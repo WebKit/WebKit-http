@@ -187,3 +187,7 @@
 #define WebKitMediaPreloadingEnabledPreferenceKey "WebKitMediaPreloadingEnabled"
 
 #define WebKitIsSecureContextAttributeEnabledPreferenceKey "WebKitIsSecureContextAttributeEnabled"
+
+#define WebKitDataTransferItemsEnabledPreferenceKey "WebKitDataTransferItemsEnabled"
+
+#define WebKitInspectorAdditionsEnabledPreferenceKey "WebKitInspectorAdditionsEnabled"

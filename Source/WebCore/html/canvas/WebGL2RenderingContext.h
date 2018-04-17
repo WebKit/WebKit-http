@@ -53,7 +53,7 @@ public:
     // Framebuffer objects
     WebGLAny getFramebufferAttachmentParameter(GC3Denum target, GC3Denum attachment, GC3Denum pname) final;
     void blitFramebuffer(GC3Dint srcX0, GC3Dint srcY0, GC3Dint srcX1, GC3Dint srcY1, GC3Dint dstX0, GC3Dint dstY0, GC3Dint dstX1, GC3Dint dstY1, GC3Dbitfield mask, GC3Denum filter);
-    void framebufferTextureLayer(GC3Denum target, GC3Denum attachment, GC3Duint texture, GC3Dint level, GC3Dint layer);
+    void framebufferTextureLayer(GC3Denum target, GC3Denum attachment, WebGLTexture*, GC3Dint level, GC3Dint layer);
     WebGLAny getInternalformatParameter(GC3Denum target, GC3Denum internalformat, GC3Denum pname);
     void invalidateFramebuffer(GC3Denum target, const Vector<GC3Denum>& attachments);
     void invalidateSubFramebuffer(GC3Denum target, const Vector<GC3Denum>& attachments, GC3Dint x, GC3Dint y, GC3Dsizei width, GC3Dsizei height);
@@ -117,27 +117,27 @@ public:
     RefPtr<WebGLQuery> createQuery();
     void deleteQuery(WebGLQuery*);
     GC3Dboolean isQuery(WebGLQuery*);
-    void beginQuery(GC3Denum target, WebGLQuery*);
+    void beginQuery(GC3Denum target, WebGLQuery&);
     void endQuery(GC3Denum target);
     RefPtr<WebGLQuery> getQuery(GC3Denum target, GC3Denum pname);
-    WebGLAny getQueryParameter(WebGLQuery*, GC3Denum pname);
+    WebGLAny getQueryParameter(WebGLQuery&, GC3Denum pname);
     
     // Sampler objects
     RefPtr<WebGLSampler> createSampler();
     void deleteSampler(WebGLSampler*);
     GC3Dboolean isSampler(WebGLSampler*);
     void bindSampler(GC3Duint unit, WebGLSampler*);
-    void samplerParameteri(WebGLSampler*, GC3Denum pname, GC3Dint param);
-    void samplerParameterf(WebGLSampler*, GC3Denum pname, GC3Dfloat param);
-    WebGLAny getSamplerParameter(WebGLSampler*, GC3Denum pname);
+    void samplerParameteri(WebGLSampler&, GC3Denum pname, GC3Dint param);
+    void samplerParameterf(WebGLSampler&, GC3Denum pname, GC3Dfloat param);
+    WebGLAny getSamplerParameter(WebGLSampler&, GC3Denum pname);
     
     // Sync objects
     RefPtr<WebGLSync> fenceSync(GC3Denum condition, GC3Dbitfield flags);
     GC3Dboolean isSync(WebGLSync*);
     void deleteSync(WebGLSync*);
-    GC3Denum clientWaitSync(WebGLSync*, GC3Dbitfield flags, GC3Duint64 timeout);
-    void waitSync(WebGLSync*, GC3Dbitfield flags, GC3Duint64 timeout);
-    WebGLAny getSyncParameter(WebGLSync*, GC3Denum pname);
+    GC3Denum clientWaitSync(WebGLSync&, GC3Dbitfield flags, GC3Duint64 timeout);
+    void waitSync(WebGLSync&, GC3Dbitfield flags, GC3Duint64 timeout);
+    WebGLAny getSyncParameter(WebGLSync&, GC3Denum pname);
     
     // Transform feedback
     RefPtr<WebGLTransformFeedback> createTransformFeedback();
@@ -146,8 +146,8 @@ public:
     void bindTransformFeedback(GC3Denum target, WebGLTransformFeedback* id);
     void beginTransformFeedback(GC3Denum primitiveMode);
     void endTransformFeedback();
-    void transformFeedbackVaryings(WebGLProgram*, const Vector<String>& varyings, GC3Denum bufferMode);
-    RefPtr<WebGLActiveInfo> getTransformFeedbackVarying(WebGLProgram*, GC3Duint index);
+    void transformFeedbackVaryings(WebGLProgram&, const Vector<String>& varyings, GC3Denum bufferMode);
+    RefPtr<WebGLActiveInfo> getTransformFeedbackVarying(WebGLProgram&, GC3Duint index);
     void pauseTransformFeedback();
     void resumeTransformFeedback();
     
@@ -155,12 +155,12 @@ public:
     void bindBufferBase(GC3Denum target, GC3Duint index, WebGLBuffer*);
     void bindBufferRange(GC3Denum target, GC3Duint index, WebGLBuffer*, GC3Dint64 offset, GC3Dint64 size);
     WebGLAny getIndexedParameter(GC3Denum target, GC3Duint index);
-    Uint32Array* getUniformIndices(WebGLProgram*, const Vector<String>& uniformNames);
+    Uint32Array* getUniformIndices(WebGLProgram&, const Vector<String>& uniformNames);
     WebGLAny getActiveUniforms(WebGLProgram&, const Vector<GC3Duint>& uniformIndices, GC3Denum pname);
-    GC3Duint getUniformBlockIndex(WebGLProgram*, const String& uniformBlockName);
-    WebGLAny getActiveUniformBlockParameter(WebGLProgram*, GC3Duint uniformBlockIndex, GC3Denum pname);
-    WebGLAny getActiveUniformBlockName(WebGLProgram*, GC3Duint uniformBlockIndex);
-    void uniformBlockBinding(WebGLProgram*, GC3Duint uniformBlockIndex, GC3Duint uniformBlockBinding);
+    GC3Duint getUniformBlockIndex(WebGLProgram&, const String& uniformBlockName);
+    WebGLAny getActiveUniformBlockParameter(WebGLProgram&, GC3Duint uniformBlockIndex, GC3Denum pname);
+    WebGLAny getActiveUniformBlockName(WebGLProgram&, GC3Duint uniformBlockIndex);
+    void uniformBlockBinding(WebGLProgram&, GC3Duint uniformBlockIndex, GC3Duint uniformBlockBinding);
     
     // Vertex array objects
     RefPtr<WebGLVertexArrayObject> createVertexArray();

@@ -54,8 +54,6 @@
 
 namespace WebCore {
 
-// FIXME: Remove this ifdef once WPE upgrades to Freetype 2.8 and removes the patch for 2.4.11.
-#if !PLATFORM(WPE)
 static RefPtr<cairo_scaled_font_t> scaledFontWithoutMetricsHinting(cairo_scaled_font_t* scaledFont)
 {
     CairoUniquePtr<cairo_font_options_t> fontOptions(cairo_font_options_create());
@@ -67,7 +65,6 @@ static RefPtr<cairo_scaled_font_t> scaledFontWithoutMetricsHinting(cairo_scaled_
     cairo_scaled_font_get_ctm(scaledFont, &fontCTM);
     return adoptRef(cairo_scaled_font_create(cairo_scaled_font_get_font_face(scaledFont), &fontMatrix, &fontCTM, fontOptions.get()));
 }
-#endif
 
 void Font::platformInit()
 {
@@ -75,18 +72,12 @@ void Font::platformInit()
         return;
 
     ASSERT(m_platformData.scaledFont());
-    // FIXME: Remove this ifdef once WPE upgrades to Freetype 2.8 and removes the patch for 2.4.11.
-#if PLATFORM(WPE)
-    cairo_font_extents_t fontExtents;
-    cairo_scaled_font_extents(m_platformData.scaledFont(), &fontExtents);
-#else
     // Temporarily create a clone that doesn't have metrics hinting in order to avoid incorrect
     // rounding resulting in incorrect baseline positioning since the sum of ascent and descent
     // becomes larger than the line height.
     auto fontWithoutMetricsHinting = scaledFontWithoutMetricsHinting(m_platformData.scaledFont());
     cairo_font_extents_t fontExtents;
     cairo_scaled_font_extents(fontWithoutMetricsHinting.get(), &fontExtents);
-#endif
 
     float ascent = narrowPrecisionToFloat(fontExtents.ascent);
     float descent = narrowPrecisionToFloat(fontExtents.descent);
@@ -98,16 +89,17 @@ void Font::platformInit()
 
         // If the USE_TYPO_METRICS flag is set in the OS/2 table then we use typo metrics instead.
         FT_Face freeTypeFace = cairoFtFaceLocker.ftFace();
-        TT_OS2* OS2Table = freeTypeFace ? static_cast<TT_OS2*>(FT_Get_Sfnt_Table(freeTypeFace, ft_sfnt_os2)) : nullptr;
-        if (OS2Table) {
-            const FT_Short kUseTypoMetricsMask = 1 << 7;
-            if (OS2Table->fsSelection & kUseTypoMetricsMask) {
-                // FT_Size_Metrics::y_scale is in 16.16 fixed point format.
-                // Its (fractional) value is a factor that converts vertical metrics from design units to units of 1/64 pixels.
-                double yscale = (freeTypeFace->size->metrics.y_scale / 65536.0) / 64.0;
-                ascent = narrowPrecisionToFloat(yscale * OS2Table->sTypoAscender);
-                descent = -narrowPrecisionToFloat(yscale * OS2Table->sTypoDescender);
-                lineGap = narrowPrecisionToFloat(yscale * OS2Table->sTypoLineGap);
+        if (freeTypeFace && freeTypeFace->face_flags & FT_FACE_FLAG_SCALABLE) {
+            if (auto* OS2Table = static_cast<TT_OS2*>(FT_Get_Sfnt_Table(freeTypeFace, ft_sfnt_os2))) {
+                const FT_Short kUseTypoMetricsMask = 1 << 7;
+                if (OS2Table->fsSelection & kUseTypoMetricsMask) {
+                    // FT_Size_Metrics::y_scale is in 16.16 fixed point format.
+                    // Its (fractional) value is a factor that converts vertical metrics from design units to units of 1/64 pixels.
+                    double yscale = (freeTypeFace->size->metrics.y_scale / 65536.0) / 64.0;
+                    ascent = narrowPrecisionToFloat(yscale * OS2Table->sTypoAscender);
+                    descent = -narrowPrecisionToFloat(yscale * OS2Table->sTypoDescender);
+                    lineGap = narrowPrecisionToFloat(yscale * OS2Table->sTypoLineGap);
+                }
             }
         }
     }

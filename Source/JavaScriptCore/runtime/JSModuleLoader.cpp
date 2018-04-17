@@ -72,15 +72,19 @@ void JSModuleLoader::finishCreation(ExecState* exec, VM& vm, JSGlobalObject* glo
 
 static String printableModuleKey(ExecState* exec, JSValue key)
 {
+    VM& vm = exec->vm();
     if (key.isString() || key.isSymbol())
         return key.toPropertyKey(exec).impl();
-    return exec->propertyNames().emptyIdentifier.impl();
+    return vm.propertyNames->emptyIdentifier.impl();
 }
 
 JSValue JSModuleLoader::provide(ExecState* exec, JSValue key, Status status, const SourceCode& sourceCode)
 {
     VM& vm = exec->vm();
-    JSObject* function = jsCast<JSObject*>(get(exec, exec->propertyNames().builtinNames().providePublicName()));
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    JSObject* function = jsCast<JSObject*>(get(exec, vm.propertyNames->builtinNames().providePublicName()));
+    RETURN_IF_EXCEPTION(scope, { });
     CallData callData;
     CallType callType = JSC::getCallData(function, callData);
     ASSERT(callType != CallType::None);
@@ -91,12 +95,17 @@ JSValue JSModuleLoader::provide(ExecState* exec, JSValue key, Status status, con
     arguments.append(jsNumber(status));
     arguments.append(JSSourceCode::create(vm, WTFMove(source)));
 
+    scope.release();
     return call(exec, function, callType, callData, this, arguments);
 }
 
 JSInternalPromise* JSModuleLoader::loadAndEvaluateModule(ExecState* exec, JSValue moduleName, JSValue referrer, JSValue scriptFetcher)
 {
-    JSObject* function = jsCast<JSObject*>(get(exec, exec->propertyNames().builtinNames().loadAndEvaluateModulePublicName()));
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    JSObject* function = jsCast<JSObject*>(get(exec, vm.propertyNames->builtinNames().loadAndEvaluateModulePublicName()));
+    RETURN_IF_EXCEPTION(scope, nullptr);
     CallData callData;
     CallType callType = JSC::getCallData(function, callData);
     ASSERT(callType != CallType::None);
@@ -106,12 +115,17 @@ JSInternalPromise* JSModuleLoader::loadAndEvaluateModule(ExecState* exec, JSValu
     arguments.append(referrer);
     arguments.append(scriptFetcher);
 
+    scope.release();
     return jsCast<JSInternalPromise*>(call(exec, function, callType, callData, this, arguments));
 }
 
 JSInternalPromise* JSModuleLoader::loadModule(ExecState* exec, JSValue moduleName, JSValue referrer, JSValue scriptFetcher)
 {
-    JSObject* function = jsCast<JSObject*>(get(exec, exec->propertyNames().builtinNames().loadModulePublicName()));
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    JSObject* function = jsCast<JSObject*>(get(exec, vm.propertyNames->builtinNames().loadModulePublicName()));
+    RETURN_IF_EXCEPTION(scope, nullptr);
     CallData callData;
     CallType callType = JSC::getCallData(function, callData);
     ASSERT(callType != CallType::None);
@@ -121,12 +135,17 @@ JSInternalPromise* JSModuleLoader::loadModule(ExecState* exec, JSValue moduleNam
     arguments.append(referrer);
     arguments.append(scriptFetcher);
 
+    scope.release();
     return jsCast<JSInternalPromise*>(call(exec, function, callType, callData, this, arguments));
 }
 
 JSValue JSModuleLoader::linkAndEvaluateModule(ExecState* exec, JSValue moduleKey, JSValue scriptFetcher)
 {
-    JSObject* function = jsCast<JSObject*>(get(exec, exec->propertyNames().builtinNames().linkAndEvaluateModulePublicName()));
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    JSObject* function = jsCast<JSObject*>(get(exec, vm.propertyNames->builtinNames().linkAndEvaluateModulePublicName()));
+    RETURN_IF_EXCEPTION(scope, { });
     CallData callData;
     CallType callType = JSC::getCallData(function, callData);
     ASSERT(callType != CallType::None);
@@ -135,12 +154,17 @@ JSValue JSModuleLoader::linkAndEvaluateModule(ExecState* exec, JSValue moduleKey
     arguments.append(moduleKey);
     arguments.append(scriptFetcher);
 
+    scope.release();
     return call(exec, function, callType, callData, this, arguments);
 }
 
 JSInternalPromise* JSModuleLoader::requestImportModule(ExecState* exec, const Identifier& moduleKey, JSValue scriptFetcher)
 {
-    auto* function = jsCast<JSObject*>(get(exec, exec->propertyNames().builtinNames().requestImportModulePublicName()));
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    auto* function = jsCast<JSObject*>(get(exec, vm.propertyNames->builtinNames().requestImportModulePublicName()));
+    RETURN_IF_EXCEPTION(scope, nullptr);
     CallData callData;
     auto callType = JSC::getCallData(function, callData);
     ASSERT(callType != CallType::None);
@@ -149,6 +173,7 @@ JSInternalPromise* JSModuleLoader::requestImportModule(ExecState* exec, const Id
     arguments.append(jsString(exec, moduleKey.impl()));
     arguments.append(scriptFetcher);
 
+    scope.release();
     return jsCast<JSInternalPromise*>(call(exec, function, callType, callData, this, arguments));
 }
 

@@ -30,6 +30,7 @@ class IntLiteralType extends Type {
         super();
         this._origin = origin;
         this._value = value;
+        this.intType = new TypeRef(origin, "int", []);
     }
     
     get origin() { return this._origin; }
@@ -54,7 +55,11 @@ class IntLiteralType extends Type {
     verifyAsArgument(unificationContext)
     {
         let realThis = unificationContext.find(this);
-        return realThis.isNumber && realThis.canRepresent(this.value);
+        if (!realThis.isNumber)
+            return {result: false, reason: "Cannot use int literal with non-number type " + realThis};
+        if (!realThis.canRepresent(this.value))
+            return {result: false, reason: "Int literal " + this.value + " too large to be represented by type " + realThis};
+        return {result: true};
     }
     
     verifyAsParameter(unificationContext)
@@ -62,9 +67,17 @@ class IntLiteralType extends Type {
         throw new Error("IntLiteralType should never be used as a type parameter");
     }
     
+    conversionCost(unificationContext)
+    {
+        let realThis = unificationContext.find(this);
+        if (realThis.equals(this.intType))
+            return 0;
+        return 1;
+    }
+    
     commitUnification(unificationContext)
     {
-        this.type = unificationContext.find(this);
+        this.type = TypeRef.wrap(unificationContext.find(this));
     }
     
     toString()

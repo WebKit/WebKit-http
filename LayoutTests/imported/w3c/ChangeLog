@@ -1,3 +1,91 @@
+2017-09-12  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Stretching auto tracks should be done as part of the track sizing algorithm
+        https://bugs.webkit.org/show_bug.cgi?id=176783
+
+        Reviewed by Sergio Villar Senin.
+
+        Import changes on the test related to the new behavior.
+
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-021.html:
+
+2017-09-12  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Use transferred size over content size for automatic minimum size
+        https://bugs.webkit.org/show_bug.cgi?id=176688
+
+        Reviewed by Sergio Villar Senin.
+
+        Import changes on the tests related to the new behavior.
+
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-006.html:
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-007.html:
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-008.html:
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-009.html:
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-021.html:
+        * web-platform-tests/css/css-grid-1/grid-items/support/100x50-green.png: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/support/25x50-green.png: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/support/50x100-green.png: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/support/50x25-green.png: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/support/w3c-import.log:
+
+2017-09-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Make the WPT entry point for LayoutTests/http/wpt more discoverable
+        https://bugs.webkit.org/show_bug.cgi?id=176494
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/WebKit/README.txt: Added.
+        Touch a file in a "WebKit" directory so that a "WebKit" link shows up
+        on the default <http://localhost:8800> listing page.
+
+2017-09-09  Sam Weinig  <sam@webkit.org>
+
+        Finish off the FormData implementation
+        https://bugs.webkit.org/show_bug.cgi?id=176659
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/XMLHttpRequest/FormData-append-expected.txt:
+        * web-platform-tests/XMLHttpRequest/formdata-delete-expected.txt:
+        * web-platform-tests/XMLHttpRequest/formdata-foreach-expected.txt:
+        * web-platform-tests/XMLHttpRequest/formdata-get-expected.txt:
+        * web-platform-tests/XMLHttpRequest/formdata-has-expected.txt:
+        * web-platform-tests/XMLHttpRequest/formdata-set-expected.txt:
+        * web-platform-tests/XMLHttpRequest/interfaces-expected.txt:
+        
+            Update results.
+
+2017-09-08  Antti Koivisto  <antti@apple.com>
+
+        Remove support for >> descendant combinator syntax
+        https://bugs.webkit.org/show_bug.cgi?id=175765
+
+        Reviewed by Sam Weinig.
+
+        Tests for these have been removed in WPT master, just update expectations until new version is imported.
+
+        * web-platform-tests/dom/nodes/Element-matches-expected.txt:
+        * web-platform-tests/dom/nodes/Element-webkitMatchesSelector-expected.txt:
+        * web-platform-tests/dom/nodes/ParentNode-querySelector-All-expected.txt:
+        * web-platform-tests/dom/nodes/ParentNode-querySelector-All-xht-expected.txt:
+
+2017-09-07  Youenn Fablet  <youenn@apple.com>
+
+        Align FetchResponse and FetchRequest body handling
+        https://bugs.webkit.org/show_bug.cgi?id=176539
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/request/request-consume-empty-expected.txt:
+        * web-platform-tests/fetch/api/request/request-consume-expected.txt:
+        * web-platform-tests/fetch/api/request/request-idl-expected.txt:
+        * web-platform-tests/fetch/api/request/request-structure-expected.txt:
+        * web-platform-tests/fetch/api/response/response-consume-empty-expected.txt:
+        * web-platform-tests/fetch/api/response/response-consume-expected.txt:
+        * web-platform-tests/url/urlencoded-parser-expected.txt:
+
 2017-09-06  Youenn Fablet  <youenn@apple.com>
 
         Support caching of Response with a ReadableStream body

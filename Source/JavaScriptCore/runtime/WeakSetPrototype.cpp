@@ -51,18 +51,18 @@ void WeakSetPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
     putDirectWithoutTransition(vm, vm.propertyNames->toStringTagSymbol, jsString(&vm, "WeakSet"), DontEnum | ReadOnly);
 }
 
-static JSWeakSet* getWeakSet(CallFrame* callFrame, JSValue value)
+ALWAYS_INLINE static JSWeakSet* getWeakSet(CallFrame* callFrame, JSValue value)
 {
     VM& vm = callFrame->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    if (!value.isObject()) {
+    if (UNLIKELY(!value.isObject())) {
         throwTypeError(callFrame, scope, WTF::ASCIILiteral("Called WeakSet function on non-object"));
         return nullptr;
     }
 
-    if (JSWeakSet* weakSet = jsDynamicCast<JSWeakSet*>(vm, value))
-        return weakSet;
+    if (LIKELY(isJSWeakSet(asObject(value))))
+        return jsCast<JSWeakSet*>(value);
 
     throwTypeError(callFrame, scope, WTF::ASCIILiteral("Called WeakSet function on a non-WeakSet object"));
     return nullptr;
@@ -92,7 +92,7 @@ EncodedJSValue JSC_HOST_CALL protoFuncWeakSetAdd(CallFrame* callFrame)
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     auto* set = getWeakSet(callFrame, callFrame->thisValue());
-    ASSERT(!!scope.exception() == !set);
+    EXCEPTION_ASSERT(!!scope.exception() == !set);
     if (!set)
         return JSValue::encode(jsUndefined());
     JSValue key = callFrame->argument(0);

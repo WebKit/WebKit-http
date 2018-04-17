@@ -55,6 +55,7 @@
 #include <WebCore/Path.h>
 #include <WebCore/PluginData.h>
 #include <WebCore/ProtectionSpace.h>
+#include <WebCore/RectEdges.h>
 #include <WebCore/Region.h>
 #include <WebCore/ResourceError.h>
 #include <WebCore/ResourceLoadStatistics.h>
@@ -2397,7 +2398,10 @@ void ArgumentCoder<ResourceLoadStatistics>::encode(Encoder& encoder, const WebCo
     encoder << statistics.hadUserInteraction;
     encoder << statistics.mostRecentUserInteractionTime.secondsSinceEpoch().value();
     encoder << statistics.grandfathered;
-    
+
+    // Storage access
+    encoder << statistics.storageAccessUnderTopFrameOrigins;
+
     // Subframe stats
     encoder << statistics.subframeUnderTopFrameOrigins;
     
@@ -2431,7 +2435,11 @@ bool ArgumentCoder<ResourceLoadStatistics>::decode(Decoder& decoder, WebCore::Re
 
     if (!decoder.decode(statistics.grandfathered))
         return false;
-    
+
+    // Storage access
+    if (!decoder.decode(statistics.storageAccessUnderTopFrameOrigins))
+        return false;
+
     // Subframe stats
     if (!decoder.decode(statistics.subframeUnderTopFrameOrigins))
         return false;

@@ -103,9 +103,9 @@
 #include "ImageLoader.h"
 #include "InspectorInstrumentation.h"
 #include "JSCustomElementInterface.h"
+#include "JSDOMPromiseDeferred.h"
 #include "JSLazyEventListener.h"
 #include "KeyboardEvent.h"
-#include "Language.h"
 #include "LayoutDisallowedScope.h"
 #include "LoaderStrategy.h"
 #include "Logging.h"
@@ -148,6 +148,7 @@
 #include "RenderView.h"
 #include "RenderWidget.h"
 #include "RequestAnimationFrameCallback.h"
+#include "ResourceLoadObserver.h"
 #include "RuntimeEnabledFeatures.h"
 #include "SVGDocumentExtensions.h"
 #include "SVGElement.h"
@@ -206,6 +207,7 @@
 #include <inspector/ScriptCallStack.h>
 #include <pal/Logger.h>
 #include <wtf/CurrentTime.h>
+#include <wtf/Language.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/SetForScope.h>
 #include <wtf/SystemTracing.h>
@@ -1542,63 +1544,47 @@ void Document::setTitle(const String& title)
         updateTitle({ title, LTR });
 }
 
-static Element* findHTMLTitle(Document& document)
-{
-    return descendantsOfType<HTMLTitleElement>(document).first();
+template<typename> struct TitleTraits;
+
+template<> struct TitleTraits<HTMLTitleElement> {
+    static bool isInEligibleLocation(HTMLTitleElement& element) { return element.isConnected() && !element.isInShadowTree(); }
+    static HTMLTitleElement* findTitleElement(Document& document) { return descendantsOfType<HTMLTitleElement>(document).first(); }
 };
 
-static bool isHTMLTitle(Element& element)
-{
-    return is<HTMLTitleElement>(element);
+template<> struct TitleTraits<SVGTitleElement> {
+    static bool isInEligibleLocation(SVGTitleElement& element) { return element.parentNode() == element.document().documentElement(); }
+    static SVGTitleElement* findTitleElement(Document& document) { return childrenOfType<SVGTitleElement>(*document.documentElement()).first(); }
 };
 
-static bool isHTMLTitleEligible(Element& element)
+template<typename TitleElement> Element* selectNewTitleElement(Document& document, Element* oldTitleElement, Element& changingTitleElement)
 {
-    return element.isConnected() && !element.isInShadowTree();
-};
+    using Traits = TitleTraits<TitleElement>;
 
-static Element* findSVGTitle(Document& document)
-{
-    return childrenOfType<SVGTitleElement>(*document.documentElement()).first();
-};
+    if (!is<TitleElement>(changingTitleElement)) {
+        ASSERT(oldTitleElement == Traits::findTitleElement(document));
+        return oldTitleElement;
+    }
 
-static bool isSVGTitle(Element& element)
-{
-    return is<SVGTitleElement>(element);
-};
+    if (oldTitleElement)
+        return Traits::findTitleElement(document);
 
-static bool isSVGTitleEligible(Element& element)
-{
-    return element.parentNode() == element.document().documentElement();
-};
+    // Optimized common case: We have no title element yet.
+    // We can figure out which title element should be used without searching.
+    bool isEligible = Traits::isInEligibleLocation(downcast<TitleElement>(changingTitleElement));
+    auto* newTitleElement = isEligible ? &changingTitleElement : nullptr;
+    ASSERT(newTitleElement == Traits::findTitleElement(document));
+    return newTitleElement;
+}
 
 void Document::updateTitleElement(Element& changingTitleElement)
 {
     // Most documents use HTML title rules.
     // Documents with SVG document elements use SVG title rules.
-    bool useSVGTitle = is<SVGSVGElement>(documentElement());
-    auto findTitle = useSVGTitle ? findSVGTitle : findHTMLTitle;
-    auto isTitle = useSVGTitle ? isSVGTitle : isHTMLTitle;
-    auto isTitleEligible = useSVGTitle ? isSVGTitleEligible : isHTMLTitleEligible;
-
-    if (!isTitle(changingTitleElement)) {
-        ASSERT(m_titleElement == findTitle(*this));
-        return;
-    }
-
-    Element* newTitleElement;
-    if (m_titleElement)
-        newTitleElement = findTitle(*this);
-    else {
-        // Optimized common case: We have no title element yet.
-        // We can figure out which title element should be used without searching.
-        newTitleElement = isTitleEligible(changingTitleElement) ? &changingTitleElement : nullptr;
-        ASSERT(newTitleElement == findTitle(*this));
-    }
-
+    auto selectTitleElement = is<SVGSVGElement>(documentElement())
+        ? selectNewTitleElement<SVGTitleElement> : selectNewTitleElement<HTMLTitleElement>;
+    auto newTitleElement = selectTitleElement(*this, m_titleElement.get(), changingTitleElement);
     if (m_titleElement == newTitleElement)
         return;
-
     m_titleElement = newTitleElement;
     updateTitleFromTitleElement();
 }
@@ -3662,6 +3648,9 @@ void Document::removeAudioProducer(MediaProducer* audioProducer)
 void Document::noteUserInteractionWithMediaElement()
 {
     if (m_userHasInteractedWithMediaElement)
+        return;
+
+    if (!topDocument().userDidInteractWithPage())
         return;
 
     m_userHasInteractedWithMediaElement = true;
@@ -7296,6 +7285,67 @@ Logger& Document::logger() const
     }
 
     return *m_logger;
+}
+
+void Document::requestStorageAccess(Ref<DeferredPromise>&& passedPromise)
+{
+    ASSERT(settings().storageAccessAPIEnabled());
+    
+    RefPtr<DeferredPromise> promise(WTFMove(passedPromise));
+    
+    if (m_hasStorageAccess) {
+        promise->resolve<IDLBoolean>(true);
+        return;
+    }
+    
+    if (!m_frame || securityOrigin().isUnique()) {
+        promise->resolve<IDLBoolean>(false);
+        return;
+    }
+    
+    if (m_frame->isMainFrame()) {
+        m_hasStorageAccess = true;
+        promise->resolve<IDLBoolean>(true);
+        return;
+    }
+    
+    // There has to be a sandbox and it has to allow the storage access API to be called.
+    if (sandboxFlags() == SandboxNone || isSandboxed(SandboxStorageAccessByUserActivation)) {
+        promise->resolve<IDLBoolean>(false);
+        return;
+    }
+    
+    auto& securityOrigin = this->securityOrigin();
+    auto& topSecurityOrigin = topDocument().securityOrigin();
+    if (securityOrigin.equal(&topSecurityOrigin)) {
+        m_hasStorageAccess = true;
+        promise->resolve<IDLBoolean>(true);
+        return;
+    }
+    
+    if (!UserGestureIndicator::processingUserGesture()) {
+        promise->resolve<IDLBoolean>(false);
+        return;
+    }
+    
+    auto partitionDomain = securityOrigin.domainForCachePartition();
+    auto topPartitionDomain = topSecurityOrigin.domainForCachePartition();
+    StringBuilder builder;
+    builder.appendLiteral("Do you want to use your ");
+    builder.append(partitionDomain);
+    builder.appendLiteral(" ID on ");
+    builder.append(topPartitionDomain);
+    builder.appendLiteral("?");
+    Page* page = this->page();
+    // FIXME: Don't use runJavaScriptConfirm because it responds synchronously.
+    if ((page && page->chrome().runJavaScriptConfirm(*m_frame, builder.toString())) || m_grantStorageAccessOverride) {
+        m_hasStorageAccess = true;
+        ResourceLoadObserver::shared().registerStorageAccess(partitionDomain, topPartitionDomain);
+        promise->resolve<IDLBoolean>(true);
+        return;
+    }
+    
+    promise->resolve<IDLBoolean>(false);
 }
 
 } // namespace WebCore

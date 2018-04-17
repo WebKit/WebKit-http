@@ -169,6 +169,8 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
     workers
     xml
 
+    Modules/cache
+    Modules/fetch
     Modules/geolocation
     Modules/indexeddb
     Modules/mediastream

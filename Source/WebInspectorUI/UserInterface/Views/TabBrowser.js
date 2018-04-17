@@ -126,6 +126,8 @@ WI.TabBrowser = class TabBrowser extends WI.View
             if (options.ignoreSearchTab && tabContentView instanceof WI.SearchTabContentView)
                 continue;
 
+            if (options.ignoreNetworkTab && tabContentView instanceof WI.LegacyNetworkTabContentView)
+                continue;
             if (options.ignoreNetworkTab && tabContentView instanceof WI.NetworkTabContentView)
                 continue;
 

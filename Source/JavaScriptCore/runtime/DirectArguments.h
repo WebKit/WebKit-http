@@ -74,8 +74,14 @@ public:
     
     uint32_t length(ExecState* exec) const
     {
-        if (UNLIKELY(m_mappedArguments))
-            return get(exec, exec->propertyNames().length).toUInt32(exec);
+        if (UNLIKELY(m_mappedArguments)) {
+            VM& vm = exec->vm();
+            auto scope = DECLARE_THROW_SCOPE(vm);
+            JSValue value = get(exec, vm.propertyNames->length);
+            RETURN_IF_EXCEPTION(scope, 0);
+            scope.release();
+            return value.toUInt32(exec);
+        }
         return m_length;
     }
     

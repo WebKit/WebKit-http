@@ -1,3 +1,413 @@
+2017-09-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add Experimental setting for new Network tab
+        https://bugs.webkit.org/show_bug.cgi?id=176750
+
+        Reviewed by Matt Baker.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded):
+        New files and strings.
+
+        * UserInterface/Base/Setting.js:
+        New experimental setting.
+
+        * UserInterface/Views/LegacyNetworkTabContentView.js:
+        (WI.LegacyNetworkTabContentView.isTabAllowed):
+        Legacy tab availability depends on the setting.
+
+        * UserInterface/Views/NetworkTabContentView.js:
+        (WI.NetworkTabContentView):
+        (WI.NetworkTabContentView.isTabAllowed):
+        (WI.NetworkTabContentView.prototype.get contentBrowser):
+        (WI.NetworkTabContentView.prototype.get type):
+        (WI.NetworkTabContentView.prototype.canShowRepresentedObject):
+        (WI.NetworkTabContentView.prototype.get supportsSplitContentBrowser):
+        Modern network tab. Only difference right now is it allows the split console.
+
+        * UserInterface/Views/NetworkTableContentView.js: Added.
+        (WI.NetworkTableContentView):
+        (WI.NetworkTableContentView.prototype.get selectionPathComponents):
+        (WI.NetworkTableContentView.prototype.get navigationItems):
+        (WI.NetworkTableContentView.prototype.shown):
+        (WI.NetworkTableContentView.prototype.hidden):
+        (WI.NetworkTableContentView.prototype.closed):
+        (WI.NetworkTableContentView.prototype.reset):
+        (WI.NetworkTableContentView.prototype.layout):
+        (WI.NetworkTableContentView.prototype.handleClearShortcut):
+        (WI.NetworkTableContentView.prototype._resourceCachingDisabledSettingChanged):
+        (WI.NetworkTableContentView.prototype._toggleDisableResourceCache):
+        Add a stubbed out ContentView. This will be implemented next.
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+        Add an experimental setting to toggle the new network tab. Only
+        show the experimental settings that relate to the debuggable target.
+        For JSContext targets, none of the settings are applicable, so don't
+        even show the experimental section.
+
+        * UserInterface/Views/TabBrowser.js:
+        (WI.TabBrowser.prototype.bestTabContentViewForRepresentedObject):
+        Treat all network tabs the same.
+
+2017-09-11  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Canvas: improve recording controls and state management
+        https://bugs.webkit.org/show_bug.cgi?id=176762
+        <rdar://problem/34382294>
+
+        Reviewed by Devin Rousso.
+
+        CanvasManager should be responsible for starting/stopping recordings
+        and tracking state. Fixing this layering issue lets CanvasContentView
+        better manage its recording UI.
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager):
+        (WI.CanvasManager.prototype.get recordingCanvas):
+        (WI.CanvasManager.prototype.startRecording):
+        (WI.CanvasManager.prototype.stopRecording):
+
+        * UserInterface/Models/Canvas.js:
+        (WI.Canvas.prototype.get isRecording):
+        (WI.Canvas.prototype.toggleRecording): Deleted.
+
+        * UserInterface/Views/CanvasContentView.css:
+        (.navigation-bar > .item.canvas-record.disabled):
+
+        * UserInterface/Views/CanvasContentView.js:
+        (WI.CanvasContentView.prototype.shown):
+        (WI.CanvasContentView.prototype._toggleRecording):
+        (WI.CanvasContentView.prototype._recordingFinished):
+        (WI.CanvasContentView.prototype._updateRecordNavigationItem):
+
+2017-09-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Cleanup and test MIMETypeUtilities
+        https://bugs.webkit.org/show_bug.cgi?id=176731
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/FileUtilities.js:
+        (WI.saveDataToFile):
+        * UserInterface/Models/SourceMapResource.js:
+        (WI.SourceMapResource):
+        Update callers to handle new return values.
+
+        * UserInterface/Base/MIMETypeUtilities.js:
+        (WI.fileExtensionForURL):
+        Return null in error cases.
+        Only provide the content after the last period.
+
+        (WI.fileExtensionForMIMEType):
+        Handle generic "+json" and "+xml" cases.
+
+        * UserInterface/Test.html:
+        Include MIMETypeUtilities for testing.
+
+2017-09-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Rename NetworkTab / NetworkSidebar to LegacyNetwork*
+        https://bugs.webkit.org/show_bug.cgi?id=176739
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Main.html:
+        * UserInterface/Views/LegacyNetworkSidebarPanel.css: Renamed from Source/WebInspectorUI/UserInterface/Views/NetworkSidebarPanel.css.
+        * UserInterface/Views/LegacyNetworkSidebarPanel.js: Renamed from Source/WebInspectorUI/UserInterface/Views/NetworkSidebarPanel.js.
+        * UserInterface/Views/LegacyNetworkTabContentView.js: Renamed from Source/WebInspectorUI/UserInterface/Views/NetworkTabContentView.js.
+        Rename resources.
+
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded):
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WI.NetworkGridContentView):
+        (WI.NetworkGridContentView.prototype._networkTimelineRecordAdded):
+        * UserInterface/Views/TabBrowser.js:
+        (WI.TabBrowser.prototype.bestTabContentViewForRepresentedObject):
+        Update names at callsites.
+
+2017-09-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused parameter to UIString
+        https://bugs.webkit.org/show_bug.cgi?id=176738
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/LoadLocalizedStrings.js:
+        (WI.UIString):
+        Remove unused parameter. We moved to String.format for this behavior a while ago.
+
+2017-09-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Do not allow the split console in the Settings tab
+        https://bugs.webkit.org/show_bug.cgi?id=176726
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype.get supportsSplitContentBrowser):
+
+2017-09-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Include a DebugContentView for debugging
+        https://bugs.webkit.org/show_bug.cgi?id=176733
+
+        Reviewed by Matt Baker.
+
+        Provide a DebugContentView which can be used to debug lifecycle
+        events of a ContentView (shown, hidden, closed), and displays a
+        provided string. It can be created like so:
+
+            `new WI.DebugContentView("Name")`
+
+        * UserInterface/Debug/DebugContentView.css: Added.
+        (.content-view.debug):
+        * UserInterface/Debug/DebugContentView.js: Added.
+        (WI.DebugContentView):
+        (WI.DebugContentView.prototype.shown):
+        (WI.DebugContentView.prototype.hidden):
+        (WI.DebugContentView.prototype.closed):
+        Log events for debugging.
+
+        * UserInterface/Main.html:
+        Include new Debug resources.
+
+2017-09-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Make Dashboard Timeline icon and Timeline tab icon more similar
+        https://bugs.webkit.org/show_bug.cgi?id=176582
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Images/Time.svg:
+        Change the clock hands to match the time of Timelines.svg.
+
+2017-09-10  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: change style of RecordingNavigationSidebarPanel
+        https://bugs.webkit.org/show_bug.cgi?id=175451
+        <rdar://problem/34040769>
+
+        Reviewed by Devin Rousso.
+
+        This patch adds UI polish to the Canvas recording navigation sidebar:
+         - New icons for Canvas2D operations
+         - Removed extraneous colors: zebra striping, frame element background color
+         - Visual action color changed to match details sidebar "changed" color
+         - Make tree item indent a convenient multiple of the base indent
+         - Move RecordingActionTreeElement styles to a separate file
+
+        * UserInterface/Images/Clip.svg: Added.
+        * UserInterface/Images/Composite.svg: Added.
+        * UserInterface/Images/Fill.svg: Added.
+        * UserInterface/Images/LineStyle.svg: Added.
+        * UserInterface/Images/Palette.svg: Added.
+        * UserInterface/Images/PathArc.svg: Added.
+        * UserInterface/Images/PathCurve.svg: Added.
+        * UserInterface/Images/PathEllipse.svg: Added.
+        * UserInterface/Images/PathLineTo.svg: Added.
+        * UserInterface/Images/PathMoveTo.svg: Added.
+        * UserInterface/Images/PathRect.svg: Added.
+        * UserInterface/Images/Pixels.svg: Added.
+        * UserInterface/Images/PointInPath.svg: Added.
+        * UserInterface/Images/PointInStroke.svg: Added.
+        * UserInterface/Images/Shadow.svg: Added.
+        * UserInterface/Images/Stroke.svg: Added.
+        * UserInterface/Images/Text.svg: Added.
+        * UserInterface/Images/Transform.svg: Added.
+        New icons for Canvas2D operations.
+
+        * UserInterface/Main.html:
+        New file.
+
+        * UserInterface/Views/GeneralTreeElement.js:
+        (WI.GeneralTreeElement.prototype.customTitleTooltip):
+        (WI.GeneralTreeElement.prototype._updateTitleTooltip):
+        Allow derived classes to supply a custom tooltip, when
+        simply getting the title element text is insufficient.
+
+        * UserInterface/Views/RecordingActionTreeElement.css: Added.
+        (.item.action.initial-state > .icon):
+        (.tree-outline:not(:focus, .force-focus) .item.action:not(.initial-state, .parent, .invalid) > .icon):
+        (.item.action:not(.initial-state)::before):
+        (body[dir=ltr] .item.action::before):
+        (body[dir=rtl] .item.action::before):
+        (.tree-outline:matches(:focus, .force-focus) .item.action.selected:not(.initial-state, .invalid) > .icon):
+        (body:not(.window-inactive, .window-docked-inactive) :matches(:focus, .force-focus) .item.action.selected > .titles .parameter.swizzled,):
+        (.tree-outline[data-indent="1"] .item.action::before,):
+        (.tree-outline[data-indent="3"] .item.action::before):
+        (.tree-outline[data-indent="4"] .item.action::before):
+        (.tree-outline[data-indent="5"] .item.action::before):
+        (.tree-outline[data-indent="6"] .item.action::before):
+        (.tree-outline[data-indent="7"] .item.action::before):
+        (body[dir=ltr] .tree-outline:not(.hide-disclosure-buttons) .item.action:not(.initial-state, .parent) > .icon):
+        (body[dir=rtl] .tree-outline:not(.hide-disclosure-buttons) .item.action:not(.initial-state, .parent) > .icon):
+        (.item.action.visual:not(.selected, .invalid)):
+        (.item.action.attribute > .titles .parameters::before):
+        (.item.action:not(.attribute) > .titles .parameters::before):
+        (.item.action:not(.attribute) > .titles .parameters::after):
+        (.item.action > .titles .parameter:not(:last-child)::after):
+        (.item.action:not(.selected) > .titles .parameter.swizzled):
+        (.item.action.composite > .icon):
+        (.item.action.fill > .icon):
+        (.item.action.image > .icon):
+        (.item.action.line-style > .icon):
+        (.item.action.shadow > .icon):
+        (.item.action.stroke > .icon):
+        (.item.action.style > .icon):
+        (.item.action.text > .icon):
+        (.item.action.transform > .icon):
+        (.item.action.arc > .icon):
+        (.item.action.clip > .icon):
+        (.item.action.curve > .icon):
+        (.item.action.ellipse > .icon):
+        (.item.action.line-to > .icon):
+        (.item.action.move-to > .icon):
+        (.item.action.point-in-path > .icon):
+        (.item.action.point-in-stroke > .icon):
+        (.item.action.rect > .icon):
+        (.item.action.restore > .icon):
+        (.item.action.save > .icon):
+        (.item.action.invalid > .icon):
+
+        * UserInterface/Views/RecordingActionTreeElement.js:
+        (WI.RecordingActionTreeElement):
+        (WI.RecordingActionTreeElement._generateDOM.createParameterElement):
+        (WI.RecordingActionTreeElement._generateDOM):
+        (WI.RecordingActionTreeElement._getClassNames):
+        Broke out into its own helper, to simplify _generateDOM which had
+        too many responsibilities.
+
+        (WI.RecordingActionTreeElement._classNameForAction.classNameForActionName):
+        (WI.RecordingActionTreeElement._classNameForAction):
+        Get an icon for the action "type". Actions are grouped by similar
+        operations. For example, lineCap, lineDash, lineJoin, lineWidth, and
+        miterLimit are assigned the icon LineStyle.svg.
+
+        (WI.RecordingActionTreeElement.prototype.customTitleTooltip):
+
+        * UserInterface/Views/RecordingNavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline .item.folder-icon > .icon):
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline:not(:empty)): Deleted.
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline > .item.parent:not(.action, .selected).expanded): Deleted.
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline .item.action:not(.initial-state)::before): Deleted.
+        (body[dir=ltr] .sidebar > .panel.navigation.recording > .content > .tree-outline .item.action:not(.initial-state)::before): Deleted.
+        (body[dir=rtl] .sidebar > .panel.navigation.recording > .content > .tree-outline .item.action:not(.initial-state)::before): Deleted.
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline[data-indent="2"] .item.action:not(.initial-state)::before): Deleted.
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline[data-indent="3"] .item.action:not(.initial-state)::before): Deleted.
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline[data-indent="4"] .item.action:not(.initial-state)::before): Deleted.
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline[data-indent="5"] .item.action:not(.initial-state)::before): Deleted.
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline[data-indent="6"] .item.action:not(.initial-state)::before): Deleted.
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline[data-indent="7"] .item.action:not(.initial-state)::before): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .action > .icon): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .action.function > .icon): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .action.attribute.getter > .icon): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .tree-outline:matches(:focus, .force-focus) .action.attribute.getter.selected > .icon): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .action.attribute.boolean > .icon): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .action.attribute.number > .icon): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .action.attribute.object > .icon): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .action.attribute.string > .icon): Deleted.
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline > .item.parent:not(.action) > .icon): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .action:matches(.invalid, .missing) > .icon): Deleted.
+        (body[dir=ltr] .sidebar > .panel.navigation.recording > .content .action:not(.initial-state) > .icon): Deleted.
+        (body[dir=rtl] .sidebar > .panel.navigation.recording > .content .action:not(.initial-state) > .icon): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .action.visual:not(.selected, .invalid)): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .action:not(.selected, .initial-state) > .titles .parameter.swizzled): Deleted.
+        (.sidebar > .panel.navigation.recording > .content .action.invalid:not(.selected, .initial-state) > .titles :matches(.name, .parameter.invalid)): Deleted.
+        * UserInterface/Views/RecordingNavigationSidebarPanel.js:
+
+2017-09-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Uncaught Exception: TypeError: this._heapSnapshot.addEventListener is not a function.
+        https://bugs.webkit.org/show_bug.cgi?id=176633
+
+        Reviewed by Michael Saboff.
+
+        * UserInterface/Proxies/HeapSnapshotDiffProxy.js:
+        (WI.HeapSnapshotDiffProxy):
+        This class has listeners of another object's events. It should extend WI.Object.
+
+2017-09-08  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Canvas: changes to currentX/currentY aren't highlighted in the details sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=176569
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Models/RecordingAction.js:
+        Add entries to WI.RecordingAction._stateModifiers for each path function.
+
+2017-09-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Augmented Inspector: Provide a way to inspect a DOM Node (DOM.inspect)
+        https://bugs.webkit.org/show_bug.cgi?id=176563
+        <rdar://problem/19639583>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded):
+        Always create the element search toolbar icon. Only show it if the DOM domain
+        is available. With augmented agents the DOM domain may be activated later.
+
+        * UserInterface/Protocol/DOMObserver.js:
+        (WI.DOMObserver.prototype.inspect):
+        Select the node in the DOM tree outline.
+
+2017-09-07  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Canvas RecordingAction tree outline virtualization is broken
+        https://bugs.webkit.org/show_bug.cgi?id=176547
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline.prototype.updateVirtualizedElements.walk):
+        (WI.TreeOutline.prototype.updateVirtualizedElements):
+        Pass the current `count` to each recursive call of `walk` so that the cumulative index of a
+        TreeElement in any given sub-tree is correct.
+        Drive-by: if there is a focused TreeElement when scrolling, only change the current
+        `scrollTop` if it is not already visible. Also rewrote some loops for clarity.
+
+2017-09-07  Devin Rousso  <webkit@devinrousso.com>
+
+        Unreviewed, change my copyright email.
+
+        * Scripts/copy-user-interface-resources.pl:
+        * UserInterface/Controllers/CodeMirrorSpringEditingController.js:
+        * UserInterface/Images/AnimationPlayStatePaused.svg:
+        * UserInterface/Images/AnimationPlayStateRunning.svg:
+        * UserInterface/Images/CSSVariable.svg:
+        * UserInterface/Images/ListStylePositionInside.svg:
+        * UserInterface/Images/ListStylePositionOutside.svg:
+        * UserInterface/Images/StyleRule.svg:
+        * UserInterface/Images/StyleRulePseudoElement.svg:
+        * UserInterface/Models/Collection.js:
+        * UserInterface/Models/ResourceCollection.js:
+        * UserInterface/Views/CollectionContentView.css:
+        * UserInterface/Views/CollectionContentView.js:
+        * UserInterface/Views/ContextMenuUtilities.js:
+        * UserInterface/Views/GeneralTabBarItem.js:
+        * UserInterface/Views/GradientEditor.css:
+        * UserInterface/Views/GradientEditor.js:
+        * UserInterface/Views/InlineSwatch.css:
+        * UserInterface/Views/InlineSwatch.js:
+        * UserInterface/Views/PinnedTabBarItem.js:
+        * UserInterface/Views/SettingsTabContentView.css:
+        * UserInterface/Views/SettingsTabContentView.js:
+        * UserInterface/Views/SpringEditor.css:
+        * UserInterface/Views/SpringEditor.js:
+        * UserInterface/Views/StyleRuleIcons.css:
+        * UserInterface/Views/TabBarItem.js:
+        * UserInterface/Views/TitleView.css:
+        * UserInterface/Views/TitleView.js:
+        * UserInterface/Views/VisualStyleBackgroundPicker.css:
+        * UserInterface/Views/VisualStyleBackgroundPicker.js:
+        * UserInterface/Views/VisualStyleBasicInput.js:
+
 2017-09-06  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: Relax the maximum sidebar width

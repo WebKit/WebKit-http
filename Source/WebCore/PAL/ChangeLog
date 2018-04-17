@@ -1,3 +1,78 @@
+2017-09-13  Andy Estes  <aestes@apple.com>
+
+        [CF] Upstream CFNetwork-related WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=176729
+
+        Reviewed by Alex Christensen.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2017-09-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Unskip fast/text/system-font-synthetic-italic.html
+        https://bugs.webkit.org/show_bug.cgi?id=175944
+
+        Reviewed by Jon Lee.
+
+        * pal/spi/cocoa/CoreTextSPI.h:
+
+2017-09-12  Eric Carlson  <eric.carlson@apple.com>
+
+        Switch MediaPlayerPrivateAVFoundation to release logging
+        https://bugs.webkit.org/show_bug.cgi?id=176621
+        <rdar://problem/34335311>
+
+        Reviewed by Jer Noble.
+
+        * pal/Logger.h:
+        (PAL::LogArgument::toString):
+        * pal/LoggerHelper.h:
+
+2017-09-11  Andy Estes  <aestes@apple.com>
+
+        [Mac] Upstream QTKit-related WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=176472
+
+        Reviewed by Eric Carlson.
+
+        * pal/spi/mac/QTKitSPI.h:
+
+2017-09-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r221773.
+        https://bugs.webkit.org/show_bug.cgi?id=176614
+
+        This caused build failures. (Requested by mlewis13 on
+        #webkit).
+
+        Reverted changeset:
+
+        "[Mac] Upstream QTKit-related WebKitSystemInterface functions"
+        https://bugs.webkit.org/show_bug.cgi?id=176472
+        http://trac.webkit.org/changeset/221773
+
+2017-09-07  Andy Estes  <aestes@apple.com>
+
+        [Mac] Upstream QTKit-related WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=176472
+
+        Reviewed by Eric Carlson.
+
+        * pal/spi/mac/QTKitSPI.h:
+
+2017-09-07  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Mac] Stop importing NSFunctionBar_Private.h in NSTouchBarSPI.h on the macOS 10.13+ SDK
+        https://bugs.webkit.org/show_bug.cgi?id=176521
+        <rdar://problem/34296289>
+
+        Reviewed by Andy Estes.
+
+        We don't need to import NSFunctionBar_Private.h when building against the macOS 10.13 SDK, or later. Guard this
+        header import with an SDK version check.
+
+        * pal/spi/cocoa/NSTouchBarSPI.h:
+
 2017-09-06  Eric Carlson  <eric.carlson@apple.com>
 
         Require LoggingHelper overrides to provide identifier

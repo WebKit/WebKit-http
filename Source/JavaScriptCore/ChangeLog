@@ -1,3 +1,1706 @@
+2017-09-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Fix Array allocation in Object.keys
+        https://bugs.webkit.org/show_bug.cgi?id=176826
+
+        Reviewed by Saam Barati.
+
+        When isHavingABadTime() is true, array allocation does not become ArrayWithContiguous.
+        We check isHavingABadTime() in ownPropertyKeys fast path.
+        And we also ensures that ownPropertyKeys uses putDirect operation instead of put by a test.
+
+        * runtime/ObjectConstructor.cpp:
+        (JSC::ownPropertyKeys):
+
+2017-09-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Optimize WeakMap::get by adding intrinsic and fixup
+        https://bugs.webkit.org/show_bug.cgi?id=176010
+
+        Reviewed by Filip Pizlo.
+
+        It reveals that Ember.js consumes 3.8% of execution time for WeakMap#get.
+        It is used for meta property for objects (see peekMeta function in Ember.js).
+
+        This patch optimizes WeakMap#get.
+
+        1. We use inlineGet to inline WeakMap#get operation in the native function.
+        Since this native function itself is very small, we should inline HashMap#get
+        entirely in this function.
+
+        2. We add JSWeakMapType and JSWeakSetType. This allows us to perform `isJSWeakMap()`
+        very fast. And this patch wires this to DFG and FTL to add WeakMapObjectUse and WeakSetObjectUse
+        to drop unnecessary type checking. We add fixup rules for WeakMapGet DFG node by using WeakMapObjectUse,
+        ObjectUse, and Int32Use.
+
+        3. We add intrinsic for WeakMap#get, and handle it in DFG and FTL. We use MapHash to
+        calculate hash value for the key's Object and use this hash value to look up value from
+        JSWeakMap's HashMap. Currently, we just call the operationWeakMapGet function in DFG and FTL.
+        It is worth considering that implementing this operation entirely in JIT, like GetMapBucket.
+        But anyway, the current one already optimizes the performance, so we leave this for the subsequent
+        patches.
+
+        We currently do not implement any other intrinsics (like, WeakMap#has, WeakSet) because they are
+        not used in Ember.js right now.
+
+        This patch optimizes WeakMap#get by 50%.
+
+                                 baseline                  patched
+
+        weak-map-key         88.6456+-3.9564     ^     59.1502+-2.2406        ^ definitely 1.4987x faster
+
+        * bytecode/DirectEvalCodeCache.h:
+        (JSC::DirectEvalCodeCache::tryGet):
+        * bytecode/SpeculatedType.cpp:
+        (JSC::dumpSpeculation):
+        (JSC::speculationFromClassInfo):
+        (JSC::speculationFromJSType):
+        (JSC::speculationFromString):
+        * bytecode/SpeculatedType.h:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGHeapLocation.cpp:
+        (WTF::printInternal):
+        * dfg/DFGHeapLocation.h:
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasHeapPrediction):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::SafeToExecuteEdge::operator()):
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::speculateWeakMapObject):
+        (JSC::DFG::SpeculativeJIT::speculateWeakSetObject):
+        (JSC::DFG::SpeculativeJIT::speculate):
+        (JSC::DFG::SpeculativeJIT::compileWeakMapGet):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGUseKind.cpp:
+        (WTF::printInternal):
+        * dfg/DFGUseKind.h:
+        (JSC::DFG::typeFilterFor):
+        (JSC::DFG::isCell):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileWeakMapGet):
+        (JSC::FTL::DFG::LowerDFGToB3::lowWeakMapObject):
+        (JSC::FTL::DFG::LowerDFGToB3::lowWeakSetObject):
+        (JSC::FTL::DFG::LowerDFGToB3::speculate):
+        (JSC::FTL::DFG::LowerDFGToB3::speculateWeakMapObject):
+        (JSC::FTL::DFG::LowerDFGToB3::speculateWeakSetObject):
+        * jit/JITOperations.h:
+        * runtime/HashMapImpl.h:
+        (JSC::WeakMapHash::hash):
+        (JSC::WeakMapHash::equal):
+        * runtime/Intrinsic.cpp:
+        (JSC::intrinsicName):
+        * runtime/Intrinsic.h:
+        * runtime/JSType.h:
+        * runtime/JSWeakMap.h:
+        (JSC::isJSWeakMap):
+        * runtime/JSWeakSet.h:
+        (JSC::isJSWeakSet):
+        * runtime/WeakMapBase.cpp:
+        (JSC::WeakMapBase::get):
+        * runtime/WeakMapBase.h:
+        (JSC::WeakMapBase::HashTranslator::hash):
+        (JSC::WeakMapBase::HashTranslator::equal):
+        (JSC::WeakMapBase::inlineGet):
+        * runtime/WeakMapPrototype.cpp:
+        (JSC::WeakMapPrototype::finishCreation):
+        (JSC::getWeakMap):
+        (JSC::protoFuncWeakMapGet):
+        * runtime/WeakSetPrototype.cpp:
+        (JSC::getWeakSet):
+
+2017-09-12  Keith Miller  <keith_miller@apple.com>
+
+        Rename JavaScriptCore CMake unifiable sources list
+        https://bugs.webkit.org/show_bug.cgi?id=176823
+
+        Reviewed by Joseph Pecoraro.
+
+        This patch also changes the error message when the unified source
+        bundler fails to be more accurate.
+
+        * CMakeLists.txt:
+
+2017-09-12  Keith Miller  <keith_miller@apple.com>
+
+        Do unified source builds for JSC
+        https://bugs.webkit.org/show_bug.cgi?id=176076
+
+        Reviewed by Geoffrey Garen.
+
+        This patch switches the CMake JavaScriptCore build to use unified sources.
+        The Xcode build will be upgraded in a follow up patch.
+
+        Most of the source changes in this patch are fixing static
+        variable/functions name collisions. The most common collisions
+        were from our use of "static const bool verbose" and "using
+        namespace ...". I fixed all the verbose cases and fixed the "using
+        namespace" issues that occurred under the current bundling
+        strategy. It's likely that more of the "using namespace" issues
+        will need to be resolved in the future, particularly in the FTL.
+
+        I don't expect either of these problems will apply to other parts
+        of the project nearly as much as in JSC. Using a verbose variable
+        is a JSC idiom and JSC tends use the same, canonical, class name
+        in multiple parts of the engine.
+
+        * CMakeLists.txt:
+        * b3/B3CheckSpecial.cpp:
+        (JSC::B3::CheckSpecial::forEachArg):
+        (JSC::B3::CheckSpecial::generate):
+        (JSC::B3::Air::numB3Args): Deleted.
+        * b3/B3DuplicateTails.cpp:
+        * b3/B3EliminateCommonSubexpressions.cpp:
+        * b3/B3FixSSA.cpp:
+        (JSC::B3::demoteValues):
+        * b3/B3FoldPathConstants.cpp:
+        * b3/B3InferSwitches.cpp:
+        * b3/B3LowerMacrosAfterOptimizations.cpp:
+        (): Deleted.
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::LowerToAir): Deleted.
+        (JSC::B3::Air::LowerToAir::run): Deleted.
+        (JSC::B3::Air::LowerToAir::shouldCopyPropagate): Deleted.
+        (JSC::B3::Air::LowerToAir::ArgPromise::ArgPromise): Deleted.
+        (JSC::B3::Air::LowerToAir::ArgPromise::swap): Deleted.
+        (JSC::B3::Air::LowerToAir::ArgPromise::operator=): Deleted.
+        (JSC::B3::Air::LowerToAir::ArgPromise::~ArgPromise): Deleted.
+        (JSC::B3::Air::LowerToAir::ArgPromise::setTraps): Deleted.
+        (JSC::B3::Air::LowerToAir::ArgPromise::tmp): Deleted.
+        (JSC::B3::Air::LowerToAir::ArgPromise::operator bool const): Deleted.
+        (JSC::B3::Air::LowerToAir::ArgPromise::kind const): Deleted.
+        (JSC::B3::Air::LowerToAir::ArgPromise::peek const): Deleted.
+        (JSC::B3::Air::LowerToAir::ArgPromise::consume): Deleted.
+        (JSC::B3::Air::LowerToAir::ArgPromise::inst): Deleted.
+        (JSC::B3::Air::LowerToAir::tmp): Deleted.
+        (JSC::B3::Air::LowerToAir::tmpPromise): Deleted.
+        (JSC::B3::Air::LowerToAir::canBeInternal): Deleted.
+        (JSC::B3::Air::LowerToAir::commitInternal): Deleted.
+        (JSC::B3::Air::LowerToAir::crossesInterference): Deleted.
+        (JSC::B3::Air::LowerToAir::scaleForShl): Deleted.
+        (JSC::B3::Air::LowerToAir::effectiveAddr): Deleted.
+        (JSC::B3::Air::LowerToAir::addr): Deleted.
+        (JSC::B3::Air::LowerToAir::trappingInst): Deleted.
+        (JSC::B3::Air::LowerToAir::loadPromiseAnyOpcode): Deleted.
+        (JSC::B3::Air::LowerToAir::loadPromise): Deleted.
+        (JSC::B3::Air::LowerToAir::imm): Deleted.
+        (JSC::B3::Air::LowerToAir::bitImm): Deleted.
+        (JSC::B3::Air::LowerToAir::bitImm64): Deleted.
+        (JSC::B3::Air::LowerToAir::immOrTmp): Deleted.
+        (JSC::B3::Air::LowerToAir::tryOpcodeForType): Deleted.
+        (JSC::B3::Air::LowerToAir::opcodeForType): Deleted.
+        (JSC::B3::Air::LowerToAir::appendUnOp): Deleted.
+        (JSC::B3::Air::LowerToAir::preferRightForResult): Deleted.
+        (JSC::B3::Air::LowerToAir::appendBinOp): Deleted.
+        (JSC::B3::Air::LowerToAir::appendShift): Deleted.
+        (JSC::B3::Air::LowerToAir::tryAppendStoreUnOp): Deleted.
+        (JSC::B3::Air::LowerToAir::tryAppendStoreBinOp): Deleted.
+        (JSC::B3::Air::LowerToAir::createStore): Deleted.
+        (JSC::B3::Air::LowerToAir::storeOpcode): Deleted.
+        (JSC::B3::Air::LowerToAir::appendStore): Deleted.
+        (JSC::B3::Air::LowerToAir::moveForType): Deleted.
+        (JSC::B3::Air::LowerToAir::relaxedMoveForType): Deleted.
+        (JSC::B3::Air::LowerToAir::print): Deleted.
+        (JSC::B3::Air::LowerToAir::append): Deleted.
+        (JSC::B3::Air::LowerToAir::appendTrapping): Deleted.
+        (JSC::B3::Air::LowerToAir::finishAppendingInstructions): Deleted.
+        (JSC::B3::Air::LowerToAir::newBlock): Deleted.
+        (JSC::B3::Air::LowerToAir::splitBlock): Deleted.
+        (JSC::B3::Air::LowerToAir::ensureSpecial): Deleted.
+        (JSC::B3::Air::LowerToAir::ensureCheckSpecial): Deleted.
+        (JSC::B3::Air::LowerToAir::fillStackmap): Deleted.
+        (JSC::B3::Air::LowerToAir::createGenericCompare): Deleted.
+        (JSC::B3::Air::LowerToAir::createBranch): Deleted.
+        (JSC::B3::Air::LowerToAir::createCompare): Deleted.
+        (JSC::B3::Air::LowerToAir::createSelect): Deleted.
+        (JSC::B3::Air::LowerToAir::tryAppendLea): Deleted.
+        (JSC::B3::Air::LowerToAir::appendX86Div): Deleted.
+        (JSC::B3::Air::LowerToAir::appendX86UDiv): Deleted.
+        (JSC::B3::Air::LowerToAir::loadLinkOpcode): Deleted.
+        (JSC::B3::Air::LowerToAir::storeCondOpcode): Deleted.
+        (JSC::B3::Air::LowerToAir::appendCAS): Deleted.
+        (JSC::B3::Air::LowerToAir::appendVoidAtomic): Deleted.
+        (JSC::B3::Air::LowerToAir::appendGeneralAtomic): Deleted.
+        (JSC::B3::Air::LowerToAir::lower): Deleted.
+        * b3/B3PatchpointSpecial.cpp:
+        (JSC::B3::PatchpointSpecial::generate):
+        * b3/B3ReduceDoubleToFloat.cpp:
+        (JSC::B3::reduceDoubleToFloat):
+        * b3/B3ReduceStrength.cpp:
+        * b3/B3StackmapGenerationParams.cpp:
+        * b3/B3StackmapSpecial.cpp:
+        (JSC::B3::StackmapSpecial::repsImpl):
+        (JSC::B3::StackmapSpecial::repForArg):
+        * b3/air/AirAllocateStackByGraphColoring.cpp:
+        (JSC::B3::Air::allocateStackByGraphColoring):
+        * b3/air/AirEmitShuffle.cpp:
+        (JSC::B3::Air::emitShuffle):
+        * b3/air/AirFixObviousSpills.cpp:
+        * b3/air/AirLowerAfterRegAlloc.cpp:
+        (JSC::B3::Air::lowerAfterRegAlloc):
+        * b3/air/AirStackAllocation.cpp:
+        (JSC::B3::Air::attemptAssignment):
+        (JSC::B3::Air::assign):
+        * bytecode/AccessCase.cpp:
+        (JSC::AccessCase::generateImpl):
+        * bytecode/CallLinkStatus.cpp:
+        (JSC::CallLinkStatus::computeDFGStatuses):
+        * bytecode/GetterSetterAccessCase.cpp:
+        (JSC::GetterSetterAccessCase::emitDOMJITGetter):
+        * bytecode/ObjectPropertyConditionSet.cpp:
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::PolymorphicAccess::addCases):
+        (JSC::PolymorphicAccess::regenerate):
+        * bytecode/PropertyCondition.cpp:
+        (JSC::PropertyCondition::isStillValidAssumingImpurePropertyWatchpoint const):
+        * bytecode/StructureStubInfo.cpp:
+        (JSC::StructureStubInfo::addAccessCase):
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::DelayedSetLocal::DelayedSetLocal):
+        (JSC::DFG::ByteCodeParser::inliningCost):
+        (JSC::DFG::ByteCodeParser::inlineCall):
+        (JSC::DFG::ByteCodeParser::attemptToInlineCall):
+        (JSC::DFG::ByteCodeParser::handleInlining):
+        (JSC::DFG::ByteCodeParser::planLoad):
+        (JSC::DFG::ByteCodeParser::store):
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        (JSC::DFG::ByteCodeParser::linkBlock):
+        (JSC::DFG::ByteCodeParser::linkBlocks):
+        * dfg/DFGCSEPhase.cpp:
+        * dfg/DFGInPlaceAbstractState.cpp:
+        (JSC::DFG::InPlaceAbstractState::merge):
+        * dfg/DFGIntegerCheckCombiningPhase.cpp:
+        (JSC::DFG::IntegerCheckCombiningPhase::handleBlock):
+        * dfg/DFGIntegerRangeOptimizationPhase.cpp:
+        * dfg/DFGMovHintRemovalPhase.cpp:
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        * dfg/DFGPhantomInsertionPhase.cpp:
+        * dfg/DFGPutStackSinkingPhase.cpp:
+        * dfg/DFGStoreBarrierInsertionPhase.cpp:
+        * dfg/DFGVarargsForwardingPhase.cpp:
+        * ftl/FTLAbstractHeap.cpp:
+        (JSC::FTL::AbstractHeap::compute):
+        * ftl/FTLAbstractHeapRepository.cpp:
+        (JSC::FTL::AbstractHeapRepository::decorateMemory):
+        (JSC::FTL::AbstractHeapRepository::decorateCCallRead):
+        (JSC::FTL::AbstractHeapRepository::decorateCCallWrite):
+        (JSC::FTL::AbstractHeapRepository::decoratePatchpointRead):
+        (JSC::FTL::AbstractHeapRepository::decoratePatchpointWrite):
+        (JSC::FTL::AbstractHeapRepository::decorateFenceRead):
+        (JSC::FTL::AbstractHeapRepository::decorateFenceWrite):
+        (JSC::FTL::AbstractHeapRepository::decorateFencedAccess):
+        (JSC::FTL::AbstractHeapRepository::computeRangesAndDecorateInstructions):
+        * ftl/FTLLink.cpp:
+        (JSC::FTL::link):
+        * heap/MarkingConstraintSet.cpp:
+        (JSC::MarkingConstraintSet::add):
+        * interpreter/ShadowChicken.cpp:
+        (JSC::ShadowChicken::update):
+        * jit/BinarySwitch.cpp:
+        (JSC::BinarySwitch::BinarySwitch):
+        (JSC::BinarySwitch::build):
+        * llint/LLIntData.cpp:
+        (JSC::LLInt::Data::loadStats):
+        (JSC::LLInt::Data::saveStats):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::ArrayPrototype::tryInitializeSpeciesWatchpoint):
+        (JSC::ArrayPrototypeAdaptiveInferredPropertyWatchpoint::handleFire):
+        * runtime/ErrorInstance.cpp:
+        (JSC::FindFirstCallerFrameWithCodeblockFunctor::FindFirstCallerFrameWithCodeblockFunctor): Deleted.
+        (JSC::FindFirstCallerFrameWithCodeblockFunctor::operator()): Deleted.
+        (JSC::FindFirstCallerFrameWithCodeblockFunctor::foundCallFrame const): Deleted.
+        (JSC::FindFirstCallerFrameWithCodeblockFunctor::index const): Deleted.
+        * runtime/IntlDateTimeFormat.cpp:
+        (JSC::IntlDateTimeFormat::initializeDateTimeFormat):
+        * runtime/PromiseDeferredTimer.cpp:
+        (JSC::PromiseDeferredTimer::doWork):
+        (JSC::PromiseDeferredTimer::addPendingPromise):
+        (JSC::PromiseDeferredTimer::cancelPendingPromise):
+        * runtime/TypeProfiler.cpp:
+        (JSC::TypeProfiler::insertNewLocation):
+        * runtime/TypeProfilerLog.cpp:
+        (JSC::TypeProfilerLog::processLogEntries):
+        * runtime/WeakMapPrototype.cpp:
+        (JSC::protoFuncWeakMapDelete):
+        (JSC::protoFuncWeakMapGet):
+        (JSC::protoFuncWeakMapHas):
+        (JSC::protoFuncWeakMapSet):
+        (JSC::getWeakMapData): Deleted.
+        * runtime/WeakSetPrototype.cpp:
+        (JSC::protoFuncWeakSetDelete):
+        (JSC::protoFuncWeakSetHas):
+        (JSC::protoFuncWeakSetAdd):
+        (JSC::getWeakMapData): Deleted.
+        * testRegExp.cpp:
+        (testOneRegExp):
+        (runFromFiles):
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::parseAndCompile):
+        * wasm/WasmBBQPlan.cpp:
+        (JSC::Wasm::BBQPlan::moveToState):
+        (JSC::Wasm::BBQPlan::parseAndValidateModule):
+        (JSC::Wasm::BBQPlan::prepare):
+        (JSC::Wasm::BBQPlan::compileFunctions):
+        (JSC::Wasm::BBQPlan::complete):
+        * wasm/WasmFaultSignalHandler.cpp:
+        (JSC::Wasm::trapHandler):
+        * wasm/WasmOMGPlan.cpp:
+        (JSC::Wasm::OMGPlan::OMGPlan):
+        (JSC::Wasm::OMGPlan::work):
+        * wasm/WasmPlan.cpp:
+        (JSC::Wasm::Plan::fail):
+        * wasm/WasmSignature.cpp:
+        (JSC::Wasm::SignatureInformation::adopt):
+        * wasm/WasmWorklist.cpp:
+        (JSC::Wasm::Worklist::enqueue):
+
+2017-09-12  Michael Saboff  <msaboff@apple.com>
+
+        String.prototype.replace() puts extra '<' in result when a named capture reference is used without named captures in the RegExp
+        https://bugs.webkit.org/show_bug.cgi?id=176814
+
+        Reviewed by Mark Lam.
+
+        The copy and advance indices where off by one and needed a little fine tuning.
+
+        * runtime/StringPrototype.cpp:
+        (JSC::substituteBackreferencesSlow):
+
+2017-09-11  Mark Lam  <mark.lam@apple.com>
+
+        More exception check book-keeping needed found by 32-bit JSC test failures.
+        https://bugs.webkit.org/show_bug.cgi?id=176742
+
+        Reviewed by Michael Saboff and Keith Miller.
+
+        * dfg/DFGOperations.cpp:
+
+2017-09-11  Mark Lam  <mark.lam@apple.com>
+
+        Make jsc dump the command line if JSC_dumpOption environment variable is set with a non-zero value.
+        https://bugs.webkit.org/show_bug.cgi?id=176722
+
+        Reviewed by Saam Barati.
+
+        For PLATFORM(COCOA), I also dumped the JSC_* environmental variables that are
+        in effect when jsc is invoked.
+
+        * jsc.cpp:
+        (CommandLine::parseArguments):
+
+2017-09-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r221854.
+
+        The test added with this change fails on 32-bit JSC bots.
+
+        Reverted changeset:
+
+        "[DFG] Optimize WeakMap::get by adding intrinsic and fixup"
+        https://bugs.webkit.org/show_bug.cgi?id=176010
+        http://trac.webkit.org/changeset/221854
+
+2017-09-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Optimize WeakMap::get by adding intrinsic and fixup
+        https://bugs.webkit.org/show_bug.cgi?id=176010
+
+        Reviewed by Filip Pizlo.
+
+        It reveals that Ember.js consumes 3.8% of execution time for WeakMap#get.
+        It is used for meta property for objects (see peekMeta function in Ember.js).
+
+        This patch optimizes WeakMap#get.
+
+        1. We use inlineGet to inline WeakMap#get operation in the native function.
+        Since this native function itself is very small, we should inline HashMap#get
+        entirely in this function.
+
+        2. We add JSWeakMapType and JSWeakSetType. This allows us to perform `isJSWeakMap()`
+        very fast. And this patch wires this to DFG and FTL to add WeakMapObjectUse and WeakSetObjectUse
+        to drop unnecessary type checking. We add fixup rules for WeakMapGet DFG node by using WeakMapObjectUse,
+        ObjectUse, and Int32Use.
+
+        3. We add intrinsic for WeakMap#get, and handle it in DFG and FTL. We use MapHash to
+        calculate hash value for the key's Object and use this hash value to look up value from
+        JSWeakMap's HashMap. Currently, we just call the operationWeakMapGet function in DFG and FTL.
+        It is worth considering that implementing this operation entirely in JIT, like GetMapBucket.
+        But anyway, the current one already optimizes the performance, so we leave this for the subsequent
+        patches.
+
+        We currently do not implement any other intrinsics (like, WeakMap#has, WeakSet) because they are
+        not used in Ember.js right now.
+
+        This patch optimizes WeakMap#get by 50%.
+
+                                 baseline                  patched
+
+        weak-map-key         88.6456+-3.9564     ^     59.1502+-2.2406        ^ definitely 1.4987x faster
+
+        * bytecode/DirectEvalCodeCache.h:
+        (JSC::DirectEvalCodeCache::tryGet):
+        * bytecode/SpeculatedType.cpp:
+        (JSC::dumpSpeculation):
+        (JSC::speculationFromClassInfo):
+        (JSC::speculationFromJSType):
+        (JSC::speculationFromString):
+        * bytecode/SpeculatedType.h:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGHeapLocation.cpp:
+        (WTF::printInternal):
+        * dfg/DFGHeapLocation.h:
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasHeapPrediction):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::SafeToExecuteEdge::operator()):
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::speculateWeakMapObject):
+        (JSC::DFG::SpeculativeJIT::speculateWeakSetObject):
+        (JSC::DFG::SpeculativeJIT::speculate):
+        (JSC::DFG::SpeculativeJIT::compileWeakMapGet):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGUseKind.cpp:
+        (WTF::printInternal):
+        * dfg/DFGUseKind.h:
+        (JSC::DFG::typeFilterFor):
+        (JSC::DFG::isCell):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileWeakMapGet):
+        (JSC::FTL::DFG::LowerDFGToB3::lowWeakMapObject):
+        (JSC::FTL::DFG::LowerDFGToB3::lowWeakSetObject):
+        (JSC::FTL::DFG::LowerDFGToB3::speculate):
+        (JSC::FTL::DFG::LowerDFGToB3::speculateWeakMapObject):
+        (JSC::FTL::DFG::LowerDFGToB3::speculateWeakSetObject):
+        * jit/JITOperations.h:
+        * runtime/Intrinsic.cpp:
+        (JSC::intrinsicName):
+        * runtime/Intrinsic.h:
+        * runtime/JSType.h:
+        * runtime/JSWeakMap.h:
+        (JSC::isJSWeakMap):
+        * runtime/JSWeakSet.h:
+        (JSC::isJSWeakSet):
+        * runtime/WeakMapBase.cpp:
+        (JSC::WeakMapBase::get):
+        * runtime/WeakMapBase.h:
+        (JSC::WeakMapBase::HashTranslator::hash):
+        (JSC::WeakMapBase::HashTranslator::equal):
+        (JSC::WeakMapBase::inlineGet):
+        * runtime/WeakMapPrototype.cpp:
+        (JSC::WeakMapPrototype::finishCreation):
+        (JSC::getWeakMap):
+        (JSC::protoFuncWeakMapGet):
+        * runtime/WeakSetPrototype.cpp:
+        (JSC::getWeakSet):
+
+2017-09-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Optimize Object.keys by using careful array allocation
+        https://bugs.webkit.org/show_bug.cgi?id=176654
+
+        Reviewed by Darin Adler.
+
+        SixSpeed object-assign.es6 stresses Object.keys. Object.keys is one of frequently used
+        function in JS apps. Luckily Object.keys has several good features.
+
+        1. Once PropertyNameArray is allocated, we know the length of the result array since
+        we do not need to filter out keys listed in PropertyNameArray. The execption is ProxyObject,
+        but it rarely appears. ProxyObject case goes to the generic path.
+
+        2. Object.keys does not need to access object after listing PropertyNameArray. It means
+        that we do not need to worry about enumeration attribute change by touching object.
+
+        This patch adds a fast path for Object.keys's array allocation. We allocate the JSArray
+        with the size and ArrayContiguous indexing shape.
+
+        This further improves SixSpeed object-assign.es5 by 13%.
+
+                                            baseline                  patched
+        Microbenchmarks:
+           object-keys-map-values       73.4324+-2.5397     ^     62.5933+-2.6677        ^ definitely 1.1732x faster
+           object-keys                  40.8828+-1.5851     ^     29.2066+-1.8944        ^ definitely 1.3998x faster
+
+                                            baseline                  patched
+        SixSpeed:
+           object-assign.es5           384.8719+-10.7204    ^    340.2734+-12.0947       ^ definitely 1.1311x faster
+
+        BTW, the further optimization of Object.keys can be considered: introducing own property keys
+        cache which is similar to the current enumeration cache. But this patch is orthogonal to
+        this optimization!
+
+        * runtime/ObjectConstructor.cpp:
+        (JSC::objectConstructorValues):
+        (JSC::ownPropertyKeys):
+        * runtime/ObjectConstructor.h:
+
+2017-09-10  Mark Lam  <mark.lam@apple.com>
+
+        Fix all ExceptionScope verification failures in JavaScriptCore.
+        https://bugs.webkit.org/show_bug.cgi?id=176662
+        <rdar://problem/34352085>
+
+        Reviewed by Filip Pizlo.
+
+        1. Introduced EXCEPTION_ASSERT macros so that we can enable exception scope
+           verification for release builds too (though this requires manually setting
+           ENABLE_EXCEPTION_SCOPE_VERIFICATION to 1 in Platform.h).
+
+           This is useful because it allows us to run the tests more quickly to check
+           if any regressions have occurred.  Debug builds run so much slower and not
+           good for a quick turn around.  Debug builds are necessary though to get
+           trace information without inlining by the C++ compiler.  This is necessary to
+           diagnose where the missing exception check is.
+
+        2. Repurposed the JSC_dumpSimulatedThrows=true options to capture and dump the last
+           simulated throw when an exception scope verification fails.
+
+           Previously, this option dumps the stack trace on all simulated throws.  That
+           turned out to not be very useful, and slows down the debugging process.
+           Instead, the new implementation captures the stack trace and only dumps it
+           if we have a verification failure.
+
+        3. Fixed missing exception checks and book-keeping needed to allow the JSC tests
+           to pass with JSC_validateExceptionChecks=true.
+
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::finishCreation):
+        * dfg/DFGOSRExit.cpp:
+        (JSC::DFG::OSRExit::executeOSRExit):
+        * dfg/DFGOperations.cpp:
+        * interpreter/Interpreter.cpp:
+        (JSC::eval):
+        (JSC::loadVarargs):
+        (JSC::Interpreter::unwind):
+        (JSC::Interpreter::executeProgram):
+        (JSC::Interpreter::executeCall):
+        (JSC::Interpreter::executeConstruct):
+        (JSC::Interpreter::prepareForRepeatCall):
+        (JSC::Interpreter::execute):
+        (JSC::Interpreter::executeModuleProgram):
+        * jit/JITOperations.cpp:
+        (JSC::getByVal):
+        * jsc.cpp:
+        (WTF::CustomGetter::customGetterAcessor):
+        (GlobalObject::moduleLoaderImportModule):
+        (GlobalObject::moduleLoaderResolve):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::getByVal):
+        (JSC::LLInt::setUpCall):
+        * parser/Parser.h:
+        (JSC::Parser::popScopeInternal):
+        * runtime/AbstractModuleRecord.cpp:
+        (JSC::AbstractModuleRecord::hostResolveImportedModule):
+        (JSC::AbstractModuleRecord::resolveImport):
+        (JSC::AbstractModuleRecord::resolveExportImpl):
+        (JSC::getExportedNames):
+        (JSC::AbstractModuleRecord::getModuleNamespace):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::getProperty):
+        (JSC::unshift):
+        (JSC::arrayProtoFuncToString):
+        (JSC::arrayProtoFuncToLocaleString):
+        (JSC::arrayProtoFuncJoin):
+        (JSC::arrayProtoFuncPop):
+        (JSC::arrayProtoFuncPush):
+        (JSC::arrayProtoFuncReverse):
+        (JSC::arrayProtoFuncShift):
+        (JSC::arrayProtoFuncSlice):
+        (JSC::arrayProtoFuncSplice):
+        (JSC::arrayProtoFuncUnShift):
+        (JSC::arrayProtoFuncIndexOf):
+        (JSC::arrayProtoFuncLastIndexOf):
+        (JSC::concatAppendOne):
+        (JSC::arrayProtoPrivateFuncConcatMemcpy):
+        (JSC::arrayProtoPrivateFuncAppendMemcpy):
+        * runtime/CatchScope.h:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/DatePrototype.cpp:
+        (JSC::dateProtoFuncSetTime):
+        (JSC::setNewValueFromTimeArgs):
+        * runtime/DirectArguments.h:
+        (JSC::DirectArguments::length const):
+        * runtime/ErrorPrototype.cpp:
+        (JSC::errorProtoFuncToString):
+        * runtime/ExceptionFuzz.cpp:
+        (JSC::doExceptionFuzzing):
+        * runtime/ExceptionScope.h:
+        (JSC::ExceptionScope::needExceptionCheck):
+        (JSC::ExceptionScope::assertNoException):
+        * runtime/GenericArgumentsInlines.h:
+        (JSC::GenericArguments<Type>::defineOwnProperty):
+        * runtime/HashMapImpl.h:
+        (JSC::HashMapImpl::rehash):
+        * runtime/IntlDateTimeFormat.cpp:
+        (JSC::IntlDateTimeFormat::formatToParts):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::defineOwnProperty):
+        (JSC::JSArray::put):
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::putToPrimitive):
+        (JSC::JSValue::putToPrimitiveByIndex):
+        * runtime/JSCJSValueInlines.h:
+        (JSC::JSValue::toIndex const):
+        (JSC::JSValue::get const):
+        (JSC::JSValue::getPropertySlot const):
+        (JSC::JSValue::equalSlowCaseInline):
+        * runtime/JSGenericTypedArrayViewConstructorInlines.h:
+        (JSC::constructGenericTypedArrayViewFromIterator):
+        (JSC::constructGenericTypedArrayViewWithArguments):
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::set):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::put):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::decode):
+        (JSC::globalFuncEval):
+        (JSC::globalFuncProtoGetter):
+        (JSC::globalFuncProtoSetter):
+        (JSC::globalFuncImportModule):
+        * runtime/JSInternalPromise.cpp:
+        (JSC::JSInternalPromise::then):
+        * runtime/JSInternalPromiseDeferred.cpp:
+        (JSC::JSInternalPromiseDeferred::create):
+        * runtime/JSJob.cpp:
+        (JSC::JSJobMicrotask::run):
+        * runtime/JSModuleEnvironment.cpp:
+        (JSC::JSModuleEnvironment::getOwnPropertySlot):
+        (JSC::JSModuleEnvironment::put):
+        (JSC::JSModuleEnvironment::deleteProperty):
+        * runtime/JSModuleLoader.cpp:
+        (JSC::JSModuleLoader::provide):
+        (JSC::JSModuleLoader::loadAndEvaluateModule):
+        (JSC::JSModuleLoader::loadModule):
+        (JSC::JSModuleLoader::linkAndEvaluateModule):
+        (JSC::JSModuleLoader::requestImportModule):
+        * runtime/JSModuleRecord.cpp:
+        (JSC::JSModuleRecord::link):
+        (JSC::JSModuleRecord::instantiateDeclarations):
+        * runtime/JSONObject.cpp:
+        (JSC::Stringifier::stringify):
+        (JSC::Stringifier::toJSON):
+        (JSC::JSONProtoFuncParse):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::calculatedClassName):
+        (JSC::ordinarySetSlow):
+        (JSC::JSObject::putInlineSlow):
+        (JSC::JSObject::ordinaryToPrimitive const):
+        (JSC::JSObject::toPrimitive const):
+        (JSC::JSObject::hasInstance):
+        (JSC::JSObject::getPropertyNames):
+        (JSC::JSObject::toNumber const):
+        (JSC::JSObject::defineOwnIndexedProperty):
+        (JSC::JSObject::putByIndexBeyondVectorLengthWithoutAttributes):
+        (JSC::JSObject::putByIndexBeyondVectorLengthWithArrayStorage):
+        (JSC::JSObject::putDirectIndexBeyondVectorLengthWithArrayStorage):
+        (JSC::validateAndApplyPropertyDescriptor):
+        (JSC::JSObject::defineOwnNonIndexProperty):
+        (JSC::JSObject::getGenericPropertyNames):
+        * runtime/JSObject.h:
+        (JSC::JSObject::get const):
+        * runtime/JSObjectInlines.h:
+        (JSC::JSObject::getPropertySlot const):
+        (JSC::JSObject::getPropertySlot):
+        (JSC::JSObject::getNonIndexPropertySlot):
+        (JSC::JSObject::putInlineForJSObject):
+        * runtime/JSPromiseConstructor.cpp:
+        (JSC::constructPromise):
+        * runtime/JSPromiseDeferred.cpp:
+        (JSC::JSPromiseDeferred::create):
+        * runtime/JSScope.cpp:
+        (JSC::abstractAccess):
+        (JSC::JSScope::resolve):
+        (JSC::JSScope::resolveScopeForHoistingFuncDeclInEval):
+        (JSC::JSScope::abstractResolve):
+        * runtime/LiteralParser.cpp:
+        (JSC::LiteralParser<CharType>::tryJSONPParse):
+        (JSC::LiteralParser<CharType>::parse):
+        * runtime/Lookup.h:
+        (JSC::putEntry):
+        * runtime/MapConstructor.cpp:
+        (JSC::constructMap):
+        * runtime/NumberPrototype.cpp:
+        (JSC::numberProtoFuncToString):
+        * runtime/ObjectConstructor.cpp:
+        (JSC::objectConstructorSetPrototypeOf):
+        (JSC::objectConstructorGetOwnPropertyDescriptor):
+        (JSC::objectConstructorGetOwnPropertyDescriptors):
+        (JSC::objectConstructorAssign):
+        (JSC::objectConstructorValues):
+        (JSC::toPropertyDescriptor):
+        (JSC::objectConstructorDefineProperty):
+        (JSC::defineProperties):
+        (JSC::objectConstructorDefineProperties):
+        (JSC::ownPropertyKeys):
+        * runtime/ObjectPrototype.cpp:
+        (JSC::objectProtoFuncHasOwnProperty):
+        (JSC::objectProtoFuncIsPrototypeOf):
+        (JSC::objectProtoFuncLookupGetter):
+        (JSC::objectProtoFuncLookupSetter):
+        (JSC::objectProtoFuncToLocaleString):
+        (JSC::objectProtoFuncToString):
+        * runtime/Options.h:
+        * runtime/ParseInt.h:
+        (JSC::toStringView):
+        * runtime/ProxyObject.cpp:
+        (JSC::performProxyGet):
+        (JSC::ProxyObject::performPut):
+        * runtime/ReflectObject.cpp:
+        (JSC::reflectObjectDefineProperty):
+        * runtime/RegExpConstructor.cpp:
+        (JSC::toFlags):
+        (JSC::regExpCreate):
+        (JSC::constructRegExp):
+        * runtime/RegExpObject.cpp:
+        (JSC::collectMatches):
+        * runtime/RegExpObjectInlines.h:
+        (JSC::RegExpObject::execInline):
+        (JSC::RegExpObject::matchInline):
+        * runtime/RegExpPrototype.cpp:
+        (JSC::regExpProtoFuncTestFast):
+        (JSC::regExpProtoFuncExec):
+        (JSC::regExpProtoFuncMatchFast):
+        (JSC::regExpProtoFuncToString):
+        (JSC::regExpProtoFuncSplitFast):
+        * runtime/ScriptExecutable.cpp:
+        (JSC::ScriptExecutable::newCodeBlockFor):
+        (JSC::ScriptExecutable::prepareForExecutionImpl):
+        * runtime/SetConstructor.cpp:
+        (JSC::constructSet):
+        * runtime/ThrowScope.cpp:
+        (JSC::ThrowScope::simulateThrow):
+        * runtime/VM.cpp:
+        (JSC::VM::verifyExceptionCheckNeedIsSatisfied):
+        * runtime/VM.h:
+        * runtime/WeakMapPrototype.cpp:
+        (JSC::protoFuncWeakMapSet):
+        * runtime/WeakSetPrototype.cpp:
+        (JSC::protoFuncWeakSetAdd):
+        * wasm/js/WebAssemblyModuleConstructor.cpp:
+        (JSC::WebAssemblyModuleConstructor::createModule):
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::link):
+        * wasm/js/WebAssemblyPrototype.cpp:
+        (JSC::reject):
+        (JSC::webAssemblyCompileFunc):
+        (JSC::resolve):
+        (JSC::webAssemblyInstantiateFunc):
+
+2017-09-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Error should compute .stack and friends lazily
+        https://bugs.webkit.org/show_bug.cgi?id=176645
+
+        Reviewed by Saam Barati.
+        
+        Building the string portion of the stack trace after we walk the stack accounts for most of
+        the cost of computing the .stack property. So, this patch makes ErrorInstance hold onto the
+        Vector<StackFrame> so that it can build the string only once it's really needed.
+        
+        This is an enormous speed-up for programs that allocate and throw exceptions.
+        
+        It's a 5.6x speed-up for "new Error()" with a stack that is 4 functions deep.
+        
+        It's a 2.2x speed-up for throwing and catching an Error.
+        
+        It's a 1.17x speed-up for the WSL test suite (which throws a lot).
+        
+        It's a significant speed-up on many of our existing try-catch microbenchmarks. For example,
+        delta-blue-try-catch is 1.16x faster.
+
+        * interpreter/Interpreter.cpp:
+        (JSC::GetStackTraceFunctor::GetStackTraceFunctor):
+        (JSC::GetStackTraceFunctor::operator() const):
+        (JSC::Interpreter::getStackTrace):
+        * interpreter/Interpreter.h:
+        * runtime/Error.cpp:
+        (JSC::getStackTrace):
+        (JSC::getBytecodeOffset):
+        (JSC::addErrorInfo):
+        (JSC::addErrorInfoAndGetBytecodeOffset): Deleted.
+        * runtime/Error.h:
+        * runtime/ErrorInstance.cpp:
+        (JSC::ErrorInstance::ErrorInstance):
+        (JSC::ErrorInstance::finishCreation):
+        (JSC::ErrorInstance::materializeErrorInfoIfNeeded):
+        (JSC::ErrorInstance::visitChildren):
+        (JSC::ErrorInstance::getOwnPropertySlot):
+        (JSC::ErrorInstance::getOwnNonIndexPropertyNames):
+        (JSC::ErrorInstance::defineOwnProperty):
+        (JSC::ErrorInstance::put):
+        (JSC::ErrorInstance::deleteProperty):
+        * runtime/ErrorInstance.h:
+        * runtime/Exception.cpp:
+        (JSC::Exception::visitChildren):
+        (JSC::Exception::finishCreation):
+        * runtime/Exception.h:
+        * runtime/StackFrame.cpp:
+        (JSC::StackFrame::visitChildren):
+        * runtime/StackFrame.h:
+        (JSC::StackFrame::StackFrame):
+
+2017-09-09  Mark Lam  <mark.lam@apple.com>
+
+        [Re-landing] Use JIT probes for DFG OSR exit.
+        https://bugs.webkit.org/show_bug.cgi?id=175144
+        <rdar://problem/33437050>
+
+        Not reviewed.  Original patch reviewed by Saam Barati.
+
+        Relanding r221774.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * assembler/MacroAssembler.cpp:
+        (JSC::stdFunctionCallback):
+        * assembler/MacroAssemblerPrinter.cpp:
+        (JSC::Printer::printCallback):
+        * assembler/ProbeContext.h:
+        (JSC::Probe::CPUState::gpr const):
+        (JSC::Probe::CPUState::spr const):
+        (JSC::Probe::Context::Context):
+        (JSC::Probe::Context::arg):
+        (JSC::Probe::Context::gpr):
+        (JSC::Probe::Context::spr):
+        (JSC::Probe::Context::fpr):
+        (JSC::Probe::Context::gprName):
+        (JSC::Probe::Context::sprName):
+        (JSC::Probe::Context::fprName):
+        (JSC::Probe::Context::gpr const):
+        (JSC::Probe::Context::spr const):
+        (JSC::Probe::Context::fpr const):
+        (JSC::Probe::Context::pc):
+        (JSC::Probe::Context::fp):
+        (JSC::Probe::Context::sp):
+        (JSC::Probe:: const): Deleted.
+        * assembler/ProbeFrame.h: Copied from Source/JavaScriptCore/assembler/ProbeFrame.h.
+        * assembler/ProbeStack.cpp:
+        (JSC::Probe::Page::Page):
+        * assembler/ProbeStack.h:
+        (JSC::Probe::Page::get):
+        (JSC::Probe::Page::set):
+        (JSC::Probe::Page::physicalAddressFor):
+        (JSC::Probe::Stack::lowWatermark):
+        (JSC::Probe::Stack::get):
+        (JSC::Probe::Stack::set):
+        * bytecode/ArithProfile.cpp:
+        * bytecode/ArithProfile.h:
+        * bytecode/ArrayProfile.h:
+        (JSC::ArrayProfile::observeArrayMode):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::updateOSRExitCounterAndCheckIfNeedToReoptimize):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::addressOfOSRExitCounter): Deleted.
+        * bytecode/ExecutionCounter.h:
+        (JSC::ExecutionCounter::hasCrossedThreshold const):
+        (JSC::ExecutionCounter::setNewThresholdForOSRExit):
+        * bytecode/MethodOfGettingAValueProfile.cpp:
+        (JSC::MethodOfGettingAValueProfile::reportValue):
+        * bytecode/MethodOfGettingAValueProfile.h:
+        * dfg/DFGDriver.cpp:
+        (JSC::DFG::compileImpl):
+        * dfg/DFGJITCode.cpp:
+        (JSC::DFG::JITCode::findPC): Deleted.
+        * dfg/DFGJITCode.h:
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::linkOSRExits):
+        (JSC::DFG::JITCompiler::link):
+        * dfg/DFGOSRExit.cpp:
+        (JSC::DFG::jsValueFor):
+        (JSC::DFG::restoreCalleeSavesFor):
+        (JSC::DFG::saveCalleeSavesFor):
+        (JSC::DFG::restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer):
+        (JSC::DFG::copyCalleeSavesToVMEntryFrameCalleeSavesBuffer):
+        (JSC::DFG::saveOrCopyCalleeSavesFor):
+        (JSC::DFG::createDirectArgumentsDuringExit):
+        (JSC::DFG::createClonedArgumentsDuringExit):
+        (JSC::DFG::OSRExit::OSRExit):
+        (JSC::DFG::emitRestoreArguments):
+        (JSC::DFG::OSRExit::executeOSRExit):
+        (JSC::DFG::reifyInlinedCallFrames):
+        (JSC::DFG::adjustAndJumpToTarget):
+        (JSC::DFG::printOSRExit):
+        (JSC::DFG::OSRExit::setPatchableCodeOffset): Deleted.
+        (JSC::DFG::OSRExit::getPatchableCodeOffsetAsJump const): Deleted.
+        (JSC::DFG::OSRExit::codeLocationForRepatch const): Deleted.
+        (JSC::DFG::OSRExit::correctJump): Deleted.
+        (JSC::DFG::OSRExit::emitRestoreArguments): Deleted.
+        (JSC::DFG::OSRExit::compileOSRExit): Deleted.
+        (JSC::DFG::OSRExit::compileExit): Deleted.
+        (JSC::DFG::OSRExit::debugOperationPrintSpeculationFailure): Deleted.
+        * dfg/DFGOSRExit.h:
+        (JSC::DFG::OSRExitState::OSRExitState):
+        (JSC::DFG::OSRExit::considerAddingAsFrequentExitSite):
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        * dfg/DFGOSRExitCompilerCommon.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGThunks.cpp:
+        (JSC::DFG::osrExitThunkGenerator):
+        (JSC::DFG::osrExitGenerationThunkGenerator): Deleted.
+        * dfg/DFGThunks.h:
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::debugCall): Deleted.
+        * jit/AssemblyHelpers.h:
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * profiler/ProfilerOSRExit.h:
+        (JSC::Profiler::OSRExit::incCount):
+        * runtime/JSCJSValue.h:
+        * runtime/JSCJSValueInlines.h:
+        * runtime/VM.h:
+
+2017-09-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r221774.
+
+        This change introduced three debug JSC test timeouts.
+
+        Reverted changeset:
+
+        "Use JIT probes for DFG OSR exit."
+        https://bugs.webkit.org/show_bug.cgi?id=175144
+        http://trac.webkit.org/changeset/221774
+
+2017-09-09  Mark Lam  <mark.lam@apple.com>
+
+        Avoid duplicate computations of ExecState::vm().
+        https://bugs.webkit.org/show_bug.cgi?id=176647
+
+        Reviewed by Saam Barati.
+
+        Because while computing ExecState::vm() is cheap, it is not free.
+
+        This patch also:
+        1. gets rids of some convenience methods in CallFrame that implicitly does a
+           ExecState::vm() computation.  This minimizes the chance of us accidentally
+           computing ExecState::vm() more than necessary.
+        2. passes vm (when available) to methodTable().
+        3. passes vm (when available) to JSLockHolder.
+
+        * API/JSBase.cpp:
+        (JSCheckScriptSyntax):
+        (JSGarbageCollect):
+        (JSReportExtraMemoryCost):
+        (JSSynchronousGarbageCollectForDebugging):
+        (JSSynchronousEdenCollectForDebugging):
+        * API/JSCallbackConstructor.h:
+        (JSC::JSCallbackConstructor::create):
+        * API/JSCallbackObject.h:
+        (JSC::JSCallbackObject::create):
+        * API/JSContext.mm:
+        (-[JSContext setException:]):
+        * API/JSContextRef.cpp:
+        (JSContextGetGlobalObject):
+        (JSContextCreateBacktrace):
+        * API/JSManagedValue.mm:
+        (-[JSManagedValue value]):
+        * API/JSObjectRef.cpp:
+        (JSObjectMake):
+        (JSObjectMakeFunctionWithCallback):
+        (JSObjectMakeConstructor):
+        (JSObjectMakeFunction):
+        (JSObjectSetPrototype):
+        (JSObjectHasProperty):
+        (JSObjectGetProperty):
+        (JSObjectSetProperty):
+        (JSObjectSetPropertyAtIndex):
+        (JSObjectDeleteProperty):
+        (JSObjectGetPrivateProperty):
+        (JSObjectSetPrivateProperty):
+        (JSObjectDeletePrivateProperty):
+        (JSObjectIsFunction):
+        (JSObjectCallAsFunction):
+        (JSObjectCallAsConstructor):
+        (JSObjectCopyPropertyNames):
+        (JSPropertyNameAccumulatorAddName):
+        * API/JSScriptRef.cpp:
+        * API/JSTypedArray.cpp:
+        (JSValueGetTypedArrayType):
+        (JSObjectMakeTypedArrayWithArrayBuffer):
+        (JSObjectMakeTypedArrayWithArrayBufferAndOffset):
+        (JSObjectGetTypedArrayBytesPtr):
+        (JSObjectGetTypedArrayBuffer):
+        (JSObjectMakeArrayBufferWithBytesNoCopy):
+        (JSObjectGetArrayBufferBytesPtr):
+        * API/JSWeakObjectMapRefPrivate.cpp:
+        * API/JSWrapperMap.mm:
+        (constructorHasInstance):
+        (makeWrapper):
+        * API/ObjCCallbackFunction.mm:
+        (objCCallbackFunctionForInvocation):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::CodeBlock):
+        (JSC::CodeBlock::jettison):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::addConstant):
+        (JSC::CodeBlock::replaceConstant):
+        * bytecode/PutByIdStatus.cpp:
+        (JSC::PutByIdStatus::computeFromLLInt):
+        (JSC::PutByIdStatus::computeFor):
+        * dfg/DFGDesiredWatchpoints.cpp:
+        (JSC::DFG::ArrayBufferViewWatchpointAdaptor::add):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::globalThisObjectFor):
+        * dfg/DFGOperations.cpp:
+        * ftl/FTLOSRExitCompiler.cpp:
+        (JSC::FTL::compileFTLOSRExit):
+        * ftl/FTLOperations.cpp:
+        (JSC::FTL::operationPopulateObjectInOSR):
+        (JSC::FTL::operationMaterializeObjectInOSR):
+        * heap/GCAssertions.h:
+        * inspector/InjectedScriptHost.cpp:
+        (Inspector::InjectedScriptHost::wrapper):
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::subtype):
+        (Inspector::constructInternalProperty):
+        (Inspector::JSInjectedScriptHost::getInternalProperties):
+        (Inspector::JSInjectedScriptHost::weakMapEntries):
+        (Inspector::JSInjectedScriptHost::weakSetEntries):
+        (Inspector::JSInjectedScriptHost::iteratorEntries):
+        * inspector/JSJavaScriptCallFrame.cpp:
+        (Inspector::valueForScopeLocation):
+        (Inspector::JSJavaScriptCallFrame::scopeDescriptions):
+        (Inspector::toJS):
+        * inspector/ScriptCallStackFactory.cpp:
+        (Inspector::extractSourceInformationFromException):
+        (Inspector::createScriptArguments):
+        * interpreter/CachedCall.h:
+        (JSC::CachedCall::CachedCall):
+        * interpreter/CallFrame.h:
+        (JSC::ExecState::atomicStringTable const): Deleted.
+        (JSC::ExecState::propertyNames const): Deleted.
+        (JSC::ExecState::emptyList const): Deleted.
+        (JSC::ExecState::interpreter): Deleted.
+        (JSC::ExecState::heap): Deleted.
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::executeProgram):
+        (JSC::Interpreter::execute):
+        (JSC::Interpreter::executeModuleProgram):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        * jit/JITOperations.cpp:
+        * jit/JITWorklist.cpp:
+        (JSC::JITWorklist::compileNow):
+        * jsc.cpp:
+        (WTF::RuntimeArray::create):
+        (WTF::RuntimeArray::getOwnPropertySlot):
+        (WTF::DOMJITGetter::DOMJITAttribute::slowCall):
+        (WTF::DOMJITFunctionObject::unsafeFunction):
+        (WTF::DOMJITCheckSubClassObject::unsafeFunction):
+        (GlobalObject::moduleLoaderFetch):
+        (functionDumpCallFrame):
+        (functionCreateRoot):
+        (functionGetElement):
+        (functionSetElementRoot):
+        (functionCreateSimpleObject):
+        (functionSetHiddenValue):
+        (functionCreateProxy):
+        (functionCreateImpureGetter):
+        (functionCreateCustomGetterObject):
+        (functionCreateDOMJITNodeObject):
+        (functionCreateDOMJITGetterObject):
+        (functionCreateDOMJITGetterComplexObject):
+        (functionCreateDOMJITFunctionObject):
+        (functionCreateDOMJITCheckSubClassObject):
+        (functionGCAndSweep):
+        (functionFullGC):
+        (functionEdenGC):
+        (functionHeapSize):
+        (functionShadowChickenFunctionsOnStack):
+        (functionSetGlobalConstRedeclarationShouldNotThrow):
+        (functionJSCOptions):
+        (functionFailNextNewCodeBlock):
+        (functionMakeMasquerader):
+        (functionDumpTypesForAllVariables):
+        (functionFindTypeForExpression):
+        (functionReturnTypeFor):
+        (functionDumpBasicBlockExecutionRanges):
+        (functionBasicBlockExecutionCount):
+        (functionDrainMicrotasks):
+        (functionGenerateHeapSnapshot):
+        (functionEnsureArrayStorage):
+        (functionStartSamplingProfiler):
+        (runInteractive):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * parser/ModuleAnalyzer.cpp:
+        (JSC::ModuleAnalyzer::ModuleAnalyzer):
+        * profiler/ProfilerBytecode.cpp:
+        (JSC::Profiler::Bytecode::toJS const):
+        * profiler/ProfilerBytecodeSequence.cpp:
+        (JSC::Profiler::BytecodeSequence::addSequenceProperties const):
+        * profiler/ProfilerBytecodes.cpp:
+        (JSC::Profiler::Bytecodes::toJS const):
+        * profiler/ProfilerCompilation.cpp:
+        (JSC::Profiler::Compilation::toJS const):
+        * profiler/ProfilerCompiledBytecode.cpp:
+        (JSC::Profiler::CompiledBytecode::toJS const):
+        * profiler/ProfilerDatabase.cpp:
+        (JSC::Profiler::Database::toJS const):
+        * profiler/ProfilerEvent.cpp:
+        (JSC::Profiler::Event::toJS const):
+        * profiler/ProfilerOSRExit.cpp:
+        (JSC::Profiler::OSRExit::toJS const):
+        * profiler/ProfilerOrigin.cpp:
+        (JSC::Profiler::Origin::toJS const):
+        * profiler/ProfilerProfiledBytecodes.cpp:
+        (JSC::Profiler::ProfiledBytecodes::toJS const):
+        * runtime/AbstractModuleRecord.cpp:
+        (JSC::identifierToJSValue):
+        (JSC::AbstractModuleRecord::resolveExportImpl):
+        (JSC::getExportedNames):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncToString):
+        (JSC::arrayProtoFuncToLocaleString):
+        * runtime/BooleanConstructor.cpp:
+        (JSC::constructBooleanFromImmediateBoolean):
+        * runtime/CallData.cpp:
+        (JSC::call):
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/CommonSlowPaths.h:
+        (JSC::CommonSlowPaths::tryCachePutToScopeGlobal):
+        (JSC::CommonSlowPaths::tryCacheGetFromScopeGlobal):
+        * runtime/Completion.cpp:
+        (JSC::checkSyntax):
+        (JSC::evaluate):
+        (JSC::loadAndEvaluateModule):
+        (JSC::loadModule):
+        (JSC::linkAndEvaluateModule):
+        (JSC::importModule):
+        * runtime/ConstructData.cpp:
+        (JSC::construct):
+        * runtime/DatePrototype.cpp:
+        (JSC::dateProtoFuncToJSON):
+        * runtime/DirectArguments.h:
+        (JSC::DirectArguments::length const):
+        * runtime/DirectEvalExecutable.cpp:
+        (JSC::DirectEvalExecutable::create):
+        * runtime/ErrorPrototype.cpp:
+        (JSC::errorProtoFuncToString):
+        * runtime/ExceptionHelpers.cpp:
+        (JSC::createUndefinedVariableError):
+        (JSC::errorDescriptionForValue):
+        * runtime/FunctionConstructor.cpp:
+        (JSC::constructFunction):
+        * runtime/GenericArgumentsInlines.h:
+        (JSC::GenericArguments<Type>::getOwnPropertyNames):
+        * runtime/IdentifierInlines.h:
+        (JSC::Identifier::add):
+        * runtime/IndirectEvalExecutable.cpp:
+        (JSC::IndirectEvalExecutable::create):
+        * runtime/InternalFunction.cpp:
+        (JSC::InternalFunction::finishCreation):
+        (JSC::InternalFunction::createSubclassStructureSlow):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::getOwnPropertySlot):
+        (JSC::JSArray::put):
+        (JSC::JSArray::deleteProperty):
+        (JSC::JSArray::getOwnNonIndexPropertyNames):
+        (JSC::JSArray::isIteratorProtocolFastAndNonObservable):
+        * runtime/JSArray.h:
+        (JSC::JSArray::shiftCountForShift):
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::dumpForBacktrace const):
+        * runtime/JSDataView.cpp:
+        (JSC::JSDataView::getOwnPropertySlot):
+        (JSC::JSDataView::deleteProperty):
+        (JSC::JSDataView::getOwnNonIndexPropertyNames):
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::getOwnPropertySlot):
+        (JSC::JSFunction::deleteProperty):
+        (JSC::JSFunction::reifyName):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncEval):
+        * runtime/JSInternalPromise.cpp:
+        (JSC::JSInternalPromise::then):
+        * runtime/JSLexicalEnvironment.cpp:
+        (JSC::JSLexicalEnvironment::deleteProperty):
+        * runtime/JSMap.cpp:
+        (JSC::JSMap::isIteratorProtocolFastAndNonObservable):
+        * runtime/JSMapIterator.h:
+        (JSC::JSMapIterator::advanceIter):
+        * runtime/JSModuleEnvironment.cpp:
+        (JSC::JSModuleEnvironment::getOwnNonIndexPropertyNames):
+        * runtime/JSModuleLoader.cpp:
+        (JSC::printableModuleKey):
+        (JSC::JSModuleLoader::provide):
+        (JSC::JSModuleLoader::loadAndEvaluateModule):
+        (JSC::JSModuleLoader::loadModule):
+        (JSC::JSModuleLoader::linkAndEvaluateModule):
+        (JSC::JSModuleLoader::requestImportModule):
+        * runtime/JSModuleNamespaceObject.h:
+        * runtime/JSModuleRecord.cpp:
+        (JSC::JSModuleRecord::evaluate):
+        * runtime/JSONObject.cpp:
+        (JSC::Stringifier::Stringifier):
+        (JSC::Stringifier::appendStringifiedValue):
+        (JSC::Stringifier::Holder::appendNextProperty):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::calculatedClassName):
+        (JSC::JSObject::putByIndex):
+        (JSC::JSObject::ordinaryToPrimitive const):
+        (JSC::JSObject::toPrimitive const):
+        (JSC::JSObject::hasInstance):
+        (JSC::JSObject::getOwnPropertyNames):
+        (JSC::JSObject::putDirectIndexSlowOrBeyondVectorLength):
+        (JSC::getCustomGetterSetterFunctionForGetterSetter):
+        (JSC::JSObject::getOwnPropertyDescriptor):
+        (JSC::JSObject::getMethod):
+        * runtime/JSObject.h:
+        (JSC::JSObject::createRawObject):
+        (JSC::JSFinalObject::create):
+        * runtime/JSObjectInlines.h:
+        (JSC::JSObject::canPerformFastPutInline):
+        (JSC::JSObject::putInlineForJSObject):
+        (JSC::JSObject::hasOwnProperty const):
+        * runtime/JSScope.cpp:
+        (JSC::isUnscopable):
+        (JSC::JSScope::resolveScopeForHoistingFuncDeclInEval):
+        * runtime/JSSet.cpp:
+        (JSC::JSSet::isIteratorProtocolFastAndNonObservable):
+        * runtime/JSSetIterator.h:
+        (JSC::JSSetIterator::advanceIter):
+        * runtime/JSString.cpp:
+        (JSC::JSString::getStringPropertyDescriptor):
+        * runtime/JSString.h:
+        (JSC::JSString::getStringPropertySlot):
+        * runtime/MapConstructor.cpp:
+        (JSC::constructMap):
+        * runtime/ModuleProgramExecutable.cpp:
+        (JSC::ModuleProgramExecutable::create):
+        * runtime/ObjectPrototype.cpp:
+        (JSC::objectProtoFuncToLocaleString):
+        * runtime/ProgramExecutable.h:
+        * runtime/RegExpObject.cpp:
+        (JSC::RegExpObject::getOwnPropertySlot):
+        (JSC::RegExpObject::deleteProperty):
+        (JSC::RegExpObject::getOwnNonIndexPropertyNames):
+        (JSC::RegExpObject::getPropertyNames):
+        (JSC::RegExpObject::getGenericPropertyNames):
+        (JSC::RegExpObject::put):
+        * runtime/ScopedArguments.h:
+        (JSC::ScopedArguments::length const):
+        * runtime/StrictEvalActivation.h:
+        (JSC::StrictEvalActivation::create):
+        * runtime/StringObject.cpp:
+        (JSC::isStringOwnProperty):
+        (JSC::StringObject::deleteProperty):
+        (JSC::StringObject::getOwnNonIndexPropertyNames):
+        * tools/JSDollarVMPrototype.cpp:
+        (JSC::JSDollarVMPrototype::gc):
+        (JSC::JSDollarVMPrototype::edenGC):
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::evaluate):
+
+2017-09-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] NewArrayWithSize(size)'s size does not care negative zero
+        https://bugs.webkit.org/show_bug.cgi?id=176300
+
+        Reviewed by Saam Barati.
+
+        NewArrayWithSize(size)'s size does not care negative zero as
+        is the same to NewTypedArray. We propagate this information
+        in DFGBackwardsPropagationPhase. This removes negative zero
+        check in kraken fft's deinterleave function.
+
+        * dfg/DFGBackwardsPropagationPhase.cpp:
+        (JSC::DFG::BackwardsPropagationPhase::propagate):
+
+2017-09-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] PutByVal with Array::Generic is too generic
+        https://bugs.webkit.org/show_bug.cgi?id=176345
+
+        Reviewed by Filip Pizlo.
+
+        Our DFG/FTL's PutByVal with Array::Generic is too generic implementation.
+        We could have the case like,
+
+            dst[key] = src[key];
+
+        with string or symbol keys. But they are handled in slow path.
+        This patch adds PutByVal(CellUse, StringUse/SymbolUse, UntypedUse). They go
+        to optimized path that does not have generic checks like (isInt32() / isDouble() etc.).
+
+        This improves SixSpeed object-assign.es5 by 9.1%.
+
+        object-assign.es5             424.3159+-11.0471    ^    388.8771+-10.9239       ^ definitely 1.0911x faster
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGOperations.cpp:
+        (JSC::DFG::putByVal):
+        (JSC::DFG::putByValInternal):
+        (JSC::DFG::putByValCellInternal):
+        (JSC::DFG::putByValCellStringInternal):
+        (JSC::DFG::operationPutByValInternal): Deleted.
+        * dfg/DFGOperations.h:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compilePutByValForCellWithString):
+        (JSC::DFG::SpeculativeJIT::compilePutByValForCellWithSymbol):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compilePutByVal):
+        * jit/JITOperations.h:
+
+2017-09-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG][FTL] GetByVal(ObjectUse with Array::Generic, StringUse/SymbolUse) should be supported
+        https://bugs.webkit.org/show_bug.cgi?id=176590
+
+        Reviewed by Saam Barati.
+
+        We add fixup edges for GetByVal(Array::Generic) to call faster operation instead of generic operationGetByVal.
+
+                                         baseline                  patched
+
+        object-iterate                5.8531+-0.3029            5.7903+-0.2795          might be 1.0108x faster
+        object-iterate-symbols        7.4099+-0.3993     ^      5.8254+-0.2276        ^ definitely 1.2720x faster
+
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGOperations.cpp:
+        (JSC::DFG::getByValObject):
+        * dfg/DFGOperations.h:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileGetByValForObjectWithString):
+        (JSC::DFG::SpeculativeJIT::compileGetByValForObjectWithSymbol):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetByVal):
+
+2017-09-07  Mark Lam  <mark.lam@apple.com>
+
+        Use JIT probes for DFG OSR exit.
+        https://bugs.webkit.org/show_bug.cgi?id=175144
+        <rdar://problem/33437050>
+
+        Reviewed by Saam Barati.
+
+        This patch does the following:
+        1. Replaces osrExitGenerationThunkGenerator() with osrExitThunkGenerator().
+           While osrExitGenerationThunkGenerator() generates a thunk that compiles a
+           unique OSR offramp for each DFG OSR exit site, osrExitThunkGenerator()
+           generates a thunk that just executes the OSR exit.
+
+           The osrExitThunkGenerator() generated thunk works by using a single JIT probe
+           to call OSRExit::executeOSRExit().  The JIT probe takes care of preserving
+           CPU registers, and providing the Probe::Stack mechanism for modifying the
+           stack frame.
+
+           OSRExit::executeOSRExit() replaces OSRExit::compileOSRExit() and
+           OSRExit::compileExit().  It is basically a re-write of those functions to
+           execute the OSR exit work instead of compiling code to execute the work.
+
+           As a result, we get the following savings:
+           a. no more OSR exit ramp compilation time.
+           b. no use of JIT executable memory for storing each unique OSR exit ramp.
+
+           On the negative side, we incur these costs:
+
+           c. the OSRExit::executeOSRExit() ramp may be a little slower than the compiled
+              version of the ramp.  However, OSR exits are rare.  Hence, this small
+              difference should not matter much.  It is also offset by the savings from
+              (a).
+
+           d. the Probe::Stack allocates 1K pages for memory for buffering stack
+              modifcations.  The number of these pages depends on the span of stack memory
+              that the OSR exit ramp reads from and writes to.  Since the OSR exit ramp
+              tends to only modify values in the current DFG frame and the current
+              VMEntryRecord, the number of pages tends to only be 1 or 2.
+
+              Using the jsc tests as a workload, the vast majority of tests that do OSR
+              exit, uses 3 or less 1K pages (with the overwhelming number using just 1 page).
+              A few tests that are pathological uses up to 14 pages, and one particularly
+              bad test (function-apply-many-args.js) uses 513 pages.
+
+           Similar to the old code, the OSR exit ramp still has 2 parts: 1 part that is
+           only executed once to compute some values for the exit site that is used by
+           all exit operations from that site, and a 2nd part to execute the exit.  The
+           1st part is protected by a checking if exit.exitState has already been
+           initialized.  The computed values are cached in exit.exitState.
+
+           Because the OSR exit thunk no longer compiles an OSR exit off-ramp, we no
+           longer need the facility to patch the site that jumps to the OSR exit ramp.
+           The DFG::JITCompiler has been modified to remove this patching code.
+
+        2. Fixed the bottom most Probe::Context and Probe::Stack get/set methods to use
+           std::memcpy to avoid strict aliasing issues.
+
+           Also optimized the implementation of Probe::Stack::physicalAddressFor().
+
+        3. Miscellaneous convenience methods added to make the Probe::Context easier of
+           use.
+
+        4. Added a Probe::Frame class that makes it easier to get/set operands and
+           arguments in a given frame using the deferred write properties of the
+           Probe::Stack.  Probe::Frame makes it easier to do some of the recovery work in
+           the OSR exit ramp.
+
+        5. Cloned or converted some functions needed by the OSR exit ramp.  The original
+           JIT versions of these functions are still left in place because they are still
+           needed for FTL OSR exit.  A FIXME comment has been added to remove them later.
+           These functions include:
+
+           DFGOSRExitCompilerCommon.cpp's handleExitCounts() ==>
+               CodeBlock::updateOSRExitCounterAndCheckIfNeedToReoptimize()
+           DFGOSRExitCompilerCommon.cpp's reifyInlinedCallFrames() ==>
+               DFGOSRExit.cpp's reifyInlinedCallFrames()
+           DFGOSRExitCompilerCommon.cpp's adjustAndJumpToTarget() ==>
+               DFGOSRExit.cpp's adjustAndJumpToTarget()
+
+           MethodOfGettingAValueProfile::emitReportValue() ==>
+               MethodOfGettingAValueProfile::reportValue()
+
+           DFGOperations.cpp's operationCreateDirectArgumentsDuringExit() ==>
+               DFGOSRExit.cpp's createDirectArgumentsDuringExit()
+           DFGOperations.cpp's operationCreateClonedArgumentsDuringExit() ==>
+               DFGOSRExit.cpp's createClonedArgumentsDuringExit()
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * assembler/MacroAssembler.cpp:
+        (JSC::stdFunctionCallback):
+        * assembler/MacroAssemblerPrinter.cpp:
+        (JSC::Printer::printCallback):
+        * assembler/ProbeContext.h:
+        (JSC::Probe::CPUState::gpr const):
+        (JSC::Probe::CPUState::spr const):
+        (JSC::Probe::Context::Context):
+        (JSC::Probe::Context::arg):
+        (JSC::Probe::Context::gpr):
+        (JSC::Probe::Context::spr):
+        (JSC::Probe::Context::fpr):
+        (JSC::Probe::Context::gprName):
+        (JSC::Probe::Context::sprName):
+        (JSC::Probe::Context::fprName):
+        (JSC::Probe::Context::gpr const):
+        (JSC::Probe::Context::spr const):
+        (JSC::Probe::Context::fpr const):
+        (JSC::Probe::Context::pc):
+        (JSC::Probe::Context::fp):
+        (JSC::Probe::Context::sp):
+        (JSC::Probe:: const): Deleted.
+        * assembler/ProbeFrame.h: Added.
+        (JSC::Probe::Frame::Frame):
+        (JSC::Probe::Frame::getArgument):
+        (JSC::Probe::Frame::getOperand):
+        (JSC::Probe::Frame::get):
+        (JSC::Probe::Frame::setArgument):
+        (JSC::Probe::Frame::setOperand):
+        (JSC::Probe::Frame::set):
+        * assembler/ProbeStack.cpp:
+        (JSC::Probe::Page::Page):
+        * assembler/ProbeStack.h:
+        (JSC::Probe::Page::get):
+        (JSC::Probe::Page::set):
+        (JSC::Probe::Page::physicalAddressFor):
+        (JSC::Probe::Stack::lowWatermark):
+        (JSC::Probe::Stack::get):
+        (JSC::Probe::Stack::set):
+        * bytecode/ArithProfile.cpp:
+        * bytecode/ArithProfile.h:
+        * bytecode/ArrayProfile.h:
+        (JSC::ArrayProfile::observeArrayMode):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::updateOSRExitCounterAndCheckIfNeedToReoptimize):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::addressOfOSRExitCounter): Deleted.
+        * bytecode/ExecutionCounter.h:
+        (JSC::ExecutionCounter::hasCrossedThreshold const):
+        (JSC::ExecutionCounter::setNewThresholdForOSRExit):
+        * bytecode/MethodOfGettingAValueProfile.cpp:
+        (JSC::MethodOfGettingAValueProfile::reportValue):
+        * bytecode/MethodOfGettingAValueProfile.h:
+        * dfg/DFGDriver.cpp:
+        (JSC::DFG::compileImpl):
+        * dfg/DFGJITCode.cpp:
+        (JSC::DFG::JITCode::findPC): Deleted.
+        * dfg/DFGJITCode.h:
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::linkOSRExits):
+        (JSC::DFG::JITCompiler::link):
+        * dfg/DFGOSRExit.cpp:
+        (JSC::DFG::jsValueFor):
+        (JSC::DFG::restoreCalleeSavesFor):
+        (JSC::DFG::saveCalleeSavesFor):
+        (JSC::DFG::restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer):
+        (JSC::DFG::copyCalleeSavesToVMEntryFrameCalleeSavesBuffer):
+        (JSC::DFG::saveOrCopyCalleeSavesFor):
+        (JSC::DFG::createDirectArgumentsDuringExit):
+        (JSC::DFG::createClonedArgumentsDuringExit):
+        (JSC::DFG::OSRExit::OSRExit):
+        (JSC::DFG::emitRestoreArguments):
+        (JSC::DFG::OSRExit::executeOSRExit):
+        (JSC::DFG::reifyInlinedCallFrames):
+        (JSC::DFG::adjustAndJumpToTarget):
+        (JSC::DFG::printOSRExit):
+        (JSC::DFG::OSRExit::setPatchableCodeOffset): Deleted.
+        (JSC::DFG::OSRExit::getPatchableCodeOffsetAsJump const): Deleted.
+        (JSC::DFG::OSRExit::codeLocationForRepatch const): Deleted.
+        (JSC::DFG::OSRExit::correctJump): Deleted.
+        (JSC::DFG::OSRExit::emitRestoreArguments): Deleted.
+        (JSC::DFG::OSRExit::compileOSRExit): Deleted.
+        (JSC::DFG::OSRExit::compileExit): Deleted.
+        (JSC::DFG::OSRExit::debugOperationPrintSpeculationFailure): Deleted.
+        * dfg/DFGOSRExit.h:
+        (JSC::DFG::OSRExitState::OSRExitState):
+        (JSC::DFG::OSRExit::considerAddingAsFrequentExitSite):
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        * dfg/DFGOSRExitCompilerCommon.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGThunks.cpp:
+        (JSC::DFG::osrExitThunkGenerator):
+        (JSC::DFG::osrExitGenerationThunkGenerator): Deleted.
+        * dfg/DFGThunks.h:
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::debugCall): Deleted.
+        * jit/AssemblyHelpers.h:
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * profiler/ProfilerOSRExit.h:
+        (JSC::Profiler::OSRExit::incCount):
+        * runtime/JSCJSValue.h:
+        * runtime/JSCJSValueInlines.h:
+        * runtime/VM.h:
+
+2017-09-07  Michael Saboff  <msaboff@apple.com>
+
+        Add support for RegExp named capture groups
+        https://bugs.webkit.org/show_bug.cgi?id=176435
+
+        Reviewed by Filip Pizlo.
+
+        Added parsing for both naming a captured parenthesis as well and using a named group in
+        a back reference.  Also added support for using named groups with String.prototype.replace().
+
+        This patch does not throw Syntax Errors as described in the current spec text for the two
+        cases of malformed back references in String.prototype.replace() as I believe that it
+        is inconsistent with the current semantics for handling of other malformed replacement
+        tokens.  I filed an issue for the requested change to the proposed spec and also filed
+        a FIXME bug https://bugs.webkit.org/show_bug.cgi?id=176434.
+
+        This patch does not implement strength reduction in the optimizing JITs for named capture
+        groups.  Filed https://bugs.webkit.org/show_bug.cgi?id=176464.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        * runtime/CommonIdentifiers.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::haveABadTime):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::regExpMatchesArrayWithGroupsStructure const):
+        * runtime/RegExp.cpp:
+        (JSC::RegExp::finishCreation):
+        * runtime/RegExp.h:
+        * runtime/RegExpMatchesArray.cpp:
+        (JSC::createStructureImpl):
+        (JSC::createRegExpMatchesArrayWithGroupsStructure):
+        (JSC::createRegExpMatchesArrayWithGroupsSlowPutStructure):
+        * runtime/RegExpMatchesArray.h:
+        (JSC::createRegExpMatchesArray):
+        * runtime/StringPrototype.cpp:
+        (JSC::substituteBackreferencesSlow):
+        (JSC::replaceUsingRegExpSearch):
+        * yarr/YarrParser.h:
+        (JSC::Yarr::Parser::CharacterClassParserDelegate::atomNamedBackReference):
+        (JSC::Yarr::Parser::parseEscape):
+        (JSC::Yarr::Parser::parseParenthesesBegin):
+        (JSC::Yarr::Parser::tryConsumeUnicodeEscape):
+        (JSC::Yarr::Parser::tryConsumeIdentifierCharacter):
+        (JSC::Yarr::Parser::isIdentifierStart):
+        (JSC::Yarr::Parser::isIdentifierPart):
+        (JSC::Yarr::Parser::tryConsumeGroupName):
+        * yarr/YarrPattern.cpp:
+        (JSC::Yarr::YarrPatternConstructor::atomParenthesesSubpatternBegin):
+        (JSC::Yarr::YarrPatternConstructor::atomNamedBackReference):
+        (JSC::Yarr::YarrPattern::errorMessage):
+        * yarr/YarrPattern.h:
+        (JSC::Yarr::YarrPattern::reset):
+        * yarr/YarrSyntaxChecker.cpp:
+        (JSC::Yarr::SyntaxChecker::atomParenthesesSubpatternBegin):
+        (JSC::Yarr::SyntaxChecker::atomNamedBackReference):
+
+2017-09-07  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [PAL] Unify PlatformUserPreferredLanguages.h with Language.h
+        https://bugs.webkit.org/show_bug.cgi?id=176561
+
+        Reviewed by Brent Fulgham.
+
+        * runtime/IntlObject.cpp:
+        (JSC::defaultLocale):
+
+2017-09-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Augmented Inspector: Provide a way to inspect a DOM Node (DOM.inspect)
+        https://bugs.webkit.org/show_bug.cgi?id=176563
+        <rdar://problem/19639583>
+
+        Reviewed by Matt Baker.
+
+        * inspector/protocol/DOM.json:
+        Add an event that is useful for augmented inspectors to inspect
+        a node. Web pages will still prefer Inspector.inspect.
+
 2017-09-06  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [JSC] Remove "malloc" and "free" from JSC/API

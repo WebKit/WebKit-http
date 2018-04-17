@@ -92,6 +92,16 @@ void DownloadProxy::processDidClose()
     m_processPool->downloadClient().processDidCrash(m_processPool.get(), this);
 }
 
+WebPageProxy* DownloadProxy::originatingPage() const
+{
+    return m_originatingPage.get();
+}
+
+void DownloadProxy::setOriginatingPage(WebPageProxy* page)
+{
+    m_originatingPage = page ? page->createWeakPtr() : nullptr;
+}
+
 void DownloadProxy::didStart(const ResourceRequest& request, const String& suggestedFilename)
 {
     m_request = request;
@@ -113,8 +123,7 @@ void DownloadProxy::didReceiveAuthenticationChallenge(const AuthenticationChalle
     m_processPool->downloadClient().didReceiveAuthenticationChallenge(m_processPool.get(), this, authenticationChallengeProxy.get());
 }
 
-#if USE(NETWORK_SESSION)
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
+#if USE(NETWORK_SESSION) && USE(PROTECTION_SPACE_AUTH_CALLBACK)
 void DownloadProxy::canAuthenticateAgainstProtectionSpace(const ProtectionSpace& protectionSpace)
 {
     if (!m_processPool)
@@ -136,18 +145,21 @@ void DownloadProxy::willSendRequest(const ResourceRequest& proposedRequest, cons
         return;
 
     RefPtr<DownloadProxy> protectedThis(this);
-    m_processPool->downloadClient().willSendRequest(proposedRequest, redirectResponse, [protectedThis](const ResourceRequest& newRequest) {
+    m_processPool->downloadClient().willSendRequest(m_processPool.get(), this, proposedRequest, redirectResponse, [protectedThis](const ResourceRequest& newRequest) {
+#if USE(NETWORK_SESSION)
         if (!protectedThis->m_processPool)
             return;
-        
+
         auto* networkProcessProxy = protectedThis->m_processPool->networkProcess();
         if (!networkProcessProxy)
             return;
-        
+
         networkProcessProxy->send(Messages::NetworkProcess::ContinueWillSendRequest(protectedThis->m_downloadID, newRequest), 0);
+#else
+        UNUSED_PARAM(newRequest);
+#endif
     });
 }
-#endif
 
 void DownloadProxy::didReceiveResponse(const ResourceResponse& response)
 {

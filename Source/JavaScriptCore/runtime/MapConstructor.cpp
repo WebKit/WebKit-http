@@ -64,19 +64,23 @@ static EncodedJSValue JSC_HOST_CALL constructMap(ExecState* exec)
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     JSValue iterable = exec->argument(0);
-    if (iterable.isUndefinedOrNull())
+    if (iterable.isUndefinedOrNull()) {
+        scope.release();
         return JSValue::encode(JSMap::create(exec, vm, mapStructure));
+    }
 
     if (isJSMap(iterable)) {
         JSMap* iterableMap = jsCast<JSMap*>(iterable);
-        if (iterableMap->canCloneFastAndNonObservable(mapStructure))
+        if (iterableMap->canCloneFastAndNonObservable(mapStructure)) {
+            scope.release();
             return JSValue::encode(iterableMap->clone(exec, vm, mapStructure));
+        }
     }
 
     JSMap* map = JSMap::create(exec, vm, mapStructure);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
-    JSValue adderFunction = map->JSObject::get(exec, exec->propertyNames().set);
+    JSValue adderFunction = map->JSObject::get(exec, vm.propertyNames->set);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     CallData adderFunctionCallData;

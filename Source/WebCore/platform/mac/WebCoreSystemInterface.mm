@@ -36,27 +36,9 @@ void (*wkDrawMediaSliderTrack)(CGContextRef context, CGRect rect, float timeLoad
 BOOL (*wkHitTestMediaUIPart)(int part, CGRect bounds, CGPoint point);
 void (*wkDrawMediaUIPart)(int part, CGContextRef context, CGRect rect, unsigned state);
 void (*wkMeasureMediaUIPart)(int part, CGRect *bounds, CGSize *naturalSize);
-NSView *(*wkCreateMediaUIBackgroundView)(void);
-NSControl *(*wkCreateMediaUIControl)(int);
 NSTimeInterval (*wkGetNSURLResponseCalculatedExpiration)(NSURLResponse *response);
 BOOL (*wkGetNSURLResponseMustRevalidate)(NSURLResponse *response);
 void (*wkPopupMenu)(NSMenu*, NSPoint location, float width, NSView*, int selectedItem, NSFont*, NSControlSize controlSize, bool usesCustomAppearance);
-unsigned (*wkQTIncludeOnlyModernMediaFileTypes)(void);
-void (*wkQTMovieDisableComponent)(uint32_t[5]);
-float (*wkQTMovieMaxTimeLoaded)(QTMovie*);
-NSString *(*wkQTMovieMaxTimeLoadedChangeNotification)(void);
-int (*wkQTMovieGetType)(QTMovie*);
-BOOL (*wkQTMovieHasClosedCaptions)(QTMovie*);
-NSURL *(*wkQTMovieResolvedURL)(QTMovie*);
-void (*wkQTMovieSetShowClosedCaptions)(QTMovie*, BOOL);
-void (*wkQTMovieSelectPreferredAlternates)(QTMovie*);
-NSArray *(*wkQTGetSitesInMediaDownloadCache)();
-void (*wkQTClearMediaDownloadCacheForSite)(NSString *site);
-void (*wkQTClearMediaDownloadCache)();
-
-void (*wkSetCONNECTProxyForStream)(CFReadStreamRef, CFStringRef proxyHost, CFNumberRef proxyPort);
-void (*wkSetCONNECTProxyAuthorizationForStream)(CFReadStreamRef, CFStringRef proxyAuthorizationString);
-CFHTTPMessageRef (*wkCopyCONNECTProxyResponse)(CFReadStreamRef, CFURLRef responseURL, CFStringRef proxyHost, CFNumberRef proxyPort);
 
 void* wkGetHyphenationLocationBeforeIndex;
 
@@ -75,12 +57,6 @@ CGFloat (*wkNSElasticDeltaForTimeDelta)(CGFloat initialPosition, CGFloat initial
 CGFloat (*wkNSElasticDeltaForReboundDelta)(CGFloat delta);
 CGFloat (*wkNSReboundDeltaForElasticDelta)(CGFloat delta);
 #endif
-
-#if ENABLE(PUBLIC_SUFFIX_LIST)
-bool (*wkIsPublicSuffix)(NSString *host);
-#endif
-
-CFStringRef (*wkCachePartitionKey)(void);
 
 int (*wkExernalDeviceTypeForPlayer)(AVPlayer *);
 NSString *(*wkExernalDeviceDisplayNameForPlayer)(AVPlayer *);

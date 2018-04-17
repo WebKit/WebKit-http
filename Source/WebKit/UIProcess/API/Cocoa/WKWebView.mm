@@ -312,7 +312,7 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
     RetainPtr<WKTextFinderClient> _textFinderClient;
 #endif
 
-#if PLATFORM(IOS) && ENABLE(DRAG_SUPPORT)
+#if PLATFORM(IOS)
     _WKDragInteractionPolicy _dragInteractionPolicy;
 #endif
 }
@@ -604,7 +604,7 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
 
     pageToViewMap().add(_page.get(), self);
 
-#if PLATFORM(IOS) && ENABLE(DRAG_SUPPORT)
+#if PLATFORM(IOS)
     _dragInteractionPolicy = _WKDragInteractionPolicyDefault;
 #endif
 }
@@ -1133,8 +1133,6 @@ static NSDictionary *dictionaryRepresentationForEditorState(const WebKit::Editor
 
 #if PLATFORM(IOS)
 
-#if ENABLE(DRAG_SUPPORT)
-
 - (_WKDragInteractionPolicy)_dragInteractionPolicy
 {
     return _dragInteractionPolicy;
@@ -1146,10 +1144,10 @@ static NSDictionary *dictionaryRepresentationForEditorState(const WebKit::Editor
         return;
 
     _dragInteractionPolicy = policy;
+#if ENABLE(DRAG_SUPPORT)
     [_contentView _didChangeDragInteractionPolicy];
-}
-
 #endif
+}
 
 - (void)_populateArchivedSubviews:(NSMutableSet *)encodedViews
 {
@@ -1511,6 +1509,9 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
     _scrollViewBackgroundColor = WebCore::Color();
     _delayUpdateVisibleContentRects = NO;
     _hadDelayedUpdateVisibleContentRects = NO;
+    _lastSentMinimumLayoutSize = std::nullopt;
+    _lastSentMaximumUnobscuredSize = std::nullopt;
+    _lastSentDeviceOrientation = std::nullopt;
 
     _frozenVisibleContentRect = std::nullopt;
     _frozenUnobscuredContentRect = std::nullopt;
@@ -5792,73 +5793,6 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 }
 
 #if PLATFORM(IOS)
-
-- (void)_simulateDataInteractionEntered:(id)info
-{
-#if ENABLE(DATA_INTERACTION)
-    [_contentView _simulateDataInteractionEntered:info];
-#endif
-}
-
-- (NSUInteger)_simulateDataInteractionUpdated:(id)info
-{
-#if ENABLE(DATA_INTERACTION)
-    return [_contentView _simulateDataInteractionUpdated:info];
-#else
-    return 0;
-#endif
-}
-
-- (void)_simulateDataInteractionPerformOperation:(id)info
-{
-#if ENABLE(DATA_INTERACTION)
-    [_contentView _simulateDataInteractionPerformOperation:info];
-#endif
-}
-
-- (void)_simulateDataInteractionEnded:(id)info
-{
-#if ENABLE(DATA_INTERACTION)
-    [_contentView _simulateDataInteractionEnded:info];
-#endif
-}
-
-- (void)_simulateDataInteractionSessionDidEnd:(id)session
-{
-#if ENABLE(DATA_INTERACTION)
-    [_contentView _simulateDataInteractionSessionDidEnd:session];
-#endif
-}
-
-- (void)_simulateWillBeginDataInteractionWithSession:(id)session
-{
-#if ENABLE(DATA_INTERACTION)
-    [_contentView _simulateWillBeginDataInteractionWithSession:session];
-#endif
-}
-
-- (NSArray *)_simulatedItemsForSession:(id)session
-{
-#if ENABLE(DATA_INTERACTION)
-    return [_contentView _simulatedItemsForSession:session];
-#else
-    return @[ ];
-#endif
-}
-
-- (void)_simulateItemsForAddingToSession:(id)session atLocation:(CGPoint)location completion:(void(^)(NSArray *))completion
-{
-#if ENABLE(DATA_INTERACTION)
-    [_contentView _simulateItemsForAddingToSession:session atLocation:location completion:completion];
-#endif
-}
-
-- (void)_simulatePrepareForDataInteractionSession:(id)session completion:(dispatch_block_t)completion
-{
-#if ENABLE(DATA_INTERACTION)
-    [_contentView _simulatePrepareForDataInteractionSession:session completion:completion];
-#endif
-}
 
 - (CGRect)_dragCaretRect
 {

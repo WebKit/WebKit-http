@@ -1,3 +1,1684 @@
+2017-09-13  Lucas Forschler  <lforschler@apple.com>
+
+        Compress spindumps on client side before packaging into layout test results zip (mac & ios)
+        https://bugs.webkit.org/show_bug.cgi?id=176853
+
+        Reviewed by Aakash Jain.
+
+        * BuildSlaveSupport/test-result-archive:
+        (main):
+        (gzip_file): use gzip to compress a file, removing original
+        (compress_spindumps): find and compress spindumps matching a filter
+        (archive_test_results): refactor to snake_case
+        (archiveTestResults): Deleted.
+
+2017-09-13  Alex Christensen  <achristensen@webkit.org>
+
+        Add WKUIDelegatePrivate equivalent of WKPageUIClient's setIsResizable, getWindowFrame, and setWindowFrame
+        https://bugs.webkit.org/show_bug.cgi?id=176857
+        <rdar://problem/29270035>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/UIDelegate.mm:
+        (-[ModalDelegate _webViewRunModal:]):
+        (-[ModalDelegate _webView:setResizable:]):
+        (-[WindowFrameDelegate _webView:setWindowFrame:]):
+        (-[WindowFrameDelegate _webView:getWindowFrameWithCompletionHandler:]):
+        (-[WindowFrameDelegate webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+        (TEST):
+        (-[ResizableDelegate _webView:setResizable:]):
+        (-[ResizableDelegate _webView:getIsResizableWithCompletionHandler:]):
+        (-[ResizableDelegate webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+
+2017-09-13  Youenn Fablet  <youenn@apple.com>
+
+        Add a lambda-based map for Vectors
+        https://bugs.webkit.org/show_bug.cgi?id=176487
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/Vector.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-09-13  John Wilander  <wilander@apple.com>
+
+        Introduce Storage Access API (document parts) as an experimental feature
+        https://bugs.webkit.org/show_bug.cgi?id=175759
+        <rdar://problem/33666847>
+
+        Reviewed by Alex Christensen.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+            Turns the feature on for tests.
+
+2017-09-13  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] DRT option --gc-between-tests is not implemented.
+        https://bugs.webkit.org/show_bug.cgi?id=176849
+
+        Reviewed by Brent Fulgham.
+
+        Perform GC after the test if this option is enabled. This patch also set the initial value of the flag
+        to true, in order to catch GC related issues in the test in which they occur.
+ 
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (runTest):
+
+2017-09-12  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] Support DataTransfer.getData and DataTransfer.setData when dragging or dropping
+        https://bugs.webkit.org/show_bug.cgi?id=176672
+        <rdar://problem/34353723>
+
+        Reviewed by Ryosuke Niwa.
+
+        Adds new tests and tweaks existing DataInteractionTests to cover the tweaks made in this patch.
+        SinglePlainTextURLTypeIdentifiers: Verify that inline presentation style is requested when dragging plaintext.
+        SinglePlainTextWordTypeIdentifiers: Verify that inline presentation style is requested when dragging a link.
+        ExternalSourceInlineTextToFileInput:
+                Verify that an item provider marked as preferring inline presentation does not trigger file uploads by
+                dragging a piece of inline text into a file input.
+        CanStartDragOnDivWithDraggableAttribute:
+                Verify that DataTransfer.setData and DataTransfer.getData work as expected by moving a draggable div.
+                The test harness writes the id of the draggable div via the DataTransfer, and upon drop, reads the id
+                back to figure out which element to append to the drop destination.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+
+2017-09-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Dragging & dropping a file creates an attachment element even when it's disabled
+        https://bugs.webkit.org/show_bug.cgi?id=176769
+
+        Reviewed by Tim Horton.
+
+        Added a webkit-test-runner flag to enable attachment element via runtime flag since this feature is now hidden
+        behind a runtime-enabled flag which needs to be set at the time of global object initialization.
+
+        * DumpRenderTree/TestOptions.h:
+        (TestOptions): Added.
+        * DumpRenderTree/TestOptions.mm:
+        (TestOptions::TestOptions):
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (setWebPreferencesForTestOptions):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        (WTR::updateTestOptionsFromTestHeader):
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::hasSameInitializationOptions const):
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::platformCreateWebView):
+
+2017-09-11  Filip Pizlo  <fpizlo@apple.com>
+
+        WSL should allow you to say "protocol Foo : Bar { ... }"
+        https://bugs.webkit.org/show_bug.cgi?id=176238
+
+        Reviewed by Mylex Maxfield.
+        
+        This makes protocol "subtyping" work. It's not really subtyping. Protocol A inherits protocol B
+        if every signature in B can be resolved against some signature in A. Also, you can explicitly
+        subtype protocols using extends syntax ("protocol Foo : Bar, Baz { ... }").
+        
+        Also makes the diagnostics when type variable constraints fail a _lot_ better. This will even
+        tell you diagnostics about why a function didn't match when protocols are not inheriting, and
+        then it will tell you why the inheritance failed.
+
+        * WebGPUShadingLanguageRI/All.js:
+        * WebGPUShadingLanguageRI/AutoWrapper.js:
+        (AutoWrapper.prototype.visitTypeVariable):
+        (AutoWrapper):
+        * WebGPUShadingLanguageRI/Checker.js:
+        (Checker.prototype.visitProtocolDecl.set throw):
+        * WebGPUShadingLanguageRI/ConstexprTypeParameter.js:
+        (ConstexprTypeParameter.prototype.verifyAsArgument):
+        (ConstexprTypeParameter.prototype.verifyAsParameter):
+        * WebGPUShadingLanguageRI/FlattenProtocolExtends.js: Added.
+        * WebGPUShadingLanguageRI/Func.js:
+        (Func.prototype.get typeParametersForCallResolution):
+        * WebGPUShadingLanguageRI/InferTypesForCall.js:
+        (inferTypesForCall):
+        * WebGPUShadingLanguageRI/IntLiteralType.js:
+        (IntLiteralType.prototype.verifyAsArgument):
+        * WebGPUShadingLanguageRI/NameResolver.js:
+        (NameResolver.prototype.visitProtocolDecl):
+        (NameResolver.prototype.visitProtocolRef): Deleted.
+        (NameResolver.prototype.visitProtocolFuncDecl): Deleted.
+        (NameResolver.prototype.visitTypeDef): Deleted.
+        (NameResolver.prototype.visitStructType): Deleted.
+        (NameResolver.prototype._resolveTypeArguments): Deleted.
+        (NameResolver.prototype.visitTypeRef): Deleted.
+        (NameResolver.prototype.visitReferenceType): Deleted.
+        (NameResolver.prototype.visitVariableDecl): Deleted.
+        (NameResolver.prototype.visitVariableRef): Deleted.
+        (NameResolver.prototype.visitReturn): Deleted.
+        (NameResolver.prototype.visitCallExpression): Deleted.
+        * WebGPUShadingLanguageRI/Node.js:
+        (Node.prototype.equals):
+        * WebGPUShadingLanguageRI/NullType.js:
+        (NullType.prototype.verifyAsArgument):
+        * WebGPUShadingLanguageRI/Parse.js:
+        (parseProtocolDecl):
+        * WebGPUShadingLanguageRI/Prepare.js:
+        (prepare):
+        * WebGPUShadingLanguageRI/ProtocolDecl.js:
+        (ProtocolDecl): Deleted.
+        (ProtocolDecl.prototype.add): Deleted.
+        (ProtocolDecl.prototype.get signatures): Deleted.
+        (ProtocolDecl.prototype.signaturesByName): Deleted.
+        (ProtocolDecl.prototype.get typeVariable): Deleted.
+        (ProtocolDecl.prototype.signaturesByNameWithTypeVariable): Deleted.
+        (ProtocolDecl.prototype.inherits): Deleted.
+        (ProtocolDecl.prototype.hasHeir): Deleted.
+        (ProtocolDecl.prototype.toString): Deleted.
+        * WebGPUShadingLanguageRI/ProtocolFuncDecl.js:
+        (ProtocolFuncDecl.prototype.get typeParametersForCallResolution):
+        (ProtocolFuncDecl):
+        * WebGPUShadingLanguageRI/Rewriter.js:
+        (Rewriter.prototype.visitProtocolDecl):
+        * WebGPUShadingLanguageRI/Test.html:
+        * WebGPUShadingLanguageRI/Test.js:
+        (TEST_nullTypeVariableUnify):
+        (TEST_simpleProtocolExtends):
+        (TEST_protocolExtendsTwo):
+        * WebGPUShadingLanguageRI/Type.js:
+        (Type.prototype.inherits):
+        * WebGPUShadingLanguageRI/TypeDefResolver.js:
+        (TypeDefResolver.prototype.visitTypeRef):
+        (TypeDefResolver):
+        * WebGPUShadingLanguageRI/TypeVariable.js:
+        (TypeVariable.prototype.inherits):
+        (TypeVariable.prototype.verifyAsArgument):
+        (TypeVariable.prototype.verifyAsParameter):
+        * WebGPUShadingLanguageRI/UnificationContext.js:
+        (UnificationContext.prototype.verify):
+        * WebGPUShadingLanguageRI/Visitor.js:
+        (Visitor.prototype.visitProtocolDecl):
+        (Visitor.prototype.visitTypeRef): Deleted.
+        (Visitor.prototype.visitNativeType): Deleted.
+        (Visitor.prototype.visitNativeTypeInstance): Deleted.
+        (Visitor.prototype.visitTypeDef): Deleted.
+        (Visitor.prototype.visitStructType): Deleted.
+        (Visitor.prototype.visitTypeVariable): Deleted.
+        (Visitor.prototype.visitConstexprTypeParameter): Deleted.
+        (Visitor.prototype.visitField): Deleted.
+        (Visitor.prototype.visitElementalType): Deleted.
+        (Visitor.prototype.visitReferenceType): Deleted.
+        (Visitor.prototype.visitPtrType): Deleted.
+        (Visitor.prototype.visitArrayRefType): Deleted.
+        (Visitor.prototype.visitArrayType): Deleted.
+        (Visitor.prototype.visitVariableDecl): Deleted.
+        (Visitor.prototype.visitAssignment): Deleted.
+        (Visitor.prototype.visitDereferenceExpression): Deleted.
+        (Visitor.prototype.visitDotExpression): Deleted.
+        (Visitor.prototype.visitMakePtrExpression): Deleted.
+        (Visitor.prototype.visitVariableRef): Deleted.
+        (Visitor.prototype.visitIfStatement): Deleted.
+        (Visitor.prototype.visitWhileLoop): Deleted.
+        (Visitor.prototype.visitDoWhileLoop): Deleted.
+        (Visitor.prototype.visitForLoop): Deleted.
+        (Visitor.prototype.visitReturn): Deleted.
+        (Visitor.prototype.visitContinue): Deleted.
+        (Visitor.prototype.visitBreak): Deleted.
+        (Visitor.prototype.visitIntLiteral): Deleted.
+        (Visitor.prototype.visitIntLiteralType): Deleted.
+        (Visitor.prototype.visitUintLiteral): Deleted.
+        (Visitor.prototype.visitNullLiteral): Deleted.
+        (Visitor.prototype.visitBoolLiteral): Deleted.
+        (Visitor.prototype.visitNullType): Deleted.
+        (Visitor.prototype.visitCallExpression): Deleted.
+        (Visitor.prototype.visitLogicalNot): Deleted.
+        (Visitor.prototype.visitFunctionLikeBlock): Deleted.
+        * WebGPUShadingLanguageRI/WrapChecker.js:
+        (WrapChecker.prototype.visitTypeVariable):
+        (WrapChecker):
+
+2017-09-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Remove duplicated test results from LayoutTest platform directories
+        https://bugs.webkit.org/show_bug.cgi?id=176686
+
+        Reviewed by Michael Catanzaro.
+
+        After several rebaselines we might end up with the same result in the platform directory than the common result
+        without noticing it. This patch adds a script to detect those cases and remove all duplicated results from the
+        repository.
+
+        * Scripts/check-for-duplicated-platform-test-results: Added.
+        (check_duplicate):
+        (check_duplicate.sha1):
+        (platform_list):
+
+2017-09-12  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        The EWS build system is forcing a non UTF-8 locale and breaks meson.
+        https://bugs.webkit.org/show_bug.cgi?id=176761
+
+        Reviewed by Michael Catanzaro.
+
+        On 2011 in order to disable GCC smartquotes (UTF-8 pretty quotes)
+        that were causing trouble with the commit-queue server, the tooling
+        for the EWS bots started to force an LC_ALL=C locale.
+
+        This was needed back then apparently because the commit-queue server
+        was unable to handle properly UTF-8 text.
+
+        6 years forward and none of the ports that commit-queue tests before
+        landing a patch use GCC, but Clang. So this should not be an issue anymore.
+
+        Forcing a non UTF-8 locale breaks the Meson build system (that the
+        GTK/WPE ports use for some dependencies of its JHBuild dependencies
+        local build system).
+        It has also the potential to break things in subtle ways that are
+        hard to debug and detect. So better stop doing this.
+
+        This patch also changes TERM=none to TERM=dumb that is the proper
+        way to disable VT100 codes (see bug 127922).
+
+        * Scripts/webkitpy/common/system/environment.py:
+        (Environment.to_dictionary):
+        (Environment.disable_jhbuild_VT100_output):
+        * Scripts/webkitpy/common/system/environment_unittest.py:
+        (EnvironmentTest.test_disable_jhbuild_VT100_output):
+        * Scripts/webkitpy/port/base.py:
+        (Port._build_driver):
+        (Port._build_image_diff):
+        * Scripts/webkitpy/port/port_testcase.py:
+        (PortTestCase.test_build_driver):
+        * Scripts/webkitpy/tool/commands/download_unittest.py:
+        * Scripts/webkitpy/tool/steps/build.py:
+        (Build.build):
+        * Scripts/webkitpy/tool/steps/steps_unittest.py:
+
+2017-09-12  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Run tests with G_DEBUG=fatal-criticals
+        https://bugs.webkit.org/show_bug.cgi?id=176755
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort.setup_environ_for_server):
+        * Scripts/webkitpy/port/wpe.py:
+        (WPEPort.setup_environ_for_server):
+
+2017-09-12  Alex Christensen  <achristensen@webkit.org>
+
+        Fix build after r221922.
+        https://bugs.webkit.org/show_bug.cgi?id=176728
+
+        * TestWebKitAPI/Tests/WebKitCocoa/UIDelegate.mm:
+        (-[ModalDelegate _webViewRunModal:]):
+        (-[ModalDelegate webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:]):
+        (TEST):
+        svn-apply inserted the test too early in the file :(
+        Shift it down to where all the used static variables are declared.
+
+2017-09-12  Alex Christensen  <achristensen@webkit.org>
+
+        Add WKUIDelegatePrivate equivalent of WKPageUIClient's runModal
+        https://bugs.webkit.org/show_bug.cgi?id=176728
+        <rdar://problem/29270035>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/UIDelegate.mm:
+        (-[ModalDelegate _webViewRunModal:]):
+        (-[ModalDelegate webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:]):
+        (TEST):
+
+2017-09-12  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r215784): The title of right-to-left pages are empty
+        https://bugs.webkit.org/show_bug.cgi?id=176746
+        <rdar://problem/34211419>
+
+        Reviewed by Brent Fulgham.
+
+        Add unit test to ensure we do not regress StringWithDirection.truncateFromEnd().
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/StringWithDirection.cpp: Added.
+        (TestWebKitAPI::TEST):
+
+2017-09-12  Alex Christensen  <achristensen@webkit.org>
+
+        Add WKUIDelegatePrivate equivalent of WKPageUIClient's decidePolicyForNotificationPermissionRequest
+        https://bugs.webkit.org/show_bug.cgi?id=176768
+        <rdar://problem/29270035>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/UIDelegate.mm:
+        (-[NotificationDelegate initWithAllowNotifications:]):
+        (-[NotificationDelegate webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+        (-[NotificationDelegate _webView:requestNotificationPermissionForSecurityOrigin:decisionHandler:]):
+        (TEST):
+
+2017-09-12 Brent Fulgham  <bfulgham@apple.com>
+
+        Show punycode to user if a URL mixes Armenian Seh or Vo with other scripts
+        https://bugs.webkit.org/show_bug.cgi?id=176578
+        <rdar://problem/33906231>
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebCore/cocoa/URLExtras.mm:
+        (TestWebKitAPI::TEST):
+
+2017-09-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Freetype] Doesn't support coloured fonts
+        https://bugs.webkit.org/show_bug.cgi?id=156579
+
+        Reviewed by Michael Catanzaro.
+
+        Bump webkitgtk-test-fonts to 0.0.6 version that includes the EmijoOne font.
+
+        * gtk/jhbuild.modules:
+        * wpe/jhbuild.modules:
+
+2017-09-11  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] Support DataTransfer.setDragImage when starting a drag on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=176721
+        <rdar://problem/34373660>
+
+        Reviewed by Tim Horton.
+
+        In DataInteractionSimulator, ask the UIDragInteractionDelegate (WKContentView) for targeted drag previews after
+        retrieving UIDragItems during a lift. Remember these previews after the drag and drop simulation is complete, so
+        API tests (currently, just DragLiftPreviewDataTransferSetDragImage) can verify that the generated drag previews
+        are as expected.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/DataTransfer-setDragImage.html: Added.
+
+        Adds a new test harness containing 5 draggable elements, each generating a drag image using different codepaths.
+        DragLiftPreviewDataTransferSetDragImage uses this page to check that the frame of the targeted drag preview in
+        each scenario is as expected.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (checkCGRectIsEqualToCGRectWithLogging):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/ios/DataInteractionSimulator.h:
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+        (-[DataInteractionSimulator _resetSimulatedState]):
+        (-[DataInteractionSimulator _advanceProgress]):
+        (-[DataInteractionSimulator liftPreviews]):
+
+2017-09-11  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r221272): WKWebView gets stuck zoomed in if the web process crashes
+        https://bugs.webkit.org/show_bug.cgi?id=176767
+        <rdar://problem/34196874>
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/AnimatedResize.mm:
+        (TEST):
+        Add a test ensuring that override layout size persists through Web
+        Content process crash.
+
+2017-09-11  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS WK2] Support tapping to add items to the current drag session in web content
+        https://bugs.webkit.org/show_bug.cgi?id=176421
+        <rdar://problem/31144674>
+
+        Reviewed by Tim Horton.
+
+        Adds a new drag and drop test that begins a drag on a text selection, adds an image and a link, and then drops
+        into a contenteditable area. This verifies that the text, link and image are inserted into the editable area
+        upon drop.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+
+2017-09-11  Lucas Forschler  <lforschler@apple.com>
+
+        bisect-builds: add --list option
+        https://bugs.webkit.org/show_bug.cgi?id=174836
+
+        Reviewed by Aakash Jain & Stephanie Lewis.
+
+        * Scripts/bisect-builds:
+        (parse_args): add --list option
+        (minified_platforms): update supported platform list (add ios simulator)
+        (print_list_and_exit): helper function to print list and exit
+
+2017-09-11  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS WK2] ExternalSourceDataTransferItemGetAsEntry tests produce inconsistent results on test automation bots
+        https://bugs.webkit.org/show_bug.cgi?id=176736
+
+        Reviewed by Andy Estes and Megan Gardner.
+
+        The test output dumped when dropping a file in DataTransferItem-getAsEntry.html should adhere to some deterministic order.
+        Currently, this is not enforced, so on some systems, these tests fail due to expected test output being out of order. To
+        fix this, simply have the test harness alphabetically sort the output before writing to the textarea.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/DataTransferItem-getAsEntry.html:
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+
+2017-09-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        webkitbot should recognize commands even when colon is omitted
+        https://bugs.webkit.org/show_bug.cgi?id=176680
+        <rdar://problem/29933898>
+
+        Reviewed by Daniel Bates.
+
+        Recognize the IRC command even when : and , were not present.
+        Unfortunately, there is no unit test for this code at the moment.
+
+        * Scripts/webkitpy/common/net/irc/ircbot.py:
+        (IRCBot.on_pubmsg):
+
+2017-09-11  Lucas Forschler  <lforschler@apple.com>
+
+        bisect-builds doesn't work due to missing requests module
+        https://bugs.webkit.org/show_bug.cgi?id=175709
+        
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/bisect-builds: use urllib2 instead of the requests module.
+        (get_s3_location_for_revision):
+        (main):
+
+2017-09-11  Filip Pizlo  <fpizlo@apple.com>
+
+        WSL Substitution should probably wrap type variables of substituted types rather than just wrapping the whole type
+        https://bugs.webkit.org/show_bug.cgi?id=176677
+
+        Reviewed by Mylex Maxfield.
+        
+        This adds a checker that verifies that all type references and variable references are wrapped.
+        
+        Then this fixes errors found by that checker by making Substitution auto-wrap replacements rather than
+        manually wrapping the outer type (for types) and cloning (for values).
+
+        * WebGPUShadingLanguageRI/All.js:
+        * WebGPUShadingLanguageRI/AutoWrapper.js: Added.
+        (AutoWrapper.prototype.visitVariableRef):
+        (AutoWrapper.prototype.visitTypeRef):
+        (AutoWrapper.prototype.visitConstexprTypeParameter):
+        (AutoWrapper.prototype.visitFuncParameter):
+        (AutoWrapper.prototype.visitVariableDecl):
+        (AutoWrapper.prototype.visitStructType):
+        (AutoWrapper.prototype.visitNativeType):
+        (AutoWrapper):
+        * WebGPUShadingLanguageRI/CheckWrapped.js:
+        (checkExpressionWrapped):
+        (checkProgramWrapped):
+        (checkWrapped): Deleted.
+        * WebGPUShadingLanguageRI/Checker.js:
+        * WebGPUShadingLanguageRI/ExpressionFinder.js: Added.
+        (ExpressionFinder):
+        (ExpressionFinder.prototype.visitFunc):
+        (ExpressionFinder.prototype.visitFuncParameter):
+        (ExpressionFinder.prototype.visitConstexprTypeParameter):
+        (ExpressionFinder.prototype.visitAssignment):
+        (ExpressionFinder.prototype.visitCallExpression):
+        (ExpressionFinder.prototype.visitReturn):
+        (ExpressionFinder.prototype.visitWhileLoop):
+        (ExpressionFinder.prototype.visitDoWhileLoop):
+        (ExpressionFinder.prototype.visitIfStatement):
+        (ExpressionFinder.prototype.visitForLoop):
+        (ExpressionFinder.prototype.visitVariableDecl):
+        * WebGPUShadingLanguageRI/NativeFuncInstance.js:
+        (NativeFuncInstance):
+        * WebGPUShadingLanguageRI/Node.js:
+        (Node.prototype.substituteToUnification):
+        (Node):
+        (Node.prototype.clone): Deleted.
+        * WebGPUShadingLanguageRI/Prepare.js:
+        (prepare):
+        * WebGPUShadingLanguageRI/StructLayoutBuilder.js:
+        (StructLayoutBuilder.prototype.visitReferenceType):
+        (StructLayoutBuilder.prototype.visitField):
+        (StructLayoutBuilder):
+        * WebGPUShadingLanguageRI/Substitution.js:
+        (Substitution):
+        (Substitution.prototype.visitTypeRef):
+        (Substitution.prototype.visitVariableRef):
+        * WebGPUShadingLanguageRI/Test.html:
+        * WebGPUShadingLanguageRI/Test.js:
+        (TEST_chainConstexpr):
+        (TEST_chainGeneric):
+        (TEST_chainStruct):
+        (TEST_chainStructInvalid):
+        * WebGPUShadingLanguageRI/Visitor.js:
+        (Visitor.prototype.visitNativeTypeInstance):
+        * WebGPUShadingLanguageRI/WrapChecker.js:
+        (WrapChecker.prototype._foundUnwrapped.originString):
+        (WrapChecker.prototype._foundUnwrapped):
+        (WrapChecker):
+
+2017-09-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Fix multiple master.cfg unit test failures.
+        https://bugs.webkit.org/show_bug.cgi?id=176745
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (TestFactory.__init__): Add missing ':'.
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py: Update expected results for Windows and iOS build steps.
+
+2017-09-11  Jonathan Bedard  <jbedard@apple.com>
+
+        Older versions should adopt newer version's expectations on mac
+        https://bugs.webkit.org/show_bug.cgi?id=176699
+        <rdar://problem/34367907>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Before:
+                mac-elcapitan-wk2
+                mac-elcapitan
+                mac-wk2
+                mac
+                wk2
+        After:
+                mac-elcapitan-wk2
+                mac-elcapitan
+                mac-sierra-wk2
+                mac-sierra
+                mac-wk2
+                mac
+                wk2
+
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort.default_baseline_search_path): Use VERSION_FALLBACK_ORDER to have old
+        versions inherit expectations from newer versions.
+        * Scripts/webkitpy/port/mac_unittest.py:
+        (MacTest.test_layout_test_searchpath_with_apple_additions): Check new behavior
+        with older versions inheriting expectations from newer versions.
+
+2017-09-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip JSC test wsl-tests.yaml/Test.js
+        https://bugs.webkit.org/show_bug.cgi?id=176727
+
+        Unreviewed test gardening.
+
+        * WebGPUShadingLanguageRI/wsl-tests.yaml:
+
+2017-09-11  Alex Christensen  <achristensen@webkit.org>
+
+        Add WKUIDelegatePrivate equivalent of WKPageUIClient's decidePolicyForGeolocationPermissionRequest
+        https://bugs.webkit.org/show_bug.cgi?id=176642
+        <rdar://problem/29270035>
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/UIDelegate.mm:
+        (-[GeolocationDelegate initWithAllowGeolocation:]):
+        (-[GeolocationDelegate _webView:requestGeolocationPermissionForFrame:decisionHandler:]):
+        (-[GeolocationDelegate webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+        (TEST):
+
+2017-09-11  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] Elements in the DOM with the `draggable` attribute should be draggable
+        https://bugs.webkit.org/show_bug.cgi?id=176664
+        <rdar://problem/32596156>
+
+        Reviewed by Tim Horton.
+
+        Adds a new API test checking that elements marked as drag sources via the `draggable` attribute can be dragged
+        with a non-null drag preview. Additionally, refactor the drag and drop simulator to not plumb drag/drop
+        interaction delegate calls through to the WKContentView via -_simulate*-prefixed testing SPI, but rather
+        by grabbing the WKWebView's drag and drop interaction delegates (i.e. the WKContentView) and calling delegate
+        methods directly. This avoids requiring boilerplate plumbing on WKWebView and WKContentView for each of the drag
+        and drop delegate methods, so these have been removed from WKWebView and WKContentView.
+
+        Additionally, renames MockDataOperationSession and MockDataInteractionSession to MockDragSession and
+        MockDropSession, respectively, and adjusts their ivars on DataInteractionSimulator to match.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/custom-draggable-div.html: Added.
+
+        Add a new test harness covering dragging and dropping elements with the draggable attribute, using DataTransfer
+        API (setData and getData) as well.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/ios/DataInteractionSimulator.h:
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+        (-[WKWebView dropInteractionDelegate]):
+        (-[WKWebView dragInteractionDelegate]):
+        (-[WKWebView dropInteraction]):
+        (-[WKWebView dragInteraction]):
+
+        Add testing utilities to ask a WKWebView for information about its drag/drop interactions and delegates. In this
+        case, this will return the WKWebView's WKContentView.
+
+        (-[DataInteractionSimulator _resetSimulatedState]):
+        (-[DataInteractionSimulator simulateAllTouchesCanceled:]):
+        (-[DataInteractionSimulator runFrom:to:additionalItemRequestLocations:]):
+        (-[DataInteractionSimulator _concludeDataInteractionAndPerformOperationIfNecessary]):
+        (-[DataInteractionSimulator _sendQueuedAdditionalItemRequest]):
+        (-[DataInteractionSimulator _advanceProgress]):
+
+        When beginning a drag session, ask the delegate for targeted lift previews and verify that these are non-null.
+        This check would fail prior to the tweak in DragDropInteractionState in this patch.
+
+        (-[DataInteractionSimulator _webView:showCustomSheetForElement:]):
+        (-[MockDataOperationSession initWithProviders:location:window:allowMove:]): Deleted.
+        (-[MockDataOperationSession session]): Deleted.
+        (-[MockDataOperationSession isLocal]): Deleted.
+        (-[MockDataOperationSession progress]): Deleted.
+        (-[MockDataOperationSession setProgressIndicatorStyle:]): Deleted.
+        (-[MockDataOperationSession progressIndicatorStyle]): Deleted.
+        (-[MockDataOperationSession operationMask]): Deleted.
+        (-[MockDataOperationSession localDragSession]): Deleted.
+        (-[MockDataOperationSession hasItemsConformingToTypeIdentifier:]): Deleted.
+        (-[MockDataOperationSession canCreateItemsOfClass:]): Deleted.
+        (-[MockDataOperationSession loadObjectsOfClass:completion:]): Deleted.
+        (-[MockDataInteractionSession initWithWindow:allowMove:]): Deleted.
+        (-[MockDataInteractionSession localOperationMask]): Deleted.
+        (-[MockDataInteractionSession externalOperationMask]): Deleted.
+
+        Replace various places where we called -_simulate* methods on WKWebView with calls to the
+        UIDragInteractionDelegate or UIDropInteractionDelegate (the WKContentView) instead. Also, adjust for some
+        mechanical renaming of drag and drop sessions.
+
+        (-[MockDataInteractionSession session]): Deleted.
+        * TestWebKitAPI/ios/UIKitSPI.h:
+
+2017-09-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Make the WPT entry point for LayoutTests/http/wpt more discoverable
+        https://bugs.webkit.org/show_bug.cgi?id=176494
+
+        Reviewed by Youenn Fablet.
+
+        * Scripts/webkitpy/layout_tests/servers/run_webkit_httpd.py:
+        (run_server):
+        Output a tip for how to access the http/wpt tests.
+
+2017-09-11  Mark Lam  <mark.lam@apple.com>
+
+        Turn on exception scope verification for JSC tests.
+        https://bugs.webkit.org/show_bug.cgi?id=162351
+        <rdar://problem/29563911>
+
+        Reviewed by Saam Barati.
+
+        Added the option to --validateExceptionChecks=true option to BASE_OPTIONS in
+        run-jsc-stress-tests.  This turns on exception scope verification on JSC test
+        runs (which currently does not include testapi).
+
+        Some stats on time to run JSC stress and mozilla tests:
+        1. Release build w/o --validateExceptionChecks=true: real 16m22.544s, user 156m24.080s, sys 123m3.649s
+        2. Debug build w/o --validateExceptionChecks=true: real 78m34.206s, user 1661m57.008s, sys 73m21.177s
+        3. Debug build w/ --validateExceptionChecks=true: real 77m41.106s, user 1656m13.924s, sys 73m42.309s
+        4. Debug build w/ --validateExceptionChecks=true --dumpSimulatedThrows=true: real 92m56.918s, user 2012m56.441s, sys 75m14.174s
+
+        The stats shows that (2) and (3) has effectively no time difference.  Hence, the
+        cost of enabling --validateExceptionChecks=true is not significant.
+
+        It would be nice to enable --dumpSimulatedThrows=true as well, but (4) is about
+        21% slower than (3).  To avoid making debug test runs a lot slower, we'll leave
+        --dumpSimulatedThrows=true off.  We can manually add that when we see a regression
+        and need to debug the issue.  Otherwise, we wont pay the price for it.
+
+        * Scripts/run-jsc-stress-tests:
+
+2017-09-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        WSL should support for loops
+        https://bugs.webkit.org/show_bug.cgi?id=176682
+
+        Reviewed by Filip Pizlo.
+
+        Follows the pattern of the existing infrastructure of while loops.
+
+        * WebGPUShadingLanguageRI/All.js:
+        * WebGPUShadingLanguageRI/Checker.js:
+        * WebGPUShadingLanguageRI/Evaluator.js:
+        (Evaluator.prototype.visitForLoop):
+        * WebGPUShadingLanguageRI/ForLoop.js: Copied from Tools/WebGPUShadingLanguageRI/LoopChecker.js.
+        (ForLoop):
+        (ForLoop.prototype.get origin):
+        (ForLoop.prototype.get initialization):
+        (ForLoop.prototype.get condition):
+        (ForLoop.prototype.get increment):
+        (ForLoop.prototype.get body):
+        (ForLoop.prototype.toString):
+        * WebGPUShadingLanguageRI/LoopChecker.js:
+        (LoopChecker.prototype.visitForLoop):
+        * WebGPUShadingLanguageRI/NameResolver.js:
+        (NameResolver.prototype.visitForLoop):
+        * WebGPUShadingLanguageRI/Parse.js:
+        (parseFor):
+        * WebGPUShadingLanguageRI/ReturnChecker.js:
+        (ReturnChecker.prototype._isBoolCastFromLiteralTrue):
+        (ReturnChecker.prototype.visitWhileLoop):
+        (ReturnChecker.prototype.visitDoWhileLoop):
+        (ReturnChecker.prototype.visitForLoop):
+        * WebGPUShadingLanguageRI/Rewriter.js:
+        (Rewriter.prototype.visitForLoop):
+        (Rewriter):
+        * WebGPUShadingLanguageRI/Test.html:
+        * WebGPUShadingLanguageRI/Test.js:
+        (TEST_forLoop):
+        * WebGPUShadingLanguageRI/Visitor.js:
+        (Visitor.prototype.visitForLoop):
+
+2017-09-11  Robin Morisset  <rmorisset@apple.com>
+
+        Just added myself to the contributors.json file as a committer
+
+        Unreviewed
+
+2017-09-10  Filip Pizlo  <fpizlo@apple.com>
+
+        IntLiteral should prefer int32 during overload resolution
+        https://bugs.webkit.org/show_bug.cgi?id=176675
+
+        Reviewed by Myles Maxfield.
+        
+        This makes intLiteralType prefer to resolve to int over other types.
+        
+        This also adds tests that if you pass intLiteral to T, then you can make it work by saying
+        int(intLiteral).
+
+        * WebGPUShadingLanguageRI/IntLiteralType.js:
+        (IntLiteralType):
+        (IntLiteralType.prototype.conversionCost):
+        * WebGPUShadingLanguageRI/Node.js:
+        (Node.prototype.conversionCost):
+        * WebGPUShadingLanguageRI/ResolveOverloadImpl.js:
+        (resolveOverloadImpl):
+        * WebGPUShadingLanguageRI/Rewriter.js:
+        (Rewriter.prototype.visitIntLiteralType):
+        * WebGPUShadingLanguageRI/Test.js:
+        (TEST_intOverloadResolution):
+        (TEST_intOverloadResolutionReverseOrder):
+        (TEST_intOverloadResolutionGeneric):
+        (TEST_intLiteralGeneric):
+        * WebGPUShadingLanguageRI/UnificationContext.js:
+        (UnificationContext.prototype.get conversionCost):
+        * WebGPUShadingLanguageRI/Visitor.js:
+        (Visitor.prototype.visitIntLiteralType):
+
+2017-09-10  Filip Pizlo  <fpizlo@apple.com>
+
+        WSL should be able to handle a simple constexpr type parameter
+        https://bugs.webkit.org/show_bug.cgi?id=176676
+
+        Reviewed by Myles Maxfield.
+        
+        This adds a test that uses a constexpr type parameter, and then fixed enough bugs to get this to work.
+
+        * WebGPUShadingLanguageRI/All.js:
+        * WebGPUShadingLanguageRI/CallExpression.js:
+        (CallExpression.prototype.resolve):
+        * WebGPUShadingLanguageRI/CheckWrapped.js: Added.
+        (checkWrapped):
+        * WebGPUShadingLanguageRI/Checker.js:
+        * WebGPUShadingLanguageRI/Evaluator.js:
+        (Evaluator.prototype.visitCallExpression):
+        (Evaluator):
+        * WebGPUShadingLanguageRI/Node.js:
+        (Node.prototype.substituteToUnification):
+        (Node.prototype.clone):
+        (Node):
+        * WebGPUShadingLanguageRI/Substitution.js:
+        (Substitution):
+        (Substitution.prototype.visitVariableRef):
+        * WebGPUShadingLanguageRI/Test.html:
+        * WebGPUShadingLanguageRI/Test.js:
+        (TEST_simpleConstexpr):
+        * WebGPUShadingLanguageRI/WrapChecker.js: Added.
+        (WrapChecker):
+        (WrapChecker.prototype.visitVariableRef):
+        (WrapChecker.prototype.visitTypeRef):
+        (WrapChecker.prototype.visitIntLiteral):
+        (WrapChecker.prototype._foundUnwrapped):
+        (WrapChecker.visitConstexprTypeParameter):
+        (WrapChecker.prototype.visitFuncParameter):
+        (WrapChecker.prototype.visitVariableDecl):
+        (WrapChecker.prototype.visitStructType):
+        (WrapChecker.prototype.visitNativeType):
+
+2017-09-11  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [WPE] Bump freetype version to 2.8.0
+        https://bugs.webkit.org/show_bug.cgi?id=176501
+
+        Reviewed by Michael Catanzaro.
+
+        Bump freetype on WPE like r221670 did on GTK.
+
+        * wpe/jhbuild.modules:
+        * wpe/patches/freetype6-2.4.11-truetype-font-height-fix.patch: Removed.
+
+2017-09-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION: [GTK] Generated HTML API documentation is missing descriptions
+        https://bugs.webkit.org/show_bug.cgi?id=176667
+
+        Reviewed by Michael Catanzaro.
+
+        This is happening since we moved the implementation files to glib dirs. The generate-gtkdoc script assumes that
+        header and implementation files are always in the same directory. To reduce the input we pass to gtk-doc we
+        ignore cpp files for which there isn't a public header. The code to do this check doesn't consider cpp files in
+        a different directory than the header file. It also assumes that header and cpp files have the same filename
+        except for the extension, which is true in all cases but WebKitWebView that we have two files WebKitWebView.cpp
+        and WebKitWebViewGtk.cpp.
+
+        * gtk/generate-gtkdoc:
+        (files_to_ignore): Check also cpp files with the Gtk suffix.
+        (files_to_ignore.add_file_if_exists): Check if a file with the given name exists in any of the source dirs.
+
+2017-09-10  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        WSL should support while loops
+        https://bugs.webkit.org/show_bug.cgi?id=176581
+
+        Reviewed by Filip Pizlo.
+
+        There are a few interesting pieces to this patch:
+        1. Because the evaluator is just a node-based descent through the tree, the implementation of break
+        and continue are just "throw".
+        2. The ReturnChecker now has to return a three-state enum because of nested blocks. The outer block
+        cares about if the inner block has "break" as opposed to it having no returns nor breaks/continues.
+        3. ReturnChecker will treat "while (true)" the same as { }, but will not descend deeper for things
+        like "while (3 == 3)".
+        4. This patch also adds a few more boolean conditional functions like operator<().
+        5. I added another pass which makes sure there are no bare break/return keywords outside of loops.
+
+        * WebGPUShadingLanguageRI/All.js:
+        * WebGPUShadingLanguageRI/Break.js: Copied from Tools/WebGPUShadingLanguageRI/CheckUnreachableCode.js.
+        (Break):
+        (Break.prototype.get origin):
+        (Break.prototype.toString):
+        * WebGPUShadingLanguageRI/CheckLoops.js: Copied from Tools/WebGPUShadingLanguageRI/CheckReturns.js.
+        (checkLoops):
+        * WebGPUShadingLanguageRI/CheckReturns.js:
+        (checkReturns):
+        * WebGPUShadingLanguageRI/CheckUnreachableCode.js:
+        (checkUnreachableCode):
+        * WebGPUShadingLanguageRI/Checker.js:
+        * WebGPUShadingLanguageRI/Continue.js: Copied from Tools/WebGPUShadingLanguageRI/CheckReturns.js.
+        (Continue):
+        (Continue.prototype.get origin):
+        (Continue.prototype.toString):
+        * WebGPUShadingLanguageRI/Evaluator.js:
+        (Evaluator.prototype.visitWhileLoop):
+        (Evaluator.prototype.visitBreak):
+        (Evaluator.prototype.visitContinue):
+        * WebGPUShadingLanguageRI/Intrinsics.js:
+        (Intrinsics):
+        * WebGPUShadingLanguageRI/Lexer.js:
+        (Lexer.prototype.next):
+        (Lexer):
+        * WebGPUShadingLanguageRI/LoopChecker.js: Copied from Tools/WebGPUShadingLanguageRI/ReturnChecker.js.
+        (LoopChecker):
+        (LoopChecker.prototype.visitFuncDef):
+        (LoopChecker.prototype.visitWhileLoop):
+        (LoopChecker.prototype.visitBreak):
+        (LoopChecker.prototype.visitContinue):
+        * WebGPUShadingLanguageRI/NameResolver.js:
+        (NameResolver.prototype.visitWhileLoop):
+        * WebGPUShadingLanguageRI/Node.js:
+        (Node.prototype.visit):
+        * WebGPUShadingLanguageRI/Parse.js:
+        (parsePossibleRelationalInequality):
+        (parseBreak):
+        (parseContinue):
+        (parseWhile):
+        * WebGPUShadingLanguageRI/Prepare.js:
+        (prepare):
+        * WebGPUShadingLanguageRI/ReturnChecker.js:
+        (ReturnChecker):
+        (ReturnChecker.prototype.visitFuncDef):
+        (ReturnChecker.prototype.visitBlock):
+        (ReturnChecker.prototype.visitIfStatement):
+        (ReturnChecker.prototype.visitWhileLoop):
+        (ReturnChecker.prototype.visitReturn):
+        (ReturnChecker.prototype.visitBreak):
+        (ReturnChecker.prototype.visitContinue):
+        * WebGPUShadingLanguageRI/Rewriter.js:
+        (Rewriter.prototype.visitContinue):
+        (Rewriter.prototype.visitBreak):
+        (Rewriter.prototype.visitWhileLoop):
+        (Rewriter):
+        * WebGPUShadingLanguageRI/StandardLibraryPrologue.js:
+        * WebGPUShadingLanguageRI/Test.html:
+        * WebGPUShadingLanguageRI/Test.js:
+        (TEST_returnIf):
+        (TEST_simpleWhile):
+        * WebGPUShadingLanguageRI/UnreachableCodeChecker.js:
+        (UnreachableCodeChecker):
+        (UnreachableCodeChecker.prototype.visitBlock):
+        * WebGPUShadingLanguageRI/Visitor.js:
+        (Visitor.prototype.visitWhileLoop):
+        (Visitor.prototype.visitContinue):
+        (Visitor.prototype.visitBreak):
+        * WebGPUShadingLanguageRI/WhileLoop.js: Copied from Tools/WebGPUShadingLanguageRI/CheckReturns.js.
+        (WhileLoop):
+        (WhileLoop.prototype.get origin):
+        (WhileLoop.prototype.get conditional):
+        (WhileLoop.prototype.get body):
+        (WhileLoop.prototype.toString):
+
+2017-09-07  Filip Pizlo  <fpizlo@apple.com>
+
+        WSL overload resolution should not be cascading
+        https://bugs.webkit.org/show_bug.cgi?id=176333
+
+        Reviewed by Myles Maxfield.
+        
+        This removes the cascading nature of overload resolution that WSL used to have, and replaces it with
+        something C++-like. If there are multiple overload candidates that match the callsite, then we resolve
+        them against each other. Anytime a function cannot be resolved onto another function, it is removed,
+        since this means that this function is in some way more general than the other one, and we are just
+        looking for the most specific function.
+        
+        If this process ends with only one function being selected, then we succeed, else we fail.
+        
+        Also changed the syntax for defining generic casts to:
+        
+        operator<T> Thingy<T>(things)
+        
+        Also fixed parsing of cast expressions. It's now possible to say a cast expression in WSL.
+        
+        The removal of cascading causes some problems. For example, the following two operators in our standard
+        library are ambiguous for bool(bool):
+        
+        operator<T> T(T)
+        operator<T:Equatable> bool(T)
+        
+        I think that what we really want is to say that the following operators are restricted to the standard
+        library:
+        
+        operator<T> T()
+        operator<T> T(T)
+        
+        It should not be possible to ever overload these.
+        
+        These changes are mostly tested by existing tests and the changes in the standard library, which has to
+        be parsed for every test.
+
+        * WebGPUShadingLanguageRI/All.js:
+        * WebGPUShadingLanguageRI/ArrayRefType.js:
+        (ArrayRefType.prototype.unifyImpl):
+        * WebGPUShadingLanguageRI/CallExpression.js:
+        (CallExpression):
+        (CallExpression.prototype.get isCast):
+        (CallExpression.prototype.get returnType):
+        (CallExpression.prototype.resolve):
+        (CallExpression.prototype.becomeCast):
+        (CallExpression.prototype.setCastData):
+        (CallExpression.prototype.toString):
+        * WebGPUShadingLanguageRI/Checker.js:
+        * WebGPUShadingLanguageRI/Evaluator.js:
+        (Evaluator.prototype.visitLogicalNot):
+        * WebGPUShadingLanguageRI/Func.js:
+        (Func.prototype.get returnTypeForOverloadResolution):
+        * WebGPUShadingLanguageRI/FuncDef.js:
+        (FuncDef):
+        * WebGPUShadingLanguageRI/FuncInstantiator.js:
+        (FuncInstantiator.prototype.getUnique.FindTypeVariable.prototype.visitTypeVariable):
+        (FuncInstantiator.prototype.getUnique.FindTypeVariable):
+        (FuncInstantiator.prototype.getUnique.InstantiationSubstitution.prototype.visitCallExpression):
+        (FuncInstantiator.prototype.getUnique.InstantiationSubstitution):
+        * WebGPUShadingLanguageRI/FunctionLikeBlock.js:
+        (FunctionLikeBlock.prototype.toString):
+        (FunctionLikeBlock):
+        * WebGPUShadingLanguageRI/InferTypesForCall.js: Added.
+        (inferTypesForCall):
+        * WebGPUShadingLanguageRI/Inline.js:
+        (resolveInlinedFunction):
+        * WebGPUShadingLanguageRI/Lexer.js:
+        (Lexer):
+        (Lexer.prototype.next):
+        * WebGPUShadingLanguageRI/NameContext.js:
+        (NameContext):
+        (NameContext.prototype.mapFor):
+        (NameContext.prototype.add):
+        (NameContext.prototype.get let):
+        (NameContext.prototype.Symbol.iterator):
+        (NameContext.get currentStatement): Deleted.
+        * WebGPUShadingLanguageRI/NameResolver.js:
+        (NameResolver.prototype.visitProgram):
+        (NameResolver.prototype.determinePossibleOverloads):
+        (NameResolver.prototype.visitProtocolFuncDecl):
+        (NameResolver.prototype.visitCallExpression):
+        (NameResolver):
+        * WebGPUShadingLanguageRI/NativeFunc.js:
+        (NativeFunc):
+        * WebGPUShadingLanguageRI/Node.js:
+        (Node.prototype.visit):
+        * WebGPUShadingLanguageRI/Parse.js:
+        (parsePossiblePrefix):
+        (parseFuncDecl):
+        (parseNativeFunc):
+        (parseNative):
+        (parsePreferredFuncDef):
+        (parse):
+        * WebGPUShadingLanguageRI/Prepare.js:
+        (prepare):
+        * WebGPUShadingLanguageRI/Program.js:
+        (Program.prototype.resolveFuncOverload): Deleted.
+        (Program.prototype.get nameContext): Deleted.
+        * WebGPUShadingLanguageRI/ProtocolDecl.js:
+        (ProtocolDecl.prototype.inherits):
+        (ProtocolDecl.prototype.hasHeir):
+        * WebGPUShadingLanguageRI/PtrType.js:
+        (PtrType.prototype.unifyImpl):
+        * WebGPUShadingLanguageRI/ResolveOverloadImpl.js:
+        (resolveOverloadImpl):
+        * WebGPUShadingLanguageRI/Rewriter.js:
+        (Rewriter.prototype.visitProtocolFuncDecl):
+        (Rewriter.prototype.processDerivedCallData):
+        (Rewriter.prototype.visitCastExpression): Deleted.
+        * WebGPUShadingLanguageRI/StandardLibrary.js: Added.
+        (preferred.operator.T.T):
+        (operator.T.Equatable.bool):
+        * WebGPUShadingLanguageRI/StandardLibraryEpilogue.js: Removed.
+        * WebGPUShadingLanguageRI/StandardLibraryPrologue.js: Removed.
+        * WebGPUShadingLanguageRI/Test.html:
+        * WebGPUShadingLanguageRI/Test.js:
+        (doLex):
+        (checkUInt):
+        (checkBool):
+        * WebGPUShadingLanguageRI/TypeRef.js:
+        (TypeRef.prototype.toString):
+        (TypeRef):
+        * WebGPUShadingLanguageRI/Visitor.js:
+        (Visitor.prototype.visitCallExpression):
+        (Visitor.prototype.visitCastExpression): Deleted.
+
+2017-09-10  Brady Eidson  <beidson@apple.com>
+
+        Try to avoid creating the default WKWebsiteDataStore until its actually needed.
+        <rdar://problem/33164453> and https://bugs.webkit.org/show_bug.cgi?id=176551
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WebsiteDataStoreCustomPaths.mm:
+        (TEST):
+
+2017-09-10  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Improve Ctrl+W and Ctrl+Q shortcuts in MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=176619
+
+        Reviewed by Carlos Garcia Campos.
+
+        There are two different problems here. First, Ctrl+W is closing the entire window. That made
+        sense when I implemented the shortcut a couple years ago, but now MiniBrowser supports tabs
+        and it should really close only one single tab. Fix that.
+
+        Next, the keyboard shortcuts are not using webkit_web_view_try_close() and so are bypassing
+        onbeforeunload handlers, which are respected when closing with the mouse. Fix that too.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (browserWindowTryCloseCurrentWebView):
+        (browserWindowTryClose):
+        (browser_window_init):
+
+2017-09-07  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Add "if" statements to WSL
+        https://bugs.webkit.org/show_bug.cgi?id=176294
+
+        Reviewed by Filip Pizlo.
+        
+        Rolling back in after skipping Test.js on debug.
+
+        Fairly straightforward implementation. ReturnChecker only returns true iff there is an else block,
+        and both the if body and the else body recursively return true.
+
+        In order to accept both syntaxes:
+        if (foo)
+            bar;
+        ... and ...
+        if (foo) {
+            bar;
+        }
+        This patch lets parseStatement() call parseBlock(). This means that the following is valid:
+        int x = 7;
+        if (foo) {
+            int x = 8;
+            // x is 8 here!
+        }
+        // x is 7 here!
+
+        This production means that these blocks don't require "if" statements, so you can just have:
+        int foo() {
+           int x = 7;
+           {
+               int x = 8;
+               // x is 8 here!
+           }
+           // x is 7 here!
+        }
+
+        However, this patch doesn't touch the following use-case:
+        if (int x = bar()) {
+            // use x here
+        }
+
+        * WebGPUShadingLanguageRI/All.js:
+        * WebGPUShadingLanguageRI/Checker.js:
+        * WebGPUShadingLanguageRI/Evaluator.js:
+        (Evaluator.prototype.visitIfStatement):
+        * WebGPUShadingLanguageRI/IfStatement.js: Copied from Tools/WebGPUShadingLanguageRI/TypeDef.js.
+        (IfStatement):
+        (IfStatement.prototype.get origin):
+        (IfStatement.prototype.get conditional):
+        (IfStatement.prototype.get body):
+        (IfStatement.prototype.get elseBody):
+        (IfStatement.prototype.toString):
+        * WebGPUShadingLanguageRI/NameResolver.js:
+        (NameResolver.prototype.visitIfStatement):
+        * WebGPUShadingLanguageRI/Parse.js:
+        (parseTypeParameters):
+        (parseIfStatement):
+        (parseStatement):
+        * WebGPUShadingLanguageRI/ReturnChecker.js:
+        (ReturnChecker.prototype.visitIfStatement):
+        * WebGPUShadingLanguageRI/Rewriter.js:
+        (Rewriter.prototype.visitIfStatement):
+        (Rewriter):
+        * WebGPUShadingLanguageRI/Test.html:
+        * WebGPUShadingLanguageRI/Test.js:
+        (TEST_variableShadowing):
+        (TEST_ifStatement):
+        (TEST_ifElseStatement):
+        (TEST_ifElseIfStatement):
+        (TEST_ifElseIfElseStatement):
+        (TEST_returnIf):
+        (TEST_protocolMonoPolySigDoublePolyDefExplicit): Deleted.
+        * WebGPUShadingLanguageRI/TypeDef.js:
+        (TypeDef.prototype.toString):
+        (TypeDef):
+        * WebGPUShadingLanguageRI/Visitor.js:
+        (Visitor.prototype.visitIfStatement):
+
+2017-09-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Unreviewed, fix typo forwad -> forward
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (browserWindowUpdateNavigationActions):
+        (backForwardlistChanged):
+        (browserWindowSwitchTab):
+        (backForwadlistChanged): Deleted.
+
+2017-09-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r221801.
+
+        This change introduced a webkitpy test failure.
+
+        Reverted changeset:
+
+        "bisect-builds doesn't work due to missing requests module"
+        https://bugs.webkit.org/show_bug.cgi?id=175709
+        http://trac.webkit.org/changeset/221801
+
+2017-09-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r221776.
+
+        This change caused wsl-tests.yaml/Test.js to time out on Debug
+        JSC bots.
+
+        Reverted changeset:
+
+        "Add "if" statements to WSL"
+        https://bugs.webkit.org/show_bug.cgi?id=176294
+        http://trac.webkit.org/changeset/221776
+
+2017-09-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        MiniBrowser closes tab instead of window on close signal
+        https://bugs.webkit.org/show_bug.cgi?id=176587
+
+        Reviewed by Carlos Garcia Campos.
+
+        This has been broken since we added support for multiple tabs. We need to run try_close for
+        every open tab, not just the current one. If there are no onbeforeonload handlers then all
+        tabs will close; if there are some, then they'll be respected, but the remaining tabs will
+        be closed.
+
+        Note that we cannot simply iterate through the tabs of the GtkNotebook, as we'd be deleting
+        tabs as we go, so save all the tabs into a separate list and then try to close each in turn.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (browserWindowTryClose):
+        (browserWindowDeleteEvent):
+
+2017-09-09  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed WPE build fix.
+
+        * TestWebKitAPI/PlatformWPE.cmake:
+        Link WebCore archives into the TestWebCore binary as a group.
+
+2017-09-08  Lucas Forschler  <lforschler@apple.com>
+
+        bisect-builds doesn't work due to missing requests module
+        https://bugs.webkit.org/show_bug.cgi?id=175709
+        
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/bisect-builds: update import to webkitpy.thirdparty.autoinstalled
+        * Scripts/webkitpy/thirdparty/__init__.py: add logic to install requests module.
+        (AutoinstallImportHook.find_module):
+        (AutoinstallImportHook):
+        (AutoinstallImportHook._install_requests):
+        * Scripts/webkitpy/thirdparty/__init___unittest.py:
+        (ThirdpartyTest.test_imports):
+
+2017-09-08  Lucas Forschler  <lforschler@apple.com>
+
+        Test commit to verify trac sync is working.
+
+2017-09-08  Lucas Forschler  <lforschler@apple.com>
+
+        Test commit to verify git sync is working.
+
+2017-09-08  Lucas Forschler  <lforschler@apple.com>
+
+        bisect-builds should not print out extracting command
+        https://bugs.webkit.org/show_bug.cgi?id=175632
+        
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/bisect-builds:
+        (extract_archive):
+
+2017-09-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        WebKit should claim that it can show responses for a broader range of JSON MIMETypes
+        https://bugs.webkit.org/show_bug.cgi?id=176252
+        <rdar://problem/34212885>
+
+        Reviewed by Ryosuke Niwa.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/WKNavigationResponse.mm: Added.
+        (-[WKNavigationResponseTestNavigationDelegate webView:decidePolicyForNavigationResponse:decisionHandler:]):
+        (-[WKNavigationResponseTestNavigationDelegate webView:didCommitNavigation:]):
+        (-[WKNavigationResponseTestSchemeHandler webView:startURLSchemeTask:]):
+        (-[WKNavigationResponseTestSchemeHandler webView:stopURLSchemeTask:]):
+        (TEST):
+        Test for canShowMIMEType with multiple JSON mime types and a garbage mime type.
+        Previously canShowMIMEType would have been YES for "application/json" but
+        NO for "application/vnd.api+json". Now it shows YES for both.
+
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/PlatformWPE.cmake:
+        * TestWebKitAPI/PlatformWin.cmake:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/MIMETypeRegistry.cpp: Added.
+        (TestWebKitAPI::TEST):
+        Tests for MIMETypeRegistry's dynamic JSON mime type detection.
+
+2017-09-07  Matthew Stewart  <matthew_r_stewart@apple.com>
+
+        Add Live PLT implemented with WebDriver
+        https://bugs.webkit.org/show_bug.cgi?id=176436
+
+        Reviewed by Stephanie Lewis.
+
+        Adds a new PLT that runs on live websites.
+
+        * Scripts/run-webdriver-plt.py: Added.
+        (parse_args):
+        (start):
+        (make_suites):
+        (main):
+        * Scripts/webkitpy/webdriver_plt/__init__.py: Added.
+        * Scripts/webkitpy/webdriver_plt/liveplt.py: Added.
+        (PageLoadTest):
+        (PageLoadTest.__init__):
+        (PageLoadTest.start):
+        (PageLoadTest.run_suite):
+        (PageLoadTest._get_driver_for_browser):
+        (PageLoadTest._setup_browser_window):
+        (PageLoadTest.run_one_test):
+        (PageLoadTest.get_results):
+        * Scripts/webkitpy/webdriver_plt/pltresults.py: Added.
+        (PLTResults):
+        (PLTResults.__init__):
+        (PLTResults.__add__):
+        (PLTResults.add_timing_result):
+        (PLTResults.mean):
+        (PLTResults.geometric_mean):
+        (PLTResults.mean_coef_variance):
+        (PLTResults.print_results):
+        (PLTResults.print_url_results):
+        (PLTResults._format_time):
+        * Scripts/webkitpy/webdriver_plt/suites/__init__.py: Added.
+        * Scripts/webkitpy/webdriver_plt/suites/arabic.suite: Added.
+        * Scripts/webkitpy/webdriver_plt/suites/cjk.suite: Added.
+        * Scripts/webkitpy/webdriver_plt/suites/news.suite: Added.
+        * Scripts/webkitpy/webdriver_plt/suites/search.suite: Added.
+        * Scripts/webkitpy/webdriver_plt/suites/shopping.suite: Added.
+        * Scripts/webkitpy/webdriver_plt/suites/social.suite: Added.
+        * Scripts/webkitpy/webdriver_plt/suites/suite.py: Added.
+        (Suite):
+        (Suite.__init__):
+        (Suite.get_available_suites):
+        * Scripts/webkitpy/webdriver_plt/urlresults.py: Added.
+        (URLResults):
+        (URLResults.__init__):
+        (URLResults.__add__):
+        (URLResults.mean):
+        (URLResults.coef_variance):
+        (URLResults.print_results):
+        (URLResults._format_time):
+
+2017-09-07  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Add "if" statements to WSL
+        https://bugs.webkit.org/show_bug.cgi?id=176294
+
+        Reviewed by Filip Pizlo.
+
+        Fairly straightforward implementation. ReturnChecker only returns true iff there is an else block,
+        and both the if body and the else body recursively return true.
+
+        In order to accept both syntaxes:
+        if (foo)
+            bar;
+        ... and ...
+        if (foo) {
+            bar;
+        }
+        This patch lets parseStatement() call parseBlock(). This means that the following is valid:
+        int x = 7;
+        if (foo) {
+            int x = 8;
+            // x is 8 here!
+        }
+        // x is 7 here!
+
+        This production means that these blocks don't require "if" statements, so you can just have:
+        int foo() {
+           int x = 7;
+           {
+               int x = 8;
+               // x is 8 here!
+           }
+           // x is 7 here!
+        }
+
+        However, this patch doesn't touch the following use-case:
+        if (int x = bar()) {
+            // use x here
+        }
+
+        * WebGPUShadingLanguageRI/All.js:
+        * WebGPUShadingLanguageRI/Checker.js:
+        * WebGPUShadingLanguageRI/Evaluator.js:
+        (Evaluator.prototype.visitIfStatement):
+        * WebGPUShadingLanguageRI/IfStatement.js: Copied from Tools/WebGPUShadingLanguageRI/TypeDef.js.
+        (IfStatement):
+        (IfStatement.prototype.get origin):
+        (IfStatement.prototype.get conditional):
+        (IfStatement.prototype.get body):
+        (IfStatement.prototype.get elseBody):
+        (IfStatement.prototype.toString):
+        * WebGPUShadingLanguageRI/NameResolver.js:
+        (NameResolver.prototype.visitIfStatement):
+        * WebGPUShadingLanguageRI/Parse.js:
+        (parseTypeParameters):
+        (parseIfStatement):
+        (parseStatement):
+        * WebGPUShadingLanguageRI/ReturnChecker.js:
+        (ReturnChecker.prototype.visitIfStatement):
+        * WebGPUShadingLanguageRI/Rewriter.js:
+        (Rewriter.prototype.visitIfStatement):
+        (Rewriter):
+        * WebGPUShadingLanguageRI/Test.html:
+        * WebGPUShadingLanguageRI/Test.js:
+        (TEST_variableShadowing):
+        (TEST_ifStatement):
+        (TEST_ifElseStatement):
+        (TEST_ifElseIfStatement):
+        (TEST_ifElseIfElseStatement):
+        (TEST_returnIf):
+        (TEST_protocolMonoPolySigDoublePolyDefExplicit): Deleted.
+        * WebGPUShadingLanguageRI/TypeDef.js:
+        (TypeDef.prototype.toString):
+        (TypeDef):
+        * WebGPUShadingLanguageRI/Visitor.js:
+        (Visitor.prototype.visitIfStatement):
+
+2017-09-07  Lucas Forschler  <lforschler@apple.com>
+
+        Test commit after server upgrade from subversion 1.9.5 to 1.9.7
+
+2017-09-07  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Add C API to retrieve the originating page of a WKDownload
+        https://bugs.webkit.org/show_bug.cgi?id=176557
+        <rdar://problem/34314776>
+
+        Reviewed by Alex Christensen.
+
+        Add layout test coverage for both the ObjC and C API.
+
+        * TestWebKitAPI/Tests/WebKit/mac/ContextMenuDownload.mm:
+        (TestWebKitAPI::decideDestinationWithSuggestedFilename):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/Download.mm:
+        (-[RedirectedDownloadDelegate _downloadDidStart:]):
+        (TEST):
+
+2017-09-07  Filip Pizlo  <fpizlo@apple.com>
+
+        WSL Node.prototype.visit should probably do memoization
+        https://bugs.webkit.org/show_bug.cgi?id=176286
+
+        Reviewed by Mark Lam.
+        
+        Visitors can sometimes revisit the same thing. For example, we may visit a FuncDef because it belongs
+        to Program and we may visit it again because a CallExpression resolved to it. That's just plain silly.
+        
+        Our tests don't currently do this, so it's not a performance problem, yet. Also, we usually avoid that
+        kind of repetitive visiting inside the visitor implementations. But as far as I can tell, this is an
+        emergent property rather than a deliberate design.
+        
+        This change just makes the policy super explicit. If you visit something more than once with the same
+        visitor, you get the same answer back. This is achieved by means of a memo table inside each visitor.
+        
+        * WebGPUShadingLanguageRI/All.js:
+        * WebGPUShadingLanguageRI/FuncInstantiator.js:
+        * WebGPUShadingLanguageRI/Node.js:
+        (Node.prototype.visit):
+        * WebGPUShadingLanguageRI/Rewriter.js:
+        (Rewriter):
+        * WebGPUShadingLanguageRI/Test.html:
+        * WebGPUShadingLanguageRI/Visitor.js:
+        (Visitor):
+        * WebGPUShadingLanguageRI/VisitorBase.js: Added.
+        (VisitorBase):
+
+2017-09-07  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Directory Upload] Extend drag and drop support to iOS
+        https://bugs.webkit.org/show_bug.cgi?id=176492
+        <rdar://problem/34291584>
+
+        Reviewed by Tim Horton.
+
+        Adds two new iOS drag and drop unit tests, which both exercise the DataTransferItem.webKitGetAsEntry codepath
+        upon drop. (...)GetFolderAsEntry creates a new folder in the temporary directory and uses it to generate an item
+        provider. This item provider is then dropped over a custom drop handling element, which writes information about
+        the exposed FileSystemEntries into a textarea. (...)ExternalSourceDataTransferItemGetPlainTextFileAsEntry does
+        something similar, except that it only drops a plain text file instead.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/DataTransferItem-getAsEntry.html: Added.
+
+        Introduce a new test page that dumps information about DataTransferItems' file system entries upon drop.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (runTestWithTemporaryTextFile):
+        (runTestWithTemporaryFolder):
+
+        Introduce helpers to set up and tear down temporary files and folders over the duration of a test.
+
+        (TestWebKitAPI::setUpTestWebViewForDataTransferItems):
+        (TestWebKitAPI::TEST):
+
+2017-09-07  Filip Pizlo  <fpizlo@apple.com>
+
+        WSL should check recursion
+        https://bugs.webkit.org/show_bug.cgi?id=176553
+
+        Reviewed by Michael Saboff and Mark Lam.
+        
+        This adds a recursion checker. Previously, we would only check for recursion during inlining, but that
+        generally only happens when we call the function.
+
+        * WebGPUShadingLanguageRI/All.js:
+        * WebGPUShadingLanguageRI/CheckRecursion.js: Added.
+        (checkRecursion):
+        * WebGPUShadingLanguageRI/Prepare.js:
+        (prepare):
+        * WebGPUShadingLanguageRI/RecursionChecker.js: Added.
+        (RecursionChecker):
+        (RecursionChecker.prototype.visitFuncDef):
+        (RecursionChecker.prototype.visitCallExpression):
+        * WebGPUShadingLanguageRI/Test.html:
+        * WebGPUShadingLanguageRI/Test.js:
+        (TEST_simpleRecursion):
+
+2017-09-07  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Notify client when downloads are redirected
+        https://bugs.webkit.org/show_bug.cgi?id=176481
+        <rdar://problem/34309065>
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/Download.mm:
+        (-[UIDownloadAsFileTestDelegate _webView:contextMenu:forElement:]):
+        (-[RedirectedDownloadDelegate _download:decideDestinationWithSuggestedFilename:allowOverwrite:]):
+        (-[RedirectedDownloadDelegate _download:didReceiveServerRedirectToURL:]):
+        (-[RedirectedDownloadDelegate _downloadDidFinish:]):
+        (TEST):
+        Add API test coverage.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createWebViewWithOptions):
+        (WTR::TestController::downloadDidReceiveServerRedirectToURL):
+        * WebKitTestRunner/TestController.h:
+        Add layout test infrastructure.
+
+2017-09-07  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] fast/canvas/2d.getPath.modification.html is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=176534
+
+        Reviewed by Alex Christensen.
+
+        We need to enable Inspector additions at runtime in order to expose the getPath function.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebPreferencesToConsistentValues):
+
+2017-09-07  Filip Pizlo  <fpizlo@apple.com>
+
+        WSL tests should run in run-javascriptcore-tests
+        https://bugs.webkit.org/show_bug.cgi?id=176550
+
+        Reviewed by Keith Miller.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests):
+        * WebGPUShadingLanguageRI/wsl-tests.yaml: Added.
+
+2017-09-07  Lucas Forschler  <lforschler@apple.com>
+
+        bisect-builds started failing with invalid json
+        https://bugs.webkit.org/show_bug.cgi?id=176478
+        
+        Once we hit 1000 items in our dynamoDB, we ran into an upper limit on the AWS API Gateway looping mechanism. 
+        This prevented us from doing a body mapping template to reformat the json. This fix is to simply return the raw json, 
+        and adjust the json parsing in our code. The AWS rest API has been fixed, and updated to v2. 
+        
+        This change is for the script which operates against the endpoint.
+        
+        Reviewed by Aakash Jain.
+
+        * Scripts/bisect-builds:
+        (get_sorted_revisions):
+
+2017-09-07  Filip Pizlo  <fpizlo@apple.com>
+
+        [WSL] Rationalize how protocol inheritance deals with type parameters
+        https://bugs.webkit.org/show_bug.cgi?id=176334
+
+        Reviewed by Mark Lam.
+        
+        This adds a bunch of tests for structs, protocols, and functions interacting in interesting
+        ways. The most complex of these tests triggers the case where the protocol contains a function
+        with one type parameter and the real function has more than one. This should give a WTypeError,
+        and now it does.
+        
+        * WebGPUShadingLanguageRI/ProtocolDecl.js:
+        (ProtocolDecl.prototype.hasHeir): Fix the handling of a mismatch of number of type parameters by actually passing the type parameters and then correctly handling the error.
+        * WebGPUShadingLanguageRI/Test.js: Add a bunch of tests for this case and a lot of other protocol cases.
+        (TEST_protocolMonoSigPolyDef):
+        (TEST_protocolPolySigPolyDef):
+        (TEST_protocolDoublePolySigDoublePolyDef):
+        (TEST_protocolDoublePolySigDoublePolyDefExplicit):
+        (TEST_protocolMonoPolySigDoublePolyDefExplicit):
+        * WebGPUShadingLanguageRI/TypeVariable.js:
+        (TypeVariable.prototype.get origin): This wasn't implemented before, which made error reporting harder.
+
+2017-09-07  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Dashboard test is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=176527
+
+        Reviewed by Brent Fulgham.
+
+        Skip test on Windows since WebKitTestRunner is required, but not built on Windows.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (TestFactory.__init__):
+
+2017-09-07  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [WPE][CMake] Add "dist" and "distcheck" targets
+        https://bugs.webkit.org/show_bug.cgi?id=176448
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add "dist" and "distcheck" CMake targets, which create release tarballs.
+        These are available only when configuring with -DDEVELOPER_MODE=TRUE.
+
+        * wpe/manifest.txt.in: Added.
+
+2017-09-07  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Enable DatatransferItems in DRT.
+        https://bugs.webkit.org/show_bug.cgi?id=176424
+
+        Reviewed by Brent Fulgham.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebPreferencesToConsistentValues):
+
 2017-09-07  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK] Bump libxml2 version to 1.9.5

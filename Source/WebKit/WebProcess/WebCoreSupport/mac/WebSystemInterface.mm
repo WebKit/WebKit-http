@@ -36,30 +36,12 @@ void InitWebCoreSystemInterface(void)
     static dispatch_once_t initOnce;
     
     dispatch_once(&initOnce, ^{
-        INIT(CopyCONNECTProxyResponse);
 #if !PLATFORM(IOS)
         INIT(DrawBezeledTextArea);
         INIT(DrawMediaSliderTrack);
         INIT(DrawMediaUIPart);
         INIT(HitTestMediaUIPart);
         INIT(MeasureMediaUIPart);
-        INIT(QTIncludeOnlyModernMediaFileTypes);
-        INIT(QTMovieDisableComponent);
-        INIT(QTMovieGetType);
-        INIT(QTMovieHasClosedCaptions);
-        INIT(QTMovieMaxTimeLoaded);
-        INIT(QTMovieMaxTimeLoadedChangeNotification);
-        INIT(QTMovieResolvedURL);
-        INIT(QTMovieSelectPreferredAlternates);
-        INIT(QTMovieSetShowClosedCaptions);
-        INIT(QTGetSitesInMediaDownloadCache);
-        INIT(QTClearMediaDownloadCacheForSite);
-        INIT(QTClearMediaDownloadCache);
-#endif
-        INIT(SetCONNECTProxyAuthorizationForStream);
-        INIT(SetCONNECTProxyForStream);
-
-#if !PLATFORM(IOS)
         INIT(ExecutableWasLinkedOnOrBeforeSnowLeopard);
         INIT(CopyDefaultSearchProviderDisplayName);
         INIT(Cursor);
@@ -69,12 +51,6 @@ void InitWebCoreSystemInterface(void)
         INIT(NSElasticDeltaForReboundDelta);
         INIT(NSReboundDeltaForElasticDelta);
 #endif
-
-#if ENABLE(PUBLIC_SUFFIX_LIST)
-        INIT(IsPublicSuffix);
-#endif
-
-        INIT(CachePartitionKey);
 
         INIT(ExernalDeviceTypeForPlayer);
         INIT(ExernalDeviceDisplayNameForPlayer);

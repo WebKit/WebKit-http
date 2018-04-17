@@ -35,6 +35,7 @@ namespace WebCore {
     macro(AnimationEffectReadOnly) \
     macro(AnimationTimeline) \
     macro(ApplePaySession) \
+    macro(AttachmentElement) \
     macro(Audio) \
     macro(Cache) \
     macro(CacheStorage) \
@@ -53,6 +54,7 @@ namespace WebCore {
     macro(Gamepad) \
     macro(GamepadButton) \
     macro(GamepadEvent) \
+    macro(HTMLAttachmentElement) \
     macro(HTMLAudioElement) \
     macro(HTMLSlotElement) \
     macro(Headers) \
@@ -124,6 +126,13 @@ namespace WebCore {
     macro(ServiceWorkerRegistration) \
     macro(ShadowRoot) \
     macro(StaticRange) \
+    macro(VRDisplay) \
+    macro(VRDisplayCapabilities) \
+    macro(VRDisplayEvent) \
+    macro(VREyeParameters) \
+    macro(VRFieldOfView) \
+    macro(VRFrameData) \
+    macro(VRStageParameters) \
     macro(WebGL2RenderingContext) \
     macro(WebGLVertexArrayObject) \
     macro(WebGPUBuffer) \
@@ -167,7 +176,6 @@ namespace WebCore {
     macro(caches) \
     macro(cancel) \
     macro(cloneArrayBuffer) \
-    macro(cloneForJS) \
     macro(close) \
     macro(closeRequested) \
     macro(closed) \
@@ -204,6 +212,13 @@ namespace WebCore {
     macro(makeThisTypeError) \
     macro(matchingElementInFlatTree) \
     macro(mediaStreamTrackConstraints) \
+    macro(onvrdisplayactivate) \
+    macro(onvrdisplayblur) \
+    macro(onvrdisplayconnect) \
+    macro(onvrdisplaydeactivate) \
+    macro(onvrdisplaydisconnect) \
+    macro(onvrdisplayfocus) \
+    macro(onvrdisplaypresentchange) \
     macro(opener) \
     macro(operations) \
     macro(ownerReadableStream) \

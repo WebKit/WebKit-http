@@ -67,7 +67,7 @@ class Checker extends Visitor {
                     throw WTypeError(typeParameter.origin.originString, "Type parameter to protocol signature not inferrable from value parameters");
             }
             if (!set.has(node.typeVariable))
-                throw new WTypeError(signature.origin.originString, "Protocol's type variable not mentioned in signature");
+                throw new WTypeError(signature.origin.originString, "Protocol's type variable (" + node.name + ") not mentioned in signature: " + signature);
         }
     }
     
@@ -77,8 +77,9 @@ class Checker extends Visitor {
             let argumentIsType = typeArguments[i] instanceof Type;
             let result = typeArguments[i].visit(this);
             if (argumentIsType) {
-                if (!typeArguments[i].inherits(typeParameters[i].protocol))
-                    throw new WTypeError(origin.originString, "Type argument does not inherit protocol");
+                let result = typeArguments[i].inherits(typeParameters[i].protocol);
+                if (!result.result)
+                    throw new WTypeError(origin.originString, "Type argument does not inherit protocol: " + result.reason);
             } else {
                 if (!result.equalsWithCommit(typeParameters[i].type))
                     throw new WTypeError(origin.originString, "Wrong type for constexpr");
@@ -101,7 +102,7 @@ class Checker extends Visitor {
             return;
         
         if (!node.elementType.instantiatedType.isPrimitive)
-            throw new WTypeError(node.origin.originString, "Illegal pointer to non-primitive type: " + node.elementType);
+            throw new WTypeError(node.origin.originString, "Illegal pointer to non-primitive type: " + node.elementType + " (instantiated to " + node.elementType.instantiatedType + ")");
     }
     
     visitArrayType(node)
@@ -157,7 +158,7 @@ class Checker extends Visitor {
     {
         let structType = node.struct.visit(this).unifyNode;
         
-        node.structType = structType;
+        node.structType = TypeRef.wrap(structType);
         
         let underlyingStruct = structType;
         
@@ -220,10 +221,58 @@ class Checker extends Visitor {
     {
         let resultType = node.operand.visit(this);
         if (!resultType)
-            throw new Error("Trying to negate something with no type: " + node.value);
+            throw new Error("Trying to negate something with no type: " + node.operand);
         if (!resultType.equals(this._program.intrinsics.bool))
-            throw new WError("Trying to negate something that isn't a bool: " + node.value);
+            throw new WError("Trying to negate something that isn't a bool: " + node.operand);
         return this._program.intrinsics.bool;
+    }
+
+    visitIfStatement(node)
+    {
+        let conditionalResultType = node.conditional.visit(this);
+        if (!conditionalResultType)
+            throw new Error("Trying to negate something with no type: " + node.conditional);
+        if (!conditionalResultType.equals(this._program.intrinsics.bool))
+            throw new WError("Trying to negate something that isn't a bool: " + node.conditional);
+        node.body.visit(this);
+        if (node.elseBody)
+            node.elseBody.visit(this);
+    }
+
+    visitWhileLoop(node)
+    {
+        let conditionalResultType = node.conditional.visit(this);
+        if (!conditionalResultType)
+            throw new Error("While loop conditional has no type: " + node.conditional);
+        if (!conditionalResultType.equals(this._program.intrinsics.bool))
+            throw new WError("While loop conditional isn't a bool: " + node.conditional);
+        node.body.visit(this);
+    }
+
+    visitDoWhileLoop(node)
+    {
+        node.body.visit(this);
+        let conditionalResultType = node.conditional.visit(this);
+        if (!conditionalResultType)
+            throw new Error("Do-While loop conditional has no type: " + node.conditional);
+        if (!conditionalResultType.equals(this._program.intrinsics.bool))
+            throw new WError("Do-While loop conditional isn't a bool: " + node.conditional);
+    }
+
+    visitForLoop(node)
+    {
+        if (node.initialization)
+            node.initialization.visit(this);
+        if (node.condition) {
+            let conditionResultType = node.condition.visit(this);
+            if (!conditionResultType)
+                throw new Error("For loop conditional has no type: " + node.conditional);
+            if (!conditionResultType.equals(this._program.intrinsics.bool))
+                throw new WError("For loop conditional isn't a bool: " + node.conditional);
+        }
+        if (node.increment)
+            node.increment.visit(this);
+        node.body.visit(this);
     }
     
     visitCommaExpression(node)
@@ -234,10 +283,9 @@ class Checker extends Visitor {
         return result;
     }
 
-    checkCastOrCallExpression(node, returnType)
+    visitCallExpression(node)
     {
-        for (let typeArgument of node.typeArguments)
-            typeArgument.visit(this);
+        let typeArgumentTypes = node.typeArguments.map(typeArgument => typeArgument.visit(this));
         let argumentTypes = node.argumentList.map(argument => {
             let newArgument = argument.visit(this);
             if (!newArgument)
@@ -245,8 +293,8 @@ class Checker extends Visitor {
             return TypeRef.wrap(newArgument);
         });
         node.argumentTypes = argumentTypes;
-        if (returnType)
-            returnType.visit(this);
+        if (node.returnType)
+            node.returnType.visit(this);
         
         let overload = null;
         let failures = [];
@@ -259,22 +307,35 @@ class Checker extends Visitor {
                 typeParameter.protocol.protocolDecl.signaturesByNameWithTypeVariable(node.name, typeParameter);
             if (!signatures)
                 continue;
-            overload = resolveOverloadImpl(signatures, node.typeArguments, argumentTypes, returnType);
+            overload = resolveOverloadImpl(signatures, node.typeArguments, argumentTypes, node.returnType);
             if (overload.func)
                 break;
             failures.push(...overload.failures);
             overload = null;
         }
         if (!overload) {
-            overload = this._program.resolveFuncOverload(
-                node.name, node.typeArguments, argumentTypes, returnType);
+            overload = resolveOverloadImpl(
+                node.possibleOverloads, node.typeArguments, argumentTypes, node.returnType);
             if (!overload.func) {
                 failures.push(...overload.failures);
-                let message = "Did not find function for call";
+                let message = "Did not find function for call with ";
+                if (node.typeArguments.length)
+                    message += "type arguments <" + node.typeArguments + "> and ";
+                message += "argument types (" + argumentTypes + ")";
+                if (node.returnType)
+                    message +=" and return type " + node.returnType;
                 if (failures.length)
                     message += ", but considered:\n" + failures.join("\n")
                 throw new WTypeError(node.origin.originString, message);
             }
+        }
+        for (let i = 0; i < typeArgumentTypes.length; ++i) {
+            let typeArgumentType = typeArgumentTypes[i];
+            let typeParameter = overload.func.typeParameters[i];
+            if (!(typeParameter instanceof ConstexprTypeParameter))
+                continue;
+            if (!typeParameter.type.equalsWithCommit(typeArgumentType))
+                throw new Error("At " + node.origin.originString + " constexpr type argument and parameter types not equal: argument = " + typeArgumentType + ", parameter = " + typeParameter.type);
         }
         for (let i = 0; i < argumentTypes.length; ++i) {
             let argumentType = argumentTypes[i];
@@ -285,16 +346,6 @@ class Checker extends Visitor {
                 throw new Error("At " + node.origin.originString + " argument and parameter types not equal after type argument substitution: argument = " + argumentType + ", parameter = " + parameterType);
         }
         return node.resolve(overload);
-    }
-
-    visitCastExpression(node)
-    {
-        return this.checkCastOrCallExpression(node, node.returnType);
-    }
-    
-    visitCallExpression(node)
-    {
-        return this.checkCastOrCallExpression(node, undefined);
     }
 }
 

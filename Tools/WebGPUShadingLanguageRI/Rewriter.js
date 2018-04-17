@@ -27,9 +27,10 @@
 // FIXME: This should have sensible behavior when it encounters definitions that it cannot handle. Right
 // now we are hackishly preventing this by wrapping things in TypeRef. That's probably wrong.
 // https://bugs.webkit.org/show_bug.cgi?id=176208
-class Rewriter {
+class Rewriter extends VisitorBase {
     constructor()
     {
+        super();
         this._mapping = new Map();
     }
     
@@ -58,6 +59,7 @@ class Rewriter {
     visitTypeDef(node) { return node; }
     visitStructType(node) { return node; }
     visitConstexprTypeParameter(node) { return node; }
+    visitProtocolDecl(node) { return node; }
 
     // This is almost wrong. We instantiate Func in Substitution in ProtocolDecl. Then, we end up
     // not rewriting type variables. I think that just works because not rewriting them there is OK.
@@ -73,6 +75,7 @@ class Rewriter {
             node.typeParameters.map(parameter => parameter.visit(this)),
             node.parameters.map(parameter => parameter.visit(this)));
         result.protocolDecl = node.protocolDecl;
+        result.possibleOverloads = node.possibleOverloads;
         return result;
     }
     
@@ -198,6 +201,16 @@ class Rewriter {
         return new Return(node.origin, node.value ? node.value.visit(this) : null);
     }
     
+    visitContinue(node)
+    {
+        return new Continue(node.origin);
+    }
+    
+    visitBreak(node)
+    {
+        return new Break(node.origin);
+    }
+    
     visitIntLiteral(node)
     {
         let result = new IntLiteral(node.origin, node.value);
@@ -209,6 +222,7 @@ class Rewriter {
     {
         let result = new IntLiteralType(node.origin, node.value);
         result.type = node.type ? node.type.visit(this) : null;
+        result.intType = node.intType.visit(this);
         return result;
     }
 
@@ -248,18 +262,12 @@ class Rewriter {
             result.argumentTypes = argumentTypes.map(argumentType => argumentType.visit(this));
         result.func = node.func;
         result.nativeFuncInstance = node.nativeFuncInstance;
+        result.possibleOverloads = node.possibleOverloads;
+        if (node.isCast)
+            result.setCastData(node.returnType.visit(this));
         return result;
     }
 
-    visitCastExpression(node)
-    {
-        let result = new CastExpression(
-            node.origin, node.returnType.visit(this),
-            node.typeArguments.map(typeArgument => typeArgument.visit(this)),
-            node.argumentList.map(argument => argument.visit(this)));
-        return this.processDerivedCallData(node, result);
-    }
-    
     visitCallExpression(node)
     {
         let result = new CallExpression(
@@ -281,6 +289,30 @@ class Rewriter {
     visitLogicalNot(node)
     {
         return new LogicalNot(node.origin, node.operand.visit(this));
+    }
+
+    visitIfStatement(node)
+    {
+        return new IfStatement(node.origin, node.conditional.visit(this), node.body.visit(this), node.elseBody ? node.elseBody.visit(this) : undefined);
+    }
+
+    visitWhileLoop(node)
+    {
+        return new WhileLoop(node.origin, node.conditional.visit(this), node.body.visit(this));
+    }
+
+    visitDoWhileLoop(node)
+    {
+        return new DoWhileLoop(node.origin, node.body.visit(this), node.conditional.visit(this));
+    }
+
+    visitForLoop(node)
+    {
+        return new ForLoop(node.origin,
+            node.initialization ? node.initialization.visit(this) : undefined,
+            node.condition ? node.condition.visit(this) : undefined,
+            node.increment ? node.increment.visit(this) : undefined,
+            node.body.visit(this));
     }
 }
 

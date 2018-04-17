@@ -24,9 +24,9 @@
  */
 "use strict";
 
-function parse(program, origin, lineNumberOffset, text)
+function parse(program, origin, originKind, lineNumberOffset, text)
 {
-    let lexer = new Lexer(origin, lineNumberOffset, text);
+    let lexer = new Lexer(origin, originKind, lineNumberOffset, text);
     
     // The hardest part of dealing with C-like languages is parsing variable declaration statements.
     // Let's consider if this happens in WSL. Here are the valid statements in WSL that being with an
@@ -148,7 +148,7 @@ function parse(program, origin, lineNumberOffset, text)
                 let type = parseType();
                 let name = consumeKind("identifier");
                 assertNext(",", ">", ">>");
-                return new ConstexprTypeParameter(type.origin, name, type);
+                return new ConstexprTypeParameter(type.origin, name.text, type);
             });
             if (constexpr)
                 result.push(constexpr);
@@ -382,7 +382,7 @@ function parse(program, origin, lineNumberOffset, text)
             return new MakeArrayRefExpression(token, parsePossiblePrefix());
         if (token = tryConsume("!")) {
             let remainder = parsePossiblePrefix();
-            return new LogicalNot(token, new CastExpression(remainder.origin, new TypeRef(remainder.origin, "bool", []), [], [remainder]));
+            return new LogicalNot(token, new CallExpression(remainder.origin, "bool", [], [remainder]));
         }
         return parsePossibleSuffix();
     }
@@ -404,7 +404,7 @@ function parse(program, origin, lineNumberOffset, text)
     
     function parsePossibleRelationalInequality()
     {
-        return parseLeftOperatorCall(["<", ">", "<=", "=>"], parsePossibleShift);
+        return parseLeftOperatorCall(["<", ">", "<=", ">="], parsePossibleShift);
     }
     
     function parsePossibleRelationalEquality()
@@ -536,6 +536,85 @@ function parse(program, origin, lineNumberOffset, text)
         return new Return(origin, expression);
     }
     
+    function parseBreak()
+    {
+        let origin = consume("break");
+        consume(";");
+        return new Break(origin);
+    }
+    
+    function parseContinue()
+    {
+        let origin = consume("continue");
+        consume(";");
+        return new Continue(origin);
+    }
+
+    function parseIfStatement()
+    {
+        let origin = consume("if");
+        consume("(");
+        let conditional = parseExpression();
+        consume(")");
+        let body = parseStatement();
+        let elseBody;
+        if (tryConsume("else"))
+            elseBody = parseStatement();
+        return new IfStatement(origin, new CallExpression(conditional.origin, "bool", [], [conditional]), body, elseBody);
+    }
+
+    function parseWhile()
+    {
+        let origin = consume("while");
+        consume("(");
+        let conditional = parseExpression();
+        consume(")");
+        let body = parseStatement();
+        return new WhileLoop(origin, new CallExpression(conditional.origin, "bool", [], [conditional]), body);
+    }
+
+    function parseFor()
+    {
+        let origin = consume("for");
+        consume("(");
+        let initialization;
+        if (tryConsume(";"))
+            initialization = undefined;
+        else {
+            initialization = lexer.backtrackingScope(parseVariableDecls);
+            if (!initialization)
+                initialization = parseEffectfulStatement();
+        }
+        let condition = tryConsume(";");
+        if (condition)
+            condition = undefined;
+        else {
+            condition = parseExpression();
+            consume(";");
+            condition = new CallExpression(condition.origin, "bool", [], [condition]);
+        }
+        let increment;
+        if (tryConsume(")"))
+            increment = undefined;
+        else {
+            increment = parseExpression();
+            consume(")");
+        }
+        let body = parseStatement();
+        return new ForLoop(origin, initialization, condition, increment, body);
+    }
+
+    function parseDo()
+    {
+        let origin = consume("do");
+        let body = parseStatement();
+        consume("while");
+        consume("(");
+        let conditional = parseExpression();
+        consume(")");
+        return new DoWhileLoop(origin, body, new CallExpression(conditional.origin, "bool", [], [conditional]));
+    }
+    
     function parseVariableDecls()
     {
         let type = parseType();
@@ -567,6 +646,10 @@ function parse(program, origin, lineNumberOffset, text)
             return parseDo();
         if (token.text == "for")
             return parseFor();
+        if (token.text == "if")
+            return parseIfStatement();
+        if (token.text == "{")
+            return parseBlock();
         let variableDecl = lexer.backtrackingScope(parseVariableDecls);
         if (variableDecl)
             return variableDecl;
@@ -627,20 +710,22 @@ function parse(program, origin, lineNumberOffset, text)
         let origin;
         let returnType;
         let name;
+        let typeParameters;
         let isCast;
         let operatorToken = tryConsume("operator");
         if (operatorToken) {
             origin = operatorToken;
+            typeParameters = parseTypeParameters();
             returnType = parseType();
-            name = CastExpression.functionName;
+            name = "operator cast";
             isCast = true;
         } else {
             returnType = parseType();
             origin = returnType.origin;
             name = parseFuncName();
+            typeParameters = parseTypeParameters();
             isCast = false;
         }
-        let typeParameters = parseTypeParameters();
         let parameters = parseParameters();
         return new Func(origin, name, returnType, typeParameters, parameters, isCast);
     }
@@ -662,10 +747,15 @@ function parse(program, origin, lineNumberOffset, text)
     {
         let origin = consume("protocol");
         let name = consumeKind("identifier").text;
-        // FIXME: Support protocol inclusion
-        // https://bugs.webkit.org/show_bug.cgi?id=176238
-        consume("{");
         let result = new ProtocolDecl(origin, name);
+        if (tryConsume(":")) {
+            while (!test("{")) {
+                result.addExtends(parseProtocolRef());
+                if (!tryConsume(","))
+                    break;
+            }
+        }
+        consume("{");
         while (!tryConsume("}")) {
             result.add(parseProtocolFuncDecl());
             consume(";");
@@ -693,6 +783,13 @@ function parse(program, origin, lineNumberOffset, text)
         return result;
     }
     
+    function parseNativeFunc()
+    {
+        let func = parseFuncDecl();
+        consume(";");
+        return new NativeFunc(func.origin, func.name, func.returnType, func.typeParameters, func.parameters, func.isCast);
+    }
+    
     function parseNative()
     {
         let origin = consume("native");
@@ -709,9 +806,19 @@ function parse(program, origin, lineNumberOffset, text)
             consume(";");
             return new NativeType(origin, name.text, isType == "primitive", parameters);
         }
-        let func = parseFuncDecl();
-        consume(";");
-        return new NativeFunc(func.origin, func.name, func.returnType, func.typeParameters, func.parameters, func.isCast);
+        return parseNativeFunc();
+    }
+    
+    function parseRestrictedFuncDef()
+    {
+        consume("restricted");
+        let result;
+        if (tryConsume("native"))
+            result = parseNativeFunc();
+        else
+            result = parseFuncDef();
+        result.isRestricted = true;
+        return result;
     }
     
     for (;;) {
@@ -722,8 +829,10 @@ function parse(program, origin, lineNumberOffset, text)
             lexer.next();
         else if (token.text == "typedef")
             program.add(parseTypeDef());
-        else if (token.text == "native")
+        else if (originKind == "native" && token.text == "native")
             program.add(parseNative());
+        else if (originKind == "native" && token.text == "restricted")
+            program.add(parseRestrictedFuncDef());
         else if (token.text == "struct")
             program.add(parseStructType());
         else if (token.text == "enum")

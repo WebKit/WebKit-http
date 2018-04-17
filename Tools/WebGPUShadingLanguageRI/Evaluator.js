@@ -148,7 +148,73 @@ class Evaluator extends Visitor {
 
     visitLogicalNot(node)
     {
-        return EPtr.box(!node.operand.visit(this).loadValue());
+        let result = !node.operand.visit(this).loadValue();
+        return EPtr.box(result);
+    }
+
+    visitIfStatement(node)
+    {
+        if (node.conditional.visit(this).loadValue())
+            return node.body.visit(this);
+        else if (node.elseBody)
+            return node.elseBody.visit(this);
+    }
+
+    visitWhileLoop(node)
+    {
+        while (node.conditional.visit(this).loadValue()) {
+            try {
+                node.body.visit(this);
+            } catch (e) {
+                if (e instanceof Break)
+                    break;
+                if (e instanceof Continue)
+                    continue;
+                throw e;
+            }
+        }
+    }
+
+    visitDoWhileLoop(node)
+    {
+        do {
+            try {
+                node.body.visit(this);
+            } catch (e) {
+                if (e instanceof Break)
+                    break;
+                if (e instanceof Continue)
+                    continue;
+                throw e;
+            }
+        } while (node.conditional.visit(this).loadValue());
+    }
+
+    visitForLoop(node)
+    {
+        for (node.initialization ? node.initialization.visit(this) : true;
+            node.condition ? node.condition.visit(this).loadValue() : true;
+            node.increment ? node.increment.visit(this) : true) {
+            try {
+                node.body.visit(this);
+            } catch (e) {
+                if (e instanceof Break)
+                    break;
+                if (e instanceof Continue)
+                    continue;
+                throw e;
+            }
+        }
+    }
+
+    visitBreak(node)
+    {
+        throw node;
+    }
+
+    visitContinue(node)
+    {
+        throw node;
     }
     
     visitCallExpression(node)
@@ -160,7 +226,8 @@ class Evaluator extends Visitor {
             let type = node.nativeFuncInstance.parameterTypes[i];
             if (!type || !argument)
                 throw new Error("Cannot get type or argument; i = " + i + ", argument = " + argument + ", type = " + type + "; in " + node);
-            callArguments.push(this._snapshot(type, argument.visit(this)));
+            let argumentValue = argument.visit(this);
+            callArguments.push(this._snapshot(type, argumentValue));
         }
         return node.func.implementation(callArguments, node);
     }

@@ -24,9 +24,10 @@
  */
 "use strict";
 
-class Visitor {
+class Visitor extends VisitorBase {
     constructor()
     {
+        super();
     }
     
     visitProgram(node)
@@ -89,6 +90,8 @@ class Visitor {
     
     visitProtocolDecl(node)
     {
+        for (let protocol of node.extends)
+            protocol.visit(this);
         for (let signature of node.signatures)
             signature.visit(this);
     }
@@ -109,7 +112,7 @@ class Visitor {
     
     visitNativeTypeInstance(node)
     {
-        node.type.visit(node);
+        node.type.visit(this);
         for (let typeArgument of node.typeArguments)
             typeArgument.visit(this);
     }
@@ -207,10 +210,49 @@ class Visitor {
             node.variable.visit(this);
     }
     
+    visitIfStatement(node)
+    {
+        node.conditional.visit(this);
+        node.body.visit(this);
+        if (node.elseBody)
+            node.elseBody.visit(this);
+    }
+    
+    visitWhileLoop(node)
+    {
+        node.conditional.visit(this);
+        node.body.visit(this);
+    }
+    
+    visitDoWhileLoop(node)
+    {
+        node.body.visit(this);
+        node.conditional.visit(this);
+    }
+    
+    visitForLoop(node)
+    {
+        if (node.initialization)
+            node.initialization.visit(this);
+        if (node.condition)
+            node.condition.visit(this);
+        if (node.increment)
+            node.increment.visit(this);
+        node.body.visit(this);
+    }
+
     visitReturn(node)
     {
         if (node.value)
             node.value.visit(this);
+    }
+
+    visitContinue(node)
+    {
+    }
+
+    visitBreak(node)
+    {
     }
     
     visitIntLiteral(node)
@@ -222,6 +264,7 @@ class Visitor {
     {
         if (node.type)
             node.type.visit(this);
+        node.intType.visit(this);
     }
     
     visitUintLiteral(node)
@@ -254,14 +297,10 @@ class Visitor {
             for (let argument of actualTypeArguments)
                 argument.visit(this);
         }
+        if (node.returnType)
+            node.returnType.visit(this);
     }
     
-    visitCastExpression(node)
-    {
-        this.visitCallExpression(node);
-        node.returnType.visit(this);
-    }
-
     visitLogicalNot(node)
     {
         node.operand.visit(this);

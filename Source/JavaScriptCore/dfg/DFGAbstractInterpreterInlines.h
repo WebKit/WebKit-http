@@ -1099,6 +1099,10 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         }
         break;
 
+    case WeakMapGet:
+        forNode(node).makeHeapTop();
+        break;
+
     case IsEmpty:
     case IsUndefined:
     case IsBoolean:
@@ -1833,9 +1837,10 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             if (JSGlobalObject* globalObject = jsDynamicCast<JSGlobalObject*>(m_vm, globalObjectValue)) {
                 if (!globalObject->isHavingABadTime()) {
                     m_graph.watchpoints().addLazily(globalObject->havingABadTimeWatchpoint());
-                    Structure* structure = globalObject->regExpMatchesArrayStructure();
-                    m_graph.registerStructure(structure);
-                    forNode(node).set(m_graph, structure);
+                    RegisteredStructureSet structureSet;
+                    structureSet.add(m_graph.registerStructure(globalObject->regExpMatchesArrayStructure()));
+                    structureSet.add(m_graph.registerStructure(globalObject->regExpMatchesArrayWithGroupsStructure()));
+                    forNode(node).set(m_graph, structureSet);
                     forNode(node).merge(SpecOther);
                     break;
                 }

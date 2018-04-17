@@ -37,12 +37,12 @@
 namespace WebCore {
 
 DOMFormData::DOMFormData(const TextEncoding& encoding)
-    : FormDataList(encoding)
+    : m_encoding(encoding)
 {
 }
 
 DOMFormData::DOMFormData(HTMLFormElement* form)
-    : FormDataList(UTF8Encoding())
+    : m_encoding(UTF8Encoding())
 {
     if (!form)
         return;
@@ -53,16 +53,114 @@ DOMFormData::DOMFormData(HTMLFormElement* form)
     }
 }
 
+// https://xhr.spec.whatwg.org/#create-an-entry
+auto DOMFormData::createFileEntry(const String& name, Blob& blob, const String& filename) -> Item
+{
+    if (!blob.isFile())
+        return { name, File::create(blob, filename.isNull() ? ASCIILiteral("blob") : filename) };
+    
+    if (!filename.isNull())
+        return { name, File::create(downcast<File>(blob), filename) };
+
+    return { name, RefPtr<File> { &downcast<File>(blob) } };
+}
+
 void DOMFormData::append(const String& name, const String& value)
 {
-    if (!name.isEmpty())
-        appendData(name, value);
+    m_items.append({ name, value });
 }
 
 void DOMFormData::append(const String& name, Blob& blob, const String& filename)
 {
-    if (!name.isEmpty())
-        appendBlob(name, blob, filename);
+    m_items.append(createFileEntry(name, blob, filename));
+}
+
+void DOMFormData::remove(const String& name)
+{
+    m_items.removeAllMatching([&name] (const auto& item) {
+        return item.name == name;
+    });
+}
+
+auto DOMFormData::get(const String& name) -> std::optional<FormDataEntryValue>
+{
+    for (auto& item : m_items) {
+        if (item.name == name)
+            return item.data;
+    }
+
+    return std::nullopt;
+}
+
+auto DOMFormData::getAll(const String& name) -> Vector<FormDataEntryValue>
+{
+    Vector<FormDataEntryValue> result;
+
+    for (auto& item : m_items) {
+        if (item.name == name)
+            result.append(item.data);
+    }
+
+    return result;
+}
+
+bool DOMFormData::has(const String& name)
+{
+    for (auto& item : m_items) {
+        if (item.name == name)
+            return true;
+    }
+    
+    return false;
+}
+
+void DOMFormData::set(const String& name, const String& value)
+{
+    set(name, { name, value });
+}
+
+void DOMFormData::set(const String& name, Blob& blob, const String& filename)
+{
+    set(name, createFileEntry(name, blob, filename));
+}
+
+void DOMFormData::set(const String& name, Item&& item)
+{
+    std::optional<size_t> initialMatchLocation;
+
+    // Find location of the first item with a matching name.
+    for (size_t i = 0; i < m_items.size(); ++i) {
+        if (name == m_items[i].name) {
+            initialMatchLocation = i;
+            break;
+        }
+    }
+
+    if (initialMatchLocation) {
+        m_items[*initialMatchLocation] = WTFMove(item);
+
+        m_items.removeAllMatching([&name] (const auto& item) {
+            return item.name == name;
+        }, *initialMatchLocation + 1);
+        return;
+    }
+
+    m_items.append(WTFMove(item));
+}
+
+DOMFormData::Iterator::Iterator(DOMFormData& target)
+    : m_target(target)
+{
+}
+
+std::optional<KeyValuePair<String, DOMFormData::FormDataEntryValue>> DOMFormData::Iterator::next()
+{
+    auto& items = m_target->items();
+    if (m_index >= items.size())
+        return std::nullopt;
+
+    auto& item = items[m_index++];
+    return makeKeyValuePair(item.name, item.data);
 }
 
 } // namespace WebCore

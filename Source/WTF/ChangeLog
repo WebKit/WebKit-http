@@ -1,3 +1,163 @@
+2017-09-13  Youenn Fablet  <youenn@apple.com>
+
+        Add a lambda-based map for Vectors
+        https://bugs.webkit.org/show_bug.cgi?id=176487
+
+        Reviewed by Darin Adler.
+
+        This helper routine allows refactoring the reserveInitialCapacity/uncheckedAppend pattern, the mapper between source and destination item being a lambda.
+
+        * wtf/Vector.h:
+        (WTF::Mapper::transform):
+        (WTF::Mapper::map):
+        (WTF::map):
+
+2017-09-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Optimize WeakMap::get by adding intrinsic and fixup
+        https://bugs.webkit.org/show_bug.cgi?id=176010
+
+        Reviewed by Filip Pizlo.
+
+        Add inlineGet method with HashTranslator.
+
+        * wtf/HashMap.h:
+        (WTF::X>::inlineGet const):
+        (WTF::MappedTraits>::inlineGet const):
+        (WTF::MappedTraits>::fastGet const): Deleted.
+        * wtf/LoggingHashMap.h:
+
+2017-09-12  Keith Miller  <keith_miller@apple.com>
+
+        Do unified source builds for JSC
+        https://bugs.webkit.org/show_bug.cgi?id=176076
+
+        Reviewed by Geoffrey Garen.
+
+        This patch adds a script that will automatically bundle source
+        files, which is currently only used by the CMake build. It's
+        important that we use the same script to generate the bundles
+        for the CMake build as the Xcode build. If we didn't do this then
+        it's likely that there would be build errors that occur in only
+        one build system. On the same note, we also need to be careful to
+        not bundle platform specific source files with platform
+        independent ones. There are a couple of things the script does not
+        currently handle but are not essential for the CMake build. First,
+        it does not handle the max bundle size restrictions that the Xcode
+        build will require. It also does not handle C files.
+
+        The unified source generator script works by collecting groups of
+        up to 8 files from the same directory. We don't bundle files from
+        across directories since I didn't see a speedup from doing
+        so. Additionally, splitting at the directory boundary means that
+        it is less likely that adding a new file will force a "clean"
+        build. This would happen because the new file will shift every
+        subsequent file into the next unified source bundle.
+
+        Using unified sources appears to be a roughly 3.5x build time
+        speed up for clean builds on my MBP and appears to have a
+        negligible effect in incremental builds.
+
+        * generate-unified-source-bundles.rb: Added.
+        * wtf/Assertions.h:
+
+2017-09-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        QualifiedName::init should assume AtomicStrings::init was already called
+        https://bugs.webkit.org/show_bug.cgi?id=176639
+
+        Reviewed by Sam Weinig.
+
+        * wtf/NeverDestroyed.h:
+        (WTF::LazyNeverDestroyed::isConstructed const):
+
+2017-09-12  Brent Fulgham  <bfulgham@apple.com>
+
+        Show punycode to user if a URL mixes Armenian Seh or Vo with other scripts
+        https://bugs.webkit.org/show_bug.cgi?id=176578
+        <rdar://problem/33906231>
+
+        Reviewed by Alex Christensen.
+
+        * wtf/ASCIICType.h:
+        (WTF::isASCIIDigitOrPunctuation): Added helper function to recognize ASCII digits
+        and punctuation characters.
+
+2017-09-12  Sam Weinig  <sam@webkit.org>
+
+        [Cleanup] Follow up cleanup for DOMFormData implementation
+        https://bugs.webkit.org/show_bug.cgi?id=176740
+
+        Reviewed by Alex Christensen.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/HashTraits.h:
+        (WTF::KeyValuePair::KeyValuePair): Deleted.
+        * wtf/KeyValuePair.h: Added.
+        (WTF::KeyValuePair::KeyValuePair):
+        (WTF::makeKeyValuePair):
+
+            Move KeyValuePair to its own header and add a makeKeyValuePair helper.
+
+2017-09-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r221854.
+
+        The test added with this change fails on 32-bit JSC bots.
+
+        Reverted changeset:
+
+        "[DFG] Optimize WeakMap::get by adding intrinsic and fixup"
+        https://bugs.webkit.org/show_bug.cgi?id=176010
+        http://trac.webkit.org/changeset/221854
+
+2017-09-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Optimize WeakMap::get by adding intrinsic and fixup
+        https://bugs.webkit.org/show_bug.cgi?id=176010
+
+        Reviewed by Filip Pizlo.
+
+        Add inlineGet method with HashTranslator.
+
+        * wtf/HashMap.h:
+        (WTF::X>::inlineGet const):
+        (WTF::MappedTraits>::inlineGet const):
+        (WTF::MappedTraits>::fastGet const): Deleted.
+        * wtf/LoggingHashMap.h:
+
+2017-09-07  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [PAL] Unify PlatformUserPreferredLanguages.h with Language.h
+        https://bugs.webkit.org/show_bug.cgi?id=176561
+
+        Reviewed by Brent Fulgham.
+
+        WebCore/platform/Language was the only* user of PlatformUserPreferredLanguages (with 1 exception).
+        That exception is that JavaScriptCore needed the functionality of WebCore/platform/Language, but it
+        couldn't get it because of the layering violation, so instead it erroneously called into
+        PlatformUserPreferredLanguages instead. This patch merges these two files into WTF so JSC gets the
+        right function and the PAL effort has one less file to move from WebCore/platform into PAL.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/Language.cpp: Renamed from Source/WebCore/platform/Language.cpp.
+        (WTF::addLanguageChangeObserver):
+        (WTF::userPreferredLanguages):
+        * wtf/Language.h: Renamed from Source/WebCore/platform/Language.h.
+        * wtf/PlatformGTK.cmake:
+        * wtf/PlatformJSCOnly.cmake:
+        * wtf/PlatformMac.cmake:
+        * wtf/PlatformUserPreferredLanguages.h: Removed.
+        * wtf/PlatformWPE.cmake:
+        * wtf/PlatformWin.cmake:
+        * wtf/cf/LanguageCF.cpp: Renamed from Source/WTF/wtf/PlatformUserPreferredLanguagesMac.mm.
+        (WTF::httpStyleLanguageCode):
+        (WTF::languagePreferencesDidChange):
+        (WTF::platformUserPreferredLanguages):
+        * wtf/unix/LanguageUnix.cpp: Renamed from Source/WTF/wtf/PlatformUserPreferredLanguagesUnix.cpp.
+        * wtf/win/LanguageWin.cpp: Renamed from Source/WTF/wtf/PlatformUserPreferredLanguagesWin.cpp.
+
 2017-09-06  Eric Carlson  <eric.carlson@apple.com>
 
         Require LoggingHelper overrides to provide identifier

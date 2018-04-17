@@ -788,6 +788,19 @@ private:
                 RELEASE_ASSERT_NOT_REACHED();
                 break;
             case Array::Generic:
+                if (node->child1()->shouldSpeculateObject()) {
+                    if (node->child2()->shouldSpeculateString()) {
+                        fixEdge<ObjectUse>(node->child1());
+                        fixEdge<StringUse>(node->child2());
+                        break;
+                    }
+
+                    if (node->child2()->shouldSpeculateSymbol()) {
+                        fixEdge<ObjectUse>(node->child1());
+                        fixEdge<SymbolUse>(node->child2());
+                        break;
+                    }
+                }
 #if USE(JSVALUE32_64)
                 fixEdge<CellUse>(node->child1()); // Speculating cell due to register pressure on 32-bit.
 #endif
@@ -852,6 +865,19 @@ private:
                 break;
             case Array::ForceExit:
             case Array::Generic:
+                if (child1->shouldSpeculateCell()) {
+                    if (child2->shouldSpeculateString()) {
+                        fixEdge<CellUse>(child1);
+                        fixEdge<StringUse>(child2);
+                        break;
+                    }
+
+                    if (child2->shouldSpeculateSymbol()) {
+                        fixEdge<CellUse>(child1);
+                        fixEdge<SymbolUse>(child2);
+                        break;
+                    }
+                }
 #if USE(JSVALUE32_64)
                 // Due to register pressure on 32-bit, we speculate cell and
                 // ignore the base-is-not-cell case entirely by letting the
@@ -1871,6 +1897,13 @@ private:
 #else
             fixEdge<UntypedUse>(node->child1());
 #endif // USE(JSVALUE64)
+            break;
+        }
+
+        case WeakMapGet: {
+            fixEdge<WeakMapObjectUse>(node->child1());
+            fixEdge<ObjectUse>(node->child2());
+            fixEdge<Int32Use>(node->child3());
             break;
         }
 

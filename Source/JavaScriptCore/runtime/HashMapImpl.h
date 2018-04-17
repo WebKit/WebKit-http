@@ -268,6 +268,15 @@ static ALWAYS_INLINE uint32_t wangsInt64Hash(uint64_t key)
     return static_cast<unsigned>(key);
 }
 
+struct WeakMapHash {
+    static unsigned hash(JSObject* key)
+    {
+        return wangsInt64Hash(JSValue::encode(key));
+    }
+    static bool equal(JSObject* a, JSObject* b) { return a == b; }
+    static const bool safeToCompareToEmptyOrDeleted = true;
+};
+
 ALWAYS_INLINE uint32_t jsMapHash(ExecState* exec, VM& vm, JSValue value)
 {
     ASSERT_WITH_MESSAGE(normalizeMapKey(value) == value, "We expect normalized values flowing into this function.");
@@ -636,7 +645,7 @@ private:
         HashMapBucketType** buffer = this->buffer();
         while (iter != end) {
             uint32_t index = jsMapHash(exec, vm, iter->key()) & mask;
-            ASSERT_WITH_MESSAGE(!scope.exception(), "All keys should already be hashed before, so this should not throw because it won't resolve ropes.");
+            EXCEPTION_ASSERT_WITH_MESSAGE(!scope.exception(), "All keys should already be hashed before, so this should not throw because it won't resolve ropes.");
             {
                 HashMapBucketType* bucket = buffer[index];
                 while (!isEmpty(bucket)) {

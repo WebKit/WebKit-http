@@ -107,7 +107,6 @@ inline RenderElement::RenderElement(ContainerNode& elementOrDocument, RenderStyl
     , m_renderBoxNeedsLazyRepaint(false)
     , m_hasPausedImageAnimations(false)
     , m_hasCounterNodeMap(false)
-    , m_isCSSAnimating(false)
     , m_hasContinuation(false)
     , m_hasValidCachedFirstLineStyle(false)
     , m_renderBlockHasMarginBeforeQuirk(false)
@@ -1105,7 +1104,8 @@ void RenderElement::willBeDestroyed()
     if (m_style.hasFixedBackgroundImage() && !settings().fixedBackgroundsPaintRelativeToDocument())
         view().frameView().removeSlowRepaintObject(this);
 
-    animation().cancelAnimations(*this);
+    if (element())
+        animation().cancelAnimations(*element());
 
     destroyLeftoverChildren();
 

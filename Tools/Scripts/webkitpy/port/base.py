@@ -1438,7 +1438,6 @@ class Port(object):
 
     def _build_driver(self):
         environment = self.host.copy_current_environment()
-        environment.disable_gcc_smartquotes()
         env = environment.to_dictionary()
 
         # FIXME: We build both DumpRenderTree and WebKitTestRunner for WebKitTestRunner runs because
@@ -1454,7 +1453,6 @@ class Port(object):
 
     def _build_image_diff(self):
         environment = self.host.copy_current_environment()
-        environment.disable_gcc_smartquotes()
         env = environment.to_dictionary()
         try:
             self._run_script("build-imagediff", env=env)

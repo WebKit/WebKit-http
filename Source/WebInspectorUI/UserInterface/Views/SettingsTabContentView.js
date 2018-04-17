@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
- * Copyright (C) 2016 Devin Rousso <dcrousso+webkit@gmail.com>. All rights reserved.
+ * Copyright (C) 2016 Devin Rousso <webkit@devinrousso.com>. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -60,6 +60,11 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
     // Public
 
     get type() { return WI.SettingsTabContentView.Type; }
+
+    get supportsSplitContentBrowser()
+    {
+        return false;
+    }
 
     get selectedSettingsView()
     {
@@ -229,21 +234,28 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
 
     _createExperimentalSettingsView()
     {
+        if (!(window.CanvasAgent || window.CSSAgent || window.NetworkAgent || window.LayerTreeAgent))
+            return;
+
         let experimentalSettingsView = new WI.SettingsView("experimental", WI.UIString("Experimental"));
 
         if (window.CanvasAgent) {
             experimentalSettingsView.addSetting(WI.UIString("Canvas:"), WI.settings.experimentalShowCanvasContextsInResources, WI.UIString("Show Contexts in Resources Tab"));
-
             experimentalSettingsView.addSeparator();
         }
 
-        experimentalSettingsView.addSetting(WI.UIString("Styles Panel:"), WI.settings.experimentalSpreadsheetStyleEditor, WI.UIString("Spreadsheet Style Editor"));
+        if (window.CSSAgent) {
+            experimentalSettingsView.addSetting(WI.UIString("Styles Panel:"), WI.settings.experimentalSpreadsheetStyleEditor, WI.UIString("Spreadsheet Style Editor"));
+            experimentalSettingsView.addSeparator();
+        }
 
-        experimentalSettingsView.addSeparator();
+        if (window.NetworkAgent) {
+            experimentalSettingsView.addSetting(WI.UIString("Network Tab:"), WI.settings.experimentalEnableNewNetworkTab, WI.UIString("New Network Tab"));
+            experimentalSettingsView.addSeparator();
+        }
 
         if (window.LayerTreeAgent) {
             experimentalSettingsView.addSetting(WI.UIString("Layers:"), WI.settings.experimentalEnableLayersTab, WI.UIString("Enable Layers Tab"));
-
             experimentalSettingsView.addSeparator();
         }
 
@@ -261,13 +273,10 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
             });
         }
 
-        if (window.CanvasAgent)
-            listenForChange(WI.settings.experimentalShowCanvasContextsInResources);
-
+        listenForChange(WI.settings.experimentalShowCanvasContextsInResources);
         listenForChange(WI.settings.experimentalSpreadsheetStyleEditor);
-
-        if (window.LayerTreeAgent)
-            listenForChange(WI.settings.experimentalEnableLayersTab);
+        listenForChange(WI.settings.experimentalEnableNewNetworkTab);
+        listenForChange(WI.settings.experimentalEnableLayersTab);
 
         this.addSettingsView(experimentalSettingsView);
     }

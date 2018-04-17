@@ -31,7 +31,6 @@
 #include "Document.h"
 #include "FontCache.h"
 #include "FrameView.h"
-#include "Language.h"
 #include "LocaleToScriptMapping.h"
 #include "MainFrame.h"
 #include "Page.h"
@@ -41,6 +40,7 @@
 #include "Settings.h"
 #include "Supplementable.h"
 #include "TextRun.h"
+#include <wtf/Language.h>
 
 #if ENABLE(INPUT_TYPE_COLOR)
 #include "ColorChooser.h"
@@ -110,6 +110,7 @@ InternalSettings::Backup::Backup(Settings& settings)
 #if ENABLE(WEBGPU)
     , m_webGPUEnabled(RuntimeEnabledFeatures::sharedFeatures().webGPUEnabled())
 #endif
+    , m_webVREnabled(RuntimeEnabledFeatures::sharedFeatures().webVREnabled())
     , m_shouldMockBoldSystemFontForAccessibility(RenderTheme::singleton().shouldMockBoldSystemFontForAccessibility())
 #if USE(AUDIO_SESSION)
     , m_shouldManageAudioSessionCategory(Settings::shouldManageAudioSessionCategory())
@@ -205,6 +206,7 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
 #if ENABLE(WEBGPU)
     RuntimeEnabledFeatures::sharedFeatures().setWebGPUEnabled(m_webGPUEnabled);
 #endif
+    RuntimeEnabledFeatures::sharedFeatures().setWebVREnabled(m_webVREnabled);
 
 #if USE(AUDIO_SESSION)
     Settings::setShouldManageAudioSessionCategory(m_shouldManageAudioSessionCategory);
@@ -729,6 +731,11 @@ void InternalSettings::setWebGPUEnabled(bool enabled)
 #else
     UNUSED_PARAM(enabled);
 #endif
+}
+
+void InternalSettings::setWebVREnabled(bool enabled)
+{
+    RuntimeEnabledFeatures::sharedFeatures().setWebVREnabled(enabled);
 }
 
 ExceptionOr<String> InternalSettings::userInterfaceDirectionPolicy()

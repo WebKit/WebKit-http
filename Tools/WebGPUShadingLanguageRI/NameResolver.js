@@ -50,6 +50,7 @@ class NameResolver extends Visitor {
         let checker = new NameResolver(nameContext);
         for (let statement of node.topLevelStatements)
             nameContext.doStatement(statement, () => statement.visit(checker));
+        node.globalNameContext = nameContext;
     }
     
     _visitTypeParametersAndBuildNameContext(node)
@@ -90,9 +91,46 @@ class NameResolver extends Visitor {
         for (let statement of node.statements)
             statement.visit(checker);
     }
+
+    visitIfStatement(node)
+    {
+        node.conditional.visit(this);
+        // The bodies might not be Blocks, so we need to explicitly give them a new context.
+        node.body.visit(new NameResolver(new NameContext(this._nameContext)));
+        if (node.elseBody)
+            node.elseBody.visit(new NameResolver(new NameContext(this._nameContext)));
+    }
+
+    visitWhileLoop(node)
+    {
+        node.conditional.visit(this);
+        // The bodies might not be Blocks, so we need to explicitly give them a new context.
+        node.body.visit(new NameResolver(new NameContext(this._nameContext)));
+    }
+
+    visitDoWhileLoop(node)
+    {
+        // The bodies might not be Blocks, so we need to explicitly give them a new context.
+        node.body.visit(new NameResolver(new NameContext(this._nameContext)));
+        node.conditional.visit(this);
+    }
+
+    visitForLoop(node)
+    {
+        let newResolver = new NameResolver(new NameContext(this._nameContext))
+        if (node.initialization)
+            node.initialization.visit(newResolver);
+        if (node.condition)
+            node.condition.visit(newResolver);
+        if (node.increment)
+            node.increment.visit(newResolver);
+        node.body.visit(newResolver);
+    }
     
     visitProtocolDecl(node)
     {
+        for (let parent of node.extends)
+            parent.visit(this);
         let nameContext = new NameContext(this._nameContext);
         nameContext.add(node.typeVariable);
         let checker = new NameResolver(nameContext);
@@ -106,6 +144,15 @@ class NameResolver extends Visitor {
         if (!result)
             throw new WTypeError(node.origin.originString, "Could not find protocol named " + node.name);
         node.protocolDecl = result;
+    }
+    
+    visitProtocolFuncDecl(node)
+    {
+        this.visitFunc(node);
+        let funcs = this._nameContext.get(Func, node.name);
+        if (!funcs)
+            throw new WTypeError(node.origin.originString, "Cannot find any functions named " + node.na,e);
+        node.possibleOverloads = funcs;
     }
     
     visitTypeDef(node)
@@ -209,6 +256,20 @@ class NameResolver extends Visitor {
     visitCallExpression(node)
     {
         this._resolveTypeArguments(node.typeArguments);
+        
+        let funcs = this._nameContext.get(Func, node.name);
+        if (funcs)
+            node.possibleOverloads = funcs;
+        else {
+            let type = this._nameContext.get(Type, node.name);
+            if (!type)
+                throw new WTypeError(node.origin.originString, "Cannot find any function or type named " + node.name);
+            node.becomeCast(type);
+            node.possibleOverloads = this._nameContext.get(Func, "operator cast");
+            if (!node.possibleOverloads)
+                throw new WTypeError(node.origin.originString, "Cannot find any operator cast implementations in cast to " + type);
+        }
+        
         super.visitCallExpression(node);
     }
 }

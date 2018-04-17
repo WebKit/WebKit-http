@@ -35,7 +35,7 @@
 #include <wtf/MathExtras.h>
 #include <wtf/dtoa/double-conversion.h>
 
-using namespace WTF::double_conversion;
+using DoubleToStringConverter = WTF::double_conversion::DoubleToStringConverter;
 
 // To avoid conflict with WTF::StringBuilder.
 typedef WTF::double_conversion::StringBuilder DoubleConversionStringBuilder;
@@ -598,9 +598,11 @@ EncodedJSValue JSC_HOST_CALL numberProtoFuncToString(ExecState* exec)
         return throwVMTypeError(exec, scope);
 
     int32_t radix = extractRadixFromArgs(exec);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     if (radix < 2 || radix > 36)
         return throwVMError(exec, scope, createRangeError(exec, ASCIILiteral("toString() radix argument must be between 2 and 36")));
 
+    scope.release();
     return JSValue::encode(numberToStringInternal(vm, doubleValue, radix));
 }
 

@@ -41,7 +41,7 @@ function doPrep(code)
 
 function doLex(code)
 {
-    let lexer = new Lexer("/internal/test", 0, code);
+    let lexer = new Lexer("/internal/test", "native", 0, code);
     var result = [];
     for (;;) {
         let next = lexer.next();
@@ -85,17 +85,17 @@ function checkInt(program, result, expected)
 function checkUInt(program, result, expected)
 {
     if (!result.type.equals(program.intrinsics.uint32))
-        throw new Error("Wrong result type; result: " + result);
+        throw new Error("Wrong result type: " + result.type);
     if (result.value != expected)
-        throw new Error("Wrong result: " + result + " (expected " + expected + ")");
+        throw new Error("Wrong result: " + result.value + " (expected " + expected + ")");
 }
 
 function checkBool(program, result, expected)
 {
     if (!result.type.equals(program.intrinsics.bool))
-        throw new Error("Wrong result type; result: " + result);
+        throw new Error("Wrong result type: " + result.type);
     if (result.value != expected)
-        throw new Error("Wrong result: " + result + " (expected " + expected + ")");
+        throw new Error("Wrong result: " + result.value + " (expected " + expected + ")");
 }
 
 function checkLexerToken(result, expectedIndex, expectedKind, expectedText)
@@ -972,7 +972,7 @@ function TEST_nullTypeVariableUnify()
                 if (!result)
                     throw new Error("In order " + order + " cannot unify " + left + " with " + right);
             }
-            if (!unificationContext.verify())
+            if (!unificationContext.verify().result)
                 throw new Error("In order " + order.map(value => "(" + value + ")") + " cannot verify");
         });
 }
@@ -987,6 +987,1076 @@ function TEST_doubleNot()
     `);
     checkBool(program, callFunction(program, "foo", [], [makeBool(program, true)]), true);
     checkBool(program, callFunction(program, "foo", [], [makeBool(program, false)]), false);
+}
+
+function TEST_simpleRecursion()
+{
+    checkFail(
+        () => doPrep(`
+            void foo<T>(T x)
+            {
+                foo(&x);
+            }
+        `),
+        (e) => e instanceof WTypeError);
+}
+
+function TEST_protocolMonoSigPolyDef()
+{
+    let program = doPrep(`
+        struct IntAnd<T> {
+            int first;
+            T second;
+        }
+        IntAnd<T> intAnd<T>(int first, T second)
+        {
+            IntAnd<T> result;
+            result.first = first;
+            result.second = second;
+            return result;
+        }
+        protocol IntAndable {
+            IntAnd<int> intAnd(IntAndable, int);
+        }
+        int foo<T:IntAndable>(T first, int second)
+        {
+            IntAnd<int> result = intAnd(first, second);
+            return result.first + result.second;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 54), makeInt(program, 12)]), 54 + 12);
+}
+
+function TEST_protocolPolySigPolyDef()
+{
+    let program = doPrep(`
+        struct IntAnd<T> {
+            int first;
+            T second;
+        }
+        IntAnd<T> intAnd<T>(int first, T second)
+        {
+            IntAnd<T> result;
+            result.first = first;
+            result.second = second;
+            return result;
+        }
+        protocol IntAndable {
+            IntAnd<T> intAnd<T>(IntAndable, T);
+        }
+        int foo<T:IntAndable>(T first, int second)
+        {
+            IntAnd<int> result = intAnd(first, second);
+            return result.first + result.second;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 54), makeInt(program, 12)]), 54 + 12);
+}
+
+function TEST_protocolDoublePolySigDoublePolyDef()
+{
+    let program = doPrep(`
+        struct IntAnd<T, U> {
+            int first;
+            T second;
+            U third;
+        }
+        IntAnd<T, U> intAnd<T, U>(int first, T second, U third)
+        {
+            IntAnd<T, U> result;
+            result.first = first;
+            result.second = second;
+            result.third = third;
+            return result;
+        }
+        protocol IntAndable {
+            IntAnd<T, U> intAnd<T, U>(IntAndable, T, U);
+        }
+        int foo<T:IntAndable>(T first, int second, int third)
+        {
+            IntAnd<int, int> result = intAnd(first, second, third);
+            return result.first + result.second + result.third;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 54), makeInt(program, 12), makeInt(program, 39)]), 54 + 12 + 39);
+}
+
+function TEST_protocolDoublePolySigDoublePolyDefExplicit()
+{
+    let program = doPrep(`
+        struct IntAnd<T, U> {
+            int first;
+            T second;
+            U third;
+        }
+        IntAnd<T, U> intAnd<T, U>(int first, T second, U third)
+        {
+            IntAnd<T, U> result;
+            result.first = first;
+            result.second = second;
+            result.third = third;
+            return result;
+        }
+        protocol IntAndable {
+            IntAnd<T, U> intAnd<T, U>(IntAndable, T, U);
+        }
+        int foo<T:IntAndable>(T first, int second, int third)
+        {
+            IntAnd<int, int> result = intAnd<int, int>(first, second, third);
+            return result.first + result.second + result.third;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 54), makeInt(program, 12), makeInt(program, 39)]), 54 + 12 + 39);
+}
+
+function TEST_variableShadowing()
+{
+    let program = doPrep(`
+        int foo()
+        {
+            int y;
+            int x = 7;
+            {
+                int x = 8;
+                y = x;
+            }
+            return y;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], []), 8);
+    program = doPrep(`
+        int foo()
+        {
+            int y;
+            int x = 7;
+            {
+                int x = 8;
+            }
+            y = x;
+            return y;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], []), 7);
+}
+
+function TEST_ifStatement()
+{
+    let program = doPrep(`
+        int foo(int x)
+        {
+            int y = 6;
+            if (x == 7) {
+                y = 8;
+            }
+            return y;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 3)]), 6);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 4)]), 6);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 5)]), 6);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 6)]), 6);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 7)]), 8);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 8)]), 6);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 9)]), 6);
+}
+
+function TEST_ifElseStatement()
+{
+    let program = doPrep(`
+        int foo(int x)
+        {
+            int y = 6;
+            if (x == 7) {
+                y = 8;
+            } else {
+                y = 9;
+            }
+            return y;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 3)]), 9);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 4)]), 9);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 5)]), 9);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 6)]), 9);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 7)]), 8);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 8)]), 9);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 9)]), 9);
+}
+
+function TEST_ifElseIfStatement()
+{
+    let program = doPrep(`
+        int foo(int x)
+        {
+            int y = 6;
+            if (x == 7) {
+                y = 8;
+            } else if (x == 8) {
+                y = 9;
+            }
+            return y;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 3)]), 6);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 4)]), 6);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 5)]), 6);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 6)]), 6);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 7)]), 8);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 8)]), 9);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 9)]), 6);
+}
+
+function TEST_ifElseIfElseStatement()
+{
+    let program = doPrep(`
+        int foo(int x)
+        {
+            int y = 6;
+            if (x == 7) {
+                y = 8;
+            } else if (x == 8) {
+                y = 9;
+            } else {
+                y = 10;
+            }
+            return y;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 3)]), 10);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 4)]), 10);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 5)]), 10);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 6)]), 10);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 7)]), 8);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 8)]), 9);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 9)]), 10);
+}
+
+function TEST_returnIf()
+{
+    checkFail(
+        () => doPrep(`
+            int foo(int x)
+            {
+                int y = 6;
+                if (x == 7) {
+                    return y;
+                }
+            }
+        `),
+        (e) => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            int foo(int x)
+            {
+                int y = 6;
+                if (x == 7) {
+                    return y;
+                } else {
+                    y = 8;
+                }
+            }
+        `),
+        (e) => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            int foo(int x)
+            {
+                int y = 6;
+                if (x == 7) {
+                    y = 8;
+                } else {
+                    return y;
+                }
+            }
+        `),
+        (e) => e instanceof WTypeError);
+    let program = doPrep(`
+        int foo(int x)
+        {
+            int y = 6;
+            if (x == 7) {
+                return 8;
+            } else {
+                return 10;
+            }
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 3)]), 10);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 4)]), 10);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 5)]), 10);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 6)]), 10);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 7)]), 8);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 8)]), 10);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 9)]), 10);
+    checkFail(
+        () => doPrep(`
+            int foo(int x)
+            {
+                int y = 6;
+                if (x == 7) {
+                    return 8;
+                } else if (x == 9) {
+                    return 10;
+                }
+            }
+        `),
+        (e) => e instanceof WTypeError);
+    program = doPrep(`
+        int foo(int x)
+        {
+            int y = 6;
+            if (x == 7) {
+                return 8;
+            } else {
+                y = 9;
+            }
+            return y;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 3)]), 9);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 4)]), 9);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 5)]), 9);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 6)]), 9);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 7)]), 8);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 8)]), 9);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 9)]), 9);
+    checkFail(
+        () => doPrep(`
+            int foo(int x)
+            {
+                int y = 6;
+                if (x == 7) {
+                    return 8;
+                } else {
+                    return 10;
+                }
+                return 11;
+            }
+        `),
+        (e) => e instanceof WTypeError);
+    program = doPrep(`
+        int foo(int x)
+        {
+            int y = 6;
+            if (x == 7)
+                int y = 8;
+            return y;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 7)]), 6);
+}
+
+function TEST_simpleWhile()
+{
+    let program = doPrep(`
+        int foo(int x)
+        {
+            while (x < 13)
+                x = x * 2;
+            return x;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 1)]), 16);
+}
+
+function TEST_protocolMonoPolySigDoublePolyDefExplicit()
+{
+    checkFail(
+        () => {
+            let program = doPrep(`
+                struct IntAnd<T, U> {
+                    int first;
+                    T second;
+                    U third;
+                }
+                IntAnd<T, U> intAnd<T, U>(int first, T second, U third)
+                {
+                    IntAnd<T, U> result;
+                    result.first = first;
+                    result.second = second;
+                    result.third = third;
+                    return result;
+                }
+                protocol IntAndable {
+                    IntAnd<T, int> intAnd<T>(IntAndable, T, int);
+                }
+                int foo<T:IntAndable>(T first, int second, int third)
+                {
+                    IntAnd<int, int> result = intAnd<int>(first, second, third);
+                    return result.first + result.second + result.third;
+                }
+            `);
+            callFunction(program, "foo", [], [makeInt(program, 54), makeInt(program, 12), makeInt(program, 39)]);
+        },
+        (e) => e instanceof WTypeError);
+}
+
+function TEST_ambiguousOverloadSimple()
+{
+    checkFail(
+        () => doPrep(`
+            void foo<T>(int, T) { }
+            void foo<T>(T, int) { }
+            void bar(int a, int b) { foo(a, b); }
+        `),
+        (e) => e instanceof WTypeError);
+}
+
+function TEST_ambiguousOverloadOverlapping()
+{
+    checkFail(
+        () => doPrep(`
+            void foo<T>(int, T) { }
+            void foo<T>(T, T) { }
+            void bar(int a, int b) { foo(a, b); }
+        `),
+        (e) => e instanceof WTypeError);
+}
+
+function TEST_ambiguousOverloadTieBreak()
+{
+    doPrep(`
+        void foo<T>(int, T) { }
+        void foo<T>(T, T) { }
+        void foo(int, int) { }
+        void bar(int a, int b) { foo(a, b); }
+    `);
+}
+
+function TEST_intOverloadResolution()
+{
+    let program = doPrep(`
+        int foo(int) { return 1; }
+        int foo(uint) { return 2; }
+        int foo(double) { return 3; }
+        int bar() { return foo(42); }
+    `);
+    checkInt(program, callFunction(program, "bar", [], []), 1);
+}
+
+function TEST_intOverloadResolutionReverseOrder()
+{
+    let program = doPrep(`
+        int foo(double) { return 3; }
+        int foo(uint) { return 2; }
+        int foo(int) { return 1; }
+        int bar() { return foo(42); }
+    `);
+    checkInt(program, callFunction(program, "bar", [], []), 1);
+}
+
+function TEST_intOverloadResolutionGeneric()
+{
+    let program = doPrep(`
+        int foo(int) { return 1; }
+        int foo<T>(T) { return 2; }
+        int bar() { return foo(42); }
+    `);
+    checkInt(program, callFunction(program, "bar", [], []), 1);
+}
+
+function TEST_intLiteralGeneric()
+{
+    checkFail(
+        () => doPrep(`
+            int foo<T>(T) { return 1; }
+            int bar() { return foo(42); }
+        `),
+        (e) => e instanceof WTypeError);
+}
+
+function TEST_intLiteralGeneric()
+{
+    let program = doPrep(`
+        T foo<T>(T x) { return x; }
+        int bar() { return foo(int(42)); }
+    `);
+    checkInt(program, callFunction(program, "bar", [], []), 42);
+}
+
+function TEST_simpleConstexpr()
+{
+    let program = doPrep(`
+        int foo<int a>(int b)
+        {
+            return a + b;
+        }
+        int bar(int b)
+        {
+            return foo<42>(b);
+        }
+    `);
+    checkInt(program, callFunction(program, "bar", [], [makeInt(program, 58)]), 58 + 42);
+}
+
+function TEST_break()
+{
+    let program = doPrep(`
+        int foo(int x)
+        {
+            while (true) {
+                x = x * 2;
+                if (x >= 7)
+                    break;
+            }
+            return x;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 1)]), 8);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 10)]), 20);
+    program = doPrep(`
+        int foo(int x)
+        {
+            while (true) {
+                while (true) {
+                    x = x * 2;
+                    if (x >= 7)
+                        break;
+                }
+                x = x - 1;
+                break;
+            }
+            return x;
+            
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 1)]), 7);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 10)]), 19);
+    checkFail(
+        () => doPrep(`
+            int foo(int x)
+            {
+                while (true) {
+                    {
+                        break;
+                    }
+                    x = x + 1;
+                }
+                return x;
+            }
+        `),
+        (e) => e instanceof WTypeError);
+    checkFail(
+        () => doPrep(`
+            int foo(int x)
+            {
+                break;
+                return x;
+            }
+        `),
+        (e) => e instanceof WTypeError);
+    program = doPrep(`
+            int foo(int x)
+            {
+                while (true) {
+                    if (x == 7) {
+                        break;
+                    }
+                    x = x + 1;
+                }
+                return x;
+            }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 1)]), 7);
+    program = doPrep(`
+            int foo(int x)
+            {
+                while (true) {
+                    break;
+                }
+                return x;
+            }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 1)]), 1);
+    program = doPrep(`
+            int foo()
+            {
+                while (true) {
+                    return 7;
+                }
+            }
+    `);
+    checkInt(program, callFunction(program, "foo", [], []), 7);
+    checkFail(
+        () => doPrep(`
+            int foo(int x)
+            {
+                while(true) {
+                    break;
+                    return 7;
+                }
+            }
+        `),
+        (e) => e instanceof WTypeError);
+}
+
+function TEST_continue()
+{
+    let program = doPrep(`
+        int foo(int x)
+        {
+            while (x < 10) {
+                if (x == 8) {
+                    x = x + 1;
+                    continue;
+                }
+                x = x * 2;
+            }
+            return x;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 1)]), 18);
+    checkFail(
+        () => doPrep(`
+            int foo(int x)
+            {
+                continue;
+                return x;
+                
+            }
+        `),
+        (e) => e instanceof WTypeError);
+}
+
+function TEST_doWhile()
+{
+    let program = doPrep(`
+        int foo(int x)
+        {
+            int y = 7;
+            do {
+                y = 8;
+                break;
+            } while (x < 10);
+            return y;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 1)]), 8);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 11)]), 8);
+    program = doPrep(`
+        int foo(int x)
+        {
+            int y = 7;
+            do {
+                y = 8;
+                break;
+            } while (y == 7);
+            return y;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 1)]), 8);
+    program = doPrep(`
+        int foo(int x)
+        {
+            int sum = 0;
+            do {
+                if (x == 11) {
+                    x = 15;
+                    continue;
+                }
+                sum = sum + x;
+                x = x + 1;
+            } while (x < 13);
+            return sum;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 9)]), 19);
+}
+
+function TEST_forLoop()
+{
+    let program = doPrep(`
+        int foo(int x)
+        {
+            int sum = 0;
+            int i;
+            for (i = 0; i < x; i = i + 1) {
+                sum = sum + i;
+            }
+            return sum;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 3)]), 3);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 4)]), 6);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 5)]), 10);
+    program = doPrep(`
+        int foo(int x)
+        {
+            int sum = 0;
+            for (int i = 0; i < x; i = i + 1) {
+                sum = sum + i;
+            }
+            return sum;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 3)]), 3);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 4)]), 6);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 5)]), 10);
+    program = doPrep(`
+        int foo(int x)
+        {
+            int sum = 0;
+            int i = 100;
+            for (int i = 0; i < x; i = i + 1) {
+                sum = sum + i;
+            }
+            return sum;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 3)]), 3);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 4)]), 6);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 5)]), 10);
+    program = doPrep(`
+        int foo(int x)
+        {
+            int sum = 0;
+            for (int i = 0; i < x; i = i + 1) {
+                if (i == 4)
+                    continue;
+                sum = sum + i;
+            }
+            return sum;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 3)]), 3);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 4)]), 6);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 5)]), 6);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 6)]), 11);
+    program = doPrep(`
+        int foo(int x)
+        {
+            int sum = 0;
+            for (int i = 0; i < x; i = i + 1) {
+                if (i == 5)
+                    break;
+                sum = sum + i;
+            }
+            return sum;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 3)]), 3);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 4)]), 6);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 5)]), 10);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 6)]), 10);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 7)]), 10);
+    program = doPrep(`
+        int foo(int x)
+        {
+            int sum = 0;
+            for (int i = 0; ; i = i + 1) {
+                if (i >= x)
+                    break;
+                sum = sum + i;
+            }
+            return sum;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 3)]), 3);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 4)]), 6);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 5)]), 10);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 6)]), 15);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 7)]), 21);
+    program = doPrep(`
+        int foo(int x)
+        {
+            int sum = 0;
+            int i = 0;
+            for ( ; ; i = i + 1) {
+                if (i >= x)
+                    break;
+                sum = sum + i;
+            }
+            return sum;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 3)]), 3);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 4)]), 6);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 5)]), 10);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 6)]), 15);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 7)]), 21);
+    program = doPrep(`
+        int foo(int x)
+        {
+            int sum = 0;
+            int i = 0;
+            for ( ; ; ) {
+                if (i >= x)
+                    break;
+                sum = sum + i;
+                i = i + 1;
+            }
+            return sum;
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 3)]), 3);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 4)]), 6);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 5)]), 10);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 6)]), 15);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 7)]), 21);
+    checkFail(
+        () => doPrep(`
+            void foo(int x)
+            {
+                for (int i = 0; ; i = i + 1) {
+                    break;
+                    x = i;
+                }
+            }
+        `),
+        (e) => e instanceof WTypeError);
+    program = doPrep(`
+        int foo(int x)
+        {
+            for ( ; ; ) {
+                return 7;
+            }
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 3)]), 7);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 4)]), 7);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 5)]), 7);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 6)]), 7);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 7)]), 7);
+    checkFail(
+        () => doPrep(`
+            int foo(int x)
+            {
+                for ( ; x < 10; ) {
+                    return 7;
+                }
+            }
+        `),
+        (e) => e instanceof WTypeError);
+    program = doPrep(`
+        int foo(int x)
+        {
+            for ( ; true; ) {
+                return 7;
+            }
+        }
+    `);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 3)]), 7);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 4)]), 7);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 5)]), 7);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 6)]), 7);
+    checkInt(program, callFunction(program, "foo", [], [makeInt(program, 7)]), 7);
+}
+
+function TEST_chainConstexpr()
+{
+    let program = doPrep(`
+        int foo<int a>(int b)
+        {
+            return a + b;
+        }
+        int bar<int a>(int b)
+        {
+            return foo<a>(b);
+        }
+        int baz(int b)
+        {
+            return bar<42>(b);
+        }
+    `);
+    checkInt(program, callFunction(program, "baz", [], [makeInt(program, 58)]), 58 + 42);
+}
+
+function TEST_chainGeneric()
+{
+    let program = doPrep(`
+        T foo<T>(T x)
+        {
+            return x;
+        }
+        T bar<T>(thread T^ ptr)
+        {
+            return ^foo(ptr);
+        }
+        int baz(int x)
+        {
+            return bar(&x);
+        }
+    `);
+    checkInt(program, callFunction(program, "baz", [], [makeInt(program, 37)]), 37);
+}
+
+function TEST_chainStruct()
+{
+    let program = doPrep(`
+        struct Foo<T> {
+            T f;
+        }
+        struct Bar<T> {
+            Foo<thread T^> f;
+        }
+        int foo(thread Bar<int>^ x)
+        {
+            return ^x->f.f;
+        }
+        int bar(int a)
+        {
+            Bar<int> x;
+            x.f.f = &a;
+            return foo(&x);
+        }
+    `);
+    checkInt(program, callFunction(program, "bar", [], [makeInt(program, 4657)]), 4657);
+}
+
+function TEST_chainStructInvalid()
+{
+    checkFail(
+        () => doPrep(`
+            struct Foo<T> {
+                T f;
+            }
+            struct Bar<T> {
+                Foo<device T^> f;
+            }
+            int foo(thread Bar<int>^ x)
+            {
+                return ^x->f.f;
+            }
+            int bar(device int^ a)
+            {
+                Bar<int> x;
+                x.f.f = a;
+                return foo(&x);
+            }
+        `),
+        (e) => e instanceof WTypeError);
+}
+
+function TEST_chainStructDevice()
+{
+    let program = doPrep(`
+        struct Foo<T> {
+            T f;
+        }
+        struct Bar<T:primitive> {
+            Foo<device T^> f;
+        }
+        int foo(thread Bar<int>^ x)
+        {
+            return ^x->f.f;
+        }
+        int bar(device int^ a)
+        {
+            Bar<int> x;
+            x.f.f = a;
+            return foo(&x);
+        }
+    `);
+    let buffer = new EBuffer(1);
+    buffer.set(0, 79201);
+    checkInt(program, callFunction(program, "bar", [], [TypedValue.box(new PtrType(null, "device", program.intrinsics.int32), new EPtr(buffer, 0))]), 79201);
+}
+
+function TEST_paramChainStructDevice()
+{
+    let program = doPrep(`
+        struct Foo<T> {
+            T f;
+        }
+        struct Bar<T> {
+            Foo<T> f;
+        }
+        int foo(thread Bar<device int^>^ x)
+        {
+            return ^x->f.f;
+        }
+        int bar(device int^ a)
+        {
+            Bar<device int^> x;
+            x.f.f = a;
+            return foo(&x);
+        }
+    `);
+    let buffer = new EBuffer(1);
+    buffer.set(0, 79201);
+    checkInt(program, callFunction(program, "bar", [], [TypedValue.box(new PtrType(null, "device", program.intrinsics.int32), new EPtr(buffer, 0))]), 79201);
+}
+
+function TEST_simpleProtocolExtends()
+{
+    let program = doPrep(`
+        protocol Foo {
+            void foo(thread Foo^);
+        }
+        protocol Bar : Foo {
+            void bar(thread Bar^);
+        }
+        void fuzz<T:Foo>(thread T^ p)
+        {
+            foo(p);
+        }
+        void buzz<T:Bar>(thread T^ p)
+        {
+            fuzz(p);
+            bar(p);
+        }
+        void foo(thread int^ p)
+        {
+            ^p = ^p + 743;
+        }
+        void bar(thread int^ p)
+        {
+            ^p = ^p + 91;
+        }
+        int thingy(int a)
+        {
+            buzz(&a);
+            return a;
+        }
+    `);
+    checkInt(program, callFunction(program, "thingy", [], [makeInt(program, 642)]), 642 + 743 + 91);
+}
+
+function TEST_protocolExtendsTwo()
+{
+    let program = doPrep(`
+        protocol Foo {
+            void foo(thread Foo^);
+        }
+        protocol Bar {
+            void bar(thread Bar^);
+        }
+        protocol Baz : Foo, Bar {
+            void baz(thread Baz^);
+        }
+        void fuzz<T:Foo>(thread T^ p)
+        {
+            foo(p);
+        }
+        void buzz<T:Bar>(thread T^ p)
+        {
+            bar(p);
+        }
+        void xuzz<T:Baz>(thread T^ p)
+        {
+            fuzz(p);
+            buzz(p);
+            baz(p);
+        }
+        void foo(thread int^ p)
+        {
+            ^p = ^p + 743;
+        }
+        void bar(thread int^ p)
+        {
+            ^p = ^p + 91;
+        }
+        void baz(thread int^ p)
+        {
+            ^p = ^p + 39;
+        }
+        int thingy(int a)
+        {
+            xuzz(&a);
+            return a;
+        }
+    `);
+    checkInt(program, callFunction(program, "thingy", [], [makeInt(program, 642)]), 642 + 743 + 91 + 39);
 }
 
 let filter = /.*/; // run everything by default
