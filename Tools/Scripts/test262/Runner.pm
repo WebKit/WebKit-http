@@ -79,9 +79,9 @@ my $saveCurrentResults;
 my $failingOnly;
 my $latestImport;
 
-my $expectationsFile = abs_path("$Bin/test262-expectations.yaml");
-my $configFile = abs_path("$Bin/test262-config.yaml");
-my $resultsFile = abs_path("$Bin/test262-results.yaml");
+my $expectationsFile = abs_path("$Bin/../../../JSTests/test262/expectations.yaml");
+my $configFile = abs_path("$Bin/config.yaml");
+my $resultsFile = abs_path("$Bin/../../../JSTests/test262/results.yaml");
 
 processCLI();
 

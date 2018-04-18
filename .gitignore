@@ -50,5 +50,5 @@ __cmake_systeminformation/
 .ycm_extra_conf.py
 
 # Ignore generated Test262 results file
-Tools/Scripts/test262/test262-results.yaml
+JSTests/test262/results.yaml
 
