@@ -78,6 +78,7 @@ my $expect;
 my $saveCurrentResults;
 my $failingOnly;
 my $latestImport;
+my $runningAllTests;
 
 my $expectationsFile = abs_path("$Bin/../../../JSTests/test262/expectations.yaml");
 my $configFile = abs_path("$Bin/config.yaml");
@@ -228,6 +229,7 @@ sub main {
         # If we only want to re-run failure, only run tests in expectation file
         @files = map { qq($test262Dir/$_) } keys %{$expect};
     } else {
+        $runningAllTests = 1;
         # Otherwise, get all files from directory
         foreach my $testsDir (@cliTestDirs) {
             find(
@@ -300,8 +302,17 @@ sub main {
     }
 
     if ($saveCurrentResults) {
-        DumpFile($resultsFile, \@res);
         DumpFile($expectationsFile, \%failed);
+        print "\nSaved results in: $expectationsFile\n";
+    } else {
+        print "\nRun with --save to save a new expectations file\n";
+    }
+
+    if ($runningAllTests) {
+        DumpFile($resultsFile, \@res);
+        print "Saved all the results in the $resultsFile.";
+        print "Summarizing results...\n\n";
+        summarizeResults();
     }
 
     my $endTime = time();
@@ -311,8 +322,7 @@ sub main {
 
     if ( !$expect ) {
         print $failcount . " tests failed\n";
-    }
-    else {
+    } else {
         print $failcount . " expected tests failed\n";
         print $newfailcount . " tests newly fail\n";
         print $newpasscount . " tests newly pass\n";
@@ -320,12 +330,6 @@ sub main {
 
     print $skipfilecount . " test files skipped\n";
     print "Done in $totalTime seconds!\n";
-    if ($saveCurrentResults) {
-        print "\nSaved results in:\n$expectationsFile\n$resultsFile\n";
-    }
-    else {
-        print "\nRun with --save to saved new test262-expectation.yaml and test262-results.yaml files\n";
-    }
 }
 
 sub loadImportFile {
@@ -368,8 +372,7 @@ sub parseError {
 
     if ($error =~ /^Exception: ([\w\d]+: .*)/m) {
         return $1;
-    }
-    else {
+    } else {
         # Unusual error format. Save the first line instead.
         my @errors = split("\n", $error);
         return $errors[0];
@@ -588,8 +591,7 @@ sub processResult {
         }
 
         $resultdata{result} = 'PASS';
-    }
-    else {
+    } else {
         $resultdata{result} = 'SKIP';
     }
 
@@ -700,7 +702,6 @@ sub summarizeResults {
         }
 
     }
-
 
     print sprintf("%-6s %-6s %-6s %-6s %s\n", '% PASS', 'PASS', 'FAIL', 'SKIP', 'FOLDER');
     foreach my $key (sort keys %bypath) {
