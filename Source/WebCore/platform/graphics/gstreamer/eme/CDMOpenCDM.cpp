@@ -98,7 +98,9 @@ std::unique_ptr<CDMPrivate> CDMFactoryOpenCDM::createCDM(const String& keySystem
 
 bool CDMFactoryOpenCDM::supportsKeySystem(const String& keySystem)
 {
-    return GStreamerEMEUtilities::isPlayReadyKeySystem(keySystem) || GStreamerEMEUtilities::isWidevineKeySystem(keySystem);
+    std::string emptyString;
+
+    return m_openCDM.IsTypeSupported(keySystem.utf8().data(), emptyString);
 }
 
 // Class CDMInstanceOpenCDM.
