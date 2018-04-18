@@ -29,9 +29,9 @@
 #include "CDMInstance.h"
 #include "GStreamerEMEUtilities.h"
 #include "MediaKeyStatus.h"
-#include <map>
 #include <open_cdm.h>
 #include <wtf/HashMap.h>
+#include <wtf/text/StringHash.h>
 
 namespace WebCore {
 
@@ -59,17 +59,10 @@ private:
     CDMInstanceOpenCDM(const CDMInstanceOpenCDM&) = delete;
     CDMInstanceOpenCDM& operator=(const CDMInstanceOpenCDM&) = delete;
 
-    class Session {
-    private:
-        Session() = delete;
-        Session(const Session&) = delete;
-        Session& operator=(const Session&) = delete;
-
+    class Session : public ThreadSafeRefCounted<Session> {
     public:
-        Session(const media::OpenCdm& source, Ref<WebCore::SharedBuffer>&& initData);
-        ~Session() = default;
+        static Ref<Session> create(const media::OpenCdm& source, Ref<WebCore::SharedBuffer>&& initData);
 
-    public:
         bool isValid() const { return m_url.empty() == false; }
         const std::string& url() const { return m_url; }
         const std::string& message() const { return m_message; }
@@ -85,6 +78,10 @@ private:
         }
 
     private:
+        Session() = delete;
+        Session(const media::OpenCdm& source, Ref<WebCore::SharedBuffer>&& initData);
+        WTF_MAKE_NONCOPYABLE(Session);
+
         media::OpenCdm m_session;
         std::string m_message;
         std::string m_url;
@@ -122,9 +119,18 @@ public:
     bool isSessionIdUsable(const String&) const;
 
 private:
+    bool addSession(const String& sessionId, Session* session);
+    bool removeSession(const String& sessionId);
+    RefPtr<Session> lookupSession(const String& sessionId) const;
+
     media::OpenCdm m_openCDM;
     const char* m_mimeType;
-    std::map<std::string, Session> m_sessionsMap;
+    // Protects against concurrent access to m_sessionsMap. In addition to the main thread
+    // the GStreamer decryptor elements running in the streaming threads have a need to
+    // lookup values in this map.
+    mutable Lock m_sessionMapMutex;
+    HashMap<String, RefPtr<CDMInstanceOpenCDM::Session>> m_sessionsMap;
+
     String m_keySystem;
 };
 
