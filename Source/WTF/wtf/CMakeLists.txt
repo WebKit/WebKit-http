@@ -317,7 +317,6 @@ set(WTF_INCLUDE_DIRECTORIES
 )
 
 set(WTF_PRIVATE_INCLUDE_DIRECTORIES
-    "${WTF_DIR}/wtf"
     "${WTF_DIR}/wtf/dtoa"
     "${WTF_DIR}/wtf/persistence"
     "${WTF_DIR}/wtf/text"
