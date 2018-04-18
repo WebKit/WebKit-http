@@ -55,6 +55,81 @@ class EBufferBuilder extends Visitor {
     visitVariableDecl(node)
     {
         this._createEPtrForNode(node);
+        if (node.initializer)
+            node.initializer.visit(this);
+    }
+    
+    visitFuncDef(node)
+    {
+        node.returnEPtr = this._createEPtr(node.returnType);
+        super.visitFuncDef(node);
+    }
+    
+    visitFunctionLikeBlock(node)
+    {
+        node.returnEPtr = this._createEPtr(node.returnType);
+        super.visitFunctionLikeBlock(node);
+    }
+    
+    visitCallExpression(node)
+    {
+        node.resultEPtr = this._createEPtr(node.resultType);
+        super.visitCallExpression(node);
+    }
+    
+    visitMakePtrExpression(node)
+    {
+        node.ePtr = EPtr.box();
+        super.visitMakePtrExpression(node);
+    }
+    
+    visitGenericLiteral(node)
+    {
+        node.ePtr = EPtr.box();
+    }
+    
+    visitNullLiteral(node)
+    {
+        node.ePtr = EPtr.box();
+    }
+    
+    visitBoolLiteral(node)
+    {
+        node.ePtr = EPtr.box();
+    }
+    
+    visitEnumLiteral(node)
+    {
+        node.ePtr = EPtr.box();
+    }
+    
+    visitLogicalNot(node)
+    {
+        node.ePtr = EPtr.box();
+        super.visitLogicalNot(node);
+    }
+    
+    visitLogicalExpression(node)
+    {
+        node.ePtr = EPtr.box();
+        super.visitLogicalExpression(node);
+    }
+    
+    visitAnonymousVariable(node)
+    {
+        this._createEPtrForNode(node);
+    }
+    
+    visitMakeArrayRefExpression(node)
+    {
+        node.ePtr = EPtr.box();
+        super.visitMakeArrayRefExpression(node);
+    }
+    
+    visitConvertPtrToArrayRefExpression(node)
+    {
+        node.ePtr = EPtr.box();
+        super.visitConvertPtrToArrayRefExpression(node);
     }
 }
 

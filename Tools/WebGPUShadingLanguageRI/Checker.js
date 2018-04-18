@@ -30,45 +30,163 @@ class Checker extends Visitor {
         super();
         this._program = program;
         this._currentStatement = null;
+        this._vertexEntryPoints = new Set();
+        this._fragmentEntryPoints = new Set();
     }
     
     visitProgram(node)
     {
-        for (let statement of node.topLevelStatements) {
+        let doStatement = statement => {
             this._currentStatement = statement;
             statement.visit(this);
         }
+        
+        for (let type of node.types.values())
+            doStatement(type);
+        for (let protocol of node.protocols.values())
+            doStatement(protocol);
+        for (let funcs of node.functions.values()) {
+            for (let func of funcs) {
+                this.visitFunc(func);
+            }
+        }
+        for (let funcs of node.functions.values()) {
+            for (let func of funcs)
+                doStatement(func);
+        }
+    }
+
+    _checkShaderType(node)
+    {
+        // FIXME: Relax these checks once we have implemented support for textures and samplers.
+        if (node.typeParameters.length != 0)
+            throw new WTypeError("Entry point " + node.name + " must not have type arguments.");
+        class NonNumericSearcher extends Visitor {
+            constructor(name)
+            {
+                super();
+                this._name = name;
+            }
+            visitArrayRefType(node)
+            {
+                throw new WTypeError(this._name + " must transitively only have numeric types.");
+            }
+            visitPtrType(node)
+            {
+                throw new WTypeError(this._name + " must transitively only have numeric types.");
+            }
+        }
+        switch (node.shaderType) {
+        case "vertex":
+            if (this._vertexEntryPoints.has(node.name))
+                throw new WTypeError("Duplicate vertex entry point name " + node.name);
+            this._vertexEntryPoints.add(node.name);
+            if (!(node.returnType.type instanceof StructType))
+                throw new WTypeError("Vertex shader " + node.name + " must return a struct.");
+            for (let parameter of node.parameters) {
+                if (parameter.type.type instanceof StructType)
+                    parameter.type.visit(new NonNumericSearcher(node.name));
+                else if (!(parameter.type.type instanceof ArrayRefType))
+                    throw new WTypeError(node.name + " accepts a parameter " + parameter.name + " which isn't a struct and isn't an ArrayRef.");
+            }
+            node.returnType.type.visit(new NonNumericSearcher);
+            break;
+        case "fragment":
+            if (this._fragmentEntryPoints.has(node.name))
+                throw new WTypeError("Duplicate fragment entry point name " + node.name);
+            this._fragmentEntryPoints.add(node.name);
+            if (!(node.returnType.type instanceof StructType))
+                throw new WTypeError("Fragment shader " + node.name + " must return a struct.");
+            for (let parameter of node.parameters) {
+                if (parameter.name == "stageIn") {
+                    if (!(parameter.type.type instanceof StructType))
+                        throw new WTypeError("Fragment entry points' stageIn parameter (of " + node.name + ") must be a struct type.");
+                    parameter.type.visit(new NonNumericSearcher(node.name));
+                } else {
+                    if (!(parameter.type.type instanceof ArrayRefType))
+                        throw new WTypeError("Fragment entry point's " + parameter.name + " parameter is not an array reference.");
+                }
+            }
+            node.returnType.type.visit(new NonNumericSearcher);
+            break;
+        }
+    }
+    
+    visitFuncDef(node)
+    {
+        if (node.shaderType)
+            this._checkShaderType(node);
+        node.body.visit(this);
+    }
+    
+    visitNativeFunc(node)
+    {
     }
     
     visitProtocolDecl(node)
     {
         for (let signature of node.signatures) {
-            let set = new Set();
-            function consider(thing)
-            {
-                if (thing.isUnifiable)
-                    set.add(thing);
-            }
-            class NoticeTypeVariable extends Visitor {
-                visitTypeRef(node)
-                {
-                    consider(node.type);
-                }
-                visitVariableRef(node)
-                {
-                    consider(node.variable);
-                }
-            }
-            let noticeTypeVariable = new NoticeTypeVariable();
+            let typeVariableTracker = new TypeVariableTracker();
             for (let parameterType of signature.parameterTypes)
-                parameterType.visit(noticeTypeVariable);
+                parameterType.visit(typeVariableTracker);
+            Node.visit(signature.returnTypeForOverloadResolution, typeVariableTracker);
             for (let typeParameter of signature.typeParameters) {
-                if (!set.has(typeParameter))
+                if (!typeVariableTracker.set.has(typeParameter))
                     throw WTypeError(typeParameter.origin.originString, "Type parameter to protocol signature not inferrable from value parameters");
             }
-            if (!set.has(node.typeVariable))
+            if (!typeVariableTracker.set.has(node.typeVariable))
                 throw new WTypeError(signature.origin.originString, "Protocol's type variable (" + node.name + ") not mentioned in signature: " + signature);
         }
+    }
+    
+    visitEnumType(node)
+    {
+        node.baseType.visit(this);
+        
+        let baseType = node.baseType.unifyNode;
+        
+        if (!baseType.isInt)
+            throw new WTypeError(node.origin.originString, "Base type of enum is not an integer: " + node.baseType);
+        
+        for (let member of node.members) {
+            if (!member.value)
+                continue;
+            
+            let memberType = member.value.visit(this);
+            if (!baseType.equalsWithCommit(memberType))
+                throw new WTypeError(member.origin.originString, "Type of enum member " + member.value.name + " does not patch enum base type (member type is " + memberType + ", enum base type is " + node.baseType + ")");
+        }
+        
+        let nextValue = baseType.defaultValue;
+        for (let member of node.members) {
+            if (member.value) {
+                nextValue = baseType.successorValue(member.value.unifyNode.valueForSelectedType);
+                continue;
+            }
+            
+            member.value = baseType.createLiteral(member.origin, nextValue);
+            nextValue = baseType.successorValue(nextValue);
+        }
+        
+        let memberArray = Array.from(node.members);
+        for (let i = 0; i < memberArray.length; ++i) {
+            let member = memberArray[i];
+            for (let j = i + 1; j < memberArray.length; ++j) {
+                let otherMember = memberArray[j];
+                if (baseType.valuesEqual(member.value.unifyNode.valueForSelectedType, otherMember.value.unifyNode.valueForSelectedType))
+                    throw new WTypeError(otherMember.origin.originString, "Duplicate enum member value (" + member.name + " has " + member.value + " while " + otherMember.name + " has " + otherMember.value + ")");
+            }
+        }
+        
+        let foundZero = false;
+        for (let member of node.members) {
+            if (baseType.valuesEqual(member.value.unifyNode.valueForSelectedType, baseType.defaultValue)) {
+                foundZero = true;
+                break;
+            }
+        }
+        if (!foundZero)
+            throw new WTypeError(node.origin.originString, "Enum does not have a member with the value zero");
     }
     
     _checkTypeArguments(origin, typeParameters, typeArguments)
@@ -91,6 +209,7 @@ class Checker extends Visitor {
     {
         if (!node.type)
             throw new Error("Type reference without a type in checker: " + node + " at " + node.origin);
+        node.type.visit(this);
         this._checkTypeArguments(node.origin, node.type.typeParameters, node.typeArguments);
     }
     
@@ -101,14 +220,22 @@ class Checker extends Visitor {
         if (node.addressSpace == "thread")
             return;
         
-        if (!node.elementType.instantiatedType.isPrimitive)
+        let instantiatedType = node.elementType.instantiatedType;
+        if (!instantiatedType.isPrimitive)
             throw new WTypeError(node.origin.originString, "Illegal pointer to non-primitive type: " + node.elementType + " (instantiated to " + node.elementType.instantiatedType + ")");
     }
     
     visitArrayType(node)
     {
+        node.elementType.visit(this);
+        
         if (!node.numElements.isConstexpr)
             throw new WTypeError(node.origin.originString, "Array length must be constexpr");
+        
+        let type = node.numElements.visit(this);
+        
+        if (!type.equalsWithCommit(this._program.intrinsics.uint32))
+            throw new WTypeError(node.origin.originString, "Array length must be a uint32");
     }
     
     visitVariableDecl(node)
@@ -134,6 +261,32 @@ class Checker extends Visitor {
         return lhsType;
     }
     
+    visitIdentityExpression(node)
+    {
+        return node.target.visit(this);
+    }
+    
+    visitReadModifyWriteExpression(node)
+    {
+        if (!node.lValue.isLValue)
+            throw new WTypeError(node.origin.originString, "LHS of read-modify-write is not an LValue: " + node.lValue);
+        let lhsType = node.lValue.visit(this);
+        node.oldValueVar.type = lhsType;
+        node.newValueVar.type = lhsType;
+        node.oldValueVar.visit(this);
+        node.newValueVar.visit(this);
+        let newValueType = node.newValueExp.visit(this);
+        if (!lhsType.equalsWithCommit(newValueType))
+            return new WTypeError(node.origin.originString, "Type mismatch in read-modify-write: " + lhsType + " versus " + newValueType);
+        return node.resultExp.visit(this);
+    }
+    
+    visitAnonymousVariable(node)
+    {
+        if (!node.type)
+            throw new Error("Anonymous variable must know type before first appearance");
+    }
+    
     visitDereferenceExpression(node)
     {
         let type = node.ptr.visit(this).unifyNode;
@@ -141,44 +294,136 @@ class Checker extends Visitor {
             throw new WTypeError(node.origin.originString, "Type passed to dereference is not a pointer: " + type);
         node.type = type.elementType;
         node.addressSpace = type.addressSpace;
+        if (!node.addressSpace)
+            throw new Error("Null address space in type: " + type);
         return node.type;
     }
     
     visitMakePtrExpression(node)
     {
         if (!node.lValue.isLValue)
-            throw new WTypeError(node.origin.originString, "Operand to \\ is not an LValue: " + node.lValue);
+            throw new WTypeError(node.origin.originString, "Operand to & is not an LValue: " + node.lValue);
         
         let elementType = node.lValue.visit(this).unifyNode;
         
         return new PtrType(node.origin, node.lValue.addressSpace, elementType);
     }
     
+    visitMakeArrayRefExpression(node)
+    {
+        let elementType = node.lValue.visit(this).unifyNode;
+        if (elementType instanceof PtrType) {
+            node.become(new ConvertPtrToArrayRefExpression(node.origin, node.lValue));
+            return new ArrayRefType(node.origin, elementType.addressSpace, elementType.elementType);
+        }
+        
+        if (!node.lValue.isLValue)
+            throw new WTypeError(node.origin.originString, "Operand to @ is not an LValue: " + node.lValue);
+        
+        if (elementType instanceof ArrayRefType)
+            throw new WTypeError(node.origin.originStrimg, "Operand to @ is an array reference: " + elementType);
+        
+        if (elementType instanceof ArrayType) {
+            node.numElements = elementType.numElements;
+            elementType = elementType.elementType;
+        } else
+            node.numElements = UintLiteral.withType(node.origin, 1, this._program.intrinsics.uint32);
+            
+        return new ArrayRefType(node.origin, node.lValue.addressSpace, elementType);
+    }
+    
+    visitConvertToArrayRefExpression(node)
+    {
+        throw new Error("Should not exist yet.");
+    }
+    
+    _finishVisitingPropertyAccess(node, baseType, extraArgs, extraArgTypes)
+    {
+        baseType = baseType.visit(new AutoWrapper())
+        node.baseType = baseType;
+        
+        // Such a type must exist. This may throw if it doesn't.
+        let typeForAnd = baseType.argumentTypeForAndOverload(node.origin);
+        if (!typeForAnd)
+            throw new Error("Cannot get typeForAnd");
+        
+        let errorForGet;
+        let errorForAnd;
+        
+        try {
+            let result = CallExpression.resolve(
+                node.origin, node.possibleGetOverloads, this._currentStatement.typeParameters,
+                node.getFuncName, [], [node.base, ...extraArgs], [baseType, ...extraArgTypes], null);
+            node.callForGet = result.call;
+            node.resultTypeForGet = result.resultType;
+        } catch (e) {
+            if (!(e instanceof WTypeError))
+                throw e;
+            errorForGet = e;
+        }
+        
+        try {
+            let baseForAnd = baseType.argumentForAndOverload(node.origin, node.base);
+            
+            let result = CallExpression.resolve(
+                node.origin, node.possibleAndOverloads, this._currentStatement.typeParameters,
+                node.andFuncName, [], [baseForAnd, ...extraArgs], [typeForAnd, ...extraArgTypes],
+                null);
+            node.callForAnd = result.call;
+            node.resultTypeForAnd = result.resultType.unifyNode.returnTypeFromAndOverload(node.origin);
+        } catch (e) {
+            if (!(e instanceof WTypeError))
+                throw e;
+            errorForAnd = e;
+        }
+        
+        if (!node.resultTypeForGet && !node.resultTypeForAnd) {
+            throw new WTypeError(
+                node.origin.originString,
+                "Cannot resolve access; tried by-value:\n" +
+                errorForGet.message + "\n" +
+                "and tried by-pointer:\n" +
+                errorForAnd.message);
+        }
+        
+        if (node.resultTypeForGet && node.resultTypeForAnd
+            && !node.resultTypeForGet.equals(node.resultTypeForAnd))
+            throw new WTypeError(node.origin.originString, "Result type resolved by-value (" + node.resultTypeForGet + ") does not match result type resolved by-pointer (" + node.resultTypeForAnd + ")");
+        
+        try {
+            let result = CallExpression.resolve(
+                node.origin, node.possibleSetOverloads, this._currentStatement.typeParameters,
+                node.setFuncName, [], [node.base, ...extraArgs, null], [baseType, ...extraArgTypes, node.resultType], null);
+            node.callForSet = result.call;
+            if (!result.resultType.equals(baseType))
+                throw new WTypeError(node.origin.originString, "Result type of setter " + result.call.func + " is not the base type " + baseType);
+        } catch (e) {
+            if (!(e instanceof WTypeError))
+                throw e;
+            node.errorForSet = e;
+        }
+        
+        return node.resultType;
+    }
+    
     visitDotExpression(node)
     {
         let structType = node.struct.visit(this).unifyNode;
+        return this._finishVisitingPropertyAccess(node, structType, [], []);
+    }
+    
+    visitIndexExpression(node)
+    {
+        let arrayType = node.array.visit(this).unifyNode;
+        let indexType = node.index.visit(this);
         
-        node.structType = TypeRef.wrap(structType);
-        
-        let underlyingStruct = structType;
-        
-        if (structType instanceof TypeRef)
-            underlyingStruct = underlyingStruct.type;
-        
-        if (!(underlyingStruct instanceof StructType))
-            throw new WTypeError(node.origin.originString, "Operand to dot expression is not a struct type: " + structType);
-        
-        if (structType instanceof TypeRef) 
-            underlyingStruct = underlyingStruct.instantiate(structType.typeArguments, "shallow");
-        
-        let field = underlyingStruct.fieldByName(node.fieldName);
-        if (!field)
-            throw new WTypeError(node.origin.originString, "Field " + node.fieldName + " not found in " + structType);
-        return field.type;
+        return this._finishVisitingPropertyAccess(node, arrayType, [node.index], [indexType]);
     }
     
     visitVariableRef(node)
     {
+        if (!node.variable.type)
+            throw new Error("Variable has no type: " + node.variable);
         return node.variable.type;
     }
     
@@ -197,14 +442,9 @@ class Checker extends Visitor {
             throw new WTypeError(node.origin.originString, "Non-void function must return a value");
     }
     
-    visitIntLiteral(node)
+    visitGenericLiteral(node)
     {
         return node.type;
-    }
-    
-    visitUintLiteral(node)
-    {
-        return this._program.intrinsics.uint32;
     }
     
     visitNullLiteral(node)
@@ -216,24 +456,37 @@ class Checker extends Visitor {
     {
         return this._program.intrinsics.bool;
     }
+    
+    visitEnumLiteral(node)
+    {
+        return node.member.enumType;
+    }
+
+    _requireBool(expression)
+    {
+        let type = expression.visit(this);
+        if (!type)
+            throw new Error("Expression has no type, but should be bool: " + expression);
+        if (!type.equals(this._program.intrinsics.bool))
+            throw new WTypeError("Expression isn't a bool: " + expression);
+    }
 
     visitLogicalNot(node)
     {
-        let resultType = node.operand.visit(this);
-        if (!resultType)
-            throw new Error("Trying to negate something with no type: " + node.operand);
-        if (!resultType.equals(this._program.intrinsics.bool))
-            throw new WError("Trying to negate something that isn't a bool: " + node.operand);
+        this._requireBool(node.operand);
+        return this._program.intrinsics.bool;
+    }
+
+    visitLogicalExpression(node)
+    {
+        this._requireBool(node.left);
+        this._requireBool(node.right);
         return this._program.intrinsics.bool;
     }
 
     visitIfStatement(node)
     {
-        let conditionalResultType = node.conditional.visit(this);
-        if (!conditionalResultType)
-            throw new Error("Trying to negate something with no type: " + node.conditional);
-        if (!conditionalResultType.equals(this._program.intrinsics.bool))
-            throw new WError("Trying to negate something that isn't a bool: " + node.conditional);
+        this._requireBool(node.conditional);
         node.body.visit(this);
         if (node.elseBody)
             node.elseBody.visit(this);
@@ -241,35 +494,22 @@ class Checker extends Visitor {
 
     visitWhileLoop(node)
     {
-        let conditionalResultType = node.conditional.visit(this);
-        if (!conditionalResultType)
-            throw new Error("While loop conditional has no type: " + node.conditional);
-        if (!conditionalResultType.equals(this._program.intrinsics.bool))
-            throw new WError("While loop conditional isn't a bool: " + node.conditional);
+        this._requireBool(node.conditional);
         node.body.visit(this);
     }
 
     visitDoWhileLoop(node)
     {
         node.body.visit(this);
-        let conditionalResultType = node.conditional.visit(this);
-        if (!conditionalResultType)
-            throw new Error("Do-While loop conditional has no type: " + node.conditional);
-        if (!conditionalResultType.equals(this._program.intrinsics.bool))
-            throw new WError("Do-While loop conditional isn't a bool: " + node.conditional);
+        this._requireBool(node.conditional);
     }
 
     visitForLoop(node)
     {
         if (node.initialization)
             node.initialization.visit(this);
-        if (node.condition) {
-            let conditionResultType = node.condition.visit(this);
-            if (!conditionResultType)
-                throw new Error("For loop conditional has no type: " + node.conditional);
-            if (!conditionResultType.equals(this._program.intrinsics.bool))
-                throw new WError("For loop conditional isn't a bool: " + node.conditional);
-        }
+        if (node.condition)
+            this._requireBool(node.condition);
         if (node.increment)
             node.increment.visit(this);
         node.body.visit(this);
@@ -282,70 +522,23 @@ class Checker extends Visitor {
             result = expression.visit(this);
         return result;
     }
-
+    
     visitCallExpression(node)
     {
-        let typeArgumentTypes = node.typeArguments.map(typeArgument => typeArgument.visit(this));
+        let typeArguments = node.typeArguments.map(typeArgument => typeArgument.visit(this));
         let argumentTypes = node.argumentList.map(argument => {
             let newArgument = argument.visit(this);
             if (!newArgument)
                 throw new Error("visitor returned null for " + argument);
-            return TypeRef.wrap(newArgument);
+            return newArgument.visit(new AutoWrapper());
         });
+        
         node.argumentTypes = argumentTypes;
         if (node.returnType)
             node.returnType.visit(this);
-        
-        let overload = null;
-        let failures = [];
-        for (let typeParameter of this._currentStatement.typeParameters) {
-            if (!(typeParameter instanceof TypeVariable))
-                continue;
-            if (!typeParameter.protocol)
-                continue;
-            let signatures =
-                typeParameter.protocol.protocolDecl.signaturesByNameWithTypeVariable(node.name, typeParameter);
-            if (!signatures)
-                continue;
-            overload = resolveOverloadImpl(signatures, node.typeArguments, argumentTypes, node.returnType);
-            if (overload.func)
-                break;
-            failures.push(...overload.failures);
-            overload = null;
-        }
-        if (!overload) {
-            overload = resolveOverloadImpl(
-                node.possibleOverloads, node.typeArguments, argumentTypes, node.returnType);
-            if (!overload.func) {
-                failures.push(...overload.failures);
-                let message = "Did not find function for call with ";
-                if (node.typeArguments.length)
-                    message += "type arguments <" + node.typeArguments + "> and ";
-                message += "argument types (" + argumentTypes + ")";
-                if (node.returnType)
-                    message +=" and return type " + node.returnType;
-                if (failures.length)
-                    message += ", but considered:\n" + failures.join("\n")
-                throw new WTypeError(node.origin.originString, message);
-            }
-        }
-        for (let i = 0; i < typeArgumentTypes.length; ++i) {
-            let typeArgumentType = typeArgumentTypes[i];
-            let typeParameter = overload.func.typeParameters[i];
-            if (!(typeParameter instanceof ConstexprTypeParameter))
-                continue;
-            if (!typeParameter.type.equalsWithCommit(typeArgumentType))
-                throw new Error("At " + node.origin.originString + " constexpr type argument and parameter types not equal: argument = " + typeArgumentType + ", parameter = " + typeParameter.type);
-        }
-        for (let i = 0; i < argumentTypes.length; ++i) {
-            let argumentType = argumentTypes[i];
-            let parameterType = overload.func.parameters[i].type.substituteToUnification(
-                overload.func.typeParameters, overload.unificationContext);
-            let result = argumentType.equalsWithCommit(parameterType);
-            if (!result)
-                throw new Error("At " + node.origin.originString + " argument and parameter types not equal after type argument substitution: argument = " + argumentType + ", parameter = " + parameterType);
-        }
-        return node.resolve(overload);
+
+        let result = node.resolve(node.possibleOverloads, this._currentStatement.typeParameters, typeArguments);
+        return result;
     }
 }
 

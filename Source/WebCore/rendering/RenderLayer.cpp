@@ -61,7 +61,6 @@
 #include "FloatPoint3D.h"
 #include "FloatRect.h"
 #include "FloatRoundedRect.h"
-#include "FlowThreadController.h"
 #include "FocusController.h"
 #include "Frame.h"
 #include "FrameLoader.h"
@@ -98,7 +97,6 @@
 #include "RenderMarquee.h"
 #include "RenderMultiColumnFlowThread.h"
 #include "RenderNamedFlowFragment.h"
-#include "RenderNamedFlowThread.h"
 #include "RenderRegion.h"
 #include "RenderReplica.h"
 #include "RenderSVGResourceClipper.h"
@@ -4265,31 +4263,6 @@ static inline bool compareZIndex(RenderLayer* first, RenderLayer* second)
     return first->zIndex() < second->zIndex();
 }
 
-// Paint the layers associated with the fixed positioned elements in named flows.
-// These layers should not be painted in a similar way as the other elements collected in
-// named flows - regions -> named flows - since we do not want them to be clipped to the
-// regions viewport.
-void RenderLayer::paintFixedLayersInNamedFlows(GraphicsContext& context, const LayerPaintingInfo& paintingInfo, PaintLayerFlags paintFlags)
-{
-    if (!isRenderViewLayer())
-        return;
-
-    // Get the named flows for the view
-    if (!renderer().view().hasRenderNamedFlowThreads())
-        return;
-
-    // Ensure the flow threads hierarchy is up-to-date before using it.
-    renderer().view().flowThreadController().updateNamedFlowsLayerListsIfNeeded();
-
-    // Collect the fixed layers in a list to be painted
-    Vector<RenderLayer*> fixedLayers;
-    renderer().view().flowThreadController().collectFixedPositionedLayers(fixedLayers);
-
-    // Paint the layers
-    for (auto* fixedLayer : fixedLayers)
-        fixedLayer->paintLayer(context, paintingInfo, paintFlags);
-}
-
 void RenderLayer::paintLayerContents(GraphicsContext& context, const LayerPaintingInfo& paintingInfo, PaintLayerFlags paintFlags)
 {
     ASSERT(isSelfPaintingLayer() || hasSelfPaintingLayerDescendant());
@@ -4432,13 +4405,6 @@ void RenderLayer::paintLayerContents(GraphicsContext& context, const LayerPainti
         
             // Now walk the sorted list of children with positive z-indices.
             paintList(posZOrderList(), currentContext, localPaintingInfo, localPaintFlags);
-
-            // Paint the fixed elements from flow threads.
-            paintFixedLayersInNamedFlows(currentContext, localPaintingInfo, localPaintFlags);
-            
-            // If this is a region, paint its contents via the flow thread's layer.
-            if (shouldPaintContent)
-                paintFlowThreadIfRegionForFragments(layerFragments, currentContext, localPaintingInfo, localPaintFlags);
         }
 
         if (isPaintingOverlayScrollbars && hasScrollbars())
@@ -5065,51 +5031,6 @@ static bool isHitCandidate(const RenderLayer* hitLayer, bool canDepthSort, doubl
     return true;
 }
 
-RenderLayer* RenderLayer::hitTestFixedLayersInNamedFlows(RenderLayer* /*rootLayer*/,
-    const HitTestRequest& request, HitTestResult& result,
-    const LayoutRect& hitTestRect, const HitTestLocation& hitTestLocation,
-    const HitTestingTransformState* transformState, 
-    double* zOffsetForDescendants, double* zOffset,
-    const HitTestingTransformState* unflattenedTransformState,
-    bool depthSortDescendants)
-{
-    if (!isRenderViewLayer())
-        return nullptr;
-
-    // Get the named flows for the view
-    if (!renderer().view().hasRenderNamedFlowThreads())
-        return nullptr;
-
-    Vector<RenderLayer*> fixedLayers;
-    renderer().view().flowThreadController().collectFixedPositionedLayers(fixedLayers);
-
-    // Hit test the layers
-    RenderLayer* resultLayer = nullptr;
-    for (int i = fixedLayers.size() - 1; i >= 0; --i) {
-        RenderLayer* fixedLayer = fixedLayers.at(i);
-
-        HitTestResult tempResult(result.hitTestLocation());
-        RenderLayer* hitLayer = fixedLayer->hitTestLayer(fixedLayer->renderer().flowThreadContainingBlock()->layer(), nullptr, request, tempResult,
-            hitTestRect, hitTestLocation, false, transformState, zOffsetForDescendants);
-
-        // If it a list-based test, we can safely append the temporary result since it might had hit
-        // nodes but not necesserily had hitLayer set.
-        ASSERT(!result.isRectBasedTest() || request.resultIsElementList());
-        if (request.resultIsElementList())
-            result.append(tempResult, request);
-
-        if (isHitCandidate(hitLayer, depthSortDescendants, zOffset, unflattenedTransformState)) {
-            resultLayer = hitLayer;
-            if (!request.resultIsElementList())
-                result = tempResult;
-            if (!depthSortDescendants)
-                break;
-        }
-    }
-
-    return resultLayer;
-}
-
 // hitTestLocation and hitTestRect are relative to rootLayer.
 // A 'flattening' layer is one preserves3D() == false.
 // transformState.m_accumulatedTransform holds the transform from the containing flattening layer.
@@ -5214,17 +5135,8 @@ RenderLayer* RenderLayer::hitTestLayer(RenderLayer* rootLayer, RenderLayer* cont
     LayerListMutationDetector mutationChecker(this);
 #endif
 
-    // Check the fixed positioned layers within flow threads that are positioned by the view.
-    RenderLayer* hitLayer = hitTestFixedLayersInNamedFlows(rootLayer, request, result, hitTestRect, hitTestLocation,
-        localTransformState.get(), zOffsetForDescendantsPtr, zOffset, unflattenedTransformState.get(), depthSortDescendants);
-    if (hitLayer) {
-        if (!depthSortDescendants)
-            return hitLayer;
-        candidateLayer = hitLayer;
-    }
-
     // Begin by walking our list of positive layers from highest z-index down to the lowest z-index.
-    hitLayer = hitTestList(posZOrderList(), rootLayer, request, result, hitTestRect, hitTestLocation,
+    auto* hitLayer = hitTestList(posZOrderList(), rootLayer, request, result, hitTestRect, hitTestLocation,
                                         localTransformState.get(), zOffsetForDescendantsPtr, zOffset, unflattenedTransformState.get(), depthSortDescendants);
     if (hitLayer) {
         if (!depthSortDescendants)
@@ -5582,9 +5494,6 @@ void RenderLayer::calculateClipRects(const ClipRectsContext& clipRectsContext, C
     ClipRectsType clipRectsType = clipRectsContext.clipRectsType;
     bool useCached = clipRectsType != TemporaryClipRects;
 
-    if (renderer().isRenderNamedFlowThread() && mapLayerClipRectsToFragmentationLayer(clipRects))
-        return;
-
     // For transformed layers, the root layer was shifted to be us, so there is no need to
     // examine the parent. We want to cache clip rects with us as the root.
     RenderLayer* parentLayer = clipRectsContext.rootLayer != this ? parent() : nullptr;
@@ -5646,11 +5555,6 @@ void RenderLayer::calculateClipRects(const ClipRectsContext& clipRectsContext, C
 Ref<ClipRects> RenderLayer::parentClipRects(const ClipRectsContext& clipRectsContext) const
 {
     ASSERT(parent());
-    if (renderer().isRenderNamedFlowThread()) {
-        auto parentClipRects = ClipRects::create();
-        if (mapLayerClipRectsToFragmentationLayer(parentClipRects))
-            return parentClipRects;
-    }
 
     if (clipRectsContext.clipRectsType == TemporaryClipRects) {
         auto parentClipRects = ClipRects::create();
@@ -5777,17 +5681,6 @@ void RenderLayer::calculateRects(const ClipRectsContext& clipRectsContext, const
             bounds.move(offsetFromRootLocal);
             if (this != clipRectsContext.rootLayer || clipRectsContext.respectOverflowClip == RespectOverflowClip)
                 backgroundRect.intersect(bounds);
-            // Boxes inside flow threads don't have their logical left computed to avoid
-            // floats. Instead, that information is kept in their RenderBoxRegionInfo structure.
-            // As such, the layer bounds must be enlarged to encompass their background rect
-            // to ensure intersecting them won't result in an empty rect, which would eventually
-            // cause paint rejection.
-            if (flowThread && flowThread->isRenderNamedFlowThread()) {
-                if (flowThread->style().isHorizontalWritingMode())
-                    layerBounds.shiftMaxXEdgeTo(std::max(layerBounds.maxX(), backgroundRect.rect().maxX()));
-                else
-                    layerBounds.shiftMaxYEdgeTo(std::max(layerBounds.maxY(), backgroundRect.rect().maxY()));
-            }
         }
     }
 }
@@ -7115,57 +7008,13 @@ void RenderLayer::paintNamedFlowThreadInsideRegion(GraphicsContext& context, Ren
     LayoutSize moveOffset = region->flowThreadPortionLocation() - (paintOffset + regionContentBox.location()) + toLayoutSize(region->fragmentContainer().scrollPosition());
     FloatPoint adjustedPaintOffset = roundPointToDevicePixels(toLayoutPoint(moveOffset), renderer().document().deviceScaleFactor());
     context.save();
-    context.translate(-adjustedPaintOffset.x(), -adjustedPaintOffset.y());
+    context.translate(-adjustedPaintOffset);
 
     LayoutSize subpixelOffset = moveOffset - toLayoutSize(LayoutPoint(adjustedPaintOffset));
     paintDirtyRect.move(moveOffset);
     paint(context, paintDirtyRect, LayoutSize(-subpixelOffset.width(), -subpixelOffset.height()), paintBehavior, nullptr, paintFlags | PaintLayerTemporaryClipRects);
     region->restoreRegionObjectsOriginalStyle();
     context.restore();
-}
-
-void RenderLayer::paintFlowThreadIfRegionForFragments(const LayerFragments& fragments, GraphicsContext& context, const LayerPaintingInfo& paintingInfo, PaintLayerFlags paintFlags)
-{
-    if (!renderer().isRenderNamedFlowFragmentContainer())
-        return;
-    
-    RenderBlockFlow& renderNamedFlowFragmentContainer = downcast<RenderBlockFlow>(renderer());
-    RenderNamedFlowFragment* flowFragment = renderNamedFlowFragmentContainer.renderNamedFlowFragment();
-    if (!flowFragment->isValid())
-        return;
-
-    RenderNamedFlowThread* flowThread = flowFragment->namedFlowThread();
-    RenderLayer* flowThreadLayer = flowThread->layer();
-
-    LayoutRect regionClipRect = LayoutRect::infiniteRect();
-    if (flowFragment->shouldClipFlowThreadContent()) {
-        regionClipRect = renderNamedFlowFragmentContainer.paddingBoxRect();
-
-        // When the layer of the flow fragment's container is composited, the flow fragment container receives a
-        // GraphicsLayer of its own so the clipping coordinates (caused by overflow:hidden) must be relative to the
-        // GraphicsLayer coordinates in which the fragment gets painted. So what is computed so far is enough.
-        // If the layer of the flowFragment is not composited, then we change the coordinates to be relative to the flow
-        // thread's layer.
-        if (!isComposited())
-            regionClipRect.move(offsetFromAncestor(paintingInfo.rootLayer));
-    }
-    
-    for (const auto& fragment : fragments) {
-        ClipRect clipRect = fragment.foregroundRect;
-        if (flowFragment->shouldClipFlowThreadContent())
-            clipRect.intersect(regionClipRect);
-
-        bool shouldClip = !clipRect.isInfinite();
-        // Optimize clipping for the single fragment case.
-        if (shouldClip)
-            clipToRect(context, paintingInfo, clipRect);
-
-        flowThreadLayer->paintNamedFlowThreadInsideRegion(context, flowFragment, paintingInfo.paintDirtyRect, fragment.layerBounds.location() + paintingInfo.subpixelOffset,
-            paintingInfo.paintBehavior, paintFlags);
-
-        if (shouldClip)
-            restoreClip(context, paintingInfo, clipRect);
-    }
 }
 
 RenderLayer* RenderLayer::hitTestFlowThreadIfRegionForFragments(const LayerFragments& fragments, RenderLayer*, const HitTestRequest& request, HitTestResult& result, const LayoutRect& hitTestRect,

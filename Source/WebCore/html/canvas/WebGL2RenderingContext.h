@@ -76,27 +76,29 @@ public:
     void compressedTexSubImage3D(GC3Denum target, GC3Dint level, GC3Dint xoffset, GC3Dint yoffset, GC3Dint zoffset, GC3Dsizei width, GC3Dsizei height, GC3Dsizei depth, GC3Denum format, GC3Dsizei imageSize, RefPtr<ArrayBufferView>&& data);
     
     // Programs and shaders
-    GC3Dint getFragDataLocation(WebGLProgram*, const String& name);
-    
+    GC3Dint getFragDataLocation(WebGLProgram&, const String& name);
+
     // Uniforms and attributes
+    using Uint32List = TypedList<Uint32Array, uint32_t>;
+    using Float32List = TypedList<Float32Array, float>;
     void uniform1ui(WebGLUniformLocation*, GC3Duint v0);
     void uniform2ui(WebGLUniformLocation*, GC3Duint v0, GC3Duint v1);
     void uniform3ui(WebGLUniformLocation*, GC3Duint v0, GC3Duint v1, GC3Duint v2);
     void uniform4ui(WebGLUniformLocation*, GC3Duint v0, GC3Duint v1, GC3Duint v2, GC3Duint v3);
-    void uniform1uiv(WebGLUniformLocation*, RefPtr<Uint32Array>&& value);
-    void uniform2uiv(WebGLUniformLocation*, RefPtr<Uint32Array>&& value);
-    void uniform3uiv(WebGLUniformLocation*, RefPtr<Uint32Array>&& value);
-    void uniform4uiv(WebGLUniformLocation*, RefPtr<Uint32Array>&& value);
-    void uniformMatrix2x3fv(WebGLUniformLocation*, GC3Dboolean transpose, RefPtr<Float32Array>&& value);
-    void uniformMatrix3x2fv(WebGLUniformLocation*, GC3Dboolean transpose, RefPtr<Float32Array>&& value);
-    void uniformMatrix2x4fv(WebGLUniformLocation*, GC3Dboolean transpose, RefPtr<Float32Array>&& value);
-    void uniformMatrix4x2fv(WebGLUniformLocation*, GC3Dboolean transpose, RefPtr<Float32Array>&& value);
-    void uniformMatrix3x4fv(WebGLUniformLocation*, GC3Dboolean transpose, RefPtr<Float32Array>&& value);
-    void uniformMatrix4x3fv(WebGLUniformLocation*, GC3Dboolean transpose, RefPtr<Float32Array>&& value);
+    void uniform1uiv(WebGLUniformLocation*, Uint32List&& data, GC3Duint srcOffset, GC3Duint srcLength);
+    void uniform2uiv(WebGLUniformLocation*, Uint32List&& data, GC3Duint srcOffset, GC3Duint srcLength);
+    void uniform3uiv(WebGLUniformLocation*, Uint32List&& data, GC3Duint srcOffset, GC3Duint srcLength);
+    void uniform4uiv(WebGLUniformLocation*, Uint32List&& data, GC3Duint srcOffset, GC3Duint srcLength);
+    void uniformMatrix2x3fv(WebGLUniformLocation*, GC3Dboolean transpose, Float32List&& value, GC3Duint srcOffset, GC3Duint srcLength);
+    void uniformMatrix3x2fv(WebGLUniformLocation*, GC3Dboolean transpose, Float32List&& value, GC3Duint srcOffset, GC3Duint srcLength);
+    void uniformMatrix2x4fv(WebGLUniformLocation*, GC3Dboolean transpose, Float32List&& value, GC3Duint srcOffset, GC3Duint srcLength);
+    void uniformMatrix4x2fv(WebGLUniformLocation*, GC3Dboolean transpose, Float32List&& value, GC3Duint srcOffset, GC3Duint srcLength);
+    void uniformMatrix3x4fv(WebGLUniformLocation*, GC3Dboolean transpose, Float32List&& value, GC3Duint srcOffset, GC3Duint srcLength);
+    void uniformMatrix4x3fv(WebGLUniformLocation*, GC3Dboolean transpose, Float32List&& value, GC3Duint srcOffset, GC3Duint srcLength);
     void vertexAttribI4i(GC3Duint index, GC3Dint x, GC3Dint y, GC3Dint z, GC3Dint w);
-    void vertexAttribI4iv(GC3Duint index, RefPtr<Int32Array>&& v);
+    void vertexAttribI4iv(GC3Duint index, Int32List&& v);
     void vertexAttribI4ui(GC3Duint index, GC3Duint x, GC3Duint y, GC3Duint z, GC3Duint w);
-    void vertexAttribI4uiv(GC3Duint index, RefPtr<Uint32Array>&& v);
+    void vertexAttribI4uiv(GC3Duint index, Uint32List&& v);
     void vertexAttribIPointer(GC3Duint index, GC3Dint size, GC3Denum type, GC3Dsizei stride, GC3Dint64 offset);
     
     // Writing to the drawing buffer
@@ -108,9 +110,9 @@ public:
     
     // Multiple render targets
     void drawBuffers(const Vector<GC3Denum>& buffers);
-    void clearBufferiv(GC3Denum buffer, GC3Dint drawbuffer, RefPtr<Int32Array>&& value);
-    void clearBufferuiv(GC3Denum buffer, GC3Dint drawbuffer, RefPtr<Uint32Array>&& value);
-    void clearBufferfv(GC3Denum buffer, GC3Dint drawbuffer, RefPtr<Float32Array>&& value);
+    void clearBufferiv(GC3Denum buffer, GC3Dint drawbuffer, Int32List&& values, GC3Duint srcOffset);
+    void clearBufferuiv(GC3Denum buffer, GC3Dint drawbuffer, Uint32List&& values, GC3Duint srcOffset);
+    void clearBufferfv(GC3Denum buffer, GC3Dint drawbuffer, Float32List&& values, GC3Duint srcOffset);
     void clearBufferfi(GC3Denum buffer, GC3Dint drawbuffer, GC3Dfloat depth, GC3Dint stencil);
     
     // Query objects
@@ -155,7 +157,7 @@ public:
     void bindBufferBase(GC3Denum target, GC3Duint index, WebGLBuffer*);
     void bindBufferRange(GC3Denum target, GC3Duint index, WebGLBuffer*, GC3Dint64 offset, GC3Dint64 size);
     WebGLAny getIndexedParameter(GC3Denum target, GC3Duint index);
-    Uint32Array* getUniformIndices(WebGLProgram&, const Vector<String>& uniformNames);
+    std::optional<Vector<GC3Duint>> getUniformIndices(WebGLProgram&, const Vector<String>& uniformNames);
     WebGLAny getActiveUniforms(WebGLProgram&, const Vector<GC3Duint>& uniformIndices, GC3Denum pname);
     GC3Duint getUniformBlockIndex(WebGLProgram&, const String& uniformBlockName);
     WebGLAny getActiveUniformBlockParameter(WebGLProgram&, GC3Duint uniformBlockIndex, GC3Denum pname);

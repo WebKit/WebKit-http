@@ -27,7 +27,6 @@
 #import "WebContentReader.h"
 
 #import "ArchiveResource.h"
-#import "DOMURL.h"
 #import "Document.h"
 #import "DocumentFragment.h"
 #import "DocumentLoader.h"
@@ -42,58 +41,11 @@
 #import "MIMETypeRegistry.h"
 #import "Text.h"
 #import "UTIUtilities.h"
-#import "WebNSAttributedStringExtras.h"
 #import "markup.h"
 #import <MobileCoreServices/MobileCoreServices.h>
-#import <pal/spi/cocoa/NSAttributedStringSPI.h>
 #import <wtf/unicode/CharacterNames.h>
 
 namespace WebCore {
-
-void WebContentReader::addFragment(RefPtr<DocumentFragment>&& newFragment)
-{
-    if (!newFragment)
-        return;
-
-    if (!fragment) {
-        fragment = WTFMove(newFragment);
-        return;
-    }
-
-    while (auto* firstChild = newFragment->firstChild()) {
-        if (fragment->appendChild(*firstChild).hasException())
-            break;
-    }
-}
-
-bool WebContentReader::readWebArchive(SharedBuffer* buffer)
-{
-    if (!frame.document())
-        return false;
-
-    if (!buffer)
-        return false;
-
-    auto archive = LegacyWebArchive::create(URL(), *buffer);
-    if (!archive)
-        return false;
-
-    auto* mainResource = archive->mainResource();
-    if (!mainResource)
-        return false;
-
-    auto& type = mainResource->mimeType();
-    if (!frame.loader().client().canShowMIMETypeAsHTML(type))
-        return false;
-
-    // FIXME: The code in createFragmentAndAddResources calls setDefersLoading(true). Don't we need that here?
-    if (auto* loader = frame.loader().documentLoader())
-        loader->addAllArchiveResources(*archive);
-
-    auto markupString = String::fromUTF8(mainResource->data().data(), mainResource->data().size());
-    addFragment(createFragmentFromMarkup(*frame.document(), markupString, mainResource->url(), DisallowScriptingAndPluginContent));
-    return true;
-}
 
 bool WebContentReader::readFilenames(const Vector<String>&)
 {
@@ -107,32 +59,6 @@ bool WebContentReader::readHTML(const String& string)
 
     addFragment(createFragmentFromMarkup(*frame.document(), string, emptyString(), DisallowScriptingAndPluginContent));
     return true;
-}
-
-bool WebContentReader::readRTFD(SharedBuffer& buffer)
-{
-    addFragment(createFragmentAndAddResources(frame, adoptNS([[NSAttributedString alloc] initWithRTFD:buffer.createNSData().get() documentAttributes:nullptr]).get()));
-    return fragment;
-}
-
-bool WebContentReader::readRTF(SharedBuffer& buffer)
-{
-    addFragment(createFragmentAndAddResources(frame, adoptNS([[NSAttributedString alloc] initWithRTF:buffer.createNSData().get() documentAttributes:nullptr]).get()));
-    return fragment;
-}
-
-bool WebContentReader::readImage(Ref<SharedBuffer>&& buffer, const String& type)
-{
-    RetainPtr<CFStringRef> stringType = type.createCFString();
-    RetainPtr<NSString> filenameExtension = adoptNS((NSString *)UTTypeCopyPreferredTagWithClass(stringType.get(), kUTTagClassFilenameExtension));
-    NSString *relativeURLPart = [@"image" stringByAppendingString:filenameExtension.get()];
-    String mimeType = MIMETypeFromUTI(type);
-
-    // FIXME: Use a blob URL instead.
-    auto archive = ArchiveResource::create(WTFMove(buffer), URL::fakeURLWithRelativePart(relativeURLPart), mimeType, emptyString(), emptyString());
-    ASSERT(archive);
-    addFragment(createFragmentForImageResourceAndAddResource(frame, *archive));
-    return fragment;
 }
 
 bool WebContentReader::readURL(const URL& url, const String& title)
@@ -160,19 +86,6 @@ bool WebContentReader::readURL(const URL& url, const String& title)
         newFragment->appendChild(Text::create(*frame.document(), { &space, 1 }));
     newFragment->appendChild(anchor);
     addFragment(WTFMove(newFragment));
-    return true;
-}
-
-bool WebContentReader::readPlainText(const String& text)
-{
-    if (!allowPlainText)
-        return false;
-
-    addFragment(createFragmentFromText(context, [text precomposedStringWithCanonicalMapping]));
-    if (!fragment)
-        return false;
-
-    madeFragmentFromPlainText = true;
     return true;
 }
 

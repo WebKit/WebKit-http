@@ -1,3 +1,591 @@
+2017-09-20  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Cannot find script to generate unified sources.
+        https://bugs.webkit.org/show_bug.cgi?id=177014
+
+        Reviewed by Keith Miller.
+
+        The ruby script can now be found in WTF/Scripts in the forwarding headers folder.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.vcxproj/JavaScriptCore.proj:
+
+2017-09-20  Alberto Garcia  <berto@igalia.com>
+
+        Fix HPPA and Alpha builds
+        https://bugs.webkit.org/show_bug.cgi?id=177224
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt:
+
+2017-09-18  Filip Pizlo  <fpizlo@apple.com>
+
+        ErrorInstance and Exception need destroy methods
+        https://bugs.webkit.org/show_bug.cgi?id=177095
+
+        Reviewed by Saam Barati.
+        
+        When I made ErrorInstance and Exception into JSDestructibleObjects, I forgot to make them
+        follow that type's protocol.
+
+        * runtime/ErrorInstance.cpp:
+        (JSC::ErrorInstance::destroy): Implement this to fix leaks.
+        * runtime/ErrorInstance.h:
+        * runtime/Exception.h: Change how this is declared now that this is a DestructibleObject.
+
+2017-09-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Consider dropping JSObjectSetPrototype feature for JSGlobalObject
+        https://bugs.webkit.org/show_bug.cgi?id=177070
+
+        Reviewed by Saam Barati.
+
+        Due to the security reason, our global object is immutable prototype exotic object.
+        It prevents users from injecting proxies into the prototype chain of the global object[1].
+        But our JSC API does not respect this attribute, and allows users to change [[Prototype]]
+        of the global object after instantiating it.
+
+        This patch removes this feature. Once global object is instantiated, we cannot change [[Prototype]]
+        of the global object. It drops JSGlobalObject::resetPrototype use, which involves GlobalThis
+        edge cases.
+
+        [1]: https://github.com/tc39/ecma262/commit/935dad4283d045bc09c67a259279772d01b3d33d
+
+        * API/JSObjectRef.cpp:
+        (JSObjectSetPrototype):
+        * API/tests/CustomGlobalObjectClassTest.c:
+        (globalObjectSetPrototypeTest):
+
+2017-09-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Remove ToThis more aggressively
+        https://bugs.webkit.org/show_bug.cgi?id=177056
+
+        Reviewed by Saam Barati.
+
+        The variation of toThis() implementation is limited. So, we attempts to implement common toThis operation in AI.
+        We move scope related toThis to JSScope::toThis. And AI investigates proven value/structure's toThis methods
+        and attempts to fold/convert to efficient nodes.
+
+        We introduces GetGlobalThis, which just loads globalThis from semantic origin's globalObject. Using this,
+        we can implement JSScope::toThis in DFG. This can avoid costly toThis indirect function pointer call.
+
+        Currently, we just emit GetGlobalThis if necessary. We can further convert it to constant if we can put
+        watchpoint to JSGlobalObject's globalThis change. But we leave it for a future patch for now.
+
+        This removes GetGlobalThis from ES6 generators in common cases.
+
+        spread-generator.es6      303.1550+-9.5037          290.9337+-8.3487          might be 1.0420x faster
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::isToThisAnIdentity):
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::convertToGetGlobalThis):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileGetGlobalThis):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetGlobalThis):
+        * runtime/JSGlobalLexicalEnvironment.cpp:
+        (JSC::JSGlobalLexicalEnvironment::toThis): Deleted.
+        * runtime/JSGlobalLexicalEnvironment.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::toThis): Deleted.
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::addressOfGlobalThis):
+        * runtime/JSLexicalEnvironment.cpp:
+        (JSC::JSLexicalEnvironment::toThis): Deleted.
+        * runtime/JSLexicalEnvironment.h:
+        * runtime/JSScope.cpp:
+        (JSC::JSScope::toThis):
+        * runtime/JSScope.h:
+        * runtime/StrictEvalActivation.cpp:
+        (JSC::StrictEvalActivation::toThis): Deleted.
+        * runtime/StrictEvalActivation.h:
+
+2017-09-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Merge JSLexicalEnvironment and JSEnvironmentRecord
+        https://bugs.webkit.org/show_bug.cgi?id=175492
+
+        Reviewed by Saam Barati.
+
+        JSEnvironmentRecord is only inherited by JSLexicalEnvironment.
+        We can merge JSEnvironmentRecord and JSLexicalEnvironment.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileGetByValOnScopedArguments):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetByVal):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCreateActivation):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetClosureVar):
+        (JSC::FTL::DFG::LowerDFGToB3::compilePutClosureVar):
+        (JSC::FTL::DFG::LowerDFGToB3::compileMaterializeCreateActivation):
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emitGetClosureVar):
+        (JSC::JIT::emitPutClosureVar):
+        (JSC::JIT::emitScopedArgumentsGetByVal):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emitGetClosureVar):
+        (JSC::JIT::emitPutClosureVar):
+        * llint/LLIntOffsetsExtractor.cpp:
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/JSEnvironmentRecord.cpp: Removed.
+        * runtime/JSEnvironmentRecord.h: Removed.
+        * runtime/JSLexicalEnvironment.cpp:
+        (JSC::JSLexicalEnvironment::visitChildren):
+        (JSC::JSLexicalEnvironment::heapSnapshot):
+        (JSC::JSLexicalEnvironment::getOwnNonIndexPropertyNames):
+        * runtime/JSLexicalEnvironment.h:
+        (JSC::JSLexicalEnvironment::subspaceFor):
+        (JSC::JSLexicalEnvironment::variables):
+        (JSC::JSLexicalEnvironment::isValidScopeOffset):
+        (JSC::JSLexicalEnvironment::variableAt):
+        (JSC::JSLexicalEnvironment::offsetOfVariables):
+        (JSC::JSLexicalEnvironment::offsetOfVariable):
+        (JSC::JSLexicalEnvironment::allocationSizeForScopeSize):
+        (JSC::JSLexicalEnvironment::allocationSize):
+        (JSC::JSLexicalEnvironment::finishCreationUninitialized):
+        (JSC::JSLexicalEnvironment::finishCreation):
+        * runtime/JSModuleEnvironment.cpp:
+        (JSC::JSModuleEnvironment::create):
+        * runtime/JSObject.h:
+        (JSC::JSObject::isEnvironment const):
+        (JSC::JSObject::isEnvironmentRecord const): Deleted.
+        * runtime/JSSegmentedVariableObject.h:
+        * runtime/StringPrototype.cpp:
+        (JSC::checkObjectCoercible):
+
+2017-09-15  Saam Barati  <sbarati@apple.com>
+
+        Arity fixup during inlining should do a 2 phase commit so it properly recovers the frame in case of exit
+        https://bugs.webkit.org/show_bug.cgi?id=176981
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch makes inline arity fixup happen in two phases:
+        1. We get all the values we need and MovHint them to the expected locals.
+        2. We SetLocal them inside the callee's CodeOrigin. This way, if we exit, the callee's
+           frame is already set up. If any SetLocal exits, we have a valid exit state.
+           This is required because if we didn't do this in two phases, we may exit in
+           the middle of arity fixup from the caller's CodeOrigin. This is unsound because if
+           we did the SetLocals in the caller's frame, the memcpy may clobber needed parts
+           of the frame right before exiting. For example, consider if we need to pad two args:
+           [arg3][arg2][arg1][arg0]
+           [fix ][fix ][arg3][arg2][arg1][arg0]
+           We memcpy starting from arg0 in the direction of arg3. If we were to exit at a type check
+           for arg3's SetLocal in the caller's CodeOrigin, we'd exit with a frame like so:
+           [arg3][arg2][arg1][arg2][arg1][arg0]
+           And the caller would then just end up thinking its argument are:
+           [arg3][arg2][arg1][arg2]
+           which is incorrect.
+       
+       
+        This patch also fixes a couple of bugs in IdentitiyWithProfile:
+        1. The bytecode generator for this bytecode intrinsic was written incorrectly.
+           It needed to store the result of evaluating its argument in a temporary that
+           it creates. Otherwise, it might try to simply overwrite a constant
+           or a register that it didn't own.
+        2. We weren't eliminating this node in CSE inside the DFG.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::BytecodeIntrinsicNode::emit_intrinsic_idWithProfile):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::inlineCall):
+        * dfg/DFGCSEPhase.cpp:
+
+2017-09-15  JF Bastien  <jfbastien@apple.com>
+
+        WTF: use Forward.h when appropriate instead of Vector.h
+        https://bugs.webkit.org/show_bug.cgi?id=176984
+
+        Reviewed by Saam Barati.
+
+        There's no need to include Vector.h when Forward.h will suffice. All we need is to move the template default parameters from Vector, and then the forward declaration can be used in so many new places: if a header only takes Vector by reference, rvalue reference, pointer, returns any of these, or has them as members then the header doesn't need to see the definition because the declaration will suffice.
+
+        * bytecode/HandlerInfo.h:
+        * heap/GCIncomingRefCounted.h:
+        * heap/GCSegmentedArray.h:
+        * wasm/js/JSWebAssemblyModule.h:
+
+2017-09-14  Saam Barati  <sbarati@apple.com>
+
+        We should have a way of preventing a caller from making a tail call and we should use it for ProxyObject instead of using build flags
+        https://bugs.webkit.org/show_bug.cgi?id=176863
+
+        Reviewed by Keith Miller.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * runtime/ProxyObject.cpp:
+        (JSC::performProxyGet):
+        (JSC::ProxyObject::performInternalMethodGetOwnProperty):
+        (JSC::ProxyObject::performHasProperty):
+        (JSC::ProxyObject::getOwnPropertySlotCommon):
+        (JSC::ProxyObject::performPut):
+        (JSC::performProxyCall):
+        (JSC::performProxyConstruct):
+        (JSC::ProxyObject::performDelete):
+        (JSC::ProxyObject::performPreventExtensions):
+        (JSC::ProxyObject::performIsExtensible):
+        (JSC::ProxyObject::performDefineOwnProperty):
+        (JSC::ProxyObject::performGetOwnPropertyNames):
+        (JSC::ProxyObject::performSetPrototype):
+        (JSC::ProxyObject::performGetPrototype):
+
+2017-09-14  Saam Barati  <sbarati@apple.com>
+
+        Make dumping the graph print when both when exitOK and !exitOK
+        https://bugs.webkit.org/show_bug.cgi?id=176954
+
+        Reviewed by Keith Miller.
+
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dump):
+
+2017-09-14  Saam Barati  <sbarati@apple.com>
+
+        It should be valid to exit before each set when doing arity fixup when inlining
+        https://bugs.webkit.org/show_bug.cgi?id=176948
+
+        Reviewed by Keith Miller.
+
+        This patch makes it so that we can exit before each SetLocal when doing arity
+        fixup during inlining. This is OK because if we exit at any of these SetLocals,
+        we will simply exit to the beginning of the call instruction.
+        
+        Not doing this led to a bug where FixupPhase would insert a ValueRep of
+        a node before the actual node. This is obviously invalid IR. I've added
+        a new validation rule to catch this malformed IR.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::inliningCost):
+        (JSC::DFG::ByteCodeParser::inlineCall):
+        * dfg/DFGValidate.cpp:
+        * runtime/Options.h:
+
+2017-09-14  Mark Lam  <mark.lam@apple.com>
+
+        AddressSanitizer: stack-buffer-underflow in JSC::Probe::Page::Page
+        https://bugs.webkit.org/show_bug.cgi?id=176874
+        <rdar://problem/34436415>
+
+        Reviewed by Saam Barati.
+
+        1. Make Probe::Stack play nice with ASan by:
+
+           a. using a local memcpy implementation that suppresses ASan on ASan builds.
+              We don't want to use std:memcpy() which validates stack memory because
+              we are intentionally copying stack memory beyond the current frame.
+
+           b. changing Stack::s_chunkSize to equal sizeof(uintptr_t) on ASan builds.
+              This ensures that Page::flushWrites() only writes stack memory that was
+              modified by a probe.  The probes should only modify stack memory that
+              belongs to JSC stack data structures.  We don't want to inadvertently
+              modify adjacent words that may belong to ASan (which may happen if
+              s_chunkSize is larger than sizeof(uintptr_t)).
+
+           c. fixing a bug in Page dirtyBits management for when the size of the value to
+              write is greater than s_chunkSize.  The fix in generic, but in practice,
+              this currently only manifests on 32-bit ASan builds because
+              sizeof(uintptr_t) and s_chunkSize are 32-bit, and we may write 64-bit
+              values.
+
+           d. making Page::m_dirtyBits 64 bits always.  This maximizes the number of
+              s_chunksPerPage we can have even on ASan builds.
+
+        2. Fixed the bottom most Probe::Context and Probe::Stack get/set methods to use
+           std::memcpy to avoid strict aliasing issues.
+
+        3. Optimized the implementation of Page::physicalAddressFor().
+
+        4. Optimized the implementation of Stack::set() in the recording of the low
+           watermark.  We just record the lowest raw pointer now, and only compute the
+           alignment to its chuck boundary later when the low watermark is requested.
+
+        5. Changed a value in testmasm to make the test less vulnerable to rounding issues.
+
+        No new test needed because this is already covered by testmasm with ASan enabled.
+
+        * assembler/ProbeContext.h:
+        (JSC::Probe::CPUState::gpr const):
+        (JSC::Probe::CPUState::spr const):
+        (JSC::Probe::Context::gpr):
+        (JSC::Probe::Context::spr):
+        (JSC::Probe::Context::fpr):
+        (JSC::Probe::Context::gprName):
+        (JSC::Probe::Context::sprName):
+        (JSC::Probe::Context::fprName):
+        (JSC::Probe::Context::gpr const):
+        (JSC::Probe::Context::spr const):
+        (JSC::Probe::Context::fpr const):
+        (JSC::Probe::Context::pc):
+        (JSC::Probe::Context::fp):
+        (JSC::Probe::Context::sp):
+        (JSC::Probe:: const): Deleted.
+        * assembler/ProbeStack.cpp:
+        (JSC::Probe::copyStackPage):
+        (JSC::Probe::Page::Page):
+        (JSC::Probe::Page::flushWrites):
+        * assembler/ProbeStack.h:
+        (JSC::Probe::Page::get):
+        (JSC::Probe::Page::set):
+        (JSC::Probe::Page::dirtyBitFor):
+        (JSC::Probe::Page::physicalAddressFor):
+        (JSC::Probe::Stack::lowWatermark):
+        (JSC::Probe::Stack::get):
+        (JSC::Probe::Stack::set):
+        * assembler/testmasm.cpp:
+        (JSC::testProbeModifiesStackValues):
+
+2017-09-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Disable Arity Fixup Inlining until crash in facebook.com is fixed
+        https://bugs.webkit.org/show_bug.cgi?id=176917
+
+        Reviewed by Saam Barati.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::inliningCost):
+        * runtime/Options.h:
+
+2017-09-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Add PrivateSymbolMode::{Include,Exclude} for PropertyNameArray
+        https://bugs.webkit.org/show_bug.cgi?id=176867
+
+        Reviewed by Sam Weinig.
+
+        We rarely require private symbols when enumerating property names.
+        This patch adds PrivateSymbolMode::{Include,Exclude}. If PrivateSymbolMode::Exclude
+        is specified, PropertyNameArray does not include private symbols.
+        This removes many ad-hoc `Identifier::isPrivateName()` in enumeration operations.
+
+        One additional good thing is that we do not need to filter private symbols out from PropertyNameArray.
+        It allows us to use Object.keys()'s fast path for Object.getOwnPropertySymbols.
+
+        object-get-own-property-symbols                48.6275+-1.0021     ^     38.1846+-1.7934        ^ definitely 1.2735x faster
+
+        * API/JSObjectRef.cpp:
+        (JSObjectCopyPropertyNames):
+        * bindings/ScriptValue.cpp:
+        (Inspector::jsToInspectorValue):
+        * bytecode/ObjectAllocationProfile.h:
+        (JSC::ObjectAllocationProfile::possibleDefaultPropertyCount):
+        * runtime/EnumerationMode.h:
+        * runtime/IntlObject.cpp:
+        (JSC::supportedLocales):
+        * runtime/JSONObject.cpp:
+        (JSC::Stringifier::Stringifier):
+        (JSC::Stringifier::Holder::appendNextProperty):
+        (JSC::Walker::walk):
+        * runtime/JSPropertyNameEnumerator.cpp:
+        (JSC::JSPropertyNameEnumerator::create):
+        * runtime/JSPropertyNameEnumerator.h:
+        (JSC::propertyNameEnumerator):
+        * runtime/ObjectConstructor.cpp:
+        (JSC::objectConstructorGetOwnPropertyDescriptors):
+        (JSC::objectConstructorAssign):
+        (JSC::objectConstructorValues):
+        (JSC::defineProperties):
+        (JSC::setIntegrityLevel):
+        (JSC::testIntegrityLevel):
+        (JSC::ownPropertyKeys):
+        * runtime/PropertyNameArray.h:
+        (JSC::PropertyNameArray::PropertyNameArray):
+        (JSC::PropertyNameArray::propertyNameMode const):
+        (JSC::PropertyNameArray::privateSymbolMode const):
+        (JSC::PropertyNameArray::addUncheckedInternal):
+        (JSC::PropertyNameArray::addUnchecked):
+        (JSC::PropertyNameArray::add):
+        (JSC::PropertyNameArray::isUidMatchedToTypeMode):
+        (JSC::PropertyNameArray::includeSymbolProperties const):
+        (JSC::PropertyNameArray::includeStringProperties const):
+        (JSC::PropertyNameArray::mode const): Deleted.
+        * runtime/ProxyObject.cpp:
+        (JSC::ProxyObject::performGetOwnPropertyNames):
+
+2017-09-13  Mark Lam  <mark.lam@apple.com>
+
+        Rolling out r221832: Regresses Speedometer by ~4% and Dromaeo CSS YUI by ~20%.
+        https://bugs.webkit.org/show_bug.cgi?id=176888
+        <rdar://problem/34381832>
+
+        Not reviewed.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * assembler/MacroAssembler.cpp:
+        (JSC::stdFunctionCallback):
+        * assembler/MacroAssemblerPrinter.cpp:
+        (JSC::Printer::printCallback):
+        * assembler/ProbeContext.h:
+        (JSC::Probe:: const):
+        (JSC::Probe::Context::Context):
+        (JSC::Probe::Context::gpr):
+        (JSC::Probe::Context::spr):
+        (JSC::Probe::Context::fpr):
+        (JSC::Probe::Context::gprName):
+        (JSC::Probe::Context::sprName):
+        (JSC::Probe::Context::fprName):
+        (JSC::Probe::Context::pc):
+        (JSC::Probe::Context::fp):
+        (JSC::Probe::Context::sp):
+        (JSC::Probe::CPUState::gpr const): Deleted.
+        (JSC::Probe::CPUState::spr const): Deleted.
+        (JSC::Probe::Context::arg): Deleted.
+        (JSC::Probe::Context::gpr const): Deleted.
+        (JSC::Probe::Context::spr const): Deleted.
+        (JSC::Probe::Context::fpr const): Deleted.
+        * assembler/ProbeFrame.h: Removed.
+        * assembler/ProbeStack.cpp:
+        (JSC::Probe::Page::Page):
+        * assembler/ProbeStack.h:
+        (JSC::Probe::Page::get):
+        (JSC::Probe::Page::set):
+        (JSC::Probe::Page::physicalAddressFor):
+        (JSC::Probe::Stack::lowWatermark):
+        (JSC::Probe::Stack::get):
+        (JSC::Probe::Stack::set):
+        * bytecode/ArithProfile.cpp:
+        * bytecode/ArithProfile.h:
+        * bytecode/ArrayProfile.h:
+        (JSC::ArrayProfile::observeArrayMode): Deleted.
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::updateOSRExitCounterAndCheckIfNeedToReoptimize): Deleted.
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::addressOfOSRExitCounter):
+        * bytecode/ExecutionCounter.h:
+        (JSC::ExecutionCounter::hasCrossedThreshold const): Deleted.
+        (JSC::ExecutionCounter::setNewThresholdForOSRExit): Deleted.
+        * bytecode/MethodOfGettingAValueProfile.cpp:
+        (JSC::MethodOfGettingAValueProfile::reportValue): Deleted.
+        * bytecode/MethodOfGettingAValueProfile.h:
+        * dfg/DFGDriver.cpp:
+        (JSC::DFG::compileImpl):
+        * dfg/DFGJITCode.cpp:
+        (JSC::DFG::JITCode::findPC):
+        * dfg/DFGJITCode.h:
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::linkOSRExits):
+        (JSC::DFG::JITCompiler::link):
+        * dfg/DFGOSRExit.cpp:
+        (JSC::DFG::OSRExit::setPatchableCodeOffset):
+        (JSC::DFG::OSRExit::getPatchableCodeOffsetAsJump const):
+        (JSC::DFG::OSRExit::codeLocationForRepatch const):
+        (JSC::DFG::OSRExit::correctJump):
+        (JSC::DFG::OSRExit::emitRestoreArguments):
+        (JSC::DFG::OSRExit::compileOSRExit):
+        (JSC::DFG::OSRExit::compileExit):
+        (JSC::DFG::OSRExit::debugOperationPrintSpeculationFailure):
+        (JSC::DFG::jsValueFor): Deleted.
+        (JSC::DFG::restoreCalleeSavesFor): Deleted.
+        (JSC::DFG::saveCalleeSavesFor): Deleted.
+        (JSC::DFG::restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer): Deleted.
+        (JSC::DFG::copyCalleeSavesToVMEntryFrameCalleeSavesBuffer): Deleted.
+        (JSC::DFG::saveOrCopyCalleeSavesFor): Deleted.
+        (JSC::DFG::createDirectArgumentsDuringExit): Deleted.
+        (JSC::DFG::createClonedArgumentsDuringExit): Deleted.
+        (JSC::DFG::emitRestoreArguments): Deleted.
+        (JSC::DFG::OSRExit::executeOSRExit): Deleted.
+        (JSC::DFG::reifyInlinedCallFrames): Deleted.
+        (JSC::DFG::adjustAndJumpToTarget): Deleted.
+        (JSC::DFG::printOSRExit): Deleted.
+        * dfg/DFGOSRExit.h:
+        (JSC::DFG::OSRExitState::OSRExitState): Deleted.
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        * dfg/DFGOSRExitCompilerCommon.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGThunks.cpp:
+        (JSC::DFG::osrExitGenerationThunkGenerator):
+        (JSC::DFG::osrExitThunkGenerator): Deleted.
+        * dfg/DFGThunks.h:
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::debugCall):
+        * jit/AssemblyHelpers.h:
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * profiler/ProfilerOSRExit.h:
+        (JSC::Profiler::OSRExit::incCount): Deleted.
+        * runtime/JSCJSValue.h:
+        * runtime/JSCJSValueInlines.h:
+        * runtime/VM.h:
+
+2017-09-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Move class/struct used in other class' member out of anonymous namespace
+        https://bugs.webkit.org/show_bug.cgi?id=176876
+
+        Reviewed by Saam Barati.
+
+        GCC warns if a class has a base or field whose type uses the anonymous namespace
+        and it is defined in an included file. This is because this possibly violates
+        one definition rule (ODR): if an included file has the anonymous namespace, each
+        translation unit creates its private anonymous namespace. Thus, each type
+        inside the anonymous namespace becomes different in each translation unit if
+        the file is included in multiple translation units.
+
+        While the current use in JSC is not violating ODR since these cpp files are included
+        only once for unified sources, specifying `-Wno-subobject-linkage` could miss
+        the actual bugs. So, in this patch, we just move related classes/structs out of
+        the anonymous namespace.
+
+        * dfg/DFGIntegerCheckCombiningPhase.cpp:
+        (JSC::DFG::IntegerCheckCombiningPhase::RangeKey::addition):
+        (JSC::DFG::IntegerCheckCombiningPhase::RangeKey::arrayBounds):
+        (JSC::DFG::IntegerCheckCombiningPhase::RangeKey::operator! const):
+        (JSC::DFG::IntegerCheckCombiningPhase::RangeKey::hash const):
+        (JSC::DFG::IntegerCheckCombiningPhase::RangeKey::operator== const):
+        (JSC::DFG::IntegerCheckCombiningPhase::RangeKey::dump const):
+        (JSC::DFG::IntegerCheckCombiningPhase::RangeKeyAndAddend::RangeKeyAndAddend):
+        (JSC::DFG::IntegerCheckCombiningPhase::RangeKeyAndAddend::operator! const):
+        (JSC::DFG::IntegerCheckCombiningPhase::RangeKeyAndAddend::dump const):
+        (JSC::DFG::IntegerCheckCombiningPhase::Range::dump const):
+        * dfg/DFGLICMPhase.cpp:
+
+2017-09-13  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Event Listeners section does not update when listeners are added/removed
+        https://bugs.webkit.org/show_bug.cgi?id=170570
+        <rdar://problem/31501645>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/DOM.json:
+        Add two new events: "didAddEventListener" and "willRemoveEventListener". These events do not
+        contain any information about the event listeners that were added/removed. They serve more
+        as indications that something has changed, and to refetch the data again via `getEventListenersForNode`.
+
 2017-09-13  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [JSC] Fix Array allocation in Object.keys

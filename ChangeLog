@@ -1,3 +1,85 @@
+2017-09-20  Alberto Garcia  <berto@igalia.com>
+
+        Fix HPPA and Alpha builds
+        https://bugs.webkit.org/show_bug.cgi?id=177224
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt:
+
+2017-09-19  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [CMake] Add ENABLE_WEB_CRYPTO option and make ENABLE_SUBTLE_CRYPTO depend on it.
+        https://bugs.webkit.org/show_bug.cgi?id=177180
+
+        Reviewed by Michael Catanzaro.
+
+        This adds a ENABLE_WEB_CRYPTO flag and makes ENABLE_SUBTLE_CRYPTO depend on it.
+        The GTK and WPE ports enable them and set ENABLE_WEB_CRYPTO to public.
+
+        * Source/cmake/OptionsGTK.cmake: Set both features to ON and ENABLE_WEB_CRYPTO to public. No change in behaviour for GTK.
+        * Source/cmake/OptionsWPE.cmake: Do like on the GTK port. The public flag is now ENABLE_WEB_CRYPTO.
+        * Source/cmake/WebKitFeatures.cmake: Add the definition of ENABLE_WEB_CRYPTO and make ENABLE_SUBTLE_CRYPTO depend on it.
+
+2017-09-18  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Rename WebKit target to WebKitLegacy and rename WebKit2 target to WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=174558
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt:
+        * Source/PlatformGTK.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+        * Source/cmake/WebKitCommon.cmake:
+        * Source/cmake/WebKitFS.cmake:
+
+2017-09-18  Yoshiaki Jitsukawa  <Yoshiaki.Jitsukawa@sony.com>
+
+        [Win][PAL] Move WebCoreHeaderDetection.h to PAL
+        https://bugs.webkit.org/show_bug.cgi?id=176990
+
+        Reviewed by Alex Christensen.
+
+        Create DerivedSources directory for PAL if WebCore build is enabled.
+
+        * Source/cmake/WebKitCommon.cmake:
+        * Source/cmake/WebKitFS.cmake:
+
+2017-09-15  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Consider enabling -Wno-expansion-to-defined for gcc 7
+        https://bugs.webkit.org/show_bug.cgi?id=167643
+
+        Reviewed by Michael Catanzaro.
+
+        Don't disable -Wexpansion-to-defined for Clang.
+        As suggested by Nico Weber, this warning produces false positives with
+        GCC only.
+
+        * Source/cmake/WebKitCompilerFlags.cmake:
+
+2017-09-14  Yousuke Kimoto  <yousuke.kimoto@sony.com>
+
+        [WinCairo] Add an option to build WebKitLegacy or WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=176891
+
+        Added an option to build WebKitLegacy or WebKit.
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/OptionsWin.cmake:
+
+2017-09-13  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Detect harfbuzz without pkgconfig
+        https://bugs.webkit.org/show_bug.cgi?id=176886
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/FindHarfBuzz.cmake:
+
 2017-09-07  Adrian Perez de Castro  <aperez@igalia.com>
 
         [WPE][CMake] Add "dist" and "distcheck" targets

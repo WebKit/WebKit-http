@@ -67,6 +67,8 @@ public:
     void clearMetadata();
     void clearImage() { m_image = nullptr; }
     URL sourceURL() const;
+    String mimeType() const;
+    long long expectedContentLength() const;
 
     // Asynchronous image decoding
     void startAsyncDecodingQueue();
@@ -103,7 +105,7 @@ public:
     // ImageFrame metadata which forces caching or re-caching the ImageFrame.
     IntSize frameSizeAtIndex(size_t, SubsamplingLevel = SubsamplingLevel::Default);
     unsigned frameBytesAtIndex(size_t, SubsamplingLevel = SubsamplingLevel::Default);
-    float frameDurationAtIndex(size_t);
+    Seconds frameDurationAtIndex(size_t);
     ImageOrientation frameOrientationAtIndex(size_t);
 
     NativeImagePtr frameImageAtIndex(size_t);

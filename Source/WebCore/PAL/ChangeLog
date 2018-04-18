@@ -1,3 +1,97 @@
+2017-09-20  Antti Koivisto  <antti@apple.com>
+
+        Remove DOM and styling support for CSS Regions
+        https://bugs.webkit.org/show_bug.cgi?id=177221
+
+        Reviewed by Andreas Kling.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-09-18  Andy Estes  <aestes@apple.com>
+
+        [Mac] Upstream miscellaneous WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=177029
+
+        Reviewed by Alex Christensen.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/PlatformMac.cmake:
+        * pal/spi/cf/CFUtilitiesSPI.h:
+        * pal/spi/cocoa/LaunchServicesSPI.h: Renamed from Source/WebCore/PAL/pal/spi/ios/LaunchServicesSPI.h.
+        * pal/spi/mac/HIServicesSPI.h:
+        * pal/spi/mac/NSCellSPI.h: Copied from Source/WebCore/PAL/pal/spi/cf/CFUtilitiesSPI.h.
+        * pal/spi/mac/NSMenuSPI.h:
+        * pal/spi/mac/NSScrollViewSPI.h: Copied from Source/WebCore/PAL/pal/spi/cf/CFUtilitiesSPI.h.
+        * pal/spi/mac/NSScrollerImpSPI.h:
+        * pal/system/cf/DefaultSearchProvider.cpp: Copied from Source/WebCore/PAL/pal/spi/cf/CFUtilitiesSPI.h.
+        (PAL::defaultSearchProviderDisplayName):
+        * pal/system/cf/DefaultSearchProvider.h: Copied from Source/WebCore/PAL/pal/spi/cf/CFUtilitiesSPI.h.
+        * pal/system/mac/PopupMenu.h: Copied from Source/WebCore/PAL/pal/spi/cf/CFUtilitiesSPI.h.
+        * pal/system/mac/PopupMenu.mm: Added.
+        (PAL::popUpMenu):
+
+2017-09-18  Yoshiaki Jitsukawa  <Yoshiaki.Jitsukawa@sony.com>
+
+        [Win][PAL] Move WebCoreHeaderDetection.h to PAL
+        https://bugs.webkit.org/show_bug.cgi?id=176990
+
+        Reviewed by Alex Christensen.
+
+        * AVFoundationSupport.py: Renamed from Source/WebCore/AVFoundationSupport.py.
+        (lookFor):
+        (fileContains):
+
+        * pal/PlatformWin.cmake:
+        Add a custom target PAL_PreBuild to generate PALHeaderDetection.h
+
+2017-09-15  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the macOS CMake build
+        https://bugs.webkit.org/show_bug.cgi?id=177015
+
+        Reviewed by Andy Estes.
+
+        * pal/PlatformMac.cmake:
+        Add WebPanel.
+
+2017-09-15  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Upstream MediaRemote and VideoToolbox WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=176953
+
+        Reviewed by Eric Carlson.
+
+        * pal/spi/mac/AVFoundationSPI.h:
+        * pal/spi/mac/MediaRemoteSPI.h:
+
+2017-09-15  Eric Carlson  <eric.carlson@apple.com>
+
+        Switch text tracks to release logging
+        https://bugs.webkit.org/show_bug.cgi?id=176809
+        <rdar://problem/34397605>
+
+        Reviewed by Jer Noble.
+
+        * pal/Logger.h:
+        (PAL::LogArgument::toString):
+        (PAL::Logger::willLog const):
+
+2017-09-14  Dan Bernstein  <mitz@apple.com>
+
+        Fixed building with the Apple internal macOS 10.12 SDK.
+
+        * pal/spi/cocoa/PassKitSPI.h: Avoid redefining types that are defined in the SDK.
+
+2017-09-14  Andy Estes  <aestes@apple.com>
+
+        [Mac] Upstream SpeechSynthesis-related WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=176931
+
+        Reviewed by Joseph Pecoraro.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/mac/SpeechSynthesisSPI.h: Added.
+
 2017-09-13  Andy Estes  <aestes@apple.com>
 
         [CF] Upstream CFNetwork-related WebKitSystemInterface functions

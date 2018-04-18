@@ -1,3 +1,858 @@
+2017-09-20  Jonathan Bedard  <jbedard@apple.com>
+
+        Removed nullable from UIDragItem property
+        https://bugs.webkit.org/show_bug.cgi?id=176264
+        <rdar://problem/31144674>
+
+        Unreviewed build fix
+
+        When a nullable annotation is used in a header file,
+        the Objective-C compiler forces annotations on the entire
+        file. Remove an unneeded annotation in UIKitSPI.h so that
+        we can build in iOS 11.
+
+        * Platform/spi/ios/UIKitSPI.h:
+
+2017-09-20  Antti Koivisto  <antti@apple.com>
+
+        Remove DOM and styling support for CSS Regions
+        https://bugs.webkit.org/show_bug.cgi?id=177221
+
+        Reviewed by Andreas Kling.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-09-19  Simon Fraser  <simon.fraser@apple.com>
+
+        Do more math in terms of FloatSizes and FloatPoints
+        https://bugs.webkit.org/show_bug.cgi?id=177217
+
+        Reviewed by Zalan Bujtas.
+
+        Add operator/(const FloatSize&, const FloatSize&), GraphicsContext::translate(const FloatPoint&),
+        FloatRect.scale(FloatSize) and AffineTransform::translate(const FloatSize&)
+        and use them in lots of places to do math in terms of points and sizes.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _didCommitLayerTree:]):
+        * UIProcess/ios/DragDropInteractionState.mm:
+        (WebKit::createTargetedDragPreview):
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.cpp:
+        (WebKit::imageForRect):
+        * WebProcess/InjectedBundle/DOM/InjectedBundleRangeHandle.cpp:
+        (WebKit::InjectedBundleRangeHandle::renderedImage):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::paintSnapshotAtSize):
+        (WebKit::WebPage::snapshotNode):
+
+2017-09-19  Simon Fraser  <simon.fraser@apple.com>
+
+        tiled-drawing/tiled-backing-in-window.html fails on Retina displays
+        https://bugs.webkit.org/show_bug.cgi?id=177113
+
+        Reviewed by Tim Horton.
+
+        Make m_customDeviceScaleFactor a std::optional<> instead of having the weird "0 is unset"
+        behavior.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::deviceScaleFactor const):
+        (WebKit::WebPageProxy::setCustomDeviceScaleFactor):
+        * UIProcess/WebPageProxy.h:
+
+2017-09-19  Alex Christensen  <achristensen@webkit.org>
+
+        Allow modern decoding of Vectors
+        https://bugs.webkit.org/show_bug.cgi?id=177102
+
+        Reviewed by Andy Estes.
+
+        Rather than allow modern decoding of Vectors of types that only allow legacy decoding,
+        I just made modern decoders for all types that we need to decode in Vectors.
+
+        * NetworkProcess/NetworkResourceLoadParameters.cpp:
+        (WebKit::NetworkResourceLoadParameters::decode):
+        * Platform/IPC/ArgumentCoders.cpp:
+        (IPC::ArgumentCoder<std::chrono::system_clock::time_point>::decode):
+        * Platform/IPC/ArgumentCoders.h:
+        * Shared/AssistedNodeInformation.cpp:
+        (WebKit::OptionItem::decode):
+        * Shared/AssistedNodeInformation.h:
+        * Shared/CallbackID.h:
+        (WebKit::CallbackID::decode):
+        * Shared/Cocoa/WebCoreArgumentCodersCocoa.mm:
+        (IPC::ArgumentCoder<WebCore::PaymentError>::decode):
+        (IPC::ArgumentCoder<WebCore::PaymentMethodUpdate>::decode):
+        (IPC::ArgumentCoder<ApplePaySessionPaymentRequest>::decode):
+        (IPC::ArgumentCoder<ApplePaySessionPaymentRequest::LineItem>::decode):
+        (IPC::ArgumentCoder<ApplePaySessionPaymentRequest::ShippingMethod>::decode):
+        (IPC::ArgumentCoder<ApplePaySessionPaymentRequest::TotalAndLineItems>::decode):
+        (IPC::ArgumentCoder<WebCore::ShippingContactUpdate>::decode):
+        (IPC::ArgumentCoder<WebCore::ShippingMethodUpdate>::decode):
+        * Shared/Databases/IndexedDB/WebIDBResult.cpp:
+        (WebKit::WebIDBResult::decode):
+        * Shared/FrameInfoData.cpp:
+        (WebKit::FrameInfoData::decode):
+        * Shared/Gamepad/GamepadData.cpp:
+        (WebKit::GamepadData::decode):
+        * Shared/Gamepad/GamepadData.h:
+        * Shared/PlatformPopupMenuData.cpp:
+        (WebKit::PlatformPopupMenuData::decode):
+        * Shared/PlatformPopupMenuData.h:
+        * Shared/Plugins/NPIdentifierData.cpp:
+        (WebKit::NPIdentifierData::decode):
+        * Shared/Plugins/NPIdentifierData.h:
+        * Shared/Plugins/NPVariantData.cpp:
+        (WebKit::NPVariantData::decode):
+        * Shared/Plugins/NPVariantData.h:
+        * Shared/RTCNetwork.cpp:
+        (WebKit::RTCNetwork::IPAddress::decode):
+        (WebKit::RTCNetwork::SocketAddress::decode):
+        (WebKit::RTCNetwork::decode):
+        * Shared/RTCNetwork.h:
+        * Shared/RemoteLayerTree/RemoteLayerTreeTransaction.h:
+        * Shared/RemoteLayerTree/RemoteLayerTreeTransaction.mm:
+        (WebKit::RemoteLayerTreeTransaction::LayerCreationProperties::decode):
+        (WebKit::RemoteLayerTreeTransaction::decode):
+        * Shared/SessionState.cpp:
+        (WebKit::HTTPBody::Element::decode):
+        (WebKit::FrameState::decode):
+        (WebKit::PageState::decode):
+        (WebKit::BackForwardListItemState::decode):
+        (WebKit::BackForwardListState::decode):
+        * Shared/SessionState.h:
+        * Shared/WebCompiledContentRuleListData.cpp:
+        (WebKit::WebCompiledContentRuleListData::decode):
+        * Shared/WebCompiledContentRuleListData.h:
+        * Shared/WebContextMenuItemData.cpp:
+        (WebKit::WebContextMenuItemData::decode):
+        * Shared/WebContextMenuItemData.h:
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<DOMCacheEngine::CacheInfo>::decode):
+        (IPC::ArgumentCoder<DOMCacheEngine::Record>::decode):
+        (IPC::ArgumentCoder<FloatRect>::decode):
+        (IPC::ArgumentCoder<FloatQuad>::decode):
+        (IPC::ArgumentCoder<IntRect>::decode):
+        (IPC::ArgumentCoder<RecentSearch>::decode):
+        (IPC::ArgumentCoder<Region::Span>::decode):
+        (IPC::ArgumentCoder<MimeClassInfo>::decode):
+        (IPC::ArgumentCoder<PluginInfo>::decode):
+        (IPC::ArgumentCoder<SelectionRect>::decode):
+        (IPC::ArgumentCoder<CompositionUnderline>::decode):
+        (IPC::ArgumentCoder<DictationAlternative>::decode):
+        (IPC::ArgumentCoder<GrammarDetail>::decode):
+        (IPC::ArgumentCoder<TextCheckingResult>::decode):
+        (IPC::ArgumentCoder<BlobPart>::decode):
+        (IPC::ArgumentCoder<ResourceLoadStatistics>::decode):
+        (IPC::ArgumentCoder<MediaConstraints>::decode):
+        (IPC::ArgumentCoder<CaptureDevice>::decode):
+        (IPC::ArgumentCoder<ScrollOffsetRange<float>>::decode):
+        (IPC::ArgumentCoder<MediaSelectionOption>::decode):
+        * Shared/WebCoreArgumentCoders.h:
+        * Shared/WebEvent.h:
+        * Shared/WebPageCreationParameters.cpp:
+        (WebKit::WebPageCreationParameters::decode):
+        * Shared/WebPlatformTouchPoint.cpp:
+        (WebKit::WebPlatformTouchPoint::decode):
+        * Shared/WebPopupItem.cpp:
+        (WebKit::WebPopupItem::decode):
+        * Shared/WebPopupItem.h:
+        * Shared/WebUserContentControllerDataTypes.cpp:
+        (WebKit::WebUserScriptData::decode):
+        (WebKit::WebUserStyleSheetData::decode):
+        (WebKit::WebScriptMessageHandlerData::decode):
+        * Shared/WebUserContentControllerDataTypes.h:
+        * Shared/WebsiteData/WebsiteData.cpp:
+        (WebKit::WebsiteData::Entry::decode):
+        * Shared/WebsiteData/WebsiteData.h:
+        * Shared/WebsiteDataStoreParameters.cpp:
+        (WebKit::WebsiteDataStoreParameters::decode):
+        * Shared/ios/WebPlatformTouchPointIOS.cpp:
+        (WebKit::WebPlatformTouchPoint::decode):
+        * Shared/mac/WebCoreArgumentCodersMac.mm:
+        (IPC::ArgumentCoder<KeypressCommand>::decode):
+        * UIProcess/LegacySessionStateCodingNone.cpp:
+        (WebKit::decodeLegacySessionState):
+        * WebProcess/WebPage/RemoteLayerTree/PlatformCAAnimationRemote.h:
+        * WebProcess/WebPage/RemoteLayerTree/PlatformCAAnimationRemote.mm:
+        (WebKit::PlatformCAAnimationRemote::KeyframeValue::decode):
+        (WebKit::PlatformCAAnimationRemote::Properties::decode):
+
+2017-09-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        On iOS, getData can't get text set by setData during copy event
+        https://bugs.webkit.org/show_bug.cgi?id=176980
+        <rdar://problem/34453915>
+
+        Reviewed by Darin Adler.
+
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebKit::WebPlatformStrategies::copy): Deleted.
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.h:
+
+2017-09-19  Alex Christensen  <achristensen@webkit.org>
+
+        Expose WKPageRef as a private property on WKWebView on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=177022
+        <rdar://problem/34342762>
+
+        Reviewed by Andy Estes.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _pageRefForTransitionToWKWebView]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+2017-09-19  Alex Christensen  <achristensen@webkit.org>
+
+        Make _WKProcessPoolConfiguration.allowsCellularAccess actually work on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=177124
+
+        Reviewed by Andy Estes.
+
+        The boolean added in r213747 was getting lost in two places:
+        1. The API::ProcessPoolConfiguration gets copied before it's used, so we need to set the bool on the copy.
+        2. The bool was not getting copied from that ProcessPoolConfiguration to the NetworkProcessCreationParameters
+        to be sent to the NetworkProcess to be given to the NSURLSessionConfiguration in NetworkSessionCocoa.mm.
+
+        These two problems were fixed and verified manually with a customized iOS app on my phone.
+        Unfortunately, this cannot be tested well with our current test infrastructure.
+
+        * UIProcess/API/APIProcessPoolConfiguration.cpp:
+        (API::ProcessPoolConfiguration::copy):
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::ensureNetworkProcess):
+
+2017-09-18  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Rename WebKit target to WebKitLegacy and rename WebKit2 target to WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=174558
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt:
+        * PlatformGTK.cmake:
+        * PlatformMac.cmake:
+        * PlatformWPE.cmake:
+        * PlatformWin.cmake:
+        * Shared/gtk/WebKitWaylandProtocol.xml: Renamed from Source/WebKit/Shared/gtk/WebKit2WaylandProtocol.xml.
+        * UIProcess/gtk/WaylandCompositor.cpp:
+        * WebProcess/gtk/WaylandCompositorDisplay.cpp:
+
+2017-09-18  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Upstream sandbox-related WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=177047
+
+        Reviewed by Daniel Bates.
+
+        * NetworkProcess/NetworkResourceLoadParameters.cpp:
+        (WebKit::NetworkResourceLoadParameters::encode const):
+        * Platform/spi/mac/QuarantineSPI.h: Added.
+        * Shared/SandboxExtension.h:
+        (): Deleted.
+        * Shared/mac/ChildProcessMac.mm:
+        (WebKit::enableSandboxStyleFileQuarantine):
+        (WebKit::ChildProcess::initializeSandbox):
+        * Shared/mac/SandboxExtensionMac.mm:
+        (WebKit::SandboxExtensionImpl::create):
+        (WebKit::SandboxExtensionImpl::SandboxExtensionImpl):
+        (WebKit::SandboxExtensionImpl::~SandboxExtensionImpl):
+        (WebKit::SandboxExtensionImpl::consume):
+        (WebKit::SandboxExtensionImpl::invalidate):
+        (WebKit::SandboxExtensionImpl::getSerializedFormat):
+        (WebKit::SandboxExtension::Handle::Handle):
+        (WebKit::SandboxExtension::Handle::~Handle):
+        (WebKit::SandboxExtension::Handle::encode const):
+        (WebKit::SandboxExtension::Handle::decode):
+        (WebKit::SandboxExtension::createHandleWithoutResolvingPath):
+        (WebKit::SandboxExtension::createHandleForReadWriteDirectory):
+        (WebKit::SandboxExtension::createHandleForTemporaryFile):
+        (WebKit::SandboxExtension::createHandleForGenericExtension):
+        (WebKit::SandboxExtension::SandboxExtension):
+        (WebKit::SandboxExtension::~SandboxExtension):
+        (WebKit::SandboxExtension::revoke):
+        (WebKit::SandboxExtension::consume):
+        (WebKit::SandboxExtension::consumePermanently):
+        (WebKit::wkSandboxExtensionType): Deleted.
+        * UIProcess/Cocoa/WebPageProxyCocoa.mm:
+        (WebKit::WebPageProxy::createSandboxExtensionsIfNeeded):
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::WebProcessPool::platformInitializeWebProcess):
+        * UIProcess/Downloads/DownloadProxy.cpp:
+        (WebKit::DownloadProxy::decideDestinationWithSuggestedFilenameAsync):
+        * UIProcess/Network/NetworkProcessProxy.cpp:
+        (WebKit::NetworkProcessProxy::grantSandboxExtensionsToStorageProcessForBlobs):
+        * UIProcess/Storage/StorageProcessProxy.cpp:
+        (WebKit::StorageProcessProxy::getSandboxExtensionsForBlobFiles):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::maybeInitializeSandboxExtensionHandle):
+        (WebKit::WebPageProxy::loadFile):
+        (WebKit::WebPageProxy::didChooseFilesForOpenPanel):
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::createNewWebProcess):
+        (WebKit::WebProcessPool::processDidFinishLaunching):
+        (WebKit::WebProcessPool::resumeDownload):
+        (WebKit::WebProcessPool::startMemorySampler):
+        * WebKit.xcodeproj/project.pbxproj:
+        * WebProcess/FileAPI/BlobRegistryProxy.cpp:
+        (WebKit::BlobRegistryProxy::registerFileBlobURL):
+
+2017-09-18  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Upstream WKSetCrashReportApplicationSpecificInformation() from WebKitSystemInterface
+        https://bugs.webkit.org/show_bug.cgi?id=177048
+
+        Reviewed by Alex Christensen.
+
+        * Platform/IPC/mac/ConnectionMac.mm:
+        (IPC::Connection::sendMessage):
+        (IPC::readFromMachPort):
+        * Platform/cocoa/CrashReporter.h: Copied from Source/WebKit/Shared/Cocoa/ChildProcessCocoa.mm.
+        * Platform/cocoa/CrashReporter.mm: Copied from Source/WebKit/Shared/Cocoa/ChildProcessCocoa.mm.
+        (WebKit::setCrashReportApplicationSpecificInformation):
+        * Platform/spi/Cocoa/CrashReporterClientSPI.h: Copied from Source/WebKit/Shared/Cocoa/ChildProcessCocoa.mm.
+        * Shared/Cocoa/ChildProcessCocoa.mm:
+        (WebKit::ChildProcess::didReceiveInvalidMessage):
+        * WebKit.xcodeproj/project.pbxproj:
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::_WKSetCrashReportApplicationSpecificInformation):
+
+2017-09-18  Andy Estes  <aestes@apple.com>
+
+        [Mac] Upstream miscellaneous WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=177029
+
+        Reviewed by Alex Christensen.
+
+        * NetworkProcess/mac/NetworkProcessMac.mm:
+        (WebKit::NetworkProcess::initializeProcessName):
+        * PluginProcess/mac/PluginProcessMac.mm:
+        (WebKit::PluginProcess::initializeProcessName):
+        * StorageProcess/mac/StorageProcessMac.mm:
+        (WebKit::StorageProcess::initializeProcessName):
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::trackingAreaOptions):
+        (WebKit::WebViewImpl::mightBeginScrollWhileInactive):
+        * UIProcess/mac/WebPopupMenuProxyMac.mm:
+        (WebKit::WebPopupMenuProxyMac::showPopupMenu):
+        * WebProcess/Plugins/Netscape/mac/NetscapePluginMac.mm:
+        (WebKit::NetscapePlugin::popUpContextMenu):
+        * WebProcess/Plugins/PDF/PDFPlugin.mm:
+        (WebKit::PDFPlugin::handleContextMenuEvent):
+        * WebProcess/WebCoreSupport/mac/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::initializeProcessName):
+        (WebKit::WebProcess::updateActivePages):
+
+2017-09-17  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Merge ProcessLauncher[WPE,GTK]
+        https://bugs.webkit.org/show_bug.cgi?id=177041
+
+        Unreviewed fixup, I broke the size of the argv buffer when experimenting with how to respond
+        to review comments. Not sure why this didn't blow up everything during testing.
+
+        * UIProcess/Launcher/glib/ProcessLauncherGLib.cpp:
+        (WebKit::ProcessLauncher::launchProcess):
+
+2017-09-17  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Merge ProcessLauncher[WPE,GTK]
+        https://bugs.webkit.org/show_bug.cgi?id=177041
+
+        Reviewed by Carlos Garcia Campos.
+
+        * PlatformGTK.cmake:
+        * PlatformWPE.cmake:
+        * UIProcess/Launcher/glib/ProcessLauncherGLib.cpp: Renamed from Source/WebKit/UIProcess/Launcher/gtk/ProcessLauncherGtk.cpp.
+        (WebKit::childSetupFunction):
+        (WebKit::ProcessLauncher::launchProcess):
+        (WebKit::ProcessLauncher::terminateProcess):
+        (WebKit::ProcessLauncher::platformInvalidate):
+        * UIProcess/Launcher/wpe/ProcessLauncherWPE.cpp: Removed.
+
+2017-09-16  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the Tools build with CMake on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=177030
+
+        Reviewed by Geoffrey Garen.
+
+        * PlatformMac.cmake:
+        Add some WebKitLegacy headers to forward (for use by the tools).
+
+2017-09-15  JF Bastien  <jfbastien@apple.com>
+
+        WTF: use Forward.h when appropriate instead of Vector.h
+        https://bugs.webkit.org/show_bug.cgi?id=176984
+
+        Reviewed by Saam Barati.
+
+        There's no need to include Vector.h when Forward.h will suffice. All we need is to move the template default parameters from Vector, and then the forward declaration can be used in so many new places: if a header only takes Vector by reference, rvalue reference, pointer, returns any of these, or has them as members then the header doesn't need to see the definition because the declaration will suffice.
+
+        * Scripts/webkit/LegacyMessages-expected.h:
+        * Scripts/webkit/Messages-expected.h:
+        * Shared/API/APIData.h:
+        * UIProcess/API/APIContextMenuClient.h:
+        * UIProcess/API/APIFormClient.h:
+        * UIProcess/API/APIHTTPCookieStore.h:
+        * UIProcess/API/APINotificationProvider.h:
+        * UIProcess/API/glib/WebKitNotificationProvider.h:
+        * UIProcess/Notifications/WebNotificationProvider.h:
+        * UIProcess/TextCheckerCompletion.h:
+        * UIProcess/WebCookieManagerProxy.h:
+        * UIProcess/WebOpenPanelResultListenerProxy.h:
+        * UIProcess/WebPasteboardProxy.h:
+        * UIProcess/WebPopupMenuProxy.h:
+        * UIProcess/WebTextCheckerClient.h:
+        * WebProcess/Cookies/WebCookieManager.h:
+        * WebProcess/Gamepad/WebGamepadProvider.h:
+        * WebProcess/InjectedBundle/API/APIInjectedBundleEditorClient.h:
+        * WebProcess/InjectedBundle/API/APIInjectedBundlePageContextMenuClient.h:
+        * WebProcess/InjectedBundle/API/APIInjectedBundlePageLoaderClient.h:
+        * WebProcess/InjectedBundle/APIInjectedBundleFormClient.h:
+        * WebProcess/InjectedBundle/InjectedBundlePageLoaderClient.h:
+        * WebProcess/Network/webrtc/WebRTCMonitor.h:
+        * WebProcess/Network/webrtc/WebRTCResolver.h:
+        * WebProcess/WebPage/DrawingArea.h:
+        * WebProcess/WebPage/WebOpenPanelResultListener.h:
+
+2017-09-15  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the macOS CMake build
+        https://bugs.webkit.org/show_bug.cgi?id=177015
+
+        Reviewed by Andy Estes.
+
+        * CMakeLists.txt:
+        Add the new RemoteLayerTree directories to the header search path.
+        Add CookieStorageUtilsCF.mm to Sources.
+
+        * PlatformMac.cmake:
+        Add a few more files, and fix the generated forwarding headers include
+        path to name "WebKit" instead of "WebKit2".
+
+2017-09-15  Youenn Fablet  <youenn@apple.com>
+
+        Add an URL method to remove both query string and fragment identifier
+        https://bugs.webkit.org/show_bug.cgi?id=176911
+
+        Reviewed by Alex Christensen.
+
+        * NetworkProcess/cache/CacheStorageEngineCache.cpp:
+        (WebKit::CacheStorage::computeKeyURL):
+
+2017-09-15  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Upstream MediaRemote and VideoToolbox WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=176953
+
+        Reviewed by Eric Carlson.
+
+        * WebProcess/WebCoreSupport/mac/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+
+2017-09-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        iOS: WebKitTestRunner hits an assertion in editing/pasteboard/datatransfer-items-copy-plaintext.html
+        https://bugs.webkit.org/show_bug.cgi?id=176968
+
+        Reviewed by Wenson Hsieh.
+
+        Don't allocate a SharedMemory of size zero (content was empty) as this would result in a crash inside
+        a WebContent process in release builds and an assertion failure in debug builds.
+
+        * UIProcess/Cocoa/WebPasteboardProxyCocoa.mm:
+        (WebKit::WebPasteboardProxy::readBufferFromPasteboard):
+
+2017-09-14  Youenn Fablet  <youenn@apple.com>
+
+        Add Cache API support of records persistency
+        https://bugs.webkit.org/show_bug.cgi?id=176845
+
+        Reviewed by Alex Christensen.
+
+        Introducing asynchronous opening of Cache objects.
+        When opening, Cache objects will read the list of records from the disk.
+        They keep in memory the necessary information to make any match or remove request without reading further information from the disk.
+        Cache objects thus keep during the opening time a list of callbacks to call when being opened.
+        Persistent storage is implemented through NetworkCache::Storage.
+
+        A Cache object is added a unique name so that records from a Cache cannot be mixed with records from another Cache.
+        This unique name is stored persistenly in addition to the Cache name.
+        This unique name is used as the key type given to the storage.
+
+        Request, response and responsebody data are no longer kept by the Cache object.
+        For regular sessions, this information is kept on the disk through NetworkCache::Storage.
+        Insertion time is also stored persistently so as to keep the ordering of the records consistent.
+        For private browsing sessions, this information is kept in a map owned by the Caches object.
+        RecordData is renamed to RecordInformation as it now only contains the information used to handle the different Cache actions.
+
+        For every record retrieval action, a ReadRecordTaskCounter is used.
+        Its purpose is to allow retrieving the record data on the disk in parallel,
+        and then send back the information when everything is read.
+        In case some records cannot be correctly read, they are removed automatically at that point.
+        The current implementation loads all information in memory including response bodies.
+        Further improvements might consider streaming the response bodies progressively.
+
+        For every stored record, an AsynchronousPutTaskCounter is used.
+        Its purpose is also to wait for all put actions to be completed before executing the completion callback.
+        In some cases, a record needs to be overriden.
+        In that case, as per the specification, only the data related to the response is to be modified.
+        This requires reading the record request data on disk before actually writing the whole record again.
+        This is implemented in updateRecordToDisk.
+
+        The Cache object is delegating all record writing/reading tasks to its Caches object.
+        The Caches object is responsible to handle persistent/private sessions.
+
+        * NetworkProcess/cache/CacheStorageEngine.cpp:
+        (WebKit::CacheStorage::Engine::retrieveRecords): Making sure Cache object is opened.
+        (WebKit::CacheStorage::Engine::readCache): Ditto.
+        (WebKit::CacheStorage::Engine::unlock): Disposing the cache without going through initializing it.
+        * NetworkProcess/cache/CacheStorageEngineCache.cpp:
+        (WebKit::CacheStorage::computeKeyURL):
+        (WebKit::CacheStorage::queryCache):
+        (WebKit::CacheStorage::updateVaryInformation):
+        (WebKit::CacheStorage::Cache::toRecordInformation):
+        (WebKit::CacheStorage::Cache::Cache):
+        (WebKit::CacheStorage::Cache::open):
+        (WebKit::CacheStorage::Cache::finishOpening):
+        (WebKit::CacheStorage::ReadRecordTaskCounter::create):
+        (WebKit::CacheStorage::ReadRecordTaskCounter::~ReadRecordTaskCounter):
+        (WebKit::CacheStorage::ReadRecordTaskCounter::appendRecord):
+        (WebKit::CacheStorage::ReadRecordTaskCounter::ReadRecordTaskCounter):
+        (WebKit::CacheStorage::Cache::retrieveRecord):
+        (WebKit::CacheStorage::Cache::retrieveRecords):
+        (WebKit::CacheStorage::Cache::addRecord):
+        (WebKit::CacheStorage::Cache::recordsFromURL):
+        (WebKit::CacheStorage::Cache::recordsFromURL const):
+        (WebKit::CacheStorage::AsynchronousPutTaskCounter::create):
+        (WebKit::CacheStorage::AsynchronousPutTaskCounter::~AsynchronousPutTaskCounter):
+        (WebKit::CacheStorage::AsynchronousPutTaskCounter::onCompletion):
+        (WebKit::CacheStorage::AsynchronousPutTaskCounter::setError):
+        (WebKit::CacheStorage::Cache::put):
+        (WebKit::CacheStorage::Cache::remove):
+        (WebKit::CacheStorage::Cache::removeFromRecordList):
+        (WebKit::CacheStorage::Cache::writeRecordToDisk):
+        (WebKit::CacheStorage::Cache::updateRecordToDisk):
+        (WebKit::CacheStorage::Cache::readRecordFromDisk):
+        (WebKit::CacheStorage::Cache::removeRecordFromDisk):
+        (WebKit::CacheStorage::Cache::encode):
+        (WebKit::CacheStorage::decodeRecordHeader):
+        (WebKit::CacheStorage::Cache::decode):
+        (WebKit::CacheStorage::Cache::keys const):
+        * NetworkProcess/cache/CacheStorageEngineCache.h:
+        (WebKit::CacheStorage::Cache::isOpened const):
+        (WebKit::CacheStorage::Cache::uniqueName const):
+        * NetworkProcess/cache/CacheStorageEngineCaches.cpp:
+        (WebKit::CacheStorage::Caches::initialize):
+        (WebKit::CacheStorage::Caches::open):
+        (WebKit::CacheStorage::Caches::remove):
+        (WebKit::CacheStorage::Caches::dispose):
+        (WebKit::CacheStorage::encodeCacheNames):
+        (WebKit::CacheStorage::decodeCachesNames):
+        (WebKit::CacheStorage::Caches::readCachesFromDisk):
+        (WebKit::CacheStorage::Caches::readRecordsList):
+        (WebKit::CacheStorage::Caches::writeRecord):
+        (WebKit::CacheStorage::Caches::readRecord):
+        (WebKit::CacheStorage::Caches::removeRecord):
+        (WebKit::CacheStorage::Caches::clearMemoryRepresentation):
+        (WebKit::CacheStorage::Caches::salt const):
+        * NetworkProcess/cache/CacheStorageEngineCaches.h:
+        (WebKit::CacheStorage::Caches::shouldPersist const):
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::Storage::store):
+        * NetworkProcess/cache/NetworkCacheStorage.h:
+        (WebKit::NetworkCache::Storage::writeWithoutWaiting):
+
+2017-09-14  Alex Christensen  <achristensen@webkit.org>
+
+        Add WKUIDelegatePrivate equivalent of WKPageUIClient's drawHeader, drawFooter, headerHeight, and footerHeight
+        https://bugs.webkit.org/show_bug.cgi?id=176889
+        <rdar://problem/29270035>
+
+        Reviewed by Andy Estes.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageLoadAlternateHTMLString):
+        (WKPageLoadAlternateHTMLStringWithUserData):
+        * UIProcess/API/Cocoa/WKBrowsingContextController.mm:
+        (-[WKBrowsingContextController loadAlternateHTMLString:baseURL:forUnreachableURL:]):
+        * UIProcess/API/Cocoa/WKUIDelegatePrivate.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _loadAlternateHTMLString:baseURL:forUnreachableURL:]):
+        * UIProcess/Cocoa/UIDelegate.h:
+        * UIProcess/Cocoa/UIDelegate.mm:
+        (WebKit::UIDelegate::setDelegate):
+        (WebKit::UIDelegate::UIClient::headerHeight):
+        (WebKit::UIDelegate::UIClient::footerHeight):
+        (WebKit::UIDelegate::UIClient::drawHeader):
+        (WebKit::UIDelegate::UIClient::drawFooter):
+        * UIProcess/Cocoa/WKReloadFrameErrorRecoveryAttempter.mm:
+        (-[WKReloadFrameErrorRecoveryAttempter attemptRecovery]):
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::printOperationWithPrintInfo):
+        * UIProcess/FrameLoadState.cpp:
+        (WebKit::FrameLoadState::didStartProvisionalLoad):
+        (WebKit::FrameLoadState::didReceiveServerRedirectForProvisionalLoad):
+        (WebKit::FrameLoadState::didFailProvisionalLoad):
+        (WebKit::FrameLoadState::didCommitLoad):
+        (WebKit::FrameLoadState::didSameDocumentNotification):
+        (WebKit::FrameLoadState::setUnreachableURL):
+        (WebKit::FrameLoadState::FrameLoadState): Deleted.
+        * UIProcess/FrameLoadState.h:
+        (WebKit::FrameLoadState::url const):
+        (WebKit::FrameLoadState::provisionalURL const):
+        (WebKit::FrameLoadState::unreachableURL const):
+        * UIProcess/WebFrameProxy.cpp:
+        (WebKit::WebFrameProxy::loadURL):
+        (WebKit::WebFrameProxy::didStartProvisionalLoad):
+        (WebKit::WebFrameProxy::didReceiveServerRedirectForProvisionalLoad):
+        (WebKit::WebFrameProxy::didSameDocumentNavigation):
+        (WebKit::WebFrameProxy::setUnreachableURL):
+        * UIProcess/WebFrameProxy.h:
+        (WebKit::WebFrameProxy::url const):
+        (WebKit::WebFrameProxy::provisionalURL const):
+        (WebKit::WebFrameProxy::unreachableURL const):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::loadAlternateHTMLString):
+        (WebKit::WebPageProxy::didStartProvisionalLoadForFrame):
+        (WebKit::WebPageProxy::didReceiveServerRedirectForProvisionalLoadForFrame):
+        (WebKit::WebPageProxy::didChangeProvisionalURLForFrame):
+        (WebKit::WebPageProxy::didSameDocumentNavigationForFrame):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDidReceiveServerRedirectForProvisionalLoad):
+        (WebKit::WebFrameLoaderClient::dispatchDidChangeProvisionalURL):
+        (WebKit::WebFrameLoaderClient::dispatchDidChangeLocationWithinPage):
+        (WebKit::WebFrameLoaderClient::dispatchDidPushStateWithinPage):
+        (WebKit::WebFrameLoaderClient::dispatchDidReplaceStateWithinPage):
+        (WebKit::WebFrameLoaderClient::dispatchDidPopStateWithinPage):
+        (WebKit::WebFrameLoaderClient::dispatchDidStartProvisionalLoad):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::loadURLInFrame):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2017-09-14  Andy Estes  <aestes@apple.com>
+
+        [Mac] Upstream SpeechSynthesis-related WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=176931
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebProcess/WebCoreSupport/mac/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+
+2017-09-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r222033.
+
+        This change caused API test WebKit.PrintFrame to time out.
+
+        Reverted changeset:
+
+        "Add WKUIDelegatePrivate equivalent of WKPageUIClient's
+        drawHeader, drawFooter, headerHeight, and footerHeight"
+        https://bugs.webkit.org/show_bug.cgi?id=176889
+        http://trac.webkit.org/changeset/222033
+
+2017-09-14  Alex Christensen  <achristensen@webkit.org>
+
+        Add WKUIDelegatePrivate equivalent of WKPageUIClient's drawHeader, drawFooter, headerHeight, and footerHeight
+        https://bugs.webkit.org/show_bug.cgi?id=176889
+        <rdar://problem/29270035>
+
+        Reviewed by Andy Estes.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageLoadAlternateHTMLString):
+        (WKPageLoadAlternateHTMLStringWithUserData):
+        * UIProcess/API/Cocoa/WKBrowsingContextController.mm:
+        (-[WKBrowsingContextController loadAlternateHTMLString:baseURL:forUnreachableURL:]):
+        * UIProcess/API/Cocoa/WKUIDelegatePrivate.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _loadAlternateHTMLString:baseURL:forUnreachableURL:]):
+        * UIProcess/Cocoa/UIDelegate.h:
+        * UIProcess/Cocoa/UIDelegate.mm:
+        (WebKit::UIDelegate::setDelegate):
+        (WebKit::UIDelegate::UIClient::headerHeight):
+        (WebKit::UIDelegate::UIClient::footerHeight):
+        (WebKit::UIDelegate::UIClient::drawHeader):
+        (WebKit::UIDelegate::UIClient::drawFooter):
+        * UIProcess/Cocoa/WKReloadFrameErrorRecoveryAttempter.mm:
+        (-[WKReloadFrameErrorRecoveryAttempter attemptRecovery]):
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::printOperationWithPrintInfo):
+        * UIProcess/FrameLoadState.cpp:
+        (WebKit::FrameLoadState::didStartProvisionalLoad):
+        (WebKit::FrameLoadState::didReceiveServerRedirectForProvisionalLoad):
+        (WebKit::FrameLoadState::didFailProvisionalLoad):
+        (WebKit::FrameLoadState::didCommitLoad):
+        (WebKit::FrameLoadState::didSameDocumentNotification):
+        (WebKit::FrameLoadState::setUnreachableURL):
+        (WebKit::FrameLoadState::FrameLoadState): Deleted.
+        * UIProcess/FrameLoadState.h:
+        (WebKit::FrameLoadState::url const):
+        (WebKit::FrameLoadState::provisionalURL const):
+        (WebKit::FrameLoadState::unreachableURL const):
+        * UIProcess/WebFrameProxy.cpp:
+        (WebKit::WebFrameProxy::loadURL):
+        (WebKit::WebFrameProxy::didStartProvisionalLoad):
+        (WebKit::WebFrameProxy::didReceiveServerRedirectForProvisionalLoad):
+        (WebKit::WebFrameProxy::didSameDocumentNavigation):
+        (WebKit::WebFrameProxy::setUnreachableURL):
+        * UIProcess/WebFrameProxy.h:
+        (WebKit::WebFrameProxy::url const):
+        (WebKit::WebFrameProxy::provisionalURL const):
+        (WebKit::WebFrameProxy::unreachableURL const):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::loadAlternateHTMLString):
+        (WebKit::WebPageProxy::didStartProvisionalLoadForFrame):
+        (WebKit::WebPageProxy::didReceiveServerRedirectForProvisionalLoadForFrame):
+        (WebKit::WebPageProxy::didChangeProvisionalURLForFrame):
+        (WebKit::WebPageProxy::didSameDocumentNavigationForFrame):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDidReceiveServerRedirectForProvisionalLoad):
+        (WebKit::WebFrameLoaderClient::dispatchDidChangeProvisionalURL):
+        (WebKit::WebFrameLoaderClient::dispatchDidChangeLocationWithinPage):
+        (WebKit::WebFrameLoaderClient::dispatchDidPushStateWithinPage):
+        (WebKit::WebFrameLoaderClient::dispatchDidReplaceStateWithinPage):
+        (WebKit::WebFrameLoaderClient::dispatchDidPopStateWithinPage):
+        (WebKit::WebFrameLoaderClient::dispatchDidStartProvisionalLoad):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::loadURLInFrame):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2017-09-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][Wayland] Flickering when resizing the window
+        https://bugs.webkit.org/show_bug.cgi?id=176774
+
+        Reviewed by Michael Catanzaro.
+
+        This regressed when we switched to always start the wayland compositor. In
+        AcceleratedDrawingAreaProxy::waitForAndDispatchDidUpdateBackingStoreState() we check if the nested compositor is
+        running, which is always true now (if EGL and the required extensions are available). We should check if we are
+        in AC mode instead.
+
+        * UIProcess/AcceleratedDrawingAreaProxy.cpp:
+        (WebKit::AcceleratedDrawingAreaProxy::waitForAndDispatchDidUpdateBackingStoreState):
+
+2017-09-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Add PrivateSymbolMode::{Include,Exclude} for PropertyNameArray
+        https://bugs.webkit.org/show_bug.cgi?id=176867
+
+        Reviewed by Sam Weinig.
+
+        * WebProcess/Plugins/Netscape/NPJSObject.cpp:
+        (WebKit::NPJSObject::enumerate):
+
+2017-09-14  Maureen Daum  <mdaum@apple.com>
+
+        Introduce the option to mark an HTML element as having AutoFill available.
+        https://bugs.webkit.org/show_bug.cgi?id=176710
+
+        Reviewed by Alex Christensen.
+
+        Introduce the option to mark an HTML element as having AutoFill available. Accessibility
+        can use this property when deciding whether to announce that the focused field offers
+        AutoFill.
+
+        * WebProcess/InjectedBundle/API/c/WKBundleNodeHandle.cpp:
+        (WKBundleNodeHandleGetHTMLInputElementAutoFillAvailable):
+        (WKBundleNodeHandleSetHTMLInputElementAutoFillAvailable):
+        * WebProcess/InjectedBundle/API/c/WKBundleNodeHandlePrivate.h:
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.cpp:
+        (WebKit::InjectedBundleNodeHandle::isAutoFillAvailable const):
+        (WebKit::InjectedBundleNodeHandle::setAutoFillAvailable):
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.h:
+
+2017-09-13  John Wilander  <wilander@apple.com>
+
+        Introduce Storage Access API (document parts) as an experimental feature
+        https://bugs.webkit.org/show_bug.cgi?id=175759
+        <rdar://problem/34414107>
+
+        Reviewed by Alex Christensen.
+
+        Storage Access API is an experimental feature which allows cross-origin,
+        sandboxed iframes to request access to their first-party storage (as
+        opposed to partitioned storage). This might be restricted to cookies or
+        might cover all stateful mechanisms.
+
+        It introduces the following three developer-facing things:
+        - A new readonly attribute, document.hasStorageAccess.
+        - A new function, document.requestStorageAccess().
+        - A new iframe sandbox token, allow-storage-access-by-user-activation.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<ResourceLoadStatistics>::encode):
+        (IPC::ArgumentCoder<ResourceLoadStatistics>::decode):
+            Storage handling of the new type of data.
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetStorageAccessAPIEnabled):
+        (WKPreferencesGetStorageAccessAPIEnabled):
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+            Bumped the model version from 9 to 10.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2017-09-13  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Consider phoneticName when encoding ContactFields
+        https://bugs.webkit.org/show_bug.cgi?id=176885
+        <rdar://problem/34176419>
+
+        Reviewed by Tim Horton.
+
+        * Shared/Cocoa/WebCoreArgumentCodersCocoa.mm:
+        (IPC::ArgumentCoder<ApplePaySessionPaymentRequest::ContactFields>::encode):
+        (IPC::ArgumentCoder<ApplePaySessionPaymentRequest::ContactFields>::decode):
+
+2017-09-13  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r221976.
+
+        The test introduced was flaky from point of addition.
+
+        Reverted changeset:
+
+        "Introduce Storage Access API (document parts) as an
+        experimental feature"
+        https://bugs.webkit.org/show_bug.cgi?id=175759
+        http://trac.webkit.org/changeset/221976
+
+2017-09-13  Youenn Fablet  <youenn@apple.com>
+
+        Internals clearCacheStorageMemoryRepresentation should return a Promise
+        https://bugs.webkit.org/show_bug.cgi?id=176818
+
+        Reviewed by Alex Christensen.
+
+        Adding a completion handler to clearMemoryRepresentation.
+
+        * NetworkProcess/cache/CacheStorageEngine.cpp:
+        (WebKit::CacheStorage::Engine::clearMemoryRepresentation):
+        * NetworkProcess/cache/CacheStorageEngine.h:
+        * NetworkProcess/cache/CacheStorageEngineConnection.cpp:
+        (WebKit::CacheStorageEngineConnection::clearMemoryRepresentation):
+        * NetworkProcess/cache/CacheStorageEngineConnection.h:
+        * NetworkProcess/cache/CacheStorageEngineConnection.messages.in:
+        * WebProcess/Cache/WebCacheStorageConnection.cpp:
+        (WebKit::WebCacheStorageConnection::clearMemoryRepresentation):
+        (WebKit::WebCacheStorageConnection::clearMemoryRepresentationCompleted):
+        * WebProcess/Cache/WebCacheStorageConnection.h:
+        * WebProcess/Cache/WebCacheStorageConnection.messages.in:
+
 2017-09-13  Andy Estes  <aestes@apple.com>
 
         [CF] Upstream CFNetwork-related WebKitSystemInterface functions

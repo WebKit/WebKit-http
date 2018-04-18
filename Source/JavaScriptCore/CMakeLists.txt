@@ -793,7 +793,6 @@ set(JavaScriptCore_UNIFIABLE_SOURCES
     runtime/JSDataViewPrototype.cpp
     runtime/JSDateMath.cpp
     runtime/JSDestructibleObjectSubspace.cpp
-    runtime/JSEnvironmentRecord.cpp
     runtime/JSFixedArray.cpp
     runtime/JSFunction.cpp
     runtime/JSGeneratorFunction.cpp
@@ -879,6 +878,7 @@ set(JavaScriptCore_UNIFIABLE_SOURCES
     runtime/PropertyTable.cpp
     runtime/PrototypeMap.cpp
     runtime/ProxyConstructor.cpp
+    runtime/ProxyObject.cpp
     runtime/ProxyRevoke.cpp
     runtime/ReflectObject.cpp
     runtime/RegExp.cpp
@@ -1023,7 +1023,13 @@ foreach (_sourceFile IN LISTS JavaScriptCore_UNIFIABLE_SOURCES)
     endif ()
 endforeach ()
 
-execute_process(COMMAND ${RUBY_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/../WTF/generate-unified-source-bundles.rb
+if (WIN32 AND INTERNAL_BUILD)
+    set(WTF_SCRIPTS_DIR "${CMAKE_BINARY_DIR}/../include/private/WTF/Scripts")
+else ()
+    set(WTF_SCRIPTS_DIR "${FORWARDING_HEADERS_DIR}/WTF/Scripts")
+endif ()
+
+execute_process(COMMAND ${RUBY_EXECUTABLE} ${WTF_SCRIPTS_DIR}/generate-unified-source-bundles.rb
   "--derived-sources-path" ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR} ${JavaScriptCore_UNIFIABLE_SOURCES}
   RESULT_VARIABLE generateUnifiedSourcesResult
   OUTPUT_VARIABLE generateUnifiedSourcesOutput
@@ -1034,18 +1040,6 @@ if (${generateUnifiedSourcesResult})
 endif ()
 
 list(APPEND JavaScriptCore_SOURCES ${generateUnifiedSourcesOutput})
-
-# These are special files that we can't or don't want to unified source compile
-list(APPEND JavaScriptCore_SOURCES
-    runtime/ProxyObject.cpp
-)
-
-# Extra flags for compile sources can go here.
-if (NOT MSVC)
-    set_source_files_properties(runtime/ProxyObject.cpp PROPERTIES COMPILE_FLAGS -fno-optimize-sibling-calls)
-else ()
-    # FIXME: Investigate if we need to set a similar flag on Windows.
-endif ()
 
 set(JavaScriptCore_OBJECT_LUT_SOURCES
     runtime/ArrayConstructor.cpp
@@ -1567,6 +1561,7 @@ list(APPEND JavaScriptCore_HEADERS ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Injecte
 
 if (WTF_CPU_ARM)
 elseif (WTF_CPU_ARM64)
+elseif (WTF_CPU_ALPHA)
 elseif (WTF_CPU_HPPA)
 elseif (WTF_CPU_PPC)
 elseif (WTF_CPU_PPC64)

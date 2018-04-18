@@ -233,7 +233,6 @@ fast/canvas/canvas-toDataURL-webp.html
 
 # Drag-and-drop is not supported:
 editing/pasteboard/datatransfer-items-drop-plaintext-file.html
-editing/pasteboard/datatransfer-items-paste-plaintext.html
 editing/pasteboard/drag-link-with-data-transfer-adds-trusted-link-to-pasteboard.html
 fast/events/bogus-dropEffect-effectAllowed.html
 fast/events/clear-drag-state.html
@@ -380,6 +379,34 @@ media/restricted-audio-playback-with-multiple-settimeouts.html [ Skip ]
 storage/domstorage/sessionstorage/set-item-synchronous-keydown.html [ Skip ]
 
 # Tests that use EventSender's mouseMoveTo, mouseUp and mouseDown
+editing/pasteboard/can-read-in-dragstart-event.html [ Skip ]
+editing/pasteboard/cleanup-on-move.html [ Skip ]
+editing/pasteboard/copy-crash.html [ Skip ]
+editing/pasteboard/copy-standalone-image-crash.html [ Skip ]
+editing/pasteboard/entries-api/
+editing/pasteboard/data-transfer-items-drag-drop-entry.html [ Skip ]
+editing/pasteboard/data-transfer-items-drag-drop-file.html [ Skip ]
+editing/pasteboard/data-transfer-items-drag-drop-string.html [ Skip ]
+editing/pasteboard/data-transfer-items-image-png.html [ Skip ]
+editing/pasteboard/datatransfer-types-dropping-text-file.html [ Skip ]
+editing/pasteboard/drag-drop-copy-content.html [ Skip ]
+editing/pasteboard/drag-drop-input-textarea.html [ Skip ]
+editing/pasteboard/drag-drop-list.html [ Skip ]
+editing/pasteboard/drag-drop-paragraph-crasher.html [ Skip ]
+editing/pasteboard/drag-drop-url-text.html [ Skip ]
+editing/pasteboard/drag-image-in-about-blank-frame.html [ Skip ]
+editing/pasteboard/drag-list-item.html [ Skip ]
+editing/pasteboard/drop-file-svg.html [ Skip ]
+editing/pasteboard/drop-inputtext-acquires-style.html [ Skip ]
+editing/pasteboard/drop-link.html [ Skip ]
+editing/pasteboard/drop-text-events.html [ Skip ]
+editing/pasteboard/drag-and-drop-attachment-contenteditable.html [ Skip ]
+editing/pasteboard/drag-and-drop-image-contenteditable.html [ Skip ]
+editing/pasteboard/drag-and-drop-inputimage-contenteditable.html [ Skip ]
+editing/pasteboard/drag-and-drop-objectimage-contenteditable.html [ Skip ]
+editing/pasteboard/files-during-page-drags.html [ Skip ]
+editing/pasteboard/get-data-text-plain-drop.html [ Skip ]
+editing/pasteboard/text-selection.html [ Skip ]
 fast/forms/range/disabled-while-dragging.html [ Skip ]
 fast/forms/range/range-drag-when-toggled-disabled.html [ Skip ]
 fast/media/video-element-in-details-collapse.html [ Skip ]
@@ -2185,9 +2212,62 @@ fast/text/fallback-language-han.html [ Skip ]
 # Media controls tests are OS X only
 media/controls [ Skip ]
 
-# Local pasteboard is not implemented on iOS, so pasteboard tests interfere with each other.
-editing/pasteboard [ Skip ]
-editing/mac/pasteboard [ Skip ]
+# Pasteboard tests failing due to extra -webkit-text-size-adjust: auto.
+editing/pasteboard/copy-null-characters.html [ Failure ]
+editing/pasteboard/copy-resolves-urls.html [ Failure ]
+editing/pasteboard/copy-text-with-wrapped-tag.html [ Failure ]
+editing/pasteboard/do-not-copy-unnecessary-styles-2.html [ Failure ]
+editing/pasteboard/paste-noscript-svg.html [ Failure ]
+editing/pasteboard/paste-noscript-xhtml.xhtml [ Failure ]
+editing/pasteboard/paste-noscript.html [ Failure ]
+editing/pasteboard/paste-visible-script.html [ Failure ]
+editing/pasteboard/paste-wrapped-blockquote-into-nonblockquote.html [ Failure ]
+
+# Failing pasteboard to triage
+editing/pasteboard/4242293-1.html [ Failure ]
+editing/pasteboard/5780697-2.html [ Failure ]
+editing/pasteboard/clipboard-customData.html [ Failure ]
+editing/pasteboard/copy-backslash-with-euc.html [ Failure ]
+editing/pasteboard/copy-in-password-field.html [ Failure ]
+editing/pasteboard/copy-inside-h1-preserves-h1.html [ Failure ]
+editing/pasteboard/copy-text-with-backgroundcolor.html [ Failure ]
+editing/pasteboard/copy-two-pasteboard-types-both-work.html [ Failure ]
+editing/pasteboard/data-transfer-items.html [ Failure ]
+editing/pasteboard/dataTransfer-setData-getData.html [ Failure ]
+editing/pasteboard/display-block-on-spans.html [ Failure ]
+editing/pasteboard/emacs-ctrl-k-with-move.html [ Failure ]
+editing/pasteboard/emacs-ctrl-k-y-001.html [ Failure ]
+editing/pasteboard/emacs-killring-alternating-append-prepend.html [ Failure ]
+editing/pasteboard/emacs-killring-backward-delete-prepend.html [ Failure ]
+editing/pasteboard/input-with-display-none-div.html [ Failure ]
+editing/pasteboard/input-with-visibility-hidden.html [ Failure ]
+editing/pasteboard/insert-div-text-into-text.html [ Failure ]
+editing/pasteboard/merge-end-3.html [ Failure ]
+editing/pasteboard/merge-end-5.html [ Failure ]
+editing/pasteboard/merge-end-list-2.html [ Failure ]
+editing/pasteboard/merge-end-table-2.html [ Failure ]
+editing/pasteboard/onpaste-text-html-types.html [ Failure ]
+editing/pasteboard/onpaste-text-html.html [ Failure ]
+editing/pasteboard/page-zoom.html [ Failure ]
+editing/pasteboard/paste-before-tab-span.html [ Failure ]
+editing/pasteboard/paste-blockquote-3.html [ Failure ]
+editing/pasteboard/paste-global-selection.html [ Failure ]
+editing/pasteboard/paste-list-004.html [ Failure ]
+editing/pasteboard/paste-placeholder-input.html [ Failure ]
+editing/pasteboard/paste-plaintext-user-select-none.html [ Failure ]
+editing/pasteboard/paste-sanitize-crash-1.html [ Failure ]
+editing/pasteboard/paste-sanitize-crash-2.html [ Failure ]
+editing/pasteboard/paste-text-events.html [ Failure ]
+editing/pasteboard/smart-paste-001.html [ Failure ]
+editing/pasteboard/smart-paste-002.html [ Failure ]
+editing/pasteboard/smart-paste-003.html [ Failure ]
+editing/pasteboard/smart-paste-004.html [ Failure ]
+editing/pasteboard/smart-paste-005.html [ Failure ]
+editing/pasteboard/smart-paste-007.html [ Failure ]
+editing/pasteboard/smart-paste-008.html [ Failure ]
+
+# Local pasteboard is not implemented on iOS, so pasteboard tests used to be all disabled.
+
 editing/execCommand/find-after-replace.html [ Skip ]
 editing/execCommand/paste-1.html [ Skip ]
 editing/execCommand/paste-and-match-style-event.html [ Skip ]
@@ -2905,5 +2985,9 @@ crypto/subtle/ecdsa-import-pkcs8-key-p521-validate-ecprivatekey-parameters-publi
 
 webkit.org/b/155092 js/arraybuffer-wrappers.html [ Pass Timeout ]
 
-webkit.org/172052 [ Release ] imported/w3c/web-platform-tests/html/webappapis/timers/type-long-setinterval.html [ Pass Failure ]
+webkit.org/b/172052 [ Release ] imported/w3c/web-platform-tests/html/webappapis/timers/type-long-setinterval.html [ Pass Failure ]
 
+webkit.org/b/176878 [ Debug ] fast/multicol/spanner-crash-when-adding-summary.html [ Crash ]
+
+# This test relies on APIs not available on iOS
+fast/images/animated-image-mp4.html [ Skip ]

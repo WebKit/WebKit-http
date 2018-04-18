@@ -1422,7 +1422,7 @@ void ByteCodeParser::emitArgumentPhantoms(int registerOffset, int argumentCountI
         addToGraph(Phantom, get(virtualRegisterForArgument(i, registerOffset)));
 }
 
-unsigned ByteCodeParser::inliningCost(CallVariant callee, int, InlineCallFrame::Kind kind)
+unsigned ByteCodeParser::inliningCost(CallVariant callee, int argumentCountIncludingThis, InlineCallFrame::Kind kind)
 {
     CallMode callMode = InlineCallFrame::callModeFor(kind);
     CodeSpecializationKind specializationKind = specializationKindFor(callMode);
@@ -1454,6 +1454,14 @@ unsigned ByteCodeParser::inliningCost(CallVariant callee, int, InlineCallFrame::
         if (DFGByteCodeParserInternal::verbose)
             dataLog("    Failing because no code block available.\n");
         return UINT_MAX;
+    }
+
+    if (!Options::useArityFixupInlining()) {
+        if (codeBlock->numParameters() > argumentCountIncludingThis) {
+            if (DFGByteCodeParserInternal::verbose)
+                dataLog("    Failing because of arity mismatch.\n");
+            return UINT_MAX;
+        }
     }
 
     CapabilityLevel capabilityLevel = inlineFunctionForCapabilityLevel(
@@ -1569,15 +1577,29 @@ void ByteCodeParser::inlineCall(Node* callTargetNode, int resultOperand, CallVar
         calleeVariable = calleeSet->variableAccessData();
         calleeVariable->mergeShouldNeverUnbox(true);
     }
-    
-    if (arityFixupCount) {
-        Node* undefined = addToGraph(JSConstant, OpInfo(m_constantUndefined));
-        auto fill = [&] (VirtualRegister reg, Node* value) {
-            Node* result = set(reg, value, ImmediateNakedSet);
-            result->variableAccessData()->mergeShouldNeverUnbox(true); // We cannot exit after starting arity fixup.
-        };
 
-        // The stack needs to be aligned due to ABIs. Thus, we have a hole if the count of arguments is not aligned.
+    Vector<std::pair<Node*, VirtualRegister>> delayedAritySets;
+
+    if (arityFixupCount) {
+        // Note: we do arity fixup in two phases:
+        // 1. We get all the values we need and MovHint them to the expected locals.
+        // 2. We SetLocal them inside the callee's CodeOrigin. This way, if we exit, the callee's
+        //    frame is already set up. If any SetLocal exits, we have a valid exit state.
+        //    This is required because if we didn't do this in two phases, we may exit in
+        //    the middle of arity fixup from the caller's CodeOrigin. This is unsound because if
+        //    we did the SetLocals in the caller's frame, the memcpy may clobber needed parts
+        //    of the frame right before exiting. For example, consider if we need to pad two args:
+        //    [arg3][arg2][arg1][arg0]
+        //    [fix ][fix ][arg3][arg2][arg1][arg0]
+        //    We memcpy starting from arg0 in the direction of arg3. If we were to exit at a type check
+        //    for arg3's SetLocal in the caller's CodeOrigin, we'd exit with a frame like so:
+        //    [arg3][arg2][arg1][arg2][arg1][arg0]
+        //    And the caller would then just end up thinking its argument are:
+        //    [arg3][arg2][arg1][arg2]
+        //    which is incorrect.
+
+        Node* undefined = addToGraph(JSConstant, OpInfo(m_constantUndefined));
+        // The stack needs to be aligned due to the JS calling convention. Thus, we have a hole if the count of arguments is not aligned.
         // We call this hole "extra slot". Consider the following case, the number of arguments is 2. If this argument
         // count does not fulfill the stack alignment requirement, we already inserted extra slots.
         //
@@ -1591,11 +1613,21 @@ void ByteCodeParser::inlineCall(Node* callTargetNode, int resultOperand, CallVar
         //
         // In such cases, we do not need to move frames.
         if (registerOffsetAfterFixup != registerOffset) {
-            for (int index = 0; index < argumentCountIncludingThis; ++index)
-                fill(virtualRegisterForArgument(index, registerOffsetAfterFixup), get(virtualRegisterForArgument(index, registerOffset)));
+            for (int index = 0; index < argumentCountIncludingThis; ++index) {
+                Node* value = get(virtualRegisterForArgument(index, registerOffset));
+                VirtualRegister argumentToSet = m_inlineStackTop->remapOperand(virtualRegisterForArgument(index, registerOffsetAfterFixup));
+                addToGraph(MovHint, OpInfo(argumentToSet.offset()), value);
+                m_setLocalQueue.append(DelayedSetLocal { currentCodeOrigin(), argumentToSet, value, ImmediateNakedSet });
+            }
         }
-        for (int index = 0; index < arityFixupCount; ++index)
-            fill(virtualRegisterForArgument(argumentCountIncludingThis + index, registerOffsetAfterFixup), undefined);
+        for (int index = 0; index < arityFixupCount; ++index) {
+            VirtualRegister argumentToSet = m_inlineStackTop->remapOperand(virtualRegisterForArgument(argumentCountIncludingThis + index, registerOffsetAfterFixup));
+            addToGraph(MovHint, OpInfo(argumentToSet.offset()), undefined);
+            m_setLocalQueue.append(DelayedSetLocal { currentCodeOrigin(), argumentToSet, undefined, ImmediateNakedSet });
+        }
+
+        // At this point, it's OK to OSR exit because we finished setting up
+        // our callee's frame. We emit an ExitOK below from the callee's CodeOrigin.
     }
 
     InlineStackEntry inlineStackEntry(
@@ -1608,6 +1640,9 @@ void ByteCodeParser::inlineCall(Node* callTargetNode, int resultOperand, CallVar
 
     // At this point, it's again OK to OSR exit.
     m_exitOK = true;
+    addToGraph(ExitOK);
+
+    processSetLocalQueue();
 
     InlineVariableData inlineVariableData;
     inlineVariableData.inlineCallFrame = m_inlineStackTop->m_inlineCallFrame;

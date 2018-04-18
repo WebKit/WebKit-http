@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2017 NAVER Corp. All rights reserved.
+ * Copyright (C) 2017 Sony Interactive Entertainment Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,10 +31,10 @@
 #include "Credential.h"
 #include "CurlContext.h"
 #include "CurlJobManager.h"
+#include "CurlSSLVerifier.h"
 #include "FormDataStreamCurl.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
-#include "SSLHandle.h"
 #include <wtf/Condition.h>
 #include <wtf/ThreadSafeRefCounted.h>
 
@@ -41,6 +42,7 @@ namespace WebCore {
 
 class MultipartHandle;
 class ProtectionSpace;
+class ResourceError;
 class ResourceHandle;
 class ThreadSafeDataBuffer;
 
@@ -72,16 +74,14 @@ private:
     ResourceResponse& response();
 
     void setupAuthentication();
-    bool getProtectionSpace(const ResourceResponse&, ProtectionSpace&);
 
-    void didReceiveHeaderLine(const String&);
-    void didReceiveAllHeaders(long httpCode, long long contentLength);
+    void didReceiveAllHeaders(long httpCode, long long contentLength, uint16_t connectPort, long availableHttpAuth);
     void didReceiveContentData(ThreadSafeDataBuffer);
     void handleLocalReceiveResponse();
     void prepareSendData(char*, size_t blockSize, size_t numberOfBlocks);
 
-    void didFinish(double, double, double, double);
-    void didFail(const String& domain, int errorCode, const URL& failingURL, const String& localizedDescription, unsigned sslErrors);
+    void didFinish(NetworkLoadMetrics);
+    void didFail(const ResourceError&);
 
     void handleDataURL();
 
@@ -91,19 +91,21 @@ private:
     size_t getFormElementsCount();
     void setupFormData(bool);
     void applyAuthentication();
-    void setWebTimings(double, double, double, double);
+    NetworkLoadMetrics getNetworkLoadMetrics();
 
+    CURLcode willSetupSslCtx(void*);
     size_t didReceiveHeader(String&&);
     size_t didReceiveData(ThreadSafeDataBuffer);
     size_t willSendData(char*, size_t blockSize, size_t numberOfBlocks);
 
+    static CURLcode willSetupSslCtxCallback(CURL*, void*, void*);
     static size_t didReceiveHeaderCallback(char*, size_t blockSize, size_t numberOfBlocks, void*);
     static size_t didReceiveDataCallback(char*, size_t blockSize, size_t numberOfBlocks, void*);
     static size_t willSendDataCallback(char*, size_t blockSize, size_t numberOfBlocks, void*);
 
     // Used by main thread.
     ResourceHandle* m_handle;
-    FormDataStream m_formDataStream;
+    std::unique_ptr<FormDataStream> m_formDataStream;
     std::unique_ptr<MultipartHandle> m_multipartHandle;
     unsigned short m_authFailureCount { 0 };
     CurlJobTicket m_job { nullptr };
@@ -114,11 +116,11 @@ private:
     String m_user;
     String m_pass;
     Credential m_initialCredential;
-    std::optional<ClientCertificate> m_sslClientCertificate;
     bool m_defersLoading;
     bool m_addedCacheValidationHeaders { false };
     Vector<char> m_postBytes;
     CurlHandle m_curlHandle;
+    CurlSSLVerifier m_sslVerifier;
     // Used by both threads.
     Condition m_workerThreadConditionVariable;
     Lock m_workerThreadMutex;

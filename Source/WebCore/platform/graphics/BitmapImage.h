@@ -98,7 +98,7 @@ public:
 
     SubsamplingLevel frameSubsamplingLevelAtIndex(size_t index) const { return m_source.frameSubsamplingLevelAtIndex(index); }
 
-    float frameDurationAtIndex(size_t index) const { return m_source.frameDurationAtIndex(index); }
+    Seconds frameDurationAtIndex(size_t index) const { return m_source.frameDurationAtIndex(index); }
     ImageOrientation frameOrientationAtIndex(size_t index) const { return m_source.frameOrientationAtIndex(index); }
 
     size_t currentFrame() const { return m_currentFrame; }
@@ -222,7 +222,7 @@ private:
     RepetitionCount m_repetitionsComplete { RepetitionCountNone }; // How many repetitions we've finished.
     MonotonicTime m_desiredFrameStartTime; // The system time at which we hope to see the next call to startAnimation().
 
-    Vector<Function<void()>, 1> m_decodingCallbacks;
+    std::unique_ptr<Vector<Function<void()>, 1>> m_decodingCallbacks;
     Seconds m_frameDecodingDurationForTesting;
     MonotonicTime m_desiredFrameDecodeTimeForTesting;
 

@@ -132,8 +132,7 @@ void Engine::retrieveRecords(uint64_t cacheIdentifier, WebCore::URL&& url, Recor
             callback(makeUnexpected(result.error()));
             return;
         }
-
-        callback(result.value().get().retrieveRecords(url));
+        result.value().get().retrieveRecords(url, WTFMove(callback));
     });
 }
 
@@ -217,10 +216,26 @@ void Engine::readCachesFromDisk(const String& origin, CachesCallback&& callback)
 
 void Engine::readCache(uint64_t cacheIdentifier, CacheCallback&& callback)
 {
-    // FIXME: Implement reading.
     auto* cache = this->cache(cacheIdentifier);
     if (!cache) {
         callback(makeUnexpected(Error::Internal));
+        return;
+    }
+    if (!cache->isOpened()) {
+        cache->open([this, protectedThis = makeRef(*this), cacheIdentifier, callback = WTFMove(callback)](std::optional<Error>&& error) mutable {
+            if (error) {
+                callback(makeUnexpected(error.value()));
+                return;
+            }
+
+            auto* cache = this->cache(cacheIdentifier);
+            if (!cache) {
+                callback(makeUnexpected(Error::Internal));
+                return;
+            }
+            ASSERT(cache->isOpened());
+            callback(std::reference_wrapper<Cache> { *cache });
+        });
         return;
     }
     callback(std::reference_wrapper<Cache> { *cache });
@@ -296,12 +311,15 @@ void Engine::removeCaches(const String& origin)
     m_caches.remove(origin);
 }
 
-void Engine::clearMemoryRepresentation(const String& origin)
+void Engine::clearMemoryRepresentation(const String& origin, WebCore::DOMCacheEngine::CompletionCallback&& callback)
 {
-    readCachesFromDisk(origin, [](CachesOrError&& result) {
-        if (!result.hasValue())
+    readCachesFromDisk(origin, [callback = WTFMove(callback)](CachesOrError&& result) {
+        if (!result.hasValue()) {
+            callback(result.error());
             return;
+        }
         result.value().get().clearMemoryRepresentation();
+        callback(std::nullopt);
     });
 }
 
@@ -325,12 +343,11 @@ void Engine::unlock(uint64_t cacheIdentifier)
     if (--lockCount->value)
         return;
 
-    readCache(cacheIdentifier, [this](CacheOrError&& result) mutable {
-        if (!result.hasValue())
-            return;
+    auto* cache = this->cache(cacheIdentifier);
+    if (!cache)
+        return;
 
-        result.value().get().dispose();
-    });
+    cache->dispose();
 }
 
 String Engine::representation()

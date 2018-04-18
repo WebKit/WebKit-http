@@ -85,8 +85,6 @@ public:
     
     LayoutRect visualOverflowRect() const override;
 
-    RenderNamedFlowThread* namedFlowThread() const;
-
     bool hasAutoLogicalHeight() const override { return m_hasAutoLogicalHeight; }
 
     LayoutUnit computedAutoHeight() const { return m_computedAutoHeight; }
@@ -105,7 +103,6 @@ public:
 
     bool hasComputedAutoHeight() const { return m_hasComputedAutoHeight; }
 
-    RegionOversetState regionOversetState() const;
 
     void attachRegion() override;
     void detachRegion() override;
@@ -135,9 +132,6 @@ private:
     void decrementAutoLogicalHeightCount();
 
     bool shouldHaveAutoLogicalHeight() const;
-
-    void updateOversetState();
-    void setRegionOversetState(RegionOversetState);
 
     void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) override;
 

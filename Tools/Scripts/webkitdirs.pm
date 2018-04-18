@@ -574,6 +574,13 @@ sub programFilesPath
     return $programFilesPath;
 }
 
+sub programFilesPathX86
+{
+    my $programFilesPathX86 = $ENV{'PROGRAMFILES(X86)'} || "C:\\Program Files (x86)";
+
+    return $programFilesPathX86;
+}
+
 sub visualStudioInstallDir
 {
     return $vsInstallDir if defined $vsInstallDir;
@@ -582,9 +589,9 @@ sub visualStudioInstallDir
         $vsInstallDir = $ENV{'VSINSTALLDIR'};
         $vsInstallDir =~ s|[\\/]$||;
     } else {
-        $vsInstallDir = File::Spec->catdir(programFilesPath(), "Microsoft Visual Studio", "2017", "Community");
+        $vsInstallDir = File::Spec->catdir(programFilesPathX86(), "Microsoft Visual Studio", "2017", "Community");
         if (not -e $vsInstallDir) {
-            $vsInstallDir = File::Spec->catdir(programFilesPath(), "Microsoft Visual Studio 14.0");
+            $vsInstallDir = File::Spec->catdir(programFilesPathX86(), "Microsoft Visual Studio 14.0");
         }
     }
     chomp($vsInstallDir = `cygpath "$vsInstallDir"`) if isCygwin();
@@ -597,9 +604,9 @@ sub msBuildInstallDir
 {
     return $msBuildInstallDir if defined $msBuildInstallDir;
 
-    $msBuildInstallDir = File::Spec->catdir(programFilesPath(), "Microsoft Visual Studio", "2017", "Community", "MSBuild", "15.0", "Bin");
+    $msBuildInstallDir = File::Spec->catdir(programFilesPathX86(), "Microsoft Visual Studio", "2017", "Community", "MSBuild", "15.0", "Bin");
     if (not -e $msBuildInstallDir) {
-        $msBuildInstallDir = File::Spec->catdir(programFilesPath(), "MSBuild", "14.0", "Bin");
+        $msBuildInstallDir = File::Spec->catdir(programFilesPathX86(), "MSBuild", "14.0", "Bin");
     }
     chomp($msBuildInstallDir = `cygpath "$msBuildInstallDir"`) if isCygwin();
 

@@ -225,8 +225,7 @@ webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/SourceBuffer-ab
 webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/SourceBuffer-abort-updating.html [ Failure ]
 webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/SourceBuffer-abort.html [ Failure ]
 webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/URL-createObjectURL-revoke.html [ Failure ]
-webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/interfaces.html [ Failure ]
-# See also bug #175578 
+# See also bug #175578
 webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/mediasource-activesourcebuffers.html [ Crash Failure ]
 # Crash is webkit.org/b/176804
 webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/mediasource-addsourcebuffer-mode.html [ Failure Crash ]
@@ -632,7 +631,6 @@ webrtc/audio-replace-track.html [ Failure ]
 webrtc/audio-muted-stats.html [ Failure ]
 webrtc/audio-muted-stats2.html [ Failure ]
 webrtc/captureCanvas-webrtc.html [ Failure ]
-webrtc/clone-audio-track.html [ Failure ]
 webrtc/closing-peerconnection.html [ Timeout ]
 webrtc/connection-state.html [ Failure ]
 webrtc/datachannel [ Skip ]
@@ -1365,6 +1363,10 @@ webkit.org/b/176804 imported/w3c/web-platform-tests/media-source/mediasource-pla
 webkit.org/b/176805 media/media-higher-prio-audio-stream.html [ Crash ]
 
 webkit.org/b/176806 media/track/track-text-track-cue-list.html [ Crash ]
+
+webkit.org/b/176856 fast/mediastream/apply-constraints-video.html [ Crash ]
+webkit.org/b/176850 webrtc/clone-audio-track.html [ Failure Crash ]
+webkit.org/b/176861 imported/w3c/web-platform-tests/media-source/mediasource-sourcebuffer-mode.html [ Crash ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Crashing tests
@@ -3236,8 +3238,8 @@ webkit.org/b/167999 imported/w3c/web-platform-tests/fetch/api/redirect/redirect-
 webkit.org/b/167999 imported/w3c/web-platform-tests/fetch/api/redirect/redirect-location.html [ Failure ]
 webkit.org/b/167999 imported/w3c/web-platform-tests/fetch/api/redirect/redirect-location-worker.html [ Failure ]
 
-webkit.org/b/168543 imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.html [ Failure ]
-webkit.org/b/168543 imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.worker.html [ Failure ]
+webkit.org/b/168543 http/wpt/resource-timing/rt-nextHopProtocol.html [ Failure ]
+webkit.org/b/168543 http/wpt/resource-timing/rt-nextHopProtocol.worker.html [ Failure ]
 
 webkit.org/b/145260 media/audio-playback-restriction-play.html [ Failure ]
 

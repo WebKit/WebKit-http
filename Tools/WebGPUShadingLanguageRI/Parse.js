@@ -172,22 +172,53 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         if (token = tryConsumeKind("identifier"))
             return new VariableRef(token, token.text);
         if (token = tryConsumeKind("intLiteral")) {
-            let intVersion = Math.floor(+token.text);
+            let intVersion = (+token.text) | 0;
             if ("" + intVersion !== token.text)
-                lexer.fail("Integer literal is not an integer");
+                lexer.fail("Integer literal is not an integer: " + token.text);
             return new IntLiteral(token, intVersion);
         }
         if (token = tryConsumeKind("uintLiteral")) {
-            let uintVersion = token.text >>> 0;
+            let uintVersion = token.text.substr(0, token.text.length - 1) >>> 0;
             if (uintVersion + "u" !== token.text)
-                lexer.fail("Integer literal is not 32-bit unsigned integer");
+                lexer.fail("Integer literal is not 32-bit unsigned integer: " + token.text);
             return new UintLiteral(token, uintVersion);
+        }
+        if ((token = tryConsumeKind("intHexLiteral"))
+            || (token = tryConsumeKind("uintHexLiteral"))) {
+            let hexString = token.text.substr(2);
+            if (token.kind == "uintHexLiteral")
+                hexString = hexString.substr(0, hexString.length - 1);
+            if (!hexString.length)
+                throw new Error("Bad hex literal: " + token);
+            let intVersion = parseInt(hexString, 16);
+            if (token.kind == "intHexLiteral")
+                intVersion = intVersion | 0;
+            else
+                intVersion = intVersion >>> 0;
+            if (intVersion.toString(16) !== hexString)
+                lexer.fail("Hex integer literal is not an integer: " + token.text);
+            if (token.kind == "intHexLiteral")
+                return new IntLiteral(token, intVersion);
+            return new UintLiteral(token, intVersion >>> 0);
         }
         if (token = tryConsumeKind("doubleLiteral"))
             return new DoubleLiteral(token, +token.text);
+        if (token = tryConsumeKind("floatLiteral")) {
+            let text = token.text;
+            let d = token.text.endsWith("d");
+            let f = token.text.endsWith("f");
+            if (d && f)
+                throw new Error("Literal cannot be both a double literal and a float literal.");
+            if (d || f)
+                text = text.substring(0, text.length - 1);
+            let value = parseFloat(text);
+            if (d)
+                return new DoubleLiteral(token, value);
+            return new FloatLiteral(token, Math.fround(value));
+        }
         if (token = tryConsume("true", "false"))
             return new BoolLiteral(token, token.text == "true");
-        // FIXME: Need support for float literals and probably other literals too.
+        // FIXME: Need support for other literals too.
         consume("(");
         let result = parseExpression();
         consume(")");
@@ -196,7 +227,13 @@ function parse(program, origin, originKind, lineNumberOffset, text)
     
     function parseConstexpr()
     {
-        return parseTerm();
+        let token;
+        if (token = tryConsume("-"))
+            return new CallExpression(token, "operator" + token.text, [], [parseTerm()]);
+        let left = parseTerm();
+        if (token = tryConsume("."))
+            left = new DotExpression(token, left, consumeKind("identifier").text);
+        return left;
     }
     
     function parseTypeArguments()
@@ -320,34 +357,57 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         consume("(");
         let argumentList = [];
         while (!test(")")) {
-            argumentList.push(parseExpression());
+            let argument = parsePossibleAssignment();
+            argumentList.push(argument);
             if (!tryConsume(","))
                 break;
         }
         consume(")");
-        return new CallExpression(name, name.text, typeArguments, argumentList);
+        let result = new CallExpression(name, name.text, typeArguments, argumentList);
+        return result;
     }
     
-    function parsePossibleSuffix()
+    function isCallExpression()
     {
-        // First check if this is a call expression.
-        let isCallExpression = lexer.testScope(() => {
+        return lexer.testScope(() => {
             consumeKind("identifier");
             parseTypeArguments();
             consume("(");
         });
+    }
+    
+    function emitIncrement(token, old, extraArg)
+    {
+        let args = [old];
+        if (extraArg)
+            args.push(extraArg);
         
-        if (isCallExpression)
-            return parseCallExpression();
+        let name = "operator" + token.text;
+        if (/=$/.test(name))
+            name = RegExp.leftContext;
         
-        let left = parseTerm();
+        if (name == "operator")
+            throw new Error("Invalid name: " + name);
+        
+        return new CallExpression(token, name, [], args);
+    }
+    
+    function finishParsingPostIncrement(token, left)
+    {
+        let readModifyWrite = new ReadModifyWriteExpression(token, left);
+        readModifyWrite.newValueExp = emitIncrement(token, readModifyWrite.oldValueRef());
+        readModifyWrite.resultExp = readModifyWrite.oldValueRef();
+        return readModifyWrite;
+    }
+    
+    function parseSuffixOperator(left, acceptableOperators)
+    {
         let token;
-        while (token = tryConsume("++", "--", ".", "->", "[")) {
+        while (token = tryConsume(...acceptableOperators)) {
             switch (token.text) {
             case "++":
             case "--":
-                left = new SuffixCallAssignment(token, "operator" + token.text, left);
-                break;
+                return finishParsingPostIncrement(token, left);
             case ".":
             case "->":
                 if (token.text == "->")
@@ -357,9 +417,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
             case "[": {
                 let index = parseExpression();
                 consume("]");
-                left = new DereferenceExpression(
-                    token,
-                    new CallExpression(token, "operator&[]", [], [left, index]));
+                left = new IndexExpression(token, left, index);
                 break;
             }
             default:
@@ -369,11 +427,42 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         return left;
     }
     
+    function parsePossibleSuffix()
+    {
+        let acceptableOperators = ["++", "--", ".", "->", "["];
+        let limitedOperators = [".", "->", "["];
+        let left;
+        if (isCallExpression()) {
+            left = parseCallExpression();
+            acceptableOperators = limitedOperators;
+        } else
+            left = parseTerm();
+        
+        return parseSuffixOperator(left, acceptableOperators);
+    }
+    
+    function finishParsingPreIncrement(token, left, extraArg)
+    {
+        let readModifyWrite = new ReadModifyWriteExpression(token, left);
+        readModifyWrite.newValueExp = emitIncrement(token, readModifyWrite.oldValueRef(), extraArg);
+        readModifyWrite.resultExp = readModifyWrite.newValueRef();
+        return readModifyWrite;
+    }
+    
+    function parsePreIncrement()
+    {
+        let token = consume("++", "--");
+        let left = parsePossiblePrefix();
+        return finishParsingPreIncrement(token, left);
+    }
+    
     function parsePossiblePrefix()
     {
         let token;
-        if (token = tryConsume("++", "--", "+", "-", "~"))
-            return new CallAssignment(token, "operator" + token.text, parsePossiblePrefix());
+        if (test("++", "--"))
+            return parsePreIncrement();
+        if (token = tryConsume("+", "-", "~"))
+            return new CallExpression(token, "operator" + token.text, [], [parsePossiblePrefix()]);
         if (token = tryConsume("^"))
             return new DereferenceExpression(token, parsePossiblePrefix());
         if (token = tryConsume("&"))
@@ -438,7 +527,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
     {
         return genericParseLeft(
             texts, nextParser,
-            (token, left, right) => new LogicalExpression(token, token.text, left, right));
+            (token, left, right) => new LogicalExpression(token, token.text, new CallExpression(left.origin, "bool", [], [left]), new CallExpression(right.origin, "bool", [], [right])));
     }
     
     function parsePossibleLogicalAnd()
@@ -471,8 +560,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         }
         if (operator.text == "=")
             return new Assignment(operator, lhs, parsePossibleAssignment());
-        let name = "operator" + operator.text.substring(0, operator.text.length - 1);
-        return new CallAssignment(operator, name, lhs, parsePossibleAssignment());
+        return finishParsingPreIncrement(operator, lhs, parsePossibleAssignment());
     }
     
     function parseAssignment()
@@ -480,12 +568,24 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         return parsePossibleAssignment("required");
     }
     
+    function parsePostIncrement()
+    {
+        let left = parseSuffixOperator(parseTerm(), ".", "->", "[");
+        let token = consume("++", "--");
+        return finishParsingPostIncrement(token, left);
+    }
+    
     function parseEffectfulExpression()
     {
-        let assignment = lexer.backtrackingScope(parseAssignment);
-        if (assignment)
-            return assignment;
-        return parseCallExpression();
+        if (isCallExpression())
+            return parseCallExpression();
+        let preIncrement = lexer.backtrackingScope(parsePreIncrement);
+        if (preIncrement)
+            return preIncrement;
+        let postIncrement = lexer.backtrackingScope(parsePostIncrement);
+        if (postIncrement)
+            return postIncrement;
+        return parseAssignment();
     }
     
     function genericParseCommaExpression(finalExpressionParser)
@@ -506,6 +606,10 @@ function parse(program, origin, originKind, lineNumberOffset, text)
             }
             list.push(effectfulExpression);
         }
+        if (!list.length)
+            throw new Error("Length should never be zero");
+        if (list.length == 1)
+            return list[0];
         return new CommaExpression(origin, list);
     }
     
@@ -648,6 +752,11 @@ function parse(program, origin, originKind, lineNumberOffset, text)
             return parseFor();
         if (token.text == "if")
             return parseIfStatement();
+        if (token.text == "trap") {
+            let origin = consume("trap");
+            consume(";");
+            return new TrapStatement(origin);
+        }
         if (token.text == "{")
             return parseBlock();
         let variableDecl = lexer.backtrackingScope(parseVariableDecls);
@@ -692,15 +801,30 @@ function parse(program, origin, originKind, lineNumberOffset, text)
     function parseFuncName()
     {
         if (tryConsume("operator")) {
-            let token = tryConsume("+", "-", "*", "/", "%", "^", "&", "|", "<", ">", "<=", ">=", "==", "++", "--", "&");
-            if (token) {
-                if (token.text != "&" || !tryConsume("["))
-                    return "operator" + token.text;
-                consume("]");
-                return "operator&[]";
+            let token = consume("+", "-", "*", "/", "%", "^", "&", "|", "<", ">", "<=", ">=", "==", "++", "--", ".", "~", "<<", ">>", "[");
+            if (token.text == "&") {
+                if (tryConsume("[")) {
+                    consume("]");
+                    return "operator&[]";
+                }
+                if (tryConsume("."))
+                    return "operator&." + consumeKind("identifier").text;
+                return "operator&";
             }
-            let name = consumeKind("identifier");
-            return "operator " + name;
+            if (token.text == ".") {
+                let result = "operator." + consumeKind("identifier").text;
+                if (tryConsume("="))
+                    result += "=";
+                return result;
+            }
+            if (token.text == "[") {
+                consume("]");
+                let result = "operator[]";
+                if (tryConsume("="))
+                    result += "=";
+                return result;
+            }
+            return "operator" + token.text;
         }
         return consumeKind("identifier").text;
     }
@@ -712,6 +836,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         let name;
         let typeParameters;
         let isCast;
+        let shaderType;
         let operatorToken = tryConsume("operator");
         if (operatorToken) {
             origin = operatorToken;
@@ -720,27 +845,32 @@ function parse(program, origin, originKind, lineNumberOffset, text)
             name = "operator cast";
             isCast = true;
         } else {
+            shaderType = tryConsume("vertex", "fragment");
             returnType = parseType();
-            origin = returnType.origin;
+            if (shaderType) {
+                origin = shaderType;
+                shaderType = shaderType.text;
+            } else
+                origin = returnType.origin;
             name = parseFuncName();
             typeParameters = parseTypeParameters();
             isCast = false;
         }
         let parameters = parseParameters();
-        return new Func(origin, name, returnType, typeParameters, parameters, isCast);
+        return new Func(origin, name, returnType, typeParameters, parameters, isCast, shaderType);
     }
 
     function parseProtocolFuncDecl()
     {
         let func = parseFuncDecl();
-        return new ProtocolFuncDecl(func.origin, func.name, func.returnType, func.typeParameters, func.parameters, func.isCast);
+        return new ProtocolFuncDecl(func.origin, func.name, func.returnType, func.typeParameters, func.parameters, func.isCast, func.shaderType);
     }
     
     function parseFuncDef()
     {
         let func = parseFuncDecl();
         let body = parseBlock();
-        return new FuncDef(func.origin, func.name, func.returnType, func.typeParameters, func.parameters, body, func.isCast);
+        return new FuncDef(func.origin, func.name, func.returnType, func.typeParameters, func.parameters, body, func.isCast, func.shaderType);
     }
     
     function parseProtocolDecl()
@@ -787,7 +917,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
     {
         let func = parseFuncDecl();
         consume(";");
-        return new NativeFunc(func.origin, func.name, func.returnType, func.typeParameters, func.parameters, func.isCast);
+        return new NativeFunc(func.origin, func.name, func.returnType, func.typeParameters, func.parameters, func.isCast, func.shaderType);
     }
     
     function parseNative()
@@ -796,7 +926,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         let isType = lexer.backtrackingScope(() => {
             if (tryConsume("typedef"))
                 return "normal";
-            consume("primitive");
+            consume("Primitive");
             consume("typedef");
             return "primitive";
         });
@@ -821,6 +951,35 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         return result;
     }
     
+    function parseEnumMember()
+    {
+        let name = consumeKind("identifier");
+        let value = null;
+        if (tryConsume("="))
+            value = parseConstexpr();
+        return new EnumMember(name, name.text, value);
+    }
+    
+    function parseEnumType()
+    {
+        consume("enum");
+        let name = consumeKind("identifier");
+        let baseType;
+        if (tryConsume(":"))
+            baseType = parseType();
+        else
+            baseType = new TypeRef(name, "int", []);
+        consume("{");
+        let result = new EnumType(name, name.text, baseType);
+        while (!test("}")) {
+            result.add(parseEnumMember());
+            if (!tryConsume(","))
+                break;
+        }
+        consume("}");
+        return result;
+    }
+    
     for (;;) {
         let token = lexer.peek();
         if (!token)
@@ -836,7 +995,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         else if (token.text == "struct")
             program.add(parseStructType());
         else if (token.text == "enum")
-            program.add(parseEnum());
+            program.add(parseEnumType());
         else if (token.text == "protocol")
             program.add(parseProtocolDecl());
         else

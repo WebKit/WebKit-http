@@ -75,6 +75,7 @@ http/tests/quicklook [ Skip ]
 http/tests/appcache/decide-navigation-policy-after-delay.html [ Skip ]
 http/tests/misc/will-send-request-with-client-provided-http-body.html [ Skip ]
 http/tests/loading/resourceLoadStatistics/ [ Skip ]
+http/tests/storageAccess/ [ Skip ]
 
 # Only Mac and iOS have an implementation of UIScriptController::doAsyncTask().
 fast/harness/uiscriptcontroller [ Skip ]
@@ -137,8 +138,6 @@ fast/text/font-lookup-dot-prefix-case-sensitive.html [ Skip ]
 
 # Payment Request is only enabled on Cocoa platforms.
 imported/w3c/web-platform-tests/payment-request [ Skip ]
-
-webkit.org/b/175269 imported/w3c/web-platform-tests/eventsource/event-data.html [ Skip ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific tests.
@@ -224,6 +223,8 @@ webkit.org/b/142208 inspector/timeline/exception-in-injected-script-while-record
 
 # This test is fast enough in release but quite slow in debug builds.
 [ Debug ] inspector/debugger/debugger-stack-overflow.html [ Skip ]
+[ Debug ] inspector/canvas/recording-2d.html [ Slow ]
+[ Debug ] inspector/canvas/recording-webgl.html [ Slow ]
 
 # Debugger stepping tests can timeout if they run slowly due to a short timer scheduled in the frontend.
 webkit.org/b/161951 [ Debug ] inspector/debugger/paused-scopes.html [ Skip ]
@@ -398,11 +399,12 @@ imported/w3c/web-platform-tests/fetch/api/cors/cors-redirect-preflight.any.html 
 imported/w3c/web-platform-tests/fetch/api/request/request-cache-only-if-cached.html [ DumpJSConsoleLogInStdErr ]
 
 webkit.org/b/161088 imported/w3c/web-platform-tests/resource-timing/resource-timing.html [ Pass Failure ]
-webkit.org/b/168357 imported/w3c/web-platform-tests/resource-timing/rt-initiatorType-media.html [ Failure ]
-webkit.org/b/168448 imported/w3c/web-platform-tests/resource-timing/rt-shared-resource-in-frames.html [ Pass Failure ]
-webkit.org/b/168448 imported/w3c/web-platform-tests/resource-timing/rt-shared-resource-in-workers.html [ Pass Failure ]
-webkit.org/b/171511 imported/w3c/web-platform-tests/resource-timing/rt-revalidate-requests.html [ Pass Failure ]
 imported/w3c/web-platform-tests/resource-timing/test_resource_timing.html [ Pass Failure ]
+
+webkit.org/b/168357 http/wpt/resource-timing/rt-initiatorType-media.html [ Failure ]
+webkit.org/b/168448 http/wpt/resource-timing/rt-shared-resource-in-frames.html [ Pass Failure ]
+webkit.org/b/168448 http/wpt/resource-timing/rt-shared-resource-in-workers.html [ Pass Failure ]
+webkit.org/b/171511 http/wpt/resource-timing/rt-revalidate-requests.html [ Pass Failure ]
 
 webkit.org/b/161312 imported/w3c/web-platform-tests/html/semantics/document-metadata/the-link-element/document-without-browsing-context.html [ Failure Pass ]
 
@@ -774,8 +776,6 @@ webkit.org/b/173506  ietestcenter/Javascript/15.4.4.15-3-14.html [ Skip ]
 webkit.org/b/173506  ietestcenter/Javascript/15.4.4.15-3-8.html [ Skip ]
 webkit.org/b/173506  sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.9_Array_prototype_shift/S15.4.4.9_A2_T2.html [ Skip ]
 
-[ Debug ] js/regress-141098.html [ Slow ]
-
 # IDBVersionChangeEvent tests need to be rewritten to use event constructors instead of createEvent,
 # after we implement the IDBVersionChangeEvent constructor.
 webkit.org/b/145390 storage/indexeddb/events.html [ Failure ]
@@ -797,10 +797,8 @@ media/session [ Skip ]
 
 webrtc/datachannel/multiple-connections.html [ Slow ]
 webrtc/video-replace-track.html [ Pass Failure ]
-webrtc/video-getParameters.html [ Failure ]
 webkit.org/b/170178 webrtc/video-replace-track-to-null.html [ Pass Failure ]
-webkit.org/b/175305 webrtc/video-rotation.html [ Failure Timeout ]
-webkit.org/b/170704 webrtc/video-mute.html [ Failure ]
+webkit.org/b/170704 webrtc/video-mute.html [ Pass Failure ]
 webkit.org/b/170701 webrtc/datachannel/bufferedAmountLowThreshold-default.html [ Pass Failure ]
 webkit.org/b/173486 webrtc/video-replace-muted-track.html [ Pass Failure Timeout ]
 
@@ -1392,6 +1390,9 @@ imported/w3c/web-platform-tests/secure-contexts/basic-popup-and-iframe-tests.htt
 ### END OF -disabled tests
 ########################################
 
+webkit.org/b/163046 [ Release ] js/regress-141098.html [ Pass Failure ]
+webkit.org/b/163046 [ Debug ] js/regress-141098.html [ Slow Pass Failure ]
+
 webkit.org/b/169625 imported/w3c/web-platform-tests/cors/status.htm [ Pass Failure ]
 
 webkit.org/b/170130 fast/events/before-unload-adopt-subframe-to-outside.html [ Pass Timeout ]
@@ -1459,3 +1460,7 @@ webkit.org/b/171945 perf/class-list-remove.html [ Pass Failure Timeout ]
 webkit.org/b/176183 fast/block/inside-inlines/opacity-on-inline.html [ ImageOnlyFailure ]
 
 webkit.org/b/166025 http/tests/fetch/fetching-same-resource-with-different-options.html [ Pass Failure ]
+
+imported/w3c/web-platform-tests/css/css-pseudo-4/first-letter-001.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-pseudo-4/first-letter-002.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-pseudo-4/first-letter-003.html [ ImageOnlyFailure ]

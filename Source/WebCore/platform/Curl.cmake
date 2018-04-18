@@ -3,6 +3,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
 )
 
 list(APPEND WebCore_SOURCES
+    platform/network/curl/AuthenticationChallengeCurl.cpp
     platform/network/curl/CookieJarCurl.cpp
     platform/network/curl/CredentialStorageCurl.cpp
     platform/network/curl/CurlCacheEntry.cpp
@@ -10,13 +11,16 @@ list(APPEND WebCore_SOURCES
     platform/network/curl/CurlContext.cpp
     platform/network/curl/CurlDownload.cpp
     platform/network/curl/CurlJobManager.cpp
+    platform/network/curl/CurlSSLHandle.cpp
+    platform/network/curl/CurlSSLVerifier.cpp
     platform/network/curl/DNSCurl.cpp
     platform/network/curl/FormDataStreamCurl.cpp
     platform/network/curl/MultipartHandle.cpp
     platform/network/curl/ProxyServerCurl.cpp
+    platform/network/curl/ResourceErrorCurl.cpp
     platform/network/curl/ResourceHandleCurl.cpp
     platform/network/curl/ResourceHandleCurlDelegate.cpp
-    platform/network/curl/SSLHandle.cpp
+    platform/network/curl/ResourceResponseCurl.cpp
     platform/network/curl/SocketStreamHandleImplCurl.cpp
     platform/network/curl/SynchronousLoaderClientCurl.cpp
 )

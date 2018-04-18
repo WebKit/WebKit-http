@@ -896,6 +896,9 @@ private:
         case GetGlobalObject:
             compileGetGlobalObject();
             break;
+        case GetGlobalThis:
+            compileGetGlobalThis();
+            break;
         case GetClosureVar:
             compileGetClosureVar();
             break;
@@ -3655,7 +3658,7 @@ private:
                 m_out.equal(scopeOffset, m_out.constInt32(ScopeOffset::invalidOffset)));
             
             address = m_out.baseIndex(
-                m_heaps.JSEnvironmentRecord_variables, caged(Gigacage::JSValue, scope),
+                m_heaps.JSLexicalEnvironment_variables, caged(Gigacage::JSValue, scope),
                 m_out.zeroExtPtr(scopeOffset));
             ValueFromBlock namedResult = m_out.anchor(m_out.load64(address));
             m_out.jump(continuation);
@@ -4456,7 +4459,7 @@ private:
         for (unsigned i = 0; i < table->scopeSize(); ++i) {
             m_out.store64(
                 m_out.constInt64(JSValue::encode(initializationValue)),
-                fastObject, m_heaps.JSEnvironmentRecord_variables[i]);
+                fastObject, m_heaps.JSLexicalEnvironment_variables[i]);
         }
         
         mutatorFence();
@@ -5960,13 +5963,19 @@ private:
         LValue structure = loadStructure(lowCell(m_node->child1()));
         setJSValue(m_out.loadPtr(structure, m_heaps.Structure_globalObject));
     }
+
+    void compileGetGlobalThis()
+    {
+        auto* globalObject = m_graph.globalObjectFor(m_node->origin.semantic);
+        setJSValue(m_out.loadPtr(m_out.absolute(globalObject->addressOfGlobalThis())));
+    }
     
     void compileGetClosureVar()
     {
         setJSValue(
             m_out.load64(
                 lowCell(m_node->child1()),
-                m_heaps.JSEnvironmentRecord_variables[m_node->scopeOffset().offset()]));
+                m_heaps.JSLexicalEnvironment_variables[m_node->scopeOffset().offset()]));
     }
     
     void compilePutClosureVar()
@@ -5974,7 +5983,7 @@ private:
         m_out.store64(
             lowJSValue(m_node->child2()),
             lowCell(m_node->child1()),
-            m_heaps.JSEnvironmentRecord_variables[m_node->scopeOffset().offset()]);
+            m_heaps.JSLexicalEnvironment_variables[m_node->scopeOffset().offset()]);
     }
     
     void compileGetFromArguments()
@@ -9546,7 +9555,7 @@ private:
             ASSERT(descriptor.kind() == ClosureVarPLoc);
             m_out.store64(
                 values[i], activation,
-                m_heaps.JSEnvironmentRecord_variables[descriptor.info()]);
+                m_heaps.JSLexicalEnvironment_variables[descriptor.info()]);
         }
 
         if (validationEnabled()) {

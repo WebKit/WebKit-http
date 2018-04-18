@@ -59,5 +59,11 @@ class StructLayoutBuilder extends Visitor {
             throw new Error("Type does not have size: " + node.type);
         this._offset += size;
     }
+    
+    visitNativeFuncInstance(node)
+    {
+        super.visitNativeFuncInstance(node);
+        node.func.didLayoutStructsInImplementationData(node.implementationData);
+    }
 }
 

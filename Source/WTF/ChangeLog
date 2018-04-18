@@ -1,3 +1,159 @@
+2017-09-20  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Cannot find script to generate unified sources.
+        https://bugs.webkit.org/show_bug.cgi?id=177014
+
+        Reviewed by Keith Miller.
+
+        Copy the ruby script to WTF/Scripts in the forwarding headers folder.
+
+        * wtf/CMakeLists.txt:
+
+2017-09-20  Alberto Garcia  <berto@igalia.com>
+
+        Fix HPPA and Alpha builds
+        https://bugs.webkit.org/show_bug.cgi?id=177224
+
+        Reviewed by Alex Christensen.
+
+        * wtf/Platform.h:
+
+2017-09-19  Youenn Fablet  <youenn@apple.com>
+
+        Allow WTF::map to use any class that is iterable and has a size getter
+        https://bugs.webkit.org/show_bug.cgi?id=177026
+
+        Reviewed by Darin Adler.
+
+        Computing the Item type given to the lambda using the iterator instead of ValueType which is specific to Vector.
+        Adding the possibility to pass a non const container reference and a lambda taking non const references as well. 
+
+        * wtf/Vector.h:
+        (WTF::MapFunctionInspector::acceptsReference):
+        (WTF::Mapper::map):
+        (WTF::map):
+
+2017-09-19  Jer Noble  <jer.noble@apple.com>
+
+        [Cocoa] Add an ImageDecoder subclass backed by AVFoundation
+        https://bugs.webkit.org/show_bug.cgi?id=176825
+
+        Reviewed by Eric Carlson.
+
+        * wtf/Platform.h:
+
+2017-09-18  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Upstream sandbox-related WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=177047
+
+        Reviewed by Daniel Bates.
+
+        * wtf/spi/darwin/SandboxSPI.h:
+
+2017-09-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r222170.
+
+        The API test added with this change is failing.
+
+        Reverted changeset:
+
+        "Allow WTF::map to use any class that is iterable and has a
+        size getter"
+        https://bugs.webkit.org/show_bug.cgi?id=177026
+        http://trac.webkit.org/changeset/222170
+
+2017-09-18  Youenn Fablet  <youenn@apple.com>
+
+        Allow WTF::map to use any class that is iterable and has a size getter
+        https://bugs.webkit.org/show_bug.cgi?id=177026
+
+        Reviewed by Darin Adler.
+
+        Computing the Item type given to the lambda using the iterator instead of ValueType which is specific to Vector.
+        Adding the possibility to pass a non const container reference and a lambda taking non const references as well. 
+
+        * wtf/Vector.h:
+        (WTF::MapFunctionInspector::acceptsReference):
+        (WTF::Mapper::map):
+        (WTF::map):
+
+2017-09-15  JF Bastien  <jfbastien@apple.com>
+
+        WTF: use Forward.h when appropriate instead of Vector.h
+        https://bugs.webkit.org/show_bug.cgi?id=176984
+
+        Reviewed by Saam Barati.
+
+        There's no need to include Vector.h when Forward.h will suffice. All we need is to move the template default parameters from Vector, and then the forward declaration can be used in so many new places: if a header only takes Vector by reference, rvalue reference, pointer, returns any of these, or has them as members then the header doesn't need to see the definition because the declaration will suffice.
+
+        * wtf/Forward.h:
+        * wtf/Vector.h:
+        * wtf/text/StringVector.h:
+
+2017-09-15  Keith Miller  <keith_miller@apple.com>
+
+        generate-unified-source-bundles.rb shouldn't write a file that isn't going to change
+        https://bugs.webkit.org/show_bug.cgi?id=177021
+
+        Reviewed by Tim Horton.
+
+        * generate-unified-source-bundles.rb:
+
+2017-09-14  Saam Barati  <sbarati@apple.com>
+
+        We should have a way of preventing a caller from making a tail call and we should use it for ProxyObject instead of using build flags
+        https://bugs.webkit.org/show_bug.cgi?id=176863
+
+        Reviewed by Keith Miller.
+
+        This patch adds a way for a particular function to mark
+        that none of its calls should be tail calls.
+        
+        It's useful in the following example if you don't want foo
+        to do a tail call to bar or baz:
+        
+        int foo(bool b)
+        {
+            NO_TAIL_CALLS();
+            if (b)
+                return baz();
+            return bar();
+        }
+        
+        Note that we're not saying that bar/baz should not be tail callable. bar/baz
+        may have other callers that are allowed to tail call it. This macro just says
+        that foo itself will not perform any tail calls.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/NoTailCalls.h: Added.
+        (WTF::NoTailCalls::~NoTailCalls):
+
+2017-09-14  Mark Lam  <mark.lam@apple.com>
+
+        AddressSanitizer: stack-buffer-underflow in JSC::Probe::Page::Page
+        https://bugs.webkit.org/show_bug.cgi?id=176874
+        <rdar://problem/34436415>
+
+        Reviewed by Saam Barati.
+
+        Added a convenience version of roundUpToMultipleOf() so that it can be applied to
+        pointers without the client having to cast explicitly.
+
+        * wtf/StdLibExtras.h:
+        (WTF::roundUpToMultipleOf):
+
+2017-09-14  Youenn Fablet  <youenn@apple.com>
+
+        Allow WTF::map to take function as parameter
+        https://bugs.webkit.org/show_bug.cgi?id=176909
+
+        Reviewed by Jer Noble.
+
+        * wtf/Vector.h:
+        (WTF::map):
+
 2017-09-13  Youenn Fablet  <youenn@apple.com>
 
         Add a lambda-based map for Vectors

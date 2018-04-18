@@ -24,20 +24,18 @@
  */
 "use strict";
 
-class IntLiteral extends Expression {
-    constructor(origin, value)
-    {
-        super(origin);
-        this._value = value;
-        this.type = new IntLiteralType(origin, value);
-    }
+let IntLiteral = createLiteral({
+    literalClassName: "IntLiteral",
+    preferredTypeName: "int",
     
-    get value() { return this._value; }
-    get isConstexpr() { return true; }
-    
-    toString()
+    negConstexpr(origin)
     {
-        return "" + this.value;
+        return new IntLiteral(origin, (-this.value) | 0);
+    },
+    
+    createType(origin, value)
+    {
+        return new IntLiteralType(origin, value);
     }
-}
+});
 

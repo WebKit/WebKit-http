@@ -29,7 +29,7 @@ WI.MainTarget = class MainTarget extends WI.Target
     {
         super("main", "", WI.Target.Type.Main, InspectorBackend.mainConnection);
 
-        let displayName = WI.debuggableType === WI.DebuggableType.Web ? WI.UIString("Main Frame") : this.displayName;
+        let displayName = WI.sharedApp.debuggableType === WI.DebuggableType.Web ? WI.UIString("Main Frame") : this.displayName;
         this._executionContext = new WI.ExecutionContext(this, WI.RuntimeManager.TopLevelContextExecutionIdentifier, displayName, true, null);
     }
 
@@ -37,13 +37,13 @@ WI.MainTarget = class MainTarget extends WI.Target
 
     get displayName()
     {
-        switch (WI.debuggableType) {
+        switch (WI.sharedApp.debuggableType) {
         case WI.DebuggableType.Web:
             return WI.UIString("Page");
         case WI.DebuggableType.JavaScript:
             return WI.UIString("JavaScript Context");
         default:
-            console.error("Unexpected debuggable type: ", WI.debuggableType);
+            console.error("Unexpected debuggable type: ", WI.sharedApp.debuggableType);
             return WI.UIString("Main");
         }
     }

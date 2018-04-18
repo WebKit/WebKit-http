@@ -34,11 +34,11 @@
 
 #include "CredentialStorage.h"
 #include "CurlCacheManager.h"
+#include "HTTPParsers.h"
 #include "MIMETypeRegistry.h"
 #include "MultipartHandle.h"
 #include "ResourceHandle.h"
 #include "ResourceHandleInternal.h"
-#include "SSLHandle.h"
 #include "TextEncoding.h"
 #include "ThreadSafeDataBuffer.h"
 #include "URL.h"
@@ -49,7 +49,6 @@ namespace WebCore {
 
 ResourceHandleCurlDelegate::ResourceHandleCurlDelegate(ResourceHandle* handle)
     : m_handle(handle)
-    , m_formDataStream(handle)
     , m_firstRequest(handle->firstRequest().isolatedCopy())
     , m_customHTTPHeaderFields(m_firstRequest.httpHeaderFields().isolatedCopy())
     , m_shouldUseCredentialStorage(handle->shouldUseCredentialStorage())
@@ -76,8 +75,6 @@ ResourceHandleCurlDelegate::ResourceHandleCurlDelegate(ResourceHandle* handle)
             m_addedCacheValidationHeaders = true;
         }
     }
-
-    m_sslClientCertificate = getSSLClientCertificate(url.host());
 
     setupAuthentication();
 }
@@ -163,26 +160,10 @@ void ResourceHandleCurlDelegate::dispatchSynchronousJob()
     // curl_easy_perform blocks until the transfer is finished.
     CURLcode ret = m_curlHandle.perform();
 
-    double pretransferTime = 0;
-    double dnsLookupTime = 0;
-    double connectTime = 0;
-    double appConnectTime = 0;
-
-    m_curlHandle.getTimes(pretransferTime, dnsLookupTime, connectTime, appConnectTime);
-    setWebTimings(pretransferTime, dnsLookupTime, connectTime, appConnectTime);
-
-    if (m_handle->client()) {
-        if (ret != CURLE_OK) {
-            String domain = CurlContext::errorDomain;
-            int errorCode = m_curlHandle.errorCode();
-            URL failingURL = m_curlHandle.getEffectiveURL();
-            String errorDescription = m_curlHandle.errorDescription();
-            unsigned sslErrors = m_curlHandle.getSslErrors();
-
-            m_handle->client()->didFail(m_handle, ResourceError(domain, errorCode, failingURL, errorDescription, sslErrors));
-        } else
-            m_handle->client()->didReceiveResponse(m_handle, ResourceResponse(response()));
-    }
+    if (ret != CURLE_OK)
+        notifyFail();
+    else
+        notifyFinish();
 }
 
 void ResourceHandleCurlDelegate::retain()
@@ -229,6 +210,8 @@ void ResourceHandleCurlDelegate::setupRequest()
     m_curlHandle.enableStdErrIfUsed();
 #endif
 
+    auto& sslHandle = CurlContext::singleton().sslHandle();
+
     m_curlHandle.setSslVerifyPeer(CurlHandle::VerifyPeerEnable);
     m_curlHandle.setSslVerifyHost(CurlHandle::VerifyHostStrictNameCheck);
     m_curlHandle.setPrivateData(this);
@@ -241,18 +224,19 @@ void ResourceHandleCurlDelegate::setupRequest()
     m_curlHandle.enableTimeout();
     m_curlHandle.enableAllowedProtocols();
 
-    if (m_sslClientCertificate) {
-        m_curlHandle.setSslCert((*m_sslClientCertificate).first.utf8().data());
+    auto sslClientCertificate = sslHandle.getSSLClientCertificate(url.host());
+    if (sslClientCertificate) {
+        m_curlHandle.setSslCert(sslClientCertificate->first.utf8().data());
         m_curlHandle.setSslCertType("P12");
-        m_curlHandle.setSslKeyPassword((*m_sslClientCertificate).second.utf8().data());
+        m_curlHandle.setSslKeyPassword(sslClientCertificate->second.utf8().data());
     }
 
-    if (CurlContext::singleton().shouldIgnoreSSLErrors())
+    if (sslHandle.shouldIgnoreSSLErrors())
         m_curlHandle.setSslVerifyPeer(CurlHandle::VerifyPeerDisable);
     else
-        setSSLVerifyOptions(m_curlHandle);
+        m_curlHandle.setSslCtxCallbackFunction(willSetupSslCtxCallback, this);
 
-    m_curlHandle.enableCAInfoIfExists();
+    m_curlHandle.setCACertPath(sslHandle.getCACertPath());
 
     m_curlHandle.enableAcceptEncoding();
     m_curlHandle.setUrl(urlString);
@@ -284,33 +268,34 @@ void ResourceHandleCurlDelegate::setupRequest()
 
 void ResourceHandleCurlDelegate::notifyFinish()
 {
-    double pretransferTime = 0;
-    double dnsLookupTime = 0;
-    double connectTime = 0;
-    double appConnectTime = 0;
+    NetworkLoadMetrics networkLoadMetrics = getNetworkLoadMetrics();
 
-    m_curlHandle.getTimes(pretransferTime, dnsLookupTime, connectTime, appConnectTime);
-
-    callOnMainThread([protectedThis = makeRef(*this), pretransferTime, dnsLookupTime, connectTime, appConnectTime] {
-        if (!protectedThis->m_handle)
-            return;
-        protectedThis->didFinish(pretransferTime, dnsLookupTime, connectTime, appConnectTime);
-    });
+    if (isMainThread())
+        didFinish(networkLoadMetrics);
+    else {
+        callOnMainThread([protectedThis = makeRef(*this), metrics = networkLoadMetrics.isolatedCopy()] {
+            if (!protectedThis->m_handle)
+                return;
+            protectedThis->didFinish(metrics);
+        });
+    }
 }
 
 void ResourceHandleCurlDelegate::notifyFail()
 {
-    String domain = CurlContext::errorDomain;
-    int errorCode = m_curlHandle.errorCode();
-    URL failingURL = m_curlHandle.getEffectiveURL();
-    String errorDescription = m_curlHandle.errorDescription();
-    unsigned sslErrors = m_curlHandle.getSslErrors();
+    ResourceError resourceError = ResourceError::httpError(m_curlHandle.errorCode(), m_firstRequest.url());
+    if (m_sslVerifier.sslErrors())
+        resourceError.setSslErrors(m_sslVerifier.sslErrors());
 
-    callOnMainThread([protectedThis = makeRef(*this), domain = domain.isolatedCopy(), errorCode, failingURL = failingURL.isolatedCopy(), errorDescription = errorDescription.isolatedCopy(), sslErrors] {
-        if (!protectedThis->m_handle)
-            return;
-        protectedThis->didFail(domain, errorCode, failingURL, errorDescription, sslErrors);
-    });
+    if (isMainThread())
+        didFail(resourceError);
+    else {
+        callOnMainThread([protectedThis = makeRef(*this), error = resourceError.isolatedCopy()] {
+            if (!protectedThis->m_handle)
+                return;
+            protectedThis->didFail(error);
+        });
+    }
 }
 
 ResourceResponse& ResourceHandleCurlDelegate::response()
@@ -338,168 +323,18 @@ void ResourceHandleCurlDelegate::setupAuthentication()
     }
 }
 
-static void removeLeadingAndTrailingQuotes(String& value)
-{
-    unsigned length = value.length();
-    if (value.startsWith('"') && value.endsWith('"') && length > 1)
-        value = value.substring(1, length - 2);
-}
-
-bool ResourceHandleCurlDelegate::getProtectionSpace(const ResourceResponse& response, ProtectionSpace& protectionSpace)
-{
-    CURLcode err;
-
-    long port = 0;
-    err = m_curlHandle.getPrimaryPort(port);
-    if (err != CURLE_OK)
-        return false;
-
-    long availableAuth = CURLAUTH_NONE;
-    err = m_curlHandle.getHttpAuthAvail(availableAuth);
-    if (err != CURLE_OK)
-        return false;
-
-    URL url = m_curlHandle.getEffectiveURL();
-    if (!url.isValid())
-        return false;
-
-    String host = url.host();
-    StringView protocol = url.protocol();
-
-    String realm;
-
-    const String authHeader = response.httpHeaderField(HTTPHeaderName::Authorization);
-    const String realmString = "realm=";
-    int realmPos = authHeader.find(realmString);
-    if (realmPos > 0) {
-        realm = authHeader.substring(realmPos + realmString.length());
-        realm = realm.left(realm.find(','));
-        removeLeadingAndTrailingQuotes(realm);
-    }
-
-    ProtectionSpaceServerType serverType = ProtectionSpaceServerHTTP;
-    if (protocol == "https")
-        serverType = ProtectionSpaceServerHTTPS;
-
-    ProtectionSpaceAuthenticationScheme authScheme = ProtectionSpaceAuthenticationSchemeUnknown;
-
-    if (availableAuth & CURLAUTH_BASIC)
-        authScheme = ProtectionSpaceAuthenticationSchemeHTTPBasic;
-    if (availableAuth & CURLAUTH_DIGEST)
-        authScheme = ProtectionSpaceAuthenticationSchemeHTTPDigest;
-    if (availableAuth & CURLAUTH_GSSNEGOTIATE)
-        authScheme = ProtectionSpaceAuthenticationSchemeNegotiate;
-    if (availableAuth & CURLAUTH_NTLM)
-        authScheme = ProtectionSpaceAuthenticationSchemeNTLM;
-
-    protectionSpace = ProtectionSpace(host, port, serverType, realm, authScheme);
-
-    return true;
-}
-
 inline static bool isHttpInfo(int statusCode)
 {
     return 100 <= statusCode && statusCode < 200;
 }
 
-inline static bool isHttpRedirect(int statusCode)
-{
-    return 300 <= statusCode && statusCode < 400 && statusCode != 304;
-}
-
-inline static bool isHttpAuthentication(int statusCode)
-{
-    return statusCode == 401;
-}
-
-inline static bool isHttpNotModified(int statusCode)
-{
-    return statusCode == 304;
-}
-
-static bool isAppendableHeader(const String &key)
-{
-    static const char* appendableHeaders[] = {
-        "access-control-allow-headers",
-        "access-control-allow-methods",
-        "access-control-allow-origin",
-        "access-control-expose-headers",
-        "allow",
-        "cache-control",
-        "connection",
-        "content-encoding",
-        "content-language",
-        "if-match",
-        "if-none-match",
-        "keep-alive",
-        "pragma",
-        "proxy-authenticate",
-        "public",
-        "server",
-        "set-cookie",
-        "te",
-        "trailer",
-        "transfer-encoding",
-        "upgrade",
-        "user-agent",
-        "vary",
-        "via",
-        "warning",
-        "www-authenticate"
-    };
-
-    // Custom headers start with 'X-', and need no further checking.
-    if (key.startsWith("x-", /* caseSensitive */ false))
-        return true;
-
-    for (auto& header : appendableHeaders) {
-        if (equalIgnoringASCIICase(key, header))
-            return true;
-    }
-
-    return false;
-}
-
-void ResourceHandleCurlDelegate::didReceiveHeaderLine(const String& header)
+void ResourceHandleCurlDelegate::didReceiveAllHeaders(long httpCode, long long contentLength, uint16_t connectPort, long availableHttpAuth)
 {
     ASSERT(isMainThread());
 
-    auto splitPosition = header.find(":");
-    if (splitPosition != notFound) {
-        String key = header.left(splitPosition).stripWhiteSpace();
-        String value = header.substring(splitPosition + 1).stripWhiteSpace();
-
-        if (isAppendableHeader(key))
-            response().addHTTPHeaderField(key, value);
-        else
-            response().setHTTPHeaderField(key, value);
-    } else if (header.startsWith("HTTP", false)) {
-        // This is the first line of the response.
-        // Extract the http status text from this.
-        //
-        // If the FOLLOWLOCATION option is enabled for the curl handle then
-        // curl will follow the redirections internally. Thus this header callback
-        // will be called more than one time with the line starting "HTTP" for one job.
-        long httpCode = 0;
-        m_curlHandle.getResponseCode(httpCode);
-
-        String httpCodeString = String::number(httpCode);
-        int statusCodePos = header.find(httpCodeString);
-
-        if (statusCodePos != notFound) {
-            // The status text is after the status code.
-            String status = header.substring(statusCodePos + httpCodeString.length());
-            response().setHTTPStatusText(status.stripWhiteSpace());
-        }
-    }
-}
-
-void ResourceHandleCurlDelegate::didReceiveAllHeaders(long httpCode, long long contentLength)
-{
-    ASSERT(isMainThread());
+    response().setURL(m_curlHandle.getEffectiveURL());
 
     response().setExpectedContentLength(contentLength);
-    response().setURL(m_curlHandle.getEffectiveURL());
     response().setHTTPStatusCode(httpCode);
     response().setMimeType(extractMIMETypeFromMediaType(response().httpHeaderField(HTTPHeaderName::ContentType)).convertToASCIILowercase());
     response().setTextEncodingName(extractCharsetFromMediaType(response().httpHeaderField(HTTPHeaderName::ContentType)));
@@ -512,7 +347,7 @@ void ResourceHandleCurlDelegate::didReceiveAllHeaders(long httpCode, long long c
     }
 
     // HTTP redirection
-    if (isHttpRedirect(httpCode)) {
+    if (response().isRedirection()) {
         String location = response().httpHeaderField(HTTPHeaderName::Location);
         if (!location.isEmpty()) {
             URL newURL = URL(m_firstRequest.url(), location);
@@ -527,22 +362,17 @@ void ResourceHandleCurlDelegate::didReceiveAllHeaders(long httpCode, long long c
 
             return;
         }
-    } else if (isHttpAuthentication(httpCode)) {
-        ProtectionSpace protectionSpace;
-        if (getProtectionSpace(response(), protectionSpace)) {
-            Credential credential;
-            AuthenticationChallenge challenge(protectionSpace, credential, m_authFailureCount, response(), ResourceError());
-            challenge.setAuthenticationClient(m_handle);
-            m_handle->didReceiveAuthenticationChallenge(challenge);
-            m_authFailureCount++;
-            return;
-        }
+    } else if (response().isUnauthorized()) {
+        AuthenticationChallenge challenge(connectPort, availableHttpAuth, m_authFailureCount, response(), m_handle);
+        m_handle->didReceiveAuthenticationChallenge(challenge);
+        m_authFailureCount++;
+        return;
     }
 
     response().setResponseFired(true);
 
     if (m_handle->client()) {
-        if (isHttpNotModified(httpCode)) {
+        if (response().isNotModified()) {
             const String& url = m_firstRequest.url().string();
             if (CurlCacheManager::getInstance().getCachedResponse(url, response())) {
                 if (m_addedCacheValidationHeaders) {
@@ -583,9 +413,7 @@ void ResourceHandleCurlDelegate::handleLocalReceiveResponse()
     // which means the ResourceLoader's response does not contain the URL.
     // Run the code here for local files to resolve the issue.
     // TODO: See if there is a better approach for handling this.
-    URL url = m_curlHandle.getEffectiveURL();
-    ASSERT(url.isValid());
-    response().setURL(url);
+    response().setURL(m_curlHandle.getEffectiveURL());
     response().setResponseFired(true);
     if (m_handle->client())
         m_handle->client()->didReceiveResponse(m_handle, ResourceResponse(response()));
@@ -598,13 +426,16 @@ void ResourceHandleCurlDelegate::prepareSendData(char* buffer, size_t blockSize,
 
     std::unique_lock<Lock> lock(m_workerThreadMutex);
 
-    if (!m_formDataStream.hasMoreElements())
+    if (!m_formDataStream || !m_formDataStream->hasMoreElements()) {
+        m_workerThreadConditionVariable.notifyOne();
         return;
+    }
 
-    size_t size = m_formDataStream.read(buffer, blockSize, numberOfBlocks);
+    size_t size = m_formDataStream->read(buffer, blockSize, numberOfBlocks);
     if (!size) {
         // Something went wrong so cancel the job.
         m_handle->cancel();
+        m_workerThreadConditionVariable.notifyOne();
         return;
     }
 
@@ -612,9 +443,11 @@ void ResourceHandleCurlDelegate::prepareSendData(char* buffer, size_t blockSize,
     m_workerThreadConditionVariable.notifyOne();
 }
 
-void ResourceHandleCurlDelegate::didFinish(double pretransferTime, double dnsLookupTime, double connectTime, double appConnectTime)
+void ResourceHandleCurlDelegate::didFinish(NetworkLoadMetrics networkLoadMetrics)
 {
-    setWebTimings(pretransferTime, dnsLookupTime, connectTime, appConnectTime);
+    response().setDeprecatedNetworkLoadMetrics(networkLoadMetrics);
+
+    m_formDataStream = nullptr;
 
     if (!m_handle)
         return;
@@ -634,14 +467,16 @@ void ResourceHandleCurlDelegate::didFinish(double pretransferTime, double dnsLoo
     }
 }
 
-void ResourceHandleCurlDelegate::didFail(const String& domain, int errorCode, const URL& failingURL, const String& localizedDescription, unsigned sslErrors)
+void ResourceHandleCurlDelegate::didFail(const ResourceError& resourceError)
 {
+    m_formDataStream = nullptr;
+
     if (!m_handle)
         return;
 
     if (m_handle->client()) {
         CurlCacheManager::getInstance().didFail(*m_handle);
-        m_handle->client()->didFail(m_handle, ResourceError(domain, errorCode, failingURL, localizedDescription, sslErrors));
+        m_handle->client()->didFail(m_handle, resourceError);
     }
 }
 
@@ -791,6 +626,9 @@ void ResourceHandleCurlDelegate::setupFormData(bool isPostRequest)
             m_curlHandle.setInFileSizeLarge(size);
     }
 
+    m_formDataStream = std::make_unique<FormDataStream>();
+    m_formDataStream->setHTTPBody(m_firstRequest.httpBody());
+
     m_curlHandle.setReadCallbackFunction(willSendDataCallback, this);
 }
 
@@ -812,19 +650,22 @@ void ResourceHandleCurlDelegate::applyAuthentication()
     m_curlHandle.setHttpAuthUserPass(user, password);
 }
 
-void ResourceHandleCurlDelegate::setWebTimings(double pretransferTime, double dnsLookupTime, double connectTime, double appConnectTime)
+NetworkLoadMetrics ResourceHandleCurlDelegate::getNetworkLoadMetrics()
 {
-    response().deprecatedNetworkLoadMetrics().domainLookupStart = Seconds(0);
-    response().deprecatedNetworkLoadMetrics().domainLookupEnd = Seconds(dnsLookupTime);
+    NetworkLoadMetrics networkLoadMetrics;
+    if (auto metrics = m_curlHandle.getTimes())
+        networkLoadMetrics = *metrics;
 
-    response().deprecatedNetworkLoadMetrics().connectStart = Seconds(dnsLookupTime);
-    response().deprecatedNetworkLoadMetrics().connectEnd = Seconds(connectTime);
+    return networkLoadMetrics;
+}
 
-    response().deprecatedNetworkLoadMetrics().requestStart = Seconds(connectTime);
-    response().deprecatedNetworkLoadMetrics().responseStart = Seconds(pretransferTime);
+CURLcode ResourceHandleCurlDelegate::willSetupSslCtx(void* sslCtx)
+{
+    m_sslVerifier.setCurlHandle(&m_curlHandle);
+    m_sslVerifier.setHostName(m_firstRequest.url().host());
+    m_sslVerifier.setSslCtx(sslCtx);
 
-    if (appConnectTime)
-        response().deprecatedNetworkLoadMetrics().secureConnectionStart = Seconds(connectTime);
+    return CURLE_OK;
 }
 
 /*
@@ -853,7 +694,8 @@ size_t ResourceHandleCurlDelegate::didReceiveHeader(String&& header)
     */
     if (header == AtomicString("\r\n") || header == AtomicString("\n")) {
         long httpCode = 0;
-        m_curlHandle.getResponseCode(httpCode);
+        if (auto code = m_curlHandle.getResponseCode())
+            httpCode = *code;
 
         if (!httpCode) {
             // Comes here when receiving 200 Connection Established. Just return.
@@ -866,19 +708,40 @@ size_t ResourceHandleCurlDelegate::didReceiveHeader(String&& header)
         }
 
         long long contentLength = 0;
-        m_curlHandle.getContentLenghtDownload(contentLength);
+        if (auto length = m_curlHandle.getContentLenghtDownload())
+            contentLength = *length;
 
-        callOnMainThread([protectedThis = makeRef(*this), httpCode, contentLength] {
-            if (!protectedThis->m_handle)
-                return;
-            protectedThis->didReceiveAllHeaders(httpCode, contentLength);
-        });
+        uint16_t connectPort = 0;
+        if (auto port = m_curlHandle.getPrimaryPort())
+            connectPort = *port;
+
+        long availableAuth = CURLAUTH_NONE;
+        if (auto auth = m_curlHandle.getHttpAuthAvail())
+            availableAuth = *auth;
+
+        if (isMainThread())
+            didReceiveAllHeaders(httpCode, contentLength, connectPort, availableAuth);
+        else {
+            callOnMainThread([protectedThis = makeRef(*this), httpCode, contentLength, connectPort, availableAuth] {
+                if (!protectedThis->m_handle)
+                    return;
+                protectedThis->didReceiveAllHeaders(httpCode, contentLength, connectPort, availableAuth);
+            });
+        }
     } else {
-        callOnMainThread([protectedThis = makeRef(*this), header = header.isolatedCopy() ] {
-            if (!protectedThis->m_handle)
-                return;
-            protectedThis->didReceiveHeaderLine(header);
-        });
+        // If the FOLLOWLOCATION option is enabled for the curl handle then
+        // curl will follow the redirections internally. Thus this header callback
+        // will be called more than one time with the line starting "HTTP" for one job.
+        if (isMainThread())
+            response().appendHTTPHeaderField(header);
+        else {
+            callOnMainThread([protectedThis = makeRef(*this), copyHeader = header.isolatedCopy() ] {
+                if (!protectedThis->m_handle)
+                    return;
+
+                protectedThis->response().appendHTTPHeaderField(copyHeader);
+            });
+        }
     }
 
     return header.length();
@@ -896,19 +759,23 @@ size_t ResourceHandleCurlDelegate::didReceiveData(ThreadSafeDataBuffer data)
     // this shouldn't be necessary but apparently is. CURL writes the data
     // of html page even if it is a redirect that was handled internally
     // can be observed e.g. on gmail.com
-    long httpCode = 0;
-    CURLcode errCd = m_curlHandle.getResponseCode(httpCode);
-    if (CURLE_OK == errCd && httpCode >= 300 && httpCode < 400)
-        return data.size();
+    if (auto httpCode = m_curlHandle.getResponseCode()) {
+        if (*httpCode >= 300 && *httpCode < 400)
+            return data.size();
+    }
 
     if (!data.size())
         return 0;
 
-    callOnMainThread([protectedThis = makeRef(*this), data] {
-        if (!protectedThis->m_handle)
-            return;
-        protectedThis->didReceiveContentData(data);
-    });
+    if (isMainThread())
+        didReceiveContentData(data);
+    else {
+        callOnMainThread([protectedThis = makeRef(*this), data] {
+            if (!protectedThis->m_handle)
+                return;
+            protectedThis->didReceiveContentData(data);
+        });
+    }
 
     return data.size();
 }
@@ -935,18 +802,27 @@ size_t ResourceHandleCurlDelegate::willSendData(char* buffer, size_t blockSize, 
 
         m_sendBytes = 0;
 
-        callOnMainThread([protectedThis = makeRef(*this), buffer, blockSize, numberOfBlocks] {
-            if (!protectedThis->m_handle)
-                return;
-            protectedThis->prepareSendData(buffer, blockSize, numberOfBlocks);
-        });
+        if (isMainThread())
+            prepareSendData(buffer, blockSize, numberOfBlocks);
+        else {
+            callOnMainThread([protectedThis = makeRef(*this), buffer, blockSize, numberOfBlocks] {
+                if (!protectedThis->m_handle)
+                    return;
+                protectedThis->prepareSendData(buffer, blockSize, numberOfBlocks);
+            });
 
-        m_workerThreadConditionVariable.wait(lock, [this] {
-            return m_sendBytes;
-        });
+            m_workerThreadConditionVariable.wait(lock, [this] {
+                return m_sendBytes;
+            });
+        }
     }
 
     return m_sendBytes;
+}
+
+CURLcode ResourceHandleCurlDelegate::willSetupSslCtxCallback(CURL*, void* sslCtx, void* userData)
+{
+    return static_cast<ResourceHandleCurlDelegate*>(userData)->willSetupSslCtx(sslCtx);
 }
 
 size_t ResourceHandleCurlDelegate::didReceiveHeaderCallback(char* ptr, size_t blockSize, size_t numberOfBlocks, void* data)

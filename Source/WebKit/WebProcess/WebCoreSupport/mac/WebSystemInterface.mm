@@ -37,24 +37,10 @@ void InitWebCoreSystemInterface(void)
     
     dispatch_once(&initOnce, ^{
 #if !PLATFORM(IOS)
-        INIT(DrawBezeledTextArea);
         INIT(DrawMediaSliderTrack);
         INIT(DrawMediaUIPart);
         INIT(HitTestMediaUIPart);
         INIT(MeasureMediaUIPart);
-        INIT(ExecutableWasLinkedOnOrBeforeSnowLeopard);
-        INIT(CopyDefaultSearchProviderDisplayName);
-        INIT(Cursor);
-        INIT(SpeechSynthesisGetVoiceIdentifiers);
-        INIT(SpeechSynthesisGetDefaultVoiceIdentifierForLocale);
-        INIT(NSElasticDeltaForTimeDelta);
-        INIT(NSElasticDeltaForReboundDelta);
-        INIT(NSReboundDeltaForElasticDelta);
 #endif
-
-        INIT(ExernalDeviceTypeForPlayer);
-        INIT(ExernalDeviceDisplayNameForPlayer);
-
-        INIT(QueryDecoderAvailability);
     });
 }

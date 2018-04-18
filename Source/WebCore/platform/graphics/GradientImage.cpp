@@ -51,10 +51,10 @@ ImageDrawResult GradientImage::draw(GraphicsContext& destContext, const FloatRec
     // clipping. We push the clipping in another state to avoid that.
     destContext.platformContext()->PushState();
 #endif
-    destContext.translate(destRect.x(), destRect.y());
+    destContext.translate(destRect.location());
     if (destRect.size() != srcRect.size())
-        destContext.scale(FloatSize(destRect.width() / srcRect.width(), destRect.height() / srcRect.height()));
-    destContext.translate(-srcRect.x(), -srcRect.y());
+        destContext.scale(destRect.size() / srcRect.size());
+    destContext.translate(-srcRect.location());
     destContext.fillRect(FloatRect(FloatPoint(), size()), m_gradient.get());
 
 #if PLATFORM(HAIKU)

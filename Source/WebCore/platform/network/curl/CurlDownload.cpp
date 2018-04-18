@@ -31,6 +31,7 @@
 #if USE(CURL)
 
 #include "CurlContext.h"
+#include "CurlSSLHandle.h"
 #include "HTTPHeaderNames.h"
 #include "HTTPParsers.h"
 #include "ResourceRequest.h"
@@ -119,7 +120,8 @@ void CurlDownload::setupRequest()
     m_curlHandle.setWriteCallbackFunction(writeCallback, this);
     m_curlHandle.enableFollowLocation();
     m_curlHandle.enableHttpAuthentication(CURLAUTH_ANY);
-    m_curlHandle.enableCAInfoIfExists();
+    m_curlHandle.setCACertPath(CurlContext::singleton().sslHandle().getCACertPath());
+
 }
 
 void CurlDownload::notifyFinish()
@@ -181,11 +183,10 @@ void CurlDownload::didReceiveHeader(const String& header)
 
     if (header == "\r\n" || header == "\n") {
 
-        long httpCode = 0;
-        m_curlHandle.getResponseCode(httpCode);
+        auto httpCode = m_curlHandle.getResponseCode();
 
-        if (httpCode >= 200 && httpCode < 300) {
-            URL url = m_curlHandle.getEffectiveURL();
+        if (httpCode && *httpCode >= 200 && *httpCode < 300) {
+            auto url = m_curlHandle.getEffectiveURL();
             callOnMainThread([protectedThis = makeRef(*this), url = url.isolatedCopy()] {
                 ResourceResponse localResponse = protectedThis->getResponse();
                 protectedThis->m_responseUrl = url;

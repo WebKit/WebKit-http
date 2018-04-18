@@ -46,6 +46,8 @@
     <script src="Test/TestSuite.js"></script>
 
     <script src="Test/Test.js"></script>
+    <script src="Controllers/AppControllerBase.js"></script>
+    <script src="Test/TestAppController.js"></script>
 
     <script src="Base/DOMUtilities.js"></script>
     <script src="Base/EventListener.js"></script>
@@ -78,10 +80,12 @@
     <script src="Protocol/DOMStorageObserver.js"></script>
     <script src="Protocol/DebuggerObserver.js"></script>
     <script src="Protocol/HeapObserver.js"></script>
+    <script src="Protocol/MemoryObserver.js"></script>
     <script src="Protocol/NetworkObserver.js"></script>
     <script src="Protocol/PageObserver.js"></script>
     <script src="Protocol/RemoteObject.js"></script>
     <script src="Protocol/RuntimeObserver.js"></script>
+    <script src="Protocol/ScriptProfilerObserver.js"></script>
     <script src="Protocol/TimelineObserver.js"></script>
     <script src="Protocol/WorkerObserver.js"></script>
 
@@ -138,6 +142,7 @@
     <script src="Models/LazySourceCodeLocation.js"></script>
     <script src="Models/MemoryCategory.js"></script>
     <script src="Models/MemoryInstrument.js"></script>
+    <script src="Models/MemoryPressureEvent.js"></script>
     <script src="Models/MemoryTimeline.js"></script>
     <script src="Models/MemoryTimelineRecord.js"></script>
     <script src="Models/NetworkInstrument.js"></script>
@@ -213,7 +218,8 @@
     <script src="Views/CodeMirrorFormatters.js"></script>
 
     <script type="text/javascript">
-        WI.loaded();
+        WI.sharedApp = new WI.TestAppController;
+        WI.sharedApp.initialize();
 
         // Debug logging is synchronous on the test page.
         InspectorTest.forceDebugLogging = false;

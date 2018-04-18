@@ -79,7 +79,7 @@ public:
     WEBCORE_EXPORT URL(const URL& base, const String& relative);
     URL(const URL& base, const String& relative, const TextEncoding&);
 
-    static URL fakeURLWithRelativePart(const String&);
+    WEBCORE_EXPORT static URL fakeURLWithRelativePart(const String&);
     WEBCORE_EXPORT static URL fileURLWithFileSystemPath(const String&);
 
     String strippedForUseAsReferrer() const;
@@ -167,8 +167,10 @@ public:
     // URL (with nothing after it). To clear the query, pass a null string.
     WEBCORE_EXPORT void setQuery(const String&);
 
-    void setFragmentIdentifier(StringView);
+    WEBCORE_EXPORT void setFragmentIdentifier(StringView);
     WEBCORE_EXPORT void removeFragmentIdentifier();
+
+    WEBCORE_EXPORT void removeQueryAndFragmentIdentifier();
 
     WEBCORE_EXPORT friend bool equalIgnoringFragmentIdentifier(const URL&, const URL&);
 

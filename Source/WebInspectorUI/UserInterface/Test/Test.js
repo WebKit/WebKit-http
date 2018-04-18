@@ -23,26 +23,20 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WI.DebuggableType = {
-    Web: "web",
-    JavaScript: "javascript"
-};
-
 WI.loaded = function()
 {
-    this.debuggableType = WI.DebuggableType.Web;
-    this.hasExtraDomains = false;
-
     // Register observers for events from the InspectorBackend.
     // The initialization order should match the same in Main.js.
     InspectorBackend.registerInspectorDispatcher(new WI.InspectorObserver);
     InspectorBackend.registerPageDispatcher(new WI.PageObserver);
     InspectorBackend.registerConsoleDispatcher(new WI.ConsoleObserver);
-    InspectorBackend.registerDOMDispatcher(new WI.DOMObserver);
     InspectorBackend.registerNetworkDispatcher(new WI.NetworkObserver);
+    InspectorBackend.registerDOMDispatcher(new WI.DOMObserver);
     InspectorBackend.registerDebuggerDispatcher(new WI.DebuggerObserver);
     InspectorBackend.registerHeapDispatcher(new WI.HeapObserver);
+    InspectorBackend.registerMemoryDispatcher(new WI.MemoryObserver);
     InspectorBackend.registerDOMStorageDispatcher(new WI.DOMStorageObserver);
+    InspectorBackend.registerScriptProfilerDispatcher(new WI.ScriptProfilerObserver);
     InspectorBackend.registerTimelineDispatcher(new WI.TimelineObserver);
     InspectorBackend.registerCSSDispatcher(new WI.CSSObserver);
     InspectorBackend.registerRuntimeDispatcher(new WI.RuntimeObserver);

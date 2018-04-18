@@ -39,8 +39,8 @@
 #include <JavaScriptCore/JSStringRefBSTR.h>
 #include <JavaScriptCore/JavaScriptCore.h>
 #include <WebCore/COMPtr.h>
-#include <WebKit/WebKit.h>
-#include <WebKit/WebKitCOMAPI.h>
+#include <WebKitLegacy/WebKit.h>
+#include <WebKitLegacy/WebKitCOMAPI.h>
 #include <comutil.h>
 #include <shlguid.h>
 #include <shlwapi.h>
@@ -289,6 +289,14 @@ void TestRunner::notifyDone()
 {
     // Same as on mac.  This can be shared.
     if (m_waitToDump && !topLoadingFrame && !WorkQueue::singleton().count())
+        dump();
+    m_waitToDump = false;
+}
+
+void TestRunner::forceImmediateCompletion()
+{
+    // Same as on mac. This can be shared.
+    if (m_waitToDump && !WorkQueue::singleton().count())
         dump();
     m_waitToDump = false;
 }

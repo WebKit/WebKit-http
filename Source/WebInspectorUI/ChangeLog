@@ -1,3 +1,676 @@
+2017-09-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Adopt named groups in complex regexes
+        https://bugs.webkit.org/show_bug.cgi?id=177117
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/URLUtilities.js:
+        (parseSecurityOrigin):
+        (parseDataURL):
+        (parseURL):
+        * UserInterface/Models/Color.js:
+        (WI.Color.fromString):
+
+2017-09-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION(r214494): Web Inspector: Ignore cache button does not work in Network tab
+        https://bugs.webkit.org/show_bug.cgi?id=177114
+        <rdar://problem/34505265>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Main.js:
+        (WI.loaded):
+        We need to register the settings change handler regardless of what the
+        initial value of the setting is.
+
+2017-09-18  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: RemoteObject.resolveNode should return a Promise
+        https://bugs.webkit.org/show_bug.cgi?id=177042
+
+        Reviewed by Joseph Pecoraro.
+
+        Update RemoteObject.resolveNode to return a promise instead of taking a
+        callback. If the promise is fulfilled, `remoteObject` will be non-null.
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WI.DOMTreeManager.prototype.inspectNodeObject.nodeAvailable):
+        (WI.DOMTreeManager.prototype.inspectNodeObject):
+        (WI.DOMTreeManager.prototype.getNodeContentFlowInfo.domNodeResolved): Deleted.
+
+        * UserInterface/Models/DOMNode.js:
+        (WI.DOMNode.prototype.toggleClass.WI.RemoteObject.resolveNode.then):
+        (WI.DOMNode.prototype.toggleClass):
+        (WI.DOMNode.prototype.scrollIntoView.WI.RemoteObject.resolveNode.then):
+        (WI.DOMNode.prototype.scrollIntoView):
+        (WI.DOMNode.prototype.toggleClass.resolvedNode.inspectedPage_node_toggleClass): Deleted.
+        (WI.DOMNode.prototype.toggleClass.resolvedNode): Deleted.
+        (WI.DOMNode.prototype.scrollIntoView.resolvedNode.inspectedPage_node_scrollIntoView): Deleted.
+        (WI.DOMNode.prototype.scrollIntoView.resolvedNode): Deleted.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WI.RemoteObject.resolveNode):
+
+        * UserInterface/Views/BoxModelDetailsSectionRow.js:
+        (WI.BoxModelDetailsSectionRow.prototype._applyUserInput.WI.RemoteObject.resolveNode.then):
+        (WI.BoxModelDetailsSectionRow.prototype._applyUserInput):
+        (WI.BoxModelDetailsSectionRow.prototype._applyUserInput.resolvedNode.toggleInlineStyleProperty): Deleted.
+        (WI.BoxModelDetailsSectionRow.prototype._applyUserInput.resolvedNode.didToggle): Deleted.
+        (WI.BoxModelDetailsSectionRow.prototype._applyUserInput.resolvedNode): Deleted.
+        * UserInterface/Views/CanvasDetailsSidebarPanel.js:
+
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.appendContextMenuItemsForDOMNode):
+
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WI.DOMNodeDetailsSidebarPanel.prototype._refreshProperties.nodeResolved.inspectedPage_node_collectPrototypes): Deleted.
+        (WI.DOMNodeDetailsSidebarPanel.prototype._refreshProperties.nodeResolved): Deleted.
+        (WI.DOMNodeDetailsSidebarPanel.prototype._refreshProperties.nodePrototypesReady): Deleted.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement.prototype._createTooltipForNode.WI.RemoteObject.resolveNode.then):
+        (WI.DOMTreeElement.prototype._createTooltipForNode):
+        (WI.DOMTreeElement.prototype._createTooltipForNode.resolvedNode.dimensions): Deleted.
+        (WI.DOMTreeElement.prototype._createTooltipForNode.resolvedNode): Deleted.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WI.DOMTreeOutline.prototype._hideElement.injectStyleAndToggleClass):
+        (WI.DOMTreeOutline.prototype._hideElement):
+        (WI.DOMTreeOutline):
+        (WI.DOMTreeOutline.prototype._hideElement.resolvedNode.injectStyleAndToggleClass): Deleted.
+        (WI.DOMTreeOutline.prototype._hideElement.resolvedNode): Deleted.
+
+2017-09-18  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: introduce an AppController class and shared instance of it
+        https://bugs.webkit.org/show_bug.cgi?id=177024
+
+        Reviewed by Matt Baker.
+
+        WebInspectorUI currently has an app controller singleton that's distributed
+        among many properties on the WI object, which also serves as a namespace for
+        classes, enums, and other frontend objects. The singleton should be a proper
+        class so that we can think more easily about what state is global.
+
+        In the process of moving pieces of Main.js into AppController, I intend to move
+        most UI related code into a view controller class for the top level view.
+        AppController really shouldn't be doing anything to the view hierarchy or DOM.
+        It is yet to be determined how responsibility for global DOM events, such as
+        those for keyboard shortcuts, will be handled.
+
+        This larger refactoring project will let us more easily do things like connect
+        to multiple debuggables in the same Inspector instance, and switch between views
+        of different debuggable targets. Even if this never comes to pass, the code will
+        be a lot easier to reason about and maintain in the future.
+
+        For the first patch, introduce {AppController, TestAppController} <: AppControllerBase.
+        Shared code goes in the base class. In the Main.html and Test.html files, first
+        construct the AppController and then call .initialize() to avoid cyclic dependencies
+        on the global singleton WI.sharedApp.
+
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+        * UserInterface/Test/Test.js:
+        (WI.loaded):
+        * UserInterface/Base/Main.js:
+        (WI.loaded):
+        Move some shared code out of here into AppControllerBase.constructor.
+        Eventually WI.loaded should not exist, and its code will move elsewhere.
+
+        (WI.contentLoaded):
+        Adopt global reference.
+
+        * UserInterface/Controllers/AppControllerBase.js: Copied from Source/WebInspectorUI/UserInterface/Protocol/MainTarget.js.
+        (WI.AppControllerBase):
+        (WI.AppControllerBase.prototype.get hasExtraDomains):
+        (WI.AppControllerBase.prototype.get debuggableType):
+        (WI.AppControllerBase.prototype.initialize):
+
+        * UserInterface/Controllers/AppController.js: New.
+        (WI.AppController):
+        (WI.AppController.prototype.get hasExtraDomains):
+        (WI.AppController.prototype.get debuggableType):
+        (WI.AppController.prototype.activateExtraDomains):
+
+        * UserInterface/Test/TestAppController.js: New.
+        (WI.TestAppController):
+        (WI.TestAppController.prototype.get hasExtraDomains):
+        (WI.TestAppController.prototype.get debuggableType):
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WI.TimelineManager.defaultTimelineTypes):
+        (WI.TimelineManager.availableTimelineTypes):
+        (WI.TimelineManager.prototype.scriptProfilerProgrammaticCaptureStarted):
+        (WI.TimelineManager.prototype.scriptProfilerProgrammaticCaptureStopped):
+        (WI.TimelineManager.prototype.scriptProfilerTrackingCompleted):
+        * UserInterface/Models/TimelineRecording.js:
+        (WI.TimelineRecording.sourceCodeTimelinesSupported):
+        * UserInterface/Protocol/InspectorObserver.js:
+        (WI.InspectorObserver.prototype.inspect):
+        (WI.InspectorObserver.prototype.activateExtraDomains):
+        (WI.InspectorObserver):
+        * UserInterface/Protocol/MainTarget.js:
+        (WI.MainTarget):
+        (WI.MainTarget.prototype.get displayName):
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WI.ResourceSidebarPanel):
+        (WI.ResourceSidebarPanel.prototype.initialLayout):
+        (WI.ResourceSidebarPanel.prototype._addScript):
+        (WI.ResourceSidebarPanel.prototype._extraDomainsActivated):
+        * UserInterface/Views/Toolbar.js:
+        Use WI.sharedApp.{debuggableType, hasExtraDomains}.
+
+2017-09-18  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: console.assert messages shouldn't end in an exclamation point
+        https://bugs.webkit.org/show_bug.cgi?id=177054
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/EventListener.js:
+        * UserInterface/Base/EventListenerSet.js:
+        (WI.EventListenerSet.prototype.register):
+        Drive-by: make assertions the same in both.
+
+        * UserInterface/Views/LayoutTimelineView.js:
+        (WI.LayoutTimelineView.prototype._processPendingRecords):
+
+        * UserInterface/Views/Resizer.js:
+        (WI.Resizer.prototype._currentPosition):
+
+2017-09-18  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: REGRESSION(r221901): Single frame recordings don't reset the recording navigation item
+        https://bugs.webkit.org/show_bug.cgi?id=176893
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager.prototype.recordingFinished):
+        Set the `_recordingCanvas` to null whenever a recording has finished and been sent to the
+        frontend. It is also necessary to do this inside `stopRecording`, as it is possible for the
+        user to start and stop a recording before any actions are recorded, meaning that no
+        recording would be sent to the frontend and this function will never get called.
+
+2017-09-17  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: support toggling properties
+        https://bugs.webkit.org/show_bug.cgi?id=176643
+
+        Reviewed by Matt Baker.
+
+        Add checkboxes to toggle (comment/uncomment) CSS properties.
+
+        * UserInterface/Base/Utilities.js:
+        (String.prototype.get lineCount):
+        (String.prototype.get lastLine):
+        Add string methods that are used by WI.CSSProperty.prototype._updateOwnerStyleText.
+
+        * UserInterface/Models/CSSProperty.js:
+        (WI.CSSProperty.prototype.commentOut):
+        (WI.CSSProperty.prototype.set text):
+        (WI.CSSProperty.prototype.get editable):
+        (WI.CSSProperty.prototype._updateOwnerStyleText):
+        Add methods necessary for property toggling.
+
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        (WI.CSSStyleDeclaration):
+        (WI.CSSStyleDeclaration.prototype.get allVisibleProperties):
+        Add a getter that is used by SpreadsheetCSSStyleDeclarationEditor.prototype._propertiesToRender.
+
+        (WI.CSSStyleDeclaration.prototype.get visibleProperties):
+        * UserInterface/Models/TextRange.js:
+        (WI.TextRange.prototype.clone):
+        (WI.TextRange.prototype.cloneAndModify):
+        (WI.TextRange.prototype.relativeTo):
+        Add methods that are used by WI.CSSProperty.prototype._updateOwnerStyleText.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.spreadsheet-style-declaration-editor):
+        (.spreadsheet-style-declaration-editor .property-toggle):
+        (.spreadsheet-css-declaration:matches(:hover, :focus) .property-toggle,):
+        (.spreadsheet-style-declaration-editor .property.disabled,):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.layout):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.set style):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.get _propertiesToRender):
+        (WI.SpreadsheetCSSStyleDeclarationEditor):
+        (WI.SpreadsheetStyleProperty):
+        (WI.SpreadsheetStyleProperty.prototype.get element):
+        (WI.SpreadsheetStyleProperty.prototype._update):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.css:
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.initialLayout):
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.refresh):
+        (WI.SpreadsheetRulesStyleDetailsPanel):
+        * UserInterface/Views/SyntaxHighlightingDefaultTheme.css:
+        (.cm-s-default .cm-comment,):
+        * UserInterface/Views/Variables.css:
+        (:root):
+        Make comment color a CSS variable.
+
+2017-09-15  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: REGRESSION(r222057): recording state doesn't update when changing actions
+        https://bugs.webkit.org/show_bug.cgi?id=176988
+
+        Reviewed by Matt Baker.
+
+        Replace `updateActionIndex` with `updateAction`, where the currently selected RecordingAction
+        is passed to the DetailsSidebarPanel. Also remove the call to `this._recording.actions` in
+        order to ensure that all logic performed by both DetailsSidebarPanel is synchronous.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Views/RecordingTabContentView.js:
+        (WI.RecordingTabContentView.prototype._updateActionIndex):
+
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.RecordingContentView.prototype.async._generateContentCanvas2D):
+        (WI.RecordingContentView.prototype.async._generateContentCanvasWebGL):
+
+        * UserInterface/Views/RecordingStateDetailsSidebarPanel.js:
+        (WI.RecordingStateDetailsSidebarPanel):
+        (WI.RecordingStateDetailsSidebarPanel.prototype.set recording):
+        (WI.RecordingStateDetailsSidebarPanel.prototype.updateAction):
+        (WI.RecordingStateDetailsSidebarPanel.prototype._generateDetailsCanvas2D):
+        (WI.RecordingStateDetailsSidebarPanel.prototype.updateActionIndex): Deleted.
+
+        * UserInterface/Views/RecordingTraceDetailsSidebarPanel.js:
+        (WI.RecordingTraceDetailsSidebarPanel):
+        (WI.RecordingTraceDetailsSidebarPanel.prototype.set recording):
+        (WI.RecordingTraceDetailsSidebarPanel.prototype.updateAction):
+        (WI.RecordingTraceDetailsSidebarPanel.prototype.updateActionIndex): Deleted.
+
+2017-09-15  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Canvas: recording parameters that include colors should show an InlineSwatch (2D canvas)
+        https://bugs.webkit.org/show_bug.cgi?id=176822
+        <rdar://problem/34402170>
+
+        Reviewed by Devin Rousso.
+
+        Show inline swatches in the canvas recording action and state sidebars.
+
+        * UserInterface/Models/Color.js:
+        Added helpers for dealing with CMYK and normalized RGB. The latter is
+        for RGB components scaled to the range [0, 1]. Also improved handling
+        for 8-bit channel values.
+        (WI.Color.rgb2hsv):
+        (WI.Color.cmyk2rgb):
+        (WI.Color.normalized2rgb):
+        (WI.Color._eightBitChannel):
+        (WI.Color.prototype._toRGBString):
+        (WI.Color.prototype._toRGBAString):
+        (WI.Color.prototype._componentToHexValue):
+        (WI.Color.prototype._rgbToHSL):
+        (WI.Color.prototype._componentToNumber): Deleted.
+        Replaced by _eightBitChannel.
+
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction):
+        (WI.RecordingAction.prototype.getColorParameters):
+        Get a subset of parameters that describe a color. This can be an array
+        containing one value (e.g. fillStyle), or multiple values, as is the
+        case with non-standard API functions that describe color using multiple
+        parameters (e.g. setFillColor).
+
+        * UserInterface/Views/InlineSwatch.css:
+        (.inline-swatch:not(.read-only):hover > span):
+        (.inline-swatch:hover > span): Deleted.
+        * UserInterface/Views/InlineSwatch.js:
+        (WI.InlineSwatch):
+        Read-only colors shouldn't show a context menu or hover effects.
+
+        * UserInterface/Views/RecordingActionTreeElement.css:
+        (.tree-outline:matches(:focus, .force-focus) .item.action > .titles .parameters > .inline-swatch):
+
+        * UserInterface/Views/RecordingActionTreeElement.js:
+        (WI.RecordingActionTreeElement._generateDOM.createParameterElement):
+        (WI.RecordingActionTreeElement._generateDOM):
+        (WI.RecordingActionTreeElement._createSwatchForColorParameters):
+
+        * UserInterface/Views/RecordingStateDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.recording-state > .content > .data-grid .inline-swatch):
+
+        * UserInterface/Views/RecordingStateDetailsSidebarPanel.js:
+        (WI.RecordingStateDetailsSidebarPanel.prototype._generateDetailsCanvas2D.isColorProperty):
+        (WI.RecordingStateDetailsSidebarPanel.prototype._generateDetailsCanvas2D.createInlineSwatch):
+        (WI.RecordingStateDetailsSidebarPanel.prototype._generateDetailsCanvas2D):
+        (WI.RecordingStateDetailsSidebarPanel):
+
+2017-09-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed rollout r222036.
+        
+        The LayoutTests added with this change is flaky.
+
+        This left in the Test.js, Test.html, InspectorBackend changes
+        needed by later patches. They are independent of the flakey test.
+
+        Reverted changeset
+        Web Inspector: Timeline should show when events preventDefault() was called on an event or not
+        https://bugs.webkit.org/show_bug.cgi?id=176824
+        http://trac.webkit.org/changeset/222036
+
+2017-09-14  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: make recording swizzle async
+        https://bugs.webkit.org/show_bug.cgi?id=176936
+
+        Reviewed by Joseph Pecoraro.
+
+        Move all swizzle functions, and all logic that depends on swizzled values, to async
+        functions so that await can be used to pause execution while objects load. This was
+        necessary primarily for swizzling Image values, as the Image is not able to be used (such as
+        for creating a CanvasPattern) until its "load" event has fired. Any callers of a Recording's
+        actions getter must now adapt to working with a promise that will resolve once all swizzling
+        has finished across all actions within that recording.
+
+        * .eslintrc:
+
+        * UserInterface/Models/Recording.js:
+        (WI.Recording):
+        (WI.Recording.prototype.async swizzle):
+        (WI.Recording.prototype.swizzle): Deleted.
+        Drive-by: currently, no data is added to the JSON for WebGL objects, so don't try to swizzle
+        them and return the placeholder value (0) instead.
+
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction):
+        (WI.RecordingAction.prototype.swizzle):
+        (WI.RecordingAction.prototype.toJSON):
+        (WI.RecordingAction.prototype.async _swizzle.swizzleParameter):
+        (WI.RecordingAction.prototype.async _swizzle.async swizzleCallFrame):
+        (WI.RecordingAction.prototype.async _swizzle):
+
+        * UserInterface/Models/RecordingInitialStateAction.js:
+        (WI.RecordingInitialStateAction):
+
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.RecordingContentView.prototype.updateActionIndex):
+        (WI.RecordingContentView.prototype.async _generateContentCanvas2D):
+        (WI.RecordingContentView.prototype.async _generateContentCanvasWebGL):
+        (WI.RecordingContentView.prototype._updateCanvasPath):
+        (WI.RecordingContentView.prototype._generateContentCanvas2D): Deleted.
+        (WI.RecordingContentView.prototype._generateContentCanvasWebGL): Deleted.
+
+        * UserInterface/Views/RecordingNavigationSidebarPanel.js:
+        (WI.RecordingNavigationSidebarPanel.prototype.set recording):
+        (WI.RecordingNavigationSidebarPanel.prototype.updateActionIndex):
+
+        * UserInterface/Views/RecordingStateDetailsSidebarPanel.js:
+        (WI.RecordingStateDetailsSidebarPanel):
+        (WI.RecordingStateDetailsSidebarPanel.prototype.updateActionIndex):
+        (WI.RecordingStateDetailsSidebarPanel.prototype._generateDetailsCanvas2D):
+
+        * UserInterface/Views/RecordingTabContentView.js:
+        (WI.RecordingTabContentView.prototype.showRepresentedObject):
+
+        * UserInterface/Views/RecordingTraceDetailsSidebarPanel.js:
+        (WI.RecordingTraceDetailsSidebarPanel):
+        (WI.RecordingTraceDetailsSidebarPanel.prototype.updateActionIndex):
+
+2017-09-14  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Color created from an RGB/HSL triplet returns bad component arrays
+        https://bugs.webkit.org/show_bug.cgi?id=176811
+        <rdar://problem/34397529>
+
+        Reviewed by Joseph Pecoraro.
+
+        A Color constructed from a format and RGB/HSL triplet should set its
+        alpha component to 1 instead of leaving it undefined. Color properties
+        and member functions expect the components array to have a length of four.
+
+        * UserInterface/Models/Color.js:
+        (WI.Color):
+
+2017-09-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Layout test inspector/debugger/breakpoints/resolved-dump-all-pause-locations.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=176952
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackend.Agent.prototype.dispatchEvent):
+        Include the event name since that may be useful in understanding what happened.
+
+        * UserInterface/Test.html:
+        * UserInterface/Test/Test.js:
+        (WI.loaded):
+        Register a MemoryObserver and include potentially necessary Model objects
+        for the Memory domain.
+
+2017-09-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timeline should show when events preventDefault() was called on an event or not
+        https://bugs.webkit.org/show_bug.cgi?id=176824
+        <rdar://problem/34290931>
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New string.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WI.TimelineManager.prototype._processRecord):
+        Include the whole data object as extra details.
+
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        (WI.ScriptTimelineRecord):
+        (WI.ScriptTimelineRecord.prototype.get extraDetails):
+        Wholesale copy of the extra data instead of just a single property.
+
+        * UserInterface/Views/ScriptDetailsTimelineView.js:
+        (WI.ScriptDetailsTimelineView):
+        Give the name column more initial space, there is still extra space
+        after this adjustment but name is comfortably larger (and the most
+        likely to be expanded).
+
+        * UserInterface/Views/ScriptTimelineDataGridNode.js:
+        (WI.ScriptTimelineDataGridNode.prototype.get subtitle):
+        Include "default prevented" as the event's subtitle if it was prevented.
+
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackend.Agent.prototype.dispatchEvent):
+        (InspectorBackend.Agent):
+        * UserInterface/Test.html:
+        * UserInterface/Test/Test.js:
+        (WI.loaded):
+        Add the ScriptProfilerObserver to tests since it is on by default for Timelines.
+
+2017-09-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r222015.
+
+        The LayoutTests added with this change are flaky.
+
+        Reverted changeset:
+
+        "Web Inspector: Timeline should show when events
+        preventDefault() was called on an event or not"
+        https://bugs.webkit.org/show_bug.cgi?id=176824
+        http://trac.webkit.org/changeset/222015
+
+2017-09-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timeline should show when events preventDefault() was called on an event or not
+        https://bugs.webkit.org/show_bug.cgi?id=176824
+        <rdar://problem/34290931>
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New string.
+
+        * UserInterface/Controllers/TimelineManager.js:
+        (WI.TimelineManager.prototype._processRecord):
+        Include the whole data object as extra details.
+
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        (WI.ScriptTimelineRecord):
+        (WI.ScriptTimelineRecord.prototype.get extraDetails):
+        Wholesale copy of the extra data instead of just a single property.
+
+        * UserInterface/Views/ScriptDetailsTimelineView.js:
+        (WI.ScriptDetailsTimelineView):
+        Give the name column more initial space, there is still extra space
+        after this adjustment but name is comfortably larger (and the most
+        likely to be expanded).
+
+        * UserInterface/Views/ScriptTimelineDataGridNode.js:
+        (WI.ScriptTimelineDataGridNode.prototype.get subtitle):
+        Include "default prevented" as the event's subtitle if it was prevented.
+
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackend.Agent.prototype.dispatchEvent):
+        (InspectorBackend.Agent):
+        * UserInterface/Test.html:
+        * UserInterface/Test/Test.js:
+        (WI.loaded):
+        Add the ScriptProfilerObserver to tests since it is on by default for Timelines.
+
+2017-09-13  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: allow recordings to be saved via ⌘-S in the Recording tab
+        https://bugs.webkit.org/show_bug.cgi?id=175284
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.RecordingContentView.prototype.get supportsSave):
+        (WI.RecordingContentView.prototype.get saveData):
+
+        * UserInterface/Views/RecordingNavigationSidebarPanel.js:
+        (WI.RecordingNavigationSidebarPanel.prototype._exportNavigationItemClicked):
+        Use the current content view's saveData when exporting.
+
+2017-09-13  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Event Listeners section does not update when listeners are added/removed
+        https://bugs.webkit.org/show_bug.cgi?id=170570
+        <rdar://problem/31501645>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Protocol/DOMObserver.js:
+        (WI.DOMObserver.prototype.didAddEventListener):
+        (WI.DOMObserver.prototype.willRemoveEventListener):
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WI.DOMTreeManager.prototype.didAddEventListener):
+        (WI.DOMTreeManager.prototype.willRemoveEventListener):
+
+        * UserInterface/Models/DOMNode.js:
+        Add "EventListenersChanged" event. Fired when an event listener is added or removed.
+
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WI.DOMNodeDetailsSidebarPanel.prototype.addEventListeners):
+        (WI.DOMNodeDetailsSidebarPanel.prototype.removeEventListeners):
+        (WI.DOMNodeDetailsSidebarPanel.prototype._eventListenersChanged):
+        Refresh the event listeners section whenever a node's event listeners change.
+
+2017-09-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Sort by size issues with Cookies and ApplicationCache DataGrids
+        https://bugs.webkit.org/show_bug.cgi?id=176879
+        <rdar://problem/34237096>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/ApplicationCacheFrameContentView.js:
+        (WI.ApplicationCacheFrameContentView.prototype._sortDataGrid):
+        (WI.ApplicationCacheFrameContentView.prototype._populateDataGrid):
+        This uses very dumb DataGridNodes with a pure data object. In that
+        object `size` is a bytes string not a number. Include the number size
+        in this data object that can be used during sorting.
+
+        * UserInterface/Views/CookieStorageContentView.js:
+        (WI.CookieStorageContentView.prototype._rebuildTable):
+        Simplify creation. Also don't reset sort options. Note that here the
+        DataGridNodes have access to the Cookie object and can already sort size
+        using the cookie's size (a number) and not the data's size (string).
+
+        * UserInterface/Views/DataGrid.js:
+        (WI.DataGrid.prototype.sortNodes):
+        (WI.DataGrid.prototype._sortNodesCallback):
+        If sortNodes was called twice, it would defer the sort and actually
+        do the sort with the first comparator and not the latest, preferred
+        comparator. Make it use the latest comparator.
+
+2017-09-13  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: display @media section headers
+        https://bugs.webkit.org/show_bug.cgi?id=176289
+        <rdar://problem/34228389>
+
+        Reviewed by Devin Rousso.
+
+        Prepend CSS media query selectors to every matching rule.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.css:
+        (.spreadsheet-css-declaration .media-label):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.initialLayout):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._createMediaHeader):
+        Don't localize "@media" since it's CSS code.
+        Don't display "all" or "screen" media query selectors. One of the goals of the
+        Styles sidebar redesign is to fit more data.
+
+2017-09-13  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Frontend should be made to expect and handle disabled properties
+        https://bugs.webkit.org/show_bug.cgi?id=166787
+        <rdar://problem/34379593>
+
+        Reviewed by Joseph Pecoraro.
+
+        This change introduces WI.CSSStyleDeclaration.prototype.allProperties getter,
+        that includes both enabled and disabled (commented out) CSS properties.
+
+        The existing WI.CSSStyleDeclaration.prototype.properties getter only includes enabled CSS properties,
+        same as before the backend change.
+
+        There is no behaviour change in the current styles sidebar. The new redesigned styles sidebar will
+        use disabled properties and display them as commented out.
+
+        * UserInterface/Models/CSSProperty.js:
+        (WI.CSSProperty.prototype.get attached):
+        Rename `enabled` to `attached`, as it didn't correspond to `_enabled` property. Attached means that the property
+        is enabled and has a ownerStyle with a set index (unless it's a computed style, where index is not applicable).
+
+        (WI.CSSProperty.prototype.get enabled):
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        (WI.CSSStyleDeclaration.prototype.get allProperties):
+        Add allProperties getter that will be used in the new styles sidebar.
+
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WI.DOMNodeStyles.prototype._markOverriddenProperties):
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WI.CSSStyleDeclarationTextEditor.prototype.highlightProperty.propertiesMatch):
+        Rename "enabled" to "attached" without any behavior change.
+
+2017-09-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Escape in global search field should clear it
+        https://bugs.webkit.org/show_bug.cgi?id=176764
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/QuickConsole.js:
+        (WI.QuickConsole.prototype._toggleOrFocus):
+        Don't implicitly prevent default. So if we didn't cause an action we
+        can let the default system action happen.
+
+        * UserInterface/Views/SearchBar.js:
+        (WI.SearchBar):
+        Remove unused keyboard shortcuts.
+
 2017-09-12  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Add Experimental setting for new Network tab

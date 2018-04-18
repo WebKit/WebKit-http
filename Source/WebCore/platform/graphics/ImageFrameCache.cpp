@@ -390,6 +390,16 @@ URL ImageFrameCache::sourceURL() const
     return m_image ? m_image->sourceURL() : URL();
 }
 
+String ImageFrameCache::mimeType() const
+{
+    return m_image ? m_image->mimeType() : emptyString();
+}
+
+long long ImageFrameCache::expectedContentLength() const
+{
+    return m_image ? m_image->expectedContentLength() : 0;
+}
+
 template<typename T, T (ImageDecoder::*functor)() const>
 T ImageFrameCache::metadata(const T& defaultValue, std::optional<T>* cachedValue)
 {
@@ -534,9 +544,9 @@ unsigned ImageFrameCache::frameBytesAtIndex(size_t index, SubsamplingLevel subsa
     return frameMetadataAtIndexCacheIfNeeded<unsigned>(index, (&ImageFrame::frameBytes), nullptr, ImageFrame::Caching::Metadata, subsamplingLevel);
 }
 
-float ImageFrameCache::frameDurationAtIndex(size_t index)
+Seconds ImageFrameCache::frameDurationAtIndex(size_t index)
 {
-    return frameMetadataAtIndexCacheIfNeeded<float>(index, (&ImageFrame::duration), nullptr, ImageFrame::Caching::Metadata);
+    return frameMetadataAtIndexCacheIfNeeded<Seconds>(index, (&ImageFrame::duration), nullptr, ImageFrame::Caching::Metadata);
 }
 
 ImageOrientation ImageFrameCache::frameOrientationAtIndex(size_t index)

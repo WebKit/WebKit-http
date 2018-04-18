@@ -582,7 +582,7 @@ crypto/workers/subtle/ [ Skip ]
 webkit.org/b/136224 fast/speechsynthesis [ Skip ]
 
 # Test is Posix-specific.
-editing/pasteboard/enties-api/datatransfer-items-drop-hidden-file.html [ Skip ]
+editing/pasteboard/entries-api/datatransfer-items-drop-hidden-file.html [ Skip ]
 
 # TODO Impossible to test text-only-zoom from DRT on Windows
 webkit.org/b/35013 svg/zoom/text/ [ Skip ]
@@ -3291,7 +3291,7 @@ http/tests/security/contentSecurityPolicy/worker-blob-inherits-csp-blocks-eval.h
 http/tests/security/cross-origin-script-window-onerror-redirected.html [ Failure Pass ]
 http/tests/security/isolatedWorld/number-prototype.html [ Failure Pass ]
 http/tests/security/local-video-src-from-remote.html [ Failure Pass ]
-http/tests/security/video-cross-origin-caching.html [ Failure Timeout Pass ]
+http/tests/security/video-cross-origin-caching.html [ Crash Failure Timeout Pass ]
 http/tests/security/video-poster-cross-origin-crash2.html [ Failure Pass ]
 http/tests/websocket/tests/hybi/simple-wss.html [ Crash Timeout ]
 security/contentSecurityPolicy/worker-inherits-blocks-eval.html [ Failure Pass ]
@@ -3851,19 +3851,22 @@ fast/forms/file/entries-api/webkitdirectory-drag-folder-webkitEntries.html [ Fai
 fast/forms/file/entries-api/webkitdirectory-drag-folder.html [ Failure ]
 http/tests/multipart/multipart-async-image.html [ Failure ]
 http/tests/security/contentSecurityPolicy/allow-favicon.html [ Failure ]
-http/wpt/cache-storage/cache-put-keys.https.any.html [ Failure ]
-http/wpt/cache-storage/cache-put-keys.https.any.worker.html [ Failure ]
-http/wpt/cache-storage/cache-put-stream.https.any.html [ Failure ]
-http/wpt/cache-storage/cache-put-stream.https.any.worker.html [ Failure ]
-http/wpt/cache-storage/cache-remove-twice.html [ Failure ]
 http/wpt/entries-api/interfaces.html [ Failure ]
 http/wpt/fetch/response-status-text.html [ Failure ]
 js/dom/builtin-getter-name.html [ Failure ]
 fast/text/variations/font-selection-font-weight.html [ ImageOnlyFailure ]
 fast/forms/file/entries-api/webkitdirectory-open-panel.html [ Skip ]
-http/tests/cache-storage/cache-origins.https.html [ Skip ]
-http/tests/cache-storage/cache-persistency.https.html [ Skip ]
-http/tests/cache-storage/cache-representation.https.html [ Skip ]
+
+# Failing cache storage tests
+webkit.org/b/176999 http/tests/cache-storage/cache-origins.https.html [ Skip ]
+webkit.org/b/176999 http/tests/cache-storage/cache-persistency.https.html [ Skip ]
+webkit.org/b/176999 http/tests/cache-storage/cache-records-persistency.https.html [ Failure ]
+webkit.org/b/176999 http/tests/cache-storage/cache-representation.https.html [ Skip ]
+webkit.org/b/176999 http/wpt/cache-storage/cache-put-keys.https.any.html [ Failure ]
+webkit.org/b/176999 http/wpt/cache-storage/cache-put-keys.https.any.worker.html [ Failure ]
+webkit.org/b/176999 http/wpt/cache-storage/cache-put-stream.https.any.html [ Failure ]
+webkit.org/b/176999 http/wpt/cache-storage/cache-put-stream.https.any.worker.html [ Failure ]
+webkit.org/b/176999 http/wpt/cache-storage/cache-remove-twice.html [ Failure ]
 
 # html/syntax web platform tests are failing on Windows.
 webkit.org/b/162415 imported/w3c/web-platform-tests/html/syntax [ Skip ]
@@ -3882,8 +3885,8 @@ http/tests/webrtc/filtering-ice-candidate-same-origin-frame.html [ Skip ]
 http/tests/webrtc/filtering-ice-candidate-same-origin-frame2.html [ Skip ]
 
 # Resource Timing Metrics not available.
-imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.html [ Skip ]
-imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.worker.html [ Skip ]
+http/wpt/resource-timing/rt-nextHopProtocol.html [ Skip ]
+http/wpt/resource-timing/rt-nextHopProtocol.worker.html [ Skip ]
 
 # WebCrypto tests are failing.
 webkit.org/b/165090 imported/w3c/web-platform-tests/WebCryptoAPI [ Skip ]
@@ -3944,21 +3947,24 @@ webkit.org/b/157916 http/tests/misc/slow-loading-animated-image.html [ Pass Imag
 webkit.org/b/176465 http/tests/preload/single_download_preload.html [ Pass Failure Crash ]
 webkit.org/b/176866 http/tests/xmlhttprequest/workers/xmlhttprequest-file-not-found.html [ Pass Crash ]
 webkit.org/b/176693 storage/indexeddb/modern/idbtransaction-objectstore-failures-private.html [ Pass Failure ]
+webkit.org/b/176880 storage/indexeddb/modern/idbtransaction-objectstore-failures.html [ Pass Failure ]
 webkit.org/b/176660 svg/animations/animations-paused-in-background-page-iframe.html [ Pass Timeout ]
+webkit.org/b/176901 svg/as-image/svg-image-with-data-uri-use-data-uri.svg [ Pass ImageOnlyFailure ]
+webkit.org/b/177077 imported/blink/fast/events/panScroll-panIcon.html [ Pass ImageOnlyFailure Crash ]
 
 # DatatransferItem tests are timing out.
 webkit.org/b/176423 editing/pasteboard/datatransfer-items-copy-plaintext.html [ Skip ]
 webkit.org/b/176423 editing/pasteboard/datatransfer-items-paste-plaintext.html [ Skip ]
-webkit.org/b/176423 editing/pasteboard/enties-api/datatransfer-items-drop-directoryReader-error.html [ Skip ]
-webkit.org/b/176423 editing/pasteboard/enties-api/datatransfer-items-drop-directoryReader-root.html [ Skip ]
-webkit.org/b/176423 editing/pasteboard/enties-api/datatransfer-items-drop-directoryReader.html [ Skip ]
-webkit.org/b/176423 editing/pasteboard/enties-api/datatransfer-items-drop-fileEntry-file.html [ Skip ]
-webkit.org/b/176423 editing/pasteboard/enties-api/datatransfer-items-drop-getAsEntry.html [ Skip ]
-webkit.org/b/176423 editing/pasteboard/enties-api/datatransfer-items-drop-getDirectory.html [ Skip ]
-webkit.org/b/176423 editing/pasteboard/enties-api/datatransfer-items-drop-getFile.html [ Skip ]
-webkit.org/b/176423 editing/pasteboard/enties-api/datatransfer-items-drop-getParent-root.html [ Skip ]
-webkit.org/b/176423 editing/pasteboard/enties-api/datatransfer-items-drop-getParent.html [ Skip ]
-webkit.org/b/176423 editing/pasteboard/enties-api/datatransfer-items-drop-getParent2.html [ Skip ]
+webkit.org/b/176423 editing/pasteboard/entries-api/datatransfer-items-drop-directoryReader-error.html [ Skip ]
+webkit.org/b/176423 editing/pasteboard/entries-api/datatransfer-items-drop-directoryReader-root.html [ Skip ]
+webkit.org/b/176423 editing/pasteboard/entries-api/datatransfer-items-drop-directoryReader.html [ Skip ]
+webkit.org/b/176423 editing/pasteboard/entries-api/datatransfer-items-drop-fileEntry-file.html [ Skip ]
+webkit.org/b/176423 editing/pasteboard/entries-api/datatransfer-items-drop-getAsEntry.html [ Skip ]
+webkit.org/b/176423 editing/pasteboard/entries-api/datatransfer-items-drop-getDirectory.html [ Skip ]
+webkit.org/b/176423 editing/pasteboard/entries-api/datatransfer-items-drop-getFile.html [ Skip ]
+webkit.org/b/176423 editing/pasteboard/entries-api/datatransfer-items-drop-getParent-root.html [ Skip ]
+webkit.org/b/176423 editing/pasteboard/entries-api/datatransfer-items-drop-getParent.html [ Skip ]
+webkit.org/b/176423 editing/pasteboard/entries-api/datatransfer-items-drop-getParent2.html [ Skip ]
 
 webkit.org/b/176598 http/tests/security/contentSecurityPolicy/audio-redirect-allowed2.html [ Pass Crash ]
 webkit.org/b/176606 http/tests/preload/single_download_preload_headers.php [ Pass Crash ]
@@ -3967,3 +3973,25 @@ webkit.org/b/176632 http/tests/websocket/tests/hybi/websocket-pending-activity.h
 
 # Web platform tests are very slow on Windows.
 webkit.org/b/176657 imported/w3c/web-platform-tests/ [ Skip ]
+
+# These tests only fail on one of the EWS machines
+webkit.org/b/176998 fast/animation/css-animation-resuming-when-visible-with-style-change2.html [ Failure ]
+webkit.org/b/176998 fast/dom/Window/Plug-ins.html [ Failure ]
+webkit.org/b/176998 fast/harness/snapshot-captures-compositing.html [ ImageOnlyFailure ]
+webkit.org/b/176998 fast/images/composited-animated-gif-outside-viewport.html [ Timeout Pass ]
+webkit.org/b/176998 pageoverlay/overlay-small-frame-mouse-events.html [ Failure ]
+webkit.org/b/176998 pageoverlay/overlay-small-frame-paints.html [ Failure ]
+webkit.org/b/176998 storage/indexeddb/modern/idbcursor-continue-primary-key-1.html [ Timeout ]
+
+webkit.org/b/177071 fast/events/beforeunload-dom-manipulation-crash.html [ Crash ]
+
+webkit.org/b/177072 http/tests/websocket/tests/hybi/secure-cookie-secure-connection.pl [ Failure ]
+
+webkit.org/b/177109 fast/css/display-contents-style-update.html [ ImageOnlyFailure ]
+
+webkit.org/b/177212 accessibility/crash-table-recursive-layout.html [ Failure ]
+
+webkit.org/b/177216 fast/images/animated-image-mp4.html [ Skip ]
+
+webkit.org/b/177234 http/wpt/resource-timing/rt-cors.html [ Skip ]
+webkit.org/b/177234 http/wpt/resource-timing/rt-cors.worker.html [ Skip ]

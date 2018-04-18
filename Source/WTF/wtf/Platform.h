@@ -366,7 +366,7 @@
 
 #endif /* ARM */
 
-#if CPU(ARM) || CPU(MIPS) || CPU(SH4)
+#if CPU(ARM) || CPU(MIPS) || CPU(SH4) || CPU(ALPHA) || CPU(HPPA)
 #define WTF_CPU_NEEDS_ALIGNED_ACCESS 1
 #endif
 
@@ -1189,6 +1189,10 @@
 
 #if PLATFORM(MAC)
 #define USE_INSERTION_UNDO_GROUPING 1
+#endif
+
+#if PLATFORM(MAC)
+#define HAVE_AVSAMPLEBUFFERGENERATOR 1
 #endif
 
 #if PLATFORM(COCOA)

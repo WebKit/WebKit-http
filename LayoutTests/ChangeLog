@@ -1,3 +1,2403 @@
+2017-09-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r222254.
+        https://bugs.webkit.org/show_bug.cgi?id=177267
+
+        Caused fast/images/animated-gif-webkit-transform.html to time
+        out, and possible perf regression (Requested by smfr on
+        #webkit).
+
+        Reverted changeset:
+
+        "Simplify compositing layer updating"
+        https://bugs.webkit.org/show_bug.cgi?id=176196
+        http://trac.webkit.org/changeset/222254
+
+2017-09-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r222278.
+
+        This needs more work before it can be landed.
+
+        Reverted changeset:
+
+        "Work towards: Move test expectations from 'ios-11' to 'ios'
+        directory"
+        https://bugs.webkit.org/show_bug.cgi?id=177167
+        http://trac.webkit.org/changeset/222278
+
+2017-09-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Work towards: Move test expectations from 'ios-11' to 'ios' directory
+        https://bugs.webkit.org/show_bug.cgi?id=177167
+
+        Unreviewed test gardening.
+
+        * platform/ios-11/TestExpectations: Removed.
+        * platform/ios/TestExpectations:
+
+2017-09-20  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] atk_table_get_n_rows() and atk_table_get_n_columns() should return values of aria-rowcount and aria-colcount, if present
+        https://bugs.webkit.org/show_bug.cgi?id=171172
+
+        Reviewed by Chris Fleizach.
+
+        Generated platform-specific expectations to reflect the new behavior.
+
+        * accessibility/aria-table-attributes.html: Modified to handle platform differences.
+        * platform/gtk/accessibility/aria-table-attributes-expected.txt: Added.
+
+2017-09-20  Youenn Fablet  <youenn@apple.com>
+
+        Make webrtc replace track tests less flaky
+        https://bugs.webkit.org/show_bug.cgi?id=172645
+        <rdar://problem/34118218>
+
+        Reviewed by Eric Carlson.
+
+        Improving stability of tests by retrying tests every 50 ms instead of once.
+        Doing some refactoring to put more helper routines in routine.js
+        Relaxing black pixel check as compression may introduce some uncertainty.
+        It is now considered black if RGB < (30, 30, 30).
+
+        * TestExpectations: Marking video-mute.html as Pass/Fail instead of Fail.
+        * webrtc/routines.js:
+        * webrtc/video-mute.html:
+        * webrtc/video-replace-muted-track.html:
+        * webrtc/video-replace-track-expected.txt:
+        * webrtc/video-replace-track-to-null.html:
+        * webrtc/video-replace-track.html:
+
+2017-09-20  Chris Dumez  <cdumez@apple.com>
+
+        Video errors should be instances of Error
+        https://bugs.webkit.org/show_bug.cgi?id=174573
+        <rdar://problem/34445494>
+
+        Reviewed by Youenn Fablet.
+
+        * http/tests/security/video-cross-origin-caching-expected.txt:
+        Rebaseline test now that output has changed slightly.
+
+        * media/media-play-promise-reject-load-abort-expected.txt:
+        * media/media-play-promise-reject-load-abort.html:
+        Extend test coverage.
+
+2017-09-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip inspector tests that crash after r222259.
+        https://bugs.webkit.org/show_bug.cgi?id=177249
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-09-20  Ms2ger  <Ms2ger@igalia.com>
+
+        [WPE] Unreviewed test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=177233
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+        * platform/wpe/tables/mozilla/marvin/x_th_nowrap-expected.txt:
+
+2017-09-20  Per Arne Vollan  <pvollan@apple.com>
+
+        Skip failing resource timing tests on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=177234
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-09-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        On Mac, dataTransfer claims to contain URL list when dropping files
+        https://bugs.webkit.org/show_bug.cgi?id=177219
+
+        Reviewed by Wenson Hsieh.
+
+        Added a regression test. For now, it only runs on Mac WK1.
+
+        * editing/pasteboard/datatransfer-types-dropping-text-file-expected.txt: Added.
+        * editing/pasteboard/datatransfer-types-dropping-text-file.html: Added.
+        * platform/ios/TestExpectations:
+        * platform/wk2/TestExpectations:
+
+2017-09-19  Simon Fraser  <simon.fraser@apple.com>
+
+        Simplify compositing layer updating
+        https://bugs.webkit.org/show_bug.cgi?id=176196
+
+        Reviewed by Zalan Bujtas.
+
+        New baselines.
+
+        * scrollingcoordinator/ios/sync-layer-positions-after-scroll-expected.txt:
+        * tiled-drawing/background-transparency-toggle-expected.txt:
+
+2017-09-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Move non-upstreamed Resource Timing tests out of web-platform-tests
+        https://bugs.webkit.org/show_bug.cgi?id=177197
+
+        Reviewed by Youenn Fablet.
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+        Update expectations for path changes.
+
+        * http/wpt/resource-timing/resources/data.json: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/resources/data.json.
+        * http/wpt/resource-timing/resources/resource.css: Added.
+        * http/wpt/resource-timing/resources/resource.html: Added.
+        * http/wpt/resource-timing/resources/resource.js: Added.
+        * http/wpt/resource-timing/resources/resource.png: Added.
+        * http/wpt/resource-timing/resources/rt-iframe-1.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/resources/rt-iframe-1.html.
+        * http/wpt/resource-timing/resources/rt-iframe-2.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/resources/rt-iframe-2.html.
+        * http/wpt/resource-timing/resources/rt-module.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/resources/rt-module.js.
+        * http/wpt/resource-timing/resources/rt-revalidation-response.py: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/resources/rt-revalidation-response.py.
+        * http/wpt/resource-timing/resources/rt-sub-module.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/resources/rt-sub-module.js.
+        * http/wpt/resource-timing/resources/rt-utilities.sub.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/resources/rt-utilities.sub.js.
+        * http/wpt/resource-timing/resources/rt-worker-resources.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/resources/rt-worker-resources.js.
+        * http/wpt/resource-timing/rt-cors-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-cors-expected.txt.
+        * http/wpt/resource-timing/rt-cors.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-cors.html.
+        * http/wpt/resource-timing/rt-cors.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-cors.js.
+        * http/wpt/resource-timing/rt-cors.worker-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-cors.worker-expected.txt.
+        * http/wpt/resource-timing/rt-cors.worker.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-cors.worker.html.
+        * http/wpt/resource-timing/rt-cors.worker.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-cors.worker.js.
+        * http/wpt/resource-timing/rt-initiatorType-css-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-initiatorType-css-expected.txt.
+        * http/wpt/resource-timing/rt-initiatorType-css.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-initiatorType-css.html.
+        * http/wpt/resource-timing/rt-initiatorType-element-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-initiatorType-element-expected.txt.
+        * http/wpt/resource-timing/rt-initiatorType-element.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-initiatorType-element.html.
+        * http/wpt/resource-timing/rt-initiatorType-fetch-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-initiatorType-fetch-expected.txt.
+        * http/wpt/resource-timing/rt-initiatorType-fetch.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-initiatorType-fetch.html.
+        * http/wpt/resource-timing/rt-initiatorType-fetch.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-initiatorType-fetch.js.
+        * http/wpt/resource-timing/rt-initiatorType-media-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-initiatorType-media-expected.txt.
+        * http/wpt/resource-timing/rt-initiatorType-media.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-initiatorType-media.html.
+        * http/wpt/resource-timing/rt-initiatorType-other-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-initiatorType-other-expected.txt.
+        * http/wpt/resource-timing/rt-initiatorType-other.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-initiatorType-other.html.
+        * http/wpt/resource-timing/rt-initiatorType-script-module-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-initiatorType-script-module-expected.txt.
+        * http/wpt/resource-timing/rt-initiatorType-script-module.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-initiatorType-script-module.html.
+        * http/wpt/resource-timing/rt-initiatorType-xmlhttprequest-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-initiatorType-xmlhttprequest-expected.txt.
+        * http/wpt/resource-timing/rt-initiatorType-xmlhttprequest.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-initiatorType-xmlhttprequest.html.
+        * http/wpt/resource-timing/rt-initiatorType-xmlhttprequest.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-initiatorType-xmlhttprequest.js.
+        * http/wpt/resource-timing/rt-initiatorType.worker-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-initiatorType.worker-expected.txt.
+        * http/wpt/resource-timing/rt-initiatorType.worker.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-initiatorType.worker.html.
+        * http/wpt/resource-timing/rt-initiatorType.worker.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-initiatorType.worker.js.
+        * http/wpt/resource-timing/rt-nextHopProtocol-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol-expected.txt.
+        * http/wpt/resource-timing/rt-nextHopProtocol.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.html.
+        * http/wpt/resource-timing/rt-nextHopProtocol.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.js.
+        * http/wpt/resource-timing/rt-nextHopProtocol.worker-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.worker-expected.txt.
+        * http/wpt/resource-timing/rt-nextHopProtocol.worker.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.worker.html.
+        * http/wpt/resource-timing/rt-nextHopProtocol.worker.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.worker.js.
+        * http/wpt/resource-timing/rt-performance-extensions-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-performance-extensions-expected.txt.
+        * http/wpt/resource-timing/rt-performance-extensions.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-performance-extensions.html.
+        * http/wpt/resource-timing/rt-performance-extensions.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-performance-extensions.js.
+        * http/wpt/resource-timing/rt-performance-extensions.worker-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-performance-extensions.worker-expected.txt.
+        * http/wpt/resource-timing/rt-performance-extensions.worker.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-performance-extensions.worker.html.
+        * http/wpt/resource-timing/rt-performance-extensions.worker.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-performance-extensions.worker.js.
+        * http/wpt/resource-timing/rt-resource-errors-expected.txt: Added.
+        * http/wpt/resource-timing/rt-resource-errors.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-resource-errors.html.
+        * http/wpt/resource-timing/rt-resource-ignored-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-resource-ignored-expected.txt.
+        * http/wpt/resource-timing/rt-resource-ignored.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-resource-ignored.html.
+        * http/wpt/resource-timing/rt-resources-per-frame-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-resources-per-frame-expected.txt.
+        * http/wpt/resource-timing/rt-resources-per-frame.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-resources-per-frame.html.
+        * http/wpt/resource-timing/rt-resources-per-worker-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-resources-per-worker-expected.txt.
+        * http/wpt/resource-timing/rt-resources-per-worker.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-resources-per-worker.html.
+        * http/wpt/resource-timing/rt-revalidate-requests-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-revalidate-requests-expected.txt.
+        * http/wpt/resource-timing/rt-revalidate-requests.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-revalidate-requests.html.
+        * http/wpt/resource-timing/rt-serialization-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-serialization-expected.txt.
+        * http/wpt/resource-timing/rt-serialization.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-serialization.html.
+        * http/wpt/resource-timing/rt-shared-resource-in-frames-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-shared-resource-in-frames-expected.txt.
+        * http/wpt/resource-timing/rt-shared-resource-in-frames.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-shared-resource-in-frames.html.
+        * http/wpt/resource-timing/rt-shared-resource-in-workers-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-shared-resource-in-workers-expected.txt.
+        * http/wpt/resource-timing/rt-shared-resource-in-workers.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/resource-timing/rt-shared-resource-in-workers.html.
+        Move tests and make small modifications to ensure we load "/WebKit/resource-timing"
+        test resources instead of "/resource-timing" resources (web-platform-tests ones).
+
+2017-09-19  Per Arne Vollan  <pvollan@apple.com>
+
+        Skip fast/images/animated-image-mp4.html on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=177216
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-09-19  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark accessibility/crash-table-recursive-layout.html as a failure on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=177212
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-09-19  Zalan Bujtas  <zalan@apple.com>
+
+        Add missing text after r222226.
+
+        * accessibility/crash-table-recursive-layout.html:
+
+2017-09-19  Matt Lewis  <jlewis3@apple.com>
+
+        Marked tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-vertical-then-horizontal.html as flaky on macOS Debug.
+        https://bugs.webkit.org/show_bug.cgi?id=171839
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-09-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        On iOS, getData can't get text set by setData during copy event
+        https://bugs.webkit.org/show_bug.cgi?id=176980
+        <rdar://problem/34453915>
+
+        Reviewed by Darin Adler.
+
+        Added regression tests to make sure dataTransfer.types returns an empty list when writing to a pasteboard (copy),
+        and doesn't contain image types when pasting plain text. Unfortunately, pasting image does result in plain text
+        content being present in the pasteboard in the form of URL so we can't test that scenario.
+
+        Also removed failing expectations from a number of tests that are now passing on iOS.
+
+        * editing/pasteboard/dataTransfer-types-is-initially-empty-on-copy-expected.txt: Added.
+        * editing/pasteboard/dataTransfer-types-is-initially-empty-on-copy.html: Added.
+        * editing/pasteboard/dataTransfer-types-pasting-plaintext-expected.txt: Added.
+        * editing/pasteboard/dataTransfer-types-pasting-plaintext.html: Added.
+        * platform/ios/TestExpectations:
+
+2017-09-19  Zalan Bujtas  <zalan@apple.com>
+
+        AXObjectCache::performDeferredCacheUpdate is called recursively through FrameView::layout. 
+        https://bugs.webkit.org/show_bug.cgi?id=176218
+        <rdar://problem/34205612>
+
+        Reviewed by Simon Fraser.
+
+        * accessibility/crash-table-recursive-layout-expected.txt: Added.
+        * accessibility/crash-table-recursive-layout.html: Added.
+
+2017-09-19  Jer Noble  <jer.noble@apple.com>
+
+        [Cocoa] Add an ImageDecoder subclass backed by AVFoundation
+        https://bugs.webkit.org/show_bug.cgi?id=176825
+
+        Reviewed by Eric Carlson.
+
+        * fast/images/animated-image-mp4-expected.txt: Added.
+        * fast/images/animated-image-mp4.html: Added.
+        * fast/images/resources/animated-red-green-blue.mp4: Added.
+        * platform/ios/TestExpectations:
+
+2017-09-19  Matt Lewis  <jlewis3@apple.com>
+
+        Marked imported/w3c/web-platform-tests/background-fetch/interfaces-worker.https.html as flaky on El Capitan Debug.
+        https://bugs.webkit.org/show_bug.cgi?id=176486
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-09-19  Zalan Bujtas  <zalan@apple.com>
+
+        Do not mutate RenderText content during layout.
+        https://bugs.webkit.org/show_bug.cgi?id=176219
+        <rdar://problem/34205724>
+
+        Reviewed by David Hyatt.
+
+        * fast/text/international/dynamic-text-combine-crash.html: Added.
+        * fast/text/text-combine-crash-expected.txt:
+
+2017-09-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        createMarkupInternal should protect its pointer to the Range's common ancestor
+        https://bugs.webkit.org/show_bug.cgi?id=177033
+        <rdar://problem/34265390>
+
+        Reviewed by Tim Horton.
+
+        Adds a test that removes the common ancestor node of a range in the middle of executing an outdent.
+
+        * editing/execCommand/outdent-with-media-query-listener-in-iframe-expected.txt: Added.
+        * editing/execCommand/outdent-with-media-query-listener-in-iframe.html: Added.
+
+2017-09-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r222217 and r222214.
+        This change introduced two LayoutTest failures.
+        https://bugs.webkit.org/show_bug.cgi?id=177026
+
+        * fast/text/international/dynamic-text-combine-crash-expected.txt: Removed.
+        * fast/text/international/dynamic-text-combine-crash.html: Removed.
+        * fast/text/text-combine-crash-expected.txt:
+
+2017-09-19  Zalan Bujtas  <zalan@apple.com>
+
+        Do not mutate RenderText content during layout.
+        https://bugs.webkit.org/show_bug.cgi?id=176219
+        <rdar://problem/34205724>
+
+        Reviewed by David Hyatt.
+
+        * fast/text/international/dynamic-text-combine-crash.html: Added.
+        * fast/text/text-combine-crash-expected.txt:
+
+2017-09-19  Matt Lewis  <jlewis3@apple.com>
+
+        Marked http/tests/websocket/tests/hybi/handshake-ok-with-legacy-websocket-response-headers.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=176240
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-09-19  Youenn Fablet  <youenn@apple.com>
+
+        webrtc/video-rotation.html is failing and now occasionally times out.
+        https://bugs.webkit.org/show_bug.cgi?id=175305
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations: Marking test as passing.
+        * webrtc/video-rotation-expected.txt:
+        * webrtc/video-rotation.html: Removing unneded subtest. Purpose of the test is checking that rotation change video size.
+
+2017-09-19  Youenn Fablet  <youenn@apple.com>
+
+        LayoutTest webrtc/video-getParameters.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=170148
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations: Marking test as passing.
+        * webrtc/video-getParameters.html: Further sanitizing parameters against changes.
+
+2017-09-19  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
+
+        [GTK] The binding code of Media Source Extension of AudioTrack, VideoTrack and TextTrack is not generated
+        https://bugs.webkit.org/show_bug.cgi?id=174620
+
+        Reviewed by Michael Catanzaro.
+
+        Add AudioTrackMediaSource, VideoTrackMediaSource and TextTrackMediaSource IDL files in CMakeLists. Fix WPT test
+        that checks MSE interfaces. This test failed since webm is not supported for MSE in GTK port. PR already merged
+        in WPT repository.
+
+        Remove skipped test that is now passing in TestExpectation. Modify expected file for GTK (same as mac).
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/media-source/interfaces-expected.txt: Added.
+
+2017-09-19  Dean Jackson  <dino@apple.com>
+
+        [WebGL] VideoTextureCopierCV doesn't correctly restore vertex attribute state
+        https://bugs.webkit.org/show_bug.cgi?id=176771
+        <rdar://problem/34386621>
+
+        Reviewed by Antoine Quint.
+
+        Tweak this test to make sure it does something different from
+        the code in WebCore to render a video into a texture, thus
+        ensuring that we're testing state is correctly restored.
+
+        * fast/canvas/webgl/texImage2D-video-flipY-true.html:
+
+2017-09-19  Dean Jackson  <dino@apple.com>
+
+        [WebGL] accelerated texImage2D for video doesn't respect flipY
+        https://bugs.webkit.org/show_bug.cgi?id=176491
+        <rdar://problem/33833511>
+
+        Reviewed by Jer Noble.
+
+        (Take 3 - this was rolled out due to a test failure)
+
+        Test that exercises UNPACK_FLIP_Y_WEBGL for video on the accelerated
+        path.
+
+        * fast/canvas/webgl/resources/orientation-flipped.mp4: Added.
+        * fast/canvas/webgl/resources/orientation-normal.mp4: Added.
+        * fast/canvas/webgl/texImage2D-video-flipY-false-expected.txt: Added.
+        * fast/canvas/webgl/texImage2D-video-flipY-false.html: Added.
+        * fast/canvas/webgl/texImage2D-video-flipY-true-expected.txt: Added.
+        * fast/canvas/webgl/texImage2D-video-flipY-true.html: Added.
+        * platform/ios/TestExpectations: This test is macOS only.
+        * platform/mac/TestExpectations: Mark an existing WebGL test as flakey, while
+          a bug exposed here is investigated.
+
+2017-09-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening for macOS.
+
+        * platform/mac-elcapitan/editing/mac/attributed-string/font-style-variant-effect-expected.txt: Copied from LayoutTests/platform/mac-sierra/editing/mac/attributed-string/font-style-variant-effect-expected.txt.
+        * platform/mac-sierra/editing/mac/attributed-string/font-style-variant-effect-expected.txt:
+        * platform/mac/TestExpectations:
+        * platform/mac/fast/loader/file-url-mimetypes-3-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+
+2017-09-18  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark fast/css/display-contents-style-update.html as a failure on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=177109
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-09-18  Tim Horton  <timothy_horton@apple.com>
+
+        Support min() and max() in calc()
+        https://bugs.webkit.org/show_bug.cgi?id=167000
+        <rdar://problem/30153481>
+
+        Reviewed by David Hyatt.
+        Patch originally by Myles Maxfield.
+
+        * css3/calc/minmax-errors-expected.txt:
+        * css3/calc/minmax-errors.html:
+        * css3/calc/simple-minmax-expected.txt:
+        * css3/calc/simple-minmax.html:
+        Revive previously-unused tests for an earlier never-implemented version
+        of this feature, and add a bunch more interesting test cases from reading the spec.
+
+2017-09-18  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark imported/blink/fast/events/panScroll-panIcon.html as flaky on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=177077
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-09-18  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: RemoteObject.resolveNode should return a Promise
+        https://bugs.webkit.org/show_bug.cgi?id=177042
+
+        Reviewed by Joseph Pecoraro.
+
+        Updated tests to use promises instead of callbacks.
+
+        * inspector/dom/highlightNode.html:
+
+2017-09-18  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: make Canvas recording tests more human readable
+        https://bugs.webkit.org/show_bug.cgi?id=176441
+
+        Reviewed by Joseph Pecoraro.
+
+        * TestExpectations:
+
+        * inspector/canvas/resources/recording-utilities.js: Added.
+        (TestPage.registerInitializer):
+        Create common functions for requesting and printing a recording.
+
+        * inspector/canvas/recording-2d-expected.txt:
+        * inspector/canvas/recording-2d.html:
+
+        * inspector/canvas/recording-webgl-expected.txt:
+        * inspector/canvas/recording-webgl.html:
+
+        * inspector/canvas/recording-webgl-snapshots-expected.txt:
+        * inspector/canvas/recording-webgl-snapshots.html:
+
+2017-09-18  Antti Koivisto  <antti@apple.com>
+
+        Another WK1 unflake attempt.
+
+        * transitions/transition-display-property-2.html:
+
+2017-09-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        getData('text/plain') doesn't work on iOS 10
+        https://bugs.webkit.org/show_bug.cgi?id=177034
+
+        Reviewed by Wenson Hsieh.
+
+        Removed the failing test expectations from tests that now pass on iOS.
+
+        * platform/ios/TestExpectations:
+
+2017-09-18  Emilio Cobos Álvarez  <emilio@crisal.io>
+
+        Always update display: contents styles in RenderTreeUpdater.
+        https://bugs.webkit.org/show_bug.cgi?id=177065
+
+        Reviewed by Antti Koivisto.
+
+        * fast/css/display-contents-style-update-expected.html: Added.
+        * fast/css/display-contents-style-update.html: Added.
+
+2017-09-18  Antti Koivisto  <antti@apple.com>
+
+        Avoid style resolution when clearing focused element.
+        https://bugs.webkit.org/show_bug.cgi?id=176224
+        <rdar://problem/34206409>
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/dom/focus-style-resolution-expected.txt: Added.
+        * fast/dom/focus-style-resolution.html: Added.
+
+2017-09-18  Antti Koivisto  <antti@apple.com>
+
+        Try to unflake a test.
+
+        Unreviewed.
+
+        * transitions/transition-display-property-2.html:
+
+2017-09-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Move baseline for editing/mac/attributed-string/font-style-variant-effect.html to mac-sierra.
+
+        Unreviewed test gardening.
+
+        * platform/mac-sierra/editing/mac/attributed-string/font-style-variant-effect-expected.txt: Renamed from LayoutTests/platform/mac-elcapitan/editing/mac/attributed-string/font-style-variant-effect-expected.txt.
+        * platform/win/TestExpectations: Drive by fix for an accidental commit.
+
+2017-09-18  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark http/tests/websocket/tests/hybi/secure-cookie-secure-connection.pl as a failure on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=177072
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-09-18  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark fast/events/beforeunload-dom-manipulation-crash.html as a crash on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=177071
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-09-18  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark http/tests/security/video-cross-origin-caching.html as a flaky crash on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=160447
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-09-18  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Fix invalid line in TestExpectations.
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-09-18  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark http/tests/websocket/tests/hybi/secure-cookie-secure-connection.pl as a failure on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=177072
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-09-18  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark fast/events/beforeunload-dom-manipulation-crash.html as a crash on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=177071
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-09-18  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark http/tests/security/video-cross-origin-caching.html as a flaky crash on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=160447
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-09-17  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: support toggling properties
+        https://bugs.webkit.org/show_bug.cgi?id=176643
+
+        Reviewed by Matt Baker.
+
+        Add tests for String.prototype.lineCount and String.prototype.lastLine.
+
+        * inspector/unit-tests/string-utilities-expected.txt:
+        * inspector/unit-tests/string-utilities.html:
+
+2017-09-16  Antti Koivisto  <antti@apple.com>
+
+        Computing animated style should not require renderers
+        https://bugs.webkit.org/show_bug.cgi?id=171926
+        <rdar://problem/34428035>
+
+        Reviewed by Sam Weinig.
+
+        * transitions/transition-display-property-2-expected.html: Added.
+        * transitions/transition-display-property-2.html: Added.
+        * transitions/transition-display-property.html:
+
+2017-09-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Rebaseline tests after r222090.
+
+        * platform/gtk/svg/W3C-I18N/g-dirRTL-ubNone-expected.png:
+        * platform/gtk/svg/W3C-I18N/g-dirRTL-ubNone-expected.txt:
+        * platform/gtk/svg/W3C-I18N/g-dirRTL-ubOverride-expected.png:
+        * platform/gtk/svg/W3C-I18N/g-dirRTL-ubOverride-expected.txt:
+        * platform/gtk/svg/W3C-I18N/text-dirRTL-ubNone-expected.png:
+        * platform/gtk/svg/W3C-I18N/text-dirRTL-ubNone-expected.txt:
+        * platform/gtk/svg/W3C-I18N/tspan-direction-rtl-expected.png:
+        * platform/gtk/svg/W3C-I18N/tspan-direction-rtl-expected.txt:
+        * platform/gtk/svg/W3C-SVG-1.1/fonts-glyph-02-t-expected.png:
+        * platform/gtk/svg/W3C-SVG-1.1/fonts-glyph-02-t-expected.txt:
+        * platform/gtk/svg/custom/glyph-selection-arabic-forms-expected.png:
+        * platform/gtk/svg/custom/glyph-selection-arabic-forms-expected.txt:
+        * platform/gtk/svg/text/bidi-tspans-expected.png:
+        * platform/gtk/svg/text/bidi-tspans-expected.txt:
+
+2017-09-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        iOS: Use blob URL instead of a WebKit fake URL when pasting an image
+        https://bugs.webkit.org/show_bug.cgi?id=176986
+        <rdar://problem/34455052>
+
+        Reviewed by Wenson Hsieh.
+
+        Removed the failing expectation on the test added by r208451 now that it passes on iOS.
+
+        * platform/ios/TestExpectations:
+
+2017-09-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Follow up to r222111, rebaseline tests for Sierra.
+        https://bugs.webkit.org/show_bug.cgi?id=176463
+
+        Unreviewed test gardening.
+
+        * platform/mac-elcapitan/platform/mac/fast/loader/file-url-mimetypes-3-expected.txt: Removed.
+        * platform/mac-sierra/editing/mac/attributed-string/anchor-element-expected.txt: Renamed from LayoutTests/platform/mac-elcapitan/editing/mac/attributed-string/anchor-element-expected.txt.
+        * platform/mac-sierra/editing/mac/attributed-string/basic-expected.txt: Renamed from LayoutTests/platform/mac-elcapitan/editing/mac/attributed-string/basic-expected.txt.
+        * platform/mac-sierra/editing/mac/attributed-string/comment-cdata-section-expected.txt: Renamed from LayoutTests/platform/mac-elcapitan/editing/mac/attributed-string/comment-cdata-section-expected.txt.
+        * platform/mac-sierra/editing/mac/attributed-string/font-size-expected.txt: Renamed from LayoutTests/platform/mac-elcapitan/editing/mac/attributed-string/font-size-expected.txt.
+        * platform/mac-sierra/editing/mac/attributed-string/font-weight-expected.txt: Renamed from LayoutTests/platform/mac-elcapitan/editing/mac/attributed-string/font-weight-expected.txt.
+        * platform/mac-sierra/editing/mac/attributed-string/letter-spacing-expected.txt: Renamed from LayoutTests/platform/mac-elcapitan/editing/mac/attributed-string/letter-spacing-expected.txt.
+        * platform/mac-sierra/editing/mac/attributed-string/text-decorations-expected.txt: Renamed from LayoutTests/platform/mac-elcapitan/editing/mac/attributed-string/text-decorations-expected.txt.
+        * platform/mac-sierra/editing/mac/attributed-string/vertical-align-expected.txt: Renamed from LayoutTests/platform/mac-elcapitan/editing/mac/attributed-string/vertical-align-expected.txt.
+        * platform/mac-sierra/editing/mac/input/firstrectforcharacterrange-styled-expected.txt: Renamed from LayoutTests/platform/mac-elcapitan/editing/mac/input/firstrectforcharacterrange-styled-expected.txt.
+        * platform/mac-sierra/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-sierra/platform/mac/fast/loader/file-url-mimetypes-3-expected.txt:
+
+2017-09-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Avoid style recomputation when forwarding a focus event to an text field's input type
+        https://bugs.webkit.org/show_bug.cgi?id=176160
+        <rdar://problem/34184820>
+
+        Reviewed by Ryosuke Niwa.
+
+        Adds a new layout test verifying that we don't crash when changing the input type from within a focus event listener.
+
+        * fast/forms/change-input-type-in-focus-handler-expected.txt: Added.
+        * fast/forms/change-input-type-in-focus-handler.html: Added.
+
+2017-09-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Move test expectations from 'mac-highsierra' to 'mac' directory
+        https://bugs.webkit.org/show_bug.cgi?id=176463
+
+        Unreviewed test gardening.
+
+        ChangeLog truncated due to hundreds of LayoutTest files being changed.
+
+2017-09-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark inspector/debugger/breakpoint-action-detach.html as flaky on Sierra.
+        https://bugs.webkit.org/show_bug.cgi?id=168338
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-09-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r222040.
+
+        The LayoutTest added with this change is a flaky image failure
+        on mac-wk1 debug bots.
+
+        Reverted changeset:
+
+        "Computing animated style should not require renderers"
+        https://bugs.webkit.org/show_bug.cgi?id=171926
+        http://trac.webkit.org/changeset/222040
+
+2017-09-15  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Canvas: recording parameters that include colors should show an InlineSwatch (2D canvas)
+        https://bugs.webkit.org/show_bug.cgi?id=176822
+        <rdar://problem/34402170>
+
+        Reviewed by Devin Rousso.
+
+        Add tests for color space conversions.
+
+        * inspector/model/color-expected.txt:
+        * inspector/model/color.html:
+
+2017-09-15  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed test maintenance.
+
+        * platform/mac-wk1/TestExpectations: Skip test under WK1 due to a bug.
+
+2017-09-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, correct a typo in a TestExpectations file.
+
+        * platform/ios/TestExpectations:
+
+2017-09-15  John Wilander  <wilander@apple.com>
+
+        Storage Access API: Deny access to nested iframes
+        https://bugs.webkit.org/show_bug.cgi?id=176939
+        <rdar://problem/34439609>
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-nested-iframe-expected.txt: Added.
+        * http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-nested-iframe.html: Added.
+        * http/tests/storageAccess/resources/nesting-iframe.html: Added.
+        * platform/mac-wk2/TestExpectations:
+            Added the new test as a [ Pass ].
+
+2017-09-15  Brent Fulgham  <bfulgham@apple.com>
+
+        Make DocumentLoader a FrameDestructionObserver
+        https://bugs.webkit.org/show_bug.cgi?id=176364
+        <rdar://problem/34254780>
+
+        Reviewed by Alex Christensen.
+
+        * fast/events/beforeunload-dom-manipulation-crash-expected.txt: Added.
+        * fast/events/beforeunload-dom-manipulation-crash.html: Added.
+
+2017-09-15  Youenn Fablet  <youenn@apple.com>
+
+        WPT harness errors on leaks and iOS-sim EWS bots
+        https://bugs.webkit.org/show_bug.cgi?id=175269
+        <rdar://problem/33902404>
+
+        Unreviewed.
+
+        * TestExpectations: Reactivating event source test.
+
+2017-09-15  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Update test expectations for cache storage tests.
+        https://bugs.webkit.org/show_bug.cgi?id=176998
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-09-15  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Update test expectations for failures on one of the EWS machines.
+        https://bugs.webkit.org/show_bug.cgi?id=176998
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-09-15  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] Rebaseline after r221966.
+
+        Unreviewed gardening. Adding VRPose.
+
+        * platform/wpe/js/dom/global-constructors-attributes-expected.txt:
+
+2017-09-15  Zan Dobersek  <zdobersek@igalia.com>
+
+        [EME] ClearKey: list 'persistent-license' sessions as supported
+        https://bugs.webkit.org/show_bug.cgi?id=176985
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Update WPE test baselines for EME ClearKey tests.
+
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-persistent-license-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-retrieve-destroy-persistent-license-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-retrieve-persistent-license-expected.txt:
+
+2017-09-15  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] Rebaseline test expectations after r222077.
+
+        Unreviewed gardening.
+
+        * platform/wpe/animations/3d/matrix-transform-type-animation-expected.txt:
+        * platform/wpe/animations/cross-fade-border-image-source-expected.txt:
+        * platform/wpe/animations/cross-fade-list-style-image-expected.txt:
+        * platform/wpe/animations/cross-fade-webkit-mask-box-image-expected.txt:
+        * platform/wpe/animations/cross-fade-webkit-mask-image-expected.txt:
+        * platform/wpe/animations/lineheight-animation-expected.txt:
+        * platform/wpe/animations/missing-values-first-keyframe-expected.txt:
+        * platform/wpe/animations/missing-values-last-keyframe-expected.txt:
+        * platform/wpe/animations/simultaneous-start-transform-expected.txt:
+        * platform/wpe/animations/width-using-ems-expected.txt:
+        * platform/wpe/css1/basic/containment-expected.txt:
+        * platform/wpe/css1/basic/contextual_selectors-expected.txt:
+        * platform/wpe/css1/basic/grouping-expected.txt:
+        * platform/wpe/css1/basic/id_as_selector-expected.txt:
+        * platform/wpe/css1/basic/inheritance-expected.txt:
+        * platform/wpe/css1/box_properties/border-expected.txt:
+        * platform/wpe/css1/box_properties/border_bottom-expected.txt:
+        * platform/wpe/css1/box_properties/border_bottom_inline-expected.txt:
+        * platform/wpe/css1/box_properties/border_bottom_width-expected.txt:
+        * platform/wpe/css1/box_properties/border_bottom_width_inline-expected.txt:
+        * platform/wpe/css1/box_properties/border_color-expected.txt:
+        * platform/wpe/css1/box_properties/border_color_inline-expected.txt:
+        * platform/wpe/css1/box_properties/border_inline-expected.txt:
+        * platform/wpe/css1/box_properties/border_left-expected.txt:
+        * platform/wpe/css1/box_properties/border_left_inline-expected.txt:
+        * platform/wpe/css1/box_properties/border_left_width-expected.txt:
+        * platform/wpe/css1/box_properties/border_left_width_inline-expected.txt:
+        * platform/wpe/css1/box_properties/border_right-expected.txt:
+        * platform/wpe/css1/box_properties/border_right_inline-expected.txt:
+        * platform/wpe/css1/box_properties/border_right_width-expected.txt:
+        * platform/wpe/css1/box_properties/border_right_width_inline-expected.txt:
+        * platform/wpe/css1/box_properties/border_style-expected.txt:
+        * platform/wpe/css1/box_properties/border_style_inline-expected.txt:
+        * platform/wpe/css1/box_properties/border_top-expected.txt:
+        * platform/wpe/css1/box_properties/border_top_inline-expected.txt:
+        * platform/wpe/css1/box_properties/border_top_width-expected.txt:
+        * platform/wpe/css1/box_properties/border_top_width_inline-expected.txt:
+        * platform/wpe/css1/box_properties/border_width-expected.txt:
+        * platform/wpe/css1/box_properties/border_width_inline-expected.txt:
+        * platform/wpe/css1/box_properties/clear-expected.txt:
+        * platform/wpe/css1/box_properties/clear_float-expected.txt:
+        * platform/wpe/css1/box_properties/float-expected.txt:
+        * platform/wpe/css1/box_properties/float_elements_in_series-expected.txt:
+        * platform/wpe/css1/box_properties/float_margin-expected.txt:
+        * platform/wpe/css1/box_properties/float_on_text_elements-expected.txt:
+        * platform/wpe/css1/box_properties/height-expected.txt:
+        * platform/wpe/css1/box_properties/margin-expected.txt:
+        * platform/wpe/css1/box_properties/margin_bottom-expected.txt:
+        * platform/wpe/css1/box_properties/margin_bottom_inline-expected.txt:
+        * platform/wpe/css1/box_properties/margin_inline-expected.txt:
+        * platform/wpe/css1/box_properties/margin_left-expected.txt:
+        * platform/wpe/css1/box_properties/margin_left_inline-expected.txt:
+        * platform/wpe/css1/box_properties/margin_right-expected.txt:
+        * platform/wpe/css1/box_properties/margin_right_inline-expected.txt:
+        * platform/wpe/css1/box_properties/margin_top-expected.txt:
+        * platform/wpe/css1/box_properties/margin_top_inline-expected.txt:
+        * platform/wpe/css1/box_properties/padding-expected.txt:
+        * platform/wpe/css1/box_properties/padding_bottom-expected.txt:
+        * platform/wpe/css1/box_properties/padding_bottom_inline-expected.txt:
+        * platform/wpe/css1/box_properties/padding_inline-expected.txt:
+        * platform/wpe/css1/box_properties/padding_left-expected.txt:
+        * platform/wpe/css1/box_properties/padding_left_inline-expected.txt:
+        * platform/wpe/css1/box_properties/padding_right-expected.txt:
+        * platform/wpe/css1/box_properties/padding_right_inline-expected.txt:
+        * platform/wpe/css1/box_properties/padding_top-expected.txt:
+        * platform/wpe/css1/box_properties/padding_top_inline-expected.txt:
+        * platform/wpe/css1/box_properties/width-expected.txt:
+        * platform/wpe/css1/cascade/cascade_order-expected.txt:
+        * platform/wpe/css1/cascade/important-expected.txt:
+        * platform/wpe/css1/classification/display-expected.txt:
+        * platform/wpe/css1/classification/list_style-expected.txt:
+        * platform/wpe/css1/classification/list_style_image-expected.txt:
+        * platform/wpe/css1/classification/list_style_position-expected.txt:
+        * platform/wpe/css1/classification/list_style_type-expected.txt:
+        * platform/wpe/css1/classification/white_space-expected.txt:
+        * platform/wpe/css1/color_and_background/background-expected.txt:
+        * platform/wpe/css1/color_and_background/background_attachment-expected.txt:
+        * platform/wpe/css1/color_and_background/background_color-expected.txt:
+        * platform/wpe/css1/color_and_background/background_image-expected.txt:
+        * platform/wpe/css1/color_and_background/background_position-expected.txt:
+        * platform/wpe/css1/color_and_background/background_repeat-expected.txt:
+        * platform/wpe/css1/color_and_background/color-expected.txt:
+        * platform/wpe/css1/conformance/forward_compatible_parsing-expected.txt:
+        * platform/wpe/css1/font_properties/font-expected.txt:
+        * platform/wpe/css1/font_properties/font_family-expected.txt:
+        * platform/wpe/css1/font_properties/font_size-expected.txt:
+        * platform/wpe/css1/font_properties/font_style-expected.txt:
+        * platform/wpe/css1/font_properties/font_variant-expected.txt:
+        * platform/wpe/css1/font_properties/font_weight-expected.txt:
+        * platform/wpe/css1/formatting_model/canvas-expected.txt:
+        * platform/wpe/css1/formatting_model/floating_elements-expected.txt:
+        * platform/wpe/css1/formatting_model/height_of_lines-expected.txt:
+        * platform/wpe/css1/formatting_model/inline_elements-expected.txt:
+        * platform/wpe/css1/formatting_model/replaced_elements-expected.txt:
+        * platform/wpe/css1/formatting_model/vertical_formatting-expected.txt:
+        * platform/wpe/css1/pseudo/anchor-expected.txt:
+        * platform/wpe/css1/pseudo/firstletter-expected.txt:
+        * platform/wpe/css1/pseudo/firstline-expected.txt:
+        * platform/wpe/css1/pseudo/multiple_pseudo_elements-expected.txt:
+        * platform/wpe/css1/pseudo/pseudo_elements_in_selectors-expected.txt:
+        * platform/wpe/css1/text_properties/letter_spacing-expected.txt:
+        * platform/wpe/css1/text_properties/line_height-expected.txt:
+        * platform/wpe/css1/text_properties/text_align-expected.txt:
+        * platform/wpe/css1/text_properties/text_decoration-expected.txt:
+        * platform/wpe/css1/text_properties/text_indent-expected.txt:
+        * platform/wpe/css1/text_properties/text_transform-expected.txt:
+        * platform/wpe/css1/text_properties/vertical_align-expected.txt:
+        * platform/wpe/css1/text_properties/word_spacing-expected.txt:
+        * platform/wpe/css1/units/color_units-expected.txt:
+        * platform/wpe/css1/units/length_units-expected.txt:
+        * platform/wpe/css1/units/percentage_units-expected.txt:
+        * platform/wpe/css1/units/urls-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-height-001-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-height-002-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-height-003-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-height-004-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-height-005-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-height-006-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-height-007-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-height-008-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-height-009-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-height-010-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-height-011-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-height-012-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-max-height-001-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-max-height-002-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-max-height-003-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-max-height-004-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-max-height-005-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-max-height-006-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-max-height-007-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-max-height-008-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-max-height-009-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-max-height-010-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-max-height-011-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-max-height-012-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-width-001-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-width-002-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-width-003-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-width-004-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-width-005-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-width-006-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-width-007-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-width-008-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-width-009-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-width-010-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-width-011-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-width-012-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-width-013-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-width-014-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-width-015-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-non-replaced-width-016-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-001-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-002-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-003-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-004-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-005-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-007-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-008-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-009-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-010-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-011-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-012-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-014-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-016-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-017-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-018-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-019-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-021-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-022-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-023-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-024-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-025-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-026-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-028-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-029-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-030-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-031-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-032-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-033-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-height-035-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-width-001-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-width-006-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-width-008-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-width-013-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-width-015-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-width-020-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-width-022-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-width-027-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-width-029-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-width-034-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-width-036-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-width-041-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-width-043-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-width-048-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-width-050-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-width-055-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-width-057-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-width-062-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-width-064-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-width-069-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-width-071-expected.txt:
+        * platform/wpe/css2.1/20110323/absolute-replaced-width-076-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-height-001-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-height-002-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-height-003-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-height-004-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-height-005-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-height-006-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-height-007-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-height-008-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-height-009-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-height-010-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-height-011-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-height-012-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-height-013-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-height-014-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-height-015-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-height-016-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-width-001-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-width-002-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-width-003-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-width-004-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-width-005-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-width-006-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-width-007-expected.txt:
+        * platform/wpe/css2.1/20110323/block-non-replaced-width-008-expected.txt:
+        * platform/wpe/css2.1/20110323/block-replaced-height-001-expected.txt:
+        * platform/wpe/css2.1/20110323/block-replaced-height-002-expected.txt:
+        * platform/wpe/css2.1/20110323/block-replaced-height-003-expected.txt:
+        * platform/wpe/css2.1/20110323/block-replaced-height-004-expected.txt:
+        * platform/wpe/css2.1/20110323/block-replaced-height-005-expected.txt:
+        * platform/wpe/css2.1/20110323/block-replaced-height-007-expected.txt:
+        * platform/wpe/css2.1/20110323/block-replaced-width-001-expected.txt:
+        * platform/wpe/css2.1/20110323/block-replaced-width-006-expected.txt:
+        * platform/wpe/css2.1/20110323/border-conflict-style-079-expected.txt:
+        * platform/wpe/css2.1/20110323/border-conflict-style-088-expected.txt:
+        * platform/wpe/css2.1/20110323/border-spacing-applies-to-015-expected.txt:
+        * platform/wpe/css2.1/20110323/c543-txt-decor-000-expected.txt:
+        * platform/wpe/css2.1/20110323/empty-inline-001-expected.txt:
+        * platform/wpe/css2.1/20110323/empty-inline-002-expected.txt:
+        * platform/wpe/css2.1/20110323/empty-inline-003-expected.txt:
+        * platform/wpe/css2.1/20110323/float-non-replaced-height-001-expected.txt:
+        * platform/wpe/css2.1/20110323/float-non-replaced-width-001-expected.txt:
+        * platform/wpe/css2.1/20110323/float-non-replaced-width-002-expected.txt:
+        * platform/wpe/css2.1/20110323/float-non-replaced-width-003-expected.txt:
+        * platform/wpe/css2.1/20110323/float-non-replaced-width-004-expected.txt:
+        * platform/wpe/css2.1/20110323/float-non-replaced-width-005-expected.txt:
+        * platform/wpe/css2.1/20110323/float-non-replaced-width-006-expected.txt:
+        * platform/wpe/css2.1/20110323/float-replaced-height-001-expected.txt:
+        * platform/wpe/css2.1/20110323/float-replaced-height-002-expected.txt:
+        * platform/wpe/css2.1/20110323/float-replaced-height-003-expected.txt:
+        * platform/wpe/css2.1/20110323/float-replaced-height-004-expected.txt:
+        * platform/wpe/css2.1/20110323/float-replaced-height-005-expected.txt:
+        * platform/wpe/css2.1/20110323/float-replaced-height-007-expected.txt:
+        * platform/wpe/css2.1/20110323/float-replaced-width-001-expected.txt:
+        * platform/wpe/css2.1/20110323/float-replaced-width-002-expected.txt:
+        * platform/wpe/css2.1/20110323/float-replaced-width-003-expected.txt:
+        * platform/wpe/css2.1/20110323/float-replaced-width-004-expected.txt:
+        * platform/wpe/css2.1/20110323/float-replaced-width-005-expected.txt:
+        * platform/wpe/css2.1/20110323/float-replaced-width-006-expected.txt:
+        * platform/wpe/css2.1/20110323/float-replaced-width-011-expected.txt:
+        * platform/wpe/css2.1/20110323/height-width-inline-table-001-expected.txt:
+        * platform/wpe/css2.1/20110323/height-width-table-001-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-block-non-replaced-height-001-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-block-non-replaced-height-002-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-block-non-replaced-width-001-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-block-non-replaced-width-002-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-block-replaced-height-001-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-block-replaced-height-002-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-block-replaced-height-003-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-block-replaced-height-004-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-block-replaced-height-005-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-block-replaced-height-007-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-block-replaced-width-001-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-block-replaced-width-006-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-non-replaced-height-002-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-non-replaced-height-003-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-non-replaced-width-001-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-non-replaced-width-002-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-replaced-height-001-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-replaced-height-002-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-replaced-height-003-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-replaced-height-004-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-replaced-height-005-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-replaced-height-007-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-replaced-width-001-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-replaced-width-006-expected.txt:
+        * platform/wpe/css2.1/20110323/inline-table-001-expected.txt:
+        * platform/wpe/css2.1/20110323/margin-applies-to-001-expected.txt:
+        * platform/wpe/css2.1/20110323/margin-applies-to-002-expected.txt:
+        * platform/wpe/css2.1/20110323/margin-applies-to-003-expected.txt:
+        * platform/wpe/css2.1/20110323/margin-applies-to-004-expected.txt:
+        * platform/wpe/css2.1/20110323/margin-applies-to-005-expected.txt:
+        * platform/wpe/css2.1/20110323/margin-applies-to-006-expected.txt:
+        * platform/wpe/css2.1/20110323/margin-applies-to-007-expected.txt:
+        * platform/wpe/css2.1/20110323/margin-applies-to-008-expected.txt:
+        * platform/wpe/css2.1/20110323/margin-applies-to-009-expected.txt:
+        * platform/wpe/css2.1/20110323/margin-applies-to-010-expected.txt:
+        * platform/wpe/css2.1/20110323/margin-applies-to-012-expected.txt:
+        * platform/wpe/css2.1/20110323/margin-applies-to-013-expected.txt:
+        * platform/wpe/css2.1/20110323/margin-applies-to-014-expected.txt:
+        * platform/wpe/css2.1/20110323/margin-applies-to-015-expected.txt:
+        * platform/wpe/css2.1/20110323/outline-color-applies-to-008-expected.txt:
+        * platform/wpe/css2.1/20110323/replaced-intrinsic-001-expected.txt:
+        * platform/wpe/css2.1/20110323/table-caption-001-expected.txt:
+        * platform/wpe/css2.1/20110323/table-caption-002-expected.txt:
+        * platform/wpe/css2.1/20110323/table-caption-horizontal-alignment-001-expected.txt:
+        * platform/wpe/css2.1/20110323/table-caption-optional-001-expected.txt:
+        * platform/wpe/css2.1/20110323/table-caption-optional-002-expected.txt:
+        * platform/wpe/css2.1/20110323/table-height-algorithm-023-expected.txt:
+        * platform/wpe/css2.1/20110323/table-height-algorithm-024-expected.txt:
+        * platform/wpe/css2.1/20110323/width-non-replaced-inline-001-expected.txt:
+        * platform/wpe/css2.1/20110323/width-replaced-element-001-expected.txt:
+        * platform/wpe/css2.1/t040102-keywords-01-b-expected.txt:
+        * platform/wpe/css2.1/t0402-c71-fwd-parsing-01-f-expected.txt:
+        * platform/wpe/css2.1/t0402-c71-fwd-parsing-02-f-expected.txt:
+        * platform/wpe/css2.1/t051202-c26-psudo-nest-00-c-expected.txt:
+        * platform/wpe/css2.1/t0602-c13-inheritance-00-e-expected.txt:
+        * platform/wpe/css2.1/t0805-c5519-brdr-r-02-e-expected.txt:
+        * platform/wpe/css2.1/t0805-c5521-brdr-l-02-e-expected.txt:
+        * platform/wpe/css2.1/t0905-c414-flt-04-c-expected.txt:
+        * platform/wpe/css2.1/t0905-c414-flt-wrap-00-e-expected.txt:
+        * platform/wpe/css2.1/t0905-c5525-fltblck-01-d-expected.txt:
+        * platform/wpe/css2.1/t0905-c5525-fltcont-00-d-g-expected.txt:
+        * platform/wpe/css2.1/t0905-c5525-fltmult-00-d-g-expected.txt:
+        * platform/wpe/css2.1/t090501-c414-flt-00-d-expected.txt:
+        * platform/wpe/css2.1/t090501-c414-flt-01-b-expected.txt:
+        * platform/wpe/css2.1/t100801-c548-ln-ht-00-c-a-expected.txt:
+        * platform/wpe/css2.1/t1202-counter-00-b-expected.txt:
+        * platform/wpe/css2.1/t1202-counter-01-b-expected.txt:
+        * platform/wpe/css2.1/t1202-counter-02-b-expected.txt:
+        * platform/wpe/css2.1/t1202-counter-03-b-expected.txt:
+        * platform/wpe/css2.1/t1202-counter-04-b-expected.txt:
+        * platform/wpe/css2.1/t1202-counter-05-b-expected.txt:
+        * platform/wpe/css2.1/t1202-counter-06-b-expected.txt:
+        * platform/wpe/css2.1/t1202-counter-16-f-expected.txt:
+        * platform/wpe/css2.1/t1202-counters-00-b-expected.txt:
+        * platform/wpe/css2.1/t1202-counters-01-b-expected.txt:
+        * platform/wpe/css2.1/t1202-counters-02-b-expected.txt:
+        * platform/wpe/css2.1/t1202-counters-03-b-expected.txt:
+        * platform/wpe/css2.1/t1202-counters-04-b-expected.txt:
+        * platform/wpe/css2.1/t1202-counters-05-b-expected.txt:
+        * platform/wpe/css2.1/t1202-counters-06-b-expected.txt:
+        * platform/wpe/css2.1/t1202-counters-18-f-expected.txt:
+        * platform/wpe/css2.1/t1204-order-00-c-expected.txt:
+        * platform/wpe/css2.1/t1204-order-01-d-expected.txt:
+        * platform/wpe/css2.1/t120401-scope-00-b-expected.txt:
+        * platform/wpe/css2.1/t120401-scope-01-c-expected.txt:
+        * platform/wpe/css2.1/t1205-c565-list-pos-00-b-expected.txt:
+        * platform/wpe/css2.1/t1507-c526-font-sz-00-b-expected.txt:
+        * platform/wpe/css2.1/t1606-c562-white-sp-00-b-ag-expected.txt:
+        * platform/wpe/css3/css3-modsel-35-expected.txt:
+        * platform/wpe/css3/css3-modsel-37-expected.txt:
+        * platform/wpe/css3/flexbox/button-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-13-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-14c-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-14e-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-15-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-159-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-168-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-168a-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-169-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-169a-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-17-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-18-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-2-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-22-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-30-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-31-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-34-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-35-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-37-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-41-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-41a-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-42-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-42a-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-45-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-45b-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-46-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-46b-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-6-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-7-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-75-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-75b-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-76-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-76b-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-79-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-8-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-80-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-82-expected.txt:
+        * platform/wpe/css3/selectors3/html/css3-modsel-82b-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-113-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-113b-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-114-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-114b-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-119-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-121-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-122-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-123-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-13-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-139-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-139b-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-140-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-140b-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-14c-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-14e-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-15-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-159-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-168-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-168a-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-169-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-169a-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-17-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-18-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-2-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-22-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-30-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-31-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-34-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-35-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-37-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-41-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-41a-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-42-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-42a-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-45-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-45b-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-46-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-46b-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-47-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-48-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-49-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-6-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-7-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-75-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-75b-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-76-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-76b-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-79-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-8-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-80-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-82-expected.txt:
+        * platform/wpe/css3/selectors3/xhtml/css3-modsel-82b-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-113-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-113b-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-114-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-114b-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-119-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-121-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-122-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-123-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-13-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-139-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-139b-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-140-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-140b-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-14c-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-14e-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-15-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-159-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-168-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-168a-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-169-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-169a-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-17-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-18-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-2-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-22-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-30-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-31-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-34-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-35-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-37-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-41-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-41a-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-42-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-42a-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-45-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-45b-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-46-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-46b-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-47-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-48-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-49-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-6-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-7-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-75-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-75b-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-76-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-76b-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-79-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-8-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-80-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-82-expected.txt:
+        * platform/wpe/css3/selectors3/xml/css3-modsel-82b-expected.txt:
+        * platform/wpe/css3/unicode-bidi-isolate-basic-expected.txt:
+        * platform/wpe/fast/dom/Element/class-attribute-whitespace-expected.txt:
+        * platform/wpe/fast/dom/HTMLDocument/frameless-location-bugzilla10837-expected.txt:
+        * platform/wpe/fast/dom/HTMLElement/bdo-expected.txt:
+        * platform/wpe/fast/dom/HTMLProgressElement/native-progress-bar-expected.txt:
+        * platform/wpe/fast/dom/HTMLProgressElement/progress-bar-value-pseudo-element-expected.txt:
+        * platform/wpe/fast/dom/HTMLTableElement/colSpan-expected.txt:
+        * platform/wpe/fast/dom/HTMLTableElement/createCaption-expected.txt:
+        * platform/wpe/fast/dom/HTMLTextAreaElement/reset-textarea-expected.txt:
+        * platform/wpe/fast/dom/Range/create-contextual-fragment-expected.txt:
+        * platform/wpe/fast/dynamic/007-expected.txt:
+        * platform/wpe/fast/dynamic/011-expected.txt:
+        * platform/wpe/fast/dynamic/012-expected.txt:
+        * platform/wpe/fast/dynamic/014-expected.txt:
+        * platform/wpe/fast/dynamic/015-expected.txt:
+        * platform/wpe/fast/dynamic/anchor-lock-expected.txt:
+        * platform/wpe/fast/dynamic/anonymous-block-orphaned-lines-expected.txt:
+        * platform/wpe/fast/dynamic/containing-block-change-expected.txt:
+        * platform/wpe/fast/dynamic/create-renderer-for-whitespace-only-text-expected.txt:
+        * platform/wpe/fast/dynamic/float-in-trailing-whitespace-after-last-line-break-expected.txt:
+        * platform/wpe/fast/dynamic/float-withdrawal-expected.txt:
+        * platform/wpe/fast/dynamic/insert-before-table-part-in-continuation-expected.txt:
+        * platform/wpe/fast/dynamic/noninlinebadness-expected.txt:
+        * platform/wpe/fast/dynamic/outerHTML-doc-expected.txt:
+        * platform/wpe/fast/dynamic/positioned-movement-with-positioned-children-expected.txt:
+        * platform/wpe/fast/dynamic/selection-highlight-adjust-expected.txt:
+        * platform/wpe/fast/dynamic/staticY-marking-parents-regression-expected.txt:
+        * platform/wpe/fast/dynamic/view-overflow-expected.txt:
+        * platform/wpe/fast/dynamic/window-resize-scrollbars-test-expected.txt:
+        * platform/wpe/fast/encoding/utf-16-big-endian-expected.txt:
+        * platform/wpe/fast/encoding/utf-16-little-endian-expected.txt:
+        * platform/wpe/fast/encoding/xmacroman-encoding-test-expected.txt:
+        * platform/wpe/fast/events/mouseover-mouseout-expected.txt:
+        * platform/wpe/fast/events/nested-window-event-expected.txt:
+        * platform/wpe/fast/events/pointer-events-2-expected.txt:
+        * platform/wpe/fast/events/resize-events-expected.txt:
+        * platform/wpe/fast/events/updateLayoutForHitTest-expected.txt:
+        * platform/wpe/fast/events/window-events-bubble-expected.txt:
+        * platform/wpe/fast/events/window-events-bubble2-expected.txt:
+        * platform/wpe/fast/gradients/crash-on-zero-radius-expected.txt:
+        * platform/wpe/fast/gradients/list-item-gradient-expected.txt:
+        * platform/wpe/fast/gradients/radial-centered-expected.txt:
+        * platform/wpe/fast/parser/001-expected.txt:
+        * platform/wpe/fast/parser/entity-comment-in-style-expected.txt:
+        * platform/wpe/fast/parser/nofoo-tags-inside-paragraph-expected.txt:
+        * platform/wpe/fast/parser/open-comment-in-style-expected.txt:
+        * platform/wpe/fast/parser/open-comment-in-textarea-expected.txt:
+        * platform/wpe/fast/parser/xhtml-alternate-entities-expected.txt:
+        * platform/wpe/fast/tokenizer/script_extra_close-expected.txt:
+        * platform/wpe/fast/transforms/bounding-rect-zoom-expected.txt:
+        * platform/wpe/fast/transforms/diamond-expected.txt:
+        * platform/wpe/fast/transforms/transform-overflow-expected.txt:
+        * platform/wpe/fast/transforms/transform-positioned-ancestor-expected.txt:
+        * platform/wpe/fast/transforms/transform-table-row-expected.txt:
+        * platform/wpe/fast/transforms/transforms-with-zoom-expected.txt:
+        * platform/wpe/fast/xsl/xslt-enc-cyr-expected.txt:
+        * platform/wpe/fast/xsl/xslt-enc-expected.txt:
+        * platform/wpe/fast/xsl/xslt-enc16-expected.txt:
+        * platform/wpe/fast/xsl/xslt-enc16to16-expected.txt:
+        * platform/wpe/fast/xsl/xslt-entity-expected.txt:
+        * platform/wpe/fast/xsl/xslt-extra-content-at-end-expected.txt:
+        * platform/wpe/fast/xsl/xslt-missing-namespace-in-xslt-expected.txt:
+        * platform/wpe/fast/xsl/xslt-relative-path-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/background-attachment-local-scrolling-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/background-color-applied-to-rounded-inline-element-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/background-color-border-box-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/background-repeat-space-padding-box-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/background-size-002-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/background-size-applies-to-block-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/background-size-aspect-ratio-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/background_color_padding_box-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/background_position_three_four_values-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/background_properties_greater_than_images-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/background_repeat_space_border_box-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/background_repeat_space_content_box-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-001-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-002-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-003-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-005-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-006-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-007-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-008-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-009-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-010-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-011-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-012-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-013-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-014-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-015-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-016-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-applies-to-017-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-clip-001-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-clip-002-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-content-edge-001-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-different-width-001-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-initial-value-001-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-not-inherited-001-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-shorthand-001-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-style-001-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-style-002-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-style-003-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-style-004-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-style-005-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-sum-of-radii-001-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-sum-of-radii-002-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-with-three-values-001-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-radius-with-two-values-001-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-top-left-radius-values-001-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-top-left-radius-values-002-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-top-left-radius-values-003-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-top-left-radius-values-004-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/border-top-right-radius-values-004-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/box-shadow-001-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/box-shadow-002-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/box-shadow-003-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/box-shadow-004-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/color-behind-images-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/none-as-image-layer-expected.txt:
+        * platform/wpe/ietestcenter/css3/bordersbackgrounds/order-of-images-expected.txt:
+        * platform/wpe/ietestcenter/css3/text/textshadow-001-expected.txt:
+        * platform/wpe/ietestcenter/css3/text/textshadow-002-expected.txt:
+        * platform/wpe/ietestcenter/css3/text/textshadow-003-expected.txt:
+        * platform/wpe/ietestcenter/css3/text/textshadow-004-expected.txt:
+        * platform/wpe/ietestcenter/css3/text/textshadow-005-expected.txt:
+        * platform/wpe/ietestcenter/css3/text/textshadow-006-expected.txt:
+        * platform/wpe/ietestcenter/css3/text/textshadow-007-expected.txt:
+        * platform/wpe/ietestcenter/css3/text/textshadow-008-expected.txt:
+        * platform/wpe/ietestcenter/css3/text/textshadow-009-expected.txt:
+        * platform/wpe/ietestcenter/css3/text/textshadow-010-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-clear-encrypted-expected.txt:
+        * platform/wpe/tables/layering/paint-test-layering-1-expected.txt:
+        * platform/wpe/tables/layering/paint-test-layering-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/45621-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug101674-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug10269-1-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug10269-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug10296-1-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug106158-1-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug106158-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug109043-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug113235-1-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug113235-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug113235-3-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug1163-1-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug1188-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug11944-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug1224-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug1302-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug131020-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug131020_iframe-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug133756-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug139524-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug1430-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug149275-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug14929-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug157890-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug16012-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug16252-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug17130-1-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug17130-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug17138-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug17587-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug18359-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug18664-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug18955-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug19356-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug19599-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug20579-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug2065-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug20804-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug2123-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug220536-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug22246-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug22246-2a-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug22246-3-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug22246-3a-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug23235-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug23299-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug24627-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug2469-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug2479-1-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug2479-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug2479-3-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug2479-4-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug2509-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug25663-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug2585-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug27038-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug27038-3-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug2886-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug2886-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug29058-1-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug29157-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug29326-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug2981-1-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug2997-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug30273-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug30332-1-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug30332-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug32205-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug32205-3-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug32447-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug3260-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug34538-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug3454-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug3977-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug42187-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug43039-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug43854-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug4427-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug44523-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug4501-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug45055-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug45055-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug4576-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug46368-1-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug46480-1-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug46480-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug46623-1-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug46623-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug48028-1-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug4803-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug51037-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug5188-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug5538-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug55694-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug57828-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug5835-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug58402-1-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug59354-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug60749-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug6184-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug6304-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug6404-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug6674-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug69187-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug69382-1-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug69382-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug7112-1-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug7112-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug73321-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug78162-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug80762-1-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug82946-1-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug82946-2-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug86708-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug8858-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug92143-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug93363-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug96334-expected.txt:
+        * platform/wpe/tables/mozilla/bugs/bug965-expected.txt:
+        * platform/wpe/tables/mozilla/collapsing_borders/bug41262-3-expected.txt:
+        * platform/wpe/tables/mozilla/core/bloomberg-expected.txt:
+        * platform/wpe/tables/mozilla/core/borders-expected.txt:
+        * platform/wpe/tables/mozilla/core/col_widths_auto_autoFix-expected.txt:
+        * platform/wpe/tables/mozilla/core/col_widths_fix_fixPer-expected.txt:
+        * platform/wpe/tables/mozilla/core/margins-expected.txt:
+        * platform/wpe/tables/mozilla/core/one_row-expected.txt:
+        * platform/wpe/tables/mozilla/core/row_span-expected.txt:
+        * platform/wpe/tables/mozilla/dom/appendCol2-expected.txt:
+        * platform/wpe/tables/mozilla/dom/appendRowsExpand1-expected.txt:
+        * platform/wpe/tables/mozilla/dom/appendTbodyExpand1-expected.txt:
+        * platform/wpe/tables/mozilla/dom/deleteCellsShrink1-expected.txt:
+        * platform/wpe/tables/mozilla/dom/deleteCellsShrink2-expected.txt:
+        * platform/wpe/tables/mozilla/dom/deleteRowsRebuild1-expected.txt:
+        * platform/wpe/tables/mozilla/dom/deleteRowsShrink1-expected.txt:
+        * platform/wpe/tables/mozilla/dom/deleteTbodyExpand1-expected.txt:
+        * platform/wpe/tables/mozilla/dom/insertCellsExpand1-expected.txt:
+        * platform/wpe/tables/mozilla/dom/insertCellsExpand2-expected.txt:
+        * platform/wpe/tables/mozilla/dom/insertCellsRebuild1-expected.txt:
+        * platform/wpe/tables/mozilla/dom/insertCellsRebuild2-expected.txt:
+        * platform/wpe/tables/mozilla/dom/insertRowsExpand1-expected.txt:
+        * platform/wpe/tables/mozilla/dom/insertRowsRebuild1-expected.txt:
+        * platform/wpe/tables/mozilla/dom/tableDom-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/body_tfoot-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/col_span-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/colgroup_align_center-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/colgroup_align_justify-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/colgroup_align_left-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/colgroup_align_right-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/colgroup_span-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/colgroup_valign_baseline-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/colgroup_valign_bottom-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/colgroup_valign_middle-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/colgroup_valign_top-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/colgroup_width_pct-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/colgroup_width_px-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/table_rules_all-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_bgcolor_teal-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_bgcolor_teal_rgb-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_bgcolor_yellow-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_bgcolor_yellow_rgb-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_caption_align_bot-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_caption_align_top-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_cellpadding-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_cellpadding_pct-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_cellspacing-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_style-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_td_align_center-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_td_align_left-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_td_align_right-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_td_colspan-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_td_height-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_td_rowspan-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_td_width-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_th_align_center-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_th_align_left-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_th_align_right-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_th_colspan-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_th_height-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_th_rowspan-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tables_th_width-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tbody_valign_baseline-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tbody_valign_bottom-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tbody_valign_middle-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tbody_valign_top-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/td_valign_baseline-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/td_valign_bottom-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/td_valign_middle-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/td_valign_top-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tfoot_valign_baseline-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tfoot_valign_bottom-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tfoot_valign_middle-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tfoot_valign_top-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/th_valign_baseline-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/th_valign_bottom-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/th_valign_middle-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/th_valign_top-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/thead_valign_baseline-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/thead_valign_bottom-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/thead_valign_middle-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/thead_valign_top-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_aqua_rgb-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_black-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_black_rgb-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_blue-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_blue_rgb-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_fuchsia-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_fuchsia_rgb-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_gray-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_gray_rgb-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_green-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_green_rgb-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_lime-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_lime_rgb-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_maroon-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_maroon_rgb-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_navy-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_navy_rgb-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_olive-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_olive_rgb-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_purple-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_purple_rgb-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_red-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_red_rgb-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_silver-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_silver_rgb-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_teal-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_teal_rgb-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_white-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_white_rgb-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_yellow-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_bgcolor_yellow_rgb-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_valign_baseline-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_valign_bottom-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_valign_middle-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/tr_valign_top-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_col_valign_baseline-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_col_valign_bottom-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_col_valign_middle-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_col_valign_top-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_col_width_rel-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_colgroup_valign_baseline-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_colgroup_valign_bottom-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_colgroup_valign_middle-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_colgroup_valign_top-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_colgroup_width_rel-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_table-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_table_bgcolor_name-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_table_bgcolor_rgb-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_table_style-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_tbody_valign_baseline-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_tbody_valign_bottom-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_tbody_valign_middle-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_tbody_valign_top-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_td_align_center-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_td_align_left-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_td_align_right-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_td_bgcolor_name-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_td_bgcolor_rgb-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_td_valign_baseline-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_td_valign_bottom-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_td_valign_middle-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_td_valign_top-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_tfoot_valign_baseline-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_tfoot_valign_bottom-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_tfoot_valign_middle-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_tfoot_valign_top-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_th_align_center-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_th_align_left-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_th_align_right-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_th_bgcolor_name-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_th_bgcolor_rgb-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_th_valign_baseline-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_th_valign_bottom-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_th_valign_middle-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_th_valign_top-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_thead_valign_baseline-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_thead_valign_bottom-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_thead_valign_middle-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_thead_valign_top-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_tr_bgcolor_name-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_tr_bgcolor_rgb-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_tr_valign_baseline-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_tr_valign_bottom-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_tr_valign_middle-expected.txt:
+        * platform/wpe/tables/mozilla/marvin/x_tr_valign_top-expected.txt:
+        * platform/wpe/tables/mozilla/other/ms-expected.txt:
+        * platform/wpe/tables/mozilla/other/nested2-expected.txt:
+        * platform/wpe/tables/mozilla/other/test3-expected.txt:
+        * platform/wpe/tables/mozilla/other/test6-expected.txt:
+        * platform/wpe/tables/mozilla/other/wa_table_thtd_rowspan-expected.txt:
+        * platform/wpe/tables/mozilla/other/wa_table_tr_align-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug10140-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug1055-2-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug1128-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug11331-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug1262-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug14007-2-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug17826-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug18770-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug19526-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug21518-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug22122-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug2479-5-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug29058-2-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug32205-4-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug42043-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug56024-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug59252-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug80762-2-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug8499-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug89315-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/bugs/bug91057-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/collapsing_borders/bug41262-5-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/collapsing_borders/bug41262-6-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/core/captions1-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/core/captions2-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/core/captions3-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/core/col_span2-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/core/cols1-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/core/standards1-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/dom/appendCells1-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/dom/appendCellsRebuild1-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/dom/appendCol1-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/dom/insertTbodyExpand1-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/dom/insertTbodyRebuild1-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/marvin/backgr_fixed-bg-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/marvin/table_frame_lhs-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/marvin/table_frame_rhs-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/marvin/table_rules_cols-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/marvin/tables_caption_align_left-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/marvin/tables_caption_align_right-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/marvin/tables_cellspacing_pct-expected.txt:
+        * platform/wpe/tables/mozilla_expected_failures/other/test4-expected.txt:
+        * platform/wpe/transforms/2d/compound-transforms-vs-containers-expected.txt:
+        * platform/wpe/transforms/2d/transform-borderbox-expected.txt:
+        * platform/wpe/transforms/2d/transform-fixed-container-expected.txt:
+        * platform/wpe/transforms/2d/transform-origin-borderbox-expected.txt:
+        * platform/wpe/transforms/3d/hit-testing/backface-hit-test-expected.txt:
+        * platform/wpe/transforms/3d/hit-testing/backface-no-transform-hit-test-expected.txt:
+        * platform/wpe/transforms/3d/point-mapping/3d-point-mapping-2-expected.txt:
+        * platform/wpe/transforms/3d/point-mapping/3d-point-mapping-3-expected.txt:
+        * platform/wpe/transforms/3d/point-mapping/3d-point-mapping-coplanar-expected.txt:
+        * platform/wpe/transforms/3d/point-mapping/3d-point-mapping-deep-expected.txt:
+        * platform/wpe/transforms/3d/point-mapping/3d-point-mapping-expected.txt:
+        * platform/wpe/transforms/3d/point-mapping/3d-point-mapping-origins-expected.txt:
+        * platform/wpe/transforms/3d/point-mapping/3d-point-mapping-overlapping-expected.txt:
+        * platform/wpe/transforms/3d/point-mapping/3d-point-mapping-preserve-3d-expected.txt:
+        * platform/wpe/transitions/cross-fade-border-image-expected.txt:
+        * platform/wpe/transitions/move-after-transition-expected.txt:
+        * platform/wpe/transitions/svg-text-shadow-transition-expected.txt:
+
+2017-09-15  Ms2ger  <Ms2ger@igalia.com>
+
+        Disallow passing a null program to getFragDataLocation.
+        https://bugs.webkit.org/show_bug.cgi?id=176895
+
+        Reviewed by Sam Weinig.
+
+        This matches the specification as well as Gecko and Chromium.
+
+        * fast/canvas/webgl/webgl2/bindings-expected.txt:
+        * fast/canvas/webgl/webgl2/bindings.html:
+
+2017-09-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        iOS: WebKitTestRunner hits an assertion in editing/pasteboard/datatransfer-items-copy-plaintext.html
+        https://bugs.webkit.org/show_bug.cgi?id=176968
+        <rdar://problem/34454843>
+
+        Reviewed by Wenson Hsieh.
+
+        Unskip the test which used to crash/hit assertions.
+
+        * platform/ios/TestExpectations:
+
+2017-09-15  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Rebaseline tests after r222077. Part 2.
+
+2017-09-15  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Rebaseline tests after r222077. Part 1.
+
+2017-09-14  Youenn Fablet  <youenn@apple.com>
+
+        Add Cache API support of records persistency
+        https://bugs.webkit.org/show_bug.cgi?id=176845
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/cache-storage/cache-persistency.https.html:
+        * http/tests/cache-storage/cache-records-persistency.https-expected.txt: Added.
+        * http/tests/cache-storage/cache-records-persistency.https.html: Added.
+
+2017-09-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r221932 and r221933.
+        https://bugs.webkit.org/show_bug.cgi?id=176969
+
+        This change did not fix the webgl test flakiness. (Requested
+        by ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "[WebGL] accelerated texImage2D for video doesn't respect
+        flipY"
+        https://bugs.webkit.org/show_bug.cgi?id=176491
+        http://trac.webkit.org/changeset/221932
+
+        "[WebGL] VideoTextureCopierCV doesn't correctly restore vertex
+        attribute state"
+        https://bugs.webkit.org/show_bug.cgi?id=176771
+        http://trac.webkit.org/changeset/221933
+
+2017-09-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed rollout r222036.
+        
+        The LayoutTests added with this change is flaky.
+
+        Reverted changeset
+        Web Inspector: Timeline should show when events preventDefault() was called on an event or not
+        https://bugs.webkit.org/show_bug.cgi?id=176824
+        http://trac.webkit.org/changeset/222036
+
+2017-09-14  Daniel Bates  <dabates@apple.com>
+
+        Import CSS Pseudo Elements 4 Web Platform Tests
+        https://bugs.webkit.org/show_bug.cgi?id=176253
+
+        Reviewed by Zalan Bujtas.
+
+        I upstreamed our CSS Pseudo Elements 4 tests to the Web Platform Tests repository.
+        Remove our version of the tests and import the ones from the Web Platform Tests repository.
+
+        * TestExpectations: Skip some tests that fail.
+        * http/wpt/css/css-pseudo-4/marker-and-other-pseudo-elements-expected.html: Removed.
+        * http/wpt/css/css-pseudo-4/marker-and-other-pseudo-elements.html: Removed.
+        * http/wpt/css/css-pseudo-4/marker-color-expected.html: Removed.
+        * http/wpt/css/css-pseudo-4/marker-color.html: Removed.
+        * http/wpt/css/css-pseudo-4/marker-font-properties-expected.html: Removed.
+        * http/wpt/css/css-pseudo-4/marker-font-properties.html: Removed.
+        * http/wpt/css/css-pseudo-4/marker-inherit-values-expected.html: Removed.
+        * http/wpt/css/css-pseudo-4/marker-inherit-values.html: Removed.
+
+2017-09-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        iOS: WebKitTestRunner hits an assertion in editing/pasteboard/datatransfer-items-copy-plaintext.html
+        https://bugs.webkit.org/show_bug.cgi?id=176968
+
+        Skip this test for now.
+
+        * platform/ios/TestExpectations:
+
+2017-09-14  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: make recording swizzle async
+        https://bugs.webkit.org/show_bug.cgi?id=176936
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/canvas/recording-2d-expected.txt:
+
+2017-09-14  Matt Lewis  <jlewis3@apple.com>
+
+        Marked svg/animations/smil-leak-element-instances.svg
+        https://bugs.webkit.org/show_bug.cgi?id=175886
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-09-14  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Color created from an RGB/HSL triplet returns bad component arrays
+        https://bugs.webkit.org/show_bug.cgi?id=176811
+        <rdar://problem/34397529>
+
+        Reviewed by Joseph Pecoraro.
+
+        Add tests for Colors constructed from a format and component array.
+
+        * inspector/model/color-expected.txt:
+        * inspector/model/color.html:
+        Drive-by cleanup: use InspectorTest.expectShallowEqual.
+
+2017-09-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/streams/piping/error-propagation-forward.dedicatedworker.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=176920
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-09-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Re-enable tests under editing/pasteboard in iOS WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=176890
+
+        Reviewed by Wenson Hsieh.
+
+        These tests were disabled because we used to run multiple layout tests tests in parallel within
+        a single instance of iOS simulator, and that caused tests that read from and write to UIPasteboard
+        with interfere with one another. This is no longer an issue since we launch a simulator per worker.
+
+        Re-enabled these pasteboard tests under iOS simulator in WebKit2 and rebaselined the tests.
+        We're going to triage failures and crashes in WebKit1 separately.
+
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator/editing/pasteboard/3976872-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/4076267-2-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/4076267-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/4242293-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/4631972-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/4641033-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/8145-2-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/8145-3-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/bad-placeholder-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/image-in-iframe-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/paste-text-004-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/paste-text-008-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/paste-text-009-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/paste-text-013-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/paste-text-014-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/paste-text-016-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/paste-text-019-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/paste-text-at-tabspan-003-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/pasting-object-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/pasting-tabs-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/quirks-mode-br-1-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/smart-drag-drop-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/smart-paste-007-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/smart-paste-008-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/styled-element-markup-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/undoable-fragment-removes-expected.png: Added.
+        * platform/ios-simulator/editing/pasteboard/unrendered-br-expected.png: Added.
+        * platform/ios-wk2/editing/pasteboard/3976872-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/4076267-2-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/4076267-3-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/4076267-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/4242293-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/4631972-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/4641033-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/8145-2-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/8145-3-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/bad-placeholder-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/paste-text-004-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/paste-text-008-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/paste-text-009-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/paste-text-013-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/paste-text-014-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/paste-text-016-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/paste-text-019-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/paste-text-at-tabspan-003-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/paste-xml-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/pasting-object-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/pasting-tabs-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/quirks-mode-br-1-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/smart-drag-drop-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/styled-element-markup-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/undoable-fragment-removes-expected.txt:
+        * platform/ios-wk2/editing/pasteboard/unrendered-br-expected.txt:
+        * platform/ios/TestExpectations:
+        * platform/ios/editing/pasteboard/image-in-iframe-expected.txt: Added.
+
+2017-09-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline js/dom/global-constructors-attributes.html for El Capitan.
+
+        Unreviewed test gardening.
+
+        * platform/mac-elcapitan-wk2/js/dom/global-constructors-attributes-expected.txt:
+
+2017-09-14  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        fast/forms/append-children-during-form-submission.html fails due to a text diff on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=176908
+
+        Reviewed by Tim Horton.
+
+        Tweak an existing layout test added in r222005 to make its expectation consistent across all platforms.
+
+        * fast/forms/append-children-during-form-submission-expected.txt:
+        * fast/forms/append-children-during-form-submission.html:
+        * platform/ios/fast/forms/append-children-during-form-submission-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/append-children-during-form-submission-expected.txt: Removed.
+
+2017-09-14  Youenn Fablet  <youenn@apple.com>
+
+        RTCDataChannel connectivity issues in Safari 11
+        https://bugs.webkit.org/show_bug.cgi?id=173052
+        <rdar://problem/32712143>
+
+        Reviewed by Alex Christensen.
+
+        * webrtc/datachannel/binary-expected.txt:
+        * webrtc/datachannel/binary.html:
+
+2017-09-14  Antti Koivisto  <antti@apple.com>
+
+        Computing animated style should not require renderers
+        https://bugs.webkit.org/show_bug.cgi?id=171926
+        <rdar://problem/34428035>
+
+        Reviewed by Sam Weinig.
+
+        * transitions/transition-display-property-2-expected.html: Added.
+        * transitions/transition-display-property-2.html: Added.
+        * transitions/transition-display-property.html:
+
+2017-09-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timeline should show when events preventDefault() was called on an event or not
+        https://bugs.webkit.org/show_bug.cgi?id=176824
+        <rdar://problem/34290931>
+
+        Reviewed by Devin Rousso.
+
+        * inspector/timeline/resources/timeline-event-utilities.js: Added.
+        (TestPage.registerInitializer.window.captureTimelineWithScript):
+        (TestPage.registerInitializer):
+        (finishRecording):
+        Helper code for creating a recording from a function.
+
+        * inspector/timeline/timeline-event-EventDispatch-expected.txt: Added.
+        * inspector/timeline/timeline-event-EventDispatch.html: Added.
+        Test for Timeline's EventDispatch records. Ensure it has
+        the new "defaultPrevented" details data.
+
+2017-09-14  Matt Lewis  <jlewis3@apple.com>
+
+        Fixed typo in expectations.
+
+        Unreviewed test expectations.
+
+        * platform/mac/TestExpectations:
+
+2017-09-14  Matt Lewis  <jlewis3@apple.com>
+
+        Follow up expectations to r222008.
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2017-09-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r222015.
+
+        The LayoutTests added with this change are flaky.
+
+        Reverted changeset:
+
+        "Web Inspector: Timeline should show when events
+        preventDefault() was called on an event or not"
+        https://bugs.webkit.org/show_bug.cgi?id=176824
+        http://trac.webkit.org/changeset/222015
+
+2017-09-14  Ms2ger  <Ms2ger@igalia.com>
+
+        Allow passing sequences to various WebGL2 methods.
+        https://bugs.webkit.org/show_bug.cgi?id=176892
+
+        Reviewed by Sam Weinig.
+
+        This matches the specification as well as Gecko and Chromium.
+
+        * fast/canvas/webgl/webgl2/sequences-expected.txt: Added.
+        * fast/canvas/webgl/webgl2/sequences.html: Added.
+
+2017-09-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline fast/forms/append-children-during-form-submission.html for iOS.
+
+        Unreviewed test gardening.
+
+        * platform/ios/fast/forms/append-children-during-form-submission-expected.txt: Added.
+
+2017-09-14  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark svg/as-image/svg-image-with-data-uri-use-data-uri.svg as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=176901
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-09-14  Per Arne Vollan  <pvollan@apple.com>
+
+        Fix typo in entries-api test names.
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-09-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Reverted r222014, and added El Capitan specific result for fast/forms/append-children-during-form-submission.html
+
+        * fast/forms/append-children-during-form-submission-expected.txt: Reverted r222014.
+        * platform/mac-elcapitan/fast/forms/append-children-during-form-submission-expected.txt: Added.
+
+2017-09-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Timeline should show when events preventDefault() was called on an event or not
+        https://bugs.webkit.org/show_bug.cgi?id=176824
+        <rdar://problem/34290931>
+
+        Reviewed by Devin Rousso.
+
+        * inspector/timeline/resources/timeline-event-utilities.js: Added.
+        (TestPage.registerInitializer.window.captureTimelineWithScript):
+        (TestPage.registerInitializer):
+        (finishRecording):
+        Helper code for creating a recording from a function.
+
+        * inspector/timeline/timeline-event-CancelAnimationFrame-expected.txt: Added.
+        * inspector/timeline/timeline-event-CancelAnimationFrame.html: Added.
+        * inspector/timeline/timeline-event-EventDispatch-expected.txt: Added.
+        * inspector/timeline/timeline-event-EventDispatch.html: Added.
+        * inspector/timeline/timeline-event-FireAnimationFrame-expected.txt: Added.
+        * inspector/timeline/timeline-event-FireAnimationFrame.html: Added.
+        * inspector/timeline/timeline-event-RequestAnimationFrame-expected.txt: Added.
+        * inspector/timeline/timeline-event-RequestAnimationFrame.html: Added.
+        * inspector/timeline/timeline-event-TimerFire-expected.txt: Added.
+        * inspector/timeline/timeline-event-TimerFire.html: Added.
+        * inspector/timeline/timeline-event-TimerInstall-expected.txt: Added.
+        * inspector/timeline/timeline-event-TimerInstall.html: Added.
+        * inspector/timeline/timeline-event-TimerRemove-expected.txt: Added.
+        * inspector/timeline/timeline-event-TimerRemove.html: Added.
+        Tests for different, specific, Timeline domain EventTypes.
+        This includes EventDispatch with its new "defaultPrevented" details data.
+
+2017-09-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Rebaseline a test after r222005.
+
+        * fast/forms/append-children-during-form-submission-expected.txt:
+
+2017-09-13  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fix a typo in the directory name: editing/pasteboard/enties-api.
+
+        Rubber-stamped by Wenson Hsieh.
+
+        * editing/pasteboard/entries-api: Renamed from LayoutTests/editing/pasteboard/enties-api.
+        * platform/win/TestExpectations:
+        * platform/wk2/TestExpectations:
+
+2017-09-13  Zalan Bujtas  <zalan@apple.com>
+
+        Switch multicolumn's spanner map from raw over to weak pointers.
+        https://bugs.webkit.org/show_bug.cgi?id=176367
+        <rdar://problem/34254896>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/multicol/spanner-crash-when-adding-summary-expected.txt: Added.
+        * fast/multicol/spanner-crash-when-adding-summary.html: Added.
+
+2017-09-13  John Wilander  <wilander@apple.com>
+
+        Introduce Storage Access API (document parts) as an experimental feature
+        https://bugs.webkit.org/show_bug.cgi?id=175759
+        <rdar://problem/34414107>
+
+        Reviewed by Alex Christensen.
+
+        Storage Access API is an experimental feature which allows cross-origin,
+        sandboxed iframes to request access to their first-party storage (as
+        opposed to partitioned storage). This might be restricted to cookies or
+        might cover all stateful mechanisms.
+
+        It introduces the following three developer-facing things:
+        - A new readonly attribute, document.hasStorageAccess.
+        - A new function, document.requestStorageAccess().
+        - A new iframe sandbox token, allow-storage-access-by-user-activation.
+
+        * TestExpectations:
+        * http/tests/storageAccess: Added.
+        * http/tests/storageAccess/request-and-deny-storage-access-cross-origin-iframe-expected.txt: Added.
+        * http/tests/storageAccess/request-and-deny-storage-access-cross-origin-iframe.html: Added.
+        * http/tests/storageAccess/request-and-deny-storage-access-cross-origin-sandboxed-iframe-expected.txt: Added.
+        * http/tests/storageAccess/request-and-deny-storage-access-cross-origin-sandboxed-iframe.html: Added.
+        * http/tests/storageAccess/request-and-grant-storage-access-cross-origin-iframe-expected.txt: Added.
+        * http/tests/storageAccess/request-and-grant-storage-access-cross-origin-iframe.html: Added.
+        * http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-expected.txt: Added.
+        * http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe.html: Added.
+        * http/tests/storageAccess/request-storage-access-cross-origin-sandboxed-iframe-with-unique-origin-expected.txt: Added.
+        * http/tests/storageAccess/request-storage-access-cross-origin-sandboxed-iframe-with-unique-origin.html: Added.
+        * http/tests/storageAccess/request-storage-access-cross-origin-sandboxed-iframe-without-allow-token-expected.txt: Added.
+        * http/tests/storageAccess/request-storage-access-cross-origin-sandboxed-iframe-without-allow-token.html: Added.
+        * http/tests/storageAccess/request-storage-access-same-origin-iframe-expected.txt: Added.
+        * http/tests/storageAccess/request-storage-access-same-origin-iframe.html: Added.
+        * http/tests/storageAccess/request-storage-access-same-origin-sandboxed-iframe-expected.txt: Added.
+        * http/tests/storageAccess/request-storage-access-same-origin-sandboxed-iframe-without-allow-token-expected.txt: Added.
+        * http/tests/storageAccess/request-storage-access-same-origin-sandboxed-iframe-without-allow-token.html: Added.
+        * http/tests/storageAccess/request-storage-access-same-origin-sandboxed-iframe.html: Added.
+        * http/tests/storageAccess/request-storage-access-top-frame-expected.txt: Added.
+        * http/tests/storageAccess/request-storage-access-top-frame.html: Added.
+        * http/tests/storageAccess/resources: Added.
+        * http/tests/storageAccess/resources/request-storage-access-iframe.html: Added.
+        * platform/mac-wk2/TestExpectations:
+            New test cases that require a user gesture marked as [ Pass ].
+            Also removed reference to (now closed) https://bugs.webkit.org/show_bug.cgi?id=175170.
+        * platform/wk2/TestExpectations:
+            New test case request-storage-access-top-frame.html marked as [ Pass ].
+
+2017-09-13  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Submitting a form can cause HTMLFormElement's associated elements vector to be mutated during iteration
+        https://bugs.webkit.org/show_bug.cgi?id=176368
+        <rdar://problem/34254998>
+
+        Reviewed by Ryosuke Niwa.
+
+        Adds a new test to make sure we don't crash when mutating a form's associated elements during form submission.
+
+        * fast/forms/append-children-during-form-submission-expected.txt: Added.
+        * fast/forms/append-children-during-form-submission.html: Added.
+
+2017-09-13  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Event Listeners section does not update when listeners are added/removed
+        https://bugs.webkit.org/show_bug.cgi?id=170570
+        <rdar://problem/31501645>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/dom/event-listener-add-remove-expected.txt: Added.
+        * inspector/dom/event-listener-add-remove.html: Added.
+
+2017-09-13  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark storage/indexeddb/modern/idbtransaction-objectstore-failures.html as flaky on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=176880
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-09-13  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r221976.
+
+        The test introduced was flaky from point of addition.
+
+        Reverted changeset:
+
+        "Introduce Storage Access API (document parts) as an
+        experimental feature"
+        https://bugs.webkit.org/show_bug.cgi?id=175759
+        http://trac.webkit.org/changeset/221976
+
+2017-09-13  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Followup (r221805): Address comments and add more tests
+        https://bugs.webkit.org/show_bug.cgi?id=176732
+
+        Reviewed by Darin Adler.
+
+        * http/tests/images/decode-slow-load-static-image-expected.txt: Added.
+        * http/tests/images/decode-slow-load-static-image.html: Added.
+
+2017-09-13  Youenn Fablet  <youenn@apple.com>
+
+        Internals clearCacheStorageMemoryRepresentation should return a Promise
+        https://bugs.webkit.org/show_bug.cgi?id=176818
+
+        Reviewed by Alex Christensen.
+
+        Updating tests to interact with the caches after the clearCacheStorageMemoryRepresentation promise is completed.
+
+        * http/tests/cache-storage/cache-origins.https.html:
+        * http/tests/cache-storage/cache-persistency.https.html:
+
+2017-09-13  Matt Lewis  <jlewis3@apple.com>
+
+        Fixed expectations of imported/w3c/web-platform-tests/html/webappapis/timers/type-long-setinterval.html.
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-09-13  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Frontend should be made to expect and handle disabled properties
+        https://bugs.webkit.org/show_bug.cgi?id=166787
+        <rdar://problem/34379593>
+
+        Reviewed by Joseph Pecoraro.
+
+        Add test cases for disabled (commented out) CSS properties.
+
+        * inspector/css/css-property-expected.txt:
+        * inspector/css/css-property.html:
+        Add test cases for previously untested `enabled` and newly added `attached` getters.
+
+        * inspector/css/matched-style-properties.html:
+
+2017-09-13  Alicia Boya García  <aboya@igalia.com>
+
+        [GTK] Test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=176871
+
+        Reviewed by Michael Catanzaro.
+
+        * platform/gtk/TestExpectations:
+
+2017-09-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline http/tests/loading/state-object-security-exception.html after r221978.
+        https://bugs.webkit.org/show_bug.cgi?id=176730
+
+        Unreviewed test gardening.
+
+        * http/tests/loading/state-object-security-exception-expected.txt:
+
 2017-09-13  Matt Lewis  <jlewis3@apple.com>
 
         Followup rebaseline after r221973.
