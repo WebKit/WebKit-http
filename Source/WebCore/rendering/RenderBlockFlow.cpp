@@ -43,9 +43,8 @@
 #include "RenderLineBreak.h"
 #include "RenderListItem.h"
 #include "RenderMarquee.h"
-#include "RenderMultiColumnFlowThread.h"
+#include "RenderMultiColumnFlow.h"
 #include "RenderMultiColumnSet.h"
-#include "RenderNamedFlowFragment.h"
 #include "RenderTableCell.h"
 #include "RenderText.h"
 #include "RenderView.h"
@@ -145,14 +144,10 @@ RenderBlockFlow::~RenderBlockFlow()
 void RenderBlockFlow::insertedIntoTree()
 {
     RenderBlock::insertedIntoTree();
-    createRenderNamedFlowFragmentIfNeeded();
 }
 
 void RenderBlockFlow::willBeDestroyed()
 {
-    if (renderNamedFlowFragment())
-        setRenderNamedFlowFragment(nullptr);
-
     // Make sure to destroy anonymous children first while they are still connected to the rest of the tree, so that they will
     // properly dirty line boxes that they are removed from. Effects that do :before/:after only on hover could crash otherwise.
     destroyLeftoverChildren();
@@ -451,18 +446,18 @@ bool RenderBlockFlow::willCreateColumns(std::optional<unsigned> desiredColumnCou
     if (!style().specifiesColumns())
         return false;
 
-    // column-axis with opposite writing direction initiates MultiColumnFlowThread.
+    // column-axis with opposite writing direction initiates MultiColumnFlow.
     if (!style().hasInlineColumnAxis())
         return true;
 
-    // Non-auto column-width always initiates MultiColumnFlowThread.
+    // Non-auto column-width always initiates MultiColumnFlow.
     if (!style().hasAutoColumnWidth())
         return true;
 
     if (desiredColumnCount)
         return desiredColumnCount.value() > 1;
 
-    // column-count > 1 always initiates MultiColumnFlowThread.
+    // column-count > 1 always initiates MultiColumnFlow.
     if (!style().hasAutoColumnCount())
         return style().columnCount() > 1;
 
@@ -496,8 +491,6 @@ void RenderBlockFlow::layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalH
     LayoutStateMaintainer statePusher(view(), *this, locationOffset(), hasTransform() || hasReflection() || styleToUse.isFlippedBlocksWritingMode(), pageLogicalHeight, pageLogicalHeightChanged);
 
     preparePaginationBeforeBlockLayout(relayoutChildren);
-    if (!relayoutChildren)
-        relayoutChildren = namedFlowFragmentNeedsUpdate();
 
     // We use four values, maxTopPos, maxTopNeg, maxBottomPos, and maxBottomNeg, to track
     // our current maximal positive and negative margins. These values are used when we
@@ -543,9 +536,9 @@ void RenderBlockFlow::layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalH
     LayoutUnit oldClientAfterEdge = clientLogicalBottom();
 
     // Before updating the final size of the flow thread make sure a forced break is applied after the content.
-    // This ensures the size information is correctly computed for the last auto-height region receiving content.
-    if (is<RenderFlowThread>(*this))
-        downcast<RenderFlowThread>(*this).applyBreakAfterContent(oldClientAfterEdge);
+    // This ensures the size information is correctly computed for the last auto-height fragment receiving content.
+    if (is<RenderFragmentedFlow>(*this))
+        downcast<RenderFragmentedFlow>(*this).applyBreakAfterContent(oldClientAfterEdge);
 
     updateLogicalHeight();
     LayoutUnit newHeight = logicalHeight();
@@ -716,7 +709,7 @@ void RenderBlockFlow::layoutBlockChild(RenderBox& child, MarginInfo& marginInfo,
 #endif
     // Position the child as though it didn't collapse with the top.
     setLogicalTopForChild(child, logicalTopEstimate, ApplyLayoutDelta);
-    estimateRegionRangeForBoxChild(child);
+    estimateFragmentRangeForBoxChild(child);
 
     RenderBlockFlow* childBlockFlow = is<RenderBlockFlow>(child) ? &downcast<RenderBlockFlow>(child) : nullptr;
     bool markDescendantsWithFloats = false;
@@ -783,7 +776,7 @@ void RenderBlockFlow::layoutBlockChild(RenderBox& child, MarginInfo& marginInfo,
         }
     }
 
-    if (updateRegionRangeForBoxChild(child))
+    if (updateFragmentRangeForBoxChild(child))
         child.setNeedsLayout(MarkOnlyThis);
 
     // In case our guess was wrong, relayout the child.
@@ -825,8 +818,8 @@ void RenderBlockFlow::layoutBlockChild(RenderBox& child, MarginInfo& marginInfo,
     }
 
     if (paginated) {
-        if (RenderFlowThread* flowThread = flowThreadContainingBlock())
-            flowThread->flowThreadDescendantBoxLaidOut(&child);
+        if (RenderFragmentedFlow* fragmentedFlow = enclosingFragmentedFlow())
+            fragmentedFlow->fragmentedFlowDescendantBoxLaidOut(&child);
         // Check for an after page/column break.
         LayoutUnit newHeight = applyAfterBreak(child, logicalHeight(), marginInfo);
         if (newHeight != height())
@@ -919,8 +912,8 @@ void RenderBlockFlow::updateStaticInlinePositionForChild(RenderBox& child, Layou
 
 void RenderBlockFlow::setStaticInlinePositionForChild(RenderBox& child, LayoutUnit blockOffset, LayoutUnit inlinePosition)
 {
-    if (flowThreadContainingBlock()) {
-        // Shift the inline position to exclude the region offset.
+    if (enclosingFragmentedFlow()) {
+        // Shift the inline position to exclude the fragment offset.
         inlinePosition += startOffsetForContent() - startOffsetForContent(blockOffset);
     }
     child.layer()->setStaticInlinePosition(inlinePosition);
@@ -1502,7 +1495,7 @@ static bool inNormalFlow(RenderBox& child)
 {
     RenderBlock* curr = child.containingBlock();
     while (curr && curr != &child.view()) {
-        if (curr->isRenderFlowThread())
+        if (curr->isRenderFragmentedFlow())
             return true;
         if (curr->isFloatingOrOutOfFlowPositioned())
             return false;
@@ -1514,21 +1507,21 @@ static bool inNormalFlow(RenderBox& child)
 LayoutUnit RenderBlockFlow::applyBeforeBreak(RenderBox& child, LayoutUnit logicalOffset)
 {
     // FIXME: Add page break checking here when we support printing.
-    RenderFlowThread* flowThread = flowThreadContainingBlock();
-    bool isInsideMulticolFlowThread = flowThread;
-    bool checkColumnBreaks = flowThread && flowThread->shouldCheckColumnBreaks();
+    RenderFragmentedFlow* fragmentedFlow = enclosingFragmentedFlow();
+    bool isInsideMulticolFlow = fragmentedFlow;
+    bool checkColumnBreaks = fragmentedFlow && fragmentedFlow->shouldCheckColumnBreaks();
     bool checkPageBreaks = !checkColumnBreaks && view().layoutState()->m_pageLogicalHeight; // FIXME: Once columns can print we have to check this.
-    bool checkRegionBreaks = false;
+    bool checkFragmentBreaks = false;
     bool checkBeforeAlways = (checkColumnBreaks && child.style().breakBefore() == ColumnBreakBetween)
         || (checkPageBreaks && alwaysPageBreak(child.style().breakBefore()));
     if (checkBeforeAlways && inNormalFlow(child) && hasNextPage(logicalOffset, IncludePageBoundary)) {
         if (checkColumnBreaks) {
-            if (isInsideMulticolFlowThread)
-                checkRegionBreaks = true;
+            if (isInsideMulticolFlow)
+                checkFragmentBreaks = true;
         }
-        if (checkRegionBreaks) {
+        if (checkFragmentBreaks) {
             LayoutUnit offsetBreakAdjustment = 0;
-            if (flowThread->addForcedRegionBreak(this, offsetFromLogicalTopOfFirstPage() + logicalOffset, &child, true, &offsetBreakAdjustment))
+            if (fragmentedFlow->addForcedFragmentBreak(this, offsetFromLogicalTopOfFirstPage() + logicalOffset, &child, true, &offsetBreakAdjustment))
                 return logicalOffset + offsetBreakAdjustment;
         }
         return nextPageLogicalTop(logicalOffset, IncludePageBoundary);
@@ -1539,11 +1532,11 @@ LayoutUnit RenderBlockFlow::applyBeforeBreak(RenderBox& child, LayoutUnit logica
 LayoutUnit RenderBlockFlow::applyAfterBreak(RenderBox& child, LayoutUnit logicalOffset, MarginInfo& marginInfo)
 {
     // FIXME: Add page break checking here when we support printing.
-    RenderFlowThread* flowThread = flowThreadContainingBlock();
-    bool isInsideMulticolFlowThread = flowThread;
-    bool checkColumnBreaks = flowThread && flowThread->shouldCheckColumnBreaks();
+    RenderFragmentedFlow* fragmentedFlow = enclosingFragmentedFlow();
+    bool isInsideMulticolFlow = fragmentedFlow;
+    bool checkColumnBreaks = fragmentedFlow && fragmentedFlow->shouldCheckColumnBreaks();
     bool checkPageBreaks = !checkColumnBreaks && view().layoutState()->m_pageLogicalHeight; // FIXME: Once columns can print we have to check this.
-    bool checkRegionBreaks = false;
+    bool checkFragmentBreaks = false;
     bool checkAfterAlways = (checkColumnBreaks && child.style().breakAfter() == ColumnBreakBetween)
         || (checkPageBreaks && alwaysPageBreak(child.style().breakAfter()));
     if (checkAfterAlways && inNormalFlow(child) && hasNextPage(logicalOffset, IncludePageBoundary)) {
@@ -1553,12 +1546,12 @@ LayoutUnit RenderBlockFlow::applyAfterBreak(RenderBox& child, LayoutUnit logical
         marginInfo.clearMargin();
 
         if (checkColumnBreaks) {
-            if (isInsideMulticolFlowThread)
-                checkRegionBreaks = true;
+            if (isInsideMulticolFlow)
+                checkFragmentBreaks = true;
         }
-        if (checkRegionBreaks) {
+        if (checkFragmentBreaks) {
             LayoutUnit offsetBreakAdjustment = 0;
-            if (flowThread->addForcedRegionBreak(this, offsetFromLogicalTopOfFirstPage() + logicalOffset + marginOffset, &child, false, &offsetBreakAdjustment))
+            if (fragmentedFlow->addForcedFragmentBreak(this, offsetFromLogicalTopOfFirstPage() + logicalOffset + marginOffset, &child, false, &offsetBreakAdjustment))
                 return logicalOffset + marginOffset + offsetBreakAdjustment;
         }
         return nextPageLogicalTop(logicalOffset, IncludePageBoundary);
@@ -1683,7 +1676,7 @@ static void clearShouldBreakAtLineToAvoidWidowIfNeeded(RenderBlockFlow& blockFlo
     blockFlow.setDidBreakAtLineToAvoidWidow();
 }
 
-void RenderBlockFlow::adjustLinePositionForPagination(RootInlineBox* lineBox, LayoutUnit& delta, bool& overflowsRegion, RenderFlowThread* flowThread)
+void RenderBlockFlow::adjustLinePositionForPagination(RootInlineBox* lineBox, LayoutUnit& delta, bool& overflowsFragment, RenderFragmentedFlow* fragmentedFlow)
 {
     // FIXME: For now we paginate using line overflow. This ensures that lines don't overlap at all when we
     // put a strut between them for pagination purposes. However, this really isn't the desired rendering, since
@@ -1704,7 +1697,7 @@ void RenderBlockFlow::adjustLinePositionForPagination(RootInlineBox* lineBox, La
     // FIXME: Another problem with simply moving lines is that the available line width may change (because of floats).
     // Technically if the location we move the line to has a different line width than our old position, then we need to dirty the
     // line and all following lines.
-    overflowsRegion = false;
+    overflowsFragment = false;
     LayoutRect logicalVisualOverflow = lineBox->logicalVisualOverflowRect(lineBox->lineTop(), lineBox->lineBottom());
     LayoutUnit logicalOffset = std::min(lineBox->lineTopWithLeading(), logicalVisualOverflow.y());
     LayoutUnit logicalBottom = std::max(lineBox->lineBottomWithLeading(), logicalVisualOverflow.maxY());
@@ -1714,7 +1707,7 @@ void RenderBlockFlow::adjustLinePositionForPagination(RootInlineBox* lineBox, La
     lineBox->setPaginationStrut(0);
     lineBox->setIsFirstAfterPageBreak(false);
     LayoutUnit pageLogicalHeight = pageLogicalHeightForOffset(logicalOffset);
-    bool hasUniformPageLogicalHeight = !flowThread || flowThread->regionsHaveUniformLogicalHeight();
+    bool hasUniformPageLogicalHeight = !fragmentedFlow || fragmentedFlow->fragmentsHaveUniformLogicalHeight();
     // If lineHeight is greater than pageLogicalHeight, but logicalVisualOverflow.height() still fits, we are
     // still going to add a strut, so that the visible overflow fits on a single page.
     if (!pageLogicalHeight || !hasNextPage(logicalOffset)) {
@@ -1743,7 +1736,7 @@ void RenderBlockFlow::adjustLinePositionForPagination(RootInlineBox* lineBox, La
     }
     
     LayoutUnit remainingLogicalHeight = pageRemainingLogicalHeightForOffset(logicalOffset, ExcludePageBoundary);
-    overflowsRegion = (lineHeight > remainingLogicalHeight);
+    overflowsFragment = (lineHeight > remainingLogicalHeight);
 
     int lineIndex = lineCount(lineBox);
     if (remainingLogicalHeight < lineHeight || (shouldBreakAtLineToAvoidWidow() && lineBreakToAvoidWidow() == lineIndex)) {
@@ -1757,7 +1750,7 @@ void RenderBlockFlow::adjustLinePositionForPagination(RootInlineBox* lineBox, La
             remainingLogicalHeight -= std::min(lineHeight - pageLogicalHeight, std::max<LayoutUnit>(0, logicalVisualOverflow.y() - lineBox->lineTopWithLeading()));
         }
         LayoutUnit remainingLogicalHeightAtNewOffset = pageRemainingLogicalHeightForOffset(logicalOffset + remainingLogicalHeight, ExcludePageBoundary);
-        overflowsRegion = (lineHeight > remainingLogicalHeightAtNewOffset);
+        overflowsFragment = (lineHeight > remainingLogicalHeightAtNewOffset);
         LayoutUnit totalLogicalHeight = lineHeight + std::max<LayoutUnit>(0, logicalOffset);
         LayoutUnit pageLogicalHeightAtNewOffset = hasUniformPageLogicalHeight ? pageLogicalHeight : pageLogicalHeightForOffset(logicalOffset + remainingLogicalHeight);
         setPageBreak(logicalOffset, lineHeight - remainingLogicalHeight);
@@ -1831,24 +1824,23 @@ bool RenderBlockFlow::hasNextPage(LayoutUnit logicalOffset, PageBoundaryRule pag
 {
     ASSERT(view().layoutState() && view().layoutState()->isPaginated());
 
-    RenderFlowThread* flowThread = flowThreadContainingBlock();
-    if (!flowThread)
+    RenderFragmentedFlow* fragmentedFlow = enclosingFragmentedFlow();
+    if (!fragmentedFlow)
         return true; // Printing and multi-column both make new pages to accommodate content.
 
-    // See if we're in the last region.
+    // See if we're in the last fragment.
     LayoutUnit pageOffset = offsetFromLogicalTopOfFirstPage() + logicalOffset;
-    RenderRegion* region = flowThread->regionAtBlockOffset(this, pageOffset, true);
-    if (!region)
+    RenderFragmentContainer* fragment = fragmentedFlow->fragmentAtBlockOffset(this, pageOffset, true);
+    if (!fragment)
         return false;
 
-    if (region->isLastRegion())
-        return region->isRenderRegionSet() || region->style().regionFragment() == BreakRegionFragment
-            || (pageBoundaryRule == IncludePageBoundary && pageOffset == region->logicalTopForFlowThreadContent());
+    if (fragment->isLastFragment())
+        return fragment->isRenderFragmentContainerSet() || (pageBoundaryRule == IncludePageBoundary && pageOffset == fragment->logicalTopForFragmentedFlowContent());
 
-    RenderRegion* startRegion = nullptr;
-    RenderRegion* endRegion = nullptr;
-    flowThread->getRegionRangeForBox(this, startRegion, endRegion);
-    return (endRegion && region != endRegion);
+    RenderFragmentContainer* startFragment = nullptr;
+    RenderFragmentContainer* endFragment = nullptr;
+    fragmentedFlow->getFragmentRangeForBox(this, startFragment, endFragment);
+    return (endFragment && fragment != endFragment);
 }
 
 LayoutUnit RenderBlockFlow::adjustForUnsplittableChild(RenderBox& child, LayoutUnit logicalOffset, LayoutUnit childBeforeMargin, LayoutUnit childAfterMargin)
@@ -1860,10 +1852,10 @@ LayoutUnit RenderBlockFlow::adjustForUnsplittableChild(RenderBox& child, LayoutU
     if (!isUnsplittable && !(child.isFlexibleBox() && !downcast<RenderFlexibleBox>(child).isFlexibleBoxImpl()))
         return logicalOffset;
     
-    RenderFlowThread* flowThread = flowThreadContainingBlock();
+    RenderFragmentedFlow* fragmentedFlow = enclosingFragmentedFlow();
     LayoutUnit childLogicalHeight = logicalHeightForChild(child) + childBeforeMargin + childAfterMargin;
     LayoutUnit pageLogicalHeight = pageLogicalHeightForOffset(logicalOffset);
-    bool hasUniformPageLogicalHeight = !flowThread || flowThread->regionsHaveUniformLogicalHeight();
+    bool hasUniformPageLogicalHeight = !fragmentedFlow || fragmentedFlow->fragmentsHaveUniformLogicalHeight();
     if (isUnsplittable)
         updateMinimumPageHeight(logicalOffset, childLogicalHeight);
     if (!pageLogicalHeight || (hasUniformPageLogicalHeight && childLogicalHeight > pageLogicalHeight)
@@ -1887,7 +1879,7 @@ LayoutUnit RenderBlockFlow::adjustForUnsplittableChild(RenderBox& child, LayoutU
 
 bool RenderBlockFlow::pushToNextPageWithMinimumLogicalHeight(LayoutUnit& adjustment, LayoutUnit logicalOffset, LayoutUnit minimumLogicalHeight) const
 {
-    bool checkRegion = false;
+    bool checkFragment = false;
     for (LayoutUnit pageLogicalHeight = pageLogicalHeightForOffset(logicalOffset + adjustment); pageLogicalHeight;
         pageLogicalHeight = pageLogicalHeightForOffset(logicalOffset + adjustment)) {
         if (minimumLogicalHeight <= pageLogicalHeight)
@@ -1895,21 +1887,21 @@ bool RenderBlockFlow::pushToNextPageWithMinimumLogicalHeight(LayoutUnit& adjustm
         if (!hasNextPage(logicalOffset + adjustment))
             return false;
         adjustment += pageLogicalHeight;
-        checkRegion = true;
+        checkFragment = true;
     }
-    return !checkRegion;
+    return !checkFragment;
 }
 
 void RenderBlockFlow::setPageBreak(LayoutUnit offset, LayoutUnit spaceShortage)
 {
-    if (RenderFlowThread* flowThread = flowThreadContainingBlock())
-        flowThread->setPageBreak(this, offsetFromLogicalTopOfFirstPage() + offset, spaceShortage);
+    if (RenderFragmentedFlow* fragmentedFlow = enclosingFragmentedFlow())
+        fragmentedFlow->setPageBreak(this, offsetFromLogicalTopOfFirstPage() + offset, spaceShortage);
 }
 
 void RenderBlockFlow::updateMinimumPageHeight(LayoutUnit offset, LayoutUnit minHeight)
 {
-    if (RenderFlowThread* flowThread = flowThreadContainingBlock())
-        flowThread->updateMinimumPageHeight(this, offsetFromLogicalTopOfFirstPage() + offset, minHeight);
+    if (RenderFragmentedFlow* fragmentedFlow = enclosingFragmentedFlow())
+        fragmentedFlow->updateMinimumPageHeight(this, offsetFromLogicalTopOfFirstPage() + offset, minHeight);
 }
 
 LayoutUnit RenderBlockFlow::nextPageLogicalTop(LayoutUnit logicalOffset, PageBoundaryRule pageBoundaryRule) const
@@ -1937,10 +1929,10 @@ LayoutUnit RenderBlockFlow::pageLogicalTopForOffset(LayoutUnit offset) const
     LayoutUnit blockLogicalTop = isHorizontalWritingMode() ? view().layoutState()->m_layoutOffset.height() : view().layoutState()->m_layoutOffset.width();
 
     LayoutUnit cumulativeOffset = offset + blockLogicalTop;
-    RenderFlowThread* flowThread = flowThreadContainingBlock();
-    if (!flowThread)
+    RenderFragmentedFlow* fragmentedFlow = enclosingFragmentedFlow();
+    if (!fragmentedFlow)
         return cumulativeOffset - roundToInt(cumulativeOffset - firstPageLogicalTop) % roundToInt(pageLogicalHeight);
-    return firstPageLogicalTop + flowThread->pageLogicalTopForOffset(cumulativeOffset - firstPageLogicalTop);
+    return firstPageLogicalTop + fragmentedFlow->pageLogicalTopForOffset(cumulativeOffset - firstPageLogicalTop);
 }
 
 LayoutUnit RenderBlockFlow::pageLogicalHeightForOffset(LayoutUnit offset) const
@@ -1952,18 +1944,18 @@ LayoutUnit RenderBlockFlow::pageLogicalHeightForOffset(LayoutUnit offset) const
         return 0;
     
     // Now check for a flow thread.
-    RenderFlowThread* flowThread = flowThreadContainingBlock();
-    if (!flowThread)
+    RenderFragmentedFlow* fragmentedFlow = enclosingFragmentedFlow();
+    if (!fragmentedFlow)
         return pageLogicalHeight;
-    return flowThread->pageLogicalHeightForOffset(offset + offsetFromLogicalTopOfFirstPage());
+    return fragmentedFlow->pageLogicalHeightForOffset(offset + offsetFromLogicalTopOfFirstPage());
 }
 
 LayoutUnit RenderBlockFlow::pageRemainingLogicalHeightForOffset(LayoutUnit offset, PageBoundaryRule pageBoundaryRule) const
 {
     offset += offsetFromLogicalTopOfFirstPage();
     
-    RenderFlowThread* flowThread = flowThreadContainingBlock();
-    if (!flowThread) {
+    RenderFragmentedFlow* fragmentedFlow = enclosingFragmentedFlow();
+    if (!fragmentedFlow) {
         LayoutUnit pageLogicalHeight = view().layoutState()->m_pageLogicalHeight;
         LayoutUnit remainingHeight = pageLogicalHeight - intMod(offset, pageLogicalHeight);
         if (pageBoundaryRule == IncludePageBoundary) {
@@ -1974,7 +1966,7 @@ LayoutUnit RenderBlockFlow::pageRemainingLogicalHeightForOffset(LayoutUnit offse
         return remainingHeight;
     }
     
-    return flowThread->pageRemainingLogicalHeightForOffset(offset, pageBoundaryRule);
+    return fragmentedFlow->pageRemainingLogicalHeightForOffset(offset, pageBoundaryRule);
 }
 
 LayoutUnit RenderBlockFlow::logicalHeightForChildForFragmentation(const RenderBox& child) const
@@ -2045,22 +2037,19 @@ void RenderBlockFlow::styleDidChange(StyleDifference diff, const RenderStyle* ol
     if (noLongerAffectsParentBlock() && style().isFloating() && previousSibling() && previousSibling()->isAnonymousBlock())
         downcast<RenderBoxModelObject>(*parent()).moveChildTo(&downcast<RenderBoxModelObject>(*previousSibling()), this);
 
-    if (auto fragment = renderNamedFlowFragment())
-        fragment->setStyle(RenderNamedFlowFragment::createStyle(style()));
-
     if (diff >= StyleDifferenceRepaint) {
         // FIXME: This could use a cheaper style-only test instead of SimpleLineLayout::canUseFor.
         if (selfNeedsLayout() || !m_simpleLineLayout || !SimpleLineLayout::canUseFor(*this))
             invalidateLineLayoutPath();
     }
 
-    if (multiColumnFlowThread())
+    if (multiColumnFlow())
         updateStylesForColumnChildren();
 }
 
 void RenderBlockFlow::updateStylesForColumnChildren()
 {
-    for (auto* child = firstChildBox(); child && (child->isInFlowRenderFlowThread() || child->isRenderMultiColumnSet()); child = child->nextSiblingBox())
+    for (auto* child = firstChildBox(); child && (child->isInFlowRenderFragmentedFlow() || child->isRenderMultiColumnSet()); child = child->nextSiblingBox())
         child->setStyle(RenderStyle::createAnonymousStyleWithDisplay(style(), BLOCK));
 }
 
@@ -2153,7 +2142,7 @@ void RenderBlockFlow::computeOverflow(LayoutUnit oldClientAfterEdge, bool recomp
 {
     RenderBlock::computeOverflow(oldClientAfterEdge, recomputeFloats);
 
-    if (!multiColumnFlowThread() && (recomputeFloats || createsNewFormattingContext() || hasSelfPaintingLayer()))
+    if (!multiColumnFlow() && (recomputeFloats || createsNewFormattingContext() || hasSelfPaintingLayer()))
         addOverflowFromFloats();
 }
 
@@ -2188,7 +2177,7 @@ void RenderBlockFlow::paintColumnRules(PaintInfo& paintInfo, const LayoutPoint& 
 {
     RenderBlock::paintColumnRules(paintInfo, point);
     
-    if (!multiColumnFlowThread() || paintInfo.context().paintingDisabled())
+    if (!multiColumnFlow() || paintInfo.context().paintingDisabled())
         return;
 
     // Iterate over our children and paint the column rules as needed.
@@ -2326,7 +2315,7 @@ void RenderBlockFlow::removeFloatingObject(RenderBox& floatBox)
                         floatingObject.originatingLine()->markDirty();
                     }
 #if !ASSERT_DISABLED
-                    floatingObject.setOriginatingLine(0);
+                    floatingObject.clearOriginatingLine();
 #endif
                 }
                 markLinesDirtyInBlockRange(0, logicalBottom);
@@ -2377,7 +2366,7 @@ void RenderBlockFlow::computeLogicalLocationForFloat(FloatingObject& floatingObj
 
     LayoutUnit floatLogicalLeft;
 
-    bool insideFlowThread = flowThreadContainingBlock();
+    bool insideFragmentedFlow = enclosingFragmentedFlow();
     bool isInitialLetter = childBox.style().styleType() == FIRST_LETTER && childBox.style().initialLetterDrop() > 0;
     
     if (isInitialLetter) {
@@ -2395,7 +2384,7 @@ void RenderBlockFlow::computeLogicalLocationForFloat(FloatingObject& floatingObj
         while (logicalRightOffsetForPositioningFloat(logicalTopOffset, logicalRightOffset, false, &heightRemainingRight) - floatLogicalLeft < floatLogicalWidth) {
             logicalTopOffset += std::min(heightRemainingLeft, heightRemainingRight);
             floatLogicalLeft = logicalLeftOffsetForPositioningFloat(logicalTopOffset, logicalLeftOffset, false, &heightRemainingLeft);
-            if (insideFlowThread) {
+            if (insideFragmentedFlow) {
                 // Have to re-evaluate all of our offsets, since they may have changed.
                 logicalRightOffset = logicalRightOffsetForContent(logicalTopOffset); // Constant part of right offset.
                 logicalLeftOffset = logicalLeftOffsetForContent(logicalTopOffset); // Constant part of left offset.
@@ -2410,7 +2399,7 @@ void RenderBlockFlow::computeLogicalLocationForFloat(FloatingObject& floatingObj
         while (floatLogicalLeft - logicalLeftOffsetForPositioningFloat(logicalTopOffset, logicalLeftOffset, false, &heightRemainingLeft) < floatLogicalWidth) {
             logicalTopOffset += std::min(heightRemainingLeft, heightRemainingRight);
             floatLogicalLeft = logicalRightOffsetForPositioningFloat(logicalTopOffset, logicalRightOffset, false, &heightRemainingRight);
-            if (insideFlowThread) {
+            if (insideFragmentedFlow) {
                 // Have to re-evaluate all of our offsets, since they may have changed.
                 logicalRightOffset = logicalRightOffsetForContent(logicalTopOffset); // Constant part of right offset.
                 logicalLeftOffset = logicalLeftOffsetForContent(logicalTopOffset); // Constant part of left offset.
@@ -2521,7 +2510,7 @@ bool RenderBlockFlow::positionNewFloats()
         computeLogicalLocationForFloat(floatingObject, logicalTop);
         LayoutUnit childLogicalTop = logicalTopForChild(childBox);
 
-        estimateRegionRangeForBoxChild(childBox);
+        estimateFragmentRangeForBoxChild(childBox);
 
         childBox.markForPaginationRelayoutIfNeeded();
         childBox.layoutIfNeeded();
@@ -2551,7 +2540,7 @@ bool RenderBlockFlow::positionNewFloats()
                 logicalTop = newLogicalTop;
             }
 
-            if (updateRegionRangeForBoxChild(childBox)) {
+            if (updateFragmentRangeForBoxChild(childBox)) {
                 childBox.setNeedsLayout(MarkOnlyThis);
                 childBox.layoutIfNeeded();
             }
@@ -2861,8 +2850,8 @@ LayoutUnit RenderBlockFlow::getClearDelta(RenderBox& child, LayoutUnit logicalTo
             if (availableLogicalWidthAtNewLogicalTopOffset == availableLogicalWidthForContent(newLogicalTop))
                 return newLogicalTop - logicalTop;
 
-            RenderRegion* region = regionAtBlockOffset(logicalTopForChild(child));
-            LayoutRect borderBox = child.borderBoxRectInRegion(region, DoNotCacheRenderBoxRegionInfo);
+            RenderFragmentContainer* fragment = fragmentAtBlockOffset(logicalTopForChild(child));
+            LayoutRect borderBox = child.borderBoxRectInFragment(fragment, DoNotCacheRenderBoxFragmentInfo);
             LayoutUnit childLogicalWidthAtOldLogicalTopOffset = isHorizontalWritingMode() ? borderBox.width() : borderBox.height();
 
             // FIXME: None of this is right for perpendicular writing-mode children.
@@ -2873,8 +2862,8 @@ LayoutUnit RenderBlockFlow::getClearDelta(RenderBox& child, LayoutUnit logicalTo
 
             child.setLogicalTop(newLogicalTop);
             child.updateLogicalWidth();
-            region = regionAtBlockOffset(logicalTopForChild(child));
-            borderBox = child.borderBoxRectInRegion(region, DoNotCacheRenderBoxRegionInfo);
+            fragment = fragmentAtBlockOffset(logicalTopForChild(child));
+            borderBox = child.borderBoxRectInFragment(fragment, DoNotCacheRenderBoxFragmentInfo);
             LayoutUnit childLogicalWidthAtNewLogicalTopOffset = isHorizontalWritingMode() ? borderBox.width() : borderBox.height();
 
             child.setLogicalTop(childOldLogicalTop);
@@ -3151,72 +3140,27 @@ GapRects RenderBlockFlow::inlineSelectionGaps(RenderBlock& rootBlock, const Layo
     return result;
 }
 
-void RenderBlockFlow::createRenderNamedFlowFragmentIfNeeded()
-{
-    if (renderNamedFlowFragment() || isRenderNamedFlowFragment())
-        return;
-
-    // FIXME: Multicolumn regions not yet supported (http://dev.w3.org/csswg/css-regions/#multi-column-regions)
-    if (style().isDisplayRegionType() && style().hasFlowFrom() && !style().specifiesColumns()) {
-        RenderNamedFlowFragment* flowFragment = new RenderNamedFlowFragment(document(), RenderNamedFlowFragment::createStyle(style()));
-        flowFragment->initializeStyle();
-        addChild(flowFragment);
-        setRenderNamedFlowFragment(flowFragment);
-    }
-}
-
-bool RenderBlockFlow::needsLayoutAfterRegionRangeChange() const
+bool RenderBlockFlow::needsLayoutAfterFragmentRangeChange() const
 {
     // A block without floats or that expands to enclose them won't need a relayout
-    // after a region range change. There is no overflow content needing relayout
-    // in the region chain because the region range can only shrink after the estimation.
+    // after a fragment range change. There is no overflow content needing relayout
+    // in the fragment chain because the fragment range can only shrink after the estimation.
     if (!containsFloats() || createsNewFormattingContext())
         return false;
 
     return true;
 }
 
-bool RenderBlockFlow::canHaveChildren() const
-{
-    return !renderNamedFlowFragment() ? RenderBlock::canHaveChildren() : renderNamedFlowFragment()->canHaveChildren();
-}
-
-bool RenderBlockFlow::canHaveGeneratedChildren() const
-{
-    return !renderNamedFlowFragment() ? RenderBlock::canHaveGeneratedChildren() : renderNamedFlowFragment()->canHaveGeneratedChildren();
-}
-
-bool RenderBlockFlow::namedFlowFragmentNeedsUpdate() const
-{
-    if (!isRenderNamedFlowFragmentContainer())
-        return false;
-
-    return hasRelativeLogicalHeight() && !isRenderView();
-}
-
 void RenderBlockFlow::updateLogicalHeight()
 {
     RenderBlock::updateLogicalHeight();
-
-    if (renderNamedFlowFragment()) {
-        renderNamedFlowFragment()->setLogicalHeight(std::max<LayoutUnit>(0, logicalHeight() - borderAndPaddingLogicalHeight()));
-        renderNamedFlowFragment()->invalidateRegionIfNeeded();
-    }
 }
 
-void RenderBlockFlow::setRenderNamedFlowFragment(RenderNamedFlowFragment* flowFragment)
+void RenderBlockFlow::setMultiColumnFlow(RenderMultiColumnFlow* fragmentedFlow)
 {
-    RenderBlockFlowRareData& rareData = ensureRareBlockFlowData();
-    if (auto* flowFragmentOnFlow = std::exchange(rareData.m_renderNamedFlowFragment, nullptr))
-        flowFragmentOnFlow->destroy();
-    rareData.m_renderNamedFlowFragment = flowFragment;
-}
-
-void RenderBlockFlow::setMultiColumnFlowThread(RenderMultiColumnFlowThread* flowThread)
-{
-    if (flowThread || hasRareBlockFlowData()) {
+    if (fragmentedFlow || hasRareBlockFlowData()) {
         RenderBlockFlowRareData& rareData = ensureRareBlockFlowData();
-        rareData.m_multiColumnFlowThread = flowThread;
+        rareData.m_multiColumnFlow = fragmentedFlow;
     }
 }
 
@@ -3415,7 +3359,7 @@ RenderText* RenderBlockFlow::findClosestTextAtAbsolutePoint(const FloatPoint& po
     
     // Only check the gaps between the root line boxes. We deliberately ignore overflow because
     // experience has shown that hit tests on an exploded text node can fail when within the
-    // overflow region.
+    // overflow fragment.
     for (RootInlineBox* current = blockFlow.firstRootBox(); current && current != blockFlow.lastRootBox(); current = current->nextRootBox()) {
         float currentBottom = current->y() + current->logicalHeight();
         if (localPoint.y() < currentBottom)
@@ -3432,7 +3376,7 @@ RenderText* RenderBlockFlow::findClosestTextAtAbsolutePoint(const FloatPoint& po
     return nullptr;
 }
 
-VisiblePosition RenderBlockFlow::positionForPointWithInlineChildren(const LayoutPoint& pointInLogicalContents, const RenderRegion* region)
+VisiblePosition RenderBlockFlow::positionForPointWithInlineChildren(const LayoutPoint& pointInLogicalContents, const RenderFragmentContainer* fragment)
 {
     ASSERT(childrenInline());
 
@@ -3449,7 +3393,7 @@ VisiblePosition RenderBlockFlow::positionForPointWithInlineChildren(const Layout
     RootInlineBox* firstRootBoxWithChildren = 0;
     RootInlineBox* lastRootBoxWithChildren = 0;
     for (RootInlineBox* root = firstRootBox(); root; root = root->nextRootBox()) {
-        if (region && root->containingRegion() != region)
+        if (fragment && root->containingFragment() != fragment)
             continue;
 
         if (!root->firstLeafChild())
@@ -3533,11 +3477,9 @@ Position RenderBlockFlow::positionForPoint(const LayoutPoint& point)
     return downcast<RenderText>(*firstChild()).positionForPoint(point);
 }
 
-VisiblePosition RenderBlockFlow::positionForPoint(const LayoutPoint& point, const RenderRegion* region)
+VisiblePosition RenderBlockFlow::positionForPoint(const LayoutPoint& point, const RenderFragmentContainer*)
 {
-    if (auto fragment = renderNamedFlowFragment())
-        return fragment->positionForPoint(point, region);
-    return RenderBlock::positionForPoint(point, region);
+    return RenderBlock::positionForPoint(point, nullptr);
 }
 
 void RenderBlockFlow::addFocusRingRectsForInlineChildren(Vector<LayoutRect>& rects, const LayoutPoint& additionalOffset, const RenderLayerModelObject*)
@@ -3565,11 +3507,11 @@ void RenderBlockFlow::paintInlineChildren(PaintInfo& paintInfo, const LayoutPoin
 
 bool RenderBlockFlow::relayoutForPagination(LayoutStateMaintainer& statePusher)
 {
-    if (!multiColumnFlowThread() || !multiColumnFlowThread()->shouldRelayoutForPagination())
+    if (!multiColumnFlow() || !multiColumnFlow()->shouldRelayoutForPagination())
         return false;
     
-    multiColumnFlowThread()->setNeedsHeightsRecalculation(false);
-    multiColumnFlowThread()->setInBalancingPass(true); // Prevent re-entering this method (and recursion into layout).
+    multiColumnFlow()->setNeedsHeightsRecalculation(false);
+    multiColumnFlow()->setInBalancingPass(true); // Prevent re-entering this method (and recursion into layout).
 
     bool needsRelayout;
     bool neededRelayout = false;
@@ -3581,7 +3523,7 @@ bool RenderBlockFlow::relayoutForPagination(LayoutStateMaintainer& statePusher)
         // passes than that, though, but the number of retries should not exceed the number of
         // columns, unless we have a bug.
         needsRelayout = false;
-        for (RenderMultiColumnSet* multicolSet = multiColumnFlowThread()->firstMultiColumnSet(); multicolSet; multicolSet = multicolSet->nextSiblingMultiColumnSet()) {
+        for (RenderMultiColumnSet* multicolSet = multiColumnFlow()->firstMultiColumnSet(); multicolSet; multicolSet = multicolSet->nextSiblingMultiColumnSet()) {
             if (multicolSet->recalculateColumnHeight(firstPass))
                 needsRelayout = true;
             if (needsRelayout) {
@@ -3595,7 +3537,7 @@ bool RenderBlockFlow::relayoutForPagination(LayoutStateMaintainer& statePusher)
         if (needsRelayout) {
             // Layout again. Column balancing resulted in a new height.
             neededRelayout = true;
-            multiColumnFlowThread()->setChildNeedsLayout(MarkOnlyThis);
+            multiColumnFlow()->setChildNeedsLayout(MarkOnlyThis);
             setChildNeedsLayout(MarkOnlyThis);
             if (firstPass)
                 statePusher.pop();
@@ -3604,7 +3546,7 @@ bool RenderBlockFlow::relayoutForPagination(LayoutStateMaintainer& statePusher)
         firstPass = false;
     } while (needsRelayout);
     
-    multiColumnFlowThread()->setInBalancingPass(false);
+    multiColumnFlow()->setInBalancingPass(false);
     
     return neededRelayout;
 }
@@ -3861,24 +3803,24 @@ void RenderBlockFlow::layoutExcludedChildren(bool relayoutChildren)
 {
     RenderBlock::layoutExcludedChildren(relayoutChildren);
 
-    auto* flowThread = multiColumnFlowThread();
-    if (!flowThread)
+    auto* fragmentedFlow = multiColumnFlow();
+    if (!fragmentedFlow)
         return;
 
-    flowThread->setIsExcludedFromNormalLayout(true);
+    fragmentedFlow->setIsExcludedFromNormalLayout(true);
 
-    setLogicalTopForChild(*flowThread, borderAndPaddingBefore());
+    setLogicalTopForChild(*fragmentedFlow, borderAndPaddingBefore());
 
     if (relayoutChildren)
-        flowThread->setChildNeedsLayout(MarkOnlyThis);
+        fragmentedFlow->setChildNeedsLayout(MarkOnlyThis);
 
-    if (flowThread->needsLayout()) {
-        for (RenderMultiColumnSet* columnSet = flowThread->firstMultiColumnSet(); columnSet; columnSet = columnSet->nextSiblingMultiColumnSet())
-            columnSet->prepareForLayout(!flowThread->inBalancingPass());
+    if (fragmentedFlow->needsLayout()) {
+        for (RenderMultiColumnSet* columnSet = fragmentedFlow->firstMultiColumnSet(); columnSet; columnSet = columnSet->nextSiblingMultiColumnSet())
+            columnSet->prepareForLayout(!fragmentedFlow->inBalancingPass());
 
-        flowThread->invalidateRegions(MarkOnlyThis);
-        flowThread->setNeedsHeightsRecalculation(true);
-        flowThread->layout();
+        fragmentedFlow->invalidateFragments(MarkOnlyThis);
+        fragmentedFlow->setNeedsHeightsRecalculation(true);
+        fragmentedFlow->layout();
     } else {
         // At the end of multicol layout, relayoutForPagination() is called unconditionally, but if
         // no children are to be laid out (e.g. fixed width with layout already being up-to-date),
@@ -3888,27 +3830,27 @@ void RenderBlockFlow::layoutExcludedChildren(bool relayoutChildren)
         // are actually required to guarantee this. The calculation of implicit breaks needs to be
         // preceded by a proper layout pass, since it's layout that sets up content runs, and the
         // runs get deleted right after every pass.
-        flowThread->setNeedsHeightsRecalculation(false);
+        fragmentedFlow->setNeedsHeightsRecalculation(false);
     }
-    determineLogicalLeftPositionForChild(*flowThread);
+    determineLogicalLeftPositionForChild(*fragmentedFlow);
 }
 
 void RenderBlockFlow::addChild(RenderObject* newChild, RenderObject* beforeChild)
 {
-    if (multiColumnFlowThread() && (!isFieldset() || !newChild->isLegend()))
-        return multiColumnFlowThread()->addChild(newChild, beforeChild);
+    if (multiColumnFlow() && (!isFieldset() || !newChild->isLegend()))
+        return multiColumnFlow()->addChild(newChild, beforeChild);
     auto* beforeChildOrPlaceholder = beforeChild;
-    if (auto* containingFlowThread = flowThreadContainingBlock())
-        beforeChildOrPlaceholder = containingFlowThread->resolveMovedChild(beforeChild);
+    if (auto* containingFragmentedFlow = enclosingFragmentedFlow())
+        beforeChildOrPlaceholder = containingFragmentedFlow->resolveMovedChild(beforeChild);
     RenderBlock::addChild(newChild, beforeChildOrPlaceholder);
 }
 
 void RenderBlockFlow::removeChild(RenderObject& oldChild)
 {
     if (!renderTreeBeingDestroyed()) {
-        RenderFlowThread* flowThread = multiColumnFlowThread();
-        if (flowThread && flowThread != &oldChild)
-            flowThread->flowThreadRelativeWillBeRemoved(oldChild);
+        RenderFragmentedFlow* fragmentedFlow = multiColumnFlow();
+        if (fragmentedFlow && fragmentedFlow != &oldChild)
+            fragmentedFlow->fragmentedFlowRelativeWillBeRemoved(oldChild);
     }
     RenderBlock::removeChild(oldChild);
 }
@@ -3916,21 +3858,21 @@ void RenderBlockFlow::removeChild(RenderObject& oldChild)
 void RenderBlockFlow::checkForPaginationLogicalHeightChange(bool& relayoutChildren, LayoutUnit& pageLogicalHeight, bool& pageLogicalHeightChanged)
 {
     // If we don't use columns or flow threads, then bail.
-    if (!isRenderFlowThread() && !multiColumnFlowThread())
+    if (!isRenderFragmentedFlow() && !multiColumnFlow())
         return;
     
     // We don't actually update any of the variables. We just subclassed to adjust our column height.
-    if (RenderMultiColumnFlowThread* flowThread = multiColumnFlowThread()) {
+    if (RenderMultiColumnFlow* fragmentedFlow = multiColumnFlow()) {
         LayoutUnit newColumnHeight;
         if (hasDefiniteLogicalHeight() || view().frameView().pagination().mode != Pagination::Unpaginated) {
             auto computedValues = computeLogicalHeight(LayoutUnit(), logicalTop());
             newColumnHeight = std::max<LayoutUnit>(computedValues.m_extent - borderAndPaddingLogicalHeight() - scrollbarLogicalHeight(), 0);
-            if (flowThread->columnHeightAvailable() != newColumnHeight)
+            if (fragmentedFlow->columnHeightAvailable() != newColumnHeight)
                 relayoutChildren = true;
         }
-        flowThread->setColumnHeightAvailable(newColumnHeight);
-    } else if (is<RenderFlowThread>(*this)) {
-        RenderFlowThread& flowThread = downcast<RenderFlowThread>(*this);
+        fragmentedFlow->setColumnHeightAvailable(newColumnHeight);
+    } else if (is<RenderFragmentedFlow>(*this)) {
+        RenderFragmentedFlow& fragmentedFlow = downcast<RenderFragmentedFlow>(*this);
 
         // FIXME: This is a hack to always make sure we have a page logical height, if said height
         // is known. The page logical height thing in LayoutState is meaningless for flow
@@ -3941,9 +3883,9 @@ void RenderBlockFlow::checkForPaginationLogicalHeightChange(bool& relayoutChildr
         // it's unknown, we need to prevent the pagination code from assuming page breaks everywhere
         // and thereby eating every top margin. It should be trivial to clean up and get rid of this
         // hack once the old multicol implementation is gone (see also RenderView::pushLayoutStateForPagination).
-        pageLogicalHeight = flowThread.isPageLogicalHeightKnown() ? LayoutUnit(1) : LayoutUnit(0);
+        pageLogicalHeight = fragmentedFlow.isPageLogicalHeightKnown() ? LayoutUnit(1) : LayoutUnit(0);
 
-        pageLogicalHeightChanged = flowThread.pageLogicalSizeChanged();
+        pageLogicalHeightChanged = fragmentedFlow.pageLogicalSizeChanged();
     }
 }
 
@@ -3954,31 +3896,31 @@ bool RenderBlockFlow::requiresColumns(int desiredColumnCount) const
 
 void RenderBlockFlow::setComputedColumnCountAndWidth(int count, LayoutUnit width)
 {
-    ASSERT(!!multiColumnFlowThread() == requiresColumns(count));
-    if (!multiColumnFlowThread())
+    ASSERT(!!multiColumnFlow() == requiresColumns(count));
+    if (!multiColumnFlow())
         return;
-    multiColumnFlowThread()->setColumnCountAndWidth(count, width);
-    multiColumnFlowThread()->setProgressionIsInline(style().hasInlineColumnAxis());
-    multiColumnFlowThread()->setProgressionIsReversed(style().columnProgression() == ReverseColumnProgression);
+    multiColumnFlow()->setColumnCountAndWidth(count, width);
+    multiColumnFlow()->setProgressionIsInline(style().hasInlineColumnAxis());
+    multiColumnFlow()->setProgressionIsReversed(style().columnProgression() == ReverseColumnProgression);
 }
 
 void RenderBlockFlow::updateColumnProgressionFromStyle(RenderStyle& style)
 {
-    if (!multiColumnFlowThread())
+    if (!multiColumnFlow())
         return;
     
     bool needsLayout = false;
-    bool oldProgressionIsInline = multiColumnFlowThread()->progressionIsInline();
+    bool oldProgressionIsInline = multiColumnFlow()->progressionIsInline();
     bool newProgressionIsInline = style.hasInlineColumnAxis();
     if (oldProgressionIsInline != newProgressionIsInline) {
-        multiColumnFlowThread()->setProgressionIsInline(newProgressionIsInline);
+        multiColumnFlow()->setProgressionIsInline(newProgressionIsInline);
         needsLayout = true;
     }
 
-    bool oldProgressionIsReversed = multiColumnFlowThread()->progressionIsReversed();
+    bool oldProgressionIsReversed = multiColumnFlow()->progressionIsReversed();
     bool newProgressionIsReversed = style.columnProgression() == ReverseColumnProgression;
     if (oldProgressionIsReversed != newProgressionIsReversed) {
-        multiColumnFlowThread()->setProgressionIsReversed(newProgressionIsReversed);
+        multiColumnFlow()->setProgressionIsReversed(newProgressionIsReversed);
         needsLayout = true;
     }
 
@@ -3988,15 +3930,15 @@ void RenderBlockFlow::updateColumnProgressionFromStyle(RenderStyle& style)
 
 LayoutUnit RenderBlockFlow::computedColumnWidth() const
 {
-    if (multiColumnFlowThread())
-        return multiColumnFlowThread()->computedColumnWidth();
+    if (multiColumnFlow())
+        return multiColumnFlow()->computedColumnWidth();
     return contentLogicalWidth();
 }
 
 unsigned RenderBlockFlow::computedColumnCount() const
 {
-    if (multiColumnFlowThread())
-        return multiColumnFlowThread()->computedColumnCount();
+    if (multiColumnFlow())
+        return multiColumnFlow()->computedColumnCount();
     
     return 1;
 }
@@ -4004,7 +3946,7 @@ unsigned RenderBlockFlow::computedColumnCount() const
 bool RenderBlockFlow::isTopLayoutOverflowAllowed() const
 {
     bool hasTopOverflow = RenderBlock::isTopLayoutOverflowAllowed();
-    if (!multiColumnFlowThread() || style().columnProgression() == NormalColumnProgression)
+    if (!multiColumnFlow() || style().columnProgression() == NormalColumnProgression)
         return hasTopOverflow;
     
     if (!(isHorizontalWritingMode() ^ !style().hasInlineColumnAxis()))
@@ -4016,7 +3958,7 @@ bool RenderBlockFlow::isTopLayoutOverflowAllowed() const
 bool RenderBlockFlow::isLeftLayoutOverflowAllowed() const
 {
     bool hasLeftOverflow = RenderBlock::isLeftLayoutOverflowAllowed();
-    if (!multiColumnFlowThread() || style().columnProgression() == NormalColumnProgression)
+    if (!multiColumnFlow() || style().columnProgression() == NormalColumnProgression)
         return hasLeftOverflow;
     
     if (isHorizontalWritingMode() ^ !style().hasInlineColumnAxis())

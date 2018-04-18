@@ -28,11 +28,13 @@ class Type extends Node {
     get typeParameters() { return []; }
     get kind() { return Type; }
     get isPtr() { return false; }
+    get isArray() { return false; }
     get isArrayRef() { return false; }
     get isRef() { return this.isPtr || this.isArrayRef; }
     get isNumber() { return false; }
     get isInt() { return false; }
     get isFloating() { return false; }
+    get isPrimitive() { return false; }
     
     inherits(protocol)
     {

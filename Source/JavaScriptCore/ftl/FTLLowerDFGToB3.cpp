@@ -932,6 +932,12 @@ private:
         case CompareGreaterEq:
             compileCompareGreaterEq();
             break;
+        case CompareBelow:
+            compileCompareBelow();
+            break;
+        case CompareBelowEq:
+            compileCompareBelowEq();
+            break;
         case CompareEqPtr:
             compileCompareEqPtr();
             break;
@@ -4082,68 +4088,134 @@ private:
     
     void compileArrayPush()
     {
-        LValue base = lowCell(m_node->child1());
-        LValue storage = lowStorage(m_node->child3());
-        
+        LValue base = lowCell(m_graph.varArgChild(m_node, 1));
+        LValue storage = lowStorage(m_graph.varArgChild(m_node, 0));
+        unsigned elementOffset = 2;
+        unsigned elementCount = m_node->numChildren() - elementOffset;
+
         switch (m_node->arrayMode().type()) {
         case Array::Int32:
         case Array::Contiguous:
         case Array::Double: {
-            LValue value;
-            Output::StoreType storeType;
-            
-            if (m_node->arrayMode().type() != Array::Double) {
-                value = lowJSValue(m_node->child2(), ManualOperandSpeculation);
-                if (m_node->arrayMode().type() == Array::Int32) {
-                    FTL_TYPE_CHECK(
-                        jsValueValue(value), m_node->child2(), SpecInt32Only, isNotInt32(value));
-                }
-                storeType = Output::Store64;
-            } else {
-                value = lowDouble(m_node->child2());
-                FTL_TYPE_CHECK(
-                    doubleValue(value), m_node->child2(), SpecDoubleReal,
-                    m_out.doubleNotEqualOrUnordered(value, value));
-                storeType = Output::StoreDouble;
-            }
-            
             IndexedAbstractHeap& heap = m_heaps.forArrayType(m_node->arrayMode().type());
 
+            if (elementCount == 1) {
+                LValue value;
+                Output::StoreType storeType;
+                
+                Edge& element = m_graph.varArgChild(m_node, elementOffset);
+                if (m_node->arrayMode().type() != Array::Double) {
+                    value = lowJSValue(element, ManualOperandSpeculation);
+                    if (m_node->arrayMode().type() == Array::Int32)
+                        RELEASE_ASSERT(!m_interpreter.needsTypeCheck(element, SpecInt32Only));
+                    storeType = Output::Store64;
+                } else {
+                    value = lowDouble(element);
+                    RELEASE_ASSERT(!m_interpreter.needsTypeCheck(element, SpecDoubleReal));
+                    storeType = Output::StoreDouble;
+                }
+
+                LValue prevLength = m_out.load32(storage, m_heaps.Butterfly_publicLength);
+                
+                LBasicBlock fastPath = m_out.newBlock();
+                LBasicBlock slowPath = m_out.newBlock();
+                LBasicBlock continuation = m_out.newBlock();
+                
+                m_out.branch(
+                    m_out.aboveOrEqual(
+                        prevLength, m_out.load32(storage, m_heaps.Butterfly_vectorLength)),
+                    unsure(slowPath), unsure(fastPath));
+                
+                LBasicBlock lastNext = m_out.appendTo(fastPath, slowPath);
+                m_out.store(
+                    value, m_out.baseIndex(heap, storage, m_out.zeroExtPtr(prevLength)), storeType);
+                LValue newLength = m_out.add(prevLength, m_out.int32One);
+                m_out.store32(newLength, storage, m_heaps.Butterfly_publicLength);
+                
+                ValueFromBlock fastResult = m_out.anchor(boxInt32(newLength));
+                m_out.jump(continuation);
+                
+                m_out.appendTo(slowPath, continuation);
+                LValue operation;
+                if (m_node->arrayMode().type() != Array::Double)
+                    operation = m_out.operation(operationArrayPush);
+                else
+                    operation = m_out.operation(operationArrayPushDouble);
+                ValueFromBlock slowResult = m_out.anchor(
+                    vmCall(Int64, operation, m_callFrame, value, base));
+                m_out.jump(continuation);
+                
+                m_out.appendTo(continuation, lastNext);
+                setJSValue(m_out.phi(Int64, fastResult, slowResult));
+                return;
+            }
+
             LValue prevLength = m_out.load32(storage, m_heaps.Butterfly_publicLength);
-            
+            LValue newLength = m_out.add(prevLength, m_out.constInt32(elementCount));
+
             LBasicBlock fastPath = m_out.newBlock();
             LBasicBlock slowPath = m_out.newBlock();
+            LBasicBlock setup = m_out.newBlock();
+            LBasicBlock slowCallPath = m_out.newBlock();
             LBasicBlock continuation = m_out.newBlock();
-            
-            m_out.branch(
-                m_out.aboveOrEqual(
-                    prevLength, m_out.load32(storage, m_heaps.Butterfly_vectorLength)),
-                unsure(slowPath), unsure(fastPath));
-            
+
+            LValue beyondVectorLength = m_out.above(newLength, m_out.load32(storage, m_heaps.Butterfly_vectorLength));
+
+            m_out.branch(beyondVectorLength, unsure(slowPath), unsure(fastPath));
+
             LBasicBlock lastNext = m_out.appendTo(fastPath, slowPath);
-            m_out.store(
-                value, m_out.baseIndex(heap, storage, m_out.zeroExtPtr(prevLength)), storeType);
-            LValue newLength = m_out.add(prevLength, m_out.int32One);
             m_out.store32(newLength, storage, m_heaps.Butterfly_publicLength);
-            
+            ValueFromBlock fastBufferResult = m_out.anchor(m_out.baseIndex(storage, m_out.zeroExtPtr(prevLength), ScaleEight));
+            m_out.jump(setup);
+
+            m_out.appendTo(slowPath, setup);
+            size_t scratchSize = sizeof(EncodedJSValue) * elementCount;
+            static_assert(sizeof(EncodedJSValue) == sizeof(double), "");
+            ASSERT(scratchSize);
+            ScratchBuffer* scratchBuffer = vm().scratchBufferForSize(scratchSize);
+            m_out.storePtr(m_out.constIntPtr(scratchSize), m_out.absolute(scratchBuffer->addressOfActiveLength()));
+            ValueFromBlock slowBufferResult = m_out.anchor(m_out.constIntPtr(static_cast<EncodedJSValue*>(scratchBuffer->dataBuffer())));
+            m_out.jump(setup);
+
+            m_out.appendTo(setup, slowCallPath);
+            LValue buffer = m_out.phi(pointerType(), fastBufferResult, slowBufferResult);
+            for (unsigned elementIndex = 0; elementIndex < elementCount; ++elementIndex) {
+                Edge& element = m_graph.varArgChild(m_node, elementIndex + elementOffset);
+
+                LValue value;
+                Output::StoreType storeType;
+                if (m_node->arrayMode().type() != Array::Double) {
+                    value = lowJSValue(element, ManualOperandSpeculation);
+                    if (m_node->arrayMode().type() == Array::Int32)
+                        RELEASE_ASSERT(!m_interpreter.needsTypeCheck(element, SpecInt32Only));
+                    storeType = Output::Store64;
+                } else {
+                    value = lowDouble(element);
+                    RELEASE_ASSERT(!m_interpreter.needsTypeCheck(element, SpecDoubleReal));
+                    storeType = Output::StoreDouble;
+                }
+
+                m_out.store(value, m_out.baseIndex(heap, buffer, m_out.constInt32(elementIndex), jsNumber(elementIndex)), storeType);
+            }
             ValueFromBlock fastResult = m_out.anchor(boxInt32(newLength));
-            m_out.jump(continuation);
-            
-            m_out.appendTo(slowPath, continuation);
+
+            m_out.branch(beyondVectorLength, unsure(slowCallPath), unsure(continuation));
+
+            m_out.appendTo(slowCallPath, continuation);
             LValue operation;
             if (m_node->arrayMode().type() != Array::Double)
-                operation = m_out.operation(operationArrayPush);
+                operation = m_out.operation(operationArrayPushMultiple);
             else
-                operation = m_out.operation(operationArrayPushDouble);
-            ValueFromBlock slowResult = m_out.anchor(
-                vmCall(Int64, operation, m_callFrame, value, base));
+                operation = m_out.operation(operationArrayPushDoubleMultiple);
+            ValueFromBlock slowResult = m_out.anchor(vmCall(Int64, operation, m_callFrame, base, buffer, m_out.constInt32(elementCount)));
+            m_out.storePtr(m_out.constIntPtr(0), m_out.absolute(scratchBuffer->addressOfActiveLength()));
             m_out.jump(continuation);
-            
+
             m_out.appendTo(continuation, lastNext);
             setJSValue(m_out.phi(Int64, fastResult, slowResult));
             return;
         }
-            
+
         default:
             DFG_CRASH(m_graph, m_node, "Bad array type");
             return;
@@ -4189,7 +4261,7 @@ private:
                 m_out.select(m_out.equal(indexingType, m_out.constInt32(ArrayWithContiguous)),
                     weakStructure(m_graph.registerStructure(globalObject->arrayStructureForIndexingTypeDuringAllocation(ArrayWithContiguous))),
                     weakStructure(m_graph.registerStructure(globalObject->arrayStructureForIndexingTypeDuringAllocation(ArrayWithDouble)))));
-            arrayResult = allocateJSArray(resultLength, structure, indexingType, false, false);
+            arrayResult = allocateJSArray(resultLength, resultLength, structure, indexingType, false, false);
         }
 
         LBasicBlock loop = m_out.newBlock();
@@ -5114,9 +5186,11 @@ private:
         
         if (!globalObject->isHavingABadTime() && !hasAnyArrayStorage(m_node->indexingType())) {
             unsigned numElements = m_node->numConstants();
-            
+            unsigned vectorLengthHint = m_node->vectorLengthHint();
+           
+            ASSERT(vectorLengthHint >= numElements);
             ArrayValues arrayValues =
-                allocateUninitializedContiguousJSArray(m_out.constInt32(numElements), structure);
+                allocateUninitializedContiguousJSArray(numElements, vectorLengthHint, structure);
             
             JSValue* data = codeBlock()->constantBuffer(m_node->startConstant());
             for (unsigned index = 0; index < m_node->numConstants(); ++index) {
@@ -5155,7 +5229,7 @@ private:
             IndexingType indexingType = m_node->indexingType();
             setJSValue(
                 allocateJSArray(
-                    publicLength, weakPointer(globalObject->arrayStructureForIndexingTypeDuringAllocation(indexingType)), m_out.constInt32(indexingType)).array);
+                    publicLength, publicLength, weakPointer(globalObject->arrayStructureForIndexingTypeDuringAllocation(indexingType)), m_out.constInt32(indexingType)).array);
             mutatorFence();
             return;
         }
@@ -6335,6 +6409,16 @@ private:
             operationCompareStringImplGreaterEq,
             operationCompareStringGreaterEq,
             operationCompareGreaterEq);
+    }
+
+    void compileCompareBelow()
+    {
+        setBoolean(m_out.below(lowInt32(m_node->child1()), lowInt32(m_node->child2())));
+    }
+    
+    void compileCompareBelowEq()
+    {
+        setBoolean(m_out.belowOrEqual(lowInt32(m_node->child1()), lowInt32(m_node->child2())));
     }
     
     void compileLogicalNot()
@@ -11441,7 +11525,7 @@ private:
         LValue butterfly;
     };
 
-    ArrayValues allocateJSArray(LValue publicLength, LValue structure, LValue indexingType, bool shouldInitializeElements = true, bool shouldLargeArraySizeCreateArrayStorage = true)
+    ArrayValues allocateJSArray(LValue publicLength, LValue vectorLength, LValue structure, LValue indexingType, bool shouldInitializeElements = true, bool shouldLargeArraySizeCreateArrayStorage = true)
     {
         JSGlobalObject* globalObject = m_graph.globalObjectFor(m_node->origin.semantic);
         if (indexingType->hasInt32()) {
@@ -11460,6 +11544,32 @@ private:
         LBasicBlock slowCase = m_out.newBlock();
         
         LBasicBlock lastNext = m_out.insertNewBlocksBefore(fastCase);
+
+        std::optional<unsigned> staticVectorLength;
+        std::optional<unsigned> staticVectorLengthFromPublicLength;
+        if (structure->hasIntPtr()) {
+            if (publicLength->hasInt32()) {
+                unsigned publicLengthConst = static_cast<unsigned>(publicLength->asInt32());
+                if (publicLengthConst <= MAX_STORAGE_VECTOR_LENGTH) {
+                    publicLengthConst = Butterfly::optimalContiguousVectorLength(
+                        bitwise_cast<Structure*>(structure->asIntPtr())->outOfLineCapacity(), publicLengthConst);
+                    staticVectorLengthFromPublicLength = publicLengthConst;
+                }
+
+            }
+            if (vectorLength->hasInt32()) {
+                unsigned vectorLengthConst = static_cast<unsigned>(vectorLength->asInt32());
+                if (vectorLengthConst <= MAX_STORAGE_VECTOR_LENGTH) {
+                    vectorLengthConst = Butterfly::optimalContiguousVectorLength(
+                        bitwise_cast<Structure*>(structure->asIntPtr())->outOfLineCapacity(), vectorLengthConst);
+                    vectorLength = m_out.constInt32(vectorLengthConst);
+                    staticVectorLength = vectorLengthConst;
+                }
+            }
+        } else {
+            // We don't compute the optimal vector length for new Array(blah) where blah is not
+            // statically known, since the compute effort of doing it here is probably not worth it.
+        }
         
         ValueFromBlock noButterfly = m_out.anchor(m_out.intPtrZero);
         
@@ -11472,22 +11582,6 @@ private:
         m_out.branch(predicate, rarely(largeCase), usually(fastCase));
         
         m_out.appendTo(fastCase, largeCase);
-
-        LValue vectorLength = nullptr;
-        if (publicLength->hasInt32() && structure->hasIntPtr()) {
-            unsigned publicLengthConst = static_cast<unsigned>(publicLength->asInt32());
-            if (publicLengthConst <= MAX_STORAGE_VECTOR_LENGTH) {
-                vectorLength = m_out.constInt32(
-                    Butterfly::optimalContiguousVectorLength(
-                        bitwise_cast<Structure*>(structure->asIntPtr())->outOfLineCapacity(), publicLengthConst));
-            }
-        }
-        
-        if (!vectorLength) {
-            // We don't compute the optimal vector length for new Array(blah) where blah is not
-            // statically known, since the compute effort of doing it here is probably not worth it.
-            vectorLength = publicLength;
-        }
             
         LValue payloadSize =
             m_out.shl(m_out.zeroExt(vectorLength, pointerType()), m_out.constIntPtr(3));
@@ -11530,13 +11624,26 @@ private:
         LValue butterflyValue = m_out.phi(pointerType(), noButterfly, haveButterfly);
 
         VM& vm = this->vm();
-        LValue slowResultValue = lazySlowPath(
-            [=, &vm] (const Vector<Location>& locations) -> RefPtr<LazySlowPath::Generator> {
-                return createLazyCallGenerator(vm,
-                    operationNewArrayWithSize, locations[0].directGPR(),
-                    locations[1].directGPR(), locations[2].directGPR(), locations[3].directGPR());
-            },
-            structureValue, publicLength, butterflyValue);
+        LValue slowResultValue = nullptr;
+        if (vectorLength == publicLength
+            || (staticVectorLengthFromPublicLength && staticVectorLength && staticVectorLength.value() == staticVectorLengthFromPublicLength.value())) {
+            slowResultValue = lazySlowPath(
+                [=, &vm] (const Vector<Location>& locations) -> RefPtr<LazySlowPath::Generator> {
+                    return createLazyCallGenerator(vm,
+                        operationNewArrayWithSize, locations[0].directGPR(),
+                        locations[1].directGPR(), locations[2].directGPR(), locations[3].directGPR());
+                },
+                structureValue, publicLength, butterflyValue);
+        } else {
+            slowResultValue = lazySlowPath(
+                [=, &vm] (const Vector<Location>& locations) -> RefPtr<LazySlowPath::Generator> {
+                    return createLazyCallGenerator(vm,
+                        operationNewArrayWithSizeAndHint, locations[0].directGPR(),
+                        locations[1].directGPR(), locations[2].directGPR(), locations[3].directGPR(), locations[4].directGPR());
+                },
+                structureValue, publicLength, vectorLength, butterflyValue);
+        }
+
         ValueFromBlock slowResult = m_out.anchor(slowResultValue);
         ValueFromBlock slowButterfly = m_out.anchor(
             m_out.loadPtr(slowResultValue, m_heaps.JSObject_butterfly));
@@ -11548,13 +11655,24 @@ private:
             m_out.phi(pointerType(), fastButterfly, slowButterfly));
     }
     
-    ArrayValues allocateUninitializedContiguousJSArray(LValue publicLength, RegisteredStructure structure)
+    ArrayValues allocateUninitializedContiguousJSArrayInternal(LValue publicLength, LValue vectorLength, RegisteredStructure structure)
     {
         bool shouldInitializeElements = false;
         bool shouldLargeArraySizeCreateArrayStorage = false;
         return allocateJSArray(
-            publicLength, weakStructure(structure), m_out.constInt32(structure->indexingType()), shouldInitializeElements,
+            publicLength, vectorLength, weakStructure(structure), m_out.constInt32(structure->indexingType()), shouldInitializeElements,
             shouldLargeArraySizeCreateArrayStorage);
+    }
+
+    ArrayValues allocateUninitializedContiguousJSArray(LValue publicLength, RegisteredStructure structure)
+    {
+        return allocateUninitializedContiguousJSArrayInternal(publicLength, publicLength, structure);
+    }
+
+    ArrayValues allocateUninitializedContiguousJSArray(unsigned publicLength, unsigned vectorLength, RegisteredStructure structure)
+    {
+        ASSERT(vectorLength >= publicLength);
+        return allocateUninitializedContiguousJSArrayInternal(m_out.constInt32(publicLength), m_out.constInt32(vectorLength), structure);
     }
     
     LValue ensureShadowChickenPacket()

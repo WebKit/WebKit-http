@@ -134,6 +134,14 @@
 #define DEFAULT_RESOURCE_TIMING_ENABLED true
 #endif
 
+#if PLATFORM(COCOA)
+#define DEFAULT_DATA_TRANSFER_ITEMS_ENABLED true
+#define DEFAULT_DIRECTORY_UPLOAD_ENABLED true
+#else
+#define DEFAULT_DATA_TRANSFER_ITEMS_ENABLED false
+#define DEFAULT_DIRECTORY_UPLOAD_ENABLED false
+#endif
+
 // macro(KeyUpper, KeyLower, TypeNameUpper, TypeName, DefaultValue, HumanReadableName, HumanReadableDescription)
 
 #define FOR_EACH_WEBKIT_BOOL_PREFERENCE(macro) \
@@ -292,7 +300,10 @@
     macro(LegacyEncryptedMediaAPIEnabled, legacyEncryptedMediaAPIEnabled, Bool, bool, DEFAULT_LEGACY_ENCRYPTED_MEDIA_API_ENABLED, "Enable Legacy EME API", "Enable legacy EME API") \
     macro(AllowMediaContentTypesRequiringHardwareSupportAsFallback, allowMediaContentTypesRequiringHardwareSupportAsFallback, Bool, bool, DEFAULT_ALLOW_MEDIA_CONTENT_TYPES_REQUIRING_HARDWARE_SUPPORT_AS_FALLBACK, "Allow Media Content Types Requirining Hardware As Fallback", "Allow Media Content Types Requirining Hardware As Fallback") \
     macro(InspectorAdditionsEnabled, inspectorAdditionsEnabled, Bool, bool, false, "Web Inspector Additions", "Enable additional page APIs used by the Web Inspector frontend page") \
+    macro(DirectoryUploadEnabled, directoryUploadEnabled, Bool, bool, DEFAULT_DIRECTORY_UPLOAD_ENABLED, "Directory Upload", "input.webkitdirectory / dataTransferItem.webkitGetAsEntry()") \
+    macro(DataTransferItemsEnabled, dataTransferItemsEnabled, Bool, bool, DEFAULT_DATA_TRANSFER_ITEMS_ENABLED, "Data Transfer Items", "Enables DataTransferItem in the clipboard API") \
     macro(WebVREnabled, webVREnabled, Bool, bool, false, "WebVR", "WebVR Module support") \
+    macro(ViewportFitEnabled, viewportFitEnabled, Bool, bool, true, "Viewport Fit", "Enable viewport-fit viewport parameter") \
     \
 
 #define FOR_EACH_WEBKIT_DOUBLE_PREFERENCE(macro) \
@@ -360,6 +371,8 @@
 //   wider testing).
 
 #define FOR_EACH_WEBKIT_EXPERIMENTAL_FEATURE_PREFERENCE(macro) \
+    macro(AsyncFrameScrollingEnabled, asyncFrameScrollingEnabled, Bool, bool, false, "Async Frame Scrolling", "Perform frame scrolling in a dedicated thread or process") \
+    macro(CacheAPIEnabled, cacheAPIEnabled, Bool, bool, false, "Cache API", "Enable Cache API") \
     macro(ConstantPropertiesEnabled, constantPropertiesEnabled, Bool, bool, true, "Constant Properties", "Enable CSS constant() properties") \
     macro(DisplayContentsEnabled, displayContentsEnabled, Bool, bool, false, "CSS display: contents", "Enable CSS display: contents support") \
     macro(SpringTimingFunctionEnabled, springTimingFunctionEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "CSS Spring Animations", "CSS Spring Animation prototype") \
@@ -368,16 +381,11 @@
     macro(WebRTCLegacyAPIDisabled, webRTCLegacyAPIDisabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "Remove Legacy WebRTC API", "Remove Legacy WebRTC API") \
     macro(IsSecureContextAttributeEnabled, isSecureContextAttributeEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "Secure Contexts API", "Enable Secure Contexts API") \
     macro(ServiceWorkersEnabled, serviceWorkersEnabled, Bool, bool, false, "ServiceWorkers", "Enable ServiceWorkers") \
-    macro(CacheAPIEnabled, cacheAPIEnabled, Bool, bool, false, "Cache API", "Enable Cache API") \
     macro(StorageAccessAPIEnabled, storageAccessAPIEnabled, Bool, bool, false, "Storage Access API", "Enable Storage Access API") \
     macro(SubresourceIntegrityEnabled, subresourceIntegrityEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "SubresourceIntegrity", "Enable SubresourceIntegrity") \
-    macro(ViewportFitEnabled, viewportFitEnabled, Bool, bool, true, "Viewport Fit", "Enable viewport-fit viewport parameter") \
     macro(WebAnimationsEnabled, webAnimationsEnabled, Bool, bool, false, "Web Animations", "Web Animations prototype") \
     macro(WebGL2Enabled, webGL2Enabled, Bool, bool, false, "WebGL 2.0", "WebGL 2 prototype") \
     macro(WebGPUEnabled, webGPUEnabled, Bool, bool, false, "WebGPU", "WebGPU prototype") \
-    macro(DirectoryUploadEnabled, directoryUploadEnabled, Bool, bool, false, "Directory Upload", "input.webkitdirectory") \
-    macro(DataTransferItemsEnabled, dataTransferItemsEnabled, Bool, bool, false, "Data Transfer Items", "Enables DataTransferItem in the clipboard API") \
-    macro(AsyncFrameScrollingEnabled, asyncFrameScrollingEnabled, Bool, bool, false, "Async Frame Scrolling", "Perform frame scrolling in a dedicated thread or process") \
     \
 
 #if PLATFORM(COCOA)
@@ -401,7 +409,7 @@
     macro(PictographFontFamily, pictographFontFamily, String, String, "Apple Color Emoji", "", "") \
     \
 
-#elif PLATFORM(GTK) || PLATFORM(HAIKU) || PLATFORM(WPE)
+#else
 
 #define FOR_EACH_WEBKIT_FONT_FAMILY_PREFERENCE(macro) \
     macro(StandardFontFamily, standardFontFamily, String, String, "Times", "", "") \

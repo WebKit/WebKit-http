@@ -47,25 +47,17 @@
 OBJC_CLASS NSView;
 OBJC_CLASS NSWindow;
 typedef NSView *PlatformWidget;
-#endif
-
-#if PLATFORM(WIN)
+#elif PLATFORM(WIN)
 typedef struct HWND__* HWND;
 typedef HWND PlatformWidget;
-#endif
-
-#if PLATFORM(GTK)
+#elif PLATFORM(GTK)
 typedef struct _GtkWidget GtkWidget;
 typedef struct _GtkContainer GtkContainer;
 typedef GtkWidget* PlatformWidget;
-#endif
-
-#if PLATFORM(HAIKU)
+#elif PLATFORM(HAIKU)
 class BView;
 typedef BView* PlatformWidget;
-#endif
-
-#if PLATFORM(WPE)
+#else
 typedef void* PlatformWidget;
 #endif
 
@@ -206,7 +198,7 @@ public:
     WEBCORE_EXPORT virtual IntPoint convertToContainingView(const IntPoint&) const;
     WEBCORE_EXPORT virtual IntPoint convertFromContainingView(const IntPoint&) const;
 
-    WeakPtr<Widget> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
+    WeakPtr<Widget> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(*this); }
 
 private:
     void init(PlatformWidget); // Must be called by all Widget constructors to initialize cross-platform data.
@@ -233,7 +225,7 @@ private:
 #if PLATFORM(HAIKU)
     PlatformWidget m_topLevelPlatformWidget;
 #endif
-    WeakPtrFactory<Widget> m_weakPtrFactory { this };
+    WeakPtrFactory<Widget> m_weakPtrFactory;
     bool m_selfVisible;
     bool m_parentVisible;
 

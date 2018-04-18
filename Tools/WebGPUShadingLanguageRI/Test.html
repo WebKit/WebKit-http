@@ -27,6 +27,7 @@
 <script src="CheckLiteralTypes.js"></script>
 <script src="CheckLoops.js"></script>
 <script src="CheckRecursion.js"></script>
+<script src="CheckRecursiveTypes.js"></script>
 <script src="CheckReturns.js"></script>
 <script src="CheckUnreachableCode.js"></script>
 <script src="CheckWrapped.js"></script>
@@ -52,6 +53,7 @@
 <script src="EvaluationCommon.js"></script>
 <script src="Evaluator.js"></script>
 <script src="ExpressionFinder.js"></script>
+<script src="ExternalOrigin.js"></script>
 <script src="Field.js"></script>
 <script src="FindHighZombies.js"></script>
 <script src="FlattenProtocolExtends.js"></script>
@@ -76,6 +78,7 @@
 <script src="IntLiteral.js"></script>
 <script src="IntLiteralType.js"></script>
 <script src="Intrinsics.js"></script>
+<script src="LateChecker.js"></script>
 <script src="Lexer.js"></script>
 <script src="LexerToken.js"></script>
 <script src="LiteralTypeChecker.js"></script>
@@ -85,6 +88,7 @@
 <script src="MakeArrayRefExpression.js"></script>
 <script src="MakePtrExpression.js"></script>
 <script src="NameContext.js"></script>
+<script src="NameFinder.js"></script>
 <script src="NameResolver.js"></script>
 <script src="NativeFunc.js"></script>
 <script src="NativeFuncInstance.js"></script>
@@ -93,11 +97,13 @@
 <script src="NormalUsePropertyResolver.js"></script>
 <script src="NullLiteral.js"></script>
 <script src="NullType.js"></script>
+<script src="OriginKind.js"></script>
 <script src="OverloadResolutionFailure.js"></script>
 <script src="Parse.js"></script>
 <script src="Prepare.js"></script>
 <script src="PropertyResolver.js"></script>
 <script src="Program.js"></script>
+<script src="ProgramWithUnnecessaryThingsRemoved.js"></script>
 <script src="Protocol.js"></script>
 <script src="ProtocolDecl.js"></script>
 <script src="ProtocolFuncDecl.js"></script>
@@ -105,6 +111,7 @@
 <script src="PtrType.js"></script>
 <script src="ReadModifyWriteExpression.js"></script>
 <script src="RecursionChecker.js"></script>
+<script src="RecursiveTypeChecker.js"></script>
 <script src="ResolveNames.js"></script>
 <script src="ResolveOverloadImpl.js"></script>
 <script src="ResolveProperties.js"></script>
@@ -117,6 +124,8 @@
 <script src="StructLayoutBuilder.js"></script>
 <script src="StructType.js"></script>
 <script src="Substitution.js"></script>
+<script src="SwitchCase.js"></script>
+<script src="SwitchStatement.js"></script>
 <script src="SynthesizeEnumFunctions.js"></script>
 <script src="SynthesizeStructAccessors.js"></script>
 <script src="TrapStatement.js"></script>
@@ -146,26 +155,19 @@
 <script>
 function doTestInBrowser()
 {
-    var tester = doTest(window);
+    var tester = doTest(/.*/);
     var lastTime;
     function next()
     {
-        var before = Date.now();
-        for (;;) {
-            try {
-                if (tester.next().done)
-                    return;
-            } catch (e) {
-                print("ERROR: " + e.message);
-                print(e.stack);
+        try {
+            if (tester.next().done)
                 return;
-            }
-            var now = Date.now();
-            if (now - before > 100) {
-                window.setTimeout(next, 0);
-                return;
-            }
+        } catch (e) {
+            print("ERROR: " + e.message);
+            print(e.stack);
+            return;
         }
+        window.setTimeout(next, 0);
     }
     next();
 }

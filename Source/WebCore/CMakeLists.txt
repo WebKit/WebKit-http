@@ -509,7 +509,6 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/CompositionEvent.idl
     dom/CustomElementRegistry.idl
     dom/CustomEvent.idl
-    dom/DOMError.idl
     dom/DOMException.idl
     dom/DOMImplementation.idl
     dom/DOMPoint.idl
@@ -1615,7 +1614,6 @@ set(WebCore_SOURCES
     dom/CustomElementReactionQueue.cpp
     dom/CustomElementRegistry.cpp
     dom/CustomEvent.cpp
-    dom/DOMError.cpp
     dom/DOMException.cpp
     dom/DOMImplementation.cpp
     dom/DOMPointReadOnly.cpp
@@ -2111,6 +2109,7 @@ set(WebCore_SOURCES
     loader/FrameLoadRequest.cpp
     loader/FrameLoader.cpp
     loader/FrameLoaderStateMachine.cpp
+    loader/HTTPHeaderField.cpp
     loader/HistoryController.cpp
     loader/ImageLoader.cpp
     loader/LinkHeader.cpp
@@ -2124,7 +2123,6 @@ set(WebCore_SOURCES
     loader/NavigationScheduler.cpp
     loader/NetscapePlugInStreamLoader.cpp
     loader/PingLoader.cpp
-    loader/PolicyCallback.cpp
     loader/PolicyChecker.cpp
     loader/ProgressTracker.cpp
     loader/ResourceCryptographicDigest.cpp
@@ -2312,8 +2310,6 @@ set(WebCore_SOURCES
     page/scrolling/ThreadedScrollingTree.cpp
 
     platform/CalculationValue.cpp
-    platform/Clock.cpp
-    platform/ClockGeneric.cpp
     platform/ContentType.cpp
     platform/ContextMenu.cpp
     platform/ContextMenuItem.cpp
@@ -2666,6 +2662,7 @@ set(WebCore_SOURCES
     rendering/LayoutDisallowedScope.cpp
     rendering/LayoutRepainter.cpp
     rendering/LayoutState.cpp
+    rendering/MarkerSubrange.cpp
     rendering/OrderIterator.cpp
     rendering/PointerEventsHitRules.cpp
     rendering/RenderAttachment.cpp
@@ -2683,7 +2680,9 @@ set(WebCore_SOURCES
     rendering/RenderEmbeddedObject.cpp
     rendering/RenderFileUploadControl.cpp
     rendering/RenderFlexibleBox.cpp
-    rendering/RenderFlowThread.cpp
+    rendering/RenderFragmentedFlow.cpp
+    rendering/RenderFragmentContainer.cpp
+    rendering/RenderFragmentContainerSet.cpp
     rendering/RenderFrame.cpp
     rendering/RenderFrameBase.cpp
     rendering/RenderFrameSet.cpp
@@ -2712,15 +2711,12 @@ set(WebCore_SOURCES
     rendering/RenderMediaControls.cpp
     rendering/RenderMenuList.cpp
     rendering/RenderMeter.cpp
-    rendering/RenderMultiColumnFlowThread.cpp
+    rendering/RenderMultiColumnFlow.cpp
     rendering/RenderMultiColumnSet.cpp
     rendering/RenderMultiColumnSpannerPlaceholder.cpp
-    rendering/RenderNamedFlowFragment.cpp
     rendering/RenderObject.cpp
     rendering/RenderProgress.cpp
     rendering/RenderQuote.cpp
-    rendering/RenderRegion.cpp
-    rendering/RenderRegionSet.cpp
     rendering/RenderReplaced.cpp
     rendering/RenderReplica.cpp
     rendering/RenderRuby.cpp
@@ -4025,8 +4021,6 @@ list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/EventInterfac
 
 
 GENERATE_EVENT_FACTORY(${WEBCORE_DIR}/dom/EventTargetFactory.in EventTargetInterfaces.h)
-ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/dom/EventNames.cpp EventTargetInterfaces.h)
-ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/dom/DOMAllInOne.cpp EventTargetInterfaces.h)
 list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/EventTargetInterfaces.h)
 
 

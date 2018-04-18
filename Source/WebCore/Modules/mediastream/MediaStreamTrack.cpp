@@ -40,6 +40,7 @@
 #include "NotImplemented.h"
 #include "OverconstrainedError.h"
 #include "Page.h"
+#include "RealtimeMediaSourceCenter.h"
 #include "ScriptExecutionContext.h"
 #include <wtf/NeverDestroyed.h>
 
@@ -53,7 +54,6 @@ Ref<MediaStreamTrack> MediaStreamTrack::create(ScriptExecutionContext& context, 
 MediaStreamTrack::MediaStreamTrack(ScriptExecutionContext& context, Ref<MediaStreamTrackPrivate>&& privateTrack)
     : ActiveDOMObject(&context)
     , m_private(WTFMove(privateTrack))
-    , m_weakPtrFactory(this)
     , m_taskQueue(context)
 {
     suspendIfNeeded();
@@ -144,7 +144,7 @@ void MediaStreamTrack::stopTrack(StopMode mode)
     configureTrackRendering();
 }
 
-MediaStreamTrack::TrackSettings MediaStreamTrack::getSettings() const
+MediaStreamTrack::TrackSettings MediaStreamTrack::getSettings(Document& document) const
 {
     auto& settings = m_private->settings();
     TrackSettings result;
@@ -167,9 +167,9 @@ MediaStreamTrack::TrackSettings MediaStreamTrack::getSettings() const
     if (settings.supportsEchoCancellation())
         result.echoCancellation = settings.echoCancellation();
     if (settings.supportsDeviceId())
-        result.deviceId = settings.deviceId();
+        result.deviceId = RealtimeMediaSourceCenter::singleton().hashStringWithSalt(settings.deviceId(), document.deviceIDHashSalt());
     if (settings.supportsGroupId())
-        result.groupId = settings.groupId();
+        result.groupId = RealtimeMediaSourceCenter::singleton().hashStringWithSalt(settings.groupId(), document.deviceIDHashSalt());
     return result;
 }
 

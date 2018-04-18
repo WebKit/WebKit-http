@@ -83,7 +83,6 @@ public:
     bool isRenderBlockFlow() const;
     bool isRenderReplaced() const;
     bool isRenderInline() const;
-    bool isRenderNamedFlowFragmentContainer() const;
 
     virtual bool isChildAllowed(const RenderObject&, const RenderStyle&) const { return true; }
     virtual void addChild(RenderObject* newChild, RenderObject* beforeChild = nullptr);
@@ -215,8 +214,8 @@ public:
 
     RespectImageOrientationEnum shouldRespectImageOrientation() const;
 
-    void removeFromRenderFlowThread();
-    virtual void resetFlowThreadContainingBlockAndChildInfoIncludingDescendants(RenderFlowThread*);
+    void removeFromRenderFragmentedFlow();
+    virtual void resetEnclosingFragmentedFlowAndChildInfoIncludingDescendants(RenderFragmentedFlow*);
 
     // Called before anonymousChild.setStyle(). Override to set custom styles for
     // the child.
@@ -277,8 +276,8 @@ protected:
     void paintOutline(PaintInfo&, const LayoutRect&);
     void updateOutlineAutoAncestor(bool hasOutlineAuto);
 
-    void removeFromRenderFlowThreadIncludingDescendants(bool shouldUpdateState);
-    void adjustFlowThreadStateOnContainingBlockChangeIfNeeded();
+    void removeFromRenderFragmentedFlowIncludingDescendants(bool shouldUpdateState);
+    void adjustFragmentedFlowStateOnContainingBlockChangeIfNeeded();
     
     bool noLongerAffectsParentBlock() const { return s_noLongerAffectsParentBlock; }
     bool isVisibleInViewport() const;
@@ -418,8 +417,6 @@ inline bool RenderElement::isRenderInline() const
 
 inline Element* RenderElement::generatingElement() const
 {
-    if (parent() && isRenderNamedFlowFragment())
-        return parent()->generatingElement();
     return downcast<Element>(RenderObject::generatingNode());
 }
 
@@ -428,7 +425,7 @@ inline bool RenderElement::canContainFixedPositionObjects() const
     return isRenderView()
         || (hasTransform() && isRenderBlock())
         || isSVGForeignObject()
-        || isOutOfFlowRenderFlowThread();
+        || isOutOfFlowRenderFragmentedFlow();
 }
 
 inline bool RenderElement::canContainAbsolutelyPositionedObjects() const

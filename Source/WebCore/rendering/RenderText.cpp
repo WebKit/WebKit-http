@@ -446,14 +446,18 @@ Vector<FloatQuad> RenderText::absoluteQuadsForRange(unsigned start, unsigned end
 Position RenderText::positionForPoint(const LayoutPoint& point)
 {
     if (simpleLineLayout() && parent()->firstChild() == parent()->lastChild()) {
-        auto position = Position(textNode(), SimpleLineLayout::textOffsetForPoint(point, *this, *simpleLineLayout()));
+        auto offset = SimpleLineLayout::textOffsetForPoint(point, *this, *simpleLineLayout());
+        // Did not find a valid offset. Fall back to the normal line layout based Position.
+        if (offset == textLength())
+            return positionForPoint(point, nullptr).deepEquivalent();
+        auto position = Position(textNode(), offset);
         ASSERT(position == positionForPoint(point, nullptr).deepEquivalent());
         return position;
     }
     return positionForPoint(point, nullptr).deepEquivalent();
 }
 
-VisiblePosition RenderText::positionForPoint(const LayoutPoint& point, const RenderRegion*)
+VisiblePosition RenderText::positionForPoint(const LayoutPoint& point, const RenderFragmentContainer*)
 {
     ensureLineBoxes();
     return m_lineBoxes.positionForPoint(*this, point);

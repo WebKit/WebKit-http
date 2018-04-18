@@ -1,3 +1,235 @@
+2017-09-27  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r222567.
+
+        This broke and internal build.
+
+        Reverted changeset:
+
+        "Build fix for High Sierra 32 bit Mac"
+        https://bugs.webkit.org/show_bug.cgi?id=177551
+        http://trac.webkit.org/changeset/222567
+
+2017-09-27  Jonathan Bedard  <jbedard@apple.com>
+
+        Build fix for High Sierra 32 bit Mac
+        https://bugs.webkit.org/show_bug.cgi?id=177551
+        <rdar://problem/34690283>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Some assertions have been removed from the SDK. Replace these assertions with equivalent
+        WTF assert code.  Since the files in this patch are using tabs, some style changes were
+        also made.
+
+        * Carbon/CarbonWindowAdapter.mm:
+        (+[CarbonWindowAdapter frameViewClassForStyleMask:]):
+        (-[CarbonWindowAdapter initWithContentRect:styleMask:backing:defer:]):
+        (-[CarbonWindowAdapter initWithCarbonWindowRef:takingOwnership:disableOrdering:carbon:]):
+        (-[CarbonWindowAdapter setViewsNeedDisplay:]):
+        (-[CarbonWindowAdapter initWithCarbonWindowRef:takingOwnership:]):
+        (-[CarbonWindowAdapter dealloc]):
+        (-[CarbonWindowAdapter windowRef]):
+        (-[CarbonWindowAdapter _hasWindowRef]):
+        (-[CarbonWindowAdapter _managesWindowRef]):
+        (-[CarbonWindowAdapter _removeWindowRef]):
+        (-[CarbonWindowAdapter _carbonWindowClass]):
+        (-[CarbonWindowAdapter reconcileToCarbonWindowBounds]):
+        (-[CarbonWindowAdapter sendSuperEvent:]):
+        (-[CarbonWindowAdapter relinquishFocus]):
+        (-[CarbonWindowAdapter _cancelKey:]):
+        (-[CarbonWindowAdapter _commonAwake]):
+        (-[CarbonWindowAdapter _destroyRealWindow:]):
+        (-[CarbonWindowAdapter _oldPlaceWindow:]):
+        (-[CarbonWindowAdapter _termWindowIfOwner]):
+        (-[CarbonWindowAdapter _windowMovedToRect:]):
+        (-[CarbonWindowAdapter constrainFrameRect:toScreen:]):
+        (-[CarbonWindowAdapter selectKeyViewFollowingView:]):
+        (-[CarbonWindowAdapter selectKeyViewPrecedingView:]):
+        (-[CarbonWindowAdapter canBecomeKeyWindow]):
+        (-[CarbonWindowAdapter canBecomeMainWindow]):
+        (-[CarbonWindowAdapter encodeWithCoder:]):
+        (-[CarbonWindowAdapter initWithCoder:]):
+        (-[CarbonWindowAdapter setContentView:]):
+        (-[CarbonWindowAdapter worksWhenModal]):
+        (-[CarbonWindowAdapter _setModalWindowLevel]):
+        (-[CarbonWindowAdapter _clearModalWindowLevel]):
+        (-[CarbonWindowAdapter carbonHICommandIDFromActionSelector:]):
+        (-[CarbonWindowAdapter sendCarbonProcessHICommandEvent:]):
+        (-[CarbonWindowAdapter sendCarbonUpdateHICommandStatusEvent:withMenuRef:andMenuItemIndex:]):
+        (-[CarbonWindowAdapter _handleRootBoundsChanged]):
+        (-[CarbonWindowAdapter _handleContentBoundsChanged]):
+        (-[CarbonWindowAdapter _handleCarbonEvent:callRef:]):
+        (NSCarbonWindowHandleEvent):
+        (-[CarbonWindowAdapter _reallyDoOrderWindow:relativeTo:findKey:forCounter:force:isModal:]):
+        (-[CarbonWindowAdapter _growBoxRect]):
+        * Carbon/HIWebView.mm:
+        (HIWebViewGetWebView):
+        (HIWebViewConstructor):
+        (HIWebViewDestructor):
+        (HIWebViewRegisterClass):
+        (GetBehaviors):
+        (Draw):
+        (HitTest):
+        (GetRegion):
+        (GetWindowRef):
+        (CreateNSEventAdoptingCGEvent):
+        (CopyEventCGEvent):
+        (CreateNSEventWithCarbonClickEvent):
+        (Click):
+        (CreateNSEventWithCarbonEvent):
+        (MouseUp):
+        (CreateNSEventWithCarbonMouseMoveEvent):
+        (MouseMoved):
+        (MouseDragged):
+        (MouseWheelMoved):
+        (ContextMenuClick):
+        (GetKind):
+        (BoundsChanged):
+        (OwningWindowChanged):
+        (WindowHandler):
+        (SyncFrame):
+        (SetFocusPart):
+        (AdvanceFocus):
+        (RelinquishFocus):
+        (ActiveStateChanged):
+        (ProcessCommand):
+        (UpdateCommandStatus):
+        (_NSSelectorForHICommand):
+        (HIWebViewEventHandler):
+        (StartUpdateObserver):
+        (StopUpdateObserver):
+        (UpdateObserver):
+
+2017-09-25  Alex Christensen  <achristensen@webkit.org>
+
+        Make PolicyAction an encodable enum class
+        https://bugs.webkit.org/show_bug.cgi?id=177480
+
+        Reviewed by Antti Koivisto.
+
+        * Plugins/WebPluginContainerCheck.mm:
+        (-[WebPluginContainerCheck _continueWithPolicy:]):
+        (-[WebPluginContainerCheck _isForbiddenFileLoad]):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (-[WebFramePolicyListener invalidate]):
+        (-[WebFramePolicyListener ignore]):
+        (-[WebFramePolicyListener download]):
+        (-[WebFramePolicyListener use]):
+        (-[WebFramePolicyListener continue]):
+        * WebView/WebPolicyDelegate.mm:
+        (-[WebPolicyDecisionListener use]):
+        (-[WebPolicyDecisionListener ignore]):
+        (-[WebPolicyDecisionListener download]):
+
+2017-09-25  Frederik Riedel  <riedel@apple.com>
+
+        Expose way to set values of classified form controls as {Legacy WebKit, WebKit} SPI
+        https://bugs.webkit.org/show_bug.cgi?id=174394
+        <rdar://problem/33183504>
+
+        Reviewed by Ryosuke Niwa.
+
+        * DOM/DOMHTMLInputElement.h:
+        * DOM/DOMHTMLInputElement.mm:
+        (-[DOMHTMLInputElement acceptsAutofilledLoginCredentials]):
+        Determines if this HTMLInputElement is part of a login screen.
+        (-[DOMHTMLInputElement representingPageUrl]):
+        Returns the webpage's URL that is currently displayed in the Web View.
+        (-[DOMHTMLInputElement insertTextSuggestion:]):
+        Inserts login credentials into the Web View.
+
+2017-09-25  Sam Weinig  <sam@webkit.org>
+
+        Remove unused EditorClient functions
+        https://bugs.webkit.org/show_bug.cgi?id=177463
+
+        Reviewed by Alex Christensen.
+
+        Remove unused EditorClient functions.
+
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::canonicalizeURL): Deleted.
+        (WebEditorClient::canonicalizeURLString): Deleted.
+        (WebEditorClient::writeDataToPasteboard): Deleted.
+        (WebEditorClient::supportedPasteboardTypesForCurrentSelection): Deleted.
+        (WebEditorClient::readDataFromPasteboard): Deleted.
+        (WebEditorClient::pasteboardChangeCount): Deleted.
+
+2017-09-25  Alex Christensen  <achristensen@webkit.org>
+
+        Stop using PolicyCallback
+        https://bugs.webkit.org/show_bug.cgi?id=176088
+
+        Reviewed by Andy Estes.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (-[WebFramePolicyListener invalidate]):
+        (-[WebFramePolicyListener receivedPolicyDecision:]):
+
+2017-09-25  Sam Weinig  <sam@webkit.org>
+
+        Remove unnecessary userVisibleString EditorClient function
+        https://bugs.webkit.org/show_bug.cgi?id=177456
+
+        Reviewed by Dan Bernstein.
+
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::userVisibleString): Deleted.
+
+            Remove userVisibleString client function.
+
+2017-09-25  Alex Christensen  <achristensen@webkit.org>
+
+        Separate form submission from PolicyChecker infrastructure
+        https://bugs.webkit.org/show_bug.cgi?id=177396
+
+        Reviewed by Geoffrey Garen.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchWillSubmitForm):
+
+2017-09-22  Zalan Bujtas  <zalan@apple.com>
+
+        WeakPtrFactory should populate m_ref lazily.
+        https://bugs.webkit.org/show_bug.cgi?id=177375
+
+        Reviewed by Geoffrey Garen.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::WebEditorClient):
+        (WebEditorClient::requestCandidatesForSelection):
+
+2017-09-22  Chris Dumez  <cdumez@apple.com>
+
+        Use high resolution timestamp for event time
+        https://bugs.webkit.org/show_bug.cgi?id=154246
+        <rdar://problem/34333304>
+
+        Reviewed by Ryosuke Niwa.
+
+        Use WallTime / MonotonicTime instead of double type for clarity.
+
+        * DOM/DOMEvent.mm:
+        (-[DOMEvent timeStamp]):
+        * WebView/WebFrame.mm:
+        (-[WebFrame _dragSourceEndedAt:operation:]):
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView PDFViewWillClickOnLink:withURL:]):
+
+2017-09-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Enable dataTransfer.items on macOS and iOS
+        https://bugs.webkit.org/show_bug.cgi?id=177335
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
 2017-09-20  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: WebView indication highlights sticks around for WebKitLegacy views

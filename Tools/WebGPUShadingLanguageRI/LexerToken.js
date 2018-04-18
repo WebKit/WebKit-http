@@ -33,6 +33,11 @@ class LexerToken {
         this._text = text;
     }
     
+    get lexer()
+    {
+        return this._lexer;
+    }
+    
     get kind()
     {
         return this._kind;
@@ -45,7 +50,12 @@ class LexerToken {
     
     get origin()
     {
-        return this._lexer.origin;
+        return this.lexer.origin;
+    }
+    
+    get originKind()
+    {
+        return this.lexer.originKind;
     }
     
     get index()

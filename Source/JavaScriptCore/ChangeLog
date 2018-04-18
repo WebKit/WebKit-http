@@ -1,3 +1,1195 @@
+2017-09-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, build fix after r222563
+        https://bugs.webkit.org/show_bug.cgi?id=175823
+
+        * runtime/JSArrayInlines.h:
+
+2017-09-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Add Above/Below comparisons for UInt32 patterns
+        https://bugs.webkit.org/show_bug.cgi?id=177281
+
+        Reviewed by Saam Barati.
+
+        Sometimes, we would like to have UInt32 operations in JS. While VM does
+        not support UInt32 nicely, VM supports efficient Int32 operations. As long
+        as signedness does not matter, we can just perform Int32 operations instead
+        and recognize its bit pattern as UInt32.
+
+        But of course, some operations respect signedness. The most frequently
+        used one is comparison. Octane/zlib performs UInt32 comparison by performing
+        `val >>> 0`. It emits op_urshift and op_unsigned. op_urshift produces
+        UInt32 in Int32 form. And op_unsigned will generate Double value if
+        the generated Int32 is < 0 (which should be UInt32).
+
+        There is a chance for optimization. The given code pattern is the following.
+
+            op_unsigned(op_urshift(@1)) lessThan:< op_unsigned(op_urshift(@2))
+
+        This can be converted to the following.
+
+            op_urshift(@1) below:< op_urshift(@2)
+
+        The above conversion is nice since
+
+        1. We can avoid op_unsigned. This could be unsignedness check in DFG. Since
+        this check depends on the value of Int32, dropping this check is not as easy as
+        removing Int32 edge filters.
+
+        2. We can perform unsigned comparison in Int32 form. We do not need to convert
+        them to DoubleRep.
+
+        Since the above comparison exists in Octane/zlib's *super* hot path, dropping
+        op_unsigned offers huge win.
+
+        At first, my patch attempts to convert the above thing in DFG pipeline.
+        However it poses several problems.
+
+        1. MovHint is not well removed. It makes UInt32ToNumber (which is for op_unsigned) live.
+        2. UInt32ToNumber could cause an OSR exit. So if we have the following nodes,
+
+            2: UInt32ToNumber(@0)
+            3: MovHint(@2, xxx)
+            4: UInt32ToNumber(@1)
+            5: MovHint(@1, xxx)
+
+        we could drop @5's MovHint. But @3 is difficult since @4 can exit.
+
+        So, instead, we start introducing a simple optimization in the bytecode compiler.
+        It performs pattern matching for op_urshift and comparison to drop op_unsigned.
+        We adds op_below and op_above families to bytecodes. They only accept Int32 and
+        perform unsigned comparison.
+
+        This offers 4% performance improvement in Octane/zlib.
+
+                                    baseline                  patched
+
+        zlib           x2     431.07483+-16.28434       414.33407+-9.38375         might be 1.0404x faster
+
+        * bytecode/BytecodeDumper.cpp:
+        (JSC::BytecodeDumper<Block>::printCompareJump):
+        (JSC::BytecodeDumper<Block>::dumpBytecode):
+        * bytecode/BytecodeDumper.h:
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/Opcode.h:
+        (JSC::isBranch):
+        * bytecode/PreciseJumpTargetsInlines.h:
+        (JSC::extractStoredJumpTargetsForBytecodeOffset):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitJumpIfTrue):
+        (JSC::BytecodeGenerator::emitJumpIfFalse):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::BinaryOpNode::emitBytecode):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGIntegerRangeOptimizationPhase.cpp:
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileCompareUnsigned):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        * dfg/DFGValidate.cpp:
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCompareBelow):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCompareBelowEq):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        * jit/JIT.h:
+        * jit/JITArithmetic.cpp:
+        (JSC::JIT::emit_op_below):
+        (JSC::JIT::emit_op_beloweq):
+        (JSC::JIT::emit_op_jbelow):
+        (JSC::JIT::emit_op_jbeloweq):
+        (JSC::JIT::emit_compareUnsignedAndJump):
+        (JSC::JIT::emit_compareUnsigned):
+        * jit/JITArithmetic32_64.cpp:
+        (JSC::JIT::emit_compareUnsignedAndJump):
+        (JSC::JIT::emit_compareUnsigned):
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * parser/Nodes.h:
+        (JSC::ExpressionNode::isBinaryOpNode const):
+
+2017-09-25  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Support ArrayPush with multiple args
+        https://bugs.webkit.org/show_bug.cgi?id=175823
+
+        Reviewed by Saam Barati.
+
+        This patch implements ArrayPush(with multiple arguments) in DFG and FTL. Previously, they are not handled
+        by ArrayPush. Then they go to generic direct call to Array#push and it does in slow path. This patch
+        extends ArrayPush to push multiple arguments in a bulk push manner.
+
+        The problem of ArrayPush is that we need to perform ArrayPush atomically: If OSR exit occurs in the middle
+        of ArrayPush, we incorrectly push pushed elements twice. Once we start pushing values, we should not exit.
+        But we do not want to iterate elements twice, once for type checks and once for actually pushing it. It
+        could move elements between registers and memory back and forth.
+
+        This patch achieves the above goal by separating type checks from ArrayPush. When starting ArrayPush, type
+        checks for elements are already done by separately emitted Check nodes.
+
+        We also add JSArray::pushInline for DFG operations just calling JSArray::push. And we also use it in
+        arrayProtoFuncPush's fast path.
+
+        This patch significantly improves performance of `push(multiple args)`.
+
+                                            baseline                  patched
+            Microbenchmarks:
+                array-push-0            461.8455+-28.9995    ^    151.3438+-6.5653        ^ definitely 3.0516x faster
+                array-push-1            133.8845+-7.0349     ?    136.1775+-5.8327        ? might be 1.0171x slower
+                array-push-2            675.6555+-13.4645    ^    145.8747+-6.4621        ^ definitely 4.6318x faster
+                array-push-3            849.5284+-15.2540    ^    253.4421+-9.1249        ^ definitely 3.3520x faster
+
+                                            baseline                  patched
+            SixSpeed:
+                spread-literal.es5       90.3482+-6.6514     ^     24.8123+-2.3304        ^ definitely 3.6413x faster
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArrayPush):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStoreBarrierInsertionPhase.cpp:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileArrayPush):
+        * jit/JITOperations.h:
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoFuncPush):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::push):
+        * runtime/JSArray.h:
+        * runtime/JSArrayInlines.h:
+        (JSC::JSArray::pushInline):
+
+2017-09-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused parameter of Page.reload
+        https://bugs.webkit.org/show_bug.cgi?id=177522
+
+        Reviewed by Matt Baker.
+
+        * inspector/protocol/Page.json:
+
+2017-09-26  Filip Pizlo  <fpizlo@apple.com>
+
+        Put g_gigacageBasePtr into its own page and make it read-only
+        https://bugs.webkit.org/show_bug.cgi?id=174972
+
+        Reviewed by Michael Saboff.
+        
+        C++ code doesn't have to know about this change. That includes C++ code that generates JIT code.
+        
+        But the offline assembler now needs to know about how to load from offsets of global variables.
+        This turned out to be easy to support by extending the existing expression support.
+
+        * llint/LowLevelInterpreter64.asm:
+        * offlineasm/ast.rb:
+        * offlineasm/parser.rb:
+        * offlineasm/transform.rb:
+        * offlineasm/x86.rb:
+
+2017-09-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r222518.
+        https://bugs.webkit.org/show_bug.cgi?id=177507
+
+        Break the High Sierra build (Requested by yusukesuzuki on
+        #webkit).
+
+        Reverted changeset:
+
+        "Add Above/Below comparisons for UInt32 patterns"
+        https://bugs.webkit.org/show_bug.cgi?id=177281
+        http://trac.webkit.org/changeset/222518
+
+2017-09-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Add Above/Below comparisons for UInt32 patterns
+        https://bugs.webkit.org/show_bug.cgi?id=177281
+
+        Reviewed by Saam Barati.
+
+        Sometimes, we would like to have UInt32 operations in JS. While VM does
+        not support UInt32 nicely, VM supports efficient Int32 operations. As long
+        as signedness does not matter, we can just perform Int32 operations instead
+        and recognize its bit pattern as UInt32.
+
+        But of course, some operations respect signedness. The most frequently
+        used one is comparison. Octane/zlib performs UInt32 comparison by performing
+        `val >>> 0`. It emits op_urshift and op_unsigned. op_urshift produces
+        UInt32 in Int32 form. And op_unsigned will generate Double value if
+        the generated Int32 is < 0 (which should be UInt32).
+
+        There is a chance for optimization. The given code pattern is the following.
+
+            op_unsigned(op_urshift(@1)) lessThan:< op_unsigned(op_urshift(@2))
+
+        This can be converted to the following.
+
+            op_urshift(@1) below:< op_urshift(@2)
+
+        The above conversion is nice since
+
+        1. We can avoid op_unsigned. This could be unsignedness check in DFG. Since
+        this check depends on the value of Int32, dropping this check is not as easy as
+        removing Int32 edge filters.
+
+        2. We can perform unsigned comparison in Int32 form. We do not need to convert
+        them to DoubleRep.
+
+        Since the above comparison exists in Octane/zlib's *super* hot path, dropping
+        op_unsigned offers huge win.
+
+        At first, my patch attempts to convert the above thing in DFG pipeline.
+        However it poses several problems.
+
+        1. MovHint is not well removed. It makes UInt32ToNumber (which is for op_unsigned) live.
+        2. UInt32ToNumber could cause an OSR exit. So if we have the following nodes,
+
+            2: UInt32ToNumber(@0)
+            3: MovHint(@2, xxx)
+            4: UInt32ToNumber(@1)
+            5: MovHint(@1, xxx)
+
+        we could drop @5's MovHint. But @3 is difficult since @4 can exit.
+
+        So, instead, we start introducing a simple optimization in the bytecode compiler.
+        It performs pattern matching for op_urshift and comparison to drop op_unsigned.
+        We adds op_below and op_above families to bytecodes. They only accept Int32 and
+        perform unsigned comparison.
+
+        This offers 4% performance improvement in Octane/zlib.
+
+                                    baseline                  patched
+
+        zlib           x2     431.07483+-16.28434       414.33407+-9.38375         might be 1.0404x faster
+
+        * bytecode/BytecodeDumper.cpp:
+        (JSC::BytecodeDumper<Block>::printCompareJump):
+        (JSC::BytecodeDumper<Block>::dumpBytecode):
+        * bytecode/BytecodeDumper.h:
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/Opcode.h:
+        (JSC::isBranch):
+        * bytecode/PreciseJumpTargetsInlines.h:
+        (JSC::extractStoredJumpTargetsForBytecodeOffset):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitJumpIfTrue):
+        (JSC::BytecodeGenerator::emitJumpIfFalse):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::BinaryOpNode::emitBytecode):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGIntegerRangeOptimizationPhase.cpp:
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileCompareUnsigned):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        * dfg/DFGValidate.cpp:
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCompareBelow):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCompareBelowEq):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        * jit/JIT.h:
+        * jit/JITArithmetic.cpp:
+        (JSC::JIT::emit_op_below):
+        (JSC::JIT::emit_op_beloweq):
+        (JSC::JIT::emit_op_jbelow):
+        (JSC::JIT::emit_op_jbeloweq):
+        (JSC::JIT::emit_compareUnsignedAndJump):
+        (JSC::JIT::emit_compareUnsigned):
+        * jit/JITArithmetic32_64.cpp:
+        (JSC::JIT::emit_compareUnsignedAndJump):
+        (JSC::JIT::emit_compareUnsigned):
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * parser/Nodes.h:
+        (JSC::ExpressionNode::isBinaryOpNode const):
+
+2017-09-24  Keith Miller  <keith_miller@apple.com>
+
+        JSC build should use unified sources for derived sources
+        https://bugs.webkit.org/show_bug.cgi?id=177421
+
+        Reviewed by JF Bastien.
+
+        This patch make a couple of changes:
+
+        1) Make derived sources added to relevant bundles. I was going to add JSCBuiltins.cpp
+        to runtime but that kept breaking the windows build. I'll get back to it later
+        2) Move the derived location of some sources both for clarity and for ease of use.
+        3) Make auto generator scripts able to create directories if needed.
+        4) Move some scripts from the top level of the JavaScriptCore directory to a
+        more appropriate directory.
+        5) Move some CMake generation commands around for clarity.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Scripts/lazywriter.py:
+        (LazyFileWriter.close):
+        * Sources.txt:
+        * inspector/scripts/generate-inspector-protocol-bindings.py:
+        (IncrementalFileWriter.close):
+        * yarr/create_regex_tables: Renamed from Source/JavaScriptCore/create_regex_tables.
+        * yarr/generateYarrCanonicalizeUnicode: Renamed from Source/JavaScriptCore/generateYarrCanonicalizeUnicode.
+
+2017-09-26  Zan Dobersek  <zdobersek@igalia.com>
+
+        Support building JavaScriptCore with the Bionic C library
+        https://bugs.webkit.org/show_bug.cgi?id=177427
+
+        Reviewed by Michael Catanzaro.
+
+        When compiling with the Bionic C library, the MachineContext.h header
+        should enable the same code paths that are enabled for the GNU C library.
+
+        The Bionic C library defines the __BIONIC__ macro, but unlike other C
+        libraries that mimic the GNU one, it doesn't define __GLIBC__. So the
+        __BIONIC__ macro checks have to match the __GLIBC__ ones.
+
+        * runtime/MachineContext.h:
+        (JSC::MachineContext::stackPointer):
+        (JSC::MachineContext::framePointer):
+        (JSC::MachineContext::instructionPointer):
+        (JSC::MachineContext::argumentPointer<1>):
+        (JSC::MachineContext::llintInstructionPointer):
+
+2017-09-25  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: move Console.addInspectedNode to DOM.setInspectedNode
+        https://bugs.webkit.org/show_bug.cgi?id=176827
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/agents/InspectorConsoleAgent.h:
+
+        * inspector/agents/JSGlobalObjectConsoleAgent.h:
+        * inspector/agents/JSGlobalObjectConsoleAgent.cpp:
+        (Inspector::JSGlobalObjectConsoleAgent::addInspectedNode): Deleted.
+
+        * inspector/protocol/Console.json:
+        * inspector/protocol/DOM.json:
+
+2017-09-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rebaseline builtins generator tests after r222473.
+
+        * Scripts/tests/builtins/expected/WebCoreJSBuiltins.h-result:
+
+2017-09-25  Alex Christensen  <achristensen@webkit.org>
+
+        Make Attribute an enum class
+        https://bugs.webkit.org/show_bug.cgi?id=177414
+
+        Reviewed by Yusuke Suzuki.
+
+        I've had enough of these naming collisions.  This is what enum classes are for.
+        Unfortunately a lot of static_cast<unsigned> is necessary until those functions take
+        an OptionSet<Attribute> instead of an unsigned parameter, but this is a big step
+        towards where we ought to be.
+
+        * API/JSCallbackObjectFunctions.h:
+        (JSC::JSCallbackObject<Parent>::getOwnPropertySlot):
+        * API/JSObjectRef.cpp:
+        (JSObjectMakeConstructor):
+        * Scripts/builtins/builtins_generate_internals_wrapper_implementation.py:
+        (BuiltinsInternalsWrapperImplementationGenerator.property_macro):
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::computeFromLLInt):
+        (JSC::GetByIdStatus::computeForStubInfoWithoutExitSiteFeedback):
+        (JSC::GetByIdStatus::computeFor):
+        * bytecode/PropertyCondition.cpp:
+        (JSC::PropertyCondition::isStillValidAssumingImpurePropertyWatchpoint const):
+        (JSC::PropertyCondition::isValidValueForAttributes):
+        * bytecode/PutByIdStatus.cpp:
+        (JSC::PutByIdStatus::computeFor):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::instantiateLexicalVariables):
+        (JSC::BytecodeGenerator::variable):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::Variable::isReadOnly const):
+        (JSC::Variable::setIsReadOnly):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::PropertyListNode::emitBytecode):
+        * create_hash_table:
+        * debugger/DebuggerScope.cpp:
+        (JSC::DebuggerScope::getOwnPropertySlot):
+        * dfg/DFGOperations.cpp:
+        * inspector/JSInjectedScriptHostPrototype.cpp:
+        (Inspector::JSInjectedScriptHostPrototype::finishCreation):
+        * inspector/JSJavaScriptCallFramePrototype.cpp:
+        (Inspector::JSJavaScriptCallFramePrototype::finishCreation):
+        * jit/Repatch.cpp:
+        (JSC::tryCacheGetByID):
+        * jsc.cpp:
+        (WTF::CustomGetter::getOwnPropertySlot):
+        (WTF::RuntimeArray::getOwnPropertySlot):
+        (WTF::RuntimeArray::getOwnPropertySlotByIndex):
+        (WTF::DOMJITGetter::finishCreation):
+        (WTF::DOMJITGetterComplex::finishCreation):
+        (WTF::DOMJITFunctionObject::finishCreation):
+        (WTF::DOMJITCheckSubClassObject::finishCreation):
+        (GlobalObject::finishCreation):
+        * runtime/ArrayConstructor.cpp:
+        (JSC::ArrayConstructor::finishCreation):
+        * runtime/ArrayIteratorPrototype.cpp:
+        (JSC::ArrayIteratorPrototype::finishCreation):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::ArrayPrototype::finishCreation):
+        * runtime/AsyncFromSyncIteratorPrototype.cpp:
+        (JSC::AsyncFromSyncIteratorPrototype::finishCreation):
+        * runtime/AsyncFunctionConstructor.cpp:
+        (JSC::AsyncFunctionConstructor::finishCreation):
+        * runtime/AsyncFunctionPrototype.cpp:
+        (JSC::AsyncFunctionPrototype::finishCreation):
+        * runtime/AsyncGeneratorFunctionConstructor.cpp:
+        (JSC::AsyncGeneratorFunctionConstructor::finishCreation):
+        * runtime/AsyncGeneratorFunctionPrototype.cpp:
+        (JSC::AsyncGeneratorFunctionPrototype::finishCreation):
+        * runtime/AsyncGeneratorPrototype.cpp:
+        (JSC::AsyncGeneratorPrototype::finishCreation):
+        * runtime/AsyncIteratorPrototype.cpp:
+        (JSC::AsyncIteratorPrototype::finishCreation):
+        * runtime/AtomicsObject.cpp:
+        (JSC::AtomicsObject::finishCreation):
+        * runtime/BooleanConstructor.cpp:
+        (JSC::BooleanConstructor::finishCreation):
+        * runtime/ClonedArguments.cpp:
+        (JSC::ClonedArguments::createStructure):
+        (JSC::ClonedArguments::getOwnPropertySlot):
+        (JSC::ClonedArguments::materializeSpecials):
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/ConsoleObject.cpp:
+        (JSC::ConsoleObject::finishCreation):
+        * runtime/DateConstructor.cpp:
+        (JSC::DateConstructor::finishCreation):
+        * runtime/DatePrototype.cpp:
+        (JSC::DatePrototype::finishCreation):
+        * runtime/DirectArguments.cpp:
+        (JSC::DirectArguments::overrideThings):
+        * runtime/Error.cpp:
+        (JSC::addErrorInfo):
+        * runtime/ErrorConstructor.cpp:
+        (JSC::ErrorConstructor::finishCreation):
+        * runtime/ErrorInstance.cpp:
+        (JSC::ErrorInstance::finishCreation):
+        * runtime/ErrorPrototype.cpp:
+        (JSC::ErrorPrototype::finishCreation):
+        * runtime/FunctionConstructor.cpp:
+        (JSC::FunctionConstructor::finishCreation):
+        * runtime/FunctionPrototype.cpp:
+        (JSC::FunctionPrototype::finishCreation):
+        (JSC::FunctionPrototype::addFunctionProperties):
+        (JSC::FunctionPrototype::initRestrictedProperties):
+        * runtime/GeneratorFunctionConstructor.cpp:
+        (JSC::GeneratorFunctionConstructor::finishCreation):
+        * runtime/GeneratorFunctionPrototype.cpp:
+        (JSC::GeneratorFunctionPrototype::finishCreation):
+        * runtime/GeneratorPrototype.cpp:
+        (JSC::GeneratorPrototype::finishCreation):
+        * runtime/GenericArgumentsInlines.h:
+        (JSC::GenericArguments<Type>::getOwnPropertySlot):
+        (JSC::GenericArguments<Type>::getOwnPropertySlotByIndex):
+        * runtime/InternalFunction.cpp:
+        (JSC::InternalFunction::finishCreation):
+        * runtime/IntlCollatorConstructor.cpp:
+        (JSC::IntlCollatorConstructor::finishCreation):
+        * runtime/IntlDateTimeFormatConstructor.cpp:
+        (JSC::IntlDateTimeFormatConstructor::finishCreation):
+        * runtime/IntlDateTimeFormatPrototype.cpp:
+        (JSC::IntlDateTimeFormatPrototype::finishCreation):
+        * runtime/IntlNumberFormatConstructor.cpp:
+        (JSC::IntlNumberFormatConstructor::finishCreation):
+        * runtime/IntlObject.cpp:
+        (JSC::IntlObject::finishCreation):
+        * runtime/IteratorPrototype.cpp:
+        (JSC::IteratorPrototype::finishCreation):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::getOwnPropertySlot):
+        (JSC::JSArray::setLengthWithArrayStorage):
+        * runtime/JSArrayBufferConstructor.cpp:
+        (JSC::JSArrayBufferConstructor::finishCreation):
+        * runtime/JSArrayBufferPrototype.cpp:
+        (JSC::JSArrayBufferPrototype::finishCreation):
+        * runtime/JSBoundFunction.cpp:
+        (JSC::JSBoundFunction::finishCreation):
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::putToPrimitive):
+        * runtime/JSDataView.cpp:
+        (JSC::JSDataView::getOwnPropertySlot):
+        * runtime/JSDataViewPrototype.cpp:
+        (JSC::JSDataViewPrototype::finishCreation):
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::finishCreation):
+        (JSC::JSFunction::getOwnPropertySlot):
+        (JSC::JSFunction::defineOwnProperty):
+        (JSC::JSFunction::reifyLength):
+        (JSC::JSFunction::reifyName):
+        (JSC::JSFunction::reifyLazyBoundNameIfNeeded):
+        * runtime/JSGenericTypedArrayViewConstructorInlines.h:
+        (JSC::JSGenericTypedArrayViewConstructor<ViewClass>::finishCreation):
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::getOwnPropertySlot):
+        (JSC::JSGenericTypedArrayView<Adaptor>::getOwnPropertySlotByIndex):
+        * runtime/JSGenericTypedArrayViewPrototypeInlines.h:
+        (JSC::JSGenericTypedArrayViewPrototype<ViewClass>::finishCreation):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::addStaticGlobals):
+        * runtime/JSLexicalEnvironment.cpp:
+        (JSC::JSLexicalEnvironment::getOwnNonIndexPropertyNames):
+        * runtime/JSModuleNamespaceObject.cpp:
+        (JSC::JSModuleNamespaceObject::finishCreation):
+        (JSC::JSModuleNamespaceObject::getOwnPropertySlotCommon):
+        * runtime/JSONObject.cpp:
+        (JSC::JSONObject::finishCreation):
+        * runtime/JSObject.cpp:
+        (JSC::getClassPropertyNames):
+        (JSC::JSObject::getOwnPropertySlotByIndex):
+        (JSC::ordinarySetSlow):
+        (JSC::JSObject::putInlineSlow):
+        (JSC::JSObject::putGetter):
+        (JSC::JSObject::putSetter):
+        (JSC::JSObject::putDirectAccessor):
+        (JSC::JSObject::putDirectCustomAccessor):
+        (JSC::JSObject::putDirectNonIndexAccessor):
+        (JSC::JSObject::deleteProperty):
+        (JSC::JSObject::deletePropertyByIndex):
+        (JSC::JSObject::getOwnPropertyNames):
+        (JSC::JSObject::putIndexedDescriptor):
+        (JSC::JSObject::defineOwnIndexedProperty):
+        (JSC::JSObject::attemptToInterceptPutByIndexOnHoleForPrototype):
+        (JSC::JSObject::putDirectIndexSlowOrBeyondVectorLength):
+        (JSC::JSObject::getOwnPropertyDescriptor):
+        (JSC::putDescriptor):
+        (JSC::validateAndApplyPropertyDescriptor):
+        * runtime/JSObject.h:
+        (JSC::JSObject::putDirect):
+        * runtime/JSObjectInlines.h:
+        (JSC::JSObject::putDirectWithoutTransition):
+        (JSC::JSObject::putDirectInternal):
+        * runtime/JSPromiseConstructor.cpp:
+        (JSC::JSPromiseConstructor::finishCreation):
+        (JSC::JSPromiseConstructor::addOwnInternalSlots):
+        * runtime/JSPromisePrototype.cpp:
+        (JSC::JSPromisePrototype::finishCreation):
+        (JSC::JSPromisePrototype::addOwnInternalSlots):
+        * runtime/JSString.cpp:
+        (JSC::JSString::getStringPropertyDescriptor):
+        * runtime/JSString.h:
+        (JSC::JSString::getStringPropertySlot):
+        * runtime/JSSymbolTableObject.cpp:
+        (JSC::JSSymbolTableObject::getOwnNonIndexPropertyNames):
+        * runtime/JSSymbolTableObject.h:
+        (JSC::symbolTableGet):
+        * runtime/JSTypedArrayViewConstructor.cpp:
+        (JSC::JSTypedArrayViewConstructor::finishCreation):
+        * runtime/JSTypedArrayViewPrototype.cpp:
+        (JSC::JSTypedArrayViewPrototype::finishCreation):
+        * runtime/LazyClassStructure.cpp:
+        (JSC::LazyClassStructure::Initializer::setConstructor):
+        * runtime/Lookup.cpp:
+        (JSC::reifyStaticAccessor):
+        (JSC::setUpStaticFunctionSlot):
+        * runtime/Lookup.h:
+        (JSC::HashTableValue::intrinsic const):
+        (JSC::HashTableValue::builtinGenerator const):
+        (JSC::HashTableValue::function const):
+        (JSC::HashTableValue::functionLength const):
+        (JSC::HashTableValue::propertyGetter const):
+        (JSC::HashTableValue::propertyPutter const):
+        (JSC::HashTableValue::domJIT const):
+        (JSC::HashTableValue::signature const):
+        (JSC::HashTableValue::accessorGetter const):
+        (JSC::HashTableValue::accessorSetter const):
+        (JSC::HashTableValue::constantInteger const):
+        (JSC::HashTableValue::lazyCellPropertyOffset const):
+        (JSC::HashTableValue::lazyClassStructureOffset const):
+        (JSC::HashTableValue::lazyPropertyCallback const):
+        (JSC::HashTableValue::builtinAccessorGetterGenerator const):
+        (JSC::HashTableValue::builtinAccessorSetterGenerator const):
+        (JSC::getStaticPropertySlotFromTable):
+        (JSC::putEntry):
+        (JSC::reifyStaticProperty):
+        * runtime/MapConstructor.cpp:
+        (JSC::MapConstructor::finishCreation):
+        * runtime/MapIteratorPrototype.cpp:
+        (JSC::MapIteratorPrototype::finishCreation):
+        * runtime/MapPrototype.cpp:
+        (JSC::MapPrototype::finishCreation):
+        * runtime/MathObject.cpp:
+        (JSC::MathObject::finishCreation):
+        * runtime/NativeErrorConstructor.cpp:
+        (JSC::NativeErrorConstructor::finishCreation):
+        * runtime/NativeErrorPrototype.cpp:
+        (JSC::NativeErrorPrototype::finishCreation):
+        * runtime/NumberConstructor.cpp:
+        (JSC::NumberConstructor::finishCreation):
+        * runtime/NumberPrototype.cpp:
+        (JSC::NumberPrototype::finishCreation):
+        * runtime/ObjectConstructor.cpp:
+        (JSC::ObjectConstructor::finishCreation):
+        (JSC::objectConstructorAssign):
+        (JSC::objectConstructorValues):
+        (JSC::objectConstructorDefineProperty):
+        * runtime/ObjectPrototype.cpp:
+        (JSC::ObjectPrototype::finishCreation):
+        (JSC::objectProtoFuncLookupGetter):
+        (JSC::objectProtoFuncLookupSetter):
+        * runtime/ProgramExecutable.cpp:
+        (JSC::ProgramExecutable::initializeGlobalProperties):
+        * runtime/PropertyDescriptor.cpp:
+        (JSC::PropertyDescriptor::writable const):
+        (JSC::PropertyDescriptor::enumerable const):
+        (JSC::PropertyDescriptor::configurable const):
+        (JSC::PropertyDescriptor::setUndefined):
+        (JSC::PropertyDescriptor::setDescriptor):
+        (JSC::PropertyDescriptor::setCustomDescriptor):
+        (JSC::PropertyDescriptor::setAccessorDescriptor):
+        (JSC::PropertyDescriptor::setWritable):
+        (JSC::PropertyDescriptor::setEnumerable):
+        (JSC::PropertyDescriptor::setConfigurable):
+        (JSC::PropertyDescriptor::setSetter):
+        (JSC::PropertyDescriptor::setGetter):
+        (JSC::PropertyDescriptor::attributesEqual const):
+        (JSC::PropertyDescriptor::attributesOverridingCurrent const):
+        * runtime/PropertySlot.cpp:
+        (JSC::PropertySlot::customGetter const):
+        * runtime/PropertySlot.h:
+        (JSC::operator| ):
+        (JSC::operator&):
+        (JSC::operator<):
+        (JSC::operator~):
+        (JSC::operator|=):
+        (JSC::PropertySlot::setUndefined):
+        * runtime/ProxyConstructor.cpp:
+        (JSC::makeRevocableProxy):
+        (JSC::ProxyConstructor::finishCreation):
+        * runtime/ProxyObject.cpp:
+        (JSC::ProxyObject::performHasProperty):
+        * runtime/ProxyRevoke.cpp:
+        (JSC::ProxyRevoke::finishCreation):
+        * runtime/ReflectObject.cpp:
+        (JSC::ReflectObject::finishCreation):
+        (JSC::reflectObjectDefineProperty):
+        * runtime/RegExpConstructor.cpp:
+        (JSC::RegExpConstructor::finishCreation):
+        * runtime/RegExpObject.cpp:
+        (JSC::RegExpObject::getOwnPropertySlot):
+        * runtime/RegExpPrototype.cpp:
+        (JSC::RegExpPrototype::finishCreation):
+        * runtime/ScopedArguments.cpp:
+        (JSC::ScopedArguments::overrideThings):
+        * runtime/SetConstructor.cpp:
+        (JSC::SetConstructor::finishCreation):
+        * runtime/SetIteratorPrototype.cpp:
+        (JSC::SetIteratorPrototype::finishCreation):
+        * runtime/SetPrototype.cpp:
+        (JSC::SetPrototype::finishCreation):
+        * runtime/SparseArrayValueMap.cpp:
+        (JSC::SparseArrayValueMap::putDirect):
+        (JSC::SparseArrayEntry::put):
+        * runtime/StringConstructor.cpp:
+        (JSC::StringConstructor::finishCreation):
+        * runtime/StringIteratorPrototype.cpp:
+        (JSC::StringIteratorPrototype::finishCreation):
+        * runtime/StringPrototype.cpp:
+        (JSC::StringPrototype::finishCreation):
+        * runtime/Structure.cpp:
+        (JSC::Structure::nonPropertyTransition):
+        (JSC::Structure::isSealed):
+        (JSC::Structure::isFrozen):
+        (JSC::Structure::getPropertyNamesFromStructure):
+        (JSC::Structure::prototypeChainMayInterceptStoreTo):
+        * runtime/StructureInlines.h:
+        (JSC::Structure::add):
+        * runtime/SymbolConstructor.cpp:
+        (JSC::SymbolConstructor::finishCreation):
+        * runtime/SymbolPrototype.cpp:
+        (JSC::SymbolPrototype::finishCreation):
+        * runtime/SymbolTable.h:
+        (JSC::SymbolTableEntry::Fast::getAttributes const):
+        (JSC::SymbolTableEntry::SymbolTableEntry):
+        (JSC::SymbolTableEntry::setAttributes):
+        * runtime/TemplateRegistry.cpp:
+        (JSC::TemplateRegistry::getTemplateObject):
+        * runtime/WeakMapConstructor.cpp:
+        (JSC::WeakMapConstructor::finishCreation):
+        * runtime/WeakMapPrototype.cpp:
+        (JSC::WeakMapPrototype::finishCreation):
+        * runtime/WeakSetConstructor.cpp:
+        (JSC::WeakSetConstructor::finishCreation):
+        * runtime/WeakSetPrototype.cpp:
+        (JSC::WeakSetPrototype::finishCreation):
+        * tools/JSDollarVMPrototype.cpp:
+        (JSC::JSDollarVMPrototype::finishCreation):
+        * wasm/js/WebAssemblyCompileErrorConstructor.cpp:
+        (JSC::WebAssemblyCompileErrorConstructor::finishCreation):
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        (JSC::WebAssemblyInstanceConstructor::finishCreation):
+        * wasm/js/WebAssemblyLinkErrorConstructor.cpp:
+        (JSC::WebAssemblyLinkErrorConstructor::finishCreation):
+        * wasm/js/WebAssemblyMemoryConstructor.cpp:
+        (JSC::WebAssemblyMemoryConstructor::finishCreation):
+        * wasm/js/WebAssemblyMemoryPrototype.cpp:
+        * wasm/js/WebAssemblyModuleConstructor.cpp:
+        (JSC::WebAssemblyModuleConstructor::finishCreation):
+        * wasm/js/WebAssemblyRuntimeErrorConstructor.cpp:
+        (JSC::WebAssemblyRuntimeErrorConstructor::finishCreation):
+        * wasm/js/WebAssemblyTableConstructor.cpp:
+        (JSC::WebAssemblyTableConstructor::finishCreation):
+
+2017-09-23  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        [ESNext] Async iteration - Implement Async Generator - optimization
+        https://bugs.webkit.org/show_bug.cgi?id=175891
+
+        Reviewed by Yusuke Suzuki.
+
+        Add small optimization for async generators:
+        1. merging async generator queue to async generator itself
+        generator.@first / generator.@last is enough, by doing so,
+          we remove one unnecessary object alloc.
+        2. merging request with queue.
+
+        * builtins/AsyncGeneratorPrototype.js:
+        (globalPrivate.asyncGeneratorQueueIsEmpty):
+        (globalPrivate.asyncGeneratorQueueCreateItem):
+        (globalPrivate.asyncGeneratorQueueEnqueue):
+        (globalPrivate.asyncGeneratorQueueDequeue):
+        (globalPrivate.asyncGeneratorDequeue):
+        (globalPrivate.isSuspendYieldState):
+        (globalPrivate.asyncGeneratorEnqueue):
+        * builtins/BuiltinNames.h:
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitPutAsyncGeneratorFields):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::FunctionNode::emitBytecode):
+
+2017-09-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: $.agent became $262.agent in test262 update
+        https://bugs.webkit.org/show_bug.cgi?id=177407
+
+        Reviewed by Yusuke Suzuki.
+
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        Alias `$` and `$262` for now.
+
+2017-09-22  Keith Miller  <keith_miller@apple.com>
+
+        Speculatively change iteration protocall to use the same next function
+        https://bugs.webkit.org/show_bug.cgi?id=175653
+
+        Reviewed by Saam Barati.
+
+        This patch speculatively makes a change to the iteration protocall to fetch the next
+        property immediately after calling the Symbol.iterator function. This is, in theory,
+        a breaking change, so we will see if this breaks things (most likely it won't as this
+        is a relatively subtle point).
+
+        See: https://github.com/tc39/ecma262/issues/976
+
+        * builtins/IteratorHelpers.js:
+        (performIteration):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitEnumeration):
+        (JSC::BytecodeGenerator::emitIteratorNext):
+        (JSC::BytecodeGenerator::emitIteratorNextWithValue):
+        (JSC::BytecodeGenerator::emitDelegateYield):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ArrayPatternNode::bindValue const):
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::iteratorEntries):
+        * runtime/IteratorOperations.cpp:
+        (JSC::iteratorNext):
+        (JSC::iteratorStep):
+        (JSC::iteratorClose):
+        (JSC::iteratorForIterable):
+        * runtime/IteratorOperations.h:
+        (JSC::forEachInIterable):
+        * runtime/JSGenericTypedArrayViewConstructorInlines.h:
+        (JSC::constructGenericTypedArrayViewFromIterator):
+        (JSC::constructGenericTypedArrayViewWithArguments):
+
+2017-09-22  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win64] Crashes in Yarr JIT compiled code
+        https://bugs.webkit.org/show_bug.cgi?id=177293
+
+        Reviewed by Yusuke Suzuki.
+
+        In x64 Windows, rcx register is used for the address of allocated
+        space for the return value. But, rcx is used for regT1 since
+        r221052. Save rcx in the stack.
+
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::generateEnter): Push ecx.
+        (JSC::Yarr::YarrGenerator::generateReturn): Pop ecx.
+
+2017-09-22  Saam Barati  <sbarati@apple.com>
+
+        Usage of ErrorInstance::m_stackTrace on the mutator is racy with the collector
+        https://bugs.webkit.org/show_bug.cgi?id=177368
+
+        Reviewed by Keith Miller.
+
+        * runtime/ErrorInstance.cpp:
+        (JSC::ErrorInstance::finishCreation):
+        (JSC::ErrorInstance::materializeErrorInfoIfNeeded):
+        (JSC::ErrorInstance::visitChildren):
+
+2017-09-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG][FTL] Profile array vector length for array allocation
+        https://bugs.webkit.org/show_bug.cgi?id=177051
+
+        Reviewed by Saam Barati.
+
+        Currently, NewArrayBuffer allocation is penalized by JSC: While empty array gets 25 vector size (BASE_CONTIGUOUS_VECTOR_LEN),
+        new_array_buffer case gets 3 vector size (BASE_CONTIGUOUS_VECTOR_LEN). Surely, new_array_buffer can get larger vector size
+        if the number of its constant elements is larger than 3. But these created array may be grown by `push()` operation after
+        the allocation. In this case, new_array_buffer is penalized compared to empty array allocation.
+
+            empty array allocation,
+
+            var array = [];
+            array.push(0);
+            array.push(1);
+            array.push(2);
+            array.push(3);
+            array.push(4);
+
+            v.s. new_array_buffer case,
+
+            var array = [0];
+            array.push(1);
+            array.push(2);
+            array.push(3);
+            array.push(4);
+
+        In this case, the latter becomes slow. While we have a chance to reduce memory usage if new_array_buffer is not grown (and a bit likely),
+        we should allocate 3 to 25 vector size if it is likely grown. So we should get profile on the resulted array.
+
+        We select 25 to make it fit to one of size classes.
+
+        In this patch, we extend ArrayAllocationProfile to record vector length. And use this information when allocating array for new_array_buffer.
+        If the number of new_array_buffer constants is <= 25, array vector size would become 3 to 25 based on profiling. If the number of its constants
+        is larger than 25, we just use it for allocation as before.
+
+        Added microbenchmark and SixSpeed spread-literal.es5 shows improvement.
+
+            new-array-buffer-vector-profile       67.4706+-3.7625     ^     28.4249+-1.9025        ^ definitely 2.3736x faster
+            spread-literal.es5                   133.1443+-9.2253     ^     95.2667+-0.5740        ^ definitely 1.3976x faster
+
+        * bytecode/ArrayAllocationProfile.cpp:
+        (JSC::ArrayAllocationProfile::updateProfile):
+        (JSC::ArrayAllocationProfile::updateIndexingType): Deleted.
+        * bytecode/ArrayAllocationProfile.h:
+        (JSC::ArrayAllocationProfile::selectIndexingType):
+        (JSC::ArrayAllocationProfile::vectorLengthHint):
+        (JSC::ArrayAllocationProfile::ArrayAllocationProfile): Deleted.
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::updateAllArrayPredictions):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dump):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::vectorLengthHint):
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileArraySlice):
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewArrayBuffer):
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewArrayWithSize):
+        (JSC::FTL::DFG::LowerDFGToB3::allocateJSArray):
+        (JSC::FTL::DFG::LowerDFGToB3::allocateUninitializedContiguousJSArrayInternal):
+        (JSC::FTL::DFG::LowerDFGToB3::allocateUninitializedContiguousJSArray):
+        * runtime/ArrayConventions.h:
+        * runtime/JSArray.h:
+        (JSC::JSArray::tryCreate):
+
+2017-09-22  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r222380.
+        https://bugs.webkit.org/show_bug.cgi?id=177352
+
+        Octane/box2d shows 8% regression (Requested by yusukesuzuki on
+        #webkit).
+
+        Reverted changeset:
+
+        "[DFG][FTL] Profile array vector length for array allocation"
+        https://bugs.webkit.org/show_bug.cgi?id=177051
+        http://trac.webkit.org/changeset/222380
+
+2017-09-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG][FTL] Profile array vector length for array allocation
+        https://bugs.webkit.org/show_bug.cgi?id=177051
+
+        Reviewed by Saam Barati.
+
+        Currently, NewArrayBuffer allocation is penalized by JSC: While empty array gets 25 vector size (BASE_CONTIGUOUS_VECTOR_LEN),
+        new_array_buffer case gets 3 vector size (BASE_CONTIGUOUS_VECTOR_LEN). Surely, new_array_buffer can get larger vector size
+        if the number of its constant elements is larger than 3. But these created array may be grown by `push()` operation after
+        the allocation. In this case, new_array_buffer is penalized compared to empty array allocation.
+
+            empty array allocation,
+
+            var array = [];
+            array.push(0);
+            array.push(1);
+            array.push(2);
+            array.push(3);
+            array.push(4);
+
+            v.s. new_array_buffer case,
+
+            var array = [0];
+            array.push(1);
+            array.push(2);
+            array.push(3);
+            array.push(4);
+
+        In this case, the latter becomes slow. While we have a chance to reduce memory usage if new_array_buffer is not grown (and a bit likely),
+        we should allocate 3 to 25 vector size if it is likely grown. So we should get profile on the resulted array.
+
+        We select 25 to make it fit to one of size classes.
+
+        In this patch, we extend ArrayAllocationProfile to record vector length. And use this information when allocating array for new_array_buffer.
+        If the number of new_array_buffer constants is <= 25, array vector size would become 3 to 25 based on profiling. If the number of its constants
+        is larger than 25, we just use it for allocation as before.
+
+        Added microbenchmark and SixSpeed spread-literal.es5 shows improvement.
+
+            new-array-buffer-vector-profile       67.4706+-3.7625     ^     28.4249+-1.9025        ^ definitely 2.3736x faster
+            spread-literal.es5                   133.1443+-9.2253     ^     95.2667+-0.5740        ^ definitely 1.3976x faster
+
+        * bytecode/ArrayAllocationProfile.cpp:
+        (JSC::ArrayAllocationProfile::updateProfile):
+        (JSC::ArrayAllocationProfile::updateIndexingType): Deleted.
+        * bytecode/ArrayAllocationProfile.h:
+        (JSC::ArrayAllocationProfile::selectIndexingType):
+        (JSC::ArrayAllocationProfile::vectorLengthHint):
+        (JSC::ArrayAllocationProfile::ArrayAllocationProfile): Deleted.
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::updateAllArrayPredictions):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dump):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::vectorLengthHint):
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileArraySlice):
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewArrayBuffer):
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewArrayWithSize):
+        (JSC::FTL::DFG::LowerDFGToB3::allocateJSArray):
+        (JSC::FTL::DFG::LowerDFGToB3::allocateUninitializedContiguousJSArrayInternal):
+        (JSC::FTL::DFG::LowerDFGToB3::allocateUninitializedContiguousJSArray):
+        * runtime/ArrayConventions.h:
+        * runtime/JSArray.h:
+        (JSC::JSArray::tryCreate):
+
+2017-09-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove support for CSS Regions
+        https://bugs.webkit.org/show_bug.cgi?id=177287
+
+        Reviewed by Matt Baker.
+
+        * inspector/protocol/CSS.json:
+        * inspector/protocol/OverlayTypes.json:
+
+2017-09-21  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: keyboard shortcut for "Reload page from origin" doesn't match Safari, and doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=177010
+        <rdar://problem/33134548>
+
+        Reviewed by Joseph Pecoraro.
+
+        Use "reload from origin" nomenclature instead of "reload ignoring cache".
+
+        * inspector/protocol/Page.json: Improve the comment, but don't change the
+        parameter name since this would be a divergence from legacy protocols.
+
+2017-09-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/annexB/built-ins/RegExp/prototype/flags/order-after-compile.js ASSERTs
+        https://bugs.webkit.org/show_bug.cgi?id=177307
+
+        Reviewed by Michael Saboff.
+
+        * runtime/RegExpPrototype.cpp:
+        In r221160 we added support for the new RegExp flag (dotAll).
+        We needed to make space for it in FlagsString.
+
+2017-09-20  Keith Miller  <keith_miller@apple.com>
+
+        JSC should use unified sources for platform specific files.
+        https://bugs.webkit.org/show_bug.cgi?id=177290
+
+        Reviewed by Michael Saboff.
+
+        Add a list of platform specific source files and update the
+        Generate Unified Sources phase of the Xcode build. I skipped WPE
+        since that seems to have failed for some reason that I didn't
+        fully understand. See:
+        https://webkit-queues.webkit.org/results/4611260
+
+        Also, fix duplicate symbols in Glib remote inspector files.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * PlatformGTK.cmake:
+        * PlatformMac.cmake:
+        * SourcesGTK.txt: Added.
+        * SourcesMac.txt: Added.
+        * inspector/remote/glib/RemoteInspectorServer.cpp:
+        (Inspector::RemoteInspectorServer::interfaceInfo):
+        (Inspector::RemoteInspectorServer::setTargetList):
+        (Inspector::RemoteInspectorServer::setupInspectorClient):
+        (Inspector::RemoteInspectorServer::setup):
+        (Inspector::RemoteInspectorServer::close):
+        (Inspector::RemoteInspectorServer::connectionClosed):
+        (Inspector::RemoteInspectorServer::sendMessageToBackend):
+        (Inspector::RemoteInspectorServer::sendMessageToFrontend):
+        (Inspector::dbusConnectionCallAsyncReadyCallback): Deleted.
+
+2017-09-20  Stephan Szabo  <stephan.szabo@sony.com>
+
+        [Win] WTF: Add alias for process id to use in place of direct uses of pid_t
+        https://bugs.webkit.org/show_bug.cgi?id=177017
+
+        Reviewed by Alex Christensen.
+
+        * API/JSRemoteInspector.cpp:
+        (JSRemoteInspectorSetParentProcessInformation):
+        * API/JSRemoteInspector.h:
+        * inspector/remote/RemoteInspector.h:
+
+2017-09-20  Keith Miller  <keith_miller@apple.com>
+
+        Rename source list file to Sources.txt
+        https://bugs.webkit.org/show_bug.cgi?id=177283
+
+        Reviewed by Saam Barati.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt: Renamed from Source/JavaScriptCore/sources.txt.
+
+2017-09-20  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, fix string capitalization
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2017-09-20  Keith Miller  <keith_miller@apple.com>
+
+        JSC Xcode build should use unified sources for platform independent files
+        https://bugs.webkit.org/show_bug.cgi?id=177190
+
+        Reviewed by Saam Barati.
+
+        This patch changes the Xcode build to use unified sources. The
+        main difference from a development perspective is that instead of
+        added source files to Xcode they need to be added to the shared
+        sources.txt. For now, platform specific files are still added
+        to the JavaScriptCore target.
+
+        Because Xcode needs to know about all the files before we generate
+        them all the unified source files need to be added to the
+        JavaScriptCore framework target. As a result, if we run out of
+        bundle files more will need to be added to the project. Currently,
+        there are no spare files. If adding more bundle files becomes
+        problematic we can change this.
+
+        LowLevelInterpreter.cpp can't be added to the unified source list yet
+        due to a clang bug.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * sources.txt: Added.
+
 2017-09-20  Per Arne Vollan  <pvollan@apple.com>
 
         [Win] Cannot find script to generate unified sources.

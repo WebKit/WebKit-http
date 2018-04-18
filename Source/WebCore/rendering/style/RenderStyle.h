@@ -166,8 +166,10 @@ public:
     ContentDistributionType resolvedAlignContentDistribution(const StyleContentAlignmentData& normalValueBehavior) const;
     StyleSelfAlignmentData resolvedAlignItems(ItemPosition normalValueBehaviour) const;
     StyleSelfAlignmentData resolvedAlignSelf(const RenderStyle* parentStyle, ItemPosition normalValueBehaviour) const;
+    StyleContentAlignmentData resolvedAlignContent(const StyleContentAlignmentData& normalValueBehaviour) const;
     StyleSelfAlignmentData resolvedJustifyItems(ItemPosition normalValueBehaviour) const;
     StyleSelfAlignmentData resolvedJustifySelf(const RenderStyle* parentStyle, ItemPosition normalValueBehaviour) const;
+    StyleContentAlignmentData resolvedJustifyContent(const StyleContentAlignmentData& normalValueBehaviour) const;
 
     PseudoId styleType() const { return static_cast<PseudoId>(m_nonInheritedFlags.styleType); }
     void setStyleType(PseudoId styleType) { m_nonInheritedFlags.styleType = styleType; }
@@ -644,12 +646,6 @@ public:
     unsigned tabSize() const { return m_rareInheritedData->tabSize; }
 
     // End CSS3 Getters
-
-    bool hasFlowInto() const { return !m_rareNonInheritedData->flowThread.isNull(); }
-    const AtomicString& flowThread() const { return m_rareNonInheritedData->flowThread; }
-    bool hasFlowFrom() const { return !m_rareNonInheritedData->regionThread.isNull(); }
-    const AtomicString& regionThread() const { return m_rareNonInheritedData->regionThread; }
-    RegionFragment regionFragment() const { return static_cast<RegionFragment>(m_rareNonInheritedData->regionFragment); }
 
     const AtomicString& lineGrid() const { return m_rareInheritedData->lineGrid; }
     LineSnap lineSnap() const { return static_cast<LineSnap>(m_rareInheritedData->lineSnap); }
@@ -1180,10 +1176,6 @@ public:
     void setLineSnap(LineSnap lineSnap) { SET_VAR(m_rareInheritedData, lineSnap, lineSnap); }
     void setLineAlign(LineAlign lineAlign) { SET_VAR(m_rareInheritedData, lineAlign, lineAlign); }
 
-    void setFlowThread(const AtomicString& flowThread) { SET_VAR(m_rareNonInheritedData, flowThread, flowThread); }
-    void setRegionThread(const AtomicString& regionThread) { SET_VAR(m_rareNonInheritedData, regionThread, regionThread); }
-    void setRegionFragment(RegionFragment regionFragment) { SET_VAR(m_rareNonInheritedData, regionFragment, regionFragment); }
-
     void setPointerEvents(EPointerEvents p) { m_inheritedFlags.pointerEvents = p; }
 
     void clearAnimations();
@@ -1643,10 +1635,6 @@ public:
     static const AtomicString& initialLineGrid() { return nullAtom(); }
     static LineSnap initialLineSnap() { return LineSnapNone; }
     static LineAlign initialLineAlign() { return LineAlignNone; }
-
-    static const AtomicString& initialFlowThread() { return nullAtom(); }
-    static const AtomicString& initialRegionThread() { return nullAtom(); }
-    static RegionFragment initialRegionFragment() { return AutoRegionFragment; }
 
     static IntSize initialInitialLetter() { return IntSize(); }
     static LineClampValue initialLineClamp() { return LineClampValue(); }
@@ -2248,7 +2236,7 @@ inline void RenderStyle::setBoxReflect(RefPtr<StyleReflection>&& reflect)
 
 inline bool pseudoElementRendererIsNeeded(const RenderStyle* style)
 {
-    return style && style->display() != NONE && (style->contentData() || style->hasFlowFrom());
+    return style && style->display() != NONE && style->contentData();
 }
 
 } // namespace WebCore

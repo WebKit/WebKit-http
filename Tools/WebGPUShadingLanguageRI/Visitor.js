@@ -95,7 +95,6 @@ class Visitor {
     {
         for (let typeArgument of node.typeArguments)
             typeArgument.visit(this);
-        Node.visit(node.type, this);
     }
     
     visitNativeType(node)
@@ -279,6 +278,19 @@ class Visitor {
         Node.visit(node.increment, this);
         node.body.visit(this);
     }
+    
+    visitSwitchStatement(node)
+    {
+        node.value.visit(this);
+        for (let switchCase of node.switchCases)
+            switchCase.visit(this);
+    }
+    
+    visitSwitchCase(node)
+    {
+        Node.visit(node.value, this);
+        node.body.visit(this);
+    }
 
     visitReturn(node)
     {
@@ -328,11 +340,14 @@ class Visitor {
             typeArgument.visit(this);
         for (let argument of node.argumentList)
             Node.visit(argument, this);
-        let actualTypeArguments = node.actualTypeArguments;
-        if (actualTypeArguments) {
-            for (let argument of actualTypeArguments)
-                argument.visit(this);
-        }
+        let handleTypeArguments = actualTypeArguments => {
+            if (actualTypeArguments) {
+                for (let argument of actualTypeArguments)
+                    argument.visit(this);
+            }
+        };
+        handleTypeArguments(node.actualTypeArguments);
+        handleTypeArguments(node.instantiatedActualTypeArguments);
         Node.visit(node.nativeFuncInstance, this);
         Node.visit(node.returnType, this);
         Node.visit(node.resultType, this);

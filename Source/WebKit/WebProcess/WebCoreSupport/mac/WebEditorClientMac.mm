@@ -57,24 +57,6 @@ void WebEditorClient::handleInputMethodKeydown(KeyboardEvent* event)
     if (event->handledByInputMethod())
         event->setDefaultHandled();
 }
-    
-NSString *WebEditorClient::userVisibleString(NSURL *url)
-{
-    return WebCore::userVisibleString(url);
-}
-
-NSURL *WebEditorClient::canonicalizeURL(NSURL *url)
-{
-    return URLByCanonicalizingURL(url);
-}
-
-NSURL *WebEditorClient::canonicalizeURLString(NSString *URLString)
-{
-    NSURL *URL = nil;
-    if (looksLikeAbsoluteURL(URLString))
-        URL = URLByCanonicalizingURL(URLWithUserTypedString(URLString, nil));
-    return URL;
-}
 
 void WebEditorClient::setInsertionPasteboard(const String&)
 {

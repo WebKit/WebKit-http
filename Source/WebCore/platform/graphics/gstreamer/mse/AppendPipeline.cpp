@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2016 Metrological Group B.V.
- * Copyright (C) 2016 Igalia S.L
+ * Copyright (C) 2016, 2017 Metrological Group B.V.
+ * Copyright (C) 2016, 2017 Igalia S.L
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -133,7 +133,15 @@ AppendPipeline::AppendPipeline(Ref<MediaSourceClientGStreamerMSE> mediaSourceCli
     // We assign the created instances here instead of adoptRef() because gst_bin_add_many()
     // below will already take the initial reference and we need an additional one for us.
     m_appsrc = gst_element_factory_make("appsrc", nullptr);
-    m_demux = gst_element_factory_make("qtdemux", nullptr);
+
+    const String& type = m_sourceBufferPrivate->type().containerType();
+    if (type.endsWith("mp4"))
+        m_demux = gst_element_factory_make("qtdemux", nullptr);
+    else if (type.endsWith("webm"))
+        m_demux = gst_element_factory_make("matroskademux", nullptr);
+    else
+        ASSERT_NOT_REACHED();
+
     m_appsink = gst_element_factory_make("appsink", nullptr);
 
     gst_app_sink_set_emit_signals(GST_APP_SINK(m_appsink.get()), TRUE);
@@ -639,8 +647,8 @@ void AppendPipeline::appsinkCapsChanged()
 
     if (m_appsinkCaps != caps) {
         m_appsinkCaps = WTFMove(caps);
-        if (m_playerPrivate && previousCapsWereNull)
-            m_playerPrivate->trackDetected(this, m_oldTrack, m_track);
+        if (m_playerPrivate)
+            m_playerPrivate->trackDetected(this, m_track, previousCapsWereNull);
         didReceiveInitializationSegment();
         gst_element_set_state(m_pipeline.get(), GST_STATE_PLAYING);
     }
@@ -1020,8 +1028,6 @@ void AppendPipeline::connectDemuxerSrcPadToAppsink(GstPad* demuxerSrcPad)
     if (m_initialDuration > m_mediaSourceClient->duration()
         || (m_mediaSourceClient->duration().isInvalid() && m_initialDuration > MediaTime::zeroTime()))
         m_mediaSourceClient->durationChanged(m_initialDuration);
-
-    m_oldTrack = m_track;
 
     parseDemuxerSrcPadCaps(gst_caps_ref(caps.get()));
 

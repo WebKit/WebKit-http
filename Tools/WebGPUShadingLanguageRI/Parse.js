@@ -297,8 +297,7 @@ function parse(program, origin, originKind, lineNumberOffset, text)
             addressSpaceConsumed = true;
             if (addressSpace)
                 return addressSpace;
-            addressSpace = consume(...addressSpaces);
-            return addressSpace;
+            return consume(...addressSpaces).text;
         }
         
         while (token = tryConsume("^", "[")) {
@@ -731,6 +730,30 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         return new CommaExpression(type.origin, list);
     }
     
+    function parseSwitchCase()
+    {
+        let token = consume("default", "case");
+        let value;
+        if (token.text == "case")
+            value = parseConstexpr();
+        consume(":");
+        let body = parseBlockBody("}", "default", "case");
+        return new SwitchCase(token, value, body);
+    }
+    
+    function parseSwitchStatement()
+    {
+        let origin = consume("switch");
+        consume("(");
+        let value = parseExpression();
+        consume(")");
+        consume("{");
+        let result = new SwitchStatement(origin, value);
+        while (!tryConsume("}"))
+            result.add(parseSwitchCase());
+        return result;
+    }
+    
     function parseStatement()
     {
         let token = lexer.peek();
@@ -752,6 +775,8 @@ function parse(program, origin, originKind, lineNumberOffset, text)
             return parseFor();
         if (token.text == "if")
             return parseIfStatement();
+        if (token.text == "switch")
+            return parseSwitchStatement();
         if (token.text == "trap") {
             let origin = consume("trap");
             consume(";");
@@ -765,15 +790,21 @@ function parse(program, origin, originKind, lineNumberOffset, text)
         return parseEffectfulStatement();
     }
     
-    function parseBlock()
+    function parseBlockBody(...terminators)
     {
-        let origin = consume("{");
         let block = new Block(origin);
-        while (!test("}")) {
+        while (!test(...terminators)) {
             let statement = parseStatement();
             if (statement)
                 block.add(statement);
         }
+        return block;
+    }
+    
+    function parseBlock()
+    {
+        let origin = consume("{");
+        let block = parseBlockBody("}");
         consume("}");
         return block;
     }
@@ -923,18 +954,11 @@ function parse(program, origin, originKind, lineNumberOffset, text)
     function parseNative()
     {
         let origin = consume("native");
-        let isType = lexer.backtrackingScope(() => {
-            if (tryConsume("typedef"))
-                return "normal";
-            consume("Primitive");
-            consume("typedef");
-            return "primitive";
-        });
-        if (isType) {
+        if (tryConsume("typedef")) {
             let name = consumeKind("identifier");
             let parameters = parseTypeParameters();
             consume(";");
-            return new NativeType(origin, name.text, isType == "primitive", parameters);
+            return new NativeType(origin, name.text, parameters);
         }
         return parseNativeFunc();
     }

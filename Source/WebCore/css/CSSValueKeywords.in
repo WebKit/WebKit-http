@@ -847,16 +847,16 @@ var
 -internal-variable-value
 
 //
-// UA Constants
+// Environment Variables
 //
 constant
+env
 
 //
 // CSS_PROP_BREAK_BEFORE/AFTER/INSIDE
 //
 avoid-column
 avoid-page
-avoid-region
 page
 recto
 region
@@ -1097,8 +1097,6 @@ x
 y
 #endif
 
-// -webkit-region-fragment
-// auto
 break
 
 wrap

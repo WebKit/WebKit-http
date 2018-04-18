@@ -29,6 +29,7 @@
 #include "AXObjectCache.h"
 #include "Attr.h"
 #include "AttributeChangeInvalidation.h"
+#include "CSSAnimationController.h"
 #include "CSSParser.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
@@ -78,9 +79,9 @@
 #include "NodeRenderStyle.h"
 #include "PlatformWheelEvent.h"
 #include "PointerLockController.h"
+#include "RenderFragmentContainer.h"
 #include "RenderLayer.h"
 #include "RenderListBox.h"
-#include "RenderRegion.h"
 #include "RenderTheme.h"
 #include "RenderTreeUpdater.h"
 #include "RenderView.h"
@@ -1072,11 +1073,11 @@ LayoutRect Element::absoluteEventBounds(bool& boundsIncludeAllDescendantElements
 
             bool computedBounds = false;
             
-            if (RenderFlowThread* flowThread = box.flowThreadContainingBlock()) {
+            if (RenderFragmentedFlow* fragmentedFlow = box.enclosingFragmentedFlow()) {
                 bool wasFixed = false;
                 Vector<FloatQuad> quads;
                 FloatRect localRect(0, 0, box.width(), box.height());
-                if (flowThread->absoluteQuadsForBox(quads, &wasFixed, &box, localRect.y(), localRect.maxY())) {
+                if (fragmentedFlow->absoluteQuadsForBox(quads, &wasFixed, &box, localRect.y(), localRect.maxY())) {
                     FloatRect quadBounds = quads[0].boundingBox();
                     for (size_t i = 1; i < quads.size(); ++i)
                         quadBounds.unite(quads[i].boundingBox());
@@ -1086,7 +1087,7 @@ LayoutRect Element::absoluteEventBounds(bool& boundsIncludeAllDescendantElements
                 } else {
                     // Probably columns. Just return the bounds of the multicol block for now.
                     // FIXME: this doesn't handle nested columns.
-                    RenderElement* multicolContainer = flowThread->parent();
+                    RenderElement* multicolContainer = fragmentedFlow->parent();
                     if (multicolContainer && is<RenderBox>(multicolContainer)) {
                         auto overflowRect = downcast<RenderBox>(*multicolContainer).layoutOverflowRect();
                         result = LayoutRect(multicolContainer->localToAbsoluteQuad(FloatRect(overflowRect), UseTransforms, &includesFixedPositionElements).boundingBox());
@@ -1764,9 +1765,12 @@ void Element::removedFrom(ContainerNode& insertionPoint)
     if (hasPendingResources())
         document().accessSVGExtensions().removeElementFromPendingResources(this);
 
+    Frame* frame = document().frame();
+    if (frame)
+        frame->animation().cancelAnimations(*this);
 
 #if PLATFORM(MAC)
-    if (Frame* frame = document().frame())
+    if (frame)
         frame->mainFrame().removeLatchingStateForTarget(*this);
 #endif
 }
@@ -2525,7 +2529,7 @@ bool Element::dispatchMouseForceWillBegin()
     if (!frame)
         return false;
 
-    PlatformMouseEvent platformMouseEvent { frame->eventHandler().lastKnownMousePosition(), frame->eventHandler().lastKnownMouseGlobalPosition(), NoButton, PlatformEvent::NoType, 1, false, false, false, false, WTF::currentTime(), ForceAtClick, NoTap };
+    PlatformMouseEvent platformMouseEvent { frame->eventHandler().lastKnownMousePosition(), frame->eventHandler().lastKnownMouseGlobalPosition(), NoButton, PlatformEvent::NoType, 1, false, false, false, false, WallTime::now(), ForceAtClick, NoTap };
     auto mouseForceWillBeginEvent = MouseEvent::create(eventNames().webkitmouseforcewillbeginEvent, document().defaultView(), platformMouseEvent, 0, nullptr);
     mouseForceWillBeginEvent->setTarget(this);
     dispatchEvent(mouseForceWillBeginEvent);
@@ -3531,7 +3535,26 @@ void Element::setHasPendingResources()
 
 void Element::clearHasPendingResources()
 {
-    ensureElementRareData().setHasPendingResources(false);
+    if (!hasRareData())
+        return;
+    elementRareData()->setHasPendingResources(false);
+}
+
+bool Element::hasCSSAnimation() const
+{
+    return hasRareData() && elementRareData()->hasCSSAnimation();
+}
+
+void Element::setHasCSSAnimation()
+{
+    ensureElementRareData().setHasCSSAnimation(true);
+}
+
+void Element::clearHasCSSAnimation()
+{
+    if (!hasRareData())
+        return;
+    elementRareData()->setHasCSSAnimation(false);
 }
 
 bool Element::canContainRangeEndPoint() const

@@ -26,14 +26,18 @@
 
 let prepare = (() => {
     let standardProgram;
-    return (origin, lineNumberOffset, text) => {
+    return function(origin, lineNumberOffset, text) {
         if (!standardProgram) {
             standardProgram = new Program();
-            parse(standardProgram, "/internal/stdlib", "native", 72, standardLibrary);
+            let firstLineOfStandardLibrary = 28; // See StandardLibrary.js.
+            parse(standardProgram, "/internal/stdlib", "native", firstLineOfStandardLibrary - 1, standardLibrary);
         }
         
         let program = cloneProgram(standardProgram);
-        parse(program, origin, "user", lineNumberOffset, text);
+        if (arguments.length) {
+            parse(program, origin, "user", lineNumberOffset, text);
+            program = programWithUnnecessaryThingsRemoved(program);
+        }
         
         foldConstexprs(program);
         let nameResolver = createNameResolver(program);
@@ -41,8 +45,7 @@ let prepare = (() => {
         resolveNamesInProtocols(program, nameResolver);
         resolveTypeDefsInTypes(program);
         resolveTypeDefsInProtocols(program);
-        // FIXME: Need to verify that structre are not cyclic.
-        // https://bugs.webkit.org/show_bug.cgi?id=177044
+        checkRecursiveTypes(program);
         synthesizeStructAccessors(program);
         synthesizeEnumFunctions(program);
         resolveNamesInFunctions(program, nameResolver);

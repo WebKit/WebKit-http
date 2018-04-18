@@ -32,15 +32,31 @@
 
 namespace WebCore {
 
+void VideoToolboxVideoEncoderFactory::setActive(bool isActive)
+{
+    if (m_isActive == isActive)
+        return;
+
+    m_isActive = isActive;
+    for (H264VideoToolboxEncoder& encoder : m_encoders)
+        encoder.SetActive(isActive);
+}
+
 webrtc::VideoEncoder* VideoToolboxVideoEncoderFactory::CreateSupportedVideoEncoder(const cricket::VideoCodec& codec)
 {
-    return new H264VideoToolboxEncoder(codec);
+    auto* encoder = new H264VideoToolboxEncoder(codec);
+    m_encoders.append(*encoder);
+
+    return encoder;
 }
 
 void VideoToolboxVideoEncoderFactory::DestroyVideoEncoder(webrtc::VideoEncoder* encoder)
 {
+    m_encoders.removeFirstMatching([&] (const auto& item) {
+        return &item.get() == encoder;
+    });
+
     delete encoder;
-    encoder = nullptr;
 }
 
 }

@@ -482,7 +482,7 @@ enum BreakBetween {
 bool alwaysPageBreak(BreakBetween);
     
 enum BreakInside {
-    AutoBreakInside, AvoidBreakInside, AvoidColumnBreakInside, AvoidPageBreakInside, AvoidRegionBreakInside
+    AutoBreakInside, AvoidBreakInside, AvoidColumnBreakInside, AvoidPageBreakInside
 };
 
 enum HangingPunctuation {
@@ -627,8 +627,6 @@ enum ImageResolutionSource { ImageResolutionSpecified = 0, ImageResolutionFromIm
 enum ImageResolutionSnap { ImageResolutionNoSnap = 0, ImageResolutionSnapPixels };
 
 enum Order { LogicalOrder = 0, VisualOrder };
-
-enum RegionFragment { AutoRegionFragment, BreakRegionFragment };
 
 enum ColumnAxis { HorizontalColumnAxis, VerticalColumnAxis, AutoColumnAxis };
 

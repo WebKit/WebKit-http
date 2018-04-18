@@ -204,23 +204,16 @@ private:
 #if PLATFORM(IOS)
     void startDelayingAndCoalescingContentChangeNotifications() final { }
     void stopDelayingAndCoalescingContentChangeNotifications() final { }
-    void writeDataToPasteboard(NSDictionary*) final { }
-    NSArray* supportedPasteboardTypesForCurrentSelection() final { return nullptr; }
-    NSArray* readDataFromPasteboard(NSString*, int) final { return nullptr; }
     bool hasRichlyEditableSelection() final { return false; }
     int getPasteboardItemsCount() final { return 0; }
     RefPtr<DocumentFragment> documentFragmentFromDelegate(int) final { return nullptr; }
     bool performsTwoStepPaste(DocumentFragment*) final { return false; }
-    int pasteboardChangeCount() final { return 0; }
 #endif
 
     bool performTwoStepDrop(DocumentFragment&, Range&, bool) final { return false; }
 
 #if PLATFORM(COCOA)
-    NSString *userVisibleString(NSURL *) final { return nullptr; }
     void setInsertionPasteboard(const String&) final { };
-    NSURL *canonicalizeURL(NSURL *) final { return nullptr; }
-    NSURL *canonicalizeURLString(NSString *) final { return nullptr; }
 #endif
 
 #if USE(APPKIT)
@@ -346,7 +339,7 @@ class EmptyFrameLoaderClient final : public FrameLoaderClient {
     void dispatchUnableToImplementPolicy(const ResourceError&) final { }
 
     void dispatchWillSendSubmitEvent(Ref<FormState>&&) final;
-    void dispatchWillSubmitForm(FormState&, FramePolicyFunction&&) final;
+    void dispatchWillSubmitForm(FormState&, WTF::Function<void(void)>&&) final;
     bool dispatchDidReceiveInvalidCertificate(DocumentLoader*, const CertificateInfo&, const char* message) final { return false; }
 
     void revertToProvisionalState(DocumentLoader*) final { }
@@ -614,7 +607,7 @@ void EmptyFrameLoaderClient::dispatchWillSendSubmitEvent(Ref<FormState>&&)
 {
 }
 
-void EmptyFrameLoaderClient::dispatchWillSubmitForm(FormState&, FramePolicyFunction&&)
+void EmptyFrameLoaderClient::dispatchWillSubmitForm(FormState&, WTF::Function<void(void)>&&)
 {
 }
 

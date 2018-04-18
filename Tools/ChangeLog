@@ -1,3 +1,1428 @@
+2017-09-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update TestResultsServer for High Sierra queues.
+        https://bugs.webkit.org/show_bug.cgi?id=177500
+
+        Reviewed by Alexey Proskuryakov.
+
+        * TestResultServer/static-dashboards/builders.jsonp:
+
+2017-09-27  Lucas Forschler  <lforschler@apple.com>
+
+        bisect-builds:add a README to the archive.
+        https://bugs.webkit.org/show_bug.cgi?id=177376
+
+        Reviewed by Alexey Proskuryakov & Jon Davis.
+
+        * BuildSlaveSupport/built-product-archive:
+        (addFilesToArchive): refactor function (was previously addLauncherToArchive)
+        (createZip): Teach function to add the README
+        (addLauncherToArchive): Deleted. (refactored to addFilesToArchive)
+        * BuildSlaveSupport/run-webkit-archive: Deleted. (Moved to WebKitArchiveSupport)
+        * WebKitArchiveSupport: Added.
+        * WebKitArchiveSupport/README: Added. README which will be packaged up with the archive.
+        * WebKitArchiveSupport/run-webkit-archive: Added. (Moved from BuildSlaveSupport)
+
+2017-09-26  Tim Horton  <timothy_horton@apple.com>
+
+        Mac CMake bot should provide verbose build output
+        https://bugs.webkit.org/show_bug.cgi?id=177512
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        It's hard to diagnose weird bot-only build problems without the
+        full verbose build output, so turn that on. The Xcode builders
+        do it too, so why not CMake!
+
+2017-09-26  Tim Horton  <timothy_horton@apple.com>
+
+        Make it possible to easily get verbose ninja output from build-webkit
+        https://bugs.webkit.org/show_bug.cgi?id=177511
+
+        Reviewed by Sam Weinig.
+
+        * Scripts/build-webkit:
+        Add a -v/--verbose argument to build-webkit, which sets the environment
+        variable VERBOSE=1, which buildCMakeGeneratedProject already checks.
+
+        * Scripts/webkitdirs.pm:
+        (buildCMakeGeneratedProject):
+        Add ninja verbosity arguments to @makeArgs, which are appended
+        after the -- and thus handed to ninja; the previous implementation
+        (appending to @args) would only work if @makeArgs was non-empty and thus
+        the -- was included.
+
+2017-09-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Followup (r222427): SynchronizedFixedQueue should not have a public constructor
+        https://bugs.webkit.org/show_bug.cgi?id=177458
+
+        Reviewed by Tim Horton.
+
+        Fix the definition and the creation of SynchronizedFixedQueue.
+
+        * TestWebKitAPI/Tests/WTF/SynchronizedFixedQueue.cpp:
+        (TestWebKitAPI::ToUpperConverter::ToUpperConverter):
+        (TestWebKitAPI::ToUpperConverter::startProducing):
+        (TestWebKitAPI::ToUpperConverter::startConsuming):
+        (TestWebKitAPI::ToUpperConverter::stopProducing):
+        (TestWebKitAPI::ToUpperConverter::stopConsuming):
+        (TestWebKitAPI::ToUpperConverter::enqueueLower):
+
+2017-09-26  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [ios-simulator] API test DataInteractionTests.ExternalSourceDataTransferItemGetFolderAsEntry is failing
+        https://bugs.webkit.org/show_bug.cgi?id=177271
+
+        Reviewed by Tim Horton and Megan Gardner.
+
+        Rebaseline a failing API test.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+
+2017-09-26  Per Arne Vollan  <pvollan@apple.com>
+
+        Set LF eol-style on Windows shell script, because the script failed on one of the EWS
+        bots, when it had the 'native' style.
+
+        Unreviewed Windows EWS fix. 
+
+        * EWSTools/start-queue-win.sh: Modified property svn:eol-style.
+
+2017-09-26  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Notify parent process when a worker is spawned
+        https://bugs.webkit.org/show_bug.cgi?id=177467
+        <rdar://problem/34660194>
+
+        Reviewed by Daniel Bates.
+
+        When we fork the parent process, there may be resources in that process
+        which workers will take ownership of. Notify ports when a new worker is created
+        so that these resources can be correctly managed.
+
+        * Scripts/webkitpy/common/message_pool.py:
+        (_MessagePool._start_workers): After all workers are started, notify the caller
+        that a worker has been created, unless we are running inline, in which case the
+        parent process is still the worker.
+        * Scripts/webkitpy/layout_tests/controllers/layout_test_runner.py:
+        (LayoutTestRunner._handle_did_spawn_worker): Notify the port that a worker process
+        has been created.
+        * Scripts/webkitpy/port/base.py:
+        (Port.did_spawn_worker): Add function so that ports may manage any
+        resources created on the parent process but managed by the provided worker.
+        * Scripts/webkitpy/port/device.py:
+        (Device.release_worker_resources): Call release_worker_resources on the
+        platform_device if such a function is defined.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort.did_spawn_worker): Release any worker resources on the iOS
+        device object associated with the spawned worker.
+        * Scripts/webkitpy/test/runner.py:
+        (Runner.handle): Ignore the did_spawn_worker message during testing.
+
+2017-09-26  Jer Noble  <jer.noble@apple.com>
+
+        Thrown ObjC exception when right clicking on <img> containing mp4 link
+        https://bugs.webkit.org/show_bug.cgi?id=177370
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit/mac/ContextMenuImgWithVideo.html: Added.
+        * TestWebKitAPI/Tests/WebKit/mac/ContextMenuImgWithVideo.mm: Added.
+        (-[ContextMenuImgWithVideoDelegate _webView:contextMenu:forElement:]):
+        (TestWebKitAPI::TEST):
+
+2017-09-26  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] 'webkit-patch clean' is failing on bot.
+        https://bugs.webkit.org/show_bug.cgi?id=177488
+
+        Reviewed by Brent Fulgham.
+
+        If 'os.remove' throws an exception, catch it.
+
+        * Scripts/webkitpy/common/checkout/scm/svn.py:
+        (SVN.discard_working_directory_changes):
+
+2017-09-25  Frederik Riedel  <riedel@apple.com>
+
+        Expose way to set values of classified form controls as {Legacy WebKit, WebKit} SPI
+        https://bugs.webkit.org/show_bug.cgi?id=174394
+        <rdar://problem/33183504>
+
+        Reviewed by Ryosuke Niwa.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/ios/WKWebViewAutofillTests.mm: Added.
+        (-[WKWebView _privateTextInput]): Testing helpers.
+        (TestWebKitAPI::TEST): Added test cases to test AutoFill for web views.
+        * TestWebKitAPI/ios/UIKitSPI.h:
+
+2017-09-25  Frederic Wang  <fwang@igalia.com>
+
+        Change my status to reviewer and reformat with validate-committer-lists
+
+        Unreviewed.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2017-09-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Add High Sierra bots to buildbot and dashboard.
+        https://bugs.webkit.org/show_bug.cgi?id=177437
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json: Add High Sierra queues, move Leaks and JSC queues over from Sierra.
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py: Update expected results.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js: Add High Sierra.
+        (WebKitBuildbot):
+
+2017-09-25  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Add API to query if a download was user-initiated
+        https://bugs.webkit.org/show_bug.cgi?id=177435
+        <rdar://problem/34498422>
+
+        Reviewed by Alex Christensen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKit/mac/ContextMenuDownload.mm:
+        (TestWebKitAPI::decideDestinationWithSuggestedFilename):
+        * TestWebKitAPI/Tests/WebKitCocoa/Download.mm:
+        (-[DownloadDelegate _downloadDidStart:]):
+        (-[DownloadDelegate _downloadDidFinish:]):
+        (runTest):
+        (TEST):
+        (-[BlobDownloadDelegate _downloadDidStart:]):
+        (-[BlobDownloadDelegate _downloadDidFinish:]):
+        (-[RedirectedDownloadDelegate _downloadDidStart:]):
+        (-[RedirectedDownloadDelegate _downloadDidFinish:]):
+
+2017-09-25  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r222455.
+        https://bugs.webkit.org/show_bug.cgi?id=177460
+
+        broke iOS build (Requested by alexchristensen on #webkit).
+
+        Reverted changeset:
+
+        "Add WKContentRuleList notify action type"
+        https://bugs.webkit.org/show_bug.cgi?id=177013
+        http://trac.webkit.org/changeset/222455
+
+2017-09-25  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] run-api-tests is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=177454
+
+        Reviewed by Brent Fulgham.
+
+        TestWebKit.exe has changed name to TestWebKitLegacy.exe.
+
+        * Scripts/run-api-tests:
+        (testToolPaths):
+
+2017-09-25  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Cygwin 64-bit EWS process cannot find Visual Studio installation.
+        https://bugs.webkit.org/show_bug.cgi?id=177244
+
+        Reviewed by Alex Christensen.
+
+        The 64-bit EWS shell process should try to find Visual Studio in the 32-bit program files folder.
+
+        * EWSTools/start-queue-win.sh:
+
+2017-09-25  Alex Christensen  <achristensen@webkit.org>
+
+        Add WKContentRuleList notify action type
+        https://bugs.webkit.org/show_bug.cgi?id=177013
+        <rdar://problem/31073936>
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (WebCore::ContentExtensions::operator<<):
+        (TestWebKitAPI::InMemoryCompiledContentExtension::create):
+        (TestWebKitAPI::InMemoryCompiledContentExtension::data):
+        (TestWebKitAPI::InMemoryCompiledContentExtension::InMemoryCompiledContentExtension):
+        (TestWebKitAPI::makeBackend):
+        (TestWebKitAPI::TEST_F):
+        (TestWebKitAPI::actionsEqual):
+        (TestWebKitAPI::sequenceInstances):
+        (TestWebKitAPI::InMemoryCompiledContentExtension::createFromFilter): Deleted.
+        (TestWebKitAPI::InMemoryCompiledContentExtension::~InMemoryCompiledContentExtension): Deleted.
+        * TestWebKitAPI/Tests/WebKitCocoa/ContentRuleListNotification.mm: Added.
+        (-[ContentRuleListNotificationDelegate _webView:URL:contentRuleListIdentifiers:notifications:]):
+        (-[ContentRuleListNotificationDelegate webView:startURLSchemeTask:]):
+        (-[ContentRuleListNotificationDelegate webView:stopURLSchemeTask:]):
+        (-[ContentRuleListNotificationDelegate webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+        (makeWarnContentRuleList):
+        (TEST):
+
+2017-09-25  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        REGRESSION(r222160) [GTK] [Debug] Internal compiler error on the buildbot (huge memory usage by GCC)
+        https://bugs.webkit.org/show_bug.cgi?id=177223
+
+        Reviewed by Carlos Garcia Campos.
+
+        When the user environment sets the variable NUMBER_OF_PROCESSORS
+        this should be passed down to the build system (ninja or make) always.
+
+        Playing with the number of this variable is needed when using icecc
+        (as you usually want to launch more parallel build process than your
+        number of cores), or when you want to limit the number of parallel
+        build process for hardware capacity reasons.
+
+        * Scripts/build-webkit:
+
+2017-09-24  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Incremental builds fail every time Web Inspector icons are removed
+        https://bugs.webkit.org/show_bug.cgi?id=177349
+
+        Reviewed by Carlos Garcia Campos.
+
+        Removing GTK WebInspector image files always breaks the GTK and
+        WPE ports incremental builds.
+
+        * Scripts/webkitdirs.pm:
+        (shouldRemoveCMakeCache): Check the timestamp of
+        Source/WebInspectorUI/UserInterface/Images/gtk directory if
+        isGtk() or isWPE().
+
+2017-09-24  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] Object attributes are missing for ARIA live region roles
+        https://bugs.webkit.org/show_bug.cgi?id=171174
+
+        Reviewed by Chris Fleizach.
+
+        Add support for testing property values for AXARIALive, AXARIAAtomic, and
+        AXARIARelevant. Also add handling for testing whether AXElementBusy is
+        "supported" (in ATK, busy is a state and is supported on all elements
+        regardless of whether the state is present or absent from the state set).
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::boolAttributeValue):
+        (WTR::AccessibilityUIElement::isAttributeSupported):
+
+2017-09-23  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed Mac CMake build fixup after r222194
+
+        * DumpRenderTree/PlatformMac.cmake:
+
+2017-09-22  Zalan Bujtas  <zalan@apple.com>
+
+        WeakPtrFactory should populate m_ref lazily.
+        https://bugs.webkit.org/show_bug.cgi?id=177375
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WTF/WeakPtr.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-09-22  Filip Pizlo  <fpizlo@apple.com>
+
+        WSL should report an error if you try to create an operator overload that will never be called
+        https://bugs.webkit.org/show_bug.cgi?id=177092
+
+        Reviewed by JF Bastien.
+        
+        This adds all kinds of checks to ensure that your operator overloads make sense. This adds all
+        kinds of tests for those checks.
+        
+        In the process of writing those tests, I hit an awesome bug: function instantiation was
+        instantiating all types, which meant that if that instantiated function needed to resolve calls
+        to protocol functions, we'd fail because we would have cloned top-level struct types. We need
+        to preserve the uninstantiated argument types, type arguments, and return type (for casts) in
+        order to be able to resolve protocol calls. But we also need the instantiated version of the
+        type arguments for execution. So, this adds some more stuff to the CallExpression class.
+        
+        * WebGPUShadingLanguageRI/All.js:
+        * WebGPUShadingLanguageRI/ArrayRefType.js:
+        (ArrayRefType.prototype.unifyImpl):
+        * WebGPUShadingLanguageRI/ArrayType.js:
+        (ArrayType.prototype.get isArray):
+        * WebGPUShadingLanguageRI/CallExpression.js:
+        (CallExpression.resolve):
+        (CallExpression.prototype.resolve):
+        (CallExpression.prototype.resolveToOverload):
+        * WebGPUShadingLanguageRI/Checker.js:
+        (Checker.prototype._checkOperatorOverload):
+        (Checker.prototype.visitFuncDef):
+        (Checker.prototype.visitProtocolDecl):
+        (Checker.prototype.visitMakeArrayRefExpression):
+        * WebGPUShadingLanguageRI/EBufferBuilder.js:
+        (EBufferBuilder.prototype._createEPtr):
+        * WebGPUShadingLanguageRI/EPtr.js:
+        (EPtr):
+        * WebGPUShadingLanguageRI/Evaluator.js:
+        (Evaluator.prototype._snapshot):
+        (Evaluator.prototype._runBody):
+        (Evaluator.prototype.visitFunctionLikeBlock):
+        (Evaluator.prototype.visitCallExpression):
+        (Evaluator):
+        (Evaluator.prototype.runFunc): Deleted.
+        * WebGPUShadingLanguageRI/ExternalOrigin.js: Added.
+        * WebGPUShadingLanguageRI/Func.js:
+        (Func.prototype.toDeclString):
+        * WebGPUShadingLanguageRI/FuncInstantiator.js:
+        (FuncInstantiator.prototype.getUnique.InstantiationSubstitution.prototype.visitCallExpression):
+        (FuncInstantiator.prototype.getUnique.InstantiationSubstitution):
+        (FuncInstantiator.prototype.getUnique.InstantiationInstantiateImmediates.prototype.visitCallExpression):
+        (FuncInstantiator.prototype.getUnique.InstantiationInstantiateImmediates):
+        (FuncInstantiator.prototype.getUnique.Instantiate.prototype.visitFuncDef):
+        * WebGPUShadingLanguageRI/Intrinsics.js:
+        (Intrinsics):
+        * WebGPUShadingLanguageRI/LateChecker.js:
+        (LateChecker.prototype.visitReferenceType):
+        (LateChecker.prototype._checkShaderType):
+        * WebGPUShadingLanguageRI/Lexer.js:
+        (Lexer._textIsIdentifierImpl):
+        (Lexer.textIsIdentifier):
+        (Lexer.prototype.next):
+        (Lexer):
+        * WebGPUShadingLanguageRI/NameResolver.js:
+        (NameResolver.prototype.visitProtocolDecl):
+        * WebGPUShadingLanguageRI/Parse.js:
+        (parseType.getAddressSpace):
+        (parseType):
+        * WebGPUShadingLanguageRI/Prepare.js:
+        (let.prepare):
+        * WebGPUShadingLanguageRI/PtrType.js:
+        (PtrType.prototype.unifyImpl):
+        * WebGPUShadingLanguageRI/ReferenceType.js:
+        (ReferenceType):
+        * WebGPUShadingLanguageRI/Rewriter.js:
+        (Rewriter.prototype.visitReferenceType):
+        (Rewriter.prototype.processDerivedCallData):
+        * WebGPUShadingLanguageRI/StandardLibrary.js:
+        (intToString):
+        * WebGPUShadingLanguageRI/StatementCloner.js:
+        (StatementCloner.prototype.visitFuncDef):
+        * WebGPUShadingLanguageRI/StructLayoutBuilder.js:
+        (StructLayoutBuilder.prototype.visitCallExpression):
+        (StructLayoutBuilder):
+        * WebGPUShadingLanguageRI/Substitution.js:
+        (Substitution.prototype.visitTypeRef):
+        * WebGPUShadingLanguageRI/Test.html:
+        * WebGPUShadingLanguageRI/Test.js:
+        (checkNumber):
+        (set target):
+        (tests.literalBool):
+        (tests.identityBool):
+        (tests.intSimpleMath):
+        (tests.uintSimpleMath):
+        (tests.uint8SimpleMath):
+        (tests.equality):
+        (tests.logicalNegation):
+        (tests.notEquality):
+        (tests.equalityTypeFailure):
+        (tests.generalNegation):
+        (tests.add1):
+        (tests.simpleGeneric):
+        (tests.nameResolutionFailure):
+        (tests.simpleVariable):
+        (tests.simpleAssignment):
+        (tests.simpleDefault):
+        (tests.simpleDereference):
+        (tests.dereferenceStore):
+        (tests.simpleMakePtr):
+        (tests.threadArrayLoad):
+        (tests.threadArrayLoadIntLiteral):
+        (tests.deviceArrayLoad):
+        (tests.threadArrayStore):
+        (tests.deviceArrayStore):
+        (tests.deviceArrayStoreIntLiteral):
+        (tests.simpleProtocol):
+        (tests.typeMismatchReturn):
+        (tests.typeMismatchVariableDecl):
+        (tests.typeMismatchAssignment):
+        (tests.typeMismatchReturnParam):
+        (tests.badAdd):
+        (tests.lexerKeyword):
+        (tests.simpleNoReturn):
+        (tests.simpleUnreachableCode):
+        (tests.simpleStruct):
+        (tests.genericStructInstance):
+        (tests.doubleGenericCallsDoubleGeneric):
+        (tests.doubleGenericCallsSingleGeneric):
+        (tests.loadNull):
+        (tests.storeNull):
+        (tests.returnNull):
+        (tests.dereferenceDefaultNull):
+        (tests.defaultInitializedNull):
+        (tests.passNullToPtrMonomorphic):
+        (tests.passNullToPtrPolymorphic):
+        (tests.passNullToPolymorphic):
+        (tests.loadNullArrayRef):
+        (tests.storeNullArrayRef):
+        (tests.returnNullArrayRef):
+        (tests.dereferenceDefaultNullArrayRef):
+        (tests.defaultInitializedNullArrayRef):
+        (tests.defaultInitializedNullArrayRefIntLiteral):
+        (tests.passNullToPtrMonomorphicArrayRef):
+        (tests.passNullToPtrPolymorphicArrayRef):
+        (tests.returnIntLiteralUint):
+        (tests.returnIntLiteralDouble):
+        (tests.badIntLiteralForInt):
+        (tests.badIntLiteralForUint):
+        (tests.badIntLiteralForDouble):
+        (tests.passNullAndNotNull):
+        (tests.passNullAndNotNullFullPoly):
+        (tests.passNullAndNotNullFullPolyReverse):
+        (tests.nullTypeVariableUnify):
+        (tests.doubleNot):
+        (tests.simpleRecursion):
+        (tests.protocolMonoSigPolyDef):
+        (tests.protocolPolySigPolyDef):
+        (tests.protocolDoublePolySigDoublePolyDef):
+        (tests.protocolDoublePolySigDoublePolyDefExplicit):
+        (tests.variableShadowing):
+        (tests.ifStatement):
+        (tests.ifElseStatement):
+        (tests.ifElseIfStatement):
+        (tests.ifElseIfElseStatement):
+        (tests.returnIf):
+        (tests.simpleWhile):
+        (tests.protocolMonoPolySigDoublePolyDefExplicit):
+        (tests.ambiguousOverloadSimple):
+        (tests.ambiguousOverloadOverlapping):
+        (tests.ambiguousOverloadTieBreak):
+        (tests.intOverloadResolution):
+        (tests.intOverloadResolutionReverseOrder):
+        (tests.intOverloadResolutionGeneric):
+        (tests.intLiteralGeneric):
+        (tests.intLiteralGenericWithProtocols):
+        (tests.uintLiteralGeneric):
+        (tests.uintLiteralGenericWithProtocols):
+        (tests.intLiteralGenericSpecific):
+        (tests.simpleConstexpr):
+        (tests.break):
+        (tests.continue):
+        (tests.doWhile):
+        (tests.forLoop):
+        (tests.chainConstexpr):
+        (tests.chainGeneric):
+        (tests.chainStruct):
+        (tests.chainStructNewlyValid):
+        (tests.chainStructDevice):
+        (tests.paramChainStructDevice):
+        (tests.simpleProtocolExtends):
+        (tests.protocolExtendsTwo):
+        (tests.prefixPlusPlus):
+        (tests.prefixPlusPlusResult):
+        (tests.postfixPlusPlus):
+        (tests.postfixPlusPlusResult):
+        (tests.prefixMinusMinus):
+        (tests.prefixMinusMinusResult):
+        (tests.postfixMinusMinus):
+        (tests.postfixMinusMinusResult):
+        (tests.plusEquals):
+        (tests.plusEqualsResult):
+        (tests.minusEquals):
+        (tests.minusEqualsResult):
+        (tests.timesEquals):
+        (tests.timesEqualsResult):
+        (tests.divideEquals):
+        (tests.divideEqualsResult):
+        (tests.twoIntLiterals):
+        (tests.unifyDifferentLiterals):
+        (tests.unifyDifferentLiteralsBackwards):
+        (tests.unifyVeryDifferentLiterals):
+        (tests.unifyVeryDifferentLiteralsBackwards):
+        (tests.assignUintToInt):
+        (tests.buildArrayThenSumIt):
+        (tests.buildArrayThenSumItUsingArrayReference):
+        (tests.overrideSubscriptStruct):
+        (tests.overrideSubscriptStructAndDoStores):
+        (tests.overrideSubscriptStructAndUsePointers):
+        (tests.overrideSubscriptStructAndUsePointersIncorrectly):
+        (tests.makeArrayRefFromLocal):
+        (tests.makeArrayRefFromPointer):
+        (tests.makeArrayRefFromArrayRef):
+        (tests.simpleLength):
+        (tests.nonArrayRefArrayLengthSucceed):
+        (tests.nonArrayRefArrayLengthFail):
+        (tests.constexprIsNotLValuePtr):
+        (tests.constexprIsNotLValueAssign):
+        (tests.constexprIsNotLValueRMW):
+        (tests.assignLength):
+        (tests.assignLengthHelper):
+        (tests.simpleGetter):
+        (tests.simpleSetter):
+        (tests.genericAccessors):
+        (tests.bitSubscriptAccessor):
+        (tests.nestedSubscriptLValueEmulationSimple):
+        (tests.nestedSubscriptLValueEmulationGeneric):
+        (tests.boolBitAnd):
+        (tests.boolBitOr):
+        (tests.boolBitXor):
+        (tests.boolBitNot):
+        (tests.intBitAnd):
+        (tests.intBitOr):
+        (tests.intBitXor):
+        (tests.intBitNot):
+        (tests.intLShift):
+        (tests.intRShift):
+        (tests.uintBitAnd):
+        (tests.uintBitOr):
+        (tests.uintBitXor):
+        (tests.uintBitNot):
+        (tests.uintLShift):
+        (tests.uintRShift):
+        (tests.uint8BitAnd):
+        (tests.uint8BitOr):
+        (tests.uint8BitXor):
+        (tests.uint8BitNot):
+        (tests.uint8LShift):
+        (tests.uint8RShift):
+        (tests.floatMath):
+        (tests.genericCastInfer):
+        (tests.booleanMath):
+        (tests.typedefArray):
+        (tests.shaderTypes):
+        (tests.builtinVectors):
+        (tests.instantiateStructInStruct):
+        (tests.instantiateStructInStructWithInt2):
+        (tests.simpleEnum):
+        (tests.enumWithManualValues):
+        (tests.enumWithoutZero):
+        (tests.enumDuplicates):
+        (tests.enumWithSomeManualValues):
+        (tests.enumConstexprGenericFunction):
+        (tests.enumConstexprGenericStruct):
+        (tests.trap):
+        (tests.swizzle):
+        (tests.enumWithExplicitIntBase):
+        (tests.enumWithUintBase):
+        (tests.enumFloatBase):
+        (tests.enumPtrBase):
+        (tests.enumArrayRefBase):
+        (tests.emptyStruct):
+        (tests.enumStructBase):
+        (tests.enumNoMembers):
+        (tests.simpleSwitch):
+        (tests.exhaustiveUint8Switch):
+        (tests.notQuiteExhaustiveUint8Switch):
+        (tests.notQuiteExhaustiveUint8SwitchWithDefault):
+        (tests.switchFallThrough):
+        (tests.switchBreak):
+        (tests.enumSwitchBreakExhaustive):
+        (tests.enumSwitchBreakNotQuiteExhaustive):
+        (tests.enumSwitchBreakNotQuiteExhaustiveWithDefault):
+        (tests.simpleRecursiveStruct):
+        (tests.mutuallyRecursiveStruct):
+        (tests.mutuallyRecursiveStructWithPointersBroken):
+        (tests.mutuallyRecursiveStructWithPointers):
+        (tests.linkedList):
+        (tests.pointerToPointer):
+        (tests.arrayRefToArrayRef):
+        (tests.pointerGetter):
+        (tests.loneSetter):
+        (tests.setterWithMismatchedType):
+        (tests.setterWithMatchedType):
+        (tests.operatorWithUninferrableTypeVariable):
+        (tests.operatorWithoutUninferrableTypeVariable):
+        (tests.operatorCastWithUninferrableTypeVariable):
+        (tests.operatorCastWithTypeVariableInferredFromReturnType):
+        (tests.incWrongArgumentLength):
+        (tests.decWrongArgumentLength):
+        (tests.incWrongTypes):
+        (tests.decWrongTypes):
+        (tests.plusWrongArgumentLength):
+        (tests.minusWrongArgumentLength):
+        (tests.timesWrongArgumentLength):
+        (tests.divideWrongArgumentLength):
+        (tests.moduloWrongArgumentLength):
+        (tests.bitAndWrongArgumentLength):
+        (tests.bitOrWrongArgumentLength):
+        (tests.bitXorWrongArgumentLength):
+        (tests.lShiftWrongArgumentLength):
+        (tests.rShiftWrongArgumentLength):
+        (tests.bitNotWrongArgumentLength):
+        (tests.equalsWrongArgumentLength):
+        (tests.lessThanWrongArgumentLength):
+        (tests.lessEqualWrongArgumentLength):
+        (tests.greaterWrongArgumentLength):
+        (tests.greaterEqualWrongArgumentLength):
+        (tests.equalsWrongReturnType):
+        (tests.notEqualsOverload):
+        (tests.lessThanWrongReturnType):
+        (tests.lessEqualWrongReturnType):
+        (tests.greaterThanWrongReturnType):
+        (tests.greaterEqualWrongReturnType):
+        (tests.dotOperatorWrongArgumentLength):
+        (tests.dotOperatorSetterWrongArgumentLength):
+        (tests.loneSetterPointer):
+        (tests.setterWithNoGetterOverload):
+        (tests.setterWithNoGetterOverloadFixed):
+        (tests.anderWithNothingWrong):
+        (tests.anderWithWrongNumberOfArguments):
+        (tests.anderDoesntReturnPointer):
+        (tests.anderDoesntTakeReference):
+        (tests.anderWithArrayRef):
+        (tests.pointerIndexGetter):
+        (tests.loneIndexSetter):
+        (tests.notLoneIndexSetter):
+        (tests.indexSetterWithMismatchedType):
+        (tests.indexOperatorWrongArgumentLength):
+        (tests.indexOperatorSetterWrongArgumentLength):
+        (tests.loneIndexSetterPointer):
+        (tests.indexSetterWithNoGetterOverload):
+        (tests.indexSetterWithNoGetterOverloadFixed):
+        (tests.indexAnderWithNothingWrong):
+        (tests.indexAnderWithWrongNumberOfArguments):
+        (tests.indexAnderDoesntReturnPointer):
+        (tests.indexAnderDoesntTakeReference):
+        (tests.indexAnderWithArrayRef):
+        (tests.devicePtrPtr):
+        (tests.threadgroupPtrPtr):
+        (tests.constantPtrPtr):
+        (tests.pointerIndexGetterInProtocol):
+        (tests.loneIndexSetterInProtocol):
+        (tests.notLoneIndexSetterInProtocol):
+        (tests.indexSetterWithMismatchedTypeInProtocol):
+        (tests.indexOperatorWrongArgumentLengthInProtocol):
+        (tests.indexOperatorSetterWrongArgumentLengthInProtocol):
+        (tests.loneIndexSetterPointerInProtocol):
+        (tests.indexSetterWithNoGetterOverloadInProtocol):
+        (tests.indexSetterWithNoGetterOverloadFixedInProtocol):
+        (tests.indexAnderWithNothingWrongInProtocol):
+        (tests.indexAnderWithWrongNumberOfArgumentsInProtocol):
+        (tests.indexAnderDoesntReturnPointerInProtocol):
+        (tests.indexAnderDoesntTakeReferenceInProtocol):
+        (tests.indexAnderWithArrayRefInProtocol):
+        (doTest):
+        (this.window.let._.of.doTest):
+        (TEST_literalBool): Deleted.
+        (TEST_identityBool): Deleted.
+        (TEST_intSimpleMath): Deleted.
+        (TEST_uintSimpleMath): Deleted.
+        (TEST_uint8SimpleMath): Deleted.
+        (TEST_equality): Deleted.
+        (TEST_logicalNegation): Deleted.
+        (TEST_notEquality): Deleted.
+        (TEST_equalityTypeFailure): Deleted.
+        (): Deleted.
+        (TEST_add1): Deleted.
+        (TEST_simpleGeneric): Deleted.
+        (TEST_nameResolutionFailure): Deleted.
+        (TEST_simpleAssignment): Deleted.
+        (TEST_simpleDefault): Deleted.
+        (TEST_simpleDereference): Deleted.
+        (TEST_dereferenceStore): Deleted.
+        (TEST_simpleMakePtr): Deleted.
+        (TEST_threadArrayLoad): Deleted.
+        (TEST_threadArrayLoadIntLiteral): Deleted.
+        (TEST_deviceArrayLoad): Deleted.
+        (TEST_threadArrayStore): Deleted.
+        (TEST_deviceArrayStore): Deleted.
+        (TEST_deviceArrayStoreIntLiteral): Deleted.
+        (TEST_simpleProtocol): Deleted.
+        (TEST_typeMismatchReturn): Deleted.
+        (TEST_simpleNoReturn): Deleted.
+        (TEST_genericStructInstance): Deleted.
+        (TEST_doubleGenericCallsDoubleGeneric): Deleted.
+        (TEST_doubleGenericCallsSingleGeneric): Deleted.
+        (TEST_dereferenceDefaultNull): Deleted.
+        (TEST_dereferenceDefaultNullArrayRef): Deleted.
+        (TEST_returnIntLiteralDouble): Deleted.
+        (TEST_badIntLiteralForInt): Deleted.
+        (TEST_passNullAndNotNullFullPoly): Deleted.
+        (TEST_passNullAndNotNullFullPolyReverse): Deleted.
+        (TEST_nullTypeVariableUnify.recurse): Deleted.
+        (TEST_nullTypeVariableUnify.everyOrder): Deleted.
+        (TEST_nullTypeVariableUnify.everyPair): Deleted.
+        (TEST_nullTypeVariableUnify): Deleted.
+        (TEST_simpleRecursion): Deleted.
+        (TEST_protocolPolySigPolyDef): Deleted.
+        (TEST_protocolDoublePolySigDoublePolyDef): Deleted.
+        (TEST_protocolDoublePolySigDoublePolyDefExplicit): Deleted.
+        (TEST_variableShadowing): Deleted.
+        (TEST_ifStatement): Deleted.
+        (TEST_ifElseStatement): Deleted.
+        (TEST_ifElseIfStatement): Deleted.
+        (TEST_ifElseIfElseStatement): Deleted.
+        (TEST_returnIf): Deleted.
+        (TEST_simpleWhile): Deleted.
+        (TEST_protocolMonoPolySigDoublePolyDefExplicit): Deleted.
+        (TEST_intOverloadResolution): Deleted.
+        (TEST_intOverloadResolutionReverseOrder): Deleted.
+        (TEST_intOverloadResolutionGeneric): Deleted.
+        (TEST_intLiteralGeneric): Deleted.
+        (TEST_intLiteralGenericWithProtocols): Deleted.
+        (TEST_uintLiteralGeneric): Deleted.
+        (TEST_uintLiteralGenericWithProtocols): Deleted.
+        (TEST_intLiteralGenericSpecific): Deleted.
+        (TEST_simpleConstexpr): Deleted.
+        (TEST_break): Deleted.
+        (TEST_forLoop): Deleted.
+        (TEST_chainConstexpr): Deleted.
+        (TEST_chainGeneric): Deleted.
+        (TEST_chainStruct): Deleted.
+        (TEST_chainStructNewlyValid): Deleted.
+        (TEST_chainStructDevice): Deleted.
+        (TEST_paramChainStructDevice): Deleted.
+        (TEST_simpleProtocolExtends): Deleted.
+        (TEST_protocolExtendsTwo): Deleted.
+        (TEST_prefixPlusPlus): Deleted.
+        (TEST_prefixPlusPlusResult): Deleted.
+        (TEST_postfixPlusPlus): Deleted.
+        (TEST_postfixPlusPlusResult): Deleted.
+        (TEST_prefixMinusMinus): Deleted.
+        (TEST_prefixMinusMinusResult): Deleted.
+        (TEST_postfixMinusMinus): Deleted.
+        (TEST_postfixMinusMinusResult): Deleted.
+        (TEST_plusEquals): Deleted.
+        (TEST_plusEqualsResult): Deleted.
+        (TEST_minusEquals): Deleted.
+        (TEST_minusEqualsResult): Deleted.
+        (TEST_timesEquals): Deleted.
+        (TEST_timesEqualsResult): Deleted.
+        (TEST_divideEquals): Deleted.
+        (TEST_divideEqualsResult): Deleted.
+        (TEST_twoIntLiterals): Deleted.
+        (TEST_unifyDifferentLiterals): Deleted.
+        (TEST_buildArrayThenSumItUsingArrayReference): Deleted.
+        (TEST_overrideSubscriptStruct): Deleted.
+        (TEST_overrideSubscriptStructAndDoStores): Deleted.
+        (TEST_overrideSubscriptStructAndUsePointers): Deleted.
+        (TEST_overrideSubscriptStructAndUsePointersIncorrectly): Deleted.
+        (TEST_makeArrayRefFromPointer): Deleted.
+        (TEST_makeArrayRefFromArrayRef): Deleted.
+        (TEST_nonArrayRefArrayLengthSucceed): Deleted.
+        (TEST_nonArrayRefArrayLengthFail): Deleted.
+        (TEST_simpleSetter): Deleted.
+        (TEST_genericAccessors): Deleted.
+        (TEST_bitSubscriptAccessor): Deleted.
+        (TEST_nestedSubscriptLValueEmulationSimple): Deleted.
+        (TEST_nestedSubscriptLValueEmulationGeneric): Deleted.
+        (TEST_boolBitAnd): Deleted.
+        (TEST_boolBitOr): Deleted.
+        (TEST_boolBitXor): Deleted.
+        (TEST_boolBitNot): Deleted.
+        (TEST_intBitAnd): Deleted.
+        (TEST_intBitOr): Deleted.
+        (TEST_intBitXor): Deleted.
+        (TEST_intBitNot): Deleted.
+        (TEST_intLShift): Deleted.
+        (TEST_intRShift): Deleted.
+        (TEST_uintBitAnd): Deleted.
+        (TEST_uintBitOr): Deleted.
+        (TEST_uintBitXor): Deleted.
+        (TEST_uintBitNot): Deleted.
+        (TEST_uintLShift): Deleted.
+        (TEST_uintRShift): Deleted.
+        (TEST_uint8BitAnd): Deleted.
+        (TEST_uint8BitOr): Deleted.
+        (TEST_uint8BitXor): Deleted.
+        (TEST_uint8BitNot): Deleted.
+        (TEST_uint8LShift): Deleted.
+        (TEST_uint8RShift): Deleted.
+        (TEST_floatMath): Deleted.
+        (TEST_booleanMath): Deleted.
+        (TEST_typedefArray): Deleted.
+        (TEST_shaderTypes): Deleted.
+        (TEST_instantiateStructInStruct): Deleted.
+        (TEST_instantiateStructInStructWithInt2): Deleted.
+        (TEST_simpleEnum): Deleted.
+        (TEST_enumWithManualValues): Deleted.
+        (TEST_enumWithoutZero): Deleted.
+        (TEST_enumConstexprGenericFunction): Deleted.
+        (TEST_enumConstexprGenericStruct): Deleted.
+        (TEST_trap): Deleted.
+        (TEST_enumWithExplicitIntBase): Deleted.
+        (TEST_enumWithUintBase): Deleted.
+        (TEST_enumFloatBase): Deleted.
+        (TEST_enumStructBase): Deleted.
+        (TEST_simpleSwitch): Deleted.
+        (TEST_exhaustiveUint8Switch): Deleted.
+        (TEST_notQuiteExhaustiveUint8Switch): Deleted.
+        (TEST_switchFallThrough): Deleted.
+        (TEST_switchBreak): Deleted.
+        (TEST_enumSwitchBreakExhaustive): Deleted.
+        (TEST_enumSwitchBreakNotQuiteExhaustive): Deleted.
+        (TEST_simpleRecursiveStruct): Deleted.
+        (TEST_linkedList): Deleted.
+        * WebGPUShadingLanguageRI/Type.js:
+        (Type.prototype.get isArray):
+        * WebGPUShadingLanguageRI/TypeRef.js:
+        (TypeRef.wrap):
+        * WebGPUShadingLanguageRI/TypeVariableTracker.js:
+        (TypeVariableTracker.prototype.set get return):
+        (TypeVariableTracker.prototype.visitVariableRef):
+        (TypeVariableTracker):
+        * WebGPUShadingLanguageRI/Visitor.js:
+        (Visitor.prototype.visitProtocolDecl):
+        * WebGPUShadingLanguageRI/index.html:
+
+2017-09-22  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r222394.
+
+        This broke the Windows Debug Build.
+
+        Reverted changeset:
+
+        "Remove build-webkit's notion of feature flags having a
+        default value"
+        https://bugs.webkit.org/show_bug.cgi?id=177338
+        http://trac.webkit.org/changeset/222394
+
+2017-09-22  Tim Horton <timothy_horton@apple.com> and Michael Catanzaro <mcatanzaro@igalia.com>
+
+        Remove build-webkit's notion of feature flags having a default value
+        https://bugs.webkit.org/show_bug.cgi?id=177338
+
+        Reviewed by Alex Christensen.
+
+        Delegate feature flag default values to the build system.
+        (FeatureDefines.xcconfig for Xcode, WebKitFeatures.cmake and Options*.cmake for CMake, and FeatureDefines.h for everyone)
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (Factory.__init__):
+        Update GTK and WPE buildbot configuration to use --no-experimental-features on old stable
+        bots instead of --default-cmake-features.
+
+        * Scripts/build-webkit:
+        (cMakeArgsFromFeatures):
+        Default feature values to 'undef'.
+        Remove the --default-cmake-features argument; it is now the default.
+        Add --no-experimental-features to replace it.
+        Stop printing the default feature flag value in the help.
+        Avoid propagating undefined values to the build system;
+        only mention flags that are overridden on the command line.
+
+        This has the nice side effect of using the default CMake features
+        for CMake builds, but still allowing toggling of them using the
+        prettier --FEATURE and --no-FEATURE arguments.
+
+        * Scripts/webkitdirs.pm:
+        (generateBuildSystemFromCMakeProject):
+        No longer need to suppress CMake warnings about unused arguments.
+
+        * Scripts/webkitperl/FeatureList.pm:
+        Remove the default values from the feature list.
+
+2017-09-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed, add the ability to skip a test262 test.
+
+        * Scripts/run-jsc-stress-tests:
+        Other handlers have :skip but a few didn't.
+
+2017-09-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Change architecture for ios-ews queue to arm64.
+        https://bugs.webkit.org/show_bug.cgi?id=177332
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/config/ews.json:
+
+2017-09-21  Tim Horton  <timothy_horton@apple.com>
+
+        Use 'ninja' from the SDK if it exists
+        https://bugs.webkit.org/show_bug.cgi?id=177330
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitdirs.pm:
+        (canUseNinja):
+        Check for ninja with xcrun in addition to commandExists() for Cocoa platforms.
+
+        (generateBuildSystemFromCMakeProject):
+        (canUseNinjaGenerator): Deleted.
+        Remove canUseNinjaGenerator; as noted in bug 177057, the Ninja generator
+        is available in all versions of CMake supported by WebKit.
+
+2017-09-21  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r222308): new API tests are failing for !NETWORK_SESSION
+        https://bugs.webkit.org/show_bug.cgi?id=177321
+
+        Reviewed by Alex Christensen.
+
+        Unskip API tests now that they pass everywhere.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/Download.mm:
+        (TEST):
+
+2017-09-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix ability to run tests in browser.
+
+        * WebGPUShadingLanguageRI/Test.html:
+        * WebGPUShadingLanguageRI/index.html:
+
+2017-09-21  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Ignore failure to get updated selenium version
+        https://bugs.webkit.org/show_bug.cgi?id=177205
+        <rdar://problem/34531669>
+
+        Reviewed by Lucas Forschler.
+
+        Sometime asking PyPI for the latest version of Selenium fails. We should try and
+        fallback to, at a minimum, version 3.5.0 or a newer installed version.
+
+        * Scripts/webkitpy/thirdparty/__init__.py:
+        (AutoinstallImportHook.greater_than_equal_to_version): Return true if the second
+        version string is greater than or equal to the first version string.
+        (AutoinstallImportHook._install_selenium): If we can't get the latest PyPI url,
+        fallback to version 3.5.0 or a newer installed version.
+
+2017-09-21  Filip Pizlo  <fpizlo@apple.com>
+
+        WSL should have some post-instantiation type checking
+        https://bugs.webkit.org/show_bug.cgi?id=177303
+
+        Reviewed by Keith Miller.
+        
+        This patch removes the Primitive protocol! Yay!
+        
+        The Primitive protocol was an attempt to handle the fact that Metal wouldn't allow us to point a
+        non-thread pointer at data structures that have pointers. This type checking rule interacts badly with
+        generics. I was able to get it to mostly work by making Primitive into a dynamic protocol - a type
+        belongs to it if it happens to be isPrimitive.
+        
+        But that was a mistake, since it makes it hard to create pointers that are generic over address space.
+        Also, it's not an appropriate rule for targeting SPIR-V logical mode. That rule will be different, and
+        possibly more complicated.
+        
+        All of these kinds of rules are easier to implement of we run them after instantiation, since then they
+        don't get in the way of generics. That's what this patch does.
+        
+        This means that we get all of the same type checking power as before, and we still can catch the errors
+        that Metal requires us to check for. It's easier to do those checks now.
+        
+        Finally, this removes the shader type checker's incomplete reimplementation of isPrimitive (which was
+        called NonNumericSearcher). The shader type checker calls isPrimitive now.
+
+        * WebGPUShadingLanguageRI/AddressSpace.js:
+        (needsPrimitiveProtocol): Deleted.
+        (protocolSuffix): Deleted.
+        * WebGPUShadingLanguageRI/All.js:
+        * WebGPUShadingLanguageRI/Checker.js:
+        (Checker.prototype._checkShaderType):
+        (Checker.prototype._checkShaderType.NonNumericSearcher): Deleted.
+        (Checker.prototype._checkShaderType.NonNumericSearcher.prototype.visitArrayRefType): Deleted.
+        (Checker.prototype._checkShaderType.NonNumericSearcher.prototype.visitPtrType): Deleted.
+        (Checker.prototype.visitReferenceType): Deleted.
+        * WebGPUShadingLanguageRI/FuncInstantiator.js:
+        (FuncInstantiator.prototype.getUnique.Instantiate.prototype.visitFuncDef):
+        * WebGPUShadingLanguageRI/Inline.js:
+        (_inlineFunction):
+        * WebGPUShadingLanguageRI/Intrinsics.js:
+        (Intrinsics):
+        * WebGPUShadingLanguageRI/LateChecker.js: Added.
+        (LateChecker):
+        (LateChecker.prototype.visitReferenceType):
+        (LateChecker.prototype._checkShaderType):
+        (LateChecker.prototype.visitFuncDef):
+        * WebGPUShadingLanguageRI/LexerToken.js:
+        (LexerToken.prototype.get isInternal): Deleted.
+        * WebGPUShadingLanguageRI/NativeType.js:
+        (NativeType):
+        (NativeType.prototype.get name):
+        (NativeType.prototype.get isPrimitive):
+        (NativeType.prototype.set isPrimitive):
+        (NativeType.prototype.toString):
+        * WebGPUShadingLanguageRI/Parse.js:
+        (parseNative):
+        * WebGPUShadingLanguageRI/ProgramWithUnnecessaryThingsRemoved.js:
+        (programWithUnnecessaryThingsRemoved):
+        * WebGPUShadingLanguageRI/ProtocolDecl.js:
+        * WebGPUShadingLanguageRI/ReferenceType.js:
+        (ReferenceType.prototype.get elementType):
+        (ReferenceType.prototype.get isPrimitive): Deleted.
+        * WebGPUShadingLanguageRI/StandardLibrary.js:
+        * WebGPUShadingLanguageRI/StatementCloner.js:
+        (StatementCloner.prototype.visitNativeType):
+        * WebGPUShadingLanguageRI/SynthesizeStructAccessors.js:
+        (synthesizeStructAccessors):
+        * WebGPUShadingLanguageRI/Test.js:
+        (TEST_passNullAndNotNullFullPoly):
+        (TEST_passNullAndNotNullFullPolyReverse):
+        (TEST_nullTypeVariableUnify):
+        (TEST_chainStructNewlyValid):
+        (TEST_chainStructDevice):
+        (TEST_chainStructInvalid): Deleted.
+        * WebGPUShadingLanguageRI/Type.js:
+        (Type.prototype.get isPrimitive):
+
+2017-09-21  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, temporarily disable new API tests introduced in r222308 until they pass on El Capitan
+
+        * TestWebKitAPI/Tests/WebKitCocoa/Download.mm:
+        (TEST):
+
+2017-09-21  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r222272.
+        https://bugs.webkit.org/show_bug.cgi?id=177316
+
+        This patch broke builds on some Win EWS bots. (Requested by
+        perarne on #webkit).
+
+        Reverted changeset:
+
+        "[Win] Cygwin 64-bit EWS process cannot find Visual Studio
+        installation."
+        https://bugs.webkit.org/show_bug.cgi?id=177244
+        http://trac.webkit.org/changeset/222272
+
+2017-09-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix a bug in the interactive app that was introduced by bad merging.
+
+        * WebGPUShadingLanguageRI/FlattenedStructOffsetGatherer.js:
+        (FlattenedStructOffsetGatherer.prototype.visitTypeRef):
+        (FlattenedStructOffsetGatherer):
+        * WebGPUShadingLanguageRI/index.html:
+
+2017-09-20  Filip Pizlo  <fpizlo@apple.com>
+
+        WSL should support switch
+        https://bugs.webkit.org/show_bug.cgi?id=176978
+
+        Reviewed by Keith Miller.
+        
+        This adds fairly complete support for switch statements. This includes things like verifying
+        whether or not a default statement is needed. This even works when the programmer lists all of
+        the values of an integer type.
+        
+        To test that last part, this patch adds uint8 support. It's easy add it, but of course it
+        meant adding a lot of tests.
+        
+        This also fixes enum bugs, since switch does things to enums that we previously didn't test.
+
+        * WebGPUShadingLanguageRI/All.js:
+        * WebGPUShadingLanguageRI/Checker.js:
+        (Checker.prototype.visitSwitchStatement):
+        * WebGPUShadingLanguageRI/EnumLiteral.js:
+        (EnumLiteral.prototype.get valueForSelectedType):
+        * WebGPUShadingLanguageRI/EnumType.js:
+        (EnumType.prototype.allValues):
+        (EnumType.prototype.valuesEqual):
+        * WebGPUShadingLanguageRI/Evaluator.js:
+        (Evaluator.prototype.visitSwitchStatement):
+        * WebGPUShadingLanguageRI/Inliner.js:
+        (Inliner.prototype.visitCallExpression):
+        (Inliner):
+        (Inliner.prototype.visitCastExpression): Deleted.
+        * WebGPUShadingLanguageRI/Intrinsics.js:
+        (Intrinsics.):
+        (Intrinsics):
+        * WebGPUShadingLanguageRI/LoopChecker.js:
+        (LoopChecker):
+        (LoopChecker.prototype.visitFuncDef):
+        (LoopChecker.prototype.visitWhileLoop):
+        (LoopChecker.prototype.visitDoWhileLoop):
+        (LoopChecker.prototype.visitForLoop):
+        (LoopChecker.prototype.visitSwitchStatement):
+        (LoopChecker.prototype.visitBreak):
+        (LoopChecker.prototype.visitContinue):
+        * WebGPUShadingLanguageRI/Node.js:
+        (Node.prototype.commit):
+        * WebGPUShadingLanguageRI/Parse.js:
+        (parseSwitchCase):
+        (parseSwitchStatement):
+        (parseStatement):
+        (parseBlockBody):
+        (parseBlock):
+        * WebGPUShadingLanguageRI/Prepare.js:
+        (let.prepare):
+        * WebGPUShadingLanguageRI/ReturnChecker.js:
+        (ReturnChecker.prototype._mergeReturnStyle):
+        (ReturnChecker.prototype.visitIfStatement):
+        (ReturnChecker.prototype.visitWhileLoop):
+        (ReturnChecker.prototype.visitDoWhileLoop):
+        (ReturnChecker.prototype.visitForLoop):
+        (ReturnChecker.prototype.visitSwitchStatement):
+        (ReturnChecker.prototype.visitContinue):
+        (ReturnChecker):
+        * WebGPUShadingLanguageRI/Rewriter.js:
+        (Rewriter.prototype.visitSwitchStatement):
+        (Rewriter.prototype.visitSwitchCase):
+        * WebGPUShadingLanguageRI/StandardLibrary.js:
+        (uint8.operator):
+        (bool.operator):
+        (_generateSwizzle):
+        * WebGPUShadingLanguageRI/SwitchCase.js: Added.
+        (SwitchCase):
+        (SwitchCase.prototype.get origin):
+        (SwitchCase.prototype.get isDefault):
+        (SwitchCase.prototype.get value):
+        (SwitchCase.prototype.get body):
+        (SwitchCase.prototype.toString):
+        * WebGPUShadingLanguageRI/SwitchStatement.js: Added.
+        (SwitchStatement):
+        (SwitchStatement.prototype.get origin):
+        (SwitchStatement.prototype.get value):
+        (SwitchStatement.prototype.add):
+        (SwitchStatement.prototype.get switchCases):
+        (SwitchStatement.prototype.toString):
+        * WebGPUShadingLanguageRI/Test.html:
+        * WebGPUShadingLanguageRI/Test.js:
+        (makeUint8):
+        (makeEnum):
+        (checkUint8):
+        (TEST_uint8SimpleMath):
+        (TEST_equality):
+        (TEST_notEquality):
+        (TEST_uint8BitAnd):
+        (TEST_uint8BitOr):
+        (TEST_uint8BitXor):
+        (TEST_uint8BitNot):
+        (TEST_uint8LShift):
+        (TEST_uint8RShift):
+        (TEST_enumWithExplicitIntBase):
+        (TEST_enumWithUintBase):
+        (TEST_enumFloatBase):
+        (TEST_enumStructBase):
+        (TEST_simpleSwitch):
+        (TEST_exhaustiveUint8Switch):
+        (TEST_notQuiteExhaustiveUint8Switch):
+        (TEST_switchFallThrough):
+        (TEST_switchBreak):
+        (TEST_enumSwitchBreakExhaustive):
+        (TEST_enumSwitchBreakNotQuiteExhaustive):
+        (doTest):
+        * WebGPUShadingLanguageRI/UnificationContext.js:
+        (UnificationContext):
+        (UnificationContext.prototype.addExtraNode):
+        (UnificationContext.prototype.get nodes):
+        * WebGPUShadingLanguageRI/Visitor.js:
+        (Visitor.prototype.visitProtocolDecl):
+        * WebGPUShadingLanguageRI/index.html:
+
+2017-09-20  Filip Pizlo  <fpizlo@apple.com>
+
+        WSL needs a way to verify that structs are not cyclic
+        https://bugs.webkit.org/show_bug.cgi?id=177044
+
+        Reviewed by Myles Maxfield.
+        
+        This adds a recursive type checking phase. Even before adding this phase, the compiler would
+        successfully detect recursive types - but at the cost of also rejecting programs that had
+        recursive types indirectly through pointers. To make both things work, I had to change Visitor
+        to no longer visit TypeRef.type by default. This resulted in some other changes in a few other
+        parts of the code that previously relied on that behavior.
+
+        * WebGPUShadingLanguageRI/All.js:
+        * WebGPUShadingLanguageRI/CheckRecursiveTypes.js: Added.
+        (checkRecursiveTypes):
+        * WebGPUShadingLanguageRI/Checker.js:
+        (Checker.prototype._checkShaderType.NonNumericSearcher.prototype.visitArrayRefType):
+        (Checker.prototype._checkShaderType.NonNumericSearcher.prototype.visitPtrType):
+        (Checker.prototype._checkShaderType.NonNumericSearcher.prototype.visitTypeRef):
+        (Checker.prototype._checkShaderType.NonNumericSearcher):
+        (Checker.prototype._checkShaderType):
+        (Checker.prototype.visitTypeRef):
+        * WebGPUShadingLanguageRI/NameResolver.js:
+        (NameResolver.prototype.visitProtocolDecl):
+        * WebGPUShadingLanguageRI/Prepare.js:
+        (let.prepare):
+        * WebGPUShadingLanguageRI/RecursiveTypeChecker.js: Added.
+        (RecursiveTypeChecker):
+        (RecursiveTypeChecker.prototype.visitFuncDef):
+        (RecursiveTypeChecker.prototype.visitNativeFunc):
+        (RecursiveTypeChecker.prototype.visitStructType):
+        (RecursiveTypeChecker.prototype.visitReferenceType):
+        (RecursiveTypeChecker.prototype.visitTypeRef):
+        * WebGPUShadingLanguageRI/StructLayoutBuilder.js:
+        (StructLayoutBuilder.prototype.visitTypeRef):
+        (StructLayoutBuilder):
+        * WebGPUShadingLanguageRI/Test.html:
+        * WebGPUShadingLanguageRI/Test.js:
+        (TEST_simpleRecursiveStruct):
+        * WebGPUShadingLanguageRI/TypeDefResolver.js:
+        (TypeDefResolver.prototype.visitTypeRef):
+        (TypeDefResolver):
+        * WebGPUShadingLanguageRI/Visitor.js:
+        (Visitor.prototype.visitProtocolDecl):
+        * WebGPUShadingLanguageRI/index.html:
+
+2017-09-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update TestResultsServer for iOS 11 queues.
+        https://bugs.webkit.org/show_bug.cgi?id=177285
+
+        Reviewed by Alexey Proskuryakov.
+
+        * TestResultServer/static-dashboards/builders.jsonp:
+
+2017-09-21  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION(r221465) WKWebViews without WebGL delegate callbacks crash when WebGL contexts are created
+        https://bugs.webkit.org/show_bug.cgi?id=177306
+        <rdar://problem/34351988>
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WebGLPolicy.mm:
+        (-[WebGLTestDelegate webView:startURLSchemeTask:]):
+        (-[DelegateWithoutWebGL webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+        (TEST):
+
+2017-09-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Update test262 tests
+        https://bugs.webkit.org/show_bug.cgi?id=177220
+
+        Reviewed by Saam Barati and Yusuke Suzuki.
+
+        * Scripts/import-test262-tests:
+        - better detect upstream git repository url from import location
+        - update JSTest test262 resources when importing from repository
+        - take seconds instead of 20+ minutes to write yaml with --failures
+        - update "negative" command to only include just the exception type
+
+2017-09-20  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Add API to get the redirect chain of a WKDownload
+        https://bugs.webkit.org/show_bug.cgi?id=176628
+        <rdar://problem/34338279>
+
+        Reviewed by Alex Christensen.
+
+        Add API test coverage for the 2 cases:
+        1. Download started as a download and is redirected while
+           downloading.
+        2. Download started as a load and was redirected during the
+           initial load.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/Download.mm:
+        (-[RedirectedDownloadDelegate _download:didReceiveServerRedirectToURL:]):
+        (-[RedirectedDownloadDelegate _downloadDidFinish:]):
+        (TEST):
+
+2017-09-20  Alex Christensen  <achristensen@webkit.org>
+
+        Add infrastructure for adding custom headers to requests per website
+        https://bugs.webkit.org/show_bug.cgi?id=177255
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/HTTPHeaderField.cpp: Added.
+        (shouldRemainUnchanged):
+        (shouldBeInvalid):
+        (shouldBecome):
+        (TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/WebsitePolicies.mm:
+        (TEST):
+
+2017-09-20  Daniel Bates  <dabates@apple.com>
+
+        Spelling and grammar dots should not overlap
+        https://bugs.webkit.org/show_bug.cgi?id=177265
+        <rdar://problem/34556424>
+
+        Reviewed by David Hyatt.
+
+        Add unit tests for the subdivision algorithm.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/MarkerSubrange.cpp: Added.
+        (WebCore::operator<<):
+        (WebCore::operator==):
+        (TestWebKitAPI::TEST):
+
+2017-09-20  Filip Pizlo  <fpizlo@apple.com>
+
+        WSL should not type-check functions in the standard library that it does not use
+        https://bugs.webkit.org/show_bug.cgi?id=177269
+
+        Reviewed by JS Bastien.
+        
+        Once we added all of the swizzling operators, the size of the standard library ballooned to the point
+        where it's just not practical to compile anything anymore. If you want to compile
+        "int foo(int x) { return x}" then it will take some ridiculous amount of time (many seconds) because WSL
+        will have to type check all of those swizzling operators.
+        
+        This change makes it so that after parsing the whole program, we remove the things that we aren't using.
+        We can make a really good estimate of what we need even before doing any name resolution. In practice,
+        this change removes almost all of the things from Program before we get to the hard work of type
+        checking. That's true because the standard library contains _many_ things and you'd have to try very
+        hard to use all of them.
+        
+        This is a 13x speed-up for Test.js. It went from 155 seconds to 12 seconds on my machine.
+
+        * WebGPUShadingLanguageRI/All.js:
+        * WebGPUShadingLanguageRI/ConstexprTypeParameter.js:
+        (ConstexprTypeParameter.prototype.get origin):
+        * WebGPUShadingLanguageRI/Intrinsics.js:
+        * WebGPUShadingLanguageRI/Lexer.js:
+        (Lexer):
+        (Lexer.prototype.get originKind):
+        * WebGPUShadingLanguageRI/LexerToken.js:
+        (LexerToken.prototype.get lexer):
+        (LexerToken.prototype.get origin):
+        (LexerToken.prototype.get originKind):
+        (LexerToken.prototype.get isInternal):
+        * WebGPUShadingLanguageRI/NameContext.js:
+        (isWildcardKind):
+        (NameContext.prototype.add):
+        (NameContext.prototype.get let):
+        (NameContext.prototype.mapFor): Deleted.
+        * WebGPUShadingLanguageRI/NameFinder.js: Added.
+        (NameFinder):
+        (NameFinder.get worklist):
+        * WebGPUShadingLanguageRI/NameResolver.js:
+        (NameResolver.prototype.visitProtocolDecl):
+        * WebGPUShadingLanguageRI/OriginKind.js: Added.
+        (isOriginKind):
+        * WebGPUShadingLanguageRI/Prepare.js:
+        (let.prepare):
+        * WebGPUShadingLanguageRI/ProgramWithUnnecessaryThingsRemoved.js: Added.
+        (programWithUnnecessaryThingsRemoved):
+        * WebGPUShadingLanguageRI/Test.html:
+        * WebGPUShadingLanguageRI/Test.js:
+        (doTest):
+        * WebGPUShadingLanguageRI/index.html:
+
+2017-09-20  Alex Christensen  <achristensen@webkit.org>
+
+        Remove ActionType::CSSDisplayNoneStyleSheet
+        https://bugs.webkit.org/show_bug.cgi?id=177275
+
+        Reviewed by Andy Estes.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (WebCore::ContentExtensions::operator<<):
+        (TestWebKitAPI::testRequest):
+        (TestWebKitAPI::TEST_F):
+
+2017-09-20  Jonathan Bedard  <jbedard@apple.com>
+
+        Device iOS 11 builds fail with FileProvider linker errors
+        https://bugs.webkit.org/show_bug.cgi?id=177272
+        <rdar://problem/34557680>
+
+        Reviewed by David Kilzer.
+
+        For iOS device and simulator, the SYSTEM_LIBRARY_DIR should never
+        be on the framework search path as neither platform should ever link
+        with Mac frameworks.
+
+        * DumpRenderTree/mac/Configurations/Base.xcconfig:
+        * WebKitTestRunner/Configurations/Base.xcconfig:
+
 2017-09-20  Alex Christensen  <achristensen@webkit.org>
 
         Remove ActionType::InvalidAction

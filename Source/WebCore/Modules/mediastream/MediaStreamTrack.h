@@ -98,7 +98,7 @@ public:
         String deviceId;
         String groupId;
     };
-    WEBCORE_EXPORT TrackSettings getSettings() const;
+    TrackSettings getSettings(Document&) const;
 
     struct TrackCapabilities {
         std::optional<LongRange> width;
@@ -165,7 +165,7 @@ private:
     void trackSettingsChanged(MediaStreamTrackPrivate&) final;
     void trackEnabledChanged(MediaStreamTrackPrivate&) final;
 
-    WeakPtr<MediaStreamTrack> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
+    WeakPtr<MediaStreamTrack> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(*this); }
 
     Vector<Observer*> m_observers;
     Ref<MediaStreamTrackPrivate> m_private;

@@ -41,6 +41,11 @@ class EnumLiteral extends Expression {
             return false;
         return this.member == other.member;
     }
+    
+    get valueForSelectedType()
+    {
+        return this.member.value.unifyNode.valueForSelectedType;
+    }
         
     toString()
     {

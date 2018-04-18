@@ -206,9 +206,6 @@
             "contextsAllowed": ["interface"],
             "values": ["", "Impl", "ImplWebGLRenderingContext", "ImplDocument", "ImplElementRoot", "ImplFrame", "ImplOwnerNodeRoot", "ImplScriptExecutionContext"]
         },
-        "GetterMayThrowException": {
-            "contextsAllowed": ["attribute"]
-        },
         "Global": {
             "contextsAllowed": ["interface"],
             "values": ["*"],
@@ -416,9 +413,6 @@
         "SetterCallWith": {
             "contextsAllowed": ["attribute"],
             "values": ["ScriptExecutionContext", "ScriptState", "GlobalObject", "ActiveWindow", "FirstWindow"]
-        },
-        "SetterMayThrowException": {
-            "contextsAllowed": ["attribute"]
         },
         "SkipCallbackInvokeCheck": {
             "contextsAllowed": ["operation", "callback-function"]

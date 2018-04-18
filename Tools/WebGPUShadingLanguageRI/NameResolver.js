@@ -139,7 +139,7 @@ class NameResolver extends Visitor {
         this.visitFunc(node);
         let funcs = this._nameContext.get(Func, node.name);
         if (!funcs)
-            throw new WTypeError(node.origin.originString, "Cannot find any functions named " + node.na,e);
+            throw new WTypeError(node.origin.originString, "Cannot find any functions named " + node.name);
         node.possibleOverloads = funcs;
     }
     
@@ -171,13 +171,15 @@ class NameResolver extends Visitor {
         for (let i = 0; i < typeArguments.length; ++i) {
             let typeArgument = typeArguments[i];
             if (typeArgument instanceof TypeOrVariableRef) {
-                let thing = this._nameContext.get(NotFunc, typeArgument.name);
+                let thing = this._nameContext.get(Anything, typeArgument.name);
                 if (!thing)
                     new WTypeError(typeArgument.origin.originString, "Could not find type or variable named " + typeArgument.name);
-                if (thing instanceof Value) {
+                if (thing instanceof Value)
                     typeArguments[i] = new VariableRef(typeArgument.origin, typeArgument.name);
-                } else
+                else if (thing instanceof Type)
                     typeArguments[i] = new TypeRef(typeArgument.origin, typeArgument.name, []);
+                else
+                    throw new WTypeError(typeArgument.origin.originString, "Type argument resolved to wrong kind of thing: " + thing.kind);
             }
             
             if (typeArgument[i] instanceof Value
@@ -209,8 +211,6 @@ class NameResolver extends Visitor {
             if (!parameterIsType && argumentIsType)
                 throw new WTypeError(node.origin.originString, "Expected value, but got type at argument #" + i);
         }
-
-        super.visitTypeRef(node);
     }
     
     visitReferenceType(node)
@@ -226,7 +226,7 @@ class NameResolver extends Visitor {
         if (node.initializer)
             node.initializer.visit(this);
     }
-    
+
     visitVariableRef(node)
     {
         if (node.variable)

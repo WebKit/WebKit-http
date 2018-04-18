@@ -641,9 +641,6 @@ webkit.org/b/122031 fast/animation/request-animation-frame-time-unit.html [ Pass
 
 webkit.org/b/122038 animations/transform-non-accelerated.html [ Pass Failure ]
 
-webkit.org/b/123220 compositing/regions/floated-region-with-transformed-child.html [ Pass ImageOnlyFailure ]
-webkit.org/b/138179 compositing/regions/propagate-region-box-shadow-border-padding-for-video.html [ Skip ]
-
 webkit.org/b/123250 plugins/destroy-during-npp-new-object-with-fallback-content.html [ Pass Failure ]
 
 webkit.org/b/123369 svg/css/parent-shadow-offscreen.svg [ ImageOnlyFailure ]
@@ -657,8 +654,6 @@ inspector/debugger/break-on-exception-throw-in-promise.html [ Slow ]
 inspector/debugger/break-on-exception.html [ Slow ]
 inspector/debugger/break-on-uncaught-exception-throw-in-promise.html [ Slow ]
 inspector/debugger/break-on-uncaught-exception.html [ Slow ]
-
-webkit.org/b/124311 compositing/regions/transform-transparent-positioned-video-inside-region.html [ ImageOnlyFailure ]
 
 webkit.org/b/124321 animations/resume-after-page-cache.html [ Pass Failure ]
 
@@ -683,9 +678,6 @@ webkit.org/b/126898 css3/flexbox/image-percent-max-height.html [ ImageOnlyFailur
 
 # repaintRectsAsText reports different repaintrects.
 webkit.org/b/131887 fast/repaint/hidpi-wrong-repaint-rect-when-parent-has-noncompositing-transform.html [ Failure ]
-
-# Some CSS region expected tests do not properly match CSS region's behavior.
-webkit.org/b/132990 fast/regions/overflow/overflow-size-change-with-stacking-context.html [ ImageOnlyFailure ]
 
 webkit.org/b/124342 fast/hidpi/image-srcset-svg-canvas.html [ ImageOnlyFailure ]
 
@@ -1269,8 +1261,6 @@ webkit.org/b/156351 storage/indexeddb/modern/autoincrement-abort-private.html [ 
 
 webkit.org/b/156983 media/video-fullscreen-restriction-removed.html [ Pass Failure ]
 
-webkit.org/b/156320 fast/regions/inline-block-inside-anonymous-overflow.html [ ImageOnlyFailure ]
-
 webkit.org/b/155196 security/contentSecurityPolicy/video-with-file-url-allowed-by-media-src-star.html [ Pass ImageOnlyFailure ]
 webkit.org/b/155196 security/contentSecurityPolicy/video-with-data-url-allowed-by-media-src-star.html [ Pass ImageOnlyFailure ]
 webkit.org/b/155196 security/contentSecurityPolicy/video-with-blob-url-allowed-by-media-src-star.html [ Skip ]
@@ -1388,7 +1378,7 @@ webkit.org/b/127116 [ Debug ] svg/custom/animate-initial-pause-unpause.html [ Pa
 
 webkit.org/b/161720 [ Debug ] storage/indexeddb/key-type-array.html [ Pass Timeout ]
 
-webkit.org/b/155138 [ Debug ] inspector/console/addInspectedNode.html [ Pass Timeout ]
+webkit.org/b/155138 [ Debug ] inspector/dom/setInspectedNode.html [ Pass Timeout ]
 
 webkit.org/b/163046 js/regress-141098.html [ Pass Failure ]
 
@@ -1576,8 +1566,6 @@ webkit.org/b/172255 imported/w3c/web-platform-tests/html/browsers/windows/browsi
 
 webkit.org/b/173328 [ ElCapitan Sierra ] fast/text/system-font-fallback-emoji.html [ Failure ]
 webkit.org/b/173328 [ ElCapitan Sierra ] fast/text/system-font-fallback.html [ ImageOnlyFailure ]
-
-webkit.org/b/173487 imported/w3c/web-platform-tests/IndexedDB/large-nested-cloning.html [ Pass Timeout Failure ]
 
 webkit.org/b/313156 [ ElCapitan ] fast/text/system-font-japanese-synthetic-italic.html [ ImageOnlyFailure ]
 
@@ -1777,7 +1765,13 @@ webkit.org/b/176878 [ Debug ] fast/multicol/spanner-crash-when-adding-summary.ht
 # <rdar://problem/34507977>
 webkit.org/b/177119 webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video.html [ Pass Failure ]
 
-webkit.org/b/177249 inspector/dom/content-flow-content-nodes.html [ Skip ]
-webkit.org/b/177249 inspector/dom/content-flow-content-removal.html [ Skip ]
-webkit.org/b/177249 inspector/dom/content-flow-list.html [ Skip ]
-webkit.org/b/177249 inspector/dom/content-node-region-info.html [ Skip ]
+webkit.org/b/177319 imported/w3c/web-platform-tests/html/semantics/forms/the-form-element/form-elements-filter.html [ Failure ]
+
+webkit.org/b/177322 [ Debug ] imported/w3c/web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/parsing.html [ Pass Failure ]
+
+webkit.org/b/177323 imported/w3c/web-platform-tests/fetch/security/embedded-credentials.tentative.sub.html [ Pass Failure ]
+
+webkit.org/b/177520 accessibility/image-load-on-delay.html [ Pass Failure ]
+
+webkit.org/b/177388 inspector/canvas/shaderProgram-add-remove-webgl.html [ Pass Failure ]
+

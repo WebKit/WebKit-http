@@ -1,3 +1,744 @@
+2017-09-27  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Create ResourceCollectionContentView and make CollectionContentView easier to extend
+        https://bugs.webkit.org/show_bug.cgi?id=177419
+
+        Reviewed by Devin Rousso.
+
+        CollectionContentView should be generic, work with any represented object
+        Collection, and not perform any type checking. It should just map items
+        to ContentViews using the provided ContentView constructor.
+
+        The behavior when clicking a ContentView in the collection has been extended.
+        If selection is enabled, clicking a ContentView will cause a "selected" class
+        to be applied to its element, and a SupplementalRepresentedObjectsDidChange
+        event is dispatched.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        New file, move CollectionContentView above subclasses.
+
+        * UserInterface/Models/ResourceCollection.js:
+        (WI.ResourceCollection.prototype.get resourceType):
+        Make resource type publicly available.
+
+        * UserInterface/Views/CollectionContentView.js:
+        Move type checking of the collection out of the base class and assert
+        that ContentViews are created when invoking `contentViewConstructor`.
+        (WI.CollectionContentView):
+        (WI.CollectionContentView.titleForCollection):
+        (WI.CollectionContentView.prototype.get supplementalRepresentedObjects):
+        (WI.CollectionContentView.prototype.get selectionEnabled):
+        (WI.CollectionContentView.prototype.set selectionEnabled):
+        (WI.CollectionContentView.prototype.addContentViewForItem):
+        (WI.CollectionContentView.prototype.removeContentViewForItem):
+        (WI.CollectionContentView.prototype.contentViewAdded):
+        (WI.CollectionContentView.prototype.contentViewRemoved):
+        (WI.CollectionContentView.prototype.initialLayout):
+        (WI.CollectionContentView.prototype.attached):
+        (WI.CollectionContentView.prototype.detached):
+        (WI.CollectionContentView.prototype._handleItemAdded):
+        (WI.CollectionContentView.prototype._handleItemRemoved):
+        (WI.CollectionContentView.prototype._selectItem):
+        (WI.CollectionContentView.prototype._addContentViewForItem): Deleted.
+        (WI.CollectionContentView.prototype._removeContentViewForItem): Deleted.
+
+        * UserInterface/Views/ContentView.js:
+        (WI.ContentView.createFromRepresentedObject):
+        Create a ResourceCollectionContentView. In the future, additional
+        Collection types can be mapped to their associated CollectionContentView.
+
+        * UserInterface/Views/ResourceCollectionContentView.js: Added.
+        New class for resource-specific logic previously in CollectionContentView.
+        (WI.ResourceCollectionContentView):
+        (WI.ResourceCollectionContentView.prototype.contentViewAdded):
+        (WI.ResourceCollectionContentView.prototype._handleContentError):
+        Remove ContentView without removing the resource from its collection.
+
+2017-09-27  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Web Inspector: Fix Layers tab sidebar popover.
+        https://bugs.webkit.org/show_bug.cgi?id=177477
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/LayerDetailsSidebarPanel.js:
+        (WI.LayerDetailsSidebarPanel.prototype.willDismissPopover): Added.
+        (WI.LayerDetailsSidebarPanel.prototype._buildDataGrid):
+        (WI.LayerDetailsSidebarPanel.prototype._sortDataGrid):
+        (WI.LayerDetailsSidebarPanel.prototype._dataGridSelectedNodeChanged):
+        (WI.LayerDetailsSidebarPanel.prototype._dataGridFocused):
+        (WI.LayerDetailsSidebarPanel.prototype._dataGridBlurred):
+        (WI.LayerDetailsSidebarPanel.prototype._showPopoverForSelectedNode): Refactored.
+        (WI.LayerDetailsSidebarPanel.prototype._presentPopover):
+        (WI.LayerDetailsSidebarPanel.prototype._dataGridClicked): Deleted -- not actually desired behavior.
+        (WI.LayerDetailsSidebarPanel.prototype._updatePopoverForSelectedNode): Deleted -- code simplification.
+        (WI.LayerDetailsSidebarPanel.prototype._hidePopover): Deleted -- no longer needed.
+
+2017-09-27  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Web Inspector: Add Canvas2D.svg and Canvas3D.svg
+        https://bugs.webkit.org/show_bug.cgi?id=175364
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add more free icons.
+
+        * UserInterface/Images/gtk/Canvas2D.svg: Copied from Source/WebInspectorUI/UserInterface/Images/gtk/Canvas.svg.
+        * UserInterface/Images/gtk/Canvas3D.svg: Added.
+
+2017-09-26  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: Style unused, overridden, and invalid properties differently
+        https://bugs.webkit.org/show_bug.cgi?id=177461
+
+        Reviewed by Matt Baker.
+
+        Style properties the same way as in the current styles sidebar with two minor changes:
+        - Commented out properties are never strikethrough.
+        - Non-inherited properties of inherited rules are no longer strikethrough (but still semi-transparent).
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.spreadsheet-style-declaration-editor .property:matches(.invalid, .other-vendor, .overridden):not(.disabled)):
+        Use the same styles as in the old sidebar, with exception of `-webkit-text-stroke-width: 0.000000000000001px`
+        hack, which was replaced by -webkit-text-decoration-color.
+
+        (.spreadsheet-style-declaration-editor .property.invalid:not(.disabled)):
+        (.spreadsheet-style-declaration-editor .property.not-inherited):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetStyleProperty):
+        (WI.SpreadsheetStyleProperty.prototype._update):
+
+2017-09-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve Table scrolling performance
+        https://bugs.webkit.org/show_bug.cgi?id=177468
+
+        Reviewed by Brian Burg.
+
+        This reduces work during scrolling updates in two ways.
+
+        1. Avoid recalculating the width/height of the Table on scroll.
+          - We only need to recalculate sizes if the view changes size.
+        2. Avoid resetting sizes on all cells if the sizes did not change.
+          - Enumerating and setting style.width values was showing up in profiles.
+
+        * UserInterface/Views/Table.js:
+        (WI.Table):
+        New member variables for a cached width/height of the scrollable region.
+        _cachedWidth is the same as _cachedScrollableHeight but they could be
+        different so I just kept them separate for now. Also switch to
+        getBoundingClientRect which gets us a better value then
+        offsetWidth/offsetHeight.
+
+        (WI.Table.prototype.resize):
+        Clear cached size and relayout.
+
+        (WI.Table.prototype.layout):
+        If we did not resize, layout without recalculating sizes.
+
+        (WI.Table.prototype.resizerDragging):
+        (WI.Table.prototype._getOrCreateRow):
+        When column widths change increment the width generation. This will let
+        us quickly check if a row's cells are appropriately sized or not.
+
+        (WI.Table.prototype._resizeColumnsAndFiller):
+        Cache width values after recalculating. Provide a fast path if values
+        have not changed.
+
+        (WI.Table.prototype._updateVisibleRows):
+        (WI.Table.prototype._updateFillerRowWithNewHeight):
+        Factor out updating the filler row into a function.
+        
+        (WI.Table.prototype._applyColumnWidths):
+        Always update the width generation of a row after setting its cell widths.
+
+        (WI.Table.prototype._applyColumnWidthsToColumnsIfNeeded):
+        Fast path only updates row cell widths if they need to change.
+
+2017-09-25  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: move Console.addInspectedNode to DOM.setInspectedNode
+        https://bugs.webkit.org/show_bug.cgi?id=176827
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WI.DOMTreeManager):
+        (WI.DOMTreeManager.prototype.setInspectedNode):
+
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WI.DOMTreeContentView.prototype._selectedNodeDidChange):
+
+2017-09-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add loading indicator next to resources in the Network Tab
+        https://bugs.webkit.org/show_bug.cgi?id=177469
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Models/Resource.js:
+        (WI.Resource.prototype.isLoading):
+        Provide a useful accessor to check if the Resource is considered loading or not.
+
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WI.NetworkGridContentView.prototype._networkTimelineRecordAdded):
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WI.ResourceTimelineDataGridNode.prototype._updateStatus):
+        * UserInterface/Views/ResourceTreeElement.js:
+        (WI.ResourceTreeElement.prototype._updateStatus):
+        Switch existing code to use the new isLoading() function and make the similiar
+        code more consistent.
+
+        * UserInterface/Views/NetworkTableContentView.css:
+        (body[dir=ltr] .content-view.network .table .cell.name > .status):
+        (body[dir=rtl] .content-view.network .table .cell.name > .status):
+        (.content-view.network .table .cell.name > .status .indeterminate-progress-spinner):
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype._populateNameCell):
+        Add a loading indicator to the Name column in the Network tab.
+        It is sized the same as the loading indicator in the Resource tab.
+
+2017-09-25  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Web Inspector: Elements tab's Layers sidebar should disappear when Layers tab is present.
+        https://bugs.webkit.org/show_bug.cgi?id=177476
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/ElementsTabContentView.js:
+        (WI.ElementsTabContentView):
+
+2017-09-25  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Add autocompletion suggestions for CSS attr based on the selected element's attributes
+        https://bugs.webkit.org/show_bug.cgi?id=177346
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/CodeMirrorCompletionController.js:
+        (WI.CodeMirrorCompletionController.prototype._generateCSSCompletions):
+        Provide a way for delegates to add completion items for CSS functions based on the name of
+        the function.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WI.CSSStyleDeclarationTextEditor.prototype.completionControllerCSSFunctionValuesNeeded):
+        If the function name is "attr", also return a list of the names of all the selected node's
+        attributes.
+
+2017-09-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed follow-up to r222470.
+
+        * UserInterface/Main.html:
+        Remove reference to css file that doesn't exist yet.
+
+2017-09-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Include a table in New Network Tab
+        https://bugs.webkit.org/show_bug.cgi?id=177206
+
+        Reviewed by Matt Baker and Brian Burg.
+
+        This includes an initial implementation of the NetworkTableContentView,
+        and a generic Table / TableColumn implementation ported from DataGrid.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        New strings and files.
+
+        * UserInterface/Views/NetworkGridContentView.css:
+        (.content-view:matches(.network, .network-grid) > .data-grid .cache-type):
+        (.cache-type): Deleted.
+        * UserInterface/Views/ResourceDetailsSidebarPanel.css:
+        (.sidebar > .panel.resource-details .cache-type):
+        Make the .cache-type selector more specific for the legacy cases.
+
+        * UserInterface/Views/NetworkTabContentView.css: Copied from Source/WebInspectorUI/UserInterface/Views/NetworkGridContentView.css.
+        (.content-view.network > .content-browser):
+        * UserInterface/Views/NetworkTabContentView.js:
+        (WI.NetworkTabContentView.prototype.shown):
+        (WI.NetworkTabContentView.prototype.hidden):
+        (WI.NetworkTabContentView.prototype.closed):
+        NetworkTabContentView has a ContentBrowser so it should be passing
+        ContentBrowser lifecycle events (shown, hidden, closed) through to
+        the sub-content browser.
+
+        * UserInterface/Views/TableColumn.js: Added.
+        (WI.TableColumn.prototype.get identifier):
+        (WI.TableColumn.prototype.get name):
+        (WI.TableColumn.prototype.get width):
+        (WI.TableColumn.prototype.get minWidth):
+        (WI.TableColumn.prototype.get maxWidth):
+        (WI.TableColumn.prototype.get hidden):
+        (WI.TableColumn.prototype.get defaultHidden):
+        (WI.TableColumn.prototype.get sortable):
+        (WI.TableColumn.prototype.get align):
+        (WI.TableColumn.prototype.get locked):
+        (WI.TableColumn.prototype.get flexible):
+        (WI.TableColumn.prototype.setWidth):
+        (WI.TableColumn.prototype.setHidden):
+        Model object for a column. Values are getter only. Columns may express
+        size constraints (min width / max width) that are respected as much as
+        possible. When a column is resized it dispatches an event.
+
+        * UserInterface/Views/Table.js: Added.
+        (WI.Table):
+        (WI.Table.prototype.get element):
+        (WI.Table.prototype.get identifier):
+        (WI.Table.prototype.get dataSource):
+        (WI.Table.prototype.get delegate):
+        (WI.Table.prototype.get rowHeight):
+        (WI.Table.prototype.get selectedRow):
+        (WI.Table.prototype.get sortOrder):
+        (WI.Table.prototype.set sortOrder):
+        (WI.Table.prototype.get sortColumnIdentifier):
+        (WI.Table.prototype.set sortColumnIdentifier):
+        (WI.Table.prototype.resize):
+        (WI.Table.prototype.reloadData):
+        (WI.Table.prototype.reloadDataAddedToEndOnly):
+        (WI.Table.prototype.reloadRow):
+        (WI.Table.prototype.reloadCell):
+        (WI.Table.prototype.selectRow):
+        (WI.Table.prototype.clearSelectedRow):
+        (WI.Table.prototype.columnWithIdentifier):
+        (WI.Table.prototype.addColumn):
+        (WI.Table.prototype.showColumn):
+        (WI.Table.prototype.hideColumn):
+        (WI.Table.prototype.restoreScrollPosition):
+        (WI.Table.prototype.initialLayout):
+        (WI.Table.prototype.layout):
+        (WI.Table.prototype.resizerDragStarted):
+        (WI.Table.prototype.resizerDragging.growableSize):
+        (WI.Table.prototype.resizerDragging.shrinkableSize):
+        (WI.Table.prototype.resizerDragging.canGrow):
+        (WI.Table.prototype.resizerDragging.canShrink):
+        (WI.Table.prototype.resizerDragging.columnToResize):
+        (WI.Table.prototype.resizerDragging):
+        (WI.Table.prototype.resizerDragEnded):
+        (WI.Table.prototype._needsLayout):
+        (WI.Table.prototype._createHeaderCell):
+        (WI.Table.prototype._createFillerCell):
+        (WI.Table.prototype._createCell):
+        (WI.Table.prototype._getOrCreateRow):
+        (WI.Table.prototype._populatedCellForColumnAndRow):
+        (WI.Table.prototype._populateRow):
+        (WI.Table.prototype._resizeColumnsAndFiller.distributeRemainingPixels):
+        (WI.Table.prototype._resizeColumnsAndFiller.bestFit):
+        (WI.Table.prototype._resizeColumnsAndFiller):
+        (WI.Table.prototype._updateVisibleRows):
+        (WI.Table.prototype._applyColumnWidths):
+        (WI.Table.prototype._positionResizerElements):
+        (WI.Table.prototype._isRowVisible):
+        (WI.Table.prototype._indexToInsertColumn):
+        (WI.Table.prototype._handleScroll):
+        (WI.Table.prototype._handleKeyDown):
+        (WI.Table.prototype._handleClick):
+        (WI.Table.prototype._handleContextMenu):
+        (WI.Table.prototype._handleHeaderCellClicked):
+        (WI.Table.prototype._handleHeaderContextMenu):
+        Table is mostly a re-implementation of DataGrid. Much of its functionality
+        was a direct copy that was then modified and simplified for a smaller
+        and simpler feature set.
+        
+        Table behaves more like Cocoa's NSTableView. A datasource supplies the
+        number of rows, which Table uses to resize appropriately. A delegate is
+        then called to populate cells in a row when they become visible. Table
+        does minimal caching, and in the event of data source changes
+        (resorting, adding rows, modifying rows, etc) the visible rows are
+        simply recreated from scratch. Clients should therefore make generating
+        a cell's contents as simple and performant as possible.
+
+        Unlike DataGrid, rows are just an <li> with a bunch of cells. Since the
+        number of rows are limited to (roughly) those that are visible, most
+        operations, like resizing, creates / modifies each of the visible cells.
+
+        Finally, Table's resizing operations behave more like flexible content
+        than DataGrid's neighbor only approach. This makes resizing the table
+        generally easier to do, but may need refinement to decide which columns
+        we would prefer to distribute columns during resizing.
+
+        * UserInterface/Views/Table.css: Added.
+        (.table):
+        (.table > .header):
+        (.table > .header > .sortable:active):
+        (.table > .header > :matches(.sort-ascending, .sort-descending)):
+        (.table > .header > :matches(.sort-ascending, .sort-descending)::after):
+        (body[dir=ltr] .table > .header > :matches(.sort-ascending, .sort-descending)):
+        (body[dir=rtl] .table > .header > :matches(.sort-ascending, .sort-descending)):
+        (body[dir=ltr] .table > .header > :matches(.sort-ascending, .sort-descending)::after):
+        (body[dir=rtl] .table > .header > :matches(.sort-ascending, .sort-descending)::after):
+        (.table > .header > .sort-ascending::after):
+        (.table > .header > .sort-descending::after):
+        (.table > .data-container):
+        (.table > .data-container.not-scrollable):
+        (.table > .data-container > .data-list):
+        (.table > .data-container > .data-list.odd-first-zebra-stripe):
+        (.table > .data-container > .data-list > li):
+        (.table > .data-container > .data-list > li.selected):
+        (.table:focus > .data-container > .data-list li.selected):
+        (.table .cell):
+        (body[dir=ltr] .table .cell:not(:last-child)):
+        (body[dir=rtl] .table .cell:not(:last-child)):
+        (body[dir=ltr] .table .cell:first-child):
+        (body[dir=rtl] .table .cell:first-child):
+        (.table :not(.header) .cell:first-of-type):
+        (.table .cell.align-right):
+        (.table .cell.align-left):
+        (.table .cell.align-center):
+        Styles mostly taken from DataGrid with a few minor tweaks.
+
+        * UserInterface/Views/NetworkTableContentView.css: Copied from Source/WebInspectorUI/UserInterface/Views/NetworkGridContentView.css.
+        (.content-view.network .table .icon):
+        (body[dir=ltr] .content-view.network .table .icon):
+        (body[dir=rtl] .content-view.network .table .icon):
+        (.content-view.network .table li:not(.filler) .cell.name):
+        (.content-view.network .table .cache-type):
+        (.content-view.network .table .error):
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView):
+        (WI.NetworkTableContentView.shortDisplayNameForResourceType):
+        (WI.NetworkTableContentView.prototype.get navigationItems):
+        (WI.NetworkTableContentView.prototype.shown):
+        (WI.NetworkTableContentView.prototype.closed):
+        (WI.NetworkTableContentView.prototype.reset):
+        (WI.NetworkTableContentView.prototype.tableNumberOfRows):
+        (WI.NetworkTableContentView.prototype.tableSortChanged):
+        (WI.NetworkTableContentView.prototype.tableCellClicked):
+        (WI.NetworkTableContentView.prototype.tableCellContextMenuClicked):
+        (WI.NetworkTableContentView.prototype.tableSelectedRowChanged):
+        (WI.NetworkTableContentView.prototype.tablePopulateCell):
+        (WI.NetworkTableContentView.prototype._populateNameCell):
+        (WI.NetworkTableContentView.prototype._populateTransferSizeCell):
+        (WI.NetworkTableContentView.prototype._generateSortComparator):
+        (WI.NetworkTableContentView.prototype.initialLayout):
+        (WI.NetworkTableContentView.prototype.layout):
+        (WI.NetworkTableContentView.prototype._processPendingEntries):
+        (WI.NetworkTableContentView.prototype._rowIndexForResource):
+        (WI.NetworkTableContentView.prototype._updateEntryForResource):
+        (WI.NetworkTableContentView.prototype._mainResourceDidChange):
+        (WI.NetworkTableContentView.prototype._resourceLoadingDidFinish):
+        (WI.NetworkTableContentView.prototype._resourceLoadingDidFail):
+        (WI.NetworkTableContentView.prototype._resourceTransferSizeDidChange):
+        (WI.NetworkTableContentView.prototype._networkTimelineRecordAdded):
+        (WI.NetworkTableContentView.prototype._isDefaultSort):
+        (WI.NetworkTableContentView.prototype._insertResourceAndReloadTable):
+        (WI.NetworkTableContentView.prototype._displayType):
+        (WI.NetworkTableContentView.prototype._entryForResource):
+        (WI.NetworkTableContentView.prototype._passFilter):
+        (WI.NetworkTableContentView.prototype._updateSortAndFilteredEntries):
+        (WI.NetworkTableContentView.prototype._updateFilteredEntries):
+        (WI.NetworkTableContentView.prototype._generateTypeFilter):
+        (WI.NetworkTableContentView.prototype._areFilterListsIdentical):
+        (WI.NetworkTableContentView.prototype._typeFilterScopeBarSelectionChanged):
+        (WI.NetworkTableContentView.prototype._tableNameColumnDidChangeWidth):
+        The NetworkTableContentView has a Table and it is the table's data source
+        and delegate. It contains a complete list of entries, and a filtered list
+        of entries, which is the backing list of rows for the table. As entries
+        are created, updated, or filters modified, this generally modifies
+        entries, sorts, filters, and reloads the table. As much as possible it
+        batches operations in the usual layout loop.
+
+2017-09-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Reduce work during resizing
+        https://bugs.webkit.org/show_bug.cgi?id=177402
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/ConsolePrompt.js:
+        (WI.ConsolePrompt.prototype.layout):
+        In the most common case there is no text so avoid doing work in CodeMirror.
+
+2017-09-22  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Remove SidebarPanel show/hide and added/removed
+        https://bugs.webkit.org/show_bug.cgi?id=177387
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/DebuggerTabContentView.js:
+        (WI.DebuggerTabContentView.prototype.showDetailsSidebarPanels):
+        * UserInterface/Views/SearchSidebarPanel.js:
+        (WI.SearchSidebarPanel.prototype.focusSearchField):
+        * UserInterface/Views/Sidebar.js:
+        (WI.Sidebar.prototype.insertSidebarPanel):
+        (WI.Sidebar.prototype.removeSidebarPanel):
+        * UserInterface/Views/SidebarPanel.js:
+        (WI.SidebarPanel.prototype.show): Deleted.
+        (WI.SidebarPanel.prototype.hide): Deleted.
+        (WI.SidebarPanel.prototype.added): Deleted.
+        (WI.SidebarPanel.prototype.removed): Deleted.
+
+2017-09-22  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: View should automatically layout when it becomes attached to the DOM
+        https://bugs.webkit.org/show_bug.cgi?id=177189
+
+        Reviewed by Devin Rousso.
+
+        This guarantees that a layout is always scheduled as soon as a view is
+        attached to the DOM. Now that nearly all views are created lazily, it
+        is safe to make this change even without having a visibility concept in
+        the View class that would prevent layouts for background views.
+
+        * UserInterface/Views/View.js:
+        (WI.View):
+        Remove `this._needsLayoutWhenAttachedToRoot` flag, which is now implicit.
+        This was set if a layout was requested before the view had been attached
+        to the DOM.
+
+        (WI.View.prototype.get element):
+        (WI.View.prototype.get layoutPending):
+        (WI.View.prototype.get parentView):
+        (WI.View.prototype.get subviews):
+        (WI.View.prototype.get isAttached):
+        (WI.View.prototype.insertSubviewBefore):
+        (WI.View.prototype.removeSubview):
+        (WI.View.prototype.removeAllSubviews):
+        (WI.View.prototype.attached):
+        (WI.View.prototype.detached):
+        Hooks for subclasses to define behavior added or removed from the DOM.
+        (WI.View.prototype._didMoveToParent):
+        (WI.View.prototype._didMoveToWindow):
+        (WI.View._scheduleLayoutForView):
+        (WI.View.prototype.didMoveToWindow): Deleted.
+        (WI.View.prototype.didMoveToParent): Deleted.
+        These were only used by View, and have been made private.
+
+2017-09-22  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: support toggling properties
+        https://bugs.webkit.org/show_bug.cgi?id=176643
+
+        Reviewed by Joseph Pecoraro.
+
+        Add a primitive UI to make CSS property names and values editable. Autocomplete, syntax highlighting,
+        and proper keyboard navigation will be added later.
+
+        Display !important when it's specified. Before this patch !important wasn't shown in the redesigned
+        styles sidebar.
+
+        * UserInterface/Models/CSSProperty.js:
+        (WI.CSSProperty.prototype.update):
+        (WI.CSSProperty.prototype.get name):
+        (WI.CSSProperty.prototype.set name):
+        (WI.CSSProperty.prototype.get value):
+        (WI.CSSProperty.prototype.get rawValue):
+        (WI.CSSProperty.prototype.set rawValue):
+        CSSProperty.prototype.value returns the same value as before. !important remains stripped.
+        CSSProperty.prototype.rawValue returns a raw value from the payload. It may include !important.
+
+        (WI.CSSProperty.prototype._updateStyle):
+        (WI.CSSProperty.prototype._updateOwnerStyleText):
+        (WI.CSSProperty):
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WI.DOMNodeStyles.prototype._parseStylePropertyPayload):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.spreadsheet-style-declaration-editor :matches(.name, .value):focus):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetStyleProperty.prototype._update):
+        (WI.SpreadsheetStyleProperty.prototype._handleNameChange):
+        (WI.SpreadsheetStyleProperty.prototype._handleValueChange):
+        (WI.SpreadsheetStyleProperty):
+
+2017-09-22  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: NavigationBar should coalesce consecutive dividers when items are hidden
+        https://bugs.webkit.org/show_bug.cgi?id=177379
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/NavigationBar.js:
+        (WI.NavigationBar.prototype.layout):
+
+2017-09-22  Tim Horton  <timothy_horton@apple.com>
+
+        Add env() as an alias of constant()
+        https://bugs.webkit.org/show_bug.cgi?id=177371
+
+        Reviewed by Simon Fraser.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+        (WI.CSSKeywordCompletions.forProperty):
+        (WI.CSSKeywordCompletions.forFunction):
+        Add autocomplete support for env().
+
+2017-09-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add autocompletion suggestions for CSS functions (constant(), linear-gradient(), etc)
+        https://bugs.webkit.org/show_bug.cgi?id=177264
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Controllers/CodeMirrorCompletionController.js:
+        (WI.CodeMirrorCompletionController.prototype._generateCSSCompletions):
+        Detect when we are inside of functions and provide completion suggestions
+        for the relevant function.
+
+        * UserInterface/Models/CSSCompletions.js:
+        Syntax highlight "constant()" like we do for "var()".
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+        (WI.CSSKeywordCompletions.forProperty):
+        Always suggest "constant()" everywhere, like we do for "var()".
+
+        (WI.CSSKeywordCompletions.forFunction):
+        Provide suggestions for some CSS functions.
+
+2017-09-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove support for CSS Regions
+        https://bugs.webkit.org/show_bug.cgi?id=177287
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Protocol/CSSObserver.js:
+        (WI.CSSObserver.prototype.namedFlowCreated):
+        (WI.CSSObserver.prototype.namedFlowRemoved):
+        (WI.CSSObserver.prototype.regionLayoutUpdated):
+        (WI.CSSObserver.prototype.regionOversetChanged):
+        (WI.CSSObserver.prototype.registeredNamedFlowContentElement):
+        (WI.CSSObserver.prototype.unregisteredNamedFlowContentElement):
+        Leave observer functions in for older backends that will send
+        these messages, but we just ignore them.
+
+        * UserInterface/Base/Main.js:
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WI.DOMTreeManager):
+        (WI.DOMTreeManager.prototype._unbind):
+        (WI.DOMTreeManager._flowPayloadHashKey): Deleted.
+        (WI.DOMTreeManager.prototype._createContentFlowFromPayload): Deleted.
+        (WI.DOMTreeManager.prototype._updateContentFlowFromPayload): Deleted.
+        (WI.DOMTreeManager.prototype.getNamedFlowCollection.onNamedFlowCollectionAvailable): Deleted.
+        (WI.DOMTreeManager.prototype.getNamedFlowCollection): Deleted.
+        (WI.DOMTreeManager.prototype.namedFlowCreated): Deleted.
+        (WI.DOMTreeManager.prototype.namedFlowRemoved): Deleted.
+        (WI.DOMTreeManager.prototype._sendNamedFlowUpdateEvents): Deleted.
+        (WI.DOMTreeManager.prototype.regionOversetChanged): Deleted.
+        (WI.DOMTreeManager.prototype.registeredNamedFlowContentElement): Deleted.
+        (WI.DOMTreeManager.prototype._removeContentNodeFromFlowIfNeeded): Deleted.
+        (WI.DOMTreeManager.prototype.unregisteredNamedFlowContentElement): Deleted.
+        (WI.DOMTreeManager.prototype._coerceRemoteArrayOfDOMNodes.nodeRequested): Deleted.
+        (WI.DOMTreeManager.prototype._coerceRemoteArrayOfDOMNodes): Deleted.
+        (WI.DOMTreeManager.prototype.getNodeContentFlowInfo.regionNodesAvailable): Deleted.
+        (WI.DOMTreeManager.prototype.getNodeContentFlowInfo.remoteObjectPropertiesAvailable): Deleted.
+        (WI.DOMTreeManager.prototype.getNodeContentFlowInfo.inspectedPage_node_getFlowInfo.getComputedProperty): Deleted.
+        (WI.DOMTreeManager.prototype.getNodeContentFlowInfo.inspectedPage_node_getFlowInfo.getContentFlowName): Deleted.
+        (WI.DOMTreeManager.prototype.getNodeContentFlowInfo): Deleted.
+        * UserInterface/Images/ContentFlow.svg: Removed.
+        * UserInterface/Images/gtk/ContentFlow.svg: Removed.
+        * UserInterface/Main.html:
+        * UserInterface/Models/Collection.js:
+        * UserInterface/Models/ContentFlow.js: Removed.
+        * UserInterface/Models/DOMTree.js:
+        (WI.DOMTree):
+        (WI.DOMTree.prototype.get frame):
+        (WI.DOMTree.prototype._framePageExecutionContextChanged):
+        (WI.DOMTree.prototype.get contentFlowCollection): Deleted.
+        (WI.DOMTree.prototype.requestContentFlowList): Deleted.
+        (WI.DOMTree.prototype._isContentFlowInCurrentDocument): Deleted.
+        (WI.DOMTree.prototype._contentFlowListWasUpdated): Deleted.
+        (WI.DOMTree.prototype._contentFlowWasAdded): Deleted.
+        (WI.DOMTree.prototype._contentFlowWasRemoved): Deleted.
+        * UserInterface/Test.html:
+        * UserInterface/Views/CollectionContentView.js:
+        (WI.CollectionContentView):
+        * UserInterface/Views/ComputedStyleDetailsPanel.css:
+        (.details-section > .content > .group > .row.simple.content-flow-link > .value > span > .icon): Deleted.
+        * UserInterface/Views/ComputedStyleDetailsPanel.js:
+        (WI.ComputedStyleDetailsPanel.prototype.refresh):
+        (WI.ComputedStyleDetailsPanel.prototype.initialLayout):
+        (WI.ComputedStyleDetailsPanel.prototype._handleVariablesSectionCollapsedStateChanged):
+        (WI.ComputedStyleDetailsPanel):
+        (WI.ComputedStyleDetailsPanel.prototype.get regionFlow): Deleted.
+        (WI.ComputedStyleDetailsPanel.prototype.set regionFlow): Deleted.
+        (WI.ComputedStyleDetailsPanel.prototype.get contentFlow): Deleted.
+        (WI.ComputedStyleDetailsPanel.prototype.set contentFlow): Deleted.
+        (WI.ComputedStyleDetailsPanel.prototype.get containerRegions): Deleted.
+        (WI.ComputedStyleDetailsPanel.prototype.set containerRegions): Deleted.
+        (WI.ComputedStyleDetailsPanel.prototype.sizeDidChange): Deleted.
+        (WI.ComputedStyleDetailsPanel.prototype._updateFlowNamesSectionVisibility): Deleted.
+        (WI.ComputedStyleDetailsPanel.prototype._resetFlowDetails): Deleted.
+        (WI.ComputedStyleDetailsPanel.prototype._refreshFlowDetails.contentFlowInfoReady): Deleted.
+        (WI.ComputedStyleDetailsPanel.prototype._refreshFlowDetails): Deleted.
+        (WI.ComputedStyleDetailsPanel.prototype._goToRegionFlowArrowWasClicked): Deleted.
+        (WI.ComputedStyleDetailsPanel.prototype._goToContentFlowArrowWasClicked): Deleted.
+        * UserInterface/Views/ContentFlowDOMTreeContentView.js: Removed.
+        * UserInterface/Views/ContentFlowIcon.css: Removed.
+        * UserInterface/Views/ContentFlowTreeElement.js: Removed.
+        * UserInterface/Views/ContentView.js:
+        (WI.ContentView.createFromRepresentedObject):
+        (WI.ContentView.isViewable):
+        * UserInterface/Views/FrameTreeElement.js:
+        (WI.FrameTreeElement.prototype.onpopulate):
+        (WI.FrameTreeElement.prototype.onexpand):
+        (WI.FrameTreeElement.prototype._childContentFlowWasAdded): Deleted.
+        (WI.FrameTreeElement.prototype._childContentFlowWasRemoved): Deleted.
+        (WI.FrameTreeElement.prototype._rootDOMNodeInvalidated): Deleted.
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WI.ResourceSidebarPanel.prototype._treeSelectionDidChange):
+        * UserInterface/Views/ResourcesTabContentView.js:
+        (WI.ResourcesTabContentView):
+        (WI.ResourcesTabContentView.prototype.canShowRepresentedObject):
+
+2017-09-21  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Web Inspector: Add details sidebar to Layers tab.
+        https://bugs.webkit.org/show_bug.cgi?id=177115
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        * UserInterface/Views/LayerDetailsSidebarPanel.css: Added.
+        * UserInterface/Views/LayerDetailsSidebarPanel.js: Added.
+        New files and strings for sidebar.
+
+        * UserInterface/Base/Utilities.js:
+        Add global identifier for "×" character.
+        
+        * UserInterface/Models/Layer.js: Added.
+        Add a model class for layers so that we can instanceof-check them.
+
+        * UserInterface/Controllers/LayerTreeManager.js:
+        (WI.LayerTreeManager.prototype.layersForNode):
+        Utilize model class WI.Layer.
+
+        * UserInterface/Views/Layers3DContentView.js:
+        (WI.Layers3DContentView):
+        (WI.Layers3DContentView.prototype.get supplementalRepresentedObjects):
+        (WI.Layers3DContentView.prototype.layout):
+        (WI.Layers3DContentView.prototype._addLayer):
+        Pass layer data to sidebar and utilize model class WI.Layer.
+
+        * UserInterface/Views/LayersTabContentView.js:
+        (WI.LayersTabContentView):
+        Attach details sidebar.
+
+2017-09-21  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: keyboard shortcut for "Reload page from origin" doesn't match Safari, and doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=177010
+        <rdar://problem/33134548>
+
+        Reviewed by Joseph Pecoraro.
+
+        I seem to have broken reload from origin via Web Inspector in a previous
+        patch, because the parameter is 'ignoreCache' instead of 'shouldIgnoreCache'.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        Modernize tooltip text.
+
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded):
+        Disambiguate two locals with the same name. Modernize the tooltip.
+        Make the shortcut Cmd-Opt-R to match Safari. Fix wrong parameter usage.
+
+        * UserInterface/Test/FrontendTestHarness.js:
+        (FrontendTestHarness.prototype.reloadPage):
+        Fix wrong parameter.
+
 2017-09-19  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Adopt named groups in complex regexes

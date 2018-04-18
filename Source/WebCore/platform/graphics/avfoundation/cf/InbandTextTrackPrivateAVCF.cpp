@@ -34,8 +34,8 @@
 #include "InbandTextTrackPrivate.h"
 #include "InbandTextTrackPrivateAVF.h"
 #include "Logging.h"
-#include "MediaTimeAVFoundation.h"
 #include <JavaScriptCore/ArrayBuffer.h>
+#include <pal/avfoundation/MediaTimeAVFoundation.h>
 #include <wtf/SoftLinking.h>
 
 #include <AVFoundationCF/AVCFPlayerItemLegibleOutput.h>
@@ -194,7 +194,7 @@ bool InbandTextTrackPrivateAVCF::readNativeSampleBuffer(CFArrayRef nativeSamples
     if (!sampleBuffer)
         return false;
 
-    duration = toMediaTime(sampleBuffer->duration);
+    duration = PAL::toMediaTime(sampleBuffer->duration);
     formatDescription = sampleBuffer->formatDescription;
 
     size_t bufferLength = CFDataGetLength(sampleBuffer->buffer);

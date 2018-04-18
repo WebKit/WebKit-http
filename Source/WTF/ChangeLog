@@ -1,3 +1,137 @@
+2017-09-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Followup (r222427): SynchronizedFixedQueue should not have a public constructor
+        https://bugs.webkit.org/show_bug.cgi?id=177458
+
+        Reviewed by Tim Horton.
+
+        Since SynchronizedFixedQueue is now derived from ThreadSafeRefCounted<SynchronizedFixedQueue>,
+        the standard way to have an instance of it is to call SynchronizedFixedQueue::create()
+        which returns a Ref<SynchronizedFixedQueue>. Now it does not make sense to still
+        have the constructor public.
+
+        * wtf/SynchronizedFixedQueue.h:
+        (WTF::SynchronizedFixedQueue::SynchronizedFixedQueue):
+
+2017-09-24  Keith Miller  <keith_miller@apple.com>
+
+        JSC build should use unified sources for derived sources
+        https://bugs.webkit.org/show_bug.cgi?id=177421
+
+        Reviewed by JF Bastien.
+
+        The script now needs to determine if a file is from a derived
+        source. This is only relevant for the CMake build since the
+        script needs to provide a list of the bundled source files. If the
+        script does not provide the full path for derived sources then
+        CMake will be unable to find them and the build will fail.
+
+        Additionally, I move the error message for the Xcode build outside
+        the main loop. This means that the error message will contain all
+        the files you need to add to Xcode and all those files will now be
+        written in DerivedSources so they should be easier to add.
+
+        * Scripts/generate-unified-source-bundles.rb:
+
+2017-09-26  Zan Dobersek  <zdobersek@igalia.com>
+
+        Support building JavaScriptCore with the Bionic C library
+        https://bugs.webkit.org/show_bug.cgi?id=177427
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/Platform.h: Define HAVE_MACHINE_CONTEXT when __BIONIC__
+        is defined, i.e. when building with the Bionic C library.
+
+2017-09-23  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Images may render partial frames even after loading all the encoded data
+        https://bugs.webkit.org/show_bug.cgi?id=177406
+
+        Reviewed by Simon Fraser.
+
+        Make it possible to create a RefPtr<SynchronizedFixedQueue>.
+
+        * wtf/SynchronizedFixedQueue.h:
+        (WTF::SynchronizedFixedQueue::create):
+        (WTF::SynchronizedFixedQueue::enqueue):
+        (WTF::SynchronizedFixedQueue::dequeue):
+
+2017-09-22  Zalan Bujtas  <zalan@apple.com>
+
+        WeakPtrFactory should populate m_ref lazily.
+        https://bugs.webkit.org/show_bug.cgi?id=177375
+
+        Reviewed by Geoffrey Garen.
+
+        This helps us with the overhead of initializing WeakPtrFactory for
+        objects that rarely end up creating the weak reference.
+        -This is in preparation for introducing WeakPtr to RenderObject.
+
+        All credit to Geoffrey Garen.
+
+        * wtf/WeakPtr.h:
+        (WTF::WeakReference::get const):
+        (WTF::WeakReference::clear):
+        (WTF::WeakReference::WeakReference):
+        (WTF::WeakPtrFactory::~WeakPtrFactory):
+        (WTF::WeakPtrFactory::createWeakPtr const):
+        (WTF::WeakPtrFactory::revokeAll):
+        (WTF::WeakPtrFactory::WeakPtrFactory): Deleted.
+
+2017-09-21  Alex Christensen  <achristensen@webkit.org>
+
+        Make StringBuilder movable
+        https://bugs.webkit.org/show_bug.cgi?id=177311
+
+        Reviewed by Chris Dumez.
+
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::StringBuilder):
+
+2017-09-20  Keith Miller  <keith_miller@apple.com>
+
+        JSC should use unified sources for platform specific files.
+        https://bugs.webkit.org/show_bug.cgi?id=177290
+
+        Reviewed by Michael Saboff.
+
+        The unified source bundler script can now handle more than one
+        list of sources. Sources will not be bundled across source file
+        lists. We want to ensure that changing one platform's sources
+        doesn't break another platform's build, as much as
+        possible. Additionally, it means that there won't be weird
+        performance changes when files are added to an unrelated platform.
+
+        Remove stale reference to generate-unified-source-bundles.rb script
+        from Xcode.
+
+        * Scripts/generate-unified-source-bundles.rb:
+        * WTF.xcodeproj/project.pbxproj:
+
+2017-09-20  Stephan Szabo  <stephan.szabo@sony.com>
+
+        [Win] WTF: Add alias for process id to use in place of direct uses of pid_t
+        https://bugs.webkit.org/show_bug.cgi?id=177017
+
+        Reviewed by Alex Christensen.
+
+        * wtf/ProcessID.h:
+        (WTF::getCurrentProcessID):
+
+2017-09-20  Keith Miller  <keith_miller@apple.com>
+
+        JSC Xcode build should use unified sources for platform independent files
+        https://bugs.webkit.org/show_bug.cgi?id=177190
+
+        Reviewed by Saam Barati.
+
+        Add a new directory for build scripts that are forwarded to subsequent framework builds.
+
+        * Scripts/generate-unified-source-bundles.rb: Renamed from Source/WTF/generate-unified-source-bundles.rb.
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+
 2017-09-20  Per Arne Vollan  <pvollan@apple.com>
 
         [Win] Cannot find script to generate unified sources.

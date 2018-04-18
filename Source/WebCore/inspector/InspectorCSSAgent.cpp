@@ -777,10 +777,6 @@ void InspectorCSSAgent::forcePseudoState(ErrorString& errorString, int nodeId, c
     element->document().styleScope().didChangeStyleSheetEnvironment();
 }
 
-void InspectorCSSAgent::getNamedFlowCollection(ErrorString&, int, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::CSS::NamedFlow>>&)
-{
-}
-
 InspectorStyleSheetForInlineStyle& InspectorCSSAgent::asInspectorStyleSheet(StyledElement& element)
 {
     auto it = m_nodeToInspectorStyleSheet.find(&element);

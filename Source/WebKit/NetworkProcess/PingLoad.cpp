@@ -31,7 +31,6 @@
 #include "AuthenticationManager.h"
 #include "Logging.h"
 #include "NetworkCORSPreflightChecker.h"
-#include "NetworkConnectionToWebProcess.h"
 #include "SessionTracker.h"
 #include "WebCompiledContentRuleList.h"
 #include "WebErrors.h"
@@ -45,10 +44,10 @@ namespace WebKit {
 
 using namespace WebCore;
 
-PingLoad::PingLoad(NetworkResourceLoadParameters&& parameters, HTTPHeaderMap&& originalRequestHeaders, Ref<NetworkConnectionToWebProcess>&& connection)
+PingLoad::PingLoad(NetworkResourceLoadParameters&& parameters, HTTPHeaderMap&& originalRequestHeaders, WTF::CompletionHandler<void(const ResourceError&)>&& completionHandler)
     : m_parameters(WTFMove(parameters))
     , m_originalRequestHeaders(WTFMove(originalRequestHeaders))
-    , m_connection(WTFMove(connection))
+    , m_completionHandler(WTFMove(completionHandler))
     , m_timeoutTimer(*this, &PingLoad::timeoutTimerFired)
     , m_isSameOriginRequest(securityOrigin().canRequest(m_parameters.request.url()))
 {
@@ -80,7 +79,7 @@ PingLoad::~PingLoad()
 
 void PingLoad::didFinish(const ResourceError& error)
 {
-    m_connection->didFinishPingLoad(m_parameters.identifier, error);
+    m_completionHandler(error);
     delete this;
 }
 
@@ -156,7 +155,7 @@ void PingLoad::willPerformHTTPRedirection(ResourceResponse&& redirectResponse, R
         return;
     }
 
-    m_parameters.allowStoredCredentials = DoNotAllowStoredCredentials;
+    m_parameters.storedCredentialsPolicy = StoredCredentialsPolicy::DoNotUse;
     m_redirectHandler = WTFMove(completionHandler);
 
     // Let's fetch the request with the original headers (equivalent to request cloning specified by fetch algorithm).
@@ -175,7 +174,7 @@ void PingLoad::didReceiveChallenge(const AuthenticationChallenge&, ChallengeComp
 void PingLoad::didReceiveResponseNetworkSession(ResourceResponse&& response, ResponseCompletionHandler&& completionHandler)
 {
     RELEASE_LOG_IF_ALLOWED("didReceiveResponseNetworkSession - httpStatusCode: %d", response.httpStatusCode());
-    completionHandler(PolicyAction::PolicyIgnore);
+    completionHandler(PolicyAction::Ignore);
     didFinish();
 }
 
@@ -253,7 +252,7 @@ void PingLoad::makeCrossOriginAccessRequest(ResourceRequest&& request)
     }
 
     m_isSimpleRequest = false;
-    if (CrossOriginPreflightResultCache::singleton().canSkipPreflight(securityOrigin().toString(), request.url(), m_parameters.allowStoredCredentials, request.httpMethod(), m_originalRequestHeaders)) {
+    if (CrossOriginPreflightResultCache::singleton().canSkipPreflight(securityOrigin().toString(), request.url(), m_parameters.storedCredentialsPolicy, request.httpMethod(), m_originalRequestHeaders)) {
         RELEASE_LOG_IF_ALLOWED("makeCrossOriginAccessRequest - preflight can be skipped thanks to cached result");
         preflightSuccess(WTFMove(request));
     } else
@@ -270,7 +269,7 @@ void PingLoad::makeSimpleCrossOriginAccessRequest(ResourceRequest&& request)
         return;
     }
 
-    updateRequestForAccessControl(request, securityOrigin(), m_parameters.allowStoredCredentials);
+    updateRequestForAccessControl(request, securityOrigin(), m_parameters.storedCredentialsPolicy);
     loadRequest(WTFMove(request));
 }
 
@@ -283,7 +282,7 @@ void PingLoad::makeCrossOriginAccessRequestWithPreflight(ResourceRequest&& reque
         WTFMove(request),
         securityOrigin(),
         m_parameters.sessionID,
-        m_parameters.allowStoredCredentials
+        m_parameters.storedCredentialsPolicy
     };
     m_corsPreflightChecker = std::make_unique<NetworkCORSPreflightChecker>(WTFMove(parameters), [this](NetworkCORSPreflightChecker::Result result) {
         RELEASE_LOG_IF_ALLOWED("makeCrossOriginAccessRequestWithPreflight preflight complete, success: %d forRedirect? %d", result == NetworkCORSPreflightChecker::Result::Success, !!m_redirectHandler);
@@ -301,7 +300,7 @@ void PingLoad::preflightSuccess(ResourceRequest&& request)
     RELEASE_LOG_IF_ALLOWED("preflightSuccess");
 
     ResourceRequest actualRequest = WTFMove(request);
-    updateRequestForAccessControl(actualRequest, securityOrigin(), m_parameters.allowStoredCredentials);
+    updateRequestForAccessControl(actualRequest, securityOrigin(), m_parameters.storedCredentialsPolicy);
 
     if (auto redirectHandler = std::exchange(m_redirectHandler, nullptr))
         redirectHandler(WTFMove(actualRequest));

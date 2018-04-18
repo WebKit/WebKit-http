@@ -44,6 +44,7 @@ class AuthenticationChallenge;
 class ProtectionSpace;
 class ResourceError;
 class ResourceResponse;
+class URL;
 }
 
 namespace WebKit {
@@ -72,6 +73,12 @@ public:
 
     WebPageProxy* originatingPage() const;
     void setOriginatingPage(WebPageProxy*);
+
+    void setRedirectChain(Vector<WebCore::URL>&& redirectChain) { m_redirectChain = WTFMove(redirectChain); }
+    const Vector<WebCore::URL>& redirectChain() const { return m_redirectChain; }
+
+    void setWasUserInitiated(bool value) { m_wasUserInitiated = value; }
+    bool wasUserInitiated() const { return m_wasUserInitiated; }
 
 private:
     explicit DownloadProxy(DownloadProxyMap&, WebProcessPool&, const WebCore::ResourceRequest&);
@@ -109,6 +116,8 @@ private:
     String m_suggestedFilename;
 
     WeakPtr<WebPageProxy> m_originatingPage;
+    Vector<WebCore::URL> m_redirectChain;
+    bool m_wasUserInitiated { true };
 };
 
 } // namespace WebKit

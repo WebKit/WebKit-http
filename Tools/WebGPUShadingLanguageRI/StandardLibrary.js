@@ -24,91 +24,71 @@
  */
 "use strict";
 
-function intToString(x)
-{
-    switch (x) {
-    case 0:
-        return "x";
-    case 1:
-        return "y";
-    case 2:
-        return "z";
-    case 3:
-        return "w";
-    default:
-        throw new Error("Could not generate standard library.");
-    }
-}
-
-// There are 481 swizzle operators. Let's not list them explicitly.
-function _generateSwizzle(maxDepth, maxItems, array)
-{
-    if (!array)
-        array = [];
-    if (array.length == maxDepth) {
-        let result = `vec${array.length}<T> operator.${array.join("")}<T>(vec${maxItems}<T> v)
-{
-    vec${array.length}<T> result;
-`;
-        for (let i = 0; i < array.length; ++i) {
-            result += `    result.${intToString(i)} = v.${array[i]};
-`;
-        }
-        result += `    return result;
-}
-`;
-        return result;
-    }
-    let result = "";
-    for (let i = 0; i < maxItems; ++i) {
-        array.push(intToString(i));
-        result += _generateSwizzle(maxDepth, maxItems, array);
-        array.pop();
-    }
-    return result;
-}
-
-// NOTE: The next line is line 72, and we rely on this in Prepare.js.
-const standardLibrary = `
+// NOTE: The next line is line 28, and we rely on this in Prepare.js.
+let standardLibrary = `
 // This is the WSL standard library. Implementations of all of these things are in
-// Intrinsics.js. The only thing that gets defined before we get here is the Primitive
-// protocol.
+// Intrinsics.js.
 
 // Need to bootstrap void first.
-native Primitive typedef void;
+native typedef void;
 
-native Primitive typedef int32;
-native Primitive typedef uint32;
-native Primitive typedef bool;
+native typedef uint8;
+native typedef int32;
+native typedef uint32;
+native typedef bool;
 typedef int = int32;
 typedef uint = uint32;
 
-native Primitive typedef float;
-native Primitive typedef double;
+native typedef float32;
+native typedef float64;
+typedef float = float32;
+typedef double = float64;
 
 native operator int32(uint32);
+native operator int32(uint8);
+native operator int32(float);
+native operator int32(double);
 native operator uint32(int32);
+native operator uint32(uint8);
+native operator uint32(float);
+native operator uint32(double);
+native operator uint8(int32);
+native operator uint8(uint32);
+native operator uint8(float);
+native operator uint8(double);
+native operator float(int32);
+native operator float(uint32);
+native operator float(uint8);
 native operator float(double);
 native operator double(float);
+native operator double(int32);
+native operator double(uint32);
+native operator double(uint8);
 
 native int operator+(int, int);
 native uint operator+(uint, uint);
+uint8 operator+(uint8 a, uint8 b) { return uint8(uint(a) + uint(b)); }
 native float operator+(float, float);
 native double operator+(double, double);
 int operator++(int value) { return value + 1; }
 uint operator++(uint value) { return value + 1; }
+uint8 operator++(uint8 value) { return value + 1; }
 native int operator-(int, int);
 native uint operator-(uint, uint);
+uint8 operator-(uint8 a, uint8 b) { return uint8(uint(a) - uint(b)); }
 native float operator-(float, float);
 native double operator-(double, double);
 int operator--(int value) { return value - 1; }
 uint operator--(uint value) { return value - 1; }
+uint8 operator--(uint8 value) { return value - 1; }
 native int operator*(int, int);
 native uint operator*(uint, uint);
+uint8 operator*(uint8 a, uint8 b) { return uint8(uint(a) * uint(b)); }
 native float operator*(float, float);
 native double operator*(double, double);
 native int operator/(int, int);
 native uint operator/(uint, uint);
+uint8 operator/(uint8 a, uint8 b) { return uint8(uint(a) / uint(b)); }
 native int operator&(int, int);
 native int operator|(int, int);
 native int operator^(int, int);
@@ -121,27 +101,38 @@ native uint operator^(uint, uint);
 native uint operator~(uint);
 native uint operator<<(uint, uint);
 native uint operator>>(uint, uint);
+uint8 operator&(uint8 a, uint8 b) { return uint8(uint(a) & uint(b)); }
+uint8 operator|(uint8 a, uint8 b) { return uint8(uint(a) | uint(b)); }
+uint8 operator^(uint8 a, uint8 b) { return uint8(uint(a) ^ uint(b)); }
+uint8 operator~(uint8 value) { return uint8(~uint(value)); }
+uint8 operator<<(uint8 a, uint b) { return uint8(uint(a) << (b & 7)); }
+uint8 operator>>(uint8 a, uint b) { return uint8(uint(a) >> (b & 7)); }
 native float operator/(float, float);
 native double operator/(double, double);
 native bool operator==(int, int);
 native bool operator==(uint, uint);
+bool operator==(uint8 a, uint8 b) { return uint(a) == uint(b); }
 native bool operator==(bool, bool);
 native bool operator==(float, float);
 native bool operator==(double, double);
 native bool operator<(int, int);
 native bool operator<(uint, uint);
+bool operator<(uint8 a, uint8 b) { return uint(a) < uint(b); }
 native bool operator<(float, float);
 native bool operator<(double, double);
 native bool operator<=(int, int);
 native bool operator<=(uint, uint);
+bool operator<=(uint8 a, uint8 b) { return uint(a) <= uint(b); }
 native bool operator<=(float, float);
 native bool operator<=(double, double);
 native bool operator>(int, int);
 native bool operator>(uint, uint);
+bool operator>(uint8 a, uint8 b) { return uint(a) > uint(b); }
 native bool operator>(float, float);
 native bool operator>(double, double);
 native bool operator>=(int, int);
 native bool operator>=(uint, uint);
+bool operator>=(uint8 a, uint8 b) { return uint(a) >= uint(b); }
 native bool operator>=(float, float);
 native bool operator>=(double, double);
 
@@ -384,27 +375,66 @@ thread T^ operator&[]<T>(thread vec4<T>^ foo, uint index)
 }
 
 native thread T^ operator&[]<T>(thread T[], uint);
-native threadgroup T^ operator&[]<T:Primitive>(threadgroup T[], uint);
-native device T^ operator&[]<T:Primitive>(device T[], uint);
-native constant T^ operator&[]<T:Primitive>(constant T[], uint);
+native threadgroup T^ operator&[]<T>(threadgroup T[], uint);
+native device T^ operator&[]<T>(device T[], uint);
+native constant T^ operator&[]<T>(constant T[], uint);
 
 native uint operator.length<T>(thread T[]);
-native uint operator.length<T:Primitive>(threadgroup T[]);
-native uint operator.length<T:Primitive>(device T[]);
-native uint operator.length<T:Primitive>(constant T[]);
+native uint operator.length<T>(threadgroup T[]);
+native uint operator.length<T>(device T[]);
+native uint operator.length<T>(constant T[]);
 
 uint operator.length<T, uint length>(T[length])
 {
     return length;
 }
-
-${_generateSwizzle(2, 2)}
-${_generateSwizzle(3, 2)}
-${_generateSwizzle(4, 2)}
-${_generateSwizzle(2, 3)}
-${_generateSwizzle(3, 3)}
-${_generateSwizzle(4, 3)}
-${_generateSwizzle(2, 4)}
-${_generateSwizzle(3, 4)}
-${_generateSwizzle(4, 4)}
 `;
+
+function intToString(x)
+{
+    switch (x) {
+    case 0:
+        return "x";
+    case 1:
+        return "y";
+    case 2:
+        return "z";
+    case 3:
+        return "w";
+    default:
+        throw new Error("Could not generate standard library.");
+    }
+}
+
+// There are 481 swizzle operators. Let's not list them explicitly.
+function _generateSwizzle(maxDepth, maxItems, array)
+{
+    if (!array)
+        array = [];
+    if (array.length == maxDepth) {
+        let result = `vec${array.length}<T> operator.${array.join("")}<T>(vec${maxItems}<T> v)
+{
+    vec${array.length}<T> result;
+`;
+        for (let i = 0; i < array.length; ++i) {
+            result += `    result.${intToString(i)} = v.${array[i]};
+`;
+        }
+        result += `    return result;
+}
+`;
+        return result;
+    }
+    let result = "";
+    for (let i = 0; i < maxItems; ++i) {
+        array.push(intToString(i));
+        result += _generateSwizzle(maxDepth, maxItems, array);
+        array.pop();
+    }
+    return result;
+}
+
+for (let maxDepth = 2; maxDepth <= 4; maxDepth++) {
+    for (let maxItems = 2; maxItems <= 4; maxItems++)
+        standardLibrary += _generateSwizzle(maxDepth, maxItems);
+}

@@ -1364,74 +1364,44 @@ void BytecodeGenerator::emitJump(Label& target)
 
 void BytecodeGenerator::emitJumpIfTrue(RegisterID* cond, Label& target)
 {
+    auto fuseCompareAndJump = [&] (OpcodeID jumpID) {
+        int dstIndex;
+        int src1Index;
+        int src2Index;
+
+        retrieveLastBinaryOp(dstIndex, src1Index, src2Index);
+
+        if (cond->index() == dstIndex && cond->isTemporary() && !cond->refCount()) {
+            rewindBinaryOp();
+
+            size_t begin = instructions().size();
+            emitOpcode(jumpID);
+            instructions().append(src1Index);
+            instructions().append(src2Index);
+            instructions().append(target.bind(begin, instructions().size()));
+            return true;
+        }
+        return false;
+    };
+
     if (m_lastOpcodeID == op_less) {
-        int dstIndex;
-        int src1Index;
-        int src2Index;
-
-        retrieveLastBinaryOp(dstIndex, src1Index, src2Index);
-
-        if (cond->index() == dstIndex && cond->isTemporary() && !cond->refCount()) {
-            rewindBinaryOp();
-
-            size_t begin = instructions().size();
-            emitOpcode(op_jless);
-            instructions().append(src1Index);
-            instructions().append(src2Index);
-            instructions().append(target.bind(begin, instructions().size()));
+        if (fuseCompareAndJump(op_jless))
             return;
-        }
     } else if (m_lastOpcodeID == op_lesseq) {
-        int dstIndex;
-        int src1Index;
-        int src2Index;
-
-        retrieveLastBinaryOp(dstIndex, src1Index, src2Index);
-
-        if (cond->index() == dstIndex && cond->isTemporary() && !cond->refCount()) {
-            rewindBinaryOp();
-
-            size_t begin = instructions().size();
-            emitOpcode(op_jlesseq);
-            instructions().append(src1Index);
-            instructions().append(src2Index);
-            instructions().append(target.bind(begin, instructions().size()));
+        if (fuseCompareAndJump(op_jlesseq))
             return;
-        }
     } else if (m_lastOpcodeID == op_greater) {
-        int dstIndex;
-        int src1Index;
-        int src2Index;
-
-        retrieveLastBinaryOp(dstIndex, src1Index, src2Index);
-
-        if (cond->index() == dstIndex && cond->isTemporary() && !cond->refCount()) {
-            rewindBinaryOp();
-
-            size_t begin = instructions().size();
-            emitOpcode(op_jgreater);
-            instructions().append(src1Index);
-            instructions().append(src2Index);
-            instructions().append(target.bind(begin, instructions().size()));
+        if (fuseCompareAndJump(op_jgreater))
             return;
-        }
     } else if (m_lastOpcodeID == op_greatereq) {
-        int dstIndex;
-        int src1Index;
-        int src2Index;
-
-        retrieveLastBinaryOp(dstIndex, src1Index, src2Index);
-
-        if (cond->index() == dstIndex && cond->isTemporary() && !cond->refCount()) {
-            rewindBinaryOp();
-
-            size_t begin = instructions().size();
-            emitOpcode(op_jgreatereq);
-            instructions().append(src1Index);
-            instructions().append(src2Index);
-            instructions().append(target.bind(begin, instructions().size()));
+        if (fuseCompareAndJump(op_jgreatereq))
             return;
-        }
+    } else if (m_lastOpcodeID == op_below) {
+        if (fuseCompareAndJump(op_jbelow))
+            return;
+    } else if (m_lastOpcodeID == op_beloweq) {
+        if (fuseCompareAndJump(op_jbeloweq))
+            return;
     } else if (m_lastOpcodeID == op_eq_null && target.isForward()) {
         int dstIndex;
         int srcIndex;
@@ -1473,74 +1443,47 @@ void BytecodeGenerator::emitJumpIfTrue(RegisterID* cond, Label& target)
 
 void BytecodeGenerator::emitJumpIfFalse(RegisterID* cond, Label& target)
 {
+    auto fuseCompareAndJump = [&] (OpcodeID jumpID, bool replaceOperands) {
+        int dstIndex;
+        int src1Index;
+        int src2Index;
+
+        retrieveLastBinaryOp(dstIndex, src1Index, src2Index);
+
+        if (cond->index() == dstIndex && cond->isTemporary() && !cond->refCount()) {
+            rewindBinaryOp();
+
+            size_t begin = instructions().size();
+            emitOpcode(jumpID);
+            // Since op_below and op_beloweq only accepts Int32, replacing operands is not observable to users.
+            if (replaceOperands)
+                std::swap(src1Index, src2Index);
+            instructions().append(src1Index);
+            instructions().append(src2Index);
+            instructions().append(target.bind(begin, instructions().size()));
+            return true;
+        }
+        return false;
+    };
+
     if (m_lastOpcodeID == op_less && target.isForward()) {
-        int dstIndex;
-        int src1Index;
-        int src2Index;
-
-        retrieveLastBinaryOp(dstIndex, src1Index, src2Index);
-
-        if (cond->index() == dstIndex && cond->isTemporary() && !cond->refCount()) {
-            rewindBinaryOp();
-
-            size_t begin = instructions().size();
-            emitOpcode(op_jnless);
-            instructions().append(src1Index);
-            instructions().append(src2Index);
-            instructions().append(target.bind(begin, instructions().size()));
+        if (fuseCompareAndJump(op_jnless, false))
             return;
-        }
     } else if (m_lastOpcodeID == op_lesseq && target.isForward()) {
-        int dstIndex;
-        int src1Index;
-        int src2Index;
-
-        retrieveLastBinaryOp(dstIndex, src1Index, src2Index);
-
-        if (cond->index() == dstIndex && cond->isTemporary() && !cond->refCount()) {
-            rewindBinaryOp();
-
-            size_t begin = instructions().size();
-            emitOpcode(op_jnlesseq);
-            instructions().append(src1Index);
-            instructions().append(src2Index);
-            instructions().append(target.bind(begin, instructions().size()));
+        if (fuseCompareAndJump(op_jnlesseq, false))
             return;
-        }
     } else if (m_lastOpcodeID == op_greater && target.isForward()) {
-        int dstIndex;
-        int src1Index;
-        int src2Index;
-
-        retrieveLastBinaryOp(dstIndex, src1Index, src2Index);
-
-        if (cond->index() == dstIndex && cond->isTemporary() && !cond->refCount()) {
-            rewindBinaryOp();
-
-            size_t begin = instructions().size();
-            emitOpcode(op_jngreater);
-            instructions().append(src1Index);
-            instructions().append(src2Index);
-            instructions().append(target.bind(begin, instructions().size()));
+        if (fuseCompareAndJump(op_jngreater, false))
             return;
-        }
     } else if (m_lastOpcodeID == op_greatereq && target.isForward()) {
-        int dstIndex;
-        int src1Index;
-        int src2Index;
-
-        retrieveLastBinaryOp(dstIndex, src1Index, src2Index);
-
-        if (cond->index() == dstIndex && cond->isTemporary() && !cond->refCount()) {
-            rewindBinaryOp();
-
-            size_t begin = instructions().size();
-            emitOpcode(op_jngreatereq);
-            instructions().append(src1Index);
-            instructions().append(src2Index);
-            instructions().append(target.bind(begin, instructions().size()));
+        if (fuseCompareAndJump(op_jngreatereq, false))
             return;
-        }
+    } else if (m_lastOpcodeID == op_below && target.isForward()) {
+        if (fuseCompareAndJump(op_jbeloweq, true))
+            return;
+    } else if (m_lastOpcodeID == op_beloweq && target.isForward()) {
+        if (fuseCompareAndJump(op_jbelow, true))
+            return;
     } else if (m_lastOpcodeID == op_not) {
         int dstIndex;
         int srcIndex;
@@ -2036,7 +1979,7 @@ bool BytecodeGenerator::instantiateLexicalVariables(const VariableEnvironment& l
                 varOffset = VarOffset(local->virtualRegister());
             }
 
-            SymbolTableEntry newEntry(varOffset, entry.value.isConst() ? ReadOnly : None);
+            SymbolTableEntry newEntry(varOffset, static_cast<unsigned>(entry.value.isConst() ? PropertyAttribute::ReadOnly : PropertyAttribute::None));
             symbolTable->add(NoLockingNecessary, entry.key.get(), newEntry);
         }
     }
@@ -2392,10 +2335,8 @@ void BytecodeGenerator::prepareLexicalScopeForNextForLoopIteration(VariableEnvir
 
 Variable BytecodeGenerator::variable(const Identifier& property, ThisResolutionType thisResolutionType)
 {
-    if (property == propertyNames().thisIdentifier && thisResolutionType == ThisResolutionType::Local) {
-        return Variable(property, VarOffset(thisRegister()->virtualRegister()), thisRegister(),
-            ReadOnly, Variable::SpecialVariable, 0, false);
-    }
+    if (property == propertyNames().thisIdentifier && thisResolutionType == ThisResolutionType::Local)
+        return Variable(property, VarOffset(thisRegister()->virtualRegister()), thisRegister(), static_cast<unsigned>(PropertyAttribute::ReadOnly), Variable::SpecialVariable, 0, false);
     
     // We can optimize lookups if the lexical variable is found before a "with" or "catch"
     // scope because we're guaranteed static resolution. If we have to pass through
@@ -2871,23 +2812,7 @@ void BytecodeGenerator::emitPutGeneratorFields(RegisterID* nextFunction)
     emitDirectPutById(m_generatorRegister, propertyNames().builtinNames().generatorFramePrivateName(), emitLoad(nullptr, jsNull()), PropertyNode::KnownDirect);
 }
 
-RegisterID* BytecodeGenerator::emitCreateAsyncGeneratorQueue(const JSTextPosition& divot)
-{
-    auto varCreateAsyncGeneratorQueue = variable(propertyNames().builtinNames().createAsyncGeneratorQueuePrivateName());
-    RefPtr<RegisterID> scope = newTemporary();
-    RefPtr<RegisterID> queue = newTemporary();
-    moveToDestinationIfNeeded(scope.get(), emitResolveScope(scope.get(), varCreateAsyncGeneratorQueue));
-    RefPtr<RegisterID> createAsyncGeneratorQueue = emitGetFromScope(newTemporary(), scope.get(), varCreateAsyncGeneratorQueue, ThrowIfNotFound);
-
-    CallArguments args(*this, nullptr, 0);
-    emitLoad(args.thisRegister(), jsUndefined());
-
-    emitCall(queue.get(), createAsyncGeneratorQueue.get(), NoExpectedFunction, args, divot, divot, divot, DebuggableCall::No);
-
-    return queue.get();
-}
-
-void BytecodeGenerator::emitPutAsyncGeneratorFields(RegisterID* nextFunction, const JSTextPosition& divot)
+void BytecodeGenerator::emitPutAsyncGeneratorFields(RegisterID* nextFunction)
 {
     ASSERT(isAsyncGeneratorFunctionParseMode(parseMode()));
 
@@ -2901,8 +2826,8 @@ void BytecodeGenerator::emitPutAsyncGeneratorFields(RegisterID* nextFunction, co
 
     emitDirectPutById(m_generatorRegister, propertyNames().builtinNames().asyncGeneratorSuspendReasonPrivateName(), emitLoad(nullptr, jsNumber(static_cast<int32_t>(JSAsyncGeneratorFunction::AsyncGeneratorSuspendReason::None))), PropertyNode::KnownDirect);
 
-
-    emitDirectPutById(m_generatorRegister, propertyNames().builtinNames().asyncGeneratorQueuePrivateName(), emitCreateAsyncGeneratorQueue(divot), PropertyNode::KnownDirect);
+    emitDirectPutById(m_generatorRegister, propertyNames().builtinNames().asyncGeneratorQueueFirstPrivateName(), emitLoad(nullptr, jsNull()), PropertyNode::KnownDirect);
+    emitDirectPutById(m_generatorRegister, propertyNames().builtinNames().asyncGeneratorQueueLastPrivateName(), emitLoad(nullptr, jsNull()), PropertyNode::KnownDirect);
 }
 
 RegisterID* BytecodeGenerator::emitDeleteById(RegisterID* dst, RegisterID* base, const Identifier& property)
@@ -4315,8 +4240,8 @@ void BytecodeGenerator::emitEnumeration(ThrowableExpressionData* node, Expressio
 
     RefPtr<RegisterID> subject = newTemporary();
     emitNode(subject.get(), subjectNode);
-
     RefPtr<RegisterID> iterator = isForAwait ? emitGetAsyncIterator(subject.get(), node) : emitGetIterator(subject.get(), node);
+    RefPtr<RegisterID> nextMethod = emitGetById(newTemporary(), iterator.get(), propertyNames().next);
 
     Ref<Label> loopDone = newLabel();
     Ref<Label> tryStartLabel = newLabel();
@@ -4422,7 +4347,7 @@ void BytecodeGenerator::emitEnumeration(ThrowableExpressionData* node, Expressio
         }
 
         {
-            emitIteratorNext(value.get(), iterator.get(), node, isForAwait ? EmitAwait::Yes : EmitAwait::No);
+            emitIteratorNext(value.get(), nextMethod.get(), iterator.get(), node, isForAwait ? EmitAwait::Yes : EmitAwait::No);
 
             emitJumpIfTrue(emitGetById(newTemporary(), value.get(), propertyNames().done), loopDone.get());
             emitGetById(value.get(), value.get(), propertyNames().value);
@@ -4587,13 +4512,12 @@ RegisterID* BytecodeGenerator::emitIsEmpty(RegisterID* dst, RegisterID* src)
     return dst;
 }
     
-RegisterID* BytecodeGenerator::emitIteratorNext(RegisterID* dst, RegisterID* iterator, const ThrowableExpressionData* node, EmitAwait doEmitAwait)
+RegisterID* BytecodeGenerator::emitIteratorNext(RegisterID* dst, RegisterID* nextMethod, RegisterID* iterator, const ThrowableExpressionData* node, EmitAwait doEmitAwait)
 {
     {
-        RefPtr<RegisterID> next = emitGetById(newTemporary(), iterator, propertyNames().next);
         CallArguments nextArguments(*this, nullptr);
         emitMove(nextArguments.thisRegister(), iterator);
-        emitCall(dst, next.get(), NoExpectedFunction, nextArguments, node->divot(), node->divotStart(), node->divotEnd(), DebuggableCall::No);
+        emitCall(dst, nextMethod, NoExpectedFunction, nextArguments, node->divot(), node->divotStart(), node->divotEnd(), DebuggableCall::No);
 
         if (doEmitAwait == EmitAwait::Yes)
             emitAwait(dst);
@@ -4607,14 +4531,13 @@ RegisterID* BytecodeGenerator::emitIteratorNext(RegisterID* dst, RegisterID* ite
     return dst;
 }
 
-RegisterID* BytecodeGenerator::emitIteratorNextWithValue(RegisterID* dst, RegisterID* iterator, RegisterID* value, const ThrowableExpressionData* node)
+RegisterID* BytecodeGenerator::emitIteratorNextWithValue(RegisterID* dst, RegisterID* nextMethod, RegisterID* iterator, RegisterID* value, const ThrowableExpressionData* node)
 {
     {
-        RefPtr<RegisterID> next = emitGetById(newTemporary(), iterator, propertyNames().next);
         CallArguments nextArguments(*this, nullptr, 1);
         emitMove(nextArguments.thisRegister(), iterator);
         emitMove(nextArguments.argumentRegister(0), value);
-        emitCall(dst, next.get(), NoExpectedFunction, nextArguments, node->divot(), node->divotStart(), node->divotEnd(), DebuggableCall::No);
+        emitCall(dst, nextMethod, NoExpectedFunction, nextArguments, node->divot(), node->divotStart(), node->divotEnd(), DebuggableCall::No);
     }
 
     return dst;
@@ -4916,8 +4839,7 @@ RegisterID* BytecodeGenerator::emitGetAsyncIterator(RegisterID* argument, Throwa
     emitJump(asyncIteratorFound.get());
     emitLabel(asyncIteratorNotFound.get());
 
-    RefPtr<RegisterID> commonIterator = emitGetById(newTemporary(), argument, propertyNames().iteratorSymbol);
-    emitCallIterator(commonIterator.get(), argument, node);
+    RefPtr<RegisterID> commonIterator = emitGetIterator(argument, node);
     emitMove(iterator.get(), commonIterator.get());
 
     auto varCreateAsyncFromSyncIterator = variable(propertyNames().builtinNames().createAsyncFromSyncIteratorPrivateName());
@@ -4947,6 +4869,7 @@ RegisterID* BytecodeGenerator::emitDelegateYield(RegisterID* argument, Throwable
     RefPtr<RegisterID> value = newTemporary();
     {
         RefPtr<RegisterID> iterator = parseMode() == SourceParseMode::AsyncGeneratorBodyMode ? emitGetAsyncIterator(argument, node) : emitGetIterator(argument, node);
+        RefPtr<RegisterID> nextMethod = emitGetById(newTemporary(), iterator.get(), propertyNames().next);
 
         Ref<Label> loopDone = newLabel();
         {
@@ -5044,7 +4967,7 @@ RegisterID* BytecodeGenerator::emitDelegateYield(RegisterID* argument, Throwable
             }
 
             emitLabel(nextElement.get());
-            emitIteratorNextWithValue(value.get(), iterator.get(), value.get(), node);
+            emitIteratorNextWithValue(value.get(), nextMethod.get(), iterator.get(), value.get(), node);
 
             emitLabel(branchOnResult.get());
 

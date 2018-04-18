@@ -26,7 +26,7 @@
     JSCustomMarkFunction,
     SkipVTableValidation,
 ] interface CSSStyleDeclaration {
-    [CEReactions, SetterMayThrowException] attribute DOMString cssText;
+    [CEReactions] attribute DOMString cssText;
 
     DOMString getPropertyValue(DOMString propertyName);
 
@@ -38,6 +38,8 @@
     readonly attribute unsigned long length;
     getter DOMString item(unsigned long index);
     readonly attribute CSSRule? parentRule;
+
+    [CEReactions] attribute [TreatNullAs=EmptyString] DOMString cssFloat;
 
     // FIXME: Using "undefined" as default parameter value is wrong.
     DOMString? getPropertyShorthand(optional DOMString propertyName = "undefined");

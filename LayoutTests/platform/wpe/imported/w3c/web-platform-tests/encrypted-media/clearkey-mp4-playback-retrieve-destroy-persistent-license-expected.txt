@@ -1,4 +1,3 @@
-CONSOLE MESSAGE: line 81: TypeError: navigator.requestMediaKeySystemAccess is not a function. (In 'navigator.requestMediaKeySystemAccess(config.keysystem, [ configuration ] )', 'navigator.requestMediaKeySystemAccess' is undefined)
 
 Harness Error (TIMEOUT), message = null
 

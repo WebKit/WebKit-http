@@ -1,3 +1,91 @@
+2017-09-27  Chris Dumez  <cdumez@apple.com>
+
+        cssFloat missing in CSSPropertyDeclaration.prototype
+        https://bugs.webkit.org/show_bug.cgi?id=177487
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline WPT now that more checks are passing.
+
+        * web-platform-tests/cssom/interfaces-expected.txt:
+
+2017-09-26  Chris Dumez  <cdumez@apple.com>
+
+        Update web-platform-tests IDL files
+        https://bugs.webkit.org/show_bug.cgi?id=177515
+
+        Reviewed by Youenn Fablet.
+
+        Update web-platform-tests IDL files and rebaseline tests.
+
+        * web-platform-tests/WebIDL/interfaces-expected.txt:
+        * web-platform-tests/cssom-view/interfaces-expected.txt:
+        * web-platform-tests/cssom/interfaces-expected.txt:
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+        * web-platform-tests/interfaces/cssom-view.idl: Added.
+        * web-platform-tests/interfaces/cssom.idl:
+        * web-platform-tests/interfaces/dom.idl:
+        * web-platform-tests/interfaces/geometry.idl:
+        * web-platform-tests/interfaces/html.idl:
+        * web-platform-tests/interfaces/payment-handler.idl: Added.
+        * web-platform-tests/interfaces/payment-request.idl: Added.
+        * web-platform-tests/interfaces/webidl.idl: Added.
+
+2017-09-25  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] fit-content() tracks shouldn't stretch
+        https://bugs.webkit.org/show_bug.cgi?id=177300
+
+        Reviewed by Sergio Villar Senin.
+
+        Imported a new test in WPT covering several cases for this issue.
+
+        * web-platform-tests/css/css-grid-1/alignment/grid-fit-content-tracks-dont-stretch-001-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-fit-content-tracks-dont-stretch-001.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/w3c-import.log:
+
+2017-09-22  Chris Dumez  <cdumez@apple.com>
+
+        Use high resolution timestamp for event time
+        https://bugs.webkit.org/show_bug.cgi?id=154246
+        <rdar://problem/34333304>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline WPT test now that more checks are passing.
+
+        * web-platform-tests/dom/events/Event-timestamp-high-resolution-expected.txt:
+
+2017-09-22  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed WPE gardening. Updating the WPT EME idlharness.html
+        baseline -- it's not port-specific since there should be no
+        differences in the Web-exposed APIs for this feature across
+        ports.
+
+        * web-platform-tests/encrypted-media/idlharness-expected.txt:
+
+2017-09-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Add missing expectation file.
+        https://bugs.webkit.org/show_bug.cgi?id=170713
+
+        Unreviewed test gardening.
+
+        * web-platform-tests/IndexedDB/nested-cloning-large-multiple-expected.txt: Added.
+
+2017-09-20  Youenn Fablet  <youenn@apple.com>
+
+        Refresh WPT tests up to f65af411d63ec13ee8fe208b4effd730a4a8b7fe
+        https://bugs.webkit.org/show_bug.cgi?id=170713
+
+        Reviewed by Alex Christensen.
+
+        * resources/TestRepositories:
+        * resources/import-expectations.json:
+        * resources/resource-files.json:
+        * web-platform-tests: Refreshed by importer.
+
 2017-09-20  Chris Dumez  <cdumez@apple.com>
 
         Video errors should be instances of Error

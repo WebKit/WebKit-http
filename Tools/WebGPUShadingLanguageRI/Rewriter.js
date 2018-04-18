@@ -156,7 +156,7 @@ class Rewriter {
     
     visitReferenceType(node)
     {
-        return new node.constructor(node.rogiin, node.addressSpace, node.elementType.visit(this));
+        return new node.constructor(node.origin, node.addressSpace, node.elementType.visit(this));
     }
     
     visitPtrType(node)
@@ -317,11 +317,14 @@ class Rewriter {
 
     processDerivedCallData(node, result)
     {
-        let actualTypeArguments = node.actualTypeArguments;
-        if (actualTypeArguments) {
-            result.actualTypeArguments =
-                actualTypeArguments.map(actualTypeArgument => actualTypeArgument.visit(this));
+        let handleTypeArguments = actualTypeArguments => {
+            if (actualTypeArguments)
+                return actualTypeArguments.map(actualTypeArgument => actualTypeArgument.visit(this));
+            else
+                return null;
         }
+        result.actualTypeArguments = handleTypeArguments(node.actualTypeArguments);
+        result.instantiatedActualTypeArguments = handleTypeArguments(node.instantiatedActualTypeArguments);
         let argumentTypes = node.argumentTypes;
         if (argumentTypes)
             result.argumentTypes = argumentTypes.map(argumentType => argumentType.visit(this));
@@ -392,6 +395,20 @@ class Rewriter {
             Node.visit(node.condition, this),
             Node.visit(node.increment, this),
             node.body.visit(this));
+    }
+    
+    visitSwitchStatement(node)
+    {
+        let result = new SwitchStatement(node.origin, Node.visit(node.value, this));
+        for (let switchCase of node.switchCases)
+            result.add(switchCase.visit(this));
+        result.type = Node.visit(node.type, this);
+        return result;
+    }
+    
+    visitSwitchCase(node)
+    {
+        return new SwitchCase(node.origin, Node.visit(node.value, this), node.body.visit(this));
     }
     
     visitAnonymousVariable(node)

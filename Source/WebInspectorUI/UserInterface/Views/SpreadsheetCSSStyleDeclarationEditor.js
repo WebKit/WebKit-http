@@ -85,7 +85,6 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 
         this._property = property;
         this._element = document.createElement("div");
-        this._element.classList.add("property");
 
         this._update();
     }
@@ -99,7 +98,47 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
     _update()
     {
         this.element.removeChildren();
-        this.element.classList.toggle("disabled", !this._property.enabled);
+        this.element.className = "";
+
+        let duplicatePropertyExistsBelow = (cssProperty) => {
+            let propertyFound = false;
+
+            for (let property of this._property.ownerStyle.properties) {
+                if (property === cssProperty)
+                    propertyFound = true;
+                else if (property.name === cssProperty.name && propertyFound)
+                    return true;
+            }
+
+            return false;
+        };
+
+        let classNames = ["property"];
+
+        if (this._property.overridden)
+            classNames.push("overridden");
+
+        if (this._property.implicit)
+            classNames.push("implicit");
+
+        if (this._property.ownerStyle.inherited && !this._property.inherited)
+            classNames.push("not-inherited");
+
+        if (!this._property.valid && this._property.hasOtherVendorNameOrKeyword())
+            classNames.push("other-vendor");
+        else if (!this._property.valid) {
+            let propertyNameIsValid = false;
+            if (WI.CSSCompletions.cssNameCompletions)
+                propertyNameIsValid = WI.CSSCompletions.cssNameCompletions.isValidPropertyName(this._property.name);
+
+            if (!propertyNameIsValid || duplicatePropertyExistsBelow(this._property))
+                classNames.push("invalid");
+        }
+
+        if (!this._property.enabled)
+            classNames.push("disabled");
+
+        this._element.classList.add(...classNames);
 
         if (this._property.editable) {
             this._checkboxElement = this.element.appendChild(document.createElement("input"));
@@ -116,19 +155,39 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         if (!this._property.enabled)
             this.element.append("/* ");
 
-        let nameElement = this.element.appendChild(document.createElement("span"));
-        nameElement.classList.add("name");
-        nameElement.textContent = this._property.name;
+        this._nameElement = this.element.appendChild(document.createElement("span"));
+        this._nameElement.classList.add("name");
+        this._nameElement.textContent = this._property.name;
 
         this.element.append(": ");
 
-        let valueElement = this.element.appendChild(document.createElement("span"));
-        valueElement.classList.add("value");
-        valueElement.textContent = this._property.value;
+        this._valueElement = this.element.appendChild(document.createElement("span"));
+        this._valueElement.classList.add("value");
+        this._valueElement.textContent = this._property.rawValue;
+
+        if (this._property.editable && this._property.enabled) {
+            this._nameElement.contentEditable = "plaintext-only";
+            this._nameElement.addEventListener("input", this.debounce(WI.SpreadsheetStyleProperty.CommitCoalesceDelay)._handleNameChange);
+
+            this._valueElement.contentEditable = "plaintext-only";
+            this._valueElement.addEventListener("input", this.debounce(WI.SpreadsheetStyleProperty.CommitCoalesceDelay)._handleValueChange);
+        }
 
         this.element.append(";");
 
         if (!this._property.enabled)
             this.element.append(" */");
     }
+
+    _handleNameChange()
+    {
+        this._property.name = this._nameElement.textContent.trim();
+    }
+
+    _handleValueChange()
+    {
+        this._property.rawValue = this._valueElement.textContent.trim();
+    }
 };
+
+WI.SpreadsheetStyleProperty.CommitCoalesceDelay = 250;

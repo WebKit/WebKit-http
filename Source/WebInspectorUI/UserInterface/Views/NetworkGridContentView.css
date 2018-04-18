@@ -43,7 +43,7 @@
     filter: grayscale();
 }
 
-.cache-type {
+.content-view:matches(.network, .network-grid) > .data-grid .cache-type {
     color: gray;
 }
 

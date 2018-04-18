@@ -1,6 +1,8 @@
 list(APPEND PAL_SOURCES
     crypto/win/CryptoDigestWin.cpp
 
+    system/ClockGeneric.cpp
+
     system/win/SoundWin.cpp
 
     text/KillRing.cpp
@@ -9,6 +11,7 @@ list(APPEND PAL_SOURCES
 list(APPEND PAL_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}"
     "${CMAKE_BINARY_DIR}/../include/private"
+    "${DERIVED_SOURCES_PAL_DIR}"
 )
 
 list(APPEND PAL_FORWARDING_HEADERS_DIRECTORIES .)

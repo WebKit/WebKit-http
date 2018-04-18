@@ -1991,6 +1991,13 @@ sub shouldRemoveCMakeCache(@)
         return 1;
     }
 
+    if (isGtk() or isWPE()) {
+        my $gtkImageDircetory = File::Spec->catdir(sourceDir(), "Source", "WebInspectorUI", "UserInterface", "Images", "gtk");
+        if ($cacheFileModifiedTime < stat($gtkImageDircetory)->mtime) {
+            return 1;
+        }
+    }
+
     if(isAnyWindows()) {
         my $winConfiguration = File::Spec->catdir(sourceDir(), "Source", "cmake", "OptionsWin.cmake");
         if ($cacheFileModifiedTime < stat($winConfiguration)->mtime) {
@@ -2022,15 +2029,15 @@ sub canUseNinja(@)
         return 0;
     }
 
+    if (isAppleCocoaWebKit()) {
+        my $devnull = File::Spec->devnull();
+        if (exitStatus(system("xcrun -find ninja >$devnull 2>&1")) == 0) {
+            return 1;
+        }
+    }
+
     # Test both ninja and ninja-build. Fedora uses ninja-build and has patched CMake to also call ninja-build.
     return commandExists("ninja") || commandExists("ninja-build");
-}
-
-sub canUseNinjaGenerator(@)
-{
-    # Check that a Ninja generator is installed
-    my $devnull = File::Spec->devnull();
-    return exitStatus(system("cmake -N -G Ninja >$devnull 2>&1")) == 0;
 }
 
 sub canUseEclipseNinjaGenerator(@)
@@ -2063,7 +2070,7 @@ sub generateBuildSystemFromCMakeProject
     chdir($buildPath) or die;
 
     # We try to be smart about when to rerun cmake, so that we can have faster incremental builds.
-    my $willUseNinja = canUseNinja() && canUseNinjaGenerator();
+    my $willUseNinja = canUseNinja();
     if (-e cmakeCachePath() && -e cmakeGeneratedBuildfile($willUseNinja)) {
         return 0;
     }
@@ -2119,31 +2126,31 @@ sub generateBuildSystemFromCMakeProject
 
 sub buildCMakeGeneratedProject($)
 {
-    my ($makeArgs) = @_;
+    my (@makeArgs) = @_;
     my $config = configuration();
     my $buildPath = File::Spec->catdir(baseProductDir(), $config);
     if (! -d $buildPath) {
         die "Must call generateBuildSystemFromCMakeProject() before building CMake project.";
     }
 
+    if ($ENV{VERBOSE} && canUseNinja()) {
+        push @makeArgs, "-v";
+        push @makeArgs, "-d keeprsp" if (version->parse(determineNinjaVersion()) >= version->parse("1.4.0"));
+    }
+
     my $command = "cmake";
     my @args = ("--build", $buildPath, "--config", $config);
-    push @args, ("--", $makeArgs) if $makeArgs;
+    push @args, ("--", @makeArgs) if @makeArgs;
 
     # GTK and JSCOnly can use a build script to preserve colors and pretty-printing.
     if ((isGtk() || isJSCOnly()) && -e "$buildPath/build.sh") {
         chdir "$buildPath" or die;
         $command = "$buildPath/build.sh";
-        @args = ($makeArgs);
-    }
-
-    if ($ENV{VERBOSE} && canUseNinja()) {
-        push @args, "-v";
-        push @args, "-d keeprsp" if (version->parse(determineNinjaVersion()) >= version->parse("1.4.0"));
+        @args = (@makeArgs);
     }
 
     # We call system("cmake @args") instead of system("cmake", @args) so that @args is
-    # parsed for shell metacharacters. In particular, $makeArgs may contain such metacharacters.
+    # parsed for shell metacharacters. In particular, @makeArgs may contain such metacharacters.
     my $wrapper = join(" ", wrapperPrefixIfNeeded()) . " ";
     return systemVerbose($wrapper . "$command @args");
 }

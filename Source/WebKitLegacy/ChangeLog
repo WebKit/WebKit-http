@@ -1,3 +1,72 @@
+2017-09-26  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] WebKitCOMAPI.h is not copied after build has finished.
+        https://bugs.webkit.org/show_bug.cgi?id=177505
+
+        Reviewed by Brent Fulgham.
+
+        The file is located in the WebKitLegacy forwarding headers folder, not the WebKit folder.
+
+        * WebKitLegacy.vcxproj/WebKitLegacy.proj:
+
+2017-09-25  Timothy Horton  <timothy_horton@apple.com>
+
+        Fix the macOS WebKit CMake build
+
+        * CMakeLists.txt:
+        Before r222194, this -umbrella flag mentioned "WebKit" twice:
+        first, the name of the target to affect; second, the name of the
+        umbrella framework. In r222194, the targets were renamed. It turns
+        out that a global find and replace isn't a great way to do this,
+        because it caught the name of the umbrella framework too.
+
+        Put it back; the umbrella framework will always be named "WebKit".
+
+        This makes it once again possible to link WebKit (before, it was
+        complaining about us linking directly to WebKitLegacy instead of the
+        nonsensical WebKitLegacy umbrella framework).
+
+2017-09-25  Chris Dumez  <cdumez@apple.com>
+
+        Make StoredCredentials an enum class and rename its header
+        https://bugs.webkit.org/show_bug.cgi?id=177455
+
+        Reviewed by Youenn Fablet.
+
+        Make StoredCredentials an enum class and rename its header for clarity. This was error-prone because 0 meant
+        "allow" and and 1 meant "do not allow". It was trivial to convert it to a boolean by mistake and get the
+        opposite behavior.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+        (WebResourceLoadScheduler::loadResourceSynchronously):
+        * WebCoreSupport/WebResourceLoadScheduler.h:
+
+2017-09-25  Timothy Horton  <timothy_horton@apple.com>
+
+        Make progress on getting Mac CMake building again
+        https://bugs.webkit.org/show_bug.cgi?id=177443
+
+        Unreviewed, just "fixing" the build.
+
+        * PlatformMac.cmake:
+        Set up dependencies correctly for our mig-generated files.
+        MAIN_DEPENDENCY is for VS, not what it sounds like.
+
+        Add mig-generated files to WebKitLegacy, not WebKit (I think this was
+        missed in the WebKit2 rename).
+
+2017-09-21  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Compile error, generate-webkitversion.pl script not found.
+        https://bugs.webkit.org/show_bug.cgi?id=177310
+
+        Reviewed by Brent Fulgham.
+
+        The script is located using the WebKitLegacy folder cmake variable, which needs
+        to be set in the project file. 
+ 
+        * WebKitLegacy.vcxproj/WebKitLegacy.proj:
+
 2017-09-18  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         [CMake] Rename WebKit target to WebKitLegacy and rename WebKit2 target to WebKit

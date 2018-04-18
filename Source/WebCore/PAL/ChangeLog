@@ -1,3 +1,96 @@
+2017-09-26  Don Olmstead  <don.olmstead@sony.com>
+
+        [PAL][CMake] Include ICU directories
+        https://bugs.webkit.org/show_bug.cgi?id=177504
+
+        Reviewed by Myles C. Maxfield.
+
+        * pal/CMakeLists.txt:
+
+2017-09-26  Yoshiaki Jitsukawa  <Yoshiaki.Jitsukawa@sony.com>
+
+        [PAL] Move Clock into PAL
+        https://bugs.webkit.org/show_bug.cgi?id=174342
+
+        Reviewed by Myles C. Maxfield.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/PlatformGTK.cmake:
+        * pal/PlatformWin.cmake:
+        * pal/system/Clock.h: Renamed from Source/WebCore/platform/Clock.h.
+        * pal/system/ClockGeneric.cpp: Renamed from Source/WebCore/platform/ClockGeneric.cpp.
+        (PAL::Clock::create):
+        * pal/system/ClockGeneric.h: Renamed from Source/WebCore/platform/ClockGeneric.h.
+        * pal/system/mac/ClockCM.h: Renamed from Source/WebCore/platform/mac/PlatformClockCM.h.
+        * pal/system/mac/ClockCM.mm: Renamed from Source/WebCore/platform/mac/PlatformClockCM.mm.
+        (Clock::create):
+        (ClockCM::ClockCM):
+        (ClockCM::initializeWithTimingSource):
+        (ClockCM::setCurrentTime):
+        (ClockCM::currentTime const):
+        (ClockCM::setCurrentMediaTime):
+        (ClockCM::currentMediaTime const):
+        (ClockCM::setPlayRate):
+        (ClockCM::start):
+        (ClockCM::stop):
+
+        * pal/cf/CoreMediaSoftLink.cpp:
+        * pal/cf/CoreMediaSoftLink.h:
+        Add requrired functions.
+2017-09-26  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] Only report libgcrypt errors when logging is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=177360
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * pal/crypto/gcrypt/Utilities.h:
+        (PAL::GCrypt::logError): Only print out the libgcrypt error on stderr
+        when logging is enabled at build-time, avoiding unnecessary output in
+        non-debugging use cases.
+
+2017-09-25  Timothy Horton  <timothy_horton@apple.com>
+
+        Make progress on getting Mac CMake building again
+        https://bugs.webkit.org/show_bug.cgi?id=177443
+
+        Unreviewed, just "fixing" the build.
+
+        * pal/PlatformMac.cmake:
+        Add some missing files and include paths.
+
+2017-09-22  Zalan Bujtas  <zalan@apple.com>
+
+        WeakPtrFactory should populate m_ref lazily.
+        https://bugs.webkit.org/show_bug.cgi?id=177375
+
+        Reviewed by Geoffrey Garen.
+
+        * pal/system/mac/SystemSleepListenerMac.mm:
+        (PAL::SystemSleepListenerMac::SystemSleepListenerMac):
+
+2017-09-21  Yoshiaki Jitsukawa  <Yoshiaki.Jitsukawa@sony.com>
+
+        [PAL] Move MediaTimeAVFoundation into PAL
+        https://bugs.webkit.org/show_bug.cgi?id=177222
+
+        Reviewed by Myles C. Maxfield.
+
+        * config.h:
+        Include PALHeaderDetection.h.
+        Define AVFOUNDATION-releavant definitions.
+
+        * pal/PlatformWin.cmake:
+        Add PAL dereived sources directory to include paths.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/CMakeLists.txt:
+        * pal/PlatformAppleWin.cmake:
+        * pal/avfoundation/MediaTimeAVFoundation.cpp: Renamed from Source/WebCore/platform/graphics/avfoundation/MediaTimeAVFoundation.cpp.
+        * pal/avfoundation/MediaTimeAVFoundation.h: Renamed from Source/WebCore/platform/graphics/avfoundation/MediaTimeAVFoundation.h.
+        * pal/cf/CoreMediaSoftLink.cpp: Added.
+        * pal/cf/CoreMediaSoftLink.h: Added.
+
 2017-09-20  Antti Koivisto  <antti@apple.com>
 
         Remove DOM and styling support for CSS Regions

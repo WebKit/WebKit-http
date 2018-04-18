@@ -42,6 +42,7 @@
 #include "RenderCounter.h"
 #include "RenderDetailsMarker.h"
 #include "RenderFileUploadControl.h"
+#include "RenderFragmentContainer.h"
 #include "RenderInline.h"
 #include "RenderIterator.h"
 #include "RenderLayer.h"
@@ -49,8 +50,6 @@
 #include "RenderLineBreak.h"
 #include "RenderListItem.h"
 #include "RenderListMarker.h"
-#include "RenderNamedFlowFragment.h"
-#include "RenderRegion.h"
 #include "RenderSVGContainer.h"
 #include "RenderSVGGradientStop.h"
 #include "RenderSVGImage.h"
@@ -705,7 +704,7 @@ static void writeLayers(TextStream& ts, const RenderLayer& rootLayer, RenderLaye
     layer.updateLayerListsIfNeeded();
 
     bool shouldPaint = (behavior & RenderAsTextShowAllLayers) ? true : layer.intersectsDamageRect(layerBounds, damageRect.rect(), &rootLayer, layer.offsetFromAncestor(&rootLayer));
-    Vector<RenderLayer*>* negativeZOrderList = layer.negZOrderList();
+    auto* negativeZOrderList = layer.negZOrderList();
     bool paintsBackgroundSeparately = negativeZOrderList && negativeZOrderList->size() > 0;
     if (shouldPaint && paintsBackgroundSeparately) {
         writeLayer(ts, layer, layerBounds, damageRect.rect(), clipRectToApply.rect(), LayerPaintPhaseBackground, indent, behavior);
@@ -743,7 +742,7 @@ static void writeLayers(TextStream& ts, const RenderLayer& rootLayer, RenderLaye
         writeLayerRenderers(ts, layer, paintsBackgroundSeparately ? LayerPaintPhaseForeground : LayerPaintPhaseAll, indent, behavior);
     }
     
-    if (Vector<RenderLayer*>* normalFlowList = layer.normalFlowList()) {
+    if (auto* normalFlowList = layer.normalFlowList()) {
         int currIndent = indent;
         if (behavior & RenderAsTextShowLayerNesting) {
             writeIndent(ts, indent);
@@ -755,28 +754,19 @@ static void writeLayers(TextStream& ts, const RenderLayer& rootLayer, RenderLaye
             writeLayers(ts, rootLayer, *currLayer, paintDirtyRect, currIndent, behavior);
     }
 
-    if (Vector<RenderLayer*>* positiveZOrderList = layer.posZOrderList()) {
-        size_t layerCount = 0;
-        for (auto* currLayer : *positiveZOrderList) {
-            if (!currLayer->isFlowThreadCollectingGraphicsLayersUnderRegions())
-                ++layerCount;
-        }
-        
+    if (auto* positiveZOrderList = layer.posZOrderList()) {
+        size_t layerCount = positiveZOrderList->size();
+
         if (layerCount) {
             int currIndent = indent;
-            if (!positiveZOrderList->size() || !positiveZOrderList->at(0)->isFlowThreadCollectingGraphicsLayersUnderRegions()) {
-                if (behavior & RenderAsTextShowLayerNesting) {
-                    writeIndent(ts, indent);
-                    ts << " positive z-order list(" << positiveZOrderList->size() << ")\n";
-                    ++currIndent;
-                }
-                
-                for (auto* currLayer : *positiveZOrderList) {
-                    // Do not print named flows twice.
-                    if (!currLayer->isFlowThreadCollectingGraphicsLayersUnderRegions())
-                        writeLayers(ts, rootLayer, *currLayer, paintDirtyRect, currIndent, behavior);
-                }
+            if (behavior & RenderAsTextShowLayerNesting) {
+                writeIndent(ts, indent);
+                ts << " positive z-order list(" << positiveZOrderList->size() << ")\n";
+                ++currIndent;
             }
+
+            for (auto* currLayer : *positiveZOrderList)
+                writeLayers(ts, rootLayer, *currLayer, paintDirtyRect, currIndent, behavior);
         }
     }
 }

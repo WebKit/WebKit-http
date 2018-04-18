@@ -60,55 +60,142 @@ class Checker extends Visitor {
     {
         // FIXME: Relax these checks once we have implemented support for textures and samplers.
         if (node.typeParameters.length != 0)
-            throw new WTypeError("Entry point " + node.name + " must not have type arguments.");
-        class NonNumericSearcher extends Visitor {
-            constructor(name)
-            {
-                super();
-                this._name = name;
-            }
-            visitArrayRefType(node)
-            {
-                throw new WTypeError(this._name + " must transitively only have numeric types.");
-            }
-            visitPtrType(node)
-            {
-                throw new WTypeError(this._name + " must transitively only have numeric types.");
-            }
-        }
+            throw new WTypeError(node.origin.originString, "Entry point " + node.name + " must not have type arguments.");
+        let shaderFunc = node;
         switch (node.shaderType) {
         case "vertex":
             if (this._vertexEntryPoints.has(node.name))
-                throw new WTypeError("Duplicate vertex entry point name " + node.name);
+                throw new WTypeError(node.origin.originString, "Duplicate vertex entry point name " + node.name);
             this._vertexEntryPoints.add(node.name);
-            if (!(node.returnType.type instanceof StructType))
-                throw new WTypeError("Vertex shader " + node.name + " must return a struct.");
-            for (let parameter of node.parameters) {
-                if (parameter.type.type instanceof StructType)
-                    parameter.type.visit(new NonNumericSearcher(node.name));
-                else if (!(parameter.type.type instanceof ArrayRefType))
-                    throw new WTypeError(node.name + " accepts a parameter " + parameter.name + " which isn't a struct and isn't an ArrayRef.");
-            }
-            node.returnType.type.visit(new NonNumericSearcher);
             break;
         case "fragment":
             if (this._fragmentEntryPoints.has(node.name))
-                throw new WTypeError("Duplicate fragment entry point name " + node.name);
+                throw new WTypeError(node.origin.originString, "Duplicate fragment entry point name " + node.name);
             this._fragmentEntryPoints.add(node.name);
-            if (!(node.returnType.type instanceof StructType))
-                throw new WTypeError("Fragment shader " + node.name + " must return a struct.");
-            for (let parameter of node.parameters) {
-                if (parameter.name == "stageIn") {
-                    if (!(parameter.type.type instanceof StructType))
-                        throw new WTypeError("Fragment entry points' stageIn parameter (of " + node.name + ") must be a struct type.");
-                    parameter.type.visit(new NonNumericSearcher(node.name));
-                } else {
-                    if (!(parameter.type.type instanceof ArrayRefType))
-                        throw new WTypeError("Fragment entry point's " + parameter.name + " parameter is not an array reference.");
-                }
-            }
-            node.returnType.type.visit(new NonNumericSearcher);
             break;
+        }
+    }
+
+    _checkOperatorOverload(func, resolveFuncs)
+    {
+        if (Lexer.textIsIdentifier(func.name))
+            return; // Not operator!
+
+        if (!func.name.startsWith("operator"))
+            throw new Error("Bad operator overload name: " + func.name);
+        
+        let typeVariableTracker = new TypeVariableTracker();
+        for (let parameterType of func.parameterTypes)
+            parameterType.visit(typeVariableTracker);
+        Node.visit(func.returnTypeForOverloadResolution, typeVariableTracker);
+        for (let typeParameter of func.typeParameters) {
+            if (!typeVariableTracker.set.has(typeParameter))
+                throw new WTypeError(typeParameter.origin.originString, "Type parameter " + typeParameter + " to operator " + func.toDeclString() + " is not inferrable from value parameters");
+        }
+        
+        let checkGetter = (kind) => {
+            let numExpectedParameters = kind == "index" ? 2 : 1;
+            if (func.parameters.length != numExpectedParameters)
+                throw new WTypeError(func.origin.originString, "Incorrect number of parameters for " + func.name + " (expected " + numExpectedParameters + ", got " + func.parameters.length + ")");
+            if (func.parameterTypes[0].unifyNode.isPtr)
+                throw new WTypeError(func.origin.originString, "Cannot have getter for pointer type: " + func.parameterTypes[0]);
+        };
+        
+        let checkSetter = (kind) => {
+            let numExpectedParameters = kind == "index" ? 3 : 2;
+            if (func.parameters.length != numExpectedParameters)
+                throw new WTypeError(func.origin.originString, "Incorrect number of parameters for " + func.name + " (expected " + numExpectedParameters + ", got " + func.parameters.length + ")");
+            if (func.parameterTypes[0].unifyNode.isPtr)
+                throw new WTypeError(func.origin.originString, "Cannot have setter for pointer type: " + func.parameterTypes[0]);
+            if (!func.returnType.equals(func.parameterTypes[0]))
+                throw new WTypeError(func.origin.originString, "First parameter type and return type of setter must match (parameter was " + func.parameterTypes[0] + " but return was " + func.returnType + ")");
+            let valueType = func.parameterTypes[numExpectedParameters - 1];
+            let getterName = func.name.substr(0, func.name.length - 1);
+            let getterFuncs = resolveFuncs(getterName);
+            if (!getterFuncs)
+                throw new WTypeError(func.origin.originString, "Every setter must have a matching getter, but did not find any function named " + getterName + " to match " + func.name);
+            let argumentTypes = func.parameterTypes.slice(0, numExpectedParameters - 1);
+            let overload = resolveOverloadImpl(getterFuncs, [], argumentTypes, null);
+            if (!overload.func)
+                throw new WTypeError(func.origin.originString, "Did not find function named " + func.name + " with arguments " + argumentTypes + (overload.failures.length ? "; tried:\n" + overload.failures.join("\n") : ""));
+            let resultType = overload.func.returnType.substituteToUnification(
+                overload.func.typeParameters, overload.unificationContext);
+            if (!resultType.equals(valueType))
+                throw new WTypeError(func.origin.originString, "Setter and getter must agree on value type (getter at " + overload.func.origin.originString + " says " + resultType + " while this setter says " + valueType + ")");
+        };
+        
+        let checkAnder = (kind) => {
+            let numExpectedParameters = kind == "index" ? 2 : 1;
+            if (func.parameters.length != numExpectedParameters)
+                throw new WTypeError(func.origin.originString, "Incorrect number of parameters for " + func.name + " (expected " + numExpectedParameters + ", got " + func.parameters.length + ")");
+            if (!func.returnType.unifyNode.isPtr)
+                throw new WTypeError(func.origin.originString, "Return type of ander is not a pointer: " + func.returnType);
+            if (!func.parameterTypes[0].unifyNode.isRef)
+                throw new WTypeError(func.origin.originString, "Parameter to ander is not a reference: " + func.parameterTypes[0]);
+        };
+        
+        switch (func.name) {
+        case "operator cast":
+            break;
+        case "operator++":
+        case "operator--":
+            if (func.parameters.length != 1)
+                throw new WTypeError(func.origin.originString, "Incorrect number of parameters for " + func.name + " (expected 1, got " + func.parameters.length + ")");
+            if (!func.parameterTypes[0].equals(func.returnType))
+                throw new WTypeError(func.origin.originString, "Parameter type and return type must match for " + func.name + " (parameter is " + func.parameterTypes[0] + " while return is " + func.returnType + ")");
+            break;
+        case "operator+":
+        case "operator-":
+            if (func.parameters.length != 1 && func.parameters.length != 2)
+                throw new WTypeError(func.origin.originString, "Incorrect number of parameters for " + func.name + " (expected 1 or 2, got " + func.parameters.length + ")");
+            break;
+        case "operator*":
+        case "operator/":
+        case "operator%":
+        case "operator&":
+        case "operator|":
+        case "operator^":
+        case "operator<<":
+        case "operator>>":
+            if (func.parameters.length != 2)
+                throw new WTypeError(func.origin.originString, "Incorrect number of parameters for " + func.name + " (expected 2, got " + func.parameters.length + ")");
+            break;
+        case "operator~":
+            if (func.parameters.length != 1)
+                throw new WTypeError(func.origin.originString, "Incorrect number of parameters for " + func.name + " (expected 1, got " + func.parameters.length + ")");
+            break;
+        case "operator==":
+        case "operator<":
+        case "operator<=":
+        case "operator>":
+        case "operator>=":
+            if (func.parameters.length != 2)
+                throw new WTypeError(func.origin.originString, "Incorrect number of parameters for " + func.name + " (expected 2, got " + func.parameters.length + ")");
+            if (!func.returnType.equals(this._program.intrinsics.bool))
+                throw new WTypeError(func.origin.originString, "Return type of " + func.name + " must be bool but was " + func.returnType);
+            break;
+        case "operator[]":
+            checkGetter("index");
+            break;
+        case "operator[]=":
+            checkSetter("index");
+            break;
+        case "operator&[]":
+            checkAnder("index");
+            break;
+        default:
+            if (func.name.startsWith("operator.")) {
+                if (func.name.endsWith("="))
+                    checkSetter("dot");
+                else
+                    checkGetter("dot");
+                break;
+            }
+            if (func.name.startsWith("operator&.")) {
+                checkAnder("dot");
+                break;
+            }
+            throw new Error("Parser accepted unrecognized operator: " + func.name);
         }
     }
     
@@ -116,6 +203,7 @@ class Checker extends Visitor {
     {
         if (node.shaderType)
             this._checkShaderType(node);
+        this._checkOperatorOverload(node, name => this._program.functions.get(name));
         node.body.visit(this);
     }
     
@@ -136,6 +224,7 @@ class Checker extends Visitor {
             }
             if (!typeVariableTracker.set.has(node.typeVariable))
                 throw new WTypeError(signature.origin.originString, "Protocol's type variable (" + node.name + ") not mentioned in signature: " + signature);
+            this._checkOperatorOverload(signature, name => node.signaturesByName(name));
         }
     }
     
@@ -209,20 +298,9 @@ class Checker extends Visitor {
     {
         if (!node.type)
             throw new Error("Type reference without a type in checker: " + node + " at " + node.origin);
-        node.type.visit(this);
+        if (!(node.type instanceof StructType))
+            node.type.visit(this);
         this._checkTypeArguments(node.origin, node.type.typeParameters, node.typeArguments);
-    }
-    
-    visitReferenceType(node)
-    {
-        node.elementType.visit(this);
-        
-        if (node.addressSpace == "thread")
-            return;
-        
-        let instantiatedType = node.elementType.instantiatedType;
-        if (!instantiatedType.isPrimitive)
-            throw new WTypeError(node.origin.originString, "Illegal pointer to non-primitive type: " + node.elementType + " (instantiated to " + node.elementType.instantiatedType + ")");
     }
     
     visitArrayType(node)
@@ -312,7 +390,7 @@ class Checker extends Visitor {
     visitMakeArrayRefExpression(node)
     {
         let elementType = node.lValue.visit(this).unifyNode;
-        if (elementType instanceof PtrType) {
+        if (elementType.isPtr) {
             node.become(new ConvertPtrToArrayRefExpression(node.origin, node.lValue));
             return new ArrayRefType(node.origin, elementType.addressSpace, elementType.elementType);
         }
@@ -320,10 +398,7 @@ class Checker extends Visitor {
         if (!node.lValue.isLValue)
             throw new WTypeError(node.origin.originString, "Operand to @ is not an LValue: " + node.lValue);
         
-        if (elementType instanceof ArrayRefType)
-            throw new WTypeError(node.origin.originStrimg, "Operand to @ is an array reference: " + elementType);
-        
-        if (elementType instanceof ArrayType) {
+        if (elementType.isArray) {
             node.numElements = elementType.numElements;
             elementType = elementType.elementType;
         } else
@@ -513,6 +588,64 @@ class Checker extends Visitor {
         if (node.increment)
             node.increment.visit(this);
         node.body.visit(this);
+    }
+
+    visitSwitchStatement(node)
+    {
+        let type = node.value.visit(this).commit();
+        
+        if (!type.unifyNode.isInt && !(type.unifyNode instanceof EnumType))
+            throw new WTypeError(node.origin.originString, "Cannot switch on non-integer/non-enum type: " + type);
+
+        node.type = type;
+        
+        let hasDefault = false;
+        
+        for (let switchCase of node.switchCases) {
+            switchCase.body.visit(this);
+
+            if (switchCase.isDefault) {
+                hasDefault = true;
+                continue;
+            }
+            
+            if (!switchCase.value.isConstexpr)
+                throw new WTypeError(switchCase.origin.originString, "Switch case not constexpr: " + switchCase.value);
+            
+            let caseType = switchCase.value.visit(this);
+            if (!type.equalsWithCommit(caseType))
+                throw new WTypeError(switchCase.origin.originString, "Switch case type does not match switch value type (case type is " + caseType + " but switch value type is " + type + ")");
+        }
+        
+        for (let i = 0; i < node.switchCases.length; ++i) {
+            let firstCase = node.switchCases[i];
+            for (let j = i + 1; j < node.switchCases.length; ++j) {
+                let secondCase = node.switchCases[j];
+                
+                if (firstCase.isDefault != secondCase.isDefault)
+                    continue;
+                
+                if (firstCase.isDefault)
+                    throw new WTypeError(secondCase.origin.originString, "Duplicate default case in switch statement");
+                
+                let valuesEqual = type.unifyNode.valuesEqual(
+                    firstCase.value.unifyNode.valueForSelectedType,
+                    secondCase.value.unifyNode.valueForSelectedType);
+                if (valuesEqual)
+                    throw new WTypeError(secondCase.origin.originString, "Duplicate case in switch statement for value " + firstCase.value.unifyNode.valueForSelectedType);
+            }
+        }
+        
+        if (!hasDefault) {
+            let includedValues = new Set();
+            for (let switchCase of node.switchCases)
+                includedValues.add(switchCase.value.unifyNode.valueForSelectedType);
+            
+            for (let {value, name} of type.unifyNode.allValues()) {
+                if (!includedValues.has(value))
+                    throw new WTypeError(node.origin.originString, "Value not handled by switch statement: " + name);
+            }
+        }
     }
     
     visitCommaExpression(node)

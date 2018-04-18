@@ -36,8 +36,7 @@ class FloatWithRect;
 class LayoutStateMaintainer;
 class LineBreaker;
 class LineInfo;
-class RenderMultiColumnFlowThread;
-class RenderNamedFlowFragment;
+class RenderMultiColumnFlow;
 class RenderRubyRun;
 
 struct WordMeasurement;
@@ -119,8 +118,7 @@ public:
         RenderBlockFlowRareData(const RenderBlockFlow& block)
             : m_margins(positiveMarginBeforeDefault(block), negativeMarginBeforeDefault(block), positiveMarginAfterDefault(block), negativeMarginAfterDefault(block))
             , m_lineBreakToAvoidWidow(-1)
-            , m_renderNamedFlowFragment(nullptr)
-            , m_multiColumnFlowThread(nullptr)
+            , m_multiColumnFlow(nullptr)
             , m_discardMarginBefore(false)
             , m_discardMarginAfter(false)
             , m_didBreakAtLineToAvoidWidow(false)
@@ -151,9 +149,8 @@ public:
         MarginValues m_margins;
         int m_lineBreakToAvoidWidow;
         std::unique_ptr<RootInlineBox> m_lineGridBox;
-        RenderNamedFlowFragment* m_renderNamedFlowFragment;
 
-        RenderMultiColumnFlowThread* m_multiColumnFlowThread;
+        RenderMultiColumnFlow* m_multiColumnFlow;
         
         bool m_discardMarginBefore : 1;
         bool m_discardMarginAfter : 1;
@@ -267,8 +264,6 @@ public:
     bool didBreakAtLineToAvoidWidow() const { return hasRareBlockFlowData() && rareBlockFlowData()->m_didBreakAtLineToAvoidWidow; }
     bool relayoutToAvoidWidows(LayoutStateMaintainer&);
 
-    bool canHaveGeneratedChildren() const override;
-
     RootInlineBox* lineGridBox() const { return hasRareBlockFlowData() ? rareBlockFlowData()->m_lineGridBox.get() : nullptr; }
     void setLineGridBox(std::unique_ptr<RootInlineBox> box)
     {
@@ -276,12 +271,8 @@ public:
     }
     void layoutLineGridBox();
 
-    bool canDropAnonymousBlockChild() const override { return !renderNamedFlowFragment(); }
-    RenderNamedFlowFragment* renderNamedFlowFragment() const { return hasRareBlockFlowData() ? rareBlockFlowData()->m_renderNamedFlowFragment : nullptr; }
-    void setRenderNamedFlowFragment(RenderNamedFlowFragment*);
-
-    RenderMultiColumnFlowThread* multiColumnFlowThread() const { return hasRareBlockFlowData() ? rareBlockFlowData()->m_multiColumnFlowThread : nullptr; }
-    void setMultiColumnFlowThread(RenderMultiColumnFlowThread*);
+    RenderMultiColumnFlow* multiColumnFlow() const { return hasRareBlockFlowData() ? rareBlockFlowData()->m_multiColumnFlow : nullptr; }
+    void setMultiColumnFlow(RenderMultiColumnFlow*);
     bool willCreateColumns(std::optional<unsigned> desiredColumnCount = std::nullopt) const;
     virtual bool requiresColumns(int) const;
 
@@ -291,7 +282,9 @@ public:
     void deleteLines() override;
     void computeOverflow(LayoutUnit oldClientAfterEdge, bool recomputeFloats = false) override;
     Position positionForPoint(const LayoutPoint&) override;
-    VisiblePosition positionForPoint(const LayoutPoint&, const RenderRegion*) override;
+    VisiblePosition positionForPoint(const LayoutPoint&, const RenderFragmentContainer*) override;
+
+    LayoutUnit lowestFloatLogicalBottom(FloatingObject::Type = FloatingObject::FloatLeftRight) const;
 
     void removeFloatingObjects();
     void markAllDescendantsWithFloatsForLayout(RenderBox* floatToRemove = nullptr, bool inLayout = true);
@@ -395,7 +388,7 @@ public:
     void updateColumnProgressionFromStyle(RenderStyle&);
     void updateStylesForColumnChildren();
 
-    bool needsLayoutAfterRegionRangeChange() const override;
+    bool needsLayoutAfterFragmentRangeChange() const override;
     WEBCORE_EXPORT RenderText* findClosestTextAtAbsolutePoint(const FloatPoint&);
 
     // A page break is required at some offset due to space shortage in the current fragmentainer.
@@ -454,7 +447,7 @@ protected:
     std::optional<int> firstLineBaseline() const override;
     std::optional<int> inlineBlockBaseline(LineDirectionMode) const override;
 
-    bool isMultiColumnBlockFlow() const override { return multiColumnFlowThread(); }
+    bool isMultiColumnBlockFlow() const override { return multiColumnFlow(); }
     
     void setComputedColumnCountAndWidth(int, LayoutUnit);
 
@@ -509,7 +502,6 @@ private:
 
     LayoutUnit lowestInitialLetterLogicalBottom() const;
     
-    LayoutUnit lowestFloatLogicalBottom(FloatingObject::Type = FloatingObject::FloatLeftRight) const; 
     LayoutUnit nextFloatLogicalBottomBelow(LayoutUnit) const;
     LayoutUnit nextFloatLogicalBottomBelowForBlock(LayoutUnit) const;
     
@@ -536,7 +528,7 @@ private:
         LayoutUnit& lastLogicalTop, LayoutUnit& lastLogicalLeft, LayoutUnit& lastLogicalRight, const LogicalSelectionOffsetCaches&, const PaintInfo*) override;
     
     Position positionForBox(InlineBox*, bool start = true) const;
-    VisiblePosition positionForPointWithInlineChildren(const LayoutPoint& pointInLogicalContents, const RenderRegion*) override;
+    VisiblePosition positionForPointWithInlineChildren(const LayoutPoint& pointInLogicalContents, const RenderFragmentContainer*) override;
     void addFocusRingRectsForInlineChildren(Vector<LayoutRect>& rects, const LayoutPoint& additionalOffset, const RenderLayerModelObject*) override;
 
 // FIXME-BLOCKFLOW: These methods have implementations in
@@ -588,14 +580,11 @@ private:
     // have to move to the next page/column.
     bool positionNewFloatOnLine(const FloatingObject& newFloat, FloatingObject* lastFloatFromPreviousLine, LineInfo&, LineWidth&);
     // This function is called to test a line box that has moved in the block direction to see if it has ended up in a new
-    // region/page/column that has a different available line width than the old one. Used to know when you have to dirty a
+    // page/column that has a different available line width than the old one. Used to know when you have to dirty a
     // line, i.e., that it can't be re-used.
-    bool lineWidthForPaginatedLineChanged(RootInlineBox*, LayoutUnit lineDelta, RenderFlowThread*) const;
+    bool lineWidthForPaginatedLineChanged(RootInlineBox*, LayoutUnit lineDelta, RenderFragmentedFlow*) const;
     void updateLogicalWidthForAlignment(const ETextAlign&, const RootInlineBox*, BidiRun* trailingSpaceRun, float& logicalLeft, float& totalLogicalWidth, float& availableLogicalWidth, int expansionOpportunityCount);
 // END METHODS DEFINED IN RenderBlockLineLayout
-
-    bool namedFlowFragmentNeedsUpdate() const;
-    bool canHaveChildren() const override;
 
     void computeInlinePreferredLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const;
 
@@ -611,9 +600,8 @@ private:
 
 public:
     // FIXME-BLOCKFLOW: These can be made protected again once all callers have been moved here.
-    void adjustLinePositionForPagination(RootInlineBox*, LayoutUnit& deltaOffset, bool& overflowsRegion, RenderFlowThread*); // Computes a deltaOffset value that put a line at the top of the next page if it doesn't fit on the current page.
-    void updateRegionForLine(RootInlineBox*) const;
-    void createRenderNamedFlowFragmentIfNeeded();
+    void adjustLinePositionForPagination(RootInlineBox*, LayoutUnit& deltaOffset, bool& overflowsFragment, RenderFragmentedFlow*); // Computes a deltaOffset value that put a line at the top of the next page if it doesn't fit on the current page.
+    void updateFragmentForLine(RootInlineBox*) const;
 
     // Pagination routines.
     bool relayoutForPagination(LayoutStateMaintainer&);
@@ -642,11 +630,6 @@ protected:
     friend class LineBreaker;
     friend class LineWidth; // Needs to know FloatingObject
 };
-
-inline bool RenderElement::isRenderNamedFlowFragmentContainer() const
-{
-    return is<RenderBlockFlow>(*this) && downcast<RenderBlockFlow>(*this).renderNamedFlowFragment();
-}
 
 inline const SimpleLineLayout::Layout* RenderBlockFlow::simpleLineLayout() const
 {

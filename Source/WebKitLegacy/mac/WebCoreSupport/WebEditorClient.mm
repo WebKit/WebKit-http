@@ -195,7 +195,6 @@ static WebViewInsertAction kit(EditorInsertAction action)
 WebEditorClient::WebEditorClient(WebView *webView)
     : m_webView(webView)
     , m_undoTarget(adoptNS([[WebEditorUndoTarget alloc] init]))
-    , m_weakPtrFactory(this)
 {
 }
 
@@ -417,24 +416,6 @@ void WebEditorClient::willWriteSelectionToPasteboard(WebCore::Range*)
 void WebEditorClient::getClientPasteboardDataForRange(WebCore::Range*, Vector<String>& pasteboardTypes, Vector<RefPtr<WebCore::SharedBuffer>>& pasteboardData)
 {
     // Not implemented WebKit, only WebKit2.
-}
-
-NSString *WebEditorClient::userVisibleString(NSURL *URL)
-{
-    return [URL _web_userVisibleString];
-}
-
-NSURL *WebEditorClient::canonicalizeURL(NSURL *URL)
-{
-    return [URL _webkit_canonicalize];
-}
-
-NSURL *WebEditorClient::canonicalizeURLString(NSString *URLString)
-{
-    NSURL *URL = nil;
-    if ([URLString _webkit_looksLikeAbsoluteURL])
-        URL = [[NSURL _webkit_URLWithUserTypedString:URLString] _webkit_canonicalize];
-    return URL;
 }
 
 #if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300)
@@ -885,28 +866,6 @@ void WebEditorClient::textDidChangeInTextArea(Element* element)
 
 #if PLATFORM(IOS)
 
-void WebEditorClient::writeDataToPasteboard(NSDictionary* representation)
-{
-    if ([[m_webView _UIKitDelegateForwarder] respondsToSelector:@selector(writeDataToPasteboard:)])
-        [[m_webView _UIKitDelegateForwarder] writeDataToPasteboard:representation];
-}
-
-NSArray *WebEditorClient::supportedPasteboardTypesForCurrentSelection()
-{
-    if ([[m_webView _UIKitDelegateForwarder] respondsToSelector:@selector(supportedPasteboardTypesForCurrentSelection)]) 
-        return [[m_webView _UIKitDelegateForwarder] supportedPasteboardTypesForCurrentSelection]; 
-
-    return nil; 
-}
-
-NSArray *WebEditorClient::readDataFromPasteboard(NSString* type, int index)
-{
-    if ([[m_webView _UIKitDelegateForwarder] respondsToSelector:@selector(readDataFromPasteboard:withIndex:)])
-        return [[m_webView _UIKitDelegateForwarder] readDataFromPasteboard:type withIndex:index];
-    
-    return nil;
-}
-
 bool WebEditorClient::hasRichlyEditableSelection()
 {
     if ([[m_webView _UIKitDelegateForwarder] respondsToSelector:@selector(hasRichlyEditableSelection)])
@@ -948,14 +907,6 @@ bool WebEditorClient::performTwoStepDrop(DocumentFragment& fragment, Range& dest
         return [[m_webView _UIKitDelegateForwarder] performTwoStepDrop:kit(&fragment) atDestination:kit(&destination) isMove:isMove];
 
     return false;
-}
-
-int WebEditorClient::pasteboardChangeCount()
-{
-    if ([[m_webView _UIKitDelegateForwarder] respondsToSelector:@selector(getPasteboardChangeCount)])
-        return [[m_webView _UIKitDelegateForwarder] getPasteboardChangeCount];
-    
-    return 0;
 }
 
 Vector<TextCheckingResult> WebEditorClient::checkTextOfParagraph(StringView string, TextCheckingTypeMask checkingTypes, const VisibleSelection&)
@@ -1247,7 +1198,7 @@ void WebEditorClient::requestCandidatesForSelection(const VisibleSelection& sele
     m_paragraphContextForCandidateRequest = plainText(frame->editor().contextRangeForCandidateRequest().get());
 
     NSTextCheckingTypes checkingTypes = NSTextCheckingTypeSpelling | NSTextCheckingTypeReplacement | NSTextCheckingTypeCorrection;
-    auto weakEditor = m_weakPtrFactory.createWeakPtr();
+    auto weakEditor = m_weakPtrFactory.createWeakPtr(*this);
     m_lastCandidateRequestSequenceNumber = [[NSSpellChecker sharedSpellChecker] requestCandidatesForSelectedRange:m_rangeForCandidates inString:m_paragraphContextForCandidateRequest.get() types:checkingTypes options:nil inSpellDocumentWithTag:spellCheckerDocumentTag() completionHandler:[weakEditor](NSInteger sequenceNumber, NSArray<NSTextCheckingResult *> *candidates) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (!weakEditor)

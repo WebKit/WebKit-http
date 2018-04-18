@@ -39,7 +39,6 @@
 #import "MediaSample.h"
 #import "MediaSampleAVFObjC.h"
 #import "MediaSourcePrivateAVFObjC.h"
-#import "MediaTimeAVFoundation.h"
 #import "NotImplemented.h"
 #import "SourceBufferPrivateClient.h"
 #import "TimeRanges.h"
@@ -49,6 +48,7 @@
 #import <QuartzCore/CALayer.h>
 #import <map>
 #import <objc/runtime.h>
+#import <pal/avfoundation/MediaTimeAVFoundation.h>
 #import <pal/spi/mac/AVFoundationSPI.h>
 #import <runtime/TypedArrayInlines.h>
 #import <wtf/BlockObjCExceptions.h>
@@ -479,9 +479,7 @@ RefPtr<SourceBufferPrivateAVFObjC> SourceBufferPrivateAVFObjC::create(MediaSourc
 }
 
 SourceBufferPrivateAVFObjC::SourceBufferPrivateAVFObjC(MediaSourcePrivateAVFObjC* parent)
-    : m_weakFactory(this)
-    , m_appendWeakFactory(this)
-    , m_parser(adoptNS([allocAVStreamDataParserInstance() init]))
+    : m_parser(adoptNS([allocAVStreamDataParserInstance() init]))
     , m_delegate(adoptNS([[WebAVStreamDataParserListener alloc] initWithParser:m_parser.get() parent:createWeakPtr()]))
     , m_errorListener(adoptNS([[WebAVSampleBufferErrorListener alloc] initWithParent:this]))
     , m_isAppendingGroup(adoptOSObject(dispatch_group_create()))
@@ -526,10 +524,10 @@ void SourceBufferPrivateAVFObjC::didParseStreamDataAsAsset(AVAsset* asset)
     SourceBufferPrivateClient::InitializationSegment segment;
 
     if ([m_asset respondsToSelector:@selector(overallDurationHint)])
-        segment.duration = toMediaTime([m_asset overallDurationHint]);
+        segment.duration = PAL::toMediaTime([m_asset overallDurationHint]);
 
     if (segment.duration.isInvalid() || segment.duration == MediaTime::zeroTime())
-        segment.duration = toMediaTime([m_asset duration]);
+        segment.duration = PAL::toMediaTime([m_asset duration]);
 
     for (AVAssetTrack* track in [m_asset tracks]) {
         if ([track hasMediaCharacteristic:AVMediaCharacteristicLegible]) {
@@ -675,7 +673,7 @@ void SourceBufferPrivateAVFObjC::append(const unsigned char* data, unsigned leng
     LOG(MediaSource, "SourceBufferPrivateAVFObjC::append(%p) - data:%p, length:%d", this, data, length);
 
     RetainPtr<NSData> nsData = adoptNS([[NSData alloc] initWithBytes:data length:length]);
-    WeakPtr<SourceBufferPrivateAVFObjC> weakThis = m_appendWeakFactory.createWeakPtr();
+    WeakPtr<SourceBufferPrivateAVFObjC> weakThis = m_appendWeakFactory.createWeakPtr(*this);
     RetainPtr<AVStreamDataParser> parser = m_parser;
     RetainPtr<WebAVStreamDataParserListener> delegate = m_delegate;
 
@@ -715,7 +713,7 @@ void SourceBufferPrivateAVFObjC::abort()
         dispatch_semaphore_signal(m_hasSessionSemaphore.get());
     dispatch_group_wait(m_isAppendingGroup.get(), DISPATCH_TIME_FOREVER);
     m_appendWeakFactory.revokeAll();
-    m_delegate.get().parent = m_appendWeakFactory.createWeakPtr();
+    m_delegate.get().parent = m_appendWeakFactory.createWeakPtr(*this);
 }
 
 void SourceBufferPrivateAVFObjC::resetParserState()
