@@ -49,11 +49,6 @@ namespace WebCore {
     return std::make_unique<Pasteboard>();
 }
 
-std::unique_ptr<Pasteboard> Pasteboard::createPrivate()
-{
-    return createForCopyAndPaste();
-}
-
 #if ENABLE(DRAG_SUPPORT)
 std::unique_ptr<Pasteboard> Pasteboard::createForDragAndDrop()
 {
@@ -341,11 +336,6 @@ String Pasteboard::readString(const String& type)
     }
 
     return result;
-}
-
-void Pasteboard::writePasteboard(const Pasteboard& sourcePasteboard)
-{
-    notImplemented();
 }
 
 void Pasteboard::clear()

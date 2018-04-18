@@ -25,6 +25,7 @@
  */
 
 #include "config.h"
+#include "ImageBackingStore.h"
 #include "ImageDecoder.h"
 
 #include <Bitmap.h>

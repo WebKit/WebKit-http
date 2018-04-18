@@ -1,11 +1,11 @@
-LIST(APPEND WebKit_INCLUDE_DIRECTORIES
+LIST(APPEND WebKitLegacy_INCLUDE_DIRECTORIES
     "${CMAKE_SOURCE_DIR}/Source"
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
     "${DERIVED_SOURCES_WEBCORE_DIR}"
-    "${WEBKIT_DIR}/Storage"
-    "${WEBKIT_DIR}/haiku"
-    "${WEBKIT_DIR}/haiku/API"
-    "${WEBKIT_DIR}/haiku/WebCoreSupport"
+	"${WEBKITLEGACY_DIR}/Storage"
+	"${WEBKITLEGACY_DIR}/haiku"
+	"${WEBKITLEGACY_DIR}/haiku/API"
+	"${WEBKITLEGACY_DIR}/haiku/WebCoreSupport"
     "${JAVASCRIPTCORE_DIR}"
     "${JAVASCRIPTCORE_DIR}/ForwardingHeaders"
     "${WEBCORE_DIR}"
@@ -61,7 +61,7 @@ LIST(APPEND WebKit_INCLUDE_DIRECTORIES
 # These folders have includes with the same name as Haiku system ones. So we
 # add them with -iquote only, as a way to reach the Haiku includes with
 # #include <>
-SET(WebKit_LOCAL_INCLUDE_DIRECTORIES
+SET(WebKitLegacy_LOCAL_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/css" # Rect.h
     "${WEBCORE_DIR}/dom" # Node.h
     "${WEBCORE_DIR}/Modules/notifications" # Notification.h
@@ -71,25 +71,25 @@ SET(WebKit_LOCAL_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/text" # DateTimeFormat.h
 )
 
-foreach(inc ${WebKit_LOCAL_INCLUDE_DIRECTORIES})
+foreach(inc ${WebKitLegacy_LOCAL_INCLUDE_DIRECTORIES})
     ADD_DEFINITIONS(-iquote ${inc})
 endforeach(inc)
 
 IF (ENABLE_VIDEO_TRACK)
-  LIST(APPEND WebKit_INCLUDE_DIRECTORIES
+	LIST(APPEND WebKitLegacy_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/html/track"
   )
 ENDIF ()
 
 IF (ENABLE_NOTIFICATIONS)
-    LIST(APPEND WebKit_LOCAL_INCLUDE_DIRECTORIES
+	LIST(APPEND WebKitLegacy_LOCAL_INCLUDE_DIRECTORIES
       "${WEBCORE_DIR}/Modules/notifications"
   )
 ENDIF ()
 
 add_definitions("-include WebKitPrefix.h")
 
-LIST(APPEND WebKit_SOURCES
+LIST(APPEND WebKitLegacy_SOURCES
     haiku/WebCoreSupport/AcceleratedCompositingContext.cpp
     haiku/WebCoreSupport/ChromeClientHaiku.cpp
     haiku/WebCoreSupport/ContextMenuClientHaiku.cpp
@@ -125,7 +125,7 @@ LIST(APPEND WebKit_SOURCES
     Storage/WebStorageNamespaceProvider.cpp
 )
 
-LIST(APPEND WebKit_LIBRARIES
+LIST(APPEND WebKitLegacy_LIBRARIES
     ${LIBXML2_LIBRARIES}
     ${SQLITE_LIBRARIES}
     ${PNG_LIBRARY}

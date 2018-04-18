@@ -10,15 +10,15 @@ list(APPEND DumpRenderTree_SOURCES
 )
 
 list(APPEND DumpRenderTree_LIBRARIES
-	WebKit
+	WebKitLegacy
 	WebCoreDerivedSources
 	WebCore
 )
 
 list(APPEND DumpRenderTree_INCLUDE_DIRECTORIES
-    ${WEBKIT_DIR}/haiku/API
-    ${WEBKIT_DIR}/haiku
-    ${WEBKIT_DIR}/haiku/WebCoreSupport
+	${WEBKITLEGACY_DIR}/haiku/API
+	${WEBKITLEGACY_DIR}/haiku
+	${WEBKITLEGACY_DIR}/haiku/WebCoreSupport
     ${WEBCORE_DIR}/css/parser
     ${WEBCORE_DIR}/platform/graphics/haiku
     ${WEBCORE_DIR}/platform/network/haiku
