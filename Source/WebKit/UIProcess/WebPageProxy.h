@@ -652,7 +652,10 @@ public:
     JSGlobalContextRef javascriptGlobalContext();
 #endif
 
+    bool isProcessingMouseEvents() const;
+    void processNextQueuedMouseEvent();
     void handleMouseEvent(const NativeWebMouseEvent&);
+
     void handleWheelEvent(const NativeWebWheelEvent&);
     void handleKeyboardEvent(const NativeWebKeyboardEvent&);
 
@@ -1817,16 +1820,13 @@ private:
 
     bool m_shouldSuppressAppLinksInNextNavigationPolicyDecision { false };
 
+    Deque<NativeWebMouseEvent> m_mouseEventQueue;
     Deque<NativeWebKeyboardEvent> m_keyEventQueue;
     Deque<NativeWebWheelEvent> m_wheelEventQueue;
     Deque<std::unique_ptr<Vector<NativeWebWheelEvent>>> m_currentlyProcessedWheelEvents;
 #if ENABLE(MAC_GESTURE_EVENTS)
     Deque<NativeWebGestureEvent> m_gestureEventQueue;
 #endif
-
-    bool m_processingMouseMoveEvent { false };
-    std::unique_ptr<NativeWebMouseEvent> m_nextMouseMoveEvent;
-    std::unique_ptr<NativeWebMouseEvent> m_currentlyProcessedMouseDownEvent;
 
 #if ENABLE(TOUCH_EVENTS)
     struct TouchEventTracking {
