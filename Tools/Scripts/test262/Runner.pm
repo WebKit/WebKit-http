@@ -75,7 +75,7 @@ my $ignoreConfig;
 my $config;
 my %configSkipHash;
 my $expect;
-my $saveCurrentResults;
+my $saveExpectations;
 my $failingOnly;
 my $latestImport;
 my $runningAllTests;
@@ -125,7 +125,7 @@ sub processCLI {
         'f|features=s@' => \@features,
         'c|config=s' => \$configFile,
         'i|ignore-config' => \$ignoreConfig,
-        's|save' => \$saveCurrentResults,
+        's|save' => \$saveExpectations,
         'x|ignore-expectations' => \$ignoreExpectations,
         'failing-files' => \$failingOnly,
         'l|latest-import' => \$latestImport,
@@ -301,7 +301,7 @@ sub main {
         }
     }
 
-    if ($saveCurrentResults) {
+    if ($saveExpectations) {
         DumpFile($expectationsFile, \%failed);
         print "\nSaved results in: $expectationsFile\n";
     } else {
@@ -660,7 +660,6 @@ sub summarizeResults {
     my %bypath;
 
     foreach my $test (@{$rawresults[0]}) {
-
         my $result = $test->{result};
 
         if ($test->{features}) {
@@ -705,8 +704,8 @@ sub summarizeResults {
 
     print sprintf("%-6s %-6s %-6s %-6s %s\n", '% PASS', 'PASS', 'FAIL', 'SKIP', 'FOLDER');
     foreach my $key (sort keys %bypath) {
-        my $c = 'black';
-        $c = 'red' if $bypath{$key}->[1];
+        my $c = 'bold';
+        $c = 'clear' if $bypath{$key}->[1];
 
         my $per = ($bypath{$key}->[0] / (
             $bypath{$key}->[0]
@@ -725,8 +724,8 @@ sub summarizeResults {
     print sprintf("%-6s %-6s %-6s %-6s %s\n", '% PASS', 'PASS', 'FAIL', 'SKIP', 'FEATURE');
 
     foreach my $key (sort keys %byfeature) {
-        my $c = 'black';
-        $c = 'red' if $byfeature{$key}->[1];
+        my $c = 'bold';
+        $c = 'clear' if $byfeature{$key}->[1];
 
         my $per = ($byfeature{$key}->[0] / (
             $byfeature{$key}->[0]
