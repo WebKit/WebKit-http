@@ -36,7 +36,6 @@
 #import <WebCore/PlatformPasteboard.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/SubframeLoader.h>
-#import <WebKitSystemInterface.h>
 
 using namespace WebCore;
 
@@ -83,9 +82,9 @@ void WebPlatformStrategies::setCookiesFromDOM(const NetworkStorageSession& sessi
     WebCore::setCookiesFromDOM(session, firstParty, url, cookieString);
 }
 
-bool WebPlatformStrategies::cookiesEnabled(const NetworkStorageSession& session, const URL& firstParty, const URL& url)
+bool WebPlatformStrategies::cookiesEnabled(const NetworkStorageSession& session)
 {
-    return WebCore::cookiesEnabled(session, firstParty, url);
+    return WebCore::cookiesEnabled(session);
 }
 
 std::pair<String, bool> WebPlatformStrategies::cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL& firstParty, const URL& url, IncludeSecureCookies includeSecureCookies)
@@ -177,6 +176,16 @@ long WebPlatformStrategies::setStringForType(const String& string, const String&
 int WebPlatformStrategies::getNumberOfFiles(const String& pasteboardName)
 {
     return PlatformPasteboard(pasteboardName).numberOfFiles();
+}
+
+Vector<String> WebPlatformStrategies::typesSafeForDOMToReadAndWrite(const String& pasteboardName)
+{
+    return PlatformPasteboard(pasteboardName).typesSafeForDOMToReadAndWrite();
+}
+
+long WebPlatformStrategies::writeCustomData(const WebCore::PasteboardCustomData& data, const String& pasteboardName)
+{
+    return PlatformPasteboard(pasteboardName).write(data);
 }
 
 #if PLATFORM(IOS)

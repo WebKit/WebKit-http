@@ -34,8 +34,6 @@
 
 #if USE(CG)
 typedef struct CGAffineTransform CGAffineTransform;
-#elif USE(CAIRO)
-#include <cairo.h>
 #elif PLATFORM(HAIKU)
 #include <AffineTransform.h>
 #endif
@@ -183,8 +181,6 @@ public:
 
 #if USE(CG)
     WEBCORE_EXPORT operator CGAffineTransform() const;
-#elif USE(CAIRO)
-    operator cairo_matrix_t() const;
 #elif PLATFORM(HAIKU)
     operator BAffineTransform() const;
 #endif

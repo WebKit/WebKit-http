@@ -42,7 +42,6 @@
 #import "TextureCacheCV.h"
 #import "VideoTextureCopierCV.h"
 #import "WebCoreDecompressionSession.h"
-#import "WebCoreSystemInterface.h"
 #import <AVFoundation/AVAsset.h>
 #import <AVFoundation/AVTime.h>
 #import <QuartzCore/CALayer.h>
@@ -640,7 +639,7 @@ bool MediaPlayerPrivateMediaSourceAVFObjC::supportsAcceleratedRendering() const
 
 void MediaPlayerPrivateMediaSourceAVFObjC::acceleratedRenderingStateChanged()
 {
-    if (!m_hasBeenAskedToPaintGL && m_player->client().mediaPlayerRenderingCanBeAccelerated(m_player)) {
+    if (!m_hasBeenAskedToPaintGL) {
         destroyDecompressionSession();
         ensureLayer();
     } else {
@@ -946,7 +945,7 @@ AVStreamSession* MediaPlayerPrivateMediaSourceAVFObjC::streamSession()
     return m_streamSession.get();
 }
 
-void MediaPlayerPrivateMediaSourceAVFObjC::setCDMSession(CDMSession* session)
+void MediaPlayerPrivateMediaSourceAVFObjC::setCDMSession(LegacyCDMSession* session)
 {
     if (session == m_session)
         return;

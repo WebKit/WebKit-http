@@ -99,6 +99,7 @@
 #include "HashChangeEvent.h"
 #include "History.h"
 #include "HitTestResult.h"
+#include "ImageBitmapRenderingContext.h"
 #include "ImageLoader.h"
 #include "InspectorInstrumentation.h"
 #include "JSCustomElementInterface.h"
@@ -173,6 +174,7 @@
 #include "ShadowRoot.h"
 #include "SocketProvider.h"
 #include "StorageEvent.h"
+#include "StringCallback.h"
 #include "StyleProperties.h"
 #include "StyleResolveForDocument.h"
 #include "StyleResolver.h"
@@ -236,7 +238,6 @@
 #include "Navigator.h"
 #include "NavigatorGeolocation.h"
 #include "WKContentObservation.h"
-#include "WebCoreSystemInterface.h"
 #endif
 
 #if ENABLE(IOS_GESTURE_EVENTS)
@@ -1233,7 +1234,7 @@ void Document::setVisualUpdatesAllowed(bool visualUpdatesAllowed)
     if (!visualUpdatesAllowed)
         return;
 
-    FrameView* frameView = view();
+    RefPtr<FrameView> frameView = view();
     bool needsLayout = frameView && renderView() && (frameView->layoutPending() || renderView()->needsLayout());
     if (needsLayout)
         updateLayout();
@@ -1916,7 +1917,7 @@ void Document::updateLayout()
     ASSERT(LayoutDisallowedScope::isLayoutAllowed());
     ASSERT(isMainThread());
 
-    FrameView* frameView = view();
+    RefPtr<FrameView> frameView = view();
     if (frameView && frameView->isInRenderTreeLayout()) {
         // View layout should not be re-entrant.
         ASSERT_NOT_REACHED();
@@ -1991,7 +1992,7 @@ bool Document::updateLayoutIfDimensionsOutOfDate(Element& element, DimensionsChe
     }
     
     // Check for re-entrancy and assert (same code that is in updateLayout()).
-    FrameView* frameView = view();
+    RefPtr<FrameView> frameView = view();
     if (frameView && frameView->isInRenderTreeLayout()) {
         // View layout should not be re-entrant.
         ASSERT_NOT_REACHED();
@@ -2246,11 +2247,6 @@ void Document::destroyRenderTree()
     if (view())
         view()->willDestroyRenderTree();
 
-#if ENABLE(FULLSCREEN_API)
-    if (m_fullScreenRenderer)
-        setFullScreenRenderer(nullptr);
-#endif
-
     if (m_documentElement)
         RenderTreeUpdater::tearDownRenderers(*m_documentElement);
 
@@ -2258,7 +2254,10 @@ void Document::destroyRenderTree()
 
     unscheduleStyleRecalc();
 
-    m_renderView = nullptr;
+    // FIXME: RenderObject::view() uses m_renderView and we can't null it before destruction is completed
+    m_renderView->destroy();
+    m_renderView.release();
+
     Node::setRenderer(nullptr);
 
 #if ENABLE(TEXT_AUTOSIZING)
@@ -2720,7 +2719,7 @@ void Document::implicitClose()
     //  -When any new HTMLLinkElement is inserted into the document
     // But those add a dynamic component to the favicon that has UI 
     // ramifications, and we need to decide what is the Right Thing To Do(tm)
-    Frame* f = frame();
+    RefPtr<Frame> f = frame();
     if (f) {
         if (auto* documentLoader = loader())
             documentLoader->startIconLoading();
@@ -4065,7 +4064,7 @@ void Document::nodeChildrenWillBeRemoved(ContainerNode& container)
             it->nodeWillBeRemoved(*n);
     }
 
-    if (Frame* frame = this->frame()) {
+    if (RefPtr<Frame> frame = this->frame()) {
         for (Node* n = container.firstChild(); n; n = n->nextSibling()) {
             frame->eventHandler().nodeWillBeRemoved(*n);
             frame->selection().nodeWillBeRemoved(*n);
@@ -4096,7 +4095,7 @@ void Document::nodeWillBeRemoved(Node& node)
     for (auto* range : m_ranges)
         range->nodeWillBeRemoved(node);
 
-    if (Frame* frame = this->frame()) {
+    if (RefPtr<Frame> frame = this->frame()) {
         frame->eventHandler().nodeWillBeRemoved(node);
         frame->selection().nodeWillBeRemoved(node);
         frame->page()->dragCaretController().nodeWillBeRemoved(node);
@@ -4981,7 +4980,7 @@ bool Document::shouldCreateRenderers()
 
 static Editor::Command command(Document* document, const String& commandName, bool userInterface = false)
 {
-    Frame* frame = document->frame();
+    RefPtr<Frame> frame = document->frame();
     if (!frame || frame->document() != document)
         return Editor::Command();
 
@@ -5611,6 +5610,9 @@ void Document::addConsoleMessage(MessageSource source, MessageLevel level, const
 
     if (Page* page = this->page())
         page->console().addMessage(source, level, message, requestIdentifier, this);
+
+    if (m_consoleMessageListener)
+        m_consoleMessageListener->scheduleCallback(*this, message);
 }
 
 void Document::addMessage(MessageSource source, MessageLevel level, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, RefPtr<Inspector::ScriptCallStack>&& callStack, JSC::ExecState* state, unsigned long requestIdentifier)
@@ -6021,7 +6023,7 @@ void Document::webkitWillEnterFullScreenForElement(Element* element)
 
     ASSERT(page()->settings().fullScreenEnabled());
 
-    unwrapFullScreenRenderer(m_fullScreenRenderer, m_fullScreenElement.get());
+    unwrapFullScreenRenderer(m_fullScreenRenderer.get(), m_fullScreenElement.get());
 
     if (element)
         element->willBecomeFullscreenElement();
@@ -6044,8 +6046,8 @@ void Document::webkitWillEnterFullScreenForElement(Element* element)
         m_savedPlaceholderRenderStyle = RenderStyle::clonePtr(renderer->style());
     }
 
-    if (m_fullScreenElement != documentElement())
-        RenderFullScreen::wrapRenderer(renderer, renderer ? renderer->parent() : nullptr, *this);
+    if (m_fullScreenElement != documentElement() && renderer)
+        RenderFullScreen::wrapExistingRenderer(*renderer, *this);
 
     m_fullScreenElement->setContainsFullScreenElementOnAncestorsCrossingFrameBoundaries(true);
 
@@ -6088,7 +6090,7 @@ void Document::webkitDidExitFullScreenForElement(Element*)
 
     m_areKeysEnabledInFullScreen = false;
 
-    unwrapFullScreenRenderer(m_fullScreenRenderer, m_fullScreenElement.get());
+    unwrapFullScreenRenderer(m_fullScreenRenderer.get(), m_fullScreenElement.get());
 
     m_fullScreenElement = nullptr;
     scheduleForcedStyleRecalc();
@@ -6107,23 +6109,20 @@ void Document::setFullScreenRenderer(RenderFullScreen* renderer)
     if (renderer == m_fullScreenRenderer)
         return;
 
-    if (renderer && m_savedPlaceholderRenderStyle) 
-        renderer->createPlaceholder(WTFMove(m_savedPlaceholderRenderStyle), m_savedPlaceholderFrameRect);
-    else if (renderer && m_fullScreenRenderer && m_fullScreenRenderer->placeholder()) {
-        RenderBlock* placeholder = m_fullScreenRenderer->placeholder();
-        renderer->createPlaceholder(RenderStyle::clonePtr(placeholder->style()), placeholder->frameRect());
+    if (renderer) {
+        if (m_savedPlaceholderRenderStyle)
+            renderer->createPlaceholder(WTFMove(m_savedPlaceholderRenderStyle), m_savedPlaceholderFrameRect);
+        else if (m_fullScreenRenderer && m_fullScreenRenderer->placeholder()) {
+            auto* placeholder = m_fullScreenRenderer->placeholder();
+            renderer->createPlaceholder(RenderStyle::clonePtr(placeholder->style()), placeholder->frameRect());
+        }
     }
 
     if (m_fullScreenRenderer)
-        m_fullScreenRenderer->destroy();
+        m_fullScreenRenderer->removeFromParentAndDestroy();
     ASSERT(!m_fullScreenRenderer);
 
-    m_fullScreenRenderer = renderer;
-}
-
-void Document::fullScreenRendererDestroyed()
-{
-    m_fullScreenRenderer = nullptr;
+    m_fullScreenRenderer = makeWeakPtr(renderer);
 }
 
 void Document::fullScreenChangeDelayTimerFired()
@@ -7279,31 +7278,31 @@ void Document::requestStorageAccess(Ref<DeferredPromise>&& passedPromise)
     RefPtr<DeferredPromise> promise(WTFMove(passedPromise));
     
     if (m_hasStorageAccess) {
-        promise->resolve<IDLBoolean>(true);
+        promise->resolve();
         return;
     }
     
     if (!m_frame || securityOrigin().isUnique()) {
-        promise->resolve<IDLBoolean>(false);
+        promise->reject();
         return;
     }
     
     if (m_frame->isMainFrame()) {
         m_hasStorageAccess = true;
-        promise->resolve<IDLBoolean>(true);
+        promise->resolve();
         return;
     }
     
     // There has to be a sandbox and it has to allow the storage access API to be called.
     if (sandboxFlags() == SandboxNone || isSandboxed(SandboxStorageAccessByUserActivation)) {
-        promise->resolve<IDLBoolean>(false);
+        promise->reject();
         return;
     }
 
     // The iframe has to be a direct child of the top document.
     auto& topDocument = this->topDocument();
     if (&topDocument != parentDocument()) {
-        promise->resolve<IDLBoolean>(false);
+        promise->reject();
         return;
     }
 
@@ -7311,33 +7310,46 @@ void Document::requestStorageAccess(Ref<DeferredPromise>&& passedPromise)
     auto& topSecurityOrigin = topDocument.securityOrigin();
     if (securityOrigin.equal(&topSecurityOrigin)) {
         m_hasStorageAccess = true;
-        promise->resolve<IDLBoolean>(true);
+        promise->resolve();
         return;
     }
     
     if (!UserGestureIndicator::processingUserGesture()) {
-        promise->resolve<IDLBoolean>(false);
+        promise->reject();
         return;
     }
     
-    auto partitionDomain = securityOrigin.domainForCachePartition();
-    auto topPartitionDomain = topSecurityOrigin.domainForCachePartition();
+    auto iframeHost = securityOrigin.host();
+    auto topHost = topSecurityOrigin.host();
     StringBuilder builder;
     builder.appendLiteral("Do you want to use your ");
-    builder.append(partitionDomain);
+    builder.append(iframeHost);
     builder.appendLiteral(" ID on ");
-    builder.append(topPartitionDomain);
+    builder.append(topHost);
     builder.appendLiteral("?");
     Page* page = this->page();
     // FIXME: Don't use runJavaScriptConfirm because it responds synchronously.
     if ((page && page->chrome().runJavaScriptConfirm(*m_frame, builder.toString())) || m_grantStorageAccessOverride) {
-        m_hasStorageAccess = true;
-        ResourceLoadObserver::shared().registerStorageAccess(partitionDomain, topPartitionDomain);
-        promise->resolve<IDLBoolean>(true);
+        page->chrome().client().requestStorageAccess(WTFMove(iframeHost), WTFMove(topHost), [documentReference = m_weakFactory.createWeakPtr(*this), promise] (bool wasGranted) {
+            Document* document = documentReference.get();
+            if (!document)
+                return;
+
+            if (wasGranted) {
+                document->m_hasStorageAccess = true;
+                promise->resolve();
+            } else
+                promise->reject();
+        });
         return;
     }
     
-    promise->resolve<IDLBoolean>(false);
+    promise->reject();
+}
+
+void Document::setConsoleMessageListener(RefPtr<StringCallback>&& listener)
+{
+    m_consoleMessageListener = listener;
 }
 
 } // namespace WebCore

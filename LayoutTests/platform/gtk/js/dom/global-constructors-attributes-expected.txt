@@ -3,6 +3,16 @@ Test to ensure that global constructors (besides IndexedDB objects) have the rig
 On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE".
 
 
+PASS Object.getOwnPropertyDescriptor(global, 'AbortController').value is AbortController
+PASS Object.getOwnPropertyDescriptor(global, 'AbortController').hasOwnProperty('get') is false
+PASS Object.getOwnPropertyDescriptor(global, 'AbortController').hasOwnProperty('set') is false
+PASS Object.getOwnPropertyDescriptor(global, 'AbortController').enumerable is false
+PASS Object.getOwnPropertyDescriptor(global, 'AbortController').configurable is true
+PASS Object.getOwnPropertyDescriptor(global, 'AbortSignal').value is AbortSignal
+PASS Object.getOwnPropertyDescriptor(global, 'AbortSignal').hasOwnProperty('get') is false
+PASS Object.getOwnPropertyDescriptor(global, 'AbortSignal').hasOwnProperty('set') is false
+PASS Object.getOwnPropertyDescriptor(global, 'AbortSignal').enumerable is false
+PASS Object.getOwnPropertyDescriptor(global, 'AbortSignal').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'AnalyserNode').value is AnalyserNode
 PASS Object.getOwnPropertyDescriptor(global, 'AnalyserNode').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'AnalyserNode').hasOwnProperty('set') is false
@@ -973,6 +983,16 @@ PASS Object.getOwnPropertyDescriptor(global, 'Image').hasOwnProperty('get') is f
 PASS Object.getOwnPropertyDescriptor(global, 'Image').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'Image').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'Image').configurable is true
+PASS Object.getOwnPropertyDescriptor(global, 'ImageBitmap').value is ImageBitmap
+PASS Object.getOwnPropertyDescriptor(global, 'ImageBitmap').hasOwnProperty('get') is false
+PASS Object.getOwnPropertyDescriptor(global, 'ImageBitmap').hasOwnProperty('set') is false
+PASS Object.getOwnPropertyDescriptor(global, 'ImageBitmap').enumerable is false
+PASS Object.getOwnPropertyDescriptor(global, 'ImageBitmap').configurable is true
+PASS Object.getOwnPropertyDescriptor(global, 'ImageBitmapRenderingContext').value is ImageBitmapRenderingContext
+PASS Object.getOwnPropertyDescriptor(global, 'ImageBitmapRenderingContext').hasOwnProperty('get') is false
+PASS Object.getOwnPropertyDescriptor(global, 'ImageBitmapRenderingContext').hasOwnProperty('set') is false
+PASS Object.getOwnPropertyDescriptor(global, 'ImageBitmapRenderingContext').enumerable is false
+PASS Object.getOwnPropertyDescriptor(global, 'ImageBitmapRenderingContext').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'ImageData').value is ImageData
 PASS Object.getOwnPropertyDescriptor(global, 'ImageData').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'ImageData').hasOwnProperty('set') is false

@@ -384,6 +384,7 @@ fast/images/webp-color-profile-lossy-alpha.html [ Skip ]
 fast/images/webp-color-profile-lossy.html [ Skip ]
 http/tests/images/webp-partial-load.html [ Skip ]
 http/tests/images/webp-progressive-load.html [ Skip ]
+fast/images/animated-webp-expected.html [ Skip ]
 
 # TODO The following tests requires the DRT's dumpUserGestureInFrameLoadCallbacks
 # method. But that method is not implemented in win port since win port can't
@@ -3554,7 +3555,6 @@ fast/text/multiple-codeunit-vertical-upright.html [ ImageOnlyFailure ]
 fast/text/simple-line-layout-simple-text-but-complex-font-path.html [ ImageOnlyFailure ]
 fast/text/variations/font-face-format.html [ ImageOnlyFailure ]
 fast/text/variations/font-face-format-woff2.html [ ImageOnlyFailure ]
-fast/text/web-font-load-fallback-during-loading.html [ ImageOnlyFailure ]
 imported/blink/scrollbars/avoid-double-scrollbars-when-html-element-is-not-the-renderview.html [ ImageOnlyFailure ]
 imported/w3c/i18n/bidi/bidi-plaintext-011.html [ ImageOnlyFailure ]
 svg/custom/anchor-on-use.svg [ ImageOnlyFailure ]
@@ -3680,6 +3680,7 @@ webkit.org/b/174079 fast/text/variations/skia-postscript-name.html [ ImageOnlyFa
 
 # Beacon is not supported on WK1.
 http/tests/blink/sendbeacon/ [ Skip ]
+http/tests/inspector/network/beacon-type.html [ Skip ]
 http/wpt/beacon/ [ Skip ]
 imported/blink/fast/beacon/ [ Skip ]
 imported/w3c/web-platform-tests/beacon/ [ Skip ]
@@ -3769,3 +3770,15 @@ webkit.org/b/177378 fast/forms/listbox-typeahead-cyrillic.html [ Failure ]
 webkit.org/b/177385 fast/forms/listbox-typeahead-greek.html [ Failure ]
 
 webkit.org/b/177541 accessibility/image-load-on-delay.html [ Failure ]
+
+# preconnect tests are failing on Windows.
+webkit.org/b/177626 fast/dom/HTMLLinkElement/preconnect-support.html  [ Skip ]
+webkit.org/b/177626 http/tests/preconnect/link-rel-preconnect-http.html [ Skip ]
+webkit.org/b/177626 http/tests/preconnect/link-rel-preconnect-https.html [ Skip ]
+
+webkit.org/b/177891 http/wpt/cache-storage/cache-quota.any.html [ Pass Failure ]
+
+webkit.org/b/177964 fast/text/loading-block-nofinish.html [ Pass ImageOnlyFailure ]
+webkit.org/b/177964 fast/text/loading-failure-finish.html [ Pass ImageOnlyFailure ]
+webkit.org/b/177964 fast/text/loading-failure-nofinish.html [ Pass ImageOnlyFailure ]
+webkit.org/b/177964 fast/text/loading-swap-nofinish.html [ Pass ImageOnlyFailure ]

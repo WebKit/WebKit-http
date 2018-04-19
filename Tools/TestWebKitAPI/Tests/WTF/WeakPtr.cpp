@@ -40,9 +40,9 @@ TEST(WTF_WeakPtr, Basic)
     EXPECT_EQ(weakPtr1.get(), &dummy);
     EXPECT_EQ(weakPtr2.get(), &dummy);
     EXPECT_EQ(weakPtr3.get(), &dummy);
-    EXPECT_TRUE(weakPtr1);
-    EXPECT_TRUE(weakPtr2);
-    EXPECT_TRUE(weakPtr3);
+    EXPECT_TRUE(!!weakPtr1);
+    EXPECT_TRUE(!!weakPtr2);
+    EXPECT_TRUE(!!weakPtr3);
     EXPECT_TRUE(weakPtr1 == weakPtr2);
     EXPECT_TRUE(weakPtr1 == &dummy);
     EXPECT_TRUE(&dummy == weakPtr2);
@@ -116,6 +116,24 @@ TEST(WTF_WeakPtr, Dereference)
     weakPtr->bar();
 }
 
+TEST(WTF_WeakPtr, Operators)
+{
+    Foo f;
+    WeakPtrFactory<Foo> factory;
+    WeakPtr<Foo> weakPtr = factory.createWeakPtr(f);
+
+    WeakPtr<Foo> weakPtr2 = weakPtr;
+    EXPECT_EQ(weakPtr2.get(), &f);
+
+    WeakPtr<Foo> weakPtr3;
+    weakPtr3 = weakPtr;
+    EXPECT_EQ(weakPtr3.get(), &f);
+
+    WeakPtr<Foo> weakPtr4 = WTFMove(weakPtr);
+    EXPECT_EQ(weakPtr4.get(), &f);
+    EXPECT_FALSE(weakPtr);
+}
+
 TEST(WTF_WeakPtr, Forget)
 {
     int dummy = 5;
@@ -180,5 +198,90 @@ TEST(WTF_WeakPtr, Forget)
     weakPtr7 = nullptr;
     EXPECT_NULL(weakPtr7.get());
 }
-    
+
+class Base {
+public:
+    int foo()
+    {
+        return 0;
+    }
+
+    auto& weakPtrFactory() { return m_weakPtrFactory; }
+
+private:
+    WeakPtrFactory<Base> m_weakPtrFactory;
+};
+
+class Derived : public Base {
+public:
+    int foo()
+    {
+        return 1;
+    }
+};
+
+TEST(WTF_WeakPtr, Downcasting)
+{
+    int dummy0 = 0;
+    int dummy1 = 1;
+
+    WeakPtr<Base> baseWeakPtr;
+    WeakPtr<Derived> derivedWeakPtr;
+
+    {
+        Derived object;
+        Derived* derivedPtr = &object;
+        Base* basePtr = static_cast<Base*>(&object);
+
+        baseWeakPtr = object.weakPtrFactory().createWeakPtr(object);
+        EXPECT_EQ(basePtr->foo(), dummy0);
+        EXPECT_EQ(baseWeakPtr->foo(), basePtr->foo());
+        EXPECT_EQ(baseWeakPtr.get()->foo(), basePtr->foo());
+
+        derivedWeakPtr = makeWeakPtr(object);
+        EXPECT_EQ(derivedWeakPtr->foo(), dummy1);
+        EXPECT_EQ(derivedWeakPtr->foo(), derivedPtr->foo());
+        EXPECT_EQ(derivedWeakPtr.get()->foo(), derivedPtr->foo());
+
+        EXPECT_EQ(baseWeakPtr.get(), derivedWeakPtr.get());
+    }
+
+    EXPECT_NULL(baseWeakPtr.get());
+    EXPECT_NULL(derivedWeakPtr.get());
+}
+
+TEST(WTF_WeakPtr, DerivedConstructAndAssign)
+{
+    Derived derived;
+    {
+        WeakPtr<Derived> derivedWeakPtr = makeWeakPtr(derived);
+        WeakPtr<Base> baseWeakPtr { WTFMove(derivedWeakPtr) };
+        EXPECT_EQ(baseWeakPtr.get(), &derived);
+        EXPECT_NULL(derivedWeakPtr.get());
+    }
+
+    {
+        WeakPtr<Derived> derivedWeakPtr = makeWeakPtr(derived);
+        WeakPtr<Base> baseWeakPtr { derivedWeakPtr };
+        EXPECT_EQ(baseWeakPtr.get(), &derived);
+        EXPECT_EQ(derivedWeakPtr.get(), &derived);
+    }
+
+    {
+        WeakPtr<Derived> derivedWeakPtr = makeWeakPtr(derived);
+        WeakPtr<Base> baseWeakPtr;
+        baseWeakPtr = WTFMove(derivedWeakPtr);
+        EXPECT_EQ(baseWeakPtr.get(), &derived);
+        EXPECT_NULL(derivedWeakPtr.get());
+    }
+
+    {
+        WeakPtr<Derived> derivedWeakPtr = makeWeakPtr(derived);
+        WeakPtr<Base> baseWeakPtr;
+        baseWeakPtr = derivedWeakPtr;
+        EXPECT_EQ(baseWeakPtr.get(), &derived);
+        EXPECT_EQ(derivedWeakPtr.get(), &derived);
+    }
+}
+
 } // namespace TestWebKitAPI

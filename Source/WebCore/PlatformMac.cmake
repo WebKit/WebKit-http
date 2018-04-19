@@ -1,17 +1,10 @@
-if ("${CURRENT_OSX_VERSION}" MATCHES "10.9")
-    set(WEBKITSYSTEMINTERFACE_LIBRARY ${CMAKE_SOURCE_DIR}/WebKitLibraries/libWebKitSystemInterfaceMavericks.a)
-elseif ("${CURRENT_OSX_VERSION}" MATCHES "10.10")
-    set(WEBKITSYSTEMINTERFACE_LIBRARY ${CMAKE_SOURCE_DIR}/WebKitLibraries/libWebKitSystemInterfaceYosemite.a)
-else ()
-    set(WEBKITSYSTEMINTERFACE_LIBRARY ${CMAKE_SOURCE_DIR}/WebKitLibraries/libWebKitSystemInterfaceElCapitan.a)
-endif ()
-
 find_library(ACCELERATE_LIBRARY accelerate)
 find_library(APPLICATIONSERVICES_LIBRARY ApplicationServices)
 find_library(AVFOUNDATION_LIBRARY AVFoundation)
 find_library(AUDIOTOOLBOX_LIBRARY AudioToolbox)
 find_library(AUDIOUNIT_LIBRARY AudioUnit)
 find_library(CARBON_LIBRARY Carbon)
+find_library(CFNETWORK_LIBRARY CFNetwork)
 find_library(COCOA_LIBRARY Cocoa)
 find_library(COREAUDIO_LIBRARY CoreAudio)
 find_library(CORESERVICES_LIBRARY CoreServices)
@@ -34,6 +27,7 @@ list(APPEND WebCore_LIBRARIES
     ${AUDIOUNIT_LIBRARY}
     ${AVFOUNDATION_LIBRARY}
     ${CARBON_LIBRARY}
+    ${CFNETWORK_LIBRARY}
     ${COCOA_LIBRARY}
     ${COREAUDIO_LIBRARY}
     ${CORESERVICES_LIBRARY}
@@ -47,7 +41,6 @@ list(APPEND WebCore_LIBRARIES
     ${SECURITY_LIBRARY}
     ${SQLITE_LIBRARIES}
     ${SYSTEMCONFIGURATION_LIBRARY}
-    ${WEBKITSYSTEMINTERFACE_LIBRARY}
     ${XML2_LIBRARY}
     ${ZLIB_LIBRARY}
 )
@@ -321,6 +314,7 @@ list(APPEND WebCore_SOURCES
     platform/cocoa/MachSendRight.cpp
     platform/cocoa/NetworkExtensionContentFilter.mm
     platform/cocoa/ParentalControlsContentFilter.mm
+    platform/cocoa/PasteboardCocoa.mm
     platform/cocoa/RuntimeApplicationChecksCocoa.mm
     platform/cocoa/ScrollController.mm
     platform/cocoa/ScrollSnapAnimatorState.mm
@@ -495,8 +489,6 @@ list(APPEND WebCore_SOURCES
     platform/mac/NSScrollerImpDetails.mm
     platform/mac/PasteboardMac.mm
     platform/mac/PasteboardWriter.mm
-    platform/mac/PlatformClockCA.cpp
-    platform/mac/PlatformClockCM.mm
     platform/mac/PlatformEventFactoryMac.mm
     platform/mac/PlatformPasteboardMac.mm
     platform/mac/PlatformScreenMac.mm
@@ -523,7 +515,6 @@ list(APPEND WebCore_SOURCES
     platform/mac/WebCoreNSStringExtras.mm
     platform/mac/WebCoreNSURLExtras.mm
     platform/mac/WebCoreObjCExtras.mm
-    platform/mac/WebCoreSystemInterface.mm
     platform/mac/WebGLBlacklist.mm
     platform/mac/WebNSAttributedStringExtras.mm
     platform/mac/WebVideoFullscreenController.mm
@@ -752,8 +743,6 @@ set(WebCore_FORWARDING_HEADERS_FILES
     platform/graphics/cocoa/IOSurface.h
 
     platform/graphics/transforms/AffineTransform.h
-
-    platform/mac/WebCoreSystemInterface.h
 
     platform/network/cf/CertificateInfo.h
     platform/network/cf/ResourceResponse.h

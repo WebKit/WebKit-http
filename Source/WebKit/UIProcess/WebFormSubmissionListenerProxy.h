@@ -25,8 +25,7 @@
 
 #pragma once
 
-#include "APIObject.h"
-#include <wtf/Function.h>
+#include "WebFrameListenerProxy.h"
 
 namespace WebKit {
 

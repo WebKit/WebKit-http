@@ -58,12 +58,14 @@ inline IndexingType JSArray::mergeIndexingTypeForCopying(IndexingType other)
 
 inline bool JSArray::canFastCopy(VM& vm, JSArray* otherArray)
 {
+    if (otherArray == this)
+        return false;
     if (hasAnyArrayStorage(indexingType()) || hasAnyArrayStorage(otherArray->indexingType()))
         return false;
     // FIXME: We should have a watchpoint for indexed properties on Array.prototype and Object.prototype
     // instead of walking the prototype chain. https://bugs.webkit.org/show_bug.cgi?id=155592
-    if (structure(vm)->holesMustForwardToPrototype(vm)
-        || otherArray->structure(vm)->holesMustForwardToPrototype(vm))
+    if (structure(vm)->holesMustForwardToPrototype(vm, this)
+        || otherArray->structure(vm)->holesMustForwardToPrototype(vm, otherArray))
         return false;
     return true;
 }

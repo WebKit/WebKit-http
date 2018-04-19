@@ -25,35 +25,72 @@
 #include "RenderTreeUpdaterMultiColumn.h"
 
 #include "RenderBlockFlow.h"
+#include "RenderChildIterator.h"
 #include "RenderMultiColumnFlow.h"
+#include "RenderMultiColumnSet.h"
+#include "RenderMultiColumnSpannerPlaceholder.h"
 
 namespace WebCore {
 
 void RenderTreeUpdater::MultiColumn::update(RenderBlockFlow& flow)
 {
     bool needsFragmentedFlow = flow.requiresColumns(flow.style().columnCount());
-    auto* multiColumnFlow = flow.multiColumnFlow();
-    if (!needsFragmentedFlow) {
-        if (multiColumnFlow) {
-            multiColumnFlow->evacuateAndDestroy();
-            ASSERT(!flow.multiColumnFlow());
-        }
+    bool hasFragmentedFlow = flow.multiColumnFlow();
+
+    if (!hasFragmentedFlow && needsFragmentedFlow) {
+        createFragmentedFlow(flow);
         return;
     }
-    if (!multiColumnFlow)
-        createFragmentedFlow(flow);
+    if (hasFragmentedFlow && !needsFragmentedFlow) {
+        destroyFragmentedFlow(flow);
+        return;
+    }
 }
 
 void RenderTreeUpdater::MultiColumn::createFragmentedFlow(RenderBlockFlow& flow)
 {
-    RenderMultiColumnFlow* fragmentedFlow = new RenderMultiColumnFlow(flow.document(), RenderStyle::createAnonymousStyleWithDisplay(flow.style(), BLOCK));
-    fragmentedFlow->initializeStyle();
+    auto newFragmentedFlow = WebCore::createRenderer<RenderMultiColumnFlow>(flow.document(), RenderStyle::createAnonymousStyleWithDisplay(flow.style(), BLOCK));
+    newFragmentedFlow->initializeStyle();
     flow.setChildrenInline(false); // Do this to avoid wrapping inline children that are just going to move into the flow thread.
     flow.deleteLines();
-    flow.RenderBlock::addChild(fragmentedFlow);
-    fragmentedFlow->populate(); // Called after the flow thread is inserted so that we are reachable by the flow thread.
+    auto& fragmentedFlow = *newFragmentedFlow;
+    flow.RenderBlock::addChild(WTFMove(newFragmentedFlow));
+
+    // Reparent children preceding the fragmented flow into the fragmented flow.
+    flow.moveChildrenTo(&fragmentedFlow, flow.firstChild(), &fragmentedFlow, true);
+    if (flow.isFieldset()) {
+        // Keep legends out of the flow thread.
+        for (auto& box : childrenOfType<RenderBox>(fragmentedFlow)) {
+            if (box.isLegend())
+                fragmentedFlow.moveChildTo(&flow, &box, true);
+        }
+    }
+
     flow.setMultiColumnFlow(fragmentedFlow);
 }
 
+void RenderTreeUpdater::MultiColumn::destroyFragmentedFlow(RenderBlockFlow& flow)
+{
+    auto& fragmentedFlow = *flow.multiColumnFlow();
+    flow.clearMultiColumnFlow();
+
+    fragmentedFlow.deleteLines();
+    fragmentedFlow.moveAllChildrenTo(&flow, true);
+
+    // Move spanners back to their original DOM position in the tree, and destroy the placeholders.
+    auto spannerMap = fragmentedFlow.takeSpannerMap();
+    for (auto& spannerAndPlaceholder : *spannerMap) {
+        RenderBox& spanner = *spannerAndPlaceholder.key;
+        auto& placeholder = *spannerAndPlaceholder.value;
+        auto takenSpanner = flow.takeChild(spanner);
+        placeholder.parent()->addChild(WTFMove(takenSpanner), &placeholder);
+        placeholder.removeFromParentAndDestroy();
+    }
+
+    while (auto* columnSet = fragmentedFlow.firstMultiColumnSet())
+        columnSet->removeFromParentAndDestroy();
+
+    fragmentedFlow.removeFromParentAndDestroy();
+}
 
 }

@@ -50,7 +50,6 @@
 #import "WebKit2Initialize.h"
 #import "WebPageGroup.h"
 #import "WebProcessPool.h"
-#import "WebSystemInterface.h"
 #import "_WKFrameHandleInternal.h"
 #import "_WKWebViewPrintFormatterInternal.h"
 #import <CoreGraphics/CoreGraphics.h>
@@ -256,16 +255,6 @@ private:
 - (WebPageProxy*)page
 {
     return _page.get();
-}
-
-- (BOOL)acceptsAutofilledLoginCredentials
-{
-    return _page->acceptsAutofilledLoginCredentials();
-}
-
-- (NSURL *)representingPageURL
-{
-    return _page->representingPageURL();
 }
 
 - (void)willMoveToWindow:(UIWindow *)newWindow

@@ -39,6 +39,7 @@
 #include <WebCore/PaymentHeaders.h>
 #include <WebCore/RealtimeMediaSource.h>
 #include <WebCore/ScrollSnapOffsetsInfo.h>
+#include <WebCore/StoredCredentialsPolicy.h>
 
 namespace WTF {
 class MonotonicTime;
@@ -99,6 +100,7 @@ struct Length;
 struct GrammarDetail;
 struct MimeClassInfo;
 struct PasteboardImage;
+struct PasteboardCustomData;
 struct PasteboardURL;
 struct PluginInfo;
 struct RecentSearch;
@@ -231,6 +233,7 @@ template<> struct ArgumentCoder<WebCore::CertificateInfo> {
 template<> struct ArgumentCoder<WebCore::FloatPoint> {
     static void encode(Encoder&, const WebCore::FloatPoint&);
     static bool decode(Decoder&, WebCore::FloatPoint&);
+    static std::optional<WebCore::FloatPoint> decode(Decoder&);
 };
 
 template<> struct ArgumentCoder<WebCore::FloatPoint3D> {
@@ -274,6 +277,7 @@ template<> struct ArgumentCoder<WebCore::ViewportArguments> {
 template<> struct ArgumentCoder<WebCore::IntPoint> {
     static void encode(Encoder&, const WebCore::IntPoint&);
     static bool decode(Decoder&, WebCore::IntPoint&);
+    static std::optional<WebCore::IntPoint> decode(Decoder&);
 };
 
 template<> struct ArgumentCoder<WebCore::IntRect> {
@@ -285,6 +289,7 @@ template<> struct ArgumentCoder<WebCore::IntRect> {
 template<> struct ArgumentCoder<WebCore::IntSize> {
     static void encode(Encoder&, const WebCore::IntSize&);
     static bool decode(Decoder&, WebCore::IntSize&);
+    static std::optional<WebCore::IntSize> decode(Decoder&);
 };
 
 template<> struct ArgumentCoder<WebCore::LayoutSize> {
@@ -422,6 +427,11 @@ template<> struct ArgumentCoder<WebCore::PasteboardImage> {
 };
 #endif
 
+template<> struct ArgumentCoder<WebCore::PasteboardCustomData> {
+    static void encode(Encoder&, const WebCore::PasteboardCustomData&);
+    static bool decode(Decoder&, WebCore::PasteboardCustomData&);
+};
+
 #if USE(SOUP)
 template<> struct ArgumentCoder<WebCore::SoupNetworkProxySettings> {
     static void encode(Encoder&, const WebCore::SoupNetworkProxySettings&);
@@ -524,7 +534,7 @@ template<> struct ArgumentCoder<WebCore::MediaSessionMetadata> {
 
 template<> struct ArgumentCoder<WebCore::TextIndicatorData> {
     static void encode(Encoder&, const WebCore::TextIndicatorData&);
-    static bool decode(Decoder&, WebCore::TextIndicatorData&);
+    static std::optional<WebCore::TextIndicatorData> decode(Decoder&);
 };
 
 template<> struct ArgumentCoder<WebCore::DictionaryPopupInfo> {
@@ -565,7 +575,7 @@ template<> struct ArgumentCoder<WebCore::Payment> {
 
 template<> struct ArgumentCoder<WebCore::PaymentAuthorizationResult> {
     static void encode(Encoder&, const WebCore::PaymentAuthorizationResult&);
-    static bool decode(Decoder&, WebCore::PaymentAuthorizationResult&);
+    static std::optional<WebCore::PaymentAuthorizationResult> decode(Decoder&);
 };
 
 template<> struct ArgumentCoder<WebCore::PaymentContact> {
@@ -590,7 +600,7 @@ template<> struct ArgumentCoder<WebCore::PaymentMethod> {
 
 template<> struct ArgumentCoder<WebCore::PaymentMethodUpdate> {
     static void encode(Encoder&, const WebCore::PaymentMethodUpdate&);
-    static bool decode(Decoder&, WebCore::PaymentMethodUpdate&);
+    static std::optional<WebCore::PaymentMethodUpdate> decode(Decoder&);
 };
 
 template<> struct ArgumentCoder<WebCore::ApplePaySessionPaymentRequest> {
@@ -625,12 +635,12 @@ template<> struct ArgumentCoder<WebCore::ApplePaySessionPaymentRequest::TotalAnd
 
 template<> struct ArgumentCoder<WebCore::ShippingContactUpdate> {
     static void encode(Encoder&, const WebCore::ShippingContactUpdate&);
-    static bool decode(Decoder&, WebCore::ShippingContactUpdate&);
+    static std::optional<WebCore::ShippingContactUpdate> decode(Decoder&);
 };
 
 template<> struct ArgumentCoder<WebCore::ShippingMethodUpdate> {
     static void encode(Encoder&, const WebCore::ShippingMethodUpdate&);
-    static bool decode(Decoder&, WebCore::ShippingMethodUpdate&);
+    static std::optional<WebCore::ShippingMethodUpdate> decode(Decoder&);
 };
 
 #endif
@@ -763,6 +773,14 @@ template<> struct EnumTraits<WebCore::MediaSelectionOption::Type> {
         WebCore::MediaSelectionOption::Type::Regular,
         WebCore::MediaSelectionOption::Type::LegibleOff,
         WebCore::MediaSelectionOption::Type::LegibleAuto
+    >;
+};
+
+template <> struct EnumTraits<WebCore::StoredCredentialsPolicy> {
+    using values = EnumValues<
+        WebCore::StoredCredentialsPolicy,
+        WebCore::StoredCredentialsPolicy::DoNotUse,
+        WebCore::StoredCredentialsPolicy::Use
     >;
 };
 

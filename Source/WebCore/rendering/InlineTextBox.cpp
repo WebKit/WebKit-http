@@ -144,8 +144,9 @@ RenderObject::SelectionState InlineTextBox::selectionState()
 {
     RenderObject::SelectionState state = renderer().selectionState();
     if (state == RenderObject::SelectionStart || state == RenderObject::SelectionEnd || state == RenderObject::SelectionBoth) {
-        unsigned startPos, endPos;
-        renderer().selectionStartEnd(startPos, endPos);
+        auto& selection = renderer().view().selection();
+        auto startPos = selection.startPosition();
+        auto endPos = selection.endPosition();
         // The position after a hard line break is considered to be past its end.
         ASSERT(start() + len() >= (isLineBreak() ? 1 : 0));
         unsigned lastSelectable = start() + len() - (isLineBreak() ? 1 : 0);
@@ -190,6 +191,7 @@ inline const FontCascade& InlineTextBox::lineFont() const
     return combinedText() ? combinedText()->textCombineFont() : lineStyle().fontCascade();
 }
 
+// FIXME: Share more code with paintSelection().
 LayoutRect InlineTextBox::localSelectionRect(unsigned startPos, unsigned endPos) const
 {
     unsigned sPos = clampedOffset(startPos);
@@ -204,19 +206,20 @@ LayoutRect InlineTextBox::localSelectionRect(unsigned startPos, unsigned endPos)
 
     LayoutUnit selectionTop = this->selectionTop();
     LayoutUnit selectionHeight = this->selectionHeight();
-    const RenderStyle& lineStyle = this->lineStyle();
-    const FontCascade& font = lineFont();
 
-    String hyphenatedString;
-    bool respectHyphen = ePos == m_len && hasHyphen();
-    if (respectHyphen)
-        hyphenatedString = hyphenatedStringForTextRun(lineStyle);
-    TextRun textRun = constructTextRun(lineStyle, hyphenatedString);
+    // FIXME: Adjust selection rect with respect to combined text.
+    bool ignoreCombinedText = true;
+    auto text = this->text(ignoreCombinedText);
+    TextRun textRun = createTextRun(text);
+    // FIXME: Shouldn't we adjust ePos to textRun.length() if ePos == (m_truncation != cNoTruncation ? m_truncation : m_len)
+    // so that the selection spans the hypen/combined text?
 
     LayoutRect selectionRect = LayoutRect(LayoutPoint(logicalLeft(), selectionTop), LayoutSize(m_logicalWidth, selectionHeight));
     // Avoid computing the font width when the entire line box is selected as an optimization.
     if (sPos || ePos != m_len)
-        font.adjustSelectionRectForText(textRun, selectionRect, sPos, ePos);
+        lineFont().adjustSelectionRectForText(textRun, selectionRect, sPos, ePos);
+    // FIXME: The computation of the snapped selection rect differs from the computation of this rect
+    // in paintSelection(). See <https://bugs.webkit.org/show_bug.cgi?id=138913>.
     IntRect snappedSelectionRect = enclosingIntRect(selectionRect);
     LayoutUnit logicalWidth = snappedSelectionRect.width();
     if (snappedSelectionRect.x() > logicalRight())
@@ -483,12 +486,12 @@ void InlineTextBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, 
     // and composition underlines.
     if (paintInfo.phase != PaintPhaseSelection && paintInfo.phase != PaintPhaseTextClip && !isPrinting) {
         if (containsComposition && !useCustomUnderlines)
-            paintCompositionBackground(context, boxOrigin, font);
+            paintCompositionBackground(context, boxOrigin);
 
-        paintDocumentMarkers(context, boxOrigin, font, true);
+        paintDocumentMarkers(context, boxOrigin, true);
 
         if (haveSelection && !useCustomUnderlines)
-            paintSelection(context, boxOrigin, lineStyle, font, selectionPaintStyle.fillColor);
+            paintSelection(context, boxOrigin, selectionPaintStyle.fillColor);
     }
 
     // FIXME: Right now, InlineTextBoxes never call addRelevantUnpaintedObject() even though they might
@@ -499,13 +502,8 @@ void InlineTextBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, 
         renderer().page().addRelevantRepaintedObject(&renderer(), IntRect(boxOrigin.x(), boxOrigin.y(), logicalWidth(), logicalHeight()));
 
     // 2. Now paint the foreground, including text and decorations like underline/overline (in quirks mode only).
-    String alternateStringToRender;
-    if (combinedText)
-        alternateStringToRender = combinedText->combinedStringForRendering();
-    else if (hasHyphen())
-        alternateStringToRender = hyphenatedStringForTextRun(lineStyle);
-
-    TextRun textRun = constructTextRun(lineStyle, alternateStringToRender);
+    auto text = this->text();
+    TextRun textRun = createTextRun(text);
     unsigned length = textRun.length();
 
     unsigned selectionStart = 0;
@@ -516,7 +514,6 @@ void InlineTextBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, 
     if (m_truncation != cNoTruncation) {
         selectionStart = std::min(selectionStart, static_cast<unsigned>(m_truncation));
         selectionEnd = std::min(selectionEnd, static_cast<unsigned>(m_truncation));
-        length = m_truncation;
     }
 
     float emphasisMarkOffset = 0;
@@ -571,7 +568,7 @@ void InlineTextBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, 
         if (currentEnd < length)
             textPainter.paintRange(textRun, boxRect, textOrigin, currentEnd, length);
     } else
-        textPainter.paint(textRun, length, boxRect, textOrigin, selectionStart, selectionEnd, paintSelectedTextOnly, paintSelectedTextSeparately, paintNonSelectedTextOnly);
+        textPainter.paint(textRun, boxRect, textOrigin, selectionStart, selectionEnd, paintSelectedTextOnly, paintSelectedTextSeparately, paintNonSelectedTextOnly);
 
     // Paint decorations
     TextDecoration textDecorations = lineStyle.textDecorationsInEffect();
@@ -595,11 +592,11 @@ void InlineTextBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, 
                 textDecorationSelectionClipOutRect.setWidth(logicalSelectionWidth);
             }
         }
-        paintDecoration(context, font, textRun, textOrigin, boxRect, textDecorations, textPaintStyle, textShadow, textDecorationSelectionClipOutRect);
+        paintDecoration(context, textRun, textOrigin, boxRect, textDecorations, textPaintStyle, textShadow, textDecorationSelectionClipOutRect);
     }
 
     if (paintInfo.phase == PaintPhaseForeground) {
-        paintDocumentMarkers(context, boxOrigin, font, false);
+        paintDocumentMarkers(context, boxOrigin, false);
 
         if (useCustomUnderlines) {
             const Vector<CompositionUnderline>& underlines = renderer().frame().editor().customCompositionUnderlines();
@@ -642,9 +639,8 @@ std::pair<unsigned, unsigned> InlineTextBox::selectionStartEnd() const
     if (selectionState == RenderObject::SelectionInside)
         return { 0, m_len };
     
-    unsigned start;
-    unsigned end;
-    renderer().selectionStartEnd(start, end);
+    auto start = renderer().view().selection().startPosition();
+    auto end = renderer().view().selection().endPosition();
     if (selectionState == RenderObject::SelectionStart)
         end = renderer().textLength();
     else if (selectionState == RenderObject::SelectionEnd)
@@ -652,7 +648,7 @@ std::pair<unsigned, unsigned> InlineTextBox::selectionStartEnd() const
     return { clampedOffset(start), clampedOffset(end) };
 }
 
-void InlineTextBox::paintSelection(GraphicsContext& context, const FloatPoint& boxOrigin, const RenderStyle& style, const FontCascade& font, const Color& textColor)
+void InlineTextBox::paintSelection(GraphicsContext& context, const FloatPoint& boxOrigin, const Color& textColor)
 {
 #if ENABLE(TEXT_SELECTION)
     if (context.paintingDisabled())
@@ -677,19 +673,16 @@ void InlineTextBox::paintSelection(GraphicsContext& context, const FloatPoint& b
     GraphicsContextStateSaver stateSaver(context);
     updateGraphicsContext(context, TextPaintStyle(c)); // Don't draw text at all!
 
-    // If the text is truncated, let the thing being painted in the truncation
+    // Note that if the text is truncated, we let the thing being painted in the truncation
     // draw its own highlight.
 
-    unsigned length = m_truncation != cNoTruncation ? m_truncation : len();
-
     // FIXME: Adjust text run for combined text.
-    String hyphenatedString;
-    bool respectHyphen = selectionEnd == length && hasHyphen();
-    if (respectHyphen)
-        hyphenatedString = hyphenatedStringForTextRun(style, length);
-    TextRun textRun = constructTextRun(style, hyphenatedString, std::optional<unsigned>(length));
-    if (respectHyphen)
-        selectionEnd = textRun.length();
+    bool ignoreCombinedText = true;
+    auto text = this->text(ignoreCombinedText);
+    TextRun textRun = createTextRun(text);
+    unsigned endOfLineIgnoringHyphenAndCombinedText = m_truncation != cNoTruncation ? m_truncation : m_len;
+    if (selectionEnd == endOfLineIgnoringHyphenAndCombinedText)
+        selectionEnd = textRun.length(); // Extend selection to include hyphen/combined text.
 
     const RootInlineBox& rootBox = root();
     LayoutUnit selectionBottom = rootBox.selectionBottom();
@@ -699,18 +692,16 @@ void InlineTextBox::paintSelection(GraphicsContext& context, const FloatPoint& b
     LayoutUnit selectionHeight = std::max<LayoutUnit>(0, selectionBottom - selectionTop);
 
     LayoutRect selectionRect = LayoutRect(boxOrigin.x(), boxOrigin.y() - deltaY, m_logicalWidth, selectionHeight);
-    font.adjustSelectionRectForText(textRun, selectionRect, selectionStart, selectionEnd);
+    lineFont().adjustSelectionRectForText(textRun, selectionRect, selectionStart, selectionEnd);
     context.fillRect(snapRectToDevicePixelsWithWritingDirection(selectionRect, renderer().document().deviceScaleFactor(), textRun.ltr()), c);
 #else
     UNUSED_PARAM(context);
     UNUSED_PARAM(boxOrigin);
-    UNUSED_PARAM(style);
-    UNUSED_PARAM(font);
     UNUSED_PARAM(textColor);
 #endif
 }
 
-inline void InlineTextBox::paintTextSubrangeBackground(GraphicsContext& context, const FloatPoint& boxOrigin, const FontCascade& font, const Color& color, unsigned startOffset, unsigned endOffset)
+inline void InlineTextBox::paintTextSubrangeBackground(GraphicsContext& context, const FloatPoint& boxOrigin, const Color& color, unsigned startOffset, unsigned endOffset)
 {
     startOffset = clampedOffset(startOffset);
     endOffset = clampedOffset(endOffset);
@@ -726,22 +717,25 @@ inline void InlineTextBox::paintTextSubrangeBackground(GraphicsContext& context,
     LayoutRect selectionRect = LayoutRect(boxOrigin.x(), boxOrigin.y() - deltaY, 0, selectionHeight());
 
     // FIXME: Adjust text run for combined text and hyphenation.
-    TextRun textRun = constructTextRun(lineStyle());
-    font.adjustSelectionRectForText(textRun, selectionRect, startOffset, endOffset);
+    bool ignoreCombinedText = true;
+    bool ignoreHyphen = true;
+    auto text = this->text(ignoreCombinedText, ignoreHyphen);
+    TextRun textRun = createTextRun(text);
+    lineFont().adjustSelectionRectForText(textRun, selectionRect, startOffset, endOffset);
     context.fillRect(snapRectToDevicePixelsWithWritingDirection(selectionRect, renderer().document().deviceScaleFactor(), textRun.ltr()), color);
 }
 
-void InlineTextBox::paintCompositionBackground(GraphicsContext& context, const FloatPoint& boxOrigin, const FontCascade& font)
+void InlineTextBox::paintCompositionBackground(GraphicsContext& context, const FloatPoint& boxOrigin)
 {
-    paintTextSubrangeBackground(context, boxOrigin, font, renderer().frame().editor().compositionStart(), renderer().frame().editor().compositionEnd(), Color::compositionFill);
+    paintTextSubrangeBackground(context, boxOrigin, renderer().frame().editor().compositionStart(), renderer().frame().editor().compositionEnd(), Color::compositionFill);
 }
 
-void InlineTextBox::paintTextMatchMarker(GraphicsContext& context, const FloatPoint& boxOrigin, const FontCascade& font, const MarkerSubrange& subrange, bool isActiveMatch)
+void InlineTextBox::paintTextMatchMarker(GraphicsContext& context, const FloatPoint& boxOrigin, const MarkerSubrange& subrange, bool isActiveMatch)
 {
     if (!renderer().frame().editor().markedTextMatchesAreHighlighted())
         return;
     auto highlightColor = isActiveMatch ? renderer().theme().platformActiveTextSearchHighlightColor() : renderer().theme().platformInactiveTextSearchHighlightColor();
-    paintTextSubrangeBackground(context, boxOrigin, font, highlightColor, subrange.startOffset, subrange.endOffset);
+    paintTextSubrangeBackground(context, boxOrigin, highlightColor, subrange.startOffset, subrange.endOffset);
 }
 
 static inline void mirrorRTLSegment(float logicalWidth, TextDirection direction, float& start, float width)
@@ -751,7 +745,7 @@ static inline void mirrorRTLSegment(float logicalWidth, TextDirection direction,
     start = logicalWidth - width - start;
 }
 
-void InlineTextBox::paintDecoration(GraphicsContext& context, const FontCascade& font, const TextRun& textRun, const FloatPoint& textOrigin,
+void InlineTextBox::paintDecoration(GraphicsContext& context, const TextRun& textRun, const FloatPoint& textOrigin,
     const FloatRect& boxRect, TextDecoration decoration, TextPaintStyle textPaintStyle, const ShadowData* shadow, const FloatRect& clipOutRect)
 {
     if (m_truncation == cFullTruncation)
@@ -772,7 +766,7 @@ void InlineTextBox::paintDecoration(GraphicsContext& context, const FontCascade&
 
     TextDecorationPainter decorationPainter(context, decoration, renderer(), isFirstLine());
     decorationPainter.setInlineTextBox(this);
-    decorationPainter.setFont(font);
+    decorationPainter.setFont(lineFont());
     decorationPainter.setWidth(width);
     decorationPainter.setBaseline(lineStyle().fontMetrics().ascent());
     decorationPainter.setIsHorizontal(isHorizontal());
@@ -794,7 +788,7 @@ void InlineTextBox::paintDecoration(GraphicsContext& context, const FontCascade&
         context.concatCTM(rotation(boxRect, Counterclockwise));
 }
 
-void InlineTextBox::paintDocumentMarker(GraphicsContext& context, const FloatPoint& boxOrigin, const FontCascade& font, const MarkerSubrange& subrange)
+void InlineTextBox::paintDocumentMarker(GraphicsContext& context, const FloatPoint& boxOrigin, const MarkerSubrange& subrange)
 {
     // Never print spelling/grammar markers (5327887)
     if (renderer().document().printing())
@@ -824,13 +818,16 @@ void InlineTextBox::paintDocumentMarker(GraphicsContext& context, const FloatPoi
 
         // Calculate start & width
         // FIXME: Adjust text run for combined text and hyphenation.
+        bool ignoreCombinedText = true;
+        bool ignoreHyphen = true;
         int deltaY = renderer().style().isFlippedLinesWritingMode() ? selectionBottom() - logicalBottom() : logicalTop() - selectionTop();
         int selHeight = selectionHeight();
         FloatPoint startPoint(boxOrigin.x(), boxOrigin.y() - deltaY);
-        TextRun run = constructTextRun(lineStyle());
+        auto text = this->text(ignoreCombinedText, ignoreHyphen);
+        TextRun run = createTextRun(text);
 
         LayoutRect selectionRect = LayoutRect(startPoint, FloatSize(0, selHeight));
-        font.adjustSelectionRectForText(run, selectionRect, startPosition, endPosition);
+        lineFont().adjustSelectionRectForText(run, selectionRect, startPosition, endPosition);
         IntRect markerRect = enclosingIntRect(selectionRect);
         start = markerRect.x() - startPoint.x();
         width = markerRect.width();
@@ -877,7 +874,7 @@ void InlineTextBox::paintDocumentMarker(GraphicsContext& context, const FloatPoi
     context.drawLineForDocumentMarker(FloatPoint(boxOrigin.x() + start, boxOrigin.y() + underlineOffset), width, lineStyleForSubrangeType(subrange.type));
 }
 
-void InlineTextBox::paintDocumentMarkers(GraphicsContext& context, const FloatPoint& boxOrigin, const FontCascade& font, bool background)
+void InlineTextBox::paintDocumentMarkers(GraphicsContext& context, const FloatPoint& boxOrigin, bool background)
 {
     if (!renderer().textNode())
         return;
@@ -971,9 +968,9 @@ void InlineTextBox::paintDocumentMarkers(GraphicsContext& context, const FloatPo
 
     for (auto& subrange : subdivide(subranges, OverlapStrategy::Frontmost)) {
         if (subrange.type == MarkerSubrange::TextMatch)
-            paintTextMatchMarker(context, boxOrigin, font, subrange, subrange.marker->isActiveMatch());
+            paintTextMatchMarker(context, boxOrigin, subrange, subrange.marker->isActiveMatch());
         else
-            paintDocumentMarker(context, boxOrigin, font, subrange);
+            paintDocumentMarker(context, boxOrigin, subrange);
     }
 }
 
@@ -1050,7 +1047,10 @@ int InlineTextBox::offsetForPosition(float lineOffset, bool includePartialGlyphs
         return isLeftToRightDirection() ? len() : 0;
     if (lineOffset - logicalLeft() < 0)
         return isLeftToRightDirection() ? 0 : len();
-    return lineFont().offsetForPosition(constructTextRun(lineStyle()), lineOffset - logicalLeft(), includePartialGlyphs);
+    bool ignoreCombinedText = true;
+    bool ignoreHyphen = true;
+    auto text = this->text(ignoreCombinedText, ignoreHyphen);
+    return lineFont().offsetForPosition(createTextRun(text), lineOffset - logicalLeft(), includePartialGlyphs);
 }
 
 float InlineTextBox::positionForOffset(unsigned offset) const
@@ -1073,40 +1073,37 @@ float InlineTextBox::positionForOffset(unsigned offset) const
 
     // FIXME: Do we need to add rightBearing here?
     LayoutRect selectionRect = LayoutRect(logicalLeft(), 0, 0, 0);
-    TextRun textRun = constructTextRun(lineStyle());
+    bool ignoreCombinedText = true;
+    bool ignoreHyphen = true;
+    auto text = this->text(ignoreCombinedText, ignoreHyphen);
+    TextRun textRun = createTextRun(text);
     lineFont().adjustSelectionRectForText(textRun, selectionRect, startOffset, endOffset);
     return snapRectToDevicePixelsWithWritingDirection(selectionRect, renderer().document().deviceScaleFactor(), textRun.ltr()).maxX();
 }
 
-StringView InlineTextBox::substringToRender(std::optional<unsigned> overridingLength) const
+TextRun InlineTextBox::createTextRun(String& string) const
 {
-    return StringView(renderer().text()).substring(start(), overridingLength.value_or(len()));
+    const auto& style = lineStyle();
+    TextRun textRun { string, textPos(), expansion(), expansionBehavior(), direction(), dirOverride() || style.rtlOrdering() == VisualOrder, !renderer().canUseSimpleFontCodePath() };
+    textRun.setTabSize(!style.collapseWhiteSpace(), style.tabSize());
+    return textRun;
 }
 
-String InlineTextBox::hyphenatedStringForTextRun(const RenderStyle& style, std::optional<unsigned> alternateLength) const
+String InlineTextBox::text(bool ignoreCombinedText, bool ignoreHyphen) const
 {
-    ASSERT(hasHyphen());
-    return makeString(substringToRender(alternateLength), style.hyphenString());
-}
-
-TextRun InlineTextBox::constructTextRun(const RenderStyle& style, StringView alternateStringToRender, std::optional<unsigned> alternateLength) const
-{
-    if (alternateStringToRender.isNull())
-        return constructTextRun(style, substringToRender(alternateLength), renderer().textLength() - start());
-    return constructTextRun(style, alternateStringToRender, alternateStringToRender.length());
-}
-
-TextRun InlineTextBox::constructTextRun(const RenderStyle& style, StringView string, unsigned maximumLength) const
-{
-    ASSERT(maximumLength >= string.length());
-
-    TextRun run(string, textPos(), expansion(), expansionBehavior(), direction(), dirOverride() || style.rtlOrdering() == VisualOrder, !renderer().canUseSimpleFontCodePath());
-    run.setTabSize(!style.collapseWhiteSpace(), style.tabSize());
-
-    // Propagate the maximum length of the characters buffer to the TextRun, even when we're only processing a substring.
-    run.setCharactersLength(maximumLength);
-    ASSERT(run.charactersLength() >= run.length());
-    return run;
+    if (UNLIKELY(m_truncation == cFullTruncation))
+        return emptyString();
+    if (auto* combinedText = this->combinedText()) {
+        if (ignoreCombinedText)
+            return renderer().text()->substring(m_start, m_len);
+        return combinedText->combinedStringForRendering();
+    }
+    if (hasHyphen()) {
+        if (ignoreHyphen)
+            return renderer().text()->substring(m_start, m_len);
+        return makeString(StringView(renderer().text()).substring(m_start, m_len), lineStyle().hyphenString());
+    }
+    return renderer().text()->substring(m_start, m_truncation != cNoTruncation ? m_truncation : m_len);
 }
 
 inline const RenderCombineText* InlineTextBox::combinedText() const

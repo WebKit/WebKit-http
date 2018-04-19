@@ -35,6 +35,7 @@ import sys
 import traceback
 
 from webkitpy.common.host import Host
+from webkitpy.common.interupt_debugging import log_stack_trace_on_cntrl_c, log_stack_trace_on_term
 from webkitpy.layout_tests.controllers.manager import Manager
 from webkitpy.layout_tests.models.test_run_results import INTERRUPTED_EXIT_STATUS
 from webkitpy.port import configuration_options, platform_options
@@ -72,6 +73,10 @@ def main(argv, stdout, stderr):
         # FIXME: is this the best way to handle unsupported port names?
         print >> stderr, str(e)
         return EXCEPTIONAL_EXIT_STATUS
+
+    stack_trace_path = host.filesystem.join(port.results_directory(), 'python_stack_trace.txt')
+    log_stack_trace_on_cntrl_c(output_file=stack_trace_path)
+    log_stack_trace_on_term(output_file=stack_trace_path)
 
     if options.print_expectations:
         return _print_expectations(port, options, args, stderr)
@@ -299,6 +304,7 @@ def parse_args(args):
         optparse.make_option('--device-type', help='iOS Simulator device type identifier (default: i386 -> iPhone 5, x86_64 -> iPhone 5s)'),
         optparse.make_option('--dedicated-simulators', action="store_true", default=False,
             help="If set, dedicated iOS simulators will always be created.  If not set, the script will attempt to use any currently running simulator."),
+        optparse.make_option('--show-touches', action="store_true", default=False, help="If set, a small dot will be shown where the generated touches are. Helpful for debugging touch tests."),
     ]))
 
     option_group_definitions.append(("Miscellaneous Options", [

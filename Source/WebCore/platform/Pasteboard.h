@@ -27,6 +27,8 @@
 
 #include "DragImage.h"
 #include "URL.h"
+#include <wtf/HashMap.h>
+#include <wtf/ListHashSet.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
@@ -56,6 +58,7 @@ class DocumentFragment;
 class DragData;
 class Element;
 class Frame;
+class PasteboardStrategy;
 class Range;
 class SelectionData;
 class SharedBuffer;
@@ -65,7 +68,7 @@ enum ShouldSerializeSelectedTextForDataTransfer { DefaultSelectedTextType, Inclu
 // For writing to the pasteboard. Generally sorted with the richest formats on top.
 
 struct PasteboardWebContent {
-#if !(PLATFORM(GTK) || PLATFORM(WIN) || PLATFORM(WPE))
+#if PLATFORM(COCOA)
     WEBCORE_EXPORT PasteboardWebContent();
     WEBCORE_EXPORT ~PasteboardWebContent();
     bool canSmartCopyOrDelete;
@@ -145,6 +148,27 @@ struct PasteboardPlainText {
 #endif
 };
 
+struct PasteboardFileReader {
+    virtual ~PasteboardFileReader() = default;
+    virtual void readFilename(const String&) = 0;
+    virtual void readBuffer(const String& filename, const String& type, Ref<SharedBuffer>&&) = 0;
+};
+
+// FIXME: We need to ensure that the contents of sameOriginCustomData are not accessible across different origins.
+struct PasteboardCustomData {
+    String origin;
+    Vector<String> orderedTypes;
+    HashMap<String, String> platformData;
+    HashMap<String, String> sameOriginCustomData;
+
+    WEBCORE_EXPORT Ref<SharedBuffer> createSharedBuffer() const;
+    WEBCORE_EXPORT static PasteboardCustomData fromSharedBuffer(const SharedBuffer&);
+
+#if PLATFORM(COCOA)
+    static const char* cocoaType();
+#endif
+};
+
 class Pasteboard {
     WTF_MAKE_NONCOPYABLE(Pasteboard); WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -164,11 +188,15 @@ public:
 
     WEBCORE_EXPORT static std::unique_ptr<Pasteboard> createForCopyAndPaste();
 
+    static bool isSafeTypeForDOMToReadAndWrite(const String&);
+
     virtual bool isStatic() const { return false; }
 
     virtual bool hasData();
-    virtual Vector<String> types();
+    virtual Vector<String> typesSafeForBindings();
+    virtual Vector<String> typesForLegacyUnsafeBindings();
     virtual String readString(const String& type);
+    virtual String readStringInCustomData(const String& type);
 
     virtual void writeString(const String& type, const String& data);
     virtual void clear();
@@ -176,13 +204,14 @@ public:
 
     virtual void read(PasteboardPlainText&);
     virtual void read(PasteboardWebContentReader&);
+    virtual void read(PasteboardFileReader&);
 
     virtual void write(const PasteboardURL&);
     virtual void writeTrustworthyWebURLsPboardType(const PasteboardURL&);
     virtual void write(const PasteboardImage&);
     virtual void write(const PasteboardWebContent&);
 
-    virtual Vector<String> readFilenames();
+    virtual bool containsFiles();
     virtual bool canSmartReplace();
 
     virtual void writeMarkup(const String& markup);
@@ -217,6 +246,7 @@ public:
 #if PLATFORM(COCOA)
     explicit Pasteboard(const String& pasteboardName);
 
+    static bool shouldTreatCocoaTypeAsFile(const String&);
     WEBCORE_EXPORT static NSArray *supportedFileUploadPasteboardTypes();
     const String& name() const { return m_pasteboardName; }
     long changeCount() const;
@@ -231,6 +261,8 @@ public:
     void writeImageToDataObject(Element&, const URL&); // FIXME: Layering violation.
 #endif
 
+    void writeCustomData(const PasteboardCustomData&);
+
 private:
 #if PLATFORM(IOS)
     bool respectsUTIFidelities() const;
@@ -242,6 +274,15 @@ private:
     void writeRangeToDataObject(Range&, Frame&); // FIXME: Layering violation.
     void writeURLToDataObject(const URL&, const String&);
     void writePlainTextToDataObject(const String&, SmartReplaceOption);
+#endif
+
+#if PLATFORM(COCOA)
+    Vector<String> readFilenames();
+    String readPlatformValueAsString(const String& domType, long changeCount, const String& pasteboardName);
+    static void addHTMLClipboardTypesForCocoaType(ListHashSet<String>& resultTypes, const String& cocoaType);
+    String readStringForPlatformType(const String&);
+    Vector<String> readTypesWithSecurityCheck();
+    RefPtr<SharedBuffer> readBufferForTypeWithSecurityCheck(const String&);
 #endif
 
 #if PLATFORM(GTK)

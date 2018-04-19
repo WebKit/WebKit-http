@@ -17,6 +17,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/airplay"
     "${WEBCORE_DIR}/Modules/beacon"
     "${WEBCORE_DIR}/Modules/applepay"
+    "${WEBCORE_DIR}/Modules/applepay/paymentrequest"
     "${WEBCORE_DIR}/Modules/cache"
     "${WEBCORE_DIR}/Modules/credentials"
     "${WEBCORE_DIR}/Modules/encryptedmedia"
@@ -497,6 +498,8 @@ set(WebCore_NON_SVG_IDL_FILES
     css/WebKitCSSMatrix.idl
     css/WebKitCSSViewportRule.idl
 
+    dom/AbortController.idl
+    dom/AbortSignal.idl
     dom/AnimationEvent.idl
     dom/Attr.idl
     dom/BeforeLoadEvent.idl
@@ -683,6 +686,8 @@ set(WebCore_NON_SVG_IDL_FILES
     html/HTMLUListElement.idl
     html/HTMLUnknownElement.idl
     html/HTMLVideoElement.idl
+    html/ImageBitmap.idl
+    html/ImageBitmapOptions.idl
     html/ImageData.idl
     html/MediaController.idl
     html/MediaError.idl
@@ -718,6 +723,7 @@ set(WebCore_NON_SVG_IDL_FILES
     html/canvas/CanvasTextDrawingStyles.idl
     html/canvas/CanvasTransform.idl
     html/canvas/CanvasUserInterface.idl
+    html/canvas/ImageBitmapRenderingContext.idl
     html/canvas/ImageSmoothingQuality.idl
     html/canvas/Path2D.idl
     html/canvas/WebGPUBuffer.idl
@@ -1098,8 +1104,6 @@ set(WebCore_SOURCES
     Modules/mediastream/MediaDevices.cpp
     Modules/mediastream/MediaDevicesEnumerationRequest.cpp
     Modules/mediastream/MediaDevicesRequest.cpp
-    Modules/mediastream/MediaEndpointPeerConnection.cpp
-    Modules/mediastream/MediaEndpointSessionDescription.cpp
     Modules/mediastream/MediaStream.cpp
     Modules/mediastream/MediaStreamEvent.cpp
     Modules/mediastream/MediaStreamRegistry.cpp
@@ -1121,7 +1125,6 @@ set(WebCore_SOURCES
     Modules/mediastream/RTCRtpTransceiver.cpp
     Modules/mediastream/RTCSessionDescription.cpp
     Modules/mediastream/RTCTrackEvent.cpp
-    Modules/mediastream/SDPProcessor.cpp
     Modules/mediastream/UserMediaController.cpp
     Modules/mediastream/UserMediaRequest.cpp
 
@@ -1130,6 +1133,7 @@ set(WebCore_SOURCES
     Modules/notifications/Notification.cpp
     Modules/notifications/NotificationController.cpp
 
+    Modules/paymentrequest/PaymentHandler.cpp
     Modules/paymentrequest/PaymentRequest.cpp
     Modules/paymentrequest/PaymentRequestUpdateEvent.cpp
     Modules/paymentrequest/PaymentResponse.cpp
@@ -1590,6 +1594,8 @@ set(WebCore_SOURCES
 
     cssjit/SelectorCompiler.cpp
 
+    dom/AbortController.cpp
+    dom/AbortSignal.cpp
     dom/ActiveDOMCallback.cpp
     dom/ActiveDOMCallbackMicrotask.cpp
     dom/ActiveDOMObject.cpp
@@ -1806,6 +1812,7 @@ set(WebCore_SOURCES
     editing/VisibleSelection.cpp
     editing/VisibleUnits.cpp
     editing/WebContentReader.cpp
+    editing/WebCorePasteboardFileReader.cpp
     editing/WrapContentsInDummySpanCommand.cpp
     editing/markup.cpp
 
@@ -1941,6 +1948,7 @@ set(WebCore_SOURCES
     html/HTMLVideoElement.cpp
     html/HTMLWBRElement.cpp
     html/HiddenInputType.cpp
+    html/ImageBitmap.cpp
     html/ImageData.cpp
     html/ImageDocument.cpp
     html/ImageInputType.cpp
@@ -1986,7 +1994,9 @@ set(WebCore_SOURCES
     html/canvas/CanvasRenderingContext.cpp
     html/canvas/CanvasRenderingContext2D.cpp
     html/canvas/CanvasStyle.cpp
+    html/canvas/ImageBitmapRenderingContext.cpp
     html/canvas/Path2D.cpp
+    html/canvas/PlaceholderRenderingContext.cpp
     html/canvas/WebGPUBuffer.cpp
     html/canvas/WebGPUCommandBuffer.cpp
     html/canvas/WebGPUCommandQueue.cpp
@@ -2330,13 +2340,13 @@ set(WebCore_SOURCES
     platform/LengthBox.cpp
     platform/LengthPoint.cpp
     platform/LengthSize.cpp
-    platform/LinkHash.cpp
     platform/LocalizedStrings.cpp
     platform/Logging.cpp
     platform/LowPowerModeNotifier.cpp
     platform/MIMETypeRegistry.cpp
     platform/MainThreadSharedTimer.cpp
     platform/NotImplemented.cpp
+    platform/Pasteboard.cpp
     platform/PasteboardWriterData.cpp
     platform/PlatformSpeechSynthesisUtterance.cpp
     platform/PlatformSpeechSynthesisVoice.cpp
@@ -2353,6 +2363,7 @@ set(WebCore_SOURCES
     platform/ScrollbarThemeComposite.cpp
     platform/SharedBuffer.cpp
     platform/SharedBufferChunkReader.cpp
+    platform/SharedStringHash.cpp
     platform/StaticPasteboard.cpp
     platform/Theme.cpp
     platform/ThreadGlobalData.cpp
@@ -2555,13 +2566,11 @@ set(WebCore_SOURCES
     platform/mediastream/RealtimeMediaSource.cpp
     platform/mediastream/RealtimeMediaSourceCenter.cpp
     platform/mediastream/RealtimeMediaSourceSettings.cpp
-    platform/mediastream/SDPProcessorScriptResource.cpp
 
     platform/mediastream/libwebrtc/LibWebRTCProvider.cpp
 
     platform/mock/DeviceOrientationClientMock.cpp
     platform/mock/GeolocationClientMock.cpp
-    platform/mock/MockMediaEndpoint.cpp
     platform/mock/MockRealtimeAudioSource.cpp
     platform/mock/MockRealtimeMediaSource.cpp
     platform/mock/MockRealtimeMediaSourceCenter.cpp
@@ -2613,7 +2622,6 @@ set(WebCore_SOURCES
 
     platform/text/BidiContext.cpp
     platform/text/DateTimeFormat.cpp
-    platform/text/LineEnding.cpp
     platform/text/LocaleToScriptMappingDefault.cpp
     platform/text/PlatformLocale.cpp
     platform/text/QuotedPrintable.cpp
@@ -2750,7 +2758,7 @@ set(WebCore_SOURCES
     rendering/RenderWidget.cpp
     rendering/RootInlineBox.cpp
     rendering/ScrollAlignment.cpp
-    rendering/SelectionSubtreeRoot.cpp
+    rendering/SelectionRangeData.cpp
     rendering/SimpleLineLayout.cpp
     rendering/SimpleLineLayoutCoverage.cpp
     rendering/SimpleLineLayoutFlowContents.cpp
@@ -3658,7 +3666,7 @@ if (ENABLE_USER_MESSAGE_HANDLERS)
 endif ()
 
 if (USE_WOFF2)
-  list(APPEND WebCore_INCLUDE_DIRECTORIES "${THIRDPARTY_DIR}/woff2/src")
+  list(APPEND WebCore_INCLUDE_DIRECTORIES "${THIRDPARTY_DIR}/woff2/include")
   list(APPEND WebCore_LIBRARIES woff2)
 endif ()
 
@@ -3882,24 +3890,6 @@ if (WebCore_USER_AGENT_SCRIPTS)
         WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES
     )
     list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/UserAgentScriptsData.cpp)
-endif ()
-
-if (ENABLE_WEB_RTC)
-    # Necessary variables:
-    # WebCore_SDP_PROCESSOR_SCRIPTS containing the JavaScript sources list
-    # WebCore_SDP_PROCESSOR_SCRIPTS_DEPENDENCIES containing the source file that will load the scripts to add the proper
-    #   dependency and having them built at the right moment
-    set(WebCore_SDP_PROCESSOR_SCRIPTS ${WEBCORE_DIR}/Modules/mediastream/sdp.js)
-    set(WebCore_SDP_PROCESSOR_SCRIPTS_DEPENDENCIES ${WEBCORE_DIR}/platform/mediastream/SDPProcessorScriptResource.cpp)
-
-    MAKE_JS_FILE_ARRAYS(
-        ${DERIVED_SOURCES_WEBCORE_DIR}/SDPProcessorScriptsData.cpp
-        ${DERIVED_SOURCES_WEBCORE_DIR}/SDPProcessorScriptsData.h
-        WebCore
-        WebCore_SDP_PROCESSOR_SCRIPTS
-        WebCore_SDP_PROCESSOR_SCRIPTS_DEPENDENCIES
-    )
-    list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/SDPProcessorScriptsData.cpp)
 endif ()
 
 # Generate plug-in resources

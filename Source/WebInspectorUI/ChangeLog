@@ -1,3 +1,704 @@
+2017-10-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network Tab - Make selection in the table more reliable (mousedown instead of click)
+        https://bugs.webkit.org/show_bug.cgi?id=177990
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype.tableCellClicked): Deleted.
+        * UserInterface/Views/Table.js:
+        (WI.Table.prototype._handleMouseDown):
+        (WI.Table.prototype._handleClick): Deleted.
+        Switch to mousedown.
+
+2017-10-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve setting the default / initial sort of a Table
+        https://bugs.webkit.org/show_bug.cgi?id=177989
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype.initialLayout):
+        Set the default / initial sort.
+
+        * UserInterface/Views/Table.js:
+        (WI.Table):
+        (WI.Table.prototype.set sortOrder):
+        (WI.Table.prototype.set sortColumnIdentifier):
+        During setup we should always update header views.
+
+2017-10-05  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: Add support for keyboard navigation (Tab, Shift-Tab, Enter, Esc)
+        https://bugs.webkit.org/show_bug.cgi?id=177711
+
+        Reviewed by Joseph Pecoraro.
+
+        Enter, Tab, Shift-Tab should commit changes.
+        Escape should discard changes.
+
+        Tab and Enter should navigate forward (focus on the next field).
+        Shift-Tab should navigate backward (focus on the previous field).
+        Esc should not change the focus.
+
+        When navigating forward from:
+
+        - Selector: Focus on the first property name. If it doesn’t exist, create a blank property.
+
+        - Property name:
+          - If property name is blank, discard the property and focus on the next editable field (property name or selector of the next rule).
+          - If property is not blank, focus on the value.
+
+        - Property value:
+          - If the last value in the rule, create a blank property and focus on its name.
+          - If not the last value in the rule, focus on the next editable field (property name or selector of the next rule).
+
+        When navigating backward from:
+
+        - Selector: create a blank property on the previous editable rule and focus on its name.
+
+        - Property name:
+          - Focus on the rule's selector.
+
+        - Property value:
+          - Focus on the property name.
+
+        * UserInterface/Base/Utilities.js:
+        (Event.prototype.stop):
+        * UserInterface/Main.html:
+        Add new files. Keep one class per file.
+
+        * UserInterface/Models/CSSProperty.js:
+        (WI.CSSProperty.prototype.remove):
+        (WI.CSSProperty.prototype.set name):
+        (WI.CSSProperty.prototype.set rawValue):
+        (WI.CSSProperty.prototype.get editable):
+        (WI.CSSProperty.prototype._updateStyleText):
+        (WI.CSSProperty.prototype._updateOwnerStyleText):
+        Update indices and ranges of properties following the edited one to prevent data corruption.
+
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        (WI.CSSStyleDeclaration.prototype.get selectorEditable):
+        (WI.CSSStyleDeclaration.prototype.set text):
+        (WI.CSSStyleDeclaration.prototype.newBlankProperty):
+        (WI.CSSStyleDeclaration.prototype.shiftPropertiesAfter):
+        (WI.CSSStyleDeclaration.prototype._rangeAfterPropertyAtIndex):
+        Implement adding new blank properties.
+
+        * UserInterface/Models/TextRange.js:
+        (WI.TextRange.prototype.cloneAndModify):
+        Add an assert to catch negative number errors.
+
+        (WI.TextRange.prototype.collapseToEnd):
+        Add a utility function akin Selection.prototype.collapseToEnd.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WI.CSSStyleDeclarationTextEditor.prototype._handleShiftTabKey):
+        (WI.CSSStyleDeclarationTextEditor.prototype._handleTabKey):
+        (WI.CSSStyleDeclarationTextEditor.prototype._formattedContent):
+        Move PrefixWhitespace from a view to a model (WI.CSSStyleDeclaration.PrefixWhitespace),
+        since it's already used in the model.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.spreadsheet-style-declaration-editor :matches(.name, .value).editing):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.layout):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.startEditingFirstProperty):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.startEditingLastProperty):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.spreadsheetCSSStyleDeclarationEditorFocusMoved):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.spreadsheetStylePropertyRemoved):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.get _propertiesToRender):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype._addBlankProperty):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype._isFocused):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype._propertiesChanged):
+        Give SpreadsheetCSSStyleDeclarationEditor a delegate so that it can move focus to a CSS selector, or previous and next CSS rules.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.get propertiesEditor):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.get editable):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.initialLayout):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.startEditingRuleSelector):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.cssStyleDeclarationTextEditorStartEditingRuleSelector):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.spreadsheetSelectorFieldDidChange):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.cssStyleDeclarationEditorStartEditingAdjacentRule):
+        Give SpreadsheetCSSStyleDeclarationSection a delegate so that it can move focus to previous and next CSS rules.
+
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.refresh):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.cssStyleDeclarationSectionStartEditingNextRule):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.cssStyleDeclarationSectionStartEditingPreviousRule):
+        (WI.SpreadsheetRulesStyleDetailsPanel):
+        Implement focusing on the next and previous CSS rules.
+
+        * UserInterface/Views/SpreadsheetSelectorField.js: Added.
+        (WI.SpreadsheetSelectorField):
+        (WI.SpreadsheetSelectorField.prototype.get editing):
+        (WI.SpreadsheetSelectorField.prototype.startEditing):
+        (WI.SpreadsheetSelectorField.prototype.stopEditing):
+        (WI.SpreadsheetSelectorField.prototype._selectText):
+        (WI.SpreadsheetSelectorField.prototype._handleClick):
+        (WI.SpreadsheetSelectorField.prototype._handleFocus):
+        (WI.SpreadsheetSelectorField.prototype._handleBlur):
+        (WI.SpreadsheetSelectorField.prototype._handleKeyDown):
+        Move SpreadsheetSelectorField into its own file.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js: Added.
+        (WI.SpreadsheetStyleProperty):
+        (WI.SpreadsheetStyleProperty.prototype.get element):
+        (WI.SpreadsheetStyleProperty.prototype.get nameTextField):
+        (WI.SpreadsheetStyleProperty.prototype.get valueTextField):
+        (WI.SpreadsheetStyleProperty.prototype._remove):
+        (WI.SpreadsheetStyleProperty.prototype._update):
+        (WI.SpreadsheetStyleProperty.prototype.spreadsheetTextFieldDidChange):
+        (WI.SpreadsheetStyleProperty.prototype.spreadsheetTextFieldDidCommit):
+        (WI.SpreadsheetStyleProperty.prototype.spreadsheetTextFieldDidBlur):
+        (WI.SpreadsheetStyleProperty.prototype._handleNameChange):
+        (WI.SpreadsheetStyleProperty.prototype._handleValueChange):
+        Move SpreadsheetStyleProperty into its own file.
+
+        * UserInterface/Views/SpreadsheetTextField.js: Added.
+        (WI.SpreadsheetTextField):
+        (WI.SpreadsheetTextField.prototype.get element):
+        (WI.SpreadsheetTextField.prototype.get editing):
+        (WI.SpreadsheetTextField.prototype.get value):
+        (WI.SpreadsheetTextField.prototype.set value):
+        (WI.SpreadsheetTextField.prototype.startEditing):
+        (WI.SpreadsheetTextField.prototype.stopEditing):
+        (WI.SpreadsheetTextField.prototype._selectText):
+        (WI.SpreadsheetTextField.prototype._discardChange):
+        (WI.SpreadsheetTextField.prototype._handleFocus):
+        (WI.SpreadsheetTextField.prototype._handleBlur):
+        (WI.SpreadsheetTextField.prototype._handleKeyDown):
+        (WI.SpreadsheetTextField.prototype._handleInput):
+        Introduce SpreadsheetTextField that is used for editing CSS property names and values.
+
+2017-10-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION(r222868): Web Inspector: Timeline ScopeBar Navigation Bar items too large
+        https://bugs.webkit.org/show_bug.cgi?id=177979
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/ButtonNavigationItem.css:
+        (.navigation-bar .item.button.text-only):
+        Make the height of text-only items the size of the text, not 100%.
+
+2017-10-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: When scrolled Network Table reduces the number of rows it may appear as blank
+        https://bugs.webkit.org/show_bug.cgi?id=177914
+        <rdar://problem/34827613>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/Table.js:
+        (WI.Table.prototype._updateVisibleRows):
+        (WI.Table.prototype._updateFillerRowWithNewHeight):
+        Reduce the scrollTop when the table was scrolled and was then reloaded with a
+        smaller number of rows. This can happen in two ways. Either the number of rows
+        was reduced so much that we enter non-scrollable mode with a non-zero filler
+        row. This can always reset the scrollTop to 0. Or when a large number of rows
+        is reduced to a smaller number than our current scrollTop but still more than
+        fit on one screen. In that case we can reduce the scrollTop to whatever would
+        scroll the table to its max position.
+
+2017-10-04  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Improve CanvasManager recording events
+        https://bugs.webkit.org/show_bug.cgi?id=177762
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager.prototype.startRecording):
+        (WI.CanvasManager.prototype.stopRecording):
+        (WI.CanvasManager.prototype.recordingFinished):
+        Replace the RecordingFinished event with a pair of events. RecordingStarted
+        is sent when CanvasAgent.startRecording succeeds. RecordingStopped is
+        sent when a recordingFinished event is received from the backend, or
+        when a call to CanvasAgent.stopRecording fails.
+
+        * UserInterface/Views/CanvasContentView.js:
+        (WI.CanvasContentView.prototype.initialLayout):
+        (WI.CanvasContentView.prototype._toggleRecording):
+        (WI.CanvasContentView.prototype._recordingStarted):
+        (WI.CanvasContentView.prototype._recordingFinished): Deleted.
+        Update recording status when CanvasManager fires recording events,
+        instead of immediately after clicking the record button.
+
+2017-10-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Detail Views for resources in Network Tab
+        https://bugs.webkit.org/show_bug.cgi?id=177553
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        New strings and resources.
+
+        * UserInterface/Base/Main.js:
+        (WI._focusedContentBrowser):
+        Detect nested content browsers instead of only top level tab content browsers.
+
+        * UserInterface/Base/Setting.js:
+        Add a new global setting for which Network Detail view is preferred.
+
+        * UserInterface/Views/ContentBrowser.css:
+        (.content-browser > .navigation-bar .item):
+        (.content-browser > .navigation-bar > .item): Deleted.
+        Generalize a navigation item style so it works on items nested inside a group.
+
+        * UserInterface/Views/ContentBrowser.js:
+        (WI.ContentBrowser.prototype._updateContentViewSelectionPathNavigationItem):
+        (WI.ContentBrowser.prototype._updateContentViewNavigationItems):
+        (WI.ContentBrowser.prototype._removeAllNavigationItems):
+        Give ContentBrowser a way to group all ContentView specific navigation items
+        inside a GroupNavigationItem. This lets the client decide what to do with
+        those navigation items, instead of default behavior in the navigation bar.
+
+        * UserInterface/Views/ContentViewContainer.js:
+        (WI.ContentViewContainer.prototype.showContentView):
+        Avoid a flash when showContentView is called with the current content view.
+
+        * UserInterface/Views/FlexibleSpaceNavigationItem.css:
+        (:matches(.navigation-bar, .toolbar) .item.flexible-space.align-start > .item):
+        (:matches(.navigation-bar, .toolbar) .item.flexible-space.align-end > .item):
+        When containing a navigation item decide where you want the items to align to.
+
+        * UserInterface/Views/FlexibleSpaceNavigationItem.js:
+        (WI.FlexibleSpaceNavigationItem):
+        (WI.FlexibleSpaceNavigationItem.prototype.updateLayout):
+        Provide an option to embed a NavigationItem within a FlexibleSpace. Its behavior right
+        now is rather simple. If the embedded Item fits in the current available space it is
+        shown. If it doesn't fit, it is hidden and we have just a flexible space. This is used
+        in the network detail view's navigation bar to keep the main navigation items centered
+        while allowing for buttons to show up on the side without affecting the centering.
+
+        * UserInterface/Views/NavigationBar.js:
+        (WI.NavigationBar):
+        (WI.NavigationBar.prototype._mouseDown):
+        (WI.NavigationBar.prototype._mouseUp):
+        Simplify event registration. This would also help avoid cases where we
+        might have registered multiple mousedown handlers.
+
+        * UserInterface/Views/GroupNavigationItem.js:
+        (WI.GroupNavigationItem):
+        (WI.GroupNavigationItem.prototype.get navigationItems):
+        (WI.GroupNavigationItem.prototype.set navigationItems):
+        (WI.GroupNavigationItem.prototype.get width):
+        (WI.GroupNavigationItem.prototype.get minimumWidth):
+        (WI.GroupNavigationItem.prototype._updateItems):
+        * UserInterface/Views/HierarchicalPathNavigationItem.js:
+        (WI.HierarchicalPathNavigationItem):
+        (WI.HierarchicalPathNavigationItem.prototype.set components):
+        (WI.HierarchicalPathNavigationItem.prototype.updateLayout):
+        (WI.HierarchicalPathNavigationItem.prototype._updateComponentsIfNeeded):
+        Defer DOM modifications until layout for NavigationItems container classes
+        that change items/components dynamically. This reduces UI flashing in the
+        bar when items/components change by coalescing all DOM updates at the same
+        time; when the NavigationBar does its next layout.
+
+        * UserInterface/Views/NetworkResourceDetailView.css:
+        (.network-resource-detail):
+        (.network-resource-detail .navigation-bar):
+        (.network-resource-detail .item.close > .glyph):
+        (.network-resource-detail .item.close > .glyph:hover):
+        (.network-resource-detail .item.close > .glyph:active):
+        (.network .network-resource-detail .navigation-bar .item.radio.button.text-only):
+        (.network .network-resource-detail .navigation-bar .item.radio.button.text-only.selected):
+        (.network-resource-detail > .content-browser):
+        Styles for the detail view's navigation bar.
+
+        * UserInterface/Views/NetworkResourceDetailView.js: Added.
+        (WI.NetworkResourceDetailView):
+        (WI.NetworkResourceDetailView.prototype.get resource):
+        (WI.NetworkResourceDetailView.prototype.shown):
+        (WI.NetworkResourceDetailView.prototype.hidden):
+        (WI.NetworkResourceDetailView.prototype.dispose):
+        (WI.NetworkResourceDetailView.prototype.initialLayout):
+        (WI.NetworkResourceDetailView.prototype._showPreferredContentView):
+        (WI.NetworkResourceDetailView.prototype._showContentViewForNavigationItem):
+        (WI.NetworkResourceDetailView.prototype._navigationItemSelected):
+        (WI.NetworkResourceDetailView.prototype._handleCloseButton):
+        ContentBrowser with customized navigation bar. This container has a fixed
+        list of ContentViews all relating to the Resource. The detail view has
+        a single delegate method for its close button. Since it maintains a
+        ContentBrowser it needs to expose shown/hidden/dispose logic to ensure
+        proper ContentView lifecycle events.
+
+        * UserInterface/Views/NetworkTableContentView.css:
+        (.showing-detail .table .cell:not(.name)):
+        (.showing-detail .table .resizer:not(:first-of-type)):
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView):
+        (WI.NetworkTableContentView.prototype.shown):
+        (WI.NetworkTableContentView.prototype.hidden):
+        (WI.NetworkTableContentView.prototype.closed):
+        (WI.NetworkTableContentView.prototype.reset):
+        (WI.NetworkTableContentView.prototype.networkResourceDetailViewClose):
+        (WI.NetworkTableContentView.prototype.tableSortChanged):
+        (WI.NetworkTableContentView.prototype.tableCellClicked):
+        (WI.NetworkTableContentView.prototype.tableSelectedRowChanged):
+        (WI.NetworkTableContentView.prototype.layout):
+        (WI.NetworkTableContentView.prototype._hideResourceDetailView):
+        (WI.NetworkTableContentView.prototype._showResourceDetailView):
+        (WI.NetworkTableContentView.prototype._positionDetailView):
+        (WI.NetworkTableContentView.prototype._updateFilteredEntries):
+        (WI.NetworkTableContentView.prototype._typeFilterScopeBarSelectionChanged):
+        (WI.NetworkTableContentView.prototype._restoreSelectedRow):
+        (WI.NetworkTableContentView.prototype._tableNameColumnDidChangeWidth):
+        Behavior for selecting a row and showing / hiding the detail view.
+        The detail view is positioned beside the Network Table's "name" column
+        and resizes when that column resizes.
+
+        * UserInterface/Views/Resizer.css:
+        (.resizer):
+        * UserInterface/Views/Table.css:
+        (.table > .resizers):
+        * UserInterface/Views/Table.js:
+        (WI.Table):
+        (WI.Table.prototype.get scrollContainer):
+        (WI.Table.prototype._positionResizerElements):
+        To let clients customize the table a bit, put resizers into their own
+        container and expose the scroll container.
+
+        * UserInterface/Views/Variables.css:
+        (:root):
+        Add a new button hover color, slightly lighter than the existing button active color.
+
+2017-10-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix Beacon and Ping folderization issues
+        https://bugs.webkit.org/show_bug.cgi?id=177885
+
+        Reviewed by Matt Baker.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.shortDisplayNameForResourceType):
+        Use common capitalized UIString "Ping". It gets lowercased later.
+
+        * UserInterface/Models/ResourceCollection.js:
+        Add missing verifier.
+
+2017-10-04  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Remove unused `representedObject` parameter from GeneralTreeElementPathComponent constructor
+        https://bugs.webkit.org/show_bug.cgi?id=177561
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/GeneralTreeElementPathComponent.js:
+        (WI.GeneralTreeElementPathComponent):
+        (WI.GeneralTreeElementPathComponent.prototype.get generalTreeElement):
+        (WI.GeneralTreeElementPathComponent.prototype.get previousSibling):
+        (WI.GeneralTreeElementPathComponent.prototype.get nextSibling):
+
+2017-10-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: After enabling the new Network Tab in experimental settings, the network tab disappears
+        https://bugs.webkit.org/show_bug.cgi?id=177774
+        <rdar://problem/34771647>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        When enabling the new network tab, ensure it gets added to the list of open tabs.
+        Place it where the old network tab was so the UI is as consistent as possible.
+
+2017-10-03  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Web Inspector: Layers tab sidebar's DOM highlight should be by row hover, not row selection
+        https://bugs.webkit.org/show_bug.cgi?id=177690
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/LayerDetailsSidebarPanel.js:
+        (WI.LayerDetailsSidebarPanel):
+        (WI.LayerDetailsSidebarPanel.prototype._buildDataGrid):
+        (WI.LayerDetailsSidebarPanel.prototype._dataGridSelectedNodeChanged):
+        (WI.LayerDetailsSidebarPanel.prototype._dataGridMouseMove):
+        (WI.LayerDetailsSidebarPanel.prototype._dataGridMouseLeave):
+        (WI.LayerDetailsSidebarPanel.prototype._hideDOMNodeHighlight):
+        (WI.LayerDetailsSidebarPanel.prototype._dataGridFocused): Deleted.
+        (WI.LayerDetailsSidebarPanel.prototype._dataGridBlurred): Deleted.
+        (WI.LayerDetailsSidebarPanel.prototype._highlightSelectedNode): Deleted.
+
+2017-10-03  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: support editing of rule selectors
+        https://bugs.webkit.org/show_bug.cgi?id=177012
+
+        Reviewed by Matt Baker.
+
+        Clicking or focusing (by tabbing from another field) on a CSS selector should select the text and make the selector
+        field editable.
+
+        Keyboard behavior while editing:
+        - Enter should commit changes.
+        - Escape should discard changes.
+        - Tab should commit changes and navigate to the first property name.
+        - Shift-Tab should commit changes and navigate to the last rule's property value, if there's one.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetStyleProperty.prototype._update):
+        Add tabIndex so the keyboard navigation (Tab & Shift-Tab) to and from selectors works as expected.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.css:
+        (.spreadsheet-css-declaration .selector:focus,):
+        (.spreadsheet-css-declaration .selector.spreadsheet-selector-field):
+        (.spreadsheet-css-declaration .selector.spreadsheet-selector-field.editing):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.get selectorEditable):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.initialLayout):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.layout):
+        Split layout into _renderOrigin and _renderSelector, so selector field can be updated separately
+        from everything else.
+
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.cssStyleDeclarationTextEditorFocused):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.spreadsheetSelectorFieldDidChange):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.spreadsheetSelectorFieldDidDiscard):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._discardSelectorChange):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._renderSelector):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._renderOrigin):
+
+        (WI.SpreadsheetSelectorField):
+        (WI.SpreadsheetSelectorField.prototype.get editing):
+        (WI.SpreadsheetSelectorField.prototype.startEditing):
+        (WI.SpreadsheetSelectorField.prototype.stopEditing):
+        (WI.SpreadsheetSelectorField.prototype._handleClick):
+        (WI.SpreadsheetSelectorField.prototype._handleFocus):
+        (WI.SpreadsheetSelectorField.prototype._handleBlur):
+        (WI.SpreadsheetSelectorField.prototype._handleKeyDown):
+
+2017-10-03  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Add View layout tests, make views more testable
+        https://bugs.webkit.org/show_bug.cgi?id=161274
+        <rdar://problem/28038615>
+
+        Reviewed by Devin Rousso.
+
+        This patch adds support for View testing. Since view layouts are scheduled
+        using requestAnimationFrame, FrontendTestHarness now provides a timer-based
+        polyfill, to allow nonintrusive testing of the frontend View hierarchy.
+
+        * UserInterface/Test.html:
+        Make WI.View available to tests.
+
+        * UserInterface/Test/FrontendTestHarness.js:
+        (FrontendTestHarness.prototype.redirectRequestAnimationFrame):
+
+        * UserInterface/Views/View.js:
+        (WI.View.rootView):
+        (WI.View.prototype.replaceSubview):
+        (WI.View.prototype._didMoveToWindow):
+        (WI.View._cancelScheduledLayoutForView):
+        Fixed issues caught while writing tests for the expected View behavior.
+
+2017-10-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Escape more characters in posix string conversion
+        https://bugs.webkit.org/show_bug.cgi?id=177761
+        <rdar://problem/34506832>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/Resource.js:
+        (WI.Resource.prototype.generateCURLCommand.escapeStringPosix):
+        Escape '!' to '\041' in posix strings ($'...') since '!' may have special behavior at times.
+
+2017-10-02  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Web Inspector: Selecting child layers with keyboard causes Compositing Reason popover to become misaligned
+        https://bugs.webkit.org/show_bug.cgi?id=150551
+
+        Reviewed by Matt Baker.
+
+        `content` setter should only be used when NOT repositioning the popover.
+        `presentNewContentWithFrame` exists to update content and position at once.
+
+        * UserInterface/Views/LayerDetailsSidebarPanel.js:
+        (WI.LayerDetailsSidebarPanel.prototype._showPopoverForSelectedNode):
+        (WI.LayerDetailsSidebarPanel.prototype._presentPopover):
+        Fix new sidebar.
+
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.js:
+        (WI.LayerTreeDetailsSidebarPanel.prototype._updatePopoverForSelectedNode):
+        Fix legacy sidebar.
+
+2017-10-02  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Web Inspector: Ensure popovers are not malformed on window resize.
+        https://bugs.webkit.org/show_bug.cgi?id=177771
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/Popover.js:
+        Ensure stale `arrow-*` CSS classes are removed on update, even if our content didn't change.
+
+2017-10-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Include Beacon and Ping requests in Network tab
+        https://bugs.webkit.org/show_bug.cgi?id=177641
+        <rdar://problem/33086839>
+
+        Reviewed by Chris Dumez.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New strings for Beacon/Ping.
+
+        * UserInterface/Images/Beacon.svg: Added.
+        * UserInterface/Views/ResourceIcons.css:
+        (.resource-icon.resource-type-ping .icon,):
+        (body:not(.mac-platform, .windows-platform) .resource-icon.resource-type-ping .icon,):
+        (body:not(.mac-platform, .windows-platform) .large .resource-icon.resource-type-ping .icon,):
+        New icon for Beacon/Ping. They share an icon since they are similiar in concept:
+        a request that is sent and the page doesn't expect a response.
+
+        * UserInterface/Controllers/FrameResourceManager.js:
+        (WI.FrameResourceManager.prototype._addNewResourceToFrameOrTarget):
+        When a sub-resource and a main-resource have the same URL we were not
+        distinguishing them. Use the resource type to distinguish them better.
+
+        * UserInterface/Models/SourceCode.js:
+        (WI.SourceCode.prototype._processContent):
+        Safer handling if the body was base64 encoded but an empty string.
+
+        * UserInterface/Models/Resource.js:
+        (WI.Resource.displayNameForType):
+        * UserInterface/Models/ResourceCollection.js:
+        (WI.ResourceCollection.verifierForType):
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.shortDisplayNameForResourceType):
+        * UserInterface/Views/ResourceClusterContentView.js:
+        (WI.ResourceClusterContentView.prototype.get responseContentView):
+        New resource types.
+
+        * UserInterface/Views/ResourceContentView.js:
+        (WI.ResourceContentView.prototype.showMessage):
+        * UserInterface/Views/TextResourceContentView.js:
+        (WI.TextResourceContentView.prototype._contentDidPopulate):
+        Nicer display for empty content, which may be common for these requests.
+
+2017-09-29  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: support undo/redo of manual edits
+        https://bugs.webkit.org/show_bug.cgi?id=177314
+
+        Reviewed by Joseph Pecoraro.
+
+        Make sure Command-Z and Command-Shift-Z undo changes in the styles sidebar
+        when not focused on a contentEditable field.
+
+        * UserInterface/Views/EditingSupport.js:
+        (WI.isEventTargetAnEditableField):
+        Make sure WI._undoKeyboardShortcut doesn't call WI.undo() when editing inside of a contentEditable element.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor):
+        Call style setter to setup event listeners during instantiation.
+
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.set style):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype._propertiesChanged):
+        Update style declaration section when it isn't focused.
+        This is the same logic as in the old styles sidebar (CSSStyleDeclarationTextEditor style setter).
+
+2017-09-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Open Resource Dialog icons are blurry (24x24 instead of 32x32)
+        https://bugs.webkit.org/show_bug.cgi?id=177631
+        <rdar://problem/34729636>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/OpenResourceDialog.css:
+        (.open-resource-dialog > .tree-outline.large .item):
+        (.open-resource-dialog > .tree-outline.large .item .icon):
+        (.open-resource-dialog .tree-outline.large .item .titles):
+        Make the rows large enough to fit the full 32x32 icon instead of a blurry 24x24.
+
+2017-09-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Uncaught exception with populate find keyboard shortcut
+        https://bugs.webkit.org/show_bug.cgi?id=177672
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/Main.js:
+        The focusedContentView can be null so bail if that is the case.
+
+2017-09-28  Devin Rousso  <webkit@devinrousso.com>
+
+        WebInspector: Uncaught Exception: TypeError: this._delegate.completionControllerCSSFunctionValuesNeeded is not a function.
+        https://bugs.webkit.org/show_bug.cgi?id=177619
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/CodeMirrorCompletionController.js:
+        (WI.CodeMirrorCompletionController.prototype._generateCSSCompletions):
+        Remove accidental `typeof` keyword.
+
+2017-09-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove Error icon in error message for resources it looks poor
+        https://bugs.webkit.org/show_bug.cgi?id=177613
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/Main.css:
+        (.message-text-view.error::before): Deleted.
+
+2017-09-28  Tim Horton  <timothy_horton@apple.com>
+
+        Remove constant() in favor of env()
+        https://bugs.webkit.org/show_bug.cgi?id=177581
+        <rdar://problem/34701321>
+
+        Reviewed by Dean Jackson.
+
+        * UserInterface/Models/CSSCompletions.js:
+        * UserInterface/Models/CSSKeywordCompletions.js:
+        (WI.CSSKeywordCompletions.forProperty):
+        (WI.CSSKeywordCompletions.forFunction):
+
+2017-09-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Uncaught Exception: Attempted to assign to readonly property (at ContentView.js:​206:​34)​
+        https://bugs.webkit.org/show_bug.cgi?id=177587
+
+        Reviewed by Matt Baker.
+
+        We allow a representedObject to be a string. In strict mode attempting to set
+        a property on a string results in a TypeError. So we should be careful not to
+        do this in the rare cases where our representedObject is the a string.
+
+        * UserInterface/Views/ContentView.js:
+        (WI.ContentView.contentViewForRepresentedObject):
+        (WI.ContentView.closedContentViewForRepresentedObject):
+        Avoid setting a property on strings. ContentViews backed by a String aren't typically
+        shared anyways, so the property case would not be useful. If a client really wants
+        to share they could use `new String(...)` as the representedObject.
+
+2017-09-27  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Missing checks in DebuggerSidebarPanel for DOM debugging support
+        https://bugs.webkit.org/show_bug.cgi?id=177574
+
+        Reviewed by Joseph Pecoraro.
+
+        Check before using class members that are conditionally constructed based
+        on DOM debugging support.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel.prototype.closed):
+        (WI.DebuggerSidebarPanel.prototype.restoreStateFromCookie):
+
 2017-09-27  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: Create ResourceCollectionContentView and make CollectionContentView easier to extend

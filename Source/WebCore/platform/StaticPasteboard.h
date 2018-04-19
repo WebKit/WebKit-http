@@ -41,10 +41,13 @@ public:
     bool isStatic() const final { return true; }
 
     bool hasData() final;
-    Vector<String> types() final { return m_types; }
+    Vector<String> typesSafeForBindings() final { return m_types; }
+    Vector<String> typesForLegacyUnsafeBindings() final { return m_types; }
     String readString(const String& type) final;
+    String readStringInCustomData(const String& type) final;
 
     void writeString(const String& type, const String& data) final;
+    void writeStringInCustomData(const String& type, const String& data);
     void clear() final;
     void clear(const String& type) final;
 
@@ -55,7 +58,7 @@ public:
     void write(const PasteboardImage&) final { }
     void write(const PasteboardWebContent&) final { }
 
-    Vector<String> readFilenames() final { return { }; }
+    bool containsFiles() final { return false; }
     bool canSmartReplace() final { return false; }
 
     void writeMarkup(const String&) final { }
@@ -67,7 +70,8 @@ public:
 
 private:
     Vector<String> m_types;
-    HashMap<String, String> m_stringContents;
+    HashMap<String, String> m_platformData;
+    HashMap<String, String> m_customData;
 };
 
 }

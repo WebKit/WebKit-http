@@ -37,6 +37,7 @@
 #include <wtf/MemoryPressureHandler.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/RetainPtr.h>
+#include <wtf/WeakPtr.h>
 
 #if PLATFORM(IOS)
 #include "WebSQLiteDatabaseTracker.h"
@@ -54,10 +55,15 @@ class ProtectionSpace;
 class SecurityOrigin;
 struct SecurityOriginData;
 struct SoupNetworkProxySettings;
+enum class StoredCredentialsPolicy;
+class URL;
 }
 
 namespace WebKit {
 class AuthenticationManager;
+#if ENABLE(SERVER_PRECONNECT)
+class PreconnectTask;
+#endif
 class NetworkConnectionToWebProcess;
 class NetworkProcessSupplement;
 class NetworkResourceLoader;
@@ -121,6 +127,9 @@ public:
 
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     void canAuthenticateAgainstProtectionSpace(NetworkResourceLoader&, const WebCore::ProtectionSpace&);
+#if ENABLE(SERVER_PRECONNECT)
+    void canAuthenticateAgainstProtectionSpace(PreconnectTask&, const WebCore::ProtectionSpace&);
+#endif
 #endif
 
     void prefetchDNS(const String&);
@@ -136,6 +145,8 @@ public:
 
     Seconds loadThrottleLatency() const { return m_loadThrottleLatency; }
     String cacheStorageDirectory(PAL::SessionID) const;
+
+    void preconnectTo(const WebCore::URL&, WebCore::StoredCredentialsPolicy);
 
 private:
     NetworkProcess();
@@ -244,6 +255,9 @@ private:
 
     HashMap<uint64_t, Function<void ()>> m_sandboxExtensionForBlobsCompletionHandlers;
     HashMap<uint64_t, Ref<NetworkResourceLoader>> m_waitingNetworkResourceLoaders;
+#if ENABLE(SERVER_PRECONNECT)
+    HashMap<uint64_t, WeakPtr<PreconnectTask>> m_waitingPreconnectTasks;
+#endif
 
 #if PLATFORM(COCOA)
     void platformInitializeNetworkProcessCocoa(const NetworkProcessCreationParameters&);

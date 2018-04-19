@@ -66,7 +66,6 @@
 #include "HTMLTextAreaElement.h"
 #include "InspectorInstrumentation.h"
 #include "KeyframeList.h"
-#include "LinkHash.h"
 #include "Logging.h"
 #include "MathMLElement.h"
 #include "MathMLNames.h"
@@ -89,6 +88,7 @@
 #include "SVGURIReference.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
+#include "SharedStringHash.h"
 #include "StyleBuilder.h"
 #include "StyleColor.h"
 #include "StyleCachedImage.h"
@@ -779,9 +779,11 @@ static bool hasEffectiveDisplayNoneForDisplayContents(const Element& element)
     // FIXME: <g>, <use> and <tspan> have special (?) behavior for display:contents in the current draft spec.
     if (is<SVGElement>(element))
         return true;
+#if ENABLE(MATHML)
     // Not sure MathML code can handle it.
     if (is<MathMLElement>(element))
         return true;
+#endif // ENABLE(MATHML)
     if (!is<HTMLElement>(element))
         return false;
     return tagNames.get().contains(element.localName());

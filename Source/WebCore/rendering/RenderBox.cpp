@@ -160,7 +160,12 @@ void RenderBox::willBeDestroyed()
 
     view().unscheduleLazyRepaint(*this);
     removeControlStatesForRenderer(*this);
-    
+
+#if ENABLE(CSS_SCROLL_SNAP)
+    if (hasInitializedStyle() && style().scrollSnapArea().hasSnapPosition())
+        view().unregisterBoxWithScrollSnapPositions(*this);
+#endif
+
     RenderBoxModelObject::willBeDestroyed();
 }
 
@@ -401,17 +406,6 @@ void RenderBox::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle
         updateShapeOutsideInfoAfterStyleChange(style(), oldStyle);
     updateGridPositionAfterStyleChange(style(), oldStyle);
 }
-
-void RenderBox::willBeRemovedFromTree()
-{
-#if ENABLE(CSS_SCROLL_SNAP)
-    if (hasInitializedStyle() && style().scrollSnapArea().hasSnapPosition())
-        view().unregisterBoxWithScrollSnapPositions(*this);
-#endif
-    
-    RenderBoxModelObject::willBeRemovedFromTree();
-}
-    
 
 void RenderBox::updateGridPositionAfterStyleChange(const RenderStyle& style, const RenderStyle* oldStyle)
 {
@@ -4931,20 +4925,21 @@ RenderObject* RenderBox::splitAnonymousBoxesAroundChild(RenderObject* beforeChil
 
             // We have to split the parent box into two boxes and move children
             // from |beforeChild| to end into the new post box.
-            auto* postBox = boxToSplit.createAnonymousBoxWithSameTypeAs(*this).release();
-            postBox->setChildrenInline(boxToSplit.childrenInline());
+            auto newPostBox = boxToSplit.createAnonymousBoxWithSameTypeAs(*this);
+            auto& postBox = *newPostBox;
+            postBox.setChildrenInline(boxToSplit.childrenInline());
             RenderBox* parentBox = downcast<RenderBox>(boxToSplit.parent());
             // We need to invalidate the |parentBox| before inserting the new node
             // so that the table repainting logic knows the structure is dirty.
             // See for example RenderTableCell:clippedOverflowRectForRepaint.
             markBoxForRelayoutAfterSplit(*parentBox);
-            parentBox->insertChildInternal(postBox, boxToSplit.nextSibling(), NotifyChildren);
-            boxToSplit.moveChildrenTo(postBox, beforeChild, nullptr, true);
+            parentBox->insertChildInternal(WTFMove(newPostBox), boxToSplit.nextSibling(), NotifyChildren);
+            boxToSplit.moveChildrenTo(&postBox, beforeChild, nullptr, true);
 
             markBoxForRelayoutAfterSplit(boxToSplit);
-            markBoxForRelayoutAfterSplit(*postBox);
+            markBoxForRelayoutAfterSplit(postBox);
 
-            beforeChild = postBox;
+            beforeChild = &postBox;
         } else
             beforeChild = &boxToSplit;
     }

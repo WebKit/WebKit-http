@@ -231,19 +231,19 @@ bool Pasteboard::hasData()
 
 static void addMimeTypesForFormat(ListHashSet<String>& results, const FORMATETC& format)
 {
-    // URL and Text are provided for compatibility with IE's model
-    if (format.cfFormat == urlFormat()->cfFormat || format.cfFormat == urlWFormat()->cfFormat) {
-        results.add("URL");
+    if (format.cfFormat == urlFormat()->cfFormat || format.cfFormat == urlWFormat()->cfFormat)
         results.add("text/uri-list");
-    }
-
-    if (format.cfFormat == plainTextWFormat()->cfFormat || format.cfFormat == plainTextFormat()->cfFormat) {
-        results.add("Text");
+    if (format.cfFormat == plainTextWFormat()->cfFormat || format.cfFormat == plainTextFormat()->cfFormat)
         results.add("text/plain");
-    }
 }
 
-Vector<String> Pasteboard::types()
+Vector<String> Pasteboard::typesSafeForBindings()
+{
+    notImplemented();
+    return { };
+}
+
+Vector<String> Pasteboard::typesForLegacyUnsafeBindings()
 {
     ListHashSet<String> results;
 
@@ -297,38 +297,60 @@ String Pasteboard::readString(const String& type)
     return "";
 }
 
-Vector<String> Pasteboard::readFilenames()
+String Pasteboard::readStringInCustomData(const String&)
 {
-    Vector<String> fileNames;
+    notImplemented();
+    return { };
+}
 
+struct PasteboardFileCounter final : PasteboardFileReader {
+    void readFilename(const String&) final { ++count; }
+    void readBuffer(const String&, const String&, Ref<SharedBuffer>&&) final { ++count; }
+
+    unsigned count { 0 };
+};
+
+bool Pasteboard::containsFiles()
+{
+    // FIXME: This implementation can be slightly more efficient by avoiding calls to DragQueryFileW.
+    PasteboardFileCounter reader;
+    read(reader);
+    return reader.count;
+}
+
+void Pasteboard::read(PasteboardFileReader& reader)
+{
 #if USE(CF)
     if (m_dataObject) {
         STGMEDIUM medium;
         if (FAILED(m_dataObject->GetData(cfHDropFormat(), &medium)))
-            return fileNames;
+            return;
 
         HDROP hdrop = reinterpret_cast<HDROP>(GlobalLock(medium.hGlobal));
         if (!hdrop)
-            return fileNames;
+            return;
 
         WCHAR filename[MAX_PATH];
         UINT fileCount = DragQueryFileW(hdrop, 0xFFFFFFFF, 0, 0);
         for (UINT i = 0; i < fileCount; i++) {
             if (!DragQueryFileW(hdrop, i, filename, WTF_ARRAY_LENGTH(filename)))
                 continue;
-            fileNames.append(filename);
+            reader.readFilename(filename);
         }
 
         GlobalUnlock(medium.hGlobal);
         ReleaseStgMedium(&medium);
-        return fileNames;
+        return;
     }
-    if (!m_dragDataMap.contains(cfHDropFormat()->cfFormat))
-        return fileNames;
-    return m_dragDataMap.get(cfHDropFormat()->cfFormat);
+    auto list = m_dragDataMap.find(cfHDropFormat()->cfFormat);
+    if (list == m_dragDataMap.end())
+        return;
+
+    for (auto& filename : list->value)
+        reader.readFilename(filename);
 #else
     notImplemented();
-    return fileNames;
+    return { };
 #endif
 }
 
@@ -1051,6 +1073,10 @@ void Pasteboard::read(PasteboardWebContentReader&)
 }
 
 void Pasteboard::write(const PasteboardImage&)
+{
+}
+
+void Pasteboard::writeCustomData(const PasteboardCustomData&)
 {
 }
 

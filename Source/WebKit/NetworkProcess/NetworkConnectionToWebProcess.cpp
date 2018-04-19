@@ -43,9 +43,11 @@
 #include "NetworkResourceLoaderMessages.h"
 #include "NetworkSocketStream.h"
 #include "NetworkSocketStreamMessages.h"
+#include "PreconnectTask.h"
 #include "RemoteNetworkingContext.h"
 #include "SessionTracker.h"
 #include "WebCoreArgumentCoders.h"
+#include "WebErrors.h"
 #include "WebsiteDataStoreParameters.h"
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/PingHandle.h>
@@ -75,6 +77,7 @@ NetworkConnectionToWebProcess::NetworkConnectionToWebProcess(IPC::Connection::Id
 
 NetworkConnectionToWebProcess::~NetworkConnectionToWebProcess()
 {
+    m_connection->invalidate();
 #if USE(LIBWEBRTC)
     if (m_rtcProvider)
         m_rtcProvider->close();
@@ -237,8 +240,8 @@ void NetworkConnectionToWebProcess::performSynchronousLoad(const NetworkResource
 
 void NetworkConnectionToWebProcess::loadPing(NetworkResourceLoadParameters&& loadParameters, HTTPHeaderMap&& originalRequestHeaders)
 {
-    auto completionHandler = [this, protectedThis = makeRef(*this), identifier = loadParameters.identifier] (const ResourceError& error) {
-        didFinishPingLoad(identifier, error);
+    auto completionHandler = [this, protectedThis = makeRef(*this), identifier = loadParameters.identifier] (const ResourceError& error, const ResourceResponse& response) {
+        didFinishPingLoad(identifier, error, response);
     };
 
 #if USE(NETWORK_SESSION)
@@ -253,12 +256,12 @@ void NetworkConnectionToWebProcess::loadPing(NetworkResourceLoadParameters&& loa
 #endif
 }
 
-void NetworkConnectionToWebProcess::didFinishPingLoad(uint64_t pingLoadIdentifier, const ResourceError& error)
+void NetworkConnectionToWebProcess::didFinishPingLoad(uint64_t pingLoadIdentifier, const ResourceError& error, const ResourceResponse& response)
 {
     if (!m_connection->isValid())
         return;
 
-    m_connection->send(Messages::NetworkProcessConnection::DidFinishPingLoad(pingLoadIdentifier, error), 0);
+    m_connection->send(Messages::NetworkProcessConnection::DidFinishPingLoad(pingLoadIdentifier, error, response), 0);
 }
 
 void NetworkConnectionToWebProcess::removeLoadIdentifier(ResourceLoadIdentifier identifier)
@@ -287,6 +290,26 @@ void NetworkConnectionToWebProcess::setDefersLoading(ResourceLoadIdentifier iden
 void NetworkConnectionToWebProcess::prefetchDNS(const String& hostname)
 {
     NetworkProcess::singleton().prefetchDNS(hostname);
+}
+
+void NetworkConnectionToWebProcess::preconnectTo(uint64_t preconnectionIdentifier, NetworkLoadParameters&& parameters)
+{
+#if ENABLE(SERVER_PRECONNECT)
+    new PreconnectTask(WTFMove(parameters), [this, protectedThis = makeRef(*this), identifier = preconnectionIdentifier] (const ResourceError& error) {
+        didFinishPreconnection(identifier, error);
+    });
+#else
+    UNUSED_PARAM(parameters);
+    didFinishPreconnection(preconnectionIdentifier, internalError(parameters.request.url()));
+#endif
+}
+
+void NetworkConnectionToWebProcess::didFinishPreconnection(uint64_t preconnectionIdentifier, const ResourceError& error)
+{
+    if (!m_connection->isValid())
+        return;
+
+    m_connection->send(Messages::NetworkProcessConnection::DidFinishPreconnection(preconnectionIdentifier, error), 0);
 }
 
 static NetworkStorageSession& storageSession(PAL::SessionID sessionID)
@@ -335,9 +358,9 @@ void NetworkConnectionToWebProcess::setCookiesFromDOM(PAL::SessionID sessionID, 
     WebCore::setCookiesFromDOM(storageSession(sessionID), firstParty, url, cookieString);
 }
 
-void NetworkConnectionToWebProcess::cookiesEnabled(PAL::SessionID sessionID, const URL& firstParty, const URL& url, bool& result)
+void NetworkConnectionToWebProcess::cookiesEnabled(PAL::SessionID sessionID, bool& result)
 {
-    result = WebCore::cookiesEnabled(storageSession(sessionID), firstParty, url);
+    result = WebCore::cookiesEnabled(storageSession(sessionID));
 }
 
 void NetworkConnectionToWebProcess::cookieRequestHeaderFieldValue(PAL::SessionID sessionID, const URL& firstParty, const URL& url, IncludeSecureCookies includeSecureCookies, String& cookieString, bool& secureCookiesAccessed)

@@ -369,3 +369,7 @@ void WebResourceLoadScheduler::startPingLoad(Frame& frame, ResourceRequest& requ
     new PingHandle(frame.loader().networkingContext(), request, options.credentials != FetchOptions::Credentials::Omit, PingHandle::UsesAsyncCallbacks::No, options.redirect == FetchOptions::Redirect::Follow, WTFMove(completionHandler));
 }
 
+void WebResourceLoadScheduler::preconnectTo(NetworkingContext&, const URL&, StoredCredentialsPolicy, PreconnectCompletionHandler&&)
+{
+}
+

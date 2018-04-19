@@ -39,16 +39,11 @@
 #include <wtf/text/StringHash.h>
 
 #if PLATFORM(COCOA)
-#include "WebCoreSystemInterface.h"
 #include <wtf/RetainPtr.h>
 #endif
 
 #if PLATFORM(WIN)
 #include <usp10.h>
-#endif
-
-#if USE(CAIRO)
-#include <cairo.h>
 #endif
 
 #if USE(CG)

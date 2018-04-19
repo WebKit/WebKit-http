@@ -33,39 +33,34 @@
 
 namespace JSC {
 
-void PrototypeMap::addPrototype(JSObject* object)
+inline Structure* PrototypeMap::createEmptyStructure(JSGlobalObject* globalObject, JSObject* prototype, const TypeInfo& typeInfo, const ClassInfo* classInfo, IndexingType indexingType, unsigned inlineCapacity, bool makePolyProtoStructure)
 {
-    m_prototypes.set(object, object);
+    RELEASE_ASSERT(!!prototype); // We use nullptr inside the HashMap for prototype to mean poly proto, so user's of this API must provide non-null prototypes.
 
-    // Note that this method makes the somewhat odd decision to not check if this
-    // object currently has indexed accessors. We could do that check here, and if
-    // indexed accessors were found, we could tell the global object to have a bad
-    // time. But we avoid this, to allow the following to be always fast:
-    //
-    // 1) Create an object.
-    // 2) Give it a setter or read-only property that happens to have a numeric name.
-    // 3) Allocate objects that use this object as a prototype.
-    //
-    // This avoids anyone having a bad time. Even if the instance objects end up
-    // having indexed storage, the creation of indexed storage leads to a prototype
-    // chain walk that detects the presence of indexed setters and then does the
-    // right thing. As a result, having a bad time only happens if you add an
-    // indexed setter (or getter, or read-only field) to an object that is already
-    // used as a prototype.
-}
-
-inline Structure* PrototypeMap::createEmptyStructure(JSGlobalObject* globalObject, JSObject* prototype, const TypeInfo& typeInfo, const ClassInfo* classInfo, IndexingType indexingType, unsigned inlineCapacity)
-{
-    auto key = std::make_tuple(prototype, inlineCapacity, classInfo, globalObject);
+    auto key = std::make_tuple(makePolyProtoStructure ? nullptr : prototype, inlineCapacity, classInfo, globalObject);
     if (Structure* structure = m_structures.get(key)) {
+        if (makePolyProtoStructure) {
+            addPrototype(prototype);
+            RELEASE_ASSERT(structure->hasPolyProto());
+        } else
+            RELEASE_ASSERT(structure->hasMonoProto());
         ASSERT(isPrototype(prototype));
         return structure;
     }
 
     addPrototype(prototype);
-    Structure* structure = Structure::create(
-        globalObject->vm(), globalObject, prototype, typeInfo, classInfo, indexingType, inlineCapacity);
+
+    VM& vm = globalObject->vm();
+    Structure* structure;
+    if (makePolyProtoStructure) {
+        structure = Structure::create(
+            Structure::PolyProto, vm, globalObject, prototype, typeInfo, classInfo, indexingType, inlineCapacity);
+    } else {
+        structure = Structure::create(
+            vm, globalObject, prototype, typeInfo, classInfo, indexingType, inlineCapacity);
+    }
     m_structures.set(key, Weak<Structure>(structure));
+
     return structure;
 }
 
@@ -73,20 +68,21 @@ Structure* PrototypeMap::emptyStructureForPrototypeFromBaseStructure(JSGlobalObj
 {
     // We currently do not have inline capacity static analysis for subclasses and all internal function constructors have a default inline capacity of 0.
     IndexingType indexingType = baseStructure->indexingType();
-    if (prototype->structure()->anyObjectInChainMayInterceptIndexedAccesses() && hasIndexedProperties(indexingType))
+    if (prototype->anyObjectInChainMayInterceptIndexedAccesses() && hasIndexedProperties(indexingType))
         indexingType = (indexingType & ~IndexingShapeMask) | SlowPutArrayStorageShape;
 
-    return createEmptyStructure(globalObject, prototype, baseStructure->typeInfo(), baseStructure->classInfo(), indexingType, 0);
+    return createEmptyStructure(globalObject, prototype, baseStructure->typeInfo(), baseStructure->classInfo(), indexingType, 0, false);
 }
 
-Structure* PrototypeMap::emptyObjectStructureForPrototype(JSGlobalObject* globalObject, JSObject* prototype, unsigned inlineCapacity)
+Structure* PrototypeMap::emptyObjectStructureForPrototype(JSGlobalObject* globalObject, JSObject* prototype, unsigned inlineCapacity, bool makePolyProtoStructure)
 {
-    return createEmptyStructure(globalObject, prototype, JSFinalObject::typeInfo(), JSFinalObject::info(), JSFinalObject::defaultIndexingType, inlineCapacity);
+    return createEmptyStructure(globalObject, prototype, JSFinalObject::typeInfo(), JSFinalObject::info(), JSFinalObject::defaultIndexingType, inlineCapacity, makePolyProtoStructure);
 }
 
 void PrototypeMap::clearEmptyObjectStructureForPrototype(JSGlobalObject* globalObject, JSObject* object, unsigned inlineCapacity)
 {
     m_structures.remove(std::make_tuple(object, inlineCapacity, JSFinalObject::info(), globalObject));
+    m_structures.remove(std::make_tuple(nullptr, inlineCapacity, JSFinalObject::info(), globalObject));
 }
 
 } // namespace JSC

@@ -1,3 +1,172 @@
+2017-10-05  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Generate a compile error if release is built without compiler optimizations
+        https://bugs.webkit.org/show_bug.cgi?id=177665
+
+        Reviewed by Brian Burg.
+
+        Default to RelWithDebInfo if CMAKE_BUILD_TYPE is unset.
+
+        * CMakeLists.txt:
+
+2017-10-05  Tim Horton  <timothy_horton@apple.com>
+
+        Make progress toward properly-formed XPC services in the Mac CMake build
+        https://bugs.webkit.org/show_bug.cgi?id=177918
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/WebKitMacros.cmake:
+        Add a macro wrapper around 'ln'.
+
+2017-10-03  Frederic Wang  <fwang@igalia.com>
+
+        Remove Brotli from Source/ThirdParty
+        https://bugs.webkit.org/show_bug.cgi?id=177804
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/CMakeLists.txt: Do not build ThirdParty/brotli anymore.
+        * Source/cmake/FindBrotliDec.cmake: Added. New cmake module to find Brotli via PkgConfig.
+        * Source/cmake/OptionsGTK.cmake: Expose USE_WOFF2 as a public option and use find_package
+        to look for brotli.
+
+2017-10-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [Linux] Port MallocBench
+        https://bugs.webkit.org/show_bug.cgi?id=177856
+
+        Reviewed by Filip Pizlo.
+
+        * CMakeLists.txt:
+
+2017-10-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r222840.
+
+        This change breaks internal builds.
+
+        Reverted changeset:
+
+        "Generate a compile error if release is built without compiler
+        optimizations"
+        https://bugs.webkit.org/show_bug.cgi?id=177665
+        http://trac.webkit.org/changeset/222840
+
+2017-10-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r222775.
+        https://bugs.webkit.org/show_bug.cgi?id=177890
+
+        Significantly increased the WebKit build time (Requested by
+        rniwa on #webkit).
+
+        Reverted changeset:
+
+        "Build libwebrtc unit tests executables"
+        https://bugs.webkit.org/show_bug.cgi?id=177211
+        http://trac.webkit.org/changeset/222775
+
+2017-10-04  Miguel Gomez  <magomez@igalia.com>
+
+        Add animation support for WebP images
+        https://bugs.webkit.org/show_bug.cgi?id=113124
+
+        Reviewed by Žan Doberšek.
+
+        * Source/cmake/FindWebP.cmake:
+
+2017-10-04  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Generate a compile error if release is built without compiler optimizations
+        https://bugs.webkit.org/show_bug.cgi?id=177665
+
+        Reviewed by Michael Catanzaro.
+
+        Default to RelWithDebInfo if CMAKE_BUILD_TYPE is unset.
+
+        * CMakeLists.txt:
+
+2017-10-03  Gustavo Noronha Silva  <gustavo.noronha@collabora.co.uk>
+
+        [GLib] Let WebCore know of low power situations
+        https://bugs.webkit.org/show_bug.cgi?id=177810
+
+        Reviewed by Carlos Garcia Campos.
+
+        WebCore can use knowledge of low power situations to throttle timers and avoid expensive
+        checks, lowering power usage. We can use upower's warning level to let WebCore know we are
+        in such a situation.
+
+        * Source/cmake/OptionsGTK.cmake: depend on upower-glib.
+        * Source/cmake/FindUPowerGLib.cmake: Added.
+
+2017-10-03  Youenn Fablet  <youenn@apple.com>
+
+        Build libwebrtc unit tests executables
+        https://bugs.webkit.org/show_bug.cgi?id=177211
+
+        Reviewed by Alex Christensen.
+
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Source.xcscheme:
+
+2017-10-02  Olivier Blin  <olivier.blin@softathome.com>
+
+        [WPE] Remove GnuTLS dependency
+        https://bugs.webkit.org/show_bug.cgi?id=177750
+
+        Reviewed by Michael Catanzaro.
+
+        libgcrypt is used by default instead of GnuTLS.
+        See bug 163125
+
+        * Source/cmake/OptionsWPE.cmake:
+
+2017-10-02  Olivier Blin  <olivier.blin@softathome.com>
+
+        [WPE] Do not require XSLT if disabled
+        https://bugs.webkit.org/show_bug.cgi?id=177752
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsWPE.cmake: libxslt is not a hard dep
+
+2017-10-02  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Remove ENABLE_CSS_REGIONS
+        https://bugs.webkit.org/show_bug.cgi?id=177689
+
+        Reviewed by Darin Adler.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2017-09-29  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r222652.
+
+        This broke an internal build.
+
+        Reverted changeset:
+
+        "Build libwebrtc unit tests executables"
+        https://bugs.webkit.org/show_bug.cgi?id=177211
+        http://trac.webkit.org/changeset/222652
+
+2017-09-29  Youenn Fablet  <youenn@apple.com>
+
+        Build libwebrtc unit tests executables
+        https://bugs.webkit.org/show_bug.cgi?id=177211
+
+        Reviewed by Alex Christensen.
+
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Source.xcscheme:
+
 2017-09-27  Ryan Haddad  <ryanhaddad@apple.com>
 
         Unreviewed, rolling out r222537.

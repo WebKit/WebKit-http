@@ -125,6 +125,7 @@ set(WebKit_SOURCES
     NetworkProcess/NetworkSession.cpp
     NetworkProcess/NetworkSocketStream.cpp
     NetworkProcess/PingLoad.cpp
+    NetworkProcess/PreconnectTask.cpp
 
     NetworkProcess/cache/CacheStorageEngine.cpp
     NetworkProcess/cache/CacheStorageEngineCache.cpp
@@ -186,10 +187,11 @@ set(WebKit_SOURCES
     Shared/SessionTracker.cpp
     Shared/ShareableBitmap.cpp
     Shared/ShareableResource.cpp
+    Shared/SharedStringHashStore.cpp
+    Shared/SharedStringHashTable.cpp
     Shared/StatisticsData.cpp
     Shared/UpdateInfo.cpp
     Shared/UserData.cpp
-    Shared/VisitedLinkTable.cpp
     Shared/WebBackForwardListItem.cpp
     Shared/WebCompiledContentRuleList.cpp
     Shared/WebCompiledContentRuleListData.cpp
@@ -320,6 +322,7 @@ set(WebKit_SOURCES
     UIProcess/WebEditCommandProxy.cpp
     UIProcess/WebFormClient.cpp
     UIProcess/WebFormSubmissionListenerProxy.cpp
+    UIProcess/WebFrameListenerProxy.cpp
     UIProcess/WebFramePolicyListenerProxy.cpp
     UIProcess/WebFrameProxy.cpp
     UIProcess/WebFullScreenManagerProxy.cpp
@@ -931,27 +934,23 @@ if (WebKit_NetworkProcess_OUTPUT_NAME)
     set_target_properties(NetworkProcess PROPERTIES OUTPUT_NAME ${WebKit_NetworkProcess_OUTPUT_NAME})
 endif ()
 
-if (NOT "${PORT}" STREQUAL "Mac")
-    add_executable(StorageProcess ${StorageProcess_SOURCES})
-    ADD_WEBKIT_PREFIX_HEADER(StorageProcess)
-    target_link_libraries(StorageProcess ${StorageProcess_LIBRARIES})
-    install(TARGETS StorageProcess DESTINATION "${LIBEXEC_INSTALL_DIR}")
+add_executable(StorageProcess ${StorageProcess_SOURCES})
+ADD_WEBKIT_PREFIX_HEADER(StorageProcess)
+target_link_libraries(StorageProcess ${StorageProcess_LIBRARIES})
+install(TARGETS StorageProcess DESTINATION "${LIBEXEC_INSTALL_DIR}")
 
-    if (COMPILER_IS_GCC_OR_CLANG)
-        WEBKIT_ADD_TARGET_CXX_FLAGS(StorageProcess -Wno-unused-parameter)
-    endif ()
-
-    if (WebKit_StorageProcess_OUTPUT_NAME)
-        set_target_properties(StorageProcess PROPERTIES OUTPUT_NAME ${WebKit_StorageProcess_OUTPUT_NAME})
-    endif ()
+if (WebKit_StorageProcess_OUTPUT_NAME)
+    set_target_properties(StorageProcess PROPERTIES OUTPUT_NAME ${WebKit_StorageProcess_OUTPUT_NAME})
 endif ()
 
 if (COMPILER_IS_GCC_OR_CLANG)
     WEBKIT_ADD_TARGET_CXX_FLAGS(WebKit -Wno-unused-parameter)
     WEBKIT_ADD_TARGET_CXX_FLAGS(WebProcess -Wno-unused-parameter)
     WEBKIT_ADD_TARGET_CXX_FLAGS(NetworkProcess -Wno-unused-parameter)
+    WEBKIT_ADD_TARGET_CXX_FLAGS(StorageProcess -Wno-unused-parameter)
 endif ()
 
+# FIXME: Mac should build a plugin process.
 if (ENABLE_PLUGIN_PROCESS AND NOT "${PORT}" STREQUAL "Mac")
     add_definitions(-DENABLE_PLUGIN_PROCESS=1)
     add_executable(PluginProcess ${PluginProcess_SOURCES})
@@ -969,34 +968,10 @@ if (ENABLE_PLUGIN_PROCESS AND NOT "${PORT}" STREQUAL "Mac")
 endif ()
 
 if ("${PORT}" STREQUAL "Mac")
-    set(_web_xpc_dir ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/WebKit.framework/XPCServices/com.apple.WebKit.WebContent.Development.xpc/Contents)
-    make_directory(${_web_xpc_dir}/MacOS)
-    make_directory(${_web_xpc_dir}/Resources)
-    make_directory(${_web_xpc_dir}/_CodeSignature)
-
-    add_custom_target(WebContentProcessNib COMMAND
-        ibtool --compile ${_web_xpc_dir}/Resources/WebContentProcess.nib ${WEBKIT_DIR}/Resources/WebContentProcess.xib
-        VERBATIM)
-    add_dependencies(WebKit WebContentProcessNib)
-
-    # FIXME: This shouldn't be two operations.
-    file(COPY ${WEBKIT_DIR}/WebProcess/EntryPoint/mac/XPCService/WebContentService/Info-OSX.plist DESTINATION ${_web_xpc_dir})
-    file(RENAME ${_web_xpc_dir}/Info-OSX.plist ${_web_xpc_dir}/Info.plist)
-
-    set_target_properties(WebProcess PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${_web_xpc_dir}/MacOS")
-
-
-    set(_net_xpc_dir ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/WebKit.framework/XPCServices/com.apple.WebKit.Networking.Development.xpc/Contents)
-    make_directory(${_net_xpc_dir}/MacOS)
-    make_directory(${_net_xpc_dir}/_CodeSignature)
-
-    # FIXME: This shouldn't be two operations.
-    file(COPY ${WEBKIT_DIR}/NetworkProcess/EntryPoint/mac/XPCService/NetworkService/Info-OSX.plist DESTINATION ${_net_xpc_dir})
-    file(RENAME ${_net_xpc_dir}/Info-OSX.plist ${_net_xpc_dir}/Info.plist)
-
-    set_target_properties(NetworkProcess PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${_net_xpc_dir}/MacOS")
+    WEBKIT_DEFINE_XPC_SERVICES()
 else ()
     WEBKIT_POPULATE_LIBRARY_VERSION(WEBKIT)
+
     set_target_properties(WebKit PROPERTIES VERSION ${WEBKIT_VERSION} SOVERSION ${WEBKIT_VERSION_MAJOR})
 
     install(TARGETS WebKit WebProcess NetworkProcess

@@ -49,7 +49,13 @@ bool Pasteboard::hasData()
     return !types.isEmpty();
 }
 
-Vector<String> Pasteboard::types()
+Vector<String> Pasteboard::typesSafeForBindings()
+{
+    notImplemented();
+    return { };
+}
+
+Vector<String> Pasteboard::typesForLegacyUnsafeBindings()
 {
     Vector<String> types;
     platformStrategies()->pasteboardStrategy()->getTypes(types);
@@ -59,6 +65,12 @@ Vector<String> Pasteboard::types()
 String Pasteboard::readString(const String& type)
 {
     return platformStrategies()->pasteboardStrategy()->readStringFromPasteboard(0, type);
+}
+
+String Pasteboard::readStringInCustomData(const String&)
+{
+    notImplemented();
+    return { };
 }
 
 void Pasteboard::writeString(const String& type, const String& text)
@@ -84,6 +96,10 @@ void Pasteboard::read(PasteboardWebContentReader&)
     notImplemented();
 }
 
+void Pasteboard::read(PasteboardFileReader&)
+{
+}
+
 void Pasteboard::write(const PasteboardURL& url)
 {
     platformStrategies()->pasteboardStrategy()->writeToPasteboard("text/plain;charset=utf-8", url.url.string());
@@ -103,9 +119,10 @@ void Pasteboard::write(const PasteboardWebContent& content)
     platformStrategies()->pasteboardStrategy()->writeToPasteboard(content);
 }
 
-Vector<String> Pasteboard::readFilenames()
+bool Pasteboard::containsFiles()
 {
-    return Vector<String>();
+    notImplemented();
+    return false;
 }
 
 bool Pasteboard::canSmartReplace()
@@ -120,6 +137,10 @@ void Pasteboard::writeMarkup(const String&)
 void Pasteboard::writePlainText(const String& text, SmartReplaceOption)
 {
     writeString("text/plain;charset=utf-8", text);
+}
+
+void Pasteboard::writeCustomData(const PasteboardCustomData&)
+{
 }
 
 } // namespace WebCore

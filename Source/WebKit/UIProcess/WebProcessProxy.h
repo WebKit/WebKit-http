@@ -38,7 +38,7 @@
 #include "VisibleWebPageCounter.h"
 #include "WebConnectionToWebProcess.h"
 #include "WebProcessProxyMessages.h"
-#include <WebCore/LinkHash.h>
+#include <WebCore/SharedStringHash.h>
 #include <memory>
 #include <pal/SessionID.h>
 #include <wtf/Forward.h>
@@ -123,7 +123,7 @@ public:
 
     void updateTextCheckerState();
 
-    void registerNewWebBackForwardListItem(WebBackForwardListItem*);
+    void registerNewWebBackForwardListItem(WebBackForwardListItem&);
     void removeBackForwardItem(uint64_t);
 
     void willAcquireUniversalFileReadSandboxExtension() { m_mayHaveUniversalFileReadSandboxExtension = true; }

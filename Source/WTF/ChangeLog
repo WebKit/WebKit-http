@@ -1,3 +1,324 @@
+2017-10-06  Antti Koivisto  <antti@apple.com>
+
+        Minor WeakPtr improvements
+        https://bugs.webkit.org/show_bug.cgi?id=177958
+
+        Reviewed by Sam Weinig.
+
+        * wtf/WeakPtr.h:
+        (WTF::WeakPtr::operator bool const):
+
+            Make explicit.
+
+        (WTF::WeakPtrFactory::createWeakPtr const):
+        (WTF::makeWeakPtr):
+
+            Remove templating from createWeakPtr, makeWeakPtr() is now the
+            canonical way to make derived-type WeakPtrs.
+
+2017-10-04  Filip Pizlo  <fpizlo@apple.com>
+
+        bmalloc mutex should be adaptive
+        https://bugs.webkit.org/show_bug.cgi?id=177839
+
+        Reviewed by Michael Saboff.
+        
+        Add some comments that I thought of while copy-pasting this code.
+
+        Reland after fixing ancient WordLock bug: the notify_one has to happen with the lock held
+        to ensure it doesn't run after that thread has died.
+
+        * wtf/LockAlgorithmInlines.h:
+        * wtf/WordLock.cpp:
+
+2017-10-05  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Generate a compile error if release is built without compiler optimizations
+        https://bugs.webkit.org/show_bug.cgi?id=177665
+
+        Reviewed by Brian Burg.
+
+        For GCC and Clang, generate an error at build time that will alert
+        the developer that she is trying to build Release without any compiler
+        optimization. A build time error is much better than an unexpected
+        "oh, WebKit is really slow ..."  situation later.
+
+        If this was intended, then we tell the developer that she can continue
+        by just setting -DRELEASE_WITHOUT_OPTIMIZATIONS in the list of build
+        flags.
+
+        The intention of this patch is to ensure that nobody builds Release
+        without enabling compiler optimization by mistake.
+
+        * wtf/Compiler.h:
+
+2017-10-05  David Kilzer  <ddkilzer@apple.com>
+
+        Bug 177893: Disable -Wcast-qual for new clang compiler in Apple ports
+        <https://webkit.org/b/177893>
+        <rdar://problem/33667497>
+
+        Reviewed by Tim Horton.
+
+        * wtf/RetainPtr.h:
+        (WTF::RetainPtr::fromStorageType const): Disable warnings for
+        -Wcast-qual until we can provide a safe cast function that lets
+        us re-enable the warning.
+
+2017-10-05  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r222893.
+
+        This caused multiple API failures.
+
+        Reverted changeset:
+
+        "bmalloc mutex should be adaptive"
+        https://bugs.webkit.org/show_bug.cgi?id=177839
+        http://trac.webkit.org/changeset/222893
+
+2017-10-04  Filip Pizlo  <fpizlo@apple.com>
+
+        bmalloc mutex should be adaptive
+        https://bugs.webkit.org/show_bug.cgi?id=177839
+
+        Reviewed by Michael Saboff.
+        
+        Add some comments that I thought of while copy-pasting this code.
+
+        * wtf/LockAlgorithmInlines.h:
+        * wtf/WordLock.cpp:
+
+2017-10-04  JF Bastien  <jfbastien@apple.com>
+
+        WTF: Update std::expected to match current proposal
+        https://bugs.webkit.org/show_bug.cgi?id=177881
+
+        Reviewed by Mark Lam.
+
+        The proposal is likely to be in C++20 and I've been asked to help co-champion
+        it. I'm therefore updating our implementation to more closely match the current
+        proposal, and to make sure it'll work for us if standardized.
+
+         - Rename UnexpectedType to Unexpected to match the proposal.
+         - Remove relational operators, only equality / inequality remains.
+         - Fix minor type signatures.
+         - Add UnexpectedType typedef.
+         - Uncomment rebind implementation.
+         - Add in-place construction tag, as well as explicit error construction tag.
+         - Add template unexpected constructor.
+         - Note that make_unexpected isn't in the proposal anymore, but we keep it because we don't have C++17 deduction guides.
+         - Remove hashing, which isn't in the proposal anymore.
+
+        * wtf/Expected.h:
+        (WTF::Unexpected::Unexpected):
+        (WTF::Unexpected::value const):
+        (WTF::operator==):
+        (WTF::operator!=):
+        (WTF::makeUnexpected):
+        (WTF::Expected::Expected):
+        (WTF::Expected::operator=):
+        (WTF::Expected::getUnexpected const):
+
+2017-10-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r222840.
+
+        This change breaks internal builds.
+
+        Reverted changeset:
+
+        "Generate a compile error if release is built without compiler
+        optimizations"
+        https://bugs.webkit.org/show_bug.cgi?id=177665
+        http://trac.webkit.org/changeset/222840
+
+2017-10-04  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Generate a compile error if release is built without compiler optimizations
+        https://bugs.webkit.org/show_bug.cgi?id=177665
+
+        Reviewed by Michael Catanzaro.
+
+        For GCC and Clang, generate an error at build time that will alert
+        the developer that she is trying to build Release without any compiler
+        optimization. A build time error is much better than an unexpected
+        "oh, WebKit is really slow ..."  situation later.
+
+        If this was intended, then we tell the developer that she can continue
+        by just setting -DRELEASE_WITHOUT_OPTIMIZATIONS in the list of build
+        flags.
+
+        The intention of this patch is to ensure that nobody builds Release
+        without enabling compiler optimization by mistake.
+
+        * wtf/Compiler.h:
+
+2017-10-04  Tomas Popela  <tpopela@redhat.com>
+
+        Allow building without WOFF enabled
+
+        Reviewed by Michael Catanzaro.
+
+        Don't force the WOFF to be turned on, but follow what is set in cmake.
+
+        * wtf/Platform.h:
+
+2017-10-03  Saam Barati  <sbarati@apple.com>
+
+        Implement polymorphic prototypes
+        https://bugs.webkit.org/show_bug.cgi?id=176391
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/Box.h:
+        (WTF::Box::operator bool const):
+        (WTF::Box::operator bool): Deleted.
+        Make Box movable. Also ensure its operator bool doesn't do an atomic increment.
+        * wtf/RefPtr.h:
+        (WTF::RefPtr::operator bool const):
+        Add `explicit operator bool()` for RefPtr.
+
+2017-10-03  Antti Koivisto  <antti@apple.com>
+
+        Allow assigning WeakPtr<Derived> to WeakPtr<Base>
+        https://bugs.webkit.org/show_bug.cgi?id=177817
+
+        Reviewed by Geoff Garen.
+
+        Add templated copy/move constructors/assignment operators, similar to RefPtr.
+
+        * wtf/WeakPtr.h:
+        (WTF::WeakPtrFactory::createWeakPtr const):
+        (WTF::weak_reference_upcast):
+        (WTF::weak_reference_downcast):
+        (WTF::WeakPtr<T>::WeakPtr):
+        (WTF::=):
+        (WTF::makeWeakPtr):
+
+2017-10-03  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: no VM / JS version of everything but Instance
+        https://bugs.webkit.org/show_bug.cgi?id=177473
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/StdLibExtras.h:
+        (WTF::default_construct_at): this makes code in WasmTable much
+        more readable, and is generally useful for generic code
+
+2017-10-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Move LineEnding.{h,cpp} from WebCore/platform/text to wtf/text
+        https://bugs.webkit.org/show_bug.cgi?id=176575
+
+        Reviewed by Alex Christensen.
+
+        As part of the PAL effort, we're trying to move everything out of WebCore/platform, one-by-one.
+        These LineEnding files belong in WTF.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/text/LineEnding.cpp: Renamed from Source/WebCore/platform/text/LineEnding.cpp.
+        (WTF::normalizeLineEndingsToCRLF):
+        * wtf/text/LineEnding.h: Renamed from Source/WebCore/platform/text/LineEnding.h.
+
+2017-10-02  Geoffrey Garen  <ggaren@apple.com>
+
+        WeakPtr should have a move constructor
+        https://bugs.webkit.org/show_bug.cgi?id=177789
+
+        Reviewed by Chris Dumez.
+
+        * wtf/WeakPtr.h: Now that we just have a RefPtr data member,
+        the default operators are sufficient.
+
+2017-10-02  Geoffrey Garen  <ggaren@apple.com>
+
+        NULL WeakPtr should not malloc!
+        https://bugs.webkit.org/show_bug.cgi?id=177773
+
+        Reviewed by Antti Koivisto.
+
+        Translating NULL into malloc is... inefficient.
+
+        * wtf/WeakPtr.h:
+        (WTF::WeakPtr::WeakPtr):
+        (WTF::WeakPtr::operator=):
+        (WTF::WeakPtr::clear): Make m_ref lazy so that a NULL m_ref can represent
+        a NULL pointer. Normal dereference is no slower because we can rely on
+        the fact that dereference of NULL should crash. operator bool() and get()
+        incur an extra branch. That's probably worth it to avoid malloc
+        for NULL.
+
+2017-10-02  Antti Koivisto  <antti@apple.com>
+
+        Add makeWeakPtr variant that takes pointer
+        https://bugs.webkit.org/show_bug.cgi?id=177767
+
+        Reviewed by Zalan Bujtas.
+
+        * wtf/WeakPtr.h:
+        (WTF::makeWeakPtr):
+
+        This version deals with the nullptr.
+
+2017-09-30  Antti Koivisto  <antti@apple.com>
+
+        Add makeWeakPtr for easier WeakPtr construction
+        https://bugs.webkit.org/show_bug.cgi?id=177706
+
+        Reviewed by Sam Weinig.
+
+        Standalone makeWeakPtr() returns a WeakPtr of the same type as the argument.
+
+        For this to work the argument type needs to expose a (possibly base type) WeakPtrFactory
+        as a public weakPtrFactory() member function.
+
+        * wtf/WeakPtr.h:
+        (WTF::WeakPtr::operator-> const):
+        (WTF::WeakPtr::operator* const): Also add operator*.
+        (WTF::makeWeakPtr):
+
+2017-09-28  Jiewen Tan  <jiewen_tan@apple.com>
+
+        WeakPtrFactory should allow downcasting
+        https://bugs.webkit.org/show_bug.cgi?id=177389
+        <rdar://problem/34604174>
+
+        Reviewed by Geoffrey Garen.
+
+        In this patch, WeakPtrFactory is enhanced with the ability to create WeakPtrs
+        of its owner's sub classes and have them point to the same WeakReference.
+
+        * wtf/WeakPtr.h:
+        (WTF::WeakPtr::WeakPtr):
+        We cannot determine the base class of type T, thus no friends. It is made public
+        such that WeakPtrFactory with a base class type U can create a derived type T
+        WeakPtr.
+        (WTF::WeakPtrFactory::createWeakPtr const):
+
+2017-09-28  Don Olmstead  <don.olmstead@sony.com>
+
+        Sync SYSTEM_MALLOC implementation of Gigacage
+        https://bugs.webkit.org/show_bug.cgi?id=177569
+
+        Reviewed by Mark Lam.
+
+        * wtf/Gigacage.h:
+        (Gigacage::basePtr):
+        (Gigacage::basePtrs):
+
+2017-09-27  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win64] Compile error, 'BasePtrs' is undefined.
+        https://bugs.webkit.org/show_bug.cgi?id=177565
+
+        Reviewed by Mark Lam.
+
+        Copy definition of 'BasePtrs' from bmalloc/GigaCage.h.
+
+        * wtf/Gigacage.h:
+
 2017-09-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
 
         Followup (r222427): SynchronizedFixedQueue should not have a public constructor

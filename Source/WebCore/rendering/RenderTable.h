@@ -126,7 +126,7 @@ public:
     LayoutUnit calcBorderEnd() const;
     void recalcBordersInRowDirection();
 
-    void addChild(RenderObject* child, RenderObject* beforeChild = 0) final;
+    void addChild(RenderPtr<RenderObject> child, RenderObject* beforeChild = 0) final;
 
     struct ColumnStruct {
         explicit ColumnStruct(unsigned initialSpan = 1)
@@ -153,9 +153,9 @@ public:
         m_columnPos[index] = position;
     }
 
-    RenderTableSection* header() const { return m_head; }
-    RenderTableSection* footer() const { return m_foot; }
-    RenderTableSection* firstBody() const { return m_firstBody; }
+    RenderTableSection* header() const { return m_head.get(); }
+    RenderTableSection* footer() const { return m_foot.get(); }
+    RenderTableSection* firstBody() const { return m_firstBody.get(); }
 
     // This function returns 0 if the table has no section.
     RenderTableSection* topSection() const;
@@ -250,8 +250,8 @@ public:
             recalcSections();
     }
 
-    static std::unique_ptr<RenderTable> createAnonymousWithParentRenderer(const RenderElement&);
-    std::unique_ptr<RenderBox> createAnonymousBoxWithSameTypeAs(const RenderBox& renderer) const override;
+    static RenderPtr<RenderTable> createAnonymousWithParentRenderer(const RenderElement&);
+    RenderPtr<RenderBox> createAnonymousBoxWithSameTypeAs(const RenderBox& renderer) const override;
 
     const BorderValue& tableStartBorderAdjoiningCell(const RenderTableCell&) const;
     const BorderValue& tableEndBorderAdjoiningCell(const RenderTableCell&) const;
@@ -273,7 +273,7 @@ protected:
     void simplifiedNormalFlowLayout() final;
 
 private:
-    static std::unique_ptr<RenderTable> createTableWithStyle(Document&, const RenderStyle&);
+    static RenderPtr<RenderTable> createTableWithStyle(Document&, const RenderStyle&);
 
     const char* renderName() const override { return "RenderTable"; }
 
@@ -332,9 +332,9 @@ private:
     typedef HashMap<const RenderTableCol*, unsigned> EffectiveColumnIndexMap;
     mutable EffectiveColumnIndexMap m_effectiveColumnIndexMap;
 
-    mutable RenderTableSection* m_head;
-    mutable RenderTableSection* m_foot;
-    mutable RenderTableSection* m_firstBody;
+    mutable WeakPtr<RenderTableSection> m_head;
+    mutable WeakPtr<RenderTableSection> m_foot;
+    mutable WeakPtr<RenderTableSection> m_firstBody;
 
     std::unique_ptr<TableLayout> m_tableLayout;
 
@@ -372,15 +372,15 @@ inline RenderTableSection* RenderTable::topSection() const
 {
     ASSERT(!needsSectionRecalc());
     if (m_head)
-        return m_head;
+        return m_head.get();
     if (m_firstBody)
-        return m_firstBody;
-    return m_foot;
+        return m_firstBody.get();
+    return m_foot.get();
 }
 
 inline bool isDirectionSame(const RenderBox* tableItem, const RenderBox* otherTableItem) { return tableItem && otherTableItem ? tableItem->style().direction() == otherTableItem->style().direction() : true; }
 
-inline std::unique_ptr<RenderBox> RenderTable::createAnonymousBoxWithSameTypeAs(const RenderBox& renderer) const
+inline RenderPtr<RenderBox> RenderTable::createAnonymousBoxWithSameTypeAs(const RenderBox& renderer) const
 {
     return RenderTable::createTableWithStyle(renderer.document(), renderer.style());
 }

@@ -39,6 +39,7 @@
 #include "AccessibilityListBoxOption.h"
 #include "AccessibilityTable.h"
 #include "AccessibilityTableCell.h"
+#include "AccessibilityTableRow.h"
 #include "Document.h"
 #include "Editing.h"
 #include "Frame.h"
@@ -448,9 +449,9 @@ static AtkAttributeSet* webkitAccessibleGetAttributes(AtkObject* object)
             attributeSet = addToAtkAttributeSet(attributeSet, "html-id", id.utf8().data());
     }
 
-    int headingLevel = coreObject->headingLevel();
-    if (headingLevel) {
-        String value = String::number(headingLevel);
+    int level = coreObject->isHeading() ? coreObject->headingLevel() : coreObject->hierarchicalLevel();
+    if (level) {
+        String value = String::number(level);
         attributeSet = addToAtkAttributeSet(attributeSet, "level", value.utf8().data());
     }
 
@@ -470,9 +471,12 @@ static AtkAttributeSet* webkitAccessibleGetAttributes(AtkObject* object)
         int columnCount = table.ariaColumnCount();
         if (columnCount)
             attributeSet = addToAtkAttributeSet(attributeSet, "colcount", String::number(columnCount).utf8().data());
-    }
-
-    if (is<AccessibilityTableCell>(*coreObject)) {
+    } else if (is<AccessibilityTableRow>(*coreObject)) {
+        auto& row = downcast<AccessibilityTableRow>(*coreObject);
+        int rowIndex = row.ariaRowIndex();
+        if (rowIndex != -1)
+            attributeSet = addToAtkAttributeSet(attributeSet, "rowindex", String::number(rowIndex).utf8().data());
+    } else if (is<AccessibilityTableCell>(*coreObject)) {
         auto& cell = downcast<AccessibilityTableCell>(*coreObject);
         int rowIndex = cell.ariaRowIndex();
         if (rowIndex != -1)
@@ -575,6 +579,16 @@ static AtkAttributeSet* webkitAccessibleGetAttributes(AtkObject* object)
             attributeSet = addToAtkAttributeSet(attributeSet, "atomic", "true");
     }
 
+    // The Core AAM states the author-provided value should be exposed as-is.
+    String dropEffect = coreObject->getAttribute(HTMLNames::aria_dropeffectAttr);
+    if (!dropEffect.isEmpty())
+        attributeSet = addToAtkAttributeSet(attributeSet, "dropeffect", dropEffect.utf8().data());
+
+    if (coreObject->isARIAGrabbed())
+        attributeSet = addToAtkAttributeSet(attributeSet, "grabbed", "true");
+    else if (coreObject->supportsARIADragging())
+        attributeSet = addToAtkAttributeSet(attributeSet, "grabbed", "false");
+
     return attributeSet;
 }
 
@@ -636,6 +650,7 @@ static AtkRole atkRole(AccessibilityObject* coreObject)
         return ATK_ROLE_MENU;
     case MenuListOptionRole:
     case MenuItemRole:
+    case MenuButtonRole:
         return ATK_ROLE_MENU_ITEM;
     case MenuItemCheckboxRole:
         return ATK_ROLE_CHECK_MENU_ITEM;
@@ -672,6 +687,7 @@ static AtkRole atkRole(AccessibilityObject* coreObject)
     case ScrollBarRole:
         return ATK_ROLE_SCROLL_BAR;
     case ScrollAreaRole:
+    case TabPanelRole:
         return ATK_ROLE_SCROLL_PANE;
     case GridRole:
     case TableRole:
@@ -686,7 +702,6 @@ static AtkRole atkRole(AccessibilityObject* coreObject)
     case GroupRole:
     case RadioGroupRole:
     case SVGRootRole:
-    case TabPanelRole:
         return ATK_ROLE_PANEL;
     case RowHeaderRole:
         return ATK_ROLE_ROW_HEADER;
@@ -939,8 +954,7 @@ static void setAtkStateSetFromCoreObject(AccessibilityObject* coreObject, AtkSta
 
     if (coreObject->isIndeterminate())
         atk_state_set_add_state(stateSet, ATK_STATE_INDETERMINATE);
-
-    if (coreObject->isCheckboxOrRadio() || coreObject->isMenuItem()) {
+    else if (coreObject->isCheckboxOrRadio() || coreObject->isMenuItem() || coreObject->isToggleButton()) {
         if (coreObject->checkboxOrRadioValue() == ButtonStateMixed)
             atk_state_set_add_state(stateSet, ATK_STATE_INDETERMINATE);
     }

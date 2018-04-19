@@ -36,6 +36,7 @@
 #include "ScrollAlignment.h"
 #include "StyleImage.h"
 #include "TextAffinity.h"
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
@@ -61,7 +62,7 @@ class RenderLayer;
 class RenderLayerModelObject;
 class RenderFragmentContainer;
 class RenderTheme;
-class SelectionSubtreeRoot;
+class SelectionRangeData;
 class TransformState;
 class VisiblePosition;
 
@@ -107,6 +108,8 @@ public:
     // marked as anonymous in the constructor.
     explicit RenderObject(Node&);
     virtual ~RenderObject();
+
+    auto& weakPtrFactory() const { return m_weakFactory; }
 
     RenderTheme& theme() const;
 
@@ -748,10 +751,7 @@ public:
     void imageChanged(CachedImage*, const IntRect* = nullptr) override;
     virtual void imageChanged(WrappedImagePtr, const IntRect* = nullptr) { }
 
-    SelectionSubtreeRoot& selectionRoot() const;
-    void selectionStartEnd(unsigned& spos, unsigned& epos) const;
-    
-    void removeFromParent();
+    void removeFromParentAndDestroy();
 
     CSSAnimationController& animation() const;
 
@@ -833,6 +833,8 @@ private:
     RenderElement* m_parent;
     RenderObject* m_previous;
     RenderObject* m_next;
+
+    WeakPtrFactory<RenderObject> m_weakFactory;
 
 #ifndef NDEBUG
     bool m_hasAXObject             : 1;

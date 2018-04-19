@@ -81,7 +81,9 @@ public:
     ExceptionOr<void> setUseLegacyBackgroundSizeShorthandBehavior(bool);
     ExceptionOr<void> setAutoscrollForDragAndDropEnabled(bool);
     ExceptionOr<void> setFontFallbackPrefersPictographs(bool);
-    ExceptionOr<void> setWebFontsAlwaysFallBack(bool);
+    enum class FontLoadTimingOverride { Block, Swap, Failure };
+    ExceptionOr<void> setFontLoadTimingOverride(const FontLoadTimingOverride&);
+    ExceptionOr<void> setShouldIgnoreFontLoadCompletions(bool);
     ExceptionOr<void> setQuickTimePluginReplacementEnabled(bool);
     ExceptionOr<void> setYouTubeFlashPluginReplacementEnabled(bool);
     ExceptionOr<void> setBackgroundShouldExtendBeyondPage(bool);
@@ -97,6 +99,7 @@ public:
     ExceptionOr<void> setSystemLayoutDirection(const String&);
     ExceptionOr<void> setShouldMockBoldSystemFontForAccessibility(bool);
     ExceptionOr<void> setShouldManageAudioSessionCategory(bool);
+    ExceptionOr<void> setCustomPasteboardDataEnabled(bool);
 
     enum class FrameFlatteningValue { Disabled, EnabledForNonFullScreenIFrames, FullyEnabled };
     ExceptionOr<void> setFrameFlattening(const FrameFlatteningValue&);
@@ -169,7 +172,7 @@ private:
         bool m_youTubeFlashPluginReplacementEnabled;
         bool m_shouldConvertPositionStyleOnCopy;
         bool m_fontFallbackPrefersPictographs;
-        bool m_webFontsAlwaysFallBack;
+        bool m_shouldIgnoreFontLoadCompletions;
         bool m_backgroundShouldExtendBeyondPage;
         SecurityOrigin::StorageBlockingPolicy m_storageBlockingPolicy;
         bool m_scrollingTreeIncludesFrames;
@@ -191,6 +194,7 @@ private:
         Settings::ForcedAccessibilityValue m_forcedColorsAreInvertedAccessibilityValue;
         Settings::ForcedAccessibilityValue m_forcedDisplayIsMonochromeAccessibilityValue;
         Settings::ForcedAccessibilityValue m_forcedPrefersReducedMotionAccessibilityValue;
+        Settings::FontLoadTimingOverride m_fontLoadTimingOverride;
         FrameFlattening m_frameFlattening;
 
         // Runtime enabled settings.
@@ -204,6 +208,7 @@ private:
 #if USE(AUDIO_SESSION)
         bool m_shouldManageAudioSessionCategory;
 #endif
+        bool m_customPasteboardDataEnabled;
     };
 
     Page* m_page;

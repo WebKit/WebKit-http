@@ -1,3 +1,84 @@
+2017-10-05  Dean Jackson  <dino@apple.com>
+
+        Lots of missing frames in YouTube360 when fullscreen on MacBook
+        https://bugs.webkit.org/show_bug.cgi?id=177903
+        <rdar://problem/33273300>
+
+        Reviewed by Sam Weinig.
+
+        Add reloadValueForKeyPath to replace setContentsChanged on CALayer.
+
+        * pal/spi/cocoa/QuartzCoreSPI.h:
+
+2017-10-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r222951 and r222952.
+        https://bugs.webkit.org/show_bug.cgi?id=177992
+
+        "Broke the iOS build and introduced a webgl LayoutTest
+        failure." (Requested by ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "Lots of missing frames in YouTube360 when fullscreen on
+        MacBook"
+        https://bugs.webkit.org/show_bug.cgi?id=177903
+        http://trac.webkit.org/changeset/222951
+
+        "Lots of missing frames in YouTube360 when fullscreen on
+        MacBook"
+        https://bugs.webkit.org/show_bug.cgi?id=177903
+        http://trac.webkit.org/changeset/222952
+
+2017-10-05  Dean Jackson  <dino@apple.com>
+
+        Lots of missing frames in YouTube360 when fullscreen on MacBook
+        https://bugs.webkit.org/show_bug.cgi?id=177903
+        <rdar://problem/33273300>
+
+        Reviewed by Sam Weinig.
+
+        Add reloadValueForKeyPath to replace setContentsChanged on CALayer.
+
+        * pal/spi/cocoa/QuartzCoreSPI.h:
+
+2017-10-05  Jer Noble  <jer.noble@apple.com>
+
+        [Cocoa] Enable ENABLE_ENCRYPTED_MEDIA build-time setting
+        https://bugs.webkit.org/show_bug.cgi?id=177261
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-09-28  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [PAL] Move HysteresisActivity into PAL
+        https://bugs.webkit.org/show_bug.cgi?id=177516
+
+        Reviewed by Alex Christensen.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/HysteresisActivity.h: Renamed from Source/WebCore/platform/HysteresisActivity.h.
+
+2017-09-28  Chris Dumez  <cdumez@apple.com>
+
+        Add support for <link rel=preconnect>
+        https://bugs.webkit.org/show_bug.cgi?id=177474
+        <rdar://problem/33141380>
+
+        Reviewed by Alex Christensen.
+
+        Add new CFNetwork SPI for preconnecting.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2017-09-27  Tim Horton  <timothy_horton@apple.com>
+
+        Try to fix the Mac CMake build
+
+        * pal/PlatformMac.cmake:
+
 2017-09-26  Don Olmstead  <don.olmstead@sony.com>
 
         [PAL][CMake] Include ICU directories

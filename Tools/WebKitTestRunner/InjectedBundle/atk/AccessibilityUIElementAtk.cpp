@@ -1680,7 +1680,10 @@ bool AccessibilityUIElement::isIndeterminate() const
 
 int AccessibilityUIElement::hierarchicalLevel() const
 {
-    // FIXME: implement
+    String level = getAttributeSetValueForId(ATK_OBJECT(m_element.get()), ObjectAttributeType, "level");
+    if (!level.isEmpty())
+        return level.toInt();
+
     return 0;
 }
 
@@ -1692,14 +1695,13 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::speak()
 
 bool AccessibilityUIElement::ariaIsGrabbed() const
 {
-    // FIXME: implement
-    return false;
+    return getAttributeSetValueForId(ATK_OBJECT(m_element.get()), ObjectAttributeType, "grabbed") == "true";
 }
 
 JSRetainPtr<JSStringRef> AccessibilityUIElement::ariaDropEffects() const
 {
-    // FIXME: implement
-    return JSStringCreateWithCharacters(0, 0);
+    String dropEffects = getAttributeSetValueForId(ATK_OBJECT(m_element.get()), ObjectAttributeType, "dropeffect");
+    return dropEffects.isEmpty() ? JSStringCreateWithCharacters(0, 0) : JSStringCreateWithUTF8CString(dropEffects.utf8().data());
 }
 
 // parameterized attributes

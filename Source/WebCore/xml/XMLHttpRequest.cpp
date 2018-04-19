@@ -172,6 +172,8 @@ void XMLHttpRequest::didCacheResponse()
 
 ExceptionOr<Document*> XMLHttpRequest::responseXML()
 {
+    ASSERT(scriptExecutionContext()->isDocument());
+    
     if (m_responseType != ResponseType::EmptyString && m_responseType != ResponseType::Document)
         return Exception { InvalidStateError };
 
@@ -185,8 +187,7 @@ ExceptionOr<Document*> XMLHttpRequest::responseXML()
         // The W3C spec requires the final MIME type to be some valid XML type, or text/html.
         // If it is text/html, then the responseType of "document" must have been supplied explicitly.
         if ((m_response.isHTTP() && !responseIsXML() && !isHTML)
-            || (isHTML && m_responseType == ResponseType::EmptyString)
-            || scriptExecutionContext()->isWorkerGlobalScope()) {
+            || (isHTML && m_responseType == ResponseType::EmptyString)) {
             m_responseDocument = nullptr;
         } else {
             if (isHTML)
@@ -252,6 +253,9 @@ ExceptionOr<void> XMLHttpRequest::setTimeout(unsigned timeout)
 
 ExceptionOr<void> XMLHttpRequest::setResponseType(ResponseType type)
 {
+    if (!scriptExecutionContext()->isDocument() && type == ResponseType::Document)
+        return { };
+
     if (m_state >= LOADING)
         return Exception { InvalidStateError };
 
@@ -323,77 +327,6 @@ ExceptionOr<void> XMLHttpRequest::setWithCredentials(bool value)
     return { };
 }
 
-bool XMLHttpRequest::isAllowedHTTPMethod(const String& method)
-{
-    return !equalLettersIgnoringASCIICase(method, "trace")
-        && !equalLettersIgnoringASCIICase(method, "track")
-        && !equalLettersIgnoringASCIICase(method, "connect");
-}
-
-String XMLHttpRequest::uppercaseKnownHTTPMethod(const String& method)
-{
-    const char* const methods[] = { "DELETE", "GET", "HEAD", "OPTIONS", "POST", "PUT" };
-    for (auto* value : methods) {
-        if (equalIgnoringASCIICase(method, value)) {
-            // Don't bother allocating a new string if it's already all uppercase.
-            if (method == value)
-                break;
-            return ASCIILiteral(value);
-        }
-    }
-    return method;
-}
-
-static bool isForbiddenRequestHeader(const String& name)
-{
-    HTTPHeaderName headerName;
-    if (!findHTTPHeaderName(name, headerName))
-        return false;
-
-    switch (headerName) {
-    case HTTPHeaderName::AcceptCharset:
-    case HTTPHeaderName::AcceptEncoding:
-    case HTTPHeaderName::AccessControlRequestHeaders:
-    case HTTPHeaderName::AccessControlRequestMethod:
-    case HTTPHeaderName::Connection:
-    case HTTPHeaderName::ContentLength:
-    case HTTPHeaderName::ContentTransferEncoding:
-    case HTTPHeaderName::Cookie:
-    case HTTPHeaderName::Cookie2:
-    case HTTPHeaderName::Date:
-    case HTTPHeaderName::DNT:
-    case HTTPHeaderName::Expect:
-    case HTTPHeaderName::Host:
-    case HTTPHeaderName::KeepAlive:
-    case HTTPHeaderName::Origin:
-    case HTTPHeaderName::Referer:
-    case HTTPHeaderName::TE:
-    case HTTPHeaderName::Trailer:
-    case HTTPHeaderName::TransferEncoding:
-    case HTTPHeaderName::Upgrade:
-    case HTTPHeaderName::UserAgent:
-    case HTTPHeaderName::Via:
-        return true;
-
-    default:
-        return false;
-    }
-}
-
-bool XMLHttpRequest::isAllowedHTTPHeader(const String& name)
-{
-    if (isForbiddenRequestHeader(name))
-        return false;
-
-    if (name.startsWith("proxy-", false))
-        return false;
-
-    if (name.startsWith("sec-", false))
-        return false;
-
-    return true;
-}
-
 ExceptionOr<void> XMLHttpRequest::open(const String& method, const String& url)
 {
     // If the async argument is omitted, set async to true.
@@ -421,7 +354,7 @@ ExceptionOr<void> XMLHttpRequest::open(const String& method, const URL& url, boo
     if (!isValidHTTPToken(method))
         return Exception { SyntaxError };
 
-    if (!isAllowedHTTPMethod(method))
+    if (isForbiddenMethod(method))
         return Exception { SecurityError };
 
     if (!async && scriptExecutionContext()->isDocument()) {
@@ -441,7 +374,7 @@ ExceptionOr<void> XMLHttpRequest::open(const String& method, const URL& url, boo
         }
     }
 
-    m_method = uppercaseKnownHTTPMethod(method);
+    m_method = normalizeHTTPMethod(method);
 
     m_url = url;
     scriptExecutionContext()->contentSecurityPolicy()->upgradeInsecureRequestIfNeeded(m_url, ContentSecurityPolicy::InsecureRequestType::Load);
@@ -919,8 +852,11 @@ ExceptionOr<void> XMLHttpRequest::setRequestHeader(const String& name, const Str
     if (!isValidHTTPToken(name) || !isValidHTTPHeaderValue(normalizedValue))
         return Exception { SyntaxError };
 
-    // A privileged script (e.g. a Dashboard widget) can set any headers.
-    if (!securityOrigin()->canLoadLocalResources() && !isAllowedHTTPHeader(name)) {
+    bool allowUnsafeHeaderField = false;
+#if ENABLE(DASHBOARD_SUPPORT)
+    allowUnsafeHeaderField = usesDashboardBackwardCompatibilityMode();
+#endif
+    if (!allowUnsafeHeaderField && isForbiddenHeaderName(name)) {
         logConsoleError(scriptExecutionContext(), "Refused to set unsafe header \"" + name + "\"");
         return { };
     }

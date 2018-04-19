@@ -133,20 +133,45 @@ String ResourceResponse::platformSuggestedFilename() const
     return filenameFromHTTPContentDisposition(httpHeaderField(HTTPHeaderName::ContentDisposition));
 }
 
-bool ResourceResponse::isRedirection() const
+bool ResourceResponse::shouldRedirect()
 {
     auto statusCode = httpStatusCode();
-    return (300 <= statusCode) && (statusCode < 400) && (statusCode != 304);
+    if (statusCode < 300 || 400 <= statusCode)
+        return false;
+
+    // Some 3xx status codes aren't actually redirects.
+    if (statusCode == 300 || statusCode == 304 || statusCode == 305 || statusCode == 306)
+        return false;
+
+    if (httpHeaderField(HTTPHeaderName::Location).isEmpty())
+        return false;
+
+    return true;
+}
+
+bool ResourceResponse::isMovedPermanently() const
+{
+    return httpStatusCode() == 301;
+}
+
+bool ResourceResponse::isFound() const
+{
+    return httpStatusCode() == 302;
+}
+
+bool ResourceResponse::isSeeOther() const
+{
+    return httpStatusCode() == 303;
 }
 
 bool ResourceResponse::isNotModified() const
 {
-    return (httpStatusCode() == 304);
+    return httpStatusCode() == 304;
 }
 
 bool ResourceResponse::isUnauthorized() const
 {
-    return (httpStatusCode() == 401);
+    return httpStatusCode() == 401;
 }
 
 }

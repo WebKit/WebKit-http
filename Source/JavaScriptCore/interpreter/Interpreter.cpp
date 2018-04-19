@@ -206,7 +206,7 @@ unsigned sizeOfVarargs(CallFrame* callFrame, JSValue arguments, uint32_t firstVa
         
     default:
         RELEASE_ASSERT(arguments.isObject());
-        length = toLength(callFrame, jsCast<JSObject*>(cell));
+        length = clampToUnsigned(toLength(callFrame, jsCast<JSObject*>(cell)));
         break;
     }
     RETURN_IF_EXCEPTION(scope, 0);
@@ -653,9 +653,9 @@ public:
 
         notifyDebuggerOfUnwinding(m_vm, m_callFrame);
 
-        copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(visitor);
+        copyCalleeSavesToEntryFrameCalleeSavesBuffer(visitor);
 
-        bool shouldStopUnwinding = visitor->callerIsVMEntryFrame();
+        bool shouldStopUnwinding = visitor->callerIsEntryFrame();
         if (shouldStopUnwinding)
             return StackVisitor::Done;
 
@@ -663,7 +663,7 @@ public:
     }
 
 private:
-    void copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(StackVisitor& visitor) const
+    void copyCalleeSavesToEntryFrameCalleeSavesBuffer(StackVisitor& visitor) const
     {
 #if ENABLE(JIT) && NUMBER_OF_CALLEE_SAVES_REGISTERS > 0
         RegisterAtOffsetList* currentCalleeSaves = visitor->calleeSaveRegisters();
@@ -676,7 +676,7 @@ private:
         intptr_t* frame = reinterpret_cast<intptr_t*>(m_callFrame->registers());
 
         unsigned registerCount = currentCalleeSaves->size();
-        VMEntryRecord* record = vmEntryRecord(m_vm.topVMEntryFrame);
+        VMEntryRecord* record = vmEntryRecord(m_vm.topEntryFrame);
         for (unsigned i = 0; i < registerCount; i++) {
             RegisterAtOffset currentEntry = currentCalleeSaves->at(i);
             if (dontCopyRegisters.get(currentEntry.reg()))
@@ -702,7 +702,7 @@ NEVER_INLINE HandlerInfo* Interpreter::unwind(VM& vm, CallFrame*& callFrame, Exc
     auto scope = DECLARE_CATCH_SCOPE(vm);
 
     if (unwindStart == UnwindFromCallerFrame) {
-        if (callFrame->callerFrameOrVMEntryFrame() == vm.topVMEntryFrame)
+        if (callFrame->callerFrameOrEntryFrame() == vm.topEntryFrame)
             return nullptr;
 
         callFrame = callFrame->callerFrame();
@@ -815,8 +815,10 @@ JSValue Interpreter::executeProgram(const SourceCode& source, CallFrame* callFra
             JSValue JSONPValue = JSONPData[entry].m_value.get();
             if (JSONPPath.size() == 1 && JSONPPath[0].m_type == JSONPPathEntryTypeDeclare) {
                 globalObject->addVar(callFrame, JSONPPath[0].m_pathEntryName);
+                RETURN_IF_EXCEPTION(throwScope, { });
                 PutPropertySlot slot(globalObject);
                 globalObject->methodTable(vm)->put(globalObject, callFrame, JSONPPath[0].m_pathEntryName, JSONPValue, slot);
+                RETURN_IF_EXCEPTION(throwScope, { });
                 result = jsUndefined();
                 continue;
             }

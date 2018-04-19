@@ -142,6 +142,7 @@ private:
                 node->setArithMode(Arith::CheckOverflow);
             else {
                 node->setArithMode(Arith::DoOverflow);
+                node->clearFlags(NodeMustGenerate);
                 node->setResult(enableInt52() ? NodeResultInt52 : NodeResultDouble);
             }
             break;
@@ -1025,8 +1026,7 @@ private:
             fixEdge<KnownCellUse>(arrayEdge);
 
             // Convert `array.push()` to GetArrayLength.
-            ASSERT(node->arrayMode().supportsSelfLength());
-            if (!elementCount) {
+            if (!elementCount && node->arrayMode().supportsSelfLength()) {
                 node->setOpAndDefaultFlags(GetArrayLength);
                 node->child1() = arrayEdge;
                 node->child2() = storageEdge;
@@ -1052,7 +1052,7 @@ private:
                     speculateForBarrier(element);
                     break;
                 default:
-                    RELEASE_ASSERT_NOT_REACHED();
+                    break;
                 }
                 ASSERT(shouldNotHaveTypeCheck(element.useKind()));
             }
@@ -1594,13 +1594,6 @@ private:
 
         case GetTypedArrayByteOffset: {
             fixEdge<KnownCellUse>(node->child1());
-            break;
-        }
-
-        case CompareBelow:
-        case CompareBelowEq: {
-            fixEdge<Int32Use>(node->child1());
-            fixEdge<Int32Use>(node->child2());
             break;
         }
 

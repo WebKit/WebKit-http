@@ -1,18 +1,10 @@
-// Copyright 2013 Google Inc. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// Glyph manipulation
+/* Copyright 2013 Google Inc. All Rights Reserved.
+
+   Distributed under MIT license.
+   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
+*/
+
+/* Glyph manipulation */
 
 #include "./glyph.h"
 
@@ -118,25 +110,27 @@ bool ReadGlyph(const uint8_t* data, size_t len, Glyph* glyph) {
 
     // Read the run-length coded flags.
     std::vector<std::vector<uint8_t> > flags(num_contours);
-    uint8_t flag = 0;
-    uint8_t flag_repeat = 0;
-    for (int i = 0; i < num_contours; ++i) {
-      flags[i].resize(glyph->contours[i].size());
-      for (size_t j = 0; j < glyph->contours[i].size(); ++j) {
-        if (flag_repeat == 0) {
-          if (!buffer.ReadU8(&flag)) {
-            return FONT_COMPRESSION_FAILURE();
-          }
-          if (flag & kFLAG_REPEAT) {
-            if (!buffer.ReadU8(&flag_repeat)) {
+    {
+      uint8_t flag = 0;
+      uint8_t flag_repeat = 0;
+      for (int i = 0; i < num_contours; ++i) {
+        flags[i].resize(glyph->contours[i].size());
+        for (size_t j = 0; j < glyph->contours[i].size(); ++j) {
+          if (flag_repeat == 0) {
+            if (!buffer.ReadU8(&flag)) {
               return FONT_COMPRESSION_FAILURE();
             }
+            if (flag & kFLAG_REPEAT) {
+              if (!buffer.ReadU8(&flag_repeat)) {
+                return FONT_COMPRESSION_FAILURE();
+              }
+            }
+          } else {
+            flag_repeat--;
           }
-        } else {
-          flag_repeat--;
+          flags[i][j] = flag;
+          glyph->contours[i][j].on_curve = flag & kFLAG_ONCURVE;
         }
-        flags[i][j] = flag;
-        glyph->contours[i][j].on_curve = flag & kFLAG_ONCURVE;
       }
     }
 

@@ -68,6 +68,7 @@ typedef NS_ENUM(NSInteger, PDFLayerControllerCursorType) {
 @property (retain) CALayer *parentLayer;
 @property (retain) PDFDocument *document;
 @property (retain) id<PDFLayerControllerDelegate> delegate;
+@property (nonatomic, strong) NSString *URLFragment;
 
 - (void)setFrameSize:(CGSize)size;
 

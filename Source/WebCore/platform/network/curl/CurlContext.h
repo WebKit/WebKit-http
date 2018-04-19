@@ -247,9 +247,6 @@ public:
     void enableAcceptEncoding();
     void enableAllowedProtocols();
 
-    void enableFollowLocation();
-    void enableAutoReferer();
-
     void enableHttpAuthentication(long);
     void setHttpAuthUserPass(const String&, const String&);
 
@@ -275,7 +272,6 @@ public:
     void setSslCtxCallbackFunction(curl_ssl_ctx_callback, void*);
 
     // Status
-    URL getEffectiveURL();
     std::optional<uint16_t> getPrimaryPort();
     std::optional<long> getResponseCode();
     std::optional<long> getHttpConnectCode();

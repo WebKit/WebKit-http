@@ -31,6 +31,26 @@ webkit.org/b/175611 imported/w3c/web-platform-tests/payment-request/allowpayment
 webkit.org/b/175611 imported/w3c/web-platform-tests/payment-request/allowpaymentrequest/removing-allowpaymentrequest.https.sub.html [ Skip ]
 webkit.org/b/175611 imported/w3c/web-platform-tests/payment-request/allowpaymentrequest/setting-allowpaymentrequest-timing.https.sub.html [ Skip ]
 webkit.org/b/175611 imported/w3c/web-platform-tests/payment-request/allowpaymentrequest/setting-allowpaymentrequest.https.sub.html [ Skip ]
+webkit.org/b/177783 imported/w3c/web-platform-tests/payment-request/rejects_if_not_active.https.html [ Skip ]
+webkit.org/b/177391 imported/w3c/web-platform-tests/payment-request/payment-request-show-method.https.html [ Pass Failure ]
+webkit.org/b/177391 imported/w3c/web-platform-tests/payment-request/payment-request-abort-method.https.html [ Pass Failure ]
+
+# skip manual payment-request tests
+imported/w3c/web-platform-tests/payment-request/algorithms-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/payment-request/change-shipping-option-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/payment-request/payment-response/complete-method-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/payment-request/payment-response/methodName-attribute-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/payment-request/payment-response/payerEmail-attribute-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/payment-request/payment-response/payerName-attribute-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/payment-request/payment-response/payerPhone-attribute-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/payment-request/payment-response/requestId-attribute-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/payment-request/payment-response/shippingAddress-attribute-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/payment-request/payment-response/shippingOption-attribute-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/payment-request/PaymentAddress/attributes-and-toJSON-method-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/payment-request/shipping-address-changed-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/payment-request/updateWith-method-pmi-handling-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/payment-request/user-abort-algorithm-manual.https.html [ Skip ]
+imported/w3c/web-platform-tests/payment-request/user-accepts-payment-request-algo-manual.https.html [ Skip ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
@@ -305,6 +325,8 @@ webkit.org/b/149087 [ Debug ] http/tests/cache/disk-cache/disk-cache-last-modifi
 webkit.org/b/149087 [ Debug ] http/tests/cache/disk-cache/disk-cache-vary.html [ Pass Failure Timeout ]
 webkit.org/b/147075 [ Debug ] http/tests/cache/disk-cache/disk-cache-disable.html [ Pass Failure Timeout ]
 webkit.org/b/149087 [ Debug ] http/tests/cache/disk-cache/disk-cache-vary-no-body.html [ Pass Failure Timeout ]
+
+webkit.org/b/178019 [ ElCapitan Release ] http/tests/cache/disk-cache/disk-cache-validation-no-body.html [ Skip ]
 
 webkit.org/b/150095 http/tests/xmlhttprequest/xmlhttprequest-overridemimetype-invalidstaterror.html [ Pass Timeout ]
 
@@ -724,6 +746,7 @@ webkit.org/b/172834 [ ElCapitan ] imported/w3c/web-platform-tests/IndexedDB/idbo
 
 # Beacon is not supported on WK2 for the non NETWORK_SESSION code path.
 [ ElCapitan ] http/tests/blink/sendbeacon/ [ Skip ]
+[ ElCapitan ] http/tests/inspector/network/beacon-type.html [ Skip ]
 [ ElCapitan ] http/wpt/beacon/ [ Skip ]
 [ ElCapitan ] imported/blink/fast/beacon/ [ Skip ]
 [ ElCapitan ] imported/w3c/web-platform-tests/beacon/ [ Skip ]
@@ -740,7 +763,7 @@ http/tests/loading/resourceLoadStatistics/user-interaction-only-reported-once-wi
 http/tests/loading/resourceLoadStatistics/user-interaction-reported-after-website-data-removal.html [ Pass ]
 http/tests/storageAccess/request-and-deny-storage-access-cross-origin-iframe.html [ Pass ]
 http/tests/storageAccess/request-and-deny-storage-access-cross-origin-sandboxed-iframe.html [ Pass ]
-http/tests/storageAccess/request-and-grant-storage-access-cross-origin-iframe.html [ Pass ]
+http/tests/storageAccess/request-and-grant-storage-access-cross-origin-non-sandboxed-iframe.html [ Pass ]
 http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe.html [ Pass ]
 http/tests/storageAccess/request-storage-access-cross-origin-sandboxed-iframe-with-unique-origin.html [ Pass ]
 http/tests/storageAccess/request-storage-access-cross-origin-sandboxed-iframe-without-allow-token.html [ Pass ]
@@ -748,6 +771,9 @@ http/tests/storageAccess/request-storage-access-same-origin-iframe.html [ Pass ]
 http/tests/storageAccess/request-storage-access-same-origin-sandboxed-iframe-without-allow-token.html [ Pass ]
 http/tests/storageAccess/request-storage-access-same-origin-sandboxed-iframe.html [ Pass ]
 http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-nested-iframe.html [ Pass ]
+http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-user-interaction.html [ Pass ]
+http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-without-user-interaction.html [ Pass ]
+http/tests/storageAccess/request-storage-access-top-frame.html [ Pass ]
 
 webkit.org/b/173861 [ Release ] http/tests/webrtc/filtering-ice-candidate-same-origin-frame.html [ Pass Timeout ]
 webkit.org/b/173861 [ Release ] http/tests/webrtc/filtering-ice-candidate-cross-origin-frame.html [ Pass Timeout ]
@@ -792,6 +818,9 @@ webkit.org/b/176122 media/video-controls-drop-and-restore-timeline.html [ Pass F
 
 # <rdar://problem/33555759>
 [ HighSierra+ ] http/tests/media/video-buffered-range-contains-currentTime.html [ Pass ImageOnlyFailure ]
+
+# Link preconnect is disabled on pre-High Sierra because the CFNetwork SPI is missing.
+[ ElCapitan Sierra ] http/tests/preconnect [ Skip ]
 
 webkit.org/b/176486 [ ElCapitan Debug ] imported/w3c/web-platform-tests/background-fetch/interfaces-worker.https.html [ Pass Failure ]
 

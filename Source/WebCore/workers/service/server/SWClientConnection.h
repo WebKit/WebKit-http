@@ -33,7 +33,10 @@
 
 namespace WebCore {
 
+class ResourceError;
+class SharedBuffer;
 struct ExceptionData;
+struct ServiceWorkerFetchResult;
 struct ServiceWorkerRegistrationData;
 
 class SWClientConnection : public ThreadSafeRefCounted<SWClientConnection> {
@@ -42,15 +45,19 @@ public:
     WEBCORE_EXPORT virtual ~SWClientConnection();
 
     void scheduleJob(ServiceWorkerJob&);
+    void finishedFetchingScript(ServiceWorkerJob&, const String&);
+    void failedFetchingScript(ServiceWorkerJob&, const ResourceError&);
 
     virtual uint64_t identifier() const = 0;
 
 protected:
     WEBCORE_EXPORT void jobRejectedInServer(uint64_t jobIdentifier, const ExceptionData&);
     WEBCORE_EXPORT void jobResolvedInServer(uint64_t jobIdentifier, const ServiceWorkerRegistrationData&);
+    WEBCORE_EXPORT void startScriptFetchForServer(uint64_t jobIdentifier);
 
 private:
     virtual void scheduleJobInServer(const ServiceWorkerJobData&) = 0;
+    virtual void finishFetchingScriptInServer(const ServiceWorkerFetchResult&) = 0;
 
     HashMap<uint64_t, RefPtr<ServiceWorkerJob>> m_scheduledJobs;
 };

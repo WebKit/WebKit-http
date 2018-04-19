@@ -998,23 +998,27 @@ private:
 
     std::optional<String> tryConsumeGroupName()
     {
-        ParseState state = saveState();
+        if (atEndOfPattern())
+            return std::nullopt;
 
+        ParseState state = saveState();
+        
         int ch = tryConsumeIdentifierCharacter();
 
         if (isIdentifierStart(ch)) {
             StringBuilder identifierBuilder;
+            identifierBuilder.append(ch);
 
-            do {
-                identifierBuilder.append(ch);
+            while (!atEndOfPattern()) {
                 ch = tryConsumeIdentifierCharacter();
-                if (ch == '>') {
+                if (ch == '>')
                     return std::optional<String>(identifierBuilder.toString());
-                    break;
-                }
+
                 if (!isIdentifierPart(ch))
                     break;
-            } while (!atEndOfPattern());
+
+                identifierBuilder.append(ch);
+            }
         }
 
         restoreState(state);

@@ -40,7 +40,7 @@ typedef CGPatternRef PlatformPatternPtr;
 interface ID2D1BitmapBrush;
 typedef ID2D1BitmapBrush* PlatformPatternPtr;
 #elif USE(CAIRO)
-#include <cairo.h>
+typedef struct _cairo_pattern cairo_pattern_t;
 typedef cairo_pattern_t* PlatformPatternPtr;
 #elif PLATFORM(HAIKU)
 #include <interface/GraphicsDefs.h>
@@ -62,8 +62,6 @@ public:
 
     Image& tileImage() const { return m_tileImage.get(); }
 
-    void platformDestroy();
-
     // Pattern space is an abstract space that maps to the default user space by the transformation 'userSpaceTransformation'
 #if !USE(DIRECT2D)
     PlatformPatternPtr createPlatformPattern(const AffineTransform& userSpaceTransformation) const;
@@ -72,8 +70,6 @@ public:
 #endif
     void setPatternSpaceTransform(const AffineTransform& patternSpaceTransformation);
     const AffineTransform& getPatternSpaceTransform() { return m_patternSpaceTransformation; };
-    void setPlatformPatternSpaceTransform();
-
     bool repeatX() const { return m_repeatX; }
     bool repeatY() const { return m_repeatY; }
 
@@ -84,7 +80,6 @@ private:
     bool m_repeatX;
     bool m_repeatY;
     AffineTransform m_patternSpaceTransformation;
-    PlatformPatternPtr m_pattern;
 };
 
 } //namespace

@@ -63,15 +63,6 @@ std::unique_ptr<Pasteboard> Pasteboard::createForDragAndDrop(const DragData& dra
 }
 #endif
 
-// Making this non-inline so that WebKit 2's decoding doesn't have to include Image.h.
-PasteboardImage::PasteboardImage()
-{
-}
-
-PasteboardImage::~PasteboardImage()
-{
-}
-
 Pasteboard::Pasteboard(SelectionData& selectionData)
     : m_selectionData(selectionData)
 {
@@ -251,13 +242,26 @@ void Pasteboard::read(PasteboardWebContentReader&)
 {
 }
 
+void Pasteboard::read(PasteboardFileReader& reader)
+{
+    readFromClipboard();
+    for (auto& filename : m_selectionData->filenames())
+        reader.readFilename(filename);
+}
+
 bool Pasteboard::hasData()
 {
     readFromClipboard();
     return m_selectionData->hasText() || m_selectionData->hasMarkup() || m_selectionData->hasURIList() || m_selectionData->hasImage() || m_selectionData->hasUnknownTypeData();
 }
 
-Vector<String> Pasteboard::types()
+Vector<String> Pasteboard::typesSafeForBindings()
+{
+    notImplemented(); // webkit.org/b/177633: [GTK] Move to new Pasteboard API
+    return { };
+}
+
+Vector<String> Pasteboard::typesForLegacyUnsafeBindings()
 {
     readFromClipboard();
 
@@ -275,9 +279,6 @@ Vector<String> Pasteboard::types()
         types.append(ASCIILiteral("text/uri-list"));
         types.append(ASCIILiteral("URL"));
     }
-
-    if (m_selectionData->hasFilenames())
-        types.append(ASCIILiteral("Files"));
 
     for (auto& key : m_selectionData->unknownTypes().keys())
         types.append(key);
@@ -307,13 +308,23 @@ String Pasteboard::readString(const String& type)
     return String();
 }
 
-Vector<String> Pasteboard::readFilenames()
+String Pasteboard::readStringInCustomData(const String&)
+{
+    notImplemented(); // webkit.org/b/177633: [GTK] Move to new Pasteboard API
+    return { };
+}
+
+bool Pasteboard::containsFiles()
 {
     readFromClipboard();
-    return m_selectionData->filenames();
+    return !m_selectionData->filenames().isEmpty();
 }
 
 void Pasteboard::writeMarkup(const String&)
+{
+}
+
+void Pasteboard::writeCustomData(const PasteboardCustomData&)
 {
 }
 

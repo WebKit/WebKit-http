@@ -34,7 +34,6 @@ media/mac [ Skip ]
 media/ios [ Skip ]
 media/controls/ipad [ Skip ]
 fast/text-autosizing [ Skip ]
-fast/css/variables/constants/ios [ Skip ]
 fast/css/variables/env/ios [ Skip ]
 http/tests/preload/viewport [ Skip ]
 
@@ -52,6 +51,9 @@ fast/forms/search/search-results-hidden-crash.html [ Skip ]
 # This doesn't have to be platform-specific, but it's only implemented on Mac now.
 fast/url/user-visible [ Skip ]
 
+# Only Mac supports Dashboard widgets.
+fast/xmlhttprequest/set-dangerous-headers-in-dashboard.html [ WontFix ]
+
 # Only Mac supports force tests.
 fast/events/cancelled-force-click-link-navigation.html [ Skip ]
 fast/events/force-click-link-selection-behavior.html [ Skip ]
@@ -67,6 +69,12 @@ fast/events/autoscroll-main-document.html [ Skip ]
 
 # Drag and drop via EventSender is only supported on Mac WK1
 editing/pasteboard/drag-drop-href-as-text-data.html [ Skip ]
+editing/pasteboard/data-transfer-get-data-on-drop-custom.html [ Skip ]
+editing/pasteboard/data-transfer-get-data-on-drop-plain-text.html [ Skip ]
+editing/pasteboard/data-transfer-get-data-on-drop-rich-text.html [ Skip ]
+editing/pasteboard/data-transfer-get-data-on-drop-url.html [ Skip ]
+editing/pasteboard/drag-end-crash-accessing-item-list.html [ Skip ]
+editing/pasteboard/data-transfer-item-list-add-file-on-drag.html [ Skip ]
 
 # Only iOS supports QuickLook
 quicklook [ Skip ]
@@ -188,7 +196,10 @@ imported/w3c/web-platform-tests/resource-timing/single-entry-per-resource.html [
 imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/traverse_the_history_4.html [ Failure ]
 imported/w3c/web-platform-tests/html/dom/interfaces.worker.html [ Pass Failure ]
 imported/w3c/web-platform-tests/mediacapture-fromelement/creation.html [ Pass Failure ]
-imported/w3c/web-platform-tests/payment-request/payment-request-show-method.https.html [ Pass Failure ]
+
+# The follow two tests change their output each run
+imported/w3c/web-platform-tests/fetch/api/abort/general.any.html [ Skip ]
+imported/w3c/web-platform-tests/fetch/api/abort/general.any.worker.html [ Skip ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific tests.
@@ -556,7 +567,6 @@ webkit.org/b/138676 imported/w3c/canvas/2d.text.draw.stroke.basic.html [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/2d.text.draw.align.end.rtl.html [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/2d.text.draw.align.left.html [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/2d.text.draw.align.right.html [ Skip ]
-webkit.org/b/138676 imported/w3c/canvas/toDataURL.png.complexcolours.html [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/2d.shadow.blur.high.html [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/2d.text.draw.space.collapse.nonspace.html [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/2d.text.draw.fontface.html [ Skip ]
@@ -565,7 +575,6 @@ webkit.org/b/138676 imported/w3c/canvas/2d.scaled.html [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/2d.text.measure.width.basic.html [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/2d.text.draw.fontface.notinpage.html [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/2d.coordinatespace.html [ Skip ]
-webkit.org/b/138676 imported/w3c/canvas/toDataURL.jpeg.primarycolours.html [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/2d.text.draw.fill.maxWidth.fontface.html [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/2d.text.draw.fill.maxWidth.zero.html [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/security.dataURI.html [ Skip ]
@@ -579,14 +588,11 @@ webkit.org/b/138676 imported/w3c/canvas/2d.text.draw.fill.basic.html [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/2d.text.draw.baseline.alphabetic.html [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/2d.text.draw.kern.consistent.html [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/2d.text.draw.fill.maxWidth.large.html [ Skip ]
-webkit.org/b/138676 imported/w3c/canvas/toDataURL.jpeg.alpha.html [ Skip ]
-webkit.org/b/138676 imported/w3c/canvas/toDataURL.png.primarycolours.html [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/2d.shadow.blur.low.html [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/2d.text.draw.align.start.ltr.html [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/2d.drawImage.animated.apng.html [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/2d.text.draw.align.start.rtl.html [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/2d.text.draw.align.end.ltr.html [ Skip ]
-webkit.org/b/138676 imported/w3c/canvas/toDataURL.jpeg.quality.basic.html [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/canvas_colorsandstyles_createlineargradient_001.htm [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/canvas_compositing_globalcompositeoperation_001.htm [ Skip ]
 webkit.org/b/138676 imported/w3c/canvas/canvas_complexshapes_beziercurveto_001.htm [ Skip ]
@@ -1119,6 +1125,7 @@ imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSA-OAEP.work
 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSASSA-PKCS1-v1_5.worker.html [ Slow ]
 imported/w3c/web-platform-tests/WebCryptoAPI/import_export/rsa_importKey.worker.html [ Slow ]
 imported/w3c/web-platform-tests/WebCryptoAPI/import_export/test_rsa_importKey.https.html [ Slow ]
+imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSA-PSS.worker.html [ Slow ]
 
 # Imported Beacon test that is flaky because its last check is very slow.
 webkit.org/b/175202 imported/w3c/web-platform-tests/beacon/beacon-basic-string.html [ Pass Failure ]
@@ -1504,3 +1511,7 @@ webkit.org/b/166025 http/tests/fetch/fetching-same-resource-with-different-optio
 imported/w3c/web-platform-tests/css/css-pseudo-4/first-letter-001.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-pseudo-4/first-letter-002.html [ ImageOnlyFailure ]
 imported/w3c/web-platform-tests/css/css-pseudo-4/first-letter-003.html [ ImageOnlyFailure ]
+
+webkit.org/b/177799 accessibility/table-detection.html [ Pass Failure ]
+
+webkit.org/b/177997 webgl/1.0.2/conformance/textures/copy-tex-image-2d-formats.html [ Pass Failure ]

@@ -264,7 +264,7 @@ public:
                     jit.store32(
                         MacroAssembler::TrustedImm32(callSiteIndex.bits()),
                         CCallHelpers::tagFor(VirtualRegister(CallFrameSlot::argumentCount)));
-                    jit.copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(*vm);
+                    jit.copyCalleeSavesToEntryFrameCalleeSavesBuffer(vm->topEntryFrame);
 
                     jit.move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
                     jit.move(CCallHelpers::TrustedImmPtr(jit.codeBlock()), GPRInfo::argumentGPR1);
@@ -931,12 +931,6 @@ private:
             break;
         case CompareGreaterEq:
             compileCompareGreaterEq();
-            break;
-        case CompareBelow:
-            compileCompareBelow();
-            break;
-        case CompareBelowEq:
-            compileCompareBelowEq();
             break;
         case CompareEqPtr:
             compileCompareEqPtr();
@@ -6410,16 +6404,6 @@ private:
             operationCompareStringGreaterEq,
             operationCompareGreaterEq);
     }
-
-    void compileCompareBelow()
-    {
-        setBoolean(m_out.below(lowInt32(m_node->child1()), lowInt32(m_node->child2())));
-    }
-    
-    void compileCompareBelowEq()
-    {
-        setBoolean(m_out.belowOrEqual(lowInt32(m_node->child1()), lowInt32(m_node->child2())));
-    }
     
     void compileLogicalNot()
     {
@@ -8969,10 +8953,12 @@ private:
         
         LBasicBlock isCellCase = m_out.newBlock();
         LBasicBlock loop = m_out.newBlock();
+        LBasicBlock loadPrototypeBits = m_out.newBlock();
+        LBasicBlock loadPolyProto = m_out.newBlock();
+        LBasicBlock comparePrototype = m_out.newBlock();
         LBasicBlock notYetInstance = m_out.newBlock();
-        LBasicBlock continuation = m_out.newBlock();
-        LBasicBlock loadPrototypeDirect = m_out.newBlock();
         LBasicBlock defaultHasInstanceSlow = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
         
         LValue condition;
         if (m_node->child1().useKind() == UntypedUse)
@@ -8990,16 +8976,28 @@ private:
         ValueFromBlock originalValue = m_out.anchor(cell);
         m_out.jump(loop);
         
-        m_out.appendTo(loop, loadPrototypeDirect);
+        m_out.appendTo(loop, loadPrototypeBits);
         LValue value = m_out.phi(Int64, originalValue);
         LValue type = m_out.load8ZeroExt32(value, m_heaps.JSCell_typeInfoType);
         m_out.branch(
             m_out.notEqual(type, m_out.constInt32(ProxyObjectType)),
-            usually(loadPrototypeDirect), rarely(defaultHasInstanceSlow));
+            usually(loadPrototypeBits), rarely(defaultHasInstanceSlow));
 
-        m_out.appendTo(loadPrototypeDirect, notYetInstance);
+        m_out.appendTo(loadPrototypeBits, loadPolyProto);
         LValue structure = loadStructure(value);
-        LValue currentPrototype = m_out.load64(structure, m_heaps.Structure_prototype);
+
+        LValue prototypeBits = m_out.load64(structure, m_heaps.Structure_prototype);
+        ValueFromBlock directProtoype = m_out.anchor(prototypeBits);
+        m_out.branch(isInt32(prototypeBits), unsure(loadPolyProto), unsure(comparePrototype));
+
+        m_out.appendTo(loadPolyProto, comparePrototype);
+        LValue index = m_out.bitAnd(prototypeBits, m_out.constInt64(UINT_MAX));
+        ValueFromBlock polyProto = m_out.anchor(
+            m_out.load64(m_out.baseIndex(m_heaps.properties.atAnyNumber(), value, index, ScaleEight, JSObject::offsetOfInlineStorage())));
+        m_out.jump(comparePrototype);
+
+        m_out.appendTo(comparePrototype, notYetInstance);
+        LValue currentPrototype = m_out.phi(Int64, directProtoype, polyProto);
         ValueFromBlock isInstanceResult = m_out.anchor(m_out.booleanTrue);
         m_out.branch(
             m_out.equal(currentPrototype, prototype),

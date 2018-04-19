@@ -43,6 +43,7 @@
 #include "AccessibilityListBoxOption.h"
 #include "AccessibilityMathMLElement.h"
 #include "AccessibilityMediaControls.h"
+#include "AccessibilityMediaObject.h"
 #include "AccessibilityMenuList.h"
 #include "AccessibilityMenuListOption.h"
 #include "AccessibilityMenuListPopup.h"
@@ -444,6 +445,11 @@ static Ref<AccessibilityObject> createFromRenderer(RenderObject* renderer)
     if (node && is<HTMLLabelElement>(node) && nodeHasRole(node, nullAtom()))
         return AccessibilityLabel::create(renderer);
 
+#if PLATFORM(IOS)
+    if (is<HTMLMediaElement>(node) && nodeHasRole(node, nullAtom()))
+        return AccessibilityMediaObject::create(renderer);
+#endif
+
 #if ENABLE(VIDEO)
     // media controls
     if (node && node->isMediaControlElement())
@@ -719,8 +725,10 @@ void AXObjectCache::remove(Node* node)
     if (!node)
         return;
 
-    if (is<Element>(*node))
+    if (is<Element>(*node)) {
         m_deferredRecomputeIsIgnoredList.remove(downcast<Element>(node));
+        m_deferredSelectedChildredChangedList.remove(downcast<Element>(node));
+    }
     m_deferredTextChangedList.remove(node);
     removeNodeForUse(node);
 
@@ -1475,6 +1483,14 @@ void AXObjectCache::handleAttributeChanged(const QualifiedName& attrName, Elemen
         handleAriaModalChange(element);
     else if (attrName == aria_currentAttr)
         postNotification(element, AXObjectCache::AXCurrentChanged);
+    else if (attrName == aria_disabledAttr)
+        postNotification(element, AXObjectCache::AXDisabledStateChanged);
+    else if (attrName == aria_pressedAttr)
+        postNotification(element, AXObjectCache::AXPressedStateChanged);
+    else if (attrName == aria_readonlyAttr)
+        postNotification(element, AXObjectCache::AXReadOnlyStatusChanged);
+    else if (attrName == aria_requiredAttr)
+        postNotification(element, AXObjectCache::AXRequiredStatusChanged);
     else
         postNotification(element, AXObjectCache::AXAriaAttributeChanged);
 }
@@ -2781,6 +2797,33 @@ void AXObjectCache::performDeferredCacheUpdate()
             recomputeIsIgnored(renderer);
     }
     m_deferredRecomputeIsIgnoredList.clear();
+    
+    for (auto* selectElement : m_deferredSelectedChildredChangedList)
+        selectedChildrenChanged(selectElement);
+    m_deferredSelectedChildredChangedList.clear();
+}
+
+static bool rendererNeedsDeferredUpdate(RenderObject& renderer)
+{
+    ASSERT(!renderer.beingDestroyed());
+    auto& document = renderer.document();
+    return renderer.needsLayout() || document.needsStyleRecalc() || document.inRenderTreeUpdate() || (document.view() && document.view()->isInRenderTreeLayout());
+}
+
+void AXObjectCache::deferRecomputeIsIgnoredIfNeeded(Element* element)
+{
+    if (!element)
+        return;
+
+    auto* renderer = element->renderer();
+    if (!renderer || renderer->beingDestroyed())
+        return;
+
+    if (rendererNeedsDeferredUpdate(*renderer)) {
+        m_deferredRecomputeIsIgnoredList.add(element);
+        return;
+    }
+    recomputeIsIgnored(renderer);
 }
 
 void AXObjectCache::deferRecomputeIsIgnored(Element* element)
@@ -2799,16 +2842,28 @@ void AXObjectCache::deferTextChangedIfNeeded(Node* node)
     if (!node)
         return;
 
-    if (node->renderer() && node->renderer()->beingDestroyed())
+    auto* renderer = node->renderer();
+    if (renderer && renderer->beingDestroyed())
         return;
 
-    auto& document = node->document();
-    // FIXME: We should just defer all text changes.
-    if (document.needsStyleRecalc() || document.inRenderTreeUpdate() || (document.view() && document.view()->isInRenderTreeLayout())) {
+    if (renderer && rendererNeedsDeferredUpdate(*renderer)) {
         m_deferredTextChangedList.add(node);
         return;
     }
     textChanged(node);
+}
+
+void AXObjectCache::deferSelectedChildrenChangedIfNeeded(Element& selectElement)
+{
+    auto* renderer = selectElement.renderer();
+    if (renderer && renderer->beingDestroyed())
+        return;
+    
+    if (renderer && rendererNeedsDeferredUpdate(*renderer)) {
+        m_deferredSelectedChildredChangedList.add(&selectElement);
+        return;
+    }
+    selectedChildrenChanged(&selectElement);
 }
 
 bool isNodeAriaVisible(Node* node)

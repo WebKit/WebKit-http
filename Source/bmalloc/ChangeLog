@@ -1,3 +1,172 @@
+2017-10-05  Filip Pizlo  <fpizlo@apple.com>
+
+        Use one Scavenger thread for all Heaps
+        https://bugs.webkit.org/show_bug.cgi?id=174973
+
+        Reviewed by JF Bastien.
+        
+        This combines the scavengers from all Heap instances into a single scavenger. It also combines
+        the accounting for deciding when to run. Each Heap still controls what it means to scavenge
+        itself (it's all in Heap::scavenge) but the policy decisions are all controlled by Scavenger.
+        Because Scavenger is also the only thing that needs an AsyncTask, this removes AsyncTask and
+        moves all of AsyncTask's logic into Scavenger.
+        
+        This appears to be a 1% progression on JetStream (with high statistical confidence: p = 0.0049).
+
+        * bmalloc.xcodeproj/project.pbxproj:
+        * bmalloc/AsyncTask.h: Removed.
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::Heap):
+        (bmalloc::Heap::allocateSmallChunk):
+        (bmalloc::Heap::allocateSmallPage):
+        (bmalloc::Heap::deallocateSmallLine):
+        (bmalloc::Heap::splitAndAllocate):
+        (bmalloc::Heap::tryAllocateLarge):
+        (bmalloc::Heap::shrinkLarge):
+        (bmalloc::Heap::deallocateLarge):
+        (bmalloc::Heap::concurrentScavenge): Deleted.
+        (bmalloc::Heap::scheduleScavengerIfUnderMemoryPressure): Deleted.
+        (bmalloc::Heap::scheduleScavenger): Deleted.
+        * bmalloc/Heap.h:
+        * bmalloc/Scavenger.cpp:
+        (bmalloc::Scavenger::Scavenger):
+        (bmalloc::Scavenger::run):
+        (bmalloc::Scavenger::runHoldingLock):
+        (bmalloc::Scavenger::runSoon):
+        (bmalloc::Scavenger::runSoonHoldingLock):
+        (bmalloc::Scavenger::didStartGrowing):
+        (bmalloc::Scavenger::scheduleIfUnderMemoryPressure):
+        (bmalloc::Scavenger::scheduleIfUnderMemoryPressureHoldingLock):
+        (bmalloc::Scavenger::schedule):
+        (bmalloc::Scavenger::threadEntryPoint):
+        (bmalloc::Scavenger::threadRunLoop):
+        (bmalloc::Scavenger::setSelfQOSClass):
+        * bmalloc/Scavenger.h:
+        (bmalloc::Scavenger::willRun):
+        (bmalloc::Scavenger::willRunSoon):
+
+2017-10-04  Filip Pizlo  <fpizlo@apple.com>
+
+        bmalloc mutex should be adaptive
+        https://bugs.webkit.org/show_bug.cgi?id=177839
+
+        Reviewed by Michael Saboff.
+        
+        This pulls the WordLock algorithm into bmalloc, mostly by copy-pasting the code. We need to
+        copy paste because sometimes we build WTF without bmalloc, so WTF cannot rely on bmalloc for
+        anything other than malloc.
+
+        Reland after fixing ancient WordLock bug: the notify_one has to happen with the lock held
+        to ensure it doesn't run after that thread has died.
+
+        * bmalloc/Algorithm.h:
+        (bmalloc::compareExchangeWeak):
+        (bmalloc::compareExchangeStrong):
+        * bmalloc/PerThread.h:
+        * bmalloc/StaticMutex.cpp:
+        (bmalloc::StaticMutex::lockSlow):
+        (bmalloc::StaticMutex::unlockSlow):
+        (bmalloc::StaticMutex::lockSlowCase): Deleted.
+        * bmalloc/StaticMutex.h:
+        (bmalloc::StaticMutex::try_lock):
+        (bmalloc::StaticMutex::isLocked const):
+        (bmalloc::StaticMutex::init):
+        (bmalloc::StaticMutex::tryLock):
+        (bmalloc::StaticMutex::lock):
+        (bmalloc::StaticMutex::unlock):
+        (bmalloc::sleep): Deleted.
+        (bmalloc::waitUntilFalse): Deleted.
+
+2017-10-05  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r222893.
+
+        This caused multiple API failures.
+
+        Reverted changeset:
+
+        "bmalloc mutex should be adaptive"
+        https://bugs.webkit.org/show_bug.cgi?id=177839
+        http://trac.webkit.org/changeset/222893
+
+2017-10-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [Linux] Port MallocBench
+        https://bugs.webkit.org/show_bug.cgi?id=177856
+
+        Reviewed by Filip Pizlo.
+
+        * CMakeLists.txt:
+
+2017-10-04  Filip Pizlo  <fpizlo@apple.com>
+
+        bmalloc mutex should be adaptive
+        https://bugs.webkit.org/show_bug.cgi?id=177839
+
+        Reviewed by Michael Saboff.
+        
+        This pulls the WordLock algorithm into bmalloc, mostly by copy-pasting the code. We need to
+        copy paste because sometimes we build WTF without bmalloc, so WTF cannot rely on bmalloc for
+        anything other than malloc.
+
+        * bmalloc/Algorithm.h:
+        (bmalloc::compareExchangeWeak):
+        (bmalloc::compareExchangeStrong):
+        * bmalloc/PerThread.h:
+        * bmalloc/StaticMutex.cpp:
+        (bmalloc::StaticMutex::lockSlow):
+        (bmalloc::StaticMutex::unlockSlow):
+        (bmalloc::StaticMutex::lockSlowCase): Deleted.
+        * bmalloc/StaticMutex.h:
+        (bmalloc::StaticMutex::try_lock):
+        (bmalloc::StaticMutex::isLocked const):
+        (bmalloc::StaticMutex::init):
+        (bmalloc::StaticMutex::tryLock):
+        (bmalloc::StaticMutex::lock):
+        (bmalloc::StaticMutex::unlock):
+        (bmalloc::sleep): Deleted.
+        (bmalloc::waitUntilFalse): Deleted.
+
+2017-10-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [Linux] Enable Gigacage in x64 Linux environment
+        https://bugs.webkit.org/show_bug.cgi?id=177745
+
+        Reviewed by Carlos Garcia Campos.
+
+        This patch enables Gigacage in x64 Linux environment.
+        Gigacage enforces a caged pointer to reference to the
+        specific memory region. This reduces the effectiveness
+        of some types of attacks setting a pointer to ArrayBuffer
+        and modifying arbitrary memory region.
+
+        * bmalloc/Gigacage.h:
+
+2017-09-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r222625.
+        https://bugs.webkit.org/show_bug.cgi?id=177664
+
+        causes crashes on iOS (Requested by pizlo-mbp on #webkit).
+
+        Reverted changeset:
+
+        "Enable gigacage on iOS"
+        https://bugs.webkit.org/show_bug.cgi?id=177586
+        http://trac.webkit.org/changeset/222625
+
+2017-09-28  Filip Pizlo  <fpizlo@apple.com>
+
+        Enable gigacage on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=177586
+
+        Reviewed by Michael Saboff.
+        
+        This enables Gigacage on iOS using a much smaller cage size. It's not necessary for it to be so
+        small, but this is a good conservative starting point to start to exercise the code.
+
+        * bmalloc/Gigacage.h:
+
 2017-09-26  Filip Pizlo  <fpizlo@apple.com>
 
         Put g_gigacageBasePtr into its own page and make it read-only

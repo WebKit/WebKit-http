@@ -7,6 +7,12 @@
 
 fast/forms/attributed-strings.html [ Pass ]
 editing/pasteboard/drag-drop-href-as-text-data.html [ Pass ]
+editing/pasteboard/data-transfer-get-data-on-drop-custom.html [ Pass ]
+editing/pasteboard/data-transfer-get-data-on-drop-plain-text.html [ Pass ]
+editing/pasteboard/data-transfer-get-data-on-drop-rich-text.html [ Pass ]
+editing/pasteboard/data-transfer-get-data-on-drop-url.html [ Pass ]
+editing/pasteboard/drag-end-crash-accessing-item-list.html [ Pass ]
+editing/pasteboard/data-transfer-item-list-add-file-on-drag.html [ Pass ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
@@ -368,6 +374,7 @@ imported/w3c/web-platform-tests/XMLHttpRequest/event-upload-progress-crossorigin
 
 # Beacon is not supported on WK1.
 http/tests/blink/sendbeacon/ [ Skip ]
+http/tests/inspector/network/beacon-type.html [ Skip ]
 http/wpt/beacon/ [ Skip ]
 imported/blink/fast/beacon/ [ Skip ]
 imported/w3c/web-platform-tests/beacon/ [ Skip ]
@@ -398,6 +405,9 @@ webkit.org/b/173432 [ Debug ] imported/w3c/web-platform-tests/fetch/nosniff/impo
 fast/images/low-memory-decode.html [ Skip ]
 
 http/tests/workers/service [ Skip ]
+
+# Link preconnect is disabled on WebKit1 because it does not use NETWORK_SESSION.
+http/tests/preconnect [ Skip ]
 
 webkit.org/b/175345 fast/images/animated-gif-scrolling-crash.html [ Pass Timeout ]
 
@@ -437,3 +447,6 @@ webkit.org/b/177020 fast/events/beforeunload-dom-manipulation-crash.html [ Skip 
 [ HighSierra+ ] fast/events/keydown-leftright-keys.html [ Crash ]
 [ HighSierra+ ] fast/forms/textarea-maxlength.html [ Crash ]
 [ HighSierra+ ] fast/text/system-font-fallback-emoji.html [ Crash ]
+
+webkit.org/b/177563 [ HighSierra ] http/tests/xmlhttprequest/response-empty-arraybuffer.html [ Failure ]
+webkit.org/b/177564 [ HighSierra ] http/tests/xmlhttprequest/response-encoding.html [ Skip ]

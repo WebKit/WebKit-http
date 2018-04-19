@@ -106,7 +106,6 @@
 #import "WebSelectionServiceController.h"
 #import "WebStorageManagerInternal.h"
 #import "WebStorageNamespaceProvider.h"
-#import "WebSystemInterface.h"
 #import "WebTextCompletionController.h"
 #import "WebTextIterator.h"
 #import "WebUIDelegate.h"
@@ -204,7 +203,6 @@
 #import <WebKitLegacy/DOM.h>
 #import <WebKitLegacy/DOMExtensions.h>
 #import <WebKitLegacy/DOMPrivate.h>
-#import <WebKitSystemInterface.h>
 #import <bindings/ScriptValue.h>
 #import <mach-o/dyld.h>
 #import <objc/runtime.h>
@@ -1417,7 +1415,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     PageConfiguration pageConfiguration(
         makeUniqueRef<WebEditorClient>(self),
         SocketProvider::create(),
-        makeUniqueRef<WebCore::LibWebRTCProvider>(),
+        LibWebRTCProvider::create(),
         WebCore::CacheStorageProvider::create()
     );
 #if !PLATFORM(IOS)
@@ -1681,7 +1679,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     PageConfiguration pageConfiguration(
         makeUniqueRef<WebEditorClient>(self),
         SocketProvider::create(),
-        makeUniqueRef<WebCore::LibWebRTCProvider>(),
+        LibWebRTCProvider::create(),
         WebCore::CacheStorageProvider::create()
     );
     pageConfiguration.chromeClient = new WebChromeClientIOS(self);
@@ -5367,7 +5365,6 @@ static Vector<String> toStringVector(NSArray* patterns)
         return;
     initialized = YES;
 
-    InitWebCoreSystemInterface();
 #if !PLATFORM(IOS)
     JSC::initializeThreading();
     WTF::initializeMainThreadToProcessMainThread();

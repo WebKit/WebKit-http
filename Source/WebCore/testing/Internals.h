@@ -77,6 +77,7 @@ class RTCPeerConnection;
 class SVGSVGElement;
 class SerializedScriptValue;
 class SourceBuffer;
+class StringCallback;
 class StyleSheet;
 class TimeRanges;
 class TypeConversions;
@@ -428,9 +429,6 @@ public:
 #endif
 
 #if ENABLE(WEB_RTC)
-#if USE(OPENWEBRTC)
-    void enableMockMediaEndpoint();
-#endif
     void emulateRTCPeerConnectionPlatformEvent(RTCPeerConnection&, const String& action);
     void useMockRTCPeerConnectionFactory(const String&);
     void setICECandidateFiltering(bool);
@@ -602,6 +600,8 @@ public:
 
     void clearCacheStorageMemoryRepresentation(DOMPromiseDeferred<void>&&);
     void cacheStorageEngineRepresentation(DOMPromiseDeferred<IDLDOMString>&&);
+
+    void setConsoleMessageListener(RefPtr<StringCallback>&&);
 
 private:
     explicit Internals(Document&);

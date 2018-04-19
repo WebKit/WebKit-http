@@ -31,6 +31,7 @@
 #include "DataReference.h"
 #include "LibWebRTCSocketClient.h"
 #include "NetworkRTCProvider.h"
+#include "RTCPacketOptions.h"
 #include <WebCore/SharedBuffer.h>
 #include <wtf/Function.h>
 
@@ -42,23 +43,10 @@ NetworkRTCSocket::NetworkRTCSocket(uint64_t identifier, NetworkRTCProvider& rtcP
 {
 }
 
-void NetworkRTCSocket::sendTo(const IPC::DataReference& data, const RTCNetwork::SocketAddress& socketAddress, int packetID, int rtpSendtimeExtensionID, String srtpAuth, int64_t srtpPacketIndex, int dscp)
+void NetworkRTCSocket::sendTo(const IPC::DataReference& data, RTCNetwork::SocketAddress&& socketAddress, RTCPacketOptions&& options)
 {
     auto buffer = WebCore::SharedBuffer::create(data.data(), data.size());
-
-    rtc::PacketOptions options;
-    options.packet_id = packetID;
-    options.packet_time_params.rtp_sendtime_extension_id = rtpSendtimeExtensionID;
-    options.packet_time_params.srtp_packet_index = srtpPacketIndex;
-    options.dscp = static_cast<rtc::DiffServCodePoint>(dscp);
-    auto srtpAuthUTF8 = srtpAuth.utf8();
-    if (srtpAuthUTF8.length()) {
-        options.packet_time_params.srtp_auth_key = std::vector<char>(srtpAuthUTF8.data(), srtpAuthUTF8.data() + srtpAuthUTF8.length());
-        options.packet_time_params.srtp_auth_tag_len = srtpAuthUTF8.length();
-    } else
-        options.packet_time_params.srtp_auth_tag_len = -1;
-    
-    m_rtcProvider.callSocket(m_identifier, [buffer = WTFMove(buffer), socketAddress, options](LibWebRTCSocketClient& client) {
+    m_rtcProvider.callSocket(m_identifier, [buffer = WTFMove(buffer), socketAddress = WTFMove(socketAddress), options = WTFMove(options.options)](LibWebRTCSocketClient& client) {
         client.sendTo(buffer.get(), socketAddress.value, options);
     });
 }

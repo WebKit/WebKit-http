@@ -35,12 +35,20 @@ WI.SpreadsheetCSSStyleDeclarationSection = class SpreadsheetCSSStyleDeclarationS
 
         this._delegate = delegate || null;
         this._style = style;
+        this._propertiesEditor = null;
         this._selectorElements = [];
     }
 
     // Public
 
     get style() { return this._style; }
+
+    get propertiesEditor() { return this._propertiesEditor; }
+
+    get editable()
+    {
+        return this._style.editable;
+    }
 
     initialLayout()
     {
@@ -55,7 +63,11 @@ WI.SpreadsheetCSSStyleDeclarationSection = class SpreadsheetCSSStyleDeclarationS
 
         this._selectorElement = document.createElement("span");
         this._selectorElement.classList.add("selector");
+        this._selectorElement.tabIndex = 0;
         this._headerElement.append(this._selectorElement);
+
+        if (this._style.selectorEditable)
+            this._selectorTextField = new WI.SpreadsheetSelectorField(this, this._selectorElement);
 
         this._propertiesEditor = new WI.SpreadsheetCSSStyleDeclarationEditor(this, this._style);
         this._propertiesEditor.element.classList.add("properties");
@@ -83,9 +95,71 @@ WI.SpreadsheetCSSStyleDeclarationSection = class SpreadsheetCSSStyleDeclarationS
     {
         super.layout();
 
-        this._selectorElement.removeChildren();
-        this._originElement.removeChildren();
+        this._renderOrigin();
+        this._renderSelector();
+    }
 
+    startEditingRuleSelector()
+    {
+        this._selectorElement.focus();
+    }
+
+    cssStyleDeclarationTextEditorStartEditingRuleSelector()
+    {
+        this.startEditingRuleSelector();
+    }
+
+    spreadsheetSelectorFieldDidChange(direction)
+    {
+        let selectorText = this._selectorElement.textContent.trim();
+
+        if (!selectorText || selectorText === this._style.ownerRule.selectorText)
+            this._discardSelectorChange();
+        else {
+            this._style.ownerRule.singleFireEventListener(WI.CSSRule.Event.SelectorChanged, this._renderSelector, this);
+            this._style.ownerRule.selectorText = selectorText;
+        }
+
+        if (!direction) {
+            // Don't do anything when it's a blur event.
+            return;
+        }
+
+        if (direction === "forward")
+            this._propertiesEditor.startEditingFirstProperty();
+        else if (direction === "backward") {
+            if (typeof this._delegate.cssStyleDeclarationSectionStartEditingPreviousRule === "function")
+                this._delegate.cssStyleDeclarationSectionStartEditingPreviousRule(this);
+        }
+    }
+
+    spreadsheetSelectorFieldDidDiscard()
+    {
+        this._discardSelectorChange();
+    }
+
+    cssStyleDeclarationEditorStartEditingAdjacentRule(toPreviousRule)
+    {
+        if (!this._delegate)
+            return;
+
+        if (toPreviousRule && typeof this._delegate.cssStyleDeclarationSectionStartEditingPreviousRule === "function")
+            this._delegate.cssStyleDeclarationSectionStartEditingPreviousRule(this);
+        else if (!toPreviousRule && typeof this._delegate.cssStyleDeclarationSectionStartEditingNextRule === "function")
+            this._delegate.cssStyleDeclarationSectionStartEditingNextRule(this);
+    }
+
+    // Private
+
+    _discardSelectorChange()
+    {
+        // Re-render selector for syntax highlighting.
+        this._renderSelector();
+    }
+
+    _renderSelector()
+    {
+        this._selectorElement.removeChildren();
         this._selectorElements = [];
 
         let appendSelector = (selector, matched) => {
@@ -145,6 +219,27 @@ WI.SpreadsheetCSSStyleDeclarationSection = class SpreadsheetCSSStyleDeclarationS
             } else
                 appendSelectorTextKnownToMatch(this._style.ownerRule.selectorText);
 
+            break;
+
+        case WI.CSSStyleDeclaration.Type.Inline:
+            this._selectorElement.textContent = WI.UIString("Style Attribute");
+            this._selectorElement.classList.add("style-attribute");
+            break;
+
+        case WI.CSSStyleDeclaration.Type.Attribute:
+            appendSelectorTextKnownToMatch(this._style.node.displayName);
+            break;
+        }
+    }
+
+    _renderOrigin()
+    {
+        this._originElement.removeChildren();
+
+        switch (this._style.type) {
+        case WI.CSSStyleDeclaration.Type.Rule:
+            console.assert(this._style.ownerRule);
+
             if (this._style.ownerRule.sourceCodeLocation) {
                 let options = {
                     dontFloat: true,
@@ -194,38 +289,13 @@ WI.SpreadsheetCSSStyleDeclarationSection = class SpreadsheetCSSStyleDeclarationS
                     this._originElement.title = WI.UIString("%s cannot be modified").format(styleTitle);
                 }
             }
-
-            break;
-
-        case WI.CSSStyleDeclaration.Type.Inline:
-            this._selectorElement.textContent = WI.UIString("Style Attribute");
-            this._selectorElement.classList.add("style-attribute");
             break;
 
         case WI.CSSStyleDeclaration.Type.Attribute:
-            appendSelectorTextKnownToMatch(this._style.node.displayName);
             this._originElement.append(WI.UIString("HTML Attributes"));
             break;
         }
     }
-
-    cssStyleDeclarationTextEditorFocused()
-    {
-        if (this._delegate && typeof this._delegate.cssStyleDeclarationSectionEditorFocused === "function")
-            this._delegate.cssStyleDeclarationSectionEditorFocused(this);
-    }
-
-    get locked()
-    {
-        return !this._style.editable;
-    }
-
-    get selectorEditable()
-    {
-        return this._style.editable && this._style.ownerRule;
-    }
-
-    // Private
 
     _createMediaHeader()
     {

@@ -56,8 +56,8 @@ WI.Table = class Table extends WI.View
         this._scrollContainerElement.className = "data-container";
         this._scrollContainerElement.addEventListener("scroll", scrollHandler);
         this._scrollContainerElement.addEventListener("mousewheel", scrollHandler);
-        if (this._delegate.tableCellClicked)
-            this._scrollContainerElement.addEventListener("click", this._handleClick.bind(this));
+        if (this._delegate.tableCellMouseDown)
+            this._scrollContainerElement.addEventListener("mousedown", this._handleMouseDown.bind(this));
         if (this._delegate.tableCellContextMenuClicked)
             this._scrollContainerElement.addEventListener("contextmenu", this._handleContextMenu.bind(this));
 
@@ -72,6 +72,9 @@ WI.Table = class Table extends WI.View
 
         this._fillerRow = this._listElement.appendChild(document.createElement("li"));
         this._fillerRow.className = "filler";
+
+        this._resizersElement = this._element.appendChild(document.createElement("div"));
+        this._resizersElement.className = "resizers";
 
         this._cachedRows = new Map;
 
@@ -93,13 +96,12 @@ WI.Table = class Table extends WI.View
         this._resizeOriginalColumnWidths = null;
         this._lastColumnIndexToAcceptRemainderPixel = 0;
 
-        this._sortOrder = WI.Table.SortOrder.Indeterminate;
-        this._sortColumnIdentifier = null;
-        this._sortRequestIdentifier = undefined;
-
-        this._sortOrderSetting = new WI.Setting(this._identifier + "-sort-order", this._sortOrder);
-        this._sortColumnIdentifierSetting = new WI.Setting(this._identifier + "-sort", this._sortColumnIdentifier);
+        this._sortOrderSetting = new WI.Setting(this._identifier + "-sort-order", WI.Table.SortOrder.Indeterminate);
+        this._sortColumnIdentifierSetting = new WI.Setting(this._identifier + "-sort", null);
         this._columnVisibilitySetting = new WI.Setting(this._identifier + "-column-visibility", {});
+
+        this._sortOrder = this._sortOrderSetting.value;
+        this._sortColumnIdentifier = this._sortColumnIdentifierSetting.value;
 
         this._cachedWidth = NaN;
         this._cachedHeight = NaN;
@@ -121,6 +123,7 @@ WI.Table = class Table extends WI.View
     get delegate() { return this._delegate; }
     get rowHeight() { return this._rowHeight; }
     get selectedRow() { return this._selectedRowIndex; }
+    get scrollContainer() { return this._scrollContainerElement; }
 
     get sortOrder()
     {
@@ -129,7 +132,7 @@ WI.Table = class Table extends WI.View
 
     set sortOrder(sortOrder)
     {
-        if (sortOrder === this._sortOrder)
+        if (sortOrder === this._sortOrder && this.didInitialLayout)
             return;
 
         console.assert(sortOrder === WI.Table.SortOrder.Indeterminate || sortOrder === WI.Table.SortOrder.Ascending || sortOrder === WI.Table.SortOrder.Descending);
@@ -158,7 +161,7 @@ WI.Table = class Table extends WI.View
 
     set sortColumnIdentifier(columnIdentifier)
     {
-        if (columnIdentifier === this._sortColumnIdentifier)
+        if (columnIdentifier === this._sortColumnIdentifier && this.didInitialLayout)
             return;
 
         let column = this._columnSpecs.get(columnIdentifier);
@@ -886,6 +889,21 @@ WI.Table = class Table extends WI.View
         let numberOfRows = this._dataSource.tableNumberOfRows(this);
         this._previousRevealedRowCount = numberOfRows;
 
+        // Scroll back up if the number of rows was reduced such that the existing
+        // scroll top value is larger than it could otherwise have been. We only
+        // need to do this adjustment if there are more rows than would fit on screen,
+        // because when the filler row activates it will reset our scroll.
+        if (scrollTop) {
+            let rowsThatCanFitOnScreen = Math.ceil(scrollableOffsetHeight / rowHeight);
+            if (numberOfRows >= rowsThatCanFitOnScreen) {
+                let maximumScrollTop = Math.max(0, (numberOfRows * rowHeight) - scrollableOffsetHeight);
+                if (scrollTop > maximumScrollTop) {
+                    this._scrollContainerElement.scrollTop = maximumScrollTop;
+                    this._cachedScrollTop = maximumScrollTop;
+                }
+            }
+        }
+
         let topHiddenRowCount = Math.max(0, Math.floor((scrollTop - overflowPadding) / rowHeight));
         let bottomHiddenRowCount = Math.max(0, this._previousRevealedRowCount - topHiddenRowCount - visibleRowCount);
 
@@ -926,6 +944,13 @@ WI.Table = class Table extends WI.View
         }
 
         this._scrollContainerElement.classList.add("not-scrollable");
+
+        // In the event that we just made the table not scrollable then the number
+        // of rows can fit on screen. Reset the scroll top.
+        if (this._cachedScrollTop) {
+            this._scrollContainerElement.scrollTop = 0;
+            this._cachedScrollTop = 0;
+        }
 
         // Extend past edge some reasonable amount. At least 200px.
         const paddingPastTheEdge = 200;
@@ -986,12 +1011,12 @@ WI.Table = class Table extends WI.View
                 do {
                     let resizer = new WI.Resizer(WI.Resizer.RuleOrientation.Vertical, this);
                     this._resizers.push(resizer);
-                    this.element.appendChild(resizer.element);
+                    this._resizersElement.appendChild(resizer.element);
                 } while (this._resizers.length < resizersNeededCount);
             } else {
                 do {
                     let resizer = this._resizers.pop();
-                    this.element.removeChild(resizer.element);
+                    this._resizersElement.removeChild(resizer.element);
                 } while (this._resizers.length > resizersNeededCount);
             }
         }
@@ -1075,8 +1100,11 @@ WI.Table = class Table extends WI.View
         }
     }
 
-    _handleClick(event)
+    _handleMouseDown(event)
     {
+        if (event.button !== 0 || event.ctrlKey)
+            return;
+
         let cell = event.target.enclosingNodeOrSelfWithClass("cell");
         if (!cell)
             return;
@@ -1089,7 +1117,7 @@ WI.Table = class Table extends WI.View
         let column = this._visibleColumns[columnIndex];
         let rowIndex = row.__index;
 
-        this._delegate.tableCellClicked(this, cell, column, rowIndex, event);
+        this._delegate.tableCellMouseDown(this, cell, column, rowIndex, event);
     }
 
     _handleContextMenu(event)

@@ -38,7 +38,10 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         this._table = null;
         this._nameColumnWidthSetting = new WI.Setting("network-table-content-view-name-column-width", 250);
 
-        // FIXME: Resource Detail View.
+        this._selectedResource = null;
+        this._resourceDetailView = null;
+        this._resourceDetailViewMap = new Map;
+
         // FIXME: Network Timeline.
         // FIXME: Filter text field.
         // FIXME: Throttling.
@@ -108,6 +111,10 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         case WI.Resource.Type.XHR:
         case WI.Resource.Type.Fetch:
             return "XHR";
+        case WI.Resource.Type.Ping:
+            return WI.UIString("Ping");
+        case WI.Resource.Type.Beacon:
+            return WI.UIString("Beacon");
         case WI.Resource.Type.WebSocket:
         case WI.Resource.Type.Other:
             return WI.UIString("Other");
@@ -139,17 +146,34 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
     {
         super.shown();
 
+        if (this._resourceDetailView)
+            this._resourceDetailView.shown();
+
         if (this._table)
             this._table.restoreScrollPosition();
     }
 
+    hidden()
+    {
+        if (this._resourceDetailView)
+            this._resourceDetailView.hidden();
+
+        super.hidden();
+    }
+
     closed()
     {
-        super.closed();
+        this._hideResourceDetailView();
+
+        for (let detailView of this._resourceDetailViewMap.values())
+            detailView.dispose();
+        this._resourceDetailViewMap.clear();
 
         WI.Frame.removeEventListener(null, null, this);
         WI.Resource.removeEventListener(null, null, this);
         WI.timelineManager.persistentNetworkTimeline.removeEventListener(WI.Timeline.Event.RecordAdded, this._networkTimelineRecordAdded, this);
+
+        super.closed();
     }
 
     reset()
@@ -158,10 +182,25 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         this._filteredEntries = [];
         this._pendingInsertions = [];
 
+        for (let detailView of this._resourceDetailViewMap.values())
+            detailView.dispose();
+        this._resourceDetailViewMap.clear();
+
         if (this._table) {
+            this._hideResourceDetailView();
+            this._selectedResource = null;
             this._table.clearSelectedRow();
             this._table.reloadData();
         }
+    }
+
+    // NetworkResourceDetailView delegate
+
+    networkResourceDetailViewClose(resourceDetailView)
+    {
+        this._hideResourceDetailView();
+        this._selectedResource = null;
+        this._table.clearSelectedRow();
     }
 
     // Table dataSource
@@ -178,6 +217,8 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         if (!this._entriesSortComparator)
             return;
 
+        this._hideResourceDetailView();
+
         this._entries = this._entries.sort(this._entriesSortComparator);
         this._updateFilteredEntries();
         this._table.reloadData();
@@ -185,9 +226,12 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
 
     // Table delegate
 
-    tableCellClicked(table, cell, column, rowIndex, event)
+    tableCellMouseDown(table, cell, column, rowIndex, event)
     {
-        // FIXME: Show resource detail view.
+        if (column !== this._nameColumn)
+            return;
+
+        this._table.selectRow(rowIndex);
     }
 
     tableCellContextMenuClicked(table, cell, column, rowIndex, event)
@@ -204,7 +248,18 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
 
     tableSelectedRowChanged(table, rowIndex)
     {
-        // FIXME: Show resource detail view.
+        if (isNaN(rowIndex)) {
+            this._selectedResource = null;
+            this._hideResourceDetailView();
+            return;
+        }
+
+        let entry = this._filteredEntries[rowIndex];
+        if (entry.resource === this._selectedResource)
+            return;
+
+        this._selectedResource = entry.resource;
+        this._showResourceDetailView(this._selectedResource);
     }
 
     tablePopulateCell(table, cell, column, rowIndex)
@@ -511,12 +566,18 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         this._table.addColumn(this._timeColumn);
         this._table.addColumn(this._waterfallColumn);
 
+        if (!this._table.sortColumnIdentifier) {
+            this._table.sortOrder = WI.Table.SortOrder.Ascending;
+            this._table.sortColumnIdentifier = "waterfall";
+        }
+
         this.addSubview(this._table);
     }
 
     layout()
     {
         this._processPendingEntries();
+        this._positionDetailView();
     }
 
     handleClearShortcut(event)
@@ -571,6 +632,58 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
             return;
 
         this._filteredEntries[rowIndex] = entry;
+    }
+
+    _hideResourceDetailView()
+    {
+        if (!this._resourceDetailView)
+            return;
+
+        this.element.classList.remove("showing-detail");
+        this._table.scrollContainer.style.removeProperty("width");
+
+        this.removeSubview(this._resourceDetailView);
+
+        this._resourceDetailView.hidden();
+        this._resourceDetailView = null;
+
+        this._table.resize();
+    }
+
+    _showResourceDetailView(resource)
+    {
+        let oldResourceDetailView = this._resourceDetailView;
+
+        this._resourceDetailView = this._resourceDetailViewMap.get(resource);
+        if (!this._resourceDetailView) {
+            this._resourceDetailView = new WI.NetworkResourceDetailView(resource, this);
+            this._resourceDetailViewMap.set(resource, this._resourceDetailView);
+        }
+
+        if (oldResourceDetailView) {
+            oldResourceDetailView.hidden();
+            this.replaceSubview(oldResourceDetailView, this._resourceDetailView);
+        } else
+            this.addSubview(this._resourceDetailView);
+        this._resourceDetailView.shown();
+
+        this.element.classList.add("showing-detail");
+        this._table.scrollContainer.style.width = this._nameColumn.width + "px";
+
+        // FIXME: It would be nice to avoid this.
+        // Currently the ResourceDetailView is in the heirarchy but has not yet done a layout so we
+        // end up seeing the table behind it. This forces us to layout now instead of after a beat.
+        this.updateLayout();
+    }
+
+    _positionDetailView()
+    {
+        if (!this._resourceDetailView)
+            return;
+
+        let side = WI.resolvedLayoutDirection() === WI.LayoutDirection.RTL ? "right" : "left";
+        this._resourceDetailView.element.style[side] = this._nameColumn.width + "px";
+        this._table.scrollContainer.style.width = this._nameColumn.width + "px";
     }
 
     _resourceCachingDisabledSettingChanged()
@@ -749,6 +862,8 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
             this._filteredEntries = this._entries.filter(this._passFilter, this);
         else
             this._filteredEntries = this._entries.slice();
+
+        this._restoreSelectedRow();
     }
 
     _generateTypeFilter()
@@ -786,13 +901,33 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         if (this._areFilterListsIdentical(oldFilter, newFilter))
             return;
 
+        // Even if the selected resource would still be visible, lets close the detail view if a filter changes.
+        this._hideResourceDetailView();
+
         this._activeTypeFilters = newFilter;
         this._updateFilteredEntries();
         this._table.reloadData();
     }
 
+    _restoreSelectedRow()
+    {
+        if (!this._selectedResource)
+            return;
+
+        let rowIndex = this._rowIndexForResource(this._selectedResource);
+        if (rowIndex === -1) {
+            this._selectedResource = null;
+            this._table.clearSelectedRow();
+            return;
+        }
+
+        this._table.selectRow(rowIndex);
+    }
+
     _tableNameColumnDidChangeWidth(event)
     {
         this._nameColumnWidthSetting.value = event.target.width;
+
+        this._positionDetailView();
     }
 };

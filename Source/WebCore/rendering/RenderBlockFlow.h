@@ -118,7 +118,6 @@ public:
         RenderBlockFlowRareData(const RenderBlockFlow& block)
             : m_margins(positiveMarginBeforeDefault(block), negativeMarginBeforeDefault(block), positiveMarginAfterDefault(block), negativeMarginAfterDefault(block))
             , m_lineBreakToAvoidWidow(-1)
-            , m_multiColumnFlow(nullptr)
             , m_discardMarginBefore(false)
             , m_discardMarginAfter(false)
             , m_didBreakAtLineToAvoidWidow(false)
@@ -150,7 +149,7 @@ public:
         int m_lineBreakToAvoidWidow;
         std::unique_ptr<RootInlineBox> m_lineGridBox;
 
-        RenderMultiColumnFlow* m_multiColumnFlow;
+        WeakPtr<RenderMultiColumnFlow> m_multiColumnFlow;
         
         bool m_discardMarginBefore : 1;
         bool m_discardMarginAfter : 1;
@@ -271,8 +270,9 @@ public:
     }
     void layoutLineGridBox();
 
-    RenderMultiColumnFlow* multiColumnFlow() const { return hasRareBlockFlowData() ? rareBlockFlowData()->m_multiColumnFlow : nullptr; }
-    void setMultiColumnFlow(RenderMultiColumnFlow*);
+    RenderMultiColumnFlow* multiColumnFlow() const { return hasRareBlockFlowData() ? rareBlockFlowData()->m_multiColumnFlow.get() : nullptr; }
+    void setMultiColumnFlow(RenderMultiColumnFlow&);
+    void clearMultiColumnFlow();
     bool willCreateColumns(std::optional<unsigned> desiredColumnCount = std::nullopt) const;
     virtual bool requiresColumns(int) const;
 
@@ -382,8 +382,8 @@ public:
     LayoutUnit logicalHeightForChildForFragmentation(const RenderBox& child) const;
     bool hasNextPage(LayoutUnit logicalOffset, PageBoundaryRule = ExcludePageBoundary) const;
 
-    void addChild(RenderObject* newChild, RenderObject* beforeChild = 0) override;
-    void removeChild(RenderObject&) override;
+    void addChild(RenderPtr<RenderObject> newChild, RenderObject* beforeChild = 0) override;
+    RenderPtr<RenderObject> takeChild(RenderObject&) override;
 
     void updateColumnProgressionFromStyle(RenderStyle&);
     void updateStylesForColumnChildren();

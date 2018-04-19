@@ -36,11 +36,11 @@ public:
 
     const char* renderName() const override { return "RenderFullScreen"; }
 
-    void setPlaceholder(RenderBlock*);
-    RenderBlock* placeholder() { return m_placeholder; }
+    RenderBlock* placeholder() { return m_placeholder.get(); }
     void createPlaceholder(std::unique_ptr<RenderStyle>, const LayoutRect& frameRect);
 
-    static RenderFullScreen* wrapRenderer(RenderObject*, RenderElement*, Document&);
+    static RenderPtr<RenderFullScreen> wrapNewRenderer(RenderPtr<RenderElement>, RenderElement& parent, Document&);
+    static void wrapExistingRenderer(RenderElement&, Document&);
     void unwrapRenderer(bool& requiresRenderTreeRebuild);
 
     ItemPosition selfAlignmentNormalBehavior(const RenderBox* = nullptr) const override { return ItemPositionCenter; }
@@ -51,7 +51,7 @@ private:
     bool isFlexibleBoxImpl() const override { return true; }
 
 protected:
-    RenderBlock* m_placeholder;
+    WeakPtr<RenderBlock> m_placeholder;
 };
 
 } // namespace WebCore

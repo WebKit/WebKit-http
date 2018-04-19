@@ -95,10 +95,13 @@ void parseAccessControlExposeHeadersAllowList(const String& headerValue, HTTPHea
 // HTTP Header routine as per https://fetch.spec.whatwg.org/#terminology-headers
 bool isForbiddenHeaderName(const String&);
 bool isForbiddenResponseHeaderName(const String&);
+bool isForbiddenMethod(const String&);
 bool isSimpleHeader(const String& name, const String& value);
 bool isCrossOriginSafeHeader(HTTPHeaderName, const HTTPHeaderSet&);
 bool isCrossOriginSafeHeader(const String&, const HTTPHeaderSet&);
 bool isCrossOriginSafeRequestHeader(HTTPHeaderName, const String&);
+
+String normalizeHTTPMethod(const String&);
 
 inline bool isHTTPSpace(UChar character)
 {

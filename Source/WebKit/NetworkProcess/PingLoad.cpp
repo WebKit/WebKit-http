@@ -44,7 +44,7 @@ namespace WebKit {
 
 using namespace WebCore;
 
-PingLoad::PingLoad(NetworkResourceLoadParameters&& parameters, HTTPHeaderMap&& originalRequestHeaders, WTF::CompletionHandler<void(const ResourceError&)>&& completionHandler)
+PingLoad::PingLoad(NetworkResourceLoadParameters&& parameters, HTTPHeaderMap&& originalRequestHeaders, WTF::CompletionHandler<void(const ResourceError&, const ResourceResponse&)>&& completionHandler)
     : m_parameters(WTFMove(parameters))
     , m_originalRequestHeaders(WTFMove(originalRequestHeaders))
     , m_completionHandler(WTFMove(completionHandler))
@@ -77,9 +77,9 @@ PingLoad::~PingLoad()
     }
 }
 
-void PingLoad::didFinish(const ResourceError& error)
+void PingLoad::didFinish(const ResourceError& error, const ResourceResponse& response)
 {
-    m_completionHandler(error);
+    m_completionHandler(error, response);
     delete this;
 }
 
@@ -175,7 +175,7 @@ void PingLoad::didReceiveResponseNetworkSession(ResourceResponse&& response, Res
 {
     RELEASE_LOG_IF_ALLOWED("didReceiveResponseNetworkSession - httpStatusCode: %d", response.httpStatusCode());
     completionHandler(PolicyAction::Ignore);
-    didFinish();
+    didFinish({ }, response);
 }
 
 void PingLoad::didReceiveData(Ref<SharedBuffer>&&)
@@ -323,7 +323,7 @@ ContentExtensions::ContentExtensionsBackend& PingLoad::contentExtensionsBackend(
 ContentExtensions::BlockedStatus PingLoad::processContentExtensionRulesForLoad(ResourceRequest& request)
 {
     auto status = contentExtensionsBackend().processContentExtensionRulesForPingLoad(request.url(), m_parameters.mainDocumentURL);
-    applyBlockedStatusToRequest(status, request);
+    applyBlockedStatusToRequest(status, nullptr, request);
     return status;
 }
 

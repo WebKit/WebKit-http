@@ -101,14 +101,55 @@ RepetitionCount GIFImageDecoder::repetitionCount() const
     return m_repetitionCount;
 }
 
+size_t GIFImageDecoder::findFirstRequiredFrameToDecode(size_t frameIndex)
+{
+    // The first frame doesn't depend on any other.
+    if (!frameIndex)
+        return 0;
+
+    for (size_t i = frameIndex; i > 0; --i) {
+        ImageFrame& frame = m_frameBufferCache[i - 1];
+
+        // Frames with disposal method RestoreToPrevious are useless, skip them.
+        if (frame.disposalMethod() == ImageFrame::DisposalMethod::RestoreToPrevious)
+            continue;
+
+        // At this point the disposal method can be Unspecified, DoNotDispose or RestoreToBackground.
+        // In every case, if the frame is complete we can start decoding the next one.
+        if (frame.isComplete())
+            return i;
+
+        // If the disposal method of this frame is RestoreToBackground and it fills the whole area,
+        // the next frame's backing store is initialized to transparent, so we start decoding with it.
+        if (frame.disposalMethod() == ImageFrame::DisposalMethod::RestoreToBackground) {
+            // We cannot use frame.backingStore()->frameRect() here, because it has been cleared
+            // when the frame was removed from the cache. We need to get the values from the
+            // reader context.
+            const auto* frameContext = m_reader->frameContext(i - 1);
+            ASSERT(frameContext);
+            IntRect frameRect(frameContext->xOffset, frameContext->yOffset, frameContext->width, frameContext->height);
+            // We would need to scale frameRect and check whether it fills the whole scaledSize(). But
+            // can check whether the original frameRect fills size() instead. If the frame fills the
+            // whole area then it can be decoded without dependencies.
+            if (frameRect.contains({ { }, size() }))
+                return i;
+        }
+    }
+
+    return 0;
+}
+
 ImageFrame* GIFImageDecoder::frameBufferAtIndex(size_t index)
 {
     if (index >= frameCount())
         return 0;
 
     ImageFrame& frame = m_frameBufferCache[index];
-    if (!frame.isComplete())
-        decode(index + 1, GIFFullQuery, isAllDataReceived());
+    if (!frame.isComplete()) {
+        for (auto i = findFirstRequiredFrameToDecode(index); i <= index; i++)
+            decode(i + 1, GIFFullQuery, isAllDataReceived());
+    }
+
     return &frame;
 }
 
@@ -124,10 +165,6 @@ void GIFImageDecoder::clearFrameBufferCache(size_t clearBeforeFrame)
     // can be asked to clear more frames than we currently have.
     if (m_frameBufferCache.isEmpty())
         return; // Nothing to do.
-
-    // Lock the decodelock here, as we are going to destroy the GIFImageReader and doing so while
-    // there's an ongoing decode will cause a crash.
-    LockHolder locker(m_decodeLock);
 
     // The "-1" here is tricky.  It does not mean that |clearBeforeFrame| is the
     // last frame we wish to preserve, but rather that we never want to clear
@@ -167,13 +204,9 @@ void GIFImageDecoder::clearFrameBufferCache(size_t clearBeforeFrame)
     // Now |i| holds the last frame we need to preserve; clear prior frames.
     for (Vector<ImageFrame>::iterator j(m_frameBufferCache.begin()); j != i; ++j) {
         ASSERT(!j->isPartial());
-        if (j->isInvalid())
+        if (!j->isInvalid())
             j->clear();
     }
-
-    // When some frames are cleared, the reader is out of sync, since the caller might ask for any frame not
-    // necessarily in the order expected by the reader. See https://bugs.webkit.org/show_bug.cgi?id=159089.
-    m_reader = nullptr;
 }
 
 bool GIFImageDecoder::haveDecodedRow(unsigned frameIndex, const Vector<unsigned char>& rowBuffer, size_t width, size_t rowNumber, unsigned repeatCount, bool writeTransparentPixels)
@@ -302,7 +335,6 @@ void GIFImageDecoder::decode(unsigned haltAtFrame, GIFQuery query, bool allDataR
     if (failed())
         return;
 
-    LockHolder locker(m_decodeLock);
     if (!m_reader) {
         m_reader = std::make_unique<GIFImageReader>(this);
         m_reader->setData(m_data.get());

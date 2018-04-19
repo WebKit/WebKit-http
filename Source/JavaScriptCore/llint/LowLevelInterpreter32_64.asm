@@ -125,8 +125,8 @@ macro doVMEntry(makeCall)
     storep vm, VMEntryRecord::m_vm[sp]
     loadp VM::topCallFrame[vm], t4
     storep t4, VMEntryRecord::m_prevTopCallFrame[sp]
-    loadp VM::topVMEntryFrame[vm], t4
-    storep t4, VMEntryRecord::m_prevTopVMEntryFrame[sp]
+    loadp VM::topEntryFrame[vm], t4
+    storep t4, VMEntryRecord::m_prevTopEntryFrame[sp]
 
     # Align stack pointer
     if X86_WIN or MIPS
@@ -189,8 +189,8 @@ macro doVMEntry(makeCall)
     loadp VMEntryRecord::m_vm[sp], t5
     loadp VMEntryRecord::m_prevTopCallFrame[sp], t4
     storep t4, VM::topCallFrame[t5]
-    loadp VMEntryRecord::m_prevTopVMEntryFrame[sp], t4
-    storep t4, VM::topVMEntryFrame[t5]
+    loadp VMEntryRecord::m_prevTopEntryFrame[sp], t4
+    storep t4, VM::topEntryFrame[t5]
 
     if ARMv7
         subp cfr, CalleeRegisterSaveSize, t5
@@ -241,7 +241,7 @@ macro doVMEntry(makeCall)
 
 .copyArgsDone:
     storep sp, VM::topCallFrame[vm]
-    storep cfr, VM::topVMEntryFrame[vm]
+    storep cfr, VM::topEntryFrame[vm]
 
     makeCall(entry, t3, t4)
 
@@ -255,8 +255,8 @@ macro doVMEntry(makeCall)
     loadp VMEntryRecord::m_vm[sp], t5
     loadp VMEntryRecord::m_prevTopCallFrame[sp], t4
     storep t4, VM::topCallFrame[t5]
-    loadp VMEntryRecord::m_prevTopVMEntryFrame[sp], t4
-    storep t4, VM::topVMEntryFrame[t5]
+    loadp VMEntryRecord::m_prevTopEntryFrame[sp], t4
+    storep t4, VM::topEntryFrame[t5]
 
     if ARMv7
         subp cfr, CalleeRegisterSaveSize, t5
@@ -324,8 +324,8 @@ _handleUncaughtException:
     loadp VMEntryRecord::m_vm[sp], t3
     loadp VMEntryRecord::m_prevTopCallFrame[sp], t5
     storep t5, VM::topCallFrame[t3]
-    loadp VMEntryRecord::m_prevTopVMEntryFrame[sp], t5
-    storep t5, VM::topVMEntryFrame[t3]
+    loadp VMEntryRecord::m_prevTopEntryFrame[sp], t5
+    storep t5, VM::topEntryFrame[t3]
 
     if ARMv7
         subp cfr, CalleeRegisterSaveSize, t3
@@ -1794,32 +1794,6 @@ _llint_op_jneq_ptr:
     dispatchBranch(12[PC])
 .opJneqPtrFallThrough:
     dispatch(constexpr op_jneq_ptr_length)
-
-
-macro compareUnsignedJump(integerCompare)
-    loadi 4[PC], t2
-    loadi 8[PC], t3
-    loadConstantOrVariable(t2, t0, t1)
-    loadConstantOrVariable2Reg(t3, t2, t3)
-    integerCompare(t1, t3, .jumpTarget)
-    dispatch(4)
-
-.jumpTarget:
-    dispatchBranch(12[PC])
-end
-
-
-macro compareUnsigned(integerCompareAndSet)
-    loadi 12[PC], t2
-    loadi 8[PC], t0
-    loadConstantOrVariable(t2, t3, t1)
-    loadConstantOrVariable2Reg(t0, t2, t0)
-    integerCompareAndSet(t0, t1, t0)
-    loadi 4[PC], t2
-    storei BooleanTag, TagOffset[cfr, t2, 8]
-    storei t0, PayloadOffset[cfr, t2, 8]
-    dispatch(4)
-end
 
 
 macro compare(integerCompare, doubleCompare, slowPath)

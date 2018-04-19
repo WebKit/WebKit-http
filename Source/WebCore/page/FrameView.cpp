@@ -1492,7 +1492,6 @@ void FrameView::layout(bool allowSubtree)
         RenderTreeNeedsLayoutChecker checker(*root);
 #endif
         root->layout();
-        ASSERT(!root->view().renderTreeIsBeingMutatedInternally());
 
 #if ENABLE(TEXT_AUTOSIZING)
         if (frame().settings().textAutosizingEnabled() && !root->view().printing()) {
@@ -3441,7 +3440,7 @@ void FrameView::updateEmbeddedObject(RenderEmbeddedObject& embeddedObject)
         return;
     }
 
-    auto weakRenderer = embeddedObject.createWeakPtr();
+    auto weakRenderer = makeWeakPtr(embeddedObject);
 
     // FIXME: This could turn into a real virtual dispatch if we defined
     // updateWidget(PluginCreationOption) on HTMLElement.
@@ -4522,8 +4521,8 @@ void FrameView::paintContentsForSnapshot(GraphicsContext& context, const IntRect
     // after we paint the snapshot.
     if (shouldPaintSelection == ExcludeSelection) {
         for (auto* frame = m_frame.ptr(); frame; frame = frame->tree().traverseNext(m_frame.ptr())) {
-            if (RenderView* root = frame->contentRenderer())
-                root->clearSelection();
+            if (auto* renderView = frame->contentRenderer())
+                renderView->selection().clear();
         }
     }
 

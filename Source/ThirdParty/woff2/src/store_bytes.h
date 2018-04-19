@@ -1,19 +1,11 @@
-// Copyright 2013 Google Inc. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// Helper functions for storing integer values into byte streams.
-// No bounds checking is performed, that is the responsibility of the caller.
+/* Copyright 2013 Google Inc. All Rights Reserved.
+
+   Distributed under MIT license.
+   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
+*/
+
+/* Helper functions for storing integer values into byte streams.
+   No bounds checking is performed, that is the responsibility of the caller. */
 
 #ifndef WOFF2_STORE_BYTES_H_
 #define WOFF2_STORE_BYTES_H_
@@ -21,6 +13,8 @@
 #include <inttypes.h>
 #include <stddef.h>
 #include <string.h>
+
+#include "./port.h"
 
 namespace woff2 {
 
@@ -33,10 +27,10 @@ inline size_t StoreU32(uint8_t* dst, size_t offset, uint32_t x) {
 }
 
 inline size_t Store16(uint8_t* dst, size_t offset, int x) {
-#if (defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__))
+#if defined(WOFF_LITTLE_ENDIAN)
   *reinterpret_cast<uint16_t*>(dst + offset) =
       ((x & 0xFF) << 8) | ((x & 0xFF00) >> 8);
-#elif (defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__))
+#elif defined(WOFF_BIG_ENDIAN)
   *reinterpret_cast<uint16_t*>(dst + offset) = static_cast<uint16_t>(x);
 #else
   dst[offset] = x >> 8;
@@ -53,11 +47,11 @@ inline void StoreU32(uint32_t val, size_t* offset, uint8_t* dst) {
 }
 
 inline void Store16(int val, size_t* offset, uint8_t* dst) {
-#if (defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__))
+#if defined(WOFF_LITTLE_ENDIAN)
   *reinterpret_cast<uint16_t*>(dst + *offset) =
       ((val & 0xFF) << 8) | ((val & 0xFF00) >> 8);
   *offset += 2;
-#elif (defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__))
+#elif defined(WOFF_BIG_ENDIAN)
   *reinterpret_cast<uint16_t*>(dst + *offset) = static_cast<uint16_t>(val);
   *offset += 2;
 #else

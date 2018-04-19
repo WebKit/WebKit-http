@@ -339,7 +339,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 #if ENABLE(MEDIA_STREAM)
     , m_userMediaPermissionRequestManager { std::make_unique<UserMediaPermissionRequestManager>(*this) }
 #endif
-    , m_pageScrolledHysteresis([this](HysteresisState state) { if (state == HysteresisState::Stopped) pageStoppedScrolling(); }, pageScrollHysteresisDuration)
+    , m_pageScrolledHysteresis([this](PAL::HysteresisState state) { if (state == PAL::HysteresisState::Stopped) pageStoppedScrolling(); }, pageScrollHysteresisDuration)
     , m_canRunBeforeUnloadConfirmPanel(parameters.canRunBeforeUnloadConfirmPanel)
     , m_canRunModal(parameters.canRunModal)
 #if PLATFORM(IOS)
@@ -352,7 +352,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     , m_activityState(parameters.activityState)
     , m_processSuppressionEnabled(true)
     , m_userActivity("Process suppression disabled for page.")
-    , m_userActivityHysteresis([this](HysteresisState) { updateUserActivity(); })
+    , m_userActivityHysteresis([this](PAL::HysteresisState) { updateUserActivity(); })
     , m_userInterfaceLayoutDirection(parameters.userInterfaceLayoutDirection)
     , m_overrideContentSecurityPolicy { parameters.overrideContentSecurityPolicy }
     , m_cpuLimit(parameters.cpuLimit)
@@ -620,7 +620,7 @@ void WebPage::updateThrottleState()
 
 void WebPage::updateUserActivity()
 {
-    if (m_userActivityHysteresis.state() == HysteresisState::Started)
+    if (m_userActivityHysteresis.state() == PAL::HysteresisState::Started)
         m_userActivity.start();
     else
         m_userActivity.stop();
@@ -2733,12 +2733,12 @@ void WebPage::setSessionID(PAL::SessionID sessionID)
     m_page->setSessionID(sessionID);
 }
 
-void WebPage::didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, PolicyAction policyAction, uint64_t navigationID, const DownloadID& downloadID)
+void WebPage::didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, PolicyAction policyAction, uint64_t navigationID, const DownloadID& downloadID, WebsitePolicies&& websitePolicies)
 {
     WebFrame* frame = WebProcess::singleton().webFrame(frameID);
     if (!frame)
         return;
-    frame->didReceivePolicyDecision(listenerID, policyAction, navigationID, downloadID);
+    frame->didReceivePolicyDecision(listenerID, policyAction, navigationID, downloadID, websitePolicies);
 }
 
 void WebPage::continueWillSubmitForm(uint64_t frameID, uint64_t listenerID)
@@ -3090,6 +3090,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setPaginateDuringLayoutEnabled(store.getBoolValueForKey(WebPreferencesKey::paginateDuringLayoutEnabledKey()));
     settings.setDOMPasteAllowed(store.getBoolValueForKey(WebPreferencesKey::domPasteAllowedKey()));
     settings.setJavaScriptCanAccessClipboard(store.getBoolValueForKey(WebPreferencesKey::javaScriptCanAccessClipboardKey()));
+    settings.setLinkPreconnectEnabled(store.getBoolValueForKey(WebPreferencesKey::linkPreconnectKey()));
     settings.setShouldPrintBackgrounds(store.getBoolValueForKey(WebPreferencesKey::shouldPrintBackgroundsKey()));
     settings.setWebSecurityEnabled(store.getBoolValueForKey(WebPreferencesKey::webSecurityEnabledKey()));
     settings.setAllowUniversalAccessFromFileURLs(store.getBoolValueForKey(WebPreferencesKey::allowUniversalAccessFromFileURLsKey()));
@@ -6038,6 +6039,30 @@ void WebPage::urlSchemeTaskDidComplete(uint64_t handlerIdentifier, uint64_t task
     ASSERT(handler);
 
     handler->taskDidComplete(taskIdentifier, error);
+}
+
+static uint64_t nextRequestStorageAccessContextId()
+{
+    static uint64_t nextContextId = 0;
+    return ++nextContextId;
+}
+
+void WebPage::requestStorageAccess(String&& subFrameHost, String&& topFrameHost, WTF::Function<void (bool)>&& callback)
+{
+    auto contextId = nextRequestStorageAccessContextId();
+    auto addResult = m_storageAccessResponseCallbackMap.add(contextId, WTFMove(callback));
+    ASSERT(addResult.isNewEntry);
+    if (addResult.iterator->value)
+        send(Messages::WebPageProxy::RequestStorageAccess(WTFMove(subFrameHost), WTFMove(topFrameHost), contextId));
+    else
+        callback(false);
+}
+
+void WebPage::storageAccessResponse(bool wasGranted, uint64_t contextId)
+{
+    auto callback = m_storageAccessResponseCallbackMap.take(contextId);
+    ASSERT(callback);
+    callback(wasGranted);
 }
 
 } // namespace WebKit

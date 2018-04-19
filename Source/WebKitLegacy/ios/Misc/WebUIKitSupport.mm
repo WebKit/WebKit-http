@@ -28,17 +28,14 @@
 #import "WebUIKitSupport.h"
 
 #import "WebDatabaseManagerInternal.h"
-#import "WebKitSystemInterface.h"
 #import "WebLocalizableStringsInternal.h"
 #import "WebPlatformStrategies.h"
-#import "WebSystemInterface.h"
 #import "WebViewPrivate.h"
 #import <WebCore/BreakLines.h>
 #import <WebCore/PathUtilities.h>
 #import <WebCore/ResourceRequest.h>
 #import <WebCore/Settings.h>
 #import <WebCore/WebBackgroundTaskController.h>
-#import <WebCore/WebCoreSystemInterface.h>
 #import <WebCore/WebCoreThreadSystemInterface.h>
 #import <wtf/spi/darwin/dyldSPI.h>
 
@@ -79,7 +76,6 @@ void WebKitInitialize(void)
     webkitInitialized = true;
     InitWebCoreThreadSystemInterface();
     [WebView enableWebThread];
-    InitWebCoreSystemInterface();
 
     // Initialize our platform strategies.
     WebPlatformStrategies::initializeIfNecessary();

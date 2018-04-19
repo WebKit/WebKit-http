@@ -430,8 +430,12 @@ bool RenderBlockFlow::willCreateColumns(std::optional<unsigned> desiredColumnCou
     // The following types are not supposed to create multicol context.
     if (isFileUploadControl() || isTextControl() || isListBox())
         return false;
-    if (isRenderSVGBlock() || isRenderMathMLBlock() || isRubyRun())
+    if (isRenderSVGBlock() || isRubyRun())
         return false;
+#if ENABLE(MATHML)
+    if (isRenderMathMLBlock())
+        return false;
+#endif // ENABLE(MATHML)
 
     if (!firstChild())
         return false;
@@ -3156,12 +3160,17 @@ void RenderBlockFlow::updateLogicalHeight()
     RenderBlock::updateLogicalHeight();
 }
 
-void RenderBlockFlow::setMultiColumnFlow(RenderMultiColumnFlow* fragmentedFlow)
+void RenderBlockFlow::setMultiColumnFlow(RenderMultiColumnFlow& fragmentedFlow)
 {
-    if (fragmentedFlow || hasRareBlockFlowData()) {
-        RenderBlockFlowRareData& rareData = ensureRareBlockFlowData();
-        rareData.m_multiColumnFlow = fragmentedFlow;
-    }
+    ASSERT(!hasRareBlockFlowData() || !rareBlockFlowData()->m_multiColumnFlow);
+    ensureRareBlockFlowData().m_multiColumnFlow = makeWeakPtr(fragmentedFlow);
+}
+
+void RenderBlockFlow::clearMultiColumnFlow()
+{
+    ASSERT(hasRareBlockFlowData());
+    ASSERT(rareBlockFlowData()->m_multiColumnFlow);
+    rareBlockFlowData()->m_multiColumnFlow.clear();
 }
 
 static bool shouldCheckLines(const RenderBlockFlow& blockFlow)
@@ -3835,24 +3844,24 @@ void RenderBlockFlow::layoutExcludedChildren(bool relayoutChildren)
     determineLogicalLeftPositionForChild(*fragmentedFlow);
 }
 
-void RenderBlockFlow::addChild(RenderObject* newChild, RenderObject* beforeChild)
+void RenderBlockFlow::addChild(RenderPtr<RenderObject> newChild, RenderObject* beforeChild)
 {
     if (multiColumnFlow() && (!isFieldset() || !newChild->isLegend()))
-        return multiColumnFlow()->addChild(newChild, beforeChild);
+        return multiColumnFlow()->addChild(WTFMove(newChild), beforeChild);
     auto* beforeChildOrPlaceholder = beforeChild;
     if (auto* containingFragmentedFlow = enclosingFragmentedFlow())
         beforeChildOrPlaceholder = containingFragmentedFlow->resolveMovedChild(beforeChild);
-    RenderBlock::addChild(newChild, beforeChildOrPlaceholder);
+    RenderBlock::addChild(WTFMove(newChild), beforeChildOrPlaceholder);
 }
 
-void RenderBlockFlow::removeChild(RenderObject& oldChild)
+RenderPtr<RenderObject> RenderBlockFlow::takeChild(RenderObject& oldChild)
 {
     if (!renderTreeBeingDestroyed()) {
         RenderFragmentedFlow* fragmentedFlow = multiColumnFlow();
         if (fragmentedFlow && fragmentedFlow != &oldChild)
             fragmentedFlow->fragmentedFlowRelativeWillBeRemoved(oldChild);
     }
-    RenderBlock::removeChild(oldChild);
+    return RenderBlock::takeChild(oldChild);
 }
 
 void RenderBlockFlow::checkForPaginationLogicalHeightChange(bool& relayoutChildren, LayoutUnit& pageLogicalHeight, bool& pageLogicalHeightChanged)

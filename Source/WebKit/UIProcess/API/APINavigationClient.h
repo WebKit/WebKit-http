@@ -26,11 +26,11 @@
 #pragma once
 
 #include "APIData.h"
-#include "DownloadID.h"
 #include "PluginModuleInfo.h"
 #include "ProcessTerminationReason.h"
 #include "SameDocumentNavigationType.h"
 #include "WebEvent.h"
+#include "WebFramePolicyListenerProxy.h"
 #include "WebsitePolicies.h"
 #include <WebCore/FrameLoaderTypes.h>
 #include <WebCore/LayoutMilestones.h>
@@ -40,15 +40,14 @@ namespace WebCore {
 class ResourceError;
 class ResourceRequest;
 class ResourceResponse;
-class URL;
 struct SecurityOriginData;
 }
 
 namespace WebKit {
 class AuthenticationChallengeProxy;
-class DownloadID;
 class QuickLookDocumentData;
 class WebBackForwardListItem;
+class WebFramePolicyListenerProxy;
 class WebFrameProxy;
 class WebPageProxy;
 class WebProtectionSpace;
@@ -97,17 +96,20 @@ public:
     virtual void didFinishLoadForQuickLookDocumentInMainFrame(const WebKit::QuickLookDocumentData&) { }
 #endif
 
-    virtual void decidePolicyForNavigationAction(WebKit::WebPageProxy&, Ref<NavigationAction>&&, Function<void(WebCore::PolicyAction, std::optional<WebKit::WebsitePolicies>&&)>&& completionHandler, Object*)
+    virtual void decidePolicyForNavigationAction(WebKit::WebPageProxy&, Ref<NavigationAction>&&, Ref<WebKit::WebFramePolicyListenerProxy>&& listener, Object*)
     {
-        completionHandler(WebCore::PolicyAction::Use, std::nullopt);
+        listener->use({ });
     }
 
-    virtual void decidePolicyForNavigationResponse(WebKit::WebPageProxy&, NavigationResponse&, Function<void(WebCore::PolicyAction, std::optional<WebKit::WebsitePolicies>&&)>&& completionHandler, Object*)
+    virtual void decidePolicyForNavigationResponse(WebKit::WebPageProxy&, NavigationResponse&, Ref<WebKit::WebFramePolicyListenerProxy>&& listener, Object*)
     {
-        completionHandler(WebCore::PolicyAction::Use, std::nullopt);
+        listener->use({ });
     }
     
+    virtual void contentRuleListNotification(WebKit::WebPageProxy&, WebCore::URL&&, Vector<WTF::String>&&, Vector<WTF::String>&&) { };
+    
 #if ENABLE(NETSCAPE_PLUGIN_API)
+    virtual bool didFailToInitializePlugIn(WebKit::WebPageProxy&, API::Dictionary&) { return false; }
     virtual WebKit::PluginModuleLoadPolicy decidePolicyForPluginLoad(WebKit::WebPageProxy&, WebKit::PluginModuleLoadPolicy currentPluginLoadPolicy, Dictionary*, WTF::String&)
     {
         return currentPluginLoadPolicy;
@@ -118,11 +120,14 @@ public:
     virtual void webGLLoadPolicy(WebKit::WebPageProxy&, const WebCore::URL&, WTF::Function<void(WebCore::WebGLLoadPolicy)>&& completionHandler) const { completionHandler(WebCore::WebGLLoadPolicy::WebGLAllowCreation); }
     virtual void resolveWebGLLoadPolicy(WebKit::WebPageProxy&, const WebCore::URL&, WTF::Function<void(WebCore::WebGLLoadPolicy)>&& completionHandler) const { completionHandler(WebCore::WebGLLoadPolicy::WebGLAllowCreation); }
 #endif
+    
+    virtual bool willGoToBackForwardListItem(WebKit::WebPageProxy&, WebKit::WebBackForwardListItem&, bool inPageCache, Object*) { return false; }
 
     virtual void didBeginNavigationGesture(WebKit::WebPageProxy&) { }
     virtual void willEndNavigationGesture(WebKit::WebPageProxy&, bool willNavigate, WebKit::WebBackForwardListItem&) { }
     virtual void didEndNavigationGesture(WebKit::WebPageProxy&, bool willNavigate, WebKit::WebBackForwardListItem&) { }
     virtual void didRemoveNavigationGestureSnapshot(WebKit::WebPageProxy&) { }
+    virtual bool didChangeBackForwardList(WebKit::WebPageProxy&, WebKit::WebBackForwardListItem*, const Vector<Ref<WebKit::WebBackForwardListItem>>&) { return false; }
 };
 
 } // namespace API

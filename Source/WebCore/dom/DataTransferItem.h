@@ -54,6 +54,7 @@ public:
 
     ~DataTransferItem();
 
+    RefPtr<File> file() { return m_file; }
     void clearListAndPutIntoDisabledMode();
 
     bool isFile() const { return m_file; }

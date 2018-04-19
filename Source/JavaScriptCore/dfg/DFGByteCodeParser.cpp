@@ -2334,6 +2334,13 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
     }
         
     case ArrayPushIntrinsic: {
+#if USE(JSVALUE32_64)
+        if (isX86() || isMIPS()) {
+            if (argumentCountIncludingThis > 2)
+                return false;
+        }
+#endif
+
         if (static_cast<unsigned>(argumentCountIncludingThis) >= MIN_SPARSE_ARRAY_INDEX)
             return false;
         
@@ -3737,6 +3744,11 @@ Node* ByteCodeParser::load(
                 // the structures in the variant.structureSet() agree on the prototype (it would be
                 // hilariously rare if they didn't). Note that we are relying on structureSet() having
                 // at least one element. That will always be true here because of how GetByIdStatus/PutByIdStatus work.
+
+                // FIXME: right now, if we have an OPCS, we have mono proto. However, this will
+                // need to be changed in the future once we have a hybrid data structure for
+                // poly proto:
+                // https://bugs.webkit.org/show_bug.cgi?id=177339
                 JSObject* prototype = variant.structureSet()[0]->storedPrototypeObject();
                 bool allAgree = true;
                 for (unsigned i = 1; i < variant.structureSet().size(); ++i) {
@@ -4312,12 +4324,12 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
 
         case op_create_this: {
-            int calleeOperand = currentInstruction[2].u.operand;
-            Node* callee = get(VirtualRegister(calleeOperand));
+            auto& bytecode = *reinterpret_cast<OpCreateThis*>(currentInstruction);
+            Node* callee = get(VirtualRegister(bytecode.callee()));
 
             JSFunction* function = callee->dynamicCastConstant<JSFunction*>(*m_vm);
             if (!function) {
-                JSCell* cachedFunction = currentInstruction[4].u.jsCell.unvalidatedGet();
+                JSCell* cachedFunction = bytecode.cachedCallee().unvalidatedGet();
                 if (cachedFunction
                     && cachedFunction != JSCell::seenMultipleCalleeObjects()
                     && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadCell)) {
@@ -4334,18 +4346,22 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             if (function) {
                 if (FunctionRareData* rareData = function->rareData()) {
                     if (Structure* structure = rareData->objectAllocationStructure()) {
-                        m_graph.freeze(rareData);
-                        m_graph.watchpoints().addLazily(rareData->allocationProfileWatchpointSet());
-                        // The callee is still live up to this point.
-                        addToGraph(Phantom, callee);
-                        set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(NewObject, OpInfo(m_graph.registerStructure(structure))));
-                        alreadyEmitted = true;
+                        // FIXME: we should be able to allocate a poly proto object here:
+                        // https://bugs.webkit.org/show_bug.cgi?id=177517
+                        if (structure->hasMonoProto()) {
+                            m_graph.freeze(rareData);
+                            m_graph.watchpoints().addLazily(rareData->allocationProfileWatchpointSet());
+                            // The callee is still live up to this point.
+                            addToGraph(Phantom, callee);
+                            set(VirtualRegister(bytecode.dst()), addToGraph(NewObject, OpInfo(m_graph.registerStructure(structure))));
+                            alreadyEmitted = true;
+                        }
                     }
                 }
             }
             if (!alreadyEmitted) {
-                set(VirtualRegister(currentInstruction[1].u.operand),
-                    addToGraph(CreateThis, OpInfo(currentInstruction[3].u.operand), callee));
+                set(VirtualRegister(bytecode.dst()),
+                    addToGraph(CreateThis, OpInfo(bytecode.inlineCapacity()), callee));
             }
             NEXT_OPCODE(op_create_this);
         }
@@ -4751,20 +4767,6 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             Node* op2 = get(VirtualRegister(currentInstruction[3].u.operand));
             set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(CompareGreaterEq, op1, op2));
             NEXT_OPCODE(op_greatereq);
-        }
-
-        case op_below: {
-            Node* op1 = get(VirtualRegister(currentInstruction[2].u.operand));
-            Node* op2 = get(VirtualRegister(currentInstruction[3].u.operand));
-            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(CompareBelow, op1, op2));
-            NEXT_OPCODE(op_below);
-        }
-
-        case op_beloweq: {
-            Node* op1 = get(VirtualRegister(currentInstruction[2].u.operand));
-            Node* op2 = get(VirtualRegister(currentInstruction[3].u.operand));
-            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(CompareBelowEq, op1, op2));
-            NEXT_OPCODE(op_beloweq);
         }
 
         case op_eq: {
@@ -5212,25 +5214,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             addToGraph(Branch, OpInfo(branchData(m_currentIndex + OPCODE_LENGTH(op_jngreatereq), m_currentIndex + relativeOffset)), condition);
             LAST_OPCODE(op_jngreatereq);
         }
-
-        case op_jbelow: {
-            unsigned relativeOffset = currentInstruction[3].u.operand;
-            Node* op1 = get(VirtualRegister(currentInstruction[1].u.operand));
-            Node* op2 = get(VirtualRegister(currentInstruction[2].u.operand));
-            Node* condition = addToGraph(CompareBelow, op1, op2);
-            addToGraph(Branch, OpInfo(branchData(m_currentIndex + relativeOffset, m_currentIndex + OPCODE_LENGTH(op_jbelow))), condition);
-            LAST_OPCODE(op_jbelow);
-        }
-
-        case op_jbeloweq: {
-            unsigned relativeOffset = currentInstruction[3].u.operand;
-            Node* op1 = get(VirtualRegister(currentInstruction[1].u.operand));
-            Node* op2 = get(VirtualRegister(currentInstruction[2].u.operand));
-            Node* condition = addToGraph(CompareBelowEq, op1, op2);
-            addToGraph(Branch, OpInfo(branchData(m_currentIndex + relativeOffset, m_currentIndex + OPCODE_LENGTH(op_jbeloweq))), condition);
-            LAST_OPCODE(op_jbeloweq);
-        }
-
+            
         case op_switch_imm: {
             SwitchData& data = *m_graph.m_switchData.add();
             data.kind = SwitchImm;

@@ -39,8 +39,6 @@ using namespace HTMLNames;
 
 RenderButton::RenderButton(HTMLFormControlElement& element, RenderStyle&& style)
     : RenderFlexibleBox(element, WTFMove(style))
-    , m_buttonText(0)
-    , m_inner(0)
 {
 }
 
@@ -63,36 +61,34 @@ bool RenderButton::hasLineIfEmpty() const
     return is<HTMLInputElement>(formControlElement());
 }
 
-void RenderButton::addChild(RenderObject* newChild, RenderObject* beforeChild)
+void RenderButton::addChild(RenderPtr<RenderObject> newChild, RenderObject* beforeChild)
 {
     if (!m_inner) {
         // Create an anonymous block.
         ASSERT(!firstChild());
-        m_inner = createAnonymousBlock(style().display());
-        updateAnonymousChildStyle(*m_inner, m_inner->mutableStyle());
-        RenderFlexibleBox::addChild(m_inner);
-    }
-    
-    m_inner->addChild(newChild, beforeChild);
+        auto newInner = createAnonymousBlock(style().display());
+        updateAnonymousChildStyle(*newInner, newInner->mutableStyle());
+        m_inner = makeWeakPtr(*newInner);
+        RenderFlexibleBox::addChild(WTFMove(newInner));
+    }    
+    m_inner->addChild(WTFMove(newChild), beforeChild);
 }
 
-void RenderButton::removeChild(RenderObject& oldChild)
+RenderPtr<RenderObject> RenderButton::takeChild(RenderObject& oldChild)
 {
     // m_inner should be the only child, but checking for direct children who
     // are not m_inner prevents security problems when that assumption is
     // violated.
     if (&oldChild == m_inner || !m_inner || oldChild.parent() == this) {
         ASSERT(&oldChild == m_inner || !m_inner);
-        RenderFlexibleBox::removeChild(oldChild);
-        m_inner = nullptr;
-    } else
-        m_inner->removeChild(oldChild);
+        return RenderFlexibleBox::takeChild(oldChild);
+    }
+    return m_inner->takeChild(oldChild);
 }
     
 void RenderButton::updateAnonymousChildStyle(const RenderObject& child, RenderStyle& childStyle) const
 {
     ASSERT_UNUSED(child, !m_inner || &child == m_inner);
-    
     childStyle.setFlexGrow(1.0f);
     // min-width: 0; is needed for correct shrinking.
     childStyle.setMinWidth(Length(0, Fixed));
@@ -119,24 +115,28 @@ void RenderButton::updateFromElement()
 
 void RenderButton::setText(const String& str)
 {
-    if (str.isEmpty()) {
-        if (m_buttonText) {
-            m_buttonText->destroy();
-            m_buttonText = 0;
-        }
-    } else {
-        if (m_buttonText)
-            m_buttonText->setText(str.impl());
-        else {
-            m_buttonText = new RenderTextFragment(document(), str);
-            addChild(m_buttonText);
-        }
+    if (!m_buttonText && str.isEmpty())
+        return;
+
+    if (!m_buttonText) {
+        auto newButtonText = createRenderer<RenderTextFragment>(document(), str);
+        m_buttonText = makeWeakPtr(*newButtonText);
+        addChild(WTFMove(newButtonText));
+        return;
     }
+
+    if (!str.isEmpty()) {
+        m_buttonText->setText(str.impl());
+        return;
+    }
+    m_buttonText->removeFromParentAndDestroy();
 }
 
 String RenderButton::text() const
 {
-    return m_buttonText ? m_buttonText->text() : 0;
+    if (m_buttonText)
+        return m_buttonText->text();
+    return { };
 }
 
 bool RenderButton::canHaveGeneratedChildren() const

@@ -3182,7 +3182,8 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 
 - (BOOL)hasText
 {
-    return YES;
+    auto& editorState = _page->editorState();
+    return !editorState.isMissingPostLayoutData && editorState.postLayoutData().hasPlainText;
 }
 
 // end of UITextInput protocol implementation
@@ -4515,6 +4516,18 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
     }
 
     return dragItems;
+}
+
+- (NSDictionary *)_autofillContext
+{
+    if (_assistedNodeInformation.elementType == InputType::None || !_assistedNodeInformation.acceptsAutofilledLoginCredentials)
+        return nil;
+
+    NSURL *platformURL = _assistedNodeInformation.representingPageURL;
+    if (!platformURL)
+        return nil;
+
+    return @{ @"_WebViewURL" : platformURL };
 }
 
 #pragma mark - UIDragInteractionDelegate

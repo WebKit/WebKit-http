@@ -32,19 +32,12 @@
 
 #if USE(CURL)
 
-#include "CachedResourceLoader.h"
 #include "CredentialStorage.h"
-#include "CurlCacheManager.h"
 #include "CurlContext.h"
-#include "CurlJobManager.h"
-#include "CurlSSLHandle.h"
 #include "FileSystem.h"
 #include "Logging.h"
-#include "MIMETypeRegistry.h"
-#include "NetworkingContext.h"
 #include "ResourceHandleInternal.h"
 #include "SynchronousLoaderClient.h"
-#include <wtf/text/Base64.h>
 
 namespace WebCore {
 
@@ -72,13 +65,21 @@ bool ResourceHandle::start()
     if (d->m_context && !d->m_context->isValid())
         return false;
 
+    // Only allow the POST and GET methods for non-HTTP requests.
+    const ResourceRequest& request = firstRequest();
+    if (!request.url().protocolIsInHTTPFamily() && request.httpMethod() != "GET" && request.httpMethod() != "POST") {
+        scheduleFailure(InvalidURLFailure); // Error must not be reported immediately
+        return true;
+    }
+
     d->m_delegate = adoptRef(new ResourceHandleCurlDelegate(this));
     return d->m_delegate->start();
 }
 
 void ResourceHandle::cancel()
 {
-    d->m_delegate->cancel();
+    if (d->m_delegate)
+        d->m_delegate->cancel();
 }
 
 #if OS(WINDOWS)
@@ -114,7 +115,8 @@ void ResourceHandle::platformSetDefersLoading(bool defers)
 {
     ASSERT(isMainThread());
 
-    d->m_delegate->setDefersLoading(defers);
+    if (d->m_delegate)
+        d->m_delegate->setDefersLoading(defers);
 }
 
 bool ResourceHandle::shouldUseCredentialStorage()
@@ -136,7 +138,8 @@ void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChall
             urlToStore = challenge.failureResponse().url();
         CredentialStorage::defaultCredentialStorage().set(partition, credential, challenge.protectionSpace(), urlToStore);
         
-        d->m_delegate->setAuthentication(credential.user(), credential.password());
+        if (d->m_delegate)
+            d->m_delegate->setAuthentication(credential.user(), credential.password());
 
         d->m_user = String();
         d->m_pass = String();
@@ -161,16 +164,19 @@ void ResourceHandle::didReceiveAuthenticationChallenge(const AuthenticationChall
                     CredentialStorage::defaultCredentialStorage().set(partition, credential, challenge.protectionSpace(), challenge.failureResponse().url());
                 }
 
-                d->m_delegate->setAuthentication(credential.user(), credential.password());
+                if (d->m_delegate)
+                    d->m_delegate->setAuthentication(credential.user(), credential.password());
                 return;
             }
         }
     }
 
     d->m_currentWebChallenge = challenge;
-    
-    if (client())
+
+    if (client()) {
+        auto protectedThis = makeRef(*this);
         client()->didReceiveAuthenticationChallenge(this, d->m_currentWebChallenge);
+    }
 }
 
 void ResourceHandle::receivedCredential(const AuthenticationChallenge& challenge, const Credential& credential)
@@ -194,7 +200,9 @@ void ResourceHandle::receivedCredential(const AuthenticationChallenge& challenge
         }
     }
 
-    d->m_delegate->setAuthentication(credential.user(), credential.password());
+    if (d->m_delegate)
+        d->m_delegate->setAuthentication(credential.user(), credential.password());
+
     clearAuthentication();
 }
 
@@ -205,8 +213,10 @@ void ResourceHandle::receivedRequestToContinueWithoutCredential(const Authentica
     if (challenge != d->m_currentWebChallenge)
         return;
 
-    d->m_delegate->setAuthentication("", "");
     clearAuthentication();
+
+    auto protectedThis = makeRef(*this);
+    didReceiveResponse(ResourceResponse(d->m_response));
 }
 
 void ResourceHandle::receivedCancellation(const AuthenticationChallenge& challenge)
@@ -216,8 +226,10 @@ void ResourceHandle::receivedCancellation(const AuthenticationChallenge& challen
     if (challenge != d->m_currentWebChallenge)
         return;
 
-    if (client())
+    if (client()) {
+        auto protectedThis = makeRef(*this);
         client()->receivedCancellation(this, challenge);
+    }
 }
 
 void ResourceHandle::receivedRequestToPerformDefaultHandling(const AuthenticationChallenge&)
@@ -243,6 +255,31 @@ void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* contex
     error = client.error();
     data.swap(client.mutableData());
     response = client.response();
+}
+
+void ResourceHandle::continueDidReceiveResponse()
+{
+    ASSERT(isMainThread());
+
+    if (d->m_delegate)
+        d->m_delegate->continueDidReceiveResponse();
+}
+
+void ResourceHandle::platformContinueSynchronousDidReceiveResponse()
+{
+    ASSERT(isMainThread());
+
+    if (d->m_delegate)
+        d->m_delegate->platformContinueSynchronousDidReceiveResponse();
+}
+
+void ResourceHandle::continueWillSendRequest(ResourceRequest&& request)
+{
+    ASSERT(isMainThread());
+    ASSERT(!client() || client()->usesAsyncCallbacks());
+
+    if (d->m_delegate)
+        d->m_delegate->continueWillSendRequest(WTFMove(request));
 }
 
 } // namespace WebCore

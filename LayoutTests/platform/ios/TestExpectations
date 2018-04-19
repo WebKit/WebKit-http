@@ -230,6 +230,7 @@ fast/dom/DeviceOrientation
 
 # WebP image format is not supported
 fast/canvas/canvas-toDataURL-webp.html
+fast/images/animated-webp-expected.html
 
 # Drag-and-drop is not supported:
 editing/pasteboard/datatransfer-items-drop-plaintext-file.html
@@ -503,11 +504,11 @@ crypto/workers/subtle/rsa-pss-import-key-verify.html [ Pass ]
 fast/viewport/ios/viewport-fit-contain.html [ Pass ]
 fast/viewport/ios/viewport-fit-cover.html [ Pass ]
 fast/viewport/ios/viewport-fit-auto.html [ Pass ]
-fast/css/variables/constants/ios [ Pass ]
 fast/css/variables/env/ios [ Pass ]
 
 # This test relies on APIs not available on iOS
 fast/images/animated-image-mp4.html [ Skip ]
+
 
 ###
 # Known failures
@@ -1128,6 +1129,10 @@ userscripts/user-script-plugin-document.html [ Failure ]
 webarchive/test-css-url-resources-in-stylesheets.html [ Failure ]
 webarchive/test-css-url-resources-inline-styles.html [ Failure ]
 webarchive/test-link-rel-icon.html [ Failure ]
+
+# The following two tests are expected to fail until <rdar://problem/34063313> is available on test systems.
+webarchive/loading/cache-expired-subresource.html [ Failure ]
+webarchive/loading/test-loading-archive-subresource-null-mimetype.html [ Crash ]
 
 # Webarchive tests that fail due to <https://bugs.webkit.org/show_bug.cgi?id=82665>:
 http/tests/webarchive/test-css-url-encoding-shift-jis.html
@@ -2055,18 +2060,14 @@ editing/pasteboard/paste-wrapped-blockquote-into-nonblockquote.html [ Failure ]
 # Failing pasteboard to triage
 editing/pasteboard/4242293-1.html [ Failure ]
 editing/pasteboard/5780697-2.html [ Failure ]
-editing/pasteboard/can-read-in-copy-and-cut-events.html [ Failure ]
 editing/pasteboard/clipboard-customData.html [ Failure ]
 editing/pasteboard/copy-backslash-with-euc.html [ Failure ]
 editing/pasteboard/copy-in-password-field.html [ Failure ]
 editing/pasteboard/copy-inside-h1-preserves-h1.html [ Failure ]
 editing/pasteboard/copy-text-with-backgroundcolor.html [ Failure ]
 editing/pasteboard/copy-two-pasteboard-types-both-work.html [ Failure ]
-editing/pasteboard/copy-without-selection.html [ Failure ]
-editing/pasteboard/data-transfer-items.html [ Failure ]
+webkit.org/b/177961 editing/pasteboard/data-transfer-items.html [ Skip ]
 editing/pasteboard/dataTransfer-setData-getData.html [ Failure ]
-editing/pasteboard/datatransfer-getdata-plaintext.html [ Failure ]
-editing/pasteboard/datatransfer-items-copy-plaintext.html [ Failure ]
 editing/pasteboard/display-block-on-spans.html [ Failure ]
 editing/pasteboard/emacs-ctrl-k-with-move.html [ Failure ]
 editing/pasteboard/emacs-ctrl-k-y-001.html [ Failure ]
@@ -2542,11 +2543,6 @@ media/track/track-in-band-subtitles-too-large.html [ Failure ]
 media/track/track-long-word-container-sizing.html [ Failure ]
 media/track/track-manual-mode.html [ Failure ]
 media/track/w3c/interfaces/TextTrackCue/align.html [ Failure ]
-media/track/w3c/interfaces/TextTrackCue/endTime.html [ Failure ]
-media/track/w3c/interfaces/TextTrackCue/id.html [ Failure ]
-media/track/w3c/interfaces/TextTrackCue/pauseOnExit.html [ Failure ]
-media/track/w3c/interfaces/TextTrackCue/startTime.html [ Failure ]
-media/track/w3c/interfaces/TextTrackCue/track.html [ Failure ]
 media/video-autoplay-allowed-but-fullscreen-required.html [ Failure ]
 media/video-background-tab-playback.html [ Failure ]
 media/video-colorspace-yuv420.html [ Failure ]
@@ -2944,3 +2940,5 @@ webkit.org/b/177323 imported/w3c/web-platform-tests/fetch/security/embedded-cred
 webkit.org/b/177445 fast/loader/form-submission-after-beforeunload-cancel.html [ Pass Timeout ]
 
 webkit.org/b/177397 compositing/masks/compositing-clip-path-change-no-repaint.html [ Pass Failure ]
+
+webkit.org/b/177617 http/tests/storageAccess/request-storage-access-top-frame.html [ Pass Timeout ]

@@ -822,7 +822,7 @@ void GraphicsContext::concatCTM(const AffineTransform& transform)
     }
 
     cairo_t* cr = platformContext()->cr();
-    const cairo_matrix_t matrix = cairo_matrix_t(transform);
+    const cairo_matrix_t matrix = toCairoMatrix(transform);
     cairo_transform(cr, &matrix);
     m_data->concatCTM(transform);
 }
@@ -838,7 +838,7 @@ void GraphicsContext::setCTM(const AffineTransform& transform)
     }
 
     cairo_t* cr = platformContext()->cr();
-    const cairo_matrix_t matrix = cairo_matrix_t(transform);
+    const cairo_matrix_t matrix = toCairoMatrix(transform);
     cairo_set_matrix(cr, &matrix);
     m_data->setCTM(transform);
 }
@@ -1207,24 +1207,6 @@ bool GraphicsContext::isAcceleratedContext() const
 
     return cairo_surface_get_type(cairo_get_target(platformContext()->cr())) == CAIRO_SURFACE_TYPE_GL;
 }
-
-#if ENABLE(3D_TRANSFORMS) && USE(TEXTURE_MAPPER)
-TransformationMatrix GraphicsContext::get3DTransform() const
-{
-    // FIXME: Can we approximate the transformation better than this?
-    return getCTM().toTransformationMatrix();
-}
-
-void GraphicsContext::concat3DTransform(const TransformationMatrix& transform)
-{
-    concatCTM(transform.toAffineTransform());
-}
-
-void GraphicsContext::set3DTransform(const TransformationMatrix& transform)
-{
-    setCTM(transform.toAffineTransform());
-}
-#endif // ENABLE(3D_TRANSFORMS) && USE(TEXTURE_MAPPER)
 
 } // namespace WebCore
 

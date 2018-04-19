@@ -19,7 +19,11 @@
 #ifndef GtkUtilities_h 
 #define GtkUtilities_h 
 
+#include <gtk/gtk.h>
+#include <wtf/MonotonicTime.h>
+#include <wtf/WallTime.h>
 #include <wtf/text/CString.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -28,9 +32,18 @@ class IntPoint;
 IntPoint convertWidgetPointToScreenPoint(GtkWidget*, const IntPoint&);
 bool widgetIsOnscreenToplevelWindow(GtkWidget*);
 
-#if ENABLE(DEVELOPER_MODE)
-CString webkitBuildDirectory();
-#endif
+template<typename GdkEventType>
+WallTime wallTimeForEvent(const GdkEventType* event)
+{
+    if (event->time == GDK_CURRENT_TIME)
+        return WallTime::now();
+    return MonotonicTime::fromRawSeconds(event->time / 1000.).approximateWallTime();
+}
+
+template<>
+WallTime wallTimeForEvent(const GdkEvent*);
+
+String defaultGtkSystemFont();
 
 } // namespace WebCore
 

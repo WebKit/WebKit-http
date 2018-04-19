@@ -71,9 +71,11 @@ list(APPEND WebCore_SOURCES
     platform/audio/glib/AudioBusGLib.cpp
 
     platform/glib/EventLoopGlib.cpp
+    platform/glib/FileMonitorGLib.cpp
     platform/glib/FileSystemGlib.cpp
     platform/glib/KeyedDecoderGlib.cpp
     platform/glib/KeyedEncoderGlib.cpp
+    platform/glib/LowPowerModeNotifierGLib.cpp
     platform/glib/MainThreadSharedTimerGLib.cpp
     platform/glib/SSLKeyGeneratorGLib.cpp
     platform/glib/SharedBufferGlib.cpp
@@ -96,6 +98,8 @@ list(APPEND WebCore_SOURCES
     platform/graphics/opentype/OpenTypeVerticalData.cpp
 
     platform/graphics/wpe/PlatformDisplayWPE.cpp
+
+    platform/network/glib/NetworkStateNotifierGLib.cpp
 
     platform/network/soup/AuthenticationChallengeSoup.cpp
     platform/network/soup/CertificateInfo.cpp
@@ -168,10 +172,10 @@ list(APPEND WebCore_LIBRARIES
     ${GLIB_GMODULE_LIBRARIES}
     ${GLIB_GOBJECT_LIBRARIES}
     ${GLIB_LIBRARIES}
-    ${GNUTLS_LIBRARIES}
     ${ICU_LIBRARIES}
     ${LIBSOUP_LIBRARIES}
     ${LIBTASN1_LIBRARIES}
+    ${UPOWERGLIB_LIBRARIES}
     ${WPE_LIBRARIES}
 )
 
@@ -179,10 +183,10 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${CAIRO_INCLUDE_DIRS}
     ${GIO_UNIX_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
-    ${GNUTLS_INCLUDE_DIRS}
     ${ICU_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
     ${LIBTASN1_INCLUDE_DIRS}
+    ${UPOWERGLIB_INCLUDE_DIRS}
     ${WPE_INCLUDE_DIRS}
 )
 

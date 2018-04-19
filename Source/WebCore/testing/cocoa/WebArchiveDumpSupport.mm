@@ -41,8 +41,21 @@ namespace WebCoreTestSupport {
 static CFURLResponseRef createCFURLResponseFromResponseData(CFDataRef responseData)
 {
     RetainPtr<NSKeyedUnarchiver> unarchiver = adoptNS([[NSKeyedUnarchiver alloc] initForReadingWithData:(NSData *)responseData]);
-    NSURLResponse *response = [unarchiver decodeObjectForKey:@"WebResourceResponse"]; // WebResourceResponseKey in WebResource.m
-    [unarchiver finishDecoding];
+    NSURLResponse *response;
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || PLATFORM(IOS)
+    // Because of <rdar://problem/34063313> we can't use this for decoding in older OS's.
+    [unarchiver setRequiresSecureCoding:YES];
+    @try {
+        response = [unarchiver decodeObjectOfClass:[NSURLResponse class] forKey:@"WebResourceResponse"]; // WebResourceResponseKey in WebResource.m
+#else
+    @try {
+        response = [unarchiver decodeObjectForKey:@"WebResourceResponse"]; // WebResourceResponseKey in WebResource.m
+#endif
+        [unarchiver finishDecoding];
+    } @catch (NSException *exception) {
+        LOG_ERROR("Failed to decode NS(HTTP)URLResponse: %@", exception);
+        response = nil;
+    }
 
     if (![response isKindOfClass:[NSHTTPURLResponse class]])
         return CFURLResponseCreate(kCFAllocatorDefault, (CFURLRef)response.URL, (CFStringRef)response.MIMEType, response.expectedContentLength, (CFStringRef)response.textEncodingName, kCFURLCacheStorageAllowed);

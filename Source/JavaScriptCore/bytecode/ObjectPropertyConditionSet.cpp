@@ -204,11 +204,15 @@ ObjectPropertyCondition generateCondition(
         break;
     }
     case PropertyCondition::Absence: {
+        if (structure->hasPolyProto())
+            return ObjectPropertyCondition();
         result = ObjectPropertyCondition::absence(
             vm, owner, object, uid, object->structure()->storedPrototypeObject());
         break;
     }
     case PropertyCondition::AbsenceOfSetEffect: {
+        if (structure->hasPolyProto())
+            return ObjectPropertyCondition();
         result = ObjectPropertyCondition::absenceOfSetEffect(
             vm, owner, object, uid, object->structure()->storedPrototypeObject());
         break;
@@ -256,6 +260,15 @@ ObjectPropertyConditionSet generateConditions(
         if (structure->isProxy()) {
             if (ObjectPropertyConditionSetInternal::verbose)
                 dataLog("It's a proxy, so invalid.\n");
+            return ObjectPropertyConditionSet::invalid();
+        }
+
+        if (structure->hasPolyProto()) {
+            // FIXME: Integrate this with PolyProtoAccessChain:
+            // https://bugs.webkit.org/show_bug.cgi?id=177339
+            // Or at least allow OPC set generation when the
+            // base is not poly proto:
+            // https://bugs.webkit.org/show_bug.cgi?id=177721
             return ObjectPropertyConditionSet::invalid();
         }
         
@@ -354,24 +367,6 @@ ObjectPropertyConditionSet generateConditionsForPrototypePropertyHit(
                 object == prototype ? PropertyCondition::Presence : PropertyCondition::Absence;
             ObjectPropertyCondition result =
                 generateCondition(vm, owner, object, uid, kind);
-            if (!result)
-                return false;
-            conditions.append(result);
-            return true;
-        });
-}
-
-ObjectPropertyConditionSet generateConditionsForPrototypePropertyHitCustom(
-    VM& vm, JSCell* owner, ExecState* exec, Structure* headStructure, JSObject* prototype,
-    UniquedStringImpl* uid)
-{
-    return generateConditions(
-        vm, exec->lexicalGlobalObject(), headStructure, prototype,
-        [&] (Vector<ObjectPropertyCondition>& conditions, JSObject* object) -> bool {
-            if (object == prototype)
-                return true;
-            ObjectPropertyCondition result =
-                generateCondition(vm, owner, object, uid, PropertyCondition::Absence);
             if (!result)
                 return false;
             conditions.append(result);

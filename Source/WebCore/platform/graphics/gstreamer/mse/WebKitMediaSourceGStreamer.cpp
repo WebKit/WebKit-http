@@ -269,7 +269,7 @@ void webKitMediaSrcFinalize(GObject* object)
     WebKitMediaSrc* source = WEBKIT_MEDIA_SRC(object);
     WebKitMediaSrcPrivate* priv = source->priv;
 
-    Deque<Stream*> oldStreams;
+    Vector<Stream*> oldStreams;
     source->priv->streams.swap(oldStreams);
 
     for (Stream* stream : oldStreams)
@@ -402,8 +402,8 @@ gboolean webKitMediaSrcQueryWithParent(GstPad* pad, GstObject* parent, GstQuery*
         switch (format) {
         case GST_FORMAT_TIME: {
             if (source->priv && source->priv->mediaPlayerPrivate) {
-                float duration = source->priv->mediaPlayerPrivate->durationMediaTime().toFloat();
-                if (duration > 0) {
+                MediaTime duration = source->priv->mediaPlayerPrivate->durationMediaTime();
+                if (duration > MediaTime::zeroTime()) {
                     gst_query_set_duration(query, format, WebCore::toGstClockTime(duration));
                     GST_DEBUG_OBJECT(source, "Answering: duration=%" GST_TIME_FORMAT, GST_TIME_ARGS(WebCore::toGstClockTime(duration)));
                     result = TRUE;

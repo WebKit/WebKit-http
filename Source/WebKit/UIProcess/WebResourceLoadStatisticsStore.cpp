@@ -174,6 +174,7 @@ WebResourceLoadStatisticsStore::WebResourceLoadStatisticsStore(const String& res
 
 WebResourceLoadStatisticsStore::~WebResourceLoadStatisticsStore()
 {
+    m_persistentStorage.finishAllPendingWorkSynchronously();
 }
     
 void WebResourceLoadStatisticsStore::removeDataRecords()
@@ -243,6 +244,17 @@ void WebResourceLoadStatisticsStore::resourceLoadStatisticsUpdated(Vector<WebCor
     processStatisticsAndDataRecords();
 }
 
+void WebResourceLoadStatisticsStore::requestStorageAccess(String&& subFrameHost, String&& topFrameHost, WTF::Function<void (bool)>&& callback)
+{
+    ASSERT(subFrameHost != topFrameHost);
+    ASSERT(RunLoop::isMain());
+
+    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), subFramePrimaryDomain = isolatedPrimaryDomain(subFrameHost), callback = WTFMove(callback)] () {
+        auto& statistic = ensureResourceStatisticsForPrimaryDomain(subFramePrimaryDomain);
+        callback(!statistic.isPrevalentResource || statistic.hadUserInteraction);
+    });
+}
+    
 void WebResourceLoadStatisticsStore::grandfatherExistingWebsiteData()
 {
     ASSERT(!RunLoop::isMain());

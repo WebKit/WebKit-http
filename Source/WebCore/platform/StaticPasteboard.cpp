@@ -26,6 +26,9 @@
 #include "config.h"
 #include "StaticPasteboard.h"
 
+#include "Settings.h"
+#include "SharedBuffer.h"
+
 namespace WebCore {
 
 StaticPasteboard::StaticPasteboard()
@@ -34,47 +37,68 @@ StaticPasteboard::StaticPasteboard()
 
 bool StaticPasteboard::hasData()
 {
-    return !m_stringContents.isEmpty();
+    return !m_platformData.isEmpty() || !m_customData.isEmpty();
 }
 
 String StaticPasteboard::readString(const String& type)
 {
-    if (!m_stringContents.contains(type))
-        return { };
-    return m_stringContents.get(type);
+    return m_platformData.get(type);
+}
+
+String StaticPasteboard::readStringInCustomData(const String& type)
+{
+    return m_customData.get(type);
+}
+
+static void updateTypes(Vector<String>& types, String type, bool moveToEnd)
+{
+    if (moveToEnd)
+        types.removeFirst(type);
+    ASSERT(!types.contains(type));
+    types.append(type);
 }
 
 void StaticPasteboard::writeString(const String& type, const String& value)
 {
-    auto result = m_stringContents.set(type, value);
-    if (result.isNewEntry)
-        m_types.append(type);
-    else {
-        m_types.removeFirst(type);
-        ASSERT(!m_types.contains(type));
-        m_types.append(type);
-    }
+    bool typeWasAlreadyPresent = !m_platformData.set(type, value).isNewEntry || m_customData.contains(type);
+    updateTypes(m_types, type, typeWasAlreadyPresent);
+}
+
+void StaticPasteboard::writeStringInCustomData(const String& type, const String& value)
+{
+    bool typeWasAlreadyPresent = !m_customData.set(type, value).isNewEntry || m_platformData.contains(type);
+    updateTypes(m_types, type, typeWasAlreadyPresent);
 }
 
 void StaticPasteboard::clear()
 {
-    m_stringContents.clear();
+    m_customData.clear();
+    m_platformData.clear();
     m_types.clear();
 }
 
 void StaticPasteboard::clear(const String& type)
 {
-    if (!m_stringContents.remove(type))
+    if (!m_platformData.remove(type) && !m_customData.remove(type))
         return;
     m_types.removeFirst(type);
     ASSERT(!m_types.contains(type));
 }
 
-// FIXME: Copy the entire StaticPasteboard to UIProcess instead of writing each string.
 void StaticPasteboard::commitToPasteboard(Pasteboard& pasteboard)
 {
-    for (auto& type : m_types)
-        pasteboard.writeString(type, m_stringContents.get(type));
+    if (m_platformData.isEmpty() && m_customData.isEmpty())
+        return;
+
+    if (Settings::customPasteboardDataEnabled()) {
+        pasteboard.writeCustomData({ { }, WTFMove(m_types), WTFMove(m_platformData), WTFMove(m_customData) });
+        return;
+    }
+
+    for (auto& entry : m_platformData)
+        pasteboard.writeString(entry.key, entry.value);
+    for (auto& entry : m_customData)
+        pasteboard.writeString(entry.key, entry.value);
 }
 
 }

@@ -48,6 +48,10 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 
+#if PLATFORM(COCOA)
+#include <wtf/spi/darwin/dyldSPI.h>
+#endif
+
 #if ENABLE(MEDIA_STREAM) && USE(AVFOUNDATION)
 #include "RealtimeMediaSourceCenterMac.h"
 #endif
@@ -115,6 +119,7 @@ bool Settings::gAVKitEnabled = false;
 bool Settings::gShouldOptOutOfNetworkStateObservation = false;
 #endif
 bool Settings::gManageAudioSession = false;
+bool Settings::gCustomPasteboardDataEnabled = false;
 
 // NOTEs
 //  1) EditingMacBehavior comprises Tiger, Leopard, SnowLeopard and iOS builds, as well as QtWebKit when built on Mac;
@@ -137,6 +142,23 @@ static EditingBehaviorType editingBehaviorTypeForPlatform()
     EditingMacBehavior
 #endif
     ;
+}
+
+bool Settings::customPasteboardDataEnabled()
+{
+    static std::once_flag initializeCustomPasteboardDataToDefaultValue;
+    std::call_once(initializeCustomPasteboardDataToDefaultValue, [] {
+#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 110300
+        gCustomPasteboardDataEnabled = IOSApplication::isMobileSafari() || dyld_get_program_sdk_version() >= DYLD_IOS_VERSION_11_3;
+#elif PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101300
+        gCustomPasteboardDataEnabled = MacApplication::isSafari() || dyld_get_program_sdk_version() > DYLD_MACOSX_VERSION_10_13;
+#elif PLATFORM(MAC)
+        gCustomPasteboardDataEnabled = MacApplication::isSafari();
+#else
+        gCustomPasteboardDataEnabled = false;
+#endif
+    });
+    return gCustomPasteboardDataEnabled;
 }
 
 #if PLATFORM(COCOA)
@@ -221,7 +243,6 @@ Settings::Settings(Page* page)
     , m_hiddenPageDOMTimerThrottlingEnabled(false)
     , m_hiddenPageCSSAnimationSuspensionEnabled(false)
     , m_fontFallbackPrefersPictographs(false)
-    , m_webFontsAlwaysFallBack(false)
     , m_forcePendingWebGLPolicy(false)
 {
     // A Frame may not have been created yet, so we initialize the AtomicString
@@ -710,14 +731,6 @@ void Settings::setFontFallbackPrefersPictographs(bool preferPictographs)
     m_fontFallbackPrefersPictographs = preferPictographs;
     if (m_page)
         m_page->setNeedsRecalcStyleInAllFrames();
-}
-
-void Settings::setWebFontsAlwaysFallBack(bool enable)
-{
-    if (m_webFontsAlwaysFallBack == enable)
-        return;
-
-    m_webFontsAlwaysFallBack = enable;
 }
 
 void Settings::setLowPowerVideoAudioBufferSizeEnabled(bool flag)

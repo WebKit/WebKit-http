@@ -41,7 +41,7 @@ public:
 private:
     bool isRenderMathMLFenced() const final { return true; }
     const char* renderName() const final { return "RenderMathMLFenced"; }
-    void addChild(RenderObject* child, RenderObject* beforeChild) final;
+    void addChild(RenderPtr<RenderObject> child, RenderObject* beforeChild) final;
     void updateFromElement() final;
 
     RenderPtr<RenderMathMLFencedOperator> createMathMLOperator(const String& operatorString, MathMLOperatorDictionary::Form, MathMLOperatorDictionary::Flag);
@@ -51,7 +51,7 @@ private:
     String m_close;
     RefPtr<StringImpl> m_separators;
 
-    RenderMathMLFencedOperator* m_closeFenceRenderer;
+    WeakPtr<RenderMathMLFencedOperator> m_closeFenceRenderer;
 };
 
 }

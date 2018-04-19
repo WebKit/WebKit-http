@@ -1,19 +1,11 @@
-// Copyright 2013 Google Inc. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// The parts of ots.h & opentype-sanitiser.h that we need, taken from the
-// https://code.google.com/p/ots/ project.
+/* Copyright 2013 Google Inc. All Rights Reserved.
+
+   Distributed under MIT license.
+   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
+*/
+
+/* The parts of ots.h & opentype-sanitiser.h that we need, taken from the
+   https://code.google.com/p/ots/ project. */
 
 #ifndef WOFF2_BUFFER_H_
 #define WOFF2_BUFFER_H_
@@ -65,8 +57,8 @@ inline bool Failure(const char *f, int l, const char *fn) {
 // -----------------------------------------------------------------------------
 class Buffer {
  public:
-  Buffer(const uint8_t *buffer, size_t len)
-      : buffer_(buffer),
+  Buffer(const uint8_t *data, size_t len)
+      : buffer_(data),
         length_(len),
         offset_(0) { }
 
@@ -74,7 +66,7 @@ class Buffer {
     return Read(NULL, n_bytes);
   }
 
-  bool Read(uint8_t *buffer, size_t n_bytes) {
+  bool Read(uint8_t *data, size_t n_bytes) {
     if (n_bytes > 1024 * 1024 * 1024) {
       return FONT_COMPRESSION_FAILURE();
     }
@@ -82,8 +74,8 @@ class Buffer {
         (offset_ > length_ - n_bytes)) {
       return FONT_COMPRESSION_FAILURE();
     }
-    if (buffer) {
-      std::memcpy(buffer, buffer_ + offset_, n_bytes);
+    if (data) {
+      std::memcpy(data, buffer_ + offset_, n_bytes);
     }
     offset_ += n_bytes;
     return true;

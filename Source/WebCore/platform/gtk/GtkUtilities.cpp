@@ -21,7 +21,6 @@
 
 #include "IntPoint.h"
 #include <gtk/gtk.h>
-#include <wtf/glib/GLibUtilities.h>
 #include <wtf/glib/GUniquePtr.h>
 
 namespace WebCore {
@@ -54,30 +53,28 @@ bool widgetIsOnscreenToplevelWindow(GtkWidget* widget)
     return widget && gtk_widget_is_toplevel(widget) && GTK_IS_WINDOW(widget) && !GTK_IS_OFFSCREEN_WINDOW(widget);
 }
 
-#if ENABLE(DEVELOPER_MODE)
-static CString topLevelPath()
+template<>
+WallTime wallTimeForEvent(const GdkEvent* event)
 {
-    if (const char* topLevelDirectory = g_getenv("WEBKIT_TOP_LEVEL"))
-        return topLevelDirectory;
-
-    // If the environment variable wasn't provided then assume we were built into
-    // WebKitBuild/Debug or WebKitBuild/Release. Obviously this will fail if the build
-    // directory is non-standard, but we can't do much more about this.
-    GUniquePtr<char> parentPath(g_path_get_dirname(getCurrentExecutablePath().data()));
-    GUniquePtr<char> layoutTestsPath(g_build_filename(parentPath.get(), "..", "..", "..", nullptr));
-    GUniquePtr<char> absoluteTopLevelPath(realpath(layoutTestsPath.get(), 0));
-    return absoluteTopLevelPath.get();
+    // This works if and only if the X server or Wayland compositor happens to
+    // be using CLOCK_MONOTONIC for its monotonic time, and so long as
+    // g_get_monotonic_time() continues to do so as well, and so long as
+    // WTF::MonotonicTime continues to use g_get_monotonic_time().
+    auto time = gdk_event_get_time(event);
+    if (time == GDK_CURRENT_TIME)
+        return WallTime::now();
+    return MonotonicTime::fromRawSeconds(time / 1000.).approximateWallTime();
 }
 
-CString webkitBuildDirectory()
+String defaultGtkSystemFont()
 {
-    const char* webkitOutputDir = g_getenv("WEBKIT_OUTPUTDIR");
-    if (webkitOutputDir)
-        return webkitOutputDir;
-
-    GUniquePtr<char> outputDir(g_build_filename(topLevelPath().data(), "WebKitBuild", nullptr));
-    return outputDir.get();
+    GUniqueOutPtr<char> fontString;
+    g_object_get(gtk_settings_get_default(), "gtk-font-name", &fontString.outPtr(), nullptr);
+    // We need to remove the size from the value of the property,
+    // which is separated from the font family using a space.
+    if (auto* spaceChar = strrchr(fontString.get(), ' '))
+        *spaceChar = '\0';
+    return String::fromUTF8(fontString.get());
 }
-#endif
 
 } // namespace WebCore

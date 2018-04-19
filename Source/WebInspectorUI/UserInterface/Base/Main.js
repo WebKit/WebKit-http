@@ -1880,8 +1880,14 @@ WI._focusConsolePrompt = function(event)
 
 WI._focusedContentBrowser = function()
 {
+    if (this.currentFocusElement) {
+        let contentBrowserElement = this.currentFocusElement.enclosingNodeOrSelfWithClass("content-browser");
+        if (contentBrowserElement && contentBrowserElement.__view && contentBrowserElement.__view instanceof WI.ContentBrowser)
+            return contentBrowserElement.__view;
+    }
+
     if (this.tabBrowser.element.isSelfOrAncestor(this.currentFocusElement) || document.activeElement === document.body) {
-        var tabContentView = this.tabBrowser.selectedTabContentView;
+        let tabContentView = this.tabBrowser.selectedTabContentView;
         if (tabContentView.contentBrowser)
             return tabContentView.contentBrowser;
         return null;
@@ -2007,6 +2013,9 @@ WI._clear = function(event)
 WI._populateFind = function(event)
 {
     let focusedContentView = this._focusedContentView();
+    if (!focusedContentView)
+        return;
+
     if (focusedContentView.supportsCustomFindBanner) {
         focusedContentView.handlePopulateFindShortcut();
         return;
@@ -2022,6 +2031,9 @@ WI._populateFind = function(event)
 WI._findNext = function(event)
 {
     let focusedContentView = this._focusedContentView();
+    if (!focusedContentView)
+        return;
+
     if (focusedContentView.supportsCustomFindBanner) {
         focusedContentView.handleFindNextShortcut();
         return;
@@ -2037,6 +2049,9 @@ WI._findNext = function(event)
 WI._findPrevious = function(event)
 {
     let focusedContentView = this._focusedContentView();
+    if (!focusedContentView)
+        return;
+
     if (focusedContentView.supportsCustomFindBanner) {
         focusedContentView.handleFindPreviousShortcut();
         return;

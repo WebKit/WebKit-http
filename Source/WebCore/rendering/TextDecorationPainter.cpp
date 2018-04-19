@@ -1,7 +1,7 @@
 /*
  * (C) 1999 Lars Knoll (knoll@kde.org)
  * (C) 2000 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -241,13 +241,13 @@ static StrokeStyle textDecorationStyleToStrokeStyle(TextDecorationStyle decorati
     return strokeStyle;
 }
 
-TextDecorationPainter::TextDecorationPainter(GraphicsContext& context, TextDecoration decoration, const RenderText& renderer, bool isFirstLine)
-    : m_context(context)
-    , m_decoration(decoration)
-    , m_wavyOffset(wavyOffsetFromDecoration())
-    , m_isPrinting(renderer.document().printing())
-    , m_styles(stylesForRenderer(renderer, m_decoration, isFirstLine))
-    , m_lineStyle(isFirstLine ? renderer.firstLineStyle() : renderer.style())
+TextDecorationPainter::TextDecorationPainter(GraphicsContext& context, unsigned decorations, const RenderText& renderer, bool isFirstLine, PseudoId pseudoId)
+    : m_context { context }
+    , m_decorations { OptionSet<TextDecoration>::fromRaw(decorations) }
+    , m_wavyOffset { wavyOffsetFromDecoration() }
+    , m_isPrinting { renderer.document().printing() }
+    , m_styles { stylesForRenderer(renderer, decorations, isFirstLine, pseudoId) }
+    , m_lineStyle { isFirstLine ? renderer.firstLineStyle() : renderer.style() }
 {
 }
 
@@ -262,7 +262,7 @@ void TextDecorationPainter::paintTextDecoration(const TextRun& textRun, const Fl
     m_context.setStrokeThickness(textDecorationThickness);
     FloatPoint localOrigin = boxOrigin;
 
-    auto paintDecoration = [&](TextDecoration decoration, TextDecorationStyle style, const Color& color, const FloatPoint& start, const FloatPoint& end, int offset) {
+    auto paintDecoration = [&] (TextDecoration decoration, TextDecorationStyle style, const Color& color, const FloatPoint& start, const FloatPoint& end, int offset) {
         m_context.setStrokeColor(color);
 
         auto strokeStyle = textDecorationStyleToStrokeStyle(style);
@@ -285,13 +285,12 @@ void TextDecorationPainter::paintTextDecoration(const TextRun& textRun, const Fl
         }
     };
 
-    bool linesAreOpaque = !m_isPrinting
-        && (!(m_decoration & TextDecorationUnderline) || m_styles.underlineColor.isOpaque())
-        && (!(m_decoration & TextDecorationOverline) || m_styles.overlineColor.isOpaque())
-        && (!(m_decoration & TextDecorationLineThrough) || m_styles.linethroughColor.isOpaque());
+    bool areLinesOpaque = !m_isPrinting && (!m_decorations.contains(TextDecorationUnderline) || m_styles.underlineColor.isOpaque())
+        && (!m_decorations.contains(TextDecorationOverline) || m_styles.overlineColor.isOpaque())
+        && (!m_decorations.contains(TextDecorationLineThrough) || m_styles.linethroughColor.isOpaque());
 
     int extraOffset = 0;
-    bool clipping = !linesAreOpaque && m_shadow && m_shadow->next();
+    bool clipping = !areLinesOpaque && m_shadow && m_shadow->next();
     if (clipping) {
         FloatRect clipRect(localOrigin, FloatSize(m_width, m_baseline + 2));
         for (const ShadowData* shadow = m_shadow; shadow; shadow = shadow->next()) {
@@ -323,22 +322,22 @@ void TextDecorationPainter::paintTextDecoration(const TextRun& textRun, const Fl
             m_context.setShadow(FloatSize(shadowX, shadowY - extraOffset), shadow->radius(), shadow->color());
             shadow = shadow->next();
         }
-        
-        // These decorations should match the visual overflows computed in visualOverflowForDecorations()
-        if (m_decoration & TextDecorationUnderline) {
-            const int offset = computeUnderlineOffset(m_lineStyle.textUnderlinePosition(), m_lineStyle.fontMetrics(), m_inlineTextBox, textDecorationThickness);
-            int wavyOffset = m_styles.underlineStyle == TextDecorationStyleWavy ? m_wavyOffset : 0;
+
+        // These decorations should match the visual overflows computed in visualOverflowForDecorations().
+        if (m_decorations.contains(TextDecorationUnderline)) {
+            int offset = computeUnderlineOffset(m_lineStyle.textUnderlinePosition(), m_lineStyle.fontMetrics(), m_inlineTextBox, textDecorationThickness);
+            float wavyOffset = m_styles.underlineStyle == TextDecorationStyleWavy ? m_wavyOffset : 0;
             FloatPoint start = localOrigin + FloatSize(0, offset + wavyOffset);
             FloatPoint end = localOrigin + FloatSize(m_width, offset + wavyOffset);
             paintDecoration(TextDecorationUnderline, m_styles.underlineStyle, m_styles.underlineColor, start, end, offset);
         }
-        if (m_decoration & TextDecorationOverline) {
-            int wavyOffset = m_styles.overlineStyle == TextDecorationStyleWavy ? m_wavyOffset : 0;
+        if (m_decorations.contains(TextDecorationOverline)) {
+            float wavyOffset = m_styles.overlineStyle == TextDecorationStyleWavy ? m_wavyOffset : 0;
             FloatPoint start = localOrigin - FloatSize(0, wavyOffset);
             FloatPoint end = localOrigin + FloatSize(m_width, -wavyOffset);
             paintDecoration(TextDecorationOverline, m_styles.overlineStyle, m_styles.overlineColor, start, end, 0);
         }
-        if (m_decoration & TextDecorationLineThrough) {
+        if (m_decorations.contains(TextDecorationLineThrough)) {
             FloatPoint start = localOrigin + FloatSize(0, 2 * m_baseline / 3);
             FloatPoint end = localOrigin + FloatSize(m_width, 2 * m_baseline / 3);
             paintDecoration(TextDecorationLineThrough, m_styles.linethroughStyle, m_styles.linethroughColor, start, end, 0);
@@ -367,35 +366,43 @@ static Color decorationColor(const RenderStyle& style)
     return style.visitedDependentColor(CSSPropertyWebkitTextFillColor);
 }
 
-static void collectStylesForRenderer(TextDecorationPainter::Styles& result, const RenderObject& renderer, unsigned requestedDecorations, bool firstLineStyle)
+static void collectStylesForRenderer(TextDecorationPainter::Styles& result, const RenderObject& renderer, OptionSet<TextDecoration> remainingDecorations, bool firstLineStyle, PseudoId pseudoId)
 {
-    unsigned remainingDecoration = requestedDecorations;
-    auto extractDecorations = [&] (const RenderStyle& style, unsigned decorations) {
+    auto extractDecorations = [&] (const RenderStyle& style, OptionSet<TextDecoration> decorations) {
         auto color = decorationColor(style);
         auto decorationStyle = style.textDecorationStyle();
 
-        if (decorations & TextDecorationUnderline) {
-            remainingDecoration &= ~TextDecorationUnderline;
+        if (decorations.contains(TextDecorationUnderline)) {
+            remainingDecorations -= TextDecorationUnderline;
             result.underlineColor = color;
             result.underlineStyle = decorationStyle;
         }
-        if (decorations & TextDecorationOverline) {
-            remainingDecoration &= ~TextDecorationOverline;
+        if (decorations.contains(TextDecorationOverline)) {
+            remainingDecorations -= TextDecorationOverline;
             result.overlineColor = color;
             result.overlineStyle = decorationStyle;
         }
-        if (decorations & TextDecorationLineThrough) {
-            remainingDecoration &= ~TextDecorationLineThrough;
+        if (decorations.contains(TextDecorationLineThrough)) {
+            remainingDecorations -= TextDecorationLineThrough;
             result.linethroughColor = color;
             result.linethroughStyle = decorationStyle;
         }
 
     };
 
+    auto styleForRenderer = [&] (const RenderObject& renderer) -> const RenderStyle& {
+        if (pseudoId != NOPSEUDO && renderer.style().hasPseudoStyle(pseudoId)) {
+            if (is<RenderText>(renderer))
+                return *downcast<RenderText>(renderer).getCachedPseudoStyle(pseudoId);
+            return *downcast<RenderElement>(renderer).getCachedPseudoStyle(pseudoId);
+        }
+        return firstLineStyle ? renderer.firstLineStyle() : renderer.style();
+    };
+
     auto* current = &renderer;
     do {
-        auto& style = firstLineStyle ? current->firstLineStyle() : current->style();
-        extractDecorations(style, style.textDecoration());
+        const auto& style = styleForRenderer(*current);
+        extractDecorations(style, OptionSet<TextDecoration>::fromRaw(style.textDecoration()));
 
         if (current->isRubyText())
             return;
@@ -404,24 +411,22 @@ static void collectStylesForRenderer(TextDecorationPainter::Styles& result, cons
         if (current && current->isAnonymousBlock() && downcast<RenderBlock>(*current).continuation())
             current = downcast<RenderBlock>(*current).continuation();
 
-        if (!remainingDecoration)
+        if (remainingDecorations.isEmpty())
             break;
 
     } while (current && !is<HTMLAnchorElement>(current->node()) && !is<HTMLFontElement>(current->node()));
 
     // If we bailed out, use the element we bailed out at (typically a <font> or <a> element).
-    if (remainingDecoration && current) {
-        auto& style = firstLineStyle ? current->firstLineStyle() : current->style();
-        extractDecorations(style, remainingDecoration);
-    }
+    if (!remainingDecorations.isEmpty() && current)
+        extractDecorations(styleForRenderer(*current), remainingDecorations);
 }
 
-auto TextDecorationPainter::stylesForRenderer(const RenderObject& renderer, unsigned requestedDecorations, bool firstLineStyle) -> Styles
+auto TextDecorationPainter::stylesForRenderer(const RenderObject& renderer, unsigned requestedDecorations, bool firstLineStyle, PseudoId pseudoId) -> Styles
 {
     Styles result;
-    collectStylesForRenderer(result, renderer, requestedDecorations, false);
+    collectStylesForRenderer(result, renderer, OptionSet<TextDecoration>::fromRaw(requestedDecorations), false, pseudoId);
     if (firstLineStyle)
-        collectStylesForRenderer(result, renderer, requestedDecorations, true);
+        collectStylesForRenderer(result, renderer, OptionSet<TextDecoration>::fromRaw(requestedDecorations), true, pseudoId);
     return result;
 }
 

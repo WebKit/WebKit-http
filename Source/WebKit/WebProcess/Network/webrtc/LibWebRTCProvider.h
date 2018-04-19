@@ -25,13 +25,23 @@
 
 #pragma once
 
+#if PLATFORM(COCOA)
+#include <WebCore/LibWebRTCProviderCocoa.h>
+#else
 #include <WebCore/LibWebRTCProvider.h>
-
+#endif
 
 namespace WebKit {
 
 #if USE(LIBWEBRTC)
-class LibWebRTCProvider final : public WebCore::LibWebRTCProvider {
+
+#if PLATFORM(COCOA)
+using LibWebRTCProviderBase = WebCore::LibWebRTCProviderCocoa;
+#else
+using LibWebRTCProviderBase = WebCore::LibWebRTCProvider;
+#endif
+
+class LibWebRTCProvider final : public LibWebRTCProviderBase {
 public:
     LibWebRTCProvider() { m_useNetworkThreadWithSocketServer = false; }
 

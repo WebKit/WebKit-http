@@ -1,18 +1,10 @@
-// Copyright 2013 Google Inc. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// Helper function for bit twiddling and macros for branch prediction.
+/* Copyright 2013 Google Inc. All Rights Reserved.
+
+   Distributed under MIT license.
+   See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
+*/
+
+/* Helper function for bit twiddling and macros for branch prediction. */
 
 #ifndef WOFF2_PORT_H_
 #define WOFF2_PORT_H_
@@ -59,5 +51,16 @@ inline int Log2Floor(uint32 n) {
 #define PREDICT_FALSE(x) (x)
 #define PREDICT_TRUE(x) (x)
 #endif
+
+#if (defined(__ARM_ARCH) && (__ARM_ARCH == 7)) || \
+    (defined(M_ARM) && (M_ARM == 7)) || \
+    defined(__aarch64__) || defined(__ARM64_ARCH_8__) || defined(__i386) || \
+    defined(_M_IX86) || defined(__x86_64__) || defined(_M_X64)
+#if defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__)
+#define WOFF_LITTLE_ENDIAN
+#elif defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+#define WOFF_BIG_ENDIAN
+#endif  /* endianness */
+#endif  /* CPU whitelist */
 
 #endif  // WOFF2_PORT_H_

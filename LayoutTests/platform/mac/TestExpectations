@@ -29,6 +29,8 @@ fast/harness/uiscriptcontroller [ Pass ]
 
 fast/events/do-not-drag-and-drop-data-detectors-link.html [ Pass ]
 
+fast/xmlhttprequest/set-dangerous-headers-in-dashboard.html [ Pass ]
+
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
 #//////////////////////////////////////////////////////////////////////////////////////////
@@ -176,6 +178,7 @@ fast/images/webp-color-profile-lossy-alpha.html
 fast/images/webp-color-profile-lossy.html
 http/tests/images/webp-partial-load.html
 http/tests/images/webp-progressive-load.html
+fast/images/animated-webp-expected.html
 
 # Times out because plugins aren't allowed to execute JS after NPP_Destroy has been called in WebKit1's OOP plugins implementation
 webkit.org/b/48929 plugins/evaluate-js-after-removing-plugin-element.html
@@ -208,6 +211,10 @@ webkit.org/b/55944 fast/dom/Geolocation/page-reload-cancel-permission-requests.h
 webkit.org/b/103435 fast/backgrounds/background-opaque-images-over-color.html [ ImageOnlyFailure ]
 
 webkit.org/b/56685 webarchive/test-link-rel-icon.html [ Failure ]
+
+# The following two tests are expected to fail until <rdar://problem/34063313> is available on test systems.
+webarchive/loading/cache-expired-subresource.html [ Failure ]
+webarchive/loading/test-loading-archive-subresource-null-mimetype.html [ Crash ]
 
 # Quota API is not supported.
 storage/storageinfo-missing-arguments.html
@@ -821,11 +828,6 @@ webkit.org/b/130490 media/video-remote-control-playpause.html [ Pass Failure ]
 webkit.org/b/131855 media/event-attributes.html [ Pass Failure Timeout ]
 webkit.org/b/133363 media/video-rtl.html [ Pass ImageOnlyFailure ]
 webkit.org/b/133686 media/track/w3c/interfaces/TextTrackCue/align.html [ Pass Failure ]
-webkit.org/b/133686 media/track/w3c/interfaces/TextTrackCue/endTime.html [ Pass Failure ]
-webkit.org/b/133686 media/track/w3c/interfaces/TextTrackCue/id.html [ Pass Failure ]
-webkit.org/b/133686 media/track/w3c/interfaces/TextTrackCue/pauseOnExit.html [ Pass Failure ]
-webkit.org/b/133686 media/track/w3c/interfaces/TextTrackCue/startTime.html [ Pass Failure ]
-webkit.org/b/133686 media/track/w3c/interfaces/TextTrackCue/track.html [ Pass Failure ]
 webkit.org/b/135071 media/video-seek-with-negative-playback.html [ Pass Timeout ]
 [ Yosemite ] media/track/track-in-band-subtitles-too-large.html [ Skip ]
 webkit.org/b/135160 [ ElCapitan+ ] media/track/track-in-band-subtitles-too-large.html [ Failure ]
@@ -1029,12 +1031,6 @@ fast/canvas/canvas-fillRect-gradient-shadow.html [ Pass Failure ]
 # SVG gradients are not bit-for-bit equivalent through a scale.
 webkit.org/b/142192 svg/transforms/transformed-text-fill-gradient.html [ ImageOnlyFailure ]
 
-# Word-spacing is incorrectly applied
-webkit.org/b/142086 fast/css/word-spacing-between-blocks.html [ ImageOnlyFailure ]
-webkit.org/b/142086 fast/css/word-spacing-between-inlines.html [ ImageOnlyFailure ]
-webkit.org/b/142086 fast/css/word-spacing-characters.html [ ImageOnlyFailure ]
-webkit.org/b/142086 fast/text/word-space-between-inlines.html [ ImageOnlyFailure ]
-
 # Underlines' starting and ending positions need to be pixel-snapped
 webkit.org/b/142087 fast/css3-text/css3-text-decoration/no-gap-between-two-rounded-textboxes.html [ ImageOnlyFailure ]
 webkit.org/b/142087 fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-ink-inherit.html [ ImageOnlyFailure ]
@@ -1097,6 +1093,7 @@ webkit.org/b/147763 [ Yosemite ] accessibility/mac/loaded-notification.html [ Sk
 webkit.org/b/148119 [ Yosemite ] fast/text/trak-optimizeLegibility.html [ Failure ]
 
 webkit.org/b/173931 inspector/canvas/context-attributes.html [ Pass Timeout ]
+webkit.org/b/178028 inspector/canvas/create-context-2d.html [ Pass Timeout ]
 webkit.org/b/174066 inspector/canvas/create-context-webgl2.html [ Pass Timeout ]
 webkit.org/b/174066 inspector/canvas/create-context-webgpu.html [ Pass Timeout ]
 webkit.org/b/174272 inspector/canvas/css-canvas-clients.html [ Pass Timeout ]
@@ -1436,6 +1433,8 @@ webkit.org/b/168415 [ ElCapitan ] http/wpt/resource-timing/rt-cors.worker.html [
 # Request Header networking data not available without Network Session.
 [ ElCapitan ] http/tests/inspector/network/resource-request-headers.html [ Failure ]
 
+[ ElCapitan ] http/tests/inspector/network/ping-type.html [ Skip ]
+
 # <rdar://problem/30610988>
 [ Sierra+ ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-cross-origin.html [ Failure ]
 [ Sierra+ ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-worker.html [ Failure ]
@@ -1572,8 +1571,6 @@ webkit.org/b/313156 [ ElCapitan ] fast/text/system-font-japanese-synthetic-itali
 webkit.org/b/173565 [ ElCapitan Release ] media/media-source/media-source-paint-to-canvas.html [ Pass Failure ]
 
 webkit.org/b/173068 imported/w3c/web-platform-tests/IndexedDB/idbobjectstore_getKey.html [ Pass Failure ]
-
-webkit.org/b/174682 media/modern-media-controls/scrubber-support/scrubber-support-drag.html [ Pass Failure ]
 
 webkit.org/b/175102 workers/wasm-hashset-many.html [ Skip ]
 webkit.org/b/175102 workers/wasm-hashset-many-2.html [ Skip ]
@@ -1770,8 +1767,6 @@ webkit.org/b/177319 imported/w3c/web-platform-tests/html/semantics/forms/the-for
 webkit.org/b/177322 [ Debug ] imported/w3c/web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/parsing.html [ Pass Failure ]
 
 webkit.org/b/177323 imported/w3c/web-platform-tests/fetch/security/embedded-credentials.tentative.sub.html [ Pass Failure ]
-
-webkit.org/b/177520 accessibility/image-load-on-delay.html [ Pass Failure ]
 
 webkit.org/b/177388 inspector/canvas/shaderProgram-add-remove-webgl.html [ Pass Failure ]
 

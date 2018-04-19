@@ -1,3 +1,135 @@
+2017-10-05  Frederic Wang  <fwang@igalia.com>
+
+        Update Source/ThirdParty/woff2 to 22c256bc457777744ba14b7325a6e8e0e7dec91c
+        https://bugs.webkit.org/show_bug.cgi?id=177994
+
+        Reviewed by Michael Catanzaro.
+
+        * woff2/CMakeLists.txt: Also consider the directory for public headers.
+        * woff2/README.webkit:
+        * woff2/include/woff2/decode.h: Renamed from Source/ThirdParty/woff2/src/woff2_dec.h.
+        * woff2/include/woff2/encode.h: Renamed from Source/ThirdParty/woff2/src/woff2_enc.h.
+        (woff2::WOFF2Params::WOFF2Params):
+        * woff2/include/woff2/output.h: Renamed from Source/ThirdParty/woff2/src/woff2_out.h.
+        (woff2::WOFF2Out::~WOFF2Out):
+        (woff2::WOFF2StringOut::MaxSize):
+        * woff2/src/buffer.h:
+        * woff2/src/convert_woff2ttf_*.cc:
+        * woff2/src/file.h:
+        * woff2/src/font.cc:
+        * woff2/src/font.h:
+        * woff2/src/glyph.cc:
+        * woff2/src/glyph.h:
+        * woff2/src/normalize.cc:
+        * woff2/src/normalize.h:
+        * woff2/src/port.h:
+        * woff2/src/round.h:
+        * woff2/src/store_bytes.h:
+        * woff2/src/table_tags.cc:
+        * woff2/src/table_tags.h:
+        * woff2/src/transform.cc:
+        * woff2/src/transform.h:
+        * woff2/src/variable_length.cc:
+        * woff2/src/variable_length.h:
+        * woff2/src/woff2_common.cc:
+        * woff2/src/woff2_common.h:
+        * woff2/src/woff2_compress.cc:
+        * woff2/src/woff2_dec.cc:
+        * woff2/src/woff2_decompress.cc:
+        * woff2/src/woff2_enc.cc:
+        * woff2/src/woff2_info.cc:
+        * woff2/src/woff2_out.cc:
+        * woff2/update.sh: Also consider directory for public headers.
+
+2017-10-03  Frederic Wang  <fwang@igalia.com>
+
+        Remove Brotli from Source/ThirdParty
+        https://bugs.webkit.org/show_bug.cgi?id=177804
+
+        Reviewed by Michael Catanzaro.
+
+        * brotli/CMakeLists.txt: Removed.
+        * brotli/LICENSE: Removed.
+        * brotli/README.webkit: Removed.
+        * brotli/common/constants.h: Removed.
+        * brotli/common/dictionary.bin: Removed.
+        * brotli/common/dictionary.c: Removed.
+        * brotli/common/dictionary.h: Removed.
+        * brotli/common/version.h: Removed.
+        * brotli/dec/bit_reader.c: Removed.
+        * brotli/dec/bit_reader.h: Removed.
+        * brotli/dec/context.h: Removed.
+        * brotli/dec/decode.c: Removed.
+        * brotli/dec/huffman.c: Removed.
+        * brotli/dec/huffman.h: Removed.
+        * brotli/dec/port.h: Removed.
+        * brotli/dec/prefix.h: Removed.
+        * brotli/dec/state.c: Removed.
+        * brotli/dec/state.h: Removed.
+        * brotli/dec/transform.h: Removed.
+        * brotli/include/brotli/decode.h: Removed.
+        * brotli/include/brotli/encode.h: Removed.
+        * brotli/include/brotli/port.h: Removed.
+        * brotli/include/brotli/types.h: Removed.
+        * brotli/update.sh: Removed.
+        * woff2/CMakeLists.txt: Use Brotli's include and library paths found by CMake.
+
+2017-10-05  Frederic Wang  <fwang@igalia.com>
+
+        Upgrade Brotli to version 1.0.1 and WOFF2 to latest upstream
+        https://bugs.webkit.org/show_bug.cgi?id=177768
+
+        Reviewed by Michael Catanzaro.
+
+        * brotli/CMakeLists.txt:
+        * brotli/README.webkit:
+        * brotli/common/constants.h: Added.
+        * brotli/common/dictionary.bin: Added.
+        * brotli/common/dictionary.c: Added.
+        * brotli/common/dictionary.h: Added.
+        * brotli/common/version.h: Added.
+        * brotli/dec/Makefile: Removed.
+        * brotli/dec/bit_reader.c:
+        * brotli/dec/bit_reader.h:
+        * brotli/dec/context.h:
+        * brotli/dec/decode.c:
+        * brotli/dec/decode.h: Removed.
+        * brotli/dec/dictionary.c: Removed.
+        * brotli/dec/dictionary.h: Removed.
+        * brotli/dec/huffman.c:
+        * brotli/dec/huffman.h:
+        * brotli/dec/port.h:
+        (BrotliDump):
+        (BrotliRBit):
+        * brotli/dec/prefix.h:
+        * brotli/dec/state.c:
+        * brotli/dec/state.h:
+        * brotli/dec/transform.h:
+        * brotli/dec/types.h: Removed.
+        * brotli/include/brotli/decode.h: Added.
+        * brotli/include/brotli/encode.h: Added.
+        * brotli/include/brotli/port.h: Added.
+        * brotli/include/brotli/types.h: Added.
+        * brotli/update.sh:
+        * woff2/CMakeLists.txt:
+        * woff2/README.webkit:
+        * woff2/src/buffer.h:
+        (woff2::Buffer::Buffer):
+        (woff2::Buffer::Read):
+        * woff2/src/convert_woff2ttf_*.cc: Added.
+        * woff2/src/font.cc:
+        * woff2/src/glyph.cc:
+        * woff2/src/normalize.cc:
+        * woff2/src/port.h:
+        * woff2/src/store_bytes.h:
+        (woff2::Store16):
+        * woff2/src/variable_length.cc:
+        * woff2/src/woff2_common.cc:
+        * woff2/src/woff2_dec.cc:
+        * woff2/src/woff2_decompress.cc:
+        * woff2/src/woff2_enc.cc:
+        * woff2/src/woff2_info.cc: Added.
+
 2017-08-08  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         [CMake] Properly test if compiler supports compiler flags

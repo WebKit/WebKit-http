@@ -30,6 +30,7 @@
 #include "InlineTextBox.h"
 #include "RenderBlock.h"
 #include "RenderStyle.h"
+#include "RenderView.h"
 #include "RootInlineBox.h"
 
 namespace WebCore {
@@ -445,11 +446,10 @@ void RenderTextLineBoxes::setSelectionState(RenderText& renderer, RenderObject::
         return;
     }
 
-    unsigned start, end;
-    renderer.selectionStartEnd(start, end);
+    auto start = renderer.view().selection().startPosition();
+    auto end = renderer.view().selection().endPosition();
     if (state == RenderObject::SelectionStart) {
         end = renderer.textLength();
-
         // to handle selection from end of text to end of line
         if (start && start == end)
             start = end - 1;

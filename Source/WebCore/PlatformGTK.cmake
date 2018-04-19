@@ -68,9 +68,11 @@ list(APPEND WebCore_SOURCES
     platform/geoclue/GeolocationProviderGeoclue.cpp
 
     platform/glib/EventLoopGlib.cpp
+    platform/glib/FileMonitorGLib.cpp
     platform/glib/FileSystemGlib.cpp
     platform/glib/KeyedDecoderGlib.cpp
     platform/glib/KeyedEncoderGlib.cpp
+    platform/glib/LowPowerModeNotifierGLib.cpp
     platform/glib/MainThreadSharedTimerGLib.cpp
     platform/glib/SSLKeyGeneratorGLib.cpp
     platform/glib/SharedBufferGlib.cpp
@@ -106,6 +108,8 @@ list(APPEND WebCore_SOURCES
     platform/gtk/PasteboardGtk.cpp
     platform/gtk/ScrollAnimatorGtk.cpp
     platform/gtk/SelectionData.cpp
+
+    platform/network/glib/NetworkStateNotifierGLib.cpp
 
     platform/network/soup/AuthenticationChallengeSoup.cpp
     platform/network/soup/CertificateInfo.cpp
@@ -211,6 +215,7 @@ list(APPEND WebCore_LIBRARIES
     ${LIBSOUP_LIBRARIES}
     ${LIBTASN1_LIBRARIES}
     ${HYPHEN_LIBRARIES}
+    ${UPOWERGLIB_LIBRARIES}
     ${X11_X11_LIB}
     ${X11_Xcomposite_LIB}
     ${X11_Xdamage_LIB}
@@ -231,6 +236,7 @@ list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
     ${LIBSECRET_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
     ${LIBTASN1_INCLUDE_DIRS}
+    ${UPOWERGLIB_INCLUDE_DIRS}
     ${ZLIB_INCLUDE_DIRS}
 )
 

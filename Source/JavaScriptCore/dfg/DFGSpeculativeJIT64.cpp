@@ -2664,14 +2664,6 @@ void SpeculativeJIT::compile(Node* node)
             return;
         break;
 
-    case CompareBelow:
-        compileCompareUnsigned(node, JITCompiler::Below);
-        break;
-
-    case CompareBelowEq:
-        compileCompareUnsigned(node, JITCompiler::BelowOrEqual);
-        break;
-
     case CompareEq:
         if (compare(node, JITCompiler::Equal, JITCompiler::DoubleEqual, operationCompareEq))
             return;
@@ -4300,7 +4292,9 @@ void SpeculativeJIT::compile(Node* node)
         slowPath.append(m_jit.branchTestPtr(MacroAssembler::Zero, rareDataGPR));
         m_jit.loadPtr(JITCompiler::Address(rareDataGPR, FunctionRareData::offsetOfObjectAllocationProfile() + ObjectAllocationProfile::offsetOfAllocator()), allocatorGPR);
         m_jit.loadPtr(JITCompiler::Address(rareDataGPR, FunctionRareData::offsetOfObjectAllocationProfile() + ObjectAllocationProfile::offsetOfStructure()), structureGPR);
+
         slowPath.append(m_jit.branchTestPtr(MacroAssembler::Zero, allocatorGPR));
+
         emitAllocateJSObject(resultGPR, nullptr, allocatorGPR, structureGPR, TrustedImmPtr(0), scratchGPR, slowPath);
         
         m_jit.loadPtr(JITCompiler::Address(calleeGPR, JSFunction::offsetOfRareData()), rareDataGPR);

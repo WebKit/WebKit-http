@@ -315,7 +315,7 @@ void WKContextAddVisitedLink(WKContextRef contextRef, WKStringRef visitedURL)
     if (visitedURLString.isEmpty())
         return;
 
-    toImpl(contextRef)->visitedLinkStore().addVisitedLinkHash(visitedLinkHash(visitedURLString));
+    toImpl(contextRef)->visitedLinkStore().addVisitedLinkHash(computeSharedStringHash(visitedURLString));
 }
 
 void WKContextClearVisitedLinks(WKContextRef contextRef)
@@ -405,6 +405,11 @@ void WKContextSetCanHandleHTTPSServerTrustEvaluation(WKContextRef contextRef, bo
 void WKContextSetDiskCacheSpeculativeValidationEnabled(WKContextRef contextRef, bool value)
 {
     toImpl(contextRef)->configuration().setDiskCacheSpeculativeValidationEnabled(value);
+}
+
+void WKContextPreconnectToServer(WKContextRef contextRef, WKURLRef serverURLRef)
+{
+    toImpl(contextRef)->preconnectToServer(URL(URL(), toWTFString(serverURLRef)));
 }
 
 WKCookieManagerRef WKContextGetCookieManager(WKContextRef contextRef)

@@ -11,4 +11,4 @@ The in-tree copy is updated by running
   sh update.sh
 from within the modules/woff2 directory.
 
-Current version: [commit 63b8fb6d0d797f04e77ee825fd8fcf7ea6205aac].
+Current version: [commit 22c256bc457777744ba14b7325a6e8e0e7dec91c].

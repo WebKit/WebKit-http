@@ -72,7 +72,6 @@
 #include "WebsiteDataStore.h"
 #include "WebsiteDataStoreParameters.h"
 #include <WebCore/ApplicationCacheStorage.h>
-#include <WebCore/LinkHash.h>
 #include <WebCore/LogInitialization.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/URLParser.h>
@@ -1155,6 +1154,14 @@ void WebProcessPool::setCanHandleHTTPSServerTrustEvaluation(bool value)
         m_networkProcess->send(Messages::NetworkProcess::SetCanHandleHTTPSServerTrustEvaluation(value), 0);
         return;
     }
+}
+
+void WebProcessPool::preconnectToServer(const URL& url)
+{
+    if (!url.isValid() || !url.protocolIsInHTTPFamily())
+        return;
+
+    ensureNetworkProcess().send(Messages::NetworkProcess::PreconnectTo(url, StoredCredentialsPolicy::Use), 0);
 }
 
 void WebProcessPool::registerURLSchemeAsLocal(const String& urlScheme)

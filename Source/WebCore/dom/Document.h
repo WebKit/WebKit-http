@@ -132,6 +132,7 @@ class HTMLPictureElement;
 class HTMLScriptElement;
 class HitTestRequest;
 class HitTestResult;
+class ImageBitmapRenderingContext;
 class IntPoint;
 class JSNode;
 class LayoutPoint;
@@ -168,6 +169,7 @@ class SelectorQuery;
 class SelectorQueryCache;
 class SerializedScriptValue;
 class Settings;
+class StringCallback;
 class StyleResolver;
 class StyleSheet;
 class StyleSheetContents;
@@ -295,7 +297,9 @@ using RenderingContext = Variant<
 #if ENABLE(WEBGPU)
     RefPtr<WebGPURenderingContext>,
 #endif
-    RefPtr<CanvasRenderingContext2D>>;
+    RefPtr<ImageBitmapRenderingContext>,
+    RefPtr<CanvasRenderingContext2D>
+>;
 
 class Document
     : public ContainerNode
@@ -1102,9 +1106,8 @@ public:
     WEBCORE_EXPORT void webkitDidExitFullScreenForElement(Element*);
     
     void setFullScreenRenderer(RenderFullScreen*);
-    RenderFullScreen* fullScreenRenderer() const { return m_fullScreenRenderer; }
-    void fullScreenRendererDestroyed();
-    
+    RenderFullScreen* fullScreenRenderer() const { return m_fullScreenRenderer.get(); }
+
     void fullScreenChangeDelayTimerFired();
     bool fullScreenIsAllowedForElement(Element*) const;
     void fullScreenElementRemoved();
@@ -1358,6 +1361,8 @@ public:
     bool hasStorageAccess() const { return m_hasStorageAccess; };
     void requestStorageAccess(Ref<DeferredPromise>&& passedPromise);
     void setUserGrantsStorageAccessOverride(bool value) { m_grantStorageAccessOverride = value; }
+
+    WEBCORE_EXPORT void setConsoleMessageListener(RefPtr<StringCallback>&&); // For testing.
 
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
@@ -1616,7 +1621,7 @@ private:
 #if ENABLE(FULLSCREEN_API)
     RefPtr<Element> m_fullScreenElement;
     Vector<RefPtr<Element>> m_fullScreenElementStack;
-    RenderFullScreen* m_fullScreenRenderer { nullptr };
+    WeakPtr<RenderFullScreen> m_fullScreenRenderer { nullptr };
     Timer m_fullScreenChangeDelayTimer;
     Deque<RefPtr<Node>> m_fullScreenChangeEventTargetQueue;
     Deque<RefPtr<Node>> m_fullScreenErrorEventTargetQueue;
@@ -1808,6 +1813,7 @@ private:
     OrientationNotifier m_orientationNotifier;
     mutable PAL::SessionID m_sessionID;
     mutable RefPtr<PAL::Logger> m_logger;
+    RefPtr<StringCallback> m_consoleMessageListener;
 
     static bool hasEverCreatedAnAXObjectCache;
 

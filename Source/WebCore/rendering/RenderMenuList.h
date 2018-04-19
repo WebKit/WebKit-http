@@ -66,8 +66,8 @@ private:
 
     bool isMenuList() const override { return true; }
 
-    void addChild(RenderObject* newChild, RenderObject* beforeChild = 0) override;
-    void removeChild(RenderObject&) override;
+    void addChild(RenderPtr<RenderObject> newChild, RenderObject* beforeChild = 0) override;
+    RenderPtr<RenderObject> takeChild(RenderObject&) override;
     bool createsAnonymousWrapper() const override { return true; }
 
     void updateFromElement() override;
@@ -137,13 +137,13 @@ private:
 
     bool isFlexibleBoxImpl() const override { return true; }
 
-    RenderText* m_buttonText;
-    RenderBlock* m_innerBlock;
+    WeakPtr<RenderText> m_buttonText;
+    WeakPtr<RenderBlock> m_innerBlock;
 
     bool m_needsOptionsWidthUpdate;
     int m_optionsWidth;
 
-    int m_lastActiveIndex;
+    std::optional<int> m_lastActiveIndex;
 
     std::unique_ptr<RenderStyle> m_optionStyle;
 

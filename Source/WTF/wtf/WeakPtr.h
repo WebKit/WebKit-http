@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2013 Google, Inc. All Rights Reserved.
- * Copyright (C) 2015 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2015, 2017 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -65,26 +65,29 @@ template<typename T>
 class WeakPtr {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    WeakPtr() : m_ref(WeakReference<T>::create(nullptr)) { }
-    WeakPtr(std::nullptr_t) : m_ref(WeakReference<T>::create(nullptr)) { }
-    WeakPtr(const WeakPtr& o) : m_ref(o.m_ref.copyRef()) { }
-    template<typename U> WeakPtr(const WeakPtr<U>& o) : m_ref(o.m_ref.copyRef()) { }
+    WeakPtr() { }
+    WeakPtr(std::nullptr_t) { }
+    WeakPtr(Ref<WeakReference<T>>&& ref) : m_ref(std::forward<Ref<WeakReference<T>>>(ref)) { }
+    template<typename U> WeakPtr(const WeakPtr<U>&);
+    template<typename U> WeakPtr(WeakPtr<U>&&);
 
-    T* get() const { return m_ref->get(); }
-    operator bool() const { return m_ref->get(); }
+    T* get() const { return m_ref ? m_ref->get() : nullptr; }
+    explicit operator bool() const { return m_ref && m_ref->get(); }
 
-    WeakPtr& operator=(const WeakPtr& o) { m_ref = o.m_ref.copyRef(); return *this; }
-    WeakPtr& operator=(std::nullptr_t) { m_ref = WeakReference<T>::create(nullptr); return *this; }
+    WeakPtr& operator=(std::nullptr_t) { m_ref = nullptr; return *this; }
+    template<typename U> WeakPtr& operator=(const WeakPtr<U>&);
+    template<typename U> WeakPtr& operator=(WeakPtr<U>&&);
 
     T* operator->() const { return m_ref->get(); }
+    T& operator*() const { return *m_ref->get(); }
 
-    void clear() { m_ref = WeakReference<T>::create(nullptr); }
+    void clear() { m_ref = nullptr; }
 
 private:
-    friend class WeakPtrFactory<T>;
-    WeakPtr(Ref<WeakReference<T>>&& ref) : m_ref(std::forward<Ref<WeakReference<T>>>(ref)) { }
+    template<typename U> friend class WeakPtr;
+    template<typename U> friend WeakPtr<U> makeWeakPtr(U&);
 
-    Ref<WeakReference<T>> m_ref;
+    RefPtr<WeakReference<T>> m_ref;
 };
 
 template<typename T>
@@ -104,8 +107,7 @@ public:
     {
         if (!m_ref)
             m_ref = WeakReference<T>::create(&ptr);
-        ASSERT(&ptr == m_ref->get());
-        return WeakPtr<T>(Ref<WeakReference<T>>(*m_ref));
+        return { makeRef(*m_ref) };
     }
 
     void revokeAll()
@@ -120,6 +122,52 @@ public:
 private:
     mutable RefPtr<WeakReference<T>> m_ref;
 };
+
+template<typename T, typename U> inline WeakReference<T>* weak_reference_upcast(WeakReference<U>* weakReference)
+{
+    static_assert(std::is_convertible<U*, T*>::value, "U* must be convertible to T*");
+    return reinterpret_cast<WeakReference<T>*>(weakReference);
+}
+
+template<typename T, typename U> inline WeakReference<T>* weak_reference_downcast(WeakReference<U>* weakReference)
+{
+    static_assert(std::is_convertible<T*, U*>::value, "T* must be convertible to U*");
+    return reinterpret_cast<WeakReference<T>*>(weakReference);
+}
+
+template<typename T> template<typename U> inline WeakPtr<T>::WeakPtr(const WeakPtr<U>& o)
+    : m_ref(weak_reference_upcast<T>(o.m_ref.get()))
+{
+}
+
+template<typename T> template<typename U> inline WeakPtr<T>::WeakPtr(WeakPtr<U>&& o)
+    : m_ref(adoptRef(weak_reference_upcast<T>(o.m_ref.leakRef())))
+{
+}
+
+template<typename T> template<typename U> inline WeakPtr<T>& WeakPtr<T>::operator=(const WeakPtr<U>& o)
+{
+    m_ref = weak_reference_upcast<T>(o.m_ref.get());
+    return *this;
+}
+
+template<typename T> template<typename U> inline WeakPtr<T>& WeakPtr<T>::operator=(WeakPtr<U>&& o)
+{
+    m_ref = adoptRef(weak_reference_upcast<T>(o.m_ref.leakRef()));
+    return *this;
+}
+
+template<typename T> inline WeakPtr<T> makeWeakPtr(T& ref)
+{
+    return { adoptRef(*weak_reference_downcast<T>(ref.weakPtrFactory().createWeakPtr(ref).m_ref.leakRef())) };
+}
+
+template<typename T> inline WeakPtr<T> makeWeakPtr(T* ptr)
+{
+    if (!ptr)
+        return { };
+    return makeWeakPtr(*ptr);
+}
 
 template<typename T, typename U> inline bool operator==(const WeakPtr<T>& a, const WeakPtr<U>& b)
 {
@@ -156,5 +204,6 @@ template<typename T, typename U> inline bool operator!=(T* a, const WeakPtr<U>& 
 using WTF::WeakPtr;
 using WTF::WeakPtrFactory;
 using WTF::WeakReference;
+using WTF::makeWeakPtr;
 
 #endif

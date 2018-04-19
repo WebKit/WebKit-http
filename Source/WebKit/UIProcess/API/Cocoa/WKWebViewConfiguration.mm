@@ -137,6 +137,7 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
     BOOL _mainContentUserGestureOverrideEnabled;
 
 #if PLATFORM(MAC)
+    double _cpuLimit;
     BOOL _showsURLsInToolTips;
     BOOL _serviceControlsEnabled;
     BOOL _imageControlsEnabled;
@@ -192,6 +193,7 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
 #endif
 
 #if PLATFORM(MAC)
+    _cpuLimit = 0;
     _printsBackgrounds = NO;
     _respectsImageOrientation = NO;
     _showsURLsInToolTips = NO;
@@ -338,6 +340,7 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
     configuration->_dragLiftDelay = self->_dragLiftDelay;
 #endif
 #if PLATFORM(MAC)
+    configuration->_cpuLimit = self->_cpuLimit;
     configuration->_userInterfaceDirectionPolicy = self->_userInterfaceDirectionPolicy;
     configuration->_showsURLsInToolTips = self->_showsURLsInToolTips;
     configuration->_serviceControlsEnabled = self->_serviceControlsEnabled;
@@ -816,6 +819,16 @@ static NSString *defaultApplicationNameForUserAgent()
 - (void)_setRequiresUserActionForEditingControlsManager:(BOOL)requiresUserAction
 {
     _requiresUserActionForEditingControlsManager = requiresUserAction;
+}
+
+- (void)_setCPULimit:(double)cpuLimit
+{
+    _cpuLimit = cpuLimit;
+}
+
+- (double)_cpuLimit
+{
+    return _cpuLimit;
 }
 
 #endif // PLATFORM(MAC)

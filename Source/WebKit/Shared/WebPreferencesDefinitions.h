@@ -45,16 +45,16 @@
 #define DEFAULT_HIDDEN_PAGE_CSS_ANIMATION_SUSPENSION_ENABLED false
 #endif
 
+#if ENABLE(SERVER_PRECONNECT)
+#define DEFAULT_LINK_PRECONNECT_ENABLED true
+#else
+#define DEFAULT_LINK_PRECONNECT_ENABLED false
+#endif
+
 #if PLATFORM(COCOA)
 #define DEFAULT_PDFPLUGIN_ENABLED true
 #else
 #define DEFAULT_PDFPLUGIN_ENABLED false
-#endif
-
-#if PLATFORM(COCOA)
-#define DEFAULT_HTML_INTERACTIVE_FORM_VALIDATION_ENABLED true
-#else
-#define DEFAULT_HTML_INTERACTIVE_FORM_VALIDATION_ENABLED false
 #endif
 
 #if PLATFORM(IOS)
@@ -181,6 +181,7 @@
     macro(DOMPasteAllowed, domPasteAllowed, Bool, bool, false, "", "") \
     macro(JavaScriptCanAccessClipboard, javaScriptCanAccessClipboard, Bool, bool, false, "", "") \
     macro(ShouldPrintBackgrounds, shouldPrintBackgrounds, Bool, bool, DEFAULT_SHOULD_PRINT_BACKGROUNDS, "", "") \
+    macro(LinkPreconnect, linkPreconnect, Bool, bool, DEFAULT_LINK_PRECONNECT_ENABLED, "", "") \
     macro(FullScreenEnabled, fullScreenEnabled, Bool, bool, false, "", "") \
     macro(AsynchronousSpellCheckingEnabled, asynchronousSpellCheckingEnabled, Bool, bool, false, "", "") \
     macro(WebSecurityEnabled, webSecurityEnabled, Bool, bool, true, "", "") \
@@ -287,7 +288,7 @@
     macro(EncryptedMediaAPIEnabled, encryptedMediaAPIEnabled, Bool, bool, false, "", "") \
     macro(MediaPreloadingEnabled, mediaPreloadingEnabled, Bool, bool, false, "", "") \
     macro(IntersectionObserverEnabled, intersectionObserverEnabled, Bool, bool, false, "Intersection Observer", "Enable Intersection Observer support") \
-    macro(InteractiveFormValidationEnabled, interactiveFormValidationEnabled, Bool, bool, DEFAULT_HTML_INTERACTIVE_FORM_VALIDATION_ENABLED, "HTML Interactive Form Validation", "HTML interactive form validation") \
+    macro(InteractiveFormValidationEnabled, interactiveFormValidationEnabled, Bool, bool, true, "HTML Interactive Form Validation", "HTML interactive form validation") \
     macro(ShouldSuppressKeyboardInputDuringProvisionalNavigation, shouldSuppressKeyboardInputDuringProvisionalNavigation, Bool, bool, false, "", "") \
     macro(CSSGridLayoutEnabled, cssGridLayoutEnabled, Bool, bool, true, "CSS Grid", "CSS Grid Layout Module support") \
     macro(GamepadsEnabled, gamepadsEnabled, Bool, bool, true, "Gamepads", "Web Gamepad API support") \

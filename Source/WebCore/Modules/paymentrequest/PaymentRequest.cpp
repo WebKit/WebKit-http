@@ -28,10 +28,12 @@
 
 #if ENABLE(PAYMENT_REQUEST)
 
+#include "ApplePayPaymentHandler.h"
 #include "Document.h"
 #include "PaymentAddress.h"
 #include "PaymentCurrencyAmount.h"
 #include "PaymentDetailsInit.h"
+#include "PaymentHandler.h"
 #include "PaymentMethodData.h"
 #include "PaymentOptions.h"
 #include "ScriptController.h"
@@ -159,6 +161,83 @@ static ExceptionOr<void> checkAndCanonicalizeTotal(PaymentCurrencyAmount& total)
     return { };
 }
 
+// Implements "validate a standardized payment method identifier"
+// https://www.w3.org/TR/payment-method-id/#validity-0
+static bool isValidStandardizedPaymentMethodIdentifier(StringView identifier)
+{
+    enum class State {
+        Start,
+        Hyphen,
+        LowerAlpha,
+        Digit,
+    };
+
+    auto state = State::Start;
+    for (auto character : identifier.codeUnits()) {
+        switch (state) {
+        case State::Start:
+        case State::Hyphen:
+            if (isASCIILower(character)) {
+                state = State::LowerAlpha;
+                break;
+            }
+
+            return false;
+
+        case State::LowerAlpha:
+        case State::Digit:
+            if (isASCIILower(character)) {
+                state = State::LowerAlpha;
+                break;
+            }
+
+            if (isASCIIDigit(character)) {
+                state = State::Digit;
+                break;
+            }
+
+            if (character == '-') {
+                state = State::Hyphen;
+                break;
+            }
+
+            return false;
+        }
+    }
+
+    return state == State::LowerAlpha || state == State::Digit;
+}
+
+// Implements "validate a URL-based payment method identifier"
+// https://www.w3.org/TR/payment-method-id/#validation
+static bool isValidURLBasedPaymentMethodIdentifier(const URL& url)
+{
+    if (!url.protocolIs("https"))
+        return false;
+
+    if (!url.user().isEmpty() || !url.pass().isEmpty())
+        return false;
+
+    return true;
+}
+
+// Implements "validate a payment method identifier"
+// https://www.w3.org/TR/payment-method-id/#validity
+std::optional<PaymentRequest::MethodIdentifier> convertAndValidatePaymentMethodIdentifier(const String& identifier)
+{
+    URL url { URL(), identifier };
+    if (!url.isValid()) {
+        if (isValidStandardizedPaymentMethodIdentifier(identifier))
+            return { identifier };
+        return std::nullopt;
+    }
+
+    if (isValidURLBasedPaymentMethodIdentifier(url))
+        return { WTFMove(url) };
+
+    return std::nullopt;
+}
+
 // Implements the PaymentRequest Constructor
 // https://www.w3.org/TR/payment-request/#constructor
 ExceptionOr<Ref<PaymentRequest>> PaymentRequest::create(Document& document, Vector<PaymentMethodData>&& methodData, PaymentDetailsInit&& details, PaymentOptions&& options)
@@ -174,8 +253,9 @@ ExceptionOr<Ref<PaymentRequest>> PaymentRequest::create(Document& document, Vect
     Vector<Method> serializedMethodData;
     serializedMethodData.reserveInitialCapacity(methodData.size());
     for (auto& paymentMethod : methodData) {
-        if (paymentMethod.supportedMethods.isEmpty())
-            return Exception { TypeError, ASCIILiteral("supportedMethods must be specified.") };
+        auto identifier = convertAndValidatePaymentMethodIdentifier(paymentMethod.supportedMethods);
+        if (!identifier)
+            return Exception { RangeError, makeString("\"", paymentMethod.supportedMethods, "\" is an invalid payment method identifier.") };
 
         String serializedData;
         if (paymentMethod.data) {
@@ -184,7 +264,7 @@ ExceptionOr<Ref<PaymentRequest>> PaymentRequest::create(Document& document, Vect
             if (scope.exception())
                 return Exception { ExistingExceptionError };
         }
-        serializedMethodData.uncheckedAppend({ paymentMethod.supportedMethods, WTFMove(serializedData) });
+        serializedMethodData.uncheckedAppend({ WTFMove(*identifier), WTFMove(serializedData) });
     }
 
     auto exception = checkAndCanonicalizeTotal(details.total.amount);
@@ -275,16 +355,7 @@ void PaymentRequest::show(ShowPromise&& promise)
     ASSERT(!m_showPromise);
     m_showPromise = WTFMove(promise);
 
-    // The spec requires these steps to be run after returning `promise` to the caller.
-    RunLoop::main().dispatch([this, protectedThis = makeRef(*this)] {
-        finishShowing();
-    });
-}
-
-void PaymentRequest::finishShowing()
-{
-    ASSERT(m_showPromise);
-
+    std::unique_ptr<PaymentHandler> selectedPaymentHandler;
     for (auto& paymentMethod : m_serializedMethodData) {
         auto scope = DECLARE_THROW_SCOPE(scriptExecutionContext()->vm());
         JSC::JSValue data = JSONParse(scriptExecutionContext()->execState(), paymentMethod.serializedData);
@@ -293,14 +364,26 @@ void PaymentRequest::finishShowing()
             return;
         }
 
-        // FIXME: If there is a payment handler that can support this payment method, allow it to
-        // convert the serialized data (propagating any exceptions that might be thrown) and add it
-        // to a list of handlers.
-        UNUSED(data);
+        auto handler = PaymentHandler::create(*this, paymentMethod.identifier);
+        if (!handler)
+            continue;
+
+        auto result = handler->convertData(*scriptExecutionContext()->execState(), WTFMove(data));
+        if (result.hasException()) {
+            m_showPromise->reject(result.releaseException());
+            return;
+        }
+
+        if (!selectedPaymentHandler)
+            selectedPaymentHandler = WTFMove(handler);
     }
 
-    // FIXME: If the list of handlers is non-empty, present the payment UI instead of rejecting.
-    m_showPromise->reject(Exception { NotSupportedError });
+    if (!selectedPaymentHandler) {
+        m_showPromise->reject(Exception { NotSupportedError });
+        return;
+    }
+
+    selectedPaymentHandler->show();
 }
 
 // https://www.w3.org/TR/payment-request/#abort()-method
@@ -309,17 +392,10 @@ ExceptionOr<void> PaymentRequest::abort(AbortPromise&& promise)
     if (m_state != State::Interactive)
         return Exception { InvalidStateError };
 
+    m_state = State::Closed;
     ASSERT(m_showPromise);
-    ASSERT(!m_abortPromise);
-    m_abortPromise = WTFMove(promise);
-
-    // The spec requires these steps to be run after returning `promise` to the caller.
-    RunLoop::main().dispatch([this, protectedThis = makeRef(*this)] {
-        m_state = State::Closed;
-        m_showPromise->reject(Exception { AbortError });
-        m_abortPromise->resolve();
-    });
-
+    m_showPromise->reject(Exception { AbortError });
+    promise.resolve();
     return { };
 }
 
@@ -331,13 +407,8 @@ void PaymentRequest::canMakePayment(CanMakePaymentPromise&& promise)
         return;
     }
 
-    m_canMakePaymentPromise = WTFMove(promise);
-
-    // The spec requires these steps to be run after returning `promise` to the caller.
-    RunLoop::main().dispatch([this, protectedThis = makeRef(*this)] {
-        // FIXME: Resolve the promise with true if we can support any of the payment methods in m_serializedMethodData.
-        m_canMakePaymentPromise->resolve(false);
-    });
+    // FIXME: Resolve the promise with true if we can support any of the payment methods in m_serializedMethodData.
+    promise.resolve(false);
 }
 
 const String& PaymentRequest::id() const

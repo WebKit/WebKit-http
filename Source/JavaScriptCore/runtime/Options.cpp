@@ -406,7 +406,7 @@ static void recomputeDependentOptions()
         Options::useWebAssembly() = false;
 
     if (!Options::useWebAssembly())
-        Options::useWebAssemblyFastTLS() = false;
+        Options::useFastTLSForWasmContext() = false;
     
     if (Options::dumpDisassembly()
         || Options::dumpDFGDisassembly()
@@ -502,6 +502,12 @@ static void recomputeDependentOptions()
         Options::reservedZoneSize() = minimumReservedZoneSize;
     if (Options::softReservedZoneSize() < Options::reservedZoneSize() + minimumReservedZoneSize)
         Options::softReservedZoneSize() = Options::reservedZoneSize() + minimumReservedZoneSize;
+
+#if USE(JSVALUE32_64)
+    // FIXME: Make probe OSR exit work on 32-bit:
+    // https://bugs.webkit.org/show_bug.cgi?id=177956
+    Options::useProbeOSRExit() = false;
+#endif
 }
 
 void Options::initialize()
