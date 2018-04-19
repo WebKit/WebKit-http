@@ -3,6 +3,8 @@ list(APPEND PAL_SOURCES
 
     crypto/tasn1/Utilities.cpp
 
+    system/ClockGeneric.cpp
+
 	system/haiku/SoundHaiku.cpp
 
     text/KillRing.cpp

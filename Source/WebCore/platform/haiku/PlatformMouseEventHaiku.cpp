@@ -40,7 +40,7 @@ PlatformMouseEvent::PlatformMouseEvent(const BMessage* message)
     , m_globalPosition(message->FindPoint("screen_where"))
     , m_clickCount(message->FindInt32("clicks"))
 {
-    m_timestamp = message->FindInt64("when") / 1000000.0;
+    m_timestamp = WallTime::fromRawSeconds(message->FindInt64("when") / 1000000.0);
 
     int32 buttons = 0;
     if (message->what == B_MOUSE_UP)

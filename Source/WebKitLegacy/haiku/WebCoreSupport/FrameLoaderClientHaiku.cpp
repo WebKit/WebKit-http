@@ -468,12 +468,12 @@ void FrameLoaderClientHaiku::dispatchDidFinishLoad()
     dispatchMessage(message);
 }
 
-void FrameLoaderClientHaiku::dispatchWillSubmitForm(FormState&, FramePolicyFunction&& function)
+void FrameLoaderClientHaiku::dispatchWillSubmitForm(FormState&, WTF::Function<void()>&& function)
 {
     CALLED();
     notImplemented();
-    // FIXME: Send an event to allow for alerts and cancellation.
-    function(PolicyUse);
+	// It seems we can access the form content here, and maybe store it for auto-complete and the like.
+    function();
 }
 
 Frame* FrameLoaderClientHaiku::dispatchCreatePage(const NavigationAction& /*action*/)
@@ -495,16 +495,16 @@ void FrameLoaderClientHaiku::dispatchShow()
 void FrameLoaderClientHaiku::dispatchDecidePolicyForResponse(const WebCore::ResourceResponse& response, const WebCore::ResourceRequest& request, FramePolicyFunction&& function)
 {
     if (request.isNull()) {
-        function(PolicyIgnore);
+        function(PolicyAction::Ignore);
         return;
     }
     // we need to call directly here
     if (!response.isAttachment() && canShowMIMEType(response.mimeType())) {
-        function(PolicyUse);
+        function(PolicyAction::Use);
     } else if (!request.url().isLocalFile() && response.mimeType() != "application/x-shockwave-flash") {
-        function(PolicyDownload);
+        function(PolicyAction::Download);
     } else {
-        function(PolicyIgnore);
+        function(PolicyAction::Ignore);
     }
 }
 
@@ -516,13 +516,13 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(const Naviga
         return;
 
     if (request.isNull()) {
-        function(PolicyIgnore);
+        function(PolicyAction::Ignore);
         return;
     }
 
     if (!m_messenger.IsValid() || !isTertiaryMouseButton(action)) {
         dispatchNavigationRequested(request);
-        function(PolicyUse);
+        function(PolicyAction::Use);
         return;
     }
 
@@ -551,7 +551,7 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(const Naviga
         m_webFrame->Frame()->loader().activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
     }
 
-    function(PolicyIgnore);
+    function(PolicyAction::Ignore);
 }
 
 void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(const NavigationAction& action,
