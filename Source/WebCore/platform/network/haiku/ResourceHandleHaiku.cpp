@@ -254,4 +254,18 @@ ResourceError SynchronousLoaderClient::platformBadResponseError()
     return ResourceError();
 }
 
+void ResourceHandle::continueWillSendRequest(ResourceRequest&& request)
+{
+    ASSERT(!client() || client()->usesAsyncCallbacks());
+    //continueAfterWillSendRequest(this, WTFMove(request));
+	notImplemented();
+}
+
+void ResourceHandle::continueDidReceiveResponse()
+{
+    ASSERT(!client() || client()->usesAsyncCallbacks());
+    //continueAfterDidReceiveResponse(this);
+	notImplemented();
+}
+
 } // namespace WebCore

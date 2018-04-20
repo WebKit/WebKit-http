@@ -128,7 +128,7 @@ std::pair<String, bool> cookieRequestHeaderFieldValue(const NetworkStorageSessio
     return {result, secure};
 }
 
-bool cookiesEnabled(const NetworkStorageSession&, const URL&, const URL&)
+bool cookiesEnabled(const NetworkStorageSession&)
 {
     return true;
 }

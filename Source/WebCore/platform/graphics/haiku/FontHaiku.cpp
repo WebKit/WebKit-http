@@ -47,12 +47,6 @@ bool FontCascade::canReturnFallbackFontsForComplexText()
     return false;
 }
 
-float FontCascade::getGlyphsAndAdvancesForComplexText(const TextRun& run,
-        unsigned from, unsigned to, GlyphBuffer& glyphBuffer, ForTextEmphasisOrNot forTextEmphasis) const
-{
-    return getGlyphsAndAdvancesForSimpleText(run, from, to, glyphBuffer);
-}
-
 void FontCascade::drawGlyphs(GraphicsContext& graphicsContext, const Font& font,
     const GlyphBuffer& glyphBuffer, unsigned from, unsigned numGlyphs,
     const FloatPoint& point, WebCore::FontSmoothingMode smoothing)
@@ -104,26 +98,6 @@ void FontCascade::drawGlyphs(GraphicsContext& graphicsContext, const Font& font,
 bool FontCascade::canExpandAroundIdeographsInComplexText()
 {
     return false;
-}
-
-float FontCascade::floatWidthForComplexText(const TextRun& run, HashSet<const Font*>* /*fallbackFonts*/, GlyphOverflow* /*glyphOverflow*/) const
-{
-    const BFont* font = primaryFont().platformData().font();
-    ASSERT(font);
-    float width = font->StringWidth(run.string().utf8().data());
-    return width;
-}
-
-int FontCascade::offsetForPositionForComplexText(const TextRun& run, float position,
-    bool includePartialGlyphs) const
-{
-    return offsetForPositionForSimpleText(run, position, includePartialGlyphs);
-}
-
-void FontCascade::adjustSelectionRectForComplexText(const TextRun& run,
-    LayoutRect& rect, unsigned from, unsigned to) const
-{
-    adjustSelectionRectForSimpleText(run, rect, from, to);
 }
 
 } // namespace WebCore

@@ -80,9 +80,9 @@ void PlatformStrategiesHaiku::setCookiesFromDOM(const NetworkStorageSession& ses
     WebCore::setCookiesFromDOM(session, firstParty, url, cookieString);
 }
 
-bool PlatformStrategiesHaiku::cookiesEnabled(const NetworkStorageSession& session, const URL& firstParty, const URL& url)
+bool PlatformStrategiesHaiku::cookiesEnabled(const NetworkStorageSession& session)
 {
-    return WebCore::cookiesEnabled(session, firstParty, url);
+    return WebCore::cookiesEnabled(session);
 }
 
 std::pair<WTF::String, bool> PlatformStrategiesHaiku::cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL& firstParty, const URL& url, IncludeSecureCookies includeSecure)

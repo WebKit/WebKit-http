@@ -722,7 +722,7 @@
 #define HAVE_BACKTRACE 1
 #endif
 
-#if OS(DARWIN) || OS(LINUX)
+#if OS(DARWIN) || OS(LINUX) || OS(HAIKU)
 #if PLATFORM(GTK)
 #if defined(__GLIBC__) && !defined(__UCLIBC__)
 #define HAVE_BACKTRACE_SYMBOLS 1

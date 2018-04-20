@@ -128,6 +128,7 @@ list(APPEND WebCore_SOURCES
 
   platform/network/haiku/CredentialStorageHaiku.cpp
   platform/network/haiku/SocketStreamHandleHaiku.cpp
+  platform/network/haiku/NetworkStateNotifierHaiku.cpp
   platform/network/haiku/NetworkStorageSessionHaiku.cpp
 
   platform/posix/FileSystemPOSIX.cpp

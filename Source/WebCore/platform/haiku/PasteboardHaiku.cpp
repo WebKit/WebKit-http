@@ -226,6 +226,12 @@ void Pasteboard::read(PasteboardWebContentReader&)
     notImplemented();
 }
 
+void Pasteboard::read(PasteboardFileReader& reader)
+{
+	notImplemented();
+}
+
+
 
 void Pasteboard::read(PasteboardPlainText& text)
 {
@@ -286,6 +292,11 @@ RefPtr<DocumentFragment> Pasteboard::documentFragment(Frame& frame, Range& conte
     return 0;
 }
 
+bool Pasteboard::containsFiles()
+{
+	notImplemented();
+	return false;
+}
 
 bool Pasteboard::hasData()
 {
@@ -338,6 +349,11 @@ String Pasteboard::readString(const String& type)
     return result;
 }
 
+String Pasteboard::readStringInCustomData(const String& type)
+{
+	return readString(type);
+}
+
 void Pasteboard::clear()
 {
     AutoClipboardLocker locker(be_clipboard);
@@ -348,8 +364,20 @@ void Pasteboard::clear()
     be_clipboard->Commit();
 }
 
-// Extensions beyond IE's API.
-Vector<String> Pasteboard::types()
+#if ENABLE(DRAG_SUPPORT)
+void Pasteboard::setDragImage(DragImage, const IntPoint&)
+{
+    notImplemented();
+}
+#endif
+
+
+Vector<String> Pasteboard::typesForLegacyUnsafeBindings()
+{
+	return typesSafeForBindings();
+}
+
+Vector<String> Pasteboard::typesSafeForBindings()
 {
     Vector<String> result;
 
@@ -371,18 +399,10 @@ Vector<String> Pasteboard::types()
     return result;
 }
 
-Vector<String> Pasteboard::readFilenames()
+void Pasteboard::writeCustomData(const PasteboardCustomData&)
 {
-    notImplemented();
-    return Vector<String>();
 }
 
-#if ENABLE(DRAG_SUPPORT)
-void Pasteboard::setDragImage(DragImage, const IntPoint&)
-{
-    notImplemented();
-}
-#endif
 
 } // namespace WebCore
 

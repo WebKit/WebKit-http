@@ -28,9 +28,19 @@
 #include "config.h"
 #include "Editor.h"
 
+#include "DOMURL.h"
 #include "DocumentFragment.h"
+#include "HTMLEmbedElement.h"
+#include "HTMLImageElement.h"
+#include "HTMLInputElement.h"
+#include "HTMLObjectElement.h"
+#include "HTMLParserIdioms.h"
 #include "NotImplemented.h"
 #include "Pasteboard.h"
+#include "RenderImage.h"
+#include "SVGImageElement.h"
+#include "XLinkNames.h"
+#include "markup.h"
 
 
 namespace WebCore {
@@ -52,6 +62,59 @@ void Editor::pasteWithPasteboard(Pasteboard* pasteboard, bool allowPlainText,
         pasteAsFragment(*fragment, canSmartReplaceWithPasteboard(*pasteboard),
             chosePlainText, mailBlockquoteHandling);
     }
+}
+
+static const AtomicString& elementURL(Element& element)
+{
+    if (is<HTMLImageElement>(element) || is<HTMLInputElement>(element))
+        return element.attributeWithoutSynchronization(HTMLNames::srcAttr);
+    if (is<SVGImageElement>(element))
+        return element.attributeWithoutSynchronization(XLinkNames::hrefAttr);
+    if (is<HTMLEmbedElement>(element) || is<HTMLObjectElement>(element))
+        return element.imageSourceURL();
+    return nullAtom();
+}
+
+static bool getImageForElement(Element& element, RefPtr<Image>& image)
+{
+    auto* renderer = element.renderer();
+    if (!is<RenderImage>(renderer))
+        return false;
+
+    CachedImage* cachedImage = downcast<RenderImage>(*renderer).cachedImage();
+    if (!cachedImage || cachedImage->errorOccurred())
+        return false;
+
+    image = cachedImage->imageForRenderer(renderer);
+    return image;
+}
+
+void Editor::writeImageToPasteboard(Pasteboard& pasteboard, Element& imageElement, const URL&, const String& title)
+{
+    PasteboardImage pasteboardImage;
+
+    if (!getImageForElement(imageElement, pasteboardImage.image))
+        return;
+    ASSERT(pasteboardImage.image);
+
+    pasteboardImage.url.url = imageElement.document().completeURL(stripLeadingAndTrailingHTMLSpaces(elementURL(imageElement)));
+    pasteboardImage.url.title = title;
+    //pasteboardImage.url.markup = createMarkup(imageElement, IncludeNode, nullptr, ResolveAllURLs);
+    pasteboard.write(pasteboardImage);
+
+	notImplemented();
+}
+
+void Editor::writeSelectionToPasteboard(Pasteboard& pasteboard)
+{
+#if 0
+    PasteboardWebContent pasteboardContent;
+    pasteboardContent.canSmartCopyOrDelete = canSmartCopyOrDelete();
+    pasteboardContent.text = selectedTextForDataTransfer();
+    pasteboardContent.markup = createMarkup(*selectedRange(), nullptr, AnnotateForInterchange, false, ResolveNonLocalURLs);
+    pasteboard.write(pasteboardContent);
+#endif
+	notImplemented();
 }
 
 RefPtr<DocumentFragment> Editor::webContentFromPasteboard(Pasteboard&, Range&, bool /*allowPlainText*/, bool& /*chosePlainText*/)

@@ -104,11 +104,6 @@ bool EventHandler::widgetDidHandleWheelEvent(const PlatformWheelEvent& event, Wi
     return static_cast<FrameView&>(widget).frame().eventHandler().handleWheelEvent(event);
 }
 
-Ref<DataTransfer> EventHandler::createDraggingDataTransfer() const
-{
-    return DataTransfer::createForDrag();
-}
-
 bool EventHandler::passMousePressEventToSubframe(MouseEventWithHitTestResults& mev, Frame* subframe)
 {
     subframe->eventHandler().handleMousePressEvent(mev.event());
