@@ -328,6 +328,12 @@ void Pasteboard::clear(const String& type)
     }
 }
 
+String Pasteboard::readOrigin()
+{
+    notImplemented(); // webkit.org/b/177633: [GTK] Move to new Pasteboard API
+    return { };
+}
+
 String Pasteboard::readString(const String& type)
 {
     BString result;
@@ -374,11 +380,6 @@ void Pasteboard::setDragImage(DragImage, const IntPoint&)
 
 Vector<String> Pasteboard::typesForLegacyUnsafeBindings()
 {
-	return typesSafeForBindings();
-}
-
-Vector<String> Pasteboard::typesSafeForBindings()
-{
     Vector<String> result;
 
     if (be_clipboard->Lock()) {
@@ -397,6 +398,11 @@ Vector<String> Pasteboard::typesSafeForBindings()
     }
 
     return result;
+}
+
+Vector<String> Pasteboard::typesSafeForBindings(const String&)
+{
+	return typesForLegacyUnsafeBindings();
 }
 
 void Pasteboard::writeCustomData(const PasteboardCustomData&)

@@ -306,17 +306,17 @@ void TestRunner::setMockDeviceOrientation(bool, double, bool, double, bool, doub
     notImplemented();
 }
 
-void TestRunner::setMockGeolocationPosition(double latitude, double longitude, double accuracy, bool canProvideAltitude, double altitude, bool canProvideAltitudeAccuracy, double altitudeAccuracy, bool canProvideHeading, double heading, bool canProvideSpeed, double speed)
-{
-    notImplemented();
-}
-
 void TestRunner::setMockGeolocationPositionUnavailableError(JSStringRef message)
 {
     notImplemented();
 }
 
 void TestRunner::setGeolocationPermission(bool allow)
+{
+    notImplemented();
+}
+
+void TestRunner::setMockGeolocationPosition(double, double, double, bool, double, bool, double, bool, double, bool, double, bool, double)
 {
     notImplemented();
 }
