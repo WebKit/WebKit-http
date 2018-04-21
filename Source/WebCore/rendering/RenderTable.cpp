@@ -218,15 +218,15 @@ void RenderTable::addChild(RenderPtr<RenderObject> child, RenderObject* beforeCh
     section.addChild(WTFMove(child));
 }
 
-void RenderTable::addCaption(const RenderTableCaption* caption)
+void RenderTable::addCaption(RenderTableCaption& caption)
 {
-    ASSERT(m_captions.find(caption) == notFound);
-    m_captions.append(const_cast<RenderTableCaption*>(caption));
+    ASSERT(m_captions.find(&caption) == notFound);
+    m_captions.append(makeWeakPtr(caption));
 }
 
-void RenderTable::removeCaption(const RenderTableCaption* oldCaption)
+void RenderTable::removeCaption(RenderTableCaption& oldCaption)
 {
-    bool removed = m_captions.removeFirst(oldCaption);
+    bool removed = m_captions.removeFirst(&oldCaption);
     ASSERT_UNUSED(removed, removed);
 }
 
@@ -686,7 +686,7 @@ void RenderTable::addOverflowFromChildren()
 
     // Add overflow from our caption.
     for (unsigned i = 0; i < m_captions.size(); i++) 
-        addOverflowFromChild(m_captions[i]);
+        addOverflowFromChild(m_captions[i].get());
 
     // Add overflow from our sections.
     for (RenderTableSection* section = topSection(); section; section = sectionBelow(section))
@@ -931,7 +931,7 @@ void RenderTable::updateColumnCache() const
     for (RenderTableCol* columnRenderer = firstColumn(); columnRenderer; columnRenderer = columnRenderer->nextColumn()) {
         if (columnRenderer->isTableColumnGroupWithColumnChildren())
             continue;
-        m_columnRenderers.append(columnRenderer);
+        m_columnRenderers.append(makeWeakPtr(columnRenderer));
         // FIXME: We should look to compute the effective column index successively from previous values instead of
         // calling colToEffCol(), which is in O(numEffCols()). Although it's unlikely that this is a hot function.
         m_effectiveColumnIndexMap.add(columnRenderer, colToEffCol(columnIndex));
@@ -1027,8 +1027,9 @@ RenderTableCol* RenderTable::slowColElement(unsigned col, bool* startEdge, bool*
         updateColumnCache();
 
     unsigned columnCount = 0;
-    for (unsigned i = 0; i < m_columnRenderers.size(); i++) {
-        RenderTableCol* columnRenderer = m_columnRenderers[i];
+    for (auto& columnRenderer : m_columnRenderers) {
+        if (!columnRenderer)
+            continue;
         unsigned span = columnRenderer->span();
         unsigned startCol = columnCount;
         ASSERT(span >= 1);
@@ -1039,10 +1040,10 @@ RenderTableCol* RenderTable::slowColElement(unsigned col, bool* startEdge, bool*
                 *startEdge = startCol == col;
             if (endEdge)
                 *endEdge = endCol == col;
-            return columnRenderer;
+            return columnRenderer.get();
         }
     }
-    return 0;
+    return nullptr;
 }
 
 void RenderTable::recalcSections() const

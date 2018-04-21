@@ -2025,6 +2025,11 @@ FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKWEBVIEW)
 
 - (UIColor *)insertionPointColor
 {
+    if (!_page->editorState().isMissingPostLayoutData) {
+        WebCore::Color caretColor = _page->editorState().postLayoutData().caretColor;
+        if (caretColor.isValid())
+            return [UIColor colorWithCGColor:cachedCGColor(caretColor)];
+    }
     return [UIColor insertionPointColor];
 }
 
@@ -2977,7 +2982,6 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
     [self.inputDelegate selectionDidChange:self];
 }
 
-#if USE(APPLE_INTERNAL_SDK)
 - (void)insertTextSuggestion:(UITextSuggestion *)textSuggestion
 {
     // FIXME: Replace NSClassFromString with actual class as soon as UIKit submitted the new class into the iOS SDK.
@@ -2989,7 +2993,6 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
     if ([inputDelegate respondsToSelector:@selector(_webView:insertTextSuggestion:inInputSession:)])
         [inputDelegate _webView:_webView insertTextSuggestion:textSuggestion inInputSession:_formInputSession.get()];
 }
-#endif // USE(APPLE_INTERNAL_SDK)
 
 - (NSString *)textInRange:(UITextRange *)range
 {

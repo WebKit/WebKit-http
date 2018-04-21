@@ -46,15 +46,14 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << diskCacheSizeOverride;
     encoder << canHandleHTTPSServerTrustEvaluation;
     encoder << cacheStorageDirectory;
+    encoder << cacheStoragePerOriginQuota;
     encoder << cacheStorageDirectoryExtensionHandle;
     encoder << diskCacheDirectory;
     encoder << diskCacheDirectoryExtensionHandle;
-#if ENABLE(NETWORK_CACHE)
     encoder << shouldEnableNetworkCache;
     encoder << shouldEnableNetworkCacheEfficacyLogging;
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
     encoder << shouldEnableNetworkCacheSpeculativeRevalidation;
-#endif
 #endif
 #if PLATFORM(MAC)
     encoder << uiProcessCookieStorageIdentifier;
@@ -116,13 +115,14 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
         return false;
     if (!decoder.decode(result.cacheStorageDirectory))
         return false;
+    if (!decoder.decode(result.cacheStoragePerOriginQuota))
+        return false;
     if (!decoder.decode(result.cacheStorageDirectoryExtensionHandle))
         return false;
     if (!decoder.decode(result.diskCacheDirectory))
         return false;
     if (!decoder.decode(result.diskCacheDirectoryExtensionHandle))
         return false;
-#if ENABLE(NETWORK_CACHE)
     if (!decoder.decode(result.shouldEnableNetworkCache))
         return false;
     if (!decoder.decode(result.shouldEnableNetworkCacheEfficacyLogging))
@@ -130,7 +130,6 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
 #if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
     if (!decoder.decode(result.shouldEnableNetworkCacheSpeculativeRevalidation))
         return false;
-#endif
 #endif
 #if PLATFORM(MAC)
     if (!decoder.decode(result.uiProcessCookieStorageIdentifier))

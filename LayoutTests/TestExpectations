@@ -73,8 +73,11 @@ editing/pasteboard/data-transfer-get-data-on-drop-custom.html [ Skip ]
 editing/pasteboard/data-transfer-get-data-on-drop-plain-text.html [ Skip ]
 editing/pasteboard/data-transfer-get-data-on-drop-rich-text.html [ Skip ]
 editing/pasteboard/data-transfer-get-data-on-drop-url.html [ Skip ]
+editing/pasteboard/data-transfer-is-unique-for-dragenter-and-dragleave.html [ Skip ]
+editing/pasteboard/data-transfer-set-data-sanitlize-url-when-dragging-in-null-origin.html [ Skip ]
 editing/pasteboard/drag-end-crash-accessing-item-list.html [ Skip ]
 editing/pasteboard/data-transfer-item-list-add-file-on-drag.html [ Skip ]
+editing/pasteboard/data-transfer-items-drop-file.html [ Skip ]
 
 # Only iOS supports QuickLook
 quicklook [ Skip ]
@@ -146,6 +149,7 @@ fast/text/accessibility-bold-system-font-2.html [ Skip ]
 fast/text/font-lookup-dot-prefix-case-sensitive.html [ Skip ]
 
 # Payment Request is only enabled on Cocoa platforms.
+http/tests/paymentrequest [ Skip ]
 imported/w3c/web-platform-tests/payment-request [ Skip ]
 
 imported/w3c/web-platform-tests/2dcontext/transformations/canvas_transformations_reset_001.html [ ImageOnlyFailure ]

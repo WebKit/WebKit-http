@@ -31,6 +31,7 @@
 #include "WebResourceLoadStatisticsStore.h"
 #include "WebResourceLoadStatisticsTelemetry.h"
 #include "WebsiteData.h"
+#include "WebsiteDataRecord.h"
 #include "WebsiteDataType.h"
 #include <WebCore/URL.h>
 
@@ -319,8 +320,34 @@ void WKWebsiteDataStoreStatisticsResetToConsistentState(WKWebsiteDataStoreRef da
     store->scheduleClearInMemory();
 }
 
+void WKWebsiteDataStoreRemoveAllFetchCaches(WKWebsiteDataStoreRef dataStoreRef)
+{
+    OptionSet<WebKit::WebsiteDataType> dataTypes = WebKit::WebsiteDataType::DOMCache;
+    WebKit::toImpl(dataStoreRef)->websiteDataStore().removeData(dataTypes, std::chrono::system_clock::time_point::min(), [] { });
+}
+
+void WKWebsiteDataStoreRemoveFetchCacheForOrigin(WKWebsiteDataStoreRef dataStoreRef, WKSecurityOriginRef origin)
+{
+    WebKit::WebsiteDataRecord dataRecord;
+    dataRecord.add(WebKit::WebsiteDataType::DOMCache, WebCore::SecurityOriginData::fromSecurityOrigin(WebKit::toImpl(origin)->securityOrigin()));
+    Vector<WebKit::WebsiteDataRecord> dataRecords = { WTFMove(dataRecord) };
+
+    OptionSet<WebKit::WebsiteDataType> dataTypes = WebKit::WebsiteDataType::DOMCache;
+    WebKit::toImpl(dataStoreRef)->websiteDataStore().removeData(dataTypes, dataRecords, [] { });
+}
+
 void WKWebsiteDataStoreRemoveAllIndexedDatabases(WKWebsiteDataStoreRef dataStoreRef)
 {
     OptionSet<WebKit::WebsiteDataType> dataTypes = WebKit::WebsiteDataType::IndexedDBDatabases;
     WebKit::toImpl(dataStoreRef)->websiteDataStore().removeData(dataTypes, std::chrono::system_clock::time_point::min(), [] { });
+}
+
+void WKWebsiteDataStoreRemoveAllServiceWorkerRegistrations(WKWebsiteDataStoreRef dataStoreRef)
+{
+#if ENABLE(SERVICE_WORKER)
+    OptionSet<WebKit::WebsiteDataType> dataTypes = WebKit::WebsiteDataType::ServiceWorkerRegistrations;
+    WebKit::toImpl(dataStoreRef)->websiteDataStore().removeData(dataTypes, std::chrono::system_clock::time_point::min(), [] { });
+#else
+    UNUSED_PARAM(dataStoreRef);
+#endif
 }

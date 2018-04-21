@@ -1,3 +1,698 @@
+2017-10-11  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Web Inspector: Make 3D objects selectable in Layers visualization
+        https://bugs.webkit.org/show_bug.cgi?id=178136
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/Layers3DContentView.js:
+        (WI.Layers3DContentView):
+        (WI.Layers3DContentView.prototype.initialLayout):
+        (WI.Layers3DContentView.prototype._canvasMouseDown):
+        (WI.Layers3DContentView.prototype._updateLayerGroupSelection):
+        Implement selection of 3D layer objects.
+        
+        (WI.Layers3DContentView.prototype._addLayerGroup): Renamed from _addLayer.
+        (WI.Layers3DContentView.prototype._updateLayerGroupPosition):
+        (WI.Layers3DContentView.prototype._createLayerMesh):
+        Refactor -- one group per layer (visible plane and composited outline), not groups by shape.
+
+        (WI.Layers3DContentView.prototype.layout):
+        (WI.Layers3DContentView.prototype._updateLayers):
+        (WI.Layers3DContentView.prototype._clearLayers): Deleted.
+        Don't destroy all 3D objects on every LayerTreeDidChange; make use of layerTreeMutations.
+        (Not only a performance improvement, but also necessary to properly preserve highlighting.) 
+        
+        (WI.Layers3DContentView.prototype.selectLayerById):
+        Allow selection to be updated from the outside.
+
+        * UserInterface/Views/LayerDetailsSidebarPanel.js:
+        (WI.LayerDetailsSidebarPanel.prototype.selectNodeByLayerId):
+        (WI.LayerDetailsSidebarPanel.prototype._buildDataGrid):
+        (WI.LayerDetailsSidebarPanel.prototype._dataGridSelectedNodeChanged):
+        Allow selection to be updated from the outside.
+
+        (WI.LayerDetailsSidebarPanel.prototype.inspect):
+        (WI.LayerDetailsSidebarPanel.prototype._updateLayers): Renamed from _updateDisplayWithLayers.
+        (WI.LayerDetailsSidebarPanel.prototype._updateDataGrid):
+        (WI.LayerDetailsSidebarPanel.prototype._updateBottomBar):
+        (WI.LayerDetailsSidebarPanel.prototype._contentForPopover):
+        (WI.LayerDetailsSidebarPanel.prototype._dataGridNodeForLayer): Deleted.
+        Cleanup.
+        
+        * UserInterface/Views/LayersTabContentView.js:
+        (WI.LayersTabContentView):
+        (WI.LayersTabContentView.prototype._detailsSidebarSelectedLayerChanged):
+        (WI.LayersTabContentView.prototype._contentViewSelectedLayerChanged):
+        Orchestrate communication of selection state between visualization and sidebar.
+
+2017-10-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Avoid "100.00ms" vs "100.0ms" jitter in TimelineRuler labels
+        https://bugs.webkit.org/show_bug.cgi?id=178143
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Utilities.js:
+        Allow a small slop factor that wouldn't have changed the display value's
+        significant figures anyways. This addresses cases where 100.0000000000001
+        were being treated slightly differently from 100.0.
+
+2017-10-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network Tab - Show initially loaded resources even if network info not logged
+        https://bugs.webkit.org/show_bug.cgi?id=178098
+        <rdar://problem/34073529>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Models/Resource.js:
+        (WI.Resource.prototype.hasResponse):
+        Resources loaded by Page.getFrameTree have a response but no status code data.
+        So include finished resources as having a resource.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView):
+        (WI.NetworkTableContentView.prototype.closed):
+        (WI.NetworkTableContentView.prototype._populateWithInitialResourcesIfNeeded):
+        (WI.NetworkTableContentView.prototype._mainFrameDidChange):
+        Listen for the first main frame change to perform an initial population.
+
+        (WI.NetworkTableContentView.prototype._insertResourceAndReloadTable):
+        This path is not currently taken when table is null, but change the code so
+        that if it is reached without the table it would behave gracefully.
+
+        * UserInterface/Views/ResourceHeadersContentView.js:
+        (WI.ResourceHeadersContentView.prototype._refreshSummarySection):
+        On first open none of the resources have a statusCode. Show an emDash.
+
+2017-10-10  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Quick Open: source mapped files are not shown as search results
+        https://bugs.webkit.org/show_bug.cgi?id=178151
+        <rdar://problem/31561718>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/OpenResourceDialog.js:
+        (WI.OpenResourceDialog.prototype._addResource):
+        Also consider matching the query string against SourceMapResources
+        attached to a resource's source maps.
+
+2017-10-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network Tab - Set column initial widths to try allow waterfall column to expand more by default
+        https://bugs.webkit.org/show_bug.cgi?id=178142
+        <rdar://problem/34918233>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype.initialLayout):
+        Provide initial widths for many columns where the max could fit
+        but we'd prefer a smaller than max initial width in wide cases.
+
+        * UserInterface/Views/Table.js:
+        (WI.Table.prototype._resizeColumnsAndFiller):
+        When auto sizing all columns use the preferred initial widths.
+
+        * UserInterface/Views/TableColumn.js:
+        (WI.TableColumn.prototype.get preferredInitialWidth):
+        Save the initial width.
+
+2017-10-10  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Web Inspector: Views should explicitly remove event listeners from managers/Frame
+        https://bugs.webkit.org/show_bug.cgi?id=175951
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/ApplicationCacheDetailsSidebarPanel.js:
+        (WI.ApplicationCacheDetailsSidebarPanel.prototype.closed):
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WI.DOMNodeDetailsSidebarPanel.prototype.closed):
+        * UserInterface/Views/DebuggerDashboardView.js:
+        (WI.DebuggerDashboardView.prototype.closed):
+        * UserInterface/Views/LogContentView.js:
+        (WI.LogContentView.prototype.closed):
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WI.NetworkGridContentView.prototype.closed):
+        * UserInterface/Views/ProbeDetailsSidebarPanel.js:
+        (WI.ProbeDetailsSidebarPanel.prototype.closed):
+        * UserInterface/Views/QuickConsole.js:
+        (WI.QuickConsole.prototype.closed):
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        (WI.ScopeChainDetailsSidebarPanel.prototype.closed):
+        * UserInterface/Views/TimelineOverview.js:
+        (WI.TimelineOverview.prototype.closed):
+
+2017-10-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network Tab - Include remote address in the Headers view
+        https://bugs.webkit.org/show_bug.cgi?id=178094
+        <rdar://problem/34895221>
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/ResourceHeadersContentView.js:
+        (WI.ResourceHeadersContentView.prototype._refreshSummarySection):
+        (WI.ResourceHeadersContentView.prototype._resourceMetricsDidChange):
+
+2017-10-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed, minified WebInspector opens blank.
+        <rdar://problem/34892307>
+
+        * UserInterface/Views/ResourceHeadersContentView.js:
+        (WI.ResourceHeadersContentView.prototype._refreshRequestHeadersSection):
+        Regression introduced in r223006. The minified build has a SyntaxError
+        causing WebInspector top open blank. Add the missing semicolon.
+
+2017-10-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network Tab - Filter resources based on URL / Text Content
+        https://bugs.webkit.org/show_bug.cgi?id=178071
+        <rdar://problem/34071562>
+
+        Reviewed by Brian Burg.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New strings.
+
+        * UserInterface/Views/FilterBar.css:
+        (.filter-bar.active > input[type="search"]::-webkit-search-decoration):
+        (.filter-bar.indicating-progress > input[type="search"]::-webkit-search-decoration):
+        New icon for progress / active states.
+
+        * UserInterface/Views/FilterBar.js:
+        (WI.FilterBar.prototype.get inputField):
+        (WI.FilterBar.prototype.get placeholder):
+        (WI.FilterBar.prototype.set placeholder):
+        (WI.FilterBar.prototype.get incremental):
+        (WI.FilterBar.prototype.set incremental):
+        (WI.FilterBar.prototype.get indicatingProgress):
+        (WI.FilterBar.prototype.set indicatingProgress):
+        (WI.FilterBar.prototype.get indicatingActive):
+        (WI.FilterBar.prototype.set indicatingActive):
+        (WI.FilterBar.prototype._handleFilterInputEvent):
+        When incremental is set to false on the FilterBar still dispatch an
+        event when the textfield clears.
+
+        * UserInterface/Images/FilterFieldActiveGlyph.svg: Added.
+        * UserInterface/Images/gtk/FilterFieldActiveGlyph.svg: Added.
+        New blue icon for active state.
+
+        * UserInterface/Controllers/FrameResourceManager.js:
+        (WI.FrameResourceManager.prototype.resourceForIdentifier):
+        Accessor for arbitrary resource.
+
+        * UserInterface/Views/NetworkTableContentView.css:
+        (.content-view.network .navigation-bar .filter-bar):
+        (.content-view.network .warning-banner):
+        (body[dir=ltr] .content-view.network .warning-banner):
+        (body[dir=rtl] .content-view.network .warning-banner):
+        (.content-view.network .warning-banner > a):
+        Warning banner when the filter produces no results. This matches the
+        warning in the Debugger tab when breakpoints are disabled.
+
+        * UserInterface/Views/ScopeBar.js:
+        (WI.ScopeBar.prototype.resetToDefault):
+        Provide a way to easily reset a scope bar to the default item.
+
+        * UserInterface/Views/RadioButtonNavigationItem.css:
+        (.navigation-bar .item.radio.button.text-only:active):
+        * UserInterface/Views/ScopeBar.css:
+        (.scope-bar > li:active):
+        Cleanup some styles that should be using a variable.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView):
+        (WI.NetworkTableContentView.prototype.get filterNavigationItems):
+        (WI.NetworkTableContentView.prototype.layout):
+        (WI.NetworkTableContentView.prototype._processPendingEntries):
+        (WI.NetworkTableContentView.prototype._checkTextFilterAgainstFinishedResource):
+        (WI.NetworkTableContentView.prototype._checkTextFilterAgainstFailedResource):
+        (WI.NetworkTableContentView.prototype._updateTextFilterActiveIndicator):
+        (WI.NetworkTableContentView.prototype._updateEmptyFilterResultsWarning):
+        (WI.NetworkTableContentView.prototype._showEmptyFilterResultsWarning):
+        (WI.NetworkTableContentView.prototype._hideEmptyFilterResultsWarning):
+        (WI.NetworkTableContentView.prototype._positionEmptyFilterMessage):
+        (WI.NetworkTableContentView.prototype._resourceLoadingDidFinish):
+        (WI.NetworkTableContentView.prototype._resourceLoadingDidFail):
+        (WI.NetworkTableContentView.prototype._networkTimelineRecordAdded):
+        (WI.NetworkTableContentView.prototype._insertResourceAndReloadTable):
+        (WI.NetworkTableContentView.prototype._hasTypeFilter):
+        (WI.NetworkTableContentView.prototype._hasTextFilter):
+        (WI.NetworkTableContentView.prototype._hasActiveFilter):
+        (WI.NetworkTableContentView.prototype._passTypeFilter):
+        (WI.NetworkTableContentView.prototype._passTextFilter):
+        (WI.NetworkTableContentView.prototype._passFilter):
+        (WI.NetworkTableContentView.prototype._updateFilteredEntries):
+        (WI.NetworkTableContentView.prototype._resetFilters):
+        (WI.NetworkTableContentView.prototype._textFilterDidChange):
+        (WI.NetworkTableContentView.prototype._tableNameColumnDidChangeWidth):
+        There are now two filters.
+
+          - FilterBar - Filters URL and Full Text Content
+          - ScopeBar  - Filters Resource Type
+
+        The text content filter is asynchronous. We reuse the existing Search
+        functionality when filtering on text. We need to defer text content
+        filtering until the resource finishes loading.
+
+2017-10-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network Tab: Row wrapping (waterfall displaying behind next row's name)
+        https://bugs.webkit.org/show_bug.cgi?id=178015
+        <rdar://problem/34858720>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/Table.css:
+        (.table > .header):
+        (.table > .data-container > .data-list > li):
+        Disallow wrapping.
+
+2017-10-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network Tab - Cookies Detail View
+        https://bugs.webkit.org/show_bug.cgi?id=177988
+        <rdar://problem/34071927>
+
+        Reviewed by Brian Burg.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+        New strings and resources.
+
+        * UserInterface/Models/Cookie.js: Added.
+        (WI.Cookie):
+        (WI.Cookie.parseCookieRequestHeader):
+        (WI.Cookie.parseSetCookieResponseHeader):
+        Encapsulation for Cookie attributes.
+
+        * UserInterface/Models/Resource.js:
+        (WI.Resource.prototype.get requestCookies):
+        (WI.Resource.prototype.get responseCookies):
+        (WI.Resource.prototype.updateForRedirectResponse):
+        (WI.Resource.prototype.updateForResponse):
+        (WI.Resource.prototype.updateWithMetrics):
+        New computed accessors for requestCookies and responseCookies.
+
+        * UserInterface/Views/NetworkResourceDetailView.js:
+        (WI.NetworkResourceDetailView.prototype._showContentViewForNavigationItem):
+        Show the new Cookie View.
+
+        * UserInterface/Views/NetworkTableContentView.css:
+        (.content-view.network .network-table .icon):
+        (.network-table li:not(.filler) .cell.name):
+        (.network-table .cache-type):
+        (.network-table .error):
+        (body[dir=ltr] .network-table .cell.name > .status):
+        (body[dir=rtl] .network-table .cell.name > .status):
+        (.network-table .cell.name > .status .indeterminate-progress-spinner):
+        (.showing-detail .network-table .cell:not(.name)):
+        (.showing-detail .network-table .resizer:not(:first-of-type)):
+        (.network-table :not(.header) .cell:first-of-type):
+        Rework these styles to be specific to the .network-table.
+
+        * UserInterface/Views/Table.css:
+        (.table :not(.header) .cell:first-of-type): Deleted.
+        Move this to the network table styles, it shouldn't apply to all tables. 
+
+        * UserInterface/Views/ResourceCookiesContentView.css:
+        (.resource-cookies > section > .details.has-table):
+        (.resource-cookies .table):
+        (.resource-cookies .table > .header):
+        Styles for Cookies view and table.
+
+        * UserInterface/Views/ResourceCookiesContentView.js: Added.
+        (WI.ResourceCookiesContentView):
+        (WI.ResourceCookiesContentView.prototype.tableNumberOfRows):
+        (WI.ResourceCookiesContentView.prototype.tableSortChanged):
+        (WI.ResourceCookiesContentView.prototype.tablePopulateCell):
+        (WI.ResourceCookiesContentView.prototype.initialLayout):
+        (WI.ResourceCookiesContentView.prototype._incompleteSectionWithMessage):
+        (WI.ResourceCookiesContentView.prototype._incompleteSectionWithLoadingIndicator):
+        (WI.ResourceCookiesContentView.prototype._dataSourceForTable):
+        (WI.ResourceCookiesContentView.prototype._generateSortComparator):
+        (WI.ResourceCookiesContentView.prototype._refreshRequestCookiesSection):
+        (WI.ResourceCookiesContentView.prototype._refreshResponseCookiesSection):
+        (WI.ResourceCookiesContentView.prototype._sizeForTable):
+        (WI.ResourceCookiesContentView.prototype._resourceRequestHeadersDidChange):
+        (WI.ResourceCookiesContentView.prototype._resourceResponseReceived):
+        Tables for Request and Response cookies. They are simliar with slightly different columns.
+        Handle simple display and sorting for the tables.
+
+        * UserInterface/Views/ResourceHeadersContentView.js:
+        (WI.ResourceHeadersContentView.prototype._refreshResponseHeadersSection):
+        Break out Set-Cookie headers as multiple headers. THey should never be combined.
+
+        * UserInterface/Views/Table.js:
+        (WI.Table.prototype.showColumn):
+        (WI.Table.prototype.hideColumn):
+        (WI.Table.prototype._handleHeaderContextMenu):
+        * UserInterface/Views/TableColumn.js:
+        (WI.TableColumn.prototype.get hideable):
+        (WI.TableColumn.prototype.set hidden):
+        (WI.TableColumn):
+        (WI.TableColumn.prototype.setHidden): Deleted.
+        Make it so some columns can not be hidden. For example the "value" column
+        in the Cookie tables.
+
+2017-10-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network Tab - Search Headers Detail View
+        https://bugs.webkit.org/show_bug.cgi?id=177981
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Main.js:
+        * UserInterface/Views/LogContentView.js:
+        (WI.LogContentView.prototype.performSearch):
+        Rename "Dom" to "DOM" in utility function.
+
+        * UserInterface/Views/ResourceHeadersContentView.css:
+        (.resource-headers.showing-find-banner .search-highlight):
+        Search highlight styles.
+
+        * UserInterface/Views/ResourceHeadersContentView.js:
+        (WI.ResourceHeadersContentView.prototype.get supportsSearch):
+        (WI.ResourceHeadersContentView.prototype.get numberOfSearchResults):
+        (WI.ResourceHeadersContentView.prototype.get hasPerformedSearch):
+        (WI.ResourceHeadersContentView.prototype.set automaticallyRevealFirstSearchResult):
+        (WI.ResourceHeadersContentView.prototype.performSearch):
+        (WI.ResourceHeadersContentView.prototype.searchCleared):
+        (WI.ResourceHeadersContentView.prototype.revealPreviousSearchResult):
+        (WI.ResourceHeadersContentView.prototype.revealNextSearchResult):
+        (WI.ResourceHeadersContentView.prototype._perfomSearchOnKeyValuePairs):
+        (WI.ResourceHeadersContentView.prototype._revealSearchResult):
+        Implement ContentView search behavior.
+
+2017-10-08  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: add autocompletion for min/max within a CSS calc
+        https://bugs.webkit.org/show_bug.cgi?id=178068
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+        (WI.CSSKeywordCompletions.forFunction):
+
+2017-10-06  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Add Canvas tab and CanvasOverviewContentView
+        https://bugs.webkit.org/show_bug.cgi?id=177604
+        <rdar://problem/34714650>
+
+        Reviewed by Devin Rousso.
+
+        This patch adds experimental feature support for the Canvas tab. Initially
+        the tab provides only an overview of the canvases in the page, and will
+        exist side-by-side with the existing experimental Canvas UI.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded):
+        * UserInterface/Base/Setting.js:
+
+        * UserInterface/Images/Canvas.svg: Added.
+        * UserInterface/Images/CanvasOverview.svg: Added.
+        * UserInterface/Main.html:
+        Add new art and canvas UI classes.
+
+        * UserInterface/Models/Canvas.js:
+        (WI.Canvas.requestNode):
+        (WI.Canvas.prototype.requestContent):
+        (WI.Canvas.prototype.requestCSSCanvasClientNodes):
+        (WI.Canvas.prototype.requestSize.calculateSize.getAttributeValue):
+        (WI.Canvas.prototype.requestSize.calculateSize):
+        (WI.Canvas.prototype.requestSize.getPropertyValue):
+        (WI.Canvas.prototype.requestSize):
+        Use promises to retrieve canvas data asynchronously.
+
+        * UserInterface/Models/CollectionTypes.js: Added.
+        (WI.CanvasCollection):
+        New location for concrete collection types. Having a class to type check
+        makes using a collection as a represented object a bit simpler.
+
+        * UserInterface/Views/CanvasContentView.css:
+        (.content-view.canvas:not(.tab)):
+        (.content-view.canvas:not(.tab) > .preview):
+        (.content-view.canvas:not(.tab) > .preview > img):
+        (.content-view.canvas:not(.tab) > :matches(header, footer)):
+        (.content-view.canvas): Deleted.
+        (.content-view.canvas > .preview): Deleted.
+        (.content-view.canvas > .preview > img): Deleted.
+        During the transition to the new Canvas tab, CanvasContentView needs to
+        support being shown as a full-size content view, and as an item in a
+        CollectionContentView. Hide header and footer elements by default.
+
+        * UserInterface/Views/CanvasContentView.js:
+        (WI.CanvasContentView):
+        (WI.CanvasContentView.prototype.refresh):
+        (WI.CanvasContentView.prototype.initialLayout):
+        (WI.CanvasContentView.prototype.layout):
+        (WI.CanvasContentView.prototype.shown):
+        (WI.CanvasContentView.prototype.attached):
+        (WI.CanvasContentView.prototype.detached):
+        (WI.CanvasContentView.prototype._showError):
+        (WI.CanvasContentView.prototype._refreshPixelSize):
+        (WI.CanvasContentView.prototype._showGridButtonClicked):
+        (WI.CanvasContentView.prototype._updateImageGrid):
+        (WI.CanvasContentView.prototype._updateMemoryCost):
+        (WI.CanvasContentView.prototype._updatePixelSize):
+        (WI.CanvasContentView.prototype._updateRecordNavigationItem):
+        (WI.CanvasContentView.prototype.hidden): Deleted.
+        (WI.CanvasContentView.prototype.closed): Deleted.
+        (WI.CanvasContentView.prototype._showPreview): Deleted.
+        Added new UI for display in the Canvas overview. These elements are always
+        created, but only appear when the canvas is viewed as a "card".
+
+        Canvas previews are no longer shown as soon as they are available from
+        the backend. Instead, once the canvas content is ready a layout is scheduled.
+        This guarantees that refreshing all canvases at once causes no flicker,
+        and introduces no perceptible delay.
+
+        Finally, the "Cancel recording" tooltip has been renamed "Stop recording",
+        to match the behavior of the command.
+
+        * UserInterface/Views/CanvasDetailsSidebarPanel.js:
+        (WI.CanvasDetailsSidebarPanel.prototype._refreshSourceSection.this._canvas.requestNode.): Deleted.
+        Canvas.prototype.requestNode now returns a promise.
+
+        * UserInterface/Views/CanvasOverviewContentView.css: Added.
+        (.content-view.canvas-overview):
+        (.content-view.canvas-overview .content-view.canvas):
+        (.content-view.canvas-overview .content-view.canvas.selected:not(.is-recording)):
+        (.content-view.canvas-overview .content-view.canvas > :matches(header, footer)):
+        (.content-view.canvas-overview .content-view.canvas > header):
+        (.content-view.canvas-overview .content-view.canvas.is-recording > header):
+        (.content-view.canvas-overview .content-view.canvas > header > .titles,):
+        (.content-view.canvas-overview .content-view.canvas > header > .titles > .title):
+        (.content-view.canvas-overview .content-view.canvas > header > .titles > .subtitle,):
+        (.content-view.canvas-overview .content-view.canvas > header .subtitle::before):
+        (.content-view.canvas-overview .content-view.canvas.is-recording > header > .titles > .title):
+        (.content-view.canvas-overview .content-view.canvas.is-recording > header > .titles > .subtitle):
+        (.content-view.canvas-overview .content-view.canvas.is-recording > header > .navigation-bar > .item):
+        (.content-view.canvas-overview .content-view.canvas > header > .navigation-bar):
+        (.content-view.canvas-overview .content-view.canvas:not(:hover, .is-recording) > header > .navigation-bar):
+        (.content-view.canvas-overview .content-view.canvas:not(.is-recording) > header > .navigation-bar > .item.record-start-stop.disabled):
+        (.content-view.canvas-overview .content-view.canvas:not(.is-recording) > header > .navigation-bar > .item.record-start-stop):
+        (.content-view.canvas-overview .content-view.canvas:not(.is-recording) > header > .navigation-bar > .item.record-start-stop:not(.disabled):hover):
+        (.content-view.canvas-overview .content-view.canvas:not(.is-recording) > header > .navigation-bar > .item.record-start-stop:not(.disabled):active):
+        (.content-view.canvas-overview .content-view.canvas > .preview):
+        (.content-view.canvas-overview .content-view.canvas > .preview > img):
+        (.content-view.canvas-overview .content-view.canvas > .preview > .message-text-view):
+        (.content-view.canvas-overview .content-view.canvas > footer):
+        (.content-view.canvas-overview .content-view.canvas > footer .memory-cost):
+        Add header, navigation bar, and footer styles to CanvasContentView when
+        it is being shown as an item in a CollectionContentView.
+
+        * UserInterface/Views/CanvasOverviewContentView.js: Added.
+        (WI.CanvasOverviewContentView):
+        (WI.CanvasOverviewContentView.prototype.get navigationItems):
+        (WI.CanvasOverviewContentView.prototype.get selectionPathComponents):
+        (WI.CanvasOverviewContentView.prototype.hidden):
+        (WI.CanvasOverviewContentView.prototype.contentViewAdded):
+        (WI.CanvasOverviewContentView.prototype.contentViewRemoved):
+        (WI.CanvasOverviewContentView.prototype.attached):
+        (WI.CanvasOverviewContentView.prototype.detached):
+        (WI.CanvasOverviewContentView.prototype._refreshPreviews):
+        (WI.CanvasOverviewContentView.prototype._selectedPathComponentChanged):
+        (WI.CanvasOverviewContentView.prototype._showGridButtonClicked):
+        (WI.CanvasOverviewContentView.prototype._supplementalRepresentedObjectsDidChange.createCanvasPathComponent):
+        (WI.CanvasOverviewContentView.prototype._supplementalRepresentedObjectsDidChange):
+        (WI.CanvasOverviewContentView.prototype._updateNavigationItems):
+        (WI.CanvasOverviewContentView.prototype._updateShowImageGrid):
+        (WI.CanvasOverviewContentView.prototype._contentViewMouseEnter):
+        (WI.CanvasOverviewContentView.prototype._contentViewMouseLeave):
+        The overview extends CollectionContentView, adding buttons for global canvas actions
+        (refresh all and show/hide grid for all), and maintains a non-visible
+        outline of CanvasTreeElements to facilitate display of the hierarchical
+        path in the navigation bar.
+
+        * UserInterface/Views/CanvasTabContentView.css: Added.
+        (.content-view.tab.canvas .navigation-bar > .item > .hierarchical-path-component > .icon):
+        (.content-view.tab.canvas .navigation-bar > .item > .canvas-overview > .icon):
+        (.content-view.tab.canvas .navigation-bar > .item .canvas .icon):
+
+        * UserInterface/Views/CanvasTabContentView.js: Added.
+        (WI.CanvasTabContentView):
+        (WI.CanvasTabContentView.tabInfo):
+        (WI.CanvasTabContentView.isTabAllowed):
+        (WI.CanvasTabContentView.prototype.get type):
+        (WI.CanvasTabContentView.prototype.get supportsSplitContentBrowser):
+        (WI.CanvasTabContentView.prototype.canShowRepresentedObject):
+        (WI.CanvasTabContentView.prototype.shown):
+        (WI.CanvasTabContentView.prototype.treeElementForRepresentedObject):
+        (WI.CanvasTabContentView.prototype.restoreFromCookie):
+        (WI.CanvasTabContentView.prototype.saveStateToCookie):
+        (WI.CanvasTabContentView.prototype.attached):
+        (WI.CanvasTabContentView.prototype.detached):
+        (WI.CanvasTabContentView.prototype._canvasAdded):
+        (WI.CanvasTabContentView.prototype._canvasRemoved):
+        (WI.CanvasTabContentView.prototype._overviewPathComponentClicked):
+        (WI.CanvasTabContentView.prototype._mainResourceDidChange):
+
+        * UserInterface/Views/CollectionContentView.js:
+        (WI.CollectionContentView):
+        (WI.CollectionContentView.prototype.setSelectedItem):
+        (WI.CollectionContentView.prototype.addContentViewForItem):
+        (WI.CollectionContentView.prototype.removeContentViewForItem):
+        (WI.CollectionContentView.prototype.initialLayout):
+        (WI.CollectionContentView.prototype._showContentPlaceholder):
+        (WI.CollectionContentView.prototype._hideContentPlaceholder):
+        Placeholder content should be created lazily, and shown after a slight delay
+        to give represented objects a chance to load. Make sure to call the
+        shown or hidden method after adding or removing a content view.
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+
+        * UserInterface/Views/Variables.css:
+        (:root):
+        (body.window-inactive *):
+
+        * UserInterface/Views/View.js:
+        (WI.View.fromElement):
+
+2017-10-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network Tab - Headers Detail View
+        https://bugs.webkit.org/show_bug.cgi?id=177896
+        <rdar://problem/34071924>
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        New resources and strings.
+
+        * UserInterface/Base/URLUtilities.js:
+        (parseURL):
+        (WI.h2Authority):
+        (WI.h2Path):
+        Utility methods to get the :authority and :path pseudo-headers from a URL.
+        This required adding user info (user:pass@) support to URL parsing.
+
+        * UserInterface/Views/NetworkTabContentView.js:
+        (WI.NetworkTabContentView):
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype.get navigationItems):
+        (WI.NetworkTableContentView.prototype.get filterNavigationItems):
+        Move the NetworkTab's filter controls to the left. Since these are not
+        dynamic just vend them from the TableContentView and place them in the
+        navigation bar.
+
+        * UserInterface/Models/Resource.js:
+        (WI.Resource.prototype.updateWithMetrics):
+        New event whenever metrics change. This is the first event that will allow
+        a client to react to a resource.protocol change.
+
+        * UserInterface/Views/NetworkResourceDetailView.css:
+        (.content-view.resource-details):
+        Base styles for the sub detail views.
+
+        * UserInterface/Views/NetworkResourceDetailView.js:
+        (WI.NetworkResourceDetailView):
+        (WI.NetworkResourceDetailView.prototype.headersContentViewGoToRequestData):
+        (WI.NetworkResourceDetailView.prototype.initialLayout):
+        (WI.NetworkResourceDetailView.prototype._showPreferredContentView):
+        (WI.NetworkResourceDetailView.prototype._showContentViewForNavigationItem):
+        Create a Header view and provide a way to switch to a particular view. This wil
+        be useful to jump from the Header's Request Data directly to the Preview's
+        Request ContentView.
+
+        * UserInterface/Views/ResourceDetailsSection.css:
+        (.resource-details > section):
+        (.resource-details > section > .title):
+        (.resource-details > section > .details):
+        (.resource-details > section > .details > p):
+        (.resource-details > section.incomplete > .details):
+        * UserInterface/Views/ResourceDetailsSection.js:
+        (WI.ResourceDetailsSection):
+        (WI.ResourceDetailsSection.prototype.get element):
+        (WI.ResourceDetailsSection.prototype.get titleElement):
+        (WI.ResourceDetailsSection.prototype.get detailsElement):
+        (WI.ResourceDetailsSection.prototype.toggleIncomplete):
+        (WI.ResourceDetailsSection.prototype.toggleError):
+        Simple sections with a title and details div with a border.
+        It may be common to have an incomplete load / error so this
+        provides some APIs and styles for sections marked incomplete
+        or with errors.
+
+        * UserInterface/Views/ResourceHeadersContentView.css:
+        (.resource-headers > section > .details):
+        (.resource-headers > section.headers > .details):
+        (.resource-headers > section.error > .details):
+        (.resource-headers > section.error .key):
+        Style the left border different colors for different sections or cases.
+
+        (.resource-headers .details):
+        (.resource-headers .details .pair):
+        (.resource-headers .details .key):
+        (.resource-headers .value):
+        (.resource-headers .header > .key):
+        (.resource-headers .h1-status > .key):
+        (.resource-headers .h2-pseudo-header > .key):
+        Wrapped text for key/value pairs and different colors for different
+        sections or cases.
+
+        (.resource-headers .go-to-arrow):
+        Go-to arrow styles for a request data section.
+
+        * UserInterface/Views/ResourceHeadersContentView.js: Added.
+        (WI.ResourceHeadersContentView):
+        (WI.ResourceHeadersContentView.prototype.initialLayout):
+        (WI.ResourceHeadersContentView.prototype.layout):
+        (WI.ResourceHeadersContentView.prototype._incompleteSectionWithMessage):
+        (WI.ResourceHeadersContentView.prototype._incompleteSectionWithLoadingIndicator):
+        (WI.ResourceHeadersContentView.prototype._appendKeyValuePair):
+        (WI.ResourceHeadersContentView.prototype._responseSourceDisplayString):
+        (WI.ResourceHeadersContentView.prototype._refreshSummarySection):
+        (WI.ResourceHeadersContentView.prototype._refreshRequestHeadersSection):
+        (WI.ResourceHeadersContentView.prototype._refreshResponseHeadersSection):
+        (WI.ResourceHeadersContentView.prototype._refreshQueryStringSection):
+        (WI.ResourceHeadersContentView.prototype._refreshRequestDataSection):
+        (WI.ResourceHeadersContentView.prototype._resourceMetricsDidChange):
+        (WI.ResourceHeadersContentView.prototype._resourceRequestHeadersDidChange):
+        (WI.ResourceHeadersContentView.prototype._resourceResponseReceived):
+        (WI.ResourceHeadersContentView.prototype._goToRequestDataClicked):
+        Summary, Request, Response, Query String, and Request Data sections.
+        The sections refresh as data becomes available.
+
+        * UserInterface/Views/Table.css:
+        (.table):
+        These variables are already defined globally.
+
+        * UserInterface/Views/Variables.css:
+        (:root):
+        New variables for the colors we use. They closely match, and are
+        sometimes identical to ones used in Timelines / Memory views.
+
 2017-10-06  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Network Tab - Make selection in the table more reliable (mousedown instead of click)

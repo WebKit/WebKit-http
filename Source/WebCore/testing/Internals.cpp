@@ -58,6 +58,7 @@
 #include "Element.h"
 #include "EventHandler.h"
 #include "ExtensionStyleSheets.h"
+#include "FetchResponse.h"
 #include "File.h"
 #include "FontCache.h"
 #include "FormController.h"
@@ -238,6 +239,11 @@
 #if USE(QUICK_LOOK)
 #include "MockPreviewLoaderClient.h"
 #include "PreviewLoader.h"
+#endif
+
+#if ENABLE(APPLE_PAY)
+#include "MockPaymentCoordinator.h"
+#include "PaymentCoordinator.h"
 #endif
 
 using JSC::CallData;
@@ -499,6 +505,11 @@ Internals::Internals(Document& document)
     }
 
     setConsoleMessageListener(nullptr);
+
+#if ENABLE(APPLE_PAY)
+    if (auto frame = document.frame())
+        frame->mainFrame().setPaymentCoordinator(std::make_unique<PaymentCoordinator>(*new MockPaymentCoordinator(frame->mainFrame())));
+#endif
 }
 
 Document* Internals::contextDocument() const
@@ -4172,6 +4183,16 @@ void Internals::setConsoleMessageListener(RefPtr<StringCallback>&& listener)
         return;
 
     contextDocument()->setConsoleMessageListener(WTFMove(listener));
+}
+
+void Internals::setResponseSizeWithPadding(FetchResponse& response, uint64_t size)
+{
+    response.setBodySizeWithPadding(size);
+}
+
+uint64_t Internals::responseSizeWithPadding(FetchResponse& response) const
+{
+    return response.bodySizeWithPadding();
 }
 
 } // namespace WebCore

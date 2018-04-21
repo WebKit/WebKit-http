@@ -1,3 +1,709 @@
+2017-10-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r223215.
+
+        This change broke the Sierra build.
+
+        Reverted changeset:
+
+        "[Apple Pay] Add subLocality and subAdministrativeArea to
+        ApplePayPaymentContact"
+        https://bugs.webkit.org/show_bug.cgi?id=178191
+        https://trac.webkit.org/changeset/223215
+
+2017-10-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline fast/scrolling/adjust-scroll-offset-on-zoom.html for iOS.
+
+        Unreviewed test gardening.
+
+        * platform/ios/fast/scrolling/adjust-scroll-offset-on-zoom-expected.txt: Added.
+
+2017-10-11  Chris Dumez  <cdumez@apple.com>
+
+        XMLHttpRequest: do not sniff text/html, and do not sniff XML when responseType is set to "text"
+        https://bugs.webkit.org/show_bug.cgi?id=168724
+
+        Reviewed by Ryosuke Niwa.
+
+        Drop outdated test, proper behavior is covered by web-platform-tests.
+
+        * fast/xmlhttprequest/xmlhttprequest-html-response-encoding-expected.txt: Removed.
+        * fast/xmlhttprequest/xmlhttprequest-html-response-encoding.html: Removed.
+
+2017-10-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/XMLHttpRequest/open-url-worker-origin.htm as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=178190
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-10-11  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Add subLocality and subAdministrativeArea to ApplePayPaymentContact
+        https://bugs.webkit.org/show_bug.cgi?id=178191
+        <rdar://problem/34906367>
+
+        Reviewed by Tim Horton.
+
+        * http/tests/ssl/applepay/ApplePaySession-expected.txt:
+        * http/tests/ssl/applepay/ApplePaySession.html:
+
+2017-10-11  Youenn Fablet  <youenn@apple.com>
+
+        Add API to clean CacheStorage data
+        https://bugs.webkit.org/show_bug.cgi?id=178034
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/cache-storage/cache-clearing.https-expected.txt: Added.
+        * http/tests/cache-storage/cache-clearing.https.html: Added.
+
+2017-10-11  Chris Dumez  <cdumez@apple.com>
+
+        [Geolocation] Expose Coordinates.floorLevel
+        https://bugs.webkit.org/show_bug.cgi?id=178173
+        <rdar://problem/34918936>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add layout test coverage.
+
+        * fast/dom/Geolocation/floorLevel-expected.txt: Added.
+        * fast/dom/Geolocation/floorLevel.html: Added.
+
+2017-10-11  Simon Fraser  <simon.fraser@apple.com>
+
+        Avoid triggering layout from style change
+        https://bugs.webkit.org/show_bug.cgi?id=178184
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/scrolling/adjust-scroll-offset-on-zoom-expected.txt: Added.
+        * fast/scrolling/adjust-scroll-offset-on-zoom.html: Added.
+
+2017-10-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Sanitize URL in pasteboard for other applications and cross origin content
+        https://bugs.webkit.org/show_bug.cgi?id=178060
+        <rdar://problem/34874518>
+
+        Reviewed by Wenson Hsieh.
+
+        Added tests for copying & pasting URLs. URLs should be %-escaped and any invalid URL should be stripped away and
+        invisible to a cross-origin content or a null origin document but the same origin content should have access to
+        its original form.
+
+        * TestExpectations:
+        * editing/pasteboard/data-transfer-get-data-on-copying-pasting-malformed-url-in-same-document-expected.txt: Added.
+        * editing/pasteboard/data-transfer-get-data-on-copying-pasting-malformed-url-in-same-document.html: Added.
+        * editing/pasteboard/data-transfer-get-data-on-drop-custom-expected.txt: Rebaselined. We no longer normalize
+        "https://www.apple.com" into "https://www.apple.com/" by NSURL / UIPasteboard within the same origin content.
+        * editing/pasteboard/data-transfer-get-data-on-paste-custom-expected.txt: Ditto.
+        * editing/pasteboard/data-transfer-set-data-ignore-copied-walformed-url-in-null-expected.txt: Added.
+        * editing/pasteboard/data-transfer-set-data-ignore-copied-walformed-url-in-null-origin-expected.txt: Added.
+        * editing/pasteboard/data-transfer-set-data-ignore-copied-walformed-url-in-null-origin.html: Added.
+        * editing/pasteboard/data-transfer-set-data-sanitlize-url-when-copying-in-null-origin-expected.txt: Added.
+        * editing/pasteboard/data-transfer-set-data-sanitlize-url-when-copying-in-null-origin.html: Added.
+        * editing/pasteboard/data-transfer-set-data-sanitlize-url-when-dragging-in-null-origin-expected.txt: Added.
+        * editing/pasteboard/data-transfer-set-data-sanitlize-url-when-dragging-in-null-origin.html: Added.
+        * editing/pasteboard/dataTransfer-setData-getData-expected.txt: Rebaselined. More test cases are passing.
+        * editing/pasteboard/dataTransfer-setData-getData.html: Updated expectations as the original URL is now preserved.
+        * http/tests/security/clipboard/copy-paste-url-across-origin-sanitizes-url-expected.txt: Added.
+        * http/tests/security/clipboard/copy-paste-url-across-origin-sanitizes-url.html: Added.
+        * http/tests/security/clipboard/resources/copy.html: Added.
+        * platform/mac-wk1/TestExpectations:
+
+2017-10-11  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Implement Apple Pay merchant validation
+        https://bugs.webkit.org/show_bug.cgi?id=178159
+
+        Reviewed by Brady Eidson.
+
+        * http/tests/ssl/applepay/ApplePayMerchantValidationEvent.https-expected.txt: Added.
+        * http/tests/ssl/applepay/ApplePayMerchantValidationEvent.https.html: Added.
+
+2017-10-11  Brady Eidson  <beidson@apple.com>
+
+        Add a SW context process (where SW scripts will actually execute).
+        https://bugs.webkit.org/show_bug.cgi?id=178156
+
+        Reviewed by Andy Estes.
+
+        * http/tests/workers/service/basic-register-exceptions-expected.txt:
+        * http/tests/workers/service/basic-register-expected.txt:
+        * http/tests/workers/service/registration-task-queue-scheduling-1-expected.txt:
+
+2017-10-11  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] Expose value of aria-keyshortcuts as object attribute
+        https://bugs.webkit.org/show_bug.cgi?id=171175
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/gtk/aria-keyshortcuts-expected.txt: Added.
+        * accessibility/gtk/aria-keyshortcuts.html: Added.
+
+2017-10-11  Youenn Fablet  <youenn@apple.com>
+
+        Import media capture WPT tests
+        https://bugs.webkit.org/show_bug.cgi?id=178138
+
+        Reviewed by Eric Carlson.
+
+        Skipping tests for ports not supporting getUserMedia.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2017-10-11  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
+
+        [GStreamer] Many media source tests crashing with GStreamer-CRITICAL **: _gst_util_uint64_scale: assertion 'denom != 0' failed in gst_qtdemux_configure_stream()
+        https://bugs.webkit.org/show_bug.cgi?id=176804
+
+        Reviewed by Michael Catanzaro.
+
+        Update expectations for fixed tests.
+
+        * platform/gtk/TestExpectations:
+
+2017-10-11  Antoine Quint  <graouts@apple.com>
+
+        Rebaseline tests at media/modern-media-controls/media-controller
+        https://bugs.webkit.org/show_bug.cgi?id=178129
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline a series of tests to work with the current modern-media-controls codebase. For the most part, this is accounting
+        for metrics changes and the refactoring of the auto-hide controller code.
+
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-expected.txt:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-and-mouse-leave-expected.txt:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-and-mouse-leave.html:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-over-controls-bar-expected.txt:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-leave-after-play-expected.txt:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-leave-after-play.html:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-pause-expected.txt:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-pause.html:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-rewind-with-mouse-enter-expected.txt:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-rewind-with-mouse-enter.html:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide.html:
+        * media/modern-media-controls/media-controller/media-controller-click-on-video-controls-should-not-pause.html:
+        * media/modern-media-controls/media-controller/media-controller-compact-expected.txt: Removed.
+        * media/modern-media-controls/media-controller/media-controller-compact.html: Removed.
+        * media/modern-media-controls/media-controller/media-controller-fullscreen-change-expected.txt:
+        * media/modern-media-controls/media-controller/media-controller-fullscreen-change.html:
+        * media/modern-media-controls/media-controller/media-controller-ios-do-not-hide-controls-when-tapping-button-expected.txt:
+        * media/modern-media-controls/media-controller/media-controller-ios-do-not-hide-controls-when-tapping-button.html:
+        * media/modern-media-controls/media-controller/media-controller-ios-only-enable-tap-gesture-recognizer-with-fades-when-idle-expected.txt:
+        * media/modern-media-controls/media-controller/media-controller-ios-only-enable-tap-gesture-recognizer-with-fades-when-idle.html:
+        * media/modern-media-controls/media-controller/media-controller-scale-factor-audio-expected.txt:
+        * media/modern-media-controls/media-controller/media-controller-scale-factor-audio.html:
+        * media/modern-media-controls/media-controller/media-controller-scale-factor-expected.txt:
+        * media/modern-media-controls/media-controller/media-controller-scale-factor.html:
+        * media/modern-media-controls/media-controller/media-controller-tight-padding-expected.txt: Removed.
+        * media/modern-media-controls/media-controller/media-controller-tight-padding.html: Removed.
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac-elcapitan/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-09-27  Frederic Wang  <fwang@igalia.com>
+
+        [iOS] Do not flatten frames when async frame scrolling is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=173704
+
+        Reviewed by Simon Fraser.
+
+        Add an iOS test to verify that frame flattening is disabled when async frame scrolling is enabled.
+
+        * platform/ios/fast/frames/flattening/iframe-flattening-with-async-frame-scrolling-expected.txt: Added.
+        * platform/ios/fast/frames/flattening/iframe-flattening-with-async-frame-scrolling.html: Added.
+
+2017-10-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Enable custom pasteboard data in DumpRenderTree and WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=178154
+
+        Reviewed by Wenson Hsieh.
+
+        * editing/pasteboard/dataTransfer-setData-getData-expected.txt: Rebaselined. One more test case is passing now.
+        * fast/events/dropzone-002.html: Fixed the test to accept an image since we no longer drop URLs when dropping
+        an image avoid leaking local file paths.
+        * platform/mac/TestExpectations: Enabled dropzone-005.html since it started passing after fixing LocalPasteboard.
+
+2017-10-10  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Validate that all PaymentCurrencyAmounts use the same currency code when using Apple Pay
+        https://bugs.webkit.org/show_bug.cgi?id=178150
+
+        Reviewed by Tim Horton.
+
+        * http/tests/paymentrequest/payment-request-abort-method.https.html:
+        * http/tests/paymentrequest/payment-request-canmakepayment-method.https.html:
+        * http/tests/paymentrequest/payment-request-show-method.https.html:
+        * http/tests/ssl/applepay/PaymentRequest.https-expected.txt:
+        * http/tests/ssl/applepay/PaymentRequest.https.html:
+
+2017-10-10  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Implement PaymentRequest.canMakePayment()
+        https://bugs.webkit.org/show_bug.cgi?id=178048
+
+        Reviewed by Youenn Fablet.
+
+        * http/tests/paymentrequest/payment-request-canmakepayment-method.https-expected.txt: Added.
+        * http/tests/paymentrequest/payment-request-canmakepayment-method.https.html: Added.
+        * http/tests/ssl/applepay/PaymentRequest.https.html:
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2017-10-10  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] ARIA form role should be mapped to ATK_ROLE_LANDMARK; not ATK_ROLE_FORM
+        https://bugs.webkit.org/show_bug.cgi?id=178137
+
+        Reviewed by Chris Fleizach.
+
+        * platform/gtk/accessibility/roles-exposed-expected.txt: Updated expectations.
+
+2017-10-10  Matt Rajca  <mrajca@apple.com>
+
+        Respect audio rate change restrictions in HTMLMediaElement::setVolume.
+        https://bugs.webkit.org/show_bug.cgi?id=178140
+
+        Reviewed by Eric Carlson.
+
+        * media/audio-playback-volume-changes-with-restrictions-and-user-gestures-expected.txt: Added.
+        * media/audio-playback-volume-changes-with-restrictions-and-user-gestures.html: Added.
+        * media/audio-playback-volume-changes-with-restrictions-expected.txt: Added.
+        * media/audio-playback-volume-changes-with-restrictions.html: Added.
+        * platform/ios/TestExpectations:
+
+2017-10-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Loading should be disabled while constructing the fragment in WebContentReader::readWebArchive
+        https://bugs.webkit.org/show_bug.cgi?id=178118
+
+        Reviewed by Antti Koivisto.
+
+        Updated the existing tests to wait for images to load in each step explicitly instead of relying on
+        them being loaded synchronously or that it's loaded within 100-200ms.
+
+        * editing/pasteboard/4641033.html:
+        * editing/pasteboard/4947130.html:
+        * editing/pasteboard/4989774.html:
+        * editing/pasteboard/drag-selected-image-to-contenteditable.html:
+        * editing/selection/drag-to-contenteditable-iframe.html:
+        * platform/ios/TestExpectations: Skipped editing/selection/drag-to-contenteditable-iframe.html on iOS
+        since we don't support testing drag & drop on iOS. Also added [ Skip ] to other entires there.
+
+2017-10-10  Chris Dumez  <cdumez@apple.com>
+
+        Entries API should recognize path starting with 2 slashes as valid absolute path
+        https://bugs.webkit.org/show_bug.cgi?id=178135
+
+        Reviewed by Ryosuke Niwa.
+
+        Add layout test coverage.
+
+        * editing/pasteboard/entries-api/datatransfer-items-drop-getDirectory-expected.txt:
+        * editing/pasteboard/entries-api/datatransfer-items-drop-getDirectory.html:
+        * editing/pasteboard/entries-api/datatransfer-items-drop-getFile-expected.txt:
+        * editing/pasteboard/entries-api/datatransfer-items-drop-getFile.html:
+
+2017-10-10  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r223110.
+
+        This caused consistent failures and timeouts on multiple
+        platforms.
+
+        Reverted changeset:
+
+        "Delete button doesn't fully delete certain emoji"
+        https://bugs.webkit.org/show_bug.cgi?id=178096
+        http://trac.webkit.org/changeset/223110
+
+2017-10-10  Antti Koivisto  <antti@apple.com>
+
+        RenderObject::destroy() should only be invoked after renderer has been removed from the tree
+        https://bugs.webkit.org/show_bug.cgi?id=178075
+
+        Reviewed by Zalan Bujtas.
+
+        * accessibility/mac/textbox-role-reports-notifications.html:
+
+        This passed because spurious AXValueChanged notifications. Force layout to prevent coalescing between mutations.
+
+2017-10-10  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] STATE_CHECKABLE should be removed from radio buttons in radiogroups with aria-readonly="true"
+        https://bugs.webkit.org/show_bug.cgi?id=177931
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/gtk/aria-readonly-radiogroup-expected.txt: Added.
+        * accessibility/gtk/aria-readonly-radiogroup.html: Added.
+
+2017-10-09  Chris Dumez  <cdumez@apple.com>
+
+        Calling fileSystemDirectoryEntry.getDirectory() with empty path should not fail
+        https://bugs.webkit.org/show_bug.cgi?id=178114
+
+        Reviewed by Ryosuke Niwa.
+
+        Extend layout test coverage.
+
+        * editing/pasteboard/entries-api/datatransfer-items-drop-getDirectory-expected.txt:
+        * editing/pasteboard/entries-api/datatransfer-items-drop-getDirectory.html:
+
+2017-10-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/paymentrequest/payment-request-abort-method.https.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=178107
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2017-10-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/dom/events/EventTarget-dispatchEvent.html for iOS.
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/dom/events/EventTarget-dispatchEvent-expected.txt: Removed.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/dom/events/EventTarget-dispatchEvent-expected.txt: Removed.
+        * platform/ios/imported/w3c/web-platform-tests/dom/events/EventTarget-dispatchEvent-expected.txt:
+
+2017-10-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Delete button doesn't fully delete certain emoji
+        https://bugs.webkit.org/show_bug.cgi?id=178096
+        <rdar://problem/34785106>
+
+        Reviewed by Simon Fraser.
+
+        * editing/deleting/delete-emoji-2.html:
+        * platform/mac/editing/deleting/delete-emoji-expected.txt:
+        * platform/mac/editing/deleting/delete-emoji-2-expected.txt:
+        * platform/ios/editing/deleting/delete-emoji-expected.txt:
+        * platform/ios/editing/deleting/delete-emoji-2-expected.txt:
+        * platform/win/TestExpectations:
+
+2017-10-09  Michael Saboff  <msaboff@apple.com>
+
+        Implement RegExp Unicode property escapes
+        https://bugs.webkit.org/show_bug.cgi?id=172069
+
+        Reviewed by JF Bastien.
+
+        New test.
+
+        * js/regexp-unicode-properties-expected.txt: Added.
+        * js/regexp-unicode-properties.html: Added.
+        * js/script-tests/regexp-unicode-properties.js: Added.
+
+2017-10-09  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Implement PaymentRequest.show() and PaymentRequest.hide()
+        https://bugs.webkit.org/show_bug.cgi?id=178043
+        <rdar://problem/34076639>
+
+        Reviewed by Tim Horton.
+
+        Copied payment-request-abort-method.https.html and payment-request-show-method.https.html
+        from web-platform-tests/payment-request/ and changed the payment method from basic-card to
+        Apple Pay. This needs to eventually be upstreamed back to WPT.
+
+        * TestExpectations:
+        * http/tests/paymentrequest/payment-request-abort-method.https-expected.txt: Added.
+        * http/tests/paymentrequest/payment-request-abort-method.https.html: Added.
+        * http/tests/paymentrequest/payment-request-show-method.https-expected.txt: Added.
+        * http/tests/paymentrequest/payment-request-show-method.https.html: Added.
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2017-10-09  Youenn Fablet  <youenn@apple.com>
+
+        Add quota to cache API
+        https://bugs.webkit.org/show_bug.cgi?id=177552
+
+        Reviewed by Alex Christensen.
+
+        * http/wpt/cache-storage/cache-quota.https.any-expected.txt: Added.
+        * http/wpt/cache-storage/cache-quota.https.any.html: Added.
+        * http/wpt/cache-storage/cache-quota.https.any.js: Added.
+
+2017-10-09  Matt Lewis  <jlewis3@apple.com>
+
+        Unskipped http/tests/cache/disk-cache/disk-cache-validation-no-body.html
+        https://bugs.webkit.org/show_bug.cgi?id=178019
+
+        Unreviewed test gardening.
+        * platform/mac-wk2/TestExpectations:
+
+2017-10-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network Tab - Cookies Detail View
+        https://bugs.webkit.org/show_bug.cgi?id=177988
+        <rdar://problem/34071927>
+
+        Reviewed by Brian Burg.
+
+        * inspector/unit-tests/cookie-expected.txt: Added.
+        * inspector/unit-tests/cookie.html: Added.
+
+2017-10-09  Matt Lewis  <jlewis3@apple.com>
+
+        Marked inspector/dom/csp-big5-hash.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=177608
+
+        Unreviewed test garding.
+
+        * platform/mac/TestExpectations:
+
+2017-10-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r223021.
+
+        LayoutTests added with this change are failing.
+
+        Reverted changeset:
+
+        "[Payment Request] Implement PaymentRequest.show() and
+        PaymentRequest.hide()"
+        https://bugs.webkit.org/show_bug.cgi?id=178043
+        http://trac.webkit.org/changeset/223021
+
+2017-10-09  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Explicitly-set aria-sort value of "none" should be exposed as an object attribute
+        https://bugs.webkit.org/show_bug.cgi?id=177955
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/gtk/aria-sort-values-expected.txt: Added.
+        * accessibility/gtk/aria-sort-values.html: Added.
+
+2017-10-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/media-source/media-source-paint-to-canvas.html as failing.
+        https://bugs.webkit.org/show_bug.cgi?id=178083
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-10-08  Darin Adler  <darin@apple.com>
+
+        Update HTMLOListElement.start to behavior from latest HTML specification
+        https://bugs.webkit.org/show_bug.cgi?id=178057
+
+        Reviewed by Chris Dumez.
+
+        * fast/lists/ol-reversed-simple-expected.txt:
+        * fast/lists/ol-reversed-simple.html:
+        * fast/lists/ol-reversed-simple.xhtml:
+        Updated test and results to expect the new behavior.
+
+2017-10-08  Darin Adler  <darin@apple.com>
+
+        Fix bugs related to setting reflected floating point DOM attributes
+        https://bugs.webkit.org/show_bug.cgi?id=178061
+
+        Reviewed by Sam Weinig.
+
+        * fast/dom/HTMLProgressElement/set-progress-properties-expected.txt: Updated test to expect
+        setting HTMLProgressElement.max to 0 to have no effect, rather than setting max to "1".
+        * fast/dom/HTMLProgressElement/set-progress-properties.html: Ditto.
+
+        * platform/ios-wk2/imported/w3c/web-platform-tests/html/dom/reflection-forms-expected.txt:
+        Updated to expect meter reflection tests to pass.
+
+2017-10-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        DataTransfer.items does not contain items for custom types supplied via add or setData
+        https://bugs.webkit.org/show_bug.cgi?id=178016
+
+        Reviewed by Darin Adler.
+
+        Adds new layout tests to check DataTransfer.items when dropping a file, and when copying and pasting with custom
+        pasteboard data types. Tweaks an existing test to adjust for normalizeType stripping HTML whitespace rather than
+        ASCII whitespace.
+
+        * TestExpectations:
+        * editing/pasteboard/data-transfer-get-data-non-normalized-types-expected.txt:
+        * editing/pasteboard/data-transfer-get-data-non-normalized-types.html:
+        * editing/pasteboard/data-transfer-items-add-custom-data-expected.txt: Added.
+        * editing/pasteboard/data-transfer-items-add-custom-data.html: Added.
+        * editing/pasteboard/data-transfer-items-drop-file-expected.txt: Added.
+        * editing/pasteboard/data-transfer-items-drop-file.html: Added.
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+
+2017-10-08  Ryosuke Niwa  <rniwa@webkit.org>
+
+        dragenter and dragleave shouldn't use the same data transfer object
+        https://bugs.webkit.org/show_bug.cgi?id=178056
+
+        Reviewed by Darin Adler.
+
+        Added a regression test for checking the uniqueness of dataTransfer object for dragenter and dragleave events.
+        Unfortunately, the test is only runnable in Mac WebKit1 port due to the lack of support in WebKitTestRunner.
+
+        * TestExpectations:
+        * editing/pasteboard/data-transfer-is-unique-for-dragenter-and-dragleave-expected.txt: Added.
+        * editing/pasteboard/data-transfer-is-unique-for-dragenter-and-dragleave.html: Added.
+        * platform/mac-wk1/TestExpectations:
+
+2017-10-08  Jer Noble  <jer.noble@apple.com>
+
+        SourceBuffer remove throws out way more content than requested
+        https://bugs.webkit.org/show_bug.cgi?id=177884
+        <rdar://problem/34817104>
+
+        Reviewed by Darin Adler.
+
+        * media/media-source/media-source-remove-decodeorder-crash-expected.txt:
+        * media/media-source/media-source-remove-decodeorder-crash.html:
+        * media/media-source/media-source-remove-too-much-expected.txt: Added.
+        * media/media-source/media-source-remove-too-much.html: Added.
+
+2017-10-08  Brent Fulgham  <bfulgham@apple.com>
+
+        Nullptr deref in WebCore::Node::computeEditability
+        https://bugs.webkit.org/show_bug.cgi?id=177905
+        <rdar://problem/34138402>
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/focus-shift-crash-expected.txt: Added.
+        * fast/dom/focus-shift-crash.html: Added.
+
+2017-10-07  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Implement PaymentRequest.show() and PaymentRequest.hide()
+        https://bugs.webkit.org/show_bug.cgi?id=178043
+        <rdar://problem/34076639>
+
+        Reviewed by Tim Horton.
+
+        Copied payment-request-abort-method.https.html and payment-request-show-method.https.html
+        from web-platform-tests/payment-request/ and changed the payment method from basic-card to
+        Apple Pay. This needs to eventually be upstreamed back to WPT.
+
+        * TestExpectations:
+        * http/tests/paymentrequest/payment-request-abort-method.https-expected.txt: Added.
+        * http/tests/paymentrequest/payment-request-abort-method.https.html: Added.
+        * http/tests/paymentrequest/payment-request-show-method.https-expected.txt: Added.
+        * http/tests/paymentrequest/payment-request-show-method.https.html: Added.
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2017-10-06  Sam Weinig  <sam@webkit.org>
+
+        Remove global-constructors-attributes tests
+        https://bugs.webkit.org/show_bug.cgi?id=178041
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        In discusstion with Alexey, we agreed these tests were much more trouble than they
+        were worth, due to testing very little, but requiring the update of up to eight
+        platform specific results per global constructor changed.
+
+        * js/dom/global-constructors-attributes-dedicated-worker-expected.txt: Removed.
+        * js/dom/global-constructors-attributes-dedicated-worker.html: Removed.
+        * js/dom/global-constructors-attributes-expected.txt: Removed.
+        * js/dom/global-constructors-attributes-idb-expected.txt: Removed.
+        * js/dom/global-constructors-attributes-idb.html: Removed.
+        * js/dom/global-constructors-attributes.html: Removed.
+        * js/dom/script-tests/global-constructors-attributes-idb.js: Removed.
+        * js/dom/script-tests/global-constructors-attributes.js: Removed.
+        * platform/gtk/js/dom/global-constructors-attributes-expected.txt: Removed.
+        * platform/mac-elcapitan-wk2/js/dom/global-constructors-attributes-expected.txt: Removed.
+        * platform/mac-elcapitan/js/dom/global-constructors-attributes-expected.txt: Removed.
+        * platform/mac-sierra-wk1/js/dom/global-constructors-attributes-expected.txt: Removed.
+        * platform/mac-sierra/js/dom/global-constructors-attributes-expected.txt: Removed.
+        * platform/mac-wk1/js/dom/global-constructors-attributes-dedicated-worker-expected.txt: Removed.
+        * platform/mac-wk1/js/dom/global-constructors-attributes-expected.txt: Removed.
+        * platform/mac-yosemite/js/dom/global-constructors-attributes-expected.txt: Removed.
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt: Removed.
+        * platform/win/js/dom/global-constructors-attributes-expected.txt: Removed.
+        * platform/wpe/js/dom/global-constructors-attributes-expected.txt: Removed.
+
+2017-10-06  Daniel Bates  <dabates@apple.com>
+
+        Spelling error annotation should encompass hyphen in misspelled word that wraps across multiple lines
+        https://bugs.webkit.org/show_bug.cgi?id=177980
+        <rdar://problem/34847454>
+
+        Reviewed by Simon Fraser.
+
+        Add a test to ensure that a spelling error decoration encompasses the hyphen for a misspelled
+        word that is hyphenated because it is broken across more than one line.
+
+        * editing/spelling/spelling-marker-includes-hyphen-expected.html: Added.
+        * editing/spelling/spelling-marker-includes-hyphen.html: Added.
+        * platform/ios/TestExpectations: Mark the test as WontFix as spelling and
+        grammar markers are not support on iOS.
+        * platform/mac-wk2/TestExpectations: Mark the test as a failure due to <https://bugs.webkit.org/show_bug.cgi?id=105616>.
+
+2017-10-06  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Add Canvas tab and CanvasOverviewContentView
+        https://bugs.webkit.org/show_bug.cgi?id=177604
+        <rdar://problem/34714650>
+
+        Reviewed by Devin Rousso.
+
+        Add test for new static function View.fromElement.
+
+        * inspector/view/basics-expected.txt:
+        * inspector/view/basics.html:
+
+2017-10-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        LayoutTest http/tests/loading/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=177679
+
+        Reviewed by Alexey Proskuryakov.
+
+        Move runTest() from an inline script to a load event handler to avoid a race between parsing and navigation.
+
+        * http/tests/loading/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction-expected.txt:
+        * http/tests/loading/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction.html:
+
+2017-10-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network Tab - Headers Detail View
+        https://bugs.webkit.org/show_bug.cgi?id=177896
+        <rdar://problem/34071924>
+
+        Reviewed by Devin Rousso.
+
+        * inspector/unit-tests/url-utilities-expected.txt:
+        * inspector/unit-tests/url-utilities.html:
+        Tests for new utility functions.
+
+2017-10-06  Nan Wang  <n_wang@apple.com>
+
+        AX: [iOS] Layout Test accessibility/ios-simulator/video-elements-ios.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=177954
+        <rdar://problem/34838094>
+
+        The test is flaky because that the video element has triggered the canplaythrough event before
+        we registered the event handler. Fixed it by setting the source after registering the handler.
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/ios-simulator/video-elements-ios.html:
+
 2017-10-06  Sam Weinig  <sam@webkit.org>
 
         Add basic support for getting a ImageBitmapRenderingContext

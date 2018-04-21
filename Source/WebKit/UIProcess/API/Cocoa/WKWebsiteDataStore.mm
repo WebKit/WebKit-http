@@ -95,7 +95,7 @@ using namespace WebCore;
     static dispatch_once_t onceToken;
     static NSSet *allWebsiteDataTypes;
     dispatch_once(&onceToken, ^{
-        allWebsiteDataTypes = [[NSSet alloc] initWithArray:@[ WKWebsiteDataTypeDiskCache, WKWebsiteDataTypeMemoryCache, WKWebsiteDataTypeOfflineWebApplicationCache, WKWebsiteDataTypeCookies, WKWebsiteDataTypeSessionStorage, WKWebsiteDataTypeLocalStorage, WKWebsiteDataTypeIndexedDBDatabases, WKWebsiteDataTypeWebSQLDatabases ]];
+        allWebsiteDataTypes = [[NSSet alloc] initWithArray:@[ WKWebsiteDataTypeDiskCache, WKWebsiteDataTypeFetchCache, WKWebsiteDataTypeMemoryCache, WKWebsiteDataTypeOfflineWebApplicationCache, WKWebsiteDataTypeCookies, WKWebsiteDataTypeSessionStorage, WKWebsiteDataTypeLocalStorage, WKWebsiteDataTypeIndexedDBDatabases, WKWebsiteDataTypeServiceWorkerRegistrations, WKWebsiteDataTypeWebSQLDatabases ]];
     });
 
     return allWebsiteDataTypes;
@@ -229,6 +229,26 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
 - (void)_setResourceLoadStatisticsEnabled:(BOOL)enabled
 {
     _websiteDataStore->websiteDataStore().setResourceLoadStatisticsEnabled(enabled);
+}
+
+- (NSUInteger)_cacheStoragePerOriginQuota
+{
+    return _websiteDataStore->websiteDataStore().cacheStoragePerOriginQuota();
+}
+
+- (void)_setCacheStoragePerOriginQuota:(NSUInteger)size
+{
+    _websiteDataStore->websiteDataStore().setCacheStoragePerOriginQuota(size);
+}
+
+- (NSString *)_cacheStorageDirectory
+{
+    return _websiteDataStore->websiteDataStore().cacheStorageDirectory();
+}
+
+- (void)_setCacheStorageDirectory:(NSString *)directory
+{
+    _websiteDataStore->websiteDataStore().setCacheStorageDirectory(directory);
 }
 
 - (void)_resourceLoadStatisticsSetLastSeen:(double)seconds forHost:(NSString *)host

@@ -334,7 +334,8 @@ enum AccessibilitySortDirection {
     SortDirectionNone,
     SortDirectionAscending,
     SortDirectionDescending,
-    SortDirectionOther
+    SortDirectionOther,
+    SortDirectionInvalid
 };
 
 enum AccessibilitySearchDirection {
@@ -702,6 +703,7 @@ public:
     AccessibilityARIACurrentState ariaCurrentState() const;
     String ariaCurrentValue() const;
     bool supportsARIACurrent() const;
+    const AtomicString& ariaKeyShortcutsValue() const;
     
     // This function checks if the object should be ignored when there's a modal dialog displayed.
     bool ignoredFromARIAModalPresence() const;
@@ -1160,6 +1162,8 @@ protected:
 
     void ariaElementsFromAttribute(AccessibilityChildrenVector&, const QualifiedName&) const;
     void ariaElementsReferencedByAttribute(AccessibilityChildrenVector&, const QualifiedName&) const;
+
+    AccessibilityObject* radioGroupAncestor() const;
 
 #if PLATFORM(GTK) && HAVE(ACCESSIBILITY)
     bool allowsTextRanges() const;

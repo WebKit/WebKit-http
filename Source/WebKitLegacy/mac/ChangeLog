@@ -1,3 +1,76 @@
+2017-10-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Sanitize URL in pasteboard for other applications and cross origin content
+        https://bugs.webkit.org/show_bug.cgi?id=178060
+        <rdar://problem/34874518>
+
+        Reviewed by Wenson Hsieh.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::typesSafeForDOMToReadAndWrite):
+
+2017-10-11  Chris Dumez  <cdumez@apple.com>
+
+        Modernize Geolocation code
+        https://bugs.webkit.org/show_bug.cgi?id=178148
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebCoreSupport/WebGeolocationClient.h:
+        * WebCoreSupport/WebGeolocationClient.mm:
+        (WebGeolocationClient::lastPosition):
+        * WebView/WebGeolocationPosition.mm:
+        (-[WebGeolocationPositionInternal initWithCoreGeolocationPosition:]):
+        (core):
+        (-[WebGeolocationPosition initWithTimestamp:latitude:longitude:accuracy:]):
+        (-[WebGeolocationPosition initWithGeolocationPosition:]):
+        * WebView/WebGeolocationPositionInternal.h:
+
+2017-10-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Enable custom pasteboard data in DumpRenderTree and WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=178154
+
+        Reviewed by Wenson Hsieh.
+
+        Enable custom pasteboard data by default.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences customPasteboardDataEnabled]): Added.
+        (-[WebPreferences setCustomPasteboardDataEnabled:]): Added.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-10-10  Sam Weinig  <sam@webkit.org>
+
+        Replace copyKeysToVector/copyValuesToVector with copyToVector(map.keys())/copyToVector(map.values())
+        https://bugs.webkit.org/show_bug.cgi?id=178102
+
+        Reviewed by Tim Horton.
+
+        * History/WebHistory.mm:
+        (-[WebHistoryPrivate rebuildHistoryByDayIfNeeded:]):
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::stopAllStreams):
+        * WebCoreSupport/WebUserMediaClient.mm:
+        (WebUserMediaClient::pageDestroyed):
+
+2017-10-09  Robin Morisset  <rmorisset@apple.com>
+
+        Make the names of the options consistent
+        https://bugs.webkit.org/show_bug.cgi?id=177933
+
+        Reviewed by Saam Barati.
+
+        * WebView/WebFrame.h:
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView setMarkedText:selectedRange:]):
+        * WebView/WebView.h:
+
 2017-10-06  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         [iOS] Tweak support for classifying form controls (followup to r222487)

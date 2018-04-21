@@ -319,6 +319,9 @@ public:
     StorageProcessProxy* storageProcess() { return m_storageProcess.get(); }
     void getStorageProcessConnection(Ref<Messages::WebProcessProxy::GetStorageProcessConnection::DelayedReply>&&);
     void storageProcessCrashed(StorageProcessProxy*);
+#if ENABLE(SERVICE_WORKER)
+    void getWorkerContextProcessConnection(StorageProcessProxy&);
+#endif
 
 #if PLATFORM(COCOA)
     bool processSuppressionEnabled() const;
@@ -385,7 +388,6 @@ public:
     static String legacyPlatformDefaultMediaKeysStorageDirectory();
     static String legacyPlatformDefaultMediaCacheDirectory();
     static String legacyPlatformDefaultApplicationCacheDirectory();
-    static String legacyPlatformDefaultCacheStorageDirectory();
     static String legacyPlatformDefaultNetworkCacheDirectory();
     static String legacyPlatformDefaultJavaScriptConfigurationDirectory();
     static bool isNetworkCacheEnabled();
@@ -411,6 +413,10 @@ public:
 
     static uint64_t registerProcessPoolCreationListener(Function<void(WebProcessPool&)>&&);
     static void unregisterProcessPoolCreationListener(uint64_t identifier);
+
+#if ENABLE(SERVICE_WORKER)
+    void didGetWorkerContextProcessConnection(const IPC::Attachment& connection);
+#endif
 
 private:
     void platformInitialize();
@@ -477,6 +483,10 @@ private:
     bool m_haveInitialEmptyProcess;
 
     WebProcessProxy* m_processWithPageCache;
+#if ENABLE(SERVICE_WORKER)
+    WebProcessProxy* m_workerContextProcess { nullptr };
+    bool m_waitingForWorkerContextProcessConnection { false };
+#endif
 
     Ref<WebPageGroup> m_defaultPageGroup;
 

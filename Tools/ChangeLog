@@ -1,3 +1,415 @@
+2017-10-11  Saam Barati  <sbarati@apple.com>
+
+        Runtime disable poly proto because it may be a 3-4% Speedometer regression
+        https://bugs.webkit.org/show_bug.cgi?id=178192
+
+        Reviewed by JF Bastien.
+
+        * Scripts/run-jsc-stress-tests:
+
+2017-10-11  Youenn Fablet  <youenn@apple.com>
+
+        Add API to clean CacheStorage data
+        https://bugs.webkit.org/show_bug.cgi?id=178034
+
+        Reviewed by Chris Dumez.
+
+        Adding internals API to trigger deleting all or origin-persistent cache storage persistent data. 
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::clearDOMCache):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::clearDOMCache):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle):
+
+2017-10-11  Chris Dumez  <cdumez@apple.com>
+
+        [Geolocation] Expose Coordinates.floorLevel
+        https://bugs.webkit.org/show_bug.cgi?id=178173
+        <rdar://problem/34918936>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add test infrastructure for testing Coordinates.floorLevel.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (setMockGeolocationPositionCallback):
+        * DumpRenderTree/TestRunner.h:
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (TestRunner::setMockGeolocationPosition):
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::setMockGeolocationPosition):
+        * WebKitTestRunner/GeolocationProviderMock.cpp:
+        (WTR::GeolocationProviderMock::setPosition):
+        * WebKitTestRunner/GeolocationProviderMock.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::setMockGeolocationPosition):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setMockGeolocationPosition):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::setMockGeolocationPosition):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle):
+
+2017-10-11  Youenn Fablet  <youenn@apple.com>
+
+        Bump default cache storage quota to 20MB
+        https://bugs.webkit.org/show_bug.cgi?id=178132
+
+        Reviewed by Alex Christensen.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::generateContextConfiguration const):
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::initializeWebViewConfiguration): Setting quota to 400kb
+
+2017-10-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r223113 and r223121.
+        https://bugs.webkit.org/show_bug.cgi?id=178182
+
+        Reintroduced 20% regression on Kraken (Requested by rniwa on
+        #webkit).
+
+        Reverted changesets:
+
+        "Enable gigacage on iOS"
+        https://bugs.webkit.org/show_bug.cgi?id=177586
+        https://trac.webkit.org/changeset/223113
+
+        "Use one virtual allocation for all gigacages and their
+        runways"
+        https://bugs.webkit.org/show_bug.cgi?id=178050
+        https://trac.webkit.org/changeset/223121
+
+2017-10-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Sanitize URL in pasteboard for other applications and cross origin content
+        https://bugs.webkit.org/show_bug.cgi?id=178060
+        <rdar://problem/34874518>
+
+        Reviewed by Wenson Hsieh.
+
+        Added API tests for sanitizing URLs copied from web content, and that the original URL is exposed to the web content.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/CopyURL.mm: Added.
+        (readURLFromPasteboard): A helper function.
+        * TestWebKitAPI/Tests/WebKitCocoa/copy-url.html: Added.
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (DataInteractionTests.DataTransferGetDataWhenDroppingCustomData): Rebaselined. https://www.apple.com is no longer
+        normalized to https://www.apple.com/ by NSURL / UIPasteboard as expected.
+        (DataInteractionTests.DataTransferSetDataValidURL): Added.
+        (DataInteractionTests.DataTransferSetDataUnescapedURL): Added.
+        (DataInteractionTests.qDataTransferSetDataInvalidURL): Added.
+
+2017-10-11  Chris Dumez  <cdumez@apple.com>
+
+        Modernize Geolocation code
+        https://bugs.webkit.org/show_bug.cgi?id=178148
+
+        Reviewed by Ryosuke Niwa.
+
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (TestRunner::setMockGeolocationPosition):
+
+2017-10-11  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
+
+        [GStreamer] Many media source tests crashing with GStreamer-CRITICAL **: _gst_util_uint64_scale: assertion 'denom != 0' failed in gst_qtdemux_configure_stream()
+        https://bugs.webkit.org/show_bug.cgi?id=176804
+
+        Reviewed by Michael Catanzaro.
+
+        Add patch to fix assert in qtdemux.
+
+        * gstreamer/jhbuild.modules:
+        * gstreamer/patches/gst-plugins-good-0009-qtdemux-fix-assert-when-moof-contains-one-sample.patch: Added.
+
+2017-10-11  Tomas Popela  <tpopela@redhat.com>
+
+        Use https for trac changeset and browser links
+        https://bugs.webkit.org/show_bug.cgi?id=178167
+
+        Reviewed by Alexey Proskuryakov.
+
+        Switch the http://trac.webkit.org/changeset and
+        http://trac.webkit.org/browser links that are printed by webkitpy to
+        https. Also update the test expectations.
+
+        * Scripts/webkitpy/common/checkout/checkout_unittest.py:
+        * Scripts/webkitpy/common/config/committervalidator_unittest.py:
+        (CommitterValidatorTest.test_flag_permission_rejection_message):
+        * Scripts/webkitpy/common/config/urls.py:
+        (view_source_url):
+        (view_revision_url):
+        * Scripts/webkitpy/common/net/bugzilla/bug_unittest.py:
+        (BugTest.test_commit_revision):
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla_mock.py:
+        * Scripts/webkitpy/common/net/buildbot/buildbot_unittest.py:
+        * Scripts/webkitpy/performance_tests/perftestsrunner_integrationtest.py:
+        (MainTest):
+        (MainTest.test_run_with_upload_json_should_generate_perf_webkit_json):
+        * Scripts/webkitpy/style/checkers/changelog_unittest.py:
+        (ChangeLogCheckerTest.test_missing_bug_number):
+        * Scripts/webkitpy/tool/bot/feeders_unittest.py:
+        * Scripts/webkitpy/tool/bot/flakytestreporter_unittest.py:
+        * Scripts/webkitpy/tool/bot/ircbot_unittest.py:
+        (IRCBotTest.test_rollout):
+        (IRCBotTest.test_revert):
+        (IRCBotTest.test_multi_rollout):
+        (IRCBotTest.test_rollout_with_r_in_svn_revision):
+        (IRCBotTest.test_multi_rollout_with_r_in_svn_revision):
+        (IRCBotTest.test_rollout_invalidate_reason):
+        (test_multi_rollout_invalidate_reason):
+        * Scripts/webkitpy/tool/bot/sheriff_unittest.py:
+        * Scripts/webkitpy/tool/commands/download_unittest.py:
+        * Scripts/webkitpy/tool/commands/newcommitbot_unittest.py:
+        * Scripts/webkitpy/tool/commands/queues_unittest.py:
+        * Scripts/webkitpy/tool/commands/suggestnominations.py:
+        (SuggestNominations._count_commit):
+        * Scripts/webkitpy/tool/commands/upload_unittest.py:
+        * Scripts/webkitpy/tool/servers/data/rebaselineserver/util.js:
+        (getTracUrl):
+        (getSortedKeys):
+        * Scripts/webkitpy/tool/steps/closebugforlanddiff_unittest.py:
+        (CloseBugForLandDiffTest.test_empty_state):
+        * Scripts/webkitpy/tool/steps/commit_unittest.py:
+        (CommitTest._test_check_test_expectations):
+        * Scripts/webkitpy/tool/steps/preparechangelogforrevert_unittest.py:
+        (UpdateChangeLogsForRevertTest):
+
+2017-10-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Enable custom pasteboard data in DumpRenderTree and WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=178154
+
+        Reviewed by Wenson Hsieh.
+
+        Fixed the bug that LocalPasteboard would fail to load the promise type if data is set after declaring types
+        by delaying the call to provideDataForType until when dataForType is called.
+
+        Without this fix, fast/events/dropzone-002.html would start failing after enabling custom pasteboard data.
+        With this fix, fast/events/dropzone-005.html also starts passing.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        * DumpRenderTree/mac/DumpRenderTreePasteboard.mm:
+        (-[LocalPasteboard addTypes:owner:]):
+        (-[LocalPasteboard dataForType:]):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+2017-10-10  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] ARIA form role should be mapped to ATK_ROLE_LANDMARK; not ATK_ROLE_FORM
+        https://bugs.webkit.org/show_bug.cgi?id=178137
+
+        Reviewed by Chris Fleizach.
+
+        Add handling for ATK_ROLE_LANDMARK resulting from the ARIA form role.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+
+2017-10-10  Jonathan Bedard  <jbedard@apple.com>
+
+        run-webkit-tests: upload test results to multiple servers
+        https://bugs.webkit.org/show_bug.cgi?id=178012
+        <rdar://problem/34856501>
+
+        Reviewed by Lucas Forschler.
+
+        Allowing uploading of results to multiple servers makes developing new results
+        databases much easier, and does not complicate uploading logic.
+
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        (Manager.upload_results): Iterate through the list of results server hosts and
+        send results to each one.
+        * Scripts/webkitpy/layout_tests/layout_package/json_layout_results_generator.py:
+        (JSONLayoutResultsGenerator.__init__): Accept a list of test results servers.
+        * Scripts/webkitpy/layout_tests/layout_package/json_results_generator.py:
+        (JSONResultsGenerator.__init__): Accept a list of test results servers.
+        (JSONResultsGenerator.get_json): Pick which server to download from by index.
+        (JSONResultsGenerator.upload_json_files): Upload the JSON to each results server.
+        (JSONResultsGenerator._get_archived_json_results): Pick which server to download from.
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py:
+        (parse_args): Allow multiple test-results-servers and results-server-hosts to be
+        passed to run-webkit-tests. 
+
+2017-10-09  Youenn Fablet  <youenn@apple.com>
+
+        Vector should be able to easily create from a list of movable only items
+        https://bugs.webkit.org/show_bug.cgi?id=176432
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/Vector.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-09-29  Filip Pizlo  <fpizlo@apple.com>
+
+        Enable gigacage on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=177586
+
+        Reviewed by JF Bastien.
+        
+        Add a mode to test disabling Gigacage.
+
+        * Scripts/run-jsc-stress-tests:
+        * Scripts/webkitruby/jsc-stress-test-writer-default.rb:
+
+2017-10-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r223015 and r223025.
+        https://bugs.webkit.org/show_bug.cgi?id=178093
+
+        Regressed Kraken on iOS by 20% (Requested by keith_mi_ on
+        #webkit).
+
+        Reverted changesets:
+
+        "Enable gigacage on iOS"
+        https://bugs.webkit.org/show_bug.cgi?id=177586
+        http://trac.webkit.org/changeset/223015
+
+        "Unreviewed, disable Gigacage on ARM64 Linux"
+        https://bugs.webkit.org/show_bug.cgi?id=177586
+        http://trac.webkit.org/changeset/223025
+
+2017-10-09  Sam Weinig  <sam@webkit.org>
+
+        Make HashMap::keys() and HashMap::values() work with WTF::map/WTF::copyToVector
+        https://bugs.webkit.org/show_bug.cgi?id=178072
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/Vector.cpp:
+        (TestWebKitAPI::TEST):
+        
+            Add tests for HashMap::keys() and HashMap::values() working with copyToVector.
+
+2017-10-05  Frederic Wang  <fwang@igalia.com>
+
+        Remove WOFF2 from Source/ThirdParty.
+        https://bugs.webkit.org/show_bug.cgi?id=177862
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/webkitpy/style/checker.py: Remove woff2.
+        * gtk/jhbuild.modules: Add new jhbuild module for woff2.
+
+2017-10-08  Sam Weinig  <sam@webkit.org>
+
+        It should be possible to create a ListHashSet with a std::initializer_list.
+        https://bugs.webkit.org/show_bug.cgi?id=178070
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/ListHashSet.cpp:
+        (TestWebKitAPI::TEST):
+        Add a test for using std::initializer_list with ListHashSet.
+
+2017-10-08  Sam Weinig  <sam@webkit.org>
+
+        There should be a version of copyToVector that returns a Vector, rather than using an out parameter
+        https://bugs.webkit.org/show_bug.cgi?id=177732
+
+        Reviewed by Saam Barati.
+
+        * TestWebKitAPI/Tests/WTF/Vector.cpp:
+        (TestWebKitAPI::TEST):
+        Add tests for the new copyToVector and copyToVectorOf functions.
+
+2017-10-08  Darin Adler  <darin@apple.com>
+
+        Fix bugs related to setting reflected floating point DOM attributes
+        https://bugs.webkit.org/show_bug.cgi?id=178061
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Tests/WTF/AtomicString.cpp: Added a test of the
+        AtomicString::number function, based on the test cases we already
+        had for String::numberToStringECMAScript, and with some additional
+        cases with powers of 10 that check handling of trailng zeroes.
+
+        * TestWebKitAPI/Tests/WTF/WTFString.cpp: Added test cases to the
+        existing tests of the String::numberToStringECMAScript function
+        as above. Also added tests for String::number and for
+        String::numberToStringFixedWidth. Also changed the tests to all use
+        EXPECT instead of ASSERT macros since these are all non-fatal.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::dumpFrameScrollPosition): Use StringBuilder::appendECMAScriptNumber
+        instead of String::number.
+
+2017-10-08  Dean Jackson  <dino@apple.com>
+
+        Make sort-Xcode-project file handle UnifiedSources
+        https://bugs.webkit.org/show_bug.cgi?id=178042
+
+        Reviewed by Sam Weinig.
+
+        Sort the UnifiedSource(\d+) files by number rather
+        than alphabetically.
+
+        * Scripts/sort-Xcode-project-file:
+        (sortChildrenByFileName):
+        (sortFilesByFileName):
+
+2017-09-29  Filip Pizlo  <fpizlo@apple.com>
+
+        Enable gigacage on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=177586
+
+        Reviewed by JF Bastien.
+        
+        Add a mode to test disabling Gigacage.
+
+        * Scripts/run-jsc-stress-tests:
+        * Scripts/webkitruby/jsc-stress-test-writer-default.rb:
+
+2017-10-06  Aishwarya Nirmal  <anirmal@apple.com>
+
+        [iOS] Respect the "caret-color" CSS property when editing
+        https://bugs.webkit.org/show_bug.cgi?id=177489
+        <rdar://problem/34600419>
+
+        Reviewed by Tim Horton.
+
+        Adds test for iOS caret color support.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/EditorStateTests.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/ios/UIKitSPI.h:
+
+2017-10-06  Alex Christensen  <achristensen@webkit.org>
+
+        Add more infrastructure to apply custom header fields to same-origin requests
+        https://bugs.webkit.org/show_bug.cgi?id=177629
+
+        Reviewed by Ryosuke Niwa.
+
+        * TestWebKitAPI/Tests/WebCore/HTTPHeaderField.cpp:
+        (canonicalizeHTTPHeader):
+        (shouldRemainUnchanged):
+        (shouldBeInvalid):
+        (shouldBecome):
+        * TestWebKitAPI/Tests/WebKitCocoa/WebsitePolicies.mm:
+        (TEST):
+        (expectHeaders):
+        (-[CustomHeaderFieldsDelegate _webView:decidePolicyForNavigationAction:decisionHandler:]):
+        (-[CustomHeaderFieldsDelegate webView:startURLSchemeTask:]):
+        (-[CustomHeaderFieldsDelegate webView:stopURLSchemeTask:]):
+
+        Test main resource requests, subresource requests, and cross-origin requests.
+
 2017-10-06  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         [iOS] Tweak support for classifying form controls (followup to r222487)

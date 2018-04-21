@@ -1,3 +1,245 @@
+2017-10-11  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. Actually skip certain type profiler tests in debug.
+
+        * typeProfiler.yaml:
+        * typeProfiler/deltablue-for-of.js:
+        * typeProfiler/getter-richards.js:
+
+2017-10-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r223113 and r223121.
+        https://bugs.webkit.org/show_bug.cgi?id=178182
+
+        Reintroduced 20% regression on Kraken (Requested by rniwa on
+        #webkit).
+
+        Reverted changesets:
+
+        "Enable gigacage on iOS"
+        https://bugs.webkit.org/show_bug.cgi?id=177586
+        https://trac.webkit.org/changeset/223113
+
+        "Use one virtual allocation for all gigacages and their
+        runways"
+        https://bugs.webkit.org/show_bug.cgi?id=178050
+        https://trac.webkit.org/changeset/223121
+
+2017-10-11  Michael Saboff  <msaboff@apple.com>
+
+        Disable test262 named capture group tests with direct unicode names and with references before definitions
+        https://bugs.webkit.org/show_bug.cgi?id=178177
+
+        Reviewed by Keith Miller.
+
+        Bugs to track fixing these test are:
+        https://bugs.webkit.org/show_bug.cgi?id=178174 -
+            "Add support in named capture group identifiers for direct surrogate pairs"
+        https://bugs.webkit.org/show_bug.cgi?id=178175 -
+            "Test262 failure with Named Capture Groups - using a reference before the group is defined"
+
+        * test262.yaml:
+
+2017-10-11  Caio Lima  <ticaiolima@gmail.com>
+
+        Object properties are undefined in super.call() but not in this.call()
+        https://bugs.webkit.org/show_bug.cgi?id=177230
+
+        Reviewed by Saam Barati.
+
+        * stress/super-call-function-subclass.js: Added.
+        (assert):
+        (A.prototype.t):
+        (A):
+        * stress/super-dot-call-and-apply.js: Added.
+        (assert):
+        (A):
+        (A.prototype.call):
+        (A.prototype.apply):
+        (B.prototype.testSuper):
+        (B):
+        (const.obj.new.B.string_appeared_here.obj.testSuper.C):
+        (D.prototype.testSuper):
+        (D):
+
+2017-10-10  Saam Barati  <sbarati@apple.com>
+
+        The prototype cache should be aware of the Executable it generates a Structure for
+        https://bugs.webkit.org/show_bug.cgi?id=177907
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/dont-confuse-structures-from-different-executable-as-poly-proto.js: Added.
+        (assert):
+        (foo.C):
+        (foo):
+        (bar.C):
+        (bar):
+        (access):
+        (makeLongChain):
+        (accessY):
+
+2017-10-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        `async` should be able to be used as an imported binding name
+        https://bugs.webkit.org/show_bug.cgi?id=176573
+
+        Reviewed by Saam Barati.
+
+        * modules/import-default-async.js: Added.
+        * modules/import-named-async-as.js: Added.
+        * modules/import-named-async.js: Added.
+        * modules/import-named-async/target.js: Added.
+        * modules/import-namespace-async.js: Added.
+        * test262.yaml:
+
+2017-09-29  Filip Pizlo  <fpizlo@apple.com>
+
+        Enable gigacage on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=177586
+
+        Reviewed by JF Bastien.
+        
+        Add tests for when Gigacage gets runtime disabled.
+
+        * stress/disable-gigacage-arrays.js: Added.
+        (foo):
+        * stress/disable-gigacage-strings.js: Added.
+        (foo):
+        * stress/disable-gigacage-typed-arrays.js: Added.
+        (foo):
+
+2017-10-09  Michael Saboff  <msaboff@apple.com>
+
+        Implement RegExp Unicode property escapes
+        https://bugs.webkit.org/show_bug.cgi?id=172069
+
+        Reviewed by JF Bastien.
+
+        Enabled Unicode Property tests.
+
+        * test262.yaml:
+
+2017-10-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r223015 and r223025.
+        https://bugs.webkit.org/show_bug.cgi?id=178093
+
+        Regressed Kraken on iOS by 20% (Requested by keith_mi_ on
+        #webkit).
+
+        Reverted changesets:
+
+        "Enable gigacage on iOS"
+        https://bugs.webkit.org/show_bug.cgi?id=177586
+        http://trac.webkit.org/changeset/223015
+
+        "Unreviewed, disable Gigacage on ARM64 Linux"
+        https://bugs.webkit.org/show_bug.cgi?id=177586
+        http://trac.webkit.org/changeset/223025
+
+2017-10-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update expectations for test262 tests that pass after r223043.
+        https://bugs.webkit.org/show_bug.cgi?id=176685
+
+        Unreviewed test gardening.
+
+        * test262.yaml:
+
+2017-10-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r223022.
+
+        This change introduced 18 test262 failures.
+
+        Reverted changeset:
+
+        "`async` should be able to be used as an imported binding
+        name"
+        https://bugs.webkit.org/show_bug.cgi?id=176573
+        http://trac.webkit.org/changeset/223022
+
+2017-10-09  Saam Barati  <sbarati@apple.com>
+
+        3 poly-proto JSC tests timing out on debug after r222827
+        https://bugs.webkit.org/show_bug.cgi?id=177880
+        <rdar://problem/34817122>
+
+        Unreviewed.
+
+        I'm skipping these type profiler tests on debug since they are long running.
+
+        * typeProfiler/deltablue-for-of.js:
+        * typeProfiler/getter-richards.js:
+
+2017-10-09  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        Safari 10 /11 problem with if (!await get(something)).
+        https://bugs.webkit.org/show_bug.cgi?id=176685
+
+        Reviewed by Saam Barati.
+
+        * stress/async-await-basic.js:
+        (awaitEpression.async):
+        * stress/async-await-syntax.js:
+        (testTopLevelAsyncAwaitSyntaxSloppyMode.testSyntax):
+        (prototype.testTopLevelAsyncAwaitSyntaxStrictMode):
+
+2017-10-08  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. Make some type profiler tests run for less time to avoid debug timeouts.
+
+        * typeProfiler/deltablue-for-of.js:
+        * typeProfiler/getter-richards.js:
+
+2017-10-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        `async` should be able to be used as an imported binding name
+        https://bugs.webkit.org/show_bug.cgi?id=176573
+
+        Reviewed by Darin Adler.
+
+        * modules/import-default-async.js: Added.
+        * modules/import-named-async-as.js: Added.
+        * modules/import-named-async.js: Added.
+        * modules/import-named-async/target.js: Added.
+        * modules/import-namespace-async.js: Added.
+
+2017-09-29  Filip Pizlo  <fpizlo@apple.com>
+
+        Enable gigacage on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=177586
+
+        Reviewed by JF Bastien.
+        
+        Add tests for when Gigacage gets runtime disabled.
+
+        * stress/disable-gigacage-arrays.js: Added.
+        (foo):
+        * stress/disable-gigacage-strings.js: Added.
+        (foo):
+        * stress/disable-gigacage-typed-arrays.js: Added.
+        (foo):
+
+2017-10-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r222791 and r222873.
+        https://bugs.webkit.org/show_bug.cgi?id=178031
+
+        Caused crashes with workers/wasm LayoutTests (Requested by
+        ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "WebAssembly: no VM / JS version of everything but Instance"
+        https://bugs.webkit.org/show_bug.cgi?id=177473
+        http://trac.webkit.org/changeset/222791
+
+        "WebAssembly: address no VM / JS follow-ups"
+        https://bugs.webkit.org/show_bug.cgi?id=177887
+        http://trac.webkit.org/changeset/222873
+
 2017-10-05  Saam Barati  <sbarati@apple.com>
 
         Make sure all prototypes under poly proto get added into the VM's prototype map

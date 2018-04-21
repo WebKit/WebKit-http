@@ -3492,6 +3492,7 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
         list(APPEND WebCore_LIBRARIES
             ${LIBEPOXY_LIBRARIES}
         )
+        add_definitions(${LIBEPOXY_DEFINITIONS})
     else ()
         if (USE_OPENGL)
             list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
@@ -3666,8 +3667,8 @@ if (ENABLE_USER_MESSAGE_HANDLERS)
 endif ()
 
 if (USE_WOFF2)
-  list(APPEND WebCore_INCLUDE_DIRECTORIES "${THIRDPARTY_DIR}/woff2/include")
-  list(APPEND WebCore_LIBRARIES woff2)
+  list(APPEND WebCore_INCLUDE_DIRECTORIES "${WOFF2DEC_INCLUDE_DIRS}")
+  list(APPEND WebCore_LIBRARIES "${BROTLIDEC_LIBRARIES}" "${WOFF2DEC_LIBRARIES}")
 endif ()
 
 if (USE_XDGMIME)

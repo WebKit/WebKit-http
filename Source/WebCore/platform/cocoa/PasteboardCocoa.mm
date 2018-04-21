@@ -143,9 +143,9 @@ bool Pasteboard::containsFiles()
     return true;
 }
 
-Vector<String> Pasteboard::typesSafeForBindings()
+Vector<String> Pasteboard::typesSafeForBindings(const String& origin)
 {
-    Vector<String> types = platformStrategies()->pasteboardStrategy()->typesSafeForDOMToReadAndWrite(m_pasteboardName);
+    Vector<String> types = platformStrategies()->pasteboardStrategy()->typesSafeForDOMToReadAndWrite(m_pasteboardName, origin);
 
     // Enforce changeCount ourselves for security. We check after reading instead of before to be
     // sure it doesn't change between our testing the change count and accessing the data.
@@ -195,7 +195,7 @@ void Pasteboard::read(PasteboardFileReader& reader)
         const char* mimeType = imageTypeToMIMEType(imageType);
         if (!mimeType)
             continue;
-        if (!existingMIMEs.add(mimeType).isNewEntry)
+        if (existingMIMEs.contains(mimeType))
             continue;
         auto buffer = readBufferForTypeWithSecurityCheck(cocoaType);
 #if PLATFORM(MAC)
@@ -204,6 +204,7 @@ void Pasteboard::read(PasteboardFileReader& reader)
 #endif
         if (!buffer)
             continue;
+        existingMIMEs.add(mimeType);
         reader.readBuffer(imageTypeToFakeFilename(imageType), mimeType, buffer.releaseNonNull());
     }
 }
@@ -215,16 +216,24 @@ String Pasteboard::readString(const String& type)
 
 String Pasteboard::readStringInCustomData(const String& type)
 {
-    auto buffer = readBufferForTypeWithSecurityCheck(PasteboardCustomData::cocoaType());
-    if (!buffer)
-        return { };
+    return readCustomData().sameOriginCustomData.get(type);
+}
 
-    // Enforce changeCount ourselves for security. We check after reading instead of before to be
-    // sure it doesn't change between our testing the change count and accessing the data.
-    if (m_changeCount != platformStrategies()->pasteboardStrategy()->changeCount(m_pasteboardName))
-        return { };
+String Pasteboard::readOrigin()
+{
+    return readCustomData().origin;
+}
 
-    return PasteboardCustomData::fromSharedBuffer(*buffer).sameOriginCustomData.get(type);
+const PasteboardCustomData& Pasteboard::readCustomData()
+{
+    if (m_customDataCache)
+        return *m_customDataCache;
+
+    if (auto buffer = readBufferForTypeWithSecurityCheck(PasteboardCustomData::cocoaType()))
+        m_customDataCache = PasteboardCustomData::fromSharedBuffer(*buffer);
+    else
+        m_customDataCache = PasteboardCustomData { };
+    return *m_customDataCache; 
 }
 
 void Pasteboard::writeCustomData(const PasteboardCustomData& data)

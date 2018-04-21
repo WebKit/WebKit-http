@@ -78,7 +78,6 @@ public:
     void absoluteQuadsForSelection(Vector<FloatQuad>& quads) const override;
 #endif
 
-    RenderBoxModelObject* virtualContinuation() const final { return continuation(); }
     RenderInline* inlineElementContinuation() const;
 
     void updateDragState(bool dragOn) final;
@@ -168,7 +167,7 @@ private:
     void addAnnotatedRegions(Vector<AnnotatedRegionValue>&) final;
 #endif
     
-    RenderPtr<RenderInline> clone() const;
+    RenderPtr<RenderInline> cloneAsContinuation() const;
 
     void paintOutlineForLine(GraphicsContext&, const LayoutPoint&, const LayoutRect& prevLine, const LayoutRect& thisLine, const LayoutRect& nextLine, const Color&);
     RenderBoxModelObject* continuationBefore(RenderObject* beforeChild);

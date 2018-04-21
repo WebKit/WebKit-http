@@ -71,3 +71,17 @@
     right: 0;
     bottom: 0;
 }
+
+.content-view.resource-details {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+
+    padding: 0 20px 20px;
+    overflow: scroll;
+
+    -webkit-user-select: text;
+    white-space: nowrap;
+}

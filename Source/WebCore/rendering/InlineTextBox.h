@@ -111,7 +111,7 @@ public:
     FloatRect calculateBoundaries() const override { return FloatRect(x(), y(), width(), height()); }
 
     virtual LayoutRect localSelectionRect(unsigned startPos, unsigned endPos) const;
-    bool isSelected(unsigned startPos, unsigned endPos) const;
+    bool isSelected(unsigned startPosition, unsigned endPosition) const;
     std::pair<unsigned, unsigned> selectionStartEnd() const;
 
 protected:
@@ -159,7 +159,8 @@ private:
     void paintTextMatchMarker(GraphicsContext&, const FloatPoint& boxOrigin, const MarkerSubrange&, bool isActiveMatch);
 
     void paintCompositionBackground(GraphicsContext&, const FloatPoint& boxOrigin);
-    void paintCompositionUnderline(GraphicsContext&, const FloatPoint& boxOrigin, const CompositionUnderline&);
+    void paintCompositionUnderlines(GraphicsContext&, const FloatPoint& boxOrigin) const;
+    void paintCompositionUnderline(GraphicsContext&, const FloatPoint& boxOrigin, const CompositionUnderline&) const;
 
     void paintTextSubrangeBackground(GraphicsContext&, const FloatPoint& boxOrigin, const Color&, unsigned startOffset, unsigned endOffset);
 

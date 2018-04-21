@@ -129,15 +129,9 @@ LayoutUnit InlineTextBox::selectionHeight() const
     return root().selectionHeight();
 }
 
-bool InlineTextBox::isSelected(unsigned startPos, unsigned endPos) const
+bool InlineTextBox::isSelected(unsigned startPosition, unsigned endPosition) const
 {
-    int sPos = clampedOffset(startPos);
-    int ePos = clampedOffset(endPos);
-    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=160786
-    // We should only be checking if sPos >= ePos here, because those are the
-    // indices used to actually generate the selection rect. Allowing us past this guard
-    // on any other condition creates zero-width selection rects.
-    return sPos < ePos || (startPos == endPos && startPos >= start() && startPos <= (start() + len()));
+    return clampedOffset(startPosition) < clampedOffset(endPosition);
 }
 
 RenderObject::SelectionState InlineTextBox::selectionState()
@@ -197,12 +191,8 @@ LayoutRect InlineTextBox::localSelectionRect(unsigned startPos, unsigned endPos)
     unsigned sPos = clampedOffset(startPos);
     unsigned ePos = clampedOffset(endPos);
 
-    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=160786
-    // We should only be checking if sPos >= ePos here, because those are the
-    // indices used to actually generate the selection rect. Allowing us past this guard
-    // on any other condition creates zero-width selection rects.
     if (sPos >= ePos && !(startPos == endPos && startPos >= start() && startPos <= (start() + len())))
-        return LayoutRect();
+        return { };
 
     LayoutUnit selectionTop = this->selectionTop();
     LayoutUnit selectionHeight = this->selectionHeight();
@@ -598,30 +588,8 @@ void InlineTextBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, 
     if (paintInfo.phase == PaintPhaseForeground) {
         paintDocumentMarkers(context, boxOrigin, false);
 
-        if (useCustomUnderlines) {
-            const Vector<CompositionUnderline>& underlines = renderer().frame().editor().customCompositionUnderlines();
-            size_t numUnderlines = underlines.size();
-
-            for (size_t index = 0; index < numUnderlines; ++index) {
-                const CompositionUnderline& underline = underlines[index];
-
-                if (underline.endOffset <= start())
-                    // underline is completely before this run.  This might be an underline that sits
-                    // before the first run we draw, or underlines that were within runs we skipped 
-                    // due to truncation.
-                    continue;
-                
-                if (underline.startOffset <= end()) {
-                    // underline intersects this run.  Paint it.
-                    paintCompositionUnderline(context, boxOrigin, underline);
-                    if (underline.endOffset > end() + 1)
-                        // underline also runs into the next run. Bail now, no more marker advancement.
-                        break;
-                } else
-                    // underline is completely after this run, bail.  A later run will paint it.
-                    break;
-            }
-        }
+        if (useCustomUnderlines)
+            paintCompositionUnderlines(context, boxOrigin);
     }
     
     if (shouldRotate)
@@ -812,22 +780,21 @@ void InlineTextBox::paintDocumentMarker(GraphicsContext& context, const FloatPoi
     if (!markerSpansWholeBox) {
         unsigned startPosition = clampedOffset(subrange.startOffset);
         unsigned endPosition = clampedOffset(subrange.endOffset);
-        
+
         if (m_truncation != cNoTruncation)
             endPosition = std::min(endPosition, static_cast<unsigned>(m_truncation));
 
         // Calculate start & width
-        // FIXME: Adjust text run for combined text and hyphenation.
+        // FIXME: Adjust text run for combined text.
         bool ignoreCombinedText = true;
-        bool ignoreHyphen = true;
         int deltaY = renderer().style().isFlippedLinesWritingMode() ? selectionBottom() - logicalBottom() : logicalTop() - selectionTop();
         int selHeight = selectionHeight();
         FloatPoint startPoint(boxOrigin.x(), boxOrigin.y() - deltaY);
-        auto text = this->text(ignoreCombinedText, ignoreHyphen);
+        auto text = this->text(ignoreCombinedText);
         TextRun run = createTextRun(text);
 
         LayoutRect selectionRect = LayoutRect(startPoint, FloatSize(0, selHeight));
-        lineFont().adjustSelectionRectForText(run, selectionRect, startPosition, endPosition);
+        lineFont().adjustSelectionRectForText(run, selectionRect, startPosition, endPosition >= len() ? run.length() : endPosition);
         IntRect markerRect = enclosingIntRect(selectionRect);
         start = markerRect.x() - startPoint.x();
         width = markerRect.width();
@@ -974,7 +941,31 @@ void InlineTextBox::paintDocumentMarkers(GraphicsContext& context, const FloatPo
     }
 }
 
-void InlineTextBox::paintCompositionUnderline(GraphicsContext& context, const FloatPoint& boxOrigin, const CompositionUnderline& underline)
+void InlineTextBox::paintCompositionUnderlines(GraphicsContext& context, const FloatPoint& boxOrigin) const
+{
+    if (m_truncation == cFullTruncation)
+        return;
+
+    for (auto& underline : renderer().frame().editor().customCompositionUnderlines()) {
+        if (underline.endOffset <= m_start) {
+            // Underline is completely before this run. This might be an underline that sits
+            // before the first run we draw, or underlines that were within runs we skipped
+            // due to truncation.
+            continue;
+        }
+
+        if (underline.startOffset > end())
+            break; // Underline is completely after this run, bail. A later run will paint it.
+
+        // Underline intersects this run. Paint it.
+        paintCompositionUnderline(context, boxOrigin, underline);
+
+        if (underline.endOffset > end() + 1)
+            break; // Underline also runs into the next run. Bail now, no more marker advancement.
+    }
+}
+
+void InlineTextBox::paintCompositionUnderline(GraphicsContext& context, const FloatPoint& boxOrigin, const CompositionUnderline& underline) const
 {
     if (m_truncation == cFullTruncation)
         return;

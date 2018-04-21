@@ -1,3 +1,845 @@
+2017-10-11  Saam Barati  <sbarati@apple.com>
+
+        Runtime disable poly proto because it may be a 3-4% Speedometer regression
+        https://bugs.webkit.org/show_bug.cgi?id=178192
+
+        Reviewed by JF Bastien.
+
+        * runtime/Options.h:
+        * runtime/StructureInlines.h:
+        (JSC::Structure::shouldConvertToPolyProto):
+
+2017-10-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r223113 and r223121.
+        https://bugs.webkit.org/show_bug.cgi?id=178182
+
+        Reintroduced 20% regression on Kraken (Requested by rniwa on
+        #webkit).
+
+        Reverted changesets:
+
+        "Enable gigacage on iOS"
+        https://bugs.webkit.org/show_bug.cgi?id=177586
+        https://trac.webkit.org/changeset/223113
+
+        "Use one virtual allocation for all gigacages and their
+        runways"
+        https://bugs.webkit.org/show_bug.cgi?id=178050
+        https://trac.webkit.org/changeset/223121
+
+2017-10-11  Michael Saboff  <msaboff@apple.com>
+
+        Update JavaScriptCore/ucd/CaseFolding.txt to Unicode database 10.0
+        https://bugs.webkit.org/show_bug.cgi?id=178106
+
+        Reviewed by Keith Miller.
+
+        * ucd/CaseFolding.txt:
+
+2017-10-11  Caio Lima  <ticaiolima@gmail.com>
+
+        Object properties are undefined in super.call() but not in this.call()
+        https://bugs.webkit.org/show_bug.cgi?id=177230
+
+        Reviewed by Saam Barati.
+
+        Bytecode generation for "super.call(...)" or "super.apply(...)"
+        shouldn't be considered as CallFunctionCallDotNode or
+        ApplyFunctionCallDotNode because they should be considered as common
+        super property access as any other function. According to spec[1],
+        "super" is not refering to parent constructor.
+
+        [1] - https://tc39.github.io/ecma262/#sec-super-keyword-runtime-semantics-evaluation
+
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::makeFunctionCallNode):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseMemberExpression):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::makeFunctionCallNode):
+
+2017-10-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Drop Instantiate hook in ES6 module loader
+        https://bugs.webkit.org/show_bug.cgi?id=178162
+
+        Reviewed by Sam Weinig.
+
+        This patch is a part of patch series for module loader refactoring to adopt
+        integrity="" parameters and introduce new whatwg module import mechanism.
+
+        In this patch, we drop instantiate hook in module loader. This hook is originally
+        introduced because it is defined in whatwg/loader spec. But this hook is not
+        used in our implementation, and this hook won't be used since (1) whatwg/loader
+        spec is abandoned, and (2) this type of hooks should be done in Service Workers.
+
+        In addition, this patch applies some cleaning up of our module loader JS code
+        to simplify things. This change paves the way to more efficient loader implementation
+        with great flexibility to adopt integrity="" parameters.
+
+        * builtins/ModuleLoaderPrototype.js:
+        (requestInstantiate):
+        (provideFetch):
+        provide is changed to provideFetch since we only used this function with Fetch stage parameter.
+
+        (fulfillInstantiate): Deleted.
+        (commitInstantiated): Deleted.
+        (instantiation): Deleted.
+        They are merged into requestInstantiate code. This is simpler.
+
+        (provide): Deleted.
+        * jsc.cpp:
+        * runtime/Completion.cpp:
+        (JSC::loadAndEvaluateModule):
+        (JSC::loadModule):
+        * runtime/JSGlobalObject.cpp:
+        * runtime/JSGlobalObject.h:
+        * runtime/JSModuleLoader.cpp:
+        (JSC::JSModuleLoader::provideFetch):
+        (JSC::JSModuleLoader::provide): Deleted.
+        Changed to provideFetch.
+
+        (JSC::JSModuleLoader::instantiate): Deleted.
+        Drop this hook.
+
+        * runtime/JSModuleLoader.h:
+        * runtime/ModuleLoaderPrototype.cpp:
+        (JSC::moduleLoaderPrototypeInstantiate): Deleted.
+        Drop this hook.
+
+2017-10-10  Saam Barati  <sbarati@apple.com>
+
+        Prototype structure transition should be a deferred transition
+        https://bugs.webkit.org/show_bug.cgi?id=177734
+
+        Reviewed by Keith Miller.
+
+        Absence ObjectPropertyConditions work by verifying both that the Structure 
+        does not have a particular property and that its prototype has
+        remained constant. However, the prototype transition was firing
+        the transition watchpoint before setting the object's structure.
+        This meant that isValid for Absence would never return false because
+        the prototype changed. Clearly this is wrong. The reason this didn't
+        break OPCs in general is that we'd also check if we could still watch
+        the OPC. In this case, we can't still watch it because we're inspecting
+        a structure with an invalidated transition watchpoint. To fix
+        this weird quirk of the code, I'm making it so that doing a prototype
+        transition uses the DeferredStructureTransitionWatchpointFire machinery.
+        
+        This patch also fixes some dead code that I left in regarding
+        poly proto in OPC.
+
+        * bytecode/PropertyCondition.cpp:
+        (JSC::PropertyCondition::isStillValidAssumingImpurePropertyWatchpoint const):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::setPrototypeDirect):
+        * runtime/Structure.cpp:
+        (JSC::Structure::changePrototypeTransition):
+        * runtime/Structure.h:
+
+2017-10-10  Robin Morisset  <rmorisset@apple.com>
+
+        Avoid allocating useless landingBlocks in DFGByteCodeParser::handleInlining()
+        https://bugs.webkit.org/show_bug.cgi?id=177926
+
+        Reviewed by Saam Barati.
+
+        When doing polyvariant inlining, there used to be a landing block for each callee, each of which was then linked to a continuation block.
+        With this change, we allocate the continuation block first, and pass it to the inlining routine so that op_ret in the callee link directly to it.
+        The only subtlety is that when inlining an intrinsic we must do the jump by hand, and also remember to call processSetLocalQueue with nextOffset before it.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::inlineCall):
+        (JSC::DFG::ByteCodeParser::attemptToInlineCall):
+        (JSC::DFG::ByteCodeParser::handleInlining):
+        (JSC::DFG::ByteCodeParser::InlineStackEntry::InlineStackEntry):
+        (JSC::DFG::ByteCodeParser::parse):
+
+2017-10-10  Guillaume Emont  <guijemont@igalia.com>
+
+        Fix compilation when MASM_PROBE (and therefore DFG) are disabled
+        https://bugs.webkit.org/show_bug.cgi?id=178134
+
+        Reviewed by Saam Barati.
+
+        * bytecode/CodeBlock.cpp:
+        * bytecode/CodeBlock.h:
+        Disable some code when building without DFG_JIT.
+
+2017-10-10  Sam Weinig  <sam@webkit.org>
+
+        Replace copyKeysToVector/copyValuesToVector with copyToVector(map.keys())/copyToVector(map.values())
+        https://bugs.webkit.org/show_bug.cgi?id=178102
+
+        Reviewed by Tim Horton.
+
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::clearInspectorBreakpointState):
+
+2017-10-10  Michael Saboff  <msaboff@apple.com>
+
+        Unreviewed build fix.
+
+        Removed unused lambda capture.
+
+        * yarr/YarrPattern.cpp:
+        (JSC::Yarr::CharacterClassConstructor::appendInverted):
+
+2017-10-10  Saam Barati  <sbarati@apple.com>
+
+        The prototype cache should be aware of the Executable it generates a Structure for
+        https://bugs.webkit.org/show_bug.cgi?id=177907
+
+        Reviewed by Filip Pizlo.
+
+        This patch renames PrototypeMap to StructureCache because
+        it is no longer a map of the prototypes in the VM. It's
+        only used to cache Structures during object construction.
+        
+        The main change of this patch is to guarantee that Structures generated
+        by the create_this originating from different two different Executables'
+        bytecode won't hash-cons to the same thing. Previously, we could hash-cons
+        them depending on the JSObject* prototype pointer. This would cause the last
+        thing that hash-consed to overwrite the Structure's poly proto watchpoint. This
+        happened because when we initialize a JSFunction's ObjectAllocationProfile,
+        we set the resulting Structure's poly proto watchpoint. This could cause a Structure
+        generating from some Executable e1 to end up with the poly proto watchpoint
+        for another Executable e2 simply because JSFunctions backed by e1 and e2
+        shared the same prototype. Then, based on profiling information, we may fire the
+        wrong Executable's poly proto watchpoint. This patch fixes this bug by
+        guaranteeing that Structures generating from create_this for different
+        Executables are unique even if they share the same prototype by adding
+        the FunctionExecutable* as another field in PrototypeKey.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * bytecode/InternalFunctionAllocationProfile.h:
+        (JSC::InternalFunctionAllocationProfile::createAllocationStructureFromBase):
+        * bytecode/ObjectAllocationProfile.cpp:
+        (JSC::ObjectAllocationProfile::initializeProfile):
+        * dfg/DFGOperations.cpp:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/InternalFunction.cpp:
+        (JSC::InternalFunction::createSubclassStructureSlow):
+        * runtime/IteratorOperations.cpp:
+        (JSC::createIteratorResultObjectStructure):
+        * runtime/JSBoundFunction.cpp:
+        (JSC::getBoundFunctionStructure):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/ObjectConstructor.h:
+        (JSC::constructEmptyObject):
+        * runtime/PrototypeKey.h:
+        (JSC::PrototypeKey::PrototypeKey):
+        (JSC::PrototypeKey::executable const):
+        (JSC::PrototypeKey::operator== const):
+        (JSC::PrototypeKey::hash const):
+        * runtime/PrototypeMap.cpp: Removed.
+        * runtime/PrototypeMap.h: Removed.
+        * runtime/StructureCache.cpp: Copied from Source/JavaScriptCore/runtime/PrototypeMap.cpp.
+        (JSC::StructureCache::createEmptyStructure):
+        (JSC::StructureCache::emptyStructureForPrototypeFromBaseStructure):
+        (JSC::StructureCache::emptyObjectStructureForPrototype):
+        (JSC::PrototypeMap::createEmptyStructure): Deleted.
+        (JSC::PrototypeMap::emptyStructureForPrototypeFromBaseStructure): Deleted.
+        (JSC::PrototypeMap::emptyObjectStructureForPrototype): Deleted.
+        * runtime/StructureCache.h: Copied from Source/JavaScriptCore/runtime/PrototypeMap.h.
+        (JSC::StructureCache::StructureCache):
+        (JSC::PrototypeMap::PrototypeMap): Deleted.
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2017-10-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        `async` should be able to be used as an imported binding name
+        https://bugs.webkit.org/show_bug.cgi?id=176573
+
+        Reviewed by Saam Barati.
+
+        Previously, we have ASYNC keyword in the parser. This is introduced only for performance,
+        and ECMA262 spec does not categorize "async" to keyword. This makes parser code complicated,
+        since ASYNC should be handled as IDENT. If we missed this ASYNC keyword, we cause a bug.
+        For example, import declaration failed to bind imported binding to the name "async" because
+        the parser considered ASYNC as keyword.
+
+        This patch removes ASYNC keyword from the parser. By carefully handling ASYNC, we can keep
+        the current performance without using this ASYNC keyword.
+
+        We also add `escaped` field to token data since contextual keyword is valid only if it does
+        not contain any escape sequences. We fix bunch of contextual keyword use with this fix too
+        e.g. `of in for-of`. This improves test262 score.
+
+        * parser/Keywords.table:
+        * parser/Lexer.cpp:
+        (JSC::Lexer<LChar>::parseIdentifier):
+        (JSC::Lexer<UChar>::parseIdentifier):
+        (JSC::Lexer<CharacterType>::parseIdentifierSlowCase):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseStatementListItem):
+        (JSC::Parser<LexerType>::parseForStatement):
+        (JSC::Parser<LexerType>::parseStatement):
+        (JSC::Parser<LexerType>::maybeParseAsyncFunctionDeclarationStatement):
+        (JSC::Parser<LexerType>::parseClass):
+        (JSC::Parser<LexerType>::parseExportDeclaration):
+        (JSC::Parser<LexerType>::parseAssignmentExpression):
+        (JSC::Parser<LexerType>::parseProperty):
+        (JSC::Parser<LexerType>::parsePrimaryExpression):
+        (JSC::Parser<LexerType>::parseMemberExpression):
+        (JSC::Parser<LexerType>::printUnexpectedTokenText):
+        * parser/Parser.h:
+        (JSC::Parser::matchContextualKeyword):
+        * parser/ParserTokens.h:
+        * runtime/CommonIdentifiers.h:
+
+2017-10-09  Saam Barati  <sbarati@apple.com>
+
+        We don't need to clearEmptyObjectStructureForPrototype because JSGlobalObject* is part of the cache's key
+        https://bugs.webkit.org/show_bug.cgi?id=177987
+
+        Reviewed by Filip Pizlo.
+
+        * runtime/JSProxy.cpp:
+        (JSC::JSProxy::setTarget):
+        * runtime/PrototypeMap.cpp:
+        (JSC::PrototypeMap::clearEmptyObjectStructureForPrototype): Deleted.
+        * runtime/PrototypeMap.h:
+
+2017-10-09  Filip Pizlo  <fpizlo@apple.com>
+
+        JSCell::didBecomePrototype is racy
+        https://bugs.webkit.org/show_bug.cgi?id=178110
+
+        Reviewed by Saam Barati.
+        
+        The indexing type can be modified by any thread using CAS. So, we need to use atomics when
+        modifying it. We don't need to use atomics when reading it though (since it's just one field).
+
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::didBecomePrototype):
+
+2017-09-29  Filip Pizlo  <fpizlo@apple.com>
+
+        Enable gigacage on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=177586
+
+        Reviewed by JF Bastien.
+
+        The hardest part of enabling Gigacage on iOS is that it requires loading global variables while
+        executing JS, so the LLInt needs to know how to load from global variables on all platforms that
+        have Gigacage. So, this teaches ARM64 how to load from global variables.
+        
+        Also, this makes the code handle disabling the gigacage a bit better.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::caged):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::cage):
+        (JSC::AssemblyHelpers::cageConditionally):
+        * offlineasm/arm64.rb:
+        * offlineasm/asm.rb:
+        * offlineasm/instructions.rb:
+
+2017-10-09  Robin Morisset  <rmorisset@apple.com>
+
+        Evaluate the benefit of skipping dead code in the DFGByteCodeParser when a function returns in its first block
+        https://bugs.webkit.org/show_bug.cgi?id=177925
+
+        Reviewed by Saam Barati.
+
+        We used to do a rather weird "optimisation" in the bytecode parser: when a function would return in its first block,
+        the rest of the function was skipped. Since it has no actual impact on any benchmarks from what I could see, I removed
+        that code. It allows some changes to parseBlock(), since it now returns void and no-longer bool (it was returning a boolean that said whether that case happened or not).
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        (JSC::DFG::ByteCodeParser::parseCodeBlock):
+
+2017-10-09  Robin Morisset  <rmorisset@apple.com>
+
+        Refactor the inliner to simplify block linking
+        https://bugs.webkit.org/show_bug.cgi?id=177922
+
+        Reviewed by Saam Barati.
+
+        The biggest refactor changes the way blocks are linked. In DFGByteCodeParser, most terminals (such as Jump or Branch) jump to nullptr initially, and have
+        some metadata indicating the bytecode index corresponding to their targets. They are later linked to the right basic block using two fields of InlineStackEntry:
+        - m_unlinkedBlocks is just a worklist of blocks with a terminal that needs to be linked
+        - m_linkingTargets is a dictionary from bytecode indices to BasicBlock*
+        Before refactoring, every block was automatically added to both of these fields, for the InlineStackEntry of whatever function allocated it.
+        This created a significant number of corner cases, such as blocks allocated in a caller, with a terminal written by an inlined callee and pointing to a block in the callee,
+        or blocks allocated in an inline callee, with a terminal written by the caller after it returns and pointing to a block in the caller, or blocks with a manually linked
+        terminal that needs to be taken off m_unlinkedBlocks.
+        I changed things so that blocks are only added to m_unlinkedBlocks when their terminal gets written (see the LAST_OPCODE macro) making it a lot easier to be in the "right" InlineStackEntry,
+        that is the one that holds their target in its m_linkingTargets field.
+
+        There are a few much smaller refactors in this patch:
+        - parse() is now of type void insted of bool (it was always returning true)
+        - The 7 and 8 arguments of handleCall were inlined in its 3 arguments version for readability
+        - The 9 argument version was cleaned up and simplified
+        - I made separate allocateBlock routines because the little dance with adoptRef(* new BasicBlock(...)) was being repeated in lots of places, and typos in that were a major source of bugs during other refactorings
+        - Jumps are now created with explicit addJumpTo() functions, providing some sanity checking through asserts and didLink()
+        - Blocks are only added to m_unlinkedBlocks if they end in a terminal that linkBlock works with (see LAST_OPCODE)
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::addToGraph):
+        (JSC::DFG::ByteCodeParser::handleCall):
+        (JSC::DFG::ByteCodeParser::refineStatically):
+        (JSC::DFG::ByteCodeParser::handleRecursiveTailCall):
+        (JSC::DFG::ByteCodeParser::handleVarargsCall):
+        (JSC::DFG::ByteCodeParser::inlineCall):
+        (JSC::DFG::ByteCodeParser::attemptToInlineCall):
+        (JSC::DFG::ByteCodeParser::handleInlining):
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        (JSC::DFG::ByteCodeParser::handleConstantInternalFunction):
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        (JSC::DFG::ByteCodeParser::parseCodeBlock):
+        (JSC::DFG::ByteCodeParser::parse):
+        (JSC::DFG::parse):
+        (JSC::DFG::ByteCodeParser::cancelLinkingForBlock): Deleted.
+        * dfg/DFGByteCodeParser.h:
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+
+2017-10-09  Michael Saboff  <msaboff@apple.com>
+
+        Implement RegExp Unicode property escapes
+        https://bugs.webkit.org/show_bug.cgi?id=172069
+
+        Reviewed by JF Bastien.
+
+        Added Unicode Properties by extending the existing CharacterClass processing.
+
+        Introduced a new Python script, generateYarrUnicodePropertyTables.py, that parses
+        Unicode Database files to create character class data.  The result is a set of functions
+        that return character classes, one for each of the required Unicode properties.
+        There are many cases where many properties are handled by one function, primarily due to
+        property aliases, but also due to Script_Extension properties that are the same as the
+        Script property for the same script value.
+
+        Extended the BuiltInCharacterClassID enum so it can be used also for Unicode property
+        character classes.  Unicode properties are the enum value BaseUnicodePropertyID plus a
+        zero based value, that value being the index to the corrensponding character class
+        function.  The generation script also creates static hashing tables similar to what we
+        use for the generated .lut.h lookup table files.  These hashing tables map property
+        names to the function index.  Using these hashing tables, we can lookup a property
+        name and if present convert it to a function index.  We add that index to
+        BaseUnicodePropertyID to create a BuiltInCharacterClassID.
+
+        When we do syntax parsing, we convert the property to its corresponding BuiltInCharacterClassID.
+        When doing real parsing we takes the returned BuiltInCharacterClassID and use it to get
+        the actual character class by calling the corresponding generated function.
+
+        Added a new CharacterClass constructor that can take literal arrays for ranges and matches
+        to make the creation of large static character classes more efficent.
+
+        Since the Unicode character classes typically have more matches and ranges, the character
+        class matching in the interpreter has been updated to use binary searching for matches and
+        ranges with more than 6 entries.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Scripts/generateYarrUnicodePropertyTables.py: Added.
+        (openOrExit):
+        (openUCDFileOrExit):
+        (verifyUCDFilesExist):
+        (ceilingToPowerOf2):
+        (Aliases):
+        (Aliases.__init__):
+        (Aliases.parsePropertyAliasesFile):
+        (Aliases.parsePropertyValueAliasesFile):
+        (Aliases.globalAliasesFor):
+        (Aliases.generalCategoryAliasesFor):
+        (Aliases.generalCategoryForAlias):
+        (Aliases.scriptAliasesFor):
+        (Aliases.scriptNameForAlias):
+        (PropertyData):
+        (PropertyData.__init__):
+        (PropertyData.setAliases):
+        (PropertyData.makeCopy):
+        (PropertyData.getIndex):
+        (PropertyData.getCreateFuncName):
+        (PropertyData.addMatch):
+        (PropertyData.addRange):
+        (PropertyData.addMatchUnorderedForMatchesAndRanges):
+        (PropertyData.addRangeUnorderedForMatchesAndRanges):
+        (PropertyData.addMatchUnordered):
+        (PropertyData.addRangeUnordered):
+        (PropertyData.removeMatchFromRanges):
+        (PropertyData.removeMatch):
+        (PropertyData.dumpMatchData):
+        (PropertyData.dump):
+        (PropertyData.dumpAll):
+        (PropertyData.dumpAll.std):
+        (PropertyData.createAndDumpHashTable):
+        (Scripts):
+        (Scripts.__init__):
+        (Scripts.parseScriptsFile):
+        (Scripts.parseScriptExtensionsFile):
+        (Scripts.dump):
+        (GeneralCategory):
+        (GeneralCategory.__init__):
+        (GeneralCategory.createSpecialPropertyData):
+        (GeneralCategory.findPropertyGroupFor):
+        (GeneralCategory.addNextCodePoints):
+        (GeneralCategory.parse):
+        (GeneralCategory.dump):
+        (BinaryProperty):
+        (BinaryProperty.__init__):
+        (BinaryProperty.parsePropertyFile):
+        (BinaryProperty.dump):
+        * Scripts/hasher.py: Added.
+        (stringHash):
+        * Sources.txt:
+        * ucd/DerivedBinaryProperties.txt: Added.
+        * ucd/DerivedCoreProperties.txt: Added.
+        * ucd/DerivedNormalizationProps.txt: Added.
+        * ucd/PropList.txt: Added.
+        * ucd/PropertyAliases.txt: Added.
+        * ucd/PropertyValueAliases.txt: Added.
+        * ucd/ScriptExtensions.txt: Added.
+        * ucd/Scripts.txt: Added.
+        * ucd/UnicodeData.txt: Added.
+        * ucd/emoji-data.txt: Added.
+        * yarr/Yarr.h:
+        * yarr/YarrInterpreter.cpp:
+        (JSC::Yarr::Interpreter::testCharacterClass):
+        * yarr/YarrParser.h:
+        (JSC::Yarr::Parser::parseEscape):
+        (JSC::Yarr::Parser::parseTokens):
+        (JSC::Yarr::Parser::isUnicodePropertyValueExpressionChar):
+        (JSC::Yarr::Parser::tryConsumeUnicodePropertyExpression):
+        * yarr/YarrPattern.cpp:
+        (JSC::Yarr::CharacterClassConstructor::appendInverted):
+        (JSC::Yarr::YarrPatternConstructor::atomBuiltInCharacterClass):
+        (JSC::Yarr::YarrPatternConstructor::atomCharacterClassBuiltIn):
+        (JSC::Yarr::YarrPattern::errorMessage):
+        (JSC::Yarr::PatternTerm::dump):
+        * yarr/YarrPattern.h:
+        (JSC::Yarr::CharacterRange::CharacterRange):
+        (JSC::Yarr::CharacterClass::CharacterClass):
+        (JSC::Yarr::YarrPattern::reset):
+        (JSC::Yarr::YarrPattern::unicodeCharacterClassFor):
+        * yarr/YarrUnicodeProperties.cpp: Added.
+        (JSC::Yarr::HashTable::entry const):
+        (JSC::Yarr::unicodeMatchPropertyValue):
+        (JSC::Yarr::unicodeMatchProperty):
+        (JSC::Yarr::createUnicodeCharacterClassFor):
+        * yarr/YarrUnicodeProperties.h: Added.
+
+2017-10-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r223015 and r223025.
+        https://bugs.webkit.org/show_bug.cgi?id=178093
+
+        Regressed Kraken on iOS by 20% (Requested by keith_mi_ on
+        #webkit).
+
+        Reverted changesets:
+
+        "Enable gigacage on iOS"
+        https://bugs.webkit.org/show_bug.cgi?id=177586
+        http://trac.webkit.org/changeset/223015
+
+        "Unreviewed, disable Gigacage on ARM64 Linux"
+        https://bugs.webkit.org/show_bug.cgi?id=177586
+        http://trac.webkit.org/changeset/223025
+
+2017-10-09  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, sort unified sources again now that they are numbered numerically rather than lexicographically.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2017-10-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r223022.
+
+        This change introduced 18 test262 failures.
+
+        Reverted changeset:
+
+        "`async` should be able to be used as an imported binding
+        name"
+        https://bugs.webkit.org/show_bug.cgi?id=176573
+        http://trac.webkit.org/changeset/223022
+
+2017-10-09  Robin Morisset  <rmorisset@apple.com>
+
+        Make the names of the options consistent
+        https://bugs.webkit.org/show_bug.cgi?id=177933
+
+        Reviewed by Saam Barati.
+
+        I added an alias so the old spelling still works.
+        I also fixed a bunch of typos in comments all around the codebase.
+
+        * b3/B3LowerToAir.cpp:
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGIntegerRangeOptimizationPhase.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGSSAConversionPhase.h:
+        * dfg/DFGSpeculativeJIT.h:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::lower):
+        * ftl/FTLOSREntry.cpp:
+        (JSC::FTL::prepareOSREntry):
+        * jit/CallFrameShuffler.cpp:
+        (JSC::CallFrameShuffler::prepareForTailCall):
+        * parser/Nodes.h:
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseExportDeclaration):
+        * runtime/Options.h:
+
+2017-10-09  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        Safari 10 /11 problem with if (!await get(something)).
+        https://bugs.webkit.org/show_bug.cgi?id=176685
+
+        Reviewed by Saam Barati.
+
+        Using unary operator before `await` lead to count it as identifier.
+        According to spec https://tc39.github.io/ecma262/#sec-async-function-definitions
+        and Note 1 `await` is as AwaitExpression and it is allowed to use unary operator
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parsePrimaryExpression):
+
+2017-10-07  Filip Pizlo  <fpizlo@apple.com>
+
+        direct-construct-arity-mismatch.js can have GCs that take ~70ms if you force poly proto and disable generational GC
+        https://bugs.webkit.org/show_bug.cgi?id=178051
+
+        Reviewed by Saam Barati.
+        
+        After I studied the profile of this test, I found two pathologies in our code relating to
+        prototypes. I think that now that we support poly proto, it's more likely for these pathologies to
+        happen. Also, the fact that we force poly proto in some tests, it's possible for one of our tests
+        to trigger these pathologies.
+        
+        - WeakGCMap::m_prototoypes is the set of all prototypes. That's super dangerous. This patch turns
+          this into a bit in the JSCell header. It uses the last spare bit in indexingTypeAndMisc. Note
+          that we still have 6 spare bits in cellState, but those are a bit more annoying to get at.
+        
+        - WeakGCMap registers itself with GC using a std::function. That means allocating things in the
+          malloc heap. This changes it to a virtual method on WeakGCMap. I don't know for sure that this is
+          a problem area, but there are places where we could allocate a lot of WeakGCMaps, like if we have
+          a lot of transition tables. It's good to reduce the amount of memory those require.
+        
+        Also, I saw a FIXME about turning the std::tuple in PrototypeMap into a struct, so I did that while
+        I was at it. I initially thought that this would have to be part of my solution, but it turned out
+        not to be. I think it's worth landing anyway since it makes the code a lot more clear.
+        
+        This fixes the timeout in that test and probably reduces memory consumption.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGOperations.cpp:
+        * heap/Heap.cpp:
+        (JSC::Heap::pruneStaleEntriesFromWeakGCMaps):
+        (JSC::Heap::registerWeakGCMap):
+        (JSC::Heap::unregisterWeakGCMap):
+        * heap/Heap.h:
+        * inspector/JSInjectedScriptHostPrototype.cpp:
+        (Inspector::JSInjectedScriptHostPrototype::finishCreation):
+        * inspector/JSJavaScriptCallFramePrototype.cpp:
+        (Inspector::JSJavaScriptCallFramePrototype::finishCreation):
+        * runtime/ArrayIteratorPrototype.cpp:
+        (JSC::ArrayIteratorPrototype::finishCreation):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::ArrayPrototype::finishCreation):
+        * runtime/AsyncFromSyncIteratorPrototype.cpp:
+        (JSC::AsyncFromSyncIteratorPrototype::finishCreation):
+        * runtime/AsyncFunctionPrototype.cpp:
+        (JSC::AsyncFunctionPrototype::finishCreation):
+        * runtime/AsyncGeneratorFunctionPrototype.cpp:
+        (JSC::AsyncGeneratorFunctionPrototype::finishCreation):
+        * runtime/AsyncGeneratorPrototype.cpp:
+        (JSC::AsyncGeneratorPrototype::finishCreation):
+        * runtime/AsyncIteratorPrototype.cpp:
+        (JSC::AsyncIteratorPrototype::finishCreation):
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/GeneratorFunctionPrototype.cpp:
+        (JSC::GeneratorFunctionPrototype::finishCreation):
+        * runtime/GeneratorPrototype.cpp:
+        (JSC::GeneratorPrototype::finishCreation):
+        * runtime/IndexingType.h:
+        * runtime/IteratorPrototype.cpp:
+        (JSC::IteratorPrototype::finishCreation):
+        * runtime/JSCInlines.h:
+        * runtime/JSCell.h:
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::mayBePrototype const):
+        (JSC::JSCell::didBecomePrototype):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::notifyPresenceOfIndexedAccessors):
+        (JSC::JSObject::setPrototypeDirect):
+        * runtime/JSProxy.cpp:
+        (JSC::JSProxy::setTarget):
+        * runtime/MapIteratorPrototype.cpp:
+        (JSC::MapIteratorPrototype::finishCreation):
+        * runtime/MapPrototype.cpp:
+        (JSC::MapPrototype::finishCreation):
+        * runtime/ObjectPrototype.cpp:
+        (JSC::ObjectPrototype::finishCreation):
+        * runtime/PrototypeKey.h: Added.
+        (JSC::PrototypeKey::PrototypeKey):
+        (JSC::PrototypeKey::prototype const):
+        (JSC::PrototypeKey::inlineCapacity const):
+        (JSC::PrototypeKey::classInfo const):
+        (JSC::PrototypeKey::globalObject const):
+        (JSC::PrototypeKey::operator== const):
+        (JSC::PrototypeKey::operator!= const):
+        (JSC::PrototypeKey::operator bool const):
+        (JSC::PrototypeKey::isHashTableDeletedValue const):
+        (JSC::PrototypeKey::hash const):
+        (JSC::PrototypeKeyHash::hash):
+        (JSC::PrototypeKeyHash::equal):
+        * runtime/PrototypeMap.cpp:
+        (JSC::PrototypeMap::createEmptyStructure):
+        (JSC::PrototypeMap::clearEmptyObjectStructureForPrototype):
+        * runtime/PrototypeMap.h:
+        (JSC::PrototypeMap::PrototypeMap):
+        * runtime/PrototypeMapInlines.h: Removed.
+        * runtime/SetIteratorPrototype.cpp:
+        (JSC::SetIteratorPrototype::finishCreation):
+        * runtime/SetPrototype.cpp:
+        (JSC::SetPrototype::finishCreation):
+        * runtime/StringIteratorPrototype.cpp:
+        (JSC::StringIteratorPrototype::finishCreation):
+        * runtime/WeakGCMap.h:
+        (JSC::WeakGCMapBase::~WeakGCMapBase):
+        * runtime/WeakGCMapInlines.h:
+        (JSC::KeyTraitsArg>::WeakGCMap):
+        * runtime/WeakMapPrototype.cpp:
+        (JSC::WeakMapPrototype::finishCreation):
+        * runtime/WeakSetPrototype.cpp:
+        (JSC::WeakSetPrototype::finishCreation):
+
+2017-10-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Octane/splay can leak memory due to stray pointers on the stack when run from the command line
+        https://bugs.webkit.org/show_bug.cgi?id=178054
+
+        Reviewed by Saam Barati.
+        
+        This throws in a bunch of sanitize calls. It fixes the problem. It's also performance-neutral. In
+        most cases, calling the sanitize function is O(1), because it doesn't have anything to do if the stack
+        height stays relatively constant.
+
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGTierUpCheckInjectionPhase.cpp:
+        (JSC::DFG::TierUpCheckInjectionPhase::run):
+        * ftl/FTLOSREntry.cpp:
+        * heap/Heap.cpp:
+        (JSC::Heap::runCurrentPhase):
+        * heap/MarkedAllocatorInlines.h:
+        (JSC::MarkedAllocator::tryAllocate):
+        (JSC::MarkedAllocator::allocate):
+        * heap/Subspace.cpp:
+        (JSC::Subspace::tryAllocateSlow):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::sanitizeStackInline):
+        * jit/ThunkGenerators.cpp:
+        (JSC::slowPathFor):
+        * runtime/VM.h:
+        (JSC::VM::addressOfLastStackTop):
+
+2017-10-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        `async` should be able to be used as an imported binding name
+        https://bugs.webkit.org/show_bug.cgi?id=176573
+
+        Reviewed by Darin Adler.
+
+        Previously, we have ASYNC keyword in the parser. This is introduced only for performance,
+        and ECMA262 spec does not categorize "async" to keyword. This makes parser code complicated,
+        since ASYNC should be handled as IDENT. If we missed this ASYNC keyword, we cause a bug.
+        For example, import declaration failed to bind imported binding to the name "async" because
+        the parser considered ASYNC as keyword.
+
+        This patch removes ASYNC keyword from the parser. By carefully handling ASYNC, we can keep
+        the current performance without using this ASYNC keyword.
+
+        * parser/Keywords.table:
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseStatementListItem):
+        (JSC::Parser<LexerType>::parseStatement):
+        (JSC::Parser<LexerType>::maybeParseAsyncFunctionDeclarationStatement):
+        (JSC::Parser<LexerType>::parseClass):
+        (JSC::Parser<LexerType>::parseExportDeclaration):
+        (JSC::Parser<LexerType>::parseAssignmentExpression):
+        (JSC::Parser<LexerType>::parseProperty):
+        (JSC::Parser<LexerType>::parsePrimaryExpression):
+        (JSC::Parser<LexerType>::parseMemberExpression):
+        (JSC::Parser<LexerType>::printUnexpectedTokenText):
+        * parser/ParserTokens.h:
+        * runtime/CommonIdentifiers.h:
+
+2017-09-29  Filip Pizlo  <fpizlo@apple.com>
+
+        Enable gigacage on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=177586
+
+        Reviewed by JF Bastien.
+
+        The hardest part of enabling Gigacage on iOS is that it requires loading global variables while
+        executing JS, so the LLInt needs to know how to load from global variables on all platforms that
+        have Gigacage. So, this teaches ARM64 how to load from global variables.
+        
+        Also, this makes the code handle disabling the gigacage a bit better.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::caged):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::cage):
+        (JSC::AssemblyHelpers::cageConditionally):
+        * offlineasm/arm64.rb:
+        * offlineasm/asm.rb:
+        * offlineasm/instructions.rb:
+
+2017-10-06  Michael Saboff  <msaboff@apple.com>
+
+        Enable RegExp JIT for match only Unicode RegExp's
+        https://bugs.webkit.org/show_bug.cgi?id=178033
+
+        Reviewed by JF Bastien.
+
+        I forgot to turn on JIT'ing for match-only Unicode RegExp's in r221052.  Do it now.
+
+        * runtime/RegExp.cpp:
+        (JSC::RegExp::compileMatchOnly):
+
+2017-10-06  Alex Christensen  <achristensen@webkit.org>
+
+        Build fix after r223002.
+
+        * dfg/DFGOSRExit.cpp:
+        (JSC::DFG::restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer):
+        (JSC::DFG::copyCalleeSavesToVMEntryFrameCalleeSavesBuffer):
+
+2017-10-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r222791 and r222873.
+        https://bugs.webkit.org/show_bug.cgi?id=178031
+
+        Caused crashes with workers/wasm LayoutTests (Requested by
+        ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "WebAssembly: no VM / JS version of everything but Instance"
+        https://bugs.webkit.org/show_bug.cgi?id=177473
+        http://trac.webkit.org/changeset/222791
+
+        "WebAssembly: address no VM / JS follow-ups"
+        https://bugs.webkit.org/show_bug.cgi?id=177887
+        http://trac.webkit.org/changeset/222873
+
 2017-10-06  Robin Morisset  <rmorisset@apple.com>
 
         Avoid integer overflow in DFGStrengthReduction.cpp
@@ -1410,21 +2252,6 @@
 
         * runtime/DatePrototype.cpp:
         (JSC::fillStructuresUsingDateArgs):
-
-2017-09-28  Filip Pizlo  <fpizlo@apple.com>
-
-        Enable gigacage on iOS
-        https://bugs.webkit.org/show_bug.cgi?id=177586
-
-        Reviewed by Michael Saboff.
-        
-        The hardest part of enabling Gigacage on iOS is that it requires loading global variables whil
-        executing JS, so the LLInt needs to know how to load from global variables on all platforms that
-        have Gigacage. So, this teaches ARM64 how to load from global variables.
-
-        * offlineasm/arm64.rb:
-        * offlineasm/asm.rb:
-        * offlineasm/instructions.rb:
 
 2017-09-28  Mark Lam  <mark.lam@apple.com>
 

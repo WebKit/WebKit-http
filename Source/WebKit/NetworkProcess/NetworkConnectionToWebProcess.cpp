@@ -48,6 +48,7 @@
 #include "SessionTracker.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebErrors.h"
+#include "WebsiteDataStore.h"
 #include "WebsiteDataStoreParameters.h"
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/PingHandle.h>
@@ -168,9 +169,7 @@ void NetworkConnectionToWebProcess::didClose(IPC::Connection&)
     // Protect ourself as we might be otherwise be deleted during this function.
     Ref<NetworkConnectionToWebProcess> protector(*this);
 
-    Vector<RefPtr<NetworkResourceLoader>> loaders;
-    copyValuesToVector(m_networkResourceLoaders, loaders);
-    for (auto& loader : loaders)
+    for (auto& loader : copyToVector(m_networkResourceLoaders.values()))
         loader->abort();
     ASSERT(m_networkResourceLoaders.isEmpty());
 
@@ -456,13 +455,11 @@ void NetworkConnectionToWebProcess::writeBlobsToTemporaryFiles(const Vector<Stri
     });
 }
 
-#if ENABLE(NETWORK_CACHE)
 void NetworkConnectionToWebProcess::storeDerivedDataToCache(const WebKit::NetworkCache::DataKey& dataKey, const IPC::DataReference& data)
 {
     if (auto* cache = NetworkProcess::singleton().cache())
         cache->storeData(dataKey, data.data(), data.size());
 }
-#endif
 
 void NetworkConnectionToWebProcess::setCaptureExtraNetworkLoadMetricsEnabled(bool enabled)
 {
@@ -471,7 +468,7 @@ void NetworkConnectionToWebProcess::setCaptureExtraNetworkLoadMetricsEnabled(boo
 
 void NetworkConnectionToWebProcess::ensureLegacyPrivateBrowsingSession()
 {
-    NetworkProcess::singleton().ensurePrivateBrowsingSession({PAL::SessionID::legacyPrivateSessionID(), { }, { }, { }, { }, { }});
+    NetworkProcess::singleton().ensurePrivateBrowsingSession({PAL::SessionID::legacyPrivateSessionID(), { }, { }, { }, { }, WebsiteDataStore::defaultCacheStoragePerOriginQuota, { }});
 }
 
 } // namespace WebKit

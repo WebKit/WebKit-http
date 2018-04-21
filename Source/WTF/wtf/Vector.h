@@ -625,6 +625,20 @@ public:
             uncheckedAppend(element);
     }
 
+    template<typename... Items>
+    static Vector from(Items&&... items)
+    {
+        Vector result;
+        auto size = sizeof...(items);
+
+        result.reserveInitialCapacity(size);
+        result.asanSetInitialBufferSizeTo(size);
+        result.m_size = size;
+
+        result.uncheckedInitialize<0>(std::forward<Items>(items)...);
+        return result;
+    }
+
     ~Vector()
     {
         if (m_size)
@@ -792,6 +806,20 @@ private:
     template<typename U> void appendSlowCase(U&&);
     template<typename... Args> void constructAndAppendSlowCase(Args&&...);
     template<typename... Args> bool tryConstructAndAppendSlowCase(Args&&...);
+
+    template<size_t position, typename U, typename... Items>
+    void uncheckedInitialize(U&& item, Items&&... items)
+    {
+        uncheckedInitialize<position>(std::forward<U>(item));
+        uncheckedInitialize<position + 1>(std::forward<Items>(items)...);
+    }
+    template<size_t position, typename U>
+    void uncheckedInitialize(U&& value)
+    {
+        ASSERT(position < size());
+        ASSERT(position < capacity());
+        new (NotNull, begin() + position) T(std::forward<U>(value));
+    }
 
     void asanSetInitialBufferSizeTo(size_t);
     void asanSetBufferSizeToFullCapacity(size_t);
@@ -1327,8 +1355,7 @@ ALWAYS_INLINE void Vector<T, inlineCapacity, OverflowHandler, minCapacity, Mallo
 
     asanBufferSizeWillChangeTo(m_size + 1);
 
-    auto ptr = std::addressof(value);
-    new (NotNull, end()) T(std::forward<U>(*ptr));
+    new (NotNull, end()) T(std::forward<U>(value));
     ++m_size;
 }
 
@@ -1562,8 +1589,8 @@ size_t removeRepeatedElements(Vector<T, inlineCapacity, OverflowHandler, minCapa
     return removeRepeatedElements(vector, [] (T& a, T& b) { return a == b; });
 }
 
-template<typename MapFunction, typename SourceType>
-struct MapFunctionInspector {
+template<typename SourceType>
+struct CollectionInspector {
     using RealSourceType = typename std::remove_reference<SourceType>::type;
     using IteratorType = decltype(std::begin(std::declval<RealSourceType>()));
     using SourceItemType = typename std::iterator_traits<IteratorType>::value_type;
@@ -1571,7 +1598,7 @@ struct MapFunctionInspector {
 
 template<typename MapFunction, typename SourceType, typename Enable = void>
 struct Mapper {
-    using SourceItemType = typename MapFunctionInspector<MapFunction, SourceType>::SourceItemType;
+    using SourceItemType = typename CollectionInspector<SourceType>::SourceItemType;
     using DestinationItemType = typename std::result_of<MapFunction(SourceItemType&)>::type;
 
     static Vector<DestinationItemType> map(SourceType source, const MapFunction& mapFunction)
@@ -1587,7 +1614,7 @@ struct Mapper {
 
 template<typename MapFunction, typename SourceType>
 struct Mapper<MapFunction, SourceType, typename std::enable_if<std::is_rvalue_reference<SourceType&&>::value>::type> {
-    using SourceItemType = typename MapFunctionInspector<MapFunction, SourceType>::SourceItemType;
+    using SourceItemType = typename CollectionInspector<SourceType>::SourceItemType;
     using DestinationItemType = typename std::result_of<MapFunction(SourceItemType&&)>::type;
 
     static Vector<DestinationItemType> map(SourceType&& source, const MapFunction& mapFunction)
@@ -1607,10 +1634,29 @@ Vector<typename Mapper<MapFunction, SourceType>::DestinationItemType> map(Source
     return Mapper<MapFunction, SourceType>::map(std::forward<SourceType>(source), std::forward<MapFunction>(mapFunction));
 }
 
+template<typename DestinationItemType, typename Collection>
+inline auto copyToVectorOf(const Collection& collection) -> Vector<DestinationItemType>
+{
+    return WTF::map(collection, [] (const auto& v) -> DestinationItemType { return v; });
+}
+
+template<typename Collection>
+struct CopyToVectorResult {
+    using Type = typename std::remove_cv<typename CollectionInspector<Collection>::SourceItemType>::type;
+};
+
+template<typename Collection>
+inline auto copyToVector(const Collection& collection) -> Vector<typename CopyToVectorResult<Collection>::Type>
+{
+    return copyToVectorOf<typename CopyToVectorResult<Collection>::Type>(collection);
+}
+
 } // namespace WTF
 
-using WTF::Vector;
 using WTF::UnsafeVectorOverflow;
+using WTF::Vector;
+using WTF::copyToVector;
+using WTF::copyToVectorOf;
 using WTF::removeRepeatedElements;
 
 #endif // WTF_Vector_h

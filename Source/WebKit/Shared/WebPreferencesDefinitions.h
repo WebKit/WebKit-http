@@ -303,6 +303,7 @@
     macro(InspectorAdditionsEnabled, inspectorAdditionsEnabled, Bool, bool, false, "Web Inspector Additions", "Enable additional page APIs used by the Web Inspector frontend page") \
     macro(DirectoryUploadEnabled, directoryUploadEnabled, Bool, bool, DEFAULT_DIRECTORY_UPLOAD_ENABLED, "Directory Upload", "input.webkitdirectory / dataTransferItem.webkitGetAsEntry()") \
     macro(DataTransferItemsEnabled, dataTransferItemsEnabled, Bool, bool, DEFAULT_DATA_TRANSFER_ITEMS_ENABLED, "Data Transfer Items", "Enables DataTransferItem in the clipboard API") \
+    macro(CustomPasteboardDataEnabled, customPasteboardDataEnabled, Bool, bool, WebCore::Settings::defaultCustomPasteboardDataEnabled(), "Custom pateboard data", "Enable custom clipboard types and better security model for clipboard API.") \
     macro(WebVREnabled, webVREnabled, Bool, bool, false, "WebVR", "WebVR Module support") \
     macro(ViewportFitEnabled, viewportFitEnabled, Bool, bool, true, "Viewport Fit", "Enable viewport-fit viewport parameter") \
     \
@@ -374,7 +375,7 @@
 #define FOR_EACH_WEBKIT_EXPERIMENTAL_FEATURE_PREFERENCE(macro) \
     macro(AsyncFrameScrollingEnabled, asyncFrameScrollingEnabled, Bool, bool, false, "Async Frame Scrolling", "Perform frame scrolling in a dedicated thread or process") \
     macro(CacheAPIEnabled, cacheAPIEnabled, Bool, bool, false, "Cache API", "Enable Cache API") \
-    macro(ConstantPropertiesEnabled, constantPropertiesEnabled, Bool, bool, true, "Constant Properties", "Enable CSS constant() properties") \
+    macro(ConstantPropertiesEnabled, constantPropertiesEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "Constant Properties", "Enable CSS constant() properties") \
     macro(DisplayContentsEnabled, displayContentsEnabled, Bool, bool, false, "CSS display: contents", "Enable CSS display: contents support") \
     macro(SpringTimingFunctionEnabled, springTimingFunctionEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "CSS Spring Animations", "CSS Spring Animation prototype") \
     macro(LinkPreloadEnabled, linkPreloadEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "Link Preload", "Link preload support") \

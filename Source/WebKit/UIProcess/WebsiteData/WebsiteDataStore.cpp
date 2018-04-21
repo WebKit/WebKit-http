@@ -161,6 +161,9 @@ static ProcessAccessType computeNetworkProcessAccessTypeForDataFetch(OptionSet<W
     if (dataTypes.contains(WebsiteDataType::DiskCache) && !isNonPersistentStore)
         processAccessType = std::max(processAccessType, ProcessAccessType::Launch);
 
+    if (dataTypes.contains(WebsiteDataType::DOMCache))
+        processAccessType = std::max(processAccessType, ProcessAccessType::Launch);
+
     return processAccessType;
 }
 
@@ -426,7 +429,11 @@ void WebsiteDataStore::fetchDataAndApply(OptionSet<WebsiteDataType> dataTypes, O
         });
     }
 
-    if (dataTypes.contains(WebsiteDataType::IndexedDBDatabases) && isPersistent()) {
+    if ((dataTypes.contains(WebsiteDataType::IndexedDBDatabases)
+#if ENABLE(SERVICE_WORKER)
+        || dataTypes.contains(WebsiteDataType::ServiceWorkerRegistrations)
+#endif
+        ) && isPersistent()) {
         for (auto& processPool : processPools()) {
             processPool->ensureStorageProcessAndWebsiteDataStore(this);
 
@@ -563,6 +570,9 @@ static ProcessAccessType computeNetworkProcessAccessTypeForDataRemoval(OptionSet
         processAccessType = std::max(processAccessType, ProcessAccessType::Launch);
 
     if (dataTypes.contains(WebsiteDataType::Credentials))
+        processAccessType = std::max(processAccessType, ProcessAccessType::Launch);
+
+    if (dataTypes.contains(WebsiteDataType::DOMCache))
         processAccessType = std::max(processAccessType, ProcessAccessType::Launch);
 
     return processAccessType;
@@ -720,7 +730,11 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, std::chr
         });
     }
 
-    if (dataTypes.contains(WebsiteDataType::IndexedDBDatabases) && isPersistent()) {
+    if ((dataTypes.contains(WebsiteDataType::IndexedDBDatabases)
+#if ENABLE(SERVICE_WORKER)
+        || dataTypes.contains(WebsiteDataType::ServiceWorkerRegistrations)
+#endif
+        ) && isPersistent()) {
         for (auto& processPool : processPools()) {
             processPool->ensureStorageProcessAndWebsiteDataStore(this);
 
@@ -999,7 +1013,11 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, const Ve
         });
     }
 
-    if (dataTypes.contains(WebsiteDataType::IndexedDBDatabases) && isPersistent()) {
+    if ((dataTypes.contains(WebsiteDataType::IndexedDBDatabases)
+#if ENABLE(SERVICE_WORKER)
+        || dataTypes.contains(WebsiteDataType::ServiceWorkerRegistrations)
+#endif
+        ) && isPersistent()) {
         for (auto& processPool : processPools()) {
             processPool->ensureStorageProcessAndWebsiteDataStore(this);
 

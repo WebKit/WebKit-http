@@ -27,12 +27,10 @@
 
 #pragma once
 
-#include "CollectionType.h"
 #include "Color.h"
 #include "ContainerNode.h"
 #include "DocumentEventQueue.h"
 #include "DocumentTiming.h"
-#include "ExceptionOr.h"
 #include "FocusDirection.h"
 #include "FontSelectorClient.h"
 #include "FrameDestructionObserver.h"
@@ -52,13 +50,11 @@
 #include "TreeScope.h"
 #include "UserActionElementSet.h"
 #include "ViewportArguments.h"
-#include <memory>
 #include <pal/SessionID.h>
 #include <wtf/Deque.h>
+#include <wtf/Forward.h>
 #include <wtf/HashCountedSet.h>
 #include <wtf/HashSet.h>
-#include <wtf/Optional.h>
-#include <wtf/Variant.h>
 #include <wtf/WeakPtr.h>
 #include <wtf/text/AtomicStringHash.h>
 
@@ -187,6 +183,9 @@ class XPathExpression;
 class XPathNSResolver;
 class XPathResult;
 
+template<typename> class ExceptionOr;
+
+enum CollectionType;
 enum class ShouldOpenExternalURLsPolicy;
 
 using PlatformDisplayID = uint32_t;
@@ -958,6 +957,8 @@ public:
     void incDOMTreeVersion() { m_domTreeVersion = ++s_globalTreeVersion; }
     uint64_t domTreeVersion() const { return m_domTreeVersion; }
 
+    String uniqueIdentifier();
+
     // XPathEvaluator methods
     WEBCORE_EXPORT ExceptionOr<Ref<XPathExpression>> createExpression(const String& expression, RefPtr<XPathNSResolver>&&);
     WEBCORE_EXPORT Ref<XPathNSResolver> createNSResolver(Node* nodeResolver);
@@ -1518,7 +1519,9 @@ private:
 
     uint64_t m_domTreeVersion;
     static uint64_t s_globalTreeVersion;
-    
+
+    String m_uniqueIdentifier;
+
     HashSet<NodeIterator*> m_nodeIterators;
     HashSet<Range*> m_ranges;
 

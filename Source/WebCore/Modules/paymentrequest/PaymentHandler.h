@@ -28,6 +28,8 @@
 #if ENABLE(PAYMENT_REQUEST)
 
 #include "PaymentRequest.h"
+#include "PaymentSessionBase.h"
+#include <wtf/Function.h>
 
 namespace JSC {
 class ExecState;
@@ -36,13 +38,17 @@ class JSValue;
 
 namespace WebCore {
 
-class PaymentHandler {
+class Document;
+
+class PaymentHandler : public virtual PaymentSessionBase {
 public:
-    static std::unique_ptr<PaymentHandler> create(PaymentRequest&, const PaymentRequest::MethodIdentifier&);
-    virtual ~PaymentHandler() = default;
+    static RefPtr<PaymentHandler> create(PaymentRequest&, const PaymentRequest::MethodIdentifier&);
+    static bool hasActiveSession(Document&);
 
     virtual ExceptionOr<void> convertData(JSC::ExecState&, JSC::JSValue&&) = 0;
-    virtual void show() = 0;
+    virtual ExceptionOr<void> show(Document&) = 0;
+    virtual void hide(Document&) = 0;
+    virtual void canMakePayment(Document&, WTF::Function<void(bool)>&& completionHandler) = 0;
 };
 
 } // namespace WebCore

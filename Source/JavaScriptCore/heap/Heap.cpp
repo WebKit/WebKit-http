@@ -1092,6 +1092,9 @@ auto Heap::runCurrentPhase(GCConductor conn, CurrentThreadState* currentThreadSt
     checkConn(conn);
     m_currentThreadState = currentThreadState;
     
+    if (conn == GCConductor::Mutator)
+        sanitizeStackForVM(vm());
+    
     // If the collector transfers the conn to the mutator, it leaves us in between phases.
     if (!finishChangingPhase(conn)) {
         // A mischevious mutator could repeatedly relinquish the conn back to us. We try to avoid doing
@@ -2112,8 +2115,8 @@ void Heap::pruneStaleEntriesFromWeakGCMaps()
 {
     if (m_collectionScope != CollectionScope::Full)
         return;
-    for (auto& pruneCallback : m_weakGCMaps.values())
-        pruneCallback();
+    for (WeakGCMapBase* weakGCMap : m_weakGCMaps)
+        weakGCMap->pruneStaleEntries();
 }
 
 void Heap::sweepArrayBuffers()
@@ -2543,12 +2546,12 @@ void Heap::decrementDeferralDepthAndGCIfNeededSlow()
     collectIfNecessaryOrDefer();
 }
 
-void Heap::registerWeakGCMap(void* weakGCMap, std::function<void()> pruningCallback)
+void Heap::registerWeakGCMap(WeakGCMapBase* weakGCMap)
 {
-    m_weakGCMaps.add(weakGCMap, WTFMove(pruningCallback));
+    m_weakGCMaps.add(weakGCMap);
 }
 
-void Heap::unregisterWeakGCMap(void* weakGCMap)
+void Heap::unregisterWeakGCMap(WeakGCMapBase* weakGCMap)
 {
     m_weakGCMaps.remove(weakGCMap);
 }

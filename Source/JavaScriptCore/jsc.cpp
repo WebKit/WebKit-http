@@ -1673,7 +1673,6 @@ const GlobalObjectMethodTable GlobalObject::s_globalObjectMethodTable = {
     &moduleLoaderImportModule,
     &moduleLoaderResolve,
     &moduleLoaderFetch,
-    nullptr, // moduleLoaderInstantiate
     &moduleLoaderCreateImportMetaProperties,
     nullptr, // moduleLoaderEvaluate
     nullptr, // promiseRejectionTracker
@@ -2059,8 +2058,8 @@ EncodedJSValue JSC_HOST_CALL functionPrintStdErr(ExecState* exec) { return print
 EncodedJSValue JSC_HOST_CALL functionDumpCallFrame(ExecState* exec)
 {
     VM& vm = exec->vm();
-    EntryFrame* topEntryFrame = vm.topEntryFrame;
-    ExecState* callerFrame = exec->callerFrame(topEntryFrame);
+    VMEntryFrame* topVMEntryFrame = vm.topVMEntryFrame;
+    ExecState* callerFrame = exec->callerFrame(topVMEntryFrame);
     if (callerFrame)
         vm.interpreter->dumpCallFrame(callerFrame);
     return JSValue::encode(jsUndefined());

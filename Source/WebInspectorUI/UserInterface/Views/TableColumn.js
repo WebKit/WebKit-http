@@ -25,7 +25,7 @@
 
 WI.TableColumn = class TableColumn extends WI.Object
 {
-    constructor(identifier, name, {initialWidth, minWidth, maxWidth, hidden, sortable, align, resizeType} = {})
+    constructor(identifier, name, {initialWidth, minWidth, maxWidth, hidden, sortable, hideable, align, resizeType} = {})
     {
         super();
 
@@ -41,9 +41,11 @@ WI.TableColumn = class TableColumn extends WI.Object
         this._width = initialWidth || NaN;
         this._minWidth = minWidth || 50;
         this._maxWidth = maxWidth || 0;
+        this._initialWidth = initialWidth || NaN;
         this._hidden = hidden || false;
         this._defaultHidden = hidden || false;
         this._sortable = typeof sortable === "boolean" ? sortable : true;
+        this._hideable = typeof hideable === "boolean" ? hideable : true;
         this._align = align || null;
         this._resizeType = resizeType || TableColumn.ResizeType.Auto;
 
@@ -58,8 +60,10 @@ WI.TableColumn = class TableColumn extends WI.Object
     get name() { return this._name; }
     get minWidth() { return this._minWidth; }
     get maxWidth() { return this._maxWidth; }
+    get preferredInitialWidth() { return this._initialWidth; }
     get defaultHidden() { return this._defaultHidden; }
     get sortable() { return this._sortable; }
+    get hideable() { return this._hideable; }
     get align() { return this._align; }
 
     get locked() { return this._resizeType === TableColumn.ResizeType.Locked; }
@@ -90,8 +94,9 @@ WI.TableColumn = class TableColumn extends WI.Object
         return this._hidden;
     }
 
-    setHidden(x)
+    set hidden(x)
     {
+        console.assert(!this.locked && this._hideable, "Should not be able to hide a non-hideable column.");
         this._hidden = x;
     }
 };

@@ -1,3 +1,188 @@
+2017-10-11  Michael Saboff  <msaboff@apple.com>
+
+        [JSC] Add ability to build with ARMV8 ILP32 ABI
+        https://bugs.webkit.org/show_bug.cgi?id=178194
+
+        Reviewed by Saam Barati.
+
+        For ARMV8 32 bit ABI, use JSVALUE32_64 and the CLOOP.
+
+        * wtf/Platform.h:
+
+2017-10-11  Youenn Fablet  <youenn@apple.com>
+
+        Add API to clean CacheStorage data
+        https://bugs.webkit.org/show_bug.cgi?id=178034
+
+        Reviewed by Chris Dumez.
+
+        Moving CallbackAggregator pattern into its own class for easier reuse.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CallbackAggregator.h: Added.
+        (WTF::CallbackAggregator::create):
+        (WTF::CallbackAggregator::~CallbackAggregator):
+        (WTF::CallbackAggregator::CallbackAggregator):
+
+2017-10-10  Sam Weinig  <sam@webkit.org>
+
+        Replace copyKeysToVector/copyValuesToVector with copyToVector(map.keys())/copyToVector(map.values())
+        https://bugs.webkit.org/show_bug.cgi?id=178102
+
+        Reviewed by Tim Horton.
+
+        * wtf/HashMap.h:
+        (WTF::copyKeysToVector): Deleted.
+        (WTF::copyValuesToVector): Deleted.
+        
+            Remove copyKeysToVector and copyValuesToVector which are no longer used.
+
+2017-10-09  Youenn Fablet  <youenn@apple.com>
+
+        Vector should be able to easily create from a list of movable only items
+        https://bugs.webkit.org/show_bug.cgi?id=176432
+
+        Reviewed by Darin Adler.
+
+        Adding static from method to construct a Vector from movable-only items.
+        This may also be used instead of initializer list constructor for types that would benefit of being moved.
+
+        * wtf/Vector.h:
+        (WTF::Vector::Vector):
+        (WTF::Vector::from):
+        (WTF::Vector::uncheckedInitialize): Introduced as an optimization to set the vector size once.
+        (WTF::Malloc>::reserveInitialCapacity):
+
+2017-10-09  Tim Horton  <timothy_horton@apple.com>
+
+        Disable INPUT_TYPE_COLOR in FeatureDefines.h
+        https://bugs.webkit.org/show_bug.cgi?id=178103
+        <rdar://problem/34872127>
+
+        Reviewed by Simon Fraser.
+
+        * wtf/FeatureDefines.h:
+        Because FeatureDefines.h overrides features that are not enabled in
+        FeatureDefines.xcconfig, you currently have to turn INPUT_TYPE_COLOR
+        off in two places. Since we only ever want it on for Mac, it's OK
+        to depend on the xcconfig defining it.
+
+2017-10-09  Sam Weinig  <sam@webkit.org>
+
+        Make HashMap::keys() and HashMap::values() work with WTF::map/WTF::copyToVector
+        https://bugs.webkit.org/show_bug.cgi?id=178072
+
+        Reviewed by Darin Adler.
+
+        Introduce SizedIteratorRange, a variant of IteratorRange that includes
+        a reference to a backing container in order to get the size of container.
+        This is useful for algorithms like WTF::map and WTF::copyToVector, that
+        can use the size to efficiently allocate things of the correct size.
+
+        The main beneficiary are HashMap's keys() and values() functions which
+        used to return IteratorRanges and now return SizedIteratorRange. This
+        allows us to remove (in a future change) copyKeysToVector() and
+        copyValuesToVector() by replacing them with copyToVector(map.keys()) and
+        copyToVector(map.values()) respectively.
+
+        * wtf/HashMap.h:
+        * wtf/IteratorRange.h:
+        (WTF::SizedIteratorRange::SizedIteratorRange):
+        (WTF::SizedIteratorRange::size const):
+        (WTF::SizedIteratorRange::begin const):
+        (WTF::SizedIteratorRange::end const):
+        (WTF::makeSizedIteratorRange):
+
+2017-10-08  Sam Weinig  <sam@webkit.org>
+
+        It should be possible to create a ListHashSet with a std::initializer_list.
+        https://bugs.webkit.org/show_bug.cgi?id=178070
+
+        Reviewed by Darin Adler.
+
+        * wtf/ListHashSet.h:
+        (WTF::U>::ListHashSet):
+        Add a constructor that takes a std::initializer_list.
+
+2017-10-08  Sam Weinig  <sam@webkit.org>
+
+        Address additional feedback from Darin for r223039 and sort the using declarations.
+
+        * wtf/Vector.h:
+
+2017-10-08  Sam Weinig  <sam@webkit.org>
+
+        There should be a version of copyToVector that returns a Vector, rather than using an out parameter
+        https://bugs.webkit.org/show_bug.cgi?id=177732
+
+        Reviewed by Saam Barati.
+
+        Add two new helper functions, copyToVector and copyToVectorOf, which will be able to
+        replace the existing out parameter taking copyToVector. Like it's ancestral namesake,
+        copyToVector takes an object that is both iterable (supports begin() and end()) and
+        has a size, and returns a Vector with a copy of all the items iterated. The copyToVectorOf
+        variant allow the user to specify a type to convert to, so if you have a HashSet<int>
+        but want those as floats in a Vector, you can do:
+        
+            auto floatVector = copyToVectorOf<float>(intSet);
+
+        * wtf/Vector.h:
+        (WTF::copyToVector):
+        (WTF::copyToVectorOf):
+
+2017-10-08  Darin Adler  <darin@apple.com>
+
+        Fix bugs related to setting reflected floating point DOM attributes
+        https://bugs.webkit.org/show_bug.cgi?id=178061
+
+        Reviewed by Sam Weinig.
+
+        * wtf/dtoa.cpp:
+        (WTF::formatStringTruncatingTrailingZerosIfNeeded): Fix a bug where
+        this function would remove trailing zeroes from the exponent if
+        present instead of from the mantissa. This meant that it would
+        format 1e10 as "1.00000e+1" instead of "1e+10". Added regression
+        tests for this to TestWebKitAPI.
+
+        * wtf/dtoa/utils.h:
+        (WTF::double_conversion::StringBuilder::RemoveCharacters): Added.
+        Used by the fix above.
+
+        * wtf/text/AtomicString.cpp:
+        (WTF::AtomicString::number): Note: This function is used by code
+        that sets the values of reflected floating point DOM attributes.
+        Changed the function to use the rules from numberToString rather
+        ones from numberToFixedPrecisionString. This is analogous to
+        String::numberToStringECMAScript, and in the future we should change
+        String and StringBuilder so this "ECMAScript" semantic is the default
+        way to convert a floating point number to a string, and rename the fixed
+        precision version that is currently called String::number. I audited
+        the small number of sites calling AtomicString::number, by temporarily
+        renaming it, and discovered that this is the correct behavior for all;
+        none needed fixed precision. Also, fixed a mistake where this explicitly
+        converted to String. That was defeating the purpose of having these
+        functions in AtomicString: It would allocate a new String and then
+        destroy it in the case where an equal string was already in the
+        AtomicString table.
+
+2017-10-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r222791 and r222873.
+        https://bugs.webkit.org/show_bug.cgi?id=178031
+
+        Caused crashes with workers/wasm LayoutTests (Requested by
+        ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "WebAssembly: no VM / JS version of everything but Instance"
+        https://bugs.webkit.org/show_bug.cgi?id=177473
+        http://trac.webkit.org/changeset/222791
+
+        "WebAssembly: address no VM / JS follow-ups"
+        https://bugs.webkit.org/show_bug.cgi?id=177887
+        http://trac.webkit.org/changeset/222873
+
 2017-10-06  Antti Koivisto  <antti@apple.com>
 
         Minor WeakPtr improvements

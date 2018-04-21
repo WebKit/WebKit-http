@@ -144,21 +144,17 @@ static EditingBehaviorType editingBehaviorTypeForPlatform()
     ;
 }
 
-bool Settings::customPasteboardDataEnabled()
+bool Settings::defaultCustomPasteboardDataEnabled()
 {
-    static std::once_flag initializeCustomPasteboardDataToDefaultValue;
-    std::call_once(initializeCustomPasteboardDataToDefaultValue, [] {
 #if PLATFORM(IOS) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 110300
-        gCustomPasteboardDataEnabled = IOSApplication::isMobileSafari() || dyld_get_program_sdk_version() >= DYLD_IOS_VERSION_11_3;
+    return IOSApplication::isMobileSafari() || dyld_get_program_sdk_version() >= DYLD_IOS_VERSION_11_3;
 #elif PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101300
-        gCustomPasteboardDataEnabled = MacApplication::isSafari() || dyld_get_program_sdk_version() > DYLD_MACOSX_VERSION_10_13;
+    return MacApplication::isSafari() || dyld_get_program_sdk_version() > DYLD_MACOSX_VERSION_10_13;
 #elif PLATFORM(MAC)
-        gCustomPasteboardDataEnabled = MacApplication::isSafari();
+    return MacApplication::isSafari();
 #else
-        gCustomPasteboardDataEnabled = false;
+    return false;
 #endif
-    });
-    return gCustomPasteboardDataEnabled;
 }
 
 #if PLATFORM(COCOA)
@@ -443,6 +439,18 @@ void Settings::setPreferMIMETypeForImages(bool preferMIMETypeForImages)
 void Settings::setForcePendingWebGLPolicy(bool forced)
 {
     m_forcePendingWebGLPolicy = forced;
+}
+
+FrameFlattening Settings::effectiveFrameFlattening()
+{
+#if PLATFORM(IOS)
+    // On iOS when async frame scrolling is enabled, it does not make sense to use full frame flattening.
+    // In that case, we just consider that frame flattening is disabled. This allows people to test
+    // frame scrolling on iOS by enabling "Async Frame Scrolling" via the Safari menu.
+    if (asyncFrameScrollingEnabled() && frameFlattening() == FrameFlatteningFullyEnabled)
+        return FrameFlatteningDisabled;
+#endif
+    return frameFlattening();
 }
 
 void Settings::setPluginsEnabled(bool arePluginsEnabled)

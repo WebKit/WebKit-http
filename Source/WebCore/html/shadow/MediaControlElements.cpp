@@ -884,12 +884,12 @@ bool MediaControlTimelineElement::willRespondToMouseClickEvents()
 
 void MediaControlTimelineElement::setPosition(double currentTime)
 {
-    setValue(String::number(currentTime));
+    setValue(String::numberToStringECMAScript(currentTime));
 }
 
 void MediaControlTimelineElement::setDuration(double duration)
 {
-    setAttribute(maxAttr, AtomicString::number(std::isfinite(duration) ? duration : 0));
+    setAttribute(maxAttr, AtomicString::number(duration));
 }
 
 // ----------------------------
@@ -1289,6 +1289,8 @@ void MediaControlTextTrackContainerElement::updateTextTrackRepresentation()
 
     if (!m_textTrackRepresentation) {
         m_textTrackRepresentation = TextTrackRepresentation::create(*this);
+        if (document().page())
+            m_textTrackRepresentation->setContentScale(document().page()->deviceScaleFactor());
         m_updateTextTrackRepresentationStyle = true;
         mediaElement->setTextTrackRepresentation(m_textTrackRepresentation.get());
     }
@@ -1357,9 +1359,12 @@ void MediaControlTextTrackContainerElement::updateSizes(bool forceUpdate)
     mediaElement->syncTextTrackBounds();
 
     IntRect videoBox;
-    if (m_textTrackRepresentation)
+    if (m_textTrackRepresentation) {
         videoBox = m_textTrackRepresentation->bounds();
-    else {
+        float deviceScaleFactor = document().page()->deviceScaleFactor();
+        videoBox.setWidth(videoBox.width() * deviceScaleFactor);
+        videoBox.setHeight(videoBox.height() * deviceScaleFactor);
+    } else {
         if (!is<RenderVideo>(mediaElement->renderer()))
             return;
         videoBox = downcast<RenderVideo>(*mediaElement->renderer()).videoBox();

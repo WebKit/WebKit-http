@@ -25,15 +25,20 @@ fast/media/mq-prefers-reduced-motion-live-update.html [ Pass ]
 fast/visual-viewport/rubberbanding-viewport-rects.html [ Pass ]
 fast/visual-viewport/rubberbanding-viewport-rects-header-footer.html  [ Pass ]
 
-imported/w3c/web-platform-tests/payment-request [ Pass ]
+[ Sierra+ ] http/tests/paymentrequest [ Pass ]
+[ Sierra+ ] imported/w3c/web-platform-tests/payment-request [ Pass ]
+webkit.org/b/178107 [ Sierra+ ] http/tests/paymentrequest/payment-request-abort-method.https.html [ Pass Failure ]
 webkit.org/b/175611 imported/w3c/web-platform-tests/payment-request/allowpaymentrequest/allowpaymentrequest-attribute-cross-origin-bc-containers.https.html [ Skip ]
 webkit.org/b/175611 imported/w3c/web-platform-tests/payment-request/allowpaymentrequest/no-attribute-cross-origin-bc-containers.https.html [ Skip ]
 webkit.org/b/175611 imported/w3c/web-platform-tests/payment-request/allowpaymentrequest/removing-allowpaymentrequest.https.sub.html [ Skip ]
 webkit.org/b/175611 imported/w3c/web-platform-tests/payment-request/allowpaymentrequest/setting-allowpaymentrequest-timing.https.sub.html [ Skip ]
 webkit.org/b/175611 imported/w3c/web-platform-tests/payment-request/allowpaymentrequest/setting-allowpaymentrequest.https.sub.html [ Skip ]
 webkit.org/b/177783 imported/w3c/web-platform-tests/payment-request/rejects_if_not_active.https.html [ Skip ]
-webkit.org/b/177391 imported/w3c/web-platform-tests/payment-request/payment-request-show-method.https.html [ Pass Failure ]
-webkit.org/b/177391 imported/w3c/web-platform-tests/payment-request/payment-request-abort-method.https.html [ Pass Failure ]
+
+# skip in favor of tests in http/tests/paymentrequest
+imported/w3c/web-platform-tests/payment-request/payment-request-show-method.https.html [ WontFix ]
+imported/w3c/web-platform-tests/payment-request/payment-request-abort-method.https.html [ WontFix ]
+imported/w3c/web-platform-tests/payment-request/payment-request-canmakepayment-method.https.html [ WontFix ]
 
 # skip manual payment-request tests
 imported/w3c/web-platform-tests/payment-request/algorithms-manual.https.html [ Skip ]
@@ -203,6 +208,7 @@ webkit.org/b/105616 editing/mac/spelling/move-cursor-to-beginning-of-autocorrect
 webkit.org/b/105616 editing/mac/spelling/removing-underline-after-accepting-autocorrection-using-punctuation.html [ Failure ]
 webkit.org/b/105616 editing/mac/spelling/accept-candidate-allows-autocorrect-on-next-word.html [ Failure ]
 webkit.org/b/105616 editing/mac/spelling/accept-unseen-candidate-records-acceptance.html [ Failure ]
+webkit.org/b/105616 editing/spelling/spelling-marker-includes-hyphen.html [ ImageOnlyFailure ]
 
 # [WK2] [Mac] Support drag in mouse events for WebKit2 EventSender
 # <https://bugs.webkit.org/show_bug.cgi?id=68552>
@@ -326,7 +332,7 @@ webkit.org/b/149087 [ Debug ] http/tests/cache/disk-cache/disk-cache-vary.html [
 webkit.org/b/147075 [ Debug ] http/tests/cache/disk-cache/disk-cache-disable.html [ Pass Failure Timeout ]
 webkit.org/b/149087 [ Debug ] http/tests/cache/disk-cache/disk-cache-vary-no-body.html [ Pass Failure Timeout ]
 
-webkit.org/b/178019 [ ElCapitan Release ] http/tests/cache/disk-cache/disk-cache-validation-no-body.html [ Skip ]
+
 
 webkit.org/b/150095 http/tests/xmlhttprequest/xmlhttprequest-overridemimetype-invalidstaterror.html [ Pass Timeout ]
 
@@ -691,8 +697,6 @@ webkit.org/b/168380 [ ElCapitan Debug ] imported/w3c/web-platform-tests/IndexedD
 
 # Skipped because Mac doesn't have a key to show the context menu
 fast/events/context-activated-by-key-event.html [ Skip ]
-
-[ Release ] js/dom/global-constructors-attributes.html [ Skip ]
 
 webkit.org/b/169621 imported/w3c/web-platform-tests/IndexedDB/fire-error-event-exception.html [ Pass Failure ]
 webkit.org/b/169760 imported/w3c/web-platform-tests/IndexedDB/fire-success-event-exception.html [ Pass Failure ]

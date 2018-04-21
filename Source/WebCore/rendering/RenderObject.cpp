@@ -817,7 +817,7 @@ void RenderObject::propagateRepaintToParentWithOutlineAutoIfNeeded(const RenderL
     if (!hasOutlineAutoAncestor())
         return;
 
-    // FIXME: We should really propagate only when the the child renderer sticks out.
+    // FIXME: We should really propagate only when the child renderer sticks out.
     bool repaintRectNeedsConverting = false;
     // Issue repaint on the renderer with outline: auto.
     for (const auto* renderer = this; renderer; renderer = renderer->parent()) {
@@ -1428,32 +1428,11 @@ bool RenderObject::isSelectionBorder() const
 
 void RenderObject::willBeDestroyed()
 {
-    // For accessibility management, notify the parent of the imminent change to its child set.
-    // We do it now, before remove(), while the parent pointer is still available.
-    if (AXObjectCache* cache = document().existingAXObjectCache())
-        cache->childrenChanged(this->parent());
-
-    if (m_parent) {
-        // FIXME: We should have always been removed from the parent before being destroyed.
-        auto takenThis = m_parent->takeChild(*this);
-        auto* leakedPtr = takenThis.release();
-        UNUSED_PARAM(leakedPtr);
-    }
-
+    ASSERT(!m_parent);
     ASSERT(renderTreeBeingDestroyed() || !is<RenderElement>(*this) || !view().frameView().hasSlowRepaintObject(downcast<RenderElement>(*this)));
 
-    // The remove() call above may invoke axObjectCache()->childrenChanged() on the parent, which may require the AX render
-    // object for this renderer. So we remove the AX render object now, after the renderer is removed.
     if (AXObjectCache* cache = document().existingAXObjectCache())
         cache->remove(this);
-
-    // FIXME: Would like to do this in RenderBoxModelObject, but the timing is so complicated that this can't easily
-    // be moved into RenderLayerModelObject::willBeDestroyed().
-    // FIXME: Is this still true?
-    if (hasLayer()) {
-        setHasLayer(false);
-        downcast<RenderLayerModelObject>(*this).destroyLayer();
-    }
 
     removeRareData();
 }
@@ -1476,11 +1455,11 @@ void RenderObject::willBeRemovedFromTree()
     parent()->setNeedsBoundariesUpdate();
 }
 
-void RenderObject::destroyAndCleanupAnonymousWrappers()
+void RenderObject::removeFromParentAndDestroyCleaningUpAnonymousWrappers()
 {
     // If the tree is destroyed, there is no need for a clean-up phase.
     if (renderTreeBeingDestroyed()) {
-        destroy();
+        removeFromParentAndDestroy();
         return;
     }
 
@@ -1497,18 +1476,20 @@ void RenderObject::destroyAndCleanupAnonymousWrappers()
         destroyRootParent = destroyRootParent->parent();
     }
 
-    if (is<RenderTableRow>(*destroyRoot)) {
-        downcast<RenderTableRow>(*destroyRoot).destroyAndCollapseAnonymousSiblingRows();
-        return;
-    }
+    if (is<RenderTableRow>(*destroyRoot))
+        downcast<RenderTableRow>(*destroyRoot).collapseAndDestroyAnonymousSiblingRows();
 
-    destroyRoot->destroy();
+    destroyRoot->removeFromParentAndDestroy();
     // WARNING: |this| is deleted here.
 }
 
 void RenderObject::destroy()
 {
-    ASSERT(!m_bitfields.beingDestroyed());
+    RELEASE_ASSERT(!m_parent);
+    RELEASE_ASSERT(!m_next);
+    RELEASE_ASSERT(!m_previous);
+    RELEASE_ASSERT(!m_bitfields.beingDestroyed());
+
     m_bitfields.setBeingDestroyed(true);
 
 #if PLATFORM(IOS)

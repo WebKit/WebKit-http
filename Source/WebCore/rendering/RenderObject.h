@@ -411,10 +411,6 @@ public:
 #endif
             ;
     }
-    bool isElementContinuation() const { return node() && node()->renderer() != this; }
-    bool isInlineElementContinuation() const { return isElementContinuation() && isInline(); }
-    bool isBlockElementContinuation() const { return isElementContinuation() && !isInline(); }
-    virtual RenderBoxModelObject* virtualContinuation() const { return nullptr; }
 
     bool isFloating() const { return m_bitfields.floating(); }
 
@@ -725,7 +721,6 @@ public:
     // When performing a global document tear-down, or when going into the page cache, the renderer of the document is cleared.
     bool renderTreeBeingDestroyed() const;
 
-    void destroyAndCleanupAnonymousWrappers();
     void destroy();
 
     // Virtual function helpers for the deprecated Flexible Box Layout (display: -webkit-box).
@@ -752,6 +747,7 @@ public:
     virtual void imageChanged(WrappedImagePtr, const IntRect* = nullptr) { }
 
     void removeFromParentAndDestroy();
+    void removeFromParentAndDestroyCleaningUpAnonymousWrappers();
 
     CSSAnimationController& animation() const;
 

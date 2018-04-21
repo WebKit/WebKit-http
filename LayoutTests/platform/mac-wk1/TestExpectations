@@ -11,8 +11,11 @@ editing/pasteboard/data-transfer-get-data-on-drop-custom.html [ Pass ]
 editing/pasteboard/data-transfer-get-data-on-drop-plain-text.html [ Pass ]
 editing/pasteboard/data-transfer-get-data-on-drop-rich-text.html [ Pass ]
 editing/pasteboard/data-transfer-get-data-on-drop-url.html [ Pass ]
+editing/pasteboard/data-transfer-is-unique-for-dragenter-and-dragleave.html [ Pass ]
+editing/pasteboard/data-transfer-set-data-sanitlize-url-when-dragging-in-null-origin.html [ Pass ]
 editing/pasteboard/drag-end-crash-accessing-item-list.html [ Pass ]
 editing/pasteboard/data-transfer-item-list-add-file-on-drag.html [ Pass ]
+editing/pasteboard/data-transfer-items-drop-file.html [ Pass ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
@@ -94,6 +97,7 @@ fast/events/ghostly-mousemoves-in-subframe.html [ Skip ]
 
 # Media Stream API testing is not supported for WK1 yet.
 fast/mediastream
+imported/w3c/web-platform-tests/mediacapture-streams
 http/tests/media/media-stream
 http/tests/ssl/media-stream
 
@@ -312,8 +316,6 @@ webkit.org/b/105870 [ Debug ] webaudio/audionode-connect-order.html [ Pass Crash
 
 webkit.org/b/160227 [ ElCapitan Debug ] inspector/memory/tracking.html [ Pass Crash ]
 
-webkit.org/b/165934 [ ElCapitan Yosemite ] js/dom/global-constructors-attributes.html [ Failure ]
-
 # rdar://problem/27723718
 [ Sierra+ ] imported/blink/compositing/child-transform-with-anchor-point.html [ ImageOnlyFailure ]
 
@@ -449,4 +451,3 @@ webkit.org/b/177020 fast/events/beforeunload-dom-manipulation-crash.html [ Skip 
 [ HighSierra+ ] fast/text/system-font-fallback-emoji.html [ Crash ]
 
 webkit.org/b/177563 [ HighSierra ] http/tests/xmlhttprequest/response-empty-arraybuffer.html [ Failure ]
-webkit.org/b/177564 [ HighSierra ] http/tests/xmlhttprequest/response-encoding.html [ Skip ]

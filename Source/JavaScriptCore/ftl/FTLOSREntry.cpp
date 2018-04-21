@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2014, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -76,7 +76,7 @@ void* prepareOSREntry(
         JSValue reconstructedValue = values.argument(argument);
         if (valueOnStack == reconstructedValue || !argument)
             continue;
-        dataLog("Mismatch between reconstructed values and the the value on the stack for argument arg", argument, " for ", *entryCodeBlock, " at bc#", bytecodeIndex, ":\n");
+        dataLog("Mismatch between reconstructed values and the value on the stack for argument arg", argument, " for ", *entryCodeBlock, " at bc#", bytecodeIndex, ":\n");
         dataLog("    Value on stack: ", valueOnStack, "\n");
         dataLog("    Reconstructed value: ", reconstructedValue, "\n");
         RELEASE_ASSERT_NOT_REACHED();

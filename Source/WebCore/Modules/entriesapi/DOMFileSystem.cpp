@@ -96,12 +96,21 @@ static bool isValidPathNameCharacter(UChar c)
 // https://wicg.github.io/entries-api/#path-segment
 static bool isValidPathSegment(StringView segment)
 {
-    ASSERT(!segment.isEmpty());
-    if (segment == "." || segment == "..")
+    if (segment.isEmpty() || segment == "." || segment == "..")
         return true;
 
     for (unsigned i = 0; i < segment.length(); ++i) {
         if (!isValidPathNameCharacter(segment[i]))
+            return false;
+    }
+    return true;
+}
+
+static bool isZeroOrMorePathSegmentsSeparatedBySlashes(StringView string)
+{
+    auto segments = string.split('/');
+    for (auto segment : segments) {
+        if (!isValidPathSegment(segment))
             return false;
     }
     return true;
@@ -116,21 +125,18 @@ static bool isValidRelativeVirtualPath(StringView virtualPath)
     if (virtualPath[0] == '/')
         return false;
 
-    auto segments = virtualPath.split('/');
-    for (auto segment : segments) {
-        if (!isValidPathSegment(segment))
-            return false;
-    }
-    return true;
+    return isZeroOrMorePathSegmentsSeparatedBySlashes(virtualPath);
 }
 
 // https://wicg.github.io/entries-api/#valid-path
 static bool isValidVirtualPath(StringView virtualPath)
 {
     if (virtualPath.isEmpty())
-        return false;
-    if (virtualPath[0] == '/')
-        return virtualPath.length() == 1 || isValidRelativeVirtualPath(virtualPath.substring(1));
+        return true;
+    if (virtualPath[0] == '/') {
+        // An absolute path is a string consisting of '/' (U+002F SOLIDUS) followed by one or more path segments joined by '/' (U+002F SOLIDUS).
+        return isZeroOrMorePathSegmentsSeparatedBySlashes(virtualPath.substring(1));
+    }
     return isValidRelativeVirtualPath(virtualPath);
 }
 
@@ -185,7 +191,7 @@ static std::optional<FileMetadata::Type> fileType(const String& fullPath)
 static String resolveRelativeVirtualPath(StringView baseVirtualPath, StringView relativeVirtualPath)
 {
     ASSERT(baseVirtualPath[0] == '/');
-    if (relativeVirtualPath[0] == '/')
+    if (!relativeVirtualPath.isEmpty() && relativeVirtualPath[0] == '/')
         return relativeVirtualPath.length() == 1 ? relativeVirtualPath.toString() : resolveRelativeVirtualPath("/", relativeVirtualPath.substring(1));
 
     Vector<StringView> virtualPathSegments;
@@ -330,9 +336,9 @@ void DOMFileSystem::getFile(ScriptExecutionContext& context, FileSystemFileEntry
 {
     auto virtualPath = fileEntry.virtualPath();
     auto fullPath = evaluatePath(virtualPath);
-    m_workQueue->dispatch([this, context = makeRef(context), fullPath = crossThreadCopy(fullPath), virtualPath = crossThreadCopy(virtualPath), completionCallback = WTFMove(completionCallback)]() mutable {
+    m_workQueue->dispatch([context = makeRef(context), fullPath = crossThreadCopy(fullPath), virtualPath = crossThreadCopy(virtualPath), completionCallback = WTFMove(completionCallback)]() mutable {
         auto validatedVirtualPath = validatePathIsExpectedType(fullPath, WTFMove(virtualPath), FileMetadata::Type::File);
-        callOnMainThread([this, context = WTFMove(context), fullPath = crossThreadCopy(fullPath), validatedVirtualPath = crossThreadCopy(validatedVirtualPath), completionCallback = WTFMove(completionCallback)]() mutable {
+        callOnMainThread([context = WTFMove(context), fullPath = crossThreadCopy(fullPath), validatedVirtualPath = crossThreadCopy(validatedVirtualPath), completionCallback = WTFMove(completionCallback)]() mutable {
             if (validatedVirtualPath.hasException())
                 completionCallback(validatedVirtualPath.releaseException());
             else

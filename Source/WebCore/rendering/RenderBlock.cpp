@@ -764,15 +764,15 @@ void RenderBlock::removeLeftoverAnonymousBlock(RenderBlock* child)
             child->nextSibling()->setPreviousSibling(child->previousSibling());
     }
 
-    child->setFirstChild(0);
-    child->m_next = 0;
+    child->setFirstChild(nullptr);
+    child->m_next = nullptr;
 
     // Remove all the information in the flow thread associated with the leftover anonymous block.
     child->resetFragmentedFlowStateOnRemoval();
 
-    child->setParent(0);
-    child->setPreviousSibling(0);
-    child->setNextSibling(0);
+    child->setParent(nullptr);
+    child->setPreviousSibling(nullptr);
+    child->setNextSibling(nullptr);
 
     child->destroy();
 }
@@ -788,7 +788,12 @@ static bool canDropAnonymousBlock(const RenderBlock& anonymousBlock)
 
 static bool canMergeContiguousAnonymousBlocks(RenderObject& oldChild, RenderObject* previous, RenderObject* next)
 {
-    if (oldChild.renderTreeBeingDestroyed() || oldChild.isInline() || oldChild.virtualContinuation())
+    ASSERT(!oldChild.renderTreeBeingDestroyed());
+
+    if (oldChild.isInline())
+        return false;
+
+    if (is<RenderBoxModelObject>(oldChild) && downcast<RenderBoxModelObject>(oldChild).continuation())
         return false;
 
     if (previous) {
@@ -870,7 +875,7 @@ RenderPtr<RenderObject> RenderBlock::takeChild(RenderObject& oldChild)
             
             // Delete the now-empty block's lines and nuke it.
             nextBlock.deleteLines();
-            nextBlock.destroy();
+            nextBlock.removeFromParentAndDestroy();
             next = nullptr;
         }
     }
@@ -915,23 +920,22 @@ RenderPtr<RenderObject> RenderBlock::takeChild(RenderObject& oldChild)
             while (containingBlockIgnoringAnonymous && containingBlockIgnoringAnonymous->isAnonymousBlock())
                 containingBlockIgnoringAnonymous = containingBlockIgnoringAnonymous->containingBlock();
             for (RenderObject* current = this; current; current = current->previousInPreOrder(containingBlockIgnoringAnonymous)) {
-                if (current->virtualContinuation() != this)
+                if (!is<RenderBoxModelObject>(current) || downcast<RenderBoxModelObject>(*current).continuation() != this)
                     continue;
-
                 // Found our previous continuation. We just need to point it to
                 // |this|'s next continuation.
-                RenderBoxModelObject* nextContinuation = continuation();
+                auto* nextContinuation = continuation();
                 if (is<RenderInline>(*current))
                     downcast<RenderInline>(*current).setContinuation(nextContinuation);
                 else if (is<RenderBlock>(*current))
                     downcast<RenderBlock>(*current).setContinuation(nextContinuation);
                 else
                     ASSERT_NOT_REACHED();
-
                 break;
             }
             setContinuation(nullptr);
-            destroy();
+            // FIXME: This is dangerous.
+            removeFromParentAndDestroy();
         }
     }
     return takenChild;

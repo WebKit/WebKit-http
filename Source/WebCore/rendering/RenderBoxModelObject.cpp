@@ -77,7 +77,7 @@ using namespace HTMLNames;
 // an anonymous block (that houses other blocks) or it will be an inline flow.
 // <b><i><p>Hello</p></i></b>. In this example the <i> will have a block as
 // its continuation but the <b> will just have an inline as its continuation.
-typedef HashMap<const RenderBoxModelObject*, RenderBoxModelObject*> ContinuationMap;
+typedef HashMap<const RenderBoxModelObject*, WeakPtr<RenderBoxModelObject>> ContinuationMap;
 static ContinuationMap& continuationMap()
 {
     static NeverDestroyed<ContinuationMap> map;
@@ -188,7 +188,7 @@ RenderBoxModelObject::~RenderBoxModelObject()
 void RenderBoxModelObject::willBeDestroyed()
 {
     if (hasContinuation()) {
-        continuation()->destroy();
+        continuation()->removeFromParentAndDestroy();
         setContinuation(nullptr);
     }
 
@@ -2449,13 +2449,14 @@ RenderBoxModelObject* RenderBoxModelObject::continuation() const
 {
     if (!hasContinuation())
         return nullptr;
-    return continuationMap().get(this);
+    return continuationMap().get(this).get();
 }
 
 void RenderBoxModelObject::setContinuation(RenderBoxModelObject* continuation)
 {
+    ASSERT(!continuation || continuation->isContinuation());
     if (continuation)
-        continuationMap().set(this, continuation);
+        continuationMap().set(this, makeWeakPtr(continuation));
     else if (hasContinuation())
         continuationMap().remove(this);
     setHasContinuation(!!continuation);
@@ -2584,9 +2585,6 @@ void RenderBoxModelObject::mapAbsoluteToLocalPoint(MapCoordinatesFlags mode, Tra
 
 void RenderBoxModelObject::moveChildTo(RenderBoxModelObject* toBoxModelObject, RenderObject* child, RenderObject* beforeChild, bool fullRemoveInsert)
 {
-#if !ASSERT_DISABLED
-    SetForScope<bool> reparentingChild(m_reparentingChild, true);
-#endif
     // We assume that callers have cleared their positioned objects list for child moves (!fullRemoveInsert) so the
     // positioned renderer maps don't become stale. It would be too slow to do the map lookup on each call.
     ASSERT(!fullRemoveInsert || !is<RenderBlock>(*this) || !downcast<RenderBlock>(*this).hasPositionedObjects());

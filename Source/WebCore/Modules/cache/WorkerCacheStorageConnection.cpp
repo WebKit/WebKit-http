@@ -53,6 +53,7 @@ struct CrossThreadRecordData {
     FetchHeaders::Guard responseHeadersGuard;
     ResourceResponse::CrossThreadData response;
     ResponseBody responseBody;
+    uint64_t responseBodySize;
 };
 
 static CrossThreadRecordData toCrossThreadRecordData(const Record& record)
@@ -66,7 +67,8 @@ static CrossThreadRecordData toCrossThreadRecordData(const Record& record)
         record.referrer.isolatedCopy(),
         record.responseHeadersGuard,
         record.response.crossThreadData(),
-        isolatedResponseBody(record.responseBody)
+        isolatedResponseBody(record.responseBody),
+        record.responseBodySize
     };
 }
 
@@ -81,7 +83,8 @@ static Record fromCrossThreadRecordData(CrossThreadRecordData&& data)
         WTFMove(data.referrer),
         data.responseHeadersGuard,
         ResourceResponse::fromCrossThreadData(WTFMove(data.response)),
-        WTFMove(data.responseBody)
+        WTFMove(data.responseBody),
+        data.responseBodySize
     };
 }
 
@@ -133,7 +136,7 @@ void WorkerCacheStorageConnection::doRemove(uint64_t requestIdentifier, uint64_t
         ASSERT(m_mainThreadConnection);
 
         m_mainThreadConnection->remove(cacheIdentifier, [this, protectedThis = WTFMove(protectedThis), requestIdentifier, cacheIdentifier](const CacheIdentifierOrError& result) mutable {
-            ASSERT(!result.hasValue() || result.value().identifier == cacheIdentifier);
+            ASSERT_UNUSED(cacheIdentifier, !result.hasValue() || result.value().identifier == cacheIdentifier);
             m_proxy.postTaskForModeToWorkerGlobalScope([this, protectedThis = WTFMove(protectedThis), requestIdentifier, result](ScriptExecutionContext& context) mutable {
                 ASSERT_UNUSED(context, context.isWorkerGlobalScope());
                 removeCompleted(requestIdentifier, result);

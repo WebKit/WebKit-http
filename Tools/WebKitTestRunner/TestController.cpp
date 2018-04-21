@@ -409,7 +409,6 @@ WKRetainPtr<WKContextConfigurationRef> TestController::generateContextConfigurat
 
         WKContextConfigurationSetApplicationCacheDirectory(configuration.get(), toWK(temporaryFolder + separator + "ApplicationCache").get());
         WKContextConfigurationSetDiskCacheDirectory(configuration.get(), toWK(temporaryFolder + separator + "Cache").get());
-        WKContextConfigurationSetCacheStorageDirectory(configuration.get(), toWK(temporaryFolder + separator + "CacheStorage").get());
         WKContextConfigurationSetIndexedDBDatabaseDirectory(configuration.get(), toWK(temporaryFolder + separator + "Databases" + separator + "IndexedDB").get());
         WKContextConfigurationSetLocalStorageDirectory(configuration.get(), toWK(temporaryFolder + separator + "LocalStorage").get());
         WKContextConfigurationSetWebSQLDatabaseDirectory(configuration.get(), toWK(temporaryFolder + separator + "Databases" + separator + "WebSQL").get());
@@ -683,6 +682,7 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetInteractiveFormValidationEnabled(preferences, true);
     WKPreferencesSetDisplayContentsEnabled(preferences, true);
     WKPreferencesSetDataTransferItemsEnabled(preferences, true);
+    WKPreferencesSetCustomPasteboardDataEnabled(preferences, true);
 
     WKPreferencesSetMockScrollbarsEnabled(preferences, options.useMockScrollbars);
     WKPreferencesSetNeedsSiteSpecificQuirks(preferences, options.needsSiteSpecificQuirks);
@@ -1870,9 +1870,9 @@ void TestController::setGeolocationPermission(bool enabled)
     decidePolicyForGeolocationPermissionRequestIfPossible();
 }
 
-void TestController::setMockGeolocationPosition(double latitude, double longitude, double accuracy, bool providesAltitude, double altitude, bool providesAltitudeAccuracy, double altitudeAccuracy, bool providesHeading, double heading, bool providesSpeed, double speed)
+void TestController::setMockGeolocationPosition(double latitude, double longitude, double accuracy, bool providesAltitude, double altitude, bool providesAltitudeAccuracy, double altitudeAccuracy, bool providesHeading, double heading, bool providesSpeed, double speed, bool providesFloorLevel, double floorLevel)
 {
-    m_geolocationProvider->setPosition(latitude, longitude, accuracy, providesAltitude, altitude, providesAltitudeAccuracy, altitudeAccuracy, providesHeading, heading, providesSpeed, speed);
+    m_geolocationProvider->setPosition(latitude, longitude, accuracy, providesAltitude, altitude, providesAltitudeAccuracy, altitudeAccuracy, providesHeading, heading, providesSpeed, speed, providesFloorLevel, floorLevel);
 }
 
 void TestController::setMockGeolocationPositionUnavailableError(WKStringRef errorMessage)
@@ -2294,6 +2294,21 @@ void TestController::removeAllSessionCredentials()
 }
 
 #endif
+
+void TestController::clearDOMCache(WKStringRef origin)
+{
+#if WK_API_ENABLED
+    auto websiteDataStore = WKContextGetWebsiteDataStore(platformContext());
+
+    if (WKStringIsEmpty(origin)) {
+        WKWebsiteDataStoreRemoveAllFetchCaches(websiteDataStore);
+        return;
+    }
+
+    auto cacheOrigin = adoptWK(WKSecurityOriginCreateFromString(origin));
+    WKWebsiteDataStoreRemoveFetchCacheForOrigin(websiteDataStore, cacheOrigin.get());
+#endif
+}
 
 #if !PLATFORM(COCOA) || !WK_API_ENABLED
 

@@ -28,7 +28,7 @@
 #if ENABLE(APPLE_PAY)
 
 #include "ApplePaySessionPaymentRequest.h"
-#include <wtf/RefCounted.h>
+#include "PaymentSessionBase.h"
 
 namespace WebCore {
 
@@ -37,10 +37,8 @@ class PaymentContact;
 class PaymentMethod;
 class URL;
 
-class PaymentSession : public RefCounted<PaymentSession> {
+class PaymentSession : public virtual PaymentSessionBase {
 public:
-    virtual ~PaymentSession() { }
-
     virtual void validateMerchant(const URL&) = 0;
     virtual void didAuthorizePayment(const Payment&) = 0;
     virtual void didSelectShippingMethod(const ApplePaySessionPaymentRequest::ShippingMethod&) = 0;

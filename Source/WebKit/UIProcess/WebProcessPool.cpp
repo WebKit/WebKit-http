@@ -196,7 +196,6 @@ static WebsiteDataStore::Configuration legacyWebsiteDataStoreConfiguration(API::
     configuration.mediaCacheDirectory = processPoolConfiguration.mediaCacheDirectory();
     configuration.mediaKeysStorageDirectory = processPoolConfiguration.mediaKeysStorageDirectory();
     configuration.resourceLoadStatisticsDirectory = processPoolConfiguration.resourceLoadStatisticsDirectory();
-    configuration.cacheStorageDirectory = processPoolConfiguration.cacheStorageDirectory();
     configuration.networkCacheDirectory = processPoolConfiguration.diskCacheDirectory();
     configuration.javaScriptConfigurationDirectory = processPoolConfiguration.javaScriptConfigurationDirectory();
 
@@ -433,9 +432,11 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
     for (auto& scheme : m_urlSchemesRegisteredForCustomProtocols)
         parameters.urlSchemesRegisteredForCustomProtocols.append(scheme);
 
-    parameters.cacheStorageDirectory = m_configuration->cacheStorageDirectory();
-    if (!parameters.cacheStorageDirectory.isEmpty())
+    parameters.cacheStorageDirectory = m_websiteDataStore ? m_websiteDataStore->websiteDataStore().cacheStorageDirectory() : String { };
+    if (!parameters.cacheStorageDirectory.isEmpty()) {
         SandboxExtension::createHandleForReadWriteDirectory(parameters.cacheStorageDirectory, parameters.cacheStorageDirectoryExtensionHandle);
+        parameters.cacheStoragePerOriginQuota = m_websiteDataStore ? m_websiteDataStore->websiteDataStore().cacheStoragePerOriginQuota() : WebsiteDataStore::defaultCacheStoragePerOriginQuota;
+    }
 
     parameters.diskCacheDirectory = m_configuration->diskCacheDirectory();
     if (!parameters.diskCacheDirectory.isEmpty())
@@ -544,7 +545,7 @@ void WebProcessPool::ensureStorageProcessAndWebsiteDataStore(WebsiteDataStore* r
         }
 #endif
 
-        m_storageProcess = StorageProcessProxy::create(this);
+        m_storageProcess = StorageProcessProxy::create(*this);
         m_storageProcess->send(Messages::StorageProcess::InitializeWebsiteDataStore(parameters), 0);
     }
 
@@ -573,6 +574,29 @@ void WebProcessPool::storageProcessCrashed(StorageProcessProxy* storageProcessPr
     m_storageProcess = nullptr;
 }
 
+#if ENABLE(SERVICE_WORKER)
+void WebProcessPool::getWorkerContextProcessConnection(StorageProcessProxy& proxy)
+{
+    ASSERT_UNUSED(proxy, &proxy == m_storageProcess);
+    
+    if (!m_workerContextProcess) {
+        if (!m_websiteDataStore)
+            m_websiteDataStore = API::WebsiteDataStore::defaultDataStore().ptr();
+        auto& newProcess = createNewWebProcess(m_websiteDataStore->websiteDataStore());
+        m_workerContextProcess = &newProcess;
+    }
+    
+    m_workerContextProcess->send(Messages::WebProcess::GetWorkerContextConnection(), 0);
+}
+
+void WebProcessPool::didGetWorkerContextProcessConnection(const IPC::Attachment& connection)
+{
+    if (!m_storageProcess)
+        return;
+    m_storageProcess->didGetWorkerContextProcessConnection(connection);
+}
+#endif
+
 void WebProcessPool::willStartUsingPrivateBrowsing()
 {
     for (auto* processPool : allProcessPools())
@@ -596,7 +620,7 @@ void WebProcessPool::setAnyPageGroupMightHavePrivateBrowsingEnabled(bool private
 {
     if (networkProcess()) {
         if (privateBrowsingEnabled)
-            networkProcess()->send(Messages::NetworkProcess::EnsurePrivateBrowsingSession({PAL::SessionID::legacyPrivateSessionID(), { }, { }, { }, { }, { }}), 0);
+            networkProcess()->send(Messages::NetworkProcess::EnsurePrivateBrowsingSession({PAL::SessionID::legacyPrivateSessionID(), { }, { }, { }, { }, WebsiteDataStore::defaultCacheStoragePerOriginQuota, { }}), 0);
         else
             networkProcess()->send(Messages::NetworkProcess::DestroySession(PAL::SessionID::legacyPrivateSessionID()), 0);
     }
@@ -881,6 +905,10 @@ void WebProcessPool::disconnectProcess(WebProcessProxy* process)
     RefPtr<WebProcessProxy> protect(process);
     if (m_processWithPageCache == process)
         m_processWithPageCache = nullptr;
+#if ENABLE(SERVICE_WORKER)
+    if (m_workerContextProcess == process)
+        m_workerContextProcess = nullptr;
+#endif
 
     static_cast<WebContextSupplement*>(supplement<WebGeolocationManagerProxy>())->processDidClose(process);
 
@@ -958,6 +986,8 @@ Ref<WebPageProxy> WebProcessPool::createWebPage(PageClient& pageClient, Ref<API:
         process = &pageConfiguration->relatedPage()->process();
     } else
         process = &createNewWebProcessRespectingProcessCountLimit(pageConfiguration->websiteDataStore()->websiteDataStore());
+
+    ASSERT(process.get() != m_workerContextProcess);
 
     return process->createWebPage(pageClient, WTFMove(pageConfiguration));
 }

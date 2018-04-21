@@ -54,6 +54,12 @@
 
 using namespace WebKit;
 
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
+@interface NSURLSessionConfiguration (WKStaging)
+@property (nullable, copy) NSSet *_suppressedAutoAddedHTTPHeaders;
+@end
+#endif
+
 static NSURLSessionResponseDisposition toNSURLSessionResponseDisposition(WebCore::PolicyAction disposition)
 {
     switch (disposition) {
@@ -571,6 +577,12 @@ NetworkSessionCocoa::NetworkSessionCocoa(PAL::SessionID sessionID, LegacyCustomP
 #endif
 
     NSURLSessionConfiguration *configuration = configurationForSessionID(m_sessionID);
+
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
+    // Without this, CFNetwork would sometimes add a Content-Type header to our requests (rdar://problem/34748470).
+    if ([configuration respondsToSelector:@selector(_suppressedAutoAddedHTTPHeaders)])
+        configuration._suppressedAutoAddedHTTPHeaders = [NSSet setWithObject:@"Content-Type"];
+#endif
 
     if (!allowsCellularAccess)
         configuration.allowsCellularAccess = NO;

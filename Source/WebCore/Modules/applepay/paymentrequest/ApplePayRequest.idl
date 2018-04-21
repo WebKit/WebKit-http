@@ -27,4 +27,6 @@
     Conditional=APPLE_PAY&PAYMENT_REQUEST,
 ] dictionary ApplePayRequest : ApplePayRequestBase {
     required unsigned long version;
+    required DOMString merchantIdentifier;
 };
+

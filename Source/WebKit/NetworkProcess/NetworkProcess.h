@@ -100,9 +100,7 @@ public:
     AuthenticationManager& authenticationManager();
     DownloadManager& downloadManager();
 
-#if ENABLE(NETWORK_CACHE)
     NetworkCache::Cache* cache() { return m_cache.get(); }
-#endif
 
     bool canHandleHTTPSServerTrustEvaluation() const { return m_canHandleHTTPSServerTrustEvaluation; }
 
@@ -145,6 +143,7 @@ public:
 
     Seconds loadThrottleLatency() const { return m_loadThrottleLatency; }
     String cacheStorageDirectory(PAL::SessionID) const;
+    uint64_t cacheStoragePerOriginQuota() const;
 
     void preconnectTo(const WebCore::URL&, WebCore::StoredCredentialsPolicy);
 
@@ -237,6 +236,7 @@ private:
     Vector<RefPtr<NetworkConnectionToWebProcess>> m_webProcessConnections;
 
     String m_cacheStorageDirectory;
+    uint64_t m_cacheStoragePerOriginQuota { 0 };
     String m_diskCacheDirectory;
     bool m_hasSetCacheModel;
     CacheModel m_cacheModel;
@@ -246,9 +246,7 @@ private:
     bool m_canHandleHTTPSServerTrustEvaluation;
     Seconds m_loadThrottleLatency;
 
-#if ENABLE(NETWORK_CACHE)
     RefPtr<NetworkCache::Cache> m_cache;
-#endif
 
     typedef HashMap<const char*, std::unique_ptr<NetworkProcessSupplement>, PtrHash<const char*>> NetworkProcessSupplementMap;
     NetworkProcessSupplementMap m_supplements;
