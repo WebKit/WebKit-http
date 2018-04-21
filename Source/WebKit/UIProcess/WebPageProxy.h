@@ -423,6 +423,8 @@ public:
     bool drawsBackground() const { return m_drawsBackground; }
     void setDrawsBackground(bool);
 
+    String currentURL() const;
+
     float topContentInset() const { return m_topContentInset; }
     void setTopContentInset(float);
 
@@ -2001,10 +2003,6 @@ private:
 #if ENABLE(POINTER_LOCK)
     bool m_isPointerLockPending { false };
     bool m_isPointerLocked { false };
-#endif
-
-#if ENABLE(DOWNLOAD_ATTRIBUTE)
-    bool m_syncNavigationActionHasDownloadAttribute { false };
 #endif
 
     bool m_isUsingHighPerformanceWebGL { false };

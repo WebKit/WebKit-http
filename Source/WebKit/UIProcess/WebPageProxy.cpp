@@ -1073,10 +1073,7 @@ RefPtr<API::Navigation> WebPageProxy::reload(OptionSet<WebCore::ReloadOption> op
 {
     SandboxExtension::Handle sandboxExtensionHandle;
 
-    String url = m_pageLoadState.activeURL();
-    if (url.isEmpty() && m_backForwardList->currentItem())
-        url = m_backForwardList->currentItem()->url();
-
+    String url = currentURL();
     if (!url.isEmpty()) {
         auto transaction = m_pageLoadState.transaction();
         m_pageLoadState.setPendingAPIRequestURL(transaction, url);
@@ -2285,10 +2282,8 @@ void WebPageProxy::receivedPolicyDecision(PolicyAction action, WebFrameProxy& fr
     if (action == PolicyAction::Ignore)
         m_pageLoadState.clearPendingAPIRequestURL(transaction);
 
-#if ENABLE(DOWNLOAD_ATTRIBUTE)
-    if (m_syncNavigationActionHasDownloadAttribute && action == PolicyAction::Use)
+    if (navigation && navigation->shouldForceDownload() && action == PolicyAction::Use)
         action = PolicyAction::Download;
-#endif
 
     DownloadID downloadID = { };
     if (action == PolicyAction::Download) {
@@ -3695,10 +3690,12 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const Secur
         auto navigation = m_navigationState->createLoadRequestNavigation(ResourceRequest(request));
         newNavigationID = navigation->navigationID();
         navigation->setWasUserInitiated(!!navigationActionData.userGestureTokenIdentifier);
+        navigation->setShouldForceDownload(!navigationActionData.downloadAttribute.isNull());
         listener->setNavigation(WTFMove(navigation));
     } else {
         auto& navigation = m_navigationState->navigation(navigationID);
         navigation.setWasUserInitiated(!!navigationActionData.userGestureTokenIdentifier);
+        navigation.setShouldForceDownload(!navigationActionData.downloadAttribute.isNull());
         listener->setNavigation(navigation);
     }
 
@@ -3714,9 +3711,6 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const Secur
     
     m_inDecidePolicyForNavigationAction = true;
     m_syncNavigationActionPolicyActionIsValid = false;
-#if ENABLE(DOWNLOAD_ATTRIBUTE)
-    m_syncNavigationActionHasDownloadAttribute = !navigationActionData.downloadAttribute.isNull();
-#endif
 
     WebFrameProxy* originatingFrame = m_process->webFrame(originatingFrameInfoData.frameID);
 
@@ -5443,16 +5437,21 @@ void WebPageProxy::didChangeProcessIsResponsive()
     m_pageLoadState.didChangeProcessIsResponsive();
 }
 
+String WebPageProxy::currentURL() const
+{
+    String url = m_pageLoadState.activeURL();
+    if (url.isEmpty() && m_backForwardList->currentItem())
+        url = m_backForwardList->currentItem()->url();
+    return url;
+}
+
 void WebPageProxy::processDidTerminate(ProcessTerminationReason reason)
 {
     ASSERT(m_isValid);
 
 #if PLATFORM(IOS)
     if (m_process->isUnderMemoryPressure()) {
-        String url = m_pageLoadState.activeURL();
-        if (url.isEmpty() && m_backForwardList->currentItem())
-            url = m_backForwardList->currentItem()->url();
-        String domain = WebCore::topPrivatelyControlledDomain(WebCore::URL(WebCore::ParsedURLString, url).host());
+        String domain = WebCore::topPrivatelyControlledDomain(WebCore::URL(WebCore::ParsedURLString, currentURL()).host());
         if (!domain.isEmpty())
             logDiagnosticMessageWithEnhancedPrivacy(WebCore::DiagnosticLoggingKeys::domainCausingJetsamKey(), domain, WebCore::ShouldSample::No);
     }
@@ -5614,11 +5613,11 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     m_callbacks.invalidate(error);
     m_loadDependentStringCallbackIDs.clear();
 
-    Vector<WebEditCommandProxy*> editCommandVector;
-    copyToVector(m_editCommandSet, editCommandVector);
+    auto editCommandVector = copyToVector(m_editCommandSet);
     m_editCommandSet.clear();
-    for (size_t i = 0, size = editCommandVector.size(); i < size; ++i)
-        editCommandVector[i]->invalidate();
+
+    for (auto& editCommand : editCommandVector)
+        editCommand->invalidate();
 
     m_activePopupMenu = nullptr;
     m_mediaState = MediaProducer::IsNotPlaying;

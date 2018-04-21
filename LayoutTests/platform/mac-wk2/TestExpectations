@@ -332,15 +332,9 @@ webkit.org/b/149087 [ Debug ] http/tests/cache/disk-cache/disk-cache-vary.html [
 webkit.org/b/147075 [ Debug ] http/tests/cache/disk-cache/disk-cache-disable.html [ Pass Failure Timeout ]
 webkit.org/b/149087 [ Debug ] http/tests/cache/disk-cache/disk-cache-vary-no-body.html [ Pass Failure Timeout ]
 
-
-
-webkit.org/b/150095 http/tests/xmlhttprequest/xmlhttprequest-overridemimetype-invalidstaterror.html [ Pass Timeout ]
-
 webkit.org/b/150241 webarchive/loading/object.html [ Pass Crash ] 
 
 webkit.org/b/150942 animations/multiple-backgrounds.html [ Pass ImageOnlyFailure ]
-
-webkit.org/b/151053 http/tests/security/cross-frame-access-put.html [ Pass Failure ]
 
 webkit.org/b/151326 [ Yosemite+ ] webarchive/loading/missing-data.html [ Pass Crash ]
 
@@ -619,13 +613,9 @@ webkit.org/b/159447 [ Debug ] inspector/debugger/tail-deleted-frames-from-vm-ent
 
 webkit.org/b/167607 [ Debug ] http/tests/inspector/worker/blob-script-with-cross-domain-imported-scripts.html [ Pass Timeout ]
 
-webkit.org/b/159884 http/tests/loading/basic-auth-resend-wrong-credentials.html [ Pass Failure ]
-
 webkit.org/b/159896 storage/indexeddb/modern/handle-user-delete.html [ Pass Timeout ]
 
 webkit.org/b/160042 accessibility/mac/value-change/value-change-user-info-contenteditable.html [ Pass Failure ]
-
-webkit.org/b/159427 http/tests/loading/basic-credentials-sent-automatically.html [ Pass Failure ]
 
 webkit.org/b/160309 fast/dom/Window/child-window-focus.html [ Pass Failure ]
 
@@ -715,8 +705,6 @@ webkit.org/b/170484 swipe/main-frame-pinning-requirement.html [ Pass Failure ]
 webkit.org/b/170960 fast/mediastream/getUserMedia-webaudio.html [ Pass Timeout ]
 
 webkit.org/b/171553 [ Release ] http/tests/websocket/tests/hybi/inspector/binary.html [ Pass Failure ]
-
-webkit.org/b/172703  webrtc/libwebrtc/descriptionGetters.html [ Pass Failure ]
 
 webkit.org/b/171763 [ Debug ] compositing/tiling/non-active-window-tiles-size.html [ Pass Failure ]
 
@@ -819,9 +807,11 @@ webkit.org/b/176122 media/video-controls-drop-and-restore-timeline.html [ Pass F
 [ HighSierra+ ] http/tests/loading/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html [ Pass ]
 [ HighSierra+ ] http/tests/loading/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout.html [ Pass Failure ]
 [ HighSierra+ ] http/tests/loading/resourceLoadStatistics/third-party-cookie-with-and-without-user-interaction.html [ Pass Failure ]
+[ HighSierra+ ] http/tests/resourceLoadStatistics/add-partitioning-to-redirect.html [ Pass ]
+[ HighSierra+ ] http/tests/resourceLoadStatistics/remove-partitioning-from-redirect.html [ Pass ]
 
 # <rdar://problem/33555759>
-[ HighSierra+ ] http/tests/media/video-buffered-range-contains-currentTime.html [ Pass ImageOnlyFailure ]
+webkit.org/b/177616 [ HighSierra+ ] http/tests/media/video-buffered-range-contains-currentTime.html [ Pass Timeout ]
 
 # Link preconnect is disabled on pre-High Sierra because the CFNetwork SPI is missing.
 [ ElCapitan Sierra ] http/tests/preconnect [ Skip ]
@@ -831,3 +821,6 @@ webkit.org/b/176486 [ ElCapitan Debug ] imported/w3c/web-platform-tests/backgrou
 webkit.org/b/171839 [ Debug ] tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-mainframe-vertical-then-horizontal.html [ Pass Failure ]
 
 webkit.org/b/177214 [ ElCapitan Debug ] imported/w3c/web-platform-tests/FileAPI/historical.https.html [ Pass Failure ]
+
+webkit.org/b/177687 http/tests/inspector/network/resource-sizes-memory-cache.html [ Pass Failure ]
+

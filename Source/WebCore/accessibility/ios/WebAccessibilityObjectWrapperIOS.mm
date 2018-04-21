@@ -56,7 +56,6 @@
 #import "SelectionRect.h"
 #import "TextIterator.h"
 #import "WAKScrollView.h"
-#import "WAKView.h"
 #import "WAKWindow.h"
 #import "WebCoreThread.h"
 #import "VisibleUnits.h"
@@ -86,8 +85,13 @@ enum {
 - (NSInteger)positionForTextMarker:(id)marker;
 @end
 
-@interface WAKView (iOSAccessibility)
-- (BOOL)accessibilityIsIgnored;
+@implementation WAKView (iOSAccessibility)
+
+- (BOOL)accessibilityIsIgnored
+{
+    return YES;
+}
+
 @end
 
 using namespace WebCore;
@@ -560,7 +564,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
 
 - (AccessibilityObjectWrapper*)_accessibilityArticleAncestor
 {
-    if (const AccessibilityObject* parent = AccessibilityObject::matchedParent(*m_object, false, [self] (const AccessibilityObject& object) {
+    if (const AccessibilityObject* parent = AccessibilityObject::matchedParent(*m_object, false, [] (const AccessibilityObject& object) {
         return object.roleValue() == DocumentArticleRole;
     }))
         return parent->wrapper();
@@ -2449,6 +2453,9 @@ static void AXAttributedStringAppendText(NSMutableAttributedString* attrString, 
         return nil;
     
     RefPtr<Range> range = selection.toNormalizedRange();
+    if (!range)
+        return nil;
+
     CharacterOffset start = cache->startOrEndCharacterOffsetForRange(range, true);
     CharacterOffset end = cache->startOrEndCharacterOffsetForRange(range, false);
 

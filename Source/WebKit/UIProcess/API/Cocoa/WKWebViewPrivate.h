@@ -30,6 +30,7 @@
 #import <WebKit/_WKActivatedElementInfo.h>
 #import <WebKit/_WKFindOptions.h>
 #import <WebKit/_WKLayoutMode.h>
+#import <WebKit/_WKOverlayScrollbarStyle.h>
 #import <WebKit/_WKRenderingProgressEvents.h>
 
 typedef NS_ENUM(NSInteger, _WKPaginationMode) {
@@ -99,6 +100,7 @@ typedef NS_OPTIONS(NSInteger, _WKRectEdge) {
 @class _WKIconLoadingDelegate;
 @class _WKRemoteObjectRegistry;
 @class _WKSessionState;
+@class _WKThumbnailView;
 @class _WKWebsitePolicies;
 @class _WKWebViewPrintFormatter;
 
@@ -173,6 +175,8 @@ typedef NS_OPTIONS(NSInteger, _WKRectEdge) {
 
 @property (nonatomic, setter=_setViewScale:) CGFloat _viewScale;
 
+@property (nonatomic, setter=_setBackgroundExtendsBeyondPage:) BOOL _backgroundExtendsBeyondPage WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(8.0));
+
 #if TARGET_OS_IPHONE
 // DERECATED: The setters of the three following function are deprecated, please use overrideLayoutParameters.
 // Define the smallest size a page take with a regular viewport.
@@ -195,8 +199,6 @@ typedef NS_OPTIONS(NSInteger, _WKRectEdge) {
 @property (nonatomic, setter=_setInterfaceOrientationOverride:) UIInterfaceOrientation _interfaceOrientationOverride;
 
 @property (nonatomic, setter=_setAllowsViewportShrinkToFit:) BOOL _allowsViewportShrinkToFit;
-
-@property (nonatomic, setter=_setBackgroundExtendsBeyondPage:) BOOL _backgroundExtendsBeyondPage;
 
 // FIXME: Remove these three properties once we expose WKWebViewContentProvider as API.
 @property (nonatomic, readonly, getter=_isDisplayingPDF) BOOL _displayingPDF;
@@ -284,6 +286,12 @@ typedef NS_OPTIONS(NSInteger, _WKRectEdge) {
 - (void)_removeMediaPlaybackControlsView WK_API_AVAILABLE(macosx(10.12.3));
 
 - (void)_prepareForMoveToWindow:(NSWindow *)targetWindow completionHandler:(void(^)(void))completionHandler WK_API_AVAILABLE(macosx(10.13));
+
+@property (nonatomic, setter=_setOverlayScrollbarStyle:) _WKOverlayScrollbarStyle _overlayScrollbarStyle WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+@property (strong, nonatomic, setter=_setInspectorAttachmentView:) NSView *_inspectorAttachmentView WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+
+@property (nonatomic, setter=_setThumbnailView:) _WKThumbnailView *_thumbnailView WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+@property (nonatomic, setter=_setIgnoresAllEvents:) BOOL _ignoresAllEvents WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 
 #endif
 
@@ -385,9 +393,28 @@ typedef NS_OPTIONS(NSInteger, _WKRectEdge) {
 - (void)_requestActivatedElementAtPosition:(CGPoint)position completionBlock:(void (^)(_WKActivatedElementInfo *))block WK_API_AVAILABLE(ios(11.0));
 - (void)_accessibilityRetrieveRectsAtSelectionOffset:(NSInteger)offset withText:(NSString *)text completionHandler:(void (^)(NSArray<NSValue *> *rects))completionHandler WK_API_AVAILABLE(ios(WK_IOS_TBA));
 
-#endif // TARGET_OS_IPHONE
-
-#if !TARGET_OS_IPHONE
+#else
+- (void)_dismissContentRelativeChildWindows WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_setFrame:(NSRect)rect andScrollBy:(NSSize)offset WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_beginDeferringViewInWindowChanges WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_endDeferringViewInWindowChanges WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_endDeferringViewInWindowChangesSync WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_gestureEventWasNotHandledByWebCore:(NSEvent *)event WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_setCustomSwipeViews:(NSArray *)customSwipeViews WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_setCustomSwipeViewsTopContentInset:(float)topContentInset WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (NSView *)_fullScreenPlaceholderView WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (NSWindow *)_fullScreenWindow WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_disableFrameSizeUpdates WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_enableFrameSizeUpdates WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_prepareForImmediateActionAnimation WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_cancelImmediateActionAnimation WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_completeImmediateActionAnimation WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (BOOL)_canChangeFrameLayout:(_WKFrameHandle *)frameHandle WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (BOOL)_tryToSwipeWithEvent:(NSEvent *)event ignoringPinnedState:(BOOL)ignoringPinnedState WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_setDidMoveSwipeSnapshotCallback:(void(^)(CGRect))callback WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+@property (nonatomic, setter=_setTotalHeightOfBanners:) CGFloat _totalHeightOfBanners WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+@property (nonatomic, copy, setter=_setUnderlayColor:) NSColor *_underlayColor;
+@property (nonatomic, readwrite, setter=_setIgnoresNonWheelEvents:) BOOL _ignoresNonWheelEvents WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 @property (nonatomic, readonly) WKPageRef _pageRefForTransitionToWKWebView  WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 @property (nonatomic, readonly) BOOL _hasActiveVideoForControlsManager WK_API_AVAILABLE(macosx(10.12));
 - (void)_requestControlledElementID WK_API_AVAILABLE(macosx(10.12.3));

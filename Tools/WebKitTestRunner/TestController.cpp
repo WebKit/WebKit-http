@@ -2295,19 +2295,108 @@ void TestController::removeAllSessionCredentials()
 
 #endif
 
-void TestController::clearDOMCache(WKStringRef origin)
-{
-#if WK_API_ENABLED
-    auto websiteDataStore = WKContextGetWebsiteDataStore(platformContext());
-
-    if (WKStringIsEmpty(origin)) {
-        WKWebsiteDataStoreRemoveAllFetchCaches(websiteDataStore);
-        return;
+#if PLATFORM(COCOA) && WK_API_ENABLED
+struct ClearDOMCacheCallbackContext {
+    explicit ClearDOMCacheCallbackContext(TestController& controller)
+        : testController(controller)
+    {
     }
 
-    auto cacheOrigin = adoptWK(WKSecurityOriginCreateFromString(origin));
-    WKWebsiteDataStoreRemoveFetchCacheForOrigin(websiteDataStore, cacheOrigin.get());
+    TestController& testController;
+    bool done { false };
+};
+
+static void clearDOMCacheCallback(void* userData)
+{
+    auto* context = static_cast<ClearDOMCacheCallbackContext*>(userData);
+    context->done = true;
+    context->testController.notifyDone();
+}
 #endif
+
+void TestController::clearDOMCache(WKStringRef origin)
+{
+#if PLATFORM(COCOA) && WK_API_ENABLED
+    auto websiteDataStore = WKContextGetWebsiteDataStore(platformContext());
+    ClearDOMCacheCallbackContext context(*this);
+
+    if (WKStringIsEmpty(origin))
+        WKWebsiteDataStoreRemoveAllFetchCaches(websiteDataStore, &context, clearDOMCacheCallback);
+    else {
+        auto cacheOrigin = adoptWK(WKSecurityOriginCreateFromString(origin));
+        WKWebsiteDataStoreRemoveFetchCacheForOrigin(websiteDataStore, cacheOrigin.get(), &context, clearDOMCacheCallback);
+    }
+    if (!context.done)
+        runUntil(context.done, m_currentInvocation->shortTimeout());
+#endif
+}
+
+struct FetchCacheOriginsCallbackContext {
+    FetchCacheOriginsCallbackContext(TestController& controller, WKStringRef origin)
+        : testController(controller)
+        , origin(origin)
+    {
+    }
+
+    TestController& testController;
+    WKStringRef origin;
+
+    bool done { false };
+    bool result { false };
+};
+
+static void fetchCacheOriginsCallback(WKArrayRef origins, void* userData)
+{
+    auto* context = static_cast<FetchCacheOriginsCallbackContext*>(userData);
+    context->done = true;
+
+    auto size = WKArrayGetSize(origins);
+    for (size_t index = 0; index < size && !context->result; ++index) {
+        WKSecurityOriginRef securityOrigin = reinterpret_cast<WKSecurityOriginRef>(WKArrayGetItemAtIndex(origins, index));
+        if (WKStringIsEqual(context->origin, adoptWK(WKSecurityOriginCopyToString(securityOrigin)).get()))
+            context->result = true;
+    }
+    context->testController.notifyDone();
+}
+
+bool TestController::hasDOMCache(WKStringRef origin)
+{
+    auto* dataStore = WKContextGetWebsiteDataStore(platformContext());
+    FetchCacheOriginsCallbackContext context(*this, origin);
+    WKWebsiteDataStoreGetFetchCacheOrigins(dataStore, &context, fetchCacheOriginsCallback);
+    if (!context.done)
+        runUntil(context.done, m_currentInvocation->shortTimeout());
+    return context.result;
+}
+
+struct FetchCacheSizeForOriginCallbackContext {
+    explicit FetchCacheSizeForOriginCallbackContext(TestController& controller)
+        : testController(controller)
+    {
+    }
+
+    TestController& testController;
+
+    bool done { false };
+    uint64_t result { 0 };
+};
+
+static void fetchCacheSizeForOriginCallback(uint64_t size, void* userData)
+{
+    auto* context = static_cast<FetchCacheSizeForOriginCallbackContext*>(userData);
+    context->done = true;
+    context->result = size;
+    context->testController.notifyDone();
+}
+
+uint64_t TestController::domCacheSize(WKStringRef origin)
+{
+    auto* dataStore = WKContextGetWebsiteDataStore(platformContext());
+    FetchCacheSizeForOriginCallbackContext context(*this);
+    WKWebsiteDataStoreGetFetchCacheSizeForOrigin(dataStore, origin, &context, fetchCacheSizeForOriginCallback);
+    if (!context.done)
+        runUntil(context.done, m_currentInvocation->shortTimeout());
+    return context.result;
 }
 
 #if !PLATFORM(COCOA) || !WK_API_ENABLED
@@ -2351,6 +2440,16 @@ bool TestController::isStatisticsPrevalentResource(WKStringRef host)
     if (!context.done)
         runUntil(context.done, m_currentInvocation->shortTimeout());
     return context.result;
+}
+
+bool TestController::isStatisticsRegisteredAsSubFrameUnder(WKStringRef, WKStringRef)
+{
+    return false;
+}
+
+bool TestController::isStatisticsRegisteredAsRedirectingTo(WKStringRef, WKStringRef)
+{
+    return false;
 }
 
 void TestController::setStatisticsHasHadUserInteraction(WKStringRef host, bool value)

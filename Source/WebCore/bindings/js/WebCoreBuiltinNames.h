@@ -32,8 +32,6 @@ namespace WebCore {
 
 #define WEBCORE_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(macro) \
     macro(Animation) \
-    macro(AnimationEffectReadOnly) \
-    macro(AnimationTimeline) \
     macro(ApplePaySession) \
     macro(AttachmentElement) \
     macro(Audio) \
@@ -45,7 +43,9 @@ namespace WebCore {
     macro(DataTransferItem) \
     macro(DataTransferItemList) \
     macro(DocumentTimeline) \
+    macro(ExtendableEvent) \
     macro(FederatedCredential) \
+    macro(FetchEvent) \
     macro(FileSystem) \
     macro(FileSystemDirectoryEntry) \
     macro(FileSystemDirectoryReader) \
@@ -72,7 +72,6 @@ namespace WebCore {
     macro(InputEvent) \
     macro(IntersectionObserver) \
     macro(IntersectionObserverEntry) \
-    macro(KeyframeEffect) \
     macro(MediaEncryptedEvent) \
     macro(MediaKeyMessageEvent) \
     macro(MediaKeySession) \
@@ -266,7 +265,6 @@ namespace WebCore {
     macro(structuredCloneArrayBuffer) \
     macro(structuredCloneArrayBufferView) \
     macro(top) \
-    macro(totalQueuedBytes) \
     macro(underlyingByteSource) \
     macro(underlyingSink) \
     macro(underlyingSource) \

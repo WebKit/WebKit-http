@@ -1,3 +1,684 @@
+2017-10-16  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Add subLocality and subAdministrativeArea to ApplePayPaymentContact and ApplePayError
+        https://bugs.webkit.org/show_bug.cgi?id=178191
+        <rdar://problem/34906367>
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/ApplePay/cocoa/WebPaymentCoordinatorProxyCocoa.mm:
+        (WebKit::toNSError):
+
+2017-10-17  Sam Weinig  <sam@webkit.org>
+
+        [Settings] Generate Settings.h/cpp
+        https://bugs.webkit.org/show_bug.cgi?id=178361
+
+        Reviewed by Dean Jackson.
+
+        * PlatformGTK.cmake:
+        * PlatformWPE.cmake:
+
+            Delete the old Settings.h from the forwarding 
+            headers directory to allow the build to work.
+
+2017-10-17  John Wilander  <wilander@apple.com>
+
+        Add and remove cookie partition accordingly in intermediary redirect requests
+        https://bugs.webkit.org/show_bug.cgi?id=178369
+        <rdar://problem/34467603>
+
+        Reviewed by Brent Fulgham.
+
+        * NetworkProcess/cocoa/NetworkDataTaskCocoa.mm:
+        (WebKit::shouldChangePartition):
+            Convenience function. Comment documents the logic.
+        (WebKit::NetworkDataTaskCocoa::willPerformHTTPRedirection):
+            Now adds and removes cookie partition based on the
+            redirect-to URL's domain.
+        * WebProcess/InjectedBundle/API/c/WKBundle.cpp:
+        (WKBundleResourceLoadStatisticsNotifyObserver):
+            Test infrastructure.
+        * WebProcess/InjectedBundle/API/c/WKBundlePrivate.h:
+
+2017-10-17  Youenn Fablet  <youenn@apple.com>
+
+        Cache API implementation should be able to compute storage size for WebKit client applications.
+        https://bugs.webkit.org/show_bug.cgi?id=178350
+
+        Reviewed by Chris Dumez.
+
+        When gathering data from DOM Cache, we compute the size as follows:
+        - If Caches object is not persistent, size is zero
+        - If Caches object is persistent, we use the size computed by NetworkCache::Storage. 
+        Covered by updated tests.
+
+        * NetworkProcess/cache/CacheStorageEngine.cpp:
+        (WebKit::CacheStorage::ReadOriginsTaskCounter::create):
+        (WebKit::CacheStorage::ReadOriginsTaskCounter::addOrigin):
+        (WebKit::CacheStorage::Engine::fetchEntries):
+        * NetworkProcess/cache/CacheStorageEngineCaches.cpp:
+        (WebKit::CacheStorage::Caches::storageSize const):
+        * NetworkProcess/cache/CacheStorageEngineCaches.h:
+        * UIProcess/API/C/WKWebsiteDataStoreRef.cpp:
+        (WKWebsiteDataStoreGetFetchCacheSizeForOrigin):
+        * UIProcess/API/C/WKWebsiteDataStoreRef.h:
+
+2017-10-17  Keith Miller  <keith_miller@apple.com>
+
+        Change WebCore sources to work with unified source builds
+        https://bugs.webkit.org/show_bug.cgi?id=178229
+
+        Rubber stamped by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-10-16  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, fix the iOS build after r223431
+
+        Remove an unused variable captured in a lambda.
+
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (-[WKNetworkSessionDelegate URLSession:task:didReceiveChallenge:completionHandler:]):
+
+2017-10-12  Matt Rajca  <mrajca@apple.com>
+
+        Add API support for quirk that lets an arbitrary click allow auto-play.
+        https://bugs.webkit.org/show_bug.cgi?id=178227
+
+        Reviewed by Alex Christensen.
+
+        Instead of hardcoding sites in WebCore, let API clients control which websites opt into the quirk that lets
+        an arbitrary click allow auto-play via website policies.
+
+        * Shared/WebsitePolicies.h:
+        * UIProcess/API/C/WKWebsitePolicies.cpp:
+        (WKWebsitePoliciesSetAllowedAutoplayQuirks):
+        (WKWebsitePoliciesGetAllowedAutoplayQuirks):
+        * UIProcess/API/C/WKWebsitePolicies.h:
+        * UIProcess/API/Cocoa/_WKWebsitePolicies.h:
+        * UIProcess/API/Cocoa/_WKWebsitePolicies.mm:
+        (-[_WKWebsitePolicies setAllowedAutoplayQuirks:]):
+        (-[_WKWebsitePolicies allowedAutoplayQuirks]):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::applyToDocumentLoader):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updateWebsitePolicies):
+
+2017-10-16  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Add subLocality and subAdministrativeArea to ApplePayPaymentContact and ApplePayError
+        https://bugs.webkit.org/show_bug.cgi?id=178191
+        <rdar://problem/34906367>
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/ApplePay/cocoa/WebPaymentCoordinatorProxyCocoa.mm:
+        (WebKit::toNSError):
+
+2017-10-16  Tim Horton  <timothy_horton@apple.com>
+
+        Safari crashes after searching PDF (under [WKPDFView zoom:to:atPoint:kind:])
+        https://bugs.webkit.org/show_bug.cgi?id=178358
+        <rdar://problem/34676899>
+
+        Reviewed by Wenson Hsieh.
+
+        * UIProcess/ios/WKPDFView.mm:
+        (-[WKPDFView _didFindMatch:]):
+        UIPDFSelection can return a null rect as the selection's bounds.
+        We can't zoom to a null rect (and doing so results in CA throwing an
+        exception later).
+
+2017-10-16  Alex Christensen  <achristensen@webkit.org>
+
+        Add a _WKThumbnailView initializer with a WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=178351
+        <rdar://problem/34979453>
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _page]):
+        (-[WKWebView _setThumbnailView:]):
+        (-[WKWebView _thumbnailView]):
+        (-[WKWebView _setIgnoresAllEvents:]):
+        (-[WKWebView _ignoresAllEvents]):
+        * UIProcess/API/Cocoa/WKWebViewInternal.h:
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/API/Cocoa/_WKThumbnailView.h:
+        * UIProcess/API/Cocoa/_WKThumbnailView.mm:
+        (-[_WKThumbnailView initWithFrame:fromWKWebView:]):
+        (-[_WKThumbnailView _viewWasUnparented]):
+        (-[_WKThumbnailView _viewWasParented]):
+
+2017-10-16  Alex Christensen  <achristensen@webkit.org>
+
+        Expose more WKView properties as WKWebViewPrivate SPI
+        https://bugs.webkit.org/show_bug.cgi?id=178349
+        <rdar://problem/34980919>
+
+        Reviewed by Tim Horton.
+
+        _backgroundExtendsBeyondPage was already exposed on iOS, but we need it on Mac, too.
+        A few other properties also need exposing.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (toAPIScrollbarStyle):
+        (toCoreScrollbarStyle):
+        (-[WKWebView _setBackgroundExtendsBeyondPage:]):
+        (-[WKWebView _backgroundExtendsBeyondPage]):
+        (-[WKWebView _setOverlayScrollbarStyle:]):
+        (-[WKWebView _overlayScrollbarStyle]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+2017-10-16  Chris Dumez  <cdumez@apple.com>
+
+        Log using differential privacy domains where the WebContent process crashes
+        https://bugs.webkit.org/show_bug.cgi?id=178346
+        <rdar://problem/33293830>
+
+        Reviewed by Alex Christensen.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::reload):
+        (WebKit::WebPageProxy::currentURL const):
+        (WebKit::WebPageProxy::processDidTerminate):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::didClose):
+
+2017-10-16  Youenn Fablet  <youenn@apple.com>
+
+        Activate Cache API by default
+        https://bugs.webkit.org/show_bug.cgi?id=178186
+
+        Reviewed by Chris Dumez.
+
+        * Shared/WebPreferencesDefinitions.h:
+
+2017-10-16  Sam Weinig  <sam@webkit.org>
+
+        [Settings] Remove all custom code from Settings.h/cpp
+        https://bugs.webkit.org/show_bug.cgi?id=178330
+
+        Reviewed by Simon Fraser.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetFrameFlatteningEnabled):
+        (WKPreferencesGetFrameFlatteningEnabled):
+        * UIProcess/API/glib/WebKitSettings.cpp:
+        (webkit_settings_get_enable_frame_flattening):
+        (webkit_settings_set_enable_frame_flattening):
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::setFrameFlatteningEnabled):
+        
+            Update for naming changes of FrameFlattening now that it is an enum class.
+
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::contentsSizeChanged const):
+
+            Ge the effectiveFrameFlattening from the FrameView, rather than the Settings.
+
+2017-10-16  Chris Dumez  <cdumez@apple.com>
+
+        [WK2][NetworkSession] Add support for resuming downloads
+        https://bugs.webkit.org/show_bug.cgi?id=177625
+        <rdar://problem/34345975>
+
+        Reviewed by Alex Christensen.
+
+        Add support for resuming downloads for the WK2 NETWORK_SESSION code path.
+
+        This was tested manually. I was unable to write an API test because our tests
+        do not run an HTTP server and CFNetwork does not seem to generate resume data
+        when cancelling a download over non-HTTP.
+
+        * NetworkProcess/Downloads/Download.cpp:
+        (WebKit::Download::didReceiveChallenge):
+        (WebKit::Download::continueCanAuthenticateAgainstProtectionSpace):
+        * NetworkProcess/Downloads/Download.h:
+        * NetworkProcess/Downloads/DownloadManager.cpp:
+        (WebKit::DownloadManager::continueCanAuthenticateAgainstProtectionSpace):
+        (WebKit::DownloadManager::resumeDownload):
+        * NetworkProcess/Downloads/cocoa/DownloadCocoa.mm:
+        (WebKit::Download::resume):
+        This currently includes a workaround for <rdar://problem/34745171>. We update the
+        resume data to include the NSURLSessionResumeInfoLocalPath key with the final
+        destination path so that CFNetwork looks for the temporary data at the right
+        location.
+
+        * NetworkProcess/cocoa/NetworkSessionCocoa.h:
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (-[WKNetworkSessionDelegate URLSession:task:didReceiveChallenge:completionHandler:]):
+        (WebKit::NetworkSessionCocoa::downloadTaskWithResumeData):
+        * Shared/Authentication/AuthenticationManager.cpp:
+        (WebKit::AuthenticationManager::didReceiveAuthenticationChallenge):
+        * Shared/Authentication/AuthenticationManager.h:
+
+2017-10-16  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [WPE] Build failure due to invalid cast of EGLNativeWindowType when targetting 64-bit ARM
+        https://bugs.webkit.org/show_bug.cgi?id=178090
+
+        Reviewed by Michael Catanzaro.
+
+        EGLNativeWindowType can be aliased to a different type depending (at least) on the EGL
+        implementation, its build options, and the libepoxy build options.  Using "static_cast"
+        works when it is a numeric value and the width of the value needs to be optionally
+        extended to 64 bits (e.g. the EGL type is "int" in a 32-bit CPU) but not for pointers,
+        and using "reinterpret_cast" works when the size of a pointer is 64 bits but not in other
+        cases. Therefore it seems reasonable to use a plain C cast expression to solve this
+        particular situation.
+
+        * WebProcess/WebPage/wpe/AcceleratedSurfaceWPE.cpp:
+        (WebKit::AcceleratedSurfaceWPE::window const): Use a good old plain C cast expression.
+
+2017-10-16  Chris Dumez  <cdumez@apple.com>
+
+        Clicks on Link with download attribute causes all (other) links to trigger download when clicked
+        https://bugs.webkit.org/show_bug.cgi?id=178267
+        <rdar://problem/34985016>
+
+        Reviewed by Darin Adler.
+
+        When clicking on an anchor with the download attribute, the m_syncNavigationActionHasDownloadAttribute
+        flag on WebPageProxy would get set. This flag would not get reset right away and instead, it would get
+        updated during the next call to WebPageProxy::decidePolicyForNavigationAction(). The issue is that if
+        you later click on a link with target="_blank", WebPageProxy::decidePolicyForNewWindowAction() gets
+        called instead of WebPageProxy::decidePolicyForNavigationAction() and we do not reset the
+        m_syncNavigationActionHasDownloadAttribute flag and we force a download.
+
+        To address the problem, I got rid of this flag on WebPageProxy and it is error-prone and should really
+        not be at page-level. Instead, I added a shouldForceDownload flag on the navigation object. It makes
+        more sense to associate the flag with the navigation and makes it less error-prone.
+
+        * UIProcess/API/APINavigation.h:
+        (API::Navigation::setShouldForceDownload):
+        (API::Navigation::shouldForceDownload const):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::receivedPolicyDecision):
+        (WebKit::WebPageProxy::decidePolicyForNavigationAction):
+        * UIProcess/WebPageProxy.h:
+
+2017-10-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r223271.
+
+        This change introduced LayoutTest failures on WK1.
+
+        Reverted changeset:
+
+        "Use asynchronous ResourceHandleClient calls for WebKit1"
+        https://bugs.webkit.org/show_bug.cgi?id=160677
+        https://trac.webkit.org/changeset/223271
+
+2017-10-13  Youenn Fablet  <youenn@apple.com>
+
+        Implement listing origins for which CacheStorage is storing data
+        https://bugs.webkit.org/show_bug.cgi?id=178236
+
+        Reviewed by Chris Dumez.
+
+        Cache storage is split on per-origin folders which name is obfuscated through salting.
+        To retrieve the origin for each folder, an origin file is now stored within each folder.
+        This file contains the actual origin.
+
+        Adding support to get the list of origin by iterating through each folder and
+        getting the actual origin by reading the content of the 'origin' file.
+
+        Adding C API for WebKitTestRunner.
+
+        * NetworkProcess/cache/CacheStorageEngine.cpp:
+        (WebKit::CacheStorage::Engine::fetchEntries):
+        (WebKit::CacheStorage::ReadOriginsTaskCounter::create):
+        (WebKit::CacheStorage::ReadOriginsTaskCounter::~ReadOriginsTaskCounter):
+        (WebKit::CacheStorage::ReadOriginsTaskCounter::addOrigin):
+        (WebKit::CacheStorage::ReadOriginsTaskCounter::ReadOriginsTaskCounter):
+        * NetworkProcess/cache/CacheStorageEngine.h:
+        * NetworkProcess/cache/CacheStorageEngineCaches.cpp:
+        (WebKit::CacheStorage::cachesOriginFilename):
+        (WebKit::CacheStorage::Caches::retrieveOriginFromDirectory):
+        (WebKit::CacheStorage::Caches::Caches):
+        (WebKit::CacheStorage::Caches::storeOrigin):
+        (WebKit::CacheStorage::Caches::readOrigin):
+        (WebKit::CacheStorage::Caches::initialize):
+        * NetworkProcess/cache/CacheStorageEngineCaches.h:
+        (WebKit::CacheStorage::Caches::origin const):
+        * UIProcess/API/C/WKWebsiteDataStoreRef.cpp:
+        (WKWebsiteDataStoreGetFetchCacheOrigins):
+        * UIProcess/API/C/WKWebsiteDataStoreRef.h:
+
+2017-10-13  Alex Christensen  <achristensen@webkit.org>
+
+        Fix API tests after r223269.
+        https://bugs.webkit.org/show_bug.cgi?id=178246
+
+        * UIProcess/API/APIContentRuleListStore.cpp:
+        (API::ContentRuleListStore::getContentRuleListSource):
+        Version 10 also has the ability to recover content rule list source.
+
+2017-10-11  Gustavo Noronha Silva  <gustavo.noronha@collabora.co.uk>
+
+        [GLib] WebKitNavigationAction should tell whether it is a redirect
+        https://bugs.webkit.org/show_bug.cgi?id=178178
+
+        There is no good way to know whether a given navigation action has been caused
+        by a redirect through the glib API. This is necessary to implement some app mode
+        heuristics for Epiphany.
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UIProcess/API/glib/WebKitNavigationAction.cpp:
+        (webkit_navigation_action_is_redirect): returns whether the navigation action is a redirect.
+        * UIProcess/API/glib/WebKitNavigationActionPrivate.h: add isRedirect to the wrapper object.
+        (_WebKitNavigationAction::_WebKitNavigationAction):
+        * UIProcess/API/gtk/WebKitNavigationAction.h: add the new API.
+        * UIProcess/API/gtk/docs/webkit2gtk-4.0-sections.txt: ditto.
+        * UIProcess/API/wpe/WebKitNavigationAction.h: ditto.
+
+2017-10-12  Brady Eidson  <beidson@apple.com>
+
+        SW "Hello world".
+        https://bugs.webkit.org/show_bug.cgi?id=178187
+
+        Reviewed by Andy Estes.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::startServiceWorkerContext):
+
+2017-10-12  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unnecessary includes in WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=178235
+
+        Reviewed by Tim Horton.
+
+        * Platform/IPC/ArgumentCoders.h:
+        * WebProcess/WebProcess.cpp:
+        * WebProcess/WebStorage/StorageAreaImpl.h:
+
+2017-10-12  Alex Christensen  <achristensen@webkit.org>
+
+        Increment ContentRuleListStore::CurrentContentRuleListFileVersion
+        https://bugs.webkit.org/show_bug.cgi?id=178246
+        <rdar://problem/34890057>
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/API/APIContentRuleListStore.h:
+        Things are crashing.  Something isn't binary reverse compatible.
+        Probably something related to r222602.
+        This is why we have a version number to update.
+
+2017-10-12  Alex Christensen  <achristensen@webkit.org>
+
+        Expose some of WKView's WebViewImpl accessors through WKWebViewPrivate
+        https://bugs.webkit.org/show_bug.cgi?id=178240
+        <rdar://problem/34962720>
+
+        Reviewed by Tim Horton.
+        
+        Also renamed createFullScreenWindow to fullScreenWindow to reflect the fact that it returns
+        an autoreleased NSWindow so we don't make the same naming mistake in the WKWebView SPI.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _dismissContentRelativeChildWindows]):
+        (-[WKWebView _setFrame:andScrollBy:]):
+        (-[WKWebView _setTotalHeightOfBanners:]):
+        (-[WKWebView _totalHeightOfBanners]):
+        (-[WKWebView _beginDeferringViewInWindowChanges]):
+        (-[WKWebView _endDeferringViewInWindowChanges]):
+        (-[WKWebView _endDeferringViewInWindowChangesSync]):
+        (-[WKWebView _gestureEventWasNotHandledByWebCore:]):
+        (-[WKWebView _setIgnoresNonWheelEvents:]):
+        (-[WKWebView _ignoresNonWheelEvents]):
+        (-[WKWebView _setCustomSwipeViews:]):
+        (-[WKWebView _setCustomSwipeViewsTopContentInset:]):
+        (-[WKWebView _tryToSwipeWithEvent:ignoringPinnedState:]):
+        (-[WKWebView _setDidMoveSwipeSnapshotCallback:]):
+        (-[WKWebView _fullScreenPlaceholderView]):
+        (-[WKWebView _fullScreenWindow]):
+        (-[WKWebView _disableFrameSizeUpdates]):
+        (-[WKWebView _enableFrameSizeUpdates]):
+        (-[WKWebView _canChangeFrameLayout:]):
+        (-[WKWebView _underlayColor]):
+        (-[WKWebView _setUnderlayColor:]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView createFullScreenWindow]):
+        * UIProcess/Cocoa/WebViewImpl.h:
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::fullScreenWindowController):
+        (WebKit::WebViewImpl::fullScreenWindow):
+        (WebKit::WebViewImpl::createFullScreenWindow): Deleted.
+
+2017-10-12  Youenn Fablet  <youenn@apple.com>
+
+        Layout Test http/tests/cache-storage/cache-clearing.https.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=178200
+
+        Reviewed by Chris Dumez.
+
+        Deleting only the per-origin folders inside the CacheStorage engine root folder.
+
+        * NetworkProcess/cache/CacheStorageEngine.cpp:
+        (WebKit::CacheStorage::Engine::clearAllCaches):
+        * UIProcess/API/C/WKWebsiteDataStoreRef.cpp:
+        (WKWebsiteDataStoreRemoveAllFetchCaches):
+        (WKWebsiteDataStoreRemoveFetchCacheForOrigin):
+        * UIProcess/API/C/WKWebsiteDataStoreRef.h:
+
+2017-10-12  Chris Dumez  <cdumez@apple.com>
+
+        [Mac] Add support for MouseEvent.buttons
+        https://bugs.webkit.org/show_bug.cgi?id=178214
+
+        Reviewed by Ryosuke Niwa.
+
+        * Shared/WebEvent.h:
+        (WebKit::WebMouseEvent::buttons const):
+        * Shared/WebEventConversion.cpp:
+        (WebKit::WebKit2PlatformMouseEvent::WebKit2PlatformMouseEvent):
+        * Shared/WebMouseEvent.cpp:
+        (WebKit::WebMouseEvent::WebMouseEvent):
+        (WebKit::WebMouseEvent::encode const):
+        (WebKit::WebMouseEvent::decode):
+        * Shared/mac/WebEventFactory.mm:
+        (WebKit::currentlyPressedMouseButtons):
+        (WebKit::WebEventFactory::createWebMouseEvent):
+        * WebProcess/Plugins/PDF/PDFPlugin.mm:
+        (WebKit::PDFPlugin::showContextMenuAtPoint):
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::createWebEvent const):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::navigateToPDFLinkWithSimulatedClick):
+        (WebKit::WebPage::simulateMouseDown):
+        (WebKit::WebPage::simulateMouseUp):
+        (WebKit::WebPage::simulateMouseMotion):
+
+2017-10-12  Youenn Fablet  <youenn@apple.com>
+
+        Add API to clean CacheStorage data
+        https://bugs.webkit.org/show_bug.cgi?id=178034
+
+        Unreviewed.
+
+        * Shared/WebsiteData/WebsiteDataType.h: fixing the DOMCache value. 
+
+2017-10-12  Stephan Szabo  <stephan.szabo@sony.com>
+
+        [WinCairo] add WebProcess files for wincairo webkit
+        https://bugs.webkit.org/show_bug.cgi?id=178024
+
+        Reviewed by Alex Christensen.
+
+        * PlatformWin.cmake:
+        * WebProcess/Cookies/curl/WebCookieManagerCurl.cpp: Added.
+        (WebKit::WebCookieManager::platformSetHTTPCookieAcceptPolicy):
+        (WebKit::WebCookieManager::platformGetHTTPCookieAcceptPolicy):
+        * WebProcess/InjectedBundle/win/InjectedBundleWin.cpp: Added.
+        (WebKit::InjectedBundle::initialize):
+        (WebKit::InjectedBundle::setBundleParameter):
+        (WebKit::InjectedBundle::setBundleParameters):
+        * WebProcess/Plugins/Netscape/JSNPObject.cpp:
+        * WebProcess/Plugins/Netscape/win/PluginProxyWin.cpp: Added.
+        (WebKit::PluginProxy::needsBackingStore const):
+        * WebProcess/WebCoreSupport/win/WebContextMenuClientWin.cpp: Added.
+        (WebKit::WebContextMenuClient::lookUpInDictionary):
+        (WebKit::WebContextMenuClient::isSpeaking):
+        (WebKit::WebContextMenuClient::speak):
+        (WebKit::WebContextMenuClient::stopSpeaking):
+        * WebProcess/WebCoreSupport/win/WebFrameNetworkingContext.cpp: Added.
+        (WebKit::WebFrameNetworkingContext::ensurePrivateBrowsingSession):
+        (WebKit::WebFrameNetworkingContext::ensureWebsiteDataStoreSession):
+        (WebKit::WebFrameNetworkingContext::WebFrameNetworkingContext):
+        (WebKit::WebFrameNetworkingContext::storageSession const):
+        (WebKit::WebFrameNetworkingContext::webFrameLoaderClient const):
+        (WebKit::WebFrameNetworkingContext::blockedError const):
+        * WebProcess/WebCoreSupport/win/WebFrameNetworkingContext.h: Added.
+        (WebKit::WebFrameNetworkingContext::create):
+        * WebProcess/WebCoreSupport/win/WebPopupMenuWin.cpp: Added.
+        (WebKit::WebPopupMenu::setUpPlatformData):
+        * WebProcess/WebPage/win/WebInspectorUIWin.cpp: Added.
+        (WebKit::WebInspectorUI::canSave):
+        (WebKit::WebInspectorUI::localizedStringsURL):
+        (WebKit::RemoteWebInspectorUI::localizedStringsURL):
+        * WebProcess/WebPage/win/WebPageWin.cpp: Added.
+        (WebKit::WebPage::platformInitialize):
+        (WebKit::WebPage::platformDetach):
+        (WebKit::WebPage::platformEditorState const):
+        (WebKit::WebPage::platformPreferencesDidChange):
+        (WebKit::WebPage::performDefaultBehaviorForKeyEvent):
+        (WebKit::WebPage::platformHasLocalDataForURL):
+        (WebKit::WebPage::cachedResponseMIMETypeForURL):
+        (WebKit::WebPage::platformCanHandleRequest):
+        (WebKit::WebPage::cachedSuggestedFilenameForURL):
+        (WebKit::WebPage::cachedResponseDataForURL):
+        (WebKit::WebPage::platformUserAgent const):
+        (WebKit::WebPage::interpretKeyEvent):
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::ensureWebToStorageProcessConnection):
+        * WebProcess/win/WebProcessWin.cpp: Added.
+        (loadResourceIntoBuffer):
+        (WebKit::WebProcess::platformInitializeWebProcess):
+        (WebKit::WebProcess::platformTerminate):
+        (WebKit::WebProcess::platformSetCacheModel):
+
+2017-10-12  David Kilzer  <ddkilzer@apple.com>
+
+        [iOS] Fix -Wunused-lambda-capture warnings in WebCore/WebKit with new clang compiler
+        <https://webkit.org/b/178226>
+
+        Reviewed by Chris Fleizach.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView changeSelectionWithTouchAt:withSelectionTouch:baseIsStart:withFlags:]):
+        - Remove unused lambda variable 'touch' which was also passed as
+          an argument.
+        (-[WKContentView changeSelectionWithTouchesFrom:to:withGesture:withState:]):
+        - Remove unused lambda variable 'gestureState' which was also
+          passed as an argument.
+        (-[WKContentView _simulateLongPressActionAtLocation:]):
+        - Remove unused lambda variable 'location'.
+
+2017-10-12  John Wilander  <wilander@apple.com>
+
+        ResourceLoadObserver::logFrameNavigation() should use redirectResponse.url()
+        https://bugs.webkit.org/show_bug.cgi?id=175257
+        <rdar://problem/33359866>
+
+        Reviewed by Brent Fulgham.
+
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.mm:
+        (-[WKWebsiteDataStore _resourceLoadStatisticsIsRegisteredAsSubFrameUnder:topFrameHost:completionHandler:]):
+        (-[WKWebsiteDataStore _resourceLoadStatisticsIsRegisteredAsRedirectingTo:hostRedirectedTo:completionHandler:]):
+            Test infrastructure.
+        * UIProcess/API/Cocoa/WKWebsiteDataStorePrivate.h:
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::isRegisteredAsSubFrameUnder):
+        (WebKit::WebResourceLoadStatisticsStore::isRegisteredAsRedirectingTo):
+            Test infrastructure.
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+
+2017-10-12  Andy Estes  <aestes@apple.com>
+
+        [iOS] Conditionally rename DatabaseProcess to StorageProcess when building for iOS devices
+        https://bugs.webkit.org/show_bug.cgi?id=178181
+        <rdar://problem/33660282>
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/BaseTarget.xcconfig:
+        * UIProcess/Launcher/mac/ProcessLauncherMac.mm:
+        (WebKit::serviceName):
+        * WebKit.xcodeproj/project.pbxproj:
+
+2017-10-12  Youenn Fablet  <youenn@apple.com>
+
+        CacheStorage persistent folder should be in /Library/Cache
+        https://bugs.webkit.org/show_bug.cgi?id=178193
+
+        Reviewed by Brady Eidson.
+
+        * UIProcess/API/Cocoa/APIWebsiteDataStoreCocoa.mm:
+        (API::WebsiteDataStore::defaultCacheStorageDirectory): Making CacheStorage
+        directory a subfolder of Caches folder.
+        (API::WebsiteDataStore::defaultDataStoreConfiguration):
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::legacyWebsiteDataStoreConfiguration):
+        (WebKit::WebProcessPool::ensureNetworkProcess): Make sure the web site data store
+        has the right cache directory path. Also make sure that the quota is set even if there is no folder specified.
+        Quota may still be useful in case of non persistent sessions.
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::resolveDirectoriesIfNecessary):
+        * UIProcess/API/glib/APIWebsiteDataStoreGLib.cpp:
+        (API::WebsiteDataStore::defaultCacheStorageDirectory):
+
+2017-10-11  Sam Weinig  <sam@webkit.org>
+
+        Remove out-parameter variants of copyToVector
+        https://bugs.webkit.org/show_bug.cgi?id=178155
+
+        Reviewed by Tim Horton.
+
+        * Shared/API/Cocoa/_WKRemoteObjectInterface.mm:
+        (-[_WKRemoteObjectInterface debugDescription]):
+        * Shared/RemoteLayerTree/RemoteScrollingCoordinatorTransaction.cpp:
+        (WebKit::dump):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::resetState):
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::createNewWebProcess):
+        * UIProcess/WebsiteData/Cocoa/WebsiteDataStoreCocoa.mm:
+        (WebKit::WebsiteDataStore::parameters):
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::pendingCookies const):
+        * UIProcess/ios/ProcessAssertionIOS.mm:
+        (-[WKProcessAssertionBackgroundTaskManager _notifyClientsOfImminentSuspension]):
+        * WebProcess/Cookies/WebCookieManager.cpp:
+        (WebKit::WebCookieManager::getHostnamesWithCookies):
+        * WebProcess/Geolocation/WebGeolocationManager.cpp:
+        (WebKit::WebGeolocationManager::didChangePosition):
+        (WebKit::WebGeolocationManager::didFailToDeterminePosition):
+        * WebProcess/Network/WebLoaderStrategy.cpp:
+        (WebKit::WebLoaderStrategy::internallyFailedLoadTimerFired):
+
+            Replace out-parameter based copyToVector, with one that returns a Vector.
+
+2017-10-11  Jaehun Lim  <ljaehun.lim@samsung.com>
+
+        Fix debug build
+
+        Unreviewed.
+
+        Add ENABLE(SERVICE_WORKER) guard.
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::createWebPage):
+
 2017-10-11  Youenn Fablet  <youenn@apple.com>
 
         Add API to clean CacheStorage data

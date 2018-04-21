@@ -1,3 +1,673 @@
+2017-10-17  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Hang when workers write to the same stack trace file
+        https://bugs.webkit.org/show_bug.cgi?id=178402
+        <rdar://problem/35033432>
+
+        Reviewed by Aakash Jain.
+
+        Workers can hang if they all write to the same stack trace file when receiving
+        a SIGTERM. Attach the pid to the stack trace file name so that each worker
+        writes to a different file.
+
+        * Scripts/webkitpy/common/interupt_debugging.py:
+        (log_stack_trace_on_term.handler): Name stack trace file path/<pid>-filename.
+        (log_stack_trace_on_cntrl_c.handler): Ditto.
+
+2017-10-17  John Wilander  <wilander@apple.com>
+
+        Add and remove cookie partition accordingly in intermediary redirect requests
+        https://bugs.webkit.org/show_bug.cgi?id=178369
+        <rdar://problem/34467603>
+
+        Reviewed by Brent Fulgham.
+
+        Adds the function statisticsNotifyObserver().
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::statisticsNotifyObserver):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::statisticsNotifyObserver):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2017-10-17  Youenn Fablet  <youenn@apple.com>
+
+        Cache API implementation should be able to compute storage size for WebKit client applications.
+        https://bugs.webkit.org/show_bug.cgi?id=178350
+
+        Reviewed by Chris Dumez.
+
+        Adding support for a domCacheSize getter.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::domCacheSize):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::FetchCacheSizeForOriginCallbackContext::FetchCacheSizeForOriginCallbackContext):
+        (WTR::fetchCacheSizeForOriginCallback):
+        (WTR::TestController::domCacheSize):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2017-10-17  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
+
+        [GStreamer][GTK][WPE] update-webkit-libs-jhbuild fails to detect changes in included moduleset files
+        https://bugs.webkit.org/show_bug.cgi?id=178206
+
+        Reviewed by Michael Catanzaro.
+
+        The update-webkit-libs-jhbuild scripts computes MD5 sum of GTK/WPE jhbuild configuration files to check if it
+        needs to rebuild the dependencies libraries. This patch fixes a bug when main GTK/WPE jhbuild modules
+        configuration file includes additional files (for example GStreamer module). It parses jhbuild.modules file to
+        check if additional files are included. If any, it computes MD5 sum for each of these included files.
+
+        * Scripts/update-webkit-libs-jhbuild:
+        (getJhbuildIncludedFilePaths): New function that returns included files in jhbuild.modules
+        (jhbuildConfigurationCheckFile): New function to check if MD5 sum file changes.
+        (jhbuildConfigurationChanged): Add MD5 sum check for included files.
+        (saveMd5File): New function to save MD5 sum of a file.
+        (saveJhbuildMd5): Add saving included files MD5 sum.
+        (deleteJhbuildMd5): Delete included files MD5 sum
+        * gtk/install-dependencies: Add perl-libXML lib that is used to parse jhbuild file.
+        * wpe/install-dependencies: Ditto.
+
+2017-10-17  Tomas Popela  <tpopela@redhat.com>
+
+        Undefined WK_API_ENABLED warning when compiling COCOA content on WebKitGTK+
+        https://bugs.webkit.org/show_bug.cgi?id=178208
+
+        Check whether we are on COCOA platform before checking for
+        WK_API_ENABLED.
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::clearDOMCache):
+
+2017-10-17  Keith Miller  <keith_miller@apple.com>
+
+        Change WebCore sources to work with unified source builds
+        https://bugs.webkit.org/show_bug.cgi?id=178229
+
+        Rubber stamped by Tim Horton.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-10-16  Christopher Reid  <chris.reid@sony.com>
+
+        [Win] Webkit should still be able to build when unable to check if libraries are up to date
+        https://bugs.webkit.org/show_bug.cgi?id=178367
+
+        Adding a option to skip the check to see if windows libraries are up to date.
+        This option is useful when testing modified libraries. This option also allows
+        building webkit when GitHub blocks requests to verify the latest library version.
+
+
+        Reviewed by Per Arne Vollan.
+
+        * Scripts/build-webkit:
+
+2017-10-12  Matt Rajca  <mrajca@apple.com>
+
+        Add API support for quirk that lets an arbitrary click allow auto-play.
+        https://bugs.webkit.org/show_bug.cgi?id=178227
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WebsitePolicies.mm:
+        (TEST): Added API test.
+
+2017-10-16  Maureen Daum  <mdaum@apple.com>
+
+        If an origin doesn't have databases in the Databases table we should still remove its information from disk in DatabaseTracker::deleteOrigin()
+        https://bugs.webkit.org/show_bug.cgi?id=178281
+        <rdar://problem/34576132>
+
+        Reviewed by Brent Fulgham.
+
+        Verify that if there is an entry in the Origins table but no entries in the Databases
+        table that we still remove the directory for the origin, and that we remove the
+        entry from the Origins table.
+
+        * TestWebKitAPI/Tests/WebCore/cocoa/DatabaseTrackerTest.mm:
+        (TestWebKitAPI::TEST):
+
+2017-10-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Cannot access images included in the content pasted from Microsoft Word
+        https://bugs.webkit.org/show_bug.cgi?id=124391
+        <rdar://problem/26862741>
+
+        Reviewed by Antti Koivisto.
+
+        Added tests for sanitizing HTML contents for copy & paste and drag & drop.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/CopyHTML.mm: Added.
+        (readHTMLFromPasteboard): Added.
+        (createWebViewWithCustomPasteboardDataEnabled): Added.
+        (CopyHTML.Sanitizes): Added.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/CopyURL.mm:
+        (createWebViewWithCustomPasteboardDataEnabled): Added to enable more tests on bots.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/PasteRTFD.mm:
+        (writeRTFToPasteboard): Added.
+        (createWebViewWithCustomPasteboardDataEnabled): Added.
+        (createHelloWorldString): Added.
+        (PasteRTF.ExposesHTMLTypeInDataTransfer): Added.
+        (PasteRTFD.ExposesHTMLTypeInDataTransfer): Added.
+        (PasteRTFD.ImageElementUsesBlobURLInHTML): Added.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/copy-html.html: Added.
+        * TestWebKitAPI/Tests/WebKitCocoa/paste-rtfd.html: Store the clipboardData contents for
+        PasteRTF.ExposesHTMLTypeInDataTransfer and PasteRTFD.ExposesHTMLTypeInDataTransfer.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (DataInteractionTests.DataTransferSanitizeHTML):
+
+2017-10-16  Youenn Fablet  <youenn@apple.com>
+
+        Activate Cache API by default
+        https://bugs.webkit.org/show_bug.cgi?id=178186
+
+        Reviewed by Chris Dumez.
+
+        Removing explicit activation of cache api.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setCacheAPIEnabled): Deleted.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2017-10-16  Ross Kirsling  <ross.kirsling@sony.com>
+
+        run-webkit-tests help text should mention arguments too
+        https://bugs.webkit.org/show_bug.cgi?id=178352
+
+        Reviewed by Tim Horton.
+
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py:
+        (parse_args):
+
+2017-10-16  Maureen Daum  <mdaum@apple.com>
+
+        If we fail to delete any database file, don't remove its information from the tracker database
+        <rdar://problem/34576132> and https://bugs.webkit.org/show_bug.cgi?id=178251
+
+        Reviewed by Brady Eidson.
+
+        Add tests that verify we correctly delete databases and remove their information from
+        the tracker database, even if the database doesn't exist. Verify that if we fail to
+        delete a database, we don't remove its information from the tracker database.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        Move DatabaseTrackerTest.cpp to DatabaseTrackerTest.mm so that we can use the cocoa
+        method for creating a temporary directory in the tests.
+        * TestWebKitAPI/Tests/WebCore/DatabaseTrackerTest.cpp: Removed.
+        The existing test was copied to DatabaseTrackerTest.mm.
+        * TestWebKitAPI/Tests/WebCore/cocoa/DatabaseTrackerTest.mm: Added.
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::addToDatabasesTable):
+        (TestWebKitAPI::removeDirectoryAndAllContents):
+        (TestWebKitAPI::createFileAtPath):
+
+2017-10-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r223422.
+
+        These tests are for a change that was rolled out in r223420
+
+        Reverted changeset:
+
+        "If we fail to delete any database file, don't remove its
+        information from the tracker database"
+        https://bugs.webkit.org/show_bug.cgi?id=178251
+        https://trac.webkit.org/changeset/223422
+
+2017-10-16  Maureen Daum  <mdaum@apple.com>
+
+        If we fail to delete any database file, don't remove its information from the tracker database
+        <rdar://problem/34576132> and https://bugs.webkit.org/show_bug.cgi?id=178251
+
+        Reviewed by Brady Eidson.
+
+        Add tests that verify we correctly delete databases and remove their information from
+        the tracker database, even if the database doesn't exist. Verify that if we fail to
+        delete a database, we don't remove its information from the tracker database.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        Move DatabaseTrackerTest.cpp to DatabaseTrackerTest.mm so that we can use the cocoa
+        method for creating a temporary directory in the tests.
+        * TestWebKitAPI/Tests/WebCore/DatabaseTrackerTest.cpp: Removed.
+        The existing test was copied to DatabaseTrackerTest.mm.
+        * TestWebKitAPI/Tests/WebCore/cocoa/DatabaseTrackerTest.mm: Added.
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::addToDatabasesTable):
+        (TestWebKitAPI::removeDirectoryAndAllContents):
+        (TestWebKitAPI::createFileAtPath):
+
+2017-10-16  David Kilzer  <ddkilzer@apple.com>
+
+        Add RELEASE_ASSERT_WITH_SECURITY_IMPLICATION() macro
+        <https://webkit.org/b/178269>
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_language): Add checker to warn about using
+        ASSERT_WITH_SECURITY_IMPLICATION().
+        (CppChecker.categories): Add 'security/assertion' to list of
+        enabled checkers.
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (CppStyleTest.test_debug_security_assertion): Add tests for
+        new checker.
+
+2017-10-16  Chris Dumez  <cdumez@apple.com>
+
+        Clicks on Link with download attribute causes all (other) links to trigger download when clicked
+        https://bugs.webkit.org/show_bug.cgi?id=178267
+        <rdar://problem/34985016>
+
+        Reviewed by Darin Adler.
+
+        Use PassThrough policy in WKTR's InjectedBundle's decidePolicyForNewWindowAction so that the
+        request is sent to the UIProcess. This gets WKTR's closer to Safari behavior and helps
+        reproduce the bug. Without this change, I would not be able to write a regression test for
+        this bug that is very easily reproducible in Safari.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::decidePolicyForNewWindowAction):
+
+2017-10-16  Emilio Cobos Álvarez  <emilio@crisal.io>
+
+        Add Emilio Cobos Álvarez to the contributors list.
+        https://bugs.webkit.org/show_bug.cgi?id=178334
+
+        Reviewed by Antti Koivisto.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2017-10-07  Maciej Stachowiak  <mjs@apple.com>
+
+        Improve --help documentation and add --list-plans to show available benchmarks.
+        https://bugs.webkit.org/show_bug.cgi?id=178059
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py:
+        (BenchmarkRunner.available_plans): New function that returns the list of available plans.
+        (BenchmarkRunner.plan_directory): New method to centralize knowledge of where the plan files live.
+        (BenchmarkRunner._find_plan_file): Updated to use BenchmarkRunner.plan_directory
+
+        * Scripts/webkitpy/benchmark_runner/run_benchmark.py:
+        
+        (parse_args): Help cleanup: Reordered options to put more common
+        ones at the top. Fixed wording. Added help for each
+        option. Explained default for each option that has one.
+
+        New option: --list-plans which tells you the available benchmarks.
+        
+        Code cleanup: Removed use of dest where redundant, made variable
+        names conforming to Python coding style.
+        
+        (run_benchmark_plan): Adapted for new variable names.
+        (list_benchmark_plans): New helper for --list-plans option.
+        (start): Account for --list-plans. Also use
+        BechmarkRunner.available_plans and use
+        BenchmarkRunner.plan_directory instead of duplicating
+        code/knowledge here.
+
+2017-10-16  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        On ToT, event.dataTransfer.getData("text/uri-list") returns an empty string when dragging an image
+        https://bugs.webkit.org/show_bug.cgi?id=178301
+        <rdar://problem/34990050>
+
+        Reviewed by Darin Adler.
+
+        Fixes issues in DumpRenderTree's LocalPasteboard to ensure that drag-drop-href-as-url.html exposes files, and
+        also adds a new iOS drag and drop API test.
+
+        * DumpRenderTree/mac/DumpRenderTreePasteboard.mm:
+        (-[LocalPasteboard addTypes:owner:]):
+        (-[LocalPasteboard setData:forType:]):
+
+        Fixes LocalPasteboard's implementation of changeCount to incremement when the pasteboard owner changes, rather
+        than every time data is changed. This is consistent with NSPasteboard behavior.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+
+        Adds a new API test to verify that an image and HTTP URL written by the platform is correctly web exposed.
+
+2017-10-15  Darin Adler  <darin@apple.com>
+
+        UTF-8 decoding produces one replacement character per byte; Encoding standard requires one replacement character per illegal sequence instead
+        https://bugs.webkit.org/show_bug.cgi?id=178207
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Added test.
+        * TestWebKitAPI/Tests/WebCore/TextCodec.cpp: Added.
+        (TestWebKitAPI::decodeHexTestBytes): Decodes a string so we can write readable tests.
+        (TestWebKitAPI::escapeNonPrintableASCIICharacters): Encodes a string so we can write readable tests.
+        (TestWebKitAPI::TEST): Added some UTF-8 tests and UTF-8 invalid sequences tests.
+        Would be smart to add more tests for other cases, exercising the fast ASCII loop for example, and
+        other encodings.
+
+2017-10-14  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [WPE] JHBuild build directory DependenciesWPE/Build is not removed by update-webkit-libs-jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=178212
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/update-webkit-libs-jhbuild:
+        (cleanJhbuild): The WPE JHBuild also uses a separate "Build" subdirectory, so do not skip
+        cleaning it when "--wpe" is passed to the script.
+
+2017-10-13  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [WPE] Fontconfig fails build in JHBuild with “error: conflicting types for ‘FcObjectTypeHash’”
+        https://bugs.webkit.org/show_bug.cgi?id=178283
+
+        Reviewed by Žan Doberšek.
+
+        * wpe/jhbuild.modules: Flag Fontconfig to be built inside the source directory, otherwise
+        compilation fails. While at it, pass "--disable-docs" to cut a bit on build time.
+
+2017-10-13  Youenn Fablet  <youenn@apple.com>
+
+        Implement listing origins for which CacheStorage is storing data
+        https://bugs.webkit.org/show_bug.cgi?id=178236
+
+        Reviewed by Chris Dumez.
+
+        Adding hasDOMCache API for checking whether origin is storing data through Cache API.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::hasDOMCache):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::FetchCacheOriginsCallbackContext::FetchCacheOriginsCallbackContext):
+        (WTR::fetchCacheOriginsCallback):
+        (WTR::TestController::hasDOMCache):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2017-10-13  Alex Christensen  <achristensen@webkit.org>
+
+        Remove Editor::simplifyMarkup
+        https://bugs.webkit.org/show_bug.cgi?id=178271
+
+        Reviewed by Wenson Hsieh.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/mac/SimplifyMarkup.mm: Removed.
+
+2017-10-11  Gustavo Noronha Silva  <gustavo.noronha@collabora.co.uk>
+
+        [GLib] WebKitNavigationAction should tell whether it is a redirect
+        https://bugs.webkit.org/show_bug.cgi?id=178178
+
+        Test that WebKitNavigationAction properly reports being a redirect.
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitPolicyClient.cpp:
+        (testNavigationPolicy): test that loading /redirect leads to a redirect WebKitNavigationAction.
+        (serverCallback): add a /redirect path to the server, which causes a redirect.
+
+2017-10-13  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, fix webkitpy failure after r223273
+
+        * Scripts/webkitpy/w3c/test_importer_unittest.py:
+        (TestImporterTest.test_harnesslinks_conversion):
+
+2017-10-12  Chris Dumez  <cdumez@apple.com>
+
+        import-w3c-tests modifies test sources and sometimes causes them to fail
+        https://bugs.webkit.org/show_bug.cgi?id=178234
+
+        Reviewed by Ryosuke Niwa.
+
+        Update import-w3c-tests to stop rewriting tests as this is causing some tests
+        to fail unexpectedly.
+
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (TestImporter.import_tests):
+
+2017-10-12  Youenn Fablet  <youenn@apple.com>
+
+        Layout Test http/tests/cache-storage/cache-clearing.https.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=178200
+
+        Reviewed by Chris Dumez.
+
+        Making clearDOMCache wait for removal completion to exit.
+        This removes the risk to interact with the cache while deleting it which will end up be racy in tests.
+
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::clearDOMCache):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::ClearDOMCacheCallbackContext::ClearDOMCacheCallbackContext):
+        (WTR::clearDOMCacheCallback):
+        (WTR::TestController::clearDOMCache):
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle):
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2017-10-12  John Wilander  <wilander@apple.com>
+
+        ResourceLoadObserver::logFrameNavigation() should use redirectResponse.url()
+        https://bugs.webkit.org/show_bug.cgi?id=175257
+        <rdar://problem/33359866>
+
+        Reviewed by Brent Fulgham.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::isStatisticsRegisteredAsSubFrameUnder):
+        (WTR::TestRunner::isStatisticsRegisteredAsRedirectingTo):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::isStatisticsRegisteredAsSubFrameUnder):
+            Not implemented.
+        (WTR::TestController::isStatisticsRegisteredAsRedirectingTo):
+            Not implemented.
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::isStatisticsRegisteredAsSubFrameUnder):
+            Implemented platform-specific.
+        (WTR::TestController::isStatisticsRegisteredAsRedirectingTo):
+            Implemented platform-specific.
+
+2017-10-12  Andy Estes  <aestes@apple.com>
+
+        [iOS] Conditionally rename DatabaseProcess to StorageProcess when building for iOS devices
+        https://bugs.webkit.org/show_bug.cgi?id=178181
+        <rdar://problem/33660282>
+
+        Reviewed by Dan Bernstein.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::databaseProcessName):
+
+2017-10-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Emit SPIR-V from WSL compiler (Part 1)
+        https://bugs.webkit.org/show_bug.cgi?id=177998
+
+        Reviewed by Filip Pizlo.
+
+        This patch implements the first half of a SPIR-V codegen phase for WSL.
+        This includes all the operations which aren't actually emitting the contents
+        of functions themselves. For example, this includes things like representing
+        WSL types with SPIR-V types, and declaring shaders' inputs and outputs. A
+        future patch will actually emit the contents of functions.
+
+        There are two helper visitors here: SPIRVTypeAnalyzer which generates SPIR-V
+        types from WSL types, and SPIRVPrimitiveVariableAnalyzer which identifies
+        input and output variables from a shader (and assigns location values to
+        each one).
+
+        This patch is currently pursuing the "logical mode" detailed in
+        https://bugs.webkit.org/show_bug.cgi?id=176967. In this mode, each pointer and
+        array reference operation can be statically traced to the variable or array it
+        is operating on.
+
+        This has the interesting property where accessing a pointer inside an array is
+        forbidden, because the array index may be computed at runtime, so the compiler
+        can't know at compile time which variable the pointer operation will be
+        accessing. However, this isn't true for structs; the program must statically
+        state which struct member it is accessing. Therefore, pointers or array
+        references must not transitively appear within an array, but they may appear
+        within a struct. The same logic applies to array references; those get lowered
+        to just two indexes in SPIR-V (a lower bound and an upper bound).
+
+        So, outside of an array, SPIR-V types don't need to include any pointers because
+        any operation with the pointer doesn't need access to the runtime value of the
+        pointer. Inside of an array, pointers are forbidden. Therefore, SPIR-V types
+        will never include any pointers.
+
+        This means that, for example, WSL can represent a linked list in logical mode.
+        However, a WSL program cannot iterate across the list, because that would require
+        assigning to a pointer. So instead, a program using a linked list could only say
+        something like "list.ptr->ptr->ptr->value".
+
+        * WebGPUShadingLanguageRI/LateChecker.js:
+        (LateChecker.prototype._checkShaderType):
+        * WebGPUShadingLanguageRI/SPIR-V.js:
+        (SPIRV.OperandChecker.prototype._isStar):
+        (SPIRV.OperandChecker.prototype.nextComparisonType):
+        (SPIRV.OperandChecker.prototype.finalize):
+        (SPIRV.OperandChecker):
+        * WebGPUShadingLanguageRI/SPIRV.html:
+        * WebGPUShadingLanguageRI/SPIRVCodegen.js: Added.
+        (findEntryPoints):
+        (emitTypes.doEmitTypes):
+        (emitTypes):
+        (ConstantFinder.prototype.visitGenericLiteralType):
+        (ConstantFinder):
+        (generateSPIRV):
+        * WebGPUShadingLanguageRI/SPIRVTypeAnalyzer.js: Added.
+        (SPIRVTypeAnalyzer):
+        (SPIRVTypeAnalyzer.prototype.get program):
+        (SPIRVTypeAnalyzer.prototype.get typeMap):
+        (SPIRVTypeAnalyzer.prototype.get currentId):
+        (SPIRVTypeAnalyzer.prototype.get stack):
+        (SPIRVTypeAnalyzer.prototype.visitTypeRef):
+        (SPIRVTypeAnalyzer.prototype._encounterType):
+        (SPIRVTypeAnalyzer.prototype.visitNullType):
+        (SPIRVTypeAnalyzer.prototype.visitGenericLiteralType):
+        (SPIRVTypeAnalyzer.prototype.visitNativeType):
+        (SPIRVTypeAnalyzer.prototype.visitEnumType):
+        (SPIRVTypeAnalyzer.prototype.visitPtrType):
+        (SPIRVTypeAnalyzer.prototype.visitArrayRefType):
+        (SPIRVTypeAnalyzer.prototype.visitArrayType):
+        (SPIRVTypeAnalyzer.prototype.visitStructType):
+        * WebGPUShadingLanguageRI/SPIRVVariableAnalyzer.js: Added.
+        (SPIRVPrimitiveVariableAnalyzer):
+        (SPIRVPrimitiveVariableAnalyzer.prototype.get program):
+        (SPIRVPrimitiveVariableAnalyzer.prototype.get typeMap):
+        (SPIRVPrimitiveVariableAnalyzer.prototype.get currentId):
+        (SPIRVPrimitiveVariableAnalyzer.prototype.get currentLocation):
+        (SPIRVPrimitiveVariableAnalyzer.prototype.get nameComponents):
+        (SPIRVPrimitiveVariableAnalyzer.prototype.get result):
+        (SPIRVPrimitiveVariableAnalyzer.prototype.visitTypeRef):
+        (SPIRVPrimitiveVariableAnalyzer.prototype.visitNullType):
+        (SPIRVPrimitiveVariableAnalyzer.prototype.visitGenericLiteralType):
+        (SPIRVPrimitiveVariableAnalyzer.prototype.visitNativeType):
+        (SPIRVPrimitiveVariableAnalyzer.prototype.visitEnumType):
+        (SPIRVPrimitiveVariableAnalyzer.prototype.visitPtrType):
+        (SPIRVPrimitiveVariableAnalyzer.prototype.visitArrayRefType):
+        (SPIRVPrimitiveVariableAnalyzer.prototype.visitArrayType):
+        (SPIRVPrimitiveVariableAnalyzer.prototype.visitStructType):
+        * WebGPUShadingLanguageRI/WSL.md:
+        * WebGPUShadingLanguageRI/index.html:
+
+2017-09-29  Filip Pizlo  <fpizlo@apple.com>
+
+        Enable gigacage on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=177586
+
+        Reviewed by JF Bastien.
+        
+        Add a mode to test disabling Gigacage.
+
+        * Scripts/run-jsc-stress-tests:
+        * Scripts/webkitruby/jsc-stress-test-writer-default.rb:
+
+2017-10-11  Sam Weinig  <sam@webkit.org>
+
+        Remove out-parameter variants of copyToVector
+        https://bugs.webkit.org/show_bug.cgi?id=178155
+
+        Reviewed by Tim Horton.
+
+        * DumpRenderTree/JavaScriptThreading.cpp:
+        (stopJavaScriptThreads):
+
+2017-10-12  Sam Weinig  <sam@webkit.org>
+
+        It should be possible to iterate just the values (and not the counts) of a HashCountedSet
+        https://bugs.webkit.org/show_bug.cgi?id=178169
+
+        Reviewed by Daniel Bates.
+
+        * TestWebKitAPI/Tests/WTF/HashCountedSet.cpp:
+        (TestWebKitAPI::TEST):
+        Add test for HashCountedSet's new values() range.
+
+2017-10-11  Frederic Wang  <fwang@igalia.com>
+
+        run-safari --ios-simulator is no longer working with Xcode 9
+        https://bugs.webkit.org/show_bug.cgi?id=177595
+
+        Reviewed by Daniel Bates.
+
+        In Xcode 9, the path of the simulator application is now in a new CoreSimulator subdirectory
+        of the iphoneOS SDK platform. This patch updates webkitdirs.pm to use the new path in
+        Xcode 9 or higher so that it is possible to run Safari on the iOS simulator again. It also
+        does some minor code refactoring to improve code reuse.
+
+        * Scripts/configure-xcode-for-ios-development: Move sdkDirectory() and sdkPlatformDirectory()
+        into webkitdirs.
+        (sdkDirectory): Deleted.
+        (sdkPlatformDirectory): Deleted.
+        * Scripts/webkitdirs.pm: Expose new sdkDirectory() and sdkPlatformDirectory().
+        (sdkDirectory): Moved from configure-xcode-for-ios-development.
+        (sdkPlatformDirectory): Ditto.
+        (XcodeSDKPath): Rely on sdkDirectory() to implement this function.
+        (iosSimulatorApplicationsPath): In Xcode 9 or higher use the new path. It is calculated
+        by relying on sdkPlatformDirectory().
+
+2017-10-11  Dewei Zhu  <dewei_zhu@apple.com>
+
+        run-benchmark script should set '__XPC_DYLD_FRAMEWORK_PATH' while launching local-built Safari on Mac.
+        https://bugs.webkit.org/show_bug.cgi?id=178199
+
+        Reviewed by Saam Barati.
+
+        '__XPC_DYLD_FRAMEWORK_PATH' should be set while launching Safari on run-benchmark script.
+        'force_remove' function should support both file and directory.
+
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_safari_driver.py:
+        (OSXSafariDriver.launch_url):
+        * Scripts/webkitpy/benchmark_runner/utils.py:
+        (force_remove):
+
 2017-10-11  Saam Barati  <sbarati@apple.com>
 
         Runtime disable poly proto because it may be a 3-4% Speedometer regression

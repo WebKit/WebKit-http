@@ -217,12 +217,30 @@ std::unique_ptr<RenderStyle> RenderElement::computeFirstLineStyle() const
         return RenderStyle::clonePtr(*firstLineStyle);
     }
 
-    if (rendererForFirstLineStyle.isAnonymous() || !rendererForFirstLineStyle.isRenderInline())
+    if (!rendererForFirstLineStyle.isRenderInline())
         return nullptr;
 
     auto& parentStyle = rendererForFirstLineStyle.parent()->firstLineStyle();
     if (&parentStyle == &rendererForFirstLineStyle.parent()->style())
         return nullptr;
+
+    if (rendererForFirstLineStyle.isAnonymous()) {
+        auto* textRendererWithDisplayContentsParent = RenderText::findByDisplayContentsInlineWrapperCandidate(rendererForFirstLineStyle);
+        if (!textRendererWithDisplayContentsParent)
+            return nullptr;
+        auto* composedTreeParentElement = textRendererWithDisplayContentsParent->textNode()->parentElementInComposedTree();
+        if (!composedTreeParentElement)
+            return nullptr;
+
+        auto style = composedTreeParentElement->styleResolver().styleForElement(*composedTreeParentElement, &parentStyle).renderStyle;
+        ASSERT(style->display() == CONTENTS);
+
+        // We act as if there was an unstyled <span> around the text node. Only styling happens via inheritance.
+        auto firstLineStyle = RenderStyle::createPtr();
+        firstLineStyle->inheritFrom(*style);
+        return firstLineStyle;
+    }
+
     return rendererForFirstLineStyle.element()->styleResolver().styleForElement(*element(), &parentStyle).renderStyle;
 }
 
@@ -1078,12 +1096,12 @@ void RenderElement::willBeRemovedFromTree()
     RenderObject::willBeRemovedFromTree();
 }
 
-inline void RenderElement::clearLayoutRootIfNeeded() const
+inline void RenderElement::clearSubtreeLayoutRootIfNeeded() const
 {
     if (renderTreeBeingDestroyed())
         return;
 
-    if (view().frameView().layoutRoot() != this)
+    if (view().frameView().subtreeLayoutRoot() != this)
         return;
 
     // Normally when a renderer is detached from the tree, the appropriate dirty bits get set
@@ -1093,7 +1111,7 @@ inline void RenderElement::clearLayoutRootIfNeeded() const
     // This indicates a failure to layout the child, which is why
     // the layout root is still set to |this|. Make sure to clear it
     // since we are getting destroyed.
-    view().frameView().clearLayoutRoot();
+    view().frameView().clearSubtreeLayoutRoot();
 }
 
 void RenderElement::willBeDestroyed()
@@ -1110,7 +1128,7 @@ void RenderElement::willBeDestroyed()
 
     RenderObject::willBeDestroyed();
 
-    clearLayoutRootIfNeeded();
+    clearSubtreeLayoutRootIfNeeded();
 
     if (hasInitializedStyle()) {
         for (auto* bgLayer = &m_style.backgroundLayers(); bgLayer; bgLayer = bgLayer->next()) {

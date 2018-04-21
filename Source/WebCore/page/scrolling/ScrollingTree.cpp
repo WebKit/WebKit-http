@@ -34,7 +34,6 @@
 #include "ScrollingStateTree.h"
 #include "ScrollingTreeFrameScrollingNode.h"
 #include "ScrollingTreeNode.h"
-#include "ScrollingTreeOverflowScrollingNode.h"
 #include "ScrollingTreeScrollingNode.h"
 #include <wtf/SetForScope.h>
 #include <wtf/text/TextStream.h>
@@ -63,7 +62,7 @@ bool ScrollingTree::shouldHandleWheelEventSynchronously(const PlatformWheelEvent
         m_latchedNode = 0;
     
     if (!m_eventTrackingRegions.isEmpty() && m_rootNode) {
-        ScrollingTreeFrameScrollingNode& frameScrollingNode = downcast<ScrollingTreeFrameScrollingNode>(*m_rootNode);
+        auto& frameScrollingNode = downcast<ScrollingTreeFrameScrollingNode>(*m_rootNode);
         FloatPoint position = wheelEvent.position();
         position.move(frameScrollingNode.viewToContentsOffset(m_mainFrameScrollPosition));
 
@@ -95,7 +94,7 @@ void ScrollingTree::handleWheelEvent(const PlatformWheelEvent& wheelEvent)
 
 void ScrollingTree::viewportChangedViaDelegatedScrolling(ScrollingNodeID nodeID, const FloatRect& fixedPositionRect, double scale)
 {
-    ScrollingTreeNode* node = nodeForID(nodeID);
+    auto* node = nodeForID(nodeID);
     if (!is<ScrollingTreeScrollingNode>(node))
         return;
 
@@ -104,12 +103,12 @@ void ScrollingTree::viewportChangedViaDelegatedScrolling(ScrollingNodeID nodeID,
 
 void ScrollingTree::scrollPositionChangedViaDelegatedScrolling(ScrollingNodeID nodeID, const WebCore::FloatPoint& scrollPosition, bool inUserInteraction)
 {
-    ScrollingTreeNode* node = nodeForID(nodeID);
-    if (!is<ScrollingTreeOverflowScrollingNode>(node))
+    auto* node = nodeForID(nodeID);
+    if (!is<ScrollingTreeScrollingNode>(node))
         return;
 
     // Update descendant nodes
-    downcast<ScrollingTreeOverflowScrollingNode>(*node).updateLayersAfterDelegatedScroll(scrollPosition);
+    downcast<ScrollingTreeScrollingNode>(*node).updateLayersAfterDelegatedScroll(scrollPosition);
 
     // Update GraphicsLayers and scroll state.
     scrollingTreeNodeDidScroll(nodeID, scrollPosition, std::nullopt, inUserInteraction ? ScrollingLayerPositionAction::Sync : ScrollingLayerPositionAction::Set);
@@ -121,7 +120,7 @@ void ScrollingTree::commitTreeState(std::unique_ptr<ScrollingStateTree> scrollin
     
     LOG(Scrolling, "\nScrollingTree::commitTreeState");
     
-    ScrollingStateScrollingNode* rootNode = scrollingStateTree->rootStateNode();
+    auto* rootNode = scrollingStateTree->rootStateNode();
     if (rootNode
         && (rootStateNodeChanged
             || rootNode->hasChangedProperty(ScrollingStateFrameScrollingNode::EventTrackingRegion)
@@ -168,7 +167,7 @@ void ScrollingTree::updateTreeFromStateNode(const ScrollingStateNode* stateNode,
         node = createScrollingTreeNode(stateNode->nodeType(), nodeID);
         if (!parentNodeID) {
             // This is the root node. Clear the node map.
-            ASSERT(stateNode->nodeType() == FrameScrollingNode);
+            ASSERT(stateNode->isFrameScrollingNode());
             m_rootNode = node;
             m_nodeMap.clear();
         } 
@@ -179,7 +178,7 @@ void ScrollingTree::updateTreeFromStateNode(const ScrollingStateNode* stateNode,
         auto parentIt = m_nodeMap.find(parentNodeID);
         ASSERT_WITH_SECURITY_IMPLICATION(parentIt != m_nodeMap.end());
         if (parentIt != m_nodeMap.end()) {
-            ScrollingTreeNode* parent = parentIt->value;
+            auto* parent = parentIt->value;
             node->setParent(parent);
             parent->appendChild(*node);
         }

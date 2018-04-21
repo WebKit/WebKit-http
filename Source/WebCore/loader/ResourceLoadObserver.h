@@ -53,9 +53,7 @@ class ResourceLoadObserver {
 public:
     WEBCORE_EXPORT static ResourceLoadObserver& shared();
 
-    WEBCORE_EXPORT void setShouldThrottleObserverNotifications(bool);
-    
-    void logFrameNavigation(const Frame&, const Frame& topFrame, const ResourceRequest& newRequest);
+    void logFrameNavigation(const Frame&, const Frame& topFrame, const ResourceRequest& newRequest, const URL& redirectUrl);
     void logSubresourceLoading(const Frame*, const ResourceRequest& newRequest, const ResourceResponse& redirectResponse);
     void logWebSocketLoading(const Frame*, const URL&);
     void logUserInteractionWithReducedTimeResolution(const Document&);
@@ -64,6 +62,7 @@ public:
 
     WEBCORE_EXPORT void setNotificationCallback(WTF::Function<void (Vector<ResourceLoadStatistics>&&)>&&);
 
+    WEBCORE_EXPORT void notifyObserver();
     WEBCORE_EXPORT void clearState();
 private:
     ResourceLoadObserver();
@@ -72,13 +71,14 @@ private:
     ResourceLoadStatistics& ensureResourceStatisticsForPrimaryDomain(const String&);
 
     void scheduleNotificationIfNeeded();
-    void notifyObserver();
     Vector<ResourceLoadStatistics> takeStatistics();
 
     HashMap<String, ResourceLoadStatistics> m_resourceStatisticsMap;
     HashMap<String, WTF::WallTime> m_lastReportedUserInteractionMap;
     WTF::Function<void (Vector<ResourceLoadStatistics>&&)> m_notificationCallback;
     Timer m_notificationTimer;
+
+    URL nonNullOwnerURL(const Document&) const;
 };
     
 } // namespace WebCore

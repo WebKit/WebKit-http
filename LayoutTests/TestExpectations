@@ -68,13 +68,15 @@ fast/events/autoscroll-when-zoomed.html [ Skip ]
 fast/events/autoscroll-main-document.html [ Skip ]
 
 # Drag and drop via EventSender is only supported on Mac WK1
-editing/pasteboard/drag-drop-href-as-text-data.html [ Skip ]
+editing/pasteboard/drag-drop-href-as-url.html [ Skip ]
 editing/pasteboard/data-transfer-get-data-on-drop-custom.html [ Skip ]
 editing/pasteboard/data-transfer-get-data-on-drop-plain-text.html [ Skip ]
 editing/pasteboard/data-transfer-get-data-on-drop-rich-text.html [ Skip ]
 editing/pasteboard/data-transfer-get-data-on-drop-url.html [ Skip ]
 editing/pasteboard/data-transfer-is-unique-for-dragenter-and-dragleave.html [ Skip ]
-editing/pasteboard/data-transfer-set-data-sanitlize-url-when-dragging-in-null-origin.html [ Skip ]
+editing/pasteboard/data-transfer-set-data-sanitize-html-when-dragging-in-null-origin.html [ Skip ]
+editing/pasteboard/data-transfer-set-data-sanitize-url-when-dragging-in-null-origin.html [ Skip ]
+
 editing/pasteboard/drag-end-crash-accessing-item-list.html [ Skip ]
 editing/pasteboard/data-transfer-item-list-add-file-on-drag.html [ Skip ]
 editing/pasteboard/data-transfer-items-drop-file.html [ Skip ]
@@ -87,6 +89,7 @@ http/tests/quicklook [ Skip ]
 http/tests/appcache/decide-navigation-policy-after-delay.html [ Skip ]
 http/tests/misc/will-send-request-with-client-provided-http-body.html [ Skip ]
 http/tests/loading/resourceLoadStatistics/ [ Skip ]
+http/tests/resourceLoadStatistics/ [ Skip ]
 http/tests/storageAccess/ [ Skip ]
 
 # Only Mac and iOS have an implementation of UIScriptController::doAsyncTask().
@@ -204,6 +207,9 @@ imported/w3c/web-platform-tests/mediacapture-fromelement/creation.html [ Pass Fa
 # The follow two tests change their output each run
 imported/w3c/web-platform-tests/fetch/api/abort/general.any.html [ Skip ]
 imported/w3c/web-platform-tests/fetch/api/abort/general.any.worker.html [ Skip ]
+
+# Not supported
+imported/w3c/web-platform-tests/background-fetch [ Skip ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific tests.
@@ -467,6 +473,9 @@ webkit.org/b/168448 http/wpt/resource-timing/rt-shared-resource-in-workers.html 
 webkit.org/b/171511 http/wpt/resource-timing/rt-revalidate-requests.html [ Pass Failure ]
 
 webkit.org/b/161312 imported/w3c/web-platform-tests/html/semantics/document-metadata/the-link-element/document-without-browsing-context.html [ Failure Pass ]
+
+webkit.org/b/178241 imported/w3c/web-platform-tests/fetch/api/basic/integrity.html [ Pass Failure ]
+webkit.org/b/178241 imported/w3c/web-platform-tests/fetch/api/basic/integrity-worker.html [ Pass Failure ]
 
 imported/w3c/web-platform-tests/XMLHttpRequest/send-conditional-cors.htm [ Failure ]
 imported/w3c/web-platform-tests/fetch/http-cache/partial.html [ Failure ]
@@ -852,14 +861,6 @@ webkit.org/b/146182 editing/selection/leak-document-with-selection-inside.html [
 media/session [ Skip ]
 
 webrtc/datachannel/multiple-connections.html [ Slow ]
-webrtc/video-replace-track.html [ Pass Failure ]
-webkit.org/b/170178 webrtc/video-replace-track-to-null.html [ Pass Failure ]
-webkit.org/b/170704 webrtc/video-mute.html [ Pass Failure ]
-webkit.org/b/170701 webrtc/datachannel/bufferedAmountLowThreshold-default.html [ Pass Failure ]
-webkit.org/b/172649 webrtc/peer-connection-audio-mute.html [ Pass Failure ]
-webkit.org/b/173486 webrtc/video-replace-muted-track.html [ Pass Failure Timeout ]
-
-imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-setLocalDescription.html [ Failure ]
 webkit.org/b/171094 imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-idl.html [ Failure ]
 webkit.org/b/171930 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-idl.html [ Failure ]
 webkit.org/b/172f21 imported/w3c/web-platform-tests/webrtc/getstats.html [ Failure ]
@@ -870,7 +871,6 @@ fast/mediastream/RTCPeerConnection-more-media-to-negotiate.html [ Skip ]
 fast/mediastream/RTCPeerConnection-overloaded-operations-params.html [ Skip ]
 fast/mediastream/RTCRtpSender-replaceTrack.html [ Skip ]
 fast/mediastream/RTCPeerConnection-dtmf.html [ Failure ]
-# libwebrtc backend doesn't generate a=bundle-only lines
 fast/mediastream/RTCPeerConnection-inspect-offer-bundlePolicy-bundle-only.html [ Failure ]
 
 # Only iOS WK1 has testRunner.setPagePaused.
@@ -1264,30 +1264,20 @@ imported/w3c/web-platform-tests/fetch/nosniff [ DumpJSConsoleLogInStdErr ]
 ########################################
 ### START OF display: contents failures
 
-webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-list-001.html [ ImageOnlyFailure ]
-webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-table-002-inline.html [ ImageOnlyFailure ]
-webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-inline-flex-001.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-before-after-first-letter-001.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-before-after-001.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-table-002-none.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-flex-003.html [ ImageOnlyFailure ]
-webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-table-001.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-before-after-002.html [ ImageOnlyFailure ]
-webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-table-002.html [ ImageOnlyFailure ]
-webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-inline-flex-001-none.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-table-001-inline.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-flex-002-none.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-flex-002.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-before-after-001.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-flow-root-001.html [ ImageOnlyFailure ]
-webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-inline-flex-001-inline.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-flex-003-none.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-table-001-none.html [ ImageOnlyFailure ]
-webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-state-change-001.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-flex-002-inline.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-flex-003-inline.html [ ImageOnlyFailure ]
-webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-list-001-inline.html [ ImageOnlyFailure ]
-webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-list-001-none.html [ ImageOnlyFailure ]
 
 ### END OF display: contents failures
 ########################################
@@ -1519,3 +1509,4 @@ imported/w3c/web-platform-tests/css/css-pseudo-4/first-letter-003.html [ ImageOn
 webkit.org/b/177799 accessibility/table-detection.html [ Pass Failure ]
 
 webkit.org/b/177997 webgl/1.0.2/conformance/textures/copy-tex-image-2d-formats.html [ Pass Failure ]
+webkit.org/b/178417 webgl/1.0.2/conformance/canvas/drawingbuffer-static-canvas-test.html [ Pass Failure ]

@@ -48,9 +48,9 @@
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
 
-using namespace WTF;
 
 namespace WebCore {
+using namespace WTF;
 
 Node* EventTarget::toNode()
 {
@@ -276,6 +276,9 @@ void EventTarget::fireEventListeners(Event& event, EventListenerVector listeners
         if (event.eventPhase() == Event::CAPTURING_PHASE && !registeredListener->useCapture())
             continue;
         if (event.eventPhase() == Event::BUBBLING_PHASE && registeredListener->useCapture())
+            continue;
+
+        if (InspectorInstrumentation::isEventListenerDisabled(*this, event.type(), registeredListener->callback(), registeredListener->useCapture()))
             continue;
 
         // If stopImmediatePropagation has been called, we just break out immediately, without

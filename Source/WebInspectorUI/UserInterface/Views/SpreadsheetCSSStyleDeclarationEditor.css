@@ -25,8 +25,11 @@
 
 .spreadsheet-style-declaration-editor {
     position: relative;
-    padding-left: 17px;
     clear: both;
+}
+
+.spreadsheet-style-declaration-editor .property {
+    padding-left: 17px;
 }
 
 .spreadsheet-style-declaration-editor .name {
@@ -42,6 +45,11 @@
     box-shadow: 0 1px 2px 1px hsla(0, 0%, 0%, 0.6);
     margin-bottom: 0 !important;
     padding-bottom: 0 !important;
+}
+
+.spreadsheet-style-declaration-editor .value.editing {
+    display: inline-block;
+    margin-right: 3px;
 }
 
 .spreadsheet-style-declaration-editor.no-properties {
@@ -78,4 +86,35 @@
 
 .spreadsheet-style-declaration-editor .property.not-inherited {
     opacity: 0.5;
+}
+
+.spreadsheet-style-declaration-editor .completion-hint {
+    color: hsl(0, 0%, 50%) !important;
+}
+
+.spreadsheet-style-declaration-editor .property.highlighted {
+    animation: style-property-highlight 2s;
+}
+
+@keyframes style-property-highlight {
+    from { background-color: yellow; }
+}
+
+.spreadsheet-style-declaration-editor .property:not(.disabled) .token-link {
+    color: var(--syntax-highlight-link-color);
+}
+
+.spreadsheet-style-declaration-editor .property:not(.disabled) .token-string {
+    color: var(--syntax-highlight-string-color);
+}
+
+.meta-key-pressed .spreadsheet-css-declaration:not(.locked) :matches(.name, .value):not(.editing):hover {
+    color: blue !important;
+    text-decoration: underline !important;
+    cursor: pointer !important;
+    -webkit-text-stroke-width: 0 !important;
+}
+
+.spreadsheet-style-declaration-editor .property:not(.disabled) .token-comment {
+    color: var(--syntax-highlight-comment-color);
 }

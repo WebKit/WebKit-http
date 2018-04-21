@@ -60,7 +60,7 @@
 #if PLATFORM(IOS)
 #define DEFAULT_ALLOWS_PICTURE_IN_PICTURE_MEDIA_PLAYBACK true
 #define DEFAULT_BACKSPACE_KEY_NAVIGATION_ENABLED false
-#define DEFAULT_FRAME_FLATTENING FrameFlatteningFullyEnabled
+#define DEFAULT_FRAME_FLATTENING FrameFlattening::FullyEnabled
 #define DEFAULT_SHOULD_PRINT_BACKGROUNDS true
 #define DEFAULT_TEXT_AREAS_ARE_RESIZABLE false
 #define DEFAULT_JAVASCRIPT_CAN_OPEN_WINDOWS_AUTOMATICALLY false
@@ -78,7 +78,7 @@
 #else
 #define DEFAULT_ALLOWS_PICTURE_IN_PICTURE_MEDIA_PLAYBACK false
 #define DEFAULT_BACKSPACE_KEY_NAVIGATION_ENABLED true
-#define DEFAULT_FRAME_FLATTENING FrameFlatteningDisabled
+#define DEFAULT_FRAME_FLATTENING FrameFlattening::Disabled
 #define DEFAULT_SHOULD_PRINT_BACKGROUNDS false
 #define DEFAULT_TEXT_AREAS_ARE_RESIZABLE true
 #define DEFAULT_JAVASCRIPT_CAN_OPEN_WINDOWS_AUTOMATICALLY true
@@ -374,7 +374,7 @@
 
 #define FOR_EACH_WEBKIT_EXPERIMENTAL_FEATURE_PREFERENCE(macro) \
     macro(AsyncFrameScrollingEnabled, asyncFrameScrollingEnabled, Bool, bool, false, "Async Frame Scrolling", "Perform frame scrolling in a dedicated thread or process") \
-    macro(CacheAPIEnabled, cacheAPIEnabled, Bool, bool, false, "Cache API", "Enable Cache API") \
+    macro(CacheAPIEnabled, cacheAPIEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "Cache API", "Enable Cache API") \
     macro(ConstantPropertiesEnabled, constantPropertiesEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "Constant Properties", "Enable CSS constant() properties") \
     macro(DisplayContentsEnabled, displayContentsEnabled, Bool, bool, false, "CSS display: contents", "Enable CSS display: contents support") \
     macro(SpringTimingFunctionEnabled, springTimingFunctionEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "CSS Spring Animations", "CSS Spring Animation prototype") \

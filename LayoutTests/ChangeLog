@@ -1,3 +1,986 @@
+2017-10-17  Dean Jackson  <dino@apple.com>
+
+        webgl/1.0.2/conformance/canvas/drawingbuffer-static-canvas-test.html failing
+        https://bugs.webkit.org/show_bug.cgi?id=178417
+        <rdar://problem/35042291>
+
+        Skip this test while I work out what causes it to fail on older hardware.
+
+        * TestExpectations:
+
+2017-10-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r223523.
+
+        A test for this change is failing on debug JSC bots.
+
+        Reverted changeset:
+
+        "[JSC] __proto__ getter should be fast"
+        https://bugs.webkit.org/show_bug.cgi?id=178067
+        https://trac.webkit.org/changeset/223523
+
+2017-10-17  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark fast/text/ellipsis-text-rtl.html as a failure on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=178413
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-10-16  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Add subLocality and subAdministrativeArea to ApplePayPaymentContact and ApplePayError
+        https://bugs.webkit.org/show_bug.cgi?id=178191
+        <rdar://problem/34906367>
+
+        Reviewed by Tim Horton.
+
+        * http/tests/ssl/applepay/ApplePayError-expected.txt:
+        * http/tests/ssl/applepay/ApplePaySession-expected.txt:
+        * http/tests/ssl/applepay/ApplePaySession.html:
+
+2017-10-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Delete button doesn't fully delete certain emoji
+        https://bugs.webkit.org/show_bug.cgi?id=178096
+        <rdar://problem/34785106>
+
+        Reviewed by Simon Fraser.
+
+        * editing/deleting/delete-emoji-1.html: Added.
+        * editing/deleting/delete-emoji-2.html: Added.
+        * editing/deleting/delete-emoji-3.html: Added.
+        * editing/deleting/delete-emoji-4.html: Added.
+        * editing/deleting/delete-emoji-5.html: Added.
+        * editing/deleting/delete-emoji-6.html: Added.
+        * editing/deleting/delete-emoji-7.html: Added.
+        * editing/deleting/delete-emoji-8.html: Added.
+        * editing/deleting/delete-emoji-9.html: Added.
+        * editing/deleting/delete-emoji.html:
+        * platform/ios/editing/deleting/delete-emoji-1-expected.txt: Added.
+        * platform/ios/editing/deleting/delete-emoji-2-expected.txt: Added.
+        * platform/ios/editing/deleting/delete-emoji-3-expected.txt: Added.
+        * platform/ios/editing/deleting/delete-emoji-4-expected.txt: Added.
+        * platform/ios/editing/deleting/delete-emoji-5-expected.txt: Added.
+        * platform/ios/editing/deleting/delete-emoji-6-expected.txt: Added.
+        * platform/ios/editing/deleting/delete-emoji-7-expected.txt: Added.
+        * platform/ios/editing/deleting/delete-emoji-8-expected.txt: Added.
+        * platform/ios/editing/deleting/delete-emoji-9-expected.txt: Added.
+        * platform/ios/editing/deleting/delete-emoji-expected.txt:
+        * platform/mac-elcapitan/editing/deleting/delete-emoji-2-expected.txt: Added.
+        * platform/mac-elcapitan/editing/deleting/delete-emoji-3-expected.txt: Added.
+        * platform/mac-elcapitan/editing/deleting/delete-emoji-4-expected.txt: Added.
+        * platform/mac-elcapitan/editing/deleting/delete-emoji-5-expected.txt: Added.
+        * platform/mac-elcapitan/editing/deleting/delete-emoji-6-expected.txt: Added.
+        * platform/mac-elcapitan/editing/deleting/delete-emoji-7-expected.txt: Added.
+        * platform/mac-elcapitan/editing/deleting/delete-emoji-8-expected.txt: Added.
+        * platform/mac-elcapitan/editing/deleting/delete-emoji-9-expected.txt: Added.
+        * platform/mac-elcapitan/editing/deleting/delete-emoji-expected.txt: Added.
+        * platform/mac-sierra/editing/deleting/delete-emoji-1-expected.txt: Added.
+        * platform/mac-sierra/editing/deleting/delete-emoji-2-expected.txt: Added.
+        * platform/mac-sierra/editing/deleting/delete-emoji-3-expected.txt: Added.
+        * platform/mac-sierra/editing/deleting/delete-emoji-4-expected.txt: Added.
+        * platform/mac-sierra/editing/deleting/delete-emoji-5-expected.txt: Added.
+        * platform/mac-sierra/editing/deleting/delete-emoji-6-expected.txt: Added.
+        * platform/mac-sierra/editing/deleting/delete-emoji-7-expected.txt: Added.
+        * platform/mac-sierra/editing/deleting/delete-emoji-8-expected.txt: Added.
+        * platform/mac-sierra/editing/deleting/delete-emoji-9-expected.txt: Added.
+        * platform/mac-sierra/editing/deleting/delete-emoji-expected.txt: Added.
+        * platform/mac/editing/deleting/delete-emoji-1-expected.txt: Added.
+        * platform/mac/editing/deleting/delete-emoji-2-expected.txt: Added.
+        * platform/mac/editing/deleting/delete-emoji-3-expected.txt: Added.
+        * platform/mac/editing/deleting/delete-emoji-4-expected.txt: Added.
+        * platform/mac/editing/deleting/delete-emoji-5-expected.txt: Added.
+        * platform/mac/editing/deleting/delete-emoji-6-expected.txt: Added.
+        * platform/mac/editing/deleting/delete-emoji-7-expected.txt: Added.
+        * platform/mac/editing/deleting/delete-emoji-8-expected.txt: Added.
+        * platform/mac/editing/deleting/delete-emoji-9-expected.txt: Added.
+        * platform/mac/editing/deleting/delete-emoji-expected.txt:
+        * platform/win/TestExpectations:
+
+2017-10-17  Per Arne Vollan  <pvollan@apple.com>
+
+        Skip service workers tests on Windows.
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-10-17  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark animations/play-state-suspend.html as flaky on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=178341
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-10-16  Dean Jackson  <dino@apple.com>
+
+        WebGL clamps drawingBufferWidth to 4096 pixels on a 5120 monitor/canvas
+        https://bugs.webkit.org/show_bug.cgi?id=178223
+        <rdar://problem/34597567>
+
+        Reviewed by Antoine Quint.
+
+        Test that resizes an already large buffer to make sure it
+        doesn't get clamped to 4k.
+
+        * fast/canvas/webgl/large-drawing-buffer-resize-expected.txt: Added.
+        * fast/canvas/webgl/large-drawing-buffer-resize.html: Added.
+
+2017-10-17  John Wilander  <wilander@apple.com>
+
+        Add and remove cookie partition accordingly in intermediary redirect requests
+        https://bugs.webkit.org/show_bug.cgi?id=178369
+        <rdar://problem/34467603>
+
+        Reviewed by Brent Fulgham.
+
+        This patch adds two new tests, relevant for the code change.
+        Also makes changes to existing tests to increase speed and
+        reliability.
+
+        * http/tests/resourceLoadStatistics/add-partitioning-to-redirect-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/add-partitioning-to-redirect.html: Added.
+        * http/tests/resourceLoadStatistics/non-sandboxed-iframe-redirect-ip-to-localhost-to-ip.html:
+        * http/tests/resourceLoadStatistics/non-sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html:
+        * http/tests/resourceLoadStatistics/non-sandboxed-nesting-iframe-with-non-sandboxed-iframe-redirect-ip-to-localhost-to-ip.html:
+        * http/tests/resourceLoadStatistics/non-sandboxed-nesting-iframe-with-non-sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html:
+        * http/tests/resourceLoadStatistics/non-sandboxed-nesting-iframe-with-sandboxed-iframe-redirect-ip-to-localhost-to-ip.html:
+        * http/tests/resourceLoadStatistics/non-sandboxed-nesting-iframe-with-sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html:
+        * http/tests/resourceLoadStatistics/remove-partitioning-from-redirect-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/remove-partitioning-from-redirect.html: Added.
+        * http/tests/resourceLoadStatistics/resources/get-cookies.php: Added.
+        * http/tests/resourceLoadStatistics/resources/redirect.php:
+        * http/tests/resourceLoadStatistics/resources/set-cookie.php: Added.
+        * http/tests/resourceLoadStatistics/sandboxed-iframe-redirect-ip-to-localhost-to-ip.html:
+        * http/tests/resourceLoadStatistics/sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html:
+        * http/tests/resourceLoadStatistics/sandboxed-nesting-iframe-with-non-sandboxed-iframe-redirect-ip-to-localhost-to-ip.html:
+        * http/tests/resourceLoadStatistics/sandboxed-nesting-iframe-with-non-sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html:
+        * http/tests/resourceLoadStatistics/sandboxed-nesting-iframe-with-sandboxed-iframe-redirect-ip-to-localhost-to-ip.html:
+        * http/tests/resourceLoadStatistics/sandboxed-nesting-iframe-with-sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html:
+        * platform/ios/TestExpectations:
+            The two new tests are marked [ Pass ].
+        * platform/mac-wk2/TestExpectations:
+            The two new tests are marked [ Pass ].
+        * platform/wk2/TestExpectations:
+            The two new tests are marked [ Skip ] because they require cookie partitioning.
+
+2017-10-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r223459.
+
+        This change introduced LayoutTest failures.
+
+        Reverted changeset:
+
+        "WebGL clamps drawingBufferWidth to 4096 pixels on a 5120
+        monitor/canvas"
+        https://bugs.webkit.org/show_bug.cgi?id=178223
+        https://trac.webkit.org/changeset/223459
+
+2017-10-17  Youenn Fablet  <youenn@apple.com>
+
+        Add preliminary support for fetch event
+        https://bugs.webkit.org/show_bug.cgi?id=178171
+
+        Reviewed by Chris Dumez.
+
+        Skipping new tests for WK1 and GTK that do not have SW.
+
+        * http/wpt/service-workers/extendableEvent.https-expected.txt: Added.
+        * http/wpt/service-workers/extendableEvent.https.html: Added.
+        * http/wpt/service-workers/fetchEvent.https-expected.txt: Added.
+        * http/wpt/service-workers/fetchEvent.https.html: Added.
+        * platform/gtk/TestExpectations:
+        * platform/ios-wk1/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+
+2017-10-17  Youenn Fablet  <youenn@apple.com>
+
+        Cache API implementation should be able to compute storage size for WebKit client applications.
+        https://bugs.webkit.org/show_bug.cgi?id=178350
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/cache-storage/cache-clearing-origin.https.html:
+        * http/tests/cache-storage/cache-representation.https.html:
+
+2017-10-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Add expected result file for fast/css/DOMQuad-points-SameObject.html.
+        https://bugs.webkit.org/show_bug.cgi?id=178366
+
+        Unreviewed test gardening.
+
+        * fast/css/DOMQuad-points-SameObject-expected.txt: Added.
+
+2017-10-17  Alex Christensen  <achristensen@webkit.org>
+
+        de-flakify http/tests/security/cross-frame-access-put.html
+        https://bugs.webkit.org/show_bug.cgi?id=178371
+
+        Reviewed by Tim Horton.
+
+        In the iframe, the test was being run after 0ms.  Sometimes, the whole iframe hadn't loaded yet,
+        so window.innerHeight and window.innerWidth were 0 instead of their intended values.  This changes
+        the test to wait for the iframe to finish loading before running the test, then post a message to
+        the parent to tell it to finish running its test instead of just relying on setTimeout(..., 0) to
+        always work after the iframe had finished loading.
+
+        * http/tests/security/cross-frame-access-put-expected.txt:
+        * http/tests/security/cross-frame-access-put.html:
+        * http/tests/security/resources/cross-frame-iframe-for-put-test.html:
+        * platform/mac-wk2/TestExpectations:
+
+2017-10-17  Alex Christensen  <achristensen@webkit.org>
+
+        Layout Test http/tests/xmlhttprequest/xmlhttprequest-overridemimetype-invalidstaterror.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=150095
+
+        Reviewed by Tim Horton.
+
+        * http/tests/xmlhttprequest/xmlhttprequest-overridemimetype-invalidstaterror-expected.txt:
+        * http/tests/xmlhttprequest/xmlhttprequest-overridemimetype-invalidstaterror.html:
+        * platform/mac-wk2/TestExpectations:
+        We were mixing jsTestIsAsync with testRunner.notifyDone which caused some flakiness.
+        Calling finishJSTest on the next runloop iteration causes it to no longer be flaky.
+
+2017-10-17  Alex Christensen  <achristensen@webkit.org>
+
+        De-flakify http/tests/loading/basic-auth-resend-wrong-credentials.html
+        https://bugs.webkit.org/show_bug.cgi?id=178370
+
+        Reviewed by Ryosuke Niwa.
+
+        Like r223445, in WebKit2 (and WebKit1 with asynchronous loading) sometimes the iframe would start
+        loading before the main resource loading finished, sometimes it wouldn't.  This isn't a problem,
+        and the rest of the test is still valid, but in order to make the dumped delegate callbacks deterministic,
+        we make it so the iframe always starts loading after the main resource is done loading.
+
+        * http/tests/loading/basic-auth-resend-wrong-credentials-expected.txt:
+        * http/tests/loading/basic-auth-resend-wrong-credentials.html:
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * platform/wk2/http/tests/loading/basic-auth-resend-wrong-credentials-expected.txt:
+
+2017-10-17  Daniel Bates  <dabates@apple.com>
+
+        ASSERTION FAILED: m_truncation != cFullTruncation in InlineTextBox::clampedOffset()
+        https://bugs.webkit.org/show_bug.cgi?id=178322
+
+        Reviewed by Darin Adler.
+
+        Add a test to ensure that clicking on the ellipsis in a truncated text run does not
+        cause an assertion failure in a debug build.
+
+        * fast/text/click-ellipsis-assertion-failure-expected.txt: Added.
+        * fast/text/click-ellipsis-assertion-failure.html: Added.
+
+2017-10-17  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r222670 and r222732): RTL truncated text may not be drawn
+        https://bugs.webkit.org/show_bug.cgi?id=178278
+        <rdar://problem/34982818>
+
+        Reviewed by Darin Adler.
+
+        Add a test to ensure that we draw right-to-left truncated text correctly.
+
+        * fast/text/ellipsis-text-rtl-expected.html: Added.
+        * fast/text/ellipsis-text-rtl.html: Added.
+
+2017-10-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] __proto__ getter should be fast
+        https://bugs.webkit.org/show_bug.cgi?id=178067
+
+        Reviewed by Saam Barati.
+
+        * js/object-literal-shorthand-construction-expected.txt:
+        * js/script-tests/object-literal-shorthand-construction.js:
+        (set 2):
+        (get 1):
+        * js/script-tests/sloppy-getter-setter-global-object.js:
+        * js/sloppy-getter-setter-global-object-expected.txt:
+
+2017-10-17  Antti Koivisto  <antti@apple.com>
+
+        Text nodes with display:contents parent should render as if they were wrapped in an unstyled <span>
+        https://bugs.webkit.org/show_bug.cgi?id=178332
+
+        Reviewed by Ryosuke Niwa.
+
+        * TestExpectations: 10 more display:contents tests pass.
+
+2017-10-17  Alicia Boya García  <aboya@igalia.com>
+
+        [MSE][GStreamer] Insert parser elements in AppendPipeline when demuxing opus or Vorbis
+        https://bugs.webkit.org/show_bug.cgi?id=178076
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        YouTube does not include durations in the WebM container for files
+        containing Opus audio, so we need to read them from the contained
+        stream. Fortunately, GStreamer has an element to do that: opusparse.
+
+        The same thing happens with Vorbis contained in WebM files from the
+        W3C tests, which should also be fixed by the GStreamer element
+        vorbisparse.
+
+        This patch adds an opusparse or vorbisparse element to the
+        AppendPipeline at the sinkpad of the demuxer when either is found.
+
+        Tests: updated expectations.
+
+        * platform/gtk/TestExpectations:
+
+2017-10-17  Alicia Boya García  <aboya@igalia.com>
+
+        [GStreamer][MSE] Unreviewed microgardening
+        https://bugs.webkit.org/show_bug.cgi?id=178344
+
+        Updates the following expectations:
+
+        - imported/w3c/web-platform-tests/media-source/mediasource-is-type-supported.html
+
+          Updated with current output (as a prerequisite to land this:
+          https://bugs.webkit.org/show_bug.cgi?id=178160, which improves the
+          -expected output a bit)
+
+        - imported/w3c/web-platform-tests/media-source/SourceBuffer-abort*.html
+
+          Marked them as passing, as they have been passing for a while.
+
+        - imported/w3c/web-platform-tests/media-source/mediasource-play-then-seek-back.html
+          imported/w3c/web-platform-tests/media-source/mediasource-sourcebuffer-mode.html
+
+          Marked them as passing. They were crashing on the build bot because
+          the changes of https://bugs.webkit.org/show_bug.cgi?id=176804 were
+          not being built, but Carlos López is already working on that.
+
+        * platform/gtk/TestExpectations:
+
+2017-10-16  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Allow reading data and blob URLs via DataTransfer when the pasteboard contains files
+        https://bugs.webkit.org/show_bug.cgi?id=178377
+
+        Reviewed by Ryosuke Niwa.
+
+        Tweaks an existing layout test to test dragging and dropping more URL protocols (ftp:, data: and blob:).
+
+        * editing/pasteboard/drag-drop-href-as-url-expected.txt:
+        * editing/pasteboard/drag-drop-href-as-url.html:
+
+2017-10-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Strip away event handlers and JavaScript URLs when copying
+        https://bugs.webkit.org/show_bug.cgi?id=178375
+
+        Reviewed by Wenson Hsieh.
+
+        Added a regression test.
+
+        * editing/pasteboard/copying-html-strips-javascript-url-and-event-handler-expected.txt: Added.
+        * editing/pasteboard/copying-html-strips-javascript-url-and-event-handler.html: Added.
+
+2017-10-16  Dean Jackson  <dino@apple.com>
+
+        WebGL clamps drawingBufferWidth to 4096 pixels on a 5120 monitor/canvas
+        https://bugs.webkit.org/show_bug.cgi?id=178223
+        <rdar://problem/34597567>
+
+        Reviewed by Antoine Quint.
+
+        Test that resizes an already large buffer to make sure it
+        doesn't get clamped to 4k.
+
+        * fast/canvas/webgl/large-drawing-buffer-resize-expected.txt: Added.
+        * fast/canvas/webgl/large-drawing-buffer-resize.html: Added.
+
+2017-10-16  Chris Dumez  <cdumez@apple.com>
+
+        DOMQuad.p1 / p2 / p3 / p4 should behave as [SameObject]
+        https://bugs.webkit.org/show_bug.cgi?id=178366
+
+        Reviewed by Youenn Fablet.
+
+        Add layout test coverage.
+
+        * fast/css/DOMQuad-points-SameObject.html: Added.
+
+2017-10-16  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Add subLocality and subAdministrativeArea to ApplePayPaymentContact and ApplePayError
+        https://bugs.webkit.org/show_bug.cgi?id=178191
+        <rdar://problem/34906367>
+
+        Reviewed by Tim Horton.
+
+        * http/tests/ssl/applepay/ApplePayError-expected.txt:
+        * http/tests/ssl/applepay/ApplePaySession-expected.txt:
+        * http/tests/ssl/applepay/ApplePaySession.html:
+
+2017-10-16  Alex Christensen  <achristensen@webkit.org>
+
+        De-flakify http/tests/loading/basic-credentials-sent-automatically.html
+        https://bugs.webkit.org/show_bug.cgi?id=178365
+
+        Reviewed by Andy Estes.
+
+        * http/tests/loading/basic-credentials-sent-automatically-expected.txt:
+        * http/tests/loading/basic-credentials-sent-automatically.html:
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * platform/wk2/http/tests/loading/basic-credentials-sent-automatically-expected.txt:
+
+2017-10-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Cannot access images included in the content pasted from Microsoft Word
+        https://bugs.webkit.org/show_bug.cgi?id=124391
+        <rdar://problem/26862741>
+
+        Reviewed by Antti Koivisto.
+
+        Added tests for copying & pasting and dragging & dropping HTML contents.
+
+        * TestExpectations:
+        * editing/pasteboard/data-transfer-get-data-on-drop-rich-text-expected.txt: Rebaselined.
+        * editing/pasteboard/data-transfer-get-data-on-paste-rich-text-expected.txt: Ditto.
+        * editing/pasteboard/data-transfer-get-data-on-paste-rich-text.html: Modified the test to strip away platform specific
+        inline style properties.
+        * editing/pasteboard/data-transfer-get-data-on-pasting-html-uses-blob-url-expected.txt: Added.
+        * editing/pasteboard/data-transfer-get-data-on-pasting-html-uses-blob-url.html: Added.
+        * editing/pasteboard/data-transfer-set-data-sanitizes-html-when-copying-expected.txt: Added.
+        * editing/pasteboard/data-transfer-set-data-sanitizes-html-when-copying-in-null-origin-expected.txt: Added.
+        * editing/pasteboard/data-transfer-set-data-sanitizes-html-when-copying-in-null-origin.html: Added.
+        * editing/pasteboard/data-transfer-set-data-sanitizes-html-when-copying.html: Added.
+        * editing/pasteboard/data-transfer-set-data-sanitizes-html-when-dragging-in-null-origin-expected.txt: Added.
+        * editing/pasteboard/data-transfer-set-data-sanitizes-html-when-dragging-in-null-origin.html: Added.
+        * editing/pasteboard/data-transfer-set-data-sanitizes-url-when-dragging-in-null-origin.html: Removed the superflous
+        call to setTimeout that was errornously added during debugging. Also updated the test to not claim all URL and
+        HTML values are read in the same origin, and updated the assertion for cross-origin case as it's now sanitized.
+        * editing/pasteboard/onpaste-text-html-expected.txt: Rebaselined. The order of CSS properties have changed.
+        * http/tests/security/clipboard/copy-paste-html-across-origin-sanitizes-html-expected.txt: Added.
+        * http/tests/security/clipboard/copy-paste-html-across-origin-sanitizes-html.html: Added.
+        * http/tests/security/clipboard/copy-paste-url-across-origin-sanitizes-url.html:
+        * http/tests/security/clipboard/resources/copy-html.html: Added.
+        * http/tests/security/clipboard/resources/copy-url.html: Renamed from copy.html.
+        * platform/ios-wk2/editing/pasteboard/data-transfer-get-data-on-paste-rich-text-expected.txt: Remoevd.
+        * platform/ios-wk1/editing/pasteboard/data-transfer-get-data-on-paste-rich-text-expected.txt: Remoevd.
+        * platform/mac-wk1/TestExpectations:
+
+2017-10-16  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Web Inspector: Layers tab mistakenly throws out the root element's layer.
+        https://bugs.webkit.org/show_bug.cgi?id=178222
+
+        Reviewed by Brian Burg.
+
+        * inspector/layers/layer-tree-manager-expected.txt: Added.
+        * inspector/layers/layer-tree-manager.html: Added.
+
+2017-10-16  Tim Horton  <timothy_horton@apple.com>
+
+        Adjust one more test from constant() to env() after r177581
+
+        * fast/events/ios/rotation/safe-area-insets-during-safari-type-rotation.html:
+
+2017-10-16  Youenn Fablet  <youenn@apple.com>
+
+        LayoutTest http/tests/cache-storage/cache-clearing-origin.https.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=178305
+        <rdar://problem/34990264>
+
+        Unreviewed.
+
+        Removing flaky test expectations based on dashboard.
+
+        * TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-10-16  Chris Dumez  <cdumez@apple.com>
+
+        Clicks on Link with download attribute causes all (other) links to trigger download when clicked
+        https://bugs.webkit.org/show_bug.cgi?id=178267
+        <rdar://problem/34985016>
+
+        Reviewed by Darin Adler.
+
+        Add layout test coverage.
+
+        * http/tests/download/anchor-load-after-download-expected.txt: Added.
+        * http/tests/download/anchor-load-after-download.html: Added.
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/html/browsers/windows/noreferrer-window-name-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/html/browsers/windows/noreferrer-window-name-expected.txt.
+
+2017-10-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline imported/w3c/web-platform-tests/beacon/headers/header-content-type.html for macOS.
+        https://bugs.webkit.org/show_bug.cgi?id=178343
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/imported/w3c/web-platform-tests/beacon/headers/header-content-type-expected.txt: Added.
+
+2017-10-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r223271.
+
+        This change introduced LayoutTest failures on WK1.
+
+        Reverted changeset:
+
+        "Use asynchronous ResourceHandleClient calls for WebKit1"
+        https://bugs.webkit.org/show_bug.cgi?id=160677
+        https://trac.webkit.org/changeset/223271
+
+2017-10-16  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark animations/play-state-in-shorthand.html as flaky on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=178341
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-10-16  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        Don't use intrinsic width if our container's width is zero
+        https://bugs.webkit.org/show_bug.cgi?id=178073
+
+        Reviewed by Sergio Villar Senin.
+
+        New rebaseline for width100percent-image.html test.
+
+        * fast/replaced/container-width-zero-expected.txt: Added.
+        * fast/replaced/container-width-zero.html: Added.
+        * platform/ios/fast/replaced/width100percent-image-expected.txt:
+        * platform/gtk/fast/replaced/width100percent-image-expected.png:
+        * platform/gtk/fast/replaced/width100percent-image-expected.txt:
+        * platform/mac/fast/replaced/width100percent-image-expected.png:
+        * platform/mac/fast/replaced/width100percent-image-expected.txt:
+        * platform/win/TestExpectations: Skips test as it needs a rebaseline.
+
+2017-10-16  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        On ToT, event.dataTransfer.getData("text/uri-list") returns an empty string when dragging an image
+        https://bugs.webkit.org/show_bug.cgi?id=178301
+        <rdar://problem/34990050>
+
+        Reviewed by Darin Adler.
+
+        Fixes an existing test to account for asynchronous image decoding, and also rebaselines results to expect that
+        only the URL can be read, and not text.
+
+        * TestExpectations:
+        * editing/pasteboard/data-transfer-item-list-add-file-multiple-times-expected.txt:
+        * editing/pasteboard/drag-drop-href-as-text-data-expected.txt: Removed.
+        * editing/pasteboard/drag-drop-href-as-text-data.html: Removed.
+        * editing/pasteboard/drag-drop-href-as-url-expected.txt: Added.
+        * editing/pasteboard/drag-drop-href-as-url.html: Added.
+
+        Tweaks an existing drag and drop test to verify that an URL can be read back when dragging an image, but not
+        when if the URL is a file URL.
+
+        * editing/pasteboard/files-during-page-drags-expected.txt:
+        * editing/pasteboard/files-during-page-drags.html:
+
+        Fixes this test by decoding the dragged image element before starting the drag and drop simulation.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-10-15  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Modify CSS number values with up key and down key
+        https://bugs.webkit.org/show_bug.cgi?id=170779
+        <rdar://problem/33170633>
+
+        Reviewed by Matt Baker.
+
+        Add tests for WI.incrementElementValue defined in WebInspectorUI/UserInterface/Views/EditingSupport.js.
+
+        * inspector/unit-tests/editing-support-expected.txt: Added.
+        * inspector/unit-tests/editing-support.html: Added.
+
+2017-10-14  Antoine Quint  <graouts@apple.com>
+
+        Remove all Web Animations code
+        https://bugs.webkit.org/show_bug.cgi?id=178273
+
+        Reviewed by Sam Weinig.
+
+        Remove the only existing Web Animations test.
+
+        * webanimations/Document-expected.txt: Removed.
+        * webanimations/Document.html: Removed.
+
+2017-10-14  Youenn Fablet  <youenn@apple.com>
+
+        Resync tests up to c1716b039411090428e7073158b1aea081dafe71
+        https://bugs.webkit.org/show_bug.cgi?id=178241
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebasing expectations.
+
+        * TestExpectations: Skipping unsupported tests.
+        * http/wpt/fetch/request-clone-expected.txt:
+        * platform/ios-wk2/imported/w3c/web-platform-tests/beacon/headers/header-content-type-expected.txt: Added.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/html/browsers/browsing-the-web/history-traversal/persisted-user-state-restoration/scroll-restoration-fragment-scrolling-cross-origin-expected.txt:
+        * platform/ios-wk2/imported/w3c/web-platform-tests/html/dom/reflection-embedded-expected.txt:
+        * platform/mac-wk1/imported/w3c/web-platform-tests/background-fetch/interfaces-expected.txt:
+        * tests-options.json:
+
+2017-10-14  Youenn Fablet  <youenn@apple.com>
+
+        Implement Cache API support for WPE/GTK
+        https://bugs.webkit.org/show_bug.cgi?id=178316
+
+        Unreviewed.
+
+        Skip tests until feature is implemented.
+
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2017-10-14  Youenn Fablet  <youenn@apple.com>
+
+        WebRTC test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=178317
+
+        Unreviewed.
+
+        Updating expectations according dashboard.
+        Skipping tests for platforms that do not support WebRTC.
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * platform/win/TestExpectations:
+
+2017-10-14  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: provide a way to enable/disable event listeners
+        https://bugs.webkit.org/show_bug.cgi?id=177451
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/dom/setEventListenerDisabled-expected.txt: Added.
+        * inspector/dom/setEventListenerDisabled.html: Added.
+
+2017-10-14  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark fast/frames/frame-unload-navigate-and-setTimeout-assert-fail.html as a flaky crash on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=178309
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-10-14  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark fast/images/animated-gif-scrolling-crash.html as flaky on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=178307
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-10-13  Brent Fulgham  <bfulgham@apple.com>
+
+        Protect FrameView during style calculations
+        https://bugs.webkit.org/show_bug.cgi?id=178300
+        <rdar://problem/34869329>
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/html/marquee-reparent-check-expected.txt: Added.
+        * fast/html/marquee-reparent-check.html: Added.
+
+2017-10-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/cache-storage/cache-clearing-origin.https.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=178305
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-10-13  Youenn Fablet  <youenn@apple.com>
+
+        http/tests/cache-storage/cache-clearing-origin.https.html is flaky on Sierra
+        https://bugs.webkit.org/show_bug.cgi?id=178303
+
+        Unreviewed.
+
+        * TestExpectations: Marking test as fail.
+
+2017-10-13  Brent Fulgham  <bfulgham@apple.com>
+
+        CMD+R / CMD+Q keyboard shortcuts are treated as user interaction with page
+        https://bugs.webkit.org/show_bug.cgi?id=178183
+        <rdar://problem/33327730>
+
+        Reviewed by Ryosuke Niwa.
+
+        * http/tests/resourceLoadStatistics/prevalent-resource-handled-keydown-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/prevalent-resource-handled-keydown.html: Added.
+        * http/tests/resourceLoadStatistics/prevalent-resource-unhandled-keydown-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/prevalent-resource-unhandled-keydown.html: Added.
+        * http/tests/resourceLoadStatistics/resources: Added.
+        * http/tests/resourceLoadStatistics/resources/onclick.html: Added.
+        * platform/ios/TestExpectations: Skip tests that require 'keyDown' support, since this is not
+          available on iOS.
+
+2017-10-13  Matt Lewis  <jlewis3@apple.com>
+
+        Marked http/tests/inspector/network/resource-sizes-memory-cache.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=177687
+
+        Unreviewed test gardening.
+        * platform/mac-wk2/TestExpectations:
+
+2017-10-13  Youenn Fablet  <youenn@apple.com>
+
+        Implement listing origins for which CacheStorage is storing data
+        https://bugs.webkit.org/show_bug.cgi?id=178236
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/cache-storage/cache-clearing-origin.https.html:
+
+2017-10-13  Youenn Fablet  <youenn@apple.com>
+
+        http/tests/cache-storage/cache-origins.https.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=178266
+
+        Unreviewed.
+
+        * http/tests/cache-storage/cache-clearing-origin.https.html:
+
+2017-10-13  Youenn Fablet  <youenn@apple.com>
+
+        Modernize LayoutTests/http/tests/cache-storage/cache-clearing-*.https.html
+        https://bugs.webkit.org/show_bug.cgi?id=178245
+
+        Reviewed by Chris Dumez.
+
+        Using await/async to improve the testing.
+        Taking benefit of clearDOMCache to wait for completion to simplify both tests as well.
+
+        * http/tests/cache-storage/cache-clearing-all.https.html:
+        * http/tests/cache-storage/cache-clearing-origin.https.html:
+
+2017-10-13  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        "text/html" data is not exposed when dragging and dropping across origins
+        https://bugs.webkit.org/show_bug.cgi?id=178253
+        <rdar://problem/34971203>
+
+        Reviewed by Ryosuke Niwa.
+
+        Renames some existing layout tests, and also augments two tests to verify that "text/html" is preserved when
+        copying and dragging across origins that don't match.
+
+        * TestExpectations:
+        * editing/pasteboard/data-transfer-set-data-ignore-copied-malformed-url-in-null-expected.txt: Renamed from LayoutTests/editing/pasteboard/data-transfer-set-data-ignore-copied-walformed-url-in-null-expected.txt.
+        * editing/pasteboard/data-transfer-set-data-ignore-copied-malformed-url-in-null-origin-expected.txt: Renamed from LayoutTests/editing/pasteboard/data-transfer-set-data-ignore-copied-walformed-url-in-null-origin-expected.txt.
+        * editing/pasteboard/data-transfer-set-data-ignore-copied-malformed-url-in-null-origin.html: Renamed from LayoutTests/editing/pasteboard/data-transfer-set-data-ignore-copied-walformed-url-in-null-origin.html.
+        * editing/pasteboard/data-transfer-set-data-sanitize-url-when-copying-in-null-origin-expected.txt: Renamed from LayoutTests/editing/pasteboard/data-transfer-set-data-sanitlize-url-when-copying-in-null-origin-expected.txt.
+        * editing/pasteboard/data-transfer-set-data-sanitize-url-when-copying-in-null-origin.html: Renamed from LayoutTests/editing/pasteboard/data-transfer-set-data-sanitlize-url-when-copying-in-null-origin.html.
+        * editing/pasteboard/data-transfer-set-data-sanitize-url-when-dragging-in-null-origin-expected.txt: Renamed from LayoutTests/editing/pasteboard/data-transfer-set-data-sanitlize-url-when-dragging-in-null-origin-expected.txt.
+        * editing/pasteboard/data-transfer-set-data-sanitize-url-when-dragging-in-null-origin.html: Renamed from LayoutTests/editing/pasteboard/data-transfer-set-data-sanitlize-url-when-dragging-in-null-origin.html.
+        * platform/mac-wk1/TestExpectations:
+
+2017-10-12  Brady Eidson  <beidson@apple.com>
+
+        SW "Hello world".
+        https://bugs.webkit.org/show_bug.cgi?id=178187
+
+        Reviewed by Andy Estes.
+
+        * http/tests/workers/service/basic-register-exceptions-expected.txt:
+        * http/tests/workers/service/basic-register-expected.txt:
+        * http/tests/workers/service/registration-task-queue-scheduling-1-expected.txt:
+
+2017-10-12  Alex Christensen  <achristensen@webkit.org>
+
+        Use asynchronous ResourceHandleClient calls for WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=160677
+
+        Reviewed by Brady Eidson.
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * platform/wk2/TestExpectations:
+
+        http/tests/cache/iframe-304-crash.html used to deterministically record its didFinishLoading callback,
+        but only for WK1.  It was marked as flaky for all WK2 ports.  It is now flaky in WK1 because the order
+        of the testRunner.notifyDone call and the didFinishLoading logging is no longer deterministic with
+        asynchronous loading, but the test still verifies that there is no crash.
+
+        http/tests/security/cross-origin-modal-dialog-base.html does navigation during showModalDialog, which
+        probably should've never worked in WK1 and never worked in WK2.  WK1 behavior now matches WK2 behavior.
+        I'm not aware of any complaints about no navigation working during showModalDialog in WK2 and I imagine
+        nobody will be regressed by this change, but if we do find such a problem, creative use of MessageQueues
+        like we do with sync xhr in WK1 now could theoretically fix the problem, but we are trying to get
+        rid of showModalDialog anyway.  The test was written to verify that the SecurityOrigin doesn't fall back
+        to the wrong origin, and it certainly doesn't now.
+
+        These tests dump load delegate call order, which are less deterministic now but the tests still behave correctly.
+        http/tests/svg/svg-use-external.html
+        http/tests/loading/text-content-type-with-binary-extension.html
+        http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-iframe-in-main-frame.html
+
+2017-10-12  Youenn Fablet  <youenn@apple.com>
+
+        Layout Test http/tests/cache-storage/cache-clearing.https.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=178200
+
+        Reviewed by Chris Dumez.
+
+        Splitting cache-clearing.https.html in two sub tests and marking them as Pass/Timeout for the moment.
+
+        * platform/win/TestExpectations: Skipping cache/sw tests.
+        * TestExpectations:
+        * http/tests/cache-storage/cache-clearing.https.html: Removed.
+        * http/tests/cache-storage/cache-clearing-all.https-expected.txt: Added.
+        * http/tests/cache-storage/cache-clearing-all.https.html: Added.
+        * http/tests/cache-storage/cache-clearing-origin.https-expected.txt: Added.
+        * http/tests/cache-storage/cache-clearing-origin.https.html: Added.
+
+2017-10-12  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark some xhtml tests as failing on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=178230
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2017-10-11  Simon Fraser  <simon.fraser@apple.com>
+
+        Don't assert if mix-blend-mode is set to a non-separable blend mode on a composited layer
+        https://bugs.webkit.org/show_bug.cgi?id=178196
+        rdar://problem/34942337
+
+        Reviewed by Dan Bates.
+
+        * compositing/filters/blend-mode-saturation-expected.txt: Added.
+        * compositing/filters/blend-mode-saturation.html: Added.
+
+2017-10-12  John Wilander  <wilander@apple.com>
+
+        ResourceLoadObserver::logFrameNavigation() should use redirectResponse.url()
+        https://bugs.webkit.org/show_bug.cgi?id=175257
+        <rdar://problem/33359866>
+
+        Reviewed by Brent Fulgham.
+
+        * TestExpectations:
+            Marked new directory as [ Skip ] since these are WK2-only.
+        * http/tests/resourceLoadStatistics: Added.
+        * http/tests/resourceLoadStatistics/non-sandboxed-iframe-redirect-ip-to-localhost-to-ip-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/non-sandboxed-iframe-redirect-ip-to-localhost-to-ip.html: Added.
+        * http/tests/resourceLoadStatistics/non-sandboxed-iframe-redirect-localhost-to-ip-to-localhost-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/non-sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html: Added.
+        * http/tests/resourceLoadStatistics/non-sandboxed-nesting-iframe-with-non-sandboxed-iframe-redirect-ip-to-localhost-to-ip-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/non-sandboxed-nesting-iframe-with-non-sandboxed-iframe-redirect-ip-to-localhost-to-ip.html: Added.
+        * http/tests/resourceLoadStatistics/non-sandboxed-nesting-iframe-with-non-sandboxed-iframe-redirect-localhost-to-ip-to-localhost-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/non-sandboxed-nesting-iframe-with-non-sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html: Added.
+        * http/tests/resourceLoadStatistics/non-sandboxed-nesting-iframe-with-sandboxed-iframe-redirect-ip-to-localhost-to-ip-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/non-sandboxed-nesting-iframe-with-sandboxed-iframe-redirect-ip-to-localhost-to-ip.html: Added.
+        * http/tests/resourceLoadStatistics/non-sandboxed-nesting-iframe-with-sandboxed-iframe-redirect-localhost-to-ip-to-localhost-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/non-sandboxed-nesting-iframe-with-sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html: Added.
+        * http/tests/resourceLoadStatistics/resources: Added.
+        * http/tests/resourceLoadStatistics/resources/iframe-report-back-loaded.html: Added.
+        * http/tests/resourceLoadStatistics/resources/page-with-non-sandboxed-iframe-redirect-ip-to-localhost-to-ip.html: Added.
+        * http/tests/resourceLoadStatistics/resources/page-with-non-sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html: Added.
+        * http/tests/resourceLoadStatistics/resources/page-with-sandboxed-iframe-redirect-ip-to-localhost-to-ip.html: Added.
+        * http/tests/resourceLoadStatistics/resources/page-with-sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html: Added.
+        * http/tests/resourceLoadStatistics/resources/redirect.php: Added.
+        * http/tests/resourceLoadStatistics/sandboxed-iframe-redirect-ip-to-localhost-to-ip-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/sandboxed-iframe-redirect-ip-to-localhost-to-ip.html: Added.
+        * http/tests/resourceLoadStatistics/sandboxed-iframe-redirect-localhost-to-ip-to-localhost-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html: Added.
+        * http/tests/resourceLoadStatistics/sandboxed-nesting-iframe-with-non-sandboxed-iframe-redirect-ip-to-localhost-to-ip-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/sandboxed-nesting-iframe-with-non-sandboxed-iframe-redirect-ip-to-localhost-to-ip.html: Added.
+        * http/tests/resourceLoadStatistics/sandboxed-nesting-iframe-with-non-sandboxed-iframe-redirect-localhost-to-ip-to-localhost-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/sandboxed-nesting-iframe-with-non-sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html: Added.
+        * http/tests/resourceLoadStatistics/sandboxed-nesting-iframe-with-sandboxed-iframe-redirect-ip-to-localhost-to-ip-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/sandboxed-nesting-iframe-with-sandboxed-iframe-redirect-ip-to-localhost-to-ip.html: Added.
+        * http/tests/resourceLoadStatistics/sandboxed-nesting-iframe-with-sandboxed-iframe-redirect-localhost-to-ip-to-localhost-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/sandboxed-nesting-iframe-with-sandboxed-iframe-redirect-localhost-to-ip-to-localhost.html: Added.
+        * platform/gtk/TestExpectations:
+            Marked new directory as [ Skip ].
+        * platform/wk2/TestExpectations:
+            Marked new directory as [ Pass ].
+        * platform/wpe/TestExpectations:
+            Marked new directory as [ Skip ].
+
+2017-10-12  Matt Lewis  <jlewis3@apple.com>
+
+        Marked imported/w3c/web-platform-tests/fetch/security/dangling-markup-mitigation-data-url.tentative.sub.html as flaky on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=177547
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2017-10-12  Matt Lewis  <jlewis3@apple.com>
+
+        Edited expectations for http/tests/media/video-buffered-range-contains-currentTime.html.
+        https://bugs.webkit.org/show_bug.cgi?id=177616
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-10-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Support integrity="" on module scripts
+        https://bugs.webkit.org/show_bug.cgi?id=177959
+
+        Reviewed by Sam Weinig.
+
+        * http/tests/subresource-integrity/resources/crossorigin-anon-script-module.js: Added.
+        * http/tests/subresource-integrity/resources/crossorigin-creds-script-module.js: Added.
+        * http/tests/subresource-integrity/resources/crossorigin-ineligible-script-module.js: Added.
+        * http/tests/subresource-integrity/resources/matching-digest-module.js: Added.
+        * http/tests/subresource-integrity/resources/non-matching-digest-module.js: Added.
+        * http/tests/subresource-integrity/resources/sri-utilities.js:
+        (add_result_callback):
+        (SRIModuleTest):
+        (SRIModuleTest.prototype.execute):
+        * http/tests/subresource-integrity/sri-module-expected.txt: Added.
+        * http/tests/subresource-integrity/sri-module.html: Added.
+        * js/dom/modules/module-inline-ignore-integrity-expected.txt: Added.
+        * js/dom/modules/module-inline-ignore-integrity.html: Added.
+        * js/dom/modules/module-integrity-non-top-level-expected.txt: Added.
+        * js/dom/modules/module-integrity-non-top-level.html: Added.
+        * js/dom/modules/script-tests/module-integrity-non-top-level-2.js: Added.
+        * js/dom/modules/script-tests/module-integrity-non-top-level.js: Added.
+
+2017-10-11  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark http/tests/cache-storage/cache-clearing.https.html as failing on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=178200
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
 2017-10-11  Ryan Haddad  <ryanhaddad@apple.com>
 
         Unreviewed, rolling out r223215.

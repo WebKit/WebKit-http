@@ -61,6 +61,8 @@ class RenderStyle;
 class RenderView;
 class RenderWidget;
 
+enum class FrameFlattening;
+
 Pagination::Mode paginationModeForRenderStyle(const RenderStyle&);
 
 class FrameView final : public ScrollView {
@@ -114,8 +116,8 @@ public:
     bool isInRenderTreeLayout() const { return m_layoutPhase == InRenderTreeLayout; }
     bool inPaintableState() { return m_layoutPhase != InRenderTreeLayout && m_layoutPhase != InViewSizeAdjust && m_layoutPhase != InPostLayout; }
 
-    RenderElement* layoutRoot() const { return m_layoutRoot; }
-    void clearLayoutRoot() { m_layoutRoot = nullptr; }
+    RenderElement* subtreeLayoutRoot() const { return m_subtreeLayoutRoot; }
+    void clearSubtreeLayoutRoot() { m_subtreeLayoutRoot = nullptr; }
     int layoutCount() const { return m_layoutCount; }
 
     WEBCORE_EXPORT bool needsLayout() const;
@@ -635,6 +637,8 @@ public:
 
     void setSpeculativeTilingDelayDisabledForTesting(bool disabled) { m_speculativeTilingDelayDisabledForTesting = disabled; }
 
+    WEBCORE_EXPORT FrameFlattening effectiveFrameFlattening() const;
+
 protected:
     bool scrollContentsFastPath(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect) final;
     void scrollContentsSlowPath(const IntRect& updateRect) final;
@@ -795,7 +799,7 @@ private:
 
     Timer m_layoutTimer;
     bool m_delayedLayout;
-    RenderElement* m_layoutRoot { nullptr };
+    RenderElement* m_subtreeLayoutRoot { nullptr };
 
     LayoutPhase m_layoutPhase;
     bool m_layoutSchedulingEnabled;

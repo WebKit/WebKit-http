@@ -186,8 +186,11 @@ namespace JSC {
         virtual bool isSpreadExpression() const { return false; }
         virtual bool isSuperNode() const { return false; }
         virtual bool isImportNode() const { return false; }
+        virtual bool isMetaProperty() const { return false; }
         virtual bool isNewTarget() const { return false; }
+        virtual bool isImportMeta() const { return false; }
         virtual bool isBytecodeIntrinsicNode() const { return false; }
+        virtual bool isBinaryOpNode() const { return false; }
 
         virtual void emitBytecodeInConditionContext(BytecodeGenerator&, Label&, Label&, FallThroughMode);
 
@@ -584,13 +587,32 @@ namespace JSC {
         ExpressionNode* m_expr;
     };
 
-    class NewTargetNode final : public ExpressionNode {
+    class MetaPropertyNode : public ExpressionNode {
+    public:
+        MetaPropertyNode(const JSTokenLocation&);
+
+    private:
+        bool isMetaProperty() const final { return true; }
+    };
+
+    class NewTargetNode final : public MetaPropertyNode {
     public:
         NewTargetNode(const JSTokenLocation&);
 
     private:
         bool isNewTarget() const final { return true; }
         RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
+    };
+
+    class ImportMetaNode final : public MetaPropertyNode {
+    public:
+        ImportMetaNode(const JSTokenLocation&, ExpressionNode*);
+
+    private:
+        bool isImportMeta() const final { return true; }
+        RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
+
+        ExpressionNode* m_expr;
     };
 
     class ResolveNode : public ExpressionNode {
@@ -1064,7 +1086,11 @@ namespace JSC {
         ExpressionNode* lhs() { return m_expr1; };
         ExpressionNode* rhs() { return m_expr2; };
 
+        bool isBinaryOpNode() const override { return true; }
+
     private:
+        enum class UInt32Result { UInt32, Constant, };
+
         void tryFoldToBranch(BytecodeGenerator&, TriState& branchCondition, ExpressionNode*& branchExpression);
         RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
 
@@ -1078,6 +1104,7 @@ namespace JSC {
         OpcodeID m_opcodeID;
     protected:
         bool m_rightHasAssignments;
+        bool m_shouldToUnsignedResult { true };
     };
 
     class PowNode : public BinaryOpNode {

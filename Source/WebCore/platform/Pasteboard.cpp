@@ -30,6 +30,7 @@
 #include "PlatformStrategies.h"
 #include "Settings.h"
 #include "SharedBuffer.h"
+#include "URLParser.h"
 #include <wtf/persistence/PersistentCoders.h>
 #include <wtf/text/StringHash.h>
 
@@ -42,6 +43,12 @@ PasteboardImage::~PasteboardImage() = default;
 bool Pasteboard::isSafeTypeForDOMToReadAndWrite(const String& type)
 {
     return type == "text/plain" || type == "text/html" || type == "text/uri-list";
+}
+
+bool Pasteboard::canExposeURLToDOMWhenPasteboardContainsFiles(const String& urlString)
+{
+    auto url = URLParser { urlString }.result();
+    return url.protocolIsInHTTPFamily() || url.protocolIsBlob() || url.protocolIsData();
 }
 
 Ref<SharedBuffer> PasteboardCustomData::createSharedBuffer() const

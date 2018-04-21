@@ -28,41 +28,55 @@ template<typename T> class optional;
 
 namespace WTF {
 
-struct FastMalloc;
-class CrashOnOverflow;
-
-template<typename T> class Function;
-template<typename T> class LazyNeverDestroyed;
-template<typename T> class NeverDestroyed;
-template<typename T> class OptionSet;
-template<typename T> class Ref;
-template<typename T> class RefPtr;
-template<typename T> class StringBuffer;
-
-template<typename... T> class Variant;
-template<typename T, size_t inlineCapacity = 0, typename OverflowHandler = CrashOnOverflow, size_t minCapacity = 16, typename Malloc = FastMalloc> class Vector;
-
 class AtomicString;
 class AtomicStringImpl;
 class BinarySemaphore;
 class CString;
+class CrashOnOverflow;
 class FunctionDispatcher;
 class OrdinalNumber;
 class PrintStream;
+class SHA1;
 class String;
 class StringBuilder;
 class StringImpl;
 class StringView;
 class TextPosition;
 
+struct FastMalloc;
+
+template<typename> class CompletionHandler;
+template<typename> class Function;
+template<typename> class LazyNeverDestroyed;
+template<typename> class NeverDestroyed;
+template<typename> class OptionSet;
+template<typename> class Ref;
+template<typename> class RefPtr;
+template<typename> class StringBuffer;
+
+template<typename> struct DefaultHash { using Hash = void; };
+template<typename> struct HashTraits;
+
+template<typename...> class Variant;
+template<class, class> class Expected;
+template<typename, size_t = 0, typename = CrashOnOverflow, size_t = 16, typename = FastMalloc> class Vector;
+template<typename Value, typename = typename DefaultHash<Value>::Hash, typename = HashTraits<Value>> class HashCountedSet;
+template<typename KeyArg, typename MappedArg, typename = typename DefaultHash<KeyArg>::Hash, typename = HashTraits<KeyArg>, typename = HashTraits<MappedArg>> class HashMap;
+template<typename ValueArg, typename = typename DefaultHash<ValueArg>::Hash, typename = HashTraits<ValueArg>> class HashSet;
+
 }
 
 using WTF::AtomicString;
 using WTF::AtomicStringImpl;
 using WTF::BinarySemaphore;
+using WTF::CompletionHandler;
 using WTF::CString;
+using WTF::Expected;
 using WTF::Function;
 using WTF::FunctionDispatcher;
+using WTF::HashCountedSet;
+using WTF::HashMap;
+using WTF::HashSet;
 using WTF::LazyNeverDestroyed;
 using WTF::NeverDestroyed;
 using WTF::OptionSet;
@@ -70,6 +84,7 @@ using WTF::OrdinalNumber;
 using WTF::PrintStream;
 using WTF::Ref;
 using WTF::RefPtr;
+using WTF::SHA1;
 using WTF::String;
 using WTF::StringBuffer;
 using WTF::StringBuilder;

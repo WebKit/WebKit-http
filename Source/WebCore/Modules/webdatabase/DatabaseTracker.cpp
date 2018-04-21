@@ -42,6 +42,7 @@
 #include "SecurityOriginHash.h"
 #include "SQLiteFileSystem.h"
 #include "SQLiteStatement.h"
+#include "SQLiteTransaction.h"
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
@@ -781,12 +782,17 @@ void DatabaseTracker::deleteDatabasesModifiedSince(std::chrono::system_clock::ti
         for (const auto& databaseName : databaseNames) {
             auto fullPath = fullPathForDatabase(origin, databaseName, false);
 
-            time_t modificationTime;
-            if (!getFileModificationTime(fullPath, modificationTime))
-                continue;
+            // If the file doesn't exist, we previously deleted it but failed to remove the information
+            // from the tracker database. We want to delete all of the information associated with this
+            // database from the tracker database, so still add its name to databaseNamesToDelete.
+            if (fileExists(fullPath)) {
+                time_t modificationTime;
+                if (!getFileModificationTime(fullPath, modificationTime))
+                    continue;
 
-            if (modificationTime < std::chrono::system_clock::to_time_t(time))
-                continue;
+                if (modificationTime < std::chrono::system_clock::to_time_t(time))
+                    continue;
+            }
 
             databaseNamesToDelete.uncheckedAppend(databaseName);
         }
@@ -817,10 +823,9 @@ bool DatabaseTracker::deleteOrigin(const SecurityOriginData& origin, DeletionMod
             return false;
 
         databaseNames = databaseNamesNoLock(origin);
-        if (databaseNames.isEmpty()) {
+        if (databaseNames.isEmpty())
             LOG_ERROR("Unable to retrieve list of database names for origin %s", origin.databaseIdentifier().utf8().data());
-            return false;
-        }
+
         if (!canDeleteOrigin(origin)) {
             LOG_ERROR("Tried to delete an origin (%s) while either creating database in it or already deleting it", origin.databaseIdentifier().utf8().data());
             ASSERT_NOT_REACHED();
@@ -830,17 +835,45 @@ bool DatabaseTracker::deleteOrigin(const SecurityOriginData& origin, DeletionMod
     }
 
     // We drop the lock here because holding locks during a call to deleteDatabaseFile will deadlock.
+    bool failedToDeleteAnyDatabaseFile = false;
     for (auto& name : databaseNames) {
-        if (!deleteDatabaseFile(origin, name, deletionMode)) {
+        if (fileExists(fullPathForDatabase(origin, name, false)) && !deleteDatabaseFile(origin, name, deletionMode)) {
             // Even if the file can't be deleted, we want to try and delete the rest, don't return early here.
             LOG_ERROR("Unable to delete file for database %s in origin %s", name.utf8().data(), origin.databaseIdentifier().utf8().data());
+            failedToDeleteAnyDatabaseFile = true;
         }
+    }
+
+    // If databaseNames is empty, delete everything in the directory containing the databases for this origin.
+    // This condition indicates that we previously tried to remove the origin but didn't get all of the way
+    // through the deletion process. Because we have lost track of the databases for this origin,
+    // we can assume that no other process is accessing them. This means it should be safe to delete them outright.
+    if (databaseNames.isEmpty()) {
+#if PLATFORM(COCOA)
+        RELEASE_LOG_ERROR(DatabaseTracker, "Unable to retrieve list of database names for origin");
+#endif
+        for (const auto& file : listDirectory(originPath(origin), "*")) {
+            if (!deleteFile(file))
+                failedToDeleteAnyDatabaseFile = true;
+        }
+    }
+
+    // If we failed to delete any database file, don't remove the origin from the tracker
+    // database because we didn't successfully remove all of its data.
+    if (failedToDeleteAnyDatabaseFile) {
+#if PLATFORM(COCOA)
+        RELEASE_LOG_ERROR(DatabaseTracker, "Failed to delete database for origin");
+#endif
+        return false;
     }
 
     {
         LockHolder lockDatabase(m_databaseGuard);
         deleteOriginLockFor(origin);
         doneDeletingOrigin(origin);
+
+        SQLiteTransaction transaction(m_database);
+        transaction.begin();
 
         SQLiteStatement statement(m_database, "DELETE FROM Databases WHERE origin=?");
         if (statement.prepare() != SQLITE_OK) {
@@ -867,6 +900,8 @@ bool DatabaseTracker::deleteOrigin(const SecurityOriginData& origin, DeletionMod
             LOG_ERROR("Unable to execute deletion of databases from origin %s from tracker", origin.databaseIdentifier().utf8().data());
             return false;
         }
+
+        transaction.commit();
 
         SQLiteFileSystem::deleteEmptyDatabaseDirectory(originPath(origin));
 
@@ -1031,7 +1066,7 @@ bool DatabaseTracker::deleteDatabase(const SecurityOriginData& origin, const Str
     }
 
     // We drop the lock here because holding locks during a call to deleteDatabaseFile will deadlock.
-    if (!deleteDatabaseFile(origin, name, DeletionMode::Default)) {
+    if (fileExists(fullPathForDatabase(origin, name, false)) && !deleteDatabaseFile(origin, name, DeletionMode::Default)) {
         LOG_ERROR("Unable to delete file for database %s in origin %s", name.utf8().data(), origin.databaseIdentifier().utf8().data());
         LockHolder lockDatabase(m_databaseGuard);
         doneDeletingDatabase(origin, name);

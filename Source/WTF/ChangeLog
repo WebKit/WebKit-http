@@ -1,3 +1,170 @@
+2017-10-17  Keith Miller  <keith_miller@apple.com>
+
+        Change WebCore sources to work with unified source builds
+        https://bugs.webkit.org/show_bug.cgi?id=178229
+
+        Rubber stamped by Tim Horton.
+
+        * wtf/Platform.h:
+        * wtf/cocoa/SoftLinking.h:
+
+2017-10-16  David Kilzer  <ddkilzer@apple.com>
+
+        Add RELEASE_ASSERT_WITH_SECURITY_IMPLICATION() macro
+        <https://webkit.org/b/178269>
+
+        Reviewed by Alex Christensen.
+
+        * wtf/Assertions.h:
+        (RELEASE_ASSERT_WITH_SECURITY_IMPLICATION): Add macro.
+
+2017-10-14  Sam Weinig  <sam@webkit.org>
+
+        Remove HashCountedSet's copyToVector functions
+        https://bugs.webkit.org/show_bug.cgi?id=178215
+
+        Reviewed by Daniel Bates.
+
+        * wtf/HashCountedSet.h:
+        (WTF::copyToVector): Deleted.
+        
+            They are replaced by either copyToVector(hashCountedSet) or copyToVector(hashCountedSet.values())
+
+2017-10-13  Sam Weinig  <sam@webkit.org>
+
+        Adopt type trait template aliases everywhere in WTF
+        https://bugs.webkit.org/show_bug.cgi?id=178299
+
+        Reviewed by Yusuke Suzuki.
+
+        Adopt type trait template aliases (e.g. replace 'typename std::make_unsigned<Source>::type'
+        with 'std::make_unsigned_t<Source>'). Also adopt using over typedef consistently.
+
+        * wtf/Atomics.h:
+        * wtf/CagedUniquePtr.h:
+        * wtf/CheckedArithmetic.h:
+        * wtf/CompletionHandler.h:
+        * wtf/Function.h:
+        * wtf/HashCountedSet.h:
+        * wtf/HashFunctions.h:
+        * wtf/HashMap.h:
+        * wtf/HashSet.h:
+        * wtf/HashTable.h:
+        * wtf/HashTraits.h:
+        * wtf/IndexedContainerIterator.h:
+        * wtf/IteratorAdaptors.h:
+        * wtf/KeyValuePair.h:
+        * wtf/LEBDecoder.h:
+        * wtf/ListHashSet.h:
+        * wtf/MathExtras.h:
+        * wtf/NeverDestroyed.h:
+        * wtf/OptionSet.h:
+        * wtf/RetainPtr.h:
+        * wtf/SizeLimits.cpp:
+        * wtf/StdLibExtras.h:
+        * wtf/SystemFree.h:
+        * wtf/ThreadSpecific.h:
+        * wtf/TypeCasts.h:
+        * wtf/Vector.h:
+        * wtf/text/IntegerToStringConversion.h:
+
+2017-10-13  Jer Noble  <jer.noble@apple.com>
+
+        Performance: Skip texture upload if source image and destination texture haven't changed
+        https://bugs.webkit.org/show_bug.cgi?id=178254
+        <rdar://problem/34968181>
+
+        Reviewed by Dean Jackson.
+
+        Add a new class, UnsafePointer, for safely holding pointers to objects with uncontrolled lifetimes.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/UnsafePointer.h: Added.
+        (WTF::UnsafePointer::UnsafePointer):
+        (WTF::UnsafePointer::operator== const):
+        (WTF::UnsafePointer::operator!= const):
+        (WTF::UnsafePointer::operator bool const):
+        (WTF::operator==):
+        (WTF::operator!=):
+
+2017-10-13  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] When built with VS2017, MiniBrowser crashes on startup.
+        https://bugs.webkit.org/show_bug.cgi?id=175209
+
+        Reviewed by Daniel Bates.
+
+        Add AtomicString(const StaticStringImpl*) constructor. This is needed since
+        this patch adds constexpr to the static, global StaticStringImpl objects
+        generated in WebCore/bindings/scripts/StaticString.pm.
+
+        * wtf/text/AtomicString.h:
+        (WTF::AtomicString::AtomicString):
+        * wtf/text/AtomicStringImpl.cpp:
+        (WTF::addStatic):
+        (WTF::AtomicStringImpl::add):
+        * wtf/text/AtomicStringImpl.h:
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::assertHashIsCorrect const):
+        (WTF::StringImpl::assertHashIsCorrect): Deleted.
+
+2017-10-12  Alex Christensen  <achristensen@webkit.org>
+
+        Add Expected, HashMap, HashSet, and SHA1 to wtf/Forward.h
+        https://bugs.webkit.org/show_bug.cgi?id=178243
+
+        Reviewed by Tim Horton.
+
+        * wtf/Forward.h:
+        * wtf/HashMap.h:
+        Move default parameters to Forward.h like we did with Vector.
+        * wtf/HashSet.h:
+        Also fix indentation.
+
+2017-10-12  Alex Christensen  <achristensen@webkit.org>
+
+        Add CompletionHandler and HashCountedSet to wtf/Forward.h
+        https://bugs.webkit.org/show_bug.cgi?id=178231
+
+        Reviewed by Tim Horton.
+
+        * wtf/Forward.h:
+        * wtf/HashCountedSet.h:
+
+2017-10-11  Sam Weinig  <sam@webkit.org>
+
+        Remove out-parameter variants of copyToVector
+        https://bugs.webkit.org/show_bug.cgi?id=178155
+
+        Reviewed by Tim Horton.
+
+        * wtf/HashMap.h:
+        (WTF::copyToVector): Deleted.
+        * wtf/HashSet.h:
+        (WTF::copyToVector): Deleted.
+        
+            Remove copyToVector.
+        
+        * wtf/Vector.h:
+        (WTF::copyToVectorSpecialization):
+        
+            Add another version of copyToVector, called copyToVectorSpecialization, that allows
+            you to specify the entire specialization for the Vector you want to copy to. This
+            can be useful if you want your resulting Vector to have an inline capacity. 
+
+2017-10-12  Sam Weinig  <sam@webkit.org>
+
+        It should be possible to iterate just the values (and not the counts) of a HashCountedSet
+        https://bugs.webkit.org/show_bug.cgi?id=178169
+
+        Reviewed by Daniel Bates.
+
+        Cleanup (fix indentation, simplify type names, adopt using), and add a values() range to
+        HashCountedSet. This will allow getting a Vector of all the values (and not the counts)
+        using the new copyToVector. 
+
+        * wtf/HashCountedSet.h:
+
 2017-10-11  Michael Saboff  <msaboff@apple.com>
 
         [JSC] Add ability to build with ARMV8 ILP32 ABI

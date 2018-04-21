@@ -1,7 +1,7 @@
 <!doctype html>
 <meta charset=windows-1252>
-<!--  Using windows-1252 to ensure that new Document() doesn't inherit utf-8
-     from the parent document.  -->
+<!-- Using windows-1252 to ensure that new Document() doesn't inherit utf-8
+     from the parent document. -->
 <title>Document constructor</title>
 <link rel=help href="https://dom.spec.whatwg.org/#dom-document">
 <script src="/resources/testharness.js"></script>
@@ -28,6 +28,7 @@ test(function() {
 
 test(function() {
   var doc = new Document();
+  assert_equals(doc.location, null);
   assert_equals(doc.URL, "about:blank");
   assert_equals(doc.documentURI, "about:blank");
   assert_equals(doc.compatMode, "CSS1Compat");

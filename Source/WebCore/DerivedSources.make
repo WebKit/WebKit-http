@@ -57,7 +57,6 @@ VPATH = \
     $(WebCore)/Modules/webdriver \
     $(WebCore)/Modules/websockets \
     $(WebCore)/Modules/webvr \
-    $(WebCore)/animation \
     $(WebCore)/bindings/js \
     $(WebCore)/crypto \
     $(WebCore)/crypto/keys \
@@ -342,13 +341,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webvr/VRLayerInit.idl \
     $(WebCore)/Modules/webvr/VRPose.idl \
     $(WebCore)/Modules/webvr/VRStageParameters.idl \
-    $(WebCore)/animation/Animatable.idl \
-    $(WebCore)/animation/AnimationEffect.idl \
-    $(WebCore)/animation/AnimationTimeline.idl \
-    $(WebCore)/animation/DocumentAnimation.idl \
-    $(WebCore)/animation/DocumentTimeline.idl \
-    $(WebCore)/animation/KeyframeEffect.idl \
-    $(WebCore)/animation/WebAnimation.idl \
     $(WebCore)/crypto/CryptoAlgorithmParameters.idl \
     $(WebCore)/crypto/CryptoKey.idl \
     $(WebCore)/crypto/CryptoKeyPair.idl \
@@ -918,6 +910,9 @@ JS_BINDING_IDLS = \
     $(WebCore)/workers/WorkerGlobalScope.idl \
     $(WebCore)/workers/WorkerLocation.idl \
     $(WebCore)/workers/WorkerType.idl \
+    $(WebCore)/workers/service/ExtendableEvent.idl \
+    $(WebCore)/workers/service/ExtendableEventInit.idl \
+    $(WebCore)/workers/service/FetchEvent.idl \
     $(WebCore)/workers/service/ServiceWorker.idl \
     $(WebCore)/workers/service/ServiceWorkerContainer.idl \
     $(WebCore)/workers/service/ServiceWorkerGlobalScope.idl \
@@ -1373,12 +1368,14 @@ GENERATE_SETTINGS_SCRIPTS = \
     $(WebCore)/Scripts/GenerateSettings/GenerateInternalSettingsIDLFile.py \
     $(WebCore)/Scripts/GenerateSettings/GenerateInternalSettingsImplementationFile.py \
     $(WebCore)/Scripts/GenerateSettings/GenerateSettings.py \
+    $(WebCore)/Scripts/GenerateSettings/GenerateSettingsHeaderFile.py \
+    $(WebCore)/Scripts/GenerateSettings/GenerateSettingsImplementationFile.py \
     $(WebCore)/Scripts/GenerateSettings/GenerateSettingsMacrosHeader.py \
     $(WebCore)/Scripts/GenerateSettings/Settings.py \
     $(WebCore)/Scripts/GenerateSettings/__init__.py
 
-all : InternalSettingsGenerated.idl InternalSettingsGenerated.cpp InternalSettingsGenerated.h SettingsMacros.h
-InternalSettingsGenerated%idl InternalSettingsGenerated%cpp InternalSettingsGenerated%h SettingsMacros%h : $(WebCore)/Scripts/GenerateSettings.py $(GENERATE_SETTINGS_SCRIPTS) page/Settings.in
+all : InternalSettingsGenerated.idl InternalSettingsGenerated.cpp InternalSettingsGenerated.h Settings.cpp Settings.h SettingsMacros.h
+InternalSettingsGenerated%idl InternalSettingsGenerated%cpp InternalSettingsGenerated%h Settings%cpp Settings%h SettingsMacros%h : $(WebCore)/Scripts/GenerateSettings.py $(GENERATE_SETTINGS_SCRIPTS) page/Settings.in
 	$(PYTHON) $< --input $(WebCore)/page/Settings.in
 
 # --------
@@ -1398,7 +1395,6 @@ PREPROCESS_IDLS_SCRIPTS = \
 
 IDL_INCLUDES = \
     $(WebCore)/Modules \
-    $(WebCore)/animation \
     $(WebCore)/css \
     $(WebCore)/crypto \
     $(WebCore)/dom \

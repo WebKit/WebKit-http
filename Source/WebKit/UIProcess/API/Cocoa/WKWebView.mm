@@ -210,6 +210,40 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
     return pageToViewMap().get(&page);
 }
 
+#if PLATFORM(MAC)
+static _WKOverlayScrollbarStyle toAPIScrollbarStyle(std::optional<WebCore::ScrollbarOverlayStyle> coreScrollbarStyle)
+{
+    if (!coreScrollbarStyle)
+        return _WKOverlayScrollbarStyleAutomatic;
+    
+    switch (coreScrollbarStyle.value()) {
+    case WebCore::ScrollbarOverlayStyleDark:
+        return _WKOverlayScrollbarStyleDark;
+    case WebCore::ScrollbarOverlayStyleLight:
+        return _WKOverlayScrollbarStyleLight;
+    case WebCore::ScrollbarOverlayStyleDefault:
+        return _WKOverlayScrollbarStyleDefault;
+    }
+    ASSERT_NOT_REACHED();
+    return _WKOverlayScrollbarStyleAutomatic;
+}
+
+static std::optional<WebCore::ScrollbarOverlayStyle> toCoreScrollbarStyle(_WKOverlayScrollbarStyle scrollbarStyle)
+{
+    switch (scrollbarStyle) {
+    case _WKOverlayScrollbarStyleDark:
+        return WebCore::ScrollbarOverlayStyleDark;
+    case _WKOverlayScrollbarStyleLight:
+        return WebCore::ScrollbarOverlayStyleLight;
+    case _WKOverlayScrollbarStyleDefault:
+        return WebCore::ScrollbarOverlayStyleDefault;
+    case _WKOverlayScrollbarStyleAutomatic:
+        break;
+    }
+    return std::nullopt;
+}
+#endif
+
 @implementation WKWebView {
     std::unique_ptr<WebKit::NavigationState> _navigationState;
     std::unique_ptr<WebKit::UIDelegate> _uiDelegate;
@@ -1043,6 +1077,11 @@ static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
 - (WKPageRef)_pageForTesting
 {
     return toAPI(_page.get());
+}
+
+- (WebKit::WebPageProxy *)_page
+{
+    return _page.get();
 }
 
 - (BOOL)allowsLinkPreview
@@ -3683,25 +3722,38 @@ WEBCORE_COMMAND(yankAndSelect)
     return [self _immediateActionAnimationControllerForHitTestResult:wrapper(*hitTestResult) withType:(_WKImmediateActionType)type userData:data];
 }
 
-// We don't expose these various bits of SPI like WKView does,
-// so have these internal methods just do the work (or do nothing):
 - (void)_web_prepareForImmediateActionAnimation
 {
+    id <WKUIDelegatePrivate> uiDelegate = (id <WKUIDelegatePrivate>)[self UIDelegate];
+    if ([uiDelegate respondsToSelector:@selector(_prepareForImmediateActionAnimationForWebView:)])
+        [uiDelegate _prepareForImmediateActionAnimationForWebView:self];
+    else
+        [self _prepareForImmediateActionAnimation];
 }
 
 - (void)_web_cancelImmediateActionAnimation
 {
+    id <WKUIDelegatePrivate> uiDelegate = (id <WKUIDelegatePrivate>)[self UIDelegate];
+    if ([uiDelegate respondsToSelector:@selector(_cancelImmediateActionAnimationForWebView:)])
+        [uiDelegate _cancelImmediateActionAnimationForWebView:self];
+    else
+        [self _cancelImmediateActionAnimation];
 }
 
 - (void)_web_completeImmediateActionAnimation
 {
+    id <WKUIDelegatePrivate> uiDelegate = (id <WKUIDelegatePrivate>)[self UIDelegate];
+    if ([uiDelegate respondsToSelector:@selector(_completeImmediateActionAnimationForWebView:)])
+        [uiDelegate _completeImmediateActionAnimationForWebView:self];
+    else
+        [self _completeImmediateActionAnimation];
 }
 
 - (void)_web_didChangeContentSize:(NSSize)newSize
 {
 }
 
-#if ENABLE(DRAG_SUPPORT) && WK_API_ENABLED
+#if ENABLE(DRAG_SUPPORT)
 
 - (WKDragDestinationAction)_web_dragDestinationActionForDraggingInfo:(id <NSDraggingInfo>)draggingInfo
 {
@@ -4579,6 +4631,16 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     _page->setFixedLayoutSize(WebCore::expandedIntSize(WebCore::FloatSize(fixedLayoutSize)));
 }
 
+- (void)_setBackgroundExtendsBeyondPage:(BOOL)backgroundExtends
+{
+    _page->setBackgroundExtendsBeyondPage(backgroundExtends);
+}
+
+- (BOOL)_backgroundExtendsBeyondPage
+{
+    return _page->backgroundExtendsBeyondPage();
+}
+
 - (CGFloat)_viewScale
 {
     return _page->viewScaleFactor();
@@ -4813,16 +4875,6 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
     if (_dynamicViewportUpdateMode == DynamicViewportUpdateMode::NotResizing)
         [self _dispatchSetMaximumUnobscuredSize:WebCore::FloatSize(size)];
-}
-
-- (void)_setBackgroundExtendsBeyondPage:(BOOL)backgroundExtends
-{
-    _page->setBackgroundExtendsBeyondPage(backgroundExtends);
-}
-
-- (BOOL)_backgroundExtendsBeyondPage
-{
-    return _page->backgroundExtendsBeyondPage();
 }
 
 - (void)_setAllowsViewportShrinkToFit:(BOOL)allowShrinkToFit
@@ -5237,7 +5289,6 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     [self _setDrawsBackground:!drawsTransparentBackground];
 }
 
-#if WK_API_ENABLED
 - (NSView *)_inspectorAttachmentView
 {
     return _impl->inspectorAttachmentView();
@@ -5247,7 +5298,16 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 {
     _impl->setInspectorAttachmentView(newView);
 }
-#endif
+
+- (void)_setOverlayScrollbarStyle:(_WKOverlayScrollbarStyle)scrollbarStyle
+{
+    _impl->setOverlayScrollbarStyle(toCoreScrollbarStyle(scrollbarStyle));
+}
+
+- (_WKOverlayScrollbarStyle)_overlayScrollbarStyle
+{
+    return toAPIScrollbarStyle(_impl->overlayScrollbarStyle());
+}
 
 - (BOOL)_windowOcclusionDetectionEnabled
 {
@@ -5348,7 +5408,7 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 
 - (NSPrintOperation *)_printOperationWithPrintInfo:(NSPrintInfo *)printInfo forFrame:(_WKFrameHandle *)frameHandle
 {
-    if (auto webFrameProxy = _page->process().webFrame(frameHandle._frameID))
+    if (auto* webFrameProxy = _page->process().webFrame(frameHandle._frameID))
         return _impl->printOperationWithPrintInfo(printInfo, *webFrameProxy);
     return nil;
 }
@@ -5401,6 +5461,28 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     _impl->prepareForMoveToWindow(targetWindow, [completionHandlerCopy] {
         completionHandlerCopy();
     });
+}
+
+- (void)_setThumbnailView:(_WKThumbnailView *)thumbnailView
+{
+    _impl->setThumbnailView(thumbnailView);
+}
+
+- (_WKThumbnailView *)_thumbnailView
+{
+    if (!_impl)
+        return nil;
+    return _impl->thumbnailView();
+}
+
+- (void)_setIgnoresAllEvents:(BOOL)ignoresAllEvents
+{
+    _impl->setIgnoresAllEvents(ignoresAllEvents);
+}
+
+- (BOOL)_ignoresAllEvents
+{
+    return _impl->ignoresAllEvents();
 }
 
 #endif
@@ -5658,6 +5740,125 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 - (WKPageRef)_pageRefForTransitionToWKWebView
 {
     return toAPI(_page.get());
+}
+
+- (void)_dismissContentRelativeChildWindows
+{
+    _impl->dismissContentRelativeChildWindowsFromViewOnly();
+}
+
+- (void)_setFrame:(NSRect)rect andScrollBy:(NSSize)offset
+{
+    _impl->setFrameAndScrollBy(NSRectToCGRect(rect), NSSizeToCGSize(offset));
+}
+
+- (void)_setTotalHeightOfBanners:(CGFloat)totalHeightOfBanners
+{
+    _impl->setTotalHeightOfBanners(totalHeightOfBanners);
+}
+
+- (CGFloat)_totalHeightOfBanners
+{
+    return _impl->totalHeightOfBanners();
+}
+
+- (void)_beginDeferringViewInWindowChanges
+{
+    _impl->beginDeferringViewInWindowChanges();
+}
+
+- (void)_endDeferringViewInWindowChanges
+{
+    _impl->endDeferringViewInWindowChanges();
+}
+
+- (void)_endDeferringViewInWindowChangesSync
+{
+    _impl->endDeferringViewInWindowChangesSync();
+}
+
+- (void)_gestureEventWasNotHandledByWebCore:(NSEvent *)event
+{
+    _impl->gestureEventWasNotHandledByWebCoreFromViewOnly(event);
+}
+
+- (void)_setIgnoresNonWheelEvents:(BOOL)ignoresNonWheelEvents
+{
+    _impl->setIgnoresNonWheelEvents(ignoresNonWheelEvents);
+}
+
+- (BOOL)_ignoresNonWheelEvents
+{
+    return _impl->ignoresNonWheelEvents();
+}
+
+- (void)_setCustomSwipeViews:(NSArray *)customSwipeViews
+{
+    _impl->setCustomSwipeViews(customSwipeViews);
+}
+
+- (void)_setCustomSwipeViewsTopContentInset:(float)topContentInset
+{
+    _impl->setCustomSwipeViewsTopContentInset(topContentInset);
+}
+
+- (BOOL)_tryToSwipeWithEvent:(NSEvent *)event ignoringPinnedState:(BOOL)ignoringPinnedState
+{
+    return _impl->tryToSwipeWithEvent(event, ignoringPinnedState);
+}
+
+- (void)_setDidMoveSwipeSnapshotCallback:(void(^)(CGRect))callback
+{
+    _impl->setDidMoveSwipeSnapshotCallback(callback);
+}
+
+- (NSView *)_fullScreenPlaceholderView
+{
+    return _impl->fullScreenPlaceholderView();
+}
+
+- (NSWindow *)_fullScreenWindow
+{
+    return _impl->fullScreenWindow();
+}
+
+- (void)_disableFrameSizeUpdates
+{
+    _impl->disableFrameSizeUpdates();
+}
+
+- (void)_enableFrameSizeUpdates
+{
+    _impl->enableFrameSizeUpdates();
+}
+
+- (void)_prepareForImmediateActionAnimation
+{
+}
+
+- (void)_cancelImmediateActionAnimation
+{
+}
+
+- (void)_completeImmediateActionAnimation
+{
+}
+
+- (BOOL)_canChangeFrameLayout:(_WKFrameHandle *)frameHandle
+{
+    if (auto* webFrameProxy = _page->process().webFrame(frameHandle._frameID))
+        return _impl->canChangeFrameLayout(*webFrameProxy);
+    return false;
+}
+
+- (NSColor *)_underlayColor
+{
+    return _impl->underlayColor();
+}
+
+- (void)_setUnderlayColor:(NSColor *)underlayColor
+{
+    _impl->setUnderlayColor(underlayColor);
 }
 
 - (BOOL)_hasActiveVideoForControlsManager

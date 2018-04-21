@@ -82,7 +82,6 @@
 #include "ReplaceSelectionCommand.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
-#include "SimplifyMarkupCommand.h"
 #include "SpellChecker.h"
 #include "SpellingCorrectionCommand.h"
 #include "StaticPasteboard.h"
@@ -1415,24 +1414,6 @@ void Editor::performDelete()
     setStartNewKillRingSequence(false);
 }
 
-void Editor::simplifyMarkup(Node* startNode, Node* endNode)
-{
-    if (!startNode)
-        return;
-    if (endNode) {
-        if (&startNode->document() != &endNode->document())
-            return;
-        // check if start node is before endNode
-        Node* node = startNode;
-        while (node && node != endNode)
-            node = NodeTraversal::next(*node);
-        if (!node)
-            return;
-    }
-    
-    SimplifyMarkupCommand::create(document(), startNode, endNode ? NodeTraversal::next(*endNode) : nullptr)->apply();
-}
-
 void Editor::copyURL(const URL& url, const String& title)
 {
     copyURL(url, title, *Pasteboard::createForCopyAndPaste());
@@ -2180,6 +2161,8 @@ String Editor::misspelledWordAtCaretOrRange(Node* clickedNode) const
     VisibleSelection wordSelection(selection.base());
     wordSelection.expandUsingGranularity(WordGranularity);
     RefPtr<Range> wordRange = wordSelection.toNormalizedRange();
+    if (!wordRange)
+        return String();
 
     // In compliance with GTK+ applications, additionally allow to provide suggestions when the current
     // selection exactly match the word selection.

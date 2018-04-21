@@ -56,6 +56,9 @@ WI.RecordingContentView = class RecordingContentView extends WI.ContentView
 
         this._previewContainer = this.element.appendChild(document.createElement("div"));
         this._previewContainer.classList.add("preview-container");
+
+        this._messageElement = this.element.appendChild(document.createElement("div"));
+        this._messageElement.classList.add("message");
     }
 
     // Static
@@ -148,8 +151,12 @@ WI.RecordingContentView = class RecordingContentView extends WI.ContentView
 
     get saveData()
     {
+        let filename = this.representedObject.displayName;
+        if (!filename.endsWith(".json"))
+            filename += ".json";
+
         return {
-            url: "web-inspector:///Recording.json",
+            url: "web-inspector:///" + encodeURI(filename),
             content: JSON.stringify(this.representedObject.toJSON()),
             forceSaveAs: true,
         };
@@ -199,7 +206,7 @@ WI.RecordingContentView = class RecordingContentView extends WI.ContentView
                         snapshot.context[name](...snapshot.state[name]);
                     else
                         snapshot.context[name] = snapshot.state[name];
-                } catch (e) {
+                } catch {
                     delete snapshot.state[name];
                 }
             }
@@ -234,7 +241,7 @@ WI.RecordingContentView = class RecordingContentView extends WI.ContentView
                     --saveCount;
                 }
 
-                this._applyAction(snapshot.context, actions[i]);
+                actions[i].apply(snapshot.context);
 
                 if (shouldDrawCanvasPath && i >= indexOfLastBeginPathAction && WI.RecordingContentView._actionModifiesPath(actions[i])) {
                     lastPathPoint = {x: this._pathContext.currentX, y: this._pathContext.currentY};
@@ -255,7 +262,7 @@ WI.RecordingContentView = class RecordingContentView extends WI.ContentView
                         this._pathContext.lineTo(subPathStartPoint.x, subPathStartPoint.y);
                         subPathStartPoint = {};
                     } else {
-                        this._applyAction(this._pathContext, actions[i], {nameOverride: isMoveTo ? "lineTo" : null});
+                        actions[i].apply(this._pathContext, {nameOverride: isMoveTo ? "lineTo" : null});
                         if (isMoveTo)
                             subPathStartPoint = {x: this._pathContext.currentX, y: this._pathContext.currentY};
                     }
@@ -389,6 +396,7 @@ WI.RecordingContentView = class RecordingContentView extends WI.ContentView
         }
 
         this._previewContainer.removeChildren();
+        this._messageElement.removeChildren();
 
         if (showCanvasPath) {
             indexOfLastBeginPathAction = this._index;
@@ -449,28 +457,6 @@ WI.RecordingContentView = class RecordingContentView extends WI.ContentView
 
         if (options.actionCompletedCallback)
             options.actionCompletedCallback(actions[this._index]);
-    }
-
-    _applyAction(context, action, options = {})
-    {
-        if (!action.valid)
-            return;
-
-        try {
-            let name = options.nameOverride || action.name;
-            if (action.isFunction)
-                context[name](...action.parameters);
-            else {
-                if (action.isGetter)
-                    context[name];
-                else
-                    context[name] = action.parameters[0];
-            }
-        } catch (e) {
-            WI.Recording.synthesizeError(WI.UIString("“%s” threw an error.").format(action.name));
-
-            action.valid = false;
-        }
     }
 
     _updateCanvasPath()

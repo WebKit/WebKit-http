@@ -1816,6 +1816,7 @@ webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download-user-triggered-sy
 webkit.org/b/156067 http/tests/download/anchor-download-attribute-content-disposition.html [ Skip ]
 webkit.org/b/156067 http/tests/download/anchor-download-no-extension.html [ Skip ]
 webkit.org/b/156067 http/tests/download/anchor-download-redirect.html [ Skip ]
+webkit.org/b/156067 http/tests/download/anchor-load-after-download.html [ Skip ]
 webkit.org/b/156067 http/tests/download/area-download.html [ Skip ]
 webkit.org/b/156067 http/tests/security/anchor-download-allow-blob.html [ Skip ]
 webkit.org/b/156067 http/tests/security/anchor-download-allow-data.html [ Skip ]
@@ -1855,11 +1856,7 @@ webkit.org/b/159379 fast/history/page-cache-webdatabase-pending-transaction.html
 
 webkit.org/b/159840 http/tests/cache/disk-cache/disk-cache-request-max-stale.html [ Pass Timeout ]
 
-webkit.org/b/159884 [ Debug ] http/tests/loading/basic-auth-resend-wrong-credentials.html [ Pass Failure ]
-
 webkit.org/b/159881 [ Release ] fast/shapes/shape-outside-floats/shape-outside-big-box-border-radius-002.html [ Pass ImageOnlyFailure ]
-
-webkit.org/b/159427 http/tests/loading/basic-credentials-sent-automatically.html [ Pass Failure ]
 
 webkit.org/b/160368 http/tests/xmlhttprequest/workers/methods-async.html [ Pass Timeout ]
 

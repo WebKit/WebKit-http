@@ -73,10 +73,10 @@
 #include <wtf/SetForScope.h>
 #include <wtf/StackStats.h>
 
-using namespace WTF;
-using namespace Unicode;
 
 namespace WebCore {
+using namespace WTF;
+using namespace Unicode;
 
 using namespace HTMLNames;
 
@@ -1015,8 +1015,7 @@ void RenderBlock::endAndCommitUpdateScrollInfoAfterLayoutTransaction()
     // from the transaction stack to ensure that all subsequent calls to RenderBlock::updateScrollInfoAfterLayout()
     // are dispatched immediately. That is, to ensure that such subsequent calls aren't added to |transaction|
     // while we are processing it.
-    Vector<RenderBlock*> blocksToUpdate;
-    copyToVector(transaction->blocks, blocksToUpdate);
+    auto blocksToUpdate = copyToVector(transaction->blocks);
     updateScrollInfoAfterLayoutTransactionStack()->removeLast();
     if (updateScrollInfoAfterLayoutTransactionStack()->isEmpty())
         updateScrollInfoAfterLayoutTransactionStack() = nullptr;

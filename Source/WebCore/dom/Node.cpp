@@ -284,7 +284,7 @@ Node::~Node()
     liveNodeSet.remove(this);
 #endif
 
-    ASSERT_WITH_SECURITY_IMPLICATION(!renderer());
+    RELEASE_ASSERT(!renderer());
     ASSERT(!parentNode());
     ASSERT(!m_previous);
     ASSERT(!m_next);
@@ -853,14 +853,10 @@ inline bool Document::shouldInvalidateNodeListAndCollectionCachesForAttribute(co
 template <typename InvalidationFunction>
 void Document::invalidateNodeListAndCollectionCaches(InvalidationFunction invalidate)
 {
-    Vector<LiveNodeList*, 8> lists;
-    copyToVector(m_listsInvalidatedAtDocument, lists);
-    for (auto* list : lists)
+    for (auto* list : copyToVectorSpecialization<Vector<LiveNodeList*, 8>>(m_listsInvalidatedAtDocument))
         invalidate(*list);
 
-    Vector<HTMLCollection*, 8> collections;
-    copyToVector(m_collectionsInvalidatedAtDocument, collections);
-    for (auto* collection : collections)
+    for (auto* collection : copyToVectorSpecialization<Vector<HTMLCollection*, 8>>(m_collectionsInvalidatedAtDocument))
         invalidate(*collection);
 }
 
@@ -1935,17 +1931,17 @@ public:
 
     ~DidMoveToNewDocumentAssertionScope()
     {
-        ASSERT_WITH_SECURITY_IMPLICATION(m_called);
+        RELEASE_ASSERT(m_called);
         s_scope = m_previousScope;
     }
 
     static void didRecieveCall(Node& node, Document& oldDocument, Document& newDocument)
     {
-        ASSERT_WITH_SECURITY_IMPLICATION(s_scope);
-        ASSERT_WITH_SECURITY_IMPLICATION(!s_scope->m_called);
-        ASSERT_WITH_SECURITY_IMPLICATION(&s_scope->m_node == &node);
-        ASSERT_WITH_SECURITY_IMPLICATION(&s_scope->m_oldDocument == &oldDocument);
-        ASSERT_WITH_SECURITY_IMPLICATION(&s_scope->m_newDocument == &newDocument);
+        RELEASE_ASSERT(s_scope);
+        RELEASE_ASSERT(!s_scope->m_called);
+        RELEASE_ASSERT(&s_scope->m_node == &node);
+        RELEASE_ASSERT(&s_scope->m_oldDocument == &oldDocument);
+        RELEASE_ASSERT(&s_scope->m_newDocument == &newDocument);
         s_scope->m_called = true;
     }
 
@@ -1974,7 +1970,7 @@ static ALWAYS_INLINE void moveNodeToNewDocument(Node& node, Document& oldDocumen
     ASSERT(!node.isConnected() || &oldDocument != &newDocument);
     DidMoveToNewDocumentAssertionScope scope(node, oldDocument, newDocument);
     node.didMoveToNewDocument(oldDocument, newDocument);
-    ASSERT_WITH_SECURITY_IMPLICATION(&node.document() == &newDocument);
+    RELEASE_ASSERT(&node.document() == &newDocument);
 }
 
 template <typename MoveNodeFunction, typename MoveShadowRootFunction>
@@ -2002,7 +1998,7 @@ static void moveShadowTreeToNewDocument(ShadowRoot& shadowRoot, Document& oldDoc
     traverseSubtreeToUpdateTreeScope(shadowRoot, [&oldDocument, &newDocument](Node& node) {
         moveNodeToNewDocument(node, oldDocument, newDocument);
     }, [&oldDocument, &newDocument](ShadowRoot& innerShadowRoot) {
-        ASSERT_WITH_SECURITY_IMPLICATION(&innerShadowRoot.document() == &oldDocument);
+        RELEASE_ASSERT(&innerShadowRoot.document() == &oldDocument);
         moveShadowTreeToNewDocument(innerShadowRoot, oldDocument, newDocument);
     });
 }
@@ -2010,7 +2006,7 @@ static void moveShadowTreeToNewDocument(ShadowRoot& shadowRoot, Document& oldDoc
 void Node::moveTreeToNewScope(Node& root, TreeScope& oldScope, TreeScope& newScope)
 {
     ASSERT(&oldScope != &newScope);
-    ASSERT_WITH_SECURITY_IMPLICATION(&root.treeScope() == &oldScope);
+    RELEASE_ASSERT(&root.treeScope() == &oldScope);
 
     Document& oldDocument = oldScope.documentScope();
     Document& newDocument = newScope.documentScope();
@@ -2018,8 +2014,8 @@ void Node::moveTreeToNewScope(Node& root, TreeScope& oldScope, TreeScope& newSco
         oldDocument.incrementReferencingNodeCount();
         traverseSubtreeToUpdateTreeScope(root, [&](Node& node) {
             ASSERT(!node.isTreeScope());
-            ASSERT_WITH_SECURITY_IMPLICATION(&node.treeScope() == &oldScope);
-            ASSERT_WITH_SECURITY_IMPLICATION(&node.document() == &oldDocument);
+            RELEASE_ASSERT(&node.treeScope() == &oldScope);
+            RELEASE_ASSERT(&node.document() == &oldDocument);
             node.setTreeScope(newScope);
             moveNodeToNewDocument(node, oldDocument, newDocument);
         }, [&](ShadowRoot& shadowRoot) {
@@ -2031,7 +2027,7 @@ void Node::moveTreeToNewScope(Node& root, TreeScope& oldScope, TreeScope& newSco
     } else {
         traverseSubtreeToUpdateTreeScope(root, [&](Node& node) {
             ASSERT(!node.isTreeScope());
-            ASSERT_WITH_SECURITY_IMPLICATION(&node.treeScope() == &oldScope);
+            RELEASE_ASSERT(&node.treeScope() == &oldScope);
             node.setTreeScope(newScope);
             if (!node.hasRareData())
                 return;
@@ -2045,7 +2041,7 @@ void Node::moveTreeToNewScope(Node& root, TreeScope& oldScope, TreeScope& newSco
 
 void Node::didMoveToNewDocument(Document& oldDocument, Document& newDocument)
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(&document() == &newDocument);
+    RELEASE_ASSERT(&document() == &newDocument);
     DidMoveToNewDocumentAssertionScope::didRecieveCall(*this, oldDocument, newDocument);
 
     newDocument.incrementReferencingNodeCount();
@@ -2386,7 +2382,7 @@ void Node::dispatchSubtreeModifiedEvent()
     if (isInShadowTree())
         return;
 
-    ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::isEventDispatchAllowedInSubtree(*this));
+    RELEASE_ASSERT(NoEventDispatchAssertion::isEventDispatchAllowedInSubtree(*this));
 
     if (!document().hasListenerType(Document::DOMSUBTREEMODIFIED_LISTENER))
         return;
@@ -2399,7 +2395,7 @@ void Node::dispatchSubtreeModifiedEvent()
 
 bool Node::dispatchDOMActivateEvent(int detail, Event& underlyingEvent)
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::isEventAllowedInMainThread());
+    RELEASE_ASSERT(NoEventDispatchAssertion::isEventAllowedInMainThread());
     Ref<UIEvent> event = UIEvent::create(eventNames().DOMActivateEvent, true, true, document().defaultView(), detail);
     event->setUnderlyingEvent(&underlyingEvent);
     dispatchScopedEvent(event);

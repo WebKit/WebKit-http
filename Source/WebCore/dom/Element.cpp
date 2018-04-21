@@ -41,7 +41,6 @@
 #include "DOMRect.h"
 #include "DOMRectList.h"
 #include "DOMTokenList.h"
-#include "DocumentAnimation.h"
 #include "DocumentSharedObjectPool.h"
 #include "Editing.h"
 #include "ElementIterator.h"
@@ -71,7 +70,6 @@
 #include "InspectorInstrumentation.h"
 #include "JSLazyEventListener.h"
 #include "KeyboardEvent.h"
-#include "KeyframeEffect.h"
 #include "MainFrame.h"
 #include "MutationObserverInterestGroup.h"
 #include "MutationRecord.h"
@@ -285,7 +283,7 @@ bool Element::dispatchMouseEvent(const PlatformMouseEvent& platformEvent, const 
             mouseEvent->bubbles(), mouseEvent->cancelable(), mouseEvent->view(), mouseEvent->detail(),
             mouseEvent->screenX(), mouseEvent->screenY(), mouseEvent->clientX(), mouseEvent->clientY(),
             mouseEvent->ctrlKey(), mouseEvent->altKey(), mouseEvent->shiftKey(), mouseEvent->metaKey(),
-            mouseEvent->button(), mouseEvent->syntheticClickType(), relatedTarget);
+            mouseEvent->button(), mouseEvent->buttons(), mouseEvent->syntheticClickType(), relatedTarget);
 
         if (mouseEvent->defaultHandled())
             doubleClickEvent->setDefaultHandled();
@@ -1496,21 +1494,6 @@ void Element::invalidateStyleAndRenderersForSubtree()
     Node::invalidateStyle(Style::Validity::SubtreeAndRenderersInvalid);
 }
 
-#if ENABLE(WEB_ANIMATIONS)
-WebAnimationVector Element::getAnimations()
-{
-    auto checkTarget = [this](AnimationEffect const& effect)
-    {
-        return (static_cast<KeyframeEffect const&>(effect).target() == this);
-    };
-
-    auto* document = DocumentAnimation::from(&this->document());
-    if (document)
-        return document->getAnimations(WTFMove(checkTarget));
-    return WebAnimationVector();
-}
-#endif
-
 bool Element::hasDisplayContents() const
 {
     if (renderer() || !hasRareData())
@@ -1531,7 +1514,7 @@ void Element::storeDisplayContentsStyle(std::unique_ptr<RenderStyle> style)
 // It is a simple solution that has the advantage of not requiring any
 // code or configuration change if a new event handler is defined.
 
-static inline bool isEventHandlerAttribute(const Attribute& attribute)
+bool Element::isEventHandlerAttribute(const Attribute& attribute) const
 {
     return attribute.name().namespaceURI().isNull() && attribute.name().localName().startsWith("on");
 }
@@ -1544,7 +1527,7 @@ bool Element::isJavaScriptURLAttribute(const Attribute& attribute) const
 void Element::stripScriptingAttributes(Vector<Attribute>& attributeVector) const
 {
     attributeVector.removeAllMatching([this](auto& attribute) -> bool {
-        return isEventHandlerAttribute(attribute)
+        return this->isEventHandlerAttribute(attribute)
             || this->isJavaScriptURLAttribute(attribute)
             || this->isHTMLContentAttribute(attribute);
     });

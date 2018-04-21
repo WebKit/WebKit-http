@@ -62,10 +62,10 @@
 #include "SelectionRect.h"
 #endif
 
-using namespace WTF;
-using namespace Unicode;
 
 namespace WebCore {
+using namespace WTF;
+using namespace Unicode;
 
 struct SameSizeAsRenderText : public RenderObject {
     void* pointers[2];
@@ -132,6 +132,12 @@ static HashMap<const RenderText*, String>& originalTextMap()
     return map;
 }
 
+static HashMap<const RenderText*, WeakPtr<RenderInline>>& inlineWrapperForDisplayContentsMap()
+{
+    static NeverDestroyed<HashMap<const RenderText*, WeakPtr<RenderInline>>> map;
+    return map;
+}
+
 void makeCapitalized(String* string, UChar previous)
 {
     // FIXME: Need to change this to use u_strToTitle instead of u_totitle and to consider locale.
@@ -183,6 +189,7 @@ inline RenderText::RenderText(Node& node, const String& text)
     , m_knownToHaveNoOverflowAndNoFallbackFonts(false)
     , m_useBackslashAsYenSymbol(false)
     , m_originalTextDiffersFromRendered(false)
+    , m_hasInlineWrapperForDisplayContents(false)
 #if ENABLE(TEXT_AUTOSIZING)
     , m_candidateComputedTextSize(0)
 #endif
@@ -291,6 +298,8 @@ void RenderText::willBeDestroyed()
 
     if (m_originalTextDiffersFromRendered)
         originalTextMap().remove(this);
+
+    setInlineWrapperForDisplayContents(nullptr);
 
     RenderObject::willBeDestroyed();
 }
@@ -1530,172 +1539,16 @@ int RenderText::previousOffset(int current) const
     if (isAllASCII() || m_text.is8Bit())
         return current - 1;
 
-    StringImpl* textImpl = m_text.impl();
-    CachedTextBreakIterator iterator(StringView(textImpl->characters16(), textImpl->length()), TextBreakIterator::Mode::Caret, nullAtom());
-    auto result = iterator.preceding(current).value_or(current - 1);
-    return result;
+    CachedTextBreakIterator iterator(m_text, TextBreakIterator::Mode::Caret, nullAtom());
+    return iterator.preceding(current).value_or(current - 1);
 }
-
-#if PLATFORM(COCOA) || PLATFORM(GTK)
-
-const UChar hangulChoseongStart = 0x1100;
-const UChar hangulChoseongEnd = 0x115F;
-const UChar hangulJungseongStart = 0x1160;
-const UChar hangulJungseongEnd = 0x11A2;
-const UChar hangulJongseongStart = 0x11A8;
-const UChar hangulJongseongEnd = 0x11F9;
-const UChar hangulSyllableStart = 0xAC00;
-const UChar hangulSyllableEnd = 0xD7AF;
-const UChar hangulJongseongCount = 28;
-
-enum class HangulState { L, V, T, LV, LVT, Break };
-
-static inline bool isHangulLVT(UChar character)
-{
-    return (character - hangulSyllableStart) % hangulJongseongCount;
-}
-
-static inline bool isMark(UChar32 character)
-{
-    return U_GET_GC_MASK(character) & U_GC_M_MASK;
-}
-
-static inline bool isRegionalIndicator(UChar32 character)
-{
-    // National flag emoji each consists of a pair of regional indicator symbols.
-    return 0x1F1E6 <= character && character <= 0x1F1FF;
-}
-
-static inline bool isInArmenianToLimbuRange(UChar32 character)
-{
-    return character >= 0x0530 && character < 0x1950;
-}
-
-#endif
 
 int RenderText::previousOffsetForBackwardDeletion(int current) const
 {
     ASSERT(!m_text.isNull());
-    StringImpl& text = *m_text.impl();
 
-    // FIXME: Unclear why this has so much handrolled code rather than using UBreakIterator.
-    // Also unclear why this is so different from advanceByCombiningCharacterSequence.
-
-    // FIXME: Seems like this fancier case could be used on all platforms now, no
-    // need for the #else case below.
-#if PLATFORM(COCOA) || PLATFORM(GTK)
-    bool sawRegionalIndicator = false;
-    bool sawEmojiGroupCandidate = false;
-    bool sawEmojiFitzpatrickModifier = false;
-    
-    while (current > 0) {
-        UChar32 character;
-        U16_PREV(text, 0, current, character);
-
-        if (sawEmojiGroupCandidate) {
-            sawEmojiGroupCandidate = false;
-            if (character == zeroWidthJoiner)
-                continue;
-            // We could have two emoji group candidates without a joiner in between.
-            // Those should not be treated as a group.
-            U16_FWD_1_UNSAFE(text, current);
-            break;
-        }
-
-        if (sawEmojiFitzpatrickModifier) {
-            if (isEmojiFitzpatrickModifier(character)) {
-                // Don't treat two emoji modifiers in a row as a group.
-                U16_FWD_1_UNSAFE(text, current);
-                break;
-            }
-            if (!isVariationSelector(character))
-                break;
-        }
-
-        if (sawRegionalIndicator) {
-            // We don't check if the pair of regional indicator symbols before current position can actually be combined
-            // into a flag, and just delete it. This may not agree with how the pair is rendered in edge cases,
-            // but is good enough in practice.
-            if (isRegionalIndicator(character))
-                break;
-            // Don't delete a preceding character that isn't a regional indicator symbol.
-            U16_FWD_1_UNSAFE(text, current);
-        }
-
-        // We don't combine characters in Armenian ... Limbu range for backward deletion.
-        if (isInArmenianToLimbuRange(character))
-            break;
-
-        if (isRegionalIndicator(character)) {
-            sawRegionalIndicator = true;
-            continue;
-        }
-        
-        if (isEmojiFitzpatrickModifier(character)) {
-            sawEmojiFitzpatrickModifier = true;
-            continue;
-        }
-
-        if (isEmojiGroupCandidate(character)) {
-            sawEmojiGroupCandidate = true;
-            continue;
-        }
-
-        // FIXME: Why are FF9E and FF9F special cased here?
-        if (!isMark(character) && character != 0xFF9E && character != 0xFF9F)
-            break;
-    }
-
-    if (current <= 0)
-        return current;
-
-    // Hangul
-    UChar character = text[current];
-    if ((character >= hangulChoseongStart && character <= hangulJongseongEnd) || (character >= hangulSyllableStart && character <= hangulSyllableEnd)) {
-        HangulState state;
-
-        if (character < hangulJungseongStart)
-            state = HangulState::L;
-        else if (character < hangulJongseongStart)
-            state = HangulState::V;
-        else if (character < hangulSyllableStart)
-            state = HangulState::T;
-        else
-            state = isHangulLVT(character) ? HangulState::LVT : HangulState::LV;
-
-        while (current > 0 && (character = text[current - 1]) >= hangulChoseongStart && character <= hangulSyllableEnd && (character <= hangulJongseongEnd || character >= hangulSyllableStart)) {
-            switch (state) {
-            case HangulState::V:
-                if (character <= hangulChoseongEnd)
-                    state = HangulState::L;
-                else if (character >= hangulSyllableStart && character <= hangulSyllableEnd && !isHangulLVT(character))
-                    state = HangulState::LV;
-                else if (character > hangulJungseongEnd)
-                    state = HangulState::Break;
-                break;
-            case HangulState::T:
-                if (character >= hangulJungseongStart && character <= hangulJungseongEnd)
-                    state = HangulState::V;
-                else if (character >= hangulSyllableStart && character <= hangulSyllableEnd)
-                    state = isHangulLVT(character) ? HangulState::LVT : HangulState::LV;
-                else if (character < hangulJungseongStart)
-                    state = HangulState::Break;
-                break;
-            default:
-                state = (character < hangulJungseongStart) ? HangulState::L : HangulState::Break;
-                break;
-            }
-            if (state == HangulState::Break)
-                break;
-            --current;
-        }
-    }
-
-    return current;
-#else
-    U16_BACK_1(text, 0, current);
-    return current;
-#endif
+    CachedTextBreakIterator iterator(m_text, TextBreakIterator::Mode::Delete, nullAtom());
+    return iterator.preceding(current).value_or(0);
 }
 
 int RenderText::nextOffset(int current) const
@@ -1703,10 +1556,8 @@ int RenderText::nextOffset(int current) const
     if (isAllASCII() || m_text.is8Bit())
         return current + 1;
 
-    StringImpl* textImpl = m_text.impl();
-    CachedTextBreakIterator iterator(StringView(textImpl->characters16(), textImpl->length()), TextBreakIterator::Mode::Caret, nullAtom());
-    auto result = iterator.following(current).value_or(current + 1);
-    return result;
+    CachedTextBreakIterator iterator(m_text, TextBreakIterator::Mode::Caret, nullAtom());
+    return iterator.following(current).value_or(current + 1);
 }
 
 bool RenderText::computeCanUseSimpleFontCodePath() const
@@ -1735,6 +1586,44 @@ StringView RenderText::stringView(unsigned start, std::optional<unsigned> stop) 
     if (is8Bit())
         return StringView(characters8() + start, destination - start);
     return StringView(characters16() + start, destination - start);
+}
+
+RenderInline* RenderText::inlineWrapperForDisplayContents()
+{
+    ASSERT(m_hasInlineWrapperForDisplayContents == inlineWrapperForDisplayContentsMap().contains(this));
+
+    if (!m_hasInlineWrapperForDisplayContents)
+        return nullptr;
+    return inlineWrapperForDisplayContentsMap().get(this).get();
+}
+
+void RenderText::setInlineWrapperForDisplayContents(RenderInline* wrapper)
+{
+    ASSERT(m_hasInlineWrapperForDisplayContents == inlineWrapperForDisplayContentsMap().contains(this));
+
+    if (!wrapper) {
+        if (!m_hasInlineWrapperForDisplayContents)
+            return;
+        inlineWrapperForDisplayContentsMap().remove(this);
+        m_hasInlineWrapperForDisplayContents = false;
+        return;
+    }
+    inlineWrapperForDisplayContentsMap().add(this, makeWeakPtr(wrapper));
+    m_hasInlineWrapperForDisplayContents = true;
+}
+
+RenderText* RenderText::findByDisplayContentsInlineWrapperCandidate(RenderElement& renderer)
+{
+    auto* firstChild = renderer.firstChild();
+    if (!is<RenderText>(firstChild))
+        return nullptr;
+    auto& textRenderer = downcast<RenderText>(*firstChild);
+    if (textRenderer.inlineWrapperForDisplayContents() != &renderer)
+        return nullptr;
+    ASSERT(textRenderer.textNode());
+    ASSERT(renderer.firstChild() == renderer.lastChild());
+    return &textRenderer;
+
 }
 
 } // namespace WebCore

@@ -242,6 +242,9 @@ public:
     // Only called by the parser immediately after element construction.
     void parserSetAttributes(const Vector<Attribute>&);
 
+    bool isEventHandlerAttribute(const Attribute&) const;
+    bool isJavaScriptURLAttribute(const Attribute&) const;
+
     // Remove attributes that might introduce scripting from the vector leaving the element unchanged.
     void stripScriptingAttributes(Vector<Attribute>&) const;
 
@@ -543,10 +546,6 @@ public:
     using ContainerNode::setAttributeEventListener;
     void setAttributeEventListener(const AtomicString& eventType, const QualifiedName& attributeName, const AtomicString& value);
 
-#if ENABLE(WEB_ANIMATIONS)
-    Vector<WebAnimation*> getAnimations();
-#endif
-
     Element* findAnchorElementForLink(String& outAnchorName);
 
 protected:
@@ -653,8 +652,6 @@ private:
 
     void detachAllAttrNodesFromElement();
     void detachAttrNodeFromElementWithValue(Attr*, const AtomicString& value);
-
-    bool isJavaScriptURLAttribute(const Attribute&) const;
 
     // Anyone thinking of using this should call document instead of ownerDocument.
     void ownerDocument() const = delete;

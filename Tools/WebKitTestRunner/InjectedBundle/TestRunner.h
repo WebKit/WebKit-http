@@ -105,7 +105,6 @@ public:
     void setModernMediaControlsEnabled(bool);
     void setWebGL2Enabled(bool);
     void setWebGPUEnabled(bool);
-    void setCacheAPIEnabled(bool);
     void setWritableStreamAPIEnabled(bool);
     void setReadableByteStreamAPIEnabled(bool);
 
@@ -168,6 +167,8 @@ public:
     JSValueRef originsWithApplicationCache();
 
     void clearDOMCache(JSStringRef origin);
+    bool hasDOMCache(JSStringRef origin);
+    uint64_t domCacheSize(JSStringRef origin);
 
     // Failed load condition testing
     void forceImmediateCompletion();
@@ -365,6 +366,7 @@ public:
     void statisticsDidModifyDataRecordsCallback();
     void statisticsDidScanDataRecordsCallback();
     void statisticsDidRunTelemetryCallback(unsigned totalPrevalentResources, unsigned totalPrevalentResourcesWithUserInteraction, unsigned top3SubframeUnderTopFrameOrigins);
+    void statisticsNotifyObserver();
     void statisticsProcessStatisticsAndDataRecords();
     void statisticsUpdateCookiePartitioning();
     void statisticsSetShouldPartitionCookiesForHost(JSStringRef hostName, bool value);
@@ -372,6 +374,8 @@ public:
     void setStatisticsLastSeen(JSStringRef hostName, double seconds);
     void setStatisticsPrevalentResource(JSStringRef hostName, bool value);
     bool isStatisticsPrevalentResource(JSStringRef hostName);
+    bool isStatisticsRegisteredAsSubFrameUnder(JSStringRef subFrameHost, JSStringRef topFrameHost);
+    bool isStatisticsRegisteredAsRedirectingTo(JSStringRef hostRedirectedFrom, JSStringRef hostRedirectedTo);
     void setStatisticsHasHadUserInteraction(JSStringRef hostName, bool value);
     bool isStatisticsHasHadUserInteraction(JSStringRef hostName);
     void setStatisticsGrandfathered(JSStringRef hostName, bool value);

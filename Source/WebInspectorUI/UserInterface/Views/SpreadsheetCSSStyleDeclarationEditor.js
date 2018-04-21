@@ -33,6 +33,7 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
 
         this._delegate = delegate;
         this.style = style;
+        this._propertyViews = [];
     }
 
     // Public
@@ -49,10 +50,16 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
         this._propertyViews = [];
         for (let index = 0; index < properties.length; index++) {
             let property = properties[index];
-            let propertyView = new WI.SpreadsheetStyleProperty(this, property, index);
+            let propertyView = new WI.SpreadsheetStyleProperty(this, property);
             this.element.append(propertyView.element);
             this._propertyViews.push(propertyView);
         }
+    }
+
+    detached()
+    {
+        for (let propertyView of this._propertyViews)
+            propertyView.detached();
     }
 
     get style()
@@ -95,6 +102,47 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
             let index = 0;
             this._addBlankProperty(index);
         }
+    }
+
+    highlightProperty(property)
+    {
+        let propertiesMatch = (cssProperty) => {
+            if (cssProperty.attached && !cssProperty.overridden) {
+                if (cssProperty.canonicalName === property.canonicalName || hasMatchingLonghandProperty(cssProperty))
+                    return true;
+            }
+
+            return false;
+        };
+
+        let hasMatchingLonghandProperty = (cssProperty) => {
+            let cssProperties = cssProperty.relatedLonghandProperties;
+
+            if (!cssProperties.length)
+                return false;
+
+            for (let property of cssProperties) {
+                if (propertiesMatch(property))
+                    return true;
+            }
+
+            return false;
+        };
+
+        for (let cssProperty of this.style.properties) {
+            if (propertiesMatch(cssProperty)) {
+                let propertyView = cssProperty.__propertyView;
+                if (propertyView) {
+                    propertyView.highlight();
+
+                    if (cssProperty.editable)
+                        propertyView.valueTextField.startEditing();
+                }
+                return true;
+            }
+        }
+
+        return false;
     }
 
     spreadsheetCSSStyleDeclarationEditorFocusMoved({direction, movedFromProperty, willRemoveProperty})
@@ -155,7 +203,7 @@ WI.SpreadsheetCSSStyleDeclarationEditor = class SpreadsheetCSSStyleDeclarationEd
     {
         let blankProperty = this._style.newBlankProperty(afterIndex);
         const newlyAdded = true;
-        let propertyView = new WI.SpreadsheetStyleProperty(this, blankProperty, blankProperty.index, newlyAdded);
+        let propertyView = new WI.SpreadsheetStyleProperty(this, blankProperty, newlyAdded);
         this.element.append(propertyView.element);
         this._propertyViews.push(propertyView);
         propertyView.nameTextField.startEditing();

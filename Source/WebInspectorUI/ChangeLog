@@ -1,3 +1,461 @@
+2017-10-17  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: [PARITY] Styles Redesign: Add color picker inline widget
+        https://bugs.webkit.org/show_bug.cgi?id=178354
+
+        Reviewed by Joseph Pecoraro.
+
+        Show color picker using the existing WI.InlineSwatch.
+
+        * UserInterface/Models/Color.js:
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.spreadsheet-style-declaration-editor .property:not(.disabled) .token-comment):
+        Syntax highlight comments in values.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype._renderValue):
+        (WI.SpreadsheetStyleProperty.prototype._addColorTokens):
+        Find colors in CodeMirror tokens and replace them with color token elements.
+
+2017-10-17  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: Command-click on a property name should jump to definition in Resources tab
+        https://bugs.webkit.org/show_bug.cgi?id=174329
+        <rdar://problem/33225564>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        Add "meta-key-pressed" class to <body> when Command key is pressed.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.meta-key-pressed .spreadsheet-css-declaration:not(.locked) :matches(.name, .value):not(.editing):hover):
+        Use the same styles as in CodeMirrorTokenTrackingController.css.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype._update):
+        (WI.SpreadsheetStyleProperty.prototype._setupJumpToSymbol):
+        This is very similar to WI.CSSStyleDeclarationTextEditor.prototype.tokenTrackingControllerHighlightedRangeWasClicked,
+        except it doesn't include special cases for CSS variables and links yet.
+
+2017-10-16  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: apply syntax highlighting to property values
+        https://bugs.webkit.org/show_bug.cgi?id=178176
+
+        Reviewed by Matt Baker.
+
+        - Highlight links blue and CSS strings dark red.
+        - Truncate URLs and strings over 150 characters.
+
+        * UserInterface/Views/CodeMirrorAdditions.js:
+        Parse CSS values using CodeMirror.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.spreadsheet-style-declaration-editor .property:not(.disabled) .token-link):
+        (.spreadsheet-style-declaration-editor .property:not(.disabled) .token-string):
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype._update):
+        (WI.SpreadsheetStyleProperty.prototype.spreadsheetTextFieldWillStartEditing):
+        Replace trancated values with their full version.
+
+        (WI.SpreadsheetStyleProperty.prototype.spreadsheetTextFieldDidCommit):
+        (WI.SpreadsheetStyleProperty.prototype.spreadsheetTextFieldDidBlur):
+        (WI.SpreadsheetStyleProperty.prototype._renderValue):
+        Highlight links and CSS strings in values when not editing.
+
+        * UserInterface/Views/SpreadsheetTextField.js:
+        (WI.SpreadsheetTextField.prototype.startEditing):
+        Disabling of syntax highlighting moved to spreadsheetTextFieldWillStartEditing.
+
+        * UserInterface/Views/SyntaxHighlightingDefaultTheme.css:
+        (.syntax-highlighted a):
+        * UserInterface/Views/Variables.css:
+        (:root):
+        Make link color a variable.
+
+2017-10-16  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Web Inspector: Layers tab mistakenly throws out the root element's layer.
+        https://bugs.webkit.org/show_bug.cgi?id=178222
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Controllers/LayerTreeManager.js:
+        (WI.LayerTreeManager.prototype.layersForNode):
+        Fix the issue at the manager level.
+
+        * UserInterface/Views/Layers3DContentView.js:
+        (WI.Layers3DContentView.prototype.layout):
+        Update new sidebar based on simplified manager API.
+
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.js:
+        (WI.LayerTreeDetailsSidebarPanel.prototype.layout):
+        Move overtailored code from manager to legacy sidebar.
+
+2017-10-15  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Modify CSS number values with up key and down key
+        https://bugs.webkit.org/show_bug.cgi?id=170779
+        <rdar://problem/33170633>
+
+        Reviewed by Matt Baker.
+
+        Up key increments a number, Down key decrements it.
+
+        Holding modifier keys changes the step value:
+        - Option modifies the value by 0.1
+        - Shift modifies the value by 10
+        - Command modifies the value by 100
+
+        * UserInterface/Test.html:
+        * UserInterface/Views/EditingSupport.js:
+        (WI.incrementElementValue):
+        Abstract away incrementElementValue into a public method.
+
+        * UserInterface/Views/SpreadsheetTextField.js:
+        (WI.SpreadsheetTextField.prototype._handleKeyDown):
+
+2017-10-15  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: show warning when recorded Canvas action caused no visual change
+        https://bugs.webkit.org/show_bug.cgi?id=175282
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction):
+        (WI.RecordingAction.prototype.get valid):
+        (WI.RecordingAction.prototype.get hasVisibleEffect):
+        (WI.RecordingAction.prototype.markInvalid):
+        (WI.RecordingAction.prototype.apply):
+        (WI.RecordingAction.prototype.async._swizzle):
+        If the selected action is visual, save a copy of the preview canvas' dataURL before
+        applying the action and compare it to its dataURL after. If there is no difference, the
+        action had no visual effect.
+
+        * UserInterface/Models/Recording.js:
+        (WI.Recording):
+
+        * UserInterface/Views/RecordingActionTreeElement.js:
+        (WI.RecordingActionTreeElement):
+        (WI.RecordingActionTreeElement.prototype._handleValidityChanged):
+        (WI.RecordingActionTreeElement.prototype._handleHasVisibleEffectChanged):
+        * UserInterface/Views/RecordingActionTreeElement.css:
+        (.item.action.visual.no-visible-effect:not(.invalid) > .status > .warning):
+
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.RecordingContentView):
+        (WI.RecordingContentView.prototype.async._generateContentCanvas2D):
+        (WI.RecordingContentView.prototype._applyAction): Deleted.
+
+2017-10-15  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: [PARITY] Styles Redesign: clicking on the go-to arrow in Computed tab should work
+        https://bugs.webkit.org/show_bug.cgi?id=178286
+        <rdar://problem/34986379>
+
+        Reviewed by Joseph Pecoraro.
+
+        Highlight the matching property using a yellow background and focus on the property value
+        if the property is editable (e.g., not a User Agent style).
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.spreadsheet-style-declaration-editor):
+        (.spreadsheet-style-declaration-editor .property):
+        Move left padding to the property element so there's no awkward gap on the left side
+        when the property is highlighted.
+
+        (.spreadsheet-style-declaration-editor .property.highlighted):
+        (@keyframes style-property-highlight):
+        Use the same animation duration as we used in `.text-editor > .CodeMirror .highlighted`.
+        The highlight color was changed from light blue to yellow.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.highlightProperty):
+        Use the same logic as in WI.CSSStyleDeclarationTextEditor.prototype.highlightProperty
+        to find matching style property to highlight.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.highlightProperty):
+        Use the same logic as in WI.CSSStyleDeclarationSection.prototype.highlightProperty.
+
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.scrollToSectionAndHighlightProperty):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.nodeStylesRefreshed):
+        Copied from WI.RulesStyleDetailsPanel.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty):
+        (WI.SpreadsheetStyleProperty.prototype.detached):
+        (WI.SpreadsheetStyleProperty.prototype.highlight):
+
+2017-10-14  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r223310): Web Inspector: Class list container is transparent and unreadable
+        https://bugs.webkit.org/show_bug.cgi?id=178311
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.css-style > .content ~ .class-list-container):
+        Fix 1px hole below the class container.
+
+2017-10-14  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Canvas tab: recordings should have a unique name
+        https://bugs.webkit.org/show_bug.cgi?id=178188
+        <rdar://problem/34943364>
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New format string "Recording %d".
+
+        * UserInterface/Base/FileUtilities.js:
+        (WI.loadDataFromFile):
+        Pass chosen filename to callback.
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager.prototype.recordingFinished):
+        Create a unique name for the recording.
+
+        * UserInterface/Models/Recording.js:
+        (WI.Recording):
+        (WI.Recording.fromPayload):
+        (WI.Recording.prototype.get displayName):
+        (WI.Recording.prototype.createDisplayName):
+
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.RecordingContentView.prototype.get saveData):
+        Use encodeURI so that special characters can be used in filenames, and
+        to be consistent with other `saveData` implementations.
+
+        * UserInterface/Views/RecordingNavigationSidebarPanel.js:
+        (WI.RecordingNavigationSidebarPanel.prototype.set recording):
+        (WI.RecordingNavigationSidebarPanel.prototype._importNavigationItemClicked):
+        Drive-by fix: wait until actions are resolved before updating UI.
+
+        * UserInterface/Views/RecordingTabContentView.js:
+        (WI.RecordingTabContentView.prototype._navigationSidebarImport):
+        Try to use the imported filename as the recording name. If the name
+        collides with that of another imported recording, append a unique suffix.
+
+2017-10-14  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: provide a way to enable/disable event listeners
+        https://bugs.webkit.org/show_bug.cgi?id=177451
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WI.DOMTreeManager.prototype.setEventListenerDisabled):
+
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WI.DOMNodeDetailsSidebarPanel.prototype.attached):
+        (WI.DOMNodeDetailsSidebarPanel.prototype.detached):
+        (WI.DOMNodeDetailsSidebarPanel.prototype._eventListenersChanged):
+        (WI.DOMNodeDetailsSidebarPanel.prototype.addEventListeners): Deleted.
+        (WI.DOMNodeDetailsSidebarPanel.prototype.removeEventListeners): Deleted.
+        Listen for `WI.DOMNode.Event.EventListenersChanged` on all instances of WI.DOMNode, since we
+        will still want to refresh the event listeners section in the event that an event listener
+        is removed from a parent node.
+
+        * UserInterface/Views/EventListenerSectionGroup.js:
+        (WI.EventListenerSectionGroup):
+        (WI.EventListenerSectionGroup.prototype._eventText):
+        (WI.EventListenerSectionGroup.prototype._nodeTextOrLink):
+        (WI.EventListenerSectionGroup.prototype._createDisabledToggleElement):
+        (WI.EventListenerSectionGroup.prototype._createDisabledToggleElement.updateTitle):
+        * UserInterface/Views/EventListenerSectionGroup.css:
+        (.event-listener-section > .content input[type="checkbox"]):
+
+        * UserInterface/Views/DetailsSectionSimpleRow.js:
+        (WI.DetailsSectionSimpleRow.prototype.get label):
+        (WI.DetailsSectionSimpleRow.prototype.set label):
+
+2017-10-13  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: make split console full width of view
+        https://bugs.webkit.org/show_bug.cgi?id=176635
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Main.html:
+        * UserInterface/Views/Main.css:
+        (#main):
+        (#content):
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.css-style > .content ~ :matches(.options-container, .class-list-container)):
+        (.sidebar > .panel.details.css-style > .content ~ .options-container):
+
+2017-10-13  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: fix ESLint errors
+        https://bugs.webkit.org/show_bug.cgi?id=175065
+
+        Reviewed by Joseph Pecoraro.
+
+        Removed trailing whitespace, extra parenthesis, and some unnecessary escape characters.
+        Added missing semicolons, spacing around default values for parameters, and changed `==` to
+        `===` where applicable.
+
+        Specific changes to each file were removed for brevity.
+
+        * .eslintrc:
+        Alphabetize each list of global variables and add some missing utility functions.
+
+        * UserInterface/Base/EventListener.js:
+        * UserInterface/Base/EventListenerSet.js:
+        * UserInterface/Base/Main.js:
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Base/TextUtilities.js:
+        * UserInterface/Base/URLUtilities.js:
+        * UserInterface/Base/Utilities.js:
+        * UserInterface/Base/YieldableTask.js:
+        * UserInterface/Controllers/AppControllerBase.js:
+        * UserInterface/Controllers/CanvasManager.js:
+        * UserInterface/Controllers/CodeMirrorCompletionController.js:
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        * UserInterface/Controllers/JavaScriptRuntimeCompletionProvider.js:
+        * UserInterface/Controllers/RuntimeManager.js:
+        * UserInterface/Controllers/SourceMapManager.js:
+        * UserInterface/Debug/DebugContentView.js:
+        * UserInterface/Debug/UncaughtExceptionReporter.js:
+        * UserInterface/Models/CSSKeywordCompletions.js:
+        * UserInterface/Models/DOMNode.js:
+        * UserInterface/Models/DOMNodeStyles.js:
+        * UserInterface/Models/KeyboardShortcut.js:
+        * UserInterface/Models/ProfileNode.js:
+        * UserInterface/Models/Resource.js:
+        * UserInterface/Models/ResourceCollection.js:
+        * UserInterface/Models/Script.js:
+        * UserInterface/Models/ScriptSyntaxTree.js:
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        * UserInterface/Protocol/Connection.js:
+        * UserInterface/Test/FrontendTestHarness.js:
+        * UserInterface/Test/TestHarness.js:
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        * UserInterface/Views/ChartDetailsSectionRow.js:
+        * UserInterface/Views/CodeMirrorAdditions.js:
+        * UserInterface/Views/CodeMirrorFormatters.js:
+        * UserInterface/Views/CodeMirrorRegexMode.js:
+        * UserInterface/Views/ContentBrowserTabContentView.js:
+        * UserInterface/Views/DataGrid.js:
+        * UserInterface/Views/DataGridNode.js:
+        * UserInterface/Views/FindBanner.js:
+        * UserInterface/Views/GroupNavigationItem.js:
+        * UserInterface/Views/HierarchicalPathNavigationItem.js:
+        * UserInterface/Views/NetworkTableContentView.js:
+        * UserInterface/Views/NetworkTimelineView.js:
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        * UserInterface/Views/ObjectTreeView.js:
+        * UserInterface/Views/RecordingContentView.js:
+        * UserInterface/Views/RenderingFrameTimelineOverviewGraph.js:
+        * UserInterface/Views/ResourceCookiesContentView.js:
+        * UserInterface/Views/ResourceDetailsSection.js:
+        * UserInterface/Views/ResourceHeadersContentView.js:
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        * UserInterface/Views/SettingEditor.js:
+        * UserInterface/Views/Sidebar.js:
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        * UserInterface/Views/Table.js:
+        * UserInterface/Views/TextEditor.js:
+        * UserInterface/Views/TimelineDataGridNode.js:
+        * UserInterface/Views/TreeElement.js:
+        * UserInterface/Views/TreeOutline.js:
+        * UserInterface/Views/WebSocketDataGridNode.js:
+        * UserInterface/Workers/Formatter/EsprimaFormatter.js:
+        * UserInterface/Workers/Formatter/FormatterWorker.js:
+
+2017-10-13  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: hook up autocompletion to property names and values
+        https://bugs.webkit.org/show_bug.cgi?id=177313
+        <rdar://problem/34577057>
+
+        Reviewed by Joseph Pecoraro.
+
+        - Arrow Right accept the current completion item and places the text caret after it.
+        - Arrow Left hides the completion popover.
+        - Arrow Up selects the previous completion item.
+        - Arrow Down selects the next completion item.
+        - Enter and Tab accept the current completion item and navigate to the next focusable item.
+        - Escape hides the completion popover, if there is one.
+
+        * UserInterface/Views/CompletionSuggestionsView.js:
+        (WI.CompletionSuggestionsView):
+        (WI.CompletionSuggestionsView.prototype._mouseDown):
+        Add a preventBlur option so clicking on an completion item doesn't change the focus and
+        doesn't cause "blur" event on the target text field.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.spreadsheet-style-declaration-editor .completion-hint):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.layout):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.detached):
+        Call detached on every SpreadsheetTextField to hide CompletionSuggestionsView once
+        SpreadsheetCSSStyleDeclarationEditor is removed from the DOM.
+
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype._addBlankProperty):
+        Remove index argument since it is no longer used.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty):
+        (WI.SpreadsheetStyleProperty.prototype.detached):
+        (WI.SpreadsheetStyleProperty.prototype._remove):
+        (WI.SpreadsheetStyleProperty.prototype._update):
+        (WI.SpreadsheetStyleProperty.prototype._nameCompletionDataProvider):
+        (WI.SpreadsheetStyleProperty.prototype._valueCompletionDataProvider):
+        Add an extra parameter to SpreadsheetTextField to pass a completion data provider.
+
+        * UserInterface/Views/SpreadsheetTextField.js:
+        (WI.SpreadsheetTextField):
+        (WI.SpreadsheetTextField.prototype.get suggestionHint):
+        (WI.SpreadsheetTextField.prototype.set suggestionHint):
+        (WI.SpreadsheetTextField.prototype.startEditing):
+        (WI.SpreadsheetTextField.prototype.stopEditing):
+        (WI.SpreadsheetTextField.prototype.detached):
+        (WI.SpreadsheetTextField.prototype.completionSuggestionsSelectedCompletion):
+        (WI.SpreadsheetTextField.prototype.completionSuggestionsClickedCompletion):
+        (WI.SpreadsheetTextField.prototype._getPrefix):
+        (WI.SpreadsheetTextField.prototype._handleBlur):
+        (WI.SpreadsheetTextField.prototype._handleKeyDown):
+        (WI.SpreadsheetTextField.prototype._handleKeyDownForSuggestionView):
+        (WI.SpreadsheetTextField.prototype._handleInput):
+        (WI.SpreadsheetTextField.prototype._updateCompletions):
+        (WI.SpreadsheetTextField.prototype._getCaretRect):
+        (WI.SpreadsheetTextField.prototype._getCompletionPrefix):
+        (WI.SpreadsheetTextField.prototype._applyCompletionHint):
+        (WI.SpreadsheetTextField.prototype._hideCompletions):
+        Provide text completion based on the existing CompletionSuggestionsView when completionProvider is passed to SpreadsheetTextField.
+
+2017-10-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Switch Clear navigation item back to the Trash icon (Console, Timelines, Network)
+        https://bugs.webkit.org/show_bug.cgi?id=178244
+        <rdar://problem/34966525>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Images/NavigationItemClear.svg: Removed.
+        * UserInterface/Images/gtk/NavigationItemClear.svg: Removed.
+        * UserInterface/Views/LogContentView.js:
+        (WI.LogContentView):
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WI.NetworkGridContentView):
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView):
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WI.TimelineRecordingContentView):
+        Many users found the new Clear icon confusing. Revert to the Trash icon.
+
 2017-10-11  Ross Kirsling  <ross.kirsling@sony.com>
 
         Web Inspector: Make 3D objects selectable in Layers visualization

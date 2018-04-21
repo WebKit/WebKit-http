@@ -104,6 +104,21 @@ WI.SpreadsheetCSSStyleDeclarationSection = class SpreadsheetCSSStyleDeclarationS
         this._selectorElement.focus();
     }
 
+    highlightProperty(property)
+    {
+        // When navigating from the Computed panel to the Styles panel, the latter
+        // could be empty. Layout all properties so they can be highlighted.
+        if (!this.didInitialLayout)
+            this.updateLayout();
+
+        if (this._propertiesEditor.highlightProperty(property)) {
+            this._element.scrollIntoView();
+            return true;
+        }
+
+        return false;
+    }
+
     cssStyleDeclarationTextEditorStartEditingRuleSelector()
     {
         this.startEditingRuleSelector();
@@ -202,9 +217,9 @@ WI.SpreadsheetCSSStyleDeclarationSection = class SpreadsheetCSSStyleDeclarationS
         case WI.CSSStyleDeclaration.Type.Rule:
             console.assert(this._style.ownerRule);
 
-            let selectors = this._style.ownerRule.selectors;
-            let matchedSelectorIndices = this._style.ownerRule.matchedSelectorIndices;
-            let alwaysMatch = !matchedSelectorIndices.length;
+            var selectors = this._style.ownerRule.selectors;
+            var matchedSelectorIndices = this._style.ownerRule.matchedSelectorIndices;
+            var alwaysMatch = !matchedSelectorIndices.length;
             if (selectors.length) {
                 let hasMatchingPseudoElementSelector = false;
                 for (let i = 0; i < selectors.length; ++i) {

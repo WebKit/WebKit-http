@@ -25,13 +25,15 @@
 
 WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 {
-    constructor(delegate, property, index, newlyAdded)
+    constructor(delegate, property, newlyAdded = false)
     {
         super();
 
+        console.assert(property instanceof WI.CSSProperty);
+
         this._delegate = delegate || null;
         this._property = property;
-        this._newlyAdded = newlyAdded || false;
+        this._newlyAdded = newlyAdded;
         this._element = document.createElement("div");
 
         this._nameElement = null;
@@ -39,6 +41,8 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 
         this._nameTextField = null;
         this._valueTextField = null;
+
+        this._property.__propertyView = this;
 
         this._update();
         property.addEventListener(WI.CSSProperty.Event.OverriddenStatusChanged, this._update, this);
@@ -50,12 +54,29 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
     get nameTextField() { return this._nameTextField; }
     get valueTextField() { return this._valueTextField; }
 
+    detached()
+    {
+        this._property.__propertyView = null;
+
+        if (this._nameTextField)
+            this._nameTextField.detached();
+
+        if (this._valueTextField)
+            this._valueTextField.detached();
+    }
+
+    highlight()
+    {
+        this._element.classList.add("highlighted");
+    }
+
     // Private
 
     _remove()
     {
         this.element.remove();
         this._property.remove();
+        this.detached();
 
         if (this._delegate && typeof this._delegate.spreadsheetStylePropertyRemoved === "function")
             this._delegate.spreadsheetStylePropertyRemoved(this);
@@ -130,20 +151,33 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 
         this._valueElement = this.element.appendChild(document.createElement("span"));
         this._valueElement.classList.add("value");
-        this._valueElement.textContent = this._property.rawValue;
+        this._renderValue(this._property.rawValue);
 
         if (this._property.editable && this._property.enabled) {
             this._nameElement.tabIndex = 0;
-            this._nameTextField = new WI.SpreadsheetTextField(this, this._nameElement);
+            this._nameTextField = new WI.SpreadsheetTextField(this, this._nameElement, this._nameCompletionDataProvider.bind(this));
 
             this._valueElement.tabIndex = 0;
-            this._valueTextField = new WI.SpreadsheetTextField(this, this._valueElement);
+            this._valueTextField = new WI.SpreadsheetTextField(this, this._valueElement, this._valueCompletionDataProvider.bind(this));
+        }
+
+        if (this._property.editable) {
+            this._setupJumpToSymbol(this._nameElement);
+            this._setupJumpToSymbol(this._valueElement);
         }
 
         this.element.append(";");
 
         if (!this._property.enabled)
             this.element.append(" */");
+    }
+
+    // SpreadsheetTextField delegate
+
+    spreadsheetTextFieldWillStartEditing(textField)
+    {
+        let isEditingName = textField === this._nameTextField;
+        textField.value = isEditingName ? this._property.name : this._property.rawValue;
     }
 
     spreadsheetTextFieldDidChange(textField)
@@ -167,6 +201,9 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
             willRemoveProperty = true;
 
         let isEditingName = textField === this._nameTextField;
+
+        if (!isEditingName && !willRemoveProperty)
+            this._renderValue(propertyValue);
 
         if (propertyName && isEditingName)
             this._newlyAdded = false;
@@ -198,6 +235,123 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
     {
         if (textField.value.trim() === "")
             this._remove();
+        else
+            this._renderValue(this._valueElement.textContent);
+    }
+
+    // Private
+
+    _renderValue(value)
+    {
+        const maxValueLength = 150;
+        let tokens = WI.tokenizeCSSValue(value);
+
+        if (this._property.enabled) {
+            // Don't show color widgets for CSS gradients, show dedicated gradient widgets instead.
+            // FIXME: <https://webkit.org/b/178404> Web Inspector: [PARITY] Styles Redesign: Add bezier curve, color gradient, and CSS variable inline widgets
+            tokens = this._addColorTokens(tokens);
+        }
+
+        tokens = tokens.map((token) => {
+            if (token instanceof Element)
+                return token;
+
+            let className = "";
+
+            if (token.type) {
+                if (token.type.includes("string"))
+                    className = "token-string";
+                else if (token.type.includes("link"))
+                    className = "token-link";
+                else if (token.type.includes("comment"))
+                    className = "token-comment";
+            }
+
+            if (className) {
+                let span = document.createElement("span");
+                span.classList.add(className);
+                span.textContent = token.value.trimMiddle(maxValueLength);
+                return span;
+            }
+
+            return token.value;
+        });
+
+        this._valueElement.removeChildren();
+        this._valueElement.append(...tokens);
+    }
+
+    _addColorTokens(tokens)
+    {
+        let newTokens = [];
+
+        let createColorTokenElement = (colorString, color) => {
+            let colorTokenElement = document.createElement("span");
+            colorTokenElement.className = "token-color";
+
+            let innerElement = document.createElement("span");
+            innerElement.className = "token-color-value";
+            innerElement.textContent = colorString;
+
+            if (color) {
+                let readOnly = !this._property.editable;
+                let swatch = new WI.InlineSwatch(WI.InlineSwatch.Type.Color, color, readOnly);
+
+                swatch.addEventListener(WI.InlineSwatch.Event.ValueChanged, (event) => {
+                    let value = event.data && event.data.value && event.data.value.toString();
+                    console.assert(value, "Color value is empty.");
+                    if (!value)
+                        return;
+
+                    innerElement.textContent = value;
+                    this._handleValueChange();
+                }, this);
+
+                colorTokenElement.append(swatch.element);
+
+                // Prevent the value from editing when clicking on the swatch.
+                swatch.element.addEventListener("mousedown", (event) => { event.stop(); });
+            }
+
+            colorTokenElement.append(innerElement);
+            return colorTokenElement;
+        };
+
+        let pushPossibleColorToken = (text, ...tokens) => {
+            let color = WI.Color.fromString(text);
+            if (color)
+                newTokens.push(createColorTokenElement(text, color));
+            else
+                newTokens.push(...tokens);
+        };
+
+        let colorFunctionStartIndex = NaN;
+
+        for (let i = 0; i < tokens.length; i++) {
+            let token = tokens[i];
+            if (token.type && token.type.includes("hex-color")) {
+                // Hex
+                pushPossibleColorToken(token.value, token);
+            } else if (WI.Color.FunctionNames.has(token.value) && token.type && (token.type.includes("atom") || token.type.includes("keyword"))) {
+                // Color Function start
+                colorFunctionStartIndex = i;
+            } else if (isNaN(colorFunctionStartIndex) && token.type && token.type.includes("keyword")) {
+                // Color keyword
+                pushPossibleColorToken(token.value, token);
+            } else if (!isNaN(colorFunctionStartIndex)) {
+                // Color Function end
+                if (token.value !== ")")
+                    continue;
+
+                let rawTokens = tokens.slice(colorFunctionStartIndex, i + 1);
+                let text = rawTokens.map((token) => token.value).join("");
+                pushPossibleColorToken(text, ...rawTokens);
+                colorFunctionStartIndex = NaN;
+            } else
+                newTokens.push(token);
+        }
+
+        return newTokens;
     }
 
     _handleNameChange()
@@ -208,6 +362,45 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
     _handleValueChange()
     {
         this._property.rawValue = this._valueElement.textContent.trim();
+    }
+
+    _nameCompletionDataProvider(prefix)
+    {
+        return WI.CSSCompletions.cssNameCompletions.startsWith(prefix);
+    }
+
+    _valueCompletionDataProvider(prefix)
+    {
+        return WI.CSSKeywordCompletions.forProperty(this._property.name).startsWith(prefix);
+    }
+
+    _setupJumpToSymbol(element)
+    {
+        element.addEventListener("mousedown", (event) => {
+            if (event.button !== 0)
+                return;
+
+            if (!WI.modifierKeys.metaKey)
+                return;
+
+            if (element.isContentEditable)
+                return;
+
+            let sourceCodeLocation = null;
+            if (this._property.ownerStyle.ownerRule)
+                sourceCodeLocation = this._property.ownerStyle.ownerRule.sourceCodeLocation;
+
+            if (!sourceCodeLocation)
+                return;
+
+            let range = this._property.styleSheetTextRange;
+            const options = {
+                ignoreNetworkTab: true,
+                ignoreSearchTab: true,
+            };
+            let sourceCode = sourceCodeLocation.sourceCode;
+            WI.showSourceCodeLocation(sourceCode.createSourceCodeLocation(range.startLine, range.startColumn), options);
+        });
     }
 };
 

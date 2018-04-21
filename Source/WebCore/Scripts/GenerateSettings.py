@@ -49,6 +49,8 @@ def main():
 
     settings = parseInput(options.input)
 
+    generateSettingsHeaderFile(outputDirectory, settings)
+    generateSettingsImplementationFile(outputDirectory, settings)
     generateSettingsMacrosHeader(outputDirectory, settings)
     generateInternalSettingsIDLFile(outputDirectory, settings)
     generateInternalSettingsHeaderFile(outputDirectory, settings)

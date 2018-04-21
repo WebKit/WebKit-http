@@ -264,7 +264,7 @@ void ResourceHandleCFURLConnectionDelegateWithOperationQueue::didSendBodyData(CF
 {
     callOnMainThread([protectedThis = makeRef(*this), totalBytesWritten, totalBytesExpectedToWrite] () mutable {
         auto& handle = protectedThis->m_handle;
-        if (!protectedThis->hasHandle() || !handle->client())
+        if (!protectedThis->hasHandle() || !handle->client() || !handle->connection())
             return;
 
         LOG(Network, "CFNet - ResourceHandleCFURLConnectionDelegateWithOperationQueue::didSendBodyData(handle=%p) (%s)", handle, handle->firstRequest().url().string().utf8().data());

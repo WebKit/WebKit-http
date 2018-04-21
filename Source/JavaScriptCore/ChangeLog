@@ -1,3 +1,588 @@
+2017-10-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r223523.
+
+        A test for this change is failing on debug JSC bots.
+
+        Reverted changeset:
+
+        "[JSC] __proto__ getter should be fast"
+        https://bugs.webkit.org/show_bug.cgi?id=178067
+        https://trac.webkit.org/changeset/223523
+
+2017-10-17  Youenn Fablet  <youenn@apple.com>
+
+        Add preliminary support for fetch event
+        https://bugs.webkit.org/show_bug.cgi?id=178171
+
+        Reviewed by Chris Dumez.
+
+        Adding events
+
+        * runtime/JSPromise.h:
+
+2017-10-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] __proto__ getter should be fast
+        https://bugs.webkit.org/show_bug.cgi?id=178067
+
+        Reviewed by Saam Barati.
+
+        In our ES6 class implementation, we access __proto__ field to retrieve super constructor.
+        Currently, it is handled as an usual getter call to a generic function. And DFG just emits
+        Call node for this. It is inefficient since typically we know the `prototype` of the given
+        object when accessing `object.__proto__` since we emit CheckStructure for this `object`.
+        If Structure has mono proto, we can immediately fold it to constant value. If it is poly proto,
+        we can still change this to efficient access to poly proto slot.
+
+        This patch implements GetPrototypeOf DFG node. This node efficiently accesses to prototype of
+        the given object. And in AI and ByteCodeParser phase, we attempt to fold it to constant.
+        ByteCodeParser's folding is a bit important since we have `callee.__proto__` code to get super
+        constructor. If we can change this to constant, we can reify CallLinkInfo with this constant.
+        This paves the way to optimizing ArrayConstructor super calls[1], which is particularly important
+        for ARES-6 ML.
+
+        And we also optimize Reflect.getPrototypeOf and Object.getPrototypeOf with this GetPrototypeOf node.
+
+        Currently, __proto__ access for poly proto object is not handled well in IC. But we add code handling
+        poly proto in GetPrototypeOf since Reflect.getPrototypeOf and Object.getPrototypeOf can use it.
+        Once IC starts handling poly proto & intrinsic getter well, this code will be used for that too.
+
+        This patch improves SixSpeed super.es6 by 3.42x.
+
+                                 baseline                  patched
+
+        super.es6           123.6666+-3.9917     ^     36.1684+-1.0351        ^ definitely 3.4192x faster
+
+        [1]: https://bugs.webkit.org/show_bug.cgi?id=178064
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        (JSC::DFG::ByteCodeParser::handleIntrinsicGetter):
+        (JSC::DFG::ByteCodeParser::handleGetById):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        (JSC::DFG::FixupPhase::fixupGetPrototypeOf):
+        * dfg/DFGHeapLocation.cpp:
+        (WTF::printInternal):
+        * dfg/DFGHeapLocation.h:
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasHeapPrediction):
+        (JSC::DFG::Node::shouldSpeculateFunction):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::speculateFunction):
+        (JSC::DFG::SpeculativeJIT::speculateFinalObject):
+        (JSC::DFG::SpeculativeJIT::compileGetPrototypeOf):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetPrototypeOf):
+        (JSC::FTL::DFG::LowerDFGToB3::compileInstanceOf):
+        * jit/IntrinsicEmitter.cpp:
+        (JSC::IntrinsicGetterAccessCase::canEmitIntrinsicGetter):
+        (JSC::IntrinsicGetterAccessCase::emitIntrinsicGetter):
+        * runtime/Intrinsic.cpp:
+        (JSC::intrinsicName):
+        * runtime/Intrinsic.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncProtoGetter):
+        * runtime/JSGlobalObjectFunctions.h:
+        * runtime/ObjectConstructor.cpp:
+        * runtime/ReflectObject.cpp:
+
+2017-10-17  Keith Miller  <keith_miller@apple.com>
+
+        Change WebCore sources to work with unified source builds
+        https://bugs.webkit.org/show_bug.cgi?id=178229
+
+        Rubber stamped by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-10-15  Filip Pizlo  <fpizlo@apple.com>
+
+        Make some asserts into release asserts
+        https://bugs.webkit.org/show_bug.cgi?id=178324
+
+        Reviewed by Saam Barati.
+        
+        These asserts are not on perf critical paths, so they might as well be release asserts.
+
+        * runtime/DataView.h:
+        (JSC::DataView::get):
+        (JSC::DataView::set):
+
+2017-10-16  JF Bastien  <jfbastien@apple.com>
+
+        JSRunLoopTimer: reduce likely race when used improperly
+        https://bugs.webkit.org/show_bug.cgi?id=178298
+        <rdar://problem/32899816>
+
+        Reviewed by Saam Barati.
+
+        If an API user sets a timer on JSRunLoopTimer, and then racily
+        destroys the JSRunLoopTimer while the timer is firing then it's
+        possible for timerDidFire to cause a use-after-free and / or crash
+        because e.g. m_apiLock becomes a nullptr while timerDidFire is
+        executing. That results from an invalid use of JSRunLoopTimer, but
+        we should try to be more resilient for that type of misuse because
+        it's not necessarily easy to catch by inspection.
+
+        With this change the only remaining race is if the timer fires,
+        and then only timerDidFire's prologue executes, but not the load
+        of the m_apiLock pointer from `this`. It's a much smaller race.
+
+        Separately, I'll reach out to API users who are seemingly misusing
+        the API.
+
+        * runtime/JSRunLoopTimer.cpp:
+        (JSC::JSRunLoopTimer::timerDidFire): put m_apiLock on the stack,
+        and checks for nullptr. This prevents loading it twice off of
+        `this` and turns a nullptr deref into "just" a use-after-free.
+        (JSC::JSRunLoopTimer::~JSRunLoopTimer): acquire m_apiLock before
+        calling m_vm->unregisterRunLoopTimer(this), which in turn does
+        CFRunLoopRemoveTimer / CFRunLoopTimerInvalidate. This prevents
+        timerDidFire from doing much while the timers are un-registered.
+        ~JSRunLoopTimer also needs to set m_apiLock to nullptr before
+        releasing the lock, so it needs its own local copy.
+
+2017-10-15  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Perform module specifier validation at parsing time
+        https://bugs.webkit.org/show_bug.cgi?id=178256
+
+        Reviewed by Darin Adler.
+
+        This patch make module loader's `resolve` operation synchronous. And we validate
+        module's requested module names when instantiating the module instead of satisfying
+        module's dependencies. This change is not observable to users. But this is precise
+        to the spec and this optimizes & simplifies the current module loader a bit by
+        reducing object allocations.
+
+        Previously, we have an object called pair in the module loader. This is pair of
+        module's name and module's record. And we use it to link one module to dependent
+        modules. Now, it is replaced with module's registry entry.
+
+        We also change our loader functions to take a registry entry instead of a module key.
+        Previous design is due to the consideration that these APIs may be exposed to users
+        in whatwg/loader spec. However, this won't happen. This change removes unnecessary
+        repeatedly hash map lookups.
+
+        * builtins/ModuleLoaderPrototype.js:
+        (globalPrivate.newRegistryEntry):
+        (requestFetch):
+        (requestInstantiate):
+        (requestSatisfy):
+        (link):
+        (moduleEvaluation):
+        (loadModule):
+        * jsc.cpp:
+        (GlobalObject::moduleLoaderResolve):
+        * runtime/AbstractModuleRecord.cpp:
+        (JSC::AbstractModuleRecord::finishCreation):
+        (JSC::AbstractModuleRecord::hostResolveImportedModule):
+        * runtime/JSGlobalObject.h:
+        * runtime/JSModuleLoader.cpp:
+        (JSC::JSModuleLoader::resolveSync):
+        (JSC::JSModuleLoader::resolve):
+        * runtime/JSModuleLoader.h:
+        * runtime/ModuleLoaderPrototype.cpp:
+        (JSC::moduleLoaderPrototypeResolveSync):
+
+2017-10-14  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: provide a way to enable/disable event listeners
+        https://bugs.webkit.org/show_bug.cgi?id=177451
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/DOM.json:
+        Add `setEventListenerDisabled` command that enables/disables a specific event listener
+        during event dispatch. When a disabled event listener is fired, the listener's callback will
+        not be called.
+
+2017-10-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Reland "Add Above/Below comparisons for UInt32 patterns"
+        https://bugs.webkit.org/show_bug.cgi?id=177281
+
+        Reviewed by Saam Barati.
+
+        We reland this patch without DFGStrengthReduction change to see what causes
+        regression in the iOS bot.
+
+        Sometimes, we would like to have UInt32 operations in JS. While VM does
+        not support UInt32 nicely, VM supports efficient Int32 operations. As long
+        as signedness does not matter, we can just perform Int32 operations instead
+        and recognize its bit pattern as UInt32.
+
+        But of course, some operations respect signedness. The most frequently
+        used one is comparison. Octane/zlib performs UInt32 comparison by performing
+        `val >>> 0`. It emits op_urshift and op_unsigned. op_urshift produces
+        UInt32 in Int32 form. And op_unsigned will generate Double value if
+        the generated Int32 is < 0 (which should be UInt32).
+
+        There is a chance for optimization. The given code pattern is the following.
+
+            op_unsigned(op_urshift(@1)) lessThan:< op_unsigned(op_urshift(@2))
+
+        This can be converted to the following.
+
+            op_urshift(@1) below:< op_urshift(@2)
+
+        The above conversion is nice since
+
+        1. We can avoid op_unsigned. This could be unsignedness check in DFG. Since
+        this check depends on the value of Int32, dropping this check is not as easy as
+        removing Int32 edge filters.
+
+        2. We can perform unsigned comparison in Int32 form. We do not need to convert
+        them to DoubleRep.
+
+        Since the above comparison exists in Octane/zlib's *super* hot path, dropping
+        op_unsigned offers huge win.
+
+        At first, my patch attempts to convert the above thing in DFG pipeline.
+        However it poses several problems.
+
+        1. MovHint is not well removed. It makes UInt32ToNumber (which is for op_unsigned) live.
+        2. UInt32ToNumber could cause an OSR exit. So if we have the following nodes,
+
+            2: UInt32ToNumber(@0)
+            3: MovHint(@2, xxx)
+            4: UInt32ToNumber(@1)
+            5: MovHint(@1, xxx)
+
+        we could drop @5's MovHint. But @3 is difficult since @4 can exit.
+
+        So, instead, we start introducing a simple optimization in the bytecode compiler.
+        It performs pattern matching for op_urshift and comparison to drop op_unsigned.
+        We adds op_below and op_above families to bytecodes. They only accept Int32 and
+        perform unsigned comparison.
+
+        This offers 4% performance improvement in Octane/zlib.
+
+                                    baseline                  patched
+
+        zlib           x2     431.07483+-16.28434       414.33407+-9.38375         might be 1.0404x faster
+
+        * bytecode/BytecodeDumper.cpp:
+        (JSC::BytecodeDumper<Block>::printCompareJump):
+        (JSC::BytecodeDumper<Block>::dumpBytecode):
+        * bytecode/BytecodeDumper.h:
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/Opcode.h:
+        (JSC::isBranch):
+        * bytecode/PreciseJumpTargetsInlines.h:
+        (JSC::extractStoredJumpTargetsForBytecodeOffset):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitJumpIfTrue):
+        (JSC::BytecodeGenerator::emitJumpIfFalse):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::BinaryOpNode::emitBytecode):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGIntegerRangeOptimizationPhase.cpp:
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileCompareUnsigned):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGValidate.cpp:
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCompareBelow):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCompareBelowEq):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        * jit/JIT.h:
+        * jit/JITArithmetic.cpp:
+        (JSC::JIT::emit_op_below):
+        (JSC::JIT::emit_op_beloweq):
+        (JSC::JIT::emit_op_jbelow):
+        (JSC::JIT::emit_op_jbeloweq):
+        (JSC::JIT::emit_compareUnsignedAndJump):
+        (JSC::JIT::emit_compareUnsigned):
+        * jit/JITArithmetic32_64.cpp:
+        (JSC::JIT::emit_compareUnsignedAndJump):
+        (JSC::JIT::emit_compareUnsigned):
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * parser/Nodes.h:
+        (JSC::ExpressionNode::isBinaryOpNode const):
+
+2017-10-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        WebAssembly: Wasm functions should have either JSFunctionType or TypeOfShouldCallGetCallData
+        https://bugs.webkit.org/show_bug.cgi?id=178210
+
+        Reviewed by Saam Barati.
+
+        In Wasm, we have two JS functions exposed to users: WebAssemblyFunction and WebAssemblyWrapperFunction.
+        The former is an exported wasm function and the latter is an imported & exported function. Since they
+        have [[Call]], they should be categorized into "function" in typeof operation.
+
+        However, these functions do not implement our function protocol correctly. They inherit JSFunction.
+        But JSType of WebAssemblyFunction is WebAssemblyFunctionType, and one of WebAssemblyWrapperFunction is
+        ObjectType. Since both do not have TypeOfShouldCallGetCallData, they return "object" when performing
+        typeof operation.
+
+        In this patch, we address the above issue by the following 2 fixes.
+
+        1. We add TypeOfShouldCallGetCallData to WebAssemblyFunction. This is the same way how we implement
+        InternalFunction. Since WebAssemblyFunction requires WebAssemblyFunctionType for fast checking in Wasm
+        implementation, we cannot make this JSFunctionType.
+
+        2. On the other hand, WebAssemblyWrapperFunction does not require a specific JSType. So this patch
+        changes JSType of WebAssemblyWrapperFunction to JSFunctionType. JSFunctionType can be usable for derived
+        classes of JSFunction (e.g. JSCustomGetterSetterFunction).
+
+        * wasm/js/WebAssemblyFunction.h:
+        (JSC::WebAssemblyFunction::signatureIndex const): Deleted.
+        (JSC::WebAssemblyFunction::wasmEntrypointLoadLocation const): Deleted.
+        (JSC::WebAssemblyFunction::callableFunction const): Deleted.
+        (JSC::WebAssemblyFunction::jsEntrypoint): Deleted.
+        (JSC::WebAssemblyFunction::offsetOfWasmEntrypointLoadLocation): Deleted.
+        * wasm/js/WebAssemblyWrapperFunction.cpp:
+        (JSC::WebAssemblyWrapperFunction::createStructure):
+        * wasm/js/WebAssemblyWrapperFunction.h:
+        (JSC::WebAssemblyWrapperFunction::signatureIndex const): Deleted.
+        (JSC::WebAssemblyWrapperFunction::wasmEntrypointLoadLocation const): Deleted.
+        (JSC::WebAssemblyWrapperFunction::callableFunction const): Deleted.
+        (JSC::WebAssemblyWrapperFunction::function): Deleted.
+
+2017-10-12  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win64] JSC compile error.
+        https://bugs.webkit.org/show_bug.cgi?id=178213
+
+        Reviewed by Alex Christensen.
+
+        Add static cast from int64 to uintptr_t.
+
+        * dfg/DFGOSRExit.cpp:
+        (JSC::DFG::OSRExit::executeOSRExit):
+
+2017-09-29  Filip Pizlo  <fpizlo@apple.com>
+
+        Enable gigacage on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=177586
+
+        Reviewed by JF Bastien.
+
+        The hardest part of enabling Gigacage on iOS is that it requires loading global variables while
+        executing JS, so the LLInt needs to know how to load from global variables on all platforms that
+        have Gigacage. So, this teaches ARM64 how to load from global variables.
+        
+        Also, this makes the code handle disabling the gigacage a bit better.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::caged):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::cage):
+        (JSC::AssemblyHelpers::cageConditionally):
+        * offlineasm/arm64.rb:
+        * offlineasm/asm.rb:
+        * offlineasm/instructions.rb:
+
+2017-10-11  Sam Weinig  <sam@webkit.org>
+
+        Remove out-parameter variants of copyToVector
+        https://bugs.webkit.org/show_bug.cgi?id=178155
+
+        Reviewed by Tim Horton.
+
+        * inspector/ScriptDebugServer.cpp:
+        (Inspector::ScriptDebugServer::dispatchBreakpointActionLog):
+        (Inspector::ScriptDebugServer::dispatchBreakpointActionSound):
+        (Inspector::ScriptDebugServer::dispatchBreakpointActionProbe):
+        (Inspector::ScriptDebugServer::dispatchDidParseSource):
+        (Inspector::ScriptDebugServer::dispatchFailedToParseSource):
+        (Inspector::ScriptDebugServer::dispatchFunctionToListeners):
+            
+            Replace out-parameter based copyToVector, with one that returns a Vector.
+
+2017-10-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Support integrity="" on module scripts
+        https://bugs.webkit.org/show_bug.cgi?id=177959
+
+        Reviewed by Sam Weinig.
+
+        This patch adds Subresource Integrity check for module scripts. Currently,
+        only top-level module can be verified with integrity parameter since there
+        is no way to perform integrity check onto the imported modules.
+
+        In JSC side, we add `parameters` to the entry point of the module loader
+        pipeline. This is fetching parameters and used when fetching modules.
+
+        We separately pass this parameters to the pipeline along with the script fetcher.
+        The script fetcher is only one for module graph since this is the initiator of
+        this module graph loading. On the other hand, this parameters is for each
+        module fetching. While setting "integrity" parameters to this script fetcher is
+        sufficient to pass parameters to top-level-module's fetching, it is not enough
+        for the future extension.
+
+        In the future, we will investigate a way to pass parameters to each non-top-level
+        module. At that time, this `parameters` should be per-module. This is because
+        "integrity" value should be different for each module. For example, we will accept
+        some form of syntax to add parameters to `import`. Some proposed syntax is like
+        https://discourse.wicg.io/t/specifying-nonce-or-integrity-when-importing-modules/1861
+
+        import "./xxx.js" integrity "xxxxxxx"
+
+        In this case, this `parameters` will be passed to "./xxx.js" module fetching. This
+        `parameters` should be different from the one of top-level-module's one. That's why
+        we need per-module `parameters` and why this patch adds `parameters` to the module pipeline.
+
+        On the other hand, we also want to keep script fetcher. This `per-module-graph` thing
+        is important to offer module-graph-wide information. For example, import.meta would
+        have `import.meta.scriptElement`, which is the script element fetching the module graph
+        including this. So, we keep the both, script fetcher and parameters.
+        https://github.com/tc39/proposal-import-meta
+
+        This parameters will be finally used by pipeline's fetch hook, and WebCore side
+        can use this parameters to fetch modules.
+
+        We also further clean up the module pipeline by dropping unnecessary features.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * builtins/ModuleLoaderPrototype.js:
+        (requestFetch):
+        (requestInstantiate):
+        (requestSatisfy):
+        (loadModule):
+        (loadAndEvaluateModule):
+        This loadAndEvaluateModule should be implemented by just calling loadModule and
+        linkAndEvaluateModule. We can drop requestReady and requestLink.
+
+        (requestLink): Deleted.
+        (requestImportModule): Deleted.
+        * jsc.cpp:
+        (GlobalObject::moduleLoaderImportModule):
+        (GlobalObject::moduleLoaderFetch):
+        import and fetch hook takes parameters. Currently, we always pass `undefined` for
+        import hook. When dynamic `import()` is extended to accept additional parameters
+        like integrity, this parameters will be replaced with the actual value.
+
+        (functionLoadModule):
+        (runWithOptions):
+        * runtime/Completion.cpp:
+        (JSC::loadAndEvaluateModule):
+        (JSC::loadModule):
+        (JSC::importModule):
+        * runtime/Completion.h:
+        * runtime/JSGlobalObject.h:
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncImportModule):
+        * runtime/JSModuleLoader.cpp:
+        (JSC::JSModuleLoader::loadAndEvaluateModule):
+        (JSC::JSModuleLoader::loadModule):
+        (JSC::JSModuleLoader::requestImportModule):
+        (JSC::JSModuleLoader::importModule):
+        (JSC::JSModuleLoader::fetch):
+        * runtime/JSModuleLoader.h:
+        * runtime/JSScriptFetchParameters.cpp: Added.
+        (JSC::JSScriptFetchParameters::destroy):
+        * runtime/JSScriptFetchParameters.h: Added.
+        (JSC::JSScriptFetchParameters::createStructure):
+        (JSC::JSScriptFetchParameters::create):
+        (JSC::JSScriptFetchParameters::parameters const):
+        (JSC::JSScriptFetchParameters::JSScriptFetchParameters):
+        Add ScriptFetchParameters' JSCell wrapper, JSScriptFetchParameters.
+        It is used in the module pipeline.
+
+        * runtime/JSType.h:
+        * runtime/ModuleLoaderPrototype.cpp:
+        (JSC::moduleLoaderPrototypeFetch):
+        * runtime/ScriptFetchParameters.h: Added.
+        (JSC::ScriptFetchParameters::~ScriptFetchParameters):
+        Add ScriptFetchParameters. We can define our own custom ScriptFetchParameters
+        by inheriting this class. WebCore creates ModuleFetchParameters by inheriting
+        this.
+
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2017-10-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        import.meta should not be assignable
+        https://bugs.webkit.org/show_bug.cgi?id=178202
+
+        Reviewed by Saam Barati.
+
+        `import.meta` cannot be used for LHS. This patch adds MetaPropertyNode
+        and make NewTargetNode and ImportMetaNode as derived classes of MetaPropertyNode.
+        We change the parser not to allow assignments for MetaPropertyNode.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ImportMetaNode::emitBytecode):
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createImportMetaExpr):
+        (JSC::ASTBuilder::isMetaProperty):
+        (JSC::ASTBuilder::isImportMeta):
+        * parser/NodeConstructors.h:
+        (JSC::MetaPropertyNode::MetaPropertyNode):
+        (JSC::NewTargetNode::NewTargetNode):
+        (JSC::ImportMetaNode::ImportMetaNode):
+        * parser/Nodes.h:
+        (JSC::ExpressionNode::isMetaProperty const):
+        (JSC::ExpressionNode::isImportMeta const):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::metaPropertyName):
+        (JSC::Parser<LexerType>::parseAssignmentExpression):
+        (JSC::Parser<LexerType>::parseMemberExpression):
+        (JSC::Parser<LexerType>::parseUnaryExpression):
+        * parser/Parser.h:
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createImportMetaExpr):
+        (JSC::SyntaxChecker::isMetaProperty):
+        (JSC::SyntaxChecker::isImportMeta):
+
 2017-10-11  Saam Barati  <sbarati@apple.com>
 
         Runtime disable poly proto because it may be a 3-4% Speedometer regression

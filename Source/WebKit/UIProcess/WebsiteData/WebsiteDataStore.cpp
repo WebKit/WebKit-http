@@ -119,6 +119,9 @@ void WebsiteDataStore::resolveDirectoriesIfNecessary()
     if (!m_configuration.javaScriptConfigurationDirectory.isEmpty())
         m_resolvedConfiguration.javaScriptConfigurationDirectory = resolvePathForSandboxExtension(m_configuration.javaScriptConfigurationDirectory);
 
+    if (!m_configuration.cacheStorageDirectory.isEmpty() && m_resolvedConfiguration.cacheStorageDirectory.isEmpty())
+        m_resolvedConfiguration.cacheStorageDirectory = resolvePathForSandboxExtension(m_configuration.cacheStorageDirectory);
+
     // Resolve directories for file paths.
     if (!m_configuration.cookieStorageFile.isEmpty()) {
         m_resolvedConfiguration.cookieStorageFile = resolveAndCreateReadWriteDirectoryForSandboxExtension(WebCore::directoryName(m_configuration.cookieStorageFile));
@@ -1370,9 +1373,7 @@ StorageProcessCreationParameters WebsiteDataStore::storageProcessParameters()
 
 Vector<WebCore::Cookie> WebsiteDataStore::pendingCookies() const
 {
-    Vector<WebCore::Cookie> cookies;
-    copyToVector(m_pendingCookies, cookies);
-    return cookies;
+    return copyToVector(m_pendingCookies);
 }
 
 void WebsiteDataStore::addPendingCookie(const WebCore::Cookie& cookie)

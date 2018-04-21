@@ -62,7 +62,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         ];
         for (let [key, checker] of uniqueTypes) {
             let type = WI.Resource.Type[key];
-            let scopeBarItem = new WI.ScopeBarItem("network-type-filter-" + key, WI.NetworkTableContentView.shortDisplayNameForResourceType(type))
+            let scopeBarItem = new WI.ScopeBarItem("network-type-filter-" + key, WI.NetworkTableContentView.shortDisplayNameForResourceType(type));
             scopeBarItem.__checker = checker;
             typeFilterScopeBarItems.push(scopeBarItem);
         }
@@ -95,7 +95,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
             WI.resourceCachingDisabledSetting.addEventListener(WI.Setting.Event.Changed, this._resourceCachingDisabledSettingChanged, this);
         }
 
-        this._clearNetworkItemsNavigationItem = new WI.ButtonNavigationItem("clear-network-items", WI.UIString("Clear Network Items (%s)").format(WI.clearKeyboardShortcut.displayName), "Images/NavigationItemClear.svg", 16, 16);
+        this._clearNetworkItemsNavigationItem = new WI.ButtonNavigationItem("clear-network-items", WI.UIString("Clear Network Items (%s)").format(WI.clearKeyboardShortcut.displayName), "Images/NavigationItemTrash.svg", 15, 15);
         this._clearNetworkItemsNavigationItem.addEventListener(WI.ButtonNavigationItem.Event.Clicked, () => this.reset());
 
         WI.Frame.addEventListener(WI.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
@@ -420,7 +420,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
                 if (isNaN(bValue))
                     return -1;
                 return aValue - bValue;
-            }
+            };
             break;
 
         case "priority":

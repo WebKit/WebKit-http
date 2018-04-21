@@ -82,6 +82,7 @@ fast/css/text-overflow-ellipsis.html [ Skip ]
 fast/css/text-overflow-ellipsis-bidi.html [ Skip ]
 fast/css/text-overflow-ellipsis-strict.html [ Skip ]
 
+webkit.org/b/178337 fast/replaced/width100percent-image.html [ Skip ]
 
 ################################################################################
 ##############    Missing Functionality Prevents Testing        ################
@@ -1134,7 +1135,8 @@ editing/pasteboard/ [ Pass Failure ]
 [ Debug ] editing/selection/4975120.html [ Skip ] # Debug Assertion
 
 # Custom pasteboard data is not supported on Windows.
-http/tests/security/clipboard/copy-paste-url-across-origin-sanitizes-url.html
+http/tests/security/clipboard/copy-paste-url-across-origin-sanitizes-url.html [ Skip ]
+http/tests/security/clipboard/copy-paste-html-across-origin-sanitizes-html.html [ Skip ]
 
 webkit.org/b/140783 [ Release ] editing/pasteboard/copy-standalone-image.html [ Failure ImageOnlyFailure ]
 webkit.org/b/140783 [ Debug ] editing/pasteboard/copy-standalone-image.html [ Skip ] # Debug Assertion
@@ -1254,6 +1256,19 @@ editing/spelling/grammar-markers.html [ Skip ]
 editing/secure-input [ Skip ]
 
 editing/deleting/delete-start-block.html [ Failure ]
+
+editing/deleting/delete-ligature-001.html [ Failure ]
+editing/deleting/delete-ligature-002.html [ Failure ]
+editing/deleting/regional-indicators.html [ Failure ]
+editing/deleting/delete-emoji-1.html [ Failure ]
+editing/deleting/delete-emoji-2.html [ Failure ]
+editing/deleting/delete-emoji-3.html [ Failure ]
+editing/deleting/delete-emoji-4.html [ Failure ]
+editing/deleting/delete-emoji-5.html [ Failure ]
+editing/deleting/delete-emoji-6.html [ Failure ]
+editing/deleting/delete-emoji-7.html [ Failure ]
+editing/deleting/delete-emoji-8.html [ Failure ]
+editing/deleting/delete-emoji-9.html [ Failure ]
 
 # https://bugs.webkit.org/show_bug.cgi?id=138025
 # Larger text and as a result, larger elements containing said text (as compared to Mac port)
@@ -3600,7 +3615,6 @@ fast/events/media-focus-in-standalone-media-document.html [ Crash Pass ]
 fast/events/message-port-postMessage-recursive.html [ Timeout Pass ]
 fast/events/page-visibility-iframe-move-test.html [ Timeout Pass ]
 fast/events/tabindex-focus-chain.html [ Failure Timeout Pass ]
-fast/images/animated-gif-scrolling-crash.html [ Crash Pass ]
 http/tests/misc/delete-frame-during-readystatechange-with-gc-after-video-removal.html [ Crash Pass ]
 http/tests/preload/single_download_preload_headers_charset.php [ Crash Failure Pass ]
 http/tests/security/contentSecurityPolicy/audio-redirect-allowed.html [ Crash Timeout Pass ]
@@ -3626,17 +3640,6 @@ js/dom/builtin-getter-name.html [ Failure ]
 fast/text/variations/font-selection-font-weight.html [ ImageOnlyFailure ]
 fast/forms/file/entries-api/webkitdirectory-open-panel.html [ Skip ]
 
-# Failing cache storage tests
-webkit.org/b/176999 http/tests/cache-storage/cache-origins.https.html [ Skip ]
-webkit.org/b/176999 http/tests/cache-storage/cache-persistency.https.html [ Skip ]
-webkit.org/b/176999 http/tests/cache-storage/cache-records-persistency.https.html [ Failure ]
-webkit.org/b/176999 http/tests/cache-storage/cache-representation.https.html [ Skip ]
-webkit.org/b/176999 http/wpt/cache-storage/cache-put-keys.https.any.html [ Failure ]
-webkit.org/b/176999 http/wpt/cache-storage/cache-put-keys.https.any.worker.html [ Failure ]
-webkit.org/b/176999 http/wpt/cache-storage/cache-put-stream.https.any.html [ Failure ]
-webkit.org/b/176999 http/wpt/cache-storage/cache-put-stream.https.any.worker.html [ Failure ]
-webkit.org/b/176999 http/wpt/cache-storage/cache-remove-twice.html [ Failure ]
-
 # html/syntax web platform tests are failing on Windows.
 webkit.org/b/162415 imported/w3c/web-platform-tests/html/syntax [ Skip ]
 
@@ -3649,9 +3652,7 @@ media/document-level-media-user-gesture-quirk.html [ Skip ]
 # webrtc not supported
 imported/w3c/web-platform-tests/webrtc [ Skip ]
 webrtc [ Skip ]
-http/tests/webrtc/filtering-ice-candidate-cross-origin-frame.html [ Skip ]
-http/tests/webrtc/filtering-ice-candidate-same-origin-frame.html [ Skip ]
-http/tests/webrtc/filtering-ice-candidate-same-origin-frame2.html [ Skip ]
+http/tests/webrtc [ Skip ]
 
 # Resource Timing Metrics not available.
 http/wpt/resource-timing/rt-nextHopProtocol.html [ Skip ]
@@ -3703,12 +3704,16 @@ webkit.org/b/93589 svg/dom/SVGScriptElement/script-change-externalResourcesRequi
 
 # No service worker implementation for WK1
 http/tests/workers/service [ Skip ]
+http/wpt/service-workers [ Skip ]
 imported/w3c/web-platform-tests/fetch/api/policies/referrer-no-referrer-service-worker.https.html [ Skip ]
 imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin-service-worker.https.html [ Skip ]
 imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin-service-worker.https.html [ Skip ]
 imported/w3c/web-platform-tests/fetch/api/policies/referrer-unsafe-url-service-worker.https.html [ Skip ]
 imported/w3c/web-platform-tests/html/webappapis/scripting/processing-model-2/integration-with-the-javascript-agent-formalism/canblock-serviceworker.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers [ Skip ]
+http/tests/cache-storage [ Skip ]
+http/wpt/cache-storage [ Skip ]
+
 
 # Flaky tests on Windows:
 webkit.org/b/176564 http/tests/misc/delete-frame-during-readystatechange.html [ Pass Crash ]
@@ -3778,9 +3783,22 @@ webkit.org/b/177626 fast/dom/HTMLLinkElement/preconnect-support.html  [ Skip ]
 webkit.org/b/177626 http/tests/preconnect/link-rel-preconnect-http.html [ Skip ]
 webkit.org/b/177626 http/tests/preconnect/link-rel-preconnect-https.html [ Skip ]
 
-webkit.org/b/177891 http/wpt/cache-storage/cache-quota.any.html [ Pass Failure ]
-
 webkit.org/b/177964 fast/text/loading-block-nofinish.html [ Pass ImageOnlyFailure ]
 webkit.org/b/177964 fast/text/loading-failure-finish.html [ Pass ImageOnlyFailure ]
 webkit.org/b/177964 fast/text/loading-failure-nofinish.html [ Pass ImageOnlyFailure ]
 webkit.org/b/177964 fast/text/loading-swap-nofinish.html [ Pass ImageOnlyFailure ]
+
+# xhtml tests are failing on some of the EWS bots.
+webkit.org/b/178230 fast/xmlhttprequest/xmlhttprequest-get.xhtml [ Failure ]
+webkit.org/b/178230 dom/xhtml/level3/core/documentgetinputencoding03.xhtml [ ImageOnlyFailure ]
+webkit.org/b/178230 dom/xhtml/level3/core/entitygetinputencoding02.xhtml [ ImageOnlyFailure ]
+webkit.org/b/178230 dom/xhtml/level3/core/entitygetxmlversion02.xhtml [ ImageOnlyFailure ]
+
+webkit.org/b/178307 fast/images/animated-gif-scrolling-crash.html [ Timeout Crash Pass ]
+
+webkit.org/b/178309 fast/frames/frame-unload-navigate-and-setTimeout-assert-fail.html [ Pass Crash ]
+
+webkit.org/b/178341 animations/play-state-in-shorthand.html [ Pass Failure ]
+webkit.org/b/178341 animations/play-state-suspend.html [ Pass Failure ]
+
+webkit.org/b/178413 fast/text/ellipsis-text-rtl.html [ ImageOnlyFailure ]

@@ -159,8 +159,10 @@ WI.CanvasManager = class CanvasManager extends WI.Object
             return;
 
         let recording = recordingPayload ? WI.Recording.fromPayload(recordingPayload) : null
-        if (recording)
+        if (recording) {
             recording.source = canvas;
+            recording.createDisplayName();
+        }
 
         this.dispatchEventToListeners(WI.CanvasManager.Event.RecordingStopped, {canvas, recording});
     }

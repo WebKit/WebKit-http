@@ -32,6 +32,7 @@
 #import "FloatQuad.h"
 #import "FloatRect.h"
 #import "FloatSize.h"
+#import "Logging.h"
 #import "MIMETypeRegistry.h"
 #import "SharedBuffer.h"
 #import "UTIUtilities.h"
@@ -52,7 +53,7 @@
 #import <wtf/SoftLinking.h>
 #import <wtf/Vector.h>
 
-#import "CoreMediaSoftLink.h"
+#import <pal/cf/CoreMediaSoftLink.h>
 #import "VideoToolboxSoftLink.h"
 
 #pragma mark - Soft Linking
@@ -63,8 +64,10 @@ SOFT_LINK_CLASS_OPTIONAL(AVFoundation, AVSampleBufferGenerator)
 SOFT_LINK_CLASS_OPTIONAL(AVFoundation, AVSampleBufferRequest)
 SOFT_LINK_POINTER_OPTIONAL(AVFoundation, AVMediaCharacteristicVisual, NSString *)
 SOFT_LINK_POINTER_OPTIONAL(AVFoundation, AVURLAssetReferenceRestrictionsKey, NSString *)
+SOFT_LINK_POINTER_OPTIONAL(AVFoundation, AVURLAssetUsesNoPersistentCacheKey, NSString *)
 #define AVMediaCharacteristicVisual getAVMediaCharacteristicVisual()
 #define AVURLAssetReferenceRestrictionsKey getAVURLAssetReferenceRestrictionsKey()
+#define AVURLAssetUsesNoPersistentCacheKey getAVURLAssetUsesNoPersistentCacheKey()
 
 #pragma mark -
 
@@ -127,7 +130,7 @@ SOFT_LINK_POINTER_OPTIONAL(AVFoundation, AVURLAssetReferenceRestrictionsKey, NSS
         return NO;
 
     if (auto dataRequest = request.dataRequest) {
-        if (dataRequest.requestedOffset + dataRequest.requestedLength > static_cast<long long>(_data.get().length))
+        if (dataRequest.requestedOffset > static_cast<long long>(_data.get().length))
             return NO;
     }
 
@@ -177,6 +180,12 @@ SOFT_LINK_POINTER_OPTIONAL(AVFoundation, AVURLAssetReferenceRestrictionsKey, NSS
             return;
 
         [dataRequest respondWithData:requestedData];
+
+        if (dataRequest.requestsAllDataToEndOfResource) {
+            if (!_complete)
+                return;
+        } else if (dataRequest.requestedOffset + dataRequest.requestedLength > dataRequest.currentOffset)
+            return;
     }
 
     [request finishLoading];
@@ -190,7 +199,8 @@ SOFT_LINK_POINTER_OPTIONAL(AVFoundation, AVURLAssetReferenceRestrictionsKey, NSS
 
     if ([self canFulfillRequest:loadingRequest]) {
         [self fulfillRequest:loadingRequest];
-        return NO;
+        if (loadingRequest.finished)
+            return NO;
     }
 
     [self enqueueRequest:loadingRequest];
@@ -222,8 +232,12 @@ static NSURL *customSchemeURL()
 static NSDictionary *imageDecoderAssetOptions()
 {
     static NeverDestroyed<RetainPtr<NSDictionary>> options;
-    if (!options.get())
-        options.get() = @{ AVURLAssetReferenceRestrictionsKey: @(AVAssetReferenceRestrictionForbidAll) };
+    if (!options.get()) {
+        options.get() = @{
+            AVURLAssetReferenceRestrictionsKey: @(AVAssetReferenceRestrictionForbidAll),
+            AVURLAssetUsesNoPersistentCacheKey: @YES,
+        };
+    }
 
     return options.get().get();
 }
@@ -307,8 +321,10 @@ AVAssetTrack *ImageDecoderAVFObjC::firstEnabledTrack()
         return track.enabled;
     }];
 
-    if (firstEnabledIndex == NSNotFound)
+    if (firstEnabledIndex == NSNotFound) {
+        LOG(Images, "ImageDecoderAVFObjC::firstEnabledTrack(%p) - asset has no enabled video tracks", this);
         return nil;
+    }
 
     return [videoTracks objectAtIndex:firstEnabledIndex];
 }
@@ -337,7 +353,7 @@ void ImageDecoderAVFObjC::readSampleMetadata()
 
     for (size_t index = 0; index < static_cast<size_t>(sampleCount); ++index) {
         auto& sampleData = m_sampleData[index];
-        sampleData.duration = Seconds(CMTimeGetSeconds([cursor currentSampleDuration]));
+        sampleData.duration = Seconds(PAL::CMTimeGetSeconds([cursor currentSampleDuration]));
         sampleData.decodeTime = PAL::toMediaTime([cursor decodeTimeStamp]);
         sampleData.presentationTime = PAL::toMediaTime([cursor presentationTimeStamp]);
         auto request = adoptNS([allocAVSampleBufferRequestInstance() initWithStartCursor:cursor.get()]);
@@ -365,10 +381,12 @@ void ImageDecoderAVFObjC::readTrackMetadata()
 bool ImageDecoderAVFObjC::storeSampleBuffer(CMSampleBufferRef sampleBuffer)
 {
     auto pixelBuffer = m_decompressionSession->decodeSampleSync(sampleBuffer);
-    if (!pixelBuffer)
+    if (!pixelBuffer) {
+        LOG(Images, "ImageDecoderAVFObjC::storeSampleBuffer(%p) - could not decode sampleBuffer", this);
         return false;
+    }
 
-    auto presentationTime = PAL::toMediaTime(CMSampleBufferGetPresentationTimeStamp(sampleBuffer));
+    auto presentationTime = PAL::toMediaTime(PAL::CMSampleBufferGetPresentationTimeStamp(sampleBuffer));
     auto indexIter = m_presentationTimeToIndex.find(presentationTime);
 
     if (m_rotation && !m_rotation.value().isIdentity()) {
@@ -405,12 +423,15 @@ bool ImageDecoderAVFObjC::storeSampleBuffer(CMSampleBufferRef sampleBuffer)
     }
 
     CGImageRef rawImage = nullptr;
-    if (noErr != VTCreateCGImageFromCVPixelBuffer(pixelBuffer.get(), nullptr, &rawImage))
+    if (noErr != VTCreateCGImageFromCVPixelBuffer(pixelBuffer.get(), nullptr, &rawImage)) {
+        LOG(Images, "ImageDecoderAVFObjC::storeSampleBuffer(%p) - could not create CGImage from pixelBuffer", this);
         return false;
+    }
 
     ASSERT(indexIter->second < m_sampleData.size());
     auto& sampleData = m_sampleData[indexIter->second];
     sampleData.image = adoptCF(rawImage);
+    sampleData.sample = nullptr;
 
     auto alphaInfo = CGImageGetAlphaInfo(rawImage);
     sampleData.hasAlpha = (alphaInfo != kCGImageAlphaNone && alphaInfo != kCGImageAlphaNoneSkipLast && alphaInfo != kCGImageAlphaNoneSkipFirst);
@@ -497,7 +518,7 @@ bool ImageDecoderAVFObjC::frameIsCompleteAtIndex(size_t index) const
     if (!sampleData.sample)
         return false;
 
-    return CMSampleBufferDataIsReady(sampleData.sample.get());
+    return PAL::CMSampleBufferDataIsReady(sampleData.sample.get());
 }
 
 ImageOrientation ImageDecoderAVFObjC::frameOrientationAtIndex(size_t) const
@@ -550,7 +571,7 @@ NativeImagePtr ImageDecoderAVFObjC::createFrameImageAtIndex(size_t index, Subsam
     auto frameCursor = [m_track makeSampleCursorWithPresentationTimeStamp:PAL::toCMTime(sampleData.presentationTime)];
     if ([frameCursor comparePositionInDecodeOrderWithPositionOfCursor:m_cursor.get()] == NSOrderedAscending)  {
         // Rewind cursor to the last sync sample to begin decoding
-        m_cursor = [frameCursor copy];
+        m_cursor = adoptNS([frameCursor copy]);
         do {
             if ([m_cursor currentSampleSyncInfo].sampleIsFullSync)
                 break;
@@ -568,33 +589,35 @@ NativeImagePtr ImageDecoderAVFObjC::createFrameImageAtIndex(size_t index, Subsam
 
         auto presentationTime = PAL::toMediaTime(m_cursor.get().presentationTimeStamp);
         auto indexIter = m_presentationTimeToIndex.find(presentationTime);
-        advanceCursor();
 
         if (indexIter == m_presentationTimeToIndex.end())
-            return nullptr;
+            break;
 
         auto& cursorSampleData = m_sampleData[indexIter->second];
 
+        if (!cursorSampleData.sample) {
+            auto request = adoptNS([allocAVSampleBufferRequestInstance() initWithStartCursor:m_cursor.get()]);
+            cursorSampleData.sample = adoptCF([m_generator createSampleBufferForRequest:request.get()]);
+        }
+
         if (!cursorSampleData.sample)
-            return nullptr;
+            break;
 
         if (!storeSampleBuffer(cursorSampleData.sample.get()))
-            return nullptr;
+            break;
 
+        advanceCursor();
         if (sampleData.image)
             return sampleData.image;
     }
 
-    ASSERT_NOT_REACHED();
+    advanceCursor();
     return nullptr;
 }
 
 void ImageDecoderAVFObjC::setExpectedContentSize(long long expectedContentSize)
 {
-    if (m_expectedContentSize == expectedContentSize)
-        return;
-
-    m_loader.get().expectedContentSize = m_expectedContentSize;
+    m_loader.get().expectedContentSize = expectedContentSize;
 }
 
 void ImageDecoderAVFObjC::setData(SharedBuffer& data, bool allDataReceived)

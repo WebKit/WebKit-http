@@ -292,11 +292,11 @@
 #include "WebGPURenderingContext.h"
 #endif
 
+
+namespace WebCore {
 using namespace PAL;
 using namespace WTF;
 using namespace Unicode;
-
-namespace WebCore {
 
 using namespace HTMLNames;
 
@@ -981,8 +981,8 @@ ExceptionOr<Ref<Node>> Document::adoptNode(Node& source)
         auto result = source.remove();
         if (result.hasException())
             return result.releaseException();
-        ASSERT_WITH_SECURITY_IMPLICATION(!source.isConnected());
-        ASSERT_WITH_SECURITY_IMPLICATION(!source.parentNode());
+        RELEASE_ASSERT(!source.isConnected());
+        RELEASE_ASSERT(!source.parentNode());
     }
 
     source.setTreeScopeRecursively(*this);
@@ -1871,7 +1871,7 @@ void Document::updateTextRenderer(Text& text, unsigned offsetOfReplacedText, uns
     SetForScope<bool> inRenderTreeUpdate(m_inRenderTreeUpdate, true);
 
     auto textUpdate = std::make_unique<Style::Update>(*this);
-    textUpdate->addText(text, { offsetOfReplacedText, lengthOfReplacedText });
+    textUpdate->addText(text, { offsetOfReplacedText, lengthOfReplacedText, std::nullopt });
 
     RenderTreeUpdater renderTreeUpdater(*this);
     renderTreeUpdater.commit(WTFMove(textUpdate));
@@ -2068,7 +2068,7 @@ bool Document::updateLayoutIfDimensionsOutOfDate(Element& element, DimensionsChe
                 break;
             }
             
-            if (currRenderer == frameView->layoutRoot())
+            if (currRenderer == frameView->subtreeLayoutRoot())
                 break;
         }
     }
@@ -2209,13 +2209,13 @@ void Document::didBecomeCurrentDocumentInFrame()
 void Document::frameDestroyed()
 {
     // detachFromFrame() must be called before destroying the Frame.
-    ASSERT_WITH_SECURITY_IMPLICATION(!m_frame);
+    RELEASE_ASSERT(!m_frame);
     FrameDestructionObserver::frameDestroyed();
 }
 
 void Document::attachToCachedFrame(CachedFrameBase& cachedFrame)
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(cachedFrame.document() == this);
+    RELEASE_ASSERT(cachedFrame.document() == this);
     ASSERT(cachedFrame.view());
     ASSERT(m_pageCacheState == Document::InPageCache);
     observeFrame(&cachedFrame.view()->frame());
@@ -2224,7 +2224,7 @@ void Document::attachToCachedFrame(CachedFrameBase& cachedFrame)
 void Document::detachFromCachedFrame(CachedFrameBase& cachedFrame)
 {
     ASSERT_UNUSED(cachedFrame, cachedFrame.view());
-    ASSERT_WITH_SECURITY_IMPLICATION(cachedFrame.document() == this);
+    RELEASE_ASSERT(cachedFrame.document() == this);
     ASSERT(m_frame == &cachedFrame.view()->frame());
     ASSERT(m_pageCacheState == Document::InPageCache);
     detachFromFrame();
@@ -2358,7 +2358,7 @@ void Document::prepareForDestruction()
     // Note that m_pageCacheState can be Document::AboutToEnterPageCache if our frame
     // was removed in an onpagehide event handler fired when the top-level frame is
     // about to enter the page cache.
-    ASSERT_WITH_SECURITY_IMPLICATION(m_pageCacheState != Document::InPageCache);
+    RELEASE_ASSERT(m_pageCacheState != Document::InPageCache);
 }
 
 void Document::removeAllEventListeners()
@@ -4037,9 +4037,7 @@ void Document::detachNodeIterator(NodeIterator* ni)
 
 void Document::moveNodeIteratorsToNewDocument(Node& node, Document& newDocument)
 {
-    Vector<NodeIterator*> nodeIterators;
-    copyToVector(m_nodeIterators, nodeIterators);
-    for (auto* it : nodeIterators) {
+    for (auto* it : copyToVector(m_nodeIterators)) {
         if (&it->root() == &node) {
             detachNodeIterator(it);
             newDocument.attachNodeIterator(it);
@@ -4232,7 +4230,7 @@ EventListener* Document::getWindowAttributeEventListener(const AtomicString& eve
 
 void Document::dispatchWindowEvent(Event& event, EventTarget* target)
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::isEventAllowedInMainThread());
+    RELEASE_ASSERT(NoEventDispatchAssertion::isEventAllowedInMainThread());
     if (!m_domWindow)
         return;
     m_domWindow->dispatchEvent(event, target);
@@ -4240,7 +4238,7 @@ void Document::dispatchWindowEvent(Event& event, EventTarget* target)
 
 void Document::dispatchWindowLoadEvent()
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::isEventAllowedInMainThread());
+    RELEASE_ASSERT(NoEventDispatchAssertion::isEventAllowedInMainThread());
     if (!m_domWindow)
         return;
     m_domWindow->dispatchLoadEvent();
@@ -4827,9 +4825,7 @@ void Document::resume(ActiveDOMObject::ReasonForSuspension reason)
     if (!m_isSuspended)
         return;
 
-    Vector<Element*> elements;
-    copyToVector(m_documentSuspensionCallbackElements, elements);
-    for (auto* element : elements)
+    for (auto* element : copyToVector(m_documentSuspensionCallbackElements))
         element->resumeFromDocumentSuspension();
 
     if (renderView())
@@ -5304,8 +5300,11 @@ bool Document::isTelephoneNumberParsingAllowed() const
 
 #endif
 
-String Document::uniqueIdentifier()
+String Document::originIdentifierForPasteboard()
 {
+    auto origin = securityOrigin().toString();
+    if (origin != "null")
+        return origin;
     if (!m_uniqueIdentifier)
         m_uniqueIdentifier = "null:" + createCanonicalUUIDString();
     return m_uniqueIdentifier;
@@ -6869,10 +6868,7 @@ void Document::didAssociateFormControlsTimerFired()
     if (!frame() || !frame()->page())
         return;
 
-    Vector<RefPtr<Element>> associatedFormControls;
-    copyToVector(m_associatedFormControls, associatedFormControls);
-
-    frame()->page()->chrome().client().didAssociateFormControls(associatedFormControls);
+    frame()->page()->chrome().client().didAssociateFormControls(copyToVector(m_associatedFormControls));
     m_associatedFormControls.clear();
 }
 
@@ -7092,7 +7088,7 @@ void Document::applyQuickLookSandbox()
     setSecurityOriginPolicy(SecurityOriginPolicy::create(WTFMove(securityOrigin)));
 
     static NeverDestroyed<String> quickLookCSP = makeString("default-src ", QLPreviewProtocol(), ": 'unsafe-inline'; base-uri 'none'; sandbox allow-same-origin allow-scripts");
-    ASSERT_WITH_SECURITY_IMPLICATION(contentSecurityPolicy());
+    RELEASE_ASSERT(contentSecurityPolicy());
     // The sandbox directive is only allowed if the policy is from an HTTP header.
     contentSecurityPolicy()->didReceiveHeader(quickLookCSP, ContentSecurityPolicyHeaderType::Enforce, ContentSecurityPolicy::PolicyFrom::HTTPHeader);
 

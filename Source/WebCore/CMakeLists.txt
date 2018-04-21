@@ -46,7 +46,6 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/websockets"
     "${WEBCORE_DIR}/Modules/webvr"
     "${WEBCORE_DIR}/accessibility"
-    "${WEBCORE_DIR}/animation"
     "${WEBCORE_DIR}/bindings"
     "${WEBCORE_DIR}/bindings/js"
     "${WEBCORE_DIR}/bridge"
@@ -149,7 +148,6 @@ SET(WebCore_LOCAL_INCLUDE_DIRECTORIES
 )
 
 set(WebCore_IDL_INCLUDES
-    animation
     css
     dom
     fileapi
@@ -421,14 +419,6 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/webvr/VRLayerInit.idl
     Modules/webvr/VRPose.idl
     Modules/webvr/VRStageParameters.idl
-
-    animation/Animatable.idl
-    animation/AnimationEffect.idl
-    animation/AnimationTimeline.idl
-    animation/DocumentAnimation.idl
-    animation/DocumentTimeline.idl
-    animation/KeyframeEffect.idl
-    animation/WebAnimation.idl
 
     crypto/CryptoAlgorithmParameters.idl
     crypto/CryptoKey.idl
@@ -803,6 +793,9 @@ set(WebCore_NON_SVG_IDL_FILES
     workers/WorkerLocation.idl
     workers/WorkerType.idl
 
+    workers/service/ExtendableEvent.idl
+    workers/service/ExtendableEventInit.idl
+    workers/service/FetchEvent.idl
     workers/service/ServiceWorker.idl
     workers/service/ServiceWorkerContainer.idl
     workers/service/ServiceWorkerGlobalScope.idl
@@ -1268,13 +1261,6 @@ set(WebCore_SOURCES
     accessibility/AccessibilityTree.cpp
     accessibility/AccessibilityTreeItem.cpp
 
-    animation/AnimationEffect.cpp
-    animation/AnimationTimeline.cpp
-    animation/DocumentAnimation.cpp
-    animation/DocumentTimeline.cpp
-    animation/KeyframeEffect.cpp
-    animation/WebAnimation.cpp
-
     bindings/js/CachedModuleScriptLoader.cpp
     bindings/js/CachedScriptFetcher.cpp
     bindings/js/CallTracer.cpp
@@ -1282,7 +1268,6 @@ set(WebCore_SOURCES
     bindings/js/DOMWrapperWorld.cpp
     bindings/js/GCController.cpp
     bindings/js/IDBBindingUtilities.cpp
-    bindings/js/JSAnimationTimelineCustom.cpp
     bindings/js/JSAttrCustom.cpp
     bindings/js/JSAudioTrackCustom.cpp
     bindings/js/JSAudioTrackListCustom.cpp
@@ -1312,6 +1297,7 @@ set(WebCore_SOURCES
     bindings/js/JSDOMGlobalObjectTask.cpp
     bindings/js/JSDOMGuardedObject.cpp
     bindings/js/JSDOMMapLike.cpp
+    bindings/js/JSDOMPromise.cpp
     bindings/js/JSDOMPromiseDeferred.cpp
     bindings/js/JSDOMWindowBase.cpp
     bindings/js/JSDOMWindowCustom.cpp
@@ -2268,7 +2254,7 @@ set(WebCore_SOURCES
     page/SecurityOrigin.cpp
     page/SecurityOriginData.cpp
     page/SecurityPolicy.cpp
-    page/Settings.cpp
+    page/SettingsBase.cpp
     page/SocketProvider.cpp
     page/SpatialNavigation.cpp
     page/SuspendableTimer.cpp
@@ -2563,9 +2549,13 @@ set(WebCore_SOURCES
     platform/mediastream/RealtimeMediaSourceSupportedConstraints.cpp
     platform/mediastream/RTCIceCandidateDescriptor.cpp
     platform/mediastream/RTCSessionDescriptionDescriptor.cpp
+    platform/mediastream/RealtimeIncomingAudioSource.cpp
+    platform/mediastream/RealtimeIncomingVideoSource.cpp
     platform/mediastream/RealtimeMediaSource.cpp
     platform/mediastream/RealtimeMediaSourceCenter.cpp
     platform/mediastream/RealtimeMediaSourceSettings.cpp
+    platform/mediastream/RealtimeOutgoingAudioSource.cpp
+    platform/mediastream/RealtimeOutgoingVideoSource.cpp
 
     platform/mediastream/libwebrtc/LibWebRTCProvider.cpp
 
@@ -3095,6 +3085,8 @@ set(WebCore_SOURCES
     workers/WorkerScriptLoader.cpp
     workers/WorkerThread.cpp
 
+    workers/service/ExtendableEvent.cpp
+    workers/service/FetchEvent.cpp
     workers/service/ServiceWorker.cpp
     workers/service/ServiceWorkerContainer.cpp
     workers/service/ServiceWorkerGlobalScope.cpp
@@ -4017,6 +4009,8 @@ list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/EventTargetIn
 
 GENERATE_SETTINGS_MACROS(${WEBCORE_DIR}/page/Settings.in SettingsMacros.h)
 list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/SettingsMacros.h)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/Settings.h)
+list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/Settings.cpp)
 list(APPEND WebCoreTestSupport_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/InternalSettingsGenerated.cpp)
 
 

@@ -378,6 +378,8 @@ fast/events/keyboardevent-key.html [ Skip ]
 fast/events/keyboardevent-code.html [ Skip ]
 http/tests/navigation/keyboard-events-during-provisional-navigation.html [ Skip ]
 http/tests/navigation/keyboard-events-during-provisional-subframe-navigation.html [ Skip ]
+http/tests/resourceLoadStatistics/prevalent-resource-handled-keydown.html [ Skip ]
+http/tests/resourceLoadStatistics/prevalent-resource-unhandled-keydown.html [ Skip ]
 media/audio-dealloc-crash.html [ Skip ]
 media/restricted-audio-playback-with-document-gesture.html [ Skip ]
 media/restricted-audio-playback-with-multiple-settimeouts.html [ Skip ]
@@ -2780,6 +2782,9 @@ fast/canvas/webgl/texImage2D-video-flipY-false.html [ Skip ]
 fast/canvas/webgl/texImage2D-video-flipY-true.html [ Skip ]
 
 webkit.org/b/174120 http/tests/loading/resourceLoadStatistics/user-interaction-in-cross-origin-sub-frame.html [ Skip ]
+# Skipped in WK2 expectations because cookie partitioning is only available in macOS High Sierra and iOS 11.
+http/tests/resourceLoadStatistics/add-partitioning-to-redirect.html [ Pass ]
+http/tests/resourceLoadStatistics/remove-partitioning-from-redirect.html [ Pass ]
 
 webkit.org/b/175273 imported/w3c/web-platform-tests/html/browsers/windows/noreferrer-window-name.html [ Failure ]
 
@@ -2893,9 +2898,6 @@ imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-idl.html [ Failure ]
 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-setLocalDescription.html [ Failure ]
 imported/w3c/web-platform-tests/webrtc/getstats.html [ Failure ]
 imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-idl.html [ Failure ]
-webrtc/video-mute.html [ Failure ]
-webrtc/video-replace-track.html [ Failure ]
-webrtc/video-rotation.html [ Failure ]
 
 # <rdar://problem/34209038>
 webgl/1.0.2/conformance/ogles/GL/log/log_001_to_008.html [ Skip ]
@@ -2938,8 +2940,6 @@ webkit.org/b/177395 fast/mediastream/RTCPeerConnection-overloaded-operations.htm
 
 webkit.org/b/177401 webrtc/captureCanvas-webrtc.html [ Pass Timeout Failure ]
 
-webkit.org/b/177438 http/tests/cache-storage/cache-representation.https.html [ Pass Failure ]
-
 webkit.org/b/177323 imported/w3c/web-platform-tests/fetch/security/embedded-credentials.tentative.sub.html [ Pass Failure ]
 
 webkit.org/b/177445 fast/loader/form-submission-after-beforeunload-cancel.html [ Pass Timeout ]
@@ -2947,3 +2947,8 @@ webkit.org/b/177445 fast/loader/form-submission-after-beforeunload-cancel.html [
 webkit.org/b/177397 compositing/masks/compositing-clip-path-change-no-repaint.html [ Pass Failure ]
 
 webkit.org/b/177617 http/tests/storageAccess/request-storage-access-top-frame.html [ Pass Timeout ]
+
+webkit.org/b/177547 imported/w3c/web-platform-tests/fetch/security/dangling-markup-mitigation-data-url.tentative.sub.html [ Pass Failure ]
+
+# macOS only test
+fast/canvas/webgl/large-drawing-buffer-resize.html [ Skip ]
