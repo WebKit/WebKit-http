@@ -57,6 +57,7 @@ VPATH = \
     $(WebCore)/Modules/webdriver \
     $(WebCore)/Modules/websockets \
     $(WebCore)/Modules/webvr \
+    $(WebCore)/animation \
     $(WebCore)/bindings/js \
     $(WebCore)/crypto \
     $(WebCore)/crypto/keys \
@@ -107,6 +108,7 @@ JS_BINDING_IDLS = \
 	$(WebCore)/Modules/applepay/ApplePayShippingMethodUpdate.idl \
     $(WebCore)/Modules/applepay/ApplePayValidateMerchantEvent.idl \
     $(WebCore)/Modules/applepay/paymentrequest/ApplePayMerchantValidationEvent.idl \
+    $(WebCore)/Modules/applepay/paymentrequest/ApplePayPaymentMethodUpdateEvent.idl \
     $(WebCore)/Modules/applepay/paymentrequest/ApplePayRequest.idl \
     $(WebCore)/Modules/beacon/NavigatorBeacon.idl \
     $(WebCore)/Modules/cache/DOMWindowCaches.idl \
@@ -341,6 +343,12 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webvr/VRLayerInit.idl \
     $(WebCore)/Modules/webvr/VRPose.idl \
     $(WebCore)/Modules/webvr/VRStageParameters.idl \
+    $(WebCore)/animation/AnimationEffect.idl \
+    $(WebCore)/animation/AnimationEffectTiming.idl \
+    $(WebCore)/animation/AnimationTimeline.idl \
+    $(WebCore)/animation/DocumentTimeline.idl \
+    $(WebCore)/animation/KeyframeEffect.idl \
+    $(WebCore)/animation/WebAnimation.idl \
     $(WebCore)/crypto/CryptoAlgorithmParameters.idl \
     $(WebCore)/crypto/CryptoKey.idl \
     $(WebCore)/crypto/CryptoKeyPair.idl \
@@ -494,6 +502,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/dom/TreeWalker.idl \
     $(WebCore)/dom/UIEvent.idl \
     $(WebCore)/dom/UIEventInit.idl \
+    $(WebCore)/dom/VisibilityState.idl \
     $(WebCore)/dom/WebKitAnimationEvent.idl \
     $(WebCore)/dom/WebKitTransitionEvent.idl \
     $(WebCore)/dom/WheelEvent.idl \
@@ -903,6 +912,8 @@ JS_BINDING_IDLS = \
     $(WebCore)/testing/MockCDMFactory.idl \
     $(WebCore)/testing/MockContentFilterSettings.idl \
     $(WebCore)/testing/MockPageOverlay.idl \
+    $(WebCore)/testing/MockPaymentAddress.idl \
+    $(WebCore)/testing/MockPaymentCoordinator.idl \
     $(WebCore)/testing/TypeConversions.idl \
     $(WebCore)/workers/AbstractWorker.idl \
     $(WebCore)/workers/DedicatedWorkerGlobalScope.idl \
@@ -912,12 +923,17 @@ JS_BINDING_IDLS = \
     $(WebCore)/workers/WorkerType.idl \
     $(WebCore)/workers/service/ExtendableEvent.idl \
     $(WebCore)/workers/service/ExtendableEventInit.idl \
+    $(WebCore)/workers/service/ExtendableMessageEvent.idl \
     $(WebCore)/workers/service/FetchEvent.idl \
     $(WebCore)/workers/service/ServiceWorker.idl \
+    $(WebCore)/workers/service/ServiceWorkerClient.idl \
+    $(WebCore)/workers/service/ServiceWorkerClientType.idl \
+    $(WebCore)/workers/service/ServiceWorkerClients.idl \
     $(WebCore)/workers/service/ServiceWorkerContainer.idl \
     $(WebCore)/workers/service/ServiceWorkerGlobalScope.idl \
     $(WebCore)/workers/service/ServiceWorkerRegistration.idl \
     $(WebCore)/workers/service/ServiceWorkerUpdateViaCache.idl \
+    $(WebCore)/workers/service/ServiceWorkerWindowClient.idl \
     $(WebCore)/xml/DOMParser.idl \
     $(WebCore)/xml/XMLHttpRequest.idl \
     $(WebCore)/xml/XMLHttpRequestEventTarget.idl \
@@ -1364,19 +1380,15 @@ JSMathMLElementWrapperFactory%cpp JSMathMLElementWrapperFactory%h MathMLElementF
 # Internal Settings
 
 GENERATE_SETTINGS_SCRIPTS = \
-    $(WebCore)/Scripts/GenerateSettings/GenerateInternalSettingsHeaderFile.py \
-    $(WebCore)/Scripts/GenerateSettings/GenerateInternalSettingsIDLFile.py \
-    $(WebCore)/Scripts/GenerateSettings/GenerateInternalSettingsImplementationFile.py \
-    $(WebCore)/Scripts/GenerateSettings/GenerateSettings.py \
-    $(WebCore)/Scripts/GenerateSettings/GenerateSettingsHeaderFile.py \
-    $(WebCore)/Scripts/GenerateSettings/GenerateSettingsImplementationFile.py \
-    $(WebCore)/Scripts/GenerateSettings/GenerateSettingsMacrosHeader.py \
-    $(WebCore)/Scripts/GenerateSettings/Settings.py \
-    $(WebCore)/Scripts/GenerateSettings/__init__.py
+    $(WebCore)/Scripts/SettingsTemplates/InternalSettingsGenerated.cpp.erb \
+    $(WebCore)/Scripts/SettingsTemplates/InternalSettingsGenerated.idl.erb \
+    $(WebCore)/Scripts/SettingsTemplates/InternalSettingsGenerated.h.erb \
+    $(WebCore)/Scripts/SettingsTemplates/Settings.cpp.erb \
+    $(WebCore)/Scripts/SettingsTemplates/Settings.h.erb
 
-all : InternalSettingsGenerated.idl InternalSettingsGenerated.cpp InternalSettingsGenerated.h Settings.cpp Settings.h SettingsMacros.h
-InternalSettingsGenerated%idl InternalSettingsGenerated%cpp InternalSettingsGenerated%h Settings%cpp Settings%h SettingsMacros%h : $(WebCore)/Scripts/GenerateSettings.py $(GENERATE_SETTINGS_SCRIPTS) page/Settings.in
-	$(PYTHON) $< --input $(WebCore)/page/Settings.in
+all : InternalSettingsGenerated.idl InternalSettingsGenerated.cpp InternalSettingsGenerated.h Settings.cpp Settings.h
+InternalSettingsGenerated%idl InternalSettingsGenerated%cpp InternalSettingsGenerated%h Settings%cpp Settings%h : $(WebCore)/Scripts/GenerateSettings.rb $(GENERATE_SETTINGS_SCRIPTS) page/Settings.yaml
+	$(RUBY) $< --input $(WebCore)/page/Settings.yaml
 
 # --------
 
@@ -1395,6 +1407,7 @@ PREPROCESS_IDLS_SCRIPTS = \
 
 IDL_INCLUDES = \
     $(WebCore)/Modules \
+    $(WebCore)/animation \
     $(WebCore)/css \
     $(WebCore)/crypto \
     $(WebCore)/dom \

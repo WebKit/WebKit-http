@@ -99,8 +99,6 @@ WI.CanvasManager = class CanvasManager extends WI.Object
         let canvas = WI.Canvas.fromPayload(canvasPayload);
         this._canvasIdentifierMap.set(canvas.identifier, canvas);
 
-        canvas.frame.canvasCollection.add(canvas);
-
         this.dispatchEventToListeners(WI.CanvasManager.Event.CanvasWasAdded, {canvas});
     }
 
@@ -117,8 +115,6 @@ WI.CanvasManager = class CanvasManager extends WI.Object
             this._shaderProgramIdentifierMap.delete(program.identifier);
             this._dispatchShaderProgramRemoved(program);
         }
-
-        canvas.frame.canvasCollection.remove(canvas);
 
         this.dispatchEventToListeners(WI.CanvasManager.Event.CanvasWasRemoved, {canvas});
     }
@@ -158,10 +154,12 @@ WI.CanvasManager = class CanvasManager extends WI.Object
         if (!canvas)
             return;
 
-        let recording = recordingPayload ? WI.Recording.fromPayload(recordingPayload) : null
+        let recording = recordingPayload ? WI.Recording.fromPayload(recordingPayload) : null;
         if (recording) {
             recording.source = canvas;
             recording.createDisplayName();
+
+            canvas.recordingCollection.add(recording);
         }
 
         this.dispatchEventToListeners(WI.CanvasManager.Event.RecordingStopped, {canvas, recording});

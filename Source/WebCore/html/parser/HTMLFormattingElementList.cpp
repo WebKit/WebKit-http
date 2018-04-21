@@ -37,13 +37,9 @@ namespace WebCore {
 // Noah's Ark of Formatting Elements can fit three of each element.
 static const size_t kNoahsArkCapacity = 3;
 
-HTMLFormattingElementList::HTMLFormattingElementList()
-{
-}
+HTMLFormattingElementList::HTMLFormattingElementList() = default;
 
-HTMLFormattingElementList::~HTMLFormattingElementList()
-{
-}
+HTMLFormattingElementList::~HTMLFormattingElementList() = default;
 
 Element* HTMLFormattingElementList::closestElementInScopeWithName(const AtomicString& targetName)
 {
@@ -143,13 +139,13 @@ void HTMLFormattingElementList::tryToEnsureNoahsArkConditionQuickly(HTMLStackIte
             break;
 
         // Quickly reject obviously non-matching candidates.
-        HTMLStackItem* candidate = entry.stackItem();
+        RefPtr<HTMLStackItem> candidate = entry.stackItem();
         if (newItem.localName() != candidate->localName() || newItem.namespaceURI() != candidate->namespaceURI())
             continue;
         if (candidate->attributes().size() != newItemAttributeCount)
             continue;
 
-        candidates.append(candidate);
+        candidates.append(candidate.get());
     }
 
     if (candidates.size() < kNoahsArkCapacity)

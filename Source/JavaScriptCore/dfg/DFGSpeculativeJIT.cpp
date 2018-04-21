@@ -2137,14 +2137,11 @@ void SpeculativeJIT::compileGetByValOnString(Node* node)
             // on a stringPrototypeChainIsSane() guaranteeing that the prototypes have no negative
             // indexed properties either.
             // https://bugs.webkit.org/show_bug.cgi?id=144668
-            m_jit.graph().watchpoints().addLazily(globalObject->stringPrototype()->structure()->transitionWatchpointSet());
-            m_jit.graph().watchpoints().addLazily(globalObject->objectPrototype()->structure()->transitionWatchpointSet());
+            m_jit.graph().registerAndWatchStructureTransition(globalObject->stringPrototype()->structure());
+            m_jit.graph().registerAndWatchStructureTransition(globalObject->objectPrototype()->structure());
             prototypeChainIsSane = globalObject->stringPrototypeChainIsSane();
         }
         if (prototypeChainIsSane) {
-            m_jit.graph().watchpoints().addLazily(globalObject->stringPrototype()->structure()->transitionWatchpointSet());
-            m_jit.graph().watchpoints().addLazily(globalObject->objectPrototype()->structure()->transitionWatchpointSet());
-            
 #if USE(JSVALUE64)
             addSlowPathGenerator(std::make_unique<SaneStringGetByValSlowPathGenerator>(
                 outOfBounds, this, JSValueRegs(scratchReg), baseReg, propertyReg));
@@ -3252,17 +3249,16 @@ void SpeculativeJIT::compileInstanceOfForObject(Node*, GPRReg valueReg, GPRReg p
     m_jit.emitLoadStructure(*m_jit.vm(), scratchReg, scratch3Reg, scratch2Reg);
 #if USE(JSVALUE64)
     m_jit.load64(MacroAssembler::Address(scratch3Reg, Structure::prototypeOffset()), scratch3Reg);
-    auto isMonoProto = m_jit.branchIfNotInt32(JSValueRegs(scratch3Reg));
-    m_jit.zeroExtend32ToPtr(scratch3Reg, scratch3Reg);
-    m_jit.load64(JITCompiler::BaseIndex(scratchReg, scratch3Reg, JITCompiler::TimesEight, JSObject::offsetOfInlineStorage()), scratch3Reg);
-    isMonoProto.link(&m_jit);
+    auto hasMonoProto = m_jit.branchTest64(JITCompiler::NonZero, scratch3Reg);
+    m_jit.load64(JITCompiler::Address(scratchReg, offsetRelativeToBase(knownPolyProtoOffset)), scratch3Reg);
+    hasMonoProto.link(&m_jit);
     m_jit.move(scratch3Reg, scratchReg);
 #else
     m_jit.load32(MacroAssembler::Address(scratch3Reg, Structure::prototypeOffset() + TagOffset), scratch2Reg);
     m_jit.load32(MacroAssembler::Address(scratch3Reg, Structure::prototypeOffset() + PayloadOffset), scratch3Reg);
-    auto isMonoProto = m_jit.branch32(CCallHelpers::NotEqual, scratch2Reg, TrustedImm32(JSValue::Int32Tag));
-    m_jit.load32(JITCompiler::BaseIndex(scratchReg, scratch3Reg, JITCompiler::TimesEight, JSObject::offsetOfInlineStorage() + PayloadOffset), scratch3Reg);
-    isMonoProto.link(&m_jit);
+    auto hasMonoProto = m_jit.branch32(CCallHelpers::NotEqual, scratch2Reg, TrustedImm32(JSValue::EmptyValueTag));
+    m_jit.load32(JITCompiler::Address(scratchReg, offsetRelativeToBase(knownPolyProtoOffset) + PayloadOffset), scratch3Reg);
+    hasMonoProto.link(&m_jit);
     m_jit.move(scratch3Reg, scratchReg);
 #endif
 
@@ -9186,13 +9182,23 @@ void SpeculativeJIT::speculateObject(Edge edge)
     speculateObject(edge, operand.gpr());
 }
 
+void SpeculativeJIT::speculateFunction(Edge edge, GPRReg cell)
+{
+    speculateCellType(edge, cell, SpecFunction, JSFunctionType);
+}
+
 void SpeculativeJIT::speculateFunction(Edge edge)
 {
     if (!needsTypeCheck(edge, SpecFunction))
         return;
     
     SpeculateCellOperand operand(this, edge);
-    speculateCellType(edge, operand.gpr(), SpecFunction, JSFunctionType);
+    speculateFunction(edge, operand.gpr());
+}
+
+void SpeculativeJIT::speculateFinalObject(Edge edge, GPRReg cell)
+{
+    speculateCellType(edge, cell, SpecFinalObject, FinalObjectType);
 }
 
 void SpeculativeJIT::speculateFinalObject(Edge edge)
@@ -9201,7 +9207,7 @@ void SpeculativeJIT::speculateFinalObject(Edge edge)
         return;
     
     SpeculateCellOperand operand(this, edge);
-    speculateCellType(edge, operand.gpr(), SpecFinalObject, FinalObjectType);
+    speculateFinalObject(edge, operand.gpr());
 }
 
 void SpeculativeJIT::speculateRegExpObject(Edge edge, GPRReg cell)
@@ -10765,6 +10771,121 @@ void SpeculativeJIT::compileWeakMapGet(Node* node)
     // No exception check here since operationWeakMapGet never throws an exception.
 
     jsValueResult(resultRegs, node);
+}
+
+void SpeculativeJIT::compileGetPrototypeOf(Node* node)
+{
+    switch (node->child1().useKind()) {
+    case ArrayUse:
+    case FunctionUse:
+    case FinalObjectUse: {
+        SpeculateCellOperand object(this, node->child1());
+        GPRTemporary temp(this);
+        GPRTemporary temp2(this);
+
+        GPRReg objectGPR = object.gpr();
+        GPRReg tempGPR = temp.gpr();
+        GPRReg temp2GPR = temp2.gpr();
+
+        switch (node->child1().useKind()) {
+        case ArrayUse:
+            speculateArray(node->child1(), objectGPR);
+            break;
+        case FunctionUse:
+            speculateFunction(node->child1(), objectGPR);
+            break;
+        case FinalObjectUse:
+            speculateFinalObject(node->child1(), objectGPR);
+            break;
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+            break;
+        }
+
+        m_jit.emitLoadStructure(*m_jit.vm(), objectGPR, tempGPR, temp2GPR);
+
+        AbstractValue& value = m_state.forNode(node->child1());
+        if ((value.m_type && !(value.m_type & ~SpecObject)) && value.m_structure.isFinite()) {
+            bool hasPolyProto = false;
+            bool hasMonoProto = false;
+            value.m_structure.forEach([&] (RegisteredStructure structure) {
+                if (structure->hasPolyProto())
+                    hasPolyProto = true;
+                else
+                    hasMonoProto = true;
+            });
+
+            if (hasMonoProto && !hasPolyProto) {
+#if USE(JSVALUE64)
+                m_jit.load64(MacroAssembler::Address(tempGPR, Structure::prototypeOffset()), tempGPR);
+                jsValueResult(tempGPR, node);
+#else
+                m_jit.load32(MacroAssembler::Address(tempGPR, Structure::prototypeOffset() + TagOffset), temp2GPR);
+                m_jit.load32(MacroAssembler::Address(tempGPR, Structure::prototypeOffset() + PayloadOffset), tempGPR);
+                jsValueResult(temp2GPR, tempGPR, node);
+#endif
+                return;
+            }
+
+            if (hasPolyProto && !hasMonoProto) {
+#if USE(JSVALUE64)
+                m_jit.load64(JITCompiler::Address(objectGPR, offsetRelativeToBase(knownPolyProtoOffset)), tempGPR);
+                jsValueResult(tempGPR, node);
+#else
+                m_jit.load32(JITCompiler::Address(objectGPR, offsetRelativeToBase(knownPolyProtoOffset) + TagOffset), temp2GPR);
+                m_jit.load32(JITCompiler::Address(objectGPR, offsetRelativeToBase(knownPolyProtoOffset) + PayloadOffset), tempGPR);
+                jsValueResult(temp2GPR, tempGPR, node);
+#endif
+                return;
+            }
+        }
+
+#if USE(JSVALUE64)
+        m_jit.load64(MacroAssembler::Address(tempGPR, Structure::prototypeOffset()), tempGPR);
+        auto hasMonoProto = m_jit.branchTest64(JITCompiler::NonZero, tempGPR);
+        m_jit.load64(JITCompiler::Address(objectGPR, offsetRelativeToBase(knownPolyProtoOffset)), tempGPR);
+        hasMonoProto.link(&m_jit);
+        jsValueResult(tempGPR, node);
+#else
+        m_jit.load32(MacroAssembler::Address(tempGPR, Structure::prototypeOffset() + TagOffset), temp2GPR);
+        m_jit.load32(MacroAssembler::Address(tempGPR, Structure::prototypeOffset() + PayloadOffset), tempGPR);
+        auto hasMonoProto = m_jit.branch32(CCallHelpers::NotEqual, temp2GPR, TrustedImm32(JSValue::EmptyValueTag));
+        m_jit.load32(JITCompiler::Address(objectGPR, offsetRelativeToBase(knownPolyProtoOffset) + TagOffset), temp2GPR);
+        m_jit.load32(JITCompiler::Address(objectGPR, offsetRelativeToBase(knownPolyProtoOffset) + PayloadOffset), tempGPR);
+        hasMonoProto.link(&m_jit);
+        jsValueResult(temp2GPR, tempGPR, node);
+#endif
+        return;
+    }
+    case ObjectUse: {
+        SpeculateCellOperand value(this, node->child1());
+        JSValueRegsTemporary result(this);
+
+        GPRReg valueGPR = value.gpr();
+        JSValueRegs resultRegs = result.regs();
+
+        speculateObject(node->child1(), valueGPR);
+
+        flushRegisters();
+        callOperation(operationGetPrototypeOfObject, resultRegs, valueGPR);
+        m_jit.exceptionCheck();
+        jsValueResult(resultRegs, node);
+        return;
+    }
+    default: {
+        JSValueOperand value(this, node->child1());
+        JSValueRegsTemporary result(this);
+
+        JSValueRegs valueRegs = value.jsValueRegs();
+        JSValueRegs resultRegs = result.regs();
+
+        flushRegisters();
+        callOperation(operationGetPrototypeOf, resultRegs, valueRegs);
+        m_jit.exceptionCheck();
+        jsValueResult(resultRegs, node);
+        return;
+    }
+    }
 }
 
 } } // namespace JSC::DFG

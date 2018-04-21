@@ -1431,7 +1431,7 @@ static inline FloatSize size(ImageBitmap& imageBitmap)
 
 static inline FloatSize size(HTMLVideoElement& video)
 {
-    auto* player = video.player();
+    auto player = video.player();
     if (!player)
         return { };
     return player->naturalSize();
@@ -1529,7 +1529,7 @@ ExceptionOr<void> CanvasRenderingContext2D::drawImage(HTMLImageElement& imageEle
     if (!cachedImage)
         return { };
 
-    Image* image = cachedImage->imageForRenderer(imageElement.renderer());
+    RefPtr<Image> image = cachedImage->imageForRenderer(imageElement.renderer());
     if (!image)
         return { };
 
@@ -1595,7 +1595,7 @@ ExceptionOr<void> CanvasRenderingContext2D::drawImage(HTMLCanvasElement& sourceC
 #if ENABLE(ACCELERATED_2D_CANVAS)
     // If we're drawing from one accelerated canvas 2d to another, avoid calling sourceCanvas.makeRenderingResultsAvailable()
     // as that will do a readback to software.
-    CanvasRenderingContext* sourceContext = sourceCanvas.renderingContext();
+    RefPtr<CanvasRenderingContext> sourceContext = sourceCanvas.renderingContext();
     // FIXME: Implement an accelerated path for drawing from a WebGL canvas to a 2d canvas when possible.
     if (!isAccelerated() || !sourceContext || !sourceContext->isAccelerated() || !sourceContext->is2d())
         sourceCanvas.makeRenderingResultsAvailable();
@@ -1669,10 +1669,47 @@ ExceptionOr<void> CanvasRenderingContext2D::drawImage(HTMLVideoElement& video, c
 
 #endif
 
-ExceptionOr<void> CanvasRenderingContext2D::drawImage(ImageBitmap&, const FloatRect&, const FloatRect&)
+ExceptionOr<void> CanvasRenderingContext2D::drawImage(ImageBitmap& imageBitmap, const FloatRect& srcRect, const FloatRect& dstRect)
 {
-    // FIXME: Implement.
-    return Exception { TypeError };
+    if (!imageBitmap.width() || !imageBitmap.height())
+        return Exception { InvalidStateError };
+
+    if (!srcRect.width() || !srcRect.height())
+        return Exception { IndexSizeError };
+
+    FloatRect srcBitmapRect = FloatRect(FloatPoint(), FloatSize(imageBitmap.width(), imageBitmap.height()));
+
+    if (!srcBitmapRect.contains(normalizeRect(srcRect)) || !dstRect.width() || !dstRect.height())
+        return { };
+
+    GraphicsContext* c = drawingContext();
+    if (!c)
+        return { };
+    if (!state().hasInvertibleTransform)
+        return { };
+
+    ImageBuffer* buffer = imageBitmap.buffer();
+    if (!buffer)
+        return { };
+
+    checkOrigin(&imageBitmap);
+
+    if (rectContainsCanvas(dstRect)) {
+        c->drawImageBuffer(*buffer, dstRect, srcRect, ImagePaintingOptions(state().globalComposite, state().globalBlend));
+        didDrawEntireCanvas();
+    } else if (isFullCanvasCompositeMode(state().globalComposite)) {
+        fullCanvasCompositedDrawImage(*buffer, dstRect, srcRect, state().globalComposite);
+        didDrawEntireCanvas();
+    } else if (state().globalComposite == CompositeCopy) {
+        clearCanvas();
+        c->drawImageBuffer(*buffer, dstRect, srcRect, ImagePaintingOptions(state().globalComposite, state().globalBlend));
+        didDrawEntireCanvas();
+    } else {
+        c->drawImageBuffer(*buffer, dstRect, srcRect, ImagePaintingOptions(state().globalComposite, state().globalBlend));
+        didDraw(dstRect);
+    }
+
+    return { };
 }
 
 void CanvasRenderingContext2D::drawImageFromRect(HTMLImageElement& imageElement, float sx, float sy, float sw, float sh, float dx, float dy, float dw, float dh, const String& compositeOperation)

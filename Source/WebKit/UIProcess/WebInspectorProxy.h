@@ -45,8 +45,7 @@ OBJC_CLASS NSURL;
 OBJC_CLASS NSView;
 OBJC_CLASS NSWindow;
 OBJC_CLASS WKWebInspectorProxyObjCAdapter;
-OBJC_CLASS WKWebInspectorWKWebView;
-OBJC_CLASS WKWebViewConfiguration;
+OBJC_CLASS WKInspectorViewController;
 #endif
 
 namespace WebCore {
@@ -92,10 +91,8 @@ public:
     void closeForCrash();
 
 #if PLATFORM(MAC) && WK_API_ENABLED
-    static RetainPtr<WKWebViewConfiguration> createFrontendConfiguration(WebPageProxy*, bool underTest);
     static RetainPtr<NSWindow> createFrontendWindow(NSRect savedWindowFrame);
 
-    void createInspectorWindow();
     void updateInspectorWindowTitle() const;
     void inspectedViewFrameDidChange(CGFloat = 0);
     void windowFrameDidChange();
@@ -105,7 +102,8 @@ public:
     void setInspectorWindowFrame(WKRect&);
     WKRect inspectorWindowFrame();
 
-    void closeTimerFired();
+    void closeFrontendPage();
+    void closeFrontendAfterInactivityTimerFired();
 
     void attachmentViewDidChange(NSView *oldView, NSView *newView);
 #endif
@@ -139,6 +137,8 @@ public:
     bool isElementSelectionActive() const { return m_elementSelectionActive; }
     void toggleElementSelection();
 
+    bool isUnderTest() const { return m_underTest; }
+
     // Provided by platform WebInspectorProxy implementations.
     static String inspectorPageURL();
     static String inspectorTestPageURL();
@@ -154,14 +154,16 @@ public:
 private:
     explicit WebInspectorProxy(WebPageProxy*);
 
-    void eagerlyCreateInspectorPage();
+    void createFrontendPage();
+    void closeFrontendPageAndWindow();
 
     // IPC::MessageReceiver
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
-    WebPageProxy* platformCreateInspectorPage();
-    void platformOpen();
-    void platformDidClose();
+    WebPageProxy* platformCreateFrontendPage();
+    void platformCreateFrontendWindow();
+    void platformCloseFrontendPageAndWindow();
+
     void platformDidCloseForCrash();
     void platformInvalidate();
     void platformBringToFront();
@@ -201,8 +203,6 @@ private:
     bool canAttach() const { return m_canAttach; }
     bool shouldOpenAttached();
 
-    bool isUnderTest() const { return m_underTest; }
-
     void open();
 
     unsigned inspectionLevel() const;
@@ -210,7 +210,6 @@ private:
     WebPreferences& inspectorPagePreferences() const;
 
 #if PLATFORM(GTK) || PLATFORM(WPE)
-    void createInspectorWindow();
     void updateInspectorWindowTitle() const;
 #endif
 
@@ -232,11 +231,11 @@ private:
     AttachmentSide m_attachmentSide {AttachmentSide::Bottom};
 
 #if PLATFORM(MAC) && WK_API_ENABLED
-    RetainPtr<WKWebInspectorWKWebView> m_inspectorView;
+    RetainPtr<WKInspectorViewController> m_inspectorViewController;
     RetainPtr<NSWindow> m_inspectorWindow;
-    RetainPtr<WKWebInspectorProxyObjCAdapter> m_inspectorProxyObjCAdapter;
+    RetainPtr<WKWebInspectorProxyObjCAdapter> m_objCAdapter;
     HashMap<String, RetainPtr<NSURL>> m_suggestedToActualURLMap;
-    RunLoop::Timer<WebInspectorProxy> m_closeTimer;
+    RunLoop::Timer<WebInspectorProxy> m_closeFrontendAfterInactivityTimer;
     String m_urlString;
 #elif PLATFORM(GTK)
     std::unique_ptr<WebInspectorProxyClient> m_client;

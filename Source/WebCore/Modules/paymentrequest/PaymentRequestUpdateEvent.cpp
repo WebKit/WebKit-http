@@ -28,14 +28,42 @@
 
 #if ENABLE(PAYMENT_REQUEST)
 
+#include "PaymentRequest.h"
+
 namespace WebCore {
 
-PaymentRequestUpdateEvent::~PaymentRequestUpdateEvent()
+PaymentRequestUpdateEvent::PaymentRequestUpdateEvent(const AtomicString& type, PaymentRequestUpdateEventInit&& eventInit)
+    : Event { type, WTFMove(eventInit), IsTrusted::No }
 {
 }
 
-void PaymentRequestUpdateEvent::updateWith(JSC::JSPromise*)
+PaymentRequestUpdateEvent::PaymentRequestUpdateEvent(const AtomicString& type, PaymentRequest& paymentRequest)
+    : Event { type, false, false }
+    , m_paymentRequest { &paymentRequest }
 {
+}
+
+PaymentRequestUpdateEvent::~PaymentRequestUpdateEvent() = default;
+
+ExceptionOr<void> PaymentRequestUpdateEvent::updateWith(Ref<DOMPromise>&& detailsPromise)
+{
+    if (!isTrusted())
+        return Exception { InvalidStateError };
+
+    if (m_waitForUpdate)
+        return Exception { InvalidStateError };
+
+    auto exception = m_paymentRequest->updateWith(*this, WTFMove(detailsPromise));
+    if (exception.hasException())
+        return exception.releaseException();
+
+    m_waitForUpdate = true;
+    return { };
+}
+
+EventInterface PaymentRequestUpdateEvent::eventInterface() const
+{
+    return PaymentRequestUpdateEventInterfaceType;
 }
 
 } // namespace WebCore

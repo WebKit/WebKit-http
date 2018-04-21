@@ -79,6 +79,7 @@
 #include <runtime/TypedArrayInlines.h>
 #include <runtime/TypedArrays.h>
 #include <wasm/js/JSWebAssemblyModule.h>
+#include <wasm/WasmModule.h>
 #include <wtf/HashTraits.h>
 #include <wtf/MainThread.h>
 #include <wtf/RunLoop.h>
@@ -1715,7 +1716,7 @@ public:
         return str;
     }
 
-    static DeserializationResult deserialize(ExecState* exec, JSGlobalObject* globalObject, Vector<RefPtr<MessagePort>>& messagePorts, ArrayBufferContentsArray* arrayBufferContentsArray, const Vector<uint8_t>& buffer, const Vector<String>& blobURLs, const Vector<String> blobFilePaths, ArrayBufferContentsArray* sharedBuffers
+    static DeserializationResult deserialize(ExecState* exec, JSGlobalObject* globalObject, const Vector<RefPtr<MessagePort>>& messagePorts, ArrayBufferContentsArray* arrayBufferContentsArray, const Vector<uint8_t>& buffer, const Vector<String>& blobURLs, const Vector<String> blobFilePaths, ArrayBufferContentsArray* sharedBuffers
 #if ENABLE(WEBASSEMBLY)
         , WasmModuleArray* wasmModules
 #endif
@@ -1772,7 +1773,7 @@ private:
         size_t m_index;
     };
 
-    CloneDeserializer(ExecState* exec, JSGlobalObject* globalObject, Vector<RefPtr<MessagePort>>& messagePorts, ArrayBufferContentsArray* arrayBufferContents,
+    CloneDeserializer(ExecState* exec, JSGlobalObject* globalObject, const Vector<RefPtr<MessagePort>>& messagePorts, ArrayBufferContentsArray* arrayBufferContents,
 #if ENABLE(WEBASSEMBLY)
         WasmModuleArray* wasmModules,
 #endif
@@ -1794,7 +1795,7 @@ private:
             m_version = 0xFFFFFFFF;
     }
 
-    CloneDeserializer(ExecState* exec, JSGlobalObject* globalObject, Vector<RefPtr<MessagePort>>& messagePorts, ArrayBufferContentsArray* arrayBufferContents, const Vector<uint8_t>& buffer, const Vector<String>& blobURLs, const Vector<String> blobFilePaths, ArrayBufferContentsArray* sharedBuffers
+    CloneDeserializer(ExecState* exec, JSGlobalObject* globalObject, const Vector<RefPtr<MessagePort>>& messagePorts, ArrayBufferContentsArray* arrayBufferContents, const Vector<uint8_t>& buffer, const Vector<String>& blobURLs, const Vector<String> blobFilePaths, ArrayBufferContentsArray* sharedBuffers
 #if ENABLE(WEBASSEMBLY)
         , WasmModuleArray* wasmModules
 #endif
@@ -2934,7 +2935,7 @@ private:
     const uint8_t* m_end;
     unsigned m_version;
     Vector<CachedString> m_constantPool;
-    Vector<RefPtr<MessagePort>>& m_messagePorts;
+    const Vector<RefPtr<MessagePort>>& m_messagePorts;
     ArrayBufferContentsArray* m_arrayBufferContents;
     Vector<RefPtr<JSC::ArrayBuffer>> m_arrayBuffers;
     Vector<String> m_blobURLs;
@@ -3143,9 +3144,7 @@ error:
     return std::make_pair(JSValue(), SerializationReturnCode::ValidationError);
 }
 
-SerializedScriptValue::~SerializedScriptValue()
-{
-}
+SerializedScriptValue::~SerializedScriptValue() = default;
 
 SerializedScriptValue::SerializedScriptValue(Vector<uint8_t>&& buffer)
     : m_data(WTFMove(buffer))
@@ -3359,18 +3358,17 @@ String SerializedScriptValue::toString()
 
 JSValue SerializedScriptValue::deserialize(ExecState& exec, JSGlobalObject* globalObject, SerializationErrorMode throwExceptions)
 {
-    Vector<RefPtr<MessagePort>> dummyMessagePorts;
-    return deserialize(exec, globalObject, dummyMessagePorts, throwExceptions);
+    return deserialize(exec, globalObject, { }, throwExceptions);
 }
 
-JSValue SerializedScriptValue::deserialize(ExecState& exec, JSGlobalObject* globalObject, Vector<RefPtr<MessagePort>>& messagePorts, SerializationErrorMode throwExceptions)
+JSValue SerializedScriptValue::deserialize(ExecState& exec, JSGlobalObject* globalObject, const Vector<RefPtr<MessagePort>>& messagePorts, SerializationErrorMode throwExceptions)
 {
     Vector<String> dummyBlobs;
     Vector<String> dummyPaths;
     return deserialize(exec, globalObject, messagePorts, dummyBlobs, dummyPaths, throwExceptions);
 }
 
-JSValue SerializedScriptValue::deserialize(ExecState& exec, JSGlobalObject* globalObject, Vector<RefPtr<MessagePort>>& messagePorts, const Vector<String>& blobURLs, const Vector<String>& blobFilePaths, SerializationErrorMode throwExceptions)
+JSValue SerializedScriptValue::deserialize(ExecState& exec, JSGlobalObject* globalObject, const Vector<RefPtr<MessagePort>>& messagePorts, const Vector<String>& blobURLs, const Vector<String>& blobFilePaths, SerializationErrorMode throwExceptions)
 {
     DeserializationResult result = CloneDeserializer::deserialize(&exec, globalObject, messagePorts, m_arrayBufferContentsArray.get(), m_data, blobURLs, blobFilePaths, m_sharedBufferContentsArray.get()
 #if ENABLE(WEBASSEMBLY)

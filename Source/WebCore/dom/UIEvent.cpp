@@ -53,13 +53,11 @@ UIEvent::UIEvent(const AtomicString& eventType, const UIEventInit& initializer, 
 {
 }
 
-UIEvent::~UIEvent()
-{
-}
+UIEvent::~UIEvent() = default;
 
 void UIEvent::initUIEvent(const AtomicString& typeArg, bool canBubbleArg, bool cancelableArg, DOMWindow* viewArg, int detailArg)
 {
-    if (dispatched())
+    if (isBeingDispatched())
         return;
 
     initEvent(typeArg, canBubbleArg, cancelableArg);

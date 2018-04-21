@@ -954,10 +954,10 @@ typedef NS_OPTIONS(NSUInteger, UIDragOperation)
 - (UIResponder *)firstResponder;
 @end
 
-#if __has_include(<UIKit/UIKeyboardLoginCredentialsSuggestion.h>)
-#import <UIKit/UIKeyboardLoginCredentialsSuggestion.h>
+#if __has_include(<UIKit/UITextAutofillSuggestion.h>)
+#import <UIKit/UITextAutofillSuggestion.h>
 #else
-@interface UIKeyboardLoginCredentialsSuggestion : UITextSuggestion
+@interface UITextAutofillSuggestion : UITextSuggestion
 @property (nonatomic, assign) NSString *username;
 @property (nonatomic, assign) NSString *password;
 @end
@@ -982,7 +982,6 @@ extern NSString * const UIKeyboardIsLocalUserInfoKey;
 extern UIApplication *UIApp;
 BOOL _UIApplicationIsExtension(void);
 void _UIApplicationLoadWebKit(void);
-BOOL _UIApplicationUsesLegacyUI(void);
 
 void UIImageDataWriteToSavedPhotosAlbum(NSData *imageData, id completionTarget, SEL completionSelector, void *contextInfo);
 

@@ -38,6 +38,7 @@
 #include "CreateLinkCommand.h"
 #include "DataTransfer.h"
 #include "DeleteSelectionCommand.h"
+#include "DeprecatedGlobalSettings.h"
 #include "DictationAlternative.h"
 #include "DictationCommand.h"
 #include "DocumentFragment.h"
@@ -82,6 +83,7 @@
 #include "ReplaceSelectionCommand.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
+#include "SimplifyMarkupCommand.h"
 #include "SpellChecker.h"
 #include "SpellingCorrectionCommand.h"
 #include "StaticPasteboard.h"
@@ -232,7 +234,7 @@ VisibleSelection Editor::selectionForCommand(Event* event)
     // If the target is a text control, and the current selection is outside of its shadow tree,
     // then use the saved selection for that text control.
     HTMLTextFormControlElement* textFormControlOfSelectionStart = enclosingTextFormControl(selection.start());
-    HTMLTextFormControlElement* textFromControlOfTarget = is<HTMLTextFormControlElement>(*event->target()->toNode()) ? downcast<HTMLTextFormControlElement>(event->target()->toNode()) : nullptr;
+    HTMLTextFormControlElement* textFromControlOfTarget = is<HTMLTextFormControlElement>(*event->target()->toNode()) ? downcast<HTMLTextFormControlElement>(event->target()->toNode().get()) : nullptr;
     if (textFromControlOfTarget && (selection.start().isNull() || textFromControlOfTarget != textFormControlOfSelectionStart)) {
         if (RefPtr<Range> range = textFromControlOfTarget->selection())
             return VisibleSelection(*range, DOWNSTREAM, selection.isDirectional());
@@ -351,7 +353,7 @@ static Ref<DataTransfer> createDataTransferForClipboardEvent(Document& document,
     case ClipboardEventKind::Cut:
         return DataTransfer::createForCopyAndPaste(document, DataTransfer::StoreMode::ReadWrite, std::make_unique<StaticPasteboard>());
     case ClipboardEventKind::PasteAsPlainText:
-        if (Settings::customPasteboardDataEnabled()) {
+        if (DeprecatedGlobalSettings::customPasteboardDataEnabled()) {
             auto plainTextType = ASCIILiteral("text/plain");
             auto plainText = Pasteboard::createForCopyAndPaste()->readString(plainTextType);
             auto pasteboard = std::make_unique<StaticPasteboard>();
@@ -455,6 +457,9 @@ bool Editor::canCopy() const
 
 bool Editor::canPaste() const
 {
+    if (m_frame.mainFrame().loader().shouldSuppressTextInputFromEditing())
+        return false;
+
     return canEdit();
 }
 
@@ -703,7 +708,7 @@ bool Editor::tryDHTMLCut()
 
 bool Editor::shouldInsertText(const String& text, Range* range, EditorInsertAction action) const
 {
-    if (m_frame.mainFrame().loader().shouldSuppressKeyboardInput() && action == EditorInsertAction::Typed)
+    if (m_frame.mainFrame().loader().shouldSuppressTextInputFromEditing() && action == EditorInsertAction::Typed)
         return false;
 
     return client() && client()->shouldInsertText(text, range, action);
@@ -1150,9 +1155,7 @@ Editor::Editor(Frame& frame)
 {
 }
 
-Editor::~Editor()
-{
-}
+Editor::~Editor() = default;
 
 void Editor::clear()
 {
@@ -1412,6 +1415,24 @@ void Editor::performDelete()
     // clear the "start new kill ring sequence" setting, because it was set to true
     // when the selection was updated by deleting the range
     setStartNewKillRingSequence(false);
+}
+
+void Editor::simplifyMarkup(Node* startNode, Node* endNode)
+{
+    if (!startNode)
+        return;
+    if (endNode) {
+        if (&startNode->document() != &endNode->document())
+            return;
+        // check if start node is before endNode
+        Node* node = startNode;
+        while (node && node != endNode)
+            node = NodeTraversal::next(*node);
+        if (!node)
+            return;
+    }
+    
+    SimplifyMarkupCommand::create(document(), startNode, endNode ? NodeTraversal::next(*endNode) : nullptr)->apply();
 }
 
 void Editor::copyURL(const URL& url, const String& title)

@@ -38,12 +38,12 @@ class ServiceWorkerJob;
 
 class WEBCORE_EXPORT ServiceWorkerProvider {
 public:
-    virtual ~ServiceWorkerProvider() { }
+    virtual ~ServiceWorkerProvider() = default;
 
     WEBCORE_EXPORT static ServiceWorkerProvider& singleton();
     WEBCORE_EXPORT static void setSharedProvider(ServiceWorkerProvider&);
 
-    virtual SWClientConnection& serviceWorkerConnectionForSession(const PAL::SessionID&) = 0;
+    virtual SWClientConnection& serviceWorkerConnectionForSession(PAL::SessionID) = 0;
 };
 
 } // namespace WebCore

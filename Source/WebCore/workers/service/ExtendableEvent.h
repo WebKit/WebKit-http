@@ -29,10 +29,11 @@
 
 #include "Event.h"
 #include "ExtendableEventInit.h"
-#include "JSDOMPromise.h"
 #include <wtf/WeakPtr.h>
 
 namespace WebCore {
+
+class DOMPromise;
 
 class ExtendableEvent : public Event {
 public:
@@ -41,14 +42,17 @@ public:
         return adoptRef(*new ExtendableEvent(type, initializer, isTrusted));
     }
 
+    ~ExtendableEvent();
+
     EventInterface eventInterface() const override { return ExtendableEventInterfaceType; }
 
-    ExceptionOr<void> waitUntil(JSC::ExecState&, JSC::JSValue);
+    ExceptionOr<void> waitUntil(Ref<DOMPromise>&&);
 
     WEBCORE_EXPORT void onFinishedWaitingForTesting(WTF::Function<void()>&&);
 
 protected:
     WEBCORE_EXPORT ExtendableEvent(const AtomicString&, const ExtendableEventInit&, IsTrusted);
+    ExtendableEvent(const AtomicString&, bool bubbles, bool cancelable);
 
     WeakPtr<ExtendableEvent> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(*this); }
 

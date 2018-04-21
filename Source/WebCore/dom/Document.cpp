@@ -615,6 +615,9 @@ Document::~Document()
 
     for (unsigned count : m_nodeListAndCollectionCounts)
         ASSERT_UNUSED(count, !count);
+
+    if (m_logger)
+        m_logger->removeObserver(*this);
 }
 
 void Document::removedLastRef()
@@ -1611,7 +1614,7 @@ void Document::visibilityStateChanged()
     notifyMediaCaptureOfVisibilityChanged();
 }
 
-auto Document::visibilityState() const -> VisibilityState
+VisibilityState Document::visibilityState() const
 {
     // The visibility of the document is inherited from the visibility of the
     // page. If there is no page associated with the document, we will assume
@@ -5365,6 +5368,7 @@ void Document::initSecurityContext()
     // loading URL with a fresh content security policy.
     setCookieURL(m_url);
     enforceSandboxFlags(m_frame->loader().effectiveSandboxFlags());
+    setReferrerPolicy(m_frame->loader().effectiveReferrerPolicy());
 
     if (shouldEnforceContentDispositionAttachmentSandbox())
         applyContentDispositionAttachmentSandbox();
@@ -7281,11 +7285,12 @@ void Document::setVlinkColor(const String& value)
         bodyElement->setAttributeWithoutSynchronization(vlinkAttr, value);
 }
 
-Logger& Document::logger() const
+Logger& Document::logger()
 {
     if (!m_logger) {
         m_logger = Logger::create(this);
         m_logger->setEnabled(this, sessionID().isAlwaysOnLoggingAllowed());
+        m_logger->addObserver(*this);
     }
 
     return *m_logger;
@@ -7370,6 +7375,73 @@ void Document::requestStorageAccess(Ref<DeferredPromise>&& passedPromise)
 void Document::setConsoleMessageListener(RefPtr<StringCallback>&& listener)
 {
     m_consoleMessageListener = listener;
+}
+
+DocumentTimeline& Document::timeline()
+{
+    if (!m_timeline)
+        m_timeline = DocumentTimeline::create();
+    return *m_timeline;
+}
+
+static MessageSource messageSourceForWTFLogChannel(const WTFLogChannel& channel)
+{
+    static const NeverDestroyed<String> mediaChannel = MAKE_STATIC_STRING_IMPL("media");
+    static const NeverDestroyed<String> webrtcChannel = MAKE_STATIC_STRING_IMPL("webrtc");
+
+    if (equalIgnoringASCIICase(mediaChannel, channel.name))
+        return MessageSource::Media;
+
+    if (equalIgnoringASCIICase(webrtcChannel, channel.name))
+        return MessageSource::WebRTC;
+
+    ASSERT_NOT_REACHED();
+    return MessageSource::Other;
+}
+
+static MessageLevel messageLevelFromWTFLogLevel(WTFLogLevel level)
+{
+    switch (level) {
+    case WTFLogLevelAlways:
+        return MessageLevel::Log;
+    case WTFLogLevelError:
+        return MessageLevel::Error;
+        break;
+    case WTFLogLevelWarning:
+        return MessageLevel::Warning;
+        break;
+    case WTFLogLevelInfo:
+        return MessageLevel::Info;
+        break;
+    case WTFLogLevelDebug:
+        return MessageLevel::Debug;
+        break;
+    }
+
+    ASSERT_NOT_REACHED();
+    return MessageLevel::Log;
+}
+
+void Document::didLogMessage(const WTFLogChannel& channel, WTFLogLevel level, const String& logMessage)
+{
+    if (!this->page())
+        return;
+
+    ASSERT(sessionID().isAlwaysOnLoggingAllowed());
+
+    auto messageSource = messageSourceForWTFLogChannel(channel);
+    auto messageLevel = messageLevelFromWTFLogLevel(level);
+
+    callOnMainThread([documentReference = m_weakFactory.createWeakPtr(*this), messageSource, messageLevel, logMessage]() mutable {
+        ASSERT(isMainThread());
+
+        Document* document = documentReference.get();
+        if (!document)
+            return;
+
+        auto message = std::make_unique<Inspector::ConsoleMessage>(messageSource, MessageType::Log, messageLevel, logMessage);
+        document->addConsoleMessage(WTFMove(message));
+    });
 }
 
 } // namespace WebCore

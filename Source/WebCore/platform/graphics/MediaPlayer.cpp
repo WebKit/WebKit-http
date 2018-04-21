@@ -29,13 +29,13 @@
 #include "MediaPlayer.h"
 
 #include "ContentType.h"
+#include "DeprecatedGlobalSettings.h"
 #include "Document.h"
 #include "IntRect.h"
 #include "Logging.h"
 #include "MIMETypeRegistry.h"
 #include "MediaPlayerPrivate.h"
 #include "PlatformTimeRanges.h"
-#include "Settings.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/CString.h>
 
@@ -238,7 +238,7 @@ static void buildMediaEnginesVector()
     ASSERT(mediaEngineVectorLock().isLocked());
 
 #if USE(AVFOUNDATION)
-    if (Settings::isAVFoundationEnabled()) {
+    if (DeprecatedGlobalSettings::isAVFoundationEnabled()) {
 
 #if PLATFORM(COCOA)
         MediaPlayerPrivateAVFoundationObjC::registerMediaEngine(addMediaEngine);
@@ -259,19 +259,19 @@ static void buildMediaEnginesVector()
 #endif // USE(AVFOUNDATION)
 
 #if PLATFORM(MAC) && USE(QTKIT)
-    if (Settings::isQTKitEnabled())
+    if (DeprecatedGlobalSettings::isQTKitEnabled())
         MediaPlayerPrivateQTKit::registerMediaEngine(addMediaEngine);
 #endif
 
 #if defined(PlatformMediaEngineClassName)
 #if USE(GSTREAMER)
-    if (Settings::isGStreamerEnabled())
+    if (DeprecatedGlobalSettings::isGStreamerEnabled())
 #endif
         PlatformMediaEngineClassName::registerMediaEngine(addMediaEngine);
 #endif
 
 #if ENABLE(VIDEO) && USE(GSTREAMER) && ENABLE(MEDIA_SOURCE) && ENABLE(VIDEO_TRACK)
-    if (Settings::isGStreamerEnabled())
+    if (DeprecatedGlobalSettings::isGStreamerEnabled())
         MediaPlayerPrivateGStreamerMSE::registerMediaEngine(addMediaEngine);
 #endif
 
@@ -960,6 +960,10 @@ void MediaPlayer::getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& t
 
 bool MediaPlayer::isAvailable()
 {
+#if PLATFORM(IOS)
+    if (DeprecatedGlobalSettings::isAVFoundationEnabled())
+        return true;
+#endif
     return !installedMediaEngines().isEmpty();
 }
 

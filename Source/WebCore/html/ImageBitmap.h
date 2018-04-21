@@ -48,8 +48,10 @@ class ImageBitmap : public ScriptWrappable, public RefCounted<ImageBitmap> {
 public:
     using Source = Variant<
         RefPtr<HTMLImageElement>,
+#if ENABLE(VIDEO)
+        RefPtr<HTMLVideoElement>,
+#endif
         RefPtr<HTMLCanvasElement>,
-        RefPtr<HTMLVideoElement>, // FIXME: Make conditional
         RefPtr<ImageBitmap>,
         RefPtr<Blob>,
         RefPtr<ImageData>
@@ -68,6 +70,10 @@ public:
 
     bool isDetached() const { return m_detached; }
 
+    ImageBuffer* buffer() { return m_bitmapData.get(); }
+
+    bool originClean() const { return m_originClean; }
+
 private:
     friend class PendingImageBitmap;
 
@@ -75,14 +81,17 @@ private:
     ImageBitmap();
 
     static void createPromise(ScriptExecutionContext&, RefPtr<HTMLImageElement>&, ImageBitmapOptions&&, std::optional<IntRect>, Promise&&);
-    static void createPromise(ScriptExecutionContext&, RefPtr<HTMLCanvasElement>&, ImageBitmapOptions&&, std::optional<IntRect>, Promise&&);
+#if ENABLE(VIDEO)
     static void createPromise(ScriptExecutionContext&, RefPtr<HTMLVideoElement>&, ImageBitmapOptions&&, std::optional<IntRect>, Promise&&);
+#endif
+    static void createPromise(ScriptExecutionContext&, RefPtr<HTMLCanvasElement>&, ImageBitmapOptions&&, std::optional<IntRect>, Promise&&);
     static void createPromise(ScriptExecutionContext&, RefPtr<ImageBitmap>&, ImageBitmapOptions&&, std::optional<IntRect>, Promise&&);
     static void createPromise(ScriptExecutionContext&, RefPtr<Blob>&, ImageBitmapOptions&&, std::optional<IntRect>, Promise&&);
     static void createPromise(ScriptExecutionContext&, RefPtr<ImageData>&, ImageBitmapOptions&&, std::optional<IntRect>, Promise&&);
 
     std::unique_ptr<ImageBuffer> m_bitmapData;
     bool m_detached { false };
+    bool m_originClean { true };
 };
 
 }

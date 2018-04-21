@@ -52,7 +52,7 @@ public:
     int minLength() const { return m_minLength; }
     ExceptionOr<void> setMinLength(int);
 
-    InsertionNotificationRequest insertedInto(ContainerNode&) override;
+    InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) override;
 
     // The derived class should return true if placeholder processing is needed.
     bool isPlaceholderVisible() const { return m_isPlaceholderVisible; }
@@ -81,7 +81,7 @@ public:
 
     virtual String value() const = 0;
 
-    virtual TextControlInnerTextElement* innerTextElement() const = 0;
+    virtual RefPtr<TextControlInnerTextElement> innerTextElement() const = 0;
     virtual RenderStyle createInnerTextStyle(const RenderStyle&) const = 0;
 
     void selectionChanged(bool shouldFireSelectEvent);

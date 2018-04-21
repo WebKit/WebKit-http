@@ -45,14 +45,14 @@ private:
 
     void buildPendingResource() final;
     void clearResourceReferences();
-    InsertionNotificationRequest insertedInto(ContainerNode&) final;
-    void removedFrom(ContainerNode&) final;
+    InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) final;
+    void removedFromAncestor(RemovalType, ContainerNode&) final;
 
     void parseAttribute(const QualifiedName&, const AtomicString&) final;
     void svgAttributeChanged(const QualifiedName&) final;
 
     bool rendererIsNeeded(const RenderStyle&) final { return false; }
-    void finishedInsertingSubtree() final;
+    void didFinishInsertingNode() final;
 
     void notifyParentOfPathChange(ContainerNode*);
 

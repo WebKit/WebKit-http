@@ -111,9 +111,12 @@ if (length($fontNamesIn)) {
     open F, ">$header" or die "Unable to open $header for writing.";
 
     printLicenseHeader($F);
-    printHeaderHead($F, "CSS", $familyNamesFileBase, "#include <wtf/text/AtomicString.h>", "");
+    printHeaderHead($F, "CSS", $familyNamesFileBase, <<END, "");
+#include <wtf/NeverDestroyed.h>
+#include <wtf/text/AtomicString.h>
+END
 
-    printMacros($F, "extern const WTF::AtomicString", "", \%parameters);
+    printMacros($F, "extern LazyNeverDestroyed<const WTF::AtomicString>", "", \%parameters);
     print F "#endif\n\n";
 
     printInit($F, 1);
@@ -127,9 +130,7 @@ if (length($fontNamesIn)) {
 
     print F StaticString::GenerateStrings(\%parameters);
 
-    for my $name (sort keys %parameters) {
-        print F "DEFINE_GLOBAL(AtomicString, $name)\n";
-    }
+    printMacros($F, "LazyNeverDestroyed<const WTF::AtomicString>", "", \%parameters);
 
     printInit($F, 0);
 
@@ -140,7 +141,7 @@ if (length($fontNamesIn)) {
         # FIXME: Would like to use static_cast here, but there are differences in const
         # depending on whether SKIP_STATIC_CONSTRUCTORS_ON_GCC is used, so stick with a
         # C-style cast for now.
-        print F "    new (NotNull, (void*)&$name) AtomicString(&${name}Data);\n";
+        print F "    ${name}.construct(&${name}Data);\n";
     }
 
     print F "}\n}\n}\n";
@@ -992,13 +993,13 @@ END
 
     print F <<END
 
-struct ConstructorFunctionMapEntry {
-    ConstructorFunctionMapEntry($parameters{namespace}ConstructorFunction function, const QualifiedName& name)
+struct $parameters{namespace}ConstructorFunctionMapEntry {
+    $parameters{namespace}ConstructorFunctionMapEntry($parameters{namespace}ConstructorFunction function, const QualifiedName& name)
         : function(function)
         , qualifiedName(&name)
     { }
 
-    ConstructorFunctionMapEntry()
+    $parameters{namespace}ConstructorFunctionMapEntry()
         : function(nullptr)
         , qualifiedName(nullptr)
     { }
@@ -1007,7 +1008,7 @@ struct ConstructorFunctionMapEntry {
     const QualifiedName* qualifiedName; // Use pointer instead of reference so that emptyValue() in HashMap is cheap to create.
 };
 
-static NEVER_INLINE HashMap<AtomicStringImpl*, ConstructorFunctionMapEntry> create$parameters{namespace}FactoryMap()
+static NEVER_INLINE HashMap<AtomicStringImpl*, $parameters{namespace}ConstructorFunctionMapEntry> create$parameters{namespace}FactoryMap()
 {
     struct TableEntry {
         const QualifiedName& name;
@@ -1023,13 +1024,13 @@ END
     print F <<END
     };
 
-    HashMap<AtomicStringImpl*, ConstructorFunctionMapEntry> map;
+    HashMap<AtomicStringImpl*, $parameters{namespace}ConstructorFunctionMapEntry> map;
     for (auto& entry : table)
-        map.add(entry.name.localName().impl(), ConstructorFunctionMapEntry(entry.function, entry.name));
+        map.add(entry.name.localName().impl(), $parameters{namespace}ConstructorFunctionMapEntry(entry.function, entry.name));
     return map;
 }
 
-static ConstructorFunctionMapEntry find$parameters{namespace}ElementConstructorFunction(const AtomicString& localName)
+static $parameters{namespace}ConstructorFunctionMapEntry find$parameters{namespace}ElementConstructorFunction(const AtomicString& localName)
 {
     static const auto map = makeNeverDestroyed(create$parameters{namespace}FactoryMap());
     return map.get().get(localName.impl());
@@ -1037,7 +1038,7 @@ static ConstructorFunctionMapEntry find$parameters{namespace}ElementConstructorF
 
 RefPtr<$parameters{namespace}Element> $parameters{namespace}ElementFactory::createKnownElement(const AtomicString& localName, Document& document$formElementArgumentForDefinition, bool createdByParser)
 {
-    const ConstructorFunctionMapEntry& entry = find$parameters{namespace}ElementConstructorFunction(localName);
+    const $parameters{namespace}ConstructorFunctionMapEntry& entry = find$parameters{namespace}ElementConstructorFunction(localName);
     if (LIKELY(entry.function)) {
         ASSERT(entry.qualifiedName);
         const auto& name = *entry.qualifiedName;
@@ -1048,7 +1049,7 @@ RefPtr<$parameters{namespace}Element> $parameters{namespace}ElementFactory::crea
 
 RefPtr<$parameters{namespace}Element> $parameters{namespace}ElementFactory::createKnownElement(const QualifiedName& name, Document& document$formElementArgumentForDefinition, bool createdByParser)
 {
-    const ConstructorFunctionMapEntry& entry = find$parameters{namespace}ElementConstructorFunction(name.localName());
+    const $parameters{namespace}ConstructorFunctionMapEntry& entry = find$parameters{namespace}ElementConstructorFunction(name.localName());
     if (LIKELY(entry.function))
         return entry.function($argumentList);
     return nullptr;
@@ -1056,7 +1057,7 @@ RefPtr<$parameters{namespace}Element> $parameters{namespace}ElementFactory::crea
 
 Ref<$parameters{namespace}Element> $parameters{namespace}ElementFactory::createElement(const AtomicString& localName, Document& document$formElementArgumentForDefinition, bool createdByParser)
 {
-    const ConstructorFunctionMapEntry& entry = find$parameters{namespace}ElementConstructorFunction(localName);
+    const $parameters{namespace}ConstructorFunctionMapEntry& entry = find$parameters{namespace}ElementConstructorFunction(localName);
     if (LIKELY(entry.function)) {
         ASSERT(entry.qualifiedName);
         const auto& name = *entry.qualifiedName;
@@ -1067,7 +1068,7 @@ Ref<$parameters{namespace}Element> $parameters{namespace}ElementFactory::createE
 
 Ref<$parameters{namespace}Element> $parameters{namespace}ElementFactory::createElement(const QualifiedName& name, Document& document$formElementArgumentForDefinition, bool createdByParser)
 {
-    const ConstructorFunctionMapEntry& entry = find$parameters{namespace}ElementConstructorFunction(name.localName());
+    const $parameters{namespace}ConstructorFunctionMapEntry& entry = find$parameters{namespace}ElementConstructorFunction(name.localName());
     if (LIKELY(entry.function))
         return entry.function($argumentList);
     return $parameters{fallbackInterfaceName}::create(name, document);

@@ -123,7 +123,7 @@ inline void* tryVMAllocate(size_t vmSize)
     vmValidate(vmSize);
     void* result = mmap(0, vmSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | BMALLOC_NORESERVE, BMALLOC_VM_TAG, 0);
     if (result == MAP_FAILED) {
-        logVMFailure();
+        logVMFailure(vmSize);
         return nullptr;
     }
     return result;
@@ -195,6 +195,9 @@ inline void vmDeallocatePhysicalPages(void* p, size_t vmSize)
     SYSCALL(posix_madvise(p, vmSize, POSIX_MADV_DONTNEED));
 #else
     SYSCALL(madvise(p, vmSize, MADV_DONTNEED));
+#if BOS(LINUX)
+    SYSCALL(madvise(p, vmSize, MADV_DONTDUMP));
+#endif
 #endif
 }
 
@@ -207,6 +210,9 @@ inline void vmAllocatePhysicalPages(void* p, size_t vmSize)
     SYSCALL(posix_madvise(p, vmSize, POSIX_MADV_NORMAL));
 #else
     SYSCALL(madvise(p, vmSize, MADV_NORMAL));
+#if BOS(LINUX)
+    SYSCALL(madvise(p, vmSize, MADV_DODUMP));
+#endif
 #endif
 }
 

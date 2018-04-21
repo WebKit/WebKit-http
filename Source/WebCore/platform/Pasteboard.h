@@ -71,6 +71,7 @@ struct PasteboardWebContent {
 #if PLATFORM(COCOA)
     WEBCORE_EXPORT PasteboardWebContent();
     WEBCORE_EXPORT ~PasteboardWebContent();
+    String contentOrigin;
     bool canSmartCopyOrDelete;
     RefPtr<SharedBuffer> dataInWebArchiveFormat;
     RefPtr<SharedBuffer> dataInRTFDFormat;
@@ -129,7 +130,7 @@ class PasteboardWebContentReader {
 public:
     String contentOrigin;
 
-    virtual ~PasteboardWebContentReader() { }
+    virtual ~PasteboardWebContentReader() = default;
 
 #if PLATFORM(COCOA)
     virtual bool readWebArchive(SharedBuffer&) = 0;

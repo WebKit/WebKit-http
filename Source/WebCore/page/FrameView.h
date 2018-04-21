@@ -104,7 +104,7 @@ public:
     void setContentsSize(const IntSize&) final;
     void updateContentsSize() final;
 
-    void layout(bool allowSubtree = true);
+    void layout();
     WEBCORE_EXPORT bool didFirstLayout() const;
     void layoutTimerFired();
     void scheduleRelayout();
@@ -114,10 +114,10 @@ public:
     bool layoutPending() const;
     bool isInLayout() const { return m_layoutPhase != OutsideLayout; }
     bool isInRenderTreeLayout() const { return m_layoutPhase == InRenderTreeLayout; }
-    bool inPaintableState() { return m_layoutPhase != InRenderTreeLayout && m_layoutPhase != InViewSizeAdjust && m_layoutPhase != InPostLayout; }
+    bool inPaintableState() const { return m_layoutPhase != InRenderTreeLayout && m_layoutPhase != InViewSizeAdjust && (m_layoutPhase != InPostLayout || m_inPerformPostLayoutTasks); }
 
-    RenderElement* subtreeLayoutRoot() const { return m_subtreeLayoutRoot; }
-    void clearSubtreeLayoutRoot() { m_subtreeLayoutRoot = nullptr; }
+    RenderElement* subtreeLayoutRoot() const { return m_subtreeLayoutRoot.get(); }
+    void clearSubtreeLayoutRoot() { m_subtreeLayoutRoot.clear(); }
     int layoutCount() const { return m_layoutCount; }
 
     WEBCORE_EXPORT bool needsLayout() const;
@@ -127,6 +127,8 @@ public:
     bool needsFullRepaint() const { return m_needsFullRepaint; }
 
     WEBCORE_EXPORT bool renderedCharactersExceed(unsigned threshold);
+
+    void scheduleSelectionUpdate();
 
 #if PLATFORM(IOS)
     bool useCustomFixedPositionLayoutRect() const;
@@ -402,7 +404,7 @@ public:
     WEBCORE_EXPORT void setAutoSizeFixedMinimumHeight(int);
     IntSize autoSizingIntrinsicContentSize() const { return m_autoSizeContentSize; }
 
-    WEBCORE_EXPORT void forceLayout(bool allowSubtree = false);
+    WEBCORE_EXPORT void forceLayout(bool allowSubtreeLayout = false);
     WEBCORE_EXPORT void forceLayoutForPagination(const FloatSize& pageSize, const FloatSize& originalPageSize, float maximumShrinkFactor, AdjustViewSizeOrNot);
 
     // FIXME: This method is retained because of embedded WebViews in AppKit.  When a WebView is embedded inside
@@ -657,15 +659,11 @@ private:
     enum LayoutPhase {
         OutsideLayout,
         InPreLayout,
-        InPreLayoutStyleUpdate,
         InRenderTreeLayout,
         InViewSizeAdjust,
-        InPostLayout,
-        InPostLayerPositionsUpdatedAfterLayout,
+        InPostLayout
     };
     LayoutPhase layoutPhase() const { return m_layoutPhase; }
-
-    bool inPreLayoutStyleUpdate() const { return m_layoutPhase == InPreLayoutStyleUpdate; }
 
     bool isFrameView() const final { return true; }
 
@@ -691,6 +689,7 @@ private:
 
     void forceLayoutParentViewIfNeeded();
     void flushPostLayoutTasksQueue();
+    void runOrSchedulePostLayoutTasks();
     void performPostLayoutTasks();
     void autoSizeIfEnabled();
 
@@ -738,6 +737,9 @@ private:
     IntSize sizeForResizeEvent() const;
     void sendResizeEventIfNeeded();
 
+    void adjustScrollbarsForLayout(bool firstLayout);
+    void updateStyleForLayout();
+
     void handleDeferredScrollbarsUpdateAfterDirectionChange();
 
     void updateScrollableAreaSet();
@@ -762,9 +764,13 @@ private:
 
     FrameView* parentFrameView() const;
 
-    void startLayoutAtMainFrameViewIfNeeded(bool allowSubtree);
+    bool handleLayoutWithFrameFlatteningIfNeeded();
+    void startLayoutAtMainFrameViewIfNeeded();
     bool frameFlatteningEnabled() const;
     bool isFrameFlatteningValidForThisFrame() const;
+    
+    void markRootOrBodyRendererDirty() const;
+    bool canPerformLayout() const;
 
     bool qualifiesAsVisuallyNonEmpty() const;
     bool isViewForDocumentInFrame() const;
@@ -777,6 +783,8 @@ private:
     void convertSubtreeLayoutToFullLayout();
 
     RenderElement* viewportRenderer() const;
+    
+    bool isLayoutNested() const { return m_layoutNestedState == LayoutNestedState::Nested; }
 
     HashSet<Widget*> m_widgetsInRenderTree;
 
@@ -799,13 +807,14 @@ private:
 
     Timer m_layoutTimer;
     bool m_delayedLayout;
-    RenderElement* m_subtreeLayoutRoot { nullptr };
+    WeakPtr<RenderElement> m_subtreeLayoutRoot;
 
     LayoutPhase m_layoutPhase;
     bool m_layoutSchedulingEnabled;
-    bool m_inSynchronousPostLayout;
+    bool m_inPerformPostLayoutTasks { false };
     int m_layoutCount;
-    unsigned m_nestedLayoutCount;
+    enum class LayoutNestedState { NotInLayout, NotNested, Nested };
+    LayoutNestedState m_layoutNestedState { LayoutNestedState::NotInLayout };
     Timer m_postLayoutTasksTimer;
     Timer m_updateEmbeddedObjectsTimer;
     bool m_firstLayoutCallbackPending;

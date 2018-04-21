@@ -1,3 +1,92 @@
+2017-10-24  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Implement the "PaymentRequest updated" algorithm
+        https://bugs.webkit.org/show_bug.cgi?id=178689
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/payment-request/payment-request-update-event-updatewith-method.https-expected.txt:
+
+2017-10-22  Dean Jackson  <dino@apple.com>
+
+        Implement drawImage(ImageBitmap) on 2d canvas
+        https://bugs.webkit.org/show_bug.cgi?id=178653
+        <rdar://problem/35104360>
+
+        Reviewed by Antoine Quint.
+
+        Update expected results now that drawImage is implemented.
+
+        * web-platform-tests/2dcontext/imagebitmap/createImageBitmap-drawImage-expected.txt:
+
+2017-10-20  Dean Jackson  <dino@apple.com>
+
+        Add createImageBitmap to Window and Worker
+        https://bugs.webkit.org/show_bug.cgi?id=178573
+        <rdar://problem/35092692>
+
+        Reviewed by Sam Weinig.
+
+        Update the expected results now that createImageBitmap exists.
+
+        * web-platform-tests/2dcontext/imagebitmap/createImageBitmap-drawImage-expected.txt:
+        * web-platform-tests/2dcontext/imagebitmap/createImageBitmap-invalid-args-expected.txt:
+        * web-platform-tests/2dcontext/imagebitmap/createImageBitmap-sizeOverflow-expected.txt:
+        * web-platform-tests/imagebitmap-renderingcontext/bitmaprenderer-as-imagesource-expected.txt:
+        * web-platform-tests/imagebitmap-renderingcontext/context-creation-with-alpha-expected.txt:
+        * web-platform-tests/imagebitmap-renderingcontext/tranferFromImageBitmap-null-expected.txt:
+        * web-platform-tests/imagebitmap-renderingcontext/transferFromImageBitmap-detached-expected.txt:
+
+2017-10-19  Antti Koivisto  <antti@apple.com>
+
+        Support ::before/::after pseudo elements on elements with display:contents
+        https://bugs.webkit.org/show_bug.cgi?id=178513
+
+        Reviewed by Ryosuke Niwa.
+
+        * web-platform-tests/cssom/getComputedStyle-pseudo-expected.txt:
+
+2017-10-19  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Only process shipping options if shipping is requested, and throw an exception on duplicate shipping option IDs
+        https://bugs.webkit.org/show_bug.cgi?id=178535
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/payment-request/payment-request-constructor.https-expected.txt:
+
+2017-10-19  Dean Jackson  <dino@apple.com>
+
+        Import W3C Web Platform Tests for createImageBitmap
+        https://bugs.webkit.org/show_bug.cgi?id=178509
+        <rdar://problem/35070583>
+
+        Reviewed by Antoine Quint.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/2dcontext/imagebitmap/common.js: Added.
+        (testCanvasDisplayingPattern):
+        (testDrawImageBitmap):
+        (initializeImageData):
+        * web-platform-tests/2dcontext/imagebitmap/createImageBitmap-drawImage-expected.txt: Added.
+        * web-platform-tests/2dcontext/imagebitmap/createImageBitmap-drawImage.html: Added.
+        * web-platform-tests/2dcontext/imagebitmap/createImageBitmap-invalid-args-expected.txt: Added.
+        * web-platform-tests/2dcontext/imagebitmap/createImageBitmap-invalid-args.html: Added.
+        * web-platform-tests/2dcontext/imagebitmap/createImageBitmap-sizeOverflow-expected.txt: Added.
+        * web-platform-tests/2dcontext/imagebitmap/createImageBitmap-sizeOverflow.html: Added.
+        * web-platform-tests/2dcontext/imagebitmap/w3c-import.log: Added.
+
+2017-10-18  Chris Dumez  <cdumez@apple.com>
+
+        Align ImageData constructor with the specification
+        https://bugs.webkit.org/show_bug.cgi?id=178406
+
+        Reviewed by Youenn Fablet.
+
+        Rebaseline test now that one more check is passing.
+
+        * web-platform-tests/html/semantics/embedded-content/the-canvas-element/imagedata-expected.txt:
+
 2017-10-16  Youenn Fablet  <youenn@apple.com>
 
         [FETCH] Remove Request.type getter

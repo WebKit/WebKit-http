@@ -36,6 +36,7 @@
 #include "ChromeClient.h"
 #include "DOMWindow.h"
 #include "DebugPageOverlays.h"
+#include "DeprecatedGlobalSettings.h"
 #include "DocumentMarkerController.h"
 #include "EventHandler.h"
 #include "EventNames.h"
@@ -242,7 +243,6 @@ FrameView::FrameView(Frame& frame)
     , m_canHaveScrollbars(true)
     , m_layoutTimer(*this, &FrameView::layoutTimerFired)
     , m_layoutPhase(OutsideLayout)
-    , m_inSynchronousPostLayout(false)
     , m_postLayoutTasksTimer(*this, &FrameView::performPostLayoutTasks)
     , m_updateEmbeddedObjectsTimer(*this, &FrameView::updateEmbeddedObjectsTimerFired)
     , m_isTransparent(false)
@@ -336,14 +336,12 @@ void FrameView::reset()
     m_isOverlapped = false;
     m_contentIsOpaque = false;
     m_layoutTimer.stop();
-    m_subtreeLayoutRoot = nullptr;
+    clearSubtreeLayoutRoot();
     m_delayedLayout = false;
     m_needsFullRepaint = true;
     m_layoutSchedulingEnabled = true;
     m_layoutPhase = OutsideLayout;
-    m_inSynchronousPostLayout = false;
     m_layoutCount = 0;
-    m_nestedLayoutCount = 0;
     m_postLayoutTasksTimer.stop();
     m_updateEmbeddedObjectsTimer.stop();
     m_firstLayout = true;
@@ -655,12 +653,12 @@ void FrameView::didRestoreFromPageCache()
 void FrameView::willDestroyRenderTree()
 {
     detachCustomScrollbars();
-    m_subtreeLayoutRoot = nullptr;
+    clearSubtreeLayoutRoot();
 }
 
 void FrameView::didDestroyRenderTree()
 {
-    ASSERT(!m_subtreeLayoutRoot);
+    ASSERT(!subtreeLayoutRoot());
     ASSERT(m_widgetsInRenderTree.isEmpty());
 
     // If the render tree is destroyed below FrameView::updateEmbeddedObjects(), there will still be a null sentinel in the set.
@@ -828,7 +826,7 @@ void FrameView::calculateScrollbarModesForLayout(ScrollbarMode& hMode, Scrollbar
         vMode = ScrollbarAlwaysOff;
     }
     
-    if (m_subtreeLayoutRoot)
+    if (subtreeLayoutRoot())
         return;
     
     auto* document = frame().document();
@@ -882,15 +880,10 @@ void FrameView::willRecalcStyle()
 
 bool FrameView::updateCompositingLayersAfterStyleChange()
 {
-    RenderView* renderView = this->renderView();
-    if (!renderView)
-        return false;
-
     // If we expect to update compositing after an incipient layout, don't do so here.
-    if (inPreLayoutStyleUpdate() || layoutPending() || renderView->needsLayout())
+    if (!renderView() || needsLayout() || isInLayout())
         return false;
-
-    return renderView->compositor().didRecalcStyleWithNoPendingLayout();
+    return renderView()->compositor().didRecalcStyleWithNoPendingLayout();
 }
 
 void FrameView::updateCompositingLayersAfterLayout()
@@ -1210,7 +1203,6 @@ void FrameView::handleDeferredScrollbarsUpdateAfterDirectionChange()
 
     m_needsDeferredScrollbarsUpdate = false;
 
-    ASSERT(m_layoutPhase == InPostLayerPositionsUpdatedAfterLayout);
     updateScrollbars(scrollPosition());
     positionScrollbarLayers();
 }
@@ -1322,293 +1314,280 @@ static void applyTextSizingIfNeeded(RenderElement& layoutRoot)
 }
 #endif
 
-void FrameView::layout(bool allowSubtreeLayout)
+bool FrameView::handleLayoutWithFrameFlatteningIfNeeded()
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(!frame().document()->inRenderTreeUpdate());
+    if (!isInChildFrameWithFrameFlattening())
+        return false;
+    
+    if (!m_frameFlatteningViewSizeForMediaQuery) {
+        LOG_WITH_STREAM(MediaQueries, stream << "FrameView " << this << " snapshotting size " <<  ScrollView::layoutSize() << " for media queries");
+        m_frameFlatteningViewSizeForMediaQuery = ScrollView::layoutSize();
+    }
+    startLayoutAtMainFrameViewIfNeeded();
+    auto* layoutRoot = subtreeLayoutRoot() ? subtreeLayoutRoot() : frame().document()->renderView();
+    return !layoutRoot || !layoutRoot->needsLayout();
+}
 
-    LOG(Layout, "FrameView %p (%dx%d) layout, main frameview %d, allowSubtreeLayout=%d", this, size().width(), size().height(), frame().isMainFrame(), allowSubtreeLayout);
-    if (isInRenderTreeLayout()) {
-        LOG(Layout, "  in layout, bailing");
+void FrameView::markRootOrBodyRendererDirty() const
+{
+    auto& document = *frame().document();
+    RenderBox* rootRenderer = document.documentElement() ? document.documentElement()->renderBox() : nullptr;
+    auto* body = document.bodyOrFrameset();
+    RenderBox* bodyRenderer = rootRenderer && body ? body->renderBox() : nullptr;
+    if (bodyRenderer && bodyRenderer->stretchesToViewport())
+        bodyRenderer->setChildNeedsLayout();
+    else if (rootRenderer && rootRenderer->stretchesToViewport())
+        rootRenderer->setChildNeedsLayout();
+}
+
+void FrameView::adjustScrollbarsForLayout(bool isFirstLayout)
+{
+    ScrollbarMode hMode;
+    ScrollbarMode vMode;
+    calculateScrollbarModesForLayout(hMode, vMode);
+    if (isFirstLayout && !isLayoutNested()) {
+        setScrollbarsSuppressed(true);
+        // Set the initial vMode to AlwaysOn if we're auto.
+        if (vMode == ScrollbarAuto)
+            setVerticalScrollbarMode(ScrollbarAlwaysOn); // This causes a vertical scrollbar to appear.
+        // Set the initial hMode to AlwaysOff if we're auto.
+        if (hMode == ScrollbarAuto)
+            setHorizontalScrollbarMode(ScrollbarAlwaysOff); // This causes a horizontal scrollbar to disappear.
+        ASSERT(frame().page());
+        if (frame().page()->expectsWheelEventTriggers())
+            scrollAnimator().setWheelEventTestTrigger(frame().page()->testTrigger());
+        setScrollbarModes(hMode, vMode);
+        setScrollbarsSuppressed(false, true);
+    } else if (hMode != horizontalScrollbarMode() || vMode != verticalScrollbarMode())
+        setScrollbarModes(hMode, vMode);
+}
+
+void FrameView::updateStyleForLayout()
+{
+    Document& document = *frame().document();
+    // Viewport-dependent media queries may cause us to need completely different style information.
+    auto* styleResolver = document.styleScope().resolverIfExists();
+    if (!styleResolver || styleResolver->hasMediaQueriesAffectedByViewportChange()) {
+        LOG(Layout, "  hasMediaQueriesAffectedByViewportChange, enqueueing style recalc");
+        document.styleScope().didChangeStyleSheetEnvironment();
+        // FIXME: This instrumentation event is not strictly accurate since cached media query results do not persist across StyleResolver rebuilds.
+        InspectorInstrumentation::mediaQueryResultChanged(document);
+    }
+    document.evaluateMediaQueryList();
+    // If there is any pagination to apply, it will affect the RenderView's style, so we should
+    // take care of that now.
+    applyPaginationToViewport();
+    // Always ensure our style info is up-to-date. This can happen in situations where
+    // the layout beats any sort of style recalc update that needs to occur.
+    document.updateStyleIfNeeded();
+}
+
+bool FrameView::canPerformLayout() const
+{
+    if (isInRenderTreeLayout())
+        return false;
+
+    if (layoutDisallowed())
+        return false;
+
+    if (isPainting())
+        return false;
+
+    if (!subtreeLayoutRoot() && !frame().document()->renderView())
+        return false;
+
+    return true;
+}
+
+void FrameView::layout()
+{
+    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(!frame().document()->inRenderTreeUpdate());
+    ASSERT(!isPainting());
+    ASSERT(frame().view() == this);
+    ASSERT(frame().document());
+    ASSERT(frame().document()->pageCacheState() == Document::NotInPageCache);
+
+    if (!canPerformLayout()) {
+        LOG(Layout, "  is not allowed, bailing");
         return;
     }
-
-    if (layoutDisallowed()) {
-        LOG(Layout, "  layout is disallowed, bailing");
-        return;
-    }
-
     // Protect the view from being deleted during layout (in recalcStyle).
     Ref<FrameView> protectedThis(*this);
+    TraceScope tracingScope(LayoutStart, LayoutEnd);
+    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willLayout(frame());
+    AnimationUpdateBlock animationUpdateBlock(&frame().animation());
 
-    // Many of the tasks performed during layout can cause this function to be re-entered,
-    // so save the layout phase now and restore it on exit.
-    SetForScope<LayoutPhase> layoutPhaseRestorer(m_layoutPhase, InPreLayout);
-
+    SetForScope<LayoutNestedState> nestedState(m_layoutNestedState, m_layoutNestedState == LayoutNestedState::NotInLayout ? LayoutNestedState::NotNested : LayoutNestedState::Nested);
     // Every scroll that happens during layout is programmatic.
     SetForScope<bool> changeInProgrammaticScroll(m_inProgrammaticScroll, true);
-
-    bool inChildFrameLayoutWithFrameFlattening = isInChildFrameWithFrameFlattening();
-
-    if (inChildFrameLayoutWithFrameFlattening) {
-        if (!m_frameFlatteningViewSizeForMediaQuery) {
-            LOG_WITH_STREAM(MediaQueries, stream << "FrameView " << this << " snapshotting size " <<  ScrollView::layoutSize() << " for media queries");
-            m_frameFlatteningViewSizeForMediaQuery = ScrollView::layoutSize();
-        }
-        startLayoutAtMainFrameViewIfNeeded(allowSubtreeLayout);
-        auto* layoutRoot = m_subtreeLayoutRoot ? m_subtreeLayoutRoot : frame().document()->renderView();
-        if (!layoutRoot || !layoutRoot->needsLayout())
-            return;
-    }
-    
-    TraceScope tracingScope(LayoutStart, LayoutEnd);
-
-#if PLATFORM(IOS)
-    if (updateFixedPositionLayoutRect())
-        allowSubtreeLayout = false;
-#endif
+    SetForScope<bool> changeSchedulingEnabled(m_layoutSchedulingEnabled, false);
 
     m_layoutTimer.stop();
     m_delayedLayout = false;
     m_setNeedsLayoutWasDeferred = false;
-    
-    // we shouldn't enter layout() while painting
-    ASSERT(!isPainting());
-    if (isPainting())
+#if PLATFORM(IOS)
+    if (updateFixedPositionLayoutRect() && subtreeLayoutRoot())
+        convertSubtreeLayoutToFullLayout();
+#endif
+
+    if (handleLayoutWithFrameFlatteningIfNeeded())
         return;
 
-    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willLayout(frame());
-    AnimationUpdateBlock animationUpdateBlock(&frame().animation());
-    
-    if (!allowSubtreeLayout && m_subtreeLayoutRoot)
-        convertSubtreeLayoutToFullLayout();
-
-    ASSERT(frame().view() == this);
-    ASSERT(frame().document());
-
     Document& document = *frame().document();
-    ASSERT(document.pageCacheState() == Document::NotInPageCache);
-    RenderElement* layoutRoot = nullptr;
-    RenderLayer* layer = nullptr;
+    WeakPtr<RenderElement> layoutRoot;
     bool isSubtreeLayout = false;
-
     {
-        SetForScope<bool> changeSchedulingEnabled(m_layoutSchedulingEnabled, false);
+        SetForScope<LayoutPhase> layoutPhase(m_layoutPhase, InPreLayout);
 
-        if (!m_nestedLayoutCount && !m_inSynchronousPostLayout && m_postLayoutTasksTimer.isActive() && !inChildFrameLayoutWithFrameFlattening) {
-            // This is a new top-level layout. If there are any remaining tasks from the previous
-            // layout, finish them now.
-            SetForScope<bool> inSynchronousPostLayoutChange(m_inSynchronousPostLayout, true);
+        // If this is a new top-level layout and there are any remaining tasks from the previous layout, finish them now.
+        if (!isLayoutNested() && m_postLayoutTasksTimer.isActive() && !isInChildFrameWithFrameFlattening())
             performPostLayoutTasks();
-        }
 
-        m_layoutPhase = InPreLayoutStyleUpdate;
-
-        // Viewport-dependent media queries may cause us to need completely different style information.
-        auto* styleResolver = document.styleScope().resolverIfExists();
-        if (!styleResolver || styleResolver->hasMediaQueriesAffectedByViewportChange()) {
-            LOG(Layout, "  hasMediaQueriesAffectedByViewportChange, enqueueing style recalc");
-            document.styleScope().didChangeStyleSheetEnvironment();
-            // FIXME: This instrumentation event is not strictly accurate since cached media query results do not persist across StyleResolver rebuilds.
-            InspectorInstrumentation::mediaQueryResultChanged(document);
-        }
-        document.evaluateMediaQueryList();
-        // If there is any pagination to apply, it will affect the RenderView's style, so we should
-        // take care of that now.
-        applyPaginationToViewport();
-        // Always ensure our style info is up-to-date. This can happen in situations where
-        // the layout beats any sort of style recalc update that needs to occur.
-        document.updateStyleIfNeeded();
-        // If there is only one ref to this view left, then its going to be destroyed as soon as we exit,
-        // so there's no point to continuing to layout
+        updateStyleForLayout();
         if (hasOneRef())
             return;
 
-        m_layoutPhase = InPreLayout;
-
-        ++m_nestedLayoutCount;
-
         autoSizeIfEnabled();
-
-        layoutRoot = m_subtreeLayoutRoot ? m_subtreeLayoutRoot : document.renderView();
-        if (!layoutRoot)
+        if (!renderView())
             return;
-        isSubtreeLayout = m_subtreeLayoutRoot;
+
+        isSubtreeLayout = subtreeLayoutRoot();
+        layoutRoot = makeWeakPtr(subtreeLayoutRoot() ? subtreeLayoutRoot() : renderView());
+        m_needsFullRepaint = !isSubtreeLayout && (m_firstLayout || renderView()->printing());
 
         if (!isSubtreeLayout) {
-            auto* body = document.bodyOrFrameset();
-            if (body && body->renderer()) {
-                if (is<HTMLFrameSetElement>(*body) && !frameFlatteningEnabled()) {
+            if (auto* body = document.bodyOrFrameset()) {
+                if (is<HTMLFrameSetElement>(*body) && !frameFlatteningEnabled() && body->renderer())
                     body->renderer()->setChildNeedsLayout();
-                } else if (is<HTMLBodyElement>(*body)) {
-                    if (!m_firstLayout && m_size.height() != layoutHeight() && body->renderer()->enclosingBox().stretchesToViewport())
-                        body->renderer()->setChildNeedsLayout();
-                }
             }
-
 #if !LOG_DISABLED
             if (m_firstLayout && !frame().ownerElement())
                 LOG(Layout, "FrameView %p elapsed time before first layout: %.3fs\n", this, document.timeSinceDocumentCreation().value());
 #endif
-        }
-
-        m_needsFullRepaint = !isSubtreeLayout && (m_firstLayout || downcast<RenderView>(*layoutRoot).printing());
-
-        if (!isSubtreeLayout) {
-            ScrollbarMode hMode;
-            ScrollbarMode vMode;    
-            calculateScrollbarModesForLayout(hMode, vMode);
-
-            if (m_firstLayout || (hMode != horizontalScrollbarMode() || vMode != verticalScrollbarMode())) {
-                if (m_firstLayout) {
-                    setScrollbarsSuppressed(true);
-
-                    m_firstLayout = false;
-                    m_firstLayoutCallbackPending = true;
-                    m_lastViewportSize = sizeForResizeEvent();
-                    m_lastZoomFactor = layoutRoot->style().zoom();
-
-                    // Set the initial vMode to AlwaysOn if we're auto.
-                    if (vMode == ScrollbarAuto)
-                        setVerticalScrollbarMode(ScrollbarAlwaysOn); // This causes a vertical scrollbar to appear.
-                    // Set the initial hMode to AlwaysOff if we're auto.
-                    if (hMode == ScrollbarAuto)
-                        setHorizontalScrollbarMode(ScrollbarAlwaysOff); // This causes a horizontal scrollbar to disappear.
-                    Page* page = frame().page();
-                    if (page && page->expectsWheelEventTriggers())
-                        scrollAnimator().setWheelEventTestTrigger(page->testTrigger());
-                    setScrollbarModes(hMode, vMode);
-                    setScrollbarsSuppressed(false, true);
-                } else
-                    setScrollbarModes(hMode, vMode);
+            if (m_firstLayout) {
+                m_lastViewportSize = sizeForResizeEvent();
+                m_lastZoomFactor = layoutRoot->style().zoom();
+                m_firstLayoutCallbackPending = true;
             }
+            adjustScrollbarsForLayout(m_firstLayout);
 
-            LayoutSize oldSize = m_size;
+            auto oldSize = m_size;
             m_size = layoutSize();
-
             if (oldSize != m_size) {
                 LOG(Layout, "  layout size changed from %.3fx%.3f to %.3fx%.3f", oldSize.width().toFloat(), oldSize.height().toFloat(), m_size.width().toFloat(), m_size.height().toFloat());
                 m_needsFullRepaint = true;
-                if (!m_firstLayout) {
-                    RenderBox* rootRenderer = document.documentElement() ? document.documentElement()->renderBox() : nullptr;
-                    auto* body = document.bodyOrFrameset();
-                    RenderBox* bodyRenderer = rootRenderer && body ? body->renderBox() : nullptr;
-                    if (bodyRenderer && bodyRenderer->stretchesToViewport())
-                        bodyRenderer->setChildNeedsLayout();
-                    else if (rootRenderer && rootRenderer->stretchesToViewport())
-                        rootRenderer->setChildNeedsLayout();
-                }
+                if (!m_firstLayout)
+                    markRootOrBodyRendererDirty();
             }
-
-            m_layoutPhase = InPreLayout;
+            m_firstLayout = false;
         }
 
-        ASSERT(allowSubtreeLayout || !isSubtreeLayout);
-        layer = layoutRoot->enclosingLayer();
-        SubtreeLayoutStateMaintainer subtreeLayoutStateMaintainer(m_subtreeLayoutRoot);
-
-        RenderView::RepaintRegionAccumulator repaintRegionAccumulator(&layoutRoot->view());
-
         ASSERT(m_layoutPhase == InPreLayout);
-        m_layoutPhase = InRenderTreeLayout;
-
         forceLayoutParentViewIfNeeded();
+    }
+    {
+        SetForScope<LayoutPhase> layoutPhase(m_layoutPhase, InRenderTreeLayout);
 
-        ASSERT(m_layoutPhase == InRenderTreeLayout);
+        SubtreeLayoutStateMaintainer subtreeLayoutStateMaintainer(subtreeLayoutRoot());
+        RenderView::RepaintRegionAccumulator repaintRegionAccumulator(renderView());
 #ifndef NDEBUG
         RenderTreeNeedsLayoutChecker checker(*layoutRoot);
 #endif
         layoutRoot->layout();
-
+        ASSERT(m_layoutPhase == InRenderTreeLayout);
 #if ENABLE(TEXT_AUTOSIZING)
         applyTextSizingIfNeeded(*layoutRoot);
 #endif
-
-        ASSERT(m_layoutPhase == InRenderTreeLayout);
-        m_subtreeLayoutRoot = nullptr;
-        // Close block here to end the scope of changeSchedulingEnabled and SubtreeLayoutStateMaintainer.
+        clearSubtreeLayoutRoot();
     }
+    {
+        SetForScope<LayoutPhase> layoutPhase(m_layoutPhase, InViewSizeAdjust);
 
-    m_layoutPhase = InViewSizeAdjust;
-
-    bool neededFullRepaint = m_needsFullRepaint;
-
-    if (!isSubtreeLayout && !downcast<RenderView>(*layoutRoot).printing()) {
-        adjustViewSize();
-        // FIXME: Firing media query callbacks synchronously on nested frames could produced a detached FrameView here by
-        // navigating away from the current document (see webkit.org/b/173329).
-        if (hasOneRef())
-            return;
+        if (!isSubtreeLayout && !renderView()->printing()) {
+            // This is to protect m_needsFullRepaint's value when layout() is getting re-entered through adjustViewSize().
+            SetForScope<bool> needsFullRepaint(m_needsFullRepaint);
+            adjustViewSize();
+            // FIXME: Firing media query callbacks synchronously on nested frames could produced a detached FrameView here by
+            // navigating away from the current document (see webkit.org/b/173329).
+            if (hasOneRef())
+                return;
+        }
     }
+    {
+        SetForScope<LayoutPhase> layoutPhase(m_layoutPhase, InPostLayout);
 
-    m_layoutPhase = InPostLayout;
+        // Now update the positions of all layers.
+        if (m_needsFullRepaint)
+            renderView()->repaintRootContents();
 
-    m_needsFullRepaint = neededFullRepaint;
+        renderView()->releaseProtectedRenderWidgets();
 
-    // Now update the positions of all layers.
-    if (m_needsFullRepaint)
-        layoutRoot->view().repaintRootContents();
+        ASSERT(!layoutRoot->needsLayout());
+        auto* layoutRootEnclosingLayer = layoutRoot->enclosingLayer();
+        layoutRootEnclosingLayer->updateLayerPositionsAfterLayout(renderView()->layer(), updateLayerPositionFlags(layoutRootEnclosingLayer, isSubtreeLayout, m_needsFullRepaint));
 
-    layoutRoot->view().releaseProtectedRenderWidgets();
+        updateCompositingLayersAfterLayout();
 
-    ASSERT(!layoutRoot->needsLayout());
-
-    layer->updateLayerPositionsAfterLayout(renderView()->layer(), updateLayerPositionFlags(layer, isSubtreeLayout, m_needsFullRepaint));
-
-    updateCompositingLayersAfterLayout();
-
-    m_layoutPhase = InPostLayerPositionsUpdatedAfterLayout;
-
-    m_layoutCount++;
+        m_layoutCount++;
 
 #if PLATFORM(COCOA) || PLATFORM(WIN) || PLATFORM(GTK)
-    if (AXObjectCache* cache = layoutRoot->document().existingAXObjectCache())
-        cache->postNotification(layoutRoot, AXObjectCache::AXLayoutComplete);
+        if (AXObjectCache* cache = document.existingAXObjectCache())
+            cache->postNotification(layoutRoot.get(), AXObjectCache::AXLayoutComplete);
 #endif
 
 #if ENABLE(DASHBOARD_SUPPORT)
-    updateAnnotatedRegions();
+        updateAnnotatedRegions();
 #endif
 
 #if ENABLE(IOS_TOUCH_EVENTS)
-    document.setTouchEventRegionsNeedUpdate();
+        document.setTouchEventRegionsNeedUpdate();
 #endif
 
-    updateCanBlitOnScrollRecursively();
+        updateCanBlitOnScrollRecursively();
 
-    handleDeferredScrollUpdateAfterContentSizeChange();
+        handleDeferredScrollUpdateAfterContentSizeChange();
 
-    handleDeferredScrollbarsUpdateAfterDirectionChange();
+        handleDeferredScrollbarsUpdateAfterDirectionChange();
 
-    if (document.hasListenerType(Document::OVERFLOWCHANGED_LISTENER))
-        updateOverflowStatus(layoutWidth() < contentsWidth(), layoutHeight() < contentsHeight());
+        if (document.hasListenerType(Document::OVERFLOWCHANGED_LISTENER))
+            updateOverflowStatus(layoutWidth() < contentsWidth(), layoutHeight() < contentsHeight());
 
-    frame().document()->markers().invalidateRectsForAllMarkers();
+        document.markers().invalidateRectsForAllMarkers();
 
-    if (!m_postLayoutTasksTimer.isActive()) {
-        if (!m_inSynchronousPostLayout) {
-            if (inChildFrameLayoutWithFrameFlattening)
-                updateWidgetPositions();
-            else {
-                SetForScope<bool> inSynchronousPostLayoutChange(m_inSynchronousPostLayout, true);
-                performPostLayoutTasks(); // Calls resumeScheduledEvents().
-            }
-        }
+        runOrSchedulePostLayoutTasks();
 
-        if (!m_postLayoutTasksTimer.isActive() && (needsLayout() || m_inSynchronousPostLayout || inChildFrameLayoutWithFrameFlattening)) {
-            // If we need layout or are already in a synchronous call to postLayoutTasks(), 
-            // defer widget updates and event dispatch until after we return. postLayoutTasks()
-            // can make us need to update again, and we can get stuck in a nasty cycle unless
-            // we call it through the timer here.
-            m_postLayoutTasksTimer.startOneShot(0_s);
-        }
-        if (needsLayout())
-            layout();
+        InspectorInstrumentation::didLayout(cookie, *layoutRoot);
+        DebugPageOverlays::didLayout(frame());
+    }
+}
+    
+void FrameView::runOrSchedulePostLayoutTasks()
+{
+    if (m_postLayoutTasksTimer.isActive())
+        return;
+
+    if (isInChildFrameWithFrameFlattening()) {
+        // While flattening frames, we defer post layout tasks to avoid getting stuck in a cycle,
+        // except updateWidgetPositions() which is required to kick off subframe layout in certain cases.
+        if (!m_inPerformPostLayoutTasks)
+            updateWidgetPositions();
+        m_postLayoutTasksTimer.startOneShot(0_s);
+        return;
     }
 
-    InspectorInstrumentation::didLayout(cookie, *layoutRoot);
-    DebugPageOverlays::didLayout(frame());
+    // If we are already in performPostLayoutTasks(), defer post layout tasks until after we return
+    // to avoid re-entrancy.
+    if (m_inPerformPostLayoutTasks) {
+        m_postLayoutTasksTimer.startOneShot(0_s);
+        return;
+    }
 
-    --m_nestedLayoutCount;
+    performPostLayoutTasks();
+    if (needsLayout()) {
+        // If performPostLayoutTasks() made us layout again, let's defer the tasks until after we return.
+        m_postLayoutTasksTimer.startOneShot(0_s);
+        layout();
+    }
 }
 
 bool FrameView::shouldDeferScrollUpdateAfterContentSizeChange()
@@ -1743,7 +1722,7 @@ bool FrameView::usesAsyncScrolling() const
 
 bool FrameView::usesMockScrollAnimator() const
 {
-    return Settings::usesMockScrollAnimator();
+    return DeprecatedGlobalSettings::usesMockScrollAnimator();
 }
 
 void FrameView::logMockScrollAnimatorMessage(const String& message) const
@@ -2659,7 +2638,7 @@ void FrameView::updateLayerPositionsAfterScrolling()
     if (m_layoutPhase == InViewSizeAdjust)
         return;
 
-    if (m_nestedLayoutCount <= 1 && hasViewportConstrainedObjects()) {
+    if (!isLayoutNested() && hasViewportConstrainedObjects()) {
         if (RenderView* renderView = this->renderView()) {
             updateWidgetPositions();
             renderView->layer()->updateLayerPositionsAfterDocumentScroll();
@@ -2701,7 +2680,7 @@ void FrameView::updateCompositingLayersAfterScrolling()
     if (!shouldUpdateCompositingLayersAfterScrolling())
         return;
 
-    if (m_nestedLayoutCount <= 1 && hasViewportConstrainedObjects()) {
+    if (!isLayoutNested() && hasViewportConstrainedObjects()) {
         if (RenderView* renderView = this->renderView())
             renderView->compositor().updateCompositingLayers(CompositingUpdateType::OnScroll);
     }
@@ -3040,9 +3019,9 @@ void FrameView::hide()
 
 void FrameView::convertSubtreeLayoutToFullLayout()
 {
-    ASSERT(m_subtreeLayoutRoot);
-    m_subtreeLayoutRoot->markContainingBlocksForLayout(ScheduleRelayout::No);
-    m_subtreeLayoutRoot = nullptr;
+    ASSERT(subtreeLayoutRoot());
+    subtreeLayoutRoot()->markContainingBlocksForLayout(ScheduleRelayout::No);
+    clearSubtreeLayoutRoot();
 }
 
 void FrameView::layoutTimerFired()
@@ -3060,7 +3039,7 @@ void FrameView::scheduleRelayout()
     // too many false assertions.  See <rdar://problem/7218118>.
     ASSERT(frame().view() == this);
 
-    if (m_subtreeLayoutRoot)
+    if (subtreeLayoutRoot())
         convertSubtreeLayoutToFullLayout();
     if (!m_layoutSchedulingEnabled)
         return;
@@ -3109,46 +3088,44 @@ void FrameView::scheduleRelayoutOfSubtree(RenderElement& newRelayoutRoot)
     ASSERT(!renderView.renderTreeBeingDestroyed());
     ASSERT(frame().view() == this);
 
-    // When m_subtreeLayoutRoot is already set, ignore the renderView's needsLayout bit
-    // since we need to resolve the conflict between the m_subtreeLayoutRoot and newRelayoutRoot layouts.
-    if (renderView.needsLayout() && !m_subtreeLayoutRoot) {
-        m_subtreeLayoutRoot = &newRelayoutRoot;
-        convertSubtreeLayoutToFullLayout();
+    if (renderView.needsLayout() && !subtreeLayoutRoot()) {
+        newRelayoutRoot.markContainingBlocksForLayout(ScheduleRelayout::No);
         return;
     }
 
     if (!layoutPending() && m_layoutSchedulingEnabled) {
         Seconds delay = renderView.document().minimumLayoutDelay();
         ASSERT(!newRelayoutRoot.container() || is<RenderView>(newRelayoutRoot.container()) || !newRelayoutRoot.container()->needsLayout());
-        m_subtreeLayoutRoot = &newRelayoutRoot;
+        m_subtreeLayoutRoot = makeWeakPtr(newRelayoutRoot);
         InspectorInstrumentation::didInvalidateLayout(frame());
         m_delayedLayout = delay.value();
         m_layoutTimer.startOneShot(delay);
         return;
     }
 
-    if (m_subtreeLayoutRoot == &newRelayoutRoot)
+    auto* subtreeLayoutRoot = this->subtreeLayoutRoot();
+    if (subtreeLayoutRoot == &newRelayoutRoot)
         return;
 
-    if (!m_subtreeLayoutRoot) {
+    if (!subtreeLayoutRoot) {
         // We already have a pending (full) layout. Just mark the subtree for layout.
         newRelayoutRoot.markContainingBlocksForLayout(ScheduleRelayout::No);
         InspectorInstrumentation::didInvalidateLayout(frame());
         return;
     }
 
-    if (isObjectAncestorContainerOf(m_subtreeLayoutRoot, &newRelayoutRoot)) {
+    if (isObjectAncestorContainerOf(subtreeLayoutRoot, &newRelayoutRoot)) {
         // Keep the current root.
-        newRelayoutRoot.markContainingBlocksForLayout(ScheduleRelayout::No, m_subtreeLayoutRoot);
-        ASSERT(!m_subtreeLayoutRoot->container() || is<RenderView>(m_subtreeLayoutRoot->container()) || !m_subtreeLayoutRoot->container()->needsLayout());
+        newRelayoutRoot.markContainingBlocksForLayout(ScheduleRelayout::No, subtreeLayoutRoot);
+        ASSERT(!subtreeLayoutRoot->container() || is<RenderView>(subtreeLayoutRoot->container()) || !subtreeLayoutRoot->container()->needsLayout());
         return;
     }
 
-    if (isObjectAncestorContainerOf(&newRelayoutRoot, m_subtreeLayoutRoot)) {
+    if (isObjectAncestorContainerOf(&newRelayoutRoot, subtreeLayoutRoot)) {
         // Re-root at newRelayoutRoot.
-        m_subtreeLayoutRoot->markContainingBlocksForLayout(ScheduleRelayout::No, &newRelayoutRoot);
-        m_subtreeLayoutRoot = &newRelayoutRoot;
-        ASSERT(!m_subtreeLayoutRoot->container() || is<RenderView>(m_subtreeLayoutRoot->container()) || !m_subtreeLayoutRoot->container()->needsLayout());
+        subtreeLayoutRoot->markContainingBlocksForLayout(ScheduleRelayout::No, &newRelayoutRoot);
+        m_subtreeLayoutRoot = makeWeakPtr(newRelayoutRoot);
+        ASSERT(!newRelayoutRoot.container() || is<RenderView>(newRelayoutRoot.container()) || !newRelayoutRoot.container()->needsLayout());
         InspectorInstrumentation::didInvalidateLayout(frame());
         return;
     }
@@ -3171,7 +3148,7 @@ bool FrameView::needsLayout() const
     RenderView* renderView = this->renderView();
     return layoutPending()
         || (renderView && renderView->needsLayout())
-        || m_subtreeLayoutRoot
+        || subtreeLayoutRoot()
         || (m_deferSetNeedsLayoutCount && m_setNeedsLayoutWasDeferred);
 }
 
@@ -3203,6 +3180,16 @@ void FrameView::unscheduleRelayout()
     
     m_layoutTimer.stop();
     m_delayedLayout = false;
+}
+
+void FrameView::scheduleSelectionUpdate()
+{
+    if (needsLayout())
+        return;
+    // FIXME: We should not need to go through the layout process since selection update does not change dimension/geometry.
+    // However we can't tell at this point if the tree is stable yet, so let's just schedule a root only layout for now.
+    setNeedsLayout();
+    scheduleRelayout();
 }
 
 void FrameView::serviceScriptedAnimations()
@@ -3478,7 +3465,7 @@ void FrameView::updateEmbeddedObject(RenderEmbeddedObject& embeddedObject)
 
 bool FrameView::updateEmbeddedObjects()
 {
-    if (m_nestedLayoutCount > 1 || !m_embeddedObjectsToUpdate || m_embeddedObjectsToUpdate->isEmpty())
+    if (isLayoutNested() || !m_embeddedObjectsToUpdate || m_embeddedObjectsToUpdate->isEmpty())
         return true;
 
     WidgetHierarchyUpdatesSuspensionScope suspendWidgetHierarchyUpdates;
@@ -3522,7 +3509,7 @@ void FrameView::queuePostLayoutCallback(Function<void()>&& callback)
 
 void FrameView::flushPostLayoutTasksQueue()
 {
-    if (m_nestedLayoutCount > 1)
+    if (isLayoutNested())
         return;
 
     if (!m_postLayoutCallbackQueue.size())
@@ -3535,6 +3522,10 @@ void FrameView::flushPostLayoutTasksQueue()
 
 void FrameView::performPostLayoutTasks()
 {
+    if (m_inPerformPostLayoutTasks)
+        return;
+
+    SetForScope<bool> inPerformPostLayoutTasks(m_inPerformPostLayoutTasks, true);
     // FIXME: We should not run any JavaScript code in this function.
     LOG(Layout, "FrameView %p performPostLayoutTasks", this);
 
@@ -3544,7 +3535,7 @@ void FrameView::performPostLayoutTasks()
 
     flushPostLayoutTasksQueue();
 
-    if (m_nestedLayoutCount <= 1 && frame().document()->documentElement())
+    if (!isLayoutNested() && frame().document()->documentElement())
         fireLayoutRelatedMilestonesIfNeeded();
 
 #if PLATFORM(IOS)
@@ -3689,7 +3680,7 @@ void FrameView::autoSizeIfEnabled()
 
     LOG(Layout, "FrameView %p autoSizeIfEnabled", this);
     SetForScope<bool> changeInAutoSize(m_inAutoSize, true);
-    if (m_subtreeLayoutRoot)
+    if (subtreeLayoutRoot())
         convertSubtreeLayoutToFullLayout();
     // Start from the minimum size and allow it to grow.
     resize(m_minAutoSize.width(), m_minAutoSize.height());
@@ -4299,7 +4290,7 @@ bool FrameView::isInChildFrameWithFrameFlattening() const
     return false;
 }
 
-void FrameView::startLayoutAtMainFrameViewIfNeeded(bool allowSubtree)
+void FrameView::startLayoutAtMainFrameViewIfNeeded()
 {
     // When we start a layout at the child level as opposed to the topmost frame view and this child
     // frame requires flattening, we need to re-initiate the layout at the topmost view. Layout
@@ -4309,7 +4300,7 @@ void FrameView::startLayoutAtMainFrameViewIfNeeded(bool allowSubtree)
         return;
 
     // In the middle of parent layout, no need to restart from topmost.
-    if (parentView->m_nestedLayoutCount)
+    if (parentView->isInLayout())
         return;
 
     // Parent tree is clean. Starting layout from it would have no effect.
@@ -4320,7 +4311,7 @@ void FrameView::startLayoutAtMainFrameViewIfNeeded(bool allowSubtree)
         parentView = parentView->parentFrameView();
 
     LOG(Layout, "  frame flattening, starting from root");
-    parentView->layout(allowSubtree);
+    parentView->layout();
 }
 
 void FrameView::updateControlTints()
@@ -4719,9 +4710,11 @@ void FrameView::enableAutoSizeMode(bool enable, const IntSize& minSize, const In
     setScrollbarModes(ScrollbarAuto, ScrollbarAuto);
 }
 
-void FrameView::forceLayout(bool allowSubtree)
+void FrameView::forceLayout(bool allowSubtreeLayout)
 {
-    layout(allowSubtree);
+    if (!allowSubtreeLayout && subtreeLayoutRoot())
+        convertSubtreeLayoutToFullLayout();
+    layout();
 }
 
 void FrameView::forceLayoutForPagination(const FloatSize& pageSize, const FloatSize& originalPageSize, float maximumShrinkFactor, AdjustViewSizeOrNot shouldAdjustViewSize)

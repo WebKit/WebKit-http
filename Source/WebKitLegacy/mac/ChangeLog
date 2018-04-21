@@ -1,3 +1,86 @@
+2017-10-24  Eric Carlson  <eric.carlson@apple.com>
+
+        Web Inspector: Enable WebKit logging configuration and display
+        https://bugs.webkit.org/show_bug.cgi?id=177027
+        <rdar://problem/33964767>
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/WebChromeClient.mm:
+        (stringForMessageSource): Deal with Media and WebRTC message sources.
+
+2017-10-20  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Provide basic timeline and animation interfaces
+        https://bugs.webkit.org/show_bug.cgi?id=178526
+
+        Reviewed by Dean Jackson.
+
+        Remove the WEB_ANIMATIONS compile-time flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-10-19  Sam Weinig  <sam@webkit.org>
+
+        [Settings] Move global settings into their own file
+        https://bugs.webkit.org/show_bug.cgi?id=178512
+
+        Reviewed by Darin Adler.
+
+        Moves all global settigns out of SettingsBase and into the new DeprecatedGlobalSettings.
+
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::supportsVideoFullscreen):
+        * WebView/WebDynamicScrollBarsView.mm:
+        (+[WebDynamicScrollBarsView _horizontalScrollerClass]):
+        (+[WebDynamicScrollBarsView _verticalScrollerClass]):
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView _preferencesChanged:]):
+        (+[WebView _doNotStartObservingNetworkReachability]):
+
+2017-10-17  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Replace some stack raw pointers with RefPtrs within WebCore/html
+        https://bugs.webkit.org/show_bug.cgi?id=178201
+        <rdar://problem/34841692>
+
+        Reviewed by Ryosuke Niwa.
+
+        * DOM/DOM.mm:
+        (kit):
+        Change the type of node as toNode() is changed to return RefPtr.
+
+2017-10-18  Chris Dumez  <cdumez@apple.com>
+
+        [Service Worker] Add stubs for Client / WindowClient / Clients
+        https://bugs.webkit.org/show_bug.cgi?id=178469
+
+        Reviewed by Youenn Fablet.
+
+        Rename PageVisiblityState to VisibilityState.
+
+        * WebView/WebView.mm:
+        (kit):
+
+2017-10-18  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, rolling out r223291.
+
+        See WebCore ChangeLog for more detail.
+
+        Reverted changeset:
+
+        "Remove Editor::simplifyMarkup"
+        https://bugs.webkit.org/show_bug.cgi?id=178271
+        https://trac.webkit.org/changeset/223291
+
 2017-10-17  Keith Miller  <keith_miller@apple.com>
 
         Change WebCore sources to work with unified source builds

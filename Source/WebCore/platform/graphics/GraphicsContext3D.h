@@ -735,13 +735,13 @@ public:
     class ContextLostCallback {
     public:
         virtual void onContextLost() = 0;
-        virtual ~ContextLostCallback() {}
+        virtual ~ContextLostCallback() = default;
     };
 
     class ErrorMessageCallback {
     public:
         virtual void onErrorMessage(const String& message, GC3Dint id) = 0;
-        virtual ~ErrorMessageCallback() { }
+        virtual ~ErrorMessageCallback() = default;
     };
 
     void setContextLostCallback(std::unique_ptr<ContextLostCallback>);
@@ -1158,8 +1158,11 @@ public:
     bool paintCompositedResultsToCanvas(ImageBuffer*);
 
 #if PLATFORM(COCOA)
-    void endPaint();
     bool texImageIOSurface2D(GC3Denum target, GC3Denum internalFormat, GC3Dsizei width, GC3Dsizei height, GC3Denum format, GC3Denum type, IOSurfaceRef, GC3Duint plane);
+#endif
+
+#if PLATFORM(IOS)
+    void presentRenderbuffer();
 #endif
 
 #if PLATFORM(MAC)

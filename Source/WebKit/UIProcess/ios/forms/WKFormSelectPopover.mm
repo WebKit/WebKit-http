@@ -264,8 +264,8 @@ static NSString *stringWithWritingDirection(NSString *string, UITextWritingDirec
     ASSERT(textRect.size.width > 0.0);
     
     // Assume all cells have the same available text width.
-    CGFloat initialFontSize = _UIApplicationUsesLegacyUI() ? UITableViewCellDefaultFontSize : cell.textLabel.font.pointSize;
-    UIFont *font = _UIApplicationUsesLegacyUI() ? [UIFont boldSystemFontOfSize:initialFontSize] : cell.textLabel.font;
+    UIFont *font = cell.textLabel.font;
+    CGFloat initialFontSize = font.pointSize;
     ASSERT(initialFontSize);
     if (textRect.size.width != _maximumTextWidth || _fontSize == 0) {
         _maximumTextWidth = textRect.size.width;
@@ -390,13 +390,10 @@ static NSString *stringWithWritingDirection(NSString *string, UITextWritingDirec
     UIViewController *popoverViewController = _tableViewController.get();
     UINavigationController *navController = nil;
     NSString *title = view.assistedNodeInformation.title;
-    BOOL needsNavigationController = (self.view && _UIApplicationUsesLegacyUI()) || [title length];
+    BOOL needsNavigationController = !!title.length;
     if (needsNavigationController) {
         navController = [[UINavigationController alloc] initWithRootViewController:_tableViewController.get()];
         popoverViewController = navController;
-        
-        if (self.view.assistedNodeInformation.isMultiSelect && _UIApplicationUsesLegacyUI())
-            _tableViewController.get().navigationItem.rightBarButtonItem = [[[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemDone target:self action:@selector(_userActionDismissedPopover:)] autorelease];
     }
     
     CGSize popoverSize = [_tableViewController.get().tableView sizeThatFits:CGSizeMake(320, CGFLOAT_MAX)];

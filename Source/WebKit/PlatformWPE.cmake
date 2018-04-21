@@ -20,7 +20,8 @@ file(REMOVE "${FORWARDING_HEADERS_DIR}/WebCore/Settings.h")
 set(WebKit_USE_PREFIX_HEADER ON)
 
 add_custom_target(webkitwpe-forwarding-headers
-    COMMAND ${PERL_EXECUTABLE} ${WEBKIT_DIR}/Scripts/generate-forwarding-headers.pl --include-path ${WEBKIT_DIR} --output ${FORWARDING_HEADERS_DIR} --platform wpe --platform soup
+    DEPENDS ${WebKit_DERIVED_SOURCES}
+    COMMAND ${PERL_EXECUTABLE} ${WEBKIT_DIR}/Scripts/generate-forwarding-headers.pl --include-path ${WEBKIT_DIR} --include-path ${DERIVED_SOURCES_WEBKIT_DIR} --output ${FORWARDING_HEADERS_DIR} --platform wpe --platform soup
 )
 
  # These symbolic link allows includes like #include <wpe/WebkitWebView.h> which simulates installed headers.
@@ -163,7 +164,6 @@ list(APPEND WebKit_SOURCES
     UIProcess/API/glib/WebKitFormSubmissionRequest.cpp
     UIProcess/API/glib/WebKitGeolocationPermissionRequest.cpp
     UIProcess/API/glib/WebKitGeolocationProvider.cpp
-    UIProcess/API/glib/WebKitIconLoadingClient.cpp
     UIProcess/API/glib/WebKitInjectedBundleClient.cpp
     UIProcess/API/glib/WebKitInstallMissingMediaPluginsPermissionRequest.cpp
     UIProcess/API/glib/WebKitJavascriptResult.cpp

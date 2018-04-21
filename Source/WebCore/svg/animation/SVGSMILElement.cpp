@@ -252,11 +252,11 @@ void SVGSMILElement::reset()
     resolveFirstInterval();
 }
 
-Node::InsertionNotificationRequest SVGSMILElement::insertedInto(ContainerNode& rootParent)
+Node::InsertedIntoAncestorResult SVGSMILElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    SVGElement::insertedInto(rootParent);
-    if (!rootParent.isConnected())
-        return InsertionDone;
+    SVGElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    if (!insertionType.connectedToDocument)
+        return InsertedIntoAncestorResult::Done;
 
     // Verify we are not in <use> instance tree.
     ASSERT(!isInShadowTree());
@@ -265,7 +265,7 @@ Node::InsertionNotificationRequest SVGSMILElement::insertedInto(ContainerNode& r
 
     SVGSVGElement* owner = ownerSVGElement();
     if (!owner)
-        return InsertionDone;
+        return InsertedIntoAncestorResult::Done;
 
     m_timeContainer = &owner->timeContainer();
     m_timeContainer->setDocumentOrderIndexesDirty();
@@ -280,17 +280,17 @@ Node::InsertionNotificationRequest SVGSMILElement::insertedInto(ContainerNode& r
     if (m_timeContainer)
         m_timeContainer->notifyIntervalsChanged();
 
-    return InsertionShouldCallFinishedInsertingSubtree;
+    return InsertedIntoAncestorResult::NeedsPostInsertionCallback;
 }
 
-void SVGSMILElement::finishedInsertingSubtree()
+void SVGSMILElement::didFinishInsertingNode()
 {
     buildPendingResource();
 }
 
-void SVGSMILElement::removedFrom(ContainerNode& rootParent)
+void SVGSMILElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
-    if (rootParent.isConnected()) {
+    if (removalType.disconnectedFromDocument) {
         clearResourceReferences();
         disconnectConditions();
         setTargetElement(nullptr);
@@ -299,7 +299,7 @@ void SVGSMILElement::removedFrom(ContainerNode& rootParent)
         m_timeContainer = nullptr;
     }
 
-    SVGElement::removedFrom(rootParent);
+    SVGElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
 }
 
 bool SVGSMILElement::hasValidAttributeName()

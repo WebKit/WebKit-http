@@ -173,21 +173,21 @@ void SVGTextPathElement::buildPendingResource()
     }
 }
 
-Node::InsertionNotificationRequest SVGTextPathElement::insertedInto(ContainerNode& rootParent)
+Node::InsertedIntoAncestorResult SVGTextPathElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    SVGTextContentElement::insertedInto(rootParent);
-    return InsertionShouldCallFinishedInsertingSubtree;
+    SVGTextContentElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    return InsertedIntoAncestorResult::NeedsPostInsertionCallback;
 }
 
-void SVGTextPathElement::finishedInsertingSubtree()
+void SVGTextPathElement::didFinishInsertingNode()
 {
     buildPendingResource();
 }
 
-void SVGTextPathElement::removedFrom(ContainerNode& rootParent)
+void SVGTextPathElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
-    SVGTextContentElement::removedFrom(rootParent);
-    if (rootParent.isConnected())
+    SVGTextContentElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
+    if (removalType.disconnectedFromDocument)
         clearResourceReferences();
 }
 

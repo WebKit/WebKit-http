@@ -80,7 +80,7 @@ void MessagePortChannel::disentangle()
         remote->setRemotePort(nullptr);
 }
 
-void MessagePortChannel::postMessageToRemote(Ref<SerializedScriptValue>&& message, std::unique_ptr<MessagePortChannelArray> channels)
+void MessagePortChannel::postMessageToRemote(Ref<SerializedScriptValue>&& message, std::unique_ptr<MessagePortChannelArray>&& channels)
 {
     LockHolder lock(m_channel->m_mutex);
     if (!m_channel->m_outgoingQueue)
@@ -150,9 +150,7 @@ PlatformMessagePortChannel::PlatformMessagePortChannel(MessagePortQueue* incomin
 {
 }
 
-PlatformMessagePortChannel::~PlatformMessagePortChannel()
-{
-}
+PlatformMessagePortChannel::~PlatformMessagePortChannel() = default;
 
 void PlatformMessagePortChannel::setRemotePort(MessagePort* port)
 {

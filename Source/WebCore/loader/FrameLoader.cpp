@@ -3553,6 +3553,15 @@ RetainPtr<CFDictionaryRef> FrameLoader::connectionProperties(ResourceLoader* loa
 }
 #endif
 
+ReferrerPolicy FrameLoader::effectiveReferrerPolicy() const
+{
+    if (auto* parentFrame = m_frame.tree().parent())
+        return parentFrame->document()->referrerPolicy();
+    if (m_opener)
+        return m_opener->document()->referrerPolicy();
+    return ReferrerPolicy::NoReferrerWhenDowngrade;
+}
+
 String FrameLoader::referrer() const
 {
     return m_documentLoader ? m_documentLoader->request().httpReferrer() : emptyString();
@@ -3811,9 +3820,9 @@ RefPtr<Frame> createWindow(Frame& openerFrame, Frame& lookupFrame, FrameLoadRequ
     return frame;
 }
 
-bool FrameLoader::shouldSuppressKeyboardInput() const
+bool FrameLoader::shouldSuppressTextInputFromEditing() const
 {
-    return m_frame.settings().shouldSuppressKeyboardInputDuringProvisionalNavigation() && m_state == FrameStateProvisional;
+    return m_frame.settings().shouldSuppressTextInputFromEditingDuringProvisionalNavigation() && m_state == FrameStateProvisional;
 }
 
 } // namespace WebCore

@@ -29,6 +29,9 @@
 #if ENABLE(APPLE_PAY)
 
 #include "MainFrame.h"
+#include "MockPayment.h"
+#include "MockPaymentContact.h"
+#include "MockPaymentMethod.h"
 #include "PaymentCoordinator.h"
 #include "URL.h"
 #include <wtf/RunLoop.h>
@@ -58,30 +61,105 @@ bool MockPaymentCoordinator::canMakePayments()
     return true;
 }
 
-void MockPaymentCoordinator::canMakePaymentsWithActiveCard(const String&, const String&, WTF::Function<void(bool)>&& completionHandler)
+void MockPaymentCoordinator::canMakePaymentsWithActiveCard(const String&, const String&, Function<void(bool)>&& completionHandler)
 {
-    RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler)]() {
+    RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler)] {
         completionHandler(true);
     });
 }
 
-void MockPaymentCoordinator::openPaymentSetup(const String&, const String&, WTF::Function<void(bool)>&& completionHandler)
+void MockPaymentCoordinator::openPaymentSetup(const String&, const String&, Function<void(bool)>&& completionHandler)
 {
-    RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler)]() {
+    RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler)] {
         completionHandler(true);
+    });
+}
+
+static uint64_t showCount;
+static uint64_t hideCount;
+
+static void dispatchIfShowing(Function<void()>&& function)
+{
+    ASSERT(showCount > hideCount);
+    RunLoop::main().dispatch([currentShowCount = showCount, function = WTFMove(function)]() {
+        if (showCount > hideCount && showCount == currentShowCount)
+            function();
     });
 }
 
 bool MockPaymentCoordinator::showPaymentUI(const URL&, const Vector<URL>&, const ApplePaySessionPaymentRequest&)
 {
-    RunLoop::main().dispatch([mainFrame = makeRef(m_mainFrame)]() {
+    ASSERT(showCount == hideCount);
+    ++showCount;
+    dispatchIfShowing([mainFrame = makeRef(m_mainFrame)]() {
         mainFrame->paymentCoordinator().validateMerchant({ URL(), ASCIILiteral("https://webkit.org/") });
     });
     return true;
 }
 
+void MockPaymentCoordinator::completeMerchantValidation(const PaymentMerchantSession&)
+{
+    dispatchIfShowing([mainFrame = makeRef(m_mainFrame), shippingAddress = m_shippingAddress]() {
+        ApplePayPaymentContact contact = shippingAddress;
+        mainFrame->paymentCoordinator().didSelectShippingContact(MockPaymentContact { WTFMove(contact) });
+    });
+}
+
+void MockPaymentCoordinator::changeShippingOption(String&& shippingOption)
+{
+    dispatchIfShowing([mainFrame = makeRef(m_mainFrame), shippingOption = WTFMove(shippingOption)]() mutable {
+        ApplePaySessionPaymentRequest::ShippingMethod shippingMethod;
+        shippingMethod.identifier = WTFMove(shippingOption);
+        mainFrame->paymentCoordinator().didSelectShippingMethod(shippingMethod);
+    });
+}
+
+void MockPaymentCoordinator::changePaymentMethod(ApplePayPaymentMethod&& paymentMethod)
+{
+    dispatchIfShowing([mainFrame = makeRef(m_mainFrame), paymentMethod = WTFMove(paymentMethod)]() mutable {
+        mainFrame->paymentCoordinator().didSelectPaymentMethod(MockPaymentMethod { WTFMove(paymentMethod) });
+    });
+}
+
+void MockPaymentCoordinator::acceptPayment()
+{
+    dispatchIfShowing([mainFrame = makeRef(m_mainFrame), shippingAddress = m_shippingAddress]() mutable {
+        ApplePayPayment payment;
+        payment.shippingContact = WTFMove(shippingAddress);
+        mainFrame->paymentCoordinator().didAuthorizePayment(MockPayment { WTFMove(payment) });
+    });
+}
+
+void MockPaymentCoordinator::cancelPayment()
+{
+    dispatchIfShowing([mainFrame = makeRef(m_mainFrame)] {
+        mainFrame->paymentCoordinator().didCancelPaymentSession();
+        ++hideCount;
+        ASSERT(showCount == hideCount);
+    });
+}
+
+void MockPaymentCoordinator::completePaymentSession(std::optional<PaymentAuthorizationResult>&&)
+{
+    ++hideCount;
+    ASSERT(showCount == hideCount);
+}
+
+void MockPaymentCoordinator::abortPaymentSession()
+{
+    ++hideCount;
+    ASSERT(showCount == hideCount);
+}
+
+void MockPaymentCoordinator::cancelPaymentSession()
+{
+    ++hideCount;
+    ASSERT(showCount == hideCount);
+}
+
 void MockPaymentCoordinator::paymentCoordinatorDestroyed()
 {
+    ASSERT(showCount == hideCount);
     delete this;
 }
 

@@ -39,7 +39,10 @@
 #include "NetworkConnectionToWebProcessMessages.h"
 #include "NetworkProcessConnection.h"
 #include "NetworkSession.h"
+#include "NetworkSessionCreationParameters.h"
 #include "PluginProcessConnectionManager.h"
+#include "ServiceWorkerContextManager.h"
+#include "ServiceWorkerContextManagerMessages.h"
 #include "SessionTracker.h"
 #include "StatisticsData.h"
 #include "StorageProcessMessages.h"
@@ -69,6 +72,7 @@
 #include "WebSocketStream.h"
 #include "WebToStorageProcessConnection.h"
 #include "WebsiteData.h"
+#include "WebsiteDataStoreParameters.h"
 #include "WebsiteDataType.h"
 #include <JavaScriptCore/JSLock.h>
 #include <JavaScriptCore/MemoryStatistics.h>
@@ -83,6 +87,7 @@
 #include <WebCore/DOMWindow.h>
 #include <WebCore/DatabaseManager.h>
 #include <WebCore/DatabaseTracker.h>
+#include <WebCore/DeprecatedGlobalSettings.h>
 #include <WebCore/DiagnosticLoggingClient.h>
 #include <WebCore/DiagnosticLoggingKeys.h>
 #include <WebCore/FontCache.h>
@@ -105,7 +110,6 @@
 #include <WebCore/ResourceLoadObserver.h>
 #include <WebCore/ResourceLoadStatistics.h>
 #include <WebCore/RuntimeApplicationChecks.h>
-#include <WebCore/SWContextManager.h>
 #include <WebCore/SchemeRegistry.h>
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/ServiceWorkerContextData.h>
@@ -262,6 +266,10 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 #endif
 
     platformInitializeWebProcess(WTFMove(parameters));
+
+#if USE(NETWORK_SESSION)
+    SessionTracker::setSession(PAL::SessionID::defaultSessionID(), NetworkSession::create({ }));
+#endif
 
     // Match the QoS of the UIProcess and the scrolling thread but use a slightly lower priority.
     WTF::Thread::setCurrentThreadIsUserInteractive(-1);
@@ -509,7 +517,7 @@ void WebProcess::fullKeyboardAccessModeChanged(bool fullKeyboardAccessEnabled)
 
 void WebProcess::ensurePrivateBrowsingSession(PAL::SessionID sessionID)
 {
-    WebFrameNetworkingContext::ensurePrivateBrowsingSession(sessionID);
+    WebFrameNetworkingContext::ensurePrivateBrowsingSession({ { }, { }, { }, { }, { }, { }, { sessionID, { }, { }, AllowsCellularAccess::Yes }});
 }
 
 void WebProcess::addWebsiteDataStore(WebsiteDataStoreParameters&& parameters)
@@ -563,7 +571,10 @@ void WebProcess::clearCachedCredentials()
 {
     NetworkStorageSession::defaultStorageSession().credentialStorage().clearCredentials();
 #if USE(NETWORK_SESSION)
-    NetworkSession::defaultSession().clearCredentials();
+    if (auto* networkSession = SessionTracker::networkSession(PAL::SessionID::defaultSessionID()))
+        networkSession->clearCredentials();
+    else
+        ASSERT_NOT_REACHED();
 #endif
 }
 
@@ -661,6 +672,15 @@ void WebProcess::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& de
         ChildProcess::didReceiveMessage(connection, decoder);
         return;
     }
+
+#if ENABLE(SERVICE_WORKER)
+    if (decoder.messageReceiverName() == Messages::ServiceWorkerContextManager::messageReceiverName()) {
+        ASSERT(m_serviceWorkerManager);
+        if (m_serviceWorkerManager)
+            m_serviceWorkerManager->didReceiveMessage(connection, decoder);
+        return;
+    }
+#endif
 
     LOG_ERROR("Unhandled web process message '%s:%s'", decoder.messageReceiverName().toString().data(), decoder.messageName().toString().data());
 }
@@ -1450,7 +1470,7 @@ void WebProcess::nonVisibleProcessCleanupTimerFired()
 
 void WebProcess::setResourceLoadStatisticsEnabled(bool enabled)
 {
-    WebCore::Settings::setResourceLoadStatisticsEnabled(enabled);
+    WebCore::DeprecatedGlobalSettings::setResourceLoadStatisticsEnabled(enabled);
 }
 
 void WebProcess::clearResourceLoadStatistics()
@@ -1620,9 +1640,9 @@ LibWebRTCNetwork& WebProcess::libWebRTCNetwork()
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-void WebProcess::getWorkerContextConnection()
+void WebProcess::getWorkerContextConnection(const WebPreferencesStore& store)
 {
-    ASSERT(!m_workerContextConnection);
+    ASSERT(!m_serviceWorkerManager);
 
 #if USE(UNIX_DOMAIN_SOCKETS)
     IPC::Connection::SocketPair socketPair = IPC::Connection::createPlatformConnection();
@@ -1642,20 +1662,11 @@ void WebProcess::getWorkerContextConnection()
     RELEASE_ASSERT_NOT_REACHED();
 #endif
 
-    m_workerContextConnection = IPC::Connection::createServerConnection(connectionIdentifier, *this);
-    m_workerContextConnection->open();
-
+    auto workerContextConnection = IPC::Connection::createServerConnection(connectionIdentifier, *this);
+    workerContextConnection->open();
+    m_serviceWorkerManager =  ServiceWorkerContextManager(WTFMove(workerContextConnection), store);
     WebProcess::singleton().parentProcessConnection()->send(Messages::WebProcessProxy::DidGetWorkerContextConnection(connectionClientPort), 0);
 }
-
-void WebProcess::startServiceWorkerContext(uint64_t serverConnectionIdentifier, const ServiceWorkerContextData& data)
-{
-    auto contextResult = SWContextManager::singleton().startServiceWorkerContext(serverConnectionIdentifier, data);
-    
-    if (contextResult.hasException())
-        m_workerContextConnection->send(Messages::StorageProcess::ServiceWorkerContextFailedToStart(serverConnectionIdentifier, data.registrationKey, data.workerID, contextResult.exception().message()), 0);
-}
-
 #endif
 
 } // namespace WebKit

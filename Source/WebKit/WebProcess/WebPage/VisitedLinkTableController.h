@@ -27,7 +27,7 @@
 
 #include "MessageReceiver.h"
 #include "SharedMemory.h"
-#include "SharedStringHashTable.h"
+#include "SharedStringHashTableReadOnly.h"
 #include <WebCore/VisitedLinkStore.h>
 
 namespace WebKit {
@@ -53,7 +53,7 @@ private:
     void removeAllVisitedLinks();
 
     uint64_t m_identifier;
-    SharedStringHashTable m_visitedLinkTable;
+    SharedStringHashTableReadOnly m_visitedLinkTable;
 };
 
 } // namespace WebKit

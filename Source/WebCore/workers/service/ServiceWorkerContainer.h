@@ -60,6 +60,7 @@ public:
     ReadyPromise& ready() { return m_readyPromise; }
 
     void addRegistration(const String& scriptURL, const RegistrationOptions&, Ref<DeferredPromise>&&);
+    void removeRegistration(const URL& scopeURL, Ref<DeferredPromise>&&);
     void getRegistration(const String& url, Ref<DeferredPromise>&&);
     void getRegistrations(Ref<DeferredPromise>&&);
 
@@ -72,7 +73,8 @@ private:
     void scheduleJob(Ref<ServiceWorkerJob>&&);
 
     void jobFailedWithException(ServiceWorkerJob&, const Exception&) final;
-    void jobResolvedWithRegistration(ServiceWorkerJob&, const ServiceWorkerRegistrationData&) final;
+    void jobResolvedWithRegistration(ServiceWorkerJob&, ServiceWorkerRegistrationData&&) final;
+    void jobResolvedWithUnregistrationResult(ServiceWorkerJob&, bool unregistrationResult) final;
     void startScriptFetchForJob(ServiceWorkerJob&) final;
     void jobFinishedLoadingScript(ServiceWorkerJob&, const String&) final;
     void jobFailedLoadingScript(ServiceWorkerJob&, const ResourceError&) final;
@@ -94,6 +96,7 @@ private:
 
     RefPtr<SWClientConnection> m_swConnection;
     HashMap<uint64_t, RefPtr<ServiceWorkerJob>> m_jobMap;
+    mutable RefPtr<ServiceWorker> m_controller;
 
 #ifndef NDEBUG
     ThreadIdentifier m_creationThread { currentThread() };

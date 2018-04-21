@@ -186,15 +186,15 @@ void SVGImageElement::didAttachRenderers()
     }
 }
 
-Node::InsertionNotificationRequest SVGImageElement::insertedInto(ContainerNode& rootParent)
+Node::InsertedIntoAncestorResult SVGImageElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    SVGGraphicsElement::insertedInto(rootParent);
-    if (!rootParent.isConnected())
-        return InsertionDone;
+    SVGGraphicsElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    if (!insertionType.connectedToDocument)
+        return InsertedIntoAncestorResult::Done;
     // Update image loader, as soon as we're living in the tree.
     // We can only resolve base URIs properly, after that!
     m_imageLoader.updateFromElement();
-    return InsertionDone;
+    return InsertedIntoAncestorResult::Done;
 }
 
 const AtomicString& SVGImageElement::imageSourceURL() const

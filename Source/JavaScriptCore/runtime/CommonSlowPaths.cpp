@@ -167,19 +167,6 @@ namespace JSC {
         CALL_END_IMPL(crExec, crCallTarget);                \
     } while (false)
 
-static CommonSlowPaths::ArityCheckData* setupArityCheckData(VM& vm, int slotsToAdd)
-{
-    CommonSlowPaths::ArityCheckData* result = vm.arityCheckData.get();
-    result->paddedStackSpace = slotsToAdd;
-#if ENABLE(JIT)
-    if (vm.canUseJIT())
-        result->thunkToCall = vm.getCTIStub(arityFixupGenerator).code().executableAddress();
-    else
-#endif
-        result->thunkToCall = 0;
-    return result;
-}
-
 SLOW_PATH_DECL(slow_path_call_arityCheck)
 {
     BEGIN();
@@ -192,7 +179,7 @@ SLOW_PATH_DECL(slow_path_call_arityCheck)
         CommonSlowPaths::interpreterThrowInCaller(exec, createStackOverflowError(exec));
         RETURN_TWO(bitwise_cast<void*>(static_cast<uintptr_t>(1)), exec);
     }
-    RETURN_TWO(0, setupArityCheckData(vm, slotsToAdd));
+    RETURN_TWO(0, bitwise_cast<void*>(static_cast<uintptr_t>(slotsToAdd)));
 }
 
 SLOW_PATH_DECL(slow_path_construct_arityCheck)
@@ -206,7 +193,7 @@ SLOW_PATH_DECL(slow_path_construct_arityCheck)
         CommonSlowPaths::interpreterThrowInCaller(exec, createStackOverflowError(exec));
         RETURN_TWO(bitwise_cast<void*>(static_cast<uintptr_t>(1)), exec);
     }
-    RETURN_TWO(0, setupArityCheckData(vm, slotsToAdd));
+    RETURN_TWO(0, bitwise_cast<void*>(static_cast<uintptr_t>(slotsToAdd)));
 }
 
 SLOW_PATH_DECL(slow_path_create_direct_arguments)
@@ -248,7 +235,7 @@ SLOW_PATH_DECL(slow_path_create_this)
         result = constructEmptyObject(exec, structure);
         if (structure->hasPolyProto()) {
             JSObject* prototype = constructor->prototypeForConstruction(vm, exec);
-            result->putDirect(vm, structure->polyProtoOffset(), prototype);
+            result->putDirect(vm, knownPolyProtoOffset, prototype);
             prototype->didBecomePrototype();
             ASSERT_WITH_MESSAGE(!hasIndexedProperties(result->indexingType()), "We rely on JSFinalObject not starting out with an indexing type otherwise we would potentially need to convert to slow put storage");
         }

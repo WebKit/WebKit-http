@@ -5085,9 +5085,6 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
         if (!m_keyEventQueue.isEmpty()) {
             LOG(KeyHandling, " UI process: sent keyEvent from didReceiveEvent");
             m_process->send(Messages::WebPage::KeyEvent(m_keyEventQueue.first()), m_pageID);
-        } else {
-            if (auto* automationSession = process().processPool().automationSession())
-                automationSession->keyboardEventsFlushedForPage(*this);
         }
 
         // The call to doneWithKeyEvent may close this WebPage.
@@ -5095,10 +5092,14 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
         Ref<WebPageProxy> protect(*this);
 
         m_pageClient.doneWithKeyEvent(event, handled);
-        if (handled)
-            break;
+        if (!handled)
+            m_uiClient->didNotHandleKeyEvent(this, event);
 
-        m_uiClient->didNotHandleKeyEvent(this, event);
+        // Notify the session after -[NSApp sendEvent:] has a crack at turning the event into an action.
+        if (m_keyEventQueue.isEmpty()) {
+            if (auto* automationSession = process().processPool().automationSession())
+                automationSession->keyboardEventsFlushedForPage(*this);
+        }
         break;
     }
 #if ENABLE(MAC_GESTURE_EVENTS)
@@ -5824,9 +5825,9 @@ void WebPageProxy::didReceiveAuthenticationChallengeProxy(uint64_t frameID, Ref<
     MESSAGE_CHECK(frame);
 
     if (m_navigationClient)
-        m_navigationClient->didReceiveAuthenticationChallenge(*this, authenticationChallenge.ptr());
+        m_navigationClient->didReceiveAuthenticationChallenge(*this, authenticationChallenge.get());
     else
-        m_loaderClient->didReceiveAuthenticationChallengeInFrame(*this, *frame, authenticationChallenge.ptr());
+        m_loaderClient->didReceiveAuthenticationChallengeInFrame(*this, *frame, authenticationChallenge.get());
 }
 
 void WebPageProxy::exceededDatabaseQuota(uint64_t frameID, const String& originIdentifier, const String& databaseName, const String& displayName, uint64_t currentQuota, uint64_t currentOriginUsage, uint64_t currentDatabaseUsage, uint64_t expectedUsage, Ref<Messages::WebPageProxy::ExceededDatabaseQuota::DelayedReply>&& reply)

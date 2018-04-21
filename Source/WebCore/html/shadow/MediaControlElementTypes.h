@@ -72,8 +72,8 @@ enum MediaControlElementType {
     MediaClosedCaptionsTrackList,
 };
 
-HTMLMediaElement* parentMediaElement(Node*);
-inline HTMLMediaElement* parentMediaElement(const RenderObject& renderer) { return parentMediaElement(renderer.node()); }
+RefPtr<HTMLMediaElement> parentMediaElement(Node*);
+inline RefPtr<HTMLMediaElement> parentMediaElement(const RenderObject& renderer) { return parentMediaElement(renderer.node()); }
 
 MediaControlElementType mediaControlElementType(Node*);
 
@@ -92,7 +92,7 @@ public:
 
 protected:
     explicit MediaControlElement(MediaControlElementType, HTMLElement*);
-    ~MediaControlElement() { }
+    ~MediaControlElement() = default;
 
     virtual void setDisplayType(MediaControlElementType);
     virtual bool isMediaControlElement() const { return true; }

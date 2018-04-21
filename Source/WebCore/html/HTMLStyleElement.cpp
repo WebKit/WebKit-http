@@ -96,19 +96,18 @@ void HTMLStyleElement::finishParsingChildren()
     HTMLElement::finishParsingChildren();
 }
 
-Node::InsertionNotificationRequest HTMLStyleElement::insertedInto(ContainerNode& insertionPoint)
+Node::InsertedIntoAncestorResult HTMLStyleElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    bool wasInDocument = isConnected();
-    auto result = HTMLElement::insertedInto(insertionPoint);
-    if (insertionPoint.isConnected() && !wasInDocument)
+    auto result = HTMLElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    if (insertionType.connectedToDocument)
         m_styleSheetOwner.insertedIntoDocument(*this);
     return result;
 }
 
-void HTMLStyleElement::removedFrom(ContainerNode& insertionPoint)
+void HTMLStyleElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
-    HTMLElement::removedFrom(insertionPoint);
-    if (insertionPoint.isConnected() && !isConnected())
+    HTMLElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
+    if (removalType.disconnectedFromDocument)
         m_styleSheetOwner.removedFromDocument(*this);
 }
 

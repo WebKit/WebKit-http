@@ -38,6 +38,7 @@
 #include "ScopeGuard.h"
 #include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
+#include "ServiceWorker.h"
 #include "ServiceWorkerJob.h"
 #include "ServiceWorkerJobData.h"
 #include "ServiceWorkerProvider.h"
@@ -74,7 +75,14 @@ void ServiceWorkerContainer::derefEventTarget()
 
 ServiceWorker* ServiceWorkerContainer::controller() const
 {
-    return nullptr;
+    auto* context = scriptExecutionContext();
+    if (!context || !context->selectedServiceWorkerIdentifier()) {
+        m_controller = nullptr;
+        return nullptr;
+    }
+    if (!m_controller || m_controller->identifier() != context->selectedServiceWorkerIdentifier())
+        m_controller = ServiceWorker::create(*context, context->selectedServiceWorkerIdentifier());
+    return m_controller.get();
 }
 
 void ServiceWorkerContainer::addRegistration(const String& relativeScriptURL, const RegistrationOptions& options, Ref<DeferredPromise>&& promise)
@@ -82,16 +90,17 @@ void ServiceWorkerContainer::addRegistration(const String& relativeScriptURL, co
     auto* context = scriptExecutionContext();
     if (!context || !context->sessionID().isValid()) {
         ASSERT_NOT_REACHED();
+        promise->reject(Exception(InvalidStateError));
         return;
     }
-
-    if (!m_swConnection)
-        m_swConnection = &ServiceWorkerProvider::singleton().serviceWorkerConnectionForSession(context->sessionID());
 
     if (relativeScriptURL.isEmpty()) {
         promise->reject(Exception { TypeError, ASCIILiteral("serviceWorker.register() cannot be called with an empty script URL") });
         return;
     }
+
+    if (!m_swConnection)
+        m_swConnection = &ServiceWorkerProvider::singleton().serviceWorkerConnectionForSession(scriptExecutionContext()->sessionID());
 
     ServiceWorkerJobData jobData(m_swConnection->identifier());
 
@@ -136,6 +145,30 @@ void ServiceWorkerContainer::addRegistration(const String& relativeScriptURL, co
     scheduleJob(ServiceWorkerJob::create(*this, WTFMove(promise), WTFMove(jobData)));
 }
 
+void ServiceWorkerContainer::removeRegistration(const URL& scopeURL, Ref<DeferredPromise>&& promise)
+{
+    auto* context = scriptExecutionContext();
+    if (!context || !context->sessionID().isValid()) {
+        ASSERT_NOT_REACHED();
+        promise->reject(Exception(InvalidStateError));
+        return;
+    }
+
+    if (!m_swConnection) {
+        ASSERT_NOT_REACHED();
+        promise->reject(Exception(InvalidStateError));
+        return;
+    }
+
+    ServiceWorkerJobData jobData(m_swConnection->identifier());
+    jobData.clientCreationURL = context->url();
+    jobData.topOrigin = SecurityOriginData::fromSecurityOrigin(context->topOrigin());
+    jobData.type = ServiceWorkerJobType::Unregister;
+    jobData.scopeURL = scopeURL;
+
+    scheduleJob(ServiceWorkerJob::create(*this, WTFMove(promise), WTFMove(jobData)));
+}
+
 void ServiceWorkerContainer::scheduleJob(Ref<ServiceWorkerJob>&& job)
 {
     ASSERT(m_swConnection);
@@ -167,7 +200,7 @@ void ServiceWorkerContainer::jobFailedWithException(ServiceWorkerJob& job, const
     jobDidFinish(job);
 }
 
-void ServiceWorkerContainer::jobResolvedWithRegistration(ServiceWorkerJob& job, const ServiceWorkerRegistrationData& data)
+void ServiceWorkerContainer::jobResolvedWithRegistration(ServiceWorkerJob& job, ServiceWorkerRegistrationData&& data)
 {
     ScopeGuard guard([this, &job] {
         jobDidFinish(job);
@@ -179,8 +212,30 @@ void ServiceWorkerContainer::jobResolvedWithRegistration(ServiceWorkerJob& job, 
         return;
     }
 
-    auto registration = ServiceWorkerRegistration::create(*context, data);
+    // FIXME: Implement proper selection of service workers.
+    context->setSelectedServiceWorkerIdentifier(data.identifier);
+
+    auto registration = ServiceWorkerRegistration::create(*context, WTFMove(data));
     job.promise().resolve<IDLInterface<ServiceWorkerRegistration>>(registration.get());
+}
+
+void ServiceWorkerContainer::jobResolvedWithUnregistrationResult(ServiceWorkerJob& job, bool unregistrationResult)
+{
+    ScopeGuard guard([this, &job] {
+        jobDidFinish(job);
+    });
+
+    auto* context = scriptExecutionContext();
+    if (!context) {
+        LOG_ERROR("ServiceWorkerContainer::jobResolvedWithUnregistrationResult called but the containers ScriptExecutionContext is gone");
+        return;
+    }
+
+    // FIXME: Implement proper selection of service workers.
+    if (unregistrationResult)
+        context->setSelectedServiceWorkerIdentifier(0);
+
+    job.promise().resolve<IDLBoolean>(unregistrationResult);
 }
 
 void ServiceWorkerContainer::startScriptFetchForJob(ServiceWorkerJob& job)

@@ -54,6 +54,7 @@
 #include "WebsiteDataStoreParameters.h"
 #include "WebsiteDataType.h"
 #include <WebCore/DNS.h>
+#include <WebCore/DeprecatedGlobalSettings.h>
 #include <WebCore/DiagnosticLoggingClient.h>
 #include <WebCore/LogInitialization.h>
 #include <WebCore/MIMETypeRegistry.h>
@@ -114,9 +115,6 @@ NetworkProcess::NetworkProcess()
     addSupplement<AuthenticationManager>();
     addSupplement<WebCookieManager>();
     addSupplement<LegacyCustomProtocolManager>();
-#if USE(NETWORK_SESSION) && PLATFORM(COCOA)
-    NetworkSessionCocoa::setLegacyCustomProtocolManager(supplement<LegacyCustomProtocolManager>());
-#endif
 }
 
 NetworkProcess::~NetworkProcess()
@@ -240,10 +238,15 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
 
     // FIXME: instead of handling this here, a message should be sent later (scales to multiple sessions)
     if (parameters.privateBrowsingEnabled)
-        RemoteNetworkingContext::ensurePrivateBrowsingSession({PAL::SessionID::legacyPrivateSessionID(), { }, { }, { }, { }, WebsiteDataStore::defaultCacheStoragePerOriginQuota, { }});
+        RemoteNetworkingContext::ensurePrivateBrowsingSession({ { }, { }, { }, { }, WebsiteDataStore::defaultCacheStoragePerOriginQuota, { }, { PAL::SessionID::legacyPrivateSessionID(), { }, { },  AllowsCellularAccess::Yes }});
 
     if (parameters.shouldUseTestingNetworkSession)
         NetworkStorageSession::switchToNewTestingSession();
+
+#if USE(NETWORK_SESSION)
+    parameters.defaultSessionParameters.legacyCustomProtocolManager = supplement<LegacyCustomProtocolManager>();
+    SessionTracker::setSession(PAL::SessionID::defaultSessionID(), NetworkSession::create(WTFMove(parameters.defaultSessionParameters)));
+#endif
 
     for (auto& supplement : m_supplements.values())
         supplement->initialize(parameters);
@@ -287,7 +290,10 @@ void NetworkProcess::clearCachedCredentials()
 {
     NetworkStorageSession::defaultStorageSession().credentialStorage().clearCredentials();
 #if USE(NETWORK_SESSION)
-    NetworkSession::defaultSession().clearCredentials();
+    if (auto* networkSession = SessionTracker::networkSession(PAL::SessionID::defaultSessionID()))
+        networkSession->clearCredentials();
+    else
+        ASSERT_NOT_REACHED();
 #endif
 }
 
@@ -548,13 +554,6 @@ void NetworkProcess::continueCanAuthenticateAgainstProtectionSpace(uint64_t load
 #endif
 
 #if USE(NETWORK_SESSION)
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-void NetworkProcess::continueCanAuthenticateAgainstProtectionSpaceDownload(DownloadID downloadID, bool canAuthenticate)
-{
-    downloadManager().continueCanAuthenticateAgainstProtectionSpace(downloadID, canAuthenticate);
-}
-#endif
-
 void NetworkProcess::continueWillSendRequest(DownloadID downloadID, WebCore::ResourceRequest&& request)
 {
     downloadManager().continueWillSendRequest(downloadID, WTFMove(request));
@@ -638,7 +637,7 @@ void NetworkProcess::getNetworkProcessStatistics(uint64_t callbackID)
 
 void NetworkProcess::setAllowsAnySSLCertificateForWebSocket(bool allows)
 {
-    Settings::setAllowsAnySSLCertificate(allows);
+    DeprecatedGlobalSettings::setAllowsAnySSLCertificate(allows);
 }
 
 void NetworkProcess::logDiagnosticMessage(uint64_t webPageID, const String& message, const String& description, ShouldSample shouldSample)

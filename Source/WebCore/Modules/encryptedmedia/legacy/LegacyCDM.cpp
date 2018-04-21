@@ -117,9 +117,7 @@ LegacyCDM::LegacyCDM(const String& keySystem)
     m_private = CDMFactoryForKeySystem(keySystem)->constructor(this);
 }
 
-LegacyCDM::~LegacyCDM()
-{
-}
+LegacyCDM::~LegacyCDM() = default;
 
 bool LegacyCDM::supportsMIMEType(const String& mimeType) const
 {
@@ -134,10 +132,10 @@ std::unique_ptr<LegacyCDMSession> LegacyCDM::createSession(LegacyCDMSessionClien
     return session;
 }
 
-MediaPlayer* LegacyCDM::mediaPlayer() const
+RefPtr<MediaPlayer> LegacyCDM::mediaPlayer() const
 {
     if (!m_client)
-        return 0;
+        return nullptr;
     return m_client->cdmMediaPlayer(this);
 }
 

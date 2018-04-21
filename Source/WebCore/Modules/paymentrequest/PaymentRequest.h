@@ -39,9 +39,11 @@
 namespace WebCore {
 
 class Document;
+class Event;
 class PaymentAddress;
 class PaymentHandler;
 class PaymentResponse;
+enum class PaymentComplete;
 enum class PaymentShippingType;
 struct PaymentMethodData;
 
@@ -66,6 +68,16 @@ public:
     const PaymentOptions& paymentOptions() const { return m_options; }
     const PaymentDetailsInit& paymentDetails() const { return m_details; }
 
+    void shippingAddressChanged(Ref<PaymentAddress>&&);
+    void shippingOptionChanged(const String& shippingOption);
+    ExceptionOr<void> updateWith(Event&, Ref<DOMPromise>&&);
+    void accept(const String& methodName, JSC::Strong<JSC::JSObject>&& details, Ref<PaymentAddress>&& shippingAddress, const String& payerName, const String& payerEmail, const String& payerPhone);
+    void complete(std::optional<PaymentComplete>&&);
+    void cancel();
+
+    // EventTarget
+    bool dispatchEvent(Event&) final;
+
     using MethodIdentifier = Variant<String, URL>;
     using RefCounted<PaymentRequest>::ref;
     using RefCounted<PaymentRequest>::deref;
@@ -83,6 +95,9 @@ private:
     };
 
     PaymentRequest(Document&, PaymentOptions&&, PaymentDetailsInit&&, Vector<String>&& serializedModifierData, Vector<Method>&& serializedMethodData, String&& selectedShippingOption);
+
+    void settleDetailsPromise(const AtomicString& type);
+    void abortWithException(Exception&&);
 
     // ActiveDOMObject
     const char* activeDOMObjectName() const final { return "PaymentRequest"; }
@@ -104,6 +119,8 @@ private:
     State m_state { State::Created };
     std::optional<ShowPromise> m_showPromise;
     RefPtr<PaymentHandler> m_activePaymentHandler;
+    RefPtr<DOMPromise> m_detailsPromise;
+    bool m_isUpdating { false };
 };
 
 std::optional<PaymentRequest::MethodIdentifier> convertAndValidatePaymentMethodIdentifier(const String& identifier);

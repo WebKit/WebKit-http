@@ -86,6 +86,11 @@ void SWServer::Connection::scriptContextFailedToStart(const ServiceWorkerRegistr
     m_server.scriptContextFailedToStart(*this, registrationKey, workerID, message);
 }
 
+void SWServer::Connection::scriptContextStarted(const ServiceWorkerRegistrationKey& registrationKey, uint64_t identifier, const String& workerID)
+{
+    m_server.scriptContextStarted(*this, registrationKey, identifier, workerID);
+}
+
 SWServer::SWServer()
 {
     m_taskThread = Thread::create(ASCIILiteral("ServiceWorker Task Thread"), [this] {
@@ -116,14 +121,23 @@ void SWServer::rejectJob(const ServiceWorkerJobData& jobData, const ExceptionDat
     connection->rejectJobInClient(jobData.identifier(), exceptionData);
 }
 
-void SWServer::resolveJob(const ServiceWorkerJobData& jobData, const ServiceWorkerRegistrationData& registrationData)
+void SWServer::resolveRegistrationJob(const ServiceWorkerJobData& jobData, const ServiceWorkerRegistrationData& registrationData)
 {
     LOG(ServiceWorker, "Resolved ServiceWorker job %" PRIu64 "-%" PRIu64 " in server with registration %" PRIu64, jobData.connectionIdentifier(), jobData.identifier(), registrationData.identifier);
     auto* connection = m_connections.get(jobData.connectionIdentifier());
     if (!connection)
         return;
 
-    connection->resolveJobInClient(jobData.identifier(), registrationData);
+    connection->resolveRegistrationJobInClient(jobData.identifier(), registrationData);
+}
+
+void SWServer::resolveUnregistrationJob(const ServiceWorkerJobData& jobData, const ServiceWorkerRegistrationKey& registrationKey, bool unregistrationResult)
+{
+    auto* connection = m_connections.get(jobData.connectionIdentifier());
+    if (!connection)
+        return;
+
+    connection->resolveUnregistrationJobInClient(jobData.identifier(), registrationKey, unregistrationResult);
 }
 
 void SWServer::startScriptFetch(const ServiceWorkerJobData& jobData)
@@ -155,6 +169,14 @@ void SWServer::scriptContextFailedToStart(Connection& connection, const ServiceW
     
     if (auto* registration = m_registrations.get(registrationKey))
         registration->scriptContextFailedToStart(connection, workerID, message);
+}
+
+void SWServer::scriptContextStarted(Connection& connection, const ServiceWorkerRegistrationKey& registrationKey, uint64_t identifier, const String& workerID)
+{
+    ASSERT(m_connections.contains(connection.identifier()));
+
+    if (auto* registration = m_registrations.get(registrationKey))
+        registration->scriptContextStarted(connection, identifier, workerID);
 }
 
 Ref<SWServerWorker> SWServer::createWorker(Connection& connection, const ServiceWorkerRegistrationKey& registrationKey, const URL& url, const String& script, WorkerType type)

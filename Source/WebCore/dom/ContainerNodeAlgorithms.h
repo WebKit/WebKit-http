@@ -26,8 +26,8 @@
 
 namespace WebCore {
 
-void notifyChildNodeInserted(ContainerNode& insertionPoint, Node&, NodeVector& postInsertionNotificationTargets);
-void notifyChildNodeRemoved(ContainerNode& insertionPoint, Node&);
+NodeVector notifyChildNodeInserted(ContainerNode& parentOfInsertedTree, Node&);
+void notifyChildNodeRemoved(ContainerNode& oldParentOfRemovedTree, Node&);
 void removeDetachedChildrenInContainer(ContainerNode&);
 
 enum SubframeDisconnectPolicy {

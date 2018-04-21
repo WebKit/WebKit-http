@@ -25,6 +25,7 @@
 #include "EventListener.h"
 #include "EventNames.h"
 #include "MutationEvent.h"
+#include "NoEventDispatchAssertion.h"
 #include "RenderSVGInline.h"
 #include "RenderSVGInlineText.h"
 #include "RenderSVGResource.h"
@@ -143,8 +144,9 @@ void SVGTRefElement::updateReferencedText(Element* target)
     if (target)
         textContent = target->textContent();
 
-    ASSERT(shadowRoot());
-    ShadowRoot* root = shadowRoot();
+    auto root = userAgentShadowRoot();
+    ASSERT(root);
+    NoEventDispatchAssertion::EventAllowedScope allowedScope(*root);
     if (!root->firstChild())
         root->appendChild(Text::create(document(), textContent));
     else {
@@ -229,7 +231,7 @@ void SVGTRefElement::buildPendingResource()
     // Remove any existing event listener.
     m_targetListener->detach();
 
-    // If we're not yet in a document, this function will be called again from insertedInto().
+    // If we're not yet in a document, this function will be called again from insertedIntoAncestor().
     if (!isConnected())
         return;
 
@@ -254,23 +256,23 @@ void SVGTRefElement::buildPendingResource()
     updateReferencedText(target.get());
 }
 
-Node::InsertionNotificationRequest SVGTRefElement::insertedInto(ContainerNode& rootParent)
+Node::InsertedIntoAncestorResult SVGTRefElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    SVGElement::insertedInto(rootParent);
-    if (rootParent.isConnected())
-        return InsertionShouldCallFinishedInsertingSubtree;
-    return InsertionDone;
+    SVGElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    if (insertionType.connectedToDocument)
+        return InsertedIntoAncestorResult::NeedsPostInsertionCallback;
+    return InsertedIntoAncestorResult::Done;
 }
 
-void SVGTRefElement::finishedInsertingSubtree()
+void SVGTRefElement::didFinishInsertingNode()
 {
     buildPendingResource();
 }
 
-void SVGTRefElement::removedFrom(ContainerNode& rootParent)
+void SVGTRefElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
-    SVGElement::removedFrom(rootParent);
-    if (rootParent.isConnected())
+    SVGElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
+    if (removalType.disconnectedFromDocument)
         m_targetListener->detach();
 }
 

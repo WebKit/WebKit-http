@@ -82,7 +82,7 @@ namespace WebCore {
         bool hasPendingActivity();
 
         // Sends a message and optional cloned port to the remote port.
-        void postMessageToRemote(Ref<SerializedScriptValue>&&, std::unique_ptr<MessagePortChannelArray>);
+        void postMessageToRemote(Ref<SerializedScriptValue>&&, std::unique_ptr<MessagePortChannelArray>&&);
 
         // Extracts a message from the message queue for this port.
         std::unique_ptr<EventData> takeMessageFromRemote();
@@ -92,7 +92,7 @@ namespace WebCore {
         // Returns the entangled port if run by the same thread (see MessagePort::locallyEntangledPort() for more details).
         MessagePort* locallyEntangledPort(const ScriptExecutionContext*);
 
-        ~MessagePortChannel();
+        WEBCORE_EXPORT ~MessagePortChannel();
 
     private:
         RefPtr<PlatformMessagePortChannel> m_channel;

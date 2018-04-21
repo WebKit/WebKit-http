@@ -28,10 +28,14 @@
 
 #if ENABLE(SERVICE_WORKER)
 
+#include "DataReference.h"
 #include "Logging.h"
+#include "ServiceWorkerClientFetch.h"
 #include "StorageToWebProcessConnectionMessages.h"
 #include "WebCoreArgumentCoders.h"
+#include "WebSWOriginTable.h"
 #include "WebSWServerConnectionMessages.h"
+#include <WebCore/SerializedScriptValue.h>
 #include <WebCore/ServiceWorkerFetchResult.h>
 #include <WebCore/ServiceWorkerJobData.h>
 
@@ -40,9 +44,10 @@ using namespace WebCore;
 
 namespace WebKit {
 
-WebSWClientConnection::WebSWClientConnection(IPC::Connection& connection, const SessionID& sessionID)
+WebSWClientConnection::WebSWClientConnection(IPC::Connection& connection, SessionID sessionID)
     : m_sessionID(sessionID)
     , m_connection(connection)
+    , m_swOriginTable(makeUniqueRef<WebSWOriginTable>())
 {
     bool result = sendSync(Messages::StorageToWebProcessConnection::EstablishSWServerConnection(sessionID), Messages::StorageToWebProcessConnection::EstablishSWServerConnection::Reply(m_identifier));
 
@@ -61,6 +66,30 @@ void WebSWClientConnection::scheduleJobInServer(const ServiceWorkerJobData& jobD
 void WebSWClientConnection::finishFetchingScriptInServer(const ServiceWorkerFetchResult& result)
 {
     send(Messages::WebSWServerConnection::FinishFetchingScriptInServer(result));
+}
+
+void WebSWClientConnection::postMessageToServiceWorkerGlobalScope(uint64_t serviceWorkerIdentifier, Ref<SerializedScriptValue>&& scriptValue, const String& sourceOrigin)
+{
+    send(Messages::WebSWServerConnection::PostMessageToServiceWorkerGlobalScope(serviceWorkerIdentifier, IPC::DataReference { scriptValue->data() }, sourceOrigin));
+}
+
+bool WebSWClientConnection::hasServiceWorkerRegisteredForOrigin(const SecurityOrigin& origin) const
+{
+    return m_swOriginTable->contains(origin);
+}
+
+void WebSWClientConnection::setSWOriginTableSharedMemory(const SharedMemory::Handle& handle)
+{
+    m_swOriginTable->setSharedMemory(handle);
+}
+
+Ref<ServiceWorkerClientFetch> WebSWClientConnection::startFetch(WebServiceWorkerProvider& provider, Ref<WebCore::ResourceLoader>&& loader, uint64_t identifier, ServiceWorkerClientFetch::Callback&& callback)
+{
+    ASSERT(loader->options().serviceWorkersMode == ServiceWorkersMode::All);
+    // FIXME: Decide whether to assert for loader->options().serviceWorkerIdentifier once we have a story for navigation loads.
+
+    send(Messages::WebSWServerConnection::StartFetch(identifier, loader->options().serviceWorkerIdentifier, loader->originalRequest(), loader->options()));
+    return ServiceWorkerClientFetch::create(provider, WTFMove(loader), identifier, m_connection.get(), WTFMove(callback));
 }
 
 } // namespace WebKit

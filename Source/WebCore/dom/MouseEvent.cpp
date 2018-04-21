@@ -78,9 +78,7 @@ Ref<MouseEvent> MouseEvent::create(const AtomicString& eventType, bool canBubble
     return adoptRef(*new MouseEvent(eventType, canBubble, cancelable, view, detail, { screenX, screenY }, { clientX, clientY }, ctrlKey, altKey, shiftKey, metaKey, button, buttons, syntheticClickType, relatedTarget));
 }
 
-MouseEvent::MouseEvent()
-{
-}
+MouseEvent::MouseEvent() = default;
 
 MouseEvent::MouseEvent(const AtomicString& eventType, bool canBubble, bool cancelable, MonotonicTime timestamp, DOMWindow* view, int detail, const IntPoint& screenLocation, const IntPoint& windowLocation,
 #if ENABLE(POINTER_LOCK)
@@ -127,13 +125,11 @@ MouseEvent::MouseEvent(const AtomicString& eventType, const MouseEventInit& init
     initCoordinates({ initializer.clientX, initializer.clientY });
 }
 
-MouseEvent::~MouseEvent()
-{
-}
+MouseEvent::~MouseEvent() = default;
 
 void MouseEvent::initMouseEvent(const AtomicString& type, bool canBubble, bool cancelable, DOMWindow* view, int detail, int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, unsigned short button, EventTarget* relatedTarget)
 {
-    if (dispatched())
+    if (isBeingDispatched())
         return;
 
     initUIEvent(type, canBubble, cancelable, view, detail);
@@ -223,7 +219,7 @@ int MouseEvent::which() const
     return m_button + 1;
 }
 
-Node* MouseEvent::toElement() const
+RefPtr<Node> MouseEvent::toElement() const
 {
     // MSIE extension - "the object toward which the user is moving the mouse pointer"
     if (type() == eventNames().mouseoutEvent || type() == eventNames().mouseleaveEvent) {
@@ -234,7 +230,7 @@ Node* MouseEvent::toElement() const
     return target() ? target()->toNode() : nullptr;
 }
 
-Node* MouseEvent::fromElement() const
+RefPtr<Node> MouseEvent::fromElement() const
 {
     // MSIE extension - "object from which activation or the mouse pointer is exiting during the event" (huh?)
     if (type() != eventNames().mouseoutEvent && type() != eventNames().mouseleaveEvent) {

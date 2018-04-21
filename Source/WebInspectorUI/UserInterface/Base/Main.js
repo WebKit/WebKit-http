@@ -431,10 +431,8 @@ WI.contentLoaded = function()
         WI.DebuggerTabContentView,
         WI.ElementsTabContentView,
         WI.LayersTabContentView,
-        WI.LegacyNetworkTabContentView,
         WI.NetworkTabContentView,
         WI.NewTabContentView,
-        WI.RecordingTabContentView,
         WI.ResourcesTabContentView,
         WI.SearchTabContentView,
         WI.SettingsTabContentView,
@@ -697,7 +695,7 @@ WI.registerTabClass = function(tabClass)
 
 WI.activateExtraDomains = function(domains)
 {
-    this.notifications.dispatchEventToListeners(WI.Notification.ExtraDomainsActivated, {"domains": domains});
+    this.notifications.dispatchEventToListeners(WI.Notification.ExtraDomainsActivated, {domains});
 
     WI.CSSCompletions.requestCSSCompletions();
 
@@ -988,16 +986,9 @@ WI.showStorageTab = function()
 
 WI.showNetworkTab = function()
 {
-    let tabContentView;
-    if (WI.settings.experimentalEnableNewNetworkTab.value) {
-        tabContentView = this.tabBrowser.bestTabContentViewForClass(WI.NetworkTabContentView);
-        if (!tabContentView)
-            tabContentView = new WI.NetworkTabContentView;
-    } else {
-        tabContentView = this.tabBrowser.bestTabContentViewForClass(WI.LegacyNetworkTabContentView);
-        if (!tabContentView)
-            tabContentView = new WI.LegacyNetworkTabContentView;
-    }
+    let tabContentView = this.tabBrowser.bestTabContentViewForClass(WI.NetworkTabContentView);
+    if (!tabContentView)
+        tabContentView = new WI.NetworkTabContentView;
 
     this.tabBrowser.showTabForContentView(tabContentView);
 };
@@ -1095,8 +1086,7 @@ WI.tabContentViewClassForRepresentedObject = function(representedObject)
         || representedObject instanceof WI.Resource
         || representedObject instanceof WI.Script
         || representedObject instanceof WI.CSSStyleSheet
-        || representedObject instanceof WI.Canvas
-        || representedObject instanceof WI.ShaderProgram)
+        || (representedObject instanceof WI.Collection && !(representedObject instanceof WI.CanvasCollection)))
         return WI.ResourcesTabContentView;
 
     // FIXME: Move these to a Storage tab.
@@ -1110,7 +1100,7 @@ WI.tabContentViewClassForRepresentedObject = function(representedObject)
         return WI.CanvasTabContentView;
 
     if (representedObject instanceof WI.Recording)
-        return WI.RecordingTabContentView;
+        return WI.CanvasTabContentView;
 
     return null;
 };

@@ -52,6 +52,7 @@
 #import "WebCoreNSURLExtras.h"
 #import "markup.h"
 #import <pal/spi/cocoa/NSAttributedStringSPI.h>
+#import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
 #import <wtf/BlockObjCExceptions.h>
 
 namespace WebCore {
@@ -141,7 +142,7 @@ static RefPtr<SharedBuffer> archivedDataForAttributedString(NSAttributedString *
     if (!attributedString.length)
         return nullptr;
 
-    return SharedBuffer::create([NSKeyedArchiver archivedDataWithRootObject:attributedString]);
+    return SharedBuffer::create(securelyArchivedDataWithRootObject(attributedString));
 }
 
 String Editor::selectionInHTMLFormat()
@@ -156,6 +157,7 @@ void Editor::writeSelectionToPasteboard(Pasteboard& pasteboard)
     NSAttributedString *attributedString = attributedStringFromRange(*selectedRange());
 
     PasteboardWebContent content;
+    content.contentOrigin = m_frame.document()->originIdentifierForPasteboard();
     content.canSmartCopyOrDelete = canSmartCopyOrDelete();
     content.dataInWebArchiveFormat = selectionInWebArchiveFormat();
     content.dataInRTFDFormat = attributedString.containsAttachments ? dataInRTFDFormat(attributedString) : nullptr;
@@ -173,6 +175,7 @@ void Editor::writeSelection(PasteboardWriterData& pasteboardWriterData)
     NSAttributedString *attributedString = attributedStringFromRange(*selectedRange());
 
     PasteboardWriterData::WebContent webContent;
+    webContent.contentOrigin = m_frame.document()->originIdentifierForPasteboard();
     webContent.canSmartCopyOrDelete = canSmartCopyOrDelete();
     webContent.dataInWebArchiveFormat = selectionInWebArchiveFormat();
     webContent.dataInRTFDFormat = attributedString.containsAttachments ? dataInRTFDFormat(attributedString) : nullptr;

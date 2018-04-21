@@ -55,6 +55,7 @@ public:
         WEBCORE_EXPORT virtual ~Connection();
 
         WEBCORE_EXPORT void scriptContextFailedToStart(const ServiceWorkerRegistrationKey&, const String& workerID, const String& message);
+        WEBCORE_EXPORT void scriptContextStarted(const ServiceWorkerRegistrationKey&, uint64_t identifier, const String& workerID);
 
     protected:
         WEBCORE_EXPORT Connection(SWServer&, uint64_t identifier);
@@ -66,7 +67,8 @@ public:
     private:
         // Messages to the client WebProcess
         virtual void rejectJobInClient(uint64_t jobIdentifier, const ExceptionData&) = 0;
-        virtual void resolveJobInClient(uint64_t jobIdentifier, const ServiceWorkerRegistrationData&) = 0;
+        virtual void resolveRegistrationJobInClient(uint64_t jobIdentifier, const ServiceWorkerRegistrationData&) = 0;
+        virtual void resolveUnregistrationJobInClient(uint64_t jobIdentifier, const ServiceWorkerRegistrationKey&, bool registrationResult) = 0;
         virtual void startScriptFetchInClient(uint64_t jobIdentifier) = 0;
 
         // Messages to the SW host WebProcess
@@ -80,7 +82,8 @@ public:
 
     void scheduleJob(const ServiceWorkerJobData&);
     void rejectJob(const ServiceWorkerJobData&, const ExceptionData&);
-    void resolveJob(const ServiceWorkerJobData&, const ServiceWorkerRegistrationData&);
+    void resolveRegistrationJob(const ServiceWorkerJobData&, const ServiceWorkerRegistrationData&);
+    void resolveUnregistrationJob(const ServiceWorkerJobData&, const ServiceWorkerRegistrationKey&, bool unregistrationResult);
     void startScriptFetch(const ServiceWorkerJobData&);
 
     void postTask(CrossThreadTask&&);
@@ -97,6 +100,7 @@ private:
 
     void scriptFetchFinished(Connection&, const ServiceWorkerFetchResult&);
     void scriptContextFailedToStart(Connection&, const ServiceWorkerRegistrationKey&, const String& workerID, const String& message);
+    void scriptContextStarted(Connection&, const ServiceWorkerRegistrationKey&, uint64_t identifier, const String& workerID);
 
     HashMap<uint64_t, Connection*> m_connections;
     HashMap<ServiceWorkerRegistrationKey, std::unique_ptr<SWServerRegistration>> m_registrations;

@@ -327,14 +327,7 @@ void InspectorInstrumentation::willRemoveEventListenerImpl(InstrumentingAgents& 
     if (PageDebuggerAgent* pageDebuggerAgent = instrumentingAgents.pageDebuggerAgent())
         pageDebuggerAgent->willRemoveEventListener(target, eventType, listener, capture);
     if (InspectorDOMAgent* domAgent = instrumentingAgents.inspectorDOMAgent())
-        domAgent->willRemoveEventListener(target, eventType, listener, capture);
-}
-
-bool InspectorInstrumentation::isEventListenerDisabledImpl(InstrumentingAgents& instrumentingAgents, EventTarget& target, const AtomicString& eventType, EventListener& listener, bool capture)
-{
-    if (InspectorDOMAgent* domAgent = instrumentingAgents.inspectorDOMAgent())
-        return domAgent->isEventListenerDisabled(target, eventType, listener, capture);
-    return false;
+        domAgent->willRemoveEventListener(target);
 }
 
 void InspectorInstrumentation::didPostMessageImpl(InstrumentingAgents& instrumentingAgents, const TimerBase& timer, JSC::ExecState& state)
@@ -632,10 +625,8 @@ void InspectorInstrumentation::didFailLoadingImpl(InstrumentingAgents& instrumen
         consoleAgent->didFailLoading(identifier, error); // This should come AFTER resource notification, front-end relies on this.
 }
 
-void InspectorInstrumentation::didFinishXHRLoadingImpl(InstrumentingAgents& instrumentingAgents, unsigned long identifier, std::optional<String> decodedText, const String& url, const String& sendURL, unsigned sendLineNumber, unsigned sendColumnNumber)
+void InspectorInstrumentation::didFinishXHRLoadingImpl(InstrumentingAgents& instrumentingAgents, unsigned long identifier, std::optional<String> decodedText)
 {
-    if (WebConsoleAgent* consoleAgent = instrumentingAgents.webConsoleAgent())
-        consoleAgent->didFinishXHRLoading(identifier, url, sendURL, sendLineNumber, sendColumnNumber);
     if (InspectorNetworkAgent* networkAgent = instrumentingAgents.inspectorNetworkAgent()) {
         if (decodedText)
             networkAgent->didFinishXHRLoading(identifier, *decodedText);

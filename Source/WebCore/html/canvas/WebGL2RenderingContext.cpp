@@ -183,8 +183,8 @@ void WebGL2RenderingContext::copyBufferSubData(GC3Denum readTarget, GC3Denum wri
         synthesizeGLError(GraphicsContext3D::INVALID_VALUE, "copyBufferSubData", "offset < 0");
         return;
     }
-    WebGLBuffer* readBuffer = validateBufferDataParameters("copyBufferSubData", readTarget, GraphicsContext3D::STATIC_DRAW);
-    WebGLBuffer* writeBuffer = validateBufferDataParameters("copyBufferSubData", writeTarget, GraphicsContext3D::STATIC_DRAW);
+    RefPtr<WebGLBuffer> readBuffer = validateBufferDataParameters("copyBufferSubData", readTarget, GraphicsContext3D::STATIC_DRAW);
+    RefPtr<WebGLBuffer> writeBuffer = validateBufferDataParameters("copyBufferSubData", writeTarget, GraphicsContext3D::STATIC_DRAW);
     if (!readBuffer || !writeBuffer) {
         synthesizeGLError(GraphicsContext3D::INVALID_VALUE, "copyBufferSubData", "Invalid readTarget or writeTarget");
         return;
@@ -217,7 +217,7 @@ void WebGL2RenderingContext::getBufferSubData(GC3Denum target, long long srcByte
 {
     if (isContextLostOrPending())
         return;
-    WebGLBuffer* buffer = validateBufferDataParameters("bufferSubData", target, GraphicsContext3D::STATIC_DRAW);
+    RefPtr<WebGLBuffer> buffer = validateBufferDataParameters("bufferSubData", target, GraphicsContext3D::STATIC_DRAW);
     if (!buffer) {
         synthesizeGLError(GraphicsContext3D::INVALID_OPERATION, "getBufferSubData", "No WebGLBuffer is bound to target");
         return;
@@ -519,11 +519,15 @@ void WebGL2RenderingContext::texSubImage2D(GC3Denum, GC3Dint, GC3Dint, GC3Dint, 
 {
 }
 
-void WebGL2RenderingContext::texSubImage3D(GC3Denum, GC3Dint, GC3Dint, GC3Dint, GC3Dint, GC3Dsizei, GC3Dsizei, GC3Dsizei, GC3Denum, GC3Denum, RefPtr<ArrayBufferView>&&)
+void WebGL2RenderingContext::texSubImage3D(GC3Denum, GC3Dint, GC3Dint, GC3Dint, GC3Dint, GC3Dsizei, GC3Dsizei, GC3Dsizei, GC3Denum, GC3Denum, GC3Dint64)
 {
 }
 
-void WebGL2RenderingContext::texSubImage3D(GC3Denum, GC3Dint, GC3Dint, GC3Dint, GC3Dint, GC3Denum, GC3Denum, TexImageSource&&)
+void WebGL2RenderingContext::texSubImage3D(GC3Denum, GC3Dint, GC3Dint, GC3Dint, GC3Dint, GC3Dsizei, GC3Dsizei, GC3Dsizei, GC3Denum, GC3Denum, RefPtr<ArrayBufferView>&&, GC3Duint)
+{
+}
+
+void WebGL2RenderingContext::texSubImage3D(GC3Denum, GC3Dint, GC3Dint, GC3Dint, GC3Dint, GC3Dsizei, GC3Dsizei, GC3Dsizei, GC3Denum, GC3Denum, TexImageSource&&)
 {
 }
 
@@ -547,7 +551,11 @@ void WebGL2RenderingContext::compressedTexImage3D(GC3Denum, GC3Dint, GC3Denum, G
 {
 }
 
-void WebGL2RenderingContext::compressedTexSubImage3D(GC3Denum, GC3Dint, GC3Dint, GC3Dint, GC3Dint, GC3Dsizei, GC3Dsizei, GC3Dsizei, GC3Denum, GC3Dsizei, RefPtr<ArrayBufferView>&&)
+void WebGL2RenderingContext::compressedTexSubImage3D(GC3Denum, GC3Dint, GC3Dint, GC3Dint, GC3Dint, GC3Dsizei, GC3Dsizei, GC3Dsizei, GC3Denum, GC3Dsizei, GC3Dint64)
+{
+}
+
+void WebGL2RenderingContext::compressedTexSubImage3D(GC3Denum, GC3Dint, GC3Dint, GC3Dint, GC3Dint, GC3Dsizei, GC3Dsizei, GC3Dsizei, GC3Denum, ArrayBufferView&, GC3Duint, GC3Duint)
 {
 }
 

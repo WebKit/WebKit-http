@@ -72,6 +72,7 @@ inline CapabilityLevel canCompile(Node* node)
     case GetButterfly:
     case GetButterflyWithoutCaging:
     case NewObject:
+    case NewStringObject:
     case NewArray:
     case NewArrayWithSpread:
     case Spread:
@@ -144,6 +145,7 @@ inline CapabilityLevel canCompile(Node* node)
     case ReallocatePropertyStorage:
     case NukeStructureAndSetButterfly:
     case GetTypedArrayByteOffset:
+    case GetPrototypeOf:
     case NotifyWrite:
     case StoreBarrier:
     case FencedStoreBarrier:

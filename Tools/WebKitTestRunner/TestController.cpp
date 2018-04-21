@@ -781,6 +781,10 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
 
     WKContextClearCachedCredentials(TestController::singleton().context());
 
+    WKWebsiteDataStoreRemoveAllServiceWorkerRegistrations(WKContextGetWebsiteDataStore(platformContext()));
+
+    clearDOMCaches();
+
     // FIXME: This function should also ensure that there is only one page open.
 
     // Reset the EventSender for each test.
@@ -904,7 +908,11 @@ const char* TestController::databaseProcessName()
 {
     // FIXME: Find a way to not hardcode the process name.
 #if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
+#if !PLATFORM(WATCHOS) && !PLATFORM(APPLETV) && __IPHONE_OS_VERSION_MIN_REQUIRED < 110300
     return "com.apple.WebKit.Databases";
+#else
+    return "com.apple.WebKit.Storage";
+#endif
 #elif PLATFORM(COCOA)
     return "com.apple.WebKit.Storage.Development";
 #else
@@ -1043,6 +1051,8 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.enableIsSecureContextAttribute = parseBooleanTestHeaderValue(value);
         if (key == "enableInspectorAdditions")
             testOptions.enableInspectorAdditions = parseBooleanTestHeaderValue(value);
+        if (key == "dumpJSConsoleLogInStdErr")
+            testOptions.dumpJSConsoleLogInStdErr = parseBooleanTestHeaderValue(value);
         pairStart = pairEnd + 1;
     }
 }
@@ -1182,7 +1192,7 @@ bool TestController::runTest(const char* inputLine)
         m_currentInvocation->setIsPixelTest(command.expectedPixelHash);
     if (command.timeout > 0)
         m_currentInvocation->setCustomTimeout(command.timeout);
-    m_currentInvocation->setDumpJSConsoleLogInStdErr(command.dumpJSConsoleLogInStdErr);
+    m_currentInvocation->setDumpJSConsoleLogInStdErr(command.dumpJSConsoleLogInStdErr || options.dumpJSConsoleLogInStdErr);
 
     platformWillRunTest(*m_currentInvocation);
 
@@ -2320,12 +2330,21 @@ void TestController::clearDOMCache(WKStringRef origin)
     auto websiteDataStore = WKContextGetWebsiteDataStore(platformContext());
     ClearDOMCacheCallbackContext context(*this);
 
-    if (WKStringIsEmpty(origin))
-        WKWebsiteDataStoreRemoveAllFetchCaches(websiteDataStore, &context, clearDOMCacheCallback);
-    else {
-        auto cacheOrigin = adoptWK(WKSecurityOriginCreateFromString(origin));
-        WKWebsiteDataStoreRemoveFetchCacheForOrigin(websiteDataStore, cacheOrigin.get(), &context, clearDOMCacheCallback);
-    }
+    auto cacheOrigin = adoptWK(WKSecurityOriginCreateFromString(origin));
+    WKWebsiteDataStoreRemoveFetchCacheForOrigin(websiteDataStore, cacheOrigin.get(), &context, clearDOMCacheCallback);
+
+    if (!context.done)
+        runUntil(context.done, m_currentInvocation->shortTimeout());
+#endif
+}
+
+void TestController::clearDOMCaches()
+{
+#if PLATFORM(COCOA) && WK_API_ENABLED
+    auto websiteDataStore = WKContextGetWebsiteDataStore(platformContext());
+    ClearDOMCacheCallbackContext context(*this);
+
+    WKWebsiteDataStoreRemoveAllFetchCaches(websiteDataStore, &context, clearDOMCacheCallback);
     if (!context.done)
         runUntil(context.done, m_currentInvocation->shortTimeout());
 #endif

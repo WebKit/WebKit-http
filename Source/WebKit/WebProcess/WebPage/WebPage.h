@@ -53,11 +53,11 @@
 #include <WebCore/IntSizeHash.h>
 #include <WebCore/Page.h>
 #include <WebCore/PageOverlay.h>
-#include <WebCore/PageVisibilityState.h>
 #include <WebCore/UserActivity.h>
 #include <WebCore/UserContentTypes.h>
 #include <WebCore/UserInterfaceLayoutDirection.h>
 #include <WebCore/UserScriptTypes.h>
+#include <WebCore/VisibilityState.h>
 #include <WebCore/WebCoreKeyboardUIMode.h>
 #include <memory>
 #include <pal/HysteresisActivity.h>
@@ -96,6 +96,7 @@
 #endif
 
 #if PLATFORM(COCOA)
+#include <WebCore/VisibleSelection.h>
 #include <wtf/RetainPtr.h>
 OBJC_CLASS CALayer;
 OBJC_CLASS NSArray;
@@ -137,7 +138,6 @@ class SubstituteData;
 class TextCheckingRequest;
 class URL;
 class VisiblePosition;
-class VisibleSelection;
 enum class TextIndicatorPresentationTransition : uint8_t;
 enum SyntheticClickType : int8_t;
 struct CompositionUnderline;
@@ -511,6 +511,7 @@ public:
 
 #if ENABLE(MEDIA_STREAM)
     UserMediaPermissionRequestManager& userMediaPermissionRequestManager() { return *m_userMediaPermissionRequestManager; }
+    void prepareToSendUserMediaPermissionRequest();
 #endif
 
     void elementDidFocus(WebCore::Node*);
@@ -586,6 +587,7 @@ public:
     void handleTwoFingerTapAtPoint(const WebCore::IntPoint&, uint64_t requestID);
     void getRectsForGranularityWithSelectionOffset(uint32_t, int32_t, CallbackID);
     void getRectsAtSelectionOffsetWithText(int32_t, const String&, CallbackID);
+    void storeSelectionForAccessibility(bool);
 #if ENABLE(IOS_TOUCH_EVENTS)
     void dispatchAsynchronousTouchEvents(const Vector<WebTouchEvent, 1>& queue);
 #endif
@@ -1527,6 +1529,7 @@ private:
     bool m_allowsBlockSelection { false };
 
     RefPtr<WebCore::Range> m_initialSelection;
+    WebCore::VisibleSelection m_storedSelectionForAccessibility { WebCore::VisibleSelection() };
     WebCore::IntSize m_blockSelectionDesiredSize;
     WebCore::FloatSize m_maximumUnobscuredSize;
     int32_t m_deviceOrientation { 0 };

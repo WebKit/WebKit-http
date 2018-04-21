@@ -94,8 +94,8 @@ private:
 
     Ref<Node> cloneNodeInternal(Document&, CloningOperation) override;
 
-    Node::InsertionNotificationRequest insertedInto(ContainerNode& insertionPoint) override;
-    void removedFrom(ContainerNode& insertionPoint) override;
+    Node::InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) override;
+    void removedFromAncestor(RemovalType, ContainerNode& insertionPoint) override;
     void didMoveToNewDocument(Document& oldDocument, Document& newDocument) override;
 
     bool m_resetStyleInheritance { false };

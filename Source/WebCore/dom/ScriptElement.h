@@ -39,7 +39,7 @@ class URL;
 
 class ScriptElement {
 public:
-    virtual ~ScriptElement() { }
+    virtual ~ScriptElement() = default;
 
     Element& element() { return m_element; }
     const Element& element() const { return m_element; }
@@ -81,8 +81,14 @@ protected:
     bool forceAsync() const { return m_forceAsync; }
 
     // Helper functions used by our parent classes.
-    bool shouldCallFinishedInsertingSubtree(ContainerNode&);
-    void finishedInsertingSubtree();
+    Node::InsertedIntoAncestorResult insertedIntoAncestor(Node::InsertionType insertionType, ContainerNode&) const
+    {
+        if (insertionType.connectedToDocument && !m_parserInserted)
+            return Node::InsertedIntoAncestorResult::NeedsPostInsertionCallback;
+        return Node::InsertedIntoAncestorResult::Done;
+    }
+
+    void didFinishInsertingNode();
     void childrenChanged(const ContainerNode::ChildChange&);
     void handleSourceAttribute(const String& sourceURL);
     void handleAsyncAttribute();

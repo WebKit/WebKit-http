@@ -229,6 +229,28 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
         zoomEditor.addEventListener(WI.SettingEditor.Event.ValueDidChange, () => { WI.setZoomFactor(zoomEditor.value); });
         WI.settings.zoomFactor.addEventListener(WI.Setting.Event.Changed, () => { zoomEditor.value = WI.getZoomFactor().maxDecimals(2); });
 
+        if (WI.LogManager.supportsLogChannels()) {
+            const logLevels = [
+                [WI.LoggingChannel.Level.Off, WI.UIString("Off")],
+                [WI.LoggingChannel.Level.Log, WI.UIString("Log")],
+                [WI.LoggingChannel.Level.Error, WI.UIString("Error")],
+                [WI.LoggingChannel.Level.Warning, WI.UIString("Warning")],
+                [WI.LoggingChannel.Level.Info, WI.UIString("Info")],
+                [WI.LoggingChannel.Level.Debug, WI.UIString("Debug")],
+            ];
+            const editorLabels = {
+                media: WI.UIString("Media Logging:"),
+                webrtc: WI.UIString("WebRTC Logging:"),
+            };
+
+            let channels = WI.logManager.customLoggingChannels;
+            for (let channel of channels) {
+                let logEditor = generalSettingsView.addGroupWithCustomSetting(editorLabels[channel.source], WI.SettingEditor.Type.Select, {values: logLevels});
+                logEditor.value = channel.level;
+                logEditor.addEventListener(WI.SettingEditor.Event.ValueDidChange, () => { ConsoleAgent.setLoggingChannelLevel(channel.source, logEditor.value); });
+            }
+        }
+
         this.addSettingsView(generalSettingsView);
     }
 
@@ -239,40 +261,9 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
 
         let experimentalSettingsView = new WI.SettingsView("experimental", WI.UIString("Experimental"));
 
-        if (window.CanvasAgent) {
-            let canvasSettingsGroup = experimentalSettingsView.addGroup(WI.UIString("Canvas:"));
-            canvasSettingsGroup.addSetting(WI.settings.experimentalEnableCanvasTab, WI.UIString("Enable Canvas Tab"));
-            canvasSettingsGroup.addSetting(WI.settings.experimentalShowCanvasContextsInResources, WI.UIString("Show Contexts in Resources Tab"));
-            experimentalSettingsView.addSeparator();
-        }
-
         if (window.CSSAgent) {
             experimentalSettingsView.addSetting(WI.UIString("Styles Panel:"), WI.settings.experimentalSpreadsheetStyleEditor, WI.UIString("Spreadsheet Style Editor"));
             experimentalSettingsView.addSeparator();
-        }
-
-        if (window.NetworkAgent) {
-            experimentalSettingsView.addSetting(WI.UIString("Network Tab:"), WI.settings.experimentalEnableNewNetworkTab, WI.UIString("New Network Tab"));
-            experimentalSettingsView.addSeparator();
-
-            // Ensure the toggled network tab is open after reloading the frontend.
-            // Put it in the same place as the existing network tab or just at the end.
-            WI.settings.experimentalEnableNewNetworkTab.addEventListener(WI.Setting.Event.Changed, () => {
-                let newNetworkTableEnabled = WI.settings.experimentalEnableNewNetworkTab.value;
-                let incomingTabIdentifier = newNetworkTableEnabled ? WI.NetworkTabContentView.Type : WI.LegacyNetworkTabContentView.Type;
-                let outgoingTabIdentifier = newNetworkTableEnabled ? WI.LegacyNetworkTabContentView.Type : WI.NetworkTabContentView.Type;
-
-                let tabs = WI._openTabsSetting.value.slice();
-                tabs.remove(incomingTabIdentifier);
-
-                let index = tabs.indexOf(outgoingTabIdentifier);
-                if (index !== -1)
-                    tabs.insertAtIndex(incomingTabIdentifier, index);
-                else
-                    tabs.push(incomingTabIdentifier);
-
-                WI._openTabsSetting.value = tabs;
-            });
         }
 
         if (window.LayerTreeAgent) {
@@ -294,11 +285,8 @@ WI.SettingsTabContentView = class SettingsTabContentView extends WI.TabContentVi
             });
         }
 
-        listenForChange(WI.settings.experimentalShowCanvasContextsInResources);
         listenForChange(WI.settings.experimentalSpreadsheetStyleEditor);
-        listenForChange(WI.settings.experimentalEnableNewNetworkTab);
         listenForChange(WI.settings.experimentalEnableLayersTab);
-        listenForChange(WI.settings.experimentalEnableCanvasTab);
 
         this.addSettingsView(experimentalSettingsView);
     }

@@ -21,6 +21,11 @@ find_library(XML2_LIBRARY XML2)
 find_package(Sqlite REQUIRED)
 find_package(ZLIB REQUIRED)
 
+list(APPEND WebCore_UNIFIED_SOURCE_LIST_FILES
+    "SourcesCocoa.txt"
+    "SourcesMac.txt"
+)
+
 list(APPEND WebCore_LIBRARIES
     ${ACCELERATE_LIBRARY}
     ${AUDIOTOOLBOX_LIBRARY}
@@ -248,7 +253,7 @@ list(APPEND WebCore_SOURCES
     page/cocoa/PerformanceLoggingCocoa.mm
     page/cocoa/ResourceUsageOverlayCocoa.mm
     page/cocoa/ResourceUsageThreadCocoa.mm
-    page/cocoa/SettingsCocoa.mm
+    page/cocoa/SettingsBaseCocoa.mm
     page/cocoa/UserAgent.mm
 
     page/mac/ChromeMac.mm

@@ -66,9 +66,7 @@ Ref<HTMLBodyElement> HTMLBodyElement::create(const QualifiedName& tagName, Docum
     return adoptRef(*new HTMLBodyElement(tagName, document));
 }
 
-HTMLBodyElement::~HTMLBodyElement()
-{
-}
+HTMLBodyElement::~HTMLBodyElement() = default;
 
 bool HTMLBodyElement::isPresentationAttribute(const QualifiedName& name) const
 {
@@ -187,23 +185,23 @@ void HTMLBodyElement::parseAttribute(const QualifiedName& name, const AtomicStri
     HTMLElement::parseAttribute(name, value);
 }
 
-Node::InsertionNotificationRequest HTMLBodyElement::insertedInto(ContainerNode& insertionPoint)
+Node::InsertedIntoAncestorResult HTMLBodyElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    HTMLElement::insertedInto(insertionPoint);
-    if (!insertionPoint.isConnected())
-        return InsertionDone;
+    HTMLElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    if (!insertionType.connectedToDocument)
+        return InsertedIntoAncestorResult::Done;
 
     // FIXME: It's surprising this is web compatible since it means a marginwidth and marginheight attribute can
     // magically appear on the <body> of all documents embedded through <iframe> or <frame>.
     // FIXME: Perhaps this code should be in attach() instead of here.
     auto* ownerElement = document().ownerElement();
     if (!is<HTMLFrameElementBase>(ownerElement))
-        return InsertionDone;
+        return InsertedIntoAncestorResult::Done;
 
-    return InsertionShouldCallFinishedInsertingSubtree;
+    return InsertedIntoAncestorResult::NeedsPostInsertionCallback;
 }
 
-void HTMLBodyElement::finishedInsertingSubtree()
+void HTMLBodyElement::didFinishInsertingNode()
 {
     auto* ownerElement = document().ownerElement();
     RELEASE_ASSERT(is<HTMLFrameElementBase>(ownerElement));
@@ -245,10 +243,10 @@ int HTMLBodyElement::scrollLeft()
 {
     if (isFirstBodyElementOfDocument()) {
         document().updateLayoutIgnorePendingStylesheets();
-        Frame* frame = document().frame();
+        RefPtr<Frame> frame = document().frame();
         if (!frame)
             return 0;
-        FrameView* view = frame->view();
+        RefPtr<FrameView> view = frame->view();
         if (!view)
             return 0;
         return adjustForZoom(view->contentsScrollPosition().x(), *frame);
@@ -260,10 +258,10 @@ void HTMLBodyElement::setScrollLeft(int scrollLeft)
 {
     if (isFirstBodyElementOfDocument()) {
         document().updateLayoutIgnorePendingStylesheets();
-        Frame* frame = document().frame();
+        RefPtr<Frame> frame = document().frame();
         if (!frame)
             return;
-        FrameView* view = frame->view();
+        RefPtr<FrameView> view = frame->view();
         if (!view)
             return;
         view->setScrollPosition(IntPoint(static_cast<int>(scrollLeft * frame->pageZoomFactor() * frame->frameScaleFactor()), view->scrollY()));
@@ -275,10 +273,10 @@ int HTMLBodyElement::scrollTop()
 {
     if (isFirstBodyElementOfDocument()) {
         document().updateLayoutIgnorePendingStylesheets();
-        Frame* frame = document().frame();
+        RefPtr<Frame> frame = document().frame();
         if (!frame)
             return 0;
-        FrameView* view = frame->view();
+        RefPtr<FrameView> view = frame->view();
         if (!view)
             return 0;
         return adjustForZoom(view->contentsScrollPosition().y(), *frame);
@@ -290,10 +288,10 @@ void HTMLBodyElement::setScrollTop(int scrollTop)
 {
     if (isFirstBodyElementOfDocument()) {
         document().updateLayoutIgnorePendingStylesheets();
-        Frame* frame = document().frame();
+        RefPtr<Frame> frame = document().frame();
         if (!frame)
             return;
-        FrameView* view = frame->view();
+        RefPtr<FrameView> view = frame->view();
         if (!view)
             return;
         view->setScrollPosition(IntPoint(view->scrollX(), static_cast<int>(scrollTop * frame->pageZoomFactor() * frame->frameScaleFactor())));
@@ -323,10 +321,10 @@ int HTMLBodyElement::scrollHeight()
     if (isFirstBodyElementOfDocument()) {
         // Update the document's layout.
         document().updateLayoutIgnorePendingStylesheets();
-        Frame* frame = document().frame();
+        RefPtr<Frame> frame = document().frame();
         if (!frame)
             return 0;
-        FrameView* view = frame->view();
+        RefPtr<FrameView> view = frame->view();
         if (!view)
             return 0;
         return adjustForZoom(view->contentsHeight(), *frame);
@@ -339,10 +337,10 @@ int HTMLBodyElement::scrollWidth()
     if (isFirstBodyElementOfDocument()) {
         // Update the document's layout.
         document().updateLayoutIgnorePendingStylesheets();
-        Frame* frame = document().frame();
+        RefPtr<Frame> frame = document().frame();
         if (!frame)
             return 0;
-        FrameView* view = frame->view();
+        RefPtr<FrameView> view = frame->view();
         if (!view)
             return 0;
         return adjustForZoom(view->contentsWidth(), *frame);

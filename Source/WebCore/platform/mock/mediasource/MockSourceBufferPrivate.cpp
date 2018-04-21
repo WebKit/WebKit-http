@@ -45,7 +45,7 @@ namespace WebCore {
 class MockMediaSample final : public MediaSample {
 public:
     static Ref<MockMediaSample> create(const MockSampleBox& box) { return adoptRef(*new MockMediaSample(box)); }
-    virtual ~MockMediaSample() { }
+    virtual ~MockMediaSample() = default;
 
 private:
     MockMediaSample(const MockSampleBox& box)
@@ -107,7 +107,7 @@ Ref<MediaSample> MockMediaSample::createNonDisplayingCopy() const
 class MockMediaDescription final : public MediaDescription {
 public:
     static RefPtr<MockMediaDescription> create(const MockTrackBox& box) { return adoptRef(new MockMediaDescription(box)); }
-    virtual ~MockMediaDescription() { }
+    virtual ~MockMediaDescription() = default;
 
     AtomicString codec() const override { return m_box.codec(); }
     bool isVideo() const override { return m_box.kind() == MockTrackBox::Video; }
@@ -130,18 +130,16 @@ MockSourceBufferPrivate::MockSourceBufferPrivate(MockMediaSourcePrivate* parent)
 {
 }
 
-MockSourceBufferPrivate::~MockSourceBufferPrivate()
-{
-}
+MockSourceBufferPrivate::~MockSourceBufferPrivate() = default;
 
 void MockSourceBufferPrivate::setClient(SourceBufferPrivateClient* client)
 {
     m_client = client;
 }
 
-void MockSourceBufferPrivate::append(const unsigned char* data, unsigned length)
+void MockSourceBufferPrivate::append(Vector<unsigned char>&& data)
 {
-    m_inputBuffer.append(data, length);
+    m_inputBuffer.appendVector(data);
     SourceBufferPrivateClient::AppendResult result = SourceBufferPrivateClient::AppendSucceeded;
 
     while (m_inputBuffer.size() && result == SourceBufferPrivateClient::AppendSucceeded) {

@@ -48,33 +48,28 @@ HTMLSlotElement::HTMLSlotElement(const QualifiedName& tagName, Document& documen
     ASSERT(hasTagName(slotTag));
 }
 
-HTMLSlotElement::InsertionNotificationRequest HTMLSlotElement::insertedInto(ContainerNode& insertionPoint)
+HTMLSlotElement::InsertedIntoAncestorResult HTMLSlotElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    auto insertionResult = HTMLElement::insertedInto(insertionPoint);
-    ASSERT_UNUSED(insertionResult, insertionResult == InsertionDone);
+    auto insertionResult = HTMLElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    ASSERT_UNUSED(insertionResult, insertionResult == InsertedIntoAncestorResult::Done);
 
-    // This function could be called when this element's shadow root's host or its ancestor is inserted.
-    // This element is new to the shadow tree (and its tree scope) only if the parent into which this element
-    // or its ancestor is inserted belongs to the same tree scope as this element's.
-    if (insertionPoint.isInShadowTree() && isInShadowTree() && &insertionPoint.treeScope() == &treeScope()) {
+    if (insertionType.treeScopeChanged && isInShadowTree()) {
         if (auto shadowRoot = containingShadowRoot())
             shadowRoot->addSlotElementByName(attributeWithoutSynchronization(nameAttr), *this);
     }
 
-    return InsertionDone;
+    return InsertedIntoAncestorResult::Done;
 }
 
-void HTMLSlotElement::removedFrom(ContainerNode& insertionPoint)
+void HTMLSlotElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
-    // ContainerNode::removeBetween always sets the removed child's tree scope to Document's but InShadowRoot flag is unset in Node::removedFrom.
-    // So if InShadowRoot flag is set but this element's tree scope is Document's, this element has just been removed from a shadow root.
-    if (insertionPoint.isInShadowTree() && isInShadowTree() && &treeScope() == &document()) {
-        auto* oldShadowRoot = insertionPoint.containingShadowRoot();
+    if (removalType.treeScopeChanged && oldParentOfRemovedTree.isInShadowTree()) {
+        auto* oldShadowRoot = oldParentOfRemovedTree.containingShadowRoot();
         ASSERT(oldShadowRoot);
         oldShadowRoot->removeSlotElementByName(attributeWithoutSynchronization(nameAttr), *this);
     }
 
-    HTMLElement::removedFrom(insertionPoint);
+    HTMLElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
 }
 
 void HTMLSlotElement::attributeChanged(const QualifiedName& name, const AtomicString& oldValue, const AtomicString& newValue, AttributeModificationReason reason)
@@ -102,19 +97,19 @@ static void flattenAssignedNodes(Vector<Node*>& nodes, const HTMLSlotElement& sl
 {
     auto* assignedNodes = slot.assignedNodes();
     if (!assignedNodes) {
-        for (Node* child = slot.firstChild(); child; child = child->nextSibling()) {
+        for (RefPtr<Node> child = slot.firstChild(); child; child = child->nextSibling()) {
             if (is<HTMLSlotElement>(*child))
                 flattenAssignedNodes(nodes, downcast<HTMLSlotElement>(*child));
             else if (is<Text>(*child) || is<Element>(*child))
-                nodes.append(child);
+                nodes.append(child.get());
         }
         return;
     }
-    for (Node* node : *assignedNodes) {
+    for (RefPtr<Node> node : *assignedNodes) {
         if (is<HTMLSlotElement>(*node))
             flattenAssignedNodes(nodes, downcast<HTMLSlotElement>(*node));
         else
-            nodes.append(node);
+            nodes.append(node.get());
     }
 }
 

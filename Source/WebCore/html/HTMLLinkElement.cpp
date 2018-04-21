@@ -340,28 +340,27 @@ void HTMLLinkElement::clearSheet()
     m_sheet = nullptr;
 }
 
-Node::InsertionNotificationRequest HTMLLinkElement::insertedInto(ContainerNode& insertionPoint)
+Node::InsertedIntoAncestorResult HTMLLinkElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    bool wasInDocument = isConnected();
-    HTMLElement::insertedInto(insertionPoint);
-    if (!insertionPoint.isConnected() || wasInDocument)
-        return InsertionDone;
+    HTMLElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    if (!insertionType.connectedToDocument)
+        return InsertedIntoAncestorResult::Done;
 
     m_styleScope = &Style::Scope::forNode(*this);
     m_styleScope->addStyleSheetCandidateNode(*this, m_createdByParser);
 
-    return InsertionShouldCallFinishedInsertingSubtree;
+    return InsertedIntoAncestorResult::NeedsPostInsertionCallback;
 }
 
-void HTMLLinkElement::finishedInsertingSubtree()
+void HTMLLinkElement::didFinishInsertingNode()
 {
     process();
 }
 
-void HTMLLinkElement::removedFrom(ContainerNode& insertionPoint)
+void HTMLLinkElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
-    HTMLElement::removedFrom(insertionPoint);
-    if (!insertionPoint.isConnected() || isConnected())
+    HTMLElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
+    if (!removalType.disconnectedFromDocument)
         return;
 
     m_linkLoader.cancelLoad();
@@ -540,7 +539,7 @@ void HTMLLinkElement::handleClick(Event& event)
     URL url = href();
     if (url.isNull())
         return;
-    Frame* frame = document().frame();
+    RefPtr<Frame> frame = document().frame();
     if (!frame)
         return;
     frame->loader().urlSelected(url, target(), &event, LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, document().shouldOpenExternalURLsPolicyToPropagate());

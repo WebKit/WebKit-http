@@ -102,6 +102,7 @@
 #import <WebCore/ValidationBubble.h>
 #import <WebCore/ViewportArguments.h>
 #import <WebCore/WritingMode.h>
+#import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
 #import <pal/spi/mac/NSTextFinderSPI.h>
 #import <wtf/BlockPtr.h>
 #import <wtf/HashMap.h>
@@ -4525,8 +4526,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
             NSObject <NSSecureCoding> *userObject = nil;
             if (API::Data* data = static_cast<API::Data*>(userData)) {
                 auto nsData = adoptNS([[NSData alloc] initWithBytesNoCopy:const_cast<void*>(static_cast<const void*>(data->bytes())) length:data->size() freeWhenDone:NO]);
-                auto unarchiver = adoptNS([[NSKeyedUnarchiver alloc] initForReadingWithData:nsData.get()]);
-                [unarchiver setRequiresSecureCoding:YES];
+                auto unarchiver = secureUnarchiverFromData(nsData.get());
                 @try {
                     userObject = [unarchiver decodeObjectOfClass:[NSObject class] forKey:@"userObject"];
                 } @catch (NSException *exception) {
@@ -5529,6 +5529,16 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
             [rectValues addObject:[NSValue valueWithCGRect:selectionRect.rect()]];
         capturedCompletionHandler(rectValues.get());
     }];
+}
+
+- (void)_accessibilityStoreSelection
+{
+    [_contentView _accessibilityStoreSelection];
+}
+
+- (void)_accessibilityClearSelection
+{
+    [_contentView _accessibilityClearSelection];
 }
 
 - (CGRect)_contentVisibleRect

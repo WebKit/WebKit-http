@@ -365,15 +365,14 @@ void SVGElement::reportAttributeParsingError(SVGParsingError error, const Qualif
     ASSERT_NOT_REACHED();
 }
 
-void SVGElement::removedFrom(ContainerNode& rootParent)
+void SVGElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
-    bool wasInDocument = rootParent.isConnected();
-    if (wasInDocument)
+    if (removalType.disconnectedFromDocument)
         updateRelativeLengthsInformation(false, this);
 
-    StyledElement::removedFrom(rootParent);
+    StyledElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
 
-    if (wasInDocument) {
+    if (removalType.disconnectedFromDocument) {
         document().accessSVGExtensions().clearTargetDependencies(*this);
         document().accessSVGExtensions().removeAllElementReferencesForTarget(this);
     }
@@ -982,12 +981,12 @@ void SVGElement::svgAttributeChanged(const QualifiedName& attrName)
     }
 }
 
-Node::InsertionNotificationRequest SVGElement::insertedInto(ContainerNode& rootParent)
+Node::InsertedIntoAncestorResult SVGElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    StyledElement::insertedInto(rootParent);
+    StyledElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
     updateRelativeLengthsInformation();
     buildPendingResourcesIfNeeded();
-    return InsertionDone;
+    return InsertedIntoAncestorResult::Done;
 }
 
 void SVGElement::buildPendingResourcesIfNeeded()
@@ -1017,7 +1016,7 @@ void SVGElement::childrenChanged(const ChildChange& change)
 {
     StyledElement::childrenChanged(change);
 
-    if (change.source == ChildChangeSourceParser)
+    if (change.source == ChildChangeSource::Parser)
         return;
     invalidateInstances();
 }
@@ -1064,7 +1063,7 @@ AffineTransform SVGElement::localCoordinateSpaceTransform(SVGLocatable::CTMScope
 
 void SVGElement::updateRelativeLengthsInformation(bool hasRelativeLengths, SVGElement* element)
 {
-    // If we're not yet in a document, this function will be called again from insertedInto(). Do nothing now.
+    // If we're not yet in a document, this function will be called again from insertedIntoAncestor(). Do nothing now.
     if (!isConnected())
         return;
 

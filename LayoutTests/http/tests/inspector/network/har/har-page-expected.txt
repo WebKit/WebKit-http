@@ -1,0 +1,110 @@
+HAR Page Test.
+
+
+== Running test suite: HAR.Page
+-- Running test case: HAR.Basic.Page
+{
+  "log": {
+    "version": "1.2",
+    "creator": {
+      "name": "WebKit Web Inspector",
+      "version": "<filtered>"
+    },
+    "pages": [
+      {
+        "startedDateTime": "<filtered>",
+        "id": "page_0",
+        "title": "http://127.0.0.1:8000/inspector/network/har/har-page.html",
+        "pageTimings": {
+          "onContentLoad": "<filtered>",
+          "onLoad": "<filtered>"
+        }
+      }
+    ],
+    "entries": [
+      {
+        "pageref": "page_0",
+        "startedDateTime": "<filtered>",
+        "time": "<filtered>",
+        "request": {
+          "method": "GET",
+          "url": "http://127.0.0.1:8000/inspector/network/har/har-page.html",
+          "httpVersion": "HTTP/1.1",
+          "cookies": [],
+          "headers": "<filtered>",
+          "queryString": [],
+          "headersSize": "<filtered>",
+          "bodySize": "<filtered>"
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "HTTP/1.1",
+          "cookies": [],
+          "headers": "<filtered>",
+          "content": {
+            "size": 2915,
+            "compression": 0,
+            "mimeType": "text/html",
+            "text": "<filtered text (2915)>"
+          },
+          "redirectURL": "",
+          "headersSize": "<filtered>",
+          "bodySize": "<filtered>"
+        },
+        "cache": {},
+        "timings": {
+          "blocked": "<filtered>",
+          "dns": "<filtered>",
+          "connect": "<filtered>",
+          "ssl": -1,
+          "send": "<filtered>",
+          "wait": "<filtered>",
+          "receive": "<filtered>"
+        }
+      },
+      {
+        "pageref": "page_0",
+        "startedDateTime": "<filtered>",
+        "time": "<filtered>",
+        "request": {
+          "method": "GET",
+          "url": "http://127.0.0.1:8000/inspector/resources/inspector-test.js",
+          "httpVersion": "",
+          "cookies": [],
+          "headers": "<filtered>",
+          "queryString": [],
+          "headersSize": "<filtered>",
+          "bodySize": "<filtered>"
+        },
+        "response": {
+          "status": 200,
+          "statusText": "OK",
+          "httpVersion": "",
+          "cookies": [],
+          "headers": "<filtered>",
+          "content": {
+            "size": 0,
+            "compression": 0,
+            "mimeType": "application/x-javascript",
+            "text": "<filtered text (6707)>"
+          },
+          "redirectURL": "",
+          "headersSize": "<filtered>",
+          "bodySize": "<filtered>"
+        },
+        "cache": {},
+        "timings": {
+          "blocked": "<filtered>",
+          "dns": "<filtered>",
+          "connect": "<filtered>",
+          "ssl": -1,
+          "send": "<filtered>",
+          "wait": "<filtered>",
+          "receive": "<filtered>"
+        }
+      }
+    ]
+  }
+}
+

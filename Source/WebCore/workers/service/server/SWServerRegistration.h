@@ -50,6 +50,7 @@ public:
     void enqueueJob(const ServiceWorkerJobData&);
     void scriptFetchFinished(SWServer::Connection&, const ServiceWorkerFetchResult&);
     void scriptContextFailedToStart(SWServer::Connection&, const String& workerID, const String& message);
+    void scriptContextStarted(SWServer::Connection&, uint64_t identifier, const String& workerID);
     
     ServiceWorkerRegistrationData data() const;
 
@@ -57,15 +58,18 @@ private:
     void jobTimerFired();
     void startNextJob();
     void rejectCurrentJob(const ExceptionData&);
-    void resolveCurrentJob(const ServiceWorkerRegistrationData&);
+    void resolveCurrentRegistrationJob(const ServiceWorkerRegistrationData&);
+    void resolveCurrentUnregistrationJob(bool unregistrationResult);
     void startScriptFetchForCurrentJob();
     void finishCurrentJob();
 
     void runRegisterJob(const ServiceWorkerJobData&);
+    void runUnregisterJob(const ServiceWorkerJobData&);
     void runUpdateJob(const ServiceWorkerJobData&);
 
     void rejectWithExceptionOnMainThread(const ExceptionData&);
     void resolveWithRegistrationOnMainThread();
+    void resolveWithUnregistrationResultOnMainThread(bool);
     void startScriptFetchFromMainThread();
     bool isEmpty();
     SWServerWorker* getNewestWorker();

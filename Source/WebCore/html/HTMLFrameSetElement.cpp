@@ -167,7 +167,7 @@ RenderPtr<RenderElement> HTMLFrameSetElement::createElementRenderer(RenderStyle&
     return createRenderer<RenderFrameSet>(*this, WTFMove(style));
 }
 
-HTMLFrameSetElement* HTMLFrameSetElement::findContaining(Element* descendant)
+RefPtr<HTMLFrameSetElement> HTMLFrameSetElement::findContaining(Element* descendant)
 {
     return ancestorsOfType<HTMLFrameSetElement>(*descendant).first();
 }
@@ -176,7 +176,7 @@ void HTMLFrameSetElement::willAttachRenderers()
 {
     // Inherit default settings from parent frameset.
     // FIXME: This is not dynamic.
-    const HTMLFrameSetElement* containingFrameSet = findContaining(this);
+    const auto containingFrameSet = findContaining(this);
     if (!containingFrameSet)
         return;
     if (!m_frameborderSet)
@@ -208,22 +208,22 @@ void HTMLFrameSetElement::willRecalcStyle(Style::Change)
         renderer()->setNeedsLayout();
 }
 
-Node::InsertionNotificationRequest HTMLFrameSetElement::insertedInto(ContainerNode& insertionPoint)
+Node::InsertedIntoAncestorResult HTMLFrameSetElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    HTMLElement::insertedInto(insertionPoint);
-    if (insertionPoint.isConnected()) {
-        if (Frame* frame = document().frame())
+    HTMLElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    if (insertionType.connectedToDocument) {
+        if (RefPtr<Frame> frame = document().frame())
             frame->loader().client().dispatchDidBecomeFrameset(document().isFrameSet());
     }
 
-    return InsertionDone;
+    return InsertedIntoAncestorResult::Done;
 }
 
-void HTMLFrameSetElement::removedFrom(ContainerNode& insertionPoint)
+void HTMLFrameSetElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
-    HTMLElement::removedFrom(insertionPoint);
-    if (insertionPoint.isConnected()) {
-        if (Frame* frame = document().frame())
+    HTMLElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
+    if (removalType.disconnectedFromDocument) {
+        if (RefPtr<Frame> frame = document().frame())
             frame->loader().client().dispatchDidBecomeFrameset(document().isFrameSet());
     }
 }

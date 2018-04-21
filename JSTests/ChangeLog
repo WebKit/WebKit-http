@@ -1,3 +1,223 @@
+2017-10-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark test262.yaml/test262/test/language/statements/try/tco-catch.js as passing.
+        https://bugs.webkit.org/show_bug.cgi?id=178592
+
+        Unreviewed test gardening.
+
+        * test262.yaml:
+
+2017-10-24  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [FTL] Support NewStringObject
+        https://bugs.webkit.org/show_bug.cgi?id=178737
+
+        Reviewed by Saam Barati.
+
+        * stress/new-string-object.js: Added.
+        (shouldBe):
+        (test):
+
+2017-10-15  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] modules can be visited more than once when resolving bindings through "star" exports as long as the exportName is different each time
+        https://bugs.webkit.org/show_bug.cgi?id=178308
+
+        Reviewed by Mark Lam.
+
+        * test262.yaml:
+
+2017-10-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Use fastJoin in Array#toString
+        https://bugs.webkit.org/show_bug.cgi?id=178062
+
+        Reviewed by Darin Adler.
+
+        * microbenchmarks/contiguous-array-to-string.js: Added.
+        (target):
+        * microbenchmarks/double-array-to-string.js: Added.
+        (target):
+        * microbenchmarks/int32-array-to-string.js: Added.
+        (target):
+
+2017-10-22  Zan Dobersek  <zdobersek@igalia.com>
+
+        stress/check-string-ident.js is improperly skipped
+        https://bugs.webkit.org/show_bug.cgi?id=178642
+
+        Reviewed by Saam Barati.
+
+        * stress/check-string-ident.js: Drop the defaultNoEagerRun directive
+        since it enforces the run-jsc-stress-tests script to still set up the
+        test to run, despite the skip directive that's used before.
+
+2017-10-20  Mark Lam  <mark.lam@apple.com>
+
+        Add a test case for r214334.
+        https://bugs.webkit.org/show_bug.cgi?id=169941
+        <rdar://problem/31221258>
+
+        Reviewed by JF Bastien.
+
+        * stress/regress-169941.js: Added.
+
+2017-10-19  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: no VM / JS version of everything but Instance
+        https://bugs.webkit.org/show_bug.cgi?id=177473
+
+        Reviewed by Filip Pizlo, Saam Barati.
+
+        - Exceeding max on memory growth now returns a range error as per
+        spec. This is a (very minor) breaking change: it used to throw OOM
+        error. Update the corresponding test.
+
+        * wasm/js-api/memory-grow.js:
+        (assertEq):
+        * wasm/js-api/table.js:
+        (assert.throws):
+
+2017-10-19  Mark Lam  <mark.lam@apple.com>
+
+        Stringifier::appendStringifiedValue() is missing an exception check.
+        https://bugs.webkit.org/show_bug.cgi?id=178386
+        <rdar://problem/35027610>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-178386.js: Added.
+
+2017-10-19  Michael Saboff  <msaboff@apple.com>
+
+        Test262: RegExp/property-escapes/generated/Emoji_Component.js fails with current RegExp Unicode Properties implementation
+        https://bugs.webkit.org/show_bug.cgi?id=178521
+
+        Reviewed by JF Bastien.
+
+        * test262.yaml: Enabled test262/test/built-ins/RegExp/property-escapes/generated/Emoji_Component.js as it
+        now passes with the current version (5.0) of the Emoji spec.
+
+2017-10-19  Robin Morisset  <rmorisset@apple.com>
+
+        Turn recursive tail calls into loops
+        https://bugs.webkit.org/show_bug.cgi?id=176601
+
+        Reviewed by Saam Barati.
+
+        Add some simple test that computes factorial in several ways, and other trivial computations.
+        They all tests the case where foo calls bar (in an inlineable way) that then does a tail call.
+        Depending on the nature of both calls, it is possible or not to turn the tail call into a loop.
+        I have no clear way of checking that the call was indeed transformed, but I can check that the code computes the right result
+        (which it doesn't if that tail call is transformed into a loop in the unsound cases).
+
+        * stress/inline-call-to-recursive-tail-call.js: Added.
+        (factorial.aux):
+        (factorial):
+        (factorial2.aux):
+        (factorial2.id):
+        (factorial2):
+        (factorial3.aux):
+        (factorial3):
+        (aux):
+        (factorial4):
+        (test):
+
+2017-10-18  Mark Lam  <mark.lam@apple.com>
+
+        RegExpObject::defineOwnProperty() does not need to compare values if no descriptor value is specified.
+        https://bugs.webkit.org/show_bug.cgi?id=177600
+        <rdar://problem/34710985>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-177600.js: Added.
+
+2017-10-18  Mark Lam  <mark.lam@apple.com>
+
+        The compiler should always register a structure when it adds its transitionWatchPointSet.
+        https://bugs.webkit.org/show_bug.cgi?id=178420
+        <rdar://problem/34814024>
+
+        Reviewed by Saam Barati and Filip Pizlo.
+
+        * stress/regress-178420.js: Added.
+        (new.Array.10000.map):
+
+2017-10-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] __proto__ getter should be fast
+        https://bugs.webkit.org/show_bug.cgi?id=178067
+
+        Reviewed by Saam Barati.
+
+        * stress/dfg-object-proto-accessor.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (target):
+        * stress/dfg-object-proto-getter.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (target):
+        * stress/dfg-object-prototype-of.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (target):
+        * stress/dfg-reflect-get-prototype-of.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (target):
+        * stress/intrinsic-getter-with-poly-proto.js: Added.
+        (shouldBe):
+        (makePolyProtoObject.foo.C):
+        (makePolyProtoObject.foo):
+        (makePolyProtoObject):
+        (target):
+        * stress/object-get-prototype-of-filtered.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (target):
+        (i.Cocoa):
+        * stress/object-get-prototype-of-mono-proto.js: Added.
+        (shouldBe):
+        (makePolyProtoObject.foo.C):
+        (makePolyProtoObject.foo):
+        (makePolyProtoObject):
+        (target):
+        * stress/object-get-prototype-of-poly-mono-proto.js: Added.
+        (shouldBe):
+        (makePolyProtoObject.foo.C):
+        (makePolyProtoObject.foo):
+        (makePolyProtoObject):
+        (target):
+        * stress/object-get-prototype-of-poly-proto.js: Added.
+        (shouldBe):
+        (makePolyProtoObject.foo.C):
+        (makePolyProtoObject.foo):
+        (makePolyProtoObject):
+        (target):
+        * stress/object-proto-getter-filtered.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (target):
+        (i.Cocoa):
+        * stress/object-proto-getter-poly-mono-proto.js: Added.
+        (shouldBe):
+        (makePolyProtoObject.foo.C):
+        (makePolyProtoObject.foo):
+        (makePolyProtoObject):
+        (target):
+        * stress/object-proto-getter-poly-proto.js: Added.
+        (shouldBe):
+        (makePolyProtoObject.foo.C):
+        (makePolyProtoObject.foo):
+        (makePolyProtoObject):
+        (target):
+        * stress/object-prototype-proto-accessors-should-throw-on-undefined-this.js:
+        * stress/string-proto.js: Added.
+        (shouldBe):
+        (target):
+
 2017-10-17  Ryan Haddad  <ryanhaddad@apple.com>
 
         Unreviewed, rolling out r223523.

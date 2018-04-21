@@ -85,15 +85,17 @@ public:
         WTF_MAKE_FAST_ALLOCATED;
     public:
         virtual JSC::JSValue get(JSC::ExecState&);
-        virtual ~InspectableObject() { }
+        virtual ~InspectableObject() = default;
     };
     void addInspectedObject(std::unique_ptr<InspectableObject>);
     JSC::JSValue inspectedObject(JSC::ExecState&);
     void inspect(JSC::ExecState&, JSC::JSValue objectToInspect, JSC::JSValue hints);
 
     struct ListenerEntry {
-        JSC::Strong<JSC::JSObject> function;
+        JSC::Strong<JSC::JSObject> listener;
         bool useCapture;
+        bool passive;
+        bool once;
     };
 
     using EventListenersRecord = Vector<WTF::KeyValuePair<String, Vector<ListenerEntry>>>;

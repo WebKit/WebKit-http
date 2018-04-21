@@ -28,17 +28,34 @@
 #if ENABLE(PAYMENT_REQUEST)
 
 #include "Event.h"
-
-namespace JSC {
-class JSPromise;
-}
+#include "PaymentRequestUpdateEventInit.h"
 
 namespace WebCore {
 
-class PaymentRequestUpdateEvent final : public Event {
+class DOMPromise;
+class PaymentRequest;
+struct PaymentRequestUpdateEventInit;
+
+class PaymentRequestUpdateEvent : public Event {
 public:
+    template <typename... Args> static Ref<PaymentRequestUpdateEvent> create(Args&&... args)
+    {
+        return adoptRef(*new PaymentRequestUpdateEvent(std::forward<Args>(args)...));
+    }
     ~PaymentRequestUpdateEvent();
-    void updateWith(JSC::JSPromise*);
+    ExceptionOr<void> updateWith(Ref<DOMPromise>&&);
+
+protected:
+    PaymentRequestUpdateEvent(const AtomicString& type, PaymentRequest&);
+
+    // Event
+    EventInterface eventInterface() const override;
+
+private:
+    PaymentRequestUpdateEvent(const AtomicString& type, PaymentRequestUpdateEventInit&&);
+
+    RefPtr<PaymentRequest> m_paymentRequest;
+    bool m_waitForUpdate { false };
 };
 
 } // namespace WebCore

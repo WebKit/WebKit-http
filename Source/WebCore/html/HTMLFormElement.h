@@ -124,8 +124,8 @@ private:
     HTMLFormElement(const QualifiedName&, Document&);
 
     bool rendererIsNeeded(const RenderStyle&) final;
-    InsertionNotificationRequest insertedInto(ContainerNode&) final;
-    void removedFrom(ContainerNode&) final;
+    InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) final;
+    void removedFromAncestor(RemovalType, ContainerNode&) final;
     void finishParsingChildren() final;
 
     void handleLocalEvents(Event&) final;
@@ -151,7 +151,7 @@ private:
     // are any invalid controls in this form.
     bool checkInvalidControlsAndCollectUnhandled(Vector<RefPtr<HTMLFormControlElement>>&);
 
-    HTMLElement* elementFromPastNamesMap(const AtomicString&) const;
+    RefPtr<HTMLElement> elementFromPastNamesMap(const AtomicString&) const;
     void addToPastNamesMap(FormNamedItem*, const AtomicString& pastName);
     void assertItemCanBeInPastNamesMap(FormNamedItem*) const;
     void removeFromPastNamesMap(FormNamedItem*);

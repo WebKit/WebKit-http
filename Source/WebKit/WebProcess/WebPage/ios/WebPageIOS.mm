@@ -99,6 +99,7 @@
 #import <WebCore/RenderImage.h>
 #import <WebCore/RenderThemeIOS.h>
 #import <WebCore/RenderView.h>
+#import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/Settings.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/StyleProperties.h>
@@ -110,7 +111,15 @@
 #import <wtf/MathExtras.h>
 #import <wtf/MemoryPressureHandler.h>
 #import <wtf/SetForScope.h>
+#import <wtf/SoftLinking.h>
 #import <wtf/text/TextStream.h>
+
+#if ENABLE(MEDIA_STREAM)
+#import "CelestialSPI.h"
+SOFT_LINK_PRIVATE_FRAMEWORK_OPTIONAL(Celestial)
+SOFT_LINK_CLASS_OPTIONAL(Celestial, AVSystemController)
+SOFT_LINK_CONSTANT_MAY_FAIL(Celestial, AVSystemController_PIDToInheritApplicationStateFrom, NSString *)
+#endif
 
 using namespace WebCore;
 
@@ -1867,7 +1876,7 @@ void WebPage::moveSelectionByOffset(int32_t offset, CallbackID callbackID)
 void WebPage::getRectsForGranularityWithSelectionOffset(uint32_t granularity, int32_t offset, CallbackID callbackID)
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
-    VisibleSelection selection = frame.selection().selection();
+    VisibleSelection selection = m_storedSelectionForAccessibility.isNone() ? frame.selection().selection() : m_storedSelectionForAccessibility;
     VisiblePosition selectionStart = selection.visibleStart();
 
     if (selectionStart.isNull()) {
@@ -1890,6 +1899,16 @@ void WebPage::getRectsForGranularityWithSelectionOffset(uint32_t granularity, in
     send(Messages::WebPageProxy::SelectionRectsCallback(selectionRects, callbackID));
 }
 
+void WebPage::storeSelectionForAccessibility(bool shouldStore)
+{
+    if (!shouldStore)
+        m_storedSelectionForAccessibility = VisibleSelection();
+    else {
+        Frame& frame = m_page->focusController().focusedOrMainFrame();
+        m_storedSelectionForAccessibility = frame.selection().selection();
+    }
+}
+
 static RefPtr<Range> rangeNearPositionMatchesText(const VisiblePosition& position, RefPtr<Range> originalRange, const String& matchText, RefPtr<Range> selectionRange)
 {
     auto range = Range::create(selectionRange->ownerDocument(), selectionRange->startPosition(), position.deepEquivalent().parentAnchoredEquivalent());
@@ -1901,7 +1920,7 @@ void WebPage::getRectsAtSelectionOffsetWithText(int32_t offset, const String& te
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
     uint32_t length = text.length();
-    VisibleSelection selection = frame.selection().selection();
+    VisibleSelection selection = m_storedSelectionForAccessibility.isNone() ? frame.selection().selection() : m_storedSelectionForAccessibility;
     VisiblePosition selectionStart = selection.visibleStart();
     VisiblePosition selectionEnd = selection.visibleEnd();
 
@@ -3398,6 +3417,22 @@ String WebPage::platformUserAgent(const URL&) const
 void WebPage::didReceivePasswordForQuickLookDocument(const String& password)
 {
     WebPreviewLoaderClient::didReceivePassword(password, m_pageID);
+}
+#endif
+
+#if ENABLE(MEDIA_STREAM)
+void WebPage::prepareToSendUserMediaPermissionRequest()
+{
+    static std::once_flag once;
+    std::call_once(once, [] {
+        if (!canLoadAVSystemController_PIDToInheritApplicationStateFrom())
+            return;
+
+        NSError *error = nil;
+        [[getAVSystemControllerClass() sharedAVSystemController] setAttribute:@(WebCore::presentingApplicationPID()) forKey:getAVSystemController_PIDToInheritApplicationStateFrom() error:&error];
+        if (error)
+            WTFLogAlways("Failed to set up PID proxying: %s", error.localizedDescription.UTF8String);
+    });
 }
 #endif
 

@@ -32,11 +32,16 @@ namespace WebCore {
 
 #define WEBCORE_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(macro) \
     macro(Animation) \
+    macro(AnimationEffect) \
+    macro(AnimationEffectTiming) \
+    macro(AnimationTimeline) \
     macro(ApplePaySession) \
     macro(AttachmentElement) \
     macro(Audio) \
     macro(Cache) \
     macro(CacheStorage) \
+    macro(Client) \
+    macro(Clients) \
     macro(Credential) \
     macro(CredentialsContainer) \
     macro(CustomElementRegistry) \
@@ -44,6 +49,7 @@ namespace WebCore {
     macro(DataTransferItemList) \
     macro(DocumentTimeline) \
     macro(ExtendableEvent) \
+    macro(ExtendableMessageEvent) \
     macro(FederatedCredential) \
     macro(FetchEvent) \
     macro(FileSystem) \
@@ -72,6 +78,7 @@ namespace WebCore {
     macro(InputEvent) \
     macro(IntersectionObserver) \
     macro(IntersectionObserverEntry) \
+    macro(KeyframeEffect) \
     macro(MediaEncryptedEvent) \
     macro(MediaKeyMessageEvent) \
     macro(MediaKeySession) \
@@ -162,6 +169,7 @@ namespace WebCore {
     macro(WebKitMediaKeySession) \
     macro(WebKitMediaKeys) \
     macro(WebSocket) \
+    macro(WindowClient) \
     macro(WritableStream) \
     macro(XMLHttpRequest) \
     macro(addTrack) \

@@ -356,7 +356,7 @@ void Node::clearRareData()
     clearFlag(HasRareDataFlag);
 }
 
-Node* Node::toNode()
+RefPtr<Node> Node::toNode()
 {
     return this;
 }
@@ -1241,21 +1241,21 @@ Node& Node::getRootNode(const GetRootNodeOptions& options) const
     return options.composed ? shadowIncludingRoot() : rootNode();
 }
 
-Node::InsertionNotificationRequest Node::insertedInto(ContainerNode& insertionPoint)
+Node::InsertedIntoAncestorResult Node::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    if (insertionPoint.isConnected())
+    if (insertionType.connectedToDocument)
         setFlag(IsConnectedFlag);
-    if (insertionPoint.isInShadowTree())
+    if (parentOfInsertedTree.isInShadowTree())
         setFlag(IsInShadowTreeFlag);
 
     invalidateStyle(Style::Validity::SubtreeAndRenderersInvalid);
 
-    return InsertionDone;
+    return InsertedIntoAncestorResult::Done;
 }
 
-void Node::removedFrom(ContainerNode& insertionPoint)
+void Node::removedFromAncestor(RemovalType removalType, ContainerNode&)
 {
-    if (insertionPoint.isConnected())
+    if (removalType.disconnectedFromDocument)
         clearFlag(IsConnectedFlag);
     if (isInShadowTree() && !treeScope().rootNode().isShadowRoot())
         clearFlag(IsInShadowTreeFlag);

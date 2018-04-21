@@ -31,6 +31,7 @@
 #include "B3Compilation.h"
 #include "B3OpaqueByproducts.h"
 #include "CCallHelpers.h"
+#include "WasmEmbedder.h"
 #include "WasmMemory.h"
 #include "WasmModuleInformation.h"
 #include "WasmTierUpCount.h"
@@ -48,15 +49,13 @@ enum class CompilationMode {
 };
 
 struct CompilationContext {
-    std::unique_ptr<CCallHelpers> jsEntrypointJIT;
-    std::unique_ptr<B3::OpaqueByproducts> jsEntrypointByproducts;
+    std::unique_ptr<CCallHelpers> embedderEntrypointJIT;
+    std::unique_ptr<B3::OpaqueByproducts> embedderEntrypointByproducts;
     std::unique_ptr<CCallHelpers> wasmEntrypointJIT;
     std::unique_ptr<B3::OpaqueByproducts> wasmEntrypointByproducts;
 };
 
-Expected<std::unique_ptr<InternalFunction>, String> parseAndCompile(CompilationContext&, const uint8_t*, size_t, const Signature&, Vector<UnlinkedWasmToWasmCall>&, const ModuleInformation&, MemoryMode, CompilationMode, uint32_t functionIndex, TierUpCount* = nullptr);
-
-std::unique_ptr<InternalFunction> createJSToWasmWrapper(CompilationContext&, const Signature&, Vector<UnlinkedWasmToWasmCall>*, const ModuleInformation&, MemoryMode, uint32_t functionIndex);
+Expected<std::unique_ptr<InternalFunction>, String> parseAndCompile(CompilationContext&, const uint8_t*, size_t, const Signature&, Vector<UnlinkedWasmToWasmCall>&, const ModuleInformation&, MemoryMode, CompilationMode, uint32_t functionIndex, TierUpCount* = nullptr, ThrowWasmException = nullptr);
 
 } } // namespace JSC::Wasm
 

@@ -39,18 +39,15 @@ class WebConsoleAgent : public Inspector::InspectorConsoleAgent {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     WebConsoleAgent(Inspector::AgentContext&, Inspector::InspectorHeapAgent*);
-    virtual ~WebConsoleAgent() { }
-
-    void setMonitoringXHREnabled(ErrorString&, bool enabled) final;
+    virtual ~WebConsoleAgent() = default;
 
     void frameWindowDiscarded(DOMWindow*);
 
-    void didFinishXHRLoading(unsigned long requestIdentifier, const String& url, const String& sendURL, unsigned sendLineNumber, unsigned sendColumnNumber);
+    void getLoggingChannels(ErrorString&, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Console::Channel>>&) final;
+    void setLoggingChannelLevel(ErrorString&, const String& channel, const String& level) final;
+
     void didReceiveResponse(unsigned long requestIdentifier, const ResourceResponse&);
     void didFailLoading(unsigned long requestIdentifier, const ResourceError&);
-
-protected:
-    bool m_monitoringXHREnabled { false };
 };
 
 } // namespace WebCore

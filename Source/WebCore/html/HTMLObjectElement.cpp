@@ -211,7 +211,7 @@ void HTMLObjectElement::parametersForPlugin(Vector<String>& paramNames, Vector<S
 
 bool HTMLObjectElement::hasFallbackContent() const
 {
-    for (Node* child = firstChild(); child; child = child->nextSibling()) {
+    for (RefPtr<Node> child = firstChild(); child; child = child->nextSibling()) {
         // Ignore whitespace-only text, and <param> tags, any other content is fallback content.
         if (is<Text>(*child)) {
             if (!downcast<Text>(*child).containsOnlyWhitespace())
@@ -313,22 +313,22 @@ void HTMLObjectElement::updateWidget(CreatePlugins createPlugins)
         renderFallbackContent();
 }
 
-Node::InsertionNotificationRequest HTMLObjectElement::insertedInto(ContainerNode& insertionPoint)
+Node::InsertedIntoAncestorResult HTMLObjectElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    HTMLPlugInImageElement::insertedInto(insertionPoint);
-    FormAssociatedElement::insertedInto(insertionPoint);
-    return InsertionShouldCallFinishedInsertingSubtree;
+    HTMLPlugInImageElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    FormAssociatedElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    return InsertedIntoAncestorResult::NeedsPostInsertionCallback;
 }
 
-void HTMLObjectElement::finishedInsertingSubtree()
+void HTMLObjectElement::didFinishInsertingNode()
 {
     resetFormOwner();
 }
 
-void HTMLObjectElement::removedFrom(ContainerNode& insertionPoint)
+void HTMLObjectElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
-    HTMLPlugInImageElement::removedFrom(insertionPoint);
-    FormAssociatedElement::removedFrom(insertionPoint);
+    HTMLPlugInImageElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
+    FormAssociatedElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
 }
 
 void HTMLObjectElement::childrenChanged(const ChildChange& change)

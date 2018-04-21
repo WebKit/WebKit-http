@@ -395,8 +395,8 @@ editing/pasteboard/paste-global-selection.html
 
 # Unexpected WebGL Conformance tests that need to be fixed
 # These tests pass when run through webgl-conformance-tests.html but not when just opened via a browser (or via run-webkit-tests)
-webgl/1.0.2/conformance/context/context-creation-and-destruction.html [ Failure Timeout ]
-webgl/1.0.2/conformance/rendering/multisample-corruption.html [ Pass Failure Timeout ]
+webgl/1.0.2/conformance/context/context-creation-and-destruction.html [ Pass Timeout ]
+webgl/1.0.2/conformance/rendering/multisample-corruption.html [ Pass Timeout ]
 http/tests/webgl/1.0.2/origin-clean-conformance.html [ Skip ]
 
 webkit.org/b/124935 [ Debug ] webgl/1.0.2/conformance/glsl/misc/shader-with-non-reserved-words.html [ Slow ]
@@ -1429,6 +1429,7 @@ webkit.org/b/168415 [ ElCapitan ] http/wpt/resource-timing/rt-cors.worker.html [
 
 # Request Header networking data not available without Network Session.
 [ ElCapitan ] http/tests/inspector/network/resource-request-headers.html [ Failure ]
+[ ElCapitan ] http/tests/inspector/network/har/har-page.html [ Failure ]
 
 [ ElCapitan ] http/tests/inspector/network/ping-type.html [ Skip ]
 
@@ -1771,6 +1772,9 @@ webkit.org/b/176878 [ Debug ] fast/multicol/spanner-crash-when-adding-summary.ht
 # <rdar://problem/34507977>
 webkit.org/b/177119 webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video.html [ Pass Failure ]
 
+# Release logging not supported
+[ Yosemite ElCapitan ] inspector/console/webcore-logging.html [ Skip ]
+
 webkit.org/b/177319 imported/w3c/web-platform-tests/html/semantics/forms/the-form-element/form-elements-filter.html [ Failure ]
 
 webkit.org/b/177322 [ Debug ] imported/w3c/web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/parsing.html [ Pass Failure ]
@@ -1782,3 +1786,7 @@ webkit.org/b/177388 inspector/canvas/shaderProgram-add-remove-webgl.html [ Pass 
 webkit.org/b/177826 inspector/dom/csp-big5-hash.html [ Pass Timeout ]
 
 webkit.org/b/178190 imported/w3c/web-platform-tests/XMLHttpRequest/open-url-worker-origin.htm [ Pass Failure ]
+
+webkit.org/b/178465 [ Debug ] fast/html/marquee-reparent-check.html [ Skip ]
+
+webkit.org/b/159427 http/tests/loading/basic-credentials-sent-automatically.html [ Pass Failure ]

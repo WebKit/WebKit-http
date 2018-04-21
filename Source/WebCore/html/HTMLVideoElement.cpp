@@ -64,6 +64,7 @@ inline HTMLVideoElement::HTMLVideoElement(const QualifiedName& tagName, Document
 Ref<HTMLVideoElement> HTMLVideoElement::create(const QualifiedName& tagName, Document& document, bool createdByParser)
 {
     auto videoElement = adoptRef(*new HTMLVideoElement(tagName, document, createdByParser));
+    videoElement->finishInitialization();
     videoElement->suspendIfNeeded();
     return videoElement;
 }
@@ -250,7 +251,7 @@ void HTMLVideoElement::setDisplayMode(DisplayMode mode)
     if (player() && player()->canLoadPoster()) {
         bool canLoad = true;
         if (!poster.isEmpty()) {
-            if (Frame* frame = document().frame())
+            if (RefPtr<Frame> frame = document().frame())
                 canLoad = frame->loader().willLoadMediaElementURL(poster);
         }
         if (canLoad)
@@ -273,7 +274,7 @@ void HTMLVideoElement::updateDisplayState()
 
 void HTMLVideoElement::paintCurrentFrameInContext(GraphicsContext& context, const FloatRect& destRect)
 {
-    MediaPlayer* player = HTMLMediaElement::player();
+    RefPtr<MediaPlayer> player = HTMLMediaElement::player();
     if (!player)
         return;
     

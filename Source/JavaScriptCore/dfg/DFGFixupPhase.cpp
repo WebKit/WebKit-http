@@ -759,10 +759,8 @@ private:
                         }
                         
                         if (canDoSaneChain) {
-                            m_graph.watchpoints().addLazily(
-                                globalObject->arrayPrototype()->structure()->transitionWatchpointSet());
-                            m_graph.watchpoints().addLazily(
-                                globalObject->objectPrototype()->structure()->transitionWatchpointSet());
+                            m_graph.registerAndWatchStructureTransition(globalObject->arrayPrototype()->structure());
+                            m_graph.registerAndWatchStructureTransition(globalObject->objectPrototype()->structure());
                             if (globalObject->arrayPrototypeChainIsSane())
                                 node->setArrayMode(arrayMode.withSpeculation(Array::SaneChain));
                         }
@@ -1218,16 +1216,16 @@ private:
             // When we go down the fast path, we don't consult the prototype chain, so we must prove
             // that it doesn't contain any indexed properties, and that any holes will result in
             // jsUndefined().
-            InlineWatchpointSet& objectPrototypeTransition = globalObject->objectPrototype()->structure()->transitionWatchpointSet();
-            InlineWatchpointSet& arrayPrototypeTransition = globalObject->arrayPrototype()->structure()->transitionWatchpointSet();
-            if (node->child1()->shouldSpeculateArray() 
-                && arrayPrototypeTransition.isStillValid() 
-                && objectPrototypeTransition.isStillValid() 
+            Structure* arrayPrototypeStructure = globalObject->arrayPrototype()->structure();
+            Structure* objectPrototypeStructure = globalObject->objectPrototype()->structure();
+            if (node->child1()->shouldSpeculateArray()
+                && arrayPrototypeStructure->transitionWatchpointSetIsStillValid()
+                && objectPrototypeStructure->transitionWatchpointSetIsStillValid()
                 && globalObject->arrayPrototypeChainIsSane()
                 && m_graph.isWatchingArrayIteratorProtocolWatchpoint(node->child1().node())
                 && m_graph.isWatchingHavingABadTimeWatchpoint(node->child1().node())) {
-                m_graph.watchpoints().addLazily(objectPrototypeTransition);
-                m_graph.watchpoints().addLazily(arrayPrototypeTransition);
+                m_graph.registerAndWatchStructureTransition(objectPrototypeStructure);
+                m_graph.registerAndWatchStructureTransition(arrayPrototypeStructure);
                 fixEdge<ArrayUse>(node->child1());
             } else
                 fixEdge<CellUse>(node->child1());
@@ -1600,6 +1598,11 @@ private:
         case CompareBelowEq: {
             fixEdge<Int32Use>(node->child1());
             fixEdge<Int32Use>(node->child2());
+            break;
+        }
+
+        case GetPrototypeOf: {
+            fixupGetPrototypeOf(node);
             break;
         }
 
@@ -2298,6 +2301,59 @@ private:
                 Edge(node->child1().node(), NotCellUse));
             m_graph.convertToConstant(node, jsBoolean(false));
             observeUseKindOnNode<NotCellUse>(node);
+            return;
+        }
+    }
+
+    void fixupGetPrototypeOf(Node* node)
+    {
+        // Reflect.getPrototypeOf only accepts Objects. For Reflect.getPrototypeOf, ByteCodeParser attaches ObjectUse edge filter before fixup phase.
+        if (node->child1().useKind() != ObjectUse) {
+            if (node->child1()->shouldSpeculateString()) {
+                insertCheck<StringUse>(node->child1().node());
+                m_graph.convertToConstant(node, m_graph.freeze(m_graph.globalObjectFor(node->origin.semantic)->stringPrototype()));
+                return;
+            }
+            if (node->child1()->shouldSpeculateInt32()) {
+                insertCheck<Int32Use>(node->child1().node());
+                m_graph.convertToConstant(node, m_graph.freeze(m_graph.globalObjectFor(node->origin.semantic)->numberPrototype()));
+                return;
+            }
+            if (enableInt52() && node->child1()->shouldSpeculateAnyInt()) {
+                insertCheck<Int52RepUse>(node->child1().node());
+                m_graph.convertToConstant(node, m_graph.freeze(m_graph.globalObjectFor(node->origin.semantic)->numberPrototype()));
+                return;
+            }
+            if (node->child1()->shouldSpeculateNumber()) {
+                insertCheck<NumberUse>(node->child1().node());
+                m_graph.convertToConstant(node, m_graph.freeze(m_graph.globalObjectFor(node->origin.semantic)->numberPrototype()));
+                return;
+            }
+            if (node->child1()->shouldSpeculateSymbol()) {
+                insertCheck<SymbolUse>(node->child1().node());
+                m_graph.convertToConstant(node, m_graph.freeze(m_graph.globalObjectFor(node->origin.semantic)->symbolPrototype()));
+                return;
+            }
+            if (node->child1()->shouldSpeculateBoolean()) {
+                insertCheck<BooleanUse>(node->child1().node());
+                m_graph.convertToConstant(node, m_graph.freeze(m_graph.globalObjectFor(node->origin.semantic)->booleanPrototype()));
+                return;
+            }
+        }
+
+        if (node->child1()->shouldSpeculateFinalObject()) {
+            fixEdge<FinalObjectUse>(node->child1());
+            node->clearFlags(NodeMustGenerate);
+            return;
+        }
+        if (node->child1()->shouldSpeculateArray()) {
+            fixEdge<ArrayUse>(node->child1());
+            node->clearFlags(NodeMustGenerate);
+            return;
+        }
+        if (node->child1()->shouldSpeculateFunction()) {
+            fixEdge<FunctionUse>(node->child1());
+            node->clearFlags(NodeMustGenerate);
             return;
         }
     }

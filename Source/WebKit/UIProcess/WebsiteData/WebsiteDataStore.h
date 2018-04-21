@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "NetworkSessionCreationParameters.h"
 #include "WebProcessLifetimeObserver.h"
 #include <WebCore/Cookie.h>
 #include <WebCore/SecurityOriginData.h>
@@ -67,9 +68,11 @@ enum class ShouldClearFirst { No, Yes };
 
 class WebsiteDataStore : public RefCounted<WebsiteDataStore>, public WebProcessLifetimeObserver, public Identified<WebsiteDataStore>  {
 public:
+    constexpr static uint64_t defaultCacheStoragePerOriginQuota = 20 * 1024 * 1024;
+
     struct Configuration {
         String cacheStorageDirectory;
-        uint64_t cacheStoragePerOriginQuota;
+        uint64_t cacheStoragePerOriginQuota { defaultCacheStoragePerOriginQuota };
         String networkCacheDirectory;
         String applicationCacheDirectory;
         String applicationCacheFlatFileSubdirectoryName;
@@ -86,8 +89,6 @@ public:
     static Ref<WebsiteDataStore> createNonPersistent();
     static Ref<WebsiteDataStore> create(Configuration, PAL::SessionID);
     virtual ~WebsiteDataStore();
-
-    constexpr static uint64_t defaultCacheStoragePerOriginQuota = 20 * 1024 * 1024;
 
     bool isPersistent() const { return !m_sessionID.isEphemeral(); }
     PAL::SessionID sessionID() const { return m_sessionID; }
@@ -141,6 +142,12 @@ public:
     void enableResourceLoadStatisticsAndSetTestingCallback(Function<void (const String&)>&& callback);
 
     void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, WTF::Function<void (bool)>&& callback);
+    
+    void setBoundInterfaceIdentifier(String&& identifier) { m_boundInterfaceIdentifier = WTFMove(identifier); }
+    const String& boundInterfaceIdentifier() { return m_boundInterfaceIdentifier; }
+    
+    void setAllowsCellularAccess(AllowsCellularAccess allows) { m_allowsCellularAccess = allows; }
+    AllowsCellularAccess allowsCellularAccess() { return m_allowsCellularAccess; }
 
 private:
     explicit WebsiteDataStore(PAL::SessionID);
@@ -186,6 +193,9 @@ private:
     RetainPtr<CFHTTPCookieStorageRef> m_cfCookieStorage;
 #endif
     HashSet<WebCore::Cookie> m_pendingCookies;
+    
+    String m_boundInterfaceIdentifier;
+    AllowsCellularAccess m_allowsCellularAccess { AllowsCellularAccess::Yes };
 };
 
 }

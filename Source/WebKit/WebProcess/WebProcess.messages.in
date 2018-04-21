@@ -115,7 +115,6 @@ messages -> WebProcess LegacyReceiver {
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-    GetWorkerContextConnection()
-    StartServiceWorkerContext(uint64_t serverConnectionIdentifier, struct WebCore::ServiceWorkerContextData contextData)
+    GetWorkerContextConnection(struct WebKit::WebPreferencesStore store)
 #endif
 }

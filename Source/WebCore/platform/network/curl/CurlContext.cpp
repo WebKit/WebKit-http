@@ -31,6 +31,7 @@
 #include "HTTPHeaderMap.h"
 #include <NetworkLoadMetrics.h>
 #include <wtf/MainThread.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/text/CString.h>
 
 #if OS(WINDOWS)
@@ -38,8 +39,6 @@
 #include <shlobj.h>
 #include <shlwapi.h>
 #endif
-
-using namespace WebCore;
 
 namespace WebCore {
 
@@ -76,6 +75,12 @@ static CString cookieJarPath()
 }
 
 // CurlContext -------------------------------------------------------------------
+
+CurlContext& CurlContext::singleton()
+{
+    static NeverDestroyed<CurlContext> sharedInstance;
+    return sharedInstance;
+}
 
 CurlContext::CurlContext()
 : m_cookieJarFileName { cookieJarPath() }
@@ -423,12 +428,8 @@ void CurlHandle::enableHttpAuthentication(long option)
 
 void CurlHandle::setHttpAuthUserPass(const String& user, const String& password)
 {
-    String userpass = emptyString();
-
-    if (!user.isEmpty() || !password.isEmpty())
-        userpass = user + ":" + password;
-
-    curl_easy_setopt(m_handle, CURLOPT_USERPWD, userpass.utf8().data());
+    curl_easy_setopt(m_handle, CURLOPT_USERNAME, user.utf8().data());
+    curl_easy_setopt(m_handle, CURLOPT_PASSWORD, password.utf8().data());
 }
 
 void CurlHandle::setCACertPath(const char* path)

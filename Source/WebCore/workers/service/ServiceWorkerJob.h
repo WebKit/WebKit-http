@@ -55,7 +55,8 @@ public:
     WEBCORE_EXPORT ~ServiceWorkerJob();
 
     void failedWithException(const Exception&);
-    void resolvedWithRegistration(const ServiceWorkerRegistrationData&);
+    void resolvedWithRegistration(ServiceWorkerRegistrationData&&);
+    void resolvedWithUnregistrationResult(bool);
     void startScriptFetch();
 
     ServiceWorkerJobData data() const { return m_jobData; }
@@ -69,6 +70,8 @@ private:
     // WorkerScriptLoaderClient
     void didReceiveResponse(unsigned long identifier, const ResourceResponse&) final;
     void notifyFinished() final;
+    bool isServiceWorkerClient() const final { return true; }
+
 
     Ref<ServiceWorkerJobClient> m_client;
     ServiceWorkerJobData m_jobData;

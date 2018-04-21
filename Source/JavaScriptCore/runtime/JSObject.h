@@ -132,7 +132,7 @@ public:
     // It is valid to use though when you know that you want to directly get it
     // without consulting the method table. This is akin to getting the [[Prototype]]
     // internal field directly as described in the specification.
-    JSValue getPrototypeDirect() const;
+    JSValue getPrototypeDirect(VM&) const;
 
     // This sets the prototype without checking for cycles and without
     // doing dynamic dispatch on [[SetPrototypeOf]] operation in the specification.
@@ -675,14 +675,14 @@ public:
     ConstPropertyStorage outOfLineStorage() const { return m_butterfly->propertyStorage(); }
     PropertyStorage outOfLineStorage() { return m_butterfly->propertyStorage(); }
 
-    const WriteBarrierBase<Unknown>* locationForOffset(PropertyOffset offset) const
+    ALWAYS_INLINE const WriteBarrierBase<Unknown>* locationForOffset(PropertyOffset offset) const
     {
         if (isInlineOffset(offset))
             return &inlineStorage()[offsetInInlineStorage(offset)];
         return &outOfLineStorage()[offsetInOutOfLineStorage(offset)];
     }
 
-    WriteBarrierBase<Unknown>* locationForOffset(PropertyOffset offset)
+    ALWAYS_INLINE WriteBarrierBase<Unknown>* locationForOffset(PropertyOffset offset)
     {
         if (isInlineOffset(offset))
             return &inlineStorage()[offsetInInlineStorage(offset)];
@@ -704,7 +704,7 @@ public:
     bool putOwnDataPropertyMayBeIndex(ExecState*, PropertyName, JSValue, PutPropertySlot&);
 
     // Fast access to known property offsets.
-    JSValue getDirect(PropertyOffset offset) const { return locationForOffset(offset)->get(); }
+    ALWAYS_INLINE JSValue getDirect(PropertyOffset offset) const { return locationForOffset(offset)->get(); }
     void putDirect(VM& vm, PropertyOffset offset, JSValue value) { locationForOffset(offset)->set(vm, this, value); }
     void putDirectWithoutBarrier(PropertyOffset offset, JSValue value) { locationForOffset(offset)->setWithoutWriteBarrier(value); }
     void putDirectUndefined(PropertyOffset offset) { locationForOffset(offset)->setUndefined(); }
@@ -873,7 +873,7 @@ protected:
     {
         Base::finishCreation(vm);
         ASSERT(inherits(vm, info()));
-        ASSERT(structure()->hasPolyProto() || getPrototypeDirect().isNull() || Heap::heap(this) == Heap::heap(getPrototypeDirect()));
+        ASSERT(structure()->hasPolyProto() || getPrototypeDirect(vm).isNull() || Heap::heap(this) == Heap::heap(getPrototypeDirect(vm)));
         ASSERT(structure()->isObject());
         ASSERT(classInfo(vm));
     }
@@ -1303,9 +1303,9 @@ inline JSObject::JSObject(VM& vm, Structure* structure, Butterfly* butterfly)
 {
 }
 
-inline JSValue JSObject::getPrototypeDirect() const
+inline JSValue JSObject::getPrototypeDirect(VM& vm) const
 {
-    return structure()->storedPrototype(this);
+    return structure(vm)->storedPrototype(this);
 }
 
 inline JSValue JSObject::getPrototype(VM& vm, ExecState* exec)
@@ -1313,7 +1313,7 @@ inline JSValue JSObject::getPrototype(VM& vm, ExecState* exec)
     auto getPrototypeMethod = methodTable(vm)->getPrototype;
     MethodTable::GetPrototypeFunctionPtr defaultGetPrototype = JSObject::getPrototype;
     if (LIKELY(getPrototypeMethod == defaultGetPrototype))
-        return getPrototypeDirect();
+        return getPrototypeDirect(vm);
     return getPrototypeMethod(this, exec);
 }
 

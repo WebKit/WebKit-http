@@ -149,7 +149,7 @@ ImageCandidate HTMLImageElement::bestFitSourceFromPictureElement()
         return { };
     picture->clearViewportDependentResults();
     document().removeViewportDependentPicture(*picture);
-    for (Node* child = picture->firstChild(); child && child != this; child = child->nextSibling()) {
+    for (RefPtr<Node> child = picture->firstChild(); child && child != this; child = child->nextSibling()) {
         if (!is<HTMLSourceElement>(*child))
             continue;
         auto& source = downcast<HTMLSourceElement>(*child);
@@ -293,7 +293,7 @@ void HTMLImageElement::didAttachRenderers()
         renderImage.setImageSizeForAltText();
 }
 
-Node::InsertionNotificationRequest HTMLImageElement::insertedInto(ContainerNode& insertionPoint)
+Node::InsertedIntoAncestorResult HTMLImageElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
     if (m_formSetByParser) {
         m_form = m_formSetByParser;
@@ -313,9 +313,9 @@ Node::InsertionNotificationRequest HTMLImageElement::insertedInto(ContainerNode&
     }
     // Insert needs to complete first, before we start updating the loader. Loader dispatches events which could result
     // in callbacks back to this node.
-    Node::InsertionNotificationRequest insertNotificationRequest = HTMLElement::insertedInto(insertionPoint);
+    Node::InsertedIntoAncestorResult insertNotificationRequest = HTMLElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
 
-    if (insertionPoint.isConnected() && !m_parsedUsemap.isNull())
+    if (insertionType.connectedToDocument && !m_parsedUsemap.isNull())
         document().addImageElementByUsemap(*m_parsedUsemap.impl(), *this);
 
     if (is<HTMLPictureElement>(parentNode())) {
@@ -325,35 +325,35 @@ Node::InsertionNotificationRequest HTMLImageElement::insertedInto(ContainerNode&
 
     // If we have been inserted from a renderer-less document,
     // our loader may have not fetched the image, so do it now.
-    if (insertionPoint.isConnected() && !m_imageLoader.image())
+    if (insertionType.connectedToDocument && !m_imageLoader.image())
         m_imageLoader.updateFromElement();
 
     return insertNotificationRequest;
 }
 
-void HTMLImageElement::removedFrom(ContainerNode& insertionPoint)
+void HTMLImageElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
     if (m_form)
         m_form->removeImgElement(this);
 
-    if (insertionPoint.isConnected() && !m_parsedUsemap.isNull())
+    if (removalType.disconnectedFromDocument && !m_parsedUsemap.isNull())
         document().removeImageElementByUsemap(*m_parsedUsemap.impl(), *this);
-    
+
     if (is<HTMLPictureElement>(parentNode()))
         setPictureElement(nullptr);
-    
+
     m_form = nullptr;
-    HTMLElement::removedFrom(insertionPoint);
+    HTMLElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
 }
 
 HTMLPictureElement* HTMLImageElement::pictureElement() const
 {
     if (!gPictureOwnerMap || !gPictureOwnerMap->contains(this))
         return nullptr;
-    HTMLPictureElement* result = gPictureOwnerMap->get(this).get();
+    auto result = gPictureOwnerMap->get(this);
     if (!result)
         gPictureOwnerMap->remove(this);
-    return result;
+    return result.get();
 }
     
 void HTMLImageElement::setPictureElement(HTMLPictureElement* pictureElement)
@@ -619,11 +619,11 @@ void HTMLImageElement::tryCreateImageControls()
 
 void HTMLImageElement::destroyImageControls()
 {
-    ShadowRoot* shadowRoot = userAgentShadowRoot();
+    auto shadowRoot = userAgentShadowRoot();
     if (!shadowRoot)
         return;
 
-    if (Node* node = shadowRoot->firstChild()) {
+    if (RefPtr<Node> node = shadowRoot->firstChild()) {
         ASSERT_WITH_SECURITY_IMPLICATION(node->isImageControlsRootElement());
         shadowRoot->removeChild(*node);
     }
@@ -637,8 +637,8 @@ void HTMLImageElement::destroyImageControls()
 
 bool HTMLImageElement::hasImageControls() const
 {
-    if (ShadowRoot* shadowRoot = userAgentShadowRoot()) {
-        Node* node = shadowRoot->firstChild();
+    if (auto shadowRoot = userAgentShadowRoot()) {
+        RefPtr<Node> node = shadowRoot->firstChild();
         ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isImageControlsRootElement());
         return node;
     }

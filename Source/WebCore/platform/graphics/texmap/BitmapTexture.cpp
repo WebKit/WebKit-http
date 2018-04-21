@@ -33,10 +33,6 @@
 
 namespace WebCore {
 
-BitmapTexture::~BitmapTexture()
-{
-}
-
 void BitmapTexture::updateContents(TextureMapper&, GraphicsLayer* sourceLayer, const IntRect& targetRect, const IntPoint& offset, UpdateContentsFlag updateContentsFlag, float scale)
 {
     // Making an unconditionally unaccelerated buffer here is OK because this code

@@ -271,24 +271,24 @@ void SVGFontFaceElement::rebuildFontFace()
     document().styleScope().didChangeStyleSheetEnvironment();
 }
 
-Node::InsertionNotificationRequest SVGFontFaceElement::insertedInto(ContainerNode& rootParent)
+Node::InsertedIntoAncestorResult SVGFontFaceElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    SVGElement::insertedInto(rootParent);
-    if (!rootParent.isConnected()) {
+    SVGElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    if (!insertionType.connectedToDocument) {
         ASSERT(!m_fontElement);
-        return InsertionDone;
+        return InsertedIntoAncestorResult::Done;
     }
     document().accessSVGExtensions().registerSVGFontFaceElement(this);
 
     rebuildFontFace();
-    return InsertionDone;
+    return InsertedIntoAncestorResult::Done;
 }
 
-void SVGFontFaceElement::removedFrom(ContainerNode& rootParent)
+void SVGFontFaceElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
-    SVGElement::removedFrom(rootParent);
+    SVGElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
 
-    if (rootParent.isConnected()) {
+    if (removalType.disconnectedFromDocument) {
         m_fontElement = nullptr;
         document().accessSVGExtensions().unregisterSVGFontFaceElement(this);
         m_fontFaceRule->mutableProperties().clear();

@@ -44,7 +44,7 @@ public:
     const Length* rowLengths() const { return m_rowLengths.get(); }
     const Length* colLengths() const { return m_colLengths.get(); }
 
-    static HTMLFrameSetElement* findContaining(Element* descendant);
+    static RefPtr<HTMLFrameSetElement> findContaining(Element* descendant);
     
     Vector<AtomicString> supportedPropertyNames() const;
     DOMWindow* namedItem(const AtomicString&);
@@ -64,8 +64,8 @@ private:
 
     void willRecalcStyle(Style::Change) final;
 
-    InsertionNotificationRequest insertedInto(ContainerNode&) final;
-    void removedFrom(ContainerNode&) final;
+    InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) final;
+    void removedFromAncestor(RemovalType, ContainerNode&) final;
 
     std::unique_ptr<Length[]> m_rowLengths;
     std::unique_ptr<Length[]> m_colLengths;

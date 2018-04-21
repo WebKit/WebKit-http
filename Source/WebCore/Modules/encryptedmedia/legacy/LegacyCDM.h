@@ -45,9 +45,9 @@ typedef bool (*CDMSupportsKeySystemAndMimeType)(const String&, const String&);
 
 class LegacyCDMClient {
 public:
-    virtual ~LegacyCDMClient() { }
+    virtual ~LegacyCDMClient() = default;
 
-    virtual MediaPlayer* cdmMediaPlayer(const LegacyCDM*) const = 0;
+    virtual RefPtr<MediaPlayer> cdmMediaPlayer(const LegacyCDM*) const = 0;
 };
 
 class LegacyCDM {
@@ -69,7 +69,7 @@ public:
     LegacyCDMClient* client() const { return m_client; }
     void setClient(LegacyCDMClient* client) { m_client = client; }
 
-    MediaPlayer* mediaPlayer() const;
+    RefPtr<MediaPlayer> mediaPlayer() const;
 
 private:
     String m_keySystem;

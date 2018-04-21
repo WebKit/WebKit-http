@@ -156,6 +156,7 @@ public:
 #endif
 
     // Event Simulation Support.
+    bool isSimulatingUserInteraction() const { return m_simulatingUserInteraction; }
 #if PLATFORM(MAC)
     bool wasEventSynthesizedForAutomation(NSEvent *);
     void markEventAsSynthesizedForAutomation(NSEvent *);
@@ -259,16 +260,17 @@ private:
 
     bool m_permissionForGetUserMedia { true };
 
+    // True if a synthesized key event is still being processed.
+    bool m_simulatingUserInteraction { false };
+
+    // Keep track of currently active modifiers across multiple keystrokes.
+    // Most platforms do not track current modifiers from synthesized events.
+    unsigned m_currentModifiers { 0 };
+
 #if ENABLE(REMOTE_INSPECTOR)
     Inspector::FrontendChannel* m_remoteChannel { nullptr };
 #endif
 
-#if PLATFORM(IOS) || PLATFORM(GTK)
-    // Keep track of currently active modifiers across multiple keystrokes.
-    // We don't synthesize platform keyboard events on iOS, so we need to track it ourselves.
-    // GTK+ doesn't keep track of the active modifiers when using synthesized events.
-    unsigned m_currentModifiers { 0 };
-#endif
 };
 
 } // namespace WebKit

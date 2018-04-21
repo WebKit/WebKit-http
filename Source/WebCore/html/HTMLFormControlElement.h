@@ -136,9 +136,9 @@ protected:
     virtual void readOnlyAttributeChanged();
     virtual void requiredAttributeChanged();
     void didAttachRenderers() override;
-    InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    void finishedInsertingSubtree() override;
-    void removedFrom(ContainerNode&) override;
+    InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) override;
+    void didFinishInsertingNode() override;
+    void removedFromAncestor(RemovalType, ContainerNode&) override;
     void didMoveToNewDocument(Document& oldDocument, Document& newDocument) override;
 
     bool supportsFocus() const override;

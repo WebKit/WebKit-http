@@ -27,12 +27,30 @@
 #include "ServiceWorkerRegistration.h"
 
 #if ENABLE(SERVICE_WORKER)
+#include "DOMWindow.h"
+#include "Document.h"
+#include "Navigator.h"
+#include "ServiceWorkerContainer.h"
+#include "WorkerGlobalScope.h"
+#include "WorkerNavigator.h"
 
 namespace WebCore {
 
-ServiceWorkerRegistration::ServiceWorkerRegistration(ScriptExecutionContext& context, const ServiceWorkerRegistrationData& registrationData)
+static ServiceWorkerContainer* containerForScriptExecutionContext(ScriptExecutionContext& context)
+{
+    NavigatorBase* navigator = nullptr;
+    if (is<Document>(context)) {
+        if (auto* window = downcast<Document>(context).domWindow())
+            navigator = window->navigator();
+    } else
+        navigator = &downcast<WorkerGlobalScope>(context).navigator();
+
+    return navigator ? navigator->serviceWorker() : nullptr;
+}
+
+ServiceWorkerRegistration::ServiceWorkerRegistration(ScriptExecutionContext& context, ServiceWorkerRegistrationData&& registrationData)
     : ActiveDOMObject(&context)
-    , m_registrationData(registrationData)
+    , m_registrationData(WTFMove(registrationData))
 {
     suspendIfNeeded();
 }
@@ -54,22 +72,35 @@ ServiceWorker* ServiceWorkerRegistration::active()
 
 const String& ServiceWorkerRegistration::scope() const
 {
-    return emptyString();
+    return m_registrationData.scopeURL;
 }
 
-ServiceWorkerRegistration::UpdateViaCache ServiceWorkerRegistration::updateViaCache() const
+ServiceWorkerUpdateViaCache ServiceWorkerRegistration::updateViaCache() const
 {
-    return UpdateViaCache::Imports;
+    return m_registrationData.updateViaCache;
 }
 
 void ServiceWorkerRegistration::update(Ref<DeferredPromise>&& promise)
 {
-    promise->reject(Exception(UnknownError, ASCIILiteral("ServiceWorkerRegistration::update not yet implemented")));
+    promise->reject(Exception(NotSupportedError, ASCIILiteral("ServiceWorkerRegistration::update not yet implemented")));
 }
 
 void ServiceWorkerRegistration::unregister(Ref<DeferredPromise>&& promise)
 {
-    promise->reject(Exception(UnknownError, ASCIILiteral("ServiceWorkerRegistration::unregister not yet implemented")));
+    auto* context = scriptExecutionContext();
+    if (!context) {
+        ASSERT_NOT_REACHED();
+        promise->reject(Exception(InvalidStateError));
+        return;
+    }
+
+    auto* container = containerForScriptExecutionContext(*context);
+    if (!container) {
+        promise->reject(Exception(InvalidStateError));
+        return;
+    }
+
+    container->removeRegistration(m_registrationData.scopeURL, WTFMove(promise));
 }
 
 EventTargetInterface ServiceWorkerRegistration::eventTargetInterface() const
@@ -79,7 +110,17 @@ EventTargetInterface ServiceWorkerRegistration::eventTargetInterface() const
 
 ScriptExecutionContext* ServiceWorkerRegistration::scriptExecutionContext() const
 {
-    return nullptr;
+    return ActiveDOMObject::scriptExecutionContext();
+}
+
+const char* ServiceWorkerRegistration::activeDOMObjectName() const
+{
+    return "ServiceWorkerRegistration";
+}
+
+bool ServiceWorkerRegistration::canSuspendForDocumentSuspension() const
+{
+    return !hasPendingActivity();
 }
 
 } // namespace WebCore

@@ -68,6 +68,7 @@
 #include "ShadowRoot.h"
 #include "SubmitInputType.h"
 #include "TelephoneInputType.h"
+#include "TextControlInnerElements.h"
 #include "TextInputType.h"
 #include "TimeInputType.h"
 #include "URLInputType.h"
@@ -163,9 +164,7 @@ std::unique_ptr<InputType> InputType::createText(HTMLInputElement& element)
     return std::make_unique<TextInputType>(element);
 }
 
-InputType::~InputType()
-{
-}
+InputType::~InputType() = default;
 
 bool InputType::themeSupportsDataListUI(InputType* type)
 {
@@ -495,7 +494,7 @@ void InputType::createShadowSubtree()
 
 void InputType::destroyShadowSubtree()
 {
-    ShadowRoot* root = element().userAgentShadowRoot();
+    RefPtr<ShadowRoot> root = element().userAgentShadowRoot();
     if (!root)
         return;
 
@@ -1145,6 +1144,11 @@ Color InputType::valueAsColor() const
 
 void InputType::selectColor(const Color&)
 {
+}
+
+RefPtr<TextControlInnerTextElement> InputType::innerTextElement() const
+{
+    return nullptr;
 }
 
 } // namespace WebCore

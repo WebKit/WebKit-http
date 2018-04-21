@@ -45,8 +45,8 @@ public:
 private:
     HTMLSourceElement(const QualifiedName&, Document&);
     
-    InsertionNotificationRequest insertedInto(ContainerNode&) final;
-    void removedFrom(ContainerNode&) final;
+    InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) final;
+    void removedFromAncestor(RemovalType, ContainerNode&) final;
     bool isURLAttribute(const Attribute&) const final;
 
     // ActiveDOMObject.

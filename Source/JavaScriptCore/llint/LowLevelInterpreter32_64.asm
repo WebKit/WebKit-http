@@ -125,8 +125,8 @@ macro doVMEntry(makeCall)
     storep vm, VMEntryRecord::m_vm[sp]
     loadp VM::topCallFrame[vm], t4
     storep t4, VMEntryRecord::m_prevTopCallFrame[sp]
-    loadp VM::topVMEntryFrame[vm], t4
-    storep t4, VMEntryRecord::m_prevTopVMEntryFrame[sp]
+    loadp VM::topEntryFrame[vm], t4
+    storep t4, VMEntryRecord::m_prevTopEntryFrame[sp]
 
     # Align stack pointer
     if X86_WIN or MIPS
@@ -189,8 +189,8 @@ macro doVMEntry(makeCall)
     loadp VMEntryRecord::m_vm[sp], t5
     loadp VMEntryRecord::m_prevTopCallFrame[sp], t4
     storep t4, VM::topCallFrame[t5]
-    loadp VMEntryRecord::m_prevTopVMEntryFrame[sp], t4
-    storep t4, VM::topVMEntryFrame[t5]
+    loadp VMEntryRecord::m_prevTopEntryFrame[sp], t4
+    storep t4, VM::topEntryFrame[t5]
 
     if ARMv7
         subp cfr, CalleeRegisterSaveSize, t5
@@ -241,7 +241,7 @@ macro doVMEntry(makeCall)
 
 .copyArgsDone:
     storep sp, VM::topCallFrame[vm]
-    storep cfr, VM::topVMEntryFrame[vm]
+    storep cfr, VM::topEntryFrame[vm]
 
     makeCall(entry, t3, t4)
 
@@ -255,8 +255,8 @@ macro doVMEntry(makeCall)
     loadp VMEntryRecord::m_vm[sp], t5
     loadp VMEntryRecord::m_prevTopCallFrame[sp], t4
     storep t4, VM::topCallFrame[t5]
-    loadp VMEntryRecord::m_prevTopVMEntryFrame[sp], t4
-    storep t4, VM::topVMEntryFrame[t5]
+    loadp VMEntryRecord::m_prevTopEntryFrame[sp], t4
+    storep t4, VM::topEntryFrame[t5]
 
     if ARMv7
         subp cfr, CalleeRegisterSaveSize, t5
@@ -324,8 +324,8 @@ _handleUncaughtException:
     loadp VMEntryRecord::m_vm[sp], t3
     loadp VMEntryRecord::m_prevTopCallFrame[sp], t5
     storep t5, VM::topCallFrame[t3]
-    loadp VMEntryRecord::m_prevTopVMEntryFrame[sp], t5
-    storep t5, VM::topVMEntryFrame[t3]
+    loadp VMEntryRecord::m_prevTopEntryFrame[sp], t5
+    storep t5, VM::topEntryFrame[t3]
 
     if ARMv7
         subp cfr, CalleeRegisterSaveSize, t3
@@ -579,20 +579,7 @@ macro functionArityCheck(doneLabel, slowPath)
     jmp _llint_throw_from_slow_path_trampoline
 
 .noError:
-    # r1 points to ArityCheckData.
-    loadp CommonSlowPaths::ArityCheckData::thunkToCall[r1], t3
-    btpz t3, .proceedInline
-    
-    loadp CommonSlowPaths::ArityCheckData::paddedStackSpace[r1], a0
-    call t3
-    if ASSERT_ENABLED
-        loadp ReturnPC[cfr], t0
-        loadp [t0], t0
-    end
-    jmp .continue
-
-.proceedInline:
-    loadi CommonSlowPaths::ArityCheckData::paddedStackSpace[r1], t1
+    move r1, t1 # r1 contains slotsToAdd.
     btiz t1, .continue
     loadi PayloadOffset + ArgumentCount[cfr], t2
     addi CallFrameHeaderSlots, t2

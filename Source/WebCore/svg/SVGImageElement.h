@@ -49,7 +49,7 @@ private:
     void svgAttributeChanged(const QualifiedName&) final;
 
     void didAttachRenderers() final;
-    InsertionNotificationRequest insertedInto(ContainerNode&) final;
+    InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) final;
 
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
 

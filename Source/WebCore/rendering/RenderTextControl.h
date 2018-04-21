@@ -46,7 +46,7 @@ protected:
     RenderTextControl(HTMLTextFormControlElement&, RenderStyle&&);
 
     // This convenience function should not be made public because innerTextElement may outlive the render tree.
-    TextControlInnerTextElement* innerTextElement() const;
+    RefPtr<TextControlInnerTextElement> innerTextElement() const;
 
     int scrollbarThickness() const;
 
@@ -91,7 +91,7 @@ public:
     explicit RenderTextControlInnerContainer(Element& element, RenderStyle&& style)
         : RenderFlexibleBox(element, WTFMove(style))
     { }
-    virtual ~RenderTextControlInnerContainer() { }
+    virtual ~RenderTextControlInnerContainer() = default;
 
     int baselinePosition(FontBaseline baseline, bool firstLine, LineDirectionMode direction, LinePositionMode position) const override
     {

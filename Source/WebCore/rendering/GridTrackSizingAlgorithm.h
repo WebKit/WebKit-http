@@ -47,7 +47,7 @@ class GridTrackSizingAlgorithmStrategy;
 
 class GridTrack {
 public:
-    GridTrack() { }
+    GridTrack() = default;
 
     const LayoutUnit& baseSize() const;
     void setBaseSize(LayoutUnit);
@@ -218,7 +218,7 @@ public:
     LayoutUnit maxContentForChild(RenderBox&) const;
     LayoutUnit minSizeForChild(RenderBox&) const;
 
-    virtual ~GridTrackSizingAlgorithmStrategy() { }
+    virtual ~GridTrackSizingAlgorithmStrategy() = default;
 
     virtual void maximizeTracks(Vector<GridTrack>&, std::optional<LayoutUnit>& freeSpace) = 0;
     virtual double findUsedFlexFraction(Vector<unsigned>& flexibleSizedTracksIndex, GridTrackSizingDirection, std::optional<LayoutUnit> initialFreeSpace) const = 0;
@@ -228,11 +228,11 @@ protected:
     GridTrackSizingAlgorithmStrategy(GridTrackSizingAlgorithm& algorithm)
         : m_algorithm(algorithm) { }
 
-    virtual LayoutUnit minLogicalWidthForChild(RenderBox&, Length childMinSize, GridTrackSizingDirection) const = 0;
+    virtual LayoutUnit minLogicalWidthForChild(RenderBox&, Length childMinSize, LayoutUnit availableSize) const = 0;
     virtual void layoutGridItemForMinSizeComputation(RenderBox&, bool overrideSizeHasChanged) const = 0;
 
     LayoutUnit logicalHeightForChild(RenderBox&) const;
-    bool updateOverrideContainingBlockContentSizeForChild(RenderBox&, GridTrackSizingDirection) const;
+    bool updateOverrideContainingBlockContentSizeForChild(RenderBox&, GridTrackSizingDirection, std::optional<LayoutUnit> = std::nullopt) const;
 
     // GridTrackSizingAlgorithm accessors for subclasses.
     LayoutUnit computeTrackBasedSize() const { return m_algorithm.computeTrackBasedSize(); }

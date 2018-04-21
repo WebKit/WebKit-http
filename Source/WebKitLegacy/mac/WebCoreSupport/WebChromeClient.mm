@@ -58,6 +58,7 @@
 #import <WebCore/ContextMenu.h>
 #import <WebCore/ContextMenuController.h>
 #import <WebCore/Cursor.h>
+#import <WebCore/DeprecatedGlobalSettings.h>
 #import <WebCore/Element.h>
 #import <WebCore/FileChooser.h>
 #import <WebCore/FileIconLoader.h>
@@ -115,6 +116,8 @@ NSString *WebConsoleMessageCSSMessageSource = @"CSSMessageSource";
 NSString *WebConsoleMessageSecurityMessageSource = @"SecurityMessageSource";
 NSString *WebConsoleMessageContentBlockerMessageSource = @"ContentBlockerMessageSource";
 NSString *WebConsoleMessageOtherMessageSource = @"OtherMessageSource";
+NSString *WebConsoleMessageMediaMessageSource = @"MediaMessageSource";
+NSString *WebConsoleMessageWebRTCMessageSource = @"WebRTCMessageSource";
 
 NSString *WebConsoleMessageDebugMessageLevel = @"DebugMessageLevel";
 NSString *WebConsoleMessageLogMessageLevel = @"LogMessageLevel";
@@ -390,6 +393,10 @@ inline static NSString *stringForMessageSource(MessageSource source)
         return WebConsoleMessageContentBlockerMessageSource;
     case MessageSource::Other:
         return WebConsoleMessageOtherMessageSource;
+    case MessageSource::Media:
+        return WebConsoleMessageMediaMessageSource;
+    case MessageSource::WebRTC:
+        return WebConsoleMessageWebRTCMessageSource;
     }
     ASSERT_NOT_REACHED();
     return @"";
@@ -951,7 +958,7 @@ void WebChromeClient::scheduleCompositingLayerFlush()
 bool WebChromeClient::supportsVideoFullscreen(HTMLMediaElementEnums::VideoFullscreenMode)
 {
 #if PLATFORM(IOS)
-    if (!Settings::avKitEnabled())
+    if (!DeprecatedGlobalSettings::avKitEnabled())
         return false;
 #endif
     return true;

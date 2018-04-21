@@ -146,7 +146,7 @@ class HTMLMediaElement
 {
 public:
     WeakPtr<HTMLMediaElement> createWeakPtr() { return m_weakFactory.createWeakPtr(*this); }
-    MediaPlayer* player() const { return m_player.get(); }
+    RefPtr<MediaPlayer> player() const { return m_player; }
 
     virtual bool isVideo() const { return false; }
     bool hasVideo() const override { return false; }
@@ -545,6 +545,7 @@ public:
 
 protected:
     HTMLMediaElement(const QualifiedName&, Document&, bool createdByParser);
+    virtual void finishInitialization();
     virtual ~HTMLMediaElement();
 
     void parseAttribute(const QualifiedName&, const AtomicString&) override;
@@ -588,9 +589,9 @@ private:
     bool isMouseFocusable() const override;
     bool rendererIsNeeded(const RenderStyle&) override;
     bool childShouldCreateRenderer(const Node&) const override;
-    InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    void finishedInsertingSubtree() override;
-    void removedFrom(ContainerNode&) override;
+    InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) override;
+    void didFinishInsertingNode() override;
+    void removedFromAncestor(RemovalType, ContainerNode&) override;
     void didRecalcStyle(Style::Change) override;
 
     void willBecomeFullscreenElement() override;

@@ -209,6 +209,10 @@ webkit.org/b/105616 editing/mac/spelling/removing-underline-after-accepting-auto
 webkit.org/b/105616 editing/mac/spelling/accept-candidate-allows-autocorrect-on-next-word.html [ Failure ]
 webkit.org/b/105616 editing/mac/spelling/accept-unseen-candidate-records-acceptance.html [ Failure ]
 webkit.org/b/105616 editing/spelling/spelling-marker-includes-hyphen.html [ ImageOnlyFailure ]
+webkit.org/b/105616 editing/spelling/spelling-markers-in-overlapping-lines.html [ ImageOnlyFailure ]
+webkit.org/b/105616 editing/spelling/spelling-markers-in-overlapping-lines-large-font.html [ ImageOnlyFailure ]
+webkit.org/b/105616 fast/writing-mode/english-bt-text-with-spelling-marker.html [ ImageOnlyFailure ]
+webkit.org/b/105616 fast/writing-mode/english-rl-text-with-spelling-marker.html [ ImageOnlyFailure ]
 
 # [WK2] [Mac] Support drag in mouse events for WebKit2 EventSender
 # <https://bugs.webkit.org/show_bug.cgi?id=68552>
@@ -803,7 +807,6 @@ webkit.org/b/176122 media/video-controls-drop-and-restore-timeline.html [ Pass F
 [ HighSierra+ ] http/tests/ssl/applepay/ApplePaySessionV3.html [ Pass ]
 # <rdar://problem/31634451>
 [ HighSierra+ ] http/tests/loading/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction.html [ Pass ]
-[ HighSierra+ ] http/tests/loading/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour.html [ Pass ]
 [ HighSierra+ ] http/tests/loading/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html [ Pass ]
 [ HighSierra+ ] http/tests/loading/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout.html [ Pass Failure ]
 [ HighSierra+ ] http/tests/loading/resourceLoadStatistics/third-party-cookie-with-and-without-user-interaction.html [ Pass Failure ]
@@ -823,4 +826,12 @@ webkit.org/b/171839 [ Debug ] tiled-drawing/scrolling/scroll-snap/scroll-snap-ma
 webkit.org/b/177214 [ ElCapitan Debug ] imported/w3c/web-platform-tests/FileAPI/historical.https.html [ Pass Failure ]
 
 webkit.org/b/177687 http/tests/inspector/network/resource-sizes-memory-cache.html [ Pass Failure ]
+
+webkit.org/b/178472 http/tests/resourceLoadStatistics/prevalent-resource-handled-keydown.html [ Pass Timeout ]
+
+webkit.org/b/178536 [ HighSierra ] http/tests/loading/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour.html [ Pass Timeout ]
+
+webkit.org/b/176881 plugins/js-from-destroy.html [ Pass Failure ]
+
+webkit.org/b/178553 [ HighSierra Release ] imported/w3c/web-platform-tests/html/dom/dynamic-markup-insertion/opening-the-input-stream/011.html [ Skip ]
 

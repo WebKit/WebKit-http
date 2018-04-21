@@ -61,7 +61,6 @@ public:
     void enable(ErrorString&) override;
     void disable(ErrorString&) override;
     void clearMessages(ErrorString&) override;
-    void setMonitoringXHREnabled(ErrorString&, bool enabled) override = 0;
 
     bool enabled() const { return m_enabled; }
     void reset();
@@ -72,6 +71,9 @@ public:
     void stopTiming(const String& title, Ref<ScriptCallStack>&&);
     void takeHeapSnapshot(const String& title);
     void count(JSC::ExecState*, Ref<ScriptArguments>&&);
+
+    void getLoggingChannels(ErrorString&, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Console::Channel>>&) override;
+    void setLoggingChannelLevel(ErrorString&, const String& channel, const String& level) override;
 
 protected:
     void addConsoleMessage(std::unique_ptr<ConsoleMessage>);

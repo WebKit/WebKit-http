@@ -30,18 +30,25 @@
 #include "Connection.h"
 #include "MessageReceiver.h"
 #include "MessageSender.h"
+#include "ServiceWorkerClientFetch.h"
+#include "SharedMemory.h"
 #include <WebCore/SWClientConnection.h>
 #include <pal/SessionID.h>
+#include <wtf/UniqueRef.h>
 
 namespace WebCore {
 struct ExceptionData;
+class ResourceLoader;
 }
 
 namespace WebKit {
 
+class WebSWOriginTable;
+class WebServiceWorkerProvider;
+
 class WebSWClientConnection : public WebCore::SWClientConnection, public IPC::MessageSender, public IPC::MessageReceiver {
 public:
-    WebSWClientConnection(IPC::Connection&, const PAL::SessionID&);
+    WebSWClientConnection(IPC::Connection&, PAL::SessionID);
     WebSWClientConnection(const WebSWClientConnection&) = delete;
     ~WebSWClientConnection() final;
 
@@ -49,9 +56,13 @@ public:
 
     void scheduleJobInServer(const WebCore::ServiceWorkerJobData&) final;
     void finishFetchingScriptInServer(const WebCore::ServiceWorkerFetchResult&) final;
+    void postMessageToServiceWorkerGlobalScope(uint64_t serviceWorkerIdentifier, Ref<WebCore::SerializedScriptValue>&&, const String& sourceOrigin) final;
 
     void disconnectedFromWebProcess();
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) final;
+
+    bool hasServiceWorkerRegisteredForOrigin(const WebCore::SecurityOrigin&) const final;
+    Ref<ServiceWorkerClientFetch> startFetch(WebServiceWorkerProvider&, Ref<WebCore::ResourceLoader>&&, uint64_t identifier, ServiceWorkerClientFetch::Callback&&);
 
 private:
     void scheduleStorageJob(const WebCore::ServiceWorkerJobData&);
@@ -59,10 +70,13 @@ private:
     IPC::Connection* messageSenderConnection() final { return m_connection.ptr(); }
     uint64_t messageSenderDestinationID() final { return m_identifier; }
 
+    void setSWOriginTableSharedMemory(const SharedMemory::Handle&);
+
     PAL::SessionID m_sessionID;
     uint64_t m_identifier;
 
     Ref<IPC::Connection> m_connection;
+    UniqueRef<WebSWOriginTable> m_swOriginTable;
 }; // class WebSWServerConnection
 
 } // namespace WebKit

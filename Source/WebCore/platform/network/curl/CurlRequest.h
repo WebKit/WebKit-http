@@ -49,7 +49,7 @@ public:
         return adoptRef(*new CurlRequest(request, delegate, shouldSuspend));
     }
 
-    virtual ~CurlRequest() { }
+    virtual ~CurlRequest() = default;
 
     void setDelegate(CurlRequestDelegate* delegate) { m_delegate = delegate;  }
     void setUserPass(const String&, const String&);
@@ -139,8 +139,9 @@ private:
     std::unique_ptr<FormDataStream> m_formDataStream;
     Vector<char> m_postBuffer;
     CurlSSLVerifier m_sslVerifier;
-    CurlResponse m_response;
 
+    CurlResponse m_response;
+    bool m_didReceiveResponse { false };
     bool m_didNotifyResponse { false };
     bool m_didReturnFromNotify { false };
     Action m_actionAfterInvoke { Action::None };
@@ -157,4 +158,4 @@ private:
     NetworkLoadMetrics m_networkLoadMetrics;
 };
 
-}
+} // namespace WebCore

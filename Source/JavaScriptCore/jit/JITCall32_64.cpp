@@ -202,22 +202,18 @@ void JIT::compileCallEval(Instruction* instruction)
 
 void JIT::compileCallEvalSlowCase(Instruction* instruction, Vector<SlowCaseEntry>::iterator& iter)
 {
+    linkAllSlowCases(iter);
+
     CallLinkInfo* info = m_codeBlock->addCallLinkInfo();
     info->setUpCall(CallLinkInfo::Call, CodeOrigin(m_bytecodeOffset), regT0);
-
-    linkSlowCase(iter);
 
     int registerOffset = -instruction[4].u.operand;
     int callee = instruction[2].u.operand;
 
     addPtr(TrustedImm32(registerOffset * sizeof(Register) + sizeof(CallerFrameAndPC)), callFrameRegister, stackPointerRegister);
 
-    move(TrustedImmPtr(info), regT2);
-
     emitLoad(callee, regT1, regT0);
-    MacroAssemblerCodeRef virtualThunk = virtualThunkFor(m_vm, *info);
-    info->setSlowStub(createJITStubRoutine(virtualThunk, *m_vm, nullptr, true));
-    emitNakedCall(virtualThunk.code());
+    emitDumbVirtualCall(*vm(), info);
     addPtr(TrustedImm32(stackPointerOffsetFor(m_codeBlock) * sizeof(Register)), callFrameRegister, stackPointerRegister);
     checkStackPointerAlignment();
 
@@ -315,8 +311,7 @@ void JIT::compileOpCallSlowCase(OpcodeID opcodeID, Instruction* instruction, Vec
         return;
     }
 
-    linkSlowCase(iter);
-    linkSlowCase(iter);
+    linkAllSlowCases(iter);
 
     move(TrustedImmPtr(m_callCompilationInfo[callLinkInfoIndex].callLinkInfo), regT2);
 

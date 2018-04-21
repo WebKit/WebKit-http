@@ -42,6 +42,7 @@
 
 namespace WebCore {
 
+class AnimationTimeline;
 class AudioContext;
 class CacheStorageConnection;
 class DOMRect;
@@ -72,6 +73,7 @@ class MemoryInfo;
 class MockCDMFactory;
 class MockContentFilterSettings;
 class MockPageOverlay;
+class MockPaymentCoordinator;
 class NodeList;
 class Page;
 class Range;
@@ -108,6 +110,7 @@ public:
 
     bool isPreloaded(const String& url);
     bool isLoadingFromMemoryCache(const String& url);
+    String fetchResponseSource(FetchResponse&);
     String xhrResponseSource(XMLHttpRequest&);
     bool isSharingStyleSheetContents(HTMLLinkElement&, HTMLLinkElement&);
     bool isStyleSheetLoadingSubresources(HTMLLinkElement&);
@@ -611,8 +614,17 @@ public:
 #if ENABLE(SERVICE_WORKER)
     void waitForFetchEventToFinish(FetchEvent&, DOMPromiseDeferred<IDLInterface<FetchResponse>>&&);
     void waitForExtendableEventToFinish(ExtendableEvent&, DOMPromiseDeferred<void>&&);
+    Ref<FetchEvent> createBeingDispatchedFetchEvent(ScriptExecutionContext&);
     Ref<ExtendableEvent> createTrustedExtendableEvent();
 #endif
+
+    bool hasServiceWorkerRegisteredForOrigin(const String&);
+        
+#if ENABLE(APPLE_PAY)
+    MockPaymentCoordinator& mockPaymentCoordinator() const;
+#endif
+
+    String timelineDescription(AnimationTimeline&);
 
 private:
     explicit Internals(Document&);
@@ -635,6 +647,10 @@ private:
 
     std::unique_ptr<InspectorStubFrontend> m_inspectorFrontend;
     RefPtr<CacheStorageConnection> m_cacheStorageConnection;
+
+#if ENABLE(APPLE_PAY)
+    MockPaymentCoordinator* m_mockPaymentCoordinator { nullptr };
+#endif
 };
 
 } // namespace WebCore

@@ -134,7 +134,7 @@ public:
 
     HTMLElement* containerElement() const;
     
-    TextControlInnerTextElement* innerTextElement() const final;
+    RefPtr<TextControlInnerTextElement> innerTextElement() const final;
     RenderStyle createInnerTextStyle(const RenderStyle&) const override;
 
     HTMLElement* innerBlockElement() const;
@@ -350,9 +350,9 @@ private:
 
     void willChangeForm() final;
     void didChangeForm() final;
-    InsertionNotificationRequest insertedInto(ContainerNode&) final;
-    void finishedInsertingSubtree() final;
-    void removedFrom(ContainerNode&) final;
+    InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) final;
+    void didFinishInsertingNode() final;
+    void removedFromAncestor(RemovalType, ContainerNode&) final;
     void didMoveToNewDocument(Document& oldDocument, Document& newDocument) final;
 
     bool hasCustomFocusLogic() const final;

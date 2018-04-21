@@ -424,6 +424,15 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
 
     NetworkProcessCreationParameters parameters;
 
+    if (withWebsiteDataStore) {
+        auto websiteDataStoreParameters = withWebsiteDataStore->parameters();
+        parameters.defaultSessionParameters = websiteDataStoreParameters.networkSessionParameters;
+
+        // FIXME: This isn't conceptually correct, but it's needed to preserve behavior introduced in r213241.
+        // We should separate the concept of the default session from the currently used persistent session.
+        parameters.defaultSessionParameters.sessionID = PAL::SessionID::defaultSessionID();
+    }
+    
     parameters.privateBrowsingEnabled = WebPreferences::anyPagesAreUsingPrivateBrowsing();
 
     parameters.cacheModel = cacheModel();
@@ -460,8 +469,6 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
     String parentBundleDirectory = this->parentBundleDirectory();
     if (!parentBundleDirectory.isEmpty())
         SandboxExtension::createHandle(parentBundleDirectory, SandboxExtension::Type::ReadOnly, parameters.parentBundleDirectoryExtensionHandle);
-
-    parameters.allowsCellularAccess = m_configuration->allowsCellularAccess();
 #endif
 
 #if OS(LINUX)
@@ -582,14 +589,14 @@ void WebProcessPool::getWorkerContextProcessConnection(StorageProcessProxy& prox
 {
     ASSERT_UNUSED(proxy, &proxy == m_storageProcess);
     
-    if (!m_workerContextProcess) {
-        if (!m_websiteDataStore)
-            m_websiteDataStore = API::WebsiteDataStore::defaultDataStore().ptr();
-        auto& newProcess = createNewWebProcess(m_websiteDataStore->websiteDataStore());
-        m_workerContextProcess = &newProcess;
-    }
-    
-    m_workerContextProcess->send(Messages::WebProcess::GetWorkerContextConnection(), 0);
+    if (m_workerContextProcess)
+        return;
+
+    if (!m_websiteDataStore)
+        m_websiteDataStore = API::WebsiteDataStore::defaultDataStore().ptr();
+    auto& newProcess = createNewWebProcess(m_websiteDataStore->websiteDataStore());
+    m_workerContextProcess = &newProcess;
+    m_workerContextProcess->send(Messages::WebProcess::GetWorkerContextConnection(m_defaultPageGroup->preferences().store()), 0);
 }
 
 void WebProcessPool::didGetWorkerContextProcessConnection(const IPC::Attachment& connection)
@@ -623,7 +630,7 @@ void WebProcessPool::setAnyPageGroupMightHavePrivateBrowsingEnabled(bool private
 {
     if (networkProcess()) {
         if (privateBrowsingEnabled)
-            networkProcess()->send(Messages::NetworkProcess::EnsurePrivateBrowsingSession({PAL::SessionID::legacyPrivateSessionID(), { }, { }, { }, { }, WebsiteDataStore::defaultCacheStoragePerOriginQuota, { }}), 0);
+            networkProcess()->send(Messages::NetworkProcess::EnsurePrivateBrowsingSession({ { }, { }, { }, { }, WebsiteDataStore::defaultCacheStoragePerOriginQuota, { }, { PAL::SessionID::legacyPrivateSessionID(), { }, { }, AllowsCellularAccess::Yes }}), 0);
         else
             networkProcess()->send(Messages::NetworkProcess::DestroySession(PAL::SessionID::legacyPrivateSessionID()), 0);
     }
@@ -937,25 +944,19 @@ WebProcessProxy& WebProcessPool::createNewWebProcessRespectingProcessCountLimit(
     if (m_processes.size() < maximumNumberOfProcesses())
         return createNewWebProcess(websiteDataStore);
 
-    Vector<RefPtr<WebProcessProxy>> processesMatchingDataStore;
-    if (mustMatchDataStore) {
-        for (auto& process : m_processes) {
-            if (&process->websiteDataStore() == &websiteDataStore)
-                processesMatchingDataStore.append(process);
-        }
-
-        if (processesMatchingDataStore.isEmpty())
-            return createNewWebProcess(websiteDataStore);
+    WebProcessProxy* processToReuse = nullptr;
+    for (auto& process : m_processes) {
+        if (mustMatchDataStore && &process->websiteDataStore() != &websiteDataStore)
+            continue;
+#if ENABLE(SERVICE_WORKER)
+        if (process.get() == m_workerContextProcess)
+            continue;
+#endif
+        // Choose the process with fewest pages.
+        if (!processToReuse || processToReuse->pageCount() > process->pageCount())
+            processToReuse = process.get();
     }
-
-    // Choose the process with fewest pages.
-    auto* processes = mustMatchDataStore ? &processesMatchingDataStore : &m_processes;
-    ASSERT(!processes->isEmpty());
-    auto& process = *std::min_element(processes->begin(), processes->end(), [](const RefPtr<WebProcessProxy>& a, const RefPtr<WebProcessProxy>& b) {
-        return a->pageCount() < b->pageCount();
-    });
-
-    return *process;
+    return processToReuse ? *processToReuse : createNewWebProcess(websiteDataStore);
 }
 
 Ref<WebPageProxy> WebProcessPool::createWebPage(PageClient& pageClient, Ref<API::PageConfiguration>&& pageConfiguration)
@@ -1006,7 +1007,7 @@ void WebProcessPool::pageAddedToProcess(WebPageProxy& page)
     if (sessionID.isEphemeral()) {
         // FIXME: Merge NetworkProcess::EnsurePrivateBrowsingSession and NetworkProcess::AddWebsiteDataStore into one message type.
         // They do basically the same thing.
-        ASSERT(page.websiteDataStore().parameters().sessionID == sessionID);
+        ASSERT(page.websiteDataStore().parameters().networkSessionParameters.sessionID == sessionID);
         sendToNetworkingProcess(Messages::NetworkProcess::EnsurePrivateBrowsingSession(page.websiteDataStore().parameters()));
         page.process().send(Messages::WebProcess::EnsurePrivateBrowsingSession(sessionID), 0);
     } else if (sessionID != PAL::SessionID::defaultSessionID()) {

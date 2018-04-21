@@ -28,6 +28,7 @@
 #include "config.h"
 #include "WorkerMessagingProxy.h"
 
+#include "CacheStorageProvider.h"
 #include "ContentSecurityPolicy.h"
 #include "DOMWindow.h"
 #include "DedicatedWorkerGlobalScope.h"
@@ -36,6 +37,7 @@
 #include "ErrorEvent.h"
 #include "EventNames.h"
 #include "MessageEvent.h"
+#include "Page.h"
 #include "ScriptExecutionContext.h"
 #include "Worker.h"
 #include "WorkerInspectorProxy.h"
@@ -94,7 +96,7 @@ void WorkerMessagingProxy::startWorkerGlobalScope(const URL& scriptURL, const St
     m_inspectorProxy->workerStarted(m_scriptExecutionContext.get(), thread.ptr(), scriptURL);
 }
 
-void WorkerMessagingProxy::postMessageToWorkerObject(RefPtr<SerializedScriptValue>&& message, std::unique_ptr<MessagePortChannelArray> channels)
+void WorkerMessagingProxy::postMessageToWorkerObject(Ref<SerializedScriptValue>&& message, std::unique_ptr<MessagePortChannelArray>&& channels)
 {
     m_scriptExecutionContext->postTask([this, channels = WTFMove(channels), message = WTFMove(message)] (ScriptExecutionContext& context) mutable {
         Worker* workerObject = this->workerObject();
@@ -106,7 +108,7 @@ void WorkerMessagingProxy::postMessageToWorkerObject(RefPtr<SerializedScriptValu
     });
 }
 
-void WorkerMessagingProxy::postMessageToWorkerGlobalScope(RefPtr<SerializedScriptValue>&& message, std::unique_ptr<MessagePortChannelArray> channels)
+void WorkerMessagingProxy::postMessageToWorkerGlobalScope(Ref<SerializedScriptValue>&& message, std::unique_ptr<MessagePortChannelArray>&& channels)
 {
     if (m_askedToTerminate)
         return;
@@ -131,6 +133,13 @@ void WorkerMessagingProxy::postTaskToLoader(ScriptExecutionContext::Task&& task)
     // FIXME: In case of nested workers, this should go directly to the root Document context.
     ASSERT(m_scriptExecutionContext->isDocument());
     m_scriptExecutionContext->postTask(WTFMove(task));
+}
+
+Ref<CacheStorageConnection> WorkerMessagingProxy::createCacheStorageConnection()
+{
+    ASSERT(isMainThread());
+    auto& document = downcast<Document>(*m_scriptExecutionContext);
+    return document.page()->cacheStorageProvider().createCacheStorageConnection(document.page()->sessionID());
 }
 
 bool WorkerMessagingProxy::postTaskForModeToWorkerGlobalScope(ScriptExecutionContext::Task&& task, const String& mode)

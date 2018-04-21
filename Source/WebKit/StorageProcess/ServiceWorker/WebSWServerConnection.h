@@ -41,7 +41,7 @@ namespace WebKit {
 
 class WebSWServerConnection : public WebCore::SWServer::Connection, public IPC::MessageSender, public IPC::MessageReceiver {
 public:
-    WebSWServerConnection(WebCore::SWServer&, IPC::Connection&, uint64_t connectionIdentifier, const PAL::SessionID&);
+    WebSWServerConnection(WebCore::SWServer&, IPC::Connection&, uint64_t connectionIdentifier, PAL::SessionID);
     WebSWServerConnection(const WebSWServerConnection&) = delete;
     ~WebSWServerConnection() final;
 
@@ -49,15 +49,28 @@ public:
     void setContextConnection(IPC::Connection*);
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) final;
 
+    PAL::SessionID sessionID() const { return m_sessionID; }
+
+    void didReceiveFetchResponse(uint64_t fetchIdentifier, const WebCore::ResourceResponse&);
+    void didReceiveFetchData(uint64_t fetchIdentifier, const IPC::DataReference&, int64_t encodedDataLength);
+    void didFinishFetch(uint64_t fetchIdentifier);
+    void didFailFetch(uint64_t fetchIdentifier);
+    void didNotHandleFetch(uint64_t fetchIdentifier);
+
 private:
     // Implement SWServer::Connection (Messages to the client WebProcess)
     void rejectJobInClient(uint64_t jobIdentifier, const WebCore::ExceptionData&) final;
-    void resolveJobInClient(uint64_t jobIdentifier, const WebCore::ServiceWorkerRegistrationData&) final;
+    void resolveRegistrationJobInClient(uint64_t jobIdentifier, const WebCore::ServiceWorkerRegistrationData&) final;
+    void resolveUnregistrationJobInClient(uint64_t jobIdentifier, const WebCore::ServiceWorkerRegistrationKey&, bool unregistrationResult) final;
     void startScriptFetchInClient(uint64_t jobIdentifier) final;
+
+    void startFetch(uint64_t fetchIdentifier, uint64_t serviceWorkerIdentifier, const WebCore::ResourceRequest&, const WebCore::FetchOptions&);
+
+    void postMessageToServiceWorkerGlobalScope(uint64_t serviceWorkerIdentifier, const IPC::DataReference& message, const String& sourceOrigin);
 
     // Messages to the SW context WebProcess
     void startServiceWorkerContext(const WebCore::ServiceWorkerContextData&) final;
-    
+
     IPC::Connection* messageSenderConnection() final { return m_contentConnection.ptr(); }
     uint64_t messageSenderDestinationID() final { return identifier(); }
 

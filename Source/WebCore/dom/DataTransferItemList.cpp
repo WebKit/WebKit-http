@@ -27,6 +27,7 @@
 #include "DataTransferItemList.h"
 
 #include "DataTransferItem.h"
+#include "DeprecatedGlobalSettings.h"
 #include "FileList.h"
 #include "Pasteboard.h"
 #include "Settings.h"
@@ -38,9 +39,7 @@ DataTransferItemList::DataTransferItemList(DataTransfer& dataTransfer)
 {
 }
 
-DataTransferItemList::~DataTransferItemList()
-{
-}
+DataTransferItemList::~DataTransferItemList() = default;
 
 unsigned DataTransferItemList::length() const
 {
@@ -57,7 +56,7 @@ RefPtr<DataTransferItem> DataTransferItemList::item(unsigned index)
 
 static bool shouldExposeTypeInItemList(const String& type)
 {
-    return Settings::customPasteboardDataEnabled() || Pasteboard::isSafeTypeForDOMToReadAndWrite(type);
+    return DeprecatedGlobalSettings::customPasteboardDataEnabled() || Pasteboard::isSafeTypeForDOMToReadAndWrite(type);
 }
 
 ExceptionOr<RefPtr<DataTransferItem>> DataTransferItemList::add(const String& data, const String& type)

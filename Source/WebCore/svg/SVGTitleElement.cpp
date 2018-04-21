@@ -38,16 +38,16 @@ Ref<SVGTitleElement> SVGTitleElement::create(const QualifiedName& tagName, Docum
     return adoptRef(*new SVGTitleElement(tagName, document));
 }
 
-Node::InsertionNotificationRequest SVGTitleElement::insertedInto(ContainerNode& insertionPoint)
+Node::InsertedIntoAncestorResult SVGTitleElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    SVGElement::insertedInto(insertionPoint);
+    SVGElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
     document().titleElementAdded(*this);
-    return InsertionDone;
+    return InsertedIntoAncestorResult::Done;
 }
 
-void SVGTitleElement::removedFrom(ContainerNode& insertionPoint)
+void SVGTitleElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
-    SVGElement::removedFrom(insertionPoint);
+    SVGElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
     document().titleElementRemoved(*this);
 }
 

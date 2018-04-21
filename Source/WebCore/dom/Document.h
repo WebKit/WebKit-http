@@ -30,6 +30,7 @@
 #include "Color.h"
 #include "ContainerNode.h"
 #include "DocumentEventQueue.h"
+#include "DocumentTimeline.h"
 #include "DocumentTiming.h"
 #include "FocusDirection.h"
 #include "FontSelectorClient.h"
@@ -37,7 +38,6 @@
 #include "MediaProducer.h"
 #include "MutationObserver.h"
 #include "OrientationNotifier.h"
-#include "PageVisibilityState.h"
 #include "PlatformEvent.h"
 #include "ReferrerPolicy.h"
 #include "Region.h"
@@ -50,6 +50,8 @@
 #include "TreeScope.h"
 #include "UserActionElementSet.h"
 #include "ViewportArguments.h"
+#include "VisibilityState.h"
+#include <pal/Logger.h>
 #include <pal/SessionID.h>
 #include <wtf/Deque.h>
 #include <wtf/Forward.h>
@@ -69,10 +71,6 @@
 namespace JSC {
 class ExecState;
 class InputCursor;
-}
-
-namespace PAL {
-class Logger;
 }
 
 namespace WebCore {
@@ -306,7 +304,8 @@ class Document
     , public ScriptExecutionContext
     , public FontSelectorClient
     , public FrameDestructionObserver
-    , public Supplementable<Document> {
+    , public Supplementable<Document>
+    , public PAL::Logger::Observer {
 public:
     static Ref<Document> create(Frame* frame, const URL& url)
     {
@@ -457,7 +456,6 @@ public:
     String documentURI() const { return m_documentURI; }
     WEBCORE_EXPORT void setDocumentURI(const String&);
 
-    using VisibilityState = PageVisibilityState;
     WEBCORE_EXPORT VisibilityState visibilityState() const;
     void visibilityStateChanged();
     WEBCORE_EXPORT bool hidden() const;
@@ -643,7 +641,7 @@ public:
 
     WEBCORE_EXPORT URL completeURL(const String&) const final;
     URL completeURL(const String&, const URL& baseURLOverride) const;
-    PAL::SessionID sessionID() const final;
+    WEBCORE_EXPORT PAL::SessionID sessionID() const final;
 
     String userAgent(const URL&) const final;
 
@@ -863,7 +861,7 @@ public:
 
     WEBCORE_EXPORT String referrer() const;
 
-    WEBCORE_EXPORT String origin() const;
+    WEBCORE_EXPORT String origin() const final;
 
     WEBCORE_EXPORT String domain() const;
     ExceptionOr<void> setDomain(const String& newDomain);
@@ -1357,7 +1355,7 @@ public:
     TextAutoSizing& textAutoSizing();
 #endif
 
-    PAL::Logger& logger() const;
+    PAL::Logger& logger();
 
     bool hasStorageAccess() const { return m_hasStorageAccess; };
     void requestStorageAccess(Ref<DeferredPromise>&& passedPromise);
@@ -1365,6 +1363,8 @@ public:
 
     WEBCORE_EXPORT void setConsoleMessageListener(RefPtr<StringCallback>&&); // For testing.
 
+    DocumentTimeline& timeline();
+        
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
     Document(Frame*, const URL&, unsigned = DefaultDocumentClass, unsigned constructionFlags = 0);
@@ -1657,6 +1657,8 @@ private:
 
     void notifyMediaCaptureOfVisibilityChanged();
 
+    void didLogMessage(const WTFLogChannel&, WTFLogLevel, const String&) final;
+
 #if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS)
     std::unique_ptr<DeviceMotionClient> m_deviceMotionClient;
     std::unique_ptr<DeviceMotionController> m_deviceMotionController;
@@ -1822,6 +1824,8 @@ private:
 
     bool m_hasStorageAccess { false };
     bool m_grantStorageAccessOverride { false };
+
+    RefPtr<DocumentTimeline> m_timeline;
 };
 
 Element* eventTargetElementForDocument(Document*);

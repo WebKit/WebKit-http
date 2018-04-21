@@ -224,7 +224,7 @@ bool Element::supportsFocus() const
     return tabIndexSetExplicitly();
 }
 
-Element* Element::focusDelegate()
+RefPtr<Element> Element::focusDelegate()
 {
     return this;
 }
@@ -1629,34 +1629,27 @@ RenderPtr<RenderElement> Element::createElementRenderer(RenderStyle&& style, con
     return RenderElement::createFor(*this, WTFMove(style));
 }
 
-Node::InsertionNotificationRequest Element::insertedInto(ContainerNode& insertionPoint)
+Node::InsertedIntoAncestorResult Element::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    bool wasInDocument = isConnected();
-    // need to do superclass processing first so isConnected() is true
-    // by the time we reach updateId
-    ContainerNode::insertedInto(insertionPoint);
-    ASSERT(!wasInDocument || isConnected());
+    ContainerNode::insertedIntoAncestor(insertionType, parentOfInsertedTree);
 
 #if ENABLE(FULLSCREEN_API)
     if (containsFullScreenElement() && parentElement() && !parentElement()->containsFullScreenElement())
         setContainsFullScreenElementOnAncestorsCrossingFrameBoundaries(true);
 #endif
 
-    if (parentNode() == &insertionPoint) {
+    if (parentNode() == &parentOfInsertedTree) {
         if (auto* shadowRoot = parentNode()->shadowRoot())
             shadowRoot->hostChildElementDidChange(*this);
     }
 
-    if (!insertionPoint.isInTreeScope())
-        return InsertionDone;
+    if (!parentOfInsertedTree.isInTreeScope())
+        return InsertedIntoAncestorResult::Done;
 
-    // This function could be called when this element's shadow root's host or its ancestor is inserted.
-    // This element is new to the shadow tree (and its tree scope) only if the parent into which this element
-    // or its ancestor is inserted belongs to the same tree scope as this element's.
-    TreeScope* newScope = &insertionPoint.treeScope();
-    bool becomeConnected = !wasInDocument && isConnected();
+    bool becomeConnected = insertionType.connectedToDocument;
+    TreeScope* newScope = &parentOfInsertedTree.treeScope();
     HTMLDocument* newDocument = becomeConnected && is<HTMLDocument>(newScope->documentScope()) ? &downcast<HTMLDocument>(newScope->documentScope()) : nullptr;
-    if (newScope != &treeScope())
+    if (!insertionType.treeScopeChanged)
         newScope = nullptr;
 
     const AtomicString& idValue = getIdAttribute();
@@ -1687,10 +1680,10 @@ Node::InsertionNotificationRequest Element::insertedInto(ContainerNode& insertio
             CustomElementReactionQueue::enqueueConnectedCallbackIfNeeded(*this);
     }
 
-    return InsertionDone;
+    return InsertedIntoAncestorResult::Done;
 }
 
-void Element::removedFrom(ContainerNode& insertionPoint)
+void Element::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
 #if ENABLE(FULLSCREEN_API)
     if (containsFullScreenElement())
@@ -1703,30 +1696,27 @@ void Element::removedFrom(ContainerNode& insertionPoint)
 
     setSavedLayerScrollPosition(ScrollPosition());
 
-    if (insertionPoint.isInTreeScope()) {
-        TreeScope* oldScope = &insertionPoint.treeScope();
-        bool becomeDisconnected = isConnected();
-        HTMLDocument* oldDocument = becomeDisconnected && is<HTMLDocument>(oldScope->documentScope()) ? &downcast<HTMLDocument>(oldScope->documentScope()) : nullptr;
-
-        // ContainerNode::removeBetween always sets the removed chid's tree scope to Document's but InTreeScope flag is unset in Node::removedFrom.
-        // So this element has been removed from the old tree scope only if InTreeScope flag is set and this element's tree scope is Document's.
-        if (!isInTreeScope() || &treeScope() != &document())
+    if (oldParentOfRemovedTree.isInTreeScope()) {
+        TreeScope* oldScope = &oldParentOfRemovedTree.treeScope();
+        Document* oldDocument = removalType.disconnectedFromDocument ? &oldScope->documentScope() : nullptr;
+        HTMLDocument* oldHTMLDocument = oldDocument && is<HTMLDocument>(*oldDocument) ? &downcast<HTMLDocument>(*oldDocument) : nullptr;
+        if (!removalType.treeScopeChanged)
             oldScope = nullptr;
 
         const AtomicString& idValue = getIdAttribute();
         if (!idValue.isNull()) {
             if (oldScope)
                 updateIdForTreeScope(*oldScope, idValue, nullAtom());
-            if (oldDocument)
-                updateIdForDocument(*oldDocument, idValue, nullAtom(), AlwaysUpdateHTMLDocumentNamedItemMaps);
+            if (oldHTMLDocument)
+                updateIdForDocument(*oldHTMLDocument, idValue, nullAtom(), AlwaysUpdateHTMLDocumentNamedItemMaps);
         }
 
         const AtomicString& nameValue = getNameAttribute();
         if (!nameValue.isNull()) {
             if (oldScope)
                 updateNameForTreeScope(*oldScope, nameValue, nullAtom());
-            if (oldDocument)
-                updateNameForDocument(*oldDocument, nameValue, nullAtom());
+            if (oldHTMLDocument)
+                updateNameForDocument(*oldHTMLDocument, nameValue, nullAtom());
         }
 
         if (oldScope && hasTagName(labelTag)) {
@@ -1734,16 +1724,21 @@ void Element::removedFrom(ContainerNode& insertionPoint)
                 updateLabel(*oldScope, attributeWithoutSynchronization(forAttr), nullAtom());
         }
 
-        if (becomeDisconnected && UNLIKELY(isDefinedCustomElement()))
+        if (oldDocument) {
+            if (oldDocument->cssTarget() == this)
+                oldDocument->setCSSTarget(nullptr);
+        }
+
+        if (removalType.disconnectedFromDocument && UNLIKELY(isDefinedCustomElement()))
             CustomElementReactionQueue::enqueueDisconnectedCallbackIfNeeded(*this);
     }
 
     if (!parentNode()) {
-        if (auto* shadowRoot = insertionPoint.shadowRoot())
+        if (auto* shadowRoot = oldParentOfRemovedTree.shadowRoot())
             shadowRoot->hostChildElementDidChange(*this);
     }
 
-    ContainerNode::removedFrom(insertionPoint);
+    ContainerNode::removedFromAncestor(removalType, oldParentOfRemovedTree);
 
     if (hasPendingResources())
         document().accessSVGExtensions().removeElementFromPendingResources(this);
@@ -1765,6 +1760,7 @@ ShadowRoot* Element::shadowRoot() const
 
 void Element::addShadowRoot(Ref<ShadowRoot>&& newShadowRoot)
 {
+    ASSERT(!newShadowRoot->hasChildNodes());
     ASSERT(!shadowRoot());
     
     if (renderer())
@@ -1776,10 +1772,11 @@ void Element::addShadowRoot(Ref<ShadowRoot>&& newShadowRoot)
     shadowRoot.setHost(this);
     shadowRoot.setParentTreeScope(treeScope());
 
-    NodeVector postInsertionNotificationTargets;
-    notifyChildNodeInserted(*this, shadowRoot, postInsertionNotificationTargets);
-    for (auto& target : postInsertionNotificationTargets)
-        target->finishedInsertingSubtree();
+#if !ASSERT_DISABLED
+    ASSERT(notifyChildNodeInserted(*this, shadowRoot).isEmpty());
+#else
+    notifyChildNodeInserted(*this, shadowRoot);
+#endif
 
     invalidateStyleAndRenderersForSubtree();
 
@@ -1867,7 +1864,7 @@ ShadowRoot* Element::shadowRootForBindings(JSC::ExecState& state) const
     return nullptr;
 }
 
-ShadowRoot* Element::userAgentShadowRoot() const
+RefPtr<ShadowRoot> Element::userAgentShadowRoot() const
 {
     ASSERT(!shadowRoot() || shadowRoot()->mode() == ShadowRootMode::UserAgent);
     return shadowRoot();
@@ -1875,7 +1872,7 @@ ShadowRoot* Element::userAgentShadowRoot() const
 
 ShadowRoot& Element::ensureUserAgentShadowRoot()
 {
-    if (auto* shadow = userAgentShadowRoot())
+    if (auto shadow = userAgentShadowRoot())
         return *shadow;
     auto newShadow = ShadowRoot::create(document(), ShadowRootMode::UserAgent);
     ShadowRoot& shadow = newShadow;
@@ -2047,7 +2044,7 @@ static void checkForSiblingStyleChanges(Element& parent, SiblingCheckType checkT
 void Element::childrenChanged(const ChildChange& change)
 {
     ContainerNode::childrenChanged(change);
-    if (change.source == ChildChangeSourceParser)
+    if (change.source == ChildChangeSource::Parser)
         checkForEmptyStyleChange(*this);
     else {
         SiblingCheckType checkType = change.type == ElementRemoved ? SiblingElementRemoved : Other;

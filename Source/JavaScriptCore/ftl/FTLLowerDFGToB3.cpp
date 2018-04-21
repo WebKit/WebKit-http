@@ -264,7 +264,7 @@ public:
                     jit.store32(
                         MacroAssembler::TrustedImm32(callSiteIndex.bits()),
                         CCallHelpers::tagFor(VirtualRegister(CallFrameSlot::argumentCount)));
-                    jit.copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(*vm);
+                    jit.copyCalleeSavesToEntryFrameCalleeSavesBuffer(vm->topEntryFrame);
 
                     jit.move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
                     jit.move(CCallHelpers::TrustedImmPtr(jit.codeBlock()), GPRInfo::argumentGPR1);
@@ -800,6 +800,9 @@ private:
         case NewObject:
             compileNewObject();
             break;
+        case NewStringObject:
+            compileNewStringObject();
+            break;
         case NewArray:
             compileNewArray();
             break;
@@ -820,6 +823,9 @@ private:
             break;
         case GetTypedArrayByteOffset:
             compileGetTypedArrayByteOffset();
+            break;
+        case GetPrototypeOf:
+            compileGetPrototypeOf();
             break;
         case AllocatePropertyStorage:
             compileAllocatePropertyStorage();
@@ -3429,6 +3435,79 @@ private:
 
         setInt32(m_out.castToInt32(m_out.phi(pointerType(), simpleOut, wastefulOut)));
     }
+
+    void compileGetPrototypeOf()
+    {
+        switch (m_node->child1().useKind()) {
+        case ArrayUse:
+        case FunctionUse:
+        case FinalObjectUse: {
+            LValue object = lowCell(m_node->child1());
+            switch (m_node->child1().useKind()) {
+            case ArrayUse:
+                speculateArray(m_node->child1(), object);
+                break;
+            case FunctionUse:
+                speculateFunction(m_node->child1(), object);
+                break;
+            case FinalObjectUse:
+                speculateFinalObject(m_node->child1(), object);
+                break;
+            default:
+                RELEASE_ASSERT_NOT_REACHED();
+                break;
+            }
+
+            LValue structure = loadStructure(object);
+
+            AbstractValue& value = m_state.forNode(m_node->child1());
+            if ((value.m_type && !(value.m_type & ~SpecObject)) && value.m_structure.isFinite()) {
+                bool hasPolyProto = false;
+                bool hasMonoProto = false;
+                value.m_structure.forEach([&] (RegisteredStructure structure) {
+                    if (structure->hasPolyProto())
+                        hasPolyProto = true;
+                    else
+                        hasMonoProto = true;
+                });
+
+                if (hasMonoProto && !hasPolyProto) {
+                    setJSValue(m_out.load64(structure, m_heaps.Structure_prototype));
+                    return;
+                }
+
+                if (hasPolyProto && !hasMonoProto) {
+                    setJSValue(m_out.load64(m_out.baseIndex(m_heaps.properties.atAnyNumber(), object, m_out.constInt64(knownPolyProtoOffset), ScaleEight, JSObject::offsetOfInlineStorage())));
+                    return;
+                }
+            }
+
+            LBasicBlock continuation = m_out.newBlock();
+            LBasicBlock loadPolyProto = m_out.newBlock();
+
+            LValue prototypeBits = m_out.load64(structure, m_heaps.Structure_prototype);
+            ValueFromBlock directPrototype = m_out.anchor(prototypeBits);
+            m_out.branch(m_out.isZero64(prototypeBits), unsure(loadPolyProto), unsure(continuation));
+
+            LBasicBlock lastNext = m_out.appendTo(loadPolyProto, continuation);
+            ValueFromBlock polyProto = m_out.anchor(
+                m_out.load64(m_out.baseIndex(m_heaps.properties.atAnyNumber(), object, m_out.constInt64(knownPolyProtoOffset), ScaleEight, JSObject::offsetOfInlineStorage())));
+            m_out.jump(continuation);
+
+            m_out.appendTo(continuation, lastNext);
+            setJSValue(m_out.phi(Int64, directPrototype, polyProto));
+            return;
+        }
+        case ObjectUse: {
+            setJSValue(vmCall(Int64, m_out.operation(operationGetPrototypeOfObject), m_callFrame, lowObject(m_node->child1())));
+            return;
+        }
+        default: {
+            setJSValue(vmCall(Int64, m_out.operation(operationGetPrototypeOf), m_callFrame, lowJSValue(m_node->child1())));
+            return;
+        }
+        }
+    }
     
     void compileGetArrayLength()
     {
@@ -4827,6 +4906,39 @@ private:
         setJSValue(allocateObject(m_node->structure()));
         mutatorFence();
     }
+
+    void compileNewStringObject()
+    {
+        RegisteredStructure structure = m_node->structure();
+        LValue string = lowString(m_node->child1());
+
+        LBasicBlock slowCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
+
+        LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowCase);
+
+        LValue fastResultValue = allocateObject<StringObject>(structure, m_out.intPtrZero, slowCase);
+        m_out.storePtr(m_out.constIntPtr(StringObject::info()), fastResultValue, m_heaps.JSDestructibleObject_classInfo);
+        m_out.store64(string, fastResultValue, m_heaps.JSWrapperObject_internalValue);
+        mutatorFence();
+        ValueFromBlock fastResult = m_out.anchor(fastResultValue);
+        m_out.jump(continuation);
+
+        m_out.appendTo(slowCase, continuation);
+        VM& vm = this->vm();
+        LValue slowResultValue = lazySlowPath(
+            [=, &vm] (const Vector<Location>& locations) -> RefPtr<LazySlowPath::Generator> {
+                return createLazyCallGenerator(vm,
+                    operationNewStringObject, locations[0].directGPR(), locations[1].directGPR(),
+                    CCallHelpers::TrustedImmPtr(structure.get()));
+            },
+            string);
+        ValueFromBlock slowResult = m_out.anchor(slowResultValue);
+        m_out.jump(continuation);
+
+        m_out.appendTo(continuation, lastNext);
+        setJSValue(m_out.phi(pointerType(), fastResult, slowResult));
+    }
     
     void compileNewArray()
     {
@@ -5680,9 +5792,9 @@ private:
                 // SaneChainOutOfBounds.
                 // https://bugs.webkit.org/show_bug.cgi?id=144668
                 
-                m_graph.watchpoints().addLazily(globalObject->stringPrototype()->structure()->transitionWatchpointSet());
-                m_graph.watchpoints().addLazily(globalObject->objectPrototype()->structure()->transitionWatchpointSet());
-                
+                m_graph.registerAndWatchStructureTransition(globalObject->stringPrototype()->structure());
+                m_graph.registerAndWatchStructureTransition(globalObject->objectPrototype()->structure());
+
                 prototypeChainIsSane = globalObject->stringPrototypeChainIsSane();
             }
             if (prototypeChainIsSane) {
@@ -9003,17 +9115,16 @@ private:
         LValue structure = loadStructure(value);
 
         LValue prototypeBits = m_out.load64(structure, m_heaps.Structure_prototype);
-        ValueFromBlock directProtoype = m_out.anchor(prototypeBits);
-        m_out.branch(isInt32(prototypeBits), unsure(loadPolyProto), unsure(comparePrototype));
+        ValueFromBlock directPrototype = m_out.anchor(prototypeBits);
+        m_out.branch(m_out.isZero64(prototypeBits), unsure(loadPolyProto), unsure(comparePrototype));
 
         m_out.appendTo(loadPolyProto, comparePrototype);
-        LValue index = m_out.bitAnd(prototypeBits, m_out.constInt64(UINT_MAX));
         ValueFromBlock polyProto = m_out.anchor(
-            m_out.load64(m_out.baseIndex(m_heaps.properties.atAnyNumber(), value, index, ScaleEight, JSObject::offsetOfInlineStorage())));
+            m_out.load64(m_out.baseIndex(m_heaps.properties.atAnyNumber(), value, m_out.constInt64(knownPolyProtoOffset), ScaleEight, JSObject::offsetOfInlineStorage())));
         m_out.jump(comparePrototype);
 
         m_out.appendTo(comparePrototype, notYetInstance);
-        LValue currentPrototype = m_out.phi(Int64, directProtoype, polyProto);
+        LValue currentPrototype = m_out.phi(Int64, directPrototype, polyProto);
         ValueFromBlock isInstanceResult = m_out.anchor(m_out.booleanTrue);
         m_out.branch(
             m_out.equal(currentPrototype, prototype),

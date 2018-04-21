@@ -28,6 +28,7 @@
 
 #if ENABLE(SERVICE_WORKER)
 
+#include "ServiceWorkerClients.h"
 #include "ServiceWorkerThread.h"
 
 namespace WebCore {
@@ -36,12 +37,11 @@ ServiceWorkerGlobalScope::ServiceWorkerGlobalScope(uint64_t serverConnectionIden
     : WorkerGlobalScope(url, identifier, userAgent, thread, shouldBypassMainWorldContentSecurityPolicy, WTFMove(topOrigin), timeOrigin, connectionProxy, socketProvider, sessionID)
     , m_serverConnectionIdentifier(serverConnectionIdentifier)
     , m_contextData(crossThreadCopy(data))
+    , m_clients(ServiceWorkerClients::create(*this))
 {
 }
 
-ServiceWorkerGlobalScope::~ServiceWorkerGlobalScope()
-{
-}
+ServiceWorkerGlobalScope::~ServiceWorkerGlobalScope() = default;
 
 ServiceWorkerRegistration& ServiceWorkerGlobalScope::registration()
 {
@@ -56,6 +56,11 @@ void ServiceWorkerGlobalScope::skipWaiting(Ref<DeferredPromise>&&)
 EventTargetInterface ServiceWorkerGlobalScope::eventTargetInterface() const
 {
     return ServiceWorkerGlobalScopeEventTargetInterfaceType;
+}
+
+ServiceWorkerThread& ServiceWorkerGlobalScope::thread()
+{
+    return static_cast<ServiceWorkerThread&>(WorkerGlobalScope::thread());
 }
 
 } // namespace WebCore

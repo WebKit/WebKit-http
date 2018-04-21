@@ -34,6 +34,7 @@
 namespace WebCore {
 
 class DeferredPromise;
+class ServiceWorkerClients;
 class ServiceWorkerThread;
 
 class ServiceWorkerGlobalScope : public WorkerGlobalScope {
@@ -47,6 +48,7 @@ public:
 
     bool isServiceWorkerGlobalScope() const final { return true; }
 
+    ServiceWorkerClients& clients() { return m_clients.get(); }
     ServiceWorkerRegistration& registration();
     
     uint64_t serverConnectionIdentifier() const { return m_serverConnectionIdentifier; }
@@ -55,13 +57,21 @@ public:
 
     EventTargetInterface eventTargetInterface() const final;
 
+    ServiceWorkerThread& thread();
+
 private:
     ServiceWorkerGlobalScope(uint64_t serverConnectionIdentifier, const ServiceWorkerContextData&, const URL&, const String& identifier, const String& userAgent, ServiceWorkerThread&, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy*, SocketProvider*, PAL::SessionID);
 
     uint64_t m_serverConnectionIdentifier;
     ServiceWorkerContextData m_contextData;
+    Ref<ServiceWorkerClients> m_clients;
 };
 
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ServiceWorkerGlobalScope)
+    static bool isType(const WebCore::ScriptExecutionContext& context) { return is<WebCore::WorkerGlobalScope>(context) && downcast<WebCore::WorkerGlobalScope>(context).isServiceWorkerGlobalScope(); }
+    static bool isType(const WebCore::WorkerGlobalScope& context) { return context.isServiceWorkerGlobalScope(); }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // ENABLE(SERVICE_WORKER)

@@ -34,9 +34,7 @@
 
 namespace WebCore {
 
-TouchEvent::TouchEvent()
-{
-}
+TouchEvent::TouchEvent() = default;
 
 TouchEvent::TouchEvent(TouchList* touches, TouchList* targetTouches,
         TouchList* changedTouches, const AtomicString& type, 
@@ -62,16 +60,14 @@ TouchEvent::TouchEvent(const AtomicString& type, const Init& initializer, IsTrus
 {
 }
 
-TouchEvent::~TouchEvent()
-{
-}
+TouchEvent::~TouchEvent() = default;
 
 void TouchEvent::initTouchEvent(TouchList* touches, TouchList* targetTouches,
         TouchList* changedTouches, const AtomicString& type, 
         DOMWindow* view, int screenX, int screenY, int clientX, int clientY,
         bool ctrlKey, bool altKey, bool shiftKey, bool metaKey)
 {
-    if (dispatched())
+    if (isBeingDispatched())
         return;
 
     initUIEvent(type, true, true, view, 0);

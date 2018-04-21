@@ -52,13 +52,11 @@ Ref<HTMLMapElement> HTMLMapElement::create(const QualifiedName& tagName, Documen
     return adoptRef(*new HTMLMapElement(tagName, document));
 }
 
-HTMLMapElement::~HTMLMapElement()
-{
-}
+HTMLMapElement::~HTMLMapElement() = default;
 
 bool HTMLMapElement::mapMouseEvent(LayoutPoint location, const LayoutSize& size, HitTestResult& result)
 {
-    HTMLAreaElement* defaultArea = 0;
+    RefPtr<HTMLAreaElement> defaultArea;
 
     for (auto& area : descendantsOfType<HTMLAreaElement>(*this)) {
         if (area.isDefault()) {
@@ -69,8 +67,8 @@ bool HTMLMapElement::mapMouseEvent(LayoutPoint location, const LayoutSize& size,
     }
     
     if (defaultArea) {
-        result.setInnerNode(defaultArea);
-        result.setURLElement(defaultArea);
+        result.setInnerNode(defaultArea.get());
+        result.setURLElement(defaultArea.get());
     }
     return defaultArea;
 }
@@ -114,19 +112,19 @@ Ref<HTMLCollection> HTMLMapElement::areas()
     return ensureRareData().ensureNodeLists().addCachedCollection<GenericCachedHTMLCollection<CollectionTypeTraits<MapAreas>::traversalType>>(*this, MapAreas);
 }
 
-Node::InsertionNotificationRequest HTMLMapElement::insertedInto(ContainerNode& insertionPoint)
+Node::InsertedIntoAncestorResult HTMLMapElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    Node::InsertionNotificationRequest request = HTMLElement::insertedInto(insertionPoint);
-    if (insertionPoint.isConnected())
+    Node::InsertedIntoAncestorResult request = HTMLElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    if (insertionType.connectedToDocument)
         treeScope().addImageMap(*this);
     return request;
 }
 
-void HTMLMapElement::removedFrom(ContainerNode& insertionPoint)
+void HTMLMapElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
-    if (insertionPoint.isConnected())
+    if (removalType.disconnectedFromDocument)
         treeScope().removeImageMap(*this);
-    HTMLElement::removedFrom(insertionPoint);
+    HTMLElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
 }
 
 }

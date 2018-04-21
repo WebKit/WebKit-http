@@ -37,13 +37,14 @@ class CanvasPattern;
 class HTMLCanvasElement;
 class HTMLImageElement;
 class HTMLVideoElement;
+class ImageBitmap;
 class URL;
 class WebGLObject;
 
 class CanvasRenderingContext : public ScriptWrappable {
     WTF_MAKE_NONCOPYABLE(CanvasRenderingContext); WTF_MAKE_FAST_ALLOCATED;
 public:
-    virtual ~CanvasRenderingContext() { }
+    virtual ~CanvasRenderingContext() = default;
 
     void ref() { m_canvas.ref(); }
     void deref() { m_canvas.deref(); }
@@ -73,6 +74,7 @@ protected:
     bool wouldTaintOrigin(const HTMLCanvasElement*);
     bool wouldTaintOrigin(const HTMLImageElement*);
     bool wouldTaintOrigin(const HTMLVideoElement*);
+    bool wouldTaintOrigin(const ImageBitmap*);
     bool wouldTaintOrigin(const URL&);
 
     template<class T> void checkOrigin(const T* arg)

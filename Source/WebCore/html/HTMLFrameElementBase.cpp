@@ -69,12 +69,12 @@ bool HTMLFrameElementBase::isURLAllowed(const URL& completeURL) const
         return true;
 
     if (protocolIsJavaScript(completeURL)) {
-        Document* contentDoc = this->contentDocument();
+        RefPtr<Document> contentDoc = this->contentDocument();
         if (contentDoc && !ScriptController::canAccessFromCurrentOrigin(contentDoc->frame()))
             return false;
     }
 
-    Frame* parentFrame = document().frame();
+    RefPtr<Frame> parentFrame = document().frame();
     if (parentFrame)
         return parentFrame->isURLAllowed(completeURL);
 
@@ -89,7 +89,7 @@ void HTMLFrameElementBase::openURL(LockHistory lockHistory, LockBackForwardList 
     if (m_URL.isEmpty())
         m_URL = blankURL().string();
 
-    Frame* parentFrame = document().frame();
+    RefPtr<Frame> parentFrame = document().frame();
     if (!parentFrame)
         return;
 
@@ -138,15 +138,15 @@ void HTMLFrameElementBase::setNameAndOpenURL()
     openURL();
 }
 
-Node::InsertionNotificationRequest HTMLFrameElementBase::insertedInto(ContainerNode& insertionPoint)
+Node::InsertedIntoAncestorResult HTMLFrameElementBase::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    HTMLFrameOwnerElement::insertedInto(insertionPoint);
-    if (insertionPoint.isConnected())
-        return InsertionShouldCallFinishedInsertingSubtree;
-    return InsertionDone;
+    HTMLFrameOwnerElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    if (insertionType.connectedToDocument)
+        return InsertedIntoAncestorResult::NeedsPostInsertionCallback;
+    return InsertedIntoAncestorResult::Done;
 }
 
-void HTMLFrameElementBase::finishedInsertingSubtree()
+void HTMLFrameElementBase::didFinishInsertingNode()
 {
     if (!isConnected())
         return;
@@ -166,7 +166,7 @@ void HTMLFrameElementBase::finishedInsertingSubtree()
 void HTMLFrameElementBase::didAttachRenderers()
 {
     if (RenderWidget* part = renderWidget()) {
-        if (Frame* frame = contentFrame())
+        if (RefPtr<Frame> frame = contentFrame())
             part->setWidget(frame->view());
     }
 }

@@ -34,6 +34,8 @@
 namespace WebCore {
 
 class ResourceError;
+class SecurityOrigin;
+class SerializedScriptValue;
 class SharedBuffer;
 struct ExceptionData;
 struct ServiceWorkerFetchResult;
@@ -47,12 +49,15 @@ public:
     void scheduleJob(ServiceWorkerJob&);
     void finishedFetchingScript(ServiceWorkerJob&, const String&);
     void failedFetchingScript(ServiceWorkerJob&, const ResourceError&);
+    virtual void postMessageToServiceWorkerGlobalScope(uint64_t serviceWorkerIdentifier, Ref<SerializedScriptValue>&&, const String& sourceOrigin) = 0;
 
     virtual uint64_t identifier() const = 0;
+    virtual bool hasServiceWorkerRegisteredForOrigin(const SecurityOrigin&) const = 0;
 
 protected:
     WEBCORE_EXPORT void jobRejectedInServer(uint64_t jobIdentifier, const ExceptionData&);
-    WEBCORE_EXPORT void jobResolvedInServer(uint64_t jobIdentifier, const ServiceWorkerRegistrationData&);
+    WEBCORE_EXPORT void registrationJobResolvedInServer(uint64_t jobIdentifier, ServiceWorkerRegistrationData&&);
+    WEBCORE_EXPORT void unregistrationJobResolvedInServer(uint64_t jobIdentifier, bool unregistrationResult);
     WEBCORE_EXPORT void startScriptFetchForServer(uint64_t jobIdentifier);
 
 private:

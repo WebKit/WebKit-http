@@ -28,7 +28,7 @@
 }
 
 body {
-    font-family: -apple-system, sans-serif;
+    font-family: -webkit-system-font, sans-serif;
     font-size: 11px;
 
     position: absolute;
@@ -151,6 +151,7 @@ body.docked:matches(.right, .left) #navigation-sidebar.collapsed > .resizer {
 #content {
     display: flex;
     height: 100%; /* This reduces paint areas when typing in the console. http://webkit.org/b/145324 */
+    flex: 1;
 }
 
 #tab-browser {

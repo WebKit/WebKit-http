@@ -63,10 +63,11 @@ Ref<HTMLSourceElement> HTMLSourceElement::create(Document& document)
     return create(sourceTag, document);
 }
 
-Node::InsertionNotificationRequest HTMLSourceElement::insertedInto(ContainerNode& insertionPoint)
+Node::InsertedIntoAncestorResult HTMLSourceElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    HTMLElement::insertedInto(insertionPoint);
-    if (auto* parent = parentElement()) {
+    HTMLElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    RefPtr<Element> parent = parentElement();
+    if (parent == &parentOfInsertedTree) {
 #if ENABLE(VIDEO)
         if (is<HTMLMediaElement>(*parent))
             downcast<HTMLMediaElement>(*parent).sourceWasAdded(*this);
@@ -75,24 +76,21 @@ Node::InsertionNotificationRequest HTMLSourceElement::insertedInto(ContainerNode
         if (is<HTMLPictureElement>(*parent))
             downcast<HTMLPictureElement>(*parent).sourcesChanged();
     }
-    return InsertionDone;
+    return InsertedIntoAncestorResult::Done;
 }
 
-void HTMLSourceElement::removedFrom(ContainerNode& removalRoot)
-{
-    Element* parent = parentElement();
-    if (!parent && is<Element>(removalRoot))
-        parent = &downcast<Element>(removalRoot);
-    if (parent) {
+void HTMLSourceElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
+{        
+    HTMLElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
+    if (!parentNode() && is<Element>(oldParentOfRemovedTree)) {
 #if ENABLE(VIDEO)
-        if (is<HTMLMediaElement>(*parent))
-            downcast<HTMLMediaElement>(*parent).sourceWasRemoved(*this);
+        if (is<HTMLMediaElement>(oldParentOfRemovedTree))
+            downcast<HTMLMediaElement>(oldParentOfRemovedTree).sourceWasRemoved(*this);
         else
 #endif
-        if (is<HTMLPictureElement>(*parent))
-            downcast<HTMLPictureElement>(*parent).sourcesChanged();
+        if (is<HTMLPictureElement>(oldParentOfRemovedTree))
+            downcast<HTMLPictureElement>(oldParentOfRemovedTree).sourcesChanged();
     }
-    HTMLElement::removedFrom(removalRoot);
 }
 
 void HTMLSourceElement::scheduleErrorEvent()

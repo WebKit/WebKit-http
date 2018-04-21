@@ -1,3 +1,49 @@
+2017-10-24  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Fix a bug in syncing script that test/build syncer is never set.
+        https://bugs.webkit.org/show_bug.cgi?id=178772
+
+        Reviewed by Ryosuke Niwa.
+
+        Neither 'buildSyncer' nor 'testSyncer' is ever set.
+        Added a unit test to cover this case.
+
+        * server-tests/tools-sync-buildbot-integration-tests.js:
+        (createTriggerable): Refactor it to allow customized name.
+        * tools/js/buildbot-triggerable.js:
+        (BuildbotTriggerable.prototype._pullBuildbotOnAllSyncers): Update syncer info accordingly.
+        (BuildbotTriggerable._testGroupMapForBuildRequests): Initialize build and test syncer to null.
+
+2017-10-24  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Owner commit does not necessarily exist in the same commit set for an owned commit.
+        https://bugs.webkit.org/show_bug.cgi?id=178763
+
+        Reviewed by Ryosuke Niwa.
+
+        Remove the check based on previous incorrect assumption.
+        Added unit tests to cover this change.
+
+        * public/privileged-api/create-test-group.php:
+        * server-tests/privileged-api-create-test-group-tests.js:
+        (return.addTriggerableAndCreateTask.string_appeared_here.then.id.taskId.id.then):
+
+2017-10-20  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Update perf dashboard upload logic to support uploading binaries from owned commits.
+        https://bugs.webkit.org/show_bug.cgi?id=178610
+
+        Reviewed by Ryosuke Niwa.
+
+        Update build requests to 'completed' only when all commit set items are satisfied.
+        Extend 'repositoryList' parameter to be able to specified own commit information.
+        Items in 'repositoryList' can either be a string for top level repository,
+        or a dictionary with two keys: 'ownerRepository' and 'ownedRepository'.
+
+        * public/api/upload-root.php: Extend upload logic for support uploading binaries from owned commits.
+        * server-tests/api-upload-root-tests.js: Added unit tests.
+        * server-tests/tools-sync-buildbot-integration-tests.js: Added unit tests.
+
 2017-10-05  Dewei Zhu  <dewei_zhu@apple.com>
 
         Add try-bot button on perf analysis status page.

@@ -151,6 +151,7 @@ private:
     void onTopologySet();
     void onBufferingStarted();
     void onBufferingStopped();
+    void onSessionStarted();
     void onSessionEnded();
 
     LPCWSTR registerVideoWindowClass();
@@ -170,8 +171,8 @@ private:
 
     class MediaPlayerListener {
     public:
-        MediaPlayerListener() { }
-        virtual ~MediaPlayerListener() { }
+        MediaPlayerListener() = default;
+        virtual ~MediaPlayerListener() = default;
 
         virtual void onMediaPlayerDeleted() { }
     };
@@ -201,8 +202,8 @@ private:
 
     class VideoSamplePool {
     public:
-        VideoSamplePool() { }
-        virtual ~VideoSamplePool() { }
+        VideoSamplePool() = default;
+        virtual ~VideoSamplePool() = default;
 
         HRESULT initialize(VideoSampleList& samples);
         void clear();
@@ -222,8 +223,8 @@ private:
 
     class VideoScheduler {
     public:
-        VideoScheduler() { }
-        virtual ~VideoScheduler() { }
+        VideoScheduler() = default;
+        virtual ~VideoScheduler() = default;
 
         void setPresenter(Direct3DPresenter* presenter) { m_presenter = presenter; }
 

@@ -52,7 +52,7 @@
 namespace WebCore {
 using namespace WTF;
 
-Node* EventTarget::toNode()
+RefPtr<Node> EventTarget::toNode()
 {
     return nullptr;
 }
@@ -74,7 +74,7 @@ bool EventTarget::addEventListener(const AtomicString& eventType, Ref<EventListe
     if (!passive.has_value() && eventNames().isTouchScrollBlockingEventType(eventType)) {
         if (toDOMWindow())
             passive = true;
-        else if (auto* node = toNode()) {
+        else if (auto node = toNode()) {
             if (node->isDocumentNode() || node->document().documentElement() == node || node->document().body() == node)
                 passive = true;
         }
@@ -276,9 +276,6 @@ void EventTarget::fireEventListeners(Event& event, EventListenerVector listeners
         if (event.eventPhase() == Event::CAPTURING_PHASE && !registeredListener->useCapture())
             continue;
         if (event.eventPhase() == Event::BUBBLING_PHASE && registeredListener->useCapture())
-            continue;
-
-        if (InspectorInstrumentation::isEventListenerDisabled(*this, event.type(), registeredListener->callback(), registeredListener->useCapture()))
             continue;
 
         // If stopImmediatePropagation has been called, we just break out immediately, without

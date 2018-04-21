@@ -36,6 +36,7 @@
 #include "FrameLoaderTypes.h"
 #include "LayoutMilestones.h"
 #include "MixedContentChecker.h"
+#include "ReferrerPolicy.h"
 #include "ResourceLoadNotifier.h"
 #include "ResourceLoaderOptions.h"
 #include "ResourceRequestBase.h"
@@ -147,6 +148,8 @@ public:
     WEBCORE_EXPORT bool frameHasLoaded() const;
 
     WEBCORE_EXPORT int numPendingOrLoadingRequests(bool recurse) const;
+
+    ReferrerPolicy effectiveReferrerPolicy() const;
     String referrer() const;
     WEBCORE_EXPORT String outgoingReferrer() const;
     String outgoingOrigin() const;
@@ -296,7 +299,7 @@ public:
     void setProvisionalLoadErrorBeingHandledURL(const URL& url) { m_provisionalLoadErrorBeingHandledURL = url; }
 
     bool isAlwaysOnLoggingAllowed() const;
-    bool shouldSuppressKeyboardInput() const;
+    bool shouldSuppressTextInputFromEditing() const;
 
 private:
     enum FormSubmissionCacheLoadPolicy {

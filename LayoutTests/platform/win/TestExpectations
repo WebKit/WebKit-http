@@ -1135,8 +1135,11 @@ editing/pasteboard/ [ Pass Failure ]
 [ Debug ] editing/selection/4975120.html [ Skip ] # Debug Assertion
 
 # Custom pasteboard data is not supported on Windows.
+editing/pasteboard/clipboard-customData.html [ Skip ]
 http/tests/security/clipboard/copy-paste-url-across-origin-sanitizes-url.html [ Skip ]
 http/tests/security/clipboard/copy-paste-html-across-origin-sanitizes-html.html [ Skip ]
+http/tests/security/clipboard/copy-paste-html-cross-origin-iframe-across-origin.html [ Skip ]
+http/tests/security/clipboard/copy-paste-html-cross-origin-iframe-in-same-origin.html [ Skip ]
 
 webkit.org/b/140783 [ Release ] editing/pasteboard/copy-standalone-image.html [ Failure ImageOnlyFailure ]
 webkit.org/b/140783 [ Debug ] editing/pasteboard/copy-standalone-image.html [ Skip ] # Debug Assertion
@@ -1154,8 +1157,6 @@ editing/pasteboard/data-transfer-items-image-png.html [ Skip ]
 editing/pasteboard/data-transfer-items-drag-drop-file.html [ Skip ]
 editing/pasteboard/data-transfer-items-drag-drop-entry.html [ Skip ]
 editing/pasteboard/data-transfer-items-drag-drop-string.html [ Skip ]
-# TODO Custom MIME type support in DataTransfer is not yet implemented.
-editing/pasteboard/clipboard-customData.html [ Skip ]
 # TODO Windows does not have global selection.
 editing/pasteboard/paste-global-selection.html [ Skip ]
 webkit.org/b/116564 editing/pasteboard/copy-without-selection.html [ Skip ]
@@ -3598,6 +3599,7 @@ fast/shadow-dom/shadow-at-root-during-disconnect.html [ Skip ]
 fast/text/font-weight-fallback.html [ Skip ]
 http/tests/cache/cache-control-immutable-https.html [ Skip ]
 http/tests/inspector/network/resource-request-headers.html [ Skip ]
+http/tests/inspector/network/har/har-page.html [ Skip ]
 http/tests/local/blob/send-hybrid-blob-using-open-panel.html [ Skip ]
 http/tests/security/contentSecurityPolicy/cross-origin-plugin-document-allowed-in-child-window.html [ Skip ]
 http/tests/security/contentSecurityPolicy/same-origin-plugin-document-blocked-in-child-window.html [ Skip ]
@@ -3768,6 +3770,9 @@ webkit.org/b/177109 fast/css/display-contents-style-update.html [ ImageOnlyFailu
 
 webkit.org/b/177212 accessibility/crash-table-recursive-layout.html [ Failure ]
 
+# Release logging not supported
+inspector/console/webcore-logging.html [ Skip ]
+
 webkit.org/b/177216 fast/images/animated-image-mp4.html [ Skip ]
 
 webkit.org/b/177234 http/wpt/resource-timing/rt-cors.html [ Skip ]
@@ -3802,3 +3807,8 @@ webkit.org/b/178341 animations/play-state-in-shorthand.html [ Pass Failure ]
 webkit.org/b/178341 animations/play-state-suspend.html [ Pass Failure ]
 
 webkit.org/b/178413 fast/text/ellipsis-text-rtl.html [ ImageOnlyFailure ]
+
+webkit.org/b/178549 http/tests/navigation/keyboard-events-during-provisional-navigation.html [ Failure ]
+webkit.org/b/178549 http/tests/navigation/keyboard-events-during-provisional-subframe-navigation.html [ Failure ]
+
+webkit.org/b/178724 fast/css-generated-content/details-summary-before-after.html [ Failure ]

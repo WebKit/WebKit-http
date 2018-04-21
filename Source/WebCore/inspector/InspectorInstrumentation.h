@@ -146,7 +146,6 @@ public:
     static void didCallFunction(const InspectorInstrumentationCookie&, ScriptExecutionContext*);
     static void didAddEventListener(EventTarget&, const AtomicString& eventType);
     static void willRemoveEventListener(EventTarget&, const AtomicString& eventType, EventListener&, bool capture);
-    static bool isEventListenerDisabled(EventTarget&, const AtomicString& eventType, EventListener&, bool capture);
     static InspectorInstrumentationCookie willDispatchEvent(Document&, const Event&, bool hasEventListeners);
     static void didDispatchEvent(const InspectorInstrumentationCookie&);
     static void willHandleEvent(ScriptExecutionContext&, const Event&, const RegisteredEventListener&);
@@ -187,7 +186,7 @@ public:
     enum class LoadType { Ping, Beacon };
     static void willSendRequestOfType(Frame*, unsigned long identifier, DocumentLoader*, ResourceRequest&, LoadType);
 
-    static void didFinishXHRLoading(ScriptExecutionContext*, unsigned long identifier, std::optional<String> decodedText, const String& url, const String& sendURL, unsigned sendLineNumber, unsigned sendColumnNumber);
+    static void didFinishXHRLoading(ScriptExecutionContext*, unsigned long identifier, std::optional<String> decodedText);
     static void willLoadXHRSynchronously(ScriptExecutionContext*);
     static void didLoadXHRSynchronously(ScriptExecutionContext*);
     static void scriptImported(ScriptExecutionContext&, unsigned long identifier, const String& sourceString);
@@ -324,7 +323,6 @@ private:
     static void didCallFunctionImpl(const InspectorInstrumentationCookie&, ScriptExecutionContext*);
     static void didAddEventListenerImpl(InstrumentingAgents&, EventTarget&, const AtomicString& eventType);
     static void willRemoveEventListenerImpl(InstrumentingAgents&, EventTarget&, const AtomicString& eventType, EventListener&, bool capture);
-    static bool isEventListenerDisabledImpl(InstrumentingAgents&, EventTarget&, const AtomicString& eventType, EventListener&, bool capture);
     static InspectorInstrumentationCookie willDispatchEventImpl(InstrumentingAgents&, Document&, const Event&, bool hasEventListeners);
     static void willHandleEventImpl(InstrumentingAgents&, const Event&, const RegisteredEventListener&);
     static void didHandleEventImpl(InstrumentingAgents&);
@@ -357,7 +355,7 @@ private:
     static void didReceiveDataImpl(InstrumentingAgents&, unsigned long identifier, const char* data, int dataLength, int encodedDataLength);
     static void didFinishLoadingImpl(InstrumentingAgents&, unsigned long identifier, DocumentLoader*, const NetworkLoadMetrics&, ResourceLoader*);
     static void didFailLoadingImpl(InstrumentingAgents&, unsigned long identifier, DocumentLoader*, const ResourceError&);
-    static void didFinishXHRLoadingImpl(InstrumentingAgents&, unsigned long identifier, std::optional<String> decodedText, const String& url, const String& sendURL, unsigned sendLineNumber, unsigned sendColumnNumber);
+    static void didFinishXHRLoadingImpl(InstrumentingAgents&, unsigned long identifier, std::optional<String> decodedText);
     static void willLoadXHRSynchronouslyImpl(InstrumentingAgents&);
     static void didLoadXHRSynchronouslyImpl(InstrumentingAgents&);
     static void scriptImportedImpl(InstrumentingAgents&, unsigned long identifier, const String& sourceString);
@@ -689,14 +687,6 @@ inline void InspectorInstrumentation::willRemoveEventListener(EventTarget& targe
         willRemoveEventListenerImpl(*instrumentingAgents, target, eventType, listener, capture);
 }
 
-inline bool InspectorInstrumentation::isEventListenerDisabled(EventTarget& target, const AtomicString& eventType, EventListener& listener, bool capture)
-{
-    FAST_RETURN_IF_NO_FRONTENDS(false);
-    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(target.scriptExecutionContext()))
-        return isEventListenerDisabledImpl(*instrumentingAgents, target, eventType, listener, capture);
-    return false;
-}
-
 inline void InspectorInstrumentation::didPostMessage(Frame& frame, TimerBase& timer, JSC::ExecState& state)
 {
     FAST_RETURN_IF_NO_FRONTENDS(void());
@@ -967,10 +957,10 @@ inline void InspectorInstrumentation::continueWithPolicyIgnore(Frame& frame, uns
         didReceiveResourceResponseImpl(*instrumentingAgents, identifier, &loader, response, nullptr);
 }
 
-inline void InspectorInstrumentation::didFinishXHRLoading(ScriptExecutionContext* context, unsigned long identifier, std::optional<String> decodedText, const String& url, const String& sendURL, unsigned sendLineNumber, unsigned sendColumnNumber)
+inline void InspectorInstrumentation::didFinishXHRLoading(ScriptExecutionContext* context, unsigned long identifier, std::optional<String> decodedText)
 {
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
-        didFinishXHRLoadingImpl(*instrumentingAgents, identifier, decodedText, url, sendURL, sendLineNumber, sendColumnNumber);
+        didFinishXHRLoadingImpl(*instrumentingAgents, identifier, decodedText);
 }
 
 inline void InspectorInstrumentation::willLoadXHRSynchronously(ScriptExecutionContext* context)

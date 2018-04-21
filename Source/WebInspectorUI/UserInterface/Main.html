@@ -111,11 +111,11 @@
     <link rel="stylesheet" href="Views/InlineSwatch.css">
     <link rel="stylesheet" href="Views/InputPopover.css">
     <link rel="stylesheet" href="Views/IssueTreeElement.css">
+    <link rel="stylesheet" href="Views/JSONResourceContentView.css">
     <link rel="stylesheet" href="Views/LayerDetailsSidebarPanel.css">
     <link rel="stylesheet" href="Views/LayerTreeDetailsSidebarPanel.css">
     <link rel="stylesheet" href="Views/LayoutTimelineOverviewGraph.css">
     <link rel="stylesheet" href="Views/LayoutTimelineView.css">
-    <link rel="stylesheet" href="Views/LegacyNetworkSidebarPanel.css">
     <link rel="stylesheet" href="Views/LogContentView.css">
     <link rel="stylesheet" href="Views/LogIcon.css">
     <link rel="stylesheet" href="Views/MemoryCategoryView.css">
@@ -124,7 +124,6 @@
     <link rel="stylesheet" href="Views/Main.css">
     <link rel="stylesheet" href="Views/NavigationBar.css">
     <link rel="stylesheet" href="Views/NavigationSidebarPanel.css">
-    <link rel="stylesheet" href="Views/NetworkGridContentView.css">
     <link rel="stylesheet" href="Views/NetworkResourceDetailView.css">
     <link rel="stylesheet" href="Views/NetworkTabContentView.css">
     <link rel="stylesheet" href="Views/NetworkTableContentView.css">
@@ -154,12 +153,14 @@
     <link rel="stylesheet" href="Views/RenderingFrameTimelineView.css">
     <link rel="stylesheet" href="Views/Resizer.css">
     <link rel="stylesheet" href="Views/ResourceCookiesContentView.css">
+    <link rel="stylesheet" href="Views/ResourceMetricsContentView.css">
     <link rel="stylesheet" href="Views/ResourceDetailsSection.css">
     <link rel="stylesheet" href="Views/ResourceDetailsSidebarPanel.css">
     <link rel="stylesheet" href="Views/ResourceHeadersContentView.css">
     <link rel="stylesheet" href="Views/ResourceIcons.css">
     <link rel="stylesheet" href="Views/ResourceSidebarPanel.css">
     <link rel="stylesheet" href="Views/ResourceTimelineDataGridNode.css">
+    <link rel="stylesheet" href="Views/ResourceTimingBreakdownView.css">
     <link rel="stylesheet" href="Views/ResourceTreeElement.css">
     <link rel="stylesheet" href="Views/RulesStyleDetailsPanel.css">
     <link rel="stylesheet" href="Views/ScopeBar.css">
@@ -387,6 +388,7 @@
     <script src="Models/LazySourceCodeLocation.js"></script>
     <script src="Models/LineWidget.js"></script>
     <script src="Models/LogObject.js"></script>
+    <script src="Models/LoggingChannel.js"></script>
     <script src="Models/MemoryCategory.js"></script>
     <script src="Models/MemoryInstrument.js"></script>
     <script src="Models/MemoryPressureEvent.js"></script>
@@ -497,7 +499,6 @@
     <script src="Views/DOMDetailsSidebarPanel.js"></script>
     <script src="Views/FolderTreeElement.js"></script>
     <script src="Views/FolderizedTreeElement.js"></script>
-    <script src="Views/LegacyNetworkTabContentView.js"></script>
     <script src="Views/NetworkTabContentView.js"></script>
     <script src="Views/NewTabContentView.js"></script>
     <script src="Views/ObjectTreeBaseTreeElement.js"></script>
@@ -513,7 +514,6 @@
     <script src="Views/DebuggerTabContentView.js"></script>
     <script src="Views/ElementsTabContentView.js"></script>
     <script src="Views/LayersTabContentView.js"></script>
-    <script src="Views/RecordingTabContentView.js"></script>
     <script src="Views/ResourceTreeElement.js"></script>
     <script src="Views/ResourcesTabContentView.js"></script>
     <script src="Views/SearchTabContentView.js"></script>
@@ -642,6 +642,7 @@
     <script src="Views/InlineSwatch.js"></script>
     <script src="Views/InputPopover.js"></script>
     <script src="Views/IssueTreeElement.js"></script>
+    <script src="Views/JSONResourceContentView.js"></script>
     <script src="Views/LayerDetailsSidebarPanel.js"></script>
     <script src="Views/LayerTreeDataGridNode.js"></script>
     <script src="Views/LayerTreeDetailsSidebarPanel.js"></script>
@@ -650,7 +651,6 @@
     <script src="Views/LayoutTimelineDataGridNode.js"></script>
     <script src="Views/LayoutTimelineOverviewGraph.js"></script>
     <script src="Views/LayoutTimelineView.js"></script>
-    <script src="Views/LegacyNetworkSidebarPanel.js"></script>
     <script src="Views/LineChart.js"></script>
     <script src="Views/LogContentView.js"></script>
     <script src="Views/MemoryCategoryView.js"></script>
@@ -658,7 +658,6 @@
     <script src="Views/MemoryTimelineView.js"></script>
     <script src="Views/MultipleScopeBarItem.js"></script>
     <script src="Views/NavigationBar.js"></script>
-    <script src="Views/NetworkGridContentView.js"></script>
     <script src="Views/NetworkResourceDetailView.js"></script>
     <script src="Views/NetworkTableContentView.js"></script>
     <script src="Views/NetworkTimelineOverviewGraph.js"></script>
@@ -695,12 +694,14 @@
     <script src="Views/Resizer.js"></script>
     <script src="Views/ResourceClusterContentView.js"></script>
     <script src="Views/ResourceCollectionContentView.js"></script>
+    <script src="Views/ResourceCookiesContentView.js"></script>
+    <script src="Views/ResourceMetricsContentView.js"></script>
     <script src="Views/ResourceDetailsSection.js"></script>
     <script src="Views/ResourceDetailsSidebarPanel.js"></script>
     <script src="Views/ResourceHeadersContentView.js"></script>
-    <script src="Views/ResourceCookiesContentView.js"></script>
     <script src="Views/ResourceSidebarPanel.js"></script>
     <script src="Views/ResourceTimelineDataGridNode.js"></script>
+    <script src="Views/ResourceTimingBreakdownView.js"></script>
     <script src="Views/ResourceTimingPopoverDataGridNode.js"></script>
     <script src="Views/RulesStyleDetailsPanel.js"></script>
     <script src="Views/ScopeBar.js"></script>
@@ -819,6 +820,7 @@
     <script src="Controllers/Formatter.js"></script>
     <script src="Controllers/FormatterSourceMap.js"></script>
     <script src="Controllers/FrameResourceManager.js"></script>
+    <script src="Controllers/HARBuilder.js"></script>
     <script src="Controllers/HeapManager.js"></script>
     <script src="Controllers/IssueManager.js"></script>
     <script src="Controllers/JavaScriptLogViewController.js"></script>

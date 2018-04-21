@@ -88,21 +88,19 @@ HTMLDocument::HTMLDocument(Frame* frame, const URL& url, DocumentClassFlags docu
     clearXMLVersion();
 }
 
-HTMLDocument::~HTMLDocument()
-{
-}
+HTMLDocument::~HTMLDocument() = default;
 
 int HTMLDocument::width()
 {
     updateLayoutIgnorePendingStylesheets();
-    FrameView* frameView = view();
+    RefPtr<FrameView> frameView = view();
     return frameView ? frameView->contentsWidth() : 0;
 }
 
 int HTMLDocument::height()
 {
     updateLayoutIgnorePendingStylesheets();
-    FrameView* frameView = view();
+    RefPtr<FrameView> frameView = view();
     return frameView ? frameView->contentsHeight() : 0;
 }
 

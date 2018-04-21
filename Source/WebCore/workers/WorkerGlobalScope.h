@@ -29,6 +29,7 @@
 #include "Base64Utilities.h"
 #include "CacheStorageConnection.h"
 #include "EventTarget.h"
+#include "ImageBitmap.h"
 #include "ScriptExecutionContext.h"
 #include "Supplementable.h"
 #include "URL.h"
@@ -62,7 +63,7 @@ public:
     virtual bool isServiceWorkerGlobalScope() const { return false; }
 
     const URL& url() const final { return m_url; }
-    String origin() const;
+    String origin() const final;
 
 #if ENABLE(INDEXED_DATABASE)
     IDBClient::IDBConnectionProxy* idbConnectionProxy() final;
@@ -111,6 +112,9 @@ public:
     Performance& performance() const;
 
     void removeAllEventListeners() final;
+
+    void createImageBitmap(ImageBitmap::Source&&, ImageBitmapOptions&&, ImageBitmap::Promise&&);
+    void createImageBitmap(ImageBitmap::Source&&, int sx, int sy, int sw, int sh, ImageBitmapOptions&&, ImageBitmap::Promise&&);
 
 protected:
     WorkerGlobalScope(const URL&, const String& identifier, const String& userAgent, WorkerThread&, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy*, SocketProvider*, PAL::SessionID);

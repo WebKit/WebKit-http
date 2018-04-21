@@ -23,6 +23,7 @@
 
 #include "ArrayAllocationProfile.h"
 #include "ArrayBufferSharingMode.h"
+#include "BooleanPrototype.h"
 #include "ExceptionHelpers.h"
 #include "InternalFunction.h"
 #include "JSArray.h"
@@ -121,6 +122,7 @@ template<typename Watchpoint> class ObjectPropertyChangeAdaptiveWatchpoint;
     macro(String, string, stringObject, StringObject, String, object) \
     macro(Symbol, symbol, symbolObject, SymbolObject, Symbol, object) \
     macro(Number, number, numberObject, NumberObject, Number, object) \
+    macro(Boolean, boolean, booleanObject, BooleanObject, Boolean, object) \
     macro(Error, error, error, ErrorInstance, Error, object) \
     macro(Map, map, map, JSMap, Map, object) \
     macro(Set, set, set, JSSet, Set, object) \
@@ -135,7 +137,6 @@ template<typename Watchpoint> class ObjectPropertyChangeAdaptiveWatchpoint;
 
 #define FOR_EACH_LAZY_BUILTIN_TYPE(macro) \
     macro(Date, date, date, DateInstance, Date, object) \
-    macro(Boolean, boolean, booleanObject, BooleanObject, Boolean, object) \
     DEFINE_STANDARD_BUILTIN(macro, WeakMap, weakMap) \
     DEFINE_STANDARD_BUILTIN(macro, WeakSet, weakSet) \
 
@@ -327,7 +328,6 @@ public:
     LazyProperty<JSGlobalObject, Structure> m_nativeStdFunctionStructure;
     LazyProperty<JSGlobalObject, Structure> m_namedFunctionStructure;
     PropertyOffset m_functionNameOffset;
-    WriteBarrier<Structure> m_privateNameStructure;
     WriteBarrier<Structure> m_regExpStructure;
     WriteBarrier<AsyncFunctionPrototype> m_asyncFunctionPrototype;
     WriteBarrier<AsyncGeneratorFunctionPrototype> m_asyncGeneratorFunctionPrototype;
@@ -565,10 +565,10 @@ public:
     ObjectPrototype* objectPrototype() const { return m_objectPrototype.get(); }
     FunctionPrototype* functionPrototype() const { return m_functionPrototype.get(); }
     ArrayPrototype* arrayPrototype() const { return m_arrayPrototype.get(); }
-    JSObject* booleanPrototype() const { return m_booleanObjectStructure.prototype(this); }
+    BooleanPrototype* booleanPrototype() const { return m_booleanPrototype.get(); }
     StringPrototype* stringPrototype() const { return m_stringPrototype.get(); }
     SymbolPrototype* symbolPrototype() const { return m_symbolPrototype.get(); }
-    JSObject* numberPrototype() const { return m_numberPrototype.get(); }
+    NumberPrototype* numberPrototype() const { return m_numberPrototype.get(); }
     JSObject* datePrototype() const { return m_dateStructure.prototype(this); }
     RegExpPrototype* regExpPrototype() const { return m_regExpPrototype.get(); }
     ErrorPrototype* errorPrototype() const { return m_errorPrototype.get(); }
@@ -616,7 +616,7 @@ public:
         return originalArrayStructureForIndexingType(structure->indexingType() | IsArray) == structure;
     }
         
-    Structure* booleanObjectStructure() const { return m_booleanObjectStructure.get(this); }
+    Structure* booleanObjectStructure() const { return m_booleanObjectStructure.get(); }
     Structure* callbackConstructorStructure() const { return m_callbackConstructorStructure.get(this); }
     Structure* callbackFunctionStructure() const { return m_callbackFunctionStructure.get(this); }
     Structure* callbackObjectStructure() const { return m_callbackObjectStructure.get(this); }
@@ -637,7 +637,6 @@ public:
     Structure* namedFunctionStructure() const { return m_namedFunctionStructure.get(this); }
     PropertyOffset functionNameOffset() const { return m_functionNameOffset; }
     Structure* numberObjectStructure() const { return m_numberObjectStructure.get(); }
-    Structure* privateNameStructure() const { return m_privateNameStructure.get(); }
     Structure* mapStructure() const { return m_mapStructure.get(); }
     Structure* regExpStructure() const { return m_regExpStructure.get(); }
     Structure* generatorFunctionStructure() const { return m_generatorFunctionStructure.get(); }

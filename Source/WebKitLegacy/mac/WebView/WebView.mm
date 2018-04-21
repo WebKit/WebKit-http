@@ -127,6 +127,7 @@
 #import <WebCore/Chrome.h>
 #import <WebCore/ColorMac.h>
 #import <WebCore/DatabaseManager.h>
+#import <WebCore/DeprecatedGlobalSettings.h>
 #import <WebCore/DictionaryLookup.h>
 #import <WebCore/Document.h>
 #import <WebCore/DocumentLoader.h>
@@ -586,14 +587,14 @@ WebLayoutMilestones kitLayoutMilestones(LayoutMilestones milestones)
         | (milestones & DidHitRelevantRepaintedObjectsAreaThreshold ? WebDidHitRelevantRepaintedObjectsAreaThreshold : 0);
 }
 
-static WebPageVisibilityState kit(PageVisibilityState visibilityState)
+static WebPageVisibilityState kit(VisibilityState visibilityState)
 {
     switch (visibilityState) {
-    case PageVisibilityState::Visible:
+    case VisibilityState::Visible:
         return WebPageVisibilityStateVisible;
-    case PageVisibilityState::Hidden:
+    case VisibilityState::Hidden:
         return WebPageVisibilityStateHidden;
-    case PageVisibilityState::Prerender:
+    case VisibilityState::Prerender:
         return WebPageVisibilityStatePrerender;
     }
 
@@ -1399,11 +1400,11 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         WebKitInitializeGamepadProviderIfNecessary();
 #endif
         
-        Settings::setShouldRespectPriorityInCSSAttributeSetters(shouldRespectPriorityInCSSAttributeSetters());
+        DeprecatedGlobalSettings::setShouldRespectPriorityInCSSAttributeSetters(shouldRespectPriorityInCSSAttributeSetters());
 
 #if PLATFORM(IOS)
         if (IOSApplication::isMobileSafari())
-            Settings::setShouldManageAudioSessionCategory(true);
+            DeprecatedGlobalSettings::setShouldManageAudioSessionCategory(true);
 #endif
 
         didOneTimeInitialization = true;
@@ -2840,13 +2841,13 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setSuppressesIncrementalRendering([preferences suppressesIncrementalRendering]);
     settings.setBackspaceKeyNavigationEnabled([preferences backspaceKeyNavigationEnabled]);
     settings.setWantsBalancedSetDefersLoadingBehavior([preferences wantsBalancedSetDefersLoadingBehavior]);
-    settings.setMockScrollbarsEnabled([preferences mockScrollbarsEnabled]);
+    DeprecatedGlobalSettings::setMockScrollbarsEnabled([preferences mockScrollbarsEnabled]);
 
     settings.setShouldRespectImageOrientation([preferences shouldRespectImageOrientation]);
 
     settings.setRequestAnimationFrameEnabled([preferences requestAnimationFrameEnabled]);
     settings.setDiagnosticLoggingEnabled([preferences diagnosticLoggingEnabled]);
-    settings.setLowPowerVideoAudioBufferSizeEnabled([preferences lowPowerVideoAudioBufferSizeEnabled]);
+    DeprecatedGlobalSettings::setLowPowerVideoAudioBufferSizeEnabled([preferences lowPowerVideoAudioBufferSizeEnabled]);
 
     settings.setUseLegacyTextAlignPositionedElementBehavior([preferences useLegacyTextAlignPositionedElementBehavior]);
 
@@ -2895,11 +2896,11 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setLayoutInterval(Seconds::fromMilliseconds([preferences _layoutInterval]));
     settings.setMaxParseDuration([preferences _maxParseDuration]);
     settings.setAlwaysUseAcceleratedOverflowScroll([preferences _alwaysUseAcceleratedOverflowScroll]);
-    settings.setAudioSessionCategoryOverride([preferences audioSessionCategoryOverride]);
-    settings.setNetworkDataUsageTrackingEnabled([preferences networkDataUsageTrackingEnabled]);
-    settings.setNetworkInterfaceName([preferences networkInterfaceName]);
+    DeprecatedGlobalSettings::setAudioSessionCategoryOverride([preferences audioSessionCategoryOverride]);
+    DeprecatedGlobalSettings::setNetworkDataUsageTrackingEnabled([preferences networkDataUsageTrackingEnabled]);
+    DeprecatedGlobalSettings::setNetworkInterfaceName([preferences networkInterfaceName]);
 #if HAVE(AVKIT)
-    settings.setAVKitEnabled([preferences avKitEnabled]);
+    DeprecatedGlobalSettings::setAVKitEnabled([preferences avKitEnabled]);
 #endif
 
     settings.setPasswordEchoEnabled([preferences _allowPasswordEcho]);
@@ -2932,7 +2933,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setExperimentalNotificationsEnabled([preferences experimentalNotificationsEnabled]);
     settings.setShowsURLsInToolTips([preferences showsURLsInToolTips]);
     settings.setShowsToolTipOverTruncatedText([preferences showsToolTipOverTruncatedText]);
-    settings.setQTKitEnabled([preferences isQTKitEnabled]);
+    DeprecatedGlobalSettings::setQTKitEnabled([preferences isQTKitEnabled]);
 #endif // PLATFORM(MAC)
 
     DatabaseManager::singleton().setIsAvailable([preferences databasesEnabled]);
@@ -2953,13 +2954,13 @@ static bool needsSelfRetainWhileLoadingQuirk()
 #endif
 
 #if USE(AVFOUNDATION)
-    settings.setAVFoundationEnabled([preferences isAVFoundationEnabled]);
-    settings.setAVFoundationNSURLSessionEnabled([preferences isAVFoundationNSURLSessionEnabled]);
+    DeprecatedGlobalSettings::setAVFoundationEnabled([preferences isAVFoundationEnabled]);
+    DeprecatedGlobalSettings::setAVFoundationNSURLSessionEnabled([preferences isAVFoundationNSURLSessionEnabled]);
 #endif
 
 #if ENABLE(MEDIA_STREAM)
-    settings.setMockCaptureDevicesEnabled([preferences mockCaptureDevicesEnabled]);
-    settings.setMediaCaptureRequiresSecureConnection([preferences mediaCaptureRequiresSecureConnection]);
+    DeprecatedGlobalSettings::setMockCaptureDevicesEnabled([preferences mockCaptureDevicesEnabled]);
+    DeprecatedGlobalSettings::setMediaCaptureRequiresSecureConnection([preferences mediaCaptureRequiresSecureConnection]);
     RuntimeEnabledFeatures::sharedFeatures().setMediaStreamEnabled([preferences mediaStreamEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setMediaDevicesEnabled([preferences mediaDevicesEnabled]);
 #endif
@@ -2981,7 +2982,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
     settings.setHiddenPageCSSAnimationSuspensionEnabled([preferences hiddenPageCSSAnimationSuspensionEnabled]);
 
-    settings.setResourceLoadStatisticsEnabled([preferences resourceLoadStatisticsEnabled]);
+    DeprecatedGlobalSettings::setResourceLoadStatisticsEnabled([preferences resourceLoadStatisticsEnabled]);
 
     settings.setViewportFitEnabled([preferences viewportFitEnabled]);
     settings.setConstantPropertiesEnabled([preferences constantPropertiesEnabled]);
@@ -3023,9 +3024,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
     RuntimeEnabledFeatures::sharedFeatures().setCSSGridLayoutEnabled([preferences isCSSGridLayoutEnabled]);
 
-#if ENABLE(WEB_ANIMATIONS)
     RuntimeEnabledFeatures::sharedFeatures().setWebAnimationsEnabled([preferences webAnimationsEnabled]);
-#endif
 
 #if ENABLE(INTERSECTION_OBSERVER)
     RuntimeEnabledFeatures::sharedFeatures().setIntersectionObserverEnabled(preferences.intersectionObserverEnabled);
@@ -3066,7 +3065,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     [WAKView _setInterpolationQuality:[preferences _interpolationQuality]];
 #endif
 
-    settings.setCustomPasteboardDataEnabled([preferences customPasteboardDataEnabled]);
+    DeprecatedGlobalSettings::setCustomPasteboardDataEnabled([preferences customPasteboardDataEnabled]);
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     settings.setMediaKeysStorageDirectory([preferences mediaKeysStorageDirectory]);
@@ -4295,7 +4294,7 @@ static inline IMP getMethod(id o, SEL s)
 
 + (void)_doNotStartObservingNetworkReachability
 {
-    Settings::setShouldOptOutOfNetworkStateObservation(true);
+    DeprecatedGlobalSettings::setShouldOptOutOfNetworkStateObservation(true);
 }
 #endif // PLATFORM(IOS)
 
@@ -8532,6 +8531,13 @@ FORWARD(toggleUnderline)
 
 - (void)_simplifyMarkup:(DOMNode *)startNode endNode:(DOMNode *)endNode
 {
+    Frame* coreFrame = core([self mainFrame]);
+    if (!coreFrame || !startNode)
+        return;
+    Node* coreStartNode= core(startNode);
+    if (&coreStartNode->document() != coreFrame->document())
+        return;
+    return coreFrame->editor().simplifyMarkup(coreStartNode, core(endNode));
 }
 
 @end

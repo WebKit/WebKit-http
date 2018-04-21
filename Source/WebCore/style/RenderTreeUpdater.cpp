@@ -75,9 +75,9 @@ RenderTreeUpdater::Parent::Parent(ContainerNode& root)
 {
 }
 
-RenderTreeUpdater::Parent::Parent(Element& element, Style::Change styleChange)
+RenderTreeUpdater::Parent::Parent(Element& element, const Style::ElementUpdates* updates)
     : element(&element)
-    , styleChange(styleChange)
+    , updates(updates)
     , renderTreePosition(element.renderer() ? std::make_optional(RenderTreePosition(*element.renderer())) : std::nullopt)
 {
 }
@@ -88,9 +88,7 @@ RenderTreeUpdater::RenderTreeUpdater(Document& document)
 {
 }
 
-RenderTreeUpdater::~RenderTreeUpdater()
-{
-}
+RenderTreeUpdater::~RenderTreeUpdater() = default;
 
 static ContainerNode* findRenderingRoot(ContainerNode& node)
 {
@@ -176,26 +174,30 @@ void RenderTreeUpdater::updateRenderTree(ContainerNode& root)
         if (is<Text>(node)) {
             auto& text = downcast<Text>(node);
             auto* textUpdate = m_styleUpdate->textUpdate(text);
-            if (parent().styleChange == Style::Detach || textUpdate || m_invalidatedWhitespaceOnlyTextSiblings.contains(&text))
+            if ((parent().updates && parent().updates->update.change == Style::Detach) || textUpdate || m_invalidatedWhitespaceOnlyTextSiblings.contains(&text))
                 updateTextRenderer(text, textUpdate);
 
+            storePreviousRenderer(text);
             it.traverseNextSkippingChildren();
             continue;
         }
 
         auto& element = downcast<Element>(node);
 
-        auto* elementUpdate = m_styleUpdate->elementUpdate(element);
+        auto* elementUpdates = m_styleUpdate->elementUpdates(element);
 
         // We hop through display: contents elements in findRenderingRoot, so
         // there may be other updates down the tree.
-        if (!elementUpdate && !element.hasDisplayContents()) {
+        if (!elementUpdates && !element.hasDisplayContents()) {
+            storePreviousRenderer(element);
             it.traverseNextSkippingChildren();
             continue;
         }
 
-        if (elementUpdate)
-            updateElementRenderer(element, *elementUpdate);
+        if (elementUpdates)
+            updateElementRenderer(element, elementUpdates->update);
+
+        storePreviousRenderer(element);
 
         bool mayHaveRenderedDescendants = element.renderer() || (element.hasDisplayContents() && shouldCreateRenderer(element, renderTreePosition().parent()));
         if (!mayHaveRenderedDescendants) {
@@ -203,7 +205,7 @@ void RenderTreeUpdater::updateRenderTree(ContainerNode& root)
             continue;
         }
 
-        pushParent(element, elementUpdate ? elementUpdate->change : Style::NoChange);
+        pushParent(element, elementUpdates);
 
         it.traverseNext();
     }
@@ -223,18 +225,18 @@ RenderTreePosition& RenderTreeUpdater::renderTreePosition()
     return *m_parentStack.last().renderTreePosition;
 }
 
-void RenderTreeUpdater::pushParent(Element& element, Style::Change changeType)
+void RenderTreeUpdater::pushParent(Element& element, const Style::ElementUpdates* updates)
 {
-    m_parentStack.append(Parent(element, changeType));
+    m_parentStack.append(Parent(element, updates));
 
-    updateBeforeDescendants(element);
+    updateBeforeDescendants(element, updates);
 }
 
 void RenderTreeUpdater::popParent()
 {
     auto& parent = m_parentStack.last();
     if (parent.element)
-        updateAfterDescendants(*parent.element, parent.styleChange);
+        updateAfterDescendants(*parent.element, parent.updates);
 
     m_parentStack.removeLast();
 }
@@ -247,14 +249,16 @@ void RenderTreeUpdater::popParentsToDepth(unsigned depth)
         popParent();
 }
 
-void RenderTreeUpdater::updateBeforeDescendants(Element& element)
+void RenderTreeUpdater::updateBeforeDescendants(Element& element, const Style::ElementUpdates* updates)
 {
-    generatedContent().updateBeforePseudoElement(element);
+    if (updates)
+        generatedContent().updatePseudoElement(element, updates->beforePseudoElementUpdate, BEFORE);
 }
 
-void RenderTreeUpdater::updateAfterDescendants(Element& element, Style::Change styleChange)
+void RenderTreeUpdater::updateAfterDescendants(Element& element, const Style::ElementUpdates* updates)
 {
-    generatedContent().updateAfterPseudoElement(element);
+    if (updates)
+        generatedContent().updatePseudoElement(element, updates->afterPseudoElementUpdate, AFTER);
 
     auto* renderer = element.renderer();
     if (!renderer)
@@ -268,7 +272,7 @@ void RenderTreeUpdater::updateAfterDescendants(Element& element, Style::Change s
     if (is<RenderBlockFlow>(*renderer))
         MultiColumn::update(downcast<RenderBlockFlow>(*renderer));
 
-    if (element.hasCustomStyleResolveCallbacks() && styleChange == Style::Detach)
+    if (element.hasCustomStyleResolveCallbacks() && updates && updates->update.change == Style::Detach)
         element.didAttachRenderers();
 }
 
@@ -384,9 +388,9 @@ void RenderTreeUpdater::createRenderer(Element& element, RenderStyle&& style)
         cache->updateCacheAfterNodeIsAttached(&element);
 }
 
-static bool textRendererIsNeeded(const Text& textNode, const RenderTreePosition& renderTreePosition)
+bool RenderTreeUpdater::textRendererIsNeeded(const Text& textNode)
 {
-    const RenderElement& parentRenderer = renderTreePosition.parent();
+    const RenderElement& parentRenderer = renderTreePosition().parent();
     if (!parentRenderer.canHaveChildren())
         return false;
     if (parentRenderer.element() && !parentRenderer.element()->childShouldCreateRenderer(textNode))
@@ -403,7 +407,7 @@ static bool textRendererIsNeeded(const Text& textNode, const RenderTreePosition&
     if (parentRenderer.style().preserveNewline()) // pre/pre-wrap/pre-line always make renderers.
         return true;
 
-    RenderObject* previousRenderer = renderTreePosition.previousSiblingRenderer(textNode);
+    auto* previousRenderer = parent().previousChildRenderer;
     if (previousRenderer && previousRenderer->isBR()) // <span><br/> <br/></span>
         return false;
 
@@ -418,7 +422,7 @@ static bool textRendererIsNeeded(const Text& textNode, const RenderTreePosition&
         RenderObject* first = parentRenderer.firstChild();
         while (first && first->isFloatingOrOutOfFlowPositioned())
             first = first->nextSibling();
-        RenderObject* nextRenderer = renderTreePosition.nextSiblingRenderer(textNode);
+        RenderObject* nextRenderer = textNode.renderer() ? textNode.renderer() :  renderTreePosition().nextSiblingRenderer(textNode);
         if (!first || nextRenderer == first) {
             // Whitespace at the start of a block just goes away. Don't even make a render object for this text.
             return false;
@@ -459,7 +463,7 @@ static void createTextRenderer(Text& textNode, RenderTreePosition& renderTreePos
 void RenderTreeUpdater::updateTextRenderer(Text& text, const Style::TextUpdate* textUpdate)
 {
     auto* existingRenderer = text.renderer();
-    bool needsRenderer = textRendererIsNeeded(text, renderTreePosition());
+    bool needsRenderer = textRendererIsNeeded(text);
 
     if (existingRenderer && textUpdate && textUpdate->inheritedDisplayContentsStyle) {
         if (existingRenderer->inlineWrapperForDisplayContents() || *textUpdate->inheritedDisplayContentsStyle) {
@@ -493,7 +497,7 @@ void RenderTreeUpdater::invalidateWhitespaceOnlyTextSiblingsAfterAttachIfNeeded(
     // the current node gaining or losing the renderer. This can only affect white space text nodes.
     for (Node* sibling = current.nextSibling(); sibling; sibling = sibling->nextSibling()) {
         if (is<Element>(*sibling)) {
-            if (m_styleUpdate->elementUpdate(downcast<Element>(*sibling)))
+            if (m_styleUpdate->elementUpdates(downcast<Element>(*sibling)))
                 return;
             // Text renderers beyond rendered elements can't be affected.
             if (sibling->renderer())
@@ -509,6 +513,15 @@ void RenderTreeUpdater::invalidateWhitespaceOnlyTextSiblingsAfterAttachIfNeeded(
             continue;
         m_invalidatedWhitespaceOnlyTextSiblings.add(&textSibling);
     }
+}
+
+void RenderTreeUpdater::storePreviousRenderer(Node& node)
+{
+    auto* renderer = node.renderer();
+    if (!renderer)
+        return;
+    ASSERT(parent().previousChildRenderer != renderer);
+    parent().previousChildRenderer = renderer;
 }
 
 void RenderTreeUpdater::tearDownRenderers(Element& root)

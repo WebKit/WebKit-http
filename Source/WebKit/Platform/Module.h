@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2017 Sony Interactive Entertainment Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +24,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Module_h
-#define Module_h
+#pragma once
 
 #include <wtf/Noncopyable.h>
 #include <wtf/text/WTFString.h>
@@ -68,6 +68,9 @@ private:
     void* platformFunctionPointer(const char* functionName) const;
 
     String m_path;
+#if PLATFORM(WIN)
+    HMODULE m_module;
+#endif
 #if USE(CF)
     RetainPtr<CFBundleRef> m_bundle;
 #if !defined(__LP64__)
@@ -86,5 +89,3 @@ template<typename FunctionType> FunctionType Module::functionPointer(const char*
 }
 
 }
-
-#endif

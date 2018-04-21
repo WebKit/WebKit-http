@@ -85,19 +85,18 @@ ShadowRoot::~ShadowRoot()
     removeDetachedChildren();
 }
 
-Node::InsertionNotificationRequest ShadowRoot::insertedInto(ContainerNode& insertionPoint)
+Node::InsertedIntoAncestorResult ShadowRoot::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    bool wasInDocument = isConnected();
-    DocumentFragment::insertedInto(insertionPoint);
-    if (insertionPoint.isConnected() && !wasInDocument)
+    DocumentFragment::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    if (insertionType.connectedToDocument)
         document().didInsertInDocumentShadowRoot(*this);
-    return InsertionDone;
+    return InsertedIntoAncestorResult::Done;
 }
 
-void ShadowRoot::removedFrom(ContainerNode& insertionPoint)
+void ShadowRoot::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
-    DocumentFragment::removedFrom(insertionPoint);
-    if (insertionPoint.isConnected() && !isConnected())
+    DocumentFragment::removedFromAncestor(removalType, oldParentOfRemovedTree);
+    if (removalType.disconnectedFromDocument)
         document().didRemoveInDocumentShadowRoot(*this);
 }
 

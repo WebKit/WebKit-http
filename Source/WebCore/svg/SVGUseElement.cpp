@@ -31,6 +31,7 @@
 #include "ElementIterator.h"
 #include "Event.h"
 #include "EventNames.h"
+#include "NoEventDispatchAssertion.h"
 #include "RenderSVGResource.h"
 #include "RenderSVGTransformableContainer.h"
 #include "SVGDocumentExtensions.h"
@@ -103,20 +104,20 @@ void SVGUseElement::parseAttribute(const QualifiedName& name, const AtomicString
     SVGURIReference::parseAttribute(name, value);
 }
 
-Node::InsertionNotificationRequest SVGUseElement::insertedInto(ContainerNode& rootParent)
+Node::InsertedIntoAncestorResult SVGUseElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    SVGGraphicsElement::insertedInto(rootParent);
-    if (isConnected()) {
+    SVGGraphicsElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
+    if (insertionType.connectedToDocument) {
         SVGExternalResourcesRequired::insertedIntoDocument(this);
         invalidateShadowTree();
         updateExternalDocument();
     }
-    return InsertionDone;
+    return InsertedIntoAncestorResult::Done;
 }
 
-void SVGUseElement::removedFrom(ContainerNode& rootParent)
+void SVGUseElement::removedFromAncestor(RemovalType removalType, ContainerNode& oldParentOfRemovedTree)
 {
-    SVGGraphicsElement::removedFrom(rootParent);
+    SVGGraphicsElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
     clearShadowTree();
     updateExternalDocument();
 }
@@ -214,8 +215,10 @@ static inline bool isDisallowedElement(const Element& element)
 
 void SVGUseElement::clearShadowTree()
 {
-    if (auto* root = userAgentShadowRoot())
+    if (auto root = userAgentShadowRoot()) {
+        NoEventDispatchAssertion::EventAllowedScope scope(*root);
         root->removeChildren();
+    }
 }
 
 void SVGUseElement::buildPendingResource()
@@ -259,7 +262,7 @@ void SVGUseElement::updateShadowTree()
 
 SVGElement* SVGUseElement::targetClone() const
 {
-    auto* root = userAgentShadowRoot();
+    auto root = userAgentShadowRoot();
     if (!root)
         return nullptr;
     return childrenOfType<SVGElement>(*root).first();
@@ -282,25 +285,24 @@ static bool isDirectReference(const SVGElement& element)
         || element.hasTagName(textTag);
 }
 
-void SVGUseElement::toClipPath(Path& path)
+Path SVGUseElement::toClipPath()
 {
-    ASSERT(path.isEmpty());
-
     auto* targetClone = this->targetClone();
     if (!is<SVGGraphicsElement>(targetClone))
-        return;
+        return { };
 
     if (!isDirectReference(*targetClone)) {
         // Spec: Indirect references are an error (14.3.5)
         document().accessSVGExtensions().reportError(ASCIILiteral("Not allowed to use indirect reference in <clip-path>"));
-        return;
+        return { };
     }
 
-    downcast<SVGGraphicsElement>(*targetClone).toClipPath(path);
+    Path path = downcast<SVGGraphicsElement>(*targetClone).toClipPath();
     SVGLengthContext lengthContext(this);
     // FIXME: Find a way to do this without manual resolution of x/y here. It's potentially incorrect.
     path.translate(FloatSize(x().value(lengthContext), y().value(lengthContext)));
     path.transform(animatedLocalTransform());
+    return path;
 }
 
 RenderElement* SVGUseElement::rendererClipChild() const
