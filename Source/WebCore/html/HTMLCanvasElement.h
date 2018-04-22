@@ -29,6 +29,7 @@
 
 #include "FloatRect.h"
 #include "HTMLElement.h"
+#include "ImageBitmapRenderingContextSettings.h"
 #include "IntSize.h"
 #include <memory>
 #include <wtf/Forward.h>
@@ -119,8 +120,8 @@ public:
 #endif
 
     static bool isBitmapRendererType(const String&);
-    ImageBitmapRenderingContext* createContextBitmapRenderer(const String&);
-    ImageBitmapRenderingContext* getContextBitmapRenderer(const String&);
+    ImageBitmapRenderingContext* createContextBitmapRenderer(const String&, ImageBitmapRenderingContextSettings&& = { });
+    ImageBitmapRenderingContext* getContextBitmapRenderer(const String&, ImageBitmapRenderingContextSettings&& = { });
 
     WEBCORE_EXPORT ExceptionOr<UncachedString> toDataURL(const String& mimeType, JSC::JSValue quality);
     WEBCORE_EXPORT ExceptionOr<UncachedString> toDataURL(const String& mimeType);
@@ -150,6 +151,7 @@ public:
     void clearPresentationCopy();
 
     SecurityOrigin* securityOrigin() const;
+    void setOriginClean() { m_originClean = true; }
     void setOriginTainted() { m_originClean = false; }
     bool originClean() const { return m_originClean; }
 
@@ -168,6 +170,10 @@ public:
     size_t memoryCost() const;
     size_t externalMemoryCost() const;
 
+    // FIXME: Only some canvas rendering contexts need an ImageBuffer.
+    // It would be better to have the contexts own the buffers.
+    void setImageBufferAndMarkDirty(std::unique_ptr<ImageBuffer>&&);
+
 private:
     HTMLCanvasElement(const QualifiedName&, Document&);
 
@@ -183,7 +189,7 @@ private:
     void clearImageBuffer() const;
 
     void setSurfaceSize(const IntSize&);
-    void setImageBuffer(std::unique_ptr<ImageBuffer>) const;
+    void setImageBuffer(std::unique_ptr<ImageBuffer>&&) const;
     void releaseImageBufferAndContext();
 
     bool paintsIntoCanvasBuffer() const;
@@ -194,7 +200,7 @@ private:
     std::unique_ptr<CanvasRenderingContext> m_context;
 
     FloatRect m_dirtyRect;
-    IntSize m_size;
+    mutable IntSize m_size;
 
     bool m_originClean { true };
     bool m_ignoreReset { false };

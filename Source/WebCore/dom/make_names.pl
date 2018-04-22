@@ -138,9 +138,6 @@ END
     print F StaticString::GenerateStringAsserts(\%parameters);
 
     for my $name (sort keys %parameters) {
-        # FIXME: Would like to use static_cast here, but there are differences in const
-        # depending on whether SKIP_STATIC_CONSTRUCTORS_ON_GCC is used, so stick with a
-        # C-style cast for now.
         print F "    ${name}.construct(&${name}Data);\n";
     }
 
@@ -488,7 +485,7 @@ sub printConstructors
         if ($enabledTags{$tagName}{mapToTagName}) {
             my $mappedName = $enabledTags{$tagName}{mapToTagName};
             printConstructorSignature($F, $mappedName, $mappedName . "To" . $tagName, "tagName");
-            printConstructorInterior($F, $mappedName, $enabledTags{$mappedName}{interfaceName}, "QualifiedName(tagName.prefix(), ${mappedName}Tag.localName(), tagName.namespaceURI())");
+            printConstructorInterior($F, $mappedName, $enabledTags{$mappedName}{interfaceName}, "QualifiedName(tagName.prefix(), ${mappedName}Tag->localName(), tagName.namespaceURI())");
         }
     }
 }
@@ -574,7 +571,6 @@ sub printCppHead
     print F "#endif\n\n";
 
     print F "#include \"${namespace}Names.h\"\n\n";
-    print F "#include <wtf/StaticConstructors.h>\n";
 
     print F "namespace WebCore {\n\n";
     print F "namespace ${namespace}Names {\n\n";
@@ -718,21 +714,25 @@ sub printNamesHeaderFile
     open F, ">$headerPath";
 
     printLicenseHeader($F);
-    printHeaderHead($F, "DOM", $parameters{namespace}, '#include "QualifiedName.h"', "class $parameters{namespace}QualifiedName : public QualifiedName { };\n\n");
+    printHeaderHead($F, "DOM", $parameters{namespace}, <<END, "class $parameters{namespace}QualifiedName : public QualifiedName { };\n\n");
+#include <wtf/NeverDestroyed.h>
+#include <wtf/text/AtomicString.h>
+#include "QualifiedName.h"
+END
 
     my $lowercaseNamespacePrefix = lc($parameters{namespacePrefix});
 
     print F "// Namespace\n";
-    print F "WEBCORE_EXPORT extern const WTF::AtomicString ${lowercaseNamespacePrefix}NamespaceURI;\n\n";
+    print F "WEBCORE_EXPORT extern LazyNeverDestroyed<const WTF::AtomicString> ${lowercaseNamespacePrefix}NamespaceURI;\n\n";
 
     if (keys %allTags) {
         print F "// Tags\n";
-        printMacros($F, "WEBCORE_EXPORT extern const WebCore::$parameters{namespace}QualifiedName", "Tag", \%allTags);
+        printMacros($F, "WEBCORE_EXPORT extern LazyNeverDestroyed<const WebCore::$parameters{namespace}QualifiedName>", "Tag", \%allTags);
     }
 
     if (keys %allAttrs) {
         print F "// Attributes\n";
-        printMacros($F, "WEBCORE_EXPORT extern const WebCore::QualifiedName", "Attr", \%allAttrs);
+        printMacros($F, "WEBCORE_EXPORT extern LazyNeverDestroyed<const WebCore::QualifiedName>", "Attr", \%allAttrs);
     }
     print F "#endif\n\n";
 
@@ -761,14 +761,14 @@ sub printNamesCppFile
     
     my $lowercaseNamespacePrefix = lc($parameters{namespacePrefix});
 
-    print F "WEBCORE_EXPORT DEFINE_GLOBAL(AtomicString, ${lowercaseNamespacePrefix}NamespaceURI)\n\n";
+    print F "LazyNeverDestroyed<const AtomicString> ${lowercaseNamespacePrefix}NamespaceURI;\n\n";
 
     print F StaticString::GenerateStrings(\%allStrings);
 
     if (keys %allTags) {
         print F "// Tags\n";
         for my $name (sort keys %allTags) {
-            print F "WEBCORE_EXPORT DEFINE_GLOBAL($parameters{namespace}QualifiedName, ", $name, "Tag)\n";
+            print F "WEBCORE_EXPORT LazyNeverDestroyed<const $parameters{namespace}QualifiedName> ${name}Tag;\n";
         }
         
         print F "\n\nconst WebCore::$parameters{namespace}QualifiedName* const* get$parameters{namespace}Tags()\n";
@@ -784,7 +784,7 @@ sub printNamesCppFile
     if (keys %allAttrs) {
         print F "\n// Attributes\n";
         for my $name (sort keys %allAttrs) {
-            print F "WEBCORE_EXPORT DEFINE_GLOBAL(QualifiedName, ", $name, "Attr)\n";
+            print F "WEBCORE_EXPORT LazyNeverDestroyed<const QualifiedName> ${name}Attr;\n";
         }
         print F "\n\nconst WebCore::QualifiedName* const* get$parameters{namespace}Attrs()\n";
         print F "{\n    static const WebCore::QualifiedName* const $parameters{namespace}Attrs[] = {\n";
@@ -801,7 +801,7 @@ sub printNamesCppFile
     print(F "    AtomicString ${lowercaseNamespacePrefix}NS(\"$parameters{namespaceURI}\", AtomicString::ConstructFromLiteral);\n\n");
 
     print(F "    // Namespace\n");
-    print(F "    new (NotNull, (void*)&${lowercaseNamespacePrefix}NamespaceURI) AtomicString(${lowercaseNamespacePrefix}NS);\n");
+    print(F "    ${lowercaseNamespacePrefix}NamespaceURI.construct(${lowercaseNamespacePrefix}NS);\n");
     print(F "\n");
     print F StaticString::GenerateStringAsserts(\%allStrings);
 
@@ -901,31 +901,28 @@ sub printDefinitions
     my $shortCamelType = ucfirst(substr(substr($type, 0, -1), 0, 4));
     my $capitalizedType = ucfirst($type);
     
-print F <<END
+print F <<END;
 
     struct ${capitalizedType}TableEntry {
-        void* targetAddress;
+        LazyNeverDestroyed<const QualifiedName>* targetAddress;
         const StaticStringImpl& name;
     };
 
     static const ${capitalizedType}TableEntry ${type}Table[] = {
 END
-;
+
+    my $cast = $type eq "tags" ? "(LazyNeverDestroyed<const QualifiedName>*)" : "";
     for my $name (sort keys %$namesRef) {
-        print F "        { (void*)&$name$shortCamelType, *(&${name}Data) },\n";
+        print F "        { $cast&$name$shortCamelType, *(&${name}Data) },\n";
     }
 
-print F <<END
+print F <<END;
     };
 
     for (auto& entry : ${type}Table)
+        entry.targetAddress->construct(nullAtom(), AtomicString(&entry.name), $namespaceURI);
 END
-;
-    if ($namespaceURI eq "nullAtom()") {
-        print F "        createQualifiedName(entry.targetAddress, &entry.name);\n";
-    } else {
-        print F "        createQualifiedName(entry.targetAddress, &entry.name, $namespaceURI);\n";
-    }
+
 }
 
 ## ElementFactory routines

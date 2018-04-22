@@ -599,7 +599,7 @@ void AppendPipeline::parseDemuxerSrcPadCaps(GstCaps* demuxerSrcPadCaps)
 
         const gchar* originalMediaType = gst_structure_get_string(structure, "original-media-type");
 
-        if (!MediaPlayerPrivateGStreamerMSE::supportsCodecs(originalMediaType)) {
+        if (!MediaPlayerPrivateGStreamerMSE::supportsCodec(originalMediaType)) {
             m_presentationSize = WebCore::FloatSize();
             m_streamType = WebCore::MediaSourceStreamTypeGStreamer::Invalid;
         } else if (g_str_has_prefix(originalMediaType, "video/")) {
@@ -632,7 +632,7 @@ void AppendPipeline::parseDemuxerSrcPadCaps(GstCaps* demuxerSrcPadCaps)
         const char* structureName = gst_structure_get_name(structure);
         GstVideoInfo info;
 
-        if (!MediaPlayerPrivateGStreamerMSE::supportsCodecs(structureName)) {
+        if (!MediaPlayerPrivateGStreamerMSE::supportsCodec(structureName)) {
             m_presentationSize = WebCore::FloatSize();
             m_streamType = WebCore::MediaSourceStreamTypeGStreamer::Invalid;
         } else if (g_str_has_prefix(structureName, "video/") && gst_video_info_from_caps(&info, demuxerSrcPadCaps)) {
@@ -1013,6 +1013,9 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
         GST_TRACE("demuxer-connect-to-appsink message posted to bus");
 
         m_padAddRemoveCondition.wait(m_padAddRemoveLock);
+
+        if (!m_playerPrivate)
+            return;
     }
 
     // Must be done in the thread we were called from (usually streaming thread).

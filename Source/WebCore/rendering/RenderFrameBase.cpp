@@ -30,8 +30,11 @@
 #include "FrameView.h"
 #include "HTMLFrameElementBase.h"
 #include "RenderView.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderFrameBase);
 
 RenderFrameBase::RenderFrameBase(HTMLFrameElementBase& element, RenderStyle&& style)
     : RenderWidget(element, WTFMove(style))
@@ -76,7 +79,7 @@ void RenderFrameBase::performLayoutWithFlattening(bool hasFixedWidth, bool hasFi
     if (!shouldExpandFrame(width(), height(), hasFixedWidth, hasFixedHeight)) {
         if (updateWidgetPosition() == ChildWidgetState::Destroyed)
             return;
-        childView()->layout();
+        childView()->layoutContext().layout();
         return;
     }
 
@@ -100,7 +103,7 @@ void RenderFrameBase::performLayoutWithFlattening(bool hasFixedWidth, bool hasFi
         // update again to pass the new width to the child frame
         if (updateWidgetPosition() == ChildWidgetState::Destroyed)
             return;
-        childView()->layout();
+        childView()->layoutContext().layout();
     }
 
     ASSERT(childView());
@@ -113,7 +116,7 @@ void RenderFrameBase::performLayoutWithFlattening(bool hasFixedWidth, bool hasFi
     if (updateWidgetPosition() == ChildWidgetState::Destroyed)
         return;
 
-    ASSERT(!childView()->layoutPending());
+    ASSERT(!childView()->layoutContext().isLayoutPending());
     ASSERT(!childRenderView()->needsLayout());
     ASSERT(!childRenderView()->firstChild() || !childRenderView()->firstChild()->firstChildSlow() || !childRenderView()->firstChild()->firstChildSlow()->needsLayout());
 }

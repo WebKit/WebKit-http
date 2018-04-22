@@ -28,9 +28,14 @@
 
 #if ENABLE(SERVICE_WORKER)
 
+#include "Document.h"
 #include "ExceptionData.h"
+#include "MessageEvent.h"
+#include "Microtasks.h"
+#include "ServiceWorkerContainer.h"
 #include "ServiceWorkerFetchResult.h"
 #include "ServiceWorkerJobData.h"
+#include "ServiceWorkerRegistration.h"
 
 namespace WebCore {
 
@@ -71,7 +76,7 @@ void SWClientConnection::jobRejectedInServer(uint64_t jobIdentifier, const Excep
     job->failedWithException(exceptionData.toException());
 }
 
-void SWClientConnection::registrationJobResolvedInServer(uint64_t jobIdentifier, ServiceWorkerRegistrationData&& registrationData)
+void SWClientConnection::registrationJobResolvedInServer(uint64_t jobIdentifier, ServiceWorkerRegistrationData&& registrationData, ShouldNotifyWhenResolved shouldNotifyWhenResolved)
 {
     auto job = m_scheduledJobs.take(jobIdentifier);
     if (!job) {
@@ -79,7 +84,11 @@ void SWClientConnection::registrationJobResolvedInServer(uint64_t jobIdentifier,
         return;
     }
 
-    job->resolvedWithRegistration(WTFMove(registrationData));
+    auto key = registrationData.key;
+    job->resolvedWithRegistration(WTFMove(registrationData), [this, protectedThis = makeRef(*this), key, shouldNotifyWhenResolved] {
+        if (shouldNotifyWhenResolved == ShouldNotifyWhenResolved::Yes)
+            didResolveRegistrationPromise(key);
+    });
 }
 
 void SWClientConnection::unregistrationJobResolvedInServer(uint64_t jobIdentifier, bool unregistrationResult)
@@ -107,6 +116,60 @@ void SWClientConnection::startScriptFetchForServer(uint64_t jobIdentifier)
     }
 
     job->startScriptFetch();
+}
+
+void SWClientConnection::postMessageToServiceWorkerClient(uint64_t destinationScriptExecutionContextIdentifier, Ref<SerializedScriptValue>&& message, ServiceWorkerIdentifier sourceIdentifier, const String& sourceOrigin)
+{
+    // FIXME: destinationScriptExecutionContextIdentifier can only identify a Document at the moment.
+    auto* destinationDocument = Document::allDocumentsMap().get(destinationScriptExecutionContextIdentifier);
+    if (!destinationDocument)
+        return;
+
+    auto* container = destinationDocument->serviceWorkerContainer();
+    if (!container)
+        return;
+
+    std::optional<MessageEventSource> source;
+    auto* activeServiceWorker = destinationDocument->activeServiceWorker();
+    if (activeServiceWorker && activeServiceWorker->identifier() == sourceIdentifier)
+        source = MessageEventSource { RefPtr<ServiceWorker> { activeServiceWorker } };
+    else {
+        // FIXME: Pass in valid scriptURL.
+        source = MessageEventSource { RefPtr<ServiceWorker> { ServiceWorker::create(*destinationDocument, sourceIdentifier, URL()) } };
+    }
+
+    // FIXME: We should pass in ports.
+    auto messageEvent = MessageEvent::create({ }, WTFMove(message), sourceOrigin, { }, WTFMove(source));
+    container->dispatchEvent(messageEvent);
+}
+
+void SWClientConnection::forEachContainer(const WTF::Function<void(ServiceWorkerContainer&)>& apply)
+{
+    // FIXME: We should iterate over all service worker clients, not only documents.
+    for (auto* document : Document::allDocuments()) {
+        if (auto* container = document->serviceWorkerContainer())
+            apply(*container);
+    }
+}
+
+void SWClientConnection::updateRegistrationState(ServiceWorkerRegistrationIdentifier identifier, ServiceWorkerRegistrationState state, std::optional<ServiceWorkerIdentifier> serviceWorkerIdentifier)
+{
+    forEachContainer([&](ServiceWorkerContainer& container) {
+        container.scheduleTaskToUpdateRegistrationState(identifier, state, serviceWorkerIdentifier);
+    });
+}
+
+void SWClientConnection::updateWorkerState(ServiceWorkerIdentifier identifier, ServiceWorkerState state)
+{
+    for (auto* worker : ServiceWorker::allWorkers().get(identifier))
+        worker->scheduleTaskToUpdateState(state);
+}
+
+void SWClientConnection::fireUpdateFoundEvent(ServiceWorkerRegistrationIdentifier identifier)
+{
+    forEachContainer([&](ServiceWorkerContainer& container) {
+        container.scheduleTaskToFireUpdateFoundEvent(identifier);
+    });
 }
 
 } // namespace WebCore

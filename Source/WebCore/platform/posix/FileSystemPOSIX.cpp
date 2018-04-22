@@ -39,11 +39,14 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <wtf/EnumTraits.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
+
+namespace FileSystem {
 
 bool fileExists(const String& path)
 {
@@ -80,12 +83,12 @@ PlatformFileHandle openFile(const String& path, FileOpenMode mode)
         return invalidPlatformFileHandle;
 
     int platformFlag = 0;
-    if (mode == OpenForRead)
+    if (mode == FileOpenMode::Read)
         platformFlag |= O_RDONLY;
-    else if (mode == OpenForWrite)
+    else if (mode == FileOpenMode::Write)
         platformFlag |= (O_WRONLY | O_CREAT | O_TRUNC);
 #if OS(DARWIN)
-    else if (mode == OpenForEventsOnly)
+    else if (mode == FileOpenMode::EventsOnly)
         platformFlag |= O_EVTONLY;
 #endif
 
@@ -104,13 +107,13 @@ long long seekFile(PlatformFileHandle handle, long long offset, FileSeekOrigin o
 {
     int whence = SEEK_SET;
     switch (origin) {
-    case SeekFromBeginning:
+    case FileSeekOrigin::Beginning:
         whence = SEEK_SET;
         break;
-    case SeekFromCurrent:
+    case FileSeekOrigin::Current:
         whence = SEEK_CUR;
         break;
-    case SeekFromEnd:
+    case FileSeekOrigin::End:
         whence = SEEK_END;
         break;
     default:
@@ -146,12 +149,12 @@ int readFromFile(PlatformFileHandle handle, char* data, int length)
 }
 
 #if USE(FILE_LOCK)
-bool lockFile(PlatformFileHandle handle, FileLockMode lockMode)
+bool lockFile(PlatformFileHandle handle, OptionSet<FileLockMode> lockMode)
 {
-    COMPILE_ASSERT(LOCK_SH == LockShared, LockSharedEncodingIsAsExpected);
-    COMPILE_ASSERT(LOCK_EX == LockExclusive, LockExclusiveEncodingIsAsExpected);
-    COMPILE_ASSERT(LOCK_NB == LockNonBlocking, LockNonBlockingEncodingIsAsExpected);
-    int result = flock(handle, lockMode);
+    COMPILE_ASSERT(LOCK_SH == WTF::enumToUnderlyingType(FileLockMode::Shared), LockSharedEncodingIsAsExpected);
+    COMPILE_ASSERT(LOCK_EX == WTF::enumToUnderlyingType(FileLockMode::Exclusive), LockExclusiveEncodingIsAsExpected);
+    COMPILE_ASSERT(LOCK_NB == WTF::enumToUnderlyingType(FileLockMode::Nonblocking), LockNonblockingEncodingIsAsExpected);
+    int result = flock(handle, lockMode.toRaw());
     return (result != -1);
 }
 
@@ -445,4 +448,5 @@ std::optional<int32_t> getFileDeviceId(const CString& fsFile)
     return fileStat.st_dev;
 }
 
+} // namespace FileSystem
 } // namespace WebCore

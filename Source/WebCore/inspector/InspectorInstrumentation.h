@@ -146,6 +146,7 @@ public:
     static void didCallFunction(const InspectorInstrumentationCookie&, ScriptExecutionContext*);
     static void didAddEventListener(EventTarget&, const AtomicString& eventType);
     static void willRemoveEventListener(EventTarget&, const AtomicString& eventType, EventListener&, bool capture);
+    static bool isEventListenerDisabled(EventTarget&, const AtomicString& eventType, EventListener&, bool capture);
     static InspectorInstrumentationCookie willDispatchEvent(Document&, const Event&, bool hasEventListeners);
     static void didDispatchEvent(const InspectorInstrumentationCookie&);
     static void willHandleEvent(ScriptExecutionContext&, const Event&, const RegisteredEventListener&);
@@ -167,8 +168,8 @@ public:
     static InspectorInstrumentationCookie willRecalculateStyle(Document&);
     static void didRecalculateStyle(const InspectorInstrumentationCookie&);
     static void didScheduleStyleRecalculation(Document&);
-
     static void applyEmulatedMedia(Frame&, String&);
+
     static void willSendRequest(Frame*, unsigned long identifier, DocumentLoader*, ResourceRequest&, const ResourceResponse& redirectResponse);
     static void didLoadResourceFromMemoryCache(Page&, DocumentLoader*, CachedResource*);
     static void didReceiveResourceResponse(Frame&, unsigned long identifier, DocumentLoader*, const ResourceResponse&, ResourceLoader*);
@@ -249,8 +250,8 @@ public:
     static void didChangeCanvasMemory(HTMLCanvasElement&);
     static void recordCanvasAction(CanvasRenderingContext&, const String&, Vector<RecordCanvasActionVariant>&& = { });
     static void didFinishRecordingCanvasFrame(HTMLCanvasElement&, bool forceDispatch = false);
-
 #if ENABLE(WEBGL)
+    static void didEnableExtension(WebGLRenderingContextBase&, const String&);
     static void didCreateProgram(WebGLRenderingContextBase&, WebGLProgram&);
     static void willDeleteProgram(WebGLRenderingContextBase&, WebGLProgram&);
     static bool isShaderProgramDisabled(WebGLRenderingContextBase&, WebGLProgram&);
@@ -323,6 +324,7 @@ private:
     static void didCallFunctionImpl(const InspectorInstrumentationCookie&, ScriptExecutionContext*);
     static void didAddEventListenerImpl(InstrumentingAgents&, EventTarget&, const AtomicString& eventType);
     static void willRemoveEventListenerImpl(InstrumentingAgents&, EventTarget&, const AtomicString& eventType, EventListener&, bool capture);
+    static bool isEventListenerDisabledImpl(InstrumentingAgents&, EventTarget&, const AtomicString& eventType, EventListener&, bool capture);
     static InspectorInstrumentationCookie willDispatchEventImpl(InstrumentingAgents&, Document&, const Event&, bool hasEventListeners);
     static void willHandleEventImpl(InstrumentingAgents&, const Event&, const RegisteredEventListener&);
     static void didHandleEventImpl(InstrumentingAgents&);
@@ -344,8 +346,8 @@ private:
     static InspectorInstrumentationCookie willRecalculateStyleImpl(InstrumentingAgents&, Document&);
     static void didRecalculateStyleImpl(const InspectorInstrumentationCookie&);
     static void didScheduleStyleRecalculationImpl(InstrumentingAgents&, Document&);
-
     static void applyEmulatedMediaImpl(InstrumentingAgents&, String&);
+
     static void willSendRequestImpl(InstrumentingAgents&, unsigned long identifier, DocumentLoader*, ResourceRequest&, const ResourceResponse& redirectResponse);
     static void willSendRequestOfTypeImpl(InstrumentingAgents&, unsigned long identifier, DocumentLoader*, ResourceRequest&, LoadType);
     static void markResourceAsCachedImpl(InstrumentingAgents&, unsigned long identifier);
@@ -421,6 +423,7 @@ private:
     static void recordCanvasActionImpl(InstrumentingAgents&, CanvasRenderingContext&, const String&, Vector<RecordCanvasActionVariant>&& = { });
     static void didFinishRecordingCanvasFrameImpl(InstrumentingAgents&, HTMLCanvasElement&, bool forceDispatch = false);
 #if ENABLE(WEBGL)
+    static void didEnableExtensionImpl(InstrumentingAgents&, WebGLRenderingContextBase&, const String&);
     static void didCreateProgramImpl(InstrumentingAgents&, WebGLRenderingContextBase&, WebGLProgram&);
     static void willDeleteProgramImpl(InstrumentingAgents&, WebGLProgram&);
     static bool isShaderProgramDisabledImpl(InstrumentingAgents&, WebGLProgram&);
@@ -687,6 +690,14 @@ inline void InspectorInstrumentation::willRemoveEventListener(EventTarget& targe
         willRemoveEventListenerImpl(*instrumentingAgents, target, eventType, listener, capture);
 }
 
+inline bool InspectorInstrumentation::isEventListenerDisabled(EventTarget& target, const AtomicString& eventType, EventListener& listener, bool capture)
+{
+    FAST_RETURN_IF_NO_FRONTENDS(false);
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(target.scriptExecutionContext()))
+        return isEventListenerDisabledImpl(*instrumentingAgents, target, eventType, listener, capture);
+    return false;
+}
+
 inline void InspectorInstrumentation::didPostMessage(Frame& frame, TimerBase& timer, JSC::ExecState& state)
 {
     FAST_RETURN_IF_NO_FRONTENDS(void());
@@ -891,18 +902,21 @@ inline void InspectorInstrumentation::applyEmulatedMedia(Frame& frame, String& m
 
 inline void InspectorInstrumentation::willSendRequest(Frame* frame, unsigned long identifier, DocumentLoader* loader, ResourceRequest& request, const ResourceResponse& redirectResponse)
 {
+    FAST_RETURN_IF_NO_FRONTENDS(void());
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForFrame(frame))
         willSendRequestImpl(*instrumentingAgents, identifier, loader, request, redirectResponse);
 }
 
 inline void InspectorInstrumentation::willSendRequestOfType(Frame* frame, unsigned long identifier, DocumentLoader* loader, ResourceRequest& request, LoadType loadType)
 {
+    FAST_RETURN_IF_NO_FRONTENDS(void());
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForFrame(frame))
         willSendRequestOfTypeImpl(*instrumentingAgents, identifier, loader, request, loadType);
 }
 
 inline void InspectorInstrumentation::didLoadResourceFromMemoryCache(Page& page, DocumentLoader* loader, CachedResource* resource)
 {
+    FAST_RETURN_IF_NO_FRONTENDS(void());
     didLoadResourceFromMemoryCacheImpl(instrumentingAgentsForPage(page), loader, resource);
 }
 
@@ -914,12 +928,14 @@ inline void InspectorInstrumentation::didReceiveResourceResponse(Frame& frame, u
 
 inline void InspectorInstrumentation::didReceiveThreadableLoaderResponse(DocumentThreadableLoader& documentThreadableLoader, unsigned long identifier)
 {
+    FAST_RETURN_IF_NO_FRONTENDS(void());
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForDocument(documentThreadableLoader.document()))
         didReceiveThreadableLoaderResponseImpl(*instrumentingAgents, documentThreadableLoader, identifier);
 }
     
 inline void InspectorInstrumentation::didReceiveData(Frame* frame, unsigned long identifier, const char* data, int dataLength, int encodedDataLength)
 {
+    FAST_RETURN_IF_NO_FRONTENDS(void());
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForFrame(frame))
         didReceiveDataImpl(*instrumentingAgents, identifier, data, dataLength, encodedDataLength);
 }
@@ -959,24 +975,28 @@ inline void InspectorInstrumentation::continueWithPolicyIgnore(Frame& frame, uns
 
 inline void InspectorInstrumentation::didFinishXHRLoading(ScriptExecutionContext* context, unsigned long identifier, std::optional<String> decodedText)
 {
+    FAST_RETURN_IF_NO_FRONTENDS(void());
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
         didFinishXHRLoadingImpl(*instrumentingAgents, identifier, decodedText);
 }
 
 inline void InspectorInstrumentation::willLoadXHRSynchronously(ScriptExecutionContext* context)
 {
+    FAST_RETURN_IF_NO_FRONTENDS(void());
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
         willLoadXHRSynchronouslyImpl(*instrumentingAgents);
 }
 
 inline void InspectorInstrumentation::didLoadXHRSynchronously(ScriptExecutionContext* context)
 {
+    FAST_RETURN_IF_NO_FRONTENDS(void());
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
         didLoadXHRSynchronouslyImpl(*instrumentingAgents);
 }
 
 inline void InspectorInstrumentation::scriptImported(ScriptExecutionContext& context, unsigned long identifier, const String& sourceString)
 {
+    FAST_RETURN_IF_NO_FRONTENDS(void());
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
         scriptImportedImpl(*instrumentingAgents, identifier, sourceString);
 }
@@ -989,6 +1009,7 @@ inline void InspectorInstrumentation::scriptExecutionBlockedByCSP(ScriptExecutio
 
 inline void InspectorInstrumentation::didReceiveScriptResponse(ScriptExecutionContext* context, unsigned long identifier)
 {
+    FAST_RETURN_IF_NO_FRONTENDS(void());
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
         didReceiveScriptResponseImpl(*instrumentingAgents, identifier);
 }
@@ -1192,6 +1213,13 @@ inline void InspectorInstrumentation::didFinishRecordingCanvasFrame(HTMLCanvasEl
 }
 
 #if ENABLE(WEBGL)
+inline void InspectorInstrumentation::didEnableExtension(WebGLRenderingContextBase& context, const String& extension)
+{
+    FAST_RETURN_IF_NO_FRONTENDS(void());
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForDocument(context.canvas().document()))
+        didEnableExtensionImpl(*instrumentingAgents, context, extension);
+}
+
 inline void InspectorInstrumentation::didCreateProgram(WebGLRenderingContextBase& context, WebGLProgram& program)
 {
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForDocument(context.canvas().document()))

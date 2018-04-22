@@ -42,6 +42,7 @@
             { "name" : "op_dec", "length" : 2 },
             { "name" : "op_to_number", "length" : 4 },
             { "name" : "op_to_string", "length" : 3 },
+            { "name" : "op_to_object", "length" : 5 },
             { "name" : "op_negate", "length" : 4 },
             { "name" : "op_add", "length" : 5 },
             { "name" : "op_mul", "length" : 5 },
@@ -176,7 +177,9 @@
             { "name" : "op_log_shadow_chicken_prologue", "length" : 2},
             { "name" : "op_log_shadow_chicken_tail", "length" : 3},
             { "name" : "op_resolve_scope_for_hoisting_func_decl_in_eval", "length" : 4 },
-            { "name" : "op_nop", "length" : 1 }
+            { "name" : "op_nop", "length" : 1 },
+            { "name" : "op_super_sampler_begin", "length" : 1 },
+            { "name" : "op_super_sampler_end", "length" : 1 }
         ]
     },
     {
@@ -218,6 +221,8 @@
             { "name" : "llint_throw_during_call_trampoline" },
             { "name" : "llint_native_call_trampoline" },
             { "name" : "llint_native_construct_trampoline" },
+            { "name" : "llint_internal_function_call_trampoline" },
+            { "name" : "llint_internal_function_construct_trampoline" },
             { "name" : "handleUncaughtException" }
         ]
     }

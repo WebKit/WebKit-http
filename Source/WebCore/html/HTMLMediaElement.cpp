@@ -641,7 +641,7 @@ static bool needsAutoplayPlayPauseEventsQuirk(const Document& document)
     if (!page || !page->settings().needsSiteSpecificQuirks())
         return false;
 
-    auto* loader = document.loader();
+    auto loader = makeRefPtr(document.loader());
     return loader && loader->allowedAutoplayQuirks().contains(AutoplayQuirk::SynthesizedPauseEvents);
 }
 
@@ -1521,7 +1521,7 @@ void HTMLMediaElement::loadResource(const URL& initialURL, ContentType& contentT
     }
 
 #if ENABLE(CONTENT_EXTENSIONS)
-    if (auto* documentLoader = frame->loader().documentLoader()) {
+    if (auto documentLoader = makeRefPtr(frame->loader().documentLoader())) {
         if (page->userContentProvider().processContentExtensionRulesForLoad(url, ResourceType::Media, *documentLoader).blockedLoad) {
             mediaLoadingFailed(MediaPlayer::FormatError);
             return;
@@ -1854,7 +1854,7 @@ void HTMLMediaElement::updateActiveTextTrackCues(const MediaTime& movieTime)
         // simple event named cuechange at the track element as well.
         if (is<LoadableTextTrack>(*affectedTrack)) {
             auto event = Event::create(eventNames().cuechangeEvent, false, false);
-            auto* trackElement = downcast<LoadableTextTrack>(*affectedTrack).trackElement();
+            auto trackElement = makeRefPtr(downcast<LoadableTextTrack>(*affectedTrack).trackElement());
             ASSERT(trackElement);
             event->setTarget(trackElement);
             m_asyncEventQueue.enqueueEvent(WTFMove(event));
@@ -2567,7 +2567,7 @@ String HTMLMediaElement::mediaPlayerMediaKeysStorageDirectory() const
     if (storageDirectory.isEmpty())
         return emptyString();
 
-    return pathByAppendingComponent(storageDirectory, SecurityOriginData::fromSecurityOrigin(document().securityOrigin()).databaseIdentifier());
+    return FileSystem::pathByAppendingComponent(storageDirectory, SecurityOriginData::fromSecurityOrigin(document().securityOrigin()).databaseIdentifier());
 }
 
 void HTMLMediaElement::webkitSetMediaKeys(WebKitMediaKeys* mediaKeys)
@@ -3140,6 +3140,11 @@ MediaTime HTMLMediaElement::currentMediaTime() const
 void HTMLMediaElement::setCurrentTime(double time)
 {
     setCurrentTime(MediaTime::createWithDouble(time));
+}
+
+void HTMLMediaElement::setCurrentTimeWithTolerance(double time, double toleranceBefore, double toleranceAfter)
+{
+    seekWithTolerance(MediaTime::createWithDouble(time), MediaTime::createWithDouble(toleranceBefore), MediaTime::createWithDouble(toleranceAfter), true);
 }
 
 void HTMLMediaElement::setCurrentTime(const MediaTime& time)
@@ -3947,7 +3952,7 @@ void HTMLMediaElement::removeAudioTrack(AudioTrack& track)
 void HTMLMediaElement::removeTextTrack(TextTrack& track, bool scheduleEvent)
 {
     TrackDisplayUpdateScope scope { *this };
-    if (auto* cues = track.cues())
+    if (auto cues = makeRefPtr(track.cues()))
         textTrackRemoveCues(track, *cues);
     track.clearClient();
     if (m_textTracks)
@@ -4272,6 +4277,7 @@ void HTMLMediaElement::updateCaptionContainer()
         return;
 
     JSC::MarkedArgumentBuffer noArguments;
+    ASSERT(!noArguments.hasOverflowed());
     JSC::call(exec, methodObject, callType, callData, controllerObject, noArguments);
     scope.clearException();
 
@@ -4282,7 +4288,7 @@ void HTMLMediaElement::updateCaptionContainer()
 void HTMLMediaElement::layoutSizeChanged()
 {
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
-    if (auto* frameView = document().view()) {
+    if (auto frameView = makeRefPtr(document().view())) {
         auto task = [this, protectedThis = makeRef(*this)] {
             if (auto root = userAgentShadowRoot())
                 root->dispatchEvent(Event::create("resize", false, false));
@@ -5338,7 +5344,12 @@ void HTMLMediaElement::userCancelledLoad()
     // Reset m_readyState since m_player is gone.
     m_readyState = HAVE_NOTHING;
     updateMediaController();
+
 #if ENABLE(VIDEO_TRACK)
+    auto* context = scriptExecutionContext();
+    if (!context || context->activeDOMObjectsAreStopped())
+        return; // Document is about to be destructed. Avoid updating layout in updateActiveTextTrackCues.
+
     updateActiveTextTrackCues(MediaTime::zeroTime());
 #endif
 }
@@ -5616,7 +5627,7 @@ void HTMLMediaElement::mediaPlayerCurrentPlaybackTargetIsWirelessChanged(MediaPl
     updateSleepDisabling();
 }
 
-bool HTMLMediaElement::dispatchEvent(Event& event)
+void HTMLMediaElement::dispatchEvent(Event& event)
 {
     if (event.type() == eventNames().webkitcurrentplaybacktargetiswirelesschangedEvent) {
         m_failedToPlayToWirelessTarget = false;
@@ -5625,7 +5636,7 @@ bool HTMLMediaElement::dispatchEvent(Event& event)
 
     DEBUG_LOG(LOGIDENTIFIER, "dispatching '", event.type(), "'");
 
-    return HTMLElement::dispatchEvent(event);
+    HTMLElement::dispatchEvent(event);
 }
 
 bool HTMLMediaElement::addEventListener(const AtomicString& eventType, Ref<EventListener>&& listener, const AddEventListenerOptions& options)
@@ -5767,10 +5778,12 @@ void HTMLMediaElement::enterFullscreen(VideoFullscreenMode mode)
 
 #if ENABLE(FULLSCREEN_API)
     if (document().settings().fullScreenEnabled()) {
+#if ENABLE(VIDEO_USES_ELEMENT_FULLSCREEN)
         if (mode == VideoFullscreenModeStandard) {
             document().requestFullScreenForElement(this, Document::ExemptIFrameAllowFullScreenRequirement);
             return;
         }
+#endif
 
         // If this media element is not going to standard fullscreen mode but there's
         // an element that's currently in full screen in the document, exit full screen
@@ -7024,7 +7037,7 @@ void HTMLMediaElement::setControllerJSProperty(const char* propertyName, JSC::JS
     controllerObject->methodTable(vm)->put(controllerObject, exec, JSC::Identifier::fromString(exec, propertyName), propertyValue, propertySlot);
 }
 
-void HTMLMediaElement::didAddUserAgentShadowRoot(ShadowRoot* root)
+void HTMLMediaElement::didAddUserAgentShadowRoot(ShadowRoot& root)
 {
     DEBUG_LOG(LOGIDENTIFIER);
 
@@ -7067,6 +7080,7 @@ void HTMLMediaElement::didAddUserAgentShadowRoot(ShadowRoot* root)
     argList.append(toJS(exec, globalObject, root));
     argList.append(mediaJSWrapper);
     argList.append(mediaControlsHostJSWrapper);
+    ASSERT(!argList.hasOverflowed());
 
     JSC::JSObject* function = functionValue.toObject(exec);
     scope.assertNoException();
@@ -7160,6 +7174,7 @@ void HTMLMediaElement::updateMediaControlsAfterPresentationModeChange()
         return;
 
     JSC::MarkedArgumentBuffer argList;
+    ASSERT(!argList.hasOverflowed());
     JSC::call(exec, function, callType, callData, controllerObject, argList);
 }
 
@@ -7199,6 +7214,7 @@ String HTMLMediaElement::getCurrentMediaControlsStatus()
     JSC::CallData callData;
     JSC::CallType callType = function->methodTable(vm)->getCallData(function, callData);
     JSC::MarkedArgumentBuffer argList;
+    ASSERT(!argList.hasOverflowed());
     if (callType == JSC::CallType::None)
         return emptyString();
 

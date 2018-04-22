@@ -210,6 +210,8 @@ public:
     WebGLAny getVertexAttrib(GC3Duint index, GC3Denum pname);
     long long getVertexAttribOffset(GC3Duint index, GC3Denum pname);
 
+    bool extensionIsEnabled(const String&);
+
     bool isPreservingDrawingBuffer() const { return m_attributes.preserveDrawingBuffer; }
     void setPreserveDrawingBuffer(bool value) { m_attributes.preserveDrawingBuffer = value; }
 
@@ -671,7 +673,7 @@ protected:
     // Helper function to check target and texture bound to the target.
     // Generate GL errors and return 0 if target is invalid or texture bound is
     // null.  Otherwise, return the texture bound to the target.
-    WebGLTexture* validateTextureBinding(const char* functionName, GC3Denum target, bool useSixEnumsForCubeMap);
+    RefPtr<WebGLTexture> validateTextureBinding(const char* functionName, GC3Denum target, bool useSixEnumsForCubeMap);
 
     // Helper function to check input format/type for functions {copy}Tex{Sub}Image.
     // Generates GL error and returns false if parameters are invalid.

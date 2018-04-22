@@ -191,6 +191,17 @@ class WinPort(DeprecatedPort):
 class WinCairoPort(DeprecatedPort):
     port_flag_name = "wincairo"
 
+    def build_webkit_command(self, build_style=None):
+        command = super(WinCairoPort, self).build_webkit_command(build_style=build_style)
+        command.append('--wincairo')
+        command.append('--64-bit')
+        return command
+
+    def run_webkit_tests_command(self, build_style=None):
+        command = super(WinCairoPort, self).run_webkit_tests_command(build_style)
+        command.append("--wincairo")
+        return command
+
 
 class GtkWK2Port(DeprecatedPort):
     port_flag_name = "gtk-wk2"

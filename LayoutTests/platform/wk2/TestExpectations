@@ -264,7 +264,6 @@ http/tests/loading/cross-origin-XHR-willLoadRequest.html
 # WebKit2 needs showModalDialog
 fast/events/scroll-event-during-modal-dialog.html
 fast/harness/show-modal-dialog.html
-http/tests/security/cross-origin-modal-dialog-base.html [ Skip ]
 
 # WebKit2 needs to support synchronous creation of about:blank/data:url frames
 fast/dom/HTMLDocument/hasFocus.html
@@ -716,6 +715,4 @@ webkit.org/b/172662 [ Debug ] http/tests/cache/disk-cache/redirect-chain-limits.
 webkit.org/b/174471 webrtc/filtering-ice-candidate-after-reload.html [ Pass Timeout ]
 
 webkit.org/b/175678 media/W3C/video/events/event_progress.html [ Pass Failure ]
-
-webkit.org/b/177440 imported/w3c/web-platform-tests/html/browsers/origin/relaxing-the-same-origin-restriction/document_domain_setter_null.tentative.html [ Pass Failure ]
 

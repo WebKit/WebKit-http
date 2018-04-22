@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -47,6 +47,14 @@ void SetConstructor::finishCreation(VM& vm, SetPrototype* setPrototype, GetterSe
     putDirectNonIndexAccessor(vm, vm.propertyNames->speciesSymbol, speciesSymbol, PropertyAttribute::Accessor | PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
 }
 
+static EncodedJSValue JSC_HOST_CALL callSet(ExecState*);
+static EncodedJSValue JSC_HOST_CALL constructSet(ExecState*);
+
+SetConstructor::SetConstructor(VM& vm, Structure* structure)
+    : Base(vm, structure, callSet, constructSet)
+{
+}
+
 static EncodedJSValue JSC_HOST_CALL callSet(ExecState* exec)
 {
     VM& vm = exec->vm();
@@ -92,22 +100,11 @@ static EncodedJSValue JSC_HOST_CALL constructSet(ExecState* exec)
     forEachInIterable(exec, iterable, [&](VM&, ExecState* exec, JSValue nextValue) {
         MarkedArgumentBuffer arguments;
         arguments.append(nextValue);
+        ASSERT(!arguments.hasOverflowed());
         call(exec, adderFunction, adderFunctionCallType, adderFunctionCallData, set, arguments);
     });
 
     return JSValue::encode(set);
-}
-
-ConstructType SetConstructor::getConstructData(JSCell*, ConstructData& constructData)
-{
-    constructData.native.function = constructSet;
-    return ConstructType::Host;
-}
-
-CallType SetConstructor::getCallData(JSCell*, CallData& callData)
-{
-    callData.native.function = callSet;
-    return CallType::Host;
 }
 
 EncodedJSValue JSC_HOST_CALL setPrivateFuncSetBucketHead(ExecState* exec)

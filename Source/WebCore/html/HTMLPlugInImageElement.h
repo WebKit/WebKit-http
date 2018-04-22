@@ -43,14 +43,6 @@ public:
     const String& url() const { return m_url; }
     const URL& loadedUrl() const { return m_loadedUrl; }
 
-    String loadedMimeType() const
-    {
-        String mimeType = serviceType();
-        if (mimeType.isEmpty())
-            mimeType = mimeTypeFromURL(m_loadedUrl);
-        return mimeType;
-    }
-
     // Public for FrameView::addWidgetToUpdate()
     bool needsWidgetUpdate() const { return m_needsWidgetUpdate; }
     void setNeedsWidgetUpdate(bool needsWidgetUpdate) { m_needsWidgetUpdate = needsWidgetUpdate; }
@@ -106,7 +98,7 @@ private:
 
     bool allowedToLoadPluginContent(const String& url, const String& mimeType) const;
 
-    void didAddUserAgentShadowRoot(ShadowRoot*) final;
+    void didAddUserAgentShadowRoot(ShadowRoot&) final;
 
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
     bool childShouldCreateRenderer(const Node&) const override;

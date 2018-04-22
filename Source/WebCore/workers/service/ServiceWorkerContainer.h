@@ -35,6 +35,7 @@
 #include "ServiceWorkerJobClient.h"
 #include "ServiceWorkerRegistration.h"
 #include "ServiceWorkerRegistrationOptions.h"
+#include "WorkerType.h"
 #include <pal/SessionID.h>
 #include <wtf/Threading.h>
 
@@ -61,23 +62,34 @@ public:
 
     void addRegistration(const String& scriptURL, const RegistrationOptions&, Ref<DeferredPromise>&&);
     void removeRegistration(const URL& scopeURL, Ref<DeferredPromise>&&);
-    void getRegistration(const String& url, Ref<DeferredPromise>&&);
-    void getRegistrations(Ref<DeferredPromise>&&);
+    void updateRegistration(const URL& scopeURL, const URL& scriptURL, WorkerType, Ref<DeferredPromise>&&);
+
+    void getRegistration(const String& clientURL, Ref<DeferredPromise>&&);
+    void scheduleTaskToUpdateRegistrationState(ServiceWorkerRegistrationIdentifier, ServiceWorkerRegistrationState, const std::optional<ServiceWorkerIdentifier>&);
+    void scheduleTaskToFireUpdateFoundEvent(ServiceWorkerRegistrationIdentifier);
+
+    using RegistrationsPromise = DOMPromiseDeferred<IDLSequence<IDLInterface<ServiceWorkerRegistration>>>;
+    void getRegistrations(RegistrationsPromise&&);
+
+    void addRegistration(ServiceWorkerRegistration&);
+    void removeRegistration(ServiceWorkerRegistration&);
 
     void startMessages();
 
     void ref() final { refEventTarget(); }
     void deref() final { derefEventTarget(); }
 
+    bool isStopped() const { return m_isStopped; };
+
 private:
     void scheduleJob(Ref<ServiceWorkerJob>&&);
 
     void jobFailedWithException(ServiceWorkerJob&, const Exception&) final;
-    void jobResolvedWithRegistration(ServiceWorkerJob&, ServiceWorkerRegistrationData&&) final;
+    void jobResolvedWithRegistration(ServiceWorkerJob&, ServiceWorkerRegistrationData&&, WTF::Function<void()>&& promiseResolvedHandler) final;
     void jobResolvedWithUnregistrationResult(ServiceWorkerJob&, bool unregistrationResult) final;
     void startScriptFetchForJob(ServiceWorkerJob&) final;
     void jobFinishedLoadingScript(ServiceWorkerJob&, const String&) final;
-    void jobFailedLoadingScript(ServiceWorkerJob&, const ResourceError&) final;
+    void jobFailedLoadingScript(ServiceWorkerJob&, const ResourceError&, std::optional<Exception>&&) final;
 
     void jobDidFinish(ServiceWorkerJob&);
 
@@ -89,14 +101,17 @@ private:
     EventTargetInterface eventTargetInterface() const final { return ServiceWorkerContainerEventTargetInterfaceType; }
     void refEventTarget() final;
     void derefEventTarget() final;
+    void stop() final { m_isStopped = true; }
 
     ReadyPromise m_readyPromise;
 
     NavigatorBase& m_navigator;
 
     RefPtr<SWClientConnection> m_swConnection;
-    HashMap<uint64_t, RefPtr<ServiceWorkerJob>> m_jobMap;
-    mutable RefPtr<ServiceWorker> m_controller;
+    HashMap<uint64_t, Ref<ServiceWorkerJob>> m_jobMap;
+
+    bool m_isStopped { false };
+    HashMap<ServiceWorkerRegistrationIdentifier, ServiceWorkerRegistration*> m_registrations;
 
 #ifndef NDEBUG
     ThreadIdentifier m_creationThread { currentThread() };

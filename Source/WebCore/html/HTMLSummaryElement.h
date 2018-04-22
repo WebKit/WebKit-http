@@ -39,11 +39,11 @@ private:
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
     void defaultEventHandler(Event&) final;
 
-    void didAddUserAgentShadowRoot(ShadowRoot*) final;
+    void didAddUserAgentShadowRoot(ShadowRoot&) final;
 
     bool hasCustomFocusLogic() const final { return true; }
 
-    HTMLDetailsElement* detailsElement() const;
+    RefPtr<HTMLDetailsElement> detailsElement() const;
 
     bool supportsFocus() const final;
 };

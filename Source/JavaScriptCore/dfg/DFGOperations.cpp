@@ -263,7 +263,7 @@ JSCell* JIT_OPERATION operationCreateThis(ExecState* exec, JSObject* constructor
     return constructEmptyObject(exec);
 }
 
-JSCell* JIT_OPERATION operationObjectConstructor(ExecState* exec, JSGlobalObject* globalObject, EncodedJSValue encodedTarget)
+JSCell* JIT_OPERATION operationCallObjectConstructor(ExecState* exec, JSGlobalObject* globalObject, EncodedJSValue encodedTarget)
 {
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
@@ -273,6 +273,26 @@ JSCell* JIT_OPERATION operationObjectConstructor(ExecState* exec, JSGlobalObject
 
     if (value.isUndefinedOrNull())
         return constructEmptyObject(exec, globalObject->objectPrototype());
+    return value.toObject(exec, globalObject);
+}
+
+JSCell* JIT_OPERATION operationToObject(ExecState* exec, JSGlobalObject* globalObject, EncodedJSValue encodedTarget, UniquedStringImpl* errorMessage)
+{
+    VM* vm = &exec->vm();
+    NativeCallFrameTracer tracer(vm, exec);
+    auto scope = DECLARE_THROW_SCOPE(*vm);
+
+    JSValue value = JSValue::decode(encodedTarget);
+    ASSERT(!value.isObject());
+
+    if (UNLIKELY(value.isUndefinedOrNull())) {
+        if (errorMessage->length()) {
+            throwVMTypeError(exec, scope, errorMessage);
+            return nullptr;
+        }
+    }
+
+    scope.release();
     return value.toObject(exec, globalObject);
 }
 
@@ -1796,6 +1816,17 @@ StringImpl* JIT_OPERATION operationResolveRope(ExecState* exec, JSString* string
     return string->value(exec).impl();
 }
 
+JSCell* JIT_OPERATION operationStringSubstr(ExecState* exec, JSCell* cell, int32_t from, int32_t span)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    auto string = jsCast<JSString*>(cell)->value(exec);
+    RETURN_IF_EXCEPTION(scope, nullptr);
+    return jsSubstring(exec, string, from, span);
+}
+
 JSString* JIT_OPERATION operationToLowerCase(ExecState* exec, JSString* string, uint32_t failingIndex)
 {
     VM& vm = exec->vm();
@@ -1954,8 +1985,10 @@ JSCell* JIT_OPERATION operationStrCat2(ExecState* exec, EncodedJSValue a, Encode
     NativeCallFrameTracer tracer(&vm, exec);
     auto scope = DECLARE_THROW_SCOPE(vm);
 
+    ASSERT(!JSValue::decode(a).isSymbol());
+    ASSERT(!JSValue::decode(b).isSymbol());
     JSString* str1 = JSValue::decode(a).toString(exec);
-    scope.assertNoException(); // Impossible, since we must have been given primitives.
+    scope.assertNoException(); // Impossible, since we must have been given non-Symbol primitives.
     JSString* str2 = JSValue::decode(b).toString(exec);
     scope.assertNoException();
 
@@ -1969,8 +2002,11 @@ JSCell* JIT_OPERATION operationStrCat3(ExecState* exec, EncodedJSValue a, Encode
     NativeCallFrameTracer tracer(&vm, exec);
     auto scope = DECLARE_THROW_SCOPE(vm);
 
+    ASSERT(!JSValue::decode(a).isSymbol());
+    ASSERT(!JSValue::decode(b).isSymbol());
+    ASSERT(!JSValue::decode(c).isSymbol());
     JSString* str1 = JSValue::decode(a).toString(exec);
-    scope.assertNoException(); // Impossible, since we must have been given primitives.
+    scope.assertNoException(); // Impossible, since we must have been given non-Symbol primitives.
     JSString* str2 = JSValue::decode(b).toString(exec);
     scope.assertNoException();
     JSString* str3 = JSValue::decode(c).toString(exec);
@@ -2376,6 +2412,7 @@ JSCell* JIT_OPERATION operationSpreadGeneric(ExecState* exec, JSCell* iterable)
 
         MarkedArgumentBuffer arguments;
         arguments.append(iterable);
+        ASSERT(!arguments.hasOverflowed());
         JSValue arrayResult = call(exec, iterationFunction, callType, callData, jsNull(), arguments);
         RETURN_IF_EXCEPTION(throwScope, nullptr);
         array = jsCast<JSArray*>(arrayResult);

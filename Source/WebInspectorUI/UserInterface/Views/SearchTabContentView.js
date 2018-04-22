@@ -32,7 +32,7 @@ WI.SearchTabContentView = class SearchTabContentView extends WI.ContentBrowserTa
         let detailsSidebarPanelConstructors = [WI.ResourceDetailsSidebarPanel, WI.ProbeDetailsSidebarPanel,
             WI.DOMNodeDetailsSidebarPanel, WI.CSSStyleDetailsSidebarPanel];
 
-        if (window.LayerTreeAgent)
+        if (window.LayerTreeAgent && !WI.settings.experimentalEnableLayersTab.value)
             detailsSidebarPanelConstructors.push(WI.LayerTreeDetailsSidebarPanel);
 
         super(identifier || "search", "search", tabBarItem, WI.SearchSidebarPanel, detailsSidebarPanelConstructors);
@@ -70,7 +70,10 @@ WI.SearchTabContentView = class SearchTabContentView extends WI.ContentBrowserTa
 
     canShowRepresentedObject(representedObject)
     {
-        if (!(representedObject instanceof WI.Resource) && !(representedObject instanceof WI.Script) && !(representedObject instanceof WI.DOMTree))
+        if (representedObject instanceof WI.DOMTree)
+            return true;
+
+        if (!(representedObject instanceof WI.Resource) && !(representedObject instanceof WI.Script))
             return false;
 
         return !!this.navigationSidebarPanel.contentTreeOutline.getCachedTreeElement(representedObject);

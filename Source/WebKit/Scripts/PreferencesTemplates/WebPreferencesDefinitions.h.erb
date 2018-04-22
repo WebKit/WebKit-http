@@ -27,52 +27,22 @@
 
 #pragma once
 
-#include "WebPreferencesDefinitionsBase.h"
+#include "WebPreferencesDefaultValues.h"
 
 // macro(KeyUpper, KeyLower, TypeNameUpper, TypeName, DefaultValue, HumanReadableName, HumanReadableDescription)
 
-#define FOR_EACH_WEBKIT_BOOL_PREFERENCE(macro) \
-<%- for @pref in @boolPreferencesNotDebug do -%>
-    macro(<%= @pref.name %>, <%= @pref.nameLower %>, Bool, bool, <%= @pref.defaultValue %>, <%= @pref.humanReadableName %>, <%= @pref.humanReadableDescription %>) \
-<%- end -%>
-    \
-
-#define FOR_EACH_WEBKIT_DOUBLE_PREFERENCE(macro) \
-<%- for @pref in @doublePreferencesNotDebug do -%>
-    macro(<%= @pref.name %>, <%= @pref.nameLower %>, Double, double, <%= @pref.defaultValue %>, <%= @pref.humanReadableName %>, <%= @pref.humanReadableDescription %>) \
-<%- end -%>
-    \
-
-#define FOR_EACH_WEBKIT_UINT32_PREFERENCE(macro) \
-<%- for @pref in @intPreferencesNotDebug do -%>
-    macro(<%= @pref.name %>, <%= @pref.nameLower %>, UInt32, uint32_t, <%= @pref.defaultValue %>, <%= @pref.humanReadableName %>, <%= @pref.humanReadableDescription %>) \
-<%- end -%>
-    \
-
-#define FOR_EACH_WEBKIT_STRING_PREFERENCE(macro) \
-<%- for @pref in @stringPreferencesNotDebug do -%>
-    macro(<%= @pref.name %>, <%= @pref.nameLower %>, String, String, <%= @pref.defaultValue %>, <%= @pref.humanReadableName %>, <%= @pref.humanReadableDescription %>) \
-<%- end -%>
-    \
-
-#define FOR_EACH_WEBKIT_STRING_PREFERENCE_NOT_IN_WEBCORE(macro) \
-<%- for @pref in @stringPreferencesNotDebugNotInWebKit do -%>
-    macro(<%= @pref.name %>, <%= @pref.nameLower %>, String, String, <%= @pref.defaultValue %>, <%= @pref.humanReadableName %>, <%= @pref.humanReadableDescription %>) \
+#define FOR_EACH_WEBKIT_PREFERENCE(macro) \
+<%- for @pref in @preferencesNotDebug do -%>
+    macro(<%= @pref.name %>, <%= @pref.nameLower %>, <%= @pref.typeUpper %>, <%= @pref.type %>, <%= @pref.defaultValue %>, <%= @pref.humanReadableName %>, <%= @pref.humanReadableDescription %>) \
 <%- end -%>
     \
 
 
 // Debug Preferences
 
-#define FOR_EACH_WEBKIT_DEBUG_BOOL_PREFERENCE(macro) \
-<%- for @pref in @boolPreferencesDebug do -%>
-    macro(<%= @pref.name %>, <%= @pref.nameLower %>, Bool, bool, <%= @pref.defaultValue %>, <%= @pref.humanReadableName %>, <%= @pref.humanReadableDescription %>) \
-<%- end -%>
-    \
-
-#define FOR_EACH_WEBKIT_DEBUG_UINT32_PREFERENCE(macro) \
-<%- for @pref in @intPreferencesDebug do -%>
-    macro(<%= @pref.name %>, <%= @pref.nameLower %>, UInt32, uint32_t, <%= @pref.defaultValue %>, <%= @pref.humanReadableName %>, <%= @pref.humanReadableDescription %>) \
+#define FOR_EACH_WEBKIT_DEBUG_PREFERENCE(macro) \
+<%- for @pref in @preferencesDebug do -%>
+    macro(<%= @pref.name %>, <%= @pref.nameLower %>, <%= @pref.typeUpper %>, <%= @pref.type %>, <%= @pref.defaultValue %>, <%= @pref.humanReadableName %>, <%= @pref.humanReadableDescription %>) \
 <%- end -%>
     \
 
@@ -80,23 +50,8 @@
 // Experimental Features
 
 #define FOR_EACH_WEBKIT_EXPERIMENTAL_FEATURE_PREFERENCE(macro) \
-<%- for @pref in @experimentalFeature do -%>
+<%- for @pref in @experimentalFeatures do -%>
     macro(<%= @pref.name %>, <%= @pref.nameLower %>, Bool, bool, <%= @pref.defaultValue %>, <%= @pref.humanReadableName %>, <%= @pref.humanReadableDescription %>) \
 <%- end -%>
-    \
-
-
-
-#define FOR_EACH_WEBKIT_DEBUG_PREFERENCE(macro) \
-    FOR_EACH_WEBKIT_DEBUG_BOOL_PREFERENCE(macro) \
-    FOR_EACH_WEBKIT_DEBUG_UINT32_PREFERENCE(macro) \
-    \
-
-#define FOR_EACH_WEBKIT_PREFERENCE(macro) \
-    FOR_EACH_WEBKIT_BOOL_PREFERENCE(macro) \
-    FOR_EACH_WEBKIT_DOUBLE_PREFERENCE(macro) \
-    FOR_EACH_WEBKIT_UINT32_PREFERENCE(macro) \
-    FOR_EACH_WEBKIT_STRING_PREFERENCE(macro) \
-    FOR_EACH_WEBKIT_STRING_PREFERENCE_NOT_IN_WEBCORE(macro) \
     \
 

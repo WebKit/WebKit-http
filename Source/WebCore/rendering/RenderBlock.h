@@ -54,6 +54,7 @@ enum TextRunFlag {
 typedef unsigned TextRunFlags;
 
 class RenderBlock : public RenderBox {
+    WTF_MAKE_ISO_ALLOCATED(RenderBlock);
 public:
     friend class LineLayoutState;
     virtual ~RenderBlock();
@@ -188,16 +189,9 @@ public:
     void addContinuationWithOutline(RenderInline*);
     bool paintsContinuationOutline(RenderInline*);
 
-    bool isAnonymousBlockContinuation() const { return isAnonymousBlock() && continuation(); }
-    WEBCORE_EXPORT RenderInline* inlineElementContinuation() const;
-    RenderBlock* blockElementContinuation() const;
-
-    using RenderBoxModelObject::continuation;
-    using RenderBoxModelObject::setContinuation;
-
     static RenderPtr<RenderBlock> createAnonymousWithParentRendererAndDisplay(const RenderBox& parent, EDisplay = BLOCK);
     RenderPtr<RenderBlock> createAnonymousBlock(EDisplay = BLOCK) const;
-    static void dropAnonymousBoxChild(RenderBlock& parent, RenderBlock& child);
+    void dropAnonymousBoxChild(RenderBlock& child);
 
     RenderPtr<RenderBox> createAnonymousBoxWithSameTypeAs(const RenderBox&) const override;
 

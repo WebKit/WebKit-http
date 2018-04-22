@@ -1,3 +1,1237 @@
+2017-11-11  Chris Dumez  <cdumez@apple.com>
+
+        Re-sync Service Workers web-platform-tests from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=179575
+
+        Reviewed by Youenn Fablet.
+
+        Re-sync Service Workers web-platform-tests from upstream 04892735ed1.
+
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/registration-attribute.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/registration-attribute.https.html:
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/resources/registration-attribute-newer-worker.js: Added.
+        (record):
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/resources/registration-attribute-worker.js:
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/resources/unregister-controlling-worker.html: Added.
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/resources/unregister-worker.js:
+        (matchQuery):
+        (e.waitUntil.self.registration.unregister.then):
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/resources/update-worker.js:
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/resources/w3c-import.log:
+        * web-platform-tests/service-workers/service-worker/detached-context.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/detached-context.https.html: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-event.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event.https.html:
+        * web-platform-tests/service-workers/service-worker/navigation-preload/empty-preload-response-body.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/navigation-preload/resources/empty-preload-response-body-scope.html: Added.
+        * web-platform-tests/service-workers/service-worker/request-body-blob.https-expected.txt: Removed.
+        * web-platform-tests/service-workers/service-worker/request-body-blob.https.html: Removed.
+        * web-platform-tests/service-workers/service-worker/resources/empty.js: Added.
+        * web-platform-tests/service-workers/service-worker/resources/fetch-event-test-worker.js:
+        (handleHeaders):
+        (handleRequestBody):
+        * web-platform-tests/service-workers/service-worker/resources/interfaces-idls.js:
+        * web-platform-tests/service-workers/service-worker/resources/interfaces-worker.sub.js:
+        (test):
+        * web-platform-tests/service-workers/service-worker/resources/request-body-blob-iframe.html: Removed.
+        * web-platform-tests/service-workers/service-worker/resources/request-body-blob-worker.js: Removed.
+        * web-platform-tests/service-workers/service-worker/resources/respond-with-body-accessed-response-iframe.html: Added.
+        * web-platform-tests/service-workers/service-worker/resources/respond-with-body-accessed-response-worker.js: Added.
+        (getQueryParams):
+        (createResponse):
+        (cloneResponseIfNeeded):
+        (passThroughCacheIfNeeded):
+        (event.request.url.indexOf):
+        (event.respondWith.createResponse.params.then):
+        (then):
+        * web-platform-tests/service-workers/service-worker/resources/respond-with-body-accessed-response.jsonp: Added.
+        * web-platform-tests/service-workers/service-worker/resources/test-helpers.sub.js:
+        * web-platform-tests/service-workers/service-worker/resources/w3c-import.log:
+        * web-platform-tests/service-workers/service-worker/resources/websocket-worker.js: Added.
+        (reportFailure):
+        (onmessage.event.ws.onopen):
+        (onmessage.event.ws.onclose):
+        (onmessage.event.ws.onerror):
+        * web-platform-tests/service-workers/service-worker/resources/xhr.js: Removed.
+        * web-platform-tests/service-workers/service-worker/respond-with-body-accessed-response.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/respond-with-body-accessed-response.https.html: Added.
+        * web-platform-tests/service-workers/service-worker/w3c-import.log:
+        * web-platform-tests/service-workers/service-worker/waiting.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/waiting.https.html:
+        * web-platform-tests/service-workers/service-worker/websocket-in-service-worker.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/websocket-in-service-worker.https.html: Added.
+        * web-platform-tests/service-workers/service-worker/xhr.https-expected.txt: Removed.
+        * web-platform-tests/service-workers/service-worker/xhr.https.html: Removed.
+
+2017-11-10  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, unskip & rebaseline several service worker tests
+
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/unregister.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/update.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/import-scripts-updated-flag.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/navigation-redirect.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/registration-script.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/registration-service-worker-attributes.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/registration-updateviacache.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/unregister-controller.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/unregister-then-register-new-script.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/update-bytecheck.https-expected.txt:
+
+2017-11-10  Chris Dumez  <cdumez@apple.com>
+
+        [Service Workers] Registration promise should be rejected when the service worker fails to start
+        https://bugs.webkit.org/show_bug.cgi?id=179566
+
+        Reviewed by Brady Eidson.
+
+        Rebaseline WPT tests now that we properly reject registration promises when the worker script
+        fails to evaluate.
+
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/registration-attribute.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/navigation-redirect.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/redirected-response.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/update.https-expected.txt:
+
+2017-11-10  Chris Dumez  <cdumez@apple.com>
+
+        [Service Workers] Implement better support for "Clear Registration" algorithm
+        https://bugs.webkit.org/show_bug.cgi?id=179441
+
+        Reviewed by Brady Eidson.
+
+        Rebaseline WPT test due to behavior change. Unfortunately, the check goes from PASS to FAIL.
+        The reason is that we do not implement "Try Clear Registration" algorithm, only the "Clear
+        Registration" one. The test expects that a registration object does not get cleared after
+        unregistration because it is "in use". However, because we do not yet support checking if
+        a registration is "in use" in try clear, we proceed to clearing the registration and marking
+        its service workers as redundant.
+
+        Previously, the test was passing because even though we were clearing the registration, we
+        did not mark its service workers as redundant yet. As a result, we would still report that
+        the registration as having an active worker with "activated" state and the test would think
+        we did not clear the registration, even though we did.
+
+        * web-platform-tests/service-workers/service-worker/getregistrations.https-expected.txt:
+
+2017-11-10  Ms2ger  <Ms2ger@igalia.com>
+
+        Allow XHR to override the User-Agent header.
+        https://bugs.webkit.org/show_bug.cgi?id=179527
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/XMLHttpRequest/setrequestheader-header-allowed-expected.txt: update expectation.
+
+2017-11-09  Chris Dumez  <cdumez@apple.com>
+
+        ServiceWorkerRegistration objects may get recycled for different SWServerRegistration objects
+        https://bugs.webkit.org/show_bug.cgi?id=179517
+
+        Reviewed by Brady Eidson.
+
+        * web-platform-tests/service-workers/service-worker/ready.https-expected.txt:
+        The test fails differently. The failure is expected here since we do not implement the
+        "Try Clear Registration" algorithm. As a result, we do not support resurrecting a
+        registration with the 'uninstalling' flag set. We always clear uninstalling registrations
+        on server side for now.
+
+        * web-platform-tests/service-workers/service-worker/unregister-then-register.https-expected.txt:
+        Same reason as above. The second checks calls unregister() for a registration that is "in use"
+        as expects it to get resurrected when calling register() again. We currently always clear
+        registrations that are unregistered on server side.
+
+
+2017-11-09  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, ebaseline flaky / skipped service worker tests
+        https://bugs.webkit.org/show_bug.cgi?id=179521
+
+        Rebaseline skipped / flaky service worker tests to get better estimates of our pass rate.
+
+        * web-platform-tests/service-workers/service-worker/extendable-event-waituntil.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-canvas-tainting-cache.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-canvas-tainting.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-cors-xhr.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-request-redirect.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/foreign-fetch-basics.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/performance-timeline.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/register-foreign-fetch-errors.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/registration-updateviacache.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/unregister-controller.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/unregister-then-register-new-script.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/update-bytecheck.https-expected.txt:
+
+2017-11-09  Chris Dumez  <cdumez@apple.com>
+
+        Implement real post 'install' event steps of the Install algorithm (steps 14+)
+        https://bugs.webkit.org/show_bug.cgi?id=179401
+
+        Reviewed by Brady Eidson.
+
+        Rebaseline a test that is now failing later (progression).
+
+        * web-platform-tests/service-workers/service-worker/navigate-window.https-expected.txt:
+
+2017-11-08  Brady Eidson  <beidson@apple.com>
+
+        Some SW Container and Registration tweaks.
+        https://bugs.webkit.org/show_bug.cgi?id=179450
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/service-workers/service-worker/claim-with-redirect.https-expected.txt:
+
+2017-11-08  Maciej Stachowiak  <mjs@apple.com>
+
+        Switch encoding WPT test suite to updating via import-w3c-tests
+        https://bugs.webkit.org/show_bug.cgi?id=179412
+
+        Reviewed by Youenn Fablet.
+
+        * resources/import-expectations.json: Import encoding tests instead of skipping.
+        * web-platform-tests/encoding/eof-utf-8-one-expected.html: Added.
+        * web-platform-tests/encoding/eof-utf-8-three-expected.html: Added.
+        * web-platform-tests/encoding/eof-utf-8-two-expected.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/w3c-import.log: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/w3c-import.log: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/w3c-import.log: Added.
+        * web-platform-tests/encoding/resources/w3c-import.log: Added.
+        * web-platform-tests/encoding/textdecoder-copy.any-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-copy.any.html: Added.
+        * web-platform-tests/encoding/textdecoder-copy.any.worker-expected.txt: Added.
+        * web-platform-tests/encoding/textdecoder-copy.any.worker.html: Added.
+        * web-platform-tests/encoding/textdecoder-labels-expected.txt.rej: Added.
+        * web-platform-tests/encoding/textencoder-constructor-non-utf-expected.txt.rej: Added.
+        * web-platform-tests/encoding/w3c-import.log: Added.
+
+2017-11-08  Chris Dumez  <cdumez@apple.com>
+
+        [Service Workers] Support waitUntil() on the 'install' event
+        https://bugs.webkit.org/show_bug.cgi?id=179396
+
+        Reviewed by Brady Eidson.
+
+        Rebaseline a few WPT tests.
+
+        * web-platform-tests/service-workers/service-worker/oninstall-script-error.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/register-wait-forever-in-install-worker.https-expected.txt:
+
+2017-11-08  Ms2ger  <Ms2ger@igalia.com>
+
+        Update XMLHttpRequest tests.
+        https://bugs.webkit.org/show_bug.cgi?id=179421
+
+        Reviewed by Sam Weinig.
+
+        * resources/import-expectations.json: enabled some more tests
+        * web-platform-tests/XMLHttpRequest/abort-during-done.htm:
+        * web-platform-tests/XMLHttpRequest/abort-during-headers-received.htm:
+        * web-platform-tests/XMLHttpRequest/abort-during-loading.htm:
+        * web-platform-tests/XMLHttpRequest/open-after-abort.htm:
+        * web-platform-tests/XMLHttpRequest/open-url-multi-window-2-expected.txt:
+        * web-platform-tests/XMLHttpRequest/open-url-multi-window-2.htm:
+        * web-platform-tests/XMLHttpRequest/open-url-multi-window-3-expected.txt:
+        * web-platform-tests/XMLHttpRequest/open-url-multi-window-3.htm:
+        * web-platform-tests/XMLHttpRequest/open-url-multi-window-4.htm:
+        * web-platform-tests/XMLHttpRequest/open-url-multi-window-6.htm:
+        * web-platform-tests/XMLHttpRequest/open-url-redirected-worker-origin-expected.txt:
+        * web-platform-tests/XMLHttpRequest/open-url-redirected-worker-origin.htm:
+        * web-platform-tests/XMLHttpRequest/open-url-worker-origin-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/open-url-worker-origin.htm: Added.
+        * web-platform-tests/XMLHttpRequest/overridemimetype-open-state-force-xml.htm:
+        * web-platform-tests/XMLHttpRequest/resources/workerxhr-origin-referrer.js:
+        * web-platform-tests/XMLHttpRequest/resources/workerxhr-simple.js:
+        * web-platform-tests/XMLHttpRequest/resources/xmlhttprequest-timeout-simple.js:
+        * web-platform-tests/XMLHttpRequest/resources/xmlhttprequest-timeout-synconmain.js:
+        * web-platform-tests/XMLHttpRequest/resources/xmlhttprequest-timeout-synconworker.js:
+        * web-platform-tests/XMLHttpRequest/resources/xmlhttprequest-timeout-twice.js:
+        * web-platform-tests/XMLHttpRequest/resources/xmlhttprequest-timeout.js:
+        * web-platform-tests/XMLHttpRequest/responsedocument-decoding.htm:
+        * web-platform-tests/XMLHttpRequest/send-authentication-basic-cors-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/send-authentication-basic-cors.htm: Added.
+        * web-platform-tests/XMLHttpRequest/send-authentication-basic-repeat-no-args-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/send-authentication-basic-repeat-no-args.htm: Added.
+        * web-platform-tests/XMLHttpRequest/send-authentication-basic-setrequestheader.htm: Added.
+        * web-platform-tests/XMLHttpRequest/send-authentication-basic.htm: Added.
+        * web-platform-tests/XMLHttpRequest/send-authentication-competing-names-passwords-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/send-authentication-competing-names-passwords.htm: Added.
+        * web-platform-tests/XMLHttpRequest/send-entity-body-basic-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/send-entity-body-basic.htm: Added.
+        * web-platform-tests/XMLHttpRequest/send-entity-body-document-expected.txt:
+        * web-platform-tests/XMLHttpRequest/send-entity-body-document.htm:
+        * web-platform-tests/XMLHttpRequest/send-entity-body-get-head-async.htm:
+        * web-platform-tests/XMLHttpRequest/send-entity-body-get-head.htm:
+        * web-platform-tests/XMLHttpRequest/send-network-error-async-events.sub-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/send-network-error-async-events.sub.htm: Added.
+        * web-platform-tests/XMLHttpRequest/send-redirect-infinite.htm:
+        * web-platform-tests/XMLHttpRequest/send-redirect-no-location.htm:
+        * web-platform-tests/XMLHttpRequest/send-redirect-post-upload.htm:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-after-send.htm:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-before-open.htm:
+        * web-platform-tests/XMLHttpRequest/w3c-import.log:
+        * web-platform-tests/XMLHttpRequest/xmlhttprequest-timeout-reused.html:
+        * web-platform-tests/XMLHttpRequest/xmlhttprequest-unsent.htm:
+
+2017-11-07  Brady Eidson  <beidson@apple.com>
+
+        Implement "UpdateWorkerState" and use it
+        https://bugs.webkit.org/show_bug.cgi?id=179318
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/service-workers/service-worker/update.https-expected.txt:
+
+2017-11-07  Maciej Stachowiak  <mjs@apple.com>
+
+        Update WPT encoding test suite to the latest version.
+        https://bugs.webkit.org/show_bug.cgi?id=179312
+
+        Reviewed by Youenn Fablet.
+
+        * resources/resource-files.json: Mark HTML files that aren't tests
+        but which are not in resources/ directories.
+        
+        The remaining changes are updates from upstream.
+
+        * web-platform-tests/encoding/OWNERS:
+        * web-platform-tests/encoding/api-invalid-label-expected.txt:
+        * web-platform-tests/encoding/api-invalid-label.html:
+        * web-platform-tests/encoding/api-replacement-encodings-expected.txt:
+        * web-platform-tests/encoding/api-replacement-encodings.html:
+        * web-platform-tests/encoding/eof-shift_jis-ref.html: Added.
+        * web-platform-tests/encoding/eof-shift_jis.html: Added.
+        * web-platform-tests/encoding/eof-utf-8-one-ref.html: Added.
+        * web-platform-tests/encoding/eof-utf-8-one.html: Added.
+        * web-platform-tests/encoding/eof-utf-8-three-ref.html: Added.
+        * web-platform-tests/encoding/eof-utf-8-three.html: Added.
+        * web-platform-tests/encoding/eof-utf-8-two-ref.html: Added.
+        * web-platform-tests/encoding/eof-utf-8-two.html: Added.
+        * web-platform-tests/encoding/idlharness.html:
+        * web-platform-tests/encoding/iso-2022-jp-decoder-expected.txt:
+        * web-platform-tests/encoding/iso-2022-jp-decoder.html:
+        * web-platform-tests/encoding/legacy-mb-japanese: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/jis0208_index.js: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-csshiftjis-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-csshiftjis.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-errors-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-errors.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-ms932-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-ms932.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-ms_kanji-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-ms_kanji.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-shift-jis-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-shift-jis.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-sjis-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-sjis.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-windows-31j-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-windows-31j.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-x-sjis-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode-x-sjis.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decode.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-decoder.js: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-csshiftjis-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-csshiftjis.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-csshiftjis.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-errors-han-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-errors-han.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-errors-han.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-errors-hangul-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-errors-hangul.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-errors-hangul.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-errors-misc-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-errors-misc.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-errors-misc.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-ms932-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-ms932.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-ms932.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-ms_kanji-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-ms_kanji.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-ms_kanji.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-shift-jis-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-shift-jis.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-shift-jis.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-sjis-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-sjis.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-sjis.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-windows-31j-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-windows-31j.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-windows-31j.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-x-sjis-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-x-sjis.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form-x-sjis.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-form.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href-errors-han-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href-errors-han.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href-errors-han.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href-errors-hangul-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href-errors-hangul.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href-errors-hangul.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href-errors-misc-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href-errors-misc.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href-errors-misc.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encode-href.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis-encoder.js: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis_chars-csshiftjis.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis_chars-csshiftjis.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis_chars-ms932.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis_chars-ms932.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis_chars-ms_kanji.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis_chars-ms_kanji.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis_chars-shift-jis.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis_chars-shift-jis.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis_chars-sjis.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis_chars-sjis.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis_chars-windows-31j.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis_chars-windows-31j.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis_chars-x-sjis.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis_chars-x-sjis.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis_chars.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis_chars.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis_errors.html: Added.
+        * web-platform-tests/encoding/legacy-mb-japanese/shift_jis/sjis_errors.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-cseuckr-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-cseuckr.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-csksc56011987-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-csksc56011987.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-errors-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-errors.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-iso-ir-149-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-iso-ir-149.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-korean-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-korean.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-ks_c_5601-1987-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-ks_c_5601-1987.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-ks_c_5601-1989-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-ks_c_5601-1989.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-ksc5601-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-ksc5601.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-ksc_5601-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-ksc_5601.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-windows-949-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-windows-949.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decoder.js: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-cseuckr-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-cseuckr.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-cseuckr.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-csksc56011987-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-csksc56011987.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-csksc56011987.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-errors-han-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-errors-han.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-errors-han.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-errors-hangul-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-errors-hangul.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-errors-hangul.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-errors-misc-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-errors-misc.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-errors-misc.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-iso-ir-149-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-iso-ir-149.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-iso-ir-149.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-korean-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-korean.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-korean.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-ks_c_5601-1987-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-ks_c_5601-1987.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-ks_c_5601-1987.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-ks_c_5601-1989-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-ks_c_5601-1989.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-ks_c_5601-1989.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-ksc5601-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-ksc5601.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-ksc5601.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-ksc_5601-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-ksc_5601.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-ksc_5601.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-windows-949-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-windows-949.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form-windows-949.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-form.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-href-errors-han-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-href-errors-han.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-href-errors-han.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-href-errors-misc-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-href-errors-misc.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-href-errors-misc.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-href-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-href.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encode-href.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-encoder.js: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr_chars-cseuckr.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr_chars-cseuckr.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr_chars-csksc56011987.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr_chars-csksc56011987.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr_chars-iso-ir-149.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr_chars-iso-ir-149.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr_chars-korean.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr_chars-korean.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr_chars-ks_c_5601-1987.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr_chars-ks_c_5601-1987.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr_chars-ks_c_5601-1989.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr_chars-ks_c_5601-1989.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr_chars-ksc5601.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr_chars-ksc5601.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr_chars-ksc_5601.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr_chars-ksc_5601.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr_chars-windows-949.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr_chars-windows-949.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr_chars.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr_chars.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr_errors.html: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr_errors.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr_index.js: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-decode-big5-hkscs-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-decode-big5-hkscs.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-decode-cn-big5-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-decode-cn-big5.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-decode-csbig5-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-decode-csbig5.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-decode-errors-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-decode-errors.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-decode-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-decode-extra-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-decode-extra.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-decode-x-x-big5-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-decode-x-x-big5.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-decode.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-decoder.js: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-enc-ascii-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-enc-ascii.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-enc-ascii.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-big5-hkscs-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-big5-hkscs.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-big5-hkscs.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-cn-big5-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-cn-big5.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-cn-big5.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-csbig5-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-csbig5.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-csbig5.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-extBa-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-extBa.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-extBa.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-extBb-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-extBb.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-extBb.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-han-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-han.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-han.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-hangul-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-hangul.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-hangul.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-misc-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-misc.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-misc.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-pua-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-errors-pua.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-x-x-big5-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-x-x-big5.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form-x-x-big5.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-form.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-href-errors-han-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-href-errors-han.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-href-errors-han.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-href-errors-hangul-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-href-errors-hangul.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-href-errors-hangul.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-href-errors-misc-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-href-errors-misc.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-href-errors-misc.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-href-expected.txt: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-href.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encode-href.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5-encoder.js: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5_chars-big5-hkscs.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5_chars-big5-hkscs.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5_chars-cn-big5.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5_chars-cn-big5.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5_chars-csbig5.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5_chars-csbig5.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5_chars-x-x-big5.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5_chars-x-x-big5.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5_chars.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5_chars.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5_chars_extra.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5_chars_extra.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5_errors.html: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5_errors.html.headers: Added.
+        * web-platform-tests/encoding/legacy-mb-tchinese/big5/big5_index.js: Added.
+        * web-platform-tests/encoding/reftest.list: Added.
+        * web-platform-tests/encoding/replacement-encodings-expected.txt: Added.
+        * web-platform-tests/encoding/replacement-encodings.html: Added.
+        * web-platform-tests/encoding/resources/decoding-helpers.js: Added.
+        * web-platform-tests/encoding/resources/encodings.js:
+        * web-platform-tests/encoding/resources/utf-32-big-endian-bom.html: Added.
+        * web-platform-tests/encoding/resources/utf-32-big-endian-bom.xml: Added.
+        * web-platform-tests/encoding/resources/utf-32-big-endian-nobom.html: Added.
+        * web-platform-tests/encoding/resources/utf-32-big-endian-nobom.xml: Added.
+        * web-platform-tests/encoding/resources/utf-32-little-endian-bom.html: Added.
+        * web-platform-tests/encoding/resources/utf-32-little-endian-bom.xml: Added.
+        * web-platform-tests/encoding/resources/utf-32-little-endian-nobom.html: Added.
+        * web-platform-tests/encoding/resources/utf-32-little-endian-nobom.xml: Added.
+        * web-platform-tests/encoding/single-byte-decoder-expected.txt:
+        * web-platform-tests/encoding/single-byte-decoder.html:
+        * web-platform-tests/encoding/textdecoder-copy.any.js: Added.
+        * web-platform-tests/encoding/textdecoder-fatal-single-byte-expected.txt:
+        * web-platform-tests/encoding/textdecoder-fatal-single-byte.html:
+        * web-platform-tests/encoding/textdecoder-labels-expected.txt:
+        * web-platform-tests/encoding/textdecoder-labels.html:
+        * web-platform-tests/encoding/textencoder-constructor-non-utf-expected.txt:
+        * web-platform-tests/encoding/textencoder-constructor-non-utf.html:
+        * web-platform-tests/encoding/unsupported-encodings-expected.txt: Added.
+        * web-platform-tests/encoding/unsupported-encodings.html: Added.
+        * web-platform-tests/encoding/utf-32-expected.txt: Added.
+        * web-platform-tests/encoding/utf-32.html: Added.
+
+2017-11-06  Maciej Stachowiak  <mjs@apple.com>
+
+        Canonical name of EUC-KR encoding should be EUC-KR, not windows-949
+        https://bugs.webkit.org/show_bug.cgi?id=179305
+
+        Reviewed by Alexey Proskuryakov.
+
+        * web-platform-tests/encoding/textdecoder-labels-expected.txt: Updated expected results. The test already correctly covered this.
+        * web-platform-tests/encoding/textencoder-constructor-non-utf-expected.txt: ditto
+
+2017-11-05  Chris Dumez  <cdumez@apple.com>
+
+        Implement ServiceWorkerRegistration.update()
+        https://bugs.webkit.org/show_bug.cgi?id=179270
+
+        Reviewed by Youenn Fablet.
+
+        Rebaseline WPT tests now that more are passing or at least failing later.
+
+        * web-platform-tests/service-workers/service-worker/claim-affect-other-registration.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/claim-with-redirect.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/import-scripts-redirect.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/multiple-register.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/multiple-update.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/postmessage-from-waiting-serviceworker.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/ready.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/registration-script.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/skip-waiting.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/unregister-then-register.https-expected.txt:
+
+        * web-platform-tests/service-workers/service-worker/update.https-expected.txt:
+        I investigated this test and it is still failing later on because we clear registrations too
+        aggressively on the StorageProcess side we are supposed to make sure the registration does
+        not have a newestWorker before clearing it when a script fetch fails or a script syntax error
+        occurs. We properly have those if (!newestWorker) checks in the code but service workers
+        are not yet populated on the SWServerRegistration object so SWServerRegistration::getNewestWorker()
+        alwasy returns null.
+
+2017-11-04  Chris Dumez  <cdumez@apple.com>
+
+        Index properties on cross origin Window objects should be enumerable
+        https://bugs.webkit.org/show_bug.cgi?id=179289
+
+        Reviewed by Darin Adler.
+
+        Re-sync WPT test after:
+        - https://github.com/w3c/web-platform-tests/pull/8045
+
+        Rebaseline a couple of WPT tests now that more checks are passing.
+
+        * web-platform-tests/html/browsers/origin/cross-origin-objects/cross-origin-objects-expected.txt:
+        * web-platform-tests/html/browsers/origin/cross-origin-objects/cross-origin-objects.html:
+        * web-platform-tests/html/browsers/the-window-object/window-indexed-properties-expected.txt:
+
+2017-11-03  Youenn Fablet  <youenn@apple.com>
+
+        Implement ServiceWorkerContainer.getRegistration
+        https://bugs.webkit.org/show_bug.cgi?id=179253
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/service-workers/service-worker/activation.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/claim-affect-other-registration.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/claim-with-redirect.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/getregistration.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/multi-globals/url-parsing.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/navigate-window.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/registration-iframe.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/skip-waiting-without-using-registration.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/synced-state.https-expected.txt:
+
+2017-11-03  Youenn Fablet  <youenn@apple.com>
+
+        Implement Service Worker Matching Registration algorithm
+        https://bugs.webkit.org/show_bug.cgi?id=178882
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/service-workers/service-worker/multi-globals/url-parsing.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/multiple-register.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/registration-basic.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/registration-scope.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/serviceworkerobject-scripturl.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/unregister-controller.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/unregister.https-expected.txt:
+
+2017-11-03  Ms2ger  <Ms2ger@igalia.com>
+
+        Update Event-timestamp-high-resolution.html.
+        https://bugs.webkit.org/show_bug.cgi?id=179242
+
+        Reviewed by Darin Adler.
+
+        Synchronise with upstream to make the test more robust.
+
+        * web-platform-tests/dom/events/Event-timestamp-high-resolution.html:
+
+2017-11-03  Antti Koivisto  <antti@apple.com>
+
+        Crash in WebCore::RenderStyle::overflowX with display:contents
+        https://bugs.webkit.org/show_bug.cgi?id=178857
+        <rdar://problem/35201120>
+
+        Reviewed by Zalan Bujtas.
+
+        * web-platform-tests/css/css-display-3/display-contents-computed-style-expected.txt:
+
+2017-11-02  Youenn Fablet  <youenn@apple.com>
+
+        Fix WPT service worker tests using www1 URLs
+        https://bugs.webkit.org/show_bug.cgi?id=179144
+
+        Reviewed by Sam Weinig.
+
+        * web-platform-tests/service-workers/service-worker/fetch-canvas-tainting-cache.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-canvas-tainting.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-cors-xhr.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-response-taint.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/resources/test-helpers.sub.js:
+
+2017-11-02  Chris Dumez  <cdumez@apple.com>
+
+        [Service Workers] Add initial implementation for try Clear Registration / Clear Registration algorithms
+        https://bugs.webkit.org/show_bug.cgi?id=179151
+
+        Reviewed by Youenn Fablet.
+
+        Rebbaseline several WPT tests now that registrations are actually removed.
+
+        * web-platform-tests/service-workers/service-worker/multi-globals/url-parsing.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/registration-basic.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/registration-scope.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/serviceworkerobject-scripturl.https-expected.txt:
+
+2017-11-01  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r219659): Can no longer log into ifttt.com using Google account
+        https://bugs.webkit.org/show_bug.cgi?id=179117
+
+        Reviewed by Geoffrey Garen.
+
+        Rebaseline WPT tests.
+
+        * web-platform-tests/html/browsers/origin/cross-origin-objects/cross-origin-objects-expected.txt:
+        * web-platform-tests/html/browsers/the-window-object/window-indexed-properties-expected.txt:
+
+2017-10-31  Dean Jackson  <dino@apple.com>
+
+        transferFromImageBitmap should update canvas dimensions
+        https://bugs.webkit.org/show_bug.cgi?id=179096
+        <rdar://problem/35285218>
+
+        Reviewed by Sam Weinig.
+
+        Update expected results now that we pass more of this test.
+
+        * web-platform-tests/imagebitmap-renderingcontext/bitmaprenderer-as-imagesource-expected.txt:
+
+2017-10-31  Chris Dumez  <cdumez@apple.com>
+
+        Fix a couple of service worker tests and unskip them
+        https://bugs.webkit.org/show_bug.cgi?id=179088
+
+        Reviewed by Sam Weinig.
+
+        Merge fixes from https://github.com/w3c/web-platform-tests/pull/8019 and rebaseline tests.
+
+        * web-platform-tests/service-workers/service-worker/fetch-event-network-error.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event-respond-with-argument.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/resources/fetch-event-network-error-controllee-iframe.html:
+        * web-platform-tests/service-workers/service-worker/resources/fetch-event-respond-with-argument-iframe.html:
+
+2017-10-30  Chris Dumez  <cdumez@apple.com>
+
+        Fire updatefound event after resolving the registration promise
+        https://bugs.webkit.org/show_bug.cgi?id=178985
+
+        Reviewed by Youenn Fablet.
+
+        Rebaseline tests and land expected results for tests that are timing out.
+        A lot of tests are now actualling testing something instead of failing right away.
+
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-add.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-delete.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-keys.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-match.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-matchAll.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-put.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-storage-keys.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-storage-match.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-storage.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/serviceworker/credentials.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/close.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/extendable-message-event-constructor.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/extendable-message-event.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/postmessage.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/registration-attribute.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/service-worker-error-event.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/unregister.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/update.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/activate-event-after-install-state-change.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/activation-after-registration.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/active.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/appcache-ordering-main.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/claim-affect-other-registration.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/claim-fetch.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/claim-not-using-registration.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/claim-using-registration.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/claim-worker-fetch.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/client-id.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/client-navigate.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/clients-get-client-types.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/clients-get-cross-origin.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/clients-get.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/clients-matchall-client-types.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/clients-matchall-exact-controller.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/clients-matchall-include-uncontrolled.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/clients-matchall-on-evaluation.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/clients-matchall-order.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/clients-matchall.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/controller-on-disconnect.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/controller-on-load.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/controller-on-reload.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/extendable-event-async-waituntil.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/extendable-event-waituntil.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-canvas-tainting-cache.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-canvas-tainting.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-cors-xhr.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-csp.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event-after-navigation-within-page.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event-async-respond-with.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event-network-error.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event-redirect.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event-referrer-policy.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event-respond-with-argument.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event-respond-with-readable-stream.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event-respond-with-response-body-with-invalid-chunk.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event-respond-with-stops-propagation.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event-throws-after-respond-with.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event-within-sw.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-frame-resource.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-header-visibility.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-mixed-content-to-inscope.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-mixed-content-to-outscope.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-request-css-base-url.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-request-css-cross-origin-mime-check.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-request-css-images.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-request-fallback.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-request-html-imports.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-request-no-freshness-headers.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-request-redirect.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-request-resources.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-request-xhr-sync.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-request-xhr.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-response-taint.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-response-xhr.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-waits-for-activate.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/foreign-fetch-basics.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/foreign-fetch-cors.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/foreign-fetch-event.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/foreign-fetch-workers.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/getregistrations.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/http-to-https-redirect-and-register.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/iframe-sandbox-register-link-element.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/immutable-prototype-serviceworker.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/import-scripts-redirect.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/import-scripts-updated-flag.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/indexeddb.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/install-event-type.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/installing.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/interfaces-sw.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/interfaces-window.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/invalid-blobtype.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/invalid-header.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/iso-latin1-header.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/link-element-register-basic.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/link-element-register-mime-types.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/link-element-register-scope.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/link-element-register-script-url.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/link-element-register-script.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/link-element-register-security-error.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/mime-sniffing.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/multi-globals/url-parsing.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/multiple-register.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/multiple-update.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/navigate-window.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/navigation-preload/broken-chunked-encoding.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/navigation-preload/chunked-encoding.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/navigation-preload/empty-preload-response-body.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/navigation-preload/get-state.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/navigation-preload/redirect.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/navigation-preload/request-headers.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/navigation-preload/resource-timing.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/navigation-redirect-body.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/navigation-redirect-to-http.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/navigation-redirect.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/onactivate-script-error.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/oninstall-script-error.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/opaque-response-preloaded.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/performance-timeline.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/postmessage-blob-url.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/postmessage-from-waiting-serviceworker.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/postmessage-msgport-to-client.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/postmessage-to-client.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/postmessage.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/ready.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/redirected-response.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/referer.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/referrer-policy-header.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/register-default-scope.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/register-foreign-fetch-errors.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/register-same-scope-different-script-url.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/register-wait-forever-in-install-worker.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/registration-basic.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/registration-end-to-end.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/registration-events.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/registration-mime-types.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/registration-scope.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/registration-script-url.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/registration-script.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/registration-security-error.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/registration-service-worker-attributes.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/registration-updateviacache.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/request-body-blob.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/request-end-to-end.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/resource-timing.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/service-worker-csp-connect.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/service-worker-csp-default.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/service-worker-csp-script.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/serviceworker-message-event-historical.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/serviceworkerobject-scripturl.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/shared-worker-controlled.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/skip-waiting-installed.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/skip-waiting-using-registration.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/skip-waiting-without-client.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/skip-waiting.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/state.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/synced-state.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/uncontrolled-page.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/unregister-controller.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/unregister-then-register-new-script.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/unregister-then-register.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/unregister.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/update-after-navigation-fetch-event.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/update-after-oneday.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/update-bytecheck.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/update-recovery.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/update.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/waiting.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/websocket.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/windowclient-navigate.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/worker-interception.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/xhr.https-expected.txt:
+
+2017-10-30  Dean Jackson  <dino@apple.com>
+
+        Implement "bitmaprenderer" CanvasRenderingContext
+        https://bugs.webkit.org/show_bug.cgi?id=178992
+        <rdar://problem/34147157>
+
+        Reviewed by Sam Weinig.
+
+        Update the expected results now more of the interface has
+        been added.
+
+        * web-platform-tests/imagebitmap-renderingcontext/bitmaprenderer-as-imagesource-expected.txt:
+        * web-platform-tests/imagebitmap-renderingcontext/context-creation-with-alpha-expected.txt:
+        * web-platform-tests/imagebitmap-renderingcontext/tranferFromImageBitmap-null-expected.txt:
+        * web-platform-tests/imagebitmap-renderingcontext/transferFromImageBitmap-detached-expected.txt:
+
+2017-10-29  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, revaseline a few tests after r224156.
+
+        * web-platform-tests/service-workers/service-worker/import-scripts-redirect.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/mime-sniffing.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/ready.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/redirected-response.https-expected.txt:
+        * web-platform-tests/streams/readable-byte-streams/detached-buffers.serviceworker.https-expected.txt:
+
+2017-10-28  Dean Jackson  <dino@apple.com>
+
+        createImageBitmap with HTMLCanvasElement
+        https://bugs.webkit.org/show_bug.cgi?id=178984
+        <rdar://problem/35238440>
+
+        Reviewed by Sam Weinig.
+
+        Update the expected results.
+
+        * web-platform-tests/2dcontext/imagebitmap/createImageBitmap-drawImage-expected.txt:
+        * web-platform-tests/2dcontext/imagebitmap/createImageBitmap-sizeOverflow-expected.txt:
+        * web-platform-tests/imagebitmap-renderingcontext/bitmaprenderer-as-imagesource-expected.txt:
+
+2017-10-28  Youenn Fablet  <youenn@apple.com>
+
+        Rebase WPT tests up to a1c0107
+        https://bugs.webkit.org/show_bug.cgi?id=178589
+
+        Reviewed by Alex Christensen.
+
+        * resources/TestRepositories:
+        * resources/import-expectations.json:
+        * resources/resource-files.json:
+        * web-platform-tests: Updated.
+
+2017-10-28  Chris Dumez  <cdumez@apple.com>
+
+        Update testharness.js to work around our lack of support for MessagePort in service workers
+        https://bugs.webkit.org/show_bug.cgi?id=178977
+
+        Reviewed by Sam Weinig.
+
+        Update testharness.js to work around our lack of support for MessagePort in service workers, similarly
+        to what was already done for Edge.
+
+        * web-platform-tests/resources/testharness.js:
+
+2017-10-27  Chris Dumez  <cdumez@apple.com>
+
+        Unskip more Service Workers tests
+        https://bugs.webkit.org/show_bug.cgi?id=178944
+
+        Reviewed by Sam Weinig.
+
+        Land expected results for tests that have been unskipped.
+
+        * web-platform-tests/service-workers/cache-storage/serviceworker/credentials.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/extendable-message-event.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/postmessage.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/registration-attribute.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/service-worker-error-event.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/unregister.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/update.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/activate-event-after-install-state-change.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/activation-after-registration.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/activation.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/active.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/appcache-ordering-main.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/claim-affect-other-registration.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/claim-fetch.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/claim-not-using-registration.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/claim-shared-worker-fetch.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/claim-using-registration.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/claim-with-redirect.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/claim-worker-fetch.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/client-id.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/client-navigate.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/clients-get-client-types.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/clients-get-cross-origin.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/clients-get.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/clients-matchall-client-types.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/clients-matchall-exact-controller.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/clients-matchall-include-uncontrolled.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/clients-matchall-order.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/clients-matchall.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/controller-on-disconnect.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/controller-on-load.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/controller-on-reload.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/extendable-event-async-waituntil.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/extendable-event-waituntil.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-csp.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-event-after-navigation-within-page.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-event-async-respond-with.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-event-network-error.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-event-redirect.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-event-referrer-policy.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-event-respond-with-argument.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-event-respond-with-readable-stream.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-event-respond-with-response-body-with-invalid-chunk.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-event-respond-with-stops-propagation.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-event-throws-after-respond-with.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-event-within-sw-manual.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-event-within-sw.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-event.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-frame-resource.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-header-visibility.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-request-css-base-url.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-request-css-cross-origin-mime-check.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-request-css-images.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-request-fallback.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-request-html-imports.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-request-no-freshness-headers.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-request-redirect.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-request-resources.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-request-xhr-sync.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-request-xhr.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-response-xhr.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-waits-for-activate.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/foreign-fetch-cors.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/getregistration.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/getregistrations.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/immutable-prototype-serviceworker.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/import-scripts-resource-map.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/import-scripts-updated-flag.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/indexeddb.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/install-event-type.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/installing.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/interfaces-window.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/invalid-blobtype.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/invalid-header.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/iso-latin1-header.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/multi-globals/url-parsing.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/multiple-register.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/multiple-update.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/navigate-window.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/navigation-preload/broken-chunked-encoding.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/navigation-preload/chunked-encoding.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/navigation-preload/empty-preload-response-body.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/navigation-preload/get-state.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/navigation-preload/redirect.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/navigation-preload/request-headers.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/navigation-preload/resource-timing.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/navigation-redirect-body.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/navigation-redirect.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/onactivate-script-error.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/oninstall-script-error.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/opaque-response-preloaded.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/postmessage-blob-url.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/postmessage-from-waiting-serviceworker.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/postmessage-msgport-to-client.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/postmessage-to-client.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/postmessage.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/ready.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/redirected-response.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/referer.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/referrer-policy-header.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/register-closed-window.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/register-default-scope.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/register-link-header.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/register-same-scope-different-script-url.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/register-wait-forever-in-install-worker.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/registration-basic.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/registration-end-to-end.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/registration-events.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/registration-iframe.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/registration-mime-types.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/registration-scope.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/registration-script-url.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/registration-script.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/registration-security-error.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/registration-service-worker-attributes.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/registration-updateviacache.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/rejections.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/request-body-blob.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/request-end-to-end.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/resource-timing.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/serviceworker-message-event-historical.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/serviceworkerobject-scripturl.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/shared-worker-controlled.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/skip-waiting-installed.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/skip-waiting-using-registration.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/skip-waiting-without-using-registration.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/skip-waiting.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/state.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/synced-state.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/uncontrolled-page.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/unregister-controller.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/unregister-then-register-new-script.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/unregister-then-register.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/unregister.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/update-after-navigation-fetch-event.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/update-after-oneday.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/update-recovery.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/update.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/websocket.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/windowclient-navigate.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/worker-interception.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/xhr.https-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-3.1-service-worker-obj-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-3.1.1-service-worker-scope-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-3.1.2-service-worker-url-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-3.1.3-service-worker-state-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-3.1.4-service-worker-on-state-change-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-3.2-navigator-service-worker-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-3.2.1-navigator-service-worker-installing-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-3.2.10-navigator-service-worker-oncontrollerchange-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-3.2.11-navigator-service-worker-onreloadpage-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-3.2.12-navigator-service-worker-onerror-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-3.2.2-navigator-service-worker-waiting-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-3.2.3-navigator-service-worker-active-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-3.2.4-navigator-service-worker-controller-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-3.2.5-navigator-service-worker-ready-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-3.2.6-navigator-service-worker-getAll-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-3.2.7-navigator-service-worker-register-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-3.2.8-navigator-service-worker-unregister-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-3.2.9-navigator-service-worker-onupdatefound-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.1-service-worker-global-scope-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.1.1-service-worker-global-scope-caches-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.1.2-service-worker-global-scope-clients-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.1.3-service-worker-global-scope-scope-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.1.4-service-worker-global-scope-fetch-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.1.5-service-worker-global-scope-update-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.1.6-service-worker-global-scope-unregister-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.1.7-service-worker-global-scope-onmessage-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.2-client-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.3-service-worker-clients-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.3.1-get-serviced-method-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.3.2-reloadall-method-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.4-request-objects-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.5-response-objects-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.5.2-response-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.5.4-opaque-response-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.6-cache-objects-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.6.1-cache-lifetimes-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.7.1-install-phase-event-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.7.1.1-wait-until-method-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.7.2-install-event-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.7.2.1-install-event-section-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.7.2.2-replace-method-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.7.3-activate-event-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.7.4.1-fetch-event-section-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.7.4.2-respond-with-method-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.7.4.3-default-method-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-4.7.4.4-is-reload-attribute-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-5.1-origin-relativity-expected.txt: Added.
+        * web-platform-tests/service-workers/stub-5.2-cross-origin-resources-expected.txt: Added.
+
+2017-10-26  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Restrict API use to secure, same-origin frames
+        https://bugs.webkit.org/show_bug.cgi?id=178887
+
+        Reviewed by Tim Horton.
+
+        The allowpaymentrequest <iframe> attribute is not yet implemented, so the regression in basic.https.html is expected.
+
+        * web-platform-tests/payment-request/allowpaymentrequest/active-document-cross-origin.https.sub-expected.txt:
+        * web-platform-tests/payment-request/allowpaymentrequest/active-document-same-origin.https-expected.txt:
+        * web-platform-tests/payment-request/allowpaymentrequest/basic.https-expected.txt:
+
 2017-10-24  Andy Estes  <aestes@apple.com>
 
         [Payment Request] Implement the "PaymentRequest updated" algorithm

@@ -42,18 +42,18 @@ namespace CacheStorage {
 
 static inline String cachesListFilename(const String& cachesRootPath)
 {
-    return WebCore::pathByAppendingComponent(cachesRootPath, ASCIILiteral("cacheslist"));
+    return WebCore::FileSystem::pathByAppendingComponent(cachesRootPath, ASCIILiteral("cacheslist"));
 }
 
 static inline String cachesOriginFilename(const String& cachesRootPath)
 {
-    return WebCore::pathByAppendingComponent(cachesRootPath, ASCIILiteral("origin"));
+    return WebCore::FileSystem::pathByAppendingComponent(cachesRootPath, ASCIILiteral("origin"));
 }
 
 void Caches::retrieveOriginFromDirectory(const String& folderPath, WorkQueue& queue, WTF::CompletionHandler<void(std::optional<WebCore::SecurityOriginData>&&)>&& completionHandler)
 {
     queue.dispatch([completionHandler = WTFMove(completionHandler), folderPath = folderPath.isolatedCopy()]() mutable {
-        if (!WebCore::fileExists(cachesListFilename(folderPath))) {
+        if (!WebCore::FileSystem::fileExists(cachesListFilename(folderPath))) {
             RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler)]() mutable {
                 completionHandler(std::nullopt);
             });
@@ -159,6 +159,11 @@ void Caches::initialize(WebCore::DOMCacheEngine::CompletionCallback&& callback)
 
 void Caches::initializeSize(WebCore::DOMCacheEngine::CompletionCallback&& callback)
 {
+    if (!m_storage) {
+        callback(Error::Internal);
+        return;
+    }
+
     uint64_t size = 0;
     m_storage->traverse({ }, 0, [protectedThis = makeRef(*this), this, protectedStorage = makeRef(*m_storage), callback = WTFMove(callback), size](const auto* storage, const auto& information) mutable {
         if (!storage) {
@@ -333,7 +338,7 @@ void Caches::readCachesFromDisk(WTF::Function<void(Expected<Vector<Cache>, Error
     }
 
     auto filename = cachesListFilename(m_rootPath);
-    if (!WebCore::fileExists(filename)) {
+    if (!WebCore::FileSystem::fileExists(filename)) {
         callback(Vector<Cache> { });
         return;
     }

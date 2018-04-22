@@ -72,7 +72,7 @@ WorkerMessagingProxy::~WorkerMessagingProxy()
         || (is<WorkerGlobalScope>(*m_scriptExecutionContext) && currentThread() == downcast<WorkerGlobalScope>(*m_scriptExecutionContext).thread().threadID()));
 }
 
-void WorkerMessagingProxy::startWorkerGlobalScope(const URL& scriptURL, const String& userAgent, const String& sourceCode, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicyResponseHeaders, bool shouldBypassMainWorldContentSecurityPolicy, MonotonicTime timeOrigin, JSC::RuntimeFlags runtimeFlags, PAL::SessionID sessionID)
+void WorkerMessagingProxy::startWorkerGlobalScope(const URL& scriptURL, const String& userAgent, bool isOnline, const String& sourceCode, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicyResponseHeaders, bool shouldBypassMainWorldContentSecurityPolicy, MonotonicTime timeOrigin, JSC::RuntimeFlags runtimeFlags, PAL::SessionID sessionID)
 {
     // FIXME: This need to be revisited when we support nested worker one day
     ASSERT(m_scriptExecutionContext);
@@ -88,10 +88,10 @@ void WorkerMessagingProxy::startWorkerGlobalScope(const URL& scriptURL, const St
 
     SocketProvider* socketProvider = document.socketProvider();
 
-    auto thread = DedicatedWorkerThread::create(scriptURL, identifier, userAgent, sourceCode, *this, *this, startMode, contentSecurityPolicyResponseHeaders, shouldBypassMainWorldContentSecurityPolicy, document.topOrigin(), timeOrigin, proxy, socketProvider, runtimeFlags, sessionID);
+    auto thread = DedicatedWorkerThread::create(scriptURL, identifier, userAgent, isOnline, sourceCode, *this, *this, *this, startMode, contentSecurityPolicyResponseHeaders, shouldBypassMainWorldContentSecurityPolicy, document.topOrigin(), timeOrigin, proxy, socketProvider, runtimeFlags, sessionID);
 
     workerThreadCreated(thread.get());
-    thread->start();
+    thread->start(nullptr);
 
     m_inspectorProxy->workerStarted(m_scriptExecutionContext.get(), thread.ptr(), scriptURL);
 }
@@ -162,13 +162,14 @@ void WorkerMessagingProxy::postExceptionToWorkerObject(const String& errorMessag
         // We don't bother checking the askedToTerminate() flag here, because exceptions should *always* be reported even if the thread is terminated.
         // This is intentionally different than the behavior in MessageWorkerTask, because terminated workers no longer deliver messages (section 4.6 of the WebWorker spec), but they do report exceptions.
 
-        bool errorHandled = !workerObject->dispatchEvent(ErrorEvent::create(errorMessage, sourceURL, lineNumber, columnNumber, { }));
-        if (!errorHandled)
+        auto event = ErrorEvent::create(errorMessage, sourceURL, lineNumber, columnNumber, { });
+        workerObject->dispatchEvent(event);
+        if (!event->defaultPrevented())
             context.reportException(errorMessage, lineNumber, columnNumber, sourceURL, nullptr, nullptr);
     });
 }
 
-void WorkerMessagingProxy::postMessageToPageInspector(const String& message)
+void WorkerMessagingProxy::postMessageToDebugger(const String& message)
 {
     RunLoop::main().dispatch([this, protectedThis = makeRef(*this), message = message.isolatedCopy()] {
         if (!m_mayBeDestroyed)
@@ -215,7 +216,9 @@ void WorkerMessagingProxy::notifyNetworkStateChange(bool isOnline)
         return;
 
     m_workerThread->runLoop().postTask([isOnline] (ScriptExecutionContext& context) {
-        downcast<WorkerGlobalScope>(context).dispatchEvent(Event::create(isOnline ? eventNames().onlineEvent : eventNames().offlineEvent, false, false));
+        auto& globalScope = downcast<WorkerGlobalScope>(context);
+        globalScope.setIsOnline(isOnline);
+        globalScope.dispatchEvent(Event::create(isOnline ? eventNames().onlineEvent : eventNames().offlineEvent, false, false));
     });
 }
 

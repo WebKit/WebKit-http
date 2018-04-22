@@ -1293,6 +1293,9 @@ public:
 
     void setFailNextGPUStatusCheck() { m_failNextStatusCheck = true; }
 
+    GC3Denum activeTextureUnit() const { return m_state.activeTextureUnit; }
+    GC3Denum currentBoundTexture() const { return m_state.currentBoundTexture(); }
+    GC3Denum currentBoundTarget() const { return m_state.currentBoundTarget(); }
     unsigned textureSeed(GC3Duint texture) { return m_state.textureSeedCount.count(texture); }
 
 private:
@@ -1439,7 +1442,7 @@ private:
 
     struct GraphicsContext3DState {
         GC3Duint boundFBO { 0 };
-        GC3Denum activeTexture { GraphicsContext3D::TEXTURE0 };
+        GC3Denum activeTextureUnit { GraphicsContext3D::TEXTURE0 };
 
         using BoundTextureMap = HashMap<GC3Denum,
             std::pair<GC3Duint, GC3Denum>,
@@ -1448,8 +1451,8 @@ private:
             WTF::PairHashTraits<WTF::UnsignedWithZeroKeyHashTraits<GC3Duint>, WTF::UnsignedWithZeroKeyHashTraits<GC3Duint>>
         >;
         BoundTextureMap boundTextureMap;
-        GC3Duint currentBoundTexture() { return boundTexture(activeTexture); }
-        GC3Duint boundTexture(GC3Denum textureUnit)
+        GC3Duint currentBoundTexture() const { return boundTexture(activeTextureUnit); }
+        GC3Duint boundTexture(GC3Denum textureUnit) const
         {
             auto iterator = boundTextureMap.find(textureUnit);
             if (iterator != boundTextureMap.end())
@@ -1457,7 +1460,8 @@ private:
             return 0;
         }
 
-        GC3Denum boundTarget(GC3Denum textureUnit)
+        GC3Duint currentBoundTarget() const { return boundTarget(activeTextureUnit); }
+        GC3Denum boundTarget(GC3Denum textureUnit) const
         {
             auto iterator = boundTextureMap.find(textureUnit);
             if (iterator != boundTextureMap.end())

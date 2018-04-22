@@ -34,6 +34,7 @@ class RenderMultiColumnSet;
 class RenderMultiColumnSpannerPlaceholder;
 
 class RenderMultiColumnFlow final : public RenderFragmentedFlow {
+    WTF_MAKE_ISO_ALLOCATED(RenderMultiColumnFlow);
 public:
     RenderMultiColumnFlow(Document&, RenderStyle&&);
     ~RenderMultiColumnFlow();
@@ -73,8 +74,6 @@ public:
 
     bool progressionIsReversed() const { return m_progressionIsReversed; }
     void setProgressionIsReversed(bool reversed) { m_progressionIsReversed = reversed; }
-    
-    void computeLineGridPaginationOrigin(LayoutState&) const;
     
     RenderFragmentContainer* mapFromFlowToFragment(TransformState&) const override;
     

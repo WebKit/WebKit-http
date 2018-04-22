@@ -1,3 +1,4 @@
 
-FAIL CacheStorage.keys assert_unreached: unregister should not fail: serviceWorker.getRegistration() is not yet implemented Reached unreachable code
+PASS CacheStorage.keys 
+PASS CacheStorage keys 
 

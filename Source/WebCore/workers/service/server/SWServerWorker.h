@@ -27,7 +27,9 @@
 
 #if ENABLE(SERVICE_WORKER)
 
+#include "ServiceWorkerIdentifier.h"
 #include "ServiceWorkerRegistrationKey.h"
+#include "ServiceWorkerTypes.h"
 #include "URL.h"
 #include <wtf/ThreadSafeRefCounted.h>
 
@@ -37,27 +39,35 @@ enum class WorkerType;
 
 class SWServerWorker : public ThreadSafeRefCounted<SWServerWorker> {
 public:
-    static Ref<SWServerWorker> create(const ServiceWorkerRegistrationKey& registrationKey, const URL& url, const String& script, WorkerType type, const String& workerID)
+    static Ref<SWServerWorker> create(const ServiceWorkerRegistrationKey& registrationKey, const URL& url, const String& script, WorkerType type, ServiceWorkerIdentifier identifier)
     {
-        return adoptRef(*new SWServerWorker(registrationKey, url, script, type, workerID));
+        return adoptRef(*new SWServerWorker(registrationKey, url, script, type, identifier));
     }
     
     SWServerWorker(const SWServerWorker&) = delete;
     ~SWServerWorker();
 
+    void terminate();
+
     const URL& scriptURL() const { return m_scriptURL; }
     const String& script() const { return m_script; }
     WorkerType type() const { return m_type; }
-    const String& workerID() const { return m_workerID; }
-    
+
+    ServiceWorkerIdentifier identifier() const { return m_identifier; }
+
+    ServiceWorkerState state() const { return m_state; }
+    void setState(ServiceWorkerState state) { m_state = state; }
+
 private:
-    SWServerWorker(const ServiceWorkerRegistrationKey&, const URL&, const String& script, WorkerType, const String& workerID);
+    SWServerWorker(const ServiceWorkerRegistrationKey&, const URL&, const String& script, WorkerType, ServiceWorkerIdentifier);
 
     ServiceWorkerRegistrationKey m_registrationKey;
     URL m_scriptURL;
     String m_script;
-    String m_workerID;
+    ServiceWorkerIdentifier m_identifier;
     WorkerType m_type;
+    
+    ServiceWorkerState m_state { ServiceWorkerState::Redundant };
 };
 
 } // namespace WebCore

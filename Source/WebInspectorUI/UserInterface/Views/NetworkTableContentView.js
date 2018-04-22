@@ -144,8 +144,9 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         case WI.Resource.Type.Script:
             return "JS";
         case WI.Resource.Type.XHR:
-        case WI.Resource.Type.Fetch:
             return "XHR";
+        case WI.Resource.Type.Fetch:
+            return WI.UIString("Fetch");
         case WI.Resource.Type.Ping:
             return WI.UIString("Ping");
         case WI.Resource.Type.Beacon:
@@ -255,6 +256,21 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         }
     }
 
+    showRepresentedObject(representedObject, cookie)
+    {
+        console.assert(representedObject instanceof WI.Resource);
+
+        let rowIndex = this._rowIndexForResource(representedObject);
+        if (rowIndex === -1) {
+            this._selectedResource = null;
+            this._table.clearSelectedRow();
+            this._hideResourceDetailView();
+            return;
+        }
+   
+        this._table.selectRow(rowIndex);
+    }
+
     // NetworkResourceDetailView delegate
 
     networkResourceDetailViewClose(resourceDetailView)
@@ -337,7 +353,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
             this._populateNameCell(cell, entry);
             break;
         case "domain":
-            cell.textContent = entry.domain || emDash;
+            this._populateDomainCell(cell, entry);
             break;
         case "type":
             cell.textContent = entry.displayType || emDash;
@@ -406,6 +422,24 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         nameElement.textContent = entry.name;
     }
 
+    _populateDomainCell(cell, entry)
+    {
+        console.assert(!cell.firstChild, "We expect the cell to be empty.", cell, cell.firstChild);
+
+        if (!entry.domain) {
+            cell.textContent = emDash;
+            return;
+        }
+
+        let secure = entry.scheme === "https" || entry.scheme === "wss";
+        if (secure) {
+            let lockIconElement = cell.appendChild(document.createElement("img"));
+            lockIconElement.className = "lock";
+        }
+
+        cell.append(entry.domain);
+    }
+
     _populateTransferSizeCell(cell, entry)
     {
         let responseSource = entry.resource.responseSource;
@@ -417,6 +451,11 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         if (responseSource === WI.Resource.ResponseSource.DiskCache) {
             cell.classList.add("cache-type");
             cell.textContent = WI.UIString("(disk)");
+            return;
+        }
+        if (responseSource === WI.Resource.ResponseSource.ServiceWorker) {
+            cell.classList.add("cache-type");
+            cell.textContent = WI.UIString("(service worker)");
             return;
         }
 
@@ -568,12 +607,16 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
                     transferSizeA = -20;
                 else if (sourceA === WI.Resource.ResponseSource.DiskCache)
                     transferSizeA = -10;
+                else if (sourceA === WI.Resource.ResponseSource.ServiceWorker)
+                    transferSizeA = -5;
 
                 let sourceB = b.resource.responseSource;
                 if (sourceB === WI.Resource.ResponseSource.MemoryCache)
                     transferSizeB = -20;
                 else if (sourceB === WI.Resource.ResponseSource.DiskCache)
                     transferSizeB = -10;
+                else if (sourceB === WI.Resource.ResponseSource.ServiceWorker)
+                    transferSizeB = -5;
 
                 return transferSizeA - transferSizeB;
             };

@@ -1,3 +1,5 @@
+include(InspectorGResources.cmake)
+
 set(WebKit_OUTPUT_NAME WPEWebKit)
 set(WebKit_WebProcess_OUTPUT_NAME WPEWebProcess)
 set(WebKit_NetworkProcess_OUTPUT_NAME WPENetworkProcess)
@@ -20,8 +22,7 @@ file(REMOVE "${FORWARDING_HEADERS_DIR}/WebCore/Settings.h")
 set(WebKit_USE_PREFIX_HEADER ON)
 
 add_custom_target(webkitwpe-forwarding-headers
-    DEPENDS ${WebKit_DERIVED_SOURCES}
-    COMMAND ${PERL_EXECUTABLE} ${WEBKIT_DIR}/Scripts/generate-forwarding-headers.pl --include-path ${WEBKIT_DIR} --include-path ${DERIVED_SOURCES_WEBKIT_DIR} --output ${FORWARDING_HEADERS_DIR} --platform wpe --platform soup
+    COMMAND ${PERL_EXECUTABLE} ${WEBKIT_DIR}/Scripts/generate-forwarding-headers.pl --include-path ${WEBKIT_DIR} --output ${FORWARDING_HEADERS_DIR} --platform wpe --platform soup
 )
 
  # These symbolic link allows includes like #include <wpe/WebkitWebView.h> which simulates installed headers.
@@ -167,9 +168,9 @@ list(APPEND WebKit_SOURCES
     UIProcess/API/glib/WebKitInjectedBundleClient.cpp
     UIProcess/API/glib/WebKitInstallMissingMediaPluginsPermissionRequest.cpp
     UIProcess/API/glib/WebKitJavascriptResult.cpp
-    UIProcess/API/glib/WebKitLoaderClient.cpp
     UIProcess/API/glib/WebKitMimeInfo.cpp
     UIProcess/API/glib/WebKitNavigationAction.cpp
+    UIProcess/API/glib/WebKitNavigationClient.cpp
     UIProcess/API/glib/WebKitNavigationPolicyDecision.cpp
     UIProcess/API/glib/WebKitNetworkProxySettings.cpp
     UIProcess/API/glib/WebKitNotification.cpp
@@ -177,7 +178,6 @@ list(APPEND WebKit_SOURCES
     UIProcess/API/glib/WebKitNotificationProvider.cpp
     UIProcess/API/glib/WebKitPermissionRequest.cpp
     UIProcess/API/glib/WebKitPlugin.cpp
-    UIProcess/API/glib/WebKitPolicyClient.cpp
     UIProcess/API/glib/WebKitPolicyDecision.cpp
     UIProcess/API/glib/WebKitPrivate.cpp
     UIProcess/API/glib/WebKitResponsePolicyDecision.cpp
@@ -424,6 +424,9 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WTF_DIR}/wtf/gtk/"
     "${WTF_DIR}/wtf/gobject"
     "${WTF_DIR}"
+)
+
+list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
     ${CAIRO_INCLUDE_DIRS}
     ${FREETYPE2_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
@@ -434,7 +437,7 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
 )
 
 list(APPEND WebKit_LIBRARIES
-    WebCorePlatformWPE
+    WebCore
     ${CAIRO_LIBRARIES}
     ${FREETYPE2_LIBRARIES}
     ${GLIB_LIBRARIES}
@@ -444,59 +447,7 @@ list(APPEND WebKit_LIBRARIES
     ${WPE_LIBRARIES}
 )
 
-set(InspectorFiles
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/Localizations/en.lproj/localizedStrings.js
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/*.html
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Base/*.js
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Controllers/*.css
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Controllers/*.js
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Debug/*.css
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Debug/*.js
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/External/CodeMirror/*.css
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/External/CodeMirror/*.js
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/External/ESLint/*.js
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/External/Esprima/*.js
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/External/three.js/*.js
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Images/gtk/*.png
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Images/gtk/*.svg
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Models/*.js
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Protocol/*.js
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Proxies/*.js
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Test/*.js
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Views/*.css
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Views/*.js
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Workers/Formatter/*.js
-    ${CMAKE_SOURCE_DIR}/Source/WebInspectorUI/UserInterface/Workers/HeapSnapshot/*.js
-)
-
-file(GLOB InspectorFilesDependencies
-    ${InspectorFiles}
-)
-
-# DerivedSources/JavaScriptCore/inspector/InspectorBackendCommands.js is
-# expected in DerivedSources/WebInspectorUI/UserInterface/Protocol/.
-add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol/InspectorBackendCommands.js
-    DEPENDS ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorBackendCommands.js
-    COMMAND cp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector/InspectorBackendCommands.js ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol/InspectorBackendCommands.js
-)
-
-add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/InspectorGResourceBundle.xml
-    DEPENDS ${InspectorFilesDependencies}
-            ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol/InspectorBackendCommands.js
-            ${TOOLS_DIR}/wpe/generate-inspector-gresource-manifest.py
-    COMMAND ${TOOLS_DIR}/wpe/generate-inspector-gresource-manifest.py --output=${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/InspectorGResourceBundle.xml ${InspectorFiles} ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/UserInterface/Protocol/InspectorBackendCommands.js
-    VERBATIM
-)
-
-add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/InspectorGResourceBundle.c
-    DEPENDS ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/InspectorGResourceBundle.xml
-    COMMAND glib-compile-resources --generate --sourcedir=${CMAKE_SOURCE_DIR}/Source/WebInspectorUI --sourcedir=${DERIVED_SOURCES_WEBINSPECTORUI_DIR} --target=${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/InspectorGResourceBundle.c ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/InspectorGResourceBundle.xml
-    VERBATIM
-)
-
+WEBKIT_BUILD_INSPECTOR_GRESOURCES(${DERIVED_SOURCES_WEBINSPECTORUI_DIR})
 list(APPEND WPEWebInspectorResources_DERIVED_SOURCES
     ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/InspectorGResourceBundle.c
 )
@@ -505,14 +456,14 @@ list(APPEND WPEWebInspectorResources_LIBRARIES
     ${GLIB_GIO_LIBRARIES}
 )
 
-list(APPEND WPEWebInspectorResources_INCLUDE_DIRECTORIES
+list(APPEND WPEWebInspectorResources_SYSTEM_INCLUDE_DIRECTORIES
     ${GLIB_INCLUDE_DIRS}
 )
 
 add_library(WPEWebInspectorResources SHARED ${WPEWebInspectorResources_DERIVED_SOURCES})
 add_dependencies(WPEWebInspectorResources WebKit)
 target_link_libraries(WPEWebInspectorResources ${WPEWebInspectorResources_LIBRARIES})
-target_include_directories(WPEWebInspectorResources PUBLIC ${WPEWebInspectorResources_INCLUDE_DIRECTORIES})
+target_include_directories(WPEWebInspectorResources SYSTEM PUBLIC ${WPEWebInspectorResources_SYSTEM_INCLUDE_DIRECTORIES})
 install(TARGETS WPEWebInspectorResources DESTINATION "${LIB_INSTALL_DIR}")
 
 add_library(WPEInjectedBundle MODULE "${WEBKIT_DIR}/WebProcess/InjectedBundle/API/glib/WebKitInjectedBundleMain.cpp")

@@ -1,3 +1,151 @@
+2017-11-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] Use linker script to control exported symbols
+        https://bugs.webkit.org/show_bug.cgi?id=179358
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        The C API is being inadvertently exported because it's marked as WEBKIT_EXPORT in the header
+        files. But of course it should only be exported in DEVELOPER_MODE, where it's needed for
+        WebKitTestRunner. Use (almost) the same linker version script as GTK to fix this. It's
+        slightly different because WPE does not have WebKitPluginProcess.
+
+        This also reduces binary size of libWPEWebKit.so in debug mode from 615 MB down to 497 MB.
+        (Haven't checked release mode.)
+
+        * Source/cmake/OptionsWPE.cmake:
+        * Source/cmake/wpesymbols.filter: Added.
+
+2017-11-08  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] Turn on ENABLE_INDEXED_DATABASE_IN_WORKERS
+        https://bugs.webkit.org/show_bug.cgi?id=179094
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * Source/cmake/OptionsWPE.cmake:
+
+2017-11-07  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] Turn on ENABLE_MEDIA_SOURCE
+        https://bugs.webkit.org/show_bug.cgi?id=179093
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * Source/cmake/OptionsWPE.cmake:
+
+2017-11-06  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, fix WPE build after r224492
+        https://bugs.webkit.org/show_bug.cgi?id=179009
+
+        * Source/cmake/OptionsWPE.cmake:
+
+2017-11-06  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] Clean up OptionsWPE.cmake
+        https://bugs.webkit.org/show_bug.cgi?id=179009
+
+        Reviewed by Žan Doberšek.
+
+        * Source/cmake/OptionsWPE.cmake:
+
+2017-11-06  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Always use SET_AND_EXPOSE_TO_BUILD to set build variables
+        https://bugs.webkit.org/show_bug.cgi?id=179038
+
+        Reviewed by Žan Doberšek.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2017-11-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Avoid duplicating code for dist and distcheck targets
+        https://bugs.webkit.org/show_bug.cgi?id=179154
+
+        Reviewed by Carlos Garcia Campos.
+
+        This commit just reduces some CMake code duplication between GTK and WPE.
+
+        * Source/PlatformGTK.cmake:
+        * Source/PlatformWPE.cmake:
+        * Source/cmake/WebKitDist.cmake: Added.
+
+2017-11-02  Tim Horton  <timothy_horton@apple.com>
+
+        Reduce duplication in the toplevel Makefile
+        https://bugs.webkit.org/show_bug.cgi?id=179204
+
+        Unreviewed build fix.
+
+        * Source/Makefile:
+        Take three. An empty SDKROOT should be like Mac (and build all the things).
+
+2017-11-02  Tim Horton  <timothy_horton@apple.com>
+
+        Reduce duplication in the toplevel Makefile
+        https://bugs.webkit.org/show_bug.cgi?id=179204
+
+        * Source/Makefile:
+        Address some post-landing review comments to keep the order of the MODULES correct.
+
+2017-11-02  Tim Horton  <timothy_horton@apple.com>
+
+        Reduce duplication in the toplevel Makefile
+        https://bugs.webkit.org/show_bug.cgi?id=179204
+
+        Reviewed by Simon Fraser.
+
+        * Source/Makefile:
+        Make MODULES additive instead of completely repeated, and only build
+        libwebrtc where it's needed.
+
+2017-11-02  Alberto Garcia  <berto@igalia.com>
+
+        Unreviewed, fix typos in library names for the GTK+ port.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2017-10-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.19.1 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2017-10-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+/WPE make distcheck.
+
+        * CMakeLists.txt: Only include PerformanceTests directory to the build for GTK+ and WPE ports when developer
+        mode is enabled.
+
+2017-10-26  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [WPE] Use proper shared object versioning for libWPEWebKit.so
+        https://bugs.webkit.org/show_bug.cgi?id=178878
+
+        Reviewed by Michael Catanzaro.
+
+        Move the CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE() to a new CMake include file,
+        and use it both for the GTK+ and WPE ports. Also add a SET_PROJECT_VERSION() macro to
+        unify setting the PROJECT_VERSION* family of variables.
+
+        * Source/cmake/OptionsGTK.cmake: Use the common macros imported from VersioningUtils.cmake.
+        * Source/cmake/OptionsWPE.cmake: Properly assign a shared object version to libWPEWebKit.so,
+        using the common macros from VersioningUtils.cmake.
+        * Source/cmake/VersioningUtils.cmake: Added.
+
+2017-10-26  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK] WebKit library .so version is not being set correctly
+        https://bugs.webkit.org/show_bug.cgi?id=178873
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsGTK.cmake: Adjust name of the target for which the .so version gets calculated.
+
 2017-10-24  Stephan Szabo  <stephan.szabo@sony.com>
 
         [Win][JSCOnly] Make jsconly build testapi and dlls and copy dlls when running tests

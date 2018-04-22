@@ -276,6 +276,12 @@ SLOW_PATH_DECL(slow_path_throw_tdz_error)
     THROW(createTDZError(exec));
 }
 
+SLOW_PATH_DECL(slow_path_check_tdz)
+{
+    BEGIN();
+    THROW(createTDZError(exec));
+}
+
 SLOW_PATH_DECL(slow_path_throw_strict_mode_readonly_property_write_error)
 {
     BEGIN();
@@ -433,6 +439,19 @@ SLOW_PATH_DECL(slow_path_to_number)
     JSValue argument = OP_C(2).jsValue();
     JSValue result = jsNumber(argument.toNumber(exec));
     RETURN_PROFILED(op_to_number, result);
+}
+
+SLOW_PATH_DECL(slow_path_to_object)
+{
+    BEGIN();
+    JSValue argument = OP_C(2).jsValue();
+    if (UNLIKELY(argument.isUndefinedOrNull())) {
+        const Identifier& ident = exec->codeBlock()->identifier(pc[3].u.operand);
+        if (!ident.isEmpty())
+            THROW(createTypeError(exec, ident.impl()));
+    }
+    JSObject* result = argument.toObject(exec);
+    RETURN_PROFILED(op_to_object, result);
 }
 
 SLOW_PATH_DECL(slow_path_add)
@@ -1082,6 +1101,7 @@ SLOW_PATH_DECL(slow_path_spread)
 
         MarkedArgumentBuffer arguments;
         arguments.append(iterable);
+        ASSERT(!arguments.hasOverflowed());
         JSValue arrayResult = call(exec, iterationFunction, callType, callData, jsNull(), arguments);
         CHECK_EXCEPTION();
         array = jsCast<JSArray*>(arrayResult);

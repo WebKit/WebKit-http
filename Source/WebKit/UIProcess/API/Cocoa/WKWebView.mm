@@ -99,10 +99,10 @@
 #import <WebCore/SQLiteDatabaseTracker.h>
 #import <WebCore/SchemeRegistry.h>
 #import <WebCore/Settings.h>
+#import <WebCore/SharedBuffer.h>
 #import <WebCore/ValidationBubble.h>
 #import <WebCore/ViewportArguments.h>
 #import <WebCore/WritingMode.h>
-#import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
 #import <pal/spi/mac/NSTextFinderSPI.h>
 #import <wtf/BlockPtr.h>
 #import <wtf/HashMap.h>
@@ -111,6 +111,7 @@
 #import <wtf/Optional.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/SetForScope.h>
+#import <wtf/UUID.h>
 #import <wtf/spi/darwin/dyldSPI.h>
 #import <wtf/text/TextStream.h>
 
@@ -259,6 +260,10 @@ static std::optional<WebCore::ScrollbarOverlayStyle> toCoreScrollbarStyle(_WKOve
 
     RetainPtr<WKScrollView> _scrollView;
     RetainPtr<WKContentView> _contentView;
+
+#if ENABLE(FULLSCREEN_API)
+    RetainPtr<WKFullScreenWindowController> _fullScreenWindowController;
+#endif
 
     BOOL _overridesMinimumLayoutSize;
     CGSize _minimumLayoutSizeOverride;
@@ -447,6 +452,29 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
 }
 #endif
 
+static void validate(WKWebViewConfiguration *configuration)
+{
+    if (!configuration.processPool)
+        [NSException raise:NSInvalidArgumentException format:@"configuration.processPool is nil"];
+    
+    if (!configuration.preferences)
+        [NSException raise:NSInvalidArgumentException format:@"configuration.preferences is nil"];
+    
+    if (!configuration.userContentController)
+        [NSException raise:NSInvalidArgumentException format:@"configuration.userContentController is nil"];
+    
+    if (!configuration.websiteDataStore)
+        [NSException raise:NSInvalidArgumentException format:@"configuration.websiteDataStore is nil"];
+    
+    if (!configuration._visitedLinkStore)
+        [NSException raise:NSInvalidArgumentException format:@"configuration._visitedLinkStore is nil"];
+    
+#if PLATFORM(IOS)
+    if (!configuration._contentProviderRegistry)
+        [NSException raise:NSInvalidArgumentException format:@"configuration._contentProviderRegistry is nil"];
+#endif
+}
+
 - (void)_initializeWithConfiguration:(WKWebViewConfiguration *)configuration
 {
     if (!configuration)
@@ -463,7 +491,7 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
         [_configuration setProcessPool:relatedWebViewProcessPool];
     }
 
-    [_configuration _validate];
+    validate(_configuration.get());
 
     WebKit::WebProcessPool& processPool = *[_configuration processPool]->_processPool;
     processPool.setResourceLoadStatisticsEnabled(configuration.websiteDataStore._resourceLoadStatisticsEnabled);
@@ -1168,6 +1196,24 @@ static NSDictionary *dictionaryRepresentationForEditorState(const WebKit::Editor
     if ([uiDelegate respondsToSelector:@selector(_webView:editorStateDidChange:)])
         [uiDelegate _webView:self editorStateDidChange:dictionaryRepresentationForEditorState(_page->editorState())];
 }
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+
+- (void)_didInsertAttachment:(NSString *)identifier
+{
+    id <WKUIDelegatePrivate> uiDelegate = (id <WKUIDelegatePrivate>)self.UIDelegate;
+    if ([uiDelegate respondsToSelector:@selector(_webView:didInsertAttachment:)])
+        [uiDelegate _webView:self didInsertAttachment:[wrapper(API::Attachment::create(identifier, *_page).leakRef()) autorelease]];
+}
+
+- (void)_didRemoveAttachment:(NSString *)identifier
+{
+    id <WKUIDelegatePrivate> uiDelegate = (id <WKUIDelegatePrivate>)self.UIDelegate;
+    if ([uiDelegate respondsToSelector:@selector(_webView:didRemoveAttachment:)])
+        [uiDelegate _webView:self didRemoveAttachment:[wrapper(API::Attachment::create(identifier, *_page).leakRef()) autorelease]];
+}
+
+#endif // ENABLE(ATTACHMENT_ELEMENT)
 
 #pragma mark iOS-specific methods
 
@@ -4146,6 +4192,23 @@ static int32_t activeOrientation(WKWebView *webView)
     _page->close();
 }
 
+- (_WKAttachment *)_insertAttachmentWithFilename:(NSString *)filename contentType:(NSString *)contentType data:(NSData *)data options:(_WKAttachmentDisplayOptions *)options completion:(void(^)(BOOL success))completionHandler
+{
+#if ENABLE(ATTACHMENT_ELEMENT)
+    auto identifier = createCanonicalUUIDString();
+
+    auto buffer = WebCore::SharedBuffer::create(data);
+    _page->insertAttachment(identifier, filename, contentType.length ? std::optional<String> { contentType } : std::nullopt, buffer.get(), [capturedHandler = makeBlockPtr(completionHandler), capturedBuffer = buffer.copyRef()] (WebKit::CallbackBase::Error error) {
+        if (capturedHandler)
+            capturedHandler(error == WebKit::CallbackBase::Error::None);
+    });
+
+    return [wrapper(API::Attachment::create(identifier, *_page).leakRef()) autorelease];
+#else
+    return nil;
+#endif
+}
+
 - (void)_evaluateJavaScriptWithoutUserGesture:(NSString *)javaScriptString completionHandler:(void (^)(id, NSError *))completionHandler
 {
     [self _evaluateJavaScript:javaScriptString forceUserGesture:NO completionHandler:completionHandler];
@@ -4526,7 +4589,8 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
             NSObject <NSSecureCoding> *userObject = nil;
             if (API::Data* data = static_cast<API::Data*>(userData)) {
                 auto nsData = adoptNS([[NSData alloc] initWithBytesNoCopy:const_cast<void*>(static_cast<const void*>(data->bytes())) length:data->size() freeWhenDone:NO]);
-                auto unarchiver = secureUnarchiverFromData(nsData.get());
+                auto unarchiver = adoptNS([[NSKeyedUnarchiver alloc] initForReadingWithData:nsData.get()]);
+                [unarchiver setRequiresSecureCoding:YES];
                 @try {
                     userObject = [unarchiver decodeObjectOfClass:[NSObject class] forKey:@"userObject"];
                 } @catch (NSException *exception) {
@@ -4705,14 +4769,14 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 - (void)_setFullscreenDelegate:(id<_WKFullscreenDelegate>)delegate
 {
 #if ENABLE(FULLSCREEN_API)
-    static_cast<WebKit::FullscreenClient&>(_page->fullscreenClient()).setDelegate(delegate);
+    downcast<WebKit::FullscreenClient>(_page->fullscreenClient()).setDelegate(delegate);
 #endif
 }
 
 - (id<_WKFullscreenDelegate>)_fullscreenDelegate
 {
 #if ENABLE(FULLSCREEN_API)
-    return static_cast<WebKit::FullscreenClient&>(_page->fullscreenClient()).delegate().autorelease();
+    return downcast<WebKit::FullscreenClient>(_page->fullscreenClient()).delegate().autorelease();
 #else
     return nullptr;
 #endif
@@ -4757,6 +4821,14 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 #pragma mark iOS-specific methods
 
 #if PLATFORM(IOS)
+
+- (void)removeFromSuperview
+{
+    [super removeFromSuperview];
+
+    if ([_fullScreenWindowController isFullScreen])
+        [_fullScreenWindowController webViewDidRemoveFromSuperviewWhileInFullscreen];
+}
 
 - (CGSize)_minimumLayoutSizeOverride
 {
@@ -5936,15 +6008,19 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 
 #endif // PLATFORM(MAC)
 
-- (void)_requestActiveNowPlayingSessionInfo
+- (void)_requestActiveNowPlayingSessionInfo:(void(^)(BOOL, NSString*, double, double, NSInteger))callback
 {
-    if (_page)
-        _page->requestActiveNowPlayingSessionInfo();
-}
+    if (!_page) {
+        callback(NO, @"", std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(), 0);
+        return;
+    }
 
-- (void)_handleActiveNowPlayingSessionInfoResponse:(BOOL)hasActiveSession title:(NSString *)title duration:(double)duration elapsedTime:(double)elapsedTime
-{
-    // Overridden by subclasses.
+    auto handler = makeBlockPtr(callback);
+    auto localCallback = WebKit::NowPlayingInfoCallback::create([handler](bool active, String title, double duration, double elapsedTime, uint64_t uniqueIdentifier, WebKit::CallbackBase::Error) {
+        handler(active, title, duration, elapsedTime, uniqueIdentifier);
+    });
+
+    _page->requestActiveNowPlayingSessionInfo(WTFMove(localCallback));
 }
 
 - (void)_setPageScale:(CGFloat)scale withOrigin:(CGPoint)origin
@@ -6006,7 +6082,8 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 - (void)_executeEditCommand:(NSString *)command argument:(NSString *)argument completion:(void (^)(BOOL))completion
 {
     _page->executeEditCommand(command, argument, [capturedCompletionBlock = makeBlockPtr(completion)](WebKit::CallbackBase::Error error) {
-        capturedCompletionBlock(error == WebKit::CallbackBase::Error::None);
+        if (capturedCompletionBlock)
+            capturedCompletionBlock(error == WebKit::CallbackBase::Error::None);
     });
 }
 
@@ -6030,6 +6107,42 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 
 @end
 
+
+#if ENABLE(FULLSCREEN_API) && PLATFORM(IOS)
+
+@implementation WKWebView (FullScreenAPI)
+
+- (BOOL)hasFullScreenWindowController
+{
+    return !!_fullScreenWindowController;
+}
+
+- (WKFullScreenWindowController *)fullScreenWindowController
+{
+    if (!_fullScreenWindowController)
+        _fullScreenWindowController = adoptNS([[WKFullScreenWindowController alloc] initWithWebView:self]);
+
+    return _fullScreenWindowController.get();
+}
+
+- (void)closeFullScreenWindowController
+{
+    if (!_fullScreenWindowController)
+        return;
+
+    [_fullScreenWindowController close];
+    _fullScreenWindowController = nullptr;
+}
+
+- (WebCoreFullScreenPlaceholderView *)fullScreenPlaceholderView
+{
+    if ([_fullScreenWindowController isFullScreen])
+        return [_fullScreenWindowController webViewPlaceholder];
+    return nil;
+}
+
+@end
+#endif // ENABLE(FULLSCREEN_API) && PLATFORM(IOS)
 
 #if PLATFORM(MAC)
 

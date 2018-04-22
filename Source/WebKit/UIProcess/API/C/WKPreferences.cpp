@@ -1650,6 +1650,16 @@ bool WKPreferencesGetMediaCaptureRequiresSecureConnection(WKPreferencesRef prefe
     return toImpl(preferencesRef)->mediaCaptureRequiresSecureConnection();
 }
 
+void WKPreferencesSetInactiveMediaCaptureSteamRepromptIntervalInMinutes(WKPreferencesRef preferencesRef, double interval)
+{
+    toImpl(preferencesRef)->setInactiveMediaCaptureSteamRepromptIntervalInMinutes(interval);
+}
+
+double WKPreferencesGetInactiveMediaCaptureSteamRepromptIntervalInMinutes(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->inactiveMediaCaptureSteamRepromptIntervalInMinutes();
+}
+
 void WKPreferencesSetFetchAPIEnabled(WKPreferencesRef preferencesRef, bool flag)
 {
     toImpl(preferencesRef)->setFetchAPIEnabled(flag);
@@ -1708,6 +1718,16 @@ void WKPreferencesSetIntersectionObserverEnabled(WKPreferencesRef preferencesRef
 bool WKPreferencesGetIntersectionObserverEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->intersectionObserverEnabled();
+}
+
+void WKPreferencesSetMenuItemElementEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    return toImpl(preferencesRef)->setMenuItemElementEnabled(flag);
+}
+
+bool WKPreferencesGetMenuItemElementEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->menuItemElementEnabled();
 }
 
 void WKPreferencesSetUserTimingEnabled(WKPreferencesRef preferencesRef, bool flag)
@@ -1878,16 +1898,6 @@ void WKPreferencesSetInspectorAdditionsEnabled(WKPreferencesRef preferencesRef, 
 bool WKPreferencesGetInspectorAdditionsEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->inspectorAdditionsEnabled();
-}
-
-void WKPreferencesSetPaymentRequestEnabled(WKPreferencesRef preferencesRef, bool flag)
-{
-    toImpl(preferencesRef)->setPaymentRequestEnabled(flag);
-}
-
-bool WKPreferencesGetPaymentRequestEnabled(WKPreferencesRef preferencesRef)
-{
-    return toImpl(preferencesRef)->paymentRequestEnabled();
 }
 
 void WKPreferencesSetStorageAccessAPIEnabled(WKPreferencesRef preferencesRef, bool flag)

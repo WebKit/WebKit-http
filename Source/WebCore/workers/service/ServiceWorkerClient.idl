@@ -25,6 +25,7 @@
 
 [
     Conditional=SERVICE_WORKER,
+    CustomToJSObject,
     EnabledAtRuntime=ServiceWorker,
     Exposed=ServiceWorker,
     InterfaceName=Client,
@@ -34,7 +35,7 @@
     readonly attribute ServiceWorkerClientType type;
     readonly attribute DOMString id;
 
-    [CallWith=ScriptState, MayThrowException] void postMessage(any message, optional sequence<object> transfer = []);
+    [CallWith=ScriptExecutionContext, MayThrowException] void postMessage(any message, optional sequence<object> transfer = []);
 };
 
 enum FrameType {

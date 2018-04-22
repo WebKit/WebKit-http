@@ -216,7 +216,6 @@ set(WebKit_SOURCES
     Shared/WebPageGroupData.cpp
     Shared/WebPlatformTouchPoint.cpp
     Shared/WebPopupItem.cpp
-    Shared/WebPreferencesKeys.cpp
     Shared/WebPreferencesStore.cpp
     Shared/WebProcessCreationParameters.cpp
     Shared/WebRenderLayer.cpp
@@ -548,8 +547,8 @@ set(WebKit_SOURCES
     WebProcess/Plugins/Netscape/NetscapePluginStream.cpp
 
     WebProcess/Storage/ServiceWorkerClientFetch.cpp
-    WebProcess/Storage/ServiceWorkerContextManager.cpp
     WebProcess/Storage/WebSWClientConnection.cpp
+    WebProcess/Storage/WebSWContextManagerConnection.cpp
     WebProcess/Storage/WebSWOriginTable.cpp
     WebProcess/Storage/WebServiceWorkerFetchTaskClient.cpp
     WebProcess/Storage/WebServiceWorkerProvider.cpp
@@ -695,8 +694,8 @@ set(WebKit_MESSAGES_IN_FILES
     WebProcess/Plugins/PluginProxy.messages.in
 
     WebProcess/Storage/ServiceWorkerClientFetch.messages.in
-    WebProcess/Storage/ServiceWorkerContextManager.messages.in
     WebProcess/Storage/WebSWClientConnection.messages.in
+    WebProcess/Storage/WebSWContextManagerConnection.messages.in
 
     WebProcess/UserContent/WebUserContentController.messages.in
 
@@ -914,11 +913,16 @@ list(APPEND WebKit_HEADERS
 )
 
 set(WebKit_WEB_PREFERENCES_TEMPLATES
+    ${WEBKIT_DIR}/Scripts/PreferencesTemplates/WebPageUpdatePreferences.cpp.erb
     ${WEBKIT_DIR}/Scripts/PreferencesTemplates/WebPreferencesDefinitions.h.erb
+    ${WEBKIT_DIR}/Scripts/PreferencesTemplates/WebPreferencesExperimentalFeatures.cpp.erb
+    ${WEBKIT_DIR}/Scripts/PreferencesTemplates/WebPreferencesKeys.cpp.erb
+    ${WEBKIT_DIR}/Scripts/PreferencesTemplates/WebPreferencesKeys.h.erb
+    ${WEBKIT_DIR}/Scripts/PreferencesTemplates/WebPreferencesStoreDefaultsMap.cpp.erb
 )
 
 add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_WEBKIT_DIR}/WebPreferencesDefinitions.h
+    OUTPUT ${DERIVED_SOURCES_WEBKIT_DIR}/WebPageUpdatePreferences.cpp ${DERIVED_SOURCES_WEBKIT_DIR}/WebPreferencesDefinitions.h ${DERIVED_SOURCES_WEBKIT_DIR}/WebPreferencesExperimentalFeatures.cpp ${DERIVED_SOURCES_WEBKIT_DIR}/WebPreferencesKeys.cpp ${DERIVED_SOURCES_WEBKIT_DIR}/WebPreferencesKeys.h ${DERIVED_SOURCES_WEBKIT_DIR}/WebPreferencesStoreDefaultsMap.cpp
     MAIN_DEPENDENCY ${WEBKIT_DIR}/Shared/WebPreferences.yaml
     DEPENDS ${WebKit_WEB_PREFERENCES_TEMPLATES}
     COMMAND ${RUBY_EXECUTABLE} ${WEBKIT_DIR}/Scripts/GeneratePreferences.rb --input ${WEBKIT_DIR}/Shared/WebPreferences.yaml --outputDir "${DERIVED_SOURCES_WEBKIT_DIR}"
@@ -926,7 +930,16 @@ add_custom_command(
 
 list(APPEND WebKit_HEADERS
     ${DERIVED_SOURCES_WEBKIT_DIR}/WebPreferencesDefinitions.h
+    ${DERIVED_SOURCES_WEBKIT_DIR}/WebPreferencesKeys.h
 )
+
+list(APPEND WebKit_SOURCES
+    ${DERIVED_SOURCES_WEBKIT_DIR}/WebPageUpdatePreferences.cpp
+    ${DERIVED_SOURCES_WEBKIT_DIR}/WebPreferencesExperimentalFeatures.cpp
+    ${DERIVED_SOURCES_WEBKIT_DIR}/WebPreferencesKeys.cpp
+    ${DERIVED_SOURCES_WEBKIT_DIR}/WebPreferencesStoreDefaultsMap.cpp
+)
+
 
 list(APPEND WebKit_SOURCES ${WebKit_DERIVED_SOURCES})
 

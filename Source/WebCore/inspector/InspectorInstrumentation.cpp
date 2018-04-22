@@ -38,7 +38,6 @@
 #include "Database.h"
 #include "DocumentLoader.h"
 #include "Event.h"
-#include "EventDispatcher.h"
 #include "InspectorApplicationCacheAgent.h"
 #include "InspectorCSSAgent.h"
 #include "InspectorCanvasAgent.h"
@@ -327,7 +326,14 @@ void InspectorInstrumentation::willRemoveEventListenerImpl(InstrumentingAgents& 
     if (PageDebuggerAgent* pageDebuggerAgent = instrumentingAgents.pageDebuggerAgent())
         pageDebuggerAgent->willRemoveEventListener(target, eventType, listener, capture);
     if (InspectorDOMAgent* domAgent = instrumentingAgents.inspectorDOMAgent())
-        domAgent->willRemoveEventListener(target);
+        domAgent->willRemoveEventListener(target, eventType, listener, capture);
+}
+
+bool InspectorInstrumentation::isEventListenerDisabledImpl(InstrumentingAgents& instrumentingAgents, EventTarget& target, const AtomicString& eventType, EventListener& listener, bool capture)
+{
+    if (InspectorDOMAgent* domAgent = instrumentingAgents.inspectorDOMAgent())
+        return domAgent->isEventListenerDisabled(target, eventType, listener, capture);
+    return false;
 }
 
 void InspectorInstrumentation::didPostMessageImpl(InstrumentingAgents& instrumentingAgents, const TimerBase& timer, JSC::ExecState& state)
@@ -1006,6 +1012,12 @@ void InspectorInstrumentation::didFinishRecordingCanvasFrameImpl(InstrumentingAg
 }
 
 #if ENABLE(WEBGL)
+void InspectorInstrumentation::didEnableExtensionImpl(InstrumentingAgents& instrumentingAgents, WebGLRenderingContextBase& context, const String& extension)
+{
+    if (InspectorCanvasAgent* canvasAgent = instrumentingAgents.inspectorCanvasAgent())
+        canvasAgent->didEnableExtension(context, extension);
+}
+
 void InspectorInstrumentation::didCreateProgramImpl(InstrumentingAgents& instrumentingAgents, WebGLRenderingContextBase& context, WebGLProgram& program)
 {
     if (InspectorCanvasAgent* canvasAgent = instrumentingAgents.inspectorCanvasAgent())

@@ -36,9 +36,9 @@ class DeferredPromise;
 
 class ServiceWorkerWindowClient final : public ServiceWorkerClient {
 public:
-    static Ref<ServiceWorkerWindowClient> create(ScriptExecutionContext& context)
+    static Ref<ServiceWorkerWindowClient> create(ScriptExecutionContext& context, const Identifier& identifier)
     {
-        return adoptRef(*new ServiceWorkerWindowClient(context));
+        return adoptRef(*new ServiceWorkerWindowClient(context, identifier));
     }
 
     VisibilityState visibilityState() const;
@@ -48,9 +48,13 @@ public:
     void navigate(const String& url, Ref<DeferredPromise>&&);
 
 private:
-    explicit ServiceWorkerWindowClient(ScriptExecutionContext&);
+    ServiceWorkerWindowClient(ScriptExecutionContext&, const Identifier&);
 };
 
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ServiceWorkerWindowClient)
+    static bool isType(const WebCore::ServiceWorkerClient& client) { return client.type() == WebCore::ServiceWorkerClientType::Window; }
+SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // ENABLE(SERVICE_WORKER)

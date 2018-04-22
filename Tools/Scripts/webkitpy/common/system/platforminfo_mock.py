@@ -1,4 +1,5 @@
 # Copyright (C) 2011 Google Inc. All rights reserved.
+# Copyright (c) 2017 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -25,6 +26,8 @@
 # THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+from webkitpy.common.version import Version
 
 
 class MockPlatformInfo(object):
@@ -64,10 +67,10 @@ class MockPlatformInfo(object):
         return 80
 
     def xcode_sdk_version(self, sdk_name):
-        return '8.1'
+        return Version('8.1')
 
     def xcode_version(self):
-        return '8.0'
+        return Version('8.0')
 
     def xcode_simctl_list(self):
         return self.expected_xcode_simctl_list

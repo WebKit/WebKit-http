@@ -64,16 +64,16 @@ function foo(a, b) {
 }
 
 // Same deal as foo, just with an inlining thrown into the mix.
-// Even the first tail call should not be optimized in this case, for subtle reasons.
+// Even the first tail call should not be optimized in this case, because some code in the compiler may constant-fold the number of arguments in that case.
 function bar(x, y) {
     function auxBar(a, b) {
         if (a == 0)
             return 42;
         if (a == 1)
-            return foo(a - 1);
+            return auxBar(a - 1);
         if (a == 2)
-            return foo(b - 1, a);
-        return foo (b - 1, a, 43);
+            return auxBar(b - 1, a);
+        return auxBar(b - 1, a, 43);
     }
 
     return auxBar(x, y);

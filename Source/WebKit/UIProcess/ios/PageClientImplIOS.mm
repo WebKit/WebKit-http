@@ -55,7 +55,6 @@
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/TextIndicator.h>
 #import <WebCore/ValidationBubble.h>
-#import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
 #import <wtf/BlockPtr.h>
 
 #define MESSAGE_CHECK(assertion) MESSAGE_CHECK_BASE(assertion, m_webView->_page->process().connection())
@@ -548,7 +547,8 @@ void PageClientImpl::startAssistingNode(const AssistedNodeInformation& nodeInfor
     NSObject <NSSecureCoding> *userObject = nil;
     if (API::Data* data = static_cast<API::Data*>(userData)) {
         auto nsData = adoptNS([[NSData alloc] initWithBytesNoCopy:const_cast<void*>(static_cast<const void*>(data->bytes())) length:data->size() freeWhenDone:NO]);
-        auto unarchiver = secureUnarchiverFromData(nsData.get());
+        auto unarchiver = adoptNS([[NSKeyedUnarchiver alloc] initForReadingWithData:nsData.get()]);
+        [unarchiver setRequiresSecureCoding:YES];
         @try {
             userObject = [unarchiver decodeObjectOfClass:[NSObject class] forKey:@"userObject"];
         } @catch (NSException *exception) {
@@ -572,11 +572,6 @@ void PageClientImpl::stopAssistingNode()
 bool PageClientImpl::allowsBlockSelection()
 {
     return [m_webView _allowsBlockSelection];
-}
-
-void PageClientImpl::didUpdateBlockSelectionWithTouch(uint32_t touch, uint32_t flags, float growThreshold, float shrinkThreshold)
-{
-    [m_contentView _didUpdateBlockSelectionWithTouch:(SelectionTouch)touch withFlags:(SelectionFlags)flags growThreshold:growThreshold shrinkThreshold:shrinkThreshold];
 }
 
 void PageClientImpl::showPlaybackTargetPicker(bool hasVideo, const IntRect& elementRect)
@@ -631,27 +626,35 @@ WebFullScreenManagerProxyClient& PageClientImpl::fullScreenManagerProxyClient()
 
 void PageClientImpl::closeFullScreenManager()
 {
+    [m_webView closeFullScreenWindowController];
 }
 
 bool PageClientImpl::isFullScreen()
 {
-    return false;
+    if (![m_webView hasFullScreenWindowController])
+        return false;
+
+    return [m_webView fullScreenWindowController].isFullScreen;
 }
 
 void PageClientImpl::enterFullScreen()
 {
+    [[m_webView fullScreenWindowController] enterFullScreen];
 }
 
 void PageClientImpl::exitFullScreen()
 {
+    [[m_webView fullScreenWindowController] exitFullScreen];
 }
 
-void PageClientImpl::beganEnterFullScreen(const IntRect&, const IntRect&)
+void PageClientImpl::beganEnterFullScreen(const IntRect& initialFrame, const IntRect& finalFrame)
 {
+    [[m_webView fullScreenWindowController] beganEnterFullScreenWithInitialFrame:initialFrame finalFrame:finalFrame];
 }
 
-void PageClientImpl::beganExitFullScreen(const IntRect&, const IntRect&)
+void PageClientImpl::beganExitFullScreen(const IntRect& initialFrame, const IntRect& finalFrame)
 {
+    [[m_webView fullScreenWindowController] beganExitFullScreenWithInitialFrame:initialFrame finalFrame:finalFrame];
 }
 
 #endif // ENABLE(FULLSCREEN_API)
@@ -802,11 +805,6 @@ void PageClientImpl::didChangeDataInteractionCaretRect(const IntRect& previousCa
     [m_contentView _didChangeDataInteractionCaretRect:previousCaretRect currentRect:caretRect];
 }
 #endif
-
-void PageClientImpl::handleActiveNowPlayingSessionInfoResponse(bool hasActiveSession, const String& title, double duration, double elapsedTime)
-{
-    [m_webView _handleActiveNowPlayingSessionInfoResponse:hasActiveSession title:nsStringFromWebCoreString(title) duration:duration elapsedTime:elapsedTime];
-}
 
 #if USE(QUICK_LOOK)
 void PageClientImpl::requestPasswordForQuickLookDocument(const String& fileName, WTF::Function<void(const String&)>&& completionHandler)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,6 +45,14 @@ void MapConstructor::finishCreation(VM& vm, MapPrototype* mapPrototype, GetterSe
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, mapPrototype, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
     putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
     putDirectNonIndexAccessor(vm, vm.propertyNames->speciesSymbol, speciesSymbol, PropertyAttribute::Accessor | PropertyAttribute::ReadOnly | PropertyAttribute::DontEnum);
+}
+
+static EncodedJSValue JSC_HOST_CALL callMap(ExecState*);
+static EncodedJSValue JSC_HOST_CALL constructMap(ExecState*);
+
+MapConstructor::MapConstructor(VM& vm, Structure* structure)
+    : Base(vm, structure, callMap, constructMap)
+{
 }
 
 static EncodedJSValue JSC_HOST_CALL callMap(ExecState* exec)
@@ -105,23 +113,12 @@ static EncodedJSValue JSC_HOST_CALL constructMap(ExecState* exec)
         MarkedArgumentBuffer arguments;
         arguments.append(key);
         arguments.append(value);
+        ASSERT(!arguments.hasOverflowed());
         scope.release();
         call(exec, adderFunction, adderFunctionCallType, adderFunctionCallData, map, arguments);
     });
 
     return JSValue::encode(map);
-}
-
-ConstructType MapConstructor::getConstructData(JSCell*, ConstructData& constructData)
-{
-    constructData.native.function = constructMap;
-    return ConstructType::Host;
-}
-
-CallType MapConstructor::getCallData(JSCell*, CallData& callData)
-{
-    callData.native.function = callMap;
-    return CallType::Host;
 }
 
 EncodedJSValue JSC_HOST_CALL mapPrivateFuncMapBucketHead(ExecState* exec)

@@ -74,7 +74,7 @@ bool ResourceLoadNotifier::didReceiveInvalidCertificate(ResourceLoader* loader, 
 
 void ResourceLoadNotifier::willSendRequest(ResourceLoader* loader, ResourceRequest& clientRequest, const ResourceResponse& redirectResponse)
 {
-    m_frame.loader().applyUserAgent(clientRequest);
+    m_frame.loader().applyUserAgentIfNeeded(clientRequest);
 
     dispatchWillSendRequest(loader->documentLoader(), loader->identifier(), clientRequest, redirectResponse);
 }

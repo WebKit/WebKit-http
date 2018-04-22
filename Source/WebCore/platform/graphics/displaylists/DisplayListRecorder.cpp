@@ -37,11 +37,10 @@ namespace WebCore {
 namespace DisplayList {
 
 Recorder::Recorder(GraphicsContext& context, DisplayList& displayList, const FloatRect& initialClip, const AffineTransform& baseCTM)
-    : m_graphicsContext(context)
+    : GraphicsContextImpl(context, initialClip, baseCTM)
     , m_displayList(displayList)
 {
     LOG_WITH_STREAM(DisplayLists, stream << "\nRecording with clip " << initialClip);
-    m_graphicsContext.setDisplayListRecorder(this);
     m_stateStack.append(ContextState(baseCTM, initialClip));
 }
 
@@ -148,10 +147,10 @@ void Recorder::restore()
 {
     if (!m_stateStack.size())
         return;
-    
+
     bool stateUsedForDrawing = currentState().wasUsedForDrawing;
     size_t saveIndex = currentState().saveItemIndex;
-    
+
     m_stateStack.removeLast();
     // Have to avoid eliding nested Save/Restore when a descendant state contains drawing items.
     currentState().wasUsedForDrawing |= stateUsedForDrawing;
@@ -163,7 +162,7 @@ void Recorder::restore()
     }
 
     appendItem(Restore::create());
-    
+
     if (saveIndex) {
         Save& saveItem = downcast<Save>(m_displayList.itemAt(saveIndex));
         saveItem.setRestoreIndex(m_displayList.itemCount() - 1);
@@ -241,13 +240,13 @@ void Recorder::drawPath(const Path& path)
     updateItemExtent(newItem);
 }
 
-void Recorder::drawFocusRing(const Path& path, int width, int offset, const Color& color)
+void Recorder::drawFocusRing(const Path& path, float width, float offset, const Color& color)
 {
     DrawingItem& newItem = downcast<DrawingItem>(appendItem(DrawFocusRingPath::create(path, width, offset, color)));
     updateItemExtent(newItem);
 }
 
-void Recorder::drawFocusRing(const Vector<FloatRect>& rects, int width, int offset, const Color& color)
+void Recorder::drawFocusRing(const Vector<FloatRect>& rects, float width, float offset, const Color& color)
 {
     DrawingItem& newItem = downcast<DrawingItem>(appendItem(DrawFocusRingRects::create(rects, width, offset, color)));
     updateItemExtent(newItem);
@@ -374,7 +373,7 @@ Item& Recorder::appendItem(Ref<Item>&& item)
 
 void Recorder::updateItemExtent(DrawingItem& item) const
 {
-    if (std::optional<FloatRect> rect = item.localBounds(m_graphicsContext))
+    if (std::optional<FloatRect> rect = item.localBounds(graphicsContext()))
         item.setExtent(extentFromLocalBounds(rect.value()));
 }
 
@@ -396,7 +395,7 @@ FloatRect Recorder::extentFromLocalBounds(const FloatRect& rect) const
     FloatSize shadowOffset;
     float shadowRadius;
     Color shadowColor;
-    if (m_graphicsContext.getShadow(shadowOffset, shadowRadius, shadowColor)) {
+    if (graphicsContext().getShadow(shadowOffset, shadowRadius, shadowColor)) {
         FloatRect shadowExtent= bounds;
         shadowExtent.move(shadowOffset);
         shadowExtent.inflate(shadowPaintingExtent(shadowRadius));

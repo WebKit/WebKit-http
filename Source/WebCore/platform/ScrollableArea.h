@@ -26,6 +26,7 @@
 #pragma once
 
 #include "ScrollSnapOffsetsInfo.h"
+#include "ScrollTypes.h"
 #include "Scrollbar.h"
 #include <wtf/Forward.h>
 #include <wtf/WeakPtr.h>
@@ -50,7 +51,7 @@ typedef IntPoint ScrollOffset;
 class ScrollableArea {
 public:
     WEBCORE_EXPORT bool scroll(ScrollDirection, ScrollGranularity, float multiplier = 1);
-    WEBCORE_EXPORT void scrollToOffsetWithoutAnimation(const FloatPoint&);
+    WEBCORE_EXPORT void scrollToOffsetWithoutAnimation(const FloatPoint&, ScrollClamping = ScrollClamping::Clamped);
     void scrollToOffsetWithoutAnimation(ScrollbarOrientation, float offset);
 
     // Should be called when the scroll position changes externally, for example if the scroll layer position
@@ -88,12 +89,10 @@ public:
     void updateScrollSnapState();
 
 #if ENABLE(TOUCH_EVENTS)
-    virtual bool isTouchScrollable() const { return false; }
     virtual bool handleTouchEvent(const PlatformTouchEvent&);
 #endif
 
 #if PLATFORM(IOS)
-    virtual bool isOverflowScroll() const { return false; }
     virtual void didStartScroll() { }
     virtual void didEndScroll() { }
     virtual void didUpdateScroll() { }

@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
  * Copyright (C) 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  *
@@ -1917,62 +1917,6 @@ EventTargetInterface Node::eventTargetInterface() const
     return NodeEventTargetInterfaceType;
 }
 
-#if !ASSERT_DISABLED || ENABLE(SECURITY_ASSERTIONS)
-class DidMoveToNewDocumentAssertionScope {
-public:
-    DidMoveToNewDocumentAssertionScope(Node& node, Document& oldDocument, Document& newDocument)
-        : m_node(node)
-        , m_oldDocument(oldDocument)
-        , m_newDocument(newDocument)
-        , m_previousScope(s_scope)
-    {
-        s_scope = this;
-    }
-
-    ~DidMoveToNewDocumentAssertionScope()
-    {
-        RELEASE_ASSERT(m_called);
-        s_scope = m_previousScope;
-    }
-
-    static void didRecieveCall(Node& node, Document& oldDocument, Document& newDocument)
-    {
-        RELEASE_ASSERT(s_scope);
-        RELEASE_ASSERT(!s_scope->m_called);
-        RELEASE_ASSERT(&s_scope->m_node == &node);
-        RELEASE_ASSERT(&s_scope->m_oldDocument == &oldDocument);
-        RELEASE_ASSERT(&s_scope->m_newDocument == &newDocument);
-        s_scope->m_called = true;
-    }
-
-private:
-    Node& m_node;
-    Document& m_oldDocument;
-    Document& m_newDocument;
-    bool m_called { false };
-    DidMoveToNewDocumentAssertionScope* m_previousScope;
-
-    static DidMoveToNewDocumentAssertionScope* s_scope;
-};
-
-DidMoveToNewDocumentAssertionScope* DidMoveToNewDocumentAssertionScope::s_scope = nullptr;
-
-#else
-class DidMoveToNewDocumentAssertionScope {
-public:
-    DidMoveToNewDocumentAssertionScope(Node&, Document&, Document&) { }
-    static void didRecieveCall(Node&, Document&, Document&) { }
-};
-#endif
-
-static ALWAYS_INLINE void moveNodeToNewDocument(Node& node, Document& oldDocument, Document& newDocument)
-{
-    ASSERT(!node.isConnected() || &oldDocument != &newDocument);
-    DidMoveToNewDocumentAssertionScope scope(node, oldDocument, newDocument);
-    node.didMoveToNewDocument(oldDocument, newDocument);
-    RELEASE_ASSERT(&node.document() == &newDocument);
-}
-
 template <typename MoveNodeFunction, typename MoveShadowRootFunction>
 static void traverseSubtreeToUpdateTreeScope(Node& root, MoveNodeFunction moveNode, MoveShadowRootFunction moveShadowRoot)
 {
@@ -1993,12 +1937,13 @@ static void traverseSubtreeToUpdateTreeScope(Node& root, MoveNodeFunction moveNo
     }
 }
 
-static void moveShadowTreeToNewDocument(ShadowRoot& shadowRoot, Document& oldDocument, Document& newDocument)
+inline void Node::moveShadowTreeToNewDocument(ShadowRoot& shadowRoot, Document& oldDocument, Document& newDocument)
 {
     traverseSubtreeToUpdateTreeScope(shadowRoot, [&oldDocument, &newDocument](Node& node) {
-        moveNodeToNewDocument(node, oldDocument, newDocument);
+        node.moveNodeToNewDocument(oldDocument, newDocument);
     }, [&oldDocument, &newDocument](ShadowRoot& innerShadowRoot) {
-        RELEASE_ASSERT(&innerShadowRoot.document() == &oldDocument);
+        RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(&innerShadowRoot.document() == &oldDocument);
+        innerShadowRoot.moveShadowRootToNewDocument(newDocument);
         moveShadowTreeToNewDocument(innerShadowRoot, oldDocument, newDocument);
     });
 }
@@ -2006,7 +1951,6 @@ static void moveShadowTreeToNewDocument(ShadowRoot& shadowRoot, Document& oldDoc
 void Node::moveTreeToNewScope(Node& root, TreeScope& oldScope, TreeScope& newScope)
 {
     ASSERT(&oldScope != &newScope);
-    RELEASE_ASSERT(&root.treeScope() == &oldScope);
 
     Document& oldDocument = oldScope.documentScope();
     Document& newDocument = newScope.documentScope();
@@ -2014,22 +1958,22 @@ void Node::moveTreeToNewScope(Node& root, TreeScope& oldScope, TreeScope& newSco
         oldDocument.incrementReferencingNodeCount();
         traverseSubtreeToUpdateTreeScope(root, [&](Node& node) {
             ASSERT(!node.isTreeScope());
-            RELEASE_ASSERT(&node.treeScope() == &oldScope);
-            RELEASE_ASSERT(&node.document() == &oldDocument);
+            RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(&node.treeScope() == &oldScope);
             node.setTreeScope(newScope);
-            moveNodeToNewDocument(node, oldDocument, newDocument);
+            node.moveNodeToNewDocument(oldDocument, newDocument);
         }, [&](ShadowRoot& shadowRoot) {
             ASSERT_WITH_SECURITY_IMPLICATION(&shadowRoot.document() == &oldDocument);
-            shadowRoot.setParentTreeScope(newScope);
+            shadowRoot.moveShadowRootToNewParentScope(newScope, newDocument);
             moveShadowTreeToNewDocument(shadowRoot, oldDocument, newDocument);
         });
+        RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(&oldScope.documentScope() == &oldDocument && &newScope.documentScope() == &newDocument);
         oldDocument.decrementReferencingNodeCount();
     } else {
         traverseSubtreeToUpdateTreeScope(root, [&](Node& node) {
             ASSERT(!node.isTreeScope());
-            RELEASE_ASSERT(&node.treeScope() == &oldScope);
+            RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(&node.treeScope() == &oldScope);
             node.setTreeScope(newScope);
-            if (!node.hasRareData())
+            if (UNLIKELY(!node.hasRareData()))
                 return;
             if (auto* nodeLists = node.rareData()->nodeLists())
                 nodeLists->adoptTreeScope();
@@ -2039,72 +1983,69 @@ void Node::moveTreeToNewScope(Node& root, TreeScope& oldScope, TreeScope& newSco
     }
 }
 
-void Node::didMoveToNewDocument(Document& oldDocument, Document& newDocument)
+void Node::moveNodeToNewDocument(Document& oldDocument, Document& newDocument)
 {
-    RELEASE_ASSERT(&document() == &newDocument);
-    DidMoveToNewDocumentAssertionScope::didRecieveCall(*this, oldDocument, newDocument);
-
     newDocument.incrementReferencingNodeCount();
     oldDocument.decrementReferencingNodeCount();
 
     if (hasRareData()) {
         if (auto* nodeLists = rareData()->nodeLists())
             nodeLists->adoptDocument(oldDocument, newDocument);
+        if (auto* registry = mutationObserverRegistry()) {
+            for (auto& registration : *registry)
+                newDocument.addMutationObserverTypes(registration->mutationTypes());
+        }
+        if (auto* transientRegistry = transientMutationObserverRegistry()) {
+            for (auto& registration : *transientRegistry)
+                newDocument.addMutationObserverTypes(registration->mutationTypes());
+        }
+    } else {
+        ASSERT(!mutationObserverRegistry());
+        ASSERT(!transientMutationObserverRegistry());
     }
 
     oldDocument.moveNodeIteratorsToNewDocument(*this, newDocument);
-
-    if (auto* eventTargetData = this->eventTargetData()) {
-        if (!eventTargetData->eventListenerMap.isEmpty()) {
-            for (auto& type : eventTargetData->eventListenerMap.eventTypes())
-                newDocument.addListenerTypeIfNeeded(type);
-        }
-    }
 
     if (AXObjectCache::accessibilityEnabled()) {
         if (auto* cache = oldDocument.existingAXObjectCache())
             cache->remove(this);
     }
 
-    unsigned numWheelEventHandlers = eventListeners(eventNames().mousewheelEvent).size() + eventListeners(eventNames().wheelEvent).size();
-    for (unsigned i = 0; i < numWheelEventHandlers; ++i) {
-        oldDocument.didRemoveWheelEventHandler(*this);
-        newDocument.didAddWheelEventHandler(*this);
-    }
+    if (auto* eventTargetData = this->eventTargetData()) {
+        if (!eventTargetData->eventListenerMap.isEmpty()) {
+            for (auto& type : eventTargetData->eventListenerMap.eventTypes())
+                newDocument.addListenerTypeIfNeeded(type);
+        }
 
-    unsigned numTouchEventListeners = 0;
-    for (auto& name : eventNames().touchEventNames())
-        numTouchEventListeners += eventListeners(name).size();
+        unsigned numWheelEventHandlers = eventListeners(eventNames().mousewheelEvent).size() + eventListeners(eventNames().wheelEvent).size();
+        for (unsigned i = 0; i < numWheelEventHandlers; ++i) {
+            oldDocument.didRemoveWheelEventHandler(*this);
+            newDocument.didAddWheelEventHandler(*this);
+        }
 
-    for (unsigned i = 0; i < numTouchEventListeners; ++i) {
-        oldDocument.didRemoveTouchEventHandler(*this);
-        newDocument.didAddTouchEventHandler(*this);
+        unsigned numTouchEventListeners = 0;
+        for (auto& name : eventNames().touchEventNames())
+            numTouchEventListeners += eventListeners(name).size();
 
+        for (unsigned i = 0; i < numTouchEventListeners; ++i) {
+            oldDocument.didRemoveTouchEventHandler(*this);
+            newDocument.didAddTouchEventHandler(*this);
 #if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
-        oldDocument.removeTouchEventListener(*this);
-        newDocument.addTouchEventListener(*this);
+            oldDocument.removeTouchEventListener(*this);
+            newDocument.addTouchEventListener(*this);
 #endif
-    }
+        }
 
 #if ENABLE(TOUCH_EVENTS) && ENABLE(IOS_GESTURE_EVENTS)
-    unsigned numGestureEventListeners = 0;
-    for (auto& name : eventNames().gestureEventNames())
-        numGestureEventListeners += eventListeners(name).size();
+        unsigned numGestureEventListeners = 0;
+        for (auto& name : eventNames().gestureEventNames())
+            numGestureEventListeners += eventListeners(name).size();
 
-    for (unsigned i = 0; i < numGestureEventListeners; ++i) {
-        oldDocument.removeTouchEventHandler(*this);
-        newDocument.addTouchEventHandler(*this);
-    }
+        for (unsigned i = 0; i < numGestureEventListeners; ++i) {
+            oldDocument.removeTouchEventHandler(*this);
+            newDocument.addTouchEventHandler(*this);
+        }
 #endif
-
-    if (auto* registry = mutationObserverRegistry()) {
-        for (auto& registration : *registry)
-            newDocument.addMutationObserverTypes(registration->mutationTypes());
-    }
-
-    if (auto* transientRegistry = transientMutationObserverRegistry()) {
-        for (auto& registration : *transientRegistry)
-            newDocument.addMutationObserverTypes(registration->mutationTypes());
     }
 
 #if !ASSERT_DISABLED || ENABLE(SECURITY_ASSERTIONS)
@@ -2116,6 +2057,9 @@ void Node::didMoveToNewDocument(Document& oldDocument, Document& newDocument)
     ASSERT_WITH_SECURITY_IMPLICATION(!oldDocument.touchEventTargetsContain(*this));
 #endif
 #endif
+
+    if (is<Element>(*this))
+        downcast<Element>(*this).didMoveToNewDocument(oldDocument, newDocument);
 }
 
 static inline bool tryAddEventListener(Node* targetNode, const AtomicString& eventType, Ref<EventListener>&& listener, const EventTarget::AddEventListenerOptions& options)
@@ -2258,7 +2202,7 @@ HashSet<MutationObserverRegistration*>* Node::transientMutationObserverRegistry(
     return &data->transientRegistry;
 }
 
-template<typename Registry> static inline void collectMatchingObserversForMutation(HashMap<MutationObserver*, MutationRecordDeliveryOptions>& observers, Registry* registry, Node& target, MutationObserver::MutationType type, const QualifiedName* attributeName)
+template<typename Registry> static inline void collectMatchingObserversForMutation(HashMap<Ref<MutationObserver>, MutationRecordDeliveryOptions>& observers, Registry* registry, Node& target, MutationObserver::MutationType type, const QualifiedName* attributeName)
 {
     if (!registry)
         return;
@@ -2266,16 +2210,16 @@ template<typename Registry> static inline void collectMatchingObserversForMutati
     for (auto& registration : *registry) {
         if (registration->shouldReceiveMutationFrom(target, type, attributeName)) {
             auto deliveryOptions = registration->deliveryOptions();
-            auto result = observers.add(&registration->observer(), deliveryOptions);
+            auto result = observers.add(registration->observer(), deliveryOptions);
             if (!result.isNewEntry)
                 result.iterator->value |= deliveryOptions;
         }
     }
 }
 
-HashMap<MutationObserver*, MutationRecordDeliveryOptions> Node::registeredMutationObservers(MutationObserver::MutationType type, const QualifiedName* attributeName)
+HashMap<Ref<MutationObserver>, MutationRecordDeliveryOptions> Node::registeredMutationObservers(MutationObserver::MutationType type, const QualifiedName* attributeName)
 {
-    HashMap<MutationObserver*, MutationRecordDeliveryOptions> result;
+    HashMap<Ref<MutationObserver>, MutationRecordDeliveryOptions> result;
     ASSERT((type == MutationObserver::Attributes && attributeName) || !attributeName);
     collectMatchingObserversForMutation(result, mutationObserverRegistry(), *this, type, attributeName);
     collectMatchingObserversForMutation(result, transientMutationObserverRegistry(), *this, type, attributeName);
@@ -2368,13 +2312,9 @@ void Node::dispatchScopedEvent(Event& event)
     EventDispatcher::dispatchScopedEvent(*this, event);
 }
 
-bool Node::dispatchEvent(Event& event)
+void Node::dispatchEvent(Event& event)
 {
-#if ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS)
-    if (is<TouchEvent>(event))
-        return dispatchTouchEvent(downcast<TouchEvent>(event));
-#endif
-    return EventDispatcher::dispatchEvent(*this, event);
+    EventDispatcher::dispatchEvent(*this, event);
 }
 
 void Node::dispatchSubtreeModifiedEvent()
@@ -2382,7 +2322,7 @@ void Node::dispatchSubtreeModifiedEvent()
     if (isInShadowTree())
         return;
 
-    RELEASE_ASSERT(NoEventDispatchAssertion::isEventDispatchAllowedInSubtree(*this));
+    ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::InMainThread::isEventDispatchAllowedInSubtree(*this));
 
     if (!document().hasListenerType(Document::DOMSUBTREEMODIFIED_LISTENER))
         return;
@@ -2393,21 +2333,16 @@ void Node::dispatchSubtreeModifiedEvent()
     dispatchScopedEvent(MutationEvent::create(subtreeModifiedEventName, true));
 }
 
-bool Node::dispatchDOMActivateEvent(int detail, Event& underlyingEvent)
+void Node::dispatchDOMActivateEvent(Event& underlyingClickEvent)
 {
-    RELEASE_ASSERT(NoEventDispatchAssertion::isEventAllowedInMainThread());
-    Ref<UIEvent> event = UIEvent::create(eventNames().DOMActivateEvent, true, true, document().defaultView(), detail);
-    event->setUnderlyingEvent(&underlyingEvent);
+    ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::InMainThread::isEventAllowed());
+    int detail = is<UIEvent>(underlyingClickEvent) ? downcast<UIEvent>(underlyingClickEvent).detail() : 0;
+    auto event = UIEvent::create(eventNames().DOMActivateEvent, true, true, document().defaultView(), detail);
+    event->setUnderlyingEvent(&underlyingClickEvent);
     dispatchScopedEvent(event);
-    return event->defaultHandled();
+    if (event->defaultHandled())
+        underlyingClickEvent.setDefaultHandled();
 }
-
-#if ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS)
-bool Node::dispatchTouchEvent(TouchEvent& event)
-{
-    return EventDispatcher::dispatchEvent(*this, event);
-}
-#endif
 
 bool Node::dispatchBeforeLoadEvent(const String& sourceURL)
 {
@@ -2415,9 +2350,9 @@ bool Node::dispatchBeforeLoadEvent(const String& sourceURL)
         return true;
 
     Ref<Node> protectedThis(*this);
-    Ref<BeforeLoadEvent> beforeLoadEvent = BeforeLoadEvent::create(sourceURL);
-    dispatchEvent(beforeLoadEvent);
-    return !beforeLoadEvent->defaultPrevented();
+    auto event = BeforeLoadEvent::create(sourceURL);
+    dispatchEvent(event);
+    return !event->defaultPrevented();
 }
 
 void Node::dispatchInputEvent()
@@ -2436,9 +2371,7 @@ void Node::defaultEventHandler(Event& event)
                 frame->eventHandler().defaultKeyboardEventHandler(downcast<KeyboardEvent>(event));
         }
     } else if (eventType == eventNames().clickEvent) {
-        int detail = is<UIEvent>(event) ? downcast<UIEvent>(event).detail() : 0;
-        if (dispatchDOMActivateEvent(detail, event))
-            event.setDefaultHandled();
+        dispatchDOMActivateEvent(event);
 #if ENABLE(CONTEXT_MENUS)
     } else if (eventType == eventNames().contextmenuEvent) {
         if (Frame* frame = document().frame())

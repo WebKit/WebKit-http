@@ -1,3 +1,298 @@
+2017-11-12  Mark Lam  <mark.lam@apple.com>
+
+        We should ensure that operationStrCat2 and operationStrCat3 are never passed Symbols as arguments.
+        https://bugs.webkit.org/show_bug.cgi?id=179562
+        <rdar://problem/35467022>
+
+        Reviewed by Saam Barati.
+
+        * regress-179562.js: Added.
+
+2017-11-08  Saam Barati  <sbarati@apple.com>
+
+        A JSFunction's ObjectAllocationProfile should watch the poly prototype watchpoint so it can clear its object allocation profile
+        https://bugs.webkit.org/show_bug.cgi?id=177792
+
+        Reviewed by Yusuke Suzuki.
+
+        * microbenchmarks/poly-proto-clear-js-function-allocation-profile.js: Added.
+        (assert):
+        (foo.Foo.prototype.ensureX):
+        (foo.Foo):
+        (foo):
+        (access):
+
+2017-11-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark test262.yaml/test262/test/language/statements/try/tco-catch.js as passing.
+        https://bugs.webkit.org/show_bug.cgi?id=178592
+
+        Unreviewed test gardening.
+
+        * test262.yaml:
+
+2017-11-08  Robin Morisset  <rmorisset@apple.com>
+
+        Turn recursive tail calls into loops
+        https://bugs.webkit.org/show_bug.cgi?id=176601
+
+        Reviewed by Saam Barati.
+
+        Relanding after https://bugs.webkit.org/show_bug.cgi?id=178834.
+
+        Add some simple test that computes factorial in several ways, and other trivial computations.
+        They all tests the case where foo calls bar (in an inlineable way) that then does a tail call.
+        Depending on the nature of both calls, it is possible or not to turn the tail call into a loop.
+        I have no clear way of checking that the call was indeed transformed, but I can check that the code computes the right result
+        (which it doesn't if that tail call is transformed into a loop in the unsound cases).
+
+        * stress/inline-call-to-recursive-tail-call.js: Added.
+        (factorial.aux):
+        (factorial):
+        (factorial2.aux2):
+        (factorial2.id):
+        (factorial2):
+        (factorial3.aux3):
+        (factorial3):
+        (aux4):
+        (factorial4):
+        (foo):
+        (auxBar):
+        (bar):
+        (test):
+
+2017-11-07  Mark Lam  <mark.lam@apple.com>
+
+        AccessCase::generateImpl() should exclude the result register when restoring registers after a call.
+        https://bugs.webkit.org/show_bug.cgi?id=179355
+        <rdar://problem/35263053>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-179355.js: Added.
+
+2017-11-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        JIT call inline caches should cache calls to objects with getCallData/getConstructData traps
+        https://bugs.webkit.org/show_bug.cgi?id=144458
+
+        Reviewed by Saam Barati.
+
+        * microbenchmarks/dfg-internal-function-call.js: Added.
+        (target):
+        * microbenchmarks/dfg-internal-function-construct.js: Added.
+        (target):
+        * microbenchmarks/dfg-internal-function-not-handled-call.js: Added.
+        (target):
+        * microbenchmarks/dfg-internal-function-not-handled-construct.js: Added.
+        (target):
+        * stress/dfg-internal-function-call.js: Added.
+        (shouldBe):
+        (target):
+        * stress/dfg-internal-function-construct.js: Added.
+        (shouldBe):
+        (target):
+        * stress/internal-function-call.js: Added.
+        (shouldBe):
+        * stress/internal-function-construct.js: Added.
+        (shouldBe):
+
+2017-11-05  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Skip stress/regress-178385.js.
+        https://bugs.webkit.org/show_bug.cgi?id=179298
+
+        Unreviewed test gardening.
+
+        * stress/regress-178385.js:
+
+2017-11-03  Keith Miller  <keith_miller@apple.com>
+
+        Add test for ic with side effects
+        https://bugs.webkit.org/show_bug.cgi?id=179268
+
+        Reviewed by Saam Barati.
+
+        * stress/put-inline-cache-side-effects.js: Added.
+        (let.i.of.objs.keys):
+        (f):
+
+2017-11-03  Mark Lam  <mark.lam@apple.com>
+
+        CachedCall (and its clients) needs overflow checks.
+        https://bugs.webkit.org/show_bug.cgi?id=179185
+
+        Reviewed by JF Bastien.
+
+        * stress/regress-179185.js: Added.
+
+2017-11-02  Michael Saboff  <msaboff@apple.com>
+
+        DFG needs to handle code motion of code in for..in loop bodies
+        https://bugs.webkit.org/show_bug.cgi?id=179212
+
+        Reviewed by Keith Miller.
+
+        New regression test.
+
+        * stress/for-in-side-effects.js: Added.
+        (getPrototypeOf):
+        (reset):
+        (testWithoutFTL.f):
+        (testWithoutFTL):
+        (testWithFTL.f):
+        (testWithFTL):
+
+2017-11-02  Filip Pizlo  <fpizlo@apple.com>
+
+        AI does not correctly model the clobber case of ArithClz32
+        https://bugs.webkit.org/show_bug.cgi?id=179188
+
+        Reviewed by Michael Saboff.
+
+        * stress/arith-clz32-effects.js: Added.
+        (foo):
+        (valueOf):
+
+2017-11-01  Michael Saboff  <msaboff@apple.com>
+
+        Integer overflow in code generated by LoadVarargs processing in DFG and FTL.
+        https://bugs.webkit.org/show_bug.cgi?id=179140
+
+        Reviewed by Saam Barati.
+
+        New regression test.
+
+        * stress/regress-179140.js: Added.
+        (testWithoutFTL):
+        (testWithFTL):
+
+2017-11-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Introduce @toObject
+        https://bugs.webkit.org/show_bug.cgi?id=178726
+
+        Reviewed by Saam Barati.
+
+        * stress/array-copywithin.js:
+        (shouldThrow):
+        * stress/object-constructor-boolean-edge.js: Added.
+        (shouldBe):
+        (test):
+        * stress/object-constructor-global.js: Added.
+        (shouldBe):
+        * stress/object-constructor-null-edge.js: Added.
+        (shouldBe):
+        (test):
+        * stress/object-constructor-number-edge.js: Added.
+        (shouldBe):
+        (test):
+        * stress/object-constructor-object-edge.js: Added.
+        (shouldBe):
+        (test):
+        (i.arg):
+        * stress/object-constructor-string-edge.js: Added.
+        (shouldBe):
+        (test):
+        * stress/object-constructor-symbol-edge.js: Added.
+        (shouldBe):
+        (test):
+        * stress/object-constructor-undefined-edge.js: Added.
+        (shouldBe):
+        (test):
+        * stress/symbol-array-from.js: Added.
+        (shouldBe):
+        * stress/to-object-intrinsic-boolean-edge.js: Added.
+        (shouldBe):
+        (builtin.createBuiltin):
+        * stress/to-object-intrinsic-null-or-undefined-edge.js: Added.
+        (shouldThrow):
+        * stress/to-object-intrinsic-number-edge.js: Added.
+        (shouldBe):
+        (builtin.createBuiltin):
+        * stress/to-object-intrinsic-object-edge.js: Added.
+        (shouldBe):
+        (builtin.createBuiltin):
+        (i.arg):
+        * stress/to-object-intrinsic-string-edge.js: Added.
+        (shouldBe):
+        (builtin.createBuiltin):
+        * stress/to-object-intrinsic-symbol-edge.js: Added.
+        (shouldBe):
+        (builtin.createBuiltin):
+        * stress/to-object-intrinsic.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (builtin.createBuiltin):
+
+2017-10-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG][FTL] Introduce StringSlice
+        https://bugs.webkit.org/show_bug.cgi?id=178934
+
+        Reviewed by Saam Barati.
+
+        * microbenchmarks/string-slice-empty.js: Added.
+        (slice):
+        * microbenchmarks/string-slice-one-char.js: Added.
+        (slice):
+        * microbenchmarks/string-slice.js: Added.
+        (slice):
+
+2017-10-26  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r222601): We fail to properly backtrack into a sub pattern of a parenthesis with non-zero minimum
+        https://bugs.webkit.org/show_bug.cgi?id=178890
+
+        Reviewed by Keith Miller.
+
+        New regression test.
+
+        * stress/regress-178890.js: Added.
+
+2017-10-26  Mark Lam  <mark.lam@apple.com>
+
+        JSRopeString::RopeBuilder::append() should check for overflows.
+        https://bugs.webkit.org/show_bug.cgi?id=178385
+        <rdar://problem/35027468>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-178385.js: Added.
+
+2017-10-26  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r223961.
+
+        The change that required this has been rolled out.
+
+        Reverted changeset:
+
+        "Mark test262.yaml/test262/test/language/statements/try/tco-
+        catch.js as passing."
+        https://bugs.webkit.org/show_bug.cgi?id=178592
+        https://trac.webkit.org/changeset/223961
+
+2017-10-25  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r223691 and r223729.
+        https://bugs.webkit.org/show_bug.cgi?id=178834
+
+        Broke Speedometer 2 React-Redux-TodoMVC test case (Requested
+        by rniwa on #webkit).
+
+        Reverted changesets:
+
+        "Turn recursive tail calls into loops"
+        https://bugs.webkit.org/show_bug.cgi?id=176601
+        https://trac.webkit.org/changeset/223691
+
+        "REGRESSION(r223691): DFGByteCodeParser.cpp:1483:83: warning:
+        comparison is always false due to limited range of data type
+        [-Wtype-limits]"
+        https://bugs.webkit.org/show_bug.cgi?id=178543
+        https://trac.webkit.org/changeset/223729
+
 2017-10-25  Ryan Haddad  <ryanhaddad@apple.com>
 
         Mark test262.yaml/test262/test/language/statements/try/tco-catch.js as passing.

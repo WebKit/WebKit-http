@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  *
  * This library is free software; you can redistribute it and/or
@@ -491,28 +491,23 @@ public:
     EventTargetInterface eventTargetInterface() const override;
     ScriptExecutionContext* scriptExecutionContext() const final; // Implemented in Document.h
 
-    virtual void didMoveToNewDocument(Document& oldDocument, Document& newDocument);
-
     bool addEventListener(const AtomicString& eventType, Ref<EventListener>&&, const AddEventListenerOptions&) override;
     bool removeEventListener(const AtomicString& eventType, EventListener&, const ListenerOptions&) override;
 
     using EventTarget::dispatchEvent;
-    bool dispatchEvent(Event&) override;
+    void dispatchEvent(Event&) override;
 
     void dispatchScopedEvent(Event&);
 
     virtual void handleLocalEvents(Event&);
 
     void dispatchSubtreeModifiedEvent();
-    bool dispatchDOMActivateEvent(int detail, Event& underlyingEvent);
+    void dispatchDOMActivateEvent(Event& underlyingClickEvent);
 
 #if ENABLE(TOUCH_EVENTS)
     virtual bool allowsDoubleTapGesture() const { return true; }
 #endif
 
-#if ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS)
-    bool dispatchTouchEvent(TouchEvent&);
-#endif
     bool dispatchBeforeLoadEvent(const String& sourceURL);
 
     void dispatchInputEvent();
@@ -535,7 +530,7 @@ public:
     EventTargetData* eventTargetDataConcurrently() final;
     EventTargetData& ensureEventTargetData() final;
 
-    HashMap<MutationObserver*, MutationRecordDeliveryOptions> registeredMutationObservers(MutationObserver::MutationType, const QualifiedName* attributeName);
+    HashMap<Ref<MutationObserver>, MutationRecordDeliveryOptions> registeredMutationObservers(MutationObserver::MutationType, const QualifiedName* attributeName);
     void registerMutationObserver(MutationObserver&, MutationObserverOptions, const HashSet<AtomicString>& attributeFilter);
     void unregisterMutationObserver(MutationObserverRegistration&);
     void registerTransientMutationObserver(MutationObserverRegistration&);
@@ -679,7 +674,9 @@ private:
 
     void* opaqueRootSlow() const;
 
+    static void moveShadowTreeToNewDocument(ShadowRoot&, Document& oldDocument, Document& newDocument);
     static void moveTreeToNewScope(Node&, TreeScope& oldScope, TreeScope& newScope);
+    void moveNodeToNewDocument(Document& oldDocument, Document& newDocument);
 
     int m_refCount;
     mutable uint32_t m_nodeFlags;

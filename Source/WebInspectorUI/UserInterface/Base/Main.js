@@ -993,6 +993,11 @@ WI.showNetworkTab = function()
     this.tabBrowser.showTabForContentView(tabContentView);
 };
 
+WI.isShowingNetworkTab = function()
+{
+    return this.tabBrowser.selectedTabContentView instanceof WI.NetworkTabContentView;
+};
+
 WI.showTimelineTab = function()
 {
     var tabContentView = this.tabBrowser.bestTabContentViewForClass(WI.TimelineTabContentView);
@@ -1782,7 +1787,7 @@ WI._domNodeWasInspected = function(event)
     InspectorFrontendHost.bringToFront();
 
     this.showElementsTab();
-    this.showMainFrameDOMTree(event.data.node);
+    this.showMainFrameDOMTree(event.data.node, {ignoreSearchTab: true});
 };
 
 WI._inspectModeStateChanged = function(event)

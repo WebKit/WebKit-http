@@ -313,17 +313,16 @@ void FrameLoader::init()
     m_progressTracker = std::make_unique<FrameProgressTracker>(m_frame);
 }
 
-#if PLATFORM(IOS)
 void FrameLoader::initForSynthesizedDocument(const URL&)
 {
     // FIXME: We need to initialize the document URL to the specified URL. Currently the URL is empty and hence
     // FrameLoader::checkCompleted() will overwrite the URL of the document to be activeDocumentLoader()->documentURL().
 
-    RefPtr<DocumentLoader> loader = m_client.createDocumentLoader(ResourceRequest(URL(ParsedURLString, emptyString())), SubstituteData());
+    auto loader = m_client.createDocumentLoader(ResourceRequest(URL(ParsedURLString, emptyString())), SubstituteData());
     loader->attachToFrame(m_frame);
     loader->setResponse(ResourceResponse(URL(), ASCIILiteral("text/html"), 0, String()));
     loader->setCommitted(true);
-    setDocumentLoader(loader.get());
+    setDocumentLoader(loader.ptr());
 
     m_stateMachine.advanceTo(FrameLoaderStateMachine::DisplayingInitialEmptyDocument);
     m_stateMachine.advanceTo(FrameLoaderStateMachine::DisplayingInitialEmptyDocumentPostCommit);
@@ -338,7 +337,6 @@ void FrameLoader::initForSynthesizedDocument(const URL&)
     m_networkingContext = m_client.createNetworkingContext();
     m_progressTracker = std::make_unique<FrameProgressTracker>(m_frame);
 }
-#endif
 
 void FrameLoader::setDefersLoading(bool defers)
 {
@@ -1689,7 +1687,7 @@ void FrameLoader::stopForUserCancel(bool deferCheckLoadComplete)
     // but haven't laid out/painted yet.
     // FIXME: Is this behavior specific to iOS? Or should we expose a setting to toggle this behavior?
     if (m_frame.view() && !m_frame.view()->didFirstLayout())
-        m_frame.view()->layout();
+        m_frame.view()->layoutContext().layout();
 #endif
 
     if (deferCheckLoadComplete)
@@ -2654,7 +2652,7 @@ void FrameLoader::addExtraFieldsToRequest(ResourceRequest& request, FrameLoadTyp
     if (m_overrideResourceLoadPriorityForTesting)
         request.setPriority(m_overrideResourceLoadPriorityForTesting.value());
 
-    applyUserAgent(request);
+    applyUserAgentIfNeeded(request);
 
     if (isMainResource)
         request.setHTTPAccept(defaultAcceptHeader);
@@ -3271,11 +3269,13 @@ void FrameLoader::loadedResourceFromMemoryCache(CachedResource& resource, Resour
     notifier().sendRemainingDelegateMessages(m_documentLoader.get(), identifier, newRequest, response, 0, resource.encodedSize(), 0, error);
 }
 
-void FrameLoader::applyUserAgent(ResourceRequest& request)
+void FrameLoader::applyUserAgentIfNeeded(ResourceRequest& request)
 {
-    String userAgent = this->userAgent(request.url());
-    ASSERT(!userAgent.isNull());
-    request.setHTTPUserAgent(userAgent);
+    if (!request.hasHTTPHeaderField(HTTPHeaderName::UserAgent)) {
+        String userAgent = this->userAgent(request.url());
+        ASSERT(!userAgent.isNull());
+        request.setHTTPUserAgent(userAgent);
+    }
 }
 
 bool FrameLoader::shouldInterruptLoadForXFrameOptions(const String& content, const URL& url, unsigned long requestIdentifier)

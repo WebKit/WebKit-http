@@ -1,0 +1,4 @@
+
+PASS importScripts() supports redirects 
+PASS importScripts() supports redirects and can be updated 
+

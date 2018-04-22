@@ -32,10 +32,13 @@
 #include "RenderLayerBacking.h"
 #include "RenderView.h"
 #include "SecurityOrigin.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/StackStats.h>
 #include <wtf/Ref.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderWidget);
 
 static HashMap<const Widget*, RenderWidget*>& widgetRendererMap()
 {
@@ -333,7 +336,7 @@ RenderWidget::ChildWidgetState RenderWidget::updateWidgetPosition()
         FrameView& frameView = downcast<FrameView>(*m_widget);
         // Check the frame's page to make sure that the frame isn't in the process of being destroyed.
         if ((widgetSizeChanged || frameView.needsLayout()) && frameView.frame().page() && frameView.frame().document())
-            frameView.layout();
+            frameView.layoutContext().layout();
     }
     return ChildWidgetState::Valid;
 }

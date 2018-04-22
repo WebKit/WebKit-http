@@ -1,3 +1,1708 @@
+2017-11-12  Gabriel Ivascu  <givascu@igalia.com>
+
+        [GTK] Add functionality to handle font sizes in points
+        https://bugs.webkit.org/show_bug.cgi?id=179285
+
+        Reviewed by Carlos Garcia Campos and Michael Catanzaro.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitSettings.cpp:
+        (testWebKitSettings):
+
+2017-11-10  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        check-webkit-style: AttributeError: 'NoneType' object has no attribute 'major'
+        https://bugs.webkit.org/show_bug.cgi?id=179522
+
+        Reviewed by Aakash Jain.
+
+        IOSSimulatorPort.ios_version should return a Version object.
+
+        * Scripts/webkitpy/port/ios_simulator.py:
+        (IOSSimulatorPort.ios_version): Return a Version object.
+
+2017-11-10  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Win] The way to detect Windows 10 is wrong
+        https://bugs.webkit.org/show_bug.cgi?id=179344
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitpy/common/system/platforminfo.py:
+        (PlatformInfo._determine_win_version):
+
+2017-11-10  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [WinCairo] LayoutTests doesn't read TextExpectations files correctly
+        https://bugs.webkit.org/show_bug.cgi?id=179219
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitpy/layout_tests/models/test_expectations.py:
+        (TestExpectationParser._parse_line):
+        * Scripts/webkitpy/port/apple.py:
+        (ApplePort.__init__):
+        (ApplePort._allowed_port_names):
+        (ApplePort):
+        (ApplePort._future_port_name):
+        (ApplePort._generate_all_test_configurations):
+        * Scripts/webkitpy/port/win.py:
+        (WinCairoPort.default_baseline_search_path):
+        (WinCairoPort):
+        (WinCairoPort._future_port_name):
+
+2017-11-10  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [WinCairo] Treat 'future' version correctly
+        https://bugs.webkit.org/show_bug.cgi?id=179345
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitpy/port/win.py:
+        (WinCairoPort.default_baseline_search_path):
+
+2017-11-10  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Finish rolling out r224544
+
+        Rubber-stamped by Tim Horton.
+
+        Now that https://bugs.webkit.org/show_bug.cgi?id=179431 has been fixed, we can once again allow one of the API
+        tests added in r224512 (WKAttachmentTests.AttachmentUpdatesWhenChangingFontStyles) to test toggling underline
+        style with a selected attachment element.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (TestWebKitAPI::TEST):
+
+2017-11-10  Alex Christensen  <achristensen@webkit.org>
+
+        _WKThumbnailView initialization with WKWebView needs to call correct initWithFrame
+        https://bugs.webkit.org/show_bug.cgi?id=179537
+        <rdar://problem/35275219>
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebKit/WKThumbnailView.mm:
+        (-[WKThumbnailViewDelegate webView:didFinishNavigation:]):
+        (TestWebKitAPI::TEST):
+
+2017-11-10  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Remove find_system_pid from port classes
+        https://bugs.webkit.org/show_bug.cgi?id=179514
+        <rdar://problem/35456900>
+
+        Reviewed by David Kilzer.
+
+        Removing dead code.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port.find_system_pid): Deleted.
+        * Scripts/webkitpy/port/server_process.py:
+        (ServerProcess._start):
+        * Scripts/webkitpy/port/win.py:
+        (WinPort.find_system_pid): Deleted.
+
+2017-11-10  Aakash Jain  <aakash_jain@apple.com>
+
+        fix style failures in webkitpy: multiple statements on one line (semicolon)
+        https://bugs.webkit.org/show_bug.cgi?id=179530
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitpy/common/net/buildbot/buildbot.py: Removed semicolon.
+        * Scripts/webkitpy/layout_tests/controllers/test_result_writer.py: Ditto.
+        * Scripts/webkitpy/tool/steps/runtests.py: Ditto.
+
+2017-11-10  Aakash Jain  <aakash_jain@apple.com>
+
+        fix style failures in webkitpy: expected 2 blank lines found 1
+        https://bugs.webkit.org/show_bug.cgi?id=179529
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitpy/benchmark_runner/run_benchmark.py: Added a blank line to follow style guidelines.
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_chrome_driver.py: Ditto.
+        * Scripts/webkitpy/common/system/platforminfo_mock.py: Ditto.
+        * Scripts/webkitpy/common/version.py: Ditto.
+        * Scripts/webkitpy/layout_tests/models/test_failures.py: Ditto.
+        * Scripts/webkitpy/port/mac_unittest.py: Ditto.
+        * Scripts/webkitpy/port/simulator_process.py: Ditto.
+
+2017-11-10  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION(r224267): WebViews scheduled with custom run loop modes don't load
+        https://bugs.webkit.org/show_bug.cgi?id=179515
+
+        Reviewed by Andy Estes.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/mac/WebViewScheduleInRunLoop.mm: Added.
+        (-[ScheduleInRunLoopDelegate webView:didFinishLoadForFrame:]):
+        (TestWebKitAPI::TEST):
+
+2017-11-10  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [webkitpy] Fix PlatformInfo._win_version since r224657
+        https://bugs.webkit.org/show_bug.cgi?id=179520
+
+        Reviewed by Aakash Jain.
+
+        There are two problems.
+
+        The return value of sys.getwindowsversion() doesn't match with
+        Version.__init__ expects. Truncate the 4th and 5th of it.
+
+        _win_version_tuple_from_cmd was deleted in r224657. But, it is
+        still needed for Cygwin Python.
+
+        * Scripts/webkitpy/common/system/platforminfo.py:
+        (PlatformInfo._win_version): Return [0:3] of getwindowsversion().
+        Call _win_version_from_cmd for Cygwin Python.
+        (PlatformInfo._win_version_from_cmd): Restored.
+
+2017-11-10  Guillaume Emont  <guijemont@igalia.com>
+
+        build-jsc: build testmasm for all platforms using cmake
+        https://bugs.webkit.org/show_bug.cgi?id=179512
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/build-jsc:
+
+2017-11-09  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Unify version parsing code
+        https://bugs.webkit.org/show_bug.cgi?id=179426
+        <rdar://problem/35415191>
+
+        Unreviewed fix to r224657.
+
+        * Scripts/webkitpy/common/version.py:
+        (Version.__init__): Check if an object is iterable.
+
+2017-11-09  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Unify version parsing code
+        https://bugs.webkit.org/show_bug.cgi?id=179426
+        <rdar://problem/35415191>
+
+        Reviewed by David Kilzer.
+
+        webkitpy needs to parse version strings or version lists frequently. Rather than
+        duplicate this code each time it's needed, unify it in a Version class.
+
+        * Scripts/webkitpy/common/system/platforminfo.py:
+        (PlatformInfo.__init__): Convert mac version string to version object and
+        use _win_version instead of _win_version_tuple.
+        (PlatformInfo.xcode_sdk_version): Convert SDK version string to Version object
+        before returning it.
+        (PlatformInfo.xcode_version): Return Version object instead of version string.
+        (PlatformInfo._determine_mac_version): Accept Version object instead of string,
+        eliminate parsing.
+        (PlatformInfo._determine_win_version): Accept Version object instead of tuple.
+        (PlatformInfo._win_version): Return Version object instead of tuple, have Version
+        object own version string parsing.
+        (PlatformInfo._win_version_tuple): Renamed to _win_version().
+        (PlatformInfo._win_version_tuple_from_cmd): Deleted.
+        * Scripts/webkitpy/common/system/platforminfo_mock.py:
+        (MockPlatformInfo.xcode_sdk_version): Return Version object instead of string.
+        (MockPlatformInfo.xcode_version): Dittio.
+        * Scripts/webkitpy/common/version.py: Added.
+        (Version): Version object.
+        (Version.__init__): Initialize the Version object with a string, integer,
+        tuple of integers, list of integers or another Version object.
+        (Version.__len__): Return 5 so that the Version object can be treated as
+        a list or tuple.
+        (Version.__getitem__): Get item in Version object by index or string.
+        (Version.__setitem__): Set item in Version object by index or string.
+        (Version.__str__): Convert version to printable string, omitting trailing 0's.
+        (Version.__cmp__): Compare two version strings, major taking precedence over
+        minor, minor taking precedence over build.
+        * Scripts/webkitpy/common/version_unittest.py: Added.
+        (VersionTestCase): Test behavior of Version object.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort.default_baseline_search_path): ios_version now returns a Version object.
+        (IOSPort._is_valid_ios_version): Deleted.
+        (IOSPort.get_option): Deleted.
+        * Scripts/webkitpy/port/ios_device.py:
+        (IOSDevicePort.determine_full_port_name): Use Version object instead of owning parsing.
+        (IOSDevicePort.ios_version): Return Version object instead of string.
+        * Scripts/webkitpy/port/ios_simulator.py:
+        (IOSSimulatorPort.simulator_runtime): Use from_version instead of from_version_string.
+        (IOSSimulatorPort.ios_version): Return Version object instead of string.
+        (IOSSimulatorPort.use_multiple_simulator_apps): Use Version object instead of string.
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Runtime.from_version): Accept Version object instead of string.
+        (Runtime.from_version_string): Replaced by from_version.
+        (Runtime.__repr__): When printing, a runtime's version will be a Version object instead
+        of a tuple.
+        (Simulator._parse_runtimes): Use Version object instead of tuple.
+        (Simulator._parse_devices): Ditto.
+        * Scripts/webkitpy/xcode/simulator_unittest.py: Use Version object instead of tuples.
+
+2017-11-09  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [WinCairo] Cannot find ImageDiff executable
+        https://bugs.webkit.org/show_bug.cgi?id=179508
+
+        Reviewed by Per Arne Vollan.
+
+        * Scripts/webkitpy/port/win.py:
+        (WinPort.is_cygwin):
+        (WinPort._path_to_image_diff):
+        (WinPort.find_system_pid):
+
+2017-11-09  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WinCairo EWS] svn-apply: 'cp' is not recognized as an internal or external command
+        https://bugs.webkit.org/show_bug.cgi?id=179469
+
+        Reviewed by Per Arne Vollan.
+
+        WinCairo EWS bots haven't installed Cygwin.
+
+        * Scripts/svn-apply:
+        (scmCopy): Use 'copy' function instead of 'cp' command.
+
+2017-11-09  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [WPE] Update dyz (WPE MiniBrowser)
+        https://bugs.webkit.org/show_bug.cgi?id=179492
+
+        Reviewed by Michael Catanzaro.
+
+        Update it to the last version as of today.
+        This version not longer uses the C API.
+
+        * wpe/jhbuild.modules:
+
+2017-11-09  Christopher Reid  <chris.reid@sony.com>
+
+        Use enum classes within FileSystem
+        https://bugs.webkit.org/show_bug.cgi?id=175172
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebCore/FileMonitor.cpp:
+        * TestWebKitAPI/Tests/WebCore/cocoa/DatabaseTrackerTest.mm:
+
+2017-11-09  Brent Fulgham  <bfulgham@apple.com>
+
+        Test fix after r224609
+        https://bugs.webkit.org/show_bug.cgi?id=178565
+        <rdar://problem/11115901>
+
+        Unreviewed test fix after r224609.
+
+        Correct two test cases that attempt to push local file URLs in violation of our
+        same origin policies. The fix is to grant universal file access, as we do for similar
+        LayoutTests.
+
+        * TestWebKitAPI/Tests/WebKit/EphemeralSessionPushStateNoHistoryCallback.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit/PrivateBrowsingPushStateNoHistoryCallback.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-11-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, remove Dan from the soup network watchlist
+
+        Per his request. It's not Hotel California; we should probably let him leave.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2017-11-08  Don Olmstead  <don.olmstead@sony.com>
+
+        Add Windows powershell EWS script
+        https://bugs.webkit.org/show_bug.cgi?id=179453
+
+        Reviewed by Brent Fulgham.
+
+        * EWSTools/Start-Queue.ps1: Added.
+
+2017-11-08  Jeremy Jones  <jeremyj@apple.com>
+
+        HTMLMediaElement should not use element fullscreen on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=179418
+        rdar://problem/35409277
+
+        Reviewed by Eric Carlson.
+
+        Add ENABLE_VIDEO_USES_ELEMENT_FULLSCREEN to determine if HTMLMediaElement should use element full screen or not.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-11-08  Tim Horton  <timothy_horton@apple.com>
+
+        [ios-simulator] API test WebKit.BundleParameters is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=178363
+        <rdar://problem/35043144>
+
+        Reviewed by Brent Fulgham.
+
+        * TestWebKitAPI/Tests/WTF/RefCounter.cpp:
+        (TestWebKitAPI::TEST):
+        Add a test.
+
+2017-11-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Attachment Support] Implement delegate hooks for attachment element insertion and removal
+        https://bugs.webkit.org/show_bug.cgi?id=179016
+        <rdar://problem/35250890>
+
+        Reviewed by Tim Horton.
+
+        See WebCore/ChangeLog for more details.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (-[AttachmentUpdateObserver init]):
+        (-[AttachmentUpdateObserver inserted]):
+        (-[AttachmentUpdateObserver removed]):
+        (-[AttachmentUpdateObserver _webView:didInsertAttachment:]):
+        (-[AttachmentUpdateObserver _webView:didRemoveAttachment:]):
+        (TestWebKitAPI::ObserveAttachmentUpdatesForScope::ObserveAttachmentUpdatesForScope):
+        (TestWebKitAPI::ObserveAttachmentUpdatesForScope::~ObserveAttachmentUpdatesForScope):
+        (TestWebKitAPI::ObserveAttachmentUpdatesForScope::observer const):
+        (TestWebKitAPI::ObserveAttachmentUpdatesForScope::expectAttachmentUpdates):
+        (-[TestWKWebView _synchronouslyExecuteEditCommand:argument:]):
+        (-[TestWKWebView expectUpdatesAfterCommand:withArgument:expectedRemovals:expectedInsertions:]):
+        (TestWebKitAPI::TEST):
+
+2017-11-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Web Inspector: use JSON::{Array,Object,Value} instead of Inspector{Array,Object,Value}
+        https://bugs.webkit.org/show_bug.cgi?id=173619
+
+        Reviewed by Brian Burg.
+
+        Update InspectorValue unit tests to use JSON namespace and add more basic tests to cover all the API.
+
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/Tests/JavaScriptCore/InspectorValue.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-11-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r224179): [GTK] Several WebViewEditor tests are failing since r224179
+        https://bugs.webkit.org/show_bug.cgi?id=179366
+
+        Reviewed by Michael Catanzaro.
+
+        Use always a toplevel window for WebViewEditor tests instead of creating and destroying one only to flush editor
+        state.
+
+        * TestWebKitAPI/Tests/WebKitGtk/TestWebViewEditor.cpp:
+
+2017-11-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Build inspector resources using copy-user-interface-resources.pl script
+        https://bugs.webkit.org/show_bug.cgi?id=179317
+
+        Reviewed by Michael Catanzaro.
+
+        Move generate-inspector-gresource-manifest.py to glib dir to be shared by GTK+ and WPE ports and update it to
+        receive an input directory instead of a list of patterns.
+        File::Copy::Recursive is required by copy-user-interface-resources.pl, so make sure it's installed.
+
+        * glib/generate-inspector-gresource-manifest.py: Renamed from Tools/gtk/generate-inspector-gresource-manifest.py.
+        (get_filenames):
+        (get_filenames.should_ignore_resource):
+        * gtk/install-dependencies:
+        * wpe/generate-inspector-gresource-manifest.py: Removed.
+        * wpe/install-dependencies:
+
+2017-11-07  Don Olmstead  <don.olmstead@sony.com>
+
+        Fix webkitpy tests after rev 224549.
+
+        Unreviewed build fix.
+
+        * Scripts/webkitpy/common/config/ports.py:
+        (WinCairoPort.run_webkit_tests_command):
+        * Scripts/webkitpy/common/config/ports_unittest.py:
+        (DeprecatedPortTest.test_wincairo_port):
+
+2017-11-07  Aakash Jain  <aakash_jain@apple.com>
+
+        Enable webkitpy EWS bubbles
+        https://bugs.webkit.org/show_bug.cgi?id=178539
+
+        Reviewed by Alexey Proskuryakov.
+
+        * QueueStatusServer/config/queues.py: Added webkitpy EWS.
+
+2017-11-07  Don Olmstead  <don.olmstead@sony.com>
+
+        Add a WinCairo EWS queue
+        https://bugs.webkit.org/show_bug.cgi?id=179390
+
+        Reviewed by Lucas Forschler.
+
+        * QueueStatusServer/config/queues.py:
+        * QueueStatusServer/model/queues.py:
+        * Scripts/webkitpy/common/config/ews.json:
+        * Scripts/webkitpy/common/config/ports.py:
+        * Scripts/webkitpy/common/config/ports_unittest.py:
+        * Scripts/webkitpy/tool/commands/earlywarningsystem_unittest.py:
+
+2017-11-07  Aakash Jain  <aakash_jain@apple.com>
+
+        fix check-webkit-style errors in webkitpy about not having two spaces before inline comment
+        https://bugs.webkit.org/show_bug.cgi?id=171506
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/checkout/scm/scm_unittest.py:
+        (SCMTest._shared_test_reverse_diff): Added two spaces before inline comment.
+        (test_create_patch_is_full_patch): Ditto.
+        * Scripts/webkitpy/common/thread/messagepump.py:
+        (MessagePump): Ditto.
+        * Scripts/webkitpy/layout_tests/servers/http_server.py:
+        (Lighttpd._prepare_config): Ditto.
+        * Scripts/webkitpy/style/checker.py: Ditto.
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (OrderOfIncludesTest.test_check_preprocessor_in_include_section): Ditto.
+
+2017-11-07  Aakash Jain  <aakash_jain@apple.com>
+
+        Add support for webkitpy tests EWS
+        https://bugs.webkit.org/show_bug.cgi?id=178480
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/config/ews.json: Added webkitpy EWS.
+        * Scripts/webkitpy/common/net/generictestresults.py: Renamed from Scripts/webkitpy/common/net/bindingstestresults.py.
+        * Scripts/webkitpy/common/net/generictestresults_unittest.py: Renamed from Scripts/webkitpy/common/net/bindingstestresults_unittest.py.
+        * Scripts/webkitpy/tool/bot/patchanalysistask.py:
+        (PatchAnalysisTask._test_patch): Do not retry webkitpy test since they are not flaky.
+        * Scripts/webkitpy/tool/bot/bindingstestresultsreader.py: Updated import for BindingsTestResult.
+        * Scripts/webkitpy/tool/bot/retrylogic_unittest.py: Ditto.
+        * Scripts/webkitpy/tool/bot/webkitpytestresultsreader.py: Copied from Scripts/webkitpy/tool/bot/bindingstestresultsreader.py.
+        * Scripts/webkitpy/tool/commands/earlywarningsystem.py:
+        (AbstractEarlyWarningSystem.begin_work_queue): Added webkitpy test result reader.
+        * Scripts/webkitpy/tool/commands/earlywarningsystem_unittest.py: Updated unit-tests.
+        * Scripts/webkitpy/tool/steps/checkpatchrelevance.py: Run webkitpy EWS only for relevant changes.
+        * Scripts/webkitpy/tool/steps/runtests.py:
+        (RunTests.run): Run webkitpy tests when --group=webkitpy is passed.
+        (RunTests._run_webkitpy_tests): Method to invoke webkitpy tests.
+        * Scripts/webkitpy/tool/steps/steps_unittest.py:
+        (test_runtests_webkitpy): Added unit-test.
+
+2017-11-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r224512 and r224521.
+        https://bugs.webkit.org/show_bug.cgi?id=179388
+
+        An API test added with this change is failing an assertion on
+        the bots. (Requested by ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "[Attachment Support] Implement delegate hooks for attachment
+        element insertion and removal"
+        https://bugs.webkit.org/show_bug.cgi?id=179016
+        https://trac.webkit.org/changeset/224512
+
+        "Remove stray logging from a newly added API test"
+        https://trac.webkit.org/changeset/224521
+
+2017-11-06  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Remove stray logging from a newly added API test
+
+        This was only for debugging purposes, and should have been removed before landing.
+
+        Rubber-stamped by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (TestWebKitAPI::TEST):
+
+2017-11-06  Jonathan Bedard  <jbedard@apple.com>
+
+        Only build ImageDiff for mac
+        https://bugs.webkit.org/show_bug.cgi?id=179349
+        <rdar://problem/35376237>
+
+        Reviewed by Tim Horton.
+
+        * ImageDiff/Makefile:
+
+2017-11-06  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, fix the internal build after updating to a newer SDK
+
+        There shouldn't be any need to include and implement these method stubs anymore,
+        even when building against the shipping iOS 11 SDK.
+
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+        (-[MockDropSession session]): Deleted.
+
+2017-11-06  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Attachment Support] Implement delegate hooks for attachment element insertion and removal
+        https://bugs.webkit.org/show_bug.cgi?id=179016
+        <rdar://problem/35250890>
+
+        Reviewed by Tim Horton.
+
+        Introduces new API tests to check that various editing operations will or won't result in the new attachment
+        insertion and removal delegate hooks being fired. Additionally refactors an existing test to verify that
+        attachments insertion and removal is observable by the UI delegate.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (-[AttachmentUpdateObserver init]):
+        (-[AttachmentUpdateObserver inserted]):
+        (-[AttachmentUpdateObserver removed]):
+        (-[AttachmentUpdateObserver _webView:didInsertAttachment:]):
+        (-[AttachmentUpdateObserver _webView:didRemoveAttachment:]):
+        (TestWebKitAPI::ObserveAttachmentUpdatesForScope::ObserveAttachmentUpdatesForScope):
+        (TestWebKitAPI::ObserveAttachmentUpdatesForScope::~ObserveAttachmentUpdatesForScope):
+        (TestWebKitAPI::ObserveAttachmentUpdatesForScope::expectAttachmentUpdates):
+
+        Implement a testing mechanism to temporarily bind a UI delegate to a given WKWebView and listen for inserted or
+        removed attachments over the course of a particular scope. The API tests use this mechanism to check that the UI
+        delegate hooks added in this patch are invoked with the right attachments when performing edit commands.
+
+        (-[TestWKWebView _synchronouslyExecuteEditCommand:argument:]):
+        (-[TestWKWebView expectUpdatesAfterCommand:withArgument:expectedRemovals:expectedInsertions:]):
+        (TestWebKitAPI::TEST):
+
+2017-11-06  Christopher Reid  <chris.reid@sony.com>
+
+        Use enum classes within FileSystem
+        https://bugs.webkit.org/show_bug.cgi?id=175172
+
+        Reviewed by Myles C. Maxfield.
+
+        * TestWebKitAPI/Tests/WebCore/FileMonitor.cpp:
+        * TestWebKitAPI/Tests/WebCore/cocoa/DatabaseTrackerTest.mm:
+
+2017-11-06  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] -Wsign-compare warning in EventSenderProxyWPE.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=179039
+
+        Reviewed by Žan Doberšek.
+
+        * WebKitTestRunner/wpe/EventSenderProxyWPE.cpp:
+        (WTR::EventSenderProxy::updateTouchPoint):
+        (WTR::EventSenderProxy::releaseTouchPoint):
+
+2017-11-06  Robin Morisset  <rmorisset@apple.com>
+
+        Add a third benchmark to TailBench
+        https://bugs.webkit.org/show_bug.cgi?id=178815
+
+        Reviewed by Saam Barati.
+
+        Add a new benchmark to TailBench: a BF interpreter written in a weird kinda functional style
+
+        * Scripts/run-jsc-benchmarks:
+
+2017-11-04  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Fix gtk-doc generation with gtk-doc master
+        https://bugs.webkit.org/show_bug.cgi?id=179252
+
+        Reviewed by Carlos Garcia Campos.
+
+        gtkdoc-scangobj has changed to no longer use a shell when executing its subcommands. In
+        particular, this means we can no longer rely on shell stuff in our run command that we use
+        to run the scanner. We currently use the RUN envvar to set LD_LIBRARY_PATH, and the end
+        result is gtkdoc-scangobj now attempts to execute our environment variable instead of the
+        scanner itself. We can just set LD_LIBRARY_PATH directly, instead of using RUN, in order to
+        make documentation generation work again.
+
+        * gtk/gtkdoc.py:
+        (GTKDoc._run_gtkdoc_scangobj):
+
+2017-11-04  Aishwarya Nirmal  <anirmal@apple.com>
+
+        [Touch Bar Web API] Add support for menuitem tag
+        https://bugs.webkit.org/show_bug.cgi?id=179020
+
+        Reviewed by Ryosuke Niwa.
+
+        Defines flags for the menu item test so that the element is recognized
+        only while its test is being run.
+
+        * DumpRenderTree/TestOptions.h:
+        * DumpRenderTree/TestOptions.mm:
+        (TestOptions::TestOptions):
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (setWebPreferencesForTestOptions):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        (WTR::updateTestOptionsFromTestHeader):
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::hasSameInitializationOptions const):
+
+2017-11-03  Andy Estes  <aestes@apple.com>
+
+        [iOS] Append the platform name to the product directory on all embedded platforms
+        https://bugs.webkit.org/show_bug.cgi?id=179271
+
+        Reviewed by Joseph Pecoraro.
+
+        * Scripts/webkitdirs.pm:
+        (determineConfigurationProductDir):
+
+2017-11-03  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [WinCairo] Add --wincairo option to run-webkit-tests
+        https://bugs.webkit.org/show_bug.cgi?id=179217
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitpy/port/factory.py:
+        (platform_options):
+
+2017-11-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Avoid duplicating code for dist and distcheck targets
+        https://bugs.webkit.org/show_bug.cgi?id=179154
+
+        Reviewed by Carlos Garcia Campos.
+
+        Move the script out of Tools/gtk because it is already used by WPE. Also, drop the .py
+        prefix because it is executable.
+
+        * Scripts/make-dist: Renamed from Tools/gtk/make-dist.py.
+
+2017-11-03  Jonathan Bedard  <jbedard@apple.com>
+
+        TestController platformAdjustContext should use provided WKContext for Mac
+        https://bugs.webkit.org/show_bug.cgi?id=179124
+        <rdar://problem/35295176>
+
+        Reviewed by Darin Adler.
+
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::initializeWebViewConfiguration): Use the provided WKContext, since that is
+        a WebProcessPool, instead of creating a second one.
+
+2017-11-02  Christopher Reid  <chris.reid@sony.com>
+
+        Add a FileSystem namespace to FileSystem.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=179063
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        * TestWebKitAPI/Tests/WebCore/FileMonitor.cpp:
+        * TestWebKitAPI/Tests/WebCore/FileSystem.cpp:
+        * TestWebKitAPI/Tests/WebCore/SecurityOrigin.cpp:
+        * TestWebKitAPI/Tests/WebCore/SharedBufferTest.cpp:
+        * TestWebKitAPI/Tests/WebCore/cocoa/DatabaseTrackerTest.mm:
+        * TestWebKitAPI/Tests/WebKitCocoa/Download.mm:
+
+2017-11-02  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [WPE][JHBuild] Update WPEBackend and WPEBackend-mesa
+        https://bugs.webkit.org/show_bug.cgi?id=179169
+
+        Reviewed by Michael Catanzaro.
+
+        Update WPEBackend and WPEBackend-mesa to last master as of today.
+
+        * wpe/jhbuild.modules:
+
+2017-11-02  Frederic Wang  <fwang@igalia.com>
+
+        Add references to bug 179167 in FIXME comments
+        https://bugs.webkit.org/show_bug.cgi?id=179168
+
+        Reviewed by Daniel Bates.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-11-01  Jeremy Jones  <jeremyj@apple.com>
+
+        Implement WKFullscreenWindowController for iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=178924
+        rdar://problem/34697120
+
+        Reviewed by Simon Fraser.
+
+        Enable ENABLE_FULLSCREEN_API for iOS.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-11-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Misc display list and other cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=179150
+
+        Reviewed by Tim Horton.
+
+        Add system trace points for display list recording.
+
+        * Tracing/SystemTracePoints.plist:
+
+2017-11-01  Stephan Szabo  <stephan.szabo@sony.com>
+
+        [Win] Detect Visual Studio 2017 location
+        https://bugs.webkit.org/show_bug.cgi?id=175275
+
+        Reviewed by Yusuke Suzuki.
+
+        * Scripts/build-jsc:
+        * Scripts/build-webkit:
+        * Scripts/update-vswhere.py: Added.
+        * Scripts/webkitdirs.pm:
+        (requireModulesForVSWhere):
+        (pickCurrentVisualStudioInstallation):
+        (pickLegacyVisualStudioInstallation):
+        (visualStudioInstallDir):
+        (visualStudioInstallDirVSWhere):
+        (visualStudioInstallDirLegacy):
+        (visualStudioInstallDirFallback):
+        (msBuildInstallDir):
+        (visualStudioVersion):
+        (visualStudioVersionFromInstallDir):
+        (generateBuildSystemFromCMakeProject):
+
+2017-11-01  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the !USE(QUICKLOOK) build
+        https://bugs.webkit.org/show_bug.cgi?id=179128
+
+        Reviewed by Wenson Hsieh.
+
+        * TestWebKitAPI/Tests/WebCore/ios/PreviewLoader.cpp:
+
+2017-11-01  Frederic Wang  <fwang@igalia.com>
+
+        Make iOS Find UI reveal matches in scrollable elements
+        https://bugs.webkit.org/show_bug.cgi?id=178789
+
+        Reviewed by Tim Horton.
+
+        This patch exposes WKWebView's findString function in order to test the fix for bug 178789.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::findString): Dummy implementation of findString.
+        * DumpRenderTree/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::findString): Ditto.
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl: Declare findString.
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::findString): Dummy implementation of findString.
+        * TestRunnerShared/UIScriptContext/UIScriptController.h: Declare findString.
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::findString): Implement findString by forwarding the call to the
+        web view.
+        * WebKitTestRunner/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::findString): Dummy implementation of findString.
+
+2017-11-01  Alex Christensen  <achristensen@webkit.org>
+
+        Add a test for _WKInputDelegate.willSubmitFormValues
+        https://bugs.webkit.org/show_bug.cgi?id=179086
+
+        Reviewed by Darin Adler.
+
+        Hidden input types are not included in this submission because FormSubmission::create ignores them
+        because input.isTextField() returns false.  This is existing behavior that wasn't shown by a test.
+        HTTPBodies are also not sent to WKURLSchemeHandlers.  This is existing behavior that wasn't shown by a test.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/_WKInputDelegate.mm: Added.
+        (-[FormSubmissionDelegate _webView:willSubmitFormValues:userObject:submissionHandler:]):
+        (TEST):
+
+2017-10-31  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Web Inspector: Add Inspector menu items to Mac MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=65218
+
+        Reviewed by Joseph Pecoraro.
+
+        Add Option-Command-I shortcut and corresponding Show/Close Web Inspector menu item to Mac MiniBrowser.
+        Only works when browser window is focused, but at least WI can be opened without having to Inspect Element.
+
+        * MiniBrowser/mac/BrowserWindowController.h:
+        * MiniBrowser/mac/BrowserWindowController.m:
+        (-[BrowserWindowController showHideWebInspector:]):
+        * MiniBrowser/mac/MainMenu.xib:
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController validateMenuItem:]):
+        (-[WK1BrowserWindowController showHideWebInspector:]):
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController validateMenuItem:]):
+        (-[WK2BrowserWindowController showHideWebInspector:]):
+
+2017-10-31  Alex Christensen  <achristensen@webkit.org>
+
+        Use asynchronous ResourceHandleClient calls for WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=160677
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/Tests/mac/SimplifyMarkup.mm:
+        (TestWebKitAPI::TEST):
+        The HTML being loaded contains an iframe, so testing if the main resource has loaded doesn't necessarily mean all subresources are loaded.
+        Wait until they are loaded before continuing the test.  This is a test of editing commands once the page has loaded, not a test of loading.
+
+2017-10-31  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r224143.
+        https://bugs.webkit.org/show_bug.cgi?id=179091
+
+        The patch requires non-standard perl modules in macOS and
+        breaks AWFY (Requested by yusukesuzuki on #webkit).
+
+        Reverted changeset:
+
+        "[Win] Detect Visual Studio 2017 location"
+        https://bugs.webkit.org/show_bug.cgi?id=175275
+        https://trac.webkit.org/changeset/224143
+
+2017-10-31  Tim Horton  <timothy_horton@apple.com>
+
+        Clean up some drag and drop feature flags
+        https://bugs.webkit.org/show_bug.cgi?id=179082
+
+        Reviewed by Simon Fraser.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+        * TestWebKitAPI/ios/UIKitSPI.h:
+
+2017-10-31  Tim Horton  <timothy_horton@apple.com>
+
+        Fix up some content filtering feature flags
+        https://bugs.webkit.org/show_bug.cgi?id=179079
+
+        Reviewed by Simon Fraser.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+        * TestWebKitAPI/Tests/WebKitCocoa/ContentFilteringPlugIn.mm:
+        (-[MockContentFilterEnabler initWithCoder:]):
+        (-[MockContentFilterEnabler dealloc]):
+
+2017-10-31  Youenn Fablet  <youenn@apple.com>
+
+        rwt should allow service worker to load localhost HTTPS resources with any certificate
+        https://bugs.webkit.org/show_bug.cgi?id=179018
+
+        Reviewed by Chris Dumez.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetStateToConsistentValues): allowing any SSL certificate for service workers.
+
+2017-10-31  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Attachment Support] Implement WKWebView SPI for inserting attachment elements
+        https://bugs.webkit.org/show_bug.cgi?id=179013
+        <rdar://problem/35249668>
+
+        Reviewed by Tim Horton.
+
+        Adds a new API test suite to exercise attachment element insertion and manipulation.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm: Added.
+        (webViewForTestingAttachments):
+        (testHTMLData):
+        (testImageData):
+        (-[TestWKWebView synchronouslyInsertAttachmentWithFilename:contentType:data:options:]):
+        (-[TestWKWebView valueOfAttribute:forQuerySelector:]):
+        (TestWebKitAPI::TEST):
+
+2017-10-31  Alex Christensen  <achristensen@webkit.org>
+
+        Fix custom header field setting with reloads and asynchronous navigation action policy decisions
+        https://bugs.webkit.org/show_bug.cgi?id=179064
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WebsitePolicies.mm:
+        (-[CustomHeaderFieldsDelegate _webView:decidePolicyForNavigationAction:decisionHandler:]):
+        (TEST):
+
+2017-10-30  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        WKBundlePageWillSendSubmitEventCallback is called with incorrect frame parameter
+        https://bugs.webkit.org/show_bug.cgi?id=176719
+
+        Reviewed by Chris Dumez.
+
+        Test that WKBundlePageWillSendSubmitEventCallback is called with separate frame and
+        sourceFrame parameters when the target frame of the form submission is not the source frame.
+
+        * TestWebKitAPI/Tests/WebKit/WillSendSubmitEvent.cpp:
+        (TestWebKitAPI::didReceiveMessageFromInjectedBundle):
+        * TestWebKitAPI/Tests/WebKit/WillSendSubmitEvent_Bundle.cpp:
+        (TestWebKitAPI::willSendSubmitEvent):
+        * TestWebKitAPI/Tests/WebKit/auto-submitting-form.html:
+
+2017-10-30  Alex Christensen  <achristensen@webkit.org>
+
+        ASSERTION FAILED: internalValuesConsistent(m_url) in WebCore::URLParser::URLParser
+        https://bugs.webkit.org/show_bug.cgi?id=178861
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2017-10-30  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r224078.
+        https://bugs.webkit.org/show_bug.cgi?id=179026
+
+        MotionMark regression (Requested by shallawa on #webkit).
+
+        Reverted changeset:
+
+        "When navigating back to a page, compositing layers may not
+        use accelerated drawing"
+        https://bugs.webkit.org/show_bug.cgi?id=178749
+        https://trac.webkit.org/changeset/224078
+
+2017-10-30  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] Fix build warnings
+        https://bugs.webkit.org/show_bug.cgi?id=178899
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestDownloads.cpp:
+        (testContextMenuDownloadActions):
+        (testBlobDownload):
+        (beforeAll):
+        * TestWebKitAPI/Tests/WebKitGLib/TestResources.cpp:
+        * TestWebKitAPI/Tests/WebKitGLib/TestUIClient.cpp:
+        (testWebViewJavaScriptDialogs):
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebExtensions.cpp:
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitSettings.cpp:
+        * WebKitTestRunner/PlatformWPE.cmake:
+        * WebKitTestRunner/wpe/HeadlessViewBackend.cpp:
+        * WebKitTestRunner/wpe/TestControllerWPE.cpp:
+        (WTR::threadDefaultContext): Deleted.
+
+2017-10-30  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] Upstream or stop using cairo-egl-device-create-for-egl-surface.patch
+        https://bugs.webkit.org/show_bug.cgi?id=178898
+
+        Reviewed by Žan Doberšek.
+
+        This patch seems to be unused.
+
+        * wpe/jhbuild.modules:
+        * wpe/patches/cairo-egl-device-create-for-egl-surface.patch: Removed.
+
+2017-10-30  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] Build more files under WebCore as unified sources and get rid of WebCorePlatformWPE build target
+        https://bugs.webkit.org/show_bug.cgi?id=178964
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * TestWebKitAPI/PlatformWPE.cmake:
+
+2017-10-12  Frederic Wang  <fwang@igalia.com>
+
+        Remove support for running safari on the iOS simulator with Xcode < 9.0
+        https://bugs.webkit.org/show_bug.cgi?id=178203
+
+        Reviewed by Alexey Proskuryakov.
+
+        This is a follow-up of r223234. We no longer support iOS WebKit development for Xcode < 9.0
+        and do not have any iOS simulator builders in our infrastructure. Hence we can remove the
+        special case to calculate the iOS simulator applications path for these old versions.
+
+        * Scripts/webkitdirs.pm:
+        (iosSimulatorApplicationsPath): Remove special case for XCode < 9.0
+
+2017-10-30  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Expose availability of certain editing commands in WebKitEditorState
+        https://bugs.webkit.org/show_bug.cgi?id=168219
+
+        Reviewed by Ryosuke Niwa.
+
+        Test it.
+
+        * TestWebKitAPI/Tests/WebKitGtk/TestWebViewEditor.cpp:
+        (testWebViewEditorCutCopyPasteNonEditable):
+        (testWebViewEditorCutCopyPasteEditable):
+        (testWebViewEditorSelectAllNonEditable):
+        (testWebViewEditorSelectAllEditable):
+        (loadContentsAndTryToCutSelection):
+        (testWebViewEditorNonEditable):
+        (testWebViewEditorEditorStateTypingAttributes):
+        (testWebViewEditorInsertImage):
+        (testWebViewEditorCreateLink):
+
+2017-10-28  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] Build gst-plugins-base without pango support
+        https://bugs.webkit.org/show_bug.cgi?id=178918
+
+        Reviewed by Carlos Garcia Campos.
+
+        We need to build gst-plugins-base without pango support for WPE. Let's use JHBuild
+        conditions so we can make platform-specific changes in the shared GStreamer moduleset.
+
+        * gstreamer/jhbuild.modules:
+        * gtk/jhbuildrc:
+        * wpe/jhbuildrc:
+
+2017-10-27  Stephan Szabo  <stephan.szabo@sony.com>
+
+        [Win] Detect Visual Studio 2017 location
+        https://bugs.webkit.org/show_bug.cgi?id=175275
+
+        Reviewed by Per Arne Vollan.
+
+        * Scripts/build-jsc:
+        * Scripts/build-webkit:
+        * Scripts/update-vswhere.py: Added.
+        * Scripts/webkitdirs.pm:
+        (pickCurrentVisualStudioInstallation):
+        (pickLegacyVisualStudioInstallation):
+        (visualStudioInstallDir):
+        (visualStudioInstallDirVSWhere):
+        (visualStudioInstallDirLegacy):
+        (visualStudioInstallDirFallback):
+        (msBuildInstallDir):
+        (visualStudioVersion):
+        (visualStudioVersionFromInstallDir):
+        (generateBuildSystemFromCMakeProject):
+
+2017-10-27  Devin Rousso  <webkit@devinrousso.com>
+
+        Create watchlist for files related WebInspector Recording
+        https://bugs.webkit.org/show_bug.cgi?id=178965
+
+        Reviewed by Joseph Pecoraro.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2017-10-27  Jonathan Bedard  <jbedard@apple.com>
+
+        Windows and WebViews are retained after re-configure
+        https://bugs.webkit.org/show_bug.cgi?id=178902
+        <rdar://problem/35211518>
+
+        Reviewed by Alexey Proskuryakov.
+
+        The test runner effectively leaks windows every time a test changes configuration.
+        We give each test it's own AutoreleasePool to fix this problem.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::runTest): Add an AutoRelease pool scoping a test run
+        so that when a configuration changes, the old window and WebView are released.
+
+2017-10-27  Eric Carlson  <eric.carlson@apple.com>
+
+        NowPlayingInfo should contain a unique identifier
+        https://bugs.webkit.org/show_bug.cgi?id=178872
+        <rdar://problem/34924012>
+
+        Unreviewed, fix a flakey test.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/NowPlayingControlsTests.mm:
+        (-[NowPlayingTestWebView hasActiveNowPlayingSession]): Update _lastUpdatedElapsedTime.
+        (-[NowPlayingTestWebView _handleActiveNowPlayingSessionInfoResponse:title:duration:elapsedTime:]): Deleted.
+
+2017-10-27  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        autoinstall can't download from http://pypi.python.org
+        https://bugs.webkit.org/show_bug.cgi?id=178925
+
+        Reviewed by Ryosuke Niwa.
+
+        The web server pypi.python.org rejects non secure http.
+
+        * Scripts/webkitpy/thirdparty/__init__.py:
+        (AutoinstallImportHook._install_mechanize): Use https instead of http.
+        (AutoinstallImportHook._install_pep8): Ditto.
+        (AutoinstallImportHook._install_pylint): Ditto.
+        (AutoinstallImportHook._install_buildbot): Ditto.
+        (AutoinstallImportHook._install_coverage): Ditto.
+
+2017-10-26  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK][WPE] install-dependencies can't find libapache2-mod-php7.0 on Ubuntu 17.10
+        https://bugs.webkit.org/show_bug.cgi?id=178854
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port._debian_php_version): Return "-php7.1" if libphp7.1.so found.
+        (Port._is_debian_php_version_7): Deleted.
+        * gtk/install-dependencies: Install libapache2-mod-php instead of libapache2-mod-php7.0.
+        * wpe/install-dependencies: Ditto.
+
+2017-10-25  Simon Fraser  <simon.fraser@apple.com>
+
+        When navigating back to a page, compositing layers may not use accelerated drawing
+        https://bugs.webkit.org/show_bug.cgi?id=178749
+        rdar://problem/35158946
+
+        Reviewed by Dean Jackson.
+
+        Fix WTR and DRT to parse "useAcceleratedDrawing" out of "webkit-test-runner" options
+        and use it to set the state of the web view.
+
+        * DumpRenderTree/TestOptions.h:
+        * DumpRenderTree/TestOptions.mm:
+        (TestOptions::TestOptions):
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (setWebPreferencesForTestOptions):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        (WTR::updateTestOptionsFromTestHeader):
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::hasSameInitializationOptions const):
+
+2017-10-26  Alex Christensen  <achristensen@webkit.org>
+
+        Move WKWebViewConfiguration validation to WKWebView construction
+        https://bugs.webkit.org/show_bug.cgi?id=178840
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/WKWebViewConfiguration.mm: Added.
+        (TEST):
+
+2017-10-26  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Demonstrate a possible structure of the WebGPU API
+        https://bugs.webkit.org/show_bug.cgi?id=178874
+
+        Reviewed by Dean Jackson.
+
+        Over the past few weeks, we've been putting together an example showing that a WebGPU API
+        which has implicit barriers can work on all three low-level graphics APIs. We've implemented
+        it on top of Vulkan first, because this is the API which has the strictest requirements and
+        is most difficult to use.
+
+        With this API, this is a valid WebGPU snippet:
+
+        auto device = WebGPU::Device::create(hInstance, hWnd);
+        auto& commandQueue = device->getCommandQueue();
+        auto& renderState = device->getRenderState(vertexShader, "main", fragmentShader, "main", { }, { }, { }, nullptr);
+        
+        … later, in the draw() function …
+        
+        auto renderPass = commandQueue->createRenderPass(nullptr);
+        renderPass->setRenderState(renderState);
+        renderPass->setViewport(0, 0, width, height);
+        renderPass->setScissorRect(0, 0, width, height);
+        renderPass->draw(3);
+        commandQueue->commitRenderPass(std::move(renderPass));
+        commandQueue->present();
+
+        This snippet doesn’t hook up any vertex attributes or resources, which means the vertex
+        shader has to say something like ({vec4(…), vec4(…), vec4(…)})[gl_VertexIndex]. It also
+        passes in “nullptr” when creating the render pass, which means “render to the screen, rather
+        than to a frame buffer.” You can also see that it doesn’t attach any resources to the draw
+        call.
+
+        In Direct3D 12 and Vulkan, resources are bound in sets, rather than individually. For
+        example, a set might contain two uniform buffers, a texture, and another uniform buffer. At
+        draw time, you swap in whole sets of resources with a single call. A shader invocation can
+        access a collection of sets. Because all shader resource accesses are indirected through
+        these sets, the shape of these sets needs to be supplied at the time you compile the render
+        state. Here is a snippet which bounds a single set which contains a uniform buffer and a
+        texture:
+
+        auto buffer = device->getBuffer(bufferInitialContents);
+        auto texture = device->getTexture(buffer width, height, WebGPU::PixelFormat::RGBA8, textureInitialContents);
+        // One resource set, which holds a single uniform buffer object and a single texture
+        auto& renderState = device->getRenderState(vertexShader, "main", fragmentShader, "main", { }, { }, { { WebGPU::ResourceType::UniformBufferObject, WebGPU::ResourceType::Texture } }, nullptr);
+        
+        … later, in the draw() function …
+        
+        auto renderPass = commandQueue->createRenderPass(nullptr);
+        renderPass->setRenderState(renderState);
+        renderPass->setResources(0, { WebGPU::UniformBufferObjectReference(buffer.get()), WebGPU::TextureReference(texture.get()) });
+        …
+        renderPass->draw(3);
+        commandQueue->commitRenderPass(std::move(renderPass));
+        commandQueue->present();
+        
+        The first argument to the setResources() call identifies which set to populate with the supplied resources.
+
+        One tenant of the low-level graphics APIs is that, if you’ve enabled double buffering (or
+        triple buffering), the GPU is executing one frame at the same time you are recording the
+        next frame. This often means that you need duplicate resources so the CPU and GPU don’t step
+        on each other’s toes. However, platforms have platform-specific requirements about whether
+        or not they can be double / triple buffered, and we don’t want to expose this to the Web for
+        fear of badly-authored programs.
+
+        To solve this, resources are reference counted, and the return type of getBuffer() is an
+        RAII type called BufferHolder which increments and decrements the reference count
+        automatically. The reference count is also incremented and decremented when the GPU is using
+        the resource in a Pass. When the reference count reaches 0, the resource isn’t destroyed;
+        instead, it’s simply moved to a “free list” which getBuffer() may pull from. Therefore,
+        applications don’t need to know whether the frame buffer is double buffered or triple
+        buffered; they can just getBuffer() each frame, and the correct number of buffers will be
+        created and recycled.
+        
+        {
+            auto buffer = device->getBuffer(bufferSize); // These get recycled
+            … populate the buffer …
+            auto renderPass = commandQueue->createRenderPass(nullptr);
+            renderPass->setRenderState(renderState);
+            renderPass->setResources(0, { WebGPU::UniformBufferObjectReference(buffer.get()) });
+            …
+            renderPass->draw(…);
+            commandQueue->commitRenderPass(std::move(renderPass));
+        }
+        commandQueue->present();
+
+        In Direct3D and Vulkan, vertex buffers and index buffers are not part of the resource sets
+        mentioned above. Instead, you tell the render state about the shape of the vertex and index
+        buffers, and you swap them out independently in the draw loop. Metal and Vulkan have almost
+        identical API to specify this shape of the vertex buffers, so I’ve mostly copied it. In this
+        example, we have two vertex attributes, a vec2 and a vec3, which both come from the same
+        buffer:
+        
+        // { Attribute format, offset within stride, buffer to pull from }
+        std::vector<WebGPU::RenderState::VertexAttribute> vertexAttributes = { {WebGPU::RenderState::VertexFormat::Float2, 0, 0}, {WebGPU::RenderState::VertexFormat::Float3, sizeof(float) * 2, 0} };
+        // A single vertex buffer, with a stride of 5 floats
+        auto& renderState = device->getRenderState(vertexShader, "main", fragmentShader, "main", { sizeof(float) * 5 }, vertexAttributes, resourceTypes, nullptr);
+        
+        … later, in the draw() function …
+        
+        auto renderPass = commandQueue->createRenderPass(nullptr);
+        renderPass->setRenderState(renderState);
+        renderPass->setVertexAttributeBuffers({ vertexBuffer.get() }); // The one vertex buffer which both attributes pull from
+        renderPass->setResources(…);
+        …
+        renderPass->draw(…);
+        commandQueue->commitRenderPass(std::move(renderPass));
+        commandQueue->present();
+
+        You can also tell the RenderState about how many render targets you have and their formats,
+        and then when you create the RenderPass, you specify the specific textures you want to
+        render into.
+
+        std::vector<WebGPU::PixelFormat> colorPixelFormats = { WebGPU::PixelFormat::RGBA8, WebGPU::PixelFormat::RGBA8 }; // Two render targets, with these formats
+        auto& renderState = device->getRenderState(vertexShader, "main", fragmentShader, "main", vertexBufferStrides, vertexAttributes, resourceTypes, &colorPixelFormats);
+        
+        … later, in the draw() function …
+        
+        std::vector<std::reference_wrapper<WebGPU::Texture>> destinationTextures = { texture1->get(), texture2->get() };
+        auto renderPass = commandQueue->createRenderPass(&destinationTextures);
+        renderPass->setRenderState(renderState);
+        …
+        renderPass->draw(…);
+        commandQueue->commitRenderPass(std::move(renderPass));
+        
+        // Now, draw one of the textures to the screen. Note that no synchronization is necessary here!
+        auto renderPass = commandQueue->createRenderPass(nullptr);
+        renderPass->setRenderState(renderState2);
+        renderPass->setResources(0, { WebGPU:: TextureReference(texture1.get()) });
+        …
+        renderPass->draw(…);
+        commandQueue->commitRenderPass(std::move(renderPass));
+        commandQueue->present();
+
+        Just like how in Metal has Render Encoders and Compute Encoders, WebGPU has RenderPasses
+        and ComputePasses.
+
+        auto& computeState = device->getComputeState(computeShader, "main", resourceTypes);
+        …
+        auto computePass = commandQueue->createComputePass();
+        computePass->setComputeState(computeState);
+        computePass->setResources(0, resources);
+        computePass->dispatch(width, height, depth);
+        commandQueue->commitComputePass(std::move(computePass));
+        
+        // Now, draw the resources we just computed. Note that no synchronization is necessary here!
+        auto renderPass = commandQueue->createRenderPass(nullptr);
+        renderPass->setRenderState(renderState);
+        renderPass->setResources(0, resources });
+        …
+        renderPass->draw(…);
+        commandQueue->commitRenderPass(std::move(renderPass));
+        commandQueue->present();
+
+        There are also two other types of passes: one that corresponds to a Metal blit encoder, and
+        one that allows the CPU to change the contents of GPU buffers and textures. This last kind
+        of pass is a little interesting: you can’t just change the contents of a buffer at any time
+        you feel like it, because that resource might be in use by the GPU. Therefore, we need to do
+        the same kind of synchronization that we already do at render pass boundaries.
+
+        In addition, both Vulkan and Direct3D have a concept of a memory heap. A resource might
+        exist inside a heap which is fast, but invisible from the CPU, or in a heap which is slow,
+        but visible by the CPU. Certain operations are not possible from some types of images (e.g.
+        non-tiled textures may not be able to be sampled from). The usual way to get around this
+        problem is to have two resources: a slow staging resource which the CPU can see, and a fast
+        resource which the CPU can’t see. Uploading data is a two-pass algorithm, where the CPU
+        memcpy()s into the slow staging resource, and then a blit command is enqueued on the GPU to
+        copy the contents of the staging resource to the real resource. This requires that the
+        upload have access to the commandQueue so it can possibly enqueue a blit between the staging
+        and real resources. Therefore, a pass is the right level of abstraction for these facilities.
+
+        std::queue<boost::unique_future<std::vector<uint8_t>>> futureQueue; // Promises for data downloads from the GPU
+        
+        … later, in the draw() function …
+        
+        // See if any of the previously-enqueued downloads are finished
+        while (!futureQueue.empty() && futureQueue.front(). has_value()) {
+            std::vector<uint8_t>& data = futureQueue.front().get();
+            // Use the downloaded data
+            futureQueue.pop();
+        }
+        …
+        auto hostAccessPass = commandQueue->createHostAccessPass();
+        hostAccessPass->overwriteBuffer(buffer->get(), bufferContents); // Upload data to a resource
+        
+        futureQueue.emplace(hostAccessPass->getBufferContents(buffer->get()));
+        commandQueue->commitHostAccessPass(std::move(hostAccessPass));
+        
+        You can also issue copy commands between resources entirely on the GPU:
+        
+        auto blitPass = commandQueue->createBlitPass();
+        blitPass->copyTexture(source->get(), destination->get(), sourceX, sourceY, destinationX, destinationY, width, height);
+        commandQueue->commitBlitPass(std::move(blitPass));
+
+        * Scripts/webkitpy/style/checker.py:
+        * WebGPUAPIStructure/Example/Example.cpp: Added.
+        (readFile):
+        (drawWebGPU):
+        (wWinMain):
+        (MyRegisterClass):
+        (InitInstance):
+        (WndProc):
+        * WebGPUAPIStructure/Example/Example.h: Added.
+        * WebGPUAPIStructure/Example/Example.ico: Added.
+        * WebGPUAPIStructure/Example/Example.rc: Added.
+        * WebGPUAPIStructure/Example/Example.vcxproj: Added.
+        * WebGPUAPIStructure/Example/Example.vcxproj.filters: Added.
+        * WebGPUAPIStructure/Example/Example.vcxproj.user: Added.
+        * WebGPUAPIStructure/Example/resource.h: Added.
+        * WebGPUAPIStructure/Example/small.ico: Added.
+        * WebGPUAPIStructure/Example/stdafx.cpp: Added.
+        * WebGPUAPIStructure/Example/stdafx.h: Added.
+        * WebGPUAPIStructure/Example/targetver.h: Added.
+        * WebGPUAPIStructure/WebGPU-Common/WebGPU-Common.vcxproj: Added.
+        * WebGPUAPIStructure/WebGPU-Common/WebGPU-Common.vcxproj.filters: Added.
+        * WebGPUAPIStructure/WebGPU-Common/WebGPU.cpp: Added.
+        (WebGPU::BufferHolder::BufferHolder):
+        (WebGPU::BufferHolder::~BufferHolder):
+        (WebGPU::TextureHolder::TextureHolder):
+        (WebGPU::TextureHolder::~TextureHolder):
+        (WebGPU::SamplerHolder::SamplerHolder):
+        (WebGPU::SamplerHolder::~SamplerHolder):
+        * WebGPUAPIStructure/WebGPU-Common/WebGPU.h: Added.
+        (WebGPU::Queue::~Queue):
+        (WebGPU::RenderState::~RenderState):
+        (WebGPU::ComputeState::~ComputeState):
+        (WebGPU::Buffer::~Buffer):
+        (WebGPU::Texture::~Texture):
+        (WebGPU::Sampler::~Sampler):
+        (WebGPU::TextureReference::TextureReference):
+        (WebGPU::TextureReference::get const):
+        (WebGPU::SamplerReference::SamplerReference):
+        (WebGPU::SamplerReference::get const):
+        (WebGPU::UniformBufferObjectReference::UniformBufferObjectReference):
+        (WebGPU::UniformBufferObjectReference::get const):
+        (WebGPU::ShaderStorageBufferObjectReference::ShaderStorageBufferObjectReference):
+        (WebGPU::ShaderStorageBufferObjectReference::get const):
+        (WebGPU::RenderPass::~RenderPass):
+        (WebGPU::ComputePass::~ComputePass):
+        (WebGPU::BlitPass::~BlitPass):
+        (WebGPU::HostAccessPass::~HostAccessPass):
+        (WebGPU::BufferHolder::get):
+        (WebGPU::TextureHolder::get):
+        (WebGPU::SamplerHolder::get):
+        (WebGPU::Device::~Device):
+        * WebGPUAPIStructure/WebGPU-Vulkan/BlitPassImpl.cpp: Added.
+        (WebGPU::BlitPassImpl::BlitPassImpl):
+        (WebGPU::BlitPassImpl::copyTexture):
+        * WebGPUAPIStructure/WebGPU-Vulkan/BlitPassImpl.h: Added.
+        * WebGPUAPIStructure/WebGPU-Vulkan/BufferImpl.cpp: Added.
+        (WebGPU::BufferImpl::BufferImpl):
+        (WebGPU::BufferImpl::decrementReferenceCount):
+        * WebGPUAPIStructure/WebGPU-Vulkan/BufferImpl.h: Added.
+        (WebGPU::BufferImpl::getBuffer const):
+        (WebGPU::BufferImpl::getDeviceMemory const):
+        (WebGPU::BufferImpl::incrementReferenceCount):
+        (WebGPU::BufferImpl::getLength const):
+        * WebGPUAPIStructure/WebGPU-Vulkan/ComputePassImpl.cpp: Added.
+        (WebGPU::ComputePassImpl::ComputePassImpl):
+        (WebGPU::ComputePassImpl::setComputeState):
+        (WebGPU::ComputePassImpl::setResources):
+        (WebGPU::ComputePassImpl::dispatch):
+        * WebGPUAPIStructure/WebGPU-Vulkan/ComputePassImpl.h: Added.
+        * WebGPUAPIStructure/WebGPU-Vulkan/ComputeStateImpl.cpp: Added.
+        (WebGPU::ComputeStateImpl::ComputeStateImpl):
+        * WebGPUAPIStructure/WebGPU-Vulkan/ComputeStateImpl.h: Added.
+        (WebGPU::ComputeStateImpl::getPipeline const):
+        (WebGPU::ComputeStateImpl::getPipelineLayout const):
+        (WebGPU::ComputeStateImpl::getDescriptorSetLayouts const):
+        * WebGPUAPIStructure/WebGPU-Vulkan/DeviceImpl.cpp: Added.
+        (WebGPU::Device::create):
+        (WebGPU::convertPixelFormat):
+        (WebGPU::convertFormat):
+        (WebGPU::debugReport):
+        (WebGPU::DeviceImpl::DeviceImpl):
+        (WebGPU::DeviceImpl::getCommandQueue):
+        (WebGPU::DeviceImpl::prepareShader):
+        (WebGPU::DeviceImpl::createPipelineLayout):
+        (WebGPU::DeviceImpl::createCompatibleRenderPass):
+        (WebGPU::convertVertexFormat):
+        (WebGPU::DeviceImpl::getRenderState):
+        (WebGPU::DeviceImpl::getComputeState):
+        (WebGPU::DeviceImpl::getBuffer):
+        (WebGPU::DeviceImpl::returnBuffer):
+        (WebGPU::DeviceImpl::getTexture):
+        (WebGPU::DeviceImpl::returnTexture):
+        (WebGPU::DeviceImpl::getSampler):
+        (WebGPU::DeviceImpl::returnSampler):
+        (WebGPU::DeviceImpl::~DeviceImpl):
+        * WebGPUAPIStructure/WebGPU-Vulkan/DeviceImpl.h: Added.
+        (WebGPU::DeviceImpl::UniqueDebugReportCallbackEXT::UniqueDebugReportCallbackEXT):
+        (WebGPU::DeviceImpl::UniqueDebugReportCallbackEXT::operator=):
+        (WebGPU::DeviceImpl::UniqueDebugReportCallbackEXT::~UniqueDebugReportCallbackEXT):
+        (WebGPU::DeviceImpl::UniqueDebugReportCallbackEXT::destroy):
+        (WebGPU::DeviceImpl::TextureParameters::operator== const):
+        (WebGPU::DeviceImpl::TextureParametersHash::operator() const):
+        * WebGPUAPIStructure/WebGPU-Vulkan/HostAccessPassImpl.cpp: Added.
+        (WebGPU::HostAccessPassImpl::HostAccessPassImpl):
+        (WebGPU::HostAccessPassImpl::overwriteBuffer):
+        (WebGPU::HostAccessPassImpl::getBufferContents):
+        (WebGPU::HostAccessPassImpl::execute):
+        * WebGPUAPIStructure/WebGPU-Vulkan/HostAccessPassImpl.h: Added.
+        (WebGPU::HostAccessPassImpl::getFinishedEvent const):
+        * WebGPUAPIStructure/WebGPU-Vulkan/PassImpl.cpp: Added.
+        (WebGPU::PassImpl::PassImpl):
+        (WebGPU::ResourceVisitor::operator()):
+        (WebGPU::ResourceVisitor::getBindings const):
+        (WebGPU::ResourceVisitor::releaseWriteDescriptorSets):
+        (WebGPU::ResourceVisitor::getDescriptorImageInfos const):
+        (WebGPU::ResourceVisitor::getDescriptorBufferInfos const):
+        (WebGPU::ResourceVisitor::getBuffers const):
+        (WebGPU::ResourceVisitor::getTextures const):
+        (WebGPU::ResourceVisitor::getSamplers const):
+        (WebGPU::ResourceVisitor::getImageCount const):
+        (WebGPU::ResourceVisitor::getSamplerCount const):
+        (WebGPU::ResourceVisitor::getUniformBufferCount const):
+        (WebGPU::ResourceVisitor::getStorageBufferCount const):
+        (WebGPU::PassImpl::setResources):
+        (WebGPU::PassImpl::insertBuffer):
+        (WebGPU::PassImpl::insertTexture):
+        (WebGPU::PassImpl::insertSampler):
+        * WebGPUAPIStructure/WebGPU-Vulkan/PassImpl.h: Added.
+        (WebGPU::PassImpl::getCommandBuffer const):
+        (WebGPU::PassImpl::iterateBuffers):
+        (WebGPU::PassImpl::iterateTextures):
+        (WebGPU::PassImpl::ResourceReference::ResourceReference):
+        (WebGPU::PassImpl::ResourceReference::~ResourceReference):
+        (WebGPU::PassImpl::ResourceReference::operator=):
+        (WebGPU::PassImpl::ResourceReference::operator== const):
+        (WebGPU::PassImpl::ResourceReference::get const):
+        (WebGPU::PassImpl::ResourceReference::release):
+        (WebGPU::PassImpl::ResourceReferenceHash::operator() const):
+        * WebGPUAPIStructure/WebGPU-Vulkan/QueueImpl.cpp: Added.
+        (WebGPU::QueueImpl::QueueImpl):
+        (WebGPU::QueueImpl::prepareCurrentFrame):
+        (WebGPU::QueueImpl::createSpecificRenderPass):
+        (WebGPU::QueueImpl::createFramebuffer):
+        (WebGPU::QueueImpl::createRenderPass):
+        (WebGPU::QueueImpl::commitRenderPass):
+        (WebGPU::QueueImpl::createComputePass):
+        (WebGPU::QueueImpl::commitComputePass):
+        (WebGPU::QueueImpl::createBlitPass):
+        (WebGPU::QueueImpl::commitBlitPass):
+        (WebGPU::QueueImpl::createHostAccessPass):
+        (WebGPU::QueueImpl::commitHostAccessPass):
+        (WebGPU::QueueImpl::present):
+        (WebGPU::QueueImpl::commitPass):
+        (WebGPU::QueueImpl::synchronizeResources):
+        (WebGPU::QueueImpl::~QueueImpl):
+        * WebGPUAPIStructure/WebGPU-Vulkan/QueueImpl.h: Added.
+        * WebGPUAPIStructure/WebGPU-Vulkan/RenderPassImpl.cpp: Added.
+        (WebGPU::RenderPassImpl::RenderPassImpl):
+        (WebGPU::RenderPassImpl::setRenderState):
+        (WebGPU::RenderPassImpl::setVertexAttributeBuffers):
+        (WebGPU::RenderPassImpl::setResources):
+        (WebGPU::RenderPassImpl::setViewport):
+        (WebGPU::RenderPassImpl::setScissorRect):
+        (WebGPU::RenderPassImpl::draw):
+        * WebGPUAPIStructure/WebGPU-Vulkan/RenderPassImpl.h: Added.
+        * WebGPUAPIStructure/WebGPU-Vulkan/RenderStateImpl.cpp: Added.
+        (WebGPU::RenderStateImpl::RenderStateImpl):
+        * WebGPUAPIStructure/WebGPU-Vulkan/RenderStateImpl.h: Added.
+        (WebGPU::RenderStateImpl::getPipeline const):
+        (WebGPU::RenderStateImpl::getPipelineLayout const):
+        (WebGPU::RenderStateImpl::getDescriptorSetLayouts const):
+        * WebGPUAPIStructure/WebGPU-Vulkan/SamplerImpl.cpp: Added.
+        (WebGPU::SamplerImpl::SamplerImpl):
+        (WebGPU::SamplerImpl::decrementReferenceCount):
+        * WebGPUAPIStructure/WebGPU-Vulkan/SamplerImpl.h: Added.
+        (WebGPU::SamplerImpl::getSampler):
+        (WebGPU::SamplerImpl::incrementReferenceCount):
+        (WebGPU::SamplerImpl::getFilter):
+        (WebGPU::SamplerImpl::getMipmapMode):
+        (WebGPU::SamplerImpl::getAddressMode):
+        * WebGPUAPIStructure/WebGPU-Vulkan/TextureImpl.cpp: Added.
+        (WebGPU::TextureImpl::TextureImpl):
+        (WebGPU::TextureImpl::decrementReferenceCount):
+        * WebGPUAPIStructure/WebGPU-Vulkan/TextureImpl.h: Added.
+        (WebGPU::TextureImpl::getImage const):
+        (WebGPU::TextureImpl::getImageView const):
+        (WebGPU::TextureImpl::getFormat const):
+        (WebGPU::TextureImpl::incrementReferenceCount):
+        (WebGPU::TextureImpl::getWidth const):
+        (WebGPU::TextureImpl::getHeight const):
+        (WebGPU::TextureImpl::getTransferredToGPU const):
+        (WebGPU::TextureImpl::setTransferredToGPU):
+        * WebGPUAPIStructure/WebGPU-Vulkan/WebGPU-Vulkan.vcxproj: Added.
+        * WebGPUAPIStructure/WebGPU-Vulkan/WebGPU-Vulkan.vcxproj.filters: Added.
+        * WebGPUAPIStructure/WebGPU.sln: Added.
+
+2017-10-26  Eric Carlson  <eric.carlson@apple.com>
+
+        NowPlayingInfo should contain a unique identifier
+        https://bugs.webkit.org/show_bug.cgi?id=178872
+
+        Reviewed by Jer Noble.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/NowPlayingControlsTests.mm:
+        (-[NowPlayingTestWebView hasActiveNowPlayingSession]): Use completion handler.
+        (TestWebKitAPI::TEST): Cleanup tests. Use new API.
+        (-[NowPlayingTestWebView waitForNowPlayingInfoToChange]): Deleted.
+
+2017-10-26  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Clear cached gUM prompt state
+        https://bugs.webkit.org/show_bug.cgi?id=178754
+        <rdar://problem/32742356>
+
+        Unreviewed, fix a flakey test.
+
+        * TestWebKitAPI/Tests/WebKit/GetUserMediaReprompt.mm:
+        (-[GetUserMediaRepromptTestView haveStream:]): New, check several times for expected state.
+        (TestWebKitAPI::TEST): Don't assume stream state changes in the page immediately.
+
+2017-10-26  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Enable Payment Request whenever Apple Pay is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=178880
+
+        Reviewed by Tim Horton.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+2017-10-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Add and update some watchlists
+        https://bugs.webkit.org/show_bug.cgi?id=178304
+
+        Reviewed by Simon Fraser.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2017-10-26  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r223984.
+
+        Caused LayoutTest assertion failures.
+
+        Reverted changeset:
+
+        "When navigating back to a page, compositing layers may not
+        use accelerated drawing"
+        https://bugs.webkit.org/show_bug.cgi?id=178749
+        https://trac.webkit.org/changeset/223984
+
+2017-10-26  Christopher Reid  <chris.reid@sony.com>
+
+        Remove scopeguard from platform
+        https://bugs.webkit.org/show_bug.cgi?id=178681
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/Tests/WebCore/FileMonitor.cpp:
+
+2017-09-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: Add support to import and run W3C tests
+        https://bugs.webkit.org/show_bug.cgi?id=177304
+
+        Reviewed by Brian Burg.
+
+        WPT has now several WebDriver tests, and new ones are going to be added to cover the whole spec. This patch
+        adds the initial support for running W3C tests. The script import-w3c-webdriver-tests reuses parts of the W3C
+        test downloader to download the tests and required tools from WPT repository into WebDriverTests
+        directory. Tests can be run with run-webdriver-tests, a new script that works similar to other test runner
+        scripts. For now it shows a summary at the end of the execution, there aren't expectations yet, since we are not
+        ready to run those tests in the bots. Once we are ready to properly run the tests, we can add the expectations
+        support and run the tests in the bots.
+
+        * Scripts/import-w3c-webdriver-tests: Added.
+        * Scripts/run-webdriver-tests: Added.
+        * Scripts/webkitpy/style/checker.py: Skip WebDriverTests directory since it only contains third-party python
+        code.
+        * Scripts/webkitpy/thirdparty/__init__.py: Add support to autodownload mozlog and mozprocess since they are
+        required by the WebDriver tests.
+        * Scripts/webkitpy/webdriver_tests/__init__.py: Added.
+        * Scripts/webkitpy/webdriver_tests/webdriver_driver.py: Added.
+        * Scripts/webkitpy/webdriver_tests/webdriver_driver_gtk.py: Added.
+        * Scripts/webkitpy/webdriver_tests/webdriver_test_result.py: Added.
+        * Scripts/webkitpy/webdriver_tests/webdriver_test_runner.py: Added.
+        * Scripts/webkitpy/webdriver_tests/webdriver_test_runner_w3c.py: Added.
+        * Scripts/webkitpy/webdriver_tests/webdriver_w3c_executor.py: Added.
+        * Scripts/webkitpy/webdriver_tests/webdriver_w3c_web_server.py: Added.
+
+2017-10-25  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Clear cached gUM prompt state
+        https://bugs.webkit.org/show_bug.cgi?id=178754
+        <rdar://problem/32742356>
+
+        Reviewed by Youenn Fablet.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Add new test
+
+        * TestWebKitAPI/Tests/WebKit/GetUserMediaReprompt.mm: Added.
+        (-[GetUserMediaRepromptUIDelegate _webView:requestUserMediaAuthorizationForDevices:url:mainFrameURL:decisionHandler:]):
+        (-[GetUserMediaRepromptUIDelegate _webView:checkUserMediaPermissionForURL:mainFrameURL:frameIdentifier:decisionHandler:]):
+        (TestWebKitAPI::TEST):
+
+        * TestWebKitAPI/Tests/WebKit/getUserMedia.html:
+
+2017-10-25  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Add committer status for Ross Kirsling
+        https://bugs.webkit.org/show_bug.cgi?id=178832
+
+        Unreviewed.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2017-10-25  Simon Fraser  <simon.fraser@apple.com>
+
+        When navigating back to a page, compositing layers may not use accelerated drawing
+        https://bugs.webkit.org/show_bug.cgi?id=178749
+        rdar://problem/35158946
+
+        Reviewed by Dean Jackson.
+
+        Fix WTR and DRT to parse "useAcceleratedDrawing" out of "webkit-test-runner" options
+        and use it to set the state of the web view.
+
+        * DumpRenderTree/TestOptions.h:
+        * DumpRenderTree/TestOptions.mm:
+        (TestOptions::TestOptions):
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (setWebPreferencesForTestOptions):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        (WTR::updateTestOptionsFromTestHeader):
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::hasSameInitializationOptions const):
+
 2017-10-25  Robin Morisset  <rmorisset@apple.com>
 
         Support the TailBench9000 benchmark in run-jsc-benchmarks

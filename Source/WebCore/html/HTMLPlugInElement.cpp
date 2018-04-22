@@ -111,7 +111,7 @@ void HTMLPlugInElement::resetInstance()
 
 JSC::Bindings::Instance* HTMLPlugInElement::bindingsInstance()
 {
-    auto* frame = document().frame();
+    auto frame = makeRefPtr(document().frame());
     if (!frame)
         return nullptr;
 
@@ -119,8 +119,8 @@ JSC::Bindings::Instance* HTMLPlugInElement::bindingsInstance()
     // the cached allocated Bindings::Instance.  Not supporting this edge-case is OK.
 
     if (!m_instance) {
-        if (auto* widget = pluginWidget())
-            m_instance = frame->script().createScriptInstanceForWidget(widget);
+        if (auto widget = makeRefPtr(pluginWidget()))
+            m_instance = frame->script().createScriptInstanceForWidget(widget.get());
     }
     return m_instance.get();
 }
@@ -227,7 +227,7 @@ bool HTMLPlugInElement::isKeyboardFocusable(KeyboardEvent&) const
         return false;
 
     RefPtr<Widget> widget = pluginWidget();
-    if (!is<PluginViewBase>(widget.get()))
+    if (!is<PluginViewBase>(widget))
         return false;
 
     return downcast<PluginViewBase>(*widget).supportsKeyboardFocus();
@@ -242,7 +242,7 @@ bool HTMLPlugInElement::isUserObservable() const
 {
     // No widget - can't be anything to see or hear here.
     RefPtr<Widget> widget = pluginWidget(PluginLoadingPolicy::DoNotLoad);
-    if (!is<PluginViewBase>(widget.get()))
+    if (!is<PluginViewBase>(widget))
         return false;
 
     PluginViewBase& pluginView = downcast<PluginViewBase>(*widget);
@@ -292,13 +292,13 @@ void HTMLPlugInElement::setDisplayState(DisplayState state)
         m_swapRendererTimer.startOneShot(0_s);
 }
 
-void HTMLPlugInElement::didAddUserAgentShadowRoot(ShadowRoot* root)
+void HTMLPlugInElement::didAddUserAgentShadowRoot(ShadowRoot& root)
 {
     if (!m_pluginReplacement || !document().page() || displayState() != PreparingPluginReplacement)
         return;
     
-    root->setResetStyleInheritance(true);
-    if (m_pluginReplacement->installReplacement(*root)) {
+    root.setResetStyleInheritance(true);
+    if (m_pluginReplacement->installReplacement(root)) {
         setDisplayState(DisplayingPluginReplacement);
         invalidateStyleAndRenderersForSubtree();
     }

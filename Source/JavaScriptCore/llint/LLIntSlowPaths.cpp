@@ -66,6 +66,7 @@
 #include "RegExpObject.h"
 #include "ShadowChicken.h"
 #include "StructureRareDataInlines.h"
+#include "SuperSampler.h"
 #include "VMInlines.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StringPrintStream.h>
@@ -1350,6 +1351,25 @@ inline SlowPathReturnType setUpCall(ExecState* execCallee, Instruction* pc, Code
     
     JSCell* calleeAsFunctionCell = getJSFunction(calleeAsValue);
     if (!calleeAsFunctionCell) {
+        if (calleeAsValue.isCell() && calleeAsValue.asCell()->type() == InternalFunctionType) {
+            auto* internalFunction = jsCast<InternalFunction*>(calleeAsValue.asCell());
+            MacroAssemblerCodePtr codePtr = vm.getCTIInternalFunctionTrampolineFor(kind);
+            ASSERT(!!codePtr);
+
+            if (!LLINT_ALWAYS_ACCESS_SLOW && callLinkInfo) {
+                CodeBlock* callerCodeBlock = exec->codeBlock();
+
+                ConcurrentJSLocker locker(callerCodeBlock->m_lock);
+
+                if (callLinkInfo->isOnList())
+                    callLinkInfo->remove();
+                callLinkInfo->callee.set(vm, callerCodeBlock, internalFunction);
+                callLinkInfo->lastSeenCallee.set(vm, callerCodeBlock, internalFunction);
+                callLinkInfo->machineCodeTarget = codePtr;
+            }
+
+            LLINT_CALL_RETURN(exec, execCallee, codePtr.executableAddress());
+        }
         throwScope.release();
         return handleHostCall(execCallee, pc, calleeAsValue, kind);
     }
@@ -1711,6 +1731,24 @@ LLINT_SLOW_PATH_DECL(slow_path_profile_catch)
     });
 
     LLINT_END();
+}
+
+LLINT_SLOW_PATH_DECL(slow_path_super_sampler_begin)
+{
+    // FIXME: It seems like we should be able to do this in asm but llint doesn't seem to like global variables.
+    // See: https://bugs.webkit.org/show_bug.cgi?id=179438
+    UNUSED_PARAM(exec);
+    g_superSamplerCount++;
+    LLINT_END_IMPL();
+}
+
+LLINT_SLOW_PATH_DECL(slow_path_super_sampler_end)
+{
+    // FIXME: It seems like we should be able to do this in asm but llint doesn't seem to like global variables.
+    // See: https://bugs.webkit.org/show_bug.cgi?id=179438
+    UNUSED_PARAM(exec);
+    g_superSamplerCount--;
+    LLINT_END_IMPL();
 }
 
 extern "C" SlowPathReturnType llint_throw_stack_overflow_error(VM* vm, ProtoCallFrame* protoFrame)

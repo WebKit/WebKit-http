@@ -30,11 +30,19 @@
 #if ENABLE(VIDEO)
 #include "RenderMediaControlElements.h"
 
+#include "LayoutState.h"
 #include "MediaControlElements.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderMediaVolumeSliderContainer);
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderMediaControlTimelineContainer);
+#if ENABLE(VIDEO_TRACK)
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderTextTrackContainerElement);
+#endif
 
 RenderMediaVolumeSliderContainer::RenderMediaVolumeSliderContainer(Element& element, RenderStyle&& style)
     : RenderBlockFlow(element, WTFMove(style))
@@ -51,7 +59,7 @@ void RenderMediaVolumeSliderContainer::layout()
     RenderBox& buttonBox = downcast<RenderBox>(*nextSibling());
     int absoluteOffsetTop = buttonBox.localToAbsolute(FloatPoint(0, -size().height())).y();
 
-    LayoutStateDisabler layoutStateDisabler(view());
+    LayoutStateDisabler layoutStateDisabler(view().frameView().layoutContext());
 
     // If the slider would be rendered outside the page, it should be moved below the controls.
     if (UNLIKELY(absoluteOffsetTop < 0))
@@ -73,7 +81,7 @@ void RenderMediaControlTimelineContainer::layout()
 {
     RenderFlexibleBox::layout();
 
-    LayoutStateDisabler layoutStateDisabler(view());
+    LayoutStateDisabler layoutStateDisabler(view().frameView().layoutContext());
     MediaControlTimelineContainerElement* container = static_cast<MediaControlTimelineContainerElement*>(element());
     container->setTimeDisplaysHidden(width().toInt() < minWidthToDisplayTimeDisplays);
 }
@@ -95,7 +103,7 @@ void RenderTextTrackContainerElement::layout()
 
     ASSERT(mediaControlElementType(element()) == MediaTextTrackDisplayContainer);
 
-    LayoutStateDisabler layoutStateDisabler(view());
+    LayoutStateDisabler layoutStateDisabler(view().frameView().layoutContext());
     static_cast<MediaControlTextTrackContainerElement*>(element())->updateSizes();
 }
 

@@ -35,6 +35,7 @@
 #include <WebCore/ResourceError.h>
 #include <WebCore/ResourceResponse.h>
 #include <WebCore/SharedBuffer.h>
+#include <wtf/CompletionHandler.h>
 
 namespace WebKit {
 
@@ -56,47 +57,60 @@ void BlobDownloadClient::didDecideDownloadDestination(const String& destinationP
 {
     ASSERT(!destinationPath.isEmpty());
 
-    if (fileExists(destinationPath)) {
+    if (FileSystem::fileExists(destinationPath)) {
         if (!allowOverwrite) {
             didFail(nullptr, cancelledError(m_download.request()));
             return;
         }
-        deleteFile(destinationPath);
+        FileSystem::deleteFile(destinationPath);
     }
 
     m_destinationPath = destinationPath;
-    m_destinationFile = openFile(m_destinationPath, OpenForWrite);
+    m_destinationFile = FileSystem::openFile(m_destinationPath, FileSystem::FileOpenMode::Write);
     m_download.didCreateDestination(m_destinationPath);
 
     m_download.continueDidReceiveResponse();
 }
 
+void BlobDownloadClient::willSendRequestAsync(ResourceHandle*, ResourceRequest&& request, ResourceResponse&&, CompletionHandler<void(ResourceRequest&&)>&& completionHandler)
+{
+    ASSERT_NOT_REACHED();
+    completionHandler(WTFMove(request));
+}
+
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
+void BlobDownloadClient::canAuthenticateAgainstProtectionSpaceAsync(ResourceHandle*, const ProtectionSpace&)
+{
+    ASSERT_NOT_REACHED();
+}
+#endif
+
 void BlobDownloadClient::didReceiveBuffer(ResourceHandle*, Ref<SharedBuffer>&& buffer, int)
 {
-    writeToFile(m_destinationFile, buffer->data(), buffer->size());
+    FileSystem::writeToFile(m_destinationFile, buffer->data(), buffer->size());
     m_download.didReceiveData(buffer->size());
 }
 
 void BlobDownloadClient::didFinishLoading(ResourceHandle*)
 {
-    closeFile(m_destinationFile);
+    FileSystem::closeFile(m_destinationFile);
     m_download.didFinish();
 }
 
 void BlobDownloadClient::didCancel()
 {
-    closeFile(m_destinationFile);
+    FileSystem::closeFile(m_destinationFile);
     if (!m_destinationPath.isEmpty())
-        deleteFile(m_destinationPath);
+        FileSystem::deleteFile(m_destinationPath);
 
     m_download.didCancel(IPC::DataReference());
 }
 
 void BlobDownloadClient::didFail(ResourceHandle*, const ResourceError& error)
 {
-    closeFile(m_destinationFile);
+    FileSystem::closeFile(m_destinationFile);
     if (!m_destinationPath.isEmpty())
-        deleteFile(m_destinationPath);
+        FileSystem::deleteFile(m_destinationPath);
 
     m_download.didFail(error, IPC::DataReference());
 }

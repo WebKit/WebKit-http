@@ -66,6 +66,7 @@ class FilterOperations;
 class HitTestRequest;
 class HitTestResult;
 class HitTestingTransformState;
+class PaintFrequencyInfo;
 class RenderFragmentedFlow;
 class RenderGeometryMap;
 class RenderLayerBacking;
@@ -197,20 +198,15 @@ public:
 
     void panScrollFromPoint(const IntPoint&);
 
-    enum ScrollOffsetClamping {
-        ScrollOffsetUnclamped,
-        ScrollOffsetClamped
-    };
-
     // Scrolling methods for layers that can scroll their overflow.
-    void scrollByRecursively(const IntSize& delta, ScrollOffsetClamping = ScrollOffsetUnclamped, ScrollableArea** scrolledArea = nullptr);
+    void scrollByRecursively(const IntSize& delta, ScrollableArea** scrolledArea = nullptr);
 
-    WEBCORE_EXPORT void scrollToOffset(const ScrollOffset&, ScrollOffsetClamping = ScrollOffsetUnclamped);
-    void scrollToXOffset(int x, ScrollOffsetClamping clamp = ScrollOffsetUnclamped) { scrollToOffset(ScrollOffset(x, scrollOffset().y()), clamp); }
-    void scrollToYOffset(int y, ScrollOffsetClamping clamp = ScrollOffsetUnclamped) { scrollToOffset(ScrollOffset(scrollOffset().x(), y), clamp); }
+    WEBCORE_EXPORT void scrollToOffset(const ScrollOffset&, ScrollClamping = ScrollClamping::Clamped);
+    void scrollToXOffset(int x, ScrollClamping clamping = ScrollClamping::Clamped) { scrollToOffset(ScrollOffset(x, scrollOffset().y()), clamping); }
+    void scrollToYOffset(int y, ScrollClamping clamping = ScrollClamping::Clamped) { scrollToOffset(ScrollOffset(scrollOffset().x(), y), clamping); }
 
-    void scrollToXPosition(int x, ScrollOffsetClamping = ScrollOffsetUnclamped);
-    void scrollToYPosition(int y, ScrollOffsetClamping = ScrollOffsetUnclamped);
+    void scrollToXPosition(int x, ScrollClamping = ScrollClamping::Clamped);
+    void scrollToYPosition(int y, ScrollClamping = ScrollClamping::Clamped);
 
     void setPostLayoutScrollPosition(std::optional<ScrollPosition>);
     void applyPostLayoutScrollPositionIfNeeded();
@@ -249,9 +245,7 @@ public:
 #if PLATFORM(IOS)
 #if ENABLE(TOUCH_EVENTS)
     bool handleTouchEvent(const PlatformTouchEvent&) override;
-    bool isTouchScrollable() const override { return true; }
 #endif
-    bool isOverflowScroll() const override { return true; }
     
     void didStartScroll() override;
     void didEndScroll() override;
@@ -680,6 +674,8 @@ public:
     // The query rect is given in local coordinates.
     bool backgroundIsKnownToBeOpaqueInRect(const LayoutRect&) const;
 
+    bool scrollingMayRevealBackground() const;
+
     bool containsDirtyOverlayScrollbars() const { return m_containsDirtyOverlayScrollbars; }
     void setContainsDirtyOverlayScrollbars(bool dirtyScrollbars) { m_containsDirtyOverlayScrollbars = dirtyScrollbars; }
 
@@ -716,6 +712,10 @@ public:
     RenderLayer* enclosingFragmentedFlowAncestor() const;
 
     bool shouldPlaceBlockDirectionScrollbarOnLeft() const final { return renderer().shouldPlaceBlockDirectionScrollbarOnLeft(); }
+
+    WEBCORE_EXPORT void simulateFrequentPaint();
+    WEBCORE_EXPORT bool paintingFrequently() const;
+    void clearPaintFrequencyInfo();
 
 private:
     enum CollectLayersBehavior { StopAtStackingContexts, StopAtStackingContainers };
@@ -888,7 +888,6 @@ private:
     bool showsOverflowControls() const;
 
     bool shouldBeNormalFlowOnly() const;
-
     bool shouldBeSelfPaintingLayer() const;
 
     int scrollOffset(ScrollbarOrientation) const override;
@@ -1170,6 +1169,8 @@ private:
     IntRect m_blockSelectionGapsBounds;
 
     std::unique_ptr<RenderLayerBacking> m_backing;
+    
+    std::unique_ptr<PaintFrequencyInfo> m_paintFrequencyInfo;
 };
 
 inline void RenderLayer::clearZOrderLists()

@@ -1,0 +1,6 @@
+
+Harness Error (TIMEOUT), message = null
+
+PASS Test skipWaiting while a client is not being controlled 
+TIMEOUT skipWaiting Test timed out
+

@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include "CurlJobManager.h"
+#include "CurlRequestSchedulerClient.h"
 #include "CurlResponse.h"
 #include "CurlSSLVerifier.h"
 #include "FileSystem.h"
@@ -36,22 +36,22 @@
 
 namespace WebCore {
 
-class CurlRequestDelegate;
+class CurlRequestClient;
 class ResourceError;
 class SharedBuffer;
 
-class CurlRequest : public ThreadSafeRefCounted<CurlRequest>, public CurlJobClient {
+class CurlRequest : public ThreadSafeRefCounted<CurlRequest>, public CurlRequestSchedulerClient {
     WTF_MAKE_NONCOPYABLE(CurlRequest);
 
 public:
-    static Ref<CurlRequest> create(const ResourceRequest& request, CurlRequestDelegate* delegate, bool shouldSuspend = false)
+    static Ref<CurlRequest> create(const ResourceRequest& request, CurlRequestClient* client, bool shouldSuspend = false)
     {
-        return adoptRef(*new CurlRequest(request, delegate, shouldSuspend));
+        return adoptRef(*new CurlRequest(request, client, shouldSuspend));
     }
 
     virtual ~CurlRequest() = default;
 
-    void setDelegate(CurlRequestDelegate* delegate) { m_delegate = delegate;  }
+    void setClient(CurlRequestClient* client) { m_client = client;  }
     void setUserPass(const String&, const String&);
 
     void start(bool isSyncRequest = false);
@@ -59,7 +59,9 @@ public:
     void suspend();
     void resume();
 
-    bool isSyncRequest() { return m_isSyncRequest; }
+    bool isSyncRequest() const { return m_isSyncRequest; }
+    bool isCompletedOrCancelled() const { return !m_curlHandle || m_cancelled; }
+
 
     // Processing for DidReceiveResponse
     void completeDidReceiveResponse();
@@ -78,7 +80,7 @@ private:
         FinishTransfer
     };
 
-    CurlRequest(const ResourceRequest&, CurlRequestDelegate*, bool shouldSuspend);
+    CurlRequest(const ResourceRequest&, CurlRequestClient*, bool shouldSuspend);
 
     void retain() override { ref(); }
     void release() override { deref(); }
@@ -86,7 +88,7 @@ private:
 
     void startWithJobManager();
 
-    void callDelegate(WTF::Function<void(CurlRequestDelegate*)>);
+    void callClient(WTF::Function<void(CurlRequestClient*)>);
 
     // Transfer processing of Request body, Response header/body
     // Called by worker thread in case of async, main thread in case of sync.
@@ -107,6 +109,7 @@ private:
 
     // Processing for DidReceiveResponse
     bool needToInvokeDidReceiveResponse() const { return !m_didNotifyResponse || !m_didReturnFromNotify; }
+    bool needToInvokeDidCancelTransfer() const { return m_didNotifyResponse && !m_didReturnFromNotify && m_actionAfterInvoke == Action::FinishTransfer; }
     void invokeDidReceiveResponseForFile(URL&);
     void invokeDidReceiveResponse(Action);
     void setRequestPaused(bool);
@@ -117,6 +120,7 @@ private:
     // Download
     void writeDataToDownloadFileIfEnabled(const SharedBuffer&);
     void closeDownloadFile();
+    void cleanupDownloadFile();
 
     // Callback functions for curl
     static CURLcode willSetupSslCtxCallback(CURL*, void*, void*);
@@ -125,7 +129,7 @@ private:
     static size_t didReceiveDataCallback(char*, size_t, size_t, void*);
 
 
-    std::atomic<CurlRequestDelegate*> m_delegate { };
+    std::atomic<CurlRequestClient*> m_client { };
     bool m_isSyncRequest { false };
     bool m_cancelled { false };
 
@@ -153,7 +157,7 @@ private:
     Lock m_downloadMutex;
     bool m_isEnabledDownloadToFile { false };
     String m_downloadFilePath;
-    PlatformFileHandle m_downloadFileHandle { invalidPlatformFileHandle };
+    FileSystem::PlatformFileHandle m_downloadFileHandle { FileSystem::invalidPlatformFileHandle };
 
     NetworkLoadMetrics m_networkLoadMetrics;
 };

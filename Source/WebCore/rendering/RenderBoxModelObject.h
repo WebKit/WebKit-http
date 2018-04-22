@@ -104,6 +104,7 @@ private:
 // at http://www.w3.org/TR/CSS21/box.html
 
 class RenderBoxModelObject : public RenderLayerModelObject {
+    WTF_MAKE_ISO_ALLOCATED(RenderBoxModelObject);
 public:
     virtual ~RenderBoxModelObject();
     
@@ -235,6 +236,10 @@ public:
     void suspendAnimations(double time = 0);
 
     RenderBoxModelObject* continuation() const;
+    WEBCORE_EXPORT RenderInline* inlineContinuation() const;
+    
+    void insertIntoContinuationChainAfter(RenderBoxModelObject&);
+    void removeFromContinuationChain();
 
     virtual LayoutRect paintRectToClipOutFromBorder(const LayoutRect&) { return LayoutRect(); };
     
@@ -256,8 +261,6 @@ protected:
 
     InterpolationQuality chooseInterpolationQuality(GraphicsContext&, Image&, const void*, const LayoutSize&);
 
-    void setContinuation(RenderBoxModelObject*);
-
     LayoutRect localCaretRectForEmptyElement(LayoutUnit width, LayoutUnit textIndentOffset);
 
     static bool shouldAntialiasLines(GraphicsContext&);
@@ -271,7 +274,8 @@ protected:
 public:
     // For RenderBlocks and RenderInlines with m_style->styleType() == FIRST_LETTER, this tracks their remaining text fragments
     RenderTextFragment* firstLetterRemainingText() const;
-    void setFirstLetterRemainingText(RenderTextFragment*);
+    void setFirstLetterRemainingText(RenderTextFragment&);
+    void clearFirstLetterRemainingText();
 
     // These functions are only used internally to manipulate the render tree structure via remove/insert/appendChildNode.
     // Since they are typically called only to move objects around within anonymous blocks, the default for fullRemoveInsert is false rather than true.
@@ -301,7 +305,12 @@ public:
 
     RenderBlock* containingBlockForAutoHeightDetection(Length logicalHeight) const;
 
+    struct ContinuationChainNode;
+
 private:
+    ContinuationChainNode& ensureContinuationChainNode();
+    void removeAndDestroyAllContinuations();
+
     LayoutUnit computedCSSPadding(const Length&) const;
     
     virtual LayoutRect frameRectForStickyPositioning() const = 0;

@@ -1,6 +1,6 @@
 {
     "domain": "Canvas",
-    "availability": "web",
+    "availability": ["web"],
     "description": "Canvas domain allows tracking of canvases that have an associated graphics context. Tracks canvases in the DOM and CSS canvases created with -webkit-canvas.",
     "types": [
         {
@@ -50,7 +50,8 @@
                 { "name": "nodeId", "$ref": "DOM.NodeId", "optional": true, "description": "The corresponding DOM node id." },
                 { "name": "cssCanvasName", "type": "string", "optional": true, "description": "The CSS canvas identifier, for canvases created with <code>document.getCSSCanvasContext</code>." },
                 { "name": "contextAttributes", "$ref": "ContextAttributes", "optional": true, "description": "Context attributes for WebGL rendering contexts." },
-                { "name": "memoryCost", "type": "number", "optional": true, "description": "Memory usage of the canvas in bytes." }
+                { "name": "memoryCost", "type": "number", "optional": true, "description": "Memory usage of the canvas in bytes." },
+                { "name": "backtrace", "type": "array", "items": { "$ref": "Console.CallFrame" }, "optional": true, "description": "Backtrace that was captured when this canvas context was created." }
             ]
         }
     ],
@@ -170,9 +171,24 @@
             ]
         },
         {
+            "name": "extensionEnabled",
+            "parameters": [
+                { "name": "canvasId", "$ref": "CanvasId" },
+                { "name": "extension", "type": "string", "description": "Name of the extension that was enabled." }
+            ]
+        },
+        {
             "name": "cssCanvasClientNodesChanged",
             "parameters": [
                 { "name": "canvasId", "$ref": "CanvasId", "description": "Identifier of canvas that changed." }
+            ]
+        },
+        {
+            "name": "recordingProgress",
+            "parameters": [
+                { "name": "canvasId", "$ref": "CanvasId" },
+                { "name": "frames", "type": "array", "items": { "$ref": "Recording.Frame" }},
+                { "name": "bufferUsed", "type": "integer", "description": "Total memory size in bytes of all data recorded since the recording began." }
             ]
         },
         {

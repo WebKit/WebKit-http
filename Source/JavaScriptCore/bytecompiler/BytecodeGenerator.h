@@ -664,6 +664,7 @@ namespace JSC {
 
         RegisterID* emitToNumber(RegisterID* dst, RegisterID* src) { return emitUnaryOpProfiled(op_to_number, dst, src); }
         RegisterID* emitToString(RegisterID* dst, RegisterID* src) { return emitUnaryOp(op_to_string, dst, src); }
+        RegisterID* emitToObject(RegisterID* dst, RegisterID* src, const Identifier& message);
         RegisterID* emitInc(RegisterID* srcDst);
         RegisterID* emitDec(RegisterID* srcDst);
 
@@ -689,6 +690,9 @@ namespace JSC {
         RegisterID* emitPutByIndex(RegisterID* base, unsigned index, RegisterID* value);
 
         RegisterID* emitAssert(RegisterID* condition, int line);
+        void emitSuperSamplerBegin();
+        void emitSuperSamplerEnd();
+
         RegisterID* emitIdWithProfile(RegisterID* src, SpeculatedType profile);
         void emitUnreachable();
 

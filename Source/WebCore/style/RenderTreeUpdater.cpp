@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -174,7 +174,9 @@ void RenderTreeUpdater::updateRenderTree(ContainerNode& root)
         if (is<Text>(node)) {
             auto& text = downcast<Text>(node);
             auto* textUpdate = m_styleUpdate->textUpdate(text);
-            if ((parent().updates && parent().updates->update.change == Style::Detach) || textUpdate || m_invalidatedWhitespaceOnlyTextSiblings.contains(&text))
+            bool didCreateParent = parent().updates && parent().updates->update.change == Style::Detach;
+            bool mayNeedUpdateWhitespaceOnlyRenderer = renderingParent().didCreateOrDestroyChildRenderer && text.containsOnlyWhitespace();
+            if (didCreateParent || textUpdate || mayNeedUpdateWhitespaceOnlyRenderer)
                 updateTextRenderer(text, textUpdate);
 
             storePreviousRenderer(text);
@@ -211,18 +213,21 @@ void RenderTreeUpdater::updateRenderTree(ContainerNode& root)
     }
 
     popParentsToDepth(0);
+}
 
-    m_invalidatedWhitespaceOnlyTextSiblings.clear();
+auto RenderTreeUpdater::renderingParent() -> Parent&
+{
+    for (unsigned i = m_parentStack.size(); i--;) {
+        if (m_parentStack[i].renderTreePosition)
+            return m_parentStack[i];
+    }
+    ASSERT_NOT_REACHED();
+    return m_parentStack.last();
 }
 
 RenderTreePosition& RenderTreeUpdater::renderTreePosition()
 {
-    for (unsigned i = m_parentStack.size(); i; --i) {
-        if (auto& position = m_parentStack[i - 1].renderTreePosition)
-            return *position;
-    }
-    ASSERT_NOT_REACHED();
-    return *m_parentStack.last().renderTreePosition;
+    return *renderingParent().renderTreePosition;
 }
 
 void RenderTreeUpdater::pushParent(Element& element, const Style::ElementUpdates* updates)
@@ -313,6 +318,8 @@ void RenderTreeUpdater::updateElementRenderer(Element& element, const Style::Ele
         // display:none cancels animations.
         auto teardownType = update.style->display() == NONE ? TeardownType::RendererUpdateCancelingAnimations : TeardownType::RendererUpdate;
         tearDownRenderers(element, teardownType);
+
+        renderingParent().didCreateOrDestroyChildRenderer = true;
     }
 
     bool hasDisplayContents = update.style->display() == CONTENTS;
@@ -326,7 +333,8 @@ void RenderTreeUpdater::updateElementRenderer(Element& element, const Style::Ele
         if (element.hasCustomStyleResolveCallbacks())
             element.willAttachRenderers();
         createRenderer(element, RenderStyle::clone(*update.style));
-        invalidateWhitespaceOnlyTextSiblingsAfterAttachIfNeeded(element);
+
+        renderingParent().didCreateOrDestroyChildRenderer = true;
         return;
     }
 
@@ -407,7 +415,7 @@ bool RenderTreeUpdater::textRendererIsNeeded(const Text& textNode)
     if (parentRenderer.style().preserveNewline()) // pre/pre-wrap/pre-line always make renderers.
         return true;
 
-    auto* previousRenderer = parent().previousChildRenderer;
+    auto* previousRenderer = renderingParent().previousChildRenderer;
     if (previousRenderer && previousRenderer->isBR()) // <span><br/> <br/></span>
         return false;
 
@@ -480,39 +488,13 @@ void RenderTreeUpdater::updateTextRenderer(Text& text, const Style::TextUpdate* 
             return;
         }
         tearDownRenderer(text);
-        invalidateWhitespaceOnlyTextSiblingsAfterAttachIfNeeded(text);
+        renderingParent().didCreateOrDestroyChildRenderer = true;
         return;
     }
     if (!needsRenderer)
         return;
     createTextRenderer(text, renderTreePosition(), textUpdate);
-    invalidateWhitespaceOnlyTextSiblingsAfterAttachIfNeeded(text);
-}
-
-void RenderTreeUpdater::invalidateWhitespaceOnlyTextSiblingsAfterAttachIfNeeded(Node& current)
-{
-    // FIXME: This needs to traverse in composed tree order.
-
-    // This function finds sibling text renderers where the results of textRendererIsNeeded may have changed as a result of
-    // the current node gaining or losing the renderer. This can only affect white space text nodes.
-    for (Node* sibling = current.nextSibling(); sibling; sibling = sibling->nextSibling()) {
-        if (is<Element>(*sibling)) {
-            if (m_styleUpdate->elementUpdates(downcast<Element>(*sibling)))
-                return;
-            // Text renderers beyond rendered elements can't be affected.
-            if (sibling->renderer())
-                return;
-            continue;
-        }
-        if (!is<Text>(*sibling))
-            continue;
-        Text& textSibling = downcast<Text>(*sibling);
-        if (m_styleUpdate->textUpdate(textSibling))
-            return;
-        if (!textSibling.containsOnlyWhitespace())
-            continue;
-        m_invalidatedWhitespaceOnlyTextSiblings.add(&textSibling);
-    }
+    renderingParent().didCreateOrDestroyChildRenderer = true;
 }
 
 void RenderTreeUpdater::storePreviousRenderer(Node& node)
@@ -520,8 +502,8 @@ void RenderTreeUpdater::storePreviousRenderer(Node& node)
     auto* renderer = node.renderer();
     if (!renderer)
         return;
-    ASSERT(parent().previousChildRenderer != renderer);
-    parent().previousChildRenderer = renderer;
+    ASSERT(renderingParent().previousChildRenderer != renderer);
+    renderingParent().previousChildRenderer = renderer;
 }
 
 void RenderTreeUpdater::tearDownRenderers(Element& root)

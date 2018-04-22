@@ -49,7 +49,6 @@
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/SharedBuffer.h>
 #import <pal/spi/cf/CFNetworkSPI.h>
-#import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
 #import <sys/param.h>
 
 #if PLATFORM(IOS)
@@ -216,7 +215,9 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
 
     if (m_bundleParameters) {
         auto data = adoptNS([[NSMutableData alloc] init]);
-        auto keyedArchiver = secureArchiverFromMutableData(data.get());
+        auto keyedArchiver = adoptNS([[NSKeyedArchiver alloc] initForWritingWithMutableData:data.get()]);
+
+        [keyedArchiver setRequiresSecureCoding:YES];
 
         @try {
             [keyedArchiver encodeObject:m_bundleParameters.get() forKey:@"parameters"];
@@ -375,7 +376,7 @@ String WebProcessPool::legacyPlatformDefaultIndexedDBDatabaseDirectory()
     // Currently, the top level of that directory contains entities related to WebSQL databases.
     // We should fix this, and move WebSQL into a subdirectory (https://bugs.webkit.org/show_bug.cgi?id=124807)
     // In the meantime, an entity name prefixed with three underscores will not conflict with any WebSQL entities.
-    return pathByAppendingComponent(legacyPlatformDefaultWebSQLDatabaseDirectory(), "___IndexedDB");
+    return FileSystem::pathByAppendingComponent(legacyPlatformDefaultWebSQLDatabaseDirectory(), "___IndexedDB");
 }
 
 String WebProcessPool::legacyPlatformDefaultLocalStorageDirectory()

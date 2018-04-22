@@ -35,6 +35,7 @@
 #include "WebKitContextMenuItemPrivate.h"
 #include "WebKitContextMenuPrivate.h"
 #include "WebKitDownloadPrivate.h"
+#include "WebKitEditingCommands.h"
 #include "WebKitEditorStatePrivate.h"
 #include "WebKitEnumTypes.h"
 #include "WebKitError.h"
@@ -44,9 +45,8 @@
 #include "WebKitIconLoadingClient.h"
 #include "WebKitInstallMissingMediaPluginsPermissionRequestPrivate.h"
 #include "WebKitJavascriptResultPrivate.h"
-#include "WebKitLoaderClient.h"
+#include "WebKitNavigationClient.h"
 #include "WebKitNotificationPrivate.h"
-#include "WebKitPolicyClient.h"
 #include "WebKitPrivate.h"
 #include "WebKitResponsePolicyDecision.h"
 #include "WebKitScriptDialogPrivate.h"
@@ -647,9 +647,8 @@ static void webkitWebViewConstructed(GObject* object)
     // The related view is only valid during the construction.
     priv->relatedView = nullptr;
 
-    attachLoaderClientToView(webView);
+    attachNavigationClientToView(webView);
     attachUIClientToView(webView);
-    attachPolicyClientToView(webView);
     attachContextMenuClientToView(webView);
     attachFormClientToView(webView);
 
@@ -3086,9 +3085,9 @@ void webkit_web_view_can_execute_editing_command(WebKitWebView* webView, const c
     g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
     g_return_if_fail(command);
 
-    GTask* task = g_task_new(webView, cancellable, callback, userData);
-    getPage(webView).validateCommand(String::fromUTF8(command), [task](const String&, bool isEnabled, int32_t, WebKit::CallbackBase::Error) {
-        g_task_return_boolean(adoptGRef(task).get(), isEnabled);        
+    GRefPtr<GTask> task = adoptGRef(g_task_new(webView, cancellable, callback, userData));
+    getPage(webView).validateCommand(String::fromUTF8(command), [task = WTFMove(task)](const String&, bool isEnabled, int32_t, WebKit::CallbackBase::Error) {
+        g_task_return_boolean(task.get(), isEnabled);
     });
 }
 

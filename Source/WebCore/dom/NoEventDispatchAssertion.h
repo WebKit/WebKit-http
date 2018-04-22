@@ -30,13 +30,12 @@ namespace WebCore {
 
 class NoEventDispatchAssertion {
 public:
+    // This variant is expensive. Use NoEventDispatchAssertion::InMainThread whenever possible.
     NoEventDispatchAssertion()
     {
-#if !ASSERT_DISABLED
         if (!isMainThread())
             return;
         ++s_count;
-#endif
     }
 
     NoEventDispatchAssertion(const NoEventDispatchAssertion&)
@@ -46,28 +45,51 @@ public:
 
     ~NoEventDispatchAssertion()
     {
-#if !ASSERT_DISABLED
         if (!isMainThread())
             return;
         ASSERT(s_count);
         s_count--;
-#endif
     }
 
     static bool isEventAllowedInMainThread()
     {
-#if ASSERT_DISABLED
-        return true;
-#else
         return !isMainThread() || !s_count;
+    }
+
+    class InMainThread {
+    public:
+        InMainThread()
+        {
+            ASSERT(isMainThread());
+            ++s_count;
+        }
+
+        ~InMainThread()
+        {
+            ASSERT(isMainThread());
+            ASSERT(s_count);
+            --s_count;
+        }
+
+        // Don't enable this assertion in release since it's O(n).
+        // Release asserts in canExecuteScript should be sufficient for security defense purposes.
+        static bool isEventDispatchAllowedInSubtree(Node& node)
+        {
+#if !ASSERT_DISABLED || ENABLE(SECURITY_ASSERTIONS)
+            return isEventAllowed() || EventAllowedScope::isAllowedNode(node);
+#else
+            UNUSED_PARAM(node);
+            return true;
 #endif
-    }
+        }
 
-    static bool isEventDispatchAllowedInSubtree(Node& node)
-    {
-        return isEventAllowedInMainThread() || EventAllowedScope::isAllowedNode(node);
-    }
-
+        static bool isEventAllowed()
+        {
+            ASSERT(isMainThread());
+            return !s_count;
+        }
+    };
+    
 #if !ASSERT_DISABLED
     class EventAllowedScope {
     public:
@@ -107,36 +129,25 @@ public:
     };
 #endif
 
-#if !ASSERT_DISABLED
+    // FIXME: Remove this class once the sync layout inside SVGImage::draw is removed.
     class DisableAssertionsInScope {
     public:
         DisableAssertionsInScope()
         {
-            if (!isMainThread())
-                return;
-            s_existingCount = s_count;
-            s_count = 0;
+            ASSERT(isMainThread());
+            std::swap(s_count, m_originalCount);
         }
 
         ~DisableAssertionsInScope()
         {
-            s_count = s_existingCount;
-            s_existingCount = 0;
+            s_count = m_originalCount;
         }
     private:
-        WEBCORE_EXPORT static unsigned s_existingCount;
+        unsigned m_originalCount { 0 };
     };
-#else
-    class DisableAssertionsInScope {
-    public:
-        DisableAssertionsInScope() { }
-    };
-#endif
 
-#if !ASSERT_DISABLED
 private:
     WEBCORE_EXPORT static unsigned s_count;
-#endif
 };
 
 } // namespace WebCore

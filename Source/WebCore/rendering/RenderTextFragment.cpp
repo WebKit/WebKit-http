@@ -27,8 +27,11 @@
 #include "RenderIterator.h"
 #include "RenderMultiColumnFlow.h"
 #include "Text.h"
+#include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderTextFragment);
 
 RenderTextFragment::RenderTextFragment(Text& textNode, const String& text, int startOffset, int length)
     : RenderText(textNode, text.substring(startOffset, length))
@@ -87,10 +90,7 @@ void RenderTextFragment::setText(const String& text, bool force)
         return;
     m_firstLetter->removeFromParentAndDestroy();
     ASSERT(!m_firstLetter);
-    if (!textNode())
-        return;
-    ASSERT(!textNode()->renderer());
-    textNode()->setRenderer(this);
+    ASSERT(!textNode() || textNode()->renderer() == this);
 }
 
 UChar RenderTextFragment::previousCharacter() const

@@ -3624,9 +3624,12 @@ void WebPageProxy::didDisplayInsecureContentForFrame(uint64_t frameID, const Use
 
     auto transaction = m_pageLoadState.transaction();
     m_pageLoadState.didDisplayOrRunInsecureContent(transaction);
-
     m_pageLoadState.commitChanges();
-    m_loaderClient->didDisplayInsecureContentForFrame(*this, *frame, m_process->transformHandlesToObjects(userData.object()).get());
+
+    if (m_navigationClient)
+        m_navigationClient->didDisplayInsecureContent(*this, m_process->transformHandlesToObjects(userData.object()).get());
+    else
+        m_loaderClient->didDisplayInsecureContentForFrame(*this, *frame, m_process->transformHandlesToObjects(userData.object()).get());
 }
 
 void WebPageProxy::didRunInsecureContentForFrame(uint64_t frameID, const UserData& userData)
@@ -3638,9 +3641,12 @@ void WebPageProxy::didRunInsecureContentForFrame(uint64_t frameID, const UserDat
 
     auto transaction = m_pageLoadState.transaction();
     m_pageLoadState.didDisplayOrRunInsecureContent(transaction);
-
     m_pageLoadState.commitChanges();
-    m_loaderClient->didRunInsecureContentForFrame(*this, *frame, m_process->transformHandlesToObjects(userData.object()).get());
+
+    if (m_navigationClient)
+        m_navigationClient->didRunInsecureContent(*this, m_process->transformHandlesToObjects(userData.object()).get());
+    else
+        m_loaderClient->didRunInsecureContentForFrame(*this, *frame, m_process->transformHandlesToObjects(userData.object()).get());
 }
 
 void WebPageProxy::didDetectXSSForFrame(uint64_t frameID, const UserData& userData)
@@ -3725,7 +3731,7 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const Secur
         auto userInitiatedActivity = m_process->userInitiatedActivity(navigationActionData.userGestureTokenIdentifier);
         bool shouldOpenAppLinks = !m_shouldSuppressAppLinksInNextNavigationPolicyDecision && destinationFrameInfo->isMainFrame() && !hostsAreEqual(URL(ParsedURLString, m_mainFrame->url()), request.url()) && navigationActionData.navigationType != WebCore::NavigationType::BackForward;
 
-        auto navigationAction = API::NavigationAction::create(WTFMove(navigationActionData), sourceFrameInfo.get(), destinationFrameInfo.ptr(), WTFMove(request), originalRequest.url(), shouldOpenAppLinks, WTFMove(userInitiatedActivity));
+        auto navigationAction = API::NavigationAction::create(WTFMove(navigationActionData), sourceFrameInfo.get(), destinationFrameInfo.ptr(), std::nullopt, WTFMove(request), originalRequest.url(), shouldOpenAppLinks, WTFMove(userInitiatedActivity));
 
         m_navigationClient->decidePolicyForNavigationAction(*this, WTFMove(navigationAction), WTFMove(listener), m_process->transformHandlesToObjects(userData.object()).get());
     } else
@@ -3760,7 +3766,7 @@ void WebPageProxy::decidePolicyForNewWindowAction(uint64_t frameID, const Securi
 
         auto userInitiatedActivity = m_process->userInitiatedActivity(navigationActionData.userGestureTokenIdentifier);
         bool shouldOpenAppLinks = !hostsAreEqual(URL(ParsedURLString, m_mainFrame->url()), request.url());
-        auto navigationAction = API::NavigationAction::create(WTFMove(navigationActionData), sourceFrameInfo.get(), nullptr, WTFMove(request), request.url(), shouldOpenAppLinks, WTFMove(userInitiatedActivity));
+        auto navigationAction = API::NavigationAction::create(WTFMove(navigationActionData), sourceFrameInfo.get(), nullptr, frameName, WTFMove(request), { }, shouldOpenAppLinks, WTFMove(userInitiatedActivity));
 
         m_navigationClient->decidePolicyForNavigationAction(*this, navigationAction.get(), WTFMove(listener), m_process->transformHandlesToObjects(userData.object()).get());
 
@@ -3783,7 +3789,7 @@ void WebPageProxy::decidePolicyForResponse(uint64_t frameID, const SecurityOrigi
 
     if (m_navigationClient) {
         auto navigationResponse = API::NavigationResponse::create(API::FrameInfo::create(*frame, frameSecurityOrigin.securityOrigin()).get(), request, response, canShowMIMEType);
-        m_navigationClient->decidePolicyForNavigationResponse(*this, navigationResponse.get(), WTFMove(listener), m_process->transformHandlesToObjects(userData.object()).get());
+        m_navigationClient->decidePolicyForNavigationResponse(*this, WTFMove(navigationResponse), WTFMove(listener), m_process->transformHandlesToObjects(userData.object()).get());
     } else
         m_policyClient->decidePolicyForResponse(*this, *frame, response, request, canShowMIMEType, WTFMove(listener), m_process->transformHandlesToObjects(userData.object()).get());
 }
@@ -6712,14 +6718,28 @@ bool WebPageProxy::isPlayingVideoInEnhancedFullscreen() const
 #endif
 
 #if PLATFORM(COCOA)
-void WebPageProxy::requestActiveNowPlayingSessionInfo()
+void WebPageProxy::requestActiveNowPlayingSessionInfo(Ref<NowPlayingInfoCallback>&& callback)
 {
-    m_process->send(Messages::WebPage::RequestActiveNowPlayingSessionInfo(), m_pageID);
+    if (!isValid()) {
+        callback->invalidate();
+        return;
+    }
+
+    auto callbackID = callback->callbackID();
+    m_callbacks.put(WTFMove(callback));
+
+    m_process->send(Messages::WebPage::RequestActiveNowPlayingSessionInfo(callbackID), m_pageID);
 }
 
-void WebPageProxy::handleActiveNowPlayingSessionInfoResponse(bool hasActiveSession, const String& title, double duration, double elapsedTime) const
+void WebPageProxy::nowPlayingInfoCallback(bool hasActiveSession, const String& title, double duration, double elapsedTime, uint64_t uniqueIdentifier, CallbackID callbackID)
 {
-    m_pageClient.handleActiveNowPlayingSessionInfoResponse(hasActiveSession, title, duration, elapsedTime);
+    auto callback = m_callbacks.take<NowPlayingInfoCallback>(callbackID);
+    if (!callback) {
+        // FIXME: Log error or assert.
+        return;
+    }
+
+    callback->performCallbackWithReturnValue(hasActiveSession, title, duration, elapsedTime, uniqueIdentifier);
 }
 #endif
 
@@ -7090,5 +7110,25 @@ void WebPageProxy::requestStorageAccess(String&& subFrameHost, String&& topFrame
         m_process->send(Messages::WebPage::StorageAccessResponse(wasGranted, webProcessContextId), m_pageID);
     });
 }
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+
+void WebPageProxy::insertAttachment(const String& identifier, const String& filename, std::optional<String> contentType, SharedBuffer& data, Function<void(CallbackBase::Error)>&& callback)
+{
+    auto callbackID = m_callbacks.put(WTFMove(callback), m_process->throttler().backgroundActivityToken());
+    m_process->send(Messages::WebPage::InsertAttachment(identifier, filename, contentType, IPC::SharedBufferDataReference { &data }, callbackID), m_pageID);
+}
+
+void WebPageProxy::didInsertAttachment(const String& identifier)
+{
+    m_pageClient.didInsertAttachment(identifier);
+}
+
+void WebPageProxy::didRemoveAttachment(const String& identifier)
+{
+    m_pageClient.didRemoveAttachment(identifier);
+}
+
+#endif // ENABLE(ATTACHMENT_ELEMENT)
 
 } // namespace WebKit

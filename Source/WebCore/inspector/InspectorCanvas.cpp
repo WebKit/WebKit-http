@@ -68,8 +68,9 @@
 #include "WebGPURenderingContext.h"
 #endif
 #include <inspector/IdentifiersFactory.h>
-#include <interpreter/CallFrame.h>
-#include <interpreter/StackVisitor.h>
+#include <inspector/ScriptCallStack.h>
+#include <inspector/ScriptCallStackFactory.h>
+#include <wtf/CurrentTime.h>
 
 
 namespace WebCore {
@@ -109,7 +110,12 @@ void InspectorCanvas::resetRecordingData()
 
 bool InspectorCanvas::hasRecordingData() const
 {
-    return m_initialState && m_frames;
+    return m_bufferUsed > 0;
+}
+
+bool InspectorCanvas::currentFrameHasData() const
+{
+    return !!m_frames;
 }
 
 static bool shouldSnapshotWebGLAction(const String& name)
@@ -121,12 +127,13 @@ static bool shouldSnapshotWebGLAction(const String& name)
 
 void InspectorCanvas::recordAction(const String& name, Vector<RecordCanvasActionVariant>&& parameters)
 {
-    if (!hasRecordingData()) {
+    if (!m_initialState) {
         m_initialState = buildInitialState();
         m_bufferUsed += m_initialState->memoryCost();
-
-        m_frames = Inspector::Protocol::Array<Inspector::Protocol::Recording::Frame>::create();
     }
+
+    if (!m_frames)
+        m_frames = Inspector::Protocol::Array<Inspector::Protocol::Recording::Frame>::create();
 
     if (!m_currentActions) {
         m_currentActions = Inspector::Protocol::Array<InspectorValue>::create();
@@ -136,6 +143,8 @@ void InspectorCanvas::recordAction(const String& name, Vector<RecordCanvasAction
             .release();
 
         m_frames->addItem(WTFMove(frame));
+
+        m_currentFrameStartTime = monotonicallyIncreasingTimeMS();
     }
 
     appendActionSnapshotIfNeeded();
@@ -168,14 +177,21 @@ RefPtr<Inspector::Protocol::Array<InspectorValue>>&& InspectorCanvas::releaseDat
     return WTFMove(m_serializedDuplicateData);
 }
 
-void InspectorCanvas::markNewFrame()
+void InspectorCanvas::finalizeFrame()
 {
+    if (m_frames && m_frames->length() && !std::isnan(m_currentFrameStartTime)) {
+        auto currentFrame = static_cast<Inspector::Protocol::Recording::Frame*>(m_frames->get(m_frames->length() - 1).get());
+        currentFrame->setDuration(monotonicallyIncreasingTimeMS() - m_currentFrameStartTime);
+
+        m_currentFrameStartTime = NAN;
+    }
+
     m_currentActions = nullptr;
 }
 
 void InspectorCanvas::markCurrentFrameIncomplete()
 {
-    if (!m_currentActions)
+    if (!m_currentActions || !m_frames || !m_frames->length())
         return;
 
     static_cast<Inspector::Protocol::Recording::Frame*>(m_frames->get(m_frames->length() - 1).get())->setIncomplete(true);
@@ -191,7 +207,7 @@ bool InspectorCanvas::hasBufferSpace() const
     return m_bufferUsed < m_bufferLimit;
 }
 
-Ref<Inspector::Protocol::Canvas::Canvas> InspectorCanvas::buildObjectForCanvas(InstrumentingAgents& instrumentingAgents)
+Ref<Inspector::Protocol::Canvas::Canvas> InspectorCanvas::buildObjectForCanvas(InstrumentingAgents& instrumentingAgents, bool captureBacktrace)
 {
     Document& document = m_canvas.document();
     Frame* frame = document.frame();
@@ -257,6 +273,11 @@ Ref<Inspector::Protocol::Canvas::Canvas> InspectorCanvas::buildObjectForCanvas(I
 
     if (size_t memoryCost = m_canvas.memoryCost())
         canvas->setMemoryCost(memoryCost);
+
+    if (captureBacktrace) {
+        auto stackTrace = Inspector::createScriptCallStack(JSMainThreadExecState::currentState(), Inspector::ScriptCallStack::maxCallStackSizeToCapture);
+        canvas->setBacktrace(stackTrace->buildInspectorArray());
+    }
 
     return canvas;
 }
@@ -429,19 +450,19 @@ RefPtr<Inspector::Protocol::Recording::InitialState> InspectorCanvas::buildIniti
         attributes->setInteger(ASCIILiteral("direction"), indexForData(convertEnumerationToString(context2d->direction())));
 
         int strokeStyleIndex;
-        if (CanvasGradient* canvasGradient = state.strokeStyle.canvasGradient())
-            strokeStyleIndex = indexForData(canvasGradient);
-        else if (CanvasPattern* canvasPattern = state.strokeStyle.canvasPattern())
-            strokeStyleIndex = indexForData(canvasPattern);
+        if (auto canvasGradient = state.strokeStyle.canvasGradient())
+            strokeStyleIndex = indexForData(canvasGradient.get());
+        else if (auto canvasPattern = state.strokeStyle.canvasPattern())
+            strokeStyleIndex = indexForData(canvasPattern.get());
         else
             strokeStyleIndex = indexForData(state.strokeStyle.color());
         attributes->setInteger(ASCIILiteral("strokeStyle"), strokeStyleIndex);
 
         int fillStyleIndex;
-        if (CanvasGradient* canvasGradient = state.fillStyle.canvasGradient())
-            fillStyleIndex = indexForData(canvasGradient);
-        else if (CanvasPattern* canvasPattern = state.fillStyle.canvasPattern())
-            fillStyleIndex = indexForData(canvasPattern);
+        if (auto canvasGradient = state.fillStyle.canvasGradient())
+            fillStyleIndex = indexForData(canvasGradient.get());
+        else if (auto canvasPattern = state.fillStyle.canvasPattern())
+            fillStyleIndex = indexForData(canvasPattern.get());
         else
             fillStyleIndex = indexForData(state.fillStyle.color());
         attributes->setInteger(ASCIILiteral("fillStyle"), fillStyleIndex);
@@ -560,22 +581,9 @@ RefPtr<Inspector::Protocol::Array<Inspector::InspectorValue>> InspectorCanvas::b
     action->addItem(WTFMove(swizzleTypes));
 
     RefPtr<Inspector::Protocol::Array<double>> trace = Inspector::Protocol::Array<double>::create();
-    if (JSC::CallFrame* callFrame = JSMainThreadExecState::currentState()->vm().topCallFrame) {
-        callFrame->iterate([&] (JSC::StackVisitor& visitor) {
-            // Only skip Native frames if they are the first frame (e.g. CanvasRenderingContext2D.prototype.save).
-            if (!trace->length() && visitor->isNativeFrame())
-                return JSC::StackVisitor::Continue;
-
-            unsigned line = 0;
-            unsigned column = 0;
-            visitor->computeLineAndColumn(line, column);
-
-            ScriptCallFrame scriptCallFrame(visitor->functionName(), visitor->sourceURL(), static_cast<JSC::SourceID>(visitor->sourceID()), line, column);
-            trace->addItem(indexForData(scriptCallFrame));
-
-            return JSC::StackVisitor::Continue;
-        });
-    }
+    auto stackTrace = Inspector::createScriptCallStack(JSMainThreadExecState::currentState(), Inspector::ScriptCallStack::maxCallStackSizeToCapture);
+    for (size_t i = 0; i < stackTrace->size(); ++i)
+        trace->addItem(indexForData(stackTrace->at(i)));
     action->addItem(WTFMove(trace));
 
     return action;

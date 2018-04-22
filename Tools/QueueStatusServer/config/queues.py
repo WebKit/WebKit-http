@@ -42,7 +42,9 @@ all_queue_names = [
     "mac-wk2-ews",
     "mac-debug-ews",
     "mac-32bit-ews",
+    "webkitpy-ews",
     "win-ews",
+    "wincairo-ews",
     "wpe-ews",
 ]
 

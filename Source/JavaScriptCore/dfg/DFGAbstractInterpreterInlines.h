@@ -618,6 +618,14 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             setConstant(node, jsNumber(clz32(value)));
             break;
         }
+        switch (node->child1().useKind()) {
+        case Int32Use:
+        case KnownInt32Use:
+            break;
+        default:
+            clobberWorld(node->origin.semantic, clobberLimit);
+            break;
+        }
         forNode(node).setType(SpecInt32Only);
         break;
     }
@@ -1096,6 +1104,11 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             }
         }
         forNode(node).setType(SpecInt32Only);
+        break;
+    }
+
+    case StringSlice: {
+        forNode(node).setType(m_graph, SpecString);
         break;
     }
 
@@ -2182,6 +2195,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).set(m_graph, node->structure());
         break;
 
+    case ToObject:
     case CallObjectConstructor: {
         AbstractValue& source = forNode(node->child1());
         AbstractValue& destination = forNode(node);
@@ -2192,6 +2206,8 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             break;
         }
 
+        if (node->op() == ToObject)
+            clobberWorld(node->origin.semantic, clobberLimit);
         forNode(node).setType(m_graph, SpecObject);
         break;
     }
@@ -3075,10 +3091,12 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     }
     case HasGenericProperty: {
         forNode(node).setType(SpecBoolean);
+        clobberWorld(node->origin.semantic, clobberLimit);
         break;
     }
     case HasStructureProperty: {
         forNode(node).setType(SpecBoolean);
+        clobberWorld(node->origin.semantic, clobberLimit);
         break;
     }
     case HasIndexedProperty: {
@@ -3105,6 +3123,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     }
     case GetPropertyEnumerator: {
         forNode(node).setType(m_graph, SpecCell);
+        clobberWorld(node->origin.semantic, clobberLimit);
         break;
     }
     case GetEnumeratorStructurePname: {
@@ -3226,6 +3245,8 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case CheckTierUpInLoop:
     case CheckTierUpAtReturn:
     case CheckTypeInfoFlags:
+    case SuperSamplerBegin:
+    case SuperSamplerEnd:
         break;
 
     case ParseInt: {

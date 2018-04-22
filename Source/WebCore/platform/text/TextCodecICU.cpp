@@ -43,18 +43,6 @@ namespace WebCore {
 
 const size_t ConversionBufferSize = 16384;
 
-#if PLATFORM(IOS)
-static const char* textCodecMacAliases[] = {
-    "macos-7_3-10.2", // xmaccyrillic, maccyrillic
-    "macos-6_2-10.4", // xmacgreek
-    "macos-6-10.2",   // macgreek
-    "macos-29-10.2",  // xmaccentraleurroman, maccentraleurroman
-    "macos-35-10.2",  // xmacturkish, macturkish
-    "softbank-sjis",  // softbanksjis
-    nullptr
-};
-#endif
-
 ICUConverterWrapper::~ICUConverterWrapper()
 {
     if (converter)
@@ -75,7 +63,7 @@ std::unique_ptr<TextCodec> TextCodecICU::create(const TextEncoding& encoding, co
 #define DECLARE_ALIASES(encoding, ...) \
     static const char* const encoding##_aliases[] { __VA_ARGS__ }
 
-// From https://encoding.spec.whatwg.org.
+// From https://encoding.spec.whatwg.org. Plus a few extra aliases that macOS had historically from TEC.
 DECLARE_ALIASES(IBM866, "866", "cp866", "csibm866");
 DECLARE_ALIASES(ISO_8859_2, "csisolatin2", "iso-ir-101", "iso8859-2", "iso88592", "iso_8859-2", "iso_8859-2:1987", "l2", "latin2");
 DECLARE_ALIASES(ISO_8859_3, "csisolatin3", "iso-ir-109", "iso8859-3", "iso88593", "iso_8859-3", "iso_8859-3:1988", "l3", "latin3");
@@ -85,15 +73,16 @@ DECLARE_ALIASES(ISO_8859_6, "arabic", "asmo-708", "csiso88596e", "csiso88596i", 
 DECLARE_ALIASES(ISO_8859_7, "csisolatingreek", "ecma-118", "elot_928", "greek", "greek8", "iso-ir-126", "iso8859-7", "iso88597", "iso_8859-7", "iso_8859-7:1987", "sun_eu_greek");
 DECLARE_ALIASES(ISO_8859_8, "csiso88598e", "csisolatinhebrew", "hebrew", "iso-8859-8-e", "iso-ir-138", "iso8859-8", "iso88598", "iso_8859-8", "iso_8859-8:1988", "visual");
 DECLARE_ALIASES(ISO_8859_8_I, "csiso88598i", "logical");
-DECLARE_ALIASES(ISO_8859_10, "csisolatin6", "iso-ir-157", "iso8859-10", "iso885910", "l6", "latin6");
+DECLARE_ALIASES(ISO_8859_10, "csisolatin6", "iso-ir-157", "iso8859-10", "iso885910", "l6", "latin6", "iso8859101992", "isoir157");
 DECLARE_ALIASES(ISO_8859_13, "iso8859-13", "iso885913");
-DECLARE_ALIASES(ISO_8859_14, "iso8859-14", "iso885914");
+DECLARE_ALIASES(ISO_8859_14, "iso8859-14", "iso885914", "isoceltic", "iso8859141998", "isoir199", "latin8", "l8");
 DECLARE_ALIASES(ISO_8859_15, "csisolatin9", "iso8859-15", "iso885915", "iso_8859-15", "l9");
+DECLARE_ALIASES(ISO_8859_16, "isoir226", "iso8859162001", "l10", "latin10");
 DECLARE_ALIASES(KOI8_R, "cskoi8r", "koi", "koi8", "koi8_r");
 DECLARE_ALIASES(KOI8_U, "koi8-ru");
 DECLARE_ALIASES(macintosh, "csmacintosh", "mac", "x-mac-roman", "macroman", "x-macroman");
 DECLARE_ALIASES(windows_874, "dos-874", "iso-8859-11", "iso8859-11", "iso885911", "tis-620");
-DECLARE_ALIASES(windows_949, "euc-kr", "cseuckr", "csksc56011987", "iso-ir-149", "korean", "ks_c_5601-1987", "ks_c_5601-1989", "ksc5601", "ksc_5601", "ms949", "x-KSC5601", "x-windows-949", "x-uhc");
+DECLARE_ALIASES(EUC_KR, "windows-949", "cseuckr", "csksc56011987", "iso-ir-149", "korean", "ks_c_5601-1987", "ks_c_5601-1989", "ksc5601", "ksc_5601", "ms949", "x-KSC5601", "x-windows-949", "x-uhc");
 DECLARE_ALIASES(windows_1250, "cp1250", "x-cp1250", "winlatin2");
 DECLARE_ALIASES(windows_1251, "cp1251", "wincyrillic", "x-cp1251");
 DECLARE_ALIASES(windows_1253, "wingreek", "cp1253", "x-cp1253");
@@ -142,12 +131,12 @@ static const struct EncodingName {
     DECLARE_ENCODING_NAME("ISO-8859-13", ISO_8859_13),
     DECLARE_ENCODING_NAME("ISO-8859-14", ISO_8859_14),
     DECLARE_ENCODING_NAME("ISO-8859-15", ISO_8859_15),
-    DECLARE_ENCODING_NAME_NO_ALIASES("ISO-8859-16"),
+    DECLARE_ENCODING_NAME("ISO-8859-16", ISO_8859_16),
     DECLARE_ENCODING_NAME("KOI8-R", KOI8_R),
     DECLARE_ENCODING_NAME("KOI8-U", KOI8_U),
     DECLARE_ENCODING_NAME("macintosh", macintosh),
     DECLARE_ENCODING_NAME("windows-874", windows_874),
-    DECLARE_ENCODING_NAME("windows-949", windows_949),
+    DECLARE_ENCODING_NAME("EUC-KR", EUC_KR),
     DECLARE_ENCODING_NAME("windows-1250", windows_1250),
     DECLARE_ENCODING_NAME("windows-1251", windows_1251),
     DECLARE_ENCODING_NAME("windows-1253", windows_1253),
@@ -180,29 +169,6 @@ void TextCodecICU::registerEncodingNames(EncodingNameRegistrar registrar)
         for (size_t i = 0; i < encodingName.aliasCount; ++i)
             registrar(encodingName.aliases[i], encodingName.name);
     }
-
-#if PLATFORM(IOS)
-    // A.B. adding a few more Mac encodings missing 'cause we don't have TextCodecMac right now
-    // luckily, they are supported in ICU, just need to alias them.
-    // this handles encodings that OS X uses TEC (TextCodecMac)
-    // <http://publib.boulder.ibm.com/infocenter/wmbhelp/v6r0m0/index.jsp?topic=/com.ibm.etools.mft.eb.doc/ac00408_.htm>
-    int32_t i = 0;
-    for (const char* macAlias = textCodecMacAliases[i]; macAlias; macAlias = textCodecMacAliases[++i]) {
-        registrar(macAlias, macAlias);
-
-        UErrorCode error = U_ZERO_ERROR;
-        uint16_t numAliases = ucnv_countAliases(macAlias, &error);
-        ASSERT(U_SUCCESS(error));
-        if (U_SUCCESS(error))
-            for (uint16_t j = 0; j < numAliases; ++j) {
-                error = U_ZERO_ERROR;
-                const char* alias = ucnv_getAlias(macAlias, j, &error);
-                ASSERT(U_SUCCESS(error));
-                if (U_SUCCESS(error) && strcmp(alias, macAlias))
-                    registrar(alias, macAlias);
-            }
-    }
-#endif
 }
 
 void TextCodecICU::registerCodecs(TextCodecRegistrar registrar)
@@ -234,19 +200,16 @@ void TextCodecICU::registerCodecs(TextCodecRegistrar registrar)
             registrar(encodingName.name, create, "macos-35-10.2");
             continue;
         }
+        if (!strcmp(encodingName.name, "EUC-KR")) {
+            registrar(encodingName.name, create, "windows-949");
+            continue;
+        }
 
         UErrorCode error = U_ZERO_ERROR;
         const char* canonicalConverterName = ucnv_getCanonicalName(encodingName.name, "IANA", &error);
         ASSERT(U_SUCCESS(error));
         registrar(encodingName.name, create, canonicalConverterName);
     }
-
-#if PLATFORM(IOS)
-    // See comment above in registerEncodingNames().
-    int32_t i = 0;
-    for (const char* alias = textCodecMacAliases[i]; alias; alias = textCodecMacAliases[++i])
-        registrar(alias, create, 0);
-#endif
 }
 
 TextCodecICU::TextCodecICU(const char* encoding, const char* canonicalConverterName)

@@ -1,0 +1,4 @@
+
+
+FAIL Verify the response of FetchEvent using XMLHttpRequest assert_equals: expected "finish" but got "failure:XHR must fail."
+

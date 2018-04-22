@@ -1,0 +1,5 @@
+
+
+FAIL Controlled resource loads assert_unreached: unexpected rejection: undefined is not an object (evaluating 'entry.workerStart') Reached unreachable code
+PASS Non-controlled resource loads 
+

@@ -67,6 +67,7 @@
 #include "ScriptController.h"
 #include "SecurityOrigin.h"
 #include "SecurityPolicy.h"
+#include "ServiceWorker.h"
 #include "Settings.h"
 #include "StyleSheetContents.h"
 #include "SubresourceLoader.h"
@@ -305,7 +306,7 @@ ResourceErrorOr<CachedResourceHandle<CachedRawResource>> CachedResourceLoader::r
 
 ResourceErrorOr<CachedResourceHandle<CachedRawResource>> CachedResourceLoader::requestRawResource(CachedResourceRequest&& request)
 {
-    ASSERT(request.options().destination == FetchOptions::Destination::EmptyString);
+    ASSERT(request.options().destination == FetchOptions::Destination::EmptyString || request.options().serviceWorkersMode == ServiceWorkersMode::None);
     return castCachedResourceTo<CachedRawResource>(requestResource(CachedResource::RawResource, WTFMove(request)));
 }
 
@@ -686,9 +687,16 @@ static inline void logMemoryCacheResourceRequest(Frame* frame, const String& key
 void CachedResourceLoader::prepareFetch(CachedResource::Type type, CachedResourceRequest& request)
 {
     // Implementing step 1 to 7 of https://fetch.spec.whatwg.org/#fetching
+    auto* document = this->document();
 
-    if (!request.origin() && document())
-        request.setOrigin(document()->securityOrigin());
+    if (document) {
+        if (!request.origin())
+            request.setOrigin(document->securityOrigin());
+#if ENABLE(SERVICE_WORKER)
+        if (auto* activeServiceWorker = document->activeServiceWorker())
+            request.setSelectedServiceWorkerIdentifierIfNeeded(activeServiceWorker->identifier());
+#endif
+    }
 
     request.setAcceptHeaderIfNone(type);
 
@@ -779,7 +787,7 @@ ResourceErrorOr<CachedResourceHandle<CachedResource>> CachedResourceLoader::requ
         }
         if (sameOriginRequest) {
             for (auto& field : m_documentLoader->customHeaderFields())
-                request.resourceRequest().addHTTPHeaderField(field.name(), field.value());
+                request.resourceRequest().setHTTPHeaderField(field.name(), field.value());
         }
     }
 

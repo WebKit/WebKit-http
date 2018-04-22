@@ -28,22 +28,25 @@
 
 #include "AnimationEffect.h"
 #include "AnimationTimeline.h"
+#include "Document.h"
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-Ref<WebAnimation> WebAnimation::create(AnimationTimeline* timeline)
+Ref<WebAnimation> WebAnimation::create(Document& document, AnimationEffect* effect, AnimationTimeline* timeline)
 {
-    auto result = adoptRef(*new WebAnimation(timeline));
+    auto result = adoptRef(*new WebAnimation());
 
-    if (timeline)
-        timeline->addAnimation(result.copyRef());
+    result->setEffect(effect);
     
+    // FIXME: the spec mandates distinguishing between an omitted timeline parameter
+    // and an explicit null or undefined value (webkit.org/b/179065).
+    result->setTimeline(timeline ? timeline : &document.timeline());
+
     return result;
 }
 
-WebAnimation::WebAnimation(AnimationTimeline* timeline)
-    : m_timeline(timeline)
+WebAnimation::WebAnimation()
 {
 }
 
@@ -55,22 +58,144 @@ WebAnimation::~WebAnimation()
 
 void WebAnimation::setEffect(RefPtr<AnimationEffect>&& effect)
 {
+    if (effect == m_effect)
+        return;
+
     m_effect = WTFMove(effect);
 }
 
+void WebAnimation::setTimeline(RefPtr<AnimationTimeline>&& timeline)
+{
+    if (timeline == m_timeline)
+        return;
+
+    // FIXME: If the animation start time of animation is resolved, make animation’s
+    // hold time unresolved (webkit.org/b/178932).
+
+    if (m_timeline)
+        m_timeline->removeAnimation(*this);
+
+    if (timeline)
+        timeline->addAnimation(*this);
+
+    m_timeline = WTFMove(timeline);
+}
+    
 std::optional<double> WebAnimation::bindingsStartTime() const
 {
     if (m_startTime)
-        return m_startTime->secondsSinceEpoch().value();
+        return m_startTime->value();
     return std::nullopt;
 }
 
 void WebAnimation::setBindingsStartTime(std::optional<double> startTime)
 {
     if (startTime == std::nullopt)
-        m_startTime = std::nullopt;
+        setStartTime(std::nullopt);
     else
-        m_startTime = MonotonicTime::fromRawSeconds(startTime.value());
+        setStartTime(Seconds(startTime.value()));
+}
+
+std::optional<Seconds> WebAnimation::startTime() const
+{
+    return m_startTime;
+}
+
+void WebAnimation::setStartTime(std::optional<Seconds> startTime)
+{
+    if (startTime == m_startTime)
+        return;
+
+    m_startTime = startTime;
+    
+    if (m_timeline)
+        m_timeline->animationTimingModelDidChange();
+}
+
+std::optional<double> WebAnimation::bindingsCurrentTime() const
+{
+    auto time = currentTime();
+    if (!time)
+        return std::nullopt;
+    return time->value();
+}
+
+ExceptionOr<void> WebAnimation::setBindingsCurrentTime(std::optional<double> currentTime)
+{
+    if (!currentTime)
+        return Exception { TypeError };
+    setCurrentTime(Seconds(currentTime.value()));
+    return { };
+}
+
+std::optional<Seconds> WebAnimation::currentTime() const
+{
+    // FIXME: return the hold time when we support pausing (webkit.org/b/178932).
+
+    if (!m_timeline || !m_startTime)
+        return std::nullopt;
+
+    auto timelineTime = m_timeline->currentTime();
+    if (!timelineTime)
+        return std::nullopt;
+
+    return (timelineTime.value() - m_startTime.value()) * m_playbackRate;
+}
+
+void WebAnimation::setCurrentTime(std::optional<Seconds> seekTime)
+{
+    // FIXME: account for hold time when we support it (webkit.org/b/178932),
+    // including situations where playbackRate is 0.
+
+    if (!m_timeline) {
+        setStartTime(std::nullopt);
+        return;
+    }
+
+    auto timelineTime = m_timeline->currentTime();
+    if (!timelineTime) {
+        setStartTime(std::nullopt);
+        return;
+    }
+
+    setStartTime(timelineTime.value() - (seekTime.value() / m_playbackRate));
+}
+
+void WebAnimation::setPlaybackRate(double newPlaybackRate)
+{
+    if (m_playbackRate == newPlaybackRate)
+        return;
+
+    // 3.5.17.1. Updating the playback rate of an animation
+    // Changes to the playback rate trigger a compensatory seek so that that the animation's current time
+    // is unaffected by the change to the playback rate.
+    auto previousTime = currentTime();
+    m_playbackRate = newPlaybackRate;
+    if (previousTime)
+        setCurrentTime(previousTime);
+}
+
+Seconds WebAnimation::timeToNextRequiredTick(Seconds timelineTime) const
+{
+    if (!m_timeline || !m_startTime || !m_effect || !m_playbackRate)
+        return Seconds::infinity();
+
+    auto startTime = m_startTime.value();
+    auto endTime = startTime + (m_effect->timing()->duration() / m_playbackRate);
+
+    // If we haven't started yet, return the interval until our active start time.
+    auto activeStartTime = std::min(startTime, endTime);
+    if (timelineTime <= activeStartTime)
+        return activeStartTime - timelineTime;
+
+    // If we're in the middle of our active duration, we want to be called as soon as possible.
+    auto activeEndTime = std::max(startTime, endTime);
+    if (timelineTime <= activeEndTime)
+        return 0_ms;
+
+    // If none of the previous cases match, then we're already past our active duration
+    // and do not need scheduling.
+    return Seconds::infinity();
 }
 
 String WebAnimation::description()

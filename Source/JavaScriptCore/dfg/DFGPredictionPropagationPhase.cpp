@@ -720,6 +720,8 @@ private:
         case LoadKeyFromMapBucket:
         case LoadValueFromMapBucket:
         case ToNumber:
+        case ToObject:
+        case CallObjectConstructor:
         case GetArgument:
         case CallDOMGetter:
         case GetDynamicVar:
@@ -784,6 +786,7 @@ private:
             break;
         }
 
+        case StringSlice:
         case ToLowerCase:
             setPrediction(SpecString);
             break;
@@ -856,10 +859,6 @@ private:
         case CheckSubClass:
             break;
 
-        case CallObjectConstructor: {
-            setPrediction(SpecObject);
-            break;
-        }
         case SkipScope:
         case GetGlobalObject: {
             setPrediction(SpecObjectOther);
@@ -1178,6 +1177,8 @@ private:
             
         // These gets ignored because it doesn't do anything.
         case CountExecution:
+        case SuperSamplerBegin:
+        case SuperSamplerEnd:
         case PhantomLocal:
         case Flush:
             break;

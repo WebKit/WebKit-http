@@ -132,7 +132,6 @@ private:
     void positionInformationDidChange(const InteractionInformationAtPosition&) override;
     void saveImageToLibrary(Ref<WebCore::SharedBuffer>&&) override;
     bool allowsBlockSelection() override;
-    void didUpdateBlockSelectionWithTouch(uint32_t touch, uint32_t flags, float growThreshold, float shrinkThreshold) override;
     void showPlaybackTargetPicker(bool hasVideo, const WebCore::IntRect& elementRect) override;
 
     bool handleRunOpenPanel(WebPageProxy*, WebFrameProxy*, API::OpenPanelParameters*, WebOpenPanelResultListenerProxy*) override;
@@ -195,8 +194,6 @@ private:
     void didRestoreScrollPosition() override;
 
     WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection() override;
-
-    void handleActiveNowPlayingSessionInfoResponse(bool hasActiveSession, const String& title, double duration, double elapsedTime) override;
 
 #if USE(QUICK_LOOK)
     void requestPasswordForQuickLookDocument(const String& fileName, WTF::Function<void(const String&)>&&) override;

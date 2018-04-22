@@ -29,8 +29,10 @@
 #include "WebAnimation.h"
 #include <wtf/Forward.h>
 #include <wtf/HashSet.h>
+#include <wtf/Optional.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
+#include <wtf/Seconds.h>
 
 namespace WebCore {
 
@@ -41,7 +43,13 @@ public:
     bool isDocumentTimeline() const { return m_classType == DocumentTimelineClass; }
     void addAnimation(Ref<WebAnimation>&&);
     void removeAnimation(Ref<WebAnimation>&&);
+    std::optional<double> bindingsCurrentTime();
+    virtual std::optional<Seconds> currentTime() { return m_currentTime; }
+    WEBCORE_EXPORT void setCurrentTime(Seconds);
     WEBCORE_EXPORT String description();
+    WEBCORE_EXPORT virtual void pause() { };
+
+    virtual void animationTimingModelDidChange() { };
 
     virtual ~AnimationTimeline();
 
@@ -52,10 +60,13 @@ protected:
 
     ClassType classType() const { return m_classType; }
 
+    HashSet<RefPtr<WebAnimation>> animations() const { return m_animations; }
+
     explicit AnimationTimeline(ClassType);
 
 private:
     ClassType m_classType;
+    std::optional<Seconds> m_currentTime;
     HashSet<RefPtr<WebAnimation>> m_animations;
 };
 

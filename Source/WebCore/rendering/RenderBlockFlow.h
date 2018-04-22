@@ -33,7 +33,6 @@
 namespace WebCore {
 
 class FloatWithRect;
-class LayoutStateMaintainer;
 class LineBreaker;
 class LineInfo;
 class RenderMultiColumnFlow;
@@ -51,6 +50,7 @@ enum LineCount {
 #endif
 
 class RenderBlockFlow : public RenderBlock {
+    WTF_MAKE_ISO_ALLOCATED(RenderBlockFlow);
 public:
     RenderBlockFlow(Element&, RenderStyle&&);
     RenderBlockFlow(Document&, RenderStyle&&);
@@ -257,7 +257,7 @@ public:
     void clearDidBreakAtLineToAvoidWidow();
     void setDidBreakAtLineToAvoidWidow();
     bool didBreakAtLineToAvoidWidow() const { return hasRareBlockFlowData() && rareBlockFlowData()->m_didBreakAtLineToAvoidWidow; }
-    bool relayoutToAvoidWidows(LayoutStateMaintainer&);
+    bool relayoutToAvoidWidows();
 
     RootInlineBox* lineGridBox() const { return hasRareBlockFlowData() ? rareBlockFlowData()->m_lineGridBox.get() : nullptr; }
     void setLineGridBox(std::unique_ptr<RootInlineBox> box)
@@ -600,7 +600,7 @@ public:
     void updateFragmentForLine(RootInlineBox*) const;
 
     // Pagination routines.
-    bool relayoutForPagination(LayoutStateMaintainer&);
+    bool relayoutForPagination();
 
     bool hasRareBlockFlowData() const { return m_rareBlockFlowData.get(); }
     RenderBlockFlowRareData* rareBlockFlowData() const { ASSERT_WITH_SECURITY_IMPLICATION(hasRareBlockFlowData()); return m_rareBlockFlowData.get(); }

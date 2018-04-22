@@ -97,6 +97,9 @@ public:
 
     bool activeStyleSheetsContains(const CSSStyleSheet*) const;
 
+    void evaluateMediaQueriesForViewportChange();
+    void evaluateMediaQueriesForAccessibilitySettingsChange();
+
     // This is called when some stylesheet becomes newly enabled or disabled.
     void didChangeActiveStyleSheetCandidates();
     // This is called when contents of a stylesheet is mutated.
@@ -107,6 +110,10 @@ public:
 
     bool hasPendingUpdate() const { return m_pendingUpdate || m_hasDescendantWithPendingUpdate; }
     void flushPendingUpdate();
+
+#if ENABLE(XSLT)
+    Vector<Ref<ProcessingInstruction>> collectXSLTransforms();
+#endif
 
     StyleResolver& resolver();
     StyleResolver* resolverIfExists();
@@ -125,6 +132,8 @@ private:
     enum class UpdateType { ActiveSet, ContentsOrInterpretation };
     void updateActiveStyleSheets(UpdateType);
     void scheduleUpdate(UpdateType);
+
+    template <typename TestFunction> void evaluateMediaQueries(TestFunction&&);
 
     WEBCORE_EXPORT void flushPendingSelfUpdate();
     WEBCORE_EXPORT void flushPendingDescendantUpdates();

@@ -59,11 +59,11 @@ list(APPEND WebCore_SOURCES
     platform/network/cf/ResourceErrorCF.cpp
     platform/network/cf/ResourceHandleCFNet.cpp
     platform/network/cf/ResourceHandleCFURLConnectionDelegate.cpp
+    platform/network/cf/ResourceHandleCFURLConnectionDelegateWithOperationQueue.cpp
     platform/network/cf/ResourceRequestCFNet.cpp
     platform/network/cf/ResourceResponseCFNet.cpp
     platform/network/cf/SocketStreamHandleImplCFNet.cpp
     platform/network/cf/SynchronousLoaderClientCFNet.cpp
-    platform/network/cf/SynchronousResourceHandleCFURLConnectionDelegate.cpp
 )
 
 if (${USE_DIRECT2D})
@@ -120,7 +120,6 @@ else ()
         platform/graphics/cg/IOSurfacePool.cpp
         platform/graphics/cg/ImageBufferCG.cpp
         platform/graphics/cg/ImageBufferDataCG.cpp
-        platform/graphics/cg/ImageCG.cpp
         platform/graphics/cg/ImageDecoderCG.cpp
         platform/graphics/cg/ImageSourceCGWin.cpp
         platform/graphics/cg/IntPointCG.cpp

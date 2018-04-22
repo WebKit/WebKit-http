@@ -640,6 +640,8 @@ private:
             flushDirect(inlineStackEntry->remapOperand(virtualRegisterForArgument(argument)));
         if (!inlineStackEntry->m_inlineCallFrame && m_graph.needsFlushedThis())
             flushDirect(virtualRegisterForArgument(0));
+        else
+            phantomLocalDirect(virtualRegisterForArgument(0));
 
         if (m_graph.needsScopeRegister())
             flushDirect(m_codeBlock->scopeRegister());
@@ -1064,7 +1066,7 @@ private:
     }
 
     bool needsDynamicLookup(ResolveType, OpcodeID);
-    
+
     VM* m_vm;
     CodeBlock* m_codeBlock;
     CodeBlock* m_profiledBlock;
@@ -1446,8 +1448,6 @@ bool ByteCodeParser::handleRecursiveTailCall(Node* callTargetNode, const CallLin
 
         // We must add some check that the profiling information was correct and the target of this call is what we thought
         emitFunctionChecks(callLinkStatus[0], callTargetNode, thisArgument);
-        // We flush everything, as if we were in the backedge of a loop (see treatment of op_jmp in parseBlock).
-        flushForTerminal();
 
         // We must set the arguments to the right values
         int argIndex = 0;
@@ -1474,6 +1474,9 @@ bool ByteCodeParser::handleRecursiveTailCall(Node* callTargetNode, const CallLin
         m_currentIndex = oldIndex;
         m_inlineStackTop = oldStackTop;
         m_exitOK = false;
+
+        // We flush everything, as if we were in the backedge of a loop (see treatment of op_jmp in parseBlock).
+        flushForTerminal();
 
         BasicBlock** entryBlockPtr = tryBinarySearch<BasicBlock*, unsigned>(stackEntry->m_blockLinkingTargets, stackEntry->m_blockLinkingTargets.size(), OPCODE_LENGTH(op_enter), getBytecodeBeginForBlock);
         RELEASE_ASSERT(entryBlockPtr);
@@ -2979,6 +2982,24 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
         return true;
     }
 
+    case StringPrototypeSliceIntrinsic: {
+        if (argumentCountIncludingThis < 2)
+            return false;
+
+        if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType))
+            return false;
+
+        insertChecks();
+        Node* thisString = get(virtualRegisterForArgument(0, registerOffset));
+        Node* start = get(virtualRegisterForArgument(1, registerOffset));
+        Node* end = nullptr;
+        if (argumentCountIncludingThis > 2)
+            end = get(virtualRegisterForArgument(2, registerOffset));
+        Node* result = addToGraph(StringSlice, thisString, start, end);
+        set(VirtualRegister(resultOperand), result);
+        return true;
+    }
+
     case StringPrototypeToLowerCaseIntrinsic: {
         if (argumentCountIncludingThis != 1)
             return false;
@@ -3355,7 +3376,7 @@ bool ByteCodeParser::handleConstantInternalFunction(
         if (argumentCountIncludingThis <= 1)
             result = addToGraph(NewObject, OpInfo(m_graph.registerStructure(function->globalObject()->objectStructureForObjectConstructor())));
         else
-            result = addToGraph(CallObjectConstructor, get(virtualRegisterForArgument(1, registerOffset)));
+            result = addToGraph(CallObjectConstructor, OpInfo(m_graph.freeze(function->globalObject())), OpInfo(prediction), get(virtualRegisterForArgument(1, registerOffset)));
         set(VirtualRegister(resultOperand), result);
         return true;
     }
@@ -5938,7 +5959,17 @@ void ByteCodeParser::parseBlock(unsigned limit)
             addToGraph(Check); // We add a nop here so that basic block linking doesn't break.
             NEXT_OPCODE(op_nop);
         }
-            
+
+        case op_super_sampler_begin: {
+            addToGraph(SuperSamplerBegin);
+            NEXT_OPCODE(op_super_sampler_begin);
+        }
+
+        case op_super_sampler_end: {
+            addToGraph(SuperSamplerEnd);
+            NEXT_OPCODE(op_super_sampler_end);
+        }
+
         case op_create_lexical_environment: {
             VirtualRegister symbolTableRegister(currentInstruction[3].u.operand);
             VirtualRegister initialValueRegister(currentInstruction[4].u.operand);
@@ -6122,6 +6153,14 @@ void ByteCodeParser::parseBlock(unsigned limit)
             Node* value = get(VirtualRegister(currentInstruction[2].u.operand));
             set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(ToString, value));
             NEXT_OPCODE(op_to_string);
+        }
+
+        case op_to_object: {
+            SpeculatedType prediction = getPrediction();
+            Node* value = get(VirtualRegister(currentInstruction[2].u.operand));
+            unsigned identifierNumber = m_inlineStackTop->m_identifierRemap[currentInstruction[3].u.operand];
+            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(ToObject, OpInfo(identifierNumber), OpInfo(prediction), value));
+            NEXT_OPCODE(op_to_object);
         }
 
         case op_in: {

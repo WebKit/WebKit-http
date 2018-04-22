@@ -124,7 +124,7 @@ bool HTMLFormControlElement::computeIsDisabledByFieldsetAncestor() const
     for (RefPtr<Element> ancestor = parentElement(); ancestor; ancestor = ancestor->parentElement()) {
         if (is<HTMLFieldSetElement>(*ancestor) && ancestor->hasAttributeWithoutSynchronization(disabledAttr)) {
             HTMLFieldSetElement& fieldSetAncestor = downcast<HTMLFieldSetElement>(*ancestor);
-            bool isInFirstLegend = is<HTMLLegendElement>(previousAncestor.get()) && previousAncestor == fieldSetAncestor.legend();
+            bool isInFirstLegend = is<HTMLLegendElement>(previousAncestor) && previousAncestor == fieldSetAncestor.legend();
             return !isInFirstLegend;
         }
         previousAncestor = ancestor;
@@ -237,8 +237,8 @@ void HTMLFormControlElement::didAttachRenderers()
         setAutofocused();
 
         RefPtr<HTMLFormControlElement> element = this;
-        auto* frameView = document().view();
-        if (frameView && frameView->isInLayout()) {
+        auto frameView = makeRefPtr(document().view());
+        if (frameView && frameView->layoutContext().isInLayout()) {
             frameView->queuePostLayoutCallback([element] {
                 element->focus();
             });
@@ -482,8 +482,9 @@ bool HTMLFormControlElement::checkValidity(Vector<RefPtr<HTMLFormControlElement>
     // An event handler can deref this object.
     Ref<HTMLFormControlElement> protectedThis(*this);
     Ref<Document> originalDocument(document());
-    bool needsDefaultAction = dispatchEvent(Event::create(eventNames().invalidEvent, false, true));
-    if (needsDefaultAction && unhandledInvalidControls && isConnected() && originalDocument.ptr() == &document())
+    auto event = Event::create(eventNames().invalidEvent, false, true);
+    dispatchEvent(event);
+    if (!event->defaultPrevented() && unhandledInvalidControls && isConnected() && originalDocument.ptr() == &document())
         unhandledInvalidControls->append(this);
     return false;
 }

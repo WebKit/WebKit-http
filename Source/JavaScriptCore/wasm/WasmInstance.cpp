@@ -26,32 +26,42 @@
 #include "config.h"
 #include "WasmInstance.h"
 
+#if ENABLE(WEBASSEMBLY)
+
 #include "Register.h"
 #include "WasmModuleInformation.h"
-
-#if ENABLE(WEBASSEMBLY)
+#include <wtf/CheckedArithmetic.h>
 
 namespace JSC { namespace Wasm {
 
 namespace {
 size_t globalMemoryByteSize(Module& module)
 {
-    return module.moduleInformation().globals.size() * sizeof(Register);
+    return (Checked<size_t>(module.moduleInformation().globals.size()) * sizeof(Register)).unsafeGet();
 }
 }
 
-Instance::Instance(Ref<Module>&& module, EntryFrame** topEntryFramePointer)
-    : m_module(WTFMove(module))
+Instance::Instance(Context* context, Ref<Module>&& module, EntryFrame** topEntryFramePointer)
+    : m_context(context)
+    , m_module(WTFMove(module))
     , m_globals(MallocPtr<uint64_t>::malloc(globalMemoryByteSize(m_module.get())))
     , m_topEntryFramePointer(topEntryFramePointer)
+    , m_numImportFunctions(m_module->moduleInformation().importFunctionCount())
 {
+    for (unsigned i = 0; i < m_numImportFunctions; ++i)
+        new (importFunctionInfo(i)) ImportFunctionInfo();
+}
+
+Ref<Instance> Instance::create(Context* context, Ref<Module>&& module, EntryFrame** topEntryFramePointer)
+{
+    return adoptRef(*new (NotNull, fastMalloc(allocationSize(module->moduleInformation().importFunctionCount()))) Instance(context, WTFMove(module), topEntryFramePointer));
 }
 
 Instance::~Instance() { }
 
 size_t Instance::extraMemoryAllocated() const
 {
-    return globalMemoryByteSize(m_module.get());
+    return globalMemoryByteSize(m_module.get()) + allocationSize(m_numImportFunctions);
 }
 
 } } // namespace JSC::Wasm

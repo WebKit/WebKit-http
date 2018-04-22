@@ -254,6 +254,7 @@
 #include "JSHTMLMediaElement.cpp"
 #include "JSHTMLMediaElementMediaSession.cpp"
 #include "JSHTMLMenuElement.cpp"
+#include "JSHTMLMenuItemElement.cpp"
 #include "JSHTMLMetaElement.cpp"
 #include "JSHTMLMeterElement.cpp"
 #include "JSHTMLModElement.cpp"
@@ -648,12 +649,3 @@
 #include "JSXPathNSResolver.cpp"
 #include "JSXPathResult.cpp"
 #include "JSXSLTProcessor.cpp"
-
-// On MSVC, including StaticConstructors.h causes all global objects not to be
-// automatically initialized by the C runtime. This is useful in some specific
-// cases (e.g., the *Names.cpp files), but can be dangerous in others. We don't
-// want StaticConstructors.h to "pollute" all the source files we #include here
-// accidentally, so we'll throw an error whenever any file includes it.
-#ifdef StaticConstructors_h
-#error Do not include any file in DerivedSources.cpp that includes StaticConstructors.h
-#endif

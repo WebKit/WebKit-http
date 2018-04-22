@@ -57,7 +57,6 @@ messages -> WebPage LegacyReceiver {
     BlurAssistedNode()
     SelectWithGesture(WebCore::IntPoint point, uint32_t granularity, uint32_t gestureType, uint32_t gestureState, bool isInteractingWithAssistedNode, WebKit::CallbackID callbackID)
     UpdateSelectionWithTouches(WebCore::IntPoint point, uint32_t touches, bool baseIsStart, WebKit::CallbackID callbackID)
-    UpdateBlockSelectionWithTouch(WebCore::IntPoint point, uint32_t touch, uint32_t handlePosition)
     SelectWithTwoTouches(WebCore::IntPoint from, WebCore::IntPoint to, uint32_t gestureType, uint32_t gestureState, WebKit::CallbackID callbackID)
     ExtendSelection(uint32_t granularity)
     SelectWordBackward()
@@ -438,7 +437,7 @@ messages -> WebPage LegacyReceiver {
 #endif
 
 #if PLATFORM(COCOA)
-    RequestActiveNowPlayingSessionInfo()
+    RequestActiveNowPlayingSessionInfo(WebKit::CallbackID callbackID)
 #endif
 
     SetShouldDispatchFakeMouseMoveEvents(bool shouldDispatchFakeMouseMoveEvents)
@@ -485,4 +484,8 @@ messages -> WebPage LegacyReceiver {
     URLSchemeTaskDidComplete(uint64_t handlerIdentifier, uint64_t taskIdentifier, WebCore::ResourceError error)
 
     StorageAccessResponse(bool wasGranted, uint64_t contextId)
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+    InsertAttachment(String identifier, String filename, std::optional<String> contentType, IPC::DataReference data, WebKit::CallbackID callbackID)
+#endif
 }

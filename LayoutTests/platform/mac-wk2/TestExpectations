@@ -26,6 +26,7 @@ fast/visual-viewport/rubberbanding-viewport-rects.html [ Pass ]
 fast/visual-viewport/rubberbanding-viewport-rects-header-footer.html  [ Pass ]
 
 [ Sierra+ ] http/tests/paymentrequest [ Pass ]
+[ Sierra+ ] http/tests/inspector/paymentrequest [ Pass ]
 [ Sierra+ ] imported/w3c/web-platform-tests/payment-request [ Pass ]
 webkit.org/b/178107 [ Sierra+ ] http/tests/paymentrequest/payment-request-abort-method.https.html [ Pass Failure ]
 webkit.org/b/175611 imported/w3c/web-platform-tests/payment-request/allowpaymentrequest/allowpaymentrequest-attribute-cross-origin-bc-containers.https.html [ Skip ]
@@ -298,10 +299,9 @@ webkit.org/b/124476 platform/mac-wk2/plugins/slow/asynchronous-plugin-initializa
 
 # uiElementForSearchPredicate() is not returning an undefined object when the search returns no results
 webkit.org/b/125996 accessibility/mac/search-when-element-starts-in-table.html [ Failure ]
+webkit.org/b/125996 accessibility/mac/search-predicate-visible-button.html [ Failure ]
 
 webkit.org/b/162999 accessibility/mac/wk1-set-selected-text-marker-range-input-element.html [ Skip ]
-
-webkit.org/b/134550 http/tests/cache/iframe-304-crash.html [ Pass Failure ]
 
 # testRunner.setUseDeferredFrameLoading is not implemented.
 webkit.org/b/93980 http/tests/appcache/load-from-appcache-defer-resume-crash.html [ Skip ]
@@ -340,15 +340,13 @@ webkit.org/b/150241 webarchive/loading/object.html [ Pass Crash ]
 
 webkit.org/b/150942 animations/multiple-backgrounds.html [ Pass ImageOnlyFailure ]
 
-webkit.org/b/151326 [ Yosemite+ ] webarchive/loading/missing-data.html [ Pass Crash ]
+webkit.org/b/151326 webarchive/loading/missing-data.html [ Pass Crash ]
 
 webkit.org/b/151455 [ Release ] http/tests/xmlhttprequest/workers/methods-async.html [ Pass Timeout ]
 
 webkit.org/b/150542 fast/forms/state-restore-per-form.html [ Pass Timeout ]
 
 webkit.org/b/151709 [ Release ] http/tests/xmlhttprequest/workers/methods.html [ Pass Timeout ]
-
-webkit.org/b/151729 [ Yosemite ] http/tests/xmlhttprequest/methods-async.html [ Pass Timeout ]
 
 webkit.org/b/155151 [ Debug ElCapitan ] media/track/track-cues-pause-on-exit.html [ Pass Timeout ]
 
@@ -416,17 +414,12 @@ webkit.org/b/133227 plugins/snapshotting/quicktime-plugin-snapshotted.html [ Pas
 
 fast/dom/frame-loading-via-document-write.html [ Timeout ]
 
-[ Yosemite+ ] fast/speechsynthesis/speech-synthesis-cancel.html [ Pass Timeout ]
+fast/speechsynthesis/speech-synthesis-cancel.html [ Pass Timeout ]
 
-webkit.org/b/140084 [ Yosemite+ ] js/dom/dfg-inline-resolve.html [ Pass Timeout ]
-
-webkit.org/b/141364 [ Yosemite ] fullscreen/full-screen-plugin.html [ Pass Timeout ]
+webkit.org/b/140084 js/dom/dfg-inline-resolve.html [ Pass Timeout ]
 
 webkit.org/b/139828 svg/animations/animateMotion-additive-2a.svg [ Pass ImageOnlyFailure ]
 webkit.org/b/139828 svg/animations/animateMotion-additive-2b.svg [ Pass ImageOnlyFailure ]
-
-# This test crashes every time in WebKit2 on Yosemite
-webkit.org/b/142726 [ Yosemite ] fast/images/animated-png.html [ Skip ]
 
 [ Debug ] editing/undo/remove-css-property-and-remove-style.html [ Pass Failure ]
 
@@ -472,7 +465,7 @@ editing/mac/selection/25228.html
 
 # WebKitTestRunner needs testRunner.setCallCloseOnWebViews
 # http://webkit.org/b/46714
-accessibility/mac/search-predicate.html
+accessibility/mac/search-predicate-visited-links.html
 
 # AX tests that require hit testing do not work in WK2.
 webkit.org/b/71298 accessibility/mac/html-slider-indicator.html
@@ -520,21 +513,20 @@ webkit.org/b/138736 http/tests/appcache/auth.html [ Skip ]
 
 media/video-background-tab-playback.html [ Pass Failure ]
 
-webkit.org/b/140607 [ Yosemite+ ] http/tests/navigation/navigation-interrupted-by-fragment.html [ Pass Timeout ]
+webkit.org/b/140607 http/tests/navigation/navigation-interrupted-by-fragment.html [ Pass Timeout ]
 
-webkit.org/b/141322 [ Debug Yosemite+ ] fast/images/destroyed-image-load-event.html [ Pass Timeout ]
+webkit.org/b/141322 [ Debug ] fast/images/destroyed-image-load-event.html [ Pass Timeout ]
 
 webkit.org/b/141085 http/tests/media/video-query-url.html [ Pass Timeout ]
-
-webkit.org/b/145702 [ Debug Yosemite ] http/tests/misc/acid3.html [ Pass Timeout ]
 
 ### END OF (6) New WebKit2-only failures in Yosemite
 ########################################
 
 # Content Extensions tests must be enabled explicitly on mac-wk2.
-http/tests/contentextensions [ Pass Failure ]
-http/tests/websocket/tests/hybi/contentextensions [ Pass Failure ]
-[ Sierra+ ] http/wpt/beacon/contentextensions [ Pass ]
+http/tests/contentextensions [ Pass ]
+http/tests/websocket/tests/hybi/contentextensions [ Pass ]
+webkit.org/b/179557 http/tests/websocket/tests/hybi/contentextensions/upgrade-worker.html [ Pass Failure ]
+webkit.org/b/179256 [ Sierra+ ] http/wpt/beacon/contentextensions [ Pass Failure ]
 webkit.org/b/168081 http/tests/contentextensions/async-xhr-onerror.html [ Pass Timeout ]
 webkit.org/b/146400 http/tests/contentextensions/character-set-basic-support.html [ Pass Failure ]
 webkit.org/b/168082 [ Sierra ] http/tests/contentextensions/invalid-selector.html [ Pass ImageOnlyFailure ]
@@ -560,8 +552,6 @@ webkit.org/b/155757 [ ElCapitan+ ] media/media-document-audio-repaint.html [ Pas
 webkit.org/b/157589 fast/text-autosizing/ios/text-autosizing-after-back.html [ Pass Timeout ]
 
 webkit.org/b/158237 fast/scrolling/scroll-container-horizontally.html [ Pass Timeout ]
-
-webkit.org/b/158639 [ Release Yosemite ] imported/blink/storage/indexeddb/blob-delete-objectstore-db.html [ Pass Timeout ]
 
 # PiP tests are only enabled for Sierra WebKit2.
 # rdar://problem/27574303
@@ -604,7 +594,7 @@ webkit.org/b/172998 [ Sierra+ ] media/fullscreen-api-enabled-media-with-presenta
 webkit.org/b/162638 [ Sierra+ ] fast/scrolling/rtl-scrollbars-alternate-iframe-body-dir-attr-does-not-update-scrollbar-placement.html [ Pass ImageOnlyFailure ]
 [ Sierra+ ] fast/scrolling/rtl-scrollbars-animation-property.html [ Pass ]
 # This test only produces an RTL token on Sierra.
-[ Yosemite ElCapitan ] fast/scrolling/rtl-scrollbars-animation-property.html [ Failure ]
+[ ElCapitan ] fast/scrolling/rtl-scrollbars-animation-property.html [ Failure ]
 
 # <rdar://problem/25063128>
 [ Sierra+ ] media/media-controls-drag-timeline-set-controls-property.html [ Pass Timeout ]
@@ -638,8 +628,6 @@ webkit.org/b/162081 editing/inserting/typing-space-to-trigger-smart-link.html [ 
 webkit.org/b/162081 editing/inserting/smart-quote-with-all-configurations.html [ Failure ]
 
 webkit.org/b/160017 js/regress-139548.html [ Pass Timeout ]
-
-webkit.org/b/161659 [ Yosemite Debug ] media/media-controls-drag-timeline-set-controls-property.html [ Pass Timeout ]
 
 webkit.org/b/162524 [ Sierra Release ] http/tests/cache/disk-cache/disk-cache-redirect.html [ Pass Timeout ]
 
@@ -710,7 +698,7 @@ webkit.org/b/170960 fast/mediastream/getUserMedia-webaudio.html [ Pass Timeout ]
 
 webkit.org/b/171553 [ Release ] http/tests/websocket/tests/hybi/inspector/binary.html [ Pass Failure ]
 
-webkit.org/b/171763 [ Debug ] compositing/tiling/non-active-window-tiles-size.html [ Pass Failure ]
+webkit.org/b/171763 compositing/tiling/non-active-window-tiles-size.html [ Pass Failure ]
 
 webkit.org/b/171837 [ Debug ] http/tests/security/storage-blocking-loosened-plugin.html [ Pass Failure ]
 
@@ -751,7 +739,7 @@ webkit.org/b/172201 webaudio/silent-audio-interrupted-in-background.html [ Pass 
 
 webkit.org/b/167757 workers/bomb.html [ Pass Timeout ]
 
-webkit.org/b/172397 [ Sierra Debug ] animations/needs-layout.html [ Pass ImageOnlyFailure ]
+webkit.org/b/172397 [ Debug ] animations/needs-layout.html [ Pass ImageOnlyFailure ]
 
 # Touch events are not available on open source bots, thus only tested on Mac.
 http/tests/loading/resourceLoadStatistics/user-interaction-in-cross-origin-sub-frame.html [ Pass ]
@@ -782,7 +770,7 @@ webkit.org/b/175341 accessibility/mac/select-element-selection-with-optgroups.ht
 
 webkit.org/b/172044 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/open-request-queue.html [ Pass Timeout ]
 
-webkit.org/b/173779 [ Sierra Debug ] fast/scrolling/arrow-key-scroll-in-rtl-document.html [ Pass Failure ]
+webkit.org/b/173779 [ Debug ] fast/scrolling/arrow-key-scroll-in-rtl-document.html [ Pass Failure ]
 
 webkit.org/b/175773 [ Debug ] imported/w3c/web-platform-tests/payment-request/payment-request-constructor-crash.https.html [ Skip ]
 
@@ -794,9 +782,9 @@ webkit.org/b/172829 [ Sierra Debug ] loader/stateobjects/replacestate-size.html 
 
 webkit.org/b/175781 svg/in-html/by-reference.html [ Pass Failure ]
 
-webkit.org/b/176054 [ Sierra ElCapitan ] media/video-controls-in-media-document.html [ Pass Failure ]
+webkit.org/b/176054 media/video-controls-in-media-document.html [ Pass Failure ]
 
-webkit.org/b/176054 [ Sierra ElCapitan ] media/video-controls-no-display-with-text-track.html [ Pass Failure ]
+webkit.org/b/176054 media/video-controls-no-display-with-text-track.html [ Pass Failure ]
 
 webkit.org/b/169238 fast/events/mouse-cursor-no-mousemove.html [ Pass Failure ]
 
@@ -834,4 +822,11 @@ webkit.org/b/178536 [ HighSierra ] http/tests/loading/resourceLoadStatistics/cle
 webkit.org/b/176881 plugins/js-from-destroy.html [ Pass Failure ]
 
 webkit.org/b/178553 [ HighSierra Release ] imported/w3c/web-platform-tests/html/dom/dynamic-markup-insertion/opening-the-input-stream/011.html [ Skip ]
+
+webkit.org/b/177501 [ HighSierra ] webrtc/video-mute.html [ Pass Timeout ]
+
+webkit.org/b/177828 http/tests/appcache/decide-navigation-policy-after-delay.html [ Skip ]
+webkit.org/b/177828 http/tests/contentfiltering/load-substitute-data-from-appcache.html [ Skip ]
+
+webkit.org/b/179208 [ HighSierra ] js/intl-datetimeformat.html [ Failure ]
 

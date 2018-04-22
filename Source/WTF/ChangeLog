@@ -1,3 +1,313 @@
+2017-11-10  Jer Noble  <jer.noble@apple.com>
+
+        Add a FairPlay Streaming based CDM for Modern EME
+        https://bugs.webkit.org/show_bug.cgi?id=179499
+        <rdar://problem/35445033>
+
+        Reviewed by Eric Carlson.
+
+        * wtf/Platform.h:
+
+2017-11-10  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION(r224267): WebViews scheduled with custom run loop modes don't load
+        https://bugs.webkit.org/show_bug.cgi?id=179515
+        <rdar://problem/35445245>
+
+        Reviewed by Andy Estes.
+
+        * wtf/MainThread.cpp:
+        (WTF::callOnMainThread):
+        * wtf/MainThread.h:
+        (WTF::callOnMainThread):
+        (WTF::scheduleDispatchFunctionsOnMainThread):
+        * wtf/generic/MainThreadGeneric.cpp:
+        (WTF::scheduleDispatchFunctionsOnMainThread):
+        * wtf/mac/MainThreadMac.mm:
+        (WTF::scheduleDispatchFunctionsOnMainThread):
+        * wtf/win/MainThreadWin.cpp:
+        (WTF::scheduleDispatchFunctionsOnMainThread):
+        Add an optional parameter which is an array of run loop mode names to pass to performSelectorOnMainThread.
+
+2017-11-10  Ms2ger  <Ms2ger@igalia.com>
+
+        Export tryFastZeroedMalloc.
+        https://bugs.webkit.org/show_bug.cgi?id=179051
+
+        Reviewed by Michael Catanzaro.
+
+        The other functions were exported in bug 72855. There does not seem to be a
+        reason not to export this one.
+
+        * wtf/FastMalloc.h:
+
+2017-11-09  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r224661.
+
+        Broke build on several internal Mac/iOS bots
+
+        Reverted changeset:
+
+        "Ignore HSTS for partitioned, cross-origin subresource
+        requests"
+        https://bugs.webkit.org/show_bug.cgi?id=178993
+        https://trac.webkit.org/changeset/224661
+
+2017-11-09  John Wilander  <wilander@apple.com>
+
+        Ignore HSTS for partitioned, cross-origin subresource requests
+        https://bugs.webkit.org/show_bug.cgi?id=178993
+        <rdar://problem/34962462>
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/Platform.h:
+            Added HAVE_CFNETWORK_IGNORE_HSTS.
+
+2017-11-08  Tim Horton  <timothy_horton@apple.com>
+
+        [ios-simulator] API test WebKit.BundleParameters is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=178363
+        <rdar://problem/35043144>
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/RefCounter.h:
+        (WTF::RefCounter<T>::Count::deref):
+        (WTF::RefCounter<T>::Count::refCounterWasDeleted):
+        (WTF::RefCounter<T>::~RefCounter):
+        If a RefCounter::Count is deref()'d and drops its RefCounter's value to
+        zero, and the RefCounter is deleted in that valueDidChangeCallback, it
+        will delete the Counter that is in the middle of deref(). Keep track
+        of whether we're inside the callback and defer the deletion until
+        the end of deref().
+
+2017-11-07  Maciej Stachowiak  <mjs@apple.com>
+
+        Get rid of unsightly hex numbers from unified build object files
+        https://bugs.webkit.org/show_bug.cgi?id=179410
+
+        Reviewed by Saam Barati.
+
+        * Scripts/generate-unified-source-bundles.rb: For extensions other than "cpp", also include 
+        the extension in the base name of the file, to avoid ugly Xcode-generated object file names.
+
+2017-11-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Disable isoheaps on iOS
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/IsoMalloc.h:
+
+2017-11-07  Brady Eidson  <beidson@apple.com>
+
+        Implement "UpdateWorkerState" and use it
+        https://bugs.webkit.org/show_bug.cgi?id=179318
+
+        Reviewed by Chris Dumez.
+
+        * wtf/ObjectIdentifier.h:
+        (WTF::ObjectIdentifier::loggingString const):
+
+2017-11-07  Michael Saboff  <msaboff@apple.com>
+
+        Add SPI function pointers qualifiers for CPU(ARM64E)
+        https://bugs.webkit.org/show_bug.cgi?id=179383
+
+        Reviewed by Mark Lam.
+
+        For ARM64E, use the appropriate SPI qualifiers for helper function pointers.
+
+        * wtf/BlockPtr.h:
+        (WTF::BlockPtr<R):
+
+2017-10-31  Filip Pizlo  <fpizlo@apple.com>
+
+        bmalloc should support strictly type-segregated isolated heaps
+        https://bugs.webkit.org/show_bug.cgi?id=178108
+
+        Reviewed by Saam Barati, Simon Fraser, and Ryosuke Niwa.
+        
+        This just adds an easy way of using the bmalloc IsoHeap API in WebKit. If bmalloc is not
+        enabled, these macros will just make the object FastMalloced.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/FastTLS.h:
+        * wtf/IsoMalloc.h: Added.
+        * wtf/IsoMallocInlines.h: Added.
+
+2017-11-06  Christopher Reid  <chris.reid@sony.com>
+
+        Use enum classes within FileSystem
+        https://bugs.webkit.org/show_bug.cgi?id=175172
+
+        Reviewed by Myles C. Maxfield.
+
+        Adding a helper function for converting enum classes to their underlying type when necessary.
+
+        * wtf/EnumTraits.h:
+
+2017-11-06  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Always use SET_AND_EXPOSE_TO_BUILD to set build variables
+        https://bugs.webkit.org/show_bug.cgi?id=179038
+
+        Reviewed by Žan Doberšek.
+
+        * wtf/Platform.h:
+
+2017-11-03  Chris Dumez  <cdumez@apple.com>
+
+        Use a single identifier type to identify Service Workers
+        https://bugs.webkit.org/show_bug.cgi?id=179192
+
+        Reviewed by Brady Eidson.
+
+        Introduce class for strongly typed identifiers. This avoids mixing up
+        different types of identifiers.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/ObjectIdentifier.h: Added.
+        (WTF::ObjectIdentifier::encode const):
+        (WTF::ObjectIdentifier::decode):
+        (WTF::ObjectIdentifier::operator== const):
+        (WTF::ObjectIdentifier::operator!= const):
+        (WTF::ObjectIdentifier::ObjectIdentifier):
+        (WTF::makeObjectIdentifier):
+        (WTF::ObjectIdentifierHash::hash):
+        (WTF::ObjectIdentifierHash::equal):
+        (WTF::HashTraits<ObjectIdentifier<T>>::emptyValue):
+        (WTF::HashTraits<ObjectIdentifier<T>>::constructDeletedValue):
+        (WTF::HashTraits<ObjectIdentifier<T>>::isDeletedValue):
+
+2017-11-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r224353.
+
+        Breaks internal builds.
+
+        Reverted changeset:
+
+        "Ignore HSTS for partitioned, cross-origin subresource
+        requests"
+        https://bugs.webkit.org/show_bug.cgi?id=178993
+        https://trac.webkit.org/changeset/224353
+
+2017-11-02  John Wilander  <wilander@apple.com>
+
+        Ignore HSTS for partitioned, cross-origin subresource requests
+        https://bugs.webkit.org/show_bug.cgi?id=178993
+        <rdar://problem/34962462>
+
+        Reviewed by Brent Fulgham and Alex Christensen.
+
+        * wtf/Platform.h:
+            Added HAVE_CFNETWORK_IGNORE_HSTS.
+
+2017-11-02  Frederic Wang  <fwang@igalia.com>
+
+        Add references to bug 179167 in FIXME comments
+        https://bugs.webkit.org/show_bug.cgi?id=179168
+
+        Reviewed by Daniel Bates.
+
+        * wtf/FeatureDefines.h:
+
+2017-11-01  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Let is<T>() accept RefPtrs
+        https://bugs.webkit.org/show_bug.cgi?id=178612
+        <rdar://problem/35102004>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add support for is<T>() for RefPtrs.
+
+        * wtf/RefPtr.h:
+        (WTF::is):
+
+2017-11-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Misc display list and other cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=179150
+
+        Reviewed by Tim Horton.
+
+        Add system trace points for display list recording.
+
+        * wtf/SystemTracing.h:
+
+2017-11-01  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Use LazyNeverDestroyed instead of DEFINE_GLOBAL
+        https://bugs.webkit.org/show_bug.cgi?id=174979
+
+        Reviewed by Yusuke Suzuki.
+
+        DEFINE_GLOBAL is not used anymore. Remove it.
+
+        * WTF.xcodeproj/project.pbxproj: Removed StaticConstructors.h
+        * config.h: Removed definitions of SKIP_STATIC_CONSTRUCTORS_ON_MSVC and SKIP_STATIC_CONSTRUCTORS_ON_GCC.
+        * wtf/CMakeLists.txt: Removed StaticConstructors.h
+        * wtf/StaticConstructors.h: Removed.
+
+2017-10-30  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] Fix build warnings
+        https://bugs.webkit.org/show_bug.cgi?id=178899
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * wtf/PlatformWPE.cmake:
+
+2017-10-27  Yousuke Kimoto  <yousuke.kimoto@sony.com>
+
+        [WinCairo] Add WTF files for wincairo webkit
+        https://bugs.webkit.org/show_bug.cgi?id=176894
+
+        Reviewed by Alex Christensen.
+
+        * wtf/PlatformWin.cmake:
+        * wtf/WorkQueue.cpp:
+        * wtf/WorkQueue.h:
+        * wtf/win/Win32Handle.h:
+        * wtf/win/WorkItemContext.cpp: Added.
+        (WTF::WorkItemContext::WorkItemContext):
+        (WTF::WorkItemContext::create):
+        (WTF::WorkItemContext::~WorkItemContext):
+        * wtf/win/WorkItemContext.h: Added.
+        (WTF::WorkItemContext::handle):
+        (WTF::WorkItemContext::waitHandle):
+        (WTF::WorkItemContext::Function<void):
+        (WTF::WorkItemContext::queue const):
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::handleCallback):
+        (WTF::WorkQueue::registerHandle):
+        (WTF::WorkQueue::unregisterAndCloseHandle):
+        (WTF::WorkQueue::unregisterWaitAndDestroyItemSoon):
+        (WTF::WorkQueue::unregisterWaitAndDestroyItemCallback):
+
+2017-10-27  Keith Miller  <keith_miller@apple.com>
+
+        Add unified source list files and build scripts to Xcode project navigator
+        https://bugs.webkit.org/show_bug.cgi?id=178959
+
+        Reviewed by Andy Estes.
+
+        * WTF.xcodeproj/project.pbxproj:
+
+2017-10-26  Mark Lam  <mark.lam@apple.com>
+
+        JSRopeString::RopeBuilder::append() should check for overflows.
+        https://bugs.webkit.org/show_bug.cgi?id=178385
+        <rdar://problem/35027468>
+
+        Reviewed by Saam Barati.
+
+        * wtf/CheckedArithmetic.h:
+
 2017-10-25  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r222945.

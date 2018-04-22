@@ -65,13 +65,13 @@ RenderPtr<RenderElement> HTMLSummaryElement::createElementRenderer(RenderStyle&&
     return createRenderer<RenderBlockFlow>(*this, WTFMove(style));
 }
 
-void HTMLSummaryElement::didAddUserAgentShadowRoot(ShadowRoot* root)
+void HTMLSummaryElement::didAddUserAgentShadowRoot(ShadowRoot& root)
 {
-    root->appendChild(DetailsMarkerControl::create(document()));
-    root->appendChild(HTMLSlotElement::create(slotTag, document()));
+    root.appendChild(DetailsMarkerControl::create(document()));
+    root.appendChild(HTMLSlotElement::create(slotTag, document()));
 }
 
-HTMLDetailsElement* HTMLSummaryElement::detailsElement() const
+RefPtr<HTMLDetailsElement> HTMLSummaryElement::detailsElement() const
 {
     auto* parent = parentElement();
     if (parent && is<HTMLDetailsElement>(*parent))
@@ -100,7 +100,7 @@ static bool isClickableControl(Node* node)
     if (is<HTMLFormControlElement>(element))
         return true;
     RefPtr<Element> host = element.shadowHost();
-    return host && is<HTMLFormControlElement>(host.get());
+    return host && is<HTMLFormControlElement>(host);
 }
 
 bool HTMLSummaryElement::supportsFocus() const

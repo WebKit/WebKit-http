@@ -31,6 +31,7 @@
 #include "ResourceLoaderOptions.h"
 #include "ResourceRequest.h"
 #include "SecurityOrigin.h"
+#include "ServiceWorkerIdentifier.h"
 #include <wtf/RefPtr.h>
 #include <wtf/text/AtomicString.h>
 
@@ -94,6 +95,10 @@ public:
     void clearFragmentIdentifier() { m_fragmentIdentifier = { }; }
 
     static String splitFragmentIdentifierFromRequestURL(ResourceRequest&);
+
+#if ENABLE(SERVICE_WORKER)
+    void setSelectedServiceWorkerIdentifierIfNeeded(ServiceWorkerIdentifier);
+#endif
 
 private:
     ResourceRequest m_resourceRequest;

@@ -34,7 +34,7 @@
 
 #if USE(CFURLCONNECTION)
 #include "ResourceHandleCFURLConnectionDelegate.h"
-#include <CFNetwork/CFURLConnectionPriv.h>
+#include <pal/spi/cf/CFNetworkSPI.h>
 #endif
 
 #if USE(CURL) && PLATFORM(WIN)
@@ -77,7 +77,7 @@ namespace WebCore {
 class ResourceHandleInternal {
     WTF_MAKE_NONCOPYABLE(ResourceHandleInternal); WTF_MAKE_FAST_ALLOCATED;
 public:
-    ResourceHandleInternal(ResourceHandle* loader, NetworkingContext* context, const ResourceRequest& request, ResourceHandleClient* client, bool defersLoading, bool shouldContentSniff)
+    ResourceHandleInternal(ResourceHandle* loader, NetworkingContext* context, const ResourceRequest& request, ResourceHandleClient* client, bool defersLoading, bool shouldContentSniff, bool shouldContentEncodingSniff)
         : m_context(context)
         , m_client(client)
         , m_firstRequest(request)
@@ -85,7 +85,7 @@ public:
         , m_partition(request.cachePartition())
         , m_defersLoading(defersLoading)
         , m_shouldContentSniff(shouldContentSniff)
-        , m_usesAsyncCallbacks(client && client->usesAsyncCallbacks())
+        , m_shouldContentEncodingSniff(shouldContentEncodingSniff)
 #if USE(CFURLCONNECTION)
         , m_currentRequest(request)
 #endif
@@ -123,7 +123,7 @@ public:
 
     bool m_defersLoading;
     bool m_shouldContentSniff;
-    bool m_usesAsyncCallbacks;
+    bool m_shouldContentEncodingSniff;
 #if USE(CFURLCONNECTION)
     RetainPtr<CFURLConnectionRef> m_connection;
     ResourceRequest m_currentRequest;

@@ -49,11 +49,14 @@ private:
     void didReceiveBuffer(WebCore::ResourceHandle*, Ref<WebCore::SharedBuffer>&&, int reportedEncodedDataLength) final;
     void didFinishLoading(WebCore::ResourceHandle*) final;
     void didFail(WebCore::ResourceHandle*, const WebCore::ResourceError&) final;
-    bool usesAsyncCallbacks() final { return true; }
+    void willSendRequestAsync(WebCore::ResourceHandle*, WebCore::ResourceRequest&&, WebCore::ResourceResponse&&, CompletionHandler<void(WebCore::ResourceRequest&&)>&&) final;
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
+    void canAuthenticateAgainstProtectionSpaceAsync(WebCore::ResourceHandle*, const WebCore::ProtectionSpace&) final;
+#endif
 
     Download& m_download;
     String m_destinationPath;
-    WebCore::PlatformFileHandle m_destinationFile { WebCore::invalidPlatformFileHandle };
+    WebCore::FileSystem::PlatformFileHandle m_destinationFile { WebCore::FileSystem::invalidPlatformFileHandle };
 };
 
 }

@@ -144,10 +144,9 @@ public:
     const ResourceError& mainDocumentError() const { return m_mainDocumentError; }
 
     const ResourceResponse& response() const { return m_response; }
-#if PLATFORM(IOS)
+
     // FIXME: This method seems to violate the encapsulation of this class.
     void setResponse(const ResourceResponse& response) { m_response = response; }
-#endif
 
     bool isClientRedirect() const { return m_isClientRedirect; }
     void setIsClientRedirect(bool isClientRedirect) { m_isClientRedirect = isClientRedirect; }
@@ -196,7 +195,7 @@ public:
     const NavigationAction& triggeringAction() const { return m_triggeringAction; }
     void setTriggeringAction(const NavigationAction&);
     void setOverrideEncoding(const String& encoding) { m_overrideEncoding = encoding; }
-    void setLastCheckedRequest(const ResourceRequest& request) { m_lastCheckedRequest = request; }
+    void setLastCheckedRequest(ResourceRequest&& request) { m_lastCheckedRequest = WTFMove(request); }
     const ResourceRequest& lastCheckedRequest()  { return m_lastCheckedRequest; }
 
     void stopRecordingResponses();
@@ -328,7 +327,7 @@ private:
     void willSendRequest(ResourceRequest&, const ResourceResponse&);
     void finishedLoading();
     void mainReceivedError(const ResourceError&);
-    WEBCORE_EXPORT void redirectReceived(CachedResource&, ResourceRequest&, const ResourceResponse&) override;
+    WEBCORE_EXPORT void redirectReceived(CachedResource&, ResourceRequest&&, const ResourceResponse&, CompletionHandler<void(ResourceRequest&&)>&&) override;
     WEBCORE_EXPORT void responseReceived(CachedResource&, const ResourceResponse&) override;
     WEBCORE_EXPORT void dataReceived(CachedResource&, const char* data, int length) override;
     WEBCORE_EXPORT void notifyFinished(CachedResource&) override;

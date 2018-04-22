@@ -137,7 +137,7 @@ public:
 
     void scrollBy(const ScrollToOptions&);
     void scrollBy(double x, double y);
-    virtual void scrollTo(const ScrollToOptions&);
+    virtual void scrollTo(const ScrollToOptions&, ScrollClamping = ScrollClamping::Clamped);
     void scrollTo(double x, double y);
 
     WEBCORE_EXPORT void scrollByLines(int lines);
@@ -260,6 +260,8 @@ public:
     // Clones all attribute-derived data, including subclass specifics (through copyNonAttributeProperties.)
     void cloneDataFromElement(const Element&);
 
+    virtual void didMoveToNewDocument(Document& oldDocument, Document& newDocument);
+
     bool hasEquivalentAttributes(const Element* other) const;
 
     virtual void copyNonAttributePropertiesFromElement(const Element&) { }
@@ -309,6 +311,8 @@ public:
     virtual int tabIndex() const;
     WEBCORE_EXPORT void setTabIndex(int);
     virtual RefPtr<Element> focusDelegate();
+
+    ExceptionOr<void> insertAdjacentHTML(const String& where, const String& html, std::optional<NodeVector&> addedNodes);
 
     WEBCORE_EXPORT ExceptionOr<Element*> insertAdjacentElement(const String& where, Element& newChild);
     WEBCORE_EXPORT ExceptionOr<void> insertAdjacentHTML(const String& where, const String& html);
@@ -556,7 +560,6 @@ protected:
     void childrenChanged(const ChildChange&) override;
     void removeAllEventListeners() final;
     virtual void parserDidSetAttributes();
-    void didMoveToNewDocument(Document& oldDocument, Document& newDocument) override;
 
     void clearTabIndexExplicitlyIfNeeded();
     void setTabIndexExplicitly(int);
@@ -578,8 +581,7 @@ private:
     bool isUserActionElementFocused() const;
     bool isUserActionElementHovered() const;
 
-    virtual void didAddUserAgentShadowRoot(ShadowRoot*) { }
-    virtual bool alwaysCreateUserAgentShadowRoot() const { return false; }
+    virtual void didAddUserAgentShadowRoot(ShadowRoot&) { }
 
     // FIXME: Remove the need for Attr to call willModifyAttribute/didModifyAttribute.
     friend class Attr;

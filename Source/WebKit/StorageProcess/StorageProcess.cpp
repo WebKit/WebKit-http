@@ -38,6 +38,7 @@
 #include <WebCore/IDBKeyData.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/SecurityOrigin.h>
+#include <WebCore/ServiceWorkerClientIdentifier.h>
 #include <WebCore/TextEncoding.h>
 #include <pal/SessionID.h>
 #include <wtf/CrossThreadTask.h>
@@ -75,8 +76,16 @@ bool StorageProcess::shouldTerminate()
     return true;
 }
 
-void StorageProcess::didClose(IPC::Connection&)
+void StorageProcess::didClose(IPC::Connection& connection)
 {
+#if ENABLE(SERVICE_WORKER)
+    if (m_workerContextProcessConnection == &connection) {
+        m_workerContextProcessConnection = nullptr;
+        return;
+    }
+#else
+    UNUSED_PARAM(connection);
+#endif
     stopRunLoop();
 }
 
@@ -132,7 +141,7 @@ void StorageProcess::ensurePathExists(const String& path)
 {
     ASSERT(!RunLoop::isMain());
 
-    if (!makeAllDirectories(path))
+    if (!FileSystem::makeAllDirectories(path))
         LOG_ERROR("Failed to make all directories for path '%s'", path.utf8().data());
 }
 
@@ -225,6 +234,8 @@ void StorageProcess::deleteWebsiteData(PAL::SessionID sessionID, OptionSet<Websi
     if (websiteDataTypes.contains(WebsiteDataType::ServiceWorkerRegistrations)) {
         if (auto* store = swOriginStoreForSession(sessionID))
             store->clear();
+        if (auto* server = m_swServers.get(sessionID))
+            server->clear();
     }
 #endif
 
@@ -250,6 +261,7 @@ void StorageProcess::deleteWebsiteDataForOrigins(PAL::SessionID sessionID, Optio
             for (auto& originData : securityOriginDatas)
                 store->remove(originData.securityOrigin());
         }
+        // FIXME: Clear service workers and registrations related to the origin.
     }
 #endif
 
@@ -287,7 +299,7 @@ void StorageProcess::accessToTemporaryFileComplete(const String& path)
     // We've either hard linked the temporary blob file to the database directory, copied it there,
     // or the transaction is being aborted.
     // In any of those cases, we can delete the temporary blob file now.
-    deleteFile(path);
+    FileSystem::deleteFile(path);
 
     if (auto extension = m_blobTemporaryFileSandboxExtensions.take(path))
         extension->revoke();
@@ -299,8 +311,8 @@ Vector<WebCore::SecurityOriginData> StorageProcess::indexedDatabaseOrigins(const
         return { };
 
     Vector<WebCore::SecurityOriginData> securityOrigins;
-    for (auto& originPath : listDirectory(path, "*")) {
-        String databaseIdentifier = pathGetFileName(originPath);
+    for (auto& originPath : FileSystem::listDirectory(path, "*")) {
+        String databaseIdentifier = FileSystem::pathGetFileName(originPath);
 
         if (auto securityOrigin = SecurityOriginData::fromDatabaseIdentifier(databaseIdentifier))
             securityOrigins.append(WTFMove(*securityOrigin));
@@ -393,16 +405,16 @@ void StorageProcess::didGetWorkerContextProcessConnection(IPC::Attachment&& enco
         connection->workerContextProcessConnectionCreated();
 }
 
-void StorageProcess::serviceWorkerContextFailedToStart(uint64_t serverConnectionIdentifier, const ServiceWorkerRegistrationKey& registrationKey, const String& workerID, const String& message)
+void StorageProcess::serviceWorkerContextFailedToStart(uint64_t serverConnectionIdentifier, const ServiceWorkerRegistrationKey& registrationKey, ServiceWorkerIdentifier serviceWorkerIdentifier, const String& message)
 {
     if (auto* connection = m_swServerConnections.get(serverConnectionIdentifier))
-        connection->scriptContextFailedToStart(registrationKey, workerID, message);
+        connection->scriptContextFailedToStart(registrationKey, serviceWorkerIdentifier, message);
 }
 
-void StorageProcess::serviceWorkerContextStarted(uint64_t serverConnectionIdentifier, const ServiceWorkerRegistrationKey& registrationKey, uint64_t identifier, const String& workerID)
+void StorageProcess::serviceWorkerContextStarted(uint64_t serverConnectionIdentifier, const ServiceWorkerRegistrationKey& registrationKey, ServiceWorkerIdentifier serviceWorkerIdentifier)
 {
     if (auto* connection = m_swServerConnections.get(serverConnectionIdentifier))
-        connection->scriptContextStarted(registrationKey, identifier, workerID);
+        connection->scriptContextStarted(registrationKey, serviceWorkerIdentifier);
 }
 
 void StorageProcess::didFailFetch(uint64_t serverConnectionIdentifier, uint64_t fetchIdentifier)
@@ -433,6 +445,24 @@ void StorageProcess::didFinishFetch(uint64_t serverConnectionIdentifier, uint64_
 {
     if (auto* connection = m_swServerConnections.get(serverConnectionIdentifier))
         connection->didFinishFetch(fetchIdentifier);
+}
+
+void StorageProcess::postMessageToServiceWorkerClient(const ServiceWorkerClientIdentifier& destinationIdentifier, const IPC::DataReference& message, ServiceWorkerIdentifier sourceIdentifier, const String& sourceOrigin)
+{
+    if (auto* connection = m_swServerConnections.get(destinationIdentifier.serverConnectionIdentifier))
+        connection->postMessageToServiceWorkerClient(destinationIdentifier.scriptExecutionContextIdentifier, message, sourceIdentifier, sourceOrigin);
+}
+
+void StorageProcess::didFinishServiceWorkerInstall(uint64_t serverConnectionIdentifier, const ServiceWorkerRegistrationKey& registrationKey, ServiceWorkerIdentifier serviceWorkerIdentifier, bool wasSuccessful)
+{
+    if (auto* connection = m_swServerConnections.get(serverConnectionIdentifier))
+        connection->didFinishInstall(registrationKey, serviceWorkerIdentifier, wasSuccessful);
+}
+
+void StorageProcess::didFinishServiceWorkerActivation(uint64_t serverConnectionIdentifier, const ServiceWorkerRegistrationKey& registrationKey, ServiceWorkerIdentifier serviceWorkerIdentifier)
+{
+    if (auto* connection = m_swServerConnections.get(serverConnectionIdentifier))
+        connection->didFinishActivation(registrationKey, serviceWorkerIdentifier);
 }
 
 void StorageProcess::registerSWServerConnection(WebSWServerConnection& connection)

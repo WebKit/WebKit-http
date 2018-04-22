@@ -1,0 +1,7 @@
+CONSOLE MESSAGE: [blocked] The page at about:blank was not allowed to display insecure content from http://example.com/.
+
+
+Harness Error (TIMEOUT), message = null
+
+TIMEOUT Verify Service Worker can receive HTTP opaqueredirect response. Test timed out
+

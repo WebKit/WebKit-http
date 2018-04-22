@@ -500,6 +500,27 @@ WI.DOMNode = class DOMNode extends WI.Object
         DOMAgent.setOuterHTML(this.id, html, this._makeUndoableCallback(callback));
     }
 
+    insertAdjacentHTML(position, html)
+    {
+        if (this.nodeType() !== Node.ELEMENT_NODE)
+            return;
+
+        // COMPATIBILITY (iOS 11.0): DOM.insertAdjacentHTML did not exist.
+        if (!DOMAgent.insertAdjacentHTML) {
+            WI.RemoteObject.resolveNode(this).then((object) => {
+                function inspectedPage_node_insertAdjacentHTML(position, html) {
+                    this.insertAdjacentHTML(position, html);
+                }
+
+                object.callFunction(inspectedPage_node_insertAdjacentHTML, [position, html]);
+                object.release();
+            });
+            return;
+        }
+
+        DOMAgent.insertAdjacentHTML(this.id, position, html, this._makeUndoableCallback());
+    }
+
     removeNode(callback)
     {
         DOMAgent.removeNode(this.id, this._makeUndoableCallback(callback));

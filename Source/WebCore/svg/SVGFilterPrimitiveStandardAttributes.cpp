@@ -64,11 +64,11 @@ SVGFilterPrimitiveStandardAttributes::SVGFilterPrimitiveStandardAttributes(const
 bool SVGFilterPrimitiveStandardAttributes::isSupportedAttribute(const QualifiedName& attrName)
 {
     static const auto supportedAttributes = makeNeverDestroyed(HashSet<QualifiedName> {
-        SVGNames::xAttr,
-        SVGNames::yAttr,
-        SVGNames::widthAttr,
-        SVGNames::heightAttr,
-        SVGNames::resultAttr,
+        SVGNames::xAttr.get(),
+        SVGNames::yAttr.get(),
+        SVGNames::widthAttr.get(),
+        SVGNames::heightAttr.get(),
+        SVGNames::resultAttr.get(),
     });
     return supportedAttributes.get().contains<SVGAttributeHashTranslator>(attrName);
 }
@@ -154,7 +154,7 @@ void invalidateFilterPrimitiveParent(SVGElement* element)
     if (!element)
         return;
 
-    ContainerNode* parent = element->parentNode();
+    auto parent = makeRefPtr(element->parentNode());
 
     if (!parent)
         return;

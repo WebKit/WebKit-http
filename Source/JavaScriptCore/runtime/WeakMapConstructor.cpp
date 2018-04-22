@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2016 Apple, Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,6 +43,14 @@ void WeakMapConstructor::finishCreation(VM& vm, WeakMapPrototype* prototype)
     Base::finishCreation(vm, prototype->classInfo(vm)->className);
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, prototype, PropertyAttribute::DontEnum | PropertyAttribute::DontDelete | PropertyAttribute::ReadOnly);
     putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly);
+}
+
+static EncodedJSValue JSC_HOST_CALL callWeakMap(ExecState*);
+static EncodedJSValue JSC_HOST_CALL constructWeakMap(ExecState*);
+
+WeakMapConstructor::WeakMapConstructor(VM& vm, Structure* structure)
+    : Base(vm, structure, callWeakMap, constructWeakMap)
+{
 }
 
 static EncodedJSValue JSC_HOST_CALL callWeakMap(ExecState* exec)
@@ -90,23 +98,12 @@ static EncodedJSValue JSC_HOST_CALL constructWeakMap(ExecState* exec)
         MarkedArgumentBuffer arguments;
         arguments.append(key);
         arguments.append(value);
+        ASSERT(!arguments.hasOverflowed());
         scope.release();
         call(exec, adderFunction, adderFunctionCallType, adderFunctionCallData, weakMap, arguments);
     });
 
     return JSValue::encode(weakMap);
-}
-
-ConstructType WeakMapConstructor::getConstructData(JSCell*, ConstructData& constructData)
-{
-    constructData.native.function = constructWeakMap;
-    return ConstructType::Host;
-}
-
-CallType WeakMapConstructor::getCallData(JSCell*, CallData& callData)
-{
-    callData.native.function = callWeakMap;
-    return CallType::Host;
 }
 
 }

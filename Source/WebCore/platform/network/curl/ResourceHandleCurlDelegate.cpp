@@ -41,6 +41,7 @@
 #include "ResourceHandleInternal.h"
 #include "SharedBuffer.h"
 #include "TextEncoding.h"
+#include <wtf/CompletionHandler.h>
 #include <wtf/text/Base64.h>
 
 namespace WebCore {
@@ -61,7 +62,7 @@ ResourceHandleCurlDelegate::ResourceHandleCurlDelegate(ResourceHandle* handle)
 ResourceHandleCurlDelegate::~ResourceHandleCurlDelegate()
 {
     if (m_curlRequest)
-        m_curlRequest->setDelegate(nullptr);
+        m_curlRequest->setClient(nullptr);
 }
 
 bool ResourceHandleCurlDelegate::hasHandle() const
@@ -124,7 +125,7 @@ void ResourceHandleCurlDelegate::setAuthentication(const String& user, const Str
 
     bool isSyncRequest = m_curlRequest->isSyncRequest();
     m_curlRequest->cancel();
-    m_curlRequest->setDelegate(nullptr);
+    m_curlRequest->setClient(nullptr);
 
     m_curlRequest = createCurlRequest(m_currentRequest);
     m_curlRequest->setUserPass(user, password);
@@ -363,12 +364,9 @@ void ResourceHandleCurlDelegate::willSendRequest()
     }
 
     ResourceResponse responseCopy = response();
-    if (m_handle->client()->usesAsyncCallbacks())
-        m_handle->client()->willSendRequestAsync(m_handle, WTFMove(newRequest), WTFMove(responseCopy));
-    else {
-        auto request = m_handle->client()->willSendRequest(m_handle, WTFMove(newRequest), WTFMove(responseCopy));
-        continueAfterWillSendRequest(WTFMove(request));
-    }
+    m_handle->client()->willSendRequestAsync(m_handle, WTFMove(newRequest), WTFMove(responseCopy), [this, protectedThis = makeRef(*this)] (ResourceRequest&& request) {
+        continueWillSendRequest(WTFMove(request));
+    });
 }
 
 void ResourceHandleCurlDelegate::continueWillSendRequest(ResourceRequest&& request)
@@ -390,7 +388,7 @@ void ResourceHandleCurlDelegate::continueAfterWillSendRequest(ResourceRequest&& 
 
     bool isSyncRequest = m_curlRequest->isSyncRequest();
     m_curlRequest->cancel();
-    m_curlRequest->setDelegate(nullptr);
+    m_curlRequest->setClient(nullptr);
 
     m_curlRequest = createCurlRequest(m_currentRequest);
 
@@ -444,7 +442,7 @@ void ResourceHandleCurlDelegate::handleDataURL()
 
     if (base64) {
         data = decodeURLEscapeSequences(data);
-        m_handle->client()->didReceiveResponse(m_handle, WTFMove(response));
+        m_handle->didReceiveResponse(WTFMove(response));
 
         // didReceiveResponse might cause the client to be deleted.
         if (m_handle->client()) {
@@ -455,7 +453,7 @@ void ResourceHandleCurlDelegate::handleDataURL()
     } else {
         TextEncoding encoding(charset);
         data = decodeURLEscapeSequences(data, encoding);
-        m_handle->client()->didReceiveResponse(m_handle, WTFMove(response));
+        m_handle->didReceiveResponse(WTFMove(response));
 
         // didReceiveResponse might cause the client to be deleted.
         if (m_handle->client()) {

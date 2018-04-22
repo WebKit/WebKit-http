@@ -273,7 +273,8 @@ bool Element::dispatchMouseEvent(const PlatformMouseEvent& platformEvent, const 
         return true; // Shouldn't happen.
 
     ASSERT(!mouseEvent->target() || mouseEvent->target() != relatedTarget);
-    bool didNotSwallowEvent = dispatchEvent(mouseEvent) && !mouseEvent->defaultHandled();
+    dispatchEvent(mouseEvent);
+    bool didNotSwallowEvent = !mouseEvent->defaultPrevented() && !mouseEvent->defaultHandled();
 
     if (mouseEvent->type() == eventNames().clickEvent && mouseEvent->detail() == 2) {
         // Special case: If it's a double click event, we also send the dblclick event. This is not part
@@ -295,30 +296,34 @@ bool Element::dispatchMouseEvent(const PlatformMouseEvent& platformEvent, const 
     return didNotSwallowEvent;
 }
 
-
-bool Element::dispatchWheelEvent(const PlatformWheelEvent& event)
+bool Element::dispatchWheelEvent(const PlatformWheelEvent& platformEvent)
 {
-    Ref<WheelEvent> wheelEvent = WheelEvent::create(event, document().defaultView());
+    auto event = WheelEvent::create(platformEvent, document().defaultView());
 
     // Events with no deltas are important because they convey platform information about scroll gestures
     // and momentum beginning or ending. However, those events should not be sent to the DOM since some
     // websites will break. They need to be dispatched because dispatching them will call into the default
     // event handler, and our platform code will correctly handle the phase changes. Calling stopPropogation()
     // will prevent the event from being sent to the DOM, but will still call the default event handler.
-    if (!event.deltaX() && !event.deltaY())
-        wheelEvent->stopPropagation();
+    // FIXME: Move this logic into WheelEvent::create.
+    if (!platformEvent.deltaX() && !platformEvent.deltaY())
+        event->stopPropagation();
 
-    return EventDispatcher::dispatchEvent(*this, wheelEvent) && !wheelEvent->defaultHandled();
+    dispatchEvent(event);
+    return !event->defaultPrevented() && !event->defaultHandled();
 }
 
 bool Element::dispatchKeyEvent(const PlatformKeyboardEvent& platformEvent)
 {
-    Ref<KeyboardEvent> event = KeyboardEvent::create(platformEvent, document().defaultView());
+    auto event = KeyboardEvent::create(platformEvent, document().defaultView());
+
     if (Frame* frame = document().frame()) {
-        if (frame->eventHandler().accessibilityPreventsEventPropogation(event))
+        if (frame->eventHandler().accessibilityPreventsEventPropagation(event))
             event->stopPropagation();
     }
-    return EventDispatcher::dispatchEvent(*this, event) && !event->defaultHandled();
+
+    dispatchEvent(event);
+    return !event->defaultPrevented() && !event->defaultHandled();
 }
 
 void Element::dispatchSimulatedClick(Event* underlyingEvent, SimulatedClickMouseEventOptions eventOptions, SimulatedClickVisualOptions visualOptions)
@@ -341,6 +346,11 @@ Ref<Node> Element::cloneNodeInternal(Document& targetDocument, CloningOperation 
 Ref<Element> Element::cloneElementWithChildren(Document& targetDocument)
 {
     Ref<Element> clone = cloneElementWithoutChildren(targetDocument);
+
+    // It's safe to dispatch events on the cloned node since author scripts have no access to it yet.
+    // This is needed for SVGUseElement::cloneTarget.
+    NoEventDispatchAssertion::EventAllowedScope allowedScope(clone.get());
+
     cloneChildNodes(clone);
     return clone;
 }
@@ -348,6 +358,11 @@ Ref<Element> Element::cloneElementWithChildren(Document& targetDocument)
 Ref<Element> Element::cloneElementWithoutChildren(Document& targetDocument)
 {
     Ref<Element> clone = cloneElementWithoutAttributesAndChildren(targetDocument);
+
+    // It's safe to dispatch events on the cloned node since author scripts have no access to it yet.
+    // This is needed for SVGUseElement::cloneTarget.
+    NoEventDispatchAssertion::EventAllowedScope allowedScope(clone.get());
+
     // This will catch HTML elements in the wrong namespace that are not correctly copied.
     // This is a sanity check as HTML overloads some of the DOM methods.
     ASSERT(isHTMLElement() == clone->isHTMLElement());
@@ -453,7 +468,7 @@ static ALWAYS_INLINE bool isStyleAttribute(const Element& element, const AtomicS
 {
     if (shouldIgnoreAttributeCase(element))
         return equalLettersIgnoringASCIICase(attributeLocalName, "style");
-    return attributeLocalName == styleAttr.localName();
+    return attributeLocalName == styleAttr->localName();
 }
 
 ALWAYS_INLINE void Element::synchronizeAttribute(const AtomicString& localName) const
@@ -693,7 +708,7 @@ void Element::scrollBy(double x, double y)
     scrollTo(scrollLeft() + normalizeNonFiniteValue(x), scrollTop() + normalizeNonFiniteValue(y));
 }
 
-void Element::scrollTo(const ScrollToOptions& options)
+void Element::scrollTo(const ScrollToOptions& options, ScrollClamping clamping)
 {
     // If the element is the root element and document is in quirks mode, terminate these steps.
     // Note that WebKit always uses quirks mode document scrolling behavior. See Document::scrollingElement().
@@ -712,8 +727,8 @@ void Element::scrollTo(const ScrollToOptions& options)
     double x = options.left ? normalizeNonFiniteValue(options.left.value()) : adjustForAbsoluteZoom(renderer->scrollLeft(), *renderer);
     double y = options.top ? normalizeNonFiniteValue(options.top.value()) : adjustForAbsoluteZoom(renderer->scrollTop(), *renderer);
 
-    renderer->setScrollLeft(clampToInteger(x * renderer->style().effectiveZoom()));
-    renderer->setScrollTop(clampToInteger(y * renderer->style().effectiveZoom()));
+    renderer->setScrollLeft(clampToInteger(x * renderer->style().effectiveZoom()), clamping);
+    renderer->setScrollTop(clampToInteger(y * renderer->style().effectiveZoom()), clamping);
 }
 
 void Element::scrollTo(double x, double y)
@@ -1025,7 +1040,7 @@ static bool layoutOverflowRectContainsAllDescendants(const RenderBox& renderBox)
         for (auto* positionedBox : *viewPositionedObjects) {
             if (positionedBox == &renderBox)
                 continue;
-            if (positionedBox->style().position() == FixedPosition && renderBox.element()->contains(positionedBox->element()))
+            if (positionedBox->isFixedPositioned() && renderBox.element()->contains(positionedBox->element()))
                 return false;
         }
     }
@@ -1131,7 +1146,7 @@ LayoutRect Element::absoluteEventHandlerBounds(bool& includesFixedPositionElemen
         return LayoutRect();
 
     if (frameView->needsLayout())
-        frameView->layout();
+        frameView->layoutContext().layout();
 
     return absoluteEventBoundsOfElementAndDescendants(includesFixedPositionElements);
 }
@@ -1561,7 +1576,6 @@ void Element::parserDidSetAttributes()
 void Element::didMoveToNewDocument(Document& oldDocument, Document& newDocument)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(&document() == &newDocument);
-    Node::didMoveToNewDocument(oldDocument, newDocument);
 
     if (oldDocument.inQuirksMode() != document().inQuirksMode()) {
         // ElementData::m_classNames or ElementData::m_idForStyleResolution need to be updated with the right case.
@@ -1762,28 +1776,31 @@ void Element::addShadowRoot(Ref<ShadowRoot>&& newShadowRoot)
 {
     ASSERT(!newShadowRoot->hasChildNodes());
     ASSERT(!shadowRoot());
-    
-    if (renderer())
-        RenderTreeUpdater::tearDownRenderers(*this);
 
     ShadowRoot& shadowRoot = newShadowRoot;
-    ensureElementRareData().setShadowRoot(WTFMove(newShadowRoot));
+    {
+        NoEventDispatchAssertion::InMainThread noEventDispatchAssertion;
+        if (renderer())
+            RenderTreeUpdater::tearDownRenderers(*this);
 
-    shadowRoot.setHost(this);
-    shadowRoot.setParentTreeScope(treeScope());
+        ensureElementRareData().setShadowRoot(WTFMove(newShadowRoot));
+
+        shadowRoot.setHost(this);
+        shadowRoot.setParentTreeScope(treeScope());
 
 #if !ASSERT_DISABLED
-    ASSERT(notifyChildNodeInserted(*this, shadowRoot).isEmpty());
+        ASSERT(notifyChildNodeInserted(*this, shadowRoot).isEmpty());
 #else
-    notifyChildNodeInserted(*this, shadowRoot);
+        notifyChildNodeInserted(*this, shadowRoot);
 #endif
 
-    invalidateStyleAndRenderersForSubtree();
-
-    InspectorInstrumentation::didPushShadowRoot(*this, shadowRoot);
+        invalidateStyleAndRenderersForSubtree();
+    }
 
     if (shadowRoot.mode() == ShadowRootMode::UserAgent)
-        didAddUserAgentShadowRoot(&shadowRoot);
+        didAddUserAgentShadowRoot(shadowRoot);
+
+    InspectorInstrumentation::didPushShadowRoot(*this, shadowRoot);
 }
 
 void Element::removeShadowRoot()
@@ -1807,23 +1824,23 @@ static bool canAttachAuthorShadowRoot(const Element& element)
 {
     static NeverDestroyed<HashSet<AtomicString>> tagNames = [] {
         static const HTMLQualifiedName* const tagList[] = {
-            &articleTag,
-            &asideTag,
-            &blockquoteTag,
-            &bodyTag,
-            &divTag,
-            &footerTag,
-            &h1Tag,
-            &h2Tag,
-            &h3Tag,
-            &h4Tag,
-            &h5Tag,
-            &h6Tag,
-            &headerTag,
-            &navTag,
-            &pTag,
-            &sectionTag,
-            &spanTag
+            &articleTag.get(),
+            &asideTag.get(),
+            &blockquoteTag.get(),
+            &bodyTag.get(),
+            &divTag.get(),
+            &footerTag.get(),
+            &h1Tag.get(),
+            &h2Tag.get(),
+            &h3Tag.get(),
+            &h4Tag.get(),
+            &h5Tag.get(),
+            &h6Tag.get(),
+            &headerTag.get(),
+            &navTag.get(),
+            &pTag.get(),
+            &sectionTag.get(),
+            &spanTag.get()
         };
         HashSet<AtomicString> set;
         for (auto& name : tagList)
@@ -2137,7 +2154,7 @@ void Element::attachAttributeNodeIfNeeded(Attr& attrNode)
     if (attrNode.ownerElement() == this)
         return;
 
-    NoEventDispatchAssertion assertNoEventDispatch;
+    NoEventDispatchAssertion::InMainThread assertNoEventDispatch;
 
     attrNode.attachToElement(*this);
     ensureAttrNodeListForElement(*this).append(&attrNode);
@@ -2155,8 +2172,8 @@ ExceptionOr<RefPtr<Attr>> Element::setAttributeNode(Attr& attrNode)
         return Exception { InUseAttributeError };
 
     {
-    NoEventDispatchAssertion assertNoEventDispatch;
-    synchronizeAllAttributes();
+        NoEventDispatchAssertion::InMainThread assertNoEventDispatch;
+        synchronizeAllAttributes();
     }
 
     auto& elementData = ensureUniqueElementData();
@@ -2201,25 +2218,23 @@ ExceptionOr<RefPtr<Attr>> Element::setAttributeNodeNS(Attr& attrNode)
     if (attrNode.ownerElement() && attrNode.ownerElement() != this)
         return Exception { InUseAttributeError };
 
-    unsigned index = 0;
-    
     // Attr::value() will return its 'm_standaloneValue' member any time its Element is set to nullptr. We need to cache this value
     // before making changes to attrNode's Element connections.
     auto attrNodeValue = attrNode.value();
-
+    unsigned index = 0;
     {
-    NoEventDispatchAssertion assertNoEventDispatch;
-    synchronizeAllAttributes();
-    auto& elementData = ensureUniqueElementData();
+        NoEventDispatchAssertion::InMainThread assertNoEventDispatch;
+        synchronizeAllAttributes();
+        auto& elementData = ensureUniqueElementData();
 
-    index = elementData.findAttributeIndexByName(attrNode.qualifiedName());
+        index = elementData.findAttributeIndexByName(attrNode.qualifiedName());
 
-    if (index != ElementData::attributeNotFound) {
-        if (oldAttrNode)
-            detachAttrNodeFromElementWithValue(oldAttrNode.get(), elementData.attributeAt(index).value());
-        else
-            oldAttrNode = Attr::create(document(), attrNode.qualifiedName(), elementData.attributeAt(index).value());
-    }
+        if (index != ElementData::attributeNotFound) {
+            if (oldAttrNode)
+                detachAttrNodeFromElementWithValue(oldAttrNode.get(), elementData.attributeAt(index).value());
+            else
+                oldAttrNode = Attr::create(document(), attrNode.qualifiedName(), elementData.attributeAt(index).value());
+        }
     }
 
     attachAttributeNodeIfNeeded(attrNode);
@@ -2465,32 +2480,30 @@ void Element::blur()
 
 void Element::dispatchFocusInEvent(const AtomicString& eventType, RefPtr<Element>&& oldFocusedElement)
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::isEventAllowedInMainThread());
+    ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::InMainThread::isEventAllowed());
     ASSERT(eventType == eventNames().focusinEvent || eventType == eventNames().DOMFocusInEvent);
     dispatchScopedEvent(FocusEvent::create(eventType, true, false, document().defaultView(), 0, WTFMove(oldFocusedElement)));
 }
 
 void Element::dispatchFocusOutEvent(const AtomicString& eventType, RefPtr<Element>&& newFocusedElement)
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::isEventAllowedInMainThread());
+    ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::InMainThread::isEventAllowed());
     ASSERT(eventType == eventNames().focusoutEvent || eventType == eventNames().DOMFocusOutEvent);
     dispatchScopedEvent(FocusEvent::create(eventType, true, false, document().defaultView(), 0, WTFMove(newFocusedElement)));
 }
 
 void Element::dispatchFocusEvent(RefPtr<Element>&& oldFocusedElement, FocusDirection)
 {
-    if (document().page())
-        document().page()->chrome().client().elementDidFocus(*this);
-
-    EventDispatcher::dispatchEvent(*this, FocusEvent::create(eventNames().focusEvent, false, false, document().defaultView(), 0, WTFMove(oldFocusedElement)));
+    if (auto* page = document().page())
+        page->chrome().client().elementDidFocus(*this);
+    dispatchEvent(FocusEvent::create(eventNames().focusEvent, false, false, document().defaultView(), 0, WTFMove(oldFocusedElement)));
 }
 
 void Element::dispatchBlurEvent(RefPtr<Element>&& newFocusedElement)
 {
-    if (document().page())
-        document().page()->chrome().client().elementDidBlur(*this);
-
-    EventDispatcher::dispatchEvent(*this, FocusEvent::create(eventNames().blurEvent, false, false, document().defaultView(), 0, WTFMove(newFocusedElement)));
+    if (auto* page = document().page())
+        page->chrome().client().elementDidBlur(*this);
+    dispatchEvent(FocusEvent::create(eventNames().blurEvent, false, false, document().defaultView(), 0, WTFMove(newFocusedElement)));
 }
 
 void Element::dispatchWebKitImageReadyEventForTesting()
@@ -2560,12 +2573,12 @@ ExceptionOr<void> Element::setOuterHTML(const String& html)
         return replaceResult.releaseException();
 
     RefPtr<Node> node = next ? next->previousSibling() : nullptr;
-    if (is<Text>(node.get())) {
+    if (is<Text>(node)) {
         auto result = mergeWithNextTextNode(downcast<Text>(*node));
         if (result.hasException())
             return result.releaseException();
     }
-    if (is<Text>(prev.get())) {
+    if (is<Text>(prev)) {
         auto result = mergeWithNextTextNode(downcast<Text>(*prev));
         if (result.hasException())
             return result.releaseException();
@@ -3628,7 +3641,7 @@ static ExceptionOr<Ref<Element>> contextElementForInsertion(const String& where,
 }
 
 // https://w3c.github.io/DOM-Parsing/#dom-element-insertadjacenthtml
-ExceptionOr<void> Element::insertAdjacentHTML(const String& where, const String& markup)
+ExceptionOr<void> Element::insertAdjacentHTML(const String& where, const String& markup, std::optional<NodeVector&> addedNodes)
 {
     // Steps 1 and 2.
     auto contextElement = contextElementForInsertion(where, *this);
@@ -3638,11 +3651,23 @@ ExceptionOr<void> Element::insertAdjacentHTML(const String& where, const String&
     auto fragment = createFragmentForInnerOuterHTML(contextElement.releaseReturnValue(), markup, AllowScriptingContent);
     if (fragment.hasException())
         return fragment.releaseException();
+
+    if (UNLIKELY(addedNodes)) {
+        // Must be called before insertAdjacent, as otherwise the children of fragment will be moved
+        // to their new parent and will be harder to keep track of.
+        *addedNodes = collectChildNodes(fragment.returnValue());
+    }
+
     // Step 4.
     auto result = insertAdjacent(where, fragment.releaseReturnValue());
     if (result.hasException())
         return result.releaseException();
     return { };
+}
+
+ExceptionOr<void> Element::insertAdjacentHTML(const String& where, const String& markup)
+{
+    return insertAdjacentHTML(where, markup, std::nullopt);
 }
 
 ExceptionOr<void> Element::insertAdjacentText(const String& where, const String& text)

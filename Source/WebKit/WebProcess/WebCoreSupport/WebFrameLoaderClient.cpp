@@ -105,7 +105,22 @@ WebFrameLoaderClient::WebFrameLoaderClient()
 WebFrameLoaderClient::~WebFrameLoaderClient()
 {
 }
-    
+
+uint64_t WebFrameLoaderClient::pageID() const
+{
+    return m_frame && m_frame->page() ? m_frame->page()->pageID() : 0;
+}
+
+uint64_t WebFrameLoaderClient::frameID() const
+{
+    return m_frame ? m_frame->frameID() : 0;
+}
+
+PAL::SessionID WebFrameLoaderClient::sessionID() const
+{
+    return m_frame && m_frame->page() ? m_frame->page()->sessionID() : PAL::SessionID::defaultSessionID();
+}
+
 void WebFrameLoaderClient::frameLoaderDestroyed()
 {
     m_frame->invalidate();
@@ -753,7 +768,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const Navigati
     webPage->send(Messages::WebPageProxy::DecidePolicyForNewWindowAction(m_frame->frameID(), SecurityOriginData::fromFrame(coreFrame), navigationActionData, request, frameName, listenerID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
 }
 
-void WebFrameLoaderClient::applyToDocumentLoader(const WebsitePolicies& websitePolicies)
+void WebFrameLoaderClient::applyToDocumentLoader(WebsitePolicies&& websitePolicies)
 {
     if (!m_frame)
         return;
@@ -767,6 +782,8 @@ void WebFrameLoaderClient::applyToDocumentLoader(const WebsitePolicies& websiteP
         documentLoader = static_cast<WebDocumentLoader*>(coreFrame->loader().documentLoader());
     if (!documentLoader)
         return;
+
+    documentLoader->setCustomHeaderFields(WTFMove(websitePolicies.customHeaderFields));
 
     // Only setUserContentExtensionsEnabled if it hasn't already been disabled by reloading without content blockers.
     if (documentLoader->userContentExtensionsEnabled())
@@ -874,15 +891,9 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
         return;
     }
 
-    documentLoader->setCustomHeaderFields(WTFMove(websitePolicies.customHeaderFields));
-    
-    // Only setUserContentExtensionsEnabled if it hasn't already been disabled by reloading without content blockers.
-    if (documentLoader->userContentExtensionsEnabled())
-        documentLoader->setUserContentExtensionsEnabled(websitePolicies.contentBlockersEnabled);
-
     // We call this synchronously because WebCore cannot gracefully handle a frame load without a synchronous navigation policy reply.
     if (receivedPolicyAction)
-        m_frame->didReceivePolicyDecision(listenerID, policyAction, newNavigationID, downloadID, websitePolicies);
+        m_frame->didReceivePolicyDecision(listenerID, policyAction, newNavigationID, downloadID, WTFMove(websitePolicies));
 }
 
 void WebFrameLoaderClient::cancelPolicyCheck()

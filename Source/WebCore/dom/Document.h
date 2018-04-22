@@ -347,7 +347,11 @@ public:
 
     void removedLastRef();
 
-    WEBCORE_EXPORT static HashSet<Document*>& allDocuments();
+    uint64_t identifier() const { return m_identifier; }
+
+    using DocumentsMap = HashMap<uint64_t, Document*>;
+    WEBCORE_EXPORT static DocumentsMap::ValuesIteratorRange allDocuments();
+    WEBCORE_EXPORT static DocumentsMap& allDocumentsMap();
 
     MediaQueryMatcher& mediaQueryMatcher();
 
@@ -751,7 +755,11 @@ public:
 
     void attachNodeIterator(NodeIterator*);
     void detachNodeIterator(NodeIterator*);
-    void moveNodeIteratorsToNewDocument(Node&, Document&);
+    void moveNodeIteratorsToNewDocument(Node& node, Document& newDocument)
+    {
+        if (!m_nodeIterators.isEmpty())
+            moveNodeIteratorsToNewDocumentSlowCase(node, newDocument);
+    }
 
     void attachRange(Range*);
     void detachRange(Range*);
@@ -944,7 +952,8 @@ public:
     void popCurrentScript();
 
 #if ENABLE(XSLT)
-    void applyXSLTransform(ProcessingInstruction* pi);
+    void scheduleToApplyXSLTransforms();
+    void applyPendingXSLTransformsNowIfScheduled();
     RefPtr<Document> transformSourceDocument() { return m_transformSourceDocument; }
     void setTransformSourceDocument(Document* doc) { m_transformSourceDocument = doc; }
 
@@ -1145,7 +1154,6 @@ public:
 
     int requestAnimationFrame(Ref<RequestAnimationFrameCallback>&&);
     void cancelAnimationFrame(int id);
-    void serviceScriptedAnimations(double timestamp);
 
     EventTarget* errorEventTarget() final;
     void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, RefPtr<Inspector::ScriptCallStack>&&) final;
@@ -1423,6 +1431,8 @@ private:
 
     void buildAccessKeyMap(TreeScope* root);
 
+    void moveNodeIteratorsToNewDocumentSlowCase(Node&, Document&);
+
     void loadEventDelayTimerFired();
 
     void pendingTasksTimerFired();
@@ -1558,8 +1568,12 @@ private:
     Vector<RefPtr<HTMLScriptElement>> m_currentScriptStack;
 
 #if ENABLE(XSLT)
+    void applyPendingXSLTransformsTimerFired();
+
     std::unique_ptr<TransformSource> m_transformSource;
     RefPtr<Document> m_transformSourceDocument;
+    Timer m_applyPendingXSLTransformsTimer;
+    bool m_hasPendingXSLTransforms { false };
 #endif
 
     String m_xmlEncoding;
@@ -1826,6 +1840,7 @@ private:
     bool m_grantStorageAccessOverride { false };
 
     RefPtr<DocumentTimeline> m_timeline;
+    uint64_t m_identifier;
 };
 
 Element* eventTargetElementForDocument(Document*);

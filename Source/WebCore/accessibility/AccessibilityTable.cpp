@@ -39,6 +39,7 @@
 #include "HTMLTableCaptionElement.h"
 #include "HTMLTableCellElement.h"
 #include "HTMLTableElement.h"
+#include "HTMLTableSectionElement.h"
 #include "RenderObject.h"
 #include "RenderTable.h"
 #include "RenderTableCell.h"
@@ -76,7 +77,7 @@ bool AccessibilityTable::hasARIARole() const
         return false;
     
     AccessibilityRole ariaRole = ariaRoleAttribute();
-    if (ariaRole != UnknownRole)
+    if (ariaRole != AccessibilityRole::Unknown)
         return true;
 
     return false;
@@ -392,8 +393,8 @@ void AccessibilityTable::addChildren()
     table.recalcSectionsIfNeeded();
     
     if (HTMLTableElement* tableElement = this->tableElement()) {
-        if (HTMLTableCaptionElement* caption = tableElement->caption()) {
-            AccessibilityObject* axCaption = axObjectCache()->getOrCreate(caption);
+        if (auto caption = tableElement->caption()) {
+            AccessibilityObject* axCaption = axObjectCache()->getOrCreate(caption.get());
             if (axCaption && !axCaption->accessibilityIsIgnored())
                 m_children.append(axCaption);
         }
@@ -416,7 +417,7 @@ void AccessibilityTable::addChildren()
     // make the columns based on the number of columns in the first body
     unsigned length = maxColumnCount;
     for (unsigned i = 0; i < length; ++i) {
-        auto& column = downcast<AccessibilityTableColumn>(*axCache->getOrCreate(ColumnRole));
+        auto& column = downcast<AccessibilityTableColumn>(*axCache->getOrCreate(AccessibilityRole::Column));
         column.setColumnIndex((int)i);
         column.setParent(this);
         m_columns.append(&column);
@@ -505,7 +506,7 @@ AccessibilityObject* AccessibilityTable::headerContainer()
     if (m_headerContainer)
         return m_headerContainer.get();
     
-    auto& tableHeader = downcast<AccessibilityMockObject>(*axObjectCache()->getOrCreate(TableHeaderContainerRole));
+    auto& tableHeader = downcast<AccessibilityMockObject>(*axObjectCache()->getOrCreate(AccessibilityRole::TableHeaderContainer));
     tableHeader.setParent(this);
 
     m_headerContainer = &tableHeader;
@@ -647,18 +648,18 @@ AccessibilityRole AccessibilityTable::roleValue() const
         return AccessibilityRenderObject::roleValue();
     
     AccessibilityRole ariaRole = ariaRoleAttribute();
-    if (ariaRole == GridRole || ariaRole == TreeGridRole)
+    if (ariaRole == AccessibilityRole::Grid || ariaRole == AccessibilityRole::TreeGrid)
         return ariaRole;
 
-    return TableRole;
+    return AccessibilityRole::Table;
 }
     
 bool AccessibilityTable::computeAccessibilityIsIgnored() const
 {
     AccessibilityObjectInclusion decision = defaultObjectInclusion();
-    if (decision == IncludeObject)
+    if (decision == AccessibilityObjectInclusion::IncludeObject)
         return false;
-    if (decision == IgnoreObject)
+    if (decision == AccessibilityObjectInclusion::IgnoreObject)
         return true;
     
     if (!isExposableThroughAccessibility())
@@ -671,7 +672,7 @@ void AccessibilityTable::titleElementText(Vector<AccessibilityText>& textOrder) 
 {
     String title = this->title();
     if (!title.isEmpty())
-        textOrder.append(AccessibilityText(title, LabelByElementText));
+        textOrder.append(AccessibilityText(title, AccessibilityTextSource::LabelByElement));
 }
 
 String AccessibilityTable::title() const
@@ -686,7 +687,7 @@ String AccessibilityTable::title() const
     // see if there is a caption
     Node* tableElement = m_renderer->node();
     if (is<HTMLTableElement>(tableElement)) {
-        if (HTMLTableCaptionElement* caption = downcast<HTMLTableElement>(*tableElement).caption())
+        if (auto caption = downcast<HTMLTableElement>(*tableElement).caption())
             title = caption->innerText();
     }
     

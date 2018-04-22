@@ -77,7 +77,7 @@ static EncodedJSValue JSC_HOST_CALL constructJSWebAssemblyInstance(ExecState* ex
     Structure* instanceStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), exec->lexicalGlobalObject()->WebAssemblyInstanceStructure());
     RETURN_IF_EXCEPTION(scope, { });
 
-    JSWebAssemblyInstance* instance = JSWebAssemblyInstance::create(vm, exec, module, importObject, instanceStructure, Wasm::Instance::create(Ref<Wasm::Module>(module->module()), &vm.topEntryFrame));
+    JSWebAssemblyInstance* instance = JSWebAssemblyInstance::create(vm, exec, module, importObject, instanceStructure, Wasm::Instance::create(&vm.wasmContext, Ref<Wasm::Module>(module->module()), &vm.topEntryFrame));
     RETURN_IF_EXCEPTION(scope, { });
 
     instance->finalizeCreation(vm, exec, module->module().compileSync(&vm.wasmContext, instance->memoryMode(), &Wasm::createJSToWasmWrapper, &Wasm::wasmToJSException));
@@ -101,7 +101,7 @@ WebAssemblyInstanceConstructor* WebAssemblyInstanceConstructor::create(VM& vm, S
 
 Structure* WebAssemblyInstanceConstructor::createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
 {
-    return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
+    return Structure::create(vm, globalObject, prototype, TypeInfo(InternalFunctionType, StructureFlags), info());
 }
 
 void WebAssemblyInstanceConstructor::finishCreation(VM& vm, WebAssemblyInstancePrototype* prototype)
@@ -112,20 +112,8 @@ void WebAssemblyInstanceConstructor::finishCreation(VM& vm, WebAssemblyInstanceP
 }
 
 WebAssemblyInstanceConstructor::WebAssemblyInstanceConstructor(VM& vm, Structure* structure)
-    : Base(vm, structure)
+    : Base(vm, structure, callJSWebAssemblyInstance, constructJSWebAssemblyInstance)
 {
-}
-
-ConstructType WebAssemblyInstanceConstructor::getConstructData(JSCell*, ConstructData& constructData)
-{
-    constructData.native.function = constructJSWebAssemblyInstance;
-    return ConstructType::Host;
-}
-
-CallType WebAssemblyInstanceConstructor::getCallData(JSCell*, CallData& callData)
-{
-    callData.native.function = callJSWebAssemblyInstance;
-    return CallType::Host;
 }
 
 } // namespace JSC

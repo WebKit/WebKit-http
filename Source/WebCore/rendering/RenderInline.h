@@ -32,6 +32,7 @@ class Position;
 class RenderFragmentContainer;
 
 class RenderInline : public RenderBoxModelObject {
+    WTF_MAKE_ISO_ALLOCATED(RenderInline);
 public:
     RenderInline(Element&, RenderStyle&&);
     RenderInline(Document&, RenderStyle&&);
@@ -78,17 +79,12 @@ public:
     void absoluteQuadsForSelection(Vector<FloatQuad>& quads) const override;
 #endif
 
-    RenderInline* inlineElementContinuation() const;
-
     void updateDragState(bool dragOn) final;
     
     LayoutSize offsetForInFlowPositionedInline(const RenderBox* child) const;
 
     void addFocusRingRects(Vector<LayoutRect>&, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer = 0) final;
     void paintOutline(PaintInfo&, const LayoutPoint&);
-
-    using RenderBoxModelObject::continuation;
-    using RenderBoxModelObject::setContinuation;
 
     bool alwaysCreateLineBoxes() const { return renderInlineAlwaysCreatesLineBoxes(); }
     void setAlwaysCreateLineBoxes() { setRenderInlineAlwaysCreatesLineBoxes(true); }

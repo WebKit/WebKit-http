@@ -73,6 +73,7 @@ public:
         case StringObjectUse:
         case StringOrStringObjectUse:
         case NotStringVarUse:
+        case NotSymbolUse:
         case NotCellUse:
         case OtherUse:
         case MiscUse:
@@ -314,6 +315,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ToPrimitive:
     case ToString:
     case ToNumber:
+    case ToObject:
     case NumberToStringWithRadix:
     case NumberToStringWithValidRadixConstant:
     case SetFunctionName:
@@ -347,6 +349,8 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case Throw:
     case ThrowStaticError:
     case CountExecution:
+    case SuperSamplerBegin:
+    case SuperSamplerEnd:
     case ForceOSRExit:
     case CheckTraps:
     case LogShadowChickenPrologue:
@@ -412,6 +416,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case ResolveScopeForHoistingFuncDeclInEval:
     case ResolveScope:
     case MapHash:
+    case StringSlice:
     case ToLowerCase:
     case GetMapBucket:
     case GetMapBucketHead:

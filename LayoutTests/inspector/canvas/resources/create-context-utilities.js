@@ -23,26 +23,49 @@ function destroyCanvases() {
     contexts = [];
 
     // Force GC to make sure the canvas element is destroyed, otherwise the frontend
-    // does not receive WI.CanvasManager.Event.CanvasWasRemoved events.
+    // does not receive WI.CanvasManager.Event.CanvasRemoved events.
     setTimeout(() => { GCController.collect(); }, 0);
 }
 
 TestPage.registerInitializer(() => {
     let suite = null;
 
+    function sanitizeURL(url) {
+        return url.replace(/^.*?LayoutTests\//, "");
+    }
+
     function awaitCanvasAdded(contextType) {
-        return WI.canvasManager.awaitEvent(WI.CanvasManager.Event.CanvasWasAdded)
+        return WI.canvasManager.awaitEvent(WI.CanvasManager.Event.CanvasAdded)
         .then((event) => {
             let canvas = event.data.canvas;
             let contextDisplayName = WI.Canvas.displayNameForContextType(contextType);
             InspectorTest.expectEqual(canvas.contextType, contextType, `Canvas context should be ${contextDisplayName}.`);
+
+            for (let i = 0; i < canvas.backtrace.length; ++i) {
+                let callFrame = canvas.backtrace[i];
+                let traceText = `  ${i}: `;
+                traceText += callFrame.functionName || "(anonymous function)";
+
+                if (callFrame.nativeCode)
+                    traceText += " - [native code]";
+                else if (callFrame.programCode)
+                    traceText += " - [program code]";
+                else if (callFrame.sourceCodeLocation) {
+                    let location = callFrame.sourceCodeLocation;
+                    traceText += " - " + sanitizeURL(location.sourceCode.url) + `:${location.lineNumber}:${location.columnNumber}`;
+                }
+
+                InspectorTest.log(traceText);
+            }
+
+            InspectorTest.log("");
 
             return canvas;
         });
     }
 
     function awaitCanvasRemoved(canvasIdentifier) {
-        return WI.canvasManager.awaitEvent(WI.CanvasManager.Event.CanvasWasRemoved)
+        return WI.canvasManager.awaitEvent(WI.CanvasManager.Event.CanvasRemoved)
         .then((event) => {
             let canvas = event.data.canvas;
             InspectorTest.expectEqual(canvas.identifier, canvasIdentifier, "Removed canvas has expected ID.");

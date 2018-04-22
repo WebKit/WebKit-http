@@ -35,6 +35,7 @@
 #include "RenderView.h"
 #include "StyleProperties.h"
 #include "TransformState.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/StackStats.h>
 
 #if ENABLE(MATHML)
@@ -45,6 +46,8 @@
 namespace WebCore {
 
 using namespace HTMLNames;
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderTableCell);
 
 struct SameSizeAsRenderTableCell : public RenderBlockFlow {
     unsigned bitfields;
@@ -386,7 +389,7 @@ LayoutRect RenderTableCell::clippedOverflowRectForRepaint(const RenderLayerModel
 
     // FIXME: layoutDelta needs to be applied in parts before/after transforms and
     // repaint containers. https://bugs.webkit.org/show_bug.cgi?id=23308
-    r.move(view().layoutDelta());
+    r.move(view().frameView().layoutContext().layoutDelta());
     return computeRectForRepaint(r, repaintContainer);
 }
 
@@ -395,7 +398,7 @@ LayoutRect RenderTableCell::computeRectForRepaint(const LayoutRect& rect, const 
     if (repaintContainer == this)
         return rect;
     LayoutRect adjustedRect = rect;
-    if ((!view().layoutStateEnabled() || repaintContainer) && parent())
+    if ((!view().frameView().layoutContext().isPaintOffsetCacheEnabled() || repaintContainer) && parent())
         adjustedRect.moveBy(-parentBox()->location()); // Rows are in the same coordinate space, so don't add their offset in.
     return RenderBlockFlow::computeRectForRepaint(adjustedRect, repaintContainer, context);
 }

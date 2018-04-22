@@ -28,6 +28,7 @@
 #if WK_API_ENABLED
 
 #import <WebKit/_WKActivatedElementInfo.h>
+#import <WebKit/_WKAttachment.h>
 #import <WebKit/_WKFindOptions.h>
 #import <WebKit/_WKLayoutMode.h>
 #import <WebKit/_WKOverlayScrollbarStyle.h>
@@ -176,6 +177,8 @@ typedef NS_OPTIONS(NSInteger, _WKRectEdge) {
 @property (nonatomic, setter=_setViewScale:) CGFloat _viewScale;
 
 @property (nonatomic, setter=_setBackgroundExtendsBeyondPage:) BOOL _backgroundExtendsBeyondPage WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(8.0));
+
+- (_WKAttachment *)_insertAttachmentWithFilename:(NSString *)filename contentType:(NSString *)contentType data:(NSData *)data options:(_WKAttachmentDisplayOptions *)options completion:(void(^)(BOOL success))completionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 #if TARGET_OS_IPHONE
 // DERECATED: The setters of the three following function are deprecated, please use overrideLayoutParameters.
@@ -433,8 +436,7 @@ typedef NS_OPTIONS(NSInteger, _WKRectEdge) {
 - (void)_setFooterBannerHeight:(int)height WK_API_AVAILABLE(macosx(10.12.3));
 #endif
 
-- (void)_requestActiveNowPlayingSessionInfo WK_API_AVAILABLE(macosx(10.12.3), ios(10.3));
-- (void)_handleActiveNowPlayingSessionInfoResponse:(BOOL)hasActiveSession title:(NSString *)title duration:(double)duration elapsedTime:(double)elapsedTime WK_API_AVAILABLE(macosx(10.12.3), ios(10.3));
+- (void)_requestActiveNowPlayingSessionInfo:(void(^)(BOOL, NSString*, double, double, NSInteger))callback WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 - (void)_setPageScale:(CGFloat)scale withOrigin:(CGPoint)origin WK_API_AVAILABLE(ios(10.3));
 - (CGFloat)_pageScale WK_API_AVAILABLE(ios(10.3));

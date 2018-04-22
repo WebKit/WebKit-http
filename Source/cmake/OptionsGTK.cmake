@@ -1,20 +1,10 @@
 include(GNUInstallDirs)
+include(VersioningUtils)
 
-set(PROJECT_VERSION_MAJOR 2)
-set(PROJECT_VERSION_MINOR 19)
-set(PROJECT_VERSION_MICRO 0)
-set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_MICRO})
+SET_PROJECT_VERSION(2 19 1)
 set(WEBKITGTK_API_VERSION 4.0)
 
-# Libtool library version, not to be confused with API version.
-# See http://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
-macro(CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE library_name current revision age)
-    math(EXPR ${library_name}_VERSION_MAJOR "${current} - ${age}")
-    set(${library_name}_VERSION_MINOR ${age})
-    set(${library_name}_VERSION_MICRO ${revision})
-    set(${library_name}_VERSION ${${library_name}_VERSION_MAJOR}.${age}.${revision})
-endmacro()
-CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT2 62 0 25)
+CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT 62 0 25)
 CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(JAVASCRIPTCORE 25 0 7)
 
 # These are shared variables, but we special case their definition so that we can use the
@@ -56,8 +46,8 @@ WEBKIT_OPTION_BEGIN()
 
 include(GStreamerDefinitions)
 
-set(USE_CAIRO ON)
-set(USE_XDGMIME ON)
+SET_AND_EXPOSE_TO_BUILD(USE_CAIRO TRUE)
+SET_AND_EXPOSE_TO_BUILD(USE_XDGMIME TRUE)
 SET_AND_EXPOSE_TO_BUILD(USE_GCRYPT TRUE)
 
 # For old versions of HarfBuzz that do not expose an API for the OpenType MATH
@@ -377,11 +367,11 @@ endif ()
 if (USE_WOFF2)
     find_package(BrotliDec 1.0.1)
     if (NOT BROTLIDEC_FOUND)
-       message(FATAL_ERROR "librotlidec is needed for USE_WOFF2.")
+       message(FATAL_ERROR "libbrotlidec is needed for USE_WOFF2.")
     endif ()
     find_package(WOFF2Dec 1.0.1)
     if (NOT WOFF2DEC_FOUND)
-       message(FATAL_ERROR "liwoff2dec is needed for USE_WOFF2.")
+       message(FATAL_ERROR "libwoff2dec is needed for USE_WOFF2.")
     endif ()
 endif ()
 

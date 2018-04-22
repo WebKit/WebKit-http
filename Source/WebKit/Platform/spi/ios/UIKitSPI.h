@@ -30,7 +30,9 @@
 #import <UIKit/UIAlertController_Private.h>
 #import <UIKit/UIApplication_Private.h>
 #import <UIKit/UIBarButtonItem_Private.h>
+#import <UIKit/UIBlurEffect_Private.h>
 #import <UIKit/UICalloutBar.h>
+#import <UIKit/UIColorEffect.h>
 #import <UIKit/UIDatePicker_Private.h>
 #import <UIKit/UIDevice_Private.h>
 #import <UIKit/UIDocumentMenuViewController_Private.h>
@@ -62,6 +64,7 @@
 #import <UIKit/UIViewController_Private.h>
 #import <UIKit/UIViewController_ViewService.h>
 #import <UIKit/UIView_Private.h>
+#import <UIKit/UIVisualEffect_Private.h>
 #import <UIKit/UIWKSelectionAssistant.h>
 #import <UIKit/UIWKTextInteractionAssistant.h>
 #import <UIKit/UIWebBrowserView.h>
@@ -470,6 +473,7 @@ typedef NS_ENUM (NSInteger, _UIBackdropMaskViewFlags) {
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000
 - (void)safeAreaInsetsDidChange;
 #endif
+@property (nonatomic, setter=_setContinuousCornerRadius:) CGFloat _continuousCornerRadius;
 @end
 
 @interface UIWebSelectionView : UIView
@@ -535,23 +539,14 @@ typedef NS_ENUM(NSInteger, UIWKGestureType) {
 
 @interface UIWKSelectionAssistant ()
 - (BOOL)shouldHandleSingleTapAtPoint:(CGPoint)point;
-- (void)blockSelectionChangedWithTouch:(UIWKSelectionTouch)touch withFlags:(UIWKSelectionFlags)flags growThreshold:(CGFloat)grow shrinkThreshold:(CGFloat)shrink;
 - (void)selectionChangedWithGestureAt:(CGPoint)point withGesture:(UIWKGestureType)gestureType withState:(UIGestureRecognizerState)gestureState withFlags:(UIWKSelectionFlags)flags;
 - (void)selectionChangedWithTouchAt:(CGPoint)point withSelectionTouch:(UIWKSelectionTouch)touch withFlags:(UIWKSelectionFlags)flags;
-- (void)selectionChangedWithTouchAt:(CGPoint)point withSelectionTouch:(UIWKSelectionTouch)touch;
 - (void)showDictionaryFor:(NSString *)selectedTerm fromRect:(CGRect)presentationRect;
 - (void)showShareSheetFor:(NSString *)selectedTerm fromRect:(CGRect)presentationRect;
 - (void)showTextServiceFor:(NSString *)selectedTerm fromRect:(CGRect)presentationRect;
 - (void)lookup:(NSString *)textWithContext withRange:(NSRange)range fromRect:(CGRect)presentationRect;
 @property (nonatomic, readonly) UILongPressGestureRecognizer *selectionLongPressRecognizer;
 @end
-
-typedef NS_ENUM(NSInteger, UIWKHandlePosition) {
-    UIWKHandleTop = 0,
-    UIWKHandleRight = 1,
-    UIWKHandleBottom = 2,
-    UIWKHandleLeft = 3,
-};
 
 @interface UIWKAutocorrectionRects : NSObject
 @end
@@ -579,7 +574,6 @@ typedef NS_ENUM(NSInteger, UIWKHandlePosition) {
 - (void)selectionChangedWithGestureAt:(CGPoint)point withGesture:(UIWKGestureType)gestureType withState:(UIGestureRecognizerState)gestureState withFlags:(UIWKSelectionFlags)flags;
 - (void)showDictionaryFor:(NSString *)selectedTerm fromRect:(CGRect)presentationRect;
 - (void)selectionChangedWithTouchAt:(CGPoint)point withSelectionTouch:(UIWKSelectionTouch)touch withFlags:(UIWKSelectionFlags)flags;
-- (void)selectionChangedWithTouchAt:(CGPoint)point withSelectionTouch:(UIWKSelectionTouch)touch;
 - (void)showTextStyleOptions;
 - (void)hideTextStyleOptions;
 - (void)lookup:(NSString *)textWithContext withRange:(NSRange)range fromRect:(CGRect)presentationRect;
@@ -594,7 +588,6 @@ typedef NS_ENUM(NSInteger, UIWKHandlePosition) {
 
 @protocol UIWKInteractionViewProtocol
 - (void)changeSelectionWithGestureAt:(CGPoint)point withGesture:(UIWKGestureType)gestureType withState:(UIGestureRecognizerState)state;
-
 - (void)changeSelectionWithTouchAt:(CGPoint)point withSelectionTouch:(UIWKSelectionTouch)touch baseIsStart:(BOOL)baseIsStart withFlags:(UIWKSelectionFlags)flags;
 - (void)changeSelectionWithTouchesFrom:(CGPoint)from to:(CGPoint)to withGesture:(UIWKGestureType)gestureType withState:(UIGestureRecognizerState)gestureState;
 - (CGRect)textFirstRect;
@@ -618,7 +611,6 @@ typedef NS_ENUM(NSInteger, UIWKHandlePosition) {
 
 @optional
 
-- (void)changeBlockSelectionWithTouchAt:(CGPoint)point withSelectionTouch:(UIWKSelectionTouch)touch forHandle:(UIWKHandlePosition)handle;
 - (void)clearSelection;
 - (void)replaceDictatedText:(NSString *)oldText withText:(NSString *)newText;
 - (void)requestDictationContext:(void (^)(NSString *selectedText, NSString *prefixText, NSString *postfixText))completionHandler;
@@ -632,11 +624,6 @@ typedef NS_ENUM(NSInteger, UIWKHandlePosition) {
 - (CGFloat)inverseScale;
 - (CGRect)unobscuredContentRect;
 @end
-
-typedef enum {
-    UIWebSelectionModeWeb = 0,
-    UIWebSelectionModeTextOnly = 1,
-} UIWebSelectionMode;
 
 @protocol UIWebFormAccessoryDelegate;
 
@@ -888,6 +875,7 @@ typedef enum {
 WTF_EXTERN_C_BEGIN
 
 NSTimeInterval _UIDragInteractionDefaultLiftDelay();
+CGFloat UIRoundToScreenScale(CGFloat value, UIScreen *);
 
 WTF_EXTERN_C_END
 
@@ -931,6 +919,29 @@ typedef NS_OPTIONS(NSUInteger, UIDragOperation)
 @end
 
 #endif
+
+@interface _UIVisualEffectLayerConfig : NSObject
++ (instancetype)layerWithFillColor:(UIColor *)fillColor opacity:(CGFloat)opacity filterType:(NSString *)filterType;
+- (void)configureLayerView:(UIView *)view;
+@end
+
+@interface _UIVisualEffectConfig : NSObject
+@property (nonatomic, readonly) _UIVisualEffectLayerConfig *contentConfig;
++ (_UIVisualEffectConfig *)configWithContentConfig:(_UIVisualEffectLayerConfig *)contentConfig;
+@end
+
+@interface UIVisualEffect ()
++ (UIVisualEffect *)emptyEffect;
++ (UIVisualEffect *)effectCombiningEffects:(NSArray<UIVisualEffect *> *)effects;
+@end
+
+@interface UIColorEffect : UIVisualEffect
++ (UIColorEffect *)colorEffectSaturate:(CGFloat)saturationAmount;
+@end
+
+@interface UIBlurEffect ()
++ (UIBlurEffect *)effectWithBlurRadius:(CGFloat)blurRadius;
+@end
 
 #endif // USE(APPLE_INTERNAL_SDK)
 
@@ -1001,6 +1012,8 @@ extern const NSString *UIPreviewDataDDContext;
 
 extern const NSString *UIPreviewDataAttachmentList;
 extern const NSString *UIPreviewDataAttachmentIndex;
+
+extern NSString * const UIPreviewDataAttachmentListSourceIsManaged;
 
 UIEdgeInsets UIEdgeInsetsAdd(UIEdgeInsets lhs, UIEdgeInsets rhs, UIRectEdge);
 

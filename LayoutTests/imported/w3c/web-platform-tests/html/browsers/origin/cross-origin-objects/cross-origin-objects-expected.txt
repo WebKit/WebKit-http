@@ -9,7 +9,7 @@ PASS [[GetOwnProperty]] - Properties on cross-origin objects should be reported 
 PASS [[GetOwnProperty]] - Property descriptors for cross-origin properties should be set up correctly 
 PASS [[Delete]] Should throw on cross-origin objects 
 PASS [[DefineOwnProperty]] Should throw for cross-origin objects 
-PASS Can only enumerate safelisted properties 
+PASS Can only enumerate safelisted enumerable properties 
 PASS [[OwnPropertyKeys]] should return all properties from cross-origin objects 
 PASS [[OwnPropertyKeys]] should return the right symbol-named properties for cross-origin objects 
 PASS [[OwnPropertyKeys]] should place the symbols after the property names after the subframe indices 

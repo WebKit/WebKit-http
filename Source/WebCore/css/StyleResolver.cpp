@@ -231,6 +231,7 @@ StyleResolver::StyleResolver(Document& document)
         m_mediaQueryEvaluator = MediaQueryEvaluator { view->mediaType(), m_document, m_rootDefaultStyle.get() };
 
     m_ruleSets.resetAuthorStyle();
+    m_ruleSets.resetUserAgentMediaQueryStyle();
 }
 
 void StyleResolver::addCurrentSVGFontFaceRules()
@@ -751,23 +752,23 @@ static bool hasEffectiveDisplayNoneForDisplayContents(const Element& element)
     // https://drafts.csswg.org/css-display-3/#unbox-html
     static NeverDestroyed<HashSet<AtomicString>> tagNames = [] {
         static const HTMLQualifiedName* const tagList[] = {
-            &brTag,
-            &wbrTag,
-            &meterTag,
-            &appletTag,
-            &progressTag,
-            &canvasTag,
-            &embedTag,
-            &objectTag,
-            &audioTag,
-            &iframeTag,
-            &imgTag,
-            &videoTag,
-            &frameTag,
-            &framesetTag,
-            &inputTag,
-            &textareaTag,
-            &selectTag,
+            &brTag.get(),
+            &wbrTag.get(),
+            &meterTag.get(),
+            &appletTag.get(),
+            &progressTag.get(),
+            &canvasTag.get(),
+            &embedTag.get(),
+            &objectTag.get(),
+            &audioTag.get(),
+            &iframeTag.get(),
+            &imgTag.get(),
+            &videoTag.get(),
+            &frameTag.get(),
+            &framesetTag.get(),
+            &inputTag.get(),
+            &textareaTag.get(),
+            &selectTag.get(),
         };
         HashSet<AtomicString> set;
         for (auto& name : tagList)
@@ -799,6 +800,10 @@ static void adjustDisplayContentsStyle(RenderStyle& style, const Element* elemen
     if (!element) {
         if (style.styleType() != BEFORE && style.styleType() != AFTER)
             style.setDisplay(NONE);
+        return;
+    }
+    if (element->document().documentElement() == element) {
+        style.setDisplay(BLOCK);
         return;
     }
     if (hasEffectiveDisplayNoneForDisplayContents(*element))
@@ -1917,7 +1922,7 @@ bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperat
     FilterOperations operations;
     for (auto& currentValue : downcast<CSSValueList>(inValue)) {
 
-        if (is<CSSPrimitiveValue>(currentValue.get())) {
+        if (is<CSSPrimitiveValue>(currentValue)) {
             auto& primitiveValue = downcast<CSSPrimitiveValue>(currentValue.get());
             if (!primitiveValue.isURI())
                 continue;
@@ -1930,7 +1935,7 @@ bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperat
             continue;
         }
 
-        if (!is<CSSFunctionValue>(currentValue.get()))
+        if (!is<CSSFunctionValue>(currentValue))
             continue;
 
         auto& filterValue = downcast<CSSFunctionValue>(currentValue.get());

@@ -35,9 +35,11 @@
 #include "WebCoreArgumentCoders.h"
 #include "WebSWOriginTable.h"
 #include "WebSWServerConnectionMessages.h"
+#include <WebCore/Document.h>
 #include <WebCore/SerializedScriptValue.h>
 #include <WebCore/ServiceWorkerFetchResult.h>
 #include <WebCore/ServiceWorkerJobData.h>
+#include <WebCore/ServiceWorkerRegistrationData.h>
 
 using namespace PAL;
 using namespace WebCore;
@@ -68,9 +70,28 @@ void WebSWClientConnection::finishFetchingScriptInServer(const ServiceWorkerFetc
     send(Messages::WebSWServerConnection::FinishFetchingScriptInServer(result));
 }
 
-void WebSWClientConnection::postMessageToServiceWorkerGlobalScope(uint64_t serviceWorkerIdentifier, Ref<SerializedScriptValue>&& scriptValue, const String& sourceOrigin)
+void WebSWClientConnection::addServiceWorkerRegistrationInServer(const ServiceWorkerRegistrationKey& key, ServiceWorkerRegistrationIdentifier identifier)
 {
-    send(Messages::WebSWServerConnection::PostMessageToServiceWorkerGlobalScope(serviceWorkerIdentifier, IPC::DataReference { scriptValue->data() }, sourceOrigin));
+    send(Messages::WebSWServerConnection::AddServiceWorkerRegistrationInServer(key, identifier));
+}
+
+void WebSWClientConnection::removeServiceWorkerRegistrationInServer(const ServiceWorkerRegistrationKey& key, ServiceWorkerRegistrationIdentifier identifier)
+{
+    send(Messages::WebSWServerConnection::RemoveServiceWorkerRegistrationInServer(key, identifier));
+}
+
+void WebSWClientConnection::postMessageToServiceWorkerGlobalScope(ServiceWorkerIdentifier destinationIdentifier, Ref<SerializedScriptValue>&& scriptValue, ScriptExecutionContext& source)
+{
+    // FIXME: Add support for posting messages from workers.
+    if (!is<Document>(source))
+        return;
+
+    send(Messages::WebSWServerConnection::PostMessageToServiceWorkerGlobalScope(destinationIdentifier, IPC::DataReference { scriptValue->data() }, downcast<Document>(source).identifier(), source.origin()));
+}
+
+void WebSWClientConnection::didResolveRegistrationPromise(const ServiceWorkerRegistrationKey& key)
+{
+    send(Messages::WebSWServerConnection::DidResolveRegistrationPromise(key));
 }
 
 bool WebSWClientConnection::hasServiceWorkerRegisteredForOrigin(const SecurityOrigin& origin) const
@@ -83,13 +104,31 @@ void WebSWClientConnection::setSWOriginTableSharedMemory(const SharedMemory::Han
     m_swOriginTable->setSharedMemory(handle);
 }
 
+void WebSWClientConnection::didMatchRegistration(uint64_t matchingRequest, std::optional<ServiceWorkerRegistrationData>&& result)
+{
+    if (auto completionHandler = m_ongoingMatchRegistrationTasks.take(matchingRequest))
+        completionHandler(WTFMove(result));
+}
+
+void WebSWClientConnection::matchRegistration(const SecurityOrigin& topOrigin, const URL& clientURL, RegistrationCallback&& callback)
+{
+    uint64_t requestIdentifier = ++m_previousMatchRegistrationTaskIdentifier;
+    m_ongoingMatchRegistrationTasks.add(requestIdentifier, WTFMove(callback));
+    send(Messages::WebSWServerConnection::MatchRegistration(requestIdentifier, SecurityOriginData::fromSecurityOrigin(topOrigin), clientURL));
+}
+
 Ref<ServiceWorkerClientFetch> WebSWClientConnection::startFetch(WebServiceWorkerProvider& provider, Ref<WebCore::ResourceLoader>&& loader, uint64_t identifier, ServiceWorkerClientFetch::Callback&& callback)
 {
-    ASSERT(loader->options().serviceWorkersMode == ServiceWorkersMode::All);
+    ASSERT(loader->options().serviceWorkersMode != ServiceWorkersMode::None);
     // FIXME: Decide whether to assert for loader->options().serviceWorkerIdentifier once we have a story for navigation loads.
 
     send(Messages::WebSWServerConnection::StartFetch(identifier, loader->options().serviceWorkerIdentifier, loader->originalRequest(), loader->options()));
     return ServiceWorkerClientFetch::create(provider, WTFMove(loader), identifier, m_connection.get(), WTFMove(callback));
+}
+
+void WebSWClientConnection::postMessageToServiceWorkerClient(uint64_t destinationScriptExecutionContextIdentifier, const IPC::DataReference& message, ServiceWorkerIdentifier sourceIdentifier, const String& sourceOrigin)
+{
+    SWClientConnection::postMessageToServiceWorkerClient(destinationScriptExecutionContextIdentifier, SerializedScriptValue::adopt(message.vector()), sourceIdentifier, sourceOrigin);
 }
 
 } // namespace WebKit

@@ -174,12 +174,15 @@ inline CapabilityLevel canCompile(Node* node)
     case ConstantStoragePointer:
     case Check:
     case CountExecution:
+    case SuperSamplerBegin:
+    case SuperSamplerEnd:
     case GetExecutable:
     case GetScope:
     case GetCallee:
     case GetArgumentCountIncludingThis:
     case ToNumber:
     case ToString:
+    case ToObject:
     case CallObjectConstructor:
     case CallStringConstructor:
     case MakeRope:
@@ -291,6 +294,7 @@ inline CapabilityLevel canCompile(Node* node)
     case CompareStrictEq:
     case DefineDataProperty:
     case DefineAccessorProperty:
+    case StringSlice:
     case ToLowerCase:
     case NumberToStringWithRadix:
     case NumberToStringWithValidRadixConstant:
@@ -508,6 +512,7 @@ CapabilityLevel canCompile(Graph& graph)
                 case MiscUse:
                 case StringIdentUse:
                 case NotStringVarUse:
+                case NotSymbolUse:
                 case AnyIntUse:
                 case DoubleRepAnyIntUse:
                     // These are OK.

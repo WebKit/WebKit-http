@@ -121,6 +121,24 @@ void WebFrameLoaderClient::frameLoaderDestroyed()
 {
 }
 
+uint64_t WebFrameLoaderClient::pageID() const
+{
+    RELEASE_ASSERT_NOT_REACHED();
+    return 0;
+}
+
+uint64_t WebFrameLoaderClient::frameID() const
+{
+    RELEASE_ASSERT_NOT_REACHED();
+    return 0;
+}
+
+PAL::SessionID WebFrameLoaderClient::sessionID() const
+{
+    RELEASE_ASSERT_NOT_REACHED();
+    return PAL::SessionID::defaultSessionID();
+}
+
 bool WebFrameLoaderClient::hasWebView() const
 {
     return m_webFrame->webView();
@@ -1035,9 +1053,6 @@ RefPtr<Frame> WebFrameLoaderClient::createFrame(const URL& url, const String& na
 ObjectContentType WebFrameLoaderClient::objectContentType(const URL& url, const String& mimeTypeIn)
 {
     String mimeType = mimeTypeIn;
-
-    if (mimeType.isEmpty())
-        mimeType = mimeTypeFromURL(url);
 
     if (mimeType.isEmpty()) {
         String decodedPath = decodeURLEscapeSequences(url.path());

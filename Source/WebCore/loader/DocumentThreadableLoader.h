@@ -83,7 +83,7 @@ namespace WebCore {
         void dataSent(CachedResource&, unsigned long long bytesSent, unsigned long long totalBytesToBeSent) override;
         void responseReceived(CachedResource&, const ResourceResponse&) override;
         void dataReceived(CachedResource&, const char* data, int dataLength) override;
-        void redirectReceived(CachedResource&, ResourceRequest&, const ResourceResponse&) override;
+        void redirectReceived(CachedResource&, ResourceRequest&&, const ResourceResponse&, CompletionHandler<void(ResourceRequest&&)>&&) override;
         void finishedTimingForWorkerLoad(CachedResource&, const ResourceTiming&) override;
         void finishedTimingForWorkerLoad(const ResourceTiming&);
         void notifyFinished(CachedResource&) override;
@@ -133,6 +133,9 @@ namespace WebCore {
         std::optional<HTTPHeaderMap> m_originalHeaders;
 
         ShouldLogError m_shouldLogError;
+#if ENABLE(SERVICE_WORKER)
+        std::optional<ResourceRequest> m_bypassingPreflightForServiceWorkerRequest;
+#endif
     };
 
 } // namespace WebCore

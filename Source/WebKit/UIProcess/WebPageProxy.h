@@ -276,6 +276,7 @@ using DrawToPDFCallback = GenericCallback<const IPC::DataReference&>;
 
 #if PLATFORM(COCOA)
 typedef GenericCallback<const WebCore::MachSendRight&> MachSendRightCallback;
+typedef GenericCallback<bool, String, double, double, uint64_t> NowPlayingInfoCallback;
 #endif
 
 class WebPageProxy : public API::ObjectImpl<API::Object::Type::Page>
@@ -515,7 +516,6 @@ public:
     void selectWithGesture(const WebCore::IntPoint, WebCore::TextGranularity, uint32_t gestureType, uint32_t gestureState, bool isInteractingWithAssistedNode, WTF::Function<void (const WebCore::IntPoint&, uint32_t, uint32_t, uint32_t, CallbackBase::Error)>&&);
     void updateSelectionWithTouches(const WebCore::IntPoint, uint32_t touches, bool baseIsStart, WTF::Function<void (const WebCore::IntPoint&, uint32_t, uint32_t, CallbackBase::Error)>&&);
     void selectWithTwoTouches(const WebCore::IntPoint from, const WebCore::IntPoint to, uint32_t gestureType, uint32_t gestureState, WTF::Function<void (const WebCore::IntPoint&, uint32_t, uint32_t, uint32_t, CallbackBase::Error)>&&);
-    void updateBlockSelectionWithTouch(const WebCore::IntPoint, uint32_t touch, uint32_t handlePosition);
     void extendSelection(WebCore::TextGranularity);
     void selectWordBackward();
     void moveSelectionByOffset(int32_t offset, WTF::Function<void (CallbackBase::Error)>&&);
@@ -540,7 +540,6 @@ public:
     void stopInteraction();
     void performActionOnElement(uint32_t action);
     void saveImageToLibrary(const SharedMemory::Handle& imageHandle, uint64_t imageSize);
-    void didUpdateBlockSelectionWithTouch(uint32_t touch, uint32_t flags, float growThreshold, float shrinkThreshold);
     void focusNextAssistedNode(bool isForward, WTF::Function<void (CallbackBase::Error)>&&);
     void setAssistedNodeValue(const String&);
     void setAssistedNodeValueAsNumber(double);
@@ -1087,8 +1086,8 @@ public:
 #endif
 
 #if PLATFORM(COCOA)
-    void requestActiveNowPlayingSessionInfo();
-    void handleActiveNowPlayingSessionInfoResponse(bool hasActiveSession, const String& title, double duration, double elapsedTime) const;
+    void requestActiveNowPlayingSessionInfo(Ref<NowPlayingInfoCallback>&&);
+    void nowPlayingInfoCallback(bool, const String&, double, double, uint64_t, CallbackID);
 #endif
 
 #if ENABLE(MEDIA_SESSION)
@@ -1211,6 +1210,10 @@ public:
     void editorStateChanged(const EditorState&);
 
     void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t webProcessContextId);
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+    void insertAttachment(const String& identifier, const String& filename, std::optional<String> contentType, WebCore::SharedBuffer& data, Function<void(CallbackBase::Error)>&&);
+#endif
 
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, Ref<API::PageConfiguration>&&);
@@ -1633,6 +1636,11 @@ private:
     void viewIsBecomingVisible();
 
     void stopAllURLSchemeTasks();
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+    void didInsertAttachment(const String& identifier);
+    void didRemoveAttachment(const String& identifier);
+#endif
 
     PageClient& m_pageClient;
     Ref<API::PageConfiguration> m_configuration;

@@ -49,7 +49,11 @@ public:
 
     void setUseIconLoadingClient(bool useIconLoadingClient) { m_useIconLoadingClient = useIconLoadingClient; }
 
-    void applyToDocumentLoader(const WebsitePolicies&);
+    void applyToDocumentLoader(WebsitePolicies&&);
+
+    uint64_t pageID() const final;
+    uint64_t frameID() const final;
+    PAL::SessionID sessionID() const final;
 
 private:
     void frameLoaderDestroyed() final;

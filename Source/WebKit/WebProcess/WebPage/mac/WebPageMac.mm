@@ -182,10 +182,6 @@ NSObject *WebPage::accessibilityObjectForMainFramePlugin()
     return 0;
 }
 
-void WebPage::platformPreferencesDidChange(const WebPreferencesStore& store)
-{
-}
-
 bool WebPage::shouldUsePDFPlugin() const
 {
     return pdfPluginEnabled() && classFromPDFKit(@"PDFLayerController");
@@ -1079,7 +1075,6 @@ void WebPage::performImmediateActionHitTestAtLocation(WebCore::FloatPoint locati
                 immediateActionResult.lookupText = selectedText;
                 immediateActionResult.isTextNode = true;
                 immediateActionResult.isSelected = true;
-                immediateActionResult.allowsCopy = true;
 
                 immediateActionResult.dictionaryPopupInfo = dictionaryPopupInfoForSelectionInPDFPlugin(selection, *pdfPugin, &options, TextIndicatorPresentationTransition::FadeIn);
             }

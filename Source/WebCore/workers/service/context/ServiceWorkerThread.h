@@ -29,8 +29,8 @@
 
 #include "ServiceWorkerContextData.h"
 #include "ServiceWorkerFetch.h"
+#include "ServiceWorkerIdentifier.h"
 #include "WorkerThread.h"
-#include <wtf/Identified.h>
 
 namespace WebCore {
 
@@ -39,11 +39,12 @@ class ContentSecurityPolicyResponseHeaders;
 class MessagePortChannel;
 class SerializedScriptValue;
 class WorkerObjectProxy;
+struct ServiceWorkerClientIdentifier;
 struct ServiceWorkerContextData;
 
 using MessagePortChannelArray = Vector<std::unique_ptr<MessagePortChannel>, 1>;
 
-class ServiceWorkerThread : public WorkerThread, public ThreadSafeIdentified<ServiceWorkerThread> {
+class ServiceWorkerThread : public WorkerThread {
 public:
     template<typename... Args> static Ref<ServiceWorkerThread> create(Args&&... args)
     {
@@ -54,14 +55,21 @@ public:
     WorkerObjectProxy& workerObjectProxy() const { return m_workerObjectProxy; }
 
     WEBCORE_EXPORT void postFetchTask(Ref<ServiceWorkerFetch::Client>&&, ResourceRequest&&, FetchOptions&&);
-    WEBCORE_EXPORT void postMessageToServiceWorkerGlobalScope(Ref<SerializedScriptValue>&&, std::unique_ptr<MessagePortChannelArray>&&, const String& sourceOrigin);
+    WEBCORE_EXPORT void postMessageToServiceWorkerGlobalScope(Ref<SerializedScriptValue>&&, std::unique_ptr<MessagePortChannelArray>&&, const ServiceWorkerClientIdentifier& sourceIdentifier, const String& sourceOrigin);
+    void fireInstallEvent();
+    void fireActivateEvent();
+
+    uint64_t serverConnectionIdentifier() const { return m_serverConnectionIdentifier; }
+    const ServiceWorkerContextData& contextData() const { return m_data; }
+
+    ServiceWorkerIdentifier identifier() const { return m_data.serviceWorkerIdentifier; }
 
 protected:
-    Ref<WorkerGlobalScope> createWorkerGlobalScope(const URL&, const String& identifier, const String& userAgent, const ContentSecurityPolicyResponseHeaders&, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, PAL::SessionID) final;
+    Ref<WorkerGlobalScope> createWorkerGlobalScope(const URL&, const String& identifier, const String& userAgent, bool isOnline, const ContentSecurityPolicyResponseHeaders&, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, PAL::SessionID) final;
     void runEventLoop() override;
 
 private:
-    WEBCORE_EXPORT ServiceWorkerThread(uint64_t serverConnectionIdentifier, const ServiceWorkerContextData&, PAL::SessionID, WorkerLoaderProxy&);
+    WEBCORE_EXPORT ServiceWorkerThread(uint64_t serverConnectionIdentifier, const ServiceWorkerContextData&, PAL::SessionID, WorkerLoaderProxy&, WorkerDebuggerProxy&);
 
     uint64_t m_serverConnectionIdentifier;
     ServiceWorkerContextData m_data;

@@ -115,6 +115,7 @@ class CodeBlock : public JSCell {
     };
 
 public:
+
     enum CopyParsedBlockTag { CopyParsedBlock };
 
     static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
@@ -314,8 +315,6 @@ public:
     const RefCountedArray<Instruction>& instructions() const { return m_instructions; }
 
     size_t predictedMachineCodeSize();
-
-    bool usesOpcode(OpcodeID);
 
     unsigned instructionCount() const { return m_instructions.size(); }
 
@@ -600,12 +599,7 @@ public:
 
     BytecodeLivenessAnalysis& livenessAnalysis()
     {
-        {
-            ConcurrentJSLocker locker(m_lock);
-            if (!!m_livenessAnalysis)
-                return *m_livenessAnalysis;
-        }
-        return livenessAnalysisSlow();
+        return m_unlinkedCode->livenessAnalysis(this);
     }
     
     void validate();
@@ -1060,8 +1054,6 @@ private:
     uint16_t m_reoptimizationRetryCounter;
 
     std::chrono::steady_clock::time_point m_creationTime;
-
-    std::unique_ptr<BytecodeLivenessAnalysis> m_livenessAnalysis;
 
     std::unique_ptr<RareData> m_rareData;
 

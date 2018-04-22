@@ -1131,6 +1131,11 @@ public:
         m_jit.setupArgumentsWithExecState(TrustedImmPtr(structure), TrustedImm32(knownLength));
         return appendCallSetResult(operation, result);
     }
+    JITCompiler::Call callOperation(C_JITOperation_ECZZ operation, GPRReg result, GPRReg arg1, GPRReg arg2, GPRReg arg3)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, arg2, arg3);
+        return appendCallSetResult(operation, result);
+    }
     JITCompiler::Call callOperation(C_JITOperation_EStZZ operation, GPRReg result, RegisteredStructure structure, unsigned knownLength, unsigned minCapacity)
     {
         m_jit.setupArgumentsWithExecState(TrustedImmPtr(structure), TrustedImm32(knownLength), TrustedImm32(minCapacity));
@@ -1181,6 +1186,12 @@ public:
     JITCompiler::Call callOperation(S_JITOperation_EGC operation, GPRReg result, JSGlobalObject* globalObject, GPRReg arg2)
     {
         m_jit.setupArgumentsWithExecState(TrustedImmPtr::weakPointer(m_jit.graph(), globalObject), arg2);
+        return appendCallSetResult(operation, result);
+    }
+
+    JITCompiler::Call callOperation(C_JITOperation_EGC operation, GPRReg result, TrustedImmPtr globalObject, GPRReg arg2)
+    {
+        m_jit.setupArgumentsWithExecState(globalObject, arg2);
         return appendCallSetResult(operation, result);
     }
 
@@ -1677,15 +1688,31 @@ public:
         return appendCallSetResult(operation, result);
     }
 
+    JITCompiler::Call callOperation(C_JITOperation_EGJ operation, GPRReg result, TrustedImmPtr globalObject, GPRReg arg1)
+    {
+        m_jit.setupArgumentsWithExecState(globalObject, arg1);
+        return appendCallSetResult(operation, result);
+    }
+
+    JITCompiler::Call callOperation(C_JITOperation_EGJ operation, GPRReg result, TrustedImmPtr globalObject, JSValueRegs arg1)
+    {
+        return callOperation(operation, result, globalObject, arg1.gpr());
+    }
+
     JITCompiler::Call callOperation(C_JITOperation_EGJ operation, GPRReg result, JSGlobalObject* globalObject, GPRReg arg1)
     {
-        m_jit.setupArgumentsWithExecState(TrustedImmPtr::weakPointer(m_jit.graph(), globalObject), arg1);
-        return appendCallSetResult(operation, result);
+        return callOperation(operation, result, TrustedImmPtr::weakPointer(m_jit.graph(), globalObject), arg1);
     }
 
     JITCompiler::Call callOperation(C_JITOperation_EGJ operation, GPRReg result, JSGlobalObject* globalObject, JSValueRegs arg1)
     {
         return callOperation(operation, result, globalObject, arg1.gpr());
+    }
+
+    JITCompiler::Call callOperation(C_JITOperation_EGJI operation, GPRReg result, JSGlobalObject* globalObject, JSValueRegs arg1, UniquedStringImpl* arg2)
+    {
+        m_jit.setupArgumentsWithExecState(TrustedImmPtr::weakPointer(m_jit.graph(), globalObject), arg1.gpr(), TrustedImmPtr(arg2));
+        return appendCallSetResult(operation, result);
     }
 
     JITCompiler::Call callOperation(C_JITOperation_EJ operation, GPRReg result, GPRReg arg1)
@@ -2333,9 +2360,21 @@ public:
         return appendCallSetResult(operation, result);
     }
 
+    JITCompiler::Call callOperation(C_JITOperation_EGJ operation, GPRReg result, TrustedImmPtr globalObject, JSValueRegs arg1)
+    {
+        m_jit.setupArgumentsWithExecState(globalObject, arg1.payloadGPR(), arg1.tagGPR());
+        return appendCallSetResult(operation, result);
+    }
+
     JITCompiler::Call callOperation(C_JITOperation_EGJ operation, GPRReg result, JSGlobalObject* globalObject, JSValueRegs arg1)
     {
         m_jit.setupArgumentsWithExecState(TrustedImmPtr::weakPointer(m_jit.graph(), globalObject), arg1.payloadGPR(), arg1.tagGPR());
+        return appendCallSetResult(operation, result);
+    }
+
+    JITCompiler::Call callOperation(C_JITOperation_EGJI operation, GPRReg result, JSGlobalObject* globalObject, JSValueRegs arg1, UniquedStringImpl* arg2)
+    {
+        m_jit.setupArgumentsWithExecState(TrustedImmPtr::weakPointer(m_jit.graph(), globalObject), arg1.payloadGPR(), arg1.tagGPR(), TrustedImmPtr(arg2));
         return appendCallSetResult(operation, result);
     }
 
@@ -2970,7 +3009,7 @@ public:
     void compileLazyJSConstant(Node*);
     void compileMaterializeNewObject(Node*);
     void compileRecordRegExpCachedResult(Node*);
-    void compileCallObjectConstructor(Node*);
+    void compileToObjectOrCallObjectConstructor(Node*);
     void compileResolveScope(Node*);
     void compileResolveScopeForHoistingFuncDeclInEval(Node*);
     void compileGetDynamicVar(Node*);
@@ -2978,6 +3017,7 @@ public:
     void compileCompareEqPtr(Node*);
     void compileDefineDataProperty(Node*);
     void compileDefineAccessorProperty(Node*);
+    void compileStringSlice(Node*);
     void compileToLowerCase(Node*);
     void compileThrow(Node*);
     void compileThrowStaticError(Node*);
@@ -3040,6 +3080,7 @@ public:
     void emitGetLength(CodeOrigin, GPRReg lengthGPR, bool includeThis = false);
     void emitGetCallee(CodeOrigin, GPRReg calleeGPR);
     void emitGetArgumentStart(CodeOrigin, GPRReg startGPR);
+    void emitPopulateSliceIndex(Edge&, GPRReg length, GPRReg result);
     
     // Generate an OSR exit fuzz check. Returns Jump() if OSR exit fuzz is not enabled, or if
     // it's in training mode.
@@ -3117,6 +3158,7 @@ public:
     void speculateStringOrOther(Edge, JSValueRegs, GPRReg scratch);
     void speculateStringOrOther(Edge);
     void speculateNotStringVar(Edge);
+    void speculateNotSymbol(Edge);
     template<typename StructureLocationType>
     void speculateStringObjectForStructure(Edge, StructureLocationType);
     void speculateStringObject(Edge, GPRReg);

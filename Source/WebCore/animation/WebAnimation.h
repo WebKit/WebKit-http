@@ -25,38 +25,54 @@
 
 #pragma once
 
+#include "ExceptionOr.h"
 #include <wtf/Forward.h>
-#include <wtf/MonotonicTime.h>
 #include <wtf/Optional.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
+#include <wtf/Seconds.h>
 
 namespace WebCore {
 
 class AnimationEffect;
 class AnimationTimeline;
+class Document;
 
 class WebAnimation final : public RefCounted<WebAnimation> {
 public:
-    static Ref<WebAnimation> create(AnimationTimeline*);
+    static Ref<WebAnimation> create(Document&, AnimationEffect*, AnimationTimeline*);
     ~WebAnimation();
 
     AnimationEffect* effect() const { return m_effect.get(); }
     void setEffect(RefPtr<AnimationEffect>&&);
     AnimationTimeline* timeline() const { return m_timeline.get(); }
+    void setTimeline(RefPtr<AnimationTimeline>&&);
+
     std::optional<double> bindingsStartTime() const;
     void setBindingsStartTime(std::optional<double>);
-    std::optional<MonotonicTime> startTime() const { return m_startTime; }
-    void setStartTime(MonotonicTime& startTime) { m_startTime = startTime; }
+    std::optional<Seconds> startTime() const;
+    void setStartTime(std::optional<Seconds>);
+
+    std::optional<double> bindingsCurrentTime() const;
+    ExceptionOr<void> setBindingsCurrentTime(std::optional<double>);
+    std::optional<Seconds> currentTime() const;
+    void setCurrentTime(std::optional<Seconds>);
+
+    double playbackRate() const { return m_playbackRate; }
+    void setPlaybackRate(double);
+
+    Seconds timeToNextRequiredTick(Seconds) const;
 
     String description();
 
 private:
-    WebAnimation(AnimationTimeline*);
+    WebAnimation();
+
     RefPtr<AnimationEffect> m_effect;
     RefPtr<AnimationTimeline> m_timeline;
-    std::optional<MonotonicTime> m_startTime;
+    std::optional<Seconds> m_startTime;
+    double m_playbackRate { 1 };
 };
 
 } // namespace WebCore

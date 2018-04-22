@@ -89,14 +89,6 @@ Bug(WPE) css2.1/20110323/vertical-align-boxes-001.htm [ ImageOnlyFailure ]
 
 Bug(WPE) ietestcenter/css3/flexbox/flexbox-align-stretch-001.htm [ ImageOnlyFailure ]
 Bug(WPE) ietestcenter/css3/flexbox/flexbox-layout-002.htm [ ImageOnlyFailure ]
-Bug(WPE) ietestcenter/css3/multicolumn/column-containing-block-001.htm [ ImageOnlyFailure ]
-Bug(WPE) ietestcenter/css3/multicolumn/column-containing-block-002.htm [ ImageOnlyFailure ]
-Bug(WPE) ietestcenter/css3/multicolumn/column-filling-001.htm [ ImageOnlyFailure ]
-Bug(WPE) ietestcenter/css3/multicolumn/column-width-applies-to-007.htm [ ImageOnlyFailure ]
-Bug(WPE) ietestcenter/css3/multicolumn/column-width-applies-to-009.htm [ ImageOnlyFailure ]
-Bug(WPE) ietestcenter/css3/multicolumn/column-width-applies-to-010.htm [ ImageOnlyFailure ]
-Bug(WPE) ietestcenter/css3/multicolumn/column-width-applies-to-012.htm [ ImageOnlyFailure ]
-Bug(WPE) ietestcenter/css3/multicolumn/column-width-applies-to-015.htm [ ImageOnlyFailure ]
 Bug(WPE) ietestcenter/css3/valuesandunits/units-000.htm [ ImageOnlyFailure ]
 
 # These are prone to run in parallel, consuming all the memory on the system.
@@ -217,6 +209,9 @@ Bug(WPE) imported/mathml-in-html5 [ Skip ]
 Bug(WPE) imported/mozilla [ Skip ]
 Bug(WPE) imported/w3c/css [ Skip ]
 Bug(WPE) imported/w3c/web-platform-tests [ Skip ]
+
+imported/w3c/web-platform-tests/dom [ Pass ]
+imported/w3c/web-platform-tests/dom/nodes/Document-constructor-svg.svg [ Timeout ]
 
 Bug(WPE) imported/w3c/IndexedDB-private-browsing/idb_webworkers.html [ Failure ]
 webkit.org/b/167576 imported/w3c/IndexedDB-private-browsing/idbcursor_iterating.html [ Crash ]
@@ -886,8 +881,12 @@ webkit.org/b/139489 http/tests/css/link-css-disabled-value-with-slow-loading-she
 webkit.org/b/139489 http/tests/css/link-css-disabled-value-with-slow-loading-sheet-in-error.html [ Failure Pass ]
 
 webkit.org/b/175419 http/tests/workers/service [ Skip ]
+webkit.org/b/175419 http/tests/inspector/network/resource-response-service-worker.html [ Skip ]
 webkit.org/b/178576 http/wpt/service-workers/extendableEvent.https.html [ Failure ]
 webkit.org/b/178576 http/wpt/service-workers/fetchEvent.https.html [ Failure ]
+webkit.org/b/178576 imported/w3c/web-platform-tests/service-workers [ Skip ]
+webkit.org/b/178576 imported/w3c/web-platform-tests/service-workers/stub-4.6.2-cache.html [ Pass ]
+webkit.org/b/178576 imported/w3c/web-platform-tests/service-workers/stub-4.6.3-cache-storage.html [ Pass ]
 
 webkit.org/b/178316 imported/w3c/web-platform-tests/service-workers/cache-storage [ Skip ]
 webkit.org/b/178316 http/wpt/cache-storage [ Skip ]

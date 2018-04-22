@@ -65,6 +65,14 @@ public:
     const String& shippingOption() const { return m_shippingOption; }
     std::optional<PaymentShippingType> shippingType() const;
 
+    enum class State {
+        Created,
+        Interactive,
+        Closed,
+    };
+
+    State state() const { return m_state; }
+
     const PaymentOptions& paymentOptions() const { return m_options; }
     const PaymentDetailsInit& paymentDetails() const { return m_details; }
 
@@ -75,20 +83,11 @@ public:
     void complete(std::optional<PaymentComplete>&&);
     void cancel();
 
-    // EventTarget
-    bool dispatchEvent(Event&) final;
-
     using MethodIdentifier = Variant<String, URL>;
     using RefCounted<PaymentRequest>::ref;
     using RefCounted<PaymentRequest>::deref;
 
 private:
-    enum class State {
-        Created,
-        Interactive,
-        Closed,
-    };
-
     struct Method {
         MethodIdentifier identifier;
         String serializedData;

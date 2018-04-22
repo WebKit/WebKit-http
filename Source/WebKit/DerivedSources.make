@@ -126,7 +126,6 @@ MESSAGE_RECEIVERS = \
     RemoteWebInspectorUI \
     SecItemShimProxy \
     ServiceWorkerClientFetch \
-    ServiceWorkerContextManager \
     SmartMagnificationController \
     StorageAreaMap \
     StorageManager \
@@ -163,6 +162,7 @@ MESSAGE_RECEIVERS = \
     WebPaymentCoordinator \
     WebPaymentCoordinatorProxy \
     WebSWClientConnection \
+    WebSWContextManagerConnection \
     WebSWServerConnection \
     PlaybackSessionManager \
     PlaybackSessionManagerProxy \
@@ -288,11 +288,17 @@ all : WebAutomationSessionProxyScriptSource.h
 # WebPreferences generation
 
 WEB_PREFERENCES_TEMPLATES = \
+    $(WebKit2)/Scripts/PreferencesTemplates/WebPageUpdatePreferences.cpp.erb \
     $(WebKit2)/Scripts/PreferencesTemplates/WebPreferencesDefinitions.h.erb \
+    $(WebKit2)/Scripts/PreferencesTemplates/WebPreferencesExperimentalFeatures.cpp.erb \
+    $(WebKit2)/Scripts/PreferencesTemplates/WebPreferencesKeys.h.erb \
+    $(WebKit2)/Scripts/PreferencesTemplates/WebPreferencesKeys.cpp.erb \
+    $(WebKit2)/Scripts/PreferencesTemplates/WebPreferencesStoreDefaultsMap.cpp.erb \
+
 #
 
-all : WebPreferencesDefinitions.h
+all : WebPageUpdatePreferences.cpp WebPreferencesDefinitions.h WebPreferencesExperimentalFeatures.cpp WebPreferencesKeys.h WebPreferencesKeys.cpp WebPreferencesStoreDefaultsMap.cpp
 
-WebPreferencesDefinitions%h : $(WebKit2)/Scripts/GeneratePreferences.rb $(WEB_PREFERENCES_TEMPLATES) $(WebKit2)/Shared/WebPreferences.yaml
+WebPageUpdatePreferences%cpp WebPreferencesDefinitions%h WebPreferencesExperimentalFeatures%cpp WebPreferencesKeys%h WebPreferencesKeys%cpp WebPreferencesStoreDefaultsMap%cpp : $(WebKit2)/Scripts/GeneratePreferences.rb $(WEB_PREFERENCES_TEMPLATES) $(WebKit2)/Shared/WebPreferences.yaml
 	$(RUBY) $< --input $(WebKit2)/Shared/WebPreferences.yaml
 

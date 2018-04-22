@@ -103,11 +103,6 @@ DocumentThreadableLoader::DocumentThreadableLoader(Document& document, Threadabl
 {
     relaxAdoptionRequirement();
 
-#if ENABLE(SERVICE_WORKER)
-    if (m_options.serviceWorkersMode == ServiceWorkersMode::All && !m_options.serviceWorkerIdentifier)
-        m_options.serviceWorkerIdentifier = document.selectedServiceWorkerIdentifier();
-#endif
-
     // Setting a referrer header is only supported in the async code path.
     ASSERT(m_async || m_referrer.isEmpty());
 
@@ -153,6 +148,17 @@ void DocumentThreadableLoader::makeCrossOriginAccessRequest(ResourceRequest&& re
     if ((m_options.preflightPolicy == ConsiderPreflight && isSimpleCrossOriginAccessRequest(request.httpMethod(), request.httpHeaderFields())) || m_options.preflightPolicy == PreventPreflight)
         makeSimpleCrossOriginAccessRequest(WTFMove(request));
     else {
+#if ENABLE(SERVICE_WORKER)
+        if (m_options.serviceWorkersMode == ServiceWorkersMode::All && m_async) {
+            if (m_options.serviceWorkerIdentifier || document().activeServiceWorker()) {
+                ASSERT(!m_bypassingPreflightForServiceWorkerRequest);
+                m_bypassingPreflightForServiceWorkerRequest = WTFMove(request);
+                m_options.serviceWorkersMode = ServiceWorkersMode::Only;
+                loadRequest(ResourceRequest { m_bypassingPreflightForServiceWorkerRequest.value() }, SkipSecurityCheck);
+                return;
+            }
+        }
+#endif
         m_simpleRequest = false;
         if (CrossOriginPreflightResultCache::singleton().canSkipPreflight(securityOrigin().toString(), request.url(), m_options.storedCredentialsPolicy, request.httpMethod(), request.httpHeaderFields()))
             preflightSuccess(WTFMove(request));
@@ -228,7 +234,7 @@ void DocumentThreadableLoader::clearResource()
         m_preflightChecker = std::nullopt;
 }
 
-void DocumentThreadableLoader::redirectReceived(CachedResource& resource, ResourceRequest& request, const ResourceResponse& redirectResponse)
+void DocumentThreadableLoader::redirectReceived(CachedResource& resource, ResourceRequest&& request, const ResourceResponse& redirectResponse, CompletionHandler<void(ResourceRequest&&)>&& completionHandler)
 {
     ASSERT(m_client);
     ASSERT_UNUSED(resource, &resource == m_resource);
@@ -242,18 +248,18 @@ void DocumentThreadableLoader::redirectReceived(CachedResource& resource, Resour
     if (!request.url().protocolIsInHTTPFamily() && m_options.initiator == cachedResourceRequestInitiators().fetch) {
         reportRedirectionWithBadScheme(request.url());
         clearResource();
-        return;
+        return completionHandler(WTFMove(request));
     }
 
     if (!isAllowedByContentSecurityPolicy(request.url(), redirectResponse.isNull() ? ContentSecurityPolicy::RedirectResponseReceived::No : ContentSecurityPolicy::RedirectResponseReceived::Yes)) {
         reportContentSecurityPolicyError(redirectResponse.url());
         clearResource();
-        return;
+        return completionHandler(WTFMove(request));
     }
 
     // Allow same origin requests to continue after allowing clients to audit the redirect.
     if (isAllowedRedirect(request.url()))
-        return;
+        return completionHandler(WTFMove(request));
 
     // Force any subsequent request to use these checks.
     m_sameOriginRequest = false;
@@ -270,7 +276,7 @@ void DocumentThreadableLoader::redirectReceived(CachedResource& resource, Resour
     // Except in case where preflight is needed, loading should be able to continue on its own.
     // But we also handle credentials here if it is restricted to SameOrigin.
     if (m_options.credentials != FetchOptions::Credentials::SameOrigin && m_simpleRequest && isSimpleCrossOriginAccessRequest(request.httpMethod(), *m_originalHeaders))
-        return;
+        return completionHandler(WTFMove(request));
 
     m_options.storedCredentialsPolicy = StoredCredentialsPolicy::DoNotUse;
 
@@ -283,6 +289,7 @@ void DocumentThreadableLoader::redirectReceived(CachedResource& resource, Resour
     request.setHTTPHeaderFields(*m_originalHeaders);
 
     makeCrossOriginAccessRequest(ResourceRequest(request));
+    completionHandler(WTFMove(request));
 }
 
 void DocumentThreadableLoader::dataSent(CachedResource& resource, unsigned long long bytesSent, unsigned long long totalBytesToBeSent)
@@ -397,6 +404,13 @@ void DocumentThreadableLoader::didFinishLoading(unsigned long identifier)
 void DocumentThreadableLoader::didFail(unsigned long, const ResourceError& error)
 {
     ASSERT(m_client);
+#if ENABLE(SERVICE_WORKER)
+    if (m_bypassingPreflightForServiceWorkerRequest) {
+        m_options.serviceWorkersMode = ServiceWorkersMode::None;
+        makeCrossOriginAccessRequest(WTFMove(m_bypassingPreflightForServiceWorkerRequest.value()));
+        return;
+    }
+#endif
     logErrorAndFail(error);
 }
 

@@ -226,6 +226,7 @@ public:
 // playback state
     WEBCORE_EXPORT double currentTime() const override;
     void setCurrentTime(double) override;
+    void setCurrentTimeWithTolerance(double, double toleranceBefore, double toleranceAfter);
     double currentTimeForBindings() const { return currentTime(); }
     WEBCORE_EXPORT ExceptionOr<void> setCurrentTimeForBindings(double);
     WEBCORE_EXPORT double getStartDate() const;
@@ -541,7 +542,10 @@ public:
 #if !RELEASE_LOG_DISABLED
     const PAL::Logger& logger() const final { return *m_logger.get(); }
     const void* logIdentifier() const final { return reinterpret_cast<const void*>(m_logIdentifier); }
+    WTFLogChannel& logChannel() const final;
 #endif
+
+    bool willLog(WTFLogLevel) const;
 
 protected:
     HTMLMediaElement(const QualifiedName&, Document&, bool createdByParser);
@@ -582,8 +586,6 @@ protected:
 
 private:
     void createMediaPlayer();
-
-    bool alwaysCreateUserAgentShadowRoot() const override { return true; }
 
     bool supportsFocus() const override;
     bool isMouseFocusable() const override;
@@ -661,7 +663,7 @@ private:
     void enqueuePlaybackTargetAvailabilityChangedEvent();
 
     using EventTarget::dispatchEvent;
-    bool dispatchEvent(Event&) override;
+    void dispatchEvent(Event&) override;
 #endif
 
 #if ENABLE(MEDIA_SESSION)
@@ -836,7 +838,7 @@ private:
     SleepType shouldDisableSleep() const;
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
-    void didAddUserAgentShadowRoot(ShadowRoot*) override;
+    void didAddUserAgentShadowRoot(ShadowRoot&) override;
     DOMWrapperWorld& ensureIsolatedWorld();
     bool ensureMediaControlsInjectedScript();
 #endif
@@ -902,13 +904,10 @@ private:
 
 #if !RELEASE_LOG_DISABLED
     const char* logClassName() const final { return "HTMLMediaElement"; }
-    WTFLogChannel& logChannel() const final;
 
     const void* mediaPlayerLogIdentifier() final { return logIdentifier(); }
     const PAL::Logger& mediaPlayerLogger() final { return logger(); }
 #endif
-
-    bool willLog(WTFLogLevel) const;
 
     WeakPtrFactory<HTMLMediaElement> m_weakFactory;
     Timer m_pendingActionTimer;

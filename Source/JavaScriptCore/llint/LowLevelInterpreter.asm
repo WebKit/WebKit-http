@@ -1638,6 +1638,17 @@ _llint_op_nop:
     dispatch(constexpr op_nop_length)
 
 
+_llint_op_super_sampler_begin:
+    callOpcodeSlowPath(_llint_slow_path_super_sampler_begin)
+    dispatch(constexpr op_super_sampler_begin_length)
+
+
+_llint_op_super_sampler_end:
+    traceExecution()
+    callOpcodeSlowPath(_llint_slow_path_super_sampler_end)
+    dispatch(constexpr op_super_sampler_end_length)
+
+
 _llint_op_switch_string:
     traceExecution()
     callOpcodeSlowPath(_llint_slow_path_switch_string)
@@ -1833,6 +1844,15 @@ _llint_native_call_trampoline:
 
 _llint_native_construct_trampoline:
     nativeCallTrampoline(NativeExecutable::m_constructor)
+
+
+_llint_internal_function_call_trampoline:
+    internalFunctionCallTrampoline(InternalFunction::m_functionForCall)
+
+
+_llint_internal_function_construct_trampoline:
+    internalFunctionCallTrampoline(InternalFunction::m_functionForConstruct)
+
 
 _llint_op_get_enumerable_length:
     traceExecution()

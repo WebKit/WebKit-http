@@ -48,7 +48,6 @@
 #import <WebCore/CertificateInfo.h>
 #import <WebCore/PluginData.h>
 #import <pal/spi/cf/CFNetworkSPI.h>
-#import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
 #import <wtf/RetainPtr.h>
 
 #if PLATFORM(IOS)
@@ -214,7 +213,8 @@ static WebKit::HTTPCookieAcceptPolicy toHTTPCookieAcceptPolicy(NSHTTPCookieAccep
     auto copy = adoptNS([(NSObject *)object copy]);
 
     auto data = adoptNS([[NSMutableData alloc] init]);
-    auto keyedArchiver = secureArchiverFromMutableData(data.get());
+    auto keyedArchiver = adoptNS([[NSKeyedArchiver alloc] initForWritingWithMutableData:data.get()]);
+    [keyedArchiver setRequiresSecureCoding:YES];
 
     @try {
         [keyedArchiver encodeObject:copy.get() forKey:@"parameter"];
@@ -236,7 +236,8 @@ static WebKit::HTTPCookieAcceptPolicy toHTTPCookieAcceptPolicy(NSHTTPCookieAccep
     auto copy = adoptNS([[NSDictionary alloc] initWithDictionary:dictionary copyItems:YES]);
 
     auto data = adoptNS([[NSMutableData alloc] init]);
-    auto keyedArchiver = secureArchiverFromMutableData(data.get());
+    auto keyedArchiver = adoptNS([[NSKeyedArchiver alloc] initForWritingWithMutableData:data.get()]);
+    [keyedArchiver setRequiresSecureCoding:YES];
 
     @try {
         [keyedArchiver encodeObject:copy.get() forKey:@"parameters"];
@@ -443,6 +444,13 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
 - (void)_setCookieStoragePartitioningEnabled:(BOOL)enabled
 {
     _processPool->setCookieStoragePartitioningEnabled(enabled);
+}
+
+- (void)_setAllowsAnySSLCertificateForServiceWorker:(BOOL) allows
+{
+#if ENABLE(SERVICE_WORKER)
+    _processPool->setAllowsAnySSLCertificateForServiceWorker(allows);
+#endif
 }
 
 #if PLATFORM(IOS)

@@ -509,6 +509,8 @@ shouldConvertInvalidURLsToBlank:
 
 springTimingFunctionEnabled:
   initial: false
+conicGradientsEnabled:
+  initial: false
 
 treatIPAddressAsDomain:
   initial: false
@@ -676,7 +678,7 @@ forcePendingWebGLPolicy:
 
 mediaKeysStorageDirectory:
   type: String
-  conditional: LEGACY_ENCRYPTED_MEDIA
+
 mediaDeviceIdentifierStorageDirectory:
   type: String
   conditional: MEDIA_STREAM

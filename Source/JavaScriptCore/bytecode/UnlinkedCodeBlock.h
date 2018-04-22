@@ -46,7 +46,9 @@
 
 namespace JSC {
 
+class BytecodeLivenessAnalysis;
 class BytecodeRewriter;
+class CodeBlock;
 class Debugger;
 class FunctionExecutable;
 class ParserError;
@@ -397,6 +399,13 @@ public:
 
     void dump(PrintStream&) const;
 
+    BytecodeLivenessAnalysis& livenessAnalysis(CodeBlock* codeBlock)
+    {
+        if (m_liveness)
+            return *m_liveness;
+        return livenessAnalysisSlow(codeBlock);
+    }
+
 protected:
     UnlinkedCodeBlock(VM*, Structure*, CodeType, const ExecutableInfo&, DebuggerMode);
     ~UnlinkedCodeBlock();
@@ -408,7 +417,7 @@ protected:
 
 private:
     friend class BytecodeRewriter;
-    void applyModification(BytecodeRewriter&);
+    void applyModification(BytecodeRewriter&, UnpackedInstructions&);
 
     void createRareDataIfNecessary()
     {
@@ -419,10 +428,12 @@ private:
     }
 
     void getLineAndColumn(const ExpressionRangeInfo&, unsigned& line, unsigned& column) const;
+    BytecodeLivenessAnalysis& livenessAnalysisSlow(CodeBlock*);
 
     int m_numParameters;
 
     std::unique_ptr<UnlinkedInstructionStream> m_unlinkedInstructions;
+    std::unique_ptr<BytecodeLivenessAnalysis> m_liveness;
 
     VirtualRegister m_thisRegister;
     VirtualRegister m_scopeRegister;
@@ -448,6 +459,7 @@ private:
     unsigned m_lineCount;
     unsigned m_endColumn;
 
+    Lock m_lock;
     TriState m_didOptimize;
     SourceParseMode m_parseMode;
     CodeFeatures m_features;

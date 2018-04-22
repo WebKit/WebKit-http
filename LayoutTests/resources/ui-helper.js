@@ -47,6 +47,13 @@ window.UIHelper = class UIHelper {
         });
     }
 
+    static activateElement(element)
+    {
+        const x = element.offsetLeft + element.offsetWidth / 2;
+        const y = element.offsetTop + element.offsetHeight / 2;
+        return UIHelper.activateAt(x, y);
+    }
+
     static keyDown(key)
     {
         if (!this.isWebKit2() || !this.isIOS()) {
@@ -148,5 +155,10 @@ window.UIHelper = class UIHelper {
         }
 
         return promise.then(finish, finish);
+    }
+
+    static withUserGesture(callback)
+    {
+        internals.withUserGesture(callback);
     }
 }

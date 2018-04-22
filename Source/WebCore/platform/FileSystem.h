@@ -33,6 +33,7 @@
 #include <time.h>
 #include <utility>
 #include <wtf/Forward.h>
+#include <wtf/OptionSet.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
@@ -56,6 +57,10 @@ typedef struct _GFileIOStream GFileIOStream;
 
 namespace WebCore {
 
+struct FileMetadata;
+
+namespace FileSystem {
+
 // PlatformFileHandle
 #if USE(GLIB) && !PLATFORM(WIN)
 typedef GFileIOStream* PlatformFileHandle;
@@ -70,29 +75,27 @@ typedef int PlatformFileHandle;
 const PlatformFileHandle invalidPlatformFileHandle = -1;
 #endif
 
-enum FileOpenMode {
-    OpenForRead = 0,
-    OpenForWrite,
+enum class FileOpenMode {
+    Read,
+    Write,
 #if OS(DARWIN)
-    OpenForEventsOnly
+    EventsOnly,
 #endif
 };
 
-enum FileSeekOrigin {
-    SeekFromBeginning = 0,
-    SeekFromCurrent,
-    SeekFromEnd
+enum class FileSeekOrigin {
+    Beginning,
+    Current,
+    End,
 };
 
-enum FileLockMode {
-    LockShared = 1,
-    LockExclusive = 2,
-    LockNonBlocking = 4
+enum class FileLockMode {
+    Shared = 1 << 0,
+    Exclusive = 1 << 1,
+    Nonblocking = 1 << 2,
 };
 
 enum class ShouldFollowSymbolicLinks { No, Yes };
-
-struct FileMetadata;
 
 WEBCORE_EXPORT bool fileExists(const String&);
 WEBCORE_EXPORT bool deleteFile(const String&);
@@ -143,7 +146,7 @@ WEBCORE_EXPORT int writeToFile(PlatformFileHandle, const char* data, int length)
 // Returns number of bytes actually written if successful, -1 otherwise.
 WEBCORE_EXPORT int readFromFile(PlatformFileHandle, char* data, int length);
 
-WEBCORE_EXPORT PlatformFileHandle openAndLockFile(const String&, FileOpenMode, FileLockMode = LockExclusive);
+WEBCORE_EXPORT PlatformFileHandle openAndLockFile(const String&, FileOpenMode, OptionSet<FileLockMode> = FileLockMode::Exclusive);
 WEBCORE_EXPORT void unlockAndCloseFile(PlatformFileHandle);
 
 // Appends the contents of the file found at 'path' to the open PlatformFileHandle.
@@ -154,7 +157,7 @@ bool appendFileContentsToFileHandle(const String& path, PlatformFileHandle&);
 bool hardLinkOrCopyFile(const String& source, const String& destination);
 
 #if USE(FILE_LOCK)
-WEBCORE_EXPORT bool lockFile(PlatformFileHandle, FileLockMode);
+WEBCORE_EXPORT bool lockFile(PlatformFileHandle, OptionSet<FileLockMode>);
 WEBCORE_EXPORT bool unlockFile(PlatformFileHandle);
 #endif
 
@@ -213,5 +216,6 @@ inline MappedFileData& MappedFileData::operator=(MappedFileData&& other)
     return *this;
 }
 
+} // namespace FileSystem
 } // namespace WebCore
 

@@ -28,7 +28,9 @@
 
 #if ENABLE(ATTACHMENT_ELEMENT)
 
+#include "Editor.h"
 #include "File.h"
+#include "Frame.h"
 #include "HTMLNames.h"
 #include "RenderAttachment.h"
 
@@ -67,6 +69,25 @@ void HTMLAttachmentElement::setFile(File* file)
         renderer->invalidate();
 }
 
+Node::InsertedIntoAncestorResult HTMLAttachmentElement::insertedIntoAncestor(InsertionType type, ContainerNode& ancestor)
+{
+    auto result = HTMLElement::insertedIntoAncestor(type, ancestor);
+    if (auto* frame = document().frame()) {
+        if (type.connectedToDocument)
+            frame->editor().didInsertAttachmentElement(*this);
+    }
+    return result;
+}
+
+void HTMLAttachmentElement::removedFromAncestor(RemovalType type, ContainerNode& ancestor)
+{
+    HTMLElement::removedFromAncestor(type, ancestor);
+    if (auto* frame = document().frame()) {
+        if (type.disconnectedFromDocument)
+            frame->editor().didRemoveAttachmentElement(*this);
+    }
+}
+
 void HTMLAttachmentElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     if (name == progressAttr || name == subtitleAttr || name == titleAttr || name == typeAttr) {
@@ -75,6 +96,16 @@ void HTMLAttachmentElement::parseAttribute(const QualifiedName& name, const Atom
     }
 
     HTMLElement::parseAttribute(name, value);
+}
+
+String HTMLAttachmentElement::uniqueIdentifier() const
+{
+    return attributeWithoutSynchronization(HTMLNames::webkitattachmentidAttr);
+}
+
+void HTMLAttachmentElement::setUniqueIdentifier(const String& identifier)
+{
+    setAttributeWithoutSynchronization(HTMLNames::webkitattachmentidAttr, identifier);
 }
 
 String HTMLAttachmentElement::attachmentTitle() const

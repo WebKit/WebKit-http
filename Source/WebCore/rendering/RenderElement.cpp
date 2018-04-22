@@ -73,6 +73,7 @@
 #include "StylePendingResources.h"
 #include "StyleResolver.h"
 #include "TextAutoSizing.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/MathExtras.h>
 #include <wtf/StackStats.h>
 
@@ -80,8 +81,10 @@
 
 namespace WebCore {
 
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderElement);
+
 struct SameSizeAsRenderElement : public RenderObject {
-    uint32_t bitfields;
+    unsigned bitfields : 25;
     void* firstChild;
     void* lastChild;
     RenderStyle style;
@@ -101,8 +104,9 @@ inline RenderElement::RenderElement(ContainerNode& elementOrDocument, RenderStyl
     , m_renderBoxNeedsLazyRepaint(false)
     , m_hasPausedImageAnimations(false)
     , m_hasCounterNodeMap(false)
-    , m_hasContinuation(false)
+    , m_hasContinuationChainNode(false)
     , m_isContinuation(false)
+    , m_isFirstLetter(false)
     , m_hasValidCachedFirstLineStyle(false)
     , m_renderBlockHasMarginBeforeQuirk(false)
     , m_renderBlockHasMarginAfterQuirk(false)
@@ -527,7 +531,7 @@ void RenderElement::destroyLeftoverChildren()
 
 void RenderElement::insertChildInternal(RenderPtr<RenderObject> newChildPtr, RenderObject* beforeChild, NotifyChildrenType notifyChildren)
 {
-    RELEASE_ASSERT_WITH_MESSAGE(!view().layoutState(), "Layout must not mutate render tree");
+    RELEASE_ASSERT_WITH_MESSAGE(!view().frameView().layoutContext().layoutState(), "Layout must not mutate render tree");
 
     ASSERT(canHaveChildren() || canHaveGeneratedChildren());
     ASSERT(!newChildPtr->parent());
@@ -537,6 +541,7 @@ void RenderElement::insertChildInternal(RenderPtr<RenderObject> newChildPtr, Ren
         beforeChild = beforeChild->parent();
 
     ASSERT(!beforeChild || beforeChild->parent() == this);
+    ASSERT(!is<RenderText>(beforeChild) || !downcast<RenderText>(*beforeChild).inlineWrapperForDisplayContents());
 
     // Take the ownership.
     auto* newChild = newChildPtr.release();
@@ -583,7 +588,7 @@ void RenderElement::insertChildInternal(RenderPtr<RenderObject> newChildPtr, Ren
 
 RenderPtr<RenderObject> RenderElement::takeChildInternal(RenderObject& oldChild, NotifyChildrenType notifyChildren)
 {
-    RELEASE_ASSERT_WITH_MESSAGE(!view().layoutState(), "Layout must not mutate render tree");
+    RELEASE_ASSERT_WITH_MESSAGE(!view().frameView().layoutContext().layoutState(), "Layout must not mutate render tree");
 
     ASSERT(canHaveChildren() || canHaveGeneratedChildren());
     ASSERT(oldChild.parent() == this);
@@ -813,7 +818,7 @@ void RenderElement::propagateStyleToAnonymousChildren(StylePropagationType propa
 
         // Preserve the position style of anonymous block continuations as they can have relative or sticky position when
         // they contain block descendants of relative or sticky positioned inlines.
-        if (elementChild.isInFlowPositioned() && downcast<RenderBlock>(elementChild).isAnonymousBlockContinuation())
+        if (elementChild.isInFlowPositioned() && elementChild.isContinuation())
             newStyle.setPosition(elementChild.style().position());
 
         updateAnonymousChildStyle(elementChild, newStyle);
@@ -961,8 +966,11 @@ void RenderElement::handleDynamicFloatPositionChange()
 
 void RenderElement::removeAnonymousWrappersForInlinesIfNecessary()
 {
-    RenderBlock& parentBlock = downcast<RenderBlock>(*parent());
-    if (!parentBlock.canDropAnonymousBlockChild())
+    // FIXME: Move to RenderBlock.
+    if (!is<RenderBlock>(*this))
+        return;
+    RenderBlock& thisBlock = downcast<RenderBlock>(*this);
+    if (!thisBlock.canDropAnonymousBlockChild())
         return;
 
     // We have changed to floated or out-of-flow positioning so maybe all our parent's
@@ -970,18 +978,18 @@ void RenderElement::removeAnonymousWrappersForInlinesIfNecessary()
     // otherwise we can proceed to stripping solitary anonymous wrappers from the inlines.
     // FIXME: We should also handle split inlines here - we exclude them at the moment by returning
     // if we find a continuation.
-    RenderObject* current = parent()->firstChild();
-    while (current && ((current->isAnonymousBlock() && !downcast<RenderBlock>(*current).isAnonymousBlockContinuation()) || current->style().isFloating() || current->style().hasOutOfFlowPosition()))
+    RenderObject* current = firstChild();
+    while (current && ((current->isAnonymousBlock() && !downcast<RenderBlock>(*current).isContinuation()) || current->style().isFloating() || current->style().hasOutOfFlowPosition()))
         current = current->nextSibling();
 
     if (current)
         return;
 
     RenderObject* next;
-    for (current = parent()->firstChild(); current; current = next) {
+    for (current = firstChild(); current; current = next) {
         next = current->nextSibling();
         if (current->isAnonymousBlock())
-            parentBlock.dropAnonymousBoxChild(parentBlock, downcast<RenderBlock>(*current));
+            thisBlock.dropAnonymousBoxChild(downcast<RenderBlock>(*current));
     }
 }
 
@@ -1010,7 +1018,7 @@ void RenderElement::styleDidChange(StyleDifference diff, const RenderStyle* oldS
         handleDynamicFloatPositionChange();
 
     if (s_noLongerAffectsParentBlock)
-        removeAnonymousWrappersForInlinesIfNecessary();
+        parent()->removeAnonymousWrappersForInlinesIfNecessary();
 
     SVGRenderSupport::styleChanged(*this, oldStyle);
 
@@ -1101,7 +1109,7 @@ inline void RenderElement::clearSubtreeLayoutRootIfNeeded() const
     if (renderTreeBeingDestroyed())
         return;
 
-    if (view().frameView().subtreeLayoutRoot() != this)
+    if (view().frameView().layoutContext().subtreeLayoutRoot() != this)
         return;
 
     // Normally when a renderer is detached from the tree, the appropriate dirty bits get set
@@ -1111,7 +1119,7 @@ inline void RenderElement::clearSubtreeLayoutRootIfNeeded() const
     // This indicates a failure to layout the child, which is why
     // the layout root is still set to |this|. Make sure to clear it
     // since we are getting destroyed.
-    view().frameView().clearSubtreeLayoutRoot();
+    view().frameView().layoutContext().clearSubtreeLayoutRoot();
 }
 
 void RenderElement::willBeDestroyed()
@@ -2152,8 +2160,10 @@ void RenderElement::updateOutlineAutoAncestor(bool hasOutlineAuto)
             continue;
         downcast<RenderElement>(child).updateOutlineAutoAncestor(hasOutlineAuto);
     }
-    if (hasContinuation())
-        downcast<RenderBoxModelObject>(*this).continuation()->updateOutlineAutoAncestor(hasOutlineAuto);
+    if (is<RenderBoxModelObject>(*this)) {
+        if (auto* continuation = downcast<RenderBoxModelObject>(*this).continuation())
+            continuation->updateOutlineAutoAncestor(hasOutlineAuto);
+    }
 }
 
 bool RenderElement::hasOutlineAnnotation() const
@@ -2171,7 +2181,7 @@ bool RenderElement::hasSelfPaintingLayer() const
 
 bool RenderElement::checkForRepaintDuringLayout() const
 {
-    if (document().view()->needsFullRepaint() || !everHadLayout() || hasSelfPaintingLayer())
+    if (document().view()->layoutContext().needsFullRepaint() || !everHadLayout() || hasSelfPaintingLayer())
         return false;
     return !settings().repaintOutsideLayoutEnabled();
 }

@@ -32,11 +32,7 @@
 // FIXME: For now default to the GBM EGL platform, but this should really be
 // somehow deducible from the build configuration.
 #define __GBM__ 1
-#if USE(LIBEPOXY)
 #include "EpoxyEGL.h"
-#else
-#include <EGL/egl.h>
-#endif
 #include <wpe/renderer-backend-egl.h>
 
 namespace WebCore {
@@ -54,7 +50,7 @@ void PlatformDisplayWPE::initialize(int hostFd)
 
     m_eglDisplay = eglGetDisplay(wpe_renderer_backend_egl_get_native_display(m_backend));
     if (m_eglDisplay == EGL_NO_DISPLAY) {
-        WTFLogAlways("PlatformDisplayWPE: could not create the EGL display.");
+        WTFLogAlways("PlatformDisplayWPE: could not create the EGL display: %s.", GLContextEGL::lastErrorString());
         return;
     }
 

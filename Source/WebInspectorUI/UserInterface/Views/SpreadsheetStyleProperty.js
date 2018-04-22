@@ -25,7 +25,7 @@
 
 WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 {
-    constructor(delegate, property, newlyAdded = false)
+    constructor(delegate, property, index)
     {
         super();
 
@@ -33,8 +33,8 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 
         this._delegate = delegate || null;
         this._property = property;
-        this._newlyAdded = newlyAdded;
         this._element = document.createElement("div");
+        this._element.dataset.propertyIndex = index;
 
         this._nameElement = null;
         this._valueElement = null;
@@ -45,8 +45,8 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         this._property.__propertyView = this;
 
         this._update();
-        property.addEventListener(WI.CSSProperty.Event.OverriddenStatusChanged, this._update, this);
-        property.addEventListener(WI.CSSProperty.Event.Changed, this.updateClassNames, this);
+        property.addEventListener(WI.CSSProperty.Event.OverriddenStatusChanged, this.updateStatus, this);
+        property.addEventListener(WI.CSSProperty.Event.Changed, this.updateStatus, this);
     }
 
     // Public
@@ -71,7 +71,7 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         this._element.classList.add("highlighted");
     }
 
-    updateClassNames()
+    updateStatus()
     {
         let duplicatePropertyExistsBelow = (cssProperty) => {
             let propertyFound = false;
@@ -86,10 +86,16 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
             return false;
         };
 
-        let classNames = ["property"];
+        let classNames = [WI.SpreadsheetStyleProperty.StyleClassName];
+        let elementTitle = "";
 
-        if (this._property.overridden)
+        if (this._property.overridden) {
             classNames.push("overridden");
+            if (duplicatePropertyExistsBelow(this._property)) {
+                classNames.push("has-warning");
+                elementTitle = WI.UIString("Duplicate property");
+            }
+        }
 
         if (this._property.implicit)
             classNames.push("implicit");
@@ -104,16 +110,22 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
             if (WI.CSSCompletions.cssNameCompletions)
                 propertyNameIsValid = WI.CSSCompletions.cssNameCompletions.isValidPropertyName(this._property.name);
 
-            if (!propertyNameIsValid || duplicatePropertyExistsBelow(this._property))
+            classNames.push("has-warning");
+
+            if (!propertyNameIsValid) {
                 classNames.push("invalid-name");
-            else
+                elementTitle = WI.UIString("Unsupported property name");
+            } else {
                 classNames.push("invalid-value");
+                elementTitle = WI.UIString("Unsupported property value");
+            }
         }
 
         if (!this._property.enabled)
             classNames.push("disabled");
 
         this._element.className = classNames.join(" ");
+        this._element.title = elementTitle;
     }
 
     // Private
@@ -131,7 +143,6 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
     _update()
     {
         this.element.removeChildren();
-        this.updateClassNames();
 
         if (this._property.editable) {
             this._checkboxElement = this.element.appendChild(document.createElement("input"));
@@ -139,7 +150,8 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
             this._checkboxElement.type = "checkbox";
             this._checkboxElement.checked = this._property.enabled;
             this._checkboxElement.tabIndex = -1;
-            this._checkboxElement.addEventListener("change", () => {
+            this._checkboxElement.addEventListener("click", (event) => {
+                event.stopPropagation();
                 let disabled = !this._checkboxElement.checked;
                 this._property.commentOut(disabled);
                 this._update();
@@ -174,8 +186,13 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 
         this.element.append(";");
 
-        if (!this._property.enabled)
+        if (this._property.enabled) {
+            this._warningElement = this.element.appendChild(document.createElement("span"));
+            this._warningElement.className = "warning";
+        } else
             this.element.append(" */");
+
+        this.updateStatus();
     }
 
     // SpreadsheetTextField delegate
@@ -199,20 +216,18 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         let propertyName = this._nameTextField.value.trim();
         let propertyValue = this._valueTextField.value.trim();
         let willRemoveProperty = false;
+        let newlyAdded = this._valueTextField.valueBeforeEditing === "";
 
         // Remove a property with an empty name or value. However, a newly added property
         // has an empty name and value at first. Don't remove it when moving focus from
         // the name to the value for the first time.
-        if (!propertyName || (!this._newlyAdded && !propertyValue))
+        if (!propertyName || (!newlyAdded && !propertyValue))
             willRemoveProperty = true;
 
         let isEditingName = textField === this._nameTextField;
 
         if (!isEditingName && !willRemoveProperty)
             this._renderValue(propertyValue);
-
-        if (propertyName && isEditingName)
-            this._newlyAdded = false;
 
         if (direction === "forward") {
             if (isEditingName && !willRemoveProperty) {
@@ -253,9 +268,11 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         let tokens = WI.tokenizeCSSValue(value);
 
         if (this._property.enabled) {
-            // Don't show color widgets for CSS gradients, show dedicated gradient widgets instead.
-            // FIXME: <https://webkit.org/b/178404> Web Inspector: [PARITY] Styles Redesign: Add bezier curve, color gradient, and CSS variable inline widgets
+            // FIXME: <https://webkit.org/b/178636> Web Inspector: Styles: Make inline widgets work with CSS functions (var(), calc(), etc.)
+            tokens = this._addGradientTokens(tokens);
             tokens = this._addColorTokens(tokens);
+            tokens = this._addTimingFunctionTokens(tokens, "cubic-bezier");
+            tokens = this._addTimingFunctionTokens(tokens, "spring");
         }
 
         tokens = tokens.map((token) => {
@@ -287,48 +304,79 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         this._valueElement.append(...tokens);
     }
 
+    _createInlineSwatch(type, text, valueObject)
+    {
+        let tokenElement = document.createElement("span");
+        let innerElement = document.createElement("span");
+        innerElement.textContent = text;
+
+        let readOnly = !this._property.editable;
+        let swatch = new WI.InlineSwatch(type, valueObject, readOnly);
+
+        swatch.addEventListener(WI.InlineSwatch.Event.ValueChanged, (event) => {
+            let value = event.data.value && event.data.value.toString();
+            if (!value)
+                return;
+
+            innerElement.textContent = value;
+            this._handleValueChange();
+        }, this);
+
+        tokenElement.append(swatch.element, innerElement);
+
+        // Prevent the value from editing when clicking on the swatch.
+        swatch.element.addEventListener("mousedown", (event) => { event.stop(); });
+
+        return tokenElement;
+    }
+
+    _addGradientTokens(tokens)
+    {
+        let gradientRegex = /^(repeating-)?(linear|radial)-gradient$/i;
+        let newTokens = [];
+        let gradientStartIndex = NaN;
+        let openParenthesis = 0;
+
+        for (let i = 0; i < tokens.length; i++) {
+            let token = tokens[i];
+            if (token.type && token.type.includes("atom") && gradientRegex.test(token.value)) {
+                gradientStartIndex = i;
+                openParenthesis = 0;
+            } else if (token.value === "(" && !isNaN(gradientStartIndex))
+                openParenthesis++;
+            else if (token.value === ")" && !isNaN(gradientStartIndex)) {
+                openParenthesis--;
+                if (openParenthesis > 0) {
+                    // Matched a CSS function inside of the gradient.
+                    continue;
+                }
+
+                let rawTokens = tokens.slice(gradientStartIndex, i + 1);
+                let text = rawTokens.map((token) => token.value).join("");
+                let gradient = WI.Gradient.fromString(text);
+                if (gradient)
+                    newTokens.push(this._createInlineSwatch(WI.InlineSwatch.Type.Gradient, text, gradient));
+                else
+                    newTokens.push(...rawTokens);
+
+                gradientStartIndex = NaN;
+            } else if (isNaN(gradientStartIndex))
+                newTokens.push(token);
+        }
+
+        return newTokens;
+    }
+
     _addColorTokens(tokens)
     {
         let newTokens = [];
 
-        let createColorTokenElement = (colorString, color) => {
-            let colorTokenElement = document.createElement("span");
-            colorTokenElement.className = "token-color";
-
-            let innerElement = document.createElement("span");
-            innerElement.className = "token-color-value";
-            innerElement.textContent = colorString;
-
-            if (color) {
-                let readOnly = !this._property.editable;
-                let swatch = new WI.InlineSwatch(WI.InlineSwatch.Type.Color, color, readOnly);
-
-                swatch.addEventListener(WI.InlineSwatch.Event.ValueChanged, (event) => {
-                    let value = event.data && event.data.value && event.data.value.toString();
-                    console.assert(value, "Color value is empty.");
-                    if (!value)
-                        return;
-
-                    innerElement.textContent = value;
-                    this._handleValueChange();
-                }, this);
-
-                colorTokenElement.append(swatch.element);
-
-                // Prevent the value from editing when clicking on the swatch.
-                swatch.element.addEventListener("mousedown", (event) => { event.stop(); });
-            }
-
-            colorTokenElement.append(innerElement);
-            return colorTokenElement;
-        };
-
-        let pushPossibleColorToken = (text, ...tokens) => {
+        let pushPossibleColorToken = (text, ...rawTokens) => {
             let color = WI.Color.fromString(text);
             if (color)
-                newTokens.push(createColorTokenElement(text, color));
+                newTokens.push(this._createInlineSwatch(WI.InlineSwatch.Type.Color, text, color));
             else
-                newTokens.push(...tokens);
+                newTokens.push(...rawTokens);
         };
 
         let colorFunctionStartIndex = NaN;
@@ -354,6 +402,51 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
                 pushPossibleColorToken(text, ...rawTokens);
                 colorFunctionStartIndex = NaN;
             } else
+                newTokens.push(token);
+        }
+
+        return newTokens;
+    }
+
+    _addTimingFunctionTokens(tokens, tokenType)
+    {
+        let newTokens = [];
+        let startIndex = NaN;
+        let openParenthesis = 0;
+
+        for (let i = 0; i < tokens.length; i++) {
+            let token = tokens[i];
+            if (token.value === tokenType && token.type && token.type.includes("atom")) {
+                startIndex = i;
+                openParenthesis = 0;
+            } else if (token.value === "(" && !isNaN(startIndex))
+                openParenthesis++;
+            else if (token.value === ")" && !isNaN(startIndex)) {
+
+                openParenthesis--;
+                if (openParenthesis > 0)
+                    continue;
+
+                let rawTokens = tokens.slice(startIndex, i + 1);
+                let text = rawTokens.map((token) => token.value).join("");
+
+                let valueObject;
+                let inlineSwatchType;
+                if (tokenType === "cubic-bezier") {
+                    valueObject = WI.CubicBezier.fromString(text);
+                    inlineSwatchType = WI.InlineSwatch.Type.Bezier;
+                } else if (tokenType === "spring") {
+                    valueObject = WI.Spring.fromString(text);
+                    inlineSwatchType = WI.InlineSwatch.Type.Spring;
+                }
+
+                if (valueObject)
+                    newTokens.push(this._createInlineSwatch(inlineSwatchType, text, valueObject));
+                else
+                    newTokens.push(...rawTokens);
+
+                startIndex = NaN;
+            } else if (isNaN(startIndex))
                 newTokens.push(token);
         }
 
@@ -409,5 +502,7 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         });
     }
 };
+
+WI.SpreadsheetStyleProperty.StyleClassName = "property";
 
 WI.SpreadsheetStyleProperty.CommitCoalesceDelay = 250;

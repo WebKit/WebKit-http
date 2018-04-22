@@ -49,7 +49,7 @@ public:
     bool isServiceWorkerGlobalScope() const final { return true; }
 
     ServiceWorkerClients& clients() { return m_clients.get(); }
-    ServiceWorkerRegistration& registration();
+    ServiceWorkerRegistration* registration();
     
     uint64_t serverConnectionIdentifier() const { return m_serverConnectionIdentifier; }
 
@@ -60,7 +60,7 @@ public:
     ServiceWorkerThread& thread();
 
 private:
-    ServiceWorkerGlobalScope(uint64_t serverConnectionIdentifier, const ServiceWorkerContextData&, const URL&, const String& identifier, const String& userAgent, ServiceWorkerThread&, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy*, SocketProvider*, PAL::SessionID);
+    ServiceWorkerGlobalScope(uint64_t serverConnectionIdentifier, const ServiceWorkerContextData&, const URL&, const String& identifier, const String& userAgent, bool isOnline, ServiceWorkerThread&, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy*, SocketProvider*, PAL::SessionID);
 
     uint64_t m_serverConnectionIdentifier;
     ServiceWorkerContextData m_contextData;

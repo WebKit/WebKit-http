@@ -41,6 +41,12 @@ public:
     WEBCORE_EXPORT File* file() const;
     void setFile(File*);
 
+    WEBCORE_EXPORT String uniqueIdentifier() const;
+    void setUniqueIdentifier(const String&);
+
+    InsertedIntoAncestorResult insertedIntoAncestor(InsertionType, ContainerNode&) final;
+    void removedFromAncestor(RemovalType, ContainerNode&) final;
+
     WEBCORE_EXPORT String attachmentTitle() const;
     String attachmentType() const;
 

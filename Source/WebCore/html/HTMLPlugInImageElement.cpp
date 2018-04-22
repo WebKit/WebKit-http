@@ -138,7 +138,7 @@ bool HTMLPlugInImageElement::isImageType()
     if (m_serviceType.isEmpty() && protocolIs(m_url, "data"))
         m_serviceType = mimeTypeFromDataURL(m_url);
 
-    if (auto* frame = document().frame())
+    if (auto frame = makeRefPtr(document().frame()))
         return frame->loader().client().objectContentType(document().completeURL(m_url), m_serviceType) == ObjectContentType::Image;
 
     return Image::supportsType(m_serviceType);
@@ -230,7 +230,7 @@ void HTMLPlugInImageElement::didAttachRenderers()
 
 void HTMLPlugInImageElement::willDetachRenderers()
 {
-    auto* widget = pluginWidget(PluginLoadingPolicy::DoNotLoad);
+    auto widget = makeRefPtr(pluginWidget(PluginLoadingPolicy::DoNotLoad));
     if (is<PluginViewBase>(widget))
         downcast<PluginViewBase>(*widget).willDetatchRenderer();
 
@@ -341,7 +341,7 @@ static DOMWrapperWorld& plugInImageElementIsolatedWorld()
     return isolatedWorld;
 }
 
-void HTMLPlugInImageElement::didAddUserAgentShadowRoot(ShadowRoot* root)
+void HTMLPlugInImageElement::didAddUserAgentShadowRoot(ShadowRoot& root)
 {
     HTMLPlugInElement::didAddUserAgentShadowRoot(root);
     if (displayState() >= PreparingPluginReplacement)
@@ -354,9 +354,9 @@ void HTMLPlugInImageElement::didAddUserAgentShadowRoot(ShadowRoot* root)
     // Reset any author styles that may apply as we only want explicit
     // styles defined in the injected user agents stylesheets to specify
     // the look-and-feel of the snapshotted plug-in overlay. 
-    root->setResetStyleInheritance(true);
+    root.setResetStyleInheritance(true);
     
-    String mimeType = loadedMimeType();
+    String mimeType = serviceType();
 
     auto& isolatedWorld = plugInImageElementIsolatedWorld();
     document().ensurePlugInsInjectedScript(isolatedWorld);
@@ -377,6 +377,7 @@ void HTMLPlugInImageElement::didAddUserAgentShadowRoot(ShadowRoot* root)
     // This parameter determines whether or not the snapshot overlay should always be visible over the plugin snapshot.
     // If no snapshot was found then we want the overlay to be visible.
     argList.append(toJS<IDLBoolean>(!m_snapshotImage));
+    ASSERT(!argList.hasOverflowed());
 
     // It is expected the JS file provides a createOverlay(shadowRoot, title, subtitle) function.
     auto* overlay = globalObject.get(&state, JSC::Identifier::fromString(&state, "createOverlay")).toObject(&state);
@@ -405,7 +406,7 @@ bool HTMLPlugInImageElement::partOfSnapshotOverlay(const Node* node) const
     auto queryResult = shadow->querySelector(selector.get());
     if (queryResult.hasException())
         return false;
-    auto* snapshotLabel = queryResult.releaseReturnValue();
+    auto snapshotLabel = makeRefPtr(queryResult.releaseReturnValue());
     return snapshotLabel && snapshotLabel->contains(node);
 }
 
@@ -424,7 +425,7 @@ void HTMLPlugInImageElement::restartSimilarPlugIns()
     // may be in different frames, so traverse from the top of the document.
 
     String plugInOrigin = m_loadedUrl.host();
-    String mimeType = loadedMimeType();
+    String mimeType = serviceType();
     Vector<Ref<HTMLPlugInImageElement>> similarPlugins;
 
     if (!document().page())
@@ -438,7 +439,7 @@ void HTMLPlugInImageElement::restartSimilarPlugIns()
             continue;
 
         for (auto& element : descendantsOfType<HTMLPlugInImageElement>(*frame->document())) {
-            if (plugInOrigin == element.loadedUrl().host() && mimeType == element.loadedMimeType())
+            if (plugInOrigin == element.loadedUrl().host() && mimeType == element.serviceType())
                 similarPlugins.append(element);
         }
     }
@@ -459,7 +460,7 @@ void HTMLPlugInImageElement::userDidClickSnapshot(MouseEvent& event, bool forwar
 
     String plugInOrigin = m_loadedUrl.host();
     if (document().page() && !SchemeRegistry::shouldTreatURLSchemeAsLocal(document().page()->mainFrame().document()->baseURL().protocol().toStringWithoutCopying()) && document().page()->settings().autostartOriginPlugInSnapshottingEnabled())
-        document().page()->plugInClient()->didStartFromOrigin(document().page()->mainFrame().document()->baseURL().host(), plugInOrigin, loadedMimeType(), document().page()->sessionID());
+        document().page()->plugInClient()->didStartFromOrigin(document().page()->mainFrame().document()->baseURL().host(), plugInOrigin, serviceType(), document().page()->sessionID());
 
     LOG(Plugins, "%p User clicked on snapshotted plug-in. Restart.", this);
     restartSnapshottedPlugIn();
@@ -537,7 +538,7 @@ void HTMLPlugInImageElement::checkSizeChangeForSnapshotting()
     LOG(Plugins, "%p Plug-in originally avoided snapshotting because it was sized %dx%d. Now it is %dx%d. Tell it to snapshot.\n", this, m_sizeWhenSnapshotted.width(), m_sizeWhenSnapshotted.height(), contentWidth, contentHeight);
     setDisplayState(WaitingForSnapshot);
     m_snapshotDecision = Snapshotted;
-    auto* widget = pluginWidget();
+    auto widget = makeRefPtr(pluginWidget());
     if (is<PluginViewBase>(widget))
         downcast<PluginViewBase>(*widget).beginSnapshottingRunningPlugin();
 }
@@ -601,7 +602,7 @@ void HTMLPlugInImageElement::subframeLoaderWillCreatePlugIn(const URL& url)
 {
     LOG(Plugins, "%p Plug-in URL: %s", this, m_url.utf8().data());
     LOG(Plugins, "   Actual URL: %s", url.string().utf8().data());
-    LOG(Plugins, "   MIME type: %s", loadedMimeType().utf8().data());
+    LOG(Plugins, "   MIME type: %s", serviceType().utf8().data());
 
     m_loadedUrl = url;
     m_plugInWasCreated = false;
@@ -663,14 +664,14 @@ void HTMLPlugInImageElement::subframeLoaderWillCreatePlugIn(const URL& url)
         return;
     }
 
-    if (document().page()->settings().autostartOriginPlugInSnapshottingEnabled() && document().page()->plugInClient() && document().page()->plugInClient()->shouldAutoStartFromOrigin(document().page()->mainFrame().document()->baseURL().host(), url.host(), loadedMimeType())) {
+    if (document().page()->settings().autostartOriginPlugInSnapshottingEnabled() && document().page()->plugInClient() && document().page()->plugInClient()->shouldAutoStartFromOrigin(document().page()->mainFrame().document()->baseURL().host(), url.host(), serviceType())) {
         LOG(Plugins, "%p Plug-in from (%s, %s) is marked to auto-start, set to play", this, document().page()->mainFrame().document()->baseURL().host().utf8().data(), url.host().utf8().data());
         m_snapshotDecision = NeverSnapshot;
         return;
     }
 
-    if (m_loadedUrl.isEmpty() && !loadedMimeType().isEmpty()) {
-        LOG(Plugins, "%p Plug-in has no src URL but does have a valid mime type %s, set to play", this, loadedMimeType().utf8().data());
+    if (m_loadedUrl.isEmpty() && !serviceType().isEmpty()) {
+        LOG(Plugins, "%p Plug-in has no src URL but does have a valid mime type %s, set to play", this, serviceType().utf8().data());
         m_snapshotDecision = MaySnapshotWhenContentIsSet;
         return;
     }

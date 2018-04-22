@@ -38,6 +38,7 @@
 #include "PlugInAutoStartProvider.h"
 #include "PluginInfoStore.h"
 #include "ProcessThrottler.h"
+#include "ServiceWorkerProcessProxy.h"
 #include "StatisticsRequest.h"
 #include "StorageProcessProxy.h"
 #include "VisitedLinkStore.h"
@@ -85,6 +86,7 @@ class DownloadProxy;
 class HighPerformanceGraphicsUsageSampler;
 class UIGamepad;
 class PerActivityStateCPUUsageSampler;
+class ServiceWorkerProcessProxy;
 class WebAutomationSession;
 class WebContextSupplement;
 class WebPageGroup;
@@ -321,6 +323,10 @@ public:
     void storageProcessCrashed(StorageProcessProxy*);
 #if ENABLE(SERVICE_WORKER)
     void getWorkerContextProcessConnection(StorageProcessProxy&);
+    bool isServiceWorker(uint64_t pageID) const { return m_serviceWorkerProcess && m_serviceWorkerProcess->pageID() == pageID; }
+    ServiceWorkerProcessProxy* serviceWorkerProxy() const { return m_serviceWorkerProcess; }
+    void setAllowsAnySSLCertificateForServiceWorker(bool allows) { m_allowsAnySSLCertificateForServiceWorker = allows; }
+    bool allowsAnySSLCertificateForServiceWorker() const { return m_allowsAnySSLCertificateForServiceWorker; }
 #endif
 
 #if PLATFORM(COCOA)
@@ -425,6 +431,7 @@ private:
     void platformInvalidateContext();
 
     WebProcessProxy& createNewWebProcess(WebsiteDataStore&);
+    void initializeNewWebProcess(WebProcessProxy&, WebsiteDataStore&);
 
     void requestWebContentStatistics(StatisticsRequest*);
     void requestNetworkingStatistics(StatisticsRequest*);
@@ -484,8 +491,9 @@ private:
 
     WebProcessProxy* m_processWithPageCache;
 #if ENABLE(SERVICE_WORKER)
-    WebProcessProxy* m_workerContextProcess { nullptr };
+    ServiceWorkerProcessProxy* m_serviceWorkerProcess { nullptr };
     bool m_waitingForWorkerContextProcessConnection { false };
+    bool m_allowsAnySSLCertificateForServiceWorker { false };
 #endif
 
     Ref<WebPageGroup> m_defaultPageGroup;

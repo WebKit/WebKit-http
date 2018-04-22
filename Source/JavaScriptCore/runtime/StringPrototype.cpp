@@ -139,7 +139,7 @@ void StringPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject, JSStr
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("lastIndexOf", stringProtoFuncLastIndexOf, static_cast<unsigned>(PropertyAttribute::DontEnum), 1);
     JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->builtinNames().replaceUsingRegExpPrivateName(), stringProtoFuncReplaceUsingRegExp, static_cast<unsigned>(PropertyAttribute::DontEnum), 2, StringPrototypeReplaceRegExpIntrinsic);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->builtinNames().replaceUsingStringSearchPrivateName(), stringProtoFuncReplaceUsingStringSearch, static_cast<unsigned>(PropertyAttribute::DontEnum), 2);
-    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("slice", stringProtoFuncSlice, static_cast<unsigned>(PropertyAttribute::DontEnum), 2);
+    JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION("slice", stringProtoFuncSlice, static_cast<unsigned>(PropertyAttribute::DontEnum), 2, StringPrototypeSliceIntrinsic);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("substr", stringProtoFuncSubstr, static_cast<unsigned>(PropertyAttribute::DontEnum), 2);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("substring", stringProtoFuncSubstring, static_cast<unsigned>(PropertyAttribute::DontEnum), 2);
     JSC_NATIVE_INTRINSIC_FUNCTION_WITHOUT_TRANSITION("toLowerCase", stringProtoFuncToLowerCase, static_cast<unsigned>(PropertyAttribute::DontEnum), 0, StringPrototypeToLowerCaseIntrinsic);
@@ -598,6 +598,11 @@ static ALWAYS_INLINE EncodedJSValue replaceUsingRegExpSearch(
                     cachedCall.appendArgument(groups);
 
                 cachedCall.setThis(jsUndefined());
+                if (UNLIKELY(cachedCall.hasOverflowedArguments())) {
+                    throwOutOfMemoryError(exec, scope);
+                    return encodedJSValue();
+                }
+
                 JSValue jsResult = cachedCall.call();
                 RETURN_IF_EXCEPTION(scope, encodedJSValue());
                 replacements.append(jsResult.toWTFString(exec));
@@ -659,6 +664,11 @@ static ALWAYS_INLINE EncodedJSValue replaceUsingRegExpSearch(
                     cachedCall.appendArgument(groups);
 
                 cachedCall.setThis(jsUndefined());
+                if (UNLIKELY(cachedCall.hasOverflowedArguments())) {
+                    throwOutOfMemoryError(exec, scope);
+                    return encodedJSValue();
+                }
+
                 JSValue jsResult = cachedCall.call();
                 RETURN_IF_EXCEPTION(scope, encodedJSValue());
                 replacements.append(jsResult.toWTFString(exec));
@@ -719,6 +729,10 @@ static ALWAYS_INLINE EncodedJSValue replaceUsingRegExpSearch(
                 args.append(string);
                 if (hasNamedCaptures)
                     args.append(groups);
+                if (UNLIKELY(args.hasOverflowed())) {
+                    throwOutOfMemoryError(exec, scope);
+                    return encodedJSValue();
+                }
 
                 JSValue replacement = call(exec, replaceValue, callType, callData, jsUndefined(), args);
                 RETURN_IF_EXCEPTION(scope, encodedJSValue());
@@ -835,6 +849,7 @@ static ALWAYS_INLINE EncodedJSValue replaceUsingStringSearch(VM& vm, ExecState* 
         args.append(jsSubstring(exec, string, matchStart, searchString.impl()->length()));
         args.append(jsNumber(matchStart));
         args.append(jsString);
+        ASSERT(!args.hasOverflowed());
         replaceValue = call(exec, replaceValue, callType, callData, jsUndefined(), args);
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
     }

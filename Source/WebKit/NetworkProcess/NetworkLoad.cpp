@@ -125,7 +125,7 @@ NetworkLoad::NetworkLoad(NetworkLoadClient& client, NetworkLoadParameters&& para
     , m_networkingContext(RemoteNetworkingContext::create(m_parameters.sessionID, m_parameters.shouldClearReferrerOnHTTPSToHTTPRedirect))
     , m_currentRequest(m_parameters.request)
 {
-    m_handle = ResourceHandle::create(m_networkingContext.get(), m_parameters.request, this, m_parameters.defersLoading, m_parameters.contentSniffingPolicy == SniffContent);
+    m_handle = ResourceHandle::create(m_networkingContext.get(), m_parameters.request, this, m_parameters.defersLoading, m_parameters.contentSniffingPolicy == SniffContent, m_parameters.contentEncodingSniffingPolicy == ContentEncodingSniffingPolicy::Sniff);
 }
 
 #endif
@@ -133,11 +133,11 @@ NetworkLoad::NetworkLoad(NetworkLoadClient& client, NetworkLoadParameters&& para
 NetworkLoad::~NetworkLoad()
 {
     ASSERT(RunLoop::isMain());
+    if (m_redirectCompletionHandler)
+        m_redirectCompletionHandler({ });
 #if USE(NETWORK_SESSION)
     if (m_responseCompletionHandler)
         m_responseCompletionHandler(PolicyAction::Ignore);
-    if (m_redirectCompletionHandler)
-        m_redirectCompletionHandler({ });
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     if (m_challengeCompletionHandler)
         m_challengeCompletionHandler(AuthenticationChallengeDisposition::Cancel, { });
@@ -211,7 +211,7 @@ void NetworkLoad::continueWillSendRequest(WebCore::ResourceRequest&& newRequest)
     }
 
     if (redirectCompletionHandler)
-        redirectCompletionHandler(m_currentRequest);
+        redirectCompletionHandler(ResourceRequest(m_currentRequest));
 #else
     if (m_currentRequest.isNull()) {
         if (m_handle)
@@ -219,7 +219,9 @@ void NetworkLoad::continueWillSendRequest(WebCore::ResourceRequest&& newRequest)
         didFail(m_handle.get(), cancelledError(m_currentRequest));
     } else if (m_handle) {
         auto currentRequestCopy = m_currentRequest;
-        m_handle->continueWillSendRequest(WTFMove(currentRequestCopy));
+        auto redirectCompletionHandler = std::exchange(m_redirectCompletionHandler, nullptr);
+        ASSERT(redirectCompletionHandler);
+        redirectCompletionHandler(WTFMove(currentRequestCopy));
     }
 #endif
 }
@@ -267,6 +269,11 @@ void NetworkLoad::sharedWillSendRedirectedRequest(ResourceRequest&& request, Res
     auto oldRequest = WTFMove(m_currentRequest);
     m_currentRequest = request;
     m_client.get().willSendRedirectedRequest(WTFMove(oldRequest), WTFMove(request), WTFMove(redirectResponse));
+}
+
+bool NetworkLoad::isAllowedToAskUserForCredentials() const
+{
+    return m_client.get().isAllowedToAskUserForCredentials();
 }
 
 #if USE(NETWORK_SESSION)
@@ -329,7 +336,7 @@ void NetworkLoad::didReceiveChallenge(const AuthenticationChallenge& challenge, 
 void NetworkLoad::completeAuthenticationChallenge(ChallengeCompletionHandler&& completionHandler)
 {
     bool isServerTrustEvaluation = m_challenge->protectionSpace().authenticationScheme() == ProtectionSpaceAuthenticationSchemeServerTrustEvaluationRequested;
-    if (m_parameters.clientCredentialPolicy == ClientCredentialPolicy::CannotAskClientForCredentials && !isServerTrustEvaluation) {
+    if (!isAllowedToAskUserForCredentials() && !isServerTrustEvaluation) {
         completionHandler(AuthenticationChallengeDisposition::UseCredential, { });
         return;
     }
@@ -485,8 +492,10 @@ void NetworkLoad::didFail(ResourceHandle* handle, const ResourceError& error)
     m_client.get().didFailLoading(error);
 }
 
-void NetworkLoad::willSendRequestAsync(ResourceHandle* handle, ResourceRequest&& request, ResourceResponse&& redirectResponse)
+void NetworkLoad::willSendRequestAsync(ResourceHandle* handle, ResourceRequest&& request, ResourceResponse&& redirectResponse, CompletionHandler<void(ResourceRequest&&)>&& completionHandler)
 {
+    ASSERT(!m_redirectCompletionHandler);
+    m_redirectCompletionHandler = WTFMove(completionHandler);
     ASSERT_UNUSED(handle, handle == m_handle);
     sharedWillSendRedirectedRequest(WTFMove(request), WTFMove(redirectResponse));
 }
@@ -553,7 +562,7 @@ void NetworkLoad::didReceiveAuthenticationChallenge(ResourceHandle* handle, cons
 {
     ASSERT_UNUSED(handle, handle == m_handle);
 
-    if (m_parameters.clientCredentialPolicy == ClientCredentialPolicy::CannotAskClientForCredentials) {
+    if (!isAllowedToAskUserForCredentials()) {
         challenge.authenticationClient()->receivedRequestToContinueWithoutCredential(challenge);
         return;
     }

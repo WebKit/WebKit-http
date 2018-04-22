@@ -74,7 +74,7 @@ bool SVGTextPathElement::isSupportedAttribute(const QualifiedName& attrName)
     static const auto supportedAttributes = makeNeverDestroyed([] {
         HashSet<QualifiedName> set;
         SVGURIReference::addSupportedAttributes(set);
-        set.add({ SVGNames::startOffsetAttr, SVGNames::methodAttr, SVGNames::spacingAttr });
+        set.add({ SVGNames::startOffsetAttr.get(), SVGNames::methodAttr.get(), SVGNames::spacingAttr.get() });
         return set;
     }());
     return supportedAttributes.get().contains<SVGAttributeHashTranslator>(attrName);
@@ -156,7 +156,7 @@ void SVGTextPathElement::buildPendingResource()
         return;
 
     String id;
-    Element* target = SVGURIReference::targetElementFromIRIString(href(), document(), &id);
+    auto target = makeRefPtr(SVGURIReference::targetElementFromIRIString(href(), document(), &id));
     if (!target) {
         // Do not register as pending if we are already pending this resource.
         if (document().accessSVGExtensions().isPendingResource(this, id))
@@ -169,7 +169,7 @@ void SVGTextPathElement::buildPendingResource()
     } else if (target->hasTagName(SVGNames::pathTag)) {
         // Register us with the target in the dependencies map. Any change of hrefElement
         // that leads to relayout/repainting now informs us, so we can react to it.
-        document().accessSVGExtensions().addElementReferencingTarget(this, downcast<SVGElement>(target));
+        document().accessSVGExtensions().addElementReferencingTarget(this, downcast<SVGElement>(target.get()));
     }
 }
 

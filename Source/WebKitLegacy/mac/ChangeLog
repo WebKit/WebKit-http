@@ -1,3 +1,194 @@
+2017-11-10  Frederik Riedel  <frederik.riedel@frogg.io>
+
+        [iOS] Use new class name from UIKit when checking UITextSuggestion type for WebKitLegacy
+        https://bugs.webkit.org/show_bug.cgi?id=179397
+
+        Reviewed by Wenson Hsieh.
+
+        * DOM/DOMHTMLInputElement.mm:
+        (-[DOMHTMLInputElement insertTextSuggestion:]):
+
+2017-11-08  Jeremy Jones  <jeremyj@apple.com>
+
+        HTMLMediaElement should not use element fullscreen on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=179418
+        rdar://problem/35409277
+
+        Reviewed by Eric Carlson.
+
+        Add ENABLE_VIDEO_USES_ELEMENT_FULLSCREEN to determine if HTMLMediaElement should use element full screen or not.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-11-06  Alex Christensen  <achristensen@webkit.org>
+
+        Make ResourceLoader::willSendRequestInternal asynchronous
+        https://bugs.webkit.org/show_bug.cgi?id=179251
+
+        Reviewed by Andy Estes.
+
+        * Plugins/Hosted/HostedNetscapePluginStream.mm:
+        (WebKit::HostedNetscapePluginStream::start):
+        * Plugins/WebNetscapePluginStream.mm:
+        (WebNetscapePluginStream::start):
+
+2017-11-01  Darin Adler  <darin@apple.com>
+
+        Simplify event dispatch code and make it a bit more consistent
+        https://bugs.webkit.org/show_bug.cgi?id=178991
+
+        Reviewed by Chris Dumez.
+
+        * DOM/DOMEvent.mm:
+        (-[DOMEvent srcElement]): Call target instead of srcElement.
+
+2017-11-04  Aishwarya Nirmal  <anirmal@apple.com>
+
+        [Touch Bar Web API] Add support for menuitem tag
+        https://bugs.webkit.org/show_bug.cgi?id=179020
+
+        Reviewed by Ryosuke Niwa.
+
+        Adds in properties and methods that allow the menuitem runtime feature
+        to be enabled or disabled.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences menuItemElementEnabled]):
+        (-[WebPreferences setMenuItemElementEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-11-02  Alex Christensen  <achristensen@webkit.org>
+
+        Use CompletionHandlers for redirects
+        https://bugs.webkit.org/show_bug.cgi?id=179163
+
+        Reviewed by Tim Horton.
+
+        * Plugins/Hosted/HostedNetscapePluginStream.h:
+        * Plugins/Hosted/HostedNetscapePluginStream.mm:
+        (WebKit::HostedNetscapePluginStream::willSendRequest):
+        * Plugins/WebNetscapePluginStream.h:
+        * Plugins/WebNetscapePluginStream.mm:
+        (WebNetscapePluginStream::willSendRequest):
+
+2017-11-02  Christopher Reid  <chris.reid@sony.com>
+
+        Add a FileSystem namespace to FileSystem.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=179063
+
+        Reviewed by Darin Adler.
+
+        * Misc/WebNSFileManagerExtras.mm:
+        * Storage/WebDatabaseProvider.mm:
+
+2017-11-02  Frederic Wang  <fwang@igalia.com>
+
+        Add references to bug 179167 in FIXME comments
+        https://bugs.webkit.org/show_bug.cgi?id=179168
+
+        Reviewed by Daniel Bates.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-11-01  Jeremy Jones  <jeremyj@apple.com>
+
+        Implement WKFullscreenWindowController for iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=178924
+        rdar://problem/34697120
+
+        Reviewed by Simon Fraser.
+
+        Enable ENABLE_FULLSCREEN_API for iOS. Fix a build error.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebView.mm:
+        (-[WebView fullScreenPlaceholderView]):
+
+2017-10-31  Tim Horton  <timothy_horton@apple.com>
+
+        Clean up some drag and drop feature flags
+        https://bugs.webkit.org/show_bug.cgi?id=179082
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-10-31  Simon Fraser  <simon.fraser@apple.com>
+
+        Make it possible to test rubber-banding in overflow scroll
+        https://bugs.webkit.org/show_bug.cgi?id=179078
+
+        Reviewed by Sam Weinig.
+
+        Add internals.unconstrainedScrollTo(element, x, y) and plumb through ScrollClamping
+        (which replaces RenderLayer::ScrollOffsetClamping) to support it.
+
+        Flip the default from unclamped to clamped for various RenderLayer scrolling-related
+        functions, since most callers want clamped.
+
+        * DOM/DOMHTML.mm:
+        (-[DOMHTMLElement setScrollXOffset:scrollYOffset:adjustForIOSCaret:]):
+
+2017-10-31  Tim Horton  <timothy_horton@apple.com>
+
+        Fix up some content filtering feature flags
+        https://bugs.webkit.org/show_bug.cgi?id=179079
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-10-28  Zalan Bujtas  <zalan@apple.com>
+
+        [FrameView::layout cleanup] Move core layout logic to a separate class.
+        https://bugs.webkit.org/show_bug.cgi?id=178771
+        <rdar://problem/35166542>
+
+        Reviewed by Simon Fraser.
+
+        Move layout code out from FrameView to LayoutContext.
+
+        * WebView/WebClipView.mm:
+        (-[WebClipView _immediateScrollToPoint:]):
+        * WebView/WebFrame.mm:
+        (-[WebFrame layoutCount]):
+
+2017-10-26  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix issues with WebView subframe painting
+        https://bugs.webkit.org/show_bug.cgi?id=178842
+        rdar://problem/34072253
+
+        Reviewed by Daniel Bates.
+        
+        WebHTMLView overrides some NSView internal methods to make sure that AppKit doesn't paint
+        subframes (WebKit controls subframe painting). The method signature of one of these changed in macOS
+        High Sierra, so match the new signature.
+
+        Also rename the 'rect' param to 'displayRect' to match AppKit code.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _recursive:displayRectIgnoringOpacity:inGraphicsContext:shouldChangeFontReferenceColor:_recursive:displayRectIgnoringOpacity:inGraphicsContext:CGContext:topView:shouldChangeFontReferenceColor:]):
+        (-[WebHTMLView _recursive:displayRectIgnoringOpacity:inGraphicsContext:CGContext:shouldChangeFontReferenceColor:_recursive:displayRectIgnoringOpacity:inGraphicsContext:CGContext:topView:shouldChangeFontReferenceColor:]): Deleted.
+
+2017-10-25  Youenn Fablet  <youenn@apple.com>
+
+        Enable ServiceWorker to fetch resources
+        https://bugs.webkit.org/show_bug.cgi?id=178673
+
+        Reviewed by Brady Eidson.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::pageID const):
+        (WebFrameLoaderClient::frameID const):
+        (WebFrameLoaderClient::sessionID const):
+
+        Added implementation to the new getters.
+        They are noop in the context of WK1.
+
 2017-10-24  Eric Carlson  <eric.carlson@apple.com>
 
         Web Inspector: Enable WebKit logging configuration and display

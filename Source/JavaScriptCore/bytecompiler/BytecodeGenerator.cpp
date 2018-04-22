@@ -48,6 +48,7 @@
 #include "Options.h"
 #include "StackAlignment.h"
 #include "StrongInlines.h"
+#include "SuperSamplerBytecodeScope.h"
 #include "UnlinkedCodeBlock.h"
 #include "UnlinkedEvalCodeBlock.h"
 #include "UnlinkedFunctionCodeBlock.h"
@@ -1692,6 +1693,16 @@ RegisterID* BytecodeGenerator::emitUnaryOpProfiled(OpcodeID opcodeID, RegisterID
     return dst;
 }
 
+RegisterID* BytecodeGenerator::emitToObject(RegisterID* dst, RegisterID* src, const Identifier& message)
+{
+    UnlinkedValueProfile profile = emitProfiledOpcode(op_to_object);
+    instructions().append(dst->index());
+    instructions().append(src->index());
+    instructions().append(addConstant(message));
+    instructions().append(profile);
+    return dst;
+}
+
 RegisterID* BytecodeGenerator::emitInc(RegisterID* srcDst)
 {
     emitOpcode(op_inc);
@@ -2955,6 +2966,16 @@ RegisterID* BytecodeGenerator::emitAssert(RegisterID* condition, int line)
     instructions().append(condition->index());
     instructions().append(line);
     return condition;
+}
+
+void BytecodeGenerator::emitSuperSamplerBegin()
+{
+    emitOpcode(op_super_sampler_begin);
+}
+
+void BytecodeGenerator::emitSuperSamplerEnd()
+{
+    emitOpcode(op_super_sampler_end);
 }
 
 RegisterID* BytecodeGenerator::emitIdWithProfile(RegisterID* src, SpeculatedType profile)

@@ -141,7 +141,7 @@ HTMLImageLoader& HTMLInputElement::ensureImageLoader()
     return *m_imageLoader;
 }
 
-void HTMLInputElement::didAddUserAgentShadowRoot(ShadowRoot*)
+void HTMLInputElement::didAddUserAgentShadowRoot(ShadowRoot&)
 {
     m_inputType->createShadowSubtree();
     updateInnerTextElementEditability();
@@ -1118,7 +1118,7 @@ void HTMLInputElement::willDispatchEvent(Event& event, InputElementClickState& s
 
 void HTMLInputElement::didDispatchClickEvent(Event& event, const InputElementClickState& state)
 {
-    m_inputType->didDispatchClick(&event, state);
+    m_inputType->didDispatchClick(event, state);
 }
 
 void HTMLInputElement::didBlur()
@@ -1193,7 +1193,7 @@ void HTMLInputElement::defaultEventHandler(Event& event)
             dispatchFormControlChangeEvent();
 
         // Form may never have been present, or may have been destroyed by code responding to the change event.
-        if (auto* formElement = form())
+        if (auto formElement = makeRefPtr(form()))
             formElement->submitImplicitly(event, canTriggerImplicitSubmission());
 
         event.setDefaultHandled();
@@ -1583,12 +1583,12 @@ void HTMLInputElement::selectColor(const Color& color)
 }
 
 #if ENABLE(DATALIST_ELEMENT)
-HTMLElement* HTMLInputElement::list() const
+RefPtr<HTMLElement> HTMLInputElement::list() const
 {
     return dataList();
 }
 
-HTMLDataListElement* HTMLInputElement::dataList() const
+RefPtr<HTMLDataListElement> HTMLInputElement::dataList() const
 {
     if (!m_hasNonEmptyList)
         return nullptr;
@@ -1597,7 +1597,7 @@ HTMLDataListElement* HTMLInputElement::dataList() const
         return nullptr;
 
     RefPtr<Element> element = treeScope().getElementById(attributeWithoutSynchronization(listAttr));
-    if (!is<HTMLDataListElement>(element.get()))
+    if (!is<HTMLDataListElement>(element))
         return nullptr;
 
     return downcast<HTMLDataListElement>(element.get());
@@ -2059,7 +2059,7 @@ bool HTMLInputElement::setupDateTimeChooserParameters(DateTimeChooserParameters&
     parameters.currentValue = value();
     parameters.isAnchorElementRTL = computedStyle()->direction() == RTL;
 #if ENABLE(DATALIST_ELEMENT)
-    if (RefPtr<HTMLDataListElement> dataList = this->dataList()) {
+    if (auto dataList = this->dataList()) {
         Ref<HTMLCollection> options = dataList->options();
         for (unsigned i = 0; RefPtr<HTMLOptionElement> option = downcast<HTMLOptionElement>(options->item(i)); ++i) {
             if (!isValidValue(option->value()))

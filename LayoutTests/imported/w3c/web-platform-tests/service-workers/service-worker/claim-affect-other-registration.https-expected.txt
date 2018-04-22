@@ -1,0 +1,4 @@
+
+
+FAIL claim() should affect the originally controlling registration. promise_test: Unhandled rejection with value: object "NotSupportedError: Passing MessagePort objects to postMessage is not yet supported"
+

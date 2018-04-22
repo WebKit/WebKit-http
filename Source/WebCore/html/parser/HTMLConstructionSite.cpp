@@ -131,7 +131,7 @@ static inline void executeReparentTask(HTMLConstructionSiteTask& task)
     ASSERT(task.operation == HTMLConstructionSiteTask::Reparent);
     ASSERT(!task.nextChild);
 
-    if (auto* parent = task.child->parentNode())
+    if (auto parent = makeRefPtr(task.child->parentNode()))
         parent->parserRemoveChild(*task.child);
 
     if (task.child->parentNode())
@@ -161,8 +161,8 @@ static inline void executeTakeAllChildrenAndReparentTask(HTMLConstructionSiteTas
     ASSERT(task.operation == HTMLConstructionSiteTask::TakeAllChildrenAndReparent);
     ASSERT(!task.nextChild);
 
-    auto* furthestBlock = task.oldParent();
-    task.parent->takeAllChildrenFrom(furthestBlock);
+    auto furthestBlock = makeRefPtr(task.oldParent());
+    task.parent->takeAllChildrenFrom(furthestBlock.get());
 
     RELEASE_ASSERT(!task.parent->parentNode());
     furthestBlock->parserAppendChild(*task.parent);
@@ -190,7 +190,7 @@ static inline void executeTask(HTMLConstructionSiteTask& task)
 
 void HTMLConstructionSite::attachLater(ContainerNode& parent, Ref<Node>&& child, bool selfClosing)
 {
-    ASSERT(scriptingContentIsAllowed(m_parserContentPolicy) || !is<Element>(child.get()) || !isScriptElement(downcast<Element>(child.get())));
+    ASSERT(scriptingContentIsAllowed(m_parserContentPolicy) || !is<Element>(child) || !isScriptElement(downcast<Element>(child.get())));
     ASSERT(pluginContentIsAllowed(m_parserContentPolicy) || !child->isPluginElement());
 
     if (shouldFosterParent()) {
@@ -269,7 +269,7 @@ void HTMLConstructionSite::dispatchDocumentElementAvailableIfNeeded()
     if (m_isParsingFragment)
         return;
 
-    if (auto* frame = m_document.frame())
+    if (auto frame = makeRefPtr(m_document.frame()))
         frame->injectUserScripts(InjectAtDocumentStart);
 }
 
@@ -573,9 +573,6 @@ void HTMLConstructionSite::insertTextNode(const String& characters, WhitespaceMo
     if (shouldFosterParent())
         findFosterSite(task);
 
-    if (is<HTMLTemplateElement>(*task.parent))
-        task.parent = &downcast<HTMLTemplateElement>(*task.parent).content();
-
     // Strings composed entirely of whitespace are likely to be repeated.
     // Turn them into AtomicString so we share a single string for each.
     bool shouldUseAtomicString = whitespaceMode == AllWhitespace || (whitespaceMode == WhitespaceUnknown && isAllWhitespace(characters));
@@ -587,7 +584,7 @@ void HTMLConstructionSite::insertTextNode(const String& characters, WhitespaceMo
     // for performance, see <https://bugs.webkit.org/show_bug.cgi?id=55898>.
 
     RefPtr<Node> previousChild = task.nextChild ? task.nextChild->previousSibling() : task.parent->lastChild();
-    if (is<Text>(previousChild.get())) {
+    if (is<Text>(previousChild)) {
         // FIXME: We're only supposed to append to this text node if it
         // was the last text node inserted by the parser.
         currentPosition = downcast<Text>(*previousChild).parserAppendData(characters, 0, lengthLimit);
@@ -663,12 +660,12 @@ RefPtr<Element> HTMLConstructionSite::createHTMLElementOrFindCustomElementInterf
     bool insideTemplateElement = !ownerDocument.frame();
     RefPtr<Element> element = HTMLElementFactory::createKnownElement(localName, ownerDocument, insideTemplateElement ? nullptr : form(), true);
     if (UNLIKELY(!element)) {
-        auto* window = ownerDocument.domWindow();
+        auto window = makeRefPtr(ownerDocument.domWindow());
         if (customElementInterface && window) {
-            auto* registry = window->customElementRegistry();
+            auto registry = makeRefPtr(window->customElementRegistry());
             if (UNLIKELY(registry)) {
-                if (auto* elementInterface = registry->findInterface(localName)) {
-                    *customElementInterface = elementInterface;
+                if (auto elementInterface = makeRefPtr(registry->findInterface(localName))) {
+                    *customElementInterface = elementInterface.get();
                     return nullptr;
                 }
             }
@@ -759,19 +756,19 @@ void HTMLConstructionSite::generateImpliedEndTags()
 void HTMLConstructionSite::findFosterSite(HTMLConstructionSiteTask& task)
 {
     // When a node is to be foster parented, the last template element with no table element is below it in the stack of open elements is the foster parent element (NOT the template's parent!)
-    auto* lastTemplateElement = m_openElements.topmost(templateTag.localName());
+    auto* lastTemplateElement = m_openElements.topmost(templateTag->localName());
     if (lastTemplateElement && !m_openElements.inTableScope(tableTag)) {
         task.parent = &lastTemplateElement->element();
         return;
     }
 
-    if (auto* lastTableElementRecord = m_openElements.topmost(tableTag.localName())) {
+    if (auto* lastTableElementRecord = m_openElements.topmost(tableTag->localName())) {
         auto& lastTableElement = lastTableElementRecord->element();
-        auto* parent = lastTableElement.parentNode();
+        auto parent = makeRefPtr(lastTableElement.parentNode());
         // When parsing HTML fragments, we skip step 4.2 ("Let root be a new html element with no attributes") for efficiency,
         // and instead use the DocumentFragment as a root node. So we must treat the root node (DocumentFragment) as if it is a html element here.
         bool parentCanBeFosterParent = parent && (parent->isElementNode() || (m_isParsingFragment && parent == &m_openElements.rootNode()));
-        parentCanBeFosterParent = parentCanBeFosterParent || (is<DocumentFragment>(parent) && downcast<DocumentFragment>(parent)->isTemplateContent());
+        parentCanBeFosterParent = parentCanBeFosterParent || (is<DocumentFragment>(parent) && downcast<DocumentFragment>(parent.get())->isTemplateContent());
         if (parentCanBeFosterParent) {
             task.parent = parent;
             task.nextChild = &lastTableElement;

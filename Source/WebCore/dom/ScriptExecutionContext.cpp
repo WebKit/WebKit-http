@@ -38,13 +38,16 @@
 #include "JSDOMExceptionHandling.h"
 #include "JSDOMWindow.h"
 #include "MessagePort.h"
+#include "Navigator.h"
 #include "NoEventDispatchAssertion.h"
 #include "PublicURLManager.h"
 #include "RejectedPromiseTracker.h"
 #include "ResourceRequest.h"
 #include "ScriptState.h"
+#include "ServiceWorker.h"
 #include "Settings.h"
 #include "WorkerGlobalScope.h"
+#include "WorkerNavigator.h"
 #include "WorkerThread.h"
 #include <heap/StrongInlines.h>
 #include <inspector/ScriptCallStack.h>
@@ -187,7 +190,7 @@ bool ScriptExecutionContext::canSuspendActiveDOMObjectsForDocumentSuspension(Vec
     // functions should not add new active DOM objects, nor execute arbitrary JavaScript.
     // An ASSERT_WITH_SECURITY_IMPLICATION or RELEASE_ASSERT will fire if this happens, but it's important to code
     // canSuspend functions so it will not happen!
-    NoEventDispatchAssertion assertNoEventDispatch;
+    NoEventDispatchAssertion::InMainThread assertNoEventDispatch;
     for (auto* activeDOMObject : m_activeDOMObjects) {
         if (!activeDOMObject->canSuspendForDocumentSuspension()) {
             canSuspend = false;
@@ -229,7 +232,7 @@ void ScriptExecutionContext::suspendActiveDOMObjects(ActiveDOMObject::ReasonForS
     // functions should not add new active DOM objects, nor execute arbitrary JavaScript.
     // An ASSERT_WITH_SECURITY_IMPLICATION or RELEASE_ASSERT will fire if this happens, but it's important to code
     // suspend functions so it will not happen!
-    NoEventDispatchAssertion assertNoEventDispatch;
+    NoEventDispatchAssertion::InMainThread assertNoEventDispatch;
     for (auto* activeDOMObject : m_activeDOMObjects)
         activeDOMObject->suspend(why);
 
@@ -258,7 +261,7 @@ void ScriptExecutionContext::resumeActiveDOMObjects(ActiveDOMObject::ReasonForSu
     // functions should not add new active DOM objects, nor execute arbitrary JavaScript.
     // An ASSERT_WITH_SECURITY_IMPLICATION or RELEASE_ASSERT will fire if this happens, but it's important to code
     // resume functions so it will not happen!
-    NoEventDispatchAssertion assertNoEventDispatch;
+    NoEventDispatchAssertion::InMainThread assertNoEventDispatch;
     for (auto* activeDOMObject : m_activeDOMObjects)
         activeDOMObject->resume();
 
@@ -524,5 +527,30 @@ JSC::ExecState* ScriptExecutionContext::execState()
     WorkerGlobalScope* workerGlobalScope = static_cast<WorkerGlobalScope*>(this);
     return execStateFromWorkerGlobalScope(workerGlobalScope);
 }
+
+#if ENABLE(SERVICE_WORKER)
+
+ServiceWorker* ScriptExecutionContext::activeServiceWorker() const
+{
+    return m_activeServiceWorker.get();
+}
+
+void ScriptExecutionContext::setActiveServiceWorker(RefPtr<ServiceWorker>&& serviceWorker)
+{
+    m_activeServiceWorker = WTFMove(serviceWorker);
+}
+
+ServiceWorkerContainer* ScriptExecutionContext::serviceWorkerContainer()
+{
+    NavigatorBase* navigator = nullptr;
+    if (is<Document>(*this)) {
+        if (auto* window = downcast<Document>(*this).domWindow())
+            navigator = window->optionalNavigator();
+    } else
+        navigator = downcast<WorkerGlobalScope>(*this).optionalNavigator();
+
+    return navigator ? navigator->serviceWorker() : nullptr;
+}
+#endif
 
 } // namespace WebCore

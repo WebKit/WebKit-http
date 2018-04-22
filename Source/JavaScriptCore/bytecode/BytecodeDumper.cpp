@@ -578,16 +578,19 @@ void BytecodeDumper<Block>::printCallOp(PrintStream& out, int location, const ty
     if (cacheDumpMode == DumpCaches) {
         LLIntCallLinkInfo* callLinkInfo = getCallLinkInfo(it[1]);
         if (callLinkInfo->lastSeenCallee) {
-            out.printf(
-                " llint(%p, exec %p)",
-                callLinkInfo->lastSeenCallee.get(),
-                callLinkInfo->lastSeenCallee->executable());
+            JSObject* object = callLinkInfo->lastSeenCallee.get();
+            if (auto* function = jsDynamicCast<JSFunction*>(*vm(), object))
+                out.printf(" llint(%p, exec %p)", function, function->executable());
+            else
+                out.printf(" llint(%p)", object);
         }
 #if ENABLE(JIT)
         if (CallLinkInfo* info = map.get(CodeOrigin(location))) {
-            JSFunction* target = info->lastSeenCallee();
-            if (target)
-                out.printf(" jit(%p, exec %p)", target, target->executable());
+            JSObject* object = info->lastSeenCallee();
+            if (auto* function = jsDynamicCast<JSFunction*>(*vm(), object))
+                out.printf(" jit(%p, exec %p)", function, function->executable());
+            else
+                out.printf(" jit(%p)", object);
         }
 
         dumpCallLinkStatus(out, location, map);
@@ -869,6 +872,13 @@ void BytecodeDumper<Block>::dumpBytecode(PrintStream& out, const typename Block:
     }
     case op_to_string: {
         printUnaryOp(out, location, it, "to_string");
+        break;
+    }
+    case op_to_object: {
+        printUnaryOp(out, location, it, "to_object");
+        int id0 = (++it)->u.operand;
+        out.printf(" %s", idName(id0, identifier(id0)).data());
+        dumpValueProfiling(out, it, hasPrintedProfiling);
         break;
     }
     case op_negate: {
@@ -1264,6 +1274,14 @@ void BytecodeDumper<Block>::dumpBytecode(PrintStream& out, const typename Block:
     }
     case op_nop: {
         printLocationAndOp(out, location, it, "nop");
+        break;
+    }
+    case op_super_sampler_begin: {
+        printLocationAndOp(out, location, it, "super_sampler_begin");
+        break;
+    }
+    case op_super_sampler_end: {
+        printLocationAndOp(out, location, it, "super_sampler_end");
         break;
     }
     case op_log_shadow_chicken_prologue: {

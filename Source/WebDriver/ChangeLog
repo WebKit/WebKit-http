@@ -1,3 +1,85 @@
+2017-11-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: WebDriverService::matchCapabilities should follow the spec
+        https://bugs.webkit.org/show_bug.cgi?id=179371
+
+        Reviewed by Brian Burg.
+
+        The returned object should contain all the entries mentioned in the spec, not only the ones already present in
+        the passed in capabilities object.
+
+        7.2 Processing Capabilities
+        https://w3c.github.io/webdriver/webdriver-spec.html#dfn-matching-capabilities
+
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::matchCapabilities const):
+        (WebDriver::WebDriverService::processCapabilities const):
+        * WebDriverService.h:
+
+2017-11-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: capabilities with null value shouldn't be added to the validated capabilities object
+        https://bugs.webkit.org/show_bug.cgi?id=179369
+
+        Reviewed by Brian Burg.
+
+        "4. If deserialized is not null, set a property on result with name name and value deserialized."
+
+        7.2 Processing Capabilities
+        https://w3c.github.io/webdriver/webdriver-spec.html#dfn-validate-capabilities
+
+        Fixes: imported/w3c/webdriver/tests/sessions/new_session/create_firstMatch.py::test_valid[platformName-None]
+
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::validatedCapabilities const):
+
+2017-10-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: unknown capabilities should produce an InvalidArgument error when validating capabilities
+        https://bugs.webkit.org/show_bug.cgi?id=178868
+
+        Reviewed by Brian Burg.
+
+        7.2 Processing Capabilities
+        https://w3c.github.io/webdriver/webdriver-spec.html#dfn-validate-capabilities
+
+        Fixes: imported/w3c/webdriver/tests/sessions/new_session/invalid_capabilities.py::test_invalid_extensions
+
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::validatedCapabilities const):
+
+2017-10-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: deserializeTimeouts should fail if the value is not integer
+        https://bugs.webkit.org/show_bug.cgi?id=178866
+
+        Reviewed by Brian Burg.
+
+        If value is not an integer, or it is less than 0 or greater than 2^64 – 1, return error with error code invalid
+        argument.
+        https://w3c.github.io/webdriver/webdriver-spec.html#dfn-deserialize-as-a-timeout
+
+        Fixes: imported/w3c/webdriver/tests/sessions/new_session/invalid_capabilities.py::test_invalid_values[timeouts-value59-body0]
+               imported/w3c/webdriver/tests/sessions/new_session/invalid_capabilities.py::test_invalid_values[timeouts-value59-body1]
+
+        * WebDriverService.cpp:
+        (WebDriver::deserializeTimeouts):
+
+2017-10-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: failing to process capabilities should produce InvalidArgument error not SessionNotCreated
+        https://bugs.webkit.org/show_bug.cgi?id=178864
+
+        Reviewed by Brian Burg.
+
+        Fixes most of the tests in imported/w3c/webdriver/tests/sessions/new_session/invalid_capabilities.py.
+
+        7.2 Processing Capabilities
+        https://w3c.github.io/webdriver/webdriver-spec.html#processing-capabilities
+
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::processCapabilities const):
+
 2017-10-10  Sam Weinig  <sam@webkit.org>
 
         Replace copyKeysToVector/copyValuesToVector with copyToVector(map.keys())/copyToVector(map.values())

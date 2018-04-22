@@ -166,13 +166,13 @@ SVGViewSpec& SVGSVGElement::currentView()
     return *m_viewSpec;
 }
 
-Frame* SVGSVGElement::frameForCurrentScale() const
+RefPtr<Frame> SVGSVGElement::frameForCurrentScale() const
 {
     // The behavior of currentScale() is undefined when we're dealing with non-standalone SVG documents.
     // If the document is embedded, the scaling is handled by the host renderer.
     if (!isConnected() || !isOutermostSVGSVGElement())
         return nullptr;
-    Frame* frame = document().frame();
+    auto frame = makeRefPtr(document().frame());
     return frame && frame->isMainFrame() ? frame : nullptr;
 }
 
@@ -180,13 +180,13 @@ float SVGSVGElement::currentScale() const
 {
     // When asking from inside an embedded SVG document, a scale value of 1 seems reasonable, as it doesn't
     // know anything about the parent scale.
-    Frame* frame = frameForCurrentScale();
+    auto frame = frameForCurrentScale();
     return frame ? frame->pageZoomFactor() : 1;
 }
 
 void SVGSVGElement::setCurrentScale(float scale)
 {
-    if (Frame* frame = frameForCurrentScale())
+    if (auto frame = frameForCurrentScale())
         frame->setPageZoomFactor(scale);
 }
 
@@ -323,26 +323,36 @@ void SVGSVGElement::forceRedraw()
 {
 }
 
-Ref<NodeList> SVGSVGElement::collectIntersectionOrEnclosureList(SVGRect& rect, SVGElement* referenceElement, bool (*checkFunction)(RefPtr<SVGElement>&&, SVGRect&))
+Ref<NodeList> SVGSVGElement::collectIntersectionOrEnclosureList(SVGRect& rect, SVGElement* referenceElement, bool (*checkFunction)(SVGElement&, SVGRect&))
 {
     Vector<Ref<Element>> elements;
     for (auto& element : descendantsOfType<SVGElement>(referenceElement ? *referenceElement : *this)) {
-        if (checkFunction(&element, rect))
+        if (checkFunction(element, rect))
             elements.append(element);
     }
     return StaticElementList::create(WTFMove(elements));
 }
 
+static bool checkIntersectionWithoutUpdatingLayout(SVGElement& element, SVGRect& rect)
+{
+    return RenderSVGModelObject::checkIntersection(element.renderer(), rect.propertyReference());
+}
+    
+static bool checkEnclosureWithoutUpdatingLayout(SVGElement& element, SVGRect& rect)
+{
+    return RenderSVGModelObject::checkEnclosure(element.renderer(), rect.propertyReference());
+}
+
 Ref<NodeList> SVGSVGElement::getIntersectionList(SVGRect& rect, SVGElement* referenceElement)
 {
     document().updateLayoutIgnorePendingStylesheets();
-    return collectIntersectionOrEnclosureList(rect, referenceElement, checkIntersection);
+    return collectIntersectionOrEnclosureList(rect, referenceElement, checkIntersectionWithoutUpdatingLayout);
 }
 
 Ref<NodeList> SVGSVGElement::getEnclosureList(SVGRect& rect, SVGElement* referenceElement)
 {
     document().updateLayoutIgnorePendingStylesheets();
-    return collectIntersectionOrEnclosureList(rect, referenceElement, checkEnclosure);
+    return collectIntersectionOrEnclosureList(rect, referenceElement, checkEnclosureWithoutUpdatingLayout);
 }
 
 bool SVGSVGElement::checkIntersection(RefPtr<SVGElement>&& element, SVGRect& rect)
@@ -350,7 +360,7 @@ bool SVGSVGElement::checkIntersection(RefPtr<SVGElement>&& element, SVGRect& rec
     if (!element)
         return false;
     element->document().updateLayoutIgnorePendingStylesheets();
-    return RenderSVGModelObject::checkIntersection(element->renderer(), rect.propertyReference());
+    return checkIntersectionWithoutUpdatingLayout(*element, rect);
 }
 
 bool SVGSVGElement::checkEnclosure(RefPtr<SVGElement>&& element, SVGRect& rect)
@@ -358,12 +368,12 @@ bool SVGSVGElement::checkEnclosure(RefPtr<SVGElement>&& element, SVGRect& rect)
     if (!element)
         return false;
     element->document().updateLayoutIgnorePendingStylesheets();
-    return RenderSVGModelObject::checkEnclosure(element->renderer(), rect.propertyReference());
+    return checkEnclosureWithoutUpdatingLayout(*element, rect);
 }
 
 void SVGSVGElement::deselectAll()
 {
-    if (Frame* frame = document().frame())
+    if (auto frame = makeRefPtr(document().frame()))
         frame->selection().clear();
 }
 
@@ -443,7 +453,7 @@ AffineTransform SVGSVGElement::localCoordinateSpaceTransform(SVGLocatable::CTMSc
             transform.translate(location.x() - viewBoxTransform.e(), location.y() - viewBoxTransform.f());
 
             // Respect scroll offset.
-            if (FrameView* view = document().view()) {
+            if (auto view = makeRefPtr(document().view())) {
                 LayoutPoint scrollPosition = view->scrollPosition();
                 scrollPosition.scale(zoomFactor);
                 transform.translate(-scrollPosition);
@@ -628,7 +638,7 @@ AffineTransform SVGSVGElement::viewBoxToViewTransform(float viewWidth, float vie
 void SVGSVGElement::scrollToAnchor(const String& fragmentIdentifier, Element* anchorNode)
 {
     auto renderer = this->renderer();
-    SVGViewSpec* view = m_viewSpec.get();
+    auto view = m_viewSpec;
     if (view)
         view->reset();
 
@@ -660,7 +670,7 @@ void SVGSVGElement::scrollToAnchor(const String& fragmentIdentifier, Element* an
     // attributes on the closest ancestor "svg" element.
     if (is<SVGViewElement>(anchorNode)) {
         auto& viewElement = downcast<SVGViewElement>(*anchorNode);
-        auto* viewportElement = SVGLocatable::nearestViewportElement(&viewElement);
+        auto viewportElement = makeRefPtr(SVGLocatable::nearestViewportElement(&viewElement));
         if (is<SVGSVGElement>(viewportElement)) {
             auto& element = downcast<SVGSVGElement>(*viewportElement);
             element.inheritViewAttributes(viewElement);
@@ -712,9 +722,9 @@ Element* SVGSVGElement::getElementById(const AtomicString& id)
     if (id.isNull())
         return nullptr;
 
-    Element* element = treeScope().getElementById(id);
+    auto element = makeRefPtr(treeScope().getElementById(id));
     if (element && element->isDescendantOf(*this))
-        return element;
+        return element.get();
     if (treeScope().containsMultipleElementsWithId(id)) {
         for (auto* element : *treeScope().getAllElementsById(id)) {
             if (element->isDescendantOf(*this))

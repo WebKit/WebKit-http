@@ -4237,8 +4237,9 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
+    case ToObject:
     case CallObjectConstructor: {
-        compileCallObjectConstructor(node);
+        compileToObjectOrCallObjectConstructor(node);
         break;
     }
 
@@ -5264,6 +5265,11 @@ void SpeculativeJIT::compile(Node* node)
         compileWeakMapGet(node);
         break;
 
+    case StringSlice: {
+        compileStringSlice(node);
+        break;
+    }
+
     case ToLowerCase: {
         compileToLowerCase(node);
         break;
@@ -5379,6 +5385,13 @@ void SpeculativeJIT::compile(Node* node)
             JITCompiler::selectScratchGPR(GPRInfo::returnValueGPR, argumentsGPR);
         
         m_jit.add32(TrustedImm32(1), GPRInfo::returnValueGPR, argCountIncludingThisGPR);
+
+        speculationCheck(
+            VarargsOverflow, JSValueSource(), Edge(), m_jit.branch32(
+                MacroAssembler::Above,
+                GPRInfo::returnValueGPR,
+                argCountIncludingThisGPR));
+
         speculationCheck(
             VarargsOverflow, JSValueSource(), Edge(), m_jit.branch32(
                 MacroAssembler::Above,
@@ -5560,6 +5573,14 @@ void SpeculativeJIT::compile(Node* node)
         
     case CountExecution:
         m_jit.add64(TrustedImm32(1), MacroAssembler::AbsoluteAddress(node->executionCounter()->address()));
+        break;
+
+    case SuperSamplerBegin:
+        m_jit.add32(TrustedImm32(1), MacroAssembler::AbsoluteAddress(bitwise_cast<void*>(&g_superSamplerCount)));
+        break;
+
+    case SuperSamplerEnd:
+        m_jit.sub32(TrustedImm32(1), MacroAssembler::AbsoluteAddress(bitwise_cast<void*>(&g_superSamplerCount)));
         break;
 
     case ForceOSRExit: {
@@ -5770,7 +5791,6 @@ void SpeculativeJIT::compile(Node* node)
         // Otherwise it's out of line
         outOfLineAccess.link(&m_jit);
         m_jit.loadPtr(MacroAssembler::Address(baseGPR, JSObject::butterflyOffset()), scratch2GPR);
-        m_jit.cage(Gigacage::JSValue, scratch2GPR);
         m_jit.move(indexGPR, scratch1GPR);
         m_jit.sub32(MacroAssembler::Address(enumeratorGPR, JSPropertyNameEnumerator::cachedInlineCapacityOffset()), scratch1GPR);
         m_jit.neg32(scratch1GPR);

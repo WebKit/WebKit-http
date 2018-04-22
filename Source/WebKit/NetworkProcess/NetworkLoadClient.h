@@ -30,10 +30,6 @@
 #include <WebCore/ResourceResponse.h>
 #include <wtf/Forward.h>
 
-#if PLATFORM(COCOA)
-typedef const struct _CFCachedURLResponse* CFCachedURLResponseRef;
-#endif
-
 namespace WebCore {
 class NetworkLoadMetrics;
 class ProtectionSpace;
@@ -47,6 +43,8 @@ public:
     virtual ~NetworkLoadClient() { }
 
     virtual bool isSynchronous() const = 0;
+
+    virtual bool isAllowedToAskUserForCredentials() const = 0;
 
     virtual void didSendData(unsigned long long bytesSent, unsigned long long totalBytesToBeSent) = 0;
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)

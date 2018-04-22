@@ -67,6 +67,7 @@
 #include <stdlib.h>
 #include <string>
 #include <unistd.h>
+#include <wtf/AutodrainedPool.h>
 #include <wtf/CryptographicallyRandomNumber.h>
 #include <wtf/HexNumber.h>
 #include <wtf/MainThread.h>
@@ -688,6 +689,7 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetNeedsSiteSpecificQuirks(preferences, options.needsSiteSpecificQuirks);
     WKPreferencesSetAttachmentElementEnabled(preferences, options.enableAttachmentElement);
     WKPreferencesSetIntersectionObserverEnabled(preferences, options.enableIntersectionObserver);
+    WKPreferencesSetMenuItemElementEnabled(preferences, options.enableMenuItemElement);
     WKPreferencesSetModernMediaControlsEnabled(preferences, options.enableModernMediaControls);
     WKPreferencesSetCredentialManagementEnabled(preferences, options.enableCredentialManagement);
     WKPreferencesSetIsSecureContextAttributeEnabled(preferences, options.enableIsSecureContextAttribute);
@@ -739,10 +741,6 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
 
     WKPreferencesSetInspectorAdditionsEnabled(preferences, options.enableInspectorAdditions);
 
-#if ENABLE(PAYMENT_REQUEST)
-    WKPreferencesSetPaymentRequestEnabled(preferences, true);
-#endif
-
     WKPreferencesSetStorageAccessAPIEnabled(preferences, true);
 
     platformResetPreferencesToConsistentValues();
@@ -784,6 +782,8 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
     WKWebsiteDataStoreRemoveAllServiceWorkerRegistrations(WKContextGetWebsiteDataStore(platformContext()));
 
     clearDOMCaches();
+
+    WKContextSetAllowsAnySSLCertificateForServiceWorkerTesting(platformContext(), true);
 
     // FIXME: This function should also ensure that there is only one page open.
 
@@ -1041,6 +1041,8 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.enableAttachmentElement = parseBooleanTestHeaderValue(value);
         if (key == "enableIntersectionObserver")
             testOptions.enableIntersectionObserver = parseBooleanTestHeaderValue(value);
+        if (key == "enableMenuItemElement")
+            testOptions.enableMenuItemElement = parseBooleanTestHeaderValue(value);
         if (key == "enableModernMediaControls")
             testOptions.enableModernMediaControls = parseBooleanTestHeaderValue(value);
         if (key == "enablePointerLock")
@@ -1178,6 +1180,8 @@ TestCommand parseInputLine(const std::string& inputLine)
 
 bool TestController::runTest(const char* inputLine)
 {
+    AutodrainedPool pool;
+    
     WKTextCheckerSetTestingMode(true);
     TestCommand command = parseInputLine(std::string(inputLine));
 

@@ -121,7 +121,7 @@ bool RadioInputType::isKeyboardFocusable(KeyboardEvent& event) const
     // Never allow keyboard tabbing to leave you in the same radio group.  Always
     // skip any other elements in the group.
     RefPtr<Element> currentFocusedNode = element().document().focusedElement();
-    if (is<HTMLInputElement>(currentFocusedNode.get())) {
+    if (is<HTMLInputElement>(currentFocusedNode)) {
         HTMLInputElement& focusedInput = downcast<HTMLInputElement>(*currentFocusedNode);
         if (focusedInput.isRadioButton() && focusedInput.form() == element().form() && focusedInput.name() == element().name())
             return false;
@@ -153,22 +153,18 @@ void RadioInputType::willDispatchClick(InputElementClickState& state)
     element().setChecked(true, DispatchChangeEvent);
 }
 
-void RadioInputType::didDispatchClick(Event* event, const InputElementClickState& state)
+void RadioInputType::didDispatchClick(Event& event, const InputElementClickState& state)
 {
-    if (event->defaultPrevented() || event->defaultHandled()) {
+    if (event.defaultPrevented() || event.defaultHandled()) {
         // Restore the original selected radio button if possible.
         // Make sure it is still a radio button and only do the restoration if it still belongs to our group.
-        RefPtr<HTMLInputElement> checkedRadioButton = state.checkedRadioButton.get();
-        if (checkedRadioButton
-                && checkedRadioButton->isRadioButton()
-                && checkedRadioButton->form() == element().form()
-                && checkedRadioButton->name() == element().name()) {
-            checkedRadioButton->setChecked(true);
-        }
+        auto& button = state.checkedRadioButton;
+        if (button && button->isRadioButton() && button->form() == element().form() && button->name() == element().name())
+            button->setChecked(true);
     }
 
     // The work we did in willDispatchClick was default handling.
-    event->setDefaultHandled();
+    event.setDefaultHandled();
 }
 
 bool RadioInputType::isRadioButton() const

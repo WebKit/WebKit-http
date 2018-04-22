@@ -37,6 +37,7 @@ WI.SpreadsheetCSSStyleDeclarationSection = class SpreadsheetCSSStyleDeclarationS
         this._style = style;
         this._propertiesEditor = null;
         this._selectorElements = [];
+        this._wasFocused = false;
     }
 
     // Public
@@ -54,7 +55,7 @@ WI.SpreadsheetCSSStyleDeclarationSection = class SpreadsheetCSSStyleDeclarationS
     {
         super.initialLayout();
 
-        this._headerElement = document.createElement("span");
+        this._headerElement = document.createElement("div");
         this._headerElement.classList.add("header");
 
         this._originElement = document.createElement("span");
@@ -63,32 +64,41 @@ WI.SpreadsheetCSSStyleDeclarationSection = class SpreadsheetCSSStyleDeclarationS
 
         this._selectorElement = document.createElement("span");
         this._selectorElement.classList.add("selector");
-        this._selectorElement.tabIndex = 0;
+        this._selectorElement.addEventListener("mouseenter", this._highlightNodesWithSelector.bind(this));
+        this._selectorElement.addEventListener("mouseleave", this._hideDOMNodeHighlight.bind(this));
         this._headerElement.append(this._selectorElement);
 
-        if (this._style.selectorEditable)
+        this._openBrace = document.createElement("span");
+        this._openBrace.classList.add("open-brace");
+        this._openBrace.textContent = " {";
+        this._headerElement.append(this._openBrace);
+
+        if (this._style.selectorEditable) {
             this._selectorTextField = new WI.SpreadsheetSelectorField(this, this._selectorElement);
+            this._selectorElement.tabIndex = 0;
+        }
 
         this._propertiesEditor = new WI.SpreadsheetCSSStyleDeclarationEditor(this, this._style);
         this._propertiesEditor.element.classList.add("properties");
 
-        let openBrace = document.createElement("span");
-        openBrace.classList.add("open-brace");
-        openBrace.textContent = " {";
+        this._closeBrace = document.createElement("span");
+        this._closeBrace.classList.add("close-brace");
+        this._closeBrace.textContent = "}";
 
-        let closeBrace = document.createElement("span");
-        closeBrace.classList.add("close-brace");
-        closeBrace.textContent = "}";
-
-        this._element.append(this._createMediaHeader(), this._headerElement, openBrace);
+        this._element.append(this._createMediaHeader(), this._headerElement);
         this.addSubview(this._propertiesEditor);
         this._propertiesEditor.needsLayout();
-        this._element.append(closeBrace);
+        this._element.append(this._closeBrace);
 
         if (!this._style.editable)
             this._element.classList.add("locked");
         else if (!this._style.ownerRule)
             this._element.classList.add("selector-locked");
+
+        if (this._style.editable) {
+            this.element.addEventListener("click", this._handleClick.bind(this));
+            this.element.addEventListener("mousedown", this._handleMouseDown.bind(this));
+        }
     }
 
     layout()
@@ -186,8 +196,8 @@ WI.SpreadsheetCSSStyleDeclarationSection = class SpreadsheetCSSStyleDeclarationS
             if (matched)
                 selectorElement.classList.add(WI.SpreadsheetCSSStyleDeclarationSection.MatchedSelectorElementStyleClassName);
 
-            let specificity = selector.specificity.map((number) => number.toLocaleString());
-            if (specificity) {
+            if (selector.specificity) {
+                let specificity = selector.specificity.map((number) => number.toLocaleString());
                 let tooltip = WI.UIString("Specificity: (%d, %d, %d)").format(...specificity);
                 if (selector.dynamic) {
                     tooltip += "\n";
@@ -333,6 +343,51 @@ WI.SpreadsheetCSSStyleDeclarationSection = class SpreadsheetCSSStyleDeclarationS
         mediaElement.append(mediaLabel);
 
         return mediaElement;
+    }
+
+    _handleMouseDown(event)
+    {
+        this._wasFocused = this._propertiesEditor.isFocused();
+    }
+
+    _handleClick(event)
+    {
+        if (this._wasFocused)
+            return;
+
+        event.stop();
+
+        if (event.target.classList.contains(WI.SpreadsheetStyleProperty.StyleClassName)) {
+            let propertyIndex = parseInt(event.target.dataset.propertyIndex);
+            this._propertiesEditor.addBlankProperty(propertyIndex + 1);
+            return;
+        }
+
+        if (event.target === this._headerElement || event.target === this._openBrace) {
+            this._propertiesEditor.addBlankProperty(0);
+            return;
+        }
+
+        if (event.target === this._element || event.target === this._closeBrace) {
+            const appendAfterLast = -1;
+            this._propertiesEditor.addBlankProperty(appendAfterLast);
+        }
+    }
+
+    _highlightNodesWithSelector()
+    {
+        if (!this._style.ownerRule) {
+            WI.domTreeManager.highlightDOMNode(this._style.node.id);
+            return;
+        }
+
+        let selectorText = this._selectorElement.textContent.trim();
+        WI.domTreeManager.highlightSelector(selectorText, this._style.node.ownerDocument.frameIdentifier);
+    }
+
+    _hideDOMNodeHighlight()
+    {
+        WI.domTreeManager.hideDOMNodeHighlight();
     }
 };
 

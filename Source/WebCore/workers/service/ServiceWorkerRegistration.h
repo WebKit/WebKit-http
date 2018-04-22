@@ -30,25 +30,31 @@
 #include "ActiveDOMObject.h"
 #include "EventTarget.h"
 #include "JSDOMPromiseDeferred.h"
+#include "SWClientConnection.h"
 #include "ServiceWorkerRegistrationData.h"
 
 namespace WebCore {
 
 class ScriptExecutionContext;
 class ServiceWorker;
+class ServiceWorkerContainer;
 
 class ServiceWorkerRegistration final : public RefCounted<ServiceWorkerRegistration>, public EventTargetWithInlineData, public ActiveDOMObject {
 public:
-    static Ref<ServiceWorkerRegistration> create(ScriptExecutionContext& context, ServiceWorkerRegistrationData&& data)
+    template <typename... Args> static Ref<ServiceWorkerRegistration> create(Args&&... args)
     {
-        return adoptRef(*new ServiceWorkerRegistration(context, WTFMove(data)));
+        return adoptRef(*new ServiceWorkerRegistration(std::forward<Args>(args)...));
     }
 
-    virtual ~ServiceWorkerRegistration() = default;
+    ~ServiceWorkerRegistration();
+
+    ServiceWorkerRegistrationIdentifier identifier() const { return m_registrationData.identifier; }
 
     ServiceWorker* installing();
     ServiceWorker* waiting();
     ServiceWorker* active();
+
+    ServiceWorker* getNewestWorker();
 
     const String& scope() const;
     ServiceWorkerUpdateViaCache updateViaCache() const;
@@ -58,9 +64,13 @@ public:
 
     using RefCounted::ref;
     using RefCounted::deref;
+    
+    const ServiceWorkerRegistrationData& data() const { return m_registrationData; }
+
+    void updateStateFromServer(ServiceWorkerRegistrationState, std::optional<ServiceWorkerIdentifier>);
 
 private:
-    ServiceWorkerRegistration(ScriptExecutionContext&, ServiceWorkerRegistrationData&&);
+    ServiceWorkerRegistration(ScriptExecutionContext&, Ref<ServiceWorkerContainer>&&, ServiceWorkerRegistrationData&&);
 
     EventTargetInterface eventTargetInterface() const final;
     ScriptExecutionContext* scriptExecutionContext() const final;
@@ -71,6 +81,11 @@ private:
     bool canSuspendForDocumentSuspension() const final;
 
     ServiceWorkerRegistrationData m_registrationData;
+    Ref<ServiceWorkerContainer> m_container;
+
+    RefPtr<ServiceWorker> m_installingWorker;
+    RefPtr<ServiceWorker> m_waitingWorker;
+    RefPtr<ServiceWorker> m_activeWorker;
 };
 
 } // namespace WebCore

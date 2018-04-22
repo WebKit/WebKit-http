@@ -373,7 +373,7 @@ CanvasRenderingContext2D* HTMLCanvasElement::createContext2d(const String& type)
     InspectorInstrumentation::didCreateCanvasRenderingContext(*this);
 
 #if USE(IOSURFACE_CANVAS_BACKING_STORE) || ENABLE(ACCELERATED_2D_CANVAS)
-    // Need to make sure a RenderLayer and compositing layer get created for the Canvas
+    // Need to make sure a RenderLayer and compositing layer get created for the Canvas.
     invalidateStyleAndLayerComposition();
 #endif
 
@@ -433,7 +433,7 @@ WebGLRenderingContextBase* HTMLCanvasElement::createContextWebGL(const String& t
 
     m_context = WebGLRenderingContextBase::create(*this, attrs, type);
     if (m_context) {
-        // Need to make sure a RenderLayer and compositing layer get created for the Canvas
+        // Need to make sure a RenderLayer and compositing layer get created for the Canvas.
         invalidateStyleAndLayerComposition();
 
         InspectorInstrumentation::didCreateCanvasRenderingContext(*this);
@@ -474,7 +474,7 @@ WebGPURenderingContext* HTMLCanvasElement::createContextWebGPU(const String& typ
 
     m_context = WebGPURenderingContext::create(*this);
     if (m_context) {
-        // Need to make sure a RenderLayer and compositing layer get created for the Canvas
+        // Need to make sure a RenderLayer and compositing layer get created for the Canvas.
         invalidateStyleAndLayerComposition();
 
         InspectorInstrumentation::didCreateCanvasRenderingContext(*this);
@@ -504,21 +504,26 @@ bool HTMLCanvasElement::isBitmapRendererType(const String& type)
     return type == "bitmaprenderer";
 }
 
-ImageBitmapRenderingContext* HTMLCanvasElement::createContextBitmapRenderer(const String& type)
+ImageBitmapRenderingContext* HTMLCanvasElement::createContextBitmapRenderer(const String& type, ImageBitmapRenderingContextSettings&& settings)
 {
     ASSERT_UNUSED(type, HTMLCanvasElement::isBitmapRendererType(type));
     ASSERT(!m_context);
 
-    m_context = std::make_unique<ImageBitmapRenderingContext>(*this);
+    m_context = std::make_unique<ImageBitmapRenderingContext>(*this, WTFMove(settings));
+
+#if USE(IOSURFACE_CANVAS_BACKING_STORE) || ENABLE(ACCELERATED_2D_CANVAS)
+    // Need to make sure a RenderLayer and compositing layer get created for the Canvas.
+    invalidateStyleAndLayerComposition();
+#endif
 
     return static_cast<ImageBitmapRenderingContext*>(m_context.get());
 }
 
-ImageBitmapRenderingContext* HTMLCanvasElement::getContextBitmapRenderer(const String& type)
+ImageBitmapRenderingContext* HTMLCanvasElement::getContextBitmapRenderer(const String& type, ImageBitmapRenderingContextSettings&& settings)
 {
     ASSERT_UNUSED(type, HTMLCanvasElement::isBitmapRendererType(type));
     if (!m_context)
-        return createContextBitmapRenderer(type);
+        return createContextBitmapRenderer(type, WTFMove(settings));
     return static_cast<ImageBitmapRenderingContext*>(m_context.get());
 }
 
@@ -602,7 +607,7 @@ bool HTMLCanvasElement::paintsIntoCanvasBuffer() const
 {
     ASSERT(m_context);
 #if USE(IOSURFACE_CANVAS_BACKING_STORE)
-    if (m_context->is2d())
+    if (m_context->is2d() || m_context->isBitmapRenderer())
         return true;
 #endif
 
@@ -956,13 +961,14 @@ void HTMLCanvasElement::createImageBuffer() const
     scriptExecutionContext()->vm().heap.reportExtraMemoryAllocated(memoryCost());
 
 #if USE(IOSURFACE_CANVAS_BACKING_STORE) || ENABLE(ACCELERATED_2D_CANVAS)
-    if (m_context && m_context->is2d())
+    if (m_context && m_context->is2d()) {
         // Recalculate compositing requirements if acceleration state changed.
         const_cast<HTMLCanvasElement*>(this)->invalidateStyleAndLayerComposition();
+    }
 #endif
 }
 
-void HTMLCanvasElement::setImageBuffer(std::unique_ptr<ImageBuffer> buffer) const
+void HTMLCanvasElement::setImageBuffer(std::unique_ptr<ImageBuffer>&& buffer) const
 {
     size_t previousMemoryCost = memoryCost();
     removeFromActivePixelMemory(previousMemoryCost);
@@ -972,6 +978,9 @@ void HTMLCanvasElement::setImageBuffer(std::unique_ptr<ImageBuffer> buffer) cons
         m_imageBuffer = WTFMove(buffer);
     }
 
+    if (m_imageBuffer && m_size != m_imageBuffer->internalSize())
+        m_size = m_imageBuffer->internalSize();
+
     size_t currentMemoryCost = memoryCost();
     activePixelMemory += currentMemoryCost;
 
@@ -979,8 +988,18 @@ void HTMLCanvasElement::setImageBuffer(std::unique_ptr<ImageBuffer> buffer) cons
         InspectorInstrumentation::didChangeCanvasMemory(const_cast<HTMLCanvasElement&>(*this));
 }
 
+void HTMLCanvasElement::setImageBufferAndMarkDirty(std::unique_ptr<ImageBuffer>&& buffer)
+{
+    m_hasCreatedImageBuffer = true;
+    setImageBuffer(WTFMove(buffer));
+    didDraw(FloatRect(FloatPoint(), m_size));
+}
+
 GraphicsContext* HTMLCanvasElement::drawingContext() const
 {
+    if (m_context && !m_context->is2d())
+        return nullptr;
+
     return buffer() ? &m_imageBuffer->context() : nullptr;
 }
 

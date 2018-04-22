@@ -36,7 +36,11 @@ ServiceWorkerRegistrationData ServiceWorkerRegistrationData::isolatedCopy() cons
         key.isolatedCopy(),
         identifier,
         scopeURL.isolatedCopy(),
-        updateViaCache
+        scriptURL.isolatedCopy(),
+        updateViaCache,
+        installingServiceWorkerIdentifier,
+        waitingServiceWorkerIdentifier,
+        activeServiceWorkerIdentifier,
     };
 }
 

@@ -33,6 +33,7 @@
 #include "HitTestRequest.h"
 #include "HitTestResult.h"
 #include "InlineElementBox.h"
+#include "LayoutState.h"
 #include "Node.h"
 #include "PODIntervalTree.h"
 #include "RenderBoxFragmentInfo.h"
@@ -45,9 +46,12 @@
 #include "RenderTheme.h"
 #include "RenderView.h"
 #include "TransformState.h"
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/StackStats.h>
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(RenderFragmentedFlow);
 
 RenderFragmentedFlow::RenderFragmentedFlow(Document& document, RenderStyle&& style)
     : RenderBlockFlow(document, WTFMove(style))
@@ -224,7 +228,7 @@ void RenderFragmentedFlow::repaintRectangleInFragments(const LayoutRect& repaint
     if (!shouldRepaint(repaintRect) || !hasValidFragmentInfo())
         return;
 
-    LayoutStateDisabler layoutStateDisabler(view()); // We can't use layout state to repaint, since the fragments are somewhere else.
+    LayoutStateDisabler layoutStateDisabler(view().frameView().layoutContext()); // We can't use layout state to repaint, since the fragments are somewhere else.
 
     for (auto& fragment : m_fragmentList)
         fragment->repaintFragmentedFlowContent(repaintRect);
@@ -324,9 +328,9 @@ LayoutPoint RenderFragmentedFlow::adjustedPositionRelativeToOffsetParent(const R
             
             // Since the top has been overriden, check if the
             // relative/sticky positioning must be reconsidered.
-            if (boxModelObject.isRelPositioned())
+            if (boxModelObject.isRelativelyPositioned())
                 referencePoint.move(0, boxModelObject.relativePositionOffset().height());
-            else if (boxModelObject.isStickyPositioned())
+            else if (boxModelObject.isStickilyPositioned())
                 referencePoint.move(0, boxModelObject.stickyPositionOffset().height());
         }
         

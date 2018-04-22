@@ -26,6 +26,7 @@
 #import "config.h"
 #import "GraphicsContext.h"
 
+#import "DisplayListRecorder.h"
 #import "GraphicsContextCG.h"
 #import "GraphicsContextPlatformPrivateCG.h"
 #import "IntRect.h"
@@ -112,15 +113,23 @@ static bool drawFocusRingToContextAtTime(CGContextRef context, CGPathRef focusRi
 }
 #endif // !PLATFORM(IOS)
 
-void GraphicsContext::drawFocusRing(const Path& path, float /* width */, float /* offset */, const Color&)
+void GraphicsContext::drawFocusRing(const Path& path, float width, float offset, const Color& color)
 {
 #if PLATFORM(MAC)
     if (paintingDisabled() || path.isNull())
         return;
 
+    if (m_impl) {
+        m_impl->drawFocusRing(path, width, offset, color);
+        return;
+    }
+
     drawFocusRingToContext(platformContext(), path.platformPath());
 #else
     UNUSED_PARAM(path);
+    UNUSED_PARAM(width);
+    UNUSED_PARAM(offset);
+    UNUSED_PARAM(color);
 #endif
 }
 
@@ -129,13 +138,19 @@ void GraphicsContext::drawFocusRing(const Path& path, double timeOffset, bool& n
 {
     if (paintingDisabled() || path.isNull())
         return;
-    
+
+    if (m_impl) // FIXME: implement animated focus ring drawing.
+        return;
+
     needsRedraw = drawFocusRingToContextAtTime(platformContext(), path.platformPath(), timeOffset);
 }
 
 void GraphicsContext::drawFocusRing(const Vector<FloatRect>& rects, double timeOffset, bool& needsRedraw)
 {
     if (paintingDisabled())
+        return;
+
+    if (m_impl) // FIXME: implement animated focus ring drawing.
         return;
 
     RetainPtr<CGMutablePathRef> focusRingPath = adoptCF(CGPathCreateMutable());
@@ -146,11 +161,16 @@ void GraphicsContext::drawFocusRing(const Vector<FloatRect>& rects, double timeO
 }
 #endif
 
-void GraphicsContext::drawFocusRing(const Vector<FloatRect>& rects, float, float offset, const Color&)
+void GraphicsContext::drawFocusRing(const Vector<FloatRect>& rects, float width, float offset, const Color& color)
 {
 #if !PLATFORM(IOS)
     if (paintingDisabled())
         return;
+
+    if (m_impl) {
+        m_impl->drawFocusRing(rects, width, offset, color);
+        return;
+    }
 
     RetainPtr<CGMutablePathRef> focusRingPath = adoptCF(CGPathCreateMutable());
     for (auto& rect : rects)
@@ -159,7 +179,9 @@ void GraphicsContext::drawFocusRing(const Vector<FloatRect>& rects, float, float
     drawFocusRingToContext(platformContext(), focusRingPath.get());
 #else
     UNUSED_PARAM(rects);
+    UNUSED_PARAM(width);
     UNUSED_PARAM(offset);
+    UNUSED_PARAM(color);
 #endif
 }
 

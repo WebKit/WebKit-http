@@ -279,10 +279,6 @@ public:
     virtual void setEditableElementIsFocused(bool) = 0;
 #endif // PLATFORM(MAC)
 
-#if PLATFORM(COCOA)
-    virtual void handleActiveNowPlayingSessionInfoResponse(bool hasActiveSession, const String& title, double duration, double elapsedTime) = 0;
-#endif
-
 #if PLATFORM(IOS)
     virtual void commitPotentialTapFailed() = 0;
     virtual void didGetTapHighlightGeometries(uint64_t requestID, const WebCore::Color&, const Vector<WebCore::FloatQuad>& highlightedQuads, const WebCore::IntSize& topLeftRadius, const WebCore::IntSize& topRightRadius, const WebCore::IntSize& bottomLeftRadius, const WebCore::IntSize& bottomRightRadius) = 0;
@@ -302,7 +298,6 @@ public:
     virtual void positionInformationDidChange(const InteractionInformationAtPosition&) = 0;
     virtual void saveImageToLibrary(Ref<WebCore::SharedBuffer>&&) = 0;
     virtual bool allowsBlockSelection() = 0;
-    virtual void didUpdateBlockSelectionWithTouch(uint32_t touch, uint32_t flags, float growThreshold, float shrinkThreshold) = 0;
     virtual void showPlaybackTargetPicker(bool hasVideo, const WebCore::IntRect& elementRect) = 0;
     virtual void disableDoubleTapGesturesDuringTapIfNecessary(uint64_t requestID) = 0;
     virtual double minimumZoomScale() const = 0;
@@ -387,6 +382,11 @@ public:
     virtual void startDrag(const WebCore::DragItem&, const ShareableBitmap::Handle& image) = 0;
     virtual void didConcludeEditDataInteraction(std::optional<WebCore::TextIndicatorData>) = 0;
     virtual void didChangeDataInteractionCaretRect(const WebCore::IntRect& previousCaretRect, const WebCore::IntRect& caretRect) = 0;
+#endif
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+    virtual void didInsertAttachment(const String& identifier) { }
+    virtual void didRemoveAttachment(const String& identifier) { }
 #endif
 
 #if PLATFORM(GTK) || PLATFORM(WPE)

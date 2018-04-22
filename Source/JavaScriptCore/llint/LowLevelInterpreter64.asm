@@ -847,6 +847,22 @@ _llint_op_to_string:
     dispatch(constexpr op_to_string_length)
 
 
+_llint_op_to_object:
+    traceExecution()
+    loadisFromInstruction(2, t0)
+    loadisFromInstruction(1, t1)
+    loadConstantOrVariable(t0, t2)
+    btqnz t2, tagMask, .opToObjectSlow
+    bbb JSCell::m_type[t2], ObjectType, .opToObjectSlow
+    storeq t2, [cfr, t1, 8]
+    valueProfile(t2, 4, t0)
+    dispatch(constexpr op_to_object_length)
+
+.opToObjectSlow:
+    callOpcodeSlowPath(_slow_path_to_object)
+    dispatch(constexpr op_to_object_length)
+
+
 _llint_op_negate:
     traceExecution()
     loadisFromInstruction(2, t0)
@@ -1208,7 +1224,7 @@ _llint_op_is_object:
 
 macro loadPropertyAtVariableOffset(propertyOffsetAsInt, objectAndStorage, value)
     bilt propertyOffsetAsInt, firstOutOfLineOffset, .isInline
-    loadCaged(_g_gigacageBasePtrs + Gigacage::BasePtrs::jsValue, constexpr JSVALUE_GIGACAGE_MASK, JSObject::m_butterfly[objectAndStorage], objectAndStorage, value)
+    loadp JSObject::m_butterfly[objectAndStorage], objectAndStorage
     negi propertyOffsetAsInt
     sxi2q propertyOffsetAsInt, propertyOffsetAsInt
     jmp .ready
@@ -1219,9 +1235,9 @@ macro loadPropertyAtVariableOffset(propertyOffsetAsInt, objectAndStorage, value)
 end
 
 
-macro storePropertyAtVariableOffset(propertyOffsetAsInt, objectAndStorage, value, scratch)
+macro storePropertyAtVariableOffset(propertyOffsetAsInt, objectAndStorage, value)
     bilt propertyOffsetAsInt, firstOutOfLineOffset, .isInline
-    loadCaged(_g_gigacageBasePtrs + Gigacage::BasePtrs::jsValue, constexpr JSVALUE_GIGACAGE_MASK, JSObject::m_butterfly[objectAndStorage], objectAndStorage, scratch)
+    loadp JSObject::m_butterfly[objectAndStorage], objectAndStorage
     negi propertyOffsetAsInt
     sxi2q propertyOffsetAsInt, propertyOffsetAsInt
     jmp .ready
@@ -1444,7 +1460,7 @@ _llint_op_put_by_id:
     loadisFromInstruction(3, t1)
     loadConstantOrVariable(t1, t2)
     loadisFromInstruction(5, t1)
-    storePropertyAtVariableOffset(t1, t0, t2, t3)
+    storePropertyAtVariableOffset(t1, t0, t2)
     writeBarrierOnOperands(1, 3)
     dispatch(constexpr op_put_by_id_length)
 
@@ -2078,6 +2094,45 @@ macro nativeCallTrampoline(executableOffsetToFunction)
     jmp _llint_throw_from_slow_path_trampoline
 end
 
+macro internalFunctionCallTrampoline(offsetOfFunction)
+    functionPrologue()
+    storep 0, CodeBlock[cfr]
+    loadp Callee[cfr], t0
+    andp MarkedBlockMask, t0, t1
+    loadp MarkedBlock::m_vm[t1], t1
+    storep cfr, VM::topCallFrame[t1]
+    if ARM64 or C_LOOP
+        storep lr, ReturnPC[cfr]
+    end
+    move cfr, a0
+    loadp Callee[cfr], t1
+    checkStackPointerAlignment(t3, 0xdead0001)
+    if C_LOOP
+        cloopCallNative offsetOfFunction[t1]
+    else
+        if X86_64_WIN
+            subp 32, sp
+        end
+        call offsetOfFunction[t1]
+        if X86_64_WIN
+            addp 32, sp
+        end
+    end
+
+    loadp Callee[cfr], t3
+    andp MarkedBlockMask, t3
+    loadp MarkedBlock::m_vm[t3], t3
+
+    btqnz VM::m_exception[t3], .handleException
+
+    functionEpilogue()
+    ret
+
+.handleException:
+    storep cfr, VM::topCallFrame[t3]
+    jmp _llint_throw_from_slow_path_trampoline
+end
+
 macro getConstantScope(dst)
     loadpFromInstruction(6, t0)
     loadisFromInstruction(dst, t1)
@@ -2266,7 +2321,7 @@ macro putProperty()
     loadisFromInstruction(3, t1)
     loadConstantOrVariable(t1, t2)
     loadisFromInstruction(6, t1)
-    storePropertyAtVariableOffset(t1, t0, t2, t3)
+    storePropertyAtVariableOffset(t1, t0, t2)
 end
 
 macro putGlobalVariable()

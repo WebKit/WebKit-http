@@ -68,6 +68,11 @@ class SecurityOrigin;
 class SocketProvider;
 class URL;
 
+#if ENABLE(SERVICE_WORKER)
+class ServiceWorker;
+class ServiceWorkerContainer;
+#endif
+
 namespace IDBClient {
 class IDBConnectionProxy;
 }
@@ -232,8 +237,10 @@ public:
     JSC::ExecState* execState();
 
 #if ENABLE(SERVICE_WORKER)
-    uint64_t selectedServiceWorkerIdentifier() const { return m_serviceWorkerIdentifier; }
-    void setSelectedServiceWorkerIdentifier(uint64_t identifier) { m_serviceWorkerIdentifier = identifier; }
+    ServiceWorker* activeServiceWorker() const;
+    void setActiveServiceWorker(RefPtr<ServiceWorker>&&);
+
+    ServiceWorkerContainer* serviceWorkerContainer();
 #endif
 
 protected:
@@ -305,7 +312,7 @@ private:
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-    uint64_t m_serviceWorkerIdentifier { 0 };
+    RefPtr<ServiceWorker> m_activeServiceWorker;
 #endif
 };
 

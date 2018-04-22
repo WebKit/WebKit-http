@@ -22,7 +22,7 @@
 
 import logging
 
-from webkitpy.common.net.bindingstestresults import BindingsTestResults
+from webkitpy.common.net.generictestresults import BindingsTestResults
 from webkitpy.tool.bot.abstracttestresultsreader import AbstractTestResultsReader
 
 _log = logging.getLogger(__name__)

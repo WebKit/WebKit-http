@@ -247,7 +247,7 @@ void CachedResourceRequest::updateReferrerOriginAndUserAgentHeaders(FrameLoader&
         m_resourceRequest.setHTTPReferrer(outgoingReferrer);
     FrameLoader::addHTTPOriginIfNeeded(m_resourceRequest, outgoingOrigin);
 
-    frameLoader.applyUserAgent(m_resourceRequest);
+    frameLoader.applyUserAgentIfNeeded(m_resourceRequest);
 }
 
 bool isRequestCrossOrigin(SecurityOrigin* origin, const URL& requestURL, const ResourceLoaderOptions& options)
@@ -272,5 +272,22 @@ void CachedResourceRequest::setDestinationIfNotSet(FetchOptions::Destination des
         return;
     m_options.destination = destination;
 }
+
+#if ENABLE(SERVICE_WORKER)
+void CachedResourceRequest::setSelectedServiceWorkerIdentifierIfNeeded(ServiceWorkerIdentifier identifier)
+{
+    if (isNonSubresourceRequest(m_options.destination))
+        return;
+    if (isPotentialNavigationOrSubresourceRequest(m_options.destination))
+        return;
+
+    if (m_options.serviceWorkersMode == ServiceWorkersMode::None)
+        return;
+    if (m_options.serviceWorkerIdentifier)
+        return;
+
+    m_options.serviceWorkerIdentifier = identifier;
+}
+#endif
 
 } // namespace WebCore
