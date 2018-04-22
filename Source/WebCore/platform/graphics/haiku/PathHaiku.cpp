@@ -183,6 +183,13 @@ Path::Path(const Path& other)
     gHitTestBitmap.addReference();
 }
 
+Path::Path(Path&& other)
+{
+    m_path = other.m_path;
+    other.m_path = nullptr;
+    gHitTestBitmap.addReference();
+}
+
 Path::~Path()
 {
     gHitTestBitmap.removeReference();
@@ -196,6 +203,17 @@ Path& Path::operator=(const Path& other)
         m_path->AddShape(other.platformPath());
     }
 
+    return *this;
+}
+
+Path& Path::operator=(Path&& other)
+{
+    if (this == &other)
+        return *this;
+    if (m_path)
+        delete m_path;
+    m_path = other.m_path;
+    other.m_path = nullptr;
     return *this;
 }
 

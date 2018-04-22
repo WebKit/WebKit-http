@@ -735,7 +735,7 @@ void BWebPage::paint(BRect rect, bool immediate)
     // we avoid recursion using fLayoutingView to abort the nested paint
     // calls early
     fLayoutingView = true;
-    view->layout(true);
+    view->layout();
     fLayoutingView = false;
 
     if (!fWebView->LockLooper())
@@ -841,7 +841,7 @@ void BWebPage::scroll(int xOffset, int yOffset, const BRect& rectToScroll,
         // Make sure the view is layouted, since it will refuse to paint
         // otherwise.
         fLayoutingView = true;
-        view->layout(true);
+        view->layout();
         fLayoutingView = false;
 
         internalPaint(offscreenView, view, &repaintRegion);

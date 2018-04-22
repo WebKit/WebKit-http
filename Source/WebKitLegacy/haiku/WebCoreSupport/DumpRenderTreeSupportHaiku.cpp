@@ -189,7 +189,7 @@ JSGlobalContextRef DumpRenderTreeClient::globalContextRefForFrame(const BWebFram
 void
 DumpRenderTreeClient::setMockScrollbarsEnabled(bool enable)
 {
-    WebCore::Settings::setMockScrollbarsEnabled(enable);
+    //WebCore::Settings::setMockScrollbarsEnabled(enable);
 }
 
 }
