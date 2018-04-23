@@ -191,7 +191,7 @@ my @features = (
       define => "ENABLE_DATA_TRANSFER_ITEMS", default => 0, value => \$dataTransferItemsSupport },
 
     { option => "datalist-element", desc => "Toggle Datalist Element support",
-      define => "ENABLE_DATALIST_ELEMENT", default => isHaiku(), value => \$datalistElementSupport },
+      define => "ENABLE_DATALIST_ELEMENT", default => 0, value => \$datalistElementSupport },
 
     { option => "device-orientation", desc => "Toggle Device Orientation support",
       define => "ENABLE_DEVICE_ORIENTATION", default => (isIOSWebKit() || isWPE()), value => \$deviceOrientationSupport },
