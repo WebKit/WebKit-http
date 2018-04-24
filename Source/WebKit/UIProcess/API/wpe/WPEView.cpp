@@ -62,7 +62,6 @@ View::View(struct wpe_view_backend* backend, const API::PageConfiguration& baseC
         preferences->setAcceleratedCompositingEnabled(true);
         preferences->setForceCompositingMode(true);
         preferences->setAccelerated2dCanvasEnabled(true);
-        preferences->setWebGLEnabled(true);
         preferences->setDeveloperExtrasEnabled(true);
     }
 
