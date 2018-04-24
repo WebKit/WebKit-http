@@ -99,10 +99,6 @@ WK_EXPORT bool WKPreferencesGetCompositingRepaintCountersVisible(WKPreferencesRe
 WK_EXPORT void WKPreferencesSetTiledScrollingIndicatorVisible(WKPreferencesRef, bool);
 WK_EXPORT bool WKPreferencesGetTiledScrollingIndicatorVisible(WKPreferencesRef);
 
-// Defaults to true.
-WK_EXPORT void WKPreferencesSetWebGLEnabled(WKPreferencesRef, bool);
-WK_EXPORT bool WKPreferencesGetWebGLEnabled(WKPreferencesRef);
-
 // Defaults to false.
 WK_EXPORT void WKPreferencesSetForceSoftwareWebGLRendering(WKPreferencesRef, bool);
 WK_EXPORT bool WKPreferencesGetForceSoftwareWebGLRendering(WKPreferencesRef);
