@@ -1,3 +1,18 @@
+2018-04-24  Leo Balter  <leonardo.balter@gmail.com>
+
+        Auto save the results for Test262
+        https://bugs.webkit.org/show_bug.cgi?id=184926
+
+        Reviewed by NOBODY (OOPS!).
+
+        * Scripts/test262/Runner.pm:
+        (processCLI):
+        (main):
+        (parseError):
+        (processResult):
+        (summarizeResults):
+        * Scripts/test262/config.yaml: Renamed from Tools/Scripts/test262/test262-config.yaml.
+
 2018-04-24  John Wilander  <wilander@apple.com>
 
         From-Origin: Support for 'same' and 'same-site' response header, nested frame origin check
