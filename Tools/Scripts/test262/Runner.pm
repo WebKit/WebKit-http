@@ -315,8 +315,6 @@ sub main {
         summarizeResults();
     }
 
-    my $endTime = time();
-    my $totalTime = $endTime - $startTime;
     my $total = scalar @res - $skipfilecount;
     print "\n" . $total . " tests ran\n";
 
@@ -329,7 +327,12 @@ sub main {
     }
 
     print $skipfilecount . " test files skipped\n";
+
+    my $endTime = time();
+    my $totalTime = $endTime - $startTime;
     print "Done in $totalTime seconds!\n";
+
+    exit $newfailcount ? 1 : 0;
 }
 
 sub loadImportFile {
@@ -583,8 +586,7 @@ sub processResult {
 
         $resultdata{result} = 'FAIL';
         $resultdata{error} = $currentfailure;
-    }
-    elsif ($scenario ne 'skip' && !$currentfailure) {
+    } elsif ($scenario ne 'skip' && !$currentfailure) {
         if ($expectedfailure) {
             print "NEW PASS $file ($scenario)\n";
             print "\n" if $verbose;
@@ -651,7 +653,6 @@ sub getHarness {
 
     return $content;
 }
-
 
 sub summarizeResults {
     my @rawresults = LoadFile($resultsFile) or die $!;
@@ -739,8 +740,6 @@ sub summarizeResults {
                       $byfeature{$key}->[1],
                       $byfeature{$key}->[2], $key));
     }
-
-
 }
 
 __END__
