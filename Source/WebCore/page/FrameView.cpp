@@ -1448,39 +1448,40 @@ void FrameView::setCannotBlitToWindow()
     updateCanBlitOnScrollRecursively();
 }
 
-void FrameView::addSlowRepaintObject(RenderElement* o)
+void FrameView::addSlowRepaintObject(RenderElement& renderer)
 {
     bool hadSlowRepaintObjects = hasSlowRepaintObjects();
 
     if (!m_slowRepaintObjects)
         m_slowRepaintObjects = std::make_unique<HashSet<const RenderElement*>>();
 
-    m_slowRepaintObjects->add(o);
+    m_slowRepaintObjects->add(&renderer);
+    if (hadSlowRepaintObjects)
+        return;
 
-    if (!hadSlowRepaintObjects) {
-        updateCanBlitOnScrollRecursively();
+    updateCanBlitOnScrollRecursively();
 
-        if (Page* page = frame().page()) {
-            if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator())
-                scrollingCoordinator->frameViewHasSlowRepaintObjectsDidChange(*this);
-        }
+    if (auto* page = frame().page()) {
+        if (auto* scrollingCoordinator = page->scrollingCoordinator())
+            scrollingCoordinator->frameViewHasSlowRepaintObjectsDidChange(*this);
     }
 }
 
-void FrameView::removeSlowRepaintObject(RenderElement* o)
+void FrameView::removeSlowRepaintObject(RenderElement& renderer)
 {
     if (!m_slowRepaintObjects)
         return;
 
-    m_slowRepaintObjects->remove(o);
-    if (m_slowRepaintObjects->isEmpty()) {
-        m_slowRepaintObjects = nullptr;
-        updateCanBlitOnScrollRecursively();
+    m_slowRepaintObjects->remove(&renderer);
+    if (!m_slowRepaintObjects->isEmpty())
+        return;
 
-        if (Page* page = frame().page()) {
-            if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator())
-                scrollingCoordinator->frameViewHasSlowRepaintObjectsDidChange(*this);
-        }
+    m_slowRepaintObjects = nullptr;
+    updateCanBlitOnScrollRecursively();
+
+    if (auto* page = frame().page()) {
+        if (auto* scrollingCoordinator = page->scrollingCoordinator())
+            scrollingCoordinator->frameViewHasSlowRepaintObjectsDidChange(*this);
     }
 }
 
@@ -2086,28 +2087,26 @@ void FrameView::restoreScrollbar()
 
 bool FrameView::scrollToFragment(const URL& url)
 {
-    // If our URL has no ref, then we have no place we need to jump to.
-    // OTOH If CSS target was set previously, we want to set it to 0, recalc
-    // and possibly repaint because :target pseudo class may have been
-    // set (see bug 11321).
-    if (!url.hasFragmentIdentifier()) {
-        frame().document()->setCSSTarget(nullptr);
-        return false;
-    }
-
     String fragmentIdentifier = url.fragmentIdentifier();
     if (scrollToAnchor(fragmentIdentifier))
         return true;
 
     // Try again after decoding the ref, based on the document's encoding.
-    if (TextResourceDecoder* decoder = frame().document()->decoder())
-        return scrollToAnchor(decodeURLEscapeSequences(fragmentIdentifier, decoder->encoding()));
+    if (TextResourceDecoder* decoder = frame().document()->decoder()) {
+        if (scrollToAnchor(decodeURLEscapeSequences(fragmentIdentifier, decoder->encoding())))
+            return true;
+    }
 
+    resetScrollAnchor();
     return false;
 }
 
-bool FrameView::scrollToAnchor(const String& name)
+bool FrameView::scrollToAnchor(const String& fragmentIdentifier)
 {
+    // If our URL has no ref, then we have no place we need to jump to.
+    if (fragmentIdentifier.isNull())
+        return false;
+
     ASSERT(frame().document());
     auto& document = *frame().document();
 
@@ -2118,22 +2117,25 @@ bool FrameView::scrollToAnchor(const String& name)
 
     document.setGotoAnchorNeededAfterStylesheetsLoad(false);
 
-    Element* anchorElement = document.findAnchor(name);
+    Element* anchorElement = document.findAnchor(fragmentIdentifier);
 
     // Setting to null will clear the current target.
     document.setCSSTarget(anchorElement);
 
     if (is<SVGDocument>(document)) {
+        if (fragmentIdentifier.isEmpty())
+            return false;
         if (auto rootElement = SVGDocument::rootElement(document)) {
-            rootElement->scrollToAnchor(name, anchorElement);
-            if (!anchorElement)
+            if (rootElement->scrollToFragment(fragmentIdentifier))
                 return true;
+            // If SVG failed to scrollToAnchor() and anchorElement is null, no other scrolling will be possible.
+            if (!anchorElement)
+                return false;
         }
-    }
-
-    // Implement the rule that "" and "top" both mean top of page as in other browsers.
-    if (!anchorElement && !(name.isEmpty() || equalLettersIgnoringASCIICase(name, "top")))
+    } else if (!anchorElement && !(fragmentIdentifier.isEmpty() || equalLettersIgnoringASCIICase(fragmentIdentifier, "top"))) {
+        // Implement the rule that "" and "top" both mean top of page as in other browsers.
         return false;
+    }
 
     ContainerNode* scrollPositionAnchor = anchorElement;
     if (!scrollPositionAnchor)
@@ -2190,6 +2192,26 @@ void FrameView::setScrollPosition(const ScrollPosition& scrollPosition)
     if (page && page->expectsWheelEventTriggers())
         scrollAnimator().setWheelEventTestTrigger(page->testTrigger());
     ScrollView::setScrollPosition(scrollPosition);
+}
+
+void FrameView::resetScrollAnchor()
+{
+    ASSERT(frame().document());
+    auto& document = *frame().document();
+
+    // If CSS target was set previously, we want to set it to 0, recalc
+    // and possibly repaint because :target pseudo class may have been
+    // set (see bug 11321).
+    document.setCSSTarget(nullptr);
+
+    if (is<SVGDocument>(document)) {
+        if (auto rootElement = SVGDocument::rootElement(document)) {
+            // We need to update the layout before resetScrollAnchor(), otherwise we
+            // could really mess things up if resetting the anchor comes at a bad moment.
+            document.updateStyleIfNeeded();
+            rootElement->resetScrollAnchor();
+        }
+    }
 }
 
 void FrameView::contentsResized()
@@ -2466,7 +2488,7 @@ static unsigned countRenderedCharactersInRenderObjectWithThreshold(const RenderE
     unsigned count = 0;
     for (const RenderObject* descendant = &renderer; descendant; descendant = descendant->nextInPreOrder()) {
         if (is<RenderText>(*descendant)) {
-            count += downcast<RenderText>(*descendant).text()->length();
+            count += downcast<RenderText>(*descendant).text().length();
             if (count >= threshold)
                 break;
         }

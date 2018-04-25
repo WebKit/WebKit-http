@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,13 +37,13 @@ bool tryToDisassembleWithUDis86(const MacroAssemblerCodePtr& codePtr, size_t siz
 {
     ud_t disassembler;
     ud_init(&disassembler);
-    ud_set_input_buffer(&disassembler, static_cast<unsigned char*>(codePtr.executableAddress()), size);
+    ud_set_input_buffer(&disassembler, codePtr.executableAddress<unsigned char*>(), size);
 #if CPU(X86_64)
     ud_set_mode(&disassembler, 64);
 #else
     ud_set_mode(&disassembler, 32);
 #endif
-    ud_set_pc(&disassembler, bitwise_cast<uintptr_t>(codePtr.executableAddress()));
+    ud_set_pc(&disassembler, codePtr.executableAddress<uintptr_t>());
     ud_set_syntax(&disassembler, UD_SYN_ATT);
     
     uint64_t currentPC = disassembler.pc;

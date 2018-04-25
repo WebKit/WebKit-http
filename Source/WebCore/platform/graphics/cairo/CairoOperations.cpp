@@ -646,25 +646,17 @@ void drawGlyphs(PlatformContextCairo& platformContext, const GraphicsContextStat
     cairo_restore(cr);
 }
 
-void drawNativeImage(PlatformContextCairo& platformContext, const NativeImagePtr& image, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator compositeOperator, BlendMode blendMode, ImageOrientation orientation, GraphicsContext& targetContext)
+void drawNativeImage(PlatformContextCairo& platformContext, cairo_surface_t* surface, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator compositeOperator, BlendMode blendMode, ImageOrientation orientation, GraphicsContext& targetContext)
 {
     platformContext.save();
 
     // Set the compositing operation.
-    if (compositeOperator == CompositeSourceOver && blendMode == BlendModeNormal && !cairoSurfaceHasAlpha(image.get()))
+    if (compositeOperator == CompositeSourceOver && blendMode == BlendModeNormal && !cairoSurfaceHasAlpha(surface))
         Cairo::State::setCompositeOperation(platformContext, CompositeCopy, BlendModeNormal);
     else
         Cairo::State::setCompositeOperation(platformContext, compositeOperator, blendMode);
 
-#if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
-    IntSize scaledSize = nativeImageSize(image);
-    FloatRect src = adjustSourceRectForDownSampling(srcRect, scaledSize);
-#else
-    FloatRect src(srcRect);
-#endif
-
     FloatRect dst = destRect;
-
     if (orientation != DefaultImageOrientation) {
         // ImageOrientation expects the origin to be at (0, 0).
         Cairo::translate(platformContext, dst.x(), dst.y());
@@ -677,14 +669,14 @@ void drawNativeImage(PlatformContextCairo& platformContext, const NativeImagePtr
         }
     }
 
-    platformContext.drawSurfaceToContext(image.get(), dst, src, targetContext);
+    platformContext.drawSurfaceToContext(surface, dst, srcRect, targetContext);
     platformContext.restore();
 }
 
-void drawPattern(PlatformContextCairo& platformContext, Image& image, const FloatRect& destRect, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, CompositeOperator compositeOperator, BlendMode blendMode)
+void drawPattern(PlatformContextCairo& platformContext, cairo_surface_t* surface, const IntSize& size, const FloatRect& destRect, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, CompositeOperator compositeOperator, BlendMode blendMode)
 {
-    if (auto surface = image.nativeImageForCurrentFrame())
-        drawPatternToCairoContext(platformContext.cr(), surface.get(), IntSize(image.size()), tileRect, patternTransform, phase, toCairoOperator(compositeOperator, blendMode), destRect);
+    // FIXME: Investigate why the size has to be passed in as an IntRect.
+    drawPatternToCairoContext(platformContext.cr(), surface, size, tileRect, patternTransform, phase, toCairoOperator(compositeOperator, blendMode), destRect);
 }
 
 void drawRect(PlatformContextCairo& platformContext, const FloatRect& rect, float borderThickness, const GraphicsContextState& state)

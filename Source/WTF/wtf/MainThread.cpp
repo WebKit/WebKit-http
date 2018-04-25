@@ -35,6 +35,7 @@
 #include "StdLibExtras.h"
 #include "Threading.h"
 #include <mutex>
+#include <wtf/Condition.h>
 #include <wtf/Lock.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/ThreadSpecific.h>
@@ -135,14 +136,14 @@ void dispatchFunctionsFromMainThread()
         // yield so the user input can be processed. Otherwise user may not be able to even close the window.
         // This code has effect only in case the scheduleDispatchFunctionsOnMainThread() is implemented in a way that
         // allows input events to be processed before we are back here.
-        if (MonotonicTime::now() - startTime > maxRunLoopSuspensionTime && currentRunLoopInCommonMode()) {
+        if (MonotonicTime::now() - startTime > maxRunLoopSuspensionTime) {
             scheduleDispatchFunctionsOnMainThread();
             break;
         }
     }
 }
 
-void callOnMainThread(Function<void()>&& function, SchedulePairHashSet* pairs)
+void callOnMainThread(Function<void()>&& function)
 {
     ASSERT(function);
 
@@ -155,7 +156,7 @@ void callOnMainThread(Function<void()>&& function, SchedulePairHashSet* pairs)
     }
 
     if (needToSchedule)
-        scheduleDispatchFunctionsOnMainThread(pairs);
+        scheduleDispatchFunctionsOnMainThread();
 }
 
 void setMainThreadCallbacksPaused(bool paused)
@@ -209,6 +210,32 @@ std::optional<GCThreadType> mayBeGCThread()
     if (!isGCThread->isSet())
         return std::nullopt;
     return **isGCThread;
+}
+
+void callOnMainThreadAndWait(WTF::Function<void()>&& function)
+{
+    if (isMainThread()) {
+        function();
+        return;
+    }
+
+    Lock mutex;
+    Condition conditionVariable;
+
+    bool isFinished = false;
+
+    callOnMainThread([&, function = WTFMove(function)] {
+        function();
+
+        std::lock_guard<Lock> lock(mutex);
+        isFinished = true;
+        conditionVariable.notifyOne();
+    });
+
+    std::unique_lock<Lock> lock(mutex);
+    conditionVariable.wait(lock, [&] {
+        return isFinished;
+    });
 }
 
 } // namespace WTF

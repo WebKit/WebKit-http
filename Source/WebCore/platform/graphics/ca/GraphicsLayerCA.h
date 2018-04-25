@@ -157,6 +157,7 @@ public:
         int treeDepth { 0 };
         bool ancestorHadChanges { false };
         bool ancestorHasTransformAnimation { false };
+        bool ancestorStartedOrEndedTransformAnimation { false };
         bool ancestorWithTransformAnimationIntersectsCoverageRect { false };
         bool ancestorIsViewportConstrained { false };
     };
@@ -288,7 +289,7 @@ private:
     WEBCORE_EXPORT bool canThrottleLayerFlush() const override;
 
     WEBCORE_EXPORT void getDebugBorderInfo(Color&, float& width) const override;
-    WEBCORE_EXPORT void dumpAdditionalProperties(WTF::TextStream&, int indent, LayerTreeAsTextBehavior) const override;
+    WEBCORE_EXPORT void dumpAdditionalProperties(WTF::TextStream&, LayerTreeAsTextBehavior) const override;
 
     void computePixelAlignment(float contentsScale, const FloatPoint& positionRelativeToBase,
         FloatPoint& position, FloatPoint3D& anchorPoint, FloatSize& alignmentOffset) const;

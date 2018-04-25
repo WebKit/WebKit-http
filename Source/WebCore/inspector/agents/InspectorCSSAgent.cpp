@@ -63,6 +63,7 @@
 
 
 namespace WebCore {
+
 using namespace Inspector;
 
 enum ForcePseudoClassFlags {
@@ -73,7 +74,7 @@ enum ForcePseudoClassFlags {
     PseudoClassVisited = 1 << 3
 };
 
-static unsigned computePseudoClassMask(const InspectorArray& pseudoClassArray)
+static unsigned computePseudoClassMask(const JSON::Array& pseudoClassArray)
 {
     static NeverDestroyed<String> active(MAKE_STATIC_STRING_IMPL("active"));
     static NeverDestroyed<String> hover(MAKE_STATIC_STRING_IMPL("hover"));
@@ -414,11 +415,7 @@ bool InspectorCSSAgent::forcePseudoState(const Element& element, CSSSelector::Ps
     if (!nodeId)
         return false;
 
-    auto it = m_nodeIdToForcedPseudoState.find(nodeId);
-    if (it == m_nodeIdToForcedPseudoState.end())
-        return false;
-
-    unsigned forcedPseudoState = it->value;
+    unsigned forcedPseudoState = m_nodeIdToForcedPseudoState.get(nodeId);
     switch (pseudoClassType) {
     case CSSSelector::PseudoClassActive:
         return forcedPseudoState & PseudoClassActive;
@@ -593,7 +590,7 @@ void InspectorCSSAgent::setStyleSheetText(ErrorString& errorString, const String
         errorString = InspectorDOMAgent::toErrorString(result.releaseException());
 }
 
-void InspectorCSSAgent::setStyleText(ErrorString& errorString, const InspectorObject& fullStyleId, const String& text, RefPtr<Inspector::Protocol::CSS::CSSStyle>& result)
+void InspectorCSSAgent::setStyleText(ErrorString& errorString, const JSON::Object& fullStyleId, const String& text, RefPtr<Inspector::Protocol::CSS::CSSStyle>& result)
 {
     InspectorCSSId compoundId(fullStyleId);
     ASSERT(!compoundId.isEmpty());
@@ -611,7 +608,7 @@ void InspectorCSSAgent::setStyleText(ErrorString& errorString, const InspectorOb
     result = inspectorStyleSheet->buildObjectForStyle(inspectorStyleSheet->styleForId(compoundId));
 }
 
-void InspectorCSSAgent::setRuleSelector(ErrorString& errorString, const InspectorObject& fullRuleId, const String& selector, RefPtr<Inspector::Protocol::CSS::CSSRule>& result)
+void InspectorCSSAgent::setRuleSelector(ErrorString& errorString, const JSON::Object& fullRuleId, const String& selector, RefPtr<Inspector::Protocol::CSS::CSSRule>& result)
 {
     InspectorCSSId compoundId(fullRuleId);
     ASSERT(!compoundId.isEmpty());
@@ -753,23 +750,23 @@ void InspectorCSSAgent::getSupportedSystemFontFamilyNames(ErrorString&, RefPtr<I
     fontFamilyNames = WTFMove(families);
 }
 
-void InspectorCSSAgent::forcePseudoState(ErrorString& errorString, int nodeId, const InspectorArray& forcedPseudoClasses)
+void InspectorCSSAgent::forcePseudoState(ErrorString& errorString, int nodeId, const JSON::Array& forcedPseudoClasses)
 {
     Element* element = m_domAgent->assertElement(errorString, nodeId);
     if (!element)
         return;
 
-    auto it = m_nodeIdToForcedPseudoState.find(nodeId);
+    // Return early if the forced pseudo state was already set correctly.
     unsigned forcedPseudoState = computePseudoClassMask(forcedPseudoClasses);
-    unsigned currentForcedPseudoState = it == m_nodeIdToForcedPseudoState.end() ? 0 : it->value;
-    if (forcedPseudoState == currentForcedPseudoState)
-        return;
-
     if (forcedPseudoState) {
-        m_nodeIdToForcedPseudoState.set(nodeId, forcedPseudoState);
+        auto iterator = m_nodeIdToForcedPseudoState.add(nodeId, 0).iterator;
+        if (forcedPseudoState == iterator->value)
+            return;
+        iterator->value = forcedPseudoState;
         m_documentsWithForcedPseudoStates.add(&element->document());
     } else {
-        m_nodeIdToForcedPseudoState.remove(nodeId);
+        if (!m_nodeIdToForcedPseudoState.remove(nodeId))
+            return;
         if (m_nodeIdToForcedPseudoState.isEmpty())
             m_documentsWithForcedPseudoStates.clear();
     }
@@ -779,17 +776,12 @@ void InspectorCSSAgent::forcePseudoState(ErrorString& errorString, int nodeId, c
 
 InspectorStyleSheetForInlineStyle& InspectorCSSAgent::asInspectorStyleSheet(StyledElement& element)
 {
-    auto it = m_nodeToInspectorStyleSheet.find(&element);
-    if (it == m_nodeToInspectorStyleSheet.end()) {
+    return m_nodeToInspectorStyleSheet.ensure(&element, [this, &element] {
         String newStyleSheetId = String::number(m_lastStyleSheetId++);
         auto inspectorStyleSheet = InspectorStyleSheetForInlineStyle::create(m_domAgent->pageAgent(), newStyleSheetId, element, Inspector::Protocol::CSS::StyleSheetOrigin::Regular, this);
-        auto& inspectorStyleSheetRef = inspectorStyleSheet.get();
         m_idToInspectorStyleSheet.set(newStyleSheetId, inspectorStyleSheet.copyRef());
-        m_nodeToInspectorStyleSheet.set(&element, WTFMove(inspectorStyleSheet));
-        return inspectorStyleSheetRef;
-    }
-
-    return *it->value;
+        return inspectorStyleSheet;
+    }).iterator->value;
 }
 
 Element* InspectorCSSAgent::elementForId(ErrorString& errorString, int nodeId)
@@ -946,21 +938,18 @@ void InspectorCSSAgent::didRemoveDOMNode(Node& node, int nodeId)
 {
     m_nodeIdToForcedPseudoState.remove(nodeId);
 
-    auto it = m_nodeToInspectorStyleSheet.find(&node);
-    if (it == m_nodeToInspectorStyleSheet.end())
+    auto sheet = m_nodeToInspectorStyleSheet.take(&node);
+    if (!sheet)
         return;
-
-    m_idToInspectorStyleSheet.remove(it->value->id());
-    m_nodeToInspectorStyleSheet.remove(&node);
+    m_idToInspectorStyleSheet.remove(sheet.value()->id());
 }
 
 void InspectorCSSAgent::didModifyDOMAttr(Element& element)
 {
-    auto it = m_nodeToInspectorStyleSheet.find(&element);
-    if (it == m_nodeToInspectorStyleSheet.end())
+    auto sheet = m_nodeToInspectorStyleSheet.get(&element);
+    if (!sheet)
         return;
-
-    it->value->didModifyElementAttribute();
+    sheet->didModifyElementAttribute();
 }
 
 void InspectorCSSAgent::styleSheetChanged(InspectorStyleSheet* styleSheet)

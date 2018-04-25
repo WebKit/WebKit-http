@@ -19,8 +19,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef FEComponentTransfer_h
-#define FEComponentTransfer_h
+#pragma once
 
 #include "FilterEffect.h"
 
@@ -39,23 +38,15 @@ enum ComponentTransferType {
 };
 
 struct ComponentTransferFunction {
-    ComponentTransferFunction()
-        : type(FECOMPONENTTRANSFER_TYPE_UNKNOWN)
-        , slope(0)
-        , intercept(0)
-        , amplitude(0)
-        , exponent(0)
-        , offset(0)
-    {
-    }
+    ComponentTransferFunction() = default;
 
-    ComponentTransferType type;
+    ComponentTransferType type { FECOMPONENTTRANSFER_TYPE_UNKNOWN };
 
-    float slope;
-    float intercept;
-    float amplitude;
-    float exponent;
-    float offset;
+    float slope { 0 };
+    float intercept { 0 };
+    float amplitude { 0 };
+    float exponent { 0 };
+    float offset { 0 };
 
     Vector<float> tableValues;
 };
@@ -65,35 +56,36 @@ public:
     static Ref<FEComponentTransfer> create(Filter&, const ComponentTransferFunction& redFunc, const ComponentTransferFunction& greenFunc,
                                            const ComponentTransferFunction& blueFunc, const ComponentTransferFunction& alphaFunc);
 
-    ComponentTransferFunction redFunction() const;
-    void setRedFunction(const ComponentTransferFunction&);
-
-    ComponentTransferFunction greenFunction() const;
-    void setGreenFunction(const ComponentTransferFunction&);
-
-    ComponentTransferFunction blueFunction() const;
-    void setBlueFunction(const ComponentTransferFunction&);
-
-    ComponentTransferFunction alphaFunction() const;
-    void setAlphaFunction(const ComponentTransferFunction&);
-
-    void platformApplySoftware() override;
-    void dump() override;
-
-    WTF::TextStream& externalRepresentation(WTF::TextStream&, int indention) const override;
+    ComponentTransferFunction redFunction() const { return m_redFunction; }
+    ComponentTransferFunction greenFunction() const { return m_greenFunction; }
+    ComponentTransferFunction blueFunction() const { return m_blueFunction; }
+    ComponentTransferFunction alphaFunction() const { return m_alphaFunction; }
 
 private:
     FEComponentTransfer(Filter&, const ComponentTransferFunction& redFunc, const ComponentTransferFunction& greenFunc,
                         const ComponentTransferFunction& blueFunc, const ComponentTransferFunction& alphaFunc);
 
-    void getValues(unsigned char rValues[256], unsigned char gValues[256], unsigned char bValues[256], unsigned char aValues[256]);
+     const char* filterName() const final { return "FEComponentTransfer"; }
 
-    ComponentTransferFunction m_redFunc;
-    ComponentTransferFunction m_greenFunc;
-    ComponentTransferFunction m_blueFunc;
-    ComponentTransferFunction m_alphaFunc;
+    using LookupTable = std::array<uint8_t, 256>;
+
+    static void computeIdentityTable(LookupTable&, const ComponentTransferFunction&);
+    static void computeTabularTable(LookupTable&, const ComponentTransferFunction&);
+    static void computeDiscreteTable(LookupTable&, const ComponentTransferFunction&);
+    static void computeLinearTable(LookupTable&, const ComponentTransferFunction&);
+    static void computeGammaTable(LookupTable&, const ComponentTransferFunction&);
+
+    void computeLookupTables(LookupTable& redTable, LookupTable& greenTable, LookupTable& blueTable, LookupTable& alphaTable);
+
+    void platformApplySoftware() override;
+
+    WTF::TextStream& externalRepresentation(WTF::TextStream&, RepresentationType) const override;
+
+    ComponentTransferFunction m_redFunction;
+    ComponentTransferFunction m_greenFunction;
+    ComponentTransferFunction m_blueFunction;
+    ComponentTransferFunction m_alphaFunction;
 };
 
 } // namespace WebCore
 
-#endif // FEComponentTransfer_h

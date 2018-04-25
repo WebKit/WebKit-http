@@ -65,6 +65,7 @@
 #import <WebCore/HTMLFormElement.h>
 #import <WebCore/HTMLInputElement.h>
 #import <WebCore/MainFrame.h>
+#import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
 
 using namespace WebCore;
 using namespace WebKit;
@@ -483,9 +484,13 @@ static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *
             if (!userObject)
                 return;
 
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200)
             auto data = adoptNS([[NSMutableData alloc] init]);
             auto archiver = adoptNS([[NSKeyedArchiver alloc] initForWritingWithMutableData:data.get()]);
             [archiver setRequiresSecureCoding:YES];
+#else
+            auto archiver = secureArchiver();
+#endif
             @try {
                 [archiver encodeObject:userObject forKey:@"userObject"];
             } @catch (NSException *exception) {
@@ -493,6 +498,10 @@ static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *
                 return;
             }
             [archiver finishEncoding];
+
+#if (!PLATFORM(MAC) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200)
+            auto data = retainPtr(archiver.get().encodedData);
+#endif
 
             userData = API::Data::createWithoutCopying(WTFMove(data));
         }

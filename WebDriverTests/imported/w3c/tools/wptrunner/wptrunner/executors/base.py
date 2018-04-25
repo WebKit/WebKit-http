@@ -102,6 +102,7 @@ class TestExecutor(object):
 
     test_type = None
     convert_result = None
+    supports_testdriver = False
 
     def __init__(self, browser, server_config, timeout_multiplier=1,
                  debug_info=None, **kwargs):
@@ -356,12 +357,10 @@ class WdspecExecutor(TestExecutor):
         return (test.result_cls(*data), [])
 
     def do_wdspec(self, session_config, path, timeout):
-        harness_result = ("OK", None)
-        subtest_results = pytestrunner.run(path,
-                                           self.server_config,
-                                           session_config,
-                                           timeout=timeout)
-        return (harness_result, subtest_results)
+        return pytestrunner.run(path,
+                                self.server_config,
+                                session_config,
+                                timeout=timeout)
 
     def do_delayed_imports(self):
         global pytestrunner

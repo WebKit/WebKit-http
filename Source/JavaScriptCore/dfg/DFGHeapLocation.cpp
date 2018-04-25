@@ -96,10 +96,6 @@ void printInternal(PrintStream& out, LocationKind kind)
         out.print("ButterflyLoc");
         return;
         
-    case ButterflyWithoutCagingLoc:
-        out.print("ButterflyWithoutCagingLoc");
-        return;
-        
     case CheckTypeInfoFlagsLoc:
         out.print("CheckTypeInfoFlagsLoc");
         return;
@@ -180,12 +176,8 @@ void printInternal(PrintStream& out, LocationKind kind)
         out.print("MapBucketValueLoc");
         return;
 
-    case MapBucketMapNextLoc:
-        out.print("MapBucketMapNextLoc");
-        return;
-
-    case MapBucketSetNextLoc:
-        out.print("MapBucketSetNextLoc");
+    case MapBucketNextLoc:
+        out.print("MapBucketNextLoc");
         return;
 
     case WeakMapGetLoc:

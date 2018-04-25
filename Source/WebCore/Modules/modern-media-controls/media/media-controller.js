@@ -57,6 +57,8 @@ class MediaController
         media.videoTracks.addEventListener("removetrack", this);
 
         media.addEventListener(this.fullscreenChangeEventType, this);
+
+        window.addEventListener("keydown", this);
     }
 
     // Public
@@ -100,7 +102,7 @@ class MediaController
     togglePlayback()
     {
         if (this.media.paused)
-            this.media.play();
+            this.media.play().catch(e => {});
         else
             this.media.pause();
     }
@@ -156,8 +158,12 @@ class MediaController
             scheduler.flushScheduledLayoutCallbacks();
         } else if (event.currentTarget === this.media) {
             this._updateControlsIfNeeded();
+            this._updateSupportingObjectsEnabledState();
             if (event.type === "webkitpresentationmodechanged")
                 this._returnMediaLayerToInlineIfNeeded();
+        } else if (event.type === "keydown" && this.isFullscreen && event.key === " ") {
+            this.togglePlayback();
+            event.preventDefault();
         }
     }
 
@@ -174,11 +180,11 @@ class MediaController
             return;
         }
 
-        // Before we reset the .controls property, we need to destroy the previous
+        // Before we reset the .controls property, we need to disable the previous
         // supporting objects so we don't leak.
         if (this._supportingObjects) {
             for (let supportingObject of this._supportingObjects)
-                supportingObject.destroy();
+                supportingObject.disable();
         }
 
         this.controls = new ControlsClass;
@@ -241,6 +247,19 @@ class MediaController
             return;
 
         this.host.textTrackContainer.classList.toggle("visible-controls-bar", !this.controls.faded);
+    }
+
+    _updateSupportingObjectsEnabledState()
+    {
+        // On iOS, we want to make sure not to update controls when we're in fullscreen since the UI
+        // will be completely invisible.
+        if (!(this.layoutTraits & LayoutTraits.iOS))
+            return;
+
+        if (this.isFullscreen)
+            this._supportingObjects.forEach(supportingObject => supportingObject.disable());
+        else
+            this._supportingObjects.forEach(supportingObject => supportingObject.enable());
     }
 
 }

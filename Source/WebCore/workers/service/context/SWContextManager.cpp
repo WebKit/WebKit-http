@@ -27,6 +27,7 @@
 
 #if ENABLE(SERVICE_WORKER)
 #include "SWContextManager.h"
+#include "ServiceWorkerClientIdentifier.h"
 
 namespace WebCore {
 
@@ -50,12 +51,13 @@ auto SWContextManager::connection() const -> Connection*
 void SWContextManager::registerServiceWorkerThreadForInstall(Ref<ServiceWorkerThreadProxy>&& serviceWorkerThreadProxy)
 {
     auto serviceWorkerIdentifier = serviceWorkerThreadProxy->identifier();
+    auto jobDataIdentifier = serviceWorkerThreadProxy->thread().contextData().jobDataIdentifier;
     auto* threadProxy = serviceWorkerThreadProxy.ptr();
     auto result = m_workerMap.add(serviceWorkerIdentifier, WTFMove(serviceWorkerThreadProxy));
     ASSERT_UNUSED(result, result.isNewEntry);
     
-    threadProxy->thread().start([serviceWorkerIdentifier](const String& exceptionMessage) {
-        SWContextManager::singleton().connection()->serviceWorkerStartedWithMessage(serviceWorkerIdentifier, exceptionMessage);
+    threadProxy->thread().start([jobDataIdentifier, serviceWorkerIdentifier](const String& exceptionMessage) {
+        SWContextManager::singleton().connection()->serviceWorkerStartedWithMessage(jobDataIdentifier, serviceWorkerIdentifier, exceptionMessage);
     });
 }
 
@@ -64,14 +66,14 @@ ServiceWorkerThreadProxy* SWContextManager::serviceWorkerThreadProxy(ServiceWork
     return m_workerMap.get(identifier);
 }
 
-void SWContextManager::postMessageToServiceWorkerGlobalScope(ServiceWorkerIdentifier destination, Ref<SerializedScriptValue>&& message, ServiceWorkerClientData&& source)
+void SWContextManager::postMessageToServiceWorkerGlobalScope(ServiceWorkerIdentifier destination, Ref<SerializedScriptValue>&& message, ServiceWorkerClientIdentifier sourceIdentifier, ServiceWorkerClientData&& sourceData)
 {
     auto* serviceWorker = m_workerMap.get(destination);
     if (!serviceWorker)
         return;
 
     // FIXME: We should pass valid MessagePortChannels.
-    serviceWorker->thread().postMessageToServiceWorkerGlobalScope(WTFMove(message), nullptr, WTFMove(source));
+    serviceWorker->thread().postMessageToServiceWorkerGlobalScope(WTFMove(message), nullptr, sourceIdentifier, WTFMove(sourceData));
 }
 
 void SWContextManager::fireInstallEvent(ServiceWorkerIdentifier identifier)
@@ -102,6 +104,12 @@ void SWContextManager::terminateWorker(ServiceWorkerIdentifier identifier)
         if (auto* connection = SWContextManager::singleton().connection())
             connection->workerTerminated(identifier);
     });
+}
+
+void SWContextManager::forEachServiceWorkerThread(const WTF::Function<void(ServiceWorkerThreadProxy&)>& apply)
+{
+    for (auto& workerThread : m_workerMap.values())
+        apply(*workerThread);
 }
 
 } // namespace WebCore

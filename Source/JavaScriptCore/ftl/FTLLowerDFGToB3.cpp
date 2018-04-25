@@ -706,8 +706,13 @@ private:
         case PutSetterByVal:
             compilePutAccessorByVal();
             break;
+        case DeleteById:
+            compileDeleteById();
+            break;
+        case DeleteByVal:
+            compileDeleteByVal();
+            break;
         case GetButterfly:
-        case GetButterflyWithoutCaging:
             compileGetButterfly();
             break;
         case ConstantStoragePointer:
@@ -1037,6 +1042,9 @@ private:
         case MapHash:
             compileMapHash();
             break;
+        case NormalizeMapKey:
+            compileNormalizeMapKey();
+            break;
         case GetMapBucket:
             compileGetMapBucket();
             break;
@@ -1051,6 +1059,12 @@ private:
             break;
         case LoadValueFromMapBucket:
             compileLoadValueFromMapBucket();
+            break;
+        case SetAdd:
+            compileSetAdd();
+            break;
+        case MapSet:
+            compileMapSet();
             break;
         case WeakMapGet:
             compileWeakMapGet();
@@ -1807,7 +1821,7 @@ private:
 #if ENABLE(MATH_IC_STATS)
                         auto slowPathEnd = jit.label();
                         jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
-                            size_t size = static_cast<char*>(linkBuffer.locationOf(slowPathEnd).executableAddress()) - static_cast<char*>(linkBuffer.locationOf(slowPathStart).executableAddress());
+                            size_t size = linkBuffer.locationOf(slowPathEnd).executableAddress<char*>() - linkBuffer.locationOf(slowPathStart).executableAddress<char*>();
                             mathIC->m_generatedCodeSize += size;
                         });
 #endif
@@ -1821,7 +1835,7 @@ private:
 #if ENABLE(MATH_IC_STATS)
                 auto inlineEnd = jit.label();
                 jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
-                    size_t size = static_cast<char*>(linkBuffer.locationOf(inlineEnd).executableAddress()) - static_cast<char*>(linkBuffer.locationOf(inlineStart).executableAddress());
+                    size_t size = linkBuffer.locationOf(inlineEnd).executableAddress<char*>() - linkBuffer.locationOf(inlineStart).executableAddress<char*>();
                     mathIC->m_generatedCodeSize += size;
                 });
 #endif
@@ -1900,7 +1914,7 @@ private:
 #if ENABLE(MATH_IC_STATS)
                         auto slowPathEnd = jit.label();
                         jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
-                            size_t size = static_cast<char*>(linkBuffer.locationOf(slowPathEnd).executableAddress()) - static_cast<char*>(linkBuffer.locationOf(slowPathStart).executableAddress());
+                            size_t size = linkBuffer.locationOf(slowPathEnd).executableAddress<char*>() - linkBuffer.locationOf(slowPathStart).executableAddress<char*>();
                             mathIC->m_generatedCodeSize += size;
                         });
 #endif
@@ -1914,7 +1928,7 @@ private:
 #if ENABLE(MATH_IC_STATS)
                 auto inlineEnd = jit.label();
                 jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
-                    size_t size = static_cast<char*>(linkBuffer.locationOf(inlineEnd).executableAddress()) - static_cast<char*>(linkBuffer.locationOf(inlineStart).executableAddress());
+                    size_t size = linkBuffer.locationOf(inlineEnd).executableAddress<char*>() - linkBuffer.locationOf(inlineStart).executableAddress<char*>();
                     mathIC->m_generatedCodeSize += size;
                 });
 #endif
@@ -3367,8 +3381,6 @@ private:
     void compileGetButterfly()
     {
         LValue butterfly = m_out.loadPtr(lowCell(m_node->child1()), m_heaps.JSObject_butterfly);
-        if (m_node->op() != GetButterflyWithoutCaging)
-            butterfly = caged(Gigacage::JSValue, butterfly);
         setStorage(butterfly);
     }
 
@@ -4204,6 +4216,20 @@ private:
             m_out.operation(m_node->op() == PutGetterByVal ? operationPutGetterByVal : operationPutSetterByVal),
             m_callFrame, base, subscript, m_out.constInt32(m_node->accessorAttributes()), accessor);
     }
+
+    void compileDeleteById()
+    {
+        LValue base = lowJSValue(m_node->child1());
+        auto uid = m_graph.identifiers()[m_node->identifierNumber()];
+        setBoolean(m_out.notZero64(vmCall(Int64, m_out.operation(operationDeleteById), m_callFrame, base, m_out.constIntPtr(uid))));
+    }
+
+    void compileDeleteByVal()
+    {
+        LValue base = lowJSValue(m_node->child1());
+        LValue subscript = lowJSValue(m_node->child2());
+        setBoolean(m_out.notZero64(vmCall(Int64, m_out.operation(operationDeleteByVal), m_callFrame, base, subscript)));
+    }
     
     void compileArrayPush()
     {
@@ -4708,11 +4734,25 @@ private:
             return;
         }
         
+
         RegisteredStructure structure = m_graph.registerStructure(
-            isGeneratorFunction ? m_graph.globalObjectFor(m_node->origin.semantic)->generatorFunctionStructure() :
-            isAsyncFunction ? m_graph.globalObjectFor(m_node->origin.semantic)->asyncFunctionStructure() :
-            isAsyncGeneratorFunction ? m_graph.globalObjectFor(m_node->origin.semantic)->asyncGeneratorFunctionStructure() :
-            m_graph.globalObjectFor(m_node->origin.semantic)->functionStructure());
+            [&] () {
+                switch (m_node->op()) {
+                case NewGeneratorFunction:
+                    return m_graph.globalObjectFor(m_node->origin.semantic)->generatorFunctionStructure();
+                case NewAsyncFunction:
+                    return m_graph.globalObjectFor(m_node->origin.semantic)->asyncFunctionStructure();
+                case NewAsyncGeneratorFunction:
+                    return m_graph.globalObjectFor(m_node->origin.semantic)->asyncGeneratorFunctionStructure();
+                case NewFunction:
+                    if (m_node->castOperand<FunctionExecutable*>()->isStrictMode())
+                        return m_graph.globalObjectFor(m_node->origin.semantic)->strictFunctionStructure();
+                    return m_graph.globalObjectFor(m_node->origin.semantic)->sloppyFunctionStructure();
+                    break;
+                default:
+                    RELEASE_ASSERT_NOT_REACHED();
+                }
+            }());
         
         LBasicBlock slowPath = m_out.newBlock();
         LBasicBlock continuation = m_out.newBlock();
@@ -5244,12 +5284,55 @@ private:
 
     void compileSpread()
     {
-        // It would be trivial to support this, but for now, we never create
-        // IR that would necessitate this. The reason is that Spread is only
-        // consumed by NewArrayWithSpread and Varargs operations. And it is
-        // never anything else. Also, any Spread(PhantomCreateRest) will turn
-        // into PhantomSpread(PhantomCreateRest).
-        RELEASE_ASSERT(m_node->child1()->op() != PhantomCreateRest); 
+        if (m_node->child1()->op() == PhantomCreateRest) {
+            // This IR is rare to generate since it requires escaping the Spread
+            // but not the CreateRest. In bytecode, we have only few operations that
+            // accept Spread's result as input. This usually leads to the Spread node not
+            // escaping. However, this can happen if for example we generate a PutStack on
+            // the Spread but nothing escapes the CreateRest.
+            LBasicBlock loopHeader = m_out.newBlock();
+            LBasicBlock loopBody = m_out.newBlock();
+            LBasicBlock slowAllocation = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
+            LBasicBlock lastNext = m_out.insertNewBlocksBefore(loopHeader);
+
+            InlineCallFrame* inlineCallFrame = m_node->child1()->origin.semantic.inlineCallFrame;
+            unsigned numberOfArgumentsToSkip = m_node->child1()->numberOfArgumentsToSkip();
+            LValue sourceStart = getArgumentsStart(inlineCallFrame, numberOfArgumentsToSkip);
+            LValue length = getSpreadLengthFromInlineCallFrame(inlineCallFrame, numberOfArgumentsToSkip);
+            static_assert(sizeof(JSValue) == 8 && 1 << 3 == 8, "Assumed in the code below.");
+            LValue size = m_out.add(
+                m_out.shl(m_out.zeroExtPtr(length), m_out.constInt32(3)),
+                m_out.constIntPtr(JSFixedArray::offsetOfData()));
+
+            LValue fastArrayValue = allocateVariableSizedCell<JSFixedArray>(size, m_graph.m_vm.fixedArrayStructure.get(), slowAllocation);
+            m_out.store32(length, fastArrayValue, m_heaps.JSFixedArray_size);
+            ValueFromBlock fastArray = m_out.anchor(fastArrayValue);
+            m_out.jump(loopHeader);
+
+            m_out.appendTo(slowAllocation, loopHeader);
+            ValueFromBlock slowArray = m_out.anchor(vmCall(Int64, m_out.operation(operationCreateFixedArray), m_callFrame, length));
+            m_out.jump(loopHeader);
+
+            m_out.appendTo(loopHeader, loopBody);
+            LValue fixedArray = m_out.phi(Int64, fastArray, slowArray);
+            ValueFromBlock startIndex = m_out.anchor(m_out.constIntPtr(0));
+            m_out.branch(m_out.isZero32(length), unsure(continuation), unsure(loopBody));
+
+            m_out.appendTo(loopBody, continuation);
+            LValue index = m_out.phi(pointerType(), startIndex);
+            LValue value = m_out.load64(
+                m_out.baseIndex(m_heaps.variables, sourceStart, index));
+            m_out.store64(value, m_out.baseIndex(m_heaps.JSFixedArray_buffer, fixedArray, index));
+            LValue nextIndex = m_out.add(m_out.constIntPtr(1), index);
+            m_out.addIncomingToPhi(index, m_out.anchor(nextIndex));
+            m_out.branch(m_out.below(nextIndex, m_out.zeroExtPtr(length)), unsure(loopBody), unsure(continuation));
+
+            m_out.appendTo(continuation, lastNext);
+            mutatorFence();
+            setJSValue(fixedArray);
+            return;
+        }
 
         LValue argument = lowCell(m_node->child1());
 
@@ -5700,8 +5783,7 @@ private:
         
         LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowPath);
         
-        MarkedAllocator* allocator = subspaceFor<JSRopeString>(vm())->allocatorFor(sizeof(JSRopeString));
-        DFG_ASSERT(m_graph, m_node, allocator);
+        MarkedAllocator* allocator = subspaceFor<JSRopeString>(vm())->allocatorForNonVirtual(sizeof(JSRopeString), AllocatorForMode::AllocatorIfExists);
         
         LValue result = allocateCell(
             m_out.constIntPtr(allocator), vm().stringStructure.get(), slowPath);
@@ -6683,7 +6765,7 @@ private:
                     [=] (LinkBuffer& linkBuffer) {
                         MacroAssemblerCodePtr linkCall =
                             vm->getCTIStub(linkCallThunkGenerator).code();
-                        linkBuffer.link(slowCall, FunctionPtr(linkCall.executableAddress()));
+                        linkBuffer.link(slowCall, FunctionPtr(linkCall));
 
                         callLinkInfo->setCallLocations(
                             CodeLocationLabel(linkBuffer.locationOfNearCall(slowCall)),
@@ -6994,7 +7076,7 @@ private:
                     [=] (LinkBuffer& linkBuffer) {
                         MacroAssemblerCodePtr linkCall =
                             vm->getCTIStub(linkCallThunkGenerator).code();
-                        linkBuffer.link(slowCall, FunctionPtr(linkCall.executableAddress()));
+                        linkBuffer.link(slowCall, FunctionPtr(linkCall));
 
                         callLinkInfo->setCallLocations(
                             CodeLocationLabel(linkBuffer.locationOfNearCall(slowCall)),
@@ -7151,8 +7233,7 @@ private:
                     jit.addPtr(CCallHelpers::TrustedImm32(stackAlignmentRegisters() - 1), scratchGPR1);
                     jit.andPtr(CCallHelpers::TrustedImm32(~(stackAlignmentRegisters() - 1)), scratchGPR1);
                     jit.negPtr(scratchGPR1);
-                    jit.lshiftPtr(CCallHelpers::Imm32(3), scratchGPR1);
-                    jit.addPtr(GPRInfo::callFrameRegister, scratchGPR1);
+                    jit.getEffectiveAddress(CCallHelpers::BaseIndex(GPRInfo::callFrameRegister, scratchGPR1, CCallHelpers::TimesEight), scratchGPR1);
 
                     // Before touching stack values, we should update the stack pointer to protect them from signal stack.
                     jit.addPtr(CCallHelpers::TrustedImm32(sizeof(CallerFrameAndPC)), scratchGPR1, CCallHelpers::stackPointerRegister);
@@ -7265,7 +7346,7 @@ private:
                     [=] (LinkBuffer& linkBuffer) {
                         MacroAssemblerCodePtr linkCall =
                             vm->getCTIStub(linkCallThunkGenerator).code();
-                        linkBuffer.link(slowCall, FunctionPtr(linkCall.executableAddress()));
+                        linkBuffer.link(slowCall, FunctionPtr(linkCall));
                         
                         callLinkInfo->setCallLocations(
                             CodeLocationLabel(linkBuffer.locationOfNearCall(slowCall)),
@@ -7548,7 +7629,7 @@ private:
                     [=] (LinkBuffer& linkBuffer) {
                         MacroAssemblerCodePtr linkCall =
                             vm->getCTIStub(linkCallThunkGenerator).code();
-                        linkBuffer.link(slowCall, FunctionPtr(linkCall.executableAddress()));
+                        linkBuffer.link(slowCall, FunctionPtr(linkCall));
                         
                         callLinkInfo->setCallLocations(
                             CodeLocationLabel(linkBuffer.locationOfNearCall(slowCall)),
@@ -8501,16 +8582,14 @@ private:
         LValue value = lowJSValue(m_node->child1());
 
         LBasicBlock isCellCase = m_out.newBlock();
-        LBasicBlock notCell = m_out.newBlock();
         LBasicBlock slowCase = m_out.newBlock();
         LBasicBlock straightHash = m_out.newBlock();
-        LBasicBlock isNumberCase = m_out.newBlock();
         LBasicBlock isStringCase = m_out.newBlock();
         LBasicBlock nonEmptyStringCase = m_out.newBlock();
         LBasicBlock continuation = m_out.newBlock();
 
         m_out.branch(
-            isCell(value, provenType(m_node->child1())), unsure(isCellCase), unsure(notCell));
+            isCell(value, provenType(m_node->child1())), unsure(isCellCase), unsure(straightHash));
 
         LBasicBlock lastNext = m_out.appendTo(isCellCase, isStringCase);
         LValue isString = m_out.equal(m_out.load8ZeroExt32(value, m_heaps.JSCell_typeInfoType), m_out.constInt32(StringType));
@@ -8522,19 +8601,11 @@ private:
         m_out.branch(
             m_out.equal(stringImpl, m_out.constIntPtr(0)), rarely(slowCase), usually(nonEmptyStringCase));
 
-        m_out.appendTo(nonEmptyStringCase, notCell);
+        m_out.appendTo(nonEmptyStringCase, straightHash);
         LValue hash = m_out.lShr(m_out.load32(stringImpl, m_heaps.StringImpl_hashAndFlags), m_out.constInt32(StringImpl::s_flagCount));
         ValueFromBlock nonEmptyStringHashResult = m_out.anchor(hash);
         m_out.branch(m_out.equal(hash, m_out.constInt32(0)),
             unsure(slowCase), unsure(continuation));
-
-        m_out.appendTo(notCell, isNumberCase);
-        m_out.branch(
-            isNumber(value), unsure(isNumberCase), unsure(straightHash));
-
-        m_out.appendTo(isNumberCase, straightHash);
-        m_out.branch(
-            isInt32(value), unsure(straightHash), unsure(slowCase));
 
         m_out.appendTo(straightHash, slowCase);
         ValueFromBlock fastResult = m_out.anchor(wangsInt64Hash(value));
@@ -8547,6 +8618,42 @@ private:
 
         m_out.appendTo(continuation, lastNext);
         setInt32(m_out.phi(Int32, fastResult, slowResult, nonEmptyStringHashResult));
+    }
+
+    void compileNormalizeMapKey()
+    {
+        ASSERT(m_node->child1().useKind() == UntypedUse);
+
+        LBasicBlock isNumberCase = m_out.newBlock();
+        LBasicBlock notInt32NumberCase = m_out.newBlock();
+        LBasicBlock notNaNCase = m_out.newBlock();
+        LBasicBlock convertibleCase = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
+
+        LBasicBlock lastNext = m_out.insertNewBlocksBefore(isNumberCase);
+
+        LValue key = lowJSValue(m_node->child1());
+        ValueFromBlock fastResult = m_out.anchor(key);
+        m_out.branch(isNotNumber(key), unsure(continuation), unsure(isNumberCase));
+
+        m_out.appendTo(isNumberCase, notInt32NumberCase);
+        m_out.branch(isInt32(key), unsure(continuation), unsure(notInt32NumberCase));
+
+        m_out.appendTo(notInt32NumberCase, notNaNCase);
+        LValue doubleValue = unboxDouble(key);
+        m_out.branch(m_out.doubleNotEqualOrUnordered(doubleValue, doubleValue), unsure(continuation), unsure(notNaNCase));
+
+        m_out.appendTo(notNaNCase, convertibleCase);
+        LValue integerValue = m_out.doubleToInt(doubleValue);
+        LValue integerValueConvertedToDouble = m_out.intToDouble(integerValue);
+        m_out.branch(m_out.doubleNotEqualOrUnordered(doubleValue, integerValueConvertedToDouble), unsure(continuation), unsure(convertibleCase));
+
+        m_out.appendTo(convertibleCase, continuation);
+        ValueFromBlock slowResult = m_out.anchor(boxInt32(integerValue));
+        m_out.jump(continuation);
+
+        m_out.appendTo(continuation, lastNext);
+        setJSValue(m_out.phi(Int64, fastResult, slowResult));
     }
 
     void compileGetMapBucket()
@@ -8650,17 +8757,13 @@ private:
             LBasicBlock bucketKeyIsCell = m_out.newBlock();
             LBasicBlock bothAreCells = m_out.newBlock();
             LBasicBlock bucketKeyIsString = m_out.newBlock();
-            LBasicBlock bucketKeyNotCell = m_out.newBlock();
-            LBasicBlock bucketKeyIsNumber = m_out.newBlock();
-            LBasicBlock bothAreNumbers = m_out.newBlock();
-            LBasicBlock bucketKeyIsInt32 = m_out.newBlock();
 
             m_out.branch(m_out.equal(key, bucketKey),
                 unsure(continuation), unsure(notBitEqual));
 
             m_out.appendTo(notBitEqual, bucketKeyIsCell);
             m_out.branch(isCell(bucketKey),
-                unsure(bucketKeyIsCell), unsure(bucketKeyNotCell));
+                unsure(bucketKeyIsCell), unsure(loopAround));
 
             m_out.appendTo(bucketKeyIsCell, bothAreCells);
             m_out.branch(isCell(key),
@@ -8670,24 +8773,8 @@ private:
             m_out.branch(isString(bucketKey),
                 unsure(bucketKeyIsString), unsure(loopAround));
 
-            m_out.appendTo(bucketKeyIsString, bucketKeyNotCell);
+            m_out.appendTo(bucketKeyIsString, loopAround);
             m_out.branch(isString(key),
-                unsure(slowPath), unsure(loopAround));
-
-            m_out.appendTo(bucketKeyNotCell, bucketKeyIsNumber);
-            m_out.branch(isNotNumber(bucketKey),
-                unsure(loopAround), unsure(bucketKeyIsNumber));
-
-            m_out.appendTo(bucketKeyIsNumber, bothAreNumbers);
-            m_out.branch(isNotNumber(key),
-                unsure(loopAround), unsure(bothAreNumbers));
-
-            m_out.appendTo(bothAreNumbers, bucketKeyIsInt32);
-            m_out.branch(isNotInt32(bucketKey),
-                unsure(slowPath), unsure(bucketKeyIsInt32));
-
-            m_out.appendTo(bucketKeyIsInt32, loopAround);
-            m_out.branch(isNotInt32(key),
                 unsure(slowPath), unsure(loopAround));
             break;
         }
@@ -8743,7 +8830,7 @@ private:
         LBasicBlock lastNext = m_out.insertNewBlocksBefore(loopStart);
 
         ASSERT(HashMapBucket<HashMapBucketDataKey>::offsetOfNext() == HashMapBucket<HashMapBucketDataKeyValue>::offsetOfNext());
-        ASSERT(HashMapBucket<HashMapBucketDataKey>::offsetOfDeleted() == HashMapBucket<HashMapBucketDataKeyValue>::offsetOfDeleted());
+        ASSERT(HashMapBucket<HashMapBucketDataKey>::offsetOfKey() == HashMapBucket<HashMapBucketDataKeyValue>::offsetOfKey());
         LValue mapBucketPrev = lowCell(m_node->child1());
         ValueFromBlock mapBucketStart = m_out.anchor(m_out.loadPtr(mapBucketPrev, m_heaps.HashMapBucket_next));
         m_out.jump(loopStart);
@@ -8764,7 +8851,7 @@ private:
 
         m_out.appendTo(hasBucket, nextBucket);
         ValueFromBlock bucketResult = m_out.anchor(mapBucket);
-        m_out.branch(m_out.isZero32(m_out.load32(mapBucket, m_heaps.HashMapBucket_deleted)), unsure(continuation), unsure(nextBucket));
+        m_out.branch(m_out.isZero64(m_out.load64(mapBucket, m_heaps.HashMapBucket_key)), unsure(nextBucket), unsure(continuation));
 
         m_out.appendTo(nextBucket, continuation);
         m_out.addIncomingToPhi(mapBucket, m_out.anchor(m_out.loadPtr(mapBucket, m_heaps.HashMapBucket_next)));
@@ -8784,6 +8871,25 @@ private:
     {
         LValue mapBucket = lowCell(m_node->child1());
         setJSValue(m_out.load64(mapBucket, m_heaps.HashMapBucket_key));
+    }
+
+    void compileSetAdd()
+    {
+        LValue set = lowSetObject(m_node->child1());
+        LValue key = lowJSValue(m_node->child2());
+        LValue hash = lowInt32(m_node->child3());
+
+        vmCall(Void, m_out.operation(operationSetAdd), m_callFrame, set, key, hash);
+    }
+
+    void compileMapSet()
+    {
+        LValue map = lowMapObject(m_graph.varArgChild(m_node, 0));
+        LValue key = lowJSValue(m_graph.varArgChild(m_node, 1));
+        LValue value = lowJSValue(m_graph.varArgChild(m_node, 2));
+        LValue hash = lowInt32(m_graph.varArgChild(m_node, 3));
+
+        vmCall(Void, m_out.operation(operationMapSet), m_callFrame, map, key, value, hash);
     }
 
     void compileWeakMapGet()
@@ -9321,7 +9427,7 @@ private:
             m_out.appendTo(slowCase, continuation);
             ValueFromBlock slowResult = m_out.anchor(m_out.equal(
                 m_out.constInt64(JSValue::encode(jsBoolean(true))), 
-                vmCall(Int64, m_out.operation(operationHasIndexedProperty), m_callFrame, base, index, internalMethodType)));
+                vmCall(Int64, m_out.operation(operationHasIndexedPropertyByInt), m_callFrame, base, index, internalMethodType)));
             m_out.jump(continuation);
 
             m_out.appendTo(continuation, lastNext);
@@ -9357,7 +9463,7 @@ private:
             m_out.appendTo(slowCase, continuation);
             ValueFromBlock slowResult = m_out.anchor(m_out.equal(
                 m_out.constInt64(JSValue::encode(jsBoolean(true))), 
-                vmCall(Int64, m_out.operation(operationHasIndexedProperty), m_callFrame, base, index, internalMethodType)));
+                vmCall(Int64, m_out.operation(operationHasIndexedPropertyByInt), m_callFrame, base, index, internalMethodType)));
             m_out.jump(continuation);
             
             m_out.appendTo(continuation, lastNext);
@@ -9582,8 +9688,7 @@ private:
             
             if (structure->outOfLineCapacity() || hasIndexedProperties(structure->indexingType())) {
                 size_t allocationSize = JSFinalObject::allocationSize(structure->inlineCapacity());
-                MarkedAllocator* cellAllocator = subspaceFor<JSFinalObject>(vm())->allocatorFor(allocationSize);
-                DFG_ASSERT(m_graph, m_node, cellAllocator);
+                MarkedAllocator* cellAllocator = subspaceFor<JSFinalObject>(vm())->allocatorForNonVirtual(allocationSize, AllocatorForMode::AllocatorIfExists);
 
                 bool hasIndexingHeader = hasIndexedProperties(structure->indexingType());
                 unsigned indexingHeaderSize = 0;
@@ -10578,7 +10683,7 @@ private:
         LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowPath);
 
         size_t sizeInBytes = sizeInValues * sizeof(JSValue);
-        MarkedAllocator* allocator = vm().jsValueGigacageAuxiliarySpace.allocatorFor(sizeInBytes);
+        MarkedAllocator* allocator = vm().jsValueGigacageAuxiliarySpace.allocatorForNonVirtual(sizeInBytes, AllocatorForMode::AllocatorIfExists);
         LValue startOfStorage = allocateHeapCell(m_out.constIntPtr(allocator), slowPath);
         ValueFromBlock fastButterfly = m_out.anchor(
             m_out.add(m_out.constIntPtr(sizeInBytes + sizeof(IndexingHeader)), startOfStorage));
@@ -11722,7 +11827,7 @@ private:
     LValue allocateObject(
         size_t size, StructureType structure, LValue butterfly, LBasicBlock slowPath)
     {
-        MarkedAllocator* allocator = subspaceFor<ClassType>(vm())->allocatorFor(size);
+        MarkedAllocator* allocator = subspaceFor<ClassType>(vm())->allocatorForNonVirtual(size, AllocatorForMode::AllocatorIfExists);
         return allocateObject(m_out.constIntPtr(allocator), structure, butterfly, slowPath);
     }
     
@@ -11739,10 +11844,10 @@ private:
         
         // Try to do some constant-folding here.
         if (subspace->hasIntPtr() && size->hasIntPtr()) {
-            Subspace* actualSubspace = bitwise_cast<Subspace*>(subspace->asIntPtr());
+            CompleteSubspace* actualSubspace = bitwise_cast<CompleteSubspace*>(subspace->asIntPtr());
             size_t actualSize = size->asIntPtr();
             
-            MarkedAllocator* actualAllocator = actualSubspace->allocatorFor(actualSize);
+            MarkedAllocator* actualAllocator = actualSubspace->allocatorForNonVirtual(actualSize, AllocatorForMode::AllocatorIfExists);
             if (!actualAllocator) {
                 LBasicBlock continuation = m_out.newBlock();
                 LBasicBlock lastNext = m_out.insertNewBlocksBefore(continuation);
@@ -11772,11 +11877,11 @@ private:
         
         return m_out.loadPtr(
             m_out.baseIndex(
-                m_heaps.Subspace_allocatorForSizeStep,
+                m_heaps.CompleteSubspace_allocatorForSizeStep,
                 subspace, m_out.sub(sizeClassIndex, m_out.intPtrOne)));
     }
     
-    LValue allocatorForSize(Subspace& subspace, LValue size, LBasicBlock slowPath)
+    LValue allocatorForSize(CompleteSubspace& subspace, LValue size, LBasicBlock slowPath)
     {
         return allocatorForSize(m_out.constIntPtr(&subspace), size, slowPath);
     }
@@ -11802,7 +11907,7 @@ private:
     LValue allocateObject(RegisteredStructure structure)
     {
         size_t allocationSize = JSFinalObject::allocationSize(structure.get()->inlineCapacity());
-        MarkedAllocator* allocator = subspaceFor<JSFinalObject>(vm())->allocatorFor(allocationSize);
+        MarkedAllocator* allocator = subspaceFor<JSFinalObject>(vm())->allocatorForNonVirtual(allocationSize, AllocatorForMode::AllocatorIfExists);
         
         // FIXME: If the allocator is null, we could simply emit a normal C call to the allocator
         // instead of putting it on the slow path.

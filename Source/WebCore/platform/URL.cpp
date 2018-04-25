@@ -224,7 +224,7 @@ String URL::encodedPass() const
 
 String URL::fragmentIdentifier() const
 {
-    if (!m_isValid || m_queryEnd == m_string.length())
+    if (!hasFragmentIdentifier())
         return String();
 
     return m_string.substring(m_queryEnd + 1);
@@ -396,7 +396,7 @@ bool URL::setProtocol(const String& s)
     return true;
 }
 
-static bool containsOnlyASCII(StringView string)
+static bool isAllASCII(StringView string)
 {
     if (string.is8Bit())
         return charactersAreAllASCII(string.characters8(), string.length());
@@ -412,7 +412,7 @@ static bool appendEncodedHostname(UCharBuffer& buffer, StringView string)
     // For host names bigger than this, we won't do IDN encoding, which is almost certainly OK.
     const unsigned hostnameBufferLength = 2048;
     
-    if (string.length() > hostnameBufferLength || containsOnlyASCII(string)) {
+    if (string.length() > hostnameBufferLength || isAllASCII(string)) {
         append(buffer, string);
         return true;
     }
@@ -674,19 +674,16 @@ void URL::setPath(const String& s)
 
 String decodeURLEscapeSequences(const String& string)
 {
+    if (string.isEmpty())
+        return string;
     return decodeEscapeSequences<URLEscapeSequence>(string, UTF8Encoding());
 }
 
 String decodeURLEscapeSequences(const String& string, const TextEncoding& encoding)
 {
+    if (string.isEmpty())
+        return string;
     return decodeEscapeSequences<URLEscapeSequence>(string, encoding);
-}
-
-String URL::serialize(bool omitFragment) const
-{
-    if (omitFragment)
-        return m_string.left(m_queryEnd);
-    return m_string;
 }
 
 #if PLATFORM(IOS)

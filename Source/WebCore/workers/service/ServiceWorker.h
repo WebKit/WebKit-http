@@ -59,15 +59,13 @@ public:
     ExceptionOr<void> postMessage(ScriptExecutionContext&, JSC::JSValue message, Vector<JSC::Strong<JSC::JSObject>>&&);
 
     ServiceWorkerIdentifier identifier() const { return m_data.identifier; }
+    ServiceWorkerRegistrationIdentifier registrationIdentifier() const { return m_data.registrationIdentifier; }
 
     using RefCounted::ref;
     using RefCounted::deref;
 
-    static const HashMap<ServiceWorkerIdentifier, HashSet<ServiceWorker*>>& allWorkers();
-
 private:
     ServiceWorker(ScriptExecutionContext&, ServiceWorkerData&&);
-    static HashMap<ServiceWorkerIdentifier, HashSet<ServiceWorker*>>& mutableAllWorkers();
     void updatePendingActivityForEventDispatch();
 
     EventTargetInterface eventTargetInterface() const final;

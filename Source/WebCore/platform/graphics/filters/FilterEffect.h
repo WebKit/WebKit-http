@@ -19,8 +19,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef FilterEffect_h
-#define FilterEffect_h
+#pragma once
 
 #include "ColorSpace.h"
 #include "FloatRect.h"
@@ -57,11 +56,12 @@ public:
     void clearResult();
     void clearResultsRecursive();
 
-    ImageBuffer* asImageBuffer();
-    RefPtr<Uint8ClampedArray> asUnmultipliedImage(const IntRect&);
-    RefPtr<Uint8ClampedArray> asPremultipliedImage(const IntRect&);
-    void copyUnmultipliedImage(Uint8ClampedArray* destination, const IntRect&);
-    void copyPremultipliedImage(Uint8ClampedArray* destination, const IntRect&);
+    ImageBuffer* imageBufferResult();
+    RefPtr<Uint8ClampedArray> unmultipliedResult(const IntRect&);
+    RefPtr<Uint8ClampedArray> premultipliedResult(const IntRect&);
+
+    void copyUnmultipliedResult(Uint8ClampedArray& destination, const IntRect&);
+    void copyPremultipliedResult(Uint8ClampedArray& destination, const IntRect&);
 
 #if ENABLE(OPENCL)
     OpenCLHandle openCLImage() { return m_openCLImageResult; }
@@ -110,19 +110,13 @@ public:
     // Only the arithmetic composite filter ever needs to perform correction.
     virtual void correctFilterResultIfNeeded() { }
 
-    virtual void platformApplySoftware() = 0;
-#if ENABLE(OPENCL)
-    virtual bool platformApplyOpenCL();
-#endif
-    virtual void dump() = 0;
-
     virtual void determineAbsolutePaintRect();
 
     virtual FilterEffectType filterEffectType() const { return FilterEffectTypeUnknown; }
 
-    virtual WTF::TextStream& externalRepresentation(WTF::TextStream&, int indention = 0) const;
+    enum class RepresentationType { TestOutput, Debugging };
+    virtual WTF::TextStream& externalRepresentation(WTF::TextStream&, RepresentationType = RepresentationType::TestOutput) const;
 
-public:
     // The following functions are SVG specific and will move to RenderSVGResourceFilterPrimitive.
     // See bug https://bugs.webkit.org/show_bug.cgi?id=45614.
     bool hasX() const { return m_hasX; }
@@ -144,6 +138,7 @@ public:
     void setEffectBoundaries(const FloatRect& effectBoundaries) { m_effectBoundaries = effectBoundaries; }
 
     Filter& filter() { return m_filter; }
+    const Filter& filter() const { return m_filter; }
 
     bool clipsToBounds() const { return m_clipsToBounds; }
     void setClipsToBounds(bool value) { m_clipsToBounds = value; }
@@ -158,6 +153,8 @@ public:
 
 protected:
     FilterEffect(Filter&);
+    
+    virtual const char* filterName() const = 0;
 
     ImageBuffer* createImageBufferResult();
     Uint8ClampedArray* createUnmultipliedImageResult();
@@ -184,29 +181,26 @@ protected:
     }
 
 private:
+    virtual void platformApplySoftware() = 0;
+
+    void copyImageBytes(const Uint8ClampedArray& source, Uint8ClampedArray& destination, const IntRect&) const;
+
+    Filter& m_filter;
+    FilterEffectVector m_inputEffects;
+
     std::unique_ptr<ImageBuffer> m_imageBufferResult;
     RefPtr<Uint8ClampedArray> m_unmultipliedImageResult;
     RefPtr<Uint8ClampedArray> m_premultipliedImageResult;
-    FilterEffectVector m_inputEffects;
 #if ENABLE(OPENCL)
     OpenCLHandle m_openCLImageResult;
 #endif
-
-    bool m_alphaImage;
 
     IntRect m_absolutePaintRect;
     
     // The maximum size of a filter primitive. In SVG this is the primitive subregion in absolute coordinate space.
     // The absolute paint rect should never be bigger than m_maxEffectRect.
     FloatRect m_maxEffectRect;
-    Filter& m_filter;
     
-private:
-    inline void copyImageBytes(Uint8ClampedArray* source, Uint8ClampedArray* destination, const IntRect&);
-
-    // The following member variables are SVG specific and will move to RenderSVGResourceFilterPrimitive.
-    // See bug https://bugs.webkit.org/show_bug.cgi?id=45614.
-
     // The subregion of a filter primitive according to the SVG Filter specification in local coordinates.
     // This is SVG specific and needs to move to RenderSVGResourceFilterPrimitive.
     FloatRect m_filterPrimitiveSubregion;
@@ -214,18 +208,21 @@ private:
     // x, y, width and height of the actual SVGFE*Element. Is needed to determine the subregion of the
     // filter primitive on a later step.
     FloatRect m_effectBoundaries;
-    bool m_hasX;
-    bool m_hasY;
-    bool m_hasWidth;
-    bool m_hasHeight;
+
+    bool m_alphaImage { false };
+    bool m_hasX { false };
+    bool m_hasY { false };
+    bool m_hasWidth { false };
+    bool m_hasHeight { false };
 
     // Should the effect clip to its primitive region, or expand to use the combined region of its inputs.
-    bool m_clipsToBounds;
+    bool m_clipsToBounds { true };
 
-    ColorSpace m_operatingColorSpace;
-    ColorSpace m_resultColorSpace;
+    ColorSpace m_operatingColorSpace { ColorSpaceLinearRGB };
+    ColorSpace m_resultColorSpace { ColorSpaceSRGB };
 };
+
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const FilterEffect&);
 
 } // namespace WebCore
 
-#endif // FilterEffect_h

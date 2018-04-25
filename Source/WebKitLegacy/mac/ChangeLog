@@ -1,3 +1,198 @@
+2017-11-30  Stephan Szabo  <stephan.szabo@sony.com>
+
+        Make LegacyCustomProtocolManager optional for network process
+        https://bugs.webkit.org/show_bug.cgi?id=176230
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-11-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Fix some NSOperationQueue leaks
+        https://bugs.webkit.org/show_bug.cgi?id=180221
+
+        Reviewed by Wenson Hsieh.
+
+        * WebView/WebView.mm:
+        (-[WebView performDragOperation:]):
+
+2017-11-30  Darin Adler  <darin@apple.com>
+
+        [Mac] remove unneeded RetainPtr use introduced in r225142
+        https://bugs.webkit.org/show_bug.cgi?id=180202
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebImmediateActionController.mm:
+        (-[WebImmediateActionController _animationControllerForText]): Got rid of unnecessary
+        RetainPtr.
+
+2017-11-29  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Remove the ImageSource from the class hierarchy that connects BitmapImage to ImageFrame
+        https://bugs.webkit.org/show_bug.cgi?id=175595
+
+        Reviewed by Darin Adler.
+
+        * WebView/WebPreferences.mm:
+
+2017-11-27  Tim Horton  <timothy_horton@apple.com>
+
+        One too many zeroes in macOS version number in FeatureDefines
+        https://bugs.webkit.org/show_bug.cgi?id=180011
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-11-23  Darin Adler  <darin@apple.com>
+
+        Fix dictionary leak in lookup, convert FindOptions to OptionSet, tweak code style nearby
+        https://bugs.webkit.org/show_bug.cgi?id=179981
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebImmediateActionController.mm:
+        (-[WebImmediateActionController _animationControllerForText]): Use RetainPtr so we don't leak.
+        * WebView/WebView.mm:
+        (coreOptions): Use |= instead of | to build up FindOptions.
+
+2017-11-23  Sam Weinig  <sam@webkit.org>
+
+        Remove unneeded ScriptController::processingUserGesture() forwarding functions
+        https://bugs.webkit.org/show_bug.cgi?id=179954
+
+        Reviewed by Darin Adler.
+
+        Replace ScriptController::processingUserGesture() and ScriptController::processingUserGestureForMedia()
+        with direct calls to the corresponding UserGestureIndicator functions.
+
+        * Plugins/WebPluginController.mm:
+        (-[WebPluginController processingUserGesture]):
+        * WebView/WebView.mm:
+        (-[WebView _isProcessingUserGesture]):
+
+2017-11-23  Darin Adler  <darin@apple.com>
+
+        Reduce WTF::String operations that do unnecessary Unicode operations instead of ASCII
+        https://bugs.webkit.org/show_bug.cgi?id=179907
+
+        Reviewed by Sam Weinig.
+
+        * History/BinaryPropertyList.cpp:
+        (BinaryPropertyListPlan::writeStringObject): Use isAllASCII.
+        (BinaryPropertyListSerializer::appendStringObject): Ditto.
+        * WebView/WebHTMLRepresentation.mm:
+        (regExpForLabels): Removed TextCaseSensitive since it is now the default.
+        (matchLabelsAgainstString): Use JSC::Yarr::TextCaseInsensitive.
+
+2017-11-22  Ali Juma  <ajuma@chromium.org>
+
+        Implement VisualViewport API attributes
+        https://bugs.webkit.org/show_bug.cgi?id=179385
+
+        Reviewed by Frédéric Wang.
+
+        Add a VisualViewportAPI preference.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences visualViewportAPIEnabled]):
+        (-[WebPreferences setVisualViewportAPIEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-11-22  Christopher Reid  <chris.reid@sony.com>
+
+        WebCoreObjCExtras.h is being included in too many places
+        https://bugs.webkit.org/show_bug.cgi?id=179931
+
+        Reviewed by Darin Adler.
+
+        * Plugins/Hosted/WebHostedNetscapePluginView.mm:
+        * Plugins/WebBaseNetscapePluginView.mm:
+        * Plugins/WebBasePluginPackage.mm:
+        * Plugins/WebNetscapePluginStream.mm:
+        * Plugins/WebNetscapePluginView.mm:
+        * WebView/WebTextIterator.mm:
+        * WebView/WebViewData.mm:
+
+2017-11-22  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r225093.
+        https://bugs.webkit.org/show_bug.cgi?id=179938
+
+        Compilation failed on WinCairo 64-bit Release (Requested by
+        fredw on #webkit).
+
+        Reverted changeset:
+
+        "Implement VisualViewport API attributes"
+        https://bugs.webkit.org/show_bug.cgi?id=179385
+        https://trac.webkit.org/changeset/225093
+
+2017-11-21  Ali Juma  <ajuma@chromium.org>
+
+        Implement VisualViewport API attributes
+        https://bugs.webkit.org/show_bug.cgi?id=179385
+
+        Reviewed by Frédéric Wang.
+
+        Add a VisualViewportAPI preference.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences visualViewportAPIEnabled]):
+        (-[WebPreferences setVisualViewportAPIEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-11-21  Christopher Reid  <chris.reid@sony.com>
+
+        [PAL] Remove FileSystem's dependency on WebCoreNSStringExtras
+        https://bugs.webkit.org/show_bug.cgi?id=179504
+
+        Reviewed by Darin Adler.
+
+        * Misc/WebKitNSStringExtras.mm:
+        * Plugins/Hosted/NetscapePluginHostManager.mm:
+        * Plugins/WebBasePluginPackage.mm:
+
+2017-11-19  Tim Horton  <timothy_horton@apple.com>
+
+        Remove unused TOUCH_ICON_LOADING feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=179873
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-11-19  Tim Horton  <timothy_horton@apple.com>
+
+        Remove unused LEGACY_VENDOR_PREFIXES feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=179872
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-11-16  Daniel Bates  <dabates@apple.com>
+
+        Add feature define for alternative presentation button element
+        https://bugs.webkit.org/show_bug.cgi?id=179692
+        Part of <rdar://problem/34917108>
+
+        Reviewed by Andy Estes.
+
+        Only enabled on Cocoa platforms by default.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2017-11-14  Nan Wang  <n_wang@apple.com>
 
         AX: AOM: Implement AccessibleNode class and support label and role attributes

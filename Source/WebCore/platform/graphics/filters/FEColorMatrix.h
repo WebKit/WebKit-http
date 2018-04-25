@@ -19,8 +19,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef FEColorMatrix_h
-#define FEColorMatrix_h
+#pragma once
 
 #include "FilterEffect.h"
 
@@ -41,22 +40,23 @@ class FEColorMatrix : public FilterEffect {
 public:
     static Ref<FEColorMatrix> create(Filter&, ColorMatrixType, const Vector<float>&);
 
-    ColorMatrixType type() const;
+    ColorMatrixType type() const { return m_type; }
     bool setType(ColorMatrixType);
 
-    const Vector<float>& values() const;
+    const Vector<float>& values() const { return m_values; }
     bool setValues(const Vector<float>&);
-
-    void platformApplySoftware() override;
-    void dump() override;
-
-    WTF::TextStream& externalRepresentation(WTF::TextStream&, int indention) const override;
 
     static inline void calculateSaturateComponents(float* components, float value);
     static inline void calculateHueRotateComponents(float* components, float value);
 
 private:
     FEColorMatrix(Filter&, ColorMatrixType, const Vector<float>&);
+
+    const char* filterName() const final { return "FEColorMatrix"; }
+
+    void platformApplySoftware() override;
+
+    WTF::TextStream& externalRepresentation(WTF::TextStream&, RepresentationType) const override;
 
     ColorMatrixType m_type;
     Vector<float> m_values;
@@ -93,4 +93,3 @@ inline void FEColorMatrix::calculateHueRotateComponents(float* components, float
 
 } // namespace WebCore
 
-#endif // FEColorMatrix_h

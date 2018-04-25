@@ -171,14 +171,14 @@ WebFrame::~WebFrame()
 }
 
 WebPage* WebFrame::page() const
-{ 
+{
     if (!m_coreFrame)
-        return 0;
+        return nullptr;
     
     if (Page* page = m_coreFrame->page())
         return WebPage::fromCorePage(page);
 
-    return 0;
+    return nullptr;
 }
 
 WebFrame* WebFrame::fromCoreFrame(Frame& frame)
@@ -291,7 +291,7 @@ void WebFrame::startDownload(const WebCore::ResourceRequest& request, const Stri
 
     auto& webProcess = WebProcess::singleton();
     PAL::SessionID sessionID = page() ? page()->sessionID() : PAL::SessionID::defaultSessionID();
-    webProcess.networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::StartDownload(sessionID, policyDownloadID, request, suggestedName), 0);
+    webProcess.ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::StartDownload(sessionID, policyDownloadID, request, suggestedName), 0);
 }
 
 void WebFrame::convertMainResourceLoadToDownload(DocumentLoader* documentLoader, PAL::SessionID sessionID, const ResourceRequest& request, const ResourceResponse& response)
@@ -313,7 +313,7 @@ void WebFrame::convertMainResourceLoadToDownload(DocumentLoader* documentLoader,
     else
         mainResourceLoadIdentifier = 0;
 
-    webProcess.networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::ConvertMainResourceLoadToDownload(sessionID, mainResourceLoadIdentifier, policyDownloadID, request, response), 0);
+    webProcess.ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::ConvertMainResourceLoadToDownload(sessionID, mainResourceLoadIdentifier, policyDownloadID, request, response), 0);
 }
 
 String WebFrame::source() const
@@ -518,21 +518,13 @@ JSGlobalContextRef WebFrame::jsContextForWorld(InjectedBundleScriptWorld* world)
 
 bool WebFrame::handlesPageScaleGesture() const
 {
-    if (!m_coreFrame->document()->isPluginDocument())
-        return 0;
-
-    PluginDocument* pluginDocument = static_cast<PluginDocument*>(m_coreFrame->document());
-    PluginView* pluginView = static_cast<PluginView*>(pluginDocument->pluginWidget());
+    auto* pluginView = WebPage::pluginViewForFrame(m_coreFrame);
     return pluginView && pluginView->handlesPageScaleFactor();
 }
 
 bool WebFrame::requiresUnifiedScaleFactor() const
 {
-    if (!m_coreFrame->document()->isPluginDocument())
-        return 0;
-
-    PluginDocument* pluginDocument = static_cast<PluginDocument*>(m_coreFrame->document());
-    PluginView* pluginView = static_cast<PluginView*>(pluginDocument->pluginWidget());
+    auto* pluginView = WebPage::pluginViewForFrame(m_coreFrame);
     return pluginView && pluginView->requiresUnifiedScaleFactor();
 }
 

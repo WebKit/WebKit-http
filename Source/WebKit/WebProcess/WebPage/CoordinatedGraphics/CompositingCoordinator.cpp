@@ -35,6 +35,7 @@
 #include <WebCore/GraphicsContext.h>
 #include <WebCore/InspectorController.h>
 #include <WebCore/MainFrame.h>
+#include <WebCore/NicosiaPaintingEngine.h>
 #include <WebCore/Page.h>
 #include <wtf/MemoryPressureHandler.h>
 #include <wtf/SetForScope.h>
@@ -50,6 +51,7 @@ namespace WebKit {
 CompositingCoordinator::CompositingCoordinator(Page* page, CompositingCoordinator::Client& client)
     : m_page(page)
     , m_client(client)
+    , m_paintingEngine(Nicosia::PaintingEngine::create())
     , m_releaseInactiveAtlasesTimer(RunLoop::main(), this, &CompositingCoordinator::releaseInactiveAtlasesTimerFired)
 {
 #if USE(GLIB_EVENT_LOOP)
@@ -224,10 +226,10 @@ void CompositingCoordinator::createImageBacking(CoordinatedImageBackingID imageI
     m_state.imagesToCreate.append(imageID);
 }
 
-void CompositingCoordinator::updateImageBacking(CoordinatedImageBackingID imageID, RefPtr<CoordinatedSurface>&& coordinatedSurface)
+void CompositingCoordinator::updateImageBacking(CoordinatedImageBackingID imageID, RefPtr<Nicosia::Buffer>&& buffer)
 {
     m_shouldSyncFrame = true;
-    m_state.imagesToUpdate.append(std::make_pair(imageID, WTFMove(coordinatedSurface)));
+    m_state.imagesToUpdate.append(std::make_pair(imageID, WTFMove(buffer)));
 }
 
 void CompositingCoordinator::clearImageBackingContents(CoordinatedImageBackingID imageID)
@@ -257,19 +259,20 @@ void CompositingCoordinator::flushPendingImageBackingChanges()
         imageBacking->update();
 }
 
-void CompositingCoordinator::notifyAnimationStarted(const GraphicsLayer*, const String&, double /* time */)
-{
-}
-
 void CompositingCoordinator::notifyFlushRequired(const GraphicsLayer*)
 {
     if (!m_isDestructing && !isFlushingLayerChanges())
         m_client.notifyFlushRequired();
 }
 
-void CompositingCoordinator::paintContents(const GraphicsLayer* graphicsLayer, GraphicsContext& graphicsContext, GraphicsLayerPaintingPhase, const FloatRect& clipRect, GraphicsLayerPaintBehavior)
+float CompositingCoordinator::deviceScaleFactor() const
 {
-    m_client.paintLayerContents(graphicsLayer, graphicsContext, enclosingIntRect(clipRect));
+    return m_page->deviceScaleFactor();
+}
+
+float CompositingCoordinator::pageScaleFactor() const
+{
+    return m_page->pageScaleFactor();
 }
 
 std::unique_ptr<GraphicsLayer> CompositingCoordinator::createGraphicsLayer(GraphicsLayer::Type layerType, GraphicsLayerClient& client)
@@ -283,26 +286,16 @@ std::unique_ptr<GraphicsLayer> CompositingCoordinator::createGraphicsLayer(Graph
     return std::unique_ptr<GraphicsLayer>(layer);
 }
 
-float CompositingCoordinator::deviceScaleFactor() const
+void CompositingCoordinator::createUpdateAtlas(UpdateAtlas::ID id, Ref<Nicosia::Buffer>&& buffer)
 {
-    return m_page->deviceScaleFactor();
+    m_state.updateAtlasesToCreate.append(std::make_pair(id, WTFMove(buffer)));
 }
 
-float CompositingCoordinator::pageScaleFactor() const
-{
-    return m_page->pageScaleFactor();
-}
-
-void CompositingCoordinator::createUpdateAtlas(uint32_t atlasID, RefPtr<CoordinatedSurface>&& coordinatedSurface)
-{
-    m_state.updateAtlasesToCreate.append(std::make_pair(atlasID, WTFMove(coordinatedSurface)));
-}
-
-void CompositingCoordinator::removeUpdateAtlas(uint32_t atlasID)
+void CompositingCoordinator::removeUpdateAtlas(UpdateAtlas::ID id)
 {
     if (m_isPurging)
         return;
-    m_atlasesToRemove.append(atlasID);
+    m_atlasesToRemove.append(id);
 }
 
 FloatRect CompositingCoordinator::visibleContentsRect() const
@@ -385,21 +378,30 @@ void CompositingCoordinator::purgeBackingStores()
     m_updateAtlases.clear();
 }
 
-bool CompositingCoordinator::paintToSurface(const IntSize& size, CoordinatedSurface::Flags flags, uint32_t& atlasID, IntPoint& offset, CoordinatedSurface::Client& client)
+Ref<Nicosia::Buffer> CompositingCoordinator::getCoordinatedBuffer(const IntSize& size, Nicosia::Buffer::Flags flags, uint32_t& atlasID, IntRect& allocatedRect)
 {
-    for (auto& updateAtlas : m_updateAtlases) {
-        UpdateAtlas* atlas = updateAtlas.get();
-        if (atlas->supportsAlpha() == (flags & CoordinatedSurface::SupportsAlpha)) {
-            // This will be false if there is no available buffer space.
-            if (atlas->paintOnAvailableBuffer(size, atlasID, offset, client))
-                return true;
+    for (auto& atlas : m_updateAtlases) {
+        if (atlas->supportsAlpha() == (flags & Nicosia::Buffer::SupportsAlpha)) {
+            if (auto buffer = atlas->getCoordinatedBuffer(size, atlasID, allocatedRect))
+                return *buffer;
         }
     }
 
-    static const int ScratchBufferDimension = 1024; // Should be a power of two.
-    m_updateAtlases.append(std::make_unique<UpdateAtlas>(*this, ScratchBufferDimension, flags));
+    static const IntSize s_atlasSize { 1024, 1024 }; // This should be a square.
+    m_updateAtlases.append(std::make_unique<UpdateAtlas>(*this, s_atlasSize, flags));
     scheduleReleaseInactiveAtlases();
-    return m_updateAtlases.last()->paintOnAvailableBuffer(size, atlasID, offset, client);
+
+    // Specified size should always fit into a newly-created UpdateAtlas and a non-null
+    // CoordinatedBuffer value should be returned from UpdateAtlas::getCoordinatedBuffer().
+    // We use a RELEASE_ASSERT() to stop any malfunctioning at the earliest point.
+    auto buffer = m_updateAtlases.last()->getCoordinatedBuffer(size, atlasID, allocatedRect);
+    RELEASE_ASSERT(buffer);
+    return *buffer;
+}
+
+Nicosia::PaintingEngine& CompositingCoordinator::paintingEngine()
+{
+    return *m_paintingEngine;
 }
 
 const Seconds releaseInactiveAtlasesTimerInterval { 500_ms };

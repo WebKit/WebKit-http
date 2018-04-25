@@ -54,6 +54,8 @@ class KillRing;
 
 namespace WebCore {
 
+class AlternativePresentationButtonElement;
+class AlternativePresentationButtonSubstitution;
 class AlternativeTextController;
 class ArchiveResource;
 class DataTransfer;
@@ -65,7 +67,6 @@ class EditorClient;
 class EditorInternalCommand;
 class File;
 class Frame;
-class HTMLAttachmentElement;
 class HTMLElement;
 class HitTestResult;
 class KeyboardEvent;
@@ -93,6 +94,11 @@ enum class MailBlockquoteHandling {
     RespectBlockquote,
     IgnoreBlockquote,
 };
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+class HTMLAttachmentElement;
+struct AttachmentDisplayOptions;
+#endif
 
 enum TemporarySelectionOption : uint8_t {
     // By default, no additional options are enabled.
@@ -501,17 +507,28 @@ public:
     bool isGettingDictionaryPopupInfo() const { return m_isGettingDictionaryPopupInfo; }
 
 #if ENABLE(ATTACHMENT_ELEMENT)
-    WEBCORE_EXPORT void insertAttachment(const String& identifier, const String& filename, const String& filepath, std::optional<String> contentType = std::nullopt);
-    WEBCORE_EXPORT void insertAttachment(const String& identifier, const String& filename, Ref<SharedBuffer>&& data, std::optional<String> contentType = std::nullopt);
+    WEBCORE_EXPORT void insertAttachment(const String& identifier, const AttachmentDisplayOptions&, const String& filename, const String& filepath, std::optional<String> contentType = std::nullopt);
+    WEBCORE_EXPORT void insertAttachment(const String& identifier, const AttachmentDisplayOptions&, const String& filename, Ref<SharedBuffer>&& data, std::optional<String> contentType = std::nullopt);
     void didInsertAttachmentElement(HTMLAttachmentElement&);
     void didRemoveAttachmentElement(HTMLAttachmentElement&);
+#endif
+
+    // FIXME: Find a better place for this functionality.
+#if ENABLE(ALTERNATIVE_PRESENTATION_BUTTON_ELEMENT)
+    // FIXME: Remove the need to pass an identifier for the alternative presentation button.
+    WEBCORE_EXPORT void substituteWithAlternativePresentationButton(Vector<Ref<Element>>&&, const String&);
+    // FIXME: Have this take an AlternativePresentationButtonElement& instead of an identifier.
+    WEBCORE_EXPORT void removeAlternativePresentationButton(const String&);
+
+    void didInsertAlternativePresentationButtonElement(AlternativePresentationButtonElement&);
+    void didRemoveAlternativePresentationButtonElement(AlternativePresentationButtonElement&);
 #endif
 
 private:
     Document& document() const;
 
 #if ENABLE(ATTACHMENT_ELEMENT)
-    void insertAttachmentFromFile(const String& identifier, const String& filename, const String& contentType, Ref<File>&&);
+    void insertAttachmentFromFile(const String& identifier, const AttachmentDisplayOptions&, const String& filename, const String& contentType, Ref<File>&&);
 #endif
 
     bool canDeleteRange(Range*) const;
@@ -580,6 +597,13 @@ private:
 #if ENABLE(ATTACHMENT_ELEMENT)
     HashSet<String> m_insertedAttachmentIdentifiers;
     HashSet<String> m_removedAttachmentIdentifiers;
+#endif
+
+#if ENABLE(ALTERNATIVE_PRESENTATION_BUTTON_ELEMENT)
+    HashMap<AlternativePresentationButtonElement*, std::unique_ptr<AlternativePresentationButtonSubstitution>> m_alternativePresentationButtonElementToSubstitutionMap;
+    HashMap<String, AlternativePresentationButtonElement*> m_alternativePresentationButtonIdentifierToElementMap;
+    std::unique_ptr<AlternativePresentationButtonSubstitution> m_lastAlternativePresentationButtonSubstitution;
+    String m_lastAlternativePresentationButtonIdentifier;
 #endif
 
     VisibleSelection m_oldSelectionForEditorUIUpdate;

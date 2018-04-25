@@ -160,9 +160,9 @@
 #include <bytecode/CodeBlock.h>
 #include <inspector/InspectorAgentBase.h>
 #include <inspector/InspectorFrontendChannel.h>
-#include <inspector/InspectorValues.h>
 #include <runtime/JSCInlines.h>
 #include <runtime/JSCJSValue.h>
+#include <wtf/JSONValues.h>
 #include <wtf/Language.h>
 #include <wtf/MemoryPressureHandler.h>
 #include <wtf/MonotonicTime.h>
@@ -1725,7 +1725,7 @@ Ref<Range> Internals::subrange(Range& range, int rangeLocation, int rangeLength)
 
 RefPtr<Range> Internals::rangeOfStringNearLocation(const Range& searchRange, const String& text, unsigned targetOffset)
 {
-    return findClosestPlainText(searchRange, text, 0, targetOffset);
+    return findClosestPlainText(searchRange, text, { }, targetOffset);
 }
 
 ExceptionOr<RefPtr<Range>> Internals::rangeForDictionaryLookupAtLocation(int x, int y)
@@ -1738,8 +1738,7 @@ ExceptionOr<RefPtr<Range>> Internals::rangeForDictionaryLookupAtLocation(int x, 
     document->updateLayoutIgnorePendingStylesheets();
 
     HitTestResult result = document->frame()->mainFrame().eventHandler().hitTestResultAtPoint(IntPoint(x, y));
-    NSDictionary *options = nullptr;
-    return DictionaryLookup::rangeAtHitTestResult(result, &options);
+    return DictionaryLookup::rangeAtHitTestResult(result, nullptr);
 #else
     UNUSED_PARAM(x);
     UNUSED_PARAM(y);
@@ -2119,7 +2118,7 @@ static ExceptionOr<FindOptions> parseFindOptions(const Vector<String>& optionLis
         {"AtWordEnds", AtWordEnds},
         {"DoNotTraverseFlatTree", DoNotTraverseFlatTree},
     };
-    FindOptions result = 0;
+    FindOptions result;
     for (auto& option : optionList) {
         bool found = false;
         for (auto& flag : flagList) {
@@ -2132,7 +2131,7 @@ static ExceptionOr<FindOptions> parseFindOptions(const Vector<String>& optionLis
         if (!found)
             return Exception { SyntaxError };
     }
-    return result;
+    return WTFMove(result);
 }
 
 ExceptionOr<RefPtr<Range>> Internals::rangeOfString(const String& text, RefPtr<Range>&& referenceRange, const Vector<String>& findOptions)
@@ -2744,7 +2743,7 @@ Ref<MemoryInfo> Internals::memoryInfo() const
 Vector<String> Internals::getReferencedFilePaths() const
 {
     frame()->loader().history().saveDocumentAndScrollState();
-    return FormController::getReferencedFilePaths(frame()->loader().history().currentItem()->documentState());
+    return FormController::referencedFilePaths(frame()->loader().history().currentItem()->documentState());
 }
 
 ExceptionOr<void> Internals::startTrackingRepaints()
@@ -4292,6 +4291,32 @@ void Internals::setTimelineCurrentTime(AnimationTimeline& timeline, double curre
 MockPaymentCoordinator& Internals::mockPaymentCoordinator() const
 {
     return *m_mockPaymentCoordinator;
+}
+#endif
+
+#if ENABLE(ALTERNATIVE_PRESENTATION_BUTTON_ELEMENT)
+ExceptionOr<void> Internals::substituteWithAlternativePresentationButton(Vector<RefPtr<Element>>&& elementsFromBindings, const String& identifier)
+{
+    if (!frame())
+        return Exception { InvalidAccessError };
+    if (elementsFromBindings.isEmpty())
+        return Exception { TypeError, ASCIILiteral { "Must specify at least one element to substitute." } };
+    Vector<Ref<Element>> elements;
+    elements.reserveInitialCapacity(elementsFromBindings.size());
+    for (auto& element : elementsFromBindings) {
+        if (element)
+            elements.uncheckedAppend(element.releaseNonNull());
+    }
+    frame()->editor().substituteWithAlternativePresentationButton(WTFMove(elements), identifier);
+    return { };
+}
+
+ExceptionOr<void> Internals::removeAlternativePresentationButton(const String& identifier)
+{
+    if (!frame())
+        return Exception { InvalidAccessError };
+    frame()->editor().removeAlternativePresentationButton(identifier);
+    return { };
 }
 #endif
 

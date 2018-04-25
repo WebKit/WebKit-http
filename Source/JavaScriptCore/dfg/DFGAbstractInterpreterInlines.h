@@ -40,6 +40,8 @@
 #include "PutByIdStatus.h"
 #include "StringObject.h"
 
+#include <wtf/CheckedArithmetic.h>
+
 namespace JSC { namespace DFG {
 
 template<typename AbstractStateType>
@@ -259,14 +261,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         AbstractValue value = m_state.variables().operand(data->local);
         // The value in the local should already be checked.
         DFG_ASSERT(m_graph, node, value.isType(typeFilterFor(data->format)));
-        if (value.value())
-            m_state.setFoundConstants(true);
-        forNode(node) = value;
-        break;
-    }
-        
-    case GetLocalUnlinked: {
-        AbstractValue value = m_state.variables().operand(node->unlinkedLocal().offset());
         if (value.value())
             m_state.setFoundConstants(true);
         forNode(node) = value;
@@ -1107,6 +1101,23 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
 
+    case NormalizeMapKey: {
+        if (JSValue key = forNode(node->child1()).value()) {
+            setConstant(node, *m_graph.freeze(normalizeMapKey(key)));
+            break;
+        }
+
+        SpeculatedType typeMaybeNormalized = (SpecFullNumber & ~SpecInt32Only);
+        if (!(forNode(node->child1()).m_type & typeMaybeNormalized)) {
+            m_state.setFoundConstants(true);
+            forNode(node) = forNode(node->child1());
+            break;
+        }
+
+        forNode(node).makeHeapTop();
+        break;
+    }
+
     case StringSlice: {
         forNode(node).setType(m_graph, SpecString);
         break;
@@ -1139,6 +1150,10 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             ASSERT(node->bucketOwnerType() == BucketOwnerType::Set);
             forNode(node).set(m_graph, m_vm.hashMapBucketSetStructure.get());
         }
+        break;
+
+    case SetAdd:
+    case MapSet:
         break;
 
     case WeakMapGet:
@@ -1864,24 +1879,28 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         JSValue index = forNode(node->child2()).m_value;
         InlineCallFrame* inlineCallFrame = node->child1()->origin.semantic.inlineCallFrame;
 
-        if (index && index.isInt32()) {
+        if (index && index.isUInt32()) {
             // This pretends to return TOP for accesses that are actually proven out-of-bounds because
             // that's the conservative thing to do. Otherwise we'd need to write more code to mark such
             // paths as unreachable, or to return undefined. We could implement that eventually.
-            
-            unsigned argumentIndex = index.asUInt32() + node->numberOfArgumentsToSkip();
-            if (inlineCallFrame) {
-                if (argumentIndex < inlineCallFrame->argumentCountIncludingThis - 1) {
-                    forNode(node) = m_state.variables().operand(
-                        virtualRegisterForArgument(argumentIndex + 1) + inlineCallFrame->stackOffset);
-                    m_state.setFoundConstants(true);
-                    break;
-                }
-            } else {
-                if (argumentIndex < m_state.variables().numberOfArguments() - 1) {
-                    forNode(node) = m_state.variables().argument(argumentIndex + 1);
-                    m_state.setFoundConstants(true);
-                    break;
+
+            Checked<unsigned, RecordOverflow> argumentIndexChecked = index.asUInt32();
+            argumentIndexChecked += node->numberOfArgumentsToSkip();
+            unsigned argumentIndex;
+            if (argumentIndexChecked.safeGet(argumentIndex) != CheckedState::DidOverflow) {
+                if (inlineCallFrame) {
+                    if (argumentIndex < inlineCallFrame->argumentCountIncludingThis - 1) {
+                        forNode(node) = m_state.variables().operand(
+                            virtualRegisterForArgument(argumentIndex + 1) + inlineCallFrame->stackOffset);
+                        m_state.setFoundConstants(true);
+                        break;
+                    }
+                } else {
+                    if (argumentIndex < m_state.variables().numberOfArguments() - 1) {
+                        forNode(node) = m_state.variables().argument(argumentIndex + 1);
+                        m_state.setFoundConstants(true);
+                        break;
+                    }
                 }
             }
         }
@@ -2279,8 +2298,13 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
 
     case NewFunction:
-        forNode(node).set(
-            m_graph, m_codeBlock->globalObjectFor(node->origin.semantic)->functionStructure());
+        if (node->castOperand<FunctionExecutable*>()->isStrictMode()) {
+            forNode(node).set(
+                m_graph, m_codeBlock->globalObjectFor(node->origin.semantic)->strictFunctionStructure());
+        } else {
+            forNode(node).set(
+                m_graph, m_codeBlock->globalObjectFor(node->origin.semantic)->sloppyFunctionStructure());
+        }
         break;
         
     case GetCallee:
@@ -2585,7 +2609,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         }
         break;
     case GetButterfly:
-    case GetButterflyWithoutCaging:
     case AllocatePropertyStorage:
     case ReallocatePropertyStorage:
     case NukeStructureAndSetButterfly:

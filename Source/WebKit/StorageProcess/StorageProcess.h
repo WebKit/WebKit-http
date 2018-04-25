@@ -30,6 +30,7 @@
 #include <WebCore/IDBBackingStore.h>
 #include <WebCore/IDBServer.h>
 #include <WebCore/ServiceWorkerIdentifier.h>
+#include <WebCore/ServiceWorkerTypes.h>
 #include <WebCore/UniqueIDBDatabase.h>
 #include <pal/SessionID.h>
 #include <wtf/CrossThreadTask.h>
@@ -95,6 +96,8 @@ public:
     void unregisterSWServerConnection(WebSWServerConnection&);
 #endif
 
+    void didReceiveStorageProcessMessage(IPC::Connection&, IPC::Decoder&);
+
 private:
     StorageProcess();
 
@@ -108,11 +111,10 @@ private:
     // IPC::Connection::Client
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
     void didClose(IPC::Connection&) override;
-    void didReceiveStorageProcessMessage(IPC::Connection&, IPC::Decoder&);
 
     // Message Handlers
     void initializeWebsiteDataStore(const StorageProcessCreationParameters&);
-    void createStorageToWebProcessConnection();
+    void createStorageToWebProcessConnection(bool isServiceWorkerProcess);
 
     void fetchWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType> websiteDataTypes, uint64_t callbackID);
     void deleteWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType> websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID);
@@ -122,14 +124,12 @@ private:
     void didGetSandboxExtensionsForBlobFiles(uint64_t requestID, SandboxExtension::HandleArray&&);
 #endif
 #if ENABLE(SERVICE_WORKER)
-    void didGetWorkerContextProcessConnection(IPC::Attachment&& encodedConnectionIdentifier);
-
-    void didReceiveFetchResponse(uint64_t serverConnectionIdentifier, uint64_t fetchIdentifier, const WebCore::ResourceResponse&);
-    void didReceiveFetchData(uint64_t serverConnectionIdentifier, uint64_t fetchIdentifier, const IPC::DataReference&, int64_t encodedDataLength);
-    void didReceiveFetchFormData(uint64_t serverConnectionIdentifier, uint64_t fetchIdentifier, const IPC::FormDataReference&);
-    void didFinishFetch(uint64_t serverConnectionIdentifier, uint64_t fetchIdentifier);
-    void didFailFetch(uint64_t serverConnectionIdentifier, uint64_t fetchIdentifier);
-    void didNotHandleFetch(uint64_t serverConnectionIdentifier, uint64_t fetchIdentifier);
+    void didReceiveFetchResponse(WebCore::SWServerConnectionIdentifier, uint64_t fetchIdentifier, const WebCore::ResourceResponse&);
+    void didReceiveFetchData(WebCore::SWServerConnectionIdentifier, uint64_t fetchIdentifier, const IPC::DataReference&, int64_t encodedDataLength);
+    void didReceiveFetchFormData(WebCore::SWServerConnectionIdentifier, uint64_t fetchIdentifier, const IPC::FormDataReference&);
+    void didFinishFetch(WebCore::SWServerConnectionIdentifier, uint64_t fetchIdentifier);
+    void didFailFetch(WebCore::SWServerConnectionIdentifier, uint64_t fetchIdentifier);
+    void didNotHandleFetch(WebCore::SWServerConnectionIdentifier, uint64_t fetchIdentifier);
 
     void postMessageToServiceWorkerClient(const WebCore::ServiceWorkerClientIdentifier& destinationIdentifier, const IPC::DataReference& message, WebCore::ServiceWorkerIdentifier sourceIdentifier, const String& sourceOrigin);
     WebSWOriginStore& swOriginStoreForSession(PAL::SessionID);
@@ -162,7 +162,7 @@ private:
     RefPtr<WebSWServerToContextConnection> m_serverToContextConnection;
     bool m_waitingForServerToContextProcessConnection { false };
     HashMap<PAL::SessionID, std::unique_ptr<WebCore::SWServer>> m_swServers;
-    HashMap<uint64_t, WebSWServerConnection*> m_swServerConnections;
+    HashMap<WebCore::SWServerConnectionIdentifier, WebSWServerConnection*> m_swServerConnections;
 #endif
 };
 

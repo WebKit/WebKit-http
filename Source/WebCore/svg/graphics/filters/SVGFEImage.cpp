@@ -94,6 +94,9 @@ void FEImage::platformApplySoftware()
     if (!m_image && !renderer)
         return;
 
+    // FEImage results are always in ColorSpaceSRGB
+    setResultColorSpace(ColorSpaceSRGB);
+
     ImageBuffer* resultImage = createImageBufferResult();
     if (!resultImage)
         return;
@@ -110,9 +113,6 @@ void FEImage::platformApplySoftware()
 
     IntPoint paintLocation = absolutePaintRect().location();
     destRect.move(-paintLocation.x(), -paintLocation.y());
-
-    // FEImage results are always in ColorSpaceSRGB
-    setResultColorSpace(ColorSpaceSRGB);
 
     if (renderer) {
         const AffineTransform& absoluteTransform = filter().absoluteTransform();
@@ -137,20 +137,15 @@ void FEImage::platformApplySoftware()
     resultImage->context().drawImage(*m_image, destRect, srcRect);
 }
 
-void FEImage::dump()
-{
-}
-
-TextStream& FEImage::externalRepresentation(TextStream& ts, int indent) const
+TextStream& FEImage::externalRepresentation(TextStream& ts, RepresentationType representation) const
 {
     FloatSize imageSize;
     if (m_image)
         imageSize = m_image->size();
     else if (RenderObject* renderer = referencedRenderer())
         imageSize = enclosingIntRect(renderer->repaintRectInLocalCoordinates()).size();
-    writeIndent(ts, indent);
-    ts << "[feImage";
-    FilterEffect::externalRepresentation(ts);
+    ts << indent << "[feImage";
+    FilterEffect::externalRepresentation(ts, representation);
     ts << " image-size=\"" << imageSize.width() << "x" << imageSize.height() << "\"]\n";
     // FIXME: should this dump also object returned by SVGFEImage::image() ?
     return ts;

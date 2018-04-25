@@ -189,7 +189,7 @@ void StorageProcess::performNextStorageTask()
     task.performTask();
 }
 
-void StorageProcess::createStorageToWebProcessConnection()
+void StorageProcess::createStorageToWebProcessConnection(bool isServiceWorkerProcess)
 {
 #if USE(UNIX_DOMAIN_SOCKETS)
     IPC::Connection::SocketPair socketPair = IPC::Connection::createPlatformConnection();
@@ -207,6 +207,19 @@ void StorageProcess::createStorageToWebProcessConnection()
     parentProcessConnection()->send(Messages::StorageProcessProxy::DidCreateStorageToWebProcessConnection(clientPort), 0);
 #else
     notImplemented();
+#endif
+
+#if ENABLE(SERVICE_WORKER)
+    if (isServiceWorkerProcess && !m_storageToWebProcessConnections.isEmpty()) {
+        ASSERT(m_waitingForServerToContextProcessConnection);
+        m_serverToContextConnection = WebSWServerToContextConnection::create(m_storageToWebProcessConnections.last()->connection());
+        m_waitingForServerToContextProcessConnection = false;
+
+        for (auto& connection : m_storageToWebProcessConnections)
+            connection->workerContextProcessConnectionCreated();
+    }
+#else
+    UNUSED_PARAM(isServiceWorkerProcess);
 #endif
 }
 
@@ -381,66 +394,40 @@ void StorageProcess::createServerToContextConnection()
         return;
     
     m_waitingForServerToContextProcessConnection = true;
-    parentProcessConnection()->send(Messages::StorageProcessProxy::GetWorkerContextProcessConnection(), 0);
+    parentProcessConnection()->send(Messages::StorageProcessProxy::EstablishWorkerContextConnectionToStorageProcess(), 0);
 }
 
-void StorageProcess::didGetWorkerContextProcessConnection(IPC::Attachment&& encodedConnectionIdentifier)
-{
-    ASSERT(m_waitingForServerToContextProcessConnection);
-    m_waitingForServerToContextProcessConnection = false;
-
-#if USE(UNIX_DOMAIN_SOCKETS)
-    IPC::Connection::Identifier connectionIdentifier = encodedConnectionIdentifier.releaseFileDescriptor();
-#elif OS(DARWIN)
-    IPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.port());
-#else
-    ASSERT_NOT_REACHED();
-#endif
-
-    if (IPC::Connection::identifierIsNull(connectionIdentifier)) {
-        LOG_ERROR("StorageProcess::didGetWorkerContextProcessConnection - Received null connection identifier");
-        return;
-    }
-
-    auto ipcConnection = IPC::Connection::createClientConnection(connectionIdentifier, *this);
-    ipcConnection->open();
-    m_serverToContextConnection = WebSWServerToContextConnection::create(WTFMove(ipcConnection));
-    
-    for (auto& connection : m_storageToWebProcessConnections)
-        connection->workerContextProcessConnectionCreated();
-}
-
-void StorageProcess::didFailFetch(uint64_t serverConnectionIdentifier, uint64_t fetchIdentifier)
+void StorageProcess::didFailFetch(SWServerConnectionIdentifier serverConnectionIdentifier, uint64_t fetchIdentifier)
 {
     if (auto* connection = m_swServerConnections.get(serverConnectionIdentifier))
         connection->didFailFetch(fetchIdentifier);
 }
 
-void StorageProcess::didNotHandleFetch(uint64_t serverConnectionIdentifier, uint64_t fetchIdentifier)
+void StorageProcess::didNotHandleFetch(SWServerConnectionIdentifier serverConnectionIdentifier, uint64_t fetchIdentifier)
 {
     if (auto* connection = m_swServerConnections.get(serverConnectionIdentifier))
         connection->didNotHandleFetch(fetchIdentifier);
 }
 
-void StorageProcess::didReceiveFetchResponse(uint64_t serverConnectionIdentifier, uint64_t fetchIdentifier, const WebCore::ResourceResponse& response)
+void StorageProcess::didReceiveFetchResponse(SWServerConnectionIdentifier serverConnectionIdentifier, uint64_t fetchIdentifier, const WebCore::ResourceResponse& response)
 {
     if (auto* connection = m_swServerConnections.get(serverConnectionIdentifier))
         connection->didReceiveFetchResponse(fetchIdentifier, response);
 }
 
-void StorageProcess::didReceiveFetchData(uint64_t serverConnectionIdentifier, uint64_t fetchIdentifier, const IPC::DataReference& data, int64_t encodedDataLength)
+void StorageProcess::didReceiveFetchData(SWServerConnectionIdentifier serverConnectionIdentifier, uint64_t fetchIdentifier, const IPC::DataReference& data, int64_t encodedDataLength)
 {
     if (auto* connection = m_swServerConnections.get(serverConnectionIdentifier))
         connection->didReceiveFetchData(fetchIdentifier, data, encodedDataLength);
 }
 
-void StorageProcess::didReceiveFetchFormData(uint64_t serverConnectionIdentifier, uint64_t fetchIdentifier, const IPC::FormDataReference& formData)
+void StorageProcess::didReceiveFetchFormData(SWServerConnectionIdentifier serverConnectionIdentifier, uint64_t fetchIdentifier, const IPC::FormDataReference& formData)
 {
     if (auto* connection = m_swServerConnections.get(serverConnectionIdentifier))
         connection->didReceiveFetchFormData(fetchIdentifier, formData);
 }
 
-void StorageProcess::didFinishFetch(uint64_t serverConnectionIdentifier, uint64_t fetchIdentifier)
+void StorageProcess::didFinishFetch(SWServerConnectionIdentifier serverConnectionIdentifier, uint64_t fetchIdentifier)
 {
     if (auto* connection = m_swServerConnections.get(serverConnectionIdentifier))
         connection->didFinishFetch(fetchIdentifier);
@@ -449,7 +436,7 @@ void StorageProcess::didFinishFetch(uint64_t serverConnectionIdentifier, uint64_
 void StorageProcess::postMessageToServiceWorkerClient(const ServiceWorkerClientIdentifier& destinationIdentifier, const IPC::DataReference& message, ServiceWorkerIdentifier sourceIdentifier, const String& sourceOrigin)
 {
     if (auto* connection = m_swServerConnections.get(destinationIdentifier.serverConnectionIdentifier))
-        connection->postMessageToServiceWorkerClient(destinationIdentifier.scriptExecutionContextIdentifier, message, sourceIdentifier, sourceOrigin);
+        connection->postMessageToServiceWorkerClient(destinationIdentifier.contextIdentifier, message, sourceIdentifier, sourceOrigin);
 }
 
 void StorageProcess::registerSWServerConnection(WebSWServerConnection& connection)

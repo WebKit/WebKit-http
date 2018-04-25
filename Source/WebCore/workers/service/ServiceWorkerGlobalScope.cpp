@@ -28,28 +28,30 @@
 
 #if ENABLE(SERVICE_WORKER)
 
+#include "ExtendableEvent.h"
+#include "SWContextManager.h"
+#include "ServiceWorkerClient.h"
 #include "ServiceWorkerClients.h"
 #include "ServiceWorkerThread.h"
+#include "ServiceWorkerWindowClient.h"
+#include "WorkerNavigator.h"
 
 namespace WebCore {
 
 ServiceWorkerGlobalScope::ServiceWorkerGlobalScope(const ServiceWorkerContextData& data, const URL& url, const String& identifier, const String& userAgent, bool isOnline, ServiceWorkerThread& thread, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy* connectionProxy, SocketProvider* socketProvider, PAL::SessionID sessionID)
     : WorkerGlobalScope(url, identifier, userAgent, isOnline, thread, shouldBypassMainWorldContentSecurityPolicy, WTFMove(topOrigin), timeOrigin, connectionProxy, socketProvider, sessionID)
     , m_contextData(crossThreadCopy(data))
+    , m_registration(ServiceWorkerRegistration::getOrCreate(*this, navigator().serviceWorker(), WTFMove(m_contextData.registration)))
     , m_clients(ServiceWorkerClients::create(*this))
 {
 }
 
 ServiceWorkerGlobalScope::~ServiceWorkerGlobalScope() = default;
 
-ServiceWorkerRegistration* ServiceWorkerGlobalScope::registration()
+void ServiceWorkerGlobalScope::skipWaiting(Ref<DeferredPromise>&& promise)
 {
-    // FIXME: implement this.
-    return nullptr;
-}
-
-void ServiceWorkerGlobalScope::skipWaiting(Ref<DeferredPromise>&&)
-{
+    // FIXME: Implement this.
+    promise->reject(Exception { NotSupportedError, ASCIILiteral("self.skipWaiting() is not yet supported") });
 }
 
 EventTargetInterface ServiceWorkerGlobalScope::eventTargetInterface() const
@@ -60,6 +62,53 @@ EventTargetInterface ServiceWorkerGlobalScope::eventTargetInterface() const
 ServiceWorkerThread& ServiceWorkerGlobalScope::thread()
 {
     return static_cast<ServiceWorkerThread&>(WorkerGlobalScope::thread());
+}
+
+ServiceWorkerClient* ServiceWorkerGlobalScope::serviceWorkerClient(ServiceWorkerClientIdentifier identifier)
+{
+    return m_clientMap.get(identifier);
+}
+
+void ServiceWorkerGlobalScope::addServiceWorkerClient(ServiceWorkerClient& client)
+{
+    auto result = m_clientMap.add(client.identifier(), &client);
+    ASSERT_UNUSED(result, result.isNewEntry);
+}
+
+void ServiceWorkerGlobalScope::removeServiceWorkerClient(ServiceWorkerClient& client)
+{
+    auto isRemoved = m_clientMap.remove(client.identifier());
+    ASSERT_UNUSED(isRemoved, isRemoved);
+}
+
+// https://w3c.github.io/ServiceWorker/#update-service-worker-extended-events-set-algorithm
+void ServiceWorkerGlobalScope::updateExtendedEventsSet(ExtendableEvent* newEvent)
+{
+    ASSERT(!isMainThread());
+    ASSERT(!newEvent || !newEvent->isBeingDispatched());
+    bool hadPendingEvents = hasPendingEvents();
+    m_extendedEvents.removeAllMatching([](auto& event) {
+        return !event->pendingPromiseCount();
+    });
+
+    if (newEvent && newEvent->pendingPromiseCount()) {
+        m_extendedEvents.append(*newEvent);
+        newEvent->whenAllExtendLifetimePromisesAreSettled([this](auto&&) {
+            updateExtendedEventsSet();
+        });
+        // Clear out the event's target as it is the WorkerGlobalScope and we do not want to keep it
+        // alive unnecessarily.
+        newEvent->setTarget(nullptr);
+    }
+
+    bool hasPendingEvents = this->hasPendingEvents();
+    if (hasPendingEvents == hadPendingEvents)
+        return;
+
+    callOnMainThread([threadIdentifier = thread().identifier(), hasPendingEvents] {
+        if (auto* connection = SWContextManager::singleton().connection())
+            connection->setServiceWorkerHasPendingEvents(threadIdentifier, hasPendingEvents);
+    });
 }
 
 } // namespace WebCore

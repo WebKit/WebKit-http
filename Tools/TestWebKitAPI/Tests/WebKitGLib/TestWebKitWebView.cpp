@@ -51,16 +51,25 @@ static void testWebViewWebContext(WebViewTest* test, gconstpointer)
     g_assert(webkit_web_context_get_default() != test->m_webContext.get());
 
     // Check that a web view created with g_object_new has the default context.
-    auto webView = Test::adoptView(g_object_new(WEBKIT_TYPE_WEB_VIEW, nullptr));
+    auto webView = Test::adoptView(g_object_new(WEBKIT_TYPE_WEB_VIEW,
+#if PLATFORM(WPE)
+        "backend", Test::createWebViewBackend(),
+#endif
+        nullptr));
     g_assert(webkit_web_view_get_context(webView.get()) == webkit_web_context_get_default());
 
     // Check that a web view created with a related view has the related view context.
-    webView = Test::adoptView(webkit_web_view_new_with_related_view(test->m_webView));
+    webView = Test::adoptView(Test::createWebView(test->m_webView));
     g_assert(webkit_web_view_get_context(webView.get()) == test->m_webContext.get());
 
     // Check that a web context given as construct parameter is ignored if a related view is also provided.
     webView = Test::adoptView(g_object_new(WEBKIT_TYPE_WEB_VIEW,
-        "web-context", webkit_web_context_get_default(), "related-view", test->m_webView, nullptr));
+#if PLATFORM(WPE)
+        "backend", Test::createWebViewBackend(),
+#endif
+        "web-context", webkit_web_context_get_default(),
+        "related-view", test->m_webView,
+        nullptr));
     g_assert(webkit_web_view_get_context(webView.get()) == test->m_webContext.get());
 }
 
@@ -69,7 +78,7 @@ static void testWebViewWebContextLifetime(WebViewTest* test, gconstpointer)
     WebKitWebContext* webContext = webkit_web_context_new();
     test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webContext));
 
-    auto* webView = webkit_web_view_new_with_context(webContext);
+    auto* webView = Test::createWebView(webContext);
     test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webView));
 
 #if PLATFORM(GTK)
@@ -85,7 +94,7 @@ static void testWebViewWebContextLifetime(WebViewTest* test, gconstpointer)
     WebKitWebContext* webContext2 = webkit_web_context_new();
     test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webContext2));
 
-    auto* webView2 = webkit_web_view_new_with_context(webContext2);
+    auto* webView2 = Test::createWebView(webContext2);
     test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webView2));
 
 #if PLATFORM(GTK)
@@ -97,6 +106,67 @@ static void testWebViewWebContextLifetime(WebViewTest* test, gconstpointer)
     g_assert_true(WEBKIT_IS_WEB_CONTEXT(webContext2));
     g_object_unref(webContext2);
 }
+
+#if PLATFORM(WPE)
+static void testWebViewWebBackend(Test* test, gconstpointer)
+{
+    // Use the default backend (we don't have a way to check the backend will be actually freed).
+    GRefPtr<WebKitWebView> webView = adoptGRef(webkit_web_view_new(nullptr));
+    test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webView.get()));
+    auto* viewBackend = webkit_web_view_get_backend(webView.get());
+    g_assert(viewBackend);
+    auto* wpeBackend = webkit_web_view_backend_get_wpe_backend(viewBackend);
+    g_assert(wpeBackend);
+    webView = nullptr;
+
+    // User provided backend with default deleter (we don't have a way to check the backend will be actually freed).
+    webView = adoptGRef(webkit_web_view_new(webkit_web_view_backend_new(wpe_view_backend_create(), nullptr, nullptr)));
+    test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webView.get()));
+    viewBackend = webkit_web_view_get_backend(webView.get());
+    g_assert(viewBackend);
+    wpeBackend = webkit_web_view_backend_get_wpe_backend(viewBackend);
+    g_assert(wpeBackend);
+    webView = nullptr;
+
+    // User provided backend with destroy notify.
+    wpeBackend = wpe_view_backend_create();
+    webView = adoptGRef(webkit_web_view_new(webkit_web_view_backend_new(wpeBackend, [](gpointer userData) {
+        auto* backend = *static_cast<struct wpe_view_backend**>(userData);
+        wpe_view_backend_destroy(backend);
+        *static_cast<struct wpe_view_backend**>(userData) = nullptr;
+    }, &wpeBackend)));
+    test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webView.get()));
+    webView = nullptr;
+    g_assert(!wpeBackend);
+
+    // User provided backend owned by another object with destroy notify.
+    static bool hasInstance = false;
+    struct BackendOwner {
+        BackendOwner(struct wpe_view_backend* backend)
+            : backend(backend)
+        {
+            hasInstance = true;
+        }
+
+        ~BackendOwner()
+        {
+            wpe_view_backend_destroy(backend);
+            hasInstance = false;
+        }
+
+        struct wpe_view_backend* backend;
+    };
+    auto* owner = new BackendOwner(wpe_view_backend_create());
+    g_assert(hasInstance);
+    webView = adoptGRef(webkit_web_view_new(webkit_web_view_backend_new(owner->backend, [](gpointer userData) {
+        delete static_cast<BackendOwner*>(userData);
+    }, owner)));
+    test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webView.get()));
+    g_assert(hasInstance);
+    webView = nullptr;
+    g_assert(!hasInstance);
+}
+#endif // PLATFORM(WPE)
 
 static void ephemeralViewloadChanged(WebKitWebView* webView, WebKitLoadEvent loadEvent, WebViewTest* test)
 {
@@ -121,6 +191,9 @@ static void testWebViewEphemeral(WebViewTest* test, gconstpointer)
 
     // A WebView on a non ephemeral context can be ephemeral.
     auto webView = Test::adoptView(g_object_new(WEBKIT_TYPE_WEB_VIEW,
+#if PLATFORM(WPE)
+        "backend", Test::createWebViewBackend(),
+#endif
         "web-context", webkit_web_view_get_context(test->m_webView),
         "is-ephemeral", TRUE,
         nullptr));
@@ -177,7 +250,7 @@ static void testWebViewSettings(WebViewTest* test, gconstpointer)
     g_assert(settings != defaultSettings);
     g_assert(!webkit_settings_get_enable_javascript(settings));
 
-    auto webView2 = Test::adoptView(webkit_web_view_new());
+    auto webView2 = Test::adoptView(Test::createWebView());
     test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webView2.get()));
     webkit_web_view_set_settings(WEBKIT_WEB_VIEW(webView2.get()), settings);
     g_assert(webkit_web_view_get_settings(WEBKIT_WEB_VIEW(webView2.get())) == settings);
@@ -189,7 +262,7 @@ static void testWebViewSettings(WebViewTest* test, gconstpointer)
     g_assert(settings == newSettings2.get());
     g_assert(webkit_settings_get_enable_javascript(settings));
 
-    auto webView3 = Test::adoptView(webkit_web_view_new_with_settings(newSettings2.get()));
+    auto webView3 = Test::adoptView(Test::createWebView(newSettings2.get()));
     test->assertObjectIsDeletedWhenTestFinishes(G_OBJECT(webView3.get()));
     g_assert(webkit_web_view_get_settings(WEBKIT_WEB_VIEW(webView3.get())) == newSettings2.get());
 }
@@ -1077,6 +1150,9 @@ void beforeAll()
 
     WebViewTest::add("WebKitWebView", "web-context", testWebViewWebContext);
     WebViewTest::add("WebKitWebView", "web-context-lifetime", testWebViewWebContextLifetime);
+#if PLATFORM(WPE)
+    Test::add("WebKitWebView", "backend", testWebViewWebBackend);
+#endif
     WebViewTest::add("WebKitWebView", "ephemeral", testWebViewEphemeral);
     WebViewTest::add("WebKitWebView", "custom-charset", testWebViewCustomCharset);
     WebViewTest::add("WebKitWebView", "settings", testWebViewSettings);

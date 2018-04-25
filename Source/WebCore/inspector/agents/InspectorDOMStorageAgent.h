@@ -49,6 +49,7 @@ class Storage;
 typedef String ErrorString;
 
 class InspectorDOMStorageAgent final : public InspectorAgentBase, public Inspector::DOMStorageBackendDispatcherHandler {
+    WTF_MAKE_NONCOPYABLE(InspectorDOMStorageAgent);
     WTF_MAKE_FAST_ALLOCATED;
 public:
     InspectorDOMStorageAgent(WebAgentContext&, InspectorPageAgent*);
@@ -60,9 +61,9 @@ public:
     // Called from the front-end.
     void enable(ErrorString&) override;
     void disable(ErrorString&) override;
-    void getDOMStorageItems(ErrorString&, const Inspector::InspectorObject& storageId, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Array<String>>>& items) override;
-    void setDOMStorageItem(ErrorString&, const Inspector::InspectorObject& storageId, const String& key, const String& value) override;
-    void removeDOMStorageItem(ErrorString&, const Inspector::InspectorObject& storageId, const String& key) override;
+    void getDOMStorageItems(ErrorString&, const JSON::Object& storageId, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Array<String>>>& items) override;
+    void setDOMStorageItem(ErrorString&, const JSON::Object& storageId, const String& key, const String& value) override;
+    void removeDOMStorageItem(ErrorString&, const JSON::Object& storageId, const String& key) override;
 
     // Called from the injected script.
     String storageId(Storage&);
@@ -72,7 +73,7 @@ public:
     void didDispatchDOMStorageEvent(const String& key, const String& oldValue, const String& newValue, StorageType, SecurityOrigin*);
 
 private:
-    RefPtr<StorageArea> findStorageArea(ErrorString&, const Inspector::InspectorObject&, Frame*&);
+    RefPtr<StorageArea> findStorageArea(ErrorString&, const JSON::Object&, Frame*&);
 
     std::unique_ptr<Inspector::DOMStorageFrontendDispatcher> m_frontendDispatcher;
     RefPtr<Inspector::DOMStorageBackendDispatcher> m_backendDispatcher;

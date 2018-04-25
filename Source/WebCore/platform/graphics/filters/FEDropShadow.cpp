@@ -86,7 +86,7 @@ void FEDropShadow::platformApplySoftware()
     FloatRect drawingRegionWithOffset(drawingRegion);
     drawingRegionWithOffset.move(offset);
 
-    ImageBuffer* sourceImage = in->asImageBuffer();
+    ImageBuffer* sourceImage = in->imageBufferResult();
     if (!sourceImage)
         return;
 
@@ -99,11 +99,13 @@ void FEDropShadow::platformApplySoftware()
 
     // TODO: Direct pixel access to ImageBuffer would avoid copying the ImageData.
     IntRect shadowArea(IntPoint(), resultImage->internalSize());
-    RefPtr<Uint8ClampedArray> srcPixelArray = resultImage->getPremultipliedImageData(shadowArea, nullptr, ImageBuffer::BackingStoreCoordinateSystem);
+    auto srcPixelArray = resultImage->getPremultipliedImageData(shadowArea, nullptr, ImageBuffer::BackingStoreCoordinateSystem);
+    if (!srcPixelArray)
+        return;
 
     contextShadow.blurLayerImage(srcPixelArray->data(), shadowArea.size(), 4 * shadowArea.size().width());
 
-    resultImage->putByteArray(Premultiplied, srcPixelArray.get(), shadowArea.size(), shadowArea, IntPoint(), ImageBuffer::BackingStoreCoordinateSystem);
+    resultImage->putByteArray(Premultiplied, *srcPixelArray, shadowArea.size(), shadowArea, IntPoint(), ImageBuffer::BackingStoreCoordinateSystem);
 
     resultContext.setCompositeOperation(CompositeSourceIn);
     resultContext.fillRect(FloatRect(FloatPoint(), absolutePaintRect().size()), m_shadowColor);
@@ -112,17 +114,14 @@ void FEDropShadow::platformApplySoftware()
     resultImage->context().drawImageBuffer(*sourceImage, drawingRegion);
 }
 
-void FEDropShadow::dump()
+TextStream& FEDropShadow::externalRepresentation(TextStream& ts, RepresentationType representation) const
 {
-}
-
-TextStream& FEDropShadow::externalRepresentation(TextStream& ts, int indent) const
-{
-    writeIndent(ts, indent);
-    ts << "[feDropShadow";
-    FilterEffect::externalRepresentation(ts);
+    ts << indent <<"[feDropShadow";
+    FilterEffect::externalRepresentation(ts, representation);
     ts << " stdDeviation=\"" << m_stdX << ", " << m_stdY << "\" dx=\"" << m_dx << "\" dy=\"" << m_dy << "\" flood-color=\"" << m_shadowColor.nameForRenderTreeAsText() <<"\" flood-opacity=\"" << m_shadowOpacity << "]\n";
-    inputEffect(0)->externalRepresentation(ts, indent + 1);
+
+    TextStream::IndentScope indentScope(ts);
+    inputEffect(0)->externalRepresentation(ts, representation);
     return ts;
 }
     

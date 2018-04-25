@@ -420,10 +420,6 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 #define ENABLE_ICONDATABASE 1
 #endif
 
-#if !defined(ENABLE_IMAGE_DECODER_DOWN_SAMPLING)
-#define ENABLE_IMAGE_DECODER_DOWN_SAMPLING 0
-#endif
-
 #if !defined(ENABLE_INDEXED_DATABASE)
 #define ENABLE_INDEXED_DATABASE 0
 #endif
@@ -484,10 +480,6 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 
 #if !defined(ENABLE_LEGACY_CSS_VENDOR_PREFIXES)
 #define ENABLE_LEGACY_CSS_VENDOR_PREFIXES 0
-#endif
-
-#if !defined(ENABLE_LEGACY_VENDOR_PREFIXES)
-#define ENABLE_LEGACY_VENDOR_PREFIXES 0
 #endif
 
 #if !defined(ENABLE_LETTERPRESS)
@@ -622,10 +614,6 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 
 #if !defined(ENABLE_TOUCH_EVENTS)
 #define ENABLE_TOUCH_EVENTS 0
-#endif
-
-#if !defined(ENABLE_TOUCH_ICON_LOADING)
-#define ENABLE_TOUCH_ICON_LOADING 0
 #endif
 
 #if !defined(ENABLE_VIDEO)

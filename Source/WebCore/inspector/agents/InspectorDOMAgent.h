@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2011 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,9 +33,9 @@
 #include "InspectorWebAgentBase.h"
 #include <inspector/InspectorBackendDispatchers.h>
 #include <inspector/InspectorFrontendDispatchers.h>
-#include <inspector/InspectorValues.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
+#include <wtf/JSONValues.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 #include <wtf/text/AtomicString.h>
@@ -113,9 +113,9 @@ public:
     void querySelector(ErrorString&, int nodeId, const String& selectors, int* elementId) override;
     void querySelectorAll(ErrorString&, int nodeId, const String& selectors, RefPtr<Inspector::Protocol::Array<int>>& result) override;
     void getDocument(ErrorString&, RefPtr<Inspector::Protocol::DOM::Node>& root) override;
-    void requestChildNodes(ErrorString&, int nodeId, const int* const depth) override;
+    void requestChildNodes(ErrorString&, int nodeId, const int* depth) override;
     void setAttributeValue(ErrorString&, int elementId, const String& name, const String& value) override;
-    void setAttributesAsText(ErrorString&, int elementId, const String& text, const String* const name) override;
+    void setAttributesAsText(ErrorString&, int elementId, const String& text, const String* name) override;
     void removeAttribute(ErrorString&, int elementId, const String& name) override;
     void removeNode(ErrorString&, int nodeId) override;
     void setNodeName(ErrorString&, int nodeId, const String& name, int* newId) override;
@@ -123,27 +123,27 @@ public:
     void setOuterHTML(ErrorString&, int nodeId, const String& outerHTML) override;
     void insertAdjacentHTML(ErrorString&, int nodeId, const String& position, const String& html) override;
     void setNodeValue(ErrorString&, int nodeId, const String& value) override;
-    void getEventListenersForNode(ErrorString&, int nodeId, const WTF::String* const objectGroup, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::DOM::EventListener>>& listenersArray) override;
+    void getEventListenersForNode(ErrorString&, int nodeId, const WTF::String* objectGroup, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::DOM::EventListener>>& listenersArray) override;
     void setEventListenerDisabled(ErrorString&, int eventListenerId, bool disabled) override;
     void getAccessibilityPropertiesForNode(ErrorString&, int nodeId, RefPtr<Inspector::Protocol::DOM::AccessibilityProperties>& axProperties) override;
-    void performSearch(ErrorString&, const String& whitespaceTrimmedQuery, const Inspector::InspectorArray* nodeIds, String* searchId, int* resultCount) override;
+    void performSearch(ErrorString&, const String& whitespaceTrimmedQuery, const JSON::Array* nodeIds, String* searchId, int* resultCount) override;
     void getSearchResults(ErrorString&, const String& searchId, int fromIndex, int toIndex, RefPtr<Inspector::Protocol::Array<int>>&) override;
     void discardSearchResults(ErrorString&, const String& searchId) override;
-    void resolveNode(ErrorString&, int nodeId, const String* const objectGroup, RefPtr<Inspector::Protocol::Runtime::RemoteObject>& result) override;
+    void resolveNode(ErrorString&, int nodeId, const String* objectGroup, RefPtr<Inspector::Protocol::Runtime::RemoteObject>& result) override;
     void getAttributes(ErrorString&, int nodeId, RefPtr<Inspector::Protocol::Array<String>>& result) override;
-    void setInspectModeEnabled(ErrorString&, bool enabled, const Inspector::InspectorObject* highlightConfig) override;
+    void setInspectModeEnabled(ErrorString&, bool enabled, const JSON::Object* highlightConfig) override;
     void requestNode(ErrorString&, const String& objectId, int* nodeId) override;
     void pushNodeByPathToFrontend(ErrorString&, const String& path, int* nodeId) override;
     void pushNodeByBackendIdToFrontend(ErrorString&, BackendNodeId, int* nodeId) override;
     void releaseBackendNodeIds(ErrorString&, const String& nodeGroup) override;
     void hideHighlight(ErrorString&) override;
-    void highlightRect(ErrorString&, int x, int y, int width, int height, const Inspector::InspectorObject* color, const Inspector::InspectorObject* outlineColor, const bool* const usePageCoordinates) override;
-    void highlightQuad(ErrorString&, const Inspector::InspectorArray& quad, const Inspector::InspectorObject* color, const Inspector::InspectorObject* outlineColor, const bool* const usePageCoordinates) override;
-    void highlightSelector(ErrorString&, const Inspector::InspectorObject& highlightConfig, const String& selectorString, const String* const frameId) override;
-    void highlightNode(ErrorString&, const Inspector::InspectorObject& highlightConfig, const int* const nodeId, const String* const objectId) override;
-    void highlightNodeList(ErrorString&, const Inspector::InspectorArray& nodeIds, const Inspector::InspectorObject& highlightConfig) override;
-    void highlightFrame(ErrorString&, const String& frameId, const Inspector::InspectorObject* color, const Inspector::InspectorObject* outlineColor) override;
-    void moveTo(ErrorString&, int nodeId, int targetNodeId, const int* const anchorNodeId, int* newNodeId) override;
+    void highlightRect(ErrorString&, int x, int y, int width, int height, const JSON::Object* color, const JSON::Object* outlineColor, const bool* usePageCoordinates) override;
+    void highlightQuad(ErrorString&, const JSON::Array& quad, const JSON::Object* color, const JSON::Object* outlineColor, const bool* usePageCoordinates) override;
+    void highlightSelector(ErrorString&, const JSON::Object& highlightConfig, const String& selectorString, const String* frameId) override;
+    void highlightNode(ErrorString&, const JSON::Object& highlightConfig, const int* nodeId, const String* objectId) override;
+    void highlightNodeList(ErrorString&, const JSON::Array& nodeIds, const JSON::Object& highlightConfig) override;
+    void highlightFrame(ErrorString&, const String& frameId, const JSON::Object* color, const JSON::Object* outlineColor) override;
+    void moveTo(ErrorString&, int nodeId, int targetNodeId, const int* anchorNodeId, int* newNodeId) override;
     void undo(ErrorString&) override;
     void redo(ErrorString&) override;
     void markUndoableState(ErrorString&) override;
@@ -203,7 +203,6 @@ public:
     static Node* innerPreviousSibling(Node*);
     static unsigned innerChildNodeCount(Node*);
     static Node* innerParentNode(Node*);
-    static bool isWhitespace(Node*);
 
     Node* assertNode(ErrorString&, int nodeId);
     Element* assertElement(ErrorString&, int nodeId);
@@ -217,8 +216,8 @@ public:
 
 private:
     void highlightMousedOverNode();
-    void setSearchingForNode(ErrorString&, bool enabled, const Inspector::InspectorObject* highlightConfig);
-    std::unique_ptr<HighlightConfig> highlightConfigFromInspectorObject(ErrorString&, const Inspector::InspectorObject* highlightInspectorObject);
+    void setSearchingForNode(ErrorString&, bool enabled, const JSON::Object* highlightConfig);
+    std::unique_ptr<HighlightConfig> highlightConfigFromInspectorObject(ErrorString&, const JSON::Object* highlightInspectorObject);
 
     // Node-related methods.
     typedef HashMap<RefPtr<Node>, int> NodeToIdMap;
@@ -244,7 +243,7 @@ private:
 
     void discardBindings();
 
-    void innerHighlightQuad(std::unique_ptr<FloatQuad>, const Inspector::InspectorObject* color, const Inspector::InspectorObject* outlineColor, const bool* usePageCoordinates);
+    void innerHighlightQuad(std::unique_ptr<FloatQuad>, const JSON::Object* color, const JSON::Object* outlineColor, const bool* usePageCoordinates);
 
     Inspector::InjectedScriptManager& m_injectedScriptManager;
     std::unique_ptr<Inspector::DOMFrontendDispatcher> m_frontendDispatcher;

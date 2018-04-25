@@ -25,6 +25,8 @@
 
 #include "bmalloc.h"
 
+#include "PerProcess.h"
+
 namespace bmalloc { namespace api {
 
 void* mallocOutOfLine(size_t size, HeapKind kind)
@@ -36,6 +38,44 @@ void freeOutOfLine(void* object, HeapKind kind)
 {
     free(object, kind);
 }
+
+void* tryLargeMemalignVirtual(size_t alignment, size_t size, HeapKind kind)
+{
+    kind = mapToActiveHeapKind(kind);
+    Heap& heap = PerProcess<PerHeapKind<Heap>>::get()->at(kind);
+    std::lock_guard<StaticMutex> lock(Heap::mutex());
+    return heap.tryAllocateLarge(lock, alignment, size, AllocationKind::Virtual);
+}
+
+void freeLargeVirtual(void* object, HeapKind kind)
+{
+    kind = mapToActiveHeapKind(kind);
+    Heap& heap = PerProcess<PerHeapKind<Heap>>::get()->at(kind);
+    std::lock_guard<StaticMutex> lock(Heap::mutex());
+    heap.deallocateLarge(lock, object, AllocationKind::Virtual);
+}
+
+void scavenge()
+{
+    scavengeThisThread();
+
+    PerProcess<Scavenger>::get()->scavenge();
+}
+
+bool isEnabled(HeapKind kind)
+{
+    kind = mapToActiveHeapKind(kind);
+    std::unique_lock<StaticMutex> lock(Heap::mutex());
+    return !PerProcess<PerHeapKind<Heap>>::getFastCase()->at(kind).debugHeap();
+}
+
+#if BOS(DARWIN)
+void setScavengerThreadQOSClass(qos_class_t overrideClass)
+{
+    std::unique_lock<StaticMutex> lock(Heap::mutex());
+    PerProcess<Scavenger>::get()->setScavengerThreadQOSClass(overrideClass);
+}
+#endif
 
 } } // namespace bmalloc::api
 

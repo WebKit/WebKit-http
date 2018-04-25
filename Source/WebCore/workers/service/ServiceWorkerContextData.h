@@ -26,7 +26,8 @@
 #pragma once
 
 #include "ServiceWorkerIdentifier.h"
-#include "ServiceWorkerRegistrationKey.h"
+#include "ServiceWorkerJobDataIdentifier.h"
+#include "ServiceWorkerRegistrationData.h"
 #include "URL.h"
 #include "WorkerType.h"
 
@@ -35,7 +36,8 @@
 namespace WebCore {
 
 struct ServiceWorkerContextData {
-    ServiceWorkerRegistrationKey registrationKey;
+    std::optional<ServiceWorkerJobDataIdentifier> jobDataIdentifier;
+    ServiceWorkerRegistrationData registration;
     ServiceWorkerIdentifier serviceWorkerIdentifier;
     String script;
     URL scriptURL;
@@ -50,14 +52,20 @@ struct ServiceWorkerContextData {
 template<class Encoder>
 void ServiceWorkerContextData::encode(Encoder& encoder) const
 {
-    encoder << registrationKey << serviceWorkerIdentifier << script << scriptURL << workerType;
+    encoder << jobDataIdentifier << registration << serviceWorkerIdentifier << script << scriptURL << workerType;
 }
 
 template<class Decoder>
 std::optional<ServiceWorkerContextData> ServiceWorkerContextData::decode(Decoder& decoder)
 {
-    auto registrationKey = ServiceWorkerRegistrationKey::decode(decoder);
-    if (!registrationKey)
+    std::optional<std::optional<ServiceWorkerJobDataIdentifier>> jobDataIdentifier;
+    decoder >> jobDataIdentifier;
+    if (!jobDataIdentifier)
+        return std::nullopt;
+
+    std::optional<ServiceWorkerRegistrationData> registration;
+    decoder >> registration;
+    if (!registration)
         return std::nullopt;
 
     auto serviceWorkerIdentifier = ServiceWorkerIdentifier::decode(decoder);
@@ -76,7 +84,7 @@ std::optional<ServiceWorkerContextData> ServiceWorkerContextData::decode(Decoder
     if (!decoder.decodeEnum(workerType))
         return std::nullopt;
     
-    return {{ WTFMove(*registrationKey), WTFMove(*serviceWorkerIdentifier), WTFMove(script), WTFMove(scriptURL), workerType }};
+    return {{ WTFMove(*jobDataIdentifier), WTFMove(*registration), WTFMove(*serviceWorkerIdentifier), WTFMove(script), WTFMove(scriptURL), workerType }};
 }
 
 } // namespace WebCore

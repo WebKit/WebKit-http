@@ -31,6 +31,7 @@ import re
 import sys
 
 from webkitpy.common.version import Version
+from webkitpy.common.version_name_map import VersionNameMap
 from webkitpy.common.system.executive import Executive
 
 
@@ -51,15 +52,26 @@ class PlatformInfo(object):
         self._executive = executive
         self._platform_module = platform_module
         self.os_name = self._determine_os_name(sys_module.platform)
-        if self.os_name == 'linux':
-            self.os_version = self._determine_linux_version()
-        if self.os_name == 'freebsd' or self.os_name == 'openbsd' or self.os_name == 'netbsd' or self.os_name == 'haiku' or self.os_name == 'ios':
-            self.os_version = platform_module.release()
+        self.os_version = None
+
         if self.os_name.startswith('mac'):
-            self.os_version = self._determine_mac_version(Version(platform_module.mac_ver()[0]))
-        if self.os_name.startswith('win'):
-            self.os_version = self._determine_win_version(self._win_version(sys_module))
+            version = Version.from_string(platform_module.mac_ver()[0])
+        elif self.os_name.startswith('win'):
+            version = self._win_version(sys_module)
+        elif self.os_name == 'linux' or self.os_name == 'freebsd' or self.os_name == 'openbsd' or self.os_name == 'netbsd':
+            version = None
+        else:
+            # Most other platforms (namely iOS) return conforming version strings.
+            version = Version.from_string(platform_module.release())
+
         self._is_cygwin = sys_module.platform == 'cygwin'
+
+        if version is None:
+            return
+
+        self.os_version = VersionNameMap.map(self).to_name(version, table='public')
+        assert self.os_version is not None
+        self.os_version = self.os_version.lower().replace(' ', '')
 
     def is_mac(self):
         return self.os_name == 'mac'
@@ -136,7 +148,7 @@ class PlatformInfo(object):
             # Assumes that xcrun does not write to standard output on failure (e.g. SDK does not exist).
             xcrun_output = self._executive.run_command(['xcrun', '--sdk', sdk_name, '--show-sdk-version'], return_stderr=False, error_handler=Executive.ignore_error).rstrip()
             if xcrun_output:
-                return Version(xcrun_output)
+                return Version.from_string(xcrun_output)
         return None
 
     def xcode_simctl_list(self):
@@ -148,7 +160,7 @@ class PlatformInfo(object):
     def xcode_version(self):
         if not self.is_mac():
             raise NotImplementedError
-        return Version(self._executive.run_command(['xcodebuild', '-version']).split()[1])
+        return Version.from_string(self._executive.run_command(['xcodebuild', '-version']).split()[1])
 
     def _determine_os_name(self, sys_platform):
         if sys_platform == 'darwin':
@@ -169,48 +181,14 @@ class PlatformInfo(object):
             return 'haiku'
         raise AssertionError('unrecognized platform string "%s"' % sys_platform)
 
-    def _determine_mac_version(self, mac_version):
-        version_strings = {
-            5: 'leopard',
-            6: 'snowleopard',
-            7: 'lion',
-            8: 'mountainlion',
-            9: 'mavericks',
-            10: 'yosemite',
-            11: 'elcapitan',
-            12: 'sierra',
-            13: 'highsierra',
-        }
-        assert mac_version.minor >= min(version_strings.keys())
-        return version_strings.get(mac_version.minor, 'future')
-
-    def _determine_linux_version(self):
-        # FIXME: we ignore whatever the real version is and pretend it's lucid for now.
-        return 'lucid'
-
-    def _determine_win_version(self, win_version):
-        if self._platform_module.release() == '10':
-            return 'win10'
-        if win_version.major == 0 and win_version.minor == 0:
-            if win_version[2] > 10000:
-                return 'win10'
-        if win_version == Version([6, 1, 7600]):
-            return '7sp0'
-        if win_version.major == 6 and win_version.minor == 0:
-            return 'vista'
-        if win_version.major == 5 and win_version.minor == 1:
-            return 'xp'
-        assert win_version[0] > 6 or win_version[1] >= 1, 'Unrecognized Windows version: "{}"'.format(win_version)
-        return 'future'
-
     def _win_version(self, sys_module):
         if hasattr(sys_module, 'getwindowsversion'):
-            return Version(sys_module.getwindowsversion()[0:3])
-        return Version(self._win_version_from_cmd())
+            return Version.from_iterable(sys_module.getwindowsversion()[0:3])
+        return Version.from_iterable(self._win_version_from_cmd())
 
     def _win_version_from_cmd(self):
         # Note that this should only ever be called on windows, so this should always work.
         ver_output = self._executive.run_command(['cmd', '/c', 'ver'], decode_output=False)
-        match_object = re.search(r'(?P<major>\d)\.(?P<minor>\d)\.(?P<build>\d+)', ver_output)
+        match_object = re.search(r'(?P<major>\d+)\.(?P<minor>\d+)\.(?P<build>\d+)', ver_output)
         assert match_object, 'cmd returned an unexpected version string: ' + ver_output
         return match_object.groups()

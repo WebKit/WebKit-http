@@ -25,7 +25,7 @@ messages -> StorageProcess LegacyReceiver {
     InitializeWebsiteDataStore(struct WebKit::StorageProcessCreationParameters processCreationParameters)
 
     # Creates a connection for communication with a WebProcess
-    CreateStorageToWebProcessConnection()
+    CreateStorageToWebProcessConnection(bool isServiceWorkerProcess)
 
     FetchWebsiteData(PAL::SessionID sessionID, OptionSet<WebKit::WebsiteDataType> websiteDataTypes, uint64_t callbackID)
     DeleteWebsiteData(PAL::SessionID sessionID, OptionSet<WebKit::WebsiteDataType> websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID)
@@ -36,14 +36,12 @@ messages -> StorageProcess LegacyReceiver {
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-    DidGetWorkerContextProcessConnection(IPC::Attachment connectionHandle)
-
-    DidNotHandleFetch(uint64_t serverConnectionIdentifier, uint64_t fetchIdentifier)
-    DidFailFetch(uint64_t serverConnectionIdentifier, uint64_t fetchIdentifier)
-    DidReceiveFetchResponse(uint64_t serverConnectionIdentifier, uint64_t fetchIdentifier, WebCore::ResourceResponse response)
-    DidReceiveFetchData(uint64_t serverConnectionIdentifier, uint64_t fetchIdentifier, IPC::DataReference data, int64_t encodedDataLength)
-    DidReceiveFetchFormData(uint64_t serverConnectionIdentifier, uint64_t fetchIdentifier, IPC::FormDataReference data)
-    DidFinishFetch(uint64_t serverConnectionIdentifier, uint64_t fetchIdentifier)
+    DidNotHandleFetch(WebCore::SWServerConnectionIdentifier serverConnectionIdentifier, uint64_t fetchIdentifier)
+    DidFailFetch(WebCore::SWServerConnectionIdentifier serverConnectionIdentifier, uint64_t fetchIdentifier)
+    DidReceiveFetchResponse(WebCore::SWServerConnectionIdentifier serverConnectionIdentifier, uint64_t fetchIdentifier, WebCore::ResourceResponse response)
+    DidReceiveFetchData(WebCore::SWServerConnectionIdentifier serverConnectionIdentifier, uint64_t fetchIdentifier, IPC::DataReference data, int64_t encodedDataLength)
+    DidReceiveFetchFormData(WebCore::SWServerConnectionIdentifier serverConnectionIdentifier, uint64_t fetchIdentifier, IPC::FormDataReference data)
+    DidFinishFetch(WebCore::SWServerConnectionIdentifier serverConnectionIdentifier, uint64_t fetchIdentifier)
     PostMessageToServiceWorkerClient(struct WebCore::ServiceWorkerClientIdentifier destinationIdentifier, IPC::DataReference message, WebCore::ServiceWorkerIdentifier sourceIdentifier, String sourceOrigin)
 #endif
 }

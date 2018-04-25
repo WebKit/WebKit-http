@@ -1,7 +1,16 @@
 # -----------------------------------------------------------------------------
 # Determine CMake version and build type.
 # -----------------------------------------------------------------------------
+#
+# NOTE: cmake_minimum_required() and project() *MUST* be the two fist commands
+# used, see https://cmake.org/cmake/help/v3.3/command/project.html -- the
+# latter in particular handles loading a bunch of shared CMake definitions
+# and loading the cross-compilation settings from CMAKE_TOOLCHAIN_FILE.
+#
+
 cmake_minimum_required(VERSION 3.3)
+
+project(WebKit)
 
 if (NOT CMAKE_BUILD_TYPE)
     message(WARNING "No CMAKE_BUILD_TYPE value specified, defaulting to RelWithDebInfo.")
@@ -9,8 +18,6 @@ if (NOT CMAKE_BUILD_TYPE)
 else ()
     message(STATUS "The CMake build type is: ${CMAKE_BUILD_TYPE}")
 endif ()
-
-project(WebKit)
 
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Source/cmake")
 
@@ -81,12 +88,8 @@ if (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "^arm")
     set(WTF_CPU_ARM 1)
 elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "^aarch64")
     set(WTF_CPU_ARM64 1)
-elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "alpha*")
-    set(WTF_CPU_ALPHA 1)
 elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "^mips")
     set(WTF_CPU_MIPS 1)
-elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "sh4")
-    set(WTF_CPU_SH4 1)
 elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "(x64|x86_64|amd64)")
     set(WTF_CPU_X86_64 1)
 elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "(i[3-6]86|x86)")
@@ -97,14 +100,8 @@ elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64")
     set(WTF_CPU_PPC64 1)
 elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "ppc64le")
     set(WTF_CPU_PPC64LE 1)
-elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "parisc*")
-    set(WTF_CPU_HPPA 1)
-elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "s390")
-    set(WTF_CPU_S390 1)
-elseif (LOWERCASE_CMAKE_SYSTEM_PROCESSOR MATCHES "s390x")
-    set(WTF_CPU_S390X 1)
 else ()
-    message(FATAL_ERROR "Unknown CPU '${LOWERCASE_CMAKE_SYSTEM_PROCESSOR}'")
+    set(WTF_CPU_UNKNOWN 1)
 endif ()
 
 # -----------------------------------------------------------------------------

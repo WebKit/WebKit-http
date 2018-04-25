@@ -1,3 +1,89 @@
+2017-11-29  JF Bastien  <jfbastien@apple.com>
+
+        WTF / bmalloc: don't write to 0xbbadbeef when ASAN is looking
+        https://bugs.webkit.org/show_bug.cgi?id=180175
+
+        Reviewed by Mark Lam.
+
+        ASAN knows that 0xbbadbeef is a bbad aaddress, and tells us so
+        when we write to it, say in an assert. That creates bbad error
+        reports where ASAN thinks we write to an invalid address, instead
+        of thinking that we hit an assertion. In some cases, tooling that
+        use fuzzers aggregate similar issues, and think that we just have
+        the one bug and not a bunch of different asserts.
+
+        At the same time, bmalloc's version of CRASH just writes to
+        0xbbadbeef and assumes that's invalid and will crash, which isn't
+        necessarily true on non-Mac platforms. WTF's version then makes
+        sure there's a crash, so bmalloc should do the same.
+
+        * bmalloc.xcodeproj/project.pbxproj:
+        * bmalloc/BAssert.h:
+        * bmalloc/BCompiler.h: Added.
+        * bmalloc/BPlatform.h:
+
+2017-11-27  Filip Pizlo  <fpizlo@apple.com>
+
+        Don't crash in forEachEntry when DebugHeap is enabled.
+
+        Unreviewed, fixing crashes on leaks bots by removing an assertion.
+
+        * bmalloc/IsoTLS.cpp:
+        (bmalloc::IsoTLS::forEachEntry):
+        * test/testbmalloc.cpp: Make this test work with DebugHeap so I can catch this kind of problem in the future.
+
+2017-11-16  Filip Pizlo  <fpizlo@apple.com>
+
+        Isolated Heaps caused an increase in reported leaks on the bots
+        https://bugs.webkit.org/show_bug.cgi?id=179463
+
+        Reviewed by Darin Adler.
+        
+        This fixes the way isoheaps interact with system tools:
+        
+        - Opts into the VMHeap API so that the leaks tool can find isoheap memory.
+        
+        - Opts into the DebugHeap/Environment APIs so that we turn off isoheap allocation if memory
+          debugging options are in use.
+
+        * bmalloc.xcodeproj/project.pbxproj:
+        * bmalloc/DebugHeap.h:
+        * bmalloc/IsoHeap.h:
+        * bmalloc/IsoPage.cpp: Added.
+        (bmalloc::IsoPageBase::allocatePageMemory):
+        * bmalloc/IsoPage.h:
+        * bmalloc/IsoPageInlines.h:
+        (bmalloc::IsoPage<Config>::tryCreate):
+        * bmalloc/IsoTLS.cpp:
+        (bmalloc::IsoTLS::deallocateSlow):
+        (bmalloc::IsoTLS::ensureEntries):
+        (bmalloc::IsoTLS::isUsingDebugHeap):
+        (bmalloc::IsoTLS::debugMalloc):
+        * bmalloc/IsoTLS.h:
+        * bmalloc/IsoTLSInlines.h:
+        (bmalloc::IsoTLS::allocate):
+        (bmalloc::IsoTLS::deallocate):
+        (bmalloc::IsoTLS::allocateImpl):
+        (bmalloc::IsoTLS::allocateFast):
+        (bmalloc::IsoTLS::allocateSlow):
+        (bmalloc::IsoTLS::deallocateImpl):
+        (bmalloc::IsoTLS::deallocateFast):
+        (bmalloc::IsoTLS::ensureHeapAndEntries):
+        (bmalloc::IsoTLS::allocator): Deleted.
+        (bmalloc::IsoTLS::deallocator): Deleted.
+        * bmalloc/bmalloc.cpp:
+        (bmalloc::api::tryLargeMemalignVirtual):
+        (bmalloc::api::freeLargeVirtual):
+        (bmalloc::api::scavenge):
+        (bmalloc::api::isEnabled):
+        (bmalloc::api::setScavengerThreadQOSClass):
+        * bmalloc/bmalloc.h:
+        (bmalloc::api::tryLargeMemalignVirtual): Deleted.
+        (bmalloc::api::freeLargeVirtual): Deleted.
+        (bmalloc::api::scavenge): Deleted.
+        (bmalloc::api::isEnabled): Deleted.
+        (bmalloc::api::setScavengerThreadQOSClass): Deleted.
+
 2017-11-14  Saam Barati  <sbarati@apple.com>
 
         Make the gigacage runway 32GB

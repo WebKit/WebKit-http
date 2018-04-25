@@ -19,8 +19,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef FEComposite_h
-#define FEComposite_h
+#pragma once
 
 #include "FilterEffect.h"
 
@@ -44,29 +43,20 @@ class FEComposite : public FilterEffect {
 public:
     static Ref<FEComposite> create(Filter&, const CompositeOperationType&, float, float, float, float);
 
-    CompositeOperationType operation() const;
+    CompositeOperationType operation() const { return m_type; }
     bool setOperation(CompositeOperationType);
 
-    float k1() const;
+    float k1() const { return m_k1; }
     bool setK1(float);
 
-    float k2() const;
+    float k2() const { return m_k2; }
     bool setK2(float);
 
-    float k3() const;
+    float k3() const { return m_k3; }
     bool setK3(float);
 
-    float k4() const;
+    float k4() const { return m_k4; }
     bool setK4(float);
-
-    void correctFilterResultIfNeeded() override;
-
-    void platformApplySoftware() override;
-    void dump() override;
-    
-    void determineAbsolutePaintRect() override;
-
-    WTF::TextStream& externalRepresentation(WTF::TextStream&, int indention) const override;
 
 protected:
     bool requiresValidPreMultipliedPixels() override { return m_type != FECOMPOSITE_OPERATOR_ARITHMETIC; }
@@ -74,13 +64,22 @@ protected:
 private:
     FEComposite(Filter&, const CompositeOperationType&, float, float, float, float);
 
-    inline void platformArithmeticSoftware(Uint8ClampedArray* source, Uint8ClampedArray* destination,
-        float k1, float k2, float k3, float k4);
+    const char* filterName() const final { return "FEComposite"; }
+
+    void correctFilterResultIfNeeded() override;
+    void determineAbsolutePaintRect() override;
+
+    void platformApplySoftware() override;
+    WTF::TextStream& externalRepresentation(WTF::TextStream&, RepresentationType) const override;
+
+    inline void platformArithmeticSoftware(const Uint8ClampedArray& source, Uint8ClampedArray& destination, float k1, float k2, float k3, float k4);
+
+#if HAVE(ARM_NEON_INTRINSICS)
     template <int b1, int b4>
-    static inline void computeArithmeticPixelsNeon(unsigned char* source, unsigned  char* destination,
-        unsigned pixelArrayLength, float k1, float k2, float k3, float k4);
-    static inline void platformArithmeticNeon(unsigned char* source, unsigned  char* destination,
-        unsigned pixelArrayLength, float k1, float k2, float k3, float k4);
+    static inline void computeArithmeticPixelsNeon(const uint8_t* source, uint8_t* destination, unsigned pixelArrayLength, float k1, float k2, float k3, float k4);
+
+    static inline void platformArithmeticNeon(const uint8_t* source, uint8_t* destination, unsigned pixelArrayLength, float k1, float k2, float k3, float k4);
+#endif
 
     CompositeOperationType m_type;
     float m_k1;
@@ -91,4 +90,3 @@ private:
 
 } // namespace WebCore
 
-#endif // FEComposite_h

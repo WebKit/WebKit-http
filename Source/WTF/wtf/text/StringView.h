@@ -45,8 +45,6 @@
 
 namespace WTF {
 
-using CharacterMatchFunction = bool (*)(UChar);
-
 // StringView is a non-owning reference to a string, similar to the proposed std::string_view.
 
 class StringView {
@@ -126,7 +124,7 @@ public:
     SplitResult split(UChar) const;
 
     size_t find(UChar, unsigned start = 0) const;
-    size_t find(CharacterMatchFunction, unsigned start = 0) const;
+    size_t find(CodeUnitMatchFunction, unsigned start = 0) const;
 
     WTF_EXPORT_STRING_API size_t find(StringView, unsigned start) const;
 
@@ -451,16 +449,16 @@ inline bool StringView::contains(UChar character) const
 inline void StringView::getCharactersWithUpconvert(LChar* destination) const
 {
     ASSERT(is8Bit());
-    StringImpl::copyChars(destination, characters8(), m_length);
+    StringImpl::copyCharacters(destination, characters8(), m_length);
 }
 
 inline void StringView::getCharactersWithUpconvert(UChar* destination) const
 {
     if (is8Bit()) {
-        StringImpl::copyChars(destination, characters8(), m_length);
+        StringImpl::copyCharacters(destination, characters8(), m_length);
         return;
     }
-    StringImpl::copyChars(destination, characters16(), m_length);
+    StringImpl::copyCharacters(destination, characters16(), m_length);
 }
 
 inline StringView::UpconvertedCharacters::UpconvertedCharacters(const StringView& string)
@@ -539,7 +537,7 @@ inline size_t StringView::find(UChar character, unsigned start) const
     return WTF::find(characters16(), m_length, character, start);
 }
 
-inline size_t StringView::find(CharacterMatchFunction matchFunction, unsigned start) const
+inline size_t StringView::find(CodeUnitMatchFunction matchFunction, unsigned start) const
 {
     if (is8Bit())
         return WTF::find(characters8(), m_length, matchFunction, start);
@@ -980,4 +978,4 @@ using WTF::append;
 using WTF::equal;
 using WTF::StringView;
 
-#endif // StringView_h
+#endif

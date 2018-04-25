@@ -1,3 +1,169 @@
+2017-11-30  Stephan Szabo  <stephan.szabo@sony.com>
+
+        Make LegacyCustomProtocolManager optional for network process
+        https://bugs.webkit.org/show_bug.cgi?id=176230
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2017-11-29  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Mac CMake build.
+
+        * Source/cmake/OptionsMac.cmake:
+
+2017-11-28  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        REGRESSION(r225098): [WPE] Some features have changed of value (70 new failures)
+        https://bugs.webkit.org/show_bug.cgi?id=180004
+
+        Reviewed by Alex Christensen.
+
+        Turn on ENABLE_ENCRYPTED_MEDIA and ENABLE_WEBGL2 when building with
+        ENABLE_EXPERIMENTAL_FEATURES. Also, let's stop turning off ENABLE_USERSELECT_ALL, as I doubt
+        there's any good reason for that.
+
+        * Source/cmake/OptionsWPE.cmake:
+
+2017-11-27  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake][Win] Conditionally select DLL CRT or static CRT
+        https://bugs.webkit.org/show_bug.cgi?id=170594
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/OptionsAppleWin.cmake:
+        * Source/cmake/OptionsMSVC.cmake:
+
+2017-11-27  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [CMake] Values of CMAKE_BUILD_TYPE from toolchain file are ignored
+        https://bugs.webkit.org/show_bug.cgi?id=179971
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * CMakeLists.txt: Call project() first, as it loads the toolchain
+        file, so that's done before checking CMAKE_BUILD_TYPE.
+
+2017-11-22  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Sanity-check feature defaults in WebKitFeatures.cmake
+        https://bugs.webkit.org/show_bug.cgi?id=179095
+
+        Reviewed by Konstantin Tokarev.
+
+        Change the default value of some features in WebKitFeatures.cmake to reduce the number of
+        Options*.cmake files the feature's default value must be overridden in.
+
+        Remove feature definitions where they are redundant with the definition in
+        WebKitFeatures.cmake, particluarly in OptionsMac.cmake.
+
+        This commit should not include any functional changes. It just aims to reduce the total
+        number of times we need to call WEBKIT_OPTION_DEFAULT_PORT_VALUE.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsJSCOnly.cmake:
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2017-11-22  Tim Horton <timothy_horton@apple.com> and Michael Catanzaro <mcatanzaro@igalia.com>
+
+        Remove build-webkit's notion of feature flags having a default value
+        https://bugs.webkit.org/show_bug.cgi?id=177338
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Add an ENABLE_EXPERIMENTAL_FEATURES flag and use it to enable certain features.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2017-11-21  Zan Dobersek  <zdobersek@igalia.com>
+
+        Drop ENABLE_IMAGE_DECODER_DOWN_SAMPLING code
+        https://bugs.webkit.org/show_bug.cgi?id=179921
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/WebKitFeatures.cmake: Remove the CMake option that
+        enabled IMAGE_DECODER_DOWN_SAMPLING code.
+
+2017-11-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.19.2 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2017-11-20  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Remove ENABLE_ALLINONE_BUILD option
+        https://bugs.webkit.org/show_bug.cgi?id=179823
+
+        Reviewed by Darin Adler.
+
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2017-11-19  Tim Horton  <timothy_horton@apple.com>
+
+        Remove unused TOUCH_ICON_LOADING feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=179873
+
+        Reviewed by Simon Fraser.
+
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2017-11-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Add CPU(UNKNOWN) to cover all the unknown CPU types
+        https://bugs.webkit.org/show_bug.cgi?id=179243
+
+        Reviewed by JF Bastien.
+
+        Drop SH4, S390, and S390X explicit support. They are handled as CPU(UNKNOWN).
+
+        * CMakeLists.txt:
+
+2017-11-19  Tim Horton  <timothy_horton@apple.com>
+
+        Remove unused LEGACY_VENDOR_PREFIXES feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=179872
+
+        Reviewed by Darin Adler.
+
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2017-11-16  Don Olmstead  <don.olmstead@sony.com>
+
+        [WinCairo] Update WinCairoRequirements
+        https://bugs.webkit.org/show_bug.cgi?id=179790
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/OptionsWinCairo.cmake:
+
+2017-11-16  Daniel Bates  <dabates@apple.com>
+
+        Add feature define for alternative presentation button element
+        https://bugs.webkit.org/show_bug.cgi?id=179692
+        Part of <rdar://problem/34917108>
+
+        Reviewed by Andy Estes.
+
+        Only enabled on Cocoa platforms by default.
+
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
 2017-11-16  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         [WPE] Expose ENABLE_JIT and USE_SYSTEM_MALLOC options

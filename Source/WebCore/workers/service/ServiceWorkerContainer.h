@@ -53,13 +53,12 @@ public:
     ServiceWorkerContainer(ScriptExecutionContext&, NavigatorBase&);
     ~ServiceWorkerContainer();
 
-    typedef WebCore::RegistrationOptions RegistrationOptions;
-
     ServiceWorker* controller() const;
 
     using ReadyPromise = DOMPromiseProxy<IDLInterface<ServiceWorkerRegistration>>;
     ReadyPromise& ready() { return m_readyPromise; }
 
+    using RegistrationOptions = ServiceWorkerRegistrationOptions;
     void addRegistration(const String& scriptURL, const RegistrationOptions&, Ref<DeferredPromise>&&);
     void removeRegistration(const URL& scopeURL, Ref<DeferredPromise>&&);
     void updateRegistration(const URL& scopeURL, const URL& scriptURL, WorkerType, Ref<DeferredPromise>&&);
@@ -67,6 +66,7 @@ public:
     void getRegistration(const String& clientURL, Ref<DeferredPromise>&&);
     void scheduleTaskToUpdateRegistrationState(ServiceWorkerRegistrationIdentifier, ServiceWorkerRegistrationState, const std::optional<ServiceWorkerData>&);
     void scheduleTaskToFireUpdateFoundEvent(ServiceWorkerRegistrationIdentifier);
+    void scheduleTaskToFireControllerChangeEvent();
 
     using RegistrationsPromise = DOMPromiseDeferred<IDLSequence<IDLInterface<ServiceWorkerRegistration>>>;
     void getRegistrations(RegistrationsPromise&&);
@@ -95,7 +95,8 @@ private:
 
     void jobDidFinish(ServiceWorkerJob&);
 
-    uint64_t connectionIdentifier() final;
+    SWServerConnectionIdentifier connectionIdentifier() final;
+    SWClientConnection& ensureSWClientConnection();
 
     const char* activeDOMObjectName() const final;
     bool canSuspendForDocumentSuspension() const final;
@@ -103,14 +104,14 @@ private:
     EventTargetInterface eventTargetInterface() const final { return ServiceWorkerContainerEventTargetInterfaceType; }
     void refEventTarget() final;
     void derefEventTarget() final;
-    void stop() final { m_isStopped = true; }
+    void stop() final;
 
     ReadyPromise m_readyPromise;
 
     NavigatorBase& m_navigator;
 
     RefPtr<SWClientConnection> m_swConnection;
-    HashMap<uint64_t, Ref<ServiceWorkerJob>> m_jobMap;
+    HashMap<ServiceWorkerJobIdentifier, Ref<ServiceWorkerJob>> m_jobMap;
 
     bool m_isStopped { false };
     HashMap<ServiceWorkerRegistrationIdentifier, ServiceWorkerRegistration*> m_registrations;

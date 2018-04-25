@@ -1,3 +1,100 @@
+2017-11-30  Stephan Szabo  <stephan.szabo@sony.com>
+
+        Make LegacyCustomProtocolManager optional for network process
+        https://bugs.webkit.org/show_bug.cgi?id=176230
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-11-29  Brent Fulgham  <bfulgham@apple.com>
+
+        Part 2: Adopt updated NSKeyed[Un]Archiver API when available
+        https://bugs.webkit.org/show_bug.cgi?id=180127
+        <rdar://problem/35710738>
+
+        Reviewed by Simon Fraser.
+
+        The API that accepts a user-allocated NSMutableData is deprecated. Switch (for macOS 10.12 and newer)
+        to the modern API. Use the original API for macOS builds prior to 10.12.
+
+        * pal/spi/cocoa/NSKeyedArchiverSPI.h:
+        (secureArchiver): Added.
+        (secureArchiverFromMutableData): Deleted.
+
+2017-11-29  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Mac CMake build.
+
+        * pal/PlatformMac.cmake:
+
+2017-11-28  Brent Fulgham  <bfulgham@apple.com>
+
+        Adopt updated NSKeyed[Un]Archiver API when available
+        https://bugs.webkit.org/show_bug.cgi?id=180127
+        <rdar://problem/35710738>
+
+        Reviewed by Alex Christensen.
+
+        Add new convenience methods (and SPI headers) so we can adopt new NSKeyedArchiver
+        API that uses secure coding by default.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/cocoa/NSKeyedArchiverSPI.h: Added.
+        (securelyArchivedDataWithRootObject): New convenience method.
+        (securelyUnarchiveRootObjectOfClassFromData): Ditto.
+        (secureArchiverFromMutableData): Ditto.
+        (secureUnarchiverFromData): Ditto.
+
+2017-11-28  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (High Sierra): Layout Test fast/multicol/newmulticol/spanner2.html is a flaky image failure on WK1
+        https://bugs.webkit.org/show_bug.cgi?id=177826
+        <rdar://problem/34876498>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * pal/spi/cg/CoreGraphicsSPI.h:
+
+2017-11-27  Tim Horton  <timothy_horton@apple.com>
+
+        One too many zeroes in macOS version number in FeatureDefines
+        https://bugs.webkit.org/show_bug.cgi?id=180011
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-11-19  Tim Horton  <timothy_horton@apple.com>
+
+        Remove unused TOUCH_ICON_LOADING feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=179873
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-11-19  Tim Horton  <timothy_horton@apple.com>
+
+        Remove unused LEGACY_VENDOR_PREFIXES feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=179872
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-11-16  Daniel Bates  <dabates@apple.com>
+
+        Add feature define for alternative presentation button element
+        https://bugs.webkit.org/show_bug.cgi?id=179692
+        Part of <rdar://problem/34917108>
+
+        Reviewed by Andy Estes.
+
+        Only enabled on Cocoa platforms by default.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2017-11-14  Daniel Bates  <dabates@apple.com>
 
         Update comment in FeatureDefines.xcconfig to reflect location of Visual Studio property files

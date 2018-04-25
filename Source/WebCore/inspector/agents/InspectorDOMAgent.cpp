@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009, 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2011 Google Inc. All rights reserved.
  * Copyright (C) 2009 Joseph Pecoraro
  *
@@ -60,6 +60,7 @@
 #include "HTMLElement.h"
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLNames.h"
+#include "HTMLParserIdioms.h"
 #include "HTMLScriptElement.h"
 #include "HTMLStyleElement.h"
 #include "HTMLTemplateElement.h"
@@ -107,6 +108,7 @@
 
 
 namespace WebCore {
+
 using namespace Inspector;
 
 using namespace HTMLNames;
@@ -114,7 +116,7 @@ using namespace HTMLNames;
 static const size_t maxTextSize = 10000;
 static const UChar ellipsisUChar[] = { 0x2026, 0 };
 
-static Color parseColor(const InspectorObject* colorObject)
+static Color parseColor(const JSON::Object* colorObject)
 {
     if (!colorObject)
         return Color::transparent;
@@ -138,15 +140,15 @@ static Color parseColor(const InspectorObject* colorObject)
     return Color(r, g, b, static_cast<int>(a * 255));
 }
 
-static Color parseConfigColor(const String& fieldName, const InspectorObject* configObject)
+static Color parseConfigColor(const String& fieldName, const JSON::Object* configObject)
 {
-    RefPtr<InspectorObject> colorObject;
+    RefPtr<JSON::Object> colorObject;
     configObject->getObject(fieldName, colorObject);
 
     return parseColor(colorObject.get());
 }
 
-static bool parseQuad(const InspectorArray& quadArray, FloatQuad* quad)
+static bool parseQuad(const JSON::Array& quadArray, FloatQuad* quad)
 {
     const size_t coordinatesInQuad = 8;
     double coordinates[coordinatesInQuad];
@@ -360,15 +362,10 @@ void InspectorDOMAgent::unbind(Node* node, NodeToIdMap* nodesMap)
     if (m_domListener)
         m_domListener->didRemoveDOMNode(*node, id);
 
-    bool childrenRequested = m_childrenRequested.contains(id);
-    if (childrenRequested) {
-        // Unbind subtree known to client recursively.
-        m_childrenRequested.remove(id);
-        Node* child = innerFirstChild(node);
-        while (child) {
+    if (m_childrenRequested.remove(id)) {
+        // FIXME: Would be better to do this iteratively rather than recursively.
+        for (Node* child = innerFirstChild(node); child; child = innerNextSibling(child))
             unbind(child, nodesMap);
-            child = innerNextSibling(child);
-        }
     }
 }
 
@@ -508,13 +505,10 @@ int InspectorDOMAgent::pushNodeToFrontend(ErrorString& errorString, int document
 
 Node* InspectorDOMAgent::nodeForId(int id)
 {
-    if (!id)
-        return 0;
+    if (!m_idToNode.isValidKey(id))
+        return nullptr;
 
-    HashMap<int, Node*>::iterator it = m_idToNode.find(id);
-    if (it != m_idToNode.end())
-        return it->value;
-    return 0;
+    return m_idToNode.get(id);
 }
 
 void InspectorDOMAgent::requestChildNodes(ErrorString& errorString, int nodeId, const int* depth)
@@ -670,7 +664,7 @@ void InspectorDOMAgent::setAttributeValue(ErrorString& errorString, int elementI
     m_domEditor->setAttribute(*element, name, value, errorString);
 }
 
-void InspectorDOMAgent::setAttributesAsText(ErrorString& errorString, int elementId, const String& text, const String* const name)
+void InspectorDOMAgent::setAttributesAsText(ErrorString& errorString, int elementId, const String& text, const String* name)
 {
     Element* element = assertEditableElement(errorString, elementId);
     if (!element)
@@ -936,7 +930,7 @@ void InspectorDOMAgent::getAccessibilityPropertiesForNode(ErrorString& errorStri
     axProperties = buildObjectForAccessibilityProperties(node);
 }
 
-void InspectorDOMAgent::performSearch(ErrorString& errorString, const String& whitespaceTrimmedQuery, const InspectorArray* nodeIds, String* searchId, int* resultCount)
+void InspectorDOMAgent::performSearch(ErrorString& errorString, const String& whitespaceTrimmedQuery, const JSON::Array* nodeIds, String* searchId, int* resultCount)
 {
     // FIXME: Search works with node granularity - number of matches within node is not calculated.
     InspectorNodeFinder finder(whitespaceTrimmedQuery);
@@ -1080,7 +1074,7 @@ void InspectorDOMAgent::highlightMousedOverNode()
         m_overlay->highlightNode(node, *m_inspectModeHighlightConfig);
 }
 
-void InspectorDOMAgent::setSearchingForNode(ErrorString& errorString, bool enabled, const InspectorObject* highlightInspectorObject)
+void InspectorDOMAgent::setSearchingForNode(ErrorString& errorString, bool enabled, const JSON::Object* highlightInspectorObject)
 {
     if (m_searchingForNode == enabled)
         return;
@@ -1101,7 +1095,7 @@ void InspectorDOMAgent::setSearchingForNode(ErrorString& errorString, bool enabl
         client->elementSelectionChanged(m_searchingForNode);
 }
 
-std::unique_ptr<HighlightConfig> InspectorDOMAgent::highlightConfigFromInspectorObject(ErrorString& errorString, const InspectorObject* highlightInspectorObject)
+std::unique_ptr<HighlightConfig> InspectorDOMAgent::highlightConfigFromInspectorObject(ErrorString& errorString, const JSON::Object* highlightInspectorObject)
 {
     if (!highlightInspectorObject) {
         errorString = ASCIILiteral("Internal error: highlight configuration parameter is missing");
@@ -1120,18 +1114,18 @@ std::unique_ptr<HighlightConfig> InspectorDOMAgent::highlightConfigFromInspector
     return highlightConfig;
 }
 
-void InspectorDOMAgent::setInspectModeEnabled(ErrorString& errorString, bool enabled, const InspectorObject* highlightConfig)
+void InspectorDOMAgent::setInspectModeEnabled(ErrorString& errorString, bool enabled, const JSON::Object* highlightConfig)
 {
     setSearchingForNode(errorString, enabled, highlightConfig ? highlightConfig : nullptr);
 }
 
-void InspectorDOMAgent::highlightRect(ErrorString&, int x, int y, int width, int height, const InspectorObject* color, const InspectorObject* outlineColor, const bool* usePageCoordinates)
+void InspectorDOMAgent::highlightRect(ErrorString&, int x, int y, int width, int height, const JSON::Object* color, const JSON::Object* outlineColor, const bool* usePageCoordinates)
 {
     auto quad = std::make_unique<FloatQuad>(FloatRect(x, y, width, height));
     innerHighlightQuad(WTFMove(quad), color, outlineColor, usePageCoordinates);
 }
 
-void InspectorDOMAgent::highlightQuad(ErrorString& errorString, const InspectorArray& quadArray, const InspectorObject* color, const InspectorObject* outlineColor, const bool* usePageCoordinates)
+void InspectorDOMAgent::highlightQuad(ErrorString& errorString, const JSON::Array& quadArray, const JSON::Object* color, const JSON::Object* outlineColor, const bool* usePageCoordinates)
 {
     auto quad = std::make_unique<FloatQuad>();
     if (!parseQuad(quadArray, quad.get())) {
@@ -1141,7 +1135,7 @@ void InspectorDOMAgent::highlightQuad(ErrorString& errorString, const InspectorA
     innerHighlightQuad(WTFMove(quad), color, outlineColor, usePageCoordinates);
 }
 
-void InspectorDOMAgent::innerHighlightQuad(std::unique_ptr<FloatQuad> quad, const InspectorObject* color, const InspectorObject* outlineColor, const bool* usePageCoordinates)
+void InspectorDOMAgent::innerHighlightQuad(std::unique_ptr<FloatQuad> quad, const JSON::Object* color, const JSON::Object* outlineColor, const bool* usePageCoordinates)
 {
     auto highlightConfig = std::make_unique<HighlightConfig>();
     highlightConfig->content = parseColor(color);
@@ -1150,7 +1144,7 @@ void InspectorDOMAgent::innerHighlightQuad(std::unique_ptr<FloatQuad> quad, cons
     m_overlay->highlightQuad(WTFMove(quad), *highlightConfig);
 }
 
-void InspectorDOMAgent::highlightSelector(ErrorString& errorString, const InspectorObject& highlightInspectorObject, const String& selectorString, const String* frameId)
+void InspectorDOMAgent::highlightSelector(ErrorString& errorString, const JSON::Object& highlightInspectorObject, const String& selectorString, const String* frameId)
 {
     RefPtr<Document> document;
 
@@ -1184,7 +1178,7 @@ void InspectorDOMAgent::highlightSelector(ErrorString& errorString, const Inspec
     m_overlay->highlightNodeList(queryResult.releaseReturnValue(), *highlightConfig);
 }
 
-void InspectorDOMAgent::highlightNode(ErrorString& errorString, const InspectorObject& highlightInspectorObject, const int* nodeId, const String* objectId)
+void InspectorDOMAgent::highlightNode(ErrorString& errorString, const JSON::Object& highlightInspectorObject, const int* nodeId, const String* objectId)
 {
     Node* node = nullptr;
     if (nodeId)
@@ -1206,7 +1200,7 @@ void InspectorDOMAgent::highlightNode(ErrorString& errorString, const InspectorO
     m_overlay->highlightNode(node, *highlightConfig);
 }
 
-void InspectorDOMAgent::highlightNodeList(ErrorString& errorString, const InspectorArray& nodeIds, const InspectorObject& highlightInspectorObject)
+void InspectorDOMAgent::highlightNodeList(ErrorString& errorString, const JSON::Array& nodeIds, const JSON::Object& highlightInspectorObject)
 {
     Vector<Ref<Node>> nodes;
     for (auto& nodeValue : nodeIds) {
@@ -1240,7 +1234,7 @@ void InspectorDOMAgent::highlightNodeList(ErrorString& errorString, const Inspec
     m_overlay->highlightNodeList(StaticNodeList::create(WTFMove(nodes)), *highlightConfig);
 }
 
-void InspectorDOMAgent::highlightFrame(ErrorString& errorString, const String& frameId, const InspectorObject* color, const InspectorObject* outlineColor)
+void InspectorDOMAgent::highlightFrame(ErrorString& errorString, const String& frameId, const JSON::Object* color, const JSON::Object* outlineColor)
 {
     Frame* frame = m_pageAgent->assertFrame(errorString, frameId);
     if (!frame)
@@ -1260,7 +1254,7 @@ void InspectorDOMAgent::hideHighlight(ErrorString&)
     m_overlay->hideHighlight();
 }
 
-void InspectorDOMAgent::moveTo(ErrorString& errorString, int nodeId, int targetElementId, const int* const anchorNodeId, int* newNodeId)
+void InspectorDOMAgent::moveTo(ErrorString& errorString, int nodeId, int targetElementId, const int* anchorNodeId, int* newNodeId)
 {
     Node* node = assertEditableNode(errorString, nodeId);
     if (!node)
@@ -1330,7 +1324,7 @@ void InspectorDOMAgent::setInspectedNode(ErrorString& errorString, int nodeId)
         commandLineAPIHost->addInspectedObject(std::make_unique<InspectableNode>(node));
 }
 
-void InspectorDOMAgent::resolveNode(ErrorString& errorString, int nodeId, const String* const objectGroup, RefPtr<Inspector::Protocol::Runtime::RemoteObject>& result)
+void InspectorDOMAgent::resolveNode(ErrorString& errorString, int nodeId, const String* objectGroup, RefPtr<Inspector::Protocol::Runtime::RemoteObject>& result)
 {
     String objectGroupName = objectGroup ? *objectGroup : emptyString();
     Node* node = nodeForId(nodeId);
@@ -1761,26 +1755,26 @@ RefPtr<Inspector::Protocol::DOM::AccessibilityProperties> InspectorDOMAgent::bui
                     controlledNodeIds->addItem(pushNodePathToFrontend(controlledElement));
             }
             
-            switch (axObject->ariaCurrentState()) {
-            case AccessibilityARIACurrentState::False:
+            switch (axObject->currentState()) {
+            case AccessibilityCurrentState::False:
                 currentState = Inspector::Protocol::DOM::AccessibilityProperties::Current::False;
                 break;
-            case AccessibilityARIACurrentState::Page:
+            case AccessibilityCurrentState::Page:
                 currentState = Inspector::Protocol::DOM::AccessibilityProperties::Current::Page;
                 break;
-            case AccessibilityARIACurrentState::Step:
+            case AccessibilityCurrentState::Step:
                 currentState = Inspector::Protocol::DOM::AccessibilityProperties::Current::Step;
                 break;
-            case AccessibilityARIACurrentState::Location:
+            case AccessibilityCurrentState::Location:
                 currentState = Inspector::Protocol::DOM::AccessibilityProperties::Current::Location;
                 break;
-            case AccessibilityARIACurrentState::Date:
+            case AccessibilityCurrentState::Date:
                 currentState = Inspector::Protocol::DOM::AccessibilityProperties::Current::Date;
                 break;
-            case AccessibilityARIACurrentState::Time:
+            case AccessibilityCurrentState::Time:
                 currentState = Inspector::Protocol::DOM::AccessibilityProperties::Current::Time;
                 break;
-            case AccessibilityARIACurrentState::True:
+            case AccessibilityCurrentState::True:
                 currentState = Inspector::Protocol::DOM::AccessibilityProperties::Current::True;
                 break;
             }
@@ -1819,16 +1813,16 @@ RefPtr<Inspector::Protocol::DOM::AccessibilityProperties> InspectorDOMAgent::bui
             else // Future versions of ARIA may allow additional truthy values. Ex. format, order, or size.
                 invalid = Inspector::Protocol::DOM::AccessibilityProperties::Invalid::True;
             
-            if (axObject->isARIAHidden() || axObject->isDOMHidden())
+            if (axObject->isAXHidden() || axObject->isDOMHidden())
                 hidden = true;
             
             label = axObject->computedLabel();
 
-            if (axObject->supportsARIALiveRegion()) {
+            if (axObject->supportsLiveRegion()) {
                 supportsLiveRegion = true;
-                liveRegionAtomic = axObject->ariaLiveRegionAtomic();
+                liveRegionAtomic = axObject->liveRegionAtomic();
 
-                String ariaRelevantAttrValue = axObject->ariaLiveRegionRelevant();
+                String ariaRelevantAttrValue = axObject->liveRegionRelevant();
                 if (!ariaRelevantAttrValue.isEmpty()) {
                     // FIXME: Pass enum values rather than strings once unblocked. http://webkit.org/b/133711
                     String ariaRelevantAdditions = Inspector::Protocol::InspectorHelpers::getEnumConstantValue(Inspector::Protocol::DOM::LiveRegionRelevant::Additions);
@@ -1852,7 +1846,7 @@ RefPtr<Inspector::Protocol::DOM::AccessibilityProperties> InspectorDOMAgent::bui
                     }
                 }
 
-                String ariaLive = axObject->ariaLiveRegionStatus();
+                String ariaLive = axObject->liveRegionStatus();
                 if (ariaLive == "assertive")
                     liveRegionStatus = Inspector::Protocol::DOM::AccessibilityProperties::LiveRegionStatus::Assertive;
                 else if (ariaLive == "polite")
@@ -1875,7 +1869,7 @@ RefPtr<Inspector::Protocol::DOM::AccessibilityProperties> InspectorDOMAgent::bui
             if (AccessibilityObject* parentObject = axObject->parentObjectUnignored())
                 parentNode = parentObject->node();
 
-            supportsPressed = axObject->ariaPressedIsPresent();
+            supportsPressed = axObject->pressedIsPresent();
             if (supportsPressed)
                 pressed = axObject->isPressed();
             
@@ -1903,7 +1897,7 @@ RefPtr<Inspector::Protocol::DOM::AccessibilityProperties> InspectorDOMAgent::bui
             hierarchicalLevel = axObject->hierarchicalLevel();
             
             level = hierarchicalLevel ? hierarchicalLevel : headingLevel;
-            isPopupButton = axObject->isPopUpButton() || axObject->ariaHasPopup();
+            isPopupButton = axObject->isPopUpButton() || axObject->hasPopup();
         }
     }
     
@@ -1981,10 +1975,16 @@ RefPtr<Inspector::Protocol::DOM::AccessibilityProperties> InspectorDOMAgent::bui
     return WTFMove(value);
 }
 
+static bool containsOnlyHTMLWhitespace(Node* node)
+{
+    // FIXME: Respect ignoreWhitespace setting from inspector front end?
+    return is<Text>(node) && downcast<Text>(*node).data().isAllSpecialCharacters<isHTMLSpace>();
+}
+
 Node* InspectorDOMAgent::innerFirstChild(Node* node)
 {
     node = node->firstChild();
-    while (isWhitespace(node))
+    while (containsOnlyHTMLWhitespace(node))
         node = node->nextSibling();
     return node;
 }
@@ -1993,7 +1993,7 @@ Node* InspectorDOMAgent::innerNextSibling(Node* node)
 {
     do {
         node = node->nextSibling();
-    } while (isWhitespace(node));
+    } while (containsOnlyHTMLWhitespace(node));
     return node;
 }
 
@@ -2001,18 +2001,15 @@ Node* InspectorDOMAgent::innerPreviousSibling(Node* node)
 {
     do {
         node = node->previousSibling();
-    } while (isWhitespace(node));
+    } while (containsOnlyHTMLWhitespace(node));
     return node;
 }
 
 unsigned InspectorDOMAgent::innerChildNodeCount(Node* node)
 {
     unsigned count = 0;
-    Node* child = innerFirstChild(node);
-    while (child) {
-        count++;
-        child = innerNextSibling(child);
-    }
+    for (Node* child = innerFirstChild(node); child; child = innerNextSibling(child))
+        ++count;
     return count;
 }
 
@@ -2024,12 +2021,6 @@ Node* InspectorDOMAgent::innerParentNode(Node* node)
     if (is<ShadowRoot>(*node))
         return downcast<ShadowRoot>(*node).host();
     return node->parentNode();
-}
-
-bool InspectorDOMAgent::isWhitespace(Node* node)
-{
-    //TODO: pull ignoreWhitespace setting from the frontend and use here.
-    return node && node->nodeType() == Node::TEXT_NODE && node->nodeValue().stripWhiteSpace().length() == 0;
 }
 
 void InspectorDOMAgent::mainFrameDOMContentLoaded()
@@ -2063,7 +2054,7 @@ void InspectorDOMAgent::didCommitLoad(Document* document)
 
 void InspectorDOMAgent::didInsertDOMNode(Node& node)
 {
-    if (isWhitespace(&node))
+    if (containsOnlyHTMLWhitespace(&node))
         return;
 
     // We could be attaching existing subtree. Forget the bindings.
@@ -2092,7 +2083,7 @@ void InspectorDOMAgent::didInsertDOMNode(Node& node)
 
 void InspectorDOMAgent::didRemoveDOMNode(Node& node)
 {
-    if (isWhitespace(&node))
+    if (containsOnlyHTMLWhitespace(&node))
         return;
 
     ContainerNode* parent = node.parentNode();

@@ -22,6 +22,60 @@ if (ENABLE_WEBKIT)
         WebKit
         gtest
     )
+
+    set(test_webkit_api_SOURCES
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/AboutBlankLoad.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/CanHandleRequest.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/CookieManager.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/DocumentStartUserScriptAlertCrash.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/DOMWindowExtensionBasic.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/DOMWindowExtensionNoCache.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/DownloadDecideDestinationCrash.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/EnumerateMediaDevices.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/EvaluateJavaScript.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/FailedLoad.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/Find.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/ForceRepaint.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/FrameMIMETypeHTML.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/FrameMIMETypePNG.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/Geolocation.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/GetInjectedBundleInitializationUserDataCallback.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/HitTestResultNodeHandle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/InjectedBundleBasic.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/InjectedBundleFrameHitTest.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/InjectedBundleInitializationUserDataCallbackWins.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/LoadAlternateHTMLStringWithNonDirectoryURL.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/LoadCanceledNoServerRedirectCallback.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/LoadPageOnCrash.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/MouseMoveAfterCrash.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/NewFirstVisuallyNonEmptyLayout.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/NewFirstVisuallyNonEmptyLayoutFails.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/NewFirstVisuallyNonEmptyLayoutForImages.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/NewFirstVisuallyNonEmptyLayoutFrames.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/PageLoadBasic.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/PageLoadDidChangeLocationWithinPageForFrame.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/ParentFrame.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/PendingAPIRequestURL.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/PreventEmptyUserAgent.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/PrivateBrowsingPushStateNoHistoryCallback.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/ProvisionalURLAfterWillSendRequestCallback.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/ReloadPageAfterCrash.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/ResizeWindowAfterCrash.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/RestoreSessionStateContainingFormData.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/ShouldGoToBackForwardListItem.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/TextFieldDidBeginAndEndEditing.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/UserMedia.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/UserMessage.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/WillSendSubmitEvent.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/WKPageCopySessionStateWithFiltering.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/WKPageGetScaleFactorNotZero.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/WKPreferences.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/WKRetainPtr.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/WKString.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/WKStringJSString.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit/WKURL.cpp
+    )
+
     list(APPEND TestWebKitAPI_LIBRARIES
         WebKit
     )
@@ -31,11 +85,6 @@ else ()
     )
 endif ()
 
-
-set(TestJavaScriptCore_LIBRARIES
-    JavaScriptCore
-    gtest
-)
 
 set(TestWTF_SOURCES
     ${TESTWEBKITAPI_DIR}/Counters.cpp
@@ -55,6 +104,7 @@ set(TestWTF_SOURCES
     ${TESTWEBKITAPI_DIR}/Tests/WTF/HashMap.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/HashSet.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/IntegerToStringConversion.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/JSONValue.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/LEBDecoder.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/LifecycleLogger.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/ListHashSet.cpp

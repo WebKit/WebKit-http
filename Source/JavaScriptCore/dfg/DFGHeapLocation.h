@@ -39,7 +39,6 @@ enum LocationKind {
     ArrayLengthLoc,
     VectorLengthLoc,
     ButterflyLoc,
-    ButterflyWithoutCagingLoc,
     CheckTypeInfoFlagsLoc,
     OverridesHasInstanceLoc,
     ClosureVariableLoc,
@@ -67,8 +66,7 @@ enum LocationKind {
     MapBucketHeadLoc,
     MapBucketValueLoc,
     MapBucketKeyLoc,
-    MapBucketMapNextLoc,
-    MapBucketSetNextLoc,
+    MapBucketNextLoc,
     WeakMapGetLoc,
     DOMStateLoc,
 };

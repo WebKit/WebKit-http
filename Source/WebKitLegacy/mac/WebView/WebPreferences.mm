@@ -58,7 +58,6 @@ using namespace WebCore;
 #import <AudioToolbox/AudioSession.h>
 #import <WebCore/Device.h>
 #import <WebCore/GraphicsContext.h>
-#import <WebCore/ImageSource.h>
 #import <WebCore/WebCoreThreadMessage.h>
 #endif
 
@@ -650,6 +649,7 @@ public:
 #else
         [NSNumber numberWithBool:YES], WebKitVisualViewportEnabledPreferenceKey,
 #endif
+        [NSNumber numberWithBool:NO], WebKitVisualViewportAPIEnabledPreferenceKey,
 
         [NSNumber numberWithBool:YES], WebKitNeedsStorageAccessFromFileURLsQuirkKey,
 #if ENABLE(MEDIA_STREAM)
@@ -3075,6 +3075,15 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitVisualViewportEnabledPreferenceKey];
 }
 
+- (BOOL)visualViewportAPIEnabled
+{
+    return [self _boolValueForKey:WebKitVisualViewportAPIEnabledPreferenceKey];
+}
+
+- (void)setVisualViewportAPIEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitVisualViewportAPIEnabledPreferenceKey];
+}
 - (BOOL)webAnimationsEnabled
 {
     return [self _boolValueForKey:WebKitWebAnimationsEnabledPreferenceKey];

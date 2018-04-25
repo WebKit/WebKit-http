@@ -23,14 +23,14 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WI.CheckboxNavigationItem = class CheckboxNavigationItem extends WI.ButtonNavigationItem
+WI.CheckboxNavigationItem = class CheckboxNavigationItem extends WI.NavigationItem
 {
     constructor(identifier, label, checked)
     {
-        super(identifier, label);
+        super(identifier, "checkbox");
 
         this._checkboxElement = this.element.appendChild(document.createElement("input"));
-        this._checkboxElement.checked = !checked;
+        this._checkboxElement.checked = checked;
         this._checkboxElement.id = "checkbox-navigation-item-" + identifier;
         this._checkboxElement.type = "checkbox";
 
@@ -38,9 +38,8 @@ WI.CheckboxNavigationItem = class CheckboxNavigationItem extends WI.ButtonNaviga
 
         this._checkboxLabel = this.element.appendChild(document.createElement("label"));
         this._checkboxLabel.className = "toggle";
+        this._checkboxLabel.textContent = label;
         this._checkboxLabel.setAttribute("for", this._checkboxElement.id);
-
-        this.updateButtonText();
     }
 
     // Public
@@ -62,16 +61,14 @@ WI.CheckboxNavigationItem = class CheckboxNavigationItem extends WI.ButtonNaviga
         return ["checkbox", "button"];
     }
 
-    updateButtonText()
-    {
-        if (this._checkboxLabel)
-            this._checkboxLabel.textContent = this.label;
-    }
-
     // Private
 
     _checkboxChanged(event)
     {
-        this.dispatchEventToListeners(WI.ButtonNavigationItem.Event.Clicked);
+        this.dispatchEventToListeners(WI.CheckboxNavigationItem.Event.CheckedDidChange);
     }
+};
+
+WI.CheckboxNavigationItem.Event = {
+    CheckedDidChange: "checkbox-navigation-item-checked-did-change",
 };

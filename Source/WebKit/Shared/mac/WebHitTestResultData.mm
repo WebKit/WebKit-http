@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,6 +33,7 @@
 #import "Encoder.h"
 #import "WebCoreArgumentCoders.h"
 #import <WebCore/TextIndicator.h>
+#import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
 #import <pal/spi/mac/DataDetectorsSPI.h>
 
 namespace WebKit {
@@ -44,13 +45,20 @@ void WebHitTestResultData::platformEncode(IPC::Encoder& encoder) const
     if (!hasActionContext)
         return;
 
-    RetainPtr<NSMutableData> data = adoptNS([[NSMutableData alloc] init]);
-    RetainPtr<NSKeyedArchiver> archiver = adoptNS([[NSKeyedArchiver alloc] initForWritingWithMutableData:data.get()]);
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200)
+    auto data = adoptNS([[NSMutableData alloc] init]);
+    auto archiver = adoptNS([[NSKeyedArchiver alloc] initForWritingWithMutableData:data.get()]);
     [archiver setRequiresSecureCoding:YES];
     [archiver encodeObject:detectedDataActionContext.get() forKey:@"actionContext"];
     [archiver finishEncoding];
 
     IPC::encode(encoder, reinterpret_cast<CFDataRef>(data.get()));
+#else
+    auto archiver = secureArchiver();
+    [archiver encodeObject:detectedDataActionContext.get() forKey:@"actionContext"];
+
+    IPC::encode(encoder, reinterpret_cast<CFDataRef>(archiver.get().encodedData));
+#endif
 
     encoder << detectedDataBoundingBox;
     encoder << detectedDataOriginatingPageOverlay;
@@ -75,8 +83,7 @@ bool WebHitTestResultData::platformDecode(IPC::Decoder& decoder, WebHitTestResul
     if (!IPC::decode(decoder, data))
         return false;
 
-    RetainPtr<NSKeyedUnarchiver> unarchiver = adoptNS([[NSKeyedUnarchiver alloc] initForReadingWithData:(NSData *)data.get()]);
-    [unarchiver setRequiresSecureCoding:YES];
+    auto unarchiver = secureUnarchiverFromData((NSData *)data.get());
     @try {
         hitTestResultData.detectedDataActionContext = [unarchiver decodeObjectOfClass:getDDActionContextClass() forKey:@"actionContext"];
     } @catch (NSException *exception) {

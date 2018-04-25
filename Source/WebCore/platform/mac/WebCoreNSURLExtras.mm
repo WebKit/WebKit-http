@@ -28,8 +28,6 @@
 
 #import "config.h"
 #import "URLParser.h"
-#import "WebCoreObjCExtras.h"
-#import "WebCoreNSStringExtras.h"
 #import "WebCoreNSURLExtras.h"
 #import <wtf/Function.h>
 #import <wtf/HexNumber.h>
@@ -721,7 +719,7 @@ static void applyHostNameFunctionToURLString(NSString *string, StringRangeApplie
     
     // Maybe we should implement this using a character buffer instead?
     
-    if (hasCaseInsensitivePrefix(string, @"mailto:")) {
+    if (protocolIs(string, "mailto")) {
         applyHostNameFunctionToMailToURLString(string, f, context);
         return;
     }

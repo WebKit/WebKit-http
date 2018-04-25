@@ -32,6 +32,7 @@
 #include "AXObjectCache.h"
 #include "AccessibilityTable.h"
 #include "AccessibilityTableCell.h"
+#include "AccessibleNode.h"
 #include "HTMLNames.h"
 #include "HTMLTableRowElement.h"
 #include "RenderObject.h"
@@ -132,6 +133,18 @@ AccessibilityObject* AccessibilityTableRow::headerObject()
     if (!cellNode || !cellNode->hasTagName(thTag))
         return nullptr;
     
+    // Verify that the row header is not part of an entire row of headers.
+    // In that case, it is unlikely this is a row header.
+    bool allHeadersInRow = true;
+    for (auto cell : rowChildren) {
+        if (cell->node() && !cell->node()->hasTagName(thTag)) {
+            allHeadersInRow = false;
+            break;
+        }
+    }
+    if (allHeadersInRow)
+        return nullptr;
+    
     return cell;
 }
     
@@ -141,34 +154,34 @@ void AccessibilityTableRow::addChildren()
     
     // "ARIA 1.1, If the set of columns which is present in the DOM is contiguous, and if there are no cells which span more than one row or
     // column in that set, then authors may place aria-colindex on each row, setting the value to the index of the first column of the set."
-    // Update child cells' ariaColIndex if there's an aria-colindex value set for the row. So the cell doesn't have to go through the siblings
+    // Update child cells' axColIndex if there's an aria-colindex value set for the row. So the cell doesn't have to go through the siblings
     // to calculate the index.
-    int colIndex = ariaColumnIndex();
+    int colIndex = axColumnIndex();
     if (colIndex == -1)
         return;
     
     unsigned index = 0;
     for (const auto& cell : children()) {
         if (is<AccessibilityTableCell>(*cell))
-            downcast<AccessibilityTableCell>(*cell).setARIAColIndexFromRow(colIndex + index);
+            downcast<AccessibilityTableCell>(*cell).setAXColIndexFromRow(colIndex + index);
         index++;
     }
 }
 
-int AccessibilityTableRow::ariaColumnIndex() const
+int AccessibilityTableRow::axColumnIndex() const
 {
-    const AtomicString& colIndexValue = getAttribute(aria_colindexAttr);
-    if (colIndexValue.toInt() >= 1)
-        return colIndexValue.toInt();
+    unsigned colIndexValue = unsignedValueForProperty(AXPropertyName::ColIndex);
+    if (colIndexValue >= 1)
+        return colIndexValue;
     
     return -1;
 }
 
-int AccessibilityTableRow::ariaRowIndex() const
+int AccessibilityTableRow::axRowIndex() const
 {
-    const AtomicString& rowIndexValue = getAttribute(aria_rowindexAttr);
-    if (rowIndexValue.toInt() >= 1)
-        return rowIndexValue.toInt();
+    unsigned rowIndexValue = unsignedValueForProperty(AXPropertyName::RowIndex);
+    if (rowIndexValue >= 1)
+        return rowIndexValue;
     
     return -1;
 }

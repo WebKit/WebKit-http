@@ -61,6 +61,8 @@ list(APPEND StorageProcess_SOURCES
 )
 
 list(APPEND WebKit_SOURCES
+    NetworkProcess/CustomProtocols/LegacyCustomProtocolManager.cpp
+
     NetworkProcess/CustomProtocols/soup/LegacyCustomProtocolManagerSoup.cpp
 
     NetworkProcess/cache/NetworkCacheCodersSoup.cpp
@@ -105,7 +107,6 @@ list(APPEND WebKit_SOURCES
     Shared/CoordinatedGraphics/SimpleViewportController.cpp
 
     Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.cpp
-    Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp
     Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp
     Shared/CoordinatedGraphics/threadedcompositor/ThreadedDisplayRefreshMonitor.cpp
 
@@ -202,12 +203,15 @@ list(APPEND WebKit_SOURCES
     UIProcess/API/wpe/PageClientImpl.cpp
     UIProcess/API/wpe/ScrollGestureController.cpp
     UIProcess/API/wpe/WebKitScriptDialogWPE.cpp
+    UIProcess/API/wpe/WebKitWebViewBackend.cpp
     UIProcess/API/wpe/WebKitWebViewWPE.cpp
     UIProcess/API/wpe/WPEView.cpp
 
     UIProcess/Automation/cairo/WebAutomationSessionCairo.cpp
 
     UIProcess/Launcher/glib/ProcessLauncherGLib.cpp
+
+    UIProcess/Network/CustomProtocols/LegacyCustomProtocolManagerProxy.cpp
 
     UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp
     UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp
@@ -276,7 +280,11 @@ list(APPEND WebKit_SOURCES
 )
 
 list(APPEND WebKit_MESSAGES_IN_FILES
+    NetworkProcess/CustomProtocols/LegacyCustomProtocolManager.messages.in
+
     UIProcess/API/wpe/CompositingManagerProxy.messages.in
+
+    UIProcess/Network/CustomProtocols/LegacyCustomProtocolManagerProxy.messages.in
 )
 
 list(APPEND WebKit_DERIVED_SOURCES
@@ -333,6 +341,7 @@ set(WPE_API_INSTALLED_HEADERS
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitWebContext.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitWebResource.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitWebView.h
+    ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitWebViewBackend.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitWebViewSessionState.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitWebsiteData.h
     ${WEBKIT_DIR}/UIProcess/API/wpe/WebKitWebsiteDataManager.h

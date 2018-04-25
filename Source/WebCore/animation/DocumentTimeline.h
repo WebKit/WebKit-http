@@ -37,6 +37,8 @@
 
 namespace WebCore {
 
+class RenderElement;
+
 class DocumentTimeline final : public AnimationTimeline
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     , public DisplayRefreshMonitorClient
@@ -52,6 +54,9 @@ public:
     void animationTimingModelDidChange() override;
     void windowScreenDidChange(PlatformDisplayID);
 
+    std::unique_ptr<RenderStyle> animatedStyleForRenderer(RenderElement& renderer);
+    void animationAcceleratedRunningStateDidChange(WebAnimation&);
+    bool runningAnimationsForElementAreAllAccelerated(Element&);
     void detachFromDocument();
 
 private:
@@ -70,6 +75,7 @@ private:
     GenericTaskQueue<Timer> m_invalidationTaskQueue;
     bool m_needsUpdateAnimationSchedule { false };
     Timer m_animationScheduleTimer;
+    HashSet<RefPtr<WebAnimation>> m_acceleratedAnimationsPendingRunningStateChange;
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     // Override for DisplayRefreshMonitorClient

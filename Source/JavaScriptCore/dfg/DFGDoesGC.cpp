@@ -64,7 +64,6 @@ bool doesGC(Graph& graph, Node* node)
     case Phi:
     case Flush:
     case PhantomLocal:
-    case GetLocalUnlinked:
     case SetArgument:
     case BitAnd:
     case BitOr:
@@ -119,7 +118,6 @@ bool doesGC(Graph& graph, Node* node)
     case CheckStructureImmediate:
     case GetExecutable:
     case GetButterfly:
-    case GetButterflyWithoutCaging:
     case CheckSubClass:
     case CheckArray:
     case GetScope:
@@ -204,6 +202,7 @@ bool doesGC(Graph& graph, Node* node)
     case CheckTraps:
     case StringFromCharCode:
     case MapHash:
+    case NormalizeMapKey:
     case GetMapBucket:
     case GetMapBucketHead:
     case GetMapBucketNext:
@@ -344,6 +343,8 @@ bool doesGC(Graph& graph, Node* node)
     case ArraySlice:
     case ArrayIndexOf:
     case ParseInt: // We might resolve a rope even though we don't clobber anything.
+    case SetAdd:
+    case MapSet:
         return true;
         
     case MultiPutByOffset:

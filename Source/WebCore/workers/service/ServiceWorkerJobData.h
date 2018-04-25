@@ -28,21 +28,22 @@
 #if ENABLE(SERVICE_WORKER)
 
 #include "SecurityOriginData.h"
+#include "ServiceWorkerJobDataIdentifier.h"
 #include "ServiceWorkerJobType.h"
 #include "ServiceWorkerRegistrationKey.h"
 #include "ServiceWorkerRegistrationOptions.h"
+#include "ServiceWorkerTypes.h"
 #include "URL.h"
-#include <wtf/Identified.h>
 
 namespace WebCore {
 
-struct ServiceWorkerJobData : public ThreadSafeIdentified<ServiceWorkerJobData> {
-public:
-    explicit ServiceWorkerJobData(uint64_t connectionIdentifier);
+struct ServiceWorkerJobData {
+    using Identifier = ServiceWorkerJobDataIdentifier;
+    explicit ServiceWorkerJobData(SWServerConnectionIdentifier);
     ServiceWorkerJobData(const ServiceWorkerJobData&) = default;
     ServiceWorkerJobData() = default;
 
-    uint64_t connectionIdentifier() const { return m_connectionIdentifier; }
+    SWServerConnectionIdentifier connectionIdentifier() const { return m_identifier.connectionIdentifier; }
 
     URL scriptURL;
     URL clientCreationURL;
@@ -50,8 +51,9 @@ public:
     URL scopeURL;
     ServiceWorkerJobType type;
 
-    RegistrationOptions registrationOptions;
+    ServiceWorkerRegistrationOptions registrationOptions;
 
+    Identifier identifier() const { return m_identifier; }
     ServiceWorkerRegistrationKey registrationKey() const;
     ServiceWorkerJobData isolatedCopy() const;
 
@@ -59,15 +61,15 @@ public:
     template<class Decoder> static std::optional<ServiceWorkerJobData> decode(Decoder&);
 
 private:
-    WEBCORE_EXPORT ServiceWorkerJobData(uint64_t jobIdentifier, uint64_t connectionIdentifier);
+    WEBCORE_EXPORT explicit ServiceWorkerJobData(const Identifier&);
 
-    uint64_t m_connectionIdentifier { 0 };
+    Identifier m_identifier;
 };
 
 template<class Encoder>
 void ServiceWorkerJobData::encode(Encoder& encoder) const
 {
-    encoder << identifier() << m_connectionIdentifier << scriptURL << clientCreationURL << topOrigin << scopeURL;
+    encoder << identifier() << scriptURL << clientCreationURL << topOrigin << scopeURL;
     encoder.encodeEnum(type);
     switch (type) {
     case ServiceWorkerJobType::Register:
@@ -82,43 +84,44 @@ void ServiceWorkerJobData::encode(Encoder& encoder) const
 template<class Decoder>
 std::optional<ServiceWorkerJobData> ServiceWorkerJobData::decode(Decoder& decoder)
 {
-    uint64_t jobIdentifier;
-    if (!decoder.decode(jobIdentifier))
+    std::optional<ServiceWorkerJobDataIdentifier> identifier;
+    decoder >> identifier;
+    if (!identifier)
         return std::nullopt;
 
-    uint64_t connectionIdentifier;
-    if (!decoder.decode(connectionIdentifier))
-        return std::nullopt;
+    ServiceWorkerJobData jobData { WTFMove(*identifier) };
 
-    std::optional<ServiceWorkerJobData> jobData = { { jobIdentifier, connectionIdentifier } };
-
-    if (!decoder.decode(jobData->scriptURL))
+    if (!decoder.decode(jobData.scriptURL))
         return std::nullopt;
-    if (!decoder.decode(jobData->clientCreationURL))
+    if (!decoder.decode(jobData.clientCreationURL))
         return std::nullopt;
 
     std::optional<SecurityOriginData> topOrigin;
     decoder >> topOrigin;
     if (!topOrigin)
         return std::nullopt;
-    jobData->topOrigin = WTFMove(*topOrigin);
+    jobData.topOrigin = WTFMove(*topOrigin);
 
-    if (!decoder.decode(jobData->scopeURL))
+    if (!decoder.decode(jobData.scopeURL))
         return std::nullopt;
-    if (!decoder.decodeEnum(jobData->type))
+    if (!decoder.decodeEnum(jobData.type))
         return std::nullopt;
 
-    switch (jobData->type) {
-    case ServiceWorkerJobType::Register:
-        if (!decoder.decode(jobData->registrationOptions))
+    switch (jobData.type) {
+    case ServiceWorkerJobType::Register: {
+        std::optional<ServiceWorkerRegistrationOptions> registrationOptions;
+        decoder >> registrationOptions;
+        if (!registrationOptions)
             return std::nullopt;
+        jobData.registrationOptions = WTFMove(*registrationOptions);
         break;
+    }
     case ServiceWorkerJobType::Unregister:
     case ServiceWorkerJobType::Update:
         break;
     }
 
-    return jobData;
+    return WTFMove(jobData);
 }
 
 } // namespace WebCore

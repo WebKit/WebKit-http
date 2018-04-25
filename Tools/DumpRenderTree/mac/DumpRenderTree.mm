@@ -856,6 +856,7 @@ static void enableExperimentalFeatures(WebPreferences* preferences)
     [preferences setWritableStreamAPIEnabled:YES];
     preferences.encryptedMediaAPIEnabled = YES;
     [preferences setAccessibilityObjectModelEnabled:YES];
+    [preferences setVisualViewportAPIEnabled:YES];
 }
 
 // Called before each test.
@@ -1592,9 +1593,9 @@ static void changeWindowScaleIfNeeded(const char* testPathOrUR)
     WTF::String localPathOrUrl = String(testPathOrUR);
     float currentScaleFactor = [[[mainFrame webView] window] backingScaleFactor];
     float requiredScaleFactor = 1;
-    if (localPathOrUrl.findIgnoringCase("/hidpi-3x-") != notFound)
+    if (localPathOrUrl.containsIgnoringASCIICase("/hidpi-3x-"))
         requiredScaleFactor = 3;
-    else if (localPathOrUrl.findIgnoringCase("/hidpi-") != notFound)
+    else if (localPathOrUrl.containsIgnoringASCIICase("/hidpi-"))
         requiredScaleFactor = 2;
     if (currentScaleFactor == requiredScaleFactor)
         return;

@@ -28,12 +28,15 @@
 #if ENABLE(SERVICE_WORKER)
 
 #include <wtf/HashMap.h>
+#include <wtf/text/StringHash.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class SecurityOrigin;
 
 class SWOriginStore {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     virtual ~SWOriginStore() = default;
 

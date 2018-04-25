@@ -37,11 +37,11 @@
 #include <inspector/InspectorBackendDispatchers.h>
 #include <inspector/InspectorFrontendDispatchers.h>
 #include <wtf/HashSet.h>
+#include <wtf/JSONValues.h>
 #include <wtf/text/WTFString.h>
 #include <yarr/RegularExpression.h>
 
 namespace Inspector {
-class InspectorObject;
 class InjectedScriptManager;
 }
 
@@ -65,6 +65,7 @@ struct WebSocketFrame;
 typedef String ErrorString;
 
 class InspectorNetworkAgent : public InspectorAgentBase, public Inspector::NetworkBackendDispatcherHandler {
+    WTF_MAKE_NONCOPYABLE(InspectorNetworkAgent);
     WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit InspectorNetworkAgent(WebAgentContext&);
@@ -108,7 +109,7 @@ public:
     // Called from frontend.
     void enable(ErrorString&) final;
     void disable(ErrorString&) final;
-    void setExtraHTTPHeaders(ErrorString&, const Inspector::InspectorObject& headers) final;
+    void setExtraHTTPHeaders(ErrorString&, const JSON::Object& headers) final;
     void getResponseBody(ErrorString&, const String& requestId, String* content, bool* base64Encoded) final;
     void setResourceCachingDisabled(ErrorString&, bool disabled) final;
     void loadResource(ErrorString&, const String& frameId, const String& url, Ref<LoadResourceCallback>&&) final;

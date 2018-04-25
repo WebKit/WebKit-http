@@ -1,3 +1,476 @@
+2017-11-29  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: can't add new property after property without trailing semicolon
+        https://bugs.webkit.org/show_bug.cgi?id=179587
+        <rdar://problem/35490858>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CSSProperty.js:
+        (WI.CSSProperty.prototype._updateOwnerStyleText):
+        (WI.CSSProperty.prototype._appendSemicolonIfNeeded):
+        Add a semicolon before the new property if the last property doesn't have it already.
+
+2017-11-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Console Tab navigation bar sometimes does not include filter bar, clear console sometimes does not work
+        https://bugs.webkit.org/show_bug.cgi?id=180124
+        <rdar://problem/35740353>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/LogContentView.js:
+        (WI.LogContentView.prototype.closed):
+        Avoid removing event listeners if this LogContentView singleton is ever closed.
+        The singleton will always be alive so we don't want to remove the event listeners
+        without a way to add them back.
+
+        * UserInterface/Base/Main.js:
+        (WI.showSplitConsole):
+        * UserInterface/Views/ConsoleTabContentView.js:
+        (WI.ConsoleTabContentView.prototype.shown):
+        When showing the ConsoleTab immediately collapse the split console so that any
+        following code that checks WI.isShowingSplitConsole will get the expected value.
+        It is also now possible to share a ContentView across ContentBrowsers via
+        tombstones, so remove the old code that would frequently close the LogContentView.
+
+2017-11-28  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: remove extra space before call frames in Canvas backtraces
+        https://bugs.webkit.org/show_bug.cgi?id=180129
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/CanvasDetailsSidebarPanel.js:
+        (WI.CanvasDetailsSidebarPanel.prototype.initialLayout):
+        * UserInterface/Views/RecordingTraceDetailsSidebarPanel.js:
+        (WI.RecordingTraceDetailsSidebarPanel):
+        Hide the disclosure buttons of these TreeOutlines as they don't have children.
+
+2017-11-28  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Clean up backtrace in Canvas details sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=179807
+        <rdar://problem/35604378>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Controllers/CallFrameTreeController.js: Added.
+        Display a list of call frames in a tree outline. Browse to the represented
+        call frame's source code location when a tree element is clicked or selected.
+
+        (WI.CallFrameTreeController):
+        (WI.CallFrameTreeController.prototype.get treeOutline):
+        (WI.CallFrameTreeController.prototype.get callFrames):
+        (WI.CallFrameTreeController.prototype.set callFrames):
+        (WI.CallFrameTreeController.prototype.disconnect):
+        (WI.CallFrameTreeController.prototype._treeElementClicked):
+        (WI.CallFrameTreeController.prototype._treeSelectionDidChange):
+        (WI.CallFrameTreeController.prototype._showSourceCodeLocation):
+
+        * UserInterface/Main.html:
+
+        * UserInterface/Views/CanvasDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.canvas .details-section.canvas-backtrace .call-frame): Deleted.
+        * UserInterface/Views/CanvasDetailsSidebarPanel.js:
+        (WI.CanvasDetailsSidebarPanel.prototype.initialLayout):
+        (WI.CanvasDetailsSidebarPanel.prototype._refreshBacktraceSection):
+
+        * UserInterface/Views/RecordingTraceDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.recording-trace > .content > .call-frame): Deleted.
+        * UserInterface/Views/RecordingTraceDetailsSidebarPanel.js:
+        (WI.RecordingTraceDetailsSidebarPanel):
+        (WI.RecordingTraceDetailsSidebarPanel.prototype.updateAction):
+
+        * UserInterface/Views/TreeElement.js:
+        (WI.TreeElement.treeElementToggled):
+        (WI.TreeElement.prototype.selectOnMouseDown):
+        Prevent selection if parent tree outline is not selectable.
+
+        * UserInterface/Views/TreeOutline.css:
+        (.tree-outline.non-selectable .item:hover):
+
+        * UserInterface/Views/TreeOutline.js:
+        Add `selectable` behavior, set at construction time. When false,
+        clicking a tree element dispatches an event instead of selecting
+        the tree element. Default true.
+
+        (WI.TreeOutline):
+        (WI.TreeOutline.prototype.get selectable):
+        Dispatch click event when not selectable, and some drive-by cleanup.
+
+2017-11-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Move console Preserve Log setting from Setting tab to Console navigation bar
+        https://bugs.webkit.org/show_bug.cgi?id=180125
+
+        Reviewed by Matt Baker.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/LogContentView.js:
+        (WI.LogContentView):
+        (WI.LogContentView.prototype.get navigationItems):
+        (WI.LogContentView.prototype._clearLogOnNavigateSettingChanged):
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createGeneralSettingsView):
+
+2017-11-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove Network "Clear on load" from Settings tab now that Network tab has a toggle for it
+        https://bugs.webkit.org/show_bug.cgi?id=180123
+
+        Reviewed by Matt Baker.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createGeneralSettingsView):
+
+2017-11-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network Tab - Add a toggle in the network tab to control automatically clearing or preserving log across loads
+        https://bugs.webkit.org/show_bug.cgi?id=180110
+        <rdar://problem/34071789>
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New strings.
+
+        * UserInterface/Views/CheckboxNavigationItem.css:
+        (.navigation-bar .item.checkbox input[type=checkbox]):
+        Tweak style to more center the checkbox vertically.
+
+        * UserInterface/Views/CheckboxNavigationItem.js:
+        (WI.CheckboxNavigationItem):
+        Fix setting the initial value of a checkbox navigation item.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView):
+        (WI.NetworkTableContentView.prototype.get navigationItems):
+        (WI.NetworkTableContentView.prototype.closed):
+        (WI.NetworkTableContentView.prototype._clearNetworkOnNavigateSettingChanged):
+        Add a new checkbox for the clear on navigation setting.
+
+        * UserInterface/Views/SettingEditor.js:
+        (WI.SettingEditor.createForSetting):
+        Update the editor checkbox if the setting changes outside of the setting editor.
+
+        * UserInterface/Views/NavigationItem.js:
+        (WI.NavigationItem.prototype.get tooltip):
+        (WI.NavigationItem.prototype.set tooltip):
+        * UserInterface/Views/ActivateButtonNavigationItem.js:
+        (WI.ActivateButtonNavigationItem.prototype.set activated):
+        * UserInterface/Views/ButtonNavigationItem.js:
+        (WI.ButtonNavigationItem):
+        (WI.ButtonNavigationItem.prototype.get toolTip): Deleted.
+        (WI.ButtonNavigationItem.prototype.set toolTip): Deleted.
+        * UserInterface/Views/ToggleButtonNavigationItem.js:
+        (WI.ToggleButtonNavigationItem.prototype.set alternateToolTip):
+        (WI.ToggleButtonNavigationItem.prototype.set toggled):
+        Move tooltip to the base class and rename it from `toolTip` to `tooltip` to
+        match existing generic places like TreeElement.
+
+2017-11-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Include Beacon loads in the Network Table's "Other" filter
+        https://bugs.webkit.org/show_bug.cgi?id=180113
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView):
+        Ensure the Other filter will handle any type that hasn't already been handled.
+
+2017-11-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ServiceWorker Inspector: Frontend changes to support Network tab and sub resources
+        https://bugs.webkit.org/show_bug.cgi?id=179642
+        <rdar://problem/35517704>
+
+        Reviewed by Brian Burg.
+
+        This patch makes use of the NetworkAgent and ServiceWorker agents in the frontend
+        for a ServiceWorker inspection target. It also makes changes to ensure that the
+        subresources requested by a ServiceWorker appear as expected in both the Resources
+        and Network Tabs.
+
+        The backends of ServiceWorkers and DedicatedWorkers for network requests are
+        different, but we want the presentation to be very similiar. Ultimately we'd like
+        to move to more similiar backends if possible.
+
+        The first (after Inspector.enable) message a ServiceWorker inspector sends to the
+        backend is ServiceWorker.getInitializationInfo. This parallels a Page inspector
+        sending Page.getResourceTree. From the response we get enough information to
+        setup the MainTarget with enough information (targetId, URL) to know what its main
+        resource URL will be. Like DedicatedWorkers, the target's main resource will be
+        filled in with the first WI.Script matching the URL. With this initialization
+        message alone the ServiceWorker Target behaves almost identically to a Worker
+        target and Network loads associated with the target (by targetId) are added as
+        sub-resources as expected.
+
+        The biggest tension in this patch is within FrameResourceManager. The class, as
+        its name indicates, assumes page resources with Frames, navigation, and loader
+        semantics. It takes a few modifications to make it better handle resources not
+        associated with a Page. A follow-up will rename this to just ResourceManager as
+        the class' main task is now to associate Resources with Targets.
+
+        * UserInterface/Base/Main.js:
+        (WI.loaded):
+        There are assumptions in a few places that the main target is a Page. Those
+        places can now be reached when the main target is a ServiceWorker. Add a
+        convenience WI.pageTarget that can be used in these places.
+
+        * UserInterface/Test/Test.js:
+        (WI.loaded):
+        Add pageTarget.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager.prototype.scriptDidParse):
+        Generalize the condition so the main target can have its main resource populated.
+        This will be the case when a ServiceWorker is the main target and its main resource
+        needs to be populated from a Script.
+
+        * UserInterface/Controllers/FrameResourceManager.js:
+        (WI.FrameResourceManager):
+        (WI.FrameResourceManager.prototype._processServiceWorkerInitializationInfo):
+        Handle ServiceWorker Resource initialization which is different from Page initialization.
+
+        (WI.FrameResourceManager.prototype._addNewResourceToFrameOrTarget):
+        (WI.FrameResourceManager.prototype._addResourceToTarget):
+        (WI.FrameResourceManager.prototype._addFrameTreeFromFrameResourceTreePayload):
+        Eliminate PageAgent, which might not be available in some targets.
+        Use pageTarget instead of mainTarget where appropriate.
+
+        * UserInterface/Controllers/TargetManager.js:
+        (WI.TargetManager.prototype.targetForIdentifier):
+        A ServiceWorker is the first time that the main target has an identifier,
+        so let TargetManager find it by target id.
+
+        * UserInterface/Models/Resource.js:
+        (WI.Resource):
+        (WI.Resource.resolvedType):
+        (WI.Resource.prototype.updateForResponse):
+        For Resource.Type.Other resources include a better type inferred from the MIME type.
+        ServiceWorker loads currently don't have type information and this provides a great
+        type for such loads. This should also provide nice types for CacheStorage.add*
+        populated resources which are otherwise type-less fetches.
+
+        * UserInterface/Protocol/Connection.js:
+        Rename the class since this may no longer be a "Page".
+
+        * UserInterface/Protocol/MainTarget.js:
+        (WI.MainTarget):
+        (WI.MainTarget.mainConnectionInfo):
+        (WI.MainTarget.prototype.get mainResource):
+        (WI.MainTarget.prototype.set mainResource):
+        (WI.MainTarget.prototype.get displayName): Deleted.
+        * UserInterface/Protocol/Target.js:
+        (WI.Target.prototype.set identifier):
+        (WI.Target.prototype.set name):
+        (WI.Target.prototype.get mainResource):
+        (WI.Target.prototype.set mainResource):
+        (WI.Target.prototype.get displayName):
+        Give richer types for the main target. And allow a few things to be initialized
+        lazily, which will be necessary from an initialization message.
+
+        * UserInterface/Views/NetworkTabContentView.js:
+        (WI.NetworkTabContentView.isTabAllowed):
+        Remove a PageAgent requirement for the Network tab. A ServiceWorker will not
+        have a PageAgent, but it will have a NetworkAgent, which should be good enough.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype._populateWithInitialResourcesIfNeeded):
+        Initial populate should populate all subresources of all targets.
+
+        * UserInterface/Views/ResourceContentView.js:
+        (WI.ResourceContentView.prototype.contentAvailable):
+        This was getting used by ResourceType.Other without warning. Make it warn.
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WI.ResourceSidebarPanel.prototype._addScript):
+        (WI.ResourceSidebarPanel.prototype._addTargetWithMainResource):
+        * UserInterface/Views/ScriptTreeElement.js:
+        (WI.ScriptTreeElement):
+        Allow WorkerTreeElements for ServiceWorker targets which may also be the main target.
+        Also when adding such a tree element, promote the resource sidebar to a full tree
+        outline, and stop hiding disclosure buttons.
+
+2017-11-27  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: selector's field shadow is clipped at the bottom
+        https://bugs.webkit.org/show_bug.cgi?id=179961
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.css:
+        (.spreadsheet-css-declaration .selector):
+
+2017-11-21  Tomas Popela  <tpopela@redhat.com>
+
+        Unreviewed compile warning fix
+
+        WARNING: console.assert inside control flow statement without braces on line: 130487:
+        console.assert(this._loggingChannelSources.includes(channel.source));
+
+        * UserInterface/Controllers/LogManager.js:
+        (WI.LogManager):
+
+2017-11-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Update the Trash / Clear icon
+        https://bugs.webkit.org/show_bug.cgi?id=179850
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Images/NavigationItemTrash.svg:
+        Update the icon.
+
+        * UserInterface/Views/ProbeDetailsSidebarPanel.css:
+        (.sidebar > .panel.probes > .navigation-bar .item.clear-samples):
+        * UserInterface/Views/ProbeSetDetailsSection.js:
+        (WI.ProbeSetDetailsSection):
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.css:
+        (.scope-chain .navigation-bar .item.clear-watch-expressions):
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        (WI.ScopeChainDetailsSidebarPanel):
+        Resize to 15x15 and move it down a pixel.
+
+2017-11-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network Tab - Add HAR Export button
+        https://bugs.webkit.org/show_bug.cgi?id=179570
+        <rdar://problem/35484918>
+
+        Reviewed by Matt Baker.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New strings.
+
+        * UserInterface/Images/Export.svg: Added.
+        * UserInterface/Images/Import.svg: Added.
+        Add symmetric import/export buttons.
+
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded):
+        Expose the save keyboard shortcut so we can show its display name in a tooltip.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView):
+        (WI.NetworkTableContentView.prototype.get navigationItems):
+        (WI.NetworkTableContentView.prototype.reset):
+        (WI.NetworkTableContentView.prototype.layout):
+        (WI.NetworkTableContentView.prototype._updateExportButton):
+        Include the export button and enable/disable it when appropriate.
+
+        (WI.NetworkTableContentView.prototype.closed):
+        Add a missing event listener removal.
+
+2017-11-17  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Disabled ImageAndText-style buttons should have gray text
+        https://bugs.webkit.org/show_bug.cgi?id=179843
+        <rdar://problem/35624337>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ButtonNavigationItem.css:
+        (.navigation-bar .item.button.disabled.image-and-text,):
+        (.navigation-bar .item.button.disabled > .glyph): Deleted.
+
+2017-11-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network Tab - Update Ignore Caches button
+        https://bugs.webkit.org/show_bug.cgi?id=179841
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Images/IgnoreCaches.svg:
+        This changes from an arrow over a cache to a slash through a cache.
+
+2017-11-17  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Remove WI.instanceForClass
+        https://bugs.webkit.org/show_bug.cgi?id=179746
+
+        Reviewed by Timothy Hatcher.
+
+        The implementations of DetailsSidebarPanel subclasses assume that panels
+        are closed and released when no longer needed. Keeping them alive with
+        instanceForClass isn't the right choice, since sidebar panels remove their
+        event listeners when closed.
+
+        * UserInterface/Base/Main.js:
+        (WI.instanceForClass): Deleted.
+        * UserInterface/Views/DebuggerTabContentView.js:
+        (WI.DebuggerTabContentView.prototype.showDetailsSidebarPanels):
+        * UserInterface/Views/TabContentView.js:
+        (WI.TabContentView.prototype.get detailsSidebarPanels):
+
+2017-11-17  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: ButtonNavigationItem should support image and text button style
+        https://bugs.webkit.org/show_bug.cgi?id=179625
+        <rdar://problem/35512238>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Main.html:
+
+        * UserInterface/Views/ButtonNavigationItem.css:
+        (.navigation-bar .item.button):
+        (.navigation-bar .item.button.image-only):
+        (.navigation-bar .item.button.image-and-text):
+        (.navigation-bar .item.button.image-and-text > span):
+        (.navigation-bar .item.button.text-only):
+        (.navigation-bar .item.button.text-only.checkbox): Deleted.
+        (.navigation-bar .item.button.text-only.checkbox label): Deleted.
+        Checkbox styles have been moved to a separate CSS file.
+
+        * UserInterface/Views/ButtonNavigationItem.js:
+        Add backing data members for the image and label, allowing the DOM
+        representation of the button to change as needed.
+
+        (WI.ButtonNavigationItem):
+        Remove duplicate role logic. The base class sets the role.
+
+        (WI.ButtonNavigationItem.prototype.set label):
+        (WI.ButtonNavigationItem.prototype.set image):
+        (WI.ButtonNavigationItem.prototype.get buttonStyle):
+        (WI.ButtonNavigationItem.prototype.set buttonStyle):
+        (WI.ButtonNavigationItem.prototype.get additionalClassNames):
+        (WI.ButtonNavigationItem.prototype._mouseClicked):
+        (WI.ButtonNavigationItem.prototype._update):
+        (WI.ButtonNavigationItem.prototype.updateButtonText): Deleted.
+
+        * UserInterface/Views/CheckboxNavigationItem.css: Added.
+        (.navigation-bar .item.checkbox):
+        (.navigation-bar .item.checkbox label):
+
+        * UserInterface/Views/CheckboxNavigationItem.js:
+        Change base class to NavigationItem, since this item lacks an image
+        and makes use of an actual label element instead of a span for its text.
+
+        (WI.CheckboxNavigationItem):
+        (WI.CheckboxNavigationItem.prototype._checkboxChanged):
+        (WI.CheckboxNavigationItem.prototype.updateButtonText): Deleted.
+
+2017-11-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove FIXMEs for GTK+ missing icons
+        https://bugs.webkit.org/show_bug.cgi?id=155282
+        <rdar://problem/25076615>
+
+        Reviewed by Michael Catanzaro.
+
+        * UserInterface/Views/PathComponentIcons.css:
+        (.source-icon .icon):
+        (body:not(.mac-platform, .windows-platform) .heap-snapshot-record .icon,): Deleted.
+        * UserInterface/Views/ResourceIcons.css:
+        (.large .resource-icon.resource-type-websocket .icon):
+        (body:not(.mac-platform, .windows-platform) .resource-icon.resource-type-ping .icon,): Deleted.
+        (body:not(.mac-platform, .windows-platform) .large .resource-icon.resource-type-ping .icon,): Deleted.
+        All ports now share the same images.
+
 2017-11-15  Nikita Vasilyev  <nvasilyev@apple.com>
 
         Web Inspector: Styles Redesign: typing colon in property name should advance to value field

@@ -2206,15 +2206,6 @@ void SpeculativeJIT::compile(Node* node)
         }
         break;
     }
-        
-    case GetLocalUnlinked: {
-        GPRTemporary payload(this);
-        GPRTemporary tag(this);
-        m_jit.load32(JITCompiler::payloadFor(node->unlinkedMachineLocal()), payload.gpr());
-        m_jit.load32(JITCompiler::tagFor(node->unlinkedMachineLocal()), tag.gpr());
-        jsValueResult(tag.gpr(), payload.gpr(), node);
-        break;
-    }
 
     case MovHint: {
         compileMovHint(m_currentNode);
@@ -4124,7 +4115,7 @@ void SpeculativeJIT::compile(Node* node)
         
         RegisteredStructure structure = node->structure();
         size_t allocationSize = JSFinalObject::allocationSize(structure->inlineCapacity());
-        MarkedAllocator* allocatorPtr = subspaceFor<JSFinalObject>(*m_jit.vm())->allocatorFor(allocationSize);
+        MarkedAllocator* allocatorPtr = subspaceFor<JSFinalObject>(*m_jit.vm())->allocatorForNonVirtual(allocationSize, AllocatorForMode::AllocatorIfExists);
 
         m_jit.move(TrustedImmPtr(allocatorPtr), allocatorGPR);
         emitAllocateJSObject(resultGPR, allocatorPtr, allocatorGPR, TrustedImmPtr(structure), TrustedImmPtr(0), scratchGPR, slowPath);
@@ -4422,7 +4413,6 @@ void SpeculativeJIT::compile(Node* node)
         break;
         
     case GetButterfly:
-    case GetButterflyWithoutCaging:
         compileGetButterfly(node);
         break;
 
@@ -4831,6 +4821,11 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
+    case NormalizeMapKey: {
+        compileNormalizeMapKey(node);
+        break;
+    }
+
     case GetMapBucket: {
         SpeculateCellOperand map(this, node->child1());
         JSValueOperand key(this, node->child2());
@@ -4873,6 +4868,14 @@ void SpeculativeJIT::compile(Node* node)
 
     case LoadValueFromMapBucket:
         compileLoadValueFromMapBucket(node);
+        break;
+
+    case SetAdd:
+        compileSetAdd(node);
+        break;
+
+    case MapSet:
+        compileMapSet(node);
         break;
 
     case WeakMapGet:
@@ -5268,7 +5271,7 @@ void SpeculativeJIT::compile(Node* node)
         moveTrueTo(resultPayloadGPR);
         MacroAssembler::Jump done = m_jit.jump();
 
-        addSlowPathGenerator(slowPathCall(slowCases, this, operationHasIndexedProperty, JSValueRegs(resultTagGPR, resultPayloadGPR), baseGPR, indexGPR, static_cast<int32_t>(node->internalMethodType())));
+        addSlowPathGenerator(slowPathCall(slowCases, this, operationHasIndexedPropertyByInt, JSValueRegs(resultTagGPR, resultPayloadGPR), baseGPR, indexGPR, static_cast<int32_t>(node->internalMethodType())));
         
         done.link(&m_jit);
         booleanResult(resultPayloadGPR, node);

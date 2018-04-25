@@ -50,14 +50,14 @@ SWServerJobQueue::~SWServerJobQueue()
 {
 }
 
-bool SWServerJobQueue::isCurrentlyProcessingJob(uint64_t jobIdentifier) const
+bool SWServerJobQueue::isCurrentlyProcessingJob(const ServiceWorkerJobDataIdentifier& jobDataIdentifier) const
 {
-    return !m_jobQueue.isEmpty() && firstJob().identifier() == jobIdentifier;
+    return !m_jobQueue.isEmpty() && firstJob().identifier() == jobDataIdentifier;
 }
 
 void SWServerJobQueue::scriptFetchFinished(SWServer::Connection& connection, const ServiceWorkerFetchResult& result)
 {
-    if (!isCurrentlyProcessingJob(result.jobIdentifier))
+    if (!isCurrentlyProcessingJob(result.jobDataIdentifier))
         return;
 
     auto& job = firstJob();
@@ -73,7 +73,7 @@ void SWServerJobQueue::scriptFetchFinished(SWServer::Connection& connection, con
 
         // If newestWorker is null, invoke Clear Registration algorithm passing registration as its argument.
         if (!newestWorker)
-            clearRegistration(*registration);
+            clearRegistration(m_server, *registration);
 
         // Invoke Finish Job with job and abort these steps.
         finishCurrentJob();
@@ -87,12 +87,15 @@ void SWServerJobQueue::scriptFetchFinished(SWServer::Connection& connection, con
     // - Invoke Finish Job with job and abort these steps.
 
     // FIXME: Support the proper worker type (classic vs module)
-    m_server.updateWorker(connection, m_registrationKey, job.scriptURL, result.script, WorkerType::Classic);
+    m_server.updateWorker(connection, job.identifier(), *registration, job.scriptURL, result.script, WorkerType::Classic);
 }
 
 // https://w3c.github.io/ServiceWorker/#update-algorithm
-void SWServerJobQueue::scriptContextFailedToStart(ServiceWorkerIdentifier, const String& message)
+void SWServerJobQueue::scriptContextFailedToStart(const ServiceWorkerJobDataIdentifier& jobDataIdentifier, ServiceWorkerIdentifier, const String& message)
 {
+    if (!isCurrentlyProcessingJob(jobDataIdentifier))
+        return;
+
     // If an uncaught runtime script error occurs during the above step, then:
     auto* registration = m_server.getRegistration(m_registrationKey);
     ASSERT(registration);
@@ -102,14 +105,17 @@ void SWServerJobQueue::scriptContextFailedToStart(ServiceWorkerIdentifier, const
 
     // If newestWorker is null, invoke Clear Registration algorithm passing registration as its argument.
     if (!registration->getNewestWorker())
-        clearRegistration(*registration);
+        clearRegistration(m_server, *registration);
 
     // Invoke Finish Job with job and abort these steps.
     finishCurrentJob();
 }
 
-void SWServerJobQueue::scriptContextStarted(ServiceWorkerIdentifier identifier)
+void SWServerJobQueue::scriptContextStarted(const ServiceWorkerJobDataIdentifier& jobDataIdentifier, ServiceWorkerIdentifier identifier)
 {
+    if (!isCurrentlyProcessingJob(jobDataIdentifier))
+        return;
+
     auto* registration = m_server.getRegistration(m_registrationKey);
     ASSERT(registration);
 
@@ -148,8 +154,11 @@ void SWServerJobQueue::didResolveRegistrationPromise()
 }
 
 // https://w3c.github.io/ServiceWorker/#install
-void SWServerJobQueue::didFinishInstall(ServiceWorkerIdentifier identifier, bool wasSuccessful)
+void SWServerJobQueue::didFinishInstall(const ServiceWorkerJobDataIdentifier& jobDataIdentifier, ServiceWorkerIdentifier identifier, bool wasSuccessful)
 {
+    if (!isCurrentlyProcessingJob(jobDataIdentifier))
+        return;
+
     auto* registration = m_server.getRegistration(m_registrationKey);
     ASSERT(registration);
     ASSERT(registration->installingWorker());
@@ -166,7 +175,7 @@ void SWServerJobQueue::didFinishInstall(ServiceWorkerIdentifier identifier, bool
 
         // If newestWorker is null, invoke Clear Registration algorithm passing registration as its argument.
         if (!registration->getNewestWorker())
-            clearRegistration(*registration);
+            clearRegistration(m_server, *registration);
         // Invoke Finish Job with job and abort these steps.
         finishCurrentJob();
         return;
@@ -230,7 +239,12 @@ void SWServerJobQueue::activate(SWServer& server, SWServerRegistration& registra
     // Run the Update Worker State algorithm passing registration's active worker and activating as the arguments.
     registration.updateWorkerState(*registration.activeWorker(), ServiceWorkerState::Activating);
     // FIXME: For each service worker client client whose creation URL matches registration's scope url...
-    // FIXME: For each service worker client client who is using registration...
+
+    // For each service worker client client who is using registration:
+    // - Set client's active worker to registration's active worker.
+    // - Invoke Notify Controller Change algorithm with client as the argument.
+    registration.notifyClientsOfControllerChange();
+
     // FIXME: Invoke Run Service Worker algorithm with activeWorker as the argument.
 
     // Queue a task to fire the activate event.
@@ -349,7 +363,7 @@ void SWServerJobQueue::tryClearRegistration(SWServerRegistration& registration)
     if (registration.activeWorker() && registration.activeWorker()->hasPendingEvents())
         return;
 
-    clearRegistration(registration);
+    clearRegistration(m_server, registration);
 }
 
 // https://w3c.github.io/ServiceWorker/#clear-registration
@@ -364,14 +378,14 @@ static void clearRegistrationWorker(SWServerRegistration& registration, SWServer
 }
 
 // https://w3c.github.io/ServiceWorker/#clear-registration
-void SWServerJobQueue::clearRegistration(SWServerRegistration& registration)
+void SWServerJobQueue::clearRegistration(SWServer& server, SWServerRegistration& registration)
 {
     clearRegistrationWorker(registration, registration.installingWorker(), ServiceWorkerRegistrationState::Installing);
     clearRegistrationWorker(registration, registration.waitingWorker(), ServiceWorkerRegistrationState::Waiting);
     clearRegistrationWorker(registration, registration.activeWorker(), ServiceWorkerRegistrationState::Active);
 
     // Remove scope to registration map[scopeString].
-    m_server.removeRegistration(registration.key());
+    server.removeRegistration(registration.key());
 }
 
 // https://w3c.github.io/ServiceWorker/#update-algorithm

@@ -60,6 +60,7 @@ set(WTF_HEADERS
     IndexedContainerIterator.h
     IteratorAdaptors.h
     IteratorRange.h
+    JSONValues.h
     Language.h
     ListHashSet.h
     Liveness.h
@@ -126,6 +127,7 @@ set(WTF_HEADERS
     SharedTask.h
     SaturatedArithmetic.h
     ScopedLambda.h
+    ScrambledPtr.h
     Seconds.h
     SegmentedVector.h
     SmallPtrSet.h
@@ -145,6 +147,7 @@ set(WTF_HEADERS
     Threading.h
     ThreadingPrimitives.h
     TimeWithDynamicClockType.h
+    TimingScope.h
     TinyPtrSet.h
     UUID.h
     UniqueRef.h
@@ -230,6 +233,7 @@ set(WTF_SOURCES
     GlobalVersion.cpp
     GregorianDateTime.cpp
     HashTable.cpp
+    JSONValues.cpp
     Language.cpp
     Lock.cpp
     LockedPrintStream.cpp
@@ -253,6 +257,7 @@ set(WTF_SOURCES
     RefCountedLeakCounter.cpp
     RunLoop.cpp
     SHA1.cpp
+    ScrambledPtr.cpp
     Seconds.cpp
     SixCharacterHash.cpp
     StackBounds.cpp
@@ -263,6 +268,7 @@ set(WTF_SOURCES
     ThreadMessage.cpp
     Threading.cpp
     TimeWithDynamicClockType.cpp
+    TimingScope.cpp
     UUID.cpp
     WallTime.cpp
     WordLock.cpp

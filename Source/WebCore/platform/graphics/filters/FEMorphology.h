@@ -19,8 +19,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef FEMorphology_h
-#define FEMorphology_h
+#pragma once
 
 #include "FilterEffect.h"
 #include "Filter.h"
@@ -46,15 +45,21 @@ public:
     float radiusY() const { return m_radiusY; }
     bool setRadiusY(float);
 
+private:
+    FEMorphology(Filter&, MorphologyOperatorType, float radiusX, float radiusY);
+
+    const char* filterName() const final { return "FEMorphology"; }
+
     void platformApplySoftware() override;
-    void dump() override;
 
     void determineAbsolutePaintRect() override;
 
-    WTF::TextStream& externalRepresentation(WTF::TextStream&, int indention) const override;
+    WTF::TextStream& externalRepresentation(WTF::TextStream&, RepresentationType) const override;
+
+    bool platformApplyDegenerate(Uint8ClampedArray& dstPixelArray, const IntRect& imageRect, int radiusX, int radiusY);
 
     struct PaintingData {
-        Uint8ClampedArray* srcPixelArray;
+        const Uint8ClampedArray* srcPixelArray;
         Uint8ClampedArray* dstPixelArray;
         int width;
         int height;
@@ -62,23 +67,18 @@ public:
         int radiusY;
     };
 
-    static const int s_minimalArea = (300 * 300); // Empirical data limit for parallel jobs
-
     struct PlatformApplyParameters {
         FEMorphology* filter;
         int startY;
         int endY;
-        PaintingData* paintingData;
+        const PaintingData* paintingData;
     };
 
     static void platformApplyWorker(PlatformApplyParameters*);
 
-    inline void platformApply(PaintingData*);
-    inline void platformApplyGeneric(PaintingData*, const int yStart, const int yEnd);
-private:
-    FEMorphology(Filter&, MorphologyOperatorType, float radiusX, float radiusY);
-    bool platformApplyDegenerate(Uint8ClampedArray* dstPixelArray, const IntRect& imageRect, int radiusX, int radiusY);
-    
+    void platformApply(const PaintingData&);
+    void platformApplyGeneric(const PaintingData&, int startY, int endY);
+
     MorphologyOperatorType m_type;
     float m_radiusX;
     float m_radiusY;
@@ -86,4 +86,3 @@ private:
 
 } // namespace WebCore
 
-#endif // FEMorphology_h

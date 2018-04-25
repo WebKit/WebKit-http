@@ -195,6 +195,7 @@
 #import <WebCore/ThreadCheck.h>
 #import <WebCore/UserAgent.h>
 #import <WebCore/UserContentController.h>
+#import <WebCore/UserGestureIndicator.h>
 #import <WebCore/UserScript.h>
 #import <WebCore/UserStyleSheet.h>
 #import <WebCore/ValidationBubble.h>
@@ -565,12 +566,20 @@ static const char webViewIsOpen[] = "At least one WebView is still open.";
 
 FindOptions coreOptions(WebFindOptions options)
 {
-    return (options & WebFindOptionsCaseInsensitive ? CaseInsensitive : 0)
-        | (options & WebFindOptionsAtWordStarts ? AtWordStarts : 0)
-        | (options & WebFindOptionsTreatMedialCapitalAsWordStart ? TreatMedialCapitalAsWordStart : 0)
-        | (options & WebFindOptionsBackwards ? Backwards : 0)
-        | (options & WebFindOptionsWrapAround ? WrapAround : 0)
-        | (options & WebFindOptionsStartInSelection ? StartInSelection : 0);
+    FindOptions findOptions;
+    if (options & WebFindOptionsCaseInsensitive)
+        findOptions |= CaseInsensitive;
+    if (options & WebFindOptionsAtWordStarts)
+        findOptions |= AtWordStarts;
+    if (options & WebFindOptionsTreatMedialCapitalAsWordStart)
+        findOptions |= TreatMedialCapitalAsWordStart;
+    if (options & WebFindOptionsBackwards)
+        findOptions |= Backwards;
+    if (options & WebFindOptionsWrapAround)
+        findOptions |= WrapAround;
+    if (options & WebFindOptionsStartInSelection)
+        findOptions |= StartInSelection;
+    return findOptions;
 }
 
 LayoutMilestones coreLayoutMilestones(WebLayoutMilestones milestones)
@@ -2342,7 +2351,7 @@ static bool fastDocumentTeardownEnabled()
 // Indicates if the WebView is in the midst of a user gesture.
 - (BOOL)_isProcessingUserGesture
 {
-    return ScriptController::processingUserGesture();
+    return UserGestureIndicator::processingUserGesture();
 }
 
 + (NSString *)_MIMETypeForFile:(NSString *)path
@@ -2860,6 +2869,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setJavaScriptCanOpenWindowsAutomatically([preferences javaScriptCanOpenWindowsAutomatically] || shouldAllowWindowOpenWithoutUserGesture());
 
     settings.setVisualViewportEnabled([preferences visualViewportEnabled]);
+    settings.setVisualViewportAPIEnabled([preferences visualViewportAPIEnabled]);
     settings.setMediaContentTypesRequiringHardwareSupport([preferences mediaContentTypesRequiringHardwareSupport]);
 
     switch ([preferences storageBlockingPolicy]) {
@@ -6719,7 +6729,8 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
             NSFilePromiseReceiver *item = draggingItem.item;
             NSDictionary *options = @{ };
 
-            [item receivePromisedFilesAtDestination:dropLocation options:options operationQueue:[NSOperationQueue new] reader:^(NSURL * _Nonnull fileURL, NSError * _Nullable errorOrNil) {
+            RetainPtr<NSOperationQueue> queue = adoptNS([NSOperationQueue new]);
+            [item receivePromisedFilesAtDestination:dropLocation options:options operationQueue:queue.get() reader:^(NSURL * _Nonnull fileURL, NSError * _Nullable errorOrNil) {
                 if (errorOrNil)
                     return;
 

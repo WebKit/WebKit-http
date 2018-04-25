@@ -270,6 +270,14 @@ public:
         m_assembler.sw(dataTempRegister, addrTempRegister, 4);
     }
 
+    void getEffectiveAddress(BaseIndex address, RegisterID dest)
+    {
+        m_assembler.sll(addrTempRegister, address.index, address.scale);
+        m_assembler.addu(dest, addrTempRegister, address.base);
+        if (address.offset)
+            add32(TrustedImm32(address.offset), dest);
+    }
+
     void and32(Address src, RegisterID dest)
     {
         load32(src, dataTempRegister);
@@ -374,6 +382,11 @@ public:
     void neg32(RegisterID srcDest)
     {
         m_assembler.subu(srcDest, MIPSRegisters::zero, srcDest);
+    }
+
+    void neg32(RegisterID src, RegisterID dest)
+    {
+        m_assembler.subu(dest, MIPSRegisters::zero, src);
     }
 
     void or32(RegisterID src, RegisterID dest)

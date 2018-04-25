@@ -47,8 +47,8 @@
 #include "Page.h"
 #include "RadioNodeList.h"
 #include "RenderTextControl.h"
-#include "ScriptController.h"
 #include "Settings.h"
+#include "UserGestureIndicator.h"
 #include <limits>
 #include <wtf/Ref.h>
 #include <wtf/SetForScope.h>
@@ -75,7 +75,7 @@ Ref<HTMLFormElement> HTMLFormElement::create(const QualifiedName& tagName, Docum
 
 HTMLFormElement::~HTMLFormElement()
 {
-    document().formController().willDeleteForm(this);
+    document().formController().willDeleteForm(*this);
     if (!shouldAutocomplete())
         document().unregisterForDocumentSuspensionCallbacks(this);
 
@@ -299,7 +299,7 @@ void HTMLFormElement::submit()
 
 void HTMLFormElement::submitFromJavaScript()
 {
-    submit(nullptr, false, ScriptController::processingUserGesture(), SubmittedByJavaScript);
+    submit(nullptr, false, UserGestureIndicator::processingUserGesture(), SubmittedByJavaScript);
 }
 
 StringPairVector HTMLFormElement::textFieldValues() const

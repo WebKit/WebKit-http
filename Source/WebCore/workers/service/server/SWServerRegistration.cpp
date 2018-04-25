@@ -111,7 +111,7 @@ void SWServerRegistration::fireUpdateFoundEvent()
 
 void SWServerRegistration::forEachConnection(const WTF::Function<void(SWServer::Connection&)>& apply)
 {
-    for (uint64_t connectionIdentifierWithClients : m_connectionsWithClientRegistrations.values()) {
+    for (auto connectionIdentifierWithClients : m_connectionsWithClientRegistrations.values()) {
         if (auto* connection = m_server.getConnection(connectionIdentifierWithClients))
             apply(*connection);
     }
@@ -134,12 +134,12 @@ ServiceWorkerRegistrationData SWServerRegistration::data() const
     return { m_registrationKey, identifier(), m_scopeURL, m_updateViaCache, WTFMove(installingWorkerData), WTFMove(waitingWorkerData), WTFMove(activeWorkerData) };
 }
 
-void SWServerRegistration::addClientServiceWorkerRegistration(uint64_t connectionIdentifier)
+void SWServerRegistration::addClientServiceWorkerRegistration(SWServerConnectionIdentifier connectionIdentifier)
 {
     m_connectionsWithClientRegistrations.add(connectionIdentifier);
 }
 
-void SWServerRegistration::removeClientServiceWorkerRegistration(uint64_t connectionIdentifier)
+void SWServerRegistration::removeClientServiceWorkerRegistration(SWServerConnectionIdentifier connectionIdentifier)
 {
     m_connectionsWithClientRegistrations.remove(connectionIdentifier);
 }
@@ -147,8 +147,8 @@ void SWServerRegistration::removeClientServiceWorkerRegistration(uint64_t connec
 void SWServerRegistration::addClientUsingRegistration(const ServiceWorkerClientIdentifier& clientIdentifier)
 {
     auto addResult = m_clientsUsingRegistration.ensure(clientIdentifier.serverConnectionIdentifier, [] {
-        return HashSet<uint64_t> { };
-    }).iterator->value.add(clientIdentifier.scriptExecutionContextIdentifier);
+        return HashSet<DocumentIdentifier> { };
+    }).iterator->value.add(clientIdentifier.contextIdentifier);
     ASSERT_UNUSED(addResult, addResult.isNewEntry);
 }
 
@@ -156,14 +156,25 @@ void SWServerRegistration::removeClientUsingRegistration(const ServiceWorkerClie
 {
     auto iterator = m_clientsUsingRegistration.find(clientIdentifier.serverConnectionIdentifier);
     ASSERT(iterator != m_clientsUsingRegistration.end());
-    bool wasRemoved = iterator->value.remove(clientIdentifier.scriptExecutionContextIdentifier);
+    bool wasRemoved = iterator->value.remove(clientIdentifier.contextIdentifier);
     ASSERT_UNUSED(wasRemoved, wasRemoved);
 
     if (iterator->value.isEmpty())
         m_clientsUsingRegistration.remove(iterator);
 }
 
-void SWServerRegistration::unregisterServerConnection(uint64_t serverConnectionIdentifier)
+// https://w3c.github.io/ServiceWorker/#notify-controller-change
+void SWServerRegistration::notifyClientsOfControllerChange()
+{
+    ASSERT(activeWorker());
+
+    for (auto& item : m_clientsUsingRegistration) {
+        if (auto* connection = m_server.getConnection(item.key))
+            connection->notifyClientsOfControllerChange(item.value, activeWorker()->data());
+    }
+}
+
+void SWServerRegistration::unregisterServerConnection(SWServerConnectionIdentifier serverConnectionIdentifier)
 {
     m_connectionsWithClientRegistrations.removeAll(serverConnectionIdentifier);
     m_clientsUsingRegistration.remove(serverConnectionIdentifier);

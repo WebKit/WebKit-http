@@ -70,59 +70,11 @@ list(APPEND TestJavaScriptCore_LIBRARIES
     ${GTK3_LIBRARIES}
 )
 
-add_executable(TestWebKit
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/AboutBlankLoad.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/CanHandleRequest.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/CookieManager.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/DocumentStartUserScriptAlertCrash.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/DOMWindowExtensionBasic.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/DOMWindowExtensionNoCache.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/DownloadDecideDestinationCrash.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/EnumerateMediaDevices.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/EvaluateJavaScript.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/FailedLoad.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/Find.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/ForceRepaint.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/FrameMIMETypeHTML.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/FrameMIMETypePNG.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/Geolocation.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/GetInjectedBundleInitializationUserDataCallback.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/HitTestResultNodeHandle.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/InjectedBundleBasic.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/InjectedBundleFrameHitTest.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/InjectedBundleInitializationUserDataCallbackWins.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/LoadAlternateHTMLStringWithNonDirectoryURL.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/LoadCanceledNoServerRedirectCallback.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/LoadPageOnCrash.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/MouseMoveAfterCrash.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/NewFirstVisuallyNonEmptyLayout.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/NewFirstVisuallyNonEmptyLayoutFails.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/NewFirstVisuallyNonEmptyLayoutForImages.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/NewFirstVisuallyNonEmptyLayoutFrames.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/PageLoadBasic.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/PageLoadDidChangeLocationWithinPageForFrame.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/ParentFrame.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/PendingAPIRequestURL.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/PreventEmptyUserAgent.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/PrivateBrowsingPushStateNoHistoryCallback.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/ProvisionalURLAfterWillSendRequestCallback.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/ReloadPageAfterCrash.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/ResizeWindowAfterCrash.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/RestoreSessionStateContainingFormData.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/ShouldGoToBackForwardListItem.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/TextFieldDidBeginAndEndEditing.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/UserMedia.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/UserMessage.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/WillSendSubmitEvent.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/WKPageCopySessionStateWithFiltering.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/WKPageGetScaleFactorNotZero.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/WKPreferences.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/WKRetainPtr.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/WKString.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/WKStringJSString.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/WebKit/WKURL.cpp
+list(APPEND test_webkit_api_SOURCES
     ${TESTWEBKITAPI_DIR}/Tests/WebKit/gtk/InputMethodFilter.cpp
 )
+
+add_executable(TestWebKit ${test_webkit_api_SOURCES})
 
 target_link_libraries(TestWebKit ${test_webkit_api_LIBRARIES})
 add_test(TestWebKit ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebKit/TestWebKit)
@@ -162,20 +114,6 @@ list(APPEND TestWTF_SOURCES
     ${TESTWEBKITAPI_DIR}/Tests/WTF/glib/WorkQueueGLib.cpp
 )
 
-add_executable(TestJavaScriptCore
-    ${test_main_SOURCES}
-    ${TESTWEBKITAPI_DIR}/TestsController.cpp
-    ${TESTWEBKITAPI_DIR}/Tests/JavaScriptCore/InspectorValue.cpp
-)
-
-target_link_libraries(TestJavaScriptCore ${TestJavaScriptCore_LIBRARIES})
-add_dependencies(TestJavaScriptCore ${ForwardingHeadersForTestWebKitAPI_NAME} ${ForwardingNetworkHeadersForTestWebKitAPI_NAME})
-add_test(TestJavaScriptCore ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/JavaScriptCore/TestJavaScriptCore)
-set_tests_properties(TestJavaScriptCore PROPERTIES TIMEOUT 60)
-set_target_properties(TestJavaScriptCore PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/JavaScriptCore/
-)
-
 if (COMPILER_IS_GCC_OR_CLANG)
     WEBKIT_ADD_TARGET_CXX_FLAGS(TestWebKit -Wno-sign-compare
                                            -Wno-undef
@@ -184,8 +122,4 @@ if (COMPILER_IS_GCC_OR_CLANG)
     WEBKIT_ADD_TARGET_CXX_FLAGS(TestWebCore -Wno-sign-compare
                                             -Wno-undef
                                             -Wno-unused-parameter)
-
-    WEBKIT_ADD_TARGET_CXX_FLAGS(TestJavaScriptCore -Wno-sign-compare
-                                                   -Wno-undef
-                                                   -Wno-unused-parameter)
 endif ()

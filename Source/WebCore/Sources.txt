@@ -404,6 +404,7 @@ bindings/js/JSReadableStreamSourceCustom.cpp
 bindings/js/JSSVGPathSegCustom.cpp
 bindings/js/JSStyleSheetCustom.cpp
 bindings/js/JSServiceWorkerClientCustom.cpp
+bindings/js/JSServiceWorkerGlobalScopeCustom.cpp
 bindings/js/JSTextCustom.cpp
 bindings/js/JSTextTrackCueCustom.cpp
 bindings/js/JSTextTrackCustom.cpp
@@ -418,6 +419,7 @@ bindings/js/JSWebGPURenderPassAttachmentDescriptorCustom.cpp
 bindings/js/JSWebGPURenderingContextCustom.cpp
 bindings/js/JSWorkerGlobalScopeBase.cpp
 bindings/js/JSWorkerGlobalScopeCustom.cpp
+bindings/js/JSWorkerNavigatorCustom.cpp
 bindings/js/JSXMLDocumentCustom.cpp
 bindings/js/JSXMLHttpRequestCustom.cpp
 bindings/js/JSXPathNSResolverCustom.cpp
@@ -1336,6 +1338,7 @@ page/UserContentProvider.cpp
 page/UserContentController.cpp
 page/UserContentURLPattern.cpp
 page/VisitedLinkStore.cpp
+page/VisualViewport.cpp
 page/WheelEventDeltaFilter.cpp
 page/WheelEventTestTrigger.cpp
 page/WindowFeatures.cpp
@@ -1481,6 +1484,7 @@ platform/encryptedmedia/CDMFactory.cpp
 
 platform/graphics/BitmapImage.cpp
 platform/graphics/Color.cpp
+platform/graphics/ColorUtilities.cpp
 platform/graphics/ComplexTextController.cpp
 platform/graphics/CrossfadeGeneratedImage.cpp
 platform/graphics/DisplayRefreshMonitor.cpp
@@ -1522,7 +1526,6 @@ platform/graphics/ImageDecoder.cpp
 platform/graphics/ImageFrame.cpp
 platform/graphics/ImageFrameCache.cpp
 platform/graphics/ImageOrientation.cpp
-platform/graphics/ImageSource.cpp
 platform/graphics/IntPoint.cpp
 platform/graphics/IntRect.cpp
 platform/graphics/IntSize.cpp
@@ -1729,6 +1732,7 @@ rendering/FlexibleBoxAlgorithm.cpp
 rendering/FixedTableLayout.cpp
 rendering/FloatingObjects.cpp
 rendering/Grid.cpp
+rendering/GridLayoutFunctions.cpp
 rendering/GridTrackSizingAlgorithm.cpp
 rendering/HitTestLocation.cpp
 rendering/HitTestResult.cpp
@@ -2171,6 +2175,7 @@ workers/WorkerThread.cpp
 workers/service/ExtendableEvent.cpp
 workers/service/ExtendableMessageEvent.cpp
 workers/service/FetchEvent.cpp
+workers/service/SWClientConnection.cpp
 workers/service/ServiceWorker.cpp
 workers/service/ServiceWorkerClient.cpp
 workers/service/ServiceWorkerClientData.cpp
@@ -2195,7 +2200,6 @@ workers/service/context/ServiceWorkerThread.cpp
 workers/service/context/ServiceWorkerThreadProxy.cpp
 workers/service/context/SWContextManager.cpp
 
-workers/service/server/SWClientConnection.cpp
 workers/service/server/SWOriginStore.cpp
 workers/service/server/SWServer.cpp
 workers/service/server/SWServerJobQueue.cpp
@@ -2940,6 +2944,7 @@ JSVRStageParameters.cpp
 JSValidityState.cpp
 JSVideoPlaybackQuality.cpp
 JSVisibilityState.cpp
+JSVisualViewport.cpp
 JSVoidCallback.cpp
 JSWaveShaperNode.cpp
 JSWebAnimation.cpp

@@ -33,8 +33,6 @@
 #import "WebNetscapePluginPackage.h"
 #import "WebPluginPackage.h"
 #import "WebTypesInternal.h"
-#import <WebCore/WebCoreNSStringExtras.h> 
-#import <WebCore/WebCoreObjCExtras.h>
 #import <algorithm>
 #import <mach-o/arch.h>
 #import <mach-o/fat.h>

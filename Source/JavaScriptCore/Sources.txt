@@ -47,6 +47,7 @@ assembler/MacroAssemblerARM.cpp
 assembler/MacroAssemblerARM64.cpp
 assembler/MacroAssemblerARMv7.cpp
 assembler/MacroAssemblerCodeRef.cpp
+assembler/MacroAssemblerMIPS.cpp
 assembler/MacroAssemblerPrinter.cpp
 assembler/MacroAssemblerX86Common.cpp
 assembler/Printer.cpp
@@ -314,7 +315,6 @@ dfg/DFGEdge.cpp
 dfg/DFGEpoch.cpp
 dfg/DFGFailedFinalizer.cpp
 dfg/DFGFinalizer.cpp
-dfg/DFGFixedButterflyAccessUncagingPhase.cpp
 dfg/DFGFixupPhase.cpp
 dfg/DFGFlowIndexing.cpp
 dfg/DFGFlushFormat.cpp
@@ -470,6 +470,7 @@ heap/CellContainer.cpp
 heap/CodeBlockSet.cpp
 heap/CollectionScope.cpp
 heap/CollectorPhase.cpp
+heap/CompleteSubspace.cpp
 heap/ConservativeRoots.cpp
 heap/DeferGC.cpp
 heap/DestructionMode.cpp
@@ -486,12 +487,15 @@ heap/HandleSet.cpp
 heap/HandleStack.cpp
 heap/Heap.cpp
 heap/HeapCell.cpp
+heap/HeapCellType.cpp
 heap/HeapFinalizerCallback.cpp
 heap/HeapHelperPool.cpp
 heap/HeapProfiler.cpp
 heap/HeapSnapshot.cpp
 heap/HeapSnapshotBuilder.cpp
 heap/IncrementalSweeper.cpp
+heap/IsoAlignedMemoryAllocator.cpp
+heap/IsoSubspace.cpp
 heap/JITStubRoutineSet.cpp
 heap/LargeAllocation.cpp
 heap/MachineStackMarker.cpp
@@ -530,7 +534,6 @@ inspector/InjectedScriptModule.cpp
 inspector/InspectorAgentRegistry.cpp
 inspector/InspectorFrontendRouter.cpp
 inspector/InspectorBackendDispatcher.cpp
-inspector/InspectorValues.cpp
 inspector/JSGlobalObjectConsoleClient.cpp
 inspector/JSGlobalObjectInspectorController.cpp
 inspector/JSGlobalObjectScriptDebugServer.cpp
@@ -772,7 +775,7 @@ runtime/JSCustomGetterSetterFunction.cpp
 runtime/JSDataView.cpp
 runtime/JSDataViewPrototype.cpp
 runtime/JSDateMath.cpp
-runtime/JSDestructibleObjectSubspace.cpp
+runtime/JSDestructibleObjectHeapCellType.cpp
 runtime/JSFixedArray.cpp
 runtime/JSFunction.cpp
 runtime/JSGeneratorFunction.cpp
@@ -807,14 +810,14 @@ runtime/JSScope.cpp
 runtime/JSScriptFetcher.cpp
 runtime/JSScriptFetchParameters.cpp
 runtime/JSSegmentedVariableObject.cpp
-runtime/JSSegmentedVariableObjectSubspace.cpp
+runtime/JSSegmentedVariableObjectHeapCellType.cpp
 runtime/JSSet.cpp
 runtime/JSSetIterator.cpp
 runtime/JSSourceCode.cpp
 runtime/JSString.cpp
 runtime/JSStringIterator.cpp
 runtime/JSStringJoiner.cpp
-runtime/JSStringSubspace.cpp
+runtime/JSStringHeapCellType.cpp
 runtime/JSSymbolTableObject.cpp
 runtime/JSTemplateRegistryKey.cpp
 runtime/JSTypedArrayConstructors.cpp
@@ -971,7 +974,7 @@ wasm/js/JSToWasm.cpp
 wasm/js/JSToWasm.h
 wasm/js/JSWebAssembly.cpp
 wasm/js/JSWebAssemblyCodeBlock.cpp
-wasm/js/JSWebAssemblyCodeBlockSubspace.cpp
+wasm/js/JSWebAssemblyCodeBlockHeapCellType.cpp
 wasm/js/JSWebAssemblyCompileError.cpp
 wasm/js/JSWebAssemblyInstance.cpp
 wasm/js/JSWebAssemblyLinkError.cpp

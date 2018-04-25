@@ -37,7 +37,7 @@
 #include "InstrumentingAgents.h"
 #include <inspector/ContentSearchUtilities.h>
 #include <inspector/InspectorFrontendDispatchers.h>
-#include <inspector/InspectorValues.h>
+#include <wtf/JSONValues.h>
 #include <yarr/RegularExpression.h>
 
 namespace {
@@ -59,6 +59,7 @@ const int domBreakpointDerivedTypeShift = 16;
 
 
 namespace WebCore {
+
 using namespace Inspector;
 
 InspectorDOMDebuggerAgent::InspectorDOMDebuggerAgent(WebAgentContext& context, InspectorDOMAgent* domAgent, InspectorDebuggerAgent* debuggerAgent)
@@ -162,7 +163,7 @@ void InspectorDOMDebuggerAgent::removeBreakpoint(ErrorString& error, const Strin
 void InspectorDOMDebuggerAgent::didInvalidateStyleAttr(Node& node)
 {
     if (hasBreakpoint(&node, AttributeModified)) {
-        Ref<InspectorObject> eventData = InspectorObject::create();
+        Ref<JSON::Object> eventData = JSON::Object::create();
         descriptionForDOMEvent(node, AttributeModified, false, eventData.get());
         m_debuggerAgent->breakProgram(Inspector::DebuggerFrontendDispatcher::Reason::DOM, WTFMove(eventData));
     }
@@ -265,7 +266,7 @@ void InspectorDOMDebuggerAgent::willInsertDOMNode(Node& parent)
         return;
 
     if (hasBreakpoint(&parent, SubtreeModified)) {
-        Ref<InspectorObject> eventData = InspectorObject::create();
+        Ref<JSON::Object> eventData = JSON::Object::create();
         descriptionForDOMEvent(parent, SubtreeModified, true, eventData.get());
         m_debuggerAgent->breakProgram(Inspector::DebuggerFrontendDispatcher::Reason::DOM, WTFMove(eventData));
     }
@@ -278,11 +279,11 @@ void InspectorDOMDebuggerAgent::willRemoveDOMNode(Node& node)
 
     Node* parentNode = InspectorDOMAgent::innerParentNode(&node);
     if (hasBreakpoint(&node, NodeRemoved)) {
-        Ref<InspectorObject> eventData = InspectorObject::create();
+        Ref<JSON::Object> eventData = JSON::Object::create();
         descriptionForDOMEvent(node, NodeRemoved, false, eventData.get());
         m_debuggerAgent->breakProgram(Inspector::DebuggerFrontendDispatcher::Reason::DOM, WTFMove(eventData));
     } else if (parentNode && hasBreakpoint(parentNode, SubtreeModified)) {
-        Ref<InspectorObject> eventData = InspectorObject::create();
+        Ref<JSON::Object> eventData = JSON::Object::create();
         descriptionForDOMEvent(node, SubtreeModified, false, eventData.get());
         m_debuggerAgent->breakProgram(Inspector::DebuggerFrontendDispatcher::Reason::DOM, WTFMove(eventData));
     }
@@ -294,13 +295,13 @@ void InspectorDOMDebuggerAgent::willModifyDOMAttr(Element& element)
         return;
 
     if (hasBreakpoint(&element, AttributeModified)) {
-        Ref<InspectorObject> eventData = InspectorObject::create();
+        Ref<JSON::Object> eventData = JSON::Object::create();
         descriptionForDOMEvent(element, AttributeModified, false, eventData.get());
         m_debuggerAgent->breakProgram(Inspector::DebuggerFrontendDispatcher::Reason::DOM, WTFMove(eventData));
     }
 }
 
-void InspectorDOMDebuggerAgent::descriptionForDOMEvent(Node& target, int breakpointType, bool insertion, InspectorObject& description)
+void InspectorDOMDebuggerAgent::descriptionForDOMEvent(Node& target, int breakpointType, bool insertion, JSON::Object& description)
 {
     ASSERT(hasBreakpoint(&target, breakpointType));
 
@@ -365,7 +366,7 @@ void InspectorDOMDebuggerAgent::pauseOnNativeEventIfNeeded(bool isDOMEvent, cons
     if (!shouldPause)
         return;
 
-    Ref<InspectorObject> eventData = InspectorObject::create();
+    Ref<JSON::Object> eventData = JSON::Object::create();
     eventData->setString(ASCIILiteral("eventName"), fullEventName);
 
     if (synchronous)
@@ -418,7 +419,7 @@ void InspectorDOMDebuggerAgent::willSendXMLHttpRequest(const String& url)
     if (breakpointURL.isNull())
         return;
 
-    Ref<InspectorObject> eventData = InspectorObject::create();
+    Ref<JSON::Object> eventData = JSON::Object::create();
     eventData->setString("breakpointURL", breakpointURL);
     eventData->setString("url", url);
     m_debuggerAgent->breakProgram(Inspector::DebuggerFrontendDispatcher::Reason::XHR, WTFMove(eventData));

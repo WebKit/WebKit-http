@@ -54,7 +54,7 @@ void SourceAlpha::platformApplySoftware()
         return;
     GraphicsContext& filterContext = resultImage->context();
 
-    ImageBuffer* imageBuffer = inputEffect(0)->asImageBuffer();
+    ImageBuffer* imageBuffer = inputEffect(0)->imageBufferResult();
     if (!imageBuffer)
         return;
 
@@ -63,14 +63,9 @@ void SourceAlpha::platformApplySoftware()
     filterContext.drawImageBuffer(*imageBuffer, IntPoint(), CompositeDestinationIn);
 }
 
-void SourceAlpha::dump()
+TextStream& SourceAlpha::externalRepresentation(TextStream& ts, RepresentationType) const
 {
-}
-
-TextStream& SourceAlpha::externalRepresentation(TextStream& ts, int indent) const
-{
-    writeIndent(ts, indent);
-    ts << "[SourceAlpha]\n";
+    ts << indent << "[SourceAlpha]\n";
     return ts;
 }
 

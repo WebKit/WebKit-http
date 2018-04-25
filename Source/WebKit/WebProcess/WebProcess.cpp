@@ -417,29 +417,6 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 #endif
 }
 
-void WebProcess::ensureNetworkProcessConnection()
-{
-    if (m_networkProcessConnection)
-        return;
-
-    IPC::Attachment encodedConnectionIdentifier;
-
-    if (!parentProcessConnection()->sendSync(Messages::WebProcessProxy::GetNetworkProcessConnection(),
-        Messages::WebProcessProxy::GetNetworkProcessConnection::Reply(encodedConnectionIdentifier), 0))
-        return;
-
-#if USE(UNIX_DOMAIN_SOCKETS)
-    IPC::Connection::Identifier connectionIdentifier = encodedConnectionIdentifier.releaseFileDescriptor();
-#elif OS(DARWIN)
-    IPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.port());
-#else
-    ASSERT_NOT_REACHED();
-#endif
-    if (IPC::Connection::identifierIsNull(connectionIdentifier))
-        return;
-    m_networkProcessConnection = NetworkProcessConnection::create(connectionIdentifier);
-}
-
 void WebProcess::registerURLSchemeAsEmptyDocument(const String& urlScheme)
 {
     SchemeRegistry::registerURLSchemeAsEmptyDocument(urlScheme);
@@ -527,7 +504,7 @@ void WebProcess::destroySession(PAL::SessionID sessionID)
 
 void WebProcess::ensureLegacyPrivateBrowsingSessionInNetworkProcess()
 {
-    networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::EnsureLegacyPrivateBrowsingSession(), 0);
+    ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::EnsureLegacyPrivateBrowsingSession(), 0);
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -669,6 +646,7 @@ void WebProcess::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& de
     }
 
 #if ENABLE(SERVICE_WORKER)
+    // FIXME: Remove?
     if (decoder.messageReceiverName() == Messages::WebSWContextManagerConnection::messageReceiverName()) {
         ASSERT(SWContextManager::singleton().connection());
         if (auto* contextManagerConnection = SWContextManager::singleton().connection())
@@ -1109,15 +1087,26 @@ void WebProcess::setInjectedBundleParameters(const IPC::DataReference& value)
     injectedBundle->setBundleParameters(value);
 }
 
-NetworkProcessConnection& WebProcess::networkConnection()
+NetworkProcessConnection& WebProcess::ensureNetworkProcessConnection()
 {
     // If we've lost our connection to the network process (e.g. it crashed) try to re-establish it.
-    if (!m_networkProcessConnection)
-        ensureNetworkProcessConnection();
-    
-    // If we failed to re-establish it then we are beyond recovery and should crash.
-    if (!m_networkProcessConnection)
-        CRASH();
+    if (!m_networkProcessConnection) {
+        IPC::Attachment encodedConnectionIdentifier;
+
+        if (!parentProcessConnection()->sendSync(Messages::WebProcessProxy::GetNetworkProcessConnection(), Messages::WebProcessProxy::GetNetworkProcessConnection::Reply(encodedConnectionIdentifier), 0))
+            CRASH();
+
+#if USE(UNIX_DOMAIN_SOCKETS)
+        IPC::Connection::Identifier connectionIdentifier = encodedConnectionIdentifier.releaseFileDescriptor();
+#elif OS(DARWIN)
+        IPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.port());
+#else
+        ASSERT_NOT_REACHED();
+#endif
+        if (IPC::Connection::identifierIsNull(connectionIdentifier))
+            CRASH();
+        m_networkProcessConnection = NetworkProcessConnection::create(connectionIdentifier);
+    }
     
     return *m_networkProcessConnection;
 }
@@ -1171,36 +1160,29 @@ void WebProcess::webToStorageProcessConnectionClosed(WebToStorageProcessConnecti
     m_webToStorageProcessConnection = nullptr;
 }
 
-WebToStorageProcessConnection* WebProcess::webToStorageProcessConnection()
+WebToStorageProcessConnection& WebProcess::ensureWebToStorageProcessConnection()
 {
-    if (!m_webToStorageProcessConnection)
-        ensureWebToStorageProcessConnection();
+    if (!m_webToStorageProcessConnection) {
+        IPC::Attachment encodedConnectionIdentifier;
 
-    return m_webToStorageProcessConnection.get();
-}
-
-void WebProcess::ensureWebToStorageProcessConnection()
-{
-    if (m_webToStorageProcessConnection)
-        return;
-
-    IPC::Attachment encodedConnectionIdentifier;
-
-    if (!parentProcessConnection()->sendSync(Messages::WebProcessProxy::GetStorageProcessConnection(), Messages::WebProcessProxy::GetStorageProcessConnection::Reply(encodedConnectionIdentifier), 0))
-        return;
+        if (!parentProcessConnection()->sendSync(Messages::WebProcessProxy::GetStorageProcessConnection(), Messages::WebProcessProxy::GetStorageProcessConnection::Reply(encodedConnectionIdentifier), 0))
+            CRASH();
 
 #if USE(UNIX_DOMAIN_SOCKETS)
-    IPC::Connection::Identifier connectionIdentifier = encodedConnectionIdentifier.releaseFileDescriptor();
+        IPC::Connection::Identifier connectionIdentifier = encodedConnectionIdentifier.releaseFileDescriptor();
 #elif OS(DARWIN)
-    IPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.port());
+        IPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.port());
 #elif OS(WINDOWS)
-    IPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.handle());
+        IPC::Connection::Identifier connectionIdentifier(encodedConnectionIdentifier.handle());
 #else
-    ASSERT_NOT_REACHED();
+        ASSERT_NOT_REACHED();
 #endif
-    if (IPC::Connection::identifierIsNull(connectionIdentifier))
-        return;
-    m_webToStorageProcessConnection = WebToStorageProcessConnection::create(connectionIdentifier);
+        if (IPC::Connection::identifierIsNull(connectionIdentifier))
+            CRASH();
+        m_webToStorageProcessConnection = WebToStorageProcessConnection::create(connectionIdentifier);
+
+    }
+    return *m_webToStorageProcessConnection;
 }
 
 void WebProcess::setEnhancedAccessibility(bool flag)
@@ -1609,7 +1591,7 @@ void WebProcess::prefetchDNS(const String& hostname)
         return;
 
     if (m_dnsPrefetchedHosts.add(hostname).isNewEntry)
-        networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::PrefetchDNS(hostname), 0);
+        ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::PrefetchDNS(hostname), 0);
     // The DNS prefetched hosts cache is only to avoid asking for the same hosts too many times
     // in a very short period of time, producing a lot of IPC traffic. So we clear this cache after
     // some time of no DNS requests.
@@ -1635,30 +1617,13 @@ LibWebRTCNetwork& WebProcess::libWebRTCNetwork()
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-void WebProcess::getWorkerContextConnection(uint64_t pageID, const WebPreferencesStore& store)
+void WebProcess::establishWorkerContextConnectionToStorageProcess(uint64_t pageID, const WebPreferencesStore& store)
 {
-#if USE(UNIX_DOMAIN_SOCKETS)
-    IPC::Connection::SocketPair socketPair = IPC::Connection::createPlatformConnection();
-    IPC::Connection::Identifier connectionIdentifier(socketPair.server);
-    IPC::Attachment connectionClientPort(socketPair.client);
-#elif OS(DARWIN)
-    mach_port_t listeningPort;
-    if (mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &listeningPort) != KERN_SUCCESS)
-        CRASH();
-
-    if (mach_port_insert_right(mach_task_self(), listeningPort, listeningPort, MACH_MSG_TYPE_MAKE_SEND) != KERN_SUCCESS)
-        CRASH();
-
-    IPC::Connection::Identifier connectionIdentifier(listeningPort);
-    IPC::Attachment connectionClientPort(listeningPort, MACH_MSG_TYPE_MOVE_SEND);
-#else
-    RELEASE_ASSERT_NOT_REACHED();
-#endif
-
-    auto workerContextConnection = IPC::Connection::createServerConnection(connectionIdentifier, *this);
-    workerContextConnection->open();
-    SWContextManager::singleton().setConnection(std::make_unique<WebSWContextManagerConnection>(WTFMove(workerContextConnection), pageID, store));
-    WebProcess::singleton().parentProcessConnection()->send(Messages::WebProcessProxy::DidGetWorkerContextConnection(connectionClientPort), 0);
+    // We are in the Service Worker context process and the call below establishes our connection to the Storage Process
+    // by calling webToStorageProcessConnection. SWContextManager needs to use the same underlying IPC::Connection as the
+    // WebToStorageProcessConnection for synchronization purposes.
+    auto& ipcConnection = ensureWebToStorageProcessConnection().connection();
+    SWContextManager::singleton().setConnection(std::make_unique<WebSWContextManagerConnection>(ipcConnection, pageID, store));
 }
 #endif
 

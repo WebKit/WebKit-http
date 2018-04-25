@@ -1,3 +1,611 @@
+2017-11-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Remove easy toRemove & map.remove() use in OAS phase
+        https://bugs.webkit.org/show_bug.cgi?id=180208
+
+        Reviewed by Mark Lam.
+
+        * wtf/HashMap.h:
+        (WTF::X>::removeIf):
+        * wtf/HashSet.h:
+        (WTF::V>::removeIf):
+        * wtf/HashTable.h:
+        (WTF::KeyTraits>::removeIf):
+
+2017-11-30  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r225362.
+        https://bugs.webkit.org/show_bug.cgi?id=180225
+
+        removeIf predicate function can touch remove target set
+        (Requested by yusukesuzuki on #webkit).
+
+        Reverted changeset:
+
+        "[JSC] Remove easy toRemove & map.remove() use"
+        https://bugs.webkit.org/show_bug.cgi?id=180208
+        https://trac.webkit.org/changeset/225362
+
+2017-11-30  Mark Lam  <mark.lam@apple.com>
+
+        Let's scramble MacroAssemblerCodePtr values.
+        https://bugs.webkit.org/show_bug.cgi?id=180169
+        <rdar://problem/35758340>
+
+        Reviewed by Filip Pizlo, Saam Barati, and JF Bastien.
+
+        Introduce a ScrambledPtr class to facilitate scrambling.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/ScrambledPtr.cpp: Added.
+        (WTF::makeScrambledPtrKey):
+        * wtf/ScrambledPtr.h: Added.
+        (WTF::ScrambledPtr::ScrambledPtr):
+        (WTF::ScrambledPtr::paranoidAssertIsScrambled const):
+        (WTF::ScrambledPtr::paranoidAssertIsNotScrambled const):
+        (WTF::ScrambledPtr:: const):
+        (WTF::ScrambledPtr::operator-> const):
+        (WTF::ScrambledPtr::scrambledBits const):
+        (WTF::ScrambledPtr::operator! const):
+        (WTF::ScrambledPtr::operator bool const):
+        (WTF::ScrambledPtr::operator== const):
+        (WTF::ScrambledPtr::operator==):
+        (WTF::ScrambledPtr::scramble):
+        (WTF::ScrambledPtr::descramble):
+
+2017-11-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Remove easy toRemove & map.remove() use
+        https://bugs.webkit.org/show_bug.cgi?id=180208
+
+        Reviewed by Mark Lam.
+
+        Return bool from removeIf. It is true if removeIf removes at least one entry.
+        This interface is similar to existing HashSet::remove, which returns true
+        if it actually removes entry.
+
+        * wtf/HashMap.h:
+        (WTF::X>::removeIf):
+        * wtf/HashSet.h:
+        (WTF::V>::removeIf):
+        * wtf/HashTable.h:
+        (WTF::KeyTraits>::removeIf):
+
+2017-11-30  Chris Dumez  <cdumez@apple.com>
+
+        Populate self.registration.installing/waiting/active inside service workers
+        https://bugs.webkit.org/show_bug.cgi?id=180168
+
+        Reviewed by Brady Eidson.
+
+        Add CrossThreadCopier support for std::optional<>.
+
+        * wtf/CrossThreadCopier.h:
+
+2017-11-29  JF Bastien  <jfbastien@apple.com>
+
+        WTF / bmalloc: don't write to 0xbbadbeef when ASAN is looking
+        https://bugs.webkit.org/show_bug.cgi?id=180175
+
+        Reviewed by Mark Lam.
+
+        ASAN knows that 0xbbadbeef is a bbad aaddress, and tells us so
+        when we write to it, say in an assert. That creates bbad error
+        reports where ASAN thinks we write to an invalid address, instead
+        of thinking that we hit an assertion. In some cases, tooling that
+        use fuzzers aggregate similar issues, and think that we just have
+        the one bug and not a bunch of different asserts.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+
+2017-11-29  Filip Pizlo  <fpizlo@apple.com>
+
+        GC should support isoheaps
+        https://bugs.webkit.org/show_bug.cgi?id=179288
+
+        Reviewed by Saam Barati.
+        
+        One of my favorite data structures in the GC is a singly-linked list that knows its tail, so that
+        things get added to it at the end rather that at the beginning. In this patch, I use this to put
+        the same node on multiple lists, which our existing linked list templates also don't support.
+        
+        This adds a new linked list that does those things:
+        
+        - It supports append(). It could also support prepend(), but currently there is no need for it.
+        
+        - It supports nodes that are on multiple lists. The GC uses std::mem_fn() to create a lambda that the
+          list uses to set next.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/SinglyLinkedListWithTail.h: Added.
+        (WTF::SinglyLinkedListWithTail::isEmpty const):
+        (WTF::SinglyLinkedListWithTail::append):
+        (WTF::SinglyLinkedListWithTail::first const):
+        (WTF::SinglyLinkedListWithTail::last const):
+
+2017-11-29  Stanislav Ocovaj  <stanislav.ocovaj@rt-rk.com>
+
+        [DFG][MIPS] Enable DFG JIT on MIPS.
+        https://bugs.webkit.org/show_bug.cgi?id=175447
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * wtf/Platform.h:
+
+2017-11-29  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r225286.
+
+        The source files within this patch have been marked as
+        executable.
+
+        Reverted changeset:
+
+        "[MIPS][JSC] Implement MacroAssembler::probe support on MIPS"
+        https://bugs.webkit.org/show_bug.cgi?id=175447
+        https://trac.webkit.org/changeset/225286
+
+2017-11-29  Stanislav Ocovaj  <stanislav.ocovaj@rt-rk.com>
+
+        [DFG][MIPS] Enable DFG JIT on MIPS.
+        https://bugs.webkit.org/show_bug.cgi?id=175447
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * wtf/Platform.h:
+
+2017-11-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Move JSONValues to WTF and convert uses of InspectorValues.h to JSONValues.h
+        https://bugs.webkit.org/show_bug.cgi?id=173793
+
+        Reviewed by Joseph Pecoraro.
+
+        Based on patch by Brian Burg.
+
+        Move the implementation into WTF. Put the actual implementation inside
+        namespace WTF::JSONImpl so that the symbols in libwtf start with the WTF prefix.
+        Also provide a top-level JSON namespace so that clients can write JSON::Value.
+        This is essentially a typedef for the entire WTF::JSONImpl namespace.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/JSONValues.cpp: Renamed from Source/JavaScriptCore/inspector/InspectorValues.cpp.
+        (JSON::Value::null):
+        (JSON::Value::create):
+        (JSON::Value::asValue):
+        (JSON::Value::asObject):
+        (JSON::Value::asArray):
+        (JSON::Value::parseJSON):
+        (JSON::Value::toJSONString const):
+        (JSON::Value::asBoolean const):
+        (JSON::Value::asDouble const):
+        (JSON::Value::asInteger const):
+        (JSON::Value::asString const):
+        (JSON::Value::writeJSON const):
+        (JSON::Value::memoryCost const):
+        (JSON::ObjectBase::~ObjectBase):
+        (JSON::ObjectBase::asObject):
+        (JSON::ObjectBase::openAccessors):
+        (JSON::ObjectBase::memoryCost const):
+        (JSON::ObjectBase::getBoolean const):
+        (JSON::ObjectBase::getString const):
+        (JSON::ObjectBase::getObject const):
+        (JSON::ObjectBase::getArray const):
+        (JSON::ObjectBase::getValue const):
+        (JSON::ObjectBase::remove):
+        (JSON::ObjectBase::writeJSON const):
+        (JSON::ObjectBase::ObjectBase):
+        (JSON::ArrayBase::~ArrayBase):
+        (JSON::ArrayBase::asArray):
+        (JSON::ArrayBase::writeJSON const):
+        (JSON::ArrayBase::ArrayBase):
+        (JSON::ArrayBase::get const):
+        (JSON::Object::create):
+        (JSON::Array::create):
+        (JSON::ArrayBase::memoryCost const):
+        * wtf/JSONValues.h: Renamed from Source/JavaScriptCore/inspector/InspectorValues.h.
+        (JSON::ObjectBase::find):
+        (JSON::ObjectBase::find const):
+        (JSON::ObjectBase::setBoolean):
+        (JSON::ObjectBase::setInteger):
+        (JSON::ObjectBase::setDouble):
+        (JSON::ObjectBase::setString):
+        (JSON::ObjectBase::setValue):
+        (JSON::ObjectBase::setObject):
+        (JSON::ObjectBase::setArray):
+        (JSON::ArrayBase::pushBoolean):
+        (JSON::ArrayBase::pushInteger):
+        (JSON::ArrayBase::pushDouble):
+        (JSON::ArrayBase::pushString):
+        (JSON::ArrayBase::pushValue):
+        (JSON::ArrayBase::pushObject):
+        (JSON::ArrayBase::pushArray):
+
+2017-11-28  Simon Fraser  <simon.fraser@apple.com>
+
+        Modernize GraphicsLayer dumping
+        https://bugs.webkit.org/show_bug.cgi?id=180067
+
+        Reviewed by Sam Weinig.
+        
+        Expose the current indent.
+
+        * wtf/text/TextStream.h:
+        (WTF::TextStream::indent const):
+
+2017-11-27  Chris Dumez  <cdumez@apple.com>
+
+        Move callOnMainThreadAndWait() from SocketStreamHandleImplCFNet.cpp to MainThread.h
+        https://bugs.webkit.org/show_bug.cgi?id=180060
+
+        Reviewed by Alex Christensen.
+
+        Move callOnMainThreadAndWait() from SocketStreamHandleImplCFNet.cpp to MainThread.h so that it can be reused.
+
+        * wtf/MainThread.cpp:
+        (WTF::callOnMainThreadAndWait):
+        * wtf/MainThread.h:
+
+2017-11-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Use TextStream's indent tracking, rather than passing indent to all the externalRepresentation() functions
+        https://bugs.webkit.org/show_bug.cgi?id=180027
+
+        Reviewed by Jon Lee.
+
+        Remove all the indent arguments, and make use of TextStream::IndentScope to control
+        output indentation.
+
+        Add an indent stream manipulator so you can say
+          ts << indent << "text"
+        to write the indent.
+
+        * wtf/text/TextStream.h:
+        (WTF::TextStream::IndentScope::IndentScope):
+        (WTF::TextStream::IndentScope::~IndentScope):
+
+2016-08-05  Darin Adler  <darin@apple.com>
+
+        Fix some minor problems in the StringImpl header
+        https://bugs.webkit.org/show_bug.cgi?id=160630
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/text/AtomicString.h: Update since CharacterMatchFunctionPtr is now
+        CodeUnitMatchFunction.
+
+        * wtf/text/StringCommon.h: Added CodeUnitMatchFunction, which replaces
+        CharacterMatchFunctionPtr.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::stripMatchedCharacters): Changed template argument name
+        to CodeUnitPredicate to help make it clear this works on code units, not
+        code points.
+        (WTF::UCharPredicate): Deleted.
+        (WTF::SpaceOrNewlinePredicate): Deleted.
+        (WTF::StringImpl::stripWhiteSpace): Removed unneeded use of predicate class to
+        turn a function into a functor; functions already work fine as functors without
+        a class wrapping them.
+        (WTF::StringImpl::stripLeadingAndTrailingCharacters): Ditto. Also renamed
+        from stripWhiteSpace, since it strips arbitrary characters.
+        (WTF::StringImpl::removeCharacters): Fixed various minor style issues and
+        updated to new type name.
+        (WTF::StringImpl::simplifyMatchedCharactersToSpace): Ditto.
+        (WTF::StringImpl::simplifyWhiteSpace): More of the same.
+        (WTF::StringImpl::find): Ditto.
+
+        * wtf/text/StringImpl.h: Removed unneeded include of uchar.h, since it's
+        included by StringCommon.h. Removed =CharacterMatchFunctionPtr and
+        IsWhiteSpaceFunctionPtr, both replaced by CodeUnitMatchFunction. Fixed
+        a mistake recently introduced in isSpaceOrNewline, which was unnecessarily,
+        inefficiently using ICU for non-ASCII Latin-1 characters.
+
+        * wtf/text/StringView.h: Use CodeUnitMatchFunction instead of CharacterMatchFunction.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::String::stripLeadingAndTrailingCharacters): Updated function name and type.
+        (WTF::String::simplifyWhiteSpace): Updated type.
+        (WTF::String::removeCharacters): Updated type.
+        * wtf/text/WTFString.h: Ditto.
+
+2017-11-23  Darin Adler  <darin@apple.com>
+
+        Fix dictionary leak in lookup, convert FindOptions to OptionSet, tweak code style nearby
+        https://bugs.webkit.org/show_bug.cgi?id=179981
+
+        Reviewed by Sam Weinig.
+
+        * wtf/OptionSet.h: Added some operators so it's easier to use | and - with individual
+        options from the set.
+
+2017-11-23  Darin Adler  <darin@apple.com>
+
+        Reduce WTF::String operations that do unnecessary Unicode operations instead of ASCII
+        https://bugs.webkit.org/show_bug.cgi?id=179907
+
+        Reviewed by Sam Weinig.
+
+        * wtf/text/ASCIIFastPath.h: Moved the using for charactersAreAllASCII here since
+        the function is defined here.
+
+        * wtf/text/AtomicString.h: Removed overloads of contains, find, startsWith, and
+        endsWith that take a boolean indicating whether they should be "case sensitive".
+        When false, this was doing Unicode case folding, and no callers needed that.
+        Also tweaked formatting and argument names.
+
+        * wtf/text/IntegerToStringConversion.h: Added an include of LChar.h since this file
+        uses that. Also tweaked formatting a bit.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::containsOnlyWhitespace): Deleted. Despite its name sounding like
+        it used the full Unicode whitespace definition, this actually checked isASCIISpace.
+        Callers now all use isAllSpecialCharacters instead with the whitespace definition
+        that is appropriate to each call site.
+        (WTF::latin1CaseFoldTable): Deleted.
+        (WTF::equalCompatibilityCaseless): Deleted.
+        (WTF::StringImpl::findIgnoringCase): Deleted.
+        (WTF::findIgnoringCaseInner): Deleted.
+        (WTF::reverseFindIgnoringCaseInner): Deleted.
+        (WTF::StringImpl::reverseFindIgnoringCase): Deleted.
+        (WTF::equalInner): Removed boolean caseSensitive argument.
+        (WTF::StringImpl::startsWith): Ditto.
+        (WTF::StringImpl::endsWith): Ditto.
+
+        * wtf/text/StringImpl.h: Moved TextCaseSensitivity out into a different header.
+        Moved ASCIIFastPath.h include here from WTFString.h. Moved isAllSpecialCharacters
+        free function here from WTFString.h. Moved lots of function bodies out of class
+        definitions to make the class definitions easier to read. Sorted things a bit.
+        Tweaked formatting. Marked constructor that takes one argument explicit. Added
+        an isEmpty function like the one in String. Renamed copyChars to copyCharacters.
+        Added isAllASCII, isAllLatin1 and isAllSpecialCharacters functions. Removed
+        boolean caseSensitive arguments from various functions. Removed findIgnoringCase
+        and reverseFindIgnoringCase. Added a FIXME to codePointCompare about the way it
+        treats null and empty strings as equal. Changed length argument in remove to
+        unsigned to match other lengths.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::String::removeInternal): Changed length argument to be unsigned.
+        (WTF::createWithFormatAndArguments): Use emptyString.
+        (WTF::String::isSafeToSendToAnotherThread const): Rewrote to be easier to read.
+
+        * wtf/text/WTFString.h: Moved ASCIIFastPath.h to StringImpl.h. Moved lots of
+        function bodies out of class definitions to make the class definitions easier
+        to read, made others one-liners. Removed the String::at function but kept the
+        String::characterAt function; the two were identical. Removed boolean
+        caseSensitive arguments from various functions. Removed findIgnoringCase and
+        reverseFindIgnoringCase. Renamed containsOnlyASCII to isAllASCII and
+        containsOnlyLatin1 to isAllLatin1 to match the naming of isAllSpecialCharacters.
+        Moved the inline implementations of functions that are defined above further
+        down, after things like the ASCIILiteral class and various functions.
+
+        * wtf/text/icu/UTextProviderLatin1.cpp: Updated name of copyChars.
+
+2017-11-22  Stephan Szabo  <stephan.szabo@sony.com>
+
+        tuple related items are used in WTF without including tuple
+        https://bugs.webkit.org/show_bug.cgi?id=179926
+
+        Reviewed by Darin Adler.
+
+        * wtf/HashFunctions.h:
+        * wtf/PrintStream.h:
+        * wtf/threads/Signals.h:
+
+2017-11-21  Zan Dobersek  <zdobersek@igalia.com>
+
+        Drop ENABLE_IMAGE_DECODER_DOWN_SAMPLING code
+        https://bugs.webkit.org/show_bug.cgi?id=179921
+
+        Reviewed by Carlos Garcia Campos.
+
+        * wtf/FeatureDefines.h: Remove the ENABLE_IMAGE_DECODER_DOWN_SAMPLING
+        definition.
+
+2017-11-19  Tim Horton  <timothy_horton@apple.com>
+
+        Remove unused TOUCH_ICON_LOADING feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=179873
+
+        Reviewed by Simon Fraser.
+
+        * wtf/FeatureDefines.h:
+
+2017-11-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Add CPU(UNKNOWN) to cover all the unknown CPU types
+        https://bugs.webkit.org/show_bug.cgi?id=179243
+
+        Reviewed by JF Bastien.
+
+        This patch adds a new CPU type, `CPU(UNKNOWN)` to cover all the unknown CPUs.
+        This CPU architecture tells conservative assumption to make JSC work on all
+        the unknown generic CPUs. And we make several CPUs (ALPHA, SH4, S390, S390X, IA64, IA64_32)
+        UNKNOWN.
+
+        We also make InlineASM available only for !CPU(UNKNOWN). In an unknown CPU, inline asm is not useful.
+
+        And we also introduce a generic way to detect 64bit pointer environment by using
+        __SIZEOF_POINTER__ predefined macro, or `UINTPTR_MAX > UINT32_MAX`.
+
+        * wtf/InlineASM.h:
+        * wtf/Platform.h:
+        * wtf/dtoa/utils.h:
+
+2017-11-19  Tim Horton  <timothy_horton@apple.com>
+
+        Remove unused LEGACY_VENDOR_PREFIXES feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=179872
+
+        Reviewed by Darin Adler.
+
+        * wtf/FeatureDefines.h:
+
+2017-11-19  Chris Dumez  <cdumez@apple.com>
+
+        Fix potential thread safety issue in ThreadSafeIdentified
+        https://bugs.webkit.org/show_bug.cgi?id=179879
+
+        Reviewed by Darin Adler.
+
+        Fix potential thread safety issue in ThreadSafeIdentified. Protect static std::atomic
+        initialization with an std::call_once() given that we build with
+        --fno-threadsafe-statics.
+
+        * wtf/Identified.h:
+        (WTF::Identified::Identified):
+        (WTF::Identified::generateIdentifier):
+        (WTF::ThreadSafeIdentified::ThreadSafeIdentified):
+        (WTF::ThreadSafeIdentified::generateIdentifier):
+
+2017-11-18  Darin Adler  <darin@apple.com>
+
+        Eliminate some cases of double hashing, other related refactoring
+        https://bugs.webkit.org/show_bug.cgi?id=179867
+
+        Reviewed by Sam Weinig.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::containsOnlyWhitespace): Added FIXME.
+
+2017-11-19  Chris Dumez  <cdumez@apple.com>
+
+        Fix potential thread safety issue in generateThreadSafeObjectIdentifier()
+        https://bugs.webkit.org/show_bug.cgi?id=179877
+
+        Reviewed by Sam Weinig.
+
+        Fix potential thread safety issue in generateThreadSafeObjectIdentifier().
+        Protect std::atomic initialization with an std::call_once() given that we
+        build with --fno-threadsafe-statics.
+
+        * wtf/ObjectIdentifier.h:
+        (WTF::generateThreadSafeObjectIdentifier):
+
+2017-11-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Use system endianess information instead of relying CPU information
+        https://bugs.webkit.org/show_bug.cgi?id=179861
+
+        Reviewed by JF Bastien.
+
+        Currently, we use known CPU information to determine endianess of the current
+        architecture. But this means that unknown CPU does not work well in WebKit
+        withou modifying code. Instead, we use compiler or system's macro to determine
+        endianess. This paves the way to dropping many CPUs in Platform.h by replacing
+        them with CPU(UNKNOWN)[1].
+
+        [1]: https://bugs.webkit.org/show_bug.cgi?id=179243
+
+        * wtf/Platform.h:
+
+2017-11-18  Chris Dumez  <cdumez@apple.com>
+
+        ASSERTION FAILED: registration in WebCore::SWServerJobQueue::scriptContextStarted(ServiceWorkerIdentifier)
+        https://bugs.webkit.org/show_bug.cgi?id=179846
+
+        Reviewed by Darin Adler.
+
+        Add a generateThreadSafeObjectIdentifier() for generating an ObjectIdentifier
+        in a thread-safe manner, using std::atomic.
+
+        * wtf/ObjectIdentifier.h:
+        (WTF::generateObjectIdentifier):
+        (WTF::generateThreadSafeObjectIdentifier):
+
+2017-11-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Remove CPU(HPPA) in StackBounds by using runtime stack direction test
+        https://bugs.webkit.org/show_bug.cgi?id=179859
+
+        Reviewed by JF Bastien.
+
+        Currently, we know that CPU(HPPA)'s stack direction is upward! But listing
+        CPU architectures here is not a scalable way.
+
+        Instead, we use runtime stack direction test. By doing so, we can handle
+        such a strange architecture without listing the CPU to Platform.h. This paves
+        the way to dropping many CPUs in Platform.h by replacing them with CPU(UNKNOWN)[1].
+
+        We also fix StackBounds::isGrowingDownward().
+
+        [1]: https://bugs.webkit.org/show_bug.cgi?id=179243
+
+        * wtf/StackBounds.cpp:
+        (WTF::StackBounds::stackDirection):
+        (WTF::testStackDirection2):
+        (WTF::testStackDirection):
+        (WTF::StackBounds::newThreadStackBounds):
+        (WTF::StackBounds::currentThreadStackBoundsInternal):
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::isGrowingDownward const):
+
+2017-11-17  Chris Dumez  <cdumez@apple.com>
+
+        Use a strongly typed identifier for SWServer::Connection
+        https://bugs.webkit.org/show_bug.cgi?id=179848
+
+        Reviewed by Brady Eidson.
+
+        Make ObjectIdentifier a little more flexible to support more use cases.
+
+        * wtf/ObjectIdentifier.h:
+        (WTF::ObjectIdentifier::toUInt64 const):
+        (WTF::makeObjectIdentifier):
+
+2017-11-17  Simon Fraser  <simon.fraser@apple.com>
+
+        Add a TimingScope class for microbenchmarking sections of code
+        https://bugs.webkit.org/show_bug.cgi?id=179825
+
+        Reviewed by Zalan Bujtas.
+        
+        Add a class, similar to B3TimingScope, which makes it easy to microbenchmark
+        sections of code. Use looks like:
+        
+        TimingScope scope("some label", 100);
+        
+        where this will print mean scope duration every 100 calls. Sample output:
+        
+            FETurbulence::platformApplySoftware: 100 calls, mean duration: 3.073181ms
+            FETurbulence::platformApplySoftware: 200 calls, mean duration: 3.074612ms
+            FETurbulence::platformApplySoftware: 300 calls, mean duration: 3.065722ms
+        
+        Because TimingScope needs to store state beween invocations, and there may be
+        multiple TimingScopes in use at the same time, data is stored in a global
+        hash map with atomic access.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/TimingScope.cpp: Added.
+        (WTF::TimingScope::scopeDidEnd):
+        * wtf/TimingScope.h: Added.
+        (WTF::TimingScope::TimingScope):
+        (WTF::TimingScope::~TimingScope):
+
+2017-11-17  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up after r224952
+        https://bugs.webkit.org/show_bug.cgi?id=179809
+
+        Reviewed by Brady Eidson.
+
+        * wtf/MainThread.cpp:
+        (WTF::dispatchFunctionsFromMainThread):
+        (WTF::callOnMainThread):
+        * wtf/MainThread.h:
+        * wtf/generic/MainThreadGeneric.cpp:
+        (WTF::scheduleDispatchFunctionsOnMainThread):
+        (WTF::currentRunLoopInCommonMode): Deleted.
+        * wtf/mac/MainThreadMac.mm:
+        (WTF::scheduleDispatchFunctionsOnMainThread):
+        (WTF::currentRunLoopInCommonMode): Deleted.
+        * wtf/win/MainThreadWin.cpp:
+        (WTF::scheduleDispatchFunctionsOnMainThread):
+        (WTF::currentRunLoopInCommonMode): Deleted.
+
 2017-11-15  Alex Christensen  <achristensen@webkit.org>
 
         Fix fast/events/message-port-postMessage-recursive.html after r224896

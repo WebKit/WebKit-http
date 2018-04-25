@@ -1,3 +1,404 @@
+2017-11-30  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: improve stack trace
+        https://bugs.webkit.org/show_bug.cgi?id=179343
+
+        Reviewed by Saam Barati.
+
+        Update the tests to follow the new format. Notably, SHA1 module
+        hash is now included in traces, and stubs are properly identified.
+
+        * wasm/assert.js: Add an assertion which matches regular expressions.
+        * wasm/function-tests/nameSection.js:
+        * wasm/function-tests/stack-overflow.js:
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.assertOverflows):
+        (assertOverflows.assertThrows.wasm.1):
+        (assertOverflows.assertThrows.wasm.0):
+        (assertOverflows.assertThrows):
+        (assertOverflows):
+        * wasm/function-tests/stack-trace.js:
+        (import.Builder.from.string_appeared_here.assert): Deleted.
+        * wasm/function-tests/trap-after-cross-instance-call.js:
+        (wasmFrameCountFromError):
+        * wasm/function-tests/trap-load-2.js:
+        (wasmFrameCountFromError):
+        * wasm/function-tests/trap-load.js:
+        (wasmFrameCountFromError):
+
+2017-11-30  Mark Lam  <mark.lam@apple.com>
+
+        jsc shell's flashHeapAccess() should not do JS work after releasing access to the heap.
+        https://bugs.webkit.org/show_bug.cgi?id=180219
+        <rdar://problem/35696536>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/regress-180219.js: Added.
+
+2017-11-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG][FTL] operationHasIndexedProperty does not consider negative int32_t
+        https://bugs.webkit.org/show_bug.cgi?id=180190
+
+        Reviewed by Mark Lam.
+
+        * stress/operation-in-may-have-negative-int32-array-storage.js: Added.
+        (shouldBe):
+        (test1):
+        * stress/operation-in-may-have-negative-int32-contiguous-array.js: Added.
+        (shouldBe):
+        (test1):
+        * stress/operation-in-may-have-negative-int32-double-array.js: Added.
+        (shouldBe):
+        (test1):
+        * stress/operation-in-may-have-negative-int32-generic-array.js: Added.
+        (shouldBe):
+        (test1):
+        * stress/operation-in-may-have-negative-int32-int32-array.js: Added.
+        (shouldBe):
+        (test1):
+        * stress/operation-in-may-have-negative-int32.js: Added.
+        (shouldBe):
+        (test2):
+        * stress/operation-in-negative-int32-cast.js: Added.
+        (shouldBe):
+        (test1):
+
+2017-11-28  JF Bastien  <jfbastien@apple.com>
+
+        Strict and sloppy functions shouldn't share structure
+        https://bugs.webkit.org/show_bug.cgi?id=180103
+        <rdar://problem/35667847>
+
+        Reviewed by Saam Barati.
+
+        * stress/get-by-id-strict-arguments.js: Added. Used to not throw
+        because the IC was wrong.
+        (foo):
+        (bar):
+        (baz):
+        (catch):
+        * stress/get-by-id-strict-callee.js: Added. Not strictly necessary
+        in this patch, but may as well test odd strict mode corner cases.
+        (bar):
+        (baz):
+        (catch):
+        * stress/get-by-id-strict-caller.js: Added. Also IC'd wrong.
+        (foo):
+        (bar):
+        (baz):
+        (catch):
+        * stress/get-by-id-strict-nested-arguments-2.js: Added. Same as
+        next file, but with invalidation of the FunctionExecutable's
+        singletonFunction() to hit SpeculativeJIT::compileNewFunction's
+        slower path.
+        (foo):
+        (bar.const.x):
+        (bar.const.y):
+        (bar):
+        (catch):
+        * stress/get-by-id-strict-nested-arguments.js: Added. Make sure
+        strict nesting works correctly.
+        (foo):
+        (bar.baz):
+        (bar):
+        * stress/strict-function-structure.js: Added. The test used to
+        assert in objectProtoFuncHasOwnProperty.
+        (foo):
+        (bar):
+        (baz):
+        * stress/strict-nested-function-structure.js: Added. Nesting.
+        (foo):
+        (bar):
+        (baz.boo):
+        (baz):
+
+2017-11-29  Robin Morisset  <rmorisset@apple.com>
+
+        The recursive tail call optimisation is wrong on closures
+        https://bugs.webkit.org/show_bug.cgi?id=179835
+
+        Reviewed by Saam Barati.
+
+        * stress/closure-recursive-tail-call.js: Added.
+        (makeClosure):
+
+2017-11-27  JF Bastien  <jfbastien@apple.com>
+
+        JavaScript rest function parameter with negative index leads to bad DFG abstract interpretation
+        https://bugs.webkit.org/show_bug.cgi?id=180051
+        <rdar://problem/35614371>
+
+        Reviewed by Saam Barati.
+
+        * stress/rest-parameter-negative.js: Added.
+        (__f_5484):
+        (catch):
+        (__f_5485):
+        (__v_22598.catch):
+
+2017-11-27  Saam Barati  <sbarati@apple.com>
+
+        Spread can escape when CreateRest does not
+        https://bugs.webkit.org/show_bug.cgi?id=180057
+        <rdar://problem/35676119>
+
+        Reviewed by JF Bastien.
+
+        * stress/spread-escapes-but-create-rest-does-not.js: Added.
+        (assert):
+        (getProperties):
+        (theFunc):
+        (let.obj.valueOf):
+
+2017-11-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Add NormalizeMapKey DFG IR
+        https://bugs.webkit.org/show_bug.cgi?id=179912
+
+        Reviewed by Saam Barati.
+
+        * stress/map-untyped-normalize-cse.js: Added.
+        (shouldBe):
+        (test):
+        * stress/map-untyped-normalize.js: Added.
+        (shouldBe):
+        (test):
+        * stress/set-untyped-normalize-cse.js: Added.
+        (shouldBe):
+        (set return.set has.set has):
+        * stress/set-untyped-normalize.js: Added.
+        (shouldBe):
+        (set return.set has):
+
+2017-11-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [FTL] Support DeleteById and DeleteByVal
+        https://bugs.webkit.org/show_bug.cgi?id=180022
+
+        Reviewed by Saam Barati.
+
+        * stress/delete-by-id.js: Added.
+        (shouldBe):
+        (test1):
+        (test2):
+        * stress/delete-by-val-ftl.js: Added.
+        (shouldBe):
+        (test1):
+        (test2):
+
+2017-11-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Introduce {Set,Map,WeakMap}Fields
+        https://bugs.webkit.org/show_bug.cgi?id=179925
+
+        Reviewed by Saam Barati.
+
+        * stress/map-set-clobber-map-get.js: Added.
+        (shouldBe):
+        (test):
+        * stress/map-set-does-not-clobber-set-has.js: Added.
+        (shouldBe):
+        * stress/map-set-does-not-clobber-weak-map-get.js: Added.
+        (shouldBe):
+        (test):
+        * stress/set-add-clobber-set-has.js: Added.
+        (shouldBe):
+        * stress/set-add-does-not-clobber-map-get.js: Added.
+        (shouldBe):
+
+2017-11-24  Mark Lam  <mark.lam@apple.com>
+
+        Move unsafe jsc shell test functions to the $vm object.
+        https://bugs.webkit.org/show_bug.cgi?id=179980
+
+        Reviewed by Yusuke Suzuki.
+
+        * controlFlowProfiler/driver/driver.js:
+        * controlFlowProfiler/execution-count.js:
+        * controlFlowProfiler/if-statement.js:
+        * controlFlowProfiler/loop-statements.js:
+        * controlFlowProfiler/switch-statements.js:
+        * controlFlowProfiler/test-jit.js:
+        * exceptionFuzz/3d-cube.js:
+        * exceptionFuzz/date-format-xparb.js:
+        * exceptionFuzz/earley-boyer.js:
+        * heapProfiler/basic-edges.js:
+        * heapProfiler/property-edge-types.js:
+        * microbenchmarks/try-get-by-id-basic.js:
+        * microbenchmarks/try-get-by-id-polymorphic.js:
+        * modules/namespace-object-try-get.js:
+        * stress/argument-count-bytecode.js:
+        * stress/argument-intrinsic-basic.js:
+        * stress/argument-intrinsic-inlining-use-caller-arg.js:
+        * stress/argument-intrinsic-inlining-with-result-escape.js:
+        * stress/argument-intrinsic-inlining-with-vararg-with-enough-arguments.js:
+        * stress/argument-intrinsic-inlining-with-vararg.js:
+        * stress/argument-intrinsic-nested-inlining.js:
+        * stress/argument-intrinsic-not-convert-to-get-argument.js:
+        * stress/argument-intrinsic-with-stack-write.js:
+        * stress/arity-mismatch-get-argument.js:
+        * stress/array-message-passing.js:
+        * stress/array-push-with-force-exit.js:
+        * stress/check-dom-with-signature.js:
+        * stress/check-sub-class.js:
+        * stress/compare-eq-incomplete-profile.js:
+        * stress/custom-get-set-inline-caching-one-level-up-proto-chain.js:
+        * stress/do-eval-virtual-call-correctly.js:
+        * stress/dom-jit-with-poly-proto.js:
+        * stress/domjit-exception-ic.js:
+        * stress/domjit-exception.js:
+        * stress/domjit-getter-complex-with-incorrect-object.js:
+        * stress/domjit-getter-complex.js:
+        * stress/domjit-getter-poly.js:
+        * stress/domjit-getter-proto.js:
+        * stress/domjit-getter-super-poly.js:
+        * stress/domjit-getter-try-catch-getter-as-get-by-id-register-restoration.js:
+        * stress/domjit-getter-type-check.js:
+        * stress/domjit-getter.js:
+        * stress/exit-during-inlined-arity-fixup-recover-proper-frame.js:
+        * stress/for-in-proxy-target-changed-structure.js:
+        * stress/for-in-proxy.js:
+        * stress/generational-opaque-roots.js:
+        * stress/global-const-redeclaration-setting-2.js:
+        * stress/global-const-redeclaration-setting-3.js:
+        * stress/global-const-redeclaration-setting-4.js:
+        * stress/global-const-redeclaration-setting-5.js:
+        * stress/global-const-redeclaration-setting.js:
+        * stress/import-basic.js:
+        * stress/import-from-eval.js:
+        * stress/import-reject-with-exception.js:
+        * stress/import-syntax.js:
+        * stress/impure-get-own-property-slot-inline-cache.js:
+        * stress/is-constructor.js:
+        * stress/istypedarrayview-intrinsic.js:
+        * stress/jsc-setImpureGetterDelegate-on-bad-type.js:
+        * stress/jsc-test-functions-should-be-more-robust.js:
+        * stress/object-toString-with-proxy.js:
+        * stress/poly-proto-custom-value-and-accessor.js:
+        * stress/proxy-inline-cache.js:
+        * stress/re-execute-error-module.js:
+        * stress/regress-150532.js:
+        * stress/regress-156992.js:
+        * stress/regress-179619.js:
+        * stress/resources/shadow-chicken-support.js:
+        * stress/runtime-array.js:
+        * stress/sampling-profiler-microtasks.js:
+        * stress/shadow-chicken-enabled.js:
+        * stress/spread-correct-global-object-on-exception.js:
+        * stress/super-get-by-id.js:
+        * stress/tailCallForwardArguments.js:
+        * stress/to-object-intrinsic-boolean-edge.js:
+        * stress/to-object-intrinsic-null-or-undefined-edge.js:
+        * stress/to-object-intrinsic-number-edge.js:
+        * stress/to-object-intrinsic-object-edge.js:
+        * stress/to-object-intrinsic-string-edge.js:
+        * stress/to-object-intrinsic-symbol-edge.js:
+        * stress/to-object-intrinsic.js:
+        * stress/try-catch-custom-getter-as-get-by-id.js:
+        * stress/try-get-by-id-poly-proto.js:
+        * stress/try-get-by-id-should-spill-registers-dfg.js:
+        * stress/try-get-by-id.js:
+        * typeProfiler/arrow-functions.js:
+        * typeProfiler/basic.js:
+        * typeProfiler/captured.js:
+        * typeProfiler/classes.js:
+        * typeProfiler/dfg-jit-optimizations.js:
+        * typeProfiler/dictionary-mode.js:
+        * typeProfiler/es6-block-scoping.js:
+        * typeProfiler/es6-classes.js:
+        * typeProfiler/inheritance.js:
+        * typeProfiler/int52-dfg.js:
+        * typeProfiler/loop.js:
+        * typeProfiler/optional-fields.js:
+        * typeProfiler/overflow.js:
+        * typeProfiler/return.js:
+        * typeProfiler/symbol.js:
+        * typeProfiler/weird-prototype-chain.js:
+
+2017-11-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG][FTL] Support MapSet / SetAdd intrinsics
+        https://bugs.webkit.org/show_bug.cgi?id=179858
+
+        Reviewed by Saam Barati.
+
+        * microbenchmarks/map-has-and-set.js: Added.
+        (test):
+        * stress/map-set-check-failure.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (target):
+        * stress/map-set-cse.js: Added.
+        (shouldBe):
+        (test):
+        * stress/set-add-check-failure.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (set shouldThrow):
+        * stress/set-add-cse.js: Added.
+        (shouldBe):
+
+2017-11-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Allow poly proto for intrinsic getters
+        https://bugs.webkit.org/show_bug.cgi?id=179550
+
+        Reviewed by Saam Barati.
+
+        This change is also tested by existing tests.
+
+            1. stress/intrinsic-getter-with-poly-proto.js
+            2. stress/poly-proto-intrinsic-getter-correctness.js
+
+        * stress/intrinsic-getter-with-poly-proto-getter-change.js: Added.
+        (shouldBe):
+        (makePolyProtoObject.foo.C):
+        (makePolyProtoObject.foo):
+        (makePolyProtoObject):
+        (target):
+        * stress/intrinsic-getter-with-poly-proto-proto-change.js: Added.
+        (shouldBe):
+        (makePolyProtoObject.foo.C):
+        (makePolyProtoObject.foo):
+        (makePolyProtoObject):
+        (target):
+
+2017-11-20  Guillaume Emont  <guijemont@igalia.com>
+
+        Skip stress/unshiftCountSlowCase-correct-postCapacity.js on embedded Linux
+        https://bugs.webkit.org/show_bug.cgi?id=179744
+
+        Reviewed by Michael Catanzaro.
+
+        This test uses too much memory for our buildbots on these platforms
+        and gets OOM-killed.
+
+        * stress/unshiftCountSlowCase-correct-postCapacity.js:
+        Skip if $memoryLimited and linux.
+
+2017-11-17  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly JS API: throw when a promise can't be created
+        https://bugs.webkit.org/show_bug.cgi?id=179826
+        <rdar://problem/35455813>
+
+        Reviewed by Mark Lam.
+
+        Test WebAssembly.{compile,instantiate} where promise creation
+        fails because of a stack overflow.
+
+        * wasm/js-api/promise-stack-overflow.js: Added.
+        (const.runNearStackLimit.f.const.t):
+        (async.testCompile):
+        (async.testInstantiate):
+
+2017-11-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, mark regress-178385.js as memory exhausting
+
+        * stress/regress-178385.js:
+
 2017-11-16  Ryan Haddad  <ryanhaddad@apple.com>
 
         Mark test262/test/language/statements/class/definition/fn-name-static-precedence.js as passing after r224927.

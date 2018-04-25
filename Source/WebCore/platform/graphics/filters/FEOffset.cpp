@@ -42,19 +42,9 @@ Ref<FEOffset> FEOffset::create(Filter& filter, float dx, float dy)
     return adoptRef(*new FEOffset(filter, dx, dy));
 }
 
-float FEOffset::dx() const
-{
-    return m_dx;
-}
-
 void FEOffset::setDx(float dx)
 {
     m_dx = dx;
-}
-
-float FEOffset::dy() const
-{
-    return m_dy;
 }
 
 void FEOffset::setDy(float dy)
@@ -79,7 +69,7 @@ void FEOffset::platformApplySoftware()
     FilterEffect* in = inputEffect(0);
 
     ImageBuffer* resultImage = createImageBufferResult();
-    ImageBuffer* inBuffer = in->asImageBuffer();
+    ImageBuffer* inBuffer = in->imageBufferResult();
     if (!resultImage || !inBuffer)
         return;
 
@@ -91,17 +81,14 @@ void FEOffset::platformApplySoftware()
     resultImage->context().drawImageBuffer(*inBuffer, drawingRegion);
 }
 
-void FEOffset::dump()
+TextStream& FEOffset::externalRepresentation(TextStream& ts, RepresentationType representation) const
 {
-}
-
-TextStream& FEOffset::externalRepresentation(TextStream& ts, int indent) const
-{
-    writeIndent(ts, indent);
-    ts << "[feOffset"; 
-    FilterEffect::externalRepresentation(ts);
+    ts << indent << "[feOffset";
+    FilterEffect::externalRepresentation(ts, representation);
     ts << " dx=\"" << dx() << "\" dy=\"" << dy() << "\"]\n";
-    inputEffect(0)->externalRepresentation(ts, indent + 1);
+
+    TextStream::IndentScope indentScope(ts);
+    inputEffect(0)->externalRepresentation(ts, representation);
     return ts;
 }
 

@@ -568,9 +568,19 @@ public:
         m_assembler.neg<32>(dest, dest);
     }
 
+    void neg32(RegisterID src, RegisterID dest)
+    {
+        m_assembler.neg<32>(dest, src);
+    }
+
     void neg64(RegisterID dest)
     {
         m_assembler.neg<64>(dest, dest);
+    }
+
+    void neg64(RegisterID src, RegisterID dest)
+    {
+        m_assembler.neg<64>(dest, src);
     }
 
     void or32(RegisterID src, RegisterID dest)
@@ -1540,7 +1550,7 @@ public:
         m_assembler.strb(src, dest, simm);
     }
 
-    void getEffectiveAddress64(BaseIndex address, RegisterID dest)
+    void getEffectiveAddress(BaseIndex address, RegisterID dest)
     {
         m_assembler.add<64>(dest, address.base, address.index, ARM64Assembler::LSL, address.scale);
         if (address.offset)

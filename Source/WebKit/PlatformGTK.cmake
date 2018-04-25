@@ -30,6 +30,8 @@ file(REMOVE "${FORWARDING_HEADERS_DIR}/WebCore/Settings.h")
 set(WebKit_USE_PREFIX_HEADER ON)
 
 list(APPEND WebKit_SOURCES
+    NetworkProcess/CustomProtocols/LegacyCustomProtocolManager.cpp
+
     NetworkProcess/CustomProtocols/soup/LegacyCustomProtocolManagerSoup.cpp
 
     NetworkProcess/cache/NetworkCacheCodersSoup.cpp
@@ -73,7 +75,6 @@ list(APPEND WebKit_SOURCES
     Shared/CoordinatedGraphics/SimpleViewportController.cpp
 
     Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.cpp
-    Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp
     Shared/CoordinatedGraphics/threadedcompositor/ThreadedDisplayRefreshMonitor.cpp
     Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp
 
@@ -200,6 +201,8 @@ list(APPEND WebKit_SOURCES
     UIProcess/Automation/gtk/WebAutomationSessionGtk.cpp
 
     UIProcess/Launcher/glib/ProcessLauncherGLib.cpp
+
+    UIProcess/Network/CustomProtocols/LegacyCustomProtocolManagerProxy.cpp
 
     UIProcess/linux/MemoryPressureMonitor.cpp
 
@@ -407,6 +410,12 @@ list(APPEND WebKit_SOURCES
 
     WebProcess/soup/WebKitSoupRequestInputStream.cpp
     WebProcess/soup/WebProcessSoup.cpp
+)
+
+list(APPEND WebKit_MESSAGES_IN_FILES
+    NetworkProcess/CustomProtocols/LegacyCustomProtocolManager.messages.in
+
+    UIProcess/Network/CustomProtocols/LegacyCustomProtocolManagerProxy.messages.in
 )
 
 list(APPEND WebKit_DERIVED_SOURCES

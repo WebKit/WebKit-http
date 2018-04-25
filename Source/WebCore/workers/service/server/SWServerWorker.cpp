@@ -43,11 +43,11 @@ SWServerWorker* SWServerWorker::existingWorkerForIdentifier(ServiceWorkerIdentif
     return allWorkers().get(identifier);
 }
 
-SWServerWorker::SWServerWorker(SWServer& server, const ServiceWorkerRegistrationKey& registrationKey, SWServerToContextConnectionIdentifier contextConnectionIdentifier, const URL& scriptURL, const String& script, WorkerType type, ServiceWorkerIdentifier identifier)
+SWServerWorker::SWServerWorker(SWServer& server, SWServerRegistration& registration, SWServerToContextConnectionIdentifier contextConnectionIdentifier, const URL& scriptURL, const String& script, WorkerType type, ServiceWorkerIdentifier identifier)
     : m_server(server)
-    , m_registrationKey(registrationKey)
+    , m_registrationKey(registration.key())
     , m_contextConnectionIdentifier(contextConnectionIdentifier)
-    , m_data { identifier, scriptURL, ServiceWorkerState::Redundant, type }
+    , m_data { identifier, scriptURL, ServiceWorkerState::Redundant, type, registration.identifier() }
     , m_script(script)
 {
     auto result = allWorkers().add(identifier, this);
@@ -65,19 +65,19 @@ void SWServerWorker::terminate()
     m_server.terminateWorker(*this);
 }
 
-void SWServerWorker::scriptContextFailedToStart(const String& message)
+void SWServerWorker::scriptContextFailedToStart(const std::optional<ServiceWorkerJobDataIdentifier>& jobDataIdentifier, const String& message)
 {
-    m_server.scriptContextFailedToStart(*this, message);
+    m_server.scriptContextFailedToStart(jobDataIdentifier, *this, message);
 }
 
-void SWServerWorker::scriptContextStarted()
+void SWServerWorker::scriptContextStarted(const std::optional<ServiceWorkerJobDataIdentifier>& jobDataIdentifier)
 {
-    m_server.scriptContextStarted(*this);
+    m_server.scriptContextStarted(jobDataIdentifier, *this);
 }
 
-void SWServerWorker::didFinishInstall(bool wasSuccessful)
+void SWServerWorker::didFinishInstall(const std::optional<ServiceWorkerJobDataIdentifier>& jobDataIdentifier, bool wasSuccessful)
 {
-    m_server.didFinishInstall(*this, wasSuccessful);
+    m_server.didFinishInstall(jobDataIdentifier, *this, wasSuccessful);
 }
 
 void SWServerWorker::didFinishActivation()

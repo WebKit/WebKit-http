@@ -53,6 +53,7 @@
 #include "CursorList.h"
 #include "DeprecatedCSSOMValue.h"
 #include "Document.h"
+#include "DocumentTimeline.h"
 #include "FontCascade.h"
 #include "FontSelectionValueInlines.h"
 #include "FontTaggedSettings.h"
@@ -2360,6 +2361,8 @@ RenderElement* ComputedStyleExtractor::styledRenderer() const
         return nullptr;
     if (m_pseudoElementSpecifier != NOPSEUDO && element == m_element.get())
         return nullptr;
+    if (element->hasDisplayContents())
+        return nullptr;
     return element->renderer();
 }
 
@@ -2447,7 +2450,10 @@ static inline const RenderStyle* computeRenderStyleForProperty(Element& element,
     auto* renderer = element.renderer();
 
     if (renderer && renderer->isComposited() && CSSAnimationController::supportsAcceleratedAnimationOfProperty(propertyID)) {
-        ownedStyle = renderer->animation().animatedStyleForRenderer(*renderer);
+        if (auto timeline = element.document().existingTimeline())
+            ownedStyle = timeline->animatedStyleForRenderer(*renderer);
+        else
+            ownedStyle = renderer->animation().animatedStyleForRenderer(*renderer);
         if (pseudoElementSpecifier && !element.isPseudoElement()) {
             // FIXME: This cached pseudo style will only exist if the animation has been run at least once.
             return ownedStyle->getCachedPseudoStyle(pseudoElementSpecifier);

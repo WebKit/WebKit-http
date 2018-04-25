@@ -464,33 +464,33 @@ static AtkAttributeSet* webkitAccessibleGetAttributes(AtkObject* object)
 
     if (is<AccessibilityTable>(*coreObject) && downcast<AccessibilityTable>(*coreObject).isExposableThroughAccessibility()) {
         auto& table = downcast<AccessibilityTable>(*coreObject);
-        int rowCount = table.ariaRowCount();
+        int rowCount = table.axRowCount();
         if (rowCount)
             attributeSet = addToAtkAttributeSet(attributeSet, "rowcount", String::number(rowCount).utf8().data());
 
-        int columnCount = table.ariaColumnCount();
+        int columnCount = table.axColumnCount();
         if (columnCount)
             attributeSet = addToAtkAttributeSet(attributeSet, "colcount", String::number(columnCount).utf8().data());
     } else if (is<AccessibilityTableRow>(*coreObject)) {
         auto& row = downcast<AccessibilityTableRow>(*coreObject);
-        int rowIndex = row.ariaRowIndex();
+        int rowIndex = row.axRowIndex();
         if (rowIndex != -1)
             attributeSet = addToAtkAttributeSet(attributeSet, "rowindex", String::number(rowIndex).utf8().data());
     } else if (is<AccessibilityTableCell>(*coreObject)) {
         auto& cell = downcast<AccessibilityTableCell>(*coreObject);
-        int rowIndex = cell.ariaRowIndex();
+        int rowIndex = cell.axRowIndex();
         if (rowIndex != -1)
             attributeSet = addToAtkAttributeSet(attributeSet, "rowindex", String::number(rowIndex).utf8().data());
 
-        int columnIndex = cell.ariaColumnIndex();
+        int columnIndex = cell.axColumnIndex();
         if (columnIndex != -1)
             attributeSet = addToAtkAttributeSet(attributeSet, "colindex", String::number(columnIndex).utf8().data());
 
-        int rowSpan = cell.ariaRowSpan();
+        int rowSpan = cell.axRowSpan();
         if (rowSpan != -1)
             attributeSet = addToAtkAttributeSet(attributeSet, "rowspan", String::number(rowSpan).utf8().data());
 
-        int columnSpan = cell.ariaColumnSpan();
+        int columnSpan = cell.axColumnSpan();
         if (columnSpan != -1)
             attributeSet = addToAtkAttributeSet(attributeSet, "colspan", String::number(columnSpan).utf8().data());
     }
@@ -499,14 +499,14 @@ static AtkAttributeSet* webkitAccessibleGetAttributes(AtkObject* object)
     if (!placeholder.isEmpty())
         attributeSet = addToAtkAttributeSet(attributeSet, "placeholder-text", placeholder.utf8().data());
 
-    if (coreObject->supportsARIAAutoComplete())
-        attributeSet = addToAtkAttributeSet(attributeSet, "autocomplete", coreObject->ariaAutoCompleteValue().utf8().data());
+    if (coreObject->supportsAutoComplete())
+        attributeSet = addToAtkAttributeSet(attributeSet, "autocomplete", coreObject->autoCompleteValue().utf8().data());
 
-    if (coreObject->supportsARIAHasPopup())
-        attributeSet = addToAtkAttributeSet(attributeSet, "haspopup", coreObject->ariaPopupValue().utf8().data());
+    if (coreObject->supportsHasPopup())
+        attributeSet = addToAtkAttributeSet(attributeSet, "haspopup", coreObject->hasPopupValue().utf8().data());
 
-    if (coreObject->supportsARIACurrent())
-        attributeSet = addToAtkAttributeSet(attributeSet, "current", coreObject->ariaCurrentValue().utf8().data());
+    if (coreObject->supportsCurrent())
+        attributeSet = addToAtkAttributeSet(attributeSet, "current", coreObject->currentValue().utf8().data());
 
     // The Core AAM states that an explicitly-set value should be exposed, including "none".
     if (coreObject->hasAttribute(HTMLNames::aria_sortAttr)) {
@@ -527,13 +527,13 @@ static AtkAttributeSet* webkitAccessibleGetAttributes(AtkObject* object)
         }
     }
 
-    if (coreObject->supportsARIAPosInSet())
-        attributeSet = addToAtkAttributeSet(attributeSet, "posinset", String::number(coreObject->ariaPosInSet()).utf8().data());
+    if (coreObject->supportsPosInSet())
+        attributeSet = addToAtkAttributeSet(attributeSet, "posinset", String::number(coreObject->posInSet()).utf8().data());
 
-    if (coreObject->supportsARIASetSize())
-        attributeSet = addToAtkAttributeSet(attributeSet, "setsize", String::number(coreObject->ariaSetSize()).utf8().data());
+    if (coreObject->supportsSetSize())
+        attributeSet = addToAtkAttributeSet(attributeSet, "setsize", String::number(coreObject->setSize()).utf8().data());
 
-    String isReadOnly = coreObject->ariaReadOnlyValue();
+    String isReadOnly = coreObject->readOnlyValue();
     if (!isReadOnly.isEmpty())
         attributeSet = addToAtkAttributeSet(attributeSet, "readonly", isReadOnly.utf8().data());
 
@@ -565,10 +565,10 @@ static AtkAttributeSet* webkitAccessibleGetAttributes(AtkObject* object)
         attributeSet = addToAtkAttributeSet(attributeSet, "roledescription", roleDescription.utf8().data());
 
     // We need to expose the live region attributes even if the live region is currently disabled/off.
-    if (auto liveContainer = coreObject->ariaLiveRegionAncestor(false)) {
-        String liveStatus = liveContainer->ariaLiveRegionStatus();
-        String relevant = liveContainer->ariaLiveRegionRelevant();
-        bool isAtomic = liveContainer->ariaLiveRegionAtomic();
+    if (auto liveContainer = coreObject->liveRegionAncestor(false)) {
+        String liveStatus = liveContainer->liveRegionStatus();
+        String relevant = liveContainer->liveRegionRelevant();
+        bool isAtomic = liveContainer->liveRegionAtomic();
         String liveRole = roleString.isEmpty() ? computedRoleString : roleString;
 
         // According to the Core AAM, we need to expose the above properties with "container-" prefixed
@@ -587,7 +587,7 @@ static AtkAttributeSet* webkitAccessibleGetAttributes(AtkObject* object)
             attributeSet = addToAtkAttributeSet(attributeSet, "relevant", relevant.utf8().data());
             if (isAtomic)
                 attributeSet = addToAtkAttributeSet(attributeSet, "atomic", "true");
-        } else if (!isAtomic && coreObject->ariaLiveRegionAtomic())
+        } else if (!isAtomic && coreObject->liveRegionAtomic())
             attributeSet = addToAtkAttributeSet(attributeSet, "atomic", "true");
     }
 
@@ -602,7 +602,7 @@ static AtkAttributeSet* webkitAccessibleGetAttributes(AtkObject* object)
         attributeSet = addToAtkAttributeSet(attributeSet, "grabbed", "false");
 
     // The Core AAM states the author-provided value should be exposed as-is.
-    const AtomicString& keyShortcuts = coreObject->ariaKeyShortcutsValue();
+    const AtomicString& keyShortcuts = coreObject->keyShortcutsValue();
     if (!keyShortcuts.isEmpty())
         attributeSet = addToAtkAttributeSet(attributeSet, "keyshortcuts", keyShortcuts.string().utf8().data());
 
@@ -687,7 +687,7 @@ static AtkRole atkRole(AccessibilityObject* coreObject)
     case AccessibilityRole::Window:
         return ATK_ROLE_WINDOW;
     case AccessibilityRole::PopUpButton:
-        return coreObject->ariaHasPopup() ? ATK_ROLE_PUSH_BUTTON : ATK_ROLE_COMBO_BOX;
+        return coreObject->hasPopup() ? ATK_ROLE_PUSH_BUTTON : ATK_ROLE_COMBO_BOX;
     case AccessibilityRole::ComboBox:
         return ATK_ROLE_COMBO_BOX;
     case AccessibilityRole::SplitGroup:
@@ -930,7 +930,7 @@ static void setAtkStateSetFromCoreObject(AccessibilityObject* coreObject, AtkSta
 
     // Please keep the state list in alphabetical order
     if ((isListBoxOption && coreObject->isSelectedOptionActive())
-        || coreObject->ariaCurrentState() != AccessibilityARIACurrentState::False)
+        || coreObject->currentState() != AccessibilityCurrentState::False)
         atk_state_set_add_state(stateSet, ATK_STATE_ACTIVE);
 
     if (coreObject->isBusy())
@@ -977,7 +977,7 @@ static void setAtkStateSetFromCoreObject(AccessibilityObject* coreObject, AtkSta
     else if (coreObject->orientation() == AccessibilityOrientation::Vertical)
         atk_state_set_add_state(stateSet, ATK_STATE_VERTICAL);
 
-    if (coreObject->ariaHasPopup())
+    if (coreObject->hasPopup())
         atk_state_set_add_state(stateSet, ATK_STATE_HAS_POPUP);
 
     if (coreObject->isIndeterminate())
@@ -987,7 +987,7 @@ static void setAtkStateSetFromCoreObject(AccessibilityObject* coreObject, AtkSta
             atk_state_set_add_state(stateSet, ATK_STATE_INDETERMINATE);
     }
 
-    if (coreObject->isAriaModalNode())
+    if (coreObject->isModalNode())
         atk_state_set_add_state(stateSet, ATK_STATE_MODAL);
 
     if (coreObject->invalidStatus() != "false")
@@ -1002,7 +1002,7 @@ static void setAtkStateSetFromCoreObject(AccessibilityObject* coreObject, AtkSta
         atk_state_set_add_state(stateSet, ATK_STATE_PRESSED);
 
 #if ATK_CHECK_VERSION(2,15,3)
-    if (!coreObject->canSetValueAttribute() && (coreObject->supportsARIAReadOnly()))
+    if (!coreObject->canSetValueAttribute() && (coreObject->supportsReadOnly()))
         atk_state_set_add_state(stateSet, ATK_STATE_READ_ONLY);
 #endif
 
@@ -1046,7 +1046,7 @@ static void setAtkStateSetFromCoreObject(AccessibilityObject* coreObject, AtkSta
 
     // TODO: ATK_STATE_SENSITIVE
 
-    if (coreObject->supportsARIAAutoComplete() && coreObject->ariaAutoCompleteValue() != "none")
+    if (coreObject->supportsAutoComplete() && coreObject->autoCompleteValue() != "none")
         atk_state_set_add_state(stateSet, ATK_STATE_SUPPORTS_AUTOCOMPLETION);
 
     if (coreObject->isVisited())

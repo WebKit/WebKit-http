@@ -26,11 +26,14 @@
 #include "config.h"
 #include "KeyframeEffect.h"
 
+#include "Animation.h"
 #include "CSSPropertyAnimation.h"
 #include "Element.h"
 #include "RenderStyle.h"
 #include "StyleProperties.h"
 #include "StyleResolver.h"
+#include "WillChangeData.h"
+#include <wtf/UUID.h>
 
 namespace WebCore {
 using namespace JSC;
@@ -49,6 +52,7 @@ ExceptionOr<Ref<KeyframeEffect>> KeyframeEffect::create(ExecState& state, Elemen
 KeyframeEffect::KeyframeEffect(Element* target)
     : AnimationEffect(KeyframeEffectClass)
     , m_target(target)
+    , m_keyframes(emptyString())
 {
 }
 
@@ -71,7 +75,7 @@ ExceptionOr<void> KeyframeEffect::processKeyframes(ExecState& state, Strong<JSOb
     if (!isJSArray(keyframes.get()))
         return Exception { TypeError };
 
-    Vector<Keyframe> newKeyframes { };
+    KeyframeList newKeyframes("keyframe-effect-" + createCanonicalUUIDString());
 
     VM& vm = state.vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
@@ -106,25 +110,47 @@ ExceptionOr<void> KeyframeEffect::processKeyframes(ExecState& state, Strong<JSOb
         styleProperties->parseDeclaration(cssText.toString(), parserContext);
         unsigned numberOfCSSProperties = styleProperties->propertyCount();
 
-        Vector<CSSPropertyID> properties(numberOfCSSProperties);
+        KeyframeValue keyframeValue(0, nullptr);
         for (unsigned k = 0; k < numberOfCSSProperties; ++k) {
-            properties[k] = styleProperties->propertyAt(k).id();
-            styleResolver.applyPropertyToStyle(styleProperties->propertyAt(k).id(), styleProperties->propertyAt(k).value(), WTFMove(renderStyle));
+            auto cssPropertyId = styleProperties->propertyAt(k).id();
+            keyframeValue.addProperty(cssPropertyId);
+            newKeyframes.addProperty(cssPropertyId);
+            styleResolver.applyPropertyToStyle(cssPropertyId, styleProperties->propertyAt(k).value(), WTFMove(renderStyle));
             renderStyle = styleResolver.state().takeStyle();
         }
 
-        newKeyframes.append({ RenderStyle::clone(*renderStyle), properties });
+        keyframeValue.setKey(i);
+        keyframeValue.setStyle(RenderStyle::clonePtr(*renderStyle));
+        newKeyframes.insert(WTFMove(keyframeValue));
     }
 
     m_keyframes = WTFMove(newKeyframes);
 
+    computeStackingContextImpact();
+
     return { };
+}
+
+void KeyframeEffect::computeStackingContextImpact()
+{
+    m_triggersStackingContext = false;
+    for (auto cssPropertyId : m_keyframes.properties()) {
+        if (WillChangeData::propertyCreatesStackingContext(cssPropertyId)) {
+            m_triggersStackingContext = true;
+            break;
+        }
+    }
 }
 
 void KeyframeEffect::applyAtLocalTime(Seconds localTime, RenderStyle& targetStyle)
 {
     if (!m_target)
         return;
+
+    if (m_startedAccelerated && localTime >= timing()->duration()) {
+        m_startedAccelerated = false;
+        animation()->acceleratedRunningStateDidChange();
+    }
 
     // FIXME: Assume animations only apply in the range [0, duration[
     // until we support fill modes, delays and iterations.
@@ -134,11 +160,90 @@ void KeyframeEffect::applyAtLocalTime(Seconds localTime, RenderStyle& targetStyl
     if (!timing()->duration())
         return;
 
-    float progress = localTime / timing()->duration();
+    bool needsToStartAccelerated = false;
 
-    // FIXME: This will crash if we attempt to animate properties that require an AnimationBase.
-    for (auto propertyId : m_keyframes[0].properties)
-        CSSPropertyAnimation::blendProperties(nullptr, propertyId, &targetStyle, &m_keyframes[0].style, &m_keyframes[1].style, progress);
+    if (!m_started && !m_startedAccelerated) {
+        needsToStartAccelerated = shouldRunAccelerated();
+        m_startedAccelerated = needsToStartAccelerated;
+        if (needsToStartAccelerated)
+            animation()->acceleratedRunningStateDidChange();
+    }
+    m_started = true;
+
+    if (!needsToStartAccelerated && !m_startedAccelerated) {
+        float progress = localTime / timing()->duration();
+        for (auto cssPropertyId : m_keyframes.properties())
+            CSSPropertyAnimation::blendProperties(this, cssPropertyId, &targetStyle, m_keyframes[0].style(), m_keyframes[1].style(), progress);
+    }
+
+    // https://w3c.github.io/web-animations/#side-effects-section
+    // For every property targeted by at least one animation effect that is current or in effect, the user agent
+    // must act as if the will-change property ([css-will-change-1]) on the target element includes the property.
+    if (m_triggersStackingContext && targetStyle.hasAutoZIndex())
+        targetStyle.setZIndex(0);
+}
+
+bool KeyframeEffect::shouldRunAccelerated()
+{
+    for (auto cssPropertyId : m_keyframes.properties()) {
+        if (!CSSPropertyAnimation::animationOfPropertyIsAccelerated(cssPropertyId))
+            return false;
+    }
+    return true;
+}
+
+void KeyframeEffect::getAnimatedStyle(std::unique_ptr<RenderStyle>& animatedStyle)
+{
+    if (!animation() || !timing()->duration())
+        return;
+
+    auto localTime = animation()->currentTime();
+
+    // FIXME: Assume animations only apply in the range [0, duration[
+    // until we support fill modes, delays and iterations.
+    if (!localTime || localTime < 0_s || localTime >= timing()->duration())
+        return;
+
+    if (!m_keyframes.size())
+        return;
+
+    if (!animatedStyle)
+        animatedStyle = RenderStyle::clonePtr(renderer()->style());
+
+    for (auto cssPropertyId : m_keyframes.properties()) {
+        float progress = localTime.value() / timing()->duration();
+        CSSPropertyAnimation::blendProperties(this, cssPropertyId, animatedStyle.get(), m_keyframes[0].style(), m_keyframes[1].style(), progress);
+    }
+}
+
+void KeyframeEffect::startOrStopAccelerated()
+{
+    auto* renderer = this->renderer();
+    if (!renderer || !renderer->isComposited())
+        return;
+
+    auto* compositedRenderer = downcast<RenderBoxModelObject>(renderer);
+    if (m_startedAccelerated) {
+        auto animation = Animation::create();
+        animation->setDuration(timing()->duration().value());
+        compositedRenderer->startAnimation(0, animation.ptr(), m_keyframes);
+    } else {
+        compositedRenderer->animationFinished(m_keyframes.animationName());
+        if (!m_target->document().renderTreeBeingDestroyed())
+            m_target->invalidateStyleAndLayerComposition();
+    }
+}
+
+RenderElement* KeyframeEffect::renderer() const
+{
+    return m_target ? m_target->renderer() : nullptr;
+}
+
+const RenderStyle& KeyframeEffect::currentStyle() const
+{
+    if (auto* renderer = this->renderer())
+        return renderer->style();
+    return RenderStyle::defaultStyle();
 }
 
 } // namespace WebCore

@@ -245,6 +245,9 @@ inspector/unit-tests/heap-snapshot-collection-event.html [ Skip ]
 fast/scrolling/scroll-animator-overlay-scrollbars-clicked.html [ Skip ]
 fast/scrolling/scroll-animator-overlay-scrollbars-hovered.html [ Skip ]
 
+# WK1 main frame scrollbars are native widgets whose size is unaffected by webkit-scrollbar.
+fast/visual-viewport/viewport-dimensions-exclude-custom-scrollbars.html [ Skip ]
+
 # This hit-test test doesn't work on DRT
 webkit.org/b/156084 accessibility/mac/video-tag-hit-test.html [ Skip ]
 
@@ -465,3 +468,5 @@ webkit.org/b/177020 fast/events/beforeunload-dom-manipulation-crash.html [ Skip 
 webkit.org/b/177563 [ HighSierra ] http/tests/xmlhttprequest/response-empty-arraybuffer.html [ Failure ]
 
 webkit.org/b/172397 [ Debug ] animations/needs-layout.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/179775 imported/w3c/web-platform-tests/XMLHttpRequest/firing-events-http-no-content-length.html [ Pass Failure ]

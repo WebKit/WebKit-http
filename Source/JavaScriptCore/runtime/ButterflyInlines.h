@@ -62,7 +62,7 @@ ALWAYS_INLINE unsigned Butterfly::optimalContiguousVectorLength(Structure* struc
 inline Butterfly* Butterfly::createUninitialized(VM& vm, JSCell*, size_t preCapacity, size_t propertyCapacity, bool hasIndexingHeader, size_t indexingPayloadSizeInBytes)
 {
     size_t size = totalSize(preCapacity, propertyCapacity, hasIndexingHeader, indexingPayloadSizeInBytes);
-    void* base = vm.jsValueGigacageAuxiliarySpace.allocate(size);
+    void* base = vm.jsValueGigacageAuxiliarySpace.allocateNonVirtual(size, nullptr, AllocationFailureMode::Assert);
     Butterfly* result = fromBase(base, preCapacity, propertyCapacity);
     return result;
 }
@@ -70,7 +70,7 @@ inline Butterfly* Butterfly::createUninitialized(VM& vm, JSCell*, size_t preCapa
 inline Butterfly* Butterfly::tryCreate(VM& vm, JSCell*, size_t preCapacity, size_t propertyCapacity, bool hasIndexingHeader, const IndexingHeader& indexingHeader, size_t indexingPayloadSizeInBytes)
 {
     size_t size = totalSize(preCapacity, propertyCapacity, hasIndexingHeader, indexingPayloadSizeInBytes);
-    void* base = vm.jsValueGigacageAuxiliarySpace.tryAllocate(size);
+    void* base = vm.jsValueGigacageAuxiliarySpace.allocateNonVirtual(size, nullptr, AllocationFailureMode::ReturnNull);
     if (!base)
         return nullptr;
     Butterfly* result = fromBase(base, preCapacity, propertyCapacity);
@@ -106,8 +106,6 @@ inline Butterfly* Butterfly::createOrGrowPropertyStorage(
     RELEASE_ASSERT(newPropertyCapacity > oldPropertyCapacity);
     if (!oldButterfly)
         return create(vm, intendedOwner, 0, newPropertyCapacity, false, IndexingHeader(), 0);
-
-    oldButterfly = oldButterfly->caged();
 
     size_t preCapacity = oldButterfly->indexingHeader()->preCapacity(structure);
     size_t indexingPayloadSizeInBytes = oldButterfly->indexingHeader()->indexingPayloadSizeInBytes(structure);
@@ -150,7 +148,7 @@ inline Butterfly* Butterfly::growArrayRight(
     void* theBase = base(0, propertyCapacity);
     size_t oldSize = totalSize(0, propertyCapacity, hadIndexingHeader, oldIndexingPayloadSizeInBytes);
     size_t newSize = totalSize(0, propertyCapacity, true, newIndexingPayloadSizeInBytes);
-    void* newBase = vm.jsValueGigacageAuxiliarySpace.tryAllocate(newSize);
+    void* newBase = vm.jsValueGigacageAuxiliarySpace.allocateNonVirtual(newSize, nullptr, AllocationFailureMode::ReturnNull);
     if (!newBase)
         return nullptr;
     // FIXME: This probably shouldn't be a memcpy.

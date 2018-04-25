@@ -1,3 +1,399 @@
+2017-11-30  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, unskip service worker test that no longer times out after r225346.
+
+        * web-platform-tests/service-workers/service-worker/skip-waiting-using-registration.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/skip-waiting-without-client.https-expected.txt:
+
+2017-11-30  Chris Dumez  <cdumez@apple.com>
+
+        ServiceWorkerGlobalScope::skipWaiting() should resolve its promise
+        https://bugs.webkit.org/show_bug.cgi?id=180204
+
+        Reviewed by Brady Eidson.
+
+        Rebaseline test which uses skipWaiting().
+
+        * web-platform-tests/service-workers/service-worker/claim-with-redirect.https-expected.txt:
+
+2017-11-30  Chris Dumez  <cdumez@apple.com>
+
+        Populate self.registration.installing/waiting/active inside service workers
+        https://bugs.webkit.org/show_bug.cgi?id=180168
+
+        Reviewed by Brady Eidson.
+
+        Rebaseline a couple of WPT that now pass for checks.
+
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/registration-attribute.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/navigation-redirect.https-expected.txt:
+
+2017-11-30  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK] Enable all wpt touch-events tests.
+        https://bugs.webkit.org/show_bug.cgi?id=180198
+
+        Unreviewed test gardening.
+
+        * web-platform-tests/touch-events/create-touch-touchlist-expected.txt: Added.
+        * web-platform-tests/touch-events/historical-expected.txt: Renamed from LayoutTests/platform/gtk/imported/w3c/web-platform-tests/touch-events/historical-expected.txt.
+        * web-platform-tests/touch-events/touch-globaleventhandler-interface-expected.txt: Renamed from LayoutTests/platform/gtk/imported/w3c/web-platform-tests/touch-events/touch-globaleventhandler-interface-expected.txt.
+        * web-platform-tests/touch-events/touch-retargeting-expected.txt:
+        * web-platform-tests/touch-events/touch-touchevent-constructor-expected.txt:
+
+2017-11-29  Chris Dumez  <cdumez@apple.com>
+
+        Start exposing self.registration inside service workers
+        https://bugs.webkit.org/show_bug.cgi?id=180162
+
+        Reviewed by Brady Eidson.
+
+        * web-platform-tests/service-workers/service-worker/redirected-response.https-expected.txt:
+
+2017-11-29  Youenn Fablet  <youenn@apple.com>
+
+        Add support for FetchEvent.clientId
+        https://bugs.webkit.org/show_bug.cgi?id=180052
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/service-workers/service-worker/fetch-event.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/resources/clients-get-worker.js:
+        * web-platform-tests/service-workers/service-worker/resources/fetch-event-test-worker.js:
+
+2017-11-29  Ms2ger  <Ms2ger@igalia.com>
+
+        Rebaseline imported/w3c/web-platform-tests/resource-timing/single-entry-per-resource.html.
+        https://bugs.webkit.org/show_bug.cgi?id=180142
+
+        Unreviewed test gardening.
+
+        * web-platform-tests/resource-timing/single-entry-per-resource-expected.txt:
+
+2017-11-28  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rebaseline a few skipped / flaky service worker tests
+
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-match.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-request-redirect.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/register-same-scope-different-script-url.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/skip-waiting-using-registration.https-expected.txt:
+
+2017-11-25  Frederic Wang  <fwang@igalia.com>
+
+        Import MathML WPT tests
+        https://bugs.webkit.org/show_bug.cgi?id=179110
+
+        Reviewed by Darin Adler.
+
+        This patch imports the MathML WPT tests and remove the corresponding unmaintained copies
+        from LayoutTests/imported/mathml-in-html5/. The only exception is for MathML tests testing
+        OpenType MATH parameters: They require Web fonts and do not work well in WebKit without
+        some tweaks because of bug 174030. For now, we only move the web fonts required by the tests
+        and keep running the legacy versions.
+
+        * resources/import-expectations.json:
+        * resources/resource-files.json:
+        * web-platform-tests/mathml/OWNERS: Added.
+        * web-platform-tests/mathml/README.md: Added.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-1-expected.txt: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/fractions/frac-1-expected.txt.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-1.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/fractions/frac-1.html.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-parameters-1.html: Copied from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/fractions/frac-parameters-1.html.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-parameters-2.html: Copied from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/fractions/frac-parameters-2.html.
+        * web-platform-tests/mathml/presentation-markup/fractions/w3c-import.log: Added.
+        * web-platform-tests/mathml/presentation-markup/operators/mo-axis-height-1-expected.txt: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/operators/mo-axis-height-1-expected.txt.
+        * web-platform-tests/mathml/presentation-markup/operators/mo-axis-height-1.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/operators/mo-axis-height-1.html.
+        * web-platform-tests/mathml/presentation-markup/operators/w3c-import.log: Added.
+        * web-platform-tests/mathml/presentation-markup/radicals/root-parameters-1.html: Copied from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/radicals/root-parameters-1.html.
+        * web-platform-tests/mathml/presentation-markup/radicals/w3c-import.log: Added.
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-1-expected.txt: Copied from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/scripts/subsup-1-expected.txt.
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-1.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/scripts/subsup-1.html.
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-2-expected.txt: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/scripts/subsup-2-expected.txt.
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-2.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/scripts/subsup-2.html.
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-3-expected.txt: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/scripts/subsup-3-expected.txt.
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-3.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/scripts/subsup-3.html.
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-4-expected.txt: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/scripts/subsup-4-expected.txt.
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-4.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/scripts/subsup-4.html.
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-5-expected.txt: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/scripts/subsup-5-expected.txt.
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-5.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/scripts/subsup-5.html.
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-parameters-1.html: Copied from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/scripts/subsup-parameters-1.html.
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-1-expected.txt: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/scripts/subsup-1-expected.txt.
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-1.html: Added.
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-1.html: Copied from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/scripts/underover-parameters-1.html.
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-2.html: Copied from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/scripts/underover-parameters-2.html.
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-3.html: Copied from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/scripts/underover-parameters-3.html.
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-4.html: Copied from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/scripts/underover-parameters-4.html.
+        * web-platform-tests/mathml/presentation-markup/scripts/w3c-import.log: Added.
+        * web-platform-tests/mathml/presentation-markup/spaces/space-1-expected.txt: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/spaces/space-1-expected.txt.
+        * web-platform-tests/mathml/presentation-markup/spaces/space-1.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/spaces/space-1.html.
+        * web-platform-tests/mathml/presentation-markup/spaces/space-2-expected.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/spaces/space-2-expected.html.
+        * web-platform-tests/mathml/presentation-markup/spaces/space-2.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/spaces/space-2.html.
+        * web-platform-tests/mathml/presentation-markup/spaces/w3c-import.log: Added.
+        * web-platform-tests/mathml/presentation-markup/tables/table-axis-height-expected.txt: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/tables/table-axis-height-expected.txt.
+        * web-platform-tests/mathml/presentation-markup/tables/table-axis-height.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/tables/table-axis-height.html.
+        * web-platform-tests/mathml/presentation-markup/tables/w3c-import.log: Added.
+        * web-platform-tests/mathml/relations/css-styling/color-1-expected.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/css-styling/color-1-expected.html.
+        * web-platform-tests/mathml/relations/css-styling/color-1.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/css-styling/color-1.html.
+        * web-platform-tests/mathml/relations/css-styling/display-1-expected.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/css-styling/display-1-expected.html.
+        * web-platform-tests/mathml/relations/css-styling/display-1.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/css-styling/display-1.html.
+        * web-platform-tests/mathml/relations/css-styling/displaystyle-1-expected.txt: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/css-styling/displaystyle-1-expected.txt.
+        * web-platform-tests/mathml/relations/css-styling/displaystyle-1.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/css-styling/displaystyle-1.html.
+        * web-platform-tests/mathml/relations/css-styling/lengths-1-expected.html: Copied from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/integration-point-1-expected.html.
+        * web-platform-tests/mathml/relations/css-styling/lengths-1.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/lengths-2-expected.html: Copied from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/integration-point-1-expected.html.
+        * web-platform-tests/mathml/relations/css-styling/lengths-2.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/lengths-3-expected.txt: Added.
+        * web-platform-tests/mathml/relations/css-styling/lengths-3.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-bold-expected.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-bold-fraktur-expected.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-bold-fraktur.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-bold-italic-expected.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-bold-italic.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-bold-sans-serif-expected.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-bold-sans-serif.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-bold-script-expected.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-bold-script.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-bold.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-double-struck-expected.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-double-struck.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-fraktur-expected.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-fraktur.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-initial-expected.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-initial.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-italic-expected.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-italic.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-looped-expected.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-looped.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-monospace-expected.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-monospace.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-sans-serif-bold-italic-expected.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-sans-serif-bold-italic.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-sans-serif-expected.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-sans-serif-italic-expected.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-sans-serif-italic.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-sans-serif.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-script-expected.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-script.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-stretched-expected.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-stretched.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-tailed-expected.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/mathvariant-tailed.html: Added.
+        * web-platform-tests/mathml/relations/css-styling/visibility-1-expected.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/css-styling/visibility-1-expected.html.
+        * web-platform-tests/mathml/relations/css-styling/visibility-1.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/css-styling/visibility-1.html.
+        * web-platform-tests/mathml/relations/css-styling/w3c-import.log: Added.
+        * web-platform-tests/mathml/relations/html5-tree/class-1-expected.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/class-1-expected.html.
+        * web-platform-tests/mathml/relations/html5-tree/class-1.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/class-1.html.
+        * web-platform-tests/mathml/relations/html5-tree/class-2-expected.txt: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/class-2-expected.txt.
+        * web-platform-tests/mathml/relations/html5-tree/class-2.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/class-2.html.
+        * web-platform-tests/mathml/relations/html5-tree/color-attributes-1-expected.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/color-attributes-1-expected.html.
+        * web-platform-tests/mathml/relations/html5-tree/color-attributes-1.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/color-attributes-1.html.
+        * web-platform-tests/mathml/relations/html5-tree/display-1-expected.txt: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/display-1-expected.txt.
+        * web-platform-tests/mathml/relations/html5-tree/display-1.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/display-1.html.
+        * web-platform-tests/mathml/relations/html5-tree/dynamic-1-expected.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/dynamic-1-expected.html.
+        * web-platform-tests/mathml/relations/html5-tree/dynamic-1.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/dynamic-1.html.
+        * web-platform-tests/mathml/relations/html5-tree/href-click-1-expected.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/href-click-1-expected.html.
+        * web-platform-tests/mathml/relations/html5-tree/href-click-1.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/href-click-1.html.
+        * web-platform-tests/mathml/relations/html5-tree/href-click-2-expected.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/href-click-2-expected.html.
+        * web-platform-tests/mathml/relations/html5-tree/href-click-2.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/href-click-2.html.
+        * web-platform-tests/mathml/relations/html5-tree/integration-point-1-expected.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/integration-point-1-expected.html.
+        * web-platform-tests/mathml/relations/html5-tree/integration-point-1.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/integration-point-1.html.
+        * web-platform-tests/mathml/relations/html5-tree/integration-point-2-expected.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/integration-point-2-expected.html.
+        * web-platform-tests/mathml/relations/html5-tree/integration-point-2.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/integration-point-2.html.
+        * web-platform-tests/mathml/relations/html5-tree/integration-point-3-expected.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/integration-point-3-expected.html.
+        * web-platform-tests/mathml/relations/html5-tree/integration-point-3.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/integration-point-3.html.
+        * web-platform-tests/mathml/relations/html5-tree/required-extensions-1-expected.txt: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/required-extensions-1-expected.txt.
+        * web-platform-tests/mathml/relations/html5-tree/required-extensions-1.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/required-extensions-1.html.
+        * web-platform-tests/mathml/relations/html5-tree/required-extensions-2-expected.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/required-extensions-2-expected.html.
+        * web-platform-tests/mathml/relations/html5-tree/required-extensions-2.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/required-extensions-2.html.
+        * web-platform-tests/mathml/relations/html5-tree/unique-identifier-1-expected.html: Added.
+        * web-platform-tests/mathml/relations/html5-tree/unique-identifier-1-iframe-1.html: Added.
+        * web-platform-tests/mathml/relations/html5-tree/unique-identifier-1-iframe-2.html: Added.
+        * web-platform-tests/mathml/relations/html5-tree/unique-identifier-1.html: Added.
+        * web-platform-tests/mathml/relations/html5-tree/unique-identifier-2-expected.txt: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/unique-identifier-2-expected.txt.
+        * web-platform-tests/mathml/relations/html5-tree/unique-identifier-2.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/unique-identifier-2.html.
+        * web-platform-tests/mathml/relations/html5-tree/unique-identifier-3-expected.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/unique-identifier-3-expected.html.
+        * web-platform-tests/mathml/relations/html5-tree/unique-identifier-3.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/html5-tree/unique-identifier-3.html.
+        * web-platform-tests/mathml/relations/html5-tree/w3c-import.log: Added.
+        * web-platform-tests/mathml/relations/text-and-math/use-typo-metrics-1-expected.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/text-and-math/use-typo-metrics-1-expected.html.
+        * web-platform-tests/mathml/relations/text-and-math/use-typo-metrics-1.html: Renamed from LayoutTests/imported/mathml-in-html5/mathml/relations/text-and-math/use-typo-metrics-1.html.
+        * web-platform-tests/mathml/relations/text-and-math/w3c-import.log: Added.
+        * web-platform-tests/mathml/tools/axisheight.py: Added.
+        * web-platform-tests/mathml/tools/fractions.py: Added.
+        * web-platform-tests/mathml/tools/largeop.py: Added.
+        * web-platform-tests/mathml/tools/limits.py: Added.
+        * web-platform-tests/mathml/tools/mathvariant-transforms.py: Added.
+        (parseCodePoint):
+        * web-platform-tests/mathml/tools/radicals.py: Added.
+        (createStretchyRadical):
+        * web-platform-tests/mathml/tools/scripts.py: Added.
+        * web-platform-tests/mathml/tools/stacks.py: Added.
+        * web-platform-tests/mathml/tools/stretchstacks.py: Added.
+        * web-platform-tests/mathml/tools/underover.py: Added.
+        * web-platform-tests/mathml/tools/use-typo-lineheight.py: Added.
+        * web-platform-tests/mathml/tools/utils/__init__.py: Added.
+        * web-platform-tests/mathml/tools/utils/mathfont.py: Added.
+        (create):
+        (drawRectangleGlyph):
+        (createSquareGlyph):
+        (drawHexaDigit):
+        (createGlyphFromValue):
+        (save):
+        * web-platform-tests/mathml/tools/utils/misc.py: Added.
+        (downloadWithProgressBar):
+        * web-platform-tests/mathml/tools/utils/w3c-import.log: Added.
+        * web-platform-tests/mathml/tools/w3c-import.log: Added.
+        * web-platform-tests/mathml/tools/xHeight.py: Added.
+        * web-platform-tests/mathml/w3c-import.log: Added.
+
+2017-11-24  Ms2ger  <Ms2ger@igalia.com>
+
+        Stop importing css-shapes-1/test-plan/index.html.
+        https://bugs.webkit.org/show_bug.cgi?id=168553
+
+        Unreviewed test gardening.
+
+        It's not a test; there's no good reason to import it.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/css/css-shapes-1/test-plan/index-expected.txt: Removed.
+        * web-platform-tests/css/css-shapes-1/test-plan/index.html: Removed.
+        * web-platform-tests/css/css-shapes-1/test-plan/w3c-import.log: Removed.
+
+2017-11-22  Ali Juma  <ajuma@chromium.org>
+
+        Implement VisualViewport API attributes
+        https://bugs.webkit.org/show_bug.cgi?id=179385
+
+        Reviewed by Frédéric Wang.
+
+        Update expectations for viewport WPTs. The new expectations are all passing,
+        except as mentioned below.
+
+        * web-platform-tests/viewport/viewport-no-resize-event-on-overflow-recalc-expected.txt:
+        * web-platform-tests/viewport/viewport-read-size-causes-layout-expected.txt:
+        * web-platform-tests/viewport/viewport-read-size-in-iframe-causes-layout-expected.txt:
+        * web-platform-tests/viewport/viewport-resize-event-on-load-overflowing-page-expected.txt:
+          Fails since events are not implemented yet (wkbug.com/b/179386).
+        * web-platform-tests/viewport/viewport-scrollbars-cause-resize-expected.txt:
+        * web-platform-tests/viewport/viewport-type-expected.txt:
+        * web-platform-tests/viewport/viewport-unscaled-scale-expected.txt:
+        * web-platform-tests/viewport/viewport-unscaled-scale-iframe-expected.txt:
+        * web-platform-tests/viewport/viewport-unscaled-scroll-expected.txt:
+        * web-platform-tests/viewport/viewport-unscaled-scroll-iframe-expected.txt:
+          Passing expectation for non-iOS, but fails on iOS because iframes aren't scrollable (wkbug.com/b/179794).
+        * web-platform-tests/viewport/viewport-unscaled-size-expected.txt:
+        * web-platform-tests/viewport/viewport-unscaled-size-iframe-expected.txt:
+          Passing expectation for non-iOS, but fails on iOS because iframes aren't scrollable (wkbug.com/b/179794).
+
+2017-11-22  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r225093.
+        https://bugs.webkit.org/show_bug.cgi?id=179938
+
+        Compilation failed on WinCairo 64-bit Release (Requested by
+        fredw on #webkit).
+
+        Reverted changeset:
+
+        "Implement VisualViewport API attributes"
+        https://bugs.webkit.org/show_bug.cgi?id=179385
+        https://trac.webkit.org/changeset/225093
+
+2017-11-21  Ali Juma  <ajuma@chromium.org>
+
+        Implement VisualViewport API attributes
+        https://bugs.webkit.org/show_bug.cgi?id=179385
+
+        Reviewed by Frédéric Wang.
+
+        Update expectations for viewport WPTs. The new expectations are all passing,
+        except as mentioned below.
+
+        * web-platform-tests/viewport/viewport-no-resize-event-on-overflow-recalc-expected.txt:
+        * web-platform-tests/viewport/viewport-read-size-causes-layout-expected.txt:
+        * web-platform-tests/viewport/viewport-read-size-in-iframe-causes-layout-expected.txt:
+        * web-platform-tests/viewport/viewport-resize-event-on-load-overflowing-page-expected.txt:
+          Fails since events are not implemented yet (wkbug.com/b/179386).
+        * web-platform-tests/viewport/viewport-scrollbars-cause-resize-expected.txt:
+        * web-platform-tests/viewport/viewport-type-expected.txt:
+        * web-platform-tests/viewport/viewport-unscaled-scale-expected.txt:
+        * web-platform-tests/viewport/viewport-unscaled-scale-iframe-expected.txt:
+        * web-platform-tests/viewport/viewport-unscaled-scroll-expected.txt:
+        * web-platform-tests/viewport/viewport-unscaled-scroll-iframe-expected.txt:
+          Passing expectation for non-iOS, but fails on iOS because iframes aren't scrollable (wkbug.com/b/179794).
+        * web-platform-tests/viewport/viewport-unscaled-size-expected.txt:
+        * web-platform-tests/viewport/viewport-unscaled-size-iframe-expected.txt:
+          Passing expectation for non-iOS, but fails on iOS because iframes aren't scrollable (wkbug.com/b/179794).
+
+2017-11-21  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK] Update expectations for wpt/url/failure.html.
+        https://bugs.webkit.org/show_bug.cgi?id=179920
+
+        Unreviewed test gardening.
+
+        * web-platform-tests/url/failure-expected.txt: update for sendBeacon support.
+
+2017-11-20  Emilio Cobos Álvarez  <emilio@crisal.io>
+
+        Incorrect computed style in pseudo-elements with display: contents
+        https://bugs.webkit.org/show_bug.cgi?id=179812
+
+        Reviewed by Antti Koivisto.
+
+        * web-platform-tests/cssom/getComputedStyle-pseudo-expected.txt:
+        * web-platform-tests/cssom/getComputedStyle-pseudo.html:
+          Extended the testcase to cover this bug.
+
+2017-11-17  Youenn Fablet  <youenn@apple.com>
+
+        ServiceWorker intercepted FetchRequest should have their referrer set appropriately.
+        https://bugs.webkit.org/show_bug.cgi?id=179803
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/service-workers/service-worker/referer.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/request-end-to-end.https-expected.txt:
+
+2017-11-16  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r224921.
+        https://bugs.webkit.org/show_bug.cgi?id=179813
+
+        We shouldn't be doing this (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Remove the outdated and unmaintained copies of the tests in
+        wpt/2dcontext/the-canvas-state/."
+        https://bugs.webkit.org/show_bug.cgi?id=179769
+        https://trac.webkit.org/changeset/224921
+
+2017-11-16  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rebaseline skipped / flaky service worker tests
+
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-match.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-canvas-tainting-cache.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-canvas-tainting.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/respond-with-body-accessed-response.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/unregister-controller.https-expected.txt:
+
+2017-11-16  Youenn Fablet  <youenn@apple.com>
+
+        Service Worker should get the body of intercepted requests
+        https://bugs.webkit.org/show_bug.cgi?id=179776
+
+        Reviewed by Alex Christensen.
+
+        * imported/w3c/web-platform-tests/fetch/api/request/request-consume-empty-expected.txt:
+        * imported/w3c/web-platform-tests/fetch/api/request/request-init-002-expected.txt:
+        * imported/w3c/web-platform-tests/fetch/api/response/response-consume-empty-expected.txt:
+        * imported/w3c/web-platform-tests/fetch/api/response/response-consume-expected.txt:
+        * imported/w3c/web-platform-tests/fetch/api/response/response-init-002-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-request-xhr.https-expected.txt:
+
 2017-11-16  Chris Dumez  <cdumez@apple.com>
 
         [Service Worker] Implement "Try Clear Registration" algorithm

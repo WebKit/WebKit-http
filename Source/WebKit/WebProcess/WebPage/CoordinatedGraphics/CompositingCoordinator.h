@@ -37,12 +37,16 @@
 #include <WebCore/GraphicsLayerClient.h>
 #include <WebCore/GraphicsLayerFactory.h>
 #include <WebCore/IntRect.h>
+#include <WebCore/NicosiaBuffer.h>
+
+namespace Nicosia {
+class PaintingEngine;
+}
 
 namespace WebCore {
-class Page;
 class GraphicsContext;
 class GraphicsLayer;
-class CoordinatedSurface;
+class Page;
 }
 
 namespace WebKit {
@@ -59,7 +63,6 @@ public:
         virtual void didFlushRootLayer(const WebCore::FloatRect& visibleContentRect) = 0;
         virtual void notifyFlushRequired() = 0;
         virtual void commitSceneState(const WebCore::CoordinatedGraphicsState&) = 0;
-        virtual void paintLayerContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, const WebCore::IntRect& clipRect) = 0;
         virtual void releaseUpdateAtlases(const Vector<uint32_t>&) = 0;
     };
 
@@ -99,15 +102,13 @@ private:
     };
 
     // GraphicsLayerClient
-    void notifyAnimationStarted(const WebCore::GraphicsLayer*, const String&, double time) override;
     void notifyFlushRequired(const WebCore::GraphicsLayer*) override;
-    void paintContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, WebCore::GraphicsLayerPaintingPhase, const WebCore::FloatRect& clipRect, WebCore::GraphicsLayerPaintBehavior) override;
     float deviceScaleFactor() const override;
     float pageScaleFactor() const override;
 
     // CoordinatedImageBacking::Client
     void createImageBacking(WebCore::CoordinatedImageBackingID) override;
-    void updateImageBacking(WebCore::CoordinatedImageBackingID, RefPtr<WebCore::CoordinatedSurface>&&) override;
+    void updateImageBacking(WebCore::CoordinatedImageBackingID, RefPtr<Nicosia::Buffer>&&) override;
     void clearImageBackingContents(WebCore::CoordinatedImageBackingID) override;
     void removeImageBacking(WebCore::CoordinatedImageBackingID) override;
 
@@ -116,12 +117,13 @@ private:
     WebCore::FloatRect visibleContentsRect() const override;
     Ref<WebCore::CoordinatedImageBacking> createImageBackingIfNeeded(WebCore::Image&) override;
     void detachLayer(WebCore::CoordinatedGraphicsLayer*) override;
-    bool paintToSurface(const WebCore::IntSize&, WebCore::CoordinatedSurface::Flags, uint32_t& /* atlasID */, WebCore::IntPoint&, WebCore::CoordinatedSurface::Client&) override;
+    Ref<Nicosia::Buffer> getCoordinatedBuffer(const WebCore::IntSize&, Nicosia::Buffer::Flags, uint32_t&, WebCore::IntRect&) override;
+    Nicosia::PaintingEngine& paintingEngine() override;
     void syncLayerState(WebCore::CoordinatedLayerID, WebCore::CoordinatedGraphicsLayerState&) override;
 
     // UpdateAtlas::Client
-    void createUpdateAtlas(uint32_t atlasID, RefPtr<WebCore::CoordinatedSurface>&&) override;
-    void removeUpdateAtlas(uint32_t atlasID) override;
+    void createUpdateAtlas(UpdateAtlas::ID, Ref<Nicosia::Buffer>&&) override;
+    void removeUpdateAtlas(UpdateAtlas::ID) override;
 
     // GraphicsLayerFactory
     std::unique_ptr<WebCore::GraphicsLayer> createGraphicsLayer(WebCore::GraphicsLayer::Type, WebCore::GraphicsLayerClient&) override;
@@ -147,10 +149,10 @@ private:
 
     WebCore::CoordinatedGraphicsState m_state;
 
-    typedef HashMap<WebCore::CoordinatedLayerID, WebCore::CoordinatedGraphicsLayer*> LayerMap;
-    LayerMap m_registeredLayers;
-    typedef HashMap<WebCore::CoordinatedImageBackingID, RefPtr<WebCore::CoordinatedImageBacking> > ImageBackingMap;
-    ImageBackingMap m_imageBackings;
+    HashMap<WebCore::CoordinatedLayerID, WebCore::CoordinatedGraphicsLayer*> m_registeredLayers;
+    HashMap<WebCore::CoordinatedImageBackingID, RefPtr<WebCore::CoordinatedImageBacking>> m_imageBackings;
+
+    std::unique_ptr<Nicosia::PaintingEngine> m_paintingEngine;
     Vector<std::unique_ptr<UpdateAtlas>> m_updateAtlases;
     Vector<uint32_t> m_atlasesToRemove;
 

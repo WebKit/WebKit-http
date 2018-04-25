@@ -51,25 +51,22 @@ void FEMerge::platformApplySoftware()
     GraphicsContext& filterContext = resultImage->context();
     for (unsigned i = 0; i < size; ++i) {
         FilterEffect* in = inputEffect(i);
-        if (ImageBuffer* inBuffer = in->asImageBuffer())
+        if (ImageBuffer* inBuffer = in->imageBufferResult())
             filterContext.drawImageBuffer(*inBuffer, drawingRegionOfInputImage(in->absolutePaintRect()));
     }
 }
 
-void FEMerge::dump()
+TextStream& FEMerge::externalRepresentation(TextStream& ts, RepresentationType representation) const
 {
-}
-
-TextStream& FEMerge::externalRepresentation(TextStream& ts, int indent) const
-{
-    writeIndent(ts, indent);
-    ts << "[feMerge";
-    FilterEffect::externalRepresentation(ts);
+    ts << indent << "[feMerge";
+    FilterEffect::externalRepresentation(ts, representation);
     unsigned size = numberOfEffectInputs();
     ASSERT(size > 0);
     ts << " mergeNodes=\"" << size << "\"]\n";
+
+    TextStream::IndentScope indentScope(ts);
     for (unsigned i = 0; i < size; ++i)
-        inputEffect(i)->externalRepresentation(ts, indent + 1);
+        inputEffect(i)->externalRepresentation(ts, representation);
     return ts;
 }
 

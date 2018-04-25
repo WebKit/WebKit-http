@@ -18,41 +18,41 @@
  Boston, MA 02110-1301, USA.
  */
 
-#ifndef UpdateAtlas_h
-#define UpdateAtlas_h
+#pragma once
 
 #include "AreaAllocator.h"
-#include <WebCore/CoordinatedSurface.h>
-#include <WebCore/IntSize.h>
+#include <WebCore/NicosiaBuffer.h>
 #include <wtf/RefPtr.h>
 
 #if USE(COORDINATED_GRAPHICS)
 
 namespace WebCore {
-class GraphicsContext;
-class IntPoint;
+class IntRect;
+class IntSize;
 }
 
 namespace WebKit {
 
 class UpdateAtlas {
+    WTF_MAKE_FAST_ALLOCATED;
     WTF_MAKE_NONCOPYABLE(UpdateAtlas);
 public:
+    using ID = uint32_t;
+
     class Client {
     public:
-        virtual void createUpdateAtlas(uint32_t /* id */, RefPtr<WebCore::CoordinatedSurface>&&) = 0;
-        virtual void removeUpdateAtlas(uint32_t /* id */) = 0;
+        virtual void createUpdateAtlas(ID, Ref<Nicosia::Buffer>&&) = 0;
+        virtual void removeUpdateAtlas(ID) = 0;
     };
 
-    UpdateAtlas(Client&, int dimension, WebCore::CoordinatedSurface::Flags);
+    UpdateAtlas(Client&, const WebCore::IntSize&, Nicosia::Buffer::Flags);
     ~UpdateAtlas();
 
-    inline WebCore::IntSize size() const { return m_surface->size(); }
+    const WebCore::IntSize& size() const { return m_buffer->size(); }
 
-    // Returns false if there is no available buffer.
-    bool paintOnAvailableBuffer(const WebCore::IntSize&, uint32_t& atlasID, WebCore::IntPoint& offset, WebCore::CoordinatedSurface::Client&);
+    RefPtr<Nicosia::Buffer> getCoordinatedBuffer(const WebCore::IntSize&, uint32_t&, WebCore::IntRect&);
     void didSwapBuffers();
-    bool supportsAlpha() const { return m_surface->supportsAlpha(); }
+    bool supportsAlpha() const { return m_buffer->supportsAlpha(); }
 
     void addTimeInactive(double seconds)
     {
@@ -69,15 +69,13 @@ public:
 private:
     void buildLayoutIfNeeded();
 
-private:
+    ID m_id { 0 };
     Client& m_client;
     std::unique_ptr<GeneralAreaAllocator> m_areaAllocator;
-    RefPtr<WebCore::CoordinatedSurface> m_surface;
+    Ref<Nicosia::Buffer> m_buffer;
     double m_inactivityInSeconds { 0 };
-    uint32_t m_ID { 0 };
 };
 
 } // namespace WebKit
 
 #endif // USE(COORDINATED_GRAPHICS)
-#endif // UpdateAtlas_h

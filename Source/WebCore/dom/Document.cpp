@@ -160,6 +160,7 @@
 #include "SVGSVGElement.h"
 #include "SVGTitleElement.h"
 #include "SVGZoomEvent.h"
+#include "SWClientConnection.h"
 #include "SchemeRegistry.h"
 #include "ScopedEventQueue.h"
 #include "ScriptController.h"
@@ -174,6 +175,8 @@
 #include "SecurityPolicy.h"
 #include "SegmentedString.h"
 #include "SelectorQuery.h"
+#include "ServiceWorkerClientData.h"
+#include "ServiceWorkerProvider.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
 #include "SocketProvider.h"
@@ -437,12 +440,6 @@ static void printNavigationErrorMessage(Frame* frame, const URL& activeURL, cons
 
 uint64_t Document::s_globalTreeVersion = 0;
 
-static uint64_t generateDocumentIdentifier()
-{
-    static uint64_t identifier = 0;
-    return ++identifier;
-}
-
 auto Document::allDocumentsMap() -> DocumentsMap&
 {
     static NeverDestroyed<DocumentsMap> documents;
@@ -512,7 +509,7 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_isSynthesized(constructionFlags & Synthesized)
     , m_isNonRenderedPlaceholder(constructionFlags & NonRenderedPlaceholder)
     , m_orientationNotifier(currentOrientation(frame))
-    , m_identifier(generateDocumentIdentifier())
+    , m_identifier(generateObjectIdentifier<DocumentIdentifierType>())
 {
     auto addResult = allDocumentsMap().add(m_identifier, this);
     ASSERT_UNUSED(addResult, addResult.isNewEntry);
@@ -657,7 +654,7 @@ void Document::removedLastRef()
         m_titleElement = nullptr;
         m_documentElement = nullptr;
         m_focusNavigationStartingNode = nullptr;
-        m_userActionElements.documentDidRemoveLastRef();
+        m_userActionElements.clear();
 #if ENABLE(FULLSCREEN_API)
         m_fullScreenElement = nullptr;
         m_fullScreenElementStack.clear();
@@ -2333,6 +2330,7 @@ void Document::prepareForDestruction()
 
 #if ENABLE(SERVICE_WORKER)
     setActiveServiceWorker(nullptr);
+    setServiceWorkerConnection(nullptr);
 #endif
 
 #if ENABLE(IOS_TOUCH_EVENTS)
@@ -6654,7 +6652,7 @@ void Document::updateLastHandledUserGestureTimestamp(MonotonicTime time)
 
 bool Document::processingUserGestureForMedia() const
 {
-    if (ScriptController::processingUserGestureForMedia())
+    if (UserGestureIndicator::processingUserGestureForMedia())
         return true;
 
     if (settings().mediaUserGestureInheritsFromDocument())
@@ -6808,7 +6806,7 @@ void Document::updateHoverActiveState(const HitTestRequest& request, Element* in
         // We are clearing the :active chain because the mouse has been released.
         for (Element* currentElement = oldActiveElement; currentElement; currentElement = currentElement->parentElementInComposedTree()) {
             currentElement->setActive(false);
-            m_userActionElements.setInActiveChain(currentElement, false);
+            m_userActionElements.setInActiveChain(*currentElement, false);
         }
         m_activeElement = nullptr;
     } else {
@@ -6820,7 +6818,7 @@ void Document::updateHoverActiveState(const HitTestRequest& request, Element* in
                 Element* element = curr->element();
                 if (!element || curr->isTextOrLineBreak())
                     continue;
-                m_userActionElements.setInActiveChain(element, true);
+                m_userActionElements.setInActiveChain(*element, true);
             }
 
             m_activeElement = newActiveElement;
@@ -7586,5 +7584,18 @@ void Document::didLogMessage(const WTFLogChannel& channel, WTFLogLevel level, co
         document->addConsoleMessage(WTFMove(message));
     });
 }
+
+#if ENABLE(SERVICE_WORKER)
+void Document::setServiceWorkerConnection(SWClientConnection* serviceWorkerConnection)
+{
+    if (m_serviceWorkerConnection)
+        m_serviceWorkerConnection->unregisterServiceWorkerClient(identifier());
+
+    m_serviceWorkerConnection = serviceWorkerConnection;
+
+    if (m_serviceWorkerConnection)
+        m_serviceWorkerConnection->registerServiceWorkerClient(topOrigin(), identifier(), ServiceWorkerClientData::from(*this));
+}
+#endif
 
 } // namespace WebCore

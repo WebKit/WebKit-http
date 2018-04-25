@@ -25,7 +25,10 @@
 
 #pragma once
 
+#include <atomic>
+#include <mutex>
 #include <wtf/HashTraits.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/text/WTFString.h>
 
 namespace WTF {
@@ -61,6 +64,8 @@ public:
     {
         return m_identifier != other.m_identifier;
     }
+
+    uint64_t toUInt64() const { return m_identifier; }
     
 #ifndef NDEBUG
     String loggingString() const
@@ -71,6 +76,8 @@ public:
 
 private:
     template<typename U> friend ObjectIdentifier<U> generateObjectIdentifier();
+    template<typename U> friend ObjectIdentifier<U> generateThreadSafeObjectIdentifier();
+    template<typename U> friend ObjectIdentifier<U> makeObjectIdentifier(uint64_t);
     friend struct HashTraits<ObjectIdentifier>;
     template<typename U> friend struct ObjectIdentifierHash;
 
@@ -83,14 +90,27 @@ private:
     }
 
     uint64_t m_identifier { 0 };
-    static uint64_t s_currentIdentifier;
 };
-
-template<typename T> uint64_t ObjectIdentifier<T>::s_currentIdentifier;
 
 template<typename T> inline ObjectIdentifier<T> generateObjectIdentifier()
 {
-    return ObjectIdentifier<T> { ++ObjectIdentifier<T>::s_currentIdentifier };
+    static uint64_t currentIdentifier;
+    return ObjectIdentifier<T> { ++currentIdentifier };
+}
+
+template<typename T> inline ObjectIdentifier<T> generateThreadSafeObjectIdentifier()
+{
+    static LazyNeverDestroyed<std::atomic<uint64_t>> currentIdentifier;
+    static std::once_flag initializeCurrentIdentifier;
+    std::call_once(initializeCurrentIdentifier, [] {
+        currentIdentifier.construct(0);
+    });
+    return ObjectIdentifier<T> { ++currentIdentifier.get() };
+}
+
+template<typename T> inline ObjectIdentifier<T> makeObjectIdentifier(uint64_t identifier)
+{
+    return ObjectIdentifier<T> { identifier };
 }
 
 template<typename T> struct ObjectIdentifierHash {
@@ -109,3 +129,5 @@ template<typename T> struct DefaultHash<ObjectIdentifier<T>> {
 
 using WTF::ObjectIdentifier;
 using WTF::generateObjectIdentifier;
+using WTF::generateThreadSafeObjectIdentifier;
+using WTF::makeObjectIdentifier;

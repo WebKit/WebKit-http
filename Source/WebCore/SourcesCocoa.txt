@@ -303,7 +303,6 @@ platform/mac/PublicSuffixMac.mm
 platform/mac/SerializedPlatformRepresentationMac.mm
 platform/mac/StringUtilities.mm
 platform/mac/URLMac.mm
-platform/mac/WebCoreNSStringExtras.mm
 platform/mac/WebCoreNSURLExtras.mm
 platform/mac/WebCoreObjCExtras.mm
 
@@ -367,6 +366,14 @@ platform/mediastream/mac/MockRealtimeAudioSourceMac.mm
 platform/mediastream/mac/WebAudioSourceProviderAVFObjC.mm
 
 platform/mediastream/libwebrtc/LibWebRTCProviderCocoa.cpp
+
+#if ENABLE_ALTERNATIVE_PRESENTATION_BUTTON_ELEMENT
+
+    editing/cocoa/AlternativePresentationButtonSubstitution.cpp
+    html/shadow/cocoa/AlternativePresentationButtonElement.cpp
+    html/shadow/cocoa/AlternativePresentationButtonInputType.cpp
+
+#endif
 
 #if ENABLE_APPLE_PAY
 

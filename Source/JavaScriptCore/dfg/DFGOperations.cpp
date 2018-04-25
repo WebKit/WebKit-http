@@ -634,7 +634,7 @@ ALWAYS_INLINE EncodedJSValue getByValCellInt(ExecState* exec, JSCell* base, int3
     NativeCallFrameTracer tracer(vm, exec);
     
     if (index < 0) {
-        // Go the slowest way possible becase negative indices don't use indexed storage.
+        // Go the slowest way possible because negative indices don't use indexed storage.
         return JSValue::encode(JSValue(base).get(exec, Identifier::from(exec, index)));
     }
 
@@ -1808,6 +1808,18 @@ char* JIT_OPERATION operationEnsureArrayStorage(ExecState* exec, JSCell* cell)
     return reinterpret_cast<char*>(asObject(cell)->ensureArrayStorage(vm));
 }
 
+EncodedJSValue JIT_OPERATION operationHasIndexedPropertyByInt(ExecState* exec, JSCell* baseCell, int32_t subscript, int32_t internalMethodType)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    JSObject* object = baseCell->toObject(exec, exec->lexicalGlobalObject());
+    if (UNLIKELY(subscript < 0)) {
+        // Go the slowest way possible because negative indices don't use indexed storage.
+        return JSValue::encode(jsBoolean(object->hasPropertyGeneric(exec, Identifier::from(exec, subscript), static_cast<PropertySlot::InternalMethodType>(internalMethodType))));
+    }
+    return JSValue::encode(jsBoolean(object->hasPropertyGeneric(exec, subscript, static_cast<PropertySlot::InternalMethodType>(internalMethodType))));
+}
+
 StringImpl* JIT_OPERATION operationResolveRope(ExecState* exec, JSString* string)
 {
     VM& vm = exec->vm();
@@ -2029,8 +2041,8 @@ char* JIT_OPERATION operationFindSwitchImmTargetForDouble(
     double asDouble = value.asDouble();
     int32_t asInt32 = static_cast<int32_t>(asDouble);
     if (asDouble == asInt32)
-        return static_cast<char*>(table.ctiForValue(asInt32).executableAddress());
-    return static_cast<char*>(table.ctiDefault.executableAddress());
+        return table.ctiForValue(asInt32).executableAddress<char*>();
+    return table.ctiDefault.executableAddress<char*>();
 }
 
 char* JIT_OPERATION operationSwitchString(ExecState* exec, size_t tableIndex, JSString* string)
@@ -2038,7 +2050,7 @@ char* JIT_OPERATION operationSwitchString(ExecState* exec, size_t tableIndex, JS
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    return static_cast<char*>(exec->codeBlock()->stringSwitchJumpTable(tableIndex).ctiForValue(string->value(exec).impl()).executableAddress());
+    return exec->codeBlock()->stringSwitchJumpTable(tableIndex).ctiForValue(string->value(exec).impl()).executableAddress<char*>();
 }
 
 int32_t JIT_OPERATION operationSwitchStringAndGetBranchOffset(ExecState* exec, size_t tableIndex, JSString* string)
@@ -2384,6 +2396,19 @@ JSCell* JIT_OPERATION operationNewArrayWithSpreadSlow(ExecState* exec, void* buf
     return result;
 }
 
+JSCell* operationCreateFixedArray(ExecState* exec, unsigned length)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    if (JSFixedArray* result = JSFixedArray::tryCreate(vm, vm.fixedArrayStructure.get(), length))
+        return result;
+
+    throwOutOfMemoryError(exec, scope);
+    return nullptr;
+}
+
 JSCell* JIT_OPERATION operationSpreadGeneric(ExecState* exec, JSCell* iterable)
 {
     VM& vm = exec->vm();
@@ -2533,14 +2558,14 @@ int32_t JIT_OPERATION operationMapHash(ExecState* exec, EncodedJSValue input)
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    return jsMapHash(exec, vm, normalizeMapKey(JSValue::decode(input)));
+    return jsMapHash(exec, vm, JSValue::decode(input));
 }
 
 JSCell* JIT_OPERATION operationJSMapFindBucket(ExecState* exec, JSCell* map, EncodedJSValue key, int32_t hash)
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
-    JSMap::BucketType** bucket = jsCast<JSMap*>(map)->findBucket(exec, normalizeMapKey(JSValue::decode(key)), hash);
+    JSMap::BucketType** bucket = jsCast<JSMap*>(map)->findBucket(exec, JSValue::decode(key), hash);
     if (!bucket)
         return vm.sentinelMapBucket.get();
     return *bucket;
@@ -2550,10 +2575,24 @@ JSCell* JIT_OPERATION operationJSSetFindBucket(ExecState* exec, JSCell* map, Enc
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
-    JSSet::BucketType** bucket = jsCast<JSSet*>(map)->findBucket(exec, normalizeMapKey(JSValue::decode(key)), hash);
+    JSSet::BucketType** bucket = jsCast<JSSet*>(map)->findBucket(exec, JSValue::decode(key), hash);
     if (!bucket)
         return vm.sentinelSetBucket.get();
     return *bucket;
+}
+
+void JIT_OPERATION operationSetAdd(ExecState* exec, JSCell* set, EncodedJSValue key, int32_t hash)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    jsCast<JSSet*>(set)->addNormalized(exec, JSValue::decode(key), JSValue(), hash);
+}
+
+void JIT_OPERATION operationMapSet(ExecState* exec, JSCell* map, EncodedJSValue key, EncodedJSValue value, int32_t hash)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    jsCast<JSMap*>(map)->addNormalized(exec, JSValue::decode(key), JSValue::decode(value), hash);
 }
 
 EncodedJSValue JIT_OPERATION operationGetPrototypeOfObject(ExecState* exec, JSObject* thisObject)

@@ -34,19 +34,33 @@
 #include "SerializedScriptValue.h"
 #include "ServiceWorkerGlobalScope.h"
 #include "ServiceWorkerThread.h"
+#include "ServiceWorkerWindowClient.h"
 
 namespace WebCore {
 
-ServiceWorkerClient::ServiceWorkerClient(ScriptExecutionContext& context, ServiceWorkerClientData&& data)
+Ref<ServiceWorkerClient> ServiceWorkerClient::getOrCreate(ServiceWorkerGlobalScope& context, ServiceWorkerClientIdentifier identifier, ServiceWorkerClientData&& data)
+{
+    if (auto* client = context.serviceWorkerClient(identifier))
+        return *client;
+
+    if (data.type == ServiceWorkerClientType::Window)
+        return ServiceWorkerWindowClient::create(context, identifier, WTFMove(data));
+
+    return adoptRef(*new ServiceWorkerClient { context, identifier, WTFMove(data) });
+}
+
+ServiceWorkerClient::ServiceWorkerClient(ServiceWorkerGlobalScope& context, ServiceWorkerClientIdentifier identifier, ServiceWorkerClientData&& data)
     : ContextDestructionObserver(&context)
+    , m_identifier(identifier)
     , m_data(WTFMove(data))
 {
-    ASSERT(m_data.identifier.serverConnectionIdentifier);
-    ASSERT(m_data.identifier.scriptExecutionContextIdentifier);
+    context.addServiceWorkerClient(*this);
 }
 
 ServiceWorkerClient::~ServiceWorkerClient()
 {
+    if (auto* context = scriptExecutionContext())
+        downcast<ServiceWorkerGlobalScope>(*context).removeServiceWorkerClient(*this);
 }
 
 const URL& ServiceWorkerClient::url() const
@@ -66,7 +80,7 @@ auto ServiceWorkerClient::frameType() const -> FrameType
 
 String ServiceWorkerClient::id() const
 {
-    return m_data.identifier.toString();
+    return identifier().toString();
 }
 
 ExceptionOr<void> ServiceWorkerClient::postMessage(ScriptExecutionContext& context, JSC::JSValue messageValue, Vector<JSC::Strong<JSC::JSObject>>&& transfer)
@@ -90,7 +104,7 @@ ExceptionOr<void> ServiceWorkerClient::postMessage(ScriptExecutionContext& conte
         return Exception { NotSupportedError, ASCIILiteral("Passing MessagePort objects to postMessage is not yet supported") };
 
     auto sourceIdentifier = downcast<ServiceWorkerGlobalScope>(context).thread().identifier();
-    callOnMainThread([message = message.releaseReturnValue(), destinationIdentifier = m_data.identifier, sourceIdentifier, sourceOrigin = context.origin().isolatedCopy()] () mutable {
+    callOnMainThread([message = message.releaseReturnValue(), destinationIdentifier = identifier(), sourceIdentifier, sourceOrigin = context.origin().isolatedCopy()] () mutable {
         if (auto* connection = SWContextManager::singleton().connection())
             connection->postMessageToServiceWorkerClient(destinationIdentifier, WTFMove(message), sourceIdentifier, sourceOrigin);
     });

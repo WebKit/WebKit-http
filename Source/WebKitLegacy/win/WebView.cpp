@@ -3825,7 +3825,13 @@ HRESULT WebView::searchFor(_In_ BSTR str, BOOL forward, BOOL caseFlag, BOOL wrap
     if (!str || !SysStringLen(str))
         return E_INVALIDARG;
 
-    FindOptions options = (caseFlag ? 0 : CaseInsensitive) | (forward ? 0 : Backwards) | (wrapFlag ? WrapAround : 0);
+    FindOptions options;
+    if (!caseFlag)
+        options |= CaseInsensitive;
+    if (!forward)
+        options |= Backwards;
+    if (wrapFlag)
+        options |= WrapAround;
     *found = m_page->findString(toString(str), options);
     return S_OK;
 }
@@ -3888,7 +3894,11 @@ HRESULT WebView::markAllMatchesForText(_In_ BSTR str, BOOL caseSensitive, BOOL h
     if (!str || !SysStringLen(str))
         return E_INVALIDARG;
 
-    *matches = m_page->markAllMatchesForText(toString(str), caseSensitive ? TextCaseSensitive : TextCaseInsensitive, highlight, limit);
+    WebCore::FindOptions options;
+    if (!caseSensitive)
+        options |= WebCore::CaseInsensitive;
+
+    *matches = m_page->markAllMatchesForText(toString(str), options, highlight, limit);
     return S_OK;
 }
 
@@ -5243,6 +5253,11 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     if (FAILED(hr))
         return hr;
     RuntimeEnabledFeatures::sharedFeatures().setInspectorAdditionsEnabled(!!enabled);
+
+    hr = prefsPrivate->visualViewportAPIEnabled(&enabled);
+    if (FAILED(hr))
+        return hr;
+    settings.setVisualViewportAPIEnabled(!!enabled);
 
     hr = preferences->privateBrowsingEnabled(&enabled);
     if (FAILED(hr))
@@ -7782,7 +7797,22 @@ HRESULT WebView::findString(_In_ BSTR string, WebFindOptions options, _Deref_opt
     if (!found)
         return E_POINTER;
 
-    *found = m_page->findString(toString(string), options);
+    WebCore::FindOptions coreOptions;
+
+    if (options & WebFindOptionsCaseInsensitive)
+        coreOptions |= WebCore::CaseInsensitive;
+    if (options & WebFindOptionsAtWordStarts)
+        coreOptions |= WebCore::AtWordStarts;
+    if (options & WebFindOptionsTreatMedialCapitalAsWordStart)
+        coreOptions |= WebCore::TreatMedialCapitalAsWordStart;
+    if (options & WebFindOptionsBackwards)
+        coreOptions |= WebCore::Backwards;
+    if (options & WebFindOptionsWrapAround)
+        coreOptions |= WebCore::WrapAround;
+    if (options & WebFindOptionsStartInSelection)
+        coreOptions |= WebCore::StartInSelection;
+
+    *found = m_page->findString(toString(string), coreOptions);
     return S_OK;
 }
 

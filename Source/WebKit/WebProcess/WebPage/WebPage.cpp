@@ -189,6 +189,7 @@
 #include <WebCore/SubframeLoader.h>
 #include <WebCore/SubstituteData.h>
 #include <WebCore/TextIterator.h>
+#include <WebCore/UserGestureIndicator.h>
 #include <WebCore/UserInputBridge.h>
 #include <WebCore/UserScript.h>
 #include <WebCore/UserStyleSheet.h>
@@ -800,12 +801,8 @@ RefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* pluginE
     if (isBlockedPlugin || !pluginProcessToken) {
 #if ENABLE(PDFKIT_PLUGIN)
         String path = parameters.url.path();
-        if (shouldUsePDFPlugin() && (MIMETypeRegistry::isPDFOrPostScriptMIMEType(parameters.mimeType) || (parameters.mimeType.isEmpty() && (path.endsWith(".pdf", false) || path.endsWith(".ps", false))))) {
-            auto pdfPlugin = PDFPlugin::create(frame);
-            return WTFMove(pdfPlugin);
-        }
-#else
-        UNUSED_PARAM(frame);
+        if (shouldUsePDFPlugin() && (MIMETypeRegistry::isPDFOrPostScriptMIMEType(parameters.mimeType) || (parameters.mimeType.isEmpty() && (path.endsWithIgnoringASCIICase(".pdf") || path.endsWithIgnoringASCIICase(".ps")))))
+            return PDFPlugin::create(*frame);
 #endif
     }
 
@@ -1003,26 +1000,23 @@ Ref<API::Array> WebPage::trackedRepaintRects()
 
 PluginView* WebPage::focusedPluginViewForFrame(Frame& frame)
 {
-    if (!frame.document()->isPluginDocument())
-        return 0;
+    if (!is<PluginDocument>(frame.document()))
+        return nullptr;
 
-    PluginDocument* pluginDocument = static_cast<PluginDocument*>(frame.document());
+    auto& pluginDocument = downcast<PluginDocument>(*frame.document());
+    if (pluginDocument.focusedElement() != pluginDocument.pluginElement())
+        return nullptr;
 
-    if (pluginDocument->focusedElement() != pluginDocument->pluginElement())
-        return 0;
-
-    PluginView* pluginView = static_cast<PluginView*>(pluginDocument->pluginWidget());
-    return pluginView;
+    return pluginViewForFrame(&frame);
 }
 
 PluginView* WebPage::pluginViewForFrame(Frame* frame)
 {
-    if (!frame->document()->isPluginDocument())
-        return 0;
+    if (!frame || !is<PluginDocument>(frame->document()))
+        return nullptr;
 
-    PluginDocument* pluginDocument = static_cast<PluginDocument*>(frame->document());
-    PluginView* pluginView = static_cast<PluginView*>(pluginDocument->pluginWidget());
-    return pluginView;
+    auto& document = downcast<PluginDocument>(*frame->document());
+    return static_cast<PluginView*>(document.pluginWidget());
 }
 
 void WebPage::executeEditingCommand(const String& commandName, const String& argument)
@@ -3481,7 +3475,7 @@ void WebPage::setActiveOpenPanelResultListener(Ref<WebOpenPanelResultListener>&&
 
 bool WebPage::findStringFromInjectedBundle(const String& target, FindOptions options)
 {
-    return m_page->findString(target, options);
+    return m_page->findString(target, core(options));
 }
 
 void WebPage::findString(const String& string, uint32_t options, uint32_t maxMatchCount)
@@ -4062,19 +4056,17 @@ void WebPage::stopSpeaking()
 #endif
 
 #if PLATFORM(MAC)
+
 RetainPtr<PDFDocument> WebPage::pdfDocumentForPrintingFrame(Frame* coreFrame)
 {
-    Document* document = coreFrame->document();
-    if (!is<PluginDocument>(document))
-        return nullptr;
-
-    PluginView* pluginView = static_cast<PluginView*>(downcast<PluginDocument>(*document).pluginWidget());
+    PluginView* pluginView = pluginViewForFrame(coreFrame);
     if (!pluginView)
         return nullptr;
 
     return pluginView->pdfDocumentForPrinting();
 }
-#endif // PLATFORM(MAC)
+
+#endif
 
 void WebPage::beginPrinting(uint64_t frameID, const PrintInfo& printInfo)
 {
@@ -4089,7 +4081,7 @@ void WebPage::beginPrinting(uint64_t frameID, const PrintInfo& printInfo)
 #if PLATFORM(MAC)
     if (pdfDocumentForPrintingFrame(coreFrame))
         return;
-#endif // PLATFORM(MAC)
+#endif
 
     if (!m_printContext)
         m_printContext = std::make_unique<PrintContext>(coreFrame);
@@ -4283,7 +4275,7 @@ void WebPage::addResourceRequest(unsigned long identifier, const WebCore::Resour
     if (!request.url().protocolIsInHTTPFamily())
         return;
 
-    if (m_mainFrameProgressCompleted && !ScriptController::processingUserGesture())
+    if (m_mainFrameProgressCompleted && !UserGestureIndicator::processingUserGesture())
         return;
 
     ASSERT(!m_trackedNetworkResourceRequestIdentifiers.contains(identifier));
@@ -5775,23 +5767,16 @@ void WebPage::invokeSharedBufferCallback(RefPtr<SharedBuffer>&& buffer, Callback
 
 #if ENABLE(ATTACHMENT_ELEMENT)
 
-void WebPage::insertAttachment(const String& identifier, const String& filename, std::optional<String> contentType, const IPC::DataReference& data, CallbackID callbackID)
+void WebPage::insertAttachment(const String& identifier, const AttachmentDisplayOptions& options, const String& filename, std::optional<String> contentType, const IPC::DataReference& data, CallbackID callbackID)
 {
     auto& frame = m_page->focusController().focusedOrMainFrame();
-    frame.editor().insertAttachment(identifier, filename, SharedBuffer::create(data.data(), data.size()), contentType);
+    frame.editor().insertAttachment(identifier, options, filename, SharedBuffer::create(data.data(), data.size()), contentType);
     send(Messages::WebPageProxy::VoidCallback(callbackID));
 }
 
 void WebPage::requestAttachmentData(const String& identifier, CallbackID callbackID)
 {
-    // FIXME: We don't currently handle attachment data requests for attachment elements in subframes.
-    auto* frame = mainFrame();
-    if (!frame || !frame->document()) {
-        invokeSharedBufferCallback({ }, callbackID);
-        return;
-    }
-
-    auto attachment = frame->document()->attachmentForIdentifier(identifier);
+    auto attachment = attachmentElementWithIdentifier(identifier);
     if (!attachment) {
         invokeSharedBufferCallback({ }, callbackID);
         return;
@@ -5803,6 +5788,25 @@ void WebPage::requestAttachmentData(const String& identifier, CallbackID callbac
         else
             protectedThis->invokeSharedBufferCallback({ }, callbackID);
     });
+}
+
+void WebPage::setAttachmentDisplayOptions(const String& identifier, const AttachmentDisplayOptions& options, CallbackID callbackID)
+{
+    if (auto attachment = attachmentElementWithIdentifier(identifier)) {
+        attachment->document().updateLayout();
+        attachment->updateDisplayMode(options.mode);
+    }
+    send(Messages::WebPageProxy::VoidCallback(callbackID));
+}
+
+RefPtr<HTMLAttachmentElement> WebPage::attachmentElementWithIdentifier(const String& identifier) const
+{
+    // FIXME: Handle attachment elements in subframes too as well.
+    auto* frame = mainFrame();
+    if (!frame || !frame->document())
+        return nullptr;
+
+    return frame->document()->attachmentForIdentifier(identifier);
 }
 
 #endif // ENABLE(ATTACHMENT_ELEMENT)

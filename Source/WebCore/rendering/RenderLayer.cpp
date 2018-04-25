@@ -76,6 +76,7 @@
 #include "HTMLFrameOwnerElement.h"
 #include "HTMLIFrameElement.h"
 #include "HTMLNames.h"
+#include "HTMLParserIdioms.h"
 #include "HitTestRequest.h"
 #include "HitTestResult.h"
 #include "HitTestingTransformState.h"
@@ -435,6 +436,10 @@ RenderLayer::~RenderLayer()
     // we don't need to delete them ourselves.
 
     clearBacking(true);
+
+    // Layer and all its children should be removed from the tree before destruction.
+    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(renderer().renderTreeBeingDestroyed() || !m_parent);
+    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(renderer().renderTreeBeingDestroyed() || !m_first);
 }
 
 String RenderLayer::name() const
@@ -6443,7 +6448,7 @@ static void determineNonLayerDescendantsPaintedContent(const RenderElement& rend
             if (renderer.style().userSelect() != SELECT_NONE)
                 request.setHasPaintedContent();
 
-            if (!renderText.text()->containsOnlyWhitespace()) {
+            if (!renderText.text().isAllSpecialCharacters<isHTMLSpace>()) {
                 request.setHasPaintedContent();
 
                 if (request.needToDetermineSubpixelAntialiasedTextState() && styleHasSmoothingTextMode(child.style()))

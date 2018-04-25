@@ -27,7 +27,9 @@
 #define NetworkProcessProxy_h
 
 #include "ChildProcessProxy.h"
+#if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
 #include "LegacyCustomProtocolManagerProxy.h"
+#endif
 #include "ProcessLauncher.h"
 #include "ProcessThrottler.h"
 #include "ProcessThrottlerClient.h"
@@ -73,6 +75,10 @@ public:
 
 #if PLATFORM(COCOA)
     void setProcessSuppressionEnabled(bool);
+#endif
+
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    void updateStorageAccessForPrevalentDomains(PAL::SessionID, const String& resourceDomain, const String& firstPartyDomain, bool value, WTF::CompletionHandler<void(bool)>&& callback);
 #endif
 
     void processReadyToSuspend();
@@ -121,6 +127,9 @@ private:
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     void canAuthenticateAgainstProtectionSpace(uint64_t loaderID, uint64_t pageID, uint64_t frameID, const WebCore::ProtectionSpace&);
 #endif
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    void storageAccessRequestResult(bool wasGranted, uint64_t contextId);
+#endif
 
     // ProcessLauncher::Client
     void didFinishLaunching(ProcessLauncher*, IPC::Connection::Identifier) override;
@@ -135,9 +144,13 @@ private:
     HashMap<uint64_t, WTF::Function<void ()>> m_pendingDeleteWebsiteDataForOriginsCallbacks;
 
     std::unique_ptr<DownloadProxyMap> m_downloadProxyMap;
+#if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
     LegacyCustomProtocolManagerProxy m_customProtocolManagerProxy;
+#endif
     ProcessThrottler m_throttler;
     ProcessThrottler::BackgroundActivityToken m_tokenForHoldingLockedFiles;
+
+    HashMap<uint64_t, WTF::CompletionHandler<void(bool wasGranted)>> m_storageAccessResponseCallbackMap;
 };
 
 } // namespace WebKit

@@ -17,8 +17,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef FEDropShadow_h
-#define FEDropShadow_h
+#pragma once
 
 #include "Color.h"
 #include "Filter.h"
@@ -48,16 +47,17 @@ public:
     float shadowOpacity() const { return m_shadowOpacity; }
     void setShadowOpacity(float shadowOpacity) { m_shadowOpacity = shadowOpacity; }
 
+private:
+    FEDropShadow(Filter&, float, float, float, float, const Color&, float);
+
+    const char* filterName() const final { return "FEDropShadow"; }
+
     void platformApplySoftware() override;
-    void dump() override;
 
     void determineAbsolutePaintRect() override;
 
-    WTF::TextStream& externalRepresentation(WTF::TextStream&, int indention) const override;
+    WTF::TextStream& externalRepresentation(WTF::TextStream&, RepresentationType) const override;
 
-private:
-    FEDropShadow(Filter&, float, float, float, float, const Color&, float);
-    
     float m_stdX;
     float m_stdY;
     float m_dx;
@@ -68,4 +68,3 @@ private:
     
 } // namespace WebCore
 
-#endif // FEDropShadow_h

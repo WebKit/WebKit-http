@@ -44,6 +44,7 @@ struct ExceptionData;
 struct ServiceWorkerFetchResult;
 
 class SWServerRegistration {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     SWServerRegistration(SWServer&, const ServiceWorkerRegistrationKey&, ServiceWorkerUpdateViaCache, const URL& scopeURL, const URL& scriptURL);
     ~SWServerRegistration();
@@ -64,8 +65,8 @@ public:
     void updateWorkerState(SWServerWorker&, ServiceWorkerState);
     void fireUpdateFoundEvent();
 
-    void addClientServiceWorkerRegistration(uint64_t connectionIdentifier);
-    void removeClientServiceWorkerRegistration(uint64_t connectionIdentifier);
+    void addClientServiceWorkerRegistration(SWServerConnectionIdentifier);
+    void removeClientServiceWorkerRegistration(SWServerConnectionIdentifier);
 
     SWServerWorker* installingWorker() const { return m_installingWorker.get(); }
     SWServerWorker* waitingWorker() const { return m_waitingWorker.get(); }
@@ -76,7 +77,9 @@ public:
     bool hasClientsUsingRegistration() const { return !m_clientsUsingRegistration.isEmpty(); }
     void addClientUsingRegistration(const ServiceWorkerClientIdentifier&);
     void removeClientUsingRegistration(const ServiceWorkerClientIdentifier&);
-    void unregisterServerConnection(uint64_t serverConnectionIdentifier);
+    void unregisterServerConnection(SWServerConnectionIdentifier);
+
+    void notifyClientsOfControllerChange();
 
 private:
     void forEachConnection(const WTF::Function<void(SWServer::Connection&)>&);
@@ -94,11 +97,11 @@ private:
 
     double m_lastUpdateTime { 0 };
     
-    HashCountedSet<uint64_t /* serverConnectionIdentifier */> m_connectionsWithClientRegistrations;
+    HashCountedSet<SWServerConnectionIdentifier> m_connectionsWithClientRegistrations;
     SWServer& m_server;
 
     MonotonicTime m_creationTime;
-    HashMap<uint64_t /* serverConnectionIdentifier */, HashSet<uint64_t /* scriptExecutionContextIdentifier */>> m_clientsUsingRegistration;
+    HashMap<SWServerConnectionIdentifier, HashSet<DocumentIdentifier>> m_clientsUsingRegistration;
 };
 
 } // namespace WebCore

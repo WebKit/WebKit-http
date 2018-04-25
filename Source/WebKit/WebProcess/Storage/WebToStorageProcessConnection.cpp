@@ -33,7 +33,10 @@
 #include "WebProcess.h"
 #include "WebSWClientConnection.h"
 #include "WebSWClientConnectionMessages.h"
+#include "WebSWContextManagerConnection.h"
+#include "WebSWContextManagerConnectionMessages.h"
 #include "WebServiceWorkerProvider.h"
+#include <WebCore/SWContextManager.h>
 
 using namespace PAL;
 using namespace WebCore;
@@ -64,13 +67,19 @@ void WebToStorageProcessConnection::didReceiveMessage(IPC::Connection& connectio
 
 #if ENABLE(SERVICE_WORKER)
     if (decoder.messageReceiverName() == Messages::WebSWClientConnection::messageReceiverName()) {
-        auto serviceWorkerConnection = m_swConnectionsByIdentifier.get(decoder.destinationID());
+        auto serviceWorkerConnection = m_swConnectionsByIdentifier.get(makeObjectIdentifier<SWServerConnectionIdentifierType>(decoder.destinationID()));
         if (serviceWorkerConnection)
             serviceWorkerConnection->didReceiveMessage(connection, decoder);
         return;
     }
     if (decoder.messageReceiverName() == Messages::ServiceWorkerClientFetch::messageReceiverName()) {
         WebServiceWorkerProvider::singleton().didReceiveServiceWorkerClientFetchMessage(connection, decoder);
+        return;
+    }
+    if (decoder.messageReceiverName() == Messages::WebSWContextManagerConnection::messageReceiverName()) {
+        ASSERT(SWContextManager::singleton().connection());
+        if (auto* contextManagerConnection = SWContextManager::singleton().connection())
+            static_cast<WebSWContextManagerConnection&>(*contextManagerConnection).didReceiveMessage(connection, decoder);
         return;
     }
 #endif
@@ -114,8 +123,8 @@ WebSWClientConnection& WebToStorageProcessConnection::serviceWorkerConnectionFor
     auto result = m_swConnectionsBySession.add(sessionID, nullptr);
     if (result.isNewEntry) {
         result.iterator->value = std::make_unique<WebSWClientConnection>(m_connection.get(), sessionID);
-        ASSERT(!m_swConnectionsByIdentifier.contains(result.iterator->value->identifier()));
-        m_swConnectionsByIdentifier.set(result.iterator->value->identifier(), result.iterator->value.get());
+        ASSERT(!m_swConnectionsByIdentifier.contains(result.iterator->value->serverConnectionIdentifier()));
+        m_swConnectionsByIdentifier.set(result.iterator->value->serverConnectionIdentifier(), result.iterator->value.get());
     }
 
     return *result.iterator->value;

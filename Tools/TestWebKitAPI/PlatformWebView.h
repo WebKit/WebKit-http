@@ -50,6 +50,11 @@ typedef GtkWidget *PlatformWindow;
 #elif PLATFORM(HAIKU)
 typedef BView* PlatformWKView;
 typedef BWindow* PlatformWindow;
+#elif PLATFORM(WPE)
+class HeadlessViewBackend;
+struct wpe_view_backend;
+typedef WKViewRef PlatformWKView;
+typedef HeadlessViewBackend *PlatformWindow;
 #endif
 
 namespace TestWebKitAPI {
@@ -80,12 +85,15 @@ public:
 private:
 #if PLATFORM(MAC)
     void initialize(WKPageConfigurationRef, Class wkViewSubclass);
-#elif PLATFORM(GTK)
+#elif PLATFORM(GTK) || PLATFORM(WPE)
     void initialize(WKPageConfigurationRef);
 #endif
 
     PlatformWKView m_view;
     PlatformWindow m_window;
+#if PLATFORM(WPE)
+    struct wpe_view_backend* m_backend { nullptr };
+#endif
 };
 
 } // namespace TestWebKitAPI

@@ -26,18 +26,20 @@ messages -> WebSWServerConnection {
     # When possible, these messages can be implemented directly by WebCore::SWClientConnection
     ScheduleJobInServer(struct WebCore::ServiceWorkerJobData jobData)
     FinishFetchingScriptInServer(struct WebCore::ServiceWorkerFetchResult result)
-    AddServiceWorkerRegistrationInServer(WebCore::ServiceWorkerRegistrationKey key, WebCore::ServiceWorkerRegistrationIdentifier identifier)
-    RemoveServiceWorkerRegistrationInServer(WebCore::ServiceWorkerRegistrationKey key, WebCore::ServiceWorkerRegistrationIdentifier identifier)
-    ServiceWorkerStartedControllingClient(WebCore::ServiceWorkerIdentifier serviceWorkerIdentifier, uint64_t scriptExecutionContextIdentifier)
-    ServiceWorkerStoppedControllingClient(WebCore::ServiceWorkerIdentifier serviceWorkerIdentifier, uint64_t scriptExecutionContextIdentifier)
+    AddServiceWorkerRegistrationInServer(WebCore::ServiceWorkerRegistrationIdentifier identifier)
+    RemoveServiceWorkerRegistrationInServer(WebCore::ServiceWorkerRegistrationIdentifier identifier)
+    ServiceWorkerStartedControllingClient(WebCore::ServiceWorkerIdentifier serviceWorkerIdentifier, WebCore::ServiceWorkerRegistrationIdentifier registrationIdentifier, WebCore::DocumentIdentifier contextIdentifier)
+    ServiceWorkerStoppedControllingClient(WebCore::ServiceWorkerIdentifier serviceWorkerIdentifier, WebCore::ServiceWorkerRegistrationIdentifier registrationIdentifier, WebCore::DocumentIdentifier contextIdentifier)
 
-    StartFetch(uint64_t identifier, std::optional<WebCore::ServiceWorkerIdentifier> serviceWorkerIdentifier, WebCore::ResourceRequest request, struct WebCore::FetchOptions options)
-    PostMessageToServiceWorkerGlobalScope(WebCore::ServiceWorkerIdentifier destinationServiceWorkerIdentifier, IPC::DataReference message, struct WebCore::ServiceWorkerClientData source)
+    StartFetch(uint64_t identifier, std::optional<WebCore::ServiceWorkerIdentifier> serviceWorkerIdentifier, WebCore::ResourceRequest request, struct WebCore::FetchOptions options, IPC::FormDataReference requestBody)
+    PostMessageToServiceWorkerGlobalScope(WebCore::ServiceWorkerIdentifier destinationServiceWorkerIdentifier, IPC::DataReference message, WebCore::DocumentIdentifier sourceContextIdentifier, struct WebCore::ServiceWorkerClientData source)
 
     DidResolveRegistrationPromise(WebCore::ServiceWorkerRegistrationKey key)
 
     MatchRegistration(uint64_t serviceRegistrationMatchRequestIdentifier, struct WebCore::SecurityOriginData topOrigin, WebCore::URL clientURL)
     GetRegistrations(uint64_t serviceRegistrationMatchRequestIdentifier, struct WebCore::SecurityOriginData topOrigin, WebCore::URL clientURL)
+    RegisterServiceWorkerClient(struct WebCore::SecurityOriginData topOrigin, WebCore::DocumentIdentifier identifier, struct WebCore::ServiceWorkerClientData data)
+    UnregisterServiceWorkerClient(WebCore::DocumentIdentifier identifier)
 }
 
 #endif // ENABLE(SERVICE_WORKER)

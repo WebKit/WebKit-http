@@ -38,6 +38,10 @@ inline _WKAttachment *wrapper(API::Attachment& attachment)
 
 }
 
+@interface _WKAttachmentDisplayOptions ()
+@property (nonatomic, readonly) WebCore::AttachmentDisplayOptions coreDisplayOptions;
+@end
+
 @interface _WKAttachment () <WKObject> {
 @package
     API::ObjectStorage<API::Attachment> _attachment;

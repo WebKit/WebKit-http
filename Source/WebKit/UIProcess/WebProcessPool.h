@@ -319,10 +319,10 @@ public:
 
     void ensureStorageProcessAndWebsiteDataStore(WebsiteDataStore* relevantDataStore);
     StorageProcessProxy* storageProcess() { return m_storageProcess.get(); }
-    void getStorageProcessConnection(Ref<Messages::WebProcessProxy::GetStorageProcessConnection::DelayedReply>&&);
+    void getStorageProcessConnection(bool isServiceWorkerProcess, Ref<Messages::WebProcessProxy::GetStorageProcessConnection::DelayedReply>&&);
     void storageProcessCrashed(StorageProcessProxy*);
 #if ENABLE(SERVICE_WORKER)
-    void getWorkerContextProcessConnection(StorageProcessProxy&);
+    void establishWorkerContextConnectionToStorageProcess(StorageProcessProxy&);
     bool isServiceWorker(uint64_t pageID) const { return m_serviceWorkerProcess && m_serviceWorkerProcess->pageID() == pageID; }
     ServiceWorkerProcessProxy* serviceWorkerProxy() const { return m_serviceWorkerProcess; }
     void setAllowsAnySSLCertificateForServiceWorker(bool allows) { m_allowsAnySSLCertificateForServiceWorker = allows; }
@@ -415,14 +415,12 @@ public:
 #if PLATFORM(COCOA)
     bool cookieStoragePartitioningEnabled() const { return m_cookieStoragePartitioningEnabled; }
     void setCookieStoragePartitioningEnabled(bool);
+    bool storageAccessAPIEnabled() const { return m_storageAccessAPIEnabled; }
+    void setStorageAccessAPIEnabled(bool);
 #endif
 
     static uint64_t registerProcessPoolCreationListener(Function<void(WebProcessPool&)>&&);
     static void unregisterProcessPoolCreationListener(uint64_t identifier);
-
-#if ENABLE(SERVICE_WORKER)
-    void didGetWorkerContextProcessConnection(const IPC::Attachment& connection);
-#endif
 
 private:
     void platformInitialize();
@@ -611,6 +609,7 @@ private:
 
 #if PLATFORM(COCOA)
     bool m_cookieStoragePartitioningEnabled { false };
+    bool m_storageAccessAPIEnabled { false };
 #endif
 
     struct Paths {

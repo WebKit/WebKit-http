@@ -30,6 +30,7 @@
 #include "Color.h"
 #include "ContainerNode.h"
 #include "DocumentEventQueue.h"
+#include "DocumentIdentifier.h"
 #include "DocumentTiming.h"
 #include "FocusDirection.h"
 #include "FontSelectorClient.h"
@@ -56,6 +57,7 @@
 #include <wtf/Forward.h>
 #include <wtf/HashCountedSet.h>
 #include <wtf/HashSet.h>
+#include <wtf/ObjectIdentifier.h>
 #include <wtf/WeakPtr.h>
 #include <wtf/text/AtomicStringHash.h>
 
@@ -152,6 +154,7 @@ class RenderView;
 class RequestAnimationFrameCallback;
 class SVGDocumentExtensions;
 class SVGSVGElement;
+class SWClientConnection;
 class ScriptElementData;
 class ScriptModuleLoader;
 class ScriptRunner;
@@ -352,9 +355,9 @@ public:
 
     void removedLastRef();
 
-    uint64_t identifier() const { return m_identifier; }
+    DocumentIdentifier identifier() const { return m_identifier; }
 
-    using DocumentsMap = HashMap<uint64_t, Document*>;
+    using DocumentsMap = HashMap<DocumentIdentifier, Document*>;
     WEBCORE_EXPORT static DocumentsMap::ValuesIteratorRange allDocuments();
     WEBCORE_EXPORT static DocumentsMap& allDocumentsMap();
 
@@ -1386,6 +1389,10 @@ public:
     WEBCORE_EXPORT RefPtr<HTMLAttachmentElement> attachmentForIdentifier(const String& identifier) const;
 #endif
 
+#if ENABLE(SERVICE_WORKER)
+    void setServiceWorkerConnection(SWClientConnection*);
+#endif
+
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
     Document(Frame*, const URL&, unsigned = DefaultDocumentClass, unsigned constructionFlags = 0);
@@ -1857,7 +1864,11 @@ private:
     bool m_grantStorageAccessOverride { false };
 
     RefPtr<DocumentTimeline> m_timeline;
-    uint64_t m_identifier;
+    DocumentIdentifier m_identifier;
+
+#if ENABLE(SERVICE_WORKER)
+    SWClientConnection* m_serviceWorkerConnection { nullptr };
+#endif
 };
 
 Element* eventTargetElementForDocument(Document*);

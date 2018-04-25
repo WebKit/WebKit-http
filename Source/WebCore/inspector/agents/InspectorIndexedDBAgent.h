@@ -48,6 +48,7 @@ class InspectorPageAgent;
 typedef String ErrorString;
 
 class InspectorIndexedDBAgent final : public InspectorAgentBase, public Inspector::IndexedDBBackendDispatcherHandler {
+    WTF_MAKE_NONCOPYABLE(InspectorIndexedDBAgent);
     WTF_MAKE_FAST_ALLOCATED;
 public:
     InspectorIndexedDBAgent(WebAgentContext&, InspectorPageAgent*);
@@ -61,7 +62,7 @@ public:
     void disable(ErrorString&) override;
     void requestDatabaseNames(ErrorString&, const String& securityOrigin, Ref<RequestDatabaseNamesCallback>&&) override;
     void requestDatabase(ErrorString&, const String& securityOrigin, const String& databaseName, Ref<RequestDatabaseCallback>&&) override;
-    void requestData(ErrorString&, const String& securityOrigin, const String& databaseName, const String& objectStoreName, const String& indexName, int skipCount, int pageSize, const Inspector::InspectorObject* keyRange, Ref<RequestDataCallback>&&) override;
+    void requestData(ErrorString&, const String& securityOrigin, const String& databaseName, const String& objectStoreName, const String& indexName, int skipCount, int pageSize, const JSON::Object* keyRange, Ref<RequestDataCallback>&&) override;
     void clearObjectStore(ErrorString&, const String& in_securityOrigin, const String& in_databaseName, const String& in_objectStoreName, Ref<ClearObjectStoreCallback>&&) override;
 
 private:

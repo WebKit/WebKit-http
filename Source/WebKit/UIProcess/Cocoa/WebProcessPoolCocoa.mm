@@ -49,6 +49,7 @@
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/SharedBuffer.h>
 #import <pal/spi/cf/CFNetworkSPI.h>
+#import <pal/spi/cocoa/NSKeyedArchiverSPI.h>
 #import <sys/param.h>
 
 #if PLATFORM(IOS)
@@ -214,10 +215,14 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
     parameters.fontWhitelist = m_fontWhitelist;
 
     if (m_bundleParameters) {
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200)
         auto data = adoptNS([[NSMutableData alloc] init]);
         auto keyedArchiver = adoptNS([[NSKeyedArchiver alloc] initForWritingWithMutableData:data.get()]);
 
         [keyedArchiver setRequiresSecureCoding:YES];
+#else
+        auto keyedArchiver = secureArchiver();
+#endif
 
         @try {
             [keyedArchiver encodeObject:m_bundleParameters.get() forKey:@"parameters"];
@@ -225,6 +230,10 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
         } @catch (NSException *exception) {
             LOG_ERROR("Failed to encode bundle parameters: %@", exception);
         }
+
+#if (!PLATFORM(MAC) || __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200)
+        auto data = retainPtr(keyedArchiver.get().encodedData);
+#endif
 
         parameters.bundleParameterData = API::Data::createWithoutCopying((const unsigned char*)[data bytes], [data length], [] (unsigned char*, const void* data) {
             [(NSData *)data release];
@@ -295,6 +304,7 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
 #endif
 
     parameters.cookieStoragePartitioningEnabled = cookieStoragePartitioningEnabled();
+    parameters.storageAccessAPIEnabled = storageAccessAPIEnabled();
 
 #if ENABLE(NETWORK_CAPTURE)
     parameters.recordReplayMode = [defaults stringForKey:WebKitRecordReplayModeDefaultsKey];
@@ -585,6 +595,12 @@ void WebProcessPool::setCookieStoragePartitioningEnabled(bool enabled)
 {
     m_cookieStoragePartitioningEnabled = enabled;
     sendToNetworkingProcess(Messages::NetworkProcess::SetCookieStoragePartitioningEnabled(enabled));
+}
+
+void WebProcessPool::setStorageAccessAPIEnabled(bool enabled)
+{
+    m_storageAccessAPIEnabled = enabled;
+    sendToNetworkingProcess(Messages::NetworkProcess::SetStorageAccessAPIEnabled(enabled));
 }
 
 int networkProcessLatencyQOS()

@@ -32,7 +32,9 @@
 #include "ChildProcessMessages.h"
 #include "DataReference.h"
 #include "DownloadProxyMessages.h"
+#if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
 #include "LegacyCustomProtocolManager.h"
+#endif
 #include "Logging.h"
 #include "NetworkConnectionToWebProcess.h"
 #include "NetworkProcessCreationParameters.h"
@@ -114,7 +116,9 @@ NetworkProcess::NetworkProcess()
 
     addSupplement<AuthenticationManager>();
     addSupplement<WebCookieManager>();
+#if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
     addSupplement<LegacyCustomProtocolManager>();
+#endif
 }
 
 NetworkProcess::~NetworkProcess()
@@ -244,7 +248,9 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
         NetworkStorageSession::switchToNewTestingSession();
 
 #if USE(NETWORK_SESSION)
+#if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
     parameters.defaultSessionParameters.legacyCustomProtocolManager = supplement<LegacyCustomProtocolManager>();
+#endif
     SessionTracker::setSession(PAL::SessionID::defaultSessionID(), NetworkSession::create(WTFMove(parameters.defaultSessionParameters)));
 #endif
 
@@ -327,6 +333,19 @@ void NetworkProcess::updatePrevalentDomainsToPartitionOrBlockCookies(PAL::Sessio
 {
     if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
         networkStorageSession->setPrevalentDomainsToPartitionOrBlockCookies(domainsToPartition, domainsToBlock, domainsToNeitherPartitionNorBlock, shouldClearFirst);
+}
+
+void NetworkProcess::updateStorageAccessForPrevalentDomains(PAL::SessionID sessionID, const String& resourceDomain, const String& firstPartyDomain, bool shouldGrantStorage, uint64_t contextId)
+{
+    bool isStorageGranted = false;
+    if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID)) {
+        networkStorageSession->setStorageAccessGranted(resourceDomain, firstPartyDomain, shouldGrantStorage);
+        ASSERT(networkStorageSession->isStorageAccessGranted(resourceDomain, firstPartyDomain) == shouldGrantStorage);
+        isStorageGranted = shouldGrantStorage;
+    } else
+        ASSERT_NOT_REACHED();
+
+    parentProcessConnection()->send(Messages::NetworkProcessProxy::StorageAccessRequestResult(isStorageGranted, contextId), 0);
 }
 
 void NetworkProcess::removePrevalentDomains(PAL::SessionID sessionID, const Vector<String>& domains)

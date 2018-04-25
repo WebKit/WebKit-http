@@ -747,11 +747,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         return;
     }
         
-    case GetLocalUnlinked:
-        read(AbstractHeap(Stack, node->unlinkedLocal()));
-        def(HeapLocation(StackLoc, AbstractHeap(Stack, node->unlinkedLocal())), LazyNode(node));
-        return;
-        
     case GetByVal: {
         ArrayMode mode = node->arrayMode();
         LocationKind indexedPropertyLoc = indexedPropertyLocForResultType(node->result());
@@ -1047,11 +1042,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case GetButterfly:
         read(JSObject_butterfly);
         def(HeapLocation(ButterflyLoc, JSObject_butterfly, node->child1()), LazyNode(node));
-        return;
-
-    case GetButterflyWithoutCaging:
-        read(JSObject_butterfly);
-        def(HeapLocation(ButterflyWithoutCagingLoc, JSObject_butterfly, node->child1()), LazyNode(node));
         return;
 
     case CheckSubClass:
@@ -1596,50 +1586,70 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         def(PureValue(node));
         return;
 
+    case NormalizeMapKey:
+        def(PureValue(node));
+        return;
+
     case GetMapBucket: {
-        read(MiscFields);
         Edge& mapEdge = node->child1();
         Edge& keyEdge = node->child2();
-        def(HeapLocation(MapBucketLoc, MiscFields, mapEdge, keyEdge), LazyNode(node));
+        AbstractHeapKind heap = (mapEdge.useKind() == MapObjectUse) ? JSMapFields : JSSetFields;
+        read(heap);
+        def(HeapLocation(MapBucketLoc, heap, mapEdge, keyEdge), LazyNode(node));
         return;
     }
 
     case GetMapBucketHead: {
-        read(MiscFields);
         Edge& mapEdge = node->child1();
-        def(HeapLocation(MapBucketHeadLoc, MiscFields, mapEdge), LazyNode(node));
+        AbstractHeapKind heap = (mapEdge.useKind() == MapObjectUse) ? JSMapFields : JSSetFields;
+        read(heap);
+        def(HeapLocation(MapBucketHeadLoc, heap, mapEdge), LazyNode(node));
         return;
     }
 
     case GetMapBucketNext: {
-        read(MiscFields);
-        LocationKind locationKind = MapBucketMapNextLoc;
-        if (node->bucketOwnerType() == BucketOwnerType::Set)
-            locationKind = MapBucketSetNextLoc;
+        AbstractHeapKind heap = (node->bucketOwnerType() == BucketOwnerType::Map) ? JSMapFields : JSSetFields;
+        read(heap);
         Edge& bucketEdge = node->child1();
-        def(HeapLocation(locationKind, MiscFields, bucketEdge), LazyNode(node));
+        def(HeapLocation(MapBucketNextLoc, heap, bucketEdge), LazyNode(node));
         return;
     }
 
     case LoadKeyFromMapBucket: {
-        read(MiscFields);
+        AbstractHeapKind heap = (node->bucketOwnerType() == BucketOwnerType::Map) ? JSMapFields : JSSetFields;
+        read(heap);
         Edge& bucketEdge = node->child1();
-        def(HeapLocation(MapBucketKeyLoc, MiscFields, bucketEdge), LazyNode(node));
+        def(HeapLocation(MapBucketKeyLoc, heap, bucketEdge), LazyNode(node));
         return;
     }
 
     case LoadValueFromMapBucket: {
-        read(MiscFields);
+        AbstractHeapKind heap = (node->bucketOwnerType() == BucketOwnerType::Map) ? JSMapFields : JSSetFields;
+        read(heap);
         Edge& bucketEdge = node->child1();
-        def(HeapLocation(MapBucketValueLoc, MiscFields, bucketEdge), LazyNode(node));
+        def(HeapLocation(MapBucketValueLoc, heap, bucketEdge), LazyNode(node));
         return;
     }
 
     case WeakMapGet: {
-        read(MiscFields);
         Edge& mapEdge = node->child1();
         Edge& keyEdge = node->child2();
-        def(HeapLocation(WeakMapGetLoc, MiscFields, mapEdge, keyEdge), LazyNode(node));
+        read(JSWeakMapFields);
+        def(HeapLocation(WeakMapGetLoc, JSWeakMapFields, mapEdge, keyEdge), LazyNode(node));
+        return;
+    }
+
+    case SetAdd: {
+        // FIXME: Define defs for them to participate in CSE.
+        // https://bugs.webkit.org/show_bug.cgi?id=179911
+        write(JSSetFields);
+        return;
+    }
+
+    case MapSet: {
+        // FIXME: Define defs for them to participate in CSE.
+        // https://bugs.webkit.org/show_bug.cgi?id=179911
+        write(JSMapFields);
         return;
     }
 

@@ -90,6 +90,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/ForwardingHeaders/replay"
     "${WEBCORE_DIR}/ForwardingHeaders/runtime"
     "${WEBCORE_DIR}/ForwardingHeaders/yarr"
+    "${WEBCORE_DIR}/html/shadow/cocoa"
     "${WEBCORE_DIR}/icu"
     "${WEBCORE_DIR}/loader/archive/cf"
     "${WEBCORE_DIR}/loader/cf"
@@ -136,19 +137,6 @@ list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
 
 set(WebCore_USER_AGENT_SCRIPTS
     ${WEBCORE_DIR}/Modules/plugins/QuickTimePluginReplacement.js
-)
-
-#FIXME: Use ios-encodings.txt once we get CMake working for iOS.
-add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/CharsetData.cpp
-    MAIN_DEPENDENCY ${WEBCORE_DIR}/platform/text/mac/make-charset-table.pl
-    DEPENDS platform/text/mac/character-sets.txt
-    DEPENDS platform/text/mac/mac-encodings.txt
-    COMMAND ${PERL_EXECUTABLE} ${WEBCORE_DIR}/platform/text/mac/make-charset-table.pl ${WEBCORE_DIR}/platform/text/mac/character-sets.txt ${WEBCORE_DIR}/platform/text/mac/mac-encodings.txt kTextEncoding > ${DERIVED_SOURCES_WEBCORE_DIR}/CharsetData.cpp
-    VERBATIM)
-
-list(APPEND WebCore_DERIVED_SOURCES
-    ${DERIVED_SOURCES_WEBCORE_DIR}/CharsetData.cpp
 )
 
 list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
@@ -306,7 +294,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cg/IOSurfacePool.cpp
     platform/graphics/cg/ImageBufferCG.cpp
     platform/graphics/cg/ImageBufferDataCG.cpp
-    platform/graphics/cg/ImageCG.cpp
     platform/graphics/cg/ImageDecoderCG.cpp
     platform/graphics/cg/ImageSourceCGMac.mm
     platform/graphics/cg/IntPointCG.cpp
@@ -429,7 +416,6 @@ list(APPEND WebCore_SOURCES
     platform/mac/WebCoreFullScreenPlaceholderView.mm
     platform/mac/WebCoreFullScreenWarningView.mm
     platform/mac/WebCoreFullScreenWindow.mm
-    platform/mac/WebCoreNSStringExtras.mm
     platform/mac/WebCoreNSURLExtras.mm
     platform/mac/WebCoreObjCExtras.mm
     platform/mac/WebGLBlacklist.mm
@@ -479,12 +465,13 @@ list(APPEND WebCore_SOURCES
 
     platform/text/mac/LocaleMac.mm
     platform/text/mac/TextBoundaries.mm
-    platform/text/mac/TextCodecMac.cpp
     platform/text/mac/TextEncodingRegistryMac.mm
 
     rendering/RenderThemeCocoa.mm
     rendering/RenderThemeMac.mm
     rendering/TextAutoSizing.cpp
+
+    xml/SoftLinkLibxslt.cpp
 )
 
 # FIXME: We do not need everything from all of these directories.
@@ -540,6 +527,8 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
     html/forms
     html/parser
     html/shadow
+
+    inspector/agents
 
     loader/appcache
     loader/archive

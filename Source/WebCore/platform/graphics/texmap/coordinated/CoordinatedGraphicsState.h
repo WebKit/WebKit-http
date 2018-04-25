@@ -36,6 +36,7 @@
 #include "FloatSize.h"
 #include "IntRect.h"
 #include "IntSize.h"
+#include "NicosiaBuffer.h"
 #include "SurfaceUpdateInfo.h"
 #include "TextureMapperAnimation.h"
 #include "TransformationMatrix.h"
@@ -45,8 +46,6 @@
 #endif
 
 namespace WebCore {
-
-class CoordinatedSurface;
 
 typedef uint32_t CoordinatedLayerID;
 enum { InvalidCoordinatedLayerID = 0 };
@@ -186,15 +185,15 @@ struct CoordinatedGraphicsState {
     IntRect coveredRect;
 
     Vector<CoordinatedLayerID> layersToCreate;
-    Vector<std::pair<CoordinatedLayerID, CoordinatedGraphicsLayerState> > layersToUpdate;
+    Vector<std::pair<CoordinatedLayerID, CoordinatedGraphicsLayerState>> layersToUpdate;
     Vector<CoordinatedLayerID> layersToRemove;
 
     Vector<CoordinatedImageBackingID> imagesToCreate;
     Vector<CoordinatedImageBackingID> imagesToRemove;
-    Vector<std::pair<CoordinatedImageBackingID, RefPtr<CoordinatedSurface> > > imagesToUpdate;
+    Vector<std::pair<CoordinatedImageBackingID, RefPtr<Nicosia::Buffer>>> imagesToUpdate;
     Vector<CoordinatedImageBackingID> imagesToClear;
 
-    Vector<std::pair<uint32_t /* atlasID */, RefPtr<CoordinatedSurface> > > updateAtlasesToCreate;
+    Vector<std::pair<uint32_t /* atlasID */, RefPtr<Nicosia::Buffer>>> updateAtlasesToCreate;
 };
 
 } // namespace WebCore

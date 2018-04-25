@@ -47,7 +47,7 @@ void FETile::platformApplySoftware()
     FilterEffect* in = inputEffect(0);
 
     ImageBuffer* resultImage = createImageBufferResult();
-    ImageBuffer* inBuffer = in->asImageBuffer();
+    ImageBuffer* inBuffer = in->imageBufferResult();
     if (!resultImage || !inBuffer)
         return;
 
@@ -86,17 +86,14 @@ void FETile::platformApplySoftware()
     filterContext.fillRect(FloatRect(FloatPoint(), absolutePaintRect().size()));
 }
 
-void FETile::dump()
+TextStream& FETile::externalRepresentation(TextStream& ts, RepresentationType representation) const
 {
-}
-
-TextStream& FETile::externalRepresentation(TextStream& ts, int indent) const
-{
-    writeIndent(ts, indent);
-    ts << "[feTile";
-    FilterEffect::externalRepresentation(ts);
+    ts << indent << "[feTile";
+    FilterEffect::externalRepresentation(ts, representation);
     ts << "]\n";
-    inputEffect(0)->externalRepresentation(ts, indent + 1);
+
+    TextStream::IndentScope indentScope(ts);
+    inputEffect(0)->externalRepresentation(ts, representation);
 
     return ts;
 }
