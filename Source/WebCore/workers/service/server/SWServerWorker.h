@@ -27,6 +27,7 @@
 
 #if ENABLE(SERVICE_WORKER)
 
+#include "ServiceWorkerData.h"
 #include "ServiceWorkerIdentifier.h"
 #include "ServiceWorkerRegistrationKey.h"
 #include "ServiceWorkerTypes.h"
@@ -35,39 +36,55 @@
 
 namespace WebCore {
 
+class SWServer;
 enum class WorkerType;
 
 class SWServerWorker : public ThreadSafeRefCounted<SWServerWorker> {
 public:
-    static Ref<SWServerWorker> create(const ServiceWorkerRegistrationKey& registrationKey, const URL& url, const String& script, WorkerType type, ServiceWorkerIdentifier identifier)
+    template <typename... Args> static Ref<SWServerWorker> create(Args&&... args)
     {
-        return adoptRef(*new SWServerWorker(registrationKey, url, script, type, identifier));
+        return adoptRef(*new SWServerWorker(std::forward<Args>(args)...));
     }
     
     SWServerWorker(const SWServerWorker&) = delete;
-    ~SWServerWorker();
+    WEBCORE_EXPORT ~SWServerWorker();
 
     void terminate();
 
-    const URL& scriptURL() const { return m_scriptURL; }
+    SWServer& server();
+    const ServiceWorkerRegistrationKey& registrationKey() const { return m_registrationKey; }
+    const URL& scriptURL() const { return m_data.scriptURL; }
     const String& script() const { return m_script; }
-    WorkerType type() const { return m_type; }
+    WorkerType type() const { return m_data.type; }
 
-    ServiceWorkerIdentifier identifier() const { return m_identifier; }
+    ServiceWorkerIdentifier identifier() const { return m_data.identifier; }
+    SWServerToContextConnectionIdentifier contextConnectionIdentifier() const { return m_contextConnectionIdentifier; }
 
-    ServiceWorkerState state() const { return m_state; }
-    void setState(ServiceWorkerState state) { m_state = state; }
+    ServiceWorkerState state() const { return m_data.state; }
+    void setState(ServiceWorkerState state) { m_data.state = state; }
+
+    bool hasPendingEvents() const { return m_hasPendingEvents; }
+    void setHasPendingEvents(bool value) { m_hasPendingEvents = value; }
+
+    void scriptContextFailedToStart(const String& message);
+    void scriptContextStarted();
+    void didFinishInstall(bool wasSuccessful);
+    void didFinishActivation();
+    void contextTerminated();
+
+    WEBCORE_EXPORT static SWServerWorker* existingWorkerForIdentifier(ServiceWorkerIdentifier);
+
+    const ServiceWorkerData& data() const { return m_data; }
 
 private:
-    SWServerWorker(const ServiceWorkerRegistrationKey&, const URL&, const String& script, WorkerType, ServiceWorkerIdentifier);
+    SWServerWorker(SWServer&, const ServiceWorkerRegistrationKey&, SWServerToContextConnectionIdentifier, const URL&, const String& script, WorkerType, ServiceWorkerIdentifier);
 
+    SWServer& m_server;
     ServiceWorkerRegistrationKey m_registrationKey;
-    URL m_scriptURL;
+    SWServerToContextConnectionIdentifier m_contextConnectionIdentifier;
+    ServiceWorkerData m_data;
     String m_script;
-    ServiceWorkerIdentifier m_identifier;
-    WorkerType m_type;
-    
-    ServiceWorkerState m_state { ServiceWorkerState::Redundant };
+    bool m_hasPendingEvents { false };
 };
 
 } // namespace WebCore

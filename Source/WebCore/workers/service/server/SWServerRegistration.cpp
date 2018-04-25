@@ -37,8 +37,7 @@ namespace WebCore {
 
 static ServiceWorkerRegistrationIdentifier generateServiceWorkerRegistrationIdentifier()
 {
-    static uint64_t identifier = 0;
-    return makeObjectIdentifier<ServiceWorkerRegistrationIdentifierType>(++identifier);
+    return generateObjectIdentifier<ServiceWorkerRegistrationIdentifierType>();
 }
 
 SWServerRegistration::SWServerRegistration(SWServer& server, const ServiceWorkerRegistrationKey& key, ServiceWorkerUpdateViaCache updateViaCache, const URL& scopeURL, const URL& scriptURL)
@@ -48,6 +47,7 @@ SWServerRegistration::SWServerRegistration(SWServer& server, const ServiceWorker
     , m_scopeURL(scopeURL)
     , m_scriptURL(scriptURL)
     , m_server(server)
+    , m_creationTime(MonotonicTime::now())
 {
     m_scopeURL.removeFragmentIdentifier();
 }
@@ -82,12 +82,12 @@ void SWServerRegistration::updateRegistrationState(ServiceWorkerRegistrationStat
         break;
     };
 
-    std::optional<ServiceWorkerIdentifier> serviceWorkerIdentifier;
+    std::optional<ServiceWorkerData> serviceWorkerData;
     if (worker)
-        serviceWorkerIdentifier = worker->identifier();
+        serviceWorkerData = worker->data();
 
     forEachConnection([&](auto& connection) {
-        connection.updateRegistrationStateInClient(identifier(), state, serviceWorkerIdentifier);
+        connection.updateRegistrationStateInClient(identifier(), state, serviceWorkerData);
     });
 }
 
@@ -119,19 +119,19 @@ void SWServerRegistration::forEachConnection(const WTF::Function<void(SWServer::
 
 ServiceWorkerRegistrationData SWServerRegistration::data() const
 {
-    std::optional<ServiceWorkerIdentifier> installingID;
+    std::optional<ServiceWorkerData> installingWorkerData;
     if (m_installingWorker)
-        installingID = m_installingWorker->identifier();
+        installingWorkerData = m_installingWorker->data();
 
-    std::optional<ServiceWorkerIdentifier> waitingID;
+    std::optional<ServiceWorkerData> waitingWorkerData;
     if (m_waitingWorker)
-        waitingID = m_waitingWorker->identifier();
+        waitingWorkerData = m_waitingWorker->data();
 
-    std::optional<ServiceWorkerIdentifier> activeID;
+    std::optional<ServiceWorkerData> activeWorkerData;
     if (m_activeWorker)
-        activeID = m_activeWorker->identifier();
+        activeWorkerData = m_activeWorker->data();
 
-    return { m_registrationKey, identifier(), m_scopeURL, m_scriptURL, m_updateViaCache, installingID, waitingID, activeID };
+    return { m_registrationKey, identifier(), m_scopeURL, m_updateViaCache, WTFMove(installingWorkerData), WTFMove(waitingWorkerData), WTFMove(activeWorkerData) };
 }
 
 void SWServerRegistration::addClientServiceWorkerRegistration(uint64_t connectionIdentifier)
@@ -142,6 +142,31 @@ void SWServerRegistration::addClientServiceWorkerRegistration(uint64_t connectio
 void SWServerRegistration::removeClientServiceWorkerRegistration(uint64_t connectionIdentifier)
 {
     m_connectionsWithClientRegistrations.remove(connectionIdentifier);
+}
+
+void SWServerRegistration::addClientUsingRegistration(const ServiceWorkerClientIdentifier& clientIdentifier)
+{
+    auto addResult = m_clientsUsingRegistration.ensure(clientIdentifier.serverConnectionIdentifier, [] {
+        return HashSet<uint64_t> { };
+    }).iterator->value.add(clientIdentifier.scriptExecutionContextIdentifier);
+    ASSERT_UNUSED(addResult, addResult.isNewEntry);
+}
+
+void SWServerRegistration::removeClientUsingRegistration(const ServiceWorkerClientIdentifier& clientIdentifier)
+{
+    auto iterator = m_clientsUsingRegistration.find(clientIdentifier.serverConnectionIdentifier);
+    ASSERT(iterator != m_clientsUsingRegistration.end());
+    bool wasRemoved = iterator->value.remove(clientIdentifier.scriptExecutionContextIdentifier);
+    ASSERT_UNUSED(wasRemoved, wasRemoved);
+
+    if (iterator->value.isEmpty())
+        m_clientsUsingRegistration.remove(iterator);
+}
+
+void SWServerRegistration::unregisterServerConnection(uint64_t serverConnectionIdentifier)
+{
+    m_connectionsWithClientRegistrations.removeAll(serverConnectionIdentifier);
+    m_clientsUsingRegistration.remove(serverConnectionIdentifier);
 }
 
 } // namespace WebCore

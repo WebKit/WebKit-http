@@ -34,6 +34,9 @@ class WebDriver(object):
     def capabilities(self):
         raise NotImplementedError
 
+    def browser_env(self):
+        return {}
+
 
 _drivers = {}
 

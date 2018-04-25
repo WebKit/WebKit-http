@@ -30,7 +30,6 @@
 #include "Color.h"
 #include "ContainerNode.h"
 #include "DocumentEventQueue.h"
-#include "DocumentTimeline.h"
 #include "DocumentTiming.h"
 #include "FocusDirection.h"
 #include "FontSelectorClient.h"
@@ -102,6 +101,7 @@ class DocumentLoader;
 class DocumentMarkerController;
 class DocumentParser;
 class DocumentSharedObjectPool;
+class DocumentTimeline;
 class DocumentType;
 class ExtensionStyleSheets;
 class FloatQuad;
@@ -173,6 +173,7 @@ class TextResourceDecoder;
 class TreeWalker;
 class VisibilityChangeClient;
 class VisitedLinkState;
+class WebAnimation;
 class WebGL2RenderingContext;
 class WebGLRenderingContext;
 class WebGPURenderingContext;
@@ -214,6 +215,10 @@ class TextAutoSizing;
 
 #if ENABLE(MEDIA_SESSION)
 class MediaSession;
+#endif
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+class HTMLAttachmentElement;
 #endif
 
 namespace Style {
@@ -1372,7 +1377,15 @@ public:
     WEBCORE_EXPORT void setConsoleMessageListener(RefPtr<StringCallback>&&); // For testing.
 
     DocumentTimeline& timeline();
+    DocumentTimeline* existingTimeline() const { return m_timeline.get(); }
+    Vector<RefPtr<WebAnimation>> getAnimations();
         
+#if ENABLE(ATTACHMENT_ELEMENT)
+    void didInsertAttachmentElement(HTMLAttachmentElement&);
+    void didRemoveAttachmentElement(HTMLAttachmentElement&);
+    WEBCORE_EXPORT RefPtr<HTMLAttachmentElement> attachmentForIdentifier(const String& identifier) const;
+#endif
+
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
     Document(Frame*, const URL&, unsigned = DefaultDocumentClass, unsigned constructionFlags = 0);
@@ -1719,6 +1732,10 @@ private:
 
 #if ENABLE(INDEXED_DATABASE)
     RefPtr<IDBClient::IDBConnectionProxy> m_idbConnectionProxy;
+#endif
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+    HashMap<String, Ref<HTMLAttachmentElement>> m_attachmentIdentifierToElementMap;
 #endif
 
     Timer m_didAssociateFormControlsTimer;

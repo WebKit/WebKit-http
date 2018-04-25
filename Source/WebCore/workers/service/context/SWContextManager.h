@@ -49,6 +49,8 @@ public:
         virtual void serviceWorkerStartedWithMessage(ServiceWorkerIdentifier, const String& exceptionMessage) = 0;
         virtual void didFinishInstall(ServiceWorkerIdentifier, bool wasSuccessful) = 0;
         virtual void didFinishActivation(ServiceWorkerIdentifier) = 0;
+        virtual void setServiceWorkerHasPendingEvents(ServiceWorkerIdentifier, bool) = 0;
+        virtual void workerTerminated(ServiceWorkerIdentifier) = 0;
     };
 
     WEBCORE_EXPORT void setConnection(std::unique_ptr<Connection>&&);
@@ -56,9 +58,10 @@ public:
 
     WEBCORE_EXPORT void registerServiceWorkerThreadForInstall(Ref<ServiceWorkerThreadProxy>&&);
     WEBCORE_EXPORT ServiceWorkerThreadProxy* serviceWorkerThreadProxy(ServiceWorkerIdentifier) const;
-    WEBCORE_EXPORT void postMessageToServiceWorkerGlobalScope(ServiceWorkerIdentifier destination, Ref<SerializedScriptValue>&& message, const ServiceWorkerClientIdentifier& sourceIdentifier, const String& sourceOrigin);
+    WEBCORE_EXPORT void postMessageToServiceWorkerGlobalScope(ServiceWorkerIdentifier destination, Ref<SerializedScriptValue>&& message, ServiceWorkerClientData&& source);
     WEBCORE_EXPORT void fireInstallEvent(ServiceWorkerIdentifier);
     WEBCORE_EXPORT void fireActivateEvent(ServiceWorkerIdentifier);
+    WEBCORE_EXPORT void terminateWorker(ServiceWorkerIdentifier);
 
 private:
     SWContextManager() = default;

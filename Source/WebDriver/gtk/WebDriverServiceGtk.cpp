@@ -85,52 +85,6 @@ std::optional<String> WebDriverService::platformMatchCapability(const String&, c
     return std::nullopt;
 }
 
-static bool parseVersion(const String& version, uint64_t& major, uint64_t& minor, uint64_t& micro)
-{
-    major = minor = micro = 0;
-
-    Vector<String> tokens;
-    version.split(".", false, tokens);
-    bool ok;
-    switch (tokens.size()) {
-    case 3:
-        micro = tokens[2].toInt64(&ok);
-        if (!ok)
-            return false;
-        FALLTHROUGH;
-    case 2:
-        minor = tokens[1].toInt64(&ok);
-        if (!ok)
-            return false;
-        FALLTHROUGH;
-    case 1:
-        major = tokens[0].toInt64(&ok);
-        if (!ok)
-            return false;
-        break;
-    default:
-        return false;
-    }
-
-    return true;
-}
-
-bool WebDriverService::platformCompareBrowserVersions(const String& requiredVersion, const String& proposedVersion)
-{
-    // We require clients to use format major.micro.minor as version string.
-    uint64_t requiredMajor, requiredMinor, requiredMicro;
-    if (!parseVersion(requiredVersion, requiredMajor, requiredMinor, requiredMicro))
-        return false;
-
-    uint64_t proposedMajor, proposedMinor, proposedMicro;
-    if (!parseVersion(proposedVersion, proposedMajor, proposedMinor, proposedMicro))
-        return false;
-
-    return proposedMajor > requiredMajor
-        || (proposedMajor == requiredMajor && proposedMinor > requiredMinor)
-        || (proposedMajor == requiredMajor && proposedMinor == requiredMinor && proposedMicro >= requiredMicro);
-}
-
 void WebDriverService::platformParseCapabilities(const InspectorObject& matchedCapabilities, Capabilities& capabilities) const
 {
     RefPtr<InspectorObject> browserOptions;

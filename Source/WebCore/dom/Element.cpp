@@ -27,6 +27,7 @@
 #include "Element.h"
 
 #include "AXObjectCache.h"
+#include "AccessibleNode.h"
 #include "Attr.h"
 #include "AttributeChangeInvalidation.h"
 #include "CSSAnimationController.h"
@@ -42,6 +43,7 @@
 #include "DOMRectList.h"
 #include "DOMTokenList.h"
 #include "DocumentSharedObjectPool.h"
+#include "DocumentTimeline.h"
 #include "Editing.h"
 #include "ElementIterator.h"
 #include "ElementRareData.h"
@@ -84,6 +86,7 @@
 #include "RenderTreeUpdater.h"
 #include "RenderView.h"
 #include "RenderWidget.h"
+#include "RuntimeEnabledFeatures.h"
 #include "SVGDocumentExtensions.h"
 #include "SVGElement.h"
 #include "SVGNames.h"
@@ -3552,7 +3555,7 @@ void Element::clearHasCSSAnimation()
 
 bool Element::canContainRangeEndPoint() const
 {
-    return !equalLettersIgnoringASCIICase(attributeWithoutSynchronization(roleAttr), "img");
+    return !equalLettersIgnoringASCIICase(AccessibleNode::effectiveStringValueForElement(const_cast<Element&>(*this), AXPropertyName::Role), "img");
 }
 
 String Element::completeURLsInAttributeValue(const URL& base, const Attribute& attribute) const
@@ -3698,6 +3701,35 @@ Element* Element::findAnchorElementForLink(String& outAnchorName)
     }
 
     return nullptr;
+}
+
+Vector<RefPtr<WebAnimation>> Element::getAnimations()
+{
+    // FIXME: Filter and order the list as specified (webkit.org/b/179535).
+    if (auto timeline = document().existingTimeline())
+        return timeline->animationsForElement(*this);
+    return { };
+}
+
+AccessibleNode* Element::accessibleNode()
+{
+    if (!RuntimeEnabledFeatures::sharedFeatures().accessibilityObjectModelEnabled())
+        return nullptr;
+
+    ElementRareData& data = ensureElementRareData();
+    if (!data.accessibleNode())
+        data.setAccessibleNode(std::make_unique<AccessibleNode>(*this));
+    return data.accessibleNode();
+}
+
+AccessibleNode* Element::existingAccessibleNode() const
+{
+    if (!RuntimeEnabledFeatures::sharedFeatures().accessibilityObjectModelEnabled())
+        return nullptr;
+
+    if (!hasRareData())
+        return nullptr;
+    return elementRareData()->accessibleNode();
 }
 
 } // namespace WebCore

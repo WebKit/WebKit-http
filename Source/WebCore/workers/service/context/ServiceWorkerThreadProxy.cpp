@@ -36,11 +36,6 @@
 
 namespace WebCore {
 
-Ref<ServiceWorkerThreadProxy> ServiceWorkerThreadProxy::create(PageConfiguration&& pageConfiguration, uint64_t serverConnectionIdentifier, const ServiceWorkerContextData& data, PAL::SessionID sessionID, CacheStorageProvider& cacheStorageProvider)
-{
-    return adoptRef(*new ServiceWorkerThreadProxy { WTFMove(pageConfiguration), serverConnectionIdentifier, data, sessionID, cacheStorageProvider });
-}
-
 static inline UniqueRef<Page> createPageForServiceWorker(PageConfiguration&& configuration, const URL& url)
 {
     auto page = makeUniqueRef<Page>(WTFMove(configuration));
@@ -52,10 +47,10 @@ static inline UniqueRef<Page> createPageForServiceWorker(PageConfiguration&& con
     return page;
 }
 
-ServiceWorkerThreadProxy::ServiceWorkerThreadProxy(PageConfiguration&& pageConfiguration, uint64_t serverConnectionIdentifier, const ServiceWorkerContextData& data, PAL::SessionID sessionID, CacheStorageProvider& cacheStorageProvider)
+ServiceWorkerThreadProxy::ServiceWorkerThreadProxy(PageConfiguration&& pageConfiguration, const ServiceWorkerContextData& data, PAL::SessionID sessionID, CacheStorageProvider& cacheStorageProvider)
     : m_page(createPageForServiceWorker(WTFMove(pageConfiguration), data.scriptURL))
     , m_document(*m_page->mainFrame().document())
-    , m_serviceWorkerThread(ServiceWorkerThread::create(serverConnectionIdentifier, data, sessionID, *this, *this))
+    , m_serviceWorkerThread(ServiceWorkerThread::create(data, sessionID, *this, *this))
     , m_cacheStorageProvider(cacheStorageProvider)
     , m_sessionID(sessionID)
     , m_inspectorProxy(*this)
@@ -87,6 +82,14 @@ void ServiceWorkerThreadProxy::postMessageToDebugger(const String& message)
         // FIXME: Handle terminated case.
         m_inspectorProxy.sendMessageFromWorkerToFrontend(message);
     });
+}
+
+void ServiceWorkerThreadProxy::setResourceCachingDisabled(bool disabled)
+{
+    postTaskToLoader([this, protectedThis = makeRef(*this), disabled] (ScriptExecutionContext&) {
+        ASSERT(isMainThread());
+        m_page->setResourceCachingDisabled(disabled);
+    });   
 }
 
 Ref<CacheStorageConnection> ServiceWorkerThreadProxy::createCacheStorageConnection()

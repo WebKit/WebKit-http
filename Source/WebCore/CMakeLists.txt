@@ -426,6 +426,9 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/webvr/VRPose.idl
     Modules/webvr/VRStageParameters.idl
 
+    accessibility/AccessibleNode.idl
+
+    animation/Animatable.idl
     animation/AnimationEffect.idl
     animation/AnimationEffectTiming.idl
     animation/AnimationTimeline.idl
@@ -1483,7 +1486,7 @@ endif ()
 
 if (USE_WOFF2)
   list(APPEND WebCore_INCLUDE_DIRECTORIES "${WOFF2DEC_INCLUDE_DIRS}")
-  list(APPEND WebCore_LIBRARIES "${BROTLIDEC_LIBRARIES}" "${WOFF2DEC_LIBRARIES}")
+  list(APPEND WebCore_LIBRARIES "${WOFF2DEC_LIBRARIES}")
 endif ()
 
 if (USE_XDGMIME)

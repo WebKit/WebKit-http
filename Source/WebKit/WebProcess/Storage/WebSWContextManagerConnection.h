@@ -54,14 +54,17 @@ private:
     void postMessageToServiceWorkerClient(const WebCore::ServiceWorkerClientIdentifier& destinationIdentifier, Ref<WebCore::SerializedScriptValue>&& message, WebCore::ServiceWorkerIdentifier sourceIdentifier, const String& sourceOrigin) final;
     void didFinishInstall(WebCore::ServiceWorkerIdentifier, bool wasSuccessful) final;
     void didFinishActivation(WebCore::ServiceWorkerIdentifier) final;
+    void setServiceWorkerHasPendingEvents(WebCore::ServiceWorkerIdentifier, bool) final;
+    void workerTerminated(WebCore::ServiceWorkerIdentifier) final;
 
     // IPC messages.
     void serviceWorkerStartedWithMessage(WebCore::ServiceWorkerIdentifier, const String& exceptionMessage) final;
-    void installServiceWorker(uint64_t serverConnectionIdentifier, const WebCore::ServiceWorkerContextData&);
+    void installServiceWorker(const WebCore::ServiceWorkerContextData&);
     void startFetch(uint64_t serverConnectionIdentifier, uint64_t fetchIdentifier, std::optional<WebCore::ServiceWorkerIdentifier>, WebCore::ResourceRequest&&, WebCore::FetchOptions&&);
-    void postMessageToServiceWorkerGlobalScope(WebCore::ServiceWorkerIdentifier destinationIdentifier, const IPC::DataReference& message, const WebCore::ServiceWorkerClientIdentifier& sourceIdentifier, const String& sourceOrigin);
-    void fireInstallEvent(uint64_t serverConnectionIdentifier, WebCore::ServiceWorkerIdentifier);
-    void fireActivateEvent(uint64_t serverConnectionIdentifier, WebCore::ServiceWorkerIdentifier);
+    void postMessageToServiceWorkerGlobalScope(WebCore::ServiceWorkerIdentifier destinationIdentifier, const IPC::DataReference& message, WebCore::ServiceWorkerClientData&& source);
+    void fireInstallEvent(WebCore::ServiceWorkerIdentifier);
+    void fireActivateEvent(WebCore::ServiceWorkerIdentifier);
+    void terminateWorker(WebCore::ServiceWorkerIdentifier);
 
     Ref<IPC::Connection> m_connectionToStorageProcess;
     uint64_t m_pageID { 0 };

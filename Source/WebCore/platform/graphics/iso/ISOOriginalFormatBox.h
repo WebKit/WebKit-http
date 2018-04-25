@@ -31,14 +31,14 @@ namespace WebCore {
 
 class ISOOriginalFormatBox : public ISOBox {
 public:
-    static FourCC boxTypeName() { return 'frma'; }
+    static FourCC boxTypeName() { return "frma"; }
 
     FourCC dataFormat() const { return m_dataFormat; }
 
 protected:
     bool parse(JSC::DataView&, unsigned& offset) override;
 
-    FourCC m_dataFormat { 0 };
+    FourCC m_dataFormat { uint32_t { 0 } };
 };
 
 }

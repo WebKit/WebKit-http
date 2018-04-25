@@ -29,6 +29,7 @@
 #include "AnimationEffect.h"
 #include "AnimationTimeline.h"
 #include "Document.h"
+#include "KeyframeEffect.h"
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -38,7 +39,7 @@ Ref<WebAnimation> WebAnimation::create(Document& document, AnimationEffect* effe
     auto result = adoptRef(*new WebAnimation());
 
     result->setEffect(effect);
-    
+
     // FIXME: the spec mandates distinguishing between an omitted timeline parameter
     // and an explicit null or undefined value (webkit.org/b/179065).
     result->setTimeline(timeline ? timeline : &document.timeline());
@@ -61,6 +62,33 @@ void WebAnimation::setEffect(RefPtr<AnimationEffect>&& effect)
     if (effect == m_effect)
         return;
 
+    if (m_effect) {
+        m_effect->setAnimation(nullptr);
+
+        // Update the Element to Animation map.
+        if (m_timeline && m_effect->isKeyframeEffect()) {
+            auto* keyframeEffect = downcast<KeyframeEffect>(m_effect.get());
+            auto* target = keyframeEffect->target();
+            if (target)
+                m_timeline->animationWasRemovedFromElement(*this, *target);
+        }
+    }
+
+    if (effect) {
+        // An animation effect can only be associated with a single animation.
+        if (effect->animation())
+            effect->animation()->setEffect(nullptr);
+
+        effect->setAnimation(this);
+
+        if (m_timeline && effect->isKeyframeEffect()) {
+            auto* keyframeEffect = downcast<KeyframeEffect>(effect.get());
+            auto* target = keyframeEffect->target();
+            if (target)
+                m_timeline->animationWasAddedToElement(*this, *target);
+        }
+    }
+
     m_effect = WTFMove(effect);
 }
 
@@ -78,13 +106,24 @@ void WebAnimation::setTimeline(RefPtr<AnimationTimeline>&& timeline)
     if (timeline)
         timeline->addAnimation(*this);
 
+    if (m_effect && m_effect->isKeyframeEffect()) {
+        auto* keyframeEffect = downcast<KeyframeEffect>(m_effect.get());
+        auto* target = keyframeEffect->target();
+        if (target) {
+            if (m_timeline)
+                m_timeline->animationWasRemovedFromElement(*this, *target);
+            if (timeline)
+                timeline->animationWasAddedToElement(*this, *target);
+        }
+    }
+
     m_timeline = WTFMove(timeline);
 }
     
 std::optional<double> WebAnimation::bindingsStartTime() const
 {
     if (m_startTime)
-        return m_startTime->value();
+        return m_startTime->milliseconds();
     return std::nullopt;
 }
 
@@ -93,7 +132,7 @@ void WebAnimation::setBindingsStartTime(std::optional<double> startTime)
     if (startTime == std::nullopt)
         setStartTime(std::nullopt);
     else
-        setStartTime(Seconds(startTime.value()));
+        setStartTime(Seconds::fromMilliseconds(startTime.value()));
 }
 
 std::optional<Seconds> WebAnimation::startTime() const
@@ -117,14 +156,14 @@ std::optional<double> WebAnimation::bindingsCurrentTime() const
     auto time = currentTime();
     if (!time)
         return std::nullopt;
-    return time->value();
+    return time->milliseconds();
 }
 
 ExceptionOr<void> WebAnimation::setBindingsCurrentTime(std::optional<double> currentTime)
 {
     if (!currentTime)
         return Exception { TypeError };
-    setCurrentTime(Seconds(currentTime.value()));
+    setCurrentTime(Seconds::fromMilliseconds(currentTime.value()));
     return { };
 }
 
@@ -196,6 +235,12 @@ Seconds WebAnimation::timeToNextRequiredTick(Seconds timelineTime) const
     // If none of the previous cases match, then we're already past our active duration
     // and do not need scheduling.
     return Seconds::infinity();
+}
+
+void WebAnimation::resolve(RenderStyle& targetStyle)
+{
+    if (m_effect && currentTime())
+        m_effect->applyAtLocalTime(currentTime().value(), targetStyle);
 }
 
 String WebAnimation::description()

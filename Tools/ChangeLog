@@ -1,3 +1,386 @@
+2017-11-16  Per Arne Vollan  <pvollan@apple.com>
+
+        Win EWS bots should reboot after N webkit-patch iterations.
+        https://bugs.webkit.org/show_bug.cgi?id=177970
+
+        Reviewed by Brent Fulgham.
+
+        * EWSTools/start-queue-win.sh:
+
+2017-11-15  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE] Add initial support for WebDriver
+        https://bugs.webkit.org/show_bug.cgi?id=179727
+
+        Reviewed by Michael Catanzaro.
+
+        Make it possible to run WebDriver tests with WPE.
+
+        * Scripts/run-webdriver-tests: Add --wpe alias for --platform=wpe.
+        * Scripts/webkitpy/port/wpe.py:
+        (WPEPort.__init__): Initialize _display_server from options.
+        (WPEPort._driver_class): Use WaylandDriver when wayland is passed as display server option.
+        * Scripts/webkitpy/webdriver_tests/webdriver_driver.py:
+        (WebDriver.browser_env): Add virtual method to get the environment that should be used.
+        * Scripts/webkitpy/webdriver_tests/webdriver_driver_wpe.py: Copied from Tools/Scripts/webkitpy/webdriver_tests/webdriver_driver.py.
+        (WebDriverWPE):
+        (WebDriverWPE.__init__):
+        (WebDriverWPE.binary_path):
+        (WebDriverWPE.browser_name):
+        (WebDriverWPE.capabilities):
+        (WebDriverWPE.browser_env):
+        * Scripts/webkitpy/webdriver_tests/webdriver_w3c_executor.py:
+        (WebDriverW3CExecutor.__init__): Update the environment with the one provided by the driver.
+        * wpe/jhbuild.modules: Upgrade dyz to newer version that supports automation.
+
+2017-11-15  Alex Christensen  <achristensen@webkit.org>
+
+        WebViews scheduled in custom run loop modes should be able to do more than 50ms of work at a time
+        https://bugs.webkit.org/show_bug.cgi?id=179742
+        <rdar://problem/35519421>
+
+        Reviewed by Jer Noble.
+
+        * TestWebKitAPI/Tests/mac/WebViewScheduleInRunLoop.mm:
+        (-[ScheduleInRunLoopDelegate webView:didFinishLoadForFrame:]):
+        (TestWebKitAPI::TEST):
+        Load more than one scheduled WebView to test work that typically takes more than 50 ms.
+
+2017-11-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r223781.
+
+        The test is now returning false, so the FIXME is not needed
+        anymore.
+
+        Reverted changeset:
+
+        "WebsiteDataStoreCustomPaths.mm is failing after r223718"
+        https://bugs.webkit.org/show_bug.cgi?id=178596
+        https://trac.webkit.org/changeset/223781
+
+2017-11-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r224863.
+
+        Introduced LayoutTest crashes on iOS Simulator.
+
+        Reverted changeset:
+
+        "Move JSONValues to WTF and convert uses of InspectorValues.h
+        to JSONValues.h"
+        https://bugs.webkit.org/show_bug.cgi?id=173793
+        https://trac.webkit.org/changeset/224863
+
+2017-11-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Remove GTK web inspector images
+        https://bugs.webkit.org/show_bug.cgi?id=179716
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Scripts/webkitdirs.pm:
+        (shouldRemoveCMakeCache):
+        * glib/generate-inspector-gresource-manifest.py:
+        (get_filenames.should_ignore_resource):
+        * gtk/manifest.txt.in:
+        * wpe/manifest.txt.in:
+
+2017-11-15  Jonathan Bedard  <jbedard@apple.com>
+
+        REGRESSION(r221877): 'future' handled incorrectly for mac
+        https://bugs.webkit.org/show_bug.cgi?id=179711
+        <rdar://problem/35546604>
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort.default_baseline_search_path): Use platform/mac-<version> instead of
+        platform/<version> as the baseline search path.
+
+2017-11-14  Nan Wang  <n_wang@apple.com>
+
+        AX: AOM: Implement AccessibleNode class and support label and role attributes
+        https://bugs.webkit.org/show_bug.cgi?id=179494
+
+        Reviewed by Ryosuke Niwa.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+2017-11-14  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Windows] Fix error while launching subprocess on Windows Python
+        https://bugs.webkit.org/show_bug.cgi?id=179637
+
+        Reviewed by Alex Christensen.
+
+        To pass environment variables to subprocess.popen on Windows Python 2,
+        the dict values must be str not unicode.
+        Also is_native_win() method is added to port.
+
+        * Scripts/webkitpy/common/system/platforminfo.py:
+        (PlatformInfo.is_native_win):
+        * Scripts/webkitpy/common/system/platforminfo_mock.py:
+        (MockPlatformInfo.is_native_win):
+        * Scripts/webkitpy/common/system/platforminfo_unittest.py:
+        (TestPlatformInfo.test_os_name_and_wrappers):
+        * Scripts/webkitpy/port/server_process.py:
+        (ServerProcess.__init__):
+
+2017-11-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Move JSONValues to WTF and convert uses of InspectorValues.h to JSONValues.h
+        https://bugs.webkit.org/show_bug.cgi?id=173793
+
+        Reviewed by Brian Burg.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/JSONValue.cpp: Renamed from Tools/TestWebKitAPI/Tests/JavaScriptCore/InspectorValue.cpp.
+        (TestWebKitAPI::TEST):
+
+2017-11-14  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Use more verbose version info from simctl
+        https://bugs.webkit.org/show_bug.cgi?id=179687
+        <rdar://problem/35539392>
+
+        Reviewed by Tim Horton.
+
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Simulator): Address FIXME, use more verbose version.
+        (Simulator._parse_runtimes): 'Internal' no longer stands along, check os for this
+        string instead.
+        * Scripts/webkitpy/xcode/simulator_unittest.py: Mock simctl output specifies iOS
+        8.4.1, not iOS 8.4.
+
+2017-11-14  Daniel Bates  <dabates@apple.com>
+
+        Update comment in FeatureDefines.xcconfig to reflect location of Visual Studio property files
+        for feature defines
+
+        Following r195498 and r201917 the Visual Studio property files for feature defines have
+        moved from directory WebKitLibraries/win/tools/vsprops to directory Source/cmake/tools/vsprops.
+        Update the comment in FeatureDefines.xcconfig to reflect the new location and names of these
+        files.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-11-14  Jer Noble  <jer.noble@apple.com>
+
+        Enable Modern EME tests in DumpRenderTree
+        https://bugs.webkit.org/show_bug.cgi?id=179544
+
+        Reviewed by Alex Christensen.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+
+2017-11-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r224800.
+        https://bugs.webkit.org/show_bug.cgi?id=179684
+
+        "Broke CLoop test mozilla/js1_6/Array/regress-304828.js"
+        (Requested by mlam on #webkit).
+
+        Reverted changeset:
+
+        "Pass --useDollarVM=true to all JSC tests."
+        https://bugs.webkit.org/show_bug.cgi?id=179647
+        https://trac.webkit.org/changeset/224800
+
+2017-11-14  Antti Koivisto  <antti@apple.com>
+
+        Enable display:contents by default
+        https://bugs.webkit.org/show_bug.cgi?id=179655
+
+        Reviewed by Sam Weinig.
+
+        No need to enable this specifically for tests anymore.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+2017-11-14  Tim Horton  <timothy_horton@apple.com>
+
+        Long pressing a phone number with spaces in it results in a link sheet instead of a data detectors sheet
+        https://bugs.webkit.org/show_bug.cgi?id=179646
+        <rdar://problem/35337288>
+
+        Reviewed by Simon Fraser.
+
+        * TestWebKitAPI/Tests/ios/ActionSheetTests.mm:
+        (-[ActionSheetObserver _dataDetectionContextForWebView:]):
+        (TestWebKitAPI::TEST):
+        Add a test that ensures that a phone number with spaces in it
+        invokes a data detectors sheet, not a normal link sheet.
+
+2017-11-14  Emilio Cobos Álvarez  <emilio@crisal.io>
+
+        Add committer status for Emilio Cobos Álvarez.
+        https://bugs.webkit.org/show_bug.cgi?id=179667
+
+        Unreviewed.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2017-11-13  Mark Lam  <mark.lam@apple.com>
+
+        Pass --useDollarVM=true to all JSC tests.
+        https://bugs.webkit.org/show_bug.cgi?id=179647
+
+        Reviewed by Saam Barati.
+
+        * Scripts/run-jsc-stress-tests:
+
+2017-11-13  Simon Fraser  <simon.fraser@apple.com>
+
+        When navigating back to a page, compositing layers may not use accelerated drawing
+        https://bugs.webkit.org/show_bug.cgi?id=178749
+        rdar://problem/35158946
+
+        Reviewed by Dean Jackson.
+
+        Fix WTR and DRT to parse "useAcceleratedDrawing" out of "webkit-test-runner" options
+        and use it to set the state of the web view.
+
+        * DumpRenderTree/TestOptions.h:
+        * DumpRenderTree/TestOptions.mm:
+        (TestOptions::TestOptions):
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (setWebPreferencesForTestOptions):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        (WTR::updateTestOptionsFromTestHeader):
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::hasSameInitializationOptions const):
+
+2017-11-13  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Windows] Fix Python error for subprocess.popen with close_fds
+        https://bugs.webkit.org/show_bug.cgi?id=179553
+
+        Reviewed by Per Arne Vollan.
+
+        * Scripts/webkitpy/port/server_process.py:
+        (ServerProcess._start):
+        (ServerProcess._should_close_fds):
+
+2017-11-13  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Require woff2 1.0.2 and drop direct brotli dependency
+        https://bugs.webkit.org/show_bug.cgi?id=179630
+
+        Reviewed by Frédéric Wang.
+
+        * gtk/jhbuild.modules:
+
+2017-11-08  Keith Miller  <keith_miller@apple.com>
+
+        Async iteration should only fetch the next method once and add feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=179451
+
+        Reviewed by Geoffrey Garen.
+
+        Add feature flag for Async iteration.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-11-13  Gabriel Ivascu  <givascu@igalia.com>
+
+        [GTK] Automatically adjust font size when gtk-xft-dpi changes
+        https://bugs.webkit.org/show_bug.cgi?id=142673
+
+        Reviewed by Michael Catanzaro.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitSettings.cpp:
+        (testWebKitSettings):
+
+2017-11-13  Jonathan Bedard  <jbedard@apple.com>
+
+        check-webkit-style cannot construct valid iOS version without an iOS SDK
+        https://bugs.webkit.org/show_bug.cgi?id=179616
+        <rdar://problem/35507018>
+
+        Reviewed by David Kilzer.
+
+        Instead of throwing an exception when we ask for an unavailable SDK on Mac,
+        we should return None.
+
+        * Scripts/webkitpy/common/system/platforminfo.py:
+        (PlatformInfo.xcode_sdk_version): Return 'None' version if the machine does not
+        have the requested SDK.
+
+2017-11-13  Keith Miller  <keith_miller@apple.com>
+
+        Uninitialized variable in sort-Xcode-project-file
+        https://bugs.webkit.org/show_bug.cgi?id=179581
+
+        Reviewed by Simon Fraser.
+
+        Previously all the unified source files were named
+        UnifiedSource<some-number>.mm. This was changed to
+        UnifiedSource<some-number>-mm.mm to stop Xcode from creating
+        hashes for mm and cpp unified source files with the same
+        number. This broke the expectations in sort-Xcode-project-file.
+
+        * Scripts/sort-Xcode-project-file:
+        (sortChildrenByFileName):
+        (sortFilesByFileName):
+
+2017-11-13  JF Bastien  <jfbastien@apple.com>
+
+        std::expected: fix and test move
+        https://bugs.webkit.org/show_bug.cgi?id=179617
+
+        Reviewed by Alex Christensen.
+
+        Test that unique_ptr can be moved around properly, both has a
+        value and an error (and in a <void, unique> specialization).
+
+        * TestWebKitAPI/Tests/WTF/Expected.cpp:
+        (TestWebKitAPI::snowflake::reset):
+        (TestWebKitAPI::snowflake::snowflake):
+        (TestWebKitAPI::snowflake::~snowflake):
+        (TestWebKitAPI::TEST):
+
+2017-11-13  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Windows] Make the port's normalize_test_name() method platform independent.
+        https://bugs.webkit.org/show_bug.cgi?id=179572
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port.normalize_test_name):
+
+2017-11-13  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Attachment Support] Implement SPI for clients to request data for a given attachment
+        https://bugs.webkit.org/show_bug.cgi?id=179586
+        <rdar://problem/35355720>
+
+        Reviewed by Darin Adler.
+
+        Augments existing API tests in WKAttachmentTests to additionally check that -requestData: yields the correct
+        result when performing various editing operations. Also adds a new API test that cuts and pastes an attachment
+        inserted using WKWebView attachment SPI, and expects that the data of the attachment can still be fetched using
+        the _WKAttachment SPI, as well as another test that inserts an empty NSData and expects that requestData: also
+        yields an empty NSData result.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (-[NSData shortDescription]):
+        (-[_WKAttachment synchronouslyRequestData:]):
+        (-[_WKAttachment expectRequestedDataToBe:]):
+        (TestWebKitAPI::TEST):
+
 2017-11-12  Gabriel Ivascu  <givascu@igalia.com>
 
         [GTK] Add functionality to handle font sizes in points

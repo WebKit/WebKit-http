@@ -681,7 +681,6 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetArtificialPluginInitializationDelayEnabled(preferences, false);
     WKPreferencesSetTabToLinksEnabled(preferences, false);
     WKPreferencesSetInteractiveFormValidationEnabled(preferences, true);
-    WKPreferencesSetDisplayContentsEnabled(preferences, true);
     WKPreferencesSetDataTransferItemsEnabled(preferences, true);
     WKPreferencesSetCustomPasteboardDataEnabled(preferences, true);
 
@@ -721,7 +720,7 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetHiddenPageDOMTimerThrottlingEnabled(preferences, false);
     WKPreferencesSetHiddenPageCSSAnimationSuspensionEnabled(preferences, false);
 
-    WKPreferencesSetAcceleratedDrawingEnabled(preferences, m_shouldUseAcceleratedDrawing);
+    WKPreferencesSetAcceleratedDrawingEnabled(preferences, m_shouldUseAcceleratedDrawing || options.useAcceleratedDrawing);
     // FIXME: We should be testing the default.
     WKPreferencesSetStorageBlockingPolicy(preferences, kWKAllowAllStorage);
 
@@ -742,6 +741,8 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetInspectorAdditionsEnabled(preferences, options.enableInspectorAdditions);
 
     WKPreferencesSetStorageAccessAPIEnabled(preferences, true);
+    
+    WKPreferencesSetAccessibilityObjectModelEnabled(preferences, true);
 
     platformResetPreferencesToConsistentValues();
 }
@@ -1025,6 +1026,8 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             String(value.c_str()).split(",", false, testOptions.overrideLanguages);
         if (key == "useThreadedScrolling")
             testOptions.useThreadedScrolling = parseBooleanTestHeaderValue(value);
+        if (key == "useAcceleratedDrawing")
+            testOptions.useAcceleratedDrawing = parseBooleanTestHeaderValue(value);
         if (key == "useFlexibleViewport")
             testOptions.useFlexibleViewport = parseBooleanTestHeaderValue(value);
         if (key == "useDataDetection")

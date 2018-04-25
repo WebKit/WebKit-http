@@ -28,22 +28,66 @@
 
 #if ENABLE(SERVICE_WORKER)
 
+#include <wtf/NeverDestroyed.h>
+
 namespace WebCore {
 
-SWServerWorker::SWServerWorker(const ServiceWorkerRegistrationKey& registrationKey, const URL& url, const String& script, WorkerType type, ServiceWorkerIdentifier identifier)
-    : m_registrationKey(registrationKey)
-    , m_scriptURL(url)
-    , m_script(script)
-    , m_identifier(identifier)
-    , m_type(type)
+static HashMap<ServiceWorkerIdentifier, SWServerWorker*>& allWorkers()
 {
+    static NeverDestroyed<HashMap<ServiceWorkerIdentifier, SWServerWorker*>> workers;
+    return workers;
 }
 
-SWServerWorker::~SWServerWorker() = default;
+SWServerWorker* SWServerWorker::existingWorkerForIdentifier(ServiceWorkerIdentifier identifier)
+{
+    return allWorkers().get(identifier);
+}
+
+SWServerWorker::SWServerWorker(SWServer& server, const ServiceWorkerRegistrationKey& registrationKey, SWServerToContextConnectionIdentifier contextConnectionIdentifier, const URL& scriptURL, const String& script, WorkerType type, ServiceWorkerIdentifier identifier)
+    : m_server(server)
+    , m_registrationKey(registrationKey)
+    , m_contextConnectionIdentifier(contextConnectionIdentifier)
+    , m_data { identifier, scriptURL, ServiceWorkerState::Redundant, type }
+    , m_script(script)
+{
+    auto result = allWorkers().add(identifier, this);
+    ASSERT_UNUSED(result, result.isNewEntry);
+}
+
+SWServerWorker::~SWServerWorker()
+{
+    auto taken = allWorkers().take(identifier());
+    ASSERT_UNUSED(taken, taken == this);
+}
 
 void SWServerWorker::terminate()
 {
-    // FIXME: Implement
+    m_server.terminateWorker(*this);
+}
+
+void SWServerWorker::scriptContextFailedToStart(const String& message)
+{
+    m_server.scriptContextFailedToStart(*this, message);
+}
+
+void SWServerWorker::scriptContextStarted()
+{
+    m_server.scriptContextStarted(*this);
+}
+
+void SWServerWorker::didFinishInstall(bool wasSuccessful)
+{
+    m_server.didFinishInstall(*this, wasSuccessful);
+}
+
+void SWServerWorker::didFinishActivation()
+{
+    m_server.didFinishActivation(*this);
+}
+
+void SWServerWorker::contextTerminated()
+{
+    m_server.workerContextTerminated(*this);
 }
 
 } // namespace WebCore

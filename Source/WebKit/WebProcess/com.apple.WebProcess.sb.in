@@ -25,7 +25,146 @@
 (deny default (with partial-symbolication))
 (allow system-audit file-read-metadata)
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
 (import "system.sb")
+#else
+;;;
+;;; The following rules were originally contained in 'system.sb'. We are duplicating them here so we can
+;;; remove unneeded sandbox extensions.
+;;;
+
+;;; Allow registration of per-pid services.
+(allow mach-register (local-name-prefix ""))
+
+;;; Allow read access to standard system paths.
+(allow file-read*
+    (require-all (file-mode #o0004)
+    (require-any (subpath "/Library/Filesystems/NetFSPlugins")
+    (subpath "/Library/Preferences/Logging")      ; Logging Rethink
+    (subpath "/System")
+    (subpath "/private/var/db/dyld")
+    (subpath "/private/var/db/timezone")
+    (subpath "/usr/lib")
+    (subpath "/usr/share"))))
+
+;;; Allow reading internal profiles on development builds
+(allow file-read*
+    (require-all (file-mode #o0004)
+    (subpath "/AppleInternal/Library/Preferences/Logging")
+    (system-attribute apple-internal)))
+
+(allow file-read-metadata
+    (literal "/etc")
+    (literal "/tmp")
+    (literal "/var")
+    (literal "/private/etc/localtime"))
+
+
+;;; Allow access to standard special files.
+(allow file-read*
+    (literal "/dev/autofs_nowait")
+    (literal "/dev/random")
+    (literal "/dev/urandom")
+    (literal "/private/etc/master.passwd")
+    (literal "/private/etc/passwd"))
+
+(allow file-read*
+       file-write-data
+    (literal "/dev/null")
+    (literal "/dev/zero"))
+
+(allow file-read*
+       file-write-data
+       file-ioctl
+    (literal "/dev/dtracehelper"))
+
+(allow network-outbound
+    (literal "/private/var/run/asl_input")
+    (literal "/private/var/run/syslog"))
+
+
+;;; Allow creation of core dumps.
+(allow file-write-create
+    (require-all (prefix "/cores/")
+        (vnode-type REGULAR-FILE)))
+
+
+;;; Allow IPC to standard system agents.
+(allow ipc-posix-shm-read*
+    (ipc-posix-name "apple.shm.notification_center")
+    (ipc-posix-name-prefix "apple.cfprefs."))
+
+;;; (system-graphics) - Allow access to graphics hardware.
+(define (system-graphics)
+    ;; Preferences
+    (allow user-preference-read
+        (preference-domain "com.apple.opengl")
+        (preference-domain "com.nvidia.OpenGL"))
+    ;; OpenGL memory debugging
+    (allow mach-lookup
+        (global-name "com.apple.gpumemd.source"))
+    ;; CVMS
+    (allow mach-lookup
+        (global-name "com.apple.cvmsServ"))
+    ;; OpenCL
+    (allow iokit-open
+        (iokit-connection "IOAccelerator")
+        (iokit-registry-entry-class "IOAccelerationUserClient")
+        (iokit-registry-entry-class "IOSurfaceRootUserClient")
+        (iokit-registry-entry-class "IOSurfaceSendRight"))
+    ;; CoreVideo CVCGDisplayLink
+    (allow iokit-open
+        (iokit-registry-entry-class "IOFramebufferSharedUserClient"))
+    ;; H.264 Acceleration
+    (allow iokit-open
+        (iokit-registry-entry-class "AppleIntelMEUserClient")
+        (iokit-registry-entry-class "AppleSNBFBUserClient"))
+    ;; QuartzCore
+    (allow iokit-open
+        (iokit-registry-entry-class "AGPMClient")
+        (iokit-registry-entry-class "AppleGraphicsControlClient")
+        (iokit-registry-entry-class "AppleGraphicsPolicyClient"))
+    ;; OpenGL
+    (allow iokit-open
+        (iokit-registry-entry-class "AppleMGPUPowerControlClient"))
+    ;; GPU bundles
+    (allow file-read*
+        (subpath "/Library/GPUBundles"))
+    ;; DisplayServices
+    (allow iokit-set-properties
+        (require-all (iokit-connection "IODisplay")
+        (require-any (iokit-property "brightness")
+        (iokit-property "linear-brightness")
+        (iokit-property "commit")
+        (iokit-property "rgcs")
+        (iokit-property "ggcs")
+        (iokit-property "bgcs")))))
+
+
+;;; (system-network) - Allow access to the network.
+(define (system-network)
+    (allow file-read*
+        (literal "/Library/Preferences/com.apple.networkd.plist"))
+    (allow mach-lookup
+        (global-name "com.apple.SystemConfiguration.PPPController")
+        (global-name "com.apple.SystemConfiguration.SCNetworkReachability")
+        (global-name "com.apple.nehelper")
+        (global-name "com.apple.networkd")
+        (global-name "com.apple.nsurlstorage-cache")
+        (global-name "com.apple.symptomsd")
+        (global-name "com.apple.usymptomsd"))
+    (allow network-outbound
+        (control-name "com.apple.netsrc")
+        (control-name "com.apple.network.statistics"))
+    (allow system-socket
+        (require-all (socket-domain AF_SYSTEM)
+        (socket-protocol 2)) ; SYSPROTO_CONTROL
+    (socket-domain AF_ROUTE)))
+
+;;;
+;;; End rules originally copied from 'system.sb'
+;;;
+#endif
 
 ;;; process-info* defaults to allow; deny it and then allow operations we actually need.
 (deny process-info*)
@@ -38,11 +177,29 @@
 (deny sysctl*)
 (allow sysctl-read
     (sysctl-name
-        "hw.availcpu"
-        "hw.ncpu"
+        "hw.byteorder"
+        "hw.busfrequency_max"
+        "hw.cputype"
+        "hw.l2cachesize"
+        "hw.machine"
+        "hw.memsize"
         "hw.model"
+        "hw.ncpu"
+        "hw.vectorunit"
+        "kern.hostname"
+        "kern.maxfilesperproc"
         "kern.memorystatus_level"
-        "vm.footprint_suspend"))
+        "kern.safeboot"
+        "kern.version"
+        "security.mac.sandbox.sentinel"
+        "vm.footprint_suspend")
+    (sysctl-name-regex #"^hw.(active|avail)cpu")
+    (sysctl-name-regex #"^hw.(busfrequency|cachelinesize|cpufrequency|pagesize|tbfrequency)_compat")
+    (sysctl-name-regex #"^hw.(logical|physical)cpu_max")
+    (sysctl-name-regex #"^hw.optional\.")
+    (sysctl-name-regex #"^kern.os(release|type|variant_status|version)")
+    (sysctl-name-regex #"^net.routetable")
+)
 
 (deny iokit-get-properties)
 (allow iokit-get-properties
@@ -53,22 +210,24 @@
     (iokit-property "ActuationSupported")
     (iokit-property "AllowDisplaySleep")
     (iokit-property "AlwaysNeedsVelocityCalculated")
-    (iokit-property "AppleIntelMEVABundleName")
-    (iokit-property-regex #"^AAPL,(DisplayPipe|OpenCLdisabled|alias-policy|boot-display|display-alias|mux-switch-state|ndrv-dev|primary-display|slot-name)")
+    (iokit-property-regex #"Apple(GVAKeyDoesNotExist|IntelMEVABundleName)")
+    (iokit-property-regex #"^AAPL,(DisplayPipe|OpenCLdisabled|IOGraphics_LER(|_RegTag_1|_RegTag_0|_Busy_2)|alias-policy|boot-display|display-alias|mux-switch-state|ndrv-dev|primary-display|slot-name)")
     (iokit-property-regex #"^ATY,fb_(linebytes|offset|size)")
     (iokit-property "BacklightHandle")
+    (iokit-property "BlockSize")
     (iokit-property-regex #"^CEA(ModeID|PixelRepetition)")
     (iokit-property "CFBundleIdentifier")
     (iokit-property "CapsLockDelay")
     (iokit-property "ConfigState")
-    (iokit-property "Device Characteristics")
-    (iokit-property "DeviceEqID")
+    (iokit-property "Description")
+    (iokit-property-regex #"^Device( Characteristics|EqID)")
     (iokit-property "DisplayRouting")
     (iokit-property "Driver is Ready")
     (iokit-property "EnableLPVP")
     (iokit-property "Endianness")
     (iokit-property "Family ID")
     (iokit-property "ForceSupported")
+    (iokit-property "Formats")
     (iokit-property "HIDPointerAccelerationType")
     (iokit-property-regex #"^IOAccel(DisplayPipeCapabilities|Index|Types|Revision)")
     (iokit-property-regex #"^IO(Class|MatchCategory|NameMatch)")
@@ -109,9 +268,10 @@
     (iokit-property "IONDRVFramebufferGeneration")
     (iokit-property "IONVRAMProperty")
     (iokit-property-regex #"^IOName(|Match(|ed))")
+    (iokit-property "IOPCITunnelled")
     (iokit-property "IOPMStrictTreeOrder")
     (iokit-property "IOParentMatch")
-    (iokit-property-regex #"^IOPCI(Express(Capabilities|Link(Status|Capabilities))|MSIMode|Resourced)")
+    (iokit-property-regex #"^IOPCI(Express(Capabilities|Link(Status|Capabilities))|MSIMode|Resourced|Tunnelled)")
     (iokit-property "IOPMIsPowerManaged")
     (iokit-property-regex #"^IOPlatform(SerialNumber|UUID)")
     (iokit-property "IOPowerManagement")
@@ -140,8 +300,13 @@
     (iokit-property "NXSystemInfo")
     (iokit-property-regex #"^VRAM,(memvendorID|total(MB|size))")
     (iokit-property "NoAutoRoute")
+    (iokit-property-regex #"^Num(Blocks|Streams)")
     (iokit-property-regex #"^PerformanceStatistics(|Accum)")
     (iokit-property "Protocol Characteristics")
+    (iokit-property "Removable")
+    (iokit-property-regex #"^ResetOn(Lock|Unlock)Ms")
+    (iokit-property "SafeEjectRequested")
+    (iokit-property "SampleRates")
     (iokit-property "Serial Number")
     (iokit-property "StartupDisplay")
     (iokit-property-regex #"^Support(AudioAUUC|sSilentClick|TapToWake)")
@@ -151,6 +316,7 @@
     (iokit-property "SurfaceList")
     (iokit-property "TimeStampFiltering")
     (iokit-property "Transport")
+    (iokit-property "UserClientEnabled")
     (iokit-property "WANTS_FRAMES_IGNORED")
     (iokit-property-regex #"^acpi-(device|path)")
     (iokit-property "assigned-addresses")
@@ -188,13 +354,17 @@
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
 (deny mach-lookup (xpc-service-name-prefix ""))
 (allow mach-lookup
+    (xpc-service-name "com.apple.PerformanceAnalysis.animationperfd")
     (xpc-service-name "com.apple.accessibility.mediaaccessibilityd")
     (xpc-service-name "com.apple.audio.SandboxHelper")
     (xpc-service-name "com.apple.coremedia.videodecoder")
     (xpc-service-name "com.apple.coremedia.videoencoder")
     (xpc-service-name-regex #"\.apple-extension-service$")
     (xpc-service-name "com.apple.hiservices-xpcservice")
+    (xpc-service-name "com.apple.ist.ds.appleconnect2.HelperService")
     (xpc-service-name "com.apple.print.normalizerd")
+    (xpc-service-name "com.apple.securityd.xpc")
+    (xpc-service-name "com.apple.signpost.signpost-notificationd")
 )
 #endif
 
@@ -294,7 +464,9 @@
         "com.apple.driver.AppleBluetoothMultitouch.trackpad"
         "com.apple.driver.AppleHIDMouse"
         "com.apple.lookup.shared"
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101200
         "com.apple.mediaaccessibility"
+#endif
         "com.apple.networkConnect"
         "com.apple.security"
         "com.apple.security.common"
@@ -334,9 +506,11 @@
 (if (defined? 'mach-register)
     (allow mach-register (global-name-regex #"^_oglprof_attach_<[0-9]+>$")))
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101200
 ;; MediaAccessibility
 (allow user-preference-read user-preference-write
     (preference-domain "com.apple.mediaaccessibility.public"))
+#endif
 
 (if (positive? (string-length (param "DARWIN_USER_CACHE_DIR")))
     (allow-read-write-directory-and-issue-read-write-extensions (param "DARWIN_USER_CACHE_DIR")))
@@ -392,32 +566,44 @@
        (global-name "com.apple.audio.SystemSoundServer-OSX")
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
        (global-name "com.apple.analyticsd")
+       (global-name "com.apple.audio.AudioComponentRegistrar")
 #endif
        (global-name "com.apple.audio.audiohald")
        (global-name "com.apple.audio.coreaudiod")
        (global-name "com.apple.awdd")
        (global-name "com.apple.cfnetwork.AuthBrokerAgent")
+       (global-name "com.apple.cfprefsd.agent")
+       (global-name "com.apple.cfprefsd.daemon")
        (global-name "com.apple.cookied")
        (global-name "com.apple.coreservices.launchservicesd")
+       (global-name "com.apple.diagnosticd")
        (global-name "com.apple.dock.server")
+       (global-name "com.apple.dyld.closured")
        (global-name "com.apple.fonts")
        (global-name "com.apple.iconservices")
        (global-name "com.apple.iconservices.store")
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
        (global-name "com.apple.mediaremoted.xpc")
 #endif
+       (global-name "com.apple.logd")
+       (global-name "com.apple.logd.events")
        (global-name "com.apple.lsd.mapdb")
+       (global-name "com.apple.mobileassetd")
        (global-name "com.apple.nesessionmanager.flow-divert-token")
        (global-name "com.apple.speech.speechsynthesisd")
        (global-name "com.apple.speech.synthesis.console")
+       (global-name "com.apple.system.DirectoryService.libinfo_v1")
+       (global-name "com.apple.system.logger")
        (global-name "com.apple.system.opendirectoryd.api")
+       (global-name "com.apple.systemstats.analysis")
        (global-name "com.apple.tccd")
        (global-name "com.apple.tccd.system")
+       (global-name "com.apple.trustd")
+       (global-name "com.apple.trustd.agent")
        (global-name "com.apple.window_proxies")
        (global-name "com.apple.windowserver.active")
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
-       (global-name "com.apple.audio.AudioComponentRegistrar")
-#endif
+       (global-name "com.apple.xpc.activity.unmanaged")
+       (global-name "com.apple.xpcd")
 )
 
 ;; Security framework
@@ -477,9 +663,6 @@
        ;; Local mDNSResponder for DNS, arbitrary outbound TCP
        (literal "/private/var/run/mDNSResponder")
        (remote tcp))
-
-(allow mach-lookup
-       (global-name "com.apple.pbs.fetch_services"))
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
 ;; CFNetwork

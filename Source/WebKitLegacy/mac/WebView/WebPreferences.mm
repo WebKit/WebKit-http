@@ -663,7 +663,7 @@ public:
 #if ENABLE(INTERSECTION_OBSERVER)
         @NO, WebKitIntersectionObserverEnabledPreferenceKey,
 #endif
-        @NO, WebKitDisplayContentsEnabledPreferenceKey,
+        @YES, WebKitDisplayContentsEnabledPreferenceKey,
         @NO, WebKitUserTimingEnabledPreferenceKey,
         @NO, WebKitResourceTimingEnabledPreferenceKey,
         @NO, WebKitCredentialManagementEnabledPreferenceKey,
@@ -674,11 +674,13 @@ public:
 #else
         @YES, WebKitLegacyEncryptedMediaAPIEnabledKey,
 #endif
+        @NO, WebKitEncryptedMediaAPIEnabledKey,
         @YES, WebKitViewportFitEnabledPreferenceKey,
         @YES, WebKitConstantPropertiesEnabledPreferenceKey,
         @YES, WebKitAllowMediaContentTypesRequiringHardwareSupportAsFallbackKey,
         @NO, WebKitInspectorAdditionsEnabledPreferenceKey,
         (NSString *)Settings::defaultMediaContentTypesRequiringHardwareSupport(), WebKitMediaContentTypesRequiringHardwareSupportPreferenceKey,
+        @NO, WebKitAccessibilityObjectModelEnabledPreferenceKey,
         nil];
 
 #if !PLATFORM(IOS)
@@ -1866,7 +1868,7 @@ static NSString *classIBCreatorID = nil;
 + (void)_setCurrentNetworkLoaderSessionCookieAcceptPolicy:(NSHTTPCookieAcceptPolicy)policy
 {
     RetainPtr<CFHTTPCookieStorageRef> cookieStorage = NetworkStorageSession::defaultStorageSession().cookieStorage();
-    ASSERT(cookieStorage); // Will fail when building without USE(CFURLCONNECTION) and NetworkStorageSession::switchToNewTestingSession() was not called beforehand.
+    ASSERT(cookieStorage); // Will fail when NetworkStorageSession::switchToNewTestingSession() was not called beforehand.
     CFHTTPCookieStorageSetCookieAcceptPolicy(cookieStorage.get(), policy);
 }
 
@@ -3205,6 +3207,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitLegacyEncryptedMediaAPIEnabledKey];
 }
 
+- (BOOL)encryptedMediaAPIEnabled
+{
+    return [self _boolValueForKey:WebKitEncryptedMediaAPIEnabledKey];
+}
+
+- (void)setEncryptedMediaAPIEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitEncryptedMediaAPIEnabledKey];
+}
+
 - (BOOL)viewportFitEnabled
 {
     return [self _boolValueForKey:WebKitViewportFitEnabledPreferenceKey];
@@ -3244,6 +3256,17 @@ static NSString *classIBCreatorID = nil;
 {
     [self _setBoolValue:flag forKey:WebKitInspectorAdditionsEnabledPreferenceKey];
 }
+
+- (BOOL)accessibilityObjectModelEnabled
+{
+    return [self _boolValueForKey:WebKitAccessibilityObjectModelEnabledPreferenceKey];
+}
+
+- (void)setAccessibilityObjectModelEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitAccessibilityObjectModelEnabledPreferenceKey];
+}
+
 
 @end
 

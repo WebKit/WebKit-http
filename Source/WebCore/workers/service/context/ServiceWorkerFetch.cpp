@@ -56,7 +56,9 @@ static void processResponse(Ref<Client>&& client, FetchResponse* response)
                 client->didFail();
                 return;
             }
-            client->didReceiveData(result.releaseReturnValue().releaseNonNull());
+
+            if (auto buffer = result.releaseReturnValue())
+                client->didReceiveData(buffer.releaseNonNull());
             client->didFinish();
         });
         return;
@@ -68,15 +70,17 @@ static void processResponse(Ref<Client>&& client, FetchResponse* response)
                 client->didFail();
                 return;
             }
-            client->didReceiveData(result.releaseReturnValue().releaseNonNull());
+
+            if (auto buffer = result.releaseReturnValue())
+                client->didReceiveData(buffer.releaseNonNull());
             client->didFinish();
         });
         return;
     }
 
     auto body = response->consumeBody();
-    WTF::switchOn(body, [] (Ref<FormData>&) {
-        // FIXME: Support FormData response bodies.
+    WTF::switchOn(body, [&] (Ref<FormData>& formData) {
+        client->didReceiveFormData(WTFMove(formData));
     }, [&] (Ref<SharedBuffer>& buffer) {
         client->didReceiveData(WTFMove(buffer));
     }, [] (std::nullptr_t&) {
@@ -85,7 +89,7 @@ static void processResponse(Ref<Client>&& client, FetchResponse* response)
     client->didFinish();
 }
 
-void dispatchFetchEvent(Ref<Client>&& client, WorkerGlobalScope& globalScope, ResourceRequest&& request, FetchOptions&& options)
+Ref<FetchEvent> dispatchFetchEvent(Ref<Client>&& client, WorkerGlobalScope& globalScope, ResourceRequest&& request, FetchOptions&& options)
 {
     ASSERT(globalScope.isServiceWorkerGlobalScope());
 
@@ -108,11 +112,12 @@ void dispatchFetchEvent(Ref<Client>&& client, WorkerGlobalScope& globalScope, Re
     if (!event->respondWithEntered()) {
         if (event->defaultPrevented()) {
             client->didFail();
-            return;
+            return event;
         }
         client->didNotHandle();
         // FIXME: Handle soft update.
     }
+    return event;
 }
 
 } // namespace ServiceWorkerFetch

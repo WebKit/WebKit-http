@@ -188,7 +188,7 @@ void WorkerThread::workerThread()
     String exceptionMessage;
     scriptController->evaluate(ScriptSourceCode(m_startupData->m_sourceCode, m_startupData->m_scriptURL), &exceptionMessage);
     
-    RunLoop::main().dispatch([evaluateCallback = WTFMove(m_evaluateCallback), message = exceptionMessage.isolatedCopy()] {
+    callOnMainThread([evaluateCallback = WTFMove(m_evaluateCallback), message = exceptionMessage.isolatedCopy()] {
         if (evaluateCallback)
             evaluateCallback(message);
     });
@@ -219,6 +219,9 @@ void WorkerThread::workerThread()
         // context will trigger the main thread to race against us to delete the WorkerThread
         // object, and the WorkerThread object owns the mutex we need to unlock after this.
         workerGlobalScopeToDelete = WTFMove(m_workerGlobalScope);
+
+        if (m_stoppedCallback)
+            callOnMainThread(WTFMove(m_stoppedCallback));
     }
 
     // The below assignment will destroy the context, which will in turn notify messaging proxy.
@@ -254,12 +257,15 @@ void WorkerThread::runEventLoop()
     m_runLoop.run(m_workerGlobalScope.get());
 }
 
-void WorkerThread::stop()
+void WorkerThread::stop(WTF::Function<void()>&& stoppedCallback)
 {
     // Mutex protection is necessary to ensure that m_workerGlobalScope isn't changed by
     // WorkerThread::workerThread() while we're accessing it. Note also that stop() can
     // be called before m_workerGlobalScope is fully created.
     LockHolder lock(m_threadCreationAndWorkerGlobalScopeMutex);
+
+    ASSERT(!m_stoppedCallback);
+    m_stoppedCallback = WTFMove(stoppedCallback);
 
     // Ensure that tasks are being handled by thread event loop. If script execution weren't forbidden, a while(1) loop in JS could keep the thread alive forever.
     if (m_workerGlobalScope) {

@@ -1,6 +1,8 @@
 
 
-FAIL Unregister does not affect existing controller assert_unreached: unexpected rejection: assert_true: document should load with a controller expected true got false Reached unreachable code
-PASS Unregister prevents control of subsequent navigations 
+Harness Error (TIMEOUT), message = null
+
+TIMEOUT Unregister does not affect existing controller Test timed out
+TIMEOUT Unregister prevents control of subsequent navigations Test timed out
 PASS Unregister prevents new controllee even if registration is still in use 
 

@@ -65,11 +65,13 @@ public:
     void updateRegistration(const URL& scopeURL, const URL& scriptURL, WorkerType, Ref<DeferredPromise>&&);
 
     void getRegistration(const String& clientURL, Ref<DeferredPromise>&&);
-    void scheduleTaskToUpdateRegistrationState(ServiceWorkerRegistrationIdentifier, ServiceWorkerRegistrationState, const std::optional<ServiceWorkerIdentifier>&);
+    void scheduleTaskToUpdateRegistrationState(ServiceWorkerRegistrationIdentifier, ServiceWorkerRegistrationState, const std::optional<ServiceWorkerData>&);
     void scheduleTaskToFireUpdateFoundEvent(ServiceWorkerRegistrationIdentifier);
 
     using RegistrationsPromise = DOMPromiseDeferred<IDLSequence<IDLInterface<ServiceWorkerRegistration>>>;
     void getRegistrations(RegistrationsPromise&&);
+
+    ServiceWorkerRegistration* registration(ServiceWorkerRegistrationIdentifier identifier) const { return m_registrations.get(identifier); }
 
     void addRegistration(ServiceWorkerRegistration&);
     void removeRegistration(ServiceWorkerRegistration&);

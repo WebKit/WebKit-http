@@ -64,7 +64,13 @@ class ServerProcess(object):
         self._port = port_obj
         self._name = name  # Should be the command name (e.g. DumpRenderTree, ImageDiff)
         self._cmd = cmd
-        self._env = env
+
+        # Windows does not allow unicode values in the environment
+        if env and self._port.host.platform.is_native_win():
+            self._env = {key: env[key].encode('utf-8') for key in env}
+        else:
+            self._env = env
+
         # Set if the process outputs non-standard newlines like '\r\n' or '\r'.
         # Don't set if there will be binary data or the data must be ASCII encoded.
         self._universal_newlines = universal_newlines
@@ -110,19 +116,29 @@ class ServerProcess(object):
         if self._proc:
             raise ValueError("%s already running" % self._name)
         self._reset()
-        # close_fds is a workaround for http://bugs.python.org/issue2320
-        # In Python 2.7.10, close_fds is also supported on Windows.
-        close_fds = True
         self._proc = self._target_host.executive.popen(self._cmd, stdin=self._target_host.executive.PIPE,
             stdout=self._target_host.executive.PIPE,
             stderr=self._target_host.executive.PIPE,
-            close_fds=close_fds,
+            close_fds=self._should_close_fds(),
             env=self._env,
             universal_newlines=self._universal_newlines)
         self._pid = self._proc.pid
         if not self._use_win32_apis:
             self._set_file_nonblocking(self._proc.stdout)
             self._set_file_nonblocking(self._proc.stderr)
+
+    def _should_close_fds(self):
+        # We need to pass close_fds=True to work around Python bug #2320
+        # (otherwise we can hang when we kill DumpRenderTree when we are running
+        # multiple threads). See http://bugs.python.org/issue2320 .
+        # In Python 2.7.10, close_fds is also supported on Windows.
+        # However, "you cannot set close_fds to true and also redirect the standard
+        # handles by setting stdin, stdout or stderr.".
+        platform = self._port.host.platform
+        if platform.is_win() and not platform.is_cygwin():
+            return False
+        else:
+            return True
 
     def _handle_possible_interrupt(self):
         """This routine checks to see if the process crashed or exited

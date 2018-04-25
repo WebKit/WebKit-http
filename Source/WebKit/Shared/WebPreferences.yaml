@@ -787,6 +787,13 @@ ViewportFitEnabled:
   humanReadableName: "Viewport Fit"
   humanReadableDescription: "Enable viewport-fit viewport parameter"
 
+DisplayContentsEnabled:
+  type: bool
+  defaultValue: true
+  humanReadableName: "CSS display: contents"
+  humanReadableDescription: "Enable CSS display: contents support"
+  webcoreBinding: RuntimeEnabledFeatures
+
 IncrementalRenderingSuppressionTimeout:
   type: double
   defaultValue: 5
@@ -1059,14 +1066,6 @@ ConstantPropertiesEnabled:
   humanReadableDescription: "Enable CSS constant() properties"
   category: experimental
 
-DisplayContentsEnabled:
-  type: bool
-  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
-  humanReadableName: "CSS display: contents"
-  humanReadableDescription: "Enable CSS display: contents support"
-  category: experimental
-  webcoreBinding: RuntimeEnabledFeatures
-
 SpringTimingFunctionEnabled:
   type: bool
   defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
@@ -1148,3 +1147,11 @@ WebGPUEnabled:
   category: experimental
   webcoreBinding: RuntimeEnabledFeatures
   condition: ENABLE(WEBGPU)
+
+AccessibilityObjectModelEnabled:
+    type: bool
+    defaultValue: false
+    humanReadableName: "Accessibility Object Model"
+    humanReadableDescription: "Accessibility Object Model support"
+    category: experimental
+    webcoreBinding: RuntimeEnabledFeatures

@@ -3039,9 +3039,14 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setIsSecureContextAttributeEnabled(preferences.isSecureContextAttributeEnabled);
     RuntimeEnabledFeatures::sharedFeatures().setDirectoryUploadEnabled([preferences directoryUploadEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setMenuItemElementEnabled([preferences menuItemElementEnabled]);
+    RuntimeEnabledFeatures::sharedFeatures().setAccessibilityObjectModelEnabled([preferences accessibilityObjectModelEnabled]);
     
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     RuntimeEnabledFeatures::sharedFeatures().setLegacyEncryptedMediaAPIEnabled(preferences.legacyEncryptedMediaAPIEnabled);
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    RuntimeEnabledFeatures::sharedFeatures().setEncryptedMediaAPIEnabled(preferences.encryptedMediaAPIEnabled);
 #endif
 
     RuntimeEnabledFeatures::sharedFeatures().setInspectorAdditionsEnabled(preferences.inspectorAdditionsEnabled);
@@ -7453,24 +7458,14 @@ static TextCheckingResult textCheckingResultFromNSTextCheckingResult(NSTextCheck
 
 - (void)scheduleInRunLoop:(NSRunLoop *)runLoop forMode:(NSString *)mode
 {
-#if USE(CFURLCONNECTION)
-    CFRunLoopRef schedulePairRunLoop = [runLoop getCFRunLoop];
-#else
-    NSRunLoop *schedulePairRunLoop = runLoop;
-#endif
     if (runLoop && mode)
-        core(self)->addSchedulePair(SchedulePair::create(schedulePairRunLoop, (CFStringRef)mode));
+        core(self)->addSchedulePair(SchedulePair::create(runLoop, (CFStringRef)mode));
 }
 
 - (void)unscheduleFromRunLoop:(NSRunLoop *)runLoop forMode:(NSString *)mode
 {
-#if USE(CFURLCONNECTION)
-    CFRunLoopRef schedulePairRunLoop = [runLoop getCFRunLoop];
-#else
-    NSRunLoop *schedulePairRunLoop = runLoop;
-#endif
     if (runLoop && mode)
-        core(self)->removeSchedulePair(SchedulePair::create(schedulePairRunLoop, (CFStringRef)mode));
+        core(self)->removeSchedulePair(SchedulePair::create(runLoop, (CFStringRef)mode));
 }
 
 static BOOL findString(NSView <WebDocumentSearching> *searchView, NSString *string, WebFindOptions options)

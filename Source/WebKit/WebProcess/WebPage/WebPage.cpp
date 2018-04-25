@@ -121,6 +121,7 @@
 #include "WebUserContentController.h"
 #include "WebUserMediaClient.h"
 #include "WebValidationMessageClient.h"
+#include "WebsiteDataStoreParameters.h"
 #include <JavaScriptCore/APICast.h>
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/ArchiveResource.h>
@@ -141,11 +142,13 @@
 #include <WebCore/ElementIterator.h>
 #include <WebCore/EventHandler.h>
 #include <WebCore/EventNames.h>
+#include <WebCore/File.h>
 #include <WebCore/FocusController.h>
 #include <WebCore/FormState.h>
 #include <WebCore/FrameLoadRequest.h>
 #include <WebCore/FrameLoaderTypes.h>
 #include <WebCore/FrameView.h>
+#include <WebCore/HTMLAttachmentElement.h>
 #include <WebCore/HTMLFormElement.h>
 #include <WebCore/HTMLImageElement.h>
 #include <WebCore/HTMLInputElement.h>
@@ -348,7 +351,6 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     , m_forceAlwaysUserScalable(parameters.ignoresViewportScaleLimits)
     , m_screenSize(parameters.screenSize)
     , m_availableScreenSize(parameters.availableScreenSize)
-    , m_allowsBlockSelection(parameters.allowsBlockSelection)
 #endif
     , m_layerVolatilityTimer(*this, &WebPage::layerVolatilityTimerFired)
     , m_activityState(parameters.activityState)
@@ -864,8 +866,6 @@ EditorState WebPage::editorState(IncludePostLayoutDataHint shouldIncludePostLayo
         postLayoutData.canCut = editor.canCut();
         postLayoutData.canCopy = editor.canCopy();
         postLayoutData.canPaste = editor.canPaste();
-        postLayoutData.canUndo = editor.canUndo();
-        postLayoutData.canRedo = editor.canRedo();
 
 #if PLATFORM(COCOA)
         if (result.isContentEditable && !selection.isNone()) {
@@ -2738,7 +2738,7 @@ void WebPage::setLayerHostingMode(LayerHostingMode layerHostingMode)
 void WebPage::setSessionID(PAL::SessionID sessionID)
 {
     if (sessionID.isEphemeral())
-        WebProcess::singleton().ensurePrivateBrowsingSession(sessionID);
+        WebProcess::singleton().addWebsiteDataStore({{ }, { }, { }, { }, { }, { }, { sessionID, { }, { }, { }}});
     m_page->setSessionID(sessionID);
 }
 
@@ -3243,11 +3243,10 @@ NotificationPermissionRequestManager* WebPage::notificationPermissionRequestMana
 }
 
 #if !PLATFORM(GTK) && !PLATFORM(COCOA) && !PLATFORM(WPE)
+
 bool WebPage::handleEditingKeyboardEvent(KeyboardEvent* evt)
 {
-    auto node = evt->target()->toNode();
-    ASSERT(node);
-    Frame* frame = node->document().frame();
+    Frame* frame = downcast<Node>(*evt->target()).document().frame();
     ASSERT(frame);
 
     const PlatformKeyboardEvent* keyEvent = evt->keyEvent();
@@ -3276,6 +3275,7 @@ bool WebPage::handleEditingKeyboardEvent(KeyboardEvent* evt)
 
     return frame->editor().insertText(evt->keyEvent()->text(), evt);
 }
+
 #endif
 
 #if ENABLE(DRAG_SUPPORT)
@@ -5765,6 +5765,14 @@ void WebPage::storageAccessResponse(bool wasGranted, uint64_t contextId)
     callback(wasGranted);
 }
 
+void WebPage::invokeSharedBufferCallback(RefPtr<SharedBuffer>&& buffer, CallbackID callbackID)
+{
+    if (buffer)
+        send(Messages::WebPageProxy::SharedBufferCallback(IPC::SharedBufferDataReference { buffer.get() }, false, callbackID));
+    else
+        send(Messages::WebPageProxy::SharedBufferCallback({ }, true, callbackID));
+}
+
 #if ENABLE(ATTACHMENT_ELEMENT)
 
 void WebPage::insertAttachment(const String& identifier, const String& filename, std::optional<String> contentType, const IPC::DataReference& data, CallbackID callbackID)
@@ -5772,6 +5780,29 @@ void WebPage::insertAttachment(const String& identifier, const String& filename,
     auto& frame = m_page->focusController().focusedOrMainFrame();
     frame.editor().insertAttachment(identifier, filename, SharedBuffer::create(data.data(), data.size()), contentType);
     send(Messages::WebPageProxy::VoidCallback(callbackID));
+}
+
+void WebPage::requestAttachmentData(const String& identifier, CallbackID callbackID)
+{
+    // FIXME: We don't currently handle attachment data requests for attachment elements in subframes.
+    auto* frame = mainFrame();
+    if (!frame || !frame->document()) {
+        invokeSharedBufferCallback({ }, callbackID);
+        return;
+    }
+
+    auto attachment = frame->document()->attachmentForIdentifier(identifier);
+    if (!attachment) {
+        invokeSharedBufferCallback({ }, callbackID);
+        return;
+    }
+
+    attachment->requestData([callbackID, protectedThis = makeRef(*this), protectedAttachment = WTFMove(attachment)] (RefPtr<SharedBuffer>&& buffer) {
+        if (buffer)
+            protectedThis->invokeSharedBufferCallback(WTFMove(buffer), callbackID);
+        else
+            protectedThis->invokeSharedBufferCallback({ }, callbackID);
+    });
 }
 
 #endif // ENABLE(ATTACHMENT_ELEMENT)

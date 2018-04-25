@@ -729,7 +729,6 @@ public:
     enum RenderStyle {
         RenderOffscreen,
         RenderDirectlyToHostWindow,
-        RenderToCurrentGLContext
     };
 
     class ContextLostCallback {
@@ -748,7 +747,6 @@ public:
     void setErrorMessageCallback(std::unique_ptr<ErrorMessageCallback>);
 
     static RefPtr<GraphicsContext3D> create(GraphicsContext3DAttributes, HostWindow*, RenderStyle = RenderOffscreen);
-    static RefPtr<GraphicsContext3D> createForCurrentGLContext();
     ~GraphicsContext3D();
 
 #if PLATFORM(COCOA)

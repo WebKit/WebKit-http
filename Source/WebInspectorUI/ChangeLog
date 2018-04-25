@@ -1,3 +1,510 @@
+2017-11-15  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: typing colon in property name should advance to value field
+        https://bugs.webkit.org/show_bug.cgi?id=178795
+        <rdar://problem/35174674>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype._update):
+        (WI.SpreadsheetStyleProperty.prototype._handleNameBeforeInput):
+        Unlike pressing Tab or Enter, typing ":" in the property name should discard suggestion hint.
+
+        (WI.SpreadsheetStyleProperty.prototype._valueCompletionDataProvider):
+        We use 250ms debounce before updating this._property.name.
+        When typing "font-f:", we want to discard suggestion hint (i.e. "font-family"),
+        and immediately show autocomplete for "font-f" (in this case, invalid property).
+
+        * UserInterface/Views/SpreadsheetTextField.js:
+        (WI.SpreadsheetTextField):
+        (WI.SpreadsheetTextField.prototype.stopEditing):
+        (WI.SpreadsheetTextField.prototype.discardCompletion):
+        Call spreadsheetTextFieldDidChange when discarding non-empty suggestion hint.
+
+        (WI.SpreadsheetTextField.prototype.detached):
+        (WI.SpreadsheetTextField.prototype.completionSuggestionsClickedCompletion):
+        (WI.SpreadsheetTextField.prototype._handleBlur):
+        (WI.SpreadsheetTextField.prototype._handleKeyDownForSuggestionView):
+        (WI.SpreadsheetTextField.prototype._updateCompletions):
+        (WI.SpreadsheetTextField.prototype._applyCompletionHint):
+        (WI.SpreadsheetTextField.prototype._hideCompletions): Deleted.
+
+2017-11-15  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION (r217750): Navigation sidebar broken after closing and re-opening tab
+        https://bugs.webkit.org/show_bug.cgi?id=179717
+        <rdar://problem/35551541>
+
+        Reviewed by Devin Rousso.
+
+        NavigationSidebarPanels should not be created with WI.instanceForClass.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WI.ResourceSidebarPanel):
+        * UserInterface/Views/SearchSidebarPanel.js:
+        (WI.SearchSidebarPanel):
+        * UserInterface/Views/StorageSidebarPanel.js:
+        (WI.StorageSidebarPanel):
+        * UserInterface/Views/TabContentView.js:
+        (WI.TabContentView.prototype.get navigationSidebarPanel):
+
+2017-11-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Remove GTK web inspector images
+        https://bugs.webkit.org/show_bug.cgi?id=179716
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Scripts/copy-user-interface-resources.pl:
+        * UserInterface/Images/gtk/AUTHORS: Removed.
+        * UserInterface/Images/gtk/ActiveCallFrame.svg: Removed.
+        * UserInterface/Images/gtk/AnimationPlayStatePaused.svg: Removed.
+        * UserInterface/Images/gtk/AnimationPlayStateRunning.svg: Removed.
+        * UserInterface/Images/gtk/ApplicationCache.png: Removed.
+        * UserInterface/Images/gtk/ApplicationCache@2x.png: Removed.
+        * UserInterface/Images/gtk/ApplicationCacheManifest.png: Removed.
+        * UserInterface/Images/gtk/ApplicationCacheManifest@2x.png: Removed.
+        * UserInterface/Images/gtk/ArrowUp.svg: Removed.
+        * UserInterface/Images/gtk/Assertion.svg: Removed.
+        * UserInterface/Images/gtk/BackForwardArrows.svg: Removed.
+        * UserInterface/Images/gtk/Breakpoint.png: Removed.
+        * UserInterface/Images/gtk/Breakpoint@2x.png: Removed.
+        * UserInterface/Images/gtk/BreakpointButton.svg: Removed.
+        * UserInterface/Images/gtk/BreakpointInactive.png: Removed.
+        * UserInterface/Images/gtk/BreakpointInactive@2x.png: Removed.
+        * UserInterface/Images/gtk/BreakpointInactiveButton.svg: Removed.
+        * UserInterface/Images/gtk/Breakpoints.svg: Removed.
+        * UserInterface/Images/gtk/COPYING: Removed.
+        * UserInterface/Images/gtk/COPYING_CCBYSA3: Removed.
+        * UserInterface/Images/gtk/COPYING_LGPL2: Removed.
+        * UserInterface/Images/gtk/CSSVariable.svg: Removed.
+        * UserInterface/Images/gtk/CallTrees.svg: Removed.
+        * UserInterface/Images/gtk/Canvas.svg: Removed.
+        * UserInterface/Images/gtk/Canvas2D.svg: Removed.
+        * UserInterface/Images/gtk/Canvas3D.svg: Removed.
+        * UserInterface/Images/gtk/CanvasOverview.svg: Removed.
+        * UserInterface/Images/gtk/Checkers.svg: Removed.
+        * UserInterface/Images/gtk/Circle.svg: Removed.
+        * UserInterface/Images/gtk/ClearBoth.svg: Removed.
+        * UserInterface/Images/gtk/ClearLeft.svg: Removed.
+        * UserInterface/Images/gtk/ClearRight.svg: Removed.
+        * UserInterface/Images/gtk/ClippingCSS.png: Removed.
+        * UserInterface/Images/gtk/ClippingCSS@2x.png: Removed.
+        * UserInterface/Images/gtk/ClippingCSSLarge.png: Removed.
+        * UserInterface/Images/gtk/ClippingCSSLarge@2x.png: Removed.
+        * UserInterface/Images/gtk/ClippingGeneric.png: Removed.
+        * UserInterface/Images/gtk/ClippingGeneric@2x.png: Removed.
+        * UserInterface/Images/gtk/ClippingGenericLarge.png: Removed.
+        * UserInterface/Images/gtk/ClippingGenericLarge@2x.png: Removed.
+        * UserInterface/Images/gtk/ClippingJS.png: Removed.
+        * UserInterface/Images/gtk/ClippingJS@2x.png: Removed.
+        * UserInterface/Images/gtk/ClippingJSLarge.png: Removed.
+        * UserInterface/Images/gtk/ClippingJSLarge@2x.png: Removed.
+        * UserInterface/Images/gtk/Close.svg: Removed.
+        * UserInterface/Images/gtk/CloseLarge.svg: Removed.
+        * UserInterface/Images/gtk/CloseWhite.svg: Removed.
+        * UserInterface/Images/gtk/ColorIcon.png: Removed.
+        * UserInterface/Images/gtk/ColorIcon@2x.png: Removed.
+        * UserInterface/Images/gtk/Console.svg: Removed.
+        * UserInterface/Images/gtk/Cookie.png: Removed.
+        * UserInterface/Images/gtk/Cookie@2x.png: Removed.
+        * UserInterface/Images/gtk/Crosshair.svg: Removed.
+        * UserInterface/Images/gtk/CubicBezier.svg: Removed.
+        * UserInterface/Images/gtk/DOMBreakpoint.svg: Removed.
+        * UserInterface/Images/gtk/DOMCharacterData.svg: Removed.
+        * UserInterface/Images/gtk/DOMComment.svg: Removed.
+        * UserInterface/Images/gtk/DOMDocument.svg: Removed.
+        * UserInterface/Images/gtk/DOMDocumentType.svg: Removed.
+        * UserInterface/Images/gtk/DOMElement.svg: Removed.
+        * UserInterface/Images/gtk/DOMNode.svg: Removed.
+        * UserInterface/Images/gtk/DOMTextNode.svg: Removed.
+        * UserInterface/Images/gtk/Database.png: Removed.
+        * UserInterface/Images/gtk/Database@2x.png: Removed.
+        * UserInterface/Images/gtk/DatabaseTable.png: Removed.
+        * UserInterface/Images/gtk/DatabaseTable@2x.png: Removed.
+        * UserInterface/Images/gtk/Debug.svg: Removed.
+        * UserInterface/Images/gtk/Debugger.svg: Removed.
+        * UserInterface/Images/gtk/DisclosureTriangles.svg: Removed.
+        * UserInterface/Images/gtk/DockBottom.svg: Removed.
+        * UserInterface/Images/gtk/DockLeft.svg: Removed.
+        * UserInterface/Images/gtk/DockRight.svg: Removed.
+        * UserInterface/Images/gtk/DocumentCSS.png: Removed.
+        * UserInterface/Images/gtk/DocumentCSS@2x.png: Removed.
+        * UserInterface/Images/gtk/DocumentCSSLarge.png: Removed.
+        * UserInterface/Images/gtk/DocumentCSSLarge@2x.png: Removed.
+        * UserInterface/Images/gtk/DocumentFont.png: Removed.
+        * UserInterface/Images/gtk/DocumentFont@2x.png: Removed.
+        * UserInterface/Images/gtk/DocumentFontLarge.png: Removed.
+        * UserInterface/Images/gtk/DocumentFontLarge@2x.png: Removed.
+        * UserInterface/Images/gtk/DocumentGeneric.png: Removed.
+        * UserInterface/Images/gtk/DocumentGeneric@2x.png: Removed.
+        * UserInterface/Images/gtk/DocumentGenericLarge.png: Removed.
+        * UserInterface/Images/gtk/DocumentGenericLarge@2x.png: Removed.
+        * UserInterface/Images/gtk/DocumentImage.png: Removed.
+        * UserInterface/Images/gtk/DocumentImage@2x.png: Removed.
+        * UserInterface/Images/gtk/DocumentImageLarge.png: Removed.
+        * UserInterface/Images/gtk/DocumentImageLarge@2x.png: Removed.
+        * UserInterface/Images/gtk/DocumentJS.png: Removed.
+        * UserInterface/Images/gtk/DocumentJS@2x.png: Removed.
+        * UserInterface/Images/gtk/DocumentJSLarge.png: Removed.
+        * UserInterface/Images/gtk/DocumentJSLarge@2x.png: Removed.
+        * UserInterface/Images/gtk/DocumentMarkup.png: Removed.
+        * UserInterface/Images/gtk/DocumentMarkup@2x.png: Removed.
+        * UserInterface/Images/gtk/DocumentMarkupLarge.png: Removed.
+        * UserInterface/Images/gtk/DocumentMarkupLarge@2x.png: Removed.
+        * UserInterface/Images/gtk/DownloadArrow.svg: Removed.
+        * UserInterface/Images/gtk/Elements.svg: Removed.
+        * UserInterface/Images/gtk/Error.svg: Removed.
+        * UserInterface/Images/gtk/Errors.svg: Removed.
+        * UserInterface/Images/gtk/ErrorsEnabled.svg: Removed.
+        * UserInterface/Images/gtk/EventListener.svg: Removed.
+        * UserInterface/Images/gtk/Events.svg: Removed.
+        * UserInterface/Images/gtk/Exception.svg: Removed.
+        * UserInterface/Images/gtk/Eye.svg: Removed.
+        * UserInterface/Images/gtk/FilterFieldActiveGlyph.svg: Removed.
+        * UserInterface/Images/gtk/FilterFieldGlyph.svg: Removed.
+        * UserInterface/Images/gtk/FloatLeft.svg: Removed.
+        * UserInterface/Images/gtk/FloatRight.svg: Removed.
+        * UserInterface/Images/gtk/FolderGeneric.png: Removed.
+        * UserInterface/Images/gtk/FolderGeneric@2x.png: Removed.
+        * UserInterface/Images/gtk/FontStyleItalic.svg: Removed.
+        * UserInterface/Images/gtk/FontStyleNormal.svg: Removed.
+        * UserInterface/Images/gtk/Function.svg: Removed.
+        * UserInterface/Images/gtk/Gear.svg: Removed.
+        * UserInterface/Images/gtk/GoToArrow.svg: Removed.
+        * UserInterface/Images/gtk/GradientStop.png: Removed.
+        * UserInterface/Images/gtk/GradientStop@2x.png: Removed.
+        * UserInterface/Images/gtk/GradientStopSelected.png: Removed.
+        * UserInterface/Images/gtk/GradientStopSelected@2x.png: Removed.
+        * UserInterface/Images/gtk/HeapAllocationsInstrument.svg: Removed.
+        * UserInterface/Images/gtk/HeapSnapshotObjectGraph.svg: Removed.
+        * UserInterface/Images/gtk/HierarchicalNavigationItemChevron.svg: Removed.
+        * UserInterface/Images/gtk/HoverMenuButton.png: Removed.
+        * UserInterface/Images/gtk/HoverMenuButton@2x.png: Removed.
+        * UserInterface/Images/gtk/IgnoreCaches.svg: Removed.
+        * UserInterface/Images/gtk/Image.svg: Removed.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner1.svg: Removed.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner10.svg: Removed.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner11.svg: Removed.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner12.svg: Removed.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner2.svg: Removed.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner3.svg: Removed.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner4.svg: Removed.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner5.svg: Removed.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner6.svg: Removed.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner7.svg: Removed.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner8.svg: Removed.
+        * UserInterface/Images/gtk/IndeterminateProgressSpinner9.svg: Removed.
+        * UserInterface/Images/gtk/Info.svg: Removed.
+        * UserInterface/Images/gtk/InstructionPointer.png: Removed.
+        * UserInterface/Images/gtk/InstructionPointer@2x.png: Removed.
+        * UserInterface/Images/gtk/Issues.svg: Removed.
+        * UserInterface/Images/gtk/IssuesEnabled.svg: Removed.
+        * UserInterface/Images/gtk/LayerBorders.svg: Removed.
+        * UserInterface/Images/gtk/Layers.svg: Removed.
+        * UserInterface/Images/gtk/LayoutInstrument.svg: Removed.
+        * UserInterface/Images/gtk/ListStylePositionInside.svg: Removed.
+        * UserInterface/Images/gtk/ListStylePositionOutside.svg: Removed.
+        * UserInterface/Images/gtk/LocalStorage.png: Removed.
+        * UserInterface/Images/gtk/LocalStorage@2x.png: Removed.
+        * UserInterface/Images/gtk/Locked.svg: Removed.
+        * UserInterface/Images/gtk/Log.svg: Removed.
+        * UserInterface/Images/gtk/Logs.svg: Removed.
+        * UserInterface/Images/gtk/MemoryInstrument.svg: Removed.
+        * UserInterface/Images/gtk/Minus.svg: Removed.
+        * UserInterface/Images/gtk/Native.svg: Removed.
+        * UserInterface/Images/gtk/NavigationItemCheckers.svg: Removed.
+        * UserInterface/Images/gtk/NavigationItemCodeCoverage.svg: Removed.
+        * UserInterface/Images/gtk/NavigationItemCurleyBraces.svg: Removed.
+        * UserInterface/Images/gtk/NavigationItemGarbageCollect.svg: Removed.
+        * UserInterface/Images/gtk/NavigationItemTrash.svg: Removed.
+        * UserInterface/Images/gtk/NavigationItemTypes.svg: Removed.
+        * UserInterface/Images/gtk/Network.svg: Removed.
+        * UserInterface/Images/gtk/NetworkInstrument.svg: Removed.
+        * UserInterface/Images/gtk/NewTab.svg: Removed.
+        * UserInterface/Images/gtk/NewTabPlus.svg: Removed.
+        * UserInterface/Images/gtk/Paint.svg: Removed.
+        * UserInterface/Images/gtk/Path.svg: Removed.
+        * UserInterface/Images/gtk/Pause.svg: Removed.
+        * UserInterface/Images/gtk/PausedBreakpoint.svg: Removed.
+        * UserInterface/Images/gtk/Pencil.svg: Removed.
+        * UserInterface/Images/gtk/Plus13.svg: Removed.
+        * UserInterface/Images/gtk/Plus15.svg: Removed.
+        * UserInterface/Images/gtk/Printer.svg: Removed.
+        * UserInterface/Images/gtk/Program.svg: Removed.
+        * UserInterface/Images/gtk/PseudoElement.svg: Removed.
+        * UserInterface/Images/gtk/Receiving.svg: Removed.
+        * UserInterface/Images/gtk/Record.svg: Removed.
+        * UserInterface/Images/gtk/Recording.svg: Removed.
+        * UserInterface/Images/gtk/Reflection.svg: Removed.
+        * UserInterface/Images/gtk/ReloadFull.svg: Removed.
+        * UserInterface/Images/gtk/ReloadToolbar.svg: Removed.
+        * UserInterface/Images/gtk/RenderingFrame.svg: Removed.
+        * UserInterface/Images/gtk/RenderingFramesInstrument.svg: Removed.
+        * UserInterface/Images/gtk/Request.svg: Removed.
+        * UserInterface/Images/gtk/Resources.svg: Removed.
+        * UserInterface/Images/gtk/Response.svg: Removed.
+        * UserInterface/Images/gtk/ResultLine.svg: Removed.
+        * UserInterface/Images/gtk/Resume.svg: Removed.
+        * UserInterface/Images/gtk/ScriptsInstrument.svg: Removed.
+        * UserInterface/Images/gtk/Search.svg: Removed.
+        * UserInterface/Images/gtk/SearchResults.svg: Removed.
+        * UserInterface/Images/gtk/Sending.svg: Removed.
+        * UserInterface/Images/gtk/SessionStorage.png: Removed.
+        * UserInterface/Images/gtk/SessionStorage@2x.png: Removed.
+        * UserInterface/Images/gtk/ShadowDOM.svg: Removed.
+        * UserInterface/Images/gtk/SliderThumb.png: Removed.
+        * UserInterface/Images/gtk/SliderThumb@2x.png: Removed.
+        * UserInterface/Images/gtk/SliderThumbPressed.png: Removed.
+        * UserInterface/Images/gtk/SliderThumbPressed@2x.png: Removed.
+        * UserInterface/Images/gtk/SortIndicatorArrows.svg: Removed.
+        * UserInterface/Images/gtk/Source.svg: Removed.
+        * UserInterface/Images/gtk/SplitToggleUp.svg: Removed.
+        * UserInterface/Images/gtk/StepInto.svg: Removed.
+        * UserInterface/Images/gtk/StepOut.svg: Removed.
+        * UserInterface/Images/gtk/StepOver.svg: Removed.
+        * UserInterface/Images/gtk/Stop.svg: Removed.
+        * UserInterface/Images/gtk/Stopwatch.svg: Removed.
+        * UserInterface/Images/gtk/Storage.svg: Removed.
+        * UserInterface/Images/gtk/StyleRule.svg: Removed.
+        * UserInterface/Images/gtk/StyleRuleInheritedElement.svg: Removed.
+        * UserInterface/Images/gtk/StyleRulePseudoElement.svg: Removed.
+        * UserInterface/Images/gtk/TailDeletedFunction.svg: Removed.
+        * UserInterface/Images/gtk/TextAlignCenter.svg: Removed.
+        * UserInterface/Images/gtk/TextAlignJustify.svg: Removed.
+        * UserInterface/Images/gtk/TextAlignLeft.svg: Removed.
+        * UserInterface/Images/gtk/TextAlignRight.svg: Removed.
+        * UserInterface/Images/gtk/TextDecorationLineThrough.svg: Removed.
+        * UserInterface/Images/gtk/TextDecorationOverline.svg: Removed.
+        * UserInterface/Images/gtk/TextDecorationUnderline.svg: Removed.
+        * UserInterface/Images/gtk/TextTransformCapitalize.svg: Removed.
+        * UserInterface/Images/gtk/TextTransformLowercase.svg: Removed.
+        * UserInterface/Images/gtk/TextTransformUppercase.svg: Removed.
+        * UserInterface/Images/gtk/Thread.svg: Removed.
+        * UserInterface/Images/gtk/Time.svg: Removed.
+        * UserInterface/Images/gtk/Timeline.svg: Removed.
+        * UserInterface/Images/gtk/TimelineRecordAPI.svg: Removed.
+        * UserInterface/Images/gtk/TimelineRecordAnimation.svg: Removed.
+        * UserInterface/Images/gtk/TimelineRecordComposite.svg: Removed.
+        * UserInterface/Images/gtk/TimelineRecordConsoleProfile.svg: Removed.
+        * UserInterface/Images/gtk/TimelineRecordEvent.svg: Removed.
+        * UserInterface/Images/gtk/TimelineRecordLayout.svg: Removed.
+        * UserInterface/Images/gtk/TimelineRecordPaint.svg: Removed.
+        * UserInterface/Images/gtk/TimelineRecordProbeSampled.svg: Removed.
+        * UserInterface/Images/gtk/TimelineRecordScriptEvaluated.svg: Removed.
+        * UserInterface/Images/gtk/TimelineRecordStyle.svg: Removed.
+        * UserInterface/Images/gtk/TimelineRecordTimer.svg: Removed.
+        * UserInterface/Images/gtk/ToggleLeftSidebar.svg: Removed.
+        * UserInterface/Images/gtk/ToggleRightSidebar.svg: Removed.
+        * UserInterface/Images/gtk/TypeBoolean.svg: Removed.
+        * UserInterface/Images/gtk/TypeNull.svg: Removed.
+        * UserInterface/Images/gtk/TypeNumber.svg: Removed.
+        * UserInterface/Images/gtk/TypeObject.svg: Removed.
+        * UserInterface/Images/gtk/TypeRegex.svg: Removed.
+        * UserInterface/Images/gtk/TypeString.svg: Removed.
+        * UserInterface/Images/gtk/TypeSymbol.svg: Removed.
+        * UserInterface/Images/gtk/TypeUndefined.svg: Removed.
+        * UserInterface/Images/gtk/Undock.svg: Removed.
+        * UserInterface/Images/gtk/UpDownArrows.svg: Removed.
+        * UserInterface/Images/gtk/UserInputPrompt.svg: Removed.
+        * UserInterface/Images/gtk/UserInputPromptPrevious.svg: Removed.
+        * UserInterface/Images/gtk/UserInputResult.svg: Removed.
+        * UserInterface/Images/gtk/VisualStyleNone.svg: Removed.
+        * UserInterface/Images/gtk/VisualStylePropertyLinked.svg: Removed.
+        * UserInterface/Images/gtk/VisualStylePropertyUnlinked.svg: Removed.
+        * UserInterface/Images/gtk/Warning.svg: Removed.
+        * UserInterface/Images/gtk/WebSocket.png: Removed.
+        * UserInterface/Images/gtk/WebSocket@2x.png: Removed.
+        * UserInterface/Images/gtk/WebSocketLarge.png: Removed.
+        * UserInterface/Images/gtk/WebSocketLarge@2x.png: Removed.
+        * UserInterface/Images/gtk/Weight.svg: Removed.
+        * UserInterface/Images/gtk/WorkerScript.png: Removed.
+        * UserInterface/Images/gtk/WorkerScript@2x.png: Removed.
+        * UserInterface/Images/gtk/WorkerScriptLarge.png: Removed.
+        * UserInterface/Images/gtk/WorkerScriptLarge@2x.png: Removed.
+
+2017-11-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Relicense non-distributable web inspector images
+        https://bugs.webkit.org/show_bug.cgi?id=166460
+        <rdar://problem/29800966>
+
+        Reviewed by Brian Burg.
+
+        * APPLE_IMAGES_LICENSE.rtf: Removed.
+        Remove the restrictive Web Inspector images license and default to the
+        same license as the rest of WebKit.
+
+        The Apple Images license was never intended to restrict distribution of
+        Web Inspector images when used as part of WebKit. Now, all contributions
+        to Web Inspector, images and source, have the same licensing as all other
+        WebKit contributions.
+
+2017-11-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network Detail Views - Split Metrics into Sizes and Timing
+        https://bugs.webkit.org/show_bug.cgi?id=179569
+        <rdar://problem/35484914>
+
+        Reviewed by Brian Burg.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        New resources and strings.
+
+        * UserInterface/Views/NetworkResourceDetailView.js:
+        (WI.NetworkResourceDetailView):
+        (WI.NetworkResourceDetailView.prototype.initialLayout):
+        (WI.NetworkResourceDetailView.prototype._showPreferredContentView):
+        (WI.NetworkResourceDetailView.prototype._showContentViewForNavigationItem):
+        (WI.NetworkResourceDetailView.prototype.sizesContentViewGoToHeaders): Renamed.
+        (WI.NetworkResourceDetailView.prototype.sizesContentViewGoToRequestBody): Renamed.
+        (WI.NetworkResourceDetailView.prototype.sizesContentViewGoToResponseBody): Renamed.
+        Split into two navigation items and views.
+
+        * UserInterface/Views/ResourceMetricsContentView.css: Removed.
+        * UserInterface/Views/ResourceMetricsContentView.js: Removed.
+        * UserInterface/Views/ResourceSizesContentView.css: Added.
+        * UserInterface/Views/ResourceSizesContentView.js: Added.
+        * UserInterface/Views/ResourceTimingContentView.css: Added.
+        * UserInterface/Views/ResourceTimingContentView.js: Added.
+        Split Metrics into two views.
+
+2017-11-14  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Cleanup navigation bar dividers and separators
+        https://bugs.webkit.org/show_bug.cgi?id=179654
+        <rdar://problem/35523734>
+
+        Reviewed by Devin Rousso.
+
+        Update path separator icon, and reduce number of dividers used in the
+        content browser's navigation bar, to more closely match modern Xcode.
+
+        * UserInterface/Images/HierarchicalNavigationItemChevron.svg:
+        Update icon, remove tapered arrow head.
+
+        * UserInterface/Views/ContentBrowser.js:
+        (WI.ContentBrowser):
+        Remove divider between back/forward buttons and item name.
+        (WI.ContentBrowser.prototype._updateContentViewNavigationItems):
+
+        * UserInterface/Views/HierarchicalPathComponent.css:
+        (.hierarchical-path-component > .separator):
+
+        * UserInterface/Views/LogContentView.js:
+        (WI.LogContentView.prototype.get navigationItems):
+        Remove dividers between buttons provided by the current content view.
+
+2017-11-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network Details Views - make section headers more prominent
+        https://bugs.webkit.org/show_bug.cgi?id=179565
+        <rdar://problem/35510531>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/ResourceDetailsSection.css:
+        (.resource-details > section > .title):
+
+2017-11-13  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: make selector field inline-block when editing
+        https://bugs.webkit.org/show_bug.cgi?id=179588
+        <rdar://problem/35490915>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.css:
+        (.spreadsheet-css-declaration .header.editing-selector .origin):
+        When the selector field is multiline, it covers the source link entirely.
+        When the selector field takes only one line, the source link remains where it was before editing.
+
+        (.spreadsheet-css-declaration .selector):
+        Make it `position: relative` to cover the source link.
+
+        (.spreadsheet-css-declaration .selector.spreadsheet-selector-field.editing):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.initialLayout):
+
+2017-11-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION(r223856): Web Inspector: Cannot view Request Data
+        https://bugs.webkit.org/show_bug.cgi?id=179567
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/ResourceClusterContentView.js:
+        (WI.ResourceClusterContentView.prototype._canShowRequestContentView):
+        This condition unintentionally got flipped in r223856.
+
+2017-11-13  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Add CheckboxNavigationItem
+        https://bugs.webkit.org/show_bug.cgi?id=179584
+        <rdar://problem/35490085>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Main.html:
+        * UserInterface/Views/ButtonNavigationItem.css:
+        (.navigation-bar .item.button.text-only.checkbox):
+        (.navigation-bar .item.button.text-only.checkbox label):
+
+        * UserInterface/Views/ButtonNavigationItem.js:
+        Cleanup and some tweaks to the label to make it work with subclasses
+        regardless of how label is represented in the DOM.
+
+        (WI.ButtonNavigationItem):
+        (WI.ButtonNavigationItem.prototype.get toolTip):
+        (WI.ButtonNavigationItem.prototype.set toolTip):
+        (WI.ButtonNavigationItem.prototype.get label):
+        (WI.ButtonNavigationItem.prototype.set label):
+        (WI.ButtonNavigationItem.prototype.set image):
+        (WI.ButtonNavigationItem.prototype.get enabled):
+        (WI.ButtonNavigationItem.prototype.set enabled):
+        (WI.ButtonNavigationItem.prototype.updateButtonText):
+
+        * UserInterface/Views/CheckboxNavigationItem.js: Added.
+        New button item with a checkbox and label. Dispatches a Clicked evennt
+        whenever the checked state changes.
+
+        (WI.CheckboxNavigationItem):
+        (WI.CheckboxNavigationItem.prototype.get checked):
+        (WI.CheckboxNavigationItem.prototype.set checked):
+        (WI.CheckboxNavigationItem.prototype.get additionalClassNames):
+        (WI.CheckboxNavigationItem.prototype.updateButtonText):
+        (WI.CheckboxNavigationItem.prototype._checkboxChanged):
+
+2017-11-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Give DataGrid/Table Header ContextMenu a section header to better describe its functions
+        https://bugs.webkit.org/show_bug.cgi?id=179560
+
+        Reviewed by Matt Baker.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New string.
+
+        * UserInterface/Views/DataGrid.js:
+        (WI.DataGrid.prototype._contextMenuInHeader):
+        * UserInterface/Views/Table.js:
+        (WI.Table.prototype._handleHeaderContextMenu):
+        Include a disabled context menu item as a section header.
+
+2017-11-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r224566): [GTK] 26 new timeouts on inspector related tests.
+        https://bugs.webkit.org/show_bug.cgi?id=179471
+
+        Reviewed by Darin Adler.
+
+        TestStub.html and TestStub.js was missing in resources bundle.
+
+        * Scripts/copy-user-interface-resources.pl: Also combine resources for TestStub.
+
 2017-11-11  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Network detail views - Include a newline between sections when copying

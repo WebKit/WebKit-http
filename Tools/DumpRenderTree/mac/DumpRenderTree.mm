@@ -840,7 +840,6 @@ static NSString *libraryPathForDumpRenderTree()
 static void enableExperimentalFeatures(WebPreferences* preferences)
 {
     [preferences setCSSGridLayoutEnabled:YES];
-    [preferences setDisplayContentsEnabled:YES];
     // FIXME: SpringTimingFunction
     [preferences setGamepadsEnabled:YES];
     [preferences setLinkPreloadEnabled:YES];
@@ -855,6 +854,8 @@ static void enableExperimentalFeatures(WebPreferences* preferences)
     [preferences setCacheAPIEnabled:NO];
     [preferences setReadableByteStreamAPIEnabled:YES];
     [preferences setWritableStreamAPIEnabled:YES];
+    preferences.encryptedMediaAPIEnabled = YES;
+    [preferences setAccessibilityObjectModelEnabled:YES];
 }
 
 // Called before each test.
@@ -982,6 +983,7 @@ static void setWebPreferencesForTestOptions(const TestOptions& options)
     WebPreferences *preferences = [WebPreferences standardPreferences];
 
     preferences.attachmentElementEnabled = options.enableAttachmentElement;
+    preferences.acceleratedDrawingEnabled = options.useAcceleratedDrawing;
     preferences.intersectionObserverEnabled = options.enableIntersectionObserver;
     preferences.menuItemElementEnabled = options.enableMenuItemElement;
     preferences.modernMediaControlsEnabled = options.enableModernMediaControls;

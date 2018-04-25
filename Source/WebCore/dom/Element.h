@@ -36,6 +36,7 @@
 
 namespace WebCore {
 
+class AccessibleNode;
 class CustomElementReactionQueue;
 class DatasetDOMStringMap;
 class DOMRect;
@@ -171,7 +172,7 @@ public:
 
     WEBCORE_EXPORT IntRect boundsInRootViewSpace();
 
-    FloatRect boundingClientRect();
+    WEBCORE_EXPORT FloatRect boundingClientRect();
 
     WEBCORE_EXPORT Ref<DOMRectList> getClientRects();
     Ref<DOMRect> getBoundingClientRect();
@@ -552,6 +553,11 @@ public:
 
     Element* findAnchorElementForLink(String& outAnchorName);
 
+    AccessibleNode* existingAccessibleNode() const;
+    AccessibleNode* accessibleNode();
+
+    Vector<RefPtr<WebAnimation>> getAnimations();
+
 protected:
     Element(const QualifiedName&, Document&, ConstructionType);
 
@@ -801,4 +807,5 @@ inline void Element::setHasFocusWithin(bool flag)
 
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::Element)
     static bool isType(const WebCore::Node& node) { return node.isElementNode(); }
+    static bool isType(const WebCore::EventTarget& target) { return is<WebCore::Node>(target) && isType(downcast<WebCore::Node>(target)); }
 SPECIALIZE_TYPE_TRAITS_END()

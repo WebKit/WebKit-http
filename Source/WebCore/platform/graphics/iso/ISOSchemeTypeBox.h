@@ -31,7 +31,7 @@ namespace WebCore {
 
 class ISOSchemeTypeBox : public ISOFullBox {
 public:
-    static FourCC boxTypeName() { return 'schm'; }
+    static FourCC boxTypeName() { return "schm"; }
 
     FourCC schemeType() const { return m_schemeType; }
     uint32_t schemeVersion() const { return m_schemeVersion; }
@@ -39,7 +39,7 @@ public:
 protected:
     bool parse(JSC::DataView&, unsigned& offset) override;
 
-    FourCC m_schemeType { 0 };
+    FourCC m_schemeType { uint32_t { 0 } };
     uint32_t m_schemeVersion { 0 };
 };
 

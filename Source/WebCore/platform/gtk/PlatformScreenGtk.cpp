@@ -40,6 +40,8 @@
 
 #include <cmath>
 #include <gtk/gtk.h>
+#include <wtf/HashMap.h>
+#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
@@ -110,6 +112,40 @@ double screenDPI()
     cachedDpi = diagonalInPixels / diagonalInInches;
 
     return cachedDpi;
+}
+
+static WTF::HashMap<void*, Function<void()>>& screenDPIObserverHandlersMap()
+{
+    static WTF::NeverDestroyed<WTF::HashMap<void*, Function<void()>>> handlersMap;
+    return handlersMap;
+}
+
+static void gtkXftDPIChangedCallback()
+{
+    for (const auto& keyValuePair : screenDPIObserverHandlersMap())
+        keyValuePair.value();
+}
+
+void setScreenDPIObserverHandler(Function<void()>&& handler, void* context)
+{
+    static GtkSettings* gtkSettings = gtk_settings_get_default();
+    static unsigned long gtkXftDpiChangedHandlerID = 0;
+
+    if (!gtkSettings)
+        return;
+
+    if (handler)
+        screenDPIObserverHandlersMap().set(context, WTFMove(handler));
+    else
+        screenDPIObserverHandlersMap().remove(context);
+
+    if (!screenDPIObserverHandlersMap().isEmpty()) {
+        if (!gtkXftDpiChangedHandlerID)
+            gtkXftDpiChangedHandlerID = g_signal_connect(gtkSettings, "notify::gtk-xft-dpi", G_CALLBACK(gtkXftDPIChangedCallback), nullptr);
+    } else if (gtkXftDpiChangedHandlerID) {
+        g_signal_handler_disconnect(gtkSettings, gtkXftDpiChangedHandlerID);
+        gtkXftDpiChangedHandlerID = 0;
+    }
 }
 
 static GdkScreen* getScreen(GtkWidget* widget)

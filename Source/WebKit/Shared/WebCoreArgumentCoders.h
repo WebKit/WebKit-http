@@ -39,9 +39,8 @@
 #include <WebCore/PaymentHeaders.h>
 #include <WebCore/RealtimeMediaSource.h>
 #include <WebCore/ScrollSnapOffsetsInfo.h>
-#include <WebCore/ServiceWorkerTypes.h>
-#include <WebCore/ServiceWorkerUpdateViaCache.h>
 #include <WebCore/StoredCredentialsPolicy.h>
+#include <WebCore/WorkerType.h>
 
 namespace WTF {
 class MonotonicTime;
@@ -157,10 +156,6 @@ struct MediaConstraints;
 
 #if ENABLE(INDEXED_DATABASE)
 using IDBKeyPath = Variant<String, Vector<String>>;
-#endif
-
-#if ENABLE(SERVICE_WORKER)
-struct ServiceWorkerClientIdentifier;
 #endif
 }
 
@@ -482,13 +477,6 @@ template<> struct ArgumentCoder<WebCore::TextCheckingRequestData> {
     static bool decode(Decoder&, WebCore::TextCheckingRequestData&);
 };
 
-#if ENABLE(SERVICE_WORKER)
-template<> struct ArgumentCoder<WebCore::ServiceWorkerClientIdentifier> {
-    static void encode(Encoder&, const WebCore::ServiceWorkerClientIdentifier&);
-    static bool decode(Decoder&, WebCore::ServiceWorkerClientIdentifier&);
-};
-#endif
-
 template<> struct ArgumentCoder<WebCore::TextCheckingResult> {
     static void encode(Encoder&, const WebCore::TextCheckingResult&);
     static std::optional<WebCore::TextCheckingResult> decode(Decoder&);
@@ -797,43 +785,12 @@ template <> struct EnumTraits<WebCore::StoredCredentialsPolicy> {
     >;
 };
 
-#if ENABLE(SERVICE_WORKER)
-template <> struct EnumTraits<WebCore::ServiceWorkerUpdateViaCache> {
+template <> struct EnumTraits<WebCore::WorkerType> {
     using values = EnumValues<
-        WebCore::ServiceWorkerUpdateViaCache,
-        WebCore::ServiceWorkerUpdateViaCache::Imports,
-        WebCore::ServiceWorkerUpdateViaCache::All,
-        WebCore::ServiceWorkerUpdateViaCache::None
+        WebCore::WorkerType,
+        WebCore::WorkerType::Classic,
+        WebCore::WorkerType::Module
     >;
 };
-
-template <> struct EnumTraits<WebCore::ServiceWorkerRegistrationState> {
-    using values = EnumValues<
-        WebCore::ServiceWorkerRegistrationState,
-        WebCore::ServiceWorkerRegistrationState::Installing,
-        WebCore::ServiceWorkerRegistrationState::Waiting,
-        WebCore::ServiceWorkerRegistrationState::Active
-    >;
-};
-    
-template <> struct EnumTraits<WebCore::ServiceWorkerState> {
-    using values = EnumValues<
-        WebCore::ServiceWorkerState,
-        WebCore::ServiceWorkerState::Installing,
-        WebCore::ServiceWorkerState::Installed,
-        WebCore::ServiceWorkerState::Activating,
-        WebCore::ServiceWorkerState::Activated,
-        WebCore::ServiceWorkerState::Redundant
-    >;
-};
-
-template <> struct EnumTraits<WebCore::ShouldNotifyWhenResolved> {
-    using values = EnumValues<
-        WebCore::ShouldNotifyWhenResolved,
-        WebCore::ShouldNotifyWhenResolved::No,
-        WebCore::ShouldNotifyWhenResolved::Yes
-    >;
-};
-#endif
 
 } // namespace WTF

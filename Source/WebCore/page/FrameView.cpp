@@ -799,8 +799,6 @@ void FrameView::updateCompositingLayersAfterLayout()
     if (!renderView)
         return;
 
-    // This call will make sure the cached hasAcceleratedCompositing is updated from the pref
-    renderView->compositor().cacheAcceleratedCompositingFlags();
     renderView->compositor().updateCompositingLayers(CompositingUpdateType::AfterLayout);
 }
 
@@ -4471,6 +4469,12 @@ FloatPoint FrameView::documentToClientPoint(FloatPoint p) const
 {
     p.move(documentToClientOffset());
     return p;
+}
+
+FloatRect FrameView::clientToDocumentRect(FloatRect rect) const
+{
+    rect.move(-documentToClientOffset());
+    return rect;
 }
 
 FloatPoint FrameView::clientToDocumentPoint(FloatPoint point) const

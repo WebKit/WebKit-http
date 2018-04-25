@@ -1315,11 +1315,13 @@ void BytecodeGenerator::emitEnter()
 {
     emitOpcode(op_enter);
 
-    // We must add the end of op_enter as a potential jump target, because the bytecode parser may decide to split its basic block
-    // to have somewhere to jump to if there is a recursive tail-call that points to this function.
-    m_codeBlock->addJumpTarget(instructions().size());
-    // This disables peephole optimizations when an instruction is a jump target
-    m_lastOpcodeID = op_end;
+    if (LIKELY(Options::optimizeRecursiveTailCalls())) {
+        // We must add the end of op_enter as a potential jump target, because the bytecode parser may decide to split its basic block
+        // to have somewhere to jump to if there is a recursive tail-call that points to this function.
+        m_codeBlock->addJumpTarget(instructions().size());
+        // This disables peephole optimizations when an instruction is a jump target
+        m_lastOpcodeID = op_end;
+    }
 }
 
 void BytecodeGenerator::emitLoopHint()
@@ -4866,7 +4868,6 @@ RegisterID* BytecodeGenerator::emitGetAsyncIterator(RegisterID* argument, Throwa
     Ref<Label> asyncIteratorFound = newLabel();
     Ref<Label> iteratorReceived = newLabel();
 
-    emitJumpIfTrue(emitIsUndefined(newTemporary(), iterator.get()), asyncIteratorNotFound.get());
     emitJumpIfTrue(emitUnaryOp(op_eq_null, newTemporary(), iterator.get()), asyncIteratorNotFound.get());
 
     emitJump(asyncIteratorFound.get());
@@ -4875,15 +4876,18 @@ RegisterID* BytecodeGenerator::emitGetAsyncIterator(RegisterID* argument, Throwa
     RefPtr<RegisterID> commonIterator = emitGetIterator(argument, node);
     emitMove(iterator.get(), commonIterator.get());
 
+    RefPtr<RegisterID> nextMethod = emitGetById(newTemporary(), iterator.get(), propertyNames().next);
+
     auto varCreateAsyncFromSyncIterator = variable(propertyNames().builtinNames().createAsyncFromSyncIteratorPrivateName());
     RefPtr<RegisterID> scope = newTemporary();
     moveToDestinationIfNeeded(scope.get(), emitResolveScope(scope.get(), varCreateAsyncFromSyncIterator));
     RefPtr<RegisterID> createAsyncFromSyncIterator = emitGetFromScope(newTemporary(), scope.get(), varCreateAsyncFromSyncIterator, ThrowIfNotFound);
 
-    CallArguments args(*this, nullptr, 1);
+    CallArguments args(*this, nullptr, 2);
     emitLoad(args.thisRegister(), jsUndefined());
 
     emitMove(args.argumentRegister(0), iterator.get());
+    emitMove(args.argumentRegister(1), nextMethod.get());
 
     JSTextPosition divot(m_scopeNode->firstLine(), m_scopeNode->startOffset(), m_scopeNode->lineStartOffset());
     emitCall(iterator.get(), createAsyncFromSyncIterator.get(), NoExpectedFunction, args, divot, divot, divot, DebuggableCall::No);

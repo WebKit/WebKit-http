@@ -52,6 +52,8 @@ public:
     void animationTimingModelDidChange() override;
     void windowScreenDidChange(PlatformDisplayID);
 
+    void detachFromDocument();
+
 private:
     DocumentTimeline(Document&, PlatformDisplayID);
 
@@ -60,9 +62,9 @@ private:
     void updateAnimationSchedule();
     void animationScheduleTimerFired();
     void scheduleAnimationResolution();
-    void resolveAnimations();
+    void updateAnimations();
 
-    Ref<Document> m_document;
+    RefPtr<Document> m_document;
     bool m_paused { false };
     std::optional<Seconds> m_cachedCurrentTime;
     GenericTaskQueue<Timer> m_invalidationTaskQueue;

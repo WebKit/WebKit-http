@@ -358,7 +358,7 @@ webkit.org/b/164933 http/tests/misc/link-rel-icon-beforeload.html [ Failure ]
 webkit.org/b/165541 compositing/layer-creation/fixed-overlap-extent-rtl.html [ Failure ]
 webkit.org/b/165541 compositing/rtl/rtl-fixed-overflow.html [ Failure ]
 
-webkit.org/b/154612 [ Sierra ] compositing/repaint/fixed-background-scroll.html [ Pass Failure ]
+webkit.org/b/154612 [ Sierra+ ] compositing/repaint/fixed-background-scroll.html [ Pass Failure ]
 
 webkit.org/b/165589 pointer-lock/lock-lost-on-esc-in-fullscreen.html [ Skip ]
 
@@ -465,4 +465,3 @@ webkit.org/b/177020 fast/events/beforeunload-dom-manipulation-crash.html [ Skip 
 webkit.org/b/177563 [ HighSierra ] http/tests/xmlhttprequest/response-empty-arraybuffer.html [ Failure ]
 
 webkit.org/b/172397 [ Debug ] animations/needs-layout.html [ Pass ImageOnlyFailure ]
-

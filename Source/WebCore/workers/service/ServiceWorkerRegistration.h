@@ -41,10 +41,7 @@ class ServiceWorkerContainer;
 
 class ServiceWorkerRegistration final : public RefCounted<ServiceWorkerRegistration>, public EventTargetWithInlineData, public ActiveDOMObject {
 public:
-    template <typename... Args> static Ref<ServiceWorkerRegistration> create(Args&&... args)
-    {
-        return adoptRef(*new ServiceWorkerRegistration(std::forward<Args>(args)...));
-    }
+    static Ref<ServiceWorkerRegistration> getOrCreate(ScriptExecutionContext&, Ref<ServiceWorkerContainer>&&, ServiceWorkerRegistrationData&&);
 
     ~ServiceWorkerRegistration();
 
@@ -67,18 +64,22 @@ public:
     
     const ServiceWorkerRegistrationData& data() const { return m_registrationData; }
 
-    void updateStateFromServer(ServiceWorkerRegistrationState, std::optional<ServiceWorkerIdentifier>);
+    void updateStateFromServer(ServiceWorkerRegistrationState, RefPtr<ServiceWorker>&&);
+    void scheduleTaskToFireUpdateFoundEvent();
 
 private:
     ServiceWorkerRegistration(ScriptExecutionContext&, Ref<ServiceWorkerContainer>&&, ServiceWorkerRegistrationData&&);
+    void updatePendingActivityForEventDispatch();
 
     EventTargetInterface eventTargetInterface() const final;
     ScriptExecutionContext* scriptExecutionContext() const final;
     void refEventTarget() final { ref(); }
     void derefEventTarget() final { deref(); }
 
+    // ActiveDOMObject.
     const char* activeDOMObjectName() const final;
     bool canSuspendForDocumentSuspension() const final;
+    void stop() final;
 
     ServiceWorkerRegistrationData m_registrationData;
     Ref<ServiceWorkerContainer> m_container;
@@ -86,6 +87,9 @@ private:
     RefPtr<ServiceWorker> m_installingWorker;
     RefPtr<ServiceWorker> m_waitingWorker;
     RefPtr<ServiceWorker> m_activeWorker;
+
+    bool m_isStopped { false };
+    RefPtr<PendingActivity<ServiceWorkerRegistration>> m_pendingActivityForEventDispatch;
 };
 
 } // namespace WebCore

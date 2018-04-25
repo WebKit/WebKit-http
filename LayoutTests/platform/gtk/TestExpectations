@@ -1885,6 +1885,10 @@ webkit.org/b/179356 imported/w3c/web-platform-tests/mediacapture-fromelement/cap
 webkit.org/b/179443 imported/w3c/web-platform-tests/html/semantics/text-level-semantics/the-bdo-element/bdo-child.html [ Pass Timeout ]
 webkit.org/b/179444 http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-audio-video-in-main-frame.html [ Pass Crash ]
 
+webkit.org/b/179755 media/video-empty-source.html [ Pass Crash ]
+
+webkit.org/b/179756 imported/w3c/web-platform-tests/WebCryptoAPI/wrapKey_unwrapKey/wrapKey_unwrapKey.worker.html [ Pass Failure ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -2200,33 +2204,6 @@ webkit.org/b/177941 http/tests/inspector/network/ping-type.html [ Timeout ]
 webkit.org/b/178454 editing/pasteboard/datatransfer-items-paste-plaintext.html [ Timeout ]
 
 webkit.org/b/178792 fast/events/touch/touch-inside-iframe.html [ Timeout ]
-
-webkit.org/b/179471 inspector/console/console-message.html [ Timeout ]
-webkit.org/b/179471 inspector/console/console-time.html [ Timeout ]
-webkit.org/b/179471 inspector/console/heapSnapshot.html [ Timeout ]
-webkit.org/b/179471 inspector/console/js-source-locations.html [ Timeout ]
-webkit.org/b/179471 inspector/console/x-frame-options-message.html [ Timeout ]
-webkit.org/b/179471 inspector/heap/tracking.html [ Timeout ]
-webkit.org/b/179471 inspector/layers/layers-anonymous.html [ Timeout ]
-webkit.org/b/179471 inspector/layers/layers-compositing-reasons.html [ Timeout ]
-webkit.org/b/179471 inspector/layers/layers-for-node.html [ Timeout ]
-webkit.org/b/179471 inspector/layers/layers-generated-content.html [ Timeout ]
-webkit.org/b/179471 inspector/layers/layers-reflected-content.html [ Timeout ]
-webkit.org/b/179471 inspector/memory/tracking.html [ Timeout ]
-webkit.org/b/179471 inspector/page/media-query-list-listener-exception.html [ Timeout ]
-webkit.org/b/179471 inspector/protocol/backend-dispatcher-argument-errors.html [ Timeout ]
-webkit.org/b/179471 inspector/protocol/backend-dispatcher-malformed-message-errors.html [ Timeout ]
-webkit.org/b/179471 inspector/runtime/CommandLineAPI-inspect.html [ Timeout ]
-webkit.org/b/179471 inspector/script-profiler/event-type-API.html [ Timeout ]
-webkit.org/b/179471 inspector/script-profiler/event-type-Microtask.html [ Timeout ]
-webkit.org/b/179471 inspector/script-profiler/event-type-Other.html [ Timeout ]
-webkit.org/b/179471 inspector/script-profiler/tracking.html [ Timeout ]
-webkit.org/b/179471 inspector/unit-tests/async-test-suite.html [ Timeout ]
-webkit.org/b/179471 inspector/unit-tests/protocol-test-dispatch-event-to-frontend.html [ Timeout ]
-webkit.org/b/179471 inspector/unit-tests/sync-test-suite.html [ Timeout ]
-webkit.org/b/179471 inspector/worker/worker-create-and-terminate.html [ Timeout ]
-webkit.org/b/179471 inspector/worker/worker-recover-if-inspector-close.html [ Timeout ]
-webkit.org/b/179471 inspector/unit-tests/breakpoint-log-message-lexer.html [ Timeout ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests timing out
@@ -2932,17 +2909,11 @@ webkit.org/b/148936 imported/w3c/web-platform-tests/html/semantics/interactive-e
 webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]
 
 # web-platform-tests XHR tests
-imported/w3c/web-platform-tests/XMLHttpRequest/getallresponseheaders.htm [ Failure ]
-imported/w3c/web-platform-tests/XMLHttpRequest/headers-normalize-response.htm [ Failure ]
-imported/w3c/web-platform-tests/XMLHttpRequest/send-entity-body-get-head-async.htm [ Failure ]
-imported/w3c/web-platform-tests/XMLHttpRequest/send-entity-body-get-head.htm [ Failure ]
-imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect.htm [ Failure ]
-imported/w3c/web-platform-tests/XMLHttpRequest/status-async.htm [ Failure ]
-imported/w3c/web-platform-tests/XMLHttpRequest/status-basic.htm [ Failure ]
-imported/w3c/web-platform-tests/XMLHttpRequest/status-error.htm [ Failure ]
+webkit.org/b/179663 imported/w3c/web-platform-tests/XMLHttpRequest/headers-normalize-response.htm [ Failure ]
+webkit.org/b/179662 imported/w3c/web-platform-tests/XMLHttpRequest/status-async.htm [ Failure ]
+webkit.org/b/179662 imported/w3c/web-platform-tests/XMLHttpRequest/status-basic.htm [ Failure ]
+webkit.org/b/179662 imported/w3c/web-platform-tests/XMLHttpRequest/status-error.htm [ Failure ]
 imported/w3c/web-platform-tests/XMLHttpRequest/event-readystatechange-loaded.htm [ Slow ]
-imported/w3c/web-platform-tests/XMLHttpRequest/send-entity-body-none.htm [ Pass ]
-imported/w3c/web-platform-tests/XMLHttpRequest/send-entity-body-empty.htm  [ Pass ]
 
 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/read-media/pageload-video.html [ Failure ]
 
@@ -3247,7 +3218,6 @@ webkit.org/b/173410 fast/canvas/canvas-createPattern-video-loading.html [ Failur
 
 webkit.org/b/173411 fast/events/touch/frame-hover-update.html [ Failure ]
 
-webkit.org/b/173413 imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-content-type.htm [ Failure ]
 webkit.org/b/173413 imported/w3c/web-platform-tests/html/semantics/forms/textfieldselection/selection-after-content-change.html [ Failure ]
 
 webkit.org/b/143702 media/progress-events-generated-correctly.html [ Failure ]
@@ -3361,6 +3331,19 @@ webkit.org/b/178591 http/tests/navigation/keyboard-events-during-provisional-sub
 webkit.org/b/179173 http/tests/inspector/network/har/har-page.html [ Failure ]
 
 webkit.org/b/179174 inspector/console/webcore-logging.html [ Failure ]
+
+webkit.org/b/179605 editing/execCommand/underline-selection-containing-image.html [ Failure ]
+
+webkit.org/b/179721 media/video-fullscreen-restriction-removed.html [ Failure ]
+webkit.org/b/179721 fullscreen/full-screen-iframe-legacy.html [ Timeout ]
+webkit.org/b/179721 media/media-fullscreen-inline.html [ Timeout ]
+webkit.org/b/179721 media/media-fullscreen-not-in-document.html [ Timeout ]
+webkit.org/b/179721 media/media-fullscreen-return-to-inline.html [ Timeout ]
+webkit.org/b/179721 media/video-fullscreeen-only-playback.html [ Timeout ]
+
+webkit.org/b/179722 compositing/accelerated-layers-after-back.html [ Failure ]
+
+webkit.org/b/179723 accessibility/accessibility-object-model.html [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of non-crashing, non-flaky tests failing

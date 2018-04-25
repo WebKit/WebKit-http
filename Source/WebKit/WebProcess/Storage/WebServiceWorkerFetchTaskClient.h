@@ -46,6 +46,7 @@ private:
 
     void didReceiveResponse(const WebCore::ResourceResponse&) final;
     void didReceiveData(Ref<WebCore::SharedBuffer>&&) final;
+    void didReceiveFormData(Ref<WebCore::FormData>&&) final;
     void didFail() final;
     void didFinish() final;
     void didNotHandle() final;

@@ -129,6 +129,7 @@
 #include <WebCore/PublicSuffix.h>
 #include <WebCore/RenderEmbeddedObject.h>
 #include <WebCore/SerializedCryptoKeyWrap.h>
+#include <WebCore/SharedBuffer.h>
 #include <WebCore/TextCheckerClient.h>
 #include <WebCore/TextIndicator.h>
 #include <WebCore/URL.h>
@@ -4895,6 +4896,20 @@ void WebPageProxy::removeEditCommand(WebEditCommandProxy* command)
     m_process->send(Messages::WebPage::DidRemoveEditCommand(command->commandID()), m_pageID);
 }
 
+bool WebPageProxy::canUndo()
+{
+    bool result;
+    canUndoRedo(Undo, result);
+    return result;
+}
+
+bool WebPageProxy::canRedo()
+{
+    bool result;
+    canUndoRedo(Redo, result);
+    return result;
+}
+
 bool WebPageProxy::isValidEditCommand(WebEditCommandProxy* command)
 {
     return m_editCommandSet.find(command) != m_editCommandSet.end();
@@ -5161,13 +5176,28 @@ void WebPageProxy::voidCallback(CallbackID callbackID)
     callback->performCallback();
 }
 
+void WebPageProxy::sharedBufferCallback(const IPC::DataReference& dataReference, bool isNull, CallbackID callbackID)
+{
+    auto callback = m_callbacks.take<SharedBufferCallback>(callbackID);
+    if (!callback) {
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    if (isNull) {
+        ASSERT(dataReference.isEmpty());
+        callback->performCallbackWithReturnValue(nullptr);
+        return;
+    }
+
+    callback->performCallbackWithReturnValue(SharedBuffer::create(dataReference.data(), dataReference.size()));
+}
+
 void WebPageProxy::dataCallback(const IPC::DataReference& dataReference, CallbackID callbackID)
 {
     auto callback = m_callbacks.take<DataCallback>(callbackID);
-    if (!callback) {
-        // FIXME: Log error or assert.
+    if (!callback)
         return;
-    }
 
     callback->performCallbackWithReturnValue(API::Data::create(dataReference.data(), dataReference.size()).ptr());
 }
@@ -5741,7 +5771,6 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.textAutosizingWidth = textAutosizingWidth();
     parameters.mimeTypesWithCustomContentProviders = m_pageClient.mimeTypesWithCustomContentProviders();
     parameters.ignoresViewportScaleLimits = m_forceAlwaysUserScalable;
-    parameters.allowsBlockSelection = m_pageClient.allowsBlockSelection();
 #endif
 
 #if PLATFORM(MAC)
@@ -7115,8 +7144,24 @@ void WebPageProxy::requestStorageAccess(String&& subFrameHost, String&& topFrame
 
 void WebPageProxy::insertAttachment(const String& identifier, const String& filename, std::optional<String> contentType, SharedBuffer& data, Function<void(CallbackBase::Error)>&& callback)
 {
+    if (!isValid()) {
+        callback(CallbackBase::Error::OwnerWasInvalidated);
+        return;
+    }
+
     auto callbackID = m_callbacks.put(WTFMove(callback), m_process->throttler().backgroundActivityToken());
     m_process->send(Messages::WebPage::InsertAttachment(identifier, filename, contentType, IPC::SharedBufferDataReference { &data }, callbackID), m_pageID);
+}
+
+void WebPageProxy::requestAttachmentData(const String& identifier, Function<void(RefPtr<SharedBuffer>, CallbackBase::Error)>&& callback)
+{
+    if (!isValid()) {
+        callback(nullptr, CallbackBase::Error::OwnerWasInvalidated);
+        return;
+    }
+
+    auto callbackID = m_callbacks.put(WTFMove(callback), m_process->throttler().backgroundActivityToken());
+    m_process->send(Messages::WebPage::RequestAttachmentData(identifier, callbackID), m_pageID);
 }
 
 void WebPageProxy::didInsertAttachment(const String& identifier)

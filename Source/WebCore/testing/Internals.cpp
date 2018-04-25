@@ -29,6 +29,7 @@
 
 #include "AXObjectCache.h"
 #include "ActiveDOMCallbackMicrotask.h"
+#include "AnimationTimeline.h"
 #include "ApplicationCacheStorage.h"
 #include "AudioSession.h"
 #include "Autofill.h"
@@ -4231,19 +4232,6 @@ void Internals::setConsoleMessageListener(RefPtr<StringCallback>&& listener)
     contextDocument()->setConsoleMessageListener(WTFMove(listener));
 }
 
-bool Internals::hasServiceWorkerRegisteredForOrigin(const String& origin)
-{
-#if ENABLE(SERVICE_WORKER)
-    if (!contextDocument())
-        return false;
-
-    return ServiceWorkerProvider::singleton().serviceWorkerConnectionForSession(contextDocument()->sessionID()).hasServiceWorkerRegisteredForOrigin(SecurityOrigin::createFromString(origin));
-#else
-    UNUSED_PARAM(origin);
-    return false;
-#endif
-}
-
 void Internals::setResponseSizeWithPadding(FetchResponse& response, uint64_t size)
 {
     response.setBodySizeWithPadding(size);
@@ -4297,7 +4285,7 @@ void Internals::pauseTimeline(AnimationTimeline& timeline)
 
 void Internals::setTimelineCurrentTime(AnimationTimeline& timeline, double currentTime)
 {
-    timeline.setCurrentTime(Seconds(currentTime));
+    timeline.setCurrentTime(Seconds::fromMilliseconds(currentTime));
 }
 
 #if ENABLE(APPLE_PAY)

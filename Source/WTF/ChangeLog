@@ -1,3 +1,152 @@
+2017-11-15  Alex Christensen  <achristensen@webkit.org>
+
+        Fix fast/events/message-port-postMessage-recursive.html after r224896
+        https://bugs.webkit.org/show_bug.cgi?id=179749
+
+        Reviewed by Jer Noble.
+
+        * wtf/mac/MainThreadMac.mm:
+        (WTF::currentRunLoopInCommonMode):
+        We sometimes run the runloop in kCFRunLoopDefaultMode, which should also have the responsiveness optimization.
+        This allows the runloop to continue to iterate when we are doing lots of things on the main thread.
+        CFRunLoop.h has a special definition of these two constants.
+
+2017-11-15  Alex Christensen  <achristensen@webkit.org>
+
+        WebViews scheduled in custom run loop modes should be able to do more than 50ms of work at a time
+        https://bugs.webkit.org/show_bug.cgi?id=179742
+        <rdar://problem/35519421>
+
+        Reviewed by Jer Noble.
+        
+        In r224687 I fixed loading from scheduled WebViews with custom run loop modes, but in 
+        dispatchFunctionsFromMainThread we have an optimization to yield the run loop if we have already
+        done more than 50ms of work on the main thread in this run loop iteration.  When this happens
+        and we are running in a custom run loop mode, we disable this responsiveness optimization.
+        We are calling CFRunLoopRunInMode or [NSRunLoop acceptInputForMode:beforeDate:] in a while loop anyways,
+        so we would not benefit from a responsiveness optimization.  We definitely don't want to reschedule
+        on the main thread in the common run loop mode in this case.
+
+        * wtf/MainThread.cpp:
+        (WTF::dispatchFunctionsFromMainThread):
+        * wtf/MainThread.h:
+        * wtf/generic/MainThreadGeneric.cpp:
+        (WTF::currentRunLoopInCommonMode):
+        * wtf/mac/MainThreadMac.mm:
+        (WTF::currentRunLoopInCommonMode):
+        * wtf/win/MainThreadWin.cpp:
+        (WTF::currentRunLoopInCommonMode):
+
+2017-11-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r224863.
+
+        Introduced LayoutTest crashes on iOS Simulator.
+
+        Reverted changeset:
+
+        "Move JSONValues to WTF and convert uses of InspectorValues.h
+        to JSONValues.h"
+        https://bugs.webkit.org/show_bug.cgi?id=173793
+        https://trac.webkit.org/changeset/224863
+
+2017-11-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Move JSONValues to WTF and convert uses of InspectorValues.h to JSONValues.h
+        https://bugs.webkit.org/show_bug.cgi?id=173793
+
+        Reviewed by Brian Burg.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/JSONValues.cpp: Renamed from Source/JavaScriptCore/inspector/InspectorValues.cpp.
+        (JSON::Value::null):
+        (JSON::Value::create):
+        (JSON::Value::asValue):
+        (JSON::Value::asObject):
+        (JSON::Value::asArray):
+        (JSON::Value::parseJSON):
+        (JSON::Value::toJSONString const):
+        (JSON::Value::asBoolean const):
+        (JSON::Value::asDouble const):
+        (JSON::Value::asInteger const):
+        (JSON::Value::asString const):
+        (JSON::Value::writeJSON const):
+        (JSON::Value::memoryCost const):
+        (JSON::ObjectBase::~ObjectBase):
+        (JSON::ObjectBase::asObject):
+        (JSON::ObjectBase::openAccessors):
+        (JSON::ObjectBase::memoryCost const):
+        (JSON::ObjectBase::getBoolean const):
+        (JSON::ObjectBase::getString const):
+        (JSON::ObjectBase::getObject const):
+        (JSON::ObjectBase::getArray const):
+        (JSON::ObjectBase::getValue const):
+        (JSON::ObjectBase::remove):
+        (JSON::ObjectBase::writeJSON const):
+        (JSON::ObjectBase::ObjectBase):
+        (JSON::ArrayBase::~ArrayBase):
+        (JSON::ArrayBase::asArray):
+        (JSON::ArrayBase::writeJSON const):
+        (JSON::ArrayBase::ArrayBase):
+        (JSON::ArrayBase::get const):
+        (JSON::Object::create):
+        (JSON::Array::create):
+        (JSON::ArrayBase::memoryCost const):
+        * wtf/JSONValues.h: Renamed from Source/JavaScriptCore/inspector/InspectorValues.h.
+        (JSON::ObjectBase::find):
+        (JSON::ObjectBase::find const):
+        (JSON::ObjectBase::setBoolean):
+        (JSON::ObjectBase::setInteger):
+        (JSON::ObjectBase::setDouble):
+        (JSON::ObjectBase::setString):
+        (JSON::ObjectBase::setValue):
+        (JSON::ObjectBase::setObject):
+        (JSON::ObjectBase::setArray):
+        (JSON::ArrayBase::pushBoolean):
+        (JSON::ArrayBase::pushInteger):
+        (JSON::ArrayBase::pushDouble):
+        (JSON::ArrayBase::pushString):
+        (JSON::ArrayBase::pushValue):
+        (JSON::ArrayBase::pushObject):
+        (JSON::ArrayBase::pushArray):
+
+2017-11-14  Alex Christensen  <achristensen@webkit.org>
+
+        Remove Cocoa CFURLConnection loading code
+        https://bugs.webkit.org/show_bug.cgi?id=179688
+
+        Reviewed by Antti Koivisto.
+
+        * wtf/SchedulePair.h:
+        * wtf/SchedulePairMac.mm:
+
+2017-11-13  Brady Eidson  <beidson@apple.com>
+
+        Massive "Server-process-to-context-process" connection overhaul.
+        https://bugs.webkit.org/show_bug.cgi?id=179554
+
+        Reviewed by Chris Dumez.
+
+        * wtf/ObjectIdentifier.h:
+        (WTF::generateObjectIdentifier):
+        (WTF::makeObjectIdentifier): Deleted.
+
+2017-11-13  JF Bastien  <jfbastien@apple.com>
+
+        std::expected: fix and test move
+        https://bugs.webkit.org/show_bug.cgi?id=179617
+
+        Reviewed by Alex Christensen.
+
+        Non-copyable move types should be able to be in an expected
+        properly.
+
+        * wtf/Expected.h:
+        (WTF::Expected::value const):
+        (WTF::Expected::error):
+        (WTF::Expected::error const):
+
 2017-11-10  Jer Noble  <jer.noble@apple.com>
 
         Add a FairPlay Streaming based CDM for Modern EME

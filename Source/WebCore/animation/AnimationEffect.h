@@ -26,6 +26,7 @@
 #pragma once
 
 #include "AnimationEffectTiming.h"
+#include "WebAnimation.h"
 #include <wtf/Forward.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
@@ -35,10 +36,14 @@ namespace WebCore {
 
 class AnimationEffect : public RefCounted<AnimationEffect> {
 public:
+    virtual ~AnimationEffect() = default;
+
     bool isKeyframeEffect() const { return m_classType == KeyframeEffectClass; }
     AnimationEffectTiming* timing() const { return m_timing.get(); }
+    virtual void applyAtLocalTime(Seconds, RenderStyle&) = 0;
 
-    virtual ~AnimationEffect() { }
+    WebAnimation* animation() const { return m_animation.get(); }
+    void setAnimation(RefPtr<WebAnimation>&& animation) { m_animation = animation; }
 
 protected:
     enum ClassType {
@@ -51,6 +56,7 @@ protected:
 
 private:
     ClassType m_classType;
+    RefPtr<WebAnimation> m_animation;
     RefPtr<AnimationEffectTiming> m_timing;
 };
 

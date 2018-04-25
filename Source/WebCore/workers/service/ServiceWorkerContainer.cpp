@@ -230,33 +230,51 @@ void ServiceWorkerContainer::getRegistration(const String& clientURL, Ref<Deferr
             return;
         }
 
-        RefPtr<ServiceWorkerRegistration> registration = m_registrations.get(result->identifier);
-        if (!registration) {
-            auto& context = *scriptExecutionContext();
-            // FIXME: We should probably not be constructing ServiceWorkerRegistration objects here. Instead, we should make
-            // sure that ServiceWorkerRegistration objects stays alive as long as their SWServerRegistration on server side.
-            registration = ServiceWorkerRegistration::create(context, *this, WTFMove(result.value()));
-        }
-        promise->resolve<IDLInterface<ServiceWorkerRegistration>>(registration.releaseNonNull());
+        auto registration = ServiceWorkerRegistration::getOrCreate(*scriptExecutionContext(), *this, WTFMove(result.value()));
+        promise->resolve<IDLInterface<ServiceWorkerRegistration>>(WTFMove(registration));
     });
 }
 
-void ServiceWorkerContainer::scheduleTaskToUpdateRegistrationState(ServiceWorkerRegistrationIdentifier identifier, ServiceWorkerRegistrationState state, const std::optional<ServiceWorkerIdentifier>& serviceWorkerIdentifier)
+void ServiceWorkerContainer::scheduleTaskToUpdateRegistrationState(ServiceWorkerRegistrationIdentifier identifier, ServiceWorkerRegistrationState state, const std::optional<ServiceWorkerData>& serviceWorkerData)
 {
     auto* context = scriptExecutionContext();
     if (!context)
         return;
 
-    context->postTask([this, protectedThis = makeRef(*this), identifier, state, serviceWorkerIdentifier](ScriptExecutionContext&) {
+    RefPtr<ServiceWorker> serviceWorker;
+    if (serviceWorkerData)
+        serviceWorker = ServiceWorker::getOrCreate(*context, ServiceWorkerData { *serviceWorkerData });
+
+    context->postTask([this, protectedThis = makeRef(*this), identifier, state, serviceWorker = WTFMove(serviceWorker)](ScriptExecutionContext&) mutable {
         if (auto* registration = m_registrations.get(identifier))
-            registration->updateStateFromServer(state, serviceWorkerIdentifier);
+            registration->updateStateFromServer(state, WTFMove(serviceWorker));
     });
 }
 
 void ServiceWorkerContainer::getRegistrations(RegistrationsPromise&& promise)
 {
-    // FIXME: Implement getRegistrations algorithm, for now pretend there is no registration.
-    promise.resolve({ });
+    auto* context = scriptExecutionContext();
+    if (!context) {
+        promise.reject(Exception { InvalidStateError });
+        return;
+    }
+
+    if (!m_swConnection)
+        m_swConnection = &ServiceWorkerProvider::singleton().serviceWorkerConnectionForSession(context->sessionID());
+
+    return m_swConnection->getRegistrations(context->topOrigin(), context->url(), [this, pendingActivity = makePendingActivity(*this), promise = WTFMove(promise)] (auto&& registrationDatas) mutable {
+        if (m_isStopped)
+            return;
+
+        Vector<Ref<ServiceWorkerRegistration>> registrations;
+        registrations.reserveInitialCapacity(registrationDatas.size());
+        for (auto& registrationData : registrationDatas) {
+            auto registration = ServiceWorkerRegistration::getOrCreate(*scriptExecutionContext(), *this, WTFMove(registrationData));
+            registrations.uncheckedAppend(WTFMove(registration));
+        }
+
+        promise.resolve(WTFMove(registrations));
+    });
 }
 
 void ServiceWorkerContainer::startMessages()
@@ -275,16 +293,8 @@ void ServiceWorkerContainer::jobFailedWithException(ServiceWorkerJob& job, const
 
 void ServiceWorkerContainer::scheduleTaskToFireUpdateFoundEvent(ServiceWorkerRegistrationIdentifier identifier)
 {
-    if (isStopped())
-        return;
-
-    scriptExecutionContext()->postTask([this, protectedThis = makeRef(*this), identifier](ScriptExecutionContext&) {
-        if (isStopped())
-            return;
-
-        if (auto* registration = m_registrations.get(identifier))
-            registration->dispatchEvent(Event::create(eventNames().updatefoundEvent, false, false));
-    });
+    if (auto* registration = m_registrations.get(identifier))
+        registration->scheduleTaskToFireUpdateFoundEvent();
 }
 
 void ServiceWorkerContainer::jobResolvedWithRegistration(ServiceWorkerJob& job, ServiceWorkerRegistrationData&& data, WTF::Function<void()>&& promiseResolvedHandler)
@@ -293,21 +303,22 @@ void ServiceWorkerContainer::jobResolvedWithRegistration(ServiceWorkerJob& job, 
         jobDidFinish(job);
     });
 
-    auto* context = scriptExecutionContext();
-    if (!context) {
-        LOG_ERROR("ServiceWorkerContainer::jobResolvedWithRegistration called but the containers ScriptExecutionContext is gone");
+    if (isStopped()) {
         promiseResolvedHandler();
         return;
     }
 
-    context->postTask([this, protectedThis = makeRef(*this), job = makeRef(job), data = WTFMove(data), promiseResolvedHandler = WTFMove(promiseResolvedHandler)](ScriptExecutionContext& context) mutable {
-        RefPtr<ServiceWorkerRegistration> registration = m_registrations.get(data.identifier);
-        if (!registration)
-            registration = ServiceWorkerRegistration::create(context, *this, WTFMove(data));
+    scriptExecutionContext()->postTask([this, protectedThis = makeRef(*this), job = makeRef(job), data = WTFMove(data), promiseResolvedHandler = WTFMove(promiseResolvedHandler)](ScriptExecutionContext& context) mutable {
+        if (isStopped()) {
+            promiseResolvedHandler();
+            return;
+        }
 
-        LOG(ServiceWorker, "Container %p resolved job with registration %p", this, registration.get());
+        auto registration = ServiceWorkerRegistration::getOrCreate(context, *this, WTFMove(data));
 
-        job->promise().resolve<IDLInterface<ServiceWorkerRegistration>>(*registration);
+        LOG(ServiceWorker, "Container %p resolved job with registration %p", this, registration.ptr());
+
+        job->promise().resolve<IDLInterface<ServiceWorkerRegistration>>(WTFMove(registration));
 
         MicrotaskQueue::mainThreadQueue().append(std::make_unique<VoidMicrotask>([promiseResolvedHandler = WTFMove(promiseResolvedHandler)] {
             promiseResolvedHandler();
@@ -326,10 +337,6 @@ void ServiceWorkerContainer::jobResolvedWithUnregistrationResult(ServiceWorkerJo
         LOG_ERROR("ServiceWorkerContainer::jobResolvedWithUnregistrationResult called but the containers ScriptExecutionContext is gone");
         return;
     }
-
-    // FIXME: Implement proper selection of service workers.
-    if (unregistrationResult)
-        context->setActiveServiceWorker(nullptr);
 
     context->postTask([job = makeRef(job), unregistrationResult](ScriptExecutionContext&) mutable {
         job->promise().resolve<IDLBoolean>(unregistrationResult);

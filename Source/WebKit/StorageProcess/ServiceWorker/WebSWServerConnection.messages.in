@@ -28,13 +28,16 @@ messages -> WebSWServerConnection {
     FinishFetchingScriptInServer(struct WebCore::ServiceWorkerFetchResult result)
     AddServiceWorkerRegistrationInServer(WebCore::ServiceWorkerRegistrationKey key, WebCore::ServiceWorkerRegistrationIdentifier identifier)
     RemoveServiceWorkerRegistrationInServer(WebCore::ServiceWorkerRegistrationKey key, WebCore::ServiceWorkerRegistrationIdentifier identifier)
+    ServiceWorkerStartedControllingClient(WebCore::ServiceWorkerIdentifier serviceWorkerIdentifier, uint64_t scriptExecutionContextIdentifier)
+    ServiceWorkerStoppedControllingClient(WebCore::ServiceWorkerIdentifier serviceWorkerIdentifier, uint64_t scriptExecutionContextIdentifier)
 
     StartFetch(uint64_t identifier, std::optional<WebCore::ServiceWorkerIdentifier> serviceWorkerIdentifier, WebCore::ResourceRequest request, struct WebCore::FetchOptions options)
-    PostMessageToServiceWorkerGlobalScope(WebCore::ServiceWorkerIdentifier destinationServiceWorkerIdentifier, IPC::DataReference message, uint64_t sourceScriptExecutionContextIdentifier, String sourceOrigin)
+    PostMessageToServiceWorkerGlobalScope(WebCore::ServiceWorkerIdentifier destinationServiceWorkerIdentifier, IPC::DataReference message, struct WebCore::ServiceWorkerClientData source)
 
     DidResolveRegistrationPromise(WebCore::ServiceWorkerRegistrationKey key)
 
     MatchRegistration(uint64_t serviceRegistrationMatchRequestIdentifier, struct WebCore::SecurityOriginData topOrigin, WebCore::URL clientURL)
+    GetRegistrations(uint64_t serviceRegistrationMatchRequestIdentifier, struct WebCore::SecurityOriginData topOrigin, WebCore::URL clientURL)
 }
 
 #endif // ENABLE(SERVICE_WORKER)

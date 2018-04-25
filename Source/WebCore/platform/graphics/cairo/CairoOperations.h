@@ -34,16 +34,90 @@
 
 #if USE(CAIRO)
 
+#include "DashArray.h"
+#include "GraphicsContext.h"
 #include "GraphicsTypes.h"
+
+typedef struct _cairo_pattern cairo_pattern_t;
 
 namespace WebCore {
 
+class AffineTransform;
+class Color;
 class FloatRect;
+class FloatRoundedRect;
+class FloatSize;
+class GraphicsContext;
 class Image;
 class Path;
 class PlatformContextCairo;
 
+struct GraphicsContextState;
+
 namespace Cairo {
+
+namespace State {
+
+void setStrokeThickness(PlatformContextCairo&, float);
+void setStrokeStyle(PlatformContextCairo&, StrokeStyle);
+
+void setGlobalAlpha(PlatformContextCairo&, float);
+void setCompositeOperation(PlatformContextCairo&, CompositeOperator, BlendMode);
+void setShouldAntialias(PlatformContextCairo&, bool);
+void setImageInterpolationQuality(PlatformContextCairo&, InterpolationQuality);
+
+void setCTM(PlatformContextCairo&, const AffineTransform&);
+AffineTransform getCTM(PlatformContextCairo&);
+
+void setShadowValues(PlatformContextCairo&, const FloatSize&, const FloatSize&, const Color&, bool);
+void clearShadow(PlatformContextCairo&);
+
+IntRect getClipBounds(PlatformContextCairo&);
+FloatRect roundToDevicePixels(PlatformContextCairo&, const FloatRect&);
+
+bool isAcceleratedContext(PlatformContextCairo&);
+
+} // namespace State
+
+void setLineCap(PlatformContextCairo&, LineCap);
+void setLineDash(PlatformContextCairo&, const DashArray&, float);
+void setLineJoin(PlatformContextCairo&, LineJoin);
+void setMiterLimit(PlatformContextCairo&, float);
+
+void fillRect(PlatformContextCairo&, const FloatRect&, const GraphicsContextState&, GraphicsContext&);
+void fillRect(PlatformContextCairo&, const FloatRect&, const Color&, bool, GraphicsContext&);
+void fillRect(PlatformContextCairo&, const FloatRect&, cairo_pattern_t*);
+void fillRoundedRect(PlatformContextCairo&, const FloatRoundedRect&, const Color&, bool, GraphicsContext&);
+void fillRectWithRoundedHole(PlatformContextCairo&, const FloatRect&, const FloatRoundedRect&, const GraphicsContextState&, GraphicsContext&);
+void fillPath(PlatformContextCairo&, const Path&, const GraphicsContextState&, GraphicsContext&);
+void strokeRect(PlatformContextCairo&, const FloatRect&, float, const GraphicsContextState&, GraphicsContext&);
+void strokePath(PlatformContextCairo&, const Path&, const GraphicsContextState&, GraphicsContext&);
+void clearRect(PlatformContextCairo&, const FloatRect&);
+
+void drawGlyphs(GraphicsContext&, const GraphicsContextState&, bool, const FloatPoint&, cairo_scaled_font_t*, double, const Vector<cairo_glyph_t>&, float, GraphicsContext&);
+
+void drawNativeImage(PlatformContextCairo&, const NativeImagePtr&, const FloatRect&, const FloatRect&, CompositeOperator, BlendMode, ImageOrientation, GraphicsContext&);
+void drawPattern(PlatformContextCairo&, Image&, const FloatRect&, const FloatRect&, const AffineTransform&, const FloatPoint&, CompositeOperator, BlendMode);
+
+void drawRect(PlatformContextCairo&, const FloatRect&, float, const GraphicsContextState&);
+void drawLine(PlatformContextCairo&, const FloatPoint&, const FloatPoint&, const GraphicsContextState&);
+void drawLinesForText(PlatformContextCairo&, const FloatPoint&, const DashArray&, bool, bool, const Color&, float);
+void drawLineForDocumentMarker(PlatformContextCairo&, const FloatPoint&, float, GraphicsContext::DocumentMarkerLineStyle);
+void drawEllipse(PlatformContextCairo&, const FloatRect&, const GraphicsContextState&);
+
+void drawFocusRing(PlatformContextCairo&, const Path&, float, const Color&);
+void drawFocusRing(PlatformContextCairo&, const Vector<FloatRect>&, float, const Color&);
+
+void save(PlatformContextCairo&);
+void restore(PlatformContextCairo&);
+
+void translate(PlatformContextCairo&, float, float);
+void rotate(PlatformContextCairo&, float);
+void scale(PlatformContextCairo&, const FloatSize&);
+void concatCTM(PlatformContextCairo&, const AffineTransform&);
+
+void beginTransparencyLayer(PlatformContextCairo&, float);
+void endTransparencyLayer(PlatformContextCairo&);
 
 void clip(PlatformContextCairo&, const FloatRect&);
 void clipOut(PlatformContextCairo&, const FloatRect&);

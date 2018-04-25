@@ -1003,6 +1003,13 @@ private:
         case ForceOSRExit:
             compileForceOSRExit();
             break;
+        case CPUIntrinsic:
+#if CPU(X86_64)
+            compileCPUIntrinsic();
+#else
+            RELEASE_ASSERT_NOT_REACHED();
+#endif
+            break;
         case Throw:
             compileThrow();
             break;
@@ -3711,15 +3718,35 @@ private:
             speculate(
                 ExoticObjectMode, noValue(), nullptr,
                 m_out.notNull(m_out.loadPtr(base, m_heaps.DirectArguments_mappedArguments)));
-            speculate(
-                ExoticObjectMode, noValue(), nullptr,
-                m_out.aboveOrEqual(
-                    index,
-                    m_out.load32NonNegative(base, m_heaps.DirectArguments_length)));
 
+            auto isOutOfBounds = m_out.aboveOrEqual(index, m_out.load32NonNegative(base, m_heaps.DirectArguments_length));
+            if (m_node->arrayMode().isInBounds()) {
+                speculate(OutOfBounds, noValue(), nullptr, isOutOfBounds);
+                TypedPointer address = m_out.baseIndex(
+                    m_heaps.DirectArguments_storage, base, m_out.zeroExtPtr(index));
+                setJSValue(m_out.load64(address));
+                return;
+            }
+
+            LBasicBlock inBounds = m_out.newBlock();
+            LBasicBlock slowCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
+
+            m_out.branch(isOutOfBounds, rarely(slowCase), usually(inBounds));
+
+            LBasicBlock lastNext = m_out.appendTo(inBounds, slowCase);
             TypedPointer address = m_out.baseIndex(
-                m_heaps.DirectArguments_storage, caged(Gigacage::JSValue, base), m_out.zeroExtPtr(index));
-            setJSValue(m_out.load64(address));
+                m_heaps.DirectArguments_storage, base, m_out.zeroExtPtr(index));
+            ValueFromBlock fastResult = m_out.anchor(m_out.load64(address));
+            m_out.jump(continuation);
+
+            m_out.appendTo(slowCase, continuation);
+            ValueFromBlock slowResult = m_out.anchor(
+                vmCall(Int64, m_out.operation(operationGetByValObjectInt), m_callFrame, base, index));
+            m_out.jump(continuation);
+
+            m_out.appendTo(continuation, lastNext);
+            setJSValue(m_out.phi(Int64, fastResult, slowResult));
             return;
         }
             
@@ -3746,9 +3773,7 @@ private:
             LBasicBlock lastNext = m_out.appendTo(namedCase, overflowCase);
             
             LValue scope = m_out.loadPtr(base, m_heaps.ScopedArguments_scope);
-            LValue arguments = caged(
-                ScopedArgumentsTable::ArgumentsPtr::kind,
-                m_out.loadPtr(table, m_heaps.ScopedArgumentsTable_arguments));
+            LValue arguments = m_out.loadPtr(table, m_heaps.ScopedArgumentsTable_arguments);
             
             TypedPointer address = m_out.baseIndex(
                 m_heaps.scopedArgumentsTableArguments, arguments, m_out.zeroExtPtr(index));
@@ -3759,15 +3784,14 @@ private:
                 m_out.equal(scopeOffset, m_out.constInt32(ScopeOffset::invalidOffset)));
             
             address = m_out.baseIndex(
-                m_heaps.JSLexicalEnvironment_variables, caged(Gigacage::JSValue, scope),
-                m_out.zeroExtPtr(scopeOffset));
+                m_heaps.JSLexicalEnvironment_variables, scope, m_out.zeroExtPtr(scopeOffset));
             ValueFromBlock namedResult = m_out.anchor(m_out.load64(address));
             m_out.jump(continuation);
             
             m_out.appendTo(overflowCase, continuation);
             
             address = m_out.baseIndex(
-                m_heaps.ScopedArguments_overflowStorage, caged(Gigacage::JSValue, base),
+                m_heaps.ScopedArguments_overflowStorage, base,
                 m_out.zeroExtPtr(m_out.sub(index, namedLength)));
             LValue overflowValue = m_out.load64(address);
             speculate(ExoticObjectMode, noValue(), nullptr, m_out.isZero64(overflowValue));
@@ -3915,7 +3939,7 @@ private:
             
             lastNext = m_out.appendTo(normalCase, continuation);
         } else
-            speculate(ExoticObjectMode, noValue(), 0, isOutOfBounds);
+            speculate(OutOfBounds, noValue(), 0, isOutOfBounds);
         
         TypedPointer base;
         if (inlineCallFrame) {
@@ -8172,6 +8196,56 @@ private:
     void compileForceOSRExit()
     {
         terminate(InadequateCoverage);
+    }
+
+    void compileCPUIntrinsic()
+    {
+#if CPU(X86_64)
+        Intrinsic intrinsic = m_node->intrinsic();
+        switch (intrinsic) {
+        case CPUMfenceIntrinsic:
+        case CPUCpuidIntrinsic:
+        case CPUPauseIntrinsic: {
+            PatchpointValue* patchpoint = m_out.patchpoint(Void);
+            patchpoint->effects = Effects::forCall();
+            if (intrinsic == CPUCpuidIntrinsic)
+                patchpoint->clobber(RegisterSet { X86Registers::eax, X86Registers::ebx, X86Registers::ecx, X86Registers::edx });
+
+            patchpoint->setGenerator([=] (CCallHelpers& jit, const B3::StackmapGenerationParams&) {
+                switch (intrinsic) {
+                case CPUMfenceIntrinsic:
+                    jit.mfence();
+                    break;
+                case CPUCpuidIntrinsic:
+                    jit.cpuid();
+                    break;
+                case CPUPauseIntrinsic:
+                    jit.pause();
+                    break;
+                default:
+                    RELEASE_ASSERT_NOT_REACHED();
+                }
+            });
+            setJSValue(m_out.constInt64(JSValue::encode(jsUndefined())));
+            break;
+        }
+        case CPURdtscIntrinsic: {
+            PatchpointValue* patchpoint = m_out.patchpoint(Int32);
+            patchpoint->effects = Effects::forCall();
+            patchpoint->clobber(RegisterSet { X86Registers::eax, X86Registers::edx });
+            // The low 32-bits of rdtsc go into rax.
+            patchpoint->resultConstraint = ValueRep::reg(X86Registers::eax);
+            patchpoint->setGenerator( [=] (CCallHelpers& jit, const B3::StackmapGenerationParams&) {
+                jit.rdtsc();
+            });
+            setJSValue(boxInt32(patchpoint));
+            break;
+        }
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+
+        }
+#endif
     }
     
     void compileThrow()

@@ -58,6 +58,7 @@
 #include "DocumentLoader.h"
 #include "DocumentMarkerController.h"
 #include "DocumentSharedObjectPool.h"
+#include "DocumentTimeline.h"
 #include "DocumentType.h"
 #include "Editing.h"
 #include "Editor.h"
@@ -74,6 +75,7 @@
 #include "GenericCachedHTMLCollection.h"
 #include "HTMLAllCollection.h"
 #include "HTMLAnchorElement.h"
+#include "HTMLAttachmentElement.h"
 #include "HTMLBaseElement.h"
 #include "HTMLBodyElement.h"
 #include "HTMLCanvasElement.h"
@@ -194,6 +196,7 @@
 #include "ValidationMessageClient.h"
 #include "VisibilityChangeClient.h"
 #include "VisitedLinkState.h"
+#include "WebAnimation.h"
 #include "WheelEvent.h"
 #include "WindowFeatures.h"
 #include "XMLDocument.h"
@@ -1921,6 +1924,19 @@ bool Document::needsStyleRecalc() const
     return false;
 }
 
+inline bool static isSafeToUpdateStyleOrLayout(FrameView* frameView)
+{
+#if USE(WEB_THREAD)
+    // FIXME: Remove this code: <rdar://problem/35522719>
+    bool usingWebThread = WebThreadIsEnabled();
+#else
+    bool usingWebThread = false;
+#endif
+    bool isSafeToExecuteScript = NoEventDispatchAssertion::InMainThread::isEventAllowed();
+    bool isInFrameFlattening = frameView && frameView->isInChildFrameWithFrameFlattening();
+    return isSafeToExecuteScript || isInFrameFlattening || usingWebThread;
+}
+
 bool Document::updateStyleIfNeeded()
 {
     RefPtr<FrameView> frameView = view();
@@ -1938,10 +1954,8 @@ bool Document::updateStyleIfNeeded()
             return false;
     }
 
-    // The early exit for needsStyleRecalc() is needed when updateWidgetPositions() is called in runOrScheduleAsynchronousTasks().
-#if !USE(WEB_THREAD)
-    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::InMainThread::isEventAllowed() || (frameView && frameView->isInChildFrameWithFrameFlattening()));
-#endif
+    // The early exit above for !needsStyleRecalc() is needed when updateWidgetPositions() is called in runOrScheduleAsynchronousTasks().
+    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(isSafeToUpdateStyleOrLayout(frameView.get()));
 
     resolveStyle();
     return true;
@@ -1958,9 +1972,7 @@ void Document::updateLayout()
         ASSERT_NOT_REACHED();
         return;
     }
-#if !USE(WEB_THREAD)
-    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::InMainThread::isEventAllowed() || (frameView && frameView->isInChildFrameWithFrameFlattening()));
-#endif
+    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(isSafeToUpdateStyleOrLayout(frameView.get()));
 
     RenderView::RepaintRegionAccumulator repaintRegionAccumulator(renderView());
 
@@ -2311,8 +2323,17 @@ void Document::prepareForDestruction()
     if (m_hasPreparedForDestruction)
         return;
 
+    if (m_timeline) {
+        m_timeline->detachFromDocument();
+        m_timeline = nullptr;
+    }
+
     if (m_frame)
         m_frame->animation().detachFromDocument(this);
+
+#if ENABLE(SERVICE_WORKER)
+    setActiveServiceWorker(nullptr);
+#endif
 
 #if ENABLE(IOS_TOUCH_EVENTS)
     clearTouchEventHandlersAndListeners();
@@ -7461,6 +7482,50 @@ DocumentTimeline& Document::timeline()
 
     return *m_timeline;
 }
+
+Vector<RefPtr<WebAnimation>> Document::getAnimations()
+{
+    Vector<RefPtr<WebAnimation>> animations;
+    if (m_timeline) {
+        // FIXME: Filter and order the list as specified (webkit.org/b/179535).
+        for (auto& animation : m_timeline->animations())
+            animations.append(animation);
+    }
+    return animations;
+}
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+
+void Document::didInsertAttachmentElement(HTMLAttachmentElement& attachment)
+{
+    auto identifier = attachment.uniqueIdentifier();
+    if (!identifier)
+        return;
+
+    m_attachmentIdentifierToElementMap.set(identifier, attachment);
+
+    if (frame())
+        frame()->editor().didInsertAttachmentElement(attachment);
+}
+
+void Document::didRemoveAttachmentElement(HTMLAttachmentElement& attachment)
+{
+    auto identifier = attachment.uniqueIdentifier();
+    if (!identifier)
+        return;
+
+    m_attachmentIdentifierToElementMap.remove(identifier);
+
+    if (frame())
+        frame()->editor().didRemoveAttachmentElement(attachment);
+}
+
+RefPtr<HTMLAttachmentElement> Document::attachmentForIdentifier(const String& identifier) const
+{
+    return m_attachmentIdentifierToElementMap.get(identifier);
+}
+
+#endif // ENABLE(ATTACHMENT_ELEMENT)
 
 static MessageSource messageSourceForWTFLogChannel(const WTFLogChannel& channel)
 {

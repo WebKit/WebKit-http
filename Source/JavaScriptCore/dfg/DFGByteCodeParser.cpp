@@ -1422,6 +1422,9 @@ void ByteCodeParser::emitArgumentPhantoms(int registerOffset, int argumentCountI
 
 bool ByteCodeParser::handleRecursiveTailCall(Node* callTargetNode, const CallLinkStatus& callLinkStatus, int registerOffset, VirtualRegister thisArgument, int argumentCountIncludingThis)
 {
+    if (UNLIKELY(!Options::optimizeRecursiveTailCalls()))
+        return false;
+
     // FIXME: We currently only do this optimisation in the simple, non-polymorphic case.
     // https://bugs.webkit.org/show_bug.cgi?id=178390
     if (callLinkStatus.couldTakeSlowPath() || callLinkStatus.size() != 1)
@@ -3033,6 +3036,23 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
         }
         return true;
     }
+
+    case CPUMfenceIntrinsic:
+    case CPURdtscIntrinsic:
+    case CPUCpuidIntrinsic:
+    case CPUPauseIntrinsic: {
+#if CPU(X86_64)
+        if (!isFTL(m_graph.m_plan.mode))
+            return false;
+        insertChecks();
+        set(VirtualRegister(resultOperand),
+            addToGraph(CPUIntrinsic, OpInfo(intrinsic), OpInfo()));
+        return true;
+#else
+        return false;
+#endif
+    }
+
 
     default:
         return false;

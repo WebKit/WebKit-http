@@ -40,6 +40,7 @@
 #include "ResourceLoaderOptions.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
+#include "ServiceWorkerRegistrationData.h"
 #include "StringWithDirection.h"
 #include "StyleSheetContents.h"
 #include "SubstituteData.h"
@@ -53,7 +54,7 @@
 #include <wtf/RunLoopTimer.h>
 #endif
 
-#if PLATFORM(COCOA) && !USE(CFURLCONNECTION)
+#if PLATFORM(COCOA)
 #include <wtf/SchedulePair.h>
 #endif
 
@@ -156,7 +157,7 @@ public:
     WEBCORE_EXPORT void setTitle(const StringWithDirection&);
     const String& overrideEncoding() const { return m_overrideEncoding; }
 
-#if PLATFORM(COCOA) && !USE(CFURLCONNECTION)
+#if PLATFORM(COCOA)
     void schedule(SchedulePair&);
     void unschedule(SchedulePair&);
 #endif
@@ -309,6 +310,8 @@ protected:
 private:
     Document* document() const;
 
+    void loadMainResource(ResourceRequest&&);
+
     void setRequest(const ResourceRequest&);
 
     void commitIfReady();
@@ -324,7 +327,7 @@ private:
     void clearArchiveResources();
 #endif
 
-    void willSendRequest(ResourceRequest&, const ResourceResponse&);
+    void willSendRequest(ResourceRequest&&, const ResourceResponse&, CompletionHandler<void(ResourceRequest&&)>&&);
     void finishedLoading();
     void mainReceivedError(const ResourceError&);
     WEBCORE_EXPORT void redirectReceived(CachedResource&, ResourceRequest&&, const ResourceResponse&, CompletionHandler<void(ResourceRequest&&)>&&) override;
@@ -478,6 +481,10 @@ private:
     bool m_userContentExtensionsEnabled { true };
     AutoplayPolicy m_autoplayPolicy { AutoplayPolicy::Default };
     OptionSet<AutoplayQuirk> m_allowedAutoplayQuirks;
+
+#if ENABLE(SERVICE_WORKER)
+    std::optional<ServiceWorkerRegistrationData> m_serviceWorkerRegistrationData;
+#endif
 
 #ifndef NDEBUG
     bool m_hasEverBeenAttached { false };

@@ -236,6 +236,7 @@ typedef GenericCallback<uint64_t> UnsignedCallback;
 typedef GenericCallback<EditingRange> EditingRangeCallback;
 typedef GenericCallback<const String&> StringCallback;
 typedef GenericCallback<API::SerializedScriptValue*, bool, const WebCore::ExceptionDetails&> ScriptValueCallback;
+typedef GenericCallback<RefPtr<WebCore::SharedBuffer>> SharedBufferCallback;
 
 #if PLATFORM(GTK)
 typedef GenericCallback<API::Error*> PrintFinishedCallback;
@@ -873,6 +874,9 @@ public:
     bool isValidEditCommand(WebEditCommandProxy*);
     void registerEditCommand(Ref<WebEditCommandProxy>&&, UndoOrRedo);
 
+    bool canUndo();
+    bool canRedo();
+
 #if PLATFORM(COCOA)
     void registerKeypressCommandName(const String& name) { m_knownKeypressCommandNames.add(name); }
     bool isValidKeypressCommandName(const String& name) const { return m_knownKeypressCommandNames.contains(name); }
@@ -1213,6 +1217,7 @@ public:
 
 #if ENABLE(ATTACHMENT_ELEMENT)
     void insertAttachment(const String& identifier, const String& filename, std::optional<String> contentType, WebCore::SharedBuffer& data, Function<void(CallbackBase::Error)>&&);
+    void requestAttachmentData(const String& identifier, Function<void(RefPtr<WebCore::SharedBuffer>, CallbackBase::Error)>&&);
 #endif
 
 private:
@@ -1466,6 +1471,7 @@ private:
 
     void voidCallback(CallbackID);
     void dataCallback(const IPC::DataReference&, CallbackID);
+    void sharedBufferCallback(const IPC::DataReference&, bool isNull, CallbackID);
     void imageCallback(const ShareableBitmap::Handle&, CallbackID);
     void stringCallback(const String&, CallbackID);
     void invalidateStringCallback(CallbackID);

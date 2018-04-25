@@ -1,3 +1,125 @@
+2017-11-14  Nan Wang  <n_wang@apple.com>
+
+        AX: AOM: Implement AccessibleNode class and support label and role attributes
+        https://bugs.webkit.org/show_bug.cgi?id=179494
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences accessibilityObjectModelEnabled]):
+        (-[WebPreferences setAccessibilityObjectModelEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-11-14  Alex Christensen  <achristensen@webkit.org>
+
+        Remove Cocoa CFURLConnection loading code
+        https://bugs.webkit.org/show_bug.cgi?id=179688
+
+        Reviewed by Antti Koivisto.
+
+        * Misc/WebDownload.mm:
+        (-[WebDownload _initWithLoadingCFURLConnection:request:response:delegate:proxy:]): Deleted.
+        * Misc/WebDownloadInternal.h:
+        * Plugins/WebBaseNetscapePluginView.mm:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::convertMainResourceLoadToDownload):
+        * WebView/WebView.mm:
+        (-[WebView scheduleInRunLoop:forMode:]):
+        (-[WebView unscheduleFromRunLoop:forMode:]):
+
+2017-11-14  Daniel Bates  <dabates@apple.com>
+
+        Update comment in FeatureDefines.xcconfig to reflect location of Visual Studio property files
+        for feature defines
+
+        Following r195498 and r201917 the Visual Studio property files for feature defines have
+        moved from directory WebKitLibraries/win/tools/vsprops to directory Source/cmake/tools/vsprops.
+        Update the comment in FeatureDefines.xcconfig to reflect the new location and names of these
+        files.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-11-14  Jer Noble  <jer.noble@apple.com>
+
+        Enable Modern EME tests in DumpRenderTree
+        https://bugs.webkit.org/show_bug.cgi?id=179544
+
+        Reviewed by Alex Christensen.
+
+        Add a WebPreferences property to enable the (modern) EME API.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences encryptedMediaAPIEnabled]):
+        (-[WebPreferences setEncryptedMediaAPIEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-11-14  Antti Koivisto  <antti@apple.com>
+
+        Enable display:contents by default
+        https://bugs.webkit.org/show_bug.cgi?id=179655
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2017-11-13  Alex Christensen  <achristensen@webkit.org>
+
+        Merge NetworkProcess::EnsurePrivateBrowsingSession and NetworkProcess::AddWebsiteDataStore into one message type
+        https://bugs.webkit.org/show_bug.cgi?id=178751
+
+        Reviewed by Brady Eidson.
+
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        (WebFrameNetworkingContext::ensurePrivateBrowsingSession):
+
+2017-11-08  Keith Miller  <keith_miller@apple.com>
+
+        Async iteration should only fetch the next method once and add feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=179451
+
+        Reviewed by Geoffrey Garen.
+
+        Add feature flag for Async iteration.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-11-13  Mark Lam  <mark.lam@apple.com>
+
+        Add more overflow check book-keeping for MarkedArgumentBuffer.
+        https://bugs.webkit.org/show_bug.cgi?id=179634
+        <rdar://problem/35492517>
+
+        Reviewed by Saam Barati.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::invoke):
+        (WebKit::NetscapePluginInstanceProxy::invokeDefault):
+        (WebKit::NetscapePluginInstanceProxy::construct):
+
+2017-11-12  Darin Adler  <darin@apple.com>
+
+        More is<> and downcast<>, less static_cast<>
+        https://bugs.webkit.org/show_bug.cgi?id=179600
+
+        Reviewed by Chris Dumez.
+
+        * DOM/DOM.mm:
+        (kit): Use is/downcast.
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::handleKeyboardEvent): Ditto.
+        (WebEditorClient::handleInputMethodKeydown): Ditto.
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _interpretKeyEvent:savingCommands:]): Ditto.
+
 2017-11-10  Frederik Riedel  <frederik.riedel@frogg.io>
 
         [iOS] Use new class name from UIKit when checking UITextSuggestion type for WebKitLegacy

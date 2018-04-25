@@ -129,7 +129,7 @@ public:
     bool canAuthenticateAgainstProtectionSpace(const ProtectionSpace&);
 #endif
 
-#if PLATFORM(COCOA) && !USE(CFURLCONNECTION)
+#if PLATFORM(COCOA)
     WEBCORE_EXPORT NSURLConnection *connection() const;
     id makeDelegate(bool, WTF::MessageQueue<WTF::Function<void()>>*);
     id delegate();
@@ -213,7 +213,7 @@ public:
 #if USE(CFURLCONNECTION)
     WEBCORE_EXPORT void continueWillCacheResponse(CFCachedURLResponseRef);
 #endif
-#if PLATFORM(COCOA) && !USE(CFURLCONNECTION)
+#if PLATFORM(COCOA)
     WEBCORE_EXPORT void continueWillCacheResponse(NSCachedURLResponse *);
 #endif
 
@@ -231,10 +231,6 @@ public:
 
 #if PLATFORM(COCOA) || USE(CFURLCONNECTION)
     WEBCORE_EXPORT static CFStringRef synchronousLoadRunLoopMode();
-#endif
-
-#if PLATFORM(IOS) && USE(CFURLCONNECTION)
-    static CFMutableDictionaryRef createSSLPropertiesFromNSURLRequest(const ResourceRequest&);
 #endif
 
     typedef Ref<ResourceHandle> (*BuiltinConstructor)(const ResourceRequest& request, ResourceHandleClient* client);
@@ -277,11 +273,11 @@ private:
     void createCFURLConnection(bool shouldUseCredentialStorage, bool shouldContentSniff, bool shouldContentEncodingSniff, WTF::MessageQueue<WTF::Function<void()>>*, CFDictionaryRef clientProperties);
 #endif
 
-#if PLATFORM(MAC) && !USE(CFURLCONNECTION)
+#if PLATFORM(MAC)
     void createNSURLConnection(id delegate, bool shouldUseCredentialStorage, bool shouldContentSniff, bool shouldContentEncodingSniff, SchedulingBehavior);
 #endif
 
-#if PLATFORM(IOS) && !USE(CFURLCONNECTION)
+#if PLATFORM(IOS)
     void createNSURLConnection(id delegate, bool shouldUseCredentialStorage, bool shouldContentSniff, bool shouldContentEncodingSniff, SchedulingBehavior, NSDictionary *connectionProperties);
 #endif
 

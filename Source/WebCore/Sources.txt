@@ -308,6 +308,7 @@ accessibility/AccessibilityTableHeaderContainer.cpp
 accessibility/AccessibilityTableRow.cpp
 accessibility/AccessibilityTree.cpp
 accessibility/AccessibilityTreeItem.cpp
+accessibility/AccessibleNode.cpp
 
 animation/AnimationEffect.cpp
 animation/AnimationEffectTiming.cpp
@@ -889,6 +890,7 @@ html/BaseClickableWithKeyInputType.cpp
 html/BaseDateAndTimeInputType.cpp
 html/BaseTextInputType.cpp
 html/ButtonInputType.cpp
+html/CanvasBase.cpp
 html/CheckboxInputType.cpp
 html/ColorInputType.cpp
 html/DOMFormData.cpp
@@ -1150,10 +1152,13 @@ inspector/agents/WebHeapAgent.cpp
 inspector/agents/page/PageConsoleAgent.cpp
 inspector/agents/page/PageDebuggerAgent.cpp
 inspector/agents/page/PageHeapAgent.cpp
+inspector/agents/page/PageNetworkAgent.cpp
 inspector/agents/page/PageRuntimeAgent.cpp
 
+inspector/agents/worker/ServiceWorkerAgent.cpp
 inspector/agents/worker/WorkerConsoleAgent.cpp
 inspector/agents/worker/WorkerDebuggerAgent.cpp
+inspector/agents/worker/WorkerNetworkAgent.cpp
 inspector/agents/worker/WorkerRuntimeAgent.cpp
 
 loader/ContentFilter.cpp
@@ -1500,6 +1505,7 @@ platform/graphics/FontTaggedSettings.cpp
 platform/graphics/FontGenericFamilies.cpp
 platform/graphics/FontPlatformData.cpp
 platform/graphics/FontRanges.cpp
+platform/graphics/FourCC.cpp
 platform/graphics/GeneratedImage.cpp
 platform/graphics/GeometryUtilities.cpp
 platform/graphics/Gradient.cpp
@@ -2167,9 +2173,11 @@ workers/service/ExtendableMessageEvent.cpp
 workers/service/FetchEvent.cpp
 workers/service/ServiceWorker.cpp
 workers/service/ServiceWorkerClient.cpp
+workers/service/ServiceWorkerClientData.cpp
 workers/service/ServiceWorkerClients.cpp
 workers/service/ServiceWorkerContainer.cpp
 workers/service/ServiceWorkerContextData.cpp
+workers/service/ServiceWorkerData.cpp
 workers/service/ServiceWorkerGlobalScope.cpp
 workers/service/ServiceWorkerJob.cpp
 workers/service/ServiceWorkerJobData.cpp
@@ -2188,9 +2196,11 @@ workers/service/context/ServiceWorkerThreadProxy.cpp
 workers/service/context/SWContextManager.cpp
 
 workers/service/server/SWClientConnection.cpp
+workers/service/server/SWOriginStore.cpp
 workers/service/server/SWServer.cpp
 workers/service/server/SWServerJobQueue.cpp
 workers/service/server/SWServerRegistration.cpp
+workers/service/server/SWServerToContextConnection.cpp
 workers/service/server/SWServerWorker.cpp
 
 xml/DOMParser.cpp
@@ -2251,6 +2261,7 @@ JSHTMLElementWrapperFactory.cpp
 JSAbortController.cpp
 JSAbortSignal.cpp
 JSAbstractWorker.cpp
+JSAccessibleNode.cpp
 JSAesCbcCfbParams.cpp
 JSAesCtrParams.cpp
 JSAesGcmParams.cpp

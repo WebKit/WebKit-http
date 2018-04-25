@@ -37,6 +37,7 @@
 #include "WebSWServerConnectionMessages.h"
 #include <WebCore/Document.h>
 #include <WebCore/SerializedScriptValue.h>
+#include <WebCore/ServiceWorkerClientData.h>
 #include <WebCore/ServiceWorkerFetchResult.h>
 #include <WebCore/ServiceWorkerJobData.h>
 #include <WebCore/ServiceWorkerRegistrationData.h>
@@ -80,13 +81,19 @@ void WebSWClientConnection::removeServiceWorkerRegistrationInServer(const Servic
     send(Messages::WebSWServerConnection::RemoveServiceWorkerRegistrationInServer(key, identifier));
 }
 
-void WebSWClientConnection::postMessageToServiceWorkerGlobalScope(ServiceWorkerIdentifier destinationIdentifier, Ref<SerializedScriptValue>&& scriptValue, ScriptExecutionContext& source)
+void WebSWClientConnection::postMessageToServiceWorkerGlobalScope(ServiceWorkerIdentifier destinationIdentifier, Ref<SerializedScriptValue>&& scriptValue, ServiceWorkerClientData&& source)
 {
-    // FIXME: Add support for posting messages from workers.
-    if (!is<Document>(source))
-        return;
+    send(Messages::WebSWServerConnection::PostMessageToServiceWorkerGlobalScope(destinationIdentifier, IPC::DataReference { scriptValue->data() }, WTFMove(source)));
+}
 
-    send(Messages::WebSWServerConnection::PostMessageToServiceWorkerGlobalScope(destinationIdentifier, IPC::DataReference { scriptValue->data() }, downcast<Document>(source).identifier(), source.origin()));
+void WebSWClientConnection::serviceWorkerStartedControllingClient(ServiceWorkerIdentifier serviceWorkerIdentifier, uint64_t scriptExecutionContextIdentifier)
+{
+    send(Messages::WebSWServerConnection::ServiceWorkerStartedControllingClient(serviceWorkerIdentifier, scriptExecutionContextIdentifier));
+}
+
+void WebSWClientConnection::serviceWorkerStoppedControllingClient(ServiceWorkerIdentifier serviceWorkerIdentifier, uint64_t scriptExecutionContextIdentifier)
+{
+    send(Messages::WebSWServerConnection::ServiceWorkerStoppedControllingClient(serviceWorkerIdentifier, scriptExecutionContextIdentifier));
 }
 
 void WebSWClientConnection::didResolveRegistrationPromise(const ServiceWorkerRegistrationKey& key)
@@ -94,8 +101,11 @@ void WebSWClientConnection::didResolveRegistrationPromise(const ServiceWorkerReg
     send(Messages::WebSWServerConnection::DidResolveRegistrationPromise(key));
 }
 
-bool WebSWClientConnection::hasServiceWorkerRegisteredForOrigin(const SecurityOrigin& origin) const
+bool WebSWClientConnection::mayHaveServiceWorkerRegisteredForOrigin(const SecurityOrigin& origin) const
 {
+    if (!m_swOriginTable->isInitialized())
+        return true;
+
     return m_swOriginTable->contains(origin);
 }
 
@@ -104,31 +114,58 @@ void WebSWClientConnection::setSWOriginTableSharedMemory(const SharedMemory::Han
     m_swOriginTable->setSharedMemory(handle);
 }
 
+void WebSWClientConnection::initializeSWOriginTableAsEmpty()
+{
+    m_swOriginTable->initializeAsEmpty();
+}
+
 void WebSWClientConnection::didMatchRegistration(uint64_t matchingRequest, std::optional<ServiceWorkerRegistrationData>&& result)
 {
     if (auto completionHandler = m_ongoingMatchRegistrationTasks.take(matchingRequest))
         completionHandler(WTFMove(result));
 }
 
+void WebSWClientConnection::didGetRegistrations(uint64_t matchingRequest, Vector<ServiceWorkerRegistrationData>&& registrations)
+{
+    if (auto completionHandler = m_ongoingGetRegistrationsTasks.take(matchingRequest))
+        completionHandler(WTFMove(registrations));
+}
+
 void WebSWClientConnection::matchRegistration(const SecurityOrigin& topOrigin, const URL& clientURL, RegistrationCallback&& callback)
 {
+    if (!mayHaveServiceWorkerRegisteredForOrigin(topOrigin)) {
+        callback(std::nullopt);
+        return;
+    }
+
     uint64_t requestIdentifier = ++m_previousMatchRegistrationTaskIdentifier;
     m_ongoingMatchRegistrationTasks.add(requestIdentifier, WTFMove(callback));
     send(Messages::WebSWServerConnection::MatchRegistration(requestIdentifier, SecurityOriginData::fromSecurityOrigin(topOrigin), clientURL));
 }
 
+void WebSWClientConnection::getRegistrations(const SecurityOrigin& topOrigin, const URL& clientURL, GetRegistrationsCallback&& callback)
+{
+    if (!mayHaveServiceWorkerRegisteredForOrigin(topOrigin)) {
+        callback({ });
+        return;
+    }
+
+    uint64_t requestIdentifier = ++m_previousGetRegistrationsTaskIdentifier;
+    m_ongoingGetRegistrationsTasks.add(requestIdentifier, WTFMove(callback));
+    send(Messages::WebSWServerConnection::GetRegistrations(requestIdentifier, SecurityOriginData::fromSecurityOrigin(topOrigin), clientURL));
+}
+
 Ref<ServiceWorkerClientFetch> WebSWClientConnection::startFetch(WebServiceWorkerProvider& provider, Ref<WebCore::ResourceLoader>&& loader, uint64_t identifier, ServiceWorkerClientFetch::Callback&& callback)
 {
-    ASSERT(loader->options().serviceWorkersMode != ServiceWorkersMode::None);
-    // FIXME: Decide whether to assert for loader->options().serviceWorkerIdentifier once we have a story for navigation loads.
+    ASSERT(loader->options().serviceWorkersMode != ServiceWorkersMode::None && loader->options().serviceWorkerIdentifier);
 
     send(Messages::WebSWServerConnection::StartFetch(identifier, loader->options().serviceWorkerIdentifier, loader->originalRequest(), loader->options()));
     return ServiceWorkerClientFetch::create(provider, WTFMove(loader), identifier, m_connection.get(), WTFMove(callback));
 }
 
-void WebSWClientConnection::postMessageToServiceWorkerClient(uint64_t destinationScriptExecutionContextIdentifier, const IPC::DataReference& message, ServiceWorkerIdentifier sourceIdentifier, const String& sourceOrigin)
+void WebSWClientConnection::postMessageToServiceWorkerClient(uint64_t destinationScriptExecutionContextIdentifier, const IPC::DataReference& message, ServiceWorkerData&& source, const String& sourceOrigin)
 {
-    SWClientConnection::postMessageToServiceWorkerClient(destinationScriptExecutionContextIdentifier, SerializedScriptValue::adopt(message.vector()), sourceIdentifier, sourceOrigin);
+    SWClientConnection::postMessageToServiceWorkerClient(destinationScriptExecutionContextIdentifier, SerializedScriptValue::adopt(message.vector()), WTFMove(source), sourceOrigin);
 }
 
 } // namespace WebKit
