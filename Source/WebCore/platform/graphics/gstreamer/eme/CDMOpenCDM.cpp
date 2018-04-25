@@ -388,7 +388,7 @@ void CDMInstanceOpenCDM::closeSession(const String& sessionId, CloseSessionCallb
     callback();
 }
 
-String CDMInstanceOpenCDM::sessionIdByInitData(const InitData& initData, bool firstInLine) const
+String CDMInstanceOpenCDM::sessionIdByInitData(const InitData& initData) const
 {
     LockHolder locker(m_sessionMapMutex);
 
@@ -411,13 +411,9 @@ String CDMInstanceOpenCDM::sessionIdByInitData(const InitData& initData, bool fi
         }
     }
 
-    if (result.isEmpty()) {
-        if (firstInLine) {
-            result = m_sessionsMap.begin()->key;
-            GST_INFO("Unknown session, returning the first in line: %s", result.utf8().data());
-        } else
-            GST_WARNING("Unknown session, nothing will be returned");
-    } else
+    if (result.isEmpty())
+        GST_WARNING("Unknown session, nothing will be returned");
+    else
         GST_DEBUG("Found session for initdata: %s", result.utf8().data());
 
     return result;

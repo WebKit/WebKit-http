@@ -115,7 +115,7 @@ public:
     void storeRecordOfKeyUsage(const String&) final { }
 
     // The init data, is the only way to find a proper session id.
-    String sessionIdByInitData(const InitData&, bool firstInLine) const;
+    String sessionIdByInitData(const InitData&) const;
     bool isSessionIdUsable(const String&) const;
 
 private:

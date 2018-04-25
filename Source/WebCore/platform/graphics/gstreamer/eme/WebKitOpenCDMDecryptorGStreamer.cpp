@@ -106,7 +106,7 @@ static SessionResult webKitMediaOpenCDMDecryptorResetSessionFromInitDataIfNeeded
     LockHolder locker(priv->m_mutex);
 
     SessionResult returnValue = InvalidSession;
-    String session = cdmInstanceOpenCDM.sessionIdByInitData(initData, false);
+    String session = cdmInstanceOpenCDM.sessionIdByInitData(initData);
     if (session.isEmpty() || !cdmInstanceOpenCDM.isSessionIdUsable(session)) {
         GST_DEBUG_OBJECT(self, "session %s is empty or unusable, resetting", session.utf8().data());
         priv->m_session = String();
