@@ -264,9 +264,6 @@ BPoint BWebFrame::ScrollPosition()
 BString BWebFrame::FrameSource() const
 {
     if (fData->frame) {
-        if (fData->frame->view() && fData->frame->view()->layoutPending())
-            fData->frame->view()->layout();
-
         WebCore::Document* document = fData->frame->document();
 
         if (document)
@@ -299,9 +296,6 @@ BString BWebFrame::InnerText() const
 {
     FrameView* view = fData->frame->view();
 
-    if (view && view->layoutPending())
-        view->layout();
-
     WebCore::Element *documentElement = fData->frame->document()->documentElement();
 
     if (!documentElement)
@@ -321,9 +315,6 @@ BString BWebFrame::AsMarkup() const
 BString BWebFrame::ExternalRepresentation() const
 {
     FrameView* view = fData->frame->view();
-
-    if (view && view->layoutPending())
-        view->layout();
 
     return externalRepresentation(fData->frame);
 }

@@ -31,6 +31,16 @@
 
 namespace WebCore {
 
+void DNSResolveQueue::updateIsUsingProxy()
+{
+    notImplemented();
+}
+
+void DNSResolveQueue::platformResolve(const String& /* hostname */)
+{
+    notImplemented();
+}
+
 void prefetchDNS(const String& hostname)
 {
     if (hostname.isEmpty())

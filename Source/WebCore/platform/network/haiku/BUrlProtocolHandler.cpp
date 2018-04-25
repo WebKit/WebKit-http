@@ -32,6 +32,7 @@
 #include "ResourceHandleInternal.h"
 #include "ResourceResponse.h"
 #include "ResourceRequest.h"
+#include <wtf/CompletionHandler.h>
 #include <wtf/text/CString.h>
 
 #include <Debug.h>
@@ -459,8 +460,6 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
         return;
     }
 
-    ResourceRequest& currentRequest = m_resourceHandle->firstRequest();
-
     Credential proposedCredential(d->m_user, d->m_pass, CredentialPersistenceForSession);
 
     AuthenticationChallenge authenticationChallenge(protectionSpace,
@@ -476,7 +475,10 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
         ResourceRequest request = m_resourceHandle->firstRequest();
 		ResourceResponse responseCopy = response;
         request.setCredentials(d->m_user.utf8().data(), d->m_pass.utf8().data());
-        client->willSendRequest(m_resourceHandle, WTFMove(request), WTFMove(responseCopy));
+		client->willSendRequestAsync(m_resourceHandle, WTFMove(request), WTFMove(responseCopy),
+    	[handle = makeRef(*m_resourceHandle)] (ResourceRequest&& request) {
+        	//continueAfterWillSendRequest(handle.ptr(), WTFMove(request));
+    	});
     } else {
         // Anything to do in case of failure?
     }
@@ -567,10 +569,13 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* caller,
         ResourceResponse responseCopy = response;
         request.setURL(url);
 
-        client->willSendRequest(m_resourceHandle, WTFMove(request), WTFMove(responseCopy));
+		client->willSendRequestAsync(m_resourceHandle, WTFMove(request), WTFMove(responseCopy),
+    	[handle = makeRef(*m_resourceHandle)] (ResourceRequest&& request) {
+        	//continueAfterWillSendRequest(handle.ptr(), WTFMove(request));
+    	});
     } else {
         ResourceResponse responseCopy = response;
-        client->didReceiveResponse(m_resourceHandle, WTFMove(responseCopy));
+        client->didReceiveResponseAsync(m_resourceHandle, WTFMove(responseCopy));
     }
 }
 

@@ -96,58 +96,6 @@ void drawNativeImage(WTF::RefPtr<WebCore::BitmapRef> const& image,
 }
 
 
-void Image::drawPattern(GraphicsContext& context, const FloatRect& dstRect,
-    const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase,
-    const FloatSize& size, CompositeOperator op,
-    BlendMode)
-{
-    NativeImagePtr image = nativeImageForCurrentFrame();
-    if (!image || !image->IsValid()) // If the image hasn't fully loaded.
-        return;
-
-    // Figure out if the image has any alpha transparency, we can use faster drawing if not
-    bool hasAlpha = false;
-
-    uint8* bits = reinterpret_cast<uint8*>(image->Bits());
-    uint32 width = image->Bounds().IntegerWidth() + 1;
-    uint32 height = image->Bounds().IntegerHeight() + 1;
-
-    uint32 bytesPerRow = image->BytesPerRow();
-    for (uint32 y = 0; y < height && !hasAlpha; y++) {
-        uint8* p = bits;
-        for (uint32 x = 0; x < width && !hasAlpha; x++) {
-            hasAlpha = p[3] < 255;
-            p += 4;
-        }
-        bits += bytesPerRow;
-    }
-
-    context.save();
-    if (hasAlpha)
-        context.platformContext()->SetDrawingMode(B_OP_ALPHA);
-    else
-        context.platformContext()->SetDrawingMode(B_OP_COPY);
-
-    context.clip(enclosingIntRect(dstRect));
-    float currentW = phase.x();
-    BRect bTileRect(tileRect);
-    // FIXME app_server doesn't support B_TILE_BITMAP in DrawBitmap calls. This
-    // would be much faster (#11196)
-    while (currentW < dstRect.x() + dstRect.width()) {
-        float currentH = phase.y();
-        while (currentH < dstRect.y() + dstRect.height()) {
-            BRect bDstRect(currentW, currentH, currentW + width - 1, currentH + height - 1);
-            context.platformContext()->DrawBitmapAsync(image.get(), bTileRect, bDstRect);
-            currentH += height;
-        }
-        currentW += width;
-    }
-    context.restore();
-
-    if (imageObserver())
-        imageObserver()->didDraw(*this);
-}
-
 NativeImagePtr BitmapImage::getBBitmap()
 {
     return frameImageAtIndex(0);

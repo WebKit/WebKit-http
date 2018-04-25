@@ -454,11 +454,6 @@ void GraphicsContext::drawPattern(Image& image, const FloatRect& destRect,
     if (paintingDisabled())
         return;
 
-    if (isRecording()) {
-        m_displayListRecorder->drawPattern(image, destRect, tileRect, patternTransform, phase, spacing, op, blendMode);
-        return;
-    }
-
     NativeImagePtr pixels = image.nativeImageForCurrentFrame();
     if (!pixels || !pixels->IsValid()) // If the image hasn't fully loaded.
         return;
@@ -583,11 +578,6 @@ void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray&
 
     if (widths.size() <= 0)
         return;
-
-    if (isRecording()) {
-        m_displayListRecorder->drawLinesForText(point, widths, printing, doubleUnderlines, strokeThickness());
-        return;
-    }
 
     // TODO would be faster to use BeginLineArray/EndLineArray here
     // TODO in Cairo, these are not lines, but filled rectangle? Whats the thickness?
@@ -774,11 +764,6 @@ AffineTransform GraphicsContext::getCTM(IncludeDeviceScale) const
 {
     if (paintingDisabled())
         return AffineTransform();
-
-    if (isRecording()) {
-        WTFLogAlways("GraphicsContext::getCTM() is not yet compatible with recording contexts.");
-        return AffineTransform();
-    }
 
     BAffineTransform t = m_data->view()->Transform();
     	// TODO: we actually need to use the combined transform here?

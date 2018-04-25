@@ -222,7 +222,6 @@ BWebPage::BWebPage(BWebView* webView, BUrlContext* context)
     , fDisplayedStatusMessage()
     , fPageVisible(true)
     , fPageDirty(false)
-    , fLayoutingView(false)
     , fToolbarsVisible(true)
     , fStatusbarVisible(true)
     , fMenubarVisible(true)
@@ -710,7 +709,7 @@ void BWebPage::requestDownload(const WebCore::ResourceRequest& request,
 
 void BWebPage::paint(BRect rect, bool immediate)
 {
-	if (fLayoutingView || !rect.IsValid())
+	if (!rect.IsValid())
 		return;
     // Block any drawing as long as the BWebView is hidden
     // (should be extended to when the containing BWebWindow is not
@@ -730,13 +729,6 @@ void BWebPage::paint(BRect rect, bool immediate)
 
     if (!view || !frame->contentRenderer())
         return;
-
-    // calling layoutIfNeededRecursive can cycle back into paint(),
-    // we avoid recursion using fLayoutingView to abort the nested paint
-    // calls early
-    fLayoutingView = true;
-    view->layout();
-    fLayoutingView = false;
 
     if (!fWebView->LockLooper())
         return;
@@ -790,7 +782,7 @@ void BWebPage::internalPaint(BView* offscreenView,
 void BWebPage::scroll(int xOffset, int yOffset, const BRect& rectToScroll,
        const BRect& clipRect)
 {
-    if (fLayoutingView || !rectToScroll.IsValid() || !clipRect.IsValid()
+    if (!rectToScroll.IsValid() || !clipRect.IsValid()
         || (xOffset == 0 && yOffset == 0) || !fWebView->LockLooper()) {
         return;
     }
@@ -838,11 +830,6 @@ void BWebPage::scroll(int xOffset, int yOffset, const BRect& rectToScroll,
     if (repaintRegion.Frame().IsValid()) {
         WebCore::Frame* frame = fMainFrame->Frame();
         WebCore::FrameView* view = frame->view();
-        // Make sure the view is layouted, since it will refuse to paint
-        // otherwise.
-        fLayoutingView = true;
-        view->layout();
-        fLayoutingView = false;
 
         internalPaint(offscreenView, view, &repaintRegion);
     }

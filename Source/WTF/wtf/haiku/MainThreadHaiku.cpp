@@ -70,7 +70,7 @@ void initializeMainThreadPlatform()
 	mainThreadLooper->AddHandler(mainThreadHandler);
 }
 
-void scheduleDispatchFunctionsOnMainThread()
+void scheduleDispatchFunctionsOnMainThread(SchedulePairHashSet*)
 {
 	// This method shall allow to process user events on the main thread
 	// before calling dispatchFunctionsFromMainThread(). The message

@@ -38,6 +38,8 @@
 
 namespace WebCore {
 
+namespace FileSystem {
+
 CString fileSystemRepresentation(const String& path)
 {
     return path.utf8();
@@ -57,5 +59,6 @@ String homeDirectoryPath()
     return String(path.Path());
 }
 
+} // namespace FileSystem
 } // namespace WebCore
 

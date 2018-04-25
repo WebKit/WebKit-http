@@ -125,6 +125,24 @@ void FrameLoaderClientHaiku::frameLoaderDestroyed()
         // frame loader object is gone!
 }
 
+uint64_t FrameLoaderClientHaiku::pageID() const
+{
+    RELEASE_ASSERT_NOT_REACHED();
+    return 0;
+}
+
+uint64_t FrameLoaderClientHaiku::frameID() const
+{
+    RELEASE_ASSERT_NOT_REACHED();
+    return 0;
+}
+
+PAL::SessionID FrameLoaderClientHaiku::sessionID() const
+{
+    RELEASE_ASSERT_NOT_REACHED();
+    return PAL::SessionID::defaultSessionID();
+}
+
 bool FrameLoaderClientHaiku::hasWebView() const
 {
     return m_webPage->WebView();
@@ -548,7 +566,7 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(const Naviga
 
     if (action.type() == NavigationType::LinkClicked) {
         ResourceRequest emptyRequest;
-        m_webFrame->Frame()->loader().activeDocumentLoader()->setLastCheckedRequest(emptyRequest);
+        m_webFrame->Frame()->loader().activeDocumentLoader()->setLastCheckedRequest(WTFMove(emptyRequest));
     }
 
     function(PolicyAction::Ignore);

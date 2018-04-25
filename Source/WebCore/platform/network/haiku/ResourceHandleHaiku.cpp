@@ -50,10 +50,12 @@ public:
 
     void waitForCompletion();
 
-    void didReceiveResponse(ResourceHandle*, ResourceResponse&&) override;
+    void didReceiveResponseAsync(ResourceHandle*, ResourceResponse&&) override;
     void didReceiveData(ResourceHandle*, const char*, unsigned, int encodedDataLength) override;
     void didFinishLoading(ResourceHandle*) override;
     void didFail(ResourceHandle*, const ResourceError&) override;
+
+	void willSendRequestAsync(ResourceHandle*, ResourceRequest&&, ResourceResponse&&, CompletionHandler<void(ResourceRequest&&)>&&) override {}
 
     ResourceResponse resourceResponse() const { return m_response; }
     ResourceError resourceError() const { return m_error; }
@@ -72,7 +74,7 @@ WebCoreSynchronousLoader::WebCoreSynchronousLoader()
 {
 }
 
-void WebCoreSynchronousLoader::didReceiveResponse(ResourceHandle*, ResourceResponse&& response)
+void WebCoreSynchronousLoader::didReceiveResponseAsync(ResourceHandle*, ResourceResponse&& response)
 {
     m_response = response;
 }
@@ -144,7 +146,7 @@ void ResourceHandle::cancel()
 void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentialsPolicy /*storedCredentials*/, ResourceError& error, ResourceResponse& response, Vector<char>& data)
 {
     WebCoreSynchronousLoader syncLoader;
-    RefPtr<ResourceHandle> handle = adoptRef(new ResourceHandle(context, request, &syncLoader, true, false));
+    RefPtr<ResourceHandle> handle = adoptRef(new ResourceHandle(context, request, &syncLoader, true, false, false));
 
     ResourceHandleInternal* d = handle->getInternal();
 
@@ -252,13 +254,6 @@ ResourceError SynchronousLoaderClient::platformBadResponseError()
 {
     notImplemented();
     return ResourceError();
-}
-
-void ResourceHandle::continueWillSendRequest(ResourceRequest&& request)
-{
-    ASSERT(!client() || client()->usesAsyncCallbacks());
-    //continueAfterWillSendRequest(this, WTFMove(request));
-	notImplemented();
 }
 
 void ResourceHandle::continueDidReceiveResponse()

@@ -60,12 +60,13 @@ public:
     WebDownloadPrivate(const ResourceRequest&, WebCore::NetworkingContext*);
 
     // ResourceHandleClient implementation
-    virtual void didReceiveResponse(ResourceHandle*, ResourceResponse&&) override;
+    virtual void didReceiveResponseAsync(ResourceHandle*, ResourceResponse&&) override;
     virtual void didReceiveData(ResourceHandle*, const char*, unsigned, int) override;
     virtual void didFinishLoading(ResourceHandle*) override;
     virtual void didFail(ResourceHandle*, const ResourceError&) override;
     virtual void wasBlocked(ResourceHandle*) override;
     virtual void cannotShowURL(ResourceHandle*) override;
+	void willSendRequestAsync(ResourceHandle*, ResourceRequest&&, ResourceResponse&&, CompletionHandler<void(ResourceRequest&&)>&&) override {}
 
     void setDownload(BWebDownload*);
     void start(const BPath& path);

@@ -53,7 +53,7 @@ static const int kMaxMimeTypeGuessTries	= 5;
 WebDownloadPrivate::WebDownloadPrivate(const ResourceRequest& request,
         WebCore::NetworkingContext* context)
     : m_webDownload(0)
-    , m_resourceHandle(ResourceHandle::create(context, request, this, false, false))
+    , m_resourceHandle(ResourceHandle::create(context, request, this, false, false, false))
     , m_currentSize(0)
     , m_expectedSize(0)
     , m_url(request.url().string())
@@ -66,7 +66,7 @@ WebDownloadPrivate::WebDownloadPrivate(const ResourceRequest& request,
 {
 }
 
-void WebDownloadPrivate::didReceiveResponse(ResourceHandle*, ResourceResponse&& response)
+void WebDownloadPrivate::didReceiveResponseAsync(ResourceHandle*, ResourceResponse&& response)
 {
     if (!response.isNull()) {
     	if (!response.suggestedFilename().isEmpty())
