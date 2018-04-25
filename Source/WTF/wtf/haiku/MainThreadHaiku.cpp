@@ -59,6 +59,11 @@ public:
 MainThreadHandler* mainThreadHandler;
 static BLooper* mainThreadLooper;
 
+bool currentRunLoopInCommonMode()
+{
+    return true;
+}
+
 void initializeMainThreadPlatform()
 {
 	// This handler is leaked at application exit time.
