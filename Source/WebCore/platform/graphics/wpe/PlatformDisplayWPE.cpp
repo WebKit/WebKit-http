@@ -37,7 +37,7 @@
 #else
 #include <EGL/egl.h>
 #endif
-#include <wpe/renderer-backend-egl.h>
+#include <wpe/wpe-egl.h>
 
 namespace WebCore {
 

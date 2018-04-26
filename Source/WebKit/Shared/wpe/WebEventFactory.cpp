@@ -28,7 +28,7 @@
 
 #include <WebCore/Scrollbar.h>
 #include <cstdlib>
-#include <wpe/input.h>
+#include <wpe/wpe.h>
 #include <wtf/glib/GUniquePtr.h>
 
 namespace WebKit {

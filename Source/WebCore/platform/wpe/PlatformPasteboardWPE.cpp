@@ -28,7 +28,7 @@
 
 #include "Pasteboard.h"
 #include <map>
-#include <wpe/pasteboard.h>
+#include <wpe/wpe.h>
 #include <wtf/Assertions.h>
 #include <wtf/text/WTFString.h>
 

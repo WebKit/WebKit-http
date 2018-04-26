@@ -39,7 +39,7 @@
 #include "WebProcessPool.h"
 #include <JavaScriptCore/JSBase.h>
 #include <stdlib.h>
-#include <wpe/view-backend.h>
+#include <wpe/wpe.h>
 
 using namespace WebKit;
 
@@ -100,7 +100,12 @@ View::View(struct wpe_view_backend* backend, const API::PageConfiguration& baseC
         {
             auto& view = *reinterpret_cast<View*>(data);
             view.frameDisplayed();
-        }
+        },
+        // padding
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr
     };
     wpe_view_backend_set_backend_client(m_backend, &s_backendClient, this);
 
@@ -139,6 +144,11 @@ View::View(struct wpe_view_backend* backend, const API::PageConfiguration& baseC
             page.handleTouchEvent(WebKit::NativeWebTouchEvent(event, page.deviceScaleFactor()));
 #endif
         },
+        // padding
+        nullptr,
+        nullptr,
+        nullptr,
+        nullptr
     };
     wpe_view_backend_set_input_client(m_backend, &s_inputClient, this);
 

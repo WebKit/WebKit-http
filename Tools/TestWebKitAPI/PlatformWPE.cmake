@@ -20,6 +20,7 @@ include_directories(
 include_directories(SYSTEM
     ${GLIB_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
+    ${WPE_INCLUDE_DIRS}
 )
 
 set(test_main_SOURCES
