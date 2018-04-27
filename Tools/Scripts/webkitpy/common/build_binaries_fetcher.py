@@ -39,7 +39,6 @@ logging.basicConfig()
 _log.setLevel(logging.INFO)
 
 
-
 class BuildBinariesFetcher:
     """A class to which automates the fetching of the build binaries revisions."""
 

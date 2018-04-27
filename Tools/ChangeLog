@@ -1,3 +1,30 @@
+2018-04-27  Amal Hussein  <amal@bocoup.com>
+
+        Add Support for a Download Build Product Script
+        https://bugs.webkit.org/show_bug.cgi?id=185045
+
+        Reviewed by NOBODY (OOPS!).
+
+        * Scripts/download-build-product.py: Added.
+        (parse_args):
+        (main):
+        * Scripts/webkitpy/common/build_binaries_fetcher.py: Added.
+        (BuildBinariesFetcher):
+        (BuildBinariesFetcher.__init__):
+        (BuildBinariesFetcher.downloaded_binaries_dir):
+        (BuildBinariesFetcher.should_default_to_latest_revision):
+        (BuildBinariesFetcher.s3_build_type):
+        (BuildBinariesFetcher.s3_build_binaries_url):
+        (BuildBinariesFetcher.local_build_binaries_dir):
+        (BuildBinariesFetcher.local_zip_path):
+        (BuildBinariesFetcher._get_os_version_name):
+        (BuildBinariesFetcher.get_path):
+        (BuildBinariesFetcher._get_build_binaries_json):
+        (BuildBinariesFetcher._get_latest_build_revision):
+        (BuildBinariesFetcher._fetch_build_binaries_json):
+        (BuildBinariesFetcher._fetch_build_binaries_zip):
+        (BuildBinariesFetcher.clean_up_on_error):
+
 2018-04-24  John Wilander  <wilander@apple.com>
 
         From-Origin: Support for 'same' and 'same-site' response header, nested frame origin check

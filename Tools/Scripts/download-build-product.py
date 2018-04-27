@@ -38,16 +38,15 @@ EXCEPTIONAL_EXIT_STATUS = 254
 _log = logging.getLogger(__name__)
 logging.basicConfig()
 
+
 def parse_args(args):
 
     option_group_definitions = [
         ("Platform options", platform_options()),
         ("Configuration options", configuration_options()),
         ("Build Binary options", [
-            optparse.make_option("--revision", type="str", default=None,
-                                 help="Pass in a build revision number from WebKit archives to download binaries."
-                                      "Revision=None will download the latest build.")
-        ])
+            optparse.make_option('--revision', type='str', default=None,
+                                 help=('Pass in a build revision number from WebKit archives to download binaries. Revision=None will download the latest build.'))]),
     ]
 
     option_parser = optparse.OptionParser(usage="%prog [options] [<path>...]")
@@ -73,6 +72,6 @@ def main(argv):
         _log.error('%s : %s' % (type(error), error))
         return EXCEPTIONAL_EXIT_STATUS
 
+
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
-
