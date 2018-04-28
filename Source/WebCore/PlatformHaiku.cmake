@@ -73,7 +73,6 @@ list(APPEND WebCore_SOURCES
   platform/haiku/TemporaryLinkStubs.cpp
   platform/haiku/WidgetHaiku.cpp
 
-  platform/graphics/ImageSource.cpp
   platform/graphics/WOFFFileFormat.cpp
 
   platform/graphics/haiku/AffineTransformHaiku.cpp
@@ -112,7 +111,6 @@ list(APPEND WebCore_SOURCES
 
   platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp
   platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp
-  platform/graphics/texmap/coordinated/CoordinatedSurface.cpp
 
   platform/image-decoders/haiku/ImageDecoderHaiku.cpp
 

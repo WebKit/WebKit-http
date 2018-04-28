@@ -45,11 +45,11 @@ FontPlatformData::findMatchingFontFamily(const AtomicString& familyName, font_fa
         strncpy(*fontFamily, familyNameUTF8.data(), B_FONT_FAMILY_LENGTH + 1);
     else {
         // If no font family is found for the given name, we use a generic font.
-        if (familyName.contains("Sans", false))
+        if (familyName.contains("Sans"))
             strncpy(*fontFamily, m_FallbackSansSerifFontFamily, B_FONT_FAMILY_LENGTH + 1);
-        else if (familyName.contains("Serif", false))
+        else if (familyName.contains("Serif"))
             strncpy(*fontFamily, m_FallbackSerifFontFamily, B_FONT_FAMILY_LENGTH + 1);
-        else if (familyName.contains("Mono", false))
+        else if (familyName.contains("Mono"))
             strncpy(*fontFamily, m_FallbackFixedFontFamily, B_FONT_FAMILY_LENGTH + 1);
         else {
             // This is the fallback font.

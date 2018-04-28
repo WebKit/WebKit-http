@@ -47,11 +47,14 @@ PlatformGradient Gradient::platformGradient()
     if (m_gradient)
         return m_gradient;
 
-    if (m_radial) {
-        // TODO: Support m_r0, the starting radius of the gradient.
-        m_gradient = new BGradientRadialFocus(m_p1, m_r1, m_p0);
-    } else
-        m_gradient = new BGradientLinear(m_p0, m_p1);
+	m_gradient = WTF::switchOn(m_data,
+		[&] (const RadialData& data) -> BGradient* {
+			return new BGradientRadialFocus(data.point1, data.endRadius, data.point0);
+		},
+		[&] (const LinearData& data) -> BGradient* {
+			return new BGradientLinear(data.point0, data.point1);
+		}
+		);
 
     size_t size = m_stops.size();
     for (size_t i = 0; i < size; i++) {
@@ -64,9 +67,14 @@ PlatformGradient Gradient::platformGradient()
     return m_gradient;
 }
 
-void Gradient::fill(GraphicsContext* context, const FloatRect& rect)
+PlatformGradient Gradient::createPlatformGradient(float globalAlpha)
 {
-    context->platformContext()->FillRect(rect, *platformGradient());
+	return platformGradient();
+}
+
+void Gradient::fill(GraphicsContext& context, const FloatRect& rect)
+{
+    context.platformContext()->FillRect(rect, *platformGradient());
 }
 
 } // namespace WebCore

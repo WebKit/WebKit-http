@@ -424,9 +424,9 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
 
     // TODO according to RFC7235, there could be more than one challenge in WWW-Authenticate. We
     // should parse them all, instead of just the first one.
-    if (challenge.startsWith("Digest", false))
+    if (challenge.startsWith("Digest"))
         scheme = ProtectionSpaceAuthenticationSchemeHTTPDigest;
-    else if (challenge.startsWith("Basic", false))
+    else if (challenge.startsWith("Basic"))
         scheme = ProtectionSpaceAuthenticationSchemeHTTPBasic;
     else {
         // Unknown authentication type, ignore (various websites are intercepting the auth and
@@ -435,7 +435,7 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
     }
 
     String realm;
-    int realmStart = challenge.find("realm=\"", 0, false);
+    int realmStart = challenge.find("realm=\"", 0);
     if (realmStart > 0) {
         realmStart += 7;
         int realmEnd = challenge.find("\"", realmStart);

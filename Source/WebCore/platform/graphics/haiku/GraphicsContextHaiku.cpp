@@ -167,8 +167,7 @@ void GraphicsContext::drawRect(const FloatRect& rect, float borderThickness)
     if (m_state.fillPattern)
         notImplemented();
     else if (m_state.fillGradient) {
-        BGradient* gradient = m_state.fillGradient->platformGradient();
-        m_data->view()->FillRect(rect, *gradient);
+		m_state.fillGradient->fill(*this, rect);
     } else if (fillColor().alpha())
         m_data->view()->FillRect(rect);
 
@@ -199,7 +198,7 @@ void GraphicsContext::drawEllipse(const FloatRect& rect)
         if (m_state.fillPattern)
             notImplemented();
         else if (m_state.fillGradient) {
-            BGradient* gradient = m_state.fillGradient->platformGradient();
+            BGradient* gradient = m_state.fillGradient->createPlatformGradient(1);
             m_data->view()->FillEllipse(rect, *gradient);
         } else
             m_data->view()->FillEllipse(rect);
@@ -359,7 +358,7 @@ void GraphicsContext::fillPath(const Path& path)
         notImplemented();
     else if (m_state.fillGradient) {
         view->SetDrawingMode(B_OP_ALPHA);
-        BGradient* gradient = m_state.fillGradient->platformGradient();
+        BGradient* gradient = m_state.fillGradient->createPlatformGradient(1);
         view->FillShape(path.platformPath(), *gradient);
     } else if (fillColor().alpha()) {
         if (view->HighColor().alpha < 255)

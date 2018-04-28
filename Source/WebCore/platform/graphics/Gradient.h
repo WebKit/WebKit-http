@@ -129,7 +129,7 @@ public:
     void paint(CGContextRef);
 #elif USE(DIRECT2D)
     PlatformGradient createPlatformGradientIfNecessary(ID2D1RenderTarget*);
-#elif USE(CAIRO)
+#elif USE(CAIRO) || USE(HAIKU)
     PlatformGradient createPlatformGradient(float globalAlpha);
 #endif
 
