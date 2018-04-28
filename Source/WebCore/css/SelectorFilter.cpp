@@ -96,21 +96,28 @@ void SelectorFilter::pushParent(Element* parent)
     pushParentStackFrame(parent);
 }
 
-static inline void collectDescendantSelectorIdentifierHashes(const CSSSelector* selector, unsigned*& hash)
+struct CollectedSelectorHashes {
+    using HashVector = Vector<unsigned, 8>;
+    HashVector ids;
+    HashVector classes;
+    HashVector tags;
+};
+
+static inline void collectSimpleSelectorHash(CollectedSelectorHashes& collectedHashes, const CSSSelector& selector)
 {
-    switch (selector->match()) {
+    switch (selector.match()) {
     case CSSSelector::Id:
-        if (!selector->value().isEmpty())
-            (*hash++) = selector->value().impl()->existingHash() * IdAttributeSalt;
+        if (!selector.value().isEmpty())
+            collectedHashes.ids.append(selector.value().impl()->existingHash() * IdAttributeSalt);
         break;
     case CSSSelector::Class:
-        if (!selector->value().isEmpty())
-            (*hash++) = selector->value().impl()->existingHash() * ClassAttributeSalt;
+        if (!selector.value().isEmpty())
+            collectedHashes.classes.append(selector.value().impl()->existingHash() * ClassAttributeSalt);
         break;
     case CSSSelector::Tag: {
-        const AtomicString& tagLowercaseLocalName = selector->tagLowercaseLocalName();
+        auto& tagLowercaseLocalName = selector.tagLowercaseLocalName();
         if (tagLowercaseLocalName != starAtom())
-            (*hash++) = tagLowercaseLocalName.impl()->existingHash() * TagNameSalt;
+            collectedHashes.tags.append(tagLowercaseLocalName.impl()->existingHash() * TagNameSalt);
         break;
     }
     default:
@@ -118,10 +125,11 @@ static inline void collectDescendantSelectorIdentifierHashes(const CSSSelector* 
     }
 }
 
-void SelectorFilter::collectIdentifierHashes(const CSSSelector* selector, unsigned* identifierHashes, unsigned maximumIdentifierCount)
+static CollectedSelectorHashes collectSelectorHashes(const CSSSelector& rightmostSelector)
 {
-    unsigned* hash = identifierHashes;
-    unsigned* end = identifierHashes + maximumIdentifierCount;
+    CollectedSelectorHashes collectedHashes;
+
+    auto* selector = &rightmostSelector;
     auto relation = selector->relation();
 
     // Skip the topmost selector. It is handled quickly by the rule hashes.
@@ -131,7 +139,7 @@ void SelectorFilter::collectIdentifierHashes(const CSSSelector* selector, unsign
         switch (relation) {
         case CSSSelector::Subselector:
             if (!skipOverSubselectors)
-                collectDescendantSelectorIdentifierHashes(selector, hash);
+                collectSimpleSelectorHash(collectedHashes, *selector);
             break;
         case CSSSelector::DirectAdjacent:
         case CSSSelector::IndirectAdjacent:
@@ -141,14 +149,53 @@ void SelectorFilter::collectIdentifierHashes(const CSSSelector* selector, unsign
         case CSSSelector::DescendantSpace:
         case CSSSelector::Child:
             skipOverSubselectors = false;
-            collectDescendantSelectorIdentifierHashes(selector, hash);
+            collectSimpleSelectorHash(collectedHashes, *selector);
             break;
         }
-        if (hash == end)
-            return;
         relation = selector->relation();
     }
-    *hash = 0;
+    return collectedHashes;
+}
+
+static SelectorFilter::Hashes chooseSelectorHashesForFilter(const CollectedSelectorHashes& collectedSelectorHashes)
+{
+    SelectorFilter::Hashes resultHashes;
+    unsigned index = 0;
+
+    auto addIfNew = [&] (unsigned hash) {
+        for (unsigned i = 0; i < index; ++i) {
+            if (resultHashes[i] == hash)
+                return;
+        }
+        resultHashes[index++] = hash;
+    };
+
+    auto copyHashes = [&] (auto& hashes) {
+        for (auto& hash : hashes) {
+            addIfNew(hash);
+            if (index == resultHashes.size())
+                return true;
+        }
+        return false;
+    };
+
+    // There is a limited number of slots. Prefer more specific selector types.
+    if (copyHashes(collectedSelectorHashes.ids))
+        return resultHashes;
+    if (copyHashes(collectedSelectorHashes.classes))
+        return resultHashes;
+    if (copyHashes(collectedSelectorHashes.tags))
+        return resultHashes;
+
+    // Null-terminate if not full.
+    resultHashes[index] = 0;
+    return resultHashes;
+}
+
+SelectorFilter::Hashes SelectorFilter::collectHashes(const CSSSelector& selector)
+{
+    auto hashes = collectSelectorHashes(selector);
+    return chooseSelectorHashesForFilter(hashes);
 }
 
 }

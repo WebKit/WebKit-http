@@ -86,6 +86,19 @@ void WebToStorageProcessConnection::didReceiveMessage(IPC::Connection& connectio
     ASSERT_NOT_REACHED();
 }
 
+void WebToStorageProcessConnection::didReceiveSyncMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& replyEncoder)
+{
+#if ENABLE(SERVICE_WORKER)
+    if (decoder.messageReceiverName() == Messages::WebSWContextManagerConnection::messageReceiverName()) {
+        ASSERT(SWContextManager::singleton().connection());
+        if (auto* contextManagerConnection = SWContextManager::singleton().connection())
+            static_cast<WebSWContextManagerConnection&>(*contextManagerConnection).didReceiveSyncMessage(connection, decoder, replyEncoder);
+        return;
+    }
+#endif
+    ASSERT_NOT_REACHED();
+}
+
 void WebToStorageProcessConnection::didClose(IPC::Connection& connection)
 {
 #if ENABLE(INDEXED_DATABASE)
@@ -94,6 +107,13 @@ void WebToStorageProcessConnection::didClose(IPC::Connection& connection)
 
     m_webIDBConnectionsByIdentifier.clear();
     m_webIDBConnectionsBySession.clear();
+#endif
+#if ENABLE(SERVICE_WORKER)
+    for (auto& connection : m_swConnectionsBySession.values())
+        connection->connectionToServerLost();
+
+    m_swConnectionsByIdentifier.clear();
+    m_swConnectionsBySession.clear();
 #endif
 
     WebProcess::singleton().webToStorageProcessConnectionClosed(this);
@@ -104,30 +124,30 @@ void WebToStorageProcessConnection::didReceiveInvalidMessage(IPC::Connection&, I
 }
 
 #if ENABLE(INDEXED_DATABASE)
-WebIDBConnectionToServer& WebToStorageProcessConnection::idbConnectionToServerForSession(const PAL::SessionID& sessionID)
+WebIDBConnectionToServer& WebToStorageProcessConnection::idbConnectionToServerForSession(SessionID sessionID)
 {
-    auto result = m_webIDBConnectionsBySession.add(sessionID, nullptr);
-    if (result.isNewEntry) {
-        result.iterator->value = WebIDBConnectionToServer::create(sessionID);
-        ASSERT(!m_webIDBConnectionsByIdentifier.contains(result.iterator->value->identifier()));
-        m_webIDBConnectionsByIdentifier.set(result.iterator->value->identifier(), result.iterator->value);
-    }
+    return *m_webIDBConnectionsBySession.ensure(sessionID, [&] {
+        auto connection = WebIDBConnectionToServer::create(sessionID);
 
-    return *result.iterator->value;
+        auto result = m_webIDBConnectionsByIdentifier.add(connection->identifier(), connection.copyRef());
+        ASSERT_UNUSED(result, result.isNewEntry);
+
+        return connection;
+    }).iterator->value;
 }
 #endif
 
 #if ENABLE(SERVICE_WORKER)
 WebSWClientConnection& WebToStorageProcessConnection::serviceWorkerConnectionForSession(SessionID sessionID)
 {
-    auto result = m_swConnectionsBySession.add(sessionID, nullptr);
-    if (result.isNewEntry) {
-        result.iterator->value = std::make_unique<WebSWClientConnection>(m_connection.get(), sessionID);
-        ASSERT(!m_swConnectionsByIdentifier.contains(result.iterator->value->serverConnectionIdentifier()));
-        m_swConnectionsByIdentifier.set(result.iterator->value->serverConnectionIdentifier(), result.iterator->value.get());
-    }
+    return *m_swConnectionsBySession.ensure(sessionID, [&] {
+        auto connection = WebSWClientConnection::create(m_connection, sessionID);
 
-    return *result.iterator->value;
+        auto result = m_swConnectionsByIdentifier.add(connection->serverConnectionIdentifier(), connection.ptr());
+        ASSERT_UNUSED(result, result.isNewEntry);
+
+        return connection;
+    }).iterator->value;
 }
 #endif
 

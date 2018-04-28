@@ -301,7 +301,7 @@ messages -> WebPage LegacyReceiver {
 
 #if ENABLE(MEDIA_STREAM)
     # MediaSteam
-    UserMediaAccessWasGranted(uint64_t userMediaID, String audioDeviceUID, String videoDeviceUID, String mediaDeviceIdentifierHashSalt)
+    UserMediaAccessWasGranted(uint64_t userMediaID, WebCore::CaptureDevice audioDevice, WebCore::CaptureDevice videoDevice, String mediaDeviceIdentifierHashSalt)
     UserMediaAccessWasDenied(uint64_t userMediaID, uint64_t reason, String invalidConstraint)
     DidCompleteMediaDeviceEnumeration(uint64_t userMediaID, Vector<WebCore::CaptureDevice> devices, String mediaDeviceIdentifierHashSalt, bool hasPersistentAccess)
 #if ENABLE(SANDBOX_EXTENSIONS)
@@ -489,5 +489,10 @@ messages -> WebPage LegacyReceiver {
     InsertAttachment(String identifier, struct WebCore::AttachmentDisplayOptions options, String filename, std::optional<String> contentType, IPC::DataReference data, WebKit::CallbackID callbackID)
     RequestAttachmentData(String identifier, WebKit::CallbackID callbackID)
     SetAttachmentDisplayOptions(String identifier, struct WebCore::AttachmentDisplayOptions options, WebKit::CallbackID callbackID)
+    SetAttachmentDataAndContentType(String identifier, IPC::DataReference data, std::optional<String> newContentType, std::optional<String> newFilename, WebKit::CallbackID callbackID)
+#endif
+
+#if ENABLE(APPLICATION_MANIFEST)
+    GetApplicationManifest(WebKit::CallbackID callbackID)
 #endif
 }

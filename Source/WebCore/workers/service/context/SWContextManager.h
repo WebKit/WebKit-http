@@ -28,14 +28,17 @@
 #if ENABLE(SERVICE_WORKER)
 
 #include "ExceptionOr.h"
+#include "ServiceWorkerClientInformation.h"
+#include "ServiceWorkerClientQueryOptions.h"
 #include "ServiceWorkerIdentifier.h"
 #include "ServiceWorkerThreadProxy.h"
+#include <wtf/CompletionHandler.h>
 #include <wtf/HashMap.h>
 
 namespace WebCore {
 
 class SerializedScriptValue;
-struct ServiceWorkerClientIdentifier;
+class ServiceWorkerGlobalScope;
 
 class SWContextManager {
 public:
@@ -51,6 +54,12 @@ public:
         virtual void didFinishActivation(ServiceWorkerIdentifier) = 0;
         virtual void setServiceWorkerHasPendingEvents(ServiceWorkerIdentifier, bool) = 0;
         virtual void workerTerminated(ServiceWorkerIdentifier) = 0;
+        virtual void skipWaiting(ServiceWorkerIdentifier, WTF::Function<void()>&& callback) = 0;
+
+        using FindClientByIdentifierCallback = WTF::CompletionHandler<void(ExceptionOr<std::optional<ServiceWorkerClientData>>&&)>;
+        virtual void findClientByIdentifier(ServiceWorkerIdentifier, ServiceWorkerClientIdentifier, FindClientByIdentifierCallback&&) = 0;
+        virtual void matchAll(ServiceWorkerIdentifier, const ServiceWorkerClientQueryOptions&, ServiceWorkerClientsMatchAllCallback&&) = 0;
+        virtual void claim(ServiceWorkerIdentifier, WTF::CompletionHandler<void()>&&) = 0;
     };
 
     WEBCORE_EXPORT void setConnection(std::unique_ptr<Connection>&&);
@@ -58,12 +67,15 @@ public:
 
     WEBCORE_EXPORT void registerServiceWorkerThreadForInstall(Ref<ServiceWorkerThreadProxy>&&);
     WEBCORE_EXPORT ServiceWorkerThreadProxy* serviceWorkerThreadProxy(ServiceWorkerIdentifier) const;
-    WEBCORE_EXPORT void postMessageToServiceWorkerGlobalScope(ServiceWorkerIdentifier destination, Ref<SerializedScriptValue>&& message, ServiceWorkerClientIdentifier sourceIdentifier, ServiceWorkerClientData&& sourceData);
+    WEBCORE_EXPORT void postMessageToServiceWorker(ServiceWorkerIdentifier destination, Ref<SerializedScriptValue>&& message, ServiceWorkerClientIdentifier sourceIdentifier, ServiceWorkerClientData&& sourceData);
+    WEBCORE_EXPORT void postMessageToServiceWorker(ServiceWorkerIdentifier destination, Ref<SerializedScriptValue>&& message, ServiceWorkerData&& sourceData);
     WEBCORE_EXPORT void fireInstallEvent(ServiceWorkerIdentifier);
     WEBCORE_EXPORT void fireActivateEvent(ServiceWorkerIdentifier);
-    WEBCORE_EXPORT void terminateWorker(ServiceWorkerIdentifier);
+    WEBCORE_EXPORT void terminateWorker(ServiceWorkerIdentifier, Function<void()>&&);
 
     void forEachServiceWorkerThread(const WTF::Function<void(ServiceWorkerThreadProxy&)>&);
+
+    WEBCORE_EXPORT void postTaskToServiceWorker(ServiceWorkerIdentifier, WTF::Function<void(ServiceWorkerGlobalScope&)>&&);
 
 private:
     SWContextManager() = default;

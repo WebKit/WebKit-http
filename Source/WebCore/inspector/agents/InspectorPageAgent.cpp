@@ -32,12 +32,8 @@
 #include "config.h"
 #include "InspectorPageAgent.h"
 
-#include "CachedCSSStyleSheet.h"
-#include "CachedFont.h"
-#include "CachedImage.h"
 #include "CachedResource.h"
 #include "CachedResourceLoader.h"
-#include "CachedScript.h"
 #include "Cookie.h"
 #include "CookieJar.h"
 #include "Document.h"
@@ -65,7 +61,6 @@
 #include "Settings.h"
 #include "StyleScope.h"
 #include "TextEncoding.h"
-#include "TextResourceDecoder.h"
 #include "UserGestureIndicator.h"
 #include <inspector/ContentSearchUtilities.h>
 #include <inspector/IdentifiersFactory.h>
@@ -74,6 +69,10 @@
 #include <wtf/text/Base64.h>
 #include <wtf/text/StringBuilder.h>
 #include <yarr/RegularExpression.h>
+
+#if ENABLE(APPLICATION_MANIFEST)
+#include "CachedApplicationManifest.h"
+#endif
 
 #if ENABLE(WEB_ARCHIVE) && USE(CF)
 #include "LegacyWebArchive.h"
@@ -92,69 +91,6 @@ static bool decodeBuffer(const char* buffer, unsigned size, const String& textEn
             encoding = WindowsLatin1Encoding();
         *result = encoding.decode(buffer, size);
         return true;
-    }
-    return false;
-}
-
-static bool hasTextContent(CachedResource* cachedResource)
-{
-    // FIXME: <https://webkit.org/b/165495> Web Inspector: XHR / Fetch for non-text content should not show garbled text
-    // We should not assume XHR / Fetch have text content.
-
-    InspectorPageAgent::ResourceType type = InspectorPageAgent::inspectorResourceType(*cachedResource);
-    return type == InspectorPageAgent::DocumentResource
-        || type == InspectorPageAgent::StylesheetResource
-        || type == InspectorPageAgent::ScriptResource
-        || type == InspectorPageAgent::XHRResource
-        || type == InspectorPageAgent::FetchResource;
-}
-
-bool InspectorPageAgent::cachedResourceContent(CachedResource* cachedResource, String* result, bool* base64Encoded)
-{
-    if (!cachedResource)
-        return false;
-
-    *base64Encoded = !hasTextContent(cachedResource);
-
-    if (!cachedResource->encodedSize()) {
-        *result = emptyString();
-        return true;
-    }
-
-    if (*base64Encoded) {
-        if (auto* buffer = cachedResource->resourceBuffer()) {
-            *result = base64Encode(buffer->data(), buffer->size());
-            return true;
-        }
-        return false;
-    }
-
-    if (cachedResource) {
-        switch (cachedResource->type()) {
-        case CachedResource::CSSStyleSheet:
-            // This can return a null String if the MIME type is invalid.
-            *result = downcast<CachedCSSStyleSheet>(*cachedResource).sheetText();
-            return !result->isNull();
-        case CachedResource::Script:
-            *result = downcast<CachedScript>(*cachedResource).script().toString();
-            return true;
-        case CachedResource::MediaResource:
-        case CachedResource::Icon:
-        case CachedResource::RawResource: {
-            auto* buffer = cachedResource->resourceBuffer();
-            if (!buffer)
-                return false;
-            RefPtr<TextResourceDecoder> decoder = InspectorPageAgent::createTextDecoder(cachedResource->response().mimeType(), cachedResource->response().textEncodingName());
-            // We show content for raw resources only for certain mime types (text, html and xml). Otherwise decoder will be null.
-            if (!decoder)
-                return false;
-            *result = decoder->decodeAndFlush(buffer->data(), buffer->size());
-            return true;
-        }
-        default:
-            auto* buffer = cachedResource->resourceBuffer();
-            return decodeBuffer(buffer ? buffer->data() : nullptr, buffer ? buffer->size() : 0, cachedResource->encoding(), result);
-        }
     }
     return false;
 }
@@ -195,14 +131,15 @@ void InspectorPageAgent::resourceContent(ErrorString& errorString, Frame* frame,
         success = mainResourceContent(frame, *base64Encoded, result);
     }
 
-    if (!success)
-        success = cachedResourceContent(cachedResource(frame, url), result, base64Encoded);
+    if (!success) {
+        if (auto* resource = cachedResource(frame, url))
+            success = InspectorNetworkAgent::cachedResourceContent(*resource, result, base64Encoded);
+    }
 
     if (!success)
         errorString = ASCIILiteral("No resource with given URL found");
 }
 
-//static
 String InspectorPageAgent::sourceMapURLForResource(CachedResource* cachedResource)
 {
     static NeverDestroyed<String> sourceMapHTTPHeader(MAKE_STATIC_STRING_IMPL("SourceMap"));
@@ -225,7 +162,7 @@ String InspectorPageAgent::sourceMapURLForResource(CachedResource* cachedResourc
 
     String content;
     bool base64Encoded;
-    if (InspectorPageAgent::cachedResourceContent(cachedResource, &content, &base64Encoded) && !base64Encoded)
+    if (InspectorNetworkAgent::cachedResourceContent(*cachedResource, &content, &base64Encoded) && !base64Encoded)
         return ContentSearchUtilities::findStylesheetSourceMapURL(content);
 
     return String();
@@ -271,6 +208,10 @@ Inspector::Protocol::Page::ResourceType InspectorPageAgent::resourceTypeJSON(Ins
         return Inspector::Protocol::Page::ResourceType::WebSocket;
     case OtherResource:
         return Inspector::Protocol::Page::ResourceType::Other;
+#if ENABLE(APPLICATION_MANIFEST)
+    case ApplicationManifestResource:
+        break;
+#endif
     }
     return Inspector::Protocol::Page::ResourceType::Other;
 }
@@ -296,6 +237,10 @@ InspectorPageAgent::ResourceType InspectorPageAgent::inspectorResourceType(Cache
         return InspectorPageAgent::DocumentResource;
     case CachedResource::Beacon:
         return InspectorPageAgent::BeaconResource;
+#if ENABLE(APPLICATION_MANIFEST)
+    case CachedResource::ApplicationManifest:
+        return InspectorPageAgent::ApplicationManifestResource;
+#endif
     case CachedResource::MediaResource:
     case CachedResource::Icon:
     case CachedResource::RawResource:
@@ -323,23 +268,6 @@ InspectorPageAgent::ResourceType InspectorPageAgent::inspectorResourceType(const
 Inspector::Protocol::Page::ResourceType InspectorPageAgent::cachedResourceTypeJSON(const CachedResource& cachedResource)
 {
     return resourceTypeJSON(inspectorResourceType(cachedResource));
-}
-
-RefPtr<TextResourceDecoder> InspectorPageAgent::createTextDecoder(const String& mimeType, const String& textEncodingName)
-{
-    if (!textEncodingName.isEmpty())
-        return TextResourceDecoder::create(ASCIILiteral("text/plain"), textEncodingName);
-
-    if (MIMETypeRegistry::isTextMIMEType(mimeType))
-        return TextResourceDecoder::create(mimeType, "UTF-8");
-
-    if (MIMETypeRegistry::isXMLMIMEType(mimeType)) {
-        RefPtr<TextResourceDecoder> decoder = TextResourceDecoder::create(ASCIILiteral("application/xml"));
-        decoder->useLenientXMLDecoding();
-        return decoder;
-    }
-
-    return TextResourceDecoder::create(ASCIILiteral("text/plain"), "UTF-8");
 }
 
 InspectorPageAgent::InspectorPageAgent(PageAgentContext& context, InspectorClient* client, InspectorOverlay* overlay)
@@ -426,9 +354,9 @@ static Ref<Inspector::Protocol::Page::Cookie> buildObjectForCookie(const Cookie&
         .release();
 }
 
-static Ref<Inspector::Protocol::Array<Inspector::Protocol::Page::Cookie>> buildArrayForCookies(ListHashSet<Cookie>& cookiesList)
+static Ref<JSON::ArrayOf<Inspector::Protocol::Page::Cookie>> buildArrayForCookies(ListHashSet<Cookie>& cookiesList)
 {
-    auto cookies = Inspector::Protocol::Array<Inspector::Protocol::Page::Cookie>::create();
+    auto cookies = JSON::ArrayOf<Inspector::Protocol::Page::Cookie>::create();
 
     for (const auto& cookie : cookiesList)
         cookies->addItem(buildObjectForCookie(cookie));
@@ -479,7 +407,7 @@ static Vector<URL> allResourcesURLsForFrame(Frame* frame)
     return result;
 }
 
-void InspectorPageAgent::getCookies(ErrorString&, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Page::Cookie>>& cookies)
+void InspectorPageAgent::getCookies(ErrorString&, RefPtr<JSON::ArrayOf<Inspector::Protocol::Page::Cookie>>& cookies)
 {
     // If we can get raw cookies.
     ListHashSet<Cookie> rawCookiesList;
@@ -517,7 +445,7 @@ void InspectorPageAgent::getCookies(ErrorString&, RefPtr<Inspector::Protocol::Ar
     if (rawCookiesImplemented)
         cookies = buildArrayForCookies(rawCookiesList);
     else
-        cookies = Inspector::Protocol::Array<Inspector::Protocol::Page::Cookie>::create();
+        cookies = JSON::ArrayOf<Inspector::Protocol::Page::Cookie>::create();
 }
 
 void InspectorPageAgent::deleteCookie(ErrorString&, const String& cookieName, const String& url)
@@ -543,21 +471,9 @@ void InspectorPageAgent::getResourceContent(ErrorString& errorString, const Stri
     resourceContent(errorString, frame, URL(ParsedURLString, url), content, base64Encoded);
 }
 
-static bool textContentForCachedResource(CachedResource* cachedResource, String* result)
+void InspectorPageAgent::searchInResource(ErrorString& errorString, const String& frameId, const String& url, const String& query, const bool* const optionalCaseSensitive, const bool* const optionalIsRegex, const String* optionalRequestId, RefPtr<JSON::ArrayOf<Inspector::Protocol::GenericTypes::SearchMatch>>& results)
 {
-    if (hasTextContent(cachedResource)) {
-        bool base64Encoded;
-        if (InspectorPageAgent::cachedResourceContent(cachedResource, result, &base64Encoded)) {
-            ASSERT(!base64Encoded);
-            return true;
-        }
-    }
-    return false;
-}
-
-void InspectorPageAgent::searchInResource(ErrorString& errorString, const String& frameId, const String& url, const String& query, const bool* const optionalCaseSensitive, const bool* const optionalIsRegex, const String* optionalRequestId, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::GenericTypes::SearchMatch>>& results)
-{
-    results = Inspector::Protocol::Array<Inspector::Protocol::GenericTypes::SearchMatch>::create();
+    results = JSON::ArrayOf<Inspector::Protocol::GenericTypes::SearchMatch>::create();
 
     bool isRegex = optionalIsRegex ? *optionalIsRegex : false;
     bool caseSensitive = optionalCaseSensitive ? *optionalCaseSensitive : false;
@@ -585,9 +501,12 @@ void InspectorPageAgent::searchInResource(ErrorString& errorString, const String
         success = mainResourceContent(frame, false, &content);
 
     if (!success) {
-        CachedResource* resource = cachedResource(frame, kurl);
-        if (resource)
-            success = textContentForCachedResource(resource, &content);
+        if (auto* resource = cachedResource(frame, kurl)) {
+            if (auto textContent = InspectorNetworkAgent::textContentForCachedResource(*resource)) {
+                content = *textContent;
+                success = true;
+            }
+        }
     }
 
     if (!success)
@@ -605,29 +524,21 @@ static Ref<Inspector::Protocol::Page::SearchResult> buildObjectForSearchResult(c
         .release();
 }
 
-void InspectorPageAgent::searchInResources(ErrorString&, const String& text, const bool* const optionalCaseSensitive, const bool* const optionalIsRegex, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Page::SearchResult>>& result)
+void InspectorPageAgent::searchInResources(ErrorString&, const String& text, const bool* const optionalCaseSensitive, const bool* const optionalIsRegex, RefPtr<JSON::ArrayOf<Inspector::Protocol::Page::SearchResult>>& result)
 {
-    result = Inspector::Protocol::Array<Inspector::Protocol::Page::SearchResult>::create();
+    result = JSON::ArrayOf<Inspector::Protocol::Page::SearchResult>::create();
 
     bool isRegex = optionalIsRegex ? *optionalIsRegex : false;
     bool caseSensitive = optionalCaseSensitive ? *optionalCaseSensitive : false;
     JSC::Yarr::RegularExpression regex = ContentSearchUtilities::createSearchRegex(text, caseSensitive, isRegex);
 
     for (Frame* frame = &m_page.mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        String content;
-
         for (auto* cachedResource : cachedResourcesForFrame(frame)) {
-            if (textContentForCachedResource(cachedResource, &content)) {
-                int matchesCount = ContentSearchUtilities::countRegularExpressionMatches(regex, content);
+            if (auto textContent = InspectorNetworkAgent::textContentForCachedResource(*cachedResource)) {
+                int matchesCount = ContentSearchUtilities::countRegularExpressionMatches(regex, *textContent);
                 if (matchesCount)
                     result->addItem(buildObjectForSearchResult(frameId(frame), cachedResource->url(), matchesCount));
             }
-        }
-
-        if (mainResourceContent(frame, false, &content)) {
-            int matchesCount = ContentSearchUtilities::countRegularExpressionMatches(regex, content);
-            if (matchesCount)
-                result->addItem(buildObjectForSearchResult(frameId(frame), frame->document()->url(), matchesCount));
         }
     }
 
@@ -831,7 +742,7 @@ Ref<Inspector::Protocol::Page::FrameResourceTree> InspectorPageAgent::buildObjec
     ASSERT_ARG(frame, frame);
 
     Ref<Inspector::Protocol::Page::Frame> frameObject = buildObjectForFrame(frame);
-    auto subresources = Inspector::Protocol::Array<Inspector::Protocol::Page::FrameResource>::create();
+    auto subresources = JSON::ArrayOf<Inspector::Protocol::Page::FrameResource>::create();
     auto result = Inspector::Protocol::Page::FrameResourceTree::create()
         .setFrame(WTFMove(frameObject))
         .setResources(subresources.copyRef())
@@ -856,10 +767,10 @@ Ref<Inspector::Protocol::Page::FrameResourceTree> InspectorPageAgent::buildObjec
         subresources->addItem(WTFMove(resourceObject));
     }
 
-    RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Page::FrameResourceTree>> childrenArray;
+    RefPtr<JSON::ArrayOf<Inspector::Protocol::Page::FrameResourceTree>> childrenArray;
     for (Frame* child = frame->tree().firstChild(); child; child = child->tree().nextSibling()) {
         if (!childrenArray) {
-            childrenArray = Inspector::Protocol::Array<Inspector::Protocol::Page::FrameResourceTree>::create();
+            childrenArray = JSON::ArrayOf<Inspector::Protocol::Page::FrameResourceTree>::create();
             result->setChildFrames(childrenArray);
         }
         childrenArray->addItem(buildObjectForFrameTree(child));

@@ -216,6 +216,11 @@ WebProcess::~WebProcess()
 
 void WebProcess::initializeProcess(const ChildProcessInitializationParameters& parameters)
 {
+#if PLATFORM(COCOA) && !PLATFORM(IOS)
+    // This call is needed when the WebProcess is not running the NSApplication event loop.
+    // Otherwise, calling enableSandboxStyleFileQuarantine() will fail.
+    launchServicesCheckIn();
+#endif
     platformInitializeProcess(parameters);
 }
 
@@ -1332,6 +1337,10 @@ void WebProcess::actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend shou
     destroyRenderingResources();
 #endif
 
+#if PLATFORM(IOS)
+    accessibilityProcessSuspendedNotification(true);
+#endif
+
     markAllLayersVolatile([this, shouldAcknowledgeWhenReadyToSuspend] {
         RELEASE_LOG(ProcessSuspension, "%p - WebProcess::markAllLayersVolatile() Successfuly marked all layers as volatile", this);
 
@@ -1418,6 +1427,10 @@ void WebProcess::processDidResume()
 
     cancelMarkAllLayersVolatile();
     setAllLayerTreeStatesFrozen(false);
+    
+#if PLATFORM(IOS)
+    accessibilityProcessSuspendedNotification(false);
+#endif
 }
 
 void WebProcess::pageDidEnterWindow(uint64_t pageID)

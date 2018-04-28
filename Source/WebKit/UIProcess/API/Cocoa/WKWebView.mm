@@ -117,6 +117,10 @@
 #import <wtf/spi/darwin/dyldSPI.h>
 #import <wtf/text/TextStream.h>
 
+#if ENABLE(APPLICATION_MANIFEST)
+#import "_WKApplicationManifestInternal.h"
+#endif
+
 #if ENABLE(DATA_DETECTION)
 #import "WKDataDetectorTypesInternal.h"
 #endif
@@ -1661,7 +1665,7 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
     if (![self usesStandardContentView])
         return;
 
-    LOG_WITH_STREAM(VisibleRects, stream << "-[WKWebView _didCommitLayerTree:] transactionID " <<  layerTreeTransaction.transactionID() << " _dynamicViewportUpdateMode " << (int)_dynamicViewportUpdateMode);
+    LOG_WITH_STREAM(VisibleRects, stream << "-[WKWebView " << _page->pageID() << " _didCommitLayerTree:] transactionID " <<  layerTreeTransaction.transactionID() << " _dynamicViewportUpdateMode " << (int)_dynamicViewportUpdateMode);
 
     bool needUpdateVisibleContentRects = _page->updateLayoutViewportParameters(layerTreeTransaction);
 
@@ -1686,8 +1690,10 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
     [_scrollView setMinimumZoomScale:layerTreeTransaction.minimumScaleFactor()];
     [_scrollView setMaximumZoomScale:layerTreeTransaction.maximumScaleFactor()];
     [_scrollView setZoomEnabled:layerTreeTransaction.allowsUserScaling()];
-    if (!layerTreeTransaction.scaleWasSetByUIProcess() && ![_scrollView isZooming] && ![_scrollView isZoomBouncing] && ![_scrollView _isAnimatingZoom] && [_scrollView zoomScale] != layerTreeTransaction.pageScaleFactor())
+    if (!layerTreeTransaction.scaleWasSetByUIProcess() && ![_scrollView isZooming] && ![_scrollView isZoomBouncing] && ![_scrollView _isAnimatingZoom] && [_scrollView zoomScale] != layerTreeTransaction.pageScaleFactor()) {
+        LOG_WITH_STREAM(VisibleRects, stream << " updating scroll view with pageScaleFactor " << layerTreeTransaction.pageScaleFactor());
         [_scrollView setZoomScale:layerTreeTransaction.pageScaleFactor()];
+    }
 
     _viewportMetaTagWidth = layerTreeTransaction.viewportMetaTagWidth();
     _viewportMetaTagWidthWasExplicit = layerTreeTransaction.viewportMetaTagWidthWasExplicit();
@@ -1776,6 +1782,8 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
 
 - (void)_dynamicViewportUpdateChangedTargetToScale:(double)newScale position:(CGPoint)newScrollPosition nextValidLayerTreeTransactionID:(uint64_t)nextValidLayerTreeTransactionID
 {
+    LOG_WITH_STREAM(VisibleRects, stream << "-[WKWebView " << _page->pageID() << " _dynamicViewportUpdateChangedTargetToScale:] " <<  newScale << " _dynamicViewportUpdateMode " << (int)_dynamicViewportUpdateMode);
+
     if (_dynamicViewportUpdateMode != DynamicViewportUpdateMode::NotResizing) {
         CGFloat animatingScaleTarget = [[_resizeAnimationView layer] transform].m11;
         double currentTargetScale = animatingScaleTarget * [[_contentView layer] transform].m11;
@@ -2452,6 +2460,7 @@ static WebCore::FloatSize activeMinimumLayoutSize(WKWebView *webView, const CGRe
     if (_lastSentMinimumLayoutSize && CGSizeEqualToSize(_lastSentMinimumLayoutSize.value(), minimumLayoutSize))
         return;
 
+    LOG_WITH_STREAM(VisibleRects, stream << "-[WKWebView " << _page->pageID() << " _dispatchSetMinimumLayoutSize:] " << minimumLayoutSize << " contentZoomScale " << contentZoomScale(self));
     _page->setViewportConfigurationMinimumLayoutSize(minimumLayoutSize);
     _lastSentMinimumLayoutSize = minimumLayoutSize;
 }
@@ -4339,6 +4348,25 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
     });
 }
 
+- (void)_getApplicationManifestWithCompletionHandler:(void (^)(_WKApplicationManifest *))completionHandler
+{
+#if ENABLE(APPLICATION_MANIFEST)
+    _page->getApplicationManifest([completionHandler = makeBlockPtr(completionHandler)](const std::optional<WebCore::ApplicationManifest>& manifest, WebKit::CallbackBase::Error error) {
+        UNUSED(error);
+        if (completionHandler) {
+            if (manifest) {
+                auto apiManifest = API::ApplicationManifest::create(*manifest);
+                completionHandler(wrapper(apiManifest));
+            } else
+                completionHandler(nil);
+        }
+    });
+#else
+    if (completionHandler)
+        completionHandler(nil);
+#endif
+}
+
 - (_WKPaginationMode)_paginationMode
 {
     switch (_page->paginationMode()) {
@@ -5096,6 +5124,8 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
 - (void)_endAnimatedResize
 {
+    LOG_WITH_STREAM(VisibleRects, stream << "-[WKWebView " << _page->pageID() << " _endAnimatedResize:] " << " _dynamicViewportUpdateMode " << (int)_dynamicViewportUpdateMode);
+
     if (_dynamicViewportUpdateMode == DynamicViewportUpdateMode::NotResizing)
         return;
 
@@ -5169,6 +5199,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
 - (void)_resizeWhileHidingContentWithUpdates:(void (^)(void))updateBlock
 {
+    LOG_WITH_STREAM(VisibleRects, stream << "-[WKWebView " << _page->pageID() << " _resizeWhileHidingContentWithUpdates:]");
     [self _beginAnimatedResizeWithUpdates:updateBlock];
     if (_dynamicViewportUpdateMode == DynamicViewportUpdateMode::ResizingWithAnimation) {
         [_contentView setHidden:YES];

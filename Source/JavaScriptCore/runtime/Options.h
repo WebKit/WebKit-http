@@ -354,6 +354,7 @@ constexpr bool enableAsyncIteration = false;
     \
     v(unsigned, minimumNumberOfScansBetweenRebalance, 100, Normal, nullptr) \
     v(unsigned, numberOfGCMarkers, computeNumberOfGCMarkers(8), Normal, nullptr) \
+    v(bool, useParallelMarkingConstraintSolver, true, Normal, nullptr) \
     v(unsigned, opaqueRootMergeThreshold, 1000, Normal, nullptr) \
     v(double, minHeapUtilization, 0.8, Normal, nullptr) \
     v(double, minMarkedBlockUtilization, 0.9, Normal, nullptr) \
@@ -477,6 +478,7 @@ constexpr bool enableAsyncIteration = false;
     v(unsigned, maxNumWebAssemblyFastMemories, 4, Normal, nullptr) \
     v(bool, useFastTLSForWasmContext, true, Normal, "If true, we will store context in fast TLS. If false, we will pin it to a register.") \
     v(bool, useCallICsForWebAssemblyToJSCalls, true, Normal, "If true, we will use CallLinkInfo to inline cache Wasm to JS calls.") \
+    v(bool, useEagerWebAssemblyModuleHashing, false, Normal, "Unnamed WebAssembly modules are identified in backtraces through their hash, if available.") \
     v(bool, useObjectRestSpread, true, Normal, "If true, we will enable Object Rest/Spread feature.") \
     v(bool, useArrayAllocationProfiling, true, Normal, "If true, we will use our normal array allocation profiling. If false, the allocation profile will always claim to be undecided.")\
     v(bool, forcePolyProto, false, Normal, "If true, create_this will always create an object with a poly proto structure.")

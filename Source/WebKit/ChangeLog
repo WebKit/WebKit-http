@@ -1,3 +1,946 @@
+2017-12-06  Jeff Miller  <jeffm@apple.com>
+
+        -[WKWebViewConfiguration copyWithZone] doesn't copy _groupIdentifier
+        https://bugs.webkit.org/show_bug.cgi?id=180504
+
+        Reviewed by Geoffrey Garen.
+
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration copyWithZone:]):
+        Copy _groupIdentifier.
+
+2017-12-06  David Quesada  <david_quesada@apple.com>
+
+        [Web App Manifest] Add SPI for fetching the manifest
+        https://bugs.webkit.org/show_bug.cgi?id=180294
+        rdar://problem/34747968
+
+        Reviewed by Geoffrey Garen.
+
+        Add a new method -[WKWebView _getApplicationManifestWithCompletionHandler:] to request
+        the manifest associated with the current page.
+
+        * Shared/API/APIObject.h:
+        * Shared/Cocoa/APIObject.mm:
+        (API::Object::newObject):
+        * UIProcess/API/APIApplicationManifest.h: Copied from Source/WebCore/Modules/applicationmanifest/ApplicationManifest.h.
+            Add a new API object type for application manifests.
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageGetApplicationManifest_b):
+            Add a C version of this SPI for WebKitTestRunner.
+        * UIProcess/API/C/WKPagePrivate.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _getApplicationManifestWithCompletionHandler:]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/API/Cocoa/_WKApplicationManifest.h: Copied from Source/WebCore/Modules/applicationmanifest/ApplicationManifest.h.
+        * UIProcess/API/Cocoa/_WKApplicationManifest.mm: Added.
+        (-[_WKApplicationManifest initWithCoder:]):
+        (-[_WKApplicationManifest encodeWithCoder:]):
+        (+[_WKApplicationManifest applicationManifestFromJSON:manifestURL:documentURL:]):
+        (-[_WKApplicationManifest _apiObject]):
+        (nullableNSString):
+        (-[_WKApplicationManifest name]):
+        (-[_WKApplicationManifest shortName]):
+        (-[_WKApplicationManifest applicationDescription]):
+        (-[_WKApplicationManifest scope]):
+        (-[_WKApplicationManifest startURL]):
+        * UIProcess/API/Cocoa/_WKApplicationManifestInternal.h: Copied from Source/WebCore/Modules/applicationmanifest/ApplicationManifest.h.
+        (API::wrapper):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::applicationManifestCallback):
+        (WebKit::WebPageProxy::getApplicationManifest):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebKit.xcodeproj/project.pbxproj:
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::finishedLoadingApplicationManifest):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::getApplicationManifest):
+        (WebKit::WebPage::didFinishLoadingApplicationManifest):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2017-12-06  Per Arne Vollan  <pvollan@apple.com>
+
+        The WebProcess should use the NSRunLoop runloop type.
+        https://bugs.webkit.org/show_bug.cgi?id=179804
+        <rdar://problem/14012823>
+
+        Reviewed by Brent Fulgham.
+
+        * Platform/IPC/mac/ConnectionMac.mm:
+        (IPC::AccessibilityProcessSuspendedNotification):
+        * Shared/ChildProcess.h:
+        * Shared/mac/ChildProcessMac.mm:
+        (WebKit::ChildProcess::launchServicesCheckIn):
+        * UIProcess/Launcher/mac/ProcessLauncherMac.mm:
+        (WebKit::shouldLeakBoost):
+        * WebProcess/EntryPoint/mac/XPCService/WebContentService/Info-OSX.plist:
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::initializeProcess):
+
+2017-12-06  Nan Wang  <n_wang@apple.com>
+
+        AX: [iOS] Post accessibility notification when a web process changes its suspended state
+        https://bugs.webkit.org/show_bug.cgi?id=180458
+        <rdar://problem/35869115>
+
+        Reviewed by Chris Dumez.
+
+        Post accessibility notification with the pid information when a web process
+        becomes suspended or resumes running.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::actualPrepareToSuspend):
+        (WebKit::WebProcess::processDidResume):
+        * WebProcess/WebProcess.h:
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::accessibilityProcessSuspendedNotification):
+
+2017-12-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed build fix, removed unused lambda capture.
+
+        * NetworkProcess/cache/CacheStorageEngineConnection.cpp:
+        (WebKit::CacheStorageEngineConnection::open):
+
+2017-12-06  John Wilander  <wilander@apple.com>
+
+        Storage Access API: Make document.hasStorageAccess a function and always allow access for same-origin iframes
+        https://bugs.webkit.org/show_bug.cgi?id=176944
+        <rdar://problem/34440658>
+
+        Reviewed by Brent Fulgham.
+
+        This change introduces document.hasStorageAccess() as a function which
+        returns a promise instead of being a property. Since cookie access can
+        be due to both a granted request and recent user interaction as first
+        party, the WebKit::WebResourceLoadStatisticsStore needs to be consulted.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::hasStorageAccess):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::hasStorageAccess):
+        (WebKit::WebResourceLoadStatisticsStore::requestStorageAccess):
+            Now adds an entry for granted access. A bug found through testing.
+            Switched from WTF::Function to WTF::CompletionHandler.
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::hasStorageAccess):
+        (WebKit::WebsiteDataStore::requestStorageAccess):
+            Switched from WTF::Function to WTF::CompletionHandler.
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::hasStorageAccess):
+        (WebKit::WebChromeClient::requestStorageAccess):
+            Switched from WTF::Function to WTF::CompletionHandler.
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::hasStorageAccess):
+        (WebKit::WebPage::requestStorageAccess):
+            Switched from WTF::Function to WTF::CompletionHandler.
+        * WebProcess/WebPage/WebPage.h:
+
+2017-12-06  Youenn Fablet  <youenn@apple.com>
+
+        CacheStorageEngineConnection should protect its IPC Connection when doing asynchronous tasks
+        https://bugs.webkit.org/show_bug.cgi?id=180461
+
+        Reviewed by Chris Dumez.
+
+        Protecting the IPC connection instead of the CacheStorageEngineConnection
+        since CacheStorageEngineConnection only keeps a reference to the NetworkConnectionToWebProcess.
+
+        * NetworkProcess/cache/CacheStorageEngineConnection.cpp:
+        (WebKit::CacheStorageEngineConnection::open):
+        (WebKit::CacheStorageEngineConnection::remove):
+        (WebKit::CacheStorageEngineConnection::caches):
+        (WebKit::CacheStorageEngineConnection::retrieveRecords):
+        (WebKit::CacheStorageEngineConnection::deleteMatchingRecords):
+        (WebKit::CacheStorageEngineConnection::putRecords):
+        (WebKit::CacheStorageEngineConnection::clearMemoryRepresentation):
+
+2017-12-06  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Introduce Nicosia::PaintingContext, add Cairo implementation
+        https://bugs.webkit.org/show_bug.cgi?id=180239
+
+        Reviewed by Michael Catanzaro.
+
+        With Nicosia::Buffer now only providing the memory area into which the
+        tile content was rasterized, we can simplify the BitmapTexture update
+        greatly -- we don't have to create a BitmapImage anymore and retrieve
+        memory pointer from the contained cairo_surface_t object. Instead, we
+        just copy to GPU the memory that Nicosia::Buffer controls.
+
+        * Shared/CoordinatedGraphics/CoordinatedBackingStore.cpp:
+        (WebKit::CoordinatedBackingStoreTile::swapBuffers):
+
+2017-12-05  Brent Fulgham  <bfulgham@apple.com>
+
+        Limit user agent versioning to an upper bound
+        https://bugs.webkit.org/show_bug.cgi?id=180365
+        <rdar://problem/34550617>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::standardUserAgent): Don't pass the WebKit bundle version when
+        creatin the User Agent string.
+        (WebKit::webKitBundleVersionString): Deleted.
+        * UIProcess/mac/WebPageProxyMac.mm:
+        (WebKit::WebPageProxy::standardUserAgent): Ditto.
+        (WebKit::webKitBundleVersionString): Deleted.
+
+2017-12-05  Alex Christensen  <achristensen@webkit.org>
+
+        Fix crash when loading a file URL that does not have a fileSystemPath representation
+        https://bugs.webkit.org/show_bug.cgi?id=180448
+        <rdar://problem/22805921>
+
+        Reviewed by Chris Dumez.
+
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::assumeReadAccessToBaseURL):
+        Check if a String is null before adding it to a HashSet.
+
+2017-12-05  Youenn Fablet  <youenn@apple.com>
+
+        Implement https://w3c.github.io/ServiceWorker/#clients-claim
+        https://bugs.webkit.org/show_bug.cgi?id=180261
+
+        Reviewed by Chris Dumez.
+
+        Add IPC plumbery for clients claim between ServiceWorker process and Storage process.
+
+        * StorageProcess/ServiceWorker/WebSWServerToContextConnection.cpp:
+        (WebKit::WebSWServerToContextConnection::claimCompleted):
+        * StorageProcess/ServiceWorker/WebSWServerToContextConnection.h:
+        * StorageProcess/ServiceWorker/WebSWServerToContextConnection.messages.in:
+        * WebProcess/Storage/WebSWContextManagerConnection.cpp:
+        (WebKit::WebSWContextManagerConnection::claim):
+        (WebKit::WebSWContextManagerConnection::claimCompleted):
+        * WebProcess/Storage/WebSWContextManagerConnection.h:
+        * WebProcess/Storage/WebSWContextManagerConnection.messages.in:
+
+2017-12-05  Chris Dumez  <cdumez@apple.com>
+
+        Add support for ServiceWorkerContainer.prototype.ready
+        https://bugs.webkit.org/show_bug.cgi?id=180383
+
+        Reviewed by Youenn Fablet.
+
+        * StorageProcess/ServiceWorker/WebSWServerConnection.cpp:
+        (WebKit::WebSWServerConnection::whenRegistrationReady):
+        (WebKit::WebSWServerConnection::resolveRegistrationReadyRequests):
+        * StorageProcess/ServiceWorker/WebSWServerConnection.h:
+        * StorageProcess/ServiceWorker/WebSWServerConnection.messages.in:
+        * WebProcess/Storage/WebSWClientConnection.cpp:
+        (WebKit::WebSWClientConnection::matchRegistration):
+        (WebKit::WebSWClientConnection::whenRegistrationReady):
+        (WebKit::WebSWClientConnection::registrationReady):
+        (WebKit::WebSWClientConnection::getRegistrations):
+        * WebProcess/Storage/WebSWClientConnection.h:
+        * WebProcess/Storage/WebSWClientConnection.messages.in:
+
+2017-12-05  Youenn Fablet  <youenn@apple.com>
+
+        Implement setting of service worker to client in SWServer without going to WebProcess
+        https://bugs.webkit.org/show_bug.cgi?id=180382
+
+        Reviewed by Chris Dumez.
+
+        * StorageProcess/ServiceWorker/WebSWServerConnection.messages.in:
+        * StorageProcess/ServiceWorker/WebSWServerConnection.cpp:
+        (WebKit::WebSWServerConnection::registerServiceWorkerClient):
+        * StorageProcess/ServiceWorker/WebSWServerConnection.h:
+        * StorageProcess/ServiceWorker/WebSWServerConnection.messages.in:
+        * WebProcess/Storage/WebSWClientConnection.cpp:
+        (WebKit::WebSWClientConnection::registerServiceWorkerClient):
+        (WebKit::WebSWClientConnection::serviceWorkerStartedControllingClient): Deleted.
+        (WebKit::WebSWClientConnection::serviceWorkerStoppedControllingClient): Deleted.
+        * WebProcess/Storage/WebSWClientConnection.h:
+
+2017-12-04  Chris Dumez  <cdumez@apple.com>
+
+        Support container.getRegistration() / getRegistrations() inside service workers
+        https://bugs.webkit.org/show_bug.cgi?id=180360
+
+        Reviewed by Youenn Fablet.
+
+        * WebProcess/Storage/WebSWClientConnection.cpp:
+        (WebKit::WebSWClientConnection::didMatchRegistration):
+        (WebKit::WebSWClientConnection::didGetRegistrations):
+        (WebKit::WebSWClientConnection::matchRegistration):
+        (WebKit::WebSWClientConnection::getRegistrations):
+
+2017-12-04  Brady Eidson  <beidson@apple.com>
+
+        Followup to:
+        Get a directory path to SWServers for storing ServiceWorker registrations
+        https://bugs.webkit.org/show_bug.cgi?id=180362
+
+        Unreviewed.
+
+        * StorageProcess/StorageProcess.cpp:
+        (WebKit::StorageProcess::swServerForSession): Change this ASSERT which is invalid in private browsing sessions.
+
+2017-12-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Minor DisplayRefreshMonitor-related cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=179802
+
+        Reviewed by Sam Weinig.
+
+        Use RunLoopObserver::WellKnownRunLoopOrders. We want to fire before layer flushing.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::m_configurationPreferenceValues):
+
+2017-12-04  Brent Fulgham  <bfulgham@apple.com>
+
+        Don't force creation of process pool when enabling resource load statistics
+        https://bugs.webkit.org/show_bug.cgi?id=180374
+        <rdar://problem/35545639>
+
+        Reviewed by Alex Christensen.
+
+        Pass appropriate arguments to the 'processPool' accessor so that we only get the
+        set of existing process pools. We don't want to pay the cost of launching new
+        process pools just to set this flag. The flag will be properly set when the pools
+        are created as soon as a WebView is instantiated.
+
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::setResourceLoadStatisticsEnabled):
+
+2017-12-04  David Quesada  <david_quesada@apple.com>
+
+        Add a class for parsing application manifests
+        https://bugs.webkit.org/show_bug.cgi?id=177973
+        rdar://problem/34747949
+
+        Reviewed by Geoffrey Garen.
+
+        * Configurations/FeatureDefines.xcconfig: Add ENABLE_APPLICATION_MANIFEST feature flag.
+
+2017-12-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Rename a static helper in TouchBarMenuItemData.cpp to match style guidelines.
+        https://bugs.webkit.org/show_bug.cgi?id=180305
+
+        Reviewed by Andy Estes.
+
+        Style guidelines state that we should use bare words for getters, so getItemType should just be
+        itemType. Since this collides with the itemType member variable, this patch also renames that
+        member variable to the more concise "type".
+
+        No change in behavior.
+
+        * Shared/TouchBarMenuItemData.cpp:
+        (WebKit::itemType):
+        (WebKit::TouchBarMenuItemData::TouchBarMenuItemData):
+        (WebKit::TouchBarMenuItemData::encode const):
+        (WebKit::TouchBarMenuItemData::decode):
+        (WebKit::getItemType): Deleted.
+        * Shared/TouchBarMenuItemData.h:
+        (WebKit::operator==):
+
+2017-12-04  Brian Burg  <bburg@apple.com>
+
+        Web Automation: add flag to preserve legacy page screenshot behavior
+        https://bugs.webkit.org/show_bug.cgi?id=180313
+        <rdar://problem/34379930>
+
+        Reviewed by Joseph Pecoraro.
+
+        For compatibility with JSON Wire Protocol implemented by Safari,
+        we need to retain the ability to perform whole page contents
+        snapshots using Automation.takeScreenshot. Add an extra flag,
+        clipToViewport, which can be used by W3C-conforming drivers.
+
+        * UIProcess/Automation/Automation.json: Add new flag.
+        * UIProcess/Automation/WebAutomationSession.h:
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::takeScreenshot):
+        * WebProcess/Automation/WebAutomationSessionProxy.h:
+        * WebProcess/Automation/WebAutomationSessionProxy.messages.in:
+        * WebProcess/Automation/WebAutomationSessionProxy.cpp:
+        (WebKit::snapshotRectForScreenshot):
+        (WebKit::WebAutomationSessionProxy::takeScreenshot):
+        If the flag is false, take a screenshot of the whole page contents.
+
+2017-12-04  JF Bastien  <jfbastien@apple.com>
+
+        Update std::expected to match libc++ coding style
+        https://bugs.webkit.org/show_bug.cgi?id=180264
+
+        Reviewed by Alex Christensen.
+
+        Update various uses of Expected, mostly renaming valueOr and
+        hasValue to the STL naming convention.
+
+        * NetworkProcess/cache/CacheStorageEngine.cpp:
+        (WebKit::CacheStorage::Engine::open):
+        (WebKit::CacheStorage::Engine::retrieveCaches):
+        (WebKit::CacheStorage::Engine::retrieveRecords):
+        (WebKit::CacheStorage::Engine::putRecords):
+        (WebKit::CacheStorage::Engine::deleteMatchingRecords):
+        (WebKit::CacheStorage::Engine::fetchEntries):
+        (WebKit::CacheStorage::Engine::clearMemoryRepresentation):
+        * NetworkProcess/cache/CacheStorageEngineCache.cpp:
+        (WebKit::CacheStorage::ReadRecordTaskCounter::appendRecord):
+        (WebKit::CacheStorage::Cache::updateRecordToDisk):
+        * NetworkProcess/cache/CacheStorageEngineCaches.cpp:
+        (WebKit::CacheStorage::Caches::initialize):
+        (WebKit::CacheStorage::Caches::readCachesFromDisk):
+        * NetworkProcess/webrtc/NetworkRTCProvider.cpp:
+        (WebKit::NetworkRTCProvider::createResolver):
+        * Platform/IPC/ArgumentCoders.h:
+
+2017-12-04  Brady Eidson  <beidson@apple.com>
+
+        Get a directory path to SWServers for storing ServiceWorker registrations.
+        https://bugs.webkit.org/show_bug.cgi?id=180362
+
+        Reviewed by Chris Dumez.
+
+        This gets all of the plumbing in place for specifying a ServiceWorker registration storage path
+        in a particular WebsiteDataStore.
+
+        * Shared/Storage/StorageProcessCreationParameters.cpp:
+        (WebKit::StorageProcessCreationParameters::encode const):
+        (WebKit::StorageProcessCreationParameters::decode):
+        * Shared/Storage/StorageProcessCreationParameters.h:
+
+        * StorageProcess/StorageProcess.cpp:
+        (WebKit::StorageProcess::initializeWebsiteDataStore):
+        (WebKit::StorageProcess::swServerForSession):
+        * StorageProcess/StorageProcess.h:
+
+        * UIProcess/API/APIProcessPoolConfiguration.cpp:
+        (API::ProcessPoolConfiguration::createWithLegacyOptions):
+        (API::ProcessPoolConfiguration::createWithWebsiteDataStoreConfiguration):
+        (API::ProcessPoolConfiguration::ProcessPoolConfiguration):
+        * UIProcess/API/APIProcessPoolConfiguration.h:
+
+        * UIProcess/API/APIWebsiteDataStore.h:
+        * UIProcess/API/Cocoa/APIWebsiteDataStoreCocoa.mm:
+        (API::WebsiteDataStore::defaultServiceWorkerRegistrationDirectory):
+        * UIProcess/API/glib/APIWebsiteDataStoreGLib.cpp:
+        (API::WebsiteDataStore::defaultServiceWorkerRegistrationDirectory):
+
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::WebProcessPool::legacyPlatformDefaultIndexedDBDatabaseDirectory):
+        (WebKit::WebProcessPool::legacyPlatformDefaultServiceWorkerRegistrationDirectory):
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::ensureStorageProcessAndWebsiteDataStore):
+        * UIProcess/WebProcessPool.h:
+
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::resolveDirectoriesIfNecessary):
+        (WebKit::WebsiteDataStore::storageProcessParameters):
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+        (WebKit::WebsiteDataStore::resolvedServiceWorkerRegistrationDirectory const):
+
+        * UIProcess/gtk/WebProcessPoolGtk.cpp:
+        (WebKit::WebProcessPool::legacyPlatformDefaultServiceWorkerRegistrationDirectory):
+
+        * UIProcess/wpe/WebProcessPoolWPE.cpp:
+        (WebKit::WebProcessPool::legacyPlatformDefaultServiceWorkerRegistrationDirectory):
+
+2017-12-04  Frederic Wang  <fwang@igalia.com>
+
+        Make ScrollingTreeNode::enclosingFrameNode return the node itself for frame nodes
+        https://bugs.webkit.org/show_bug.cgi?id=180353
+
+        Reviewed by Antonio Gomes.
+
+        This function was introduced in bug 175135 to solve a rendering bug with fixed positioned
+        nodes in overflow nodes. For a frame node, the reference frame to use for fixed nodes is
+        actually the frame node itself or otherwise we will get the same rendering bug. This patch
+        makes enclosingFrameNode return the node itself when it is a frame node and renames it to
+        clarify this behavior. Currently, enclosingFrameNode is not used for frame nodes so the
+        behavior is unchanged.
+
+        * UIProcess/RemoteLayerTree/ios/ScrollingTreeScrollingNodeDelegateIOS.mm:
+        (WebKit::ScrollingTreeScrollingNodeDelegateIOS::updateChildNodesAfterScroll): Use auto* and
+        the new function name.
+
+2017-12-04  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Implement PAL::SleepDisabler
+        https://bugs.webkit.org/show_bug.cgi?id=178485
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseDispose):
+        (webkitWebViewBaseEnterFullScreen):
+        (webkitWebViewBaseExitFullScreen):
+        (screenSaverInhibitedCallback): Deleted.
+        (webkitWebViewBaseSendInhibitMessageToScreenSaver): Deleted.
+        (screenSaverProxyCreatedCallback): Deleted.
+        (webkitWebViewBaseInhibitScreenSaver): Deleted.
+        (webkitWebViewBaseUninhibitScreenSaver): Deleted.
+
+2017-12-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        WTF shouldn't have both Thread and ThreadIdentifier
+        https://bugs.webkit.org/show_bug.cgi?id=180308
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/API/glib/IconDatabase.cpp:
+        * UIProcess/GenericCallback.h:
+        (WebKit::GenericCallback::~GenericCallback):
+        (WebKit::GenericCallback::performCallbackWithReturnValue):
+
+2017-12-03  Chris Dumez  <cdumez@apple.com>
+
+        Support serviceWorker.postMessage() inside service workers
+        https://bugs.webkit.org/show_bug.cgi?id=180328
+
+        Reviewed by Darin Adler.
+
+        Support serviceWorker.postMessage() inside service workers.
+
+        * StorageProcess/ServiceWorker/WebSWServerConnection.cpp:
+        (WebKit::WebSWServerConnection::postMessageToServiceWorkerFromClient):
+        (WebKit::WebSWServerConnection::postMessageToServiceWorkerFromServiceWorker):
+        * StorageProcess/ServiceWorker/WebSWServerConnection.h:
+        * StorageProcess/ServiceWorker/WebSWServerConnection.messages.in:
+        * WebProcess/Storage/WebSWClientConnection.cpp:
+        (WebKit::WebSWClientConnection::postMessageToServiceWorker):
+        * WebProcess/Storage/WebSWClientConnection.h:
+        * WebProcess/Storage/WebSWContextManagerConnection.cpp:
+        (WebKit::WebSWContextManagerConnection::postMessageToServiceWorkerFromClient):
+        (WebKit::WebSWContextManagerConnection::postMessageToServiceWorkerFromServiceWorker):
+        * WebProcess/Storage/WebSWContextManagerConnection.h:
+        * WebProcess/Storage/WebSWContextManagerConnection.messages.in:
+
+2017-12-03  Chris Dumez  <cdumez@apple.com>
+
+        Implement self.skipWaiting() inside service workers
+        https://bugs.webkit.org/show_bug.cgi?id=180329
+
+        Reviewed by Darin Adler.
+
+        * StorageProcess/ServiceWorker/WebSWServerToContextConnection.cpp:
+        (WebKit::WebSWServerToContextConnection::didFinishSkipWaiting):
+        * StorageProcess/ServiceWorker/WebSWServerToContextConnection.h:
+        * StorageProcess/ServiceWorker/WebSWServerToContextConnection.messages.in:
+        * WebProcess/Storage/WebSWContextManagerConnection.cpp:
+        (WebKit::WebSWContextManagerConnection::skipWaiting):
+        (WebKit::WebSWContextManagerConnection::didFinishSkipWaiting):
+        * WebProcess/Storage/WebSWContextManagerConnection.h:
+        * WebProcess/Storage/WebSWContextManagerConnection.messages.in:
+
+2017-12-02  Youenn Fablet  <youenn@apple.com>
+
+        Implement https://w3c.github.io/ServiceWorker/#clients-getall
+        https://bugs.webkit.org/show_bug.cgi?id=180276
+
+        Reviewed by Chris Dumez.
+
+        Add IPC plumbery for clients.matchAll between ServiceWorker process and Storage process.
+
+        * StorageProcess/ServiceWorker/WebSWServerToContextConnection.cpp:
+        (WebKit::WebSWServerToContextConnection::matchAllCompleted):
+        * StorageProcess/ServiceWorker/WebSWServerToContextConnection.h:
+        * StorageProcess/ServiceWorker/WebSWServerToContextConnection.messages.in:
+        * WebProcess/Storage/WebSWContextManagerConnection.cpp:
+        (WebKit::WebSWContextManagerConnection::matchAll):
+        (WebKit::WebSWContextManagerConnection::matchAllCompleted):
+        * WebProcess/Storage/WebSWContextManagerConnection.h:
+        * WebProcess/Storage/WebSWContextManagerConnection.messages.in:
+
+2017-12-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remote Web Inspector window always shows up at the default size
+        https://bugs.webkit.org/show_bug.cgi?id=180284
+        <rdar://problem/35430255>
+
+        Reviewed by Brian Burg.
+
+        * UIProcess/mac/RemoteWebInspectorProxyMac.mm:
+        (WebKit::RemoteWebInspectorProxy::platformCreateFrontendPageAndWindow):
+        Give remote web inspector windows an autosave name so that their frame can
+        be automatically saved and restored by the system.
+
+2017-12-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Add a log channel for viewports
+        https://bugs.webkit.org/show_bug.cgi?id=180295
+
+        Reviewed by Zalan Bujtas.
+
+        Add a "Viewports" log channel to log viewport scaling information, and enhance the
+        WebKit "VisibleRects" channel to log additional data for the same reason.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _didCommitLayerTree:]):
+        (-[WKWebView _dynamicViewportUpdateChangedTargetToScale:position:nextValidLayerTreeTransactionID:]):
+        (-[WKWebView _dispatchSetMinimumLayoutSize:]):
+        (-[WKWebView _endAnimatedResize]):
+        (-[WKWebView _resizeWhileHidingContentWithUpdates:]):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::setFixedLayoutSize):
+        (WebKit::WebPage::mainFrameDidLayout):
+        (WebKit::WebPage::didCommitLoad):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::scaleAfterViewportWidthChange):
+        (WebKit::WebPage::setViewportConfigurationMinimumLayoutSize):
+        (WebKit::WebPage::dynamicViewportSizeUpdate):
+        (WebKit::WebPage::resetViewportDefaultConfiguration):
+        (WebKit::WebPage::viewportConfigurationChanged):
+        (WebKit::WebPage::updateVisibleContentRects):
+
+2017-12-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: handle user prompts shown while executing scripts
+        https://bugs.webkit.org/show_bug.cgi?id=179979
+
+        Reviewed by Brian Burg.
+
+        * UIProcess/Automation/Automation.json: Add UnexpectedAlertOpen error.
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::willShowJavaScriptDialog): Finish pending evaluateJavaScriptFunction operations
+        with UnexpectedAlertOpen error.
+
+2017-12-02  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Make some minor adjustments to TouchBarMenuData and TouchBarMenuItemData
+        https://bugs.webkit.org/show_bug.cgi?id=180305
+
+        Reviewed by Joseph Pecoraro.
+
+        Mark some methods and parameters as const, use the default constructor in more places, and also remove a few
+        extraneous imported headers.
+
+        * Shared/TouchBarMenuData.cpp:
+        (WebKit::TouchBarMenuData::TouchBarMenuData):
+
+        Add a FIXME regarding the use of the 'id' attribute.
+
+        (WebKit::TouchBarMenuData::decode):
+        * Shared/TouchBarMenuData.h:
+        (WebKit::TouchBarMenuData::items const):
+        (WebKit::TouchBarMenuData::setID):
+        (WebKit::TouchBarMenuData::isPageCustomized const):
+        (WebKit::TouchBarMenuData::items): Deleted.
+        (WebKit::TouchBarMenuData::isPageCustomized): Deleted.
+        * Shared/TouchBarMenuItemData.cpp:
+        (WebKit::getItemType):
+
+        Change a helper method from a static class function to a static function in the implementation file.
+
+        (WebKit::TouchBarMenuItemData::TouchBarMenuItemData):
+        (WebKit::TouchBarMenuItemData::encode const):
+        (WebKit::TouchBarMenuItemData::decode):
+        (WebKit::TouchBarMenuItemData::getItemType): Deleted.
+        * Shared/TouchBarMenuItemData.h:
+        (WebKit::operator==):
+
+        Remove the commandName member variable, since it doesn't make sense to propagate an event handler
+        attribute from WebCore to the client layer.
+
+        * UIProcess/WebPageProxy.messages.in:
+
+2017-12-01  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK+ debug build fix. Replace ASSERT_UNUSED() with UNUSED_PARAM()
+        in WebKit::WebPage methods that used to operate on HTMLMenuElement pointer
+        values (which have been converted to references).
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::didInsertMenuElement):
+        (WebKit::WebPage::didRemoveMenuElement):
+        (WebKit::WebPage::didInsertMenuItemElement):
+        (WebKit::WebPage::didRemoveMenuItemElement):
+
+2017-12-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Reduce the number of calls to ViewportConfiguration::updateConfiguration()
+        https://bugs.webkit.org/show_bug.cgi?id=180299
+
+        Reviewed by Zalan Bujtas.
+
+        There are several calls to ViewportConfiguration::setDefaultConfiguration() during loading
+        with the same arguments. We can avoid unnecessary calls to updateConfiguration() by returning
+        early if the configuration hasn't changed.
+
+        Also move the fetching of ViewportConfiguration::xhtmlMobileParameters() from didReceiveMobileDocType()
+        into resetViewportDefaultConfiguration() where we grab all the other default configs.
+
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::didReceiveMobileDocType):
+        (WebKit::WebPage::resetViewportDefaultConfiguration):
+
+2017-12-01  Aishwarya Nirmal  <anirmal@apple.com>
+
+        [Touch Bar Web API] Object representing Touch Bar Menu to send between Web and UI Processes
+        https://bugs.webkit.org/show_bug.cgi?id=179714
+
+        Reviewed by Wenson Hsieh.
+
+        These changes define the TouchBarMenuData and TouchBarMenuItemData objects which draw information
+        from touch bar HTMLMenuElement and HTMLMenuItemElement. These objects represent the contents of
+        the page-customized touch bar. Changes to the html elements representing the touch bar are sent 
+        to the UI process.
+
+        * Shared/TouchBarMenuData.cpp: Copied from Source/WebCore/html/HTMLMenuItemElement.cpp.
+        (WebKit::TouchBarMenuData::TouchBarMenuData):
+        (WebKit::TouchBarMenuData::addMenuItem):
+        (WebKit::TouchBarMenuData::removeMenuItem):
+        (WebKit::TouchBarMenuData::encode const):
+        (WebKit::TouchBarMenuData::decode):
+        * Shared/TouchBarMenuData.h: Copied from Source/WebCore/html/HTMLMenuItemElement.h.
+        (WebKit::TouchBarMenuData::items):
+        (WebKit::TouchBarMenuData::isPageCustomized):
+        (WebKit::TouchBarMenuData::setIsPageCustomized):
+        * Shared/TouchBarMenuItemData.cpp: Added.
+        (WebKit::TouchBarMenuItemData::getItemType):
+        (WebKit::TouchBarMenuItemData::TouchBarMenuItemData):
+        (WebKit::TouchBarMenuItemData::encode const):
+        (WebKit::TouchBarMenuItemData::decode):
+        * Shared/TouchBarMenuItemData.h: Added.
+        (WebKit::operator<):
+        (WebKit::operator>):
+        (WebKit::operator<=):
+        (WebKit::operator>=):
+        (WebKit::operator==):
+        (WebKit::operator!=):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::touchBarMenuDataChanged):
+        (WebKit::WebPageProxy::touchBarMenuItemDataAdded):
+        (WebKit::WebPageProxy::touchBarMenuItemDataRemoved):
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::touchBarMenuData const):
+        * UIProcess/WebPageProxy.messages.in:
+        * WebKit.xcodeproj/project.pbxproj:
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::didInsertMenuElement):
+        (WebKit::WebChromeClient::didRemoveMenuElement):
+        (WebKit::WebChromeClient::didInsertMenuItemElement):
+        (WebKit::WebChromeClient::didRemoveMenuItemElement):
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::didInsertMenuElement):
+        (WebKit::WebPage::didRemoveMenuElement):
+        (WebKit::WebPage::didInsertMenuItemElement):
+        (WebKit::WebPage::didRemoveMenuItemElement):
+        (WebKit::WebPage::sendTouchBarMenuDataRemovedUpdate):
+        (WebKit::WebPage::sendTouchBarMenuDataAddedUpdate):
+        (WebKit::WebPage::sendTouchBarMenuItemDataAddedUpdate):
+        (WebKit::WebPage::sendTouchBarMenuItemDataRemovedUpdate):
+        * WebProcess/WebPage/WebPage.h:
+
+2017-12-01  Daniel Bates  <dabates@apple.com>
+
+        Alternative Presentation Button: Provide a way to query for the replaced elements
+        https://bugs.webkit.org/show_bug.cgi?id=180114
+        <rdar://problem/35710539>
+
+        Reviewed by Tim Horton.
+
+        Add SPI to query for the elements that were replaced by an Alternative Presentation Button.
+
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInFrame.mm:
+        (-[WKWebProcessPlugInFrame elementsReplacedByAlternativePresentationButtonWithIdentifier:]): Added.
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInFramePrivate.h:
+        * WebProcess/InjectedBundle/API/c/WKBundleFrame.cpp:
+        (WKBundleElementsReplacedByAlternativePresentationButton): Added.
+        * WebProcess/InjectedBundle/API/c/WKBundleFramePrivate.h:
+
+2017-12-01  Youenn Fablet  <youenn@apple.com>
+
+        Implement https://w3c.github.io/ServiceWorker/#clients-get
+        https://bugs.webkit.org/show_bug.cgi?id=180167
+
+        Reviewed by Chris Dumez.
+
+        Add IPC plumbery for clientFromId between ServiceWorker process and Storage process.
+
+        * StorageProcess/ServiceWorker/WebSWServerToContextConnection.cpp:
+        (WebKit::WebSWServerToContextConnection::clientFromIdCompleted):
+        * StorageProcess/ServiceWorker/WebSWServerToContextConnection.h:
+        * StorageProcess/ServiceWorker/WebSWServerToContextConnection.messages.in:
+        * WebProcess/Storage/WebSWContextManagerConnection.cpp:
+        (WebKit::WebSWContextManagerConnection::findClientByIdentifier):
+        (WebKit::WebSWContextManagerConnection::findClientByIdentifierCompleted):
+        * WebProcess/Storage/WebSWContextManagerConnection.h:
+        * WebProcess/Storage/WebSWContextManagerConnection.messages.in:
+
+2017-12-01  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: move Inspector::Protocol::Array<T> to JSON namespace
+        https://bugs.webkit.org/show_bug.cgi?id=173662
+
+        Reviewed by Joseph Pecoraro.
+
+        Adopt new type names.
+
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::getNextContext):
+        (WebKit::WebAutomationSession::getBrowsingContexts):
+        (WebKit::buildArrayForCookies):
+        (WebKit::WebAutomationSession::getSessionPermissions):
+        * UIProcess/Automation/WebAutomationSession.h:
+
+2017-12-01  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Attachment Support] Implement SPI for clients to update a given attachment's data
+        https://bugs.webkit.org/show_bug.cgi?id=180184
+        <rdar://problem/35355731>
+
+        Reviewed by Tim Horton.
+
+        Add plumbing to the web process for setting the attachment data (and optionally, the content type and/or file
+        name) of a given attachment. See WebCore ChangeLog for more detail. Changes covered by new API tests.
+
+        * UIProcess/API/APIAttachment.cpp:
+        (API::Attachment::setDataAndContentType):
+        * UIProcess/API/APIAttachment.h:
+        * UIProcess/API/Cocoa/_WKAttachment.h:
+
+        Add nullability annotations around _WKAttachment SPI methods.
+
+        * UIProcess/API/Cocoa/_WKAttachment.mm:
+        (-[_WKAttachment setData:newContentType:newFilename:completion:]):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::setAttachmentDataAndContentType):
+        * UIProcess/WebPageProxy.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::setAttachmentDataAndContentType):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2017-12-01  Brady Eidson  <beidson@apple.com>
+
+        Add Internals.terminateServiceWorker, and the ability to restart service workers for postMessage.
+        https://bugs.webkit.org/show_bug.cgi?id=180170
+
+        Reviewed by Chris Dumez.
+
+        * StorageProcess/ServiceWorker/WebSWServerConnection.cpp:
+        (WebKit::WebSWServerConnection::startFetch):
+        (WebKit::WebSWServerConnection::postMessageToServiceWorkerGlobalScope):
+        * StorageProcess/ServiceWorker/WebSWServerConnection.h:
+        * StorageProcess/ServiceWorker/WebSWServerConnection.messages.in:
+
+        * StorageProcess/ServiceWorker/WebSWServerToContextConnection.cpp:
+        (WebKit::WebSWServerToContextConnection::syncTerminateWorker):
+        * StorageProcess/ServiceWorker/WebSWServerToContextConnection.h:
+
+        * StorageProcess/StorageToWebProcessConnection.cpp:
+        (WebKit::StorageToWebProcessConnection::didReceiveSyncMessage):
+
+        * WebProcess/Storage/WebSWClientConnection.cpp:
+        (WebKit::WebSWClientConnection::syncTerminateWorker):
+        * WebProcess/Storage/WebSWClientConnection.h:
+
+        * WebProcess/Storage/WebSWContextManagerConnection.cpp:
+        (WebKit::WebSWContextManagerConnection::terminateWorker):
+        (WebKit::WebSWContextManagerConnection::syncTerminateWorker):
+        * WebProcess/Storage/WebSWContextManagerConnection.h:
+        * WebProcess/Storage/WebSWContextManagerConnection.messages.in:
+
+        * WebProcess/Storage/WebToStorageProcessConnection.cpp:
+        (WebKit::WebToStorageProcessConnection::didReceiveSyncMessage):
+        * WebProcess/Storage/WebToStorageProcessConnection.h:
+
+2017-12-01  Youenn Fablet  <youenn@apple.com>
+
+        Clear WebSWClientConnection in case storage process IPC connection is closing
+        https://bugs.webkit.org/show_bug.cgi?id=180210
+
+        Reviewed by Chris Dumez.
+
+        Clear the sw connection maps when connection is closing.
+        Call related completion handlers for each connection.
+
+        * WebProcess/Storage/WebSWClientConnection.cpp:
+        (WebKit::WebSWClientConnection::connectionToServerLost):
+        * WebProcess/Storage/WebSWClientConnection.h:
+        * WebProcess/Storage/WebToStorageProcessConnection.cpp:
+        (WebKit::WebToStorageProcessConnection::didClose):
+        (WebKit::WebToStorageProcessConnection::idbConnectionToServerForSession):
+        (WebKit::WebToStorageProcessConnection::serviceWorkerConnectionForSession):
+        * WebProcess/Storage/WebToStorageProcessConnection.h:
+
+2017-12-01  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Use CaptureDevice instead of device ID to identify devices
+        https://bugs.webkit.org/show_bug.cgi?id=180206
+        <rdar://problem/35775758>
+
+        Reviewed by Youenn Fablet.
+
+        * UIProcess/Cocoa/UserMediaCaptureManagerProxy.cpp:
+        (WebKit::UserMediaCaptureManagerProxy::createMediaSourceForCaptureDeviceWithConstraints):
+        * UIProcess/Cocoa/UserMediaCaptureManagerProxy.h:
+        * UIProcess/Cocoa/UserMediaCaptureManagerProxy.messages.in:
+        * UIProcess/UserMediaPermissionRequestManagerProxy.cpp:
+        (WebKit::UserMediaPermissionRequestManagerProxy::userMediaAccessWasGranted):
+        (WebKit::UserMediaPermissionRequestManagerProxy::grantAccess):
+        (WebKit::UserMediaPermissionRequestManagerProxy::requestUserMediaPermissionForFrame):
+        * UIProcess/UserMediaPermissionRequestManagerProxy.h:
+        * UIProcess/UserMediaPermissionRequestProxy.cpp:
+        (WebKit::UserMediaPermissionRequestProxy::allow):
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.cpp:
+        (WebKit::UserMediaPermissionRequestManager::userMediaAccessWasGranted):
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::userMediaAccessWasGranted):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+        * WebProcess/cocoa/UserMediaCaptureManager.cpp:
+        (WebKit::UserMediaCaptureManager::createCaptureSource):
+        * WebProcess/cocoa/UserMediaCaptureManager.h:
+
+2017-12-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: link and partial links queries don't work in xhtml documents
+        https://bugs.webkit.org/show_bug.cgi?id=180191
+
+        Reviewed by Brian Burg.
+
+        We convert the queries to use xpath, which works for html documents, but it doesn't work for xhtml. In case of
+        xhtml we would need to provide a namespace resolver and elements would need to be prefixed with 'xhtml:'. It's
+        easier to simply iterate the link elements and compare the text.
+
+        Fixes: imported/w3c/webdriver/tests/retrieval/find_element_from_element.py::test_xhtml_namespace[link text-full link text]
+               imported/w3c/webdriver/tests/retrieval/find_element_from_element.py::test_xhtml_namespace[partial link text-link text]
+               imported/w3c/webdriver/tests/retrieval/find_element_from_elements.py::test_xhtml_namespace[link text-full link text]
+               imported/w3c/webdriver/tests/retrieval/find_element_from_elements.py::test_xhtml_namespace[partial link text-link text]
+               imported/w3c/webdriver/tests/retrieval/find_element.py::test_xhtml_namespace[link text-full link text]
+               imported/w3c/webdriver/tests/retrieval/find_element.py::test_xhtml_namespace[partial link text-link text]
+               imported/w3c/webdriver/tests/retrieval/find_elements.py::test_xhtml_namespace[link text-full link text]
+               imported/w3c/webdriver/tests/retrieval/find_elements.py::test_xhtml_namespace[partial link text-link text]
+
+        * UIProcess/Automation/atoms/FindNodes.js:
+        (switch):
+        (tryToFindNode):
+
+2017-11-30  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION (r224791): cookies are shared between ephemeral sessions in the same process pool
+        https://bugs.webkit.org/show_bug.cgi?id=180235
+
+        Reviewed by Joseph Pecoraro.
+
+        In r224791 I assumed that uiProcessCookieStorageIdentifier would be empty in the ephemeral session initialization message.
+        This is not the case.  We did not catch this because almost all of our ephemeral session testing uses the legacyPrivateSessionID.
+        I add checks for if the SessionID is ephemeral like we already have in WebFrameNetworkingContext::ensureWebsiteDataStoreSession.
+        I also add an API test that makes sure cookies are not shared between ephemeral sessions the way they are made through the API.
+
+        * NetworkProcess/mac/RemoteNetworkingContext.mm:
+        (WebKit::RemoteNetworkingContext::ensureWebsiteDataStoreSession):
+
 2017-11-30  Stephan Szabo  <stephan.szabo@sony.com>
 
         Make LegacyCustomProtocolManager optional for network process

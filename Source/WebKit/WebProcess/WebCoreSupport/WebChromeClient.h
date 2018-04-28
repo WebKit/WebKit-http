@@ -42,6 +42,11 @@ public:
 private:
     ~WebChromeClient();
 
+    void didInsertMenuElement(WebCore::HTMLMenuElement&);
+    void didRemoveMenuElement(WebCore::HTMLMenuElement&);
+    void didInsertMenuItemElement(WebCore::HTMLMenuItemElement&);
+    void didRemoveMenuItemElement(WebCore::HTMLMenuItemElement&);
+
     void chromeDestroyed() final;
     
     void setWindowRect(const WebCore::FloatRect&) final;
@@ -344,7 +349,8 @@ private:
 
     void didInvalidateDocumentMarkerRects() final;
 
-    void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, WTF::Function<void (bool)>&&) final;
+    void hasStorageAccess(String&& subFrameHost, String&& topFrameHost, WTF::CompletionHandler<void (bool)>&&) final;
+    void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, WTF::CompletionHandler<void (bool)>&&) final;
 
     String m_cachedToolTip;
     mutable RefPtr<WebFrame> m_cachedFrameSetLargestFrame;

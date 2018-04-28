@@ -5010,7 +5010,7 @@ private:
         LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowCase);
 
         LValue fastResultValue = allocateObject<StringObject>(structure, m_out.intPtrZero, slowCase);
-        m_out.storePtr(m_out.constIntPtr(StringObject::info()), fastResultValue, m_heaps.JSDestructibleObject_classInfo);
+        m_out.storePtr(m_out.constIntPtr(ClassInfoScrambledPtr(StringObject::info()).bits()), fastResultValue, m_heaps.JSDestructibleObject_classInfo);
         m_out.store64(string, fastResultValue, m_heaps.JSWrapperObject_internalValue);
         mutatorFence();
         ValueFromBlock fastResult = m_out.anchor(fastResultValue);
@@ -5430,22 +5430,22 @@ private:
         JSGlobalObject* globalObject = m_graph.globalObjectFor(m_node->origin.semantic);
         RegisteredStructure structure = m_graph.registerStructure(globalObject->arrayStructureForIndexingTypeDuringAllocation(
             m_node->indexingType()));
+        JSFixedArray* array = m_node->castOperand<JSFixedArray*>();
+        unsigned numElements = array->length();
         
         if (!globalObject->isHavingABadTime() && !hasAnyArrayStorage(m_node->indexingType())) {
-            unsigned numElements = m_node->numConstants();
             unsigned vectorLengthHint = m_node->vectorLengthHint();
            
             ASSERT(vectorLengthHint >= numElements);
             ArrayValues arrayValues =
                 allocateUninitializedContiguousJSArray(numElements, vectorLengthHint, structure);
             
-            JSValue* data = codeBlock()->constantBuffer(m_node->startConstant());
-            for (unsigned index = 0; index < m_node->numConstants(); ++index) {
+            for (unsigned index = 0; index < numElements; ++index) {
                 int64_t value;
                 if (hasDouble(m_node->indexingType()))
-                    value = bitwise_cast<int64_t>(data[index].asNumber());
+                    value = bitwise_cast<int64_t>(array->get(index).asNumber());
                 else
-                    value = JSValue::encode(data[index]);
+                    value = JSValue::encode(array->get(index));
                 
                 m_out.store64(
                     m_out.constInt64(value),
@@ -5460,8 +5460,8 @@ private:
         
         setJSValue(vmCall(
             Int64, m_out.operation(operationNewArrayBuffer), m_callFrame,
-            weakStructure(structure), m_out.constIntPtr(m_node->startConstant()),
-            m_out.constIntPtr(m_node->numConstants())));
+            weakStructure(structure), m_out.weakPointer(m_node->cellOperand()),
+            m_out.constIntPtr(numElements)));
     }
 
     void compileNewArrayWithSize()
@@ -6982,6 +6982,16 @@ private:
     {
         Node* node = m_node;
         unsigned numArgs = node->numChildren() - 1;
+
+        // It seems counterintuitive that this is needed given that tail calls don't create a new frame
+        // on the stack. However, the tail call slow path builds the frame at SP instead of FP before
+        // calling into the slow path C code. This slow path may decide to throw an exception because
+        // the callee we're trying to call is not callable. Throwing an exception will cause us to walk
+        // the stack, which may read, for the sake of the correctness of this code, arbitrary slots on the
+        // stack to recover state. This call arg area ensures the call frame shuffler does not overwrite
+        // any of the slots the stack walking code requires when on the slow path.
+        m_proc.requestCallArgAreaSizeInBytes(
+            WTF::roundUpToMultipleOf(stackAlignmentBytes(), (CallFrame::headerSizeInRegisters + numArgs) * sizeof(EncodedJSValue)));
 
         LValue jsCallee = lowJSValue(m_graph.varArgChild(node, 0));
         
@@ -11160,7 +11170,9 @@ private:
             LBasicBlock continuation = m_out.newBlock();
 
             LValue structure = loadStructure(cell);
-            ValueFromBlock otherAtStart = m_out.anchor(m_out.loadPtr(structure, m_heaps.Structure_classInfo));
+            LValue scrambledClassInfo = m_out.loadPtr(structure, m_heaps.Structure_classInfo);
+            LValue classInfo = m_out.bitXor(scrambledClassInfo, m_out.constInt64(g_classInfoScrambledPtrKey));
+            ValueFromBlock otherAtStart = m_out.anchor(classInfo);
             m_out.jump(loop);
 
             LBasicBlock lastNext = m_out.appendTo(loop, parentClass);

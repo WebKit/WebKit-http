@@ -56,7 +56,7 @@ public:
     WEBCORE_EXPORT ServiceWorkerRegistrationData data() const;
 
     bool isUninstalling() const { return m_uninstalling; }
-    void setIsUninstalling(bool value) { m_uninstalling = value; }
+    void setIsUninstalling(bool);
 
     void setLastUpdateTime(double time) { m_lastUpdateTime = time; }
     ServiceWorkerUpdateViaCache updateViaCache() const { return m_updateViaCache; }
@@ -80,9 +80,18 @@ public:
     void unregisterServerConnection(SWServerConnectionIdentifier);
 
     void notifyClientsOfControllerChange();
+    void controlClient(ServiceWorkerClientIdentifier);
+
+    void clear();
+    bool tryClear();
+    void tryActivate();
+    void didFinishActivation(ServiceWorkerIdentifier);
 
 private:
     void forEachConnection(const WTF::Function<void(SWServer::Connection&)>&);
+
+    void activate();
+    void handleClientUnload();
 
     ServiceWorkerRegistrationIdentifier m_identifier;
     ServiceWorkerRegistrationKey m_registrationKey;

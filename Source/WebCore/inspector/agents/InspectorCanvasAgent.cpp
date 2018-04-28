@@ -191,13 +191,13 @@ void InspectorCanvasAgent::requestContent(ErrorString& errorString, const String
         errorString = ASCIILiteral("Unsupported canvas context type");
 }
 
-void InspectorCanvasAgent::requestCSSCanvasClientNodes(ErrorString& errorString, const String& canvasId, RefPtr<Inspector::Protocol::Array<int>>& result)
+void InspectorCanvasAgent::requestCSSCanvasClientNodes(ErrorString& errorString, const String& canvasId, RefPtr<JSON::ArrayOf<int>>& result)
 {
     auto* inspectorCanvas = assertInspectorCanvas(errorString, canvasId);
     if (!inspectorCanvas)
         return;
 
-    result = Inspector::Protocol::Array<int>::create();
+    result = JSON::ArrayOf<int>::create();
     for (Element* element : inspectorCanvas->canvas().cssCanvasClients()) {
         if (int documentNodeId = m_instrumentingAgents.inspectorDOMAgent()->boundNodeId(&element->document()))
             result->addItem(m_instrumentingAgents.inspectorDOMAgent()->pushNodeToFrontend(errorString, documentNodeId, element));
@@ -522,9 +522,36 @@ void InspectorCanvasAgent::didFinishRecordingCanvasFrame(HTMLCanvasElement& canv
         .setData(inspectorCanvas->releaseData())
         .release();
 
+    const String& name = inspectorCanvas->recordingName();
+    if (!name.isEmpty())
+        recording->setName(name);
+
     m_frontendDispatcher->recordingFinished(inspectorCanvas->identifier(), WTFMove(recording));
 
     inspectorCanvas->resetRecordingData();
+}
+
+void InspectorCanvasAgent::consoleStartRecordingCanvas(HTMLCanvasElement& canvasElement, JSC::ExecState& exec, JSC::JSObject* options)
+{
+    auto* inspectorCanvas = findInspectorCanvas(canvasElement);
+    if (!inspectorCanvas)
+        return;
+
+    if (inspectorCanvas->canvas().renderingContext()->callTracingActive())
+        return;
+
+    inspectorCanvas->resetRecordingData();
+
+    if (options) {
+        if (JSC::JSValue optionName = options->get(&exec, JSC::Identifier::fromString(&exec, "name")))
+            inspectorCanvas->setRecordingName(optionName.toWTFString(&exec));
+        if (JSC::JSValue optionSingleFrame = options->get(&exec, JSC::Identifier::fromString(&exec, "singleFrame")))
+            inspectorCanvas->setSingleFrame(optionSingleFrame.toBoolean(&exec));
+        if (JSC::JSValue optionMemoryLimit = options->get(&exec, JSC::Identifier::fromString(&exec, "memoryLimit")))
+            inspectorCanvas->setBufferLimit(optionMemoryLimit.toNumber(&exec));
+    }
+
+    inspectorCanvas->canvas().renderingContext()->setCallTracingActive(true);
 }
 
 #if ENABLE(WEBGL)

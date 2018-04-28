@@ -42,7 +42,7 @@ ServiceWorkerGlobalScope::ServiceWorkerGlobalScope(const ServiceWorkerContextDat
     : WorkerGlobalScope(url, identifier, userAgent, isOnline, thread, shouldBypassMainWorldContentSecurityPolicy, WTFMove(topOrigin), timeOrigin, connectionProxy, socketProvider, sessionID)
     , m_contextData(crossThreadCopy(data))
     , m_registration(ServiceWorkerRegistration::getOrCreate(*this, navigator().serviceWorker(), WTFMove(m_contextData.registration)))
-    , m_clients(ServiceWorkerClients::create(*this))
+    , m_clients(ServiceWorkerClients::create())
 {
 }
 
@@ -50,8 +50,20 @@ ServiceWorkerGlobalScope::~ServiceWorkerGlobalScope() = default;
 
 void ServiceWorkerGlobalScope::skipWaiting(Ref<DeferredPromise>&& promise)
 {
-    // FIXME: Implement this.
-    promise->reject(Exception { NotSupportedError, ASCIILiteral("self.skipWaiting() is not yet supported") });
+    uint64_t requestIdentifier = ++m_lastRequestIdentifier;
+    m_pendingSkipWaitingPromises.add(requestIdentifier, WTFMove(promise));
+
+    callOnMainThread([workerThread = makeRef(thread()), requestIdentifier]() mutable {
+        if (auto* connection = SWContextManager::singleton().connection()) {
+            connection->skipWaiting(workerThread->identifier(), [workerThread = WTFMove(workerThread), requestIdentifier] {
+                workerThread->runLoop().postTask([requestIdentifier](auto& context) {
+                    auto& scope = downcast<ServiceWorkerGlobalScope>(context);
+                    if (auto promise = scope.m_pendingSkipWaitingPromises.take(requestIdentifier))
+                        promise->resolve();
+                });
+            });
+        }
+    });
 }
 
 EventTargetInterface ServiceWorkerGlobalScope::eventTargetInterface() const

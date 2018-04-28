@@ -47,6 +47,7 @@ enum class ServiceWorkerState;
 enum class ShouldNotifyWhenResolved;
 struct ExceptionData;
 struct ServiceWorkerClientData;
+struct ServiceWorkerClientIdentifier;
 struct ServiceWorkerData;
 struct ServiceWorkerFetchResult;
 struct ServiceWorkerRegistrationData;
@@ -61,6 +62,9 @@ public:
     using GetRegistrationsCallback = WTF::CompletionHandler<void(Vector<ServiceWorkerRegistrationData>&&)>;
     virtual void getRegistrations(const SecurityOrigin& topOrigin, const URL& clientURL, GetRegistrationsCallback&&) = 0;
 
+    using WhenRegistrationReadyCallback = WTF::Function<void(ServiceWorkerRegistrationData&&)>;
+    virtual void whenRegistrationReady(const SecurityOrigin& topOrigin, const URL& clientURL, WhenRegistrationReadyCallback&&) = 0;
+
     virtual void addServiceWorkerRegistrationInServer(ServiceWorkerRegistrationIdentifier) = 0;
     virtual void removeServiceWorkerRegistrationInServer(ServiceWorkerRegistrationIdentifier) = 0;
 
@@ -70,14 +74,14 @@ public:
 
     virtual void didResolveRegistrationPromise(const ServiceWorkerRegistrationKey&) = 0;
 
-    virtual void postMessageToServiceWorkerGlobalScope(ServiceWorkerIdentifier destinationIdentifier, Ref<SerializedScriptValue>&&, DocumentIdentifier sourceContextIdentifier, ServiceWorkerClientData&& source) = 0;
+    virtual void postMessageToServiceWorker(ServiceWorkerIdentifier destination, Ref<SerializedScriptValue>&& message, ServiceWorkerClientIdentifier sourceIdentifier, ServiceWorkerClientData&& sourceData) = 0;
+    virtual void postMessageToServiceWorker(ServiceWorkerIdentifier destination, Ref<SerializedScriptValue>&& message, ServiceWorkerIdentifier source) = 0;
+
     virtual SWServerConnectionIdentifier serverConnectionIdentifier() const = 0;
     virtual bool mayHaveServiceWorkerRegisteredForOrigin(const SecurityOrigin&) const = 0;
+    virtual void syncTerminateWorker(ServiceWorkerIdentifier) = 0;
 
-    virtual void serviceWorkerStartedControllingClient(ServiceWorkerIdentifier, ServiceWorkerRegistrationIdentifier, DocumentIdentifier) = 0;
-    virtual void serviceWorkerStoppedControllingClient(ServiceWorkerIdentifier, ServiceWorkerRegistrationIdentifier, DocumentIdentifier) = 0;
-
-    virtual void registerServiceWorkerClient(const SecurityOrigin& topOrigin, DocumentIdentifier, const ServiceWorkerClientData&) = 0;
+    virtual void registerServiceWorkerClient(const SecurityOrigin& topOrigin, DocumentIdentifier, const ServiceWorkerClientData&, const std::optional<ServiceWorkerIdentifier>&) = 0;
     virtual void unregisterServiceWorkerClient(DocumentIdentifier) = 0;
 
 protected:
@@ -92,6 +96,8 @@ protected:
     WEBCORE_EXPORT void updateWorkerState(ServiceWorkerIdentifier, ServiceWorkerState);
     WEBCORE_EXPORT void fireUpdateFoundEvent(ServiceWorkerRegistrationIdentifier);
     WEBCORE_EXPORT void notifyClientsOfControllerChange(const HashSet<DocumentIdentifier>& contextIdentifiers, ServiceWorkerData&& newController);
+
+    WEBCORE_EXPORT void clearPendingJobs();
 
 private:
     virtual void scheduleJobInServer(const ServiceWorkerJobData&) = 0;

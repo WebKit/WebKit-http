@@ -789,7 +789,14 @@ editing/deleting/forward-delete-key.html [ Skip ]
 editing/deleting/skip-virama-001.html [ Skip ]
 editing/input/option-page-up-down.html [ Skip ]
 editing/input/page-up-down-scrolls.html [ Skip ]
+editing/input/password-echo-passnode.html [ Skip ]
+editing/input/password-echo-passnode2.html [ Skip ]
+editing/input/password-echo-passnode3.html [ Skip ]
 editing/input/reveal-caret-of-transformed-multiline-input.html [ Skip ]
+editing/input/reveal-edit-on-input-vertically.html [ Skip ]
+editing/input/reveal-contenteditable-on-input-vertically.html [ Skip ]
+editing/input/scroll-to-edge-if-line-break-at-end-of-document-contenteditable.html [ Skip ]
+editing/input/scroll-to-edge-if-paragraph-separator-at-end-of-document-contenteditable.html [ Skip ]
 editing/input/scroll-viewport-page-up-down.html [ Skip ]
 editing/input/setting-input-value-cancel-ime-composition.html [ Skip ]
 editing/input/style-change-during-input.html [ Skip ]
@@ -1318,6 +1325,23 @@ editing/deleting/delete-cell-contents.html [ Failure ]
 editing/deleting/smart-delete-002.html [ Failure ]
 editing/deleting/smart-delete-across-editable-boundaries.html [ Failure ]
 editing/deleting/smart-editing-disabled-mac.html [ Failure ]
+
+# editing/execCommand tests to triage
+webkit.org/b/180270 editing/execCommand/button.html [ Failure ]
+webkit.org/b/180269 editing/execCommand/createLink.html [ Failure ]
+webkit.org/b/180271 editing/execCommand/hilitecolor.html [ Failure ]
+webkit.org/b/180268 editing/execCommand/query-command-state.html [ Failure ]
+webkit.org/b/180267 editing/execCommand/remove-format-multiple-elements-mac.html [ Failure ]
+webkit.org/b/180267 editing/execCommand/remove-format-multiple-elements-win.html [ Failure ]
+webkit.org/b/180267 editing/execCommand/remove-formatting-2.html [ Failure ]
+webkit.org/b/180269 editing/execCommand/toggle-link-mac.html [ Failure ]
+webkit.org/b/180269 editing/execCommand/toggle-unlink-mac.html
+webkit.org/b/180269 editing/execCommand/unlink.html [ Failure ]
+
+webkit.org/b/180275 editing/caret/color-span-inside-editable-background.html [ ImageOnlyFailure ]
+webkit.org/b/180725 editing/caret/color-span-inside-editable.html [ ImageOnlyFailure ]
+
+webkit.org/b/180286 editing/input/editable-container-with-word-wrap-normal.html [ Failure ]
 
 # Font tests that fail:
 fonts/font-fallback-prefers-pictographs.html [ ImageOnlyFailure ]
@@ -2933,7 +2957,6 @@ webgl/1.0.3/conformance/extensions/webgl-compressed-texture-pvrtc.html [ Failure
 webgl/1.0.3/conformance/glsl/misc/shader-struct-scope.html [ Failure ]
 webgl/1.0.3/conformance/glsl/misc/shaders-with-invariance.html [ Failure ]
 webgl/1.0.3/conformance/glsl/misc/shaders-with-name-conflicts.html [ Failure ]
-webgl/1.0.3/conformance/glsl/misc/struct-nesting-of-variable-names.html [ Failure ]
 webgl/1.0.3/conformance/renderbuffers/feedback-loop.html [ Failure ]
 webgl/1.0.3/conformance/rendering/point-no-attributes.html [ Failure ]
 webgl/1.0.3/conformance/textures/texture-copying-feedback-loops.html [ Failure ]
@@ -3276,5 +3299,5 @@ webkit.org/b/178127 media/modern-media-controls/media-controller/media-controlle
 # <rdar://problem/33731086>
 media/modern-media-controls/time-labels-support/elapsed-time.html [ Skip ]
 
-# Skip WebGL while the ANGLE update has caused many failures
-webgl [ Skip ]
+# Requries AVFoundation support <rdar://problem/34502208>
+http/tests/images/image-supports-video.html

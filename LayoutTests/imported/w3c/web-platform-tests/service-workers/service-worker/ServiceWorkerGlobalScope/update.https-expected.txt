@@ -1,6 +1,3 @@
 
-
-Harness Error (TIMEOUT), message = null
-
-TIMEOUT Update a registration on ServiceWorkerGlobalScope Test timed out
+PASS Update a registration on ServiceWorkerGlobalScope 
 

@@ -1,3 +1,450 @@
+2017-12-06  Jeff Miller  <jeffm@apple.com>
+
+        -[WKWebViewConfiguration copyWithZone] doesn't copy _groupIdentifier
+        https://bugs.webkit.org/show_bug.cgi?id=180504
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKWebViewConfiguration.mm:
+        Add a test to verify that the _groupIdentifier is copied.
+
+2017-12-06  David Quesada  <david_quesada@apple.com>
+
+        [Web App Manifest] Add SPI for fetching the manifest
+        https://bugs.webkit.org/show_bug.cgi?id=180294
+        rdar://problem/34747968
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/ApplicationManifest.mm: Added.
+            Added two API tests for _WKApplicationManifest:
+            - Testing _WKApplicationManifest's conformance to NSCoding.
+            - Testing -[WKWebView _getApplicationManifestWithCompletionHandler:], verifying the
+              values of the resulting _WKApplicationManifest.
+        (TestWebKitAPI::TEST):
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+            Added a new testRunner method getApplicationManifestThen(), used by the LayoutTests
+            to request the document load its associated manifest. The layout tests formerly called
+            an unimplemented function getManifestThen(), but I added 'Application' to somewhat
+            differentiate this from the app cache manifest.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didReceiveMessageToPage):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::getApplicationManifestThen):
+        (WTR::TestRunner::didGetApplicationManifest):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2017-12-05  Stephan Szabo  <stephan.szabo@sony.com>
+
+        Switch windows build to Visual Studio 2017
+        https://bugs.webkit.org/show_bug.cgi?id=172412
+
+        Reviewed by Per Arne Vollan.
+
+        * Scripts/build-webkit:
+        * Scripts/webkitdirs.pm:
+        (visualStudioInstallDir):
+        (visualStudioInstallDirFallback):
+        (msBuildInstallDir):
+        (setupAppleWinEnv):
+        (setupCygwinEnv):
+        (generateBuildSystemFromCMakeProject):
+        (pickLegacyVisualStudioInstallation): Deleted.
+        (visualStudioInstallDirLegacy): Deleted.
+        (visualStudioVersion): Deleted.
+        (visualStudioVersionFromInstallDir): Deleted.
+
+2017-12-05  Alex Christensen  <achristensen@webkit.org>
+
+        Fix crash when loading a file URL that does not have a fileSystemPath representation
+        https://bugs.webkit.org/show_bug.cgi?id=180448
+        <rdar://problem/22805921>
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/LoadAlternateHTMLString.mm:
+        (TEST):
+        Test opening a URL that used to crash WebKit.
+
+2017-12-05  Michael Saboff  <msaboff@apple.com>
+
+        Make WebKit build for ARM64_32
+        https://bugs.webkit.org/show_bug.cgi?id=180447
+
+        Reviewed by Mark Lam.
+
+        Add an instance of the _TestWTFAlwaysMissing for arm64_32 architecture.
+
+        * TestWebKitAPI/Tests/WTF/darwin/libTestWTFAlwaysMissing-iOS-v2.tbd:
+
+2017-12-05  Aakash Jain  <aakash_jain@apple.com>
+
+        [build.webkit.org] Rename mastercfg_unittest to steps_unittest
+        https://bugs.webkit.org/show_bug.cgi?id=180432
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py: Removed.
+        * BuildSlaveSupport/build.webkit.org-config/steps_unittest.py: Copied from BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py.
+
+2017-12-05  Aakash Jain  <aakash_jain@apple.com>
+
+        [build.webkit.org] Fix style issues in mastercfg_unittest.py
+        https://bugs.webkit.org/show_bug.cgi?id=180439
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py: Added imports directly instead of relying
+        on imports from other files. We will try to import minimum required modules. Currently we are importing
+        everything from master.cfg, loadConfig.py, factories.py and steps.py
+
+2017-12-05  Aakash Jain  <aakash_jain@apple.com>
+
+        [build.webkit.org] Rename MasterCfgTest to RunWebKitTestsTest
+        https://bugs.webkit.org/show_bug.cgi?id=180391
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py:
+        (RunWebKitTestsTest): Renamed from MasterCfgTest.
+
+2017-12-01  Filip Pizlo  <fpizlo@apple.com>
+
+        GC constraint solving should be parallel
+        https://bugs.webkit.org/show_bug.cgi?id=179934
+
+        Reviewed by JF Bastien.
+
+        * Scripts/run-jsc-benchmarks: Add splay-latency test, since this change needed to be carefully validated with that benchmark.
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/ConcurrentPtrHashSet.cpp: Added. This has unit tests of the new concurrent data structure. The tests focus on correctness under serial execution, which appears to be enough for now (it's so easy to catch a concurrency bug by just running the GC).
+        (TestWebKitAPI::TEST):
+
+2017-12-04  Nan Wang  <n_wang@apple.com>
+
+        AX: AOM: Implement relation type properties
+        https://bugs.webkit.org/show_bug.cgi?id=179500
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        (WTR::AccessibilityUIElement::ariaDetailsElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaErrorMessageElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaDescribedByReferencingElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaDetailsReferencingElementAtIndex):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::ariaDetailsElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaErrorMessageElementAtIndex):
+
+2017-12-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Minor DisplayRefreshMonitor-related cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=179802
+
+        Reviewed by Sam Weinig.
+
+        New trace point for when the CVDisplayLink fires on its own thread.
+
+        * Tracing/SystemTracePoints.plist:
+
+2017-12-04  David Quesada  <david_quesada@apple.com>
+
+        Add a class for parsing application manifests
+        https://bugs.webkit.org/show_bug.cgi?id=177973
+        rdar://problem/34747949
+
+        Reviewed by Geoffrey Garen.
+
+        Add basic unit tests for ApplicationManifestParser. For each of the implemented top-level properties,
+        attempt to parse manifests with varying types of valid and invalid data to ensure the resulting
+        ApplicationManifest is configured with the appropriate values per the spec.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig: Add ENABLE_APPLICATION_MANIFEST feature flag.
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/ApplicationManifestParser.cpp: Added.
+        (ApplicationManifestParserTest::SetUp):
+        (ApplicationManifestParserTest::parseString):
+        (ApplicationManifestParserTest::parseTopLevelProperty):
+        (ApplicationManifestParserTest::testStartURL):
+        (ApplicationManifestParserTest::testName):
+        (ApplicationManifestParserTest::testDescription):
+        (ApplicationManifestParserTest::testShortName):
+        (ApplicationManifestParserTest::testScope):
+        (assertManifestHasDefaultValues):
+        (TEST_F):
+
+2017-12-04  Aakash Jain  <aakash_jain@apple.com>
+
+        Add docstring in EarlyWarningSystemTask to explain return values
+        https://bugs.webkit.org/show_bug.cgi?id=180303
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitpy/tool/bot/earlywarningsystemtask.py:
+        (EarlyWarningSystemTask.run): Added docstring to explain return values.
+        * Scripts/webkitpy/tool/commands/earlywarningsystem.py:
+        (AbstractEarlyWarningSystem.review_patch): Added comment to explain the result of unlocking a patch.
+
+2017-12-04  JF Bastien  <jfbastien@apple.com>
+
+        Update std::expected to match libc++ coding style
+        https://bugs.webkit.org/show_bug.cgi?id=180264
+
+        Reviewed by Alex Christensen.
+
+        Update tests according to name changes as well as removal of
+        now-gone APIs.
+
+        * TestWebKitAPI/Tests/WTF/Expected.cpp:
+        (std::experimental::fundamentals_v3::operator<<):
+        (TestWebKitAPI::TEST):
+        (WTF::operator<<): Deleted.
+        * TestWebKitAPI/Tests/WebCore/HTMLParserIdioms.cpp:
+        (TestWebKitAPI::testParseHTMLInteger):
+        (TestWebKitAPI::testParseHTMLNonNegativeInteger):
+
+2017-12-04  Ross Kirsling  <ross.kirsling@sony.com>
+
+        download-latest-github-release.py should use existing release ANY time latest is not found
+        https://bugs.webkit.org/show_bug.cgi?id=180293
+
+        Reviewed by Per Arne Vollan.
+
+        * Scripts/download-latest-github-release.py:
+        (find_latest_release):
+        Handle all URLErrors, not just HTTPErrors. Stop special-casing 404s.
+
+        (main):
+        Rearrange logic so any failure to detect a latest release falls back to an existing release. Improve logging.
+
+        (Status):
+        (download_release):
+        (load_version_info): Renamed from existing_version info.
+        (has_latest_release): Deleted.
+        Cleanup.
+
+2017-12-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Exclude some more leak callstacks
+        https://bugs.webkit.org/show_bug.cgi?id=180379
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/port/leakdetector.py:
+        (LeakDetector._types_to_exclude_from_leaks):
+        (LeakDetector._callstacks_to_exclude_from_leaks):
+        (LeakDetector._leaks_args):
+        (LeakDetector._types_to_exlude_from_leaks): Deleted.
+        * Scripts/webkitpy/port/leakdetector_unittest.py:
+        (LeakDetectorTest.test_leaks_args):
+
+2017-12-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        WTF shouldn't have both Thread and ThreadIdentifier
+        https://bugs.webkit.org/show_bug.cgi?id=180308
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (dumpRenderTree):
+        (runThread): Deleted.
+        (runPthread): Deleted.
+        (testThreadIdentifierMap): Deleted.
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/ParkingLot.cpp:
+        * TestWebKitAPI/Tests/WTF/Threading.cpp: Added.
+        (TestWebKitAPI::TEST):
+
+2017-12-03  Aakash Jain  <aakash_jain@apple.com>
+
+        webkitpy EWS keeps retrying a failing patch
+        https://bugs.webkit.org/show_bug.cgi?id=180302
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/tool/bot/patchanalysistask.py:
+        (PatchAnalysisTask._test_patch): Instead of returning false, call report_failure() 
+        which raises an exception, this exception is catched by earlywarningsystem.py and
+        it posts a comment on bugzilla. Returning false simply unlocks the patch and returns
+        it to the queue.
+
+2017-12-03  Darin Adler  <darin@apple.com>
+
+        Add WTF::Hasher, an easier to use replacement for WTF::IntegerHasher
+        https://bugs.webkit.org/show_bug.cgi?id=180318
+
+        Reviewed by JF Bastien.
+
+        * TestWebKitAPI/CMakeLists.txt: Added Hasher.cpp.
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Ditto.
+
+        * TestWebKitAPI/Tests/WTF/Hasher.cpp: Added. Contains tests of the new
+        WTF::Hasher class.
+
+        * TestWebKitAPI/Tests/WTF/StringHasher.cpp: Include StringHasher.h instead of
+        Hasher.h.
+
+2017-12-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: auto-install pytest instead of importing it from wpt tools directory
+        https://bugs.webkit.org/show_bug.cgi?id=180243
+
+        Reviewed by Brian Burg.
+
+        We don't really need the (old) version included in wpt tools dir, so we can simply remove it and use autoinstall
+        instead.
+
+        * Scripts/webkitpy/thirdparty/__init__.py:
+        (AutoinstallImportHook.find_module): Check pytest.
+        (AutoinstallImportHook._install_pytest): Install pytest.
+        * Scripts/webkitpy/webdriver_tests/webdriver_selenium_executor.py: Import autoinstalled pytest.
+        * Scripts/webkitpy/webdriver_tests/webdriver_test_runner_w3c.py:
+        (WebDriverTestRunnerW3C.run): Update the subtest path since the new pytest uses a different strategy for
+        rootdir.
+        * Scripts/webkitpy/webdriver_tests/webdriver_w3c_executor.py: Import autoinstalled pytest.
+
+2017-12-01  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Hardcoded python path is not compatible with virtual environment.
+        https://bugs.webkit.org/show_bug.cgi?id=180300
+
+        Reviewed by Stephanie Lewis.
+
+        Hardcoding '/usr/bin/python' does not work with python virtual environment.
+        Use 'python' instead.
+
+        * Scripts/webkitpy/benchmark_runner/http_server_driver/simple_http_server_driver.py:
+        (SimpleHTTPServerDriver.serve):
+
+2017-12-01  Aakash Jain  <aakash_jain@apple.com>
+
+        [build.webkit.org] Move python code to load config from master.cfg in separate file
+        https://bugs.webkit.org/show_bug.cgi?id=180278
+
+        Reviewed by Daniel Bates.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg: Moved appropriate code to loadConfig.py
+        * BuildSlaveSupport/build.webkit.org-config/loadConfig.py: Ditto.
+        * BuildSlaveSupport/build.webkit.org-config/steps.py: Removed extra import.
+
+2017-12-01  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: move Inspector::Protocol::Array<T> to JSON namespace
+        https://bugs.webkit.org/show_bug.cgi?id=173662
+
+        Reviewed by Joseph Pecoraro.
+
+        Add duplicate test cases for JSON::ArrayOf<T> based on JSON::Array.
+
+        * TestWebKitAPI/Tests/WTF/JSONValue.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-12-01  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Attachment Support] Implement SPI for clients to update a given attachment's data
+        https://bugs.webkit.org/show_bug.cgi?id=180184
+        <rdar://problem/35355731>
+
+        Reviewed by Tim Horton.
+
+        Adds two new API tests to exercise the attachment data update flow.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (TestWebKitAPI::ObserveAttachmentUpdatesForScope::ObserveAttachmentUpdatesForScope):
+        (-[_WKAttachment synchronouslySetDisplayOptions:error:]):
+        (-[_WKAttachment synchronouslyRequestData:]):
+        (-[_WKAttachment synchronouslySetData:newContentType:newFilename:error:]):
+        (TestWebKitAPI::TEST):
+
+2017-12-01  Alicia Boya García  <aboya@igalia.com>
+
+        [GTK] Add SampleMap.cpp API tests to CMake
+        https://bugs.webkit.org/show_bug.cgi?id=180252
+
+        Reviewed by Žan Doberšek.
+
+        * TestWebKitAPI/PlatformGTK.cmake:
+
+2017-11-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: add support for importing and running selenium tests
+        https://bugs.webkit.org/show_bug.cgi?id=180145
+
+        Reviewed by Brian Burg.
+
+        We currently import and run W3C tests, which are the best ones to ensure our implementation is spec
+        compliant. However, the selenium API is what user will actually use in the end, so it's important to ensure that
+        we don't break the selenium support. This patch adds webdriver_test_runner_selenium.py and
+        webdriver_selenium_executor.py to run selenium tests. The script import-w3c-webdriver-tests has been renamed as
+        import-webdriver-tests and it can now import selenium tests too.
+
+        * Scripts/import-w3c-webdriver-tests: Removed.
+        * Scripts/import-webdriver-tests: Added.
+        (Importer):
+        (Importer.__init__):
+        (Importer.download_tests):
+        (Importer.import_tests):
+        (Importer.import_tests.should_skip_file):
+        * Scripts/webkitpy/webdriver_tests/webdriver_driver.py:
+        (WebDriver.browser_path):
+        (WebDriver):
+        (WebDriver.browser_args):
+        (WebDriver.selenium_name):
+        * Scripts/webkitpy/webdriver_tests/webdriver_driver_gtk.py:
+        (WebDriverGtk.browser_path):
+        (WebDriverGtk):
+        (WebDriverGtk.browser_args):
+        (WebDriverGtk.capabilities):
+        (WebDriverGtk.selenium_name):
+        * Scripts/webkitpy/webdriver_tests/webdriver_driver_wpe.py:
+        (WebDriverWPE.browser_args):
+        (WebDriverWPE.capabilities):
+        * Scripts/webkitpy/webdriver_tests/webdriver_selenium_executor.py: Added.
+        (_ensure_directory_in_path):
+        (CollectRecorder):
+        (CollectRecorder.__init__):
+        (CollectRecorder.pytest_collectreport):
+        (WebDriverSeleniumExecutor):
+        (WebDriverSeleniumExecutor.__init__):
+        (WebDriverSeleniumExecutor.collect):
+        (WebDriverSeleniumExecutor.run):
+        * Scripts/webkitpy/webdriver_tests/webdriver_test_runner.py:
+        (WebDriverTestRunner):
+        (WebDriverTestRunner.__init__):
+        (WebDriverTestRunner.run):
+        (WebDriverTestRunner.print_results):
+        (WebDriverTestRunner.dump_results_to_json_file):
+        * Scripts/webkitpy/webdriver_tests/webdriver_test_runner_selenium.py: Added.
+        (WebDriverTestRunnerSelenium):
+        (WebDriverTestRunnerSelenium.__init__):
+        (WebDriverTestRunnerSelenium._tests_dir):
+        (WebDriverTestRunnerSelenium.collect_tests):
+        (WebDriverTestRunnerSelenium.run):
+        (WebDriverTestRunnerSelenium.results):
+        * Scripts/webkitpy/webdriver_tests/webdriver_test_runner_w3c.py:
+        (WebDriverTestRunnerW3C.__init__):
+        (WebDriverTestRunnerW3C.run):
+        * Scripts/webkitpy/webdriver_tests/webdriver_w3c_executor.py:
+
+2017-11-30  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION (r224791): cookies are shared between ephemeral sessions in the same process pool
+        https://bugs.webkit.org/show_bug.cgi?id=180235
+
+        Reviewed by Joseph Pecoraro.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/CookiePrivateBrowsing.mm: Added.
+        (-[CookiePrivateBrowsingDelegate webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+        (TEST):
+
 2017-11-30  Stephan Szabo  <stephan.szabo@sony.com>
 
         Make LegacyCustomProtocolManager optional for network process

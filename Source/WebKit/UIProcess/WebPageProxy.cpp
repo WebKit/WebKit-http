@@ -155,6 +155,8 @@
 #if PLATFORM(COCOA)
 #include "RemoteLayerTreeDrawingAreaProxy.h"
 #include "RemoteLayerTreeScrollingPerformanceData.h"
+#include "TouchBarMenuData.h"
+#include "TouchBarMenuItemData.h"
 #include "VideoFullscreenManagerProxy.h"
 #include "VideoFullscreenManagerProxyMessages.h"
 #include "ViewSnapshotStore.h"
@@ -406,8 +408,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     m_process->addMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID, *this);
 
 #if PLATFORM(COCOA)
-    const CFIndex activityStateChangeRunLoopOrder = (CFIndex)RunLoopObserver::WellKnownRunLoopOrders::CoreAnimationCommit - 1;
-    m_activityStateChangeDispatcher = std::make_unique<RunLoopObserver>(activityStateChangeRunLoopOrder, [this] {
+    m_activityStateChangeDispatcher = std::make_unique<RunLoopObserver>(static_cast<CFIndex>(RunLoopObserver::WellKnownRunLoopOrders::ActivityStateChange), [this] {
         this->dispatchActivityStateChange();
     });
 #endif
@@ -5312,6 +5313,17 @@ void WebPageProxy::editingRangeCallback(const EditingRange& range, CallbackID ca
     callback->performCallbackWithReturnValue(range);
 }
 
+#if ENABLE(APPLICATION_MANIFEST)
+void WebPageProxy::applicationManifestCallback(const std::optional<WebCore::ApplicationManifest>& manifestOrNull, CallbackID callbackID)
+{
+    auto callback = m_callbacks.take<ApplicationManifestCallback>(callbackID);
+    if (!callback)
+        return;
+
+    callback->performCallbackWithReturnValue(manifestOrNull);
+}
+#endif
+
 #if PLATFORM(COCOA)
 void WebPageProxy::machSendRightCallback(const MachSendRight& sendRight, CallbackID callbackID)
 {
@@ -7141,12 +7153,36 @@ void WebPageProxy::stopURLSchemeTask(uint64_t handlerIdentifier, uint64_t taskId
     iterator->value->stopTask(*this, taskIdentifier);
 }
 
+void WebPageProxy::hasStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t webProcessContextId)
+{
+    m_websiteDataStore->hasStorageAccess(WTFMove(subFrameHost), WTFMove(topFrameHost), [this, webProcessContextId] (bool hasAccess) {
+        m_process->send(Messages::WebPage::StorageAccessResponse(hasAccess, webProcessContextId), m_pageID);
+    });
+}
+
 void WebPageProxy::requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t webProcessContextId)
 {
     m_websiteDataStore->requestStorageAccess(WTFMove(subFrameHost), WTFMove(topFrameHost), [this, webProcessContextId] (bool wasGranted) {
         m_process->send(Messages::WebPage::StorageAccessResponse(wasGranted, webProcessContextId), m_pageID);
     });
 }
+
+#if PLATFORM(COCOA)
+void WebPageProxy::touchBarMenuDataChanged(const TouchBarMenuData& touchBarMenuData)
+{
+    m_touchBarMenuData = touchBarMenuData;
+}
+
+void WebPageProxy::touchBarMenuItemDataAdded(const TouchBarMenuItemData& touchBarMenuItemData)
+{
+    m_touchBarMenuData.addMenuItem(touchBarMenuItemData);
+}
+
+void WebPageProxy::touchBarMenuItemDataRemoved(const TouchBarMenuItemData& touchBarMenuItemData)
+{
+    m_touchBarMenuData.removeMenuItem(touchBarMenuItemData);
+}
+#endif
 
 #if ENABLE(ATTACHMENT_ELEMENT)
 
@@ -7183,6 +7219,17 @@ void WebPageProxy::setAttachmentDisplayOptions(const String& identifier, Attachm
     m_process->send(Messages::WebPage::SetAttachmentDisplayOptions(identifier, options, callbackID), m_pageID);
 }
 
+void WebPageProxy::setAttachmentDataAndContentType(const String& identifier, SharedBuffer& data, std::optional<String>&& newContentType, std::optional<String>&& newFilename, Function<void(CallbackBase::Error)>&& callback)
+{
+    if (!isValid()) {
+        callback(CallbackBase::Error::OwnerWasInvalidated);
+        return;
+    }
+
+    auto callbackID = m_callbacks.put(WTFMove(callback), m_process->throttler().backgroundActivityToken());
+    m_process->send(Messages::WebPage::SetAttachmentDataAndContentType(identifier, IPC::SharedBufferDataReference { &data }, WTFMove(newContentType), WTFMove(newFilename), callbackID), m_pageID);
+}
+
 void WebPageProxy::didInsertAttachment(const String& identifier)
 {
     m_pageClient.didInsertAttachment(identifier);
@@ -7194,5 +7241,19 @@ void WebPageProxy::didRemoveAttachment(const String& identifier)
 }
 
 #endif // ENABLE(ATTACHMENT_ELEMENT)
+
+#if ENABLE(APPLICATION_MANIFEST)
+void WebPageProxy::getApplicationManifest(Function<void(const std::optional<WebCore::ApplicationManifest>&, CallbackBase::Error)>&& callbackFunction)
+{
+    if (!isValid()) {
+        callbackFunction(std::nullopt, CallbackBase::Error::Unknown);
+        return;
+    }
+
+    auto callbackID = m_callbacks.put(WTFMove(callbackFunction), m_process->throttler().backgroundActivityToken());
+    m_loadDependentStringCallbackIDs.add(callbackID);
+    m_process->send(Messages::WebPage::GetApplicationManifest(callbackID), m_pageID);
+}
+#endif
 
 } // namespace WebKit

@@ -23,6 +23,16 @@
 
 Modules/airplay/WebKitPlaybackTargetAvailabilityEvent.cpp
 
+#if ENABLE_APPLICATION_MANIFEST
+
+Modules/applicationmanifest/ApplicationManifestParser.cpp
+
+loader/ApplicationManifestLoader.cpp
+
+loader/cache/CachedApplicationManifest.cpp
+
+#endif
+
 Modules/beacon/NavigatorBeacon.cpp
 
 Modules/cache/CacheStorageConnection.cpp
@@ -321,6 +331,7 @@ bindings/js/CachedModuleScriptLoader.cpp
 bindings/js/CachedScriptFetcher.cpp
 bindings/js/CallTracer.cpp
 bindings/js/CommonVM.cpp
+bindings/js/DOMGCOutputConstraint.cpp
 bindings/js/DOMWrapperWorld.cpp
 bindings/js/GCController.cpp
 bindings/js/IDBBindingUtilities.cpp
@@ -1254,6 +1265,7 @@ mathml/MathMLOperatorDictionary.cpp
 mathml/MathMLOperatorElement.cpp
 mathml/MathMLPaddedElement.cpp
 mathml/MathMLPresentationElement.cpp
+mathml/MathMLRootElement.cpp
 mathml/MathMLRowElement.cpp
 mathml/MathMLScriptsElement.cpp
 mathml/MathMLSelectElement.cpp
@@ -1524,8 +1536,8 @@ platform/graphics/Image.cpp
 platform/graphics/ImageBuffer.cpp
 platform/graphics/ImageDecoder.cpp
 platform/graphics/ImageFrame.cpp
-platform/graphics/ImageFrameCache.cpp
 platform/graphics/ImageOrientation.cpp
+platform/graphics/ImageSource.cpp
 platform/graphics/IntPoint.cpp
 platform/graphics/IntRect.cpp
 platform/graphics/IntSize.cpp

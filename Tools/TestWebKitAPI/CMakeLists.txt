@@ -93,6 +93,7 @@ set(TestWTF_SOURCES
     ${TESTWEBKITAPI_DIR}/Tests/WTF/BloomFilter.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/CString.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/CheckedArithmeticOperations.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/ConcurrentPtrHashSet.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Condition.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/CrossThreadTask.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/DateMath.cpp
@@ -103,6 +104,7 @@ set(TestWTF_SOURCES
     ${TESTWEBKITAPI_DIR}/Tests/WTF/HashCountedSet.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/HashMap.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/HashSet.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/Hasher.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/IntegerToStringConversion.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/JSONValue.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/LEBDecoder.cpp
@@ -140,6 +142,7 @@ set(TestWTF_SOURCES
     ${TESTWEBKITAPI_DIR}/Tests/WTF/TextBreakIterator.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/ThreadGroup.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/ThreadMessages.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/Threading.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Time.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/UniqueRef.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Variant.cpp

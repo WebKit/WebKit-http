@@ -127,6 +127,26 @@ WebChromeClient::WebChromeClient(WebPage& page)
 {
 }
 
+void WebChromeClient::didInsertMenuElement(HTMLMenuElement& element)
+{
+    m_page.didInsertMenuElement(element);
+}
+
+void WebChromeClient::didRemoveMenuElement(HTMLMenuElement& element)
+{
+    m_page.didRemoveMenuElement(element);
+}
+
+void WebChromeClient::didInsertMenuItemElement(HTMLMenuItemElement& element)
+{
+    m_page.didInsertMenuItemElement(element);
+}
+
+void WebChromeClient::didRemoveMenuItemElement(HTMLMenuItemElement& element)
+{
+    m_page.didRemoveMenuItemElement(element);
+}
+
 inline WebChromeClient::~WebChromeClient()
 {
 }
@@ -1236,7 +1256,12 @@ void WebChromeClient::didInvalidateDocumentMarkerRects()
     m_page.findController().didInvalidateDocumentMarkerRects();
 }
 
-void WebChromeClient::requestStorageAccess(String&& subFrameHost, String&& topFrameHost, WTF::Function<void (bool)>&& callback)
+void WebChromeClient::hasStorageAccess(String&& subFrameHost, String&& topFrameHost, WTF::CompletionHandler<void (bool)>&& callback)
+{
+    m_page.hasStorageAccess(WTFMove(subFrameHost), WTFMove(topFrameHost), WTFMove(callback));
+}
+
+void WebChromeClient::requestStorageAccess(String&& subFrameHost, String&& topFrameHost, WTF::CompletionHandler<void (bool)>&& callback)
 {
     m_page.requestStorageAccess(WTFMove(subFrameHost), WTFMove(topFrameHost), WTFMove(callback));
 }

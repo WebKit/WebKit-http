@@ -124,7 +124,7 @@ public:
     void setIndicating(bool indicating);
 
     RefPtr<Inspector::Protocol::OverlayTypes::NodeHighlightData> buildHighlightObjectForNode(Node*, HighlightType) const;
-    Ref<Inspector::Protocol::Array<Inspector::Protocol::OverlayTypes::NodeHighlightData>> buildObjectForHighlightedNodes() const;
+    Ref<JSON::ArrayOf<Inspector::Protocol::OverlayTypes::NodeHighlightData>> buildObjectForHighlightedNodes() const;
 
     void freePage();
 private:

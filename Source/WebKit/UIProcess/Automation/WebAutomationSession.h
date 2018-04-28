@@ -132,7 +132,7 @@ public:
     void evaluateJavaScriptFunction(Inspector::ErrorString&, const String& browsingContextHandle, const String* optionalFrameHandle, const String& function, const JSON::Array& arguments, const bool* optionalExpectsImplicitCallbackArgument, const int* optionalCallbackTimeout, Ref<Inspector::AutomationBackendDispatcherHandler::EvaluateJavaScriptFunctionCallback>&&) override;
     void performMouseInteraction(Inspector::ErrorString&, const String& handle, const JSON::Object& requestedPosition, const String& mouseButton, const String& mouseInteraction, const JSON::Array& keyModifiers, Ref<PerformMouseInteractionCallback>&&) final;
     void performKeyboardInteractions(Inspector::ErrorString&, const String& handle, const JSON::Array& interactions, Ref<PerformKeyboardInteractionsCallback>&&) override;
-    void takeScreenshot(Inspector::ErrorString&, const String& handle, const String* optionalFrameHandle, const String* optionalNodeHandle, const bool* optionalScrollIntoViewIfNeeded, Ref<TakeScreenshotCallback>&&) override;
+    void takeScreenshot(Inspector::ErrorString&, const String& handle, const String* optionalFrameHandle, const String* optionalNodeHandle, const bool* optionalScrollIntoViewIfNeeded, const bool* optionalClipToViewport, Ref<TakeScreenshotCallback>&&) override;
     void resolveChildFrameHandle(Inspector::ErrorString&, const String& browsingContextHandle, const String* optionalFrameHandle, const int* optionalOrdinal, const String* optionalName, const String* optionalNodeHandle, Ref<ResolveChildFrameHandleCallback>&&) override;
     void resolveParentFrameHandle(Inspector::ErrorString&, const String& browsingContextHandle, const String& frameHandle, Ref<ResolveParentFrameHandleCallback>&&) override;
     void computeElementLayout(Inspector::ErrorString&, const String& browsingContextHandle, const String& frameHandle, const String& nodeHandle, const bool* optionalScrollIntoViewIfNeeded, const String& coordinateSystem, Ref<Inspector::AutomationBackendDispatcherHandler::ComputeElementLayoutCallback>&&) override;
@@ -147,7 +147,7 @@ public:
     void deleteSingleCookie(Inspector::ErrorString&, const String& browsingContextHandle, const String& cookieName, Ref<DeleteSingleCookieCallback>&&) override;
     void addSingleCookie(Inspector::ErrorString&, const String& browsingContextHandle, const JSON::Object& cookie, Ref<AddSingleCookieCallback>&&) override;
     void deleteAllCookies(Inspector::ErrorString&, const String& browsingContextHandle) override;
-    void getSessionPermissions(Inspector::ErrorString&, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Automation::SessionPermissionData>>& out_permissions) override;
+    void getSessionPermissions(Inspector::ErrorString&, RefPtr<JSON::ArrayOf<Inspector::Protocol::Automation::SessionPermissionData>>& out_permissions) override;
     void setSessionPermissions(Inspector::ErrorString&, const JSON::Array& in_permissions) override;
 
     // Platform: macOS
@@ -166,7 +166,7 @@ private:
     WebPageProxy* webPageProxyForHandle(const String&);
     String handleForWebPageProxy(const WebPageProxy&);
     Ref<Inspector::Protocol::Automation::BrowsingContext> buildBrowsingContextForPage(WebPageProxy&, WebCore::FloatRect windowFrame);
-    void getNextContext(Ref<WebAutomationSession>&&, Vector<Ref<WebPageProxy>>&&, Ref<Inspector::Protocol::Array<Inspector::Protocol::Automation::BrowsingContext>>, Ref<WebAutomationSession::GetBrowsingContextsCallback>&&);
+    void getNextContext(Ref<WebAutomationSession>&&, Vector<Ref<WebPageProxy>>&&, Ref<JSON::ArrayOf<Inspector::Protocol::Automation::BrowsingContext>>, Ref<WebAutomationSession::GetBrowsingContextsCallback>&&);
 
     std::optional<uint64_t> webFrameIDForHandle(const String&);
     String handleForWebFrameID(uint64_t frameID);

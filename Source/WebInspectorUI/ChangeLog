@@ -1,3 +1,528 @@
+2017-12-06  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Canvas: spurious warnings shown for commands that changed pixel contents
+        https://bugs.webkit.org/show_bug.cgi?id=180505
+        <rdar://problem/35891651>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction.prototype.apply.getContent):
+        (WI.RecordingAction.prototype.apply):
+
+2017-12-06  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Style Redesign: filtering removes header if one rule has no match even if others do
+        https://bugs.webkit.org/show_bug.cgi?id=180467
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.applyFilter):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype._handleSectionFilterApplied):
+
+2017-12-06  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Details section headers overlap Classes container in the Computed Styles panel
+        https://bugs.webkit.org/show_bug.cgi?id=180380
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.css-style > .content ~ :matches(.options-container, .class-list-container)):
+
+2017-12-06  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Canvas Tab initial user experience is poor when no canvases exist
+        https://bugs.webkit.org/show_bug.cgi?id=179329
+        <rdar://problem/35842036>
+
+        Reviewed by Timothy Hatcher.
+
+        This patch adds a new method, WI.createNavigationItemHelp, for creating command
+        help to display in a message text view. The method accepts a format string and
+        NavigationItem, and returns a DOM element. For example,
+
+            WI.createNavigationItemHelp("Press %s to do X.", navigationItem)
+
+        returns:
+
+            <div class="navigation-item-help">
+                Press <div class="navigation-bar"><div class="item">...</div></div> to do X.
+            </div>
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Main.js:
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager.prototype.importRecording):
+        Importing a recording should be a manager command with a corresponding
+        event, so that it's decoupled from any specific location in the UI.
+
+        * UserInterface/Views/CanvasOverviewContentView.js:
+        (WI.CanvasOverviewContentView):
+
+        * UserInterface/Views/CanvasTabContentView.js:
+        (WI.CanvasTabContentView):
+        (WI.CanvasTabContentView.prototype.attached):
+        (WI.CanvasTabContentView.prototype._recordingImportedOrStopped):
+        (WI.CanvasTabContentView.prototype._recordingStopped): Deleted.
+        (WI.CanvasTabContentView.prototype._navigationSidebarImport): Deleted.
+
+        * UserInterface/Views/Main.css:
+        (.message-text-view .navigation-item-help):
+        (.message-text-view .navigation-item-help .navigation-bar):
+        (.message-text-view .navigation-item-help .navigation-bar > .item):
+        New styles for a NavigationItem appearing inline as part of descriptive
+        text. Wrapped in a fake navigation bar so navigation item styles are picked up.
+
+        * UserInterface/Views/RecordingNavigationSidebarPanel.js:
+        (WI.RecordingNavigationSidebarPanel.prototype.initialLayout):
+        (WI.RecordingNavigationSidebarPanel.prototype._importNavigationItemClicked): Deleted.
+        Moved import code to CanvasManager.
+
+2017-12-06  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: REGRESSION(r225569): CSSStyleDetailsSidebarPanel no longer exists
+        https://bugs.webkit.org/show_bug.cgi?id=180466
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.applyFilter):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._handleEditorFilterApplied):
+
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.applyFilter):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype._handleSectionFilterApplied):
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype.applyFilter):
+
+2017-12-06  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Styles Redesign: display related pseudo-elements
+        https://bugs.webkit.org/show_bug.cgi?id=176187
+        <rdar://problem/34194917>
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        (WI.SpreadsheetRulesStyleDetailsPanel):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.refresh):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.applyFilter):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype._handleSectionFilterApplied):
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.css:
+        (.spreadsheet-style-panel .section-header):
+        (.spreadsheet-style-panel .section-header .node-link):
+        (.spreadsheet-style-panel .section-header .node-link:hover):
+        (.spreadsheet-style-panel .section-inherited): Deleted.
+        (.spreadsheet-style-panel .section-inherited .node-link): Deleted.
+        (.spreadsheet-style-panel .section-inherited .node-link:hover): Deleted.
+        After all of the matched and inherited styles are added, loop over each pseudo-element, get
+        the DOMNodeStyles for each, refresh them if needed, and then add the header and sections.
+
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WI.DOMNodeStyles.prototype.refreshIfNeeded):
+        (WI.DOMNodeStyles.prototype.refresh):
+        Return a reference to the DOMNodeStyles object once the refresh promise is resolved.
+
+        * UserInterface/Models/DOMNode.js:
+        (WI.DOMNode.prototype.get displayName):
+        If the node is a pseudo-element, display the pseudo-type instead of the node name.
+
+2017-12-06  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: [PARITY] Styles Redesign: Ability to add new style rules
+        https://bugs.webkit.org/show_bug.cgi?id=178329
+        <rdar://problem/35001005>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        (WI.SpreadsheetRulesStyleDetailsPanel):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.refresh):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.newRuleButtonClicked):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.newRuleButtonContextMenu):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype._addNewRule):
+        Implement the two functions that CSSStyleDetailsSidebarPanel expects to exist in order for
+        the selected panel to support adding a new rule.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.layout):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.startEditingRuleSelector):
+        If the _selectorElement has not been created yet, set a flag and focus it once layout() has
+        been called (thereby ensuring that initialLayout() has been called).
+
+2017-12-05  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Styles Redesign: for newly added properties, pressing delete in empty value field should focus on name field
+        https://bugs.webkit.org/show_bug.cgi?id=179831
+        <rdar://problem/35626976>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/SpreadsheetTextField.js:
+        (WI.SpreadsheetTextField.prototype._handleKeyDown):
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype.spreadsheetTextFieldDidBackspace):
+
+2017-12-05  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: [PARITY] Styles Redesign: Make filtering work
+        https://bugs.webkit.org/show_bug.cgi?id=178331
+        <rdar://problem/35001015>
+
+        Reviewed by Timothy Hatcher.
+
+        Since both the sections and editors (per-section) use View semantics, we cannot simply
+        search for instances of the filtered text since not all of the subviews may have called
+        layout() yet. Instead, we have to rely on event listeners to relay information as to whether
+        the filtered text was matched up the chain, applying the correct style classes along the way.
+
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        (WI.SpreadsheetRulesStyleDetailsPanel):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.refresh):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.applyFilter):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.filterDidChange):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype._handleSectionFilterApplied):
+        Save the "Inherited From" elements so that they can be hidden if no styles inherited from
+        that node match the filter.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.initialLayout):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.layout):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.applyFilter):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._renderSelector):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._createMediaHeader):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._handleEditorFilterApplied):
+        Save the media header elements so that they can also be filtered.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.layout):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.applyFilter):
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty):
+        (WI.SpreadsheetStyleProperty.prototype.applyFilter):
+        (WI.SpreadsheetStyleProperty.prototype._update):
+        Move the name and value elements to a new container so that filter highlight won't also
+        apply to the checkbox or warning element.
+
+2017-12-05  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: adding a property before or after the first one appends it to the end
+        https://bugs.webkit.org/show_bug.cgi?id=180321
+        <rdar://problem/35816402>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        (WI.CSSStyleDeclaration.prototype._rangeAfterPropertyAtIndex):
+        * UserInterface/Models/TextRange.js:
+        (WI.TextRange.prototype.collapseToStart):
+
+2017-12-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Empty Message View in Network Tab has padding at top
+        https://bugs.webkit.org/show_bug.cgi?id=180453
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/NetworkTableContentView.css:
+        (.content-view.network .message-text-view): Deleted.
+
+2017-12-05  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: make Computed a top-level sidebar tab
+        https://bugs.webkit.org/show_bug.cgi?id=174229
+        <rdar://problem/33170193>
+
+        Reviewed by Matt Baker.
+
+        Styles dropdown tab selector was removed. Styles and Computed are now top-level sidebar tabs.
+
+        Visual styles is no longer visible in the Styles sidebar tabs by default but can be enabled in the settings.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Main.html:
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WI.CSSStyleDeclarationSection.prototype.findMatchingPropertiesAndSelectors):
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WI.CSSStyleDeclarationTextEditor.prototype.findMatchingProperties):
+        (WI.CSSStyleDeclarationTextEditor.prototype.removeNonMatchingProperties):
+        * UserInterface/Views/ComputedStyleDetailsSidebarPanel.js: Added.
+        (WI.ComputedStyleDetailsSidebarPanel):
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WI.DOMTreeOutline.prototype._ondragover):
+        (WI.DOMTreeOutline.prototype._ondrop):
+        * UserInterface/Views/ElementsTabContentView.js:
+        (WI.ElementsTabContentView):
+        * UserInterface/Views/GeneralStyleDetailsSidebarPanel.css: Renamed from Source/WebInspectorUI/UserInterface/Views/CSSStyleDetailsSidebarPanel.css.
+        * UserInterface/Views/GeneralStyleDetailsSidebarPanel.js: Renamed from Source/WebInspectorUI/UserInterface/Views/CSSStyleDetailsSidebarPanel.js.
+        (WI.GeneralStyleDetailsSidebarPanel):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype.get panel):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype.visibilityDidChange):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype.computedStyleDetailsPanelShowProperty):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype.layout):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype.initialLayout):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype.sizeDidChange):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype.get _initialScrollOffset):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype._updateNoForcedPseudoClassesScrollOffset):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype._showPanel):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype._newRuleButtonClicked):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype._newRuleButtonContextMenu):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype._populateClassToggles):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype._createToggleForClassName):
+        (WI.GeneralStyleDetailsSidebarPanel.prototype._filterDidChange):
+        Styles and Computed tabs share a few UI components, such as force state (:hover, :focus, etc.),
+        filter field, and CSS class toggle components. To implement this, CSSStyleDetailsSidebarPanel was renamed
+        to GeneralStyleDetailsSidebarPanel.
+
+        CSSStyleDetailsSidebarPanel used to support several panels. This is no longer the case with GeneralStyleDetailsSidebarPanel:
+        - _initiallySelectedPanel was removed.
+        - _selectedPanel was replaced by _panel.
+
+        * UserInterface/Views/GroupNavigationItem.js:
+        (WI.GroupNavigationItem.prototype.get minimumWidth):
+        * UserInterface/Views/NavigationBar.css:
+        (.navigation-bar .item,):
+        (.sidebar-navigation-bar):
+        (.sidebar-navigation-bar .holder):
+        * UserInterface/Views/NavigationBar.js:
+        (WI.NavigationBar.prototype._calculateMinimumWidth):
+        Minor optimization: don't toggle class names when there are no visible navigation items.
+
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WI.RulesStyleDetailsPanel.prototype.filterDidChange):
+        * UserInterface/Views/RulesStyleDetailsSidebarPanel.js: Copied from Source/WebInspectorUI/UserInterface/Views/NavigationBar.css.
+        (WI.RulesStyleDetailsSidebarPanel):
+        * UserInterface/Views/SearchTabContentView.js:
+        (WI.SearchTabContentView):
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createExperimentalSettingsView):
+        * UserInterface/Views/Sidebar.js:
+        (WI.Sidebar):
+        * UserInterface/Views/SidebarNavigationBar.js: Copied from Source/WebInspectorUI/UserInterface/Views/NavigationBar.css.
+        (WI.SidebarNavigationBar):
+        (WI.SidebarNavigationBar.prototype.insertNavigationItem):
+        (WI.SidebarNavigationBar.prototype._calculateMinimumWidth):
+        SidebarNavigationBar wraps navigation items in an element so it can correctly calculate the width of all items with spacing between them.
+
+        * UserInterface/Views/StyleDetailsPanel.js:
+        (WI.StyleDetailsPanel.prototype.get _initialScrollOffset):
+        * UserInterface/Views/VisualStyleDetailsSidebarPanel.js: Copied from Source/WebInspectorUI/UserInterface/Views/NavigationBar.css.
+        (WI.VisualStyleDetailsSidebarPanel):
+
+2017-12-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: content views for resources loaded through XHR do not reflect declared mime-type
+        https://bugs.webkit.org/show_bug.cgi?id=141389
+        <rdar://problem/19767070>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Utilities.js:
+        Blob <-> Text conversion helpers.
+
+        * UserInterface/Models/Resource.js:
+        (WI.Resource.prototype.createObjectURL):
+        Previously all Image resources were assumed to have base64Encoded data
+        which we automatically convert to a Blob. Now that some image data
+        can be transfered as text, convert that to a Blob here since the output
+        is expected to be a Blob.
+
+        * UserInterface/Views/ResourceContentView.js:
+        (WI.ResourceContentView.prototype.showGenericNoContentMessage):
+        * UserInterface/Views/TextResourceContentView.js:
+        (WI.TextResourceContentView.prototype.contentAvailable):
+        (WI.TextResourceContentView.prototype._contentDidPopulate):
+        * UserInterface/Views/ImageResourceContentView.js:
+        (WI.ImageResourceContentView.prototype.contentAvailable):
+        Better handle no content cases.
+
+        * UserInterface/Views/ResourceClusterContentView.js:
+        (WI.ResourceClusterContentView.prototype.get responseContentView):
+        (WI.ResourceClusterContentView.prototype._contentViewForResourceType):
+        Make a best effort to find a good ContentView to show the resource data.
+        This is done by looking at the ResourceType and MIME Type.
+
+        * UserInterface/Views/SVGImageResourceClusterContentView.js:
+        (WI.SVGImageResourceClusterContentView.prototype._showContentViewForIdentifier):
+        Handle if image data is now text (the image/svg+xml case).
+
+2017-12-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove webkitGetImageDataHD and webkitPutImageDataHD from canvas API
+        https://bugs.webkit.org/show_bug.cgi?id=180387
+
+        Reviewed by Dean Jackson.
+
+        CanvasRenderingContext2D.webkitGetImageDataHD and webkitPutImageDataHD were never standardized,
+        and Blink removed support in 2014 (https://groups.google.com/a/chromium.org/forum/#!topic/blink-dev/FOPH5dloGG8).
+
+        Since our canvas backing store is always 1x, they have no use anyway, so remove them.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction.prototype.getImageParameters):
+        (WI.RecordingAction):
+        * UserInterface/Views/RecordingActionTreeElement.js:
+        (WI.RecordingActionTreeElement._classNameForAction.classNameForActionName):
+        (WI.RecordingActionTreeElement._classNameForAction):
+
+2017-12-04  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: provide method for recording CanvasRenderingContext2D from JavaScript
+        https://bugs.webkit.org/show_bug.cgi?id=175166
+        <rdar://problem/34040740>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager.prototype.recordingFinished):
+        If a `name` is sent with the payload, use it as the suggested name.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+        Add `console.record` and `console.recordEnd`.
+
+        * UserInterface/Views/CanvasTabContentView.js:
+        (WI.CanvasTabContentView.prototype.showRepresentedObject):
+        Drive-by: remove logic that toggled the collapsed state of the navigation sidebar, as this
+        was not very controllable by the user and often was aggravating.
+
+        (WI.CanvasTabContentView.prototype._recordingStopped):
+        Only show the recording if it was not started from the console. This can determined by
+        CanvasManager when it recieves a recording if the recording's source is not the same as the
+        current canvas being recorded.
+
+2017-12-04  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Canvas Tab initial user interface needs some polish
+        https://bugs.webkit.org/show_bug.cgi?id=179330
+        <rdar://problem/35367581>
+
+        Reviewed by Joseph Pecoraro.
+
+        Update the Canvas overview placeholder text and prevent appearance of
+        the vertical scrollbar when no canvases exist. This patch also includes
+        a bunch of cleanup of code that creates content placeholder text throughout
+        the UI, and makes sure all text is styled consistently.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        Updated Canvas overview message text.
+
+        * UserInterface/Base/Main.js:
+        Make the "message text view" a container with child message element, instead
+        of a simple element with text content. This makes it simpler to customize
+        the message (by adding buttons, more text, etc).
+
+        * UserInterface/Views/CanvasDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.canvas .details-section.canvas-extensions .content > ul):
+        (.sidebar > .panel.details.canvas > .content > .empty-content-placeholder): Deleted.
+        (.sidebar > .panel.details.canvas > .content > .empty-content-placeholder > .message): Deleted.
+        * UserInterface/Views/CanvasDetailsSidebarPanel.js:
+        (WI.CanvasDetailsSidebarPanel.prototype.initialLayout):
+
+        * UserInterface/Views/CanvasOverviewContentView.js:
+        (WI.CanvasOverviewContentView):
+        Customize the content placeholder to include a description beneath
+        the "No Canvas Contexts" message.
+
+        * UserInterface/Views/CollectionContentView.css:
+        (.content-view.collection):
+        Change overflow-y to auto, to prevent scrollbar from appearing when
+        "Show scroll bars" system preference is enabled on macOS.
+
+        * UserInterface/Views/CollectionContentView.js:
+        Add support for custom content placeholders.
+        (WI.CollectionContentView):
+        (WI.CollectionContentView.prototype._showContentPlaceholder):
+        (WI.CollectionContentView.prototype._hideContentPlaceholder):
+
+        * UserInterface/Views/ContentView.css:
+        (.content-view > .message-text-view):
+        (.content-view > .message-text-view > .message):
+
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        (.sidebar > .panel.navigation.debugger > .content):
+        (.sidebar > .panel.navigation.debugger > :matches(.content, .empty-content-placeholder)): Deleted.
+
+        * UserInterface/Views/DetailsSection.css:
+        (.details-section > .content > .group > .row > .message-text-view):
+
+        * UserInterface/Views/Main.css:
+        (.message-text-view):
+        (.message-text-view > .message):
+        (.message-text-view.error):
+
+        * UserInterface/Views/NavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation > .overflow-shadow):
+        (.sidebar > .panel.navigation > .content .empty-content-placeholder): Deleted.
+        (.sidebar > .panel.navigation > .content > .empty-content-placeholder): Deleted.
+        (.sidebar > .panel.navigation > .content .empty-content-placeholder > .message): Deleted.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WI.NavigationSidebarPanel.prototype.showEmptyContentPlaceholder):
+        (WI.NavigationSidebarPanel.prototype._createEmptyContentPlaceholderIfNeeded):
+
+        * UserInterface/Views/NetworkTableContentView.css:
+        (.content-view.network .message-text-view):
+        (.content-view.network .message-text-view > .message):
+        Workaround to prevent "No Filter Results" message from being styled like
+        "full width" messages displayed in ContentViews (large, bold font).
+        This is needed because the placeholder message element is a immediate child
+        of the network content view, rather than the network table.
+
+        (.content-view.network .empty-content-placeholder): Deleted.
+        (body[dir=ltr] .content-view.network .empty-content-placeholder): Deleted.
+        (body[dir=rtl] .content-view.network .empty-content-placeholder): Deleted.
+        (.content-view.network .empty-content-placeholder > .message): Deleted.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype._showEmptyFilterResultsMessage):
+
+        * UserInterface/Views/RecordingNavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation.recording > .content):
+        (.sidebar > .panel.navigation.recording > :matches(.content, .empty-content-placeholder)): Deleted.
+
+        * UserInterface/Views/ResourceSidebarPanel.css:
+        (.sidebar > .panel.navigation.resource > .content):
+        (.sidebar > .panel.navigation.resource > :matches(.content, .empty-content-placeholder)): Deleted.
+
+        * UserInterface/Views/RulesStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style > .content > .rules > .message-text-view):
+        (.sidebar > .panel.details.css-style > .content > .rules:not(.filter-non-matching) > .message-text-view):
+        (.sidebar > .panel.details.css-style > .content > .rules:not(.filter-non-matching) > .no-filter-results): Deleted.
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress > .rules.filter-non-matching > .no-filter-results): Deleted.
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress > .rules.filter-non-matching > .no-filter-results > .no-filter-results-message): Deleted.
+
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WI.RulesStyleDetailsPanel):
+
+        * UserInterface/Views/SearchSidebarPanel.css:
+        (.sidebar > .panel.navigation.search > :matches(.content, .message-text-view)):
+        (.sidebar > .panel.navigation.search.changed > :matches(.content, .message-text-view)):
+        (.sidebar > .panel.navigation.search > :matches(.content, .empty-content-placeholder)): Deleted.
+        (.sidebar > .panel.navigation.search.changed > :matches(.content, .empty-content-placeholder)): Deleted.
+
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        (WI.SpreadsheetRulesStyleDetailsPanel):
+
+        * UserInterface/Views/StorageSidebarPanel.css:
+        (.sidebar > .panel.navigation.storage > .content):
+        (.sidebar > .panel.navigation.storage > :matches(.content, .empty-content-placeholder)): Deleted.
+
+        * UserInterface/Views/Variables.css:
+        (:root):
+
 2017-11-29  Nikita Vasilyev  <nvasilyev@apple.com>
 
         Web Inspector: Styles Redesign: can't add new property after property without trailing semicolon

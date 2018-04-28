@@ -90,6 +90,10 @@ class VoidCallback;
 class WebGLRenderingContext;
 class XMLHttpRequest;
 
+#if ENABLE(SERVICE_WORKER)
+class ServiceWorker;
+#endif
+
 class Internals final : public RefCounted<Internals>, private ContextDestructionObserver
 #if ENABLE(MEDIA_STREAM)
     , private RealtimeMediaSource::Observer
@@ -623,6 +627,7 @@ public:
     Ref<FetchEvent> createBeingDispatchedFetchEvent(ScriptExecutionContext&);
     using HasRegistrationPromise = DOMPromiseDeferred<IDLBoolean>;
     void hasServiceWorkerRegistration(const String& clientURL, HasRegistrationPromise&&);
+    void terminateServiceWorker(ServiceWorker&);
 #endif
 
 #if ENABLE(APPLE_PAY)
@@ -632,6 +637,7 @@ public:
 #if ENABLE(ALTERNATIVE_PRESENTATION_BUTTON_ELEMENT)
     ExceptionOr<void> substituteWithAlternativePresentationButton(Vector<RefPtr<Element>>&&, const String&);
     ExceptionOr<void> removeAlternativePresentationButton(const String&);
+    ExceptionOr<Vector<Ref<Element>>> elementsReplacedByAlternativePresentationButton(const String&);
 #endif
 
     String timelineDescription(AnimationTimeline&);

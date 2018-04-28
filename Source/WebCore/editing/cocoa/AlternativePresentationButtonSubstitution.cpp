@@ -110,6 +110,7 @@ void AlternativePresentationButtonSubstitution::unapply()
         m_shadowHost->userAgentShadowRoot()->removeChild(*m_alternativePresentationButtonElement);
         ASSERT(!m_shadowHost->userAgentShadowRoot()->countChildNodes());
         m_shadowHost->removeShadowRoot();
+        m_shadowHost->invalidateStyleAndRenderersForSubtree();
     };
     auto restoreStyles = [&] {
         for (auto& savedDisplayStyle : m_savedDisplayStyles) {
@@ -124,6 +125,16 @@ void AlternativePresentationButtonSubstitution::unapply()
     m_isApplied = false;
     restoreStyles();
     detachShadowRoot();
+}
+
+Vector<Ref<Element>> AlternativePresentationButtonSubstitution::replacedElements()
+{
+    Vector<Ref<Element>> result;
+    result.reserveInitialCapacity(m_savedDisplayStyles.size() + 1);
+    result.uncheckedAppend(m_shadowHost.copyRef());
+    for (auto& savedDisplayStyle : m_savedDisplayStyles)
+        result.uncheckedAppend(savedDisplayStyle.element.copyRef());
+    return result;
 }
 
 } // namespace WebCore

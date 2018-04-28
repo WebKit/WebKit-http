@@ -79,6 +79,7 @@ public:
 
         String mediaCacheDirectory;
         String indexedDBDatabaseDirectory;
+        String serviceWorkerRegistrationDirectory;
         String webSQLDatabaseDirectory;
         String localStorageDirectory;
         String mediaKeysStorageDirectory;
@@ -127,6 +128,7 @@ public:
     const String& resolvedJavaScriptConfigurationDirectory() const { return m_resolvedConfiguration.javaScriptConfigurationDirectory; }
     const String& resolvedCookieStorageFile() const { return m_resolvedConfiguration.cookieStorageFile; }
     const String& resolvedIndexedDatabaseDirectory() const { return m_resolvedConfiguration.indexedDBDatabaseDirectory; }
+    const String& resolvedServiceWorkerRegistrationDirectory() const { return m_resolvedConfiguration.serviceWorkerRegistrationDirectory; }
 
     StorageManager* storageManager() { return m_storageManager.get(); }
 
@@ -142,7 +144,8 @@ public:
 
     void enableResourceLoadStatisticsAndSetTestingCallback(Function<void (const String&)>&& callback);
 
-    void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, WTF::Function<void (bool)>&& callback);
+    void hasStorageAccess(String&& subFrameHost, String&& topFrameHost, WTF::CompletionHandler<void (bool)>&& callback);
+    void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, WTF::CompletionHandler<void (bool)>&& callback);
     
     void setBoundInterfaceIdentifier(String&& identifier) { m_boundInterfaceIdentifier = WTFMove(identifier); }
     const String& boundInterfaceIdentifier() { return m_boundInterfaceIdentifier; }

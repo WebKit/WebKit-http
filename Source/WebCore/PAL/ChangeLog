@@ -1,3 +1,37 @@
+2017-12-04  David Quesada  <david_quesada@apple.com>
+
+        Add a class for parsing application manifests
+        https://bugs.webkit.org/show_bug.cgi?id=177973
+        rdar://problem/34747949
+
+        Reviewed by Geoffrey Garen.
+
+        * Configurations/FeatureDefines.xcconfig: Add ENABLE_APPLICATION_MANIFEST feature flag.
+
+2017-12-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed WPE build fix.
+
+        * pal/PlatformWPE.cmake: Use GLIB_INCLUDE_DIRS for building the PAL library.
+
+2017-12-04  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Implement PAL::SleepDisabler
+        https://bugs.webkit.org/show_bug.cgi?id=178485
+
+        Reviewed by Carlos Garcia Campos.
+
+        * pal/PlatformGTK.cmake:
+        * pal/PlatformWPE.cmake:
+        * pal/system/SleepDisabler.cpp:
+        * pal/system/glib/SleepDisablerGLib.cpp: Added.
+        (PAL::SleepDisabler::create):
+        (PAL::SleepDisablerGLib::SleepDisablerGLib):
+        (PAL::SleepDisablerGLib::~SleepDisablerGLib):
+        (PAL::SleepDisablerGLib::acquireInhibitor):
+        (PAL::SleepDisablerGLib::releaseInhibitor):
+        * pal/system/glib/SleepDisablerGLib.h: Added.
+
 2017-11-30  Stephan Szabo  <stephan.szabo@sony.com>
 
         Make LegacyCustomProtocolManager optional for network process

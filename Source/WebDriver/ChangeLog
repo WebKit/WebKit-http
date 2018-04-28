@@ -1,3 +1,159 @@
+2017-12-04  Brian Burg  <bburg@apple.com>
+
+        Web Automation: add flag to preserve legacy page screenshot behavior
+        https://bugs.webkit.org/show_bug.cgi?id=180313
+        <rdar://problem/34379930>
+
+        Reviewed by Joseph Pecoraro.
+
+        Set the clipToViewport flag to true when sending Automation.takeScreenshot.
+        This preserves the current behavior for this driver implementation.
+
+        * Session.cpp:
+        (WebDriver::Session::takeScreenshot):
+
+2017-12-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: implement element property command
+        https://bugs.webkit.org/show_bug.cgi?id=180244
+
+        Reviewed by Brian Burg.
+
+        13.3 Get Element Property
+        https://w3c.github.io/webdriver/webdriver-spec.html#get-element-property
+
+        Fixes: imported/w3c/webdriver/tests/state/get_element_property.py::test_no_browsing_context
+               imported/w3c/webdriver/tests/state/get_element_property.py::test_handle_prompt_dismiss
+               imported/w3c/webdriver/tests/state/get_element_property.py::test_handle_prompt_accept
+               imported/w3c/webdriver/tests/state/get_element_property.py::test_handle_prompt_missing_value
+               imported/w3c/webdriver/tests/state/get_element_property.py::test_element_stale
+
+        * Session.cpp:
+        (WebDriver::Session::getElementAttribute):
+        (WebDriver::Session::getElementProperty):
+        * Session.h:
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::getElementProperty):
+        * WebDriverService.h:
+
+2017-12-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: handle user prompts shown while executing scripts
+        https://bugs.webkit.org/show_bug.cgi?id=179979
+
+        Reviewed by Brian Burg.
+
+        15.2 Executing Script
+        https://w3c.github.io/webdriver/webdriver-spec.html#executing-script
+
+        The rules to execute a function body are as follows. The algorithm will return success with the JSON
+        representation of the function’s return value, or an error if the evaluation of the function results in a
+        JavaScript exception being thrown or at any point during its execution an unhandled user prompt appears.
+
+        If at any point during the algorithm a user prompt appears, the user prompt handler must be invoked. If its
+        return value is an error, it must immediately return with that error and abort all subsequent substeps of this
+        algorithm.
+
+        This will be covered by new WPT tests that will be available after the next upgrade.
+
+        * CommandResult.cpp:
+        (WebDriver::CommandResult::CommandResult): Handle UnexpectedAlertOpen internal error.
+        * Session.cpp:
+        (WebDriver::Session::handleUserPrompts): Move code to handleUnexpectedAlertOpen() and call it instead.
+        (WebDriver::Session::handleUnexpectedAlertOpen): Code moved here to be used also by executeScript().
+        (WebDriver::Session::executeScript): In case of UnexpectedAlertOpen error, call handleUnexpectedAlertOpen().
+        * Session.h:
+
+2017-12-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: implement status command
+        https://bugs.webkit.org/show_bug.cgi?id=180133
+
+        Reviewed by Brian Burg.
+
+        8.3 Status
+        https://w3c.github.io/webdriver/webdriver-spec.html#status
+
+        Fixes: imported/w3c/webdriver/tests/sessions/status.py::test_get_status_no_session
+               imported/w3c/webdriver/tests/sessions/status.py::test_status_with_session_running_on_endpoint_node
+
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::status):
+        * WebDriverService.h:
+
+2017-12-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: end point nodes are only allowed to have one session
+        https://bugs.webkit.org/show_bug.cgi?id=180131
+
+        Reviewed by Brian Burg.
+
+        We are currently keeping a map of sessions, but our service is always and end point node, so only one session
+        can exist at a time. Make findSessionOrCompleteWithError() return a boolean instead, failing in case the sessionID
+        parameter is not found or it doesn't match the current session. Replace the session map and active session
+        pointer with a single session member and return SessionNotCreated error when new session command is received and
+        there's an active session.
+
+        8. Sessions
+        A remote end has an associated maximum active sessions (an integer) that defines the number of active sessions
+        that are supported. This may be “unlimited” for intermediary nodes, but must be exactly one for a remote end
+        that is an endpoint node.
+        https://w3c.github.io/webdriver/webdriver-spec.html#dfn-maximum-active-sessions
+
+        Fixes: imported/w3c/webdriver/tests/sessions/new_session/default_values.py::test_repeat_new_session
+
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::findSessionOrCompleteWithError):
+        (WebDriver::WebDriverService::newSession):
+        (WebDriver::WebDriverService::deleteSession):
+        (WebDriver::WebDriverService::status):
+        (WebDriver::WebDriverService::setTimeouts):
+        (WebDriver::WebDriverService::go):
+        (WebDriver::WebDriverService::getCurrentURL):
+        (WebDriver::WebDriverService::back):
+        (WebDriver::WebDriverService::forward):
+        (WebDriver::WebDriverService::refresh):
+        (WebDriver::WebDriverService::getTitle):
+        (WebDriver::WebDriverService::getWindowHandle):
+        (WebDriver::WebDriverService::setWindowRect):
+        (WebDriver::WebDriverService::closeWindow):
+        (WebDriver::WebDriverService::switchToWindow):
+        (WebDriver::WebDriverService::getWindowHandles):
+        (WebDriver::WebDriverService::switchToFrame):
+        (WebDriver::WebDriverService::switchToParentFrame):
+        (WebDriver::findStrategyAndSelectorOrCompleteWithError):
+        (WebDriver::WebDriverService::findElement):
+        (WebDriver::WebDriverService::findElements):
+        (WebDriver::WebDriverService::findElementFromElement):
+        (WebDriver::WebDriverService::findElementsFromElement):
+        (WebDriver::WebDriverService::getActiveElement):
+        (WebDriver::WebDriverService::isElementSelected):
+        (WebDriver::WebDriverService::getElementAttribute):
+        (WebDriver::WebDriverService::getElementText):
+        (WebDriver::WebDriverService::getElementTagName):
+        (WebDriver::WebDriverService::getElementRect):
+        (WebDriver::WebDriverService::isElementEnabled):
+        (WebDriver::WebDriverService::isElementDisplayed):
+        (WebDriver::WebDriverService::elementClick):
+        (WebDriver::WebDriverService::elementClear):
+        (WebDriver::WebDriverService::elementSendKeys):
+        (WebDriver::findScriptAndArgumentsOrCompleteWithError):
+        (WebDriver::WebDriverService::executeScript):
+        (WebDriver::WebDriverService::executeAsyncScript):
+        (WebDriver::WebDriverService::getAllCookies):
+        (WebDriver::WebDriverService::getNamedCookie):
+        (WebDriver::deserializeCookie):
+        (WebDriver::WebDriverService::addCookie):
+        (WebDriver::WebDriverService::deleteCookie):
+        (WebDriver::WebDriverService::deleteAllCookies):
+        (WebDriver::WebDriverService::dismissAlert):
+        (WebDriver::WebDriverService::acceptAlert):
+        (WebDriver::WebDriverService::getAlertText):
+        (WebDriver::WebDriverService::sendAlertText):
+        (WebDriver::WebDriverService::takeScreenshot):
+        (WebDriver::WebDriverService::takeElementScreenshot):
+        * WebDriverService.h:
+
 2017-11-30  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         WebDriver: locator strategy should be validated before trying to find elements

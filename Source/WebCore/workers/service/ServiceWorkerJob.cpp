@@ -41,35 +41,36 @@ ServiceWorkerJob::ServiceWorkerJob(ServiceWorkerJobClient& client, Ref<DeferredP
     : m_client(client)
     , m_jobData(WTFMove(jobData))
     , m_promise(WTFMove(promise))
+    , m_contextIdentifier(client.contextIdentifier())
 {
 }
 
 ServiceWorkerJob::~ServiceWorkerJob()
 {
-    ASSERT(currentThread() == m_creationThread);
+    ASSERT(m_creationThread.ptr() == &Thread::current());
 }
 
 void ServiceWorkerJob::failedWithException(const Exception& exception)
 {
-    ASSERT(currentThread() == m_creationThread);
+    ASSERT(m_creationThread.ptr() == &Thread::current());
     ASSERT(!m_completed);
 
     m_completed = true;
     m_client->jobFailedWithException(*this, exception);
 }
 
-void ServiceWorkerJob::resolvedWithRegistration(ServiceWorkerRegistrationData&& data, WTF::Function<void()>&& promiseResolvedHandler)
+void ServiceWorkerJob::resolvedWithRegistration(ServiceWorkerRegistrationData&& data, ShouldNotifyWhenResolved shouldNotifyWhenResolved)
 {
-    ASSERT(currentThread() == m_creationThread);
+    ASSERT(m_creationThread.ptr() == &Thread::current());
     ASSERT(!m_completed);
 
     m_completed = true;
-    m_client->jobResolvedWithRegistration(*this, WTFMove(data), WTFMove(promiseResolvedHandler));
+    m_client->jobResolvedWithRegistration(*this, WTFMove(data), shouldNotifyWhenResolved);
 }
 
 void ServiceWorkerJob::resolvedWithUnregistrationResult(bool unregistrationResult)
 {
-    ASSERT(currentThread() == m_creationThread);
+    ASSERT(m_creationThread.ptr() == &Thread::current());
     ASSERT(!m_completed);
 
     m_completed = true;
@@ -78,7 +79,7 @@ void ServiceWorkerJob::resolvedWithUnregistrationResult(bool unregistrationResul
 
 void ServiceWorkerJob::startScriptFetch()
 {
-    ASSERT(currentThread() == m_creationThread);
+    ASSERT(m_creationThread.ptr() == &Thread::current());
     ASSERT(!m_completed);
 
     m_client->startScriptFetchForJob(*this);
@@ -86,7 +87,7 @@ void ServiceWorkerJob::startScriptFetch()
 
 void ServiceWorkerJob::fetchScriptWithContext(ScriptExecutionContext& context)
 {
-    ASSERT(currentThread() == m_creationThread);
+    ASSERT(m_creationThread.ptr() == &Thread::current());
     ASSERT(!m_completed);
 
     // FIXME: WorkerScriptLoader is the wrong loader class to use here, but there's nothing else better right now.
@@ -96,7 +97,7 @@ void ServiceWorkerJob::fetchScriptWithContext(ScriptExecutionContext& context)
 
 void ServiceWorkerJob::didReceiveResponse(unsigned long, const ResourceResponse& response)
 {
-    ASSERT(currentThread() == m_creationThread);
+    ASSERT(m_creationThread.ptr() == &Thread::current());
     ASSERT(!m_completed);
     ASSERT(m_scriptLoader);
 
@@ -114,7 +115,7 @@ void ServiceWorkerJob::didReceiveResponse(unsigned long, const ResourceResponse&
 
 void ServiceWorkerJob::notifyFinished()
 {
-    ASSERT(currentThread() == m_creationThread);
+    ASSERT(m_creationThread.ptr() == &Thread::current());
     ASSERT(m_scriptLoader);
     
     if (!m_scriptLoader->failed())

@@ -152,6 +152,8 @@
 #include <WebCore/HTMLFormElement.h>
 #include <WebCore/HTMLImageElement.h>
 #include <WebCore/HTMLInputElement.h>
+#include <WebCore/HTMLMenuElement.h>
+#include <WebCore/HTMLMenuItemElement.h>
 #include <WebCore/HTMLOListElement.h>
 #include <WebCore/HTMLPlugInElement.h>
 #include <WebCore/HTMLPlugInImageElement.h>
@@ -206,6 +208,7 @@
 #include <runtime/SamplingProfiler.h>
 #include <wtf/RunLoop.h>
 #include <wtf/SetForScope.h>
+#include <wtf/text/TextStream.h>
 
 #if ENABLE(DATA_DETECTION)
 #include "DataDetectionResult.h"
@@ -223,6 +226,8 @@
 #include "PDFPlugin.h"
 #include "PlaybackSessionManager.h"
 #include "RemoteLayerTreeTransaction.h"
+#include "TouchBarMenuData.h"
+#include "TouchBarMenuItemData.h"
 #include "VideoFullscreenManager.h"
 #include "WKStringCF.h"
 #include <WebCore/LegacyWebArchive.h>
@@ -1742,6 +1747,7 @@ bool WebPage::setFixedLayoutSize(const IntSize& size)
     if (!view || view->fixedLayoutSize() == size)
         return false;
 
+    LOG_WITH_STREAM(VisibleRects, stream << "WebPage " << m_pageID << " setFixedLayoutSize " << size);
     view->setFixedLayoutSize(size);
 
     send(Messages::WebPageProxy::FixedLayoutSizeDidChange(size));
@@ -3588,9 +3594,9 @@ void WebPage::prepareToSendUserMediaPermissionRequest()
 }
 #endif
 
-void WebPage::userMediaAccessWasGranted(uint64_t userMediaID, String&& audioDeviceUID, String&& videoDeviceUID, String&& mediaDeviceIdentifierHashSalt)
+void WebPage::userMediaAccessWasGranted(uint64_t userMediaID, WebCore::CaptureDevice&& audioDevice, WebCore::CaptureDevice&& videoDevice, String&& mediaDeviceIdentifierHashSalt)
 {
-    m_userMediaPermissionRequestManager->userMediaAccessWasGranted(userMediaID, WTFMove(audioDeviceUID), WTFMove(videoDeviceUID), WTFMove(mediaDeviceIdentifierHashSalt));
+    m_userMediaPermissionRequestManager->userMediaAccessWasGranted(userMediaID, WTFMove(audioDevice), WTFMove(videoDevice), WTFMove(mediaDeviceIdentifierHashSalt));
 }
 
 void WebPage::userMediaAccessWasDenied(uint64_t userMediaID, uint64_t reason, String&& invalidConstraint)
@@ -3777,6 +3783,7 @@ void WebPage::mainFrameDidLayout()
 #if PLATFORM(IOS)
     if (FrameView* frameView = mainFrameView()) {
         IntSize newContentSize = frameView->contentsSize();
+        LOG_WITH_STREAM(VisibleRects, stream << "WebPage " << m_pageID << " mainFrameDidLayout setting content size to " << newContentSize);
         if (m_viewportConfiguration.setContentsSize(newContentSize))
             viewportConfigurationChanged();
     }
@@ -5081,6 +5088,8 @@ void WebPage::didCommitLoad(WebFrame* frame)
     const Frame* coreFrame = frame->coreFrame();
     
     bool viewportChanged = false;
+
+    LOG_WITH_STREAM(VisibleRects, stream << "WebPage " << m_pageID << " didCommitLoad setting content size to " << coreFrame->view()->contentsSize());
     if (m_viewportConfiguration.setContentsSize(coreFrame->view()->contentsSize()))
         viewportChanged = true;
 
@@ -5115,6 +5124,42 @@ void WebPage::didFinishLoad(WebFrame* frame)
     m_determinePrimarySnapshottedPlugInTimer.startOneShot(0_s);
 #else
     UNUSED_PARAM(frame);
+#endif
+}
+
+void WebPage::didInsertMenuElement(HTMLMenuElement& element)
+{
+#if PLATFORM(COCOA)
+    sendTouchBarMenuDataAddedUpdate(element);
+#else
+    UNUSED_PARAM(element);
+#endif
+}
+
+void WebPage::didRemoveMenuElement(HTMLMenuElement& element)
+{
+#if PLATFORM(COCOA)
+    sendTouchBarMenuDataRemovedUpdate(element);
+#else
+    UNUSED_PARAM(element);
+#endif
+}
+
+void WebPage::didInsertMenuItemElement(HTMLMenuItemElement& element)
+{
+#if PLATFORM(COCOA)
+    sendTouchBarMenuItemDataAddedUpdate(element);
+#else
+    UNUSED_PARAM(element);
+#endif
+}
+
+void WebPage::didRemoveMenuItemElement(HTMLMenuItemElement& element)
+{
+#if PLATFORM(COCOA)
+    sendTouchBarMenuItemDataRemovedUpdate(element);
+#else
+    UNUSED_PARAM(element);
 #endif
 }
 
@@ -5338,6 +5383,28 @@ void WebPage::sendEditorStateUpdate()
         m_drawingArea->scheduleCompositingLayerFlush();
     }
 }
+
+#if PLATFORM(COCOA)
+void WebPage::sendTouchBarMenuDataRemovedUpdate(HTMLMenuElement& element)
+{
+    send(Messages::WebPageProxy::TouchBarMenuDataChanged(TouchBarMenuData { }));
+}
+
+void WebPage::sendTouchBarMenuDataAddedUpdate(HTMLMenuElement& element)
+{
+    send(Messages::WebPageProxy::TouchBarMenuDataChanged(TouchBarMenuData {element}));
+}
+
+void WebPage::sendTouchBarMenuItemDataAddedUpdate(HTMLMenuItemElement& element)
+{
+    send(Messages::WebPageProxy::TouchBarMenuItemDataAdded(TouchBarMenuItemData {element}));
+}
+
+void WebPage::sendTouchBarMenuItemDataRemovedUpdate(HTMLMenuItemElement& element)
+{
+    send(Messages::WebPageProxy::TouchBarMenuItemDataRemoved(TouchBarMenuItemData {element}));
+}
+#endif
 
 void WebPage::sendPartialEditorStateAndSchedulePostLayoutUpdate()
 {
@@ -5739,7 +5806,18 @@ static uint64_t nextRequestStorageAccessContextId()
     return ++nextContextId;
 }
 
-void WebPage::requestStorageAccess(String&& subFrameHost, String&& topFrameHost, WTF::Function<void (bool)>&& callback)
+void WebPage::hasStorageAccess(String&& subFrameHost, String&& topFrameHost, WTF::CompletionHandler<void (bool)>&& callback)
+{
+    auto contextId = nextRequestStorageAccessContextId();
+    auto addResult = m_storageAccessResponseCallbackMap.add(contextId, WTFMove(callback));
+    ASSERT(addResult.isNewEntry);
+    if (addResult.iterator->value)
+        send(Messages::WebPageProxy::HasStorageAccess(WTFMove(subFrameHost), WTFMove(topFrameHost), contextId));
+    else
+        callback(false);
+}
+    
+void WebPage::requestStorageAccess(String&& subFrameHost, String&& topFrameHost, WTF::CompletionHandler<void (bool)>&& callback)
 {
     auto contextId = nextRequestStorageAccessContextId();
     auto addResult = m_storageAccessResponseCallbackMap.add(contextId, WTFMove(callback));
@@ -5799,6 +5877,15 @@ void WebPage::setAttachmentDisplayOptions(const String& identifier, const Attach
     send(Messages::WebPageProxy::VoidCallback(callbackID));
 }
 
+void WebPage::setAttachmentDataAndContentType(const String& identifier, const IPC::DataReference& data, std::optional<String> newContentType, std::optional<String> newFilename, CallbackID callbackID)
+{
+    if (auto attachment = attachmentElementWithIdentifier(identifier)) {
+        attachment->document().updateLayout();
+        attachment->updateFileWithData(SharedBuffer::create(data.data(), data.size()), WTFMove(newContentType), WTFMove(newFilename));
+    }
+    send(Messages::WebPageProxy::VoidCallback(callbackID));
+}
+
 RefPtr<HTMLAttachmentElement> WebPage::attachmentElementWithIdentifier(const String& identifier) const
 {
     // FIXME: Handle attachment elements in subframes too as well.
@@ -5810,5 +5897,33 @@ RefPtr<HTMLAttachmentElement> WebPage::attachmentElementWithIdentifier(const Str
 }
 
 #endif // ENABLE(ATTACHMENT_ELEMENT)
+
+#if ENABLE(APPLICATION_MANIFEST)
+void WebPage::getApplicationManifest(CallbackID callbackID)
+{
+    ASSERT(callbackID.isValid());
+    Document* mainFrameDocument = m_mainFrame->coreFrame()->document();
+    DocumentLoader* loader = mainFrameDocument ? mainFrameDocument->loader() : nullptr;
+
+    if (!loader) {
+        send(Messages::WebPageProxy::ApplicationManifestCallback(std::nullopt, callbackID));
+        return;
+    }
+
+    auto coreCallbackID = loader->loadApplicationManifest();
+    if (!coreCallbackID) {
+        send(Messages::WebPageProxy::ApplicationManifestCallback(std::nullopt, callbackID));
+        return;
+    }
+
+    m_applicationManifestFetchCallbackMap.add(coreCallbackID, callbackID.toInteger());
+}
+
+void WebPage::didFinishLoadingApplicationManifest(uint64_t coreCallbackID, const std::optional<WebCore::ApplicationManifest>& manifest)
+{
+    auto callbackID = CallbackID::fromInteger(m_applicationManifestFetchCallbackMap.take(coreCallbackID));
+    send(Messages::WebPageProxy::ApplicationManifestCallback(manifest, callbackID));
+}
+#endif // ENABLE(APPLICATION_MANIFEST)
 
 } // namespace WebKit

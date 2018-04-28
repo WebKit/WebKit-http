@@ -588,26 +588,6 @@ loader/go-back-to-different-window-size.html [ Failure ]
 transforms/2d/transform-fixed-container.html [ Failure ]
 
 # Editing tests that fail:
-editing/caret/color-span-inside-editable-background.html [ ImageOnlyFailure ]
-editing/caret/color-span-inside-editable.html [ ImageOnlyFailure ]
-editing/deleting/5144139-2.html [ Failure ]
-editing/execCommand/button.html [ Failure ]
-editing/execCommand/createLink.html [ Failure ]
-editing/execCommand/hilitecolor.html [ Failure ]
-editing/execCommand/query-command-state.html [ Failure ]
-editing/execCommand/remove-format-multiple-elements-mac.html [ Failure ]
-editing/execCommand/remove-format-multiple-elements-win.html [ Failure ]
-editing/execCommand/remove-formatting-2.html [ Failure ]
-editing/execCommand/toggle-link-mac.html [ Failure ]
-editing/execCommand/toggle-unlink-mac.html [ Failure ]
-editing/execCommand/unlink.html [ Failure ]
-editing/input/editable-container-with-word-wrap-normal.html [ Failure ]
-editing/input/password-echo-passnode.html [ Failure ]
-editing/input/password-echo-passnode2.html [ Failure ]
-editing/input/password-echo-passnode3.html [ Failure ]
-editing/input/reveal-edit-on-input-vertically.html [ Failure ]
-editing/input/scroll-to-edge-if-line-break-at-end-of-document-contenteditable.html [ Failure ]
-editing/input/scroll-to-edge-if-paragraph-separator-at-end-of-document-contenteditable.html [ Failure ]
 editing/inserting/caret-position.html [ Failure ]
 editing/inserting/insert-3654864-fix.html [ Failure ]
 editing/inserting/insert-3775316-fix.html [ Failure ]
@@ -716,7 +696,6 @@ editing/undo/undo-misspellings.html [ Failure ]
 editing/undo/undo-typing-001.html [ Failure ]
 
 # Editing tests that time out:
-editing/input/reveal-contenteditable-on-input-vertically.html
 editing/selection/designmode-no-caret.html
 editing/selection/move-by-character-brute-force.html
 editing/spelling/delete-into-misspelled-word.html
@@ -742,9 +721,6 @@ editing/spelling/spelling-with-whitespace-selection.html
 editing/unsupported-content/list-delete-001.html
 
 # Editing tests that are flaky:
-editing/caret/caret-color.html [ Failure Pass ]
-editing/deleting/whitespace-pre-1.html [ Failure Pass ]
-editing/execCommand/indent-paragraphs.html [ Failure Pass ]
 editing/inserting/insert-thai-characters-001.html [ Failure Pass ]
 editing/selection/find-in-text-control.html [ Failure Pass ]
 editing/selection/skip-non-editable-1.html [ Failure Pass ]

@@ -173,6 +173,8 @@ WI.NativeConstructorFunctionParameters = {
         log: "message, [...values]",
         profile: "name",
         profileEnd: "name",
+        record: "object, [options]",
+        recordEnd: "object",
         table: "data, [columns]",
         takeHeapSnapshot: "[label]",
         time: "name = \"default\"",
@@ -679,8 +681,6 @@ WI.NativePrototypeFunctionParameters = {
         strokeText: "text, x, y, [maxWidth]",
         transform: "m11, m12, m21, m22, dx, dy",
         translate: "tx, ty",
-        webkitGetImageDataHD: "sx, sy, sw, sh",
-        webkitPutImageDataHD: "imagedata, dx, dy",
         __proto__: null,
     },
 

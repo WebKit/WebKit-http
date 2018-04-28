@@ -132,6 +132,7 @@
 #include "ScrollingMomentumCalculator.h"
 #include "SecurityOrigin.h"
 #include "SerializedScriptValue.h"
+#include "ServiceWorker.h"
 #include "ServiceWorkerProvider.h"
 #include "ServiceWorkerRegistrationData.h"
 #include "Settings.h"
@@ -4132,11 +4133,11 @@ ExceptionOr<void> Internals::setMediaDeviceState(const String& id, const String&
         return Exception { InvalidAccessError, makeString("\"" + property, "\" is not a valid property for this method.") };
 
     auto salt = document->deviceIDHashSalt();
-    std::optional<CaptureDevice> device = RealtimeMediaSourceCenter::singleton().captureDeviceWithUniqueID(id, salt);
+    CaptureDevice device = RealtimeMediaSourceCenter::singleton().captureDeviceWithUniqueID(id, salt);
     if (!device)
         return Exception { InvalidAccessError, makeString("device with ID \"" + id, "\" not found.") };
 
-    auto result = RealtimeMediaSourceCenter::singleton().setDeviceEnabled(device->persistentId(), value);
+    auto result = RealtimeMediaSourceCenter::singleton().setDeviceEnabled(device.persistentId(), value);
     if (result.hasException())
         return result.releaseException();
 
@@ -4270,6 +4271,14 @@ void Internals::hasServiceWorkerRegistration(const String& clientURL, HasRegistr
         promise.resolve(!!result);
     });
 }
+
+void Internals::terminateServiceWorker(ServiceWorker& worker)
+{
+    if (!contextDocument())
+        return;
+
+    ServiceWorkerProvider::singleton().serviceWorkerConnectionForSession(contextDocument()->sessionID()).syncTerminateWorker(worker.identifier());
+}
 #endif
 
 String Internals::timelineDescription(AnimationTimeline& timeline)
@@ -4317,6 +4326,13 @@ ExceptionOr<void> Internals::removeAlternativePresentationButton(const String& i
         return Exception { InvalidAccessError };
     frame()->editor().removeAlternativePresentationButton(identifier);
     return { };
+}
+
+ExceptionOr<Vector<Ref<Element>>> Internals::elementsReplacedByAlternativePresentationButton(const String& identifier)
+{
+    if (!frame())
+        return Exception { InvalidAccessError };
+    return frame()->editor().elementsReplacedByAlternativePresentationButton(identifier);
 }
 #endif
 

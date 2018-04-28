@@ -27,38 +27,37 @@
 
 #if ENABLE(SERVICE_WORKER)
 
-#include "ActiveDOMObject.h"
+#include "ServiceWorkerClientQueryOptions.h"
 #include "ServiceWorkerClientType.h"
+#include "ServiceWorkerIdentifier.h"
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
 
 class DeferredPromise;
+class ScriptExecutionContext;
+struct ServiceWorkerClientData;
+struct ServiceWorkerClientIdentifier;
 
-class ServiceWorkerClients : public RefCounted<ServiceWorkerClients>, public ActiveDOMObject {
+class ServiceWorkerClients : public RefCounted<ServiceWorkerClients> {
 public:
-    static Ref<ServiceWorkerClients> create(ScriptExecutionContext& context)
+    static Ref<ServiceWorkerClients> create()
     {
-        return adoptRef(*new ServiceWorkerClients(context));
+        return adoptRef(*new ServiceWorkerClients);
     }
 
-    struct ClientQueryOptions {
-        bool includeUncontrolled { false };
-        ServiceWorkerClientType type { ServiceWorkerClientType::Window };
-    };
+    using ClientQueryOptions = ServiceWorkerClientQueryOptions;
 
-    void get(const String& id, Ref<DeferredPromise>&&);
-    void matchAll(const ClientQueryOptions&, Ref<DeferredPromise>&&);
-    void openWindow(const String& url, Ref<DeferredPromise>&&);
-    void claim(Ref<DeferredPromise>&&);
+    void get(ScriptExecutionContext&, const String& id, Ref<DeferredPromise>&&);
+    void matchAll(ScriptExecutionContext&, const ClientQueryOptions&, Ref<DeferredPromise>&&);
+    void openWindow(ScriptExecutionContext&, const String& url, Ref<DeferredPromise>&&);
+    void claim(ScriptExecutionContext&, Ref<DeferredPromise>&&);
 
 private:
-    explicit ServiceWorkerClients(ScriptExecutionContext&);
+    ServiceWorkerClients() = default;
 
-    // ActiveDOMObject.
-    const char* activeDOMObjectName() const final;
-    bool canSuspendForDocumentSuspension() const final;
+    HashMap<DeferredPromise*, Ref<DeferredPromise>> m_pendingPromises;
 };
 
 } // namespace WebCore

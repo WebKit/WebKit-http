@@ -41,6 +41,7 @@
 #include "ServiceWorkerContextData.h"
 #include "ServiceWorkerFetchResult.h"
 #include "ServiceWorkerJobData.h"
+#include <wtf/CompletionHandler.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/WTFString.h>
 
@@ -50,6 +51,8 @@ static ServiceWorkerIdentifier generateServiceWorkerIdentifier()
 {
     return generateObjectIdentifier<ServiceWorkerIdentifierType>();
 }
+
+static Seconds terminationDelay { 10_s };
 
 SWServer::Connection::Connection(SWServer& server)
     : m_server(server)
@@ -85,6 +88,13 @@ SWServer::~SWServer()
     ASSERT(!m_taskThread);
     
     allServers().remove(this);
+}
+
+SWServerWorker* SWServer::workerByID(ServiceWorkerIdentifier identifier) const
+{
+    auto* worker = SWServerWorker::existingWorkerForIdentifier(identifier);
+    ASSERT(!worker || &worker->server() == this);
+    return worker;
 }
 
 SWServerRegistration* SWServer::getRegistration(const ServiceWorkerRegistrationKey& registrationKey)
@@ -138,7 +148,7 @@ void SWServer::clearAll()
 {
     m_jobQueues.clear();
     while (!m_registrations.isEmpty())
-        SWServerJobQueue::clearRegistration(*this, *m_registrations.begin()->value);
+        m_registrations.begin()->value->clear();
     ASSERT(m_registrationsByID.isEmpty());
     m_originStore->clearAll();
 }
@@ -178,19 +188,16 @@ void SWServer::Connection::removeServiceWorkerRegistrationInServer(ServiceWorker
     m_server.removeClientServiceWorkerRegistration(*this, identifier);
 }
 
-void SWServer::Connection::serviceWorkerStartedControllingClient(ServiceWorkerIdentifier serviceWorkerIdentifier, ServiceWorkerRegistrationIdentifier registrationIdentifier, DocumentIdentifier contextIdentifier)
+void SWServer::Connection::syncTerminateWorker(ServiceWorkerIdentifier identifier)
 {
-    m_server.serviceWorkerStartedControllingClient(*this, serviceWorkerIdentifier, registrationIdentifier, contextIdentifier);
+    if (auto* worker = m_server.workerByID(identifier))
+        m_server.syncTerminateWorker(*worker);
 }
 
-void SWServer::Connection::serviceWorkerStoppedControllingClient(ServiceWorkerIdentifier serviceWorkerIdentifier, ServiceWorkerRegistrationIdentifier registrationIdentifier, DocumentIdentifier contextIdentifier)
-{
-    m_server.serviceWorkerStoppedControllingClient(*this, serviceWorkerIdentifier, registrationIdentifier, contextIdentifier);
-}
-
-SWServer::SWServer(UniqueRef<SWOriginStore>&& originStore)
+SWServer::SWServer(UniqueRef<SWOriginStore>&& originStore, const String& registrationDatabaseDirectory)
     : m_originStore(WTFMove(originStore))
 {
+    UNUSED_PARAM(registrationDatabaseDirectory);
     allServers().add(this);
     m_taskThread = Thread::create(ASCIILiteral("ServiceWorker Task Thread"), [this] {
         taskThreadEntryPoint();
@@ -296,13 +303,70 @@ void SWServer::didFinishInstall(const std::optional<ServiceWorkerJobDataIdentifi
 void SWServer::didFinishActivation(SWServerWorker& worker)
 {
     if (auto* registration = getRegistration(worker.registrationKey()))
-        SWServerJobQueue::didFinishActivation(*registration, worker.identifier());
+        registration->didFinishActivation(worker.identifier());
 }
 
-void SWServer::workerContextTerminated(SWServerWorker& worker)
+// https://w3c.github.io/ServiceWorker/#clients-get
+std::optional<ServiceWorkerClientData> SWServer::findClientByIdentifier(const ClientOrigin& origin, ServiceWorkerClientIdentifier clientIdentifier)
 {
-    auto result = m_workersByID.remove(worker.identifier());
-    ASSERT_UNUSED(result, result);
+    // FIXME: Support WindowClient additional properties.
+
+    auto iterator = m_clients.find(origin);
+    if (iterator == m_clients.end())
+        return std::nullopt;
+
+    auto& clients = iterator->value.clients;
+    auto position = clients.findMatching([&] (const auto& client) {
+        return clientIdentifier == client.identifier;
+    });
+
+    return (position != notFound) ? std::make_optional(clients[position].data) : std::nullopt;
+}
+
+// https://w3c.github.io/ServiceWorker/#clients-getall
+void SWServer::matchAll(SWServerWorker& worker, const ServiceWorkerClientQueryOptions& options, ServiceWorkerClientsMatchAllCallback&& callback)
+{
+    // FIXME: Support reserved client filtering.
+    // FIXME: Support WindowClient additional properties.
+
+    auto clients = m_clients.find(worker.origin())->value.clients;
+
+    if (!options.includeUncontrolled) {
+        clients.removeAllMatching([&] (const auto& client) {
+            return worker.identifier() != m_clientToControllingWorker.get(client.identifier);
+        });
+    }
+    if (options.type != ServiceWorkerClientType::All) {
+        clients.removeAllMatching([&] (const auto& client) {
+            return options.type != client.data.type;
+        });
+    }
+    callback(WTFMove(clients));
+}
+
+void SWServer::claim(SWServerWorker& worker)
+{
+    auto& origin = worker.origin();
+    auto iterator = m_clients.find(origin);
+    if (iterator == m_clients.end())
+        return;
+
+    auto& clients = iterator->value.clients;
+    for (auto& client : clients) {
+        auto* registration = doRegistrationMatching(origin.topOrigin, client.data.url);
+        if (!(registration && registration->key() == worker.registrationKey()))
+            continue;
+
+        auto result = m_clientToControllingWorker.add(client.identifier, worker.identifier());
+        if (!result.isNewEntry) {
+            if (result.iterator->value == worker.identifier())
+                continue;
+            if (auto* controllingRegistration = registrationFromServiceWorkerIdentifier(result.iterator->value))
+                controllingRegistration->removeClientUsingRegistration(client.identifier);
+            result.iterator->value = worker.identifier();
+        }
+        registration->controlClient(client.identifier);
+    }
 }
 
 void SWServer::didResolveRegistrationPromise(Connection& connection, const ServiceWorkerRegistrationKey& registrationKey)
@@ -333,24 +397,6 @@ void SWServer::removeClientServiceWorkerRegistration(Connection& connection, Ser
     }
     
     registration->removeClientServiceWorkerRegistration(connection.identifier());
-}
-
-void SWServer::serviceWorkerStartedControllingClient(Connection& connection, ServiceWorkerIdentifier, ServiceWorkerRegistrationIdentifier registrationIdentifier, DocumentIdentifier contextIdentifier)
-{
-    auto* registration = m_registrationsByID.get(registrationIdentifier);
-    if (!registration)
-        return;
-
-    registration->addClientUsingRegistration({ connection.identifier(), contextIdentifier });
-}
-
-void SWServer::serviceWorkerStoppedControllingClient(Connection& connection, ServiceWorkerIdentifier, ServiceWorkerRegistrationIdentifier registrationIdentifier, DocumentIdentifier contextIdentifier)
-{
-    auto* registration = m_registrationsByID.get(registrationIdentifier);
-    if (!registration)
-        return;
-
-    registration->removeClientUsingRegistration({ connection.identifier(), contextIdentifier });
 }
 
 void SWServer::updateWorker(Connection&, const ServiceWorkerJobDataIdentifier& jobDataIdentifier, SWServerRegistration& registration, const URL& url, const String& script, WorkerType type)
@@ -387,20 +433,83 @@ void SWServer::installContextData(const ServiceWorkerContextData& data)
     auto* registration = m_registrations.get(data.registration.key);
     RELEASE_ASSERT(registration);
 
-    auto result = m_workersByID.add(data.serviceWorkerIdentifier, SWServerWorker::create(*this, *registration, connection->identifier(), data.scriptURL, data.script, data.workerType, data.serviceWorkerIdentifier));
-    ASSERT_UNUSED(result, result.isNewEntry);
+    auto result = m_runningOrTerminatingWorkers.add(data.serviceWorkerIdentifier, SWServerWorker::create(*this, *registration, connection->identifier(), data.scriptURL, data.script, data.workerType, data.serviceWorkerIdentifier));
+    ASSERT(result.isNewEntry);
+
+    result.iterator->value->setState(SWServerWorker::State::Running);
 
     connection->installServiceWorkerContext(data);
 }
 
+bool SWServer::invokeRunServiceWorker(ServiceWorkerIdentifier identifier)
+{
+    if (auto* worker = m_runningOrTerminatingWorkers.get(identifier)) {
+        if (worker->isRunning())
+            return true;
+    }
+
+    // Nobody should have a ServiceWorkerIdentifier for a SWServerWorker that doesn't exist.
+    auto* worker = workerByID(identifier);
+    ASSERT(worker);
+
+    // If the registration for a working has been removed then the request to run
+    // the worker is moot.
+    if (!getRegistration(worker->registrationKey()))
+        return false;
+
+    m_runningOrTerminatingWorkers.add(identifier, *worker);
+    worker->setState(SWServerWorker::State::Running);
+
+    auto* connection = SWServerToContextConnection::globalServerToContextConnection();
+    ASSERT(connection);
+    connection->installServiceWorkerContext(worker->contextData());
+    
+    return true;
+}
 
 void SWServer::terminateWorker(SWServerWorker& worker)
 {
+    terminateWorkerInternal(worker, Asynchronous);
+}
+
+void SWServer::syncTerminateWorker(SWServerWorker& worker)
+{
+    terminateWorkerInternal(worker, Synchronous);
+}
+
+void SWServer::terminateWorkerInternal(SWServerWorker& worker, TerminationMode mode)
+{
     auto* connection = SWServerToContextConnection::connectionForIdentifier(worker.contextConnectionIdentifier());
-    if (connection)
-        connection->terminateWorker(worker.identifier());
-    else
+    if (!connection) {
         LOG_ERROR("Request to terminate a worker whose context connection does not exist");
+        return;
+    }
+
+    ASSERT(m_runningOrTerminatingWorkers.get(worker.identifier()) == &worker);
+    ASSERT(!worker.isTerminating());
+
+    worker.setState(SWServerWorker::State::Terminating);
+
+    switch (mode) {
+    case Asynchronous:
+        connection->terminateWorker(worker.identifier());
+        break;
+    case Synchronous:
+        connection->syncTerminateWorker(worker.identifier());
+        break;
+    };
+}
+
+void SWServer::workerContextTerminated(SWServerWorker& worker)
+{
+    ASSERT(worker.isTerminating());
+
+    worker.setState(SWServerWorker::State::NotRunning);
+
+    // At this point if no registrations are referencing the worker then it will be destroyed,
+    // removing itself from the m_workersByID map.
+    auto result = m_runningOrTerminatingWorkers.take(worker.identifier());
+    ASSERT_UNUSED(result, result && result->ptr() == &worker);
 }
 
 void SWServer::fireInstallEvent(SWServerWorker& worker)
@@ -482,9 +591,9 @@ void SWServer::unregisterConnection(Connection& connection)
         registration->unregisterServerConnection(connection.identifier());
 }
 
-const SWServerRegistration* SWServer::doRegistrationMatching(const SecurityOriginData& topOrigin, const URL& clientURL) const
+SWServerRegistration* SWServer::doRegistrationMatching(const SecurityOriginData& topOrigin, const URL& clientURL)
 {
-    const SWServerRegistration* selectedRegistration = nullptr;
+    SWServerRegistration* selectedRegistration = nullptr;
     for (auto& registration : m_registrations.values()) {
         if (!registration->key().isMatching(topOrigin, clientURL))
             continue;
@@ -495,26 +604,97 @@ const SWServerRegistration* SWServer::doRegistrationMatching(const SecurityOrigi
     return (selectedRegistration && !selectedRegistration->isUninstalling()) ? selectedRegistration : nullptr;
 }
 
-void SWServer::registerServiceWorkerClient(ClientOrigin&& clientOrigin, ServiceWorkerClientIdentifier identifier, ServiceWorkerClientData&& data)
+void SWServer::setClientActiveWorker(ServiceWorkerClientIdentifier clientIdentifier, ServiceWorkerIdentifier serviceWorkerIdentifier)
 {
-    m_clients.ensure(WTFMove(clientOrigin), [] {
-        return Vector<ClientInformation> { };
-    }).iterator->value.append(ClientInformation { identifier, WTFMove(data) });
+    m_clientToControllingWorker.set(clientIdentifier, serviceWorkerIdentifier);
 }
 
-void SWServer::unregisterServiceWorkerClient(const ClientOrigin& clientOrigin, ServiceWorkerClientIdentifier identifier)
+SWServerRegistration* SWServer::registrationFromServiceWorkerIdentifier(ServiceWorkerIdentifier identifier)
 {
-    auto iterator = m_clients.find(clientOrigin);
-    ASSERT(iterator != m_clients.end());
+    auto iterator = m_runningOrTerminatingWorkers.find(identifier);
+    if (iterator == m_runningOrTerminatingWorkers.end())
+        return nullptr;
 
-    auto& clients = iterator->value;
-    clients.removeFirstMatching([&] (const auto& item) {
-        return identifier == item.identifier;
+    return m_registrations.get(iterator->value->registrationKey());
+}
+
+void SWServer::registerServiceWorkerClient(ClientOrigin&& clientOrigin, ServiceWorkerClientIdentifier clientIdentifier, ServiceWorkerClientData&& data, const std::optional<ServiceWorkerIdentifier>& controllingServiceWorkerIdentifier)
+{
+    auto& clientsData = m_clients.ensure(WTFMove(clientOrigin), [] {
+        return Clients { };
+    }).iterator->value;
+
+    clientsData.clients.append(ServiceWorkerClientInformation { clientIdentifier, WTFMove(data) });
+    if (clientsData.terminateServiceWorkersTimer)
+        clientsData.terminateServiceWorkersTimer = nullptr;
+
+    if (!controllingServiceWorkerIdentifier)
+        return;
+
+    if (auto* controllingRegistration = registrationFromServiceWorkerIdentifier(*controllingServiceWorkerIdentifier)) {
+        controllingRegistration->addClientUsingRegistration(clientIdentifier);
+        auto result = m_clientToControllingWorker.add(clientIdentifier, *controllingServiceWorkerIdentifier);
+        ASSERT_UNUSED(result, result.isNewEntry);
+    }
+}
+
+void SWServer::unregisterServiceWorkerClient(const ClientOrigin& clientOrigin, ServiceWorkerClientIdentifier clientIdentifier)
+{
+    auto clientIterator = m_clients.find(clientOrigin);
+    ASSERT(clientIterator != m_clients.end());
+
+    auto& clients = clientIterator->value.clients;
+    clients.removeFirstMatching([&] (const auto& client) {
+        return clientIdentifier == client.identifier;
     });
     if (clients.isEmpty()) {
-        // FIXME: We might want to terminate any clientOrigin related service worker.
-        m_clients.remove(iterator);
+        ASSERT(!clientIterator->value.terminateServiceWorkersTimer);
+        clientIterator->value.terminateServiceWorkersTimer = std::make_unique<Timer>([clientOrigin, this] {
+            for (auto& worker : m_runningOrTerminatingWorkers.values()) {
+                if (worker->origin() == clientOrigin)
+                    terminateWorker(worker);
+            }
+            m_clients.remove(clientOrigin);
+        });
+        clientIterator->value.terminateServiceWorkersTimer->startOneShot(terminationDelay);
     }
+
+    auto workerIterator = m_clientToControllingWorker.find(clientIdentifier);
+    if (workerIterator == m_clientToControllingWorker.end())
+        return;
+
+    if (auto* controllingRegistration = registrationFromServiceWorkerIdentifier(workerIterator->value))
+        controllingRegistration->removeClientUsingRegistration(clientIdentifier);
+
+    m_clientToControllingWorker.remove(workerIterator);
+}
+
+void SWServer::resolveRegistrationReadyRequests(SWServerRegistration& registration)
+{
+    for (auto* connection : m_connections.values())
+        connection->resolveRegistrationReadyRequests(registration);
+}
+
+void SWServer::Connection::whenRegistrationReady(uint64_t registrationReadyRequestIdentifier, const SecurityOriginData& topOrigin, const URL& clientURL)
+{
+    if (auto* registration = doRegistrationMatching(topOrigin, clientURL)) {
+        if (registration->activeWorker()) {
+            registrationReady(registrationReadyRequestIdentifier, registration->data());
+            return;
+        }
+    }
+    m_registrationReadyRequests.append({ topOrigin, clientURL, registrationReadyRequestIdentifier });
+}
+
+void SWServer::Connection::resolveRegistrationReadyRequests(SWServerRegistration& registration)
+{
+    m_registrationReadyRequests.removeAllMatching([&](auto& request) {
+        if (!registration.key().isMatching(request.topOrigin, request.clientURL))
+            return false;
+
+        registrationReady(request.identifier, registration.data());
+        return true;
+    });
 }
 
 } // namespace WebCore

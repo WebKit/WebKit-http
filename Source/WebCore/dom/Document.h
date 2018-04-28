@@ -1373,7 +1373,7 @@ public:
 
     PAL::Logger& logger();
 
-    bool hasStorageAccess() const { return m_hasStorageAccess; };
+    void hasStorageAccess(Ref<DeferredPromise>&& passedPromise);
     void requestStorageAccess(Ref<DeferredPromise>&& passedPromise);
     void setUserGrantsStorageAccessOverride(bool value) { m_grantStorageAccessOverride = value; }
 
@@ -1860,14 +1860,13 @@ private:
 
     static bool hasEverCreatedAnAXObjectCache;
 
-    bool m_hasStorageAccess { false };
     bool m_grantStorageAccessOverride { false };
 
     RefPtr<DocumentTimeline> m_timeline;
     DocumentIdentifier m_identifier;
 
 #if ENABLE(SERVICE_WORKER)
-    SWClientConnection* m_serviceWorkerConnection { nullptr };
+    RefPtr<SWClientConnection> m_serviceWorkerConnection;
 #endif
 };
 

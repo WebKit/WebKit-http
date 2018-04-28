@@ -35,6 +35,7 @@
 #include "ScriptExecutionContext.h"
 #include "SerializedScriptValue.h"
 #include "ServiceWorkerClientData.h"
+#include "ServiceWorkerGlobalScope.h"
 #include "ServiceWorkerProvider.h"
 #include <runtime/JSCJSValueInlines.h>
 #include <wtf/NeverDestroyed.h>
@@ -87,6 +88,9 @@ void ServiceWorker::scheduleTaskToUpdateState(State state)
 
 ExceptionOr<void> ServiceWorker::postMessage(ScriptExecutionContext& context, JSC::JSValue messageValue, Vector<JSC::Strong<JSC::JSObject>>&& transfer)
 {
+    if (m_isStopped)
+        return Exception { InvalidStateError };
+
     if (state() == State::Redundant)
         return Exception { InvalidStateError, ASCIILiteral("Service Worker state is redundant") };
 
@@ -110,14 +114,19 @@ ExceptionOr<void> ServiceWorker::postMessage(ScriptExecutionContext& context, JS
     if (channels && !channels->isEmpty())
         return Exception { NotSupportedError, ASCIILiteral("Passing MessagePort objects to postMessage is not yet supported") };
 
-    // FIXME: We should add support for workers.
-    if (!is<Document>(context))
-        return Exception { NotSupportedError, ASCIILiteral("serviceWorkerClient.postMessage() from workers is not yet supported") };
+    if (is<ServiceWorkerGlobalScope>(context)) {
+        auto sourceWorkerIdentifier = downcast<ServiceWorkerGlobalScope>(context).thread().identifier();
+        callOnMainThread([sessionID = context.sessionID(), destinationIdentifier = identifier(), sourceWorkerIdentifier, message = WTFMove(message)]() mutable {
+            auto& connection = ServiceWorkerProvider::singleton().serviceWorkerConnectionForSession(sessionID);
+            connection.postMessageToServiceWorker(destinationIdentifier, message.releaseReturnValue(), sourceWorkerIdentifier);
+        });
+        return { };
+    }
 
     auto sourceClientData = ServiceWorkerClientData::from(context);
-
-    auto& swConnection = ServiceWorkerProvider::singleton().serviceWorkerConnectionForSession(context.sessionID());
-    swConnection.postMessageToServiceWorkerGlobalScope(identifier(), message.releaseReturnValue(), downcast<Document>(context).identifier(), WTFMove(sourceClientData));
+    auto& connection = ServiceWorkerProvider::singleton().serviceWorkerConnectionForSession(context.sessionID());
+    ServiceWorkerClientIdentifier sourceClientIdentifier { connection.serverConnectionIdentifier(), downcast<Document>(context).identifier() };
+    connection.postMessageToServiceWorker(identifier(), message.releaseReturnValue(), WTFMove(sourceClientIdentifier), WTFMove(sourceClientData));
 
     return { };
 }

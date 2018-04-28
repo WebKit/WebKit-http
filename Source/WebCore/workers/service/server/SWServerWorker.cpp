@@ -60,9 +60,25 @@ SWServerWorker::~SWServerWorker()
     ASSERT_UNUSED(taken, taken == this);
 }
 
+ServiceWorkerContextData SWServerWorker::contextData() const
+{
+    auto* registration = m_server.getRegistration(m_registrationKey);
+    ASSERT(registration);
+
+    return { std::nullopt, registration->data(), m_data.identifier, m_script, m_data.scriptURL, m_data.type };
+}
+
 void SWServerWorker::terminate()
 {
     m_server.terminateWorker(*this);
+}
+
+const ClientOrigin& SWServerWorker::origin() const
+{
+    if (!m_origin)
+        m_origin = ClientOrigin { m_registrationKey.topOrigin(), SecurityOriginData::fromSecurityOrigin(SecurityOrigin::create(m_data.scriptURL)) };
+
+    return *m_origin;
 }
 
 void SWServerWorker::scriptContextFailedToStart(const std::optional<ServiceWorkerJobDataIdentifier>& jobDataIdentifier, const String& message)
@@ -88,6 +104,49 @@ void SWServerWorker::didFinishActivation()
 void SWServerWorker::contextTerminated()
 {
     m_server.workerContextTerminated(*this);
+}
+
+std::optional<ServiceWorkerClientData> SWServerWorker::findClientByIdentifier(ServiceWorkerClientIdentifier clientId)
+{
+    return m_server.findClientByIdentifier(origin(), clientId);
+}
+
+void SWServerWorker::matchAll(const ServiceWorkerClientQueryOptions& options, ServiceWorkerClientsMatchAllCallback&& callback)
+{
+    return m_server.matchAll(*this, options, WTFMove(callback));
+}
+
+void SWServerWorker::claim()
+{
+    return m_server.claim(*this);
+}
+
+void SWServerWorker::skipWaiting()
+{
+    m_isSkipWaitingFlagSet = true;
+
+    auto* registration = m_server.getRegistration(m_registrationKey);
+    ASSERT(registration);
+    registration->tryActivate();
+}
+
+void SWServerWorker::setHasPendingEvents(bool hasPendingEvents)
+{
+    if (m_hasPendingEvents == hasPendingEvents)
+        return;
+
+    m_hasPendingEvents = hasPendingEvents;
+    if (m_hasPendingEvents)
+        return;
+
+    // Do tryClear/tryActivate, as per https://w3c.github.io/ServiceWorker/#wait-until-method.
+    auto* registration = m_server.getRegistration(m_registrationKey);
+    if (!registration)
+        return;
+
+    if (registration->isUninstalling() && registration->tryClear())
+        return;
+    registration->tryActivate();
 }
 
 } // namespace WebCore

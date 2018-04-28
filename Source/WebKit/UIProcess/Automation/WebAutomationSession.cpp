@@ -233,7 +233,7 @@ Ref<Inspector::Protocol::Automation::BrowsingContext> WebAutomationSession::buil
 
 // Platform-independent Commands.
 
-void WebAutomationSession::getNextContext(Ref<WebAutomationSession>&& protectedThis, Vector<Ref<WebPageProxy>>&& pages, Ref<Inspector::Protocol::Array<Inspector::Protocol::Automation::BrowsingContext>> contexts, Ref<WebAutomationSession::GetBrowsingContextsCallback>&& callback)
+void WebAutomationSession::getNextContext(Ref<WebAutomationSession>&& protectedThis, Vector<Ref<WebPageProxy>>&& pages, Ref<JSON::ArrayOf<Inspector::Protocol::Automation::BrowsingContext>> contexts, Ref<WebAutomationSession::GetBrowsingContextsCallback>&& callback)
 {
     if (pages.isEmpty()) {
         callback->sendSuccess(WTFMove(contexts));
@@ -259,7 +259,7 @@ void WebAutomationSession::getBrowsingContexts(Inspector::ErrorString& errorStri
         }
     }
     
-    getNextContext(makeRef(*this), WTFMove(pages), Inspector::Protocol::Array<Inspector::Protocol::Automation::BrowsingContext>::create(), WTFMove(callback));
+    getNextContext(makeRef(*this), WTFMove(pages), JSON::ArrayOf<Inspector::Protocol::Automation::BrowsingContext>::create(), WTFMove(callback));
 }
 
 void WebAutomationSession::getBrowsingContext(Inspector::ErrorString& errorString, const String& handle, Ref<GetBrowsingContextCallback>&& callback)
@@ -551,14 +551,26 @@ void WebAutomationSession::loadTimerFired()
 void WebAutomationSession::willShowJavaScriptDialog(WebPageProxy& page)
 {
     // Wait until the next run loop iteration to give time for the client to show the dialog,
-    // then check if page is loading and the dialog is still present. The dialog will block the
-    // load in case of normal strategy, so we want to dispatch all pending navigation callbacks.
+    // then check if the dialog is still present. If the page is loading, the dialog will block
+    // the load in case of normal strategy, so we want to dispatch all pending navigation callbacks.
+    // If the dialog was shown during a script execution, we want to finish the evaluateJavaScriptFunction
+    // operation with an unexpected alert open error.
     RunLoop::main().dispatch([this, protectedThis = makeRef(*this), page = makeRef(page)] {
-        if (!page->isValid() || !page->pageLoadState().isLoading() || !m_client || !m_client->isShowingJavaScriptDialogOnPage(*this, page))
+        if (!page->isValid() || !m_client || !m_client->isShowingJavaScriptDialogOnPage(*this, page))
             return;
 
-        respondToPendingFrameNavigationCallbacksWithTimeout(m_pendingNormalNavigationInBrowsingContextCallbacksPerFrame);
-        respondToPendingPageNavigationCallbacksWithTimeout(m_pendingNormalNavigationInBrowsingContextCallbacksPerPage);
+        if (page->pageLoadState().isLoading()) {
+            respondToPendingFrameNavigationCallbacksWithTimeout(m_pendingNormalNavigationInBrowsingContextCallbacksPerFrame);
+            respondToPendingPageNavigationCallbacksWithTimeout(m_pendingNormalNavigationInBrowsingContextCallbacksPerPage);
+        }
+
+        if (!m_evaluateJavaScriptFunctionCallbacks.isEmpty()) {
+            Inspector::ErrorString unexpectedAlertOpenError = STRING_FOR_PREDEFINED_ERROR_NAME(UnexpectedAlertOpen);
+            for (auto key : m_evaluateJavaScriptFunctionCallbacks.keys()) {
+                auto callback = m_evaluateJavaScriptFunctionCallbacks.take(key);
+                callback->sendFailure(unexpectedAlertOpenError);
+            }
+        }
     });
 }
 
@@ -1117,9 +1129,9 @@ static Ref<Inspector::Protocol::Automation::Cookie> buildObjectForCookie(const W
         .release();
 }
 
-static Ref<Inspector::Protocol::Array<Inspector::Protocol::Automation::Cookie>> buildArrayForCookies(Vector<WebCore::Cookie>& cookiesList)
+static Ref<JSON::ArrayOf<Inspector::Protocol::Automation::Cookie>> buildArrayForCookies(Vector<WebCore::Cookie>& cookiesList)
 {
-    auto cookies = Inspector::Protocol::Array<Inspector::Protocol::Automation::Cookie>::create();
+    auto cookies = JSON::ArrayOf<Inspector::Protocol::Automation::Cookie>::create();
 
     for (const auto& cookie : cookiesList)
         cookies->addItem(buildObjectForCookie(cookie));
@@ -1240,9 +1252,9 @@ void WebAutomationSession::deleteAllCookies(ErrorString& errorString, const Stri
     cookieManager->deleteCookiesForHostname(page->websiteDataStore().sessionID(), activeURL.host());
 }
 
-void WebAutomationSession::getSessionPermissions(ErrorString&, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Automation::SessionPermissionData>>& out_permissions)
+void WebAutomationSession::getSessionPermissions(ErrorString&, RefPtr<JSON::ArrayOf<Inspector::Protocol::Automation::SessionPermissionData>>& out_permissions)
 {
-    auto permissionsObjectArray = Inspector::Protocol::Array<Inspector::Protocol::Automation::SessionPermissionData>::create();
+    auto permissionsObjectArray = JSON::ArrayOf<Inspector::Protocol::Automation::SessionPermissionData>::create();
     auto getUserMediaPermissionObject = Inspector::Protocol::Automation::SessionPermissionData::create()
         .setPermission(Inspector::Protocol::Automation::SessionPermission::GetUserMedia)
         .setValue(m_permissionForGetUserMedia)
@@ -1437,7 +1449,7 @@ void WebAutomationSession::performKeyboardInteractions(ErrorString& errorString,
 #endif // PLATFORM(COCOA) || PLATFORM(GTK)
 }
 
-void WebAutomationSession::takeScreenshot(ErrorString& errorString, const String& handle, const String* optionalFrameHandle, const String* optionalNodeHandle, const bool* optionalScrollIntoViewIfNeeded, Ref<TakeScreenshotCallback>&& callback)
+void WebAutomationSession::takeScreenshot(ErrorString& errorString, const String& handle, const String* optionalFrameHandle, const String* optionalNodeHandle, const bool* optionalScrollIntoViewIfNeeded, const bool* optionalClipToViewport, Ref<TakeScreenshotCallback>&& callback)
 {
     WebPageProxy* page = webPageProxyForHandle(handle);
     if (!page)
@@ -1449,11 +1461,12 @@ void WebAutomationSession::takeScreenshot(ErrorString& errorString, const String
 
     bool scrollIntoViewIfNeeded = optionalScrollIntoViewIfNeeded ? *optionalScrollIntoViewIfNeeded : false;
     String nodeHandle = optionalNodeHandle ? *optionalNodeHandle : emptyString();
+    bool clipToViewport = optionalClipToViewport ? *optionalClipToViewport : false;
 
     uint64_t callbackID = m_nextScreenshotCallbackID++;
     m_screenshotCallbacks.set(callbackID, WTFMove(callback));
 
-    page->process().send(Messages::WebAutomationSessionProxy::TakeScreenshot(page->pageID(), frameID.value(), nodeHandle, scrollIntoViewIfNeeded, callbackID), 0);
+    page->process().send(Messages::WebAutomationSessionProxy::TakeScreenshot(page->pageID(), frameID.value(), nodeHandle, scrollIntoViewIfNeeded, clipToViewport, callbackID), 0);
 }
 
 void WebAutomationSession::didTakeScreenshot(uint64_t callbackID, const ShareableBitmap::Handle& imageDataHandle, const String& errorType)

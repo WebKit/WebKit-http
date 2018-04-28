@@ -1,3 +1,126 @@
+2017-12-05  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: don't eagerly checksum
+        https://bugs.webkit.org/show_bug.cgi?id=180441
+        <rdar://problem/35156628>
+
+        Reviewed by Saam Barati.
+
+        Checksum is now disabled, so tests only have <?> as the module
+        name.
+
+        * wasm/function-tests/nameSection.js:
+        * wasm/function-tests/stack-overflow.js:
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.assertOverflows):
+        (assertOverflows.assertThrows):
+        (assertOverflows):
+        * wasm/function-tests/stack-trace.js:
+
+2017-12-04  JF Bastien  <jfbastien@apple.com>
+
+        Proxy all functions, except the $ objects
+        https://bugs.webkit.org/show_bug.cgi?id=180375
+
+        Reviewed by Saam Barati.
+
+        It looks like this test may have broken some executions because I
+        call some internal objects. Explicitly ignore objects whose name
+        starts with "$" because it's a bad idea anyways.
+
+        * stress/proxy-all-the-parameters.js:
+        (generateObjects):
+        (get throw):
+
+2017-12-04  Saam Barati  <sbarati@apple.com>
+
+        We need to leave room on the top of the stack for the FTL TailCall slow path so it doesn't overwrite things we want to retrieve when doing a stack walk when throwing an exception
+        https://bugs.webkit.org/show_bug.cgi?id=180366
+        <rdar://problem/35685877>
+
+        Reviewed by Michael Saboff.
+
+        * stress/ftl-tail-call-throw-exception-from-slow-path-recover-stack-values.js: Added.
+        (theParent):
+        (test1.base.getParentStaticValue):
+        (test1.base):
+        (test1.__v_24888.prototype.set prop):
+        (test1.__v_24888):
+        (test2.base.getParentStaticValue):
+        (test2.base):
+        (test2.__v_24888.prototype.set prop):
+        (test2.__v_24888):
+        (test2):
+
+2017-12-01  JF Bastien  <jfbastien@apple.com>
+
+        Try proxying all function arguments
+        https://bugs.webkit.org/show_bug.cgi?id=180306
+
+        Reviewed by Saam Barati.
+
+        * stress/proxy-all-the-parameters.js: Added.
+        (isPropertyOfType):
+        (getProperties):
+        (generateObjects):
+        (getObjects):
+        (getFunctions):
+        (get throw):
+        (let.o.of.getObjects.let.f.of.getFunctions.catch):
+
+2017-12-01  JF Bastien  <jfbastien@apple.com>
+
+        JavaScriptCore: missing exception checks in Math functions that take more than one argument
+        https://bugs.webkit.org/show_bug.cgi?id=180297
+        <rdar://problem/35745556>
+
+        Reviewed by Mark Lam.
+
+        * stress/math-exceptions.js: Added.
+        (get try):
+        (catch):
+
+2017-12-01  JF Bastien  <jfbastien@apple.com>
+
+        JavaScriptCore: add test for weird class static getters
+        https://bugs.webkit.org/show_bug.cgi?id=180281
+        <rdar://problem/35592139>
+
+        Reviewed by Mark Lam.
+
+        I fixed a bug for it in r224927 and didn't add a test. Do so.
+
+        * stress/class-static-get-weird.js: Added.
+        (c.prototype.get name):
+        (c):
+        (c.prototype.get arguments):
+        (c.prototype.get caller):
+        (c.prototype.get length):
+
+2017-12-01  Saam Barati  <sbarati@apple.com>
+
+        Having a bad time needs to handle ArrayClass indexing type as well
+        https://bugs.webkit.org/show_bug.cgi?id=180274
+        <rdar://problem/35667869>
+
+        Reviewed by Keith Miller and Mark Lam.
+
+        * stress/array-prototype-slow-put-having-a-bad-time-2.js: Added.
+        (assert):
+        * stress/array-prototype-slow-put-having-a-bad-time.js: Added.
+        (assert):
+
+2017-12-01  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: restore cached stack limit after out-call
+        https://bugs.webkit.org/show_bug.cgi?id=179106
+        <rdar://problem/35337525>
+
+        Reviewed by Saam Barati.
+
+        * wasm/function-tests/double-instance.js: Added.
+        (const.imp.boom):
+        (const.imp.get callAnother):
+
 2017-11-30  JF Bastien  <jfbastien@apple.com>
 
         WebAssembly: improve stack trace

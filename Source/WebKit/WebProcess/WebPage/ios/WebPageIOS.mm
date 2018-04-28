@@ -252,10 +252,7 @@ FloatSize WebPage::availableScreenSize() const
 
 void WebPage::didReceiveMobileDocType(bool isMobileDoctype)
 {
-    if (isMobileDoctype)
-        m_viewportConfiguration.setDefaultConfiguration(ViewportConfiguration::xhtmlMobileParameters());
-    else
-        resetViewportDefaultConfiguration(m_mainFrame.get());
+    resetViewportDefaultConfiguration(m_mainFrame.get(), isMobileDoctype);
 }
 
 void WebPage::savePageState(HistoryItem& historyItem)
@@ -272,6 +269,8 @@ static double scaleAfterViewportWidthChange(double currentScale, bool userHasCha
         scale = viewportConfiguration.initialScale();
     else
         scale = std::max(std::min(currentScale, viewportConfiguration.maximumScale()), viewportConfiguration.minimumScale());
+
+    LOG(VisibleRects, "scaleAfterViewportWidthChange getting scale %.2f", scale);
 
     if (userHasChangedPageScaleFactor) {
         // When the content size changes, we keep the same relative horizontal content width in view, otherwise we would
@@ -2376,6 +2375,7 @@ void WebPage::autofillLoginCredentials(const String& username, const String& pas
 
 void WebPage::setViewportConfigurationMinimumLayoutSize(const FloatSize& size)
 {
+    LOG_WITH_STREAM(VisibleRects, stream << "WebPage " << m_pageID << " setViewportConfigurationMinimumLayoutSize " << size);
     if (m_viewportConfiguration.setMinimumLayoutSize(size))
         viewportConfigurationChanged();
 }
@@ -2416,7 +2416,7 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
     SetForScope<bool> dynamicSizeUpdateGuard(m_inDynamicSizeUpdate, true);
     // FIXME: this does not handle the cases where the content would change the content size or scroll position from JavaScript.
     // To handle those cases, we would need to redo this computation on every change until the next visible content rect update.
-    LOG_WITH_STREAM(VisibleRects, stream << "\nWebPage::dynamicViewportSizeUpdate - targetUnobscuredRect " << targetUnobscuredRect << " targetExposedContentRect " << targetExposedContentRect << " targetScale " << targetScale);
+    LOG_WITH_STREAM(VisibleRects, stream << "\nWebPage::dynamicViewportSizeUpdate - minimumLayoutSize " << minimumLayoutSize << " targetUnobscuredRect " << targetUnobscuredRect << " targetExposedContentRect " << targetExposedContentRect << " targetScale " << targetScale);
 
     FrameView& frameView = *m_page->mainFrame().view();
     IntSize oldContentSize = frameView.contentsSize();
@@ -2448,6 +2448,7 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
         }
     }
 
+    LOG_WITH_STREAM(VisibleRects, stream << "WebPage::dynamicViewportSizeUpdate setting minimum layout size to " << minimumLayoutSize);
     m_viewportConfiguration.setMinimumLayoutSize(minimumLayoutSize);
     IntSize newLayoutSize = m_viewportConfiguration.layoutSize();
 
@@ -2595,8 +2596,9 @@ void WebPage::synchronizeDynamicViewportUpdate(double& newTargetScale, FloatPoin
     nextValidLayerTreeTransactionID = downcast<RemoteLayerTreeDrawingArea>(*m_drawingArea).nextTransactionID();
 }
 
-void WebPage::resetViewportDefaultConfiguration(WebFrame* frame)
+void WebPage::resetViewportDefaultConfiguration(WebFrame* frame, bool hasMobileDocType)
 {
+    LOG_WITH_STREAM(VisibleRects, stream << "WebPage " << m_pageID << " resetViewportDefaultConfiguration");
     if (m_useTestingViewportConfiguration) {
         m_viewportConfiguration.setDefaultConfiguration(ViewportConfiguration::testingParameters());
         return;
@@ -2604,6 +2606,11 @@ void WebPage::resetViewportDefaultConfiguration(WebFrame* frame)
 
     if (!frame) {
         m_viewportConfiguration.setDefaultConfiguration(ViewportConfiguration::webpageParameters());
+        return;
+    }
+
+    if (hasMobileDocType) {
+        m_viewportConfiguration.setDefaultConfiguration(ViewportConfiguration::xhtmlMobileParameters());
         return;
     }
 
@@ -2627,6 +2634,8 @@ void WebPage::viewportConfigurationChanged()
         scale = std::max(std::min(pageScaleFactor(), m_viewportConfiguration.maximumScale()), m_viewportConfiguration.minimumScale());
     else
         scale = initialScale;
+
+    LOG_WITH_STREAM(VisibleRects, stream << "WebPage " << m_pageID << " viewportConfigurationChanged - setting zoomedOutPageScaleFactor to " << m_viewportConfiguration.minimumScale() << " and scale to " << scale);
 
     m_page->setZoomedOutPageScaleFactor(m_viewportConfiguration.minimumScale());
 
@@ -2767,7 +2776,7 @@ static bool selectionIsInsideFixedPositionContainer(Frame& frame)
 
 void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visibleContentRectUpdateInfo, MonotonicTime oldestTimestamp)
 {
-    LOG_WITH_STREAM(VisibleRects, stream << "\nWebPage::updateVisibleContentRects " << visibleContentRectUpdateInfo);
+    LOG_WITH_STREAM(VisibleRects, stream << "\nWebPage " << m_pageID << " updateVisibleContentRects " << visibleContentRectUpdateInfo);
 
     // Skip any VisibleContentRectUpdate that have been queued before DidCommitLoad suppresses the updates in the UIProcess.
     if (visibleContentRectUpdateInfo.lastLayerTreeTransactionID() < m_mainFrame->firstLayerTreeTransactionIDAfterDidCommitLoad() && !visibleContentRectUpdateInfo.isFirstUpdateForNewViewSize())

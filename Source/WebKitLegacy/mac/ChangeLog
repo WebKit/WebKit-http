@@ -1,3 +1,39 @@
+2017-12-05  Brent Fulgham  <bfulgham@apple.com>
+
+        Limit user agent versioning to an upper bound
+        https://bugs.webkit.org/show_bug.cgi?id=180365
+        <rdar://problem/34550617>
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebView/WebView.mm:
+        (+[WebView _standardUserAgentWithApplicationName:]): Don't pass the WebKit bundle version when
+        creating the User Agent string.
+        (webKitBundleVersionString): Deleted.
+
+2017-12-05  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Stop specifying TARGET_OS_EMBEDDED in postprocess-headers.sh's unifdef options
+        https://bugs.webkit.org/show_bug.cgi?id=180457
+        <rdar://problem/35143007>
+
+        Reviewed by Tim Horton.
+
+        None of WebKitLegacy's framework headers mention TARGET_OS_EMBEDDED, so there's no need to
+        check for this macro during post-processing.
+
+        * postprocess-headers.sh:
+
+2017-12-04  David Quesada  <david_quesada@apple.com>
+
+        Add a class for parsing application manifests
+        https://bugs.webkit.org/show_bug.cgi?id=177973
+        rdar://problem/34747949
+
+        Reviewed by Geoffrey Garen.
+
+        * Configurations/FeatureDefines.xcconfig: Add ENABLE_APPLICATION_MANIFEST feature flag.
+
 2017-11-30  Stephan Szabo  <stephan.szabo@sony.com>
 
         Make LegacyCustomProtocolManager optional for network process

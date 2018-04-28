@@ -1,3 +1,759 @@
+2017-12-06  Saam Barati  <sbarati@apple.com>
+
+        ASSERTION FAILED: vm->currentThreadIsHoldingAPILock() in void JSC::sanitizeStackForVM(JSC::VM *)
+        https://bugs.webkit.org/show_bug.cgi?id=180438
+        <rdar://problem/35862342>
+
+        Reviewed by Yusuke Suzuki.
+
+        A couple inspector methods that take stacktraces need
+        to grab the JSLock.
+
+        * inspector/ScriptCallStackFactory.cpp:
+        (Inspector::createScriptCallStack):
+        (Inspector::createScriptCallStackForConsole):
+
+2017-12-05  Stephan Szabo  <stephan.szabo@sony.com>
+
+        Switch windows build to Visual Studio 2017
+        https://bugs.webkit.org/show_bug.cgi?id=172412
+
+        Reviewed by Per Arne Vollan.
+
+        * JavaScriptCore.vcxproj/JavaScriptCore.proj:
+
+2017-12-05  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: don't eagerly checksum
+        https://bugs.webkit.org/show_bug.cgi?id=180441
+        <rdar://problem/35156628>
+
+        Reviewed by Saam Barati.
+
+        Make checksumming of module optional for now. The bots think the
+        checksum hurt compile-time. I'd measured it and couldn't see a
+        difference, and still can't at this point in time, but we'll see
+        if disabling it fixes the bots. If so then I can make it lazy upon
+        first backtrace construction, or I can try out MD5 instead of
+        SHA1.
+
+        * runtime/Options.h:
+        * wasm/WasmModuleInformation.cpp:
+        (JSC::Wasm::ModuleInformation::ModuleInformation):
+        * wasm/WasmModuleInformation.h:
+        * wasm/WasmNameSection.h:
+        (JSC::Wasm::NameSection::NameSection):
+
+2017-12-05  Filip Pizlo  <fpizlo@apple.com>
+
+        IsoAlignedMemoryAllocator needs to free all of its memory when the VM destructs
+        https://bugs.webkit.org/show_bug.cgi?id=180425
+
+        Reviewed by Saam Barati.
+        
+        Failure to do so causes leaks after starting workers.
+
+        * heap/IsoAlignedMemoryAllocator.cpp:
+        (JSC::IsoAlignedMemoryAllocator::~IsoAlignedMemoryAllocator):
+        (JSC::IsoAlignedMemoryAllocator::tryAllocateAlignedMemory):
+
+2017-12-05  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win64] Compile error in testmasm.cpp.
+        https://bugs.webkit.org/show_bug.cgi?id=180436
+
+        Reviewed by Mark Lam.
+
+        Fix MSVC warning (32-bit shift implicitly converted to 64 bits).
+        
+        * assembler/testmasm.cpp:
+        (JSC::testGetEffectiveAddress):
+
+2017-12-01  Filip Pizlo  <fpizlo@apple.com>
+
+        GC constraint solving should be parallel
+        https://bugs.webkit.org/show_bug.cgi?id=179934
+
+        Reviewed by JF Bastien.
+        
+        This makes it possible to do constraint solving in parallel. This looks like a 1% Speedometer
+        speed-up. It's more than 1% on trunk-Speedometer.
+        
+        The constraint solver supports running constraints in parallel in two different ways:
+        
+        - Run multiple constraints in parallel to each other. This only works for constraints that can
+          tolerate other constraints running concurrently to them (constraint.concurrency() ==
+          ConstraintConcurrency::Concurrent). This is the most basic kind of parallelism that the
+          constraint solver supports. All constraints except the JSC SPI constraints are concurrent. We
+          could probably make them concurrent, but I'm playing it safe for now.
+        
+        - A constraint can create parallel work for itself, which the constraint solver will interleave
+          with other stuff. A constraint can report that it has parallel work by returning
+          ConstraintParallelism::Parallel from its executeImpl() function. Then the solver will allow that
+          constraint's doParallelWorkImpl() function to run on as many GC marker threads as are available,
+          for as long as that function wants to run.
+        
+        It's not possible to have a non-concurrent constraint that creates parallel work.
+        
+        The parallelism is implemented in terms of the existing GC marker threads. This turns out to be
+        most natural for two reasons:
+        
+        - No need to start any other threads.
+        
+        - The constraints all want to be passed a SlotVisitor. Running on the marker threads means having
+          access to those threads' SlotVisitors. Also, it means less load balancing. The solver will
+          create work on each marking thread's SlotVisitor. When the solver is done "stealing" a marker
+          thread, that thread will have work it can start doing immediately. Before this change, we had to
+          contribute the work found by the constraint solver to the global worklist so that it could be
+          distributed to the marker threads by load balancing. This change probably helps to avoid that
+          load balancing step.
+        
+        A lot of this change is about making it easy to iterate GC data structures in parallel. This
+        change makes almost all constraints parallel-enabled, but only the DOM's output constraint uses
+        the parallel work API. That constraint iterates the marked cells in two subspaces. This change
+        makes it very easy to compose parallel iterators over subspaces, allocators, blocks, and cells.
+        The marked cell parallel iterator is composed out of parallel iterators for the others. A parallel
+        iterator is just an iterator that can do an atomic next() very quickly. We abstract them using
+        RefPtr<SharedTask<...()>>, where ... is the type returned from the iterator. We know it's done
+        when it returns a falsish version of ... (in the current code, that's always a pointer type, so
+        done is indicated by null).
+        
+        * API/JSMarkingConstraintPrivate.cpp:
+        (JSContextGroupAddMarkingConstraint):
+        * API/JSVirtualMachine.mm:
+        (scanExternalObjectGraph):
+        (scanExternalRememberedSet):
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * bytecode/AccessCase.cpp:
+        (JSC::AccessCase::propagateTransitions const):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::visitWeakly):
+        (JSC::CodeBlock::shouldJettisonDueToOldAge):
+        (JSC::shouldMarkTransition):
+        (JSC::CodeBlock::propagateTransitions):
+        (JSC::CodeBlock::determineLiveness):
+        * dfg/DFGWorklist.cpp:
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::compile):
+        * heap/ConstraintParallelism.h: Added.
+        (WTF::printInternal):
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        (JSC::Heap::addToRememberedSet):
+        (JSC::Heap::runFixpointPhase):
+        (JSC::Heap::stopThePeriphery):
+        (JSC::Heap::resumeThePeriphery):
+        (JSC::Heap::addCoreConstraints):
+        (JSC::Heap::setBonusVisitorTask):
+        (JSC::Heap::runTaskInParallel):
+        (JSC::Heap::forEachSlotVisitor): Deleted.
+        * heap/Heap.h:
+        (JSC::Heap::worldIsRunning const):
+        (JSC::Heap::runFunctionInParallel):
+        * heap/HeapInlines.h:
+        (JSC::Heap::worldIsStopped const):
+        (JSC::Heap::isMarked):
+        (JSC::Heap::incrementDeferralDepth):
+        (JSC::Heap::decrementDeferralDepth):
+        (JSC::Heap::decrementDeferralDepthAndGCIfNeeded):
+        (JSC::Heap::forEachSlotVisitor):
+        (JSC::Heap::collectorBelievesThatTheWorldIsStopped const): Deleted.
+        (JSC::Heap::isMarkedConcurrently): Deleted.
+        * heap/HeapSnapshotBuilder.cpp:
+        (JSC::HeapSnapshotBuilder::appendNode):
+        * heap/LargeAllocation.h:
+        (JSC::LargeAllocation::isMarked):
+        (JSC::LargeAllocation::isMarkedConcurrently): Deleted.
+        * heap/LockDuringMarking.h:
+        (JSC::lockDuringMarking):
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::parallelNotEmptyBlockSource):
+        * heap/MarkedAllocator.h:
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::aboutToMark):
+        (JSC::MarkedBlock::isMarked):
+        (JSC::MarkedBlock::areMarksStaleWithDependency): Deleted.
+        (JSC::MarkedBlock::isMarkedConcurrently): Deleted.
+        * heap/MarkedSpace.h:
+        (JSC::MarkedSpace::activeWeakSetsBegin):
+        (JSC::MarkedSpace::activeWeakSetsEnd):
+        (JSC::MarkedSpace::newActiveWeakSetsBegin):
+        (JSC::MarkedSpace::newActiveWeakSetsEnd):
+        * heap/MarkingConstraint.cpp:
+        (JSC::MarkingConstraint::MarkingConstraint):
+        (JSC::MarkingConstraint::execute):
+        (JSC::MarkingConstraint::quickWorkEstimate):
+        (JSC::MarkingConstraint::workEstimate):
+        (JSC::MarkingConstraint::doParallelWork):
+        (JSC::MarkingConstraint::finishParallelWork):
+        (JSC::MarkingConstraint::doParallelWorkImpl):
+        (JSC::MarkingConstraint::finishParallelWorkImpl):
+        * heap/MarkingConstraint.h:
+        (JSC::MarkingConstraint::lastExecuteParallelism const):
+        (JSC::MarkingConstraint::parallelism const):
+        (JSC::MarkingConstraint::quickWorkEstimate): Deleted.
+        (JSC::MarkingConstraint::workEstimate): Deleted.
+        * heap/MarkingConstraintSet.cpp:
+        (JSC::MarkingConstraintSet::MarkingConstraintSet):
+        (JSC::MarkingConstraintSet::add):
+        (JSC::MarkingConstraintSet::executeConvergence):
+        (JSC::MarkingConstraintSet::executeConvergenceImpl):
+        (JSC::MarkingConstraintSet::executeAll):
+        (JSC::MarkingConstraintSet::ExecutionContext::ExecutionContext): Deleted.
+        (JSC::MarkingConstraintSet::ExecutionContext::didVisitSomething const): Deleted.
+        (JSC::MarkingConstraintSet::ExecutionContext::shouldTimeOut const): Deleted.
+        (JSC::MarkingConstraintSet::ExecutionContext::drain): Deleted.
+        (JSC::MarkingConstraintSet::ExecutionContext::didExecute const): Deleted.
+        (JSC::MarkingConstraintSet::ExecutionContext::execute): Deleted.
+        (): Deleted.
+        * heap/MarkingConstraintSet.h:
+        * heap/MarkingConstraintSolver.cpp: Added.
+        (JSC::MarkingConstraintSolver::MarkingConstraintSolver):
+        (JSC::MarkingConstraintSolver::~MarkingConstraintSolver):
+        (JSC::MarkingConstraintSolver::didVisitSomething const):
+        (JSC::MarkingConstraintSolver::execute):
+        (JSC::MarkingConstraintSolver::drain):
+        (JSC::MarkingConstraintSolver::converge):
+        (JSC::MarkingConstraintSolver::runExecutionThread):
+        (JSC::MarkingConstraintSolver::didExecute):
+        * heap/MarkingConstraintSolver.h: Added.
+        * heap/OpaqueRootSet.h: Removed.
+        * heap/ParallelSourceAdapter.h: Added.
+        (JSC::ParallelSourceAdapter::ParallelSourceAdapter):
+        (JSC::createParallelSourceAdapter):
+        * heap/SimpleMarkingConstraint.cpp: Added.
+        (JSC::SimpleMarkingConstraint::SimpleMarkingConstraint):
+        (JSC::SimpleMarkingConstraint::~SimpleMarkingConstraint):
+        (JSC::SimpleMarkingConstraint::quickWorkEstimate):
+        (JSC::SimpleMarkingConstraint::executeImpl):
+        * heap/SimpleMarkingConstraint.h: Added.
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::didStartMarking):
+        (JSC::SlotVisitor::reset):
+        (JSC::SlotVisitor::appendToMarkStack):
+        (JSC::SlotVisitor::visitChildren):
+        (JSC::SlotVisitor::updateMutatorIsStopped):
+        (JSC::SlotVisitor::mutatorIsStoppedIsUpToDate const):
+        (JSC::SlotVisitor::drain):
+        (JSC::SlotVisitor::performIncrementOfDraining):
+        (JSC::SlotVisitor::didReachTermination):
+        (JSC::SlotVisitor::hasWork):
+        (JSC::SlotVisitor::drainFromShared):
+        (JSC::SlotVisitor::drainInParallelPassively):
+        (JSC::SlotVisitor::waitForTermination):
+        (JSC::SlotVisitor::addOpaqueRoot): Deleted.
+        (JSC::SlotVisitor::containsOpaqueRoot const): Deleted.
+        (JSC::SlotVisitor::containsOpaqueRootTriState const): Deleted.
+        (JSC::SlotVisitor::mergeIfNecessary): Deleted.
+        (JSC::SlotVisitor::mergeOpaqueRootsIfProfitable): Deleted.
+        (JSC::SlotVisitor::mergeOpaqueRoots): Deleted.
+        * heap/SlotVisitor.h:
+        * heap/SlotVisitorInlines.h:
+        (JSC::SlotVisitor::addOpaqueRoot):
+        (JSC::SlotVisitor::containsOpaqueRoot const):
+        (JSC::SlotVisitor::vm):
+        (JSC::SlotVisitor::vm const):
+        * heap/Subspace.cpp:
+        (JSC::Subspace::parallelAllocatorSource):
+        (JSC::Subspace::parallelNotEmptyMarkedBlockSource):
+        * heap/Subspace.h:
+        * heap/SubspaceInlines.h:
+        (JSC::Subspace::forEachMarkedCellInParallel):
+        * heap/VisitCounter.h: Added.
+        (JSC::VisitCounter::VisitCounter):
+        (JSC::VisitCounter::visitCount const):
+        * heap/VisitingTimeout.h: Removed.
+        * heap/WeakBlock.cpp:
+        (JSC::WeakBlock::specializedVisit):
+        * runtime/Structure.cpp:
+        (JSC::Structure::isCheapDuringGC):
+        (JSC::Structure::markIfCheap):
+
+2017-12-04  JF Bastien  <jfbastien@apple.com>
+
+        Math: don't redundantly check for exceptions, just release scope
+        https://bugs.webkit.org/show_bug.cgi?id=180395
+
+        Rubber stamped by Mark Lam.
+
+        Two of the exceptions checks could just have been exception scope
+        releases before the return, which is ever-so-slightly more
+        efficient. The same technically applies where we have loops over
+        parameters, but doing the scope release there isn't really more
+        efficient and is way harder to read.
+
+        * runtime/MathObject.cpp:
+        (JSC::mathProtoFuncATan2):
+        (JSC::mathProtoFuncPow):
+
+2017-12-04  David Quesada  <david_quesada@apple.com>
+
+        Add a class for parsing application manifests
+        https://bugs.webkit.org/show_bug.cgi?id=177973
+        rdar://problem/34747949
+
+        Reviewed by Geoffrey Garen.
+
+        * Configurations/FeatureDefines.xcconfig: Add ENABLE_APPLICATION_MANIFEST feature flag.
+
+2017-12-04  JF Bastien  <jfbastien@apple.com>
+
+        Update std::expected to match libc++ coding style
+        https://bugs.webkit.org/show_bug.cgi?id=180264
+
+        Reviewed by Alex Christensen.
+
+        Update various uses of Expected.
+
+        * wasm/WasmModule.h:
+        * wasm/WasmModuleParser.cpp:
+        (JSC::Wasm::ModuleParser::parseImport):
+        (JSC::Wasm::ModuleParser::parseTableHelper):
+        (JSC::Wasm::ModuleParser::parseTable):
+        (JSC::Wasm::ModuleParser::parseMemoryHelper):
+        * wasm/WasmParser.h:
+        * wasm/generateWasmValidateInlinesHeader.py:
+        (loadMacro):
+        (storeMacro):
+        * wasm/js/JSWebAssemblyModule.cpp:
+        (JSC::JSWebAssemblyModule::createStub):
+        * wasm/js/JSWebAssemblyModule.h:
+
+2017-12-04  Saam Barati  <sbarati@apple.com>
+
+        We need to leave room on the top of the stack for the FTL TailCall slow path so it doesn't overwrite things we want to retrieve when doing a stack walk when throwing an exception
+        https://bugs.webkit.org/show_bug.cgi?id=180366
+        <rdar://problem/35685877>
+
+        Reviewed by Michael Saboff.
+
+        On the TailCall slow path, the CallFrameShuffler will build the frame with
+        respect to SP instead of FP. However, this may overwrite slots on the stack
+        that are needed if the slow path C call does a stack walk. The slow path
+        C call does a stack walk when it throws an exception. This patch fixes
+        this bug by ensuring that the top of the stack in the FTL always has enough
+        space to allow CallFrameShuffler to build a frame without overwriting any
+        items on the stack that are needed when doing a stack walk.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileTailCall):
+
+2017-12-04  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: provide method for recording CanvasRenderingContext2D from JavaScript
+        https://bugs.webkit.org/show_bug.cgi?id=175166
+        <rdar://problem/34040740>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/Recording.json:
+        Add optional `name` that will be used by the frontend for uniquely identifying the Recording.
+
+        * inspector/JSGlobalObjectConsoleClient.h:
+        * inspector/JSGlobalObjectConsoleClient.cpp:
+        (Inspector::JSGlobalObjectConsoleClient::record):
+        (Inspector::JSGlobalObjectConsoleClient::recordEnd):
+
+        * runtime/ConsoleClient.h:
+        * runtime/ConsoleObject.cpp:
+        (JSC::ConsoleObject::finishCreation):
+        (JSC::consoleProtoFuncRecord):
+        (JSC::consoleProtoFuncRecordEnd):
+
+2017-12-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        WTF shouldn't have both Thread and ThreadIdentifier
+        https://bugs.webkit.org/show_bug.cgi?id=180308
+
+        Reviewed by Darin Adler.
+
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::tryCopyOtherThreadStacks):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::llint_trace_operand):
+        (JSC::LLInt::llint_trace_value):
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        (JSC::LLInt::traceFunctionPrologue):
+        * runtime/ExceptionScope.cpp:
+        (JSC::ExceptionScope::unexpectedExceptionMessage):
+        * runtime/JSLock.h:
+        (JSC::JSLock::currentThreadIsHoldingLock):
+        * runtime/VM.cpp:
+        (JSC::VM::throwException):
+        * runtime/VM.h:
+        (JSC::VM::throwingThread const):
+        (JSC::VM::clearException):
+        * tools/HeapVerifier.cpp:
+        (JSC::HeapVerifier::printVerificationHeader):
+
+2017-12-03  Caio Lima  <ticaiolima@gmail.com>
+
+        Rename DestroyFunc to avoid redefinition on unified build
+        https://bugs.webkit.org/show_bug.cgi?id=180335
+
+        Reviewed by Filip Pizlo.
+
+        Changing DestroyFunc structures to more specific names to avoid
+        conflits on unified builds.
+
+        * heap/HeapCellType.cpp:
+        (JSC::HeapCellType::finishSweep):
+        (JSC::HeapCellType::destroy):
+        * runtime/JSDestructibleObjectHeapCellType.cpp:
+        (JSC::JSDestructibleObjectHeapCellType::finishSweep):
+        (JSC::JSDestructibleObjectHeapCellType::destroy):
+        * runtime/JSSegmentedVariableObjectHeapCellType.cpp:
+        (JSC::JSSegmentedVariableObjectHeapCellType::finishSweep):
+        (JSC::JSSegmentedVariableObjectHeapCellType::destroy):
+        * runtime/JSStringHeapCellType.cpp:
+        (JSC::JSStringHeapCellType::finishSweep):
+        (JSC::JSStringHeapCellType::destroy):
+        * wasm/js/JSWebAssemblyCodeBlockHeapCellType.cpp:
+        (JSC::JSWebAssemblyCodeBlockHeapCellType::finishSweep):
+        (JSC::JSWebAssemblyCodeBlockHeapCellType::destroy):
+
+2017-12-01  JF Bastien  <jfbastien@apple.com>
+
+        JavaScriptCore: missing exception checks in Math functions that take more than one argument
+        https://bugs.webkit.org/show_bug.cgi?id=180297
+        <rdar://problem/35745556>
+
+        Reviewed by Mark Lam.
+
+        * runtime/MathObject.cpp:
+        (JSC::mathProtoFuncATan2):
+        (JSC::mathProtoFuncMax):
+        (JSC::mathProtoFuncMin):
+        (JSC::mathProtoFuncPow):
+
+2017-12-01  Mark Lam  <mark.lam@apple.com>
+
+        Let's scramble ClassInfo pointers in cells.
+        https://bugs.webkit.org/show_bug.cgi?id=180291
+        <rdar://problem/35807620>
+
+        Reviewed by JF Bastien.
+
+        * API/JSCallbackObject.h:
+        * API/JSObjectRef.cpp:
+        (classInfoPrivate):
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * assembler/MacroAssemblerCodeRef.cpp:
+        (JSC::MacroAssemblerCodePtr::initialize): Deleted.
+        * assembler/MacroAssemblerCodeRef.h:
+        (JSC::MacroAssemblerCodePtr:: const):
+        (JSC::MacroAssemblerCodePtr::hash const):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::checkArray):
+        (JSC::DFG::SpeculativeJIT::compileCheckSubClass):
+        (JSC::DFG::SpeculativeJIT::compileNewStringObject):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewStringObject):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCheckSubClass):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::emitAllocateDestructibleObject):
+        * jit/SpecializedThunkJIT.h:
+        (JSC::SpecializedThunkJIT::loadArgumentWithSpecificClass):
+        * runtime/InitializeThreading.cpp:
+        (JSC::initializeThreading):
+        * runtime/JSCScrambledPtr.cpp: Added.
+        (JSC::initializeScrambledPtrKeys):
+        * runtime/JSCScrambledPtr.h: Added.
+        * runtime/JSDestructibleObject.h:
+        (JSC::JSDestructibleObject::classInfo const):
+        * runtime/JSSegmentedVariableObject.h:
+        (JSC::JSSegmentedVariableObject::classInfo const):
+        * runtime/Structure.h:
+        * runtime/VM.h:
+
+2017-12-01  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: move Inspector::Protocol::Array<T> to JSON namespace
+        https://bugs.webkit.org/show_bug.cgi?id=173662
+
+        Reviewed by Joseph Pecoraro.
+
+        Adopt new type names. Fix protocol generator to use correct type names.
+
+        * inspector/ConsoleMessage.cpp:
+        (Inspector::ConsoleMessage::addToFrontend):
+        Improve namings and use 'auto' when the type is obvious and repeated.
+
+        * inspector/ContentSearchUtilities.cpp:
+        (Inspector::ContentSearchUtilities::searchInTextByLines):
+        * inspector/ContentSearchUtilities.h:
+        * inspector/InjectedScript.cpp:
+        (Inspector::InjectedScript::getProperties):
+        (Inspector::InjectedScript::getDisplayableProperties):
+        (Inspector::InjectedScript::getInternalProperties):
+        (Inspector::InjectedScript::getCollectionEntries):
+        (Inspector::InjectedScript::wrapCallFrames const):
+        * inspector/InjectedScript.h:
+        * inspector/InspectorProtocolTypes.h:
+        (Inspector::Protocol::BindingTraits<JSON::ArrayOf<T>>::runtimeCast):
+        (Inspector::Protocol::Array::Array): Deleted.
+        (Inspector::Protocol::Array::openAccessors): Deleted.
+        (Inspector::Protocol::Array::addItem): Deleted.
+        (Inspector::Protocol::Array::create): Deleted.
+        (Inspector::Protocol::BindingTraits<Protocol::Array<T>>::runtimeCast): Deleted.
+        (Inspector::Protocol::BindingTraits<Protocol::Array<T>>::assertValueHasExpectedType): Deleted.
+        Move the implementation out of this file.
+
+        * inspector/ScriptCallStack.cpp:
+        (Inspector::ScriptCallStack::buildInspectorArray const):
+        * inspector/ScriptCallStack.h:
+        * inspector/agents/InspectorAgent.cpp:
+        (Inspector::InspectorAgent::activateExtraDomain):
+        (Inspector::InspectorAgent::activateExtraDomains):
+        * inspector/agents/InspectorAgent.h:
+        * inspector/agents/InspectorConsoleAgent.cpp:
+        (Inspector::InspectorConsoleAgent::getLoggingChannels):
+        * inspector/agents/InspectorConsoleAgent.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::setBreakpointByUrl):
+        (Inspector::InspectorDebuggerAgent::searchInContent):
+        (Inspector::InspectorDebuggerAgent::currentCallFrames):
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * inspector/agents/InspectorRuntimeAgent.cpp:
+        (Inspector::InspectorRuntimeAgent::getProperties):
+        (Inspector::InspectorRuntimeAgent::getDisplayableProperties):
+        (Inspector::InspectorRuntimeAgent::getCollectionEntries):
+        (Inspector::InspectorRuntimeAgent::getRuntimeTypesForVariablesAtOffsets):
+        (Inspector::InspectorRuntimeAgent::getBasicBlocks):
+        * inspector/agents/InspectorRuntimeAgent.h:
+        * inspector/agents/InspectorScriptProfilerAgent.cpp:
+        (Inspector::buildSamples):
+        Use more 'auto' and rename a variable.
+
+        * inspector/scripts/codegen/cpp_generator.py:
+        (CppGenerator.cpp_protocol_type_for_type):
+        Adopt new type names. This exposed a latent bug where we should have been
+        unwrapping an AliasedType prior to generating a C++ type for it. The aliased
+        type may be an array, in which case we would have generated the wrong type.
+
+        * inspector/scripts/codegen/generate_cpp_protocol_types_header.py:
+        (_generate_typedefs_for_domain.JSON):
+        (_generate_typedefs_for_domain.Inspector): Deleted.
+        * inspector/scripts/codegen/objc_generator.py:
+        (ObjCGenerator.protocol_type_for_type):
+        (ObjCGenerator.objc_protocol_export_expression_for_variable):
+        * inspector/scripts/tests/generic/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/generic/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-array-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-object-type.json-result:
+        Rebaseline.
+
+        * runtime/TypeSet.cpp:
+        (JSC::TypeSet::allStructureRepresentations const):
+        (JSC::StructureShape::inspectorRepresentation):
+        * runtime/TypeSet.h:
+
+2017-12-01  Saam Barati  <sbarati@apple.com>
+
+        Having a bad time needs to handle ArrayClass indexing type as well
+        https://bugs.webkit.org/show_bug.cgi?id=180274
+        <rdar://problem/35667869>
+
+        Reviewed by Keith Miller and Mark Lam.
+
+        We need to make sure to transition ArrayClass to SlowPutArrayStorage as well.
+        Otherwise, we'll end up with the wrong Structure, which will lead us to not
+        adhere to the spec. The bug was that we were not considering ArrayClass inside 
+        hasBrokenIndexing. This patch rewrites that function to automatically opt
+        in non-empty indexing types as broken, instead of having to opt out all
+        non-empty indexing types besides SlowPutArrayStorage.
+
+        * runtime/IndexingType.h:
+        (JSC::hasSlowPutArrayStorage):
+        (JSC::shouldUseSlowPut):
+        * runtime/JSGlobalObject.cpp:
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::switchToSlowPutArrayStorage):
+
+2017-12-01  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: stack trace improvement follow-ups
+        https://bugs.webkit.org/show_bug.cgi?id=180273
+
+        Reviewed by Saam Barati.
+
+        * wasm/WasmIndexOrName.cpp:
+        (JSC::Wasm::makeString):
+        * wasm/WasmIndexOrName.h:
+        (JSC::Wasm::IndexOrName::nameSection const):
+        * wasm/WasmNameSection.h:
+        (JSC::Wasm::NameSection::NameSection):
+        (JSC::Wasm::NameSection::get):
+
+2017-12-01  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: restore cached stack limit after out-call
+        https://bugs.webkit.org/show_bug.cgi?id=179106
+        <rdar://problem/35337525>
+
+        Reviewed by Saam Barati.
+
+        We cache the stack limit on the Instance so that we can do fast
+        stack checks where required. In regular usage the stack limit
+        never changes because we always run on the same thread, but in
+        rare cases an API user can totally migrate which thread (and
+        therefore stack) is used for execution between WebAssembly
+        traces. For that reason we set the cached stack limit to
+        UINTPTR_MAX on the outgoing Instance when transitioning back into
+        a different Instance. We usually restore the cached stack limit in
+        Context::store, but this wasn't called on all code paths. We had a
+        bug where an Instance calling into itself indirectly would
+        therefore fail to restore its cached stack limit properly.
+
+        This patch therefore restores the cached stack limit after direct
+        calls which could be to imports (both wasm->wasm and
+        wasm->embedder). We have to do all of them because we have no way
+        of knowing what imports will do (they're known at instantiation
+        time, not compilation time, and different instances can have
+        different imports). To make this efficient we also add a pointer
+        to the canonical location of the stack limit (i.e. the extra
+        indirection we're trying to save by caching the stack limit on the
+        Instance in the first place). This is potentially a small perf hit
+        on imported direct calls.
+
+        It's hard to say what the performance cost will be because we
+        haven't seen much code in the wild which does this. We're adding
+        two dependent loads and a store of the loaded value, which is
+        unlikely to get used soon after. It's more code, but on an
+        out-of-order processor it doesn't contribute to the critical path.
+
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::restoreWebAssemblyGlobalState):
+        (JSC::Wasm::B3IRGenerator::addGrowMemory):
+        (JSC::Wasm::B3IRGenerator::addCall):
+        (JSC::Wasm::B3IRGenerator::addCallIndirect):
+        * wasm/WasmInstance.cpp:
+        (JSC::Wasm::Instance::Instance):
+        (JSC::Wasm::Instance::create):
+        * wasm/WasmInstance.h:
+        (JSC::Wasm::Instance::offsetOfPointerToActualStackLimit):
+        (JSC::Wasm::Instance::cachedStackLimit const):
+        (JSC::Wasm::Instance::setCachedStackLimit):
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        (JSC::JSWebAssemblyInstance::create):
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::callWebAssemblyFunction):
+
+2017-11-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Use JSFixedArray for op_new_array_buffer
+        https://bugs.webkit.org/show_bug.cgi?id=180084
+
+        Reviewed by Saam Barati.
+
+        For op_new_array_buffer, we have a special constant buffer in CodeBlock.
+        But using JSFixedArray is better because,
+
+        1. In DFG, we have special hashing mechanism to avoid duplicating constant buffer from the same CodeBlock.
+           If we use JSFixedArray, this is unnecessary since JSFixedArray is handled just as JS constant.
+
+        2. In a subsequent patch[1], we would like to support Spread(PhantomNewArrayBuffer). If NewArrayBuffer
+           has JSFixedArray, we can just emit a held JSFixedArray.
+
+        3. We can reduce length of op_new_array_buffer since JSFixedArray holds this.
+
+        4. We can fold NewArrayBufferData into uint64_t. No need to maintain a bag of NewArrayBufferData in DFG.
+
+        5. We do not need to look up constant buffer from CodeBlock if buffer data is necessary. Our NewArrayBuffer
+           DFG node has JSFixedArray as its cellOperand. This makes materializing PhantomNewArrayBuffer easy, which
+           will be introduced in [1].
+
+        [1]: https://bugs.webkit.org/show_bug.cgi?id=179762
+
+        * bytecode/BytecodeDumper.cpp:
+        (JSC::BytecodeDumper<Block>::dumpBytecode):
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::finishCreation):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::numberOfConstantBuffers const): Deleted.
+        (JSC::CodeBlock::addConstantBuffer): Deleted.
+        (JSC::CodeBlock::constantBufferAsVector): Deleted.
+        (JSC::CodeBlock::constantBuffer): Deleted.
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedCodeBlock::shrinkToFit):
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::constantBufferCount): Deleted.
+        (JSC::UnlinkedCodeBlock::addConstantBuffer): Deleted.
+        (JSC::UnlinkedCodeBlock::constantBuffer const): Deleted.
+        (JSC::UnlinkedCodeBlock::constantBuffer): Deleted.
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitNewArray):
+        (JSC::BytecodeGenerator::addConstantBuffer): Deleted.
+        * bytecompiler/BytecodeGenerator.h:
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        (JSC::DFG::ByteCodeParser::InlineStackEntry::InlineStackEntry):
+        (JSC::DFG::ConstantBufferKey::ConstantBufferKey): Deleted.
+        (JSC::DFG::ConstantBufferKey::operator== const): Deleted.
+        (JSC::DFG::ConstantBufferKey::hash const): Deleted.
+        (JSC::DFG::ConstantBufferKey::isHashTableDeletedValue const): Deleted.
+        (JSC::DFG::ConstantBufferKey::codeBlock const): Deleted.
+        (JSC::DFG::ConstantBufferKey::index const): Deleted.
+        (JSC::DFG::ConstantBufferKeyHash::hash): Deleted.
+        (JSC::DFG::ConstantBufferKeyHash::equal): Deleted.
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dump):
+        * dfg/DFGGraph.h:
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasNewArrayBufferData):
+        (JSC::DFG::Node::newArrayBufferData):
+        (JSC::DFG::Node::hasVectorLengthHint):
+        (JSC::DFG::Node::vectorLengthHint):
+        (JSC::DFG::Node::indexingType):
+        (JSC::DFG::Node::hasCellOperand):
+        (JSC::DFG::Node::OpInfoWrapper::operator=):
+        (JSC::DFG::Node::OpInfoWrapper::asNewArrayBufferData const):
+        (JSC::DFG::Node::hasConstantBuffer): Deleted.
+        (JSC::DFG::Node::startConstant): Deleted.
+        (JSC::DFG::Node::numConstants): Deleted.
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewArrayBuffer):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        * jit/JIT.h:
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_new_array_buffer): Deleted.
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * llint/LLIntSlowPaths.cpp:
+        * llint/LLIntSlowPaths.h:
+        * llint/LowLevelInterpreter.asm:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/CommonSlowPaths.h:
+        * runtime/JSFixedArray.cpp:
+        (JSC::JSFixedArray::dumpToStream):
+        * runtime/JSFixedArray.h:
+        (JSC::JSFixedArray::create):
+        (JSC::JSFixedArray::get const):
+        (JSC::JSFixedArray::set):
+        (JSC::JSFixedArray::buffer const):
+        (JSC::JSFixedArray::values const):
+        (JSC::JSFixedArray::length const):
+        (JSC::JSFixedArray::get): Deleted.
+
 2017-11-30  JF Bastien  <jfbastien@apple.com>
 
         WebAssembly: improve stack trace

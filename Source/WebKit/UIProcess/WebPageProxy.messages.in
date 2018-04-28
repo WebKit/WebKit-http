@@ -167,6 +167,9 @@ messages -> WebPageProxy {
     EditingRangeCallback(struct WebKit::EditingRange range, WebKit::CallbackID callbackID)
     UnsignedCallback(uint64_t result, WebKit::CallbackID callbackID)
     RectForCharacterRangeCallback(WebCore::IntRect rect, struct WebKit::EditingRange actualRange, WebKit::CallbackID callbackID)
+#if ENABLE(APPLICATION_MANIFEST)
+    ApplicationManifestCallback(std::optional<WebCore::ApplicationManifest> manifest, WebKit::CallbackID callbackID)
+#endif
 #if PLATFORM(MAC)
     AttributedStringForCharacterRangeCallback(struct WebKit::AttributedString string, struct WebKit::EditingRange actualRange, WebKit::CallbackID callbackID)
     FontAtSelectionCallback(String fontName, double fontSize, bool selectioHasMultipleFonts, WebKit::CallbackID callbackID)
@@ -346,6 +349,10 @@ messages -> WebPageProxy {
     SearchWithSpotlight(String string)
 
     SearchTheWeb(String string)
+
+    TouchBarMenuDataChanged(WebKit::TouchBarMenuData touchBarMenuData)
+    TouchBarMenuItemDataAdded(struct WebKit::TouchBarMenuItemData touchBarMenuItemData)
+    TouchBarMenuItemDataRemoved(struct WebKit::TouchBarMenuItemData touchBarMenuItemData)
 #endif
 
 #if USE(APPKIT)
@@ -501,6 +508,7 @@ messages -> WebPageProxy {
     StartURLSchemeTask(struct WebKit::URLSchemeTaskParameters parameters)
     StopURLSchemeTask(uint64_t handlerIdentifier, uint64_t taskIdentifier)
 
+    HasStorageAccess(String subFrameHost, String topFrameHost, uint64_t contextID)
     RequestStorageAccess(String subFrameHost, String topFrameHost, uint64_t contextID)
 
 #if ENABLE(ATTACHMENT_ELEMENT)

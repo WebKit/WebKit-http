@@ -48,6 +48,7 @@
 #include <WebCore/PageConfiguration.h>
 #include <WebCore/RuntimeEnabledFeatures.h>
 #include <WebCore/SerializedScriptValue.h>
+#include <WebCore/ServiceWorkerClientData.h>
 #include <WebCore/ServiceWorkerClientIdentifier.h>
 #include <pal/SessionID.h>
 
@@ -149,9 +150,14 @@ void WebSWContextManagerConnection::startFetch(SWServerConnectionIdentifier serv
     serviceWorkerThreadProxy->thread().postFetchTask(WTFMove(client), WTFMove(clientId), WTFMove(request), WTFMove(options));
 }
 
-void WebSWContextManagerConnection::postMessageToServiceWorkerGlobalScope(ServiceWorkerIdentifier destinationIdentifier, const IPC::DataReference& message, ServiceWorkerClientIdentifier sourceIdentifier, ServiceWorkerClientData&& sourceData)
+void WebSWContextManagerConnection::postMessageToServiceWorkerFromClient(ServiceWorkerIdentifier destinationIdentifier, const IPC::DataReference& message, ServiceWorkerClientIdentifier sourceIdentifier, ServiceWorkerClientData&& sourceData)
 {
-    SWContextManager::singleton().postMessageToServiceWorkerGlobalScope(destinationIdentifier, SerializedScriptValue::adopt(message.vector()), sourceIdentifier, WTFMove(sourceData));
+    SWContextManager::singleton().postMessageToServiceWorker(destinationIdentifier, SerializedScriptValue::adopt(message.vector()), sourceIdentifier, WTFMove(sourceData));
+}
+
+void WebSWContextManagerConnection::postMessageToServiceWorkerFromServiceWorker(ServiceWorkerIdentifier destinationIdentifier, const IPC::DataReference& message, ServiceWorkerData&& sourceData)
+{
+    SWContextManager::singleton().postMessageToServiceWorker(destinationIdentifier, SerializedScriptValue::adopt(message.vector()), WTFMove(sourceData));
 }
 
 void WebSWContextManagerConnection::fireInstallEvent(ServiceWorkerIdentifier identifier)
@@ -166,7 +172,14 @@ void WebSWContextManagerConnection::fireActivateEvent(ServiceWorkerIdentifier id
 
 void WebSWContextManagerConnection::terminateWorker(ServiceWorkerIdentifier identifier)
 {
-    SWContextManager::singleton().terminateWorker(identifier);
+    SWContextManager::singleton().terminateWorker(identifier, nullptr);
+}
+
+void WebSWContextManagerConnection::syncTerminateWorker(ServiceWorkerIdentifier identifier, Ref<Messages::WebSWContextManagerConnection::SyncTerminateWorker::DelayedReply>&& reply)
+{
+    SWContextManager::singleton().terminateWorker(identifier, [reply = WTFMove(reply)] {
+        reply->send();
+    });
 }
 
 void WebSWContextManagerConnection::postMessageToServiceWorkerClient(const ServiceWorkerClientIdentifier& destinationIdentifier, Ref<SerializedScriptValue>&& message, ServiceWorkerIdentifier sourceIdentifier, const String& sourceOrigin)
@@ -189,9 +202,66 @@ void WebSWContextManagerConnection::setServiceWorkerHasPendingEvents(ServiceWork
     m_connectionToStorageProcess->send(Messages::WebSWServerToContextConnection::SetServiceWorkerHasPendingEvents(serviceWorkerIdentifier, hasPendingEvents), 0);
 }
 
+void WebSWContextManagerConnection::skipWaiting(ServiceWorkerIdentifier serviceWorkerIdentifier, WTF::Function<void()>&& callback)
+{
+    auto callbackID = ++m_previousRequestIdentifier;
+    m_skipWaitingRequests.add(callbackID, WTFMove(callback));
+    m_connectionToStorageProcess->send(Messages::WebSWServerToContextConnection::SkipWaiting(serviceWorkerIdentifier, callbackID), 0);
+}
+
 void WebSWContextManagerConnection::workerTerminated(ServiceWorkerIdentifier serviceWorkerIdentifier)
 {
     m_connectionToStorageProcess->send(Messages::WebSWServerToContextConnection::WorkerTerminated(serviceWorkerIdentifier), 0);
+}
+
+void WebSWContextManagerConnection::findClientByIdentifier(WebCore::ServiceWorkerIdentifier serviceWorkerIdentifier, ServiceWorkerClientIdentifier clientIdentifier, FindClientByIdentifierCallback&& callback)
+{
+    auto requestIdentifier = ++m_previousRequestIdentifier;
+    m_findClientByIdentifierRequests.add(requestIdentifier, WTFMove(callback));
+    m_connectionToStorageProcess->send(Messages::WebSWServerToContextConnection::FindClientByIdentifier { requestIdentifier, serviceWorkerIdentifier, clientIdentifier }, 0);
+}
+
+void WebSWContextManagerConnection::findClientByIdentifierCompleted(uint64_t requestIdentifier, std::optional<ServiceWorkerClientData>&& clientData, bool hasSecurityError)
+{
+    if (auto callback = m_findClientByIdentifierRequests.take(requestIdentifier)) {
+        if (hasSecurityError) {
+            callback(Exception { SecurityError });
+            return;
+        }
+        callback(WTFMove(clientData));
+    }
+}
+
+void WebSWContextManagerConnection::matchAll(WebCore::ServiceWorkerIdentifier serviceWorkerIdentifier, const ServiceWorkerClientQueryOptions& options, ServiceWorkerClientsMatchAllCallback&& callback)
+{
+    auto requestIdentifier = ++m_previousRequestIdentifier;
+    m_matchAllRequests.add(requestIdentifier, WTFMove(callback));
+    m_connectionToStorageProcess->send(Messages::WebSWServerToContextConnection::MatchAll { requestIdentifier, serviceWorkerIdentifier, options }, 0);
+}
+
+void WebSWContextManagerConnection::matchAllCompleted(uint64_t requestIdentifier, Vector<ServiceWorkerClientInformation>&& clientsData)
+{
+    if (auto callback = m_matchAllRequests.take(requestIdentifier))
+        callback(WTFMove(clientsData));
+}
+
+void WebSWContextManagerConnection::claim(WebCore::ServiceWorkerIdentifier serviceWorkerIdentifier, CompletionHandler<void()>&& callback)
+{
+    auto requestIdentifier = ++m_previousRequestIdentifier;
+    m_claimRequests.add(requestIdentifier, WTFMove(callback));
+    m_connectionToStorageProcess->send(Messages::WebSWServerToContextConnection::Claim { requestIdentifier, serviceWorkerIdentifier }, 0);
+}
+
+void WebSWContextManagerConnection::claimCompleted(uint64_t claimRequestIdentifier)
+{
+    if (auto callback = m_claimRequests.take(claimRequestIdentifier))
+        callback();
+}
+
+void WebSWContextManagerConnection::didFinishSkipWaiting(uint64_t callbackID)
+{
+    if (auto callback = m_skipWaitingRequests.take(callbackID))
+        callback();
 }
 
 } // namespace WebCore

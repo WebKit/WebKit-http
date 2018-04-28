@@ -41,8 +41,10 @@ class ServiceWorkerJobClient {
 public:
     virtual ~ServiceWorkerJobClient() = default;
 
+    virtual DocumentOrWorkerIdentifier contextIdentifier() = 0;
+
     virtual void jobFailedWithException(ServiceWorkerJob&, const Exception&) = 0;
-    virtual void jobResolvedWithRegistration(ServiceWorkerJob&, ServiceWorkerRegistrationData&&, WTF::Function<void()>&& promiseResolvedHandler) = 0;
+    virtual void jobResolvedWithRegistration(ServiceWorkerJob&, ServiceWorkerRegistrationData&&, ShouldNotifyWhenResolved) = 0;
     virtual void jobResolvedWithUnregistrationResult(ServiceWorkerJob&, bool unregistrationResult) = 0;
     virtual void startScriptFetchForJob(ServiceWorkerJob&) = 0;
     virtual void jobFinishedLoadingScript(ServiceWorkerJob&, const String&) = 0;

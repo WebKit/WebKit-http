@@ -50,7 +50,6 @@ class MainFrame;
 class Page;
 class RenderObject;
 class SharedBuffer;
-class TextResourceDecoder;
 class URL;
 
 typedef String ErrorString;
@@ -72,10 +71,12 @@ public:
         PingResource,
         BeaconResource,
         WebSocketResource,
+#if ENABLE(APPLICATION_MANIFEST)
+        ApplicationManifestResource,
+#endif
         OtherResource,
     };
 
-    static bool cachedResourceContent(CachedResource*, String* result, bool* base64Encoded);
     static bool sharedBufferContent(RefPtr<SharedBuffer>&&, const String& textEncodingName, bool withBase64Encode, String* result);
     static void resourceContent(ErrorString&, Frame*, const URL&, String* result, bool* base64Encoded);
     static String sourceMapURLForResource(CachedResource*);
@@ -85,19 +86,18 @@ public:
     static ResourceType inspectorResourceType(CachedResource::Type);
     static ResourceType inspectorResourceType(const CachedResource&);
     static Inspector::Protocol::Page::ResourceType cachedResourceTypeJSON(const CachedResource&);
-    static RefPtr<TextResourceDecoder> createTextDecoder(const String& mimeType, const String& textEncodingName);
 
     // Page API for InspectorFrontend
     void enable(ErrorString&) override;
     void disable(ErrorString&) override;
     void reload(ErrorString&, const bool* const optionalReloadFromOrigin, const bool* const optionalRevalidateAllResources) override;
     void navigate(ErrorString&, const String& url) override;
-    void getCookies(ErrorString&, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Page::Cookie>>& cookies) override;
+    void getCookies(ErrorString&, RefPtr<JSON::ArrayOf<Inspector::Protocol::Page::Cookie>>& cookies) override;
     void deleteCookie(ErrorString&, const String& cookieName, const String& url) override;
     void getResourceTree(ErrorString&, RefPtr<Inspector::Protocol::Page::FrameResourceTree>&) override;
     void getResourceContent(ErrorString&, const String& frameId, const String& url, String* content, bool* base64Encoded) override;
-    void searchInResource(ErrorString&, const String& frameId, const String& url, const String& query, const bool* const optionalCaseSensitive, const bool* const optionalIsRegex, const String* const optionalRequestId, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::GenericTypes::SearchMatch>>&) override;
-    void searchInResources(ErrorString&, const String&, const bool* const caseSensitive, const bool* const isRegex, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Page::SearchResult>>&) override;
+    void searchInResource(ErrorString&, const String& frameId, const String& url, const String& query, const bool* const optionalCaseSensitive, const bool* const optionalIsRegex, const String* const optionalRequestId, RefPtr<JSON::ArrayOf<Inspector::Protocol::GenericTypes::SearchMatch>>&) override;
+    void searchInResources(ErrorString&, const String&, const bool* const caseSensitive, const bool* const isRegex, RefPtr<JSON::ArrayOf<Inspector::Protocol::Page::SearchResult>>&) override;
     void setShowPaintRects(ErrorString&, bool show) override;
     void setEmulatedMedia(ErrorString&, const String&) override;
     void getCompositingBordersVisible(ErrorString&, bool* out_param) override;

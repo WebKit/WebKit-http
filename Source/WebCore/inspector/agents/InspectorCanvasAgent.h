@@ -71,7 +71,7 @@ public:
     void disable(ErrorString&) override;
     void requestNode(ErrorString&, const String& canvasId, int* nodeId) override;
     void requestContent(ErrorString&, const String& canvasId, String* content) override;
-    void requestCSSCanvasClientNodes(ErrorString&, const String& canvasId, RefPtr<Inspector::Protocol::Array<int>>&) override;
+    void requestCSSCanvasClientNodes(ErrorString&, const String& canvasId, RefPtr<JSON::ArrayOf<int>>&) override;
     void resolveCanvasContext(ErrorString&, const String& canvasId, const String* const objectGroup, RefPtr<Inspector::Protocol::Runtime::RemoteObject>&) override;
     void startRecording(ErrorString&, const String& canvasId, const bool* const singleFrame, const int* const memoryLimit) override;
     void stopRecording(ErrorString&, const String& canvasId) override;
@@ -87,6 +87,7 @@ public:
     void didChangeCanvasMemory(HTMLCanvasElement&);
     void recordCanvasAction(CanvasRenderingContext&, const String&, Vector<RecordCanvasActionVariant>&& = { });
     void didFinishRecordingCanvasFrame(HTMLCanvasElement&, bool forceDispatch = false);
+    void consoleStartRecordingCanvas(HTMLCanvasElement&, JSC::ExecState&, JSC::JSObject* options);
 #if ENABLE(WEBGL)
     void didEnableExtension(WebGLRenderingContextBase&, const String&);
     void didCreateProgram(WebGLRenderingContextBase&, WebGLProgram&);

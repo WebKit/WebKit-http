@@ -349,7 +349,6 @@ void CodeBlock::finishCreation(VM& vm, CopyParsedBlockTag, CodeBlock& other)
         createRareDataIfNecessary();
         
         m_rareData->m_exceptionHandlers = other.m_rareData->m_exceptionHandlers;
-        m_rareData->m_constantBuffers = other.m_rareData->m_constantBuffers;
         m_rareData->m_switchJumpTables = other.m_rareData->m_switchJumpTables;
         m_rareData->m_stringSwitchJumpTables = other.m_rareData->m_stringSwitchJumpTables;
     }
@@ -461,13 +460,6 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
 
     if (unlinkedCodeBlock->hasRareData()) {
         createRareDataIfNecessary();
-        if (size_t count = unlinkedCodeBlock->constantBufferCount()) {
-            m_rareData->m_constantBuffers.grow(count);
-            for (size_t i = 0; i < count; i++) {
-                const UnlinkedCodeBlock::ConstantBuffer& buffer = unlinkedCodeBlock->constantBuffer(i);
-                m_rareData->m_constantBuffers[i] = buffer;
-            }
-        }
         if (size_t count = unlinkedCodeBlock->numberOfExceptionHandlers()) {
             m_rareData->m_exceptionHandlers.resizeToFit(count);
             for (size_t i = 0; i < count; i++) {
@@ -980,7 +972,7 @@ void CodeBlock::visitWeakly(SlotVisitor& visitor)
     
     m_visitWeaklyHasBeenCalled = true;
 
-    if (Heap::isMarkedConcurrently(this))
+    if (Heap::isMarked(this))
         return;
 
     if (shouldVisitStrongly(locker)) {
@@ -1132,7 +1124,7 @@ static std::chrono::milliseconds timeToLive(JITCode::JITType jitType)
 
 bool CodeBlock::shouldJettisonDueToOldAge(const ConcurrentJSLocker&)
 {
-    if (Heap::isMarkedConcurrently(this))
+    if (Heap::isMarked(this))
         return false;
 
     if (UNLIKELY(Options::forceCodeBlockToJettisonDueToOldAge()))
@@ -1147,10 +1139,10 @@ bool CodeBlock::shouldJettisonDueToOldAge(const ConcurrentJSLocker&)
 #if ENABLE(DFG_JIT)
 static bool shouldMarkTransition(DFG::WeakReferenceTransition& transition)
 {
-    if (transition.m_codeOrigin && !Heap::isMarkedConcurrently(transition.m_codeOrigin.get()))
+    if (transition.m_codeOrigin && !Heap::isMarked(transition.m_codeOrigin.get()))
         return false;
     
-    if (!Heap::isMarkedConcurrently(transition.m_from.get()))
+    if (!Heap::isMarked(transition.m_from.get()))
         return false;
     
     return true;
@@ -1180,7 +1172,7 @@ void CodeBlock::propagateTransitions(const ConcurrentJSLocker&, SlotVisitor& vis
                     m_vm->heap.structureIDTable().get(oldStructureID);
                 Structure* newStructure =
                     m_vm->heap.structureIDTable().get(newStructureID);
-                if (Heap::isMarkedConcurrently(oldStructure))
+                if (Heap::isMarked(oldStructure))
                     visitor.appendUnbarriered(newStructure);
                 else
                     allAreMarkedSoFar = false;
@@ -1254,14 +1246,14 @@ void CodeBlock::determineLiveness(const ConcurrentJSLocker&, SlotVisitor& visito
     for (unsigned i = 0; i < dfgCommon->weakReferences.size(); ++i) {
         JSCell* reference = dfgCommon->weakReferences[i].get();
         ASSERT(!jsDynamicCast<CodeBlock*>(*reference->vm(), reference));
-        if (!Heap::isMarkedConcurrently(reference)) {
+        if (!Heap::isMarked(reference)) {
             allAreLiveSoFar = false;
             break;
         }
     }
     if (allAreLiveSoFar) {
         for (unsigned i = 0; i < dfgCommon->weakStructureReferences.size(); ++i) {
-            if (!Heap::isMarkedConcurrently(dfgCommon->weakStructureReferences[i].get())) {
+            if (!Heap::isMarked(dfgCommon->weakStructureReferences[i].get())) {
                 allAreLiveSoFar = false;
                 break;
             }

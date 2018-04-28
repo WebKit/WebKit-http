@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2006, 2009, 2011 Apple Inc. All rights reserved.
+ *  Copyright (C) 2006-2017 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -34,6 +34,7 @@ class BinarySemaphore;
 class CString;
 class CrashOnOverflow;
 class FunctionDispatcher;
+class Hasher;
 class OrdinalNumber;
 class PrintStream;
 class SHA1;
@@ -42,6 +43,7 @@ class StringBuilder;
 class StringImpl;
 class StringView;
 class TextPosition;
+class TextStream;
 
 struct FastMalloc;
 
@@ -58,7 +60,6 @@ template<typename> struct DefaultHash { using Hash = void; };
 template<typename> struct HashTraits;
 
 template<typename...> class Variant;
-template<class, class> class Expected;
 template<typename, size_t = 0, typename = CrashOnOverflow, size_t = 16, typename = FastMalloc> class Vector;
 template<typename Value, typename = typename DefaultHash<Value>::Hash, typename = HashTraits<Value>> class HashCountedSet;
 template<typename KeyArg, typename MappedArg, typename = typename DefaultHash<KeyArg>::Hash, typename = HashTraits<KeyArg>, typename = HashTraits<MappedArg>> class HashMap;
@@ -66,17 +67,24 @@ template<typename ValueArg, typename = typename DefaultHash<ValueArg>::Hash, typ
 
 }
 
+namespace std {
+namespace experimental {
+inline namespace fundamentals_v3 {
+template<class, class> class expected;
+template<class> class unexpected;
+}}} // namespace std::experimental::fundamentals_v3
+
 using WTF::AtomicString;
 using WTF::AtomicStringImpl;
 using WTF::BinarySemaphore;
-using WTF::CompletionHandler;
 using WTF::CString;
-using WTF::Expected;
+using WTF::CompletionHandler;
 using WTF::Function;
 using WTF::FunctionDispatcher;
 using WTF::HashCountedSet;
 using WTF::HashMap;
 using WTF::HashSet;
+using WTF::Hasher;
 using WTF::LazyNeverDestroyed;
 using WTF::NeverDestroyed;
 using WTF::OptionSet;
@@ -91,5 +99,9 @@ using WTF::StringBuilder;
 using WTF::StringImpl;
 using WTF::StringView;
 using WTF::TextPosition;
+using WTF::TextStream;
 using WTF::Variant;
 using WTF::Vector;
+
+template<class T, class E> using Expected = std::experimental::expected<T, E>;
+template<class E> using Unexpected = std::experimental::unexpected<E>;

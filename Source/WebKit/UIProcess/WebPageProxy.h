@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -82,6 +82,7 @@
 #include <WebCore/URL.h>
 #include <WebCore/UserInterfaceLayoutDirection.h>
 #include <memory>
+#include <wtf/CompletionHandler.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/MonotonicTime.h>
@@ -104,6 +105,8 @@ OBJC_CLASS _WKRemoteObjectRegistry;
 
 #if PLATFORM(COCOA)
 #include "LayerRepresentation.h"
+#include "TouchBarMenuData.h"
+#include "TouchBarMenuItemData.h"
 #endif
 
 #if PLATFORM(GTK)
@@ -155,6 +158,7 @@ class SharedBuffer;
 class TextIndicator;
 class ValidationBubble;
 
+struct ApplicationManifest;
 struct DictionaryPopupInfo;
 struct ExceptionDetails;
 struct FileChooserSettings;
@@ -262,6 +266,10 @@ struct QueuedTouchEvents {
 
 typedef GenericCallback<const String&, bool, int32_t> ValidateCommandCallback;
 typedef GenericCallback<const WebCore::IntRect&, const EditingRange&> RectForCharacterRangeCallback;
+
+#if ENABLE(APPLICATION_MANIFEST)
+typedef GenericCallback<const std::optional<WebCore::ApplicationManifest>&> ApplicationManifestCallback;
+#endif
 
 #if PLATFORM(MAC)
 typedef GenericCallback<const AttributedString&, const EditingRange&> AttributedStringForCharacterRangeCallback;
@@ -482,7 +490,11 @@ public:
     bool canDelete() const { return hasSelectedRange() && isContentEditable(); }
     bool hasSelectedRange() const { return m_editorState.selectionIsRange; }
     bool isContentEditable() const { return m_editorState.isContentEditable; }
-    
+
+#if PLATFORM(COCOA)
+    const TouchBarMenuData& touchBarMenuData() const { return m_touchBarMenuData; }
+#endif
+
     bool maintainsInactiveSelection() const;
     void setMaintainsInactiveSelection(bool);
     void setEditable(bool);
@@ -1220,12 +1232,25 @@ public:
 #endif
     void editorStateChanged(const EditorState&);
 
+#if PLATFORM(COCOA)
+    void touchBarMenuDataRemoved();
+    void touchBarMenuDataChanged(const TouchBarMenuData&);
+    void touchBarMenuItemDataAdded(const TouchBarMenuItemData&);
+    void touchBarMenuItemDataRemoved(const TouchBarMenuItemData&);
+#endif
+
+    void hasStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t webProcessContextId);
     void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t webProcessContextId);
 
 #if ENABLE(ATTACHMENT_ELEMENT)
     void insertAttachment(const String& identifier, const WebCore::AttachmentDisplayOptions&, const String& filename, std::optional<String> contentType, WebCore::SharedBuffer& data, Function<void(CallbackBase::Error)>&&);
     void requestAttachmentData(const String& identifier, Function<void(RefPtr<WebCore::SharedBuffer>, CallbackBase::Error)>&&);
     void setAttachmentDisplayOptions(const String& identifier, WebCore::AttachmentDisplayOptions, Function<void(CallbackBase::Error)>&&);
+    void setAttachmentDataAndContentType(const String& identifier, WebCore::SharedBuffer& data, std::optional<String>&& newContentType, std::optional<String>&& newFilename, Function<void(CallbackBase::Error)>&&);
+#endif
+
+#if ENABLE(APPLICATION_MANIFEST)
+    void getApplicationManifest(Function<void(const std::optional<WebCore::ApplicationManifest>&, CallbackBase::Error)>&&);
 #endif
 
 private:
@@ -1488,6 +1513,9 @@ private:
     void validateCommandCallback(const String&, bool, int, CallbackID);
     void unsignedCallback(uint64_t, CallbackID);
     void editingRangeCallback(const EditingRange&, CallbackID);
+#if ENABLE(APPLICATION_MANIFEST)
+    void applicationManifestCallback(const std::optional<WebCore::ApplicationManifest>&, CallbackID);
+#endif
 #if PLATFORM(COCOA)
     void machSendRightCallback(const WebCore::MachSendRight&, CallbackID);
 #endif
@@ -1781,6 +1809,10 @@ private:
 
     EditorState m_editorState;
     bool m_isEditable { false };
+
+#if PLATFORM(COCOA)
+    TouchBarMenuData m_touchBarMenuData;
+#endif
 
     double m_textZoomFactor { 1 };
     double m_pageZoomFactor { 1 };

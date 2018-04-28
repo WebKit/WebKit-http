@@ -62,6 +62,7 @@ private:
 
     void newSession(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
     void deleteSession(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
+    void status(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
     void setTimeouts(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
     void go(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
     void getCurrentURL(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
@@ -83,12 +84,13 @@ private:
     void findElementsFromElement(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
     void getActiveElement(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
     void isElementSelected(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
+    void getElementAttribute(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
+    void getElementProperty(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
     void getElementText(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
     void getElementTagName(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
     void getElementRect(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
     void isElementEnabled(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
     void isElementDisplayed(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
-    void getElementAttribute(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
     void elementClick(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
     void elementClear(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
     void elementSendKeys(RefPtr<JSON::Object>&&, Function<void (CommandResult&&)>&&);
@@ -115,14 +117,13 @@ private:
     std::optional<String> platformMatchCapability(const String&, const RefPtr<JSON::Value>&) const;
     void parseCapabilities(const JSON::Object& desiredCapabilities, Capabilities&) const;
     void platformParseCapabilities(const JSON::Object& desiredCapabilities, Capabilities&) const;
-    RefPtr<Session> findSessionOrCompleteWithError(JSON::Object&, Function<void (CommandResult&&)>&);
+    bool findSessionOrCompleteWithError(JSON::Object&, Function<void (CommandResult&&)>&);
 
     void handleRequest(HTTPRequestHandler::Request&&, Function<void (HTTPRequestHandler::Response&&)>&& replyHandler) override;
     void sendResponse(Function<void (HTTPRequestHandler::Response&&)>&& replyHandler, CommandResult&&) const;
 
     HTTPServer m_server;
-    HashMap<String, RefPtr<Session>> m_sessions;
-    Session* m_activeSession { nullptr };
+    RefPtr<Session> m_session;
 };
 
 } // namespace WebDriver

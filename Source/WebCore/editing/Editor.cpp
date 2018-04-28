@@ -3802,7 +3802,7 @@ void Editor::insertAttachment(const String& identifier, const AttachmentDisplayO
 {
     if (!contentType)
         contentType = File::contentTypeForFile(filename);
-    insertAttachmentFromFile(identifier, options, filename, *contentType, File::create(Blob::create(data, *contentType), filename));
+    insertAttachmentFromFile(identifier, options, filename, *contentType, File::create(Blob::create(WTFMove(data), *contentType), filename));
 }
 
 void Editor::insertAttachmentFromFile(const String& identifier, const AttachmentDisplayOptions& options, const String& filename, const String& contentType, Ref<File>&& file)
@@ -3855,6 +3855,16 @@ void Editor::removeAlternativePresentationButton(const String& identifier)
     ASSERT(m_alternativePresentationButtonElementToSubstitutionMap.contains(button));
     auto substitution = m_alternativePresentationButtonElementToSubstitutionMap.take(button);
     substitution->unapply();
+}
+
+Vector<Ref<Element>> Editor::elementsReplacedByAlternativePresentationButton(const String& identifier)
+{
+    if (!m_alternativePresentationButtonIdentifierToElementMap.contains(identifier))
+        return { };
+    auto* button = m_alternativePresentationButtonIdentifierToElementMap.get(identifier);
+    ASSERT(m_alternativePresentationButtonElementToSubstitutionMap.contains(button));
+    auto substitution = m_alternativePresentationButtonElementToSubstitutionMap.get(button);
+    return substitution->replacedElements();
 }
 
 void Editor::didInsertAlternativePresentationButtonElement(AlternativePresentationButtonElement& button)

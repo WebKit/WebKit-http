@@ -221,6 +221,7 @@
 #include <wtf/SystemTracing.h>
 #include <wtf/UUID.h>
 #include <wtf/text/StringBuffer.h>
+#include <wtf/text/TextStream.h>
 #include <yarr/RegularExpression.h>
 
 #if ENABLE(DEVICE_ORIENTATION)
@@ -3382,10 +3383,14 @@ void Document::processViewport(const String& features, ViewportArguments::Type o
 {
     ASSERT(!features.isNull());
 
+    LOG_WITH_STREAM(Viewports, stream << "Document::processViewport " << features);
+
     if (origin < m_viewportArguments.type)
         return;
 
     m_viewportArguments = ViewportArguments(origin);
+
+    LOG_WITH_STREAM(Viewports, stream  << " resolved to " << m_viewportArguments);
 
     processFeaturesString(features, FeatureMode::Viewport, [this](StringView key, StringView value) {
         setViewportFeature(m_viewportArguments, *this, key, value);
@@ -7392,16 +7397,50 @@ Logger& Document::logger()
     return *m_logger;
 }
 
+void Document::hasStorageAccess(Ref<DeferredPromise>&& passedPromise)
+{
+    ASSERT(settings().storageAccessAPIEnabled());
+
+    RefPtr<DeferredPromise> promise(WTFMove(passedPromise));
+
+    if (!m_frame || securityOrigin().isUnique()) {
+        promise->resolve<IDLBoolean>(false);
+        return;
+    }
+    
+    if (m_frame->isMainFrame()) {
+        promise->resolve<IDLBoolean>(true);
+        return;
+    }
+    
+    auto& securityOrigin = this->securityOrigin();
+    auto& topSecurityOrigin = topDocument().securityOrigin();
+    if (securityOrigin.equal(&topSecurityOrigin)) {
+        promise->resolve<IDLBoolean>(true);
+        return;
+    }
+
+    if (Page* page = this->page()) {
+        auto iframeHost = securityOrigin.host();
+        auto topHost = topSecurityOrigin.host();
+        page->chrome().client().hasStorageAccess(WTFMove(iframeHost), WTFMove(topHost), [documentReference = m_weakFactory.createWeakPtr(*this), promise] (bool hasAccess) {
+            Document* document = documentReference.get();
+            if (!document)
+                return;
+            
+            promise->resolve<IDLBoolean>(hasAccess);
+        });
+        return;
+    }
+
+    promise->reject();
+}
+
 void Document::requestStorageAccess(Ref<DeferredPromise>&& passedPromise)
 {
     ASSERT(settings().storageAccessAPIEnabled());
     
     RefPtr<DeferredPromise> promise(WTFMove(passedPromise));
-    
-    if (m_hasStorageAccess) {
-        promise->resolve();
-        return;
-    }
     
     if (!m_frame || securityOrigin().isUnique()) {
         promise->reject();
@@ -7409,7 +7448,14 @@ void Document::requestStorageAccess(Ref<DeferredPromise>&& passedPromise)
     }
     
     if (m_frame->isMainFrame()) {
-        m_hasStorageAccess = true;
+        promise->resolve();
+        return;
+    }
+    
+    auto& topDocument = this->topDocument();
+    auto& topSecurityOrigin = topDocument.securityOrigin();
+    auto& securityOrigin = this->securityOrigin();
+    if (securityOrigin.equal(&topSecurityOrigin)) {
         promise->resolve();
         return;
     }
@@ -7421,20 +7467,11 @@ void Document::requestStorageAccess(Ref<DeferredPromise>&& passedPromise)
     }
 
     // The iframe has to be a direct child of the top document.
-    auto& topDocument = this->topDocument();
     if (&topDocument != parentDocument()) {
         promise->reject();
         return;
     }
 
-    auto& securityOrigin = this->securityOrigin();
-    auto& topSecurityOrigin = topDocument.securityOrigin();
-    if (securityOrigin.equal(&topSecurityOrigin)) {
-        m_hasStorageAccess = true;
-        promise->resolve();
-        return;
-    }
-    
     if (!UserGestureIndicator::processingUserGesture()) {
         promise->reject();
         return;
@@ -7456,10 +7493,9 @@ void Document::requestStorageAccess(Ref<DeferredPromise>&& passedPromise)
             if (!document)
                 return;
 
-            if (wasGranted) {
-                document->m_hasStorageAccess = true;
+            if (wasGranted)
                 promise->resolve();
-            } else
+            else
                 promise->reject();
         });
         return;
@@ -7593,8 +7629,11 @@ void Document::setServiceWorkerConnection(SWClientConnection* serviceWorkerConne
 
     m_serviceWorkerConnection = serviceWorkerConnection;
 
-    if (m_serviceWorkerConnection)
-        m_serviceWorkerConnection->registerServiceWorkerClient(topOrigin(), identifier(), ServiceWorkerClientData::from(*this));
+    if (!m_serviceWorkerConnection)
+        return;
+
+    auto controllingServiceWorkerIdentifier = activeServiceWorker() ? std::make_optional<ServiceWorkerIdentifier>(activeServiceWorker()->identifier()) : std::nullopt;
+    m_serviceWorkerConnection->registerServiceWorkerClient(topOrigin(), identifier(), ServiceWorkerClientData::from(*this), controllingServiceWorkerIdentifier);
 }
 #endif
 

@@ -76,6 +76,31 @@ void WebSWServerToContextConnection::terminateWorker(ServiceWorkerIdentifier ser
     send(Messages::WebSWContextManagerConnection::TerminateWorker(serviceWorkerIdentifier));
 }
 
+void WebSWServerToContextConnection::syncTerminateWorker(ServiceWorkerIdentifier serviceWorkerIdentifier)
+{
+    sendSync(Messages::WebSWContextManagerConnection::SyncTerminateWorker(serviceWorkerIdentifier), Messages::WebSWContextManagerConnection::SyncTerminateWorker::Reply());
+}
+
+void WebSWServerToContextConnection::findClientByIdentifierCompleted(uint64_t requestIdentifier, const std::optional<ServiceWorkerClientData>& data, bool hasSecurityError)
+{
+    send(Messages::WebSWContextManagerConnection::FindClientByIdentifierCompleted { requestIdentifier, data, hasSecurityError });
+}
+
+void WebSWServerToContextConnection::matchAllCompleted(uint64_t requestIdentifier, const Vector<ServiceWorkerClientInformation>& clientsData)
+{
+    send(Messages::WebSWContextManagerConnection::MatchAllCompleted { requestIdentifier, clientsData });
+}
+
+void WebSWServerToContextConnection::claimCompleted(uint64_t requestIdentifier)
+{
+    send(Messages::WebSWContextManagerConnection::ClaimCompleted { requestIdentifier });
+}
+
+void WebSWServerToContextConnection::didFinishSkipWaiting(uint64_t callbackID)
+{
+    send(Messages::WebSWContextManagerConnection::DidFinishSkipWaiting { callbackID });
+}
+
 } // namespace WebKit
 
 #endif // ENABLE(SERVICE_WORKER)

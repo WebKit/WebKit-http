@@ -49,6 +49,8 @@
 #include <WebCore/ActivityState.h>
 #include <WebCore/DictionaryPopupInfo.h>
 #include <WebCore/FrameLoaderTypes.h>
+#include <WebCore/HTMLMenuElement.h>
+#include <WebCore/HTMLMenuItemElement.h>
 #include <WebCore/IntRect.h>
 #include <WebCore/IntSizeHash.h>
 #include <WebCore/Page.h>
@@ -83,6 +85,10 @@
 #include "GestureTypes.h"
 #include "WebPageMessages.h"
 #include <WebCore/ViewportConfiguration.h>
+#endif
+
+#if ENABLE(APPLICATION_MANIFEST)
+#include <WebCore/ApplicationManifest.h>
 #endif
 
 #if ENABLE(IOS_TOUCH_EVENTS)
@@ -123,6 +129,8 @@ class Frame;
 class FrameSelection;
 class FrameView;
 class GraphicsContext;
+class HTMLMenuElement;
+class HTMLMenuItemElement;
 class HTMLPlugInElement;
 class HTMLPlugInImageElement;
 class IntPoint;
@@ -305,6 +313,11 @@ public:
     String userAgent(WebFrame*, const WebCore::URL&) const;
     String platformUserAgent(const WebCore::URL&) const;
     WebCore::KeyboardUIMode keyboardUIMode();
+
+    void didInsertMenuElement(WebCore::HTMLMenuElement&);
+    void didRemoveMenuElement(WebCore::HTMLMenuElement&);
+    void didInsertMenuItemElement(WebCore::HTMLMenuItemElement&);
+    void didRemoveMenuItemElement(WebCore::HTMLMenuItemElement&);
 
     const String& overrideContentSecurityPolicy() const { return m_overrideContentSecurityPolicy; }
 
@@ -1011,13 +1024,20 @@ public:
     void sendPartialEditorStateAndSchedulePostLayoutUpdate();
     void flushPendingEditorStateUpdate();
 
-    void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, WTF::Function<void (bool)>&& callback);
+    void hasStorageAccess(String&& subFrameHost, String&& topFrameHost, WTF::CompletionHandler<void (bool)>&& callback);
+    void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, WTF::CompletionHandler<void (bool)>&& callback);
     void storageAccessResponse(bool wasGranted, uint64_t contextId);
 
 #if ENABLE(ATTACHMENT_ELEMENT)
     void insertAttachment(const String& identifier, const WebCore::AttachmentDisplayOptions&, const String& filename, std::optional<String> contentType, const IPC::DataReference&, CallbackID);
     void requestAttachmentData(const String& identifier, CallbackID);
     void setAttachmentDisplayOptions(const String& identifier, const WebCore::AttachmentDisplayOptions&, CallbackID);
+    void setAttachmentDataAndContentType(const String& identifier, const IPC::DataReference&, std::optional<String> newContentType, std::optional<String> newFilename, CallbackID);
+#endif
+
+#if ENABLE(APPLICATION_MANIFEST)
+    void getApplicationManifest(CallbackID);
+    void didFinishLoadingApplicationManifest(uint64_t, const std::optional<WebCore::ApplicationManifest>&);
 #endif
 
 private:
@@ -1035,11 +1055,18 @@ private:
     void platformEditorState(WebCore::Frame&, EditorState& result, IncludePostLayoutDataHint) const;
     void sendEditorStateUpdate();
 
+#if PLATFORM(COCOA)
+    void sendTouchBarMenuDataAddedUpdate(WebCore::HTMLMenuElement&);
+    void sendTouchBarMenuDataRemovedUpdate(WebCore::HTMLMenuElement&);
+    void sendTouchBarMenuItemDataAddedUpdate(WebCore::HTMLMenuItemElement&);
+    void sendTouchBarMenuItemDataRemovedUpdate(WebCore::HTMLMenuItemElement&);
+#endif
+
     void didReceiveWebPageMessage(IPC::Connection&, IPC::Decoder&);
     void didReceiveSyncWebPageMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
 
 #if PLATFORM(IOS)
-    void resetViewportDefaultConfiguration(WebFrame* mainFrame);
+    void resetViewportDefaultConfiguration(WebFrame* mainFrame, bool hasMobileDocType = false);
     void viewportConfigurationChanged();
     void updateViewportSizeForCSSViewportUnits();
 
@@ -1226,7 +1253,7 @@ private:
     void didReceiveNotificationPermissionDecision(uint64_t notificationID, bool allowed);
 
 #if ENABLE(MEDIA_STREAM)
-    void userMediaAccessWasGranted(uint64_t userMediaID, String&& audioDeviceUID, String&& videoDeviceUID, String&& mediaDeviceIdentifierHashSalt);
+    void userMediaAccessWasGranted(uint64_t userMediaID, WebCore::CaptureDevice&& audioDeviceUID, WebCore::CaptureDevice&& videoDeviceUID, String&& mediaDeviceIdentifierHashSalt);
     void userMediaAccessWasDenied(uint64_t userMediaID, uint64_t reason, String&& invalidConstraint);
 
     void didCompleteMediaDeviceEnumeration(uint64_t userMediaID, const Vector<WebCore::CaptureDevice>& devices, String&& deviceIdentifierHashSalt, bool originHasPersistentAccess);
@@ -1627,6 +1654,10 @@ private:
     HashMap<uint64_t, WebURLSchemeHandlerProxy*> m_identifierToURLSchemeHandlerProxyMap;
 
     HashMap<uint64_t, WTF::Function<void (bool granted)>> m_storageAccessResponseCallbackMap;
+
+#if ENABLE(APPLICATION_MANIFEST)
+    HashMap<uint64_t, uint64_t> m_applicationManifestFetchCallbackMap;
+#endif
 };
 
 } // namespace WebKit

@@ -29,7 +29,9 @@
 
 #include "Connection.h"
 #include "MessageReceiver.h"
+#include "WebSWContextManagerConnectionMessages.h"
 #include <WebCore/SWContextManager.h>
+#include <WebCore/ServiceWorkerClientInformation.h>
 #include <WebCore/ServiceWorkerTypes.h>
 
 namespace IPC {
@@ -51,6 +53,7 @@ public:
     WebSWContextManagerConnection(Ref<IPC::Connection>&&, uint64_t pageID, const WebPreferencesStore&);
 
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) final;
+    void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) final;
 
 private:
     void updatePreferences(const WebPreferencesStore&);
@@ -61,19 +64,35 @@ private:
     void didFinishActivation(WebCore::ServiceWorkerIdentifier) final;
     void setServiceWorkerHasPendingEvents(WebCore::ServiceWorkerIdentifier, bool) final;
     void workerTerminated(WebCore::ServiceWorkerIdentifier) final;
+    void findClientByIdentifier(WebCore::ServiceWorkerIdentifier, WebCore::ServiceWorkerClientIdentifier, FindClientByIdentifierCallback&&) final;
+    void matchAll(WebCore::ServiceWorkerIdentifier, const WebCore::ServiceWorkerClientQueryOptions&, WebCore::ServiceWorkerClientsMatchAllCallback&&) final;
+    void claim(WebCore::ServiceWorkerIdentifier, WTF::CompletionHandler<void()>&&) final;
+    void skipWaiting(WebCore::ServiceWorkerIdentifier, WTF::Function<void()>&& callback) final;
 
     // IPC messages.
     void serviceWorkerStartedWithMessage(std::optional<WebCore::ServiceWorkerJobDataIdentifier>, WebCore::ServiceWorkerIdentifier, const String& exceptionMessage) final;
     void installServiceWorker(const WebCore::ServiceWorkerContextData&);
     void startFetch(WebCore::SWServerConnectionIdentifier, uint64_t fetchIdentifier, std::optional<WebCore::ServiceWorkerIdentifier>, WebCore::ResourceRequest&&, WebCore::FetchOptions&&, IPC::FormDataReference&&);
-    void postMessageToServiceWorkerGlobalScope(WebCore::ServiceWorkerIdentifier destinationIdentifier, const IPC::DataReference& message, WebCore::ServiceWorkerClientIdentifier sourceIdentifier, WebCore::ServiceWorkerClientData&& sourceData);
+    void postMessageToServiceWorkerFromClient(WebCore::ServiceWorkerIdentifier destinationIdentifier, const IPC::DataReference& message, WebCore::ServiceWorkerClientIdentifier sourceIdentifier, WebCore::ServiceWorkerClientData&& sourceData);
+    void postMessageToServiceWorkerFromServiceWorker(WebCore::ServiceWorkerIdentifier destination, const IPC::DataReference& message, WebCore::ServiceWorkerData&& sourceData);
     void fireInstallEvent(WebCore::ServiceWorkerIdentifier);
     void fireActivateEvent(WebCore::ServiceWorkerIdentifier);
     void terminateWorker(WebCore::ServiceWorkerIdentifier);
+    void syncTerminateWorker(WebCore::ServiceWorkerIdentifier, Ref<Messages::WebSWContextManagerConnection::SyncTerminateWorker::DelayedReply>&&);
+    void findClientByIdentifierCompleted(uint64_t requestIdentifier, std::optional<WebCore::ServiceWorkerClientData>&&, bool hasSecurityError);
+    void matchAllCompleted(uint64_t matchAllRequestIdentifier, Vector<WebCore::ServiceWorkerClientInformation>&&);
+    void claimCompleted(uint64_t claimRequestIdentifier);
+    void didFinishSkipWaiting(uint64_t callbackID);
 
     Ref<IPC::Connection> m_connectionToStorageProcess;
     uint64_t m_pageID { 0 };
     uint64_t m_previousServiceWorkerID { 0 };
+
+    HashMap<uint64_t, FindClientByIdentifierCallback> m_findClientByIdentifierRequests;
+    HashMap<uint64_t, WebCore::ServiceWorkerClientsMatchAllCallback> m_matchAllRequests;
+    HashMap<uint64_t, WTF::CompletionHandler<void()>> m_claimRequests;
+    HashMap<uint64_t, WTF::Function<void()>> m_skipWaitingRequests;
+    uint64_t m_previousRequestIdentifier { 0 };
 };
 
 } // namespace WebKit

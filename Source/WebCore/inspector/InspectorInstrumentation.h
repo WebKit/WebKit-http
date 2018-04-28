@@ -48,6 +48,7 @@
 #include "StorageArea.h"
 #include "WorkerGlobalScope.h"
 #include "WorkerInspectorController.h"
+#include <runtime/JSCInlines.h>
 #include <wtf/MemoryPressureHandler.h>
 #include <wtf/RefPtr.h>
 
@@ -194,7 +195,6 @@ public:
     static void continueAfterXFrameOptionsDenied(Frame&, unsigned long identifier, DocumentLoader&, const ResourceResponse&);
     static void continueWithPolicyDownload(Frame&, unsigned long identifier, DocumentLoader&, const ResourceResponse&);
     static void continueWithPolicyIgnore(Frame&, unsigned long identifier, DocumentLoader&, const ResourceResponse&);
-    static void didFinishXHRLoading(ScriptExecutionContext*, unsigned long identifier, std::optional<String> decodedText);
     static void willLoadXHRSynchronously(ScriptExecutionContext*);
     static void didLoadXHRSynchronously(ScriptExecutionContext*);
     static void scriptImported(ScriptExecutionContext&, unsigned long identifier, const String& sourceString);
@@ -225,6 +225,7 @@ public:
     static void consoleTimeStamp(Frame&, Ref<Inspector::ScriptArguments>&&);
     static void startProfiling(Page&, JSC::ExecState*, const String& title);
     static void stopProfiling(Page&, JSC::ExecState*, const String& title);
+    static void consoleStartRecordingCanvas(HTMLCanvasElement&, JSC::ExecState&, JSC::JSObject* options);
 
     static void didRequestAnimationFrame(Document&, int callbackId);
     static void didCancelAnimationFrame(Document&, int callbackId);
@@ -364,7 +365,6 @@ private:
     static void didReceiveDataImpl(InstrumentingAgents&, unsigned long identifier, const char* data, int dataLength, int encodedDataLength);
     static void didFinishLoadingImpl(InstrumentingAgents&, unsigned long identifier, DocumentLoader*, const NetworkLoadMetrics&, ResourceLoader*);
     static void didFailLoadingImpl(InstrumentingAgents&, unsigned long identifier, DocumentLoader*, const ResourceError&);
-    static void didFinishXHRLoadingImpl(InstrumentingAgents&, unsigned long identifier, std::optional<String> decodedText);
     static void willLoadXHRSynchronouslyImpl(InstrumentingAgents&);
     static void didLoadXHRSynchronouslyImpl(InstrumentingAgents&);
     static void scriptImportedImpl(InstrumentingAgents&, unsigned long identifier, const String& sourceString);
@@ -391,14 +391,14 @@ private:
     static void stopConsoleTimingImpl(InstrumentingAgents&, Frame&, const String& title, Ref<Inspector::ScriptCallStack>&&);
     static void stopConsoleTimingImpl(InstrumentingAgents&, const String& title, Ref<Inspector::ScriptCallStack>&&);
     static void consoleTimeStampImpl(InstrumentingAgents&, Frame&, Ref<Inspector::ScriptArguments>&&);
+    static void startProfilingImpl(InstrumentingAgents&, JSC::ExecState*, const String& title);
+    static void stopProfilingImpl(InstrumentingAgents&, JSC::ExecState*, const String& title);
+    static void consoleStartRecordingCanvasImpl(InstrumentingAgents&, HTMLCanvasElement&, JSC::ExecState&, JSC::JSObject* options);
 
     static void didRequestAnimationFrameImpl(InstrumentingAgents&, int callbackId, Document&);
     static void didCancelAnimationFrameImpl(InstrumentingAgents&, int callbackId, Document&);
     static InspectorInstrumentationCookie willFireAnimationFrameImpl(InstrumentingAgents&, int callbackId, Document&);
     static void didFireAnimationFrameImpl(const InspectorInstrumentationCookie&);
-
-    static void startProfilingImpl(InstrumentingAgents&, JSC::ExecState*, const String& title);
-    static void stopProfilingImpl(InstrumentingAgents&, JSC::ExecState*, const String& title);
 
     static void didOpenDatabaseImpl(InstrumentingAgents&, RefPtr<Database>&&, const String& domain, const String& name, const String& version);
 
@@ -1009,13 +1009,6 @@ inline void InspectorInstrumentation::continueWithPolicyIgnore(Frame& frame, uns
         didReceiveResourceResponseImpl(*instrumentingAgents, identifier, &loader, response, nullptr);
 }
 
-inline void InspectorInstrumentation::didFinishXHRLoading(ScriptExecutionContext* context, unsigned long identifier, std::optional<String> decodedText)
-{
-    FAST_RETURN_IF_NO_FRONTENDS(void());
-    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForContext(context))
-        didFinishXHRLoadingImpl(*instrumentingAgents, identifier, decodedText);
-}
-
 inline void InspectorInstrumentation::willLoadXHRSynchronously(ScriptExecutionContext* context)
 {
     FAST_RETURN_IF_NO_FRONTENDS(void());
@@ -1387,6 +1380,13 @@ inline void InspectorInstrumentation::startProfiling(Page& page, JSC::ExecState*
 inline void InspectorInstrumentation::stopProfiling(Page& page, JSC::ExecState* exec, const String &title)
 {
     stopProfilingImpl(instrumentingAgentsForPage(page), exec, title);
+}
+
+inline void InspectorInstrumentation::consoleStartRecordingCanvas(HTMLCanvasElement& canvasElement, JSC::ExecState& exec, JSC::JSObject* options)
+{
+    FAST_RETURN_IF_NO_FRONTENDS(void());
+    if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForDocument(&canvasElement.document()))
+        consoleStartRecordingCanvasImpl(*instrumentingAgents, canvasElement, exec, options);
 }
 
 inline void InspectorInstrumentation::didRequestAnimationFrame(Document& document, int callbackId)

@@ -2243,9 +2243,33 @@ WI.createMessageTextView = function(message, isError)
     if (isError)
         messageElement.classList.add("error");
 
-    messageElement.textContent = message;
+    let textElement = messageElement.appendChild(document.createElement("div"));
+    textElement.className = "message";
+    textElement.textContent = message;
 
     return messageElement;
+};
+
+WI.createNavigationItemHelp = function(formatString, navigationItem)
+{
+    console.assert(typeof formatString === "string");
+    console.assert(navigationItem instanceof WI.NavigationItem);
+
+    function append(a, b) {
+        a.append(b);
+        return a;
+    }
+
+    let containerElement = document.createElement("div");
+    containerElement.className = "navigation-item-help";
+    containerElement.__navigationItem = navigationItem;
+
+    let wrapperElement = document.createElement("div");
+    wrapperElement.className = "navigation-bar";
+    wrapperElement.appendChild(navigationItem.element);
+
+    String.format(formatString, [wrapperElement], String.standardFormatters, containerElement, append);
+    return containerElement;
 };
 
 WI.createGoToArrowButton = function()

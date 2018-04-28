@@ -34,18 +34,14 @@ WI.SpreadsheetRulesStyleDetailsPanel = class SpreadsheetRulesStyleDetailsPanel e
 
         this.element.classList.add("spreadsheet-style-panel");
 
+        this._headerMap = new Map;
         this._sections = [];
-        this._inspectorSection = null;
-        this._isInspectorSectionPendingFocus = false;
+        this._newRuleSelector = null;
         this._ruleMediaAndInherticanceList = [];
         this._propertyToSelectAndHighlight = null;
+        this._filterText = null;
 
-        this._emptyFilterResultsElement = document.createElement("div");
-        this._emptyFilterResultsElement.classList.add("no-filter-results");
-
-        this._emptyFilterResultsMessage = this._emptyFilterResultsElement.appendChild(document.createElement("div"));
-        this._emptyFilterResultsMessage.classList.add("no-filter-results-message");
-        this._emptyFilterResultsMessage.textContent = WI.UIString("No Results Found");
+        this._emptyFilterResultsElement = WI.createMessageTextView(WI.UIString("No Results Found"));
     }
 
     // Public
@@ -58,6 +54,12 @@ WI.SpreadsheetRulesStyleDetailsPanel = class SpreadsheetRulesStyleDetailsPanel e
             super.refresh(significantChange);
             return;
         }
+
+        this.removeAllSubviews();
+
+        let previousStyle = null;
+        this._headerMap.clear();
+        this._sections = [];
 
         let uniqueOrderedStyles = (orderedStyles) => {
             let uniqueStyles = [];
@@ -83,48 +85,61 @@ WI.SpreadsheetRulesStyleDetailsPanel = class SpreadsheetRulesStyleDetailsPanel e
             return uniqueStyles;
         };
 
-        let createInheritedHeader = (style) => {
-            let inheritedHeader = document.createElement("h2");
-            inheritedHeader.classList.add("section-inherited");
-            inheritedHeader.append(WI.UIString("Inherited From: "), WI.linkifyNodeReference(style.node, {
+        let createHeader = (text, node) => {
+            let header = this.element.appendChild(document.createElement("h2"));
+            header.classList.add("section-header");
+            header.append(text);
+            header.append(" ", WI.linkifyNodeReference(node, {
                 maxLength: 100,
                 excludeRevealElement: true,
             }));
 
-            return inheritedHeader;
+            this._headerMap.set(node, header);
         };
 
-        this.removeAllSubviews();
-
-        let orderedStyles = uniqueOrderedStyles(this.nodeStyles.orderedStyles);
-        let previousStyle = null;
-
-        this._sections = [];
-
-        for (let style of orderedStyles) {
-            if (style.inherited && (!previousStyle || previousStyle.node !== style.node))
-                this.element.append(createInheritedHeader(style));
-
-            // FIXME: <https://webkit.org/b/176187> Display matching pseudo-styles
-            // FIXME: <https://webkit.org/b/176289> Display at-rule section headers (@media, @keyframes, etc.)
-
+        let createSection = (style) => {
             let section = style[WI.SpreadsheetRulesStyleDetailsPanel.RuleSection];
             if (!section) {
                 section = new WI.SpreadsheetCSSStyleDeclarationSection(this, style);
                 style[WI.SpreadsheetRulesStyleDetailsPanel.RuleSection] = section;
             }
 
-            if (this._isInspectorSectionPendingFocus && style.isInspectorRule())
-                this._inspectorSection = section;
+            section.addEventListener(WI.SpreadsheetCSSStyleDeclarationSection.Event.FilterApplied, this._handleSectionFilterApplied, this);
+
+            if (this._newRuleSelector === style.selectorText && !style.hasProperties())
+                section.startEditingRuleSelector();
 
             this.addSubview(section);
             section.needsLayout();
             this._sections.push(section);
 
             previousStyle = style;
+        };
+
+        for (let style of uniqueOrderedStyles(this.nodeStyles.orderedStyles)) {
+            if (style.inherited && (!previousStyle || previousStyle.node !== style.node))
+                createHeader(WI.UIString("Inherited From"), style.node);
+
+            createSection(style);
         }
 
+        let pseudoElements = Array.from(this.nodeStyles.node.pseudoElements().values());
+        Promise.all(pseudoElements.map((pseudoElement) => WI.cssStyleManager.stylesForNode(pseudoElement).refreshIfNeeded()))
+        .then((pseudoNodeStyles) => {
+            for (let pseudoNodeStyle of pseudoNodeStyles) {
+                createHeader(WI.UIString("Pseudo Element"), pseudoNodeStyle.node);
+
+                for (let style of uniqueOrderedStyles(pseudoNodeStyle.orderedStyles))
+                    createSection(style);
+            }
+        });
+
+        this._newRuleSelector = null;
+
         this.element.append(this._emptyFilterResultsElement);
+
+        if (this._filterText)
+            this.applyFilter(this._filterText);
 
         super.refresh(significantChange);
     }
@@ -152,6 +167,43 @@ WI.SpreadsheetRulesStyleDetailsPanel = class SpreadsheetRulesStyleDetailsPanel e
         }
     }
 
+    newRuleButtonClicked()
+    {
+        if (this.nodeStyles.node.isInUserAgentShadowTree())
+            return;
+
+        this._addNewRule();
+    }
+
+    newRuleButtonContextMenu(event)
+    {
+        if (this.nodeStyles.node.isInUserAgentShadowTree())
+            return;
+
+        let styleSheets = WI.cssStyleManager.styleSheets.filter(styleSheet => styleSheet.hasInfo() && !styleSheet.isInlineStyleTag() && !styleSheet.isInlineStyleAttributeStyleSheet());
+        if (!styleSheets.length)
+            return;
+
+        let contextMenu = WI.ContextMenu.createFromEvent(event);
+
+        const handler = null;
+        const disabled = true;
+        contextMenu.appendItem(WI.UIString("Available Style Sheets"), handler, disabled);
+
+        let [inspectorStyleSheets, regularStyleSheets] = styleSheets.partition(styleSheet => styleSheet.isInspectorStyleSheet());
+        console.assert(inspectorStyleSheets.length <= 1, "There should never be more than one inspector style sheet");
+
+        contextMenu.appendItem(WI.UIString("Inspector Style Sheet"), () => {
+            this._addNewRule(inspectorStyleSheets.length ? inspectorStyleSheets[0].id : null);
+        });
+
+        for (let styleSheet of regularStyleSheets) {
+            contextMenu.appendItem(styleSheet.displayName, () => {
+                this._addNewRule(styleSheet.id);
+            });
+        }
+    }
+
     cssStyleDeclarationSectionStartEditingNextRule(currentSection)
     {
         let currentIndex = this._sections.indexOf(currentSection);
@@ -175,6 +227,57 @@ WI.SpreadsheetRulesStyleDetailsPanel = class SpreadsheetRulesStyleDetailsPanel e
                 break;
             }
         }
+    }
+
+    applyFilter(filterText)
+    {
+        this._filterText = filterText;
+
+        if (!this.didInitialLayout)
+            return;
+
+        if (this._filterText)
+            this.element.classList.add("filter-non-matching");
+
+        for (let header of this._headerMap.values())
+            header.classList.add(WI.GeneralStyleDetailsSidebarPanel.NoFilterMatchInSectionClassName);
+
+        for (let section of this._sections)
+            section.applyFilter(this._filterText);
+    }
+
+    // Protected
+
+    filterDidChange(filterBar)
+    {
+        super.filterDidChange(filterBar);
+
+        this.applyFilter(filterBar.filters.text);
+    }
+
+    // Private
+
+    _handleSectionFilterApplied(event)
+    {
+        if (!event.data.matches)
+            return;
+
+        this.element.classList.remove("filter-non-matching");
+
+        let header = this._headerMap.get(event.target.style.node);
+        if (header)
+            header.classList.remove(WI.GeneralStyleDetailsSidebarPanel.NoFilterMatchInSectionClassName);
+    }
+
+    // Private
+
+    _addNewRule(stylesheetId)
+    {
+        const justSelector = true;
+        this._newRuleSelector = this.nodeStyles.node.appropriateSelectorFor(justSelector);
+
+        const text = "";
+        this.nodeStyles.addRule(this._newRuleSelector, text, stylesheetId);
     }
 };
 

@@ -35,13 +35,7 @@ WI.RulesStyleDetailsPanel = class RulesStyleDetailsPanel extends WI.StyleDetails
         this._ruleMediaAndInherticanceList = [];
         this._propertyToSelectAndHighlight = null;
 
-        this._emptyFilterResultsElement = document.createElement("div");
-        this._emptyFilterResultsElement.classList.add("no-filter-results");
-
-        this._emptyFilterResultsMessage = document.createElement("div");
-        this._emptyFilterResultsMessage.classList.add("no-filter-results-message");
-        this._emptyFilterResultsMessage.textContent = WI.UIString("No Results Found");
-        this._emptyFilterResultsElement.appendChild(this._emptyFilterResultsMessage);
+        this._emptyFilterResultsElement = WI.createMessageTextView(WI.UIString("No Results Found"));
 
         this._boundRemoveSectionWithActiveEditor = this._removeSectionWithActiveEditor.bind(this);
     }
@@ -361,7 +355,7 @@ WI.RulesStyleDetailsPanel = class RulesStyleDetailsPanel extends WI.StyleDetails
     {
         for (var labels of this._ruleMediaAndInherticanceList) {
             for (var i = 0; i < labels.length; ++i) {
-                labels[i].classList.toggle(WI.CSSStyleDetailsSidebarPanel.NoFilterMatchInSectionClassName, filterBar.hasActiveFilters());
+                labels[i].classList.toggle(WI.GeneralStyleDetailsSidebarPanel.NoFilterMatchInSectionClassName, filterBar.hasActiveFilters());
 
                 if (i === labels.length - 1)
                     labels[i].classList.toggle("filter-matching-label", filterBar.hasActiveFilters());
@@ -375,9 +369,9 @@ WI.RulesStyleDetailsPanel = class RulesStyleDetailsPanel extends WI.StyleDetails
             if (section.findMatchingPropertiesAndSelectors(filterBar.filters.text) && filterBar.hasActiveFilters()) {
                 if (this._ruleMediaAndInherticanceList[i].length) {
                     for (var label of this._ruleMediaAndInherticanceList[i])
-                        label.classList.remove(WI.CSSStyleDetailsSidebarPanel.NoFilterMatchInSectionClassName);
+                        label.classList.remove(WI.GeneralStyleDetailsSidebarPanel.NoFilterMatchInSectionClassName);
                 } else
-                    section.element.classList.add(WI.CSSStyleDetailsSidebarPanel.FilterMatchingSectionHasLabelClassName);
+                    section.element.classList.add(WI.GeneralStyleDetailsSidebarPanel.FilterMatchingSectionHasLabelClassName);
 
                 matchFound = true;
             }

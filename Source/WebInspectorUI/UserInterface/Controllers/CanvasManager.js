@@ -55,6 +55,35 @@ WI.CanvasManager = class CanvasManager extends WI.Object
 
     get recordingCanvas() { return this._recordingCanvas; }
 
+    importRecording()
+    {
+        WI.loadDataFromFile((data, filename) => {
+            if (!data)
+                return;
+
+            let payload = null;
+            try {
+                payload = JSON.parse(data);
+            } catch (e) {
+                WI.Recording.synthesizeError(e);
+                return;
+            }
+
+            let recording = WI.Recording.fromPayload(payload);
+            if (!recording) {
+                WI.Recording.synthesizeError(WI.UIString("unsupported version."));
+                return;
+            }
+
+            let extensionStart = filename.lastIndexOf(".");
+            if (extensionStart !== -1)
+                filename = filename.substring(0, extensionStart);
+            recording.createDisplayName(filename);
+
+            this.dispatchEventToListeners(WI.CanvasManager.Event.RecordingImported, {recording});
+        });
+    }
+
     startRecording(canvas, singleFrame)
     {
         console.assert(!this._recordingCanvas, "Recording already started.");
@@ -168,10 +197,13 @@ WI.CanvasManager = class CanvasManager extends WI.Object
     {
         // Called from WI.CanvasObserver.
 
-        this._recordingCanvas = null;
-
         let canvas = this._canvasIdentifierMap.get(canvasIdentifier);
         console.assert(canvas);
+
+        let fromConsole = canvas !== this._recordingCanvas;
+        if (!fromConsole)
+            this._recordingCanvas = null;
+
         if (!canvas)
             return;
 
@@ -179,12 +211,12 @@ WI.CanvasManager = class CanvasManager extends WI.Object
         let recording = recordingPayload ? WI.Recording.fromPayload(recordingPayload, frames) : null;
         if (recording) {
             recording.source = canvas;
-            recording.createDisplayName();
+            recording.createDisplayName(recordingPayload.name);
 
             canvas.recordingCollection.add(recording);
         }
 
-        this.dispatchEventToListeners(WI.CanvasManager.Event.RecordingStopped, {canvas, recording});
+        this.dispatchEventToListeners(WI.CanvasManager.Event.RecordingStopped, {canvas, recording, fromConsole});
     }
 
     extensionEnabled(canvasIdentifier, extension)
@@ -268,6 +300,7 @@ WI.CanvasManager = class CanvasManager extends WI.Object
 WI.CanvasManager.Event = {
     CanvasAdded: "canvas-manager-canvas-was-added",
     CanvasRemoved: "canvas-manager-canvas-was-removed",
+    RecordingImported: "canvas-manager-recording-imported",
     RecordingStarted: "canvas-manager-recording-started",
     RecordingProgress: "canvas-manager-recording-progress",
     RecordingStopped: "canvas-manager-recording-stopped",

@@ -84,6 +84,12 @@
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
+#if ENABLE(APPLICATION_MANIFEST)
+#include "ApplicationManifestLoader.h"
+#include "HTMLHeadElement.h"
+#include "HTMLLinkElement.h"
+#endif
+
 #if ENABLE(WEB_ARCHIVE) || ENABLE(MHTML)
 #include "ArchiveFactory.h"
 #endif
@@ -281,6 +287,12 @@ void DocumentLoader::stopLoading()
         notifyFinishedLoadingIcon(callbackIdentifier, nullptr);
     m_iconLoaders.clear();
     m_iconsPendingLoadDecision.clear();
+    
+#if ENABLE(APPLICATION_MANIFEST)
+    for (auto callbackIdentifier : m_applicationManifestLoaders.values())
+        notifyFinishedLoadingApplicationManifest(callbackIdentifier, std::nullopt);
+    m_applicationManifestLoaders.clear();
+#endif
 
     // Always cancel multipart loaders
     cancelAll(m_multipartSubresourceLoaders);
@@ -874,11 +886,11 @@ void DocumentLoader::commitData(const char* bytes, size_t length)
         if (RuntimeEnabledFeatures::sharedFeatures().serviceWorkerEnabled()) {
             // FIXME: We should probably register the client as soon as we do the related navigation fetch.
             // We can probably implement this when supporting FetchEvent.reservedClientId.
-            m_frame->document()->setServiceWorkerConnection(&ServiceWorkerProvider::singleton().serviceWorkerConnectionForSession(m_frame->page()->sessionID()));
             if (m_serviceWorkerRegistrationData && m_serviceWorkerRegistrationData->activeWorker) {
                 m_frame->document()->setActiveServiceWorker(ServiceWorker::getOrCreate(*m_frame->document(), WTFMove(m_serviceWorkerRegistrationData->activeWorker.value())));
                 m_serviceWorkerRegistrationData = { };
             }
+            m_frame->document()->setServiceWorkerConnection(&ServiceWorkerProvider::singleton().serviceWorkerConnectionForSession(m_frame->page()->sessionID()));
         }
 #endif
         // Call receivedFirstData() exactly once per load. We should only reach this point multiple times
@@ -1044,6 +1056,69 @@ void DocumentLoader::clearMainResourceLoader()
     if (this == frameLoader()->activeDocumentLoader())
         checkLoadComplete();
 }
+
+#if ENABLE(APPLICATION_MANIFEST)
+uint64_t DocumentLoader::loadApplicationManifest()
+{
+    static uint64_t nextCallbackID = 1;
+
+    auto* document = this->document();
+    if (!document)
+        return 0;
+
+    if (!m_frame->isMainFrame())
+        return 0;
+
+    if (document->url().isEmpty() || document->url().isBlankURL())
+        return 0;
+
+    auto head = document->head();
+    if (!head)
+        return 0;
+
+    URL manifestURL;
+    bool useCredentials = false;
+    for (const auto& link : childrenOfType<HTMLLinkElement>(*head)) {
+        if (link.isApplicationManifest()) {
+            manifestURL = link.href();
+            useCredentials = equalIgnoringASCIICase(link.attributeWithoutSynchronization(HTMLNames::crossoriginAttr), "use-credentials");
+            break;
+        }
+    }
+
+    if (manifestURL.isEmpty() || !manifestURL.isValid())
+        return 0;
+
+    auto manifestLoader = std::make_unique<ApplicationManifestLoader>(*this, manifestURL, useCredentials);
+    auto* rawManifestLoader = manifestLoader.get();
+    auto callbackID = nextCallbackID++;
+    m_applicationManifestLoaders.set(WTFMove(manifestLoader), callbackID);
+
+    if (!rawManifestLoader->startLoading()) {
+        m_applicationManifestLoaders.remove(rawManifestLoader);
+        return 0;
+    }
+
+    return callbackID;
+}
+
+void DocumentLoader::finishedLoadingApplicationManifest(ApplicationManifestLoader& loader)
+{
+    // If the DocumentLoader has detached from its frame, all manifest loads should have already been canceled.
+    ASSERT(m_frame);
+
+    auto callbackIdentifier = m_applicationManifestLoaders.get(&loader);
+    notifyFinishedLoadingApplicationManifest(callbackIdentifier, loader.processManifest());
+    m_applicationManifestLoaders.remove(&loader);
+}
+
+void DocumentLoader::notifyFinishedLoadingApplicationManifest(uint64_t callbackIdentifier, std::optional<ApplicationManifest> manifest)
+{
+    RELEASE_ASSERT(callbackIdentifier);
+    RELEASE_ASSERT(m_frame);
+    m_frame->loader().client().finishedLoadingApplicationManifest(callbackIdentifier, manifest);
+}
+#endif
 
 void DocumentLoader::setCustomHeaderFields(Vector<HTTPHeaderField>&& fields)
 {
@@ -1531,7 +1606,7 @@ void DocumentLoader::loadMainResource(ResourceRequest&& request)
     mainResourceRequest.setNavigationServiceWorkerRegistrationData(m_serviceWorkerRegistrationData);
 #endif
 
-    m_mainResource = m_cachedResourceLoader->requestMainResource(WTFMove(mainResourceRequest)).valueOr(nullptr);
+    m_mainResource = m_cachedResourceLoader->requestMainResource(WTFMove(mainResourceRequest)).value_or(nullptr);
 
 #if ENABLE(CONTENT_EXTENSIONS)
     if (m_mainResource && m_mainResource->errorOccurred() && m_frame->page() && m_mainResource->resourceError().domain() == ContentExtensions::WebKitContentBlockerDomain) {
