@@ -1367,7 +1367,7 @@ void BWebPage::handleFindString(BMessage* message)
         message->SendReply(&reply);
     }
 
-    WebCore::FindOptions options = 0;
+    WebCore::FindOptions options;
     if (!forward)
         options |= WebCore::Backwards;
     if (!caseSensitive)

@@ -179,8 +179,7 @@ AccessibilityObject* AccessibilityARIAGridCell::parentRowGroup() const
 
 String AccessibilityARIAGridCell::readOnlyValue() const
 {
-    if (hasProperty(AXPropertyName::ReadOnly))
-        return boolValueForProperty(AXPropertyName::ReadOnly).value() ? "true" : "false";
+        return "false";
 
     // ARIA 1.1 requires user agents to propagate the grid's aria-readonly value to all
     // gridcell elements if the property is not present on the gridcell element itelf.

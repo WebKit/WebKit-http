@@ -655,8 +655,6 @@
 #define HAVE_TM_ZONE 1
 #define HAVE_SYS_TIME_H 1
 
-#define USE_SYSTEM_MALLOC 1
-
 #define ENABLE_INSPECTOR 1
 #define ENABLE_JAVASCRIPT_DEBUGGER 1
 #endif

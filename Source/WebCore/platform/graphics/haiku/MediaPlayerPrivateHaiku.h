@@ -48,6 +48,7 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface {
         ~MediaPlayerPrivate();
 
         void load(const String& url) override;
+		void load(const String& url, MediaSourcePrivateClient*) override;
         void cancelLoad() override;
 
         void prepareToPlay() override;

@@ -73,6 +73,11 @@ MediaPlayerPrivate::~MediaPlayerPrivate()
     delete m_frameBuffer;
 }
 
+void MediaPlayerPrivate::load(const String& url, WebCore::MediaSourcePrivateClient*)
+{
+	load(url);
+}
+
 void MediaPlayerPrivate::load(const String& url)
 {
     // Cleanup from previous request (can this even happen?)

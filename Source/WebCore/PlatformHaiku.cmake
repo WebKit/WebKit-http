@@ -44,6 +44,8 @@ list(APPEND WebCore_SOURCES
 
   page/PointerLockController.cpp
 
+  platform/audio/FFTFrameStub.cpp
+
   platform/haiku/CursorHaiku.cpp
   platform/haiku/DragImageHaiku.cpp
   platform/haiku/DragDataHaiku.cpp
@@ -189,6 +191,12 @@ if (ENABLE_SUBTLE_CRYPTO)
         crypto/keys/CryptoKeyRSA.cpp
         crypto/keys/CryptoKeyRaw.cpp
     )
+endif ()
+
+if (ENABLE_WEB_AUDIO)
+    list(APPEND WebCore_SOURCES
+		platform/audio/haiku/AudioDestinationHaiku.cpp
+	)
 endif ()
 
 list(APPEND WebCore_USER_AGENT_STYLE_SHEETS

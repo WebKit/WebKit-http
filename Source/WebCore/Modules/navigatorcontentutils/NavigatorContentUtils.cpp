@@ -80,7 +80,7 @@ static bool verifyProtocolHandlerScheme(const String& scheme)
     // FIXME: Should this be case sensitive, or should it be ASCII case-insensitive?
     if (scheme.startsWith("web+")) {
         // The specification requires that the length of scheme is at least five characters (including 'web+' prefix).
-        if (scheme.length() >= 5 && isValidProtocol(scheme))
+        if (scheme.length() >= 5)
             return true;
     }
 

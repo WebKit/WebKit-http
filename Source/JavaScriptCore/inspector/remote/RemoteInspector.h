@@ -42,6 +42,10 @@ OBJC_CLASS NSString;
 typedef RetainPtr<NSDictionary> TargetListing;
 #endif
 
+#if PLATFORM(HAIKU)
+typedef void* TargetListing;
+#endif
+
 #if USE(GLIB)
 #include <wtf/glib/GRefPtr.h>
 typedef GRefPtr<GVariant> TargetListing;

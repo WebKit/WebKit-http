@@ -37,8 +37,6 @@ namespace WebCore {
 class Page;
 class Navigator;
 
-typedef int ExceptionCode;
-
 class NavigatorContentUtils final : public Supplement<Page> {
 public:
     explicit NavigatorContentUtils(std::unique_ptr<NavigatorContentUtilsClient> client)

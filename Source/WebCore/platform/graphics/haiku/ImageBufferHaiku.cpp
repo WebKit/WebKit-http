@@ -368,7 +368,7 @@ RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& 
     return getImageData(backingStoreRect, m_data, m_size, true);
 }
 
-void ImageBuffer::putByteArray(Multiply multiplied, const Uint8ClampedArray& source, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, CoordinateSystem)
+void ImageBuffer::putByteArray(const Uint8ClampedArray& source, AlphaPremultiplication multiplied, const IntSize& sourceSize, const IntRect& sourceRect, const IntPoint& destPoint, CoordinateSystem)
 {
     // Make sure all asynchronous drawing has finished
     m_data.m_view->Sync();
@@ -400,7 +400,7 @@ void ImageBuffer::putByteArray(Multiply multiplied, const Uint8ClampedArray& sou
     unsigned rows = sourceRect.height();
     unsigned columns = sourceRect.width();
     convertToInternalData(sourceRows, sourceBytesPerRow, destRows, destBytesPerRow,
-        rows, columns, multiplied == Premultiplied);
+        rows, columns, multiplied == AlphaPremultiplication::Premultiplied);
 }
 
 // TODO: quality

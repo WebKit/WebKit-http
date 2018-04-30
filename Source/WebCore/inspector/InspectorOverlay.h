@@ -33,7 +33,6 @@
 #include "LayoutRect.h"
 #include "NodeList.h"
 #include "Timer.h"
-#include "inspector/InspectorController.h"
 #include "inspector/InspectorProtocolTypes.h"
 #include <wtf/Deque.h>
 #include <wtf/JSONValues.h>

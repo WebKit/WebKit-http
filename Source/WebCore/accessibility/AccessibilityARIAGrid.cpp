@@ -82,10 +82,7 @@ bool AccessibilityARIAGrid::addTableCellChild(AccessibilityObject* child, HashSe
 
 bool AccessibilityARIAGrid::isMultiSelectable() const
 {
-    auto multiSelectable = boolValueForProperty(AXPropertyName::Multiselectable);
-    if (multiSelectable && !multiSelectable.value())
         return false;
-    return true;
 }
 
 void AccessibilityARIAGrid::addRowDescendant(AccessibilityObject* rowChild, HashSet<AccessibilityObject*>& appendedRows, unsigned& columnCount)
