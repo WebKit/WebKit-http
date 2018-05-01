@@ -1169,18 +1169,9 @@ void AppendPipeline::connectDemuxerSrcPadToAppsink(GstPad* demuxerSrcPad)
         break;
     }
 
-#if ENABLE(ENCRYPTED_MEDIA)
-    // Don't try and guess the caps from the demuxer src right now, wait instead for the caps change
-    // when the decryptor transforms caps and call trackDetected after that event, see appsinkCapsChanged.
-    if (!m_decryptor) {
-#endif
-        m_appsinkCaps = WTFMove(caps);
-
-        if (m_playerPrivate)
-            m_playerPrivate->trackDetected(this, m_track, true);
-#if ENABLE(ENCRYPTED_MEDIA)
-    }
-#endif
+    m_appsinkCaps = WTFMove(caps);
+    if (m_playerPrivate)
+        m_playerPrivate->trackDetected(this, m_track, true);
 
     m_padAddRemoveCondition.notifyOne();
 }
