@@ -263,6 +263,9 @@ void LauncherWindow::LoadCommitted(const BString& url, BWebView* view)
     BString status("Loading: ");
     status << url;
     StatusChanged(status, view);
+
+    NavigationCapabilitiesChanged(m_BackButton->IsEnabled(),
+        m_ForwardButton->IsEnabled(), true, view);
 }
 
 void LauncherWindow::LoadProgress(float progress, BWebView* view)

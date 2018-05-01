@@ -63,6 +63,7 @@ class VersionNameMap(object):
                 'Vista': Version(6),
                 'XP': Version(5, 1),
             },
+            'haiku' : { '' : Version(1.4) }
         }
 
     @classmethod
