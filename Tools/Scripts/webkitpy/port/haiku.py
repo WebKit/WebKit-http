@@ -121,7 +121,10 @@ class HaikuPort(Port):
         return "/system/bin/lighttpd"
 
     def _path_to_lighttpd_modules(self):
-        return "/system/lib/lighttpd"
+        if os.path.exists("/system/lib/lighttpd"):
+            return "/system/lib/lighttpd"
+        else:
+            return "/system/lib/x86/lighttpd"
 
     def _path_to_lighttpd_php(self):
         return "/system/bin/php-cgi"
