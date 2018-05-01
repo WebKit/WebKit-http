@@ -145,5 +145,5 @@ class HaikuPort(Port):
         command.append(super(HaikuPort, self).make_args())
         return command
 
-    def _get_crash_log(self, name, pid, stdout, stderr, newer_than):
+    def _get_crash_log(self, name, pid, stdout, stderr, newer_than, target_host=None):
         return HaikuCrashLogGenerator(name, pid, newer_than, self._filesystem, self._path_to_driver).generate_crash_log(stdout, stderr)
