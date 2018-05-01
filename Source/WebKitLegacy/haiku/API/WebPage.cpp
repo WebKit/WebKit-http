@@ -57,6 +57,7 @@
 #include "FrameView.h"
 #include "GeolocationClientMock.h"
 #include "GraphicsContext.h"
+#include "IconDatabase.h"
 #include "InitializeThreading.h"
 #include "InspectorClientHaiku.h"
 #include "LibWebRTCProvider.h"
@@ -175,6 +176,7 @@ BMessenger BWebPage::sDownloadListener;
 
 /*static*/ void BWebPage::ShutdownOnce()
 {
+	WebKit::iconDatabase().close();
 }
 
 /*static*/ void BWebPage::SetCacheModel(BWebKitCacheModel model)

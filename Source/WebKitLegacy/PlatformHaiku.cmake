@@ -99,6 +99,7 @@ LIST(APPEND WebKitLegacy_SOURCES
     haiku/WebCoreSupport/EditorClientHaiku.cpp
     haiku/WebCoreSupport/FrameLoaderClientHaiku.cpp
     haiku/WebCoreSupport/FrameNetworkingContextHaiku.cpp
+	haiku/WebCoreSupport/IconDatabase.cpp
     haiku/WebCoreSupport/InspectorClientHaiku.cpp
     haiku/WebCoreSupport/NotificationClientHaiku.cpp
     haiku/WebCoreSupport/PlatformStrategiesHaiku.cpp
