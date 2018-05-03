@@ -126,7 +126,6 @@ static void webkit_media_opencdm_decrypt_class_init(WebKitOpenCDMDecryptClass* k
     cencClass->handleInitData = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorHandleInitData);
     cencClass->decrypt = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorDecrypt);
     cencClass->attemptToDecryptWithLocalInstance = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorAttemptToDecryptWithLocalInstance);
-    cencClass->protectionSystemId = WEBCORE_CDMFACTORY_SYSTEM_UUID;
 
     g_type_class_add_private(klass, sizeof(WebKitOpenCDMDecryptPrivate));
 }
