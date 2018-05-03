@@ -218,7 +218,6 @@ protected:
     void dispatchDecryptionKey(GstBuffer*);
     void attemptToDecryptWithLocalInstance();
     virtual void dispatchDecryptionStructure(GUniquePtr<GstStructure>&&);
-    void initializationDataEncountered(GstEvent*);
 #endif
 
     enum MainThreadNotification {
@@ -278,8 +277,6 @@ protected:
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
-    Lock m_protectionMutex;
-    Condition m_protectionCondition;
     RefPtr<const CDMInstance> m_cdmInstance;
     Vector<GstEventSeqNum> m_reportedProtectionEvents;
     bool m_needToResendCredentials { false };
