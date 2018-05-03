@@ -298,24 +298,13 @@ void WebCookieManagerProxy::getCookies2(PAL::SessionID sessionID, Function<void 
     processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::GetCookies2(sessionID, callbackID));
 }
 
-void WebCookieManagerProxy::didGetCookies2(Vector<WebCore::Cookie> cookies, uint64_t callbackID)
+void WebCookieManagerProxy::didGetCookies2(const Vector<Cookie>& cookies, WebKit::CallbackID callbackID)
 {
-    // FIXME: CookieStorage
-#if 0
-    if (!callback)
-    {
-        return;
-    }
-
     const size_t cookiesSize = cookies.size();
     Vector<RefPtr<API::Object> > passCookies(cookiesSize);
-
     for (size_t i = 0; i < cookiesSize; ++i)
-    {
         passCookies[i] = WebCookie::create(cookies[i]);
-    }
-    callback->performCallbackWithReturnValue(API::Array::create(WTFMove(passCookies)).ptr());
-#endif
+    m_callbacks.take<ArrayCallback>(callbackID)->performCallbackWithReturnValue(API::Array::create(WTFMove(passCookies)).ptr());
 }
 
 } // namespace WebKit

@@ -1002,7 +1002,7 @@ void CoordinatedGraphicsLayer::updateContentBuffers()
 
     if (!m_needsDisplay.fullRect) {
         for (auto& rect : m_needsDisplay.dirtyRects)
-            m_mainBackingStore->invalidate(IntRect { rect });
+            m_mainBackingStore->invalidate(enclosingIntRect( rect ));
     } else
         m_mainBackingStore->invalidate({ { }, IntSize { m_size } });
 

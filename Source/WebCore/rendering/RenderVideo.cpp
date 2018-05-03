@@ -254,11 +254,13 @@ void RenderVideo::updatePlayer()
 
     contentChanged(VideoChanged);
 
-    IntRect videoBounds = videoBox();
-    mediaPlayer->setSize(IntSize(videoBounds.width(), videoBounds.height()));
 #if USE(HOLE_PUNCH_GSTREAMER) || USE(HOLE_PUNCH_EXTERNAL)
     IntRect windowRect = document().view()->contentsToScreen(absoluteBoundingBoxRect(true));
+    mediaPlayer->setSize(IntSize(windowRect.width(), windowRect.height()));
     mediaPlayer->setPosition(IntPoint(windowRect.x(), windowRect.y()));
+#else
+    IntRect videoBounds = videoBox();
+    mediaPlayer->setSize(IntSize(videoBounds.width(), videoBounds.height()));
 #endif
     mediaPlayer->setVisible(!videoElement().elementIsHidden());
     mediaPlayer->setShouldMaintainAspectRatio(style().objectFit() != ObjectFitFill);
