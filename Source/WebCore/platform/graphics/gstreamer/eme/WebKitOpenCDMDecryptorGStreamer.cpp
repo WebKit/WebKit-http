@@ -40,7 +40,7 @@ struct _WebKitOpenCDMDecryptPrivate {
 };
 
 static void webKitMediaOpenCDMDecryptorFinalize(GObject*);
-static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecrypt*, GstBuffer*, GstBuffer*, unsigned, GstBuffer*);
+static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecrypt*, GstBuffer* keyIDBuffer, GstBuffer* iv, GstBuffer* sample, unsigned subSamplesCount, GstBuffer* subSamples);
 static bool webKitMediaOpenCDMDecryptorHandleInitData(WebKitMediaCommonEncryptionDecrypt* self, const WebCore::InitData& initData);
 static bool webKitMediaOpenCDMDecryptorAttemptToDecryptWithLocalInstance(WebKitMediaCommonEncryptionDecrypt* self, const WebCore::InitData&);
 
@@ -177,13 +177,14 @@ static bool webKitMediaOpenCDMDecryptorAttemptToDecryptWithLocalInstance(WebKitM
     return webKitMediaOpenCDMDecryptorResetSessionFromInitDataIfNeeded(self, initData) != InvalidSession;
 }
 
-static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecrypt* self, GstBuffer* ivBuffer, GstBuffer* buffer, unsigned subSampleCount, GstBuffer* subSamplesBuffer)
+static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecrypt* self, GstBuffer* keyIDBuffer, GstBuffer* ivBuffer, GstBuffer* buffer, unsigned subSampleCount, GstBuffer* subSamplesBuffer)
 {
     GstMapInfo ivMap;
     if (!gst_buffer_map(ivBuffer, &ivMap, GST_MAP_READ)) {
         GST_ERROR_OBJECT(self, "Failed to map IV");
         return false;
     }
+    GST_MEMDUMP_OBJECT(self, "IV for sample", ivMap.data, ivMap.size);
 
     GstMapInfo map;
     if (!gst_buffer_map(buffer, &map, static_cast<GstMapFlags>(GST_MAP_READWRITE))) {
@@ -192,7 +193,13 @@ static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecryp
         return false;
     }
 
-    WebKitOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(WEBKIT_OPENCDM_DECRYPT(self));
+    GstMapInfo keyIDBufferMap;
+    if (!gst_buffer_map(keyIDBuffer, &keyIDBufferMap, GST_MAP_READ)) {
+        gst_buffer_unmap(ivBuffer, &ivMap);
+        gst_buffer_unmap(buffer, &map);
+        GST_ERROR_OBJECT(self, "Failed to map key ID buffer");
+        return false;
+    }
 
     int errorCode;
     bool returnValue = true;
@@ -231,8 +238,9 @@ static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecryp
         gst_byte_reader_set_pos(reader.get(), 0);
 
         // Decrypt cipher.
-        GST_TRACE_OBJECT(self, "decrypting");
-        if ((errorCode = priv->m_openCdm->Decrypt(holdEncryptedData.get(), static_cast<uint32_t>(totalEncrypted),
+        GST_TRACE_OBJECT(self, "decrypting (subsample)");
+        auto decryptor = std::make_unique<media::OpenCdm>(keyIDBufferMap.data, keyIDBufferMap.size);
+        if ((errorCode = decryptor->Decrypt(holdEncryptedData.get(), static_cast<uint32_t>(totalEncrypted),
             ivMap.data, static_cast<uint32_t>(ivMap.size)))) {
             GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);
             gst_buffer_unmap(subSamplesBuffer, &subSamplesMap);
@@ -256,8 +264,9 @@ static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecryp
         gst_buffer_unmap(subSamplesBuffer, &subSamplesMap);
     } else {
         // Decrypt cipher.
-        GST_TRACE_OBJECT(self, "decrypting");
-        if ((errorCode = priv->m_openCdm->Decrypt(map.data, static_cast<uint32_t>(map.size),
+        GST_TRACE_OBJECT(self, "decrypting (no subsamples)");
+        auto decryptor = std::make_unique<media::OpenCdm>(keyIDBufferMap.data, keyIDBufferMap.size);
+        if ((errorCode = decryptor->Decrypt(map.data, static_cast<uint32_t>(map.size),
             ivMap.data, static_cast<uint32_t>(ivMap.size)))) {
             GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);
             returnValue = false;

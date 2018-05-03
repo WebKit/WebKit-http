@@ -45,7 +45,7 @@ struct _WebKitMediaClearKeyDecryptPrivate {
 
 static void webKitMediaClearKeyDecryptorFinalize(GObject*);
 static bool webKitMediaClearKeyDecryptorSetupCipher(WebKitMediaCommonEncryptionDecrypt*, GstBuffer*);
-static bool webKitMediaClearKeyDecryptorDecrypt(WebKitMediaCommonEncryptionDecrypt*, GstBuffer* iv, GstBuffer* sample, unsigned subSamplesCount, GstBuffer* subSamples);
+static bool webKitMediaClearKeyDecryptorDecrypt(WebKitMediaCommonEncryptionDecrypt*, GstBuffer* keyIDBuffer, GstBuffer* iv, GstBuffer* sample, unsigned subSamplesCount, GstBuffer* subSamples);
 static void webKitMediaClearKeyDecryptorReleaseCipher(WebKitMediaCommonEncryptionDecrypt*);
 
 GST_DEBUG_CATEGORY_STATIC(webkit_media_clear_key_decrypt_debug_category);
@@ -167,8 +167,10 @@ static bool webKitMediaClearKeyDecryptorSetupCipher(WebKitMediaCommonEncryptionD
     return true;
 }
 
-static bool webKitMediaClearKeyDecryptorDecrypt(WebKitMediaCommonEncryptionDecrypt* self, GstBuffer* ivBuffer, GstBuffer* buffer, unsigned subSampleCount, GstBuffer* subSamplesBuffer)
+static bool webKitMediaClearKeyDecryptorDecrypt(WebKitMediaCommonEncryptionDecrypt* self, GstBuffer* keyIDBuffer, GstBuffer* ivBuffer, GstBuffer* buffer, unsigned subSampleCount, GstBuffer* subSamplesBuffer)
 {
+    UNUSED_PARAM(keyIDBuffer);
+
     GstMapInfo ivMap;
     if (!gst_buffer_map(ivBuffer, &ivMap, GST_MAP_READ)) {
         GST_ERROR_OBJECT(self, "Failed to map IV");

@@ -286,8 +286,20 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
 
     value = gst_structure_get_value(protectionMeta->info, "kid");
     GstBuffer* keyIDBuffer = nullptr;
-    if (value)
-        keyIDBuffer = gst_value_get_buffer(value);
+    if (!value) {
+        GST_ERROR_OBJECT(self, "No key ID available for encrypted sample");
+        return GST_FLOW_NOT_SUPPORTED;
+    }
+
+    keyIDBuffer = gst_value_get_buffer(value);
+#ifndef GST_DISABLE_GST_DEBUG
+    if (gst_debug_category_get_threshold(GST_CAT_DEFAULT) >= GST_LEVEL_MEMDUMP) {
+        GstMapInfo map;
+        gst_buffer_map (keyIDBuffer, &map, GST_MAP_READ);
+        GST_MEMDUMP_OBJECT(self, "key ID for sample", map.data, map.size);
+        gst_buffer_unmap (keyIDBuffer, &map);
+    }
+#endif
 
     WebKitMediaCommonEncryptionDecryptClass* klass = WEBKIT_MEDIA_CENC_DECRYPT_GET_CLASS(self);
     if (!klass->setupCipher(self, keyIDBuffer)) {
@@ -306,7 +318,7 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
 
     GstBuffer* ivBuffer = gst_value_get_buffer(value);
     GST_TRACE_OBJECT(self, "decrypting");
-    if (!klass->decrypt(self, ivBuffer, buffer, subSampleCount, subSamplesBuffer)) {
+    if (!klass->decrypt(self, keyIDBuffer, ivBuffer, buffer, subSampleCount, subSamplesBuffer)) {
         GST_ERROR_OBJECT(self, "Decryption failed");
         klass->releaseCipher(self);
         gst_buffer_remove_meta(buffer, reinterpret_cast<GstMeta*>(protectionMeta));

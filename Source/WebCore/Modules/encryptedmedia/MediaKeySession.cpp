@@ -480,7 +480,7 @@ void MediaKeySession::close(Ref<DeferredPromise>&& promise)
 {
     // https://w3c.github.io/encrypted-media/#dom-mediakeysession-close
     // W3C Editor's Draft 09 November 2016
-    LOG(EME, "EME - closing session %s", m_sessionId.utf8().data());
+    LOG(EME, "EME - closing session with id [%s]", m_sessionId.utf8().data());
 
     // 1. Let session be the associated MediaKeySession object.
     // 2. If session is closed, return a resolved promise.
@@ -500,7 +500,7 @@ void MediaKeySession::close(Ref<DeferredPromise>&& promise)
     m_taskQueue.enqueueTask([this, promise = WTFMove(promise)] () mutable {
         // 5.1. Let cdm be the CDM instance represented by session's cdm instance value.
         // 5.2. Use cdm to close the key session associated with session.
-        LOG(EME, "EME - closing CDM session %s", m_sessionId.utf8().data());
+        LOG(EME, "EME - closing CDM session with id [%s]", m_sessionId.utf8().data());
         m_instance->closeSession(m_sessionId, [this, weakThis = m_weakPtrFactory.createWeakPtr(*this), promise = WTFMove(promise)] () mutable {
             if (!weakThis)
                 return;
@@ -670,7 +670,7 @@ void MediaKeySession::sessionClosed()
 {
     // https://w3c.github.io/encrypted-media/#session-closed
     // W3C Editor's Draft 09 November 2016
-    LOG(EME, "EME - closing session %s", m_sessionId.utf8().data());
+    LOG(EME, "EME - sessionClosed %s", m_sessionId.utf8().data());
 
     // 1. Let session be the associated MediaKeySession object.
     // 2. If session's session type is "persistent-usage-record", execute the following steps in parallel:
