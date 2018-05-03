@@ -1583,6 +1583,11 @@ function decodeBase64ToBlob(base64Data, mimeType)
     return new Blob(byteArrays, {type: mimeType});
 }
 
+function getPropertyValueAsPx(style, propertyName)
+{
+    return Number(style.getPropertyValue(propertyName).replace(/px$/, "") || 0);
+}
+
 if (!window.handlePromiseException) {
     window.handlePromiseException = function handlePromiseException(error)
     {

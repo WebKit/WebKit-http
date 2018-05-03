@@ -256,7 +256,7 @@ WI.Recording = class Recording
                     this._swizzle[index][type] = context.createPattern(image, repeat);
                     break;
                 }
-            } catch { }
+            } catch (e) { }
         }
 
         return this._swizzle[index][type];
