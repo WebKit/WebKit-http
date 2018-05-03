@@ -26,6 +26,7 @@
 #include "config.h"
 #include "WKHTTPCookieStorageRef.h"
 
+#include "APIArray.h"
 #include "APIHTTPCookieStorage.h"
 #include "APIWebCookie.h"
 #include "WKArray.h"
@@ -56,8 +57,7 @@ void WKHTTPCookieStorageSetCookies(WKHTTPCookieStorageRef cookieStorage, WKArray
 
 void WKHTTPCookieStorageGetCookies(WKHTTPCookieStorageRef cookieStorage, void* context, WKHTTPCookieStorageGetCookiesFunction callback)
 {
-    // FIXME: CookieStorage
-    // WebKit::toImpl(cookieStorage)->getCookies(WebKit::toGenericCallbackFunction(context, callback));
+    WebKit::toImpl(cookieStorage)->getCookies(WebKit::toGenericCallbackFunction(context, callback));
 }
 
 void WKHTTPCookieStorageStartObservingCookieChanges(WKHTTPCookieStorageRef cookieStorage)

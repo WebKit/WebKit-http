@@ -171,13 +171,10 @@ void WebCookieManager::setCookies2(PAL::SessionID sessionID, const Vector<WebCor
 
 void WebCookieManager::getCookies2(PAL::SessionID sessionID, CallbackID callbackID)
 {
-    // FIXME: CookieStorage
-#if 0
     Vector<WebCore::Cookie> cookies;
     if (auto* storageSession = NetworkStorageSession::storageSession(sessionID))
         WebCore::getCookies(*storageSession, cookies);
-    m_process->send(Messages::WebCookieManagerProxy::DidGetCookies(cookies, callbackID), 0);
-#endif
+    m_process.send(Messages::WebCookieManagerProxy::DidGetCookies2(cookies, callbackID), 0);
 }
 
 } // namespace WebKit
