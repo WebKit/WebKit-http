@@ -70,7 +70,7 @@ extern "C" kern_return_t bootstrap_register2(mach_port_t, name_t, mach_port_t, u
 #endif
 
 // for QNX we need SOCK_DGRAM, see https://bugs.webkit.org/show_bug.cgi?id=95553
-#if defined(SOCK_SEQPACKET) && !defined(Q_OS_MACX) && !OS(QNX)
+#if defined(SOCK_SEQPACKET) && !defined(Q_OS_MACOS) && !OS(QNX)
 #define SOCKET_TYPE SOCK_SEQPACKET
 #else
 #define SOCKET_TYPE SOCK_DGRAM
@@ -101,7 +101,7 @@ void QtWebProcess::setupChildProcess()
 #endif
     prctl(PR_SET_PDEATHSIG, SIGKILL);
 #endif
-#if defined(Q_OS_MACX)
+#if defined(Q_OS_MACOS)
     qputenv("QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM", QByteArray("1"));
 #endif
 }

@@ -110,7 +110,7 @@ private:
 
     QRect indicatorRect(QStyleFacade::ButtonType part, const QRect& originalRect) const;
 
-#ifdef Q_OS_MAC
+#ifdef Q_OS_MACOS
     int m_buttonFontPixelSize;
 #endif
 

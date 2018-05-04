@@ -224,7 +224,7 @@ void QStyleFacadeImp::getButtonMetrics(QString *buttonFontFamily, int *buttonFon
     QFont defaultButtonFont = QApplication::font(&button);
     *buttonFontFamily = defaultButtonFont.family();
     *buttonFontPixelSize = 0;
-#ifdef Q_OS_MAC
+#ifdef Q_OS_MACOS
     button.setAttribute(Qt::WA_MacSmallSize);
     QFontInfo fontInfo(defaultButtonFont);
     *buttonFontPixelSize = fontInfo.pixelSize();
@@ -281,7 +281,7 @@ void QStyleFacadeImp::paintComboBox(QPainter *painter, const QStyleFacadeOption 
 
     QRect rect = opt.rect;
 
-#if defined(Q_OS_MAC) && !defined(QT_NO_STYLE_MAC)
+#if defined(Q_OS_MACOS) && !defined(QT_NO_STYLE_MAC)
     // QMacStyle makes the combo boxes a little bit smaller to leave space for the focus rect.
     // Because of it, the combo button is drawn at a point to the left of where it was expect to be and may end up
     // overlapped with the text. This will force QMacStyle to draw the combo box with the expected width.
@@ -366,7 +366,7 @@ void QStyleFacadeImp::paintInnerSpinButton(QPainter* painter, const QStyleFacade
     // Default to moving the buttons a little bit within the editor frame.
     int inflateX = -2;
     int inflateY = -2;
-#if defined(Q_OS_MAC) && !defined(QT_NO_STYLE_MAC)
+#if defined(Q_OS_MACOS) && !defined(QT_NO_STYLE_MAC)
     // QMacStyle will position the aqua buttons flush to the right.
     // This will move them more within the control for better style, a la
     // Chromium look & feel.
