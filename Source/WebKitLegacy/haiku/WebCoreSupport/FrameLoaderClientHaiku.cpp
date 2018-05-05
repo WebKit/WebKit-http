@@ -251,14 +251,11 @@ void FrameLoaderClientHaiku::dispatchDidReceiveAuthenticationChallenge(DocumentL
 }
 
 
-bool FrameLoaderClientHaiku::dispatchDidReceiveInvalidCertificate(DocumentLoader*,
+bool FrameLoaderClientHaiku::dispatchDidReceiveInvalidCertificate(DocumentLoader* loader,
     const CertificateInfo& certificate, const char* message)
 {
-	// FIXME use m_messenger as above, so that the alert is generated from the
-	// API side and can be overriden by clients with a fancier one (or hidden
-	// completely in case of DumpRenderTree).
-    String text = "The SSL certificate received from " + 
-        m_webFrame->Frame()->document()->url().string() + " could not be "
+    String text = "The SSL certificate received from " +
+        loader->url().string() + " could not be "
         "authenticated for the following reason: " + message + ".\n\n"
         "The secure connection to the website may be compromised, make sure "
         "to not send any sensitive information.";
