@@ -639,6 +639,9 @@ void SourceBuffer::sourceBufferPrivateAppendComplete(AppendResult result)
     if (m_source)
         m_source->monitorSourceBuffers();
 
+    if (isRemoved())
+        return;
+
     MediaTime currentMediaTime = m_source->currentTime();
     for (auto& trackBufferPair : m_trackBufferMap) {
         TrackBuffer& trackBuffer = trackBufferPair.value;

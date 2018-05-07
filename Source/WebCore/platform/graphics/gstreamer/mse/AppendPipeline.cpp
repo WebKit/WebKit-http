@@ -267,6 +267,12 @@ AppendPipeline::~AppendPipeline()
         m_padAddRemoveCondition.notifyOne();
     }
 
+    if (m_appsink) {
+        GstSample *sample;
+        while ((sample = gst_app_sink_try_pull_sample(GST_APP_SINK(m_appsink.get()), 0)))
+            gst_sample_unref(sample);
+    }
+
     // FIXME: Maybe notify appendComplete here?
 
     if (m_pipeline) {
@@ -325,6 +331,12 @@ void AppendPipeline::clearPlayerPrivate()
         m_padAddRemoveCondition.notifyOne();
     }
 
+    if (m_appsink) {
+        GstSample *sample;
+        while ((sample = gst_app_sink_try_pull_sample(GST_APP_SINK(m_appsink.get()), 0)))
+            gst_sample_unref(sample);
+    }
+
     // And now that no handleNewSample operations will remain stalled waiting
     // for the main thread, stop the pipeline.
     if (m_pipeline)
@@ -349,6 +361,8 @@ void AppendPipeline::handleNeedContextSyncMessage(GstMessage* message)
 void AppendPipeline::handleApplicationMessage(GstMessage* message)
 {
     ASSERT(WTF::isMainThread());
+
+    RefPtr<AppendPipeline> protectedThis(this);
 
     const GstStructure* structure = gst_message_get_structure(message);
 
@@ -1013,6 +1027,9 @@ GstFlowReturn AppendPipeline::handleNewAppsinkSample(GstElement* appsink)
     ASSERT(!WTF::isMainThread());
 
     if (!m_playerPrivate || m_appendState == AppendState::Invalid) {
+        GstSample *sample;
+        while ((sample = gst_app_sink_try_pull_sample(GST_APP_SINK(appsink), 0)))
+            gst_sample_unref(sample);
         GST_WARNING("AppendPipeline has been disabled, ignoring this sample");
         return GST_FLOW_ERROR;
     }

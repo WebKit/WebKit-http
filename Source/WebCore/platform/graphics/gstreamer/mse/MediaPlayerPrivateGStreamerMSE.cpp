@@ -126,6 +126,9 @@ MediaPlayerPrivateGStreamerMSE::~MediaPlayerPrivateGStreamerMSE()
     for (auto iterator : m_appendPipelinesMap)
         iterator.value->clearPlayerPrivate();
 
+    if (m_mediaSourceClient)
+        m_mediaSourceClient->clearPlayerPrivate();
+
     if (m_source) {
         webKitMediaSrcSetMediaPlayerPrivate(WEBKIT_MEDIA_SRC(m_source.get()), nullptr);
         g_signal_handlers_disconnect_by_data(m_source.get(), this);
@@ -706,6 +709,8 @@ bool MediaPlayerPrivateGStreamerMSE::playbackPipelineHasFutureData() const
 
 void MediaPlayerPrivateGStreamerMSE::setMediaSourceClient(Ref<MediaSourceClientGStreamerMSE> client)
 {
+    if (m_mediaSourceClient)
+        m_mediaSourceClient->clearPlayerPrivate();
     m_mediaSourceClient = client.ptr();
 }
 
