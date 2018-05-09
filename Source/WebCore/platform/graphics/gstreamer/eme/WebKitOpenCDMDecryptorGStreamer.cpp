@@ -26,7 +26,6 @@
 #if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OPENCDM)
 
 #include "CDMOpenCDM.h"
-#include "GUniquePtrGStreamer.h"
 #include <open_cdm.h>
 #include <wtf/text/WTFString.h>
 #include <wtf/Lock.h>
