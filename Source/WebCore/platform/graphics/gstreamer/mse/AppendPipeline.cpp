@@ -93,52 +93,6 @@ static void appendPipelineApplicationMessageCallback(GstBus*, GstMessage* messag
     appendPipeline->handleApplicationMessage(message);
 }
 
-#if ENABLE(ENCRYPTED_MEDIA)
-static void appendPipelineElementMessageCallback(GstBus*, GstMessage* message, AppendPipeline* appendPipeline)
-{
-    appendPipeline->handleElementMessage(message);
-}
-
-#if GST_CHECK_VERSION(1, 5, 3)
-static GstElement* createDecryptor(const char* requestedProtectionSystemUuid)
-{
-    GstElement* decryptor = nullptr;
-    GList* decryptors = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_DECRYPTOR, GST_RANK_MARGINAL);
-
-    for (GList* walk = decryptors; !decryptor && walk; walk = g_list_next(walk)) {
-        GstElementFactory* factory = reinterpret_cast<GstElementFactory*>(walk->data);
-
-        for (const GList* current = gst_element_factory_get_static_pad_templates(factory); current && !decryptor; current = g_list_next(current)) {
-            GstStaticPadTemplate* staticPadTemplate = static_cast<GstStaticPadTemplate*>(current->data);
-            GRefPtr<GstCaps> caps = adoptGRef(gst_static_pad_template_get_caps(staticPadTemplate));
-            unsigned length = gst_caps_get_size(caps.get());
-
-            GST_TRACE("factory %s caps has size %u", GST_OBJECT_NAME(factory), length);
-            for (unsigned i = 0; !decryptor && i < length; ++i) {
-                GstStructure* structure = gst_caps_get_structure(caps.get(), i);
-                GST_TRACE("checking structure %s", gst_structure_get_name(structure));
-                if (gst_structure_has_field_typed(structure, GST_PROTECTION_SYSTEM_ID_CAPS_FIELD, G_TYPE_STRING)) {
-                    const char* protectionSystemUuid = gst_structure_get_string(structure, GST_PROTECTION_SYSTEM_ID_CAPS_FIELD);
-                    GST_TRACE("structure %s has protection system %s", gst_structure_get_name(structure), protectionSystemUuid);
-                    if (!g_ascii_strcasecmp(requestedProtectionSystemUuid, protectionSystemUuid)) {
-                        GST_DEBUG("found decryptor %s for %s", GST_OBJECT_NAME(factory), requestedProtectionSystemUuid);
-                        decryptor = gst_element_factory_create(factory, nullptr);
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    gst_plugin_feature_list_free(decryptors);
-    GST_TRACE("returning decryptor %p", decryptor);
-    return decryptor;
-}
-#else
-#error "At least a GStreamer version 1.5.3 is required to enable ENCRYPTED_MEDIA."
-#endif
-
-#endif
-
 static void appendPipelineStateChangeMessageCallback(GstBus*, GstMessage* message, AppendPipeline* appendPipeline)
 {
     appendPipeline->handleStateChangeMessage(message);
@@ -240,9 +194,6 @@ AppendPipeline::AppendPipeline(Ref<MediaSourceClientGStreamerMSE> mediaSourceCli
 
     g_signal_connect(m_bus.get(), "sync-message::need-context", G_CALLBACK(appendPipelineNeedContextMessageCallback), this);
     g_signal_connect(m_bus.get(), "message::application", G_CALLBACK(appendPipelineApplicationMessageCallback), this);
-#if ENABLE(ENCRYPTED_MEDIA)
-    g_signal_connect(m_bus.get(), "message::element", G_CALLBACK(appendPipelineElementMessageCallback), this);
-#endif
     g_signal_connect(m_bus.get(), "message::state-changed", G_CALLBACK(appendPipelineStateChangeMessageCallback), this);
 
     // We assign the created instances here instead of adoptRef() because gst_bin_add_many()
@@ -462,25 +413,6 @@ void AppendPipeline::demuxerNoMorePads()
     GST_TRACE("set pipeline to playing");
     gst_element_set_state(m_pipeline.get(), GST_STATE_PLAYING);
 }
-
-#if ENABLE(ENCRYPTED_MEDIA)
-void AppendPipeline::handleElementMessage(GstMessage* message)
-{
-    ASSERT(WTF::isMainThread());
-
-    const GstStructure* structure = gst_message_get_structure(message);
-    GST_TRACE("%s message from %s", gst_structure_get_name(structure), GST_MESSAGE_SRC_NAME(message));
-    if (m_playerPrivate) {
-        if (gst_structure_has_name(structure, "drm-initialization-data-encountered")) {
-            GST_DEBUG("sending drm-initialization-data-encountered message from %s to the player", GST_MESSAGE_SRC_NAME(message));
-            m_playerPrivate->handleProtectionStructure(structure);
-        } else if (gst_structure_has_name(structure, "drm-cdm-instance-needed")) {
-            GST_DEBUG("sending drm-cdm-instance-needed message from %s to the player", GST_MESSAGE_SRC_NAME(message));
-            m_playerPrivate->dispatchLocalCDMInstance();
-        }
-    }
-}
-#endif
 
 void AppendPipeline::handleStateChangeMessage(GstMessage* message)
 {
@@ -708,19 +640,7 @@ void AppendPipeline::parseDemuxerSrcPadCaps(GstCaps* demuxerSrcPadCaps)
 
     m_demuxerSrcPadCaps = adoptGRef(demuxerSrcPadCaps);
     m_streamType = WebCore::MediaSourceStreamTypeGStreamer::Unknown;
-#if ENABLE(ENCRYPTED_MEDIA)
-    if (areEncryptedCaps(m_demuxerSrcPadCaps.get())) {
-        // Any previous decryptor should have been removed from the pipeline by disconnectFromAppSinkFromStreamingThread()
-        ASSERT(!m_decryptor);
 
-        GstStructure* structure = gst_caps_get_structure(m_demuxerSrcPadCaps.get(), 0);
-        m_decryptor = createDecryptor(gst_structure_get_string(structure, "protection-system"));
-        if (!m_decryptor) {
-            GST_ERROR("decryptor not found for caps: %" GST_PTR_FORMAT, m_demuxerSrcPadCaps.get());
-            return;
-        }
-    }
-#endif
     const char* originalMediaType = capsMediaType(m_demuxerSrcPadCaps.get());
     if (!MediaPlayerPrivateGStreamerMSE::supportsCodec(originalMediaType)) {
             m_presentationSize = WebCore::FloatSize();
@@ -1147,35 +1067,6 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
         } else
             GST_INFO("no parser");
 
-#if ENABLE(ENCRYPTED_MEDIA)
-        if (m_decryptor) {
-            GST_INFO("we have a decryptor %s", GST_ELEMENT_NAME(m_decryptor.get()));
-            gst_bin_add(GST_BIN(m_pipeline.get()), m_decryptor.get());
-            gst_element_sync_state_with_parent(m_decryptor.get());
-
-            GRefPtr<GstPad> decryptorSinkPad = adoptGRef(gst_element_get_static_pad(m_decryptor.get(), "sink"));
-            GRefPtr<GstPad> decryptorSrcPad = adoptGRef(gst_element_get_static_pad(m_decryptor.get(), "src"));
-
-            gst_pad_link(currentSrcPad.get(), decryptorSinkPad.get());
-            currentSrcPad = decryptorSrcPad;
-        } else {
-            GST_INFO("we don't have a decryptor");
-            gst_pad_add_probe(currentSrcPad.get(), GST_PAD_PROBE_TYPE_EVENT_BOTH,
-                [] (GstPad*, GstPadProbeInfo* info, void*) -> GstPadProbeReturn {
-                    ASSERT(GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_EVENT_BOTH);
-                    GstEvent* event = GST_PAD_PROBE_INFO_EVENT(info);
-                    if (GST_EVENT_TYPE(event) == GST_EVENT_PROTECTION) {
-                        GST_WARNING("protection event %d going \"down the sink\"", GST_EVENT_SEQNUM(event));
-                        return GST_PAD_PROBE_DROP;
-                    } else if (GST_EVENT_TYPE(event) == GST_EVENT_CUSTOM_DOWNSTREAM_OOB) {
-                        GST_WARNING("OOB encryption event %s going \"down the sink\"", gst_structure_get_name(gst_event_get_structure(event)));
-                        return GST_PAD_PROBE_DROP;
-                    }
-                    return GST_PAD_PROBE_OK;
-                }, nullptr, nullptr);
-        }
-#endif
-
         gst_pad_add_probe(currentSrcPad.get(), GST_PAD_PROBE_TYPE_BUFFER,
             [] (GstPad*, GstPadProbeInfo* info, void* userData) -> GstPadProbeReturn {
                 ASSERT(GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_BUFFER);
@@ -1300,14 +1191,6 @@ void AppendPipeline::disconnectDemuxerSrcPadFromAppsinkFromAnyThread(GstPad*)
 
     GST_DEBUG("Disconnecting appsink");
 
-#if ENABLE(ENCRYPTED_MEDIA)
-    if (m_decryptor) {
-        gst_element_set_state(m_decryptor.get(), GST_STATE_NULL);
-        gst_bin_remove(GST_BIN(m_pipeline.get()), m_decryptor.get());
-        m_decryptor = nullptr;
-    }
-#endif
-
     if (m_parser) {
         gst_element_set_state(m_parser.get(), GST_STATE_NULL);
         gst_bin_remove(GST_BIN(m_pipeline.get()), m_parser.get());
@@ -1325,17 +1208,6 @@ void AppendPipeline::appendPipelineDemuxerNoMorePadsFromAnyThread()
     gst_bus_post(m_bus.get(), message);
     GST_TRACE("appendPipelineDemuxerNoMorePadsFromAnyThread - posted to bus");
 }
-
-#if ENABLE(ENCRYPTED_MEDIA)
-void AppendPipeline::dispatchDecryptionStructure(GUniquePtr<GstStructure>&& structure)
-{
-    if (m_decryptor) {
-        bool wasEventHandled = gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB, structure.release()));
-        GST_TRACE("dispatched structure to append pipeline %p, handled %s", this, boolForPrinting(wasEventHandled));
-    } else
-        GST_DEBUG("cannot dispatch decryption structure, no decryptor yet");
-}
-#endif
 
 static void appendPipelineAppsinkCapsChanged(GObject* appsinkPad, GParamSpec*, AppendPipeline* appendPipeline)
 {

@@ -1015,8 +1015,7 @@ MediaTime MediaPlayerPrivateGStreamerMSE::maxMediaTimeSeekable() const
 #if ENABLE(ENCRYPTED_MEDIA)
 void MediaPlayerPrivateGStreamerMSE::dispatchDecryptionStructure(GUniquePtr<GstStructure>&& structure)
 {
-    for (const auto& it : m_appendPipelinesMap)
-        it.value->dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_copy(structure.get())));
+    gst_element_send_event(m_playbackPipeline->pipeline(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB, gst_structure_copy(structure.get())));
 }
 #endif
 
