@@ -42,17 +42,17 @@ _log.setLevel(logging.INFO)
 
 class BuildBinariesFetcher:
 
-    def __init__(self, params):
-        self.host = params.host
-        self.platform = params.platform
-        self.architecture = params.architecture
-        self.configuration = params.configuration
-        self.revision = params.revision
-        self.build_directory = params.build_directory
-        self.should_use_download_unminified_url = params.full
-        self.should_delete_first = params.delete_first
-        self.should_not_extract = params.no_extract
-        self.s3_zip_url = params.url
+    def __init__(self, host, platform, architecture='x86_64', configuration='release', full=False, revision=None, build_directory=None, delete_first=False, no_extract=False, url=None):
+        self.host = host
+        self.platform = platform
+        self.architecture = architecture
+        self.configuration = configuration
+        self.revision = revision
+        self.build_directory = build_directory
+        self.should_use_download_unminified_url = full
+        self.should_delete_first = delete_first
+        self.should_not_extract = no_extract
+        self.s3_zip_url = url
 
     @property
     def local_downloaded_binaries_directory(self):

@@ -58,7 +58,7 @@ def bisect_builds(revision_list, start_index, end_index, options):
 
 
 def download_and_extract_archive(options, revision):
-    command = ['python', '../BuildSlaveSupport/download-built-product', '--{}'.format(options.configuration), '--platform', options.platform, '--architecture', options.architecture, '--full', options.full, '--revision', options.revision]
+    command = ['python', '../BuildSlaveSupport/download-built-product', '--{}'.format(options.configuration), '--platform', options.platform, '--architecture', options.architecture, '--full', options.full, '--revision', revision]
     print('Downloading revision: {}'.format(revision))
     subprocess.check_call(command)
 
@@ -189,10 +189,8 @@ def main(options):
 
     validate_options(options)
 
-    options.host = Host()
-
-    build_binaries_fetcher = BuildBinariesFetcher(options)
-    revision_list = build_binaries_fetcher.get_path()
+    build_binaries_fetcher = BuildBinariesFetcher(Host(), options.platform, options.architecture, options.configuration, options.full)
+    revision_list = build_binaries_fetcher.get_sorted_revisions()
 
     if options.list:
         print_list_and_exit(revision_list, options)

@@ -58,9 +58,7 @@ def main():
     parser.add_argument('url', nargs='?', help='Full url to the s3 zip archive file.')
     args = parser.parse_args()
 
-    args.host = Host()
-
-    build_binaries_fetcher = BuildBinariesFetcher(args)
+    build_binaries_fetcher = BuildBinariesFetcher(Host(), args.platform, args.architecture, args.configuration, args.full, args.revision, build_directory, args.delete_first, args.no_extract, args.url)
     build_binaries_fetcher.get_path()
 
 if __name__ == '__main__':
