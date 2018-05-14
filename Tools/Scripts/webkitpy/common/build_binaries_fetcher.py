@@ -29,7 +29,6 @@ import logging
 from zipfile import ZipFile, BadZipfile
 from urllib2 import urlopen, HTTPError, URLError
 from webkitpy.common.webkit_finder import WebKitFinder
-from webkitpy.port.ios import IOSPort
 
 REST_API_URL = 'https://q1tzqfy48e.execute-api.us-west-2.amazonaws.com/v2/'
 REST_API_ENDPOINT = 'archives/'
@@ -55,16 +54,17 @@ class BuildBinariesFetcher:
         self.should_not_extract = params.no_extract
         self.s3_zip_url = params.url
 
-
-        # TODO call validate options? -- make another validation class
-
     @property
     def local_downloaded_binaries_directory(self):
-        build_directory = ( 'WebkitBuild', )
+        build_directory = ('WebkitBuild', )
         if self.build_directory:
 
             build_directory = ', '.join(self.build_directory.split('/')), self.platform + self.architecture + self.revision
         return WebKitFinder(self.host.filesystem).path_from_webkit_base(*build_directory)
+
+    @property
+    def local_extracted_directory(self):
+        return WebKitFinder(self.host.filesystem).path_from_webkit_base(self.local_downloaded_binaries_directory, self.configuration.capitalize())
 
     @property
     def s3_build_type(self):
@@ -96,11 +96,11 @@ class BuildBinariesFetcher:
         return build_binaries_json
 
     def _prompt_user_to_delete_first(self):
-        var = raw_input('\n A build already exists at %s. Do you want to override it [y/n]: ' % self.local_downloaded_binaries_directory)
-        var = var.lower()
-        if 'y' in var:
+        ans = raw_input('\n A build already exists at %s. Do you want to override it [y/n]: ' % self.local_extracted_directory)
+        ans = ans.lower()
+        if 'y' in ans:
             return True
-        if 'n' in var:
+        if 'n' in ans:
             return False
         else:
             self._prompt_user_to_delete_first()
@@ -108,20 +108,17 @@ class BuildBinariesFetcher:
     def get_path(self):
         try:
             if self.s3_zip_url:
-                print('\n 1 ##### %s' % self.revision )
                 self.revision = os.path.basename(self.s3_zip_url).strip('.zip')
 
             if not self.revision:
-                print('\n 2 ##### %s' % self.revision )
-
                 self.revision = self._get_latest_build_revision()
 
             # check to see if previously downloaded local version exists before downloading
-            if self.host.filesystem.exists(self.local_downloaded_binaries_directory) and not self.should_delete_first:
+            if self.host.filesystem.exists(self.local_extracted_directory) and not self.should_delete_first:
 
                 if not self._prompt_user_to_delete_first():
                     print('\n Aborting... to download build in another directory use the --build-directory flag')
-                    return exit(0)
+                    exit(0)
 
             return self._fetch_build_binaries()
         except KeyboardInterrupt as error:
@@ -179,20 +176,7 @@ class BuildBinariesFetcher:
 
                 self._extract_zip_archive()
 
-            # extract_exception = Exception('Cannot extract zipfile %s' % self.local_zip_path)
-            # if sys.platform == 'darwin':
-            #     if subprocess.call(["ditto", "-x", "-k", self.local_zip_path, self.local_downloaded_binaries_directory]):
-            #         raise extract_exception
-            # elif sys.platform == 'cygwin' or sys.platform.startswith('linux'):
-            #     if subprocess.call(["unzip", "-o", self.local_zip_path], cwd=self.local_downloaded_binaries_directory):
-            #         raise extract_exception
-            # elif sys.platform == 'win32':
-            #     archive = ZipFile(self.local_zip_path, "r")
-            #     archive.extractall(self.local_downloaded_binaries_directory)
-            #     archive.close()
-
-            _log.info("Deleting ZipFile Extracted Binaries Can Be Found Here: %s" % self.local_downloaded_binaries_directory)
-            # os.remove(self.local_zip_path)
+            _log.info("Extracted Binaries Can Be Found Here: %s" % self.local_downloaded_binaries_directory)
 
             return self.local_downloaded_binaries_directory
 
@@ -208,7 +192,6 @@ class BuildBinariesFetcher:
                    '--%s' % self.configuration.lower(), 'extract']
 
         if self.build_directory:
-            print(' command %s' % command)
             command.extend(['--build-directory', self.local_downloaded_binaries_directory])
 
         subprocess.check_call(command)

@@ -289,7 +289,7 @@ class UploadMinifiedBuiltProduct(UploadBuiltProduct):
 
 class DownloadBuiltProduct(shell.ShellCommand):
     command = ["python", "./Tools/BuildSlaveSupport/download-built-product",
-        WithProperties("--platform=%(platform)s"), WithProperties("--%(configuration)s"),
+        WithProperties("--platform=%(platform)s"), WithProperties("--%(configuration)s"), WithProperties("--delete-first"), WithProperties("--no-extract"),
         WithProperties(S3URL + "archives.webkit.org/%(fullPlatform)s-%(architecture)s-%(configuration)s/%(got_revision)s.zip")]
     name = "download-built-product"
     description = ["downloading built product"]
