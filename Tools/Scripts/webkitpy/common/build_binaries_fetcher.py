@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2018 Apple Inc. All rights reserved.
+# Copyright (C) 2018 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -60,7 +60,7 @@ class BuildBinariesFetcher:
 
     @property
     def local_downloaded_binaries_directory(self):
-        build_directory = ( 'WebkitBuild', )
+        build_directory = ('WebkitBuild', )
         if self.build_directory:
 
             build_directory = ', '.join(self.build_directory.split('/')), self.platform + self.architecture + self.revision
@@ -96,11 +96,11 @@ class BuildBinariesFetcher:
         return build_binaries_json
 
     def _prompt_user_to_delete_first(self):
-        var = raw_input('\n A build already exists at %s. Do you want to override it [y/n]: ' % self.local_downloaded_binaries_directory)
-        var = var.lower()
-        if 'y' in var:
+        ans = raw_input('\n A build already exists at %s. Do you want to override it [y/n]: ' % self.local_downloaded_binaries_directory)
+        ans = ans.lower()
+        if 'y' in ans:
             return True
-        if 'n' in var:
+        if 'n' in ans:
             return False
         else:
             self._prompt_user_to_delete_first()
@@ -108,12 +108,9 @@ class BuildBinariesFetcher:
     def get_path(self):
         try:
             if self.s3_zip_url:
-                print('\n 1 ##### %s' % self.revision )
                 self.revision = os.path.basename(self.s3_zip_url).strip('.zip')
 
             if not self.revision:
-                print('\n 2 ##### %s' % self.revision )
-
                 self.revision = self._get_latest_build_revision()
 
             # check to see if previously downloaded local version exists before downloading
@@ -127,7 +124,7 @@ class BuildBinariesFetcher:
         except KeyboardInterrupt as error:
             _log.error('\n User interrupted cmd')
         except Exception as error:
-            #self.clean_up_on_error()
+            #self.clean_up_on_error() TODO revist this?
             raise error
 
     def get_sorted_revisions(self):

@@ -46,7 +46,7 @@ def main():
     parser.add_option("--release", action="store_const", const="release", dest="configuration")
     parser.add_option("--minify", action="store_true", dest="minify", default=False,
                       help="Create a minified archive by removing files that are not necessary for running applications against the built product, at the cost of complicating debugging.")
-    parser.add_option("--build-directory", dest="build_directory", help="TODO")
+    parser.add_option("--build-directory", dest="build_directory", help="Custom path for build executables")
 
     options, (action, ) = parser.parse_args()
     if not options.platform:
