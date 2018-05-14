@@ -31,6 +31,9 @@ from urllib2 import urlopen, HTTPError, URLError
 from webkitpy.common.webkit_finder import WebKitFinder
 from webkitpy.port.ios import IOSPort
 
+REST_API_URL = 'https://q1tzqfy48e.execute-api.us-west-2.amazonaws.com/v2/'
+REST_API_ENDPOINT = 'archives/'
+REST_API_MINIFIED_ENDPOINT = 'minified-archives/'
 
 _log = logging.getLogger(__name__)
 
@@ -38,105 +41,125 @@ logging.basicConfig()
 
 _log.setLevel(logging.INFO)
 
-
 class BuildBinariesFetcher:
-    """A class to which automates the fetching of the build binaries revisions."""
 
-    def __init__(self, host, port_name, architecture, configuration, build_binaries_revision=None):
-        """ Initialize the build url options needed to construct paths"""
-        self.host = host
-        self.port_name = port_name
-        self.os_version_name = self._get_os_version_name()
-        self.architecture = architecture
-        self.configuration = configuration
-        self.build_binaries_revision = build_binaries_revision
-        self.s3_zip_url = None
+    def __init__(self, params):
+        self.host = params.host
+        self.platform = params.platform
+        self.architecture = params.architecture
+        self.configuration = params.configuration
+        self.revision = params.revision
+        self.build_directory = params.build_directory
+        self.should_use_download_unminified_url = params.full
+        self.should_delete_first = params.delete_first
+        self.should_not_extract = params.no_extract
+        self.s3_zip_url = params.url
 
-        # FIXME find version of this endpoint which returns more than the latest 30 builds
-        self.s3_build_binaries_api_base_path = 'https://q1tzqfy48e.execute-api.us-west-2.amazonaws.com/v2/latest'
 
-    @property
-    def downloaded_binaries_dir(self):
-        webkit_finder = WebKitFinder(self.host.filesystem)
-        return webkit_finder.path_from_webkit_base('WebKitBuild', 'downloaded_binaries')
+        # TODO call validate options? -- make another validation class
 
     @property
-    def should_default_to_latest_revision(self):
-        return self.build_binaries_revision == None
+    def local_downloaded_binaries_directory(self):
+        build_directory = ( 'WebkitBuild', )
+        if self.build_directory:
+
+            build_directory = ', '.join(self.build_directory.split('/')), self.platform + self.architecture + self.revision
+        return WebKitFinder(self.host.filesystem).path_from_webkit_base(*build_directory)
 
     @property
     def s3_build_type(self):
-        return "{self.port_name}-{self.os_version_name}-{self.architecture}-{self.configuration}".format(self=self).lower()
+        return "{self.platform}-{self.architecture}-{self.configuration}".format(self=self).lower()
 
     @property
     def s3_build_binaries_url(self):
-        return self.host.filesystem.join(self.s3_build_binaries_api_base_path, self.s3_build_type)
+        s3_api_base_path = self.host.filesystem.join(REST_API_URL, REST_API_MINIFIED_ENDPOINT)
+        if self.should_use_download_unminified_url:
+            s3_api_base_path = self.host.filesystem.join(REST_API_URL, REST_API_ENDPOINT)
+        return self.host.filesystem.join(s3_api_base_path, self.s3_build_type)
 
     @property
-    def local_build_binaries_dir(self):
-        return self.host.filesystem.join(self.downloaded_binaries_dir, self.s3_build_type, self.build_binaries_revision)
+    def s3_build_binaries_single_revision_url(self):
+        return self.host.filesystem.join(self.s3_build_binaries_url, self.revision)
 
     @property
     def local_zip_path(self):
-        return "{self.local_build_binaries_dir}.zip".format(self=self)
+        return self.host.filesystem.join(self.local_downloaded_binaries_directory, self.configuration + '.zip')
 
-    def _get_os_version_name(self):
-        if self.port_name == "mac":
-            return self.host.platform.os_version_name().lower().replace(' ', '')
-        elif self.port_name == "ios-simulator":
-            return IOSPort.CURRENT_VERSION.major
-        else:
-            raise NotImplementedError('Downloading binaries for the %s is not currently supported' % self.port_name)
+    @staticmethod
+    def _get_archives_json(url): # TODO revisit this name and print statement
 
-    def get_path(self):
-        try:
-            if not self.build_binaries_revision:
-                self.build_binaries_revision = self._get_latest_build_revision()
+        print('fetching %s' % url)
 
-            # check to see if previously downloaded local version exists before downloading
-            if self.host.filesystem.exists(self.local_build_binaries_dir):
-                _log.info('Build Binary has been previously dowloaded and can be found at: %s' % self.local_build_binaries_dir)
-                return self.local_build_binaries_dir
-
-            _log.info('Fetching %s builds' % self.s3_build_type)
-            return self._fetch_build_binaries_json()
-        except Exception as error:
-            self.clean_up_on_error()
-            raise error
-
-    def _get_build_binaries_json(self):
-        response = urlopen(self.s3_build_binaries_url)
+        response = urlopen(url)
         build_binaries_json = json.load(response)
-
-        if build_binaries_json['Count'] == 0:
-            raise Exception('No build revisions found at: %s' % self.s3_build_binaries_url)
 
         return build_binaries_json
 
+    def _prompt_user_to_delete_first(self):
+        var = raw_input('\n A build already exists at %s. Do you want to override it [y/n]: ' % self.local_downloaded_binaries_directory)
+        var = var.lower()
+        if 'y' in var:
+            return True
+        if 'n' in var:
+            return False
+        else:
+            self._prompt_user_to_delete_first()
+
+    def get_path(self):
+        try:
+            if self.s3_zip_url:
+                print('\n 1 ##### %s' % self.revision )
+                self.revision = os.path.basename(self.s3_zip_url).strip('.zip')
+
+            if not self.revision:
+                print('\n 2 ##### %s' % self.revision )
+
+                self.revision = self._get_latest_build_revision()
+
+            # check to see if previously downloaded local version exists before downloading
+            if self.host.filesystem.exists(self.local_downloaded_binaries_directory) and not self.should_delete_first:
+
+                if not self._prompt_user_to_delete_first():
+                    print('\n Aborting... to download build in another directory use the --build-directory flag')
+                    return exit(0)
+
+            return self._fetch_build_binaries()
+        except KeyboardInterrupt as error:
+            _log.error('\n User interrupted cmd')
+        except Exception as error:
+            #self.clean_up_on_error()
+            raise error
+
+    def get_sorted_revisions(self):
+        build_binaries_json = self._get_archives_json(self.s3_build_binaries_url)
+
+        revisions = [int(item['revision']['N']) for item in build_binaries_json['revisions']['Items']]
+        return sorted(revisions)
+
     def _get_latest_build_revision(self):
-        build_binaries_json = self._get_build_binaries_json()
-        latest_build_revision = build_binaries_json['Items'][0]['revision']['N']
+        build_binaries_json = self._get_archives_json(self.s3_build_binaries_url)
+        items = build_binaries_json['revisions']['Items']
+        if not items:
+            raise Exception('No build revisions found at: %s' % self.s3_build_binaries_url)
+
+        latest_revision_index = len(items) - 1
+        latest_build_revision = items[latest_revision_index]['revision']['N']
 
         _log.info('Defaulting to fetching the latest build revision: %s' % latest_build_revision)
-        return build_binaries_json['Items'][0]['revision']['N']
 
-    def _fetch_build_binaries_json(self):
-        build_binaries_json = self._get_build_binaries_json()
+        return latest_build_revision
 
-        if self.should_default_to_latest_revision:
-            self.s3_zip_url = build_binaries_json['Items'][0]['revision']['N']
-        else:
-            for item in build_binaries_json['Items']:
-                revision = item['revision']['N']
-                if revision == self.build_binaries_revision:
-                    self.s3_zip_url = item['s3_url']['S']
-                    break
+    def _fetch_build_binaries(self):
 
-        if self.s3_zip_url:
-            return self._fetch_build_binaries_zip()
-        else:
-            raise Exception('Could not find revision %s in the constructed API path: %s'
-                            % (self.build_binaries_revision, self.s3_build_binaries_url))
+        if not self.s3_zip_url:
+            build_binaries_json = self._get_archives_json(self.s3_build_binaries_single_revision_url)
+
+            if not build_binaries_json['archive']:
+                raise Exception('No build revisions found at: %s' % self.s3_build_binaries_url)
+
+            self.s3_zip_url = build_binaries_json['archive'][0]['s3_url']
+
+        return self._fetch_build_binaries_zip()
 
     def _fetch_build_binaries_zip(self):
 
@@ -145,30 +168,33 @@ class BuildBinariesFetcher:
             _log.info("Starting ZipFile Download: %s" % self.s3_zip_url)
             build_zip = urlopen(self.s3_zip_url)
 
-            self.host.filesystem.maybe_make_directory(self.local_build_binaries_dir)
+            self.host.filesystem.maybe_make_directory(self.local_downloaded_binaries_directory)
 
             with open(self.local_zip_path, "wb") as local_build_binaries:
                 _log.info("Writing ZipFile To Local Drive: %s" % self.local_zip_path)
                 local_build_binaries.write(build_zip.read())
 
-            _log.info("Extracting ZipFile")
+            if not self.should_not_extract:
+                _log.info("Extracting ZipFile")
 
-            extract_exception = Exception('Cannot extract zipfile %s' % self.local_zip_path)
-            if sys.platform == 'darwin':
-                if subprocess.call(["ditto", "-x", "-k", self.local_zip_path, self.local_build_binaries_dir]):
-                    raise extract_exception
-            elif sys.platform == 'cygwin' or sys.platform.startswith('linux'):
-                if subprocess.call(["unzip", "-o", self.local_zip_path], cwd=self.local_build_binaries_dir):
-                    raise extract_exception
-            elif sys.platform == 'win32':
-                archive = ZipFile(self.local_zip_path, "r")
-                archive.extractall(self.local_build_binaries_dir)
-                archive.close()
+                self._extract_zip_archive()
 
-            _log.info("Deleting ZipFile Extracted Binaries Can Be Found Here: %s" % self.local_build_binaries_dir)
-            os.remove(self.local_zip_path)
+            # extract_exception = Exception('Cannot extract zipfile %s' % self.local_zip_path)
+            # if sys.platform == 'darwin':
+            #     if subprocess.call(["ditto", "-x", "-k", self.local_zip_path, self.local_downloaded_binaries_directory]):
+            #         raise extract_exception
+            # elif sys.platform == 'cygwin' or sys.platform.startswith('linux'):
+            #     if subprocess.call(["unzip", "-o", self.local_zip_path], cwd=self.local_downloaded_binaries_directory):
+            #         raise extract_exception
+            # elif sys.platform == 'win32':
+            #     archive = ZipFile(self.local_zip_path, "r")
+            #     archive.extractall(self.local_downloaded_binaries_directory)
+            #     archive.close()
 
-            return self.local_build_binaries_dir
+            _log.info("Deleting ZipFile Extracted Binaries Can Be Found Here: %s" % self.local_downloaded_binaries_directory)
+            # os.remove(self.local_zip_path)
+
+            return self.local_downloaded_binaries_directory
 
         except BadZipfile:
             raise Exception('BadZipfile Error: could not exact ZipFile')
@@ -177,10 +203,16 @@ class BuildBinariesFetcher:
         except URLError:
             raise Exception('URLError Error: please make sure %s is a valid link' % self.s3_build_binaries_url)
 
-    def clean_up_on_error(self):
-        """ Delete newly creating files & directories which may be corrupt or incomplete"""
-        if self.host.filesystem.exists(self.local_build_binaries_dir):
-            shutil.rmtree(self.local_build_binaries_dir)
+    def _extract_zip_archive(self):
+        command = ['python', 'Tools/BuildSlaveSupport/built-product-archive', '--platform', self.platform.lower(),
+                   '--%s' % self.configuration.lower(), 'extract']
 
-        if self.host.filesystem.exists(self.local_zip_path):
-            os.remove(self.local_zip_path)
+        if self.build_directory:
+            print(' command %s' % command)
+            command.extend(['--build-directory', self.local_downloaded_binaries_directory])
+
+        subprocess.check_call(command)
+
+
+# todo add flag for dir created to use in cleanup on error
+# add config to does exsist check

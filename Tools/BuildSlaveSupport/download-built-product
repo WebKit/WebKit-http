@@ -24,32 +24,71 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
+import argparse
 import optparse
 import os
 import subprocess
+import json
 import sys
 import urllib
+import logging
 
+from urllib2 import urlopen, HTTPError, URLError
+
+absolute_file_path = os.path.abspath(__file__)
+build_slave_support_dir = os.path.dirname(absolute_file_path)
+webkit_tools_dir = os.path.dirname(build_slave_support_dir)
+scripts_dir = os.path.join(webkit_tools_dir, 'Scripts')
+sys.path.append(scripts_dir)
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from webkitpy.common.build_binaries_fetcher import BuildBinariesFetcher
+from webkitpy.common.webkit_finder import WebKitFinder
+from webkitpy.common.host import Host
+
+BUILD_DIRECTORY = 'DownloadedBinaries'
+
+
+_log = logging.getLogger(__name__)
+
+logging.basicConfig()
+
+_log.setLevel(logging.INFO)
 
 def main():
-    parser = optparse.OptionParser("usage: %prog [options] [url]")
-    parser.add_option("--platform", dest="platform")
-    parser.add_option("--debug", action="store_const", const="debug", dest="configuration")
-    parser.add_option("--release", action="store_const", const="release", dest="configuration")
+    parser = argparse.ArgumentParser("usage: %prog [options] [url]") # TODO update all these with help and aliases
+    parser.add_argument("--platform", dest="platform", default="mac-highsierra")
+    parser.add_argument("--debug", action="store_const", const="debug", dest="configuration")
+    parser.add_argument("--release", action="store_const", const="release", dest="configuration")
+    parser.add_argument('--architecture', default='x86_64', help='The architecture to query [x86_64 | i386]')
+    parser.add_argument('--build-directory', nargs='?', const=BUILD_DIRECTORY, help='TODO')
+    parser.add_argument('--full', action='store_true', default=False, help='Use full archives containing debug symbols. These are significantly larger files!')
+    parser.add_argument('--revision', default=None, help='Pass in a build revision number from WebKit archives to download binaries. Revision=None will download the latest build.')
+    parser.add_argument('--delete-first', action='store_true', default=False, help='Flag will clobber existing build directory')
+    parser.add_argument('--no-extract', action='store_true', default=False, help='TODO')
+    parser.add_argument('url', nargs='?', help='TODO')
+    options = parser.parse_args()
 
-    options, (url, ) = parser.parse_args()
+    print('options %s' % options)
+    url = options.url
+    print('url %s' % url)
 
     archiveDir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "WebKitBuild"))
     if not os.path.isdir(archiveDir):
         os.makedirs(archiveDir)
     archivePath = os.path.join(archiveDir, "%s.zip" % options.configuration)
 
+    print('##### archivePath %s' % archivePath)
+
+    options.host = Host()
+    build_binaries_fetcher = BuildBinariesFetcher(options)
+    build_binaries_fetcher.get_path()
     if sys.platform == 'win32':  # curl is not availble on Windows (outside of cygwin)
         urllib.urlretrieve(url, archivePath)
         return 0
 
-    return subprocess.call(["curl", "--fail", "--output", archivePath, url])
+   # return subprocess.call(["curl", "--fail", "--output", archivePath, url])
 
 
 if __name__ == '__main__':

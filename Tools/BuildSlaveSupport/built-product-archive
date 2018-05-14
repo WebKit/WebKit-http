@@ -46,7 +46,8 @@ def main():
     parser.add_option("--release", action="store_const", const="release", dest="configuration")
     parser.add_option("--minify", action="store_true", dest="minify", default=False,
                       help="Create a minified archive by removing files that are not necessary for running applications against the built product, at the cost of complicating debugging.")
-                      
+    parser.add_option("--build-directory", dest="build_directory", help="TODO")
+
     options, (action, ) = parser.parse_args()
     if not options.platform:
         parser.error("Platform is required")
@@ -70,7 +71,7 @@ def main():
     if action == 'archive':
         return archiveBuiltProduct(options.configuration, genericPlatform, options.platform, options.minify)
     else:
-        return extractBuiltProduct(options.configuration, genericPlatform)
+        return extractBuiltProduct(options.configuration, genericPlatform, options.build_directory)
 
 
 def webkitBuildDirectoryForConfigurationAndPlatform(configuration, platform, fullPlatform='', returnTopLevelDirectory=False):
@@ -239,9 +240,8 @@ def archiveBuiltProduct(configuration, platform, fullPlatform, minify=False):
         if createZipFromList(neededDirectories, configuration, excludePattern='*.o'):
             return 1
 
-def unzipArchive(directoryToExtractTo, configuration):
-    archiveDir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "WebKitBuild"))
-    assert os.path.isdir(archiveDir)
+def unzipArchive(archiveDir, directoryToExtractTo, configuration):
+
     archiveFile = os.path.join(archiveDir, configuration + ".zip")
 
     if sys.platform == 'darwin':
@@ -258,19 +258,22 @@ def unzipArchive(directoryToExtractTo, configuration):
     os.unlink(archiveFile)
 
 
-def extractBuiltProduct(configuration, platform):
+def extractBuiltProduct(configuration, platform, build_directory):
     assert platform in ('mac', 'win', 'gtk', 'ios', 'wpe', 'wincairo')
+    archiveDir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "WebKitBuild"))
+    assert os.path.isdir(archiveDir)
 
-    archiveFile = os.path.join(_topLevelBuildDirectory, configuration + '.zip')
+    if build_directory:
+        return unzipArchive(build_directory, build_directory, configuration)
 
     removeDirectoryIfExists(_configurationBuildDirectory)
     os.makedirs(_configurationBuildDirectory)
 
     if platform in ('mac', 'ios'):
-        return unzipArchive(_topLevelBuildDirectory, configuration)
+        return unzipArchive(archiveDir, _topLevelBuildDirectory, configuration)
     elif platform in ('win', 'gtk', 'wpe', 'wincairo'):
         print 'Extracting', _configurationBuildDirectory
-        return unzipArchive(_configurationBuildDirectory, configuration)
+        return unzipArchive(archiveDir, _configurationBuildDirectory, configuration)
 
 
 if __name__ == '__main__':

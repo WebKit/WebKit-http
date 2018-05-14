@@ -36,12 +36,9 @@ import subprocess
 import sys
 import tempfile
 import urllib2
-import urlparse
 
-REST_API_URL = 'https://q1tzqfy48e.execute-api.us-west-2.amazonaws.com/v2/'
-REST_API_ENDPOINT = 'archives/'
-REST_API_MINIFIED_ENDPOINT = 'minified-archives/'
-
+from webkitpy.common.build_binaries_fetcher import BuildBinariesFetcher
+from webkitpy.common.host import Host
 
 def bisect_builds(revision_list, start_index, end_index, options):
     while True:
@@ -49,8 +46,7 @@ def bisect_builds(revision_list, start_index, end_index, options):
         if index_to_test == None:
             print('No more builds to test...')
             exit(1)
-        download_archive(options, revision_list[index_to_test])
-        extract_archive(options)
+        download_and_extract_archive(options, revision_list[index_to_test])
         reproduces = test_archive(options, revision_list[index_to_test])
 
         if reproduces:          # bisect left
@@ -61,17 +57,9 @@ def bisect_builds(revision_list, start_index, end_index, options):
             bisect_builds(revision_list, index_to_test, end_index, options)
 
 
-def download_archive(options, revision):
-    api_url = get_api_url(options)
-    s3_url = get_s3_location_for_revision(api_url, revision)
-    print('Archive URL: {}'.format(s3_url))
-    command = ['python', '../BuildSlaveSupport/download-built-product', '--{}'.format(options.configuration), '--platform', options.platform, s3_url]
+def download_and_extract_archive(options, revision):
+    command = ['python', '../BuildSlaveSupport/download-built-product', '--{}'.format(options.configuration), '--platform', options.platform, '--architecture', options.architecture, '--full', options.full, '--revision', options.revision]
     print('Downloading revision: {}'.format(revision))
-    subprocess.check_call(command)
-
-
-def extract_archive(options):
-    command = ['python', '../BuildSlaveSupport/built-product-archive', '--platform', options.platform, '--%s' % options.configuration, 'extract']
     subprocess.check_call(command)
 
 
@@ -92,17 +80,6 @@ def find_ge(a, x):
     raise ValueError
 # ---- end bisect helpers ----
 
-
-def get_api_url(options):
-    if options.full:
-        base_url = urlparse.urljoin(REST_API_URL, REST_API_ENDPOINT)
-    else:
-        base_url = urlparse.urljoin(REST_API_URL, REST_API_MINIFIED_ENDPOINT)
-
-    api_url = urlparse.urljoin(base_url, '-'.join([options.platform, options.architecture, options.configuration]))
-    return api_url
-
-
 def get_indices_from_revisions(revision_list, start_revision, end_revision):
     if start_revision is None:
         print('WARNING: No starting revision was given, defaulting to first available for this configuration')
@@ -117,21 +94,6 @@ def get_indices_from_revisions(revision_list, start_revision, end_revision):
         end_index = find_le(revision_list, end_revision)
 
     return start_index, end_index
-
-
-def get_sorted_revisions(revisions_dict):
-    revisions = [int(item['revision']['N']) for item in revisions_dict['revisions']['Items']]
-    return sorted(revisions)
-    
-
-def get_s3_location_for_revision(url, revision):
-    url = '/'.join([url, str(revision)])
-    r = urllib2.urlopen(url)
-    data = json.load(r)
-    
-    for archive in data['archive']:
-        s3_url = archive['s3_url']
-    return s3_url
 
 
 def parse_args(args):
@@ -224,20 +186,24 @@ def print_list_and_exit(revision_list, options):
         exit(0)
 
 def main(options):
+
     validate_options(options)
 
-    url = get_api_url(options)
-    r = urllib2.urlopen(url)
-    data = json.load(r)
-    
-    revision_list = get_sorted_revisions(data)
+    options.host = Host()
+
+    build_binaries_fetcher = BuildBinariesFetcher(options)
+    revision_list = build_binaries_fetcher.get_path()
 
     if options.list:
         print_list_and_exit(revision_list, options)
 
     start_index, end_index = get_indices_from_revisions(revision_list, options.start, options.end)
     print('Bisecting between {} and {}'.format(revision_list[start_index], revision_list[end_index]))
-    
+
+    print('start_index %s' % revision_list[start_index])
+    print('end_index %s' % revision_list[end_index])
+    print('options %s' % options)
+
     # from here forward, use indices instead of revisions
     bisect_builds(revision_list, start_index, end_index, options)
 
