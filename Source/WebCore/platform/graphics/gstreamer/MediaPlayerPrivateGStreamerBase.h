@@ -147,7 +147,7 @@ public:
     void cdmInstanceAttached(const CDMInstance&) override;
     void cdmInstanceDetached(const CDMInstance&) override;
     void attemptToDecryptWithInstance(const CDMInstance&) final;
-    void handleProtectionEvent(GstEvent*);
+    void handleProtectionStructure(const GstStructure*);
     void dispatchLocalCDMInstance();
 #endif
 

@@ -93,6 +93,23 @@ public:
         return { };
     }
 
+    static const char* uuidToKeySystem(const String& uuid)
+    {
+        if (uuid == s_ClearKeyUUID)
+            return s_ClearKeyKeySystem;
+
+#if USE(OPENCDM)
+        if (uuid == s_PlayReadyUUID)
+            return s_PlayReadyKeySystems[0];
+
+        if (uuid == s_WidevineUUID)
+            return s_WidevineKeySystem;
+#endif
+
+        ASSERT_NOT_REACHED();
+        return { };
+    }
+
 #if (!defined(GST_DISABLE_GST_DEBUG))
     static String initDataMD5(const InitData&);
 #endif

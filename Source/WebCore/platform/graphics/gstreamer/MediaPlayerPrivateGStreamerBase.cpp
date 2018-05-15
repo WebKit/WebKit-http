@@ -1255,32 +1255,32 @@ unsigned MediaPlayerPrivateGStreamerBase::videoDecodedByteCount() const
 }
 
 #if ENABLE(ENCRYPTED_MEDIA)
-void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
+void MediaPlayerPrivateGStreamerBase::handleProtectionStructure(const GstStructure* structure)
 {
     ASSERT(isMainThread());
 
     // FIXME: Inform that we are waiting for a key.
-    const char* eventKeySystemUUID = nullptr;
-    GstBuffer* data = nullptr;
-    gst_event_parse_protection(event, &eventKeySystemUUID, &data, nullptr);
+    GUniqueOutPtr<char> keySystemUUID;
+    GRefPtr<GstBuffer> data;
+    gst_structure_get(structure, "init-data", GST_TYPE_BUFFER, &data.outPtr(), "key-system-uuid", G_TYPE_STRING, &keySystemUUID.outPtr(), nullptr);
 
     GstMapInfo mapInfo;
-    if (!gst_buffer_map(data, &mapInfo, GST_MAP_READ)) {
-        GST_WARNING("cannot map %s protection data", eventKeySystemUUID);
+    if (!gst_buffer_map(data.get(), &mapInfo, GST_MAP_READ)) {
+        GST_WARNING("cannot map protection data");
         return;
     }
 
-    GST_TRACE("init data encountered for %s of size %" G_GSIZE_FORMAT " with MD5 %s", eventKeySystemUUID, mapInfo.size, GStreamerEMEUtilities::initDataMD5(InitData(reinterpret_cast<const uint8_t*>(mapInfo.data), mapInfo.size)).utf8().data());
+    String keySystemUUIDString = keySystemUUID ? keySystemUUID.get() : "(unspecified)";
+    GST_TRACE("init data encountered for %s of size %" G_GSIZE_FORMAT " with MD5 %s", keySystemUUIDString.utf8().data(), mapInfo.size, GStreamerEMEUtilities::initDataMD5(InitData(reinterpret_cast<const uint8_t*>(mapInfo.data), mapInfo.size)).utf8().data());
     GST_MEMDUMP("init data", reinterpret_cast<const uint8_t*>(mapInfo.data), mapInfo.size);
     InitData initData(reinterpret_cast<const uint8_t*>(mapInfo.data), mapInfo.size);
-    gst_buffer_unmap(data, &mapInfo);
+    gst_buffer_unmap(data.get(), &mapInfo);
 
-    String eventKeySystemUUIDString = eventKeySystemUUID;
-    RunLoop::main().dispatch([weakThis = m_weakPtrFactory.createWeakPtr(*this), eventKeySystemUUID = eventKeySystemUUIDString, initData] {
+    RunLoop::main().dispatch([weakThis = m_weakPtrFactory.createWeakPtr(*this), keySystemUUID = keySystemUUIDString, initData] {
         if (!weakThis)
             return;
 
-        GST_DEBUG("scheduling initializationDataEncountered event for %s with init data size of %" G_GSIZE_FORMAT, eventKeySystemUUID.utf8().data(), initData.sizeInBytes());
+        GST_DEBUG("scheduling initializationDataEncountered event for %s with init data size of %" G_GSIZE_FORMAT, keySystemUUID.utf8().data(), initData.sizeInBytes());
         GST_TRACE("init data MD5 %s", GStreamerEMEUtilities::initDataMD5(initData).utf8().data());
         GST_MEMDUMP("init datas", reinterpret_cast<const uint8_t*>(initData.characters8()), initData.sizeInBytes());
         weakThis->m_player->initializationDataEncountered(ASCIILiteral("cenc"), ArrayBuffer::create(reinterpret_cast<const uint8_t*>(initData.characters8()), initData.sizeInBytes()));
@@ -1298,6 +1298,12 @@ void MediaPlayerPrivateGStreamerBase::cdmInstanceAttached(const CDMInstance& ins
 void MediaPlayerPrivateGStreamerBase::dispatchLocalCDMInstance()
 {
     ASSERT(isMainThread());
+
+    if (!m_cdmInstance) {
+        GST_DEBUG("no CDM instance yet, not dispatching anything");
+        return;
+    }
+
     GST_DEBUG("CDM instance %p dispatched", m_cdmInstance.get());
     dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_new("drm-cdm-instance-attached", "cdm-instance", G_TYPE_POINTER, m_cdmInstance.get(), nullptr)));
 }
