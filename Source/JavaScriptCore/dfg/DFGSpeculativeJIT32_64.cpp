@@ -5131,31 +5131,6 @@ void SpeculativeJIT::compile(Node* node)
         flushRegisters();
         callOperation(operationHasOwnProperty, resultGPR, objectGPR, keyRegs);
         booleanResult(resultGPR, node);
-#elif CPU(MIPS)
-        SpeculateCellOperand object(this, node->child1());
-        GPRTemporary result(this, Reuse, object);
-        GPRTemporary temp(this);
-        GPRReg tempGPR = temp.gpr();
-        Optional<SpeculateCellOperand> keyAsCell;
-        Optional<JSValueOperand> keyAsValue;
-        JSValueRegs keyRegs;
-        if (node->child2().useKind() == UntypedUse) {
-            keyAsValue = JSValueOperand(this, node->child2());
-            keyRegs = keyAsValue->jsValueRegs();
-        } else {
-            ASSERT(node->child2().useKind() == StringUse || node->child2().useKind() == SymbolUse);
-            keyAsCell = SpeculateCellOperand(this, node->child2());
-            m_jit.move(MacroAssembler::TrustedImm32(JSValue::CellTag), tempGPR);
-            keyRegs = JSValueRegs(tempGPR, keyAsCell->gpr());
-        }
-        GPRReg objectGPR = object.gpr();
-        GPRReg resultGPR = result.gpr();
-
-        speculateObject(node->child1());
-
-        flushRegisters();
-        callOperation(operationHasOwnProperty, resultGPR, objectGPR, keyRegs);
-        booleanResult(resultGPR, node);
 #else
         SpeculateCellOperand object(this, node->child1());
         GPRTemporary uniquedStringImpl(this);
