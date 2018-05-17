@@ -44,4 +44,11 @@ void WebCookieManagerProxy::getCookiePersistentStorage(String& storagePath, uint
     storageType = static_cast<uint32_t>(m_cookiePersistentStorageType);
 }
 
+void WebCookieManagerProxy::setLimit(uint64_t limit)
+{
+    m_cookieStorageLimit = limit;
+    processPool()->setInitialCookiesLimit(limit);
+    processPool()->sendToNetworkingProcess(Messages::WebCookieManager::SetLimit(m_cookieStorageLimit));
+}
+
 }

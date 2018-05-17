@@ -91,4 +91,9 @@ void WebCookieManager::setCookiePersistentStorage(const String& storagePath, uin
     storageSession.setCookieStorage(jar.get());
 }
 
+void WebCookieManager::setLimit(uint64_t limit)
+{
+    NetworkStorageSession::defaultStorageSession().setCookiesLimit(limit);
+}
+
 } // namespace WebKit

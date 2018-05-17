@@ -135,6 +135,7 @@ void NetworkStorageSession::setCookieStorage(SoupCookieJar* jar)
         m_cookieStorage = adoptGRef(soup_cookie_jar_new());
         soup_cookie_jar_set_accept_policy(m_cookieStorage.get(), SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY);
     }
+    setCookiesLimit(m_cookiesLimit);
     g_signal_connect_swapped(m_cookieStorage.get(), "changed", G_CALLBACK(cookiesDidChange), this);
     if (m_session && m_session->cookieJar() != m_cookieStorage.get())
         m_session->setCookieJar(m_cookieStorage.get());
@@ -143,6 +144,12 @@ void NetworkStorageSession::setCookieStorage(SoupCookieJar* jar)
 void NetworkStorageSession::setCookieObserverHandler(Function<void ()>&& handler)
 {
     m_cookieObserverHandler = WTFMove(handler);
+}
+
+void NetworkStorageSession::setCookiesLimit(uint64_t limit)
+{
+    m_cookiesLimit = limit;
+    soup_cookie_jar_set_limit(m_cookieStorage.get(), m_cookiesLimit);
 }
 
 #if USE(LIBSECRET)

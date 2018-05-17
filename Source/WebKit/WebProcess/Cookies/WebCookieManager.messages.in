@@ -46,5 +46,6 @@
 
 #if USE(SOUP)
     SetCookiePersistentStorage(String storagePath, uint32_t storageType)
+    SetLimit(uint64_t limit)
 #endif
 }

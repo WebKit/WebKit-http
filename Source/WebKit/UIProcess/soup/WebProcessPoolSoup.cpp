@@ -40,6 +40,7 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
 {
     supplement<WebCookieManagerProxy>()->getCookiePersistentStorage(parameters.cookiePersistentStoragePath, parameters.cookiePersistentStorageType);
     parameters.cookieAcceptPolicy = m_initialHTTPCookieAcceptPolicy;
+    parameters.cookiesLimit = m_initialCookiesLimit;
     parameters.ignoreTLSErrors = m_ignoreTLSErrors;
     parameters.languages = userPreferredLanguages();
     for (const auto& scheme : m_urlSchemesRegisteredForCustomProtocols)
