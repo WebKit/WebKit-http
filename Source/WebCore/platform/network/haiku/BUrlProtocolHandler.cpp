@@ -288,10 +288,10 @@ BUrlProtocolHandler::BUrlProtocolHandler(NetworkingContext* context,
     , m_position(0)
     , m_redirectionTries(gMaxRecursionLimit)
 {
-    BString method = BString(m_resourceHandle->firstRequest().httpMethod());
-
     if (!m_resourceHandle)
         return;
+
+    BString method = BString(m_resourceHandle->firstRequest().httpMethod());
 
     m_postData = NULL;
 
@@ -575,7 +575,11 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* caller,
     	});
     } else {
         ResourceResponse responseCopy = response;
-        client->didReceiveResponseAsync(m_resourceHandle, WTFMove(responseCopy));
+        // Make sure the resource handle is not deleted immediately, otherwise
+        // didReceiveResponse would crash. Keep a reference to it so it can be
+        // deleted cleanly after the function returns.
+        RefPtr<ResourceHandle> protectedHandle(m_resourceHandle);
+        protectedHandle->didReceiveResponse(WTFMove(responseCopy));
     }
 }
 
