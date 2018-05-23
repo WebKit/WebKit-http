@@ -75,6 +75,7 @@ WK_EXPORT void WKBundleSetClient(WKBundleRef bundle, WKBundleClientBase* client)
 WK_EXPORT void WKBundlePostMessage(WKBundleRef bundle, WKStringRef messageName, WKTypeRef messageBody);
 WK_EXPORT void WKBundlePostSynchronousMessage(WKBundleRef bundle, WKStringRef messageName, WKTypeRef messageBody, WKTypeRef* returnData);
 WK_EXPORT void WKBundleAddOriginAccessWhitelistEntry(WKBundleRef bundle, WKStringRef, WKStringRef, WKStringRef, bool);
+WK_EXPORT void WKBundleSetSpatialNavigationEnabled(WKBundleRef bundle, WKBundlePageGroupRef pageGroup, bool enabled);
 
 WK_EXPORT WKConnectionRef WKBundleGetApplicationConnection(WKBundleRef bundle);
 
