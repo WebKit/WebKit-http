@@ -90,7 +90,7 @@ public:
 #endif
 
         ASSERT_NOT_REACHED();
-        return { };
+        return nullptr;
     }
 
     static const char* uuidToKeySystem(const String& uuid)
@@ -107,7 +107,7 @@ public:
 #endif
 
         ASSERT_NOT_REACHED();
-        return { };
+        return nullptr;
     }
 
 #if (!defined(GST_DISABLE_GST_DEBUG))

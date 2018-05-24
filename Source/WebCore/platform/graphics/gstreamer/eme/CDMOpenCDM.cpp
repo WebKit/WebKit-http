@@ -226,37 +226,37 @@ CDMInstance::SuccessValue CDMInstanceOpenCDM::setServerCertificate(Ref<SharedBuf
         ? WebCore::CDMInstance::SuccessValue::Succeeded : WebCore::CDMInstance::SuccessValue::Failed;
 }
 
-void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicString&, Ref<SharedBuffer>&& initData, LicenseCallback callback)
+void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicString&, Ref<SharedBuffer>&& rawInitData, LicenseCallback callback)
 {
-    InitData initDataAsInitData = InitData(reinterpret_cast<const uint8_t*>(initData->data()), initData->size());
+    InitData initData = InitData(reinterpret_cast<const uint8_t*>(rawInitData->data()), rawInitData->size());
 
-    GST_TRACE("Going to request a new session id, init data size %u and MD5 %s", initDataAsInitData.sizeInBytes(), GStreamerEMEUtilities::initDataMD5(initDataAsInitData).utf8().data());
-    GST_MEMDUMP("init data", initDataAsInitData.characters8(), initDataAsInitData.sizeInBytes());
+    GST_TRACE("Going to request a new session id, init data size %u and MD5 %s", initData.sizeInBytes(), GStreamerEMEUtilities::initDataMD5(initData).utf8().data());
+    GST_MEMDUMP("init data", initData.characters8(), initData.sizeInBytes());
 
-    String sessionIdAsString = sessionIdByInitData(initDataAsInitData);
+    String sessionIdAsString = sessionIdByInitData(initData);
     if (!sessionIdAsString.isEmpty()) {
         GST_DEBUG("session %s already created, bailing out", sessionIdAsString.utf8().data());
-        callback(WTFMove(initData), sessionIdAsString, false, Failed);
+        callback(WTFMove(rawInitData), sessionIdAsString, false, Failed);
         return;
     }
 
     std::string sessionId;
     media::OpenCdm openCDM(m_openCDM);
 
-    sessionId = openCDM.CreateSession(m_mimeType, reinterpret_cast<const uint8_t*>(initData->data()), initData->size(), openCDMLicenseType(licenseType));
+    sessionId = openCDM.CreateSession(m_mimeType, reinterpret_cast<const uint8_t*>(rawInitData->data()), rawInitData->size(), openCDMLicenseType(licenseType));
 
     if (sessionId.empty()) {
         GST_ERROR("could not create session id");
-        callback(WTFMove(initData), { }, false, Failed);
+        callback(WTFMove(rawInitData), { }, false, Failed);
         return;
     }
 
     sessionIdAsString = String::fromUTF8(sessionId.c_str());
-    Ref<Session> newSession = Session::create(openCDM, WTFMove(initData));
+    Ref<Session> newSession = Session::create(openCDM, WTFMove(rawInitData));
 
     if (!newSession->isValid()) {
         GST_WARNING("created invalid session %s", sessionIdAsString.utf8().data());
-        callback(WTFMove(initData), sessionIdAsString, false, Failed);
+        callback(WTFMove(rawInitData), sessionIdAsString, false, Failed);
         return;
     }
 
