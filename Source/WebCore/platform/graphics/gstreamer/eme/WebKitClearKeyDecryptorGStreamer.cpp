@@ -84,7 +84,6 @@ static void webkit_media_clear_key_decrypt_class_init(WebKitMediaClearKeyDecrypt
         "webkitclearkey", 0, "ClearKey decryptor");
 
     WebKitMediaCommonEncryptionDecryptClass* cencClass = WEBKIT_MEDIA_CENC_DECRYPT_CLASS(klass);
-    cencClass->protectionSystemId = WebCore::GStreamerEMEUtilities::s_ClearKeyUUID;
     cencClass->setupCipher = GST_DEBUG_FUNCPTR(webKitMediaClearKeyDecryptorSetupCipher);
     cencClass->decrypt = GST_DEBUG_FUNCPTR(webKitMediaClearKeyDecryptorDecrypt);
     cencClass->releaseCipher = GST_DEBUG_FUNCPTR(webKitMediaClearKeyDecryptorReleaseCipher);

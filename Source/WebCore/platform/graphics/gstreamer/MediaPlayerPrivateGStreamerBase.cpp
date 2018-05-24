@@ -50,13 +50,12 @@
 
 #if ENABLE(ENCRYPTED_MEDIA)
 #include "CDMInstance.h"
-#include "GStreamerEMEUtilities.h"
 #include "SharedBuffer.h"
-#include "WebKitClearKeyDecryptorGStreamer.h"
 #if USE(OPENCDM)
 #include "CDMOpenCDM.h"
-#include "WebKitOpenCDMPlayReadyDecryptorGStreamer.h"
-#include "WebKitOpenCDMWidevineDecryptorGStreamer.h"
+#include "WebKitOpenCDMDecryptorGStreamer.h"
+#else
+#include "WebKitClearKeyDecryptorGStreamer.h"
 #endif
 #endif
 
@@ -150,24 +149,22 @@ static const GstStreamVolumeFormat volumeFormat = GST_STREAM_VOLUME_FORMAT_LINEA
 static const GstStreamVolumeFormat volumeFormat = GST_STREAM_VOLUME_FORMAT_CUBIC;
 #endif
 
-
 void registerWebKitGStreamerElements()
 {
     if (!webkitGstCheckVersion(1, 6, 1))
         return;
 
 #if ENABLE(ENCRYPTED_MEDIA)
+#if USE(OPENCDM)
+    GRefPtr<GstElementFactory> decryptorFactory = adoptGRef(gst_element_factory_find("webkitopencdm"));
+    if (!decryptorFactory)
+        gst_element_register(0, "webkitopencdm", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_OPENCDM_DECRYPT);
+
+#else
     GRefPtr<GstElementFactory> clearKeyDecryptorFactory = adoptGRef(gst_element_factory_find("webkitclearkey"));
     if (!clearKeyDecryptorFactory)
         gst_element_register(nullptr, "webkitclearkey", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_MEDIA_CK_DECRYPT);
 
-#if USE(OPENCDM)
-    GRefPtr<GstElementFactory> widevineDecryptorFactory = adoptGRef(gst_element_factory_find("webkitopencdmwidevine"));
-    if (!widevineDecryptorFactory)
-        gst_element_register(0, "webkitopencdmwidevine", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_OPENCDM_WIDEVINE_DECRYPT);
-    GRefPtr<GstElementFactory> playReadyDecryptorFactory = adoptGRef(gst_element_factory_find("webkitplayreadydec"));
-    if (!playReadyDecryptorFactory)
-        gst_element_register(0, "webkitplayreadydec", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_OPENCDM_PLAYREADY_DECRYPT);
 #endif
 #endif
 }
@@ -304,9 +301,6 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
 
 MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 {
-#if ENABLE(ENCRYPTED_MEDIA)
-    m_protectionCondition.notifyAll();
-#endif
     m_notifier->invalidate();
 
 #if USE(GSTREAMER_GL) || USE(COORDINATED_GRAPHICS_THREADED)
@@ -398,85 +392,6 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
         return true;
     }
 #endif // USE(GSTREAMER_GL)
-
-#if ENABLE(ENCRYPTED_MEDIA)
-    if (!g_strcmp0(contextType, "drm-preferred-decryption-system-id")) {
-        if (isMainThread()) {
-            GST_ERROR("can't handle drm-preferred-decryption-system-id need context message in the main thread");
-            ASSERT_NOT_REACHED();
-            return false;
-        }
-
-        GST_DEBUG("handling drm-preferred-decryption-system-id need context message");
-        LockHolder lock(m_protectionMutex);
-
-        if (!m_cdmInstance || m_cdmInstance->keySystem().isEmpty()) {
-            std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>> streamEncryptionInformation = GStreamerEMEUtilities::extractEventsAndSystemsFromMessage(message);
-            GST_TRACE("found %" G_GSIZE_FORMAT " protection events", streamEncryptionInformation.first.size());
-            InitData concatenatedInitDataChunks;
-            unsigned concatenatedInitDataChunksNumber = 0;
-
-            for (auto& event : streamEncryptionInformation.first) {
-                GST_TRACE("handling protection event %u", GST_EVENT_SEQNUM(event.get()));
-                const char* eventKeySystemUUID = nullptr;
-                GstBuffer* data = nullptr;
-                gst_event_parse_protection(event.get(), &eventKeySystemUUID, &data, nullptr);
-
-                if (!streamEncryptionInformation.second.contains(eventKeySystemUUID)) {
-                    GST_DEBUG("%s not supported", eventKeySystemUUID);
-                    continue;
-                }
-
-                GstMapInfo mapInfo;
-                if (!gst_buffer_map(data, &mapInfo, GST_MAP_READ)) {
-                    GST_WARNING("cannot map %s protection data", eventKeySystemUUID);
-                    continue;
-                }
-
-                GST_TRACE("appending concatenated init data for %s of size %" G_GSIZE_FORMAT "(MD5: %s)", eventKeySystemUUID, mapInfo.size, GStreamerEMEUtilities::initDataMD5(InitData(reinterpret_cast<const uint8_t*>(mapInfo.data), mapInfo.size)).utf8().data());
-                GST_MEMDUMP("init data", reinterpret_cast<const uint8_t*>(mapInfo.data), mapInfo.size);
-                concatenatedInitDataChunks.append(reinterpret_cast<const uint8_t*>(mapInfo.data), mapInfo.size);
-                concatenatedInitDataChunksNumber++;
-
-                gst_buffer_unmap(data, &mapInfo);
-
-                ASSERT(!m_reportedProtectionEvents.contains(GST_EVENT_SEQNUM(event.get())));
-                m_reportedProtectionEvents.append(GST_EVENT_SEQNUM(event.get()));
-            }
-
-            if (!concatenatedInitDataChunksNumber)
-                return false;
-
-            RunLoop::main().dispatch([weakThis = m_weakPtrFactory.createWeakPtr(*this), initData = concatenatedInitDataChunks] {
-                if (!weakThis)
-                    return;
-
-                GST_DEBUG("scheduling initializationDataEncountered event with concatenated init data size of %" G_GSIZE_FORMAT, initData.sizeInBytes());
-                GST_TRACE("concatenated init data MD5 %s", GStreamerEMEUtilities::initDataMD5(initData).utf8().data());
-                GST_MEMDUMP("concatenated init datas", reinterpret_cast<const uint8_t*>(initData.characters8()), initData.sizeInBytes());
-                weakThis->m_player->initializationDataEncountered(ASCIILiteral("cenc"), ArrayBuffer::create(reinterpret_cast<const uint8_t*>(initData.characters8()), initData.sizeInBytes()));
-            });
-
-            GST_INFO("waiting for a CDM instance");
-            m_protectionCondition.waitFor(m_protectionMutex, WEBCORE_GSTREAMER_EME_LICENSE_KEY_RESPONSE_TIMEOUT, [this] {
-                return this->m_cdmInstance;
-            });
-        }
-
-        if (m_cdmInstance && !m_cdmInstance->keySystem().isEmpty()) {
-            const char* preferredKeySystemUuid = GStreamerEMEUtilities::keySystemToUuid(m_cdmInstance->keySystem());
-            GST_INFO("working with %s, continuing with %s on %s", m_cdmInstance->keySystem().utf8().data(), preferredKeySystemUuid, GST_MESSAGE_SRC_NAME(message));
-
-            GRefPtr<GstContext> context = adoptGRef(gst_context_new("drm-preferred-decryption-system-id", FALSE));
-            GstStructure* contextStructure = gst_context_writable_structure(context.get());
-            gst_structure_set(contextStructure, "decryption-system-id", G_TYPE_STRING, preferredKeySystemUuid, nullptr);
-            gst_element_set_context(GST_ELEMENT(GST_MESSAGE_SRC(message)), context.get());
-        } else
-            GST_WARNING("no proper CDM instance attached");
-
-        return true;
-    }
-#endif // ENABLE(ENCRYPTED_MEDIA)
 
     return false;
 }
@@ -1340,30 +1255,32 @@ unsigned MediaPlayerPrivateGStreamerBase::videoDecodedByteCount() const
 }
 
 #if ENABLE(ENCRYPTED_MEDIA)
-void MediaPlayerPrivateGStreamerBase::initializationDataEncountered(GstEvent* event)
+void MediaPlayerPrivateGStreamerBase::handleProtectionStructure(const GstStructure* structure)
 {
+    ASSERT(isMainThread());
+
     // FIXME: Inform that we are waiting for a key.
-    const char* eventKeySystemUUID = nullptr;
-    GstBuffer* data = nullptr;
-    gst_event_parse_protection(event, &eventKeySystemUUID, &data, nullptr);
+    GUniqueOutPtr<char> keySystemUUID;
+    GRefPtr<GstBuffer> data;
+    gst_structure_get(structure, "init-data", GST_TYPE_BUFFER, &data.outPtr(), "key-system-uuid", G_TYPE_STRING, &keySystemUUID.outPtr(), nullptr);
 
     GstMapInfo mapInfo;
-    if (!gst_buffer_map(data, &mapInfo, GST_MAP_READ)) {
-        GST_WARNING("cannot map %s protection data", eventKeySystemUUID);
+    if (!gst_buffer_map(data.get(), &mapInfo, GST_MAP_READ)) {
+        GST_WARNING("cannot map protection data");
         return;
     }
 
-    GST_TRACE("init data encountered for %s of size %" G_GSIZE_FORMAT " with MD5 %s", eventKeySystemUUID, mapInfo.size, GStreamerEMEUtilities::initDataMD5(InitData(reinterpret_cast<const uint8_t*>(mapInfo.data), mapInfo.size)).utf8().data());
+    String keySystemUUIDString = keySystemUUID ? keySystemUUID.get() : "(unspecified)";
+    GST_TRACE("init data encountered for %s of size %" G_GSIZE_FORMAT " with MD5 %s", keySystemUUIDString.utf8().data(), mapInfo.size, GStreamerEMEUtilities::initDataMD5(InitData(reinterpret_cast<const uint8_t*>(mapInfo.data), mapInfo.size)).utf8().data());
     GST_MEMDUMP("init data", reinterpret_cast<const uint8_t*>(mapInfo.data), mapInfo.size);
     InitData initData(reinterpret_cast<const uint8_t*>(mapInfo.data), mapInfo.size);
-    gst_buffer_unmap(data, &mapInfo);
+    gst_buffer_unmap(data.get(), &mapInfo);
 
-    String eventKeySystemUUIDString = eventKeySystemUUID;
-    RunLoop::main().dispatch([weakThis = m_weakPtrFactory.createWeakPtr(*this), eventKeySystemUUID = eventKeySystemUUIDString, initData] {
+    RunLoop::main().dispatch([weakThis = m_weakPtrFactory.createWeakPtr(*this), keySystemUUID = keySystemUUIDString, initData] {
         if (!weakThis)
             return;
 
-        GST_DEBUG("scheduling initializationDataEncountered event for %s with init data size of %" G_GSIZE_FORMAT, eventKeySystemUUID.utf8().data(), initData.sizeInBytes());
+        GST_DEBUG("scheduling initializationDataEncountered event for %s with init data size of %" G_GSIZE_FORMAT, keySystemUUID.utf8().data(), initData.sizeInBytes());
         GST_TRACE("init data MD5 %s", GStreamerEMEUtilities::initDataMD5(initData).utf8().data());
         GST_MEMDUMP("init datas", reinterpret_cast<const uint8_t*>(initData.characters8()), initData.sizeInBytes());
         weakThis->m_player->initializationDataEncountered(ASCIILiteral("cenc"), ArrayBuffer::create(reinterpret_cast<const uint8_t*>(initData.characters8()), initData.sizeInBytes()));
@@ -1372,37 +1289,39 @@ void MediaPlayerPrivateGStreamerBase::initializationDataEncountered(GstEvent* ev
 
 void MediaPlayerPrivateGStreamerBase::cdmInstanceAttached(const CDMInstance& instance)
 {
-    {
-        LockHolder lock(m_protectionMutex);
-        GST_DEBUG("CDM instance %p set", &instance);
-        m_cdmInstance = &instance;
-    }
+    ASSERT(isMainThread());
+    GST_DEBUG("CDM instance %p set", &instance);
+    m_cdmInstance = &instance;
     dispatchLocalCDMInstance();
-    m_protectionCondition.notifyAll();
 }
 
 void MediaPlayerPrivateGStreamerBase::dispatchLocalCDMInstance()
 {
-    LockHolder lock(m_protectionMutex);
+    ASSERT(isMainThread());
+
+    if (!m_cdmInstance) {
+        GST_DEBUG("no CDM instance yet, not dispatching anything");
+        return;
+    }
+
     GST_DEBUG("CDM instance %p dispatched", m_cdmInstance.get());
     dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_new("drm-cdm-instance-attached", "cdm-instance", G_TYPE_POINTER, m_cdmInstance.get(), nullptr)));
 }
 
 void MediaPlayerPrivateGStreamerBase::cdmInstanceDetached(const CDMInstance& instance)
 {
+    ASSERT(isMainThread());
     ASSERT(m_cdmInstance.get() == &instance);
-    LockHolder lock(m_protectionMutex);
     GST_DEBUG("detaching CDM instance %p, dispatching event", m_cdmInstance.get());
     m_cdmInstance = nullptr;
     dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_new("drm-cdm-instance-detached", "cdm-instance", G_TYPE_POINTER, &instance, nullptr)));
-    m_protectionCondition.notifyAll();
 }
 
 void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithInstance(const CDMInstance& instance)
 {
+    ASSERT(isMainThread());
     ASSERT(m_cdmInstance.get() == &instance);
     GST_TRACE("instance %p, current stored %p", &instance, m_cdmInstance.get());
-    LockHolder lock(m_protectionMutex);
     attemptToDecryptWithLocalInstance();
 }
 
@@ -1425,28 +1344,13 @@ void MediaPlayerPrivateGStreamerBase::dispatchDecryptionStructure(GUniquePtr<Gst
     bool eventHandled = gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB, structure.release()));
     GST_TRACE("emitted decryption structure on pipeline, event handled %s", boolForPrinting(eventHandled));
 }
-
-void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
-{
-    LockHolder lock(m_protectionMutex);
-
-    // Check whether the protection event was already reported or not to JavaScript by the demuxer thread.
-    size_t eventPosition = m_reportedProtectionEvents.find(GST_EVENT_SEQNUM(event));
-    if (eventPosition != notFound) {
-        GST_DEBUG("event %u already reported to JS", GST_EVENT_SEQNUM(event));
-        m_reportedProtectionEvents.remove(eventPosition);
-        return;
-    }
-
-    initializationDataEncountered(event);
-}
 #endif
 
 bool MediaPlayerPrivateGStreamerBase::supportsKeySystem(const String& keySystem, const String& mimeType)
 {
     bool result = false;
 
-#if ENABLE(ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA) && !USE(OPENCDM)
     result = GStreamerEMEUtilities::isClearKeyKeySystem(keySystem);
 #endif
 

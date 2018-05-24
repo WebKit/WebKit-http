@@ -24,7 +24,6 @@
 #if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)
 
 #include "GStreamerCommon.h"
-#include <gst/gst.h>
 #include <wtf/text/WTFString.h>
 #include <wtf/Seconds.h>
 
@@ -94,8 +93,22 @@ public:
         return { };
     }
 
-    static GstElement* createDecryptor(const char* protectionSystem);
-    static std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>> extractEventsAndSystemsFromMessage(GstMessage*);
+    static const char* uuidToKeySystem(const String& uuid)
+    {
+        if (uuid == s_ClearKeyUUID)
+            return s_ClearKeyKeySystem;
+
+#if USE(OPENCDM)
+        if (uuid == s_PlayReadyUUID)
+            return s_PlayReadyKeySystems[0];
+
+        if (uuid == s_WidevineUUID)
+            return s_WidevineKeySystem;
+#endif
+
+        ASSERT_NOT_REACHED();
+        return { };
+    }
 
 #if (!defined(GST_DISABLE_GST_DEBUG))
     static String initDataMD5(const InitData&);

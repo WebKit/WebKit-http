@@ -1174,9 +1174,7 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
 #if ENABLE(ENCRYPTED_MEDIA)
             else if (gst_structure_has_name(structure, "drm-initialization-data-encountered")) {
                 GST_DEBUG("drm-initialization-data-encountered message from %s", GST_MESSAGE_SRC_NAME(message));
-                GRefPtr<GstEvent> event;
-                gst_structure_get(structure, "event", GST_TYPE_EVENT, &event.outPtr(), nullptr);
-                handleProtectionEvent(event.get());
+                handleProtectionStructure(structure);
             } else if (gst_structure_has_name(structure, "drm-cdm-instance-needed")) {
                 GST_DEBUG("drm-cdm-instance-needed message from %s", GST_MESSAGE_SRC_NAME(message));
                 dispatchLocalCDMInstance();

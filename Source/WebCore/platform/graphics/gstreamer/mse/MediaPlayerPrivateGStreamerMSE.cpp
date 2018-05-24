@@ -56,12 +56,13 @@
 #include <wtf/text/AtomicStringHash.h>
 
 #if ENABLE(ENCRYPTED_MEDIA)
-#include "CDMClearKey.h"
 #include "SharedBuffer.h"
 #endif
 
 #if USE(OPENCDM)
 #include "CDMOpenCDM.h"
+#else
+#include "CDMClearKey.h"
 #endif
 
 static const char* dumpReadyState(WebCore::MediaPlayer::ReadyState readyState)
