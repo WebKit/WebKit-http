@@ -151,6 +151,7 @@ public:
     void switchToBrowsingContext(Inspector::ErrorString&, const String& browsingContextHandle, const String* optionalFrameHandle, Ref<SwitchToBrowsingContextCallback>&&) override;
     void createBrowsingContext(Inspector::ErrorString&, const bool* preferNewTab, Ref<CreateBrowsingContextCallback>&&) override;
     void setWindowFrameOfBrowsingContext(Inspector::ErrorString&, const String& handle, const JSON::Object* origin, const JSON::Object* size, Ref<SetWindowFrameOfBrowsingContextCallback>&&) final;
+    void maximizeWindowOfBrowsingContext(Inspector::ErrorString&, const String& handle, Ref<MaximizeWindowOfBrowsingContextCallback>&&) final;
     void hideWindowOfBrowsingContext(Inspector::ErrorString&, const String& handle, Ref<HideWindowOfBrowsingContextCallback>&&) final;
     void navigateBrowsingContext(Inspector::ErrorString&, const String& handle, const String& url, const String* optionalPageLoadStrategyString, const int* optionalPageLoadTimeout, Ref<NavigateBrowsingContextCallback>&&) override;
     void goBackInBrowsingContext(Inspector::ErrorString&, const String&, const String* optionalPageLoadStrategyString, const int* optionalPageLoadTimeout, Ref<GoBackInBrowsingContextCallback>&&) override;
@@ -213,6 +214,7 @@ private:
 
     void exitFullscreenWindowForPage(WebPageProxy&, WTF::CompletionHandler<void()>&&);
     void restoreWindowForPage(WebPageProxy&, WTF::CompletionHandler<void()>&&);
+    void maximizeWindowForPage(WebPageProxy&, WTF::CompletionHandler<void()>&&);
     void hideWindowForPage(WebPageProxy&, WTF::CompletionHandler<void()>&&);
 
     // Implemented in generated WebAutomationSessionMessageReceiver.cpp.
