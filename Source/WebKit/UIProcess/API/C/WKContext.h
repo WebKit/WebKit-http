@@ -27,6 +27,7 @@
 #define WKContext_h
 
 #include <WebKit/WKBase.h>
+#include <WebKit/WKContextAutomationClient.h>
 #include <WebKit/WKContextConnectionClient.h>
 #include <WebKit/WKContextDownloadClient.h>
 #include <WebKit/WKContextHistoryClient.h>
@@ -164,6 +165,9 @@ WK_EXPORT void WKContextSetPlugInAutoStartOriginHashes(WKContextRef context, WKD
 WK_EXPORT void WKContextSetPlugInAutoStartOrigins(WKContextRef contextRef, WKArrayRef arrayRef);
 WK_EXPORT void WKContextSetPlugInAutoStartOriginsFilteringOutEntriesAddedAfterTime(WKContextRef contextRef, WKDictionaryRef dictionaryRef, double time);
 WK_EXPORT void WKContextRefreshPlugIns(WKContextRef context);
+
+WK_EXPORT void WKContextSetAutomationClient(WKContextRef contextRef, const WKContextAutomationClientBase* wkClient);
+WK_EXPORT void WKContextSetAutomationSession(WKContextRef contextRef, WKWebAutomationSessionRef sessionRef);
 
 #ifdef __cplusplus
 }

@@ -63,6 +63,10 @@
 #include <WebCore/SoupNetworkProxySettings.h>
 #endif
 
+#if PLATFORM(WPE)
+#include "WPEAutomationClient.h"
+#endif
+
 #if PLATFORM(COCOA)
 OBJC_CLASS NSMutableDictionary;
 OBJC_CLASS NSObject;
@@ -274,6 +278,11 @@ public:
     void disableProcessTermination() { m_processTerminationEnabled = false; }
     void enableProcessTermination();
 
+#if PLATFORM(WPE)
+    void didSetAutomationClient();
+    void setAutomationAllowed(bool);
+    bool isAutomationAllowed() const;
+#endif
     void updateAutomationCapabilities() const;
     void setAutomationSession(RefPtr<WebAutomationSession>&&);
     WebAutomationSession* automationSession() const { return m_automationSession.get(); }
@@ -592,6 +601,10 @@ private:
 
 #if PLATFORM(COCOA)
     bool m_cookieStoragePartitioningEnabled { false };
+#endif
+
+#if PLATFORM(WPE) && ENABLE(REMOTE_INSPECTOR)
+    std::unique_ptr<WPEAutomationClient> m_wpeAutomationClient;
 #endif
 
     struct Paths {

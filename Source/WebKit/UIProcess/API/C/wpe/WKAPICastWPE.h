@@ -31,20 +31,17 @@
 #endif
 
 #include "WKView.h"
-#include "WKWebAutomation.h"
 #include "WebGrammarDetail.h"
 #include <WebCore/ActivityState.h>
 
 namespace WKWPE {
 class View;
-class WebAutomation;
 }
 
 namespace WebKit {
 
 WK_ADD_API_MAPPING(WKGrammarDetailRef, WebGrammarDetail)
 WK_ADD_API_MAPPING(WKViewRef, WKWPE::View)
-WK_ADD_API_MAPPING(WKWebAutomationSessionRef, WKWPE::WebAutomation)
 
 inline ProxyingRefPtr<WebGrammarDetail> toAPI(const WebCore::GrammarDetail& grammarDetail)
 {

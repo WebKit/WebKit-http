@@ -102,6 +102,7 @@
 #include <WebKit/WKUserScriptRef.h>
 #include <WebKit/WKView.h>
 #include <WebKit/WKViewportAttributes.h>
+#include <WebKit/WKWebAutomationSession.h>
 #include <WebKit/WKWindowFeaturesRef.h>
 
 #endif // WPE_WebKit_h

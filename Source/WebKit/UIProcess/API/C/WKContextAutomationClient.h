@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2016 TATA ELXSI
- * Copyright (C) 2016 Metrological
+ * Copyright (C) 2018 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,30 +23,28 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "WKWebAutomation.h"
-#include "WKPage.h"
-#include "WKPagePrivate.h"
+#ifndef WKContextAutomationClient_h
+#define WKContextAutomationClient_h
 
-#include "APIAutomationSessionClient.h"
-#include "WKPageConfigurationRef.h"
-#include "APIPageConfiguration.h"
-#include "WKAPICast.h"
-#include "WPEWebAutomation.h"
-#include "WebProcessPool.h"
+#include <WebKit/WKBase.h>
 
-using namespace WebKit;
+typedef bool (*WKContextAllowsRemoteAutomationCallback)(WKContextRef context, const void* clientInfo);
+typedef void (*WKContextDidRequestAutomationSessionCallback)(WKContextRef context, WKStringRef sessionID, const void* clientInfo);
+typedef WKStringRef (*WKContextAutomationBrowserInfoCallback)(WKContextRef context, const void* clientInfo);
 
-WKWebAutomationSessionRef WKWebAutomationSessionCreate(WKContextRef context, WKPageRef page)
-{
-    WKWebAutomationSessionRef automationSession = toAPI(WKWPE::WebAutomation::create());
-    toImpl(automationSession)->setSessionIdentifier("wpe");
-    toImpl(automationSession)->setProcessPool(toImpl(context));
-    WKPageSetControlledByAutomation(page, true);
-    return automationSession;
-}
+typedef struct WKContextAutomationClientBase {
+    int                                          version;
+    const void*                                  clientInfo;
+} WKContextAutomationClientBase;
 
-void WKWebAutomationExecuteCommand(WKWebAutomationSessionRef automationSession, WKStringRef command, WKAutomationCommandStatusCallback callback)
-{
-    toImpl(automationSession)->sendMessageToTarget(toImpl(command)->string(), callback);
-}
+typedef struct WKContextAutomationClientV0 {
+    WKContextAutomationClientBase                base;
+
+    // Version 0.
+    WKContextAllowsRemoteAutomationCallback      allowsRemoteAutomation;
+    WKContextDidRequestAutomationSessionCallback didRequestAutomationSession;
+    WKContextAutomationBrowserInfoCallback       browserName;
+    WKContextAutomationBrowserInfoCallback       browserVersion;
+} WKContextAutomationClientV0;
+
+#endif // WKContextAutomationClient_h

@@ -363,6 +363,9 @@ void WebProcessPool::setAutomationClient(std::unique_ptr<API::AutomationClient>&
         m_automationClient = std::make_unique<API::AutomationClient>();
     else
         m_automationClient = WTFMove(automationClient);
+#if PLATFORM(WPE)
+    didSetAutomationClient();
+#endif
 }
 
 void WebProcessPool::setLegacyCustomProtocolManagerClient(std::unique_ptr<API::CustomProtocolManagerClient>&& customProtocolManagerClient)

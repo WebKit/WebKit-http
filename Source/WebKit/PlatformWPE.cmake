@@ -146,7 +146,6 @@ list(APPEND WebKit_SOURCES
     UIProcess/API/C/soup/WKSoupSession.cpp
 
     UIProcess/API/C/wpe/WKView.cpp
-    UIProcess/API/C/wpe/WKWebAutomation.cpp
 
     UIProcess/API/glib/APIWebsiteDataStoreGLib.cpp
     UIProcess/API/glib/IconDatabase.cpp
@@ -211,8 +210,6 @@ list(APPEND WebKit_SOURCES
     UIProcess/API/wpe/WebKitScriptDialogWPE.cpp
     UIProcess/API/wpe/WebKitWebViewWPE.cpp
     UIProcess/API/wpe/WPEView.cpp
-    UIProcess/API/wpe/WPEWebAutomation.cpp
-    UIProcess/API/wpe/WPEWebAutomationClient.cpp
 
     UIProcess/InspectorServer/HTTPRequest.cpp
     UIProcess/InspectorServer/WebInspectorServer.cpp
@@ -432,6 +429,7 @@ list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/UIProcess/gstreamer"
     "${WEBKIT_DIR}/UIProcess/linux"
     "${WEBKIT_DIR}/UIProcess/soup"
+    "${WEBKIT_DIR}/UIProcess/wpe"
     "${WEBKIT_DIR}/WebProcess/InjectedBundle/API/glib"
     "${WEBKIT_DIR}/WebProcess/InjectedBundle/API/wpe"
     "${WEBKIT_DIR}/WebProcess/soup"
@@ -625,6 +623,7 @@ if (EXPORT_DEPRECATED_WEBKIT2_C_API)
 
         ${WEBKIT_DIR}/UIProcess/API/C/WKBackForwardListItemRef.h
         ${WEBKIT_DIR}/UIProcess/API/C/WKBackForwardListRef.h
+        ${WEBKIT_DIR}/UIProcess/API/C/WKContextAutomationClient.h
         ${WEBKIT_DIR}/UIProcess/API/C/WKContextConfigurationRef.h
         ${WEBKIT_DIR}/UIProcess/API/C/WKContextConnectionClient.h
         ${WEBKIT_DIR}/UIProcess/API/C/WKContextDownloadClient.h
@@ -666,6 +665,8 @@ if (EXPORT_DEPRECATED_WEBKIT2_C_API)
         ${WEBKIT_DIR}/UIProcess/API/C/WKUserContentControllerRef.h
         ${WEBKIT_DIR}/UIProcess/API/C/WKUserScriptRef.h
         ${WEBKIT_DIR}/UIProcess/API/C/WKViewportAttributes.h
+        ${WEBKIT_DIR}/UIProcess/API/C/WKWebAutomationSession.h
+        ${WEBKIT_DIR}/UIProcess/API/C/WKWebAutomationSessionClient.h
         ${WEBKIT_DIR}/UIProcess/API/C/WKWindowFeaturesRef.h
 
         ${WEBKIT_DIR}/UIProcess/API/C/WKGeolocationManager.h
@@ -679,7 +680,6 @@ if (EXPORT_DEPRECATED_WEBKIT2_C_API)
         ${WEBKIT_DIR}/UIProcess/API/C/WKProxy.h
 
         ${WEBKIT_DIR}/UIProcess/API/C/wpe/WKView.h
-        ${WEBKIT_DIR}/UIProcess/API/C/wpe/WKWebAutomation.h
 
         ${WEBKIT_DIR}/UIProcess/API/C/soup/WKCookieManagerSoup.h
         ${WEBKIT_DIR}/UIProcess/API/C/soup/WKSoupSession.h

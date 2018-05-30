@@ -38,6 +38,7 @@
 #include "WKAPICast.h"
 #include "WKContextConfigurationRef.h"
 #include "WKRetainPtr.h"
+#include "WebAutomationSession.h"
 #include "WebCertificateInfo.h"
 #include "WebContextInjectedBundleClient.h"
 #include "WebProcessPool.h"
@@ -55,6 +56,9 @@ template<> struct ClientTraits<WKContextDownloadClientBase> {
 };
 template<> struct ClientTraits<WKContextHistoryClientBase> {
     typedef std::tuple<WKContextHistoryClientV0> Versions;
+};
+template<> struct ClientTraits<WKContextAutomationClientBase> {
+    typedef std::tuple<WKContextAutomationClientV0> Versions;
 };
 }
 
@@ -607,4 +611,52 @@ ProcessID WKContextGetNetworkProcessIdentifier(WKContextRef contextRef)
 ProcessID WKContextGetDatabaseProcessIdentifier(WKContextRef contextRef)
 {
     return toImpl(contextRef)->storageProcessIdentifier();
+}
+
+void WKContextSetAutomationClient(WKContextRef contextRef, const WKContextAutomationClientBase* wkClient)
+{
+    class AutomationClient final : public API::Client<WKContextAutomationClientBase>, public API::AutomationClient {
+    public:
+        explicit AutomationClient(const WKContextAutomationClientBase* client)
+        {
+            initialize(client);
+        }
+    private:
+        bool allowsRemoteAutomation(WebProcessPool* processPool) override
+        {
+            if (!m_client.allowsRemoteAutomation)
+                return false;
+            return m_client.allowsRemoteAutomation(toAPI(processPool), m_client.base.clientInfo);
+        }
+
+        void didRequestAutomationSession(WebProcessPool* processPool, const String& identifier) override
+        {
+            if (!m_client.didRequestAutomationSession)
+                return;
+            m_client.didRequestAutomationSession(toAPI(processPool), toAPI(identifier.impl()), m_client.base.clientInfo);
+        }
+
+        String browserName(WebProcessPool* processPool) const
+        {
+            if (!m_client.browserName)
+                return { };
+            WKRetainPtr<WKStringRef> name(AdoptWK, m_client.browserName(toAPI(processPool), m_client.base.clientInfo));
+            return toWTFString(name.get());
+        }
+
+        String browserVersion(WebProcessPool* processPool) const
+        {
+            if (!m_client.browserVersion)
+                return { };
+            WKRetainPtr<WKStringRef> version(AdoptWK, m_client.browserVersion(toAPI(processPool), m_client.base.clientInfo));
+            return toWTFString(version.get());
+        }
+    };
+
+    toImpl(contextRef)->setAutomationClient(std::make_unique<AutomationClient>(wkClient));
+}
+
+void WKContextSetAutomationSession(WKContextRef contextRef, WKWebAutomationSessionRef session)
+{
+    toImpl(contextRef)->setAutomationSession(toImpl(session));
 }

@@ -117,6 +117,20 @@ void WebProcessPool::platformInitialize()
 #endif
 }
 
+void WebProcessPool::didSetAutomationClient()
+{
+#if ENABLE(REMOTE_INSPECTOR)
+    if (m_automationClient) {
+        if (Inspector::RemoteInspector::singleton().client()) {
+            WTFLogAlways("Not enabling automation on WebProcessPool because there's another pool with automation enabled, only one is allowed");
+            return;
+        }
+        m_wpeAutomationClient = std::make_unique<WPEAutomationClient>(*this, *m_automationClient);
+    } else
+        m_wpeAutomationClient = nullptr;
+#endif
+}
+
 WTF::String WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory()
 {
     GUniquePtr<gchar> cacheDirectory(g_build_filename(g_get_user_cache_dir(), "wpe", "appcache", nullptr));

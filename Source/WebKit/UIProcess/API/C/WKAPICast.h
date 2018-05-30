@@ -82,6 +82,7 @@ class GeolocationPermissionRequest;
 class NotificationPermissionRequest;
 class UserMediaPermissionCheckProxy;
 class UserMediaPermissionRequestProxy;
+class WebAutomationSession;
 class WebBackForwardList;
 class WebBackForwardListItem;
 class WebColorPickerResultListenerProxy;
@@ -171,6 +172,7 @@ WK_ADD_API_MAPPING(WKUserMediaPermissionCheckRef, UserMediaPermissionCheckProxy)
 WK_ADD_API_MAPPING(WKUserMediaPermissionRequestRef, UserMediaPermissionRequestProxy)
 WK_ADD_API_MAPPING(WKUserScriptRef, API::UserScript)
 WK_ADD_API_MAPPING(WKViewportAttributesRef, WebViewportAttributes)
+WK_ADD_API_MAPPING(WKWebAutomationSessionRef, WebAutomationSession)
 WK_ADD_API_MAPPING(WKWebsiteDataStoreRef, API::WebsiteDataStore)
 WK_ADD_API_MAPPING(WKWebsitePoliciesRef, API::WebsitePolicies)
 WK_ADD_API_MAPPING(WKWindowFeaturesRef, API::WindowFeatures)

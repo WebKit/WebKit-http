@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2016 TATA ELXSI
- * Copyright (C) 2016 Metrological
+ * Copyright (C) 2018 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,40 +23,23 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WPEWebAutomation_h
-#define WPEWebAutomation_h
+#ifndef WKWebAutomationSessionClient_h
+#define WKWebAutomationSessionClient_h
 
-#include "APIObject.h"
-#include "WebInspectorProxy.h"
-#include "WPEWebAutomationClient.h"
+#include <WebKit/WKBase.h>
 
-#include <JavaScriptCore/InspectorFrontendChannel.h>
-#include <JavaScriptCore/InspectorBackendDispatcher.h>
-#include <JavaScriptCore/InspectorFrontendRouter.h>
-#include <wtf/RefPtr.h>
+typedef WKPageRef (*WKWebAutomationRequestNewPageCallback)(WKWebAutomationSessionRef session, const void* clientInfo);
 
+typedef struct WKebAutomationSessionClientBase {
+    int                                   version;
+    const void*                           clientInfo;
+} WKWebAutomationSessionClientBase;
 
-namespace WKWPE {
-class WebAutomation final: public API::ObjectImpl<API::Object::Type::AutomationSession>, public Inspector::FrontendChannel {
+typedef struct WKWebAutomationsessionClientV0 {
+    WKWebAutomationSessionClientBase      base;
 
-public:
-    static WebAutomation* create();
+    // Version 0.
+    WKWebAutomationRequestNewPageCallback requestNewPage;
+} WKWebAutomationSessionClientV0;
 
-    void sendMessageToTarget(const String& command, void (*commandCallback)(WKStringRef rspMsg));
-    
-    ConnectionType connectionType() const override { return ConnectionType::Remote; }
-    void sendMessageToFrontend(const String& rspMsg) override;
-    void setProcessPool(WebKit::WebProcessPool* processPool);
-    void setSessionIdentifier(const String& sessionIdentifier);
-
-private:
-    WebAutomation();
-    virtual ~WebAutomation();
-
-    void (*m_commandStatusCallback)(WKStringRef rspMsg);
-    std::unique_ptr<WebKit::WebAutomationSession> m_webAutomationSession;
-};
-
-} // WKWPE
-
-#endif // WPEWebAutomation_h
+#endif // WKWebAutomationSessionClient_h

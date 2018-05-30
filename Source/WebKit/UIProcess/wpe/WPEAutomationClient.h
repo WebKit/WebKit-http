@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2016 TATA ELXSI
- * Copyright (C) 2016 Metrological
+ * Copyright (C) 2018 Metrological
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,25 +23,55 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WKWebAutomation_h
-#define WKWebAutomation_h
+#pragma once
 
-#include <WebKit/WKBase.h>
-#include <WebKit/WKGeometry.h>
+#if ENABLE(REMOTE_INSPECTOR)
+#include "APIAutomationClient.h"
+#include "WebProcessPool.h"
+#include <JavaScriptCore/RemoteInspector.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace WebKit {
 
-typedef void (*WKAutomationCommandStatusCallback)(WKStringRef command);
+class WPEAutomationClient final : Inspector::RemoteInspector::Client {
+public:
+    explicit WPEAutomationClient(WebProcessPool& processPool, API::AutomationClient& client)
+        : m_processPool(processPool)
+        , m_client(client)
+    {
+        Inspector::RemoteInspector::singleton().setClient(this);
+    }
 
-WK_EXPORT WKWebAutomationSessionRef WKWebAutomationSessionCreate(WKContextRef context, WKPageRef page);
-WK_EXPORT void WKWebAutomationExecuteCommand(WKWebAutomationSessionRef automationSession, WKStringRef command, WKAutomationCommandStatusCallback callback);
+    ~WPEAutomationClient()
+    {
+        Inspector::RemoteInspector::singleton().setClient(nullptr);
+    }
 
-#ifdef __cplusplus
-}
-#endif
+private:
+    bool remoteAutomationAllowed() const override
+    {
+        return m_client.allowsRemoteAutomation(&m_processPool);
+    }
 
-#endif // WKWebAutomation_h
+    void requestAutomationSession(const String& sessionIdentifier) override
+    {
+        m_client.didRequestAutomationSession(&m_processPool, sessionIdentifier);
+    }
+
+    String browserName() const override
+    {
+        return m_client.browserName(&m_processPool);
+    }
+
+    String browserVersion() const override
+    {
+        return m_client.browserVersion(&m_processPool);
+    }
 
 
+    WebProcessPool& m_processPool;
+    API::AutomationClient& m_client;
+};
+
+} // namespace WebKit
+
+#endif // ENABLE(REMOTE_INSPECTOR)
