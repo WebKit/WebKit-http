@@ -182,6 +182,7 @@ bool BitmapImage::notSolidColor()
 
 ImageDrawResult BitmapImage::draw(GraphicsContext& context, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, BlendMode mode, DecodingMode decodingMode, ImageOrientationDescription description)
 {
+     decodingMode = DecodingMode::Synchronous;
     if (destRect.isEmpty() || srcRect.isEmpty())
         return ImageDrawResult::DidNothing;
 
