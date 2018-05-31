@@ -87,6 +87,7 @@ void drawNativeImage(const NativeImagePtr& image, GraphicsContext& context, cons
         }
     }
 
+    context.platformContext()->setImageInterpolationQuality(InterpolationLow);
     context.platformContext()->drawSurfaceToContext(image.get(), adjustedDestRect, adjustedSrcRect, context);
     context.restore();
 }
