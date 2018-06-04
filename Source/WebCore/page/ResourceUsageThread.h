@@ -36,6 +36,7 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/Threading.h>
+#include "MemoryCache.h"
 
 namespace JSC {
 class VM;
@@ -49,6 +50,7 @@ class ResourceUsageThread {
 public:
     static void addObserver(void* key, std::function<void (const ResourceUsageData&)>);
     static void removeObserver(void* key);
+    static void setTotalLayerInfo(double);
 
 private:
     friend NeverDestroyed<ResourceUsageThread>;
@@ -70,6 +72,8 @@ private:
     // Platforms may need to access some data from the common VM.
     // They should ensure their use of the VM is thread safe.
     JSC::VM* m_vm { nullptr };
+
+    double totalLayerBackingStoreBytes { 0 };
 };
 
 #if PLATFORM(COCOA)

@@ -50,6 +50,9 @@ void ResourceUsageThread::addObserver(void* key, std::function<void (const Resou
 {
     auto& resourceUsageThread = ResourceUsageThread::singleton();
     resourceUsageThread.createThreadIfNeeded();
+#if PLATFORM(LINUX)
+    MemoryCache::singleton().setDisabled(false);
+#endif
 
     {
         LockHolder locker(resourceUsageThread.m_lock);
@@ -64,11 +67,20 @@ void ResourceUsageThread::addObserver(void* key, std::function<void (const Resou
 void ResourceUsageThread::removeObserver(void* key)
 {
     auto& resourceUsageThread = ResourceUsageThread::singleton();
+#if PLATFORM(LINUX)
+    MemoryCache::singleton().setDisabled(true);
+#endif
 
     {
         LockHolder locker(resourceUsageThread.m_lock);
         resourceUsageThread.m_observers.remove(key);
     }
+}
+
+void ResourceUsageThread::setTotalLayerInfo(double layerBackingStoreBytes)
+{
+    auto& resourceUsageThread = ResourceUsageThread::singleton();
+    resourceUsageThread.totalLayerBackingStoreBytes = layerBackingStoreBytes;
 }
 
 void ResourceUsageThread::waitUntilObservers()

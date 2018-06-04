@@ -160,6 +160,11 @@ void ResourceUsageThread::platformThreadBody(JSC::VM* vm, ResourceUsageData& dat
     data.categories[MemoryCategory::GCOwned].dirtySize = currentGCOwnedExtra - currentGCOwnedExternal;
     data.categories[MemoryCategory::GCOwned].externalSize = currentGCOwnedExternal;
 
+    data.categories[MemoryCategory::Images].dirtySize = MemoryCache::singleton().getStatistics().images.decodedSize;
+
+    data.categories[MemoryCategory::LibcMalloc].dirtySize = WTF::fastMallocStatistics().committedVMBytes;
+    data.categories[MemoryCategory::Layers].dirtySize = totalLayerBackingStoreBytes;
+
     data.totalExternalSize = currentGCOwnedExternal;
 
     data.timeOfNextEdenCollection = vm->heap.edenActivityCallback()->nextFireTime();
