@@ -269,7 +269,10 @@ static inline bool compositingLogEnabled()
 #if ENABLE(RESOURCE_USAGE)
     return true;
 #endif
+#if !LOG_DISABLED
     return LogCompositing.state == WTFLogChannelOn;
+#endif
+    return false;
 }
 #endif
 
