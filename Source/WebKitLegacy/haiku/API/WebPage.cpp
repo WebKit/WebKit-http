@@ -732,6 +732,7 @@ void BWebPage::paint(BRect rect, bool immediate)
 
     if (!view || !frame->contentRenderer())
         return;
+    view->updateLayoutAndStyleIfNeededRecursive();
 
     if (!fWebView->LockLooper())
         return;
