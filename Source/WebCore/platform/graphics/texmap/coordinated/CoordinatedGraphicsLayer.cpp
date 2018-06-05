@@ -398,6 +398,8 @@ void CoordinatedGraphicsLayer::setContentsToPlatformLayer(PlatformLayer* platfor
         if (m_platformLayer)
             m_platformLayer->setClient(nullptr);
         m_shouldSyncPlatformLayer = true;
+        if (platformLayer)
+            m_shouldUpdatePlatformLayer = true;
     }
 
     m_platformLayer = platformLayer;
