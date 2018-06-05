@@ -8,4 +8,6 @@ list(APPEND PAL_SOURCES
 	system/haiku/SoundHaiku.cpp
 
     text/KillRing.cpp
+
+    unix/LoggingUnix.cpp
 )

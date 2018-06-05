@@ -177,7 +177,7 @@ ResourceError SynchronousLoaderClient::platformBadResponseError()
 
 void ResourceHandle::continueDidReceiveResponse()
 {
-    ASSERT(!client() || client()->usesAsyncCallbacks());
+    //ASSERT(!client() || client()->usesAsyncCallbacks());
     //continueAfterDidReceiveResponse(this);
 	notImplemented();
 }

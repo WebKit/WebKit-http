@@ -44,7 +44,7 @@ SocketStreamHandleImpl::SocketStreamHandleImpl(const URL& url, SocketStreamHandl
     :
     SocketStreamHandle(url, client)
 {
-    LOG(Network, "SocketStreamHandle %p new client %p", this, m_client);
+    LOG(Network, "SocketStreamHandle %p new client %p", this, &m_client);
     fReadThreadId = 0;
     fWriteThreadId = 0;
     unsigned int port = url.port() ? *url.port() : (url.protocolIs("wss") ? 443 : 80);
