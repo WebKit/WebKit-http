@@ -29,8 +29,7 @@
 #pragma once
 
 #include "NicosiaPaintingEngine.h"
-
-typedef struct _GThreadPool GThreadPool;
+#include <wtf/WorkerPool.h>
 
 namespace Nicosia {
 
@@ -42,7 +41,7 @@ public:
 private:
     bool paint(WebCore::GraphicsLayer&, Ref<Buffer>&&, const WebCore::IntRect&, const WebCore::IntRect&, const WebCore::IntRect&, float) override;
 
-    GThreadPool* m_threadPool;
+    Ref<WorkerPool> m_workerPool;
 };
 
 } // namespace Nicosia

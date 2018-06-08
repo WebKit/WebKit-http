@@ -159,6 +159,7 @@ set(WTF_HEADERS
     WeakPtr.h
     WordLock.h
     WorkQueue.h
+    WorkerPool.h
     dtoa.h
 
     dtoa/bignum-dtoa.h
@@ -269,6 +270,7 @@ set(WTF_SOURCES
     WallTime.cpp
     WordLock.cpp
     WorkQueue.cpp
+    WorkerPool.cpp
     dtoa.cpp
 
     dtoa/bignum-dtoa.cc
