@@ -144,7 +144,13 @@ void ProcessLauncher::launchProcess()
     if (!setCloseOnExec(socketPair.client))
         RELEASE_ASSERT_NOT_REACHED();
 
-    g_child_watch_add(pid, [](GPid pid, gint, gpointer) { g_spawn_close_pid(pid); }, nullptr);
+    auto childWatchFunc = [](GPid pid, gint status, gpointer) {
+        GUniqueOutPtr<GError> error;
+        if (!g_spawn_check_exit_status(status, &error.outPtr()))
+            g_warning("%s", error->message);
+        g_spawn_close_pid(pid);
+    };
+    g_child_watch_add(pid, childWatchFunc, nullptr);
 
     close(socketPair.client);
     m_processIdentifier = pid;
