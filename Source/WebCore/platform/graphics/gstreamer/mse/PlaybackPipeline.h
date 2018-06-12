@@ -27,9 +27,9 @@
 #include "WebKitMediaSourceGStreamer.h"
 #include "WebKitMediaSourceGStreamerPrivate.h"
 
+#include <GStreamerCommon.h>
 #include <gst/gst.h>
 #include <wtf/Condition.h>
-#include <wtf/glib/GRefPtr.h>
 
 namespace WTF {
 template<> GRefPtr<WebKitMediaSrc> adoptGRef(WebKitMediaSrc*);
