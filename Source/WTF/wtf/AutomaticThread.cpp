@@ -162,8 +162,8 @@ void AutomaticThread::start(const AbstractLocker&)
     
     m_hasUnderlyingThread = true;
     
-    RefPtr<Thread> thread = Thread::create(
-        "WTF::AutomaticThread",
+    Thread::create(
+        name(),
         [=] () {
             if (verbose)
                 dataLog(RawPointer(this), ": Running automatic thread!\n");
@@ -227,8 +227,7 @@ void AutomaticThread::start(const AbstractLocker&)
                 }
                 RELEASE_ASSERT(result == WorkResult::Continue);
             }
-        });
-    thread->detach();
+        })->detach();
 }
 
 void AutomaticThread::threadDidStart()
