@@ -52,7 +52,7 @@ private:
         return m_client.allowsRemoteAutomation(&m_processPool);
     }
 
-    void requestAutomationSession(const String& sessionIdentifier) override
+    void requestAutomationSession(const String& sessionIdentifier, const SessionCapabilities&) override
     {
         m_client.didRequestAutomationSession(&m_processPool, sessionIdentifier);
     }
