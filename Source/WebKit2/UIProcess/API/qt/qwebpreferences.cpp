@@ -87,6 +87,8 @@ bool QWebPreferencesPrivate::testAttribute(QWebPreferencesPrivate::WebAttribute 
         return WKPreferencesGetLogsPageMessagesToSystemConsoleEnabled(preferencesRef);
     case WebSecurityEnabled:
         return WKPreferencesGetWebSecurityEnabled(preferencesRef);
+    case AllowRunningInsecureContent:
+        return WKPreferencesGetAllowRunningInsecureContent(preferencesRef);
     default:
         ASSERT_NOT_REACHED();
         return false;
@@ -165,6 +167,9 @@ void QWebPreferencesPrivate::setAttribute(QWebPreferencesPrivate::WebAttribute a
         break;
     case WebSecurityEnabled:
         WKPreferencesSetWebSecurityEnabled(preferencesRef, enable);
+        break;
+    case AllowRunningInsecureContent:
+        WKPreferencesSetAllowRunningInsecureContent(preferencesRef, enable);
         break;
     default:
         ASSERT_NOT_REACHED();
@@ -665,6 +670,19 @@ void QWebPreferences::setWebSecurityEnabled(bool enable)
         return;
     d->setAttribute(QWebPreferencesPrivate::WebSecurityEnabled, enable);
     emit webSecurityEnabledChanged();
+}
+
+bool QWebPreferences::allowRunningInsecureContent() const
+{
+    return d->testAttribute(QWebPreferencesPrivate::WebSecurityEnabled);
+}
+
+void QWebPreferences::setAllowRunningInsecureContent(bool enable)
+{
+    if (allowRunningInsecureContent() == enable)
+        return;
+    d->setAttribute(QWebPreferencesPrivate::AllowRunningInsecureContent, enable);
+    emit allowRunningInsecureContentChanged();
 }
 
 QWebPreferencesPrivate* QWebPreferencesPrivate::get(QWebPreferences* preferences)
