@@ -75,7 +75,6 @@ public:
     GstElement* appsink() { return m_appsink.get(); }
     GstCaps* demuxerSrcPadCaps() { return m_demuxerSrcPadCaps.get(); }
     GstCaps* appsinkCaps() { return m_appsinkCaps.get(); }
-    MediaPlayerPrivateGStreamerMSE* playerPrivate() { return m_playerPrivate; }
     RefPtr<WebCore::TrackPrivateBase> track() { return m_track; }
     WebCore::MediaSourceStreamTypeGStreamer streamType() { return m_streamType; }
 
@@ -88,6 +87,11 @@ public:
 
     void reportAppsrcAtLeastABufferLeft();
     void reportAppsrcNeedDataReceived();
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    void cacheProtectionEvent(GRefPtr<GstEvent>&& event) { m_cachedProtectionEvents.append(WTFMove(event)); }
+    void handleProtectedBufferProbeInformation(GstPadProbeInfo*);
+#endif
 
 private:
     void resetPipeline();
@@ -143,7 +147,8 @@ private:
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
-    struct PadProbeInformation m_appsinkPadEventProbeInformation;
+    struct PadProbeInformation m_appsinkPadProtectionProbeInformation;
+    Vector<GRefPtr<GstEvent>> m_cachedProtectionEvents;
 #endif
     // Keeps track of the states of append processing, to avoid performing actions inappropriate for the current state
     // (eg: processing more samples when the last one has been detected, etc.). See setAppendState() for valid

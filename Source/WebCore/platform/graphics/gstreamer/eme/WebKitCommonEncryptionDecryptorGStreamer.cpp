@@ -205,14 +205,27 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
     WebKitMediaCommonEncryptionDecrypt* self = WEBKIT_MEDIA_CENC_DECRYPT(base);
     WebKitMediaCommonEncryptionDecryptPrivate* priv = WEBKIT_MEDIA_CENC_DECRYPT_GET_PRIVATE(self);
 
+    GstProtectionMeta* protectionMeta = reinterpret_cast<GstProtectionMeta*>(gst_buffer_get_protection_meta(buffer));
+    bool isBufferEncrypted = protectionMeta;
+
     LockHolder locker(priv->m_mutex);
+
+    if (protectionMeta) {
+        const GValue* streamEncryptionEventsList = gst_structure_get_value(protectionMeta->info, "stream-encryption-events");
+        if (streamEncryptionEventsList && GST_VALUE_HOLDS_LIST(streamEncryptionEventsList)) {
+            unsigned streamEncryptionEventsListSize = gst_value_list_get_size(streamEncryptionEventsList);
+            for (unsigned i = 0; i < streamEncryptionEventsListSize; ++i)
+                priv->m_pendingProtectionEvents.append(GRefPtr<GstEvent>(static_cast<GstEvent*>(g_value_get_boxed(gst_value_list_get_value(streamEncryptionEventsList, i)))));
+            gst_structure_remove_field(protectionMeta->info, "stream-encryption-events");
+            isBufferEncrypted &= gst_structure_n_fields(protectionMeta->info) > 0;
+        }
+    }
 
     if (!priv->m_pendingProtectionEvents.isEmpty())
         webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(self);
 
-    GstProtectionMeta* protectionMeta = reinterpret_cast<GstProtectionMeta*>(gst_buffer_get_protection_meta(buffer));
-    if (!protectionMeta) {
-        GST_TRACE_OBJECT(self, "Failed to get GstProtection metadata from buffer %p, assuming it's not encrypted", buffer);
+    if (!isBufferEncrypted) {
+        GST_TRACE_OBJECT(self, "failed to get original protection metadata from buffer %p, assuming it's not encrypted", buffer);
         return GST_FLOW_OK;
     }
 
@@ -316,6 +329,8 @@ static void webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(Web
         GstBuffer* buffer = nullptr;
         const char* eventKeySystemUUID = nullptr;
         gst_event_parse_protection(event.get(), &eventKeySystemUUID, &buffer, nullptr);
+
+        GST_TRACE_OBJECT(self, "handling protection event %u for %s", GST_EVENT_SEQNUM(event.get()), eventKeySystemUUID);
 
         if (priv->m_cdmInstance && g_strcmp0(eventKeySystemUUID, WebCore::GStreamerEMEUtilities::keySystemToUuid(priv->m_cdmInstance->keySystem()))) {
             GST_TRACE_OBJECT(self, "protection event for a different key system");
