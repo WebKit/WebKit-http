@@ -233,7 +233,7 @@ void ScrollbarThemeHaiku::paintThumb(GraphicsContext& context, Scrollbar& scroll
 
     BRect drawRect = BRect(rect);
     BView* view = context.platformContext();
-    rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
+    rgb_color base = ui_color(B_SCROLL_BAR_THUMB_COLOR);
     rgb_color dark2 = tint_color(base, B_DARKEN_2_TINT);
     rgb_color dark3 = tint_color(base, B_DARKEN_3_TINT);
 

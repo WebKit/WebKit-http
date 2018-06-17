@@ -44,64 +44,6 @@
 
 namespace WebCore {
 
-class WebCoreSynchronousLoader : public ResourceHandleClient {
-public:
-    WebCoreSynchronousLoader();
-
-    void waitForCompletion();
-
-    void didReceiveResponseAsync(ResourceHandle*, ResourceResponse&&) override;
-    void didReceiveData(ResourceHandle*, const char*, unsigned, int encodedDataLength) override;
-    void didFinishLoading(ResourceHandle*) override;
-    void didFail(ResourceHandle*, const ResourceError&) override;
-
-	void willSendRequestAsync(ResourceHandle*, ResourceRequest&&, ResourceResponse&&, CompletionHandler<void(ResourceRequest&&)>&&) override {}
-
-    ResourceResponse resourceResponse() const { return m_response; }
-    ResourceError resourceError() const { return m_error; }
-    Vector<char> data() const { return m_data; }
-
-private:
-    ResourceResponse m_response;
-    ResourceError m_error;
-    Vector<char> m_data;
-    bool fFinished;
-};
-
-WebCoreSynchronousLoader::WebCoreSynchronousLoader()
-	:
-	fFinished(false)
-{
-}
-
-void WebCoreSynchronousLoader::didReceiveResponseAsync(ResourceHandle*, ResourceResponse&& response)
-{
-    m_response = response;
-}
-
-void WebCoreSynchronousLoader::didReceiveData(ResourceHandle*, const char* data, unsigned length, int)
-{
-    m_data.append(data, length);
-}
-
-void WebCoreSynchronousLoader::didFinishLoading(ResourceHandle*)
-{
-	fFinished = true;
-}
-
-void WebCoreSynchronousLoader::didFail(ResourceHandle*, const ResourceError& error)
-{
-    m_error = error;
-    fFinished = true;
-}
-
-void WebCoreSynchronousLoader::waitForCompletion()
-{
-	while (!fFinished)
-		snooze(10000);
-	return;
-}
-
 ResourceHandleInternal::~ResourceHandleInternal()
 {
 }
@@ -145,30 +87,7 @@ void ResourceHandle::cancel()
 
 void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentialsPolicy /*storedCredentials*/, ResourceError& error, ResourceResponse& response, Vector<char>& data)
 {
-    WebCoreSynchronousLoader syncLoader;
-    RefPtr<ResourceHandle> handle = adoptRef(new ResourceHandle(context, request, &syncLoader, true, false, false));
-
-    ResourceHandleInternal* d = handle->getInternal();
-
-    if (!d->m_user.isEmpty() || !d->m_pass.isEmpty()) {
-        // If credentials were specified for this request, add them to the url,
-        // so that they will be passed to QNetworkRequest.
-        URL urlWithCredentials(d->m_firstRequest.url());
-        urlWithCredentials.setUser(d->m_user);
-        urlWithCredentials.setPass(d->m_pass);
-        d->m_firstRequest.setURL(urlWithCredentials);
-    }
-    //d->m_context = context;
-    
-    d->m_urlrequest = new BUrlProtocolHandler(context, handle.get(),
-        true);
-    if (!d->m_urlrequest->isValid())
-        handle->scheduleFailure(InvalidURLFailure);
-
-    syncLoader.waitForCompletion();
-    error = syncLoader.resourceError();
-    data = syncLoader.data();
-    response = syncLoader.resourceResponse();
+    ASSERT_NOT_REACHED();
 }
 
 
@@ -258,7 +177,7 @@ ResourceError SynchronousLoaderClient::platformBadResponseError()
 
 void ResourceHandle::continueDidReceiveResponse()
 {
-    ASSERT(!client() || client()->usesAsyncCallbacks());
+    //ASSERT(!client() || client()->usesAsyncCallbacks());
     //continueAfterDidReceiveResponse(this);
 	notImplemented();
 }

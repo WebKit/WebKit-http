@@ -91,6 +91,10 @@ struct PasteboardWebContent {
     String text;
     String markup;
 #endif
+#if PLATFORM(HAIKU)
+    String text;
+    String markup;
+#endif
 };
 
 struct PasteboardURL {

@@ -73,10 +73,12 @@ MediaPlayerPrivate::~MediaPlayerPrivate()
     delete m_frameBuffer;
 }
 
+#if ENABLE(MEDIA_SOURCE)
 void MediaPlayerPrivate::load(const String& url, WebCore::MediaSourcePrivateClient*)
 {
-	load(url);
+    load(url);
 }
+#endif
 
 void MediaPlayerPrivate::load(const String& url)
 {

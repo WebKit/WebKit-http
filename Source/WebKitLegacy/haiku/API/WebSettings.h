@@ -66,12 +66,21 @@ public:
 	static	void				SetIconDatabasePath(const BString& path);
 	static	void				ClearIconDatabase();
 
+	// This method triggers sending the provided message when the favicon
+	// for the given URL can be found.
+	// It is dispatched to the BMessenger provided to SendIconForURL().
+	// The icon will be stored as archived BBitmap "icon" in the message, which is
+	// otherwise a copy of the provided message
+	static  void				SendIconForURL(const BString& url,
+									const BMessage& reply,
+									const BMessenger& target);
+
 	static	void				SetOfflineStoragePath(const BString& path);
 	static	void				SetOfflineStorageDefaultQuota(int64 maximumSize);
 
 	static	void				SetOfflineWebApplicationCachePath(const BString& path);
 	static	void				SetOfflineWebApplicationCacheQuota(int64 maximumSize);
-    
+
 			void				SetLocalStoragePath(const BString& path);
 
 			void				SetSerifFont(const BFont& font);
@@ -112,6 +121,7 @@ private:
 			void				_HandleSetPersistentStoragePath(const BString& path);
 			void				_HandleSetIconDatabasePath(const BString& path);
 			void				_HandleClearIconDatabase();
+			void				_HandleSendIconForURL(BMessage* message);
 			void				_HandleSetOfflineStoragePath(const BString& path);
 			void				_HandleSetOfflineStorageDefaultQuota(int64 maximumSize);
 			void				_HandleSetWebApplicationCachePath(const BString& path);

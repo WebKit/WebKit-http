@@ -167,9 +167,22 @@ void WebCore::Pasteboard::write(WebCore::PasteboardImage const&)
     notImplemented();
 }
 
-void WebCore::Pasteboard::write(WebCore::PasteboardWebContent const&)
+void WebCore::Pasteboard::write(WebCore::PasteboardWebContent const& content)
 {
-    notImplemented();
+    AutoClipboardLocker locker(be_clipboard);
+    if (!locker.isLocked())
+        return;
+
+    be_clipboard->Clear();
+    BMessage* data = be_clipboard->Data();
+    if (!data)
+        return;
+
+    data->AddData("text/html", B_MIME_TYPE, content.markup.utf8().data(), content.markup.utf8().length());
+
+    data->AddData("text/plain", B_MIME_TYPE, content.text.utf8().data(), content.text.utf8().length());
+
+    be_clipboard->Commit();
 }
 
 void WebCore::Pasteboard::writeMarkup(WTF::String const& text)

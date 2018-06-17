@@ -187,7 +187,7 @@ void deleteAllCookiesModifiedAfterDate(const NetworkStorageSession&, double)
     notImplemented();
 }
 
-void startObservingCookieChanges(const NetworkStorageSession& storageSession, std::function<void ()>&& callback)
+void startObservingCookieChanges(const NetworkStorageSession& storageSession, WTF::Function<void ()>&& callback)
 {
     notImplemented();
 }

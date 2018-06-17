@@ -107,14 +107,10 @@ void Editor::writeImageToPasteboard(Pasteboard& pasteboard, Element& imageElemen
 
 void Editor::writeSelectionToPasteboard(Pasteboard& pasteboard)
 {
-#if 0
     PasteboardWebContent pasteboardContent;
-    pasteboardContent.canSmartCopyOrDelete = canSmartCopyOrDelete();
     pasteboardContent.text = selectedTextForDataTransfer();
     pasteboardContent.markup = createMarkup(*selectedRange(), nullptr, AnnotateForInterchange, false, ResolveNonLocalURLs);
     pasteboard.write(pasteboardContent);
-#endif
-	notImplemented();
 }
 
 RefPtr<DocumentFragment> Editor::webContentFromPasteboard(Pasteboard&, Range&, bool /*allowPlainText*/, bool& /*chosePlainText*/)

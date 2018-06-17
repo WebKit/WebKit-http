@@ -57,10 +57,11 @@
 #include "FrameView.h"
 #include "GeolocationClientMock.h"
 #include "GraphicsContext.h"
+#include "IconDatabase.h"
 #include "InitializeThreading.h"
 #include "InspectorClientHaiku.h"
 #include "LibWebRTCProvider.h"
-#include "Logging.h"
+#include "LogInitialization.h"
 #include "MemoryCache.h"
 #include "WebNavigatorContentUtilsClient.h"
 #include "NotificationClientHaiku.h"
@@ -157,7 +158,7 @@ BMessenger BWebPage::sDownloadListener;
 	// NOTE: This needs to be called when the BApplication is ready.
 	// It won't work as static initialization.
 #if !LOG_DISABLED
-    WebCore::initializeLoggingChannelsIfNecessary();
+    WebCore::initializeLogChannelsIfNecessary();
 #endif
     PlatformStrategiesHaiku::initialize();
     //WebKitInitializeWebDatabasesIfNecessary();
@@ -175,6 +176,7 @@ BMessenger BWebPage::sDownloadListener;
 
 /*static*/ void BWebPage::ShutdownOnce()
 {
+	WebKit::iconDatabase().close();
 }
 
 /*static*/ void BWebPage::SetCacheModel(BWebKitCacheModel model)
@@ -730,6 +732,7 @@ void BWebPage::paint(BRect rect, bool immediate)
 
     if (!view || !frame->contentRenderer())
         return;
+    view->updateLayoutAndStyleIfNeededRecursive();
 
     if (!fWebView->LockLooper())
         return;
