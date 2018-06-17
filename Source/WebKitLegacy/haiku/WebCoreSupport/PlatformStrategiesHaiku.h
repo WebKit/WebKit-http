@@ -25,12 +25,16 @@
 #include "PasteboardStrategy.h"
 #include "PlatformStrategies.h"
 
+#include <wtf/Forward.h>
+
 class PlatformStrategiesHaiku : public WebCore::PlatformStrategies, private WebCore::CookiesStrategy {
 public:
     static void initialize();
 
 private:
     PlatformStrategiesHaiku();
+
+    friend class NeverDestroyed<PlatformStrategiesHaiku>;
 
     // WebCore::PlatformStrategies
     WebCore::LoaderStrategy* createLoaderStrategy() override;

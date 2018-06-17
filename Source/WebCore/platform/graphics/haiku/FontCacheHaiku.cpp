@@ -90,7 +90,7 @@ std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(
 }
 
 
-Vector<FontSelectionCapabilities> FontCache::getFontSelectionCapabilitiesInFamily(const AtomicString& familyName)
+Vector<FontSelectionCapabilities> FontCache::getFontSelectionCapabilitiesInFamily(const AtomicString& familyName, AllowUserInstalledFonts)
 {
     Vector<FontSelectionCapabilities> result;
 

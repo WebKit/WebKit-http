@@ -38,6 +38,7 @@
 #include "NotImplemented.h"
 #include "PlatformCookieJar.h"
 
+#include <functional>
 #include <support/Locker.h>
 #include <UrlContext.h>
 #include <stdio.h>

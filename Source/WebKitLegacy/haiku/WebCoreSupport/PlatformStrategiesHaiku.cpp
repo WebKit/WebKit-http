@@ -28,6 +28,7 @@
 
 #include "BlobRegistryImpl.h"
 #include "NetworkStorageSession.h"
+#include "wtf/NeverDestroyed.h"
 #include "NotImplemented.h"
 #include "Page.h"
 #include "PageGroup.h"
@@ -40,8 +41,8 @@ using namespace WebCore;
 
 void PlatformStrategiesHaiku::initialize()
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(PlatformStrategiesHaiku, platformStrategies, ());
-    setPlatformStrategies(&platformStrategies);
+    static NeverDestroyed<PlatformStrategiesHaiku> platformStrategies;
+    setPlatformStrategies(&platformStrategies.get());
 }
 
 PlatformStrategiesHaiku::PlatformStrategiesHaiku()
