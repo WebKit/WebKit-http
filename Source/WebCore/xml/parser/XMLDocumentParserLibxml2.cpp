@@ -53,7 +53,6 @@
 #include "XMLNSNames.h"
 #include "XMLDocumentParserScope.h"
 #include <libxml/parserInternals.h>
-#include <wtf/StringExtras.h>
 #include <wtf/unicode/UTF8.h>
 
 #if ENABLE(XSLT)
@@ -432,7 +431,7 @@ static bool shouldAllowExternalLoad(const URL& url)
 static void* openFunc(const char* uri)
 {
     ASSERT(XMLDocumentParserScope::currentCachedResourceLoader);
-    ASSERT(&Thread::current() == libxmlLoaderThread);
+    ASSERT(libxmlLoaderThread == &Thread::current());
 
     URL url(URL(), uri);
 

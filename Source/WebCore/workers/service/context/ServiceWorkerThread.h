@@ -58,8 +58,7 @@ public:
 
     WEBCORE_EXPORT void postFetchTask(Ref<ServiceWorkerFetch::Client>&&, ResourceRequest&&, FetchOptions&&);
     WEBCORE_EXPORT void postFetchTask(Ref<ServiceWorkerFetch::Client>&&, std::optional<ServiceWorkerClientIdentifier>&&, ResourceRequest&&, FetchOptions&&);
-    WEBCORE_EXPORT void postMessageToServiceWorker(Ref<SerializedScriptValue>&&, std::unique_ptr<MessagePortChannelArray>&&, ServiceWorkerClientIdentifier sourceIdentifier, ServiceWorkerClientData&& sourceData);
-    WEBCORE_EXPORT void postMessageToServiceWorker(Ref<SerializedScriptValue>&&, std::unique_ptr<MessagePortChannelArray>&&, ServiceWorkerData&& sourceData);
+    WEBCORE_EXPORT void postMessageToServiceWorker(Ref<SerializedScriptValue>&&, std::unique_ptr<MessagePortChannelArray>&&, ServiceWorkerOrClientData&& sourceData);
 
     void fireInstallEvent();
     void fireActivateEvent();
@@ -73,7 +72,7 @@ protected:
     void runEventLoop() override;
 
 private:
-    WEBCORE_EXPORT ServiceWorkerThread(const ServiceWorkerContextData&, PAL::SessionID, WorkerLoaderProxy&, WorkerDebuggerProxy&);
+    WEBCORE_EXPORT ServiceWorkerThread(const ServiceWorkerContextData&, PAL::SessionID, String&& userAgent, WorkerLoaderProxy&, WorkerDebuggerProxy&, IDBClient::IDBConnectionProxy*, SocketProvider*);
 
     ServiceWorkerContextData m_data;
     WorkerObjectProxy& m_workerObjectProxy;

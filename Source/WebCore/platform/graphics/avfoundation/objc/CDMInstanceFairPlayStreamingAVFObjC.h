@@ -75,17 +75,22 @@ public:
     bool shouldRetryRequestForReason(AVContentKeyRequest *, NSString *);
     void sessionIdentifierChanged(NSData *);
 
+    AVContentKeySession *contentKeySession() { return m_session.get(); }
+
 private:
     WeakPtr<CDMInstanceFairPlayStreamingAVFObjC> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(*this); }
     bool isLicenseTypeSupported(LicenseType) const;
 
+    Vector<Ref<SharedBuffer>> keyIDs();
+
     WeakPtrFactory<CDMInstanceFairPlayStreamingAVFObjC> m_weakPtrFactory;
     RefPtr<SharedBuffer> m_serverCertificate;
-    bool m_persistentStateAllowed { false };
+    bool m_persistentStateAllowed { true };
     RetainPtr<NSURL> m_storageDirectory;
     RetainPtr<AVContentKeySession> m_session;
     RetainPtr<AVContentKeyRequest> m_request;
     RetainPtr<WebCoreFPSContentKeySessionDelegate> m_delegate;
+    Vector<RetainPtr<NSData>> m_expiredSessions;
     String m_sessionId;
 
     LicenseCallback m_requestLicenseCallback;
@@ -94,5 +99,7 @@ private:
     RemoveSessionDataCallback m_removeSessionDataCallback;
 };
 }
+
+SPECIALIZE_TYPE_TRAITS_CDM_INSTANCE(WebCore::CDMInstanceFairPlayStreamingAVFObjC, WebCore::CDMInstance::ImplementationType::FairPlayStreaming)
 
 #endif // HAVE(AVCONTENTKEYSESSION)

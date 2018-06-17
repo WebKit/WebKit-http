@@ -144,6 +144,10 @@
 #include <wtf/SystemTracing.h>
 #include <wtf/text/StringView.h>
 
+#if ENABLE(APPLICATION_MANIFEST)
+#include "APIApplicationManifest.h"
+#endif
+
 #if ENABLE(ASYNC_SCROLLING)
 #include "RemoteScrollingCoordinatorProxy.h"
 #endif
@@ -2277,7 +2281,7 @@ void WebPageProxy::centerSelectionInVisibleArea()
     m_process->send(Messages::WebPage::CenterSelectionInVisibleArea(), m_pageID);
 }
 
-void WebPageProxy::receivedPolicyDecision(PolicyAction action, WebFrameProxy& frame, uint64_t listenerID, API::Navigation* navigation, const WebsitePolicies& websitePolicies)
+void WebPageProxy::receivedPolicyDecision(PolicyAction action, WebFrameProxy& frame, uint64_t listenerID, API::Navigation* navigation, std::optional<WebsitePolicies>&& websitePolicies)
 {
     if (!isValid())
         return;
@@ -2326,11 +2330,17 @@ void WebPageProxy::receivedPolicyDecision(PolicyAction action, WebFrameProxy& fr
     m_process->send(Messages::WebPage::DidReceivePolicyDecision(frame.frameID(), listenerID, action, navigation ? navigation->navigationID() : 0, downloadID, websitePolicies), m_pageID);
 }
 
-void WebPageProxy::setUserAgent(const String& userAgent)
+void WebPageProxy::setUserAgent(String&& userAgent)
 {
     if (m_userAgent == userAgent)
         return;
-    m_userAgent = userAgent;
+    m_userAgent = WTFMove(userAgent);
+
+#if ENABLE(SERVICE_WORKER)
+    // We update the service worker there at the moment to be sure we use values used by actual web pages.
+    // FIXME: Refactor this when we have a better User-Agent story.
+    process().processPool().updateServiceWorkerUserAgent(m_userAgent);
+#endif
 
     if (!isValid())
         return;
@@ -2361,7 +2371,7 @@ void WebPageProxy::setCustomUserAgent(const String& customUserAgent)
         return;
     }
 
-    setUserAgent(m_customUserAgent);
+    setUserAgent(String { m_customUserAgent });
 }
 
 void WebPageProxy::resumeActiveDOMObjectsAndAnimations()
@@ -3681,7 +3691,7 @@ void WebPageProxy::frameDidBecomeFrameSet(uint64_t frameID, bool value)
         m_frameSetLargestFrame = value ? m_mainFrame : 0;
 }
 
-void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, NavigationActionData&& navigationActionData, const FrameInfoData& originatingFrameInfoData, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, ResourceRequest&& request, uint64_t listenerID, const UserData& userData, bool& receivedPolicyAction, uint64_t& newNavigationID, WebCore::PolicyAction& policyAction, DownloadID& downloadID, WebsitePolicies& websitePolicies)
+void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, NavigationActionData&& navigationActionData, const FrameInfoData& originatingFrameInfoData, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, ResourceRequest&& request, uint64_t listenerID, const UserData& userData, bool& receivedPolicyAction, uint64_t& newNavigationID, WebCore::PolicyAction& policyAction, DownloadID& downloadID, std::optional<WebsitePolicies>& websitePolicies)
 {
     PageClientProtector protector(m_pageClient);
 
@@ -5810,6 +5820,10 @@ WebPageCreationParameters WebPageProxy::creationParameters()
 #if USE(LIBWEBRTC)
     parameters.enumeratingAllNetworkInterfacesEnabled = m_preferences->enumeratingAllNetworkInterfacesEnabled();
 #endif
+#endif
+
+#if ENABLE(APPLICATION_MANIFEST)
+    parameters.applicationManifest = m_configuration->applicationManifest() ? std::optional<WebCore::ApplicationManifest>(m_configuration->applicationManifest()->applicationManifest()) : std::nullopt;
 #endif
 
     m_process->addWebUserContentControllerProxy(m_userContentController, parameters);

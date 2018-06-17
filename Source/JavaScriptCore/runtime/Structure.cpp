@@ -26,6 +26,7 @@
 #include "config.h"
 #include "Structure.h"
 
+#include "BuiltinNames.h"
 #include "CodeBlock.h"
 #include "DumpContext.h"
 #include "JSCInlines.h"
@@ -86,7 +87,7 @@ inline void StructureTransitionTable::setSingleTransition(Structure* structure)
     if (WeakImpl* impl = this->weakImpl())
         WeakSet::deallocate(impl);
     WeakImpl* impl = WeakSet::allocate(structure, &singleSlotTransitionWeakOwner(), this);
-    m_data = reinterpret_cast<intptr_t>(impl) | UsingSingleSlotFlag;
+    m_data = PoisonedWeakImplPtr(impl).bits() | UsingSingleSlotFlag;
 }
 
 bool StructureTransitionTable::contains(UniquedStringImpl* rep, unsigned attributes) const
@@ -873,6 +874,7 @@ void Structure::startWatchingPropertyForReplacements(VM& vm, PropertyName proper
 
 void Structure::didCachePropertyReplacement(VM& vm, PropertyOffset offset)
 {
+    RELEASE_ASSERT(isValidOffset(offset));
     ensurePropertyReplacementWatchpointSet(vm, offset)->fireAll(vm, "Did cache property replacement");
 }
 

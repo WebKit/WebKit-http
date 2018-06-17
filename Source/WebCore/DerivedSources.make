@@ -348,6 +348,8 @@ JS_BINDING_IDLS = \
     $(WebCore)/animation/Animatable.idl \
     $(WebCore)/animation/AnimationEffect.idl \
     $(WebCore)/animation/AnimationEffectTiming.idl \
+    $(WebCore)/animation/AnimationPlaybackEvent.idl \
+    $(WebCore)/animation/AnimationPlaybackEventInit.idl \
     $(WebCore)/animation/AnimationTimeline.idl \
     $(WebCore)/animation/DocumentTimeline.idl \
     $(WebCore)/animation/KeyframeEffect.idl \
@@ -657,6 +659,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/html/canvas/OESTextureHalfFloat.idl \
     $(WebCore)/html/canvas/OESTextureHalfFloatLinear.idl \
     $(WebCore)/html/canvas/OESVertexArrayObject.idl \
+    $(WebCore)/html/canvas/OffscreenCanvasRenderingContext2D.idl \
     $(WebCore)/html/canvas/Path2D.idl \
     $(WebCore)/html/canvas/WebGL2RenderingContext.idl \
     $(WebCore)/html/canvas/WebGLActiveInfo.idl \

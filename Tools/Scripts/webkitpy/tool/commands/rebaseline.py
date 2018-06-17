@@ -26,6 +26,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
 import json
 import logging
 import optparse
@@ -194,7 +195,7 @@ class RebaselineTest(AbstractRebaseliningCommand):
 
     def execute(self, options, args, tool):
         self._rebaseline_test_and_update_expectations(options)
-        print json.dumps(self._scm_changes)
+        print(json.dumps(self._scm_changes))
 
 
 class AbstractParallelRebaselineCommand(AbstractRebaseliningCommand):
@@ -205,8 +206,8 @@ class AbstractParallelRebaselineCommand(AbstractRebaseliningCommand):
             verbose_args = ['--verbose'] if verbose else []
             stderr = self._tool.executive.run_command([self._tool.path()] + verbose_args + args, cwd=self._tool.scm().checkout_root, return_stderr=True)
             for line in stderr.splitlines():
-                print >> sys.stderr, line
-        except ScriptError, e:
+                print(line, file=sys.stderr)
+        except ScriptError as e:
             _log.error(e)
 
     def _builders_to_fetch_from(self, builders_to_check):
@@ -279,7 +280,7 @@ class AbstractParallelRebaselineCommand(AbstractRebaseliningCommand):
         log_output = '\n'.join(result[2] for result in command_results).replace('\n\n', '\n')
         for line in log_output.split('\n'):
             if line:
-                print >> sys.stderr, line  # FIXME: Figure out how to log properly.
+                print(line, file=sys.stderr)  # FIXME: Figure out how to log properly.
 
         files_to_add = self._files_to_add(command_results)
         if files_to_add:

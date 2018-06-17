@@ -34,6 +34,7 @@
 #if ENABLE(VIDEO_TRACK)
 
 #include "Document.h"
+#include <wtf/JSONValues.h>
 #include <wtf/MediaTime.h>
 
 namespace WebCore {
@@ -84,7 +85,7 @@ public:
     void willChange();
     virtual void didChange();
 
-    virtual String toString() const;
+    String toJSONString() const;
 
     using RefCounted::ref;
     using RefCounted::deref;
@@ -93,6 +94,8 @@ protected:
     TextTrackCue(ScriptExecutionContext&, const MediaTime& start, const MediaTime& end);
 
     Document& ownerDocument() { return downcast<Document>(m_scriptExecutionContext); }
+
+    virtual void toJSON(JSON::Object&) const;
 
 private:
     void refEventTarget() final { ref(); }
@@ -121,7 +124,7 @@ private:
 
 } // namespace WebCore
 
-namespace PAL {
+namespace WTF {
 
 template<typename Type>
 struct LogArgument;
@@ -130,10 +133,9 @@ template <>
 struct LogArgument<WebCore::TextTrackCue> {
     static String toString(const WebCore::TextTrackCue& cue)
     {
-        return cue.toString();
+        return cue.toJSONString();
     }
 };
-
 
 }
 

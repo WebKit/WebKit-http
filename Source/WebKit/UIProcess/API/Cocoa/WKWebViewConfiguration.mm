@@ -32,6 +32,7 @@
 #import "VersionChecks.h"
 #import "WKPreferences.h"
 #import "WKProcessPool.h"
+#import "WKRetainPtr.h"
 #import "WKUserContentController.h"
 #import "WKWebView.h"
 #import "WKWebViewContentProviderRegistry.h"
@@ -136,6 +137,7 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
     BOOL _mainContentUserGestureOverrideEnabled;
 
 #if PLATFORM(MAC)
+    WKRetainPtr<WKPageGroupRef> _pageGroup;
     double _cpuLimit;
     BOOL _showsURLsInToolTips;
     BOOL _serviceControlsEnabled;
@@ -145,6 +147,10 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
     BOOL _initialCapitalizationEnabled;
     BOOL _waitsForPaintAfterViewDidMoveToWindow;
     BOOL _controlledByAutomation;
+
+#if ENABLE(APPLICATION_MANIFEST)
+    RetainPtr<_WKApplicationManifest> _applicationManifest;
+#endif
 
 #if ENABLE(APPLE_PAY)
     BOOL _applePayEnabled;
@@ -343,6 +349,7 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
     configuration->_serviceControlsEnabled = self->_serviceControlsEnabled;
     configuration->_imageControlsEnabled = self->_imageControlsEnabled;
     configuration->_requiresUserActionForEditingControlsManager = self->_requiresUserActionForEditingControlsManager;
+    configuration->_pageGroup = self._pageGroup;
 #endif
 #if ENABLE(DATA_DETECTION) && PLATFORM(IOS)
     configuration->_dataDetectorTypes = self->_dataDetectorTypes;
@@ -352,6 +359,9 @@ static _WKDragLiftDelay toDragLiftDelay(NSUInteger value)
 #endif
 #if ENABLE(APPLE_PAY)
     configuration->_applePayEnabled = self->_applePayEnabled;
+#endif
+#if ENABLE(APPLICATION_MANIFEST)
+    configuration->_applicationManifest = self->_applicationManifest;
 #endif
     configuration->_needsStorageAccessFromFileURLsQuirk = self->_needsStorageAccessFromFileURLsQuirk;
     configuration->_overrideContentSecurityPolicy = adoptNS([self->_overrideContentSecurityPolicy copyWithZone:zone]);
@@ -746,6 +756,22 @@ static NSString *defaultApplicationNameForUserAgent()
     _controlledByAutomation = controlledByAutomation;
 }
 
+- (_WKApplicationManifest *)_applicationManifest
+{
+#if ENABLE(APPLICATION_MANIFEST)
+    return _applicationManifest.get();
+#else
+    return nil;
+#endif
+}
+
+- (void)_setApplicationManifest:(_WKApplicationManifest *)applicationManifest
+{
+#if ENABLE(APPLICATION_MANIFEST)
+    _applicationManifest = applicationManifest;
+#endif
+}
+
 #if PLATFORM(MAC)
 - (BOOL)_showsURLsInToolTips
 {
@@ -785,6 +811,16 @@ static NSString *defaultApplicationNameForUserAgent()
 - (void)_setRequiresUserActionForEditingControlsManager:(BOOL)requiresUserAction
 {
     _requiresUserActionForEditingControlsManager = requiresUserAction;
+}
+
+- (WKPageGroupRef)_pageGroup
+{
+    return _pageGroup.get();
+}
+
+- (void)_setPageGroup:(WKPageGroupRef)pageGroup
+{
+    _pageGroup = pageGroup;
 }
 
 - (void)_setCPULimit:(double)cpuLimit

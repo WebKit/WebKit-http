@@ -743,6 +743,8 @@ runtime/HashMapImpl.cpp
 runtime/Identifier.cpp
 runtime/IndexingType.cpp
 runtime/IndirectEvalExecutable.cpp
+runtime/InferredStructure.cpp
+runtime/InferredStructureWatchpoint.cpp
 runtime/InferredType.cpp
 runtime/InferredTypeTable.cpp
 runtime/InferredValue.cpp
@@ -770,9 +772,10 @@ runtime/JSArrayBufferPrototype.cpp
 runtime/JSArrayBufferView.cpp
 runtime/JSAsyncFunction.cpp
 runtime/JSAsyncGeneratorFunction.cpp
+runtime/JSBigInt.cpp
 runtime/JSBoundFunction.cpp
 runtime/JSCJSValue.cpp
-runtime/JSCScrambledPtr.cpp
+runtime/JSCPoisonedPtr.cpp
 runtime/JSCallee.cpp
 runtime/JSCell.cpp
 runtime/JSCustomGetterSetterFunction.cpp

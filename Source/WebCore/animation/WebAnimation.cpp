@@ -27,8 +27,10 @@
 #include "WebAnimation.h"
 
 #include "AnimationEffect.h"
+#include "AnimationPlaybackEvent.h"
 #include "AnimationTimeline.h"
 #include "Document.h"
+#include "JSWebAnimation.h"
 #include "KeyframeEffect.h"
 #include <wtf/text/WTFString.h>
 
@@ -36,7 +38,7 @@ namespace WebCore {
 
 Ref<WebAnimation> WebAnimation::create(Document& document, AnimationEffect* effect, AnimationTimeline* timeline)
 {
-    auto result = adoptRef(*new WebAnimation());
+    auto result = adoptRef(*new WebAnimation(document));
 
     result->setEffect(effect);
 
@@ -47,8 +49,12 @@ Ref<WebAnimation> WebAnimation::create(Document& document, AnimationEffect* effe
     return result;
 }
 
-WebAnimation::WebAnimation()
+WebAnimation::WebAnimation(Document& document)
+    : ActiveDOMObject(&document)
+    , m_readyPromise(*this, &WebAnimation::readyPromiseResolve)
+    , m_finishedPromise(*this, &WebAnimation::finishedPromiseResolve)
 {
+    suspendIfNeeded();
 }
 
 WebAnimation::~WebAnimation()
@@ -214,6 +220,59 @@ void WebAnimation::setPlaybackRate(double newPlaybackRate)
         setCurrentTime(previousTime);
 }
 
+auto WebAnimation::playState() const -> PlayState
+{
+    // Section 3.5.19. Play states
+
+    // Animation has a pending play task or a pending pause task → pending
+    if (pending())
+        return PlayState::Pending;
+
+    // The current time of animation is unresolved → idle
+    if (!currentTime())
+        return PlayState::Idle;
+
+    // The start time of animation is unresolved → paused
+    if (!startTime())
+        return PlayState::Paused;
+
+    // For animation, animation playback rate > 0 and current time ≥ target effect end; or
+    // animation playback rate < 0 and current time ≤ 0 → finished
+    if ((m_playbackRate > 0 && currentTime().value() >= effectEndTime()) || (m_playbackRate < 0 && currentTime().value() <= 0_s))
+        return PlayState::Finished;
+
+    // Otherwise → running
+    return PlayState::Running;
+}
+
+Seconds WebAnimation::effectEndTime() const
+{
+    // The target effect end of an animation is equal to the end time of the animation's target effect.
+    // If the animation has no target effect, the target effect end is zero.
+    // FIXME: Use the effect's computed end time once we support it (webkit.org/b/179170).
+    return m_effect ? m_effect->timing()->duration() : 0_s;
+}
+
+void WebAnimation::enqueueAnimationPlaybackEvent(const AtomicString& type, std::optional<Seconds> currentTime, std::optional<Seconds> timelineTime)
+{
+    auto event = AnimationPlaybackEvent::create(type, currentTime, timelineTime);
+    event->setTarget(this);
+
+    if (is<DocumentTimeline>(m_timeline)) {
+        // If animation has a document for timing, then append event to its document for timing's pending animation event queue along
+        // with its target, animation. If animation is associated with an active timeline that defines a procedure to convert timeline times
+        // to origin-relative time, let the scheduled event time be the result of applying that procedure to timeline time. Otherwise, the
+        // scheduled event time is an unresolved time value.
+        downcast<DocumentTimeline>(*m_timeline).enqueueAnimationPlaybackEvent(WTFMove(event));
+    } else {
+        // Otherwise, queue a task to dispatch event at animation. The task source for this task is the DOM manipulation task source.
+        callOnMainThread([this, pendingActivity = makePendingActivity(*this), event = WTFMove(event)]() {
+            if (!m_isStopped)
+                this->dispatchEvent(event);
+        });
+    }
+}
+
 Seconds WebAnimation::timeToNextRequiredTick(Seconds timelineTime) const
 {
     if (!m_timeline || !m_startTime || !m_effect || !m_playbackRate)
@@ -245,7 +304,7 @@ void WebAnimation::resolve(RenderStyle& targetStyle)
 
 void WebAnimation::acceleratedRunningStateDidChange()
 {
-    if (m_timeline && m_timeline->isDocumentTimeline())
+    if (is<DocumentTimeline>(m_timeline))
         downcast<DocumentTimeline>(*m_timeline).animationAcceleratedRunningStateDidChange(*this);
 }
 
@@ -255,9 +314,35 @@ void WebAnimation::startOrStopAccelerated()
         downcast<KeyframeEffect>(*m_effect).startOrStopAccelerated();
 }
 
+WebAnimation& WebAnimation::readyPromiseResolve()
+{
+    return *this;
+}
+
+WebAnimation& WebAnimation::finishedPromiseResolve()
+{
+    return *this;
+}
+
 String WebAnimation::description()
 {
     return "Animation";
+}
+
+const char* WebAnimation::activeDOMObjectName() const
+{
+    return "Animation";
+}
+
+bool WebAnimation::canSuspendForDocumentSuspension() const
+{
+    return !hasPendingActivity();
+}
+
+void WebAnimation::stop()
+{
+    m_isStopped = true;
+    removeAllEventListeners();
 }
 
 } // namespace WebCore

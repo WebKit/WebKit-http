@@ -39,6 +39,7 @@
 #include <wtf/Forward.h>
 #include <wtf/Function.h>
 #include <wtf/HashSet.h>
+#include <wtf/IsoMalloc.h>
 #include <wtf/ListHashSet.h>
 #include <wtf/text/WTFString.h>
 
@@ -67,6 +68,7 @@ enum class FrameFlattening;
 Pagination::Mode paginationModeForRenderStyle(const RenderStyle&);
 
 class FrameView final : public ScrollView {
+    WTF_MAKE_ISO_ALLOCATED(FrameView);
 public:
     friend class RenderView;
     friend class Internals;
@@ -249,6 +251,8 @@ public:
     // If set, overrides the default "m_layoutViewportOrigin, size of initial containing block" rect.
     // Used with delegated scrolling (i.e. iOS).
     WEBCORE_EXPORT void setLayoutViewportOverrideRect(std::optional<LayoutRect>, TriggerLayoutOrNot = TriggerLayoutOrNot::Yes);
+
+    WEBCORE_EXPORT void setVisualViewportOverrideRect(std::optional<LayoutRect>);
 
     // These are in document coordinates, unaffected by page scale (but affected by zooming).
     WEBCORE_EXPORT LayoutRect layoutViewportRect() const;
@@ -822,6 +826,7 @@ private:
     
     LayoutPoint m_layoutViewportOrigin;
     std::optional<LayoutRect> m_layoutViewportOverrideRect;
+    std::optional<LayoutRect> m_visualViewportOverrideRect; // Used when the iOS keyboard is showing.
 
     RefPtr<Node> m_nodeToDraw;
     PaintBehavior m_paintBehavior;

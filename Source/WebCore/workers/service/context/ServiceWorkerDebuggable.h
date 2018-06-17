@@ -43,19 +43,19 @@ public:
     ServiceWorkerDebuggable(ServiceWorkerThreadProxy&, const ServiceWorkerContextData&);
     ~ServiceWorkerDebuggable() = default;
 
-    Inspector::RemoteControllableTarget::Type type() const override { return Inspector::RemoteControllableTarget::Type::ServiceWorker; }
+    Inspector::RemoteControllableTarget::Type type() const final { return Inspector::RemoteControllableTarget::Type::ServiceWorker; }
 
-    String name() const override { return ASCIILiteral("ServiceWorker"); }
-    String url() const override { return m_scriptURL; }
-    bool hasLocalDebugger() const override { return false; }
+    String name() const final { return ASCIILiteral("ServiceWorker"); }
+    String url() const final { return m_scopeURL; }
+    bool hasLocalDebugger() const final { return false; }
 
-    void connect(Inspector::FrontendChannel*, bool isAutomaticConnection = false, bool immediatelyPause = false) override;
-    void disconnect(Inspector::FrontendChannel*) override;
-    void dispatchMessageFromRemote(const String& message) override;
+    void connect(Inspector::FrontendChannel*, bool isAutomaticConnection = false, bool immediatelyPause = false) final;
+    void disconnect(Inspector::FrontendChannel*) final;
+    void dispatchMessageFromRemote(const String& message) final;
 
 private:
     ServiceWorkerThreadProxy& m_serviceWorkerThreadProxy;
-    String m_scriptURL;
+    String m_scopeURL;
 };
 
 } // namespace WebCore

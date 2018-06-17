@@ -197,7 +197,7 @@ class HelpCommand(Command):
         if args:
             command = self._tool.command_by_name(args[0])
             if command:
-                print command.standalone_help()
+                print(command.standalone_help())
                 return 0
 
         self.show_all_commands = options.show_all_commands
@@ -304,7 +304,7 @@ class MultiCommandTool(object):
             try:
                 result = command.check_arguments_and_execute(options, args, self)
                 break
-            except TryAgain, e:
+            except TryAgain as e:
                 pass
 
         self.command_completed()

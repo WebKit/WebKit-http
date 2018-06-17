@@ -1034,6 +1034,10 @@ VisibleDebugOverlayRegions:
   defaultValue: 0
   category: debug
 
+ShouldDisallowUserInstalledFonts:
+  type: bool
+  defaultValue: false
+
 
 # For experimental features:
 # The type should be boolean.
@@ -1073,6 +1077,14 @@ SpringTimingFunctionEnabled:
   humanReadableDescription: "CSS Spring Animation prototype"
   category: experimental
 
+ImageBitmapOffscreenCanvasEnabled:
+  type: bool
+  defaultValue: true
+  humanReadableName: "ImageBitmap and OffscreenCanvas"
+  humanReadableDescription: "Support for the ImageBitmap and OffscreenCanvas APIs"
+  category: experimental
+  webcoreBinding: RuntimeEnabledFeatures
+
 LinkPreloadEnabled:
   type: bool
   defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
@@ -1100,7 +1112,7 @@ IsSecureContextAttributeEnabled:
 
 ServiceWorkersEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: DEFAULT_SERVICE_WORKERS_ENABLED
   humanReadableName: "ServiceWorkers"
   humanReadableDescription: "Enable ServiceWorkers"
   category: experimental

@@ -53,6 +53,7 @@
 #include "InterpreterInlines.h"
 #include "JIT.h"
 #include "JITMathIC.h"
+#include "JSBigInt.h"
 #include "JSCInlines.h"
 #include "JSCJSValue.h"
 #include "JSFunction.h"
@@ -83,7 +84,6 @@
 #include <wtf/BagToHashMap.h>
 #include <wtf/CommaPrinter.h>
 #include <wtf/SimpleStats.h>
-#include <wtf/StringExtras.h>
 #include <wtf/StringPrintStream.h>
 #include <wtf/text/UniquedStringImpl.h>
 

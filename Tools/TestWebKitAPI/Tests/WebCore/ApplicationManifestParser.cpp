@@ -34,6 +34,22 @@
 using namespace WTF;
 using namespace WebCore;
 
+namespace WebCore {
+static inline std::ostream& operator<<(std::ostream& os, const ApplicationManifest::Display& display)
+{
+    switch (display) {
+    case ApplicationManifest::Display::Browser:
+        return os << "ApplicationManifest::Display::Browser";
+    case ApplicationManifest::Display::MinimalUI:
+        return os << "ApplicationManifest::Display::MinimalUI";
+    case ApplicationManifest::Display::Standalone:
+        return os << "ApplicationManifest::Display::Standalone";
+    case ApplicationManifest::Display::Fullscreen:
+        return os << "ApplicationManifest::Display::Fullscreen";
+    }
+}
+} // namespace WebCore
+
 class ApplicationManifestParserTest : public testing::Test {
 public:
     URL m_manifestURL;
@@ -69,6 +85,13 @@ public:
         auto manifest = parseTopLevelProperty("start_url", rawJSON);
         auto value = manifest.startURL;
         EXPECT_STREQ(expectedValue.string().utf8().data(), value.string().utf8().data());
+    }
+
+    void testDisplay(const String& rawJSON, ApplicationManifest::Display expectedValue)
+    {
+        auto manifest = parseTopLevelProperty("display", rawJSON);
+        auto value = manifest.display;
+        EXPECT_EQ(expectedValue, value);
     }
 
     void testName(const String& rawJSON, const String& expectedValue)
@@ -169,6 +192,23 @@ TEST_F(ApplicationManifestParserTest, StartURL)
     testStartURL("\"../page2\"", "https://example.com/page2");
 }
 
+TEST_F(ApplicationManifestParserTest, Display)
+{
+    testDisplay("123", ApplicationManifest::Display::Browser);
+    testDisplay("null", ApplicationManifest::Display::Browser);
+    testDisplay("true", ApplicationManifest::Display::Browser);
+    testDisplay("{ }", ApplicationManifest::Display::Browser);
+    testDisplay("[ ]", ApplicationManifest::Display::Browser);
+    testDisplay("\"\"", ApplicationManifest::Display::Browser);
+    testDisplay("\"garbage string\"", ApplicationManifest::Display::Browser);
+
+    testDisplay("\"browser\"", ApplicationManifest::Display::Browser);
+    testDisplay("\"standalone\"", ApplicationManifest::Display::Standalone);
+    testDisplay("\"minimal-ui\"", ApplicationManifest::Display::MinimalUI);
+    testDisplay("\"fullscreen\"", ApplicationManifest::Display::Fullscreen);
+    testDisplay("\"\t\nMINIMAL-UI \"", ApplicationManifest::Display::MinimalUI);
+}
+
 TEST_F(ApplicationManifestParserTest, Name)
 {
     testName("123", String());
@@ -243,6 +283,13 @@ TEST_F(ApplicationManifestParserTest, Scope)
 
     // It's fine if the document URL or manifest URL aren't within the application scope - only the start URL needs to be.
     testScope("\"https://example.com/other\"", String("https://example.com/other/start-url"), "https://example.com/other");
+}
+
+TEST_F(ApplicationManifestParserTest, Whitespace)
+{
+    auto manifest = parseString(ASCIILiteral("  { \"name\": \"PASS\" }\n"));
+
+    EXPECT_STREQ("PASS", manifest.name.utf8().data());
 }
 
 #endif

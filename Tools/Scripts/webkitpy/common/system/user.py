@@ -77,12 +77,12 @@ class User(object):
     def prompt_with_multiple_lists(cls, list_title, subtitles, lists, can_choose_multiple=False, raw_input=raw_input):
         item_index = 0
         cumulated_list = []
-        print list_title
+        print(list_title)
         for i in range(len(subtitles)):
-            print "\n" + subtitles[i]
+            print("\n" + subtitles[i])
             for item in lists[i]:
                 item_index += 1
-                print "%2d. %s" % (item_index, item)
+                print("%2d. %s" % (item_index, item))
             cumulated_list += lists[i]
         return cls._wait_on_list_response(cumulated_list, can_choose_multiple, raw_input)
 
@@ -102,24 +102,24 @@ class User(object):
                             indices += range(int(parts[0]) - 1, int(parts[1]))
                         else:
                             indices.append(int(value) - 1)
-                except ValueError, err:
+                except ValueError as err:
                     continue
 
                 return [list_items[i] for i in indices]
             else:
                 try:
                     result = int(cls.prompt("Enter a number: ", raw_input=raw_input)) - 1
-                except ValueError, err:
+                except ValueError as err:
                     continue
                 return list_items[result]
 
     @classmethod
     def prompt_with_list(cls, list_title, list_items, can_choose_multiple=False, raw_input=raw_input):
-        print list_title
+        print(list_title)
         i = 0
         for item in list_items:
             i += 1
-            print "%2d. %s" % (i, item)
+            print("%2d. %s" % (i, item))
         return cls._wait_on_list_response(list_items, can_choose_multiple, raw_input)
 
     def edit(self, files):
@@ -128,20 +128,20 @@ class User(object):
         # Note: Not thread safe: http://bugs.python.org/issue2320
         try:
             subprocess.call(args + files)
-        except OSError, e:
+        except OSError as e:
             _log.warn("There was a problem editing the ChangeLog using editor '%s': %s." % (editor, e))
 
     def _warn_if_application_is_xcode(self, edit_application):
         if "Xcode" in edit_application:
-            print "Instead of using Xcode.app, consider using EDITOR=\"xed --wait\"."
+            print("Instead of using Xcode.app, consider using EDITOR=\"xed --wait\".")
 
     def edit_changelog(self, files):
         edit_application = os.environ.get("CHANGE_LOG_EDIT_APPLICATION")
         if edit_application and self._platforminfo.is_mac():
             # On Mac we support editing ChangeLogs using an application.
             args = shlex.split(edit_application)
-            print "Using editor in the CHANGE_LOG_EDIT_APPLICATION environment variable."
-            print "Please quit the editor application when done editing."
+            print("Using editor in the CHANGE_LOG_EDIT_APPLICATION environment variable.")
+            print("Please quit the editor application when done editing.")
             self._warn_if_application_is_xcode(edit_application)
             subprocess.call(["open", "-W", "-n", "-a"] + args + files)
             return
@@ -153,7 +153,7 @@ class User(object):
             # Note: Not thread safe: http://bugs.python.org/issue2320
             child_process = subprocess.Popen([pager], stdin=subprocess.PIPE)
             child_process.communicate(input=message)
-        except IOError, e:
+        except IOError as e:
             pass
 
     def confirm(self, message=None, default=DEFAULT_YES, raw_input=raw_input):
@@ -169,7 +169,7 @@ class User(object):
         try:
             webbrowser.get()
             return True
-        except webbrowser.Error, e:
+        except webbrowser.Error as e:
             return False
 
     def open_url(self, url):

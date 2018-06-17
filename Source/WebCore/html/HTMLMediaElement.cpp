@@ -88,7 +88,6 @@
 #include "UserContentController.h"
 #include "UserGestureIndicator.h"
 #include <limits>
-#include <pal/Logger.h>
 #include <pal/SessionID.h>
 #include <pal/system/SleepDisabler.h>
 #include <runtime/Uint8Array.h>
@@ -166,7 +165,7 @@
 #include "VideoFullscreenModel.h"
 #endif
 
-namespace PAL {
+namespace WTF {
 template <>
 struct LogArgument<WebCore::URL> {
     static String toString(const WebCore::URL& url)
@@ -2584,7 +2583,13 @@ bool HTMLMediaElement::mediaPlayerKeyNeeded(MediaPlayer*, Uint8Array* initData)
     if (!RuntimeEnabledFeatures::sharedFeatures().legacyEncryptedMediaAPIEnabled())
         return false;
 
-    if (!hasEventListeners("webkitneedkey")) {
+    if (!hasEventListeners("webkitneedkey")
+#if ENABLE(ENCRYPTED_MEDIA)
+        // Only fire an error if ENCRYPTED_MEDIA is not enabled, to give clients of the 
+        // "encrypted" event a chance to handle it without resulting in a synthetic error.
+        && !RuntimeEnabledFeatures::sharedFeatures().encryptedMediaAPIEnabled()
+#endif
+        ) {
         m_error = MediaError::create(MediaError::MEDIA_ERR_ENCRYPTED);
         scheduleEvent(eventNames().errorEvent);
         return false;
@@ -2718,6 +2723,9 @@ void HTMLMediaElement::setMediaKeys(MediaKeys* mediaKeys, Ref<DeferredPromise>&&
 
 void HTMLMediaElement::mediaPlayerInitializationDataEncountered(const String& initDataType, RefPtr<ArrayBuffer>&& initData)
 {
+    if (!RuntimeEnabledFeatures::sharedFeatures().encryptedMediaAPIEnabled())
+        return;
+
     // https://w3c.github.io/encrypted-media/#initdata-encountered
     // W3C Editor's Draft 23 June 2017
 
@@ -5242,7 +5250,7 @@ void HTMLMediaElement::updatePlayState(UpdateState updateState)
     bool shouldBePlaying = potentiallyPlaying();
     bool playerPaused = m_player->paused();
 
-    INFO_LOG(LOGIDENTIFIER, "shouldBePlaying = ", shouldBePlaying, " playerPaused = ", playerPaused);
+    INFO_LOG(LOGIDENTIFIER, "shouldBePlaying = ", shouldBePlaying, ", playerPaused = ", playerPaused);
 
     if (shouldBePlaying) {
         scheduleUpdatePlaybackControlsManager();
@@ -6605,6 +6613,12 @@ void HTMLMediaElement::updateSleepDisabling()
         m_player->setShouldDisableSleep(shouldDisableSleep == SleepType::Display);
 }
 
+static inline bool isRemoteMediaStreamVideoTrack(RefPtr<MediaStreamTrack>& item)
+{
+    auto* track = item.get();
+    return track->privateTrack().type() == RealtimeMediaSource::Type::Video && !track->isCaptureTrack() && !track->isCanvas();
+}
+
 HTMLMediaElement::SleepType HTMLMediaElement::shouldDisableSleep() const
 {
     // See https://bugs.webkit.org/show_bug.cgi?id=180197 before removing this guard.
@@ -6620,15 +6634,14 @@ HTMLMediaElement::SleepType HTMLMediaElement::shouldDisableSleep() const
         return SleepType::System;
 #endif
 
+    bool shouldBeAbleToSleep = !hasVideo() || !hasAudio();
 #if ENABLE(MEDIA_STREAM)
-    if (m_mediaStreamSrcObject) {
-        // Do not block system from sleeping if element is only rendering local (capture) sources.
-        if (WTF::allOf(m_mediaStreamSrcObject->getTracks(), [] (RefPtr<MediaStreamTrack>& track) { return track && track->isCaptureTrack(); }))
-            return SleepType::None;
-    }
+    // Remote media stream video tracks may have their corresponding audio tracks being played outside of the media element. Let's ensure to not IDLE the screen in that case.
+    // FIXME: We should check that audio is being/to be played. Ideally, we would come up with a media stream agnostic heuristisc.
+    shouldBeAbleToSleep = shouldBeAbleToSleep && !(m_mediaStreamSrcObject && WTF::anyOf(m_mediaStreamSrcObject->getTracks(), isRemoteMediaStreamVideoTrack));
 #endif
 
-    if (!hasVideo() || !hasAudio())
+    if (shouldBeAbleToSleep)
         return SleepType::None;
 
     if (m_elementIsHidden)

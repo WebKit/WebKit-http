@@ -97,9 +97,9 @@ namespace WebCore {
 const PlatformMedia NoPlatformMedia = { PlatformMedia::None, {0} };
 
 #if !RELEASE_LOG_DISABLED
-static RefPtr<PAL::Logger>& nullLogger()
+static RefPtr<Logger>& nullLogger()
 {
-    static NeverDestroyed<RefPtr<PAL::Logger>> logger;
+    static NeverDestroyed<RefPtr<Logger>> logger;
     return logger;
 }
 #endif
@@ -177,10 +177,10 @@ public:
 class NullMediaPlayerClient : public MediaPlayerClient {
 public:
 #if !RELEASE_LOG_DISABLED
-    const PAL::Logger& mediaPlayerLogger() final
+    const Logger& mediaPlayerLogger() final
     {
         if (!nullLogger().get()) {
-            nullLogger() = PAL::Logger::create(this);
+            nullLogger() = Logger::create(this);
             nullLogger()->setEnabled(this, false);
         }
 
@@ -215,11 +215,7 @@ struct MediaPlayerFactory {
 
 static void addMediaEngine(CreateMediaEnginePlayer&&, MediaEngineSupportedTypes, MediaEngineSupportsType, MediaEngineOriginsInMediaCache, MediaEngineClearMediaCache, MediaEngineClearMediaCacheForOrigins, MediaEngineSupportsKeySystem);
 
-static Lock& mediaEngineVectorLock()
-{
-    static NeverDestroyed<Lock> lock;
-    return lock;
-}
+static StaticLock mediaEngineVectorLock;
 
 static bool& haveMediaEnginesVector()
 {
@@ -235,7 +231,7 @@ static Vector<MediaPlayerFactory>& mutableInstalledMediaEnginesVector()
 
 static void buildMediaEnginesVector()
 {
-    ASSERT(mediaEngineVectorLock().isLocked());
+    ASSERT(mediaEngineVectorLock.isLocked());
 
 #if USE(AVFOUNDATION)
     if (DeprecatedGlobalSettings::isAVFoundationEnabled()) {
@@ -281,7 +277,7 @@ static void buildMediaEnginesVector()
 static const Vector<MediaPlayerFactory>& installedMediaEngines()
 {
     {
-        LockHolder lock(mediaEngineVectorLock());
+        auto locker = holdLock(mediaEngineVectorLock);
         if (!haveMediaEnginesVector())
             buildMediaEnginesVector();
     }
@@ -1393,7 +1389,7 @@ Vector<RefPtr<PlatformTextTrack>> MediaPlayer::outOfBandTrackSources()
 
 void MediaPlayer::resetMediaEngines()
 {
-    LockHolder lock(mediaEngineVectorLock());
+    auto locker = holdLock(mediaEngineVectorLock);
 
     mutableInstalledMediaEnginesVector().clear();
     haveMediaEnginesVector() = false;
@@ -1512,7 +1508,7 @@ bool MediaPlayer::shouldCheckHardwareSupport() const
 }
 
 #if !RELEASE_LOG_DISABLED
-const PAL::Logger& MediaPlayer::mediaPlayerLogger()
+const Logger& MediaPlayer::mediaPlayerLogger()
 {
     return client().mediaPlayerLogger();
 }

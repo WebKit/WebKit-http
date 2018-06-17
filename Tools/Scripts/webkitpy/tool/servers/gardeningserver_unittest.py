@@ -26,6 +26,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
 import json
 import sys
 import unittest
@@ -73,14 +74,14 @@ class TestGardeningHTTPRequestHandler(GardeningHTTPRequestHandler):
         return self.body if self.body else ''
 
     def _serve_text(self, text):
-        print "== Begin Response =="
-        print text
-        print "== End Response =="
+        print("== Begin Response ==")
+        print(text)
+        print("== End Response ==")
 
     def _serve_json(self, json_object):
-        print "== Begin JSON Response =="
-        print json.dumps(json_object)
-        print "== End JSON Response =="
+        print("== Begin JSON Response ==")
+        print(json.dumps(json_object))
+        print("== End JSON Response ==")
 
 
 class GardeningServerTest(unittest.TestCase):
@@ -103,7 +104,7 @@ class GardeningServerTest(unittest.TestCase):
         self.output = ['{"add": [], "delete": []}', '']
 
         def run_command(args, cwd=None, input=None, **kwargs):
-            print >> sys.stderr, "MOCK run_command: %s, cwd=%s, input=%s" % (args, cwd, input)
+            print("MOCK run_command: %s, cwd=%s, input=%s" % (args, cwd, input), file=sys.stderr)
             return self.output.pop(0)
 
         server.tool.executive.run_command = run_command

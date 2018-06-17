@@ -27,7 +27,7 @@
 
 #if ENABLE(SERVICE_WORKER)
 
-#include "ServiceWorkerClientInformation.h"
+#include "ServiceWorkerClientData.h"
 #include "ServiceWorkerData.h"
 #include "ServiceWorkerIdentifier.h"
 #include "ServiceWorkerRegistrationKey.h"
@@ -88,7 +88,7 @@ public:
     void didFinishInstall(const std::optional<ServiceWorkerJobDataIdentifier>&, bool wasSuccessful);
     void didFinishActivation();
     void contextTerminated();
-    std::optional<ServiceWorkerClientData> findClientByIdentifier(ServiceWorkerClientIdentifier);
+    std::optional<ServiceWorkerClientData> findClientByIdentifier(const ServiceWorkerClientIdentifier&) const;
     void matchAll(const ServiceWorkerClientQueryOptions&, ServiceWorkerClientsMatchAllCallback&&);
     void claim();
 

@@ -411,6 +411,7 @@ WKRetainPtr<WKContextConfigurationRef> TestController::generateContextConfigurat
         WKContextConfigurationSetApplicationCacheDirectory(configuration.get(), toWK(temporaryFolder + separator + "ApplicationCache").get());
         WKContextConfigurationSetDiskCacheDirectory(configuration.get(), toWK(temporaryFolder + separator + "Cache").get());
         WKContextConfigurationSetIndexedDBDatabaseDirectory(configuration.get(), toWK(temporaryFolder + separator + "Databases" + separator + "IndexedDB").get());
+        WKContextConfigurationSetServiceWorkerDatabaseDirectory(configuration.get(), toWK(temporaryFolder + separator + "ServiceWorkers").get());
         WKContextConfigurationSetLocalStorageDirectory(configuration.get(), toWK(temporaryFolder + separator + "LocalStorage").get());
         WKContextConfigurationSetWebSQLDatabaseDirectory(configuration.get(), toWK(temporaryFolder + separator + "Databases" + separator + "WebSQL").get());
         WKContextConfigurationSetMediaKeysStorageDirectory(configuration.get(), toWK(temporaryFolder + separator + "MediaKeys").get());
@@ -982,6 +983,13 @@ static bool parseBooleanTestHeaderValue(const std::string& value)
     return false;
 }
 
+static std::string parseStringTestHeaderValueAsRelativePath(const std::string& value, const std::string& pathOrURL)
+{
+    WKRetainPtr<WKURLRef> baseURL(AdoptWK, createTestURL(pathOrURL.c_str()));
+    WKRetainPtr<WKURLRef> relativeURL(AdoptWK, WKURLCreateWithBaseURL(baseURL.get(), value.c_str()));
+    return toSTD(adoptWK(WKURLCopyPath(relativeURL.get())));
+}
+
 static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std::string& pathOrURL, const std::string& absolutePath)
 {
     std::string filename = absolutePath;
@@ -1058,6 +1066,8 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.enableInspectorAdditions = parseBooleanTestHeaderValue(value);
         if (key == "dumpJSConsoleLogInStdErr")
             testOptions.dumpJSConsoleLogInStdErr = parseBooleanTestHeaderValue(value);
+        if (key == "applicationManifest")
+            testOptions.applicationManifest = parseStringTestHeaderValueAsRelativePath(value, pathOrURL);
         pairStart = pairEnd + 1;
     }
 }
@@ -2272,6 +2282,11 @@ void TestController::setIgnoresViewportScaleLimits(bool ignoresViewportScaleLimi
 void TestController::terminateNetworkProcess()
 {
     WKContextTerminateNetworkProcess(platformContext());
+}
+
+void TestController::terminateServiceWorkerProcess()
+{
+    WKContextTerminateServiceWorkerProcess(platformContext());
 }
 
 #if !PLATFORM(COCOA)

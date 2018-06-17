@@ -42,7 +42,6 @@
 #include "URL.h"
 #include <CoreMedia/CoreMedia.h>
 #include <heap/HeapInlines.h>
-#include <pal/Logger.h>
 #include <runtime/DataView.h>
 #include <runtime/TypedArrayInlines.h>
 #include <runtime/Uint16Array.h>
@@ -401,10 +400,8 @@ MediaTime MediaPlayerPrivateAVFoundation::maxMediaTimeSeekable() const
     if (!metaDataAvailable())
         return MediaTime::zeroTime();
 
-    if (!m_cachedMaxTimeSeekable) {
+    if (!m_cachedMaxTimeSeekable)
         m_cachedMaxTimeSeekable = platformMaxTimeSeekable();
-        INFO_LOG(LOGIDENTIFIER, "caching ", m_cachedMaxTimeSeekable);
-    }
 
     return m_cachedMaxTimeSeekable;
 }
@@ -414,10 +411,8 @@ MediaTime MediaPlayerPrivateAVFoundation::minMediaTimeSeekable() const
     if (!metaDataAvailable())
         return MediaTime::zeroTime();
 
-    if (!m_cachedMinTimeSeekable) {
+    if (!m_cachedMinTimeSeekable)
         m_cachedMinTimeSeekable = platformMinTimeSeekable();
-        INFO_LOG(LOGIDENTIFIER, "caching ", m_cachedMinTimeSeekable);
-    }
 
     return m_cachedMinTimeSeekable;
 }

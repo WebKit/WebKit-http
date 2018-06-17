@@ -68,7 +68,7 @@ WebSWServerConnection::~WebSWServerConnection()
 {
     StorageProcess::singleton().unregisterSWServerConnection(*this);
     for (auto keyValue : m_clientOrigins)
-        server().unregisterServiceWorkerClient(keyValue.value, ServiceWorkerClientIdentifier { identifier(), keyValue.key });
+        server().unregisterServiceWorkerClient(keyValue.value, keyValue.key);
 }
 
 void WebSWServerConnection::disconnectedFromWebProcess()
@@ -116,38 +116,36 @@ void WebSWServerConnection::updateWorkerStateInClient(ServiceWorkerIdentifier wo
     send(Messages::WebSWClientConnection::UpdateWorkerState(worker, state));
 }
 
-void WebSWServerConnection::startFetch(uint64_t fetchIdentifier, std::optional<ServiceWorkerIdentifier> serviceWorkerIdentifier, const ResourceRequest& request, const FetchOptions& options, const IPC::FormDataReference& formData)
+void WebSWServerConnection::startFetch(uint64_t fetchIdentifier, ServiceWorkerIdentifier serviceWorkerIdentifier, ResourceRequest&& request, FetchOptions&& options, IPC::FormDataReference&& formData)
 {
     // It's possible this specific worker cannot be re-run (e.g. its registration has been removed)
-    if (serviceWorkerIdentifier && !server().invokeRunServiceWorker(*serviceWorkerIdentifier))
-        return;
-
-    // FIXME: If we don't have a ServiceWorkerIdentifier here then we need to create and run the appropriate Service Worker,
-    // but it's unclear that we have enough information here to do that.
-
-    sendToContextProcess(Messages::WebSWContextManagerConnection::StartFetch { identifier(), fetchIdentifier, serviceWorkerIdentifier, request, options, formData });
+    server().runServiceWorkerIfNecessary(serviceWorkerIdentifier, [contentConnection = m_contentConnection.copyRef(), connectionIdentifier = identifier(), fetchIdentifier, serviceWorkerIdentifier = serviceWorkerIdentifier, request = WTFMove(request), options = WTFMove(options), formData = WTFMove(formData)](bool success, auto& contextConnection) {
+        if (success)
+            sendToContextProcess(contextConnection, Messages::WebSWContextManagerConnection::StartFetch { connectionIdentifier, fetchIdentifier, serviceWorkerIdentifier, request, options, formData });
+        else
+            contentConnection->send(Messages::ServiceWorkerClientFetch::DidNotHandle { }, fetchIdentifier);
+    });
 }
 
-void WebSWServerConnection::postMessageToServiceWorkerFromClient(ServiceWorkerIdentifier destinationIdentifier, const IPC::DataReference& message, ServiceWorkerClientIdentifier sourceIdentifier, ServiceWorkerClientData&& sourceData)
+void WebSWServerConnection::postMessageToServiceWorker(ServiceWorkerIdentifier destinationIdentifier, IPC::DataReference&& message, const ServiceWorkerOrClientIdentifier& sourceIdentifier)
 {
+    std::optional<ServiceWorkerOrClientData> sourceData;
+    WTF::switchOn(sourceIdentifier, [&](ServiceWorkerIdentifier identifier) {
+        if (auto* sourceWorker = server().workerByID(identifier))
+            sourceData = ServiceWorkerOrClientData { sourceWorker->data() };
+    }, [&](ServiceWorkerClientIdentifier identifier) {
+        if (auto clientData = server().serviceWorkerClientByID(identifier))
+            sourceData = ServiceWorkerOrClientData { *clientData };
+    });
+
+    if (!sourceData)
+        return;
+
     // It's possible this specific worker cannot be re-run (e.g. its registration has been removed)
-    if (!server().invokeRunServiceWorker(destinationIdentifier))
-        return;
-
-    sendToContextProcess(Messages::WebSWContextManagerConnection::PostMessageToServiceWorkerFromClient { destinationIdentifier, message, sourceIdentifier, WTFMove(sourceData) });
-}
-
-void WebSWServerConnection::postMessageToServiceWorkerFromServiceWorker(ServiceWorkerIdentifier destinationIdentifier, const IPC::DataReference& message, ServiceWorkerIdentifier sourceIdentifier)
-{
-    // It's possible this specific worker cannot be re-run (e.g. its registration has been removed)
-    if (!server().invokeRunServiceWorker(destinationIdentifier))
-        return;
-
-    auto* sourceWorker = server().workerByID(sourceIdentifier);
-    if (!sourceWorker)
-        return;
-
-    sendToContextProcess(Messages::WebSWContextManagerConnection::PostMessageToServiceWorkerFromServiceWorker { destinationIdentifier, message, sourceWorker->data() });
+    server().runServiceWorkerIfNecessary(destinationIdentifier, [destinationIdentifier, message = message.vector(), sourceData = WTFMove(*sourceData)](bool success, auto& contextConnection) mutable {
+        if (success)
+            sendToContextProcess(contextConnection, Messages::WebSWContextManagerConnection::PostMessageToServiceWorker { destinationIdentifier, message, WTFMove(sourceData) });
+    });
 }
 
 void WebSWServerConnection::didReceiveFetchResponse(uint64_t fetchIdentifier, const ResourceResponse& response)
@@ -209,20 +207,20 @@ void WebSWServerConnection::getRegistrations(uint64_t registrationMatchRequestId
     send(Messages::WebSWClientConnection::DidGetRegistrations { registrationMatchRequestIdentifier, registrations });
 }
 
-void WebSWServerConnection::registerServiceWorkerClient(SecurityOriginData&& topOrigin, DocumentIdentifier contextIdentifier, ServiceWorkerClientData&& data, const std::optional<ServiceWorkerIdentifier>& controllingServiceWorkerIdentifier)
+void WebSWServerConnection::registerServiceWorkerClient(SecurityOriginData&& topOrigin, ServiceWorkerClientData&& data, const std::optional<ServiceWorkerIdentifier>& controllingServiceWorkerIdentifier)
 {
     auto clientOrigin = ClientOrigin { WTFMove(topOrigin), SecurityOriginData::fromSecurityOrigin(SecurityOrigin::create(data.url)) };
-    m_clientOrigins.add(contextIdentifier, clientOrigin);
-    server().registerServiceWorkerClient(WTFMove(clientOrigin), ServiceWorkerClientIdentifier { this->identifier(), contextIdentifier } , WTFMove(data), controllingServiceWorkerIdentifier);
+    m_clientOrigins.add(data.identifier, clientOrigin);
+    server().registerServiceWorkerClient(WTFMove(clientOrigin), WTFMove(data), controllingServiceWorkerIdentifier);
 }
 
-void WebSWServerConnection::unregisterServiceWorkerClient(DocumentIdentifier contextIdentifier)
+void WebSWServerConnection::unregisterServiceWorkerClient(const ServiceWorkerClientIdentifier& clientIdentifier)
 {
-    auto iterator = m_clientOrigins.find(contextIdentifier);
+    auto iterator = m_clientOrigins.find(clientIdentifier);
     if (iterator == m_clientOrigins.end())
         return;
 
-    server().unregisterServiceWorkerClient(iterator->value, ServiceWorkerClientIdentifier { this->identifier(), contextIdentifier });
+    server().unregisterServiceWorkerClient(iterator->value, clientIdentifier);
     m_clientOrigins.remove(iterator);
 }
 
@@ -230,6 +228,11 @@ template<typename U> void WebSWServerConnection::sendToContextProcess(U&& messag
 {
     if (auto* connection = StorageProcess::singleton().globalServerToContextConnection())
         connection->send(WTFMove(message));
+}
+
+template<typename U> void WebSWServerConnection::sendToContextProcess(WebCore::SWServerToContextConnection& connection, U&& message)
+{
+    static_cast<WebSWServerToContextConnection&>(connection).send(WTFMove(message));
 }
 
 } // namespace WebKit

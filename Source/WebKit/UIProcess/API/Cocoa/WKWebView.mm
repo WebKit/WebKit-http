@@ -517,11 +517,16 @@ static void validate(WKWebViewConfiguration *configuration)
     if (NSString *overrideContentSecurityPolicy = configuration._overrideContentSecurityPolicy)
         pageConfiguration->setOverrideContentSecurityPolicy(overrideContentSecurityPolicy);
 
-    RefPtr<WebKit::WebPageGroup> pageGroup;
-    NSString *groupIdentifier = configuration._groupIdentifier;
-    if (groupIdentifier.length) {
-        pageGroup = WebKit::WebPageGroup::create(configuration._groupIdentifier);
-        pageConfiguration->setPageGroup(pageGroup.get());
+#if PLATFORM(MAC)
+    if (auto pageGroup = WebKit::toImpl([configuration _pageGroup])) {
+        pageConfiguration->setPageGroup(pageGroup);
+        pageConfiguration->setUserContentController(&pageGroup->userContentController());
+    } else
+#endif
+    {
+        NSString *groupIdentifier = configuration._groupIdentifier;
+        if (groupIdentifier.length)
+            pageConfiguration->setPageGroup(WebKit::WebPageGroup::create(configuration._groupIdentifier).ptr());
     }
 
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::suppressesIncrementalRenderingKey(), WebKit::WebPreferencesStore::Value(!![_configuration suppressesIncrementalRendering]));
@@ -536,6 +541,10 @@ static void validate(WKWebViewConfiguration *configuration)
     pageConfiguration->setInitialCapitalizationEnabled([_configuration _initialCapitalizationEnabled]);
     pageConfiguration->setWaitsForPaintAfterViewDidMoveToWindow([_configuration _waitsForPaintAfterViewDidMoveToWindow]);
     pageConfiguration->setControlledByAutomation([_configuration _isControlledByAutomation]);
+
+#if ENABLE(APPLICATION_MANIFEST)
+    pageConfiguration->setApplicationManifest([_configuration _applicationManifest] ? [configuration _applicationManifest]->_applicationManifest.get() : nullptr);
+#endif
 
 #if PLATFORM(MAC)
     if (auto cpuLimit = [_configuration _cpuLimit])
@@ -1625,18 +1634,19 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
 
 static CGPoint contentOffsetBoundedInValidRange(UIScrollView *scrollView, CGPoint contentOffset)
 {
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+    UIEdgeInsets contentInsets = scrollView.adjustedContentInset;
+#else
     UIEdgeInsets contentInsets = scrollView.contentInset;
+#endif
+
     CGSize contentSize = scrollView.contentSize;
     CGSize scrollViewSize = scrollView.bounds.size;
 
-    CGFloat maxHorizontalOffset = contentSize.width + contentInsets.right - scrollViewSize.width;
-    contentOffset.x = std::min(maxHorizontalOffset, contentOffset.x);
-    contentOffset.x = std::max(-contentInsets.left, contentOffset.x);
+    CGPoint minimumContentOffset = CGPointMake(-contentInsets.left, -contentInsets.top);
+    CGPoint maximumContentOffset = CGPointMake(std::max(minimumContentOffset.x, contentSize.width + contentInsets.right - scrollViewSize.width), std::max(minimumContentOffset.y, contentSize.height + contentInsets.bottom - scrollViewSize.height));
 
-    CGFloat maxVerticalOffset = contentSize.height + contentInsets.bottom - scrollViewSize.height;
-    contentOffset.y = std::min(maxVerticalOffset, contentOffset.y);
-    contentOffset.y = std::max(-contentInsets.top, contentOffset.y);
-    return contentOffset;
+    return CGPointMake(std::max(std::min(contentOffset.x, maximumContentOffset.x), minimumContentOffset.x), std::max(std::min(contentOffset.y, maximumContentOffset.y), minimumContentOffset.y));
 }
 
 static void changeContentOffsetBoundedInValidRange(UIScrollView *scrollView, WebCore::FloatPoint contentOffset)

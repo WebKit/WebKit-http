@@ -55,7 +55,7 @@ struct SameSizeAsFontCascadeDescription {
 COMPILE_ASSERT(sizeof(FontCascadeDescription) == sizeof(SameSizeAsFontCascadeDescription), FontCascadeDescription_should_stay_small);
 
 FontDescription::FontDescription()
-    : m_fontSelectionRequest(FontCascadeDescription::initialWeight(), FontCascadeDescription::initialStretch(), FontCascadeDescription::initialItalic())
+    : m_fontSelectionRequest { FontCascadeDescription::initialWeight(), FontCascadeDescription::initialStretch(), FontCascadeDescription::initialItalic() }
     , m_orientation(Horizontal)
     , m_nonCJKGlyphOrientation(static_cast<unsigned>(NonCJKGlyphOrientation::Mixed))
     , m_widthVariant(RegularWidth)
@@ -80,6 +80,7 @@ FontDescription::FontDescription()
     , m_variantEastAsianRuby(static_cast<unsigned>(FontVariantEastAsianRuby::Normal))
     , m_opticalSizing(static_cast<unsigned>(FontOpticalSizing::Enabled))
     , m_fontStyleAxis(FontCascadeDescription::initialFontStyleAxis() == FontStyleAxis::ital)
+    , m_mayRepresentUserInstalledFont(true)
 {
 }
 

@@ -322,6 +322,7 @@ accessibility/AccessibleNode.cpp
 
 animation/AnimationEffect.cpp
 animation/AnimationEffectTiming.cpp
+animation/AnimationPlaybackEvent.cpp
 animation/AnimationTimeline.cpp
 animation/DocumentTimeline.cpp
 animation/KeyframeEffect.cpp
@@ -407,6 +408,7 @@ bindings/js/JSNavigatorCustom.cpp
 bindings/js/JSNodeCustom.cpp
 bindings/js/JSNodeIteratorCustom.cpp
 bindings/js/JSNodeListCustom.cpp
+bindings/js/JSOffscreenCanvasRenderingContext2DCustom.cpp
 bindings/js/JSPerformanceEntryCustom.cpp
 bindings/js/JSPluginElementFunctions.cpp
 bindings/js/JSPopStateEventCustom.cpp
@@ -1057,8 +1059,10 @@ html/canvas/CanvasPath.cpp
 html/canvas/CanvasPattern.cpp
 html/canvas/CanvasRenderingContext.cpp
 html/canvas/CanvasRenderingContext2D.cpp
+html/canvas/CanvasRenderingContext2DBase.cpp
 html/canvas/CanvasStyle.cpp
 html/canvas/ImageBitmapRenderingContext.cpp
+html/canvas/OffscreenCanvasRenderingContext2D.cpp
 html/canvas/Path2D.cpp
 html/canvas/PlaceholderRenderingContext.cpp
 html/canvas/WebGPUBuffer.cpp
@@ -1857,6 +1861,7 @@ rendering/SimpleLineLayoutTextFragmentIterator.cpp
 rendering/TextDecorationPainter.cpp
 rendering/TextPaintStyle.cpp
 rendering/TextPainter.cpp
+rendering/TrailingFloatsRootInlineBox.cpp
 
 rendering/line/LineBreaker.cpp
 rendering/line/LineInfo.cpp
@@ -2212,6 +2217,8 @@ workers/service/context/ServiceWorkerThread.cpp
 workers/service/context/ServiceWorkerThreadProxy.cpp
 workers/service/context/SWContextManager.cpp
 
+workers/service/server/RegistrationDatabase.cpp
+workers/service/server/RegistrationStore.cpp
 workers/service/server/SWOriginStore.cpp
 workers/service/server/SWServer.cpp
 workers/service/server/SWServerJobQueue.cpp
@@ -2286,6 +2293,8 @@ JSAnalyserNode.cpp
 JSAnimationEvent.cpp
 JSAnimationEffect.cpp
 JSAnimationEffectTiming.cpp
+JSAnimationPlaybackEvent.cpp
+JSAnimationPlaybackEventInit.cpp
 JSAnimationTimeline.cpp
 JSAttr.cpp
 JSAudioBuffer.cpp
@@ -2660,6 +2669,7 @@ JSNotificationPermissionCallback.cpp
 JSOfflineAudioCompletionEvent.cpp
 JSOfflineAudioContext.cpp
 JSOffscreenCanvas.cpp
+JSOffscreenCanvasRenderingContext2D.cpp
 JSOscillatorNode.cpp
 JSOverconstrainedError.cpp
 JSOverconstrainedErrorEvent.cpp

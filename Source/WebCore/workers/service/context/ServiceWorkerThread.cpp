@@ -67,14 +67,11 @@ private:
 
 // FIXME: Use a valid WorkerReportingProxy
 // FIXME: Use a valid WorkerObjectProxy
-// FIXME: Use a valid IDBConnection
-// FIXME: Use a valid SocketProvider
-// FIXME: Use a valid user agent
 // FIXME: Use a valid isOnline flag
 // FIXME: Use valid runtime flags
 
-ServiceWorkerThread::ServiceWorkerThread(const ServiceWorkerContextData& data, PAL::SessionID, WorkerLoaderProxy& loaderProxy, WorkerDebuggerProxy& debuggerProxy)
-    : WorkerThread(data.scriptURL, "serviceworker:" + Inspector::IdentifiersFactory::createIdentifier(), ASCIILiteral("WorkerUserAgent"), /* isOnline */ false, data.script, loaderProxy, debuggerProxy, DummyServiceWorkerThreadProxy::shared(), WorkerThreadStartMode::Normal, ContentSecurityPolicyResponseHeaders { }, false, SecurityOrigin::create(data.scriptURL).get(), MonotonicTime::now(), nullptr, nullptr, JSC::RuntimeFlags::createAllEnabled(), SessionID::defaultSessionID())
+ServiceWorkerThread::ServiceWorkerThread(const ServiceWorkerContextData& data, PAL::SessionID, String&& userAgent, WorkerLoaderProxy& loaderProxy, WorkerDebuggerProxy& debuggerProxy, IDBClient::IDBConnectionProxy* idbConnectionProxy, SocketProvider* socketProvider)
+    : WorkerThread(data.scriptURL, "serviceworker:" + Inspector::IdentifiersFactory::createIdentifier(), WTFMove(userAgent), /* isOnline */ false, data.script, loaderProxy, debuggerProxy, DummyServiceWorkerThreadProxy::shared(), WorkerThreadStartMode::Normal, ContentSecurityPolicyResponseHeaders { }, false, SecurityOrigin::create(data.scriptURL).get(), MonotonicTime::now(), idbConnectionProxy, socketProvider, JSC::RuntimeFlags::createAllEnabled(), SessionID::defaultSessionID())
     , m_data(data.isolatedCopy())
     , m_workerObjectProxy(DummyServiceWorkerThreadProxy::shared())
 {
@@ -114,23 +111,22 @@ static void fireMessageEvent(ServiceWorkerGlobalScope& scope, Ref<SerializedScri
     scope.updateExtendedEventsSet(messageEvent.ptr());
 }
 
-void ServiceWorkerThread::postMessageToServiceWorker(Ref<SerializedScriptValue>&& message, std::unique_ptr<MessagePortChannelArray>&& channels, ServiceWorkerClientIdentifier sourceIdentifier, ServiceWorkerClientData&& sourceData)
+void ServiceWorkerThread::postMessageToServiceWorker(Ref<SerializedScriptValue>&& message, std::unique_ptr<MessagePortChannelArray>&& channels, ServiceWorkerOrClientData&& sourceData)
 {
-    runLoop().postTask([channels = WTFMove(channels), message = WTFMove(message), sourceIdentifier, sourceData = sourceData.isolatedCopy()] (auto& context) mutable {
+    runLoop().postTask([channels = WTFMove(channels), message = WTFMove(message), sourceData = WTFMove(sourceData)] (auto& context) mutable {
         auto& serviceWorkerGlobalScope = downcast<ServiceWorkerGlobalScope>(context);
-        RefPtr<ServiceWorkerClient> source = ServiceWorkerClient::getOrCreate(serviceWorkerGlobalScope, sourceIdentifier, WTFMove(sourceData));
-        auto sourceOrigin = SecurityOrigin::create(source->url());
-        fireMessageEvent(serviceWorkerGlobalScope, WTFMove(message), WTFMove(channels), ExtendableMessageEventSource { source }, WTFMove(sourceOrigin));
-    });
-}
-
-void ServiceWorkerThread::postMessageToServiceWorker(Ref<SerializedScriptValue>&& message, std::unique_ptr<MessagePortChannelArray>&& channels, ServiceWorkerData&& sourceData)
-{
-    runLoop().postTask([channels = WTFMove(channels), message = WTFMove(message), sourceData = sourceData.isolatedCopy()] (auto& context) mutable {
-        auto& serviceWorkerGlobalScope = downcast<ServiceWorkerGlobalScope>(context);
-        RefPtr<ServiceWorker> source = ServiceWorker::getOrCreate(serviceWorkerGlobalScope, WTFMove(sourceData));
-        auto sourceOrigin = SecurityOrigin::create(source->scriptURL());
-        fireMessageEvent(downcast<ServiceWorkerGlobalScope>(context), WTFMove(message), WTFMove(channels), ExtendableMessageEventSource { source }, WTFMove(sourceOrigin));
+        RefPtr<SecurityOrigin> sourceOrigin;
+        ExtendableMessageEventSource source;
+        if (WTF::holds_alternative<ServiceWorkerClientData>(sourceData)) {
+            RefPtr<ServiceWorkerClient> sourceClient = ServiceWorkerClient::getOrCreate(serviceWorkerGlobalScope, WTFMove(WTF::get<ServiceWorkerClientData>(sourceData)));
+            sourceOrigin = SecurityOrigin::create(sourceClient->url());
+            source = WTFMove(sourceClient);
+        } else {
+            RefPtr<ServiceWorker> sourceWorker = ServiceWorker::getOrCreate(serviceWorkerGlobalScope, WTFMove(WTF::get<ServiceWorkerData>(sourceData)));
+            sourceOrigin = SecurityOrigin::create(sourceWorker->scriptURL());
+            source = WTFMove(sourceWorker);
+        }
+        fireMessageEvent(serviceWorkerGlobalScope, WTFMove(message), WTFMove(channels), ExtendableMessageEventSource { source }, sourceOrigin.releaseNonNull());
     });
 }
 

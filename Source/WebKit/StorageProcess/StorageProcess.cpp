@@ -43,6 +43,7 @@
 #include <WebCore/ServiceWorkerClientIdentifier.h>
 #include <WebCore/TextEncoding.h>
 #include <pal/SessionID.h>
+#include <wtf/CallbackAggregator.h>
 #include <wtf/CrossThreadTask.h>
 #include <wtf/MainThread.h>
 
@@ -86,8 +87,7 @@ void StorageProcess::didClose(IPC::Connection& connection)
 {
 #if ENABLE(SERVICE_WORKER)
     if (m_serverToContextConnection && m_serverToContextConnection->ipcConnection() == &connection) {
-        m_serverToContextConnection->connectionClosed();
-        m_serverToContextConnection = nullptr;
+        connectionToContextProcessWasClosed();
         return;
     }
 #else
@@ -95,6 +95,38 @@ void StorageProcess::didClose(IPC::Connection& connection)
 #endif
     stopRunLoop();
 }
+
+#if ENABLE(SERVICE_WORKER)
+void StorageProcess::connectionToContextProcessWasClosed()
+{
+    if (!m_serverToContextConnection)
+        return;
+
+    bool shouldRelaunch = needsServerToContextConnection();
+
+    m_serverToContextConnection->connectionClosed();
+    m_serverToContextConnection = nullptr;
+
+    for (auto& swServer : m_swServers.values())
+        swServer->markAllWorkersAsTerminated();
+
+    if (shouldRelaunch)
+        createServerToContextConnection();
+}
+
+// The rule is that we need a context process (and a connection to it) as long as we have SWServerConnections to regular WebProcesses.
+bool StorageProcess::needsServerToContextConnection() const
+{
+    if (m_swServerConnections.isEmpty())
+        return false;
+
+    // If the last SWServerConnection is to the context process, then we no longer need the context connection.
+    if (m_swServerConnections.size() == 1 && m_serverToContextConnection && &m_swServerConnections.begin()->value->ipcConnection() == m_serverToContextConnection->ipcConnection())
+        return false;
+
+    return true;
+}
+#endif
 
 void StorageProcess::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
@@ -264,50 +296,42 @@ void StorageProcess::fetchWebsiteData(PAL::SessionID sessionID, OptionSet<Websit
 
 void StorageProcess::deleteWebsiteData(PAL::SessionID sessionID, OptionSet<WebsiteDataType> websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID)
 {
-    auto completionHandler = [this, callbackID]() {
+    auto callbackAggregator = CallbackAggregator::create([this, callbackID] {
         parentProcessConnection()->send(Messages::StorageProcessProxy::DidDeleteWebsiteData(callbackID), 0);
-    };
+    });
 
 #if ENABLE(SERVICE_WORKER)
     if (websiteDataTypes.contains(WebsiteDataType::ServiceWorkerRegistrations)) {
         if (auto* server = m_swServers.get(sessionID))
-            server->clearAll();
+            server->clearAll([callbackAggregator = callbackAggregator.copyRef()] { });
     }
 #endif
 
 #if ENABLE(INDEXED_DATABASE)
-    if (websiteDataTypes.contains(WebsiteDataType::IndexedDBDatabases)) {
-        idbServer(sessionID).closeAndDeleteDatabasesModifiedSince(modifiedSince, WTFMove(completionHandler));
-        return;
-    }
+    if (websiteDataTypes.contains(WebsiteDataType::IndexedDBDatabases))
+        idbServer(sessionID).closeAndDeleteDatabasesModifiedSince(modifiedSince, [callbackAggregator = WTFMove(callbackAggregator)] { });
 #endif
-
-    completionHandler();
 }
 
 void StorageProcess::deleteWebsiteDataForOrigins(PAL::SessionID sessionID, OptionSet<WebsiteDataType> websiteDataTypes, const Vector<SecurityOriginData>& securityOriginDatas, uint64_t callbackID)
 {
-    auto completionHandler = [this, callbackID]() {
+    auto callbackAggregator = CallbackAggregator::create([this, callbackID]() {
         parentProcessConnection()->send(Messages::StorageProcessProxy::DidDeleteWebsiteDataForOrigins(callbackID), 0);
-    };
+    });
 
 #if ENABLE(SERVICE_WORKER)
     if (websiteDataTypes.contains(WebsiteDataType::ServiceWorkerRegistrations)) {
         if (auto* server = m_swServers.get(sessionID)) {
             for (auto& originData : securityOriginDatas)
-                server->clear(originData.securityOrigin());
+                server->clear(originData.securityOrigin(), [callbackAggregator = callbackAggregator.copyRef()] { });
         }
     }
 #endif
 
 #if ENABLE(INDEXED_DATABASE)
-    if (!websiteDataTypes.contains(WebsiteDataType::IndexedDBDatabases)) {
-        idbServer(sessionID).closeAndDeleteDatabasesForOrigins(securityOriginDatas, WTFMove(completionHandler));
-        return;
-    }
+    if (!websiteDataTypes.contains(WebsiteDataType::IndexedDBDatabases))
+        idbServer(sessionID).closeAndDeleteDatabasesForOrigins(securityOriginDatas, [callbackAggregator = WTFMove(callbackAggregator)] { });
 #endif
-
-    completionHandler();
 }
 
 #if ENABLE(SANDBOX_EXTENSIONS)
@@ -389,7 +413,7 @@ SWServer& StorageProcess::swServerForSession(PAL::SessionID sessionID)
     // If there's not, then where did this PAL::SessionID come from?
     ASSERT(sessionID.isEphemeral() || !path.isEmpty());
 
-    result.iterator->value = std::make_unique<SWServer>(makeUniqueRef<WebSWOriginStore>(), path);
+    result.iterator->value = std::make_unique<SWServer>(makeUniqueRef<WebSWOriginStore>(), WTFMove(path), sessionID);
     return *result.iterator->value;
 }
 

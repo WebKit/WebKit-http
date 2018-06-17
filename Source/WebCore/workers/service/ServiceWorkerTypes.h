@@ -35,6 +35,10 @@
 
 namespace WebCore {
 
+struct ServiceWorkerData;
+struct ServiceWorkerClientData;
+struct ServiceWorkerClientIdentifier;
+
 enum class ServiceWorkerRegistrationState {
     Installing = 0,
     Waiting = 1,
@@ -71,6 +75,9 @@ enum SWServerConnectionIdentifierType { };
 using SWServerConnectionIdentifier = ObjectIdentifier<SWServerConnectionIdentifierType>;
 
 using DocumentOrWorkerIdentifier = Variant<DocumentIdentifier, ServiceWorkerIdentifier>;
+
+using ServiceWorkerOrClientData = Variant<ServiceWorkerData, ServiceWorkerClientData>;
+using ServiceWorkerOrClientIdentifier = Variant<ServiceWorkerIdentifier, ServiceWorkerClientIdentifier>;
 
 } // namespace WebCore
 

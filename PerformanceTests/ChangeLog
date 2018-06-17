@@ -1,3 +1,48 @@
+2017-12-11  Tim Horton  <timothy_horton@apple.com>
+
+        Stop using deprecated target conditional for simulator builds
+        https://bugs.webkit.org/show_bug.cgi?id=180662
+        <rdar://problem/35136156>
+
+        Reviewed by Simon Fraser.
+
+        * StitchMarker/wtf/Platform.h:
+        * StitchMarker/wtf/dependencies/bmalloc/BPlatform.h:
+
+2017-12-11  Antti Koivisto  <antti@apple.com>
+
+        StyleBench improvements
+        https://bugs.webkit.org/show_bug.cgi?id=180646
+
+        Reviewed by Geoffrey Garen.
+
+        - Remove :empty rule from global stylesheet. It caused all tests to hit positional pseudo-class code paths.
+        - Instead use min-width to create easy flexible layout. Use it for ::before/::after too.
+        - Add :empty to positional pseudo-class test.
+        - Include some id attributes and id selectors
+        - Chance to have more than 1 classes per compound selector
+        - Change distribution of elements and classes to be non-uniform
+        - Other bug fixes
+
+        * StyleBench/resources/style-bench.js:
+        (Random.prototype.numberSquareWeightedToLow):
+        (Random):
+        (defaultConfiguration):
+        (prototype.randomElementName):
+        (prototype.randomId):
+        (prototype.makeCompoundSelector):
+        (prototype.makeSelector):
+        (prototype.makeElement):
+
+2017-12-08  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [python] Replace print operator with print() function for python3 compatibility
+        https://bugs.webkit.org/show_bug.cgi?id=180592
+
+        Reviewed by Michael Catanzaro.
+
+        * JSBench/harness.py:
+
 2017-12-01  Filip Pizlo  <fpizlo@apple.com>
 
         GC constraint solving should be parallel

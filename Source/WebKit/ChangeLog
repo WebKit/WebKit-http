@@ -1,3 +1,873 @@
+2017-12-12  John Wilander  <wilander@apple.com>
+
+        Dispatch resource load statistics telemetry on the main thread
+        https://bugs.webkit.org/show_bug.cgi?id=180602
+        <rdar://problem/35942205>
+
+        Reviewed by Brent Fulgham.
+
+        * UIProcess/WebResourceLoadStatisticsTelemetry.cpp:
+        (WebKit::WebResourceLoadStatisticsTelemetry::calculateAndSubmit):
+            Now switches to the main thread for the telemetry submission
+            through a webpage proxy. The reason is that the webpage we
+            use may go away while we're still using it. This kind of
+            telemetry isn't associated with a specific webpage but the
+            infrastructure requires a webpage proxy.
+
+2017-12-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        IPC code doesn't understand NSDictionaries with non-NSString keys
+        https://bugs.webkit.org/show_bug.cgi?id=180307
+        <rdar://problem/35812382>
+
+        Reviewed by Alex Christensen.
+
+        Variable fonts have a dictionary inside its descriptor which represents the values
+        of all the axes of the variable font. Our IPC code wasn't expecting this.
+
+        * Shared/mac/ArgumentCodersMac.mm:
+        (IPC::encode):
+        (IPC::decode):
+
+2017-12-12  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed build fix after r225763.
+
+        Remove dangling close-parentheses character.
+
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.WebContent.sb:
+
+2017-12-12  Zach Li  <zachli@apple.com>
+
+        [WK2] Expose image via WKBundleHitTestResult API.
+        https://bugs.webkit.org/show_bug.cgi?id=180552.
+        rdar://problem/23951521
+
+        Reviewed by Simon Fraser.
+
+        * WebProcess/InjectedBundle/API/c/WKBundleHitTestResult.cpp:
+        (WKBundleHitTestResultGetImage):
+        * WebProcess/InjectedBundle/API/c/WKBundleHitTestResult.h:
+
+        * WebProcess/InjectedBundle/InjectedBundleHitTestResult.cpp:
+        (WebKit::InjectedBundleHitTestResult::image const):
+        Convert from WebCore::Image to WebImage by creating a WebImage
+        and paint the WebCore::Image into its graphics context. For now,
+        only handle bitmap images.
+        * WebProcess/InjectedBundle/InjectedBundleHitTestResult.h:
+
+2017-12-12  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove ColorSpaceDeviceRGB and most users of the obsolete deviceRGB colorspace
+        https://bugs.webkit.org/show_bug.cgi?id=180689
+
+        Reviewed by Tim Horton.
+
+        Remove encoding of ColorSpaceDeviceRGB.
+
+        * Shared/WebCoreArgumentCoders.h:
+
+2017-12-12  Brent Fulgham  <bfulgham@apple.com>
+
+        REGRESSION(r216941): Plugin Process can't access AppStore Plugin Service
+        https://bugs.webkit.org/show_bug.cgi?id=180701
+        <rdar://problem/35940948>
+
+        Reviewed by Daniel Bates.
+
+        The PluginProcess needs access to the AppStore Plugin XPC service.
+
+        * PluginProcess/mac/com.apple.WebKit.plugin-common.sb.in:
+
+2017-12-12  Brady Eidson  <beidson@apple.com>
+
+        Make ServiceWorkers follow the DEFAULT_EXPERIMENTAL_FEATURES_ENABLED flag on Mac.
+        <rdar://problem/35978311> and https://bugs.webkit.org/show_bug.cgi?id=180697
+
+        Reviewed by Chris Dumez.
+
+        * Shared/WebPreferences.yaml:
+        * Shared/WebPreferencesDefaultValues.h:
+
+2017-12-12  Chris Dumez  <cdumez@apple.com>
+
+        Simplify IPC code between WebProcess and StorageProcess for serviceWorker.postMessage()
+        https://bugs.webkit.org/show_bug.cgi?id=180683
+
+        Reviewed by Brady Eidson.
+
+        Merge the 2 code paths from calling postMessage() from a ServiceWorkerClient and from
+        a ServiceWorker. Also, postMessage() now only IPCs an identifier from the WebContent
+        process to the StorageProcess. The ServiceWorkerClientData is looked up on Storage
+        process side from the identifier before being sent to the context process.
+
+        * Scripts/webkit/messages.py:
+        (forward_declarations_and_headers):
+        (headers_for_type):
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<ServiceWorkerOrClientIdentifier>::encode):
+        (IPC::ArgumentCoder<ServiceWorkerOrClientIdentifier>::decode):
+        * Shared/WebCoreArgumentCoders.h:
+        * StorageProcess/ServiceWorker/WebSWServerConnection.cpp:
+        (WebKit::WebSWServerConnection::postMessageToServiceWorker):
+        * StorageProcess/ServiceWorker/WebSWServerConnection.h:
+        * StorageProcess/ServiceWorker/WebSWServerConnection.messages.in:
+        * WebProcess/Storage/WebSWClientConnection.cpp:
+        (WebKit::WebSWClientConnection::postMessageToServiceWorker):
+        * WebProcess/Storage/WebSWClientConnection.h:
+
+2017-12-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Thread::create should have Thread::tryCreate
+        https://bugs.webkit.org/show_bug.cgi?id=180333
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/API/glib/IconDatabase.cpp:
+        (WebKit::IconDatabase::open):
+        * UIProcess/linux/MemoryPressureMonitor.cpp:
+        (WebKit::MemoryPressureMonitor::MemoryPressureMonitor):
+
+2017-12-11  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Move UpdateAtlas, AreaAllocator into the platform layer
+        https://bugs.webkit.org/show_bug.cgi?id=180641
+
+        Reviewed by Michael Catanzaro.
+
+        Move the UpdateAtlas and AreaAllocator classes into the platform layer,
+        moving over build targets and adjust UpdateAtlas class references in
+        CompositingCoordinator.
+
+        * PlatformGTK.cmake:
+        * PlatformWPE.cmake:
+        * PlatformWin.cmake:
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.h:
+
+2017-12-11  Alex Christensen  <achristensen@webkit.org>
+
+        Add a WKPageGroupRef setter in WKWebViewConfiguration
+        https://bugs.webkit.org/show_bug.cgi?id=180674
+        <rdar://problem/35920392>
+
+        Reviewed by Brady Eidson.
+
+        There is a Mac app trying to transition to WKWebView, and it uses WKPageGroupRef extensively.
+        To help it transition, we are temporarily giving it an ObjC way to use this organization for
+        its UserContentControllers to be united per PageGroup before it transitions away from SPIs like
+        WKBundleAddUserScript.  Make it Mac-only to indicate that this should be transitioned away from,
+        rather than adopted on iOS.
+        
+        No change in behavior for apps not using the new WKWebViewConfiguration._pageGroup SPI.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _initializeWithConfiguration:]):
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration copyWithZone:]):
+        (-[WKWebViewConfiguration _pageGroup]):
+        (-[WKWebViewConfiguration _setPageGroup:]):
+        * UIProcess/API/Cocoa/WKWebViewConfigurationPrivate.h:
+
+2017-12-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [iOS] Remove unused services from WebContent Process sandbox
+        https://bugs.webkit.org/show_bug.cgi?id=180670
+
+        Reviewed by Eric Carlson.
+
+        Pare down the set of sandbox exceptions in the iOS WebContent process sandbox to just
+        those services actually in use:
+        1. Remove unused code.
+        2. Instead of defining a 'UIKit-app' function and calling it, just declare the individual sandbox
+        commands inline. This will allow them to be more easily consolidated with other parts of the
+        sandbox in a future step.
+
+        This update should not change behavior.
+
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.WebContent.sb:
+
+2017-12-11  Chris Dumez  <cdumez@apple.com>
+
+        Merge ServiceWorkerClientIdentifier into ServiceWorkerClientData
+        https://bugs.webkit.org/show_bug.cgi?id=180669
+
+        Reviewed by Youenn Fablet.
+
+        Merge ServiceWorkerClientIdentifier into ServiceWorkerClientData, for consistency with
+        ServiceWorkerIdentifier / ServiceWorkerData, and start simplifying the postMessage() code.
+
+        * Scripts/webkit/messages.py:
+        (forward_declarations_and_headers):
+        (headers_for_type):
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<ServiceWorkerOrClientData>::encode):
+        (IPC::ArgumentCoder<ServiceWorkerOrClientData>::decode):
+        * Shared/WebCoreArgumentCoders.h:
+        * StorageProcess/ServiceWorker/WebSWServerConnection.cpp:
+        (WebKit::WebSWServerConnection::~WebSWServerConnection):
+        (WebKit::WebSWServerConnection::postMessageToServiceWorkerFromClient):
+        (WebKit::WebSWServerConnection::postMessageToServiceWorkerFromServiceWorker):
+        (WebKit::WebSWServerConnection::registerServiceWorkerClient):
+        (WebKit::WebSWServerConnection::unregisterServiceWorkerClient):
+        * StorageProcess/ServiceWorker/WebSWServerConnection.h:
+        * StorageProcess/ServiceWorker/WebSWServerConnection.messages.in:
+        * StorageProcess/ServiceWorker/WebSWServerToContextConnection.cpp:
+        (WebKit::WebSWServerToContextConnection::matchAllCompleted):
+        * StorageProcess/ServiceWorker/WebSWServerToContextConnection.h:
+        * WebProcess/Storage/WebSWClientConnection.cpp:
+        (WebKit::WebSWClientConnection::registerServiceWorkerClient):
+        (WebKit::WebSWClientConnection::unregisterServiceWorkerClient):
+        * WebProcess/Storage/WebSWClientConnection.h:
+        * WebProcess/Storage/WebSWContextManagerConnection.cpp:
+        (WebKit::WebSWContextManagerConnection::postMessageToServiceWorker):
+        (WebKit::WebSWContextManagerConnection::matchAllCompleted):
+        * WebProcess/Storage/WebSWContextManagerConnection.h:
+        * WebProcess/Storage/WebSWContextManagerConnection.messages.in:
+
+2017-12-11  Youenn Fablet  <youenn@apple.com>
+
+        RTCPacketOptions::packet_id should be encoded as 32 bits integer.
+        https://bugs.webkit.org/show_bug.cgi?id=180654
+
+        Reviewed by Eric Carlson.
+
+        packet_id is a 16 bit unsigned integer, but it can also take -1 if its value is not set.
+        Before the patch, it was IPC encoded as a 16 bit signed integer which is not large enough.
+
+        * Shared/RTCPacketOptions.cpp:
+        (WebKit::RTCPacketOptions::encode const):
+        (WebKit::RTCPacketOptions::decode):
+
+2017-12-11  Chris Dumez  <cdumez@apple.com>
+
+        Layout Test http/tests/workers/service/postmessage-after-sw-process-crash.https.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=180659
+
+        Reviewed by Youenn Fablet.
+
+        Fix flaky crash due to capturing an IPC::DataReference in a lambda, which would point to invalid
+        memory when the lambda is called asynchronously.
+
+        * StorageProcess/ServiceWorker/WebSWServerConnection.cpp:
+        (WebKit::WebSWServerConnection::postMessageToServiceWorkerFromClient):
+        (WebKit::WebSWServerConnection::postMessageToServiceWorkerFromServiceWorker):
+
+2017-12-11  Brent Fulgham  <bfulgham@apple.com>
+
+        [iOS] Don't import 'UIKit-apps.sb' to the WebContent process sandbox
+        https://bugs.webkit.org/show_bug.cgi?id=180610
+        <rdar://problem/18899506>
+
+        Reviewed by Dean Jackson.
+
+        Stop including 'system.sb', and just include the portions of that sandbox that we
+        actually use in WebContent Process. This is the first step in some further sandbox
+        tightening.
+
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.WebContent.sb:
+
+2017-12-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Add Converter traits to StringHasher instead of function pointer
+        https://bugs.webkit.org/show_bug.cgi?id=180656
+
+        Reviewed by JF Bastien.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::addCaseFoldedCharacters):
+
+2017-12-11  David Quesada  <david_quesada@apple.com>
+
+        Turn on ENABLE_APPLICATION_MANIFEST
+        https://bugs.webkit.org/show_bug.cgi?id=180562
+        rdar://problem/35924737
+
+        Reviewed by Geoffrey Garen.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-12-11  Dean Jackson  <dino@apple.com>
+
+        Add a runtime feature flag for ImageBitmap and OffscreenCanvas
+        https://bugs.webkit.org/show_bug.cgi?id=180652
+        <rdar://problem/35969611>
+
+        Reviewed by Antoine Quint.
+
+        Add an experimental feature flag for these interfaces.
+
+        * Shared/WebPreferences.yaml:
+
+2017-12-10  Stephan Szabo  <stephan.szabo@sony.com>
+
+        APIClient.h uses things from <tuple> without including it explicitly
+        https://bugs.webkit.org/show_bug.cgi?id=180609
+
+        Reviewed by Darin Adler.
+
+        * Shared/API/APIClient.h:
+
+2017-12-08  Youenn Fablet  <youenn@apple.com>
+
+        Service Worker should use a correct user agent
+        https://bugs.webkit.org/show_bug.cgi?id=180566
+        <rdar://problem/35926295>
+
+        Reviewed by Chris Dumez.
+
+        Addendum to landed patch.
+        This change was removed from the last version of the patch but proves to be needed by Safari.
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::establishWorkerContextConnectionToStorageProcess):
+        Added back setting the user agent at start of service worker in case a page is already created.
+
+2017-12-08  Brady Eidson  <beidson@apple.com>
+
+        Delay some service worker operations until after the database import completes.
+        https://bugs.webkit.org/show_bug.cgi?id=180573
+
+        Reviewed by Chris Dumez.
+
+        * StorageProcess/ServiceWorker/WebSWOriginStore.cpp:
+        (WebKit::WebSWOriginStore::importComplete): Tell the Origin Table on all connects that
+          the import is complete.
+        (WebKit::WebSWOriginStore::registerSWServerConnection):
+        * StorageProcess/ServiceWorker/WebSWOriginStore.h:
+
+        * WebProcess/Storage/WebSWClientConnection.cpp:
+        (WebKit::WebSWClientConnection::mayHaveServiceWorkerRegisteredForOrigin const):
+        (WebKit::WebSWClientConnection::setSWOriginTableIsImported): Run deferred tasks!
+        (WebKit::WebSWClientConnection::matchRegistration): If the import isn't complete yet, delay
+          the match registration task until later.
+        (WebKit::WebSWClientConnection::runOrDelayTask): Either send the message now or save off
+          the task to wait until the import is complete.
+        (WebKit::WebSWClientConnection::getRegistrations): If the import isn't complete yet, delay
+          the get registrations task until later.
+        (WebKit::WebSWClientConnection::initializeSWOriginTableAsEmpty): Deleted.
+        * WebProcess/Storage/WebSWClientConnection.h:
+        * WebProcess/Storage/WebSWClientConnection.messages.in:
+
+        * WebProcess/Storage/WebSWOriginTable.cpp:
+        (WebKit::WebSWOriginTable::setSharedMemory):
+        * WebProcess/Storage/WebSWOriginTable.h:
+        (WebKit::WebSWOriginTable::isImported const):
+        (WebKit::WebSWOriginTable::setIsImported):
+        (WebKit::WebSWOriginTable::isInitialized const): Deleted.
+        (WebKit::WebSWOriginTable::initializeAsEmpty): Deleted.
+
+2017-12-08  Youenn Fablet  <youenn@apple.com>
+
+        Service Worker should use a correct user agent
+        https://bugs.webkit.org/show_bug.cgi?id=180566
+        <rdar://problem/35926295>
+
+        Reviewed by Chris Dumez.
+
+        Add support to set service worker user agent from UIProcess to service worker process.
+        One user agent is currently supported per service worker process and it can be changed at any given time.
+        Only new service worker will use the new value.
+        Once a service worker is launched, it will stay with the same user agent value.
+
+        This sets both navigator.userAgent and User-Agent header name used for fetch within a service worker.
+        Compute the service worker process user agent by picking the last user agent set for a web page.
+
+        * UIProcess/ServiceWorkerProcessProxy.cpp:
+        (WebKit::ServiceWorkerProcessProxy::start):
+        (WebKit::ServiceWorkerProcessProxy::setUserAgent):
+        * UIProcess/ServiceWorkerProcessProxy.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::setApplicationNameForUserAgent):
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::establishWorkerContextConnectionToStorageProcess):
+        (WebKit::WebProcessPool::createWebPage):
+        (WebKit::WebProcessPool::updateServiceWorkerUserAgent):
+        * UIProcess/WebProcessPool.h:
+        * WebProcess/Storage/WebSWContextManagerConnection.cpp:
+        (WebKit::WebSWContextManagerConnection::installServiceWorker):
+        (WebKit::WebSWContextManagerConnection::setUserAgent):
+        (WebKit::WebSWContextManagerConnection::removeFrameLoaderClient):
+        * WebProcess/Storage/WebSWContextManagerConnection.h:
+        * WebProcess/Storage/WebSWContextManagerConnection.messages.in:
+
+2017-12-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Wrong caret position for input field inside a fixed position parent on iOS 11
+        https://bugs.webkit.org/show_bug.cgi?id=176896
+        rdar://problem/33726145
+
+        Reviewed by Tim Horton.
+
+        In r219668 I added code to compute a layout viewport rect in the web process, so that
+        after programmatic scrolling, getBoundingClientRect() would return the correct values.
+        However, that computation sometimes used a different visual viewport than the UI process,
+        resulting in a different layout viewport being set. This would happen when the keyboard
+        was visible, and the combination of this and zooming when focusing an input would result
+        in a state where the scrolling tree contained notes computed with the bad layout viewport.
+        This could cause apparently offset fixed elements, and bad caret positioning if those fixed
+        elements contained the focused input.
+
+        Fix by passing to the web process the same visual viewport rect that the UI process is using,
+        namely "unobscuredContentRectRespectingInputViewBounds". This was already being set in
+        VisibleContentRectUpdateInfo but wasn't encoded/decoded, so fix that. Set it as an optional<>
+        on FrameView when different from the normal visual viewport, and return it from
+        visualViewportRect().
+
+        Some other minor logging changes.
+
+        * Shared/VisibleContentRectUpdateInfo.cpp:
+        (WebKit::VisibleContentRectUpdateInfo::encode const):
+        (WebKit::VisibleContentRectUpdateInfo::decode):
+        (WebKit::operator<<):
+        * Shared/VisibleContentRectUpdateInfo.h:
+        (WebKit::VisibleContentRectUpdateInfo::VisibleContentRectUpdateInfo):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::updateVisibleContentRects):
+
+2017-12-06  Simon Fraser  <simon.fraser@apple.com>
+
+        When the iPhone keyboard is up, sometimes we never commit a stable update and re-show the caret
+        https://bugs.webkit.org/show_bug.cgi?id=180498
+
+        Reviewed by Tim Horton.
+
+        When the keyboard is showing, we would think that the page was in a rubber-banding state
+        because contentOffsetBoundedInValidRange() would always clamp the content offset to a different
+        value.
+
+        This happened because scrollView.contentInset don't change when the keyboard is showing,
+        but UIKit actually consults scrollView.adjustedContentInset, which does. If we use
+        scrollView.adjustedContentInset in this computation, we'll get a correct answer.
+
+        Also rewrote the clamping logic to be more similar to what UIKit does internally when computing
+        min/max content offset.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (contentOffsetBoundedInValidRange):
+
+2017-12-08  Chris Dumez  <cdumez@apple.com>
+
+        Clearing all Website Data should remove service worker registrations on disk
+        https://bugs.webkit.org/show_bug.cgi?id=180558
+
+        Reviewed by Youenn Fablet.
+
+        * StorageProcess/StorageProcess.cpp:
+        (WebKit::StorageProcess::deleteWebsiteData):
+        (WebKit::StorageProcess::deleteWebsiteDataForOrigins):
+
+2017-12-08  Youenn Fablet  <youenn@apple.com>
+
+        WebServiceWorkerProvider should use Cancellation error to notify DTL that it cannot handle a fetch
+        https://bugs.webkit.org/show_bug.cgi?id=180584
+
+        Reviewed by Alex Christensen.
+
+        * WebProcess/Network/WebLoaderStrategy.cpp:
+        (WebKit::WebLoaderStrategy::scheduleLoad):
+
+2017-12-08  Youenn Fablet  <youenn@apple.com>
+
+        Service Worker should use a correct SessionID
+        https://bugs.webkit.org/show_bug.cgi?id=180585
+
+        Reviewed by Alex Christensen.
+
+        Store SessionID in SWServer and send it as part of service worker instantiation.
+        Use it when creating service worker thread in service worker process.
+
+        * StorageProcess/ServiceWorker/WebSWServerToContextConnection.cpp:
+        (WebKit::WebSWServerToContextConnection::installServiceWorkerContext):
+        * StorageProcess/ServiceWorker/WebSWServerToContextConnection.h:
+        * StorageProcess/StorageProcess.cpp:
+        (WebKit::StorageProcess::swServerForSession):
+        * WebProcess/Storage/WebSWContextManagerConnection.cpp:
+        (WebKit::WebSWContextManagerConnection::installServiceWorker):
+        * WebProcess/Storage/WebSWContextManagerConnection.h:
+        * WebProcess/Storage/WebSWContextManagerConnection.messages.in:
+
+2017-12-08  Youenn Fablet  <youenn@apple.com>
+
+        FetchResponse should keep unfiltered ResourceResponse so that it can be used in Service Worker
+        https://bugs.webkit.org/show_bug.cgi?id=179641
+        <rdar://problem/35923570>
+
+        Reviewed by Alex Christensen.
+
+        * WebProcess/Storage/ServiceWorkerClientFetch.cpp:
+        (WebKit::ServiceWorkerClientFetch::didReceiveResponse): In case of opaque redirected response, handle it as a regular response.
+
+2017-12-08  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused code in WebPageGroup
+        https://bugs.webkit.org/show_bug.cgi?id=180604
+
+        Reviewed by Youenn Fablet.
+
+        * UIProcess/WebPageGroup.cpp:
+        (WebKit::WebPageGroup::userContentController):
+        (WebKit::WebPageGroup::createNonNull): Deleted.
+        (WebKit::WebPageGroup::preferencesDidChange): Deleted.
+        * UIProcess/WebPageGroup.h:
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::WebProcessPool):
+
+2017-12-08  Alex Christensen  <achristensen@webkit.org>
+
+        Modernize APIWebsiteDataStore.h and WebProcessPool.h
+        https://bugs.webkit.org/show_bug.cgi?id=180588
+
+        Reviewed by Chris Dumez.
+
+        pragma once, Ref instead of RefPtr, initializer list in header instead of literals in constructor.
+
+        * UIProcess/API/APIWebsiteDataStore.h:
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::WebProcessPool):
+        * UIProcess/WebProcessPool.h:
+
+2017-12-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Remove pthread_once in favor of dispatch_once
+        https://bugs.webkit.org/show_bug.cgi?id=180591
+
+        Reviewed by Saam Barati.
+
+        * PluginProcess/mac/PluginProcessMac.mm:
+        (WebKit::shouldCallRealDebugger):
+        (WebKit::initShouldCallRealDebugger): Deleted.
+
+2017-12-08  Chris Dumez  <cdumez@apple.com>
+
+        ProcessPoolConfiguration::copy() fails to copy the service worker path
+        https://bugs.webkit.org/show_bug.cgi?id=180595
+
+        Reviewed by Brady Eidson.
+
+        * UIProcess/API/APIProcessPoolConfiguration.cpp:
+        (API::ProcessPoolConfiguration::copy):
+
+2017-12-08  Chris Dumez  <cdumez@apple.com>
+
+        Different WebKitTestRunner instances should use different service worker registrations databases
+        https://bugs.webkit.org/show_bug.cgi?id=180589
+
+        Reviewed by Brady Eidson.
+
+        * UIProcess/API/C/WKContextConfigurationRef.cpp:
+        (WKContextConfigurationCopyServiceWorkerDatabaseDirectory):
+        (WKContextConfigurationSetServiceWorkerDatabaseDirectory):
+        * UIProcess/API/C/WKContextConfigurationRef.h:
+
+2017-12-08  Alex Christensen  <achristensen@webkit.org>
+
+        Pass std::optional<WebsitePolicies> instead of WebsitePolicies
+        https://bugs.webkit.org/show_bug.cgi?id=180563
+
+        Reviewed by Andy Estes.
+
+        WebsitePolicies are only passed along when a decidePolicyForNavigationAction SPI completion handler
+        is called with a valid _WKWebsitePolicies object.  In other cases, we don't have one.  Rather than
+        making WebsitePolicies have a default value for everything that won't change policies, pass
+        a std::optional<WebsitePolicies> which indicates better when we don't have new policies.
+
+        No change in behavior, but this will enable me to add things to WebsitePolicies that have no default value.
+
+        * Shared/WebsitePolicies.h:
+        Make WebsitePolicies a class with public members because the IPC code generators don't understand std::optional<struct type>
+        * UIProcess/API/C/WKAPICast.h:
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::tryAppLink):
+        (WebKit::NavigationState::NavigationClient::decidePolicyForNavigationAction):
+        * UIProcess/WebFrameListenerProxy.cpp:
+        (WebKit::WebFrameListenerProxy::receivedPolicyDecision):
+        * UIProcess/WebFrameListenerProxy.h:
+        * UIProcess/WebFramePolicyListenerProxy.cpp:
+        (WebKit::WebFramePolicyListenerProxy::use):
+        * UIProcess/WebFramePolicyListenerProxy.h:
+        * UIProcess/WebFrameProxy.cpp:
+        (WebKit::WebFrameProxy::receivedPolicyDecision):
+        * UIProcess/WebFrameProxy.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::receivedPolicyDecision):
+        (WebKit::WebPageProxy::decidePolicyForNavigationAction):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.h:
+        * WebProcess/WebPage/WebFrame.cpp:
+        (WebKit::WebFrame::didReceivePolicyDecision):
+        * WebProcess/WebPage/WebFrame.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::didReceivePolicyDecision):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2017-12-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Remove remaining use of Mutex
+        https://bugs.webkit.org/show_bug.cgi?id=180579
+
+        Reviewed by Alex Christensen.
+
+        Remove unused "BinarySemaphore.h".
+
+        * Platform/IPC/win/ConnectionWin.cpp:
+
+2017-12-08  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] WebInspectorProxyClient needs a virtual destructor
+        https://bugs.webkit.org/show_bug.cgi?id=180533
+
+        Reviewed by Carlos Garcia Campos.
+
+        Otherwise the derived class portion of the object, WebKitInspectorClient, is not destroyed.
+
+        * UIProcess/gtk/WebInspectorProxyClient.h:
+
+2017-12-07  Yousuke Kimoto  <yousuke.kimoto@sony.com>
+
+        [WinCairo] Fix ResourceError handling in ArgumentCoder for wincairo webkit
+        https://bugs.webkit.org/show_bug.cgi?id=180483
+
+        Reviewed by Alex Christensen.
+
+        * Shared/curl/WebCoreArgumentCodersCurl.cpp:
+        (IPC::ArgumentCoder<ResourceError>::encodePlatformData):
+        (IPC::ArgumentCoder<ResourceError>::decodePlatformData):
+
+2017-12-07  Youenn Fablet  <youenn@apple.com>
+
+        StartFetch should take a ServiceWorkerIdentifier
+        https://bugs.webkit.org/show_bug.cgi?id=180478
+
+        Reviewed by Brady Eidson.
+
+        Before the patch, StartFetch was taking an optional ServiceWorkerIdentifier.
+        Now that every navigation fetch is querying its matching registration, it can no longer be optional.
+
+        In the case there is a problem in running the service worker at start fetch time,
+        answer to the WebProcess to go to network so that the request does not get stalled.
+
+        * StorageProcess/ServiceWorker/WebSWServerConnection.cpp:
+        (WebKit::WebSWServerConnection::startFetch):
+        * StorageProcess/ServiceWorker/WebSWServerConnection.h:
+        * StorageProcess/ServiceWorker/WebSWServerConnection.messages.in:
+        * WebProcess/Storage/WebSWClientConnection.cpp:
+        (WebKit::WebSWClientConnection::startFetch):
+        * WebProcess/Storage/WebSWContextManagerConnection.cpp:
+        (WebKit::WebSWContextManagerConnection::startFetch):
+        * WebProcess/Storage/WebSWContextManagerConnection.h:
+        * WebProcess/Storage/WebSWContextManagerConnection.messages.in:
+
+2017-12-07  Saam Barati  <sbarati@apple.com>
+
+        We need to grab the JSLock in InjectedBundle::createWebDataFromUint8Array
+        https://bugs.webkit.org/show_bug.cgi?id=180492
+
+        Reviewed by Alex Christensen.
+
+        InjectedBundle::createWebDataFromUint8Array calls into WebCore APIs that allocate
+        out of the JS heap. It's only legal to allocate out of the JS heap when holding the JS lock.
+
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::createWebDataFromUint8Array):
+
+2017-12-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Propagate WebKit2Logging channels to the Web Process
+        https://bugs.webkit.org/show_bug.cgi?id=180517
+
+        Reviewed by Tim Horton.
+
+        If you set WebKit2Logging, you want those channels active in both the UI process and
+        the web process, but without tricky 'defaults' gyrations, setting them in the web process
+        was hard.
+
+        Instead, send them through to the process via WebProcessCreationParameters, as we do
+        for WebCoreLogging channels.
+
+        * Platform/LogInitialization.h:
+        * Platform/Logging.cpp:
+        (WebKit::initializeLogChannelsIfNecessary):
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::encode const):
+        (WebKit::WebProcessCreationParameters::decode):
+        * Shared/WebProcessCreationParameters.h:
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::WebProcessPool::platformInitializeWebProcess):
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::platformInitializeWebProcess):
+
+2017-12-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Add logging for EditorState in RemoteLayerTree transactions
+        https://bugs.webkit.org/show_bug.cgi?id=180515
+
+        Reviewed by Wenson Hsieh.
+       
+        Make EditorState TextStream-able, and dump it in layer tree transactions.
+
+        * Shared/EditorState.cpp:
+        (WebKit::operator<<):
+        * Shared/EditorState.h:
+        * Shared/RemoteLayerTree/RemoteLayerTreeTransaction.mm:
+        (WebKit::RemoteLayerTreeTransaction::description const):
+
+2017-12-07  Youenn Fablet  <youenn@apple.com>
+
+        CacheStorage Cache should not remove any disk entry when clearing its memory representation
+        https://bugs.webkit.org/show_bug.cgi?id=180546
+
+        Reviewed by Brady Eidson.
+
+        * NetworkProcess/cache/CacheStorageEngineCache.cpp:
+        (WebKit::CacheStorage::Cache::clearMemoryRepresentation):
+
+2017-12-07  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Add SPI to disallow user-installed fonts
+        https://bugs.webkit.org/show_bug.cgi?id=180062
+        <rdar://problem/35042408>
+
+        Reviewed by Simon Fraser.
+
+        * Shared/WebPreferences.yaml:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetShouldDisallowUserInstalledFonts):
+        (WKPreferencesGetShouldDisallowUserInstalledFonts):
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences _shouldDisallowUserInstalledFonts]):
+        (-[WKPreferences _setShouldDisallowUserInstalledFonts:]):
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+
+2017-12-07  David Quesada  <david_quesada@apple.com>
+
+        [Web App Manifest] Support display-mode media feature
+        https://bugs.webkit.org/show_bug.cgi?id=180376
+        rdar://problem/35837993
+
+        Reviewed by Geoffrey Garen.
+
+        * UIProcess/API/Cocoa/_WKApplicationManifest.h:
+        * UIProcess/API/Cocoa/_WKApplicationManifest.mm:
+        (-[_WKApplicationManifest initWithCoder:]):
+        (-[_WKApplicationManifest encodeWithCoder:]):
+        (-[_WKApplicationManifest displayMode]):
+
+2017-12-07  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed build fix after r225622.
+
+        * StorageProcess/ServiceWorker/WebSWServerConnection.cpp:
+        (WebKit::WebSWServerConnection::postMessageToServiceWorkerFromServiceWorker):
+
+2017-12-06  Chris Dumez  <cdumez@apple.com>
+
+        We should be able to recover after a Service Worker process crash
+        https://bugs.webkit.org/show_bug.cgi?id=180477
+
+        Reviewed by Brady Eidson and Youenn Fablet.
+
+        * StorageProcess/ServiceWorker/WebSWServerConnection.cpp:
+        (WebKit::WebSWServerConnection::startFetch):
+        (WebKit::WebSWServerConnection::postMessageToServiceWorkerFromClient):
+        (WebKit::WebSWServerConnection::postMessageToServiceWorkerFromServiceWorker):
+        Update calls to SWServer::runServiceWorkerIfNecessary() that that it is asynchronous
+        and takes in a lambda.
+
+        * StorageProcess/ServiceWorker/WebSWServerConnection.h:
+        (WebKit::WebSWServerConnection::ipcConnection const):
+        Add getter for the underlying IPC connection.
+
+        * StorageProcess/StorageProcess.cpp:
+        (WebKit::StorageProcess::didClose):
+        (WebKit::StorageProcess::connectionToContextProcessWasClosed):
+        Move some code to connectionToContextProcessWasClosed() to avoid duplication.
+        Also, relaunch the Service Worker process if it has exited but we still
+        have SWServer connections to regular Web Processes.
+
+        (WebKit::StorageProcess::needsServerToContextConnection const):
+        Utility function to determine if we still need the service worker process.
+        The current rule is that we need the service worker (aka "context") process
+        if we still have SWServer connections to regular Web Processes.
+
+        * StorageProcess/StorageProcess.h:
+
+        * StorageProcess/StorageToWebProcessConnection.cpp:
+        (WebKit::StorageToWebProcessConnection::didClose):
+        If didClose() is called for the connection to the service worker context,
+        let the StorageProcess know so that it can clear its state and relaunch
+        the process if necessary.
+
+        * UIProcess/API/C/WKContext.cpp:
+        (WKContextTerminateServiceWorkerProcess):
+        * UIProcess/API/C/WKContextPrivate.h:
+        * UIProcess/API/Cocoa/WKProcessPool.mm:
+        (-[WKProcessPool _terminateServiceWorkerProcess]):
+        * UIProcess/API/Cocoa/WKProcessPoolPrivate.h:
+        Add SPI to terminate the service worker process.
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::m_serviceWorkerProcessTerminationTimer):
+        (WebKit::WebProcessPool::createNewWebProcess):
+        (WebKit::WebProcessPool::disconnectProcess):
+        (WebKit::WebProcessPool::terminateServiceWorkerProcess):
+        * UIProcess/WebProcessPool.h:
+        We used to shutdown the ServiceWorker process right away as soon as the last regular
+        WebProcess was gone. We now give it a grace period of 5 seconds in case a new
+        WebProcess gets launched shortly after.
+
+2017-12-02  Darin Adler  <darin@apple.com>
+
+        Modernize some aspects of text codecs, eliminate WebKit use of strcasecmp
+        https://bugs.webkit.org/show_bug.cgi?id=180009
+
+        Reviewed by Alex Christensen.
+
+        * WebProcess/Plugins/Netscape/NetscapeBrowserFuncs.cpp:
+        (WebKit::initializeProtectionSpace): Use equalLettersIgnoringASCIICase instead
+        of strcasecmp.
+
+2017-12-06  David Quesada  <david_quesada@apple.com>
+
+        [Web App Manifest] Add SPI for applying a manifest to a top-level browsing context
+        https://bugs.webkit.org/show_bug.cgi?id=180368
+        rdar://problem/34748067
+
+        Reviewed by Geoffrey Garen.
+
+        Add a new property WKWebViewConfiguration._applicationManifest to specify manifest
+        to apply to application contexts (aka. top-level browsing contexts, i.e. web views).
+        The manifest is ultimately stored on the MainFrame of the Pages created from the
+        web view configuration.
+
+        No new tests, no change in behavior.
+
+        * Shared/WebPageCreationParameters.cpp:
+        (WebKit::WebPageCreationParameters::encode const):
+        (WebKit::WebPageCreationParameters::decode):
+        * Shared/WebPageCreationParameters.h:
+        * UIProcess/API/APIPageConfiguration.cpp:
+        (API::PageConfiguration::copy const):
+        (API::PageConfiguration::applicationManifest const):
+        (API::PageConfiguration::setApplicationManifest):
+        * UIProcess/API/APIPageConfiguration.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _initializeWithConfiguration:]):
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration copyWithZone:]):
+        (-[WKWebViewConfiguration _applicationManifest]):
+        (-[WKWebViewConfiguration _setApplicationManifest:]):
+        * UIProcess/API/Cocoa/WKWebViewConfigurationPrivate.h:
+        * UIProcess/API/Cocoa/_WKApplicationManifestInternal.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::creationParameters):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::m_cpuLimit):
+
 2017-12-06  Jeff Miller  <jeffm@apple.com>
 
         -[WKWebViewConfiguration copyWithZone] doesn't copy _groupIdentifier

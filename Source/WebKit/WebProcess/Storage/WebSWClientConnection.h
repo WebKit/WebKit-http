@@ -73,9 +73,8 @@ private:
 
     void scheduleJobInServer(const WebCore::ServiceWorkerJobData&) final;
     void finishFetchingScriptInServer(const WebCore::ServiceWorkerFetchResult&) final;
-    void postMessageToServiceWorker(WebCore::ServiceWorkerIdentifier destinationIdentifier, Ref<WebCore::SerializedScriptValue>&&, WebCore::ServiceWorkerClientIdentifier sourceIdentifier, WebCore::ServiceWorkerClientData&& source) final;
-    void postMessageToServiceWorker(WebCore::ServiceWorkerIdentifier destinationIdentifier, Ref<WebCore::SerializedScriptValue>&&, WebCore::ServiceWorkerIdentifier sourceWorkerIdentifier) final;
-    void registerServiceWorkerClient(const WebCore::SecurityOrigin& topOrigin, WebCore::DocumentIdentifier, const WebCore::ServiceWorkerClientData&, const std::optional<WebCore::ServiceWorkerIdentifier>&) final;
+    void postMessageToServiceWorker(WebCore::ServiceWorkerIdentifier destinationIdentifier, Ref<WebCore::SerializedScriptValue>&&, const WebCore::ServiceWorkerOrClientIdentifier& source) final;
+    void registerServiceWorkerClient(const WebCore::SecurityOrigin& topOrigin, const WebCore::ServiceWorkerClientData&, const std::optional<WebCore::ServiceWorkerIdentifier>&) final;
     void unregisterServiceWorkerClient(WebCore::DocumentIdentifier) final;
 
     void matchRegistration(const WebCore::SecurityOrigin& topOrigin, const WebCore::URL& clientURL, RegistrationCallback&&) final;
@@ -90,11 +89,13 @@ private:
 
     void scheduleStorageJob(const WebCore::ServiceWorkerJobData&);
 
+    void runOrDelayTaskForImport(WTF::Function<void()>&& task);
+
     IPC::Connection* messageSenderConnection() final { return m_connection.ptr(); }
     uint64_t messageSenderDestinationID() final { return m_identifier.toUInt64(); }
 
     void setSWOriginTableSharedMemory(const SharedMemory::Handle&);
-    void initializeSWOriginTableAsEmpty();
+    void setSWOriginTableIsImported();
 
     PAL::SessionID m_sessionID;
     WebCore::SWServerConnectionIdentifier m_identifier;
@@ -106,6 +107,7 @@ private:
     HashMap<uint64_t, RegistrationCallback> m_ongoingMatchRegistrationTasks;
     HashMap<uint64_t, GetRegistrationsCallback> m_ongoingGetRegistrationsTasks;
     HashMap<uint64_t, WhenRegistrationReadyCallback> m_ongoingRegistrationReadyTasks;
+    Deque<WTF::Function<void()>> m_tasksPendingOriginImport;
 
 }; // class WebSWServerConnection
 

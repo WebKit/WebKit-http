@@ -49,10 +49,15 @@ public:
     const URL& scope() const { return m_scope; }
     void setScope(URL&& scope) { m_scope = WTFMove(scope); }
 
+    bool relatesToOrigin(const SecurityOrigin&) const;
+
     ServiceWorkerRegistrationKey isolatedCopy() const;
 
     template<class Encoder> void encode(Encoder&) const;
     template<class Decoder> static std::optional<ServiceWorkerRegistrationKey> decode(Decoder&);
+
+    String toDatabaseKey() const;
+    static std::optional<ServiceWorkerRegistrationKey> fromDatabaseKey(const String&);
 
 #ifndef NDEBUG
     String loggingString() const;

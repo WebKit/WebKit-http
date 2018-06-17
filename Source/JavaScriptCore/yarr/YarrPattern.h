@@ -59,12 +59,14 @@ public:
     CharacterClass()
         : m_table(0)
         , m_hasNonBMPCharacters(false)
+        , m_anyCharacter(false)
     {
     }
     CharacterClass(const char* table, bool inverted)
         : m_table(table)
         , m_tableInverted(inverted)
         , m_hasNonBMPCharacters(false)
+        , m_anyCharacter(false)
     {
     }
     CharacterClass(std::initializer_list<UChar32> matches, std::initializer_list<CharacterRange> ranges, std::initializer_list<UChar32> matchesUnicode, std::initializer_list<CharacterRange> rangesUnicode)
@@ -75,6 +77,7 @@ public:
         , m_table(0)
         , m_tableInverted(false)
         , m_hasNonBMPCharacters(false)
+        , m_anyCharacter(false)
     {
     }
 
@@ -84,8 +87,9 @@ public:
     Vector<CharacterRange> m_rangesUnicode;
 
     const char* m_table;
-    bool m_tableInverted;
-    bool m_hasNonBMPCharacters;
+    bool m_tableInverted : 1;
+    bool m_hasNonBMPCharacters : 1;
+    bool m_anyCharacter : 1;
 };
 
 enum QuantifierType {
@@ -223,7 +227,13 @@ struct PatternTerm {
     {
         return m_capture;
     }
-    
+
+    bool containsAnyCaptures()
+    {
+        ASSERT(this->type == TypeParenthesesSubpattern);
+        return parentheses.lastSubpatternId >= parentheses.subpatternId;
+    }
+
     void quantify(unsigned count, QuantifierType type)
     {
         quantityMinCount = 0;
@@ -545,6 +555,10 @@ private:
     HashMap<unsigned, CharacterClass*> unicodePropertiesCached;
 };
 
+    void indentForNestingLevel(PrintStream&, unsigned);
+    void dumpUChar32(PrintStream&, UChar32);
+    void dumpCharacterClass(PrintStream&, YarrPattern*, CharacterClass*);
+
     struct BackTrackInfoPatternCharacter {
         uintptr_t begin; // Only needed for unicode patterns
         uintptr_t matchAmount;
@@ -570,9 +584,9 @@ private:
     };
 
     struct BackTrackInfoAlternative {
-        uintptr_t offset;
-
-        static unsigned offsetIndex() { return offsetof(BackTrackInfoAlternative, offset) / sizeof(uintptr_t); }
+        union {
+            uintptr_t offset;
+        };
     };
 
     struct BackTrackInfoParentheticalAssertion {
@@ -583,14 +597,28 @@ private:
 
     struct BackTrackInfoParenthesesOnce {
         uintptr_t begin;
+        uintptr_t returnAddress;
 
         static unsigned beginIndex() { return offsetof(BackTrackInfoParenthesesOnce, begin) / sizeof(uintptr_t); }
+        static unsigned returnAddressIndex() { return offsetof(BackTrackInfoParenthesesOnce, returnAddress) / sizeof(uintptr_t); }
     };
 
     struct BackTrackInfoParenthesesTerminal {
         uintptr_t begin;
 
         static unsigned beginIndex() { return offsetof(BackTrackInfoParenthesesTerminal, begin) / sizeof(uintptr_t); }
+    };
+
+    struct BackTrackInfoParentheses {
+        uintptr_t begin;
+        uintptr_t returnAddress;
+        uintptr_t matchAmount;
+        uintptr_t patternContextHead;
+
+        static unsigned beginIndex() { return offsetof(BackTrackInfoParentheses, begin) / sizeof(uintptr_t); }
+        static unsigned returnAddressIndex() { return offsetof(BackTrackInfoParentheses, returnAddress) / sizeof(uintptr_t); }
+        static unsigned matchAmountIndex() { return offsetof(BackTrackInfoParentheses, matchAmount) / sizeof(uintptr_t); }
+        static unsigned patternContextHeadIndex() { return offsetof(BackTrackInfoParentheses, patternContextHead) / sizeof(uintptr_t); }
     };
 
 } } // namespace JSC::Yarr

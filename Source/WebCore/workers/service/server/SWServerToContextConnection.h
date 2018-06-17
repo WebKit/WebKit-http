@@ -32,12 +32,15 @@
 #include "ServiceWorkerTypes.h"
 #include <wtf/RefCounted.h>
 
+namespace PAL {
+class SessionID;
+}
+
 namespace WebCore {
 
 class SWServer;
 struct ServiceWorkerClientData;
 struct ServiceWorkerClientIdentifier;
-struct ServiceWorkerClientInformation;
 struct ServiceWorkerContextData;
 struct ServiceWorkerJobDataIdentifier;
 
@@ -48,13 +51,13 @@ public:
     SWServerToContextConnectionIdentifier identifier() const { return m_identifier; }
 
     // Messages to the SW host process
-    virtual void installServiceWorkerContext(const ServiceWorkerContextData&) = 0;
+    virtual void installServiceWorkerContext(const ServiceWorkerContextData&, PAL::SessionID) = 0;
     virtual void fireInstallEvent(ServiceWorkerIdentifier) = 0;
     virtual void fireActivateEvent(ServiceWorkerIdentifier) = 0;
     virtual void terminateWorker(ServiceWorkerIdentifier) = 0;
     virtual void syncTerminateWorker(ServiceWorkerIdentifier) = 0;
     virtual void findClientByIdentifierCompleted(uint64_t requestIdentifier, const std::optional<ServiceWorkerClientData>&, bool hasSecurityError) = 0;
-    virtual void matchAllCompleted(uint64_t requestIdentifier, const Vector<ServiceWorkerClientInformation>&) = 0;
+    virtual void matchAllCompleted(uint64_t requestIdentifier, const Vector<ServiceWorkerClientData>&) = 0;
     virtual void claimCompleted(uint64_t requestIdentifier) = 0;
     virtual void didFinishSkipWaiting(uint64_t callbackID) = 0;
 

@@ -25,6 +25,9 @@
 
 #pragma once
 
+#include "ActiveDOMObject.h"
+#include "DOMPromiseProxy.h"
+#include "EventTarget.h"
 #include "ExceptionOr.h"
 #include <wtf/Forward.h>
 #include <wtf/Optional.h>
@@ -36,11 +39,12 @@
 namespace WebCore {
 
 class AnimationEffect;
+class AnimationPlaybackEvent;
 class AnimationTimeline;
 class Document;
 class RenderStyle;
 
-class WebAnimation final : public RefCounted<WebAnimation> {
+class WebAnimation final : public RefCounted<WebAnimation>, public EventTargetWithInlineData, public ActiveDOMObject {
 public:
     static Ref<WebAnimation> create(Document&, AnimationEffect*, AnimationTimeline*);
     ~WebAnimation();
@@ -63,6 +67,18 @@ public:
     double playbackRate() const { return m_playbackRate; }
     void setPlaybackRate(double);
 
+    enum class PlayState { Idle, Pending, Running, Paused, Finished };
+    PlayState playState() const;
+
+    // FIXME: return a live value once we support pending pause and play tasks.
+    bool pending() const { return false; }
+
+    using ReadyPromise = DOMPromiseProxyWithResolveCallback<IDLInterface<WebAnimation>>;
+    ReadyPromise& ready() { return m_readyPromise; }
+
+    using FinishedPromise = DOMPromiseProxyWithResolveCallback<IDLInterface<WebAnimation>>;
+    FinishedPromise& finished() { return m_finishedPromise; }
+
     Seconds timeToNextRequiredTick(Seconds) const;
     void resolve(RenderStyle&);
     void acceleratedRunningStateDidChange();
@@ -70,13 +86,35 @@ public:
 
     String description();
 
-private:
-    WebAnimation();
+    using RefCounted::ref;
+    using RefCounted::deref;
 
+private:
+    explicit WebAnimation(Document&);
+
+    void enqueueAnimationPlaybackEvent(const AtomicString&, std::optional<Seconds>, std::optional<Seconds>);
+    Seconds effectEndTime() const;
+    WebAnimation& readyPromiseResolve();
+    WebAnimation& finishedPromiseResolve();
+    
     RefPtr<AnimationEffect> m_effect;
     RefPtr<AnimationTimeline> m_timeline;
     std::optional<Seconds> m_startTime;
     double m_playbackRate { 1 };
+    bool m_isStopped { false };
+    ReadyPromise m_readyPromise;
+    FinishedPromise m_finishedPromise;
+
+    // ActiveDOMObject.
+    const char* activeDOMObjectName() const final;
+    bool canSuspendForDocumentSuspension() const final;
+    void stop() final;
+
+    // EventTarget
+    EventTargetInterface eventTargetInterface() const final { return WebAnimationEventTargetInterfaceType; }
+    void refEventTarget() final { ref(); }
+    void derefEventTarget() final { deref(); }
+    ScriptExecutionContext* scriptExecutionContext() const final { return ActiveDOMObject::scriptExecutionContext(); }
 };
 
 } // namespace WebCore

@@ -405,12 +405,15 @@ public:
     void setOpenPanelFiles(JSValueRef);
 
     void terminateNetworkProcess();
+    void terminateServiceWorkerProcess();
 
     void removeAllSessionCredentials(JSValueRef);
     void callDidRemoveAllSessionCredentialsCallback();
     
     void getApplicationManifestThen(JSValueRef);
     void didGetApplicationManifest();
+
+    void installFakeHelvetica(JSStringRef configuration);
 
 private:
     TestRunner();

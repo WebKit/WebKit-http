@@ -58,6 +58,7 @@ class LeakDetector(object):
             'WebCore::createPrivateStorageSession', # <rdar://problem/35189565>
             'CIDeviceManagerStartMonitoring', # <rdar://problem/35711052>
             'NSSpellChecker init', # <rdar://problem/35434615>
+            'NSColor controlHighlightColor', # <rdar://problem/35816332>
         ]
         return callstacks
 
@@ -91,7 +92,7 @@ class LeakDetector(object):
         ] + leak_files
         try:
             parse_malloc_history_output = self._port._run_script("parse-malloc-history", args, include_configuration_arguments=False)
-        except ScriptError, e:
+        except ScriptError as e:
             _log.warn("Failed to parse leaks output: %s" % e.message_with_output())
             return
 
@@ -117,7 +118,7 @@ class LeakDetector(object):
             # thus we pass decode_output=False.  Without this code we've seen errors like:
             # "UnicodeDecodeError: 'utf8' codec can't decode byte 0x88 in position 779874: unexpected code byte"
             leaks_output = self._port._run_script("run-leaks", self._leaks_args(process_pid), include_configuration_arguments=False, decode_output=False)
-        except ScriptError, e:
+        except ScriptError as e:
             _log.warn("Failed to run leaks tool: %s" % e.message_with_output())
             return
 

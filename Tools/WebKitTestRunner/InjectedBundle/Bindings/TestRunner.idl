@@ -304,8 +304,11 @@ interface TestRunner {
     void setWebRTCLegacyAPIEnabled(boolean value);
 
     void terminateNetworkProcess();
+    void terminateServiceWorkerProcess();
 
     void removeAllSessionCredentials(object callback);
 
     void getApplicationManifestThen(object callback);
+
+    void installFakeHelvetica(DOMString configuration);
 };

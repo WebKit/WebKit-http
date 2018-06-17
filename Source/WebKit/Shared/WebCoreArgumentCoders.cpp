@@ -65,6 +65,9 @@
 #include <WebCore/ScrollingConstraints.h>
 #include <WebCore/ScrollingCoordinator.h>
 #include <WebCore/SearchPopupMenu.h>
+#include <WebCore/ServiceWorkerClientData.h>
+#include <WebCore/ServiceWorkerClientIdentifier.h>
+#include <WebCore/ServiceWorkerData.h>
 #include <WebCore/TextCheckerClient.h>
 #include <WebCore/TextIndicator.h>
 #include <WebCore/TimingFunction.h>
@@ -2679,6 +2682,74 @@ bool ArgumentCoder<IDBKeyPath>::decode(Decoder& decoder, IDBKeyPath& keyPath)
         if (!decoder.decode(vector))
             return false;
         keyPath = vector;
+    }
+    return true;
+}
+#endif
+
+#if ENABLE(SERVICE_WORKER)
+void ArgumentCoder<ServiceWorkerOrClientData>::encode(Encoder& encoder, const ServiceWorkerOrClientData& data)
+{
+    bool isServiceWorkerData = WTF::holds_alternative<ServiceWorkerData>(data);
+    encoder << isServiceWorkerData;
+    if (isServiceWorkerData)
+        encoder << WTF::get<ServiceWorkerData>(data);
+    else
+        encoder << WTF::get<ServiceWorkerClientData>(data);
+}
+
+bool ArgumentCoder<ServiceWorkerOrClientData>::decode(Decoder& decoder, ServiceWorkerOrClientData& data)
+{
+    bool isServiceWorkerData;
+    if (!decoder.decode(isServiceWorkerData))
+        return false;
+    if (isServiceWorkerData) {
+        std::optional<ServiceWorkerData> workerData;
+        decoder >> workerData;
+        if (!workerData)
+            return false;
+
+        data = WTFMove(*workerData);
+    } else {
+        std::optional<ServiceWorkerClientData> clientData;
+        decoder >> clientData;
+        if (!clientData)
+            return false;
+
+        data = WTFMove(*clientData);
+    }
+    return true;
+}
+
+void ArgumentCoder<ServiceWorkerOrClientIdentifier>::encode(Encoder& encoder, const ServiceWorkerOrClientIdentifier& identifier)
+{
+    bool isServiceWorkerIdentifier = WTF::holds_alternative<ServiceWorkerIdentifier>(identifier);
+    encoder << isServiceWorkerIdentifier;
+    if (isServiceWorkerIdentifier)
+        encoder << WTF::get<ServiceWorkerIdentifier>(identifier);
+    else
+        encoder << WTF::get<ServiceWorkerClientIdentifier>(identifier);
+}
+
+bool ArgumentCoder<ServiceWorkerOrClientIdentifier>::decode(Decoder& decoder, ServiceWorkerOrClientIdentifier& identifier)
+{
+    bool isServiceWorkerIdentifier;
+    if (!decoder.decode(isServiceWorkerIdentifier))
+        return false;
+    if (isServiceWorkerIdentifier) {
+        std::optional<ServiceWorkerIdentifier> workerIdentifier;
+        decoder >> workerIdentifier;
+        if (!workerIdentifier)
+            return false;
+
+        identifier = WTFMove(*workerIdentifier);
+    } else {
+        std::optional<ServiceWorkerClientIdentifier> clientIdentifier;
+        decoder >> clientIdentifier;
+        if (!clientIdentifier)
+            return false;
+
+        identifier = WTFMove(*clientIdentifier);
     }
     return true;
 }

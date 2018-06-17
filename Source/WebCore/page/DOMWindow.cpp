@@ -62,7 +62,6 @@
 #include "FrameLoaderClient.h"
 #include "FrameTree.h"
 #include "FrameView.h"
-#include "HTMLFrameOwnerElement.h"
 #include "History.h"
 #include "InspectorInstrumentation.h"
 #include "JSDOMWindowBase.h"
@@ -928,7 +927,7 @@ ExceptionOr<void> DOMWindow::postMessage(JSC::ExecState& state, DOMWindow& incum
     }
 
     Vector<RefPtr<MessagePort>> ports;
-    auto message = SerializedScriptValue::create(state, messageValue, WTFMove(transfer), ports);
+    auto message = SerializedScriptValue::create(state, messageValue, WTFMove(transfer), ports, SerializationContext::WindowPostMessage);
     if (message.hasException())
         return message.releaseException();
 
@@ -1260,6 +1259,10 @@ int DOMWindow::innerHeight() const
     if (!m_frame)
         return 0;
 
+    // Force enough layout in the parent document to ensure that the FrameView has been resized.
+    if (auto* frameElement = this->frameElement())
+        frameElement->document().updateLayoutIfDimensionsOutOfDate(*frameElement, HeightDimensionsCheck);
+
     FrameView* view = m_frame->view();
     if (!view)
         return 0;
@@ -1271,6 +1274,10 @@ int DOMWindow::innerWidth() const
 {
     if (!m_frame)
         return 0;
+
+    // Force enough layout in the parent document to ensure that the FrameView has been resized.
+    if (auto* frameElement = this->frameElement())
+        frameElement->document().updateLayoutIfDimensionsOutOfDate(*frameElement, WidthDimensionsCheck);
 
     FrameView* view = m_frame->view();
     if (!view)
@@ -1482,8 +1489,6 @@ RefPtr<CSSRuleList> DOMWindow::getMatchedCSSRules(Element* element, const String
     unsigned rulesToInclude = StyleResolver::AuthorCSSRules;
     if (!authorOnly)
         rulesToInclude |= StyleResolver::UAAndUserCSSRules;
-    if (m_frame->settings().crossOriginCheckInGetMatchedCSSRulesDisabled())
-        rulesToInclude |= StyleResolver::CrossOriginCSSRules;
 
     PseudoId pseudoId = CSSSelector::pseudoId(pseudoType);
 
@@ -1491,9 +1496,17 @@ RefPtr<CSSRuleList> DOMWindow::getMatchedCSSRules(Element* element, const String
     if (matchedRules.isEmpty())
         return nullptr;
 
+    bool allowCrossOrigin = m_frame->settings().crossOriginCheckInGetMatchedCSSRulesDisabled();
+
     RefPtr<StaticCSSRuleList> ruleList = StaticCSSRuleList::create();
-    for (auto& rule : matchedRules)
+    for (auto& rule : matchedRules) {
+        if (!allowCrossOrigin && !rule->hasDocumentSecurityOrigin())
+            continue;
         ruleList->rules().append(rule->createCSSOMWrapper());
+    }
+
+    if (ruleList->rules().isEmpty())
+        return nullptr;
 
     return ruleList;
 }

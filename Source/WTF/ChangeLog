@@ -1,3 +1,689 @@
+2017-12-12  JF Bastien  <jfbastien@apple.com>
+
+        makeString: support more integral types
+        https://bugs.webkit.org/show_bug.cgi?id=180720
+
+        Reviewed by Sam Weinig.
+
+        Only some integral types worked. Add more types by using template
+        magic. While we're here, also use the same magic for
+        floating-point types in the theoretical future where short float
+        or long double matter.
+
+        The core of the magic is a second, defaulted, template
+        parameter. It's declared in Forward.h (as void), and then in
+        classes where we want to enable_if we use it (in C++ speak we
+        create a partial class template specialization), otherwise we
+        leave it as void.
+
+        Also clean up some constructors which were being way too verbose
+        in stating that they were declarations for this template
+        specialization right here, when really we already knew that.
+
+        * wtf/Forward.h:
+        * wtf/text/StringConcatenate.h:
+        (WTF::StringTypeAdapter<char>::StringTypeAdapter<char>): Deleted.
+        (WTF::StringTypeAdapter<char>::length): Deleted.
+        (WTF::StringTypeAdapter<char>::is8Bit): Deleted.
+        (WTF::StringTypeAdapter<char>::writeTo const): Deleted.
+        (WTF::StringTypeAdapter<char>::toString const): Deleted.
+        (WTF::StringTypeAdapter<UChar>::StringTypeAdapter<UChar>): Deleted.
+        (WTF::StringTypeAdapter<UChar>::length const): Deleted.
+        (WTF::StringTypeAdapter<UChar>::is8Bit const): Deleted.
+        (WTF::StringTypeAdapter<UChar>::writeTo const): Deleted.
+        (WTF::StringTypeAdapter<UChar>::toString const): Deleted.
+        (WTF::StringTypeAdapter<char::StringTypeAdapter): Deleted.
+        (WTF::StringTypeAdapter<ASCIILiteral>::StringTypeAdapter): Deleted.
+        (WTF::StringTypeAdapter<Vector<char>>::StringTypeAdapter): Deleted.
+        (WTF::StringTypeAdapter<Vector<char>>::length const): Deleted.
+        (WTF::StringTypeAdapter<Vector<char>>::is8Bit const): Deleted.
+        (WTF::StringTypeAdapter<Vector<char>>::writeTo const): Deleted.
+        (WTF::StringTypeAdapter<Vector<char>>::toString const): Deleted.
+        (WTF::StringTypeAdapter<String>::StringTypeAdapter<String>): Deleted.
+        (WTF::StringTypeAdapter<String>::length const): Deleted.
+        (WTF::StringTypeAdapter<String>::is8Bit const): Deleted.
+        (WTF::StringTypeAdapter<String>::writeTo const): Deleted.
+        (WTF::StringTypeAdapter<String>::toString const): Deleted.
+        (WTF::StringTypeAdapter<AtomicString>::StringTypeAdapter): Deleted.
+        * wtf/text/StringConcatenateNumbers.h:
+        (WTF::StringTypeAdapter<FormattedNumber>::StringTypeAdapter):
+        (WTF::StringTypeAdapter<int>::StringTypeAdapter<int>): Deleted.
+        (WTF::StringTypeAdapter<int>::length const): Deleted.
+        (WTF::StringTypeAdapter<int>::is8Bit const): Deleted.
+        (WTF::StringTypeAdapter<int>::writeTo const): Deleted.
+        (WTF::StringTypeAdapter<int>::toString const): Deleted.
+        (WTF::StringTypeAdapter<unsigned>::StringTypeAdapter<unsigned>): Deleted.
+        (WTF::StringTypeAdapter<unsigned>::length const): Deleted.
+        (WTF::StringTypeAdapter<unsigned>::is8Bit const): Deleted.
+        (WTF::StringTypeAdapter<unsigned>::writeTo const): Deleted.
+        (WTF::StringTypeAdapter<unsigned>::toString const): Deleted.
+        (WTF::StringTypeAdapter<double>::StringTypeAdapter<double>): Deleted.
+        (WTF::StringTypeAdapter<double>::length const): Deleted.
+        (WTF::StringTypeAdapter<double>::is8Bit const): Deleted.
+        (WTF::StringTypeAdapter<double>::writeTo const): Deleted.
+        (WTF::StringTypeAdapter<double>::toString const): Deleted.
+        (WTF::StringTypeAdapter<float>::StringTypeAdapter<float>): Deleted.
+        (WTF::StringTypeAdapter<FormattedNumber>::StringTypeAdapter<FormattedNumber>): Deleted.
+        * wtf/text/StringView.h:
+        (WTF::StringTypeAdapter<StringView>::StringTypeAdapter<StringView>): Deleted.
+        (WTF::StringTypeAdapter<StringView>::length): Deleted.
+        (WTF::StringTypeAdapter<StringView>::is8Bit): Deleted.
+        (WTF::StringTypeAdapter<StringView>::writeTo): Deleted.
+        (WTF::StringTypeAdapter<StringView>::toString const): Deleted.
+
+2017-12-12  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Implement BigInt literals and JSBigInt
+        https://bugs.webkit.org/show_bug.cgi?id=179000
+
+        Reviewed by Darin Adler and Yusuke Suzuki.
+
+        * wtf/HashFunctions.h:
+
+2017-12-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Symbol not found: __ZN3WTF8LockBase10unlockSlowEv
+        https://bugs.webkit.org/show_bug.cgi?id=180691
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/mac/DeprecatedSymbolsUsedBySafari.mm:
+        (WTF::LockBase::lockSlow):
+        (WTF::LockBase::unlockSlow):
+        Add back LockBase Symbols used by System Safari on 10.13.
+
+2017-12-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Thread::create should have Thread::tryCreate
+        https://bugs.webkit.org/show_bug.cgi?id=180333
+
+        Reviewed by Darin Adler.
+
+        Many callers of Thread::create assume that it returns non-nullptr Thread.
+        But if the number of threads hits the limit in the system, creating Thread
+        would fail. In that case, it is really difficult to keep WebKit working.
+
+        We introduce Thread::tryCreate, and change the returned value from Thread::create
+        from RefPtr<Thread> to Ref<Thread>. In Thread::create, we ensure thread creation
+        succeeds by RELEASE_ASSERT. And we use Thread::create intentionally if the
+        caller assumes that thread should be created.
+
+        * wtf/AutomaticThread.cpp:
+        (WTF::AutomaticThread::start):
+        * wtf/ParallelJobsGeneric.cpp:
+        (WTF::ParallelEnvironment::ThreadPrivate::tryLockFor):
+        * wtf/Threading.cpp:
+        (WTF::Thread::tryCreate):
+        (WTF::Thread::create): Deleted.
+        * wtf/Threading.h:
+        (WTF::Thread::create):
+        * wtf/WorkQueue.cpp:
+        (WTF::WorkQueue::concurrentApply):
+
+2017-12-11  Eric Carlson  <eric.carlson@apple.com>
+
+        Web Inspector: Optionally log WebKit log parameters as JSON
+        https://bugs.webkit.org/show_bug.cgi?id=180529
+        <rdar://problem/35909462>
+
+        Reviewed by Joseph Pecoraro.
+
+        * wtf/Logger.h:
+        (WTF::Logger::log):
+        (WTF::LogArgument<Logger::LogSiteIdentifier>::toString):
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::toJSONString const): Serialize to JSON string.
+        * wtf/MediaTime.h:
+
+2017-12-11  Tim Horton  <timothy_horton@apple.com>
+
+        Stop using deprecated target conditional for simulator builds
+        https://bugs.webkit.org/show_bug.cgi?id=180662
+        <rdar://problem/35136156>
+
+        Reviewed by Simon Fraser.
+
+        * wtf/Platform.h:
+
+2017-12-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Add Converter traits to StringHasher instead of function pointer
+        https://bugs.webkit.org/show_bug.cgi?id=180656
+
+        Reviewed by JF Bastien.
+
+        In the latest ICU, UChar is char16_t. So defining defaultConverter(UChar)
+        and defaultConverter(char16_t) causes duplicate definitions.
+        Instead of passing a funtion pointer, we pass a trait class DefaultConveter
+        which has `convert` static function. And we make this `convert` function
+        generic. This avoids defining convert function for UChar and char16_t.
+
+        * wtf/text/StringHash.h:
+        (WTF::ASCIICaseInsensitiveHash::FoldCase::convert):
+        (WTF::ASCIICaseInsensitiveHash::hash):
+        (WTF::ASCIICaseInsensitiveHash::foldCase): Deleted.
+        * wtf/text/StringHasher.h:
+        (WTF::StringHasher::DefaultConverter::convert):
+        (WTF::StringHasher::addCharactersAssumingAligned):
+        (WTF::StringHasher::addCharacters):
+        (WTF::StringHasher::computeHashAndMaskTop8Bits):
+        (WTF::StringHasher::computeHash):
+        (WTF::StringHasher::computeLiteralHash):
+        (WTF::StringHasher::computeLiteralHashAndMaskTop8Bits):
+        (WTF::StringHasher::computeHashImpl):
+        (WTF::StringHasher::Converter): Deleted.
+        (WTF::StringHasher::defaultConverter): Deleted.
+
+2017-12-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Reduce sizeof(Thread) by adjusting alignment
+        https://bugs.webkit.org/show_bug.cgi?id=180630
+
+        Reviewed by Saam Barati.
+
+        Reduce sizeof(Thread) slightly by adjusting alignment.
+
+        * wtf/Threading.h:
+
+2017-12-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, follow-up patch after r225726
+        https://bugs.webkit.org/show_bug.cgi?id=180622
+
+        Suggested by Darin. We should take care of signed-extension of `char`.
+
+        * wtf/text/StringHasher.h:
+        (WTF::StringHasher::defaultConverter):
+
+2017-12-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Remove RELAXED_CONSTEXPR
+        https://bugs.webkit.org/show_bug.cgi?id=180624
+
+        Reviewed by JF Bastien.
+
+        All of our required compilers support relaxed constexpr in C++14.
+        We can drop RELAXED_CONSTEXPR macro in our tree.
+
+        * wtf/Compiler.h:
+        * wtf/Expected.h:
+        (std::experimental::fundamentals_v3::expected::operator*):
+        (std::experimental::fundamentals_v3::expected::value):
+        (std::experimental::fundamentals_v3::expected::error):
+        * wtf/Unexpected.h:
+        (std::experimental::fundamentals_v3::unexpected::value):
+        (std::experimental::fundamentals_v3::unexpected::value const):
+
+2017-12-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Fix WTF::Hasher tuple expansion with variadic args
+        https://bugs.webkit.org/show_bug.cgi?id=180623
+
+        Reviewed by JF Bastien.
+
+        We expand a tuple with `...`, and use this in a function's argument list.
+        And in this argument list, we call `add()` for each value. This will be
+        expanded as follows.
+
+            [] (...) { }((add(hasher, std::get<i>(values)), 0)...);
+
+        will become,
+
+            [] (...) { }((add(hasher, std::get<0>(values)), 0), (add(hasher, std::get<1>(values)), 0), ...);
+
+        However, the evaluation order of the C++ argument is unspecified. Actually,
+        in GCC environment, this `add()` is not called in our expected order. As a
+        result, currently we have test failures in TestWTF.
+
+        This patch just uses variadic templates to expand tuples, and call add() in
+        our expected order. This patch fixes an existing failure of TestWTF in GCC environment.
+
+        * wtf/Hasher.h:
+        (WTF::Hasher::computeHash):
+        (WTF::addArgs):
+        (WTF::addTupleHelper):
+        (WTF::add):
+
+2017-12-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use relaxed constexpr for StringHasher
+        https://bugs.webkit.org/show_bug.cgi?id=180622
+
+        Reviewed by JF Bastien.
+
+        Now VC++ is updated and all the WebKit compilers support C++14 relaxed constexpr.
+        This patch uses relaxed constexpr for StringHasher constexpr implementation
+
+        * wtf/text/StringHasher.h:
+        (WTF::StringHasher::addCharactersAssumingAligned):
+        (WTF::StringHasher::Converter):
+        (WTF::StringHasher::computeHashAndMaskTop8Bits):
+        (WTF::StringHasher::computeHash):
+        (WTF::StringHasher::computeLiteralHash):
+        (WTF::StringHasher::computeLiteralHashAndMaskTop8Bits):
+        (WTF::StringHasher::defaultConverter):
+        (WTF::StringHasher::avalancheBits):
+        (WTF::StringHasher::finalize):
+        (WTF::StringHasher::finalizeAndMaskTop8Bits):
+        (WTF::StringHasher::avoidZero):
+        (WTF::StringHasher::calculateWithRemainingLastCharacter):
+        (WTF::StringHasher::calculateWithTwoCharacters):
+        (WTF::StringHasher::processPendingCharacter const):
+        (WTF::StringHasher::StringHasher): Deleted.
+        (WTF::StringHasher::avalancheBits3): Deleted.
+        (WTF::StringHasher::avalancheBits2): Deleted.
+        (WTF::StringHasher::avalancheBits1): Deleted.
+        (WTF::StringHasher::avalancheBits0): Deleted.
+        (WTF::StringHasher::calculateWithRemainingLastCharacter1): Deleted.
+        (WTF::StringHasher::calculateWithRemainingLastCharacter0): Deleted.
+        (WTF::StringHasher::calculate1): Deleted.
+        (WTF::StringHasher::calculate0): Deleted.
+        (WTF::StringHasher::calculate): Deleted.
+        (WTF::StringHasher::computeLiteralHashImpl): Deleted.
+
+2017-12-08  Eric Carlson  <eric.carlson@apple.com>
+
+        Move Logger from PAL to WTF so it can be used outside of WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=180561
+
+        Reviewed by Alex Christensen.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Logger.h: Copied from Source/WebCore/PAL/pal/Logger.h.
+        (PAL::LogArgument::toString): Deleted.
+        (PAL::Logger::create): Deleted.
+        (PAL::Logger::logAlways const): Deleted.
+        (PAL::Logger::error const): Deleted.
+        (PAL::Logger::warning const): Deleted.
+        (PAL::Logger::info const): Deleted.
+        (PAL::Logger::debug const): Deleted.
+        (PAL::Logger::willLog const): Deleted.
+        (PAL::Logger::enabled const): Deleted.
+        (PAL::Logger::setEnabled): Deleted.
+        (PAL::Logger::LogSiteIdentifier::LogSiteIdentifier): Deleted.
+        (PAL::Logger::addObserver): Deleted.
+        (PAL::Logger::removeObserver): Deleted.
+        (PAL::Logger::Logger): Deleted.
+        (PAL::Logger::log): Deleted.
+        (PAL::Logger::observers): Deleted.
+        (PAL::LogArgument<Logger::LogSiteIdentifier>::toString): Deleted.
+        * wtf/LoggerHelper.h: Copied from Source/WebCore/PAL/pal/LoggerHelper.h.
+
+2017-12-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Remove pthread_once in favor of dispatch_once
+        https://bugs.webkit.org/show_bug.cgi?id=180591
+
+        Reviewed by Saam Barati.
+
+        Fix the comment.
+
+        * wtf/Threading.h:
+        (WTF::Thread::current):
+
+2017-12-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF][Linux][GTK] Fix a minor bug in generic/WorkQueue when WorkQueue is immediately destroyed
+        https://bugs.webkit.org/show_bug.cgi?id=180586
+
+        Reviewed by Darin Adler.
+
+        If WorkQueue is created and destroyed immediately, RunLoop::stop can be called
+        befire calling RunLoop::run(). At that time WorkQueue thread is not stopped.
+
+        This patch dispatches a task stopping its own RunLoop to ensure stop is done.
+        We also clean up WorkQueue implementation not to include unnecessary fields,
+        lock, condition, and thread.
+
+        * wtf/WorkQueue.h:
+        * wtf/generic/WorkQueueGeneric.cpp:
+        (WorkQueue::platformInitialize):
+        (WorkQueue::platformInvalidate):
+
+2017-12-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Remove remaining use of Mutex
+        https://bugs.webkit.org/show_bug.cgi?id=180579
+
+        Reviewed by Alex Christensen.
+
+        Mutex should be only used in low-level Locking and Threading.
+        Other ones should use WTF::Lock and WTF::Condition instead.
+        This patch replaces WTF::Mutex with WTF::Lock in WTF if it
+        is not related to threading or locking implementation.
+
+        And we also use WTF::Lock and WTF::Condition in WTF::BinarySemaphore.
+
+        * wtf/RunLoop.cpp:
+        (WTF::RunLoop::performWork):
+        (WTF::RunLoop::dispatch):
+        * wtf/RunLoop.h:
+        * wtf/WorkQueue.cpp:
+        * wtf/WorkQueue.h:
+        * wtf/threads/BinarySemaphore.cpp:
+        (WTF::BinarySemaphore::signal):
+        (WTF::BinarySemaphore::wait):
+        (WTF::BinarySemaphore::BinarySemaphore): Deleted.
+        (WTF::BinarySemaphore::~BinarySemaphore): Deleted.
+        * wtf/threads/BinarySemaphore.h:
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::registerHandle):
+        (WTF::WorkQueue::unregisterAndCloseHandle):
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::timerCallback):
+        (WTF::WorkQueue::dispatchAfter):
+        (WTF::TimerContext::TimerContext): Deleted.
+
+2017-12-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use StaticLock and Lock instead of Mutex in Windows WebKitLegacy
+        https://bugs.webkit.org/show_bug.cgi?id=180572
+
+        Reviewed by Mark Lam.
+
+        Remove DEPRECATED_DEFINE_STATIC_LOCAL since it's no longer used.
+
+        * wtf/StdLibExtras.h:
+
+2017-12-07  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Win] [64-bit] Resolve Microsoft warning C4319 on BitVector.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=180490
+
+        Reviewed by Alex Christensen.
+
+        bitsInPointer() returns unsigned which is smaller than size_t.
+        "~"(negate) operator is applied before extending its size which result filled with zero.
+        This may be potentially a bug if numBits is greater than max value of unsigned long
+        (which is not practical).
+
+        * wtf/BitVector.cpp:
+        (WTF::BitVector::OutOfLineBits::create):
+
+2017-12-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use WTF Locking primitives in WebThread and drop pthread_xxx use
+        https://bugs.webkit.org/show_bug.cgi?id=180445
+
+        Reviewed by Saam Barati.
+
+        Add initializer form to fill struct with zero if struct does not have any default initializers.
+
+        * wtf/ThreadSpecific.h:
+        (WTF::ThreadSpecific::Data::Data):
+
+2017-12-07  Mark Lam  <mark.lam@apple.com>
+
+        Apply poisoning to some native code pointers.
+        https://bugs.webkit.org/show_bug.cgi?id=180541
+        <rdar://problem/35916875>
+
+        Reviewed by Filip Pizlo.
+
+        Ensure that the resultant poisoned bits still looks like a pointer in that its
+        bottom bits are 0, just like the alignment bits of a pointer.  This allows the
+        client to use the bottom bits of the poisoned bits as flag bits just like the
+        client was previously able to do with pointer values.
+
+        Note: we only ensure that the bottom alignment bits of the generated poison
+        value is 0.  We're not masking out the poisoned bits.  This means that the bottom
+        bits of the poisoned bits will only be null if the original pointer is aligned.
+        Hence, if the client applies the poison to an unaligned pointer, we do not lose
+        any information on the low bits.
+
+        Also removed 2 wrong assertions in PoisonedImpl's constructors.  We were
+        asserting that Poisoned will never be used with a null value, but that's invalid.
+        We do want to allow a null value so that we don't have to constantly do null
+        checks in the clients.  This was uncovered by some layout tests.
+
+        * wtf/Poisoned.cpp:
+        (WTF::makePoison):
+        * wtf/Poisoned.h:
+        (WTF::PoisonedImpl::PoisonedImpl):
+
+2017-12-07  Mark Lam  <mark.lam@apple.com>
+
+        [Re-landing r225620] Refactoring: Rename ScrambledPtr to Poisoned.
+        https://bugs.webkit.org/show_bug.cgi?id=180514
+
+        Reviewed by Saam Barati and JF Bastien.
+
+        Re-landing r225620 with speculative build fix for GCC 7.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/Poisoned.cpp: Copied from Source/WTF/wtf/ScrambledPtr.cpp.
+        (WTF::makePoison):
+        (WTF::makeScrambledPtrKey): Deleted.
+        * wtf/Poisoned.h: Copied from Source/WTF/wtf/ScrambledPtr.h.
+        (WTF::PoisonedImpl::PoisonedImpl):
+        (WTF::PoisonedImpl::assertIsPoisoned const):
+        (WTF::PoisonedImpl::assertIsNotPoisoned const):
+        (WTF::PoisonedImpl::unpoisoned const):
+        (WTF::PoisonedImpl::operator-> const):
+        (WTF::PoisonedImpl::bits const):
+        (WTF::PoisonedImpl::operator! const):
+        (WTF::PoisonedImpl::operator bool const):
+        (WTF::PoisonedImpl::operator== const):
+        (WTF::PoisonedImpl::operator==):
+        (WTF::PoisonedImpl::operator=):
+        (WTF::PoisonedImpl::poison):
+        (WTF::PoisonedImpl::unpoison):
+        (WTF::ScrambledPtr::ScrambledPtr): Deleted.
+        (WTF::ScrambledPtr::assertIsScrambled const): Deleted.
+        (WTF::ScrambledPtr::assertIsNotScrambled const): Deleted.
+        (WTF::ScrambledPtr::descrambled const): Deleted.
+        (WTF::ScrambledPtr::operator-> const): Deleted.
+        (WTF::ScrambledPtr::bits const): Deleted.
+        (WTF::ScrambledPtr::operator! const): Deleted.
+        (WTF::ScrambledPtr::operator bool const): Deleted.
+        (WTF::ScrambledPtr::operator== const): Deleted.
+        (WTF::ScrambledPtr::operator==): Deleted.
+        (WTF::ScrambledPtr::operator=): Deleted.
+        (WTF::ScrambledPtr::scramble): Deleted.
+        (WTF::ScrambledPtr::descramble): Deleted.
+        * wtf/ScrambledPtr.cpp: Removed.
+        * wtf/ScrambledPtr.h: Removed.
+
+2017-12-07  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r225620
+        https://bugs.webkit.org/show_bug.cgi?id=180514
+        <rdar://problem/35901694>
+
+        It broke the build with GCC 7, and I don't know how to fix it.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/Poisoned.h: Removed.
+        * wtf/ScrambledPtr.cpp: Renamed from Source/WTF/wtf/Poisoned.cpp.
+        (WTF::makeScrambledPtrKey):
+        * wtf/ScrambledPtr.h: Added.
+        (WTF::ScrambledPtr::ScrambledPtr):
+        (WTF::ScrambledPtr::assertIsScrambled const):
+        (WTF::ScrambledPtr::assertIsNotScrambled const):
+        (WTF::ScrambledPtr::descrambled const):
+        (WTF::ScrambledPtr::operator-> const):
+        (WTF::ScrambledPtr::bits const):
+        (WTF::ScrambledPtr::operator! const):
+        (WTF::ScrambledPtr::operator bool const):
+        (WTF::ScrambledPtr::operator== const):
+        (WTF::ScrambledPtr::operator==):
+        (WTF::ScrambledPtr::operator=):
+        (WTF::ScrambledPtr::scramble):
+        (WTF::ScrambledPtr::descramble):
+
+2017-12-06  Mark Lam  <mark.lam@apple.com>
+
+        Refactoring: Rename ScrambledPtr to Poisoned.
+        https://bugs.webkit.org/show_bug.cgi?id=180514
+
+        Reviewed by Saam Barati.
+
+        We're switching our nomenclature to "poisoning" instead of "scrambling" pointers.
+        This allows us to use shorter names.
+
+        This patch is almost purely refactoring, except for one change: the PoisonedImpl
+        template class (previously ScrambledPtr) has been modified to allow usage of
+        a constexpr uint32_t poison value (see Int32Poisoned) in addition to a runtime
+        determined uintptr_t poison value (see Poisoned).
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/Poisoned.cpp: Copied from Source/WTF/wtf/ScrambledPtr.cpp.
+        (WTF::makePoison):
+        (WTF::makeScrambledPtrKey): Deleted.
+        * wtf/Poisoned.h: Copied from Source/WTF/wtf/ScrambledPtr.h.
+        (WTF::PoisonedImpl::PoisonedImpl):
+        (WTF::PoisonedImpl::assertIsPoisoned const):
+        (WTF::PoisonedImpl::assertIsNotPoisoned const):
+        (WTF::PoisonedImpl::unpoisoned const):
+        (WTF::PoisonedImpl::operator-> const):
+        (WTF::PoisonedImpl::bits const):
+        (WTF::PoisonedImpl::operator! const):
+        (WTF::PoisonedImpl::operator bool const):
+        (WTF::PoisonedImpl::operator== const):
+        (WTF::PoisonedImpl::operator==):
+        (WTF::PoisonedImpl::operator=):
+        (WTF::PoisonedImpl::poison):
+        (WTF::PoisonedImpl::unpoison):
+        (WTF::ScrambledPtr::ScrambledPtr): Deleted.
+        (WTF::ScrambledPtr::assertIsScrambled const): Deleted.
+        (WTF::ScrambledPtr::assertIsNotScrambled const): Deleted.
+        (WTF::ScrambledPtr::descrambled const): Deleted.
+        (WTF::ScrambledPtr::operator-> const): Deleted.
+        (WTF::ScrambledPtr::bits const): Deleted.
+        (WTF::ScrambledPtr::operator! const): Deleted.
+        (WTF::ScrambledPtr::operator bool const): Deleted.
+        (WTF::ScrambledPtr::operator== const): Deleted.
+        (WTF::ScrambledPtr::operator==): Deleted.
+        (WTF::ScrambledPtr::operator=): Deleted.
+        (WTF::ScrambledPtr::scramble): Deleted.
+        (WTF::ScrambledPtr::descramble): Deleted.
+        * wtf/ScrambledPtr.cpp: Removed.
+        * wtf/ScrambledPtr.h: Removed.
+
+2017-12-02  Darin Adler  <darin@apple.com>
+
+        Modernize some aspects of text codecs, eliminate WebKit use of strcasecmp
+        https://bugs.webkit.org/show_bug.cgi?id=180009
+
+        Reviewed by Alex Christensen.
+
+        * wtf/Assertions.cpp: Removed include of StringExtras.h.
+        (WTFLogChannelByName): Use equalIgnoringASCIICase instead of strcasecmp.
+        * wtf/DateMath.cpp: Removed include of StringExtras.h.
+        * wtf/MD5.cpp: Ditto. Also removed include of CString.h.
+        * wtf/SHA1.cpp: Ditto.
+
+        * wtf/StringExtras.h:
+        (strncasecmp): Deleted.
+        (strcasecmp): Deleted.
+
+        * wtf/StringPrintStream.cpp: Removed include of StringExtras.h.
+        * wtf/text/Base64.cpp: Ditto.
+
+        * wtf/text/LineEnding.cpp:
+        (WTF::normalizeLineEndingsToLF): Replaced old more general purpose function with
+        this. Changed argument type to vector and used an rvalue reference and return value.
+        Also fixed some small logic errors.
+        (WTF::normalizeLineEndingsToCRLF): Ditto.
+        (WTF::normalizeLineEndingsToNative): Updated for above changes.
+        * wtf/text/LineEnding.h: Updated for above changes.
+
+        * wtf/text/StringCommon.h:
+        (WTF::equalIgnoringASCIICase): Added overload for const char*.
+        (WTF::equalLettersIgnoringASCIICase): Ditto.
+
+        * wtf/text/TextStream.cpp: Removed include of StringExtras.h.
+        * wtf/text/WTFString.cpp: Ditto.
+        * wtf/unicode/icu/CollatorICU.cpp: Ditto.
+
+2017-12-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Remove XXXLockBase since constexpr constructor can initialize static variables without calling global constructors
+        https://bugs.webkit.org/show_bug.cgi?id=180495
+
+        Reviewed by Mark Lam.
+
+        Very nice feature of C++11 is that constexpr constructor can initialize static global variables
+        without calling global constructors. We do not need to have XXXLockBase with derived XXXLock
+        class since StaticXXXLock can have constructors as long as it is constexpr.
+        We remove bunch of these classes, and set `XXXLock() = default;` explicitly for readability.
+        C++11's default constructor is constexpr as long as its member's default constructor / default
+        initializer is constexpr.
+
+        * wtf/Condition.h:
+        (WTF::ConditionBase::construct): Deleted.
+        (WTF::ConditionBase::waitUntil): Deleted.
+        (WTF::ConditionBase::waitFor): Deleted.
+        (WTF::ConditionBase::wait): Deleted.
+        (WTF::ConditionBase::notifyOne): Deleted.
+        (WTF::ConditionBase::notifyAll): Deleted.
+        (WTF::Condition::Condition): Deleted.
+        * wtf/CountingLock.h:
+        (WTF::CountingLock::CountingLock): Deleted.
+        (WTF::CountingLock::~CountingLock): Deleted.
+        * wtf/Lock.cpp:
+        (WTF::Lock::lockSlow):
+        (WTF::Lock::unlockSlow):
+        (WTF::Lock::unlockFairlySlow):
+        (WTF::Lock::safepointSlow):
+        (WTF::LockBase::lockSlow): Deleted.
+        (WTF::LockBase::unlockSlow): Deleted.
+        (WTF::LockBase::unlockFairlySlow): Deleted.
+        (WTF::LockBase::safepointSlow): Deleted.
+        * wtf/Lock.h:
+        (WTF::LockBase::construct): Deleted.
+        (WTF::LockBase::lock): Deleted.
+        (WTF::LockBase::tryLock): Deleted.
+        (WTF::LockBase::try_lock): Deleted.
+        (WTF::LockBase::unlock): Deleted.
+        (WTF::LockBase::unlockFairly): Deleted.
+        (WTF::LockBase::safepoint): Deleted.
+        (WTF::LockBase::isHeld const): Deleted.
+        (WTF::LockBase::isLocked const): Deleted.
+        (WTF::LockBase::isFullyReset const): Deleted.
+        (WTF::Lock::Lock): Deleted.
+        * wtf/ReadWriteLock.cpp:
+        (WTF::ReadWriteLock::readLock):
+        (WTF::ReadWriteLock::readUnlock):
+        (WTF::ReadWriteLock::writeLock):
+        (WTF::ReadWriteLock::writeUnlock):
+        (WTF::ReadWriteLockBase::construct): Deleted.
+        (WTF::ReadWriteLockBase::readLock): Deleted.
+        (WTF::ReadWriteLockBase::readUnlock): Deleted.
+        (WTF::ReadWriteLockBase::writeLock): Deleted.
+        (WTF::ReadWriteLockBase::writeUnlock): Deleted.
+        * wtf/ReadWriteLock.h:
+        (WTF::ReadWriteLock::read):
+        (WTF::ReadWriteLock::write):
+        (WTF::ReadWriteLockBase::ReadLock::tryLock): Deleted.
+        (WTF::ReadWriteLockBase::ReadLock::lock): Deleted.
+        (WTF::ReadWriteLockBase::ReadLock::unlock): Deleted.
+        (WTF::ReadWriteLockBase::WriteLock::tryLock): Deleted.
+        (WTF::ReadWriteLockBase::WriteLock::lock): Deleted.
+        (WTF::ReadWriteLockBase::WriteLock::unlock): Deleted.
+        (WTF::ReadWriteLockBase::read): Deleted.
+        (WTF::ReadWriteLockBase::write): Deleted.
+        (WTF::ReadWriteLock::ReadWriteLock): Deleted.
+        * wtf/RecursiveLockAdapter.h:
+        (WTF::RecursiveLockAdapter::RecursiveLockAdapter): Deleted.
+        * wtf/WordLock.cpp:
+        (WTF::WordLock::lockSlow):
+        (WTF::WordLock::unlockSlow):
+        (WTF::WordLockBase::lockSlow): Deleted.
+        (WTF::WordLockBase::unlockSlow): Deleted.
+        * wtf/WordLock.h:
+        (WTF::WordLockBase::lock): Deleted.
+        (WTF::WordLockBase::unlock): Deleted.
+        (WTF::WordLockBase::isHeld const): Deleted.
+        (WTF::WordLockBase::isLocked const): Deleted.
+        (WTF::WordLockBase::isFullyReset const): Deleted.
+        (WTF::WordLock::WordLock): Deleted.
+        * wtf/WorkQueue.cpp:
+
 2017-12-05  Stephan Szabo  <stephan.szabo@sony.com>
 
         Switch windows build to Visual Studio 2017

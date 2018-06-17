@@ -48,6 +48,7 @@ public:
     CharacterClassConstructor(bool isCaseInsensitive, CanonicalMode canonicalMode)
         : m_isCaseInsensitive(isCaseInsensitive)
         , m_hasNonBMPCharacters(false)
+        , m_anyCharacter(false)
         , m_canonicalMode(canonicalMode)
     {
     }
@@ -59,6 +60,7 @@ public:
         m_matchesUnicode.clear();
         m_rangesUnicode.clear();
         m_hasNonBMPCharacters = false;
+        m_anyCharacter = false;
     }
 
     void append(const CharacterClass* other)
@@ -238,6 +240,8 @@ public:
 
     std::unique_ptr<CharacterClass> charClass()
     {
+        coalesceTables();
+
         auto characterClass = std::make_unique<CharacterClass>();
 
         characterClass->m_matches.swap(m_matches);
@@ -245,6 +249,10 @@ public:
         characterClass->m_matchesUnicode.swap(m_matchesUnicode);
         characterClass->m_rangesUnicode.swap(m_rangesUnicode);
         characterClass->m_hasNonBMPCharacters = hasNonBMPCharacters();
+        characterClass->m_anyCharacter = anyCharacter();
+
+        m_hasNonBMPCharacters = false;
+        m_anyCharacter = false;
 
         return characterClass;
     }
@@ -270,9 +278,31 @@ private:
             int val = matches[pos+index] - ch;
             if (!val)
                 return;
-            else if (val > 0)
+            else if (val > 0) {
+                if (val == 1) {
+                    UChar32 lo = ch;
+                    UChar32 hi = ch + 1;
+                    matches.remove(pos + index);
+                    if (pos + index > 0 && matches[pos + index - 1] == ch - 1) {
+                        lo = ch - 1;
+                        matches.remove(pos + index - 1);
+                    }
+                    addSortedRange(isASCII(ch) ? m_ranges : m_rangesUnicode, lo, hi);
+                    return;
+                }
                 range = index;
-            else {
+            } else {
+                if (val == -1) {
+                    UChar32 lo = ch - 1;
+                    UChar32 hi = ch;
+                    matches.remove(pos + index);
+                    if (pos + index + 1 < matches.size() && matches[pos + index + 1] == ch + 1) {
+                        hi = ch + 1;
+                        matches.remove(pos + index + 1);
+                    }
+                    addSortedRange(isASCII(ch) ? m_ranges : m_rangesUnicode, lo, hi);
+                    return;
+                }
                 pos += (index+1);
                 range -= (index+1);
             }
@@ -286,17 +316,17 @@ private:
 
     void addSortedRange(Vector<CharacterRange>& ranges, UChar32 lo, UChar32 hi)
     {
-        unsigned end = ranges.size();
+        size_t end = ranges.size();
 
         if (!U_IS_BMP(hi))
             m_hasNonBMPCharacters = true;
 
         // Simple linear scan - I doubt there are that many ranges anyway...
         // feel free to fix this with something faster (eg binary chop).
-        for (unsigned i = 0; i < end; ++i) {
+        for (size_t i = 0; i < end; ++i) {
             // does the new range fall before the current position in the array
             if (hi < ranges[i].begin) {
-                // optional optimization: concatenate appending ranges? - may not be worthwhile.
+                // Concatenate appending ranges.
                 if (hi == (ranges[i].begin - 1)) {
                     ranges[i].begin = lo;
                     return;
@@ -312,18 +342,7 @@ private:
                 ranges[i].begin = std::min(ranges[i].begin, lo);
                 ranges[i].end = std::max(ranges[i].end, hi);
 
-                // now check if the new range can subsume any subsequent ranges.
-                unsigned next = i+1;
-                // each iteration of the loop we will either remove something from the list, or break the loop.
-                while (next < ranges.size()) {
-                    if (ranges[next].begin <= (ranges[i].end + 1)) {
-                        // the next entry now overlaps / concatenates this one.
-                        ranges[i].end = std::max(ranges[i].end, ranges[next].end);
-                        ranges.remove(next);
-                    } else
-                        break;
-                }
-                
+                mergeRangesFrom(ranges, i);
                 return;
             }
         }
@@ -332,13 +351,76 @@ private:
         ranges.append(CharacterRange(lo, hi));
     }
 
+    void mergeRangesFrom(Vector<CharacterRange>& ranges, size_t index)
+    {
+        unsigned next = index + 1;
+
+        // each iteration of the loop we will either remove something from the list, or break out of the loop.
+        while (next < ranges.size()) {
+            if (ranges[next].begin <= (ranges[index].end + 1)) {
+                // the next entry now overlaps / concatenates with this one.
+                ranges[index].end = std::max(ranges[index].end, ranges[next].end);
+                ranges.remove(next);
+            } else
+                break;
+        }
+
+    }
+
+    void coalesceTables()
+    {
+        auto coalesceMatchesAndRanges = [&](Vector<UChar32>& matches, Vector<CharacterRange>& ranges) {
+
+            size_t matchesIndex = 0;
+            size_t rangesIndex = 0;
+
+            while (matchesIndex < matches.size() && rangesIndex < ranges.size()) {
+                while (matchesIndex < matches.size() && matches[matchesIndex] < ranges[rangesIndex].begin - 1)
+                    matchesIndex++;
+
+                if (matchesIndex < matches.size() && matches[matchesIndex] == ranges[rangesIndex].begin - 1) {
+                    ranges[rangesIndex].begin = matches[matchesIndex];
+                    matches.remove(matchesIndex);
+                }
+
+                while (matchesIndex < matches.size() && matches[matchesIndex] < ranges[rangesIndex].end + 1)
+                    matchesIndex++;
+
+                if (matchesIndex < matches.size()) {
+                    if (matches[matchesIndex] == ranges[rangesIndex].end + 1) {
+                        ranges[rangesIndex].end = matches[matchesIndex];
+                        matches.remove(matchesIndex);
+
+                        mergeRangesFrom(ranges, rangesIndex);
+                    } else
+                        matchesIndex++;
+                }
+            }
+        };
+
+        coalesceMatchesAndRanges(m_matches, m_ranges);
+        coalesceMatchesAndRanges(m_matchesUnicode, m_rangesUnicode);
+
+        if (!m_matches.size() && !m_matchesUnicode.size()
+            && m_ranges.size() == 1 && m_rangesUnicode.size() == 1
+            && m_ranges[0].begin == 0 && m_ranges[0].end == 0x7f
+            && m_rangesUnicode[0].begin == 0x80 && m_rangesUnicode[0].end == 0x10ffff)
+            m_anyCharacter = true;
+    }
+
     bool hasNonBMPCharacters()
     {
         return m_hasNonBMPCharacters;
     }
 
-    bool m_isCaseInsensitive;
-    bool m_hasNonBMPCharacters;
+    bool anyCharacter()
+    {
+        return m_anyCharacter;
+    }
+
+    bool m_isCaseInsensitive : 1;
+    bool m_hasNonBMPCharacters : 1;
+    bool m_anyCharacter : 1;
     CanonicalMode m_canonicalMode;
 
     Vector<UChar32> m_matches;
@@ -489,6 +571,11 @@ public:
     void atomCharacterClassEnd()
     {
         auto newCharacterClass = m_characterClassConstructor.charClass();
+
+        if (!m_invertCharacterClass && newCharacterClass.get()->m_anyCharacter) {
+            m_alternative->m_terms.append(PatternTerm(m_pattern.anyCharacterClass(), false));
+            return;
+        }
         m_alternative->m_terms.append(PatternTerm(newCharacterClass.get(), m_invertCharacterClass));
         m_pattern.m_userCharacterClasses.append(WTFMove(newCharacterClass));
     }
@@ -741,8 +828,7 @@ public:
                 // Note: for fixed once parentheses we will ensure at least the minimum is available; others are on their own.
                 term.frameLocation = currentCallFrameSize;
                 if (term.quantityMaxCount == 1 && !term.parentheses.isCopy) {
-                    if (term.quantityType != QuantifierFixedCount)
-                        currentCallFrameSize += YarrStackSpaceForBackTrackInfoParenthesesOnce;
+                    currentCallFrameSize += YarrStackSpaceForBackTrackInfoParenthesesOnce;
                     error = setupDisjunctionOffsets(term.parentheses.disjunction, currentCallFrameSize, currentInputPosition.unsafeGet(), currentCallFrameSize);
                     if (error)
                         return error;
@@ -758,11 +844,10 @@ public:
                     term.inputPosition = currentInputPosition.unsafeGet();
                 } else {
                     term.inputPosition = currentInputPosition.unsafeGet();
-                    unsigned ignoredCallFrameSize;
-                    error = setupDisjunctionOffsets(term.parentheses.disjunction, 0, currentInputPosition.unsafeGet(), ignoredCallFrameSize);
+                    currentCallFrameSize += YarrStackSpaceForBackTrackInfoParentheses;
+                    error = setupDisjunctionOffsets(term.parentheses.disjunction, currentCallFrameSize, currentInputPosition.unsafeGet(), currentCallFrameSize);
                     if (error)
                         return error;
-                    currentCallFrameSize += YarrStackSpaceForBackTrackInfoParentheses;
                 }
                 // Fixed count of 1 could be accepted, if they have a fixed size *AND* if all alternatives are of the same length.
                 alternative->m_hasFixedSize = false;
@@ -1098,19 +1183,92 @@ YarrPattern::YarrPattern(const String& pattern, RegExpFlags flags, const char** 
     *error = compile(pattern, stackLimit);
 }
 
-static void indentForNestingLevel(PrintStream& out, unsigned nestingDepth)
+void indentForNestingLevel(PrintStream& out, unsigned nestingDepth)
 {
     out.print("    ");
     for (; nestingDepth; --nestingDepth)
         out.print("  ");
 }
 
-static void dumpUChar32(PrintStream& out, UChar32 c)
+void dumpUChar32(PrintStream& out, UChar32 c)
 {
     if (c >= ' '&& c <= 0xff)
         out.printf("'%c'", static_cast<char>(c));
     else
         out.printf("0x%04x", c);
+}
+
+void dumpCharacterClass(PrintStream& out, YarrPattern* pattern, CharacterClass* characterClass)
+{
+    if (characterClass == pattern->anyCharacterClass())
+        out.print("<any character>");
+    else if (characterClass == pattern->newlineCharacterClass())
+        out.print("<newline>");
+    else if (characterClass == pattern->digitsCharacterClass())
+        out.print("<digits>");
+    else if (characterClass == pattern->spacesCharacterClass())
+        out.print("<whitespace>");
+    else if (characterClass == pattern->wordcharCharacterClass())
+        out.print("<word>");
+    else if (characterClass == pattern->wordUnicodeIgnoreCaseCharCharacterClass())
+        out.print("<unicode ignore case>");
+    else if (characterClass == pattern->nondigitsCharacterClass())
+        out.print("<non-digits>");
+    else if (characterClass == pattern->nonspacesCharacterClass())
+        out.print("<non-whitespace>");
+    else if (characterClass == pattern->nonwordcharCharacterClass())
+        out.print("<non-word>");
+    else if (characterClass == pattern->nonwordUnicodeIgnoreCaseCharCharacterClass())
+        out.print("<unicode non-ignore case>");
+    else {
+        bool needMatchesRangesSeperator = false;
+
+        auto dumpMatches = [&] (const char* prefix, Vector<UChar32> matches) {
+            size_t matchesSize = matches.size();
+            if (matchesSize) {
+                if (needMatchesRangesSeperator)
+                    out.print(",");
+                needMatchesRangesSeperator = true;
+
+                out.print(prefix, ":(");
+                for (size_t i = 0; i < matchesSize; ++i) {
+                    if (i)
+                        out.print(",");
+                    dumpUChar32(out, matches[i]);
+                }
+                out.print(")");
+            }
+        };
+
+        auto dumpRanges = [&] (const char* prefix, Vector<CharacterRange> ranges) {
+            size_t rangeSize = ranges.size();
+            if (rangeSize) {
+                if (needMatchesRangesSeperator)
+                    out.print(",");
+                needMatchesRangesSeperator = true;
+
+                out.print(prefix, " ranges:(");
+                for (size_t i = 0; i < rangeSize; ++i) {
+                    if (i)
+                        out.print(",");
+                    CharacterRange range = ranges[i];
+                    out.print("(");
+                    dumpUChar32(out, range.begin);
+                    out.print("..");
+                    dumpUChar32(out, range.end);
+                    out.print(")");
+                }
+                out.print(")");
+            }
+        };
+
+        out.print("[");
+        dumpMatches("ASCII", characterClass->m_matches);
+        dumpRanges("ASCII", characterClass->m_ranges);
+        dumpMatches("Unicode", characterClass->m_matchesUnicode);
+        dumpRanges("Unicode", characterClass->m_rangesUnicode);
+        out.print("]");
+    }
 }
 
 void PatternAlternative::dump(PrintStream& out, YarrPattern* thisPattern, unsigned nestingDepth)
@@ -1152,8 +1310,10 @@ void PatternTerm::dump(PrintStream& out, YarrPattern* thisPattern, unsigned nest
 {
     indentForNestingLevel(out, nestingDepth);
 
-    if (invert() && (type != TypeParenthesesSubpattern && type != TypeParentheticalAssertion))
-        out.print("not ");
+    if (type != TypeParenthesesSubpattern && type != TypeParentheticalAssertion) {
+        if (invert())
+            out.print("not ");
+    }
 
     switch (type) {
     case TypeAssertionBOL:
@@ -1167,6 +1327,7 @@ void PatternTerm::dump(PrintStream& out, YarrPattern* thisPattern, unsigned nest
         break;
     case TypePatternCharacter:
         out.printf("character ");
+        out.printf("inputPosition %u ", inputPosition);
         if (thisPattern->ignoreCase() && isASCIIAlpha(patternCharacter)) {
             dumpUChar32(out, toASCIIUpper(patternCharacter));
             out.print("/");
@@ -1180,7 +1341,7 @@ void PatternTerm::dump(PrintStream& out, YarrPattern* thisPattern, unsigned nest
         break;
     case TypeCharacterClass:
         out.print("character class ");
-        if (characterClass == thisPattern->anyCharacterClass())
+        if (characterClass->m_anyCharacter)
             out.print("<any character>");
         else if (characterClass == thisPattern->newlineCharacterClass())
             out.print("<newline>");
@@ -1288,16 +1449,17 @@ void PatternTerm::dump(PrintStream& out, YarrPattern* thisPattern, unsigned nest
         if (parentheses.isTerminal)
             out.print(",terminal");
 
-        if (quantityMaxCount != 1 || parentheses.isCopy || quantityType != QuantifierFixedCount)
-            out.println(",frame location ", frameLocation);
-        else
-            out.println();
+        out.println(",frame location ", frameLocation);
 
         if (parentheses.disjunction->m_alternatives.size() > 1) {
             indentForNestingLevel(out, nestingDepth + 1);
             unsigned alternativeFrameLocation = frameLocation;
-            if (quantityType != QuantifierFixedCount)
+            if (quantityMaxCount == 1 && !parentheses.isCopy)
                 alternativeFrameLocation += YarrStackSpaceForBackTrackInfoParenthesesOnce;
+            else if (parentheses.isTerminal)
+                alternativeFrameLocation += YarrStackSpaceForBackTrackInfoParenthesesTerminal;
+            else
+                alternativeFrameLocation += YarrStackSpaceForBackTrackInfoParentheses;
             out.println("alternative list,frame location ", alternativeFrameLocation);
         }
 
@@ -1374,6 +1536,8 @@ void YarrPattern::dumpPattern(PrintStream& out, const String& patternString)
         out.print(")");
     }
     out.print(":\n");
+    if (m_body->m_callFrameSize)
+        out.print("    callframe size: ", m_body->m_callFrameSize, "\n");
     m_body->dump(out, this);
 }
 
@@ -1383,6 +1547,7 @@ std::unique_ptr<CharacterClass> anycharCreate()
     characterClass->m_ranges.append(CharacterRange(0x00, 0x7f));
     characterClass->m_rangesUnicode.append(CharacterRange(0x0080, 0x10ffff));
     characterClass->m_hasNonBMPCharacters = true;
+    characterClass->m_anyCharacter = true;
     return characterClass;
 }
 

@@ -1,3 +1,202 @@
+2017-12-12  Youenn Fablet  <youenn@apple.com>
+
+        Fetch Event header filtering should apply in CORS mode only
+        https://bugs.webkit.org/show_bug.cgi?id=180708
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/service-workers/service-worker/fetch-event.https-expected.txt:
+
+2017-12-12  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-grid] Implement alignment for absolute positioned grid items
+        https://bugs.webkit.org/show_bug.cgi?id=180632
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        These tests now pass and verify the alignment logic for positioned grid items.
+
+        * web-platform-tests/css/css-grid/alignment/grid-column-axis-alignment-positioned-items-002-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-column-axis-alignment-positioned-items-005-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-column-axis-alignment-positioned-items-007-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-column-axis-alignment-positioned-items-009-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-column-axis-alignment-positioned-items-011-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-column-axis-alignment-positioned-items-013-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-column-axis-alignment-positioned-items-014-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-column-axis-alignment-positioned-items-016-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-row-axis-alignment-positioned-items-002-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-row-axis-alignment-positioned-items-003-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-row-axis-alignment-positioned-items-004-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-row-axis-alignment-positioned-items-005-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-row-axis-alignment-positioned-items-007-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-row-axis-alignment-positioned-items-009-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-row-axis-alignment-positioned-items-010-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-row-axis-alignment-positioned-items-013-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-row-axis-alignment-positioned-items-014-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-row-axis-alignment-positioned-items-015-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-non-static-positioned-items-001-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-non-static-positioned-items-002-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-non-static-positioned-items-003-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-non-static-positioned-items-004-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-non-static-positioned-items-005-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-non-static-positioned-items-006-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-non-static-positioned-items-007-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-non-static-positioned-items-008-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-non-static-positioned-items-009-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-non-static-positioned-items-009.html:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-non-static-positioned-items-010-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-non-static-positioned-items-011-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-non-static-positioned-items-012-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-positioned-items-with-margin-border-padding-001-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-positioned-items-with-margin-border-padding-002-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-positioned-items-with-margin-border-padding-003-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-positioned-items-with-margin-border-padding-004-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-positioned-items-with-margin-border-padding-005-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-positioned-items-with-margin-border-padding-006-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-positioned-items-with-margin-border-padding-007-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-positioned-items-with-margin-border-padding-008-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-positioned-items-with-margin-border-padding-009-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-positioned-items-with-margin-border-padding-010-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-positioned-items-with-margin-border-padding-011-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-positioned-items-with-margin-border-padding-012-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-positioned-items-with-margin-border-padding-013-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-positioned-items-with-margin-border-padding-014-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-positioned-items-with-margin-border-padding-015-expected.txt:
+        * web-platform-tests/css/css-grid/alignment/grid-self-alignment-positioned-items-with-margin-border-padding-016-expected.txt:
+
+2017-12-12  Youenn Fablet  <youenn@apple.com>
+
+        Navigation requests should use navigate fetch mode
+        https://bugs.webkit.org/show_bug.cgi?id=179808
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/service-workers/service-worker/fetch-request-redirect.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/navigation-redirect.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/register-same-scope-different-script-url.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/request-end-to-end.https-expected.txt:
+        This is a progression since test is failing at a later point. Test might need being updated to match latest fetch spec.
+        * web-platform-tests/service-workers/service-worker/resources/clients-get-worker.js:
+        (self.onfetch): Change upstreamed at https://github.com/w3c/web-platform-tests/pull/8289.
+
+2017-12-12  Youenn Fablet  <youenn@apple.com>
+
+        Rebasing/unskipping some WPT service worker tests
+        https://bugs.webkit.org/show_bug.cgi?id=180705
+
+        Unreviewed.
+
+        * web-platform-tests/service-workers/service-worker/fetch-event.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/service-worker-csp-default.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/service-worker-csp-script.https-expected.txt:
+
+2017-12-12  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        [Readable Streams API] Throw RangeError if a size is provided when creating a readable byte stream
+        https://bugs.webkit.org/show_bug.cgi?id=180470
+
+        Reviewed by Youenn Fablet.
+
+        One new test imported from WPT to check that RangeError is thrown if a size is provided.
+
+        * web-platform-tests/streams/readable-byte-streams/general-expected.txt: Updated expectations.
+        * web-platform-tests/streams/readable-byte-streams/general.dedicatedworker-expected.txt: Updated expectations.
+        * web-platform-tests/streams/readable-byte-streams/general.js: Imported one test case from WPT.
+        * web-platform-tests/streams/readable-byte-streams/general.serviceworker.https-expected.txt: Updated expectations.
+
+2017-12-12  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK] Update some test expectations.
+        https://bugs.webkit.org/show_bug.cgi?id=180655
+
+        Unreviewed test gardening.
+
+        Update tests from upstream, and update test expectations.
+
+        * web-platform-tests/XMLHttpRequest/send-network-error-sync-events.sub-expected.txt:
+        * web-platform-tests/XMLHttpRequest/send-network-error-sync-events.sub.htm:
+        * web-platform-tests/common/media.js:
+        * web-platform-tests/html/browsers/browsing-the-web/read-media/pageload-video-expected.txt:
+        * web-platform-tests/html/browsers/browsing-the-web/read-media/pageload-video.html:
+        * web-platform-tests/html/semantics/forms/textfieldselection/textfieldselection-setSelectionRange.html:
+
+2017-12-12  Ms2ger  <Ms2ger@igalia.com>
+
+        Implement {DOMMimeTypeArray, DOMPluginArray}::supportedPropertyNames().
+        https://bugs.webkit.org/show_bug.cgi?id=180471
+
+        Reviewed by Darin Adler.
+
+        Update test expectation. It will now work better if "WebKit built-in PDF"
+        is not present or not the only available plugin.
+
+        * web-platform-tests/html/webappapis/system-state-and-capabilities/the-navigator-object/navigator-pluginarray-expected.txt:
+
+2017-12-11  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Automatic minimum size is not clamped if min track sizing function is auto
+        https://bugs.webkit.org/show_bug.cgi?id=180283
+
+        Reviewed by Darin Adler.
+
+        Update expected result in the following WPT tests, as now everything
+        is passing there.
+
+        * web-platform-tests/css/css-grid/grid-items/grid-minimum-size-grid-items-022-expected.txt:
+        * web-platform-tests/css/css-grid/grid-items/grid-minimum-size-grid-items-023-expected.txt:
+
+2017-12-11  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        REGRESSION(r221931): Row stretch doesn't work for grid container with min-height
+        https://bugs.webkit.org/show_bug.cgi?id=180287
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/css/css-grid/grid-model/grid-box-sizing-001-expected.txt:
+        Update expectations as the test is now passing.
+
+2017-12-08  Chris Dumez  <cdumez@apple.com>
+
+        ServiceWorkerGlobalScope is a global object and should be marked as [ImplicitThis] in the IDL
+        https://bugs.webkit.org/show_bug.cgi?id=180615
+
+        Reviewed by Brady Eidson.
+
+        Rebaseline WPT tests now that more checks are passing.
+
+        * web-platform-tests/service-workers/service-worker/interfaces-sw.https-expected.txt:
+        * web-platform-tests/workers/interfaces.worker-expected.txt:
+
+2017-12-08  Youenn Fablet  <youenn@apple.com>
+
+        FetchResponse should keep unfiltered ResourceResponse so that it can be used in Service Worker
+        https://bugs.webkit.org/show_bug.cgi?id=179641
+        <rdar://problem/35923570>
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/service-workers/service-worker/fetch-request-css-cross-origin-mime-check.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-response-taint.https-expected.txt:
+
+2017-12-07  Youenn Fablet  <youenn@apple.com>
+
+        Activate IDB and WebSockets in service workers
+        https://bugs.webkit.org/show_bug.cgi?id=180534
+
+        Reviewed by Brady Eidson.
+
+        * web-platform-tests/service-workers/service-worker/websocket-in-service-worker.https-expected.txt:
+
+2017-12-07  Ms2ger  <Ms2ger@igalia.com>
+
+        Update imported/w3c/web-platform-tests/css/css-pseudo-4/marker-font-properties.html from upstream.
+        https://bugs.webkit.org/show_bug.cgi?id=177362
+
+        Unreviewed test gardening.
+
+        * web-platform-tests/css/css-pseudo-4/marker-font-properties-expected.html:
+        * web-platform-tests/css/css-pseudo-4/marker-font-properties.html:
+
 2017-12-06  Youenn Fablet  <youenn@apple.com>
 
         Import WPT workers test suite

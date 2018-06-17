@@ -28,6 +28,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
 import logging
 import optparse
 import os
@@ -68,9 +69,9 @@ def main(argv, stdout, stderr):
 
     try:
         port = host.port_factory.get(options.platform, options)
-    except NotImplementedError, e:
+    except NotImplementedError as e:
         # FIXME: is this the best way to handle unsupported port names?
-        print >> stderr, str(e)
+        print(str(e), file=stderr)
         return EXCEPTIONAL_EXIT_STATUS
 
     if options.print_expectations:
@@ -92,7 +93,7 @@ def main(argv, stdout, stderr):
         return INTERRUPTED_EXIT_STATUS
     except BaseException as e:
         if isinstance(e, Exception):
-            print >> stderr, '\n%s raised: %s' % (e.__class__.__name__, str(e))
+            print('\n%s raised: %s' % (e.__class__.__name__, str(e)), file=stderr)
             traceback.print_exc(file=stderr)
         return EXCEPTIONAL_EXIT_STATUS
 

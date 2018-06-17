@@ -1,3 +1,61 @@
+2017-12-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed build fix after r225766.
+
+        * pal/spi/mac/AVFoundationSPI.h:
+        Conform AVStreamDataParser to the AVContentKeyRecipient protocol if available.
+
+2017-12-11  David Quesada  <david_quesada@apple.com>
+
+        Turn on ENABLE_APPLICATION_MANIFEST
+        https://bugs.webkit.org/show_bug.cgi?id=180562
+        rdar://problem/35924737
+
+        Reviewed by Geoffrey Garen.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-12-08  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [python] Replace print operator with print() function for python3 compatibility
+        https://bugs.webkit.org/show_bug.cgi?id=180592
+
+        Reviewed by Michael Catanzaro.
+
+        * AVFoundationSupport.py:
+
+2017-12-08  Eric Carlson  <eric.carlson@apple.com>
+
+        Move Logger from PAL to WTF so it can be used outside of WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=180561
+
+        Reviewed by Alex Christensen.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/Logger.h: Removed.
+        * pal/LoggerHelper.h: Removed.
+
+2017-12-07  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Add SPI to disallow user-installed fonts
+        https://bugs.webkit.org/show_bug.cgi?id=180062
+        <rdar://problem/35042408>
+
+        Reviewed by Simon Fraser.
+
+        * pal/spi/cocoa/CoreTextSPI.h:
+
+2017-12-02  Darin Adler  <darin@apple.com>
+
+        Modernize some aspects of text codecs, eliminate WebKit use of strcasecmp
+        https://bugs.webkit.org/show_bug.cgi?id=180009
+
+        Reviewed by Alex Christensen.
+
+        * PAL.xcodeproj/project.pbxproj: Added UnencodableHandling.h.
+        * pal/text/UnencodableHandling.h: Moved the UnencodableHandling enumeration
+        here from TextCodec.h and changed it to an enum class.
+
 2017-12-04  David Quesada  <david_quesada@apple.com>
 
         Add a class for parsing application manifests

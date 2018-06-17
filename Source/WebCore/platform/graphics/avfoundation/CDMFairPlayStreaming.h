@@ -64,6 +64,14 @@ public:
     bool supportsInitData(const AtomicString&, const SharedBuffer&) const override;
     RefPtr<SharedBuffer> sanitizeResponse(const SharedBuffer&) const override;
     std::optional<String> sanitizeSessionId(const String&) const override;
+
+    static const AtomicString& sinfName();
+    static Vector<Ref<SharedBuffer>> extractKeyIDsSinf(const SharedBuffer&);
+    static RefPtr<SharedBuffer> sanitizeSinf(const SharedBuffer&);
+
+    static const AtomicString& skdName();
+    static Vector<Ref<SharedBuffer>> extractKeyIDsSkd(const SharedBuffer&);
+    static RefPtr<SharedBuffer> sanitizeSkd(const SharedBuffer&);
 };
 
 }

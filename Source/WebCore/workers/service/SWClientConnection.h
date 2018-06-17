@@ -74,14 +74,13 @@ public:
 
     virtual void didResolveRegistrationPromise(const ServiceWorkerRegistrationKey&) = 0;
 
-    virtual void postMessageToServiceWorker(ServiceWorkerIdentifier destination, Ref<SerializedScriptValue>&& message, ServiceWorkerClientIdentifier sourceIdentifier, ServiceWorkerClientData&& sourceData) = 0;
-    virtual void postMessageToServiceWorker(ServiceWorkerIdentifier destination, Ref<SerializedScriptValue>&& message, ServiceWorkerIdentifier source) = 0;
+    virtual void postMessageToServiceWorker(ServiceWorkerIdentifier destination, Ref<SerializedScriptValue>&& message, const ServiceWorkerOrClientIdentifier& source) = 0;
 
     virtual SWServerConnectionIdentifier serverConnectionIdentifier() const = 0;
     virtual bool mayHaveServiceWorkerRegisteredForOrigin(const SecurityOrigin&) const = 0;
     virtual void syncTerminateWorker(ServiceWorkerIdentifier) = 0;
 
-    virtual void registerServiceWorkerClient(const SecurityOrigin& topOrigin, DocumentIdentifier, const ServiceWorkerClientData&, const std::optional<ServiceWorkerIdentifier>&) = 0;
+    virtual void registerServiceWorkerClient(const SecurityOrigin& topOrigin, const ServiceWorkerClientData&, const std::optional<ServiceWorkerIdentifier>&) = 0;
     virtual void unregisterServiceWorkerClient(DocumentIdentifier) = 0;
 
 protected:

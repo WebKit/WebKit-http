@@ -1125,7 +1125,7 @@ webkit.org/b/156078 inspector/console/heapSnapshot.html [ Pass Timeout ]
 webkit.org/b/158006 inspector/console/console-time.html [ Pass Timeout ]
 webkit.org/b/156634 inspector/formatting/formatting-javascript.html [ Pass Timeout ]
 webkit.org/b/158948 inspector/timeline [ Pass Timeout ]
-webkit.org/b/168091 [ Debug ] inspector/worker/resources-in-worker.html [ Pass Timeout ]
+webkit.org/b/168091 inspector/worker/resources-in-worker.html [ Pass Failure ]
 
 webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]
 
@@ -1725,9 +1725,6 @@ webkit.org/b/176878 [ Debug ] fast/multicol/spanner-crash-when-adding-summary.ht
 # <rdar://problem/33850189>
 [ HighSierra+ ] http/tests/websocket/tests/hybi/deflate-frame-parameter.html [ Failure ]
 
-# <rdar://problem/34507977>
-webkit.org/b/177119 webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video.html [ Pass Failure ]
-
 # Release logging not supported
 [ ElCapitan ] inspector/console/webcore-logging.html [ Skip ]
 
@@ -1748,6 +1745,9 @@ webkit.org/b/175998 http/tests/security/mixedContent/insecure-css-with-secure-co
 # AVContentKeySession not available pre-High Sierra
 [ ElCapitan Sierra ] platform/mac/media/encrypted-media/fps-createMediaKeys.html [ Skip ]
 [ ElCapitan Sierra ] platform/mac/media/encrypted-media/fps-requestMediaKeySystemAccess.html [ Skip ]
+[ ElCapitan Sierra ] platform/mac/media/encrypted-media/fps-createSession.html [ Skip ]
+[ ElCapitan Sierra ] platform/mac/media/encrypted-media/fps-generateRequest.html [ Skip ]
+[ ElCapitan Sierra ] platform/mac/media/encrypted-media/fps-encrypted-event.html [ Skip ]
 
 # rdar://problem/35395437
 [ HighSierra+ ] imported/w3c/web-platform-tests/media-source/mediasource-play.html [ Failure ]
@@ -1758,3 +1758,7 @@ webkit.org/b/165311 [ Sierra+ ] media/modern-media-controls/pip-support/pip-supp
 
 webkit.org/b/176693 storage/indexeddb/modern/idbtransaction-objectstore-failures-private.html [ Pass Failure ]
 
+# User-installed font infrastructure is ony present on certain OSes.
+webkit.org/b/180062 [ ElCapitan Sierra HighSierra ] fast/text/user-installed-fonts/disable.html [ ImageOnlyFailure ]
+webkit.org/b/180062 [ ElCapitan Sierra HighSierra ] fast/text/user-installed-fonts/shadow-postscript.html [ ImageOnlyFailure ]
+webkit.org/b/180062 [ ElCapitan Sierra HighSierra ] fast/text/user-installed-fonts/shadow.html [ ImageOnlyFailure ]

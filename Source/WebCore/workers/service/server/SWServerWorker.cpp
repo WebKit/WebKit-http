@@ -65,12 +65,13 @@ ServiceWorkerContextData SWServerWorker::contextData() const
     auto* registration = m_server.getRegistration(m_registrationKey);
     ASSERT(registration);
 
-    return { std::nullopt, registration->data(), m_data.identifier, m_script, m_data.scriptURL, m_data.type };
+    return { std::nullopt, registration->data(), m_data.identifier, m_script, m_data.scriptURL, m_data.type, false };
 }
 
 void SWServerWorker::terminate()
 {
-    m_server.terminateWorker(*this);
+    if (isRunning())
+        m_server.terminateWorker(*this);
 }
 
 const ClientOrigin& SWServerWorker::origin() const
@@ -106,9 +107,9 @@ void SWServerWorker::contextTerminated()
     m_server.workerContextTerminated(*this);
 }
 
-std::optional<ServiceWorkerClientData> SWServerWorker::findClientByIdentifier(ServiceWorkerClientIdentifier clientId)
+std::optional<ServiceWorkerClientData> SWServerWorker::findClientByIdentifier(const ServiceWorkerClientIdentifier& clientId) const
 {
-    return m_server.findClientByIdentifier(origin(), clientId);
+    return m_server.serviceWorkerClientByID(clientId);
 }
 
 void SWServerWorker::matchAll(const ServiceWorkerClientQueryOptions& options, ServiceWorkerClientsMatchAllCallback&& callback)

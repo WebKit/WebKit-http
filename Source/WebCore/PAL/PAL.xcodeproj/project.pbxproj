@@ -21,8 +21,6 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
-		0708AC331F4C874B001F788F /* Logger.h in Headers */ = {isa = PBXBuildFile; fileRef = 0708AC321F4C874A001F788F /* Logger.h */; };
-		07377ADC1F5777D90027F16D /* LoggerHelper.h in Headers */ = {isa = PBXBuildFile; fileRef = 07377ADB1F5777D70027F16D /* LoggerHelper.h */; };
 		0C00CFD41F68CE4600AAC26D /* MediaTimeAVFoundation.h in Headers */ = {isa = PBXBuildFile; fileRef = 0C00CFD21F68CE4600AAC26D /* MediaTimeAVFoundation.h */; };
 		0C2D9E731EEF5AF600DBC317 /* ExportMacros.h in Headers */ = {isa = PBXBuildFile; fileRef = 0C2D9E721EEF5AF600DBC317 /* ExportMacros.h */; };
 		0C2DA06D1F33CA8400DBC317 /* CFLocaleSPI.h in Headers */ = {isa = PBXBuildFile; fileRef = 0C2DA0671F33CA8400DBC317 /* CFLocaleSPI.h */; };
@@ -159,8 +157,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		0708AC321F4C874A001F788F /* Logger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Logger.h; sourceTree = "<group>"; };
-		07377ADB1F5777D70027F16D /* LoggerHelper.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LoggerHelper.h; sourceTree = "<group>"; };
 		0C00CFD11F68CE4600AAC26D /* MediaTimeAVFoundation.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MediaTimeAVFoundation.cpp; path = avfoundation/MediaTimeAVFoundation.cpp; sourceTree = "<group>"; };
 		0C00CFD21F68CE4600AAC26D /* MediaTimeAVFoundation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MediaTimeAVFoundation.h; path = avfoundation/MediaTimeAVFoundation.h; sourceTree = "<group>"; };
 		0C2D9E721EEF5AF600DBC317 /* ExportMacros.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ExportMacros.h; sourceTree = "<group>"; };
@@ -255,6 +251,7 @@
 		1C67CEA11E32EDA800F80F2E /* FeatureDefines.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = FeatureDefines.xcconfig; sourceTree = "<group>"; };
 		1C67CEA21E32EE2600F80F2E /* Version.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = Version.xcconfig; sourceTree = "<group>"; };
 		7A1656431F97B2B800BA3CE4 /* NSKeyedArchiverSPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NSKeyedArchiverSPI.h; sourceTree = "<group>"; };
+		93E5909C1F93BF1E0067F8CF /* UnencodableHandling.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UnencodableHandling.h; sourceTree = "<group>"; };
 		A10265861F56746100B4C844 /* FoundationSPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FoundationSPI.h; sourceTree = "<group>"; };
 		A10265881F56747A00B4C844 /* HIToolboxSPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HIToolboxSPI.h; sourceTree = "<group>"; };
 		A102658A1F56748C00B4C844 /* QuickDrawSPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = QuickDrawSPI.h; sourceTree = "<group>"; };
@@ -486,8 +483,6 @@
 				F44291621FA52670002CC93E /* FileSizeFormatter.cpp */,
 				F442915F1FA5261E002CC93E /* FileSizeFormatter.h */,
 				A39DE74D1F7C443C007BCB00 /* HysteresisActivity.h */,
-				0708AC321F4C874A001F788F /* Logger.h */,
-				07377ADB1F5777D70027F16D /* LoggerHelper.h */,
 				1C4876D61F8D7F4E00CCEEBD /* Logging.cpp */,
 				1C4876D71F8D7F4E00CCEEBD /* Logging.h */,
 				1C4876DD1F8D812B00CCEEBD /* LogInitialization.h */,
@@ -543,6 +538,7 @@
 				A30D41231F0DD10500B71954 /* mac */,
 				A30D411F1F0DD0EA00B71954 /* KillRing.cpp */,
 				A30D411E1F0DD0EA00B71954 /* KillRing.h */,
+				93E5909C1F93BF1E0067F8CF /* UnencodableHandling.h */,
 			);
 			path = text;
 			sourceTree = "<group>";
@@ -642,8 +638,6 @@
 				A30D41211F0DD0EA00B71954 /* KillRing.h in Headers */,
 				0C5AF91C1F43A4C7002EAC02 /* LaunchServicesSPI.h in Headers */,
 				0C2DA1471F3BEB4900DBC317 /* LinkPresentationSPI.h in Headers */,
-				0708AC331F4C874B001F788F /* Logger.h in Headers */,
-				07377ADC1F5777D90027F16D /* LoggerHelper.h in Headers */,
 				1C4876D91F8D7F4E00CCEEBD /* Logging.h in Headers */,
 				0C77858B1F45130F00F4EBB6 /* LookupSPI.h in Headers */,
 				0C2DA1481F3BEB4900DBC317 /* MachVMSPI.h in Headers */,

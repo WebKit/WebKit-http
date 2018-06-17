@@ -39,6 +39,7 @@
 #include <WebCore/PaymentHeaders.h>
 #include <WebCore/RealtimeMediaSource.h>
 #include <WebCore/ScrollSnapOffsetsInfo.h>
+#include <WebCore/ServiceWorkerTypes.h>
 #include <WebCore/StoredCredentialsPolicy.h>
 #include <WebCore/WorkerType.h>
 
@@ -667,6 +668,20 @@ template<> struct ArgumentCoder<WebCore::IDBKeyPath> {
 
 #endif
 
+#if ENABLE(SERVICE_WORKER)
+
+template<> struct ArgumentCoder<WebCore::ServiceWorkerOrClientData> {
+    static void encode(Encoder&, const WebCore::ServiceWorkerOrClientData&);
+    static bool decode(Decoder&, WebCore::ServiceWorkerOrClientData&);
+};
+
+template<> struct ArgumentCoder<WebCore::ServiceWorkerOrClientIdentifier> {
+    static void encode(Encoder&, const WebCore::ServiceWorkerOrClientIdentifier&);
+    static bool decode(Decoder&, WebCore::ServiceWorkerOrClientIdentifier&);
+};
+
+#endif
+
 #if ENABLE(CSS_SCROLL_SNAP)
 
 template<> struct ArgumentCoder<WebCore::ScrollOffsetRange<float>> {
@@ -688,7 +703,6 @@ namespace WTF {
 template<> struct EnumTraits<WebCore::ColorSpace> {
     using values = EnumValues<
     WebCore::ColorSpace,
-    WebCore::ColorSpace::ColorSpaceDeviceRGB,
     WebCore::ColorSpace::ColorSpaceSRGB,
     WebCore::ColorSpace::ColorSpaceLinearRGB,
     WebCore::ColorSpace::ColorSpaceDisplayP3

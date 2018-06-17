@@ -47,7 +47,7 @@ public:
     void willDestroyFrontendAndBackend(Inspector::DisconnectReason) final;
 
     // ServiceWorkerBackendDispatcherHandler
-    void getInitializationInfo(ErrorString&, RefPtr<Inspector::Protocol::ServiceWorker::InitializationInfo>&) final;
+    void getInitializationInfo(ErrorString&, RefPtr<Inspector::Protocol::ServiceWorker::Configuration>&) final;
 
 private:
     ServiceWorkerGlobalScope& m_serviceWorkerGlobalScope;

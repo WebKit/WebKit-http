@@ -50,6 +50,30 @@
 
 namespace WebCore {
 
+static const Vector<FourCC>& validFairPlayStreamingSchemes()
+{
+    static NeverDestroyed<Vector<FourCC>> validSchemes = Vector<FourCC>({ 
+        "cbcs",
+        "cbc2",
+        "cbc1",
+        "cenc",
+    });
+
+    return validSchemes;
+}
+
+const AtomicString& CDMPrivateFairPlayStreaming::sinfName()
+{
+    static NeverDestroyed<AtomicString> sinf { MAKE_STATIC_STRING_IMPL("sinf") };
+    return sinf;
+}
+
+const AtomicString& CDMPrivateFairPlayStreaming::skdName()
+{
+    static NeverDestroyed<AtomicString> skd { MAKE_STATIC_STRING_IMPL("skd") };
+    return skd;
+}
+
 static Vector<Ref<SharedBuffer>> extractSinfData(const SharedBuffer& buffer)
 {
     // JSON of the format: "{ sinf: [ <base64-encoded-string> ] }"
@@ -66,7 +90,7 @@ static Vector<Ref<SharedBuffer>> extractSinfData(const SharedBuffer& buffer)
         return { };
 
     RefPtr<JSON::Array> sinfArray;
-    if (!object->getArray("sinf", sinfArray))
+    if (!object->getArray(CDMPrivateFairPlayStreaming::sinfName(), sinfArray))
         return { };
 
     Vector<Ref<SharedBuffer>> sinfs;
@@ -78,7 +102,7 @@ static Vector<Ref<SharedBuffer>> extractSinfData(const SharedBuffer& buffer)
             continue;
 
         Vector<char> sinfData;
-        if (!WTF::base64URLDecode(keyID, { sinfData }))
+        if (!WTF::base64Decode(keyID, { sinfData }, WTF::Base64IgnoreSpacesAndNewLines))
             continue;
 
         sinfs.uncheckedAppend(SharedBuffer::create(WTFMove(sinfData)));
@@ -134,28 +158,21 @@ static SchemeAndKeyResult extractSchemeAndKeyIdFromSinf(const SharedBuffer& buff
     return result;
 }
 
-static Vector<Ref<SharedBuffer>> extractKeyIDsSinf(const SharedBuffer& buffer)
+Vector<Ref<SharedBuffer>> CDMPrivateFairPlayStreaming::extractKeyIDsSinf(const SharedBuffer& buffer)
 {
-    auto sinfs = extractSinfData(buffer);
-    if (sinfs.isEmpty())
-        return { };
 
     Vector<Ref<SharedBuffer>> keyIDs;
-    for (auto& sinf : sinfs) {
-        auto results = extractSchemeAndKeyIdFromSinf(sinf);
-        if (!results.size())
-            continue;
+    auto results = extractSchemeAndKeyIdFromSinf(buffer);
 
-        for (auto& result : results) {
-            if (result.first == 'cbcs')
-                keyIDs.append(SharedBuffer::create(result.second.data(), result.second.size()));
-        }
+    for (auto& result : results) {
+        if (validFairPlayStreamingSchemes().contains(result.first))
+            keyIDs.append(SharedBuffer::create(result.second.data(), result.second.size()));
     }
 
     return keyIDs;
 }
 
-static RefPtr<SharedBuffer> sanitizeSinf(const SharedBuffer& buffer)
+RefPtr<SharedBuffer> CDMPrivateFairPlayStreaming::sanitizeSinf(const SharedBuffer& buffer)
 {
     // Common SINF Box Format
     UNUSED_PARAM(buffer);
@@ -163,12 +180,34 @@ static RefPtr<SharedBuffer> sanitizeSinf(const SharedBuffer& buffer)
     return buffer.copy();
 }
 
+RefPtr<SharedBuffer> CDMPrivateFairPlayStreaming::sanitizeSkd(const SharedBuffer& buffer)
+{
+    UNUSED_PARAM(buffer);
+    notImplemented();
+    return buffer.copy();
+}
+
+Vector<Ref<SharedBuffer>> CDMPrivateFairPlayStreaming::extractKeyIDsSkd(const SharedBuffer& buffer)
+{
+    // In the 'skd' scheme, the init data is the key ID.
+    Vector<Ref<SharedBuffer>> keyIDs;
+    keyIDs.append(buffer.copy());
+    return keyIDs;
+}
+
+static const HashSet<AtomicString>& validInitDataTypes()
+{
+    static NeverDestroyed<HashSet<AtomicString>> validTypes = HashSet<AtomicString>({ CDMPrivateFairPlayStreaming::sinfName(), CDMPrivateFairPlayStreaming::skdName() });
+    return validTypes;
+}
+
 void CDMFactory::platformRegisterFactories(Vector<CDMFactory*>& factories)
 {
     factories.append(&CDMFactoryClearKey::singleton());
     factories.append(&CDMFactoryFairPlayStreaming::singleton());
 
-    InitDataRegistry::shared().registerInitDataType("sinf", { sanitizeSinf, extractKeyIDsSinf });
+    InitDataRegistry::shared().registerInitDataType(CDMPrivateFairPlayStreaming::sinfName(), { CDMPrivateFairPlayStreaming::sanitizeSinf, CDMPrivateFairPlayStreaming::extractKeyIDsSinf });
+    InitDataRegistry::shared().registerInitDataType(CDMPrivateFairPlayStreaming::skdName(), { CDMPrivateFairPlayStreaming::sanitizeSkd, CDMPrivateFairPlayStreaming::extractKeyIDsSkd });
 }
 
 CDMFactoryFairPlayStreaming& CDMFactoryFairPlayStreaming::singleton()
@@ -200,12 +239,12 @@ CDMPrivateFairPlayStreaming::~CDMPrivateFairPlayStreaming() = default;
 
 bool CDMPrivateFairPlayStreaming::supportsInitDataType(const AtomicString& initDataType) const
 {
-    return initDataType == "sinf";
+    return validInitDataTypes().contains(initDataType);
 }
 
 bool CDMPrivateFairPlayStreaming::supportsConfiguration(const CDMKeySystemConfiguration& configuration) const
 {
-    if (!configuration.initDataTypes.contains("sinf"))
+    if (!WTF::anyOf(configuration.initDataTypes, [] (auto& initDataType) { return validInitDataTypes().contains(initDataType); }))
         return false;
 
 #if HAVE(AVCONTENTKEYSESSION)
@@ -320,9 +359,17 @@ bool CDMPrivateFairPlayStreaming::supportsInitData(const AtomicString& initDataT
     if (!supportsInitDataType(initDataType))
         return false;
 
-    return WTF::anyOf(extractSchemeAndKeyIdFromSinf(initData), [](auto& result) {
-        return result.first == 'cbcs' || result.first == 'cbc2' || result.first == 'cbc1';
-    });
+    if (initDataType == sinfName()) {
+        return WTF::anyOf(extractSchemeAndKeyIdFromSinf(initData), [](auto& result) {
+            return validFairPlayStreamingSchemes().contains(result.first);
+        });
+    }
+
+    if (initDataType == skdName())
+        return true;
+
+    ASSERT_NOT_REACHED();
+    return false;
 }
 
 RefPtr<SharedBuffer> CDMPrivateFairPlayStreaming::sanitizeResponse(const SharedBuffer& response) const
