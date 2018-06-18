@@ -216,7 +216,7 @@ WebProcess::~WebProcess()
 
 void WebProcess::initializeProcess(const ChildProcessInitializationParameters& parameters)
 {
-#if PLATFORM(COCOA) && !PLATFORM(IOS)
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
     // This call is needed when the WebProcess is not running the NSApplication event loop.
     // Otherwise, calling enableSandboxStyleFileQuarantine() will fail.
     launchServicesCheckIn();
@@ -1195,10 +1195,10 @@ void WebProcess::setEnhancedAccessibility(bool flag)
     WebCore::AXObjectCache::setEnhancedUserInterfaceAccessibility(flag);
 }
     
-void WebProcess::startMemorySampler(const SandboxExtension::Handle& sampleLogFileHandle, const String& sampleLogFilePath, const double interval)
+void WebProcess::startMemorySampler(SandboxExtension::Handle&& sampleLogFileHandle, const String& sampleLogFilePath, const double interval)
 {
 #if ENABLE(MEMORY_SAMPLER)    
-    WebMemorySampler::singleton()->start(sampleLogFileHandle, sampleLogFilePath, interval);
+    WebMemorySampler::singleton()->start(WTFMove(sampleLogFileHandle), sampleLogFilePath, interval);
 #else
     UNUSED_PARAM(sampleLogFileHandle);
     UNUSED_PARAM(sampleLogFilePath);

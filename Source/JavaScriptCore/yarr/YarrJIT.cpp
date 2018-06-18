@@ -176,6 +176,7 @@ class YarrGenerator : private MacroAssembler {
         struct ParenContext* next;
         uint32_t begin;
         uint32_t matchAmount;
+        uintptr_t returnAddress;
         struct Subpatterns {
             unsigned start;
             unsigned end;
@@ -200,6 +201,11 @@ class YarrGenerator : private MacroAssembler {
         static ptrdiff_t matchAmountOffset()
         {
             return offsetof(ParenContext, matchAmount);
+        }
+
+        static ptrdiff_t returnAddressOffset()
+        {
+            return offsetof(ParenContext, returnAddress);
         }
 
         static ptrdiff_t subpatternOffset(size_t subpattern)
@@ -244,7 +250,7 @@ class YarrGenerator : private MacroAssembler {
         emptyFreeList.link(this);
     }
 
-    void allocatePatternContext(RegisterID result)
+    void allocateParenContext(RegisterID result)
     {
         m_abortExecution.append(branchTestPtr(Zero, freelistRegister));
         sub32(TrustedImm32(1), remainingMatchCount);
@@ -253,47 +259,51 @@ class YarrGenerator : private MacroAssembler {
         loadPtr(Address(freelistRegister, ParenContext::nextOffset()), freelistRegister);
     }
 
-    void freePatternContext(RegisterID headPtrRegister, RegisterID newHeadPtrRegister)
+    void freeParenContext(RegisterID headPtrRegister, RegisterID newHeadPtrRegister)
     {
         loadPtr(Address(headPtrRegister, ParenContext::nextOffset()), newHeadPtrRegister);
         storePtr(freelistRegister, Address(headPtrRegister, ParenContext::nextOffset()));
         move(headPtrRegister, freelistRegister);
     }
 
-    void savePatternContext(RegisterID patternContextReg, RegisterID tempReg, unsigned firstSubpattern, unsigned lastSubpattern, unsigned subpatternBaseFrameLocation)
+    void saveParenContext(RegisterID parenContextReg, RegisterID tempReg, unsigned firstSubpattern, unsigned lastSubpattern, unsigned subpatternBaseFrameLocation)
     {
-        store32(index, Address(patternContextReg, ParenContext::beginOffset()));
+        store32(index, Address(parenContextReg, ParenContext::beginOffset()));
         loadFromFrame(subpatternBaseFrameLocation + BackTrackInfoParentheses::matchAmountIndex(), tempReg);
-        store32(tempReg, Address(patternContextReg, ParenContext::matchAmountOffset()));
+        store32(tempReg, Address(parenContextReg, ParenContext::matchAmountOffset()));
+        loadFromFrame(subpatternBaseFrameLocation + BackTrackInfoParentheses::returnAddressIndex(), tempReg);
+        storePtr(tempReg, Address(parenContextReg, ParenContext::returnAddressOffset()));
         if (compileMode == IncludeSubpatterns) {
             for (unsigned subpattern = firstSubpattern; subpattern <= lastSubpattern; subpattern++) {
                 loadPtr(Address(output, (subpattern << 1) * sizeof(unsigned)), tempReg);
-                storePtr(tempReg, Address(patternContextReg, ParenContext::subpatternOffset(subpattern)));
+                storePtr(tempReg, Address(parenContextReg, ParenContext::subpatternOffset(subpattern)));
                 clearSubpatternStart(subpattern);
             }
         }
         subpatternBaseFrameLocation += YarrStackSpaceForBackTrackInfoParentheses;
         for (unsigned frameLocation = subpatternBaseFrameLocation; frameLocation < m_parenContextSizes.frameSlots(); frameLocation++) {
             loadFromFrame(frameLocation, tempReg);
-            storePtr(tempReg, Address(patternContextReg, ParenContext::savedFrameOffset(m_parenContextSizes) + frameLocation * sizeof(uintptr_t)));
+            storePtr(tempReg, Address(parenContextReg, ParenContext::savedFrameOffset(m_parenContextSizes) + frameLocation * sizeof(uintptr_t)));
         }
     }
 
-    void restorePatternContext(RegisterID patternContextReg, RegisterID tempReg, unsigned firstSubpattern, unsigned lastSubpattern, unsigned subpatternBaseFrameLocation)
+    void restoreParenContext(RegisterID parenContextReg, RegisterID tempReg, unsigned firstSubpattern, unsigned lastSubpattern, unsigned subpatternBaseFrameLocation)
     {
-        load32(Address(patternContextReg, ParenContext::beginOffset()), index);
+        load32(Address(parenContextReg, ParenContext::beginOffset()), index);
         storeToFrame(index, subpatternBaseFrameLocation + BackTrackInfoParentheses::beginIndex());
-        load32(Address(patternContextReg, ParenContext::matchAmountOffset()), tempReg);
+        load32(Address(parenContextReg, ParenContext::matchAmountOffset()), tempReg);
         storeToFrame(tempReg, subpatternBaseFrameLocation + BackTrackInfoParentheses::matchAmountIndex());
+        loadPtr(Address(parenContextReg, ParenContext::returnAddressOffset()), tempReg);
+        storeToFrame(tempReg, subpatternBaseFrameLocation + BackTrackInfoParentheses::returnAddressIndex());
         if (compileMode == IncludeSubpatterns) {
             for (unsigned subpattern = firstSubpattern; subpattern <= lastSubpattern; subpattern++) {
-                loadPtr(Address(patternContextReg, ParenContext::subpatternOffset(subpattern)), tempReg);
+                loadPtr(Address(parenContextReg, ParenContext::subpatternOffset(subpattern)), tempReg);
                 storePtr(tempReg, Address(output, (subpattern << 1) * sizeof(unsigned)));
             }
         }
         subpatternBaseFrameLocation += YarrStackSpaceForBackTrackInfoParentheses;
         for (unsigned frameLocation = subpatternBaseFrameLocation; frameLocation < m_parenContextSizes.frameSlots(); frameLocation++) {
-            loadPtr(Address(patternContextReg, ParenContext::savedFrameOffset(m_parenContextSizes) + frameLocation * sizeof(uintptr_t)), tempReg);
+            loadPtr(Address(parenContextReg, ParenContext::savedFrameOffset(m_parenContextSizes) + frameLocation * sizeof(uintptr_t)), tempReg);
             storeToFrame(tempReg, frameLocation);
         }
     }
@@ -2183,7 +2193,7 @@ class YarrGenerator : private MacroAssembler {
                 // FIXME: for capturing parens, could use the index in the capture array?
                 if (term->quantityType == QuantifierGreedy || term->quantityType == QuantifierNonGreedy) {
                     storeToFrame(TrustedImm32(0), parenthesesFrameLocation + BackTrackInfoParentheses::matchAmountIndex());
-                    storeToFrame(TrustedImmPtr(0), parenthesesFrameLocation + BackTrackInfoParentheses::patternContextHeadIndex());
+                    storeToFrame(TrustedImmPtr(0), parenthesesFrameLocation + BackTrackInfoParentheses::parenContextHeadIndex());
 
                     if (term->quantityType == QuantifierNonGreedy) {
                         storeToFrame(TrustedImm32(-1), parenthesesFrameLocation + BackTrackInfoParentheses::beginIndex());
@@ -2191,14 +2201,14 @@ class YarrGenerator : private MacroAssembler {
                     }
                     
                     op.m_reentry = label();
-                    RegisterID currPatternContextReg = regT0;
-                    RegisterID newPatternContextReg = regT1;
+                    RegisterID currParenContextReg = regT0;
+                    RegisterID newParenContextReg = regT1;
 
-                    loadFromFrame(parenthesesFrameLocation + BackTrackInfoParentheses::patternContextHeadIndex(), currPatternContextReg);
-                    allocatePatternContext(newPatternContextReg);
-                    storePtr(currPatternContextReg, newPatternContextReg);
-                    storeToFrame(newPatternContextReg, parenthesesFrameLocation + BackTrackInfoParentheses::patternContextHeadIndex());
-                    savePatternContext(newPatternContextReg, regT2, term->parentheses.subpatternId, term->parentheses.lastSubpatternId, parenthesesFrameLocation);
+                    loadFromFrame(parenthesesFrameLocation + BackTrackInfoParentheses::parenContextHeadIndex(), currParenContextReg);
+                    allocateParenContext(newParenContextReg);
+                    storePtr(currParenContextReg, newParenContextReg);
+                    storeToFrame(newParenContextReg, parenthesesFrameLocation + BackTrackInfoParentheses::parenContextHeadIndex());
+                    saveParenContext(newParenContextReg, regT2, term->parentheses.subpatternId, term->parentheses.lastSubpatternId, parenthesesFrameLocation);
                     storeToFrame(index, parenthesesFrameLocation + BackTrackInfoParentheses::beginIndex());
                 }
 
@@ -2831,19 +2841,19 @@ class YarrGenerator : private MacroAssembler {
                 PatternTerm* term = op.m_term;
                 unsigned parenthesesFrameLocation = term->frameLocation;
 
-                if (term->quantityType == QuantifierGreedy) {
+                if (term->quantityType != QuantifierFixedCount) {
                     m_backtrackingState.link(this);
 
                     if (term->quantityType == QuantifierGreedy) {
-                        RegisterID currPatternContextReg = regT0;
-                        RegisterID newPatternContextReg = regT1;
+                        RegisterID currParenContextReg = regT0;
+                        RegisterID newParenContextReg = regT1;
 
-                        loadFromFrame(parenthesesFrameLocation + BackTrackInfoParentheses::patternContextHeadIndex(), currPatternContextReg);
+                        loadFromFrame(parenthesesFrameLocation + BackTrackInfoParentheses::parenContextHeadIndex(), currParenContextReg);
 
-                        restorePatternContext(currPatternContextReg, regT2, term->parentheses.subpatternId, term->parentheses.lastSubpatternId, parenthesesFrameLocation);
+                        restoreParenContext(currParenContextReg, regT2, term->parentheses.subpatternId, term->parentheses.lastSubpatternId, parenthesesFrameLocation);
 
-                        freePatternContext(currPatternContextReg, newPatternContextReg);
-                        storeToFrame(newPatternContextReg, parenthesesFrameLocation + BackTrackInfoParentheses::patternContextHeadIndex());
+                        freeParenContext(currParenContextReg, newParenContextReg);
+                        storeToFrame(newParenContextReg, parenthesesFrameLocation + BackTrackInfoParentheses::parenContextHeadIndex());
                         const RegisterID countTemporary = regT0;
                         loadFromFrame(parenthesesFrameLocation + BackTrackInfoParentheses::matchAmountIndex(), countTemporary);
                         Jump zeroLengthMatch = branchTest32(Zero, countTemporary);

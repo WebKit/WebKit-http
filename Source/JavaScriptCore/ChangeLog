@@ -1,3 +1,893 @@
+2017-12-14  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION (r225695): Repro crash on yahoo login page
+        https://bugs.webkit.org/show_bug.cgi?id=180761
+
+        Reviewed by JF Bastien.
+
+        Relanding r225695 with a fix.
+
+        The fix is that we need to save the return address for a parentheses in
+        the ParenContext because it is actually used by any immediately contained
+        alternatives.
+
+        Also did a little refactoring, changing occurances of PatternContext to
+        ParenContext since that is the name of the structure.
+
+        * runtime/RegExp.cpp:
+        (JSC::byteCodeCompilePattern):
+        (JSC::RegExp::byteCodeCompileIfNecessary):
+        (JSC::RegExp::compile):
+        (JSC::RegExp::compileMatchOnly):
+        * runtime/RegExp.h:
+        * runtime/RegExpInlines.h:
+        (JSC::RegExp::matchInline):
+        * testRegExp.cpp:
+        (parseRegExpLine):
+        (runFromFiles):
+        * yarr/Yarr.h:
+        * yarr/YarrInterpreter.cpp:
+        (JSC::Yarr::ByteCompiler::compile):
+        (JSC::Yarr::ByteCompiler::dumpDisjunction):
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::ParenContextSizes::ParenContextSizes):
+        (JSC::Yarr::YarrGenerator::ParenContextSizes::numSubpatterns):
+        (JSC::Yarr::YarrGenerator::ParenContextSizes::frameSlots):
+        (JSC::Yarr::YarrGenerator::ParenContext::sizeFor):
+        (JSC::Yarr::YarrGenerator::ParenContext::nextOffset):
+        (JSC::Yarr::YarrGenerator::ParenContext::beginOffset):
+        (JSC::Yarr::YarrGenerator::ParenContext::matchAmountOffset):
+        (JSC::Yarr::YarrGenerator::ParenContext::returnAddressOffset):
+        (JSC::Yarr::YarrGenerator::ParenContext::subpatternOffset):
+        (JSC::Yarr::YarrGenerator::ParenContext::savedFrameOffset):
+        (JSC::Yarr::YarrGenerator::initParenContextFreeList):
+        (JSC::Yarr::YarrGenerator::allocateParenContext):
+        (JSC::Yarr::YarrGenerator::freeParenContext):
+        (JSC::Yarr::YarrGenerator::saveParenContext):
+        (JSC::Yarr::YarrGenerator::restoreParenContext):
+        (JSC::Yarr::YarrGenerator::tryReadUnicodeCharImpl):
+        (JSC::Yarr::YarrGenerator::storeToFrame):
+        (JSC::Yarr::YarrGenerator::generateJITFailReturn):
+        (JSC::Yarr::YarrGenerator::clearMatches):
+        (JSC::Yarr::YarrGenerator::generate):
+        (JSC::Yarr::YarrGenerator::backtrack):
+        (JSC::Yarr::YarrGenerator::opCompileParenthesesSubpattern):
+        (JSC::Yarr::YarrGenerator::generateEnter):
+        (JSC::Yarr::YarrGenerator::generateReturn):
+        (JSC::Yarr::YarrGenerator::YarrGenerator):
+        (JSC::Yarr::YarrGenerator::compile):
+        * yarr/YarrJIT.h:
+        (JSC::Yarr::YarrCodeBlock::execute):
+        * yarr/YarrPattern.cpp:
+        (JSC::Yarr::indentForNestingLevel):
+        (JSC::Yarr::dumpUChar32):
+        (JSC::Yarr::dumpCharacterClass):
+        (JSC::Yarr::PatternTerm::dump):
+        (JSC::Yarr::YarrPattern::dumpPattern):
+        * yarr/YarrPattern.h:
+        (JSC::Yarr::PatternTerm::containsAnyCaptures):
+        (JSC::Yarr::BackTrackInfoParenthesesOnce::returnAddressIndex):
+        (JSC::Yarr::BackTrackInfoParentheses::beginIndex):
+        (JSC::Yarr::BackTrackInfoParentheses::returnAddressIndex):
+        (JSC::Yarr::BackTrackInfoParentheses::matchAmountIndex):
+        (JSC::Yarr::BackTrackInfoParentheses::parenContextHeadIndex):
+        (JSC::Yarr::BackTrackInfoAlternative::offsetIndex): Deleted.
+
+2017-12-13  Keith Miller  <keith_miller@apple.com>
+
+        JSObjects should have a mask for loading indexed properties
+        https://bugs.webkit.org/show_bug.cgi?id=180768
+
+        Reviewed by Mark Lam.
+
+        This patch adds a new member to JSObject that holds an indexing
+        mask.  The indexing mask is bitwise anded with the index used to
+        load a property.  If for whatever reason an attacker is able to
+        clobber the vectorLength of our butterfly they still won't be able
+        to read substantially past the end of the buttefly. For
+        performance reasons we don't use the indexing masking for
+        TypedArrays. Since TypedArrays are already gigacaged the risk of
+        wild reads is still restricted.
+
+        This patch is a <1% regression on Speedometer and ~3% regression
+        on JetStream in my testing.
+
+        * assembler/MacroAssembler.h:
+        (JSC::MacroAssembler::urshiftPtr):
+        * bytecode/AccessCase.cpp:
+        (JSC::AccessCase::generateImpl):
+        * dfg/DFGAbstractHeap.h:
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::emitAllocateRawObject):
+        (JSC::DFG::SpeculativeJIT::compileDoublePutByVal):
+        (JSC::DFG::SpeculativeJIT::compileNewFunctionCommon):
+        (JSC::DFG::SpeculativeJIT::compileCreateActivation):
+        (JSC::DFG::SpeculativeJIT::compileCreateDirectArguments):
+        (JSC::DFG::SpeculativeJIT::compileArraySlice):
+        (JSC::DFG::SpeculativeJIT::compileNukeStructureAndSetButterfly):
+        (JSC::DFG::SpeculativeJIT::compileNewStringObject):
+        (JSC::DFG::SpeculativeJIT::compileNewTypedArray):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::emitAllocateJSObject):
+        (JSC::DFG::SpeculativeJIT::emitAllocateJSObjectWithKnownSize):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        (JSC::DFG::SpeculativeJIT::compileAllocateNewArrayWithSize):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        (JSC::DFG::SpeculativeJIT::compileAllocateNewArrayWithSize):
+        * ftl/FTLAbstractHeap.cpp:
+        (JSC::FTL::IndexedAbstractHeap::baseIndex):
+        * ftl/FTLAbstractHeap.h:
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileAtomicsReadModifyWrite):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetByVal):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCreateActivation):
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewFunction):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCreateDirectArguments):
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewStringObject):
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewTypedArray):
+        (JSC::FTL::DFG::LowerDFGToB3::compileMaterializeNewObject):
+        (JSC::FTL::DFG::LowerDFGToB3::compileMaterializeCreateActivation):
+        (JSC::FTL::DFG::LowerDFGToB3::maskedIndex):
+        (JSC::FTL::DFG::LowerDFGToB3::computeButterflyIndexingMask):
+        (JSC::FTL::DFG::LowerDFGToB3::allocateObject):
+        (JSC::FTL::DFG::LowerDFGToB3::allocateVariableSizedObject):
+        (JSC::FTL::DFG::LowerDFGToB3::allocateJSArray):
+        (JSC::FTL::DFG::LowerDFGToB3::pointerIntoTypedArray):
+        * ftl/FTLOutput.h:
+        (JSC::FTL::Output::baseIndex):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::emitComputeButterflyIndexingMask):
+        (JSC::AssemblyHelpers::nukeStructureAndStoreButterfly):
+        (JSC::AssemblyHelpers::emitAllocateJSObject):
+        (JSC::AssemblyHelpers::emitAllocateJSObjectWithKnownSize):
+        (JSC::AssemblyHelpers::emitAllocateVariableSizedJSObject):
+        (JSC::AssemblyHelpers::emitAllocateDestructibleObject):
+        (JSC::AssemblyHelpers::storeButterfly): Deleted.
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_new_object):
+        (JSC::JIT::emit_op_create_this):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_new_object):
+        (JSC::JIT::emit_op_create_this):
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emitDoubleLoad):
+        (JSC::JIT::emitContiguousLoad):
+        (JSC::JIT::emitArrayStorageLoad):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/ArrayStorage.h:
+        (JSC::ArrayStorage::availableVectorLength):
+        * runtime/Butterfly.h:
+        (JSC::ContiguousData::ContiguousData):
+        (JSC::ContiguousData::at const):
+        (JSC::ContiguousData::at):
+        (JSC::Butterfly::publicLength const):
+        (JSC::Butterfly::vectorLength const):
+        (JSC::Butterfly::computeIndexingMaskForVectorLength):
+        (JSC::Butterfly::computeIndexingMask):
+        (JSC::Butterfly::contiguousInt32):
+        (JSC::ContiguousData::operator[] const): Deleted.
+        (JSC::ContiguousData::operator[]): Deleted.
+        (JSC::Butterfly::publicLength): Deleted.
+        (JSC::Butterfly::vectorLength): Deleted.
+        * runtime/ButterflyInlines.h:
+        (JSC::ContiguousData<T>::at const):
+        (JSC::ContiguousData<T>::at):
+        * runtime/ClonedArguments.cpp:
+        (JSC::ClonedArguments::createEmpty):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::tryCreateUninitializedRestricted):
+        (JSC::JSArray::appendMemcpy):
+        (JSC::JSArray::setLength):
+        (JSC::JSArray::pop):
+        (JSC::JSArray::fastSlice):
+        (JSC::JSArray::shiftCountWithArrayStorage):
+        (JSC::JSArray::shiftCountWithAnyIndexingType):
+        (JSC::JSArray::unshiftCountWithAnyIndexingType):
+        (JSC::JSArray::fillArgList):
+        (JSC::JSArray::copyToArguments):
+        * runtime/JSArrayBufferView.cpp:
+        (JSC::JSArrayBufferView::JSArrayBufferView):
+        * runtime/JSArrayInlines.h:
+        (JSC::JSArray::pushInline):
+        * runtime/JSFixedArray.h:
+        (JSC::JSFixedArray::createFromArray):
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::slowDownAndWasteMemory):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::getOwnPropertySlotByIndex):
+        (JSC::JSObject::putByIndex):
+        (JSC::JSObject::createInitialInt32):
+        (JSC::JSObject::createInitialDouble):
+        (JSC::JSObject::createInitialContiguous):
+        (JSC::JSObject::convertUndecidedToInt32):
+        (JSC::JSObject::convertUndecidedToDouble):
+        (JSC::JSObject::convertUndecidedToContiguous):
+        (JSC::JSObject::convertInt32ToDouble):
+        (JSC::JSObject::convertInt32ToArrayStorage):
+        (JSC::JSObject::convertDoubleToContiguous):
+        (JSC::JSObject::convertDoubleToArrayStorage):
+        (JSC::JSObject::convertContiguousToArrayStorage):
+        (JSC::JSObject::createInitialForValueAndSet):
+        (JSC::JSObject::deletePropertyByIndex):
+        (JSC::JSObject::getOwnPropertyNames):
+        (JSC::JSObject::putByIndexBeyondVectorLengthWithoutAttributes):
+        (JSC::JSObject::countElements):
+        (JSC::JSObject::ensureLengthSlow):
+        (JSC::JSObject::reallocateAndShrinkButterfly):
+        (JSC::JSObject::getEnumerableLength):
+        * runtime/JSObject.h:
+        (JSC::JSObject::canGetIndexQuickly):
+        (JSC::JSObject::getIndexQuickly):
+        (JSC::JSObject::tryGetIndexQuickly const):
+        (JSC::JSObject::setIndexQuickly):
+        (JSC::JSObject::initializeIndex):
+        (JSC::JSObject::initializeIndexWithoutBarrier):
+        (JSC::JSObject::butterflyIndexingMaskOffset):
+        (JSC::JSObject::butterflyIndexingMask const):
+        (JSC::JSObject::setButterflyWithIndexingMask):
+        (JSC::JSObject::setButterfly):
+        (JSC::JSObject::nukeStructureAndSetButterfly):
+        (JSC::JSObject::JSObject):
+        * runtime/RegExpMatchesArray.h:
+        (JSC::tryCreateUninitializedRegExpMatchesArray):
+        * runtime/Structure.cpp:
+        (JSC::Structure::flattenDictionaryStructure):
+
+2017-12-14  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r225799/r225887): Remove duplicate entries for JSCPoisonedPtr.h in Xcode project
+
+        Fixes the following warning during builds:
+
+            Warning: Multiple build commands for output file WebKitBuild/Release/JavaScriptCore.framework/Versions/A/PrivateHeaders/JSCPoisonedPtr.h
+
+        * JavaScriptCore.xcodeproj/project.pbxproj: Remove duplicate
+        entries for JSCPoisonedPtr.h.
+
+2017-12-14  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r225887): Build broke due to missing includes in InferredValue.h
+        <https://bugs.webkit.org/show_bug.cgi?id=180738>
+
+        * runtime/InferredValue.h: Attempt to fix build by adding
+        missing #include statements.
+
+2017-12-13  Filip Pizlo  <fpizlo@apple.com>
+
+        Octane/richards regressed by a whopping 20% because eliminateCommonSubexpressions has a weird fixpoint requirement
+        https://bugs.webkit.org/show_bug.cgi?id=180783
+
+        Reviewed by Saam Barati.
+        
+        This fixes the regression by fixpointing CSE. We need to fixpoint CSE because of this case:
+        
+            BB#1:
+                a: Load(@x)
+                b: Load(@x)
+                c: Load(@b)
+            BB#2:
+                d: Load(@b)
+            BB#3:
+                e: Load(@b)
+        
+        Lets assume that #3 loops around to #2, so to eliminate @d, we need to prove that it's redundant
+        with both @c and @e. The problem is that by the time we get to @d, the CSE state will look like
+        this:
+
+            BB#1:
+                a: Load(@x)
+                b: Load(@x)
+                c: Load(@a)
+                memoryAtTail: {@x=>@a, @a=>@c}
+            BB#2:
+                d: Load(@a) [sic]
+                memoryAtTail: {@b=>@d}
+            BB#3:
+                e: Load(@b)
+                memoryAtTail: {@b=>@e} [sic]
+        
+        Note that #3's atTail map is keyed on @b, which was the old (no longer canonical) version of @a.
+        But @d's children were already substituted, so it refers to @a. Since @a is not in #3's atTail
+        map, we don't find it and leave the redundancy.
+        
+        I think that the cleanest solution is to fixpoint. CSE is pretty cheap, so hopefully we can afford
+        this. It fixes the richards regression, since richards is super dependent on B3 CSE.
+
+        * b3/B3EliminateCommonSubexpressions.cpp: Logging.
+        * b3/B3Generate.cpp:
+        (JSC::B3::generateToAir): Fix the bug.
+        * b3/air/AirReportUsedRegisters.cpp:
+        (JSC::B3::Air::reportUsedRegisters): Logging.
+        * dfg/DFGByteCodeParser.cpp:
+        * dfg/DFGSSAConversionPhase.cpp:
+        (JSC::DFG::SSAConversionPhase::run): Don't generate EntrySwitch if we don't need it (makes IR easier to read).
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::lower): Don't generate EntrySwitch if we don't need it (makes IR easier to read).
+
+2017-12-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION: Web Inspector: Opening inspector crashes page if there are empty resources
+        https://bugs.webkit.org/show_bug.cgi?id=180787
+        <rdar://problem/35934838>
+
+        Reviewed by Brian Burg.
+
+        * inspector/ContentSearchUtilities.cpp:
+        (Inspector::ContentSearchUtilities::findMagicComment):
+        For empty / null strings just return. There is no use
+        trying to search them for a long common syntax.
+
+2017-12-13  Saam Barati  <sbarati@apple.com>
+
+        Arrow functions need their own structure because they have different properties than sloppy functions
+        https://bugs.webkit.org/show_bug.cgi?id=180779
+        <rdar://problem/35814591>
+
+        Reviewed by Mark Lam.
+
+        We were using the same structure for sloppy functions and
+        arrow functions. This broke our IC caching machinery because
+        these two types of functions actually have different properties.
+        This patch gives them different structures.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileNewFunction):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewFunction):
+        * runtime/FunctionConstructor.cpp:
+        (JSC::constructFunctionSkippingEvalEnabledCheck):
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::selectStructureForNewFuncExp):
+        (JSC::JSFunction::create):
+        * runtime/JSFunction.h:
+        * runtime/JSFunctionInlines.h:
+        (JSC::JSFunction::createWithInvalidatedReallocationWatchpoint):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::arrowFunctionStructure const):
+
+2017-12-12  Filip Pizlo  <fpizlo@apple.com>
+
+        InferredValue should use IsoSubspace
+        https://bugs.webkit.org/show_bug.cgi?id=180738
+
+        Reviewed by Keith Miller.
+        
+        This moves InferredValue into an IsoSubspace and then takes advantage of this to get rid of
+        its UnconditionalFinalizer.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/Heap.cpp:
+        (JSC::Heap::finalizeUnconditionalFinalizers):
+        * runtime/InferredValue.cpp:
+        (JSC::InferredValue::visitChildren):
+        (JSC::InferredValue::ValueCleanup::ValueCleanup): Deleted.
+        (JSC::InferredValue::ValueCleanup::~ValueCleanup): Deleted.
+        (JSC::InferredValue::ValueCleanup::finalizeUnconditionally): Deleted.
+        * runtime/InferredValue.h:
+        (JSC::InferredValue::subspaceFor):
+        * runtime/InferredValueInlines.h: Added.
+        (JSC::InferredValue::finalizeUnconditionally):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2017-12-13  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: add instrumentation for ImageBitmapRenderingContext
+        https://bugs.webkit.org/show_bug.cgi?id=180736
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/Canvas.json:
+        * inspector/scripts/codegen/generator.py:
+
+2017-12-13  Saam Barati  <sbarati@apple.com>
+
+        Take a value driven approach to how we emit structure checks in TypeCheckHoistingPhase to obviate the need for static_assert guards
+        https://bugs.webkit.org/show_bug.cgi?id=180771
+
+        Reviewed by JF Bastien.
+
+        * dfg/DFGTypeCheckHoistingPhase.cpp:
+        (JSC::DFG::TypeCheckHoistingPhase::run):
+
+2017-12-13  Saam Barati  <sbarati@apple.com>
+
+        REGRESSION(r225844): Around 850 new JSC failures on 32-bit
+        https://bugs.webkit.org/show_bug.cgi?id=180764
+
+        Unreviewed. We should only emit CheckStructureOrEmpty on 64 bit platforms.
+
+        * dfg/DFGTypeCheckHoistingPhase.cpp:
+        (JSC::DFG::TypeCheckHoistingPhase::run):
+
+2017-12-13  Michael Saboff  <msaboff@apple.com>
+
+        Unreviewed rollout of r225695. Caused a crash on yahoo login page.
+
+        That bug tracked in https://bugs.webkit.org/show_bug.cgi?id=180761.
+
+        * runtime/RegExp.cpp:
+        (JSC::RegExp::compile):
+        (JSC::RegExp::compileMatchOnly):
+        (JSC::byteCodeCompilePattern): Deleted.
+        (JSC::RegExp::byteCodeCompileIfNecessary): Deleted.
+        * runtime/RegExp.h:
+        * runtime/RegExpInlines.h:
+        (JSC::RegExp::matchInline):
+        * testRegExp.cpp:
+        (parseRegExpLine):
+        (runFromFiles):
+        * yarr/Yarr.h:
+        * yarr/YarrInterpreter.cpp:
+        (JSC::Yarr::ByteCompiler::compile):
+        (JSC::Yarr::ByteCompiler::dumpDisjunction):
+        (JSC::Yarr::ByteCompiler::emitDisjunction):
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::tryReadUnicodeCharImpl):
+        (JSC::Yarr::YarrGenerator::generate):
+        (JSC::Yarr::YarrGenerator::backtrack):
+        (JSC::Yarr::YarrGenerator::opCompileParenthesesSubpattern):
+        (JSC::Yarr::YarrGenerator::generateEnter):
+        (JSC::Yarr::YarrGenerator::generateReturn):
+        (JSC::Yarr::YarrGenerator::YarrGenerator):
+        (JSC::Yarr::YarrGenerator::compile):
+        (JSC::Yarr::YarrGenerator::ParenContextSizes::ParenContextSizes): Deleted.
+        (JSC::Yarr::YarrGenerator::ParenContextSizes::numSubpatterns): Deleted.
+        (JSC::Yarr::YarrGenerator::ParenContextSizes::frameSlots): Deleted.
+        (JSC::Yarr::YarrGenerator::ParenContext::sizeFor): Deleted.
+        (JSC::Yarr::YarrGenerator::ParenContext::nextOffset): Deleted.
+        (JSC::Yarr::YarrGenerator::ParenContext::beginOffset): Deleted.
+        (JSC::Yarr::YarrGenerator::ParenContext::matchAmountOffset): Deleted.
+        (JSC::Yarr::YarrGenerator::ParenContext::subpatternOffset): Deleted.
+        (JSC::Yarr::YarrGenerator::ParenContext::savedFrameOffset): Deleted.
+        (JSC::Yarr::YarrGenerator::initParenContextFreeList): Deleted.
+        (JSC::Yarr::YarrGenerator::allocatePatternContext): Deleted.
+        (JSC::Yarr::YarrGenerator::freePatternContext): Deleted.
+        (JSC::Yarr::YarrGenerator::savePatternContext): Deleted.
+        (JSC::Yarr::YarrGenerator::restorePatternContext): Deleted.
+        (JSC::Yarr::YarrGenerator::generateJITFailReturn): Deleted.
+        (JSC::Yarr::YarrGenerator::clearMatches): Deleted.
+        * yarr/YarrJIT.h:
+        (JSC::Yarr::YarrCodeBlock::execute):
+        * yarr/YarrPattern.cpp:
+        (JSC::Yarr::indentForNestingLevel):
+        (JSC::Yarr::dumpUChar32):
+        (JSC::Yarr::PatternTerm::dump):
+        (JSC::Yarr::YarrPattern::dumpPattern):
+        (JSC::Yarr::dumpCharacterClass): Deleted.
+        * yarr/YarrPattern.h:
+        (JSC::Yarr::BackTrackInfoAlternative::offsetIndex):
+        (JSC::Yarr::BackTrackInfoParenthesesOnce::beginIndex):
+        (JSC::Yarr::PatternTerm::containsAnyCaptures): Deleted.
+        (JSC::Yarr::BackTrackInfoParenthesesOnce::returnAddressIndex): Deleted.
+        (JSC::Yarr::BackTrackInfoParentheses::beginIndex): Deleted.
+        (JSC::Yarr::BackTrackInfoParentheses::returnAddressIndex): Deleted.
+        (JSC::Yarr::BackTrackInfoParentheses::matchAmountIndex): Deleted.
+        (JSC::Yarr::BackTrackInfoParentheses::patternContextHeadIndex): Deleted.
+
+2017-12-13  Mark Lam  <mark.lam@apple.com>
+
+        Fill out some Poisoned APIs, fix some bugs, and add some tests.
+        https://bugs.webkit.org/show_bug.cgi?id=180724
+        <rdar://problem/36006884>
+
+        Reviewed by JF Bastien.
+
+        * runtime/StructureTransitionTable.h:
+
+2017-12-13  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Breking tests on Debug build and 32-bits due to missing Exception check
+        https://bugs.webkit.org/show_bug.cgi?id=180746
+
+        Reviewed by Saam Barati.
+
+        We have some uncatched exceptions that could happen due to OOM into
+        JSBigInt::allocateFor and JSBigInt::toStringGeneric. This patching is
+        catching such exceptions properly.
+
+        * runtime/JSBigInt.cpp:
+        (JSC::JSBigInt::allocateFor):
+        (JSC::JSBigInt::parseInt):
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::toStringSlowCase const):
+
+2017-12-13  Saam Barati  <sbarati@apple.com>
+
+        Fix how JSFunction handles "caller" and "arguments" for functions that don't have those properties
+        https://bugs.webkit.org/show_bug.cgi?id=163579
+        <rdar://problem/35455798>
+
+        Reviewed by Mark Lam.
+
+        Some functions in JavaScript do not have the "caller" and "arguments" properties.
+        For example, strict functions do not. When reading our code that dealt with these
+        types of functions, it was simply all wrong. We were doing weird things depending
+        on the method table hook. This patch fixes this by doing what we should've been
+        doing all along: when the JSFunction does not own the "caller"/"arguments" property,
+        it should defer to its base class implementation for the various method table hooks.
+
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::put):
+        (JSC::JSFunction::deleteProperty):
+        (JSC::JSFunction::defineOwnProperty):
+
+2017-12-13  Saam Barati  <sbarati@apple.com>
+
+        TypeCheckHoistingPhase needs to emit a CheckStructureOrEmpty if it's doing it for |this|
+        https://bugs.webkit.org/show_bug.cgi?id=180734
+        <rdar://problem/35640547>
+
+        Reviewed by Yusuke Suzuki.
+
+        The |this| value may be TDZ. If type check hoisting phase
+        hoists a CheckStructure to it, it will crash. This patch
+        makes it so we emit CheckStructureOrEmpty for |this|.
+
+        * dfg/DFGTypeCheckHoistingPhase.cpp:
+        (JSC::DFG::TypeCheckHoistingPhase::run):
+
+2017-12-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Optimize Object.assign by single transition acceleration
+        https://bugs.webkit.org/show_bug.cgi?id=180644
+
+        Reviewed by Saam Barati.
+
+        Handling single transition is critical. Since this get() function is only used
+        in Structure.cpp's 2 functions and it is quite small, we can annotate `inline`
+        to accelerate it.
+
+        This improves SixSpeed/object-assign.es6 by 2.8%.
+
+                                    baseline                  patched
+
+        object-assign.es6      382.3548+-8.0461          371.6496+-5.7439          might be 1.0288x faster
+
+        * runtime/Structure.cpp:
+        (JSC::StructureTransitionTable::get const):
+
+2017-12-12  Filip Pizlo  <fpizlo@apple.com>
+
+        Structure, StructureRareData, and PropertyTable should be in IsoSubspaces
+        https://bugs.webkit.org/show_bug.cgi?id=180732
+
+        Rubber stamped by Mark Lam.
+        
+        We should eventually move all fixed-size cells into IsoSubspaces. I don't know if they are
+        scalable enough to support that, so we should do it carefully.
+
+        * heap/MarkedSpace.cpp:
+        * runtime/PropertyMapHashTable.h:
+        * runtime/Structure.h:
+        * runtime/StructureRareData.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2017-12-12  Saam Barati  <sbarati@apple.com>
+
+        We need to model effects of Spread(@PhantomCreateRest) in Clobberize/PreciseLocalClobberize
+        https://bugs.webkit.org/show_bug.cgi?id=180725
+        <rdar://problem/35970511>
+
+        Reviewed by Michael Saboff.
+
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGPreciseLocalClobberize.h:
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::readTop):
+
+2017-12-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Implement optimized WeakMap and WeakSet
+        https://bugs.webkit.org/show_bug.cgi?id=179929
+
+        Reviewed by Saam Barati.
+
+        This patch introduces WeakMapImpl to optimize WeakMap and WeakSet.
+        This is similar to HashMapImpl. But,
+
+        1. WeakMapImpl's bucket is not allocated in GC heap since WeakMap
+        do not need to have iterators.
+
+        2. WeakMapImpl's buffer is allocated in JSValue Gigacage instead
+        of auxiliary buffer. This is because we would like to allocate buffer
+        when finalizing GC. At that time, WeakMapImpl prunes dead entries and
+        shrink it if necessary. However, allocating from the GC heap during
+        finalization is not allowed.
+
+        In particular, (2) is important since it ensures any WeakMap operations
+        do not cause GC. Since GC may collect dead keys in WeakMap, rehash WeakMap,
+        and reallocate/change WeakMap's buffer, ensuring that any WeakMap operations
+        do not cause GC makes our implementation simple. To ensure this, we place
+        DisallowGC for each WeakMap's interface.
+
+        In DFG, we introduce WeakMapGet and ExtractValueFromWeakMapGet nodes.
+        WeakMapGet looks up entry in WeakMapImpl and returns value. If it is
+        WeakMap, it returns value. And it returns key if it is WeakSet. If it
+        does not find a corresponding entry, it returns JSEmpty.
+        ExtractValueFromWeakMapGet converts JSEmpty to JSUndefined.
+
+        This patch improves WeakMap and WeakSet operations.
+
+                                     baseline                  patched
+
+            weak-set-key        240.6932+-10.4923    ^    148.7606+-6.1784        ^ definitely 1.6180x faster
+            weak-map-key        174.3176+-8.2680     ^    151.7053+-6.8723        ^ definitely 1.1491x faster
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * dfg/DFGAbstractHeap.h:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasHeapPrediction):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileExtractValueFromWeakMapGet):
+        (JSC::DFG::SpeculativeJIT::compileWeakMapGet):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileExtractValueFromWeakMapGet):
+        (JSC::FTL::DFG::LowerDFGToB3::compileWeakMapGet):
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::weakMapEntries):
+        (Inspector::JSInjectedScriptHost::weakSetEntries):
+        Existing code is incorrect. They can run GC and break WeakMap's iterator.
+        We introduce takeSnapshot function to WeakMapImpl, which retrieves live
+        entries without causing any GC.
+
+        * runtime/HashMapImpl.h:
+        (JSC::shouldShrink):
+        (JSC::shouldRehashAfterAdd):
+        (JSC::nextCapacity):
+        (JSC::HashMapImpl::shouldRehashAfterAdd const):
+        (JSC::HashMapImpl::shouldShrink const):
+        (JSC::HashMapImpl::rehash):
+        (JSC::WeakMapHash::hash): Deleted.
+        (JSC::WeakMapHash::equal): Deleted.
+        * runtime/Intrinsic.cpp:
+        (JSC::intrinsicName):
+        * runtime/Intrinsic.h:
+        * runtime/JSWeakMap.cpp:
+        * runtime/JSWeakMap.h:
+        * runtime/JSWeakSet.cpp:
+        * runtime/JSWeakSet.h:
+        * runtime/VM.cpp:
+        * runtime/WeakGCMap.h:
+        (JSC::WeakGCMap::forEach): Deleted.
+        * runtime/WeakMapBase.cpp: Removed.
+        * runtime/WeakMapBase.h: Removed.
+        * runtime/WeakMapConstructor.cpp:
+        (JSC::constructWeakMap):
+        * runtime/WeakMapImpl.cpp: Added.
+        (JSC::WeakMapImpl<WeakMapBucket>::destroy):
+        (JSC::WeakMapImpl<WeakMapBucket>::visitChildren):
+        (JSC::WeakMapImpl<WeakMapBucket>::estimatedSize):
+        (JSC::WeakMapImpl<WeakMapBucket<WeakMapBucketDataKey>>::visitWeakReferences):
+        (JSC::WeakMapImpl<WeakMapBucket<WeakMapBucketDataKeyValue>>::visitWeakReferences):
+        (JSC::WeakMapImpl<WeakMapBucket>::finalizeUnconditionally):
+        (JSC::WeakMapImpl<WeakMapBucket<WeakMapBucketDataKey>>::takeSnapshot):
+        (JSC::WeakMapImpl<WeakMapBucket<WeakMapBucketDataKeyValue>>::takeSnapshot):
+        * runtime/WeakMapImpl.h: Added.
+        (JSC::jsWeakMapHash):
+        (JSC::nextCapacityAfterRemoveBatching):
+        (JSC::WeakMapBucket::setKey):
+        (JSC::WeakMapBucket::setValue):
+        (JSC::WeakMapBucket::key const):
+        (JSC::WeakMapBucket::value const):
+        (JSC::WeakMapBucket::copyFrom):
+        (JSC::WeakMapBucket::offsetOfKey):
+        (JSC::WeakMapBucket::offsetOfValue):
+        (JSC::WeakMapBucket::extractValue):
+        (JSC::WeakMapBucket::isEmpty):
+        (JSC::WeakMapBucket::deletedKey):
+        (JSC::WeakMapBucket::isDeleted):
+        (JSC::WeakMapBucket::makeDeleted):
+        (JSC::WeakMapBucket::visitAggregate):
+        (JSC::WeakMapBucket::clearValue):
+        (JSC::WeakMapBuffer::allocationSize):
+        (JSC::WeakMapBuffer::buffer const):
+        (JSC::WeakMapBuffer::create):
+        (JSC::WeakMapBuffer::reset):
+        (JSC::WeakMapImpl::WeakMapImpl):
+        (JSC::WeakMapImpl::finishCreation):
+        (JSC::WeakMapImpl::get):
+        (JSC::WeakMapImpl::has):
+        (JSC::WeakMapImpl::add):
+        (JSC::WeakMapImpl::remove):
+        (JSC::WeakMapImpl::size const):
+        (JSC::WeakMapImpl::offsetOfBuffer):
+        (JSC::WeakMapImpl::offsetOfCapacity):
+        (JSC::WeakMapImpl::findBucket):
+        (JSC::WeakMapImpl::buffer const):
+        (JSC::WeakMapImpl::forEach):
+        (JSC::WeakMapImpl::shouldRehashAfterAdd const):
+        (JSC::WeakMapImpl::shouldShrink const):
+        (JSC::WeakMapImpl::canUseBucket):
+        (JSC::WeakMapImpl::addInternal):
+        (JSC::WeakMapImpl::findBucketAlreadyHashed):
+        (JSC::WeakMapImpl::rehash):
+        (JSC::WeakMapImpl::checkConsistency const):
+        (JSC::WeakMapImpl::makeAndSetNewBuffer):
+        (JSC::WeakMapImpl::assertBufferIsEmpty const):
+        (JSC::WeakMapImpl::DeadKeyCleaner::target):
+        * runtime/WeakMapPrototype.cpp:
+        (JSC::WeakMapPrototype::finishCreation):
+        (JSC::protoFuncWeakMapGet):
+        (JSC::protoFuncWeakMapHas):
+        * runtime/WeakSetConstructor.cpp:
+        (JSC::constructWeakSet):
+        * runtime/WeakSetPrototype.cpp:
+        (JSC::WeakSetPrototype::finishCreation):
+        (JSC::protoFuncWeakSetHas):
+        (JSC::protoFuncWeakSetAdd):
+
+2017-12-11  Filip Pizlo  <fpizlo@apple.com>
+
+        It should be possible to flag a cell for unconditional finalization
+        https://bugs.webkit.org/show_bug.cgi?id=180636
+
+        Reviewed by Saam Barati.
+        
+        UnconditionalFinalizers were annoying - you had to allocate them and you had to manage a
+        global linked list - but they had some nice properties:
+        
+        - You only did the hardest work (creating the UnconditionalFinalizer) on first GC where you
+          survived and needed it.
+            -> Just needing it wasn't enough.
+            -> Just surviving wasn't enough.
+        
+        The new API based on IsoSubspaces meant that just surviving was enough to cause unconditional
+        finalizer logic to be invoked. I think that's not great. InferredType got around this by
+        making InferredStructure a cell, but this was a gross hack. For one, it meant that
+        InferredStructure would survive during the GC in which its finalizer obviated the need for its
+        existence. It's not really an idiom I want us to repeat because it sounds like the sort of
+        thing that turns out to be subtly broken.
+        
+        We really need to have a way of indicating when you have entered into the state that requires
+        your unconditional finalizer to be invoked. Basically, we want to be able to track the set of
+        objects that need unconditional finalizers. Only the subset of that set that overlaps with the
+        set of marked objects needs to be accurate. The easiest way to do this is a hierarchy of
+        bitvectors: one to say which MarkedBlocks have objects that have unconditional finalizers, and
+        another level to say which atoms within a MarkedBlock have unconditional finalizers.
+        
+        This change introduces IsoCellSet, which couples itself to the MarkedAllocator of some
+        IsoSubspace to allow maintaining a set of objects (well, cells - you could do this with
+        auxiliaries) that belong to that IsoSubspace. It'll have undefined behavior if you try to
+        add/remove/contains an object that isn't in that IsoSubspace. For objects in that subspace,
+        you can add/remove/contains and forEachMarkedCell. The cost of each IsoCellSet is at worst
+        about 0.8% increase in size to every object in the subspace that the set is attached to. So,
+        it makes sense to have a handful per subspace max. This change only needs one per subspace,
+        but you could imagine more if we do this for WeakReferenceHarvester.
+        
+        To absolutely minimize the possibility that this incurs costs, the add/remove/contains
+        functions can be used from any thread so long as forEachMarkedCell isn't running. This means
+        that InferredType only needs to add itself to the set during visitChildren. Thus, it needs to
+        both survive and need it for the hardest work to take place. The work of adding does involve
+        a gnarly load chain that ends in a CAS: load block handle from block, load index, load
+        segment, load bitvector, load bit -> if not set, then CAS. That's five dependent loads!
+        However, it's perfect for running in parallel since the only write operations are to widely
+        dispersed cache lines that contain the bits underlying the set.
+        
+        The best part is how forEachMarkedCell works. That skips blocks that don't have any objects
+        that need unconditional finalizers, and only touches the memory of marked objects that have
+        the unconditional finalizer bit set. It will walk those objects in roughly address order. I
+        previously found that this speeds up walking over a lot of objects when I made similar changes
+        for DOM GC (calling visitAdditionalChildren via forEachMarkedCell rather than by walking a
+        HashSet).
+        
+        This change makes InferredStructure be a malloc object again, but now it's in an IsoHeap.
+        
+        My expectation for this change is that it's perf-neutral. Long-term, it gives us a path
+        forward for eliminating UnconditionalFinalizer and WeakReferenceHarvester while using
+        IsoSubspace in more places.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * heap/AtomIndices.h: Added.
+        (JSC::AtomIndices::AtomIndices):
+        * heap/Heap.cpp:
+        (JSC::Heap::finalizeUnconditionalFinalizers):
+        * heap/Heap.h:
+        * heap/IsoCellSet.cpp: Added.
+        (JSC::IsoCellSet::IsoCellSet):
+        (JSC::IsoCellSet::~IsoCellSet):
+        (JSC::IsoCellSet::addSlow):
+        (JSC::IsoCellSet::didResizeBits):
+        (JSC::IsoCellSet::didRemoveBlock):
+        (JSC::IsoCellSet::sweepToFreeList):
+        * heap/IsoCellSet.h: Added.
+        * heap/IsoCellSetInlines.h: Added.
+        (JSC::IsoCellSet::add):
+        (JSC::IsoCellSet::remove):
+        (JSC::IsoCellSet::contains const):
+        (JSC::IsoCellSet::forEachMarkedCell):
+        * heap/IsoSubspace.cpp:
+        (JSC::IsoSubspace::didResizeBits):
+        (JSC::IsoSubspace::didRemoveBlock):
+        (JSC::IsoSubspace::didBeginSweepingToFreeList):
+        * heap/IsoSubspace.h:
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::addBlock):
+        (JSC::MarkedAllocator::removeBlock):
+        * heap/MarkedAllocator.h:
+        * heap/MarkedAllocatorInlines.h:
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::Handle::sweep):
+        (JSC::MarkedBlock::Handle::isEmpty): Deleted.
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::marks const):
+        (JSC::MarkedBlock::Handle::newlyAllocated const):
+        * heap/MarkedBlockInlines.h:
+        (JSC::MarkedBlock::Handle::isAllocated):
+        (JSC::MarkedBlock::Handle::isEmpty):
+        (JSC::MarkedBlock::Handle::emptyMode):
+        (JSC::MarkedBlock::Handle::forEachMarkedCell):
+        * heap/Subspace.cpp:
+        (JSC::Subspace::didResizeBits):
+        (JSC::Subspace::didRemoveBlock):
+        (JSC::Subspace::didBeginSweepingToFreeList):
+        * heap/Subspace.h:
+        * heap/SubspaceInlines.h:
+        (JSC::Subspace::forEachMarkedCell):
+        * runtime/InferredStructure.cpp:
+        (JSC::InferredStructure::InferredStructure):
+        (JSC::InferredStructure::create): Deleted.
+        (JSC::InferredStructure::destroy): Deleted.
+        (JSC::InferredStructure::createStructure): Deleted.
+        (JSC::InferredStructure::visitChildren): Deleted.
+        (JSC::InferredStructure::finalizeUnconditionally): Deleted.
+        (JSC::InferredStructure::finishCreation): Deleted.
+        * runtime/InferredStructure.h:
+        * runtime/InferredStructureWatchpoint.cpp:
+        (JSC::InferredStructureWatchpoint::fireInternal):
+        * runtime/InferredType.cpp:
+        (JSC::InferredType::visitChildren):
+        (JSC::InferredType::willStoreValueSlow):
+        (JSC::InferredType::makeTopSlow):
+        (JSC::InferredType::set):
+        (JSC::InferredType::removeStructure):
+        (JSC::InferredType::finalizeUnconditionally):
+        * runtime/InferredType.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
 2017-12-12  Saam Barati  <sbarati@apple.com>
 
         ConstantFoldingPhase rule for GetMyArgumentByVal must check for negative indices

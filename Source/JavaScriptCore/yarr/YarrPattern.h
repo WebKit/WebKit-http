@@ -613,12 +613,12 @@ private:
         uintptr_t begin;
         uintptr_t returnAddress;
         uintptr_t matchAmount;
-        uintptr_t patternContextHead;
+        uintptr_t parenContextHead;
 
         static unsigned beginIndex() { return offsetof(BackTrackInfoParentheses, begin) / sizeof(uintptr_t); }
         static unsigned returnAddressIndex() { return offsetof(BackTrackInfoParentheses, returnAddress) / sizeof(uintptr_t); }
         static unsigned matchAmountIndex() { return offsetof(BackTrackInfoParentheses, matchAmount) / sizeof(uintptr_t); }
-        static unsigned patternContextHeadIndex() { return offsetof(BackTrackInfoParentheses, patternContextHead) / sizeof(uintptr_t); }
+        static unsigned parenContextHeadIndex() { return offsetof(BackTrackInfoParentheses, parenContextHead) / sizeof(uintptr_t); }
     };
 
 } } // namespace JSC::Yarr

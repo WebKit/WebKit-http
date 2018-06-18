@@ -99,7 +99,7 @@ bool StructureTransitionTable::contains(UniquedStringImpl* rep, unsigned attribu
     return map()->get(std::make_pair(rep, attributes));
 }
 
-Structure* StructureTransitionTable::get(UniquedStringImpl* rep, unsigned attributes) const
+inline Structure* StructureTransitionTable::get(UniquedStringImpl* rep, unsigned attributes) const
 {
     if (isUsingSingleSlot()) {
         Structure* transition = singleTransition();
@@ -799,7 +799,7 @@ Structure* Structure::flattenDictionaryStructure(VM& vm, JSObject* object)
         // If the object had a Butterfly but after flattening/compacting we no longer have need of it,
         // we need to zero it out because the collector depends on the Structure to know the size for copying.
         if (!afterOutOfLineCapacity && !this->hasIndexingHeader(object))
-            object->setButterfly(vm, nullptr);
+            object->setButterflyWithIndexingMask(vm, nullptr, 0);
         // If the object was down-sized to the point where the base of the Butterfly is no longer within the 
         // first CopiedBlock::blockSize bytes, we'll get the wrong answer if we try to mask the base back to 
         // the CopiedBlock header. To prevent this case we need to memmove the Butterfly down.

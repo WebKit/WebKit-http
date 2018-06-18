@@ -60,6 +60,7 @@
 #include "ScopedArguments.h"
 #include "ScratchRegisterAllocator.h"
 #include "SuperSampler.h"
+#include "WeakMapImpl.h"
 #include <wtf/BitVector.h>
 #include <wtf/Box.h>
 #include <wtf/MathExtras.h>
@@ -108,7 +109,7 @@ void SpeculativeJIT::emitAllocateRawObject(GPRReg resultGPR, RegisteredStructure
     size += outOfLineCapacity * sizeof(JSValue);
 
     m_jit.move(TrustedImmPtr(0), storageGPR);
-    
+
     if (size) {
         if (MarkedAllocator* allocator = m_jit.vm()->jsValueGigacageAuxiliarySpace.allocatorForNonVirtual(size, AllocatorForMode::AllocatorIfExists)) {
             m_jit.move(TrustedImmPtr(allocator), scratchGPR);
@@ -128,7 +129,8 @@ void SpeculativeJIT::emitAllocateRawObject(GPRReg resultGPR, RegisteredStructure
     MarkedAllocator* allocatorPtr = subspaceFor<JSFinalObject>(*m_jit.vm())->allocatorForNonVirtual(allocationSize, AllocatorForMode::AllocatorIfExists);
     if (allocatorPtr) {
         m_jit.move(TrustedImmPtr(allocatorPtr), scratchGPR);
-        emitAllocateJSObject(resultGPR, allocatorPtr, scratchGPR, TrustedImmPtr(structure), storageGPR, scratch2GPR, slowCases);
+        uint32_t mask = Butterfly::computeIndexingMaskForVectorLength(vectorLength);
+        emitAllocateJSObject(resultGPR, allocatorPtr, scratchGPR, TrustedImmPtr(structure), storageGPR, TrustedImm32(mask), scratch2GPR, slowCases);
         m_jit.emitInitializeInlineStorage(resultGPR, structure->inlineCapacity());
     } else
         slowCases.append(m_jit.jump());
@@ -2082,7 +2084,7 @@ void SpeculativeJIT::compileDoublePutByVal(Node* node, SpeculateCellOperand& bas
         
         m_jit.add32(TrustedImm32(1), propertyReg, temporaryReg);
         m_jit.store32(temporaryReg, MacroAssembler::Address(storageReg, Butterfly::offsetOfPublicLength()));
-        
+
         inBounds.link(&m_jit);
     }
     
@@ -6739,9 +6741,12 @@ void SpeculativeJIT::compileCheckStringIdent(Node* node)
     noResult(node);
 }
 
-template <typename ClassType> void SpeculativeJIT::compileNewFunctionCommon(GPRReg resultGPR, RegisteredStructure structure, GPRReg scratch1GPR, GPRReg scratch2GPR, GPRReg scopeGPR, MacroAssembler::JumpList& slowPath, size_t size, FunctionExecutable* executable, ptrdiff_t offsetOfScopeChain, ptrdiff_t offsetOfExecutable, ptrdiff_t offsetOfRareData)
+template <typename ClassType>
+void SpeculativeJIT::compileNewFunctionCommon(GPRReg resultGPR, RegisteredStructure structure, GPRReg scratch1GPR, GPRReg scratch2GPR, GPRReg scopeGPR, MacroAssembler::JumpList& slowPath, size_t size, FunctionExecutable* executable, ptrdiff_t offsetOfScopeChain, ptrdiff_t offsetOfExecutable, ptrdiff_t offsetOfRareData)
 {
-    emitAllocateJSObjectWithKnownSize<ClassType>(resultGPR, TrustedImmPtr(structure), TrustedImmPtr(0), scratch1GPR, scratch2GPR, slowPath, size);
+    auto butterfly = TrustedImmPtr(nullptr);
+    auto mask = TrustedImm32(0);
+    emitAllocateJSObjectWithKnownSize<ClassType>(resultGPR, TrustedImmPtr(structure), butterfly, mask, scratch1GPR, scratch2GPR, slowPath, size);
     
     m_jit.storePtr(scopeGPR, JITCompiler::Address(resultGPR, offsetOfScopeChain));
     m_jit.storePtr(TrustedImmPtr::weakPointer(m_jit.graph(), executable), JITCompiler::Address(resultGPR, offsetOfExecutable));
@@ -6781,17 +6786,16 @@ void SpeculativeJIT::compileNewFunction(Node* node)
 
     RegisteredStructure structure = m_jit.graph().registerStructure(
         [&] () {
+            JSGlobalObject* globalObject = m_jit.graph().globalObjectFor(node->origin.semantic);
             switch (nodeType) {
             case NewGeneratorFunction:
-                return m_jit.graph().globalObjectFor(node->origin.semantic)->generatorFunctionStructure();
+                return globalObject->generatorFunctionStructure();
             case NewAsyncFunction:
-                return m_jit.graph().globalObjectFor(node->origin.semantic)->asyncFunctionStructure();
+                return globalObject->asyncFunctionStructure();
             case NewAsyncGeneratorFunction:
-                return m_jit.graph().globalObjectFor(node->origin.semantic)->asyncGeneratorFunctionStructure();
+                return globalObject->asyncGeneratorFunctionStructure();
             case NewFunction:
-                if (node->castOperand<FunctionExecutable*>()->isStrictMode())
-                    return m_jit.graph().globalObjectFor(node->origin.semantic)->strictFunctionStructure();
-                return m_jit.graph().globalObjectFor(node->origin.semantic)->sloppyFunctionStructure();
+                return JSFunction::selectStructureForNewFuncExp(globalObject, node->castOperand<FunctionExecutable*>());
             default:
                 RELEASE_ASSERT_NOT_REACHED();
             }
@@ -6951,8 +6955,10 @@ void SpeculativeJIT::compileCreateActivation(Node* node)
     GPRReg scratch2GPR = scratch2.gpr();
         
     JITCompiler::JumpList slowPath;
+    auto butterfly = TrustedImmPtr(nullptr);
+    auto mask = TrustedImm32(0);
     emitAllocateJSObjectWithKnownSize<JSLexicalEnvironment>(
-        resultGPR, TrustedImmPtr(structure), TrustedImmPtr(0), scratch1GPR, scratch2GPR,
+        resultGPR, TrustedImmPtr(structure), butterfly, mask, scratch1GPR, scratch2GPR,
         slowPath, JSLexicalEnvironment::allocationSize(table));
         
     // Don't need a memory barriers since we just fast-created the activation, so the
@@ -7029,8 +7035,10 @@ void SpeculativeJIT::compileCreateDirectArguments(Node* node)
     // size statically.
     JITCompiler::JumpList slowPath;
     if (lengthIsKnown) {
+        auto butterfly = TrustedImmPtr(nullptr);
+        auto mask = TrustedImm32(0);
         emitAllocateJSObjectWithKnownSize<DirectArguments>(
-            resultGPR, TrustedImmPtr(structure), TrustedImmPtr(0), scratch1GPR, scratch2GPR,
+            resultGPR, TrustedImmPtr(structure), butterfly, mask, scratch1GPR, scratch2GPR,
             slowPath, DirectArguments::allocationSize(std::max(knownLength, minCapacity)));
             
         m_jit.store32(
@@ -7687,23 +7695,28 @@ void SpeculativeJIT::compileArraySlice(Node* node)
 
         done.link(&m_jit);
 
-        {
+        MacroAssembler::JumpList slowCases;
+        m_jit.move(TrustedImmPtr(0), storageResultGPR);
+        // X86 only has 6 GP registers, which is not enough for the fast case here. At least without custom code, which is not currently worth the extra code maintenance.
+        if (!isX86() || isX86_64()) {
             GPRTemporary scratch(this);
             GPRTemporary scratch2(this);
+            GPRTemporary indexingMask(this);
             GPRReg scratchGPR = scratch.gpr();
             GPRReg scratch2GPR = scratch2.gpr();
-
-            MacroAssembler::JumpList slowCases;
-            m_jit.move(TrustedImmPtr(0), storageResultGPR);
+            GPRReg indexingMaskGPR = indexingMask.gpr();
 
             emitAllocateButterfly(storageResultGPR, sizeGPR, scratchGPR, scratch2GPR, resultGPR, slowCases);
             emitInitializeButterfly(storageResultGPR, sizeGPR, emptyValueRegs, scratchGPR);
-            emitAllocateJSObject<JSArray>(resultGPR, tempValue, storageResultGPR, scratchGPR, scratch2GPR, slowCases);
+            m_jit.emitComputeButterflyIndexingMask(sizeGPR, scratch2GPR, indexingMaskGPR);
+            emitAllocateJSObject<JSArray>(resultGPR, tempValue, storageResultGPR, indexingMaskGPR, scratchGPR, scratch2GPR, slowCases);
             m_jit.mutatorFence(*m_jit.vm());
-
-            addSlowPathGenerator(std::make_unique<CallArrayAllocatorWithVariableStructureVariableSizeSlowPathGenerator>(
-                slowCases, this, operationNewArrayWithSize, resultGPR, tempValue, sizeGPR, storageResultGPR));
+        } else {
+            slowCases.append(m_jit.jump());
         }
+
+        addSlowPathGenerator(std::make_unique<CallArrayAllocatorWithVariableStructureVariableSizeSlowPathGenerator>(
+            slowCases, this, operationNewArrayWithSize, resultGPR, tempValue, sizeGPR, storageResultGPR));
     }
 
     GPRTemporary temp4(this);
@@ -8524,10 +8537,10 @@ void SpeculativeJIT::compileNukeStructureAndSetButterfly(Node* node)
 {
     SpeculateCellOperand base(this, node->child1());
     StorageOperand storage(this, node->child2());
-    
+
     GPRReg baseGPR = base.gpr();
     GPRReg storageGPR = storage.gpr();
-    
+
     m_jit.nukeStructureAndStoreButterfly(*m_jit.vm(), storageGPR, baseGPR);
     
     noResult(node);
@@ -8997,9 +9010,11 @@ void SpeculativeJIT::compileNewStringObject(Node* node)
     GPRReg scratch2GPR = scratch2.gpr();
     
     JITCompiler::JumpList slowPath;
-    
+
+    auto butterfly = TrustedImmPtr(nullptr);
+    auto mask = TrustedImm32(0);
     emitAllocateJSObject<StringObject>(
-        resultGPR, TrustedImmPtr(node->structure()), TrustedImmPtr(0), scratch1GPR, scratch2GPR,
+        resultGPR, TrustedImmPtr(node->structure()), butterfly, mask, scratch1GPR, scratch2GPR,
         slowPath);
     
     m_jit.storePtr(
@@ -9081,9 +9096,11 @@ void SpeculativeJIT::compileNewTypedArray(Node* node)
         MacroAssembler::BaseIndex(storageGPR, scratchGPR, MacroAssembler::TimesFour));
     m_jit.branchTest32(MacroAssembler::NonZero, scratchGPR).linkTo(loop, &m_jit);
     done.link(&m_jit);
-    
+
+    auto butterfly = TrustedImmPtr(nullptr);
+    auto mask = TrustedImm32(0);
     emitAllocateJSObject<JSArrayBufferView>(
-        resultGPR, TrustedImmPtr(structure), TrustedImmPtr(0), scratchGPR, scratchGPR2,
+        resultGPR, TrustedImmPtr(structure), butterfly, mask, scratchGPR, scratchGPR2,
         slowCases);
     
     m_jit.storePtr(
@@ -10876,6 +10893,33 @@ void SpeculativeJIT::compileLoadValueFromMapBucket(Node* node)
     jsValueResult(resultRegs, node);
 }
 
+void SpeculativeJIT::compileExtractValueFromWeakMapGet(Node* node)
+{
+    JSValueOperand value(this, node->child1());
+    JSValueRegsTemporary result(this, Reuse, value);
+
+    JSValueRegs valueRegs = value.jsValueRegs();
+    JSValueRegs resultRegs = result.regs();
+
+#if USE(JSVALUE64)
+    m_jit.moveValueRegs(valueRegs, resultRegs);
+    auto done = m_jit.branchTestPtr(CCallHelpers::NonZero, resultRegs.payloadGPR());
+    m_jit.moveValue(jsUndefined(), resultRegs);
+    done.link(&m_jit);
+#else
+    auto isEmpty = m_jit.branch32(JITCompiler::Equal, valueRegs.tagGPR(), TrustedImm32(JSValue::EmptyValueTag));
+    m_jit.moveValueRegs(valueRegs, resultRegs);
+    auto done = m_jit.jump();
+
+    isEmpty.link(&m_jit);
+    m_jit.moveValue(jsUndefined(), resultRegs);
+
+    done.link(&m_jit);
+#endif
+
+    jsValueResult(resultRegs, node, DataFormatJS);
+}
+
 void SpeculativeJIT::compileThrow(Node* node)
 {
     JSValueOperand value(this, node->child1());
@@ -10940,21 +10984,75 @@ void SpeculativeJIT::compileMapSet(Node* node)
 void SpeculativeJIT::compileWeakMapGet(Node* node)
 {
     SpeculateCellOperand weakMap(this, node->child1());
-    SpeculateCellOperand object(this, node->child2());
+    SpeculateCellOperand key(this, node->child2());
     SpeculateInt32Operand hash(this, node->child3());
     JSValueRegsTemporary result(this);
 
+    GPRTemporary mask(this);
+    GPRTemporary index(this);
+    GPRTemporary buffer(this);
+    GPRTemporary bucket(this);
+
     GPRReg weakMapGPR = weakMap.gpr();
-    GPRReg objectGPR = object.gpr();
+    GPRReg keyGPR = key.gpr();
     GPRReg hashGPR = hash.gpr();
+
+    GPRReg maskGPR = mask.gpr();
+    GPRReg indexGPR = index.gpr();
+    GPRReg bufferGPR = buffer.gpr();
+    GPRReg bucketGPR = bucket.gpr();
     JSValueRegs resultRegs = result.regs();
 
-    speculateWeakMapObject(node->child1(), weakMapGPR);
-    speculateObject(node->child2(), objectGPR);
+    if (node->child1().useKind() == WeakMapObjectUse)
+        speculateWeakMapObject(node->child1(), weakMapGPR);
+    else
+        speculateWeakSetObject(node->child1(), weakMapGPR);
+    speculateObject(node->child2(), keyGPR);
 
-    flushRegisters();
-    callOperation(operationWeakMapGet, resultRegs, weakMapGPR, objectGPR, hashGPR);
-    // No exception check here since operationWeakMapGet never throws an exception.
+    ASSERT(WeakMapImpl<WeakMapBucket<WeakMapBucketDataKey>>::offsetOfCapacity() == WeakMapImpl<WeakMapBucket<WeakMapBucketDataKeyValue>>::offsetOfCapacity());
+    ASSERT(WeakMapImpl<WeakMapBucket<WeakMapBucketDataKey>>::offsetOfBuffer() == WeakMapImpl<WeakMapBucket<WeakMapBucketDataKeyValue>>::offsetOfBuffer());
+    m_jit.load32(MacroAssembler::Address(weakMapGPR, WeakMapImpl<WeakMapBucket<WeakMapBucketDataKey>>::offsetOfCapacity()), maskGPR);
+    m_jit.loadPtr(MacroAssembler::Address(weakMapGPR, WeakMapImpl<WeakMapBucket<WeakMapBucketDataKey>>::offsetOfBuffer()), bufferGPR);
+    m_jit.sub32(TrustedImm32(1), maskGPR);
+    m_jit.move(hashGPR, indexGPR);
+
+    MacroAssembler::Label loop = m_jit.label();
+
+    m_jit.and32(maskGPR, indexGPR);
+    if (node->child1().useKind() == WeakSetObjectUse) {
+        static_assert(sizeof(WeakMapBucket<WeakMapBucketDataKey>) == sizeof(void*), "");
+        m_jit.zeroExtend32ToPtr(indexGPR, bucketGPR);
+        m_jit.lshiftPtr(MacroAssembler::Imm32(sizeof(void*) == 4 ? 2 : 3), bucketGPR);
+        m_jit.addPtr(bufferGPR, bucketGPR);
+    } else {
+        ASSERT(node->child1().useKind() == WeakMapObjectUse);
+        static_assert(sizeof(WeakMapBucket<WeakMapBucketDataKeyValue>) == 16, "");
+        m_jit.zeroExtend32ToPtr(indexGPR, bucketGPR);
+        m_jit.lshiftPtr(MacroAssembler::Imm32(4), bucketGPR);
+        m_jit.addPtr(bufferGPR, bucketGPR);
+    }
+
+    m_jit.loadPtr(MacroAssembler::Address(bucketGPR, WeakMapBucket<WeakMapBucketDataKeyValue>::offsetOfKey()), resultRegs.payloadGPR());
+
+    // They're definitely the same value, we found the bucket we were looking for!
+    // The deleted key comparison is also done with this.
+    auto found = m_jit.branchPtr(MacroAssembler::Equal, resultRegs.payloadGPR(), keyGPR);
+
+    auto notPresentInTable = m_jit.branchTestPtr(MacroAssembler::Zero, resultRegs.payloadGPR());
+
+    m_jit.add32(TrustedImm32(1), indexGPR);
+    m_jit.jump().linkTo(loop, &m_jit);
+
+    notPresentInTable.link(&m_jit);
+    found.link(&m_jit);
+
+    // Empty bucket has JSEmpty value. Empty key is JSEmpty. If empty bucket is found, we can use the same path used for the case of finding a bucket.
+    if (node->child1().useKind() == WeakSetObjectUse) {
+#if USE(JSVALUE32_64)
+        m_jit.move(TrustedImm32(JSValue::CellTag), resultRegs.tagGPR());
+#endif
+    } else
+        m_jit.loadValue(MacroAssembler::Address(bucketGPR, WeakMapBucket<WeakMapBucketDataKeyValue>::offsetOfValue()), resultRegs);
 
     jsValueResult(resultRegs, node);
 }

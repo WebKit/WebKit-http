@@ -160,6 +160,7 @@
 #include "SVGNames.h"
 #include "SVGSVGElement.h"
 #include "SVGTitleElement.h"
+#include "SVGUseElement.h"
 #include "SVGZoomEvent.h"
 #include "SWClientConnection.h"
 #include "SchemeRegistry.h"
@@ -629,8 +630,9 @@ Document::~Document()
     if (hasRareData())
         clearRareData();
 
-    ASSERT(m_listsInvalidatedAtDocument.isEmpty());
-    ASSERT(m_collectionsInvalidatedAtDocument.isEmpty());
+    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(m_listsInvalidatedAtDocument.isEmpty());
+    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(m_collectionsInvalidatedAtDocument.isEmpty());
+    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(m_svgUseElements.isEmpty());
 
     for (unsigned count : m_nodeListAndCollectionCounts)
         ASSERT_UNUSED(count, !count);
@@ -1234,7 +1236,7 @@ void Document::setVisualUpdatesAllowed(ReadyState readyState)
         if (m_visualUpdatesSuppressionTimer.isActive()) {
             ASSERT(!m_visualUpdatesAllowed);
 
-            if (!view()->visualUpdatesAllowedByClient())
+            if (view() && !view()->visualUpdatesAllowedByClient())
                 return;
 
             setVisualUpdatesAllowed(true);
@@ -1272,8 +1274,8 @@ void Document::setVisualUpdatesAllowed(bool visualUpdatesAllowed)
         }
     }
 
-    if (view())
-        view()->updateCompositingLayersAfterLayout();
+    if (frameView)
+        frameView->updateCompositingLayersAfterLayout();
 
     if (RenderView* renderView = this->renderView())
         renderView->repaintViewAndCompositedLayers();
@@ -1288,7 +1290,7 @@ void Document::visualUpdatesSuppressionTimerFired()
 
     // If the client is extending the visual update suppression period explicitly, the
     // watchdog should not re-enable visual updates itself, but should wait for the client.
-    if (!view()->visualUpdatesAllowedByClient())
+    if (view() && !view()->visualUpdatesAllowedByClient())
         return;
 
     setVisualUpdatesAllowed(true);
@@ -1786,6 +1788,15 @@ void Document::resolveStyle(ResolveStyleType type)
 
     RenderView::RepaintRegionAccumulator repaintRegionAccumulator(renderView());
     AnimationUpdateBlock animationUpdateBlock(&m_frame->animation());
+
+    // FIXME: Do this update per tree scope.
+    {
+        auto elements = copyToVectorOf<RefPtr<SVGUseElement>>(m_svgUseElements);
+        // We can't clear m_svgUseElements here because updateShadowTree may end up executing arbitrary scripts
+        // which may insert new SVG use elements or remove existing ones inside sync IPC via ImageLoader::updateFromElement.
+        for (auto& element : elements)
+            element->updateShadowTree();
+    }
 
     // FIXME: We should update style on our ancestor chain before proceeding (especially for seamless),
     // however doing so currently causes several tests to crash, as Frame::setDocument calls Document::attach
@@ -5251,6 +5262,18 @@ SVGDocumentExtensions& Document::accessSVGExtensions()
     return *m_svgExtensions;
 }
 
+void Document::addSVGUseElement(SVGUseElement& element)
+{
+    auto result = m_svgUseElements.add(&element);
+    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(result.isNewEntry);
+}
+
+void Document::removeSVGUseElement(SVGUseElement& element)
+{
+    bool didRemove = m_svgUseElements.remove(&element);
+    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(didRemove);
+}
+
 bool Document::hasSVGRootNode() const
 {
     return documentElement() && documentElement()->hasTagName(SVGNames::svgTag);
@@ -7406,6 +7429,9 @@ void Document::hasStorageAccess(Ref<DeferredPromise>&& passedPromise)
 
     RefPtr<DeferredPromise> promise(WTFMove(passedPromise));
 
+    if (m_hasFrameSpecificStorageAccess)
+        promise->resolve<IDLBoolean>(true);
+    
     if (!m_frame || securityOrigin().isUnique()) {
         promise->resolve<IDLBoolean>(false);
         return;
@@ -7444,6 +7470,9 @@ void Document::requestStorageAccess(Ref<DeferredPromise>&& passedPromise)
     ASSERT(settings().storageAccessAPIEnabled());
     
     RefPtr<DeferredPromise> promise(WTFMove(passedPromise));
+    
+    if (m_hasFrameSpecificStorageAccess)
+        promise->resolve();
     
     if (!m_frame || securityOrigin().isUnique()) {
         promise->reject();
@@ -7489,16 +7518,22 @@ void Document::requestStorageAccess(Ref<DeferredPromise>&& passedPromise)
     builder.append(topHost);
     builder.appendLiteral("?");
     Page* page = this->page();
+
+    ASSERT(m_frame);
+    auto frameID = m_frame->loader().client().frameID();
+    auto pageID = m_frame->loader().client().pageID();
+
     // FIXME: Don't use runJavaScriptConfirm because it responds synchronously.
     if ((page && page->chrome().runJavaScriptConfirm(*m_frame, builder.toString())) || m_grantStorageAccessOverride) {
-        page->chrome().client().requestStorageAccess(WTFMove(iframeHost), WTFMove(topHost), [documentReference = m_weakFactory.createWeakPtr(*this), promise] (bool wasGranted) {
+        page->chrome().client().requestStorageAccess(WTFMove(iframeHost), WTFMove(topHost), frameID, pageID, [documentReference = m_weakFactory.createWeakPtr(*this), promise] (bool wasGranted) {
             Document* document = documentReference.get();
             if (!document)
                 return;
 
-            if (wasGranted)
+            if (wasGranted) {
+                document->m_hasFrameSpecificStorageAccess = true;
                 promise->resolve();
-            else
+            } else
                 promise->reject();
         });
         return;

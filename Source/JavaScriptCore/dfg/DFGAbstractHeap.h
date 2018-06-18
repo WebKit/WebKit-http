@@ -58,6 +58,7 @@ namespace JSC { namespace DFG {
     macro(JSCell_typeInfoFlags) \
     macro(JSCell_typeInfoType) \
     macro(JSObject_butterfly) \
+    macro(JSObject_butterflyMask) \
     macro(JSPropertyNameEnumerator_cachedPropertyNames) \
     macro(RegExpObject_lastIndex) \
     macro(NamedProperties) \
@@ -75,6 +76,7 @@ namespace JSC { namespace DFG {
     macro(JSMapFields) \
     macro(JSSetFields) \
     macro(JSWeakMapFields) \
+    macro(JSWeakSetFields) \
     macro(InternalState) \
     macro(Absolute) \
     /* DOMJIT tells the heap range with the pair of integers. */\

@@ -517,6 +517,8 @@ webkit.org/b/138736 http/tests/appcache/auth.html [ Skip ]
 
 media/video-background-tab-playback.html [ Pass Failure ]
 
+media/encrypted-media/clearKey/clearKey-encrypted-cenc-event-mse.html [ Failure ]
+
 webkit.org/b/140607 http/tests/navigation/navigation-interrupted-by-fragment.html [ Pass Timeout ]
 
 webkit.org/b/141322 [ Debug ] fast/images/destroyed-image-load-event.html [ Pass Timeout ]
@@ -527,8 +529,8 @@ webkit.org/b/141085 http/tests/media/video-query-url.html [ Pass Timeout ]
 ########################################
 
 # Content Extensions tests must be enabled explicitly on mac-wk2.
-http/tests/contentextensions [ Pass ]
-http/tests/websocket/tests/hybi/contentextensions [ Pass ]
+http/tests/contentextensions [ Pass Failure  ]
+http/tests/websocket/tests/hybi/contentextensions [ Pass Failure ]
 webkit.org/b/179557 http/tests/websocket/tests/hybi/contentextensions/upgrade-worker.html [ Pass Failure ]
 webkit.org/b/179256 [ Sierra+ ] http/wpt/beacon/contentextensions [ Pass Failure ]
 webkit.org/b/168081 http/tests/contentextensions/async-xhr-onerror.html [ Pass Timeout ]
@@ -639,7 +641,7 @@ webkit.org/b/161745 http/tests/security/anchor-download-allow-data.html [ Pass F
 
 webkit.org/b/161926 storage/indexeddb/index-cursor.html [ Pass Timeout ]
 
-webkit.org/b/162685 [ Debug ] http/tests/cache/disk-cache/disk-cache-204-status-code.html [ Pass Failure ]
+webkit.org/b/162685  http/tests/cache/disk-cache/disk-cache-204-status-code.html [ Pass Failure ]
 
 webkit.org/b/161649 [ Debug ] http/tests/cache/disk-cache/resource-becomes-uncacheable.html [ Pass Failure ]
 
@@ -760,7 +762,8 @@ http/tests/storageAccess/request-storage-access-same-origin-sandboxed-iframe-wit
 http/tests/storageAccess/request-storage-access-same-origin-sandboxed-iframe.html [ Pass ]
 http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-nested-iframe.html [ Pass ]
 http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-recent-user-interaction.html [ Pass ]
-[ HighSierra+ ] http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-non-recent-user-interaction.html [ Pass ]
+[ HighSierra+ ] http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-non-recent-user-interaction-but-try-access-from-wrong-frame.html [ Pass ]
+[ HighSierra+ ] http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-non-recent-user-interaction-and-try-access-from-right-frame.html [ Pass ]
 http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe-from-prevalent-domain-without-user-interaction.html [ Pass ]
 http/tests/storageAccess/request-storage-access-top-frame.html [ Pass ]
 http/tests/storageAccess/request-storage-access-cross-origin-sandboxed-iframe-without-user-gesture.html [ Pass ]
@@ -843,4 +846,6 @@ webkit.org/b/179773 imported/w3c/web-platform-tests/fetch/api/abort/serviceworke
 webkit.org/b/176078 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-onnegotiationneeded.html [ Pass Failure ]
 
 webkit.org/b/179351 imported/w3c/web-platform-tests/service-workers/service-worker/worker-interception.https.html [ Pass Failure ]
+
+webkit.org/b/173742 security/contentSecurityPolicy/plugins-types-allows-youtube-plugin-replacement.html [ Pass Failure ]
 

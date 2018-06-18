@@ -18,7 +18,9 @@ set(WTF_HEADERS
     ClockType.h
     CompilationThread.h
     Compiler.h
+    ConcurrentBuffer.h
     ConcurrentPtrHashSet.h
+    ConcurrentVector.h
     Condition.h
     CountingLock.h
     CrossThreadCopier.h
@@ -243,6 +245,7 @@ set(WTF_SOURCES
     GregorianDateTime.cpp
     HashTable.cpp
     JSONValues.cpp
+    JSValueMalloc.cpp
     Language.cpp
     Lock.cpp
     LockedPrintStream.cpp

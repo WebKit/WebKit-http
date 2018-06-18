@@ -962,6 +962,9 @@ media/encrypted-media/encrypted-media-syntax.html [ Skip ]
 media/encrypted-media/encrypted-media-v2-events.html [ Skip ]
 media/encrypted-media/encrypted-media-v2-syntax.html [ Skip ]
 
+webkit.org/b/180071 media/encrypted-media/clearKey/clearKey-encrypted-cenc-event.html [ Failure ]
+webkit.org/b/180071 media/encrypted-media/clearKey/clearKey-encrypted-cenc-event-mse.html [ Failure ]
+
 webkit.org/b/172815 imported/w3c/i18n/bidi/bidi-plaintext-011.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/176174 media/event-queue-crash.html [ Pass Failure ]
@@ -979,7 +982,7 @@ Bug(WPE) perf/accessibility-title-ui-element.html [ Failure ]
 webkit.org/b/177873 http/wpt/beacon/beacon-async-error-logging.html [ Failure ]
 
 webkit.org/b/177872 http/wpt/fetch/response-status-text.html [ Failure ]
-
+webkit.org/b/180749 http/wpt/offscreen-canvas/transferToImageBitmap-webgl.html [ ImageOnlyFailure ]
 webkit.org/b/168543 http/wpt/resource-timing/rt-nextHopProtocol.html [ Failure ]
 webkit.org/b/168543 http/wpt/resource-timing/rt-nextHopProtocol.worker.html [ Failure ]
 webkit.org/b/177871 http/wpt/resource-timing/rt-shared-resource-in-workers.html [ Failure ]
@@ -1029,6 +1032,7 @@ webkit.org/b/175419 http/tests/workers/service [ Skip ]
 webkit.org/b/175419 http/tests/inspector/network/resource-response-service-worker.html [ Skip ]
 webkit.org/b/178576 http/wpt/service-workers/extendableEvent.https.html [ Failure ]
 webkit.org/b/178576 http/wpt/service-workers/fetchEvent.https.html [ Failure ]
+webkit.org/b/178576 http/wpt/service-workers/useragent.https.html [ Failure ]
 webkit.org/b/178576 imported/w3c/web-platform-tests/service-workers [ Skip ]
 webkit.org/b/178576 imported/w3c/web-platform-tests/service-workers/stub-4.6.2-cache.html [ Pass ]
 webkit.org/b/178576 imported/w3c/web-platform-tests/service-workers/stub-4.6.3-cache-storage.html [ Pass ]
@@ -1039,6 +1043,7 @@ webkit.org/b/178316 http/tests/cache-storage [ Skip ]
 
 webkit.org/b/178577 http/tests/dom/document-attributes-null-handling.html [ Failure ]
 webkit.org/b/178578 http/tests/images/hidpi-srcset-copy.html [ Failure ]
+webkit.org/b/180370 http/tests/images/image-supports-video.html [ Skip ]
 
 webkit.org/b/175422 http/tests/blink/sendbeacon/beacon-same-origin.html [ Failure ]
 

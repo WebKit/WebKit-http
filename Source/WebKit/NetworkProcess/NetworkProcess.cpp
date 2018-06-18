@@ -335,12 +335,12 @@ void NetworkProcess::updatePrevalentDomainsToPartitionOrBlockCookies(PAL::Sessio
         networkStorageSession->setPrevalentDomainsToPartitionOrBlockCookies(domainsToPartition, domainsToBlock, domainsToNeitherPartitionNorBlock, shouldClearFirst);
 }
 
-void NetworkProcess::updateStorageAccessForPrevalentDomains(PAL::SessionID sessionID, const String& resourceDomain, const String& firstPartyDomain, bool shouldGrantStorage, uint64_t contextId)
+void NetworkProcess::updateStorageAccessForPrevalentDomains(PAL::SessionID sessionID, const String& resourceDomain, const String& firstPartyDomain, uint64_t frameID, uint64_t pageID, bool shouldGrantStorage, uint64_t contextId)
 {
     bool isStorageGranted = false;
     if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID)) {
-        networkStorageSession->setStorageAccessGranted(resourceDomain, firstPartyDomain, shouldGrantStorage);
-        ASSERT(networkStorageSession->isStorageAccessGranted(resourceDomain, firstPartyDomain) == shouldGrantStorage);
+        networkStorageSession->setStorageAccessGranted(resourceDomain, firstPartyDomain, frameID, pageID, shouldGrantStorage);
+        ASSERT(networkStorageSession->isStorageAccessGranted(resourceDomain, firstPartyDomain, frameID, pageID) == shouldGrantStorage);
         isStorageGranted = shouldGrantStorage;
     } else
         ASSERT_NOT_REACHED();
@@ -518,9 +518,9 @@ void NetworkProcess::downloadRequest(PAL::SessionID sessionID, DownloadID downlo
     downloadManager().startDownload(nullptr, sessionID, downloadID, request, suggestedFilename);
 }
 
-void NetworkProcess::resumeDownload(PAL::SessionID sessionID, DownloadID downloadID, const IPC::DataReference& resumeData, const String& path, const WebKit::SandboxExtension::Handle& sandboxExtensionHandle)
+void NetworkProcess::resumeDownload(PAL::SessionID sessionID, DownloadID downloadID, const IPC::DataReference& resumeData, const String& path, WebKit::SandboxExtension::Handle&& sandboxExtensionHandle)
 {
-    downloadManager().resumeDownload(sessionID, downloadID, resumeData, path, sandboxExtensionHandle);
+    downloadManager().resumeDownload(sessionID, downloadID, resumeData, path, WTFMove(sandboxExtensionHandle));
 }
 
 void NetworkProcess::cancelDownload(DownloadID downloadID)
@@ -594,12 +594,12 @@ void NetworkProcess::findPendingDownloadLocation(NetworkDataTask& networkDataTas
 }
 #endif
 
-void NetworkProcess::continueDecidePendingDownloadDestination(DownloadID downloadID, String destination, const SandboxExtension::Handle& sandboxExtensionHandle, bool allowOverwrite)
+void NetworkProcess::continueDecidePendingDownloadDestination(DownloadID downloadID, String destination, SandboxExtension::Handle&& sandboxExtensionHandle, bool allowOverwrite)
 {
     if (destination.isEmpty())
         downloadManager().cancelDownload(downloadID);
     else
-        downloadManager().continueDecidePendingDownloadDestination(downloadID, destination, sandboxExtensionHandle, allowOverwrite);
+        downloadManager().continueDecidePendingDownloadDestination(downloadID, destination, WTFMove(sandboxExtensionHandle), allowOverwrite);
 }
 
 void NetworkProcess::setCacheModel(uint32_t cm)

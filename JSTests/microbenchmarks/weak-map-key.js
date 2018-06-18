@@ -11,7 +11,7 @@ function objectKey(o) {
 }
 noInline(objectKey);
 
-const iters = 300000;
+const iters = 1000000;
 let start = Date.now();
 
 {

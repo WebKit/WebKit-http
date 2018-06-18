@@ -852,7 +852,7 @@ public:
     void dragEntered(WebCore::DragData&, const String& dragStorageName = String());
     void dragUpdated(WebCore::DragData&, const String& dragStorageName = String());
     void dragExited(WebCore::DragData&, const String& dragStorageName = String());
-    void performDragOperation(WebCore::DragData&, const String& dragStorageName, const SandboxExtension::Handle&, const SandboxExtension::HandleArray&);
+    void performDragOperation(WebCore::DragData&, const String& dragStorageName, SandboxExtension::Handle&&, SandboxExtension::HandleArray&&);
 
     void didPerformDragControllerAction(uint64_t dragOperation, bool mouseIsOverFileInput, unsigned numberOfItemsToBeAccepted, const WebCore::IntRect& insertionRect);
     void dragEnded(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, uint64_t operation);
@@ -1240,7 +1240,7 @@ public:
 #endif
 
     void hasStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t webProcessContextId);
-    void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t webProcessContextId);
+    void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t pageID, uint64_t webProcessContextId);
 
 #if ENABLE(ATTACHMENT_ELEMENT)
     void insertAttachment(const String& identifier, const WebCore::AttachmentDisplayOptions&, const String& filename, std::optional<String> contentType, WebCore::SharedBuffer& data, Function<void(CallbackBase::Error)>&&);
@@ -1607,7 +1607,7 @@ private:
 
     void clearLoadDependentCallbacks();
 
-    void performDragControllerAction(DragControllerAction, WebCore::DragData&, const String& dragStorageName, const SandboxExtension::Handle&, const SandboxExtension::HandleArray&);
+    void performDragControllerAction(DragControllerAction, WebCore::DragData&, const String& dragStorageName, SandboxExtension::Handle&&, SandboxExtension::HandleArray&&);
 
     void updateBackingStoreDiscardableState();
 

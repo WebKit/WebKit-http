@@ -34,12 +34,14 @@ void InferredStructureWatchpoint::fireInternal(const FireDetail&)
 {
     InferredStructure* inferredStructure =
         bitwise_cast<InferredStructure*>(
-            bitwise_cast<char*>(this) - OBJECT_OFFSETOF(InferredStructure, m_watchpoint));
+            bitwise_cast<char*>(this) - OBJECT_OFFSETOF(InferredStructure, watchpoint));
 
-    if (!inferredStructure->isLive())
+    InferredType* inferredType = inferredStructure->parent;
+    
+    if (!inferredType->isLive())
         return;
     
-    inferredStructure->m_parent->removeStructure();
+    inferredType->removeStructure();
 }
 
 } // namespace JSC

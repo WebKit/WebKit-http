@@ -35,6 +35,7 @@
 #include "JSFixedArray.h"
 #include "JSMap.h"
 #include "JSSet.h"
+#include "JSWeakMap.h"
 #include "Symbol.h"
 
 namespace JSC { namespace FTL {
@@ -71,6 +72,7 @@ namespace JSC { namespace FTL {
     macro(JSFunction_scope, JSFunction::offsetOfScopeChain()) \
     macro(JSFunction_rareData, JSFunction::offsetOfRareData()) \
     macro(JSObject_butterfly, JSObject::butterflyOffset()) \
+    macro(JSObject_butterflyMask, JSObject::butterflyIndexingMaskOffset()) \
     macro(JSPropertyNameEnumerator_cachedInlineCapacity, JSPropertyNameEnumerator::cachedInlineCapacityOffset()) \
     macro(JSPropertyNameEnumerator_cachedPropertyNamesVector, JSPropertyNameEnumerator::cachedPropertyNamesVectorOffset()) \
     macro(JSPropertyNameEnumerator_cachedStructureID, JSPropertyNameEnumerator::cachedStructureIDOffset()) \
@@ -118,6 +120,10 @@ namespace JSC { namespace FTL {
     macro(HashMapBucket_value, HashMapBucket<HashMapBucketDataKeyValue>::offsetOfValue()) \
     macro(HashMapBucket_key, HashMapBucket<HashMapBucketDataKeyValue>::offsetOfKey()) \
     macro(HashMapBucket_next, HashMapBucket<HashMapBucketDataKeyValue>::offsetOfNext()) \
+    macro(WeakMapImpl_capacity, WeakMapImpl<WeakMapBucket<WeakMapBucketDataKey>>::offsetOfCapacity()) \
+    macro(WeakMapImpl_buffer,  WeakMapImpl<WeakMapBucket<WeakMapBucketDataKey>>::offsetOfBuffer()) \
+    macro(WeakMapBucket_value, WeakMapBucket<WeakMapBucketDataKeyValue>::offsetOfValue()) \
+    macro(WeakMapBucket_key, WeakMapBucket<WeakMapBucketDataKeyValue>::offsetOfKey()) \
     macro(Symbol_symbolImpl, Symbol::offsetOfSymbolImpl()) \
     macro(JSFixedArray_size, JSFixedArray::offsetOfSize()) \
 

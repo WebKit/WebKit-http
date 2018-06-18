@@ -88,11 +88,11 @@ using namespace JSC;
 
 namespace WebKit {
 
-RefPtr<InjectedBundle> InjectedBundle::create(const WebProcessCreationParameters& parameters, API::Object* initializationUserData)
+RefPtr<InjectedBundle> InjectedBundle::create(WebProcessCreationParameters& parameters, API::Object* initializationUserData)
 {
     auto bundle = adoptRef(*new InjectedBundle(parameters));
 
-    bundle->m_sandboxExtension = SandboxExtension::create(parameters.injectedBundlePathExtensionHandle);
+    bundle->m_sandboxExtension = SandboxExtension::create(WTFMove(parameters.injectedBundlePathExtensionHandle));
     if (!bundle->initialize(parameters, initializationUserData))
         return nullptr;
 
@@ -321,7 +321,7 @@ void InjectedBundle::setPrivateBrowsingEnabled(WebPageGroupProxy* pageGroup, boo
 {
     if (enabled) {
         WebProcess::singleton().ensureLegacyPrivateBrowsingSessionInNetworkProcess();
-        WebFrameNetworkingContext::ensureWebsiteDataStoreSession({ { }, { }, { }, { }, { }, { }, { PAL::SessionID::legacyPrivateSessionID(), { }, { }, AllowsCellularAccess::Yes }});
+        WebFrameNetworkingContext::ensureWebsiteDataStoreSession(WebsiteDataStoreParameters::legacyPrivateSessionParameters());
     } else
         SessionTracker::destroySession(PAL::SessionID::legacyPrivateSessionID());
 

@@ -97,7 +97,7 @@ public:
     bool isTextButton() const;
 
     bool isRadioButton() const;
-    WEBCORE_EXPORT bool isTextField() const;
+    WEBCORE_EXPORT bool isTextField() const final;
     WEBCORE_EXPORT bool isSearchField() const;
     bool isInputTypeHidden() const;
     WEBCORE_EXPORT bool isPasswordField() const;
@@ -135,7 +135,7 @@ public:
     HTMLElement* containerElement() const;
     
     RefPtr<TextControlInnerTextElement> innerTextElement() const final;
-    RenderStyle createInnerTextStyle(const RenderStyle&) const override;
+    RenderStyle createInnerTextStyle(const RenderStyle&) override;
 
     HTMLElement* innerBlockElement() const;
     HTMLElement* innerSpinButtonElement() const;
@@ -244,8 +244,10 @@ public:
     bool isAutoFilled() const { return m_isAutoFilled; }
     WEBCORE_EXPORT void setAutoFilled(bool = true);
 
-    AutoFillButtonType autoFillButtonType() const { return (AutoFillButtonType)m_autoFillButtonType; }
+    AutoFillButtonType autoFillButtonType() const { return static_cast<AutoFillButtonType>(m_autoFillButtonType); }
     WEBCORE_EXPORT void setShowAutoFillButton(AutoFillButtonType);
+
+    bool hasAutoFillStrongPasswordButton() const  { return autoFillButtonType() == AutoFillButtonType::StrongPassword || autoFillButtonType() == AutoFillButtonType::StrongConfirmationPassword; }
 
     bool isAutoFillAvailable() const { return m_isAutoFillAvailable; }
     void setAutoFillAvailable(bool autoFillAvailable) { m_isAutoFillAvailable = autoFillAvailable; }
@@ -371,7 +373,7 @@ private:
     void updateFocusAppearance(SelectionRestorationMode, SelectionRevealMode) final;
     bool shouldUseInputMethod() final;
 
-    bool isTextFormControl() const final { return isTextField(); }
+    bool isInnerTextElementEditable() const final { return !hasAutoFillStrongPasswordButton() && HTMLTextFormControlElement::isInnerTextElementEditable(); }
 
     bool canTriggerImplicitSubmission() const final { return isTextField(); }
 
@@ -460,7 +462,7 @@ private:
     bool m_isActivatedSubmit : 1;
     unsigned m_autocomplete : 2; // AutoCompleteSetting
     bool m_isAutoFilled : 1;
-    unsigned m_autoFillButtonType : 2; // AutoFillButtonType;
+    unsigned m_autoFillButtonType : 3; // AutoFillButtonType;
     bool m_isAutoFillAvailable : 1;
 #if ENABLE(DATALIST_ELEMENT)
     bool m_hasNonEmptyList : 1;

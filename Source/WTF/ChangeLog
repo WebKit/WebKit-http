@@ -1,3 +1,161 @@
+2017-12-13  Keith Miller  <keith_miller@apple.com>
+
+        JSObjects should have a mask for loading indexed properties
+        https://bugs.webkit.org/show_bug.cgi?id=180768
+
+        Reviewed by Mark Lam.
+
+        Add a clz that wraps the builtin clz intrinisics provided by
+        various compilers. The clz function by default assumes that
+        the input may be zero. On X86 this makes a difference because not
+        all CPUs have LZCNT and BSR has undefined behavior on zero. On ARM,
+        the zero check gets optimized away, regardless.
+
+        * wtf/StdLibExtras.h:
+        (std::clz):
+
+2017-12-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        REGRESSION(r225769): Build errors with constexpr std::tie on older gcc
+        https://bugs.webkit.org/show_bug.cgi?id=180692
+
+        Reviewed by Carlos Garcia Campos.
+
+        Due to libstdc++'s bug[1], std::tie is not annotated with constexpr in libstdc++ 5.
+        This patch adds WTF::tie for a work around. Since we do not want to
+        include <tuple> in StdLibExtras.h, we define this function for all
+        the compilers.
+
+        [1]: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=65978
+
+        * wtf/StdLibExtras.h:
+
+2017-12-13  Mark Lam  <mark.lam@apple.com>
+
+        Fill out some Poisoned APIs, fix some bugs, and add some tests.
+        https://bugs.webkit.org/show_bug.cgi?id=180724
+        <rdar://problem/36006884>
+
+        Reviewed by JF Bastien.
+
+        Also rename Int32Poisoned to ConstExprPoisoned.  The key it takes is actually a
+        uint32_t.  So, Int32 is really a misnomer.  In addition, the key needs to be a
+        constexpr.  So, ConstExprPoisoned is a better name for it.
+
+        * wtf/Poisoned.cpp:
+        (WTF::makePoison):
+        * wtf/Poisoned.h:
+        (WTF::PoisonedImplHelper::asReference):
+        (WTF::PoisonedImpl::PoisonedImpl):
+        (WTF::PoisonedImpl::clear):
+        (WTF::PoisonedImpl::operator* const):
+        (WTF::PoisonedImpl::operator-> const):
+        (WTF::PoisonedImpl::operator== const):
+        (WTF::PoisonedImpl::operator!= const):
+        (WTF::PoisonedImpl::operator< const):
+        (WTF::PoisonedImpl::operator<= const):
+        (WTF::PoisonedImpl::operator> const):
+        (WTF::PoisonedImpl::operator>= const):
+        (WTF::PoisonedImpl::operator=):
+        (WTF::PoisonedImpl::swap):
+        (WTF::PoisonedImpl::exchange):
+        (WTF::swap):
+        (WTF::makePoison):
+        (WTF::PoisonedImpl::operator==): Deleted.
+
+2017-12-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Implement optimized WeakMap and WeakSet
+        https://bugs.webkit.org/show_bug.cgi?id=179929
+
+        Reviewed by Saam Barati.
+
+        We introduce JSValueMalloc, which is specialized malloc scheme with Gigacage::JSValue.
+        This is used for WeakMapImpl's buffer.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/JSValueMalloc.cpp: Added.
+        (WTF::tryJSValueMalloc):
+        (WTF::jsValueMalloc):
+        (WTF::jsValueRealloc):
+        (WTF::jsValueFree):
+        * wtf/JSValueMalloc.h: Added.
+        (WTF::JSValueMalloc::malloc):
+        (WTF::JSValueMalloc::tryMalloc):
+        (WTF::JSValueMalloc::realloc):
+        (WTF::JSValueMalloc::free):
+        * wtf/MallocPtr.h:
+        (WTF::MallocPtr::~MallocPtr):
+        (WTF::MallocPtr::malloc):
+        (WTF::MallocPtr::tryMalloc):
+        (WTF::MallocPtr::realloc):
+        We extend MallocPtr to adopt malloc scheme as its template parameter.
+
+2017-12-11  Filip Pizlo  <fpizlo@apple.com>
+
+        It should be possible to flag a cell for unconditional finalization
+        https://bugs.webkit.org/show_bug.cgi?id=180636
+
+        Reviewed by Saam Barati.
+        
+        This adds ConcurrentVector, which is like SegmentedVector, but wastes some space to allow
+        resizing to proceed concurrently to access. It's not possible to resize concurrently to
+        resizing, concurrent read/writes aren't protected from racing if they access the same element,
+        and who knows what you'll get if you iterate up to size() while someone else append()s. The
+        key insight is to stash all prior copies of the spine, so that nobody crashes trying to access
+        a stale spine.
+        
+        I'm going to want to do the same thing for FastBitVector, by creating a segmented WordOwner
+        class. That would require repeating the dance of having a spine that can resize while stashing
+        old versions. So, the spine resizing logic is abstracted behind ConcurrentBuffer. You could
+        use that as a kind of "concurrent vector" for immutable data. That's how ConcurrentVector uses
+        it: it's an immutable array of segment pointers.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/ConcurrentBuffer.h: Added.
+        (WTF::ConcurrentBuffer::ConcurrentBuffer):
+        (WTF::ConcurrentBuffer::~ConcurrentBuffer):
+        (WTF::ConcurrentBuffer::growExact):
+        (WTF::ConcurrentBuffer::grow):
+        (WTF::ConcurrentBuffer::array const):
+        (WTF::ConcurrentBuffer::operator[]):
+        (WTF::ConcurrentBuffer::operator[] const):
+        (WTF::ConcurrentBuffer::createArray):
+        * wtf/ConcurrentVector.h: Added.
+        (WTF::ConcurrentVectorIterator::~ConcurrentVectorIterator):
+        (WTF::ConcurrentVectorIterator::operator* const):
+        (WTF::ConcurrentVectorIterator::operator-> const):
+        (WTF::ConcurrentVectorIterator::operator++):
+        (WTF::ConcurrentVectorIterator::operator== const):
+        (WTF::ConcurrentVectorIterator::operator!= const):
+        (WTF::ConcurrentVectorIterator::operator=):
+        (WTF::ConcurrentVectorIterator::ConcurrentVectorIterator):
+        (WTF::ConcurrentVector::~ConcurrentVector):
+        (WTF::ConcurrentVector::size const):
+        (WTF::ConcurrentVector::isEmpty const):
+        (WTF::ConcurrentVector::at):
+        (WTF::ConcurrentVector::at const):
+        (WTF::ConcurrentVector::operator[]):
+        (WTF::ConcurrentVector::operator[] const):
+        (WTF::ConcurrentVector::first):
+        (WTF::ConcurrentVector::first const):
+        (WTF::ConcurrentVector::last):
+        (WTF::ConcurrentVector::last const):
+        (WTF::ConcurrentVector::takeLast):
+        (WTF::ConcurrentVector::append):
+        (WTF::ConcurrentVector::alloc):
+        (WTF::ConcurrentVector::removeLast):
+        (WTF::ConcurrentVector::grow):
+        (WTF::ConcurrentVector::begin):
+        (WTF::ConcurrentVector::end):
+        (WTF::ConcurrentVector::segmentExistsFor):
+        (WTF::ConcurrentVector::segmentFor):
+        (WTF::ConcurrentVector::subscriptFor):
+        (WTF::ConcurrentVector::ensureSegmentsFor):
+        (WTF::ConcurrentVector::ensureSegment):
+        (WTF::ConcurrentVector::allocateSegment):
+
 2017-12-12  JF Bastien  <jfbastien@apple.com>
 
         makeString: support more integral types

@@ -1357,6 +1357,8 @@ media/encrypted-media/mock-MediaKeySession-load.html [ Skip ]
 media/encrypted-media/mock-MediaKeySession-remove.html [ Skip ]
 media/encrypted-media/mock-MediaKeySession-update.html [ Skip ]
 
+media/encrypted-media/clearKey/clearKey-encrypted-cenc-event.html [ Skip ]
+
 webkit.org/b/162507 http/tests/media/hls/hls-video-resize.html [ Pass Failure ]
 
 webkit.org/b/167642 imported/w3c/web-platform-tests/shadow-dom/slotchange.html [ Pass Failure ]
@@ -1730,7 +1732,7 @@ webkit.org/b/176878 [ Debug ] fast/multicol/spanner-crash-when-adding-summary.ht
 
 webkit.org/b/177319 imported/w3c/web-platform-tests/html/semantics/forms/the-form-element/form-elements-filter.html [ Failure ]
 
-webkit.org/b/177322 [ Debug ] imported/w3c/web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/parsing.html [ Pass Failure ]
+webkit.org/b/177322 imported/w3c/web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/parsing.html [ Pass Failure ]
 
 webkit.org/b/177323 imported/w3c/web-platform-tests/fetch/security/embedded-credentials.tentative.sub.html [ Pass Failure ]
 
@@ -1762,3 +1764,6 @@ webkit.org/b/176693 storage/indexeddb/modern/idbtransaction-objectstore-failures
 webkit.org/b/180062 [ ElCapitan Sierra HighSierra ] fast/text/user-installed-fonts/disable.html [ ImageOnlyFailure ]
 webkit.org/b/180062 [ ElCapitan Sierra HighSierra ] fast/text/user-installed-fonts/shadow-postscript.html [ ImageOnlyFailure ]
 webkit.org/b/180062 [ ElCapitan Sierra HighSierra ] fast/text/user-installed-fonts/shadow.html [ ImageOnlyFailure ]
+
+webkit.org/b/180560 accessibility/mac/html5-input-number.html [ Pass Failure ]
+

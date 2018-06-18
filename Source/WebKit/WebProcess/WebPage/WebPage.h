@@ -658,7 +658,7 @@ public:
 
         void invalidate();
 
-        void beginLoad(WebFrame*, const SandboxExtension::Handle& handle);
+        void beginLoad(WebFrame*, SandboxExtension::Handle&&);
         void willPerformLoadDragDestinationAction(RefPtr<SandboxExtension>&& pendingDropSandboxExtension);
         void didStartProvisionalLoad(WebFrame*);
         void didCommitProvisionalLoad(WebFrame*);
@@ -763,7 +763,7 @@ public:
 #endif
 
 #if ENABLE(DRAG_SUPPORT) && !PLATFORM(GTK)
-    void performDragControllerAction(DragControllerAction, const WebCore::DragData&, const SandboxExtension::Handle&, const SandboxExtension::HandleArray&);
+    void performDragControllerAction(DragControllerAction, const WebCore::DragData&, SandboxExtension::Handle&&, SandboxExtension::HandleArray&&);
 #endif
 
 #if ENABLE(DRAG_SUPPORT)
@@ -1025,7 +1025,7 @@ public:
     void flushPendingEditorStateUpdate();
 
     void hasStorageAccess(String&& subFrameHost, String&& topFrameHost, WTF::CompletionHandler<void (bool)>&& callback);
-    void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, WTF::CompletionHandler<void (bool)>&& callback);
+    void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t pageID, WTF::CompletionHandler<void (bool)>&& callback);
     void storageAccessResponse(bool wasGranted, uint64_t contextId);
 
 #if ENABLE(ATTACHMENT_ELEMENT)
@@ -1111,12 +1111,12 @@ private:
     // Actions
     void tryClose();
     void platformDidReceiveLoadParameters(const LoadParameters&);
-    void loadRequest(const LoadParameters&);
+    void loadRequest(LoadParameters&&);
     void loadData(const LoadParameters&);
     void loadString(const LoadParameters&);
     void loadAlternateHTMLString(const LoadParameters&);
     void navigateToPDFLinkWithSimulatedClick(const String& url, WebCore::IntPoint documentPoint, WebCore::IntPoint screenPoint);
-    void reload(uint64_t navigationID, uint32_t reloadOptions, const SandboxExtension::Handle&);
+    void reload(uint64_t navigationID, uint32_t reloadOptions, SandboxExtension::Handle&&);
     void goForward(uint64_t navigationID, uint64_t);
     void goBack(uint64_t navigationID, uint64_t);
     void goToBackForwardItem(uint64_t navigationID, uint64_t);
@@ -1260,7 +1260,7 @@ private:
 #endif
 
 #if ENABLE(MEDIA_STREAM) && ENABLE(SANDBOX_EXTENSIONS)
-    void grantUserMediaDeviceSandboxExtensions(const MediaDeviceSandboxExtensions&);
+    void grantUserMediaDeviceSandboxExtensions(MediaDeviceSandboxExtensions&&);
     void revokeUserMediaDeviceSandboxExtensions(const Vector<String>&);
 #endif
 
@@ -1298,7 +1298,7 @@ private:
 
     void reportUsedFeatures();
 
-    void updateWebsitePolicies(const WebsitePolicies&);
+    void updateWebsitePolicies(WebsitePolicies&&);
 
 #if PLATFORM(MAC)
     void performImmediateActionHitTestAtLocation(WebCore::FloatPoint);

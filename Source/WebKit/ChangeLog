@@ -1,3 +1,505 @@
+2017-12-14  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Mac CMake build
+        https://bugs.webkit.org/show_bug.cgi?id=180835
+
+        Reviewed by Andy Estes.
+
+        * PlatformMac.cmake:
+        * Shared/WebsiteDataStoreParameters.cpp:
+        (WebKit::WebsiteDataStoreParameters::ephemeralParametersWithSessionID):
+        * Shared/WebsiteDataStoreParameters.h:
+        * UIProcess/API/APIAttachment.h:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::setPrivateBrowsingEnabled):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::setSessionID):
+
+2017-12-14  Alex Christensen  <achristensen@webkit.org>
+
+        Use move semantics for SandboxExtension::Handle
+        https://bugs.webkit.org/show_bug.cgi?id=180792
+
+        Reviewed by Andy Estes.
+        
+        Passing them around as const SandboxExtension::Handle& is wrong because ownership is transferred and they are consumed.
+        It only works now because their contents are mutable, which isn't a good use of mutable.
+
+        * NetworkProcess/Downloads/Download.cpp:
+        (WebKit::Download::decideDestinationWithSuggestedFilename):
+        (WebKit::Download::didDecideDownloadDestination):
+        * NetworkProcess/Downloads/Download.h:
+        * NetworkProcess/Downloads/DownloadManager.cpp:
+        (WebKit::DownloadManager::continueDecidePendingDownloadDestination):
+        (WebKit::DownloadManager::resumeDownload):
+        * NetworkProcess/Downloads/DownloadManager.h:
+        * NetworkProcess/Downloads/cocoa/DownloadCocoa.mm:
+        (WebKit::Download::resume):
+        * NetworkProcess/Downloads/ios/DownloadIOS.mm:
+        (WebKit::Download::resume):
+        * NetworkProcess/Downloads/mac/DownloadMac.mm:
+        (WebKit::Download::resume):
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::registerFileBlobURL):
+        (WebKit::NetworkConnectionToWebProcess::preregisterSandboxExtensionsForOptionallyFileBackedBlob):
+        * NetworkProcess/NetworkConnectionToWebProcess.h:
+        * NetworkProcess/NetworkDataTask.h:
+        (WebKit::NetworkDataTask::setPendingDownloadLocation):
+        * NetworkProcess/NetworkDataTaskBlob.cpp:
+        (WebKit::NetworkDataTaskBlob::setPendingDownloadLocation):
+        * NetworkProcess/NetworkDataTaskBlob.h:
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::resumeDownload):
+        (WebKit::NetworkProcess::continueDecidePendingDownloadDestination):
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/NetworkResourceLoadParameters.cpp:
+        (WebKit::NetworkResourceLoadParameters::decode):
+        * NetworkProcess/cocoa/NetworkDataTaskCocoa.h:
+        * NetworkProcess/cocoa/NetworkDataTaskCocoa.mm:
+        (WebKit::NetworkDataTaskCocoa::setPendingDownloadLocation):
+        * Shared/SandboxExtension.h:
+        (WebKit::SandboxExtension::create):
+        * Shared/WebMemorySampler.cpp:
+        (WebKit::WebMemorySampler::start):
+        (WebKit::WebMemorySampler::initializeSandboxedLogFile):
+        * Shared/WebMemorySampler.h:
+        * Shared/mac/SandboxExtensionMac.mm:
+        (WebKit::SandboxExtension::create):
+        * StorageProcess/StorageProcess.cpp:
+        (WebKit::StorageProcess::grantSandboxExtensionsForBlobs):
+        * StorageProcess/StorageProcess.h:
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::performDragOperation):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::dragEntered):
+        (WebKit::WebPageProxy::dragUpdated):
+        (WebKit::WebPageProxy::dragExited):
+        (WebKit::WebPageProxy::performDragOperation):
+        (WebKit::WebPageProxy::performDragControllerAction):
+        * UIProcess/WebPageProxy.h:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::create):
+        * WebProcess/InjectedBundle/InjectedBundle.h:
+        * WebProcess/MediaStream/MediaDeviceSandboxExtensions.cpp:
+        (WebKit::MediaDeviceSandboxExtensions::operator[]):
+        (WebKit::MediaDeviceSandboxExtensions::operator[] const): Deleted.
+        * WebProcess/MediaStream/MediaDeviceSandboxExtensions.h:
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.cpp:
+        (WebKit::UserMediaPermissionRequestManager::grantUserMediaDeviceSandboxExtensions):
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.h:
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebKit::WebPlatformStrategies::getPathnamesForType):
+        * WebProcess/WebPage/WebBackForwardListProxy.cpp:
+        (WebKit::WebBackForwardListProxy::goToItem):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::loadRequest):
+        (WebKit::WebPage::reload):
+        (WebKit::WebPage::performDragControllerAction):
+        (WebKit::WebPage::grantUserMediaDeviceSandboxExtensions):
+        (WebKit::WebPage::SandboxExtensionTracker::beginLoad):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::startMemorySampler):
+        * WebProcess/WebProcess.h:
+
+2017-12-14  Alex Christensen  <achristensen@webkit.org>
+
+        Make WebsitePolicies a proper class with getters and setters
+        https://bugs.webkit.org/show_bug.cgi?id=180788
+
+        Reviewed by Andy Estes.
+
+        Also introduce WebsitePolicies::applyToDocumentLoader to reduce duplicate code.
+        This has a side-effect of now applying custom http header fields and content blocking enabled status
+        when updating WebsitePolicies.  This will result in these being applied when a user updates
+        the per-site settings, and they weren't before.
+
+        * CMakeLists.txt:
+        * Shared/WebsitePolicies.cpp: Added.
+        (WebKit::WebsitePolicies::WebsitePolicies):
+        (WebKit::WebsitePolicies::encode const):
+        (WebKit::WebsitePolicies::decode):
+        (WebKit::WebsitePolicies::applyToDocumentLoader):
+        * Shared/WebsitePolicies.h:
+        (WebKit::WebsitePolicies::contentBlockersEnabled const):
+        (WebKit::WebsitePolicies::setContentBlockersEnabled):
+        (WebKit::WebsitePolicies::allowedAutoplayQuirks const):
+        (WebKit::WebsitePolicies::setAllowedAutoplayQuirks):
+        (WebKit::WebsitePolicies::autoplayPolicy const):
+        (WebKit::WebsitePolicies::setAutoplayPolicy):
+        (WebKit::WebsitePolicies::customHeaderFields):
+        (WebKit::WebsitePolicies::takeCustomHeaderFields):
+        (WebKit::WebsitePolicies::setCustomHeaderFields):
+        (WebKit::WebsitePolicies::encode const): Deleted.
+        (WebKit::WebsitePolicies::decode): Deleted.
+        * UIProcess/API/APIWebsitePolicies.h:
+        * WebKit.xcodeproj/project.pbxproj:
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::applyToDocumentLoader):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updateWebsitePolicies):
+        * WebProcess/WebPage/WebPage.h:
+
+2017-12-14  Chris Dumez  <cdumez@apple.com>
+
+        Enable Service Workers on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=180836
+
+        Reviewed by Alex Christensen.
+
+        * Shared/WebPreferencesDefaultValues.h:
+        * UIProcess/WebProcessPool.cpp:
+        Enable Service Workers on iOS.
+
+        (WebKit::WebProcessPool::ensureNetworkProcess):
+        Fall back to defaultCacheStorageDirectory() instead of the empty string
+        for the cache storage directory, when we do not have a store.
+
+2017-12-14  Chris Dumez  <cdumez@apple.com>
+
+        Service worker script fetching currently always uses the network cache
+        https://bugs.webkit.org/show_bug.cgi?id=180816
+
+        Reviewed by Alex Christensen.
+
+        * StorageProcess/ServiceWorker/WebSWServerConnection.cpp:
+        (WebKit::WebSWServerConnection::startScriptFetchInClient):
+        * StorageProcess/ServiceWorker/WebSWServerConnection.h:
+        * WebProcess/Storage/WebSWClientConnection.messages.in:
+
+2017-12-14  Chris Dumez  <cdumez@apple.com>
+
+        StorageProcess::deleteWebsiteData() should ensure there is a SWServer for the given sessionID
+        https://bugs.webkit.org/show_bug.cgi?id=180784
+
+        Reviewed by Youenn Fablet.
+
+        StorageProcess::deleteWebsiteData() should ensure there is a SWServer for the given sessionID
+        instead of not clearing anything when no such SWServer exists.
+
+        This will be useful on iOS once <rdar://problem/36034667> is fully fixed.
+
+        * StorageProcess/StorageProcess.cpp:
+        (WebKit::StorageProcess::deleteWebsiteData):
+        (WebKit::StorageProcess::deleteWebsiteDataForOrigins):
+        * UIProcess/API/APIProcessPoolConfiguration.cpp:
+        (API::ProcessPoolConfiguration::createWithWebsiteDataStoreConfiguration):
+
+2017-12-14  Chris Dumez  <cdumez@apple.com>
+
+        WebsiteDataStore::defaultDataStoreConfiguration() fails to set default value for serviceWorkerRegistrationDirectory
+        https://bugs.webkit.org/show_bug.cgi?id=180794
+        <rdar://problem/36034667>
+
+        Reviewed by Youenn Fablet.
+
+        Set the default IndexedDB and ServiceWorker database paths in WebsiteDataStore::defaultDataStoreConfiguration().
+        Without this, the client is forced to set the expected path.
+
+        * UIProcess/API/Cocoa/APIWebsiteDataStoreCocoa.mm:
+        (API::WebsiteDataStore::defaultDataStoreConfiguration):
+        * UIProcess/API/glib/APIWebsiteDataStoreGLib.cpp:
+        (API::WebsiteDataStore::defaultDataStoreConfiguration):
+
+2017-12-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Cmd-Option-R in docked inspector causes the inspector to reload instead of the inspected page
+        https://bugs.webkit.org/show_bug.cgi?id=180775
+        <rdar://problem/35964592>
+
+        Reviewed by Brian Burg.
+
+        * WebKit.xcodeproj/project.pbxproj:
+        Remove old files add new files.
+
+        * PlatformMac.cmake:
+        * UIProcess/mac/WKWebInspectorWKWebView.h: Removed.
+        * UIProcess/mac/WKWebInspectorWKWebView.mm: Removed.
+        Remove unused WKWebInspectorWKWebView.
+
+        * UIProcess/API/Cocoa/_WKRemoteWebInspectorViewController.mm:
+        * UIProcess/mac/WKInspectorViewController.mm:
+        (-[WKInspectorViewController dealloc]):
+        (-[WKInspectorViewController webView]):
+        (-[WKInspectorViewController inspectorWKWebViewReload:]):
+        (-[WKInspectorViewController inspectorWKWebViewReloadFromOrigin:]):
+        Handle WKWebView IBActions sent to the inspector frontend WKWebView.
+
+        * UIProcess/mac/WKInspectorWKWebView.h:
+        * UIProcess/mac/WKInspectorWKWebView.mm:
+        (-[WKInspectorWKWebView tag]):
+        (-[WKInspectorWKWebView inspectorWKWebViewDelegate]):
+        (-[WKInspectorWKWebView setInspectorWKWebViewDelegate:]):
+        (-[WKInspectorWKWebView reload:]):
+        (-[WKInspectorWKWebView reloadFromOrigin:]):
+        Move WKInspectorWKWebView into its own file. Include a delegate
+        to handle reload IBActions that will want to override.
+
+2017-12-13  Chris Dumez  <cdumez@apple.com>
+
+        Fix copy/paste error in ProcessPoolConfiguration::createWithWebsiteDataStoreConfiguration()
+        https://bugs.webkit.org/show_bug.cgi?id=180782
+
+        Reviewed by Youenn Fablet.
+
+        * UIProcess/API/APIProcessPoolConfiguration.cpp:
+        (API::ProcessPoolConfiguration::createWithWebsiteDataStoreConfiguration):
+
+2017-12-13  Daniel Bates  <dabates@apple.com>
+
+        Add more auto fill button types
+        https://bugs.webkit.org/show_bug.cgi?id=180651
+        <rdar://problem/35891125>
+        And
+        <rdar://problem/35977943>
+
+        Reviewed by Brent Fulgham.
+
+        Adds enumerators for the new auto fill button types.
+
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInNodeHandle.mm:
+        (toAutoFillButtonType):
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInNodeHandlePrivate.h:
+        * WebProcess/InjectedBundle/API/c/WKBundleNodeHandle.cpp:
+        (toAutoFillButtonType):
+        * WebProcess/InjectedBundle/API/c/WKBundleNodeHandlePrivate.h:
+
+2017-12-13  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r225864.
+
+        This caused the Layout test step to crash out on Debug testers
+
+        Reverted changeset:
+
+        "REGRESSION (r225789): API tests
+        WKProcessPool.InitialWarmedProcessUsed and
+        WebKit.WebsiteDataStoreCustomPaths are failing."
+        https://bugs.webkit.org/show_bug.cgi?id=180722
+        https://trac.webkit.org/changeset/225864
+
+2017-12-13  Brady Eidson  <beidson@apple.com>
+
+        REGRESSION (r225789): API tests WKProcessPool.InitialWarmedProcessUsed and WebKit.WebsiteDataStoreCustomPaths are failing.
+        https://bugs.webkit.org/show_bug.cgi?id=180722
+
+        Reviewed by Chris Dumez.
+
+        - Add a test-only accessor to get the number of WebProcesses hosting WebPages
+        - Have WebsiteDataStore keep track of all instances so they can be looked up by SessionID
+        - When the StorageProcess needs to establish a SW context connection on behalf of a specific SessionID,
+          the UI process will now prefer using the WebsiteDataStore associated with that SessionID. This allows
+          us to continue deferring creation of the default data store if it's not needed.
+
+        * StorageProcess/StorageProcess.cpp:
+        (WebKit::StorageProcess::connectionToContextProcessWasClosed):
+        (WebKit::StorageProcess::createServerToContextConnection):
+        * StorageProcess/StorageProcess.h:
+
+        * StorageProcess/StorageToWebProcessConnection.cpp:
+        (WebKit::StorageToWebProcessConnection::establishSWServerConnection):
+
+        * UIProcess/API/Cocoa/WKProcessPool.mm:
+        (-[WKProcessPool _webPageContentProcessCount]):
+        * UIProcess/API/Cocoa/WKProcessPoolPrivate.h:
+
+        * UIProcess/Storage/StorageProcessProxy.cpp:
+        (WebKit::StorageProcessProxy::establishWorkerContextConnectionToStorageProcess):
+        (WebKit::StorageProcessProxy::establishWorkerContextConnectionToStorageProcessForExplicitSession):
+        * UIProcess/Storage/StorageProcessProxy.h:
+        * UIProcess/Storage/StorageProcessProxy.messages.in:
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::establishWorkerContextConnectionToStorageProcess):
+        * UIProcess/WebProcessPool.h:
+
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::WebsiteDataStore):
+        (WebKit::WebsiteDataStore::~WebsiteDataStore):
+        (WebKit::WebsiteDataStore::existingDataStoreForSessionID):
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+
+2017-12-13  Per Arne Vollan  <pvollan@apple.com>
+
+        REGRESSION(225597): Can't select a text box or web view on a page when VO is on.
+        https://bugs.webkit.org/show_bug.cgi?id=180756
+        <rdar://problem/35996158>
+
+        Reviewed by Brent Fulgham.
+
+        * Platform/IPC/mac/ConnectionMac.mm:
+        (IPC::AccessibilityProcessSuspendedNotification):
+        * UIProcess/Launcher/mac/ProcessLauncherMac.mm:
+        (WebKit::shouldLeakBoost):
+        * WebProcess/EntryPoint/mac/XPCService/WebContentService/Info-OSX.plist:
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::initializeProcess):
+
+2017-12-13  Brent Fulgham  <bfulgham@apple.com>
+
+        [iOS] Further Trim WebContent Process sandbox
+        https://bugs.webkit.org/show_bug.cgi?id=180727
+        <rdar://problem/18899506>
+
+        Reviewed by Eric Carlson.
+
+        Take another pass over the contents of the file and remove addition items that
+        don't have call sites in WebKit.
+
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.WebContent.sb:
+
+2017-12-13  Daniel Bates  <dabates@apple.com>
+
+        Move out-parameter in API::FormClient::willBeginInputSession() to the end of the parameter list
+        https://bugs.webkit.org/show_bug.cgi?id=180754
+
+        Reviewed by Wenson Hsieh.
+
+        Group all in-parameters in the signature of API::FormClient::willBeginInputSession() at
+        the front of the parameter list instead of interspersing in- and out- parameters.
+
+        No functionality changed. So, no new tests.
+
+        * WebProcess/InjectedBundle/API/mac/WKWebProcessPlugInBrowserContextController.mm:
+        (-[WKWebProcessPlugInBrowserContextController _setFormDelegate:]):
+        * WebProcess/InjectedBundle/APIInjectedBundleFormClient.h:
+        (API::InjectedBundle::FormClient::willBeginInputSession):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::elementDidFocus):
+
+2017-12-13  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Take process assertion to prevent the service worker process from getting suspended
+        https://bugs.webkit.org/show_bug.cgi?id=180735
+
+        Reviewed by Brady Eidson.
+
+        Take process assertion to prevent the service worker process from getting suspended while
+        it is still needed. We use the same policy as for the network process, meaning that
+        unsuspended WebContent processes prevent the service worker process from getting suspended.
+
+        This patch still does not enable service workers on iOS. The demo at https://mdn.github.io/sw-test/
+        appears to work. However, things are not working as expected for mobile.twitter.com where I
+        see the fetches intercepted by the service worker fail when offline for some reason (unrelated
+        to process suspension).
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::m_foregroundWebProcessCounter):
+        (WebKit::m_backgroundWebProcessCounter):
+        (WebKit::WebProcessPool::ensureNetworkProcess):
+        (WebKit::WebProcessPool::establishWorkerContextConnectionToStorageProcess):
+        (WebKit::WebProcessPool::disconnectProcess):
+        (WebKit::WebProcessPool::updateProcessAssertions):
+        (WebKit::WebProcessPool::reinstateNetworkProcessAssertionState):
+        * UIProcess/WebProcessPool.h:
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::didSetAssertionState):
+        * UIProcess/WebProcessProxy.h:
+
+2017-12-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.19.3 release.
+
+        * gtk/NEWS: Add release notes for 2.19.3.
+
+2017-12-12  Daniel Bates  <dabates@apple.com>
+
+        [WK] Add modern WebKit SPI to set auto fill button type and query if the auto fill button is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=180686
+
+        Reviewed by Alex Christensen.
+
+        * WebKit.xcodeproj/project.pbxproj:
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInNodeHandle.mm:
+        (-[WKWebProcessPlugInNodeHandle isHTMLInputElementAutoFillButtonEnabled]):
+        (toAutoFillButtonType):
+        (-[WKWebProcessPlugInNodeHandle setHTMLInputElementAutoFillButtonEnabledWithButtonType:]):
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInNodeHandleInternal.h:
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInNodeHandlePrivate.h:
+
+2017-12-12  John Wilander  <wilander@apple.com>
+
+        Storage Access API: Implement frame-specific access in the network storage session layer
+        https://bugs.webkit.org/show_bug.cgi?id=180679
+        <rdar://problem/35982116>
+
+        Reviewed by Alex Christensen.
+
+        This changes adds frameID and pageID to what is communicated for
+        storage access and also stored in the network process' table of
+        partitioning exceptions.
+
+        * NetworkProcess/NetworkDataTask.cpp:
+        (WebKit::NetworkDataTask::create):
+            Now stores frameID and pageID for the task for easy retrieval
+            in the HSTS checks.
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::updateStorageAccessForPrevalentDomains):
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/NetworkProcess.messages.in:
+        * NetworkProcess/cocoa/NetworkDataTaskCocoa.h:
+        * NetworkProcess/cocoa/NetworkDataTaskCocoa.mm:
+        (WebKit::NetworkDataTaskCocoa::NetworkDataTaskCocoa):
+        (WebKit::NetworkDataTaskCocoa::willPerformHTTPRedirection):
+            These two methods now submit frameID and pageID to the
+            partitioning query call.
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (-[WKNetworkSessionDelegate URLSession:task:willPerformHTTPRedirection:newRequest:completionHandler:]):
+        (-[WKNetworkSessionDelegate URLSession:task:_schemeUpgraded:completionHandler:]):
+            These two methods now submit frameID and pageID to the
+            partitioning query call.
+        * UIProcess/Network/NetworkProcessProxy.cpp:
+        (WebKit::NetworkProcessProxy::updateStorageAccessForPrevalentDomains):
+        * UIProcess/Network/NetworkProcessProxy.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::requestStorageAccess):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::requestStorageAccess):
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::updateStorageAccessForPrevalentDomainsHandler):
+        (WebKit::WebsiteDataStore::enableResourceLoadStatisticsAndSetTestingCallback):
+        (WebKit::WebsiteDataStore::requestStorageAccess):
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::requestStorageAccess):
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::requestStorageAccess):
+        * WebProcess/WebPage/WebPage.h:
+
+2017-12-12  Alex Christensen  <achristensen@webkit.org>
+
+        Modernize WebsiteDataStoreParameters and SandboxExtension::Handle decoding
+        https://bugs.webkit.org/show_bug.cgi?id=180621
+
+        Reviewed by Youenn Fablet.
+
+        * NetworkProcess/NetworkProcessCreationParameters.cpp:
+        (WebKit::NetworkProcessCreationParameters::decode):
+        * NetworkProcess/NetworkResourceLoadParameters.cpp:
+        (WebKit::NetworkResourceLoadParameters::decode):
+        * Shared/LoadParameters.cpp:
+        (WebKit::LoadParameters::decode):
+        * Shared/SandboxExtension.h:
+        (WebKit::decode):
+        (WebKit::SandboxExtension::Handle::decode): Deleted.
+        * Shared/Storage/StorageProcessCreationParameters.cpp:
+        (WebKit::StorageProcessCreationParameters::decode):
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::decode):
+        * Shared/WebsiteDataStoreParameters.cpp:
+        (WebKit::WebsiteDataStoreParameters::decode):
+        * Shared/WebsiteDataStoreParameters.h:
+        * Shared/mac/SandboxExtensionMac.mm:
+        (WebKit::SandboxExtension::Handle::decode):
+        (WebKit::SandboxExtension::HandleArray::HandleArray):
+        (WebKit::SandboxExtension::HandleArray::encode const):
+        (WebKit::SandboxExtension::HandleArray::decode):
+        (WebKit::SandboxExtension::SandboxExtension):
+
 2017-12-12  John Wilander  <wilander@apple.com>
 
         Dispatch resource load statistics telemetry on the main thread

@@ -532,6 +532,9 @@ static inline FunctionType addPseudoClassType(const CSSSelector& selector, Selec
     case CSSSelector::PseudoClassAutofill:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(isAutofilled));
         return FunctionType::SimpleSelectorChecker;
+    case CSSSelector::PseudoClassAutofillStrongPassword:
+        fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(isAutofilledStrongPassword));
+        return FunctionType::SimpleSelectorChecker;
     case CSSSelector::PseudoClassChecked:
         fragment.unoptimizedPseudoClasses.append(JSC::FunctionPtr(isChecked));
         return FunctionType::SimpleSelectorChecker;
@@ -3344,7 +3347,7 @@ void SelectorCodeGenerator::generateElementIsOnlyChild(Assembler::JumpList& fail
 
 static bool makeContextStyleUniqueIfNecessaryAndTestIsPlaceholderShown(const Element* element, SelectorChecker::CheckingContext* checkingContext)
 {
-    if (is<HTMLTextFormControlElement>(*element)) {
+    if (is<HTMLTextFormControlElement>(*element) && element->isTextField()) {
         if (checkingContext->resolvingMode == SelectorChecker::Mode::ResolvingStyle)
             checkingContext->styleRelations.append({ *element, Style::Relation::Unique, 1 });
         return downcast<HTMLTextFormControlElement>(*element).isPlaceholderVisible();

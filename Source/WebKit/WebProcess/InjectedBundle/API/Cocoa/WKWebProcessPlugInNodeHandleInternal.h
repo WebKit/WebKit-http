@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "WKWebProcessPlugInNodeHandle.h"
+#import "WKWebProcessPlugInNodeHandlePrivate.h"
 
 #if WK_API_ENABLED
 

@@ -445,6 +445,14 @@ IteratorTypeDst mergeDeduplicatedSorted(IteratorTypeLeft leftBegin, IteratorType
     return dstIter;
 }
 
+// libstdc++5 does not have constexpr std::tie. Since we cannot redefine std::tie with constexpr, we define WTF::tie instead.
+// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=65978
+template <class ...Args>
+inline constexpr std::tuple<Args&...> tie(Args&... values) noexcept
+{
+    return std::tuple<Args&...>(values...);
+}
+
 } // namespace WTF
 
 // This version of placement new omits a 0 check.
@@ -539,6 +547,23 @@ template <size_t I> struct in_place_index_t {
 template <size_t I>
 __IN_PLACE_INLINE_VARIABLE constexpr in_place_index_t<I> in_place_index { };
 #endif // __cplusplus < 201703L
+
+enum class ZeroStatus {
+    MayBeZero,
+    NonZero
+};
+
+constexpr size_t clz(uint32_t value, ZeroStatus mightBeZero = ZeroStatus::MayBeZero)
+{
+    if (mightBeZero == ZeroStatus::MayBeZero && value) {
+#if COMPILER(MSVC)
+        return __lzcnt(value);
+#else
+        return __builtin_clz(value);
+#endif
+    }
+    return 32;
+}
 
 } // namespace std
 

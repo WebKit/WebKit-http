@@ -62,7 +62,7 @@ public:
     std::optional<double> bindingsCurrentTime() const;
     ExceptionOr<void> setBindingsCurrentTime(std::optional<double>);
     std::optional<Seconds> currentTime() const;
-    void setCurrentTime(std::optional<Seconds>);
+    ExceptionOr<void> setCurrentTime(std::optional<Seconds>);
 
     double playbackRate() const { return m_playbackRate; }
     void setPlaybackRate(double);
@@ -70,8 +70,7 @@ public:
     enum class PlayState { Idle, Pending, Running, Paused, Finished };
     PlayState playState() const;
 
-    // FIXME: return a live value once we support pending pause and play tasks.
-    bool pending() const { return false; }
+    bool pending() const { return hasPendingPauseTask() || hasPendingPlayTask(); }
 
     using ReadyPromise = DOMPromiseProxyWithResolveCallback<IDLInterface<WebAnimation>>;
     ReadyPromise& ready() { return m_readyPromise; }
@@ -79,10 +78,19 @@ public:
     using FinishedPromise = DOMPromiseProxyWithResolveCallback<IDLInterface<WebAnimation>>;
     FinishedPromise& finished() { return m_finishedPromise; }
 
+    void cancel();
+    ExceptionOr<void> finish();
+    ExceptionOr<void> play();
+    ExceptionOr<void> pause();
+
     Seconds timeToNextRequiredTick(Seconds) const;
     void resolve(RenderStyle&);
     void acceleratedRunningStateDidChange();
     void startOrStopAccelerated();
+
+    enum class DidSeek { Yes, No };
+    enum class SynchronouslyNotify { Yes, No };
+    void updateFinishedState(DidSeek, SynchronouslyNotify);
 
     String description();
 
@@ -92,18 +100,42 @@ public:
 private:
     explicit WebAnimation(Document&);
 
+    enum class RespectHoldTime { Yes, No };
+    enum class AutoRewind { Yes, No };
+    enum class TimeToRunPendingTask { NotScheduled, ASAP, WhenReady };
+
     void enqueueAnimationPlaybackEvent(const AtomicString&, std::optional<Seconds>, std::optional<Seconds>);
     Seconds effectEndTime() const;
     WebAnimation& readyPromiseResolve();
     WebAnimation& finishedPromiseResolve();
+    std::optional<Seconds> currentTime(RespectHoldTime) const;
+    ExceptionOr<void> silentlySetCurrentTime(std::optional<Seconds>);
+    void finishNotificationSteps();
+    void scheduleMicrotaskIfNeeded();
+    void performMicrotask();
+    void setTimeToRunPendingPauseTask(TimeToRunPendingTask);
+    void setTimeToRunPendingPlayTask(TimeToRunPendingTask);
+    bool hasPendingPauseTask() const { return m_timeToRunPendingPauseTask != TimeToRunPendingTask::NotScheduled; }
+    bool hasPendingPlayTask() const { return m_timeToRunPendingPlayTask != TimeToRunPendingTask::NotScheduled; }
+    void updatePendingTasks();
+    ExceptionOr<void> play(AutoRewind);
+    void runPendingPauseTask();
+    void runPendingPlayTask();
+    void resetPendingTasks();
     
     RefPtr<AnimationEffect> m_effect;
     RefPtr<AnimationTimeline> m_timeline;
+    std::optional<Seconds> m_previousCurrentTime;
     std::optional<Seconds> m_startTime;
+    std::optional<Seconds> m_holdTime;
     double m_playbackRate { 1 };
     bool m_isStopped { false };
+    bool m_finishNotificationStepsMicrotaskPending;
+    bool m_scheduledMicrotask;
     ReadyPromise m_readyPromise;
     FinishedPromise m_finishedPromise;
+    TimeToRunPendingTask m_timeToRunPendingPlayTask { TimeToRunPendingTask::NotScheduled };
+    TimeToRunPendingTask m_timeToRunPendingPauseTask { TimeToRunPendingTask::NotScheduled };
 
     // ActiveDOMObject.
     const char* activeDOMObjectName() const final;

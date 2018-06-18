@@ -53,7 +53,6 @@ namespace WebCore {
     macro(animationend) \
     macro(animationiteration) \
     macro(animationstart) \
-    macro(applepaypaymentmethodchanged) \
     macro(applepayvalidatemerchant) \
     macro(audioend) \
     macro(audioprocess) \
@@ -117,6 +116,7 @@ namespace WebCore {
     macro(error) \
     macro(exit) \
     macro(fetch) \
+    macro(finish) \
     macro(focus) \
     macro(focusin) \
     macro(focusout) \

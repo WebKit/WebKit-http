@@ -33,7 +33,7 @@ class RenderTextControl;
 class TextControlInnerTextElement;
 class VisiblePosition;
 
-enum class AutoFillButtonType : uint8_t { None, Credentials, Contacts };
+enum class AutoFillButtonType : uint8_t { None, Credentials, Contacts, StrongConfirmationPassword, StrongPassword };
 enum TextFieldSelectionDirection { SelectionHasNoDirection, SelectionHasForwardDirection, SelectionHasBackwardDirection };
 enum TextFieldEventBehavior { DispatchNoEvent, DispatchChangeEvent, DispatchInputAndChangeEvent };
 
@@ -82,7 +82,7 @@ public:
     virtual String value() const = 0;
 
     virtual RefPtr<TextControlInnerTextElement> innerTextElement() const = 0;
-    virtual RenderStyle createInnerTextStyle(const RenderStyle&) const = 0;
+    virtual RenderStyle createInnerTextStyle(const RenderStyle&) = 0;
 
     void selectionChanged(bool shouldFireSelectEvent);
     WEBCORE_EXPORT bool lastChangeWasUserEdit() const;
@@ -106,6 +106,7 @@ protected:
 
     void disabledStateChanged() override;
     void readOnlyAttributeChanged() override;
+    virtual bool isInnerTextElementEditable() const;
     void updateInnerTextElementEditability();
 
     void cacheSelection(int start, int end, TextFieldSelectionDirection direction)
@@ -131,6 +132,8 @@ protected:
 
 private:
     TextFieldSelectionDirection cachedSelectionDirection() const { return static_cast<TextFieldSelectionDirection>(m_cachedSelectionDirection); }
+
+    bool isTextFormControlElement() const final { return true; }
 
     int computeSelectionStart() const;
     int computeSelectionEnd() const;
@@ -169,7 +172,7 @@ HTMLTextFormControlElement* enclosingTextFormControl(const Position&);
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::HTMLTextFormControlElement)
-    static bool isType(const WebCore::Element& element) { return element.isTextFormControl(); }
+    static bool isType(const WebCore::Element& element) { return element.isTextFormControlElement(); }
     static bool isType(const WebCore::Node& node) { return is<WebCore::Element>(node) && isType(downcast<WebCore::Element>(node)); }
     static bool isType(const WebCore::EventTarget& target) { return is<WebCore::Node>(target) && isType(downcast<WebCore::Node>(target)); }
 SPECIALIZE_TYPE_TRAITS_END()

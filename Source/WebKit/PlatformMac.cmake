@@ -71,6 +71,8 @@ list(APPEND WebKit_SOURCES
 
     Shared/APIWebArchive.mm
     Shared/APIWebArchiveResource.mm
+    Shared/TouchBarMenuData.cpp
+    Shared/TouchBarMenuItemData.cpp
 
     Shared/Authentication/cocoa/AuthenticationManagerCocoa.mm
 
@@ -225,6 +227,7 @@ list(APPEND WebKit_SOURCES
     UIProcess/API/Cocoa/WKWebsiteDataStore.mm
     UIProcess/API/Cocoa/WKWindowFeatures.mm
     UIProcess/API/Cocoa/_WKActivatedElementInfo.mm
+    UIProcess/API/Cocoa/_WKApplicationManifest.mm
     UIProcess/API/Cocoa/_WKAttachment.mm
     UIProcess/API/Cocoa/_WKAutomationSession.mm
     UIProcess/API/Cocoa/_WKAutomationSessionConfiguration.mm
@@ -308,12 +311,12 @@ list(APPEND WebKit_SOURCES
     UIProcess/mac/WKFullScreenWindowController.mm
     UIProcess/mac/WKImmediateActionController.mm
     UIProcess/mac/WKInspectorViewController.mm
+    UIProcess/mac/WKInspectorWKWebView.mm
     UIProcess/mac/WKPrintingView.mm
     UIProcess/mac/WKSharingServicePickerDelegate.mm
     UIProcess/mac/WKTextFinderClient.mm
     UIProcess/mac/WKTextInputWindowController.mm
     UIProcess/mac/WKViewLayoutStrategy.mm
-    UIProcess/mac/WKWebInspectorWKWebView.mm
     UIProcess/mac/WebColorPickerMac.mm
     UIProcess/mac/WebContextMenuProxyMac.mm
     UIProcess/mac/WebCookieManagerProxyMac.mm
@@ -481,6 +484,8 @@ set(WebKit_FORWARDING_HEADERS_FILES
     UIProcess/API/C/WKPageDiagnosticLoggingClient.h
     UIProcess/API/C/WKPageNavigationClient.h
     UIProcess/API/C/WKPageRenderingProgressEvents.h
+
+    WebProcess/WebPage/WebPageOverlay.h
 )
 
 list(APPEND WebKit_MESSAGES_IN_FILES
@@ -518,7 +523,6 @@ set(WebKit_FORWARDING_HEADERS_DIRECTORIES
     Shared/API/c/cf
     Shared/API/c/mac
 
-    UIProcess
     UIProcess/Cocoa
 
     UIProcess/API/C
@@ -526,8 +530,6 @@ set(WebKit_FORWARDING_HEADERS_DIRECTORIES
     UIProcess/API/C/Cocoa
     UIProcess/API/C/mac
     UIProcess/API/cpp
-
-    WebProcess/WebPage
 
     WebProcess/InjectedBundle/API/Cocoa
     WebProcess/InjectedBundle/API/c
