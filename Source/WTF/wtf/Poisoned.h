@@ -43,7 +43,7 @@
 #define ENABLE_MIXED_POISON (__clang_major__ >= 9)
 #elif defined(__clang_major__)
 #define ENABLE_MIXED_POISON (__clang_major__ >= 4)
-#elif defined(__GNUC__)
+#elif defined(__GNUC__) && !OS(HAIKU)
 #include <features.h>
 #define ENABLE_MIXED_POISON (__GNUC_PREREQ(7, 2))
 #endif // !defined(__GNUC__)
