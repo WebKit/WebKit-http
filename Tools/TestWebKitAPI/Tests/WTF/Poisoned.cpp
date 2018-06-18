@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -61,6 +61,15 @@ TEST(WTF_Poisoned, Basic)
         ASSERT_EQ(&a, ptr.unpoisoned());
         ASSERT_EQ(&a, &*ptr);
         ASSERT_EQ(&a.name, &ptr->name);
+
+#if ENABLE(POISON)
+        uintptr_t ptrBits;
+        std::memcpy(&ptrBits, &ptr, sizeof(ptrBits));
+        ASSERT_TRUE(ptrBits != bitwise_cast<uintptr_t>(&a));
+#if ENABLE(POISON_ASSERTS)
+        ASSERT_TRUE((Poisoned<g_testPoisonA, RefLogger*>::isPoisoned(ptrBits)));
+#endif
+#endif // ENABLE(POISON)
     }
 
     {
@@ -367,6 +376,32 @@ TEST(WTF_Poisoned, Swap)
         ASSERT_TRUE(p2.bits() != p4.bits());
 #endif
     }
+
+#if ENABLE(MIXED_POISON)
+    {
+        Poisoned<g_testPoisonA, RefLogger*> p1(&a);
+        RefLogger* p2(&b);
+        ASSERT_EQ(&a, p1.unpoisoned());
+        ASSERT_EQ(&b, p2);
+        swap(p1, p2);
+        ASSERT_EQ(&b, p1.unpoisoned());
+        ASSERT_EQ(&a, p2);
+
+        ASSERT_TRUE(p1.bits() != bitwise_cast<uintptr_t>(p2));
+    }
+
+    {
+        Poisoned<g_testPoisonA, RefLogger*> p1(&a);
+        RefLogger* p2(&b);
+        ASSERT_EQ(&a, p1.unpoisoned());
+        ASSERT_EQ(&b, p2);
+        p1.swap(p2);
+        ASSERT_EQ(&b, p1.unpoisoned());
+        ASSERT_EQ(&a, p2);
+
+        ASSERT_TRUE(p1.bits() != bitwise_cast<uintptr_t>(p2));
+    }
+#endif
 }
 
 static Poisoned<g_testPoisonA, RefLogger*> poisonedPtrFoo(RefLogger& logger)

@@ -38,7 +38,6 @@ namespace WebCore {
 
 class RealtimeMediaSourceSettings {
 public:
-    enum SourceType { None, Camera, Microphone };
     enum VideoFacingMode { Unknown, User, Environment, Left, Right };
 
     static String facingMode(RealtimeMediaSourceSettings::VideoFacingMode);
@@ -90,6 +89,22 @@ public:
     const AtomicString& groupId() const { return m_groupId; }
     void setGroupId(const AtomicString& groupId) { m_groupId = groupId; }
 
+    enum class DisplaySurfaceType {
+        Monitor,
+        Window,
+        Application,
+        Browser,
+        Invalid,
+    };
+
+    bool supportsDisplaySurface() const { return m_supportedConstraints.supportsDisplaySurface(); }
+    DisplaySurfaceType displaySurface() const { return m_displaySurface; }
+    void setDisplaySurface(DisplaySurfaceType displaySurface) { m_displaySurface = displaySurface; }
+
+    bool supportsLogicalSurface() const { return m_supportedConstraints.supportsLogicalSurface(); }
+    bool logicalSurface() const { return m_logicalSurface; }
+    void setLogicalSurface(bool logicalSurface) { m_logicalSurface = logicalSurface; }
+
     const RealtimeMediaSourceSupportedConstraints& supportedConstraints() const { return m_supportedConstraints; }
     void setSupportedConstraints(const RealtimeMediaSourceSupportedConstraints& supportedConstraints) { m_supportedConstraints = supportedConstraints; }
 
@@ -113,6 +128,9 @@ private:
     AtomicString m_deviceId;
     AtomicString m_groupId;
     AtomicString m_label;
+
+    DisplaySurfaceType m_displaySurface { DisplaySurfaceType::Invalid };
+    bool m_logicalSurface { 0 };
 
     RealtimeMediaSourceSupportedConstraints m_supportedConstraints;
 };

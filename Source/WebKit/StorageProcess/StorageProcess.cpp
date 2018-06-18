@@ -111,7 +111,7 @@ void StorageProcess::connectionToContextProcessWasClosed()
         swServer->markAllWorkersAsTerminated();
 
     if (shouldRelaunch)
-        createServerToContextConnection();
+        createServerToContextConnection(std::nullopt);
 }
 
 // The rule is that we need a context process (and a connection to it) as long as we have SWServerConnections to regular WebProcesses.
@@ -191,6 +191,9 @@ void StorageProcess::initializeWebsiteDataStore(const StorageProcessCreationPara
         SandboxExtension::consumePermanently(parameters.serviceWorkerRegistrationDirectoryExtensionHandle);
         postStorageTask(createCrossThreadTask(*this, &StorageProcess::ensurePathExists, parameters.serviceWorkerRegistrationDirectory));
     }
+
+    for (auto& scheme : parameters.urlSchemesServiceWorkersCanHandle)
+        registerURLSchemeServiceWorkersCanHandle(scheme);
 #endif
 }
 
@@ -265,36 +268,38 @@ void StorageProcess::createStorageToWebProcessConnection(bool isServiceWorkerPro
 
 void StorageProcess::fetchWebsiteData(PAL::SessionID sessionID, OptionSet<WebsiteDataType> websiteDataTypes, uint64_t callbackID)
 {
-    auto completionHandler = [this, callbackID](const WebsiteData& websiteData) {
-        parentProcessConnection()->send(Messages::StorageProcessProxy::DidFetchWebsiteData(callbackID, websiteData), 0);
-    };
+    auto websiteData = std::make_unique<WebsiteData>();
+    WebsiteData* rawWebsiteData = websiteData.get();
+    auto callbackAggregator = CallbackAggregator::create([this, websiteData = WTFMove(websiteData), callbackID]() {
+        parentProcessConnection()->send(Messages::StorageProcessProxy::DidFetchWebsiteData(callbackID, *websiteData), 0);
+    });
 
+    String path;
 #if ENABLE(SERVICE_WORKER)
-    if (websiteDataTypes.contains(WebsiteDataType::ServiceWorkerRegistrations))
-        notImplemented();
-#endif
-
-#if ENABLE(INDEXED_DATABASE)
-    String path = m_idbDatabasePaths.get(sessionID);
-    if (!path.isEmpty() && websiteDataTypes.contains(WebsiteDataType::IndexedDBDatabases)) {
-        // FIXME: Pick the right database store based on the session ID.
-        postStorageTask(CrossThreadTask([this, completionHandler = WTFMove(completionHandler), path = WTFMove(path)]() mutable {
-            RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler), securityOrigins = indexedDatabaseOrigins(path)] {
-                WebsiteData websiteData;
-                for (const auto& securityOrigin : securityOrigins)
-                    websiteData.entries.append({ securityOrigin, WebsiteDataType::IndexedDBDatabases, 0 });
-
-                completionHandler(websiteData);
-            });
-        }));
-        return;
+    path = m_swDatabasePaths.get(sessionID);
+    if (!path.isEmpty() && websiteDataTypes.contains(WebsiteDataType::ServiceWorkerRegistrations)) {
+        swServerForSession(sessionID).getOriginsWithRegistrations([rawWebsiteData, callbackAggregator = callbackAggregator.copyRef()](const HashSet<SecurityOriginData>& origins) mutable {
+            for (auto& origin : origins)
+                rawWebsiteData->entries.append({ origin, WebsiteDataType::ServiceWorkerRegistrations, 0 });
+        });
     }
 #endif
 
-    completionHandler({ });
+#if ENABLE(INDEXED_DATABASE)
+    path = m_idbDatabasePaths.get(sessionID);
+    if (!path.isEmpty() && websiteDataTypes.contains(WebsiteDataType::IndexedDBDatabases)) {
+        // FIXME: Pick the right database store based on the session ID.
+        postStorageTask(CrossThreadTask([this, callbackAggregator = callbackAggregator.copyRef(), path = WTFMove(path), rawWebsiteData]() mutable {
+            RunLoop::main().dispatch([callbackAggregator = WTFMove(callbackAggregator), rawWebsiteData, securityOrigins = indexedDatabaseOrigins(path)] {
+                for (const auto& securityOrigin : securityOrigins)
+                    rawWebsiteData->entries.append({ securityOrigin, WebsiteDataType::IndexedDBDatabases, 0 });
+            });
+        }));
+    }
+#endif
 }
 
-void StorageProcess::deleteWebsiteData(PAL::SessionID sessionID, OptionSet<WebsiteDataType> websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID)
+void StorageProcess::deleteWebsiteData(PAL::SessionID sessionID, OptionSet<WebsiteDataType> websiteDataTypes, WallTime modifiedSince, uint64_t callbackID)
 {
     auto callbackAggregator = CallbackAggregator::create([this, callbackID] {
         parentProcessConnection()->send(Messages::StorageProcessProxy::DidDeleteWebsiteData(callbackID), 0);
@@ -424,13 +429,16 @@ WebSWServerToContextConnection* StorageProcess::globalServerToContextConnection(
     return m_serverToContextConnection.get();
 }
 
-void StorageProcess::createServerToContextConnection()
+void StorageProcess::createServerToContextConnection(std::optional<PAL::SessionID> sessionID)
 {
     if (m_waitingForServerToContextProcessConnection)
         return;
     
     m_waitingForServerToContextProcessConnection = true;
-    parentProcessConnection()->send(Messages::StorageProcessProxy::EstablishWorkerContextConnectionToStorageProcess(), 0);
+    if (sessionID)
+        parentProcessConnection()->send(Messages::StorageProcessProxy::EstablishWorkerContextConnectionToStorageProcessForExplicitSession(*sessionID), 0);
+    else
+        parentProcessConnection()->send(Messages::StorageProcessProxy::EstablishWorkerContextConnectionToStorageProcess(), 0);
 }
 
 void StorageProcess::didFailFetch(SWServerConnectionIdentifier serverConnectionIdentifier, uint64_t fetchIdentifier)

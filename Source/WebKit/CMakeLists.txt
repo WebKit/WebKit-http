@@ -223,7 +223,7 @@ set(WebKit_SOURCES
     Shared/WebUserContentControllerDataTypes.cpp
     Shared/WebWheelEvent.cpp
     Shared/WebsiteDataStoreParameters.cpp
-    Shared/WebsitePolicies.cpp
+    Shared/WebsitePoliciesData.cpp
 
     Shared/API/APIArray.cpp
     Shared/API/APIData.cpp
@@ -813,6 +813,7 @@ if (UNIX)
         if (SHM_OPEN_REQUIRES_LIBRT)
             list(APPEND WebKit_LIBRARIES rt)
         endif ()
+        unset(CMAKE_REQUIRED_LIBRARIES)
     endif ()
 endif ()
 
@@ -943,10 +944,6 @@ ADD_WEBKIT_PREFIX_HEADER(WebKit)
 
 if (COMPILER_IS_GCC_OR_CLANG AND NOT APPLE)
     target_link_libraries(WebKit -Wl,--start-group WebCore WebCoreDerivedSources -Wl,--end-group)
-endif ()
-
-if (WebKit_VERSION_SCRIPT)
-    WEBKIT_ADD_TARGET_PROPERTIES(WebKit LINK_FLAGS "${WebKit_VERSION_SCRIPT}")
 endif ()
 
 add_executable(WebProcess ${WebProcess_SOURCES})

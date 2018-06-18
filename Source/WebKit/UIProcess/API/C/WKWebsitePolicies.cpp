@@ -32,7 +32,6 @@
 #include "WKArray.h"
 #include "WKDictionary.h"
 #include "WKRetainPtr.h"
-#include "WebsitePolicies.h"
 
 using namespace WebKit;
 

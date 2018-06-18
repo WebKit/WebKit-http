@@ -28,8 +28,11 @@
 
 #include "Logging.h"
 #include "SandboxInitializationParameters.h"
+#include <WebCore/SchemeRegistry.h>
 #include <pal/SessionID.h>
 #include <unistd.h>
+
+using namespace WebCore;
 
 namespace WebKit {
 
@@ -61,6 +64,9 @@ static void didCloseOnConnectionWorkQueue(IPC::Connection*)
 
 void ChildProcess::initialize(const ChildProcessInitializationParameters& parameters)
 {
+    RELEASE_ASSERT_WITH_MESSAGE(parameters.processIdentifier, "Unable to initialize child process without a WebCore process identifier");
+    Process::setIdentifier(*parameters.processIdentifier);
+
     platformInitialize();
 
 #if PLATFORM(COCOA)
@@ -189,6 +195,11 @@ void ChildProcess::terminate()
 void ChildProcess::shutDown()
 {
     terminate();
+}
+
+void ChildProcess::registerURLSchemeServiceWorkersCanHandle(const String& urlScheme) const
+{
+    WebCore::SchemeRegistry::registerURLSchemeServiceWorkersCanHandle(urlScheme);
 }
 
 #if !PLATFORM(COCOA)

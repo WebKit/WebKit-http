@@ -29,15 +29,15 @@
 }
 
 .spreadsheet-style-declaration-editor .property {
-    padding-right: var(--css-declaration-side-padding);
-    padding-left: calc(var(--css-declaration-side-padding) + 17px);
+    padding-right: var(--css-declaration-horizontal-padding);
+    padding-left: calc(var(--css-declaration-horizontal-padding) + 17px);
 }
 
-.spreadsheet-style-declaration-editor .name {
+.spreadsheet-style-declaration-editor .property:not(.disabled) .name {
     color: var(--syntax-highlight-boolean-color);
 }
 
-.spreadsheet-style-declaration-editor .value {
+.spreadsheet-style-declaration-editor .property:not(.disabled) .value {
     color: black;
 }
 
@@ -60,7 +60,7 @@
 .spreadsheet-style-declaration-editor .property-toggle {
     visibility: hidden;
     position: absolute;
-    left: calc(var(--css-declaration-side-padding) + 1px);
+    left: calc(var(--css-declaration-horizontal-padding) + 1px);
     width: 10px;
     height: 10px;
     margin: 0;
@@ -71,8 +71,7 @@
     visibility: visible;
 }
 
-.spreadsheet-style-declaration-editor .property.disabled,
-.spreadsheet-style-declaration-editor .property.disabled > * {
+.spreadsheet-style-declaration-editor .property.disabled {
     color: var(--syntax-highlight-comment-color) !important;
 }
 
@@ -102,7 +101,7 @@
     position: absolute;
     right: 0;
     display: inline-block;
-    width: calc(20px + var(--css-declaration-side-padding));
+    width: calc(20px + var(--css-declaration-horizontal-padding));
     height: 13px;
 
     background-image: url(../Images/Warning.svg);

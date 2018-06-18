@@ -1,3 +1,603 @@
+2018-01-08  Don Olmstead  <don.olmstead@sony.com>
+
+        Add WTF_EXPORTs to UniStdExtras
+        https://bugs.webkit.org/show_bug.cgi?id=181415
+
+        Reviewed by Alex Christensen.
+
+        * wtf/UniStdExtras.h:
+
+2018-01-07  Mark Lam  <mark.lam@apple.com>
+
+        Apply poisoning to more pointers in JSC.
+        https://bugs.webkit.org/show_bug.cgi?id=181096
+        <rdar://problem/36182970>
+
+        Reviewed by JF Bastien.
+
+        Added support for PoisonedBag and PoisonedRefCountedArray.
+
+        * wtf/Bag.h:
+        (WTF::Private::BagNode::BagNode):
+        (WTF::Bag::Bag):
+        (WTF::Bag::operator=):
+        (WTF::Bag::clear):
+        (WTF::Bag::add):
+        (WTF::Bag::begin):
+        (WTF::Bag::unwrappedHead):
+        (WTF::Bag::Node::Node): Deleted.
+        * wtf/BagToHashMap.h:
+        (WTF::toHashMap):
+        * wtf/Poisoned.h:
+        (WTF::constExprPoisonRandom):
+        (WTF::makeConstExprPoison):
+        * wtf/RefCountedArray.h:
+        (WTF::RefCountedArray::RefCountedArray):
+        (WTF::RefCountedArray::clone const):
+        (WTF::RefCountedArray::operator=):
+        (WTF::RefCountedArray::~RefCountedArray):
+        (WTF::RefCountedArray::refCount const):
+        (WTF::RefCountedArray::size const):
+        (WTF::RefCountedArray::data):
+        (WTF::RefCountedArray::begin):
+        (WTF::RefCountedArray::end):
+        (WTF::RefCountedArray::data const):
+        (WTF::RefCountedArray::begin const):
+        (WTF::RefCountedArray::operator== const):
+        (WTF::RefCountedArray::Header::fromPayload):
+        * wtf/WTFAssertions.cpp:
+
+2018-01-05  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: poison JS object's secrets
+        https://bugs.webkit.org/show_bug.cgi?id=181339
+        <rdar://problem/36325001>
+
+        Reviewed by Mark Lam.
+
+        swapping a poisoned pointer with a non-poisoned one (as is done in
+        JSWebAssembyMemory::adopt) was missing.
+
+        * wtf/Poisoned.h:
+        (WTF::PoisonedImpl::swap):
+        (WTF::ConstExprPoisonedPtrTraits::swap):
+
+2018-01-05  David Kilzer  <ddkilzer@apple.com>
+
+        Re-enable -Wcast-qual in WebCore for Apple ports
+        <https://webkit.org/b/177895>
+        <rdar://problem/34960830>
+
+        Reviewed by Joseph Pecoraro.
+
+        * wtf/RetainPtr.h:
+        (WTF::RetainPtr::fromStorageTypeHelper const): Add const_cast<>
+        operator here since some CFTypes are not defined as const
+        pointers, which triggers a warning in C++ source with
+        -Wcast-qual when casting from CFTypeRef back to the original
+        type.  Note that we use const_cast<CF_BRIDGED_TYPE(id) void*>()
+        here (and in TypeCastsCF.h below) since this is what CFTypeRef
+        is defined as in CFBase.h, but without the 'const' modifier.
+        (WTF::RetainPtr::fromStorageType const): Ditto.
+
+        * wtf/cf/TypeCastsCF.h: Use #pragma once.
+        (WTF_DECLARE_CF_TYPE_TRAIT): Rename from DECLARE_CF_TYPE_TRAIT.
+        Don't #undef it so that it can be used in other source files.
+        (WTF_DECLARE_CF_MUTABLE_TYPE_TRAIT): Add new macro that is used
+        for declaring CFMutable types.  The CFTypeID for CF_Foo_ and
+        CFMutable_Foo_ are the same, so we have to use a different macro
+        to declare type traits for those types.
+        (WTF::dynamic_cf_cast): Add assertion to catch issues in Debug
+        builds.
+        (WTF::checked_cf_cast): Inline code from WTF::dynamic_cf_cast
+        and change behavior to be more consistent between Debug and
+        Release builds, as well as other "checked" functions.
+        Previously this function would return nullptr in Release builds
+        if nullptr or the wrong type of object was passed in, but crash
+        in both cases on Debug builds.  The new behavior always returns
+        nullptr if nullptr was passed in (but never crashes), and always
+        crashes if the wrong type of object is passed in.
+
+2018-01-04  Keith Miller  <keith_miller@apple.com>
+
+        TypedArrays and Wasm should use index masking.
+        https://bugs.webkit.org/show_bug.cgi?id=181313
+
+        Reviewed by Michael Saboff.
+
+        * wtf/MathExtras.h:
+        (WTF::computeIndexingMask):
+
+2018-01-03  Michael Saboff  <msaboff@apple.com>
+
+        Disable SharedArrayBuffers from Web API
+        https://bugs.webkit.org/show_bug.cgi?id=181266
+
+        Reviewed by Saam Barati.
+
+        Turn off SharedArrayBuffers using a compile time flag ENABLE_SHARED_ARRAY_BUFFER.
+
+        * wtf/Platform.h:
+
+2017-12-28  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Remove std::chrono completely
+        https://bugs.webkit.org/show_bug.cgi?id=181186
+
+        Reviewed by Alex Christensen.
+
+        std::chrono's overflow unaware design is dangerous[1]. Even small code like
+        `condition.wait_for(std::chrono::seconds::max())` is broken in some platforms
+        due to overflow of std::chrono::time_point. So we intentionally avoid using
+        std::chrono, and use WallTime, MonotonicTime, Seconds instead.
+
+        This patch removes all the remaining use of std::chrono from WebKit tree.
+
+        [1]: https://lists.webkit.org/pipermail/webkit-dev/2016-May/028242.html
+
+        * wtf/CrossThreadCopier.h:
+        Remove std::chrono support from cross thread copiers.
+        * wtf/Forward.h:
+        * wtf/MonotonicTime.h:
+        (WTF::MonotonicTime::isolatedCopy const):
+        Add isolatedCopy function.
+        * wtf/RunLoop.h:
+        (WTF::RunLoop::TimerBase::startRepeating):
+        (WTF::RunLoop::TimerBase::startOneShot):
+        Just remove these helpers.
+        * wtf/Seconds.h:
+        (WTF::Seconds::isolatedCopy const):
+        Add isolatedCopy function.
+        * wtf/WallTime.h:
+        (WTF::WallTime::isolatedCopy const):
+        Add isolatedCopy function.
+        * wtf/persistence/PersistentCoders.h:
+        (WTF::Persistence::Coder<Seconds>::encode):
+        (WTF::Persistence::Coder<Seconds>::decode):
+        (WTF::Persistence::Coder<WallTime>::encode):
+        (WTF::Persistence::Coder<WallTime>::decode):
+        Add persistent coder support for Seconds and WallTime.
+        (WTF::Persistence::Coder<std::chrono::system_clock::time_point>::encode): Deleted.
+        (WTF::Persistence::Coder<std::chrono::system_clock::time_point>::decode): Deleted.
+        Remove std::chrono support from persistent coders.
+
+2018-01-02  Mark Lam  <mark.lam@apple.com>
+
+        Refactoring: Rename DummyClass to DummyStruct because it's a struct.
+        https://bugs.webkit.org/show_bug.cgi?id=181230
+
+        Reviewed by JF Bastien.
+
+        * wtf/WTFAssertions.cpp:
+
+2018-01-02  Mark Lam  <mark.lam@apple.com>
+
+        Ensure that poisoned pointers do not look like double or int32 JSValues.
+        https://bugs.webkit.org/show_bug.cgi?id=181221
+        <rdar://problem/36248638>
+
+        Reviewed by JF Bastien.
+
+        Changed poison values to ensure that poisoned bits (i.e. pointer ^ poison)
+        satisfies the following conditions:
+        1. bits 48-63 are 0: this ensures that poisoned bits look like a pointer and
+           not a double or int32 JSValue.
+        2. bits 32-47 are not completely 0.
+        3. bit 2 is never 0: this ensures that the poisoned value of a non-null pointer
+           will never be null.
+        4. bit 0-1 is always 0: this ensures that clients can still use the 2 bottom
+           bits of the poisoned value as flag bits (just like they were able to do with
+           pointer values).  The only difference is that bit 2 can no longer be used for
+           flag bits because poisoned values need it to always be set.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/PointerAsserts.cpp: Removed.
+
+        * wtf/Poisoned.cpp:
+        (WTF::makePoison):
+        - Updated to satisfy the above requirements.
+        
+        * wtf/Poisoned.h:
+        (WTF::makeConstExprPoison):
+        (WTF::makePoison): Deleted.
+
+        * wtf/WTFAssertions.cpp: Copied from Source/WTF/wtf/PointerAsserts.cpp.
+        - Renamed from PointerAsserts.cpp because we assert more things than just
+          pointers here.
+        - Added some assertions to test makeConstExprPoison() to ensure that it satisfies
+          the above requirements.
+
+2017-12-28  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Remove std::chrono if it is not used for ArgumentCoder or PersistentCoder
+        https://bugs.webkit.org/show_bug.cgi?id=181174
+
+        Reviewed by Konstantin Tokarev.
+
+        Make WallTime more constexpr friendly. This change is already applied to MonoTonicTime.
+
+        We would like to move std::{isfinite,isinf,isnan} overloadings from std:: to each class scope in a separate patch[1].
+
+        [1]: https://bugs.webkit.org/show_bug.cgi?id=181183
+
+        * wtf/WallTime.h:
+        (WTF::WallTime::WallTime):
+        (WTF::WallTime::fromRawSeconds):
+        (WTF::WallTime::infinity):
+        (WTF::WallTime::secondsSinceEpoch const):
+        (WTF::WallTime::operator bool const):
+        (WTF::WallTime::operator+ const):
+        (WTF::WallTime::operator- const):
+        (WTF::WallTime::operator== const):
+        (WTF::WallTime::operator!= const):
+        (WTF::WallTime::operator< const):
+        (WTF::WallTime::operator> const):
+        (WTF::WallTime::operator<= const):
+        (WTF::WallTime::operator>= const):
+
+2017-12-28  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][CMake] Use add_custom_command to copy each forwarding header files
+        https://bugs.webkit.org/show_bug.cgi?id=180921
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/PlatformWin.cmake: Use WEBKIT_MAKE_FORWARDING_HEADERS.
+
+2017-12-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Add clock_gettime based monotonicallyIncreasingTime implementation for Linux and BSDs
+        https://bugs.webkit.org/show_bug.cgi?id=181175
+
+        Reviewed by Michael Catanzaro.
+
+        Use platform-provided POSIX APIs to get monotonic time.
+
+        * wtf/CurrentTime.cpp:
+        (WTF::monotonicallyIncreasingTime):
+
+2017-12-26  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        REGRESSION(r225769): Build error with constexpr std::max // std::min in libdstdc++4
+        https://bugs.webkit.org/show_bug.cgi?id=181160
+
+        Reviewed by Myles C. Maxfield.
+
+        In libstdc++-4 std::max and std::min are not annotated with constexpr.
+        This patch adds a WTF::min and WTF::max for using where a constexpr result is expected.
+        Related: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=60271
+
+        * wtf/StdLibExtras.h:
+        (WTF::min):
+        (WTF::max):
+
+2017-12-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Remove std::chrono completely
+        https://bugs.webkit.org/show_bug.cgi?id=181165
+
+        Reviewed by Konstantin Tokarev.
+
+        WTF::currentCPUTime now returns WTF::Seconds.
+        We also add the implementaiton for Linux and FreeBSD.
+
+        * wtf/CurrentTime.cpp:
+        (WTF::currentCPUTime):
+        * wtf/CurrentTime.h:
+
+2017-12-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, try to fix the Sierra build after r226277.
+
+        The macOS 10.12 SDK does not know about NSControlStateValue and some types of NSLevelIndicatorStyles, so these
+        need to be declared in a separate section in AppKitCompatibilityDeclarations.h (rather than in the < macOS 10.12
+        SDK #ifdef).
+
+        * wtf/mac/AppKitCompatibilityDeclarations.h:
+
+2017-12-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Fix build failures due to using deprecated AppKit symbols
+        https://bugs.webkit.org/show_bug.cgi?id=181110
+        <rdar://problem/36162865>
+
+        Reviewed by Dan Bernstein and Tim Horton.
+
+        When building with older macOS SDKs where some AppKit constants don't exist, define the modern constants to be
+        equal to their deprecated counterparts. This allows us to just have the modern types in WebKit sources while
+        avoiding breakage on old SDKs.
+
+        This, along with many other symbols in the compability header, can be removed once WebKit stops supporting macOS
+        10.11.
+
+        * wtf/mac/AppKitCompatibilityDeclarations.h:
+
+2017-12-21  Mark Lam  <mark.lam@apple.com>
+
+        Add WTF::PoisonedUniquePtr to replace std::unique_ptr when poisoning is desired.
+        https://bugs.webkit.org/show_bug.cgi?id=181062
+        <rdar://problem/36167040>
+
+        Reviewed by Chris Dumez.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/PointerAsserts.cpp: Copied from Source/WTF/wtf/RefPtr.cpp.
+        - renamed file because we asserts all kinds of pointers in here, not just RefPtr.
+        
+        * wtf/Poisoned.h:
+        - added a missing #include.
+        - make constexpr poison values more scrambled.
+        (WTF::makePoison):
+
+        * wtf/PoisonedUniquePtr.h: Added.
+        (WTF::PoisonedUniquePtr::PoisonedUniquePtr):
+        (WTF::PoisonedUniquePtr::~PoisonedUniquePtr):
+        (WTF::PoisonedUniquePtr::create):
+        (WTF::PoisonedUniquePtr::operator=):
+        (WTF::PoisonedUniquePtr::get const):
+        (WTF::PoisonedUniquePtr::operator[] const):
+        (WTF::PoisonedUniquePtr::clear):
+        (WTF::PoisonedUniquePtr::destroy):
+        (WTF::PoisonedUniquePtr::clearWithoutDestroy):
+        (WTF::makePoisonedUnique):
+        * wtf/RefPtr.cpp: Removed.
+
+2017-12-21  Jeremy Jones  <jeremyj@apple.com>
+
+        Element fullscreen interface should display the location
+        https://bugs.webkit.org/show_bug.cgi?id=181006
+        rdar://problem/36143176
+
+        Reviewed by Simon Fraser.
+
+        Add SecTrustCopyInfo SPI.
+
+        * wtf/spi/cocoa/SecuritySPI.h:
+
+2017-12-20  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [CMake][WTF] Lowercase ForwardingHeaders directory name of WTF
+        https://bugs.webkit.org/show_bug.cgi?id=181022
+
+        Reviewed by Konstantin Tokarev.
+
+        * wtf/CMakeLists.txt: Renamed ForwardingHeaders directory name WTF to wtf.
+        * wtf/PlatformWin.cmake: Ditto.
+
+2017-12-19  Brian Burg  <bburg@apple.com>
+
+        SLEEP_THREAD_FOR_DEBUGGER() macro should try to print out the PID of the affected process
+        https://bugs.webkit.org/show_bug.cgi?id=180947
+
+        Reviewed by Joseph Pecoraro.
+
+        * wtf/DebugUtilities.h:
+        - Use sleep() from CurrentTime.h as it is more cross-platform.
+        - Print a message with the process PID to simplify attaching to sleeping thread.
+        - Include source location in case multiple such macros are being used.
+
+2017-12-18  Daniel Bates  <dabates@apple.com>
+
+        Conditionally forward declare NSMapTable SPI
+        https://bugs.webkit.org/show_bug.cgi?id=180936
+        <rdar://problem/35037796>
+
+        Reviewed by Dan Bernstein.
+
+        * wtf/spi/cocoa/NSMapTableSPI.h:
+
+2017-12-16  Filip Pizlo  <fpizlo@apple.com>
+
+        Vector index masking
+        https://bugs.webkit.org/show_bug.cgi?id=180909
+
+        Reviewed by Keith Miller.
+        
+        Adds index masking to StringImpl and Vector.
+        
+        Perf:
+        
+        - 0.4% slower on microbenchmarks.
+        - Octane totally even.
+        - Kraken may be 0.8% slower.
+        - Speedometer is 0.8% slower with p = 0.008.
+        - membuster is even:
+            - snap2pre: 0.7% bigger w/ p = 0.26,
+            - snap2post: 0.3% smaller w/ p = 0.81,
+            - snap3pre: 1.2% bigger w/ p = 0.63,
+            - snap3post: 0.4% smaller w/ p = 0.76.
+
+        * wtf/MathExtras.h:
+        (WTF::roundUpToPowerOfTwo):
+        (WTF::maskForSize):
+        * wtf/SizeLimits.cpp:
+        * wtf/Vector.h:
+        (WTF::VectorBufferBase::allocateBuffer):
+        (WTF::VectorBufferBase::tryAllocateBuffer):
+        (WTF::VectorBufferBase::reallocateBuffer):
+        (WTF::VectorBufferBase::deallocateBuffer):
+        (WTF::VectorBufferBase::releaseBuffer):
+        (WTF::VectorBufferBase::VectorBufferBase):
+        (WTF::VectorBufferBase::updateMask):
+        (WTF::VectorBuffer::allocateBuffer):
+        (WTF::VectorBuffer::tryAllocateBuffer):
+        (WTF::VectorBuffer::swap):
+        (WTF::VectorBuffer::restoreInlineBufferIfNeeded):
+        (WTF::Vector::at):
+        (WTF::Vector::at const):
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::maskOffset):
+        (WTF::StringImpl::mask const):
+        (WTF::StringImplShape::StringImplShape):
+        (WTF::StringImpl::at const):
+        (WTF::StringImpl::tailOffset):
+        * wtf/text/StringView.h:
+        (WTF::StringView::StringView):
+        (WTF::StringView::operator=):
+        (WTF::StringView::initialize):
+        (WTF::StringView::clear):
+        (WTF::StringView::operator[] const):
+        * wtf/text/WTFString.h:
+        (WTF::String::mask const):
+
+2017-12-18  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK][Darwin] Do not define mach exceptions for GTK+
+
+        Rubber-stamped by Michael Catanzaro.
+        * wtf/Platform.h:
+
+2017-12-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [FTL] NewArrayBuffer should be sinked if it is only used for spreading
+        https://bugs.webkit.org/show_bug.cgi?id=179762
+
+        Reviewed by Saam Barati.
+
+        We add RecursableLambda<>. This can take a lambda and offer a way
+        to call this lambda recursively without introducing additional allocations.
+
+        C++ lambda is super useful in particular when we need to capture many
+        variables as references. Passing many arguments to a usual function is not
+        a good way. But C++ lambda does not allow us to easily call itself recursively.
+
+        Our recursableLambda offers `self` function as a first argument of the
+        given lambda. We can call this `self` recursively.
+
+        auto targetFunction = recursableLambda([] (auto self, ...) -> resultType {
+            self(...);
+        });
+
+        While `std::function<> func = [&func] { ... }` allows recursion, it causes
+        heap allocation for std::function<>. `auto func = [&func] { ... }` causes
+        a compile error since we need to deduce an actual type when capturing `func`.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/RecursableLambda.h: Added.
+        (WTF::RecursableLambda::RecursableLambda):
+        (WTF::RecursableLambda::operator() const):
+        (WTF::recursableLambda):
+
+2017-12-17  Mark Lam  <mark.lam@apple.com>
+
+        Enhance Ref and RefPtr to be able to work with smart pointers.
+        https://bugs.webkit.org/show_bug.cgi?id=180762
+        <rdar://problem/36027122>
+
+        Reviewed by JF Bastien and Darin Adler.
+
+        This is so we can use them with ConstExprPoisoned pointers to make PoisonedRef
+        and PoisonedRefPtr.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/DumbPtrTraits.h: Added.
+        (WTF::DumbPtrTraits::exchange):
+        (WTF::DumbPtrTraits::swap):
+        (WTF::DumbPtrTraits::unwrap):
+        * wtf/Forward.h:
+        * wtf/Poisoned.h:
+        (WTF::ConstExprPoisonedPtrTraits::exchange):
+        (WTF::ConstExprPoisonedPtrTraits::swap):
+        (WTF::ConstExprPoisonedPtrTraits::unwrap):
+        * wtf/Ref.h:
+        (WTF::Ref::~Ref):
+        (WTF::Ref::Ref):
+        (WTF::Ref::ptrAllowingHashTableEmptyValue const):
+        (WTF::Ref::ptrAllowingHashTableEmptyValue):
+        (WTF::Ref::operator-> const):
+        (WTF::Ref::get const):
+        (WTF::Ref::operator T& const):
+        (WTF::=):
+        (WTF::U>::swap):
+        (WTF::swap):
+        (WTF::U>::replace):
+        (WTF::static_reference_cast):
+        (WTF::adoptRef):
+        (WTF::is):
+        (WTF::Ref<T>::swap): Deleted.
+        (WTF::Ref<T>::replace): Deleted.
+        (WTF::GetPtrHelper<Ref<T>>::getPtr): Deleted.
+        * wtf/RefPtr.cpp: Added.
+        * wtf/RefPtr.h:
+        (WTF::RefPtr::RefPtr):
+        (WTF::RefPtr::~RefPtr):
+        (WTF::RefPtr::get const):
+        (WTF::RefPtr::operator* const):
+        (WTF::RefPtr::operator-> const):
+        (WTF::U>::RefPtr):
+        (WTF::U>::leakRef):
+        (WTF::=):
+        (WTF::U>::swap):
+        (WTF::swap):
+        (WTF::operator==):
+        (WTF::operator!=):
+        (WTF::static_pointer_cast):
+        (WTF::adoptRef):
+        (WTF::is):
+        (WTF::RefPtr<T>::RefPtr): Deleted.
+        (WTF::RefPtr<T>::leakRef): Deleted.
+        (WTF::RefPtr<T>::swap): Deleted.
+
+2017-12-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Remove unnecessary boolean result of start() functions
+        https://bugs.webkit.org/show_bug.cgi?id=180856
+
+        Reviewed by Darin Adler.
+
+        CrossThreadTaskHandler's Thread is just released without calling
+        either `waitForCompletion` or `detach`. It means that this resource
+        of the thread is not released.
+
+        * benchmarks/ConditionSpeedTest.cpp:
+        * wtf/CrossThreadTaskHandler.cpp:
+        (WTF::CrossThreadTaskHandler::CrossThreadTaskHandler):
+        * wtf/CrossThreadTaskHandler.h:
+
+2017-12-14  David Kilzer  <ddkilzer@apple.com>
+
+        Enable -Wstrict-prototypes for WebKit
+        <https://webkit.org/b/180757>
+        <rdar://problem/36024132>
+
+        Rubber-stamped by Joseph Pecoraro.
+
+        * Configurations/Base.xcconfig:
+        (CLANG_WARN_STRICT_PROTOTYPES): Add. Set to YES.
+        * wtf/Assertions.h:
+        (WTFReportBacktrace): Add 'void' to C function declaration.
+        (WTFCrashHookFunction): Add 'void' to C function pointer declaration.
+        (WTFInstallReportBacktraceOnCrashHook): Add 'void' to C function declaration.
+        (WTFIsDebuggerAttached): Ditto.
+        (WTFCrash): Ditto.
+        (WTFCrashWithSecurityImplication): Ditto.
+
+2017-12-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Drop Thread::tryCreate
+        https://bugs.webkit.org/show_bug.cgi?id=180808
+
+        Reviewed by Darin Adler.
+
+        We remove Thread::tryCreate. When thread creation fails, we have no way to keep WebKit working.
+        Compared to tryMalloc, Thread::create always consumes fixed size of resource. If it fails,
+        this is not due to arbitrary large user request. It is not reasonable that some thread creations
+        are handled gracefully while the other thread creations are not.
+
+        If we would like to have the limit of number of users' thread creation (like, calling `new Worker`
+        so many times), we should have a soft limit instead of relying on system's hard limit.
+
+        * wtf/ParallelJobsGeneric.cpp:
+        (WTF::ParallelEnvironment::ThreadPrivate::tryLockFor):
+        * wtf/Threading.cpp:
+        (WTF::Thread::create):
+        (WTF::Thread::tryCreate): Deleted.
+        * wtf/Threading.h:
+        (WTF::Thread::create): Deleted.
+
 2017-12-13  Keith Miller  <keith_miller@apple.com>
 
         JSObjects should have a mask for loading indexed properties

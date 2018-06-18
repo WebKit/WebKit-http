@@ -34,6 +34,10 @@
 OBJC_CLASS WKContentView;
 OBJC_CLASS WKEditorUndoTargetObjC;
 
+namespace WebCore {
+struct PromisedBlobInfo;
+}
+
 namespace WebKit {
     
 class PageClientImpl : public PageClientImplCocoa
@@ -94,9 +98,6 @@ private:
     void doneWithTouchEvent(const NativeWebTouchEvent&, bool wasEventHandled) override;
 #endif
     RefPtr<WebPopupMenuProxy> createPopupMenuProxy(WebPageProxy&) override;
-#if ENABLE(CONTEXT_MENUS)
-    RefPtr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy&, const ContextMenuContextData&, const UserData&) override;
-#endif
     Ref<WebCore::ValidationBubble> createValidationBubble(const String& message, const WebCore::ValidationBubble::Settings&) final;
 
     void setTextIndicator(Ref<WebCore::TextIndicator>, WebCore::TextIndicatorWindowLifetime) override;
@@ -124,7 +125,7 @@ private:
     void restorePageState(std::optional<WebCore::FloatPoint>, const WebCore::FloatPoint&, const WebCore::FloatBoxExtent&, double) override;
     void restorePageCenterAndScale(std::optional<WebCore::FloatPoint>, double) override;
 
-    void startAssistingNode(const AssistedNodeInformation&, bool userIsInteracting, bool blurPreviousNode, API::Object* userData) override;
+    void startAssistingNode(const AssistedNodeInformation&, bool userIsInteracting, bool blurPreviousNode, bool changingActivityState, API::Object* userData) override;
     void stopAssistingNode() override;
     bool isAssistingNode() override;
     void selectionDidChange() override;
@@ -206,6 +207,8 @@ private:
     void didConcludeEditDataInteraction(std::optional<WebCore::TextIndicatorData>) override;
     void didChangeDataInteractionCaretRect(const WebCore::IntRect& previousCaretRect, const WebCore::IntRect& caretRect) override;
 #endif
+
+    void prepareToDragPromisedBlob(const WebCore::PromisedBlobInfo&) final;
 
     WKContentView *m_contentView;
     RetainPtr<WKEditorUndoTargetObjC> m_undoTarget;

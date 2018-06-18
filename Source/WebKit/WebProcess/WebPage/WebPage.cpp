@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2012 Intel Corporation. All rights reserved.
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
  *
@@ -30,7 +30,6 @@
 
 #include "APIArray.h"
 #include "APIGeometry.h"
-#include "APIWebsitePolicies.h"
 #include "AssistedNodeInformation.h"
 #include "DataReference.h"
 #include "DragControllerAction.h"
@@ -47,6 +46,8 @@
 #include "LoadParameters.h"
 #include "Logging.h"
 #include "NetscapePlugin.h"
+#include "NetworkConnectionToWebProcessMessages.h"
+#include "NetworkProcessConnection.h"
 #include "NotificationPermissionRequestManager.h"
 #include "PageBanner.h"
 #include "PluginProcessAttributes.h"
@@ -174,6 +175,7 @@
 #include <WebCore/PlatformKeyboardEvent.h>
 #include <WebCore/PluginDocument.h>
 #include <WebCore/PrintContext.h>
+#include <WebCore/PromisedBlobInfo.h>
 #include <WebCore/Range.h>
 #include <WebCore/RenderLayer.h>
 #include <WebCore/RenderTreeAsText.h>
@@ -324,6 +326,8 @@ Ref<WebPage> WebPage::create(uint64_t pageID, WebPageCreationParameters&& parame
 WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     : m_pageID(pageID)
     , m_viewSize(parameters.viewSize)
+    , m_alwaysShowsHorizontalScroller { parameters.alwaysShowsHorizontalScroller }
+    , m_alwaysShowsVerticalScroller { parameters.alwaysShowsVerticalScroller }
 #if ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
     , m_determinePrimarySnapshottedPlugInTimer(RunLoop::main(), this, &WebPage::determinePrimarySnapshottedPlugInTimerFired)
 #endif
@@ -417,6 +421,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 
 #if ENABLE(APPLE_PAY)
     pageConfiguration.paymentCoordinatorClient = new WebPaymentCoordinator(*this);
+    pageConfiguration.availablePaymentNetworks = WTFMove(parameters.availablePaymentNetworks);
 #endif
 
 #if ENABLE(APPLICATION_MANIFEST)
@@ -579,6 +584,11 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     m_userContentController->addUserScriptMessageHandlers(parameters.messageHandlers);
 #if ENABLE(CONTENT_EXTENSIONS)
     m_userContentController->addContentRuleLists(parameters.contentRuleLists);
+#endif
+
+#if PLATFORM(IOS)
+    setViewportConfigurationMinimumLayoutSize(parameters.viewportConfigurationMinimumLayoutSize);
+    setMaximumUnobscuredSize(parameters.maximumUnobscuredSize);
 #endif
 }
 
@@ -1085,6 +1095,8 @@ void WebPage::close()
     if (m_isClosed)
         return;
 
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::RemoveStorageAccessForAllFramesOnPage(sessionID(), m_pageID), 0);
+    
     m_isClosed = true;
 
     // If there is still no URL, then we never loaded anything in this page, so nothing to report.
@@ -2715,7 +2727,11 @@ void WebPage::setActivityState(ActivityState::Flags activityState, bool wantsDid
     if (changed)
         updateThrottleState();
 
-    m_page->setActivityState(activityState);
+    {
+        SetForScope<bool> currentlyChangingActivityState { m_changingActivityState, true };
+        m_page->setActivityState(activityState);
+    }
+    
     for (auto* pluginView : m_pluginViews)
         pluginView->activityStateDidChange(changed);
 
@@ -2742,11 +2758,11 @@ void WebPage::setLayerHostingMode(LayerHostingMode layerHostingMode)
 void WebPage::setSessionID(PAL::SessionID sessionID)
 {
     if (sessionID.isEphemeral())
-        WebProcess::singleton().addWebsiteDataStore(WebsiteDataStoreParameters::ephemeralParametersWithSessionID(sessionID));
+        WebProcess::singleton().addWebsiteDataStore({{ }, { }, { }, { }, { }, { }, { sessionID, { }, { }, { }}});
     m_page->setSessionID(sessionID);
 }
 
-void WebPage::didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, PolicyAction policyAction, uint64_t navigationID, const DownloadID& downloadID, std::optional<WebsitePolicies>&& websitePolicies)
+void WebPage::didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, PolicyAction policyAction, uint64_t navigationID, const DownloadID& downloadID, std::optional<WebsitePoliciesData>&& websitePolicies)
 {
     WebFrame* frame = WebProcess::singleton().webFrame(frameID);
     if (!frame)
@@ -3068,6 +3084,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     RuntimeEnabledFeatures::sharedFeatures().setWebRTCLegacyAPIEnabled(!store.getBoolValueForKey(WebPreferencesKey::webRTCLegacyAPIDisabledKey()));
 #endif
 
+    RuntimeEnabledFeatures::sharedFeatures().setWebAuthenticationEnabled(store.getBoolValueForKey(WebPreferencesKey::webAuthenticationEnabledKey()));
+
     DatabaseManager::singleton().setIsAvailable(store.getBoolValueForKey(WebPreferencesKey::databasesEnabledKey()));
 
     m_tabToLinks = store.getBoolValueForKey(WebPreferencesKey::tabsToLinksKey());
@@ -3283,6 +3301,11 @@ bool WebPage::handleEditingKeyboardEvent(KeyboardEvent* evt)
 #endif
 
 #if ENABLE(DRAG_SUPPORT)
+
+void WebPage::prepareToDragPromisedBlob(const WebCore::PromisedBlobInfo& info)
+{
+    send(Messages::WebPageProxy::PrepareToDragPromisedBlob(info));
+}
 
 #if PLATFORM(GTK)
 void WebPage::performDragControllerAction(DragControllerAction action, const IntPoint& clientPosition, const IntPoint& globalPosition, uint64_t draggingSourceOperationMask, WebSelectionData&& selection, uint32_t flags)
@@ -4859,7 +4882,7 @@ void WebPage::elementDidFocus(WebCore::Node* node)
 
         m_formClient->willBeginInputSession(this, downcast<Element>(node), WebFrame::fromCoreFrame(*node->document().frame()), m_userIsInteracting, userData);
 
-        send(Messages::WebPageProxy::StartAssistingNode(information, m_userIsInteracting, m_hasPendingBlurNotification, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
+        send(Messages::WebPageProxy::StartAssistingNode(information, m_userIsInteracting, m_hasPendingBlurNotification, m_changingActivityState, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
 #elif PLATFORM(MAC)
         if (node->hasTagName(WebCore::HTMLNames::selectTag))
             send(Messages::WebPageProxy::SetEditableElementIsFocused(false));
@@ -4913,6 +4936,30 @@ void WebPage::canceledComposition()
 {
     send(Messages::WebPageProxy::CompositionWasCanceled());
     sendEditorStateUpdate();
+}
+
+void WebPage::setAlwaysShowsHorizontalScroller(bool alwaysShowsHorizontalScroller)
+{
+    if (alwaysShowsHorizontalScroller == m_alwaysShowsHorizontalScroller)
+        return;
+
+    m_alwaysShowsHorizontalScroller = alwaysShowsHorizontalScroller;
+    auto view = corePage()->mainFrame().view();
+    if (!alwaysShowsHorizontalScroller)
+        view->setHorizontalScrollbarLock(false);
+    view->setHorizontalScrollbarMode(alwaysShowsHorizontalScroller ? ScrollbarAlwaysOn : m_mainFrameIsScrollable ? ScrollbarAuto : ScrollbarAlwaysOff, alwaysShowsHorizontalScroller || !m_mainFrameIsScrollable);
+}
+
+void WebPage::setAlwaysShowsVerticalScroller(bool alwaysShowsVerticalScroller)
+{
+    if (alwaysShowsVerticalScroller == m_alwaysShowsVerticalScroller)
+        return;
+
+    m_alwaysShowsVerticalScroller = alwaysShowsVerticalScroller;
+    auto view = corePage()->mainFrame().view();
+    if (!alwaysShowsVerticalScroller)
+        view->setVerticalScrollbarLock(false);
+    view->setVerticalScrollbarMode(alwaysShowsVerticalScroller ? ScrollbarAlwaysOn : m_mainFrameIsScrollable ? ScrollbarAuto : ScrollbarAlwaysOff, alwaysShowsVerticalScroller || !m_mainFrameIsScrollable);
 }
 
 void WebPage::setMinimumLayoutSize(const IntSize& minimumLayoutSize)
@@ -5109,7 +5156,7 @@ void WebPage::didCommitLoad(WebFrame* frame)
 #endif
 
 #if USE(OS_STATE)
-    m_loadCommitTime = std::chrono::system_clock::now();
+    m_loadCommitTime = WallTime::now();
 #endif
 
     WebProcess::singleton().updateActivePages();
@@ -5438,7 +5485,7 @@ void WebPage::flushPendingEditorStateUpdate()
     sendEditorStateUpdate();
 }
 
-void WebPage::updateWebsitePolicies(WebsitePolicies&& websitePolicies)
+void WebPage::updateWebsitePolicies(WebsitePoliciesData&& websitePolicies)
 {
     if (!m_page)
         return;
@@ -5447,7 +5494,7 @@ void WebPage::updateWebsitePolicies(WebsitePolicies&& websitePolicies)
     if (!documentLoader)
         return;
 
-    WebsitePolicies::applyToDocumentLoader(WTFMove(websitePolicies), *documentLoader);
+    WebsitePoliciesData::applyToDocumentLoader(WTFMove(websitePolicies), *documentLoader);
     
 #if ENABLE(VIDEO)
     m_page->updateMediaElementRateChangeRestrictions();
@@ -5772,19 +5819,20 @@ void WebPage::urlSchemeTaskDidComplete(uint64_t handlerIdentifier, uint64_t task
     handler->taskDidComplete(taskIdentifier, error);
 }
 
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
 static uint64_t nextRequestStorageAccessContextId()
 {
     static uint64_t nextContextId = 0;
     return ++nextContextId;
 }
 
-void WebPage::hasStorageAccess(String&& subFrameHost, String&& topFrameHost, WTF::CompletionHandler<void (bool)>&& callback)
+void WebPage::hasStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t pageID, WTF::CompletionHandler<void (bool)>&& callback)
 {
     auto contextId = nextRequestStorageAccessContextId();
     auto addResult = m_storageAccessResponseCallbackMap.add(contextId, WTFMove(callback));
     ASSERT(addResult.isNewEntry);
     if (addResult.iterator->value)
-        send(Messages::WebPageProxy::HasStorageAccess(WTFMove(subFrameHost), WTFMove(topFrameHost), contextId));
+        send(Messages::WebPageProxy::HasStorageAccess(WTFMove(subFrameHost), WTFMove(topFrameHost), frameID, pageID, contextId));
     else
         callback(false);
 }
@@ -5806,14 +5854,7 @@ void WebPage::storageAccessResponse(bool wasGranted, uint64_t contextId)
     ASSERT(callback);
     callback(wasGranted);
 }
-
-void WebPage::invokeSharedBufferCallback(RefPtr<SharedBuffer>&& buffer, CallbackID callbackID)
-{
-    if (buffer)
-        send(Messages::WebPageProxy::SharedBufferCallback(IPC::SharedBufferDataReference { buffer.get() }, false, callbackID));
-    else
-        send(Messages::WebPageProxy::SharedBufferCallback({ }, true, callbackID));
-}
+#endif
 
 #if ENABLE(ATTACHMENT_ELEMENT)
 
@@ -5824,19 +5865,16 @@ void WebPage::insertAttachment(const String& identifier, const AttachmentDisplay
     send(Messages::WebPageProxy::VoidCallback(callbackID));
 }
 
-void WebPage::requestAttachmentData(const String& identifier, CallbackID callbackID)
+void WebPage::requestAttachmentInfo(const String& identifier, CallbackID callbackID)
 {
     auto attachment = attachmentElementWithIdentifier(identifier);
     if (!attachment) {
-        invokeSharedBufferCallback({ }, callbackID);
+        send(Messages::WebPageProxy::AttachmentInfoCallback({ }, callbackID));
         return;
     }
 
-    attachment->requestData([callbackID, protectedThis = makeRef(*this), protectedAttachment = WTFMove(attachment)] (RefPtr<SharedBuffer>&& buffer) {
-        if (buffer)
-            protectedThis->invokeSharedBufferCallback(WTFMove(buffer), callbackID);
-        else
-            protectedThis->invokeSharedBufferCallback({ }, callbackID);
+    attachment->requestInfo([callbackID, protectedThis = makeRef(*this), protectedAttachment = WTFMove(attachment)] (const AttachmentInfo& info) {
+        protectedThis->send(Messages::WebPageProxy::AttachmentInfoCallback(info, callbackID));
     });
 }
 

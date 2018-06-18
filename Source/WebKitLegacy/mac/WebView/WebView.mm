@@ -159,6 +159,7 @@
 #import <WebCore/JSElement.h>
 #import <WebCore/JSNodeList.h>
 #import <WebCore/JSNotification.h>
+#import <WebCore/LegacyNSPasteboardTypes.h>
 #import <WebCore/LibWebRTCProvider.h>
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/LogInitialization.h>
@@ -1310,7 +1311,7 @@ static bool shouldRequireUserGestureToLoadVideo()
     static bool shouldRequireUserGestureToLoadVideo = dyld_get_program_sdk_version() >= DYLD_IOS_VERSION_10_0;
     return shouldRequireUserGestureToLoadVideo;
 #else
-    return true;
+    return false;
 #endif
 }
 
@@ -3040,11 +3041,12 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setResourceTimingEnabled(preferences.resourceTimingEnabled);
     RuntimeEnabledFeatures::sharedFeatures().setLinkPreloadEnabled(preferences.linkPreloadEnabled);
     RuntimeEnabledFeatures::sharedFeatures().setMediaPreloadingEnabled(preferences.mediaPreloadingEnabled);
-    RuntimeEnabledFeatures::sharedFeatures().setCredentialManagementEnabled(preferences.credentialManagementEnabled);
+    RuntimeEnabledFeatures::sharedFeatures().setWebAuthenticationEnabled(preferences.webAuthenticationEnabled);
     RuntimeEnabledFeatures::sharedFeatures().setIsSecureContextAttributeEnabled(preferences.isSecureContextAttributeEnabled);
     RuntimeEnabledFeatures::sharedFeatures().setDirectoryUploadEnabled([preferences directoryUploadEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setMenuItemElementEnabled([preferences menuItemElementEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setAccessibilityObjectModelEnabled([preferences accessibilityObjectModelEnabled]);
+    RuntimeEnabledFeatures::sharedFeatures().setMediaCapabilitiesEnabled([preferences mediaCapabilitiesEnabled]);
     
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     RuntimeEnabledFeatures::sharedFeatures().setLegacyEncryptedMediaAPIEnabled(preferences.legacyEncryptedMediaAPIEnabled);
@@ -6717,8 +6719,8 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     NSArray* types = draggingInfo.draggingPasteboard.types;
-    if (![types containsObject:WebArchivePboardType] && ![types containsObject:NSFilenamesPboardType] && [types containsObject:NSFilesPromisePboardType]) {
-        NSArray *files = [draggingInfo.draggingPasteboard propertyListForType:NSFilesPromisePboardType];
+    if (![types containsObject:WebArchivePboardType] && ![types containsObject:legacyFilenamesPasteboardType()] && [types containsObject:legacyFilesPromisePasteboardType()]) {
+        NSArray *files = [draggingInfo.draggingPasteboard propertyListForType:legacyFilesPromisePasteboardType()];
         if (![files isKindOfClass:[NSArray class]]) {
             delete dragData;
             return false;
@@ -7399,56 +7401,56 @@ static TextCheckingResult textCheckingResultFromNSTextCheckingResult(NSTextCheck
         }
         if ([(NSObject *)item isKindOfClass:[NSMenuItem class]]) {
             NSMenuItem *menuItem = (NSMenuItem *)item;
-            [menuItem setState:checkMark ? NSOnState : NSOffState];
+            [menuItem setState:checkMark ? NSControlStateValueOn : NSControlStateValueOff];
         }
         return retVal;
     } else if (action == @selector(toggleSmartInsertDelete:)) {
         BOOL checkMark = [self smartInsertDeleteEnabled];
         if ([(NSObject *)item isKindOfClass:[NSMenuItem class]]) {
             NSMenuItem *menuItem = (NSMenuItem *)item;
-            [menuItem setState:checkMark ? NSOnState : NSOffState];
+            [menuItem setState:checkMark ? NSControlStateValueOn : NSControlStateValueOff];
         }
         return YES;
     } else if (action == @selector(toggleGrammarChecking:)) {
         BOOL checkMark = [self isGrammarCheckingEnabled];
         if ([(NSObject *)item isKindOfClass:[NSMenuItem class]]) {
             NSMenuItem *menuItem = (NSMenuItem *)item;
-            [menuItem setState:checkMark ? NSOnState : NSOffState];
+            [menuItem setState:checkMark ? NSControlStateValueOn : NSControlStateValueOff];
         }
         return YES;
     } else if (action == @selector(toggleAutomaticQuoteSubstitution:)) {
         BOOL checkMark = [self isAutomaticQuoteSubstitutionEnabled];
         if ([(NSObject *)item isKindOfClass:[NSMenuItem class]]) {
             NSMenuItem *menuItem = (NSMenuItem *)item;
-            [menuItem setState:checkMark ? NSOnState : NSOffState];
+            [menuItem setState:checkMark ? NSControlStateValueOn : NSControlStateValueOff];
         }
         return YES;
     } else if (action == @selector(toggleAutomaticLinkDetection:)) {
         BOOL checkMark = [self isAutomaticLinkDetectionEnabled];
         if ([(NSObject *)item isKindOfClass:[NSMenuItem class]]) {
             NSMenuItem *menuItem = (NSMenuItem *)item;
-            [menuItem setState:checkMark ? NSOnState : NSOffState];
+            [menuItem setState:checkMark ? NSControlStateValueOn : NSControlStateValueOff];
         }
         return YES;
     } else if (action == @selector(toggleAutomaticDashSubstitution:)) {
         BOOL checkMark = [self isAutomaticDashSubstitutionEnabled];
         if ([(NSObject *)item isKindOfClass:[NSMenuItem class]]) {
             NSMenuItem *menuItem = (NSMenuItem *)item;
-            [menuItem setState:checkMark ? NSOnState : NSOffState];
+            [menuItem setState:checkMark ? NSControlStateValueOn : NSControlStateValueOff];
         }
         return YES;
     } else if (action == @selector(toggleAutomaticTextReplacement:)) {
         BOOL checkMark = [self isAutomaticTextReplacementEnabled];
         if ([(NSObject *)item isKindOfClass:[NSMenuItem class]]) {
             NSMenuItem *menuItem = (NSMenuItem *)item;
-            [menuItem setState:checkMark ? NSOnState : NSOffState];
+            [menuItem setState:checkMark ? NSControlStateValueOn : NSControlStateValueOff];
         }
         return YES;
     } else if (action == @selector(toggleAutomaticSpellingCorrection:)) {
         BOOL checkMark = [self isAutomaticSpellingCorrectionEnabled];
         if ([(NSObject *)item isKindOfClass:[NSMenuItem class]]) {
             NSMenuItem *menuItem = (NSMenuItem *)item;
-            [menuItem setState:checkMark ? NSOnState : NSOffState];
+            [menuItem setState:checkMark ? NSControlStateValueOn : NSControlStateValueOff];
         }
         return YES;
     }
@@ -8958,12 +8960,12 @@ static WebFrameView *containingFrameView(NSView *view)
     }
     
     NSPasteboard *pasteboard = [NSPasteboard pasteboardWithUniqueName];
-    [pasteboard declareTypes:[NSArray arrayWithObject:NSStringPboardType] owner:nil];
+    [pasteboard declareTypes:[NSArray arrayWithObject:legacyStringPasteboardType()] owner:nil];
     NSMutableString *s = [selectedString mutableCopy];
     const unichar nonBreakingSpaceCharacter = 0xA0;
     NSString *nonBreakingSpaceString = [NSString stringWithCharacters:&nonBreakingSpaceCharacter length:1];
     [s replaceOccurrencesOfString:nonBreakingSpaceString withString:@" " options:0 range:NSMakeRange(0, [s length])];
-    [pasteboard setString:s forType:NSStringPboardType];
+    [pasteboard setString:s forType:legacyStringPasteboardType()];
     [s release];
     
     // FIXME: seems fragile to use the service by name, but this is what AppKit does
@@ -9180,7 +9182,10 @@ bool LayerFlushController::flushLayers()
         // AppKit may have disabled screen updates, thinking an upcoming window flush will re-enable them.
         // In case setNeedsDisplayInRect() has prevented the window from needing to be flushed, re-enable screen
         // updates here.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         if (![window isFlushWindowDisabled])
+#pragma clang diagnostic pop
             [window _enableScreenUpdatesIfNeeded];
 #endif
 

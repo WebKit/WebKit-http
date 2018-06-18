@@ -82,31 +82,40 @@ static void processResponse(Ref<Client>&& client, FetchResponse* response)
 
     auto body = response->consumeBody();
     WTF::switchOn(body, [&] (Ref<FormData>& formData) {
-        client->didReceiveFormData(WTFMove(formData));
+        client->didReceiveFormDataAndFinish(WTFMove(formData));
     }, [&] (Ref<SharedBuffer>& buffer) {
         client->didReceiveData(WTFMove(buffer));
-    }, [] (std::nullptr_t&) {
+        client->didFinish();
+    }, [&] (std::nullptr_t&) {
+        client->didFinish();
     });
-
-    client->didFinish();
 }
 
-Ref<FetchEvent> dispatchFetchEvent(Ref<Client>&& client, WorkerGlobalScope& globalScope, std::optional<ServiceWorkerClientIdentifier> clientId, ResourceRequest&& request, FetchOptions&& options)
+void dispatchFetchEvent(Ref<Client>&& client, ServiceWorkerGlobalScope& globalScope, std::optional<ServiceWorkerClientIdentifier> clientId, ResourceRequest&& request, String&& referrer, FetchOptions&& options)
 {
-    ASSERT(globalScope.isServiceWorkerGlobalScope());
-
-    auto httpReferrer = request.httpReferrer();
-    // We are intercepting fetch calls after going through the HTTP layer, which adds some specific headers.
-    // Let's clean them so that cross origin checks do not fail.
-    if (options.mode == FetchOptions::Mode::Cors)
-        cleanRedirectedRequestForAccessControl(request);
-
     auto requestHeaders = FetchHeaders::create(FetchHeaders::Guard::Immutable, HTTPHeaderMap { request.httpHeaderFields() });
-    auto fetchRequest = FetchRequest::create(globalScope, FetchBody::fromFormData(request.httpBody()), WTFMove(requestHeaders),  WTFMove(request), WTFMove(options), WTFMove(httpReferrer));
+
+    bool isNavigation = options.mode == FetchOptions::Mode::Navigate;
+    bool isNonSubresourceRequest = WebCore::isNonSubresourceRequest(options.destination);
+
+    auto* formData = request.httpBody();
+    std::optional<FetchBody> body;
+    if (formData && !formData->isEmpty()) {
+        body = FetchBody::fromFormData(*formData);
+        if (!body) {
+            client->didNotHandle();
+            return;
+        }
+    }
+    // FIXME: loading code should set redirect mode to manual.
+    if (isNavigation)
+        options.redirect = FetchOptions::Redirect::Manual;
+
+    auto fetchRequest = FetchRequest::create(globalScope, WTFMove(body), WTFMove(requestHeaders),  WTFMove(request), WTFMove(options), WTFMove(referrer));
 
     FetchEvent::Init init;
     init.request = WTFMove(fetchRequest);
-    if (options.mode == FetchOptions::Mode::Navigate) {
+    if (isNavigation) {
         // FIXME: Set reservedClientId.
         if (clientId)
             init.targetClientId = clientId->toString();
@@ -124,12 +133,16 @@ Ref<FetchEvent> dispatchFetchEvent(Ref<Client>&& client, WorkerGlobalScope& glob
     if (!event->respondWithEntered()) {
         if (event->defaultPrevented()) {
             client->didFail();
-            return event;
+            return;
         }
         client->didNotHandle();
-        // FIXME: Handle soft update.
     }
-    return event;
+
+    globalScope.updateExtendedEventsSet(event.ptr());
+
+    auto& registration = globalScope.registration();
+    if (isNonSubresourceRequest || registration.needsUpdate())
+        registration.softUpdate();
 }
 
 } // namespace ServiceWorkerFetch

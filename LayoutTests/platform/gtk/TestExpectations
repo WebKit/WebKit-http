@@ -779,7 +779,7 @@ webkit.org/b/128172 fast/events/touch/multi-touch-inside-nested-iframes.html [ C
 webkit.org/b/128172 fast/events/touch/multi-touch-inside-iframes.html [ Timeout ]
 webkit.org/b/128172 fast/events/touch/basic-single-touch-events.html [ Crash Timeout ]
 webkit.org/b/128172 fast/events/touch/page-scaled-touch-gesture-click.html [ Timeout ]
-webkit.org/b/128172 fast/events/touch/touch-target.html [ Timeout ]
+webkit.org/b/128172 fast/events/touch/touch-target.html [ Crash Timeout ]
 webkit.org/b/128172 fast/events/touch/touch-target-limited.html [ Crash Timeout ]
 webkit.org/b/128172 fast/events/touch/send-oncancel-event.html [ Timeout ]
 
@@ -1130,8 +1130,6 @@ webkit.org/b/175419 http/tests/workers/service [ Skip ]
 webkit.org/b/175419 http/wpt/service-workers [ Failure ]
 webkit.org/b/175419 http/tests/inspector/network/resource-response-service-worker.html [ Skip ]
 webkit.org/b/175419 imported/w3c/web-platform-tests/service-workers [ Skip ]
-webkit.org/b/175419 imported/w3c/web-platform-tests/service-workers/stub-4.6.2-cache.html [ Pass ]
-webkit.org/b/175419 imported/w3c/web-platform-tests/service-workers/stub-4.6.3-cache-storage.html [ Pass ]
 
 webkit.org/b/175419 imported/w3c/web-platform-tests/background-fetch/interfaces-worker.https.html [ Failure ]
 webkit.org/b/175419 imported/w3c/web-platform-tests/background-fetch/interfaces.html [ Failure ]
@@ -1179,7 +1177,6 @@ webkit.org/b/180370 http/tests/images/image-supports-video.html [ Skip ]
 webkit.org/b/177633 editing/pasteboard/data-transfer-get-data-on-paste-rich-text.html [ Failure ]
 webkit.org/b/177633 editing/pasteboard/data-transfer-get-data-on-paste-plain-text.html [ Failure ]
 webkit.org/b/177633 editing/pasteboard/data-transfer-get-data-on-paste-custom.html [ Failure ]
-webkit.org/b/177633 http/tests/misc/copy-resolves-urls.html [ Failure ]
 webkit.org/b/177633 http/tests/security/clipboard/copy-paste-html-cross-origin-iframe-across-origin.html [ Skip ]
 webkit.org/b/177633 http/tests/security/clipboard/copy-paste-html-cross-origin-iframe-in-same-origin.html [ Skip ]
 
@@ -1197,9 +1194,7 @@ webkit.org/b/179989 fast/css3-text/css3-text-justify/getComputedStyle/getCompute
 webkit.org/b/179989 fast/css3-text/css3-text-align-last/getComputedStyle/getComputedStyle-text-align-last-inherited.html [ Failure ]
 webkit.org/b/179989 fast/css3-text/css3-text-align-last/getComputedStyle/getComputedStyle-text-align-last.html [ Failure ]
 
-# These tests rely on an iOS feature.
-webkit.org/b/180148 accessibility/alternative-presentation-button-input-type.html [ Skip ]
-webkit.org/b/180148 accessibility/alternative-presentation-button.html [ Skip ]
+webkit.org/b/180062 fast/text/user-installed-fonts [ Skip ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures.
@@ -1407,9 +1402,6 @@ webkit.org/b/104809 media/encrypted-media/encrypted-media-not-loaded.html [ Fail
 webkit.org/b/104809 media/encrypted-media/encrypted-media-syntax.html [ Failure Timeout ]
 webkit.org/b/104809 media/track/track-cues-pause-on-exit.html [ Timeout Pass ]
 
-webkit.org/b/180071 media/encrypted-media/clearKey/clearKey-encrypted-cenc-event.html [ Failure ]
-webkit.org/b/180071 media/encrypted-media/clearKey/clearKey-encrypted-cenc-event-mse.html [ Failure ]
-
 # This test also crashes after the FTL merge
 webkit.org/b/106415 webkit.org/b/119255 fast/workers/worker-close-more.html [ Timeout Crash Pass ]
 
@@ -1535,7 +1527,6 @@ Bug(GTK) fast/loader/fragment-after-redirect-gets-back-entry.html [ Failure Pass
 Bug(GTK) fast/writing-mode/japanese-ruby-horizontal-bt.html [ Failure Pass ]
 Bug(GTK) fast/writing-mode/japanese-ruby-vertical-lr.html [ Failure Pass ]
 Bug(GTK) fast/writing-mode/japanese-ruby-vertical-rl.html [ Failure Pass ]
-Bug(GTK) credentials/idlharness.html [ Failure Pass ]
 webkit.org/b/131533 media/track/track-remove-active-cue-crash.html [ Timeout Pass ]
 
 webkit.org/b/131934 fast/dom/Window/mozilla-focus-blur.html [ Failure Timeout Pass ]
@@ -1855,8 +1846,6 @@ webkit.org/b/173412 fast/scrolling/overflow-scrollable-after-back.html [ Pass Fa
 webkit.org/b/168373 media/video-multiple-concurrent-playback.html [ Failure Crash ]
 webkit.org/b/168373 media/video-seek-past-end-paused.html [ Failure Pass ]
 
-webkit.org/b/172255 imported/w3c/web-platform-tests/html/browsers/windows/browsing-context.html [ Pass Failure ]
-
 webkit.org/b/174240 svg/dom/SVGScriptElement/script-change-externalResourcesRequired-while-loading.svg [ Pass Timeout ]
 
 webkit.org/b/174353 media/video-restricted-invisible-autoplay-not-allowed.html [ Crash Pass ]
@@ -1889,8 +1878,6 @@ webkit.org/b/177940 workers/wasm-hashset.html [ Crash Timeout Pass ]
 
 webkit.org/b/179050 accessibility/aria-text-role.html [ Crash Pass ]
 
-webkit.org/b/179051 imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-invalid-args.html [ Crash Failure ]
-
 webkit.org/b/179356 imported/w3c/web-platform-tests/mediacapture-fromelement/capture.html [ Failure Crash ]
 
 webkit.org/b/179443 imported/w3c/web-platform-tests/html/semantics/text-level-semantics/the-bdo-element/bdo-child.html [ Pass Timeout ]
@@ -1904,9 +1891,13 @@ webkit.org/b/180095 imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/tes
 
 webkit.org/b/180369 http/tests/security/mixedContent/insecure-xhr-in-main-frame.html [ Pass Crash ]
 
-webkit.org/b/180806 fast/html/menuitem-element.html [ Pass Crash ]
-
 webkit.org/b/179174 inspector/console/webcore-logging.html [ Failure Crash ]
+
+webkit.org/b/181030 wasm/iframe-postmessage.html [ Pass Failure ]
+webkit.org/b/179948 [ Release ] fast/hidpi/filters-reference.html [ Pass ImageOnlyFailure ]
+webkit.org/b/181031 fast/frames/crash-when-iframe-is-remove-in-eventhandler.html [ Pass Crash ]
+
+webkit.org/b/181139 imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt/test_rsa_oaep.https.html [ Pass Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
@@ -2120,7 +2111,6 @@ webkit.org/b/141959 http/tests/media/clearkey/clear-key-hls-aes128.html [ Crash 
 webkit.org/b/142489 http/tests/media/video-play-waiting.html [ Timeout ]
 
 webkit.org/b/142820 fast/images/animated-gif-body-outside-viewport.html [ Timeout Pass ]
-webkit.org/b/143473 editing/pasteboard/drag-and-drop-attachment-contenteditable.html [ Timeout ]
 
 webkit.org/b/143477 fast/writing-mode/broken-ideograph-small-caps.html [ Timeout Pass ]
 
@@ -2286,9 +2276,6 @@ fast/layers/prevent-hit-test-during-layout.html [ Skip ]
 # This is a Mac specific feature
 webkit.org/b/168466 http/tests/security/bypassing-cors-checks-for-extension-urls.html [ Skip ]
 
-# Currently only has Objective-C API
-http/tests/resourceLoadStatistics [ Skip ]
-
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of tests with architecture-specific results
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -2404,14 +2391,15 @@ webkit.org/b/95935 http/tests/security/cross-origin-plugin.html [ Failure ]
 # https://bugs.webkit.org/show_bug.cgi?id=39160
 webkit.org/b/39160 security/block-test-no-port.html [ Failure ]
 
+# Missing support for the modifierArray argument to EventSendingController::mouseMoveTo().
+Bug(GTK) platform/gtk/fast/events/event-sender-metakey.html [ Failure ]
+
 # Unexplained failures
 Bug(GTK) fast/css/disabled-author-styles.html [ Failure ]
 Bug(GTK) fast/events/keydown-numpad-keys.html [ Failure ]
 Bug(GTK) fast/events/remove-target-with-shadow-in-drag.html [ Failure ]
 Bug(GTK) fast/forms/listbox-typeahead-cyrillic.html [ Failure ]
 Bug(GTK) fast/forms/listbox-typeahead-greek.html [ Failure ]
-Bug(GTK) fast/forms/mailto/formenctype-attribute-button-html.html [ Failure ]
-Bug(GTK) fast/forms/mailto/formenctype-attribute-input-html.html [ Failure ]
 Bug(GTK) fast/forms/select-type-ahead-non-latin.html [ Failure ]
 Bug(GTK) fast/ruby/nested-ruby.html [ Failure ]
 Bug(GTK) fast/ruby/ruby-beforeafter.html [ Failure ]
@@ -2436,7 +2424,6 @@ Bug(GTK) http/tests/security/cross-origin-xsl-BLOCKED.html [ Failure ]
 Bug(GTK) http/tests/security/cross-origin-xsl-redirect-BLOCKED.html [ Failure ]
 Bug(GTK) http/tests/security/storage-blocking-strengthened-plugin.html [ Failure ]
 Bug(GTK) http/tests/security/storage-blocking-strengthened-private-browsing-plugin.html [ Failure ]
-Bug(GTK) platform/gtk/fast/events/event-sender-metakey.html [ Failure ]
 Bug(GTK) plugins/keyboard-events.html [ Failure ]
 Bug(GTK) plugins/netscape-plugin-setwindow-size-2.html [ Failure ]
 Bug(GTK) plugins/npp-set-window-called-during-destruction.html [ Failure ]
@@ -2456,8 +2443,6 @@ Bug(GTK) http/tests/security/xssAuditor/xss-filter-bypass-sjis.html [ Failure ]
 Bug(GTK) fast/backgrounds/background-position-parsing.html [ Failure ]
 
 Bug(GTK) fast/css/sticky/sticky-top-zoomed.html [ ImageOnlyFailure ]
-
-Bug(GTK) fast/forms/file/input-file-value.html [ Failure ]
 
 Bug(GTK) fast/forms/select/popup-closes-on-blur.html [ Failure ]
 
@@ -2616,8 +2601,6 @@ webkit.org/b/86443 plugins/npruntime/delete-plugin-within-hasProperty-return-fal
 webkit.org/b/86443 plugins/npruntime/delete-plugin-within-hasProperty-return-true.html [ Failure ]
 webkit.org/b/86443 plugins/npruntime/delete-plugin-within-setProperty.html [ Failure ]
 
-webkit.org/b/86971 svg/hittest/svg-shapes-non-scale-stroke.html [ Failure ]
-
 webkit.org/b/51027 [ Release ] plugins/refcount-leaks.html [ Failure ]
 
 # Failing after r121121 on both GTK and EFL
@@ -2625,8 +2608,6 @@ webkit.org/b/89845 fast/forms/input-set-composition-scroll.html [ Failure ]
 
 # This failure appears to be GTK-specific
 webkit.org/b/91319 css2.1/20110323/vertical-align-boxes-001.htm [ ImageOnlyFailure ]
-
-webkit.org/b/93976 fast/css-generated-content/quotes-lang.html [ ImageOnlyFailure ]
 
 # This has always failed on Gtk/Efl - exposed by bug 89826
 webkit.org/b/94009 css2.1/20110323/c541-word-sp-000.htm [ ImageOnlyFailure ]
@@ -2700,7 +2681,6 @@ webkit.org/b/120839 animations/cross-fade-background-image.html [ ImageOnlyFailu
 
 webkit.org/b/121905 fast/images/exif-orientation.html [ Failure ]
 
-webkit.org/b/180581 fast/text/break-word-pre-wrap.html [ ImageOnlyFailure ]
 webkit.org/b/180581 css3/shapes/shape-outside/values/shape-margin-001.html [ Failure ]
 webkit.org/b/180581 css3/shapes/shape-outside/values/shape-outside-circle-004.html [ Failure ]
 webkit.org/b/180581 css3/shapes/shape-outside/values/shape-outside-circle-005.html [ Failure ]
@@ -2716,7 +2696,6 @@ webkit.org/b/180581 imported/w3c/web-platform-tests/css/css-shapes-1/shape-outsi
 webkit.org/b/180581 imported/w3c/web-platform-tests/css/css-shapes-1/shape-outside/values/shape-outside-ellipse-005.html [ Failure ]
 webkit.org/b/180581 imported/w3c/web-platform-tests/css/css-shapes-1/shape-outside/values/shape-outside-inset-003.html [ Failure ]
 webkit.org/b/180581 imported/w3c/web-platform-tests/css/css-shapes-1/shape-outside/values/shape-outside-polygon-004.html [ Failure ]
-webkit.org/b/180581 imported/w3c/web-platform-tests/css/css-shapes-1/shape-outside/values/shape-outside-shape-arguments-000.html [ Failure ]
 
 webkit.org/b/124507 fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-ink.html [ ImageOnlyFailure ]
 webkit.org/b/139486 fast/css3-text/css3-text-decoration/text-decoration-skip/decoration-skip-crash-fallback-svg.html [ ImageOnlyFailure ]
@@ -2936,8 +2915,6 @@ webkit.org/b/179662 imported/w3c/web-platform-tests/XMLHttpRequest/status-basic.
 webkit.org/b/179662 imported/w3c/web-platform-tests/XMLHttpRequest/status-error.htm [ Failure ]
 imported/w3c/web-platform-tests/XMLHttpRequest/event-readystatechange-loaded.htm [ Slow ]
 
-imported/w3c/web-platform-tests/html/browsers/browsing-the-web/read-media/pageload-video.html [ Failure ]
-
 webkit.org/b/151267 imported/blink/compositing/squashing/squashing-reflection-disallowed.html [ ImageOnlyFailure ]
 webkit.org/b/151267 imported/blink/compositing/will-change/stacking-context-creation.html [ ImageOnlyFailure ]
 webkit.org/b/151267 imported/blink/css3/blending/mix-blend-mode-background-size.html [ ImageOnlyFailure ]
@@ -2957,21 +2934,12 @@ webkit.org/b/151267 imported/blink/scrollbars/avoid-double-scrollbars-when-html-
 webkit.org/b/151267 imported/blink/svg/animations/no-attr-radialgradient-spreadmethod.svg [ ImageOnlyFailure ]
 webkit.org/b/151267 imported/blink/svg/as-image/default-sans-serif-font.html [ ImageOnlyFailure ]
 webkit.org/b/151267 imported/blink/svg/canvas/canvas-draw-pattern-size.html [ ImageOnlyFailure ]
-webkit.org/b/151267 imported/blink/svg/custom/feDisplacementMap-invalid-selector.svg [ ImageOnlyFailure ]
-webkit.org/b/151267 imported/blink/svg/filters/big-viewbox.svg [ ImageOnlyFailure ]
 webkit.org/b/151267 imported/blink/svg/filters/feDropShadow-linearrgb-flood-color.svg [ ImageOnlyFailure ]
-webkit.org/b/151267 imported/blink/svg/filters/feOffset-nonuniform-scale.svg [ ImageOnlyFailure ]
-webkit.org/b/151267 imported/blink/svg/filters/filter-huge-clamping.svg [ ImageOnlyFailure ]
 webkit.org/b/151267 imported/blink/webexposed/webkit-focus-ring-exposed-to-quirks-mode.html [ ImageOnlyFailure ]
 
 webkit.org/b/152057 accessibility/textarea-selected-text-range.html [ Failure Timeout ]
 
 webkit.org/b/152788 imported/mozilla/svg/filter-scaled-02.html [ ImageOnlyFailure Pass ]
-webkit.org/b/152788 imported/mozilla/svg/image/image-filter-01.svg [ ImageOnlyFailure ]
-webkit.org/b/152788 svg/filters/color-space-conversion.svg [ ImageOnlyFailure ]
-webkit.org/b/152788 svg/filters/container-with-filters.svg [ ImageOnlyFailure ]
-webkit.org/b/152788 svg/filters/feComposite-background-rect-control-operators.svg [ ImageOnlyFailure ]
-webkit.org/b/152788 svg/filters/feDisplacementMap-filterUnits.svg [ ImageOnlyFailure ]
 
 webkit.org/b/152821 imported/w3c/css/css-multicol-1/multicol-basic-001.html [ ImageOnlyFailure ]
 webkit.org/b/152821 imported/w3c/css/css-multicol-1/multicol-basic-002.html [ ImageOnlyFailure ]
@@ -3066,8 +3034,6 @@ webkit.org/b/163823 media/context-menu-actions.html [ Failure ]
 webkit.org/b/163823 media/video-defaultmuted.html [ Failure ]
 webkit.org/b/163823 media/video-volume-slider.html [ Failure ]
 
-webkit.org/b/163826 storage/domstorage/events/basic-body-attribute.html [ Failure ]
-
 webkit.org/b/163827 storage/websql/quota-tracking.html [ Failure ]
 
 webkit.org/b/163830 svg/css/mix-blend-mode-background-root.svg [ ImageOnlyFailure ]
@@ -3076,15 +3042,12 @@ webkit.org/b/163830 svg/css/mix-blend-mode-with-inline-svg.html [ ImageOnlyFailu
 
 webkit.org/b/163829 svg/W3C-SVG-1.1/fonts-desc-02-t.svg [ Failure ]
 webkit.org/b/163831 svg/custom/acid3-test-77.html [ Failure ]
-webkit.org/b/163832 svg/custom/filter-update-different-root.html [ ImageOnlyFailure ]
 
 webkit.org/b/163858 fast/events/touch/touch-constructor.html [ Skip ]
 
 webkit.org/b/163971 fast/borders/border-image-space.html [ ImageOnlyFailure ]
 
 webkit.org/b/163972 fast/canvas/canvas-gradient-addStop-error.html [ Failure ]
-
-webkit.org/b/163973 fast/canvas/canvas-imageSmoothingQuality.html [ Failure ]
 
 webkit.org/b/163974 fast/canvas/drawImage-with-negative-source-destination.html [ Failure ]
 
@@ -3101,8 +3064,6 @@ webkit.org/b/163981 fast/css3-text/css3-text-decoration/text-underline-position/
 webkit.org/b/163982 fast/css3-text/css3-text-indent/text-indent-each-line-hanging.html [ ImageOnlyFailure ]
 
 webkit.org/b/163984 fast/dom/Window/child-window-focus.html [ Failure ]
-
-webkit.org/b/163987 fast/dom/Window/window-lookup-precedence.html [ Failure ]
 
 webkit.org/b/167999 imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-worker.html [ Failure ]
 webkit.org/b/167999 imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count.html [ Failure ]
@@ -3178,11 +3139,10 @@ webkit.org/b/170053 media/video-load-require-user-gesture.html [ Failure Pass ]
 webkit.org/b/170335 canvas/philip/tests/2d.pattern.animated.gif.html [ Failure ]
 
 webkit.org/b/171598 accessibility/gtk/menu-list-unfocused-notifications.html [ Failure ]
-webkit.org/b/171726 imported/w3c/web-platform-tests/media-source/mediasource-redundant-seek.html [ Failure ]
-# Crash is bug #176020
-webkit.org/b/171726 imported/w3c/web-platform-tests/media-source/mediasource-removesourcebuffer.html [ Failure Crash ]
+
+webkit.org/b/176020 imported/w3c/web-platform-tests/media-source/mediasource-removesourcebuffer.html [ Crash Pass ]
+
 webkit.org/b/171726 imported/w3c/web-platform-tests/media-source/mediasource-seek-beyond-duration.html [ Failure ]
-webkit.org/b/171726 imported/w3c/web-platform-tests/media-source/mediasource-seek-during-pending-seek.html [ Failure ]
 webkit.org/b/171726 media/media-source/media-source-init-segment-duration.html [ Failure ]
 
 webkit.org/b/172270 fast/text/font-interstitial-invisible-width-while-loading.html [ Failure ]
@@ -3350,8 +3310,6 @@ webkit.org/b/179052 compositing/contents-format/subpixel-antialiased-nested-laye
 
 webkit.org/b/180371 fast/attachment/attachment-without-appearance.html [ ImageOnlyFailure ]
 
-webkit.org/b/180062 fast/text/user-installed-fonts [ ImageOnlyFailure ]
-
 webkit.org/b/180749 http/wpt/offscreen-canvas/transferToImageBitmap-webgl.html [ ImageOnlyFailure ]
 
 webkit.org/b/180801 fast/forms/input-autofilled.html [ Failure ]
@@ -3361,6 +3319,8 @@ webkit.org/b/180802 imported/w3c/web-platform-tests/html/webappapis/system-state
 webkit.org/b/180803 imported/w3c/web-platform-tests/media-source/mediasource-duration-boundaryconditions.html [ Failure ]
 
 webkit.org/b/180805 inspector/canvas/requestContent-bitmaprenderer.html [ Failure ]
+
+webkit.org/b/175189 http/tests/resourceLoadStatistics/grandfathering.html [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of non-crashing, non-flaky tests failing
@@ -3455,7 +3415,7 @@ webkit.org/b/172337 imported/w3c/web-platform-tests/url/failure.html [ Pass ]
 
 webkit.org/b/175290 imported/w3c/web-platform-tests/css/css-ui-3/text-overflow-005.html [ Pass ]
 
-webkit.org/b/169264 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/history-traversal/persisted-user-state-restoration/scroll-restoration-navigation-samedoc.html [ Pass ]
+webkit.org/b/139282 imported/mozilla/svg/image/image-filter-01.svg [ Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of PASSING tests. See top of file where to put new expectations.

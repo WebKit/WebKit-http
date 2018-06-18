@@ -102,6 +102,22 @@ void SWServerRegistration::updateWorkerState(SWServerWorker& worker, ServiceWork
     });
 }
 
+void SWServerRegistration::setUpdateViaCache(ServiceWorkerUpdateViaCache updateViaCache)
+{
+    m_updateViaCache = updateViaCache;
+    forEachConnection([&](auto& connection) {
+        connection.setRegistrationUpdateViaCache(identifier(), updateViaCache);
+    });
+}
+
+void SWServerRegistration::setLastUpdateTime(WallTime time)
+{
+    m_lastUpdateTime = time;
+    forEachConnection([&](auto& connection) {
+        connection.setRegistrationLastUpdateTime(identifier(), time);
+    });
+}
+
 void SWServerRegistration::fireUpdateFoundEvent()
 {
     forEachConnection([&](auto& connection) {

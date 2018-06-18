@@ -10,5 +10,6 @@ function listener(event) {
   }
 }
 
-addEventListener("message", listener, false)
+addEventListener("message", listener, false);
+window.parent.postMessage("ready", "*");
 </script>

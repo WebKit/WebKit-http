@@ -27,6 +27,7 @@
 #include "config.h"
 #include "FELighting.h"
 
+#include "ColorUtilities.h"
 #include "FELightingNEON.h"
 #include <wtf/ParallelJobs.h>
 
@@ -232,7 +233,7 @@ inline IntSize FELighting::LightingData::bottomRightNormal(int offset) const
     int top = static_cast<int>(pixels->item(offset + cAlphaChannelOffset));
     return {
         -topLeft + top - 2 * left + 2 * center,
-        topLeft - 2 * top + left + 2 * center
+        -topLeft - 2 * top + left + 2 * center
     };
 }
 
@@ -397,8 +398,10 @@ bool FELighting::drawLighting(Uint8ClampedArray& pixels, int width, int height)
     data.widthMultipliedByPixelSize = width * cPixelSize;
     data.widthDecreasedByOne = width - 1;
     data.heightDecreasedByOne = height - 1;
-    paintingData.intialLightingData.colorVector = FloatPoint3D(m_lightingColor.red(), m_lightingColor.green(), m_lightingColor.blue());
-    m_lightSource->initPaintingData(paintingData);
+    
+    Color lightColor = (operatingColorSpace() == ColorSpaceLinearRGB) ? sRGBToLinearColor(m_lightingColor) : m_lightingColor;
+    paintingData.initialLightingData.colorVector = FloatPoint3D(lightColor.red(), lightColor.green(), lightColor.blue());
+    m_lightSource->initPaintingData(*this, paintingData);
 
     // Top left.
     int offset = 0;

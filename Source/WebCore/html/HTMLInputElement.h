@@ -147,10 +147,6 @@ public:
     HTMLElement* placeholderElement() const final;
     WEBCORE_EXPORT HTMLElement* autoFillButtonElement() const;
 
-#if ENABLE(ALTERNATIVE_PRESENTATION_BUTTON_ELEMENT)
-    WEBCORE_EXPORT HTMLElement* alternativePresentationButtonElement() const;
-#endif
-
     bool checked() const { return m_isChecked; }
     WEBCORE_EXPORT void setChecked(bool, TextFieldEventBehavior = DispatchNoEvent);
 
@@ -167,10 +163,6 @@ public:
     float decorationWidth() const;
 
     WEBCORE_EXPORT void setType(const AtomicString&);
-
-#if ENABLE(ALTERNATIVE_PRESENTATION_BUTTON_ELEMENT)
-    void setTypeWithoutUpdatingAttribute(const AtomicString&);
-#endif
 
     WEBCORE_EXPORT String value() const final;
     WEBCORE_EXPORT ExceptionOr<void> setValue(const String&, TextFieldEventBehavior = DispatchNoEvent);
@@ -244,6 +236,7 @@ public:
     bool isAutoFilled() const { return m_isAutoFilled; }
     WEBCORE_EXPORT void setAutoFilled(bool = true);
 
+    AutoFillButtonType lastAutoFillButtonType() const { return static_cast<AutoFillButtonType>(m_lastAutoFillButtonType); }
     AutoFillButtonType autoFillButtonType() const { return static_cast<AutoFillButtonType>(m_autoFillButtonType); }
     WEBCORE_EXPORT void setShowAutoFillButton(AutoFillButtonType);
 
@@ -435,8 +428,7 @@ private:
     void requiredAttributeChanged() final;
 
     void initializeInputType();
-    std::unique_ptr<InputType> createInputType(const AtomicString&);
-    void updateType(const AtomicString&);
+    void updateType();
     void runPostTypeUpdateTasks();
     
     void subtreeHasChanged() final;
@@ -462,7 +454,8 @@ private:
     bool m_isActivatedSubmit : 1;
     unsigned m_autocomplete : 2; // AutoCompleteSetting
     bool m_isAutoFilled : 1;
-    unsigned m_autoFillButtonType : 3; // AutoFillButtonType;
+    unsigned m_autoFillButtonType : 3; // AutoFillButtonType
+    unsigned m_lastAutoFillButtonType : 3; // AutoFillButtonType
     bool m_isAutoFillAvailable : 1;
 #if ENABLE(DATALIST_ELEMENT)
     bool m_hasNonEmptyList : 1;

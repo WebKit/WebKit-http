@@ -59,6 +59,7 @@ typedef NS_OPTIONS(NSInteger, _WKMediaMutedState) {
 typedef NS_OPTIONS(NSUInteger, _WKCaptureDevices) {
     _WKCaptureDeviceMicrophone = 1 << 0,
     _WKCaptureDeviceCamera = 1 << 1,
+    _WKCaptureDeviceDisplay = 1 << 2,
 } WK_API_AVAILABLE(macosx(10.13), ios(11.0));
 
 #if TARGET_OS_IPHONE
@@ -238,7 +239,6 @@ typedef NS_OPTIONS(NSInteger, _WKRectEdge) {
 - (void)_setOverlaidAccessoryViewsInset:(CGSize)inset;
 
 - (void)_killWebContentProcess;
-- (void)_didRelaunchProcess;
 
 // Puts the view into a state where being taken out of the view hierarchy and resigning first responder
 // will not count as becoming inactive and unfocused. The returned block must be called to exit the state.
@@ -279,6 +279,9 @@ typedef NS_OPTIONS(NSInteger, _WKRectEdge) {
 // When using _minimumLayoutWidth, the web content will lay out to the intrinsic height
 // of the content; use this property to force it to lay out to the height of the view instead.
 @property (nonatomic, setter=_setShouldExpandContentToViewHeightForAutoLayout:) BOOL _shouldExpandContentToViewHeightForAutoLayout WK_API_AVAILABLE(macosx(10.12));
+
+@property (nonatomic, setter=_setAlwaysShowsHorizontalScroller:) BOOL _alwaysShowsHorizontalScroller WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+@property (nonatomic, setter=_setAlwaysShowsVerticalScroller:) BOOL _alwaysShowsVerticalScroller WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 
 - (NSPrintOperation *)_printOperationWithPrintInfo:(NSPrintInfo *)printInfo;
 - (NSPrintOperation *)_printOperationWithPrintInfo:(NSPrintInfo *)printInfo forFrame:(_WKFrameHandle *)frameHandle WK_API_AVAILABLE(macosx(10.12), ios(10.0));
@@ -374,7 +377,7 @@ typedef NS_OPTIONS(NSInteger, _WKRectEdge) {
 - (void)dismissFormAccessoryView WK_API_AVAILABLE(ios(10.3));
 - (void)selectFormAccessoryPickerRow:(int)rowIndex WK_API_AVAILABLE(ios(10.3));
 
-- (void)applyAutocorrection:(NSString *)newString toString:(NSString *)oldString withCompletionHandler:(void (^)())completionHandler WK_API_AVAILABLE(ios(11.0));
+- (void)applyAutocorrection:(NSString *)newString toString:(NSString *)oldString withCompletionHandler:(void (^)(void))completionHandler WK_API_AVAILABLE(ios(11.0));
 
 - (void)didStartFormControlInteraction WK_API_AVAILABLE(ios(10.3));
 - (void)didEndFormControlInteraction WK_API_AVAILABLE(ios(10.3));

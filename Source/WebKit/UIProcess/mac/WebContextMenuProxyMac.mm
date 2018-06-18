@@ -139,7 +139,7 @@ using namespace WebCore;
         return;
     }
 
-    WebKit::WebContextMenuItemData item(ActionType, static_cast<ContextMenuAction>([sender tag]), [sender title], [sender isEnabled], [sender state] == NSOnState);
+    WebKit::WebContextMenuItemData item(ActionType, static_cast<ContextMenuAction>([sender tag]), [sender title], [sender isEnabled], [sender state] == NSControlStateValueOn);
     if (representedObject) {
         ASSERT([representedObject isKindOfClass:[WKUserDataWrapper class]]);
         item.setUserData([static_cast<WKUserDataWrapper *>(representedObject) userData]);
@@ -152,8 +152,8 @@ using namespace WebCore;
 
 namespace WebKit {
 
-WebContextMenuProxyMac::WebContextMenuProxyMac(NSView* webView, WebPageProxy& page, const ContextMenuContextData& context, const UserData& userData)
-    : WebContextMenuProxy(context, userData)
+WebContextMenuProxyMac::WebContextMenuProxyMac(NSView* webView, WebPageProxy& page, ContextMenuContextData&& context, const UserData& userData)
+    : WebContextMenuProxy(WTFMove(context), userData)
     , m_webView(webView)
     , m_page(page)
 {
@@ -425,7 +425,7 @@ RetainPtr<NSMenuItem> WebContextMenuProxyMac::createContextMenuItem(const WebCon
 
         [menuItem setTag:item.action()];
         [menuItem setEnabled:item.enabled()];
-        [menuItem setState:item.checked() ? NSOnState : NSOffState];
+        [menuItem setState:item.checked() ? NSControlStateValueOn : NSControlStateValueOff];
         [menuItem setTarget:[WKMenuTarget sharedMenuTarget]];
         [menuItem setIdentifier:menuItemIdentifier(item.action())];
 
@@ -451,9 +451,14 @@ RetainPtr<NSMenuItem> WebContextMenuProxyMac::createContextMenuItem(const WebCon
     }
 }
 
-void WebContextMenuProxyMac::showContextMenuWithItems(const Vector<WebContextMenuItemData>& items)
+void WebContextMenuProxyMac::showContextMenuWithItems(const Vector<Ref<WebContextMenuItem>>& items)
 {
-    auto menu = createContextMenuFromItems(items);
+    Vector<WebContextMenuItemData> data;
+    data.reserveInitialCapacity(items.size());
+    for (auto& item : items)
+        data.uncheckedAppend(item->data());
+    
+    auto menu = createContextMenuFromItems(data);
     [[WKMenuTarget sharedMenuTarget] setMenuProxy:this];
     m_menu = m_page.contextMenuClient().menuFromProposedMenu(m_page, menu.get(), m_context.webHitTestResultData(), m_userData.object());
 
@@ -469,11 +474,11 @@ void WebContextMenuProxyMac::showContextMenuWithItems(const Vector<WebContextMen
 
 void WebContextMenuProxyMac::showContextMenu()
 {
-    Vector<RefPtr<WebContextMenuItem>> proposedAPIItems;
+    Vector<Ref<WebContextMenuItem>> proposedAPIItems;
     for (auto& item : m_context.menuItems())
         proposedAPIItems.append(WebContextMenuItem::create(item));
 
-    Vector<RefPtr<WebContextMenuItem>> clientItems;
+    Vector<Ref<WebContextMenuItem>> clientItems;
     bool useProposedItems = true;
 
     if (m_contextMenuListener) {
@@ -493,10 +498,8 @@ void WebContextMenuProxyMac::showContextMenu()
     if (m_page.contextMenuClient().showContextMenu(m_page, m_context.menuLocation(), useProposedItems ? proposedAPIItems : clientItems))
         return;
 
-    Vector<WebContextMenuItemData> items;
-    for (auto& item : (useProposedItems ? proposedAPIItems : clientItems))
-        items.append(item->data());
-
+    auto&& items = WTFMove(useProposedItems ? proposedAPIItems : clientItems);
+    
     if (items.isEmpty())
         return;
 

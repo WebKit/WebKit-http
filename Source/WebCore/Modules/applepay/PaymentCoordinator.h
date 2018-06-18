@@ -29,6 +29,7 @@
 
 #include "ApplePaySessionPaymentRequest.h"
 #include <wtf/Function.h>
+#include <wtf/text/StringHash.h>
 
 namespace WebCore {
 
@@ -47,10 +48,10 @@ struct ShippingMethodUpdate;
 
 class PaymentCoordinator {
 public:
-    WEBCORE_EXPORT explicit PaymentCoordinator(PaymentCoordinatorClient&);
+    WEBCORE_EXPORT PaymentCoordinator(PaymentCoordinatorClient&, const Vector<String>& availablePaymentNetworks);
     WEBCORE_EXPORT ~PaymentCoordinator();
 
-    bool supportsVersion(unsigned version);
+    bool supportsVersion(unsigned version) const;
     bool canMakePayments();
     void canMakePaymentsWithActiveCard(const String& merchantIdentifier, const String& domainName, WTF::Function<void (bool)>&& completionHandler);
     void openPaymentSetup(const String& merchantIdentifier, const String& domainName, WTF::Function<void (bool)>&& completionHandler);
@@ -73,10 +74,13 @@ public:
     WEBCORE_EXPORT void didSelectShippingContact(const PaymentContact&);
     WEBCORE_EXPORT void didCancelPaymentSession();
 
+    std::optional<String> validatedPaymentNetwork(unsigned version, const String&) const;
+
 private:
     PaymentCoordinatorClient& m_client;
 
     RefPtr<PaymentSession> m_activeSession;
+    HashSet<String, ASCIICaseInsensitiveHash> m_availablePaymentNetworks;
 };
 
 }

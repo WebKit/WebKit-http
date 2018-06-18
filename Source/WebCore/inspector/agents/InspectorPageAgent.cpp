@@ -176,7 +176,7 @@ CachedResource* InspectorPageAgent::cachedResource(Frame* frame, const URL& url)
     CachedResource* cachedResource = frame->document()->cachedResourceLoader().cachedResource(MemoryCache::removeFragmentIdentifierIfNeeded(url));
     if (!cachedResource) {
         ResourceRequest request(url);
-        request.setDomainForCachePartition(frame->document()->topOrigin().domainForCachePartition());
+        request.setDomainForCachePartition(frame->document()->domainForCachePartition());
         cachedResource = MemoryCache::singleton().resourceForRequest(request, frame->page()->sessionID());
     }
 
@@ -824,7 +824,7 @@ void InspectorPageAgent::snapshotNode(ErrorString& errorString, int nodeId, Stri
         return;
     }
 
-    *outDataURL = snapshot->toDataURL(ASCIILiteral("image/png"));
+    *outDataURL = snapshot->toDataURL(ASCIILiteral("image/png"), std::nullopt, PreserveResolution::Yes);
 }
 
 void InspectorPageAgent::snapshotRect(ErrorString& errorString, int x, int y, int width, int height, const String& coordinateSystem, String* outDataURL)
@@ -843,7 +843,7 @@ void InspectorPageAgent::snapshotRect(ErrorString& errorString, int x, int y, in
         return;
     }
 
-    *outDataURL = snapshot->toDataURL(ASCIILiteral("image/png"));
+    *outDataURL = snapshot->toDataURL(ASCIILiteral("image/png"), std::nullopt, PreserveResolution::Yes);
 }
 
 void InspectorPageAgent::archive(ErrorString& errorString, String* data)

@@ -37,7 +37,7 @@ public:
     RenderInline(Element&, RenderStyle&&);
     RenderInline(Document&, RenderStyle&&);
 
-    void addChild(RenderPtr<RenderObject> newChild, RenderObject* beforeChild = 0) override;
+    void addChild(RenderTreeBuilder&, RenderPtr<RenderObject> newChild, RenderObject* beforeChild = 0) override;
 
     LayoutUnit marginLeft() const final;
     LayoutUnit marginRight() const final;
@@ -94,6 +94,8 @@ public:
 
     bool hitTestCulledInline(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset);
 
+    void addChildIgnoringContinuation(RenderTreeBuilder&, RenderPtr<RenderObject> newChild, RenderObject* beforeChild = nullptr) final;
+
 protected:
     void willBeDestroyed() override;
 
@@ -115,12 +117,6 @@ private:
     void generateLineBoxRects(GeneratorContext& yield) const;
     template<typename GeneratorContext>
     void generateCulledLineBoxRects(GeneratorContext& yield, const RenderInline* container) const;
-
-    void addChildToContinuation(RenderPtr<RenderObject> newChild, RenderObject* beforeChild);
-    void addChildIgnoringContinuation(RenderPtr<RenderObject> newChild, RenderObject* beforeChild = nullptr) final;
-
-    void splitInlines(RenderBlock* fromBlock, RenderBlock* toBlock, RenderBlock* middleBlock, RenderObject* beforeChild, RenderBoxModelObject* oldCont);
-    void splitFlow(RenderObject* beforeChild, RenderPtr<RenderBlock> newBlockBox, RenderPtr<RenderObject> newChild, RenderBoxModelObject* oldCont);
 
     void layout() final { ASSERT_NOT_REACHED(); } // Do nothing for layout()
 
@@ -162,11 +158,8 @@ private:
 #if ENABLE(DASHBOARD_SUPPORT)
     void addAnnotatedRegions(Vector<AnnotatedRegionValue>&) final;
 #endif
-    
-    RenderPtr<RenderInline> cloneAsContinuation() const;
 
     void paintOutlineForLine(GraphicsContext&, const LayoutPoint&, const LayoutRect& prevLine, const LayoutRect& thisLine, const LayoutRect& nextLine, const Color&);
-    RenderBoxModelObject* continuationBefore(RenderObject* beforeChild);
 
     bool willChangeCreatesStackingContext() const
     {

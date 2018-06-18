@@ -486,6 +486,12 @@ MediaStreamEnabled:
   webcoreBinding: RuntimeEnabledFeatures
   condition: ENABLE(MEDIA_STREAM)
 
+ScreenCaptureEnabled:
+  type: bool
+  defaultValue: false
+  webcoreBinding: RuntimeEnabledFeatures
+  condition: ENABLE(MEDIA_STREAM)
+
 PeerConnectionEnabled:
   type: bool
   defaultValue: WebCore::LibWebRTCProvider::webRTCAvailable()
@@ -697,11 +703,11 @@ InputEventsEnabled:
   humanReadableDescription: "Enable InputEvents support"
   webcoreBinding: RuntimeEnabledFeatures
 
-CredentialManagementEnabled:
+WebAuthenticationEnabled:
   type: bool
   defaultValue: false
-  humanReadableName: "Credential Management"
-  humanReadableDescription: "Enable Credential Management support"
+  humanReadableName: "Web Authentication"
+  humanReadableDescription: "Enable Web Authentication support"
   webcoreBinding: RuntimeEnabledFeatures
 
 ModernMediaControlsEnabled:
@@ -1034,10 +1040,14 @@ VisibleDebugOverlayRegions:
   defaultValue: 0
   category: debug
 
-ShouldDisallowUserInstalledFonts:
+ShouldAllowUserInstalledFonts:
   type: bool
-  defaultValue: false
+  defaultValue: true
 
+MediaCapabilitiesEnabled:
+    type: bool
+    defaultValue: false
+    webcoreBinding: RuntimeEnabledFeatures
 
 # For experimental features:
 # The type should be boolean.

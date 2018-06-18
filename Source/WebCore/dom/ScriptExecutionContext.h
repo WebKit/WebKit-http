@@ -235,9 +235,13 @@ public:
         return ensureRejectedPromiseTrackerSlow();
     }
 
-    JSC::ExecState* execState();
+    WEBCORE_EXPORT JSC::ExecState* execState();
+
+    WEBCORE_EXPORT String domainForCachePartition() const;
+    void setDomainForCachePartition(String&& domain) { m_domainForCachePartition = WTFMove(domain); }
 
 #if ENABLE(SERVICE_WORKER)
+    bool hasServiceWorkerScheme();
     ServiceWorker* activeServiceWorker() const;
     void setActiveServiceWorker(RefPtr<ServiceWorker>&&);
 
@@ -247,7 +251,7 @@ public:
 
     ServiceWorkerContainer* serviceWorkerContainer();
 
-    WEBCORE_EXPORT static void postTaskTo(const DocumentOrWorkerIdentifier&, WTF::Function<void(ScriptExecutionContext&)>&&);
+    WEBCORE_EXPORT static bool postTaskTo(const DocumentOrWorkerIdentifier&, WTF::Function<void(ScriptExecutionContext&)>&&);
 #endif
 
 protected:
@@ -322,6 +326,8 @@ private:
     RefPtr<ServiceWorker> m_activeServiceWorker;
     HashMap<ServiceWorkerIdentifier, ServiceWorker*> m_serviceWorkers;
 #endif
+
+    String m_domainForCachePartition;
 };
 
 } // namespace WebCore

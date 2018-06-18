@@ -93,7 +93,7 @@ void StorageProcessProxy::fetchWebsiteData(PAL::SessionID sessionID, OptionSet<W
     send(Messages::StorageProcess::FetchWebsiteData(sessionID, dataTypes, callbackID), 0);
 }
 
-void StorageProcessProxy::deleteWebsiteData(PAL::SessionID sessionID, OptionSet<WebsiteDataType> dataTypes, std::chrono::system_clock::time_point modifiedSince, WTF::Function<void ()>&& completionHandler)
+void StorageProcessProxy::deleteWebsiteData(PAL::SessionID sessionID, OptionSet<WebsiteDataType> dataTypes, WallTime modifiedSince, WTF::Function<void ()>&& completionHandler)
 {
     auto callbackID = generateCallbackID();
 
@@ -223,7 +223,12 @@ void StorageProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Con
 #if ENABLE(SERVICE_WORKER)
 void StorageProcessProxy::establishWorkerContextConnectionToStorageProcess()
 {
-    m_processPool.establishWorkerContextConnectionToStorageProcess(*this);
+    m_processPool.establishWorkerContextConnectionToStorageProcess(*this, std::nullopt);
+}
+
+void StorageProcessProxy::establishWorkerContextConnectionToStorageProcessForExplicitSession(PAL::SessionID sessionID)
+{
+    m_processPool.establishWorkerContextConnectionToStorageProcess(*this, sessionID);
 }
 #endif
 

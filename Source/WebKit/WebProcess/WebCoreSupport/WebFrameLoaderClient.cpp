@@ -36,6 +36,8 @@
 #include "InjectedBundleDOMWindowExtension.h"
 #include "InjectedBundleNavigationAction.h"
 #include "NavigationActionData.h"
+#include "NetworkConnectionToWebProcessMessages.h"
+#include "NetworkProcessConnection.h"
 #include "PluginView.h"
 #include "UserData.h"
 #include "WKBundleAPICast.h"
@@ -54,7 +56,7 @@
 #include "WebPageProxyMessages.h"
 #include "WebProcess.h"
 #include "WebProcessPoolMessages.h"
-#include "WebsitePolicies.h"
+#include "WebsitePoliciesData.h"
 #include <JavaScriptCore/APICast.h>
 #include <JavaScriptCore/JSObject.h>
 #include <WebCore/CachedFrame.h>
@@ -106,14 +108,20 @@ WebFrameLoaderClient::~WebFrameLoaderClient()
 {
 }
 
-uint64_t WebFrameLoaderClient::pageID() const
+std::optional<uint64_t> WebFrameLoaderClient::pageID() const
 {
-    return m_frame && m_frame->page() ? m_frame->page()->pageID() : 0;
+    if (m_frame && m_frame->page())
+        return m_frame->page()->pageID();
+
+    return std::nullopt;
 }
 
-uint64_t WebFrameLoaderClient::frameID() const
+std::optional<uint64_t> WebFrameLoaderClient::frameID() const
 {
-    return m_frame ? m_frame->frameID() : 0;
+    if (m_frame)
+        return m_frame->frameID();
+
+    return std::nullopt;
 }
 
 PAL::SessionID WebFrameLoaderClient::sessionID() const
@@ -159,6 +167,13 @@ void WebFrameLoaderClient::detachedFromParent2()
     WebPage* webPage = m_frame->page();
     if (!webPage)
         return;
+
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    if (m_hasFrameSpecificStorageAccess) {
+        WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::RemoveStorageAccessForFrame(sessionID(), frameID().value(), pageID().value()), 0);
+        m_hasFrameSpecificStorageAccess = false;
+    }
+#endif
 
     RefPtr<API::Object> userData;
 
@@ -364,6 +379,23 @@ void WebFrameLoaderClient::dispatchDidChangeMainDocument()
         return;
 
     webPage->send(Messages::WebPageProxy::DidChangeMainDocument(m_frame->frameID()));
+}
+
+void WebFrameLoaderClient::dispatchWillChangeDocument()
+{
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    if (m_frame->isMainFrame())
+        return;
+
+    WebPage* webPage = m_frame->page();
+    if (!webPage)
+        return;
+
+    if (m_hasFrameSpecificStorageAccess) {
+        WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::RemoveStorageAccessForFrame(sessionID(), frameID().value(), pageID().value()), 0);
+        m_hasFrameSpecificStorageAccess = false;
+    }
+#endif
 }
 
 void WebFrameLoaderClient::dispatchDidPushStateWithinPage()
@@ -770,7 +802,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const Navigati
     webPage->send(Messages::WebPageProxy::DecidePolicyForNewWindowAction(m_frame->frameID(), SecurityOriginData::fromFrame(coreFrame), navigationActionData, request, frameName, listenerID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
 }
 
-void WebFrameLoaderClient::applyToDocumentLoader(WebsitePolicies&& websitePolicies)
+void WebFrameLoaderClient::applyToDocumentLoader(WebsitePoliciesData&& websitePolicies)
 {
     if (!m_frame)
         return;
@@ -785,7 +817,7 @@ void WebFrameLoaderClient::applyToDocumentLoader(WebsitePolicies&& websitePolici
     if (!documentLoader)
         return;
 
-    WebsitePolicies::applyToDocumentLoader(WTFMove(websitePolicies), *documentLoader);
+    WebsitePoliciesData::applyToDocumentLoader(WTFMove(websitePolicies), *documentLoader);
 }
 
 void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const NavigationAction& navigationAction, const ResourceRequest& request, bool didReceiveRedirectResponse, FormState* formState, FramePolicyFunction&& function)
@@ -856,7 +888,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
 
     // Notify the UIProcess.
     Ref<WebFrame> protect(*m_frame);
-    std::optional<WebsitePolicies> websitePolicies;
+    std::optional<WebsitePoliciesData> websitePolicies;
     if (!webPage->sendSync(Messages::WebPageProxy::DecidePolicyForNavigationAction(m_frame->frameID(), SecurityOriginData::fromFrame(coreFrame), documentLoader->navigationID(), navigationActionData, originatingFrameInfoData, originatingFrame && originatingFrame->page() ? originatingFrame->page()->pageID() : 0, navigationAction.resourceRequest(), request, listenerID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())), Messages::WebPageProxy::DecidePolicyForNavigationAction::Reply(receivedPolicyAction, newNavigationID, policyAction, downloadID, websitePolicies))) {
         m_frame->didReceivePolicyDecision(listenerID, PolicyAction::Ignore, 0, { }, { });
         return;
@@ -1379,9 +1411,15 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
 
     ScrollbarMode defaultScrollbarMode = shouldHideScrollbars ? ScrollbarAlwaysOff : ScrollbarAuto;
 
+    ScrollbarMode horizontalScrollbarMode = webPage->alwaysShowsHorizontalScroller() ? ScrollbarAlwaysOn : defaultScrollbarMode;
+    ScrollbarMode verticalScrollbarMode = webPage->alwaysShowsVerticalScroller() ? ScrollbarAlwaysOn : defaultScrollbarMode;
+
+    bool horizontalLock = shouldHideScrollbars || webPage->alwaysShowsHorizontalScroller();
+    bool verticalLock = shouldHideScrollbars || webPage->alwaysShowsVerticalScroller();
+
     m_frame->coreFrame()->createView(webPage->size(), backgroundColor, isTransparent,
         webPage->fixedLayoutSize(), fixedVisibleContentRect, shouldUseFixedLayout,
-        defaultScrollbarMode, /* lock */ shouldHideScrollbars, defaultScrollbarMode, /* lock */ shouldHideScrollbars);
+        horizontalScrollbarMode, horizontalLock, verticalScrollbarMode, verticalLock);
 
     if (int minimumLayoutWidth = webPage->minimumLayoutSize().width()) {
         int minimumLayoutHeight = std::max(webPage->minimumLayoutSize().height(), 1);

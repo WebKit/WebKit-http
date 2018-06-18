@@ -35,6 +35,7 @@
 #include "APILegacyContextHistoryClient.h"
 #include "APIPageConfiguration.h"
 #include "APIProcessPoolConfiguration.h"
+#include "ChildProcessMessages.h"
 #include "DownloadProxy.h"
 #include "DownloadProxyMessages.h"
 #include "GamepadData.h"
@@ -557,6 +558,9 @@ void WebProcessPool::ensureStorageProcessAndWebsiteDataStore(WebsiteDataStore* r
             parameters.serviceWorkerRegistrationDirectory = m_configuration->serviceWorkerRegistrationDirectory();
             SandboxExtension::createHandleForReadWriteDirectory(parameters.serviceWorkerRegistrationDirectory, parameters.serviceWorkerRegistrationDirectoryExtensionHandle);
         }
+
+        if (!m_schemesServiceWorkersCanHandle.isEmpty())
+            parameters.urlSchemesServiceWorkersCanHandle = copyToVector(m_schemesServiceWorkersCanHandle);
 #endif
 
         m_storageProcess = StorageProcessProxy::create(*this);
@@ -569,9 +573,9 @@ void WebProcessPool::ensureStorageProcessAndWebsiteDataStore(WebsiteDataStore* r
     m_storageProcess->send(Messages::StorageProcess::InitializeWebsiteDataStore(relevantDataStore->storageProcessParameters()), 0);
 }
 
-void WebProcessPool::getStorageProcessConnection(bool isServiceWorkerProcess, Ref<Messages::WebProcessProxy::GetStorageProcessConnection::DelayedReply>&& reply)
+void WebProcessPool::getStorageProcessConnection(bool isServiceWorkerProcess, PAL::SessionID initialSessionID, Ref<Messages::WebProcessProxy::GetStorageProcessConnection::DelayedReply>&& reply)
 {
-    ensureStorageProcessAndWebsiteDataStore(nullptr);
+    ensureStorageProcessAndWebsiteDataStore(WebsiteDataStore::existingNonDefaultDataStoreForSessionID(initialSessionID));
 
     m_storageProcess->getStorageProcessConnection(isServiceWorkerProcess, WTFMove(reply));
 }
@@ -589,23 +593,32 @@ void WebProcessPool::storageProcessCrashed(StorageProcessProxy* storageProcessPr
 }
 
 #if ENABLE(SERVICE_WORKER)
-void WebProcessPool::establishWorkerContextConnectionToStorageProcess(StorageProcessProxy& proxy)
+void WebProcessPool::establishWorkerContextConnectionToStorageProcess(StorageProcessProxy& proxy, std::optional<PAL::SessionID> sessionID)
 {
     ASSERT_UNUSED(proxy, &proxy == m_storageProcess);
 
     if (m_serviceWorkerProcess)
         return;
 
-    if (!m_websiteDataStore)
-        m_websiteDataStore = API::WebsiteDataStore::defaultDataStore().ptr();
+    WebsiteDataStore* websiteDataStore = nullptr;
+    if (sessionID)
+        websiteDataStore = WebsiteDataStore::existingNonDefaultDataStoreForSessionID(*sessionID);
 
-    auto serviceWorkerProcessProxy = ServiceWorkerProcessProxy::create(*this, m_websiteDataStore->websiteDataStore());
+    if (!websiteDataStore) {
+        if (!m_websiteDataStore)
+            m_websiteDataStore = API::WebsiteDataStore::defaultDataStore().ptr();
+        websiteDataStore = &m_websiteDataStore->websiteDataStore();
+    }
+
+    auto serviceWorkerProcessProxy = ServiceWorkerProcessProxy::create(*this, *websiteDataStore);
     m_serviceWorkerProcess = serviceWorkerProcessProxy.ptr();
+
     updateProcessAssertions();
-    initializeNewWebProcess(serviceWorkerProcessProxy.get(), m_websiteDataStore->websiteDataStore());
+    initializeNewWebProcess(serviceWorkerProcessProxy.get(), *websiteDataStore);
+
     m_processes.append(WTFMove(serviceWorkerProcessProxy));
 
-    m_serviceWorkerProcess->start(m_defaultPageGroup->preferences().store());
+    m_serviceWorkerProcess->start(m_serviceWorkerPreferences ? m_serviceWorkerPreferences.value() : m_defaultPageGroup->preferences().store(), sessionID);
     if (!m_serviceWorkerUserAgent.isNull())
         m_serviceWorkerProcess->setUserAgent(m_serviceWorkerUserAgent);
 }
@@ -768,6 +781,7 @@ void WebProcessPool::initializeNewWebProcess(WebProcessProxy& process, WebsiteDa
     parameters.urlSchemesRegisteredAsCORSEnabled = copyToVector(m_schemesToRegisterAsCORSEnabled);
     parameters.urlSchemesRegisteredAsAlwaysRevalidated = copyToVector(m_schemesToRegisterAsAlwaysRevalidated);
     parameters.urlSchemesRegisteredAsCachePartitioned = copyToVector(m_schemesToRegisterAsCachePartitioned);
+    parameters.urlSchemesServiceWorkersCanHandle = copyToVector(m_schemesServiceWorkersCanHandle);
 
     parameters.shouldAlwaysUseComplexTextCodePath = m_alwaysUsesComplexTextCodePath;
     parameters.shouldUseFontSmoothing = m_shouldUseFontSmoothing;
@@ -1031,7 +1045,7 @@ void WebProcessPool::updateServiceWorkerUserAgent(const String& userAgent)
 }
 #endif
 
-void WebProcessPool::pageAddedToProcess(WebPageProxy& page)
+void WebProcessPool::pageBeginUsingWebsiteDataStore(WebPageProxy& page)
 {
     auto result = m_sessionToPagesMap.add(page.sessionID(), HashSet<WebPageProxy*>()).iterator->value.add(&page);
     ASSERT_UNUSED(result, result.isNewEntry);
@@ -1050,9 +1064,17 @@ void WebProcessPool::pageAddedToProcess(WebPageProxy& page)
             ensureStorageProcessAndWebsiteDataStore(&page.websiteDataStore());
 #endif
     }
+
+#if ENABLE(SERVICE_WORKER)
+    if (!m_serviceWorkerPreferences) {
+        m_serviceWorkerPreferences = page.preferencesStore();
+        if (m_serviceWorkerProcess)
+            m_serviceWorkerProcess->updatePreferencesStore(m_serviceWorkerPreferences.value());
+    }
+#endif
 }
 
-void WebProcessPool::pageRemovedFromProcess(WebPageProxy& page)
+void WebProcessPool::pageEndUsingWebsiteDataStore(WebPageProxy& page)
 {
     auto sessionID = page.sessionID();
     auto iterator = m_sessionToPagesMap.find(sessionID);
@@ -1281,6 +1303,14 @@ void WebProcessPool::registerURLSchemeAsCachePartitioned(const String& urlScheme
     sendToAllProcesses(Messages::WebProcess::RegisterURLSchemeAsCachePartitioned(urlScheme));
 }
 
+void WebProcessPool::registerURLSchemeServiceWorkersCanHandle(const String& urlScheme)
+{
+    m_schemesServiceWorkersCanHandle.add(urlScheme);
+    sendToAllProcesses(Messages::ChildProcess::RegisterURLSchemeServiceWorkersCanHandle(urlScheme));
+    if (m_storageProcess)
+        m_storageProcess->send(Messages::ChildProcess::RegisterURLSchemeServiceWorkersCanHandle(urlScheme), 0);
+}
+
 void WebProcessPool::setCacheModel(CacheModel cacheModel)
 {
     m_configuration->setCacheModel(cacheModel);
@@ -1428,6 +1458,9 @@ void WebProcessPool::terminateServiceWorkerProcess()
     if (!m_serviceWorkerProcess)
         return;
 
+#ifndef NDEBUG
+    auto protectedThis = makeRef(*this);
+#endif
     m_serviceWorkerProcess->requestTermination(ProcessTerminationReason::RequestedByClient);
     ASSERT(!m_processes.contains(m_serviceWorkerProcess));
     ASSERT(!m_serviceWorkerProcess);

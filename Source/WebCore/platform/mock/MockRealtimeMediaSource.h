@@ -44,6 +44,11 @@ public:
 
     static Vector<CaptureDevice>& audioDevices();
     static Vector<CaptureDevice>& videoDevices();
+    static Vector<CaptureDevice>& displayDevices();
+
+    static std::optional<CaptureDevice> captureDeviceWithPersistentID(CaptureDevice::DeviceType, const String&);
+
+    enum class MockDevice { Invalid, Microphone1, Microphone2, Camera1, Camera2, Screen1, Screen2 };
 
 protected:
     MockRealtimeMediaSource(const String& id, Type, const String& name);
@@ -57,7 +62,8 @@ protected:
 
     RealtimeMediaSourceSupportedConstraints& supportedConstraints();
 
-    unsigned deviceIndex() { return m_deviceIndex; }
+    MockDevice device() const { return m_device; }
+    MockDevice m_device { MockDevice::Invalid };
 
 private:
     void initializeCapabilities();
@@ -66,7 +72,6 @@ private:
     RealtimeMediaSourceSettings m_currentSettings;
     RealtimeMediaSourceSupportedConstraints m_supportedConstraints;
     std::unique_ptr<RealtimeMediaSourceCapabilities> m_capabilities;
-    unsigned m_deviceIndex { 0 };
 };
 
 } // namespace WebCore

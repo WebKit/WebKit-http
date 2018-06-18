@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,8 +35,17 @@
 
 namespace WebCore {
 
-PaymentCoordinator::PaymentCoordinator(PaymentCoordinatorClient& client)
-    : m_client(client)
+static HashSet<String, ASCIICaseInsensitiveHash> toHashSet(const Vector<String>& values)
+{
+    HashSet<String, ASCIICaseInsensitiveHash> result;
+    for (auto& value : values)
+        result.add(value);
+    return result;
+}
+
+PaymentCoordinator::PaymentCoordinator(PaymentCoordinatorClient& client, const Vector<String>& availablePaymentNetworks)
+    : m_client { client }
+    , m_availablePaymentNetworks { toHashSet(availablePaymentNetworks) }
 {
 }
 
@@ -45,7 +54,7 @@ PaymentCoordinator::~PaymentCoordinator()
     m_client.paymentCoordinatorDestroyed();
 }
 
-bool PaymentCoordinator::supportsVersion(unsigned version)
+bool PaymentCoordinator::supportsVersion(unsigned version) const
 {
     return m_client.supportsVersion(version);
 }
@@ -194,6 +203,21 @@ void PaymentCoordinator::didCancelPaymentSession()
     m_activeSession = nullptr;
 }
 
+std::optional<String> PaymentCoordinator::validatedPaymentNetwork(unsigned version, const String& paymentNetwork) const
+{
+    if (version < 2 && equalIgnoringASCIICase(paymentNetwork, "jcb"))
+        return std::nullopt;
+
+    if (version < 3 && equalIgnoringASCIICase(paymentNetwork, "carteBancaire"))
+        return std::nullopt;
+
+    auto result = m_availablePaymentNetworks.find(paymentNetwork);
+    if (result == m_availablePaymentNetworks.end())
+        return std::nullopt;
+
+    return *result;
 }
 
-#endif
+} // namespace WebCore
+
+#endif // ENABLE(APPLE_PAY)

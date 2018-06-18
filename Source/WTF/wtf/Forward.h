@@ -35,25 +35,29 @@ class CString;
 class CrashOnOverflow;
 class FunctionDispatcher;
 class Hasher;
+class MonotonicTime;
 class OrdinalNumber;
 class PrintStream;
 class SHA1;
+class Seconds;
 class String;
 class StringBuilder;
 class StringImpl;
 class StringView;
 class TextPosition;
 class TextStream;
+class WallTime;
 
 struct FastMalloc;
 
 template<typename> class CompletionHandler;
+template<typename T> struct DumbPtrTraits;
 template<typename> class Function;
 template<typename> class LazyNeverDestroyed;
 template<typename> class NeverDestroyed;
 template<typename> class OptionSet;
-template<typename> class Ref;
-template<typename> class RefPtr;
+template<typename T, typename = DumbPtrTraits<T>> class Ref;
+template<typename T, typename = DumbPtrTraits<T>> class RefPtr;
 template<typename> class StringBuffer;
 template<typename, typename = void> class StringTypeAdapter;
 

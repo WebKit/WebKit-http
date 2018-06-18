@@ -705,6 +705,7 @@ void BytecodeDumper<Block>::dumpBytecode(PrintStream& out, const typename Block:
         if (structure)
             out.print(", cache(struct = ", RawPointer(structure), ")");
         out.print(", ", getToThisStatus(*(++it)));
+        dumpValueProfiling(out, it, hasPrintedProfiling);
         break;
     }
     case op_check_tdz: {
@@ -1592,13 +1593,6 @@ void BytecodeDumper<Block>::dumpBytecode(PrintStream& out, const typename Block:
         int hasBreakpointFlag = (++it)->u.operand;
         printLocationAndOp(out, location, it, "debug");
         out.printf("%s, %d", debugHookName(debugHookType), hasBreakpointFlag);
-        break;
-    }
-    case op_assert: {
-        int condition = (++it)->u.operand;
-        int line = (++it)->u.operand;
-        printLocationAndOp(out, location, it, "assert");
-        out.printf("%s, %d", registerName(condition).data(), line);
         break;
     }
     case op_identity_with_profile: {

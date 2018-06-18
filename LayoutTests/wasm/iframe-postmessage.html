@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<iframe src="./resources/frame.html" id="iframe"></iframe>
 <script src="../resources/js-test.js"></script>
 <script src="../resources/wasm-builder.js"></script>
 <script src="./resources/load_wasm.js"></script>
@@ -15,6 +14,8 @@ function finish(value) {
         testRunner.notifyDone();
 }
 
+window.addEventListener("message", value =>  run(), { once:true }, false);
+
 var run = async function () {
     try {
         window.addEventListener("message", (answer) => finish(answer.data), false);
@@ -22,9 +23,8 @@ var run = async function () {
         var iframe = document.getElementById("iframe").contentWindow;
         iframe.postMessage(mod, '*');
     } catch (e) {
-        console.log('error:', e);
+        debug('error:' + e);
     }
 };
-
-setTimeout(run);
 </script>
+<iframe src="./resources/frame.html" id="iframe"></iframe>

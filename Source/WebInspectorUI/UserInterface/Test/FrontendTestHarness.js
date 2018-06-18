@@ -77,8 +77,10 @@ FrontendTestHarness = class FrontendTestHarness extends TestHarness
         this.evaluateInPage(`TestPage.debugLog(unescape("${escape(stringifiedMessage)}"));`);
     }
 
-    evaluateInPage(expression, callback)
+    evaluateInPage(expression, callback, options={})
     {
+        let remoteObjectOnly = !!options.remoteObjectOnly;
+
         // If we load this page outside of the inspector, or hit an early error when loading
         // the test frontend, then defer evaluating the commands (indefinitely in the former case).
         if (this._originalConsole && !window.RuntimeAgent) {
@@ -86,10 +88,25 @@ FrontendTestHarness = class FrontendTestHarness extends TestHarness
             return;
         }
 
-        if (typeof callback === "function")
-            RuntimeAgent.evaluate.invoke({expression, objectGroup: "test", includeCommandLineAPI: false}, callback);
-        else
-            return RuntimeAgent.evaluate.invoke({expression, objectGroup: "test", includeCommandLineAPI: false});
+        // Return primitive values directly, otherwise return a WI.RemoteObject instance.
+        function translateResult(result) {
+            let remoteObject = WI.RemoteObject.fromPayload(result);
+            return (!remoteObjectOnly && remoteObject.hasValue()) ? remoteObject.value : remoteObject;
+        }
+
+        let response = RuntimeAgent.evaluate.invoke({expression, objectGroup: "test", includeCommandLineAPI: false})
+        if (callback && typeof callback === "function") {
+            response = response.then(({result, wasThrown}) => callback(null, translateResult(result), wasThrown));
+            response = response.catch((error) => callback(error, null, false));
+        } else {
+            // Turn a thrown Error result into a promise rejection.
+            return response.then(({result, wasThrown}) => {
+                result = translateResult(result);
+                if (result && wasThrown)
+                    return Promise.reject(new Error(result.description));
+                return Promise.resolve(result);
+            });
+        }
     }
 
     debug()

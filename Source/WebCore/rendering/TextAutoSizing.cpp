@@ -36,8 +36,7 @@
 #include "RenderListMarker.h"
 #include "RenderText.h"
 #include "RenderTextFragment.h"
-#include "RenderTreeUpdaterFirstLetter.h"
-#include "RenderTreeUpdaterListItem.h"
+#include "RenderTreeBuilder.h"
 #include "StyleResolver.h"
 
 namespace WebCore {
@@ -97,6 +96,9 @@ auto TextAutoSizingValue::adjustTextNodeSizes() -> StillHasNodes
         cumulativeSize += node->renderer()->candidateComputedTextSize();
 
     float averageSize = std::round(cumulativeSize / m_autoSizedNodes.size());
+
+    // FIXME: Figure out how to make this code use RenderTreeUpdater/Builder properly.
+    RenderTreeBuilder builder((*m_autoSizedNodes.begin())->renderer()->view());
 
     // Adjust sizes.
     bool firstPass = true;
@@ -158,8 +160,7 @@ auto TextAutoSizingValue::adjustTextNodeSizes() -> StillHasNodes
         newParentStyle.fontCascade().update(&node->document().fontSelector());
         parentRenderer->setStyle(WTFMove(newParentStyle));
 
-        if (is<RenderListItem>(*parentRenderer))
-            RenderTreeUpdater::ListItem::updateMarker(downcast<RenderListItem>(*parentRenderer));
+        builder.updateAfterDescendants(*parentRenderer);
     }
 
     for (auto& node : m_autoSizedNodes) {
@@ -169,8 +170,7 @@ auto TextAutoSizingValue::adjustTextNodeSizes() -> StillHasNodes
         auto* block = downcast<RenderTextFragment>(textRenderer).blockForAccompanyingFirstLetter();
         if (!block)
             continue;
-        // FIXME: All render tree mutations should be done by RenderTreeUpdater commit.
-        RenderTreeUpdater::FirstLetter::update(*block);
+        builder.updateAfterDescendants(*block);
     }
 
     return stillHasNodes;

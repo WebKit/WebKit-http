@@ -73,7 +73,7 @@ public:
     // FIXME-BLOCKFLOW: Remove virtualizaion when all callers have moved to RenderBlockFlow
     virtual void deleteLines();
 
-    void addChild(RenderPtr<RenderObject> newChild, RenderObject* beforeChild = 0) override;
+    void addChild(RenderTreeBuilder&, RenderPtr<RenderObject> newChild, RenderObject* beforeChild = 0) override;
     RenderPtr<RenderObject> takeChild(RenderObject&) override;
 
     virtual void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0);
@@ -395,7 +395,10 @@ public:
     
     void adjustBorderBoxRectForPainting(LayoutRect&) override;
     LayoutRect paintRectToClipOutFromBorder(const LayoutRect&) override;
-    
+    void addChildIgnoringContinuation(RenderTreeBuilder&, RenderPtr<RenderObject> newChild, RenderObject* beforeChild) override;
+    virtual void removeLeftoverAnonymousBlock(RenderBlock* child);
+    bool isInlineBlockOrInlineTable() const final { return isInline() && isReplaced(); }
+
 protected:
     virtual void addOverflowFromChildren();
     // FIXME-BLOCKFLOW: Remove virtualization when all callers have moved to RenderBlockFlow
@@ -432,16 +435,8 @@ private:
 
     const char* renderName() const override;
 
-    bool isInlineBlockOrInlineTable() const final { return isInline() && isReplaced(); }
-
-    void makeChildrenNonInline(RenderObject* insertionPoint = nullptr);
-    virtual void removeLeftoverAnonymousBlock(RenderBlock* child);
-
     // FIXME-BLOCKFLOW: Remove virtualizaion when all callers have moved to RenderBlockFlow
     virtual void moveAllChildrenIncludingFloatsTo(RenderBlock& toBlock, RenderBoxModelObject::NormalizeAfterInsertion normalizeAfterInsertion) { moveAllChildrenTo(&toBlock, normalizeAfterInsertion); }
-
-    void addChildToContinuation(RenderPtr<RenderObject> newChild, RenderObject* beforeChild);
-    void addChildIgnoringContinuation(RenderPtr<RenderObject> newChild, RenderObject* beforeChild) override;
 
     bool isSelfCollapsingBlock() const override;
     virtual bool childrenPreventSelfCollapsing() const;
@@ -502,7 +497,6 @@ private:
     virtual VisiblePosition positionForPointWithInlineChildren(const LayoutPoint&, const RenderFragmentContainer*);
 
     RenderPtr<RenderBlock> clone() const;
-    RenderBlock* continuationBefore(RenderObject* beforeChild);
 
     RenderFragmentedFlow* updateCachedEnclosingFragmentedFlow(RenderFragmentedFlow*) const;
 

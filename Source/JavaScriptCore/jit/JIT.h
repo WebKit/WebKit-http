@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -719,6 +719,7 @@ namespace JSC {
         MacroAssembler::Call callOperation(C_JITOperation_EL, GPRReg);
         MacroAssembler::Call callOperation(C_JITOperation_EL, TrustedImmPtr);
         MacroAssembler::Call callOperation(C_JITOperation_ESt, Structure*);
+        MacroAssembler::Call callOperation(C_JITOperation_EC, JSCell*);
         MacroAssembler::Call callOperation(C_JITOperation_EZ, int32_t);
         MacroAssembler::Call callOperation(Z_JITOperation_EJZZ, GPRReg, int32_t, int32_t);
         MacroAssembler::Call callOperation(J_JITOperation_E, int);
@@ -902,8 +903,8 @@ namespace JSC {
         Instruction* copiedInstruction(Instruction*);
 
         Interpreter* m_interpreter;
-        
-        RefCountedArray<Instruction> m_instructions;
+
+        PoisonedRefCountedArray<CodeBlockPoison, Instruction> m_instructions;
 
         Vector<CallRecord> m_calls;
         Vector<Label> m_labels;
@@ -943,6 +944,7 @@ namespace JSC {
         bool m_canBeOptimized;
         bool m_canBeOptimizedOrInlined;
         bool m_shouldEmitProfiling;
+        bool m_shouldUseIndexMasking;
         unsigned m_loopOSREntryBytecodeOffset { 0 };
     } JIT_CLASS_ALIGNMENT;
 

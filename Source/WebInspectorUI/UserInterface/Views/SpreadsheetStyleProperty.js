@@ -45,6 +45,8 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 
         this._property.__propertyView = this;
 
+        this._hasInvalidVariableValue = false;
+
         this._update();
         property.addEventListener(WI.CSSProperty.Event.OverriddenStatusChanged, this.updateStatus, this);
         property.addEventListener(WI.CSSProperty.Event.Changed, this.updateStatus, this);
@@ -106,7 +108,7 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 
         if (!this._property.valid && this._property.hasOtherVendorNameOrKeyword())
             classNames.push("other-vendor");
-        else if (!this._property.valid && this._property.value !== "") {
+        else if (this._hasInvalidVariableValue || (!this._property.valid && this._property.value !== "")) {
             let propertyNameIsValid = false;
             if (WI.CSSCompletions.cssNameCompletions)
                 propertyNameIsValid = WI.CSSCompletions.cssNameCompletions.isValidPropertyName(this._property.name);
@@ -191,6 +193,8 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
             this._nameTextField = new WI.SpreadsheetTextField(this, this._nameElement, this._nameCompletionDataProvider.bind(this));
 
             this._valueElement.tabIndex = 0;
+            this._valueElement.addEventListener("beforeinput", this._handleValueBeforeInput.bind(this));
+
             this._valueTextField = new WI.SpreadsheetTextField(this, this._valueElement, this._valueCompletionDataProvider.bind(this));
         }
 
@@ -286,6 +290,8 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 
     _renderValue(value)
     {
+        this._hasInvalidVariableValue = false;
+
         const maxValueLength = 150;
         let tokens = WI.tokenizeCSSValue(value);
 
@@ -295,6 +301,7 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
             tokens = this._addColorTokens(tokens);
             tokens = this._addTimingFunctionTokens(tokens, "cubic-bezier");
             tokens = this._addTimingFunctionTokens(tokens, "spring");
+            tokens = this._addVariableTokens(tokens);
         }
 
         tokens = tokens.map((token) => {
@@ -475,6 +482,46 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         return newTokens;
     }
 
+    _addVariableTokens(tokens)
+    {
+        let newTokens = [];
+        let startIndex = NaN;
+        let openParenthesis = 0;
+
+        for (let i = 0; i < tokens.length; i++) {
+            let token = tokens[i];
+            if (token.value === "var" && token.type && token.type.includes("atom")) {
+                startIndex = i;
+                openParenthesis = 0;
+            } else if (token.value === "(" && !isNaN(startIndex))
+                ++openParenthesis;
+            else if (token.value === ")" && !isNaN(startIndex)) {
+                --openParenthesis;
+                if (openParenthesis > 0)
+                    continue;
+
+                let rawTokens = tokens.slice(startIndex, i + 1);
+                let tokenValues = rawTokens.map((token) => token.value);
+                let variableName = tokenValues.find((value, i) => value.startsWith("--") && /\bvariable-2\b/.test(rawTokens[i].type));
+
+                const dontCreateIfMissing = true;
+                let variableProperty = this._property.ownerStyle.nodeStyles.computedStyle.propertyForName(variableName, dontCreateIfMissing);
+                if (variableProperty) {
+                    let valueObject = variableProperty.value.trim();
+                    newTokens.push(this._createInlineSwatch(WI.InlineSwatch.Type.Variable, tokenValues.join(""), valueObject));
+                } else {
+                    this._hasInvalidVariableValue = true;
+                    newTokens.push(...rawTokens);
+                }
+
+                startIndex = NaN;
+            } else if (isNaN(startIndex))
+                newTokens.push(token);
+        }
+
+        return newTokens;
+    }
+
     _handleNameChange()
     {
         this._property.name = this._nameElement.textContent.trim();
@@ -498,6 +545,37 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
     _nameCompletionDataProvider(prefix)
     {
         return WI.CSSCompletions.cssNameCompletions.startsWith(prefix);
+    }
+
+    _handleValueBeforeInput(event)
+    {
+        if (event.data !== ";" || event.inputType !== "insertText")
+            return;
+
+        let text = this._valueTextField.valueWithoutSuggestion();
+        let selection = window.getSelection();
+        if (!selection.rangeCount || selection.getRangeAt(0).endOffset !== text.length)
+            return;
+
+        // Find the first and last index (if any) of a quote character to ensure that the string
+        // doesn't contain unbalanced quotes. If so, then there's no way that the semicolon could be
+        // part of a string within the value, so we can assume that it's the property "terminator".
+        const quoteRegex = /["']/g;
+        let start = -1;
+        let end = text.length;
+        let match = null;
+        while (match = quoteRegex.exec(text)) {
+            if (start < 0)
+                start = match.index;
+            end = match.index + 1;
+        }
+
+        if (start !== -1 && !text.substring(start, end).hasMatchingEscapedQuotes())
+            return;
+
+        event.preventDefault();
+        this._valueTextField.stopEditing();
+        this.spreadsheetTextFieldDidCommit(this._valueTextField, {direction: "forward"});
     }
 
     _valueCompletionDataProvider(prefix)

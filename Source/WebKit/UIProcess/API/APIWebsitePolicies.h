@@ -26,33 +26,54 @@
 #pragma once
 
 #include "APIObject.h"
-#include "WebsitePolicies.h"
+#include "WebsiteAutoplayPolicy.h"
+#include "WebsiteAutoplayQuirk.h"
+#include <WebCore/HTTPHeaderField.h>
+#include <wtf/EnumTraits.h>
 #include <wtf/OptionSet.h>
+#include <wtf/Optional.h>
+#include <wtf/Vector.h>
+
+namespace WebKit {
+struct WebsitePoliciesData;
+}
 
 namespace API {
 
-class WebsitePolicies final : public ObjectImpl<Object::Type::WebsitePolicies> {
+class WebsiteDataStore;
+
+class WebsitePolicies final : public API::ObjectImpl<API::Object::Type::WebsitePolicies> {
 public:
-    static Ref<WebsitePolicies> create();
-    explicit WebsitePolicies();
-    virtual ~WebsitePolicies();
+    static Ref<WebsitePolicies> create() { return adoptRef(*new WebsitePolicies); }
+    WebsitePolicies();
+    ~WebsitePolicies();
 
-    bool contentBlockersEnabled() const { return m_websitePolicies.contentBlockersEnabled(); }
-    void setContentBlockersEnabled(bool enabled) { m_websitePolicies.setContentBlockersEnabled(enabled); }
-
-    OptionSet<WebKit::WebsiteAutoplayQuirk> allowedAutoplayQuirks() const { return m_websitePolicies.allowedAutoplayQuirks(); }
-    void setAllowedAutoplayQuirks(OptionSet<WebKit::WebsiteAutoplayQuirk> allowedQuirks) { m_websitePolicies.setAllowedAutoplayQuirks(allowedQuirks); }
-
-    WebKit::WebsiteAutoplayPolicy autoplayPolicy() const { return m_websitePolicies.autoplayPolicy(); }
-    void setAutoplayPolicy(WebKit::WebsiteAutoplayPolicy policy) { m_websitePolicies.setAutoplayPolicy(policy); }
-
-    void setCustomHeaderFields(Vector<WebCore::HTTPHeaderField>&& customHeaderFields) { m_websitePolicies.setCustomHeaderFields(WTFMove(customHeaderFields)); };
-    const Vector<WebCore::HTTPHeaderField> customHeaderFields() { return m_websitePolicies.customHeaderFields(); }
-
-    const WebKit::WebsitePolicies& websitePolicies() { return m_websitePolicies; }
+    bool contentBlockersEnabled() const { return m_contentBlockersEnabled; }
+    void setContentBlockersEnabled(bool enabled) { m_contentBlockersEnabled = enabled; }
     
+    OptionSet<WebKit::WebsiteAutoplayQuirk> allowedAutoplayQuirks() const { return m_allowedAutoplayQuirks; }
+    void setAllowedAutoplayQuirks(OptionSet<WebKit::WebsiteAutoplayQuirk> quirks) { m_allowedAutoplayQuirks = quirks; }
+    
+    WebKit::WebsiteAutoplayPolicy autoplayPolicy() const { return m_autoplayPolicy; }
+    void setAutoplayPolicy(WebKit::WebsiteAutoplayPolicy policy) { m_autoplayPolicy = policy; }
+    
+    const Vector<WebCore::HTTPHeaderField>& customHeaderFields() const { return m_customHeaderFields; }
+    Vector<WebCore::HTTPHeaderField>&& takeCustomHeaderFields() { return WTFMove(m_customHeaderFields); }
+    void setCustomHeaderFields(Vector<WebCore::HTTPHeaderField>&& fields) { m_customHeaderFields = WTFMove(fields); }
+    
+    WebsiteDataStore* websiteDataStore() const { return m_websiteDataStore.get(); }
+    void setWebsiteDataStore(RefPtr<WebsiteDataStore>&&);
+
+    WebKit::WebsitePoliciesData data();
+
 private:
-    WebKit::WebsitePolicies m_websitePolicies;
+    WebsitePolicies(bool contentBlockersEnabled, OptionSet<WebKit::WebsiteAutoplayQuirk>, WebKit::WebsiteAutoplayPolicy, Vector<WebCore::HTTPHeaderField>&&, RefPtr<WebsiteDataStore>&&);
+
+    bool m_contentBlockersEnabled { true };
+    OptionSet<WebKit::WebsiteAutoplayQuirk> m_allowedAutoplayQuirks;
+    WebKit::WebsiteAutoplayPolicy m_autoplayPolicy { WebKit::WebsiteAutoplayPolicy::Default };
+    Vector<WebCore::HTTPHeaderField> m_customHeaderFields;
+    RefPtr<WebsiteDataStore> m_websiteDataStore;
 };
 
-}
+} // namespace API

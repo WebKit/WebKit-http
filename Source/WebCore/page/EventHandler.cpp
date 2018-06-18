@@ -1589,9 +1589,6 @@ void EventHandler::cancelAutoHideCursorTimer()
 {
     if (m_autoHideCursorTimer.isActive())
         m_autoHideCursorTimer.stop();
-
-    if (auto page = m_frame.page())
-        page->chrome().setCursorHiddenUntilMouseMoves(false);
 }
 
 void EventHandler::autoHideCursorTimerFired()
@@ -2681,16 +2678,30 @@ void EventHandler::platformNotifyIfEndGesture(const PlatformWheelEvent&, const W
 {
 }
 
-IntPoint EventHandler::effectiveMousePositionForSelectionAutoscroll() const
-{
-    return m_lastKnownMousePosition;
-}
-
 void EventHandler::clearOrScheduleClearingLatchedStateIfNeeded(const PlatformWheelEvent&)
 {
     clearLatchedState();
 }
-#endif
+    
+#if !PLATFORM(IOS)
+    
+IntPoint EventHandler::targetPositionInWindowForSelectionAutoscroll() const
+{
+    return m_lastKnownMousePosition;
+}
+    
+#endif // !PLATFORM(IOS)
+    
+#endif // !PLATFORM(MAC)
+    
+#if !PLATFORM(IOS)
+    
+bool EventHandler::shouldUpdateAutoscroll()
+{
+    return mousePressed();
+}
+    
+#endif // !PLATFORM(IOS)
 
 Widget* EventHandler::widgetForEventTarget(Element* eventTarget)
 {

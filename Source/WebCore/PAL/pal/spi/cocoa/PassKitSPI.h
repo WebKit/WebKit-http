@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,6 +29,7 @@
 
 #import <PassKit/PassKit.h>
 #import <PassKit/PKPaymentAuthorizationViewController_Private.h>
+#import <PassKit/PKPaymentRequest_Private.h>
 
 #else
 
@@ -176,6 +177,7 @@ typedef NSString * PKPaymentNetwork NS_EXTENSIBLE_STRING_ENUM;
 @end
 
 @interface PKPaymentRequest : NSObject
++ (NSArray<PKPaymentNetwork> *)availableNetworks;
 @property (nonatomic, copy) NSString *countryCode;
 @property (nonatomic, copy) NSArray<PKPaymentNetwork> *supportedNetworks;
 @property (nonatomic, assign) PKMerchantCapability merchantCapabilities;
@@ -244,6 +246,18 @@ NS_ASSUME_NONNULL_BEGIN
 @optional
 - (void)paymentAuthorizationViewController:(PKPaymentAuthorizationViewController *)controller didRequestMerchantSession:(void(^)(PKPaymentMerchantSession *, NSError *))sessionBlock;
 @end
+
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101304) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 110300)
+typedef NS_ENUM(NSUInteger, PKPaymentRequestAPIType) {
+    PKPaymentRequestAPITypeInApp = 0,
+    PKPaymentRequestAPITypeWebJS,
+    PKPaymentRequestAPITypeWebPaymentRequest,
+};
+
+@interface PKPaymentRequest ()
+@property (nonatomic, assign) PKPaymentRequestAPIType APIType;
+@end
+#endif
 
 NS_ASSUME_NONNULL_END
 

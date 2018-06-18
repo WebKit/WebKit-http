@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "WKOpenPanelParameters.h"
+#import "WKOpenPanelParametersPrivate.h"
 
 #if WK_API_ENABLED && PLATFORM(MAC)
 

@@ -39,6 +39,8 @@
 #include "EventNames.h"
 #include "MediaDevicesRequest.h"
 #include "MediaTrackSupportedConstraints.h"
+#include "RealtimeMediaSourceSettings.h"
+#include "RuntimeEnabledFeatures.h"
 #include "UserMediaRequest.h"
 #include <wtf/RandomNumber.h>
 
@@ -58,6 +60,11 @@ inline MediaDevices::MediaDevices(Document& document)
         if (!m_scheduledEventTimer.isActive())
             m_scheduledEventTimer.startOneShot(Seconds(randomNumber() / 2));
     });
+
+    static_assert(static_cast<size_t>(MediaDevices::DisplayCaptureSurfaceType::Monitor) == static_cast<size_t>(RealtimeMediaSourceSettings::DisplaySurfaceType::Monitor), "MediaDevices::DisplayCaptureSurfaceType::Monitor is not equal to RealtimeMediaSourceSettings::DisplaySurfaceType::Monitor as expected");
+    static_assert(static_cast<size_t>(MediaDevices::DisplayCaptureSurfaceType::Window) == static_cast<size_t>(RealtimeMediaSourceSettings::DisplaySurfaceType::Window), "MediaDevices::DisplayCaptureSurfaceType::Window is not RealtimeMediaSourceSettings::DisplaySurfaceType::Window as expected");
+    static_assert(static_cast<size_t>(MediaDevices::DisplayCaptureSurfaceType::Application) == static_cast<size_t>(RealtimeMediaSourceSettings::DisplaySurfaceType::Application), "MediaDevices::DisplayCaptureSurfaceType::Application is not RealtimeMediaSourceSettings::DisplaySurfaceType::Application as expected");
+    static_assert(static_cast<size_t>(MediaDevices::DisplayCaptureSurfaceType::Browser) == static_cast<size_t>(RealtimeMediaSourceSettings::DisplaySurfaceType::Browser), "MediaDevices::DisplayCaptureSurfaceType::Browser is not RealtimeMediaSourceSettings::DisplaySurfaceType::Browser as expected");
 }
 
 MediaDevices::~MediaDevices()
@@ -100,7 +107,25 @@ ExceptionOr<void> MediaDevices::getUserMedia(const StreamConstraints& constraint
     auto videoConstraints = createMediaConstraints(constraints.video);
     if (videoConstraints.isValid)
         videoConstraints.setDefaultVideoConstraints();
-    return UserMediaRequest::start(*document, WTFMove(audioConstraints), WTFMove(videoConstraints), WTFMove(promise));
+
+    auto request = UserMediaRequest::create(*document, { MediaStreamRequest::Type::UserMedia, WTFMove(audioConstraints), WTFMove(videoConstraints) }, WTFMove(promise));
+    if (request)
+        request->start();
+
+    return { };
+}
+
+ExceptionOr<void> MediaDevices::getDisplayMedia(const StreamConstraints& constraints, Promise&& promise) const
+{
+    auto* document = this->document();
+    if (!document)
+        return Exception { InvalidStateError };
+
+    auto request = UserMediaRequest::create(*document, { MediaStreamRequest::Type::DisplayMedia, createMediaConstraints(constraints.audio), createMediaConstraints(constraints.video) }, WTFMove(promise));
+    if (request)
+        request->start();
+
+    return { };
 }
 
 void MediaDevices::enumerateDevices(EnumerateDevicesPromise&& promise) const
@@ -126,6 +151,7 @@ MediaTrackSupportedConstraints MediaDevices::getSupportedConstraints()
     result.echoCancellation = supported.supportsEchoCancellation();
     result.deviceId = supported.supportsDeviceId();
     result.groupId = supported.supportsGroupId();
+
     return result;
 }
 

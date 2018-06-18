@@ -45,10 +45,12 @@ public:
 
     WEBCORE_EXPORT URL blobURL() const;
     WEBCORE_EXPORT File* file() const;
-    void setFile(RefPtr<File>&&);
 
-    WEBCORE_EXPORT String uniqueIdentifier() const;
-    void setUniqueIdentifier(const String&);
+    enum class UpdateDisplayAttributes { No, Yes };
+    void setFile(RefPtr<File>&&, UpdateDisplayAttributes = UpdateDisplayAttributes::No);
+
+    String uniqueIdentifier() const { return m_uniqueIdentifier; }
+    void setUniqueIdentifier(const String& uniqueIdentifier) { m_uniqueIdentifier = uniqueIdentifier; }
 
     WEBCORE_EXPORT void updateDisplayMode(AttachmentDisplayMode);
     WEBCORE_EXPORT void updateFileWithData(Ref<SharedBuffer>&& data, std::optional<String>&& newContentType = std::nullopt, std::optional<String>&& newFilename = std::nullopt);
@@ -62,7 +64,7 @@ public:
 
     RenderAttachment* attachmentRenderer() const;
 
-    WEBCORE_EXPORT void requestData(Function<void(RefPtr<SharedBuffer>&&)>&& callback);
+    WEBCORE_EXPORT void requestInfo(Function<void(const AttachmentInfo&)>&& callback);
     void destroyReader(AttachmentDataReader&);
 
 private:
@@ -98,6 +100,7 @@ private:
     
     RefPtr<File> m_file;
     Vector<std::unique_ptr<AttachmentDataReader>> m_attachmentReaders;
+    String m_uniqueIdentifier;
 };
 
 } // namespace WebCore

@@ -75,16 +75,18 @@ static void setCGStrokeColor(CGContextRef context, const Color& color)
 CGColorSpaceRef sRGBColorSpaceRef()
 {
     static CGColorSpaceRef sRGBColorSpace;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        sRGBColorSpace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [] {
 #if PLATFORM(WIN)
         // Out-of-date CG installations will not honor kCGColorSpaceSRGB. This logic avoids
         // causing a crash under those conditions. Since the default color space in Windows
         // is sRGB, this all works out nicely.
         // FIXME: Is this still needed? rdar://problem/15213515 was fixed.
+        sRGBColorSpace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
         if (!sRGBColorSpace)
             sRGBColorSpace = CGColorSpaceCreateDeviceRGB();
+#else
+        sRGBColorSpace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
 #endif // PLATFORM(WIN)
     });
     return sRGBColorSpace;
@@ -95,8 +97,8 @@ CGColorSpaceRef sRGBColorSpaceRef()
 CGColorSpaceRef linearRGBColorSpaceRef()
 {
     static CGColorSpaceRef linearRGBColorSpace;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [] {
 #if PLATFORM(WIN)
         // FIXME: Windows should be able to use linear sRGB, this is tracked by http://webkit.org/b/80000.
         linearRGBColorSpace = sRGBColorSpaceRef();
@@ -104,7 +106,6 @@ CGColorSpaceRef linearRGBColorSpaceRef()
         linearRGBColorSpace = CGColorSpaceCreateWithName(kCGColorSpaceLinearSRGB);
 #endif
     });
-
     return linearRGBColorSpace;
 }
 #endif
@@ -112,14 +113,17 @@ CGColorSpaceRef linearRGBColorSpaceRef()
 CGColorSpaceRef extendedSRGBColorSpaceRef()
 {
     static CGColorSpaceRef extendedSRGBColorSpace;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [] {
+        CGColorSpaceRef colorSpace = NULL;
 #if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200)
-        extendedSRGBColorSpace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedSRGB);
+        colorSpace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedSRGB);
 #endif
         // If there is no support for extended sRGB, fall back to sRGB.
-        if (!extendedSRGBColorSpace)
-            extendedSRGBColorSpace = sRGBColorSpaceRef();
+        if (!colorSpace)
+            colorSpace = sRGBColorSpaceRef();
+
+        extendedSRGBColorSpace = colorSpace;
     });
     return extendedSRGBColorSpace;
 }
@@ -127,8 +131,8 @@ CGColorSpaceRef extendedSRGBColorSpaceRef()
 CGColorSpaceRef displayP3ColorSpaceRef()
 {
     static CGColorSpaceRef displayP3ColorSpace;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [] {
 #if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 101100)
         displayP3ColorSpace = CGColorSpaceCreateWithName(kCGColorSpaceDisplayP3);
 #else

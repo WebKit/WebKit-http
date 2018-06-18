@@ -12,9 +12,6 @@ editing/mac [ Pass ]
 fast/scrolling/latching [ Pass ]
 media/mac [ Pass ]
 
-fast/forms/alternative-presentation-button [ Pass ]
-accessibility/alternative-presentation-button-input-type.html [ Pass ]
-accessibility/alternative-presentation-button.html [ Pass ]
 fast/forms/search/search-padding-cancel-results-buttons.html [ Pass ]
 fast/forms/search/search-results-hidden-crash.html [ Pass ]
 
@@ -294,8 +291,6 @@ webkit.org/b/82665 http/tests/webarchive/test-css-url-encoding.html [ Failure ]
 webkit.org/b/82665 webarchive/test-css-url-resources-in-stylesheets.html [ Failure ]
 webkit.org/b/82665 webarchive/test-css-url-resources-inline-styles.html [ Failure ]
 
-webkit.org/b/82672 http/tests/xmlhttprequest/range-test.html [ Pass Failure ]
-
 webkit.org/b/82762 fast/animation/request-animation-frame-during-modal.html
 
 webkit.org/b/82805 fast/canvas/webgl/framebuffer-object-attachment.html [ Failure ]
@@ -543,9 +538,6 @@ fast/repaint/overflow-scroll-touch-repaint.html [ Skip ]
 # Hardware accelerated CSS transitions appear pixelated when scaled up using transform
 webkit.org/b/27684 compositing/text-on-scaled-layer.html [ ImageOnlyFailure ]
 webkit.org/b/27684 compositing/text-on-scaled-surface.html [ ImageOnlyFailure ]
-
-# Asserts in MessagePort::contextDestroyed, but the assert usually gets attributed to later tests.
-webkit.org/b/94458 fast/events/message-port-constructor-for-deleted-document.html
 
 webkit.org/b/95501 http/tests/security/inactive-document-with-empty-security-origin.html [ Skip ]
 
@@ -1357,8 +1349,6 @@ media/encrypted-media/mock-MediaKeySession-load.html [ Skip ]
 media/encrypted-media/mock-MediaKeySession-remove.html [ Skip ]
 media/encrypted-media/mock-MediaKeySession-update.html [ Skip ]
 
-media/encrypted-media/clearKey/clearKey-encrypted-cenc-event.html [ Skip ]
-
 webkit.org/b/162507 http/tests/media/hls/hls-video-resize.html [ Pass Failure ]
 
 webkit.org/b/167642 imported/w3c/web-platform-tests/shadow-dom/slotchange.html [ Pass Failure ]
@@ -1528,8 +1518,6 @@ media/modern-media-controls/media-documents/background-color-and-centering.html 
 media/modern-media-controls/pip-support/ipad [ Skip ]
 
 webkit.org/b/170907 [ Debug ] imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.worker.html [ Pass Failure Timeout ]
-
-webkit.org/b/172255 imported/w3c/web-platform-tests/html/browsers/windows/browsing-context.html [ Pass Failure ]
 
 webkit.org/b/173328 [ ElCapitan Sierra ] fast/text/system-font-fallback-emoji.html [ Failure ]
 webkit.org/b/173328 [ ElCapitan Sierra ] fast/text/system-font-fallback.html [ ImageOnlyFailure ]
@@ -1767,3 +1755,6 @@ webkit.org/b/180062 [ ElCapitan Sierra HighSierra ] fast/text/user-installed-fon
 
 webkit.org/b/180560 accessibility/mac/html5-input-number.html [ Pass Failure ]
 
+webkit.org/b/180675 accessibility/mac/search-field-cancel-button.html [ Pass Failure ]
+
+webkit.org/b/181098 fast/workers/worker-terminate.html [ Pass Timeout ]

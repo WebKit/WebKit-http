@@ -31,6 +31,7 @@
 #include "LayoutState.h"
 #include "PaintInfo.h"
 #include "RenderTableCell.h"
+#include "RenderTreeBuilder.h"
 #include "RenderView.h"
 #include "StyleInheritedData.h"
 #include <wtf/IsoMallocInlines.h>
@@ -110,63 +111,17 @@ const BorderValue& RenderTableRow::borderAdjoiningEndCell(const RenderTableCell&
     return style().borderEnd();
 }
 
-void RenderTableRow::addChild(RenderPtr<RenderObject> child, RenderObject* beforeChild)
+void RenderTableRow::addChild(RenderTreeBuilder& builder, RenderPtr<RenderObject> child, RenderObject* beforeChild)
 {
-    if (!is<RenderTableCell>(*child)) {
-        RenderObject* last = beforeChild;
-        if (!last)
-            last = lastCell();
-        if (last && last->isAnonymous() && is<RenderTableCell>(*last) && !last->isBeforeOrAfterContent()) {
-            RenderTableCell& cell = downcast<RenderTableCell>(*last);
-            if (beforeChild == &cell)
-                beforeChild = cell.firstChild();
-            cell.addChild(WTFMove(child), beforeChild);
-            return;
-        }
-
-        if (beforeChild && !beforeChild->isAnonymous() && beforeChild->parent() == this) {
-            RenderObject* cell = beforeChild->previousSibling();
-            if (is<RenderTableCell>(cell) && cell->isAnonymous()) {
-                downcast<RenderTableCell>(*cell).addChild(WTFMove(child));
-                return;
-            }
-        }
-
-        // Try to find an anonymous container for the child.
-        if (last && last->parent() && last->parent()->isAnonymous() && !last->parent()->isBeforeOrAfterContent()) {
-            // If beforeChild is inside an anonymous cell, insert into the cell.
-            if (!is<RenderTableCell>(*last)) {
-                last->parent()->addChild(WTFMove(child), beforeChild);
-                return;
-            }
-            // If beforeChild is inside an anonymous row, insert into the row.
-            auto& parent = *last->parent();
-            if (is<RenderTableRow>(parent)) {
-                auto newCell = RenderTableCell::createAnonymousWithParentRenderer(*this);
-                auto& cell = *newCell;
-                parent.addChild(WTFMove(newCell), beforeChild);
-                cell.addChild(WTFMove(child));
-                return;
-            }
-        }
-        auto newCell = RenderTableCell::createAnonymousWithParentRenderer(*this);
-        auto& cell = *newCell;
-        addChild(WTFMove(newCell), beforeChild);
-        cell.addChild(WTFMove(child));
-        return;
-    } 
-
     if (beforeChild && beforeChild->parent() != this)
-        beforeChild = splitAnonymousBoxesAroundChild(beforeChild);    
-
-    RenderTableCell& cell = downcast<RenderTableCell>(*child);
+        beforeChild = builder.splitAnonymousBoxesAroundChild(*this, beforeChild);    
 
     // Generated content can result in us having a null section so make sure to null check our parent.
-    if (RenderTableSection* section = this->section())
-        section->addCell(&cell, this);
+    if (auto* section = this->section())
+        section->addCell(&downcast<RenderTableCell>(*child), this);
 
     ASSERT(!beforeChild || is<RenderTableCell>(*beforeChild));
-    RenderBox::addChild(WTFMove(child), beforeChild);
+    RenderBox::addChild(builder, WTFMove(child), beforeChild);
 
     if (beforeChild || nextRow())
         section()->setNeedsCellRecalc();

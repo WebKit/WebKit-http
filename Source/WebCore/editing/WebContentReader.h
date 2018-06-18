@@ -32,6 +32,7 @@
 namespace WebCore {
 
 class ArchiveResource;
+class Blob;
 
 class FrameWebContentReader : public PasteboardWebContentReader {
 public:
@@ -62,12 +63,13 @@ public:
     {
     }
 
+    DocumentFragment& ensureFragment();
     void addFragment(Ref<DocumentFragment>&&);
 
 private:
 #if PLATFORM(COCOA)
     bool readWebArchive(SharedBuffer&) override;
-    bool readFilenames(const Vector<String>&) override;
+    bool readFilePaths(const Vector<String>&) override;
     bool readHTML(const String&) override;
     bool readRTFD(SharedBuffer&) override;
     bool readRTF(SharedBuffer&) override;
@@ -89,7 +91,7 @@ public:
 private:
 #if PLATFORM(COCOA)
     bool readWebArchive(SharedBuffer&) override;
-    bool readFilenames(const Vector<String>&) override { return false; }
+    bool readFilePaths(const Vector<String>&) override { return false; }
     bool readHTML(const String&) override;
     bool readRTFD(SharedBuffer&) override;
     bool readRTF(SharedBuffer&) override;
@@ -105,7 +107,7 @@ struct FragmentAndResources {
     Vector<Ref<ArchiveResource>> resources;
 };
 
-RefPtr<DocumentFragment> createFragmentAndAddResources(Frame&, NSAttributedString*);
+RefPtr<DocumentFragment> createFragmentAndAddResources(Frame&, NSAttributedString *);
 #endif
 
 }

@@ -30,7 +30,6 @@
 #include "GCIncomingRefCountedSet.h"
 #include "GCRequest.h"
 #include "HandleSet.h"
-#include "HandleStack.h"
 #include "HeapFinalizerCallback.h"
 #include "HeapObserver.h"
 #include "ListableHandler.h"
@@ -238,7 +237,6 @@ public:
     template<typename Functor> void forEachCodeBlockIgnoringJITPlans(const AbstractLocker& codeBlockSetLocker, const Functor&);
 
     HandleSet* handleSet() { return &m_handleSet; }
-    HandleStack* handleStack() { return &m_handleStack; }
 
     void willStartIterating();
     void didFinishIterating();
@@ -372,6 +370,7 @@ public:
 
     template<typename Func>
     void forEachSlotVisitor(const Func&);
+    unsigned numberOfSlotVisitors();
 
 private:
     friend class AllocatingScope;
@@ -498,6 +497,9 @@ private:
 
     template<typename CellType, typename CellSet>
     void finalizeUnconditionalFinalizers(CellSet&);
+
+    template<typename CellType>
+    void finalizeUnconditionalFinalizersInIsoSubspace();
     
     void finalizeUnconditionalFinalizers();
     
@@ -602,7 +604,6 @@ private:
     Lock m_parallelSlotVisitorLock;
     
     HandleSet m_handleSet;
-    HandleStack m_handleStack;
     std::unique_ptr<CodeBlockSet> m_codeBlocks;
     std::unique_ptr<JITStubRoutineSet> m_jitStubRoutines;
     FinalizerOwner m_finalizerOwner;

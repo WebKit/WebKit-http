@@ -34,16 +34,67 @@
 
 namespace WebCore {
 
-MessagePort::MessagePort(ScriptExecutionContext& scriptExecutionContext)
-    : m_scriptExecutionContext(&scriptExecutionContext)
+static HashMap<MessagePortIdentifier, MessagePort*>& allMessagePorts()
 {
+    static NeverDestroyed<HashMap<MessagePortIdentifier, MessagePort*>> map;
+    return map;
+}
+
+static Lock& allMessagePortsLock()
+{
+    static NeverDestroyed<Lock> lock;
+    return lock;
+}
+
+void MessagePort::ref() const
+{
+    ++m_refCount;
+}
+
+void MessagePort::deref() const
+{
+    // MessagePort::existingMessagePortForIdentifier() is unique in that it holds a raw pointer to a MessagePort
+    // but might create a RefPtr from it.
+    // If that happens on one thread at the same time that a MessagePort is being deref'ed and destroyed on a
+    // different thread then Bad Things could happen.
+    // This custom deref() function is designed to handle that contention by guaranteeing that nobody can be
+    // creating a RefPtr inside existingMessagePortForIdentifier while the object is mid-deletion.
+
+    if (!--m_refCount) {
+        Locker<Lock> locker(allMessagePortsLock());
+
+        if (m_refCount)
+            return;
+
+        allMessagePorts().remove(m_identifier);
+        delete this;
+    }
+}
+
+RefPtr<MessagePort> MessagePort::existingMessagePortForIdentifier(const MessagePortIdentifier& identifier)
+{
+    Locker<Lock> locker(allMessagePortsLock());
+
+    return allMessagePorts().get(identifier);
+}
+
+MessagePort::MessagePort(ScriptExecutionContext& scriptExecutionContext, const MessagePortIdentifier& identifier)
+    : ActiveDOMObject(&scriptExecutionContext)
+    , m_identifier(identifier)
+{
+    Locker<Lock> locker(allMessagePortsLock());
+    allMessagePorts().set(m_identifier, this);
+
     m_scriptExecutionContext->createdMessagePort(*this);
+    suspendIfNeeded();
 
     // Don't need to call processMessagePortMessagesSoon() here, because the port will not be opened until start() is invoked.
 }
 
 MessagePort::~MessagePort()
 {
+    ASSERT(allMessagePortsLock().isLocked());
+
     close();
     if (m_scriptExecutionContext)
         m_scriptExecutionContext->destroyedMessagePort(*this);
@@ -64,9 +115,10 @@ ExceptionOr<void> MessagePort::postMessage(JSC::ExecState& state, JSC::JSValue m
     // Make sure we aren't connected to any of the passed-in ports.
     if (!ports.isEmpty()) {
         for (auto& dataPort : ports) {
-            if (dataPort == this || m_entangledChannel->isConnectedTo(dataPort.get()))
+            if (dataPort == this || m_entangledChannel->isConnectedTo(dataPort->identifier()))
                 return Exception { DataCloneError };
         }
+
         auto disentangleResult = MessagePort::disentanglePorts(WTFMove(ports));
         if (disentangleResult.hasException())
             return disentangleResult.releaseException();
@@ -76,7 +128,7 @@ ExceptionOr<void> MessagePort::postMessage(JSC::ExecState& state, JSC::JSValue m
     return { };
 }
 
-std::unique_ptr<MessagePortChannel> MessagePort::disentangle()
+RefPtr<MessagePortChannel> MessagePort::disentangle()
 {
     ASSERT(m_entangledChannel);
 
@@ -85,6 +137,9 @@ std::unique_ptr<MessagePortChannel> MessagePort::disentangle()
     // We can't receive any messages or generate any events after this, so remove ourselves from the list of active ports.
     ASSERT(m_scriptExecutionContext);
     m_scriptExecutionContext->destroyedMessagePort(*this);
+    m_scriptExecutionContext->willDestroyActiveDOMObject(*this);
+    m_scriptExecutionContext->willDestroyDestructionObserver(*this);
+
     m_scriptExecutionContext = nullptr;
 
     return WTFMove(m_entangledChannel);
@@ -119,14 +174,14 @@ void MessagePort::close()
     m_closed = true;
 }
 
-void MessagePort::entangle(std::unique_ptr<MessagePortChannel>&& remote)
+void MessagePort::entangleWithRemote(RefPtr<MessagePortChannel>&& remote)
 {
     // Only invoked to set our initial entanglement.
     ASSERT(!m_entangledChannel);
     ASSERT(m_scriptExecutionContext);
 
     // Don't entangle the ports if the channel is closed.
-    if (remote->entangleIfOpen(this))
+    if (remote->entangleWithRemoteIfOpen(m_identifier))
         m_entangledChannel = WTFMove(remote);
 }
 
@@ -148,31 +203,35 @@ void MessagePort::dispatchMessages()
     if (!m_entangledChannel)
         return;
 
-    bool contextIsWorker = is<WorkerGlobalScope>(*m_scriptExecutionContext);
-
-    auto pendingMessages = m_entangledChannel->takeAllMessagesFromRemote();
-    for (auto& message : pendingMessages) {
-        // close() in Worker onmessage handler should prevent next message from dispatching.
-        if (contextIsWorker && downcast<WorkerGlobalScope>(*m_scriptExecutionContext).isClosing())
+    m_entangledChannel->takeAllMessagesFromRemote([this, protectedThis = makeRef(*this)](Deque<std::unique_ptr<MessagePortChannel::EventData>>&& messages) {
+        if (!m_scriptExecutionContext)
             return;
 
-        auto ports = MessagePort::entanglePorts(*m_scriptExecutionContext, WTFMove(message->channels));
-        dispatchEvent(MessageEvent::create(WTFMove(ports), WTFMove(message->message)));
-    }
+        bool contextIsWorker = is<WorkerGlobalScope>(*m_scriptExecutionContext);
+        for (auto& message : messages) {
+            // close() in Worker onmessage handler should prevent next message from dispatching.
+            if (contextIsWorker && downcast<WorkerGlobalScope>(*m_scriptExecutionContext).isClosing())
+                return;
+            auto ports = MessagePort::entanglePorts(*m_scriptExecutionContext, WTFMove(message->channels));
+            dispatchEvent(MessageEvent::create(WTFMove(ports), WTFMove(message->message)));
+        }
+    });
 }
 
-bool MessagePort::hasPendingActivity()
+bool MessagePort::hasPendingActivity() const
 {
     // The spec says that entangled message ports should always be treated as if they have a strong reference.
     // We'll also stipulate that the queue needs to be open (if the app drops its reference to the port before start()-ing it, then it's not really entangled as it's unreachable).
     if (m_started && m_entangledChannel && m_entangledChannel->hasPendingActivity())
         return true;
+
     if (isEntangled() && !locallyEntangledPort())
         return true;
+
     return false;
 }
 
-MessagePort* MessagePort::locallyEntangledPort()
+MessagePort* MessagePort::locallyEntangledPort() const
 {
     return m_entangledChannel ? m_entangledChannel->locallyEntangledPort(m_scriptExecutionContext) : nullptr;
 }
@@ -204,8 +263,8 @@ Vector<RefPtr<MessagePort>> MessagePort::entanglePorts(ScriptExecutionContext& c
     Vector<RefPtr<MessagePort>> portArray;
     portArray.reserveInitialCapacity(channels->size());
     for (unsigned int i = 0; i < channels->size(); ++i) {
-        auto port = MessagePort::create(context);
-        port->entangle(WTFMove((*channels)[i]));
+        auto port = MessagePort::create(context, { Process::identifier(), generateObjectIdentifier<MessagePortIdentifier::PortIdentifierType>() });
+        port->entangleWithRemote(WTFMove((*channels)[i]));
         portArray.uncheckedAppend(WTFMove(port));
     }
     return portArray;
@@ -216,6 +275,16 @@ bool MessagePort::addEventListener(const AtomicString& eventType, Ref<EventListe
     if (listener->isAttribute() && eventType == eventNames().messageEvent)
         start();
     return EventTargetWithInlineData::addEventListener(eventType, WTFMove(listener), options);
+}
+
+const char* MessagePort::activeDOMObjectName() const
+{
+    return "MessagePort";
+}
+
+bool MessagePort::canSuspendForDocumentSuspension() const
+{
+    return !hasPendingActivity() || (!m_started || m_closed);
 }
 
 } // namespace WebCore

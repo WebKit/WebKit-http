@@ -26,7 +26,10 @@
 #pragma once
 
 #include "AnimationEffect.h"
+#include "AnimationEffectTimingProperties.h"
 #include "CSSPropertyBlendingClient.h"
+#include "CompositeOperation.h"
+#include "KeyframeEffectOptions.h"
 #include "KeyframeList.h"
 #include "RenderStyle.h"
 #include <wtf/Ref.h>
@@ -38,8 +41,31 @@ class Element;
 class KeyframeEffect final : public AnimationEffect
     , public CSSPropertyBlendingClient {
 public:
-    static ExceptionOr<Ref<KeyframeEffect>> create(JSC::ExecState&, Element*, JSC::Strong<JSC::JSObject>&&);
+    static ExceptionOr<Ref<KeyframeEffect>> create(JSC::ExecState&, Element*, JSC::Strong<JSC::JSObject>&&, std::optional<Variant<double, KeyframeEffectOptions>>&&);
     ~KeyframeEffect() { }
+
+    struct BasePropertyIndexedKeyframe {
+        Variant<std::nullptr_t, double, Vector<std::optional<double>>> offset;
+        Variant<String, Vector<String>> easing;
+        Variant<CompositeOperation, Vector<CompositeOperation>> composite;
+    };
+
+    struct PropertyAndValues {
+        CSSPropertyID property;
+        Vector<String> values;
+    };
+
+    struct KeyframeLikeObject {
+        BasePropertyIndexedKeyframe baseProperties;
+        Vector<PropertyAndValues> propertiesAndValues;
+    };
+
+    struct ProcessedKeyframe {
+        String easing;
+        std::optional<double> offset;
+        std::optional<CompositeOperation> composite;
+        HashMap<CSSPropertyID, String> cssPropertiesAndValues;
+    };
 
     Element* target() const { return m_target.get(); }
     ExceptionOr<void> setKeyframes(JSC::ExecState&, JSC::Strong<JSC::JSObject>&&);
@@ -60,6 +86,8 @@ public:
 private:
     KeyframeEffect(Element*);
     ExceptionOr<void> processKeyframes(JSC::ExecState&, JSC::Strong<JSC::JSObject>&&);
+
+    void setAnimatedPropertiesInStyle(RenderStyle&, double);
     void computeStackingContextImpact();
     bool shouldRunAccelerated();
 

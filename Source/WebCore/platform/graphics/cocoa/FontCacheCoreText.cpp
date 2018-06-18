@@ -367,6 +367,11 @@ static FeaturesMap computeFeatureSettingsFromVariants(const FontVariantSettings&
     return result;
 }
 
+static inline bool fontNameIsSystemFont(CFStringRef fontName)
+{
+    return CFStringGetLength(fontName) > 0 && CFStringGetCharacterAtIndex(fontName, 0) == '.';
+}
+
 #if ENABLE(VARIATION_FONTS)
 struct VariationDefaults {
     float defaultValue;
@@ -417,8 +422,9 @@ static inline bool fontIsSystemFont(CTFontRef font)
 {
     if (CTFontDescriptorIsSystemUIFont(adoptCF(CTFontCopyFontDescriptor(font)).get()))
         return true;
+
     auto name = adoptCF(CTFontCopyPostScriptName(font));
-    return CFStringGetLength(name.get()) > 0 && CFStringGetCharacterAtIndex(name.get(), 0) == '.';
+    return fontNameIsSystemFont(name.get());
 }
 
 // These values were calculated by performing a linear regression on the CSS weights/widths/slopes and Core Text weights/widths/slopes of San Francisco.
@@ -731,25 +737,24 @@ void FontCache::platformInit()
 
 Vector<String> FontCache::systemFontFamilies()
 {
-    // FIXME: <rdar://problem/21890188>
-    auto attributes = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, nullptr, nullptr, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
-    auto emptyFontDescriptor = adoptCF(CTFontDescriptorCreateWithAttributes(attributes.get()));
-    auto matchedDescriptors = adoptCF(CTFontDescriptorCreateMatchingFontDescriptors(emptyFontDescriptor.get(), nullptr));
-    if (!matchedDescriptors)
-        return { };
+    Vector<String> fontFamilies;
 
-    CFIndex numMatches = CFArrayGetCount(matchedDescriptors.get());
-    if (!numMatches)
-        return { };
+    auto availableFontFamilies = adoptCF(CTFontManagerCopyAvailableFontFamilyNames());
+    CFIndex count = CFArrayGetCount(availableFontFamilies.get());
+    for (CFIndex i = 0; i < count; ++i) {
+        CFStringRef fontName = static_cast<CFStringRef>(CFArrayGetValueAtIndex(availableFontFamilies.get(), i));
+        if (CFGetTypeID(fontName) != CFStringGetTypeID()) {
+            ASSERT_NOT_REACHED();
+            continue;
+        }
 
-    HashSet<String> visited;
-    for (CFIndex i = 0; i < numMatches; ++i) {
-        auto fontDescriptor = static_cast<CTFontDescriptorRef>(CFArrayGetValueAtIndex(matchedDescriptors.get(), i));
-        if (auto familyName = adoptCF(static_cast<CFStringRef>(CTFontDescriptorCopyAttribute(fontDescriptor, kCTFontFamilyNameAttribute))))
-            visited.add(familyName.get());
+        if (fontNameIsSystemFont(fontName))
+            continue;
+
+        fontFamilies.append(fontName);
     }
 
-    return copyToVector(visited);
+    return fontFamilies;
 }
 
 static CTFontSymbolicTraits computeTraits(const FontDescription& fontDescription)
@@ -833,7 +838,7 @@ public:
 #if !CAN_DISALLOW_USER_INSTALLED_FONTS
     static FontDatabase& singleton()
     {
-        static NeverDestroyed<FontDatabase> database(FontCache::AllowUserInstalledFonts::Yes);
+        static NeverDestroyed<FontDatabase> database(AllowUserInstalledFonts::Yes);
         return database;
     }
 #endif
@@ -841,7 +846,7 @@ public:
     static FontDatabase& singletonAllowingUserInstalledFonts()
     {
 #if CAN_DISALLOW_USER_INSTALLED_FONTS
-        static NeverDestroyed<FontDatabase> database(FontCache::AllowUserInstalledFonts::Yes);
+        static NeverDestroyed<FontDatabase> database(AllowUserInstalledFonts::Yes);
         return database;
 #else
         return singleton();
@@ -851,7 +856,7 @@ public:
     static FontDatabase& singletonDisallowingUserInstalledFonts()
     {
 #if CAN_DISALLOW_USER_INSTALLED_FONTS
-        static NeverDestroyed<FontDatabase> database(FontCache::AllowUserInstalledFonts::No);
+        static NeverDestroyed<FontDatabase> database(AllowUserInstalledFonts::No);
         return database;
 #else
         return singleton();
@@ -910,7 +915,7 @@ public:
             auto familyNameString = folded.createCFString();
             RetainPtr<CFDictionaryRef> attributes;
 #if CAN_DISALLOW_USER_INSTALLED_FONTS
-            if (m_allowUserInstalledFonts == FontCache::AllowUserInstalledFonts::No) {
+            if (m_allowUserInstalledFonts == AllowUserInstalledFonts::No) {
                 CFTypeRef keys[] = { kCTFontFamilyNameAttribute, kCTFontUserInstalledAttribute };
                 CFTypeRef values[] = { familyNameString.get(), kCFBooleanFalse };
                 attributes = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, keys, values, WTF_ARRAY_LENGTH(keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
@@ -948,7 +953,7 @@ public:
 #endif
             RetainPtr<CFDictionaryRef> attributes;
 #if CAN_DISALLOW_USER_INSTALLED_FONTS
-            if (m_allowUserInstalledFonts == FontCache::AllowUserInstalledFonts::No) {
+            if (m_allowUserInstalledFonts == AllowUserInstalledFonts::No) {
                 CFTypeRef keys[] = { kCTFontEnabledAttribute, nameAttribute, kCTFontUserInstalledAttribute };
                 CFTypeRef values[] = { kCFBooleanTrue, postScriptNameString.get(), kCFBooleanFalse };
                 attributes = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, keys, values, WTF_ARRAY_LENGTH(keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
@@ -974,14 +979,14 @@ public:
 private:
     friend class NeverDestroyed<FontDatabase>;
 
-    FontDatabase(FontCache::AllowUserInstalledFonts allowUserInstalledFonts)
+    FontDatabase(AllowUserInstalledFonts allowUserInstalledFonts)
         : m_allowUserInstalledFonts(allowUserInstalledFonts)
     {
     }
 
     HashMap<String, InstalledFontFamily> m_familyNameToFontDescriptors;
     HashMap<String, InstalledFont> m_postScriptNameToFontDescriptors;
-    FontCache::AllowUserInstalledFonts m_allowUserInstalledFonts;
+    AllowUserInstalledFonts m_allowUserInstalledFonts;
 };
 
 // Because this struct holds intermediate values which may be in the compressed -1 - 1 GX range, we don't want to use the relatively large
@@ -1190,18 +1195,18 @@ struct FontLookup {
     bool createdFromPostScriptName { false };
 };
 
-static FontLookup platformFontLookupWithFamily(const AtomicString& family, FontSelectionRequest request, float size, bool mayRepresentUserInstalledFont)
+static FontLookup platformFontLookupWithFamily(const AtomicString& family, FontSelectionRequest request, float size, AllowUserInstalledFonts allowUserInstalledFonts)
 {
     const auto& whitelist = fontWhitelist();
     if (!isSystemFont(family) && whitelist.size() && !whitelist.contains(family))
         return { nullptr };
 
 #if SHOULD_USE_CORE_TEXT_FONT_LOOKUP
-    UNUSED_PARAM(mayRepresentUserInstalledFont);
+    UNUSED_PARAM(allowUserInstalledFonts);
     CTFontSymbolicTraits traits = (isFontWeightBold(request.weight) ? kCTFontTraitBold : 0) | (isItalic(request.slope) ? kCTFontTraitItalic : 0);
     return { adoptCF(CTFontCreateForCSS(family.string().createCFString().get(), static_cast<float>(request.weight), traits, size)) };
 #else
-    auto& fontDatabase = mayRepresentUserInstalledFont ? FontDatabase::singletonAllowingUserInstalledFonts() : FontDatabase::singletonDisallowingUserInstalledFonts();
+    auto& fontDatabase = allowUserInstalledFonts == AllowUserInstalledFonts::Yes ? FontDatabase::singletonAllowingUserInstalledFonts() : FontDatabase::singletonDisallowingUserInstalledFonts();
     const auto& familyFonts = fontDatabase.collectionForFamily(family.string());
     if (familyFonts.isEmpty()) {
         // The CSS spec states that font-family only accepts a name of an actual font family. However, in WebKit, we claim to also
@@ -1265,7 +1270,7 @@ static RetainPtr<CTFontRef> fontWithFamily(const AtomicString& family, const Fon
     FontLookup fontLookup;
     fontLookup.result = platformFontWithFamilySpecialCase(family, request, size);
     if (!fontLookup.result)
-        fontLookup = platformFontLookupWithFamily(family, request, size, fontDescription.mayRepresentUserInstalledFont());
+        fontLookup = platformFontLookupWithFamily(family, request, size, fontDescription.shouldAllowUserInstalledFonts());
     return preparePlatformFont(fontLookup.result.get(), fontDescription, fontFaceFeatures, fontFaceVariantSettings, fontFaceCapabilities, size, !fontLookup.createdFromPostScriptName);
 }
 

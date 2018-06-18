@@ -36,23 +36,27 @@ namespace WebCore {
 std::ostream& operator<<(std::ostream& os, MarkerSubrange::Type type)
 {
     switch (type) {
-    case MarkerSubrange::Unmarked:
-        return os << "Unmarked";
-    case MarkerSubrange::GrammarError:
-        return os << "GrammarError";
     case MarkerSubrange::Correction:
         return os << "Correction";
+    case MarkerSubrange::DictationAlternatives:
+        return os << "DictationAlternatives";
+#if PLATFORM(IOS)
+    // FIXME: See <rdar://problem/8933352>. Also, remove the PLATFORM(IOS)-guard.
+    case MarkerSubrange::DictationPhraseWithAlternatives:
+        return os << "DictationPhraseWithAlternatives";
+#endif
+    case MarkerSubrange::DraggedContent:
+        return os << "DraggedContent";
+    case MarkerSubrange::GrammarError:
+        return os << "GrammarError";
+    case MarkerSubrange::Selection:
+        return os << "Selection";
     case MarkerSubrange::SpellingError:
         return os << "SpellingError";
     case MarkerSubrange::TextMatch:
         return os << "TextMatch";
-    case MarkerSubrange::DictationAlternatives:
-        return os << "DictationAlternatives";
-#if PLATFORM(IOS)
-        // FIXME: See <rdar://problem/8933352>. Also, remove the PLATFORM(IOS)-guard.
-    case MarkerSubrange::DictationPhraseWithAlternatives:
-        return os << "DictationPhraseWithAlternatives";
-#endif
+    case MarkerSubrange::Unmarked:
+        return os << "Unmarked";
     }
 }
 
@@ -62,11 +66,6 @@ std::ostream& operator<<(std::ostream& os, const MarkerSubrange& subrange)
     if (subrange.marker)
         os << static_cast<const void*>(subrange.marker);
     return os << ")";
-}
-
-bool operator==(const MarkerSubrange& a, const MarkerSubrange& b)
-{
-    return a.startOffset == b.startOffset && a.endOffset == b.endOffset && a.type == b.type && a.marker == b.marker;
 }
 
 }
@@ -170,6 +169,63 @@ TEST(MarkerSubrange, SubdivideSpellingAndGrammarComplicatedFrontmost)
         MarkerSubrange { 59, 63, MarkerSubrange::GrammarError },
     };
     auto results = subdivide(subranges, OverlapStrategy::Frontmost);
+    ASSERT_EQ(expectedSubranges.size(), results.size());
+    for (size_t i = 0; i < expectedSubranges.size(); ++i)
+        EXPECT_EQ(expectedSubranges[i], results[i]);
+}
+
+TEST(MarkerSubrange, SubdivideGrammarAndSelectionOverlap)
+{
+    Vector<MarkerSubrange> subranges {
+        MarkerSubrange { 0, 40, MarkerSubrange::GrammarError },
+        MarkerSubrange { 2, 60, MarkerSubrange::Selection },
+        MarkerSubrange { 50, 60, MarkerSubrange::GrammarError },
+    };
+    Vector<MarkerSubrange> expectedSubranges {
+        MarkerSubrange { 0, 2, MarkerSubrange::GrammarError },
+        MarkerSubrange { 2, 40, MarkerSubrange::GrammarError },
+        MarkerSubrange { 2, 40, MarkerSubrange::Selection },
+        MarkerSubrange { 40, 50, MarkerSubrange::Selection },
+        MarkerSubrange { 50, 60, MarkerSubrange::GrammarError },
+        MarkerSubrange { 50, 60, MarkerSubrange::Selection },
+    };
+    auto results = subdivide(subranges);
+    ASSERT_EQ(expectedSubranges.size(), results.size());
+    for (size_t i = 0; i < expectedSubranges.size(); ++i)
+        EXPECT_EQ(expectedSubranges[i], results[i]);
+}
+
+TEST(MarkerSubrange, SubdivideGrammarAndSelectionOverlapFrontmost)
+{
+    Vector<MarkerSubrange> subranges {
+        MarkerSubrange { 0, 40, MarkerSubrange::GrammarError },
+        MarkerSubrange { 2, 60, MarkerSubrange::Selection },
+        MarkerSubrange { 50, 60, MarkerSubrange::GrammarError },
+    };
+    Vector<MarkerSubrange> expectedSubranges {
+        MarkerSubrange { 0, 2, MarkerSubrange::GrammarError },
+        MarkerSubrange { 2, 40, MarkerSubrange::Selection },
+        MarkerSubrange { 40, 50, MarkerSubrange::Selection },
+        MarkerSubrange { 50, 60, MarkerSubrange::Selection },
+    };
+    auto results = subdivide(subranges, OverlapStrategy::Frontmost);
+    ASSERT_EQ(expectedSubranges.size(), results.size());
+    for (size_t i = 0; i < expectedSubranges.size(); ++i)
+        EXPECT_EQ(expectedSubranges[i], results[i]);
+}
+
+TEST(MarkerSubrange, SubdivideGrammarAndSelectionOverlapFrontmostWithLongestEffectiveRange)
+{
+    Vector<MarkerSubrange> subranges {
+        MarkerSubrange { 0, 40, MarkerSubrange::GrammarError },
+        MarkerSubrange { 2, 60, MarkerSubrange::Selection },
+        MarkerSubrange { 50, 60, MarkerSubrange::GrammarError },
+    };
+    Vector<MarkerSubrange> expectedSubranges {
+        MarkerSubrange { 0, 2, MarkerSubrange::GrammarError },
+        MarkerSubrange { 2, 60, MarkerSubrange::Selection },
+    };
+    auto results = subdivide(subranges, OverlapStrategy::FrontmostWithLongestEffectiveRange);
     ASSERT_EQ(expectedSubranges.size(), results.size());
     for (size_t i = 0; i < expectedSubranges.size(); ++i)
         EXPECT_EQ(expectedSubranges[i], results[i]);

@@ -59,6 +59,11 @@ using namespace WebCore;
     [super dealloc];
 }
 
++ (BOOL)supportsSecureCoding
+{
+    return YES;
+}
+
 - (instancetype)initWithCoder:(NSCoder *)coder
 {
     if (!(self = [super init]))
@@ -106,12 +111,10 @@ using namespace WebCore;
     return WebKit::wrapper(_websiteDataStore->httpCookieStore());
 }
 
-static std::chrono::system_clock::time_point toSystemClockTime(NSDate *date)
+static WallTime toSystemClockTime(NSDate *date)
 {
     ASSERT(date);
-    using namespace std::chrono;
-
-    return system_clock::time_point(duration_cast<system_clock::duration>(duration<double>(date.timeIntervalSince1970)));
+    return WallTime::fromRawSeconds(date.timeIntervalSince1970);
 }
 
 - (void)fetchDataRecordsOfTypes:(NSSet *)dataTypes completionHandler:(void (^)(NSArray<WKWebsiteDataRecord *> *))completionHandler
@@ -559,7 +562,7 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
     if (!store)
         return;
 
-    store->scheduleClearInMemoryAndPersistent(std::chrono::system_clock::now() - std::chrono::hours(hours), WebKit::WebResourceLoadStatisticsStore::ShouldGrandfather::Yes);
+    store->scheduleClearInMemoryAndPersistent(WallTime::now() - Seconds::fromHours(hours), WebKit::WebResourceLoadStatisticsStore::ShouldGrandfather::Yes);
 }
 
 - (void)_resourceLoadStatisticsResetToConsistentState
@@ -588,6 +591,11 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
         return;
 
     store->setStatisticsTestingCallback(nullptr);
+}
+
++ (void)_allowWebsiteDataRecordsForAllOrigins
+{
+    WebKit::WebsiteDataStore::allowWebsiteDataRecordsForAllOrigins();
 }
 
 @end

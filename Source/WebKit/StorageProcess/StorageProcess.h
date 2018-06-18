@@ -89,7 +89,7 @@ public:
     // For now we just have one global connection to service worker context processes.
     // This will change in the future.
     WebSWServerToContextConnection* globalServerToContextConnection();
-    void createServerToContextConnection();
+    void createServerToContextConnection(std::optional<PAL::SessionID>);
 
     WebCore::SWServer& swServerForSession(PAL::SessionID);
     void registerSWServerConnection(WebSWServerConnection&);
@@ -121,7 +121,7 @@ private:
     void createStorageToWebProcessConnection(bool isServiceWorkerProcess);
 
     void fetchWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType> websiteDataTypes, uint64_t callbackID);
-    void deleteWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType> websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID);
+    void deleteWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType> websiteDataTypes, WallTime modifiedSince, uint64_t callbackID);
     void deleteWebsiteDataForOrigins(PAL::SessionID, OptionSet<WebsiteDataType> websiteDataTypes, const Vector<WebCore::SecurityOriginData>& origins, uint64_t callbackID);
 #if ENABLE(SANDBOX_EXTENSIONS)
     void grantSandboxExtensionsForBlobs(const Vector<String>& paths, SandboxExtension::HandleArray&&);

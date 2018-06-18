@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,9 +30,22 @@
 namespace JSC {
 
 enum Poison {
-    NotPoisoned = 0,
-    TransitionMapPoison,
-    WeakImplPoison,
+    NotPoisoned = 0, // Reserved (and unused) so that poison keys are never 0.
+
+    // Add new poison keys below in alphabetical order. The order doesn't really
+    // matter, but we might as well keep them in alphabetically order for
+    // greater readability.
+    CodeBlockPoison,
+    JSGlobalObjectPoison,
+    JSScriptFetchParametersPoison,
+    JSScriptFetcherPoison,
+    JSWebAssemblyCodeBlockPoison,
+    JSWebAssemblyInstancePoison,
+    JSWebAssemblyMemoryPoison,
+    JSWebAssemblyModulePoison,
+    JSWebAssemblyTablePoison,
+    StructureTransitionTablePoison,
+    UnlinkedSourceCodePoison,
 };
 
 } // namespace JSC

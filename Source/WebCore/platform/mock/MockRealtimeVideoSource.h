@@ -47,7 +47,6 @@ class MockRealtimeVideoSource : public MockRealtimeMediaSource {
 public:
 
     static CaptureSourceOrError create(const String& deviceID, const String& name, const MediaConstraints*);
-    static Ref<MockRealtimeVideoSource> createMuted(const String& name);
 
     static VideoCaptureFactory& factory();
 
@@ -83,6 +82,9 @@ private:
     void generateFrame();
 
     void delaySamples(float) override;
+
+    bool mockCamera() const { return device() == MockDevice::Camera1 || device() == MockDevice::Camera2; }
+    bool mockScreen() const { return device() == MockDevice::Screen1 || device() == MockDevice::Screen2; }
 
     float m_baseFontSize { 0 };
     float m_bipBopFontSize { 0 };

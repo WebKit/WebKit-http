@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include <utility>
 #include <wtf/Assertions.h>
 
 #define ENABLE_POISON 1
@@ -86,6 +87,7 @@ asReference(T ptr) { return *ptr; }
 
 } // namespace PoisonedImplHelper
 
+// FIXME: once we have C++17, we can make the key of type auto and remove the need for KeyType.
 template<typename KeyType, KeyType key, typename T, typename = std::enable_if_t<std::is_pointer<T>::value>>
 class PoisonedImpl {
 public:
@@ -181,6 +183,13 @@ public:
         o = t2;
     }
 
+    void swap(T& t2)
+    {
+        T t1 = this->unpoisoned();
+        std::swap(t1, t2);
+        m_poisonedBits = poison(t1);
+    }
+
     template<class U>
     T exchange(U&& newValue)
     {
@@ -211,12 +220,31 @@ inline void swap(PoisonedImpl<K1, k1, T1>& a, PoisonedImpl<K2, k2, T2>& b)
     a.swap(b);
 }
 
+template<typename K1, K1 k1, typename T1>
+inline void swap(PoisonedImpl<K1, k1, T1>& a, T1& b)
+{
+    a.swap(b);
+}
+
 WTF_EXPORT_PRIVATE uintptr_t makePoison();
 
-inline constexpr uintptr_t makePoison(uint32_t key)
+#if ENABLE(POISON)
+// FIXME: once we have C++17, we can make this a lambda in makeConstExprPoison().
+inline constexpr uintptr_t constExprPoisonRandom(uintptr_t seed)
+{
+    uintptr_t result1 = seed * 6906969069 + 1234567;
+    uintptr_t result2 = seed * 8253729 + 2396403;
+    return (result1 << 3) ^ (result2 << 16);
+}
+#endif
+
+inline constexpr uintptr_t makeConstExprPoison(uint32_t key)
 {
 #if ENABLE(POISON)
-    return static_cast<uintptr_t>(0x80000000 | key) << 32;
+    uintptr_t poison = constExprPoisonRandom(key);
+    poison &= ~(static_cast<uintptr_t>(0xffff) << 48); // Ensure that poisoned bits look like a pointer.
+    poison |= (1 << 2); // Ensure that poisoned bits cannot be 0.
+    return poison;
 #else
     return (void)key, 0;
 #endif
@@ -226,12 +254,27 @@ template<uintptr_t& key, typename T>
 using Poisoned = PoisonedImpl<uintptr_t&, key, T>;
 
 template<uint32_t key, typename T>
-using ConstExprPoisoned = PoisonedImpl<uintptr_t, makePoison(key), T>;
+using ConstExprPoisoned = PoisonedImpl<uintptr_t, makeConstExprPoison(key), T>;
+
+template<uint32_t key, typename T>
+struct ConstExprPoisonedPtrTraits {
+    using StorageType = ConstExprPoisoned<key, T*>;
+
+    template<class U> static ALWAYS_INLINE T* exchange(StorageType& ptr, U&& newValue) { return ptr.exchange(newValue); }
+
+    template<typename K1, K1 k1, typename T1>
+    static ALWAYS_INLINE void swap(PoisonedImpl<K1, k1, T1>& a, T1& b) { a.swap(b); }
+
+    template<typename K1, K1 k1, typename T1, typename K2, K2 k2, typename T2>
+    static ALWAYS_INLINE void swap(PoisonedImpl<K1, k1, T1>& a, PoisonedImpl<K2, k2, T2>& b) { a.swap(b); }
+
+    static ALWAYS_INLINE T* unwrap(const StorageType& ptr) { return ptr.unpoisoned(); }
+};
 
 } // namespace WTF
 
 using WTF::ConstExprPoisoned;
 using WTF::Poisoned;
 using WTF::PoisonedBits;
+using WTF::makeConstExprPoison;
 using WTF::makePoison;
-

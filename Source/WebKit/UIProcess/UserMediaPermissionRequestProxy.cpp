@@ -31,7 +31,7 @@ using namespace WebCore;
 
 namespace WebKit {
 
-UserMediaPermissionRequestProxy::UserMediaPermissionRequestProxy(UserMediaPermissionRequestManagerProxy& manager, uint64_t userMediaID, uint64_t mainFrameID, uint64_t frameID, Ref<WebCore::SecurityOrigin>&& userMediaDocumentOrigin, Ref<WebCore::SecurityOrigin>&& topLevelDocumentOrigin, Vector<WebCore::CaptureDevice>&& audioDevices, Vector<WebCore::CaptureDevice>&& videoDevices, String&& deviceIDHashSalt)
+UserMediaPermissionRequestProxy::UserMediaPermissionRequestProxy(UserMediaPermissionRequestManagerProxy& manager, uint64_t userMediaID, uint64_t mainFrameID, uint64_t frameID, Ref<WebCore::SecurityOrigin>&& userMediaDocumentOrigin, Ref<WebCore::SecurityOrigin>&& topLevelDocumentOrigin, Vector<WebCore::CaptureDevice>&& audioDevices, Vector<WebCore::CaptureDevice>&& videoDevices, String&& deviceIDHashSalt, WebCore::MediaStreamRequest&& request)
     : m_manager(&manager)
     , m_userMediaID(userMediaID)
     , m_mainFrameID(mainFrameID)
@@ -41,6 +41,7 @@ UserMediaPermissionRequestProxy::UserMediaPermissionRequestProxy(UserMediaPermis
     , m_eligibleVideoDevices(WTFMove(videoDevices))
     , m_eligibleAudioDevices(WTFMove(audioDevices))
     , m_deviceIdentifierHashSalt(WTFMove(deviceIDHashSalt))
+    , m_request(WTFMove(request))
 {
 }
 
@@ -53,14 +54,28 @@ void UserMediaPermissionRequestProxy::allow(const String& audioDeviceUID, const 
 #if ENABLE(MEDIA_STREAM)
     CaptureDevice audioDevice;
     if (!audioDeviceUID.isEmpty()) {
-        audioDevice = RealtimeMediaSourceCenter::singleton().audioCaptureDeviceManager().deviceWithUID(audioDeviceUID, RealtimeMediaSource::Type::Audio);
-        ASSERT(audioDevice);
+        size_t index = m_eligibleAudioDevices.findMatching([&](const auto& device) {
+            return device.persistentId() == audioDeviceUID;
+        });
+        ASSERT(index != notFound);
+
+        if (index != notFound)
+            audioDevice = m_eligibleAudioDevices[index];
+
+        ASSERT(audioDevice.enabled());
     }
 
     CaptureDevice videoDevice;
     if (!videoDeviceUID.isEmpty()) {
-        videoDevice = RealtimeMediaSourceCenter::singleton().videoCaptureDeviceManager().deviceWithUID(videoDeviceUID, RealtimeMediaSource::Type::Video);
-        ASSERT(videoDevice);
+        size_t index = m_eligibleVideoDevices.findMatching([&](const auto& device) {
+            return device.persistentId() == videoDeviceUID;
+        });
+        ASSERT(index != notFound);
+
+        if (index != notFound)
+            videoDevice = m_eligibleVideoDevices[index];
+
+        ASSERT(videoDevice.enabled());
     }
 
     m_manager->userMediaAccessWasGranted(m_userMediaID, WTFMove(audioDevice), WTFMove(videoDevice));
@@ -69,6 +84,16 @@ void UserMediaPermissionRequestProxy::allow(const String& audioDeviceUID, const 
     UNUSED_PARAM(videoDeviceUID);
 #endif
 
+    invalidate();
+}
+
+void UserMediaPermissionRequestProxy::allow(WebCore::CaptureDevice&& audioDevice, WebCore::CaptureDevice&& videoDevice)
+{
+    ASSERT(m_manager);
+    if (!m_manager)
+        return;
+
+    m_manager->userMediaAccessWasGranted(m_userMediaID, WTFMove(audioDevice), WTFMove(videoDevice));
     invalidate();
 }
 

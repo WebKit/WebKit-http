@@ -52,14 +52,15 @@ public:
         return adoptRef(*new WorkerScriptLoader);
     }
 
-    void loadSynchronously(ScriptExecutionContext*, const URL&, FetchOptions::Mode, ContentSecurityPolicyEnforcement, const String& initiatorIdentifier);
-    void loadAsynchronously(ScriptExecutionContext*, const URL&, FetchOptions::Mode, FetchOptions::Cache, ContentSecurityPolicyEnforcement, const String& initiatorIdentifier, WorkerScriptLoaderClient*);
+    void loadSynchronously(ScriptExecutionContext*, const URL&, FetchOptions::Mode, FetchOptions::Cache, ContentSecurityPolicyEnforcement, const String& initiatorIdentifier);
+    void loadAsynchronously(ScriptExecutionContext&, ResourceRequest&&, FetchOptions::Mode, FetchOptions::Cache, FetchOptions::Redirect, ContentSecurityPolicyEnforcement, WorkerScriptLoaderClient&);
 
     void notifyError();
 
     String script();
     const URL& url() const { return m_url; }
     const URL& responseURL() const;
+    const String& responseMIMEType() const { return m_responseMIMEType; }
     bool failed() const { return m_failed; }
     unsigned long identifier() const { return m_identifier; }
     const ResourceError& error() const { return m_error; }
@@ -68,6 +69,8 @@ public:
     void didReceiveData(const char* data, int dataLength) override;
     void didFinishLoading(unsigned long identifier) override;
     void didFail(const ResourceError&) override;
+
+    void cancel();
 
 private:
     friend class WTF::RefCounted<WorkerScriptLoader>;
@@ -85,6 +88,7 @@ private:
     StringBuilder m_script;
     URL m_url;
     URL m_responseURL;
+    String m_responseMIMEType;
     unsigned long m_identifier { 0 };
     bool m_failed { false };
     bool m_finishing { false };

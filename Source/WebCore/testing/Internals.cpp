@@ -45,6 +45,7 @@
 #include "CachedImage.h"
 #include "CachedResourceLoader.h"
 #include "Chrome.h"
+#include "ClientOrigin.h"
 #include "ComposedTreeIterator.h"
 #include "Cursor.h"
 #include "DOMRect.h"
@@ -61,7 +62,7 @@
 #include "EventHandler.h"
 #include "ExtendableEvent.h"
 #include "ExtensionStyleSheets.h"
-#include "FetchEvent.h"
+#include "FetchResponse.h"
 #include "File.h"
 #include "FontCache.h"
 #include "FormController.h"
@@ -90,7 +91,6 @@
 #include "InstrumentingAgents.h"
 #include "IntRect.h"
 #include "InternalSettings.h"
-#include "JSFetchResponse.h"
 #include "JSImageData.h"
 #include "LibWebRTCProvider.h"
 #include "MainFrame.h"
@@ -520,7 +520,7 @@ Internals::Internals(Document& document)
     auto* frame = document.frame();
     if (frame && frame->isMainFrame()) {
         m_mockPaymentCoordinator = new MockPaymentCoordinator(frame->mainFrame());
-        frame->mainFrame().setPaymentCoordinator(std::make_unique<PaymentCoordinator>(*m_mockPaymentCoordinator));
+        frame->mainFrame().setPaymentCoordinator(std::make_unique<PaymentCoordinator>(*m_mockPaymentCoordinator, m_mockPaymentCoordinator->availablePaymentNetworks()));
     }
 #endif
 }
@@ -630,7 +630,7 @@ bool Internals::isLoadingFromMemoryCache(const String& url)
         return false;
 
     ResourceRequest request(contextDocument()->completeURL(url));
-    request.setDomainForCachePartition(contextDocument()->topOrigin().domainForCachePartition());
+    request.setDomainForCachePartition(contextDocument()->domainForCachePartition());
 
     CachedResource* resource = MemoryCache::singleton().resourceForRequest(request, contextDocument()->page()->sessionID());
     return resource && resource->status() == CachedResource::Cached;
@@ -1663,18 +1663,46 @@ static AutoFillButtonType toAutoFillButtonType(Internals::AutoFillButtonType typ
         return AutoFillButtonType::Credentials;
     case Internals::AutoFillButtonType::Contacts:
         return AutoFillButtonType::Contacts;
-    case Internals::AutoFillButtonType::StrongPassword:
-        return AutoFillButtonType::StrongPassword;
     case Internals::AutoFillButtonType::StrongConfirmationPassword:
         return AutoFillButtonType::StrongConfirmationPassword;
+    case Internals::AutoFillButtonType::StrongPassword:
+        return AutoFillButtonType::StrongPassword;
     }
     ASSERT_NOT_REACHED();
     return AutoFillButtonType::None;
 }
 
+static Internals::AutoFillButtonType toInternalsAutoFillButtonType(AutoFillButtonType type)
+{
+    switch (type) {
+    case AutoFillButtonType::None:
+        return Internals::AutoFillButtonType::None;
+    case AutoFillButtonType::Credentials:
+        return Internals::AutoFillButtonType::Credentials;
+    case AutoFillButtonType::Contacts:
+        return Internals::AutoFillButtonType::Contacts;
+    case AutoFillButtonType::StrongConfirmationPassword:
+        return Internals::AutoFillButtonType::StrongConfirmationPassword;
+   case AutoFillButtonType::StrongPassword:
+        return Internals::AutoFillButtonType::StrongPassword;
+    }
+    ASSERT_NOT_REACHED();
+    return Internals::AutoFillButtonType::None;
+}
+
 void Internals::setShowAutoFillButton(HTMLInputElement& element, AutoFillButtonType type)
 {
     element.setShowAutoFillButton(toAutoFillButtonType(type));
+}
+
+auto Internals::autoFillButtonType(const HTMLInputElement& element) -> AutoFillButtonType
+{
+    return toInternalsAutoFillButtonType(element.autoFillButtonType());
+}
+
+auto Internals::lastAutoFillButtonType(const HTMLInputElement& element) -> AutoFillButtonType
+{
+    return toInternalsAutoFillButtonType(element.lastAutoFillButtonType());
 }
 
 ExceptionOr<void> Internals::scrollElementToRect(Element& element, int x, int y, int w, int h)
@@ -3666,6 +3694,14 @@ void Internals::setPageDefersLoading(bool defersLoading)
         page->setDefersLoading(defersLoading);
 }
 
+ExceptionOr<bool> Internals::pageDefersLoading()
+{
+    Document* document = contextDocument();
+    if (!document || !document->page())
+        return Exception { InvalidAccessError };
+    return document->page()->defersLoading();
+}
+
 RefPtr<File> Internals::createFile(const String& path)
 {
     Document* document = contextDocument();
@@ -4212,7 +4248,7 @@ void Internals::clearCacheStorageMemoryRepresentation(DOMPromiseDeferred<void>&&
         if (!m_cacheStorageConnection)
             return;
     }
-    m_cacheStorageConnection->clearMemoryRepresentation(document->securityOrigin().toString(), [promise = WTFMove(promise)](std::optional<DOMCacheEngine::Error>&& result) mutable {
+    m_cacheStorageConnection->clearMemoryRepresentation(ClientOrigin { SecurityOriginData::fromSecurityOrigin(document->topOrigin()), SecurityOriginData::fromSecurityOrigin(document->securityOrigin()) }, [promise = WTFMove(promise)] (auto && result) mutable {
         ASSERT_UNUSED(result, !result);
         promise.resolve();
     });
@@ -4254,23 +4290,6 @@ uint64_t Internals::responseSizeWithPadding(FetchResponse& response) const
 }
 
 #if ENABLE(SERVICE_WORKER)
-void Internals::waitForFetchEventToFinish(FetchEvent& event, DOMPromiseDeferred<IDLInterface<FetchResponse>>&& promise)
-{
-    event.onResponse([promise = WTFMove(promise), event = makeRef(event)] (FetchResponse* response) mutable {
-        if (response)
-            promise.resolve(*response);
-        else
-            promise.reject(TypeError, ASCIILiteral("fetch event responded with error"));
-    });
-}
-
-Ref<FetchEvent> Internals::createBeingDispatchedFetchEvent(ScriptExecutionContext& context)
-{
-    auto event = FetchEvent::createForTesting(context);
-    event->setEventPhase(Event::CAPTURING_PHASE);
-    return event;
-}
-
 void Internals::hasServiceWorkerRegistration(const String& clientURL, HasRegistrationPromise&& promise)
 {
     if (!contextDocument())
@@ -4311,39 +4330,6 @@ void Internals::setTimelineCurrentTime(AnimationTimeline& timeline, double curre
 MockPaymentCoordinator& Internals::mockPaymentCoordinator() const
 {
     return *m_mockPaymentCoordinator;
-}
-#endif
-
-#if ENABLE(ALTERNATIVE_PRESENTATION_BUTTON_ELEMENT)
-ExceptionOr<void> Internals::substituteWithAlternativePresentationButton(Vector<RefPtr<Element>>&& elementsFromBindings, const String& identifier)
-{
-    if (!frame())
-        return Exception { InvalidAccessError };
-    if (elementsFromBindings.isEmpty())
-        return Exception { TypeError, ASCIILiteral { "Must specify at least one element to substitute." } };
-    Vector<Ref<Element>> elements;
-    elements.reserveInitialCapacity(elementsFromBindings.size());
-    for (auto& element : elementsFromBindings) {
-        if (element)
-            elements.uncheckedAppend(element.releaseNonNull());
-    }
-    frame()->editor().substituteWithAlternativePresentationButton(WTFMove(elements), identifier);
-    return { };
-}
-
-ExceptionOr<void> Internals::removeAlternativePresentationButton(const String& identifier)
-{
-    if (!frame())
-        return Exception { InvalidAccessError };
-    frame()->editor().removeAlternativePresentationButton(identifier);
-    return { };
-}
-
-ExceptionOr<Vector<Ref<Element>>> Internals::elementsReplacedByAlternativePresentationButton(const String& identifier)
-{
-    if (!frame())
-        return Exception { InvalidAccessError };
-    return frame()->editor().elementsReplacedByAlternativePresentationButton(identifier);
 }
 #endif
 

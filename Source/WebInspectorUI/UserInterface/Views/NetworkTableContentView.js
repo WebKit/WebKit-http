@@ -83,6 +83,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         this._typeFilterScopeBar.addEventListener(WI.ScopeBar.Event.SelectionChanged, this._typeFilterScopeBarSelectionChanged, this);
 
         this._urlFilterSearchText = null;
+        this._urlFilterSearchRegex = null;
         this._urlFilterIsActive = false;
 
         this._urlFilterNavigationItem = new WI.FilterBarNavigationItem;
@@ -904,10 +905,9 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         this.needsLayout();
     }
 
-    _checkURLFilterAgainstFinishedResource(resource)
+    _checkURLFilterAgainstResource(resource)
     {
-        let searchQuery = this._urlFilterSearchText;
-        if (resource.url.includes(searchQuery))
+        if (this._urlFilterSearchRegex.test(resource.url))
             this._activeURLFilterResources.add(resource);
     }
 
@@ -952,6 +952,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         this._resourceDetailView = null;
 
         this._table.resize();
+        this._table.reloadVisibleColumnCells(this._waterfallColumn);
     }
 
     _showResourceDetailView(resource)
@@ -1077,7 +1078,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
             this._waterfallEndTime = resource.timingData.responseEnd;
 
         if (this._hasURLFilter())
-            this._checkURLFilterAgainstFinishedResource(resource);
+            this._checkURLFilterAgainstResource(resource);
 
         this.needsLayout();
     }
@@ -1093,7 +1094,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
             this._waterfallEndTime = resource.timingData.responseEnd;
 
         if (this._hasURLFilter())
-            this._checkURLFilterAgainstFinishedResource(resource);
+            this._checkURLFilterAgainstResource(resource);
 
         this.needsLayout();
     }
@@ -1195,7 +1196,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
             cached: resource.cached,
             resourceSize: resource.size,
             transferSize: !isNaN(resource.networkTotalTransferSize) ? resource.networkTotalTransferSize : resource.estimatedTotalTransferSize,
-            time: resource.duration,
+            time: resource.totalDuration,
             protocol: resource.protocol,
             priority: resource.priority,
             remoteAddress: resource.remoteAddress,
@@ -1274,6 +1275,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
 
         // Clear url filter.
         this._urlFilterSearchText = null;
+        this._urlFilterSearchRegex = null;
         this._urlFilterIsActive = false;
         this._activeURLFilterResources.clear();
         this._urlFilterNavigationItem.filterBar.clear();
@@ -1335,6 +1337,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         // Search cleared.
         if (!searchQuery) {
             this._urlFilterSearchText = null;
+            this._urlFilterSearchRegex = null;
             this._urlFilterIsActive = false;
             this._activeURLFilterResources.clear();
 
@@ -1345,13 +1348,12 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
 
         this._urlFilterIsActive = true;
         this._urlFilterSearchText = searchQuery;
+        this._urlFilterSearchRegex = new RegExp(searchQuery.escapeForRegExp(), "i");
+
         this._activeURLFilterResources.clear();
 
-        for (let entry of this._entries) {
-            let resource = entry.resource;
-            if (resource.url.includes(searchQuery))
-                this._activeURLFilterResources.add(resource);
-        }
+        for (let entry of this._entries)
+            this._checkURLFilterAgainstResource(entry.resource);
 
         this._updateFilteredEntries();
         this._table.reloadData();
@@ -1409,7 +1411,7 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
             return contentElement;
         }
 
-        let breakdownView = new WI.ResourceTimingBreakdownView(resource);
+        let breakdownView = new WI.ResourceTimingBreakdownView(resource, 300);
         contentElement.appendChild(breakdownView.element);
         breakdownView.updateLayout();
 
@@ -1444,6 +1446,8 @@ WI.NetworkTableContentView = class NetworkTableContentView extends WI.ContentVie
         };
 
         let targetFrame = calculateTargetFrame();
+        if (!targetFrame)
+            return;
         if (!targetFrame.size.width && !targetFrame.size.height)
             return;
 

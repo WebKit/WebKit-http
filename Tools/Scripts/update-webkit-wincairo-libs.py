@@ -24,6 +24,7 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import importlib
+import os.path
 import sys
 import zipfile
 
@@ -33,12 +34,12 @@ repo = 'WebKitForWindows/WinCairoRequirements'
 file = 'WinCairoRequirements.zip'
 output = 'WebKitLibraries/win'
 
-result = download.main([repo, file])
+result = download.main(['-o', output, repo, file])
 
 # Only unzip if required
 if result == download.Status.DOWNLOADED:
     print('Extracting release to {}...'.format(output))
-    zip = zipfile.ZipFile(file, 'r')
+    zip = zipfile.ZipFile(os.path.join(output, file), 'r')
     zip.extractall(output)
     zip.close()
 elif result == download.Status.COULD_NOT_FIND:

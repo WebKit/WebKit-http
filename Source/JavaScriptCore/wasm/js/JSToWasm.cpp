@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -117,7 +117,9 @@ std::unique_ptr<InternalFunction> createJSToWasmWrapper(CompilationContext& comp
         // Wasm::Context*'s instance.
         if (!Context::useFastTLS()) {
             jit.loadPtr(CCallHelpers::Address(GPRInfo::callFrameRegister, jsOffset), wasmContextInstanceGPR);
-            jit.loadPtr(CCallHelpers::Address(wasmContextInstanceGPR, JSWebAssemblyInstance::offsetOfInstance()), wasmContextInstanceGPR);
+            jit.loadPtr(CCallHelpers::Address(wasmContextInstanceGPR, JSWebAssemblyInstance::offsetOfPoisonedInstance()), wasmContextInstanceGPR);
+            jit.move(CCallHelpers::TrustedImm64(makeConstExprPoison(JSWebAssemblyInstancePoison)), scratchReg);
+            jit.xor64(scratchReg, wasmContextInstanceGPR);
             jsOffset += sizeof(EncodedJSValue);
         }
 
@@ -181,6 +183,7 @@ std::unique_ptr<InternalFunction> createJSToWasmWrapper(CompilationContext& comp
         }
 
         if (mode != MemoryMode::Signaling) {
+            jit.loadPtr(CCallHelpers::Address(baseMemory, Wasm::Memory::offsetOfIndexingMask()), pinnedRegs.indexingMask);
             const auto& sizeRegs = pinnedRegs.sizeRegisters;
             ASSERT(sizeRegs.size() >= 1);
             ASSERT(!sizeRegs[0].sizeOffset); // The following code assumes we start at 0, and calculates subsequent size registers relative to 0.

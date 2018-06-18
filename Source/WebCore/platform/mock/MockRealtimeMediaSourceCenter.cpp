@@ -30,16 +30,9 @@
 
 #if ENABLE(MEDIA_STREAM)
 
-#include "CaptureDevice.h"
 #include "Logging.h"
-#include "MediaStream.h"
-#include "MediaStreamPrivate.h"
-#include "MediaStreamTrack.h"
 #include "MockRealtimeAudioSource.h"
-#include "MockRealtimeMediaSource.h"
 #include "MockRealtimeVideoSource.h"
-#include "RealtimeMediaSource.h"
-#include "RealtimeMediaSourceCapabilities.h"
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {

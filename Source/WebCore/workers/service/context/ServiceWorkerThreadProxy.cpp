@@ -31,18 +31,39 @@
 #include "CacheStorageProvider.h"
 #include "FrameLoader.h"
 #include "MainFrame.h"
+#include "Settings.h"
 #include <pal/SessionID.h>
+#include <wtf/MainThread.h>
 #include <wtf/RunLoop.h>
 
 namespace WebCore {
 
-static inline UniqueRef<Page> createPageForServiceWorker(PageConfiguration&& configuration, const URL& url)
+URL static inline topOriginURL(const SecurityOrigin& origin)
+{
+    URL url;
+    url.setProtocol(origin.protocol());
+    url.setHost(origin.host());
+    if (origin.port())
+        url.setPort(*origin.port());
+    return url;
+}
+
+static inline UniqueRef<Page> createPageForServiceWorker(PageConfiguration&& configuration, const ServiceWorkerContextData& data, SecurityOrigin::StorageBlockingPolicy storageBlockingPolicy)
 {
     auto page = makeUniqueRef<Page>(WTFMove(configuration));
     auto& mainFrame = page->mainFrame();
     mainFrame.loader().initForSynthesizedDocument({ });
-    auto document = Document::createNonRenderedPlaceholder(&mainFrame, url);
+    auto document = Document::createNonRenderedPlaceholder(&mainFrame, data.scriptURL);
     document->createDOMWindow();
+
+    document->mutableSettings().setStorageBlockingPolicy(storageBlockingPolicy);
+    document->storageBlockingStateDidChange();
+
+    auto origin = data.registration.key.topOrigin().securityOrigin();
+    origin->setStorageBlockingPolicy(storageBlockingPolicy);
+
+    document->setFirstPartyForCookies(topOriginURL(origin));
+    document->setDomainForCachePartition(origin->domainForCachePartition());
     mainFrame.setDocument(WTFMove(document));
     return page;
 }
@@ -56,14 +77,29 @@ static inline IDBClient::IDBConnectionProxy* idbConnectionProxy(Document& docume
 #endif
 }
 
-ServiceWorkerThreadProxy::ServiceWorkerThreadProxy(PageConfiguration&& pageConfiguration, const ServiceWorkerContextData& data, PAL::SessionID sessionID, String&& userAgent, CacheStorageProvider& cacheStorageProvider)
-    : m_page(createPageForServiceWorker(WTFMove(pageConfiguration), data.scriptURL))
+static HashSet<ServiceWorkerThreadProxy*>& allServiceWorkerThreadProxies()
+{
+    static NeverDestroyed<HashSet<ServiceWorkerThreadProxy*>> set;
+    return set;
+}
+
+ServiceWorkerThreadProxy::ServiceWorkerThreadProxy(PageConfiguration&& pageConfiguration, const ServiceWorkerContextData& data, PAL::SessionID sessionID, String&& userAgent, CacheStorageProvider& cacheStorageProvider, SecurityOrigin::StorageBlockingPolicy storageBlockingPolicy)
+    : m_page(createPageForServiceWorker(WTFMove(pageConfiguration), data, storageBlockingPolicy))
     , m_document(*m_page->mainFrame().document())
     , m_serviceWorkerThread(ServiceWorkerThread::create(data, sessionID, WTFMove(userAgent), *this, *this, idbConnectionProxy(m_document), m_document->socketProvider()))
     , m_cacheStorageProvider(cacheStorageProvider)
     , m_sessionID(sessionID)
     , m_inspectorProxy(*this)
 {
+    static bool addedListener;
+    if (!addedListener) {
+        NetworkStateNotifier::singleton().addListener(&networkStateChanged);
+        addedListener = true;
+    }
+
+    ASSERT(!allServiceWorkerThreadProxies().contains(this));
+    allServiceWorkerThreadProxies().add(this);
+
 #if ENABLE(REMOTE_INSPECTOR)
     m_remoteDebuggable = std::make_unique<ServiceWorkerDebuggable>(*this, data);
     m_remoteDebuggable->setRemoteDebuggingAllowed(true);
@@ -71,16 +107,24 @@ ServiceWorkerThreadProxy::ServiceWorkerThreadProxy(PageConfiguration&& pageConfi
 #endif
 }
 
+ServiceWorkerThreadProxy::~ServiceWorkerThreadProxy()
+{
+    ASSERT(allServiceWorkerThreadProxies().contains(this));
+    allServiceWorkerThreadProxies().remove(this);
+}
+
 bool ServiceWorkerThreadProxy::postTaskForModeToWorkerGlobalScope(ScriptExecutionContext::Task&& task, const String& mode)
 {
-    // FIXME: Handle termination case.
+    if (m_isTerminatingOrTerminated)
+        return false;
+
     m_serviceWorkerThread->runLoop().postTaskForMode(WTFMove(task), mode);
     return true;
 }
 
 void ServiceWorkerThreadProxy::postTaskToLoader(ScriptExecutionContext::Task&& task)
 {
-    RunLoop::main().dispatch([task = WTFMove(task), this, protectedThis = makeRef(*this)] () mutable {
+    callOnMainThread([task = WTFMove(task), this, protectedThis = makeRef(*this)] () mutable {
         task.performTask(m_document.get());
     });
 }
@@ -107,6 +151,33 @@ Ref<CacheStorageConnection> ServiceWorkerThreadProxy::createCacheStorageConnecti
     if (!m_cacheStorageConnection)
         m_cacheStorageConnection = m_cacheStorageProvider.createCacheStorageConnection(m_sessionID);
     return *m_cacheStorageConnection;
+}
+
+std::unique_ptr<FetchLoader> ServiceWorkerThreadProxy::createBlobLoader(FetchLoaderClient& client, const URL& blobURL)
+{
+    auto loader = std::make_unique<FetchLoader>(client, nullptr);
+    loader->startLoadingBlobURL(m_document, blobURL);
+    if (!loader->isStarted())
+        return nullptr;
+    return loader;
+}
+
+void ServiceWorkerThreadProxy::networkStateChanged(bool isOnLine)
+{
+    for (auto* proxy : allServiceWorkerThreadProxies())
+        proxy->notifyNetworkStateChange(isOnLine);
+}
+
+void ServiceWorkerThreadProxy::notifyNetworkStateChange(bool isOnline)
+{
+    if (m_isTerminatingOrTerminated)
+        return;
+
+    postTaskForModeToWorkerGlobalScope([isOnline] (ScriptExecutionContext& context) {
+        auto& globalScope = downcast<WorkerGlobalScope>(context);
+        globalScope.setIsOnline(isOnline);
+        globalScope.dispatchEvent(Event::create(isOnline ? eventNames().onlineEvent : eventNames().offlineEvent, false, false));
+    }, WorkerRunLoop::defaultMode());
 }
 
 } // namespace WebCore

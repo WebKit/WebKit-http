@@ -27,12 +27,14 @@
 #import "DragData.h"
 
 #if ENABLE(DRAG_SUPPORT)
+#import "LegacyNSPasteboardTypes.h"
 #import "MIMETypeRegistry.h"
 #import "NotImplemented.h"
 #import "Pasteboard.h"
 #import "PasteboardStrategy.h"
 #import "PlatformPasteboard.h"
 #import "PlatformStrategies.h"
+#import "RuntimeEnabledFeatures.h"
 #import "WebCoreNSURLExtras.h"
 
 #if PLATFORM(IOS)
@@ -46,7 +48,7 @@ static inline String rtfPasteboardType()
 #if PLATFORM(IOS)
     return String(kUTTypeRTF);
 #else
-    return String(NSRTFPboardType);
+    return String(legacyRTFPasteboardType());
 #endif
 }
 
@@ -55,7 +57,7 @@ static inline String rtfdPasteboardType()
 #if PLATFORM(IOS)
     return String(kUTTypeFlatRTFD);
 #else
-    return String(NSRTFDPboardType);
+    return String(legacyRTFDPasteboardType());
 #endif
 }
 
@@ -64,7 +66,7 @@ static inline String stringPasteboardType()
 #if PLATFORM(IOS)
     return String(kUTTypeText);
 #else
-    return String(NSStringPboardType);
+    return String(legacyStringPasteboardType());
 #endif
 }
 
@@ -73,7 +75,7 @@ static inline String urlPasteboardType()
 #if PLATFORM(IOS)
     return String(kUTTypeURL);
 #else
-    return String(NSURLPboardType);
+    return String(legacyURLPasteboardType());
 #endif
 }
 
@@ -82,7 +84,7 @@ static inline String htmlPasteboardType()
 #if PLATFORM(IOS)
     return String(kUTTypeHTML);
 #else
-    return String(NSHTMLPboardType);
+    return String(legacyHTMLPasteboardType());
 #endif
 }
 
@@ -91,7 +93,7 @@ static inline String colorPasteboardType()
 #if PLATFORM(IOS)
     return "com.apple.uikit.color";
 #else
-    return String(NSColorPboardType);
+    return String(legacyColorPasteboardType());
 #endif
 }
 
@@ -100,7 +102,7 @@ static inline String pdfPasteboardType()
 #if PLATFORM(IOS)
     return String(kUTTypePDF);
 #else
-    return String(NSPDFPboardType);
+    return String(legacyPDFPasteboardType());
 #endif
 }
 
@@ -109,7 +111,7 @@ static inline String tiffPasteboardType()
 #if PLATFORM(IOS)
     return String(kUTTypeTIFF);
 #else
-    return String(NSTIFFPboardType);
+    return String(legacyTIFFPasteboardType());
 #endif
 }
 
@@ -172,7 +174,7 @@ Vector<String> DragData::asFilenames() const
 {
 #if PLATFORM(MAC)
     Vector<String> results;
-    platformStrategies()->pasteboardStrategy()->getPathnamesForType(results, String(NSFilenamesPboardType), m_pasteboardName);
+    platformStrategies()->pasteboardStrategy()->getPathnamesForType(results, String(legacyFilenamesPasteboardType()), m_pasteboardName);
     if (!results.isEmpty())
         return results;
 #endif
@@ -188,7 +190,7 @@ bool DragData::containsPlainText() const
         || types.contains(rtfdPasteboardType())
         || types.contains(rtfPasteboardType())
 #if PLATFORM(MAC)
-        || types.contains(String(NSFilenamesPboardType))
+        || types.contains(String(legacyFilenamesPasteboardType()))
 #endif
         || platformStrategies()->pasteboardStrategy()->stringForType(urlPasteboardType(), m_pasteboardName).length();
 }
@@ -219,13 +221,16 @@ bool DragData::containsCompatibleContent(DraggingPurpose purpose) const
     if (purpose == DraggingPurpose::ForFileUpload)
         return containsFiles();
 
+    if (purpose == DraggingPurpose::ForEditing && RuntimeEnabledFeatures::sharedFeatures().attachmentElementEnabled() && containsFiles())
+        return true;
+
     Vector<String> types;
     platformStrategies()->pasteboardStrategy()->getTypes(types, m_pasteboardName);
     return types.contains(String(WebArchivePboardType))
         || types.contains(htmlPasteboardType())
 #if PLATFORM(MAC)
-        || types.contains(String(NSFilenamesPboardType))
-        || types.contains(String(NSFilesPromisePboardType))
+        || types.contains(String(legacyFilenamesPasteboardType()))
+        || types.contains(String(legacyFilesPromisePasteboardType()))
 #endif
         || types.contains(tiffPasteboardType())
         || types.contains(pdfPasteboardType())
@@ -243,7 +248,7 @@ bool DragData::containsPromise() const
 {
     Vector<String> files;
 #if PLATFORM(MAC)
-    platformStrategies()->pasteboardStrategy()->getPathnamesForType(files, String(NSFilesPromisePboardType), m_pasteboardName);
+    platformStrategies()->pasteboardStrategy()->getPathnamesForType(files, String(legacyFilesPromisePasteboardType()), m_pasteboardName);
 #endif
     return files.size() == 1;
 }
@@ -307,9 +312,9 @@ String DragData::asURL(FilenameConversionPolicy, String* title) const
     }
     
 #if PLATFORM(MAC)
-    if (types.contains(String(NSFilenamesPboardType))) {
+    if (types.contains(String(legacyFilenamesPasteboardType()))) {
         Vector<String> files;
-        platformStrategies()->pasteboardStrategy()->getPathnamesForType(files, String(NSFilenamesPboardType), m_pasteboardName);
+        platformStrategies()->pasteboardStrategy()->getPathnamesForType(files, String(legacyFilenamesPasteboardType()), m_pasteboardName);
         if (files.size() == 1) {
             BOOL isDirectory;
             if ([[NSFileManager defaultManager] fileExistsAtPath:files[0] isDirectory:&isDirectory] && isDirectory)
@@ -318,7 +323,7 @@ String DragData::asURL(FilenameConversionPolicy, String* title) const
         }
     }
 
-    if (types.contains(String(NSFilesPromisePboardType)) && fileNames().size() == 1)
+    if (types.contains(String(legacyFilesPromisePasteboardType())) && fileNames().size() == 1)
         return [URLByCanonicalizingURL([NSURL fileURLWithPath:fileNames()[0]]) absoluteString];
 #endif
 

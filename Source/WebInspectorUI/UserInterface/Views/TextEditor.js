@@ -129,7 +129,15 @@ WI.TextEditor = class TextEditor extends WI.View
             if (this._initialStringNotSet) {
                 this._codeMirror.clearHistory();
                 this._codeMirror.markClean();
+
                 this._initialStringNotSet = false;
+
+                // There may have been an attempt at a search before the initial string was set. If so, reperform it now that we have content.
+                if (this._searchQuery) {
+                    let query = this._searchQuery;
+                    this._searchQuery = null;
+                    this.performSearch(query);
+                }
             }
 
             // Update the execution line now that we might have content for that line.
@@ -294,6 +302,10 @@ WI.TextEditor = class TextEditor extends WI.View
 
         this._searchQuery = query;
 
+        // Defer until the initial string is set.
+        if (this._initialStringNotSet)
+            return;
+
         // Allow subclasses to handle the searching if they have a better way.
         // If we are formatted, just use CodeMirror's search.
         if (typeof this.customPerformSearch === "function" && !this.formatted) {
@@ -394,12 +406,10 @@ WI.TextEditor = class TextEditor extends WI.View
 
     searchCleared()
     {
-        function clearResults() {
-            for (var i = 0; i < this._searchResults.length; ++i)
-                this._searchResults[i].clear();
-        }
-
-        this._codeMirror.operation(clearResults.bind(this));
+        this._codeMirror.operation(() => {
+            for (let searchResult of this._searchResults)
+                searchResult.clear();
+        });
 
         this._searchQuery = null;
         this._searchResults = [];
@@ -1045,7 +1055,7 @@ WI.TextEditor = class TextEditor extends WI.View
 
     _revealSearchResult(result, changeFocus, directionInCaseOfRevalidation)
     {
-        var position = result.find();
+        let position = result.find();
 
         // Check for a valid position, it might have been removed from editing by the user.
         // If the position is invalide, revalidate all positions reveal as needed.
@@ -1068,50 +1078,55 @@ WI.TextEditor = class TextEditor extends WI.View
         if (changeFocus)
             this._codeMirror.focus();
 
+        // Collect info for the bouncy highlight.
+        let highlightEditorPosition = this._codeMirror.getCursor("start");
+        let textContent = this._codeMirror.getSelection();
+
         // Remove the bouncy highlight if it is still around. The animation will not
         // start unless we remove it and add it back to the document.
-        if (this._bouncyHighlightElement)
-            this._bouncyHighlightElement.remove();
+        this._removeBouncyHighlightElementIfNeeded();
 
         // Create the bouncy highlight.
         this._bouncyHighlightElement = document.createElement("div");
         this._bouncyHighlightElement.className = WI.TextEditor.BouncyHighlightStyleClassName;
-
-        // Collect info for the bouncy highlight.
-        var textContent = this._codeMirror.getSelection();
-        var coordinates = this._codeMirror.cursorCoords(true, "page");
-
-        // Adjust the coordinates to be based in the text editor's space.
-        let textEditorRect = this.element.getBoundingClientRect();
-        coordinates.top -= textEditorRect.top;
-        coordinates.left -= textEditorRect.left;
-
-        // Position and show the bouncy highlight.
         this._bouncyHighlightElement.textContent = textContent;
-        this._bouncyHighlightElement.style.top = coordinates.top + "px";
-        this._bouncyHighlightElement.style.left = coordinates.left + "px";
-        this.element.appendChild(this._bouncyHighlightElement);
 
-        let scrollHandler = () => {
-            if (this._bouncyHighlightElement)
-                this._bouncyHighlightElement.remove();
-        };
+        function positionBouncyHighlight() {
+            // Adjust the coordinates to be based in the text editor's space.
+            let coordinates = this._codeMirror.cursorCoords(highlightEditorPosition, "page");
+            let textEditorRect = this.element.getBoundingClientRect();
+            coordinates.top -= textEditorRect.top;
+            coordinates.left -= textEditorRect.left;
 
-        this.addScrollHandler(scrollHandler);
-
-        function animationEnded()
-        {
-            if (!this._bouncyHighlightElement)
-                return;
-
-            this._bouncyHighlightElement.remove();
-            delete this._bouncyHighlightElement;
-
-            this.removeScrollHandler(scrollHandler);
+            // Position the bouncy highlight.
+            this._bouncyHighlightElement.style.top = coordinates.top + "px";
+            this._bouncyHighlightElement.style.left = coordinates.left + "px";
         }
 
+        // Position and show the highlight.
+        positionBouncyHighlight.call(this);
+        this.element.appendChild(this._bouncyHighlightElement);
+
+        // Reposition the highlight if the editor scrolls.
+        this._bouncyHighlightScrollHandler = () => { positionBouncyHighlight.call(this); };
+        this.addScrollHandler(this._bouncyHighlightScrollHandler);
+
         // Listen for the end of the animation so we can remove the element.
-        this._bouncyHighlightElement.addEventListener("animationend", animationEnded.bind(this));
+        this._bouncyHighlightElement.addEventListener("animationend", () => {
+            this._removeBouncyHighlightElementIfNeeded();
+        });
+    }
+
+    _removeBouncyHighlightElementIfNeeded()
+    {
+        if (!this._bouncyHighlightElement)
+            return;
+
+        this.removeScrollHandler(this._bouncyHighlightScrollHandler);
+        this._bouncyHighlightScrollHandler = null;
+
+        this._bouncyHighlightElement.remove();
+        this._bouncyHighlightElement = null;
     }
 
     _binarySearchInsertionIndexInSearchResults(object, comparator)

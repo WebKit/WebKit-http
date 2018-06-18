@@ -70,15 +70,44 @@ namespace WebCore {
 
 static const CFStringRef s_setCookieKeyCF = CFSTR("Set-Cookie");
 static const CFStringRef s_cookieCF = CFSTR("Cookie");
+static const CFStringRef s_createdCF = CFSTR("Created");
 
 static inline RetainPtr<CFStringRef> cookieDomain(CFHTTPCookieRef cookie)
 {
     return adoptCF(CFHTTPCookieCopyDomain(cookie));
 }
 
+static double canonicalCookieTime(double time)
+{
+    if (!time)
+        return time;
+
+    return (time + kCFAbsoluteTimeIntervalSince1970) * 1000;
+}
+
+static double cookieCreatedTime(CFHTTPCookieRef cookie)
+{
+    RetainPtr<CFDictionaryRef> props = adoptCF(CFHTTPCookieCopyProperties(cookie));
+    auto value = CFDictionaryGetValue(props.get(), s_createdCF);
+
+    auto asNumber = dynamic_cf_cast<CFNumberRef>(value);
+    if (asNumber) {
+        double asDouble;
+        if (CFNumberGetValue(asNumber, kCFNumberFloat64Type, &asDouble))
+            return canonicalCookieTime(asDouble);
+        return 0.0;
+    }
+
+    auto asString = dynamic_cf_cast<CFStringRef>(value);
+    if (asString)
+        return canonicalCookieTime(CFStringGetDoubleValue(asString));
+
+    return 0.0;
+}
+
 static inline CFAbsoluteTime cookieExpirationTime(CFHTTPCookieRef cookie)
 {
-    return CFHTTPCookieGetExpirationTime(cookie);
+    return canonicalCookieTime(CFHTTPCookieGetExpirationTime(cookie));
 }
 
 static inline RetainPtr<CFStringRef> cookieName(CFHTTPCookieRef cookie)
@@ -138,8 +167,10 @@ static CFArrayRef createCookies(CFDictionaryRef headerFields, CFURLRef url)
     return parsedCookies;
 }
 
-void setCookiesFromDOM(const NetworkStorageSession& session, const URL& firstParty, const URL& url, const String& value)
+void setCookiesFromDOM(const NetworkStorageSession& session, const URL& firstParty, const URL& url, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, const String& value)
 {
+    UNUSED_PARAM(frameID);
+    UNUSED_PARAM(pageID);
     // <rdar://problem/5632883> CFHTTPCookieStorage stores an empty cookie, which would be sent as "Cookie: =".
     if (value.isEmpty())
         return;
@@ -172,8 +203,10 @@ static bool containsSecureCookies(CFArrayRef cookies)
     return false;
 }
 
-std::pair<String, bool> cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty, const URL& url, IncludeSecureCookies includeSecureCookies)
+std::pair<String, bool> cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty, const URL& url, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, IncludeSecureCookies includeSecureCookies)
 {
+    UNUSED_PARAM(frameID);
+    UNUSED_PARAM(pageID);
     RetainPtr<CFArrayRef> cookiesCF = copyCookiesForURLWithFirstPartyURL(session, firstParty, url, includeSecureCookies);
 
     auto filteredCookies = filterCookies(cookiesCF.get());
@@ -185,8 +218,10 @@ std::pair<String, bool> cookiesForDOM(const NetworkStorageSession& session, cons
     return { cookieString, didAccessSecureCookies };
 }
 
-std::pair<String, bool> cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL& firstParty, const URL& url, IncludeSecureCookies includeSecureCookies)
+std::pair<String, bool> cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL& firstParty, const URL& url, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, IncludeSecureCookies includeSecureCookies)
 {
+    UNUSED_PARAM(frameID);
+    UNUSED_PARAM(pageID);
     RetainPtr<CFArrayRef> cookiesCF = copyCookiesForURLWithFirstPartyURL(session, firstParty, url, includeSecureCookies);
 
     bool didAccessSecureCookies = containsSecureCookies(cookiesCF.get());
@@ -202,8 +237,10 @@ bool cookiesEnabled(const NetworkStorageSession& session)
     return policy == CFHTTPCookieStorageAcceptPolicyOnlyFromMainDocumentDomain || policy == CFHTTPCookieStorageAcceptPolicyExclusivelyFromMainDocumentDomain || policy == CFHTTPCookieStorageAcceptPolicyAlways;
 }
 
-bool getRawCookies(const NetworkStorageSession& session, const URL& firstParty, const URL& url, Vector<Cookie>& rawCookies)
+bool getRawCookies(const NetworkStorageSession& session, const URL& firstParty, const URL& url, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, Vector<Cookie>& rawCookies)
 {
+    UNUSED_PARAM(frameID);
+    UNUSED_PARAM(pageID);
     rawCookies.clear();
 
     auto includeSecureCookies = url.protocolIs("https") ? IncludeSecureCookies::Yes : IncludeSecureCookies::No;
@@ -220,7 +257,8 @@ bool getRawCookies(const NetworkStorageSession& session, const URL& firstParty, 
         String domain = cookieDomain(cookie).get();
         String path = cookiePath(cookie).get();
 
-        double expires = (cookieExpirationTime(cookie) + kCFAbsoluteTimeIntervalSince1970) * 1000;
+        double created = cookieCreatedTime(cookie);
+        double expires = cookieExpirationTime(cookie);
 
         bool httpOnly = CFHTTPCookieIsHTTPOnly(cookie);
         bool secure = CFHTTPCookieIsSecure(cookie);
@@ -230,7 +268,7 @@ bool getRawCookies(const NetworkStorageSession& session, const URL& firstParty, 
         URL commentURL;
         Vector<uint16_t> ports;
 
-        rawCookies.uncheckedAppend(Cookie(name, value, domain, path, expires, httpOnly, secure, session, comment, commentURL, ports));
+        rawCookies.uncheckedAppend(Cookie(name, value, domain, path, created, expires, httpOnly, secure, session, comment, commentURL, ports));
     }
 
     return true;
@@ -278,7 +316,7 @@ void deleteCookiesForHostnames(const NetworkStorageSession& session, const Vecto
 {
 }
 
-void deleteAllCookiesModifiedSince(const NetworkStorageSession&, std::chrono::system_clock::time_point)
+void deleteAllCookiesModifiedSince(const NetworkStorageSession&, WallTime)
 {
 }
 

@@ -46,6 +46,7 @@
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/Threading.h>
 #include <wtf/UniqueRef.h>
+#include <wtf/WeakPtr.h>
 
 namespace WebCore {
 
@@ -74,6 +75,8 @@ public:
         using Identifier = SWServerConnectionIdentifier;
         Identifier identifier() const { return m_identifier; }
 
+        auto& weakPtrFactory() { return m_weakFactory; }
+
         WEBCORE_EXPORT void didResolveRegistrationPromise(const ServiceWorkerRegistrationKey&);
         SWServerRegistration* doRegistrationMatching(const SecurityOriginData& topOrigin, const URL& clientURL) { return m_server.doRegistrationMatching(topOrigin, clientURL); }
         void resolveRegistrationReadyRequests(SWServerRegistration&);
@@ -82,6 +85,8 @@ public:
         virtual void updateRegistrationStateInClient(ServiceWorkerRegistrationIdentifier, ServiceWorkerRegistrationState, const std::optional<ServiceWorkerData>&) = 0;
         virtual void updateWorkerStateInClient(ServiceWorkerIdentifier, ServiceWorkerState) = 0;
         virtual void fireUpdateFoundEvent(ServiceWorkerRegistrationIdentifier) = 0;
+        virtual void setRegistrationLastUpdateTime(ServiceWorkerRegistrationIdentifier, WallTime) = 0;
+        virtual void setRegistrationUpdateViaCache(ServiceWorkerRegistrationIdentifier, ServiceWorkerUpdateViaCache) = 0;
         virtual void notifyClientsOfControllerChange(const HashSet<DocumentIdentifier>& contextIdentifiers, const ServiceWorkerData& newController) = 0;
         virtual void registrationReady(uint64_t registrationReadyRequestIdentifier, ServiceWorkerRegistrationData&&) = 0;
 
@@ -101,7 +106,7 @@ public:
         virtual void rejectJobInClient(const ServiceWorkerJobDataIdentifier&, const ExceptionData&) = 0;
         virtual void resolveRegistrationJobInClient(const ServiceWorkerJobDataIdentifier&, const ServiceWorkerRegistrationData&, ShouldNotifyWhenResolved) = 0;
         virtual void resolveUnregistrationJobInClient(const ServiceWorkerJobDataIdentifier&, const ServiceWorkerRegistrationKey&, bool registrationResult) = 0;
-        virtual void startScriptFetchInClient(const ServiceWorkerJobDataIdentifier&, FetchOptions::Cache) = 0;
+        virtual void startScriptFetchInClient(const ServiceWorkerJobDataIdentifier&, const ServiceWorkerRegistrationKey&, FetchOptions::Cache) = 0;
 
         struct RegistrationReadyRequest {
             SecurityOriginData topOrigin;
@@ -111,6 +116,7 @@ public:
 
         SWServer& m_server;
         Identifier m_identifier;
+        WeakPtrFactory<Connection> m_weakFactory;
         Vector<RegistrationReadyRequest> m_registrationReadyRequests;
     };
 
@@ -171,6 +177,9 @@ public:
 
     void addRegistrationFromStore(ServiceWorkerContextData&&);
     void registrationStoreImportComplete();
+    void registrationStoreDatabaseFailedToOpen();
+
+    WEBCORE_EXPORT void getOriginsWithRegistrations(WTF::Function<void(const HashSet<SecurityOriginData>&)>);
 
 private:
     void registerConnection(Connection&);
@@ -194,6 +203,8 @@ private:
 
     SWServerRegistration* registrationFromServiceWorkerIdentifier(ServiceWorkerIdentifier);
     void forEachClientForOrigin(const ClientOrigin&, const WTF::Function<void(ServiceWorkerClientData&)>&);
+
+    void performGetOriginsWithRegistrationsCallbacks();
 
     enum TerminationMode {
         Synchronous,
@@ -229,6 +240,8 @@ private:
     Deque<ServiceWorkerContextData> m_pendingContextDatas;
     HashMap<ServiceWorkerIdentifier, Vector<RunServiceWorkerCallback>> m_serviceWorkerRunRequests;
     PAL::SessionID m_sessionID;
+    bool m_importCompleted { false };
+    Vector<WTF::Function<void(const HashSet<SecurityOriginData>&)>> m_getOriginsWithRegistrationsCallbacks;
 };
 
 } // namespace WebCore

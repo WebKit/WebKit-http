@@ -66,6 +66,7 @@
 #include "RenderTableRow.h"
 #include "RenderText.h"
 #include "RenderTheme.h"
+#include "RenderTreeBuilder.h"
 #include "RenderView.h"
 #include "SVGRenderSupport.h"
 #include "Settings.h"
@@ -475,7 +476,7 @@ bool RenderElement::childRequiresTable(const RenderObject& child) const
     return false;
 }
 
-void RenderElement::addChild(RenderPtr<RenderObject> newChild, RenderObject* beforeChild)
+void RenderElement::addChild(RenderTreeBuilder& builder, RenderPtr<RenderObject> newChild, RenderObject* beforeChild)
 {
     auto& child = *newChild;
     if (childRequiresTable(child)) {
@@ -484,12 +485,12 @@ void RenderElement::addChild(RenderPtr<RenderObject> newChild, RenderObject* bef
         if (afterChild && afterChild->isAnonymous() && is<RenderTable>(*afterChild) && !afterChild->isBeforeContent())
             table = downcast<RenderTable>(afterChild);
         else {
-            auto newTable =  RenderTable::createAnonymousWithParentRenderer(*this);
+            auto newTable = RenderTable::createAnonymousWithParentRenderer(*this);
             table = newTable.get();
-            addChild(WTFMove(newTable), beforeChild);
+            builder.insertChild(*this, WTFMove(newTable), beforeChild);
         }
 
-        table->addChild(WTFMove(newChild));
+        builder.insertChild(*table, WTFMove(newChild));
     } else
         insertChildInternal(WTFMove(newChild), beforeChild);
 
@@ -508,6 +509,11 @@ void RenderElement::addChild(RenderPtr<RenderObject> newChild, RenderObject* bef
         downcast<RenderLayerModelObject>(child).layer()->removeOnlyThisLayer();
 
     SVGRenderSupport::childAdded(*this, child);
+}
+
+void RenderElement::addChildIgnoringContinuation(RenderTreeBuilder& builder, RenderPtr<RenderObject> newChild, RenderObject* beforeChild)
+{
+    builder.insertChild(*this, WTFMove(newChild), beforeChild);
 }
 
 RenderPtr<RenderObject> RenderElement::takeChild(RenderObject& oldChild)
@@ -822,7 +828,7 @@ void RenderElement::propagateStyleToAnonymousChildren(StylePropagationType propa
         if (elementChild.isInFlowPositioned() && elementChild.isContinuation())
             newStyle.setPosition(elementChild.style().position());
 
-        updateAnonymousChildStyle(elementChild, newStyle);
+        updateAnonymousChildStyle(newStyle);
         
         elementChild.setStyle(WTFMove(newStyle));
     }

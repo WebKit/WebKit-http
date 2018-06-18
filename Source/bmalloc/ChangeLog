@@ -1,3 +1,23 @@
+2017-12-20  Ting-Wei Lan  <lantw44@gmail.com>
+
+        Include stdio.h before using stderr and _IONBF
+        https://bugs.webkit.org/show_bug.cgi?id=181046
+
+        Reviewed by Alex Christensen.
+
+        * bmalloc/IsoTLS.cpp:
+
+2017-12-14  David Kilzer  <ddkilzer@apple.com>
+
+        Enable -Wstrict-prototypes for WebKit
+        <https://webkit.org/b/180757>
+        <rdar://problem/36024132>
+
+        Rubber-stamped by Joseph Pecoraro.
+
+        * Configurations/Base.xcconfig:
+        (CLANG_WARN_STRICT_PROTOTYPES): Add. Set to YES.
+
 2017-12-14  Saam Barati  <sbarati@apple.com>
 
         logVMFailure should not simulate crash on iOS

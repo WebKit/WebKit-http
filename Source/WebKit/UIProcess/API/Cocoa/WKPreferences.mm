@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,6 +34,7 @@
 #import "_WKExperimentalFeature.h"
 #import "_WKExperimentalFeatureInternal.h"
 #import <WebCore/SecurityOrigin.h>
+#import <WebCore/Settings.h>
 #import <wtf/RetainPtr.h>
 
 @implementation WKPreferences
@@ -52,6 +53,11 @@
     _preferences->~WebPreferences();
 
     [super dealloc];
+}
+
++ (BOOL)supportsSecureCoding
+{
+    return YES;
 }
 
 // FIXME: We currently only encode/decode API preferences. We should consider whether we should
@@ -582,6 +588,16 @@ static _WKStorageBlockingPolicy toAPI(WebCore::SecurityOrigin::StorageBlockingPo
     _preferences->setMediaDevicesEnabled(enabled);
 }
 
+- (BOOL)_screenCaptureEnabled
+{
+    return _preferences->screenCaptureEnabled();
+}
+
+- (void)_setScreenCaptureEnabled:(BOOL)enabled
+{
+    _preferences->setScreenCaptureEnabled(enabled);
+}
+
 - (BOOL)_mockCaptureDevicesEnabled
 {
     return _preferences->mockCaptureDevicesEnabled();
@@ -657,14 +673,62 @@ static _WKStorageBlockingPolicy toAPI(WebCore::SecurityOrigin::StorageBlockingPo
     _preferences->setJavaScriptCanAccessClipboard(javaScriptCanAccessClipboard);
 }
 
-- (BOOL)_shouldDisallowUserInstalledFonts
+- (BOOL)_shouldAllowUserInstalledFonts
 {
-    return _preferences->shouldDisallowUserInstalledFonts();
+    return _preferences->shouldAllowUserInstalledFonts();
 }
 
-- (void)_setShouldDisallowUserInstalledFonts:(BOOL)_shouldDisallowUserInstalledFonts
+- (void)_setShouldAllowUserInstalledFonts:(BOOL)_shouldAllowUserInstalledFonts
 {
-    _preferences->setShouldDisallowUserInstalledFonts(_shouldDisallowUserInstalledFonts);
+    _preferences->setShouldAllowUserInstalledFonts(_shouldAllowUserInstalledFonts);
+}
+
+static _WKEditableLinkBehavior toAPI(WebCore::EditableLinkBehavior behavior)
+{
+    switch (behavior) {
+    case WebCore::EditableLinkDefaultBehavior:
+        return _WKEditableLinkBehaviorDefault;
+    case WebCore::EditableLinkAlwaysLive:
+        return _WKEditableLinkBehaviorAlwaysLive;
+    case WebCore::EditableLinkOnlyLiveWithShiftKey:
+        return _WKEditableLinkBehaviorOnlyLiveWithShiftKey;
+    case WebCore::EditableLinkLiveWhenNotFocused:
+        return _WKEditableLinkBehaviorLiveWhenNotFocused;
+    case WebCore::EditableLinkNeverLive:
+        return _WKEditableLinkBehaviorNeverLive;
+    }
+    
+    ASSERT_NOT_REACHED();
+    return _WKEditableLinkBehaviorNeverLive;
+}
+
+static WebCore::EditableLinkBehavior toEditableLinkBehavior(_WKEditableLinkBehavior wkBehavior)
+{
+    switch (wkBehavior) {
+    case _WKEditableLinkBehaviorDefault:
+        return WebCore::EditableLinkDefaultBehavior;
+    case _WKEditableLinkBehaviorAlwaysLive:
+        return WebCore::EditableLinkAlwaysLive;
+    case _WKEditableLinkBehaviorOnlyLiveWithShiftKey:
+        return WebCore::EditableLinkOnlyLiveWithShiftKey;
+    case _WKEditableLinkBehaviorLiveWhenNotFocused:
+        return WebCore::EditableLinkLiveWhenNotFocused;
+    case _WKEditableLinkBehaviorNeverLive:
+        return WebCore::EditableLinkNeverLive;
+    }
+    
+    ASSERT_NOT_REACHED();
+    return WebCore::EditableLinkNeverLive;
+}
+
+- (_WKEditableLinkBehavior)_editableLinkBehavior
+{
+    return toAPI(static_cast<WebCore::EditableLinkBehavior>(_preferences->editableLinkBehavior()));
+}
+
+- (void)_setEditableLinkBehavior:(_WKEditableLinkBehavior)editableLinkBehavior
+{
+    _preferences->setEditableLinkBehavior(toEditableLinkBehavior(editableLinkBehavior));
 }
 
 #if PLATFORM(MAC)

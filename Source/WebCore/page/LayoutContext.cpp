@@ -31,11 +31,12 @@
 #include "Document.h"
 #include "FrameView.h"
 #include "InspectorInstrumentation.h"
+#include "LayoutDisallowedScope.h"
 #include "LayoutState.h"
 #include "Logging.h"
-#include "NoEventDispatchAssertion.h"
 #include "RenderElement.h"
 #include "RenderView.h"
+#include "ScriptDisallowedScope.h"
 #include "Settings.h"
 
 #include <wtf/SetForScope.h>
@@ -122,6 +123,7 @@ void LayoutContext::layout()
     LOG_WITH_STREAM(Layout, stream << "FrameView " << &view() << " LayoutContext::layout() with size " << view().layoutSize());
 
     RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(!frame().document()->inRenderTreeUpdate());
+    ASSERT(LayoutDisallowedScope::isLayoutAllowed());
     ASSERT(!view().isPainting());
     ASSERT(frame().view() == &view());
     ASSERT(frame().document());
@@ -175,7 +177,7 @@ void LayoutContext::layout()
     }
     {
         SetForScope<LayoutPhase> layoutPhase(m_layoutPhase, LayoutPhase::InRenderTreeLayout);
-        NoEventDispatchAssertion::InMainThread noEventDispatchAssertion;
+        ScriptDisallowedScope::InMainThread scriptDisallowedScope;
         SubtreeLayoutStateMaintainer subtreeLayoutStateMaintainer(subtreeLayoutRoot());
         RenderView::RepaintRegionAccumulator repaintRegionAccumulator(renderView());
 #ifndef NDEBUG

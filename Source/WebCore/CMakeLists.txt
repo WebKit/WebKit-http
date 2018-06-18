@@ -23,7 +23,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/applepay"
     "${WEBCORE_DIR}/Modules/applepay/paymentrequest"
     "${WEBCORE_DIR}/Modules/cache"
-    "${WEBCORE_DIR}/Modules/credentials"
+    "${WEBCORE_DIR}/Modules/credentialmanagement"
     "${WEBCORE_DIR}/Modules/encryptedmedia"
     "${WEBCORE_DIR}/Modules/encryptedmedia/legacy"
     "${WEBCORE_DIR}/Modules/entriesapi"
@@ -33,6 +33,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/indexeddb/client"
     "${WEBCORE_DIR}/Modules/indexeddb/server"
     "${WEBCORE_DIR}/Modules/indexeddb/shared"
+    "${WEBCORE_DIR}/Modules/mediacapabilities"
     "${WEBCORE_DIR}/Modules/mediacontrols/"
     "${WEBCORE_DIR}/Modules/mediasession"
     "${WEBCORE_DIR}/Modules/mediasource"
@@ -45,6 +46,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/speech"
     "${WEBCORE_DIR}/Modules/streams"
     "${WEBCORE_DIR}/Modules/webaudio"
+    "${WEBCORE_DIR}/Modules/webauthn"
     "${WEBCORE_DIR}/Modules/webdatabase"
     "${WEBCORE_DIR}/Modules/webdriver"
     "${WEBCORE_DIR}/Modules/websockets"
@@ -115,6 +117,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/rendering/mathml"
     "${WEBCORE_DIR}/rendering/style"
     "${WEBCORE_DIR}/rendering/svg"
+    "${WEBCORE_DIR}/rendering/updating"
     "${WEBCORE_DIR}/replay"
     "${WEBCORE_DIR}/storage"
     "${WEBCORE_DIR}/style"
@@ -172,12 +175,13 @@ set(WebCore_IDL_INCLUDES
 
     Modules/airplay
     Modules/cache
-    Modules/credentials
+    Modules/credentialmanagement
     Modules/encryptedmedia/legacy
     Modules/entriesapi
     Modules/fetch
     Modules/geolocation
     Modules/indexeddb
+    Modules/mediacapabilities
     Modules/mediasession
     Modules/mediastream
     Modules/notifications
@@ -210,18 +214,11 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/cache/DOMWindowCaches.idl
     Modules/cache/WorkerGlobalScopeCaches.idl
 
-    Modules/credentials/BasicCredential.idl
-    Modules/credentials/CredentialCreationOptions.idl
-    Modules/credentials/CredentialData.idl
-    Modules/credentials/CredentialRequestOptions.idl
-    Modules/credentials/CredentialUserData.idl
-    Modules/credentials/CredentialsContainer.idl
-    Modules/credentials/FederatedCredential.idl
-    Modules/credentials/FederatedCredentialInit.idl
-    Modules/credentials/FederatedCredentialRequestOptions.idl
-    Modules/credentials/NavigatorCredentials.idl
-    Modules/credentials/PasswordCredential.idl
-    Modules/credentials/PasswordCredentialData.idl
+    Modules/credentialmanagement/BasicCredential.idl
+    Modules/credentialmanagement/CredentialCreationOptions.idl
+    Modules/credentialmanagement/CredentialRequestOptions.idl
+    Modules/credentialmanagement/CredentialsContainer.idl
+    Modules/credentialmanagement/NavigatorCredentials.idl
 
     Modules/entriesapi/DOMFileSystem.idl
     Modules/entriesapi/ErrorCallback.idl
@@ -271,6 +268,19 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/indexeddb/IDBTransactionMode.idl
     Modules/indexeddb/IDBVersionChangeEvent.idl
     Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.idl
+
+    Modules/mediacapabilities/AudioConfiguration.idl
+    Modules/mediacapabilities/MediaCapabilities.idl
+    Modules/mediacapabilities/MediaCapabilitiesInfo.idl
+    Modules/mediacapabilities/MediaConfiguration.idl
+    Modules/mediacapabilities/MediaDecodingConfiguration.idl
+    Modules/mediacapabilities/MediaDecodingType.idl
+    Modules/mediacapabilities/MediaEncodingConfiguration.idl
+    Modules/mediacapabilities/MediaEncodingType.idl
+    Modules/mediacapabilities/NavigatorMediaCapabilities.idl
+    Modules/mediacapabilities/ScreenColorGamut.idl
+    Modules/mediacapabilities/ScreenLuminance.idl
+    Modules/mediacapabilities/VideoConfiguration.idl
 
     Modules/mediacontrols/MediaControlsHost.idl
 
@@ -395,6 +405,8 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/webaudio/ScriptProcessorNode.idl
     Modules/webaudio/WaveShaperNode.idl
 
+    Modules/webauthn/PublicKeyCredential.idl
+
     Modules/webdatabase/DOMWindowWebDatabase.idl
     Modules/webdatabase/Database.idl
     Modules/webdatabase/DatabaseCallback.idl
@@ -431,11 +443,18 @@ set(WebCore_NON_SVG_IDL_FILES
     animation/Animatable.idl
     animation/AnimationEffect.idl
     animation/AnimationEffectTiming.idl
+    animation/AnimationEffectTimingProperties.idl
     animation/AnimationPlaybackEvent.idl
     animation/AnimationPlaybackEventInit.idl
     animation/AnimationTimeline.idl
+    animation/CompositeOperation.idl
     animation/DocumentTimeline.idl
+    animation/FillMode.idl
+    animation/IterationCompositeOperation.idl
+    animation/KeyframeAnimationOptions.idl
     animation/KeyframeEffect.idl
+    animation/KeyframeEffectOptions.idl
+    animation/PlaybackDirection.idl
     animation/WebAnimation.idl
 
     crypto/CryptoAlgorithmParameters.idl
@@ -1537,6 +1556,7 @@ set(WebCoreTestSupport_IDL_FILES
     testing/MockCDMFactory.idl
     testing/MockContentFilterSettings.idl
     testing/MockPageOverlay.idl
+    testing/ServiceWorkerInternals.idl
     testing/TypeConversions.idl
 )
 
@@ -1556,7 +1576,7 @@ list(APPEND WebCoreTestSupport_SOURCES
     testing/MockGamepadProvider.cpp
     testing/MockPageOverlay.cpp
     testing/MockPageOverlayClient.cpp
-
+    testing/ServiceWorkerInternals.cpp
     testing/js/WebCoreTestSupport.cpp
 )
 
@@ -2004,7 +2024,7 @@ endif ()
 
 target_link_libraries(WebCore ${WebCore_LIBRARIES})
 
-if (SHARED_CORE)
+if (${WebCore_LIBRARY_TYPE} MATCHES "SHARED")
     set_target_properties(WebCore PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${PROJECT_VERSION_MAJOR})
     install(TARGETS WebCore DESTINATION "${LIB_INSTALL_DIR}")
 endif ()

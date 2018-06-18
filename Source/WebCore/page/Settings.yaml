@@ -579,7 +579,7 @@ allowMediaContentTypesRequiringHardwareSupportAsFallback:
   initial: false
 
 storageAccessAPIEnabled:
-  initial: false
+  initial: true
 
 timeWithoutMouseMovementBeforeHidingControls:
   type: Seconds
@@ -661,8 +661,8 @@ storageBlockingPolicy:
   initial: SecurityOrigin::AllowAllStorage
   onChange: storageBlockingPolicyChanged
 
-shouldDisallowUserInstalledFonts:
-  initial: false
+shouldAllowUserInstalledFonts:
+  initial: true
   onChange: setNeedsRecalcStyleInAllFrames
 
 # Only set by Layout Tests.
@@ -700,3 +700,6 @@ touchEventEmulationEnabled:
   initial: false
   getter: isTouchEventEmulationEnabled
   conditional: TOUCH_EVENTS
+
+mediaCapabilitiesEnabled:
+  initial: false

@@ -50,6 +50,8 @@
 #include "JSGlobalObject.h"
 #include "JSLock.h"
 #include "JSVirtualMachineInternal.h"
+#include "JSWeakMap.h"
+#include "JSWeakSet.h"
 #include "JSWebAssemblyCodeBlock.h"
 #include "MachineStackMarker.h"
 #include "MarkStackMergingConstraint.h"
@@ -72,6 +74,7 @@
 #include "VM.h"
 #include "VisitCounter.h"
 #include "WasmMemory.h"
+#include "WeakMapImplInlines.h"
 #include "WeakSetInlines.h"
 #include <algorithm>
 #if PLATFORM(IOS)
@@ -563,10 +566,21 @@ void Heap::finalizeUnconditionalFinalizers(CellSet& cellSet)
         });
 }
 
+template<typename CellType>
+void Heap::finalizeUnconditionalFinalizersInIsoSubspace()
+{
+    JSC::subspaceFor<CellType>(*vm())->forEachMarkedCell(
+        [&] (HeapCell* cell, HeapCell::Kind) {
+            static_cast<CellType*>(cell)->finalizeUnconditionally(*vm());
+        });
+}
+
 void Heap::finalizeUnconditionalFinalizers()
 {
     finalizeUnconditionalFinalizers<InferredType>(vm()->inferredTypesWithFinalizers);
     finalizeUnconditionalFinalizers<InferredValue>(vm()->inferredValuesWithFinalizers);
+    finalizeUnconditionalFinalizersInIsoSubspace<JSWeakSet>();
+    finalizeUnconditionalFinalizersInIsoSubspace<JSWeakMap>();
     
     while (m_unconditionalFinalizers.hasNext()) {
         UnconditionalFinalizer* finalizer = m_unconditionalFinalizers.removeNext();
@@ -2654,7 +2668,6 @@ void Heap::addCoreConstraints()
         "Sh", "Strong Handles",
         [this] (SlotVisitor& slotVisitor) {
             m_handleSet.visitStrongHandles(slotVisitor);
-            m_handleStack.visit(slotVisitor);
         },
         ConstraintVolatility::GreyedByExecution);
     

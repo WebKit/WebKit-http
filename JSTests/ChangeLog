@@ -1,3 +1,266 @@
+2018-01-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Disable SharedArrayBuffer tests missed in r226386.
+        https://bugs.webkit.org/show_bug.cgi?id=181266
+
+        Unreviewed test gardening.
+
+        * test262.yaml:
+
+2018-01-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Object.getOwnPropertyNames includes "arguments" and "caller" for bound functions
+        https://bugs.webkit.org/show_bug.cgi?id=181321
+
+        Reviewed by Saam Barati.
+
+        * stress/bound-function-does-not-have-caller-and-arguments.js: Added.
+        (shouldBe):
+        (testFunction):
+        * test262.yaml:
+
+2018-01-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, attempt to fix test262 after r226386.
+
+        * test262.yaml:
+
+2018-01-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Define defs for MapSet/SetAdd to participate in CSE
+        https://bugs.webkit.org/show_bug.cgi?id=179911
+
+        Reviewed by Saam Barati.
+
+        In addition to these tests, map-set-cse.js and set-add-cse.js work.
+
+        * stress/map-set-change-get.js: Added.
+        (shouldBe):
+        (test):
+        * stress/map-set-create-bucket.js: Added.
+        (shouldBe):
+        (test):
+        * stress/set-add-create-bucket.js: Added.
+        (shouldBe):
+
+2018-01-03  Michael Saboff  <msaboff@apple.com>
+
+        Disable SharedArrayBuffers from Web API
+        https://bugs.webkit.org/show_bug.cgi?id=181266
+
+        Reviewed by Saam Barati.
+
+        Disabled SharedArrayBuffer tests.
+
+        * stress/SharedArrayBuffer-opt.js:
+        * stress/SharedArrayBuffer.js:
+        * stress/array-buffer-byte-length.js:
+        * stress/atomics-add-uint32.js:
+        * stress/atomics-known-int-use.js:
+        * stress/atomics-neg-zero.js:
+        * stress/atomics-store-return.js:
+        * stress/lars-sab-workers.js:
+        * stress/regress-159779-1.js:
+        * stress/regress-159779-2.js:
+        * stress/regress-170473.js:
+        * test262.yaml:
+
+2018-01-03  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Failing test stress/big-int-constructor-oom.js into MIPS
+        https://bugs.webkit.org/show_bug.cgi?id=181258
+
+        Reviewed by Antonio Gomes.
+
+        * stress/big-int-constructor-gc.js:
+        * stress/big-int-constructor-oom.js:
+
+2018-01-03  Robin Morisset  <rmorisset@apple.com>
+
+        Inlining of a function that ends in op_unreachable crashes
+        https://bugs.webkit.org/show_bug.cgi?id=181027
+
+        Reviewed by Filip Pizlo.
+
+        * stress/inlining-unreachable.js: Added.
+        (bar):
+        (baz):
+        (i.catch):
+
+2018-01-02  Saam Barati  <sbarati@apple.com>
+
+        Incorrect assertion inside AccessCase
+        https://bugs.webkit.org/show_bug.cgi?id=181200
+        <rdar://problem/35494754>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/setter-same-base-and-rhs-invalid-assertion-inside-access-case.js: Added.
+        (ctor):
+        (theFunc):
+        (run):
+
+2018-01-02  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Implement BigIntConstructor and BigIntPrototype
+        https://bugs.webkit.org/show_bug.cgi?id=175359
+
+        Reviewed by Yusuke Suzuki.
+
+        * bigIntTests.yaml:
+        * stress/big-int-as-key.js: Added.
+        * stress/big-int-constructor-gc.js: Added.
+        * stress/big-int-constructor-oom.js: Added.
+        * stress/big-int-constructor-properties.js: Added.
+        * stress/big-int-constructor-prototype-prop-descriptor.js: Added.
+        * stress/big-int-constructor-prototype.js: Added.
+        * stress/big-int-constructor.js: Added.
+        * stress/big-int-function-apply.js:
+        * stress/big-int-length.js: Added.
+        * stress/big-int-prop-descriptor.js: Added.
+        * stress/big-int-proto-constructor.js: Added.
+        * stress/big-int-proto-name.js: Added.
+        * stress/big-int-prototype-properties.js: Added.
+        * stress/big-int-prototype-proto.js: Added.
+        * stress/big-int-prototype-value-of.js: Added.
+        * stress/big-int-prototype-symbol-to-string-tag.js: Added.
+        * stress/big-int-prototype-to-string-apply.js: Added.
+        * stress/big-int-to-object.js: Added.
+        * stress/big-int-to-string.js: Added.
+
+2017-12-28  Saam Barati  <sbarati@apple.com>
+
+        Assertion used to determine if something is an async generator is wrong
+        https://bugs.webkit.org/show_bug.cgi?id=181168
+        <rdar://problem/35640560>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/async-generator-assertion.js: Added.
+
+2017-12-21  Guillaume Emont  <guijemont@igalia.com>
+
+        Skip stress/splay-flash-access tests on memory limited platforms
+        https://bugs.webkit.org/show_bug.cgi?id=181086
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        These tests use about 185M of memory, and occasionally get OOM-killed
+        on memory limited platforms.
+
+        * stress/splay-flash-access-1ms.js:
+        * stress/splay-flash-access.js:
+
+2017-12-21  Guillaume Emont  <guijemont@igalia.com>
+
+        Skip slow jsc tests on embedded platforms
+        https://bugs.webkit.org/show_bug.cgi?id=180937
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        The tests typeProfiler/deltablue-for-of.js and
+        typeProfiler/getter-richards.js take a very long time in the
+        ftl-no-cjit-type-profiler-force-poly-proto on embedded platform, and
+        thus always timeout. They should be skipped on these platforms.
+
+        * typeProfiler/deltablue-for-of.js: Skip on arm*/mips.
+        * typeProfiler/getter-richards.js: Skip on arm*/mips.
+
+2017-12-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Do not check isValid() in op_new_regexp
+        https://bugs.webkit.org/show_bug.cgi?id=180970
+
+        Reviewed by Saam Barati.
+
+        * stress/regexp-syntax-error-invalid-flags.js: Added.
+        (shouldThrow):
+
+2017-12-18  Guillaume Emont  <guijemont@igalia.com>
+
+        Skip stress/call-apply-exponential-bytecode-size.js unless x86-64 or arm64
+        https://bugs.webkit.org/show_bug.cgi?id=180712
+
+        Reviewed by Michael Catanzaro.
+
+        stress/call-apply-exponential-bytecode-size.js crashes if the
+        ExecutableAllocator's fixedExecutableMemoryPoolSize is less than 64
+        MB. Currently it is 64 MB or more only on x86-64 and arm64, so we
+        should skip the test on other platforms.
+
+        * stress/call-apply-exponential-bytecode-size.js:
+
+2017-12-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [FTL] NewArrayBuffer should be sinked if it is only used for spreading
+        https://bugs.webkit.org/show_bug.cgi?id=179762
+
+        Reviewed by Saam Barati.
+
+        * stress/call-varargs-double-new-array-buffer.js: Added.
+        (assert):
+        (bar):
+        (foo):
+        * stress/call-varargs-spread-new-array-buffer.js: Added.
+        (assert):
+        (bar):
+        (foo):
+        * stress/call-varargs-spread-new-array-buffer2.js: Added.
+        (assert):
+        (bar):
+        (foo):
+        * stress/forward-varargs-double-new-array-buffer.js: Added.
+        (assert):
+        (test.baz):
+        (test.bar):
+        (test.foo):
+        (test):
+        * stress/new-array-buffer-sinking-osrexit.js: Added.
+        (target):
+        (test):
+        * stress/new-array-with-spread-double-new-array-buffer.js: Added.
+        (shouldBe):
+        (test):
+        * stress/new-array-with-spread-with-phantom-new-array-buffer.js: Added.
+        (shouldBe):
+        (target):
+        (test):
+        * stress/phantom-new-array-buffer-forward-varargs.js: Added.
+        (assert):
+        (test1.bar):
+        (test1.foo):
+        (test1):
+        (test2.bar):
+        (test2.foo):
+        (test3.baz):
+        (test3.bar):
+        (test3.foo):
+        (test4.baz):
+        (test4.bar):
+        (test4.foo):
+        * stress/phantom-new-array-buffer-forward-varargs2.js: Added.
+        (assert):
+        (test.baz):
+        (test.bar):
+        (test.foo):
+        (test):
+        * stress/phantom-new-array-buffer-osr-exit.js: Added.
+        (assert):
+        (baz):
+        (bar):
+        (effects):
+        (foo):
+
+2017-12-14  Saam Barati  <sbarati@apple.com>
+
+        The CleanUp after LICM is erroneously removing a Check
+        https://bugs.webkit.org/show_bug.cgi?id=180852
+        <rdar://problem/36063494>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/dont-run-cleanup-after-licm.js: Added.
+
 2017-12-14  Michael Saboff  <msaboff@apple.com>
 
         REGRESSION (r225695): Repro crash on yahoo login page

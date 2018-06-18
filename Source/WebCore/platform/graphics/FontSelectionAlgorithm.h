@@ -30,6 +30,7 @@
 #include <tuple>
 #include <wtf/Hasher.h>
 #include <wtf/Optional.h>
+#include <wtf/StdLibExtras.h>
 
 namespace WebCore {
 
@@ -102,7 +103,7 @@ constexpr FontSelectionValue FontSelectionValue::minimumValue()
 
 constexpr FontSelectionValue FontSelectionValue::clampFloat(float value)
 {
-    return FontSelectionValue { std::max<float>(minimumValue(), std::min<float>(value, maximumValue())) };
+    return FontSelectionValue { WTF::max<float>(minimumValue(), WTF::min<float>(value, maximumValue())) };
 }
 
 constexpr FontSelectionValue::FontSelectionValue(int rawValue, RawTag)

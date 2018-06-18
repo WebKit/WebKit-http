@@ -52,7 +52,6 @@ namespace WebCore {
     macro(DocumentTimeline) \
     macro(ExtendableEvent) \
     macro(ExtendableMessageEvent) \
-    macro(FederatedCredential) \
     macro(FetchEvent) \
     macro(FileSystem) \
     macro(FileSystemDirectoryEntry) \
@@ -83,6 +82,8 @@ namespace WebCore {
     macro(IntersectionObserver) \
     macro(IntersectionObserverEntry) \
     macro(KeyframeEffect) \
+    macro(MediaCapabilities) \
+    macro(MediaCapabilitiesInfo) \
     macro(MediaEncryptedEvent) \
     macro(MediaKeyMessageEvent) \
     macro(MediaKeySession) \
@@ -99,7 +100,6 @@ namespace WebCore {
     macro(NavigatorUserMedia) \
     macro(OffscreenCanvas) \
     macro(OffscreenCanvasRenderingContext2D) \
-    macro(PasswordCredential) \
     macro(PaymentAddress) \
     macro(PaymentRequest) \
     macro(PaymentRequestUpdateEvent) \
@@ -111,6 +111,7 @@ namespace WebCore {
     macro(PerformanceObserver) \
     macro(PerformanceObserverEntryList) \
     macro(PerformanceResourceTiming) \
+    macro(PublicKeyCredential) \
     macro(RTCDTMFSender) \
     macro(RTCDTMFToneChangeEvent) \
     macro(RTCDataChannel) \
@@ -132,6 +133,7 @@ namespace WebCore {
     macro(ReadableStreamDefaultReader) \
     macro(Request) \
     macro(Response) \
+    macro(ScreenLuminance) \
     macro(ServiceWorker) \
     macro(ServiceWorkerContainer) \
     macro(ServiceWorkerGlobalScope) \

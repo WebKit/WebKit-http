@@ -153,6 +153,7 @@ struct CompositionUnderline;
 struct DictationAlternative;
 struct Highlight;
 struct KeypressCommand;
+struct PromisedBlobInfo;
 struct TextCheckingResult;
 struct ViewportArguments;
 
@@ -210,7 +211,6 @@ class WebUserContentController;
 class VideoFullscreenManager;
 class WebWheelEvent;
 class WebTouchEvent;
-class WebsitePolicies;
 class RemoteLayerTreeTransaction;
 
 struct AssistedNodeInformation;
@@ -224,6 +224,7 @@ struct PrintInfo;
 struct WebPageCreationParameters;
 struct WebPreferencesStore;
 struct WebSelectionData;
+struct WebsitePoliciesData;
 
 enum class DragControllerAction;
 enum FindOptions : uint16_t;
@@ -605,6 +606,8 @@ public:
     void getRectsForGranularityWithSelectionOffset(uint32_t, int32_t, CallbackID);
     void getRectsAtSelectionOffsetWithText(int32_t, const String&, CallbackID);
     void storeSelectionForAccessibility(bool);
+    void startAutoscrollAtPosition(const WebCore::FloatPoint&);
+    void cancelAutoscroll();
 
     void contentSizeCategoryDidChange(const String&);
 
@@ -775,6 +778,8 @@ public:
     void willStartDrag() { ASSERT(!m_isStartingDrag); m_isStartingDrag = true; }
     void didStartDrag();
     void dragCancelled();
+
+    void prepareToDragPromisedBlob(const WebCore::PromisedBlobInfo&);
 #endif
 
     void beginPrinting(uint64_t frameID, const PrintInfo&);
@@ -913,6 +918,12 @@ public:
 
     bool mainFrameIsScrollable() const { return m_mainFrameIsScrollable; }
 
+    void setAlwaysShowsHorizontalScroller(bool);
+    void setAlwaysShowsVerticalScroller(bool);
+
+    bool alwaysShowsHorizontalScroller() const { return m_alwaysShowsHorizontalScroller; };
+    bool alwaysShowsVerticalScroller() const { return m_alwaysShowsVerticalScroller; };
+
     void setMinimumLayoutSize(const WebCore::IntSize&);
     WebCore::IntSize minimumLayoutSize() const { return m_minimumLayoutSize; }
 
@@ -994,7 +1005,7 @@ public:
     void insertNewlineInQuotedContent();
 
 #if USE(OS_STATE)
-    std::chrono::system_clock::time_point loadCommitTime() const { return m_loadCommitTime; }
+    WallTime loadCommitTime() const { return m_loadCommitTime; }
 #endif
 
 #if ENABLE(GAMEPAD)
@@ -1024,13 +1035,15 @@ public:
     void sendPartialEditorStateAndSchedulePostLayoutUpdate();
     void flushPendingEditorStateUpdate();
 
-    void hasStorageAccess(String&& subFrameHost, String&& topFrameHost, WTF::CompletionHandler<void (bool)>&& callback);
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    void hasStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t pageID, WTF::CompletionHandler<void (bool)>&& callback);
     void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t pageID, WTF::CompletionHandler<void (bool)>&& callback);
     void storageAccessResponse(bool wasGranted, uint64_t contextId);
+#endif
 
 #if ENABLE(ATTACHMENT_ELEMENT)
     void insertAttachment(const String& identifier, const WebCore::AttachmentDisplayOptions&, const String& filename, std::optional<String> contentType, const IPC::DataReference&, CallbackID);
-    void requestAttachmentData(const String& identifier, CallbackID);
+    void requestAttachmentInfo(const String& identifier, CallbackID);
     void setAttachmentDisplayOptions(const String& identifier, const WebCore::AttachmentDisplayOptions&, CallbackID);
     void setAttachmentDataAndContentType(const String& identifier, const IPC::DataReference&, std::optional<String> newContentType, std::optional<String> newFilename, CallbackID);
 #endif
@@ -1153,8 +1166,6 @@ private:
     void restoreSession(const Vector<BackForwardListItemState>&);
     void didRemoveBackForwardItem(uint64_t);
 
-    void invokeSharedBufferCallback(RefPtr<WebCore::SharedBuffer>&&, CallbackID);
-
 #if ENABLE(REMOTE_INSPECTOR)
     void setAllowsRemoteInspection(bool);
     void setRemoteInspectionNameOverride(const String&);
@@ -1189,7 +1200,7 @@ private:
     void updatePreferences(const WebPreferencesStore&);
     void updatePreferencesGenerated(const WebPreferencesStore&);
 
-    void didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, WebCore::PolicyAction, uint64_t navigationID, const DownloadID&, std::optional<WebsitePolicies>&&);
+    void didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, WebCore::PolicyAction, uint64_t navigationID, const DownloadID&, std::optional<WebsitePoliciesData>&&);
     void continueWillSubmitForm(uint64_t frameID, uint64_t listenerID);
     void setUserAgent(const String&);
     void setCustomTextEncodingName(const String&);
@@ -1298,7 +1309,7 @@ private:
 
     void reportUsedFeatures();
 
-    void updateWebsitePolicies(WebsitePolicies&&);
+    void updateWebsitePolicies(WebsitePoliciesData&&);
 
 #if PLATFORM(MAC)
     void performImmediateActionHitTestAtLocation(WebCore::FloatPoint);
@@ -1395,6 +1406,9 @@ private:
     bool m_artificialPluginInitializationDelayEnabled { false };
     bool m_scrollingPerformanceLoggingEnabled { false };
     bool m_mainFrameIsScrollable { true };
+
+    bool m_alwaysShowsHorizontalScroller { false };
+    bool m_alwaysShowsVerticalScroller { false };
 
 #if PLATFORM(IOS)
     bool m_ignoreViewportScalingConstraints { false };
@@ -1551,6 +1565,7 @@ private:
     bool m_hasEverFocusedElementDueToUserInteractionSincePageTransition { false };
     bool m_needsHiddenContentEditableQuirk { false };
     bool m_needsPlainTextQuirk { false };
+    bool m_changingActivityState { false };
 
 #if ENABLE(CONTEXT_MENUS)
     bool m_isShowingContextMenu { false };
@@ -1642,7 +1657,7 @@ private:
 #endif
 
 #if USE(OS_STATE)
-    std::chrono::system_clock::time_point m_loadCommitTime;
+    WallTime m_loadCommitTime;
 #endif
 
     WebCore::UserInterfaceLayoutDirection m_userInterfaceLayoutDirection { WebCore::UserInterfaceLayoutDirection::LTR };

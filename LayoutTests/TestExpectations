@@ -22,9 +22,6 @@ fast/visual-viewport/tiled-drawing [ Skip ]
 swipe [ Skip ]
 fast/zooming/ios [ Skip ]
 fast/forms/ios [ Skip ]
-fast/forms/alternative-presentation-button [ Skip ]
-accessibility/alternative-presentation-button-input-type.html [ Skip ]
-accessibility/alternative-presentation-button.html [ Skip ]
 fast/viewport/ios [ Skip ]
 fast/visual-viewport/ios/ [ Skip ]
 fast/events/ios [ Skip ]
@@ -143,51 +140,51 @@ imported/w3c/web-platform-tests/secure-contexts/basic-shared-worker.https.html [
 imported/w3c/web-platform-tests/secure-contexts/shared-worker-insecure-first.https.html [ Skip ]
 imported/w3c/web-platform-tests/secure-contexts/shared-worker-secure-first.https.html [ Skip ]
 
+# This test seems wrong as it call update() for a script that does not change and expected an updatefound event.
+# Per specification, if the scripts are identical, we do not install the new script and return the existing registration.
+imported/w3c/web-platform-tests/service-workers/service-worker/import-scripts-redirect.https.html [ Skip ]
+
 # Skip service worker tests that are timing out.
 imported/w3c/web-platform-tests/fetch/api/abort/general-serviceworker.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/extendable-event-waituntil.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-event-respond-with-partial-stream.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/http-to-https-redirect-and-register.https.html [ Skip ]
-imported/w3c/web-platform-tests/service-workers/service-worker/navigation-preload/broken-chunked-encoding.https.html [ Skip ]
-imported/w3c/web-platform-tests/service-workers/service-worker/navigation-preload/chunked-encoding.https.html [ Skip ]
-imported/w3c/web-platform-tests/service-workers/service-worker/navigation-preload/get-state.https.html [ Skip ]
-imported/w3c/web-platform-tests/service-workers/service-worker/navigation-preload/redirect.https.html [ Skip ]
-imported/w3c/web-platform-tests/service-workers/service-worker/navigation-preload/request-headers.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/navigation-redirect.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/postmessage.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/postmessage-msgport-to-client.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/respond-with-body-accessed-response.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/sandboxed-iframe-fetch-event.https.html [ Skip ]
-imported/w3c/web-platform-tests/service-workers/service-worker/update-after-navigation-fetch-event.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/update-after-oneday.https.html [ Skip ]
+imported/w3c/web-platform-tests/service-workers/service-worker/update-bytecheck.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/update-recovery.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/client-navigate.https.html [ Skip ]
 
+# Unsupported features: SharedWorker, NavigationPreload
+imported/w3c/web-platform-tests/service-workers/service-worker/navigation-preload [ Skip ]
+imported/w3c/web-platform-tests/service-workers/service-worker/shared-worker-controlled.https.html [ Skip ]
+imported/w3c/web-platform-tests/service-workers/service-worker/claim-shared-worker-fetch.https.html [ Skip ]
+
 webkit.org/b/179342 http/tests/workers/service/registration-task-queue-scheduling-1.html [ Pass Failure ]
-http/tests/workers/service/service-worker-cache-api.https.html [ Pass Failure ]
 imported/w3c/web-platform-tests/service-workers/service-worker/about-blank-replacement.https.html [ Pass Failure ]
-webkit.org/b/179137 imported/w3c/web-platform-tests/service-workers/cache-storage/serviceworker/cache-match.https.html [ Pass Failure ]
+imported/w3c/web-platform-tests/service-workers/service-worker/fetch-canvas-tainting-cache.https.html [ DumpJSConsoleLogInStdErr Pass Failure ]
 webkit.org/b/179248 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-event-within-sw.https.html [ Pass Failure ]
 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-event-respond-with-response-body-with-invalid-chunk.https.html [ Pass Failure ]
 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-request-redirect.https.html [ Pass Failure Timeout ]
-imported/w3c/web-platform-tests/service-workers/service-worker/fetch-request-xhr.https.html [ Pass Failure ]
 imported/w3c/web-platform-tests/service-workers/service-worker/multiple-update.https.html [ Pass Failure ]
 imported/w3c/web-platform-tests/service-workers/service-worker/performance-timeline.https.html [ Pass Failure ]
 imported/w3c/web-platform-tests/service-workers/service-worker/registration-service-worker-attributes.https.html [ Pass Failure ]
-webkit.org/b/179138 imported/w3c/web-platform-tests/service-workers/service-worker/registration-updateviacache.https.html [ Pass Failure ]
 imported/w3c/web-platform-tests/service-workers/service-worker/service-worker-csp-connect.https.html [ Pass Failure ]
 imported/w3c/web-platform-tests/service-workers/service-worker/uncontrolled-page.https.html [ Pass Failure ]
-imported/w3c/web-platform-tests/service-workers/service-worker/update-bytecheck.https.html [ Pass Failure ]
-imported/w3c/web-platform-tests/service-workers/service-worker/unregister-controller.https.html [ Pass Failure ]
 imported/w3c/web-platform-tests/service-workers/service-worker/websocket.https.html [ Pass Failure ]
 imported/w3c/web-platform-tests/service-workers/service-worker/windowclient-navigate.https.html [ Pass Failure ]
 imported/w3c/web-platform-tests/streams/readable-byte-streams/detached-buffers.serviceworker.https.html [ Pass Failure ]
-imported/w3c/web-platform-tests/service-workers/service-worker/fetch-canvas-tainting.https.html [ DumpJSConsoleLogInStdErr Pass Failure ]
-imported/w3c/web-platform-tests/service-workers/service-worker/fetch-canvas-tainting-cache.https.html [ DumpJSConsoleLogInStdErr Pass Failure ]
-imported/w3c/web-platform-tests/service-workers/service-worker/fetch-cors-xhr.https.html [ DumpJSConsoleLogInStdErr Pass Failure ]
 imported/w3c/web-platform-tests/service-workers/service-worker/update.https.html [ Pass Failure ]
 
+imported/w3c/web-platform-tests/service-workers/service-worker/fetch-cors-xhr.https.html [ DumpJSConsoleLogInStdErr ]
+imported/w3c/web-platform-tests/service-workers/service-worker/fetch-canvas-tainting.https.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-response-taint.https.html [ DumpJSConsoleLogInStdErr ]
+[ Debug ] imported/w3c/web-platform-tests/service-workers/service-worker/getregistrations.https.html [ Slow ]
+[ Debug ] imported/w3c/web-platform-tests/service-workers/service-worker/interfaces-sw.https.html [ Slow ]
 
 # Skip workers tests that are timing out or are SharedWorker related only
 imported/w3c/web-platform-tests/workers/constructors/Worker/same-origin.html [ Skip ]
@@ -204,6 +201,8 @@ imported/w3c/web-platform-tests/workers/Worker_cross_origin_security_err.htm [ S
 
 imported/w3c/web-platform-tests/workers/constructors/SharedWorker [ Skip ]
 imported/w3c/web-platform-tests/workers/SharedWorker_blobUrl.html [ Skip ]
+
+imported/w3c/web-platform-tests/fetch/api/redirect/redirect-mode.html [ DumpJSConsoleLogInStdErr ]
 
 # textarea.animate is not supported
 imported/w3c/web-platform-tests/css/css-ui-3/caret-color-018.html [ Skip ]
@@ -222,6 +221,7 @@ http/tests/inspector/paymentrequest [ Skip ]
 imported/w3c/web-platform-tests/payment-request [ Skip ]
 
 imported/w3c/web-platform-tests/2dcontext/transformations/canvas_transformations_reset_001.html [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/XMLHttpRequest/xmlhttprequest-sync-default-feature-policy.sub.html [ Skip ]
 webkit.org/b/179607 imported/w3c/web-platform-tests/XMLHttpRequest/access-control-and-redirects-async.htm [ Pass Failure ]
 webkit.org/b/179607 imported/w3c/web-platform-tests/XMLHttpRequest/access-control-and-redirects-async-same-origin.htm [ Pass Failure ]
 webkit.org/b/179608 imported/w3c/web-platform-tests/XMLHttpRequest/access-control-preflight-async-header-denied.htm [ Failure ]
@@ -346,6 +346,9 @@ webkit.org/b/53990 fast/forms/search-event-delay.html [ Pass Failure ]
 webkit.org/b/126142 css3/calc/transitions-dependent.html [ Pass Failure ]
 
 webkit.org/b/124932 media/video-size.html [ Pass Failure ]
+
+webkit.org/b/180430 media/encrypted-media/clearKey/clearKey-encrypted-cenc-event.html [ Skip ]
+webkit.org/b/180430 media/encrypted-media/clearKey/clearKey-encrypted-cenc-event-mse.html [ Skip ]
 
 webkit.org/b/126166 [ Debug ] js/dfg-int32array.html [ Skip ]
 webkit.org/b/126166 [ Debug ] js/dfg-uint16array.html [ Skip ]
@@ -1252,6 +1255,20 @@ webkit.org/b/159370 [ Debug ] fast/history/page-cache-destroy-document.html [ Sk
 # This test is just way too slow.
 workers/bomb-with-v8.html [ Skip ]
 
+# Disable the SharedArrayBuffers tests
+imported/blink/fast/beacon/beacon-basic.html [ Skip ]
+imported/w3c/web-platform-tests/html/webappapis/scripting/processing-model-2/integration-with-the-javascript-agent-formalism/canblock-dedicatedworker.html [ Skip ]
+imported/w3c/web-platform-tests/html/webappapis/scripting/processing-model-2/integration-with-the-javascript-agent-formalism/canblock-serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/html/webappapis/scripting/processing-model-2/integration-with-the-javascript-agent-formalism/canblock-window.html [ Skip ]
+js/shared-array-buffer-webgl.html [ Skip ]
+workers/sab/cascade_lock.html [ Skip ]
+workers/sab/multi-memory-multi-buffer.html [ Skip ]
+workers/sab/multi-memory.html [ Skip ]
+workers/sab/no-transfer.html [ Skip ]
+workers/sab/postMessage-clones.html [ Skip ]
+workers/sab/postMessage-transfer-type-error.html [ Skip ]
+workers/sab/sent-from-worker-no-transfer.html [ Skip ]
+
 # These tests are slow by design.
 workers/wasm-hashset-many.html [ Slow ]
 workers/wasm-hashset-many-2.html [ Slow ]
@@ -1387,7 +1404,6 @@ webkit.org/b/168175 imported/w3c/web-platform-tests/html/semantics/grouping-cont
 webkit.org/b/168175 imported/w3c/web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-reftest-list-owner-menu.html [ ImageOnlyFailure ]
 webkit.org/b/168175 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/history-traversal/same-url.html [ Pass Failure ]
 webkit.org/b/168175 imported/w3c/web-platform-tests/html/browsers/offline/browser-state/navigator_online_online.html [ Pass Failure ]
-webkit.org/b/169264 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/history-traversal/persisted-user-state-restoration/scroll-restoration-navigation-samedoc.html [ Failure ]
 
 imported/w3c/web-platform-tests/cssom/MediaList.html [ Failure ]
 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/document-adopt-base-url.html [ ImageOnlyFailure ]
@@ -1638,14 +1654,26 @@ webkit.org/b/177997 webgl/1.0.2/conformance/textures/copy-tex-image-2d-formats.h
 
 webkit.org/b/179069 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-iframe-element/sandbox_032.htm [ Pass Failure ]
 
+webkit.org/b/181119 http/wpt/web-animations/interfaces/Animatable/animate-no-browsing-context.html [ Pass Failure ]
+webkit.org/b/181123 http/wpt/web-animations/interfaces/Animation/finish.html [ Pass Failure ]
+webkit.org/b/181116 http/wpt/web-animations/interfaces/Animation/finished.html [ Crash Failure ]
+webkit.org/b/181120 http/wpt/web-animations/interfaces/Animation/onfinish.html [ Pass Failure ]
+webkit.org/b/179287 http/wpt/web-animations/interfaces/Animation/startTime.html [ Pass Failure ]
+webkit.org/b/181122 http/wpt/web-animations/interfaces/AnimationEffectTiming/endDelay.html [ Pass Failure ]
 webkit.org/b/179287 http/wpt/web-animations/interfaces/AnimationTimeline/document-timeline.html [ Pass Failure ]
 webkit.org/b/179287 http/wpt/web-animations/timing-model/animations/set-the-animation-start-time.html [ Pass Failure ]
-webkit.org/b/179287 http/wpt/web-animations/interfaces/Animation/startTime.html [ Pass Failure ]
+webkit.org/b/181121 http/wpt/web-animations/timing-model/animations/updating-the-finished-state.html [ Pass Failure ]
 
 webkit.org/b/177440 imported/w3c/web-platform-tests/html/browsers/origin/relaxing-the-same-origin-restriction/document_domain_setter_null.tentative.html [ Pass Failure ]
+
+webkit.org/b/157068 [ Debug ] imported/w3c/web-platform-tests/fetch/nosniff/importscripts.html [ Pass Crash ]
 
 # Application Manifest tests
 webkit.org/b/153152 http/tests/security/contentSecurityPolicy/manifest-src-allowed.html [ Skip ]
 webkit.org/b/153152 http/tests/security/contentSecurityPolicy/manifest-src-blocked.html [ Skip ]
 webkit.org/b/158205 applicationmanifest/ [ Skip ]
 
+webkit.org/b/178785 perf/object-keys.html [ Pass Failure ]
+
+# There is a bug in the test
+imported/w3c/web-platform-tests/workers/worker-performance.worker.html [ Pass Failure ]

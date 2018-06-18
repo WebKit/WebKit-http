@@ -31,6 +31,7 @@
 #include "DataReference.h"
 #include "WebSWClientConnection.h"
 #include "WebServiceWorkerProvider.h"
+#include <WebCore/CrossOriginAccessControl.h>
 #include <WebCore/MIMETypeRegistry.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/ResourceError.h>
@@ -62,14 +63,51 @@ ServiceWorkerClientFetch::ServiceWorkerClientFetch(WebServiceWorkerProvider& ser
 
 void ServiceWorkerClientFetch::start()
 {
-    m_connection->startFetch(m_loader, m_loader->identifier());
+    auto request = m_loader->request();
+    auto& options = m_loader->options();
+
+    auto referrer = request.httpReferrer();
+
+    // We are intercepting fetch calls after going through the HTTP layer, which may add some specific headers.
+    cleanHTTPRequestHeadersForAccessControl(request, options.httpHeadersToKeep);
+
+    ASSERT(options.serviceWorkersMode != ServiceWorkersMode::None);
+    m_connection->startFetch(m_loader->identifier(), options.serviceWorkerIdentifier.value(), request, options, referrer);
+}
+
+// https://fetch.spec.whatwg.org/#http-fetch step 3.3
+std::optional<ResourceError> ServiceWorkerClientFetch::validateResponse(const ResourceResponse& response)
+{
+    // FIXME: make a better error reporting.
+    if (response.type() == ResourceResponse::Type::Error)
+        return ResourceError { ResourceError::Type::General };
+
+    auto& options = m_loader->options();
+    if (options.mode != FetchOptions::Mode::NoCors && response.tainting() == ResourceResponse::Tainting::Opaque)
+        return ResourceError { errorDomainWebKitInternal, 0, response.url(), ASCIILiteral("Response served by service worker is opaque"), ResourceError::Type::AccessControl };
+
+    // Navigate mode induces manual redirect.
+    if (options.redirect != FetchOptions::Redirect::Manual && options.mode != FetchOptions::Mode::Navigate && response.tainting() == ResourceResponse::Tainting::Opaqueredirect)
+        return ResourceError { errorDomainWebKitInternal, 0, response.url(), ASCIILiteral("Response served by service worker is opaque redirect"), ResourceError::Type::AccessControl };
+
+    if (options.redirect != FetchOptions::Redirect::Follow && response.isRedirected())
+        return ResourceError { errorDomainWebKitInternal, 0, response.url(), ASCIILiteral("Response served by service worker has redirections"), ResourceError::Type::AccessControl };
+
+    return std::nullopt;
 }
 
 void ServiceWorkerClientFetch::didReceiveResponse(ResourceResponse&& response)
 {
     auto protectedThis = makeRef(*this);
 
-    if (response.isRedirection() && response.tainting() != ResourceResponse::Tainting::Opaqueredirect) {
+    if (auto error = validateResponse(response)) {
+        m_loader->didFail(error.value());
+        if (auto callback = WTFMove(m_callback))
+            callback(Result::Succeeded);
+        return;
+    }
+
+    if (response.isRedirection()) {
         m_redirectionStatus = RedirectionStatus::Receiving;
         // FIXME: Get shouldClearReferrerOnHTTPSToHTTPRedirect value from
         m_loader->willSendRequest(m_loader->request().redirectedRequest(response, m_shouldClearReferrerOnHTTPSToHTTPRedirect), response, [protectedThis = makeRef(*this), this](ResourceRequest&& request) {
@@ -86,21 +124,16 @@ void ServiceWorkerClientFetch::didReceiveResponse(ResourceResponse&& response)
         return;
     }
 
-    if (response.type() == ResourceResponse::Type::Error) {
-        // Add support for a better error.
-        m_loader->didFail({ ResourceError::Type::General });
-        if (auto callback = WTFMove(m_callback))
-            callback(Result::Succeeded);
-        return;
-    }
-
     // In case of main resource and mime type is the default one, we set it to text/html to pass more service worker WPT tests.
     // FIXME: We should refine our MIME type sniffing strategy for synthetic responses.
     if (m_loader->originalRequest().requester() == ResourceRequest::Requester::Main) {
-        if (response.mimeType() == defaultMIMEType())
+        if (response.mimeType() == defaultMIMEType()) {
             response.setMimeType(ASCIILiteral("text/html"));
+            response.setTextEncodingName(ASCIILiteral("UTF-8"));
+        }
     }
     response.setSource(ResourceResponse::Source::ServiceWorker);
+
     m_loader->didReceiveResponse(response);
     if (auto callback = WTFMove(m_callback))
         callback(Result::Succeeded);

@@ -43,7 +43,7 @@ WorkerScriptLoader::WorkerScriptLoader() = default;
 
 WorkerScriptLoader::~WorkerScriptLoader() = default;
 
-void WorkerScriptLoader::loadSynchronously(ScriptExecutionContext* scriptExecutionContext, const URL& url, FetchOptions::Mode mode, ContentSecurityPolicyEnforcement contentSecurityPolicyEnforcement, const String& initiatorIdentifier)
+void WorkerScriptLoader::loadSynchronously(ScriptExecutionContext* scriptExecutionContext, const URL& url, FetchOptions::Mode mode, FetchOptions::Cache cachePolicy, ContentSecurityPolicyEnforcement contentSecurityPolicyEnforcement, const String& initiatorIdentifier)
 {
     ASSERT(scriptExecutionContext);
     auto& workerGlobalScope = downcast<WorkerGlobalScope>(*scriptExecutionContext);
@@ -62,6 +62,7 @@ void WorkerScriptLoader::loadSynchronously(ScriptExecutionContext* scriptExecuti
     ThreadableLoaderOptions options;
     options.credentials = FetchOptions::Credentials::Include;
     options.mode = mode;
+    options.cache = cachePolicy;
     options.sendLoadCallbacks = SendCallbacks;
     options.contentSecurityPolicyEnforcement = contentSecurityPolicyEnforcement;
 #if ENABLE(SERVICE_WORKER)
@@ -72,15 +73,14 @@ void WorkerScriptLoader::loadSynchronously(ScriptExecutionContext* scriptExecuti
     WorkerThreadableLoader::loadResourceSynchronously(workerGlobalScope, WTFMove(*request), *this, options);
 }
 
-void WorkerScriptLoader::loadAsynchronously(ScriptExecutionContext* scriptExecutionContext, const URL& url, FetchOptions::Mode mode, FetchOptions::Cache cachePolicy, ContentSecurityPolicyEnforcement contentSecurityPolicyEnforcement, const String& initiatorIdentifier, WorkerScriptLoaderClient* client)
+void WorkerScriptLoader::loadAsynchronously(ScriptExecutionContext& scriptExecutionContext, ResourceRequest&& scriptRequest, FetchOptions::Mode mode, FetchOptions::Cache cachePolicy, FetchOptions::Redirect redirectPolicy, ContentSecurityPolicyEnforcement contentSecurityPolicyEnforcement, WorkerScriptLoaderClient& client)
 {
-    ASSERT(client);
-    ASSERT(scriptExecutionContext);
+    m_client = &client;
+    m_url = scriptRequest.url();
 
-    m_client = client;
-    m_url = url;
+    ASSERT(scriptRequest.httpMethod() == "GET");
 
-    std::unique_ptr<ResourceRequest> request(createResourceRequest(initiatorIdentifier));
+    auto request = std::make_unique<ResourceRequest>(WTFMove(scriptRequest));
     if (!request)
         return;
 
@@ -92,16 +92,17 @@ void WorkerScriptLoader::loadAsynchronously(ScriptExecutionContext* scriptExecut
     options.credentials = FetchOptions::Credentials::SameOrigin;
     options.mode = mode;
     options.cache = cachePolicy;
+    options.redirect = redirectPolicy;
     options.sendLoadCallbacks = SendCallbacks;
     options.contentSecurityPolicyEnforcement = contentSecurityPolicyEnforcement;
 #if ENABLE(SERVICE_WORKER)
     options.serviceWorkersMode = m_client->isServiceWorkerClient() ? ServiceWorkersMode::None : ServiceWorkersMode::All;
-    if (auto* activeServiceWorker = scriptExecutionContext->activeServiceWorker())
+    if (auto* activeServiceWorker = scriptExecutionContext.activeServiceWorker())
         options.serviceWorkerIdentifier = activeServiceWorker->identifier();
 #endif
     // During create, callbacks may happen which remove the last reference to this object.
     Ref<WorkerScriptLoader> protectedThis(*this);
-    m_threadableLoader = ThreadableLoader::create(*scriptExecutionContext, *this, WTFMove(*request), options);
+    m_threadableLoader = ThreadableLoader::create(scriptExecutionContext, *this, WTFMove(*request), options);
 }
 
 const URL& WorkerScriptLoader::responseURL() const
@@ -131,6 +132,7 @@ void WorkerScriptLoader::didReceiveResponse(unsigned long identifier, const Reso
     }
 
     m_responseURL = response.url();
+    m_responseMIMEType = response.mimeType();
     m_responseEncoding = response.textEncodingName();
     if (m_client)
         m_client->didReceiveResponse(identifier, response);
@@ -180,6 +182,8 @@ void WorkerScriptLoader::didFail(const ResourceError& error)
 void WorkerScriptLoader::notifyError()
 {
     m_failed = true;
+    if (m_error.isNull())
+        m_error = ResourceError { errorDomainWebKitInternal, 0, url(), "Failed to load script", ResourceError::Type::General };
     notifyFinished();
 }
 
@@ -190,11 +194,22 @@ String WorkerScriptLoader::script()
 
 void WorkerScriptLoader::notifyFinished()
 {
+    m_threadableLoader = nullptr;
     if (!m_client || m_finishing)
         return;
 
     m_finishing = true;
     m_client->notifyFinished();
+}
+
+void WorkerScriptLoader::cancel()
+{
+    if (!m_threadableLoader)
+        return;
+
+    m_client = nullptr;
+    m_threadableLoader->cancel();
+    m_threadableLoader = nullptr;
 }
 
 } // namespace WebCore

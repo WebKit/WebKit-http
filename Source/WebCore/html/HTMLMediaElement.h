@@ -183,10 +183,12 @@ public:
     using HTMLMediaElementEnums::DelayedActionType;
     void scheduleDelayedAction(DelayedActionType);
     void scheduleResolvePendingPlayPromises();
-    void rejectPendingPlayPromises(DOMException&);
-    void resolvePendingPlayPromises();
+    void scheduleRejectPendingPlayPromises(Ref<DOMException>&&);
+    using PlayPromiseVector = Vector<DOMPromiseDeferred<void>>;
+    void rejectPendingPlayPromises(PlayPromiseVector&&, Ref<DOMException>&&);
+    void resolvePendingPlayPromises(PlayPromiseVector&&);
     void scheduleNotifyAboutPlaying();
-    void notifyAboutPlaying();
+    void notifyAboutPlaying(PlayPromiseVector&&);
     
     MediaPlayerEnums::MovieLoadType movieLoadType() const;
     
@@ -420,6 +422,7 @@ public:
     void enterFullscreen(VideoFullscreenMode);
     void enterFullscreen() override;
     WEBCORE_EXPORT void exitFullscreen();
+    WEBCORE_EXPORT void setVideoFullscreenStandby(bool);
 
     bool hasClosedCaptions() const override;
     bool closedCaptionsVisible() const override;
@@ -436,7 +439,7 @@ public:
     WEBCORE_EXPORT static void setMediaCacheDirectory(const String&);
     WEBCORE_EXPORT static const String& mediaCacheDirectory();
     WEBCORE_EXPORT static HashSet<RefPtr<SecurityOrigin>> originsInMediaCache(const String&);
-    WEBCORE_EXPORT static void clearMediaCache(const String&, std::chrono::system_clock::time_point modifiedSince = { });
+    WEBCORE_EXPORT static void clearMediaCache(const String&, WallTime modifiedSince = { });
     WEBCORE_EXPORT static void clearMediaCacheForOrigins(const String&, const HashSet<RefPtr<SecurityOrigin>>&);
     static void resetMediaEngines();
 
@@ -770,7 +773,7 @@ private:
 #endif
 
     // These "internal" functions do not check user gesture restrictions.
-    bool playInternal();
+    void playInternal();
     void pauseInternal();
 
     void prepareForLoad();
@@ -926,7 +929,7 @@ private:
     RefPtr<TimeRanges> m_playedTimeRanges;
     GenericEventQueue m_asyncEventQueue;
 
-    Vector<DOMPromiseDeferred<void>> m_pendingPlayPromises;
+    PlayPromiseVector m_pendingPlayPromises;
 
     double m_requestedPlaybackRate { 1 };
     double m_reportedPlaybackRate { 1 };
@@ -975,6 +978,7 @@ private:
     RefPtr<HTMLSourceElement> m_nextChildNodeToConsider;
 
     VideoFullscreenMode m_videoFullscreenMode { VideoFullscreenModeNone };
+    bool m_videoFullscreenStandby { false };
     bool m_preparedForInline;
     WTF::Function<void()> m_preparedForInlineCompletionHandler;
 

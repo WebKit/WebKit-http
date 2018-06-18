@@ -112,6 +112,21 @@ ServiceWorkerUpdateViaCache ServiceWorkerRegistration::updateViaCache() const
     return m_registrationData.updateViaCache;
 }
 
+WallTime ServiceWorkerRegistration::lastUpdateTime() const
+{
+    return m_registrationData.lastUpdateTime;
+}
+
+void ServiceWorkerRegistration::setLastUpdateTime(WallTime lastUpdateTime)
+{
+    m_registrationData.lastUpdateTime = lastUpdateTime;
+}
+
+void ServiceWorkerRegistration::setUpdateViaCache(ServiceWorkerUpdateViaCache updateViaCache)
+{
+    m_registrationData.updateViaCache = updateViaCache;
+}
+
 void ServiceWorkerRegistration::update(Ref<DeferredPromise>&& promise)
 {
     if (m_isStopped) {
@@ -127,6 +142,19 @@ void ServiceWorkerRegistration::update(Ref<DeferredPromise>&& promise)
 
     // FIXME: Support worker types.
     m_container->updateRegistration(m_registrationData.scopeURL, newestWorker->scriptURL(), WorkerType::Classic, WTFMove(promise));
+}
+
+void ServiceWorkerRegistration::softUpdate()
+{
+    if (m_isStopped)
+        return;
+
+    auto* newestWorker = getNewestWorker();
+    if (!newestWorker)
+        return;
+
+    // FIXME: Support worker types.
+    m_container->updateRegistration(m_registrationData.scopeURL, newestWorker->scriptURL(), WorkerType::Classic, nullptr);
 }
 
 void ServiceWorkerRegistration::unregister(Ref<DeferredPromise>&& promise)

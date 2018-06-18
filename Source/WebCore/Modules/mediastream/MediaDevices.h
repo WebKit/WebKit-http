@@ -60,11 +60,19 @@ public:
     using Promise = DOMPromiseDeferred<IDLInterface<MediaStream>>;
     using EnumerateDevicesPromise = DOMPromiseDeferred<IDLSequence<IDLInterface<MediaDeviceInfo>>>;
 
+    enum class DisplayCaptureSurfaceType {
+        Monitor,
+        Window,
+        Application,
+        Browser,
+    };
+
     struct StreamConstraints {
         Variant<bool, MediaTrackConstraints> video;
         Variant<bool, MediaTrackConstraints> audio;
     };
     ExceptionOr<void> getUserMedia(const StreamConstraints&, Promise&&) const;
+    ExceptionOr<void> getDisplayMedia(const StreamConstraints&, Promise&&) const;
     void enumerateDevices(EnumerateDevicesPromise&&) const;
     MediaTrackSupportedConstraints getSupportedConstraints();
 

@@ -78,6 +78,7 @@
 #import <WebKit/WebFrameView.h>
 #import <WebKit/WebHistory.h>
 #import <WebKit/WebHistoryItemPrivate.h>
+#import <WebKit/WebInspector.h>
 #import <WebKit/WebKitNSStringExtras.h>
 #import <WebKit/WebPluginDatabase.h>
 #import <WebKit/WebPreferenceKeysPrivate.h>
@@ -86,7 +87,6 @@
 #import <WebKit/WebResourceLoadDelegate.h>
 #import <WebKit/WebStorageManagerPrivate.h>
 #import <WebKit/WebViewPrivate.h>
-#import <WebKitLegacy/WebInspector.h>
 #import <getopt.h>
 #import <wtf/Assertions.h>
 #import <wtf/FastMalloc.h>
@@ -850,7 +850,7 @@ static void enableExperimentalFeatures(WebPreferences* preferences)
     [preferences setWebGPUEnabled:YES];
     // FIXME: AsyncFrameScrollingEnabled
     [preferences setWebRTCLegacyAPIEnabled:YES];
-    [preferences setCredentialManagementEnabled:YES];
+    [preferences setWebAuthenticationEnabled:NO];
     [preferences setCacheAPIEnabled:NO];
     [preferences setReadableByteStreamAPIEnabled:YES];
     [preferences setWritableStreamAPIEnabled:YES];
@@ -974,6 +974,7 @@ static void resetWebPreferencesToConsistentValues()
     [preferences setUserTimingEnabled:YES];
 
     [preferences setCacheAPIEnabled:NO];
+    preferences.mediaCapabilitiesEnabled = YES;
 
     [WebPreferences _clearNetworkLoaderSession];
     [WebPreferences _setCurrentNetworkLoaderSessionCookieAcceptPolicy:NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain];
@@ -988,7 +989,7 @@ static void setWebPreferencesForTestOptions(const TestOptions& options)
     preferences.intersectionObserverEnabled = options.enableIntersectionObserver;
     preferences.menuItemElementEnabled = options.enableMenuItemElement;
     preferences.modernMediaControlsEnabled = options.enableModernMediaControls;
-    preferences.credentialManagementEnabled = options.enableCredentialManagement;
+    preferences.webAuthenticationEnabled = options.enableWebAuthentication;
     preferences.isSecureContextAttributeEnabled = options.enableIsSecureContextAttribute;
     preferences.inspectorAdditionsEnabled = options.enableInspectorAdditions;
 }

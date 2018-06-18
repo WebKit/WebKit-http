@@ -1538,6 +1538,12 @@
       ],
       "status" : "committer"
    },
+   "David Quesada" : {
+      "emails" : [
+         "david_quesada@apple.com"
+      ],
+      "status" : "committer"
+   },
    "David Reveman" : {
       "emails" : [
          "reveman@chromium.org"
@@ -2697,7 +2703,7 @@
       "nicks" : [
          "lajava"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "Jay Civelli" : {
       "emails" : [
@@ -3162,7 +3168,6 @@
    },
    "Julien Brianceau" : {
       "emails" : [
-         "jbriance@cisco.com",
          "julien.brianceau@gmail.com"
       ],
       "nicks" : [

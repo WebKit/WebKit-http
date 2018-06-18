@@ -28,6 +28,7 @@
 
 #include "DataReference.h"
 #include "ShareableBitmap.h"
+#include <WebCore/AttachmentTypes.h>
 #include <WebCore/AuthenticationChallenge.h>
 #include <WebCore/BlobPart.h>
 #include <WebCore/CacheQueryOptions.h>
@@ -55,6 +56,7 @@
 #include <WebCore/Pasteboard.h>
 #include <WebCore/Path.h>
 #include <WebCore/PluginData.h>
+#include <WebCore/PromisedBlobInfo.h>
 #include <WebCore/ProtectionSpace.h>
 #include <WebCore/RectEdges.h>
 #include <WebCore/Region.h>
@@ -79,7 +81,6 @@
 #include <pal/SessionID.h>
 #include <wtf/MonotonicTime.h>
 #include <wtf/Seconds.h>
-#include <wtf/WallTime.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringHash.h>
 
@@ -146,6 +147,33 @@ static bool decodeSharedBuffer(Decoder& decoder, RefPtr<SharedBuffer>& buffer)
     return true;
 }
 
+static void encodeTypesAndData(Encoder& encoder, const Vector<String>& types, const Vector<RefPtr<SharedBuffer>>& data)
+{
+    ASSERT(types.size() == data.size());
+    encoder << types;
+    encoder << static_cast<uint64_t>(data.size());
+    for (auto& buffer : data)
+        encodeSharedBuffer(encoder, buffer.get());
+}
+
+static bool decodeTypesAndData(Decoder& decoder, Vector<String>& types, Vector<RefPtr<SharedBuffer>>& data)
+{
+    if (!decoder.decode(types))
+        return false;
+
+    uint64_t dataSize;
+    if (!decoder.decode(dataSize))
+        return false;
+
+    ASSERT(dataSize == types.size());
+
+    data.resize(dataSize);
+    for (auto& buffer : data)
+        decodeSharedBuffer(decoder, buffer);
+
+    return true;
+}
+
 void ArgumentCoder<MonotonicTime>::encode(Encoder& encoder, const MonotonicTime& time)
 {
     encoder << time.secondsSinceEpoch().value();
@@ -158,21 +186,6 @@ bool ArgumentCoder<MonotonicTime>::decode(Decoder& decoder, MonotonicTime& time)
         return false;
 
     time = MonotonicTime::fromRawSeconds(value);
-    return true;
-}
-
-void ArgumentCoder<WallTime>::encode(Encoder& encoder, const WallTime& time)
-{
-    encoder << time.secondsSinceEpoch().value();
-}
-
-bool ArgumentCoder<WallTime>::decode(Decoder& decoder, WallTime& time)
-{
-    double value;
-    if (!decoder.decode(value))
-        return false;
-
-    time = WallTime::fromRawSeconds(value);
     return true;
 }
 
@@ -854,7 +867,7 @@ std::optional<RecentSearch> ArgumentCoder<RecentSearch>::decode(Decoder& decoder
     if (!string)
         return std::nullopt;
     
-    std::optional<std::chrono::system_clock::time_point> time;
+    std::optional<WallTime> time;
     decoder >> time;
     if (!time)
         return std::nullopt;
@@ -1664,33 +1677,6 @@ bool ArgumentCoder<PasteboardURL>::decode(Decoder& decoder, PasteboardURL& conte
     return true;
 }
 
-static void encodeClientTypesAndData(Encoder& encoder, const Vector<String>& types, const Vector<RefPtr<SharedBuffer>>& data)
-{
-    ASSERT(types.size() == data.size());
-    encoder << types;
-    encoder << static_cast<uint64_t>(data.size());
-    for (auto& buffer : data)
-        encodeSharedBuffer(encoder, buffer.get());
-}
-
-static bool decodeClientTypesAndData(Decoder& decoder, Vector<String>& types, Vector<RefPtr<SharedBuffer>>& data)
-{
-    if (!decoder.decode(types))
-        return false;
-
-    uint64_t dataSize;
-    if (!decoder.decode(dataSize))
-        return false;
-
-    ASSERT(dataSize == types.size());
-
-    data.resize(dataSize);
-    for (auto& buffer : data)
-        decodeSharedBuffer(decoder, buffer);
-
-    return true;
-}
-
 void ArgumentCoder<PasteboardWebContent>::encode(Encoder& encoder, const PasteboardWebContent& content)
 {
     encoder << content.contentOrigin;
@@ -1703,7 +1689,7 @@ void ArgumentCoder<PasteboardWebContent>::encode(Encoder& encoder, const Pastebo
     encodeSharedBuffer(encoder, content.dataInRTFFormat.get());
     encodeSharedBuffer(encoder, content.dataInAttributedStringFormat.get());
 
-    encodeClientTypesAndData(encoder, content.clientTypes, content.clientData);
+    encodeTypesAndData(encoder, content.clientTypes, content.clientData);
 }
 
 bool ArgumentCoder<PasteboardWebContent>::decode(Decoder& decoder, PasteboardWebContent& content)
@@ -1724,7 +1710,7 @@ bool ArgumentCoder<PasteboardWebContent>::decode(Decoder& decoder, PasteboardWeb
         return false;
     if (!decodeSharedBuffer(decoder, content.dataInAttributedStringFormat))
         return false;
-    if (!decodeClientTypesAndData(decoder, content.clientTypes, content.clientData))
+    if (!decodeTypesAndData(decoder, content.clientTypes, content.clientData))
         return false;
     return true;
 }
@@ -1739,7 +1725,7 @@ void ArgumentCoder<PasteboardImage>::encode(Encoder& encoder, const PasteboardIm
     encoder << pasteboardImage.imageSize;
     if (pasteboardImage.resourceData)
         encodeSharedBuffer(encoder, pasteboardImage.resourceData.get());
-    encodeClientTypesAndData(encoder, pasteboardImage.clientTypes, pasteboardImage.clientData);
+    encodeTypesAndData(encoder, pasteboardImage.clientTypes, pasteboardImage.clientData);
 }
 
 bool ArgumentCoder<PasteboardImage>::decode(Decoder& decoder, PasteboardImage& pasteboardImage)
@@ -1758,7 +1744,7 @@ bool ArgumentCoder<PasteboardImage>::decode(Decoder& decoder, PasteboardImage& p
         return false;
     if (!decodeSharedBuffer(decoder, pasteboardImage.resourceData))
         return false;
-    if (!decodeClientTypesAndData(decoder, pasteboardImage.clientTypes, pasteboardImage.clientData))
+    if (!decodeTypesAndData(decoder, pasteboardImage.clientTypes, pasteboardImage.clientData))
         return false;
     return true;
 }
@@ -2613,47 +2599,6 @@ bool ArgumentCoder<MediaConstraints>::decode(Decoder& decoder, WebCore::MediaCon
         && decoder.decode(constraints.deviceIDHashSalt)
         && decoder.decode(constraints.isValid);
 }
-
-void ArgumentCoder<CaptureDevice>::encode(Encoder& encoder, const WebCore::CaptureDevice& device)
-{
-    encoder << device.persistentId();
-    encoder << device.label();
-    encoder << device.groupId();
-    encoder << device.enabled();
-    encoder.encodeEnum(device.type());
-}
-
-std::optional<CaptureDevice> ArgumentCoder<CaptureDevice>::decode(Decoder& decoder)
-{
-    std::optional<String> persistentId;
-    decoder >> persistentId;
-    if (!persistentId)
-        return std::nullopt;
-
-    std::optional<String> label;
-    decoder >> label;
-    if (!label)
-        return std::nullopt;
-
-    std::optional<String> groupId;
-    decoder >> groupId;
-    if (!groupId)
-        return std::nullopt;
-
-    std::optional<bool> enabled;
-    decoder >> enabled;
-    if (!enabled)
-        return std::nullopt;
-
-    std::optional<CaptureDevice::DeviceType> type;
-    decoder >> type;
-    if (!type)
-        return std::nullopt;
-
-    std::optional<CaptureDevice> device = {{ WTFMove(*persistentId), WTFMove(*type), WTFMove(*label), WTFMove(*groupId) }};
-    device->setEnabled(*enabled);
-    return device;
-}
 #endif
 
 #if ENABLE(INDEXED_DATABASE)
@@ -2801,5 +2746,69 @@ std::optional<MediaSelectionOption> ArgumentCoder<MediaSelectionOption>::decode(
     
     return {{ WTFMove(*displayName), WTFMove(*type) }};
 }
+
+void ArgumentCoder<PromisedBlobInfo>::encode(Encoder& encoder, const PromisedBlobInfo& info)
+{
+    encoder << info.blobURL;
+    encoder << info.contentType;
+    encoder << info.filename;
+    encodeTypesAndData(encoder, info.additionalTypes, info.additionalData);
+}
+
+bool ArgumentCoder<PromisedBlobInfo>::decode(Decoder& decoder, PromisedBlobInfo& info)
+{
+    if (!decoder.decode(info.blobURL))
+        return false;
+
+    if (!decoder.decode(info.contentType))
+        return false;
+
+    if (!decoder.decode(info.filename))
+        return false;
+
+    if (!decodeTypesAndData(decoder, info.additionalTypes, info.additionalData))
+        return false;
+
+    return true;
+}
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+
+void ArgumentCoder<AttachmentInfo>::encode(Encoder& encoder, const AttachmentInfo& info)
+{
+    bool dataIsNull = !info.data;
+    encoder << info.contentType << info.name << info.filePath << dataIsNull;
+    if (!dataIsNull) {
+        SharedBufferDataReference dataReference { info.data.get() };
+        encoder << static_cast<DataReference&>(dataReference);
+    }
+}
+
+bool ArgumentCoder<AttachmentInfo>::decode(Decoder& decoder, AttachmentInfo& info)
+{
+    if (!decoder.decode(info.contentType))
+        return false;
+
+    if (!decoder.decode(info.name))
+        return false;
+
+    if (!decoder.decode(info.filePath))
+        return false;
+
+    bool dataIsNull = true;
+    if (!decoder.decode(dataIsNull))
+        return false;
+
+    if (!dataIsNull) {
+        DataReference dataReference;
+        if (!decoder.decode(dataReference))
+            return false;
+        info.data = SharedBuffer::create(dataReference.data(), dataReference.size());
+    }
+
+    return true;
+}
+
+#endif // ENABLE(ATTACHMENT_ELEMENT)
 
 } // namespace IPC

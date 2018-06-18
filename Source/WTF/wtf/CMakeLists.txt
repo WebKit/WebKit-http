@@ -37,6 +37,7 @@ set(WTF_HEADERS
     Deque.h
     DisallowCType.h
     DoublyLinkedList.h
+    DumbPtrTraits.h
     FastMalloc.h
     FastTLS.h
     FeatureDefines.h
@@ -110,6 +111,7 @@ set(WTF_HEADERS
     Platform.h
     PlatformRegisters.h
     Poisoned.h
+    PoisonedUniquePtr.h
     PrintStream.h
     ProcessID.h
     RAMSize.h
@@ -282,6 +284,7 @@ set(WTF_SOURCES
     TimeWithDynamicClockType.cpp
     TimingScope.cpp
     UUID.cpp
+    WTFAssertions.cpp
     WallTime.cpp
     WordLock.cpp
     WorkQueue.cpp
@@ -417,10 +420,10 @@ if (MSVC)
         VERBATIM)
 endif ()
 
-file(MAKE_DIRECTORY ${FORWARDING_HEADERS_DIR}/WTF/Scripts)
+file(MAKE_DIRECTORY ${FORWARDING_HEADERS_DIR}/wtf/Scripts)
 
 file(COPY
     ../Scripts/generate-unified-source-bundles.rb
     DESTINATION
-    ${FORWARDING_HEADERS_DIR}/WTF/Scripts
+    ${FORWARDING_HEADERS_DIR}/wtf/Scripts
 )

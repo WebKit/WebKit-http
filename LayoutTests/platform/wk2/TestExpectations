@@ -604,6 +604,7 @@ fast/forms/file/file-input-change-event.html
 fast/forms/file/file-input-reset.html
 fast/forms/file/get-file-upload.html
 fast/forms/file/input-file-re-render.html
+fast/forms/file/input-file-value.html
 fast/forms/file/input-file-write-files.html
 fast/forms/file/recover-file-input-in-unposted-form.html
 fast/forms/file/selected-files-from-history-state.html
@@ -684,11 +685,10 @@ http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-mixed-statistic
 http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-sub-frame-under-top-frame-origins.html [ Pass ]
 http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-under-top-frame-origins.html [ Pass ]
 http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-unique-redirects-to.html [ Pass ]
-http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store.html [ Pass ]
+webkit.org/b/181223 http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store.html [ Skip ]
 http/tests/resourceLoadStatistics/grandfathering.html [ Pass ]
-http/tests/resourceLoadStatistics/telemetry-generation.html [ Pass ]
+webkit.org/b/180703 http/tests/resourceLoadStatistics/telemetry-generation.html [ Pass Failure ]
 http/tests/resourceLoadStatistics/prune-statistics.html [ Pass ]
-http/tests/storageAccess/request-storage-access-top-frame.html [ Pass ]
 http/tests/resourceLoadStatistics [ Pass ]
 # Cookie partitioning is only supported in macOS High Sierra and iOS 11.
 http/tests/resourceLoadStatistics/add-partitioning-to-redirect.html [ Skip ]

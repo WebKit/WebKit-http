@@ -96,6 +96,11 @@ static WKProcessPool *sharedProcessPool;
     [super dealloc];
 }
 
++ (BOOL)supportsSecureCoding
+{
+    return YES;
+}
+
 - (void)encodeWithCoder:(NSCoder *)coder
 {
     if (self == sharedProcessPool) {
@@ -175,6 +180,11 @@ static WKProcessPool *sharedProcessPool;
 - (void)_setAllowsSpecificHTTPSCertificate:(NSArray *)certificateChain forHost:(NSString *)host
 {
     _processPool->allowSpecificHTTPSCertificateForHost(WebKit::WebCertificateInfo::create(WebCore::CertificateInfo((CFArrayRef)certificateChain)).ptr(), host);
+}
+
+- (void)_registerURLSchemeServiceWorkersCanHandle:(NSString *)scheme
+{
+    _processPool->registerURLSchemeServiceWorkersCanHandle(scheme);
 }
 
 - (void)_setCanHandleHTTPSServerTrustEvaluation:(BOOL)value
@@ -435,6 +445,29 @@ static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<S
 - (size_t)_webProcessCount
 {
     return _processPool->processes().size();
+}
+
+- (size_t)_webPageContentProcessCount
+{
+    auto allWebProcesses = _processPool->processes();
+    auto* serviceWorkerProcess = _processPool->serviceWorkerProxy();
+    if (!serviceWorkerProcess)
+        return allWebProcesses.size();
+
+#if !ASSERT_DISABLED
+    bool serviceWorkerProcessWasFound = false;
+    for (auto& process : allWebProcesses) {
+        if (process == serviceWorkerProcess) {
+            serviceWorkerProcessWasFound = true;
+            break;
+        }
+    }
+
+    ASSERT(serviceWorkerProcessWasFound);
+    ASSERT(allWebProcesses.size() > 1);
+#endif
+
+    return allWebProcesses.size() - 1;
 }
 
 - (void)_preconnectToServer:(NSURL *)serverURL

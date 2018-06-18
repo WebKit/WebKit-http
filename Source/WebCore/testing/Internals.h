@@ -52,7 +52,6 @@ class DOMWindow;
 class Document;
 class Element;
 class ExtendableEvent;
-class FetchEvent;
 class FetchResponse;
 class File;
 class Frame;
@@ -236,6 +235,8 @@ public:
     void setAutofilled(HTMLInputElement&, bool enabled);
     enum class AutoFillButtonType { None, Contacts, Credentials, StrongPassword, StrongConfirmationPassword };
     void setShowAutoFillButton(HTMLInputElement&, AutoFillButtonType);
+    AutoFillButtonType autoFillButtonType(const HTMLInputElement&);
+    AutoFillButtonType lastAutoFillButtonType(const HTMLInputElement&);
     ExceptionOr<void> scrollElementToRect(Element&, int x, int y, int w, int h);
 
     ExceptionOr<String> autofillFieldName(Element&);
@@ -528,6 +529,7 @@ public:
     String pageMediaState();
 
     void setPageDefersLoading(bool);
+    ExceptionOr<bool> pageDefersLoading();
 
     RefPtr<File> createFile(const String&);
     void queueMicroTask(int);
@@ -623,8 +625,6 @@ public:
     void setConsoleMessageListener(RefPtr<StringCallback>&&);
 
 #if ENABLE(SERVICE_WORKER)
-    void waitForFetchEventToFinish(FetchEvent&, DOMPromiseDeferred<IDLInterface<FetchResponse>>&&);
-    Ref<FetchEvent> createBeingDispatchedFetchEvent(ScriptExecutionContext&);
     using HasRegistrationPromise = DOMPromiseDeferred<IDLBoolean>;
     void hasServiceWorkerRegistration(const String& clientURL, HasRegistrationPromise&&);
     void terminateServiceWorker(ServiceWorker&);
@@ -632,12 +632,6 @@ public:
 
 #if ENABLE(APPLE_PAY)
     MockPaymentCoordinator& mockPaymentCoordinator() const;
-#endif
-
-#if ENABLE(ALTERNATIVE_PRESENTATION_BUTTON_ELEMENT)
-    ExceptionOr<void> substituteWithAlternativePresentationButton(Vector<RefPtr<Element>>&&, const String&);
-    ExceptionOr<void> removeAlternativePresentationButton(const String&);
-    ExceptionOr<Vector<Ref<Element>>> elementsReplacedByAlternativePresentationButton(const String&);
 #endif
 
     String timelineDescription(AnimationTimeline&);

@@ -28,6 +28,8 @@
 
 #if WK_API_ENABLED
 
+#import "WKWebsiteDataStoreInternal.h"
+
 @implementation _WKWebsitePolicies
 
 - (void)dealloc
@@ -142,6 +144,17 @@
             parsedFields.uncheckedAppend(WTFMove(*field));
     }
     _websitePolicies->setCustomHeaderFields(WTFMove(parsedFields));
+}
+
+- (WKWebsiteDataStore *)websiteDataStore
+{
+    auto* store = _websitePolicies->websiteDataStore();
+    return store ? WebKit::wrapper(*store) : nil;
+}
+
+- (void)setWebsiteDataStore:(WKWebsiteDataStore *)websiteDataStore
+{
+    _websitePolicies->setWebsiteDataStore(websiteDataStore->_websiteDataStore.get());
 }
 
 - (NSString *)description

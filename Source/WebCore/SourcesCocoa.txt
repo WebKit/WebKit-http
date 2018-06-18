@@ -354,11 +354,14 @@ rendering/RenderThemeCocoa.mm
 rendering/TextAutoSizing.cpp
 
 platform/mediastream/mac/CoreAudioCaptureSource.cpp
+platform/mediastream/mac/DisplayCaptureManagerCocoa.cpp
+platform/mediastream/mac/DisplayCaptureSourceCocoa.cpp
 platform/mediastream/mac/RealtimeIncomingAudioSourceCocoa.cpp
 platform/mediastream/mac/RealtimeIncomingVideoSourceCocoa.cpp
 platform/mediastream/mac/RealtimeMediaSourceCenterMac.cpp
 platform/mediastream/mac/RealtimeOutgoingAudioSourceCocoa.cpp
 platform/mediastream/mac/RealtimeOutgoingVideoSourceCocoa.cpp
+platform/mediastream/mac/ScreenDisplayCaptureSourceMac.mm
 
 platform/audio/mac/AudioSampleDataSource.mm
 
@@ -366,14 +369,6 @@ platform/mediastream/mac/MockRealtimeAudioSourceMac.mm
 platform/mediastream/mac/WebAudioSourceProviderAVFObjC.mm
 
 platform/mediastream/libwebrtc/LibWebRTCProviderCocoa.cpp
-
-#if ENABLE_ALTERNATIVE_PRESENTATION_BUTTON_ELEMENT
-
-    editing/cocoa/AlternativePresentationButtonSubstitution.cpp
-    html/shadow/cocoa/AlternativePresentationButtonElement.cpp
-    html/shadow/cocoa/AlternativePresentationButtonInputType.cpp
-
-#endif
 
 #if ENABLE_APPLE_PAY
 

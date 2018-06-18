@@ -72,6 +72,7 @@
 #import <WebCore/Pasteboard.h>
 #import <WebCore/Path.h>
 #import <WebCore/PathUtilities.h>
+#import <WebCore/PromisedBlobInfo.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/Scrollbar.h>
 #import <WebCore/TextIndicator.h>
@@ -254,19 +255,18 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 @protocol UISelectionInteractionAssistant;
 
 @interface WKFocusedElementInfo : NSObject <_WKFocusedElementInfo>
-- (instancetype)initWithAssistedNodeInformation:(const AssistedNodeInformation&)information isUserInitiated:(BOOL)isUserInitiated;
+- (instancetype)initWithAssistedNodeInformation:(const AssistedNodeInformation&)information isUserInitiated:(BOOL)isUserInitiated userObject:(NSObject <NSSecureCoding> *)userObject;
 @end
 
 @interface WKFormInputSession : NSObject <_WKFormInputSession>
 
-- (instancetype)initWithContentView:(WKContentView *)view focusedElementInfo:(WKFocusedElementInfo *)elementInfo userObject:(NSObject <NSSecureCoding> *)userObject;
+- (instancetype)initWithContentView:(WKContentView *)view focusedElementInfo:(WKFocusedElementInfo *)elementInfo;
 - (void)invalidate;
 
 @end
 
 @implementation WKFormInputSession {
     WKContentView *_contentView;
-    RetainPtr<NSObject <NSSecureCoding>> _userObject;
     RetainPtr<WKFocusedElementInfo> _focusedElementInfo;
     RetainPtr<UIView> _customInputView;
     RetainPtr<NSArray<UITextSuggestion *>> _suggestions;
@@ -274,14 +274,13 @@ const CGFloat minimumTapHighlightRadius = 2.0;
     BOOL _forceSecureTextEntry;
 }
 
-- (instancetype)initWithContentView:(WKContentView *)view focusedElementInfo:(WKFocusedElementInfo *)elementInfo userObject:(NSObject <NSSecureCoding> *)userObject
+- (instancetype)initWithContentView:(WKContentView *)view focusedElementInfo:(WKFocusedElementInfo *)elementInfo
 {
     if (!(self = [super init]))
         return nil;
 
     _contentView = view;
     _focusedElementInfo = elementInfo;
-    _userObject = userObject;
 
     return self;
 }
@@ -293,7 +292,7 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 
 - (NSObject <NSSecureCoding> *)userObject
 {
-    return _userObject.get();
+    return [_focusedElementInfo userObject];
 }
 
 - (BOOL)isValid
@@ -312,7 +311,7 @@ const CGFloat minimumTapHighlightRadius = 2.0;
         [[_contentView formAccessoryView] showAutoFillButtonWithTitle:title];
     else
         [[_contentView formAccessoryView] hideAutoFillButton];
-    if (UICurrentUserInterfaceIdiomIsPad())
+    if (currentUserInterfaceIdiomIsPad())
         [_contentView reloadInputViews];
 }
 
@@ -383,9 +382,10 @@ const CGFloat minimumTapHighlightRadius = 2.0;
     WKInputType _type;
     RetainPtr<NSString> _value;
     BOOL _isUserInitiated;
+    RetainPtr<NSObject <NSSecureCoding>> _userObject;
 }
 
-- (instancetype)initWithAssistedNodeInformation:(const AssistedNodeInformation&)information isUserInitiated:(BOOL)isUserInitiated
+- (instancetype)initWithAssistedNodeInformation:(const AssistedNodeInformation&)information isUserInitiated:(BOOL)isUserInitiated userObject:(NSObject <NSSecureCoding> *)userObject
 {
     if (!(self = [super init]))
         return nil;
@@ -448,6 +448,7 @@ const CGFloat minimumTapHighlightRadius = 2.0;
     }
     _value = information.value;
     _isUserInitiated = isUserInitiated;
+    _userObject = userObject;
     return self;
 }
 
@@ -464,6 +465,11 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 - (BOOL)isUserInitiated
 {
     return _isUserInitiated;
+}
+
+- (NSObject <NSSecureCoding> *)userObject
+{
+    return _userObject.get();
 }
 @end
 
@@ -685,6 +691,24 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 {
     return _page->unobscuredContentRect();
 }
+
+
+#pragma mark - UITextAutoscrolling
+- (void)startAutoscroll:(CGPoint)point
+{
+    _page->startAutoscrollAtPosition(point);
+}
+
+- (void)cancelAutoscroll
+{
+    _page->cancelAutoscroll();
+}
+
+- (void)scrollSelectionToVisible:(BOOL)animated
+{
+    // Used to scroll selection on keyboard up; we already scroll to visible.
+}
+
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
 {
@@ -1105,12 +1129,12 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
     case InputType::None:
         return NO;
     case InputType::Select:
-        return !UICurrentUserInterfaceIdiomIsPad();
+        return !currentUserInterfaceIdiomIsPad();
     case InputType::Date:
     case InputType::Month:
     case InputType::DateTimeLocal:
     case InputType::Time:
-        return !UICurrentUserInterfaceIdiomIsPad();
+        return !currentUserInterfaceIdiomIsPad();
     default:
         return !_assistedNodeInformation.isReadOnly;
     }
@@ -1132,7 +1156,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
                   fontSize:_assistedNodeInformation.nodeFontSize
               minimumScale:_assistedNodeInformation.minimumScaleFactor
               maximumScale:_assistedNodeInformation.maximumScaleFactorIgnoringAlwaysScalable
-              allowScaling:(_assistedNodeInformation.allowsUserScalingIgnoringAlwaysScalable && !UICurrentUserInterfaceIdiomIsPad())
+              allowScaling:(_assistedNodeInformation.allowsUserScalingIgnoringAlwaysScalable && !currentUserInterfaceIdiomIsPad())
                forceScroll:[self requiresAccessoryView]];
 
     _didAccessoryTabInitiateFocus = NO;
@@ -1850,7 +1874,7 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     case InputType::Month:
     case InputType::Week:
     case InputType::Time:
-        return !UICurrentUserInterfaceIdiomIsPad();
+        return !currentUserInterfaceIdiomIsPad();
     }
 }
 
@@ -2928,7 +2952,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
     [_formAccessoryView setNextEnabled:_assistedNodeInformation.hasNextNode];
     [_formAccessoryView setPreviousEnabled:_assistedNodeInformation.hasPreviousNode];
 
-    if (UICurrentUserInterfaceIdiomIsPad())
+    if (currentUserInterfaceIdiomIsPad())
         [_formAccessoryView setClearVisible:NO];
     else {
         switch (_assistedNodeInformation.elementType) {
@@ -3841,19 +3865,19 @@ static bool isAssistableInputType(InputType type)
     return false;
 }
 
-- (void)_startAssistingNode:(const AssistedNodeInformation&)information userIsInteracting:(BOOL)userIsInteracting blurPreviousNode:(BOOL)blurPreviousNode userObject:(NSObject <NSSecureCoding> *)userObject
+- (void)_startAssistingNode:(const AssistedNodeInformation&)information userIsInteracting:(BOOL)userIsInteracting blurPreviousNode:(BOOL)blurPreviousNode changingActivityState:(BOOL)changingActivityState userObject:(NSObject <NSSecureCoding> *)userObject
 {
     _inputViewUpdateDeferrer = nullptr;
 
     id <_WKInputDelegate> inputDelegate = [_webView _inputDelegate];
-    RetainPtr<WKFocusedElementInfo> focusedElementInfo = adoptNS([[WKFocusedElementInfo alloc] initWithAssistedNodeInformation:information isUserInitiated:userIsInteracting]);
+    RetainPtr<WKFocusedElementInfo> focusedElementInfo = adoptNS([[WKFocusedElementInfo alloc] initWithAssistedNodeInformation:information isUserInitiated:userIsInteracting userObject:userObject]);
     BOOL shouldShowKeyboard;
 
     if ([inputDelegate respondsToSelector:@selector(_webView:focusShouldStartInputSession:)])
         shouldShowKeyboard = [inputDelegate _webView:_webView focusShouldStartInputSession:focusedElementInfo.get()];
     else {
         // The default behavior is to allow node assistance if the user is interacting or the keyboard is already active.
-        shouldShowKeyboard = userIsInteracting || _textSelectionAssistant;
+        shouldShowKeyboard = userIsInteracting || _textSelectionAssistant || changingActivityState;
 #if ENABLE(DATA_INTERACTION)
         shouldShowKeyboard |= _dragDropInteractionState.isPerformingDrop();
 #endif
@@ -3903,7 +3927,7 @@ static bool isAssistableInputType(InputType type)
     [_inputPeripheral beginEditing];
 
     if ([inputDelegate respondsToSelector:@selector(_webView:didStartInputSession:)]) {
-        _formInputSession = adoptNS([[WKFormInputSession alloc] initWithContentView:self focusedElementInfo:focusedElementInfo.get() userObject:userObject]);
+        _formInputSession = adoptNS([[WKFormInputSession alloc] initWithContentView:self focusedElementInfo:focusedElementInfo.get()]);
         [inputDelegate _webView:_webView didStartInputSession:_formInputSession.get()];
     }
     
@@ -4444,6 +4468,12 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
     }
 
     [_editDropCaretView updateToPosition:[WKTextPosition textPositionWithRect:rect]];
+}
+
+- (void)_prepareToDragPromisedBlob:(const PromisedBlobInfo&)info
+{
+    // FIXME: Add iOS support for dragging promised blob data as file promises.
+    UNUSED_PARAM(info);
 }
 
 - (WKDragDestinationAction)_dragDestinationActionForDropSession:(id <UIDropSession>)session

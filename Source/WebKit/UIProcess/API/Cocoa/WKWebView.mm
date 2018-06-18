@@ -74,6 +74,7 @@
 #import "WebFullScreenManagerProxy.h"
 #import "WebPageGroup.h"
 #import "WebPageProxy.h"
+#import "WebPaymentCoordinatorProxy.h"
 #import "WebPreferencesKeys.h"
 #import "WebProcessPool.h"
 #import "WebProcessProxy.h"
@@ -430,7 +431,7 @@ static bool shouldRequireUserGestureToLoadVideo()
     static bool shouldRequireUserGestureToLoadVideo = dyld_get_program_sdk_version() >= DYLD_IOS_VERSION_10_0;
     return shouldRequireUserGestureToLoadVideo;
 #else
-    return true;
+    return false;
 #endif
 }
 
@@ -588,7 +589,8 @@ static void validate(WKWebViewConfiguration *configuration)
 #endif
 
 #if ENABLE(APPLE_PAY)
-    pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::applePayEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _applePayEnabled]));
+    bool applePayEnabled = [_configuration _applePayEnabled] && WebKit::WebPaymentCoordinatorProxy::platformSupportsPayments();
+    pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::applePayEnabledKey(), WebKit::WebPreferencesStore::Value(applePayEnabled));
 #endif
 
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::needsStorageAccessFromFileURLsQuirkKey(), WebKit::WebPreferencesStore::Value(!![_configuration _needsStorageAccessFromFileURLsQuirk]));
@@ -723,11 +725,11 @@ static void validate(WKWebViewConfiguration *configuration)
     if (!(self = [super initWithCoder:coder]))
         return nil;
 
-    WKWebViewConfiguration *configuration = [coder decodeObjectForKey:@"configuration"];
+    WKWebViewConfiguration *configuration = decodeObjectOfClassForKeyFromCoder([WKWebViewConfiguration class], @"configuration", coder);
     [self _initializeWithConfiguration:configuration];
 
     self.allowsBackForwardNavigationGestures = [coder decodeBoolForKey:@"allowsBackForwardNavigationGestures"];
-    self.customUserAgent = [coder decodeObjectForKey:@"customUserAgent"];
+    self.customUserAgent = decodeObjectOfClassForKeyFromCoder([NSString class], @"customUserAgent", coder);
     self.allowsLinkPreview = [coder decodeBoolForKey:@"allowsLinkPreview"];
 
 #if PLATFORM(MAC)
@@ -2378,6 +2380,11 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 - (void)scrollViewDidEndZooming:(UIScrollView *)scrollView withView:(UIView *)view atScale:(CGFloat)scale
 {
     ASSERT(scrollView == _scrollView);
+    // FIXME: remove when rdar://problem/36065495 is fixed.
+    // When rotating with two fingers down, UIScrollView can set a bogus content view position.
+    // "Center" is top left because we set the anchorPoint to 0,0.
+    [_contentView setCenter:self.bounds.origin];
+
     [self _scheduleVisibleContentRectUpdateAfterScrollInView:scrollView];
     [_contentView didZoomToScale:scale];
 }
@@ -4150,15 +4157,6 @@ static int32_t activeOrientation(WKWebView *webView)
 
 #endif
 
-- (void)_didRelaunchProcess
-{
-#if PLATFORM(IOS)
-    CGRect bounds = self.bounds;
-    [self _dispatchSetMinimumLayoutSize:activeMinimumLayoutSize(self, bounds)];
-    [self _dispatchSetMaximumUnobscuredSize:activeMaximumUnobscuredSize(self, bounds)];
-#endif
-}
-
 - (NSData *)_sessionStateData
 {
     WebKit::SessionState sessionState = _page->sessionState();
@@ -4233,7 +4231,10 @@ static int32_t activeOrientation(WKWebView *webView)
 
 - (void)_updateWebsitePolicies:(_WKWebsitePolicies *)websitePolicies
 {
-    _page->updateWebsitePolicies(websitePolicies->_websitePolicies->websitePolicies());
+    auto data = websitePolicies->_websitePolicies->data();
+    if (data.websiteDataStoreParameters)
+        [NSException raise:NSInvalidArgumentException format:@"Updating WKWebsiteDataStore is only supported during decidePolicyForNavigationAction."];
+    _page->updateWebsitePolicies(WTFMove(data));
 }
 
 - (BOOL)_allowsRemoteInspection
@@ -4858,6 +4859,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
 #if PLATFORM(IOS)
 
+#if ENABLE(FULLSCREEN_API)
 - (void)removeFromSuperview
 {
     [super removeFromSuperview];
@@ -4865,6 +4867,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     if ([_fullScreenWindowController isFullScreen])
         [_fullScreenWindowController webViewDidRemoveFromSuperviewWhileInFullscreen];
 }
+#endif
 
 - (CGSize)_minimumLayoutSizeOverride
 {
@@ -5510,6 +5513,26 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     return _impl->setShouldExpandToViewHeightForAutoLayout(shouldExpand);
 }
 
+- (BOOL)_alwaysShowsHorizontalScroller
+{
+    return _page->alwaysShowsHorizontalScroller();
+}
+
+- (void)_setAlwaysShowsHorizontalScroller:(BOOL)alwaysShowsHorizontalScroller
+{
+    _page->setAlwaysShowsHorizontalScroller(alwaysShowsHorizontalScroller);
+}
+
+- (BOOL)_alwaysShowsVerticalScroller
+{
+    return _page->alwaysShowsVerticalScroller();
+}
+
+- (void)_setAlwaysShowsVerticalScroller:(BOOL)alwaysShowsVerticalScroller
+{
+    _page->setAlwaysShowsVerticalScroller(alwaysShowsVerticalScroller);
+}
+
 - (NSPrintOperation *)_printOperationWithPrintInfo:(NSPrintInfo *)printInfo
 {
     if (auto webFrameProxy = _page->mainFrame())
@@ -5677,7 +5700,7 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     [_contentView accessoryTab:NO];
 }
 
-- (void)applyAutocorrection:(NSString *)newString toString:(NSString *)oldString withCompletionHandler:(void (^)())completionHandler
+- (void)applyAutocorrection:(NSString *)newString toString:(NSString *)oldString withCompletionHandler:(void (^)(void))completionHandler
 {
     [_contentView applyAutocorrection:newString toString:oldString withCompletionHandler:[capturedCompletionHandler = makeBlockPtr(completionHandler)] (UIWKAutocorrectionRects *rects) {
         capturedCompletionHandler();

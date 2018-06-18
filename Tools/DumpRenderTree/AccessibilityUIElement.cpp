@@ -1319,10 +1319,10 @@ static JSValueRef isIgnoredCallback(JSContextRef context, JSObjectRef thisObject
     return JSValueMakeBoolean(context, toAXElement(thisObject)->isIgnored());
 }
 
-static JSValueRef speakCallback(JSContextRef context, JSObjectRef thisObject, JSStringRef, JSValueRef*)
+static JSValueRef speakAsCallback(JSContextRef context, JSObjectRef thisObject, JSStringRef, JSValueRef*)
 {
-    JSRetainPtr<JSStringRef> speakString(Adopt, toAXElement(thisObject)->speak());
-    return JSValueMakeString(context, speakString.get());
+    JSRetainPtr<JSStringRef> speakAsString(Adopt, toAXElement(thisObject)->speakAs());
+    return JSValueMakeString(context, speakAsString.get());
 }
 
 static JSValueRef selectedChildrenCountCallback(JSContextRef context, JSObjectRef thisObject, JSStringRef propertyName, JSValueRef* exception)
@@ -1527,7 +1527,6 @@ static JSValueRef mathPrescriptsDescriptionCallback(JSContextRef context, JSObje
 
 // Unsupported methods on various platforms.
 #if !PLATFORM(MAC) || PLATFORM(IOS)
-JSStringRef AccessibilityUIElement::speak() { return 0; }
 JSStringRef AccessibilityUIElement::rangeForLine(int line) { return 0; }
 JSStringRef AccessibilityUIElement::rangeForPosition(int, int) { return 0; }
 void AccessibilityUIElement::setSelectedChild(AccessibilityUIElement*) const { }
@@ -1539,6 +1538,7 @@ AccessibilityUIElement AccessibilityUIElement::uiElementAttributeValue(JSStringR
 #endif
 
 #if !PLATFORM(MAC) && !PLATFORM(IOS)
+JSStringRef AccessibilityUIElement::speakAs() { return nullptr; }
 JSStringRef AccessibilityUIElement::pathDescription() const { return 0; }
 void AccessibilityUIElement::setValue(JSStringRef) { }
 #endif
@@ -1801,7 +1801,7 @@ JSClassRef AccessibilityUIElement::getJSClass()
         { "ariaDropEffects", getARIADropEffectsCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "classList", getClassListCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "isIgnored", isIgnoredCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
-        { "speak", speakCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+        { "speakAs", speakAsCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "selectedChildrenCount", selectedChildrenCountCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "horizontalScrollbar", horizontalScrollbarCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "verticalScrollbar", verticalScrollbarCallback, 0, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },

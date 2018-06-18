@@ -64,6 +64,7 @@
 #import <WebCore/Image.h>
 #import <WebCore/KeyboardEvent.h>
 #import <WebCore/NotImplemented.h>
+#import <WebCore/PromisedBlobInfo.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/TextIndicator.h>
 #import <WebCore/TextIndicatorWindow.h>
@@ -364,13 +365,6 @@ void PageClientImpl::setPromisedDataForImage(const String& pasteboardName, Ref<S
     m_impl->setPromisedDataForImage(image.get(), filename, extension, title, url, visibleURL, archiveBuffer.get(), pasteboardName);
 }
 
-#if ENABLE(ATTACHMENT_ELEMENT)
-void PageClientImpl::setPromisedDataForAttachment(const String& pasteboardName, const String& filename, const String& extension, const String& title, const String& url, const String& visibleURL)
-{
-    m_impl->setPromisedDataForAttachment(filename, extension, title, url, visibleURL, pasteboardName);
-}
-#endif
-
 void PageClientImpl::updateSecureInputState()
 {
     m_impl->updateSecureInputState();
@@ -448,9 +442,9 @@ RefPtr<WebPopupMenuProxy> PageClientImpl::createPopupMenuProxy(WebPageProxy& pag
 }
 
 #if ENABLE(CONTEXT_MENUS)
-RefPtr<WebContextMenuProxy> PageClientImpl::createContextMenuProxy(WebPageProxy& page, const ContextMenuContextData& context, const UserData& userData)
+Ref<WebContextMenuProxy> PageClientImpl::createContextMenuProxy(WebPageProxy& page, ContextMenuContextData&& context, const UserData& userData)
 {
-    return WebContextMenuProxyMac::create(m_view, page, context, userData);
+    return WebContextMenuProxyMac::create(m_view, page, WTFMove(context), userData);
 }
 #endif
 
@@ -881,6 +875,11 @@ WebCore::UserInterfaceLayoutDirection PageClientImpl::userInterfaceLayoutDirecti
     if (!m_view)
         return WebCore::UserInterfaceLayoutDirection::LTR;
     return (m_view.userInterfaceLayoutDirection == NSUserInterfaceLayoutDirectionLeftToRight) ? WebCore::UserInterfaceLayoutDirection::LTR : WebCore::UserInterfaceLayoutDirection::RTL;
+}
+
+void PageClientImpl::prepareToDragPromisedBlob(const WebCore::PromisedBlobInfo& info)
+{
+    m_impl->prepareToDragPromisedBlob(info);
 }
 
 } // namespace WebKit

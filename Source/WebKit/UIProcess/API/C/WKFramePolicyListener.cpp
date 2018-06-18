@@ -30,7 +30,7 @@
 #include "WKAPICast.h"
 #include "WebFramePolicyListenerProxy.h"
 #include "WebFrameProxy.h"
-#include "WebsitePolicies.h"
+#include "WebsitePoliciesData.h"
 
 using namespace WebKit;
 
@@ -41,12 +41,14 @@ WKTypeID WKFramePolicyListenerGetTypeID()
 
 void WKFramePolicyListenerUse(WKFramePolicyListenerRef policyListenerRef)
 {
-    toImpl(policyListenerRef)->use({ });
+    toImpl(policyListenerRef)->use(std::nullopt);
 }
 
 void WKFramePolicyListenerUseWithPolicies(WKFramePolicyListenerRef policyListenerRef, WKWebsitePoliciesRef websitePolicies)
 {
-    toImpl(policyListenerRef)->use(toImpl(websitePolicies)->websitePolicies());
+    auto data = toImpl(websitePolicies)->data();
+    RELEASE_ASSERT_WITH_MESSAGE(!data.websiteDataStoreParameters, "Setting WebsitePolicies.WebsiteDataStore is not supported in the C API.");
+    toImpl(policyListenerRef)->use(WTFMove(data));
 }
 
 void WKFramePolicyListenerDownload(WKFramePolicyListenerRef policyListenerRef)

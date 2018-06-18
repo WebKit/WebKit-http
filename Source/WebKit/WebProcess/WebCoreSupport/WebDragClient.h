@@ -51,10 +51,9 @@ private:
 
 #if PLATFORM(COCOA)
     void declareAndWriteDragImage(const String& pasteboardName, WebCore::Element&, const WebCore::URL&, const String&, WebCore::Frame*) override;
-#if ENABLE(ATTACHMENT_ELEMENT)
-    void declareAndWriteAttachment(const String& pasteboardName, WebCore::Element&, const WebCore::URL&, const String& path, WebCore::Frame*) override;
 #endif
-#endif
+
+    void prepareToDragPromisedBlob(const WebCore::PromisedBlobInfo&) final;
 
     void dragControllerDestroyed() override;
 

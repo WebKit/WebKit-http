@@ -35,7 +35,7 @@ namespace WebKit {
 
 class PluginView;
 class WebFrame;
-class WebsitePolicies;
+struct WebsitePoliciesData;
     
 class WebFrameLoaderClient final : public WebCore::FrameLoaderClient {
 public:
@@ -49,12 +49,17 @@ public:
 
     void setUseIconLoadingClient(bool useIconLoadingClient) { m_useIconLoadingClient = useIconLoadingClient; }
 
-    void applyToDocumentLoader(WebsitePolicies&&);
+    void applyToDocumentLoader(WebsitePoliciesData&&);
 
-    uint64_t pageID() const final;
-    uint64_t frameID() const final;
+    std::optional<uint64_t> pageID() const final;
+    std::optional<uint64_t> frameID() const final;
     PAL::SessionID sessionID() const final;
 
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    bool hasFrameSpecificStorageAccess() { return m_hasFrameSpecificStorageAccess; }
+    void setHasFrameSpecificStorageAccess(bool value) { m_hasFrameSpecificStorageAccess = value; };
+#endif
+    
 private:
     void frameLoaderDestroyed() final;
 
@@ -92,6 +97,7 @@ private:
     void dispatchDidFinishDataDetection(NSArray *detectionResults) final;
 #endif
     void dispatchDidChangeMainDocument() final;
+    void dispatchWillChangeDocument() final;
 
     void dispatchDidDispatchOnloadEvents() final;
     void dispatchDidReceiveServerRedirectForProvisionalLoad() final;
@@ -273,6 +279,9 @@ private:
     bool m_frameHasCustomContentProvider;
     bool m_frameCameFromPageCache;
     bool m_useIconLoadingClient { false };
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    bool m_hasFrameSpecificStorageAccess { false };
+#endif
 };
 
 // As long as EmptyFrameLoaderClient exists in WebCore, this can return 0.

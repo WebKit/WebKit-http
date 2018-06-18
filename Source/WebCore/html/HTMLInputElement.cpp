@@ -60,7 +60,6 @@
 #include "SearchInputType.h"
 #include "Settings.h"
 #include "StyleResolver.h"
-#include "StyleTreeResolver.h"
 #include "TextControlInnerElements.h"
 #include <wtf/Language.h>
 #include <wtf/MathExtras.h>
@@ -68,11 +67,6 @@
 
 #if ENABLE(TOUCH_EVENTS)
 #include "TouchEvent.h"
-#endif
-
-#if ENABLE(ALTERNATIVE_PRESENTATION_BUTTON_ELEMENT)
-#include "AlternativePresentationButtonInputType.h"
-#include "InputTypeNames.h"
 #endif
 
 namespace WebCore {
@@ -112,6 +106,7 @@ HTMLInputElement::HTMLInputElement(const QualifiedName& tagName, Document& docum
     , m_autocomplete(Uninitialized)
     , m_isAutoFilled(false)
     , m_autoFillButtonType(static_cast<uint8_t>(AutoFillButtonType::None))
+    , m_lastAutoFillButtonType(static_cast<uint8_t>(AutoFillButtonType::None))
     , m_isAutoFillAvailable(false)
 #if ENABLE(DATALIST_ELEMENT)
     , m_hasNonEmptyList(false)
@@ -237,13 +232,6 @@ HTMLElement* HTMLInputElement::placeholderElement() const
 {
     return m_inputType->placeholderElement();
 }
-
-#if ENABLE(ALTERNATIVE_PRESENTATION_BUTTON_ELEMENT)
-HTMLElement* HTMLInputElement::alternativePresentationButtonElement() const
-{
-    return m_inputType->alternativePresentationButtonElement();
-}
-#endif
 
 bool HTMLInputElement::shouldAutocomplete() const
 {
@@ -494,28 +482,12 @@ void HTMLInputElement::setType(const AtomicString& type)
     setAttributeWithoutSynchronization(typeAttr, type);
 }
 
-#if ENABLE(ALTERNATIVE_PRESENTATION_BUTTON_ELEMENT)
-void HTMLInputElement::setTypeWithoutUpdatingAttribute(const AtomicString& type)
-{
-    updateType(type);
-}
-#endif
-
-inline std::unique_ptr<InputType> HTMLInputElement::createInputType(const AtomicString& type)
-{
-#if ENABLE(ALTERNATIVE_PRESENTATION_BUTTON_ELEMENT)
-    if (type == InputTypeNames::alternativePresentationButton())
-        return std::make_unique<AlternativePresentationButtonInputType>(*this);
-#endif
-    return InputType::create(*this, type);
-}
-
-void HTMLInputElement::updateType(const AtomicString& newType)
+void HTMLInputElement::updateType()
 {
     ASSERT(m_inputType);
-    auto newInputType = createInputType(newType);
+    auto newType = InputType::create(*this, attributeWithoutSynchronization(typeAttr));
     m_hasType = true;
-    if (m_inputType->formControlType() == newInputType->formControlType())
+    if (m_inputType->formControlType() == newType->formControlType())
         return;
 
     removeFromRadioButtonGroup();
@@ -525,9 +497,9 @@ void HTMLInputElement::updateType(const AtomicString& newType)
     bool didRespectHeightAndWidth = m_inputType->shouldRespectHeightAndWidthAttributes();
     bool wasSuccessfulSubmitButtonCandidate = m_inputType->canBeSuccessfulSubmitButton();
 
-    std::unique_ptr<InputType> oldInputType = WTFMove(m_inputType);
-    m_inputType = WTFMove(newInputType);
-    oldInputType->destroyShadowSubtree();
+    m_inputType->destroyShadowSubtree();
+
+    m_inputType = WTFMove(newType);
     m_inputType->createShadowSubtree();
     updateInnerTextElementEditability();
 
@@ -721,7 +693,7 @@ void HTMLInputElement::parseAttribute(const QualifiedName& name, const AtomicStr
                 unregisterForSuspensionCallbackIfNeeded();
         }
     } else if (name == typeAttr)
-        updateType(value);
+        updateType();
     else if (name == valueAttr) {
         // Changes to the value attribute may change whether or not this element has a default value.
         // If this field is autocomplete=off that might affect the return value of needsSuspensionCallback.
@@ -841,18 +813,14 @@ RenderPtr<RenderElement> HTMLInputElement::createElementRenderer(RenderStyle&& s
 void HTMLInputElement::willAttachRenderers()
 {
     if (!m_hasType)
-        updateType(attributeWithoutSynchronization(typeAttr));
+        updateType();
 }
 
 void HTMLInputElement::didAttachRenderers()
 {
     HTMLTextFormControlElement::didAttachRenderers();
 
-    if (m_inputType->needsPostStyleResolutionCallback()) {
-        Style::queuePostResolutionCallback([protectedElement = makeRef(*this)] {
-            protectedElement->m_inputType->updateAfterStyleResolution();
-        });
-    }
+    m_inputType->attach();
 
     if (document().focusedElement() == this) {
         document().view()->queuePostLayoutCallback([protectedThis = makeRef(*this)] {
@@ -1376,6 +1344,7 @@ void HTMLInputElement::setShowAutoFillButton(AutoFillButtonType autoFillButtonTy
     if (static_cast<uint8_t>(autoFillButtonType) == m_autoFillButtonType)
         return;
 
+    m_lastAutoFillButtonType = m_autoFillButtonType;
     m_autoFillButtonType = static_cast<uint8_t>(autoFillButtonType);
     m_inputType->updateAutoFillButton();
     updateInnerTextElementEditability();

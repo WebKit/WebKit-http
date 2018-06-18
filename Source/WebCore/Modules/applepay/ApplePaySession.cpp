@@ -207,13 +207,14 @@ static ExceptionOr<Vector<ApplePaySessionPaymentRequest::ShippingMethod>> conver
     return WTFMove(result);
 }
 
-static ExceptionOr<ApplePaySessionPaymentRequest> convertAndValidate(unsigned version, ApplePayPaymentRequest&& paymentRequest)
+static ExceptionOr<ApplePaySessionPaymentRequest> convertAndValidate(unsigned version, ApplePayPaymentRequest&& paymentRequest, const PaymentCoordinator& paymentCoordinator)
 {
-    auto convertedRequest = convertAndValidate(version, paymentRequest);
+    auto convertedRequest = convertAndValidate(version, paymentRequest, paymentCoordinator);
     if (convertedRequest.hasException())
         return convertedRequest.releaseException();
 
     auto result = convertedRequest.releaseReturnValue();
+    result.setRequester(ApplePaySessionPaymentRequest::Requester::ApplePayJS);
     result.setCurrencyCode(paymentRequest.currencyCode);
 
     auto total = convertAndValidateTotal(WTFMove(paymentRequest.total));
@@ -413,17 +414,19 @@ ExceptionOr<Ref<ApplePaySession>> ApplePaySession::create(Document& document, un
     if (!version || !paymentCoordinator.supportsVersion(version))
         return Exception { InvalidAccessError, makeString("\"" + String::number(version), "\" is not a supported version.") };
 
-    auto convertedPaymentRequest = convertAndValidate(version, WTFMove(paymentRequest));
+    auto convertedPaymentRequest = convertAndValidate(version, WTFMove(paymentRequest), paymentCoordinator);
     if (convertedPaymentRequest.hasException())
         return convertedPaymentRequest.releaseException();
 
-    return adoptRef(*new ApplePaySession(document, convertedPaymentRequest.releaseReturnValue()));
+    return adoptRef(*new ApplePaySession(document, version, convertedPaymentRequest.releaseReturnValue()));
 }
 
-ApplePaySession::ApplePaySession(Document& document, ApplePaySessionPaymentRequest&& paymentRequest)
-    : ActiveDOMObject(&document)
-    , m_paymentRequest(WTFMove(paymentRequest))
+ApplePaySession::ApplePaySession(Document& document, unsigned version, ApplePaySessionPaymentRequest&& paymentRequest)
+    : ActiveDOMObject { &document }
+    , m_paymentRequest { WTFMove(paymentRequest) }
+    , m_version { version }
 {
+    ASSERT(document.frame()->mainFrame().paymentCoordinator().supportsVersion(version));
     suspendIfNeeded();
 }
 
@@ -735,6 +738,11 @@ ExceptionOr<void> ApplePaySession::completePayment(unsigned short status)
     return completePayment(WTFMove(result));
 }
 
+unsigned ApplePaySession::version() const
+{
+    return m_version;
+}
+
 void ApplePaySession::validateMerchant(const URL& validationURL)
 {
     if (m_state == State::Aborted) {
@@ -763,7 +771,7 @@ void ApplePaySession::didAuthorizePayment(const Payment& payment)
 
     m_state = State::Authorized;
 
-    auto event = ApplePayPaymentAuthorizedEvent::create(eventNames().paymentauthorizedEvent, payment);
+    auto event = ApplePayPaymentAuthorizedEvent::create(eventNames().paymentauthorizedEvent, version(), payment);
     dispatchEvent(event.get());
 }
 
@@ -791,7 +799,7 @@ void ApplePaySession::didSelectShippingContact(const PaymentContact& shippingCon
     }
 
     m_state = State::ShippingContactSelected;
-    auto event = ApplePayShippingContactSelectedEvent::create(eventNames().shippingcontactselectedEvent, shippingContact);
+    auto event = ApplePayShippingContactSelectedEvent::create(eventNames().shippingcontactselectedEvent, version(), shippingContact);
     dispatchEvent(event.get());
 }
 

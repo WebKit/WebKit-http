@@ -28,6 +28,7 @@
 
 #include "CachedImage.h"
 #include "CanvasPattern.h"
+#include "HTMLCanvasElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLVideoElement.h"
 #include "Image.h"
@@ -80,6 +81,9 @@ bool CanvasRenderingContext::wouldTaintOrigin(const HTMLImageElement* element)
     if (!image)
         return false;
 
+    if (image->sourceURL().protocolIsData())
+        return false;
+    
     if (!image->hasSingleSecurityOrigin())
         return true;
 

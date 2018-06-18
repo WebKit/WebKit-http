@@ -1,3 +1,160 @@
+2018-01-05  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Add Mac screen capture source
+        https://bugs.webkit.org/show_bug.cgi?id=181333
+        <rdar://problem/36323219>
+
+        Reviewed by Dean Jackson.
+
+        * pal/spi/cg/CoreGraphicsSPI.h: Declare some CGDisplayMode SPI.
+
+2018-01-03  Ting-Wei Lan  <lantw44@gmail.com>
+
+        Replace hard-coded paths in shebangs with #!/usr/bin/env
+        https://bugs.webkit.org/show_bug.cgi?id=181040
+
+        Reviewed by Alex Christensen.
+
+        * AVFoundationSupport.py:
+
+2018-01-03  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] WebKitLegacy compile error.
+        https://bugs.webkit.org/show_bug.cgi?id=181257
+        rdar://problem/36273774
+
+        Reviewed by Alex Christensen.
+
+        The include file 'pal/text/UnencodableHandling.h' is not found. Add folder to list of forwarding
+        headers directories.
+ 
+        * pal/PlatformWin.cmake:
+
+2018-01-02  Brent Fulgham  <bfulgham@apple.com>
+
+        [macOS, iOS] Adopt new secure coding APIs in WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=181085
+        <rdar://problem/34837397>
+
+        Reviewed by Tim Horton.
+
+        Add a new helper function to allow WebKit code to use NSSecureCoding in more
+        places when the underlying operating system supports it.
+
+        * pal/spi/cocoa/NSKeyedArchiverSPI.h:
+        (decodeObjectOfClassForKeyFromCoder): New wrapper method.
+
+2017-12-21  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed test fix after r226224.
+        <rdar://problem/36185975>
+
+        Pasteboard data is more than a dictionary. We have to whitelist NSString
+        and NSArray as well. Change method name to reflect that we take a whitelist
+        of classes that are allowed to be unarchived in the call.
+        
+        * pal/spi/cocoa/NSKeyedArchiverSPI.h:
+        (unarchivedObjectOfClassesFromData):
+        (unarchivedObjectOfClassFromData): Deleted.
+
+2017-12-21  Jeremy Jones  <jeremyj@apple.com>
+
+        Update FULLSCREEN_API feature defines.
+        https://bugs.webkit.org/show_bug.cgi?id=181015
+
+        Reviewed by Tim Horton.
+
+        Change enabled iphone sdk for FULLSCREEN_API.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-12-21  Brent Fulgham  <bfulgham@apple.com>
+
+        Adopt new secure coding APIs in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=178484
+        <rdar://problem/34837193>
+
+        Reviewed by Eric Carlson.
+
+        Due to <rdar://problem/31376830 we cannot used SecureCoding on NSAttributedString
+        in some cases. Add a macro for OS revisions that do not support secure coding,
+        and use the standard unarchive operation for NSAttributedString in those cases.
+
+        Rename 'insecurelyUnarchiveObjectOfClassFromData' to 'insecurelyUnarchiveObjectFromData',
+        and move it earlier in the file so that it can be reused in 'unarchivedObjectOfClassFromData'.
+
+        * pal/spi/cocoa/NSKeyedArchiverSPI.h:
+        (insecurelyUnarchiveObjectFromData): Renamed from insecurelyUnarchiveObjectOfClassFromData.
+        (unarchivedObjectOfClassFromData): Renamed from 'securelyUnarchiveObjectOfClassFromData' and
+        modified to use 'insecurelyUnarchiveObjectFromData'.
+        (securelyUnarchiveObjectOfClassFromData): Deleted.
+        (insecurelyUnarchiveObjectOfClassFromData): Deleted.
+
+2017-12-21  Jeremy Jones  <jeremyj@apple.com>
+
+        Element fullscreen interface should display the location
+        https://bugs.webkit.org/show_bug.cgi?id=181006
+        rdar://problem/36143176
+
+        Reviewed by Simon Fraser.
+
+        Add iOS availability check.
+
+        * pal/spi/cocoa/LinkPresentationSPI.h:
+
+2017-12-20  Daniel Bates  <dabates@apple.com>
+
+        Remove Alternative Presentation Button
+        https://bugs.webkit.org/show_bug.cgi?id=180500
+        <rdar://problem/35891047>
+
+        Reviewed by Simon Fraser.
+
+        We no longer need the alternative presentation button.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-12-20  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Tell PassKit whether Apple Pay JS or Payment Request was used to start an Apple Pay session
+        https://bugs.webkit.org/show_bug.cgi?id=181001
+        <rdar://problem/35479106>
+
+        Reviewed by Tim Horton.
+
+        * pal/spi/cocoa/PassKitSPI.h:
+
+2017-12-19  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Stop maintaining a list of payment networks
+        https://bugs.webkit.org/show_bug.cgi?id=180965
+        <rdar://problem/34696560>
+
+        Reviewed by Tim Horton.
+
+        * pal/spi/cocoa/PassKitSPI.h: Defined +[PKPaymentRequest availableNetworks].
+
+2017-12-14  David Kilzer  <ddkilzer@apple.com>
+
+        Fix 32-bit build: Enable -Wstrict-prototypes for WebKit
+        <https://webkit.org/b/180757>
+        <rdar://problem/36024132>
+
+        * pal/spi/mac/QuickDrawSPI.h:
+        (NewRgn): Add 'void' to C function declaration.
+        (PenNormal): Ditto.
+
+2017-12-14  David Kilzer  <ddkilzer@apple.com>
+
+        Enable -Wstrict-prototypes for WebKit
+        <https://webkit.org/b/180757>
+        <rdar://problem/36024132>
+
+        Rubber-stamped by Joseph Pecoraro.
+
+        * Configurations/Base.xcconfig:
+        (CLANG_WARN_STRICT_PROTOTYPES): Add. Set to YES.
+
 2017-12-11  Joseph Pecoraro  <pecoraro@apple.com>
 
         Unreviewed build fix after r225766.

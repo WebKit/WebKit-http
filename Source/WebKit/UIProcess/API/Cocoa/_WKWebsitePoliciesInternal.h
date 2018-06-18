@@ -30,9 +30,9 @@
 #import "APIWebsitePolicies.h"
 #import "WKObject.h"
 
-namespace WebKit {
+namespace API {
 
-inline _WKWebsitePolicies *wrapper(API::WebsitePolicies& websitePolicies)
+inline _WKWebsitePolicies *wrapper(WebsitePolicies& websitePolicies)
 {
     ASSERT([websitePolicies.wrapper() isKindOfClass:[_WKWebsitePolicies class]]);
     return (_WKWebsitePolicies *)websitePolicies.wrapper();

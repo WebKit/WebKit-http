@@ -43,6 +43,7 @@ CLANG_WARN_INT_CONVERSION = YES;
 CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
 CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+CLANG_WARN_STRICT_PROTOTYPES = YES;
 CLANG_WARN_SUSPICIOUS_MOVE = YES;
 CLANG_WARN_UNREACHABLE_CODE = YES;
 CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
@@ -80,7 +81,7 @@ GCC_WARN_UNUSED_VARIABLE = YES;
 CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
 OTHER_MIGFLAGS = -F$(BUILT_PRODUCTS_DIR);
 PREBINDING = NO;
-WARNING_CFLAGS = -Wall -Wextra -Wchar-subscripts -Wextra-tokens -Wformat-security -Winit-self -Wmissing-format-attribute -Wmissing-noreturn -Wno-unused-parameter -Wpacked -Wpointer-arith -Wredundant-decls -Wundef -Wwrite-strings -Wexit-time-destructors -Wglobal-constructors -Wtautological-compare -Wimplicit-fallthrough;
+WARNING_CFLAGS = -Wall -Wextra -Wcast-qual -Wchar-subscripts -Wextra-tokens -Wformat-security -Winit-self -Wmissing-format-attribute -Wmissing-noreturn -Wno-unused-parameter -Wpacked -Wpointer-arith -Wredundant-decls -Wundef -Wwrite-strings -Wexit-time-destructors -Wglobal-constructors -Wtautological-compare -Wimplicit-fallthrough;
 
 TARGET_MAC_OS_X_VERSION_MAJOR = $(TARGET_MAC_OS_X_VERSION_MAJOR$(MACOSX_DEPLOYMENT_TARGET:suffix:identifier));
 TARGET_MAC_OS_X_VERSION_MAJOR_11 = 101100;

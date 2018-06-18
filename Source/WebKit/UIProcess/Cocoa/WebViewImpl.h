@@ -33,6 +33,7 @@
 #include "WeakObjCPtr.h"
 #include "WebPageProxy.h"
 #include "_WKOverlayScrollbarStyle.h"
+#include <WebCore/PromisedBlobInfo.h>
 #include <WebCore/TextIndicatorWindow.h>
 #include <WebCore/UserInterfaceLayoutDirection.h>
 #include <pal/spi/cocoa/AVKitSPI.h>
@@ -415,9 +416,6 @@ public:
     void dragImageForView(NSView *, NSImage *, CGPoint clientPoint, bool linkDrag);
     void setFileAndURLTypes(NSString *filename, NSString *extension, NSString *title, NSString *url, NSString *visibleURL, NSPasteboard *);
     void setPromisedDataForImage(WebCore::Image*, NSString *filename, NSString *extension, NSString *title, NSString *url, NSString *visibleURL, WebCore::SharedBuffer* archiveBuffer, NSString *pasteboardName);
-#if ENABLE(ATTACHMENT_ELEMENT)
-    void setPromisedDataForAttachment(NSString *filename, NSString *extension, NSString *title, NSString *url, NSString *visibleURL, NSString *pasteboardName);
-#endif
     void pasteboardChangedOwner(NSPasteboard *);
     void provideDataForPasteboard(NSPasteboard *, NSString *type);
     NSArray *namesOfPromisedFilesDroppedAtDestination(NSURL *dropDestination);
@@ -536,6 +534,8 @@ public:
     void updateTouchBarAndRefreshTextBarIdentifiers();
     void setIsCustomizingTouchBar(bool isCustomizingTouchBar) { m_isCustomizingTouchBar = isCustomizingTouchBar; };
 #endif // HAVE(TOUCH_BAR)
+
+    void prepareToDragPromisedBlob(const WebCore::PromisedBlobInfo&);
 
 private:
 #if HAVE(TOUCH_BAR)

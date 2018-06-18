@@ -158,7 +158,7 @@ WI.loaded = function()
     // Create settings.
     this._showingSplitConsoleSetting = new WI.Setting("showing-split-console", false);
 
-    this._openTabsSetting = new WI.Setting("open-tab-types", ["elements", "network", "resources", "timeline", "debugger", "storage", "console"]);
+    this._openTabsSetting = new WI.Setting("open-tab-types", ["elements", "network", "resources", "timeline", "debugger", "storage", "canvas", "console"]);
     this._selectedTabIndexSetting = new WI.Setting("selected-tab-index", 0);
 
     this.showShadowDOMSetting = new WI.Setting("show-shadow-dom", false);
@@ -775,7 +775,7 @@ WI.updateVisibilityState = function(visible)
 
 WI.handlePossibleLinkClick = function(event, frame, options = {})
 {
-    var anchorElement = event.target.enclosingNodeOrSelfWithNodeName("a");
+    let anchorElement = event.target.enclosingNodeOrSelfWithNodeName("a");
     if (!anchorElement || !anchorElement.href)
         return false;
 
@@ -788,7 +788,10 @@ WI.handlePossibleLinkClick = function(event, frame, options = {})
     event.preventDefault();
     event.stopPropagation();
 
-    this.openURL(anchorElement.href, frame, Object.shallowMerge(options, {lineNumber: anchorElement.lineNumber}));
+    this.openURL(anchorElement.href, frame, Object.shallowMerge(options, {
+        lineNumber: anchorElement.lineNumber,
+        ignoreSearchTab: !WI.isShowingSearchTab(),
+    }));
 
     return true;
 };
@@ -979,6 +982,11 @@ WI.showNetworkTab = function()
 WI.isShowingNetworkTab = function()
 {
     return this.tabBrowser.selectedTabContentView instanceof WI.NetworkTabContentView;
+};
+
+WI.isShowingSearchTab = function()
+{
+    return this.tabBrowser.selectedTabContentView instanceof WI.SearchTabContentView;
 };
 
 WI.showTimelineTab = function()
@@ -2359,20 +2367,13 @@ WI.sourceCodeForURL = function(url)
     return sourceCode || null;
 };
 
-WI.linkifyURLAsNode = function(url, linkText, classes)
+WI.linkifyURLAsNode = function(url, linkText, className)
 {
-    if (!linkText)
-        linkText = url;
-
-    classes = classes ? classes + " " : "";
-
-    var a = document.createElement("a");
+    let a = document.createElement("a");
     a.href = url;
-    a.className = classes;
-
-    a.textContent = linkText;
+    a.className = className || "";
+    a.textContent = linkText || url;
     a.style.maxWidth = "100%";
-
     return a;
 };
 

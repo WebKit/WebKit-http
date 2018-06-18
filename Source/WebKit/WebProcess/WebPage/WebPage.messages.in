@@ -99,6 +99,8 @@ messages -> WebPage LegacyReceiver {
     GetRectsForGranularityWithSelectionOffset(uint32_t granularity, int32_t offset, WebKit::CallbackID callbackID)
     GetRectsAtSelectionOffsetWithText(int32_t offset, String text, WebKit::CallbackID callbackID)
     StoreSelectionForAccessibility(bool shouldStore)
+    StartAutoscrollAtPosition(WebCore::FloatPoint positionInWindow)
+    CancelAutoscroll()
 #endif
 
     SetControlledByAutomation(bool controlled)
@@ -150,8 +152,8 @@ messages -> WebPage LegacyReceiver {
 
     DidRemoveBackForwardItem(uint64_t backForwardItemID)
 
-    UpdateWebsitePolicies(WebKit::WebsitePolicies websitePolicies)
-    DidReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, enum WebCore::PolicyAction policyAction, uint64_t navigationID, WebKit::DownloadID downloadID, std::optional<WebKit::WebsitePolicies> websitePolicies)
+    UpdateWebsitePolicies(struct WebKit::WebsitePoliciesData websitePolicies)
+    DidReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, enum WebCore::PolicyAction policyAction, uint64_t navigationID, WebKit::DownloadID downloadID, std::optional<WebKit::WebsitePoliciesData> websitePolicies)
     ContinueWillSubmitForm(uint64_t frameID, uint64_t listenerID)
 
     ClearSelection()
@@ -399,6 +401,9 @@ messages -> WebPage LegacyReceiver {
     FontAtSelection(WebKit::CallbackID callbackID);
 #endif
 
+    SetAlwaysShowsHorizontalScroller(bool alwaysShowsHorizontalScroller)
+    SetAlwaysShowsVerticalScroller(bool alwaysShowsVerticalScroller)
+
     SetMinimumLayoutSize(WebCore::IntSize minimumLayoutSize)
     SetAutoSizingShouldExpandToViewHeight(bool shouldExpand)
 
@@ -483,11 +488,13 @@ messages -> WebPage LegacyReceiver {
     URLSchemeTaskDidReceiveData(uint64_t handlerIdentifier, uint64_t taskIdentifier, IPC::DataReference data)
     URLSchemeTaskDidComplete(uint64_t handlerIdentifier, uint64_t taskIdentifier, WebCore::ResourceError error)
 
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
     StorageAccessResponse(bool wasGranted, uint64_t contextId)
+#endif
 
 #if ENABLE(ATTACHMENT_ELEMENT)
     InsertAttachment(String identifier, struct WebCore::AttachmentDisplayOptions options, String filename, std::optional<String> contentType, IPC::DataReference data, WebKit::CallbackID callbackID)
-    RequestAttachmentData(String identifier, WebKit::CallbackID callbackID)
+    RequestAttachmentInfo(String identifier, WebKit::CallbackID callbackID)
     SetAttachmentDisplayOptions(String identifier, struct WebCore::AttachmentDisplayOptions options, WebKit::CallbackID callbackID)
     SetAttachmentDataAndContentType(String identifier, IPC::DataReference data, std::optional<String> newContentType, std::optional<String> newFilename, WebKit::CallbackID callbackID)
 #endif

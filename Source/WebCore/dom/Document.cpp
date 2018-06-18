@@ -125,7 +125,7 @@
 #include "NavigationDisabler.h"
 #include "NavigationScheduler.h"
 #include "NestingLevelIncrementer.h"
-#include "NoEventDispatchAssertion.h"
+
 #include "NodeIterator.h"
 #include "NodeRareData.h"
 #include "NodeWithIndex.h"
@@ -166,6 +166,7 @@
 #include "SchemeRegistry.h"
 #include "ScopedEventQueue.h"
 #include "ScriptController.h"
+#include "ScriptDisallowedScope.h"
 #include "ScriptModuleLoader.h"
 #include "ScriptRunner.h"
 #include "ScriptSourceCode.h"
@@ -1806,7 +1807,7 @@ void Document::resolveStyle(ResolveStyleType type)
     // hits a null-dereference due to security code always assuming the document has a SecurityOrigin.
 
     {
-        NoEventDispatchAssertion::InMainThread noEventDispatchAssertion;
+        ScriptDisallowedScope::InMainThread scriptDisallowedScope;
         styleScope().flushPendingUpdate();
         frameView.willRecalcStyle();
     }
@@ -1817,7 +1818,7 @@ void Document::resolveStyle(ResolveStyleType type)
     {
         Style::PostResolutionCallbackDisabler disabler(*this);
         WidgetHierarchyUpdatesSuspensionScope suspendWidgetHierarchyUpdates;
-        NoEventDispatchAssertion::InMainThread noEventDispatchAssertion;
+        ScriptDisallowedScope::InMainThread scriptDisallowedScope;
 
         m_inStyleRecalc = true;
 
@@ -1936,7 +1937,7 @@ bool Document::needsStyleRecalc() const
 
 inline bool static isSafeToUpdateStyleOrLayout(FrameView* frameView)
 {
-    bool isSafeToExecuteScript = NoEventDispatchAssertion::InMainThread::isEventAllowed();
+    bool isSafeToExecuteScript = ScriptDisallowedScope::InMainThread::isScriptAllowed();
     bool isInFrameFlattening = frameView && frameView->isInChildFrameWithFrameFlattening();
     return isSafeToExecuteScript || isInFrameFlattening || !isInWebProcess();
 }
@@ -1945,7 +1946,7 @@ bool Document::updateStyleIfNeeded()
 {
     RefPtr<FrameView> frameView = view();
     {
-        NoEventDispatchAssertion::InMainThread noEventDispatchAssertion;
+        ScriptDisallowedScope::InMainThread scriptDisallowedScope;
         ASSERT(isMainThread());
         ASSERT(!frameView || !frameView->isPainting());
 
@@ -1968,7 +1969,6 @@ bool Document::updateStyleIfNeeded()
 void Document::updateLayout()
 {
     ASSERT(isMainThread());
-    ASSERT(LayoutDisallowedScope::isLayoutAllowed());
 
     RefPtr<FrameView> frameView = view();
     if (frameView && frameView->layoutContext().isInRenderTreeLayout()) {
@@ -4121,7 +4121,7 @@ void Document::updateRangesAfterChildrenChanged(ContainerNode& container)
 
 void Document::nodeChildrenWillBeRemoved(ContainerNode& container)
 {
-    ASSERT(!NoEventDispatchAssertion::InMainThread::isEventAllowed());
+    ASSERT(!ScriptDisallowedScope::InMainThread::isScriptAllowed());
 
     removeFocusedNodeOfSubtree(container, true /* amongChildrenOnly */);
     removeFocusNavigationNodeOfSubtree(container, true /* amongChildrenOnly */);
@@ -4154,7 +4154,7 @@ void Document::nodeChildrenWillBeRemoved(ContainerNode& container)
 
 void Document::nodeWillBeRemoved(Node& node)
 {
-    ASSERT(!NoEventDispatchAssertion::InMainThread::isEventAllowed());
+    ASSERT(!ScriptDisallowedScope::InMainThread::isScriptAllowed());
 
     removeFocusedNodeOfSubtree(node);
     removeFocusNavigationNodeOfSubtree(node);
@@ -4298,7 +4298,7 @@ EventListener* Document::getWindowAttributeEventListener(const AtomicString& eve
 
 void Document::dispatchWindowEvent(Event& event, EventTarget* target)
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::InMainThread::isEventAllowed());
+    ASSERT_WITH_SECURITY_IMPLICATION(ScriptDisallowedScope::InMainThread::isScriptAllowed());
     if (!m_domWindow)
         return;
     m_domWindow->dispatchEvent(event, target);
@@ -4306,7 +4306,7 @@ void Document::dispatchWindowEvent(Event& event, EventTarget* target)
 
 void Document::dispatchWindowLoadEvent()
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::InMainThread::isEventAllowed());
+    ASSERT_WITH_SECURITY_IMPLICATION(ScriptDisallowedScope::InMainThread::isScriptAllowed());
     if (!m_domWindow)
         return;
     m_domWindow->dispatchLoadEvent();
@@ -4624,8 +4624,7 @@ ExceptionOr<void> Document::setDomain(const String& newDomain)
 // http://www.whatwg.org/specs/web-apps/current-work/#dom-document-lastmodified
 String Document::lastModified()
 {
-    using namespace std::chrono;
-    std::optional<system_clock::time_point> dateTime;
+    std::optional<WallTime> dateTime;
     if (m_frame && loader())
         dateTime = loader()->response().lastModified();
 
@@ -4633,9 +4632,9 @@ String Document::lastModified()
     // specification tells us to read the last modification date from the file
     // system.
     if (!dateTime)
-        dateTime = system_clock::now();
+        dateTime = WallTime::now();
 
-    auto ctime = system_clock::to_time_t(dateTime.value());
+    auto ctime = dateTime.value().secondsSinceEpoch().secondsAs<time_t>();
     auto localDateTime = std::localtime(&ctime);
     return String::format("%02d/%02d/%04d %02d:%02d:%02d", localDateTime->tm_mon + 1, localDateTime->tm_mday, 1900 + localDateTime->tm_year, localDateTime->tm_hour, localDateTime->tm_min, localDateTime->tm_sec);
 }
@@ -5141,7 +5140,7 @@ void Document::applyPendingXSLTransformsTimerFired()
         return;
 
     m_hasPendingXSLTransforms = false;
-    ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::InMainThread::isEventAllowed());
+    ASSERT_WITH_SECURITY_IMPLICATION(ScriptDisallowedScope::InMainThread::isScriptAllowed());
     for (auto& processingInstruction : styleScope().collectXSLTransforms()) {
         ASSERT(processingInstruction->isXSL());
 
@@ -5699,11 +5698,18 @@ std::optional<RenderingContext> Document::getCSSCanvasContext(const String& type
 HTMLCanvasElement* Document::getCSSCanvasElement(const String& name)
 {
     RefPtr<HTMLCanvasElement>& element = m_cssCanvasElements.add(name, nullptr).iterator->value;
-    if (!element) {
+    if (!element)
         element = HTMLCanvasElement::create(*this);
-        InspectorInstrumentation::didCreateCSSCanvas(*element, name);
-    }
     return element.get();
+}
+
+String Document::nameForCSSCanvasElement(const HTMLCanvasElement& canvasElement) const
+{
+    for (const auto& entry : m_cssCanvasElements) {
+        if (entry.value.get() == &canvasElement)
+            return entry.key;
+    }
+    return String();
 }
 
 #if ENABLE(TEXT_AUTOSIZING)
@@ -6213,6 +6219,9 @@ void Document::webkitWillEnterFullScreenForElement(Element* element)
     m_fullScreenElement->setContainsFullScreenElementOnAncestorsCrossingFrameBoundaries(true);
 
     resolveStyle(ResolveStyleType::Rebuild);
+#if PLATFORM(IOS) && ENABLE(FULLSCREEN_API)
+    m_fullScreenChangeDelayTimer.startOneShot(0_s);
+#endif
 }
 
 void Document::webkitDidEnterFullScreenForElement(Element*)
@@ -6225,7 +6234,9 @@ void Document::webkitDidEnterFullScreenForElement(Element*)
 
     m_fullScreenElement->didBecomeFullscreenElement();
 
+#if !PLATFORM(IOS) || !ENABLE(FULLSCREEN_API)
     m_fullScreenChangeDelayTimer.startOneShot(0_s);
+#endif
 }
 
 void Document::webkitWillExitFullScreenForElement(Element*)
@@ -6633,6 +6644,8 @@ LayoutRect Document::absoluteEventHandlerBounds(bool& includesFixedPositionEleme
 
 Document::RegionFixedPair Document::absoluteRegionForEventTargets(const EventTargetSet* targets)
 {
+    LayoutDisallowedScope layoutDisallowedScope(LayoutDisallowedScope::Reason::ReentrancyAvoidance);
+
     if (!targets)
         return RegionFixedPair(Region(), false);
 
@@ -7423,15 +7436,16 @@ Logger& Document::logger()
     return *m_logger;
 }
 
-void Document::hasStorageAccess(Ref<DeferredPromise>&& passedPromise)
+void Document::hasStorageAccess(Ref<DeferredPromise>&& promise)
 {
     ASSERT(settings().storageAccessAPIEnabled());
 
-    RefPtr<DeferredPromise> promise(WTFMove(passedPromise));
-
-    if (m_hasFrameSpecificStorageAccess)
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    if (hasFrameSpecificStorageAccess()) {
         promise->resolve<IDLBoolean>(true);
-    
+        return;
+    }
+
     if (!m_frame || securityOrigin().isUnique()) {
         promise->resolve<IDLBoolean>(false);
         return;
@@ -7449,10 +7463,17 @@ void Document::hasStorageAccess(Ref<DeferredPromise>&& passedPromise)
         return;
     }
 
+    auto frameID = m_frame->loader().client().frameID();
+    auto pageID = m_frame->loader().client().pageID();
+    if (!frameID || !pageID) {
+        promise->reject();
+        return;
+    }
+
     if (Page* page = this->page()) {
         auto iframeHost = securityOrigin.host();
         auto topHost = topSecurityOrigin.host();
-        page->chrome().client().hasStorageAccess(WTFMove(iframeHost), WTFMove(topHost), [documentReference = m_weakFactory.createWeakPtr(*this), promise] (bool hasAccess) {
+        page->chrome().client().hasStorageAccess(WTFMove(iframeHost), WTFMove(topHost), frameID.value(), pageID.value(), [documentReference = m_weakFactory.createWeakPtr(*this), promise = WTFMove(promise)] (bool hasAccess) {
             Document* document = documentReference.get();
             if (!document)
                 return;
@@ -7461,18 +7482,20 @@ void Document::hasStorageAccess(Ref<DeferredPromise>&& passedPromise)
         });
         return;
     }
+#endif
 
     promise->reject();
 }
 
-void Document::requestStorageAccess(Ref<DeferredPromise>&& passedPromise)
+void Document::requestStorageAccess(Ref<DeferredPromise>&& promise)
 {
     ASSERT(settings().storageAccessAPIEnabled());
     
-    RefPtr<DeferredPromise> promise(WTFMove(passedPromise));
-    
-    if (m_hasFrameSpecificStorageAccess)
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    if (hasFrameSpecificStorageAccess()) {
         promise->resolve();
+        return;
+    }
     
     if (!m_frame || securityOrigin().isUnique()) {
         promise->reject();
@@ -7492,8 +7515,8 @@ void Document::requestStorageAccess(Ref<DeferredPromise>&& passedPromise)
         return;
     }
     
-    // There has to be a sandbox and it has to allow the storage access API to be called.
-    if (sandboxFlags() == SandboxNone || isSandboxed(SandboxStorageAccessByUserActivation)) {
+    // If there is a sandbox, it has to allow the storage access API to be called.
+    if (sandboxFlags() != SandboxNone && isSandboxed(SandboxStorageAccessByUserActivation)) {
         promise->reject();
         return;
     }
@@ -7511,36 +7534,42 @@ void Document::requestStorageAccess(Ref<DeferredPromise>&& passedPromise)
     
     auto iframeHost = securityOrigin.host();
     auto topHost = topSecurityOrigin.host();
-    StringBuilder builder;
-    builder.appendLiteral("Do you want to use your ");
-    builder.append(iframeHost);
-    builder.appendLiteral(" ID on ");
-    builder.append(topHost);
-    builder.appendLiteral("?");
-    Page* page = this->page();
 
-    ASSERT(m_frame);
+    Page* page = this->page();
     auto frameID = m_frame->loader().client().frameID();
     auto pageID = m_frame->loader().client().pageID();
-
-    // FIXME: Don't use runJavaScriptConfirm because it responds synchronously.
-    if ((page && page->chrome().runJavaScriptConfirm(*m_frame, builder.toString())) || m_grantStorageAccessOverride) {
-        page->chrome().client().requestStorageAccess(WTFMove(iframeHost), WTFMove(topHost), frameID, pageID, [documentReference = m_weakFactory.createWeakPtr(*this), promise] (bool wasGranted) {
-            Document* document = documentReference.get();
-            if (!document)
-                return;
-
-            if (wasGranted) {
-                document->m_hasFrameSpecificStorageAccess = true;
-                promise->resolve();
-            } else
-                promise->reject();
-        });
+    if (!page || !frameID || !pageID) {
+        promise->reject();
         return;
     }
-    
+
+    page->chrome().client().requestStorageAccess(WTFMove(iframeHost), WTFMove(topHost), frameID.value(), pageID.value(), [documentReference = m_weakFactory.createWeakPtr(*this), promise = WTFMove(promise)] (bool wasGranted) {
+        Document* document = documentReference.get();
+        if (!document)
+            return;
+        
+        if (wasGranted) {
+            document->setHasFrameSpecificStorageAccess(true);
+            promise->resolve();
+        } else
+            promise->reject();
+    });
+#else
     promise->reject();
+#endif
 }
+
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+bool Document::hasFrameSpecificStorageAccess() const
+{
+    return m_frame->loader().client().hasFrameSpecificStorageAccess();
+}
+    
+void Document::setHasFrameSpecificStorageAccess(bool value)
+{
+    m_frame->loader().client().setHasFrameSpecificStorageAccess(value);
+}
+#endif
 
 void Document::setConsoleMessageListener(RefPtr<StringCallback>&& listener)
 {
@@ -7571,8 +7600,10 @@ Vector<RefPtr<WebAnimation>> Document::getAnimations()
 void Document::didInsertAttachmentElement(HTMLAttachmentElement& attachment)
 {
     auto identifier = attachment.uniqueIdentifier();
-    if (!identifier)
-        return;
+    if (identifier.isEmpty() || m_attachmentIdentifierToElementMap.contains(identifier)) {
+        identifier = createCanonicalUUIDString();
+        attachment.setUniqueIdentifier(identifier);
+    }
 
     m_attachmentIdentifierToElementMap.set(identifier, attachment);
 

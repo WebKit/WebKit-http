@@ -38,8 +38,10 @@
 #include "AVVideoCaptureSource.h"
 #include "CoreAudioCaptureDeviceManager.h"
 #include "CoreAudioCaptureSource.h"
+#include "DisplayCaptureManagerCocoa.h"
 #include "Logging.h"
 #include "MediaStreamPrivate.h"
+#include "ScreenDisplayCaptureSourceMac.h"
 #include <wtf/MainThread.h>
 
 namespace WebCore {
@@ -49,7 +51,25 @@ class VideoCaptureSourceFactoryMac final : public RealtimeMediaSource::VideoCapt
 public:
     CaptureSourceOrError createVideoCaptureSource(const CaptureDevice& device, const MediaConstraints* constraints) final
     {
-        return AVVideoCaptureSource::create(device.persistentId(), constraints);
+        switch (device.type()) {
+        case CaptureDevice::DeviceType::Camera:
+            return AVVideoCaptureSource::create(device.persistentId(), constraints);
+            break;
+        case CaptureDevice::DeviceType::Screen:
+#if PLATFORM(MAC)
+            return ScreenDisplayCaptureSourceMac::create(device.persistentId(), constraints);
+            break;
+#endif
+        case CaptureDevice::DeviceType::Application:
+        case CaptureDevice::DeviceType::Window:
+        case CaptureDevice::DeviceType::Browser:
+        case CaptureDevice::DeviceType::Microphone:
+        case CaptureDevice::DeviceType::Unknown:
+            ASSERT_NOT_REACHED();
+            break;
+        }
+
+        return { };
     }
 
 #if PLATFORM(IOS)
@@ -115,6 +135,11 @@ CaptureDeviceManager& RealtimeMediaSourceCenterMac::audioCaptureDeviceManager()
 CaptureDeviceManager& RealtimeMediaSourceCenterMac::videoCaptureDeviceManager()
 {
     return AVCaptureDeviceManager::singleton();
+}
+
+CaptureDeviceManager& RealtimeMediaSourceCenterMac::displayCaptureDeviceManager()
+{
+    return DisplayCaptureManagerCocoa::singleton();
 }
 
 } // namespace WebCore

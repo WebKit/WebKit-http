@@ -70,6 +70,7 @@
 #include <WebCore/PrintContext.h>
 #include <WebCore/ResourceHandle.h>
 #include <WebCore/RuntimeEnabledFeatures.h>
+#include <WebCore/SWContextManager.h>
 #include <WebCore/ScriptController.h>
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/SecurityPolicy.h>
@@ -116,6 +117,13 @@ void InjectedBundle::setClient(std::unique_ptr<API::InjectedBundle::Client>&& cl
         m_client = std::make_unique<API::InjectedBundle::Client>();
     else
         m_client = WTFMove(client);
+}
+
+void InjectedBundle::setServiceWorkerProxyCreationCallback(void (*callback)(uint64_t))
+{
+#if ENABLE(SERVICE_WORKER)
+    SWContextManager::singleton().setServiceWorkerCreationCallback(callback);
+#endif
 }
 
 void InjectedBundle::postMessage(const String& messageName, API::Object* messageBody)
@@ -224,6 +232,8 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
 #if ENABLE(MEDIA_STREAM)
     if (preference == "WebKitMediaDevicesEnabled")
         RuntimeEnabledFeatures::sharedFeatures().setMediaDevicesEnabled(enabled);
+    if (preference == "WebKitScreenCaptureEnabled")
+        RuntimeEnabledFeatures::sharedFeatures().setScreenCaptureEnabled(enabled);
 #endif
 
 #if ENABLE(WEB_RTC)
@@ -321,7 +331,7 @@ void InjectedBundle::setPrivateBrowsingEnabled(WebPageGroupProxy* pageGroup, boo
 {
     if (enabled) {
         WebProcess::singleton().ensureLegacyPrivateBrowsingSessionInNetworkProcess();
-        WebFrameNetworkingContext::ensureWebsiteDataStoreSession(WebsiteDataStoreParameters::legacyPrivateSessionParameters());
+        WebFrameNetworkingContext::ensureWebsiteDataStoreSession({ { }, { }, { }, { }, { }, { }, { PAL::SessionID::legacyPrivateSessionID(), { }, { }, AllowsCellularAccess::Yes }});
     } else
         SessionTracker::destroySession(PAL::SessionID::legacyPrivateSessionID());
 

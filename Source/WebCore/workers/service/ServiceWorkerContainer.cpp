@@ -38,6 +38,7 @@
 #include "Logging.h"
 #include "NavigatorBase.h"
 #include "ResourceError.h"
+#include "SchemeRegistry.h"
 #include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
 #include "ServiceWorker.h"
@@ -129,8 +130,7 @@ void ServiceWorkerContainer::addRegistration(const String& relativeScriptURL, co
         return;
     }
 
-    // FIXME: The spec disallows scripts outside of HTTP(S), but we'll likely support app custom URL schemes in WebKit.
-    if (!jobData.scriptURL.protocolIsInHTTPFamily()) {
+    if (!SchemeRegistry::canServiceWorkersHandleURLScheme(jobData.scriptURL.protocol().toStringWithoutCopying())) {
         promise->reject(Exception { TypeError, ASCIILiteral("serviceWorker.register() must be called with a script URL whose protocol is either HTTP or HTTPS") });
         return;
     }
@@ -141,11 +141,12 @@ void ServiceWorkerContainer::addRegistration(const String& relativeScriptURL, co
         return;
     }
 
-    String scope = options.scope.isEmpty() ? ASCIILiteral("./") : options.scope;
-    if (!scope.isEmpty())
-        jobData.scopeURL = context->completeURL(scope);
+    if (!options.scope.isEmpty())
+        jobData.scopeURL = context->completeURL(options.scope);
+    else
+        jobData.scopeURL = URL(jobData.scriptURL, "./");
 
-    if (!jobData.scopeURL.isNull() && !jobData.scopeURL.protocolIsInHTTPFamily()) {
+    if (!jobData.scopeURL.isNull() && !SchemeRegistry::canServiceWorkersHandleURLScheme(jobData.scopeURL.protocol().toStringWithoutCopying())) {
         promise->reject(Exception { TypeError, ASCIILiteral("Scope URL provided to serviceWorker.register() must be either HTTP or HTTPS") });
         return;
     }
@@ -188,24 +189,23 @@ void ServiceWorkerContainer::removeRegistration(const URL& scopeURL, Ref<Deferre
     scheduleJob(ServiceWorkerJob::create(*this, WTFMove(promise), WTFMove(jobData)));
 }
 
-void ServiceWorkerContainer::updateRegistration(const URL& scopeURL, const URL& scriptURL, WorkerType, Ref<DeferredPromise>&& promise)
+void ServiceWorkerContainer::updateRegistration(const URL& scopeURL, const URL& scriptURL, WorkerType, RefPtr<DeferredPromise>&& promise)
 {
-    auto* context = scriptExecutionContext();
-    if (!context || !context->sessionID().isValid()) {
-        ASSERT_NOT_REACHED();
-        promise->reject(Exception(InvalidStateError));
-        return;
-    }
+    ASSERT(!m_isStopped);
+
+    auto& context = *scriptExecutionContext();
+    ASSERT(context.sessionID().isValid());
 
     if (!m_swConnection) {
         ASSERT_NOT_REACHED();
-        promise->reject(Exception(InvalidStateError));
+        if (promise)
+            promise->reject(Exception(InvalidStateError));
         return;
     }
 
     ServiceWorkerJobData jobData(m_swConnection->serverConnectionIdentifier());
-    jobData.clientCreationURL = context->url();
-    jobData.topOrigin = SecurityOriginData::fromSecurityOrigin(context->topOrigin());
+    jobData.clientCreationURL = context.url();
+    jobData.topOrigin = SecurityOriginData::fromSecurityOrigin(context.topOrigin());
     jobData.type = ServiceWorkerJobType::Update;
     jobData.scopeURL = scopeURL;
     jobData.scriptURL = scriptURL;
@@ -352,12 +352,20 @@ void ServiceWorkerContainer::jobFailedWithException(ServiceWorkerJob& job, const
     ASSERT(m_creationThread.ptr() == &Thread::current());
 #endif
 
+    ASSERT_WITH_MESSAGE(job.promise() || job.data().type == ServiceWorkerJobType::Update, "Only soft updates have no promise");
+
+    auto guard = WTF::makeScopeExit([this, &job] {
+        jobDidFinish(job);
+    });
+
+    if (!job.promise())
+        return;
+
     if (auto* context = scriptExecutionContext()) {
         context->postTask([job = makeRef(job), exception](ScriptExecutionContext&) {
-            job->promise().reject(exception);
+            job->promise()->reject(exception);
         });
     }
-    jobDidFinish(job);
 }
 
 void ServiceWorkerContainer::scheduleTaskToFireUpdateFoundEvent(ServiceWorkerRegistrationIdentifier identifier)
@@ -375,6 +383,7 @@ void ServiceWorkerContainer::jobResolvedWithRegistration(ServiceWorkerJob& job, 
 #ifndef NDEBUG
     ASSERT(m_creationThread.ptr() == &Thread::current());
 #endif
+    ASSERT_WITH_MESSAGE(job.promise() || job.data().type == ServiceWorkerJobType::Update, "Only soft updates have no promise");
 
     auto guard = WTF::makeScopeExit([this, &job] {
         jobDidFinish(job);
@@ -394,6 +403,11 @@ void ServiceWorkerContainer::jobResolvedWithRegistration(ServiceWorkerJob& job, 
         return;
     }
 
+    if (!job.promise()) {
+        notifyWhenResolvedIfNeeded();
+        return;
+    }
+
     scriptExecutionContext()->postTask([this, protectedThis = makeRef(*this), job = makeRef(job), data = WTFMove(data), notifyWhenResolvedIfNeeded = WTFMove(notifyWhenResolvedIfNeeded)](ScriptExecutionContext& context) mutable {
         if (isStopped()) {
             notifyWhenResolvedIfNeeded();
@@ -404,7 +418,7 @@ void ServiceWorkerContainer::jobResolvedWithRegistration(ServiceWorkerJob& job, 
 
         LOG(ServiceWorker, "Container %p resolved job with registration %p", this, registration.ptr());
 
-        job->promise().resolve<IDLInterface<ServiceWorkerRegistration>>(WTFMove(registration));
+        job->promise()->resolve<IDLInterface<ServiceWorkerRegistration>>(WTFMove(registration));
 
         notifyWhenResolvedIfNeeded();
     });
@@ -415,6 +429,8 @@ void ServiceWorkerContainer::jobResolvedWithUnregistrationResult(ServiceWorkerJo
 #ifndef NDEBUG
     ASSERT(m_creationThread.ptr() == &Thread::current());
 #endif
+
+    ASSERT(job.promise());
 
     auto guard = WTF::makeScopeExit([this, &job] {
         jobDidFinish(job);
@@ -427,7 +443,7 @@ void ServiceWorkerContainer::jobResolvedWithUnregistrationResult(ServiceWorkerJo
     }
 
     context->postTask([job = makeRef(job), unregistrationResult](ScriptExecutionContext&) mutable {
-        job->promise().resolve<IDLBoolean>(unregistrationResult);
+        job->promise()->resolve<IDLBoolean>(unregistrationResult);
     });
 }
 
@@ -443,7 +459,7 @@ void ServiceWorkerContainer::startScriptFetchForJob(ServiceWorkerJob& job, Fetch
     if (!context) {
         LOG_ERROR("ServiceWorkerContainer::jobResolvedWithRegistration called but the container's ScriptExecutionContext is gone");
         callOnMainThread([connection = m_swConnection, job = makeRef(job)] {
-            connection->failedFetchingScript(job, { errorDomainWebKitInternal, 0, job->data().scriptURL, ASCIILiteral("Attempt to fetch service worker script with no ScriptExecutionContext") });
+            connection->failedFetchingScript(job->data().identifier(), job->data().registrationKey(), { errorDomainWebKitInternal, 0, job->data().scriptURL, ASCIILiteral("Attempt to fetch service worker script with no ScriptExecutionContext") });
         });
         jobDidFinish(job);
         return;
@@ -470,14 +486,15 @@ void ServiceWorkerContainer::jobFailedLoadingScript(ServiceWorkerJob& job, const
 #ifndef NDEBUG
     ASSERT(m_creationThread.ptr() == &Thread::current());
 #endif
+    ASSERT_WITH_MESSAGE(job.promise() || job.data().type == ServiceWorkerJobType::Update, "Only soft updates have no promise");
 
     LOG(ServiceWorker, "SeviceWorkerContainer %p failed fetching script for job %s", this, job.identifier().loggingString().utf8().data());
 
-    if (exception)
-        job.promise().reject(*exception);
+    if (exception && job.promise())
+        job.promise()->reject(*exception);
 
     callOnMainThread([connection = m_swConnection, job = makeRef(job), error = error.isolatedCopy()] {
-        connection->failedFetchingScript(job, error);
+        connection->failedFetchingScript(job->data().identifier(), job->data().registrationKey(), error);
     });
 }
 
@@ -562,6 +579,8 @@ void ServiceWorkerContainer::stop()
     m_isStopped = true;
     removeAllEventListeners();
     m_pendingPromises.clear();
+    for (auto& job : m_jobMap.values())
+        job->cancelPendingLoad();
 }
 
 DocumentOrWorkerIdentifier ServiceWorkerContainer::contextIdentifier()

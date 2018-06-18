@@ -214,23 +214,13 @@ RegExp::RegExp(VM& vm, const String& patternString, RegExpFlags flags)
     , m_state(NotCompiled)
     , m_patternString(patternString)
     , m_flags(flags)
-    , m_constructionError(0)
-    , m_numSubpatterns(0)
-#if ENABLE(REGEXP_TRACING)
-    , m_rtMatchOnlyTotalSubjectStringLen(0.0)
-    , m_rtMatchTotalSubjectStringLen(0.0)
-    , m_rtMatchOnlyCallCount(0)
-    , m_rtMatchOnlyFoundCount(0)
-    , m_rtMatchCallCount(0)
-    , m_rtMatchFoundCount(0)
-#endif
 {
 }
 
 void RegExp::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    Yarr::YarrPattern pattern(m_patternString, m_flags, &m_constructionError, vm.stackLimit());
+    Yarr::YarrPattern pattern(m_patternString, m_flags, m_constructionErrorCode, vm.stackLimit());
     if (!isValid())
         m_state = ParseError;
     else {
@@ -282,8 +272,8 @@ void RegExp::byteCodeCompileIfNecessary(VM* vm)
     if (m_regExpBytecode)
         return;
 
-    Yarr::YarrPattern pattern(m_patternString, m_flags, &m_constructionError, vm->stackLimit());
-    if (m_constructionError) {
+    Yarr::YarrPattern pattern(m_patternString, m_flags, m_constructionErrorCode, vm->stackLimit());
+    if (hasError(m_constructionErrorCode)) {
         RELEASE_ASSERT_NOT_REACHED();
 #if COMPILER_QUIRK(CONSIDERS_UNREACHABLE_CODE)
         m_state = ParseError;
@@ -299,8 +289,8 @@ void RegExp::compile(VM* vm, Yarr::YarrCharSize charSize)
 {
     ConcurrentJSLocker locker(m_lock);
     
-    Yarr::YarrPattern pattern(m_patternString, m_flags, &m_constructionError, vm->stackLimit());
-    if (m_constructionError) {
+    Yarr::YarrPattern pattern(m_patternString, m_flags, m_constructionErrorCode, vm->stackLimit());
+    if (hasError(m_constructionErrorCode)) {
         RELEASE_ASSERT_NOT_REACHED();
 #if COMPILER_QUIRK(CONSIDERS_UNREACHABLE_CODE)
         m_state = ParseError;
@@ -316,7 +306,7 @@ void RegExp::compile(VM* vm, Yarr::YarrCharSize charSize)
     }
 
 #if ENABLE(YARR_JIT)
-    if (!pattern.m_containsBackreferences && !pattern.containsUnsignedLengthPattern() && vm->canUseRegExpJIT()) {
+    if (!pattern.m_containsBackreferences && !pattern.containsUnsignedLengthPattern() && VM::canUseRegExpJIT()) {
         Yarr::jitCompile(pattern, charSize, vm, m_regExpJITCode);
         if (!m_regExpJITCode.isFallBack()) {
             m_state = JITCode;
@@ -355,8 +345,8 @@ void RegExp::compileMatchOnly(VM* vm, Yarr::YarrCharSize charSize)
 {
     ConcurrentJSLocker locker(m_lock);
     
-    Yarr::YarrPattern pattern(m_patternString, m_flags, &m_constructionError, vm->stackLimit());
-    if (m_constructionError) {
+    Yarr::YarrPattern pattern(m_patternString, m_flags, m_constructionErrorCode, vm->stackLimit());
+    if (hasError(m_constructionErrorCode)) {
         RELEASE_ASSERT_NOT_REACHED();
 #if COMPILER_QUIRK(CONSIDERS_UNREACHABLE_CODE)
         m_state = ParseError;
@@ -372,7 +362,7 @@ void RegExp::compileMatchOnly(VM* vm, Yarr::YarrCharSize charSize)
     }
 
 #if ENABLE(YARR_JIT)
-    if (!pattern.m_containsBackreferences && !pattern.containsUnsignedLengthPattern() && vm->canUseRegExpJIT()) {
+    if (!pattern.m_containsBackreferences && !pattern.containsUnsignedLengthPattern() && VM::canUseRegExpJIT()) {
         Yarr::jitCompile(pattern, charSize, vm, m_regExpJITCode, Yarr::MatchOnly);
         if (!m_regExpJITCode.isFallBack()) {
             m_state = JITCode;

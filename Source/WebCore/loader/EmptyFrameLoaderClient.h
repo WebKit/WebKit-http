@@ -32,8 +32,8 @@ class WEBCORE_EXPORT EmptyFrameLoaderClient : public FrameLoaderClient {
 
     void frameLoaderDestroyed() override { }
 
-    uint64_t frameID() const override { return 0; }
-    uint64_t pageID() const override { return 0; }
+    std::optional<uint64_t> frameID() const override { return std::nullopt; }
+    std::optional<uint64_t> pageID() const override { return std::nullopt; }
     PAL::SessionID sessionID() const override;
 
     bool hasWebView() const final { return true; } // mainly for assertions
@@ -52,7 +52,7 @@ class WEBCORE_EXPORT EmptyFrameLoaderClient : public FrameLoaderClient {
     void convertMainResourceLoadToDownload(DocumentLoader*, PAL::SessionID, const ResourceRequest&, const ResourceResponse&) final { }
 
     void assignIdentifierToInitialRequest(unsigned long, DocumentLoader*, const ResourceRequest&) final { }
-    bool shouldUseCredentialStorage(DocumentLoader*, unsigned long) final { return false; }
+    bool shouldUseCredentialStorage(DocumentLoader*, unsigned long) override { return false; }
     void dispatchWillSendRequest(DocumentLoader*, unsigned long, ResourceRequest&, const ResourceResponse&) final { }
     void dispatchDidReceiveAuthenticationChallenge(DocumentLoader*, unsigned long, const AuthenticationChallenge&) final { }
 	bool dispatchDidReceiveInvalidCertificate(DocumentLoader*, const CertificateInfo&, const char* message) final { return false; }
@@ -200,6 +200,10 @@ class WEBCORE_EXPORT EmptyFrameLoaderClient : public FrameLoaderClient {
 
 #if USE(QUICK_LOOK)
     RefPtr<PreviewLoaderClient> createPreviewLoaderClient(const String&, const String&) final { return nullptr; }
+#endif
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    bool hasFrameSpecificStorageAccess() final { return false; }
+    void setHasFrameSpecificStorageAccess(bool) final { }
 #endif
 };
 
