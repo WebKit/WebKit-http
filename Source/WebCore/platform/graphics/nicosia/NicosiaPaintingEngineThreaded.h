@@ -35,7 +35,7 @@ namespace Nicosia {
 
 class PaintingEngineThreaded final : public PaintingEngine {
 public:
-    PaintingEngineThreaded();
+    explicit PaintingEngineThreaded(unsigned);
     virtual ~PaintingEngineThreaded();
 
 private:

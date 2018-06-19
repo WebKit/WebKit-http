@@ -57,8 +57,8 @@ static void paintLayer(GraphicsContext& context, GraphicsLayer& layer, const Int
     context.restore();
 }
 
-PaintingEngineThreaded::PaintingEngineThreaded()
-    : m_workerPool(WorkerPool::create(4))
+PaintingEngineThreaded::PaintingEngineThreaded(unsigned numThreads)
+    : m_workerPool(WorkerPool::create(numThreads))
 {
 }
 
