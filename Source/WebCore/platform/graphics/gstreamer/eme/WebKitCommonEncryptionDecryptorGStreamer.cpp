@@ -34,7 +34,7 @@
 
 #define WEBKIT_MEDIA_CENC_DECRYPT_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), WEBKIT_TYPE_MEDIA_CENC_DECRYPT, WebKitMediaCommonEncryptionDecryptPrivate))
 struct _WebKitMediaCommonEncryptionDecryptPrivate {
-    bool m_keyReceived;
+    bool m_keyReceived { false };
     Lock m_mutex;
     Condition m_condition;
     RefPtr<WebCore::CDMInstance> m_cdmInstance;
