@@ -1,3 +1,13 @@
+2018-06-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [GTK][WPE][Nicosia] Add name for Nicosia Painting Threads
+        https://bugs.webkit.org/show_bug.cgi?id=186836
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WTF/WorkerPool.cpp:
+        (TestWebKitAPI::TEST):
+
 2018-06-07  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [WTF] Add WorkerPool
