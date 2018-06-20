@@ -89,7 +89,7 @@ public:
     void reportAppsrcNeedDataReceived();
 
 #if ENABLE(ENCRYPTED_MEDIA)
-    void cacheProtectionEvent(GRefPtr<GstEvent>&& event) { m_cachedProtectionEvents.append(WTFMove(event)); }
+    void cacheProtectionEvent(GRefPtr<GstEvent>&&);
     void handleProtectedBufferProbeInformation(GstPadProbeInfo*);
 #endif
 
@@ -148,7 +148,8 @@ private:
 
 #if ENABLE(ENCRYPTED_MEDIA)
     struct PadProbeInformation m_appsinkPadProtectionProbeInformation;
-    Vector<GRefPtr<GstEvent>> m_cachedProtectionEvents;
+    GValue m_cachedProtectionEvents;
+    bool m_isProcessingProtectionEvents { false };
 #endif
     // Keeps track of the states of append processing, to avoid performing actions inappropriate for the current state
     // (eg: processing more samples when the last one has been detected, etc.). See setAppendState() for valid

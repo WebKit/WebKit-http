@@ -40,6 +40,7 @@ struct _WebKitMediaCommonEncryptionDecryptPrivate {
     RefPtr<WebCore::CDMInstance> m_cdmInstance;
     WTF::HashMap<WebCore::InitData, WebCore::InitData> m_initDatas;
     Vector<GRefPtr<GstEvent>> m_pendingProtectionEvents;
+    uint32_t m_currentEvent { 0 };
 };
 
 static GstStateChangeReturn webKitMediaCommonEncryptionDecryptorChangeState(GstElement*, GstStateChange transition);
@@ -337,9 +338,17 @@ static void webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(Web
             continue;
         }
 
+        if (priv->m_currentEvent == GST_EVENT_SEQNUM(event.get())) {
+            GST_TRACE_OBJECT(self, "event %u already handled", priv->m_currentEvent);
+            continue;
+        }
+
         WebCore::InitData initData;
         if (priv->m_cdmInstance)
             initData = priv->m_initDatas.get(WebCore::GStreamerEMEUtilities::keySystemToUuid(priv->m_cdmInstance->keySystem()));
+
+        priv->m_currentEvent = GST_EVENT_SEQNUM(event.get());
+
         if (initData.isEmpty() || gst_buffer_memcmp(buffer, 0, initData.characters8(), initData.sizeInBytes())) {
             GstMapInfo mapInfo;
             if (!gst_buffer_map(buffer, &mapInfo, GST_MAP_READ)) {
@@ -363,6 +372,7 @@ static void webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(Web
                     break;
                 } else {
                     GST_TRACE_OBJECT(self, "concatenating init data and considering key not received");
+                    priv->m_currentEvent = 0;
                     concatenatedInitDatas.append(initData);
                 }
             } else {
