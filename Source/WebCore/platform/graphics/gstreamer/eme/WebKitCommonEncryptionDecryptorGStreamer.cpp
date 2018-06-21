@@ -218,7 +218,7 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
             for (unsigned i = 0; i < streamEncryptionEventsListSize; ++i)
                 priv->m_pendingProtectionEvents.append(GRefPtr<GstEvent>(static_cast<GstEvent*>(g_value_get_boxed(gst_value_list_get_value(streamEncryptionEventsList, i)))));
             gst_structure_remove_field(protectionMeta->info, "stream-encryption-events");
-            isBufferEncrypted &= gst_structure_n_fields(protectionMeta->info) > 0;
+            isBufferEncrypted = gst_structure_n_fields(protectionMeta->info) > 0;
         }
     }
 

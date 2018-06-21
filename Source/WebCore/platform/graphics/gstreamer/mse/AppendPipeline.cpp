@@ -1271,6 +1271,8 @@ void AppendPipeline::cacheProtectionEvent(GRefPtr<GstEvent>&& event)
 
 void AppendPipeline::handleProtectedBufferProbeInformation(GstPadProbeInfo* info)
 {
+    ASSERT(GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_BUFFER);
+
     m_isProcessingProtectionEvents = false;
 
     unsigned listSize = gst_value_list_get_size(&m_cachedProtectionEvents);
