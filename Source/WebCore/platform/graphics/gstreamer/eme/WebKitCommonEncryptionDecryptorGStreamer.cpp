@@ -38,7 +38,7 @@ struct _WebKitMediaCommonEncryptionDecryptPrivate {
     Lock m_mutex;
     Condition m_condition;
     RefPtr<WebCore::CDMInstance> m_cdmInstance;
-    WTF::HashMap<WebCore::InitData, WebCore::InitData> m_initDatas;
+    WTF::HashMap<String, WebCore::InitData> m_initDatas;
     Vector<GRefPtr<GstEvent>> m_pendingProtectionEvents;
     uint32_t m_currentEvent { 0 };
 };
