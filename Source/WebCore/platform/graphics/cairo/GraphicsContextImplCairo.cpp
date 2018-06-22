@@ -34,6 +34,7 @@
 #include "Font.h"
 #include "GlyphBuffer.h"
 #include "GraphicsContextPlatformPrivateCairo.h"
+#include "ImageBuffer.h"
 #include "IntRect.h"
 
 namespace WebCore {
@@ -403,6 +404,16 @@ void GraphicsContextImplCairo::clipPath(const Path& path, WindRule clipRule)
 IntRect GraphicsContextImplCairo::clipBounds()
 {
     return Cairo::State::getClipBounds(m_platformContext);
+}
+
+void GraphicsContextImplCairo::clipToImageBuffer(ImageBuffer& buffer, const FloatRect& destRect)
+{
+    RefPtr<Image> image = buffer.copyImage(DontCopyBackingStore);
+    if (!image)
+        return;
+
+    if (auto surface = image->nativeImageForCurrentFrame())
+        Cairo::clipToImageBuffer(m_platformContext, surface.get(), destRect);
 }
 
 void GraphicsContextImplCairo::applyDeviceScaleFactor(float)
