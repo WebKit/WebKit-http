@@ -120,23 +120,20 @@ static bool webKitMediaClearKeyDecryptorSetupCipher(WebKitMediaCommonEncryptionD
     gcry_error_t error;
 
     GRefPtr<GstBuffer> keyBuffer;
-    {
-        GstMapInfo keyIDBufferMap;
-        if (!gst_buffer_map(keyIDBuffer, &keyIDBufferMap, GST_MAP_READ)) {
+    GstMappedBuffer mappedKeyIDBuffer(keyIDBuffer, GST_MAP_READ);
+    if (!mappedKeyIDBuffer) {
             GST_ERROR_OBJECT(self, "Failed to map key ID buffer");
             return false;
-        }
+    }
 
 #if ENABLE(ENCRYPTED_MEDIA)
         for (auto& key : priv->keys) {
-            if (!gst_buffer_memcmp(key.keyID.get(), 0, keyIDBufferMap.data, keyIDBufferMap.size)) {
+            if (!gst_buffer_memcmp(key.keyID.get(), 0, mappedKeyIDBuffer.data(), mappedKeyIDBuffer.size())) {
                 keyBuffer = key.keyValue;
                 break;
             }
         }
 #endif
-
-        gst_buffer_unmap(keyIDBuffer, &keyIDBufferMap);
     }
 
     if (!keyBuffer) {
@@ -150,15 +147,14 @@ static bool webKitMediaClearKeyDecryptorSetupCipher(WebKitMediaCommonEncryptionD
         return false;
     }
 
-    GstMapInfo keyMap;
-    if (!gst_buffer_map(keyBuffer.get(), &keyMap, GST_MAP_READ)) {
+    GstMappedBuffer mappedKeyBuffer(keyBuffer.get(), GST_MAP_READ);
+    if (!mappedKeyBuffer) {
         GST_ERROR_OBJECT(self, "Failed to map decryption key");
         return false;
     }
 
-    ASSERT(keyMap.size == CLEARKEY_SIZE);
-    error = gcry_cipher_setkey(priv->handle, keyMap.data, keyMap.size);
-    gst_buffer_unmap(keyBuffer.get(), &keyMap);
+    ASSERT(keyBufferMapped.size() == CLEARKEY_SIZE);
+    error = gcry_cipher_setkey(priv->handle, mappedKeyBuffer.data(), mappedKeyBuffer.size());
     if (error) {
         GST_ERROR_OBJECT(self, "gcry_cipher_setkey failed: %s", gpg_strerror(error));
         return false;
@@ -171,21 +167,20 @@ static bool webKitMediaClearKeyDecryptorDecrypt(WebKitMediaCommonEncryptionDecry
 {
     UNUSED_PARAM(keyIDBuffer);
 
-    GstMapInfo ivMap;
-    if (!gst_buffer_map(ivBuffer, &ivMap, GST_MAP_READ)) {
+    GstMappedBuffer mappedIVBuffer(ivBuffer, GST_MAP_READ);
+    if (!mappedIVBuffer) {
         GST_ERROR_OBJECT(self, "Failed to map IV");
         return false;
     }
 
     uint8_t ctr[CLEARKEY_SIZE];
-    if (ivMap.size == 8) {
+    if (mappedIVBuffer.size() == 8) {
         memset(ctr + 8, 0, 8);
-        memcpy(ctr, ivMap.data, 8);
+        memcpy(ctr, mappedIVBuffer.data(), 8);
     } else {
-        ASSERT(ivMap.size == CLEARKEY_SIZE);
-        memcpy(ctr, ivMap.data, CLEARKEY_SIZE);
+        ASSERT(mappedIVBuffer.size() == CLEARKEY_SIZE);
+        memcpy(ctr, mappedIVBuffer.data(), CLEARKEY_SIZE);
     }
-    gst_buffer_unmap(ivBuffer, &ivMap);
 
     WebKitMediaClearKeyDecryptPrivate* priv = WEBKIT_MEDIA_CK_DECRYPT_GET_PRIVATE(WEBKIT_MEDIA_CK_DECRYPT(self));
     gcry_error_t error = gcry_cipher_setctr(priv->handle, ctr, CLEARKEY_SIZE);
@@ -194,28 +189,25 @@ static bool webKitMediaClearKeyDecryptorDecrypt(WebKitMediaCommonEncryptionDecry
         return false;
     }
 
-    GstMapInfo map;
-    gboolean bufferMapped = gst_buffer_map(buffer, &map, static_cast<GstMapFlags>(GST_MAP_READWRITE));
-    if (!bufferMapped) {
+    GstMappedBuffer mappedBuffer(buffer, GST_MAP_READWRITE);
+    if (!mappedBuffer) {
         GST_ERROR_OBJECT(self, "Failed to map buffer");
         return false;
     }
 
-    GstMapInfo subSamplesMap;
-    gboolean subsamplesBufferMapped = gst_buffer_map(subSamplesBuffer, &subSamplesMap, GST_MAP_READ);
-    if (!subsamplesBufferMapped) {
+    GstMappedBuffer mappedSubsamplesBuffer(subSamplesBuffer, GST_MAP_READ);
+    if (!mappedSubsamplesBuffer) {
         GST_ERROR_OBJECT(self, "Failed to map subsample buffer");
-        gst_buffer_unmap(buffer, &map);
         return false;
     }
 
-    GstByteReader* reader = gst_byte_reader_new(subSamplesMap.data, subSamplesMap.size);
+    GstByteReader* reader = gst_byte_reader_new(mappedSubsamplesBuffer.data(), mappedSubsamplesBuffer.size());
     unsigned position = 0;
     unsigned sampleIndex = 0;
 
     GST_DEBUG_OBJECT(self, "position: %d, size: %zu", position, map.size);
 
-    while (position < map.size) {
+    while (position < mappedBuffer.size()) {
         guint16 nBytesClear = 0;
         guint32 nBytesEncrypted = 0;
 
@@ -224,27 +216,23 @@ static bool webKitMediaClearKeyDecryptorDecrypt(WebKitMediaCommonEncryptionDecry
                 || !gst_byte_reader_get_uint32_be(reader, &nBytesEncrypted)) {
                 GST_DEBUG_OBJECT(self, "unsupported");
                 gst_byte_reader_free(reader);
-                gst_buffer_unmap(buffer, &map);
-                gst_buffer_unmap(subSamplesBuffer, &subSamplesMap);
                 return false;
             }
 
             sampleIndex++;
         } else {
             nBytesClear = 0;
-            nBytesEncrypted = map.size - position;
+            nBytesEncrypted = mappedBuffer.size() - position;
         }
 
-        GST_TRACE_OBJECT(self, "%d bytes clear (todo=%zu)", nBytesClear, map.size - position);
+        GST_TRACE_OBJECT(self, "%d bytes clear (todo=%zu)", nBytesClear, mappedBuffer.size() - position);
         position += nBytesClear;
         if (nBytesEncrypted) {
-            GST_TRACE_OBJECT(self, "%d bytes encrypted (todo=%zu)", nBytesEncrypted, map.size - position);
-            error = gcry_cipher_decrypt(priv->handle, map.data + position, nBytesEncrypted, 0, 0);
+            GST_TRACE_OBJECT(self, "%d bytes encrypted (todo=%zu)", nBytesEncrypted, mappedBuffer.size() - position);
+            error = gcry_cipher_decrypt(priv->handle, mappedBuffer.data() + position, nBytesEncrypted, 0, 0);
             if (error) {
                 GST_ERROR_OBJECT(self, "decryption failed: %s", gpg_strerror(error));
                 gst_byte_reader_free(reader);
-                gst_buffer_unmap(buffer, &map);
-                gst_buffer_unmap(subSamplesBuffer, &subSamplesMap);
                 return false;
             }
             position += nBytesEncrypted;
@@ -252,8 +240,6 @@ static bool webKitMediaClearKeyDecryptorDecrypt(WebKitMediaCommonEncryptionDecry
     }
 
     gst_byte_reader_free(reader);
-    gst_buffer_unmap(buffer, &map);
-    gst_buffer_unmap(subSamplesBuffer, &subSamplesMap);
     return true;
 }
 

@@ -294,10 +294,12 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
     keyIDBuffer = gst_value_get_buffer(value);
 #ifndef GST_DISABLE_GST_DEBUG
     if (gst_debug_category_get_threshold(GST_CAT_DEFAULT) >= GST_LEVEL_MEMDUMP) {
-        GstMapInfo map;
-        gst_buffer_map (keyIDBuffer, &map, GST_MAP_READ);
-        GST_MEMDUMP_OBJECT(self, "key ID for sample", map.data, map.size);
-        gst_buffer_unmap (keyIDBuffer, &map);
+        GstMappedBuffer mappedKeyID(keyIDBuffer, GST_MAP_READ);
+        if (!mappedKeyID) {
+            GST_ERROR_OBJECT(self, "failed to map key ID buffer");
+            return GST_FLOW_NOT_SUPPORTED;
+        }
+        GST_MEMDUMP_OBJECT(self, "key ID for sample", mappedKeyID.data(), mappedKeyID.size());
     }
 #endif
 
@@ -362,17 +364,16 @@ static void webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(Web
         priv->m_currentEvent = GST_EVENT_SEQNUM(event.get());
 
         if (initData.isEmpty() || gst_buffer_memcmp(buffer, 0, initData.characters8(), initData.sizeInBytes())) {
-            GstMapInfo mapInfo;
-            if (!gst_buffer_map(buffer, &mapInfo, GST_MAP_READ)) {
+            GstMappedBuffer mappedBuffer(buffer, GST_MAP_READ);
+            if (!mappedBuffer) {
                 GST_WARNING_OBJECT(self, "cannot map protection data");
                 continue;
             }
 
-            initData = WebCore::InitData(reinterpret_cast<const uint8_t*>(mapInfo.data), mapInfo.size);
-            GST_DEBUG_OBJECT(self, "init data of size %u", mapInfo.size);
+            initData = WebCore::InitData(mappedBuffer.data(), mappedBuffer.size());
+            GST_DEBUG_OBJECT(self, "init data of size %u", mappedBuffer.size());
             GST_TRACE_OBJECT(self, "init data MD5 %s", WebCore::GStreamerEMEUtilities::initDataMD5(initData).utf8().data());
-            GST_MEMDUMP_OBJECT(self, "init data", reinterpret_cast<const uint8_t*>(mapInfo.data), mapInfo.size);
-            gst_buffer_unmap(buffer, &mapInfo);
+            GST_MEMDUMP_OBJECT(self, "init data", mappedBuffer.data(), mappedBuffer.size());
             priv->m_initDatas.set(eventKeySystemUUID, initData);
 
             priv->m_keyReceived = priv->m_cdmInstance && !klass->handleInitData(self, initData);
@@ -402,13 +403,12 @@ static void webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(Web
 
     if (!priv->m_cdmInstance && !concatenatedInitDatas.isEmpty()) {
         GRefPtr<GstBuffer> buffer = adoptGRef(gst_buffer_new_allocate(nullptr, concatenatedInitDatas.sizeInBytes(), nullptr));
-        GstMapInfo mapInfo;
-        if (!gst_buffer_map(buffer.get(), &mapInfo, GST_MAP_WRITE)) {
+        GstMappedBuffer mappedBuffer(buffer.get(), GST_MAP_WRITE);
+        if (!mappedBuffer) {
             GST_WARNING_OBJECT(self, "cannot map writable init data");
             return;
         }
-        memcpy(mapInfo.data, concatenatedInitDatas.characters8(), concatenatedInitDatas.sizeInBytes());
-        gst_buffer_unmap(buffer.get(), &mapInfo);
+        memcpy(mappedBuffer.data(), concatenatedInitDatas.characters8(), concatenatedInitDatas.sizeInBytes());
         GST_DEBUG_OBJECT(self, "reporting concatenated init datas of size %u", concatenatedInitDatas.sizeInBytes());
         GST_TRACE_OBJECT(self, "init data MD5 %s", WebCore::GStreamerEMEUtilities::initDataMD5(concatenatedInitDatas).utf8().data());
         GST_MEMDUMP_OBJECT(self, "init data", reinterpret_cast<const uint8_t*>(concatenatedInitDatas.characters8()), concatenatedInitDatas.sizeInBytes());
