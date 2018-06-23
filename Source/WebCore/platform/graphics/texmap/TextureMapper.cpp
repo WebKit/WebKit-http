@@ -38,11 +38,11 @@ RefPtr<BitmapTexture> TextureMapper::acquireTextureFromPool(const IntSize& size,
     return selectedTexture;
 }
 
-std::unique_ptr<TextureMapper> TextureMapper::create(AccelerationMode mode)
+std::unique_ptr<TextureMapper> TextureMapper::create()
 {
-    if (mode == SoftwareMode)
-        return std::make_unique<TextureMapperImageBuffer>();
-    return platformCreateAccelerated();
+    // FIXME remove this Haiku hack and implement on platform side
+    return std::make_unique<TextureMapperImageBuffer>();
+    // return platformCreateAccelerated();
 }
 
 TextureMapper::TextureMapper(AccelerationMode accelerationMode)

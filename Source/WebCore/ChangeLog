@@ -1,3 +1,1196 @@
+2018-01-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r226667 and r226673.
+        https://bugs.webkit.org/show_bug.cgi?id=181488
+
+        This caused a flaky crash. (Requested by mlewis13 on #webkit).
+
+        Reverted changesets:
+
+        "CodeBlocks should be in IsoSubspaces"
+        https://bugs.webkit.org/show_bug.cgi?id=180884
+        https://trac.webkit.org/changeset/226667
+
+        "REGRESSION (r226667): CodeBlocks should be in IsoSubspaces"
+        https://bugs.webkit.org/show_bug.cgi?id=180884
+        https://trac.webkit.org/changeset/226673
+
+2018-01-10  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION(r225650): The scores of MotionMark tests Multiply and Leaves dropped by 8%
+        https://bugs.webkit.org/show_bug.cgi?id=181460
+        <rdar://problem/36379776>
+
+        Reviewed by Ryosuke Niwa.
+
+        * css/parser/CSSParser.cpp:
+        (WebCore::CSSParserContext::CSSParserContext):
+
+        Don't do the expensive security origin test if the sheet base URL and document URL are identical.
+        This is true for inline style and inline stylesheets.
+
+2018-01-10  Antti Koivisto  <antti@apple.com>
+
+        Try to fix windows build.
+
+        * css/RuleFeature.cpp:
+        (WebCore::RuleFeatureSet::computeNextMatchElement):
+
+2018-01-10  Zalan Bujtas  <zalan@apple.com>
+
+        [RenderTreeBuilder] Move RenderRuby's moveChildren logic to RenderTreeBuilder
+        https://bugs.webkit.org/show_bug.cgi?id=181470
+        <rdar://problem/36397683>
+
+        Reviewed by Antti Koivisto.
+
+        This is about moving code, no cleanup and/or normalization (unfortunately it also means
+        some temporary changes).  
+
+        No change in functionality.
+
+        * rendering/RenderBlockFlow.h:
+        * rendering/RenderRubyBase.cpp:
+        (WebCore::RenderRubyBase::moveChildren): Deleted.
+        (WebCore::RenderRubyBase::mergeChildrenWithBase): Deleted.
+        (WebCore::RenderRubyBase::moveInlineChildren): Deleted.
+        (WebCore::RenderRubyBase::moveBlockChildren): Deleted.
+        * rendering/RenderRubyBase.h:
+        * rendering/RenderRubyRun.cpp:
+        (WebCore::RenderRubyRun::takeChild):
+        * rendering/updating/RenderTreeBuilder.cpp:
+        (WebCore::RenderTreeBuilder::moveRubyChildren):
+        * rendering/updating/RenderTreeBuilder.h:
+        * rendering/updating/RenderTreeBuilderRuby.cpp:
+        (WebCore::RenderTreeBuilder::Ruby::moveInlineChildren):
+        (WebCore::RenderTreeBuilder::Ruby::moveBlockChildren):
+        (WebCore::RenderTreeBuilder::Ruby::moveChildren):
+        (WebCore::RenderTreeBuilder::Ruby::moveChildrenInternal):
+        (WebCore::RenderTreeBuilder::Ruby::insertChild):
+        * rendering/updating/RenderTreeBuilderRuby.h:
+
+2018-01-10  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] fix critical GObject warning
+
+        Rubber-stamped by Carlos Garcia Campos.
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.cpp:
+        (WebCore::MediaPlayerPrivateGStreamer::handleMessage): No need to
+        resort to complicated things to get the element name...
+
+2018-01-10  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] REGRESSION(r226629): broke media/video-interruption-with-resume-allowing-play.html
+        https://bugs.webkit.org/show_bug.cgi?id=181471
+        <rdar://problem/36402323>
+
+        Reviewed by Carlos Garcia Campos.
+
+        This patch mainly reduces the amount of playback state changes
+        emitted by the GStreamer player to its client. Emitting those
+        notifications too often has bad side effects.
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.cpp:
+        (WebCore::MediaPlayerPrivateGStreamer::paused const): Add debug messages.
+        (WebCore::MediaPlayerPrivateGStreamer::handleMessage): This debug message appears too much. Demote.
+        (WebCore::MediaPlayerPrivateGStreamer::maxTimeLoaded const): Ditto.
+        (WebCore::MediaPlayerPrivateGStreamer::didLoadingProgress const): Ditto.
+        (WebCore::MediaPlayerPrivateGStreamer::updateStates): Try to emit
+        playback state change notification only when going to PLAYING.
+        (WebCore::MediaPlayerPrivateGStreamer::loadingFailed): Add warning message.
+
+2018-01-10  Youenn Fablet  <youenn@apple.com>
+
+        Add Service Worker CSP persistency
+        https://bugs.webkit.org/show_bug.cgi?id=181434
+
+        Reviewed by Alex Christensen.
+
+        Covered by manual testing.
+        Future work on service worker test infrastructure should allow automating such tests.
+
+        Add support for service worker CSP data persistency.
+        Add a version parameter to increment each time the schema is changing.
+        This allows the same store to be used by multiple WebKits.
+
+        * workers/service/server/RegistrationDatabase.cpp:
+        (WebCore::v1RecordsTableSchema):
+        (WebCore::RegistrationDatabase::openSQLiteDatabase):
+        (WebCore::RegistrationDatabase::doPushChanges):
+        (WebCore::RegistrationDatabase::importRecords):
+
+2018-01-10  Antti Koivisto  <antti@apple.com>
+
+        Invalidate current element style on class change accurately
+        https://bugs.webkit.org/show_bug.cgi?id=181210
+
+        Reviewed by Zalan Bujtas.
+
+        * css/DocumentRuleSets.cpp:
+        (WebCore::DocumentRuleSets::collectFeatures const):
+        (WebCore::DocumentRuleSets::subjectClassRules const):
+
+            New rule set containing class rules affecting the subject element.
+
+        (WebCore::DocumentRuleSets::ancestorClassRules const):
+        * css/DocumentRuleSets.h:
+        * css/RuleFeature.cpp:
+        (WebCore::RuleFeatureSet::recursivelyCollectFeaturesFromSelector):
+
+            Classify selector components into various buckets based on the elements they match relative to
+            the subject element. There are more categories than this patch strictly needs, for future use.
+
+        (WebCore::RuleFeatureSet::collectFeatures):
+        (WebCore::RuleFeatureSet::add):
+        (WebCore::RuleFeatureSet::clear):
+        (WebCore::RuleFeatureSet::shrinkToFit):
+        * css/RuleFeature.h:
+        * css/StyleResolver.h:
+        (WebCore::StyleResolver::hasSelectorForClass const): Deleted.
+        * style/ClassChangeInvalidation.cpp:
+        (WebCore::Style::elementNeedsInvalidation):
+        (WebCore::Style::ClassChangeInvalidation::computeInvalidation):
+
+            Don't invalidate current element unconditionally on class change. Instead find the subject rulesets
+            that might affect it use them to perform invalidation.
+
+        (WebCore::Style::ClassChangeInvalidation::invalidateStyleWithRuleSets):
+        (WebCore::Style::ClassChangeInvalidation::invalidateStyle): Deleted.
+        (WebCore::Style::ClassChangeInvalidation::invalidateDescendantStyle): Deleted.
+        * style/ClassChangeInvalidation.h:
+        (WebCore::Style::ClassChangeInvalidation::ClassChangeInvalidation):
+        (WebCore::Style::ClassChangeInvalidation::~ClassChangeInvalidation):
+        * style/StyleSharingResolver.cpp:
+        (WebCore::Style::SharingResolver::classNamesAffectedByRules const):
+
+2018-01-09  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Expose the id property on Animation
+        https://bugs.webkit.org/show_bug.cgi?id=181450
+        <rdar://problem/36383600>
+
+        Reviewed by Dean Jackson.
+
+        Expose the "id" property on Animation and handle the "id" property on the optional KeyframeAnimationOptions object
+        passed to Element.animate(). All of the WPT tests related to this property are now passing.
+
+        * animation/WebAnimation.h:
+        * animation/WebAnimation.idl:
+        * dom/Element.cpp:
+        (WebCore::Element::animate):
+
+2018-01-09  Chris Dumez  <cdumez@apple.com>
+
+        Make service workers behave correctly with regards to Page Cache
+        https://bugs.webkit.org/show_bug.cgi?id=181446
+        <rdar://problem/36164291>
+
+        Reviewed by Youenn Fablet.
+
+        Make service workers behave correctly with regards to Page Cache:
+        1. If a document has an active service worker, do not let it go into PageCache
+        2. When a document goes into page cache, unregister it from the list of service worker clients
+        3. When a document is restored from page cache, add it nack to the list of service worker clients
+
+        Tests: http/tests/workers/service/client-added-to-clients-when-restored-from-page-cache.html
+               http/tests/workers/service/client-removed-from-clients-while-in-page-cache.html
+               http/tests/workers/service/no-page-cache-when-controlled.html
+               http/tests/workers/service/other_resources/test.html
+
+        * dom/Document.cpp:
+        (WebCore::Document::suspend):
+        (WebCore::Document::resume):
+        * history/PageCache.cpp:
+        (WebCore::canCacheFrame):
+        * page/DiagnosticLoggingKeys.cpp:
+        (WebCore::DiagnosticLoggingKeys::serviceWorkerKey):
+        * page/DiagnosticLoggingKeys.h:
+
+2018-01-09  Chris Dumez  <cdumez@apple.com>
+
+        We should not return undefined for most properties of a detached Window
+        https://bugs.webkit.org/show_bug.cgi?id=181416
+        <rdar://problem/36162489>
+
+        Reviewed by Ryosuke Niwa.
+
+        We should not return undefined for most properties on a detached Window. WebKit previously only exposed "closed"
+        and "close" properties on detached / frameless windows. However, this does not match the HTML specification [1]
+        or the behavior of Firefox and Chrome.
+
+        Note that Chrome does not seem to fully follow the HTML specification either, it seems to treat detached windows
+        the same way as cross-origin ones. As a result, it only exposed properties that are visible cross-origin when
+        a window is detached / frameless.
+
+        [1] https://html.spec.whatwg.org/#windowproxy-get
+
+        No new tests, updated existingt tests.
+
+        * bindings/js/JSDOMWindowCustom.cpp:
+        (WebCore::jsDOMWindowGetOwnPropertySlotRestrictedAccess):
+        (WebCore::JSDOMWindow::getOwnPropertySlot):
+        (WebCore::JSDOMWindow::getOwnPropertySlotByIndex):
+
+2018-01-09  Darin Adler  <darin@apple.com>
+
+        Further refinement to list item and counter code after "list-item" counter fix
+        https://bugs.webkit.org/show_bug.cgi?id=181426
+
+        Reviewed by Zalan Bujtas.
+
+        * css/StyleBuilderCustom.h:
+        (WebCore::StyleBuilderCustom::applyInheritCounter): Use auto.
+        (WebCore::StyleBuilderCustom::applyValueCounter): Use auto, removed unneeded
+        null checks for things that can never be null, moved the saturated addition
+        here and got rid of the addIncrementValue function from CounterDirectives.
+        Use the saturatedAddition function from SaturatedArithmetic.h instead of the
+        much less efficient one that did the same thing, CounterDirectives::addClamped.
+
+        * rendering/RenderCounter.cpp:
+        (WebCore::listItemCounterDirectives): Use aggregate syntax for the return
+        statements.
+        (WebCore::planCounter): Changed to use a struct return value instead of two
+        out arguments. Use the saturatedAddition function from SaturatedArithmetic.h
+        instead of the much less efficient one that did the same thing,
+        CounterDirectives::addClamped.
+        (WebCore::findPlaceForCounter): Changed to use a struct return value instead
+        of two out arguments.
+        (WebCore::makeCounterNode): Updated for the above changes. Changed code to
+        use add instead of both get and set. Updated to keep the counter maps inside
+        the values of the "map of maps" instead of using a unique_ptr and allocating
+        each one on the heap.
+        (WebCore::destroyCounterNodeWithoutMapRemoval): Changed argument to a reference
+        instead of a pointer. Updated for changes to the map. Use RefPtr more
+        consistently.
+        (WebCore::RenderCounter::destroyCounterNodes): Use iterators less.
+        (WebCore::RenderCounter::destroyCounterNode): Ditto.
+        (WebCore::RenderCounter::rendererRemovedFromTree): Add a check of
+        hasCounterNodeMap here before calling destroyCounterNodes, so that function
+        can assume the flag is true (both other callers already check it).
+        (WebCore::updateCounters): Use auto and update for changes above.
+        (WebCore::RenderCounter::rendererStyleChanged): Use modern for loops instead
+        of iterators.
+        (showCounterRendererTree): Use auto and udpate for changes above.
+
+        * rendering/RenderListItem.cpp:
+        (WebCore::enclosingList): Stop referring to elements as "nodes". Changed
+        the local variable names for clarity.
+        (WebCore::nextListItemHelper): Renamed from nextListItem since it's not
+        intended to be called directly and we want to use a function pointer to
+        nextListItem. Fixed the algorithm to correctly handle ad hoc "lists" that
+        are not actually HTML list elements, using the definition in the enclosingList
+        function as the previousListItem function already did.
+        (WebCore::nextListItem): Updated for name changes.
+        (WebCore::firstListItem): Renamed from nextListItem for clarity.
+        (WebCore::previousListItem): Rewrote loop so it doesn't have to do things
+        so strangely when we find another list.
+        (WebCore::RenderListItem::updateItemValuesForOrderedList): Use auto and
+        update local variable names.
+        (WebCore::RenderListItem::itemCountForOrderedList): Ditto.
+        (WebCore::RenderListItem::updateValueNow const): Rewrote to use an iterative
+        algorithm instead of a recursive one. Fixes the FIXME here.
+        (WebCore::RenderListItem::updateValue): Use m_valueWasSetExplicitly
+        instead of m_explicitValue.
+        (WebCore::RenderListItem::explicitValueChanged): Use auto and simplified
+        the loop a bit.
+        (WebCore::RenderListItem::setExplicitValue): Set m_valueWasSetExplicitly
+        instead of m_explicitValue.
+        (WebCore::previousOrNextItem): Deleted.
+        (WebCore::RenderListItem::updateListMarkerNumbers): Streamlined the loop
+        a bit and used a fucntion pointer to handle the two different directions.
+        (WebCore::RenderListItem::isInReversedOrderedList const): Simplified by
+        getting rid of an unneeded use of pointers and local variables.
+
+        * rendering/RenderListItem.h: Use a boolean, m_valueWasSetExplicitly,
+        instead of a separate optional m_explicitValue.
+
+        * rendering/style/CounterDirectives.h: Since all the code in this file was
+        rewritten, removed old copyrights. Deleted the addIncrementValue function,
+        since it is clear enough in the one call site in the style builder.
+        Deleted the addClamped function because it was just a much slower
+        version of the saturatedAddition function. Made == and != into constexpr
+        functions since they are simple enough to be.
+
+        * rendering/style/RenderStyle.cpp:
+        (WebCore::RenderStyle::getCounterDirectives const): Deleted. Caller can
+        handle this just fine without a helper function.
+        * rendering/style/RenderStyle.h: Ditto.
+
+2018-01-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        font-display:fallback can cause a visual flash (which is supposed to be impossible)
+        https://bugs.webkit.org/show_bug.cgi?id=181374
+
+        Reviewed by Simon Fraser.
+
+        A FontCascade represents an entire font-family fallback list, but sometimes we need to pull out a single
+        representative font from the list to calculate things like line height. Previously, if the first item in
+        the font-family list was in the middle of being downloaded, this representative font was hardcoded to be
+        Times. However, when actually laying out and drawing the glyphs, we have logic to skip the interstitial
+        Times if there are any installed fonts present in the font-family list (so you wouldn't ever actually
+        see Times). This means that line height (among other things) was being calculated as if Times was used,
+        but in reality, some other font from the font-family list was being used.
+
+        Alone, this isn't a huge problem, but font-display:fallback makes a font transition between "timed out"
+        and "failed," and when the font hits the failed state, the representative font skips over the cancelled
+        item and hits the next item in the fallback list. This means that line heights will change, which causes
+        a visual flash, even when font-display:fallback is specified.
+
+        The solution is simply to educate the logic which identifies this representative font so that it
+        understands what to do for currently-loading fonts.
+
+        Tests: fast/text/font-display/swap-flash.html
+
+        * platform/graphics/FontCascadeFonts.h:
+        (WebCore::FontCascadeFonts::primaryFont):
+        * rendering/line/BreakingContext.h:
+        (WebCore::textWidth):
+
+2018-01-04  Filip Pizlo  <fpizlo@apple.com>
+
+        CodeBlocks should be in IsoSubspaces
+        https://bugs.webkit.org/show_bug.cgi?id=180884
+
+        Reviewed by Saam Barati.
+
+        No new tests because no new behavior.
+        
+        Adopting new parallel constraint API, so that more of the logic of doing parallel
+        constraint solving is shared between the DOM's output constraints and JSC's output
+        constraints.
+
+        * bindings/js/DOMGCOutputConstraint.cpp:
+        (WebCore::DOMGCOutputConstraint::executeImpl):
+        (WebCore::DOMGCOutputConstraint::doParallelWorkImpl): Deleted.
+        (WebCore::DOMGCOutputConstraint::finishParallelWorkImpl): Deleted.
+        * bindings/js/DOMGCOutputConstraint.h:
+
+2018-01-08  Simon Fraser  <simon.fraser@apple.com>
+
+        Clean up Marquee-related enums
+        https://bugs.webkit.org/show_bug.cgi?id=181347
+
+        Reviewed by Anders Carlsson.
+
+        Modernize EMarqueeBehavior and EMarqueeDirection enums. Stop using the weird negative
+        values in the MarqueeDirection and do manual reverse direction mapping.
+
+        Make some member functions of RenderMarquee private.
+
+        Stop using bitfields in RenderMarquee because the memory saving is not worth it, and doing so
+        allows us to use modern initialization.
+
+        No behavior change.
+
+        * css/CSSPrimitiveValueMappings.h:
+        (WebCore::CSSPrimitiveValue::CSSPrimitiveValue):
+        (WebCore::CSSPrimitiveValue::operator MarqueeBehavior const):
+        (WebCore::CSSPrimitiveValue::operator MarqueeDirection const):
+        (WebCore::CSSPrimitiveValue::operator EMarqueeBehavior const): Deleted.
+        (WebCore::CSSPrimitiveValue::operator EMarqueeDirection const): Deleted.
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::adjustRenderStyle):
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::sizesLogicalWidthToFitContent const):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::calculateClipRects const):
+        * rendering/RenderMarquee.cpp:
+        (WebCore::RenderMarquee::RenderMarquee):
+        (WebCore::reverseDirection):
+        (WebCore::RenderMarquee::direction const):
+        (WebCore::RenderMarquee::isHorizontal const):
+        (WebCore::RenderMarquee::computePosition):
+        (WebCore::RenderMarquee::start):
+        (WebCore::RenderMarquee::updateMarqueePosition):
+        (WebCore::RenderMarquee::updateMarqueeStyle):
+        (WebCore::RenderMarquee::timerFired):
+        * rendering/RenderMarquee.h:
+        * rendering/style/RenderStyle.h:
+        (WebCore::RenderStyle::marqueeBehavior const):
+        (WebCore::RenderStyle::marqueeDirection const):
+        (WebCore::RenderStyle::setMarqueeDirection):
+        (WebCore::RenderStyle::setMarqueeBehavior):
+        (WebCore::RenderStyle::initialMarqueeBehavior):
+        (WebCore::RenderStyle::initialMarqueeDirection):
+        * rendering/style/RenderStyleConstants.h:
+        * rendering/style/StyleMarqueeData.cpp:
+        (WebCore::StyleMarqueeData::StyleMarqueeData):
+        * rendering/style/StyleMarqueeData.h:
+
+2018-01-09  Jer Noble  <jer.noble@apple.com>
+
+        Many CVDisplayLink threads created and destroyed while watching a YouTube video
+        https://bugs.webkit.org/show_bug.cgi?id=181396
+
+        Reviewed by Simon Fraser.
+
+        When watching some YouTube videos (or any video with default controls), event handlers for
+        the "timeupdate" event which use rAF will cause the underlying platform objects to be
+        destroyed in between "timeupdate" events being fired, since they occur every 250ms, and rAF
+        objects are destroyed every 166ms (or 10/60hz). Update this constant to destroy the
+        underlying objects every 333ms (or 20/60hz) so that this common pattern doesn't lead to
+        excessive rAF platform object turnover.
+
+        * platform/Logging.h:
+        * platform/graphics/DisplayRefreshMonitor.h:
+        (WebCore::DisplayRefreshMonitor::shouldBeTerminated const):
+        * platform/graphics/DisplayRefreshMonitor.cpp:
+        (WebCore::DisplayRefreshMonitor::displayDidRefresh):
+        * platform/graphics/DisplayRefreshMonitorManager.cpp:
+        (WebCore::DisplayRefreshMonitorManager::createMonitorForClient):
+        (WebCore::DisplayRefreshMonitorManager::displayDidRefresh):
+
+2018-01-09  Zalan Bujtas  <zalan@apple.com>
+
+        [RenderTreeBuilder] Move RenderElement addChild mutation logic to RenderTreeBuilder
+        https://bugs.webkit.org/show_bug.cgi?id=181451
+        <rdar://problem/36385562>
+
+        Reviewed by Antti Koivisto.
+
+        This is about moving code, no cleanup and/or normalization (unfortunately it also means
+        some temporary changes).  
+
+        No change in functionality.
+
+        * rendering/RenderElement.cpp:
+        (WebCore::RenderElement::addChild):
+        (WebCore::RenderElement::childRequiresTable const): Deleted.
+        * rendering/RenderElement.h:
+        * rendering/updating/RenderTreeBuilder.cpp:
+        (WebCore::RenderTreeBuilder::insertChildToRenderElement):
+        (WebCore::RenderTreeBuilder::childRequiresTable):
+        * rendering/updating/RenderTreeBuilder.h:
+        * rendering/updating/RenderTreeBuilderInline.cpp:
+        (WebCore::RenderTreeBuilder::Inline::insertChildToContinuation):
+        (WebCore::RenderTreeBuilder::Inline::insertChildIgnoringContinuation):
+        (WebCore::RenderTreeBuilder::Inline::newChildIsInline):
+        (WebCore::newChildIsInline): Deleted.
+        * rendering/updating/RenderTreeBuilderInline.h:
+
+2018-01-09  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r226531.
+
+        This caused test failures on macOS WK2.
+
+        Reverted changeset:
+
+        "Use no-cache fetch mode when loading main documents with
+        location.reload()"
+        https://bugs.webkit.org/show_bug.cgi?id=181285
+        https://trac.webkit.org/changeset/226531
+
+2018-01-09  Michael Saboff  <msaboff@apple.com>
+
+        Unreviewed, rolling out r226600 and r226603
+        https://bugs.webkit.org/show_bug.cgi?id=181351
+
+        Add a DOM gadget for Spectre testing
+
+        * dom/Comment.cpp:
+        (WebCore::Comment::Comment):
+        (WebCore::Comment::setReadLength): Deleted.
+        (WebCore::Comment::charCodeAt): Deleted.
+        (WebCore::Comment::clflushReadLength): Deleted.
+        * dom/Comment.h:
+        * dom/Comment.idl:
+        * page/RuntimeEnabledFeatures.cpp:
+        (WebCore::RuntimeEnabledFeatures::spectreGadgetsEnabled const): Deleted.
+        * page/RuntimeEnabledFeatures.h:
+
+2018-01-09  Don Olmstead  <don.olmstead@sony.com>
+
+        Add additional WEBCORE_EXPORTs
+        https://bugs.webkit.org/show_bug.cgi?id=181414
+
+        Reviewed by Alex Christensen.
+
+        No new tests. No change in behavior.
+
+        * dom/Document.h:
+        * dom/ViewportArguments.h:
+        * page/DOMWindow.h:
+        * page/FrameView.h:
+        * page/PageOverlayController.h:
+        * platform/ContextMenuItem.h:
+        * platform/Pasteboard.h:
+        * platform/SharedBuffer.h:
+        * platform/UserAgent.h:
+        * platform/graphics/GLContext.h:
+        * platform/graphics/GraphicsContext.h:
+        * platform/graphics/GraphicsLayerTransform.h:
+        * platform/graphics/PlatformDisplay.h:
+        * platform/graphics/cairo/BackingStoreBackendCairoImpl.h:
+        * platform/graphics/cairo/PlatformContextCairo.h:
+        * platform/graphics/cairo/RefPtrCairo.h:
+        * platform/graphics/nicosia/NicosiaBuffer.h:
+        * platform/graphics/nicosia/NicosiaPaintingEngine.h:
+        * platform/graphics/texmap/TextureMapper.h:
+        * platform/graphics/texmap/TextureMapperAnimation.h:
+        * platform/graphics/texmap/TextureMapperBackingStore.h:
+        * platform/graphics/texmap/TextureMapperFPSCounter.h:
+        * platform/graphics/texmap/TextureMapperLayer.h:
+        (WebCore::TextureMapperLayer::TextureMapperLayer): Deleted.
+        (WebCore::TextureMapperLayer::setID): Deleted.
+        (WebCore::TextureMapperLayer::id): Deleted.
+        (WebCore::TextureMapperLayer:: const): Deleted.
+        (WebCore::TextureMapperLayer::setScrollClient): Deleted.
+        (WebCore::TextureMapperLayer::setIsScrollable): Deleted.
+        (WebCore::TextureMapperLayer::isScrollable const): Deleted.
+        (WebCore::TextureMapperLayer::textureMapper const): Deleted.
+        (WebCore::TextureMapperLayer::setTextureMapper): Deleted.
+        (WebCore::TextureMapperLayer::drawsContent const): Deleted.
+        (WebCore::TextureMapperLayer::contentsAreVisible const): Deleted.
+        (WebCore::TextureMapperLayer::size const): Deleted.
+        (WebCore::TextureMapperLayer::opacity const): Deleted.
+        (WebCore::TextureMapperLayer::transform const): Deleted.
+        (WebCore::TextureMapperLayer::hasFilters const): Deleted.
+        (WebCore::TextureMapperLayer::isShowingRepaintCounter const): Deleted.
+        (WebCore::TextureMapperLayer::fixedToViewport const): Deleted.
+        (WebCore::TextureMapperLayer::rootLayer const): Deleted.
+        (WebCore::TextureMapperLayer::texture): Deleted.
+        (WebCore::TextureMapperLayer::adjustedPosition const): Deleted.
+        (WebCore::TextureMapperLayer::layerRect const): Deleted.
+        (WebCore::TextureMapperLayer::State::State): Deleted.
+        * platform/graphics/texmap/TextureMapperPlatformLayerProxy.h:
+        * platform/graphics/texmap/TextureMapperTile.h:
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.h:
+        (WebCore::CoordinatedGraphicsLayer::isScrollable const): Deleted.
+        (WebCore::CoordinatedGraphicsLayer::id const): Deleted.
+        (WebCore::CoordinatedGraphicsLayer::coverRect const): Deleted.
+        (WebCore::CoordinatedGraphicsLayer::fixedToViewport const): Deleted.
+        * platform/graphics/texmap/coordinated/CoordinatedImageBacking.h:
+        (WebCore::CoordinatedImageBacking::id const): Deleted.
+        * platform/graphics/texmap/coordinated/TiledBackingStore.h:
+        * platform/graphics/texmap/coordinated/UpdateAtlas.h:
+        * platform/network/AuthenticationChallengeBase.h:
+        * platform/network/CredentialBase.h:
+        * platform/network/ProtectionSpaceBase.h:
+        * platform/network/curl/SocketStreamHandleImpl.h:
+        * replay/UserInputBridge.h:
+
+2018-01-09  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl] Move FormData related tasks into new CurlFormDataStream class.
+        https://bugs.webkit.org/show_bug.cgi?id=181106
+
+        Reviewed by Alex Christensen.
+
+        No new tests because no behavior change.
+
+        * platform/Curl.cmake:
+        * platform/network/curl/CurlFormDataStream.cpp: Added.
+        (WebCore::CurlFormDataStream::CurlFormDataStream):
+        (WebCore::CurlFormDataStream::~CurlFormDataStream):
+        (WebCore::CurlFormDataStream::clean):
+        (WebCore::CurlFormDataStream::shouldUseChunkTransfer):
+        (WebCore::CurlFormDataStream::totalSize):
+        (WebCore::CurlFormDataStream::computeContentLength):
+        (WebCore::CurlFormDataStream::read):
+        (WebCore::CurlFormDataStream::readFromFile):
+        (WebCore::CurlFormDataStream::readFromData):
+        * platform/network/curl/CurlFormDataStream.h: Renamed from Source/WebCore/platform/network/curl/FormDataStreamCurl.h.
+        (WebCore::CurlFormDataStream::elementSize):
+        (WebCore::CurlFormDataStream::totalReadSize):
+        * platform/network/curl/CurlRequest.cpp:
+        (WebCore::CurlRequest::CurlRequest):
+        (WebCore::CurlRequest::willSendData):
+        (WebCore::CurlRequest::finalizeTransfer):
+        (WebCore::CurlRequest::setupPUT):
+        (WebCore::CurlRequest::setupPOST):
+        (WebCore::CurlRequest::setupSendData):
+        (WebCore::CurlRequest::resolveBlobReferences): Deleted.
+        (WebCore::CurlRequest::setupFormData): Deleted.
+        * platform/network/curl/CurlRequest.h:
+        * platform/network/curl/FormDataStreamCurl.cpp: Removed.
+
+2018-01-09  Zalan Bujtas  <zalan@apple.com>
+
+        [RenderTreeBuilder] Move MathML addChild logic to RenderTreeBuilder
+        https://bugs.webkit.org/show_bug.cgi?id=181443
+        <rdar://problem/36380228>
+
+        Reviewed by Antti Koivisto.
+
+        This is about moving code, no cleanup and/or normalization (unfortunately it also means
+        some temporary changes).  
+
+        No change in functionality.
+
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * rendering/mathml/RenderMathMLFenced.cpp:
+        (WebCore::RenderMathMLFenced::addChild):
+        (WebCore::RenderMathMLFenced::createMathMLOperator): Deleted.
+        (WebCore::RenderMathMLFenced::makeFences): Deleted.
+        * rendering/mathml/RenderMathMLFenced.h:
+        * rendering/updating/RenderTreeBuilder.cpp:
+        (WebCore::RenderTreeBuilder::RenderTreeBuilder):
+        (WebCore::RenderTreeBuilder::insertChildToRenderMathMLFenced):
+        * rendering/updating/RenderTreeBuilder.h:
+        (WebCore::RenderTreeBuilder::mathMLBuilder):
+
+2018-01-09  Antti Koivisto  <antti@apple.com>
+
+        Blank page except for inner iframes because pending stylesheets cause style.isNotFinal() to be true
+        https://bugs.webkit.org/show_bug.cgi?id=180940
+        <rdar://problem/36116507>
+
+        Reviewed by Darin Adler.
+
+        Test: http/tests/local/loading-stylesheet-import-remove.html
+
+        If a <link> referencing a stylesheet containing an @import that was still loading was removed
+        from the document, the loading state was never cleared. For head stylesheets this blocked
+        rendering permanently.
+
+        Test reduction by Justin Ridgewell.
+
+        * html/HTMLLinkElement.cpp:
+        (WebCore::HTMLLinkElement::removedFromAncestor):
+
+        Test if the stylesheet it loading before clearing the pointer.
+
+2018-01-09  Dan Bernstein  <mitz@apple.com>
+
+        Removed some empty directories that were left behind
+
+        * Modules/indieui: Removed.
+        * Modules/vibration: Removed.
+        * platform/graphics/ca/mac: Removed.
+        * platform/mediastream/gstreamer: Removed.
+
+2018-01-09  Antoine Quint  <graouts@apple.com>
+
+        Refactor timing function solving code
+        https://bugs.webkit.org/show_bug.cgi?id=181428
+
+        Reviewed by Dean Jackson.
+
+        We have duplicated code to solve "cubic" and "steps" timing functions in AnimationBase and TextureMapperAnimation,
+        and we will soon need similar code to deal with timing functions in Web Animations. We move this code into TimingFunction
+        with a single transformTime() function that can be called directly on the timing function rather than having callers
+        figure out what type timing functions are to solve them.
+
+        No test as there shouldn't be any behavior change.
+
+        * page/animation/AnimationBase.cpp:
+        (WebCore::AnimationBase::progress const):
+        (WebCore::solveEpsilon): Deleted.
+        (WebCore::solveCubicBezierFunction): Deleted.
+        (WebCore::solveStepsFunction): Deleted.
+        (WebCore::solveSpringFunction): Deleted.
+        * platform/animation/TimingFunction.cpp:
+        (WebCore::TimingFunction::transformTime const):
+        * platform/animation/TimingFunction.h:
+        * platform/graphics/texmap/TextureMapperAnimation.cpp:
+        (WebCore::TextureMapperAnimation::apply):
+        (WebCore::solveEpsilon): Deleted.
+        (WebCore::solveCubicBezierFunction): Deleted.
+        (WebCore::solveStepsFunction): Deleted.
+        (WebCore::applyTimingFunction): Deleted.
+
+2018-01-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, silence -Wunused-parameter warning
+
+        * testing/js/WebCoreTestSupport.cpp:
+        (WebCoreTestSupport::setupNewlyCreatedServiceWorker):
+
+2018-01-09  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Check Image::m_image is not null in ImageLoader::decode()
+        https://bugs.webkit.org/show_bug.cgi?id=180386
+        <rdar://problem/34634483>
+
+        Reviewed by Tim Horton.
+
+        Ensure ImageLoader::m_image is not null before referencing it.
+
+        * loader/ImageLoader.cpp:
+        (WebCore::ImageLoader::decode):
+
+2018-01-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [FreeType] Use FastMalloc for FreeType
+        https://bugs.webkit.org/show_bug.cgi?id=181387
+
+        Reviewed by Michael Catanzaro.
+
+        Add custom memory allocator for FreeType to use FastMalloc.
+
+        * platform/graphics/freetype/FontCustomPlatformDataFreeType.cpp:
+        (WebCore::initializeFreeTypeLibrary):
+        (WebCore::createFontCustomPlatformData):
+
+2018-01-09  Zalan Bujtas  <zalan@apple.com>
+
+        [RenderTreeBuilder] Move RenderTable* addChild mutation logic to RenderTreeBuilder
+        https://bugs.webkit.org/show_bug.cgi?id=181424
+        <rdar://problem/36368628>
+
+        Reviewed by Antti Koivisto.
+
+        This is about moving code, no cleanup and/or normalization (unfortunately it also means
+        some temporary changes).  
+
+        Covered by existing tests.
+
+        * rendering/RenderTable.cpp:
+        (WebCore::RenderTable::addChild):
+        * rendering/RenderTableRow.cpp:
+        (WebCore::RenderTableRow::addChild):
+        * rendering/RenderTableSection.cpp:
+        (WebCore::RenderTableSection::addChild):
+        * rendering/updating/RenderTreeBuilder.cpp:
+        (WebCore::RenderTreeBuilder::insertChildToRenderTable):
+        (WebCore::RenderTreeBuilder::insertChildToRenderTableSection):
+        (WebCore::RenderTreeBuilder::insertChildToRenderTableRow):
+        * rendering/updating/RenderTreeBuilder.h:
+        * rendering/updating/RenderTreeBuilderTable.cpp:
+        (WebCore::RenderTreeBuilder::Table::insertChild):
+        * rendering/updating/RenderTreeBuilderTable.h:
+
+2018-01-09  Zalan Bujtas  <zalan@apple.com>
+
+        [RenderTreeBuilder] Transition Render*::addChild() calls to RenderTreeBuilder::insertChildToRender*()
+        https://bugs.webkit.org/show_bug.cgi?id=181407
+        <rdar://problem/36361176>
+
+        Reviewed by Antti Koivisto.
+
+        Eventually all mutation will be going through the RenderTreeBuilder.
+
+        No change in functionality.
+
+        * rendering/RenderGrid.cpp:
+        (WebCore::RenderGrid::addChild):
+        * rendering/RenderMultiColumnFlow.cpp:
+        (WebCore::RenderMultiColumnFlow::processPossibleSpannerDescendant):
+        * rendering/RenderRubyRun.cpp:
+        (WebCore::RenderRubyRun::rubyBaseSafe):
+        * rendering/updating/RenderTreeBuilderBlockFlow.cpp:
+        (WebCore::RenderTreeBuilder::BlockFlow::insertChild):
+        * rendering/updating/RenderTreeBuilderMultiColumn.cpp:
+        (WebCore::RenderTreeBuilder::MultiColumn::createFragmentedFlow):
+        * rendering/updating/RenderTreeBuilderRuby.cpp:
+        (WebCore::RenderTreeBuilder::Ruby::findOrCreateParentForChild):
+
+2018-01-09  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] Ensure SleepDisabler is not held by pages in page cache
+        https://bugs.webkit.org/show_bug.cgi?id=180197
+
+        Reviewed by Eric Carlson.
+
+        The sleep disabler is now checked again whenever the media player
+        playback state or other characteristic has changed in the media
+        engine.
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::mediaPlayerPlaybackStateChanged):
+        Check if the sleep disabler state needs to be updated or not.
+        (WebCore::HTMLMediaElement::mediaPlayerCharacteristicChanged): Ditto.
+        (WebCore::HTMLMediaElement::shouldDisableSleep const): Enable
+        sleep disabler for GTK and WPE ports.
+
+2018-01-09  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] Missing notifications to player client
+        https://bugs.webkit.org/show_bug.cgi?id=181432
+
+        Reviewed by Carlos Garcia Campos.
+
+        We now properly emit playback state changes and characteristic
+        updates to the client when the pipeline state changes and when
+        audio/video tracks changes are detected.
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.cpp:
+        (WebCore::MediaPlayerPrivateGStreamer::playbackPosition const):
+        This debug message appears too often in logs. Demote.
+        (WebCore::MediaPlayerPrivateGStreamer::durationMediaTime const): Ditto.
+        (WebCore::MediaPlayerPrivateGStreamer::notifyPlayerOfVideo): Emit
+        charasteristicChanged notification.
+        (WebCore::MediaPlayerPrivateGStreamer::notifyPlayerOfAudio): Ditto.
+        (WebCore::MediaPlayerPrivateGStreamer::updateStates): Keep track
+        of old and current pipeline state.
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.h:
+
+
+2018-01-09  Youenn Fablet  <youenn@apple.com>
+
+        Add CSP support to service workers
+        https://bugs.webkit.org/show_bug.cgi?id=181385
+
+        Reviewed by Chris Dumez.
+
+        Covered by rebased tests.
+
+        Added recovery of CSP information from WorkerScriptLoader.
+        Added plumbing to pass the CSP information to Service Workers.
+        Did not add persistency support for the CSP information as this requires changing the SQL database schema.
+        This will be done in a follow-up.
+
+        * workers/WorkerScriptLoader.cpp:
+        (WebCore::WorkerScriptLoader::loadAsynchronously):
+        (WebCore::WorkerScriptLoader::didReceiveResponse):
+        * workers/WorkerScriptLoader.h:
+        (WebCore::WorkerScriptLoader::contentSecurityPolicy const):
+        * workers/service/SWClientConnection.cpp:
+        (WebCore::SWClientConnection::finishedFetchingScript):
+        (WebCore::SWClientConnection::failedFetchingScript):
+        * workers/service/SWClientConnection.h:
+        * workers/service/ServiceWorkerContainer.cpp:
+        (WebCore::ServiceWorkerContainer::addRegistration):
+        (WebCore::ServiceWorkerContainer::jobFailedWithException):
+        (WebCore::ServiceWorkerContainer::jobResolvedWithRegistration):
+        (WebCore::ServiceWorkerContainer::jobFinishedLoadingScript):
+        * workers/service/ServiceWorkerContainer.h:
+        * workers/service/ServiceWorkerContextData.cpp:
+        (WebCore::ServiceWorkerContextData::isolatedCopy const):
+        * workers/service/ServiceWorkerContextData.h:
+        (WebCore::ServiceWorkerContextData::encode const):
+        (WebCore::ServiceWorkerContextData::decode):
+        * workers/service/ServiceWorkerFetchResult.h:
+        (WebCore::ServiceWorkerFetchResult::encode const):
+        (WebCore::ServiceWorkerFetchResult::decode):
+        * workers/service/ServiceWorkerGlobalScope.cpp:
+        (WebCore::ServiceWorkerGlobalScope::create):
+        * workers/service/ServiceWorkerGlobalScope.h:
+        * workers/service/ServiceWorkerJob.cpp:
+        (WebCore::ServiceWorkerJob::notifyFinished):
+        * workers/service/ServiceWorkerJobClient.h:
+        * workers/service/context/ServiceWorkerThread.cpp:
+        (WebCore::ServiceWorkerThread::ServiceWorkerThread):
+        (WebCore::ServiceWorkerThread::createWorkerGlobalScope):
+        * workers/service/server/RegistrationDatabase.cpp:
+        (WebCore::v1RecordsTableSchema):
+        (WebCore::RegistrationDatabase::importRecords):
+        * workers/service/server/SWServer.cpp:
+        (WebCore::SWServer::updateWorker):
+        (WebCore::SWServer::installContextData):
+        * workers/service/server/SWServer.h:
+        * workers/service/server/SWServerJobQueue.cpp:
+        (WebCore::SWServerJobQueue::scriptFetchFinished):
+        * workers/service/server/SWServerWorker.cpp:
+        (WebCore::SWServerWorker::SWServerWorker):
+        (WebCore::m_contentSecurityPolicy):
+        (WebCore::SWServerWorker::contextData const):
+        * workers/service/server/SWServerWorker.h:
+
+2018-01-09  Antoine Quint  <graouts@apple.com>
+
+        Provide a method to obtain a CSS value from a RenderStyle by CSSPropertyID
+        https://bugs.webkit.org/show_bug.cgi?id=181429
+
+        Reviewed by Antti Koivisto.
+
+        The KeyframeEffect.getKeyframes() method from Web Animations requires that we return all styles applied at a given
+        animation effect keyframe. When we parse keyframes, we create RenderStyle objects that are stored in a KeyframeList,
+        as well as a list of CSSPropertyIDs that are animated. In order to provide the list of animated properties and their
+        values when calling getKeyframes(), we need to be able to read back from the RenderStyle we create. As a first step
+        towards this goal, we factor some code in ComputedStyleExtractor::propertyValue() out into a new method
+        ComputedStyleExtractor::valueForPropertyinStyle() which takes in an explicit RenderStyle.
+
+        No test as this is simply refactoring that doesn't change or add behavior.
+
+        * css/CSSComputedStyleDeclaration.cpp:
+        (WebCore::ComputedStyleExtractor::propertyValue):
+        (WebCore::ComputedStyleExtractor::valueForPropertyinStyle):
+        * css/CSSComputedStyleDeclaration.h:
+
+2018-01-09  Youenn Fablet  <youenn@apple.com>
+
+        SWClientConnection should not keep references to service worker jobs
+        https://bugs.webkit.org/show_bug.cgi?id=181381
+
+        Reviewed by Chris Dumez.
+
+        Difficult to test determiniscally but corresponding crash log should no longer happen in debug builds.
+
+        Stopped passing ServiceWorkerJob references from ServiceWorkerContainer (potentially in service worker thread) to SWClientConnection (main thread).
+        Instead pass job identifiers and related data to the main thread.
+
+        Minor refactoring to use ServiceWorkerJobIdentifier instead of ServiceWorkerJobDataIdentifier which contains more data than needed.
+
+        * workers/service/SWClientConnection.cpp:
+        (WebCore::SWClientConnection::scheduleJob):
+        (WebCore::SWClientConnection::failedFetchingScript):
+        (WebCore::SWClientConnection::postTaskForJob):
+        (WebCore::SWClientConnection::jobRejectedInServer):
+        (WebCore::SWClientConnection::registrationJobResolvedInServer):
+        (WebCore::SWClientConnection::unregistrationJobResolvedInServer):
+        (WebCore::SWClientConnection::startScriptFetchForServer):
+        (WebCore::SWClientConnection::clearPendingJobs):
+        (WebCore::SWClientConnection::finishedFetchingScript): Deleted.
+        * workers/service/SWClientConnection.h:
+        * workers/service/ServiceWorkerContainer.cpp:
+        (WebCore::ServiceWorkerContainer::scheduleJob):
+        (WebCore::ServiceWorkerContainer::startScriptFetchForJob):
+        (WebCore::ServiceWorkerContainer::jobFinishedLoadingScript):
+        (WebCore::ServiceWorkerContainer::jobFailedLoadingScript):
+        * workers/service/ServiceWorkerContainer.h:
+        * workers/service/server/SWServer.cpp:
+        (WebCore::SWServer::rejectJob):
+        (WebCore::SWServer::resolveRegistrationJob):
+        (WebCore::SWServer::resolveUnregistrationJob):
+        (WebCore::SWServer::startScriptFetch):
+        * workers/service/server/SWServer.h:
+
+2018-01-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r224460): Text fields sometimes get "messed up"
+        https://bugs.webkit.org/show_bug.cgi?id=181115
+
+        Reviewed by Zalan Bujtas.
+
+        Add the scroll position to paint offset before computing the clip rectangle. Before r224460, scroll position was
+        substracted after the clip rectangle was computed.
+
+        * rendering/LayoutState.cpp:
+        (WebCore::LayoutState::computeClipRect):
+
+2018-01-09  Ali Juma  <ajuma@chromium.org>
+
+        Implement VisualViewport API events
+        https://bugs.webkit.org/show_bug.cgi?id=179386
+
+        Reviewed by Frédéric Wang.
+
+        Implement the events (resize and scroll) defined by the Visual Viewport API
+        (https://wicg.github.io/visual-viewport/#events).
+
+        This is behind the VisualViewportAPI experimental feature flag.
+
+        In order to detect when events need to be fired, change the computation of
+        Visual Viewport attributes to happen whenever the layout viewport is updated
+        rather than only on-demand.
+
+        Tests: fast/visual-viewport/resize-event-fired-window-resized.html
+               fast/visual-viewport/resize-event-fired.html
+               fast/visual-viewport/scroll-event-fired.html
+
+        * dom/Document.cpp:
+        (WebCore::Document::addListenerTypeIfNeeded):
+        Add support for tracking resize event listeners.
+        * dom/Document.h:
+        * dom/DocumentEventQueue.cpp:
+        (WebCore::DocumentEventQueue::enqueueOrDispatchScrollEvent):
+        (WebCore::DocumentEventQueue::enqueueScrollEvent):
+        Factored out of enqueueOrDispatchScrollEvent so that this logic can be reused
+        for Visual Viewport scroll events.
+        (WebCore::DocumentEventQueue::enqueueResizeEvent):
+        (WebCore::DocumentEventQueue::pendingEventTimerFired):
+        * dom/DocumentEventQueue.h:
+        * page/FrameView.cpp:
+        (WebCore::FrameView::updateLayoutViewport):
+        * page/VisualViewport.cpp:
+        (WebCore::VisualViewport::addEventListener):
+        (WebCore::layoutIfNonNull):
+        (WebCore::VisualViewport::offsetLeft const):
+        Remove attribute computation logic since this now happens during update().
+        (WebCore::VisualViewport::offsetTop const): Ditto.
+        (WebCore::VisualViewport::pageLeft const): Ditto.
+        (WebCore::VisualViewport::pageTop const): Ditto.
+        (WebCore::VisualViewport::width const): Ditto.
+        (WebCore::VisualViewport::height const): Ditto.
+        (WebCore::VisualViewport::scale const):
+        (WebCore::VisualViewport::update):
+        Added. Computes all of the Visual Viewport attributes and determines
+        whether events need to be fired.
+        (WebCore::VisualViewport::enqueueResizeEvent):
+        (WebCore::VisualViewport::enqueueScrollEvent):
+        (WebCore::getFrameViewAndLayoutIfNonNull): Deleted.
+        * page/VisualViewport.h:
+
+2018-01-09  Yacine Bandou  <yacine.bandou_ext@softathome.com>
+
+        [EME] Add the CENC initData support in ClearKey CDM
+        https://bugs.webkit.org/show_bug.cgi?id=180081
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Add the "cenc" initDataType support in ClearKey CDM.
+        Parse the CENC initData and extract the KIDs by following the W3C spec
+        https://www.w3.org/TR/eme-initdata-cenc/#common-system
+
+        Tests: media/encrypted-media/clearKey/clearKey-message-cenc-event.html
+               media/encrypted-media/clearKey/clearKey-message-cenc-event-mse.html
+
+        * platform/encryptedmedia/clearkey/CDMClearKey.cpp:
+        (WebCore::extractKeyidsLocationFromCencInitData):
+        (WebCore::isCencInitData):
+        (WebCore::extractKeyidsFromCencInitData):
+        (WebCore::CDMPrivateClearKey::supportsInitDataType const):
+        (WebCore::CDMPrivateClearKey::supportsInitData const):
+        (WebCore::CDMInstanceClearKey::requestLicense):
+
+2018-01-09  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Pass state values directly to Cairo operations
+        https://bugs.webkit.org/show_bug.cgi?id=181389
+
+        Reviewed by Carlos Garcia Campos.
+
+        Instead of passing reference to the GraphicsContextState object to
+        various Cairo operations, only pass the required state values. This
+        makes it explicit what state values are used in these operations, at the
+        expense of some long parameter lists, but this will be better addressed
+        by future refactoring of this code into more concise functions.
+
+        No new tests -- no change in functionality.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::drawGlyphsShadow):
+        (WebCore::Cairo::dashedLineCornerWidthForStrokeWidth):
+        (WebCore::Cairo::dashedLinePatternWidthForStrokeWidth):
+        (WebCore::Cairo::drawGlyphs):
+        (WebCore::Cairo::drawRect):
+        (WebCore::Cairo::drawLine):
+        (WebCore::Cairo::drawEllipse):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/FontCairo.cpp:
+        (WebCore::FontCascade::drawGlyphs):
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::drawRect):
+        (WebCore::GraphicsContext::drawLine):
+        (WebCore::GraphicsContext::drawEllipse):
+
+2018-01-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Release assert in addResourceTiming when a cache resource is requested during style recalc
+        https://bugs.webkit.org/show_bug.cgi?id=181137
+        <rdar://problem/35666574>
+
+        Reviewed by Simon Fraser.
+
+        Make the dispatching of resourcetimingbufferfull event asynchronous to avoid dispatching it
+        synchronously during a style resolution when CachedResourceLoader::requestImage requests
+        a previously loaded image.
+
+        We now schedule a timer when the resource timing buffer becomes full, and dispatch the event
+        when the timer fires. Meanwhile, we have a backup buffer to which additional resource timing
+        entries would be added. Once the event is dispatched, we refill the buffer exposed to author
+        scripts. When refilling the buffer results in it becoming full again, we keep repeating the
+        process of firing resourcetimingbufferfull and re-filling the buffer until either we stop
+        making progress (i.e. the script didn't increase the number of empty entires in the buffer)
+        or the backup buffer (at the time we started this process) becomes empty.
+
+        Also fixed a bug that we were firing resourcetimingbufferfull event when the last entry that
+        fits within the buffer size was added instead of when an entry is being added to an already
+        full buffer. To make this work, the patch introduces m_resourceTimingBufferFullFlag,
+        representing the concept "resource timing buffer full" flag in the resource timing specification.
+
+        Test: http/tests/performance/performance-resource-timing-resourcetimingbufferfull-crash.html
+
+        * page/Performance.cpp:
+        (WebCore::Performance::Performance):
+        (WebCore::Performance::clearResourceTimings):
+        (WebCore::Performance::setResourceTimingBufferSize):
+        (WebCore::Performance::addResourceTiming):
+        (WebCore::Performance::resourceTimingBufferFullTimerFired):
+        * page/Performance.h:
+
+2018-01-08  Chris Nardi  <csnardi1@gmail.com>
+
+        ::first-letter incorrectly selects grapheme pairs
+        https://bugs.webkit.org/show_bug.cgi?id=181315
+
+        Reviewed by Darin Adler.
+
+        Grapheme pairs were incorrectly selected by ::first-letter. This
+        change fixes their selection.
+
+        Tests: Updated fast/css/first-letter-punctuation.html and imported
+        LayoutTests/imported/w3c/web-platform-tests/css/css-pseudo-4/first-letter-004.html
+
+        * rendering/updating/RenderTreeBuilderFirstLetter.cpp:
+        (WebCore::isPunctuationForFirstLetter):
+        (WebCore::shouldSkipForFirstLetter):
+        (WebCore::RenderTreeBuilder::FirstLetter::createRenderers):
+
+2018-01-08  Darin Adler  <darin@apple.com>
+
+        Special list-item counter starts from an incorrect number for ::before and ::after
+        https://bugs.webkit.org/show_bug.cgi?id=181084
+
+        Reviewed by Zalan Bujtas.
+
+        Test: fast/css/counters/counter-list-item.html
+
+        * Sources.txt: Removed CounterDirectives.cpp.
+        * WebCore.xcodeproj/project.pbxproj: Ditto.
+
+        * css/CSSComputedStyleDeclaration.cpp:
+        (WebCore::counterToCSSValue): Updated for changes to the CounterDirectives struct.
+        * css/StyleBuilderCustom.h:
+        (WebCore::StyleBuilderCustom::applyInheritCounter): Ditto.
+        (WebCore::StyleBuilderCustom::applyValueCounter): Ditto.
+
+        * html/HTMLLIElement.cpp:
+        (WebCore::HTMLLIElement::parseValue): Call setExplicitValue(std::nullopt) instead
+        of clearExplicitValue since we are using std::optional now.
+
+        * rendering/RenderCounter.cpp:
+        (WebCore::listItemCounterDirectives): Added. Computes the counter directives that
+        express the effects on the list-item counter from list item and list elements.
+        Used something as close to what the CSS 3 draft says as possible. This uses a
+        negative increment when creating a list to counteract the positive increment done
+        by a list element, except in the case of an unordered list. This is where the bug
+        fix actually lies. Also fixed handling of reversed ordered lists at the same time.
+        (WebCore::planCounter): Refactored to use the function above. Also changed the
+        code to pay attention to both the counter directives and the implicit ones from
+        list item and list elements, getting as close as possible to what the specification
+        seems to call for.
+
+        * rendering/RenderListItem.cpp:
+        (WebCore::RenderListItem::RenderListItem): Since we are using std::optional and no
+        longer using bit fields, simplified the constructor for each list item.
+        (WebCore::RenderListItem::calcValue const): Deleted.
+        (WebCore::RenderListItem::updateValueNow const): Merged in all the code from the
+        old calcValue function, but it is also simpler now since m_value is std::optional.
+        (WebCore::RenderListItem::updateValue): Updated to use std::optional.
+        (WebCore::RenderListItem::setExplicitValue): Ditto.
+        (WebCore::RenderListItem::clearExplicitValue): Deleted.
+        (WebCore::RenderListItem::updateListMarkerNumbers): Updated to use std::optional.
+        (WebCore::RenderListItem::isInReversedOrderedList const): Added. This is used by
+        the counter code so it can decrement instead of incrementing.
+
+        * rendering/RenderListItem.h: Updated to use std::optional. Also marked functions
+        final instead of override and initialized m_notInList after making it not be a
+        bitfield any more.
+
+        * rendering/style/CounterDirectives.cpp: Removed.
+        * rendering/style/CounterDirectives.h: Removed most of the CounterDirectives
+        class and replaced it with a struct with two std::optional. Added an addClamped
+        function so the counter code can share it with the addIncrementValue function.
+        If we want to make a faster version that doesn't use double, we can come back
+        and do that. Also moved the == function to the header since the implementation
+        is so trivial.
+
+        * rendering/style/StyleAllInOne.cpp: Removed CounterDirectives.cpp.
+
+        * rendering/style/StyleRareNonInheritedData.cpp:
+        (WebCore::StyleRareNonInheritedData::StyleRareNonInheritedData): Updated to
+        use std::make_unique directly instead of using a clone function.
+
+2018-01-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Attachment Support] Expose HTMLAttachmentElement.uniqueIdentifier to bindings
+        https://bugs.webkit.org/show_bug.cgi?id=181420
+        <rdar://problem/36365827>
+
+        Reviewed by Alex Christensen.
+
+        Add a new IDL definition for uniqueIdentifier on HTMLAttachmentElement. This allows clients to relate attachment
+        elements in the DOM to _WKAttachments delivered via Objective-C SPI.
+
+        Adjusted existing tests in WKAttachmentTests.
+
+        * html/HTMLAttachmentElement.idl:
+
 2018-01-08  Don Olmstead  <don.olmstead@sony.com>
 
         AccessibilityARIAGrid does not compile when accessibility is disabled

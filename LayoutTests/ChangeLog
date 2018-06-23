@@ -1,3 +1,385 @@
+2018-01-10  Matt Lewis  <jlewis3@apple.com>
+
+        Adjusted expectations for webrtc/video-unmute.html.
+        https://bugs.webkit.org/show_bug.cgi?id=172879
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-10  Youenn Fablet  <youenn@apple.com>
+
+        Skip http/wpt/service-workers/fetchEvent.https.html in Debug
+        https://bugs.webkit.org/show_bug.cgi?id=181481
+
+        Unreviewed.
+
+        * TestExpectations:
+
+2018-01-10  Matt Lewis  <jlewis3@apple.com>
+
+        Marked http/tests/workers/service/service-worker-importScript.html as flaky on macOS WK2.
+        https://bugs.webkit.org/show_bug.cgi?id=181097
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-10  Matt Lewis  <jlewis3@apple.com>
+
+        Marked imported/w3c/web-platform-tests/service-workers/service-worker/fetch-waits-for-activate.https.html as flaky on macOS and iOS WK2.
+        https://bugs.webkit.org/show_bug.cgi?id=181392
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-10  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Rebaseline test after r225366.
+
+        Unreviewed test gardening.
+
+        * platform/win/svg/W3C-SVG-1.1/filters-comptran-01-b-expected.txt:
+
+2018-01-10  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (r224301?): LayoutTest http/tests/workers/service/registration-task-queue-scheduling-1.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=179342
+        <rdar://problem/35478161>
+
+        Reviewed by Youenn Fablet.
+
+        * TestExpectations:
+        Unmark the test as flaky.
+
+        * http/tests/workers/service/registration-task-queue-scheduling-1-expected.txt:
+        * http/tests/workers/service/resources/registration-task-queue-scheduling-1-second-window.html:
+        * http/tests/workers/service/resources/registration-task-queue-scheduling-1.js:
+        Update test to register a scriptURL that actually fails. When registration succeeds, the test
+        logs lines indicating that registration succeeded unexpectedly. Also, when registration
+        succeeds, the registration of the top frame are no longer guaranteed to be resolved before
+        the ones of the subframe (because it involves things like network loads).
+
+2018-01-10  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, skip http/tests/workers/service/other_resources folder.
+
+        It is a resources folder and does not contain tests.
+
+        * TestExpectations:
+
+2018-01-10  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Rebaseline tests after r225366.
+
+        Unreviewed test gardening.
+
+        * platform/win/svg/custom/feComponentTransfer-Discrete-expected.txt:
+        * platform/win/svg/custom/feComponentTransfer-Gamma-expected.txt:
+        * platform/win/svg/custom/feComponentTransfer-Linear-expected.txt:
+        * platform/win/svg/custom/feComponentTransfer-Table-expected.txt:
+
+2018-01-10  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed GTK gardening
+
+        * platform/gtk/TestExpectations: Unflag now-passing test and skip
+        mediastream tests, useless without any webrtc backend.
+
+2018-01-10  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] REGRESSION(r226629): broke media/video-interruption-with-resume-allowing-play.html
+        https://bugs.webkit.org/show_bug.cgi?id=181471
+        <rdar://problem/36402323>
+
+        Reviewed by Carlos Garcia Campos.
+
+        * platform/gtk/TestExpectations: These 2 tests shall pass now.
+
+2018-01-10  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK] Enable css2.1/20110323/c541-word-sp-000.htm.
+        https://bugs.webkit.org/show_bug.cgi?id=94009
+
+        Unreviewed test gardening.
+
+        It was fixed in r226404.
+
+        * platform/gtk/TestExpectations:
+
+2018-01-10  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed, updating expectations for media test timing out on GTK
+
+        * platform/gtk/TestExpectations:
+
+2018-01-10  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed, updating expectations for media test timing out on GTK
+
+        * platform/gtk/TestExpectations:
+
+2018-01-10  Antti Koivisto  <antti@apple.com>
+
+        Invalidate current element style on class change accurately
+        https://bugs.webkit.org/show_bug.cgi?id=181210
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/css/set-inline-style-recalc-expected.txt:
+        * fast/css/set-inline-style-recalc.html:
+
+2018-01-09  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Expose the id property on Animation
+        https://bugs.webkit.org/show_bug.cgi?id=181450
+        <rdar://problem/36383600>
+
+        Reviewed by Dean Jackson.
+
+        Mark all tests related to the "id" property as passing.
+
+        * http/wpt/web-animations/interfaces/Animatable/animate-expected.txt:
+        * http/wpt/web-animations/interfaces/Animation/id-expected.txt:
+        * http/wpt/web-animations/interfaces/Animation/idlharness-expected.txt:
+
+2018-01-09  Chris Dumez  <cdumez@apple.com>
+
+        Make service workers behave correctly with regards to Page Cache
+        https://bugs.webkit.org/show_bug.cgi?id=181446
+        <rdar://problem/36164291>
+
+        Reviewed by Youenn Fablet.
+
+        Add layout test coverage.
+
+        * http/tests/workers/service/client-added-to-clients-when-restored-from-page-cache-expected.txt: Added.
+        * http/tests/workers/service/client-added-to-clients-when-restored-from-page-cache.html: Added.
+        * http/tests/workers/service/client-removed-from-clients-while-in-page-cache-expected.txt: Added.
+        * http/tests/workers/service/client-removed-from-clients-while-in-page-cache.html: Added.
+        * http/tests/workers/service/no-page-cache-when-controlled-expected.txt: Added.
+        * http/tests/workers/service/no-page-cache-when-controlled.html: Added.
+        * http/tests/workers/service/other_resources/test.html: Added.
+        * http/tests/workers/service/resources/getClientCount-worker.js: Added.
+        (event.then):
+
+2018-01-09  Chris Dumez  <cdumez@apple.com>
+
+        We should not return undefined for most properties of a detached Window
+        https://bugs.webkit.org/show_bug.cgi?id=181416
+        <rdar://problem/36162489>
+
+        Reviewed by Ryosuke Niwa.
+
+        Update existing tests to reflect behavior change.
+
+        * fast/dom/Window/orphaned-frame-access-expected.txt:
+        * fast/dom/Window/orphaned-frame-access.html:
+        * fast/frames/detached-frame-property-expected.txt:
+        * fast/frames/detached-frame-property.html:
+
+2018-01-09  Darin Adler  <darin@apple.com>
+
+        Further refinement to list item and counter code after "list-item" counter fix
+        https://bugs.webkit.org/show_bug.cgi?id=181426
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/css/counters/counter-list-item.html: Removed an extra newline at the end of
+        the file.
+
+2018-01-09  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        font-display:fallback can cause a visual flash (which is supposed to be impossible)
+        https://bugs.webkit.org/show_bug.cgi?id=181374
+
+        Reviewed by Simon Fraser.
+
+        Move font-display tests into their common subfolder.
+
+        * fast/text/font-display/block-finish-expected.html: Renamed from LayoutTests/fast/text/loading-block-finish-expected.html.
+        * fast/text/font-display/block-finish.html: Renamed from LayoutTests/fast/text/loading-block-finish.html.
+        * fast/text/font-display/block-nofinish-expected.html: Renamed from LayoutTests/fast/text/loading-block-nofinish-expected.html.
+        * fast/text/font-display/block-nofinish.html: Renamed from LayoutTests/fast/text/loading-block-nofinish.html.
+        * fast/text/font-display/failure-finish-expected.html: Renamed from LayoutTests/fast/text/loading-failure-finish-expected.html.
+        * fast/text/font-display/failure-finish.html: Renamed from LayoutTests/fast/text/loading-failure-finish.html.
+        * fast/text/font-display/failure-nofinish-expected.html: Renamed from LayoutTests/fast/text/loading-failure-nofinish-expected.html.
+        * fast/text/font-display/failure-nofinish.html: Renamed from LayoutTests/fast/text/loading-failure-nofinish.html.
+        * fast/text/font-display/swap-finish-expected.html: Renamed from LayoutTests/fast/text/loading-swap-finish-expected.html.
+        * fast/text/font-display/swap-finish.html: Renamed from LayoutTests/fast/text/loading-swap-finish.html.
+        * fast/text/font-display/swap-nofinish-expected.html: Renamed from LayoutTests/fast/text/loading-swap-nofinish-expected.html.
+        * fast/text/font-display/swap-nofinish.html: Renamed from LayoutTests/fast/text/loading-swap-nofinish.html.
+        * fast/text/font-display/swap-flash-expected.html: Added.
+        * fast/text/font-display/swap-flash.html: Added.
+        * platform/win/TestExpectations:
+
+2018-01-09  Matt Lewis  <jlewis3@apple.com>
+
+        Fixed test expectaions.
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2018-01-09  Antti Koivisto  <antti@apple.com>
+
+        Blank page except for inner iframes because pending stylesheets cause style.isNotFinal() to be true
+        https://bugs.webkit.org/show_bug.cgi?id=180940
+        <rdar://problem/36116507>
+
+        Reviewed by Darin Adler.
+
+        * http/tests/local/loading-stylesheet-import-remove.html: Added.
+        * http/tests/local/loading-stylesheet-import-remove-expected.html: Added.
+        * http/tests/local/resources/slow-import.css: Added.
+
+2018-01-09  Youenn Fablet  <youenn@apple.com>
+
+        Make imported/w3c/web-platform-tests/service-workers/service-worker/fetch-canvas-tainting-cache.https.html robust to quota error
+        https://bugs.webkit.org/show_bug.cgi?id=181404
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations:
+
+2018-01-09  Youenn Fablet  <youenn@apple.com>
+
+        [iOS Debug WK2] Layout Test imported/w3c/web-platform-tests/service-workers/service-worker/register-closed-window.https.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=181087
+        <rdar://problem/36188109>
+
+        Reviewed by Chris Dumez.
+
+        * platform/ios-wk2/TestExpectations: Removed flaky expectation.
+
+2018-01-09  Yacine Bandou  <yacine.bandou_ext@softathome.com>
+
+        [EME] Add layout test for clearKey CENC message event
+        https://bugs.webkit.org/show_bug.cgi?id=180928
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Tests the reception of clearKey message event after the encrypted event and checks its KeyID.
+        There are two tests: one with MSE playback and another with regular playback.
+
+        * media/encrypted-media/clearKey/clearKey-message-cenc-event-expected.txt: Added.
+        * media/encrypted-media/clearKey/clearKey-message-cenc-event-mse-expected.txt: Added.
+        * media/encrypted-media/clearKey/clearKey-message-cenc-event-mse.html: Added.
+            Test with MSE playback.
+        * media/encrypted-media/clearKey/clearKey-message-cenc-event.html: Added.
+            Test with regular playback.
+        * media/encrypted-media/clearKey/encrypted-media-clearKey-handler.js: Added.
+            This JavaScript file provides a simple clearKey EME implementation, checks the EME support, handles the "encrypted", "message" and 
+            "keystatuseschange" events, and updates the CDM session with the right keys.
+            This implementation allows to play an encrypted media (video or audio or both), it is used in this test by overloading the "onMessage" callback 
+            by an other function that checks the 'message' event and stops the test.
+        * media/encrypted-media/medias-enc.js:
+            I take this opportunity to introduce some fixes:
+            Rename "mimetype" field to "mimeType", this field is only used in "clearKey-encrypted-cenc-event-mse.html",
+            thus it is easy to change it now.
+            Change the KeyID of the encrypted video with the right value, it is used for first time in this test.
+        * media/media-source/media-source-loader-simple.js:
+            Use "mimeType" instead of "mimetype" as it is modified in "medias-enc.js".
+        * platform/gtk/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2018-01-09  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Check Image::m_image is not null in ImageLoader::decode()
+        https://bugs.webkit.org/show_bug.cgi?id=180386
+        <rdar://problem/34634483>
+
+        Reviewed by Tim Horton.
+
+        Add a new rejected case for decoding an image with an invalid URL.
+
+        * fast/images/decode-static-image-reject-expected.txt:
+        * fast/images/decode-static-image-reject.html:
+
+2018-01-09  Ali Juma  <ajuma@chromium.org>
+
+        Mark imported/w3c/web-platform-tests/viewport/viewport-resize-event-on-load-overflowing-page.html as flaky
+        https://bugs.webkit.org/show_bug.cgi?id=181436
+
+        Reviewed by Frédéric Wang.
+
+        Test gardening.
+
+        * TestExpectations:
+        Mark test that seems to have timing issues as flaky.
+
+2018-01-09  Ali Juma  <ajuma@chromium.org>
+
+        Implement VisualViewport API events
+        https://bugs.webkit.org/show_bug.cgi?id=179386
+
+        Reviewed by Frédéric Wang.
+
+        Add tests for Visual Viewport API events. Test that a resize event is fired after
+        pinch zoom and after window resize, and test that a scroll event is fired when the
+        visual viewport is scrolled.
+
+        * fast/visual-viewport/resize-event-fired-expected.txt: Added.
+        * fast/visual-viewport/resize-event-fired-window-resized-expected.txt: Added.
+        * fast/visual-viewport/resize-event-fired-window-resized.html: Added.
+        * fast/visual-viewport/resize-event-fired.html: Added.
+        * fast/visual-viewport/scroll-event-fired-expected.txt: Added.
+        * fast/visual-viewport/scroll-event-fired.html: Added.
+        * platform/gtk/TestExpectations:
+        Skipped tests that use UIScriptController::zoomToScale, since this isn't implemented on GTK.
+        * platform/ios/TestExpectations:
+        Skipped test that resizes a window, since this isn't supported on iOS.
+        * platform/win/TestExpectations:
+        Skipped tests that use UIScriptController::zoomToScale, since this isn't implemented on Windows.
+
+2018-01-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Release assert in addResourceTiming when a cache resource is requested during style recalc
+        https://bugs.webkit.org/show_bug.cgi?id=181137
+        <rdar://problem/35666574>
+
+        Reviewed by Simon Fraser.
+
+        Added a regression test for the crash.
+
+        Also fixed test cases in rt-performance-extensions.js which were incorrectly asserting and assuming that
+        resourcetimingbufferfull event will be fired when there are exactly the same number of entries as the buffer size.
+
+        * http/tests/performance/performance-resource-timing-resourcetimingbufferfull -crash-expected.txt: Added.
+        * http/tests/performance/performance-resource-timing-resourcetimingbufferfull-crash.html: Added.
+        * http/wpt/resource-timing/rt-performance-extensions.js: Fixed the test cases.
+
+2018-01-08  Chris Nardi  <csnardi1@gmail.com>
+
+        ::first-letter incorrectly selects grapheme pairs
+        https://bugs.webkit.org/show_bug.cgi?id=181315
+
+        Reviewed by Darin Adler.
+
+        * fast/css/first-letter-punctuation-expected.html: Added.
+        * fast/css/first-letter-punctuation.html:
+        * platform/gtk/fast/css/first-letter-punctuation-expected.png: Removed.
+        * platform/gtk/fast/css/first-letter-punctuation-expected.txt: Removed.
+        * platform/ios/fast/css/first-letter-punctuation-expected.txt: Removed.
+        * platform/mac/fast/css/first-letter-punctuation-expected.png: Removed.
+        * platform/mac/fast/css/first-letter-punctuation-expected.txt: Removed.
+        * platform/win/fast/css/first-letter-punctuation-expected.txt: Removed.
+
+2018-01-08  Darin Adler  <darin@apple.com>
+
+        Special list-item counter starts from an incorrect number for ::before and ::after
+        https://bugs.webkit.org/show_bug.cgi?id=181084
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/css/counters/counter-list-item-expected.html: Added.
+        * fast/css/counters/counter-list-item.html: Added.
+
 2018-01-08  Said Abou-Hallawa  <sabouhallawa@apple.com>
 
         A canvas should not be tainted if it draws a data URL SVGImage with a <foreignObject>

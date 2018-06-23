@@ -161,4 +161,52 @@ RenderElement& RenderTreeBuilder::Table::findOrCreateParentForChild(RenderTable&
     return section;
 }
 
+void RenderTreeBuilder::Table::insertChild(RenderTableRow& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild)
+{
+    if (beforeChild && beforeChild->parent() != &parent)
+        beforeChild = m_builder.splitAnonymousBoxesAroundChild(parent, beforeChild);
+
+    ASSERT(!beforeChild || is<RenderTableCell>(*beforeChild));
+    parent.RenderBox::addChild(m_builder, WTFMove(child), beforeChild);
+}
+
+void RenderTreeBuilder::Table::insertChild(RenderTableSection& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild)
+{
+    if (beforeChild && beforeChild->parent() != &parent)
+        beforeChild = m_builder.splitAnonymousBoxesAroundChild(parent, beforeChild);
+
+    ASSERT(!beforeChild || is<RenderTableRow>(*beforeChild));
+    parent.RenderBox::addChild(m_builder, WTFMove(child), beforeChild);
+}
+
+void RenderTreeBuilder::Table::insertChild(RenderTable& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild)
+{
+    if (beforeChild && beforeChild->parent() != &parent)
+        beforeChild = m_builder.splitAnonymousBoxesAroundChild(parent, beforeChild);
+
+    parent.RenderBox::addChild(m_builder, WTFMove(child), beforeChild);
+}
+
+bool RenderTreeBuilder::Table::childRequiresTable(const RenderElement& parent, const RenderObject& child)
+{
+    if (is<RenderTableCol>(child)) {
+        const RenderTableCol& newTableColumn = downcast<RenderTableCol>(child);
+        bool isColumnInColumnGroup = newTableColumn.isTableColumn() && is<RenderTableCol>(parent);
+        return !is<RenderTable>(parent) && !isColumnInColumnGroup;
+    }
+    if (is<RenderTableCaption>(child))
+        return !is<RenderTable>(parent);
+
+    if (is<RenderTableSection>(child))
+        return !is<RenderTable>(parent);
+
+    if (is<RenderTableRow>(child))
+        return !is<RenderTableSection>(parent);
+
+    if (is<RenderTableCell>(child))
+        return !is<RenderTableRow>(parent);
+
+    return false;
+}
+
 }

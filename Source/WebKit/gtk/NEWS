@@ -1,4 +1,27 @@
 =================
+WebKitGTK+ 2.19.5
+=================
+
+What's new in WebKitGTK+ 2.19.4?
+
+  - This is a follow up release to export webkit_dom_dom_window_webkit_message_handlers_post_message() symbol that
+    was hidden in 2.19.4 by mistake.
+
+=================
+WebKitGTK+ 2.19.4
+=================
+
+What's new in WebKitGTK+ 2.19.4?
+
+  - Add web process API to detect when form is submitted via JavaScript.
+  - Add new API to replace webkit_form_submission_request_get_text_fields() that is now deprecated.
+  - Add WebKitWebView::web-process-terminated signal and deprecate web-process-crashed.
+  - Fix rendering issues when editing text areas.
+  - Use FastMalloc based GstAllocator for GStreamer.
+  - Fix several crashes and rendering issues.
+  - Translation updates: Swedish.
+
+=================
 WebKitGTK+ 2.19.3
 =================
 

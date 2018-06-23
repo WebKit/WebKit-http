@@ -567,8 +567,8 @@ webkit.org/b/99036 fast/shadow-dom/pointerlockelement-in-slot.html [ Skip ]
 webkit.org/b/85211 ietestcenter/css3/flexbox/flexbox-align-stretch-001.htm [ ImageOnlyFailure ]
 webkit.org/b/85212 ietestcenter/css3/flexbox/flexbox-layout-002.htm [ ImageOnlyFailure ]
 
-fast/mediastream [ Pass ]
 # Skipping until backend is implemented
+fast/mediastream [ Skip ]
 webrtc [ Skip ]
 imported/w3c/web-platform-tests/webrtc/ [ Skip ]
 http/tests/webrtc [ Skip ]
@@ -968,7 +968,9 @@ webkit.org/b/153833 fast/events/before-input-prevent-insert-replacement.html [ S
 webkit.org/b/153833 fast/events/input-event-insert-replacement.html [ Skip ]
 
 # Skip tests requiring UIScriptController::zoomToScale
+webkit.org/b/168050 fast/visual-viewport/resize-event-fired.html [ Skip ]
 webkit.org/b/168050 fast/visual-viewport/rtl-zoomed-rects.html [ Skip ]
+webkit.org/b/168050 fast/visual-viewport/scroll-event-fired.html [ Skip ]
 webkit.org/b/168050 fast/visual-viewport/viewport-dimensions-exclude-custom-scrollbars.html [ Skip ]
 webkit.org/b/168050 fast/visual-viewport/viewport-dimensions-exclude-scrollbars.html [ Skip ]
 webkit.org/b/168050 fast/visual-viewport/viewport-dimensions-iframe.html [ Skip ]
@@ -1300,8 +1302,6 @@ webkit.org/b/176801 fast/mediastream/argument-types.html [ Crash Pass ]
 
 webkit.org/b/176803 http/tests/local/blob/send-hybrid-blob-using-open-panel.html [ Crash ]
 
-webkit.org/b/176805 media/media-higher-prio-audio-stream.html [ Crash ]
-
 webkit.org/b/176856 fast/mediastream/apply-constraints-video.html [ Crash ]
 
 # See also webkit.org/b/141699
@@ -1401,6 +1401,9 @@ webkit.org/b/104809 media/adopt-node-crash.html [ Crash Timeout Pass ]
 webkit.org/b/104809 media/encrypted-media/encrypted-media-not-loaded.html [ Failure Timeout Crash ]
 webkit.org/b/104809 media/encrypted-media/encrypted-media-syntax.html [ Failure Timeout ]
 webkit.org/b/104809 media/track/track-cues-pause-on-exit.html [ Timeout Pass ]
+
+webkit.org/b/180928 media/encrypted-media/clearKey/clearKey-message-cenc-event.html [ Skip ]
+webkit.org/b/180928 media/encrypted-media/clearKey/clearKey-message-cenc-event-mse.html [ Skip ]
 
 # This test also crashes after the FTL merge
 webkit.org/b/106415 webkit.org/b/119255 fast/workers/worker-close-more.html [ Timeout Crash Pass ]
@@ -2608,9 +2611,6 @@ webkit.org/b/89845 fast/forms/input-set-composition-scroll.html [ Failure ]
 
 # This failure appears to be GTK-specific
 webkit.org/b/91319 css2.1/20110323/vertical-align-boxes-001.htm [ ImageOnlyFailure ]
-
-# This has always failed on Gtk/Efl - exposed by bug 89826
-webkit.org/b/94009 css2.1/20110323/c541-word-sp-000.htm [ ImageOnlyFailure ]
 
 webkit.org/b/80129 fast/frames/flattening/frameset-flattening-advanced.html [ Failure ]
 

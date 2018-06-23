@@ -1,3 +1,115 @@
+2018-01-09  John Wilander  <wilander@apple.com>
+
+        Storage Access API: Turn feature on by default in WebPreferences.yaml
+        https://bugs.webkit.org/show_bug.cgi?id=181458
+
+        Reviewed by Brent Fulgham.
+
+        * Shared/WebPreferences.yaml:
+
+2018-01-09  Alex Christensen  <achristensen@webkit.org>
+
+        WKOpenPanelParameters SPI should return autoreleased objects
+        https://bugs.webkit.org/show_bug.cgi?id=181457
+        <rdar://problem/35884960>
+
+        Reviewed by Tim Horton.
+
+        In r226607 I made a mistake by returning an object that has been released.
+        I instead follow a pattern of leaking and autoreleasing that we use elsewhere in the ObjC API.
+
+        * UIProcess/API/Cocoa/WKOpenPanelParameters.mm:
+        (-[WKOpenPanelParameters _acceptedMIMETypes]):
+        (-[WKOpenPanelParameters _acceptedFileExtensions]):
+
+2018-01-09  Dan Bernstein  <mitz@apple.com>
+
+        Removed some empty directories that were left behind
+
+        * WebProcess/Cookies/cf: Removed.
+        * WebProcess/ios: Removed.
+
+2018-01-09  Paul Knight  <pknight@apple.com>
+
+        Don't record dynamic spelling corrections while in an ephemeral browsing session
+        https://bugs.webkit.org/show_bug.cgi?id=181417
+        <rdar://problem/33309104>
+
+        Dynamic spelling correction responses are kept on disk. Avoid recording
+        these responses when in an ephemeral session.
+
+        Reviewed by Tim Horton and Wenson Hsieh.
+
+        * UIProcess/mac/CorrectionPanel.h:
+        * UIProcess/mac/CorrectionPanel.mm:
+        (WebKit::CorrectionPanel::recordAutocorrectionResponse):
+            Add a WebViewImpl parameter so we can query the current session.
+            Return early before recording the response if the session is
+            ephemeral.
+        (WebKit::CorrectionPanel::handleAcceptedReplacement):
+            Update a caller to include the new parameter.
+        * UIProcess/mac/PageClientImplMac.mm:
+        (WebKit::PageClientImpl::recordAutocorrectionResponse):
+            Ditto.
+
+2018-01-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.19.5 release.
+
+        * gtk/NEWS: Add release notes for 2.19.5.
+
+2018-01-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Missing symbols exported in 2.19.4
+        https://bugs.webkit.org/show_bug.cgi?id=181433
+
+        Reviewed by Michael Catanzaro.
+
+        Add missing WEBKIT_API to webkit_dom_dom_window_webkit_message_handlers_post_message().
+
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMDOMWindow.h:
+        * webkitglib-symbols.map: Remove webkit_media_player_debug from local.
+
+2018-01-09  Youenn Fablet  <youenn@apple.com>
+
+        SWClientConnection should not keep references to service worker jobs
+        https://bugs.webkit.org/show_bug.cgi?id=181381
+
+        Reviewed by Chris Dumez.
+
+        Updated IPC handling based on WebCore refactoring.
+
+        * Scripts/webkit/messages.py:
+        (forward_declarations_and_headers):
+        (headers_for_type):
+        * StorageProcess/ServiceWorker/WebSWServerConnection.cpp:
+        (WebKit::WebSWServerConnection::rejectJobInClient):
+        (WebKit::WebSWServerConnection::resolveRegistrationJobInClient):
+        (WebKit::WebSWServerConnection::resolveUnregistrationJobInClient):
+        (WebKit::WebSWServerConnection::startScriptFetchInClient):
+        * StorageProcess/ServiceWorker/WebSWServerConnection.h:
+        * WebProcess/Storage/WebSWClientConnection.messages.in:
+
+2018-01-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.19.4 release.
+
+        * gtk/NEWS: Add release notes for 2.19.4.
+
+2018-01-09  Ali Juma  <ajuma@chromium.org>
+
+        Implement VisualViewport API events
+        https://bugs.webkit.org/show_bug.cgi?id=179386
+
+        Reviewed by Frédéric Wang.
+
+        Change the default value of the VisualViewportAPI experimental feature flag to
+        DEFAULT_EXPERIMENTAL_FEATURES_ENABLED. This patch completes the implementation
+        of this feature as specified by https://wicg.github.io/visual-viewport/, so this
+        feature is now ready for wider testing.
+
+        * Shared/WebPreferences.yaml:
+
 2018-01-08  Alex Christensen  <achristensen@webkit.org>
 
         Add WKNavigationDelegate SPI exposing WebProcess crash reason

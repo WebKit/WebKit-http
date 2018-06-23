@@ -1,3 +1,26 @@
+2018-01-09  Mark Lam  <mark.lam@apple.com>
+
+        ASSERTION FAILED: pair.second->m_type & PropertyNode::Getter
+        https://bugs.webkit.org/show_bug.cgi?id=181388
+        <rdar://problem/36349351>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-181388.js: Added.
+
+2018-01-08  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: mask indexed accesses to Table
+        https://bugs.webkit.org/show_bug.cgi?id=181412
+        <rdar://problem/36363236>
+
+        Reviewed by Saam Barati.
+
+        Update error messages.
+
+        * wasm/js-api/table.js:
+        (assert.throws.WebAssembly.Table.prototype.grow):
+
 2018-01-08  Ryan Haddad  <ryanhaddad@apple.com>
 
         Disable SharedArrayBuffer tests missed in r226386.

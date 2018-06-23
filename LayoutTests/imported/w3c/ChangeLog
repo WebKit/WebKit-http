@@ -1,3 +1,99 @@
+2018-01-09  Chris Dumez  <cdumez@apple.com>
+
+        We should not return undefined for most properties of a detached Window
+        https://bugs.webkit.org/show_bug.cgi?id=181416
+        <rdar://problem/36162489>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline several WPT tests now that more checks are passing.
+
+        * web-platform-tests/custom-elements/custom-element-registry/per-global-expected.txt:
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe-append-to-child-document-expected.txt:
+        * web-platform-tests/service-workers/service-worker/detached-context.https-expected.txt:
+
+2018-01-09  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r226531.
+
+        This caused test failures on macOS WK2.
+
+        Reverted changeset:
+
+        "Use no-cache fetch mode when loading main documents with
+        location.reload()"
+        https://bugs.webkit.org/show_bug.cgi?id=181285
+        https://trac.webkit.org/changeset/226531
+
+2018-01-09  Youenn Fablet  <youenn@apple.com>
+
+        Make imported/w3c/web-platform-tests/service-workers/service-worker/fetch-canvas-tainting-cache.https.html robust to quota error
+        https://bugs.webkit.org/show_bug.cgi?id=181404
+
+        Reviewed by Alex Christensen.
+
+        Ensure fetch event promise is resolved in case cache is used.
+        Ensure each cache entry is deleted to not hit any cache quota error.
+        Test was previously deleting the whole cache, but in WebKit, the quota
+        in such a case will only be updated when the cache is garbaged collected, which is not deterministic.
+        Make tests output more results to improve debugability.
+
+        * web-platform-tests/service-workers/service-worker/fetch-canvas-tainting-cache.https.html:
+        * web-platform-tests/service-workers/service-worker/fetch-canvas-tainting.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-canvas-tainting.https.html:
+        * web-platform-tests/service-workers/service-worker/resources/fetch-canvas-tainting-iframe.html:
+
+2018-01-09  Youenn Fablet  <youenn@apple.com>
+
+        [iOS Debug WK2] Layout Test imported/w3c/web-platform-tests/service-workers/service-worker/register-closed-window.https.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=181087
+        <rdar://problem/36188109>
+
+        Reviewed by Chris Dumez.
+
+        Updated test to get a more deterministic output.
+
+        * web-platform-tests/service-workers/service-worker/register-closed-window.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/resources/register-closed-window-iframe.html:
+
+2018-01-09  Youenn Fablet  <youenn@apple.com>
+
+        Add CSP support to service workers
+        https://bugs.webkit.org/show_bug.cgi?id=181385
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/service-workers/service-worker/service-worker-csp-connect.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/service-worker-csp-default.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/service-worker-csp-script.https-expected.txt:
+
+2018-01-09  Ali Juma  <ajuma@chromium.org>
+
+        Implement VisualViewport API events
+        https://bugs.webkit.org/show_bug.cgi?id=179386
+
+        Reviewed by Frédéric Wang.
+
+        Update expectation for a viewport WPT that now passes.
+
+        * web-platform-tests/viewport/viewport-resize-event-on-load-overflowing-page-expected.txt:
+
+2018-01-08  Chris Nardi  <csnardi1@gmail.com>
+
+        ::first-letter incorrectly selects grapheme pairs
+        https://bugs.webkit.org/show_bug.cgi?id=181315
+
+        Reviewed by Darin Adler.
+
+        Updated css-pseudo-4 to latest WPT revision and added first-letter-004.html.
+
+        * web-platform-tests/css/css-pseudo-4/first-letter-004-expected.html: Added.
+        * web-platform-tests/css/css-pseudo-4/first-letter-004.html: Added.
+        * web-platform-tests/css/css-pseudo-4/marker-color-expected.html:
+        * web-platform-tests/css/css-pseudo-4/marker-color.html:
+        * web-platform-tests/css/css-pseudo-4/marker-font-properties.html:
+        * web-platform-tests/css/css-pseudo-4/w3c-import.log:
+
 2018-01-08  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r226532 and r226540.

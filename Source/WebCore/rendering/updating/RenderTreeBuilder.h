@@ -29,11 +29,16 @@
 
 namespace WebCore {
 
+class RenderMathMLFenced;
+class RenderRubyBase;
 class RenderRubyRun;
 class RenderSVGContainer;
 class RenderSVGInline;
 class RenderSVGRoot;
 class RenderSVGText;
+class RenderTable;
+class RenderTableRow;
+class RenderTableSection;
 class RenderTreeUpdater;
 
 class RenderTreeBuilder {
@@ -51,6 +56,7 @@ public:
     static RenderTreeBuilder* current() { return s_current; }
 
     // These functions are temporary until after all block/inline/continuation code is moved over.
+    void insertChildToRenderElement(RenderElement& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild = nullptr);
     void insertChildToRenderBlock(RenderBlock& parent, RenderPtr<RenderObject>, RenderObject* beforeChild = nullptr);
     void insertChildToRenderBlockIgnoringContinuation(RenderBlock& parent, RenderPtr<RenderObject>, RenderObject* beforeChild = nullptr);
     void insertChildToRenderBlockFlow(RenderBlockFlow& parent, RenderPtr<RenderObject>, RenderObject* beforeChild = nullptr);
@@ -60,10 +66,16 @@ public:
     void insertChildToSVGInline(RenderSVGInline& parent, RenderPtr<RenderObject>, RenderObject* beforeChild = nullptr);
     void insertChildToSVGRoot(RenderSVGRoot& parent, RenderPtr<RenderObject>, RenderObject* beforeChild = nullptr);
     void insertChildToSVGText(RenderSVGText& parent, RenderPtr<RenderObject>, RenderObject* beforeChild = nullptr);
+    void insertChildToRenderTable(RenderTable& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild = nullptr);
+    void insertChildToRenderTableSection(RenderTableSection& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild = nullptr);
+    void insertChildToRenderTableRow(RenderTableRow& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild = nullptr);
+    void insertChildToRenderMathMLFenced(RenderMathMLFenced& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild = nullptr);
 
+    bool childRequiresTable(const RenderElement& parent, const RenderObject& child);
     void makeChildrenNonInline(RenderBlock& parent, RenderObject* insertionPoint = nullptr);
     RenderObject* splitAnonymousBoxesAroundChild(RenderBox& parent, RenderObject* beforeChild);
     void splitFlow(RenderInline& parent, RenderObject* beforeChild, RenderPtr<RenderBlock> newBlockBox, RenderPtr<RenderObject> child, RenderBoxModelObject* oldCont);
+    void moveRubyChildren(RenderRubyBase& from, RenderRubyBase& to);
 
 private:
     class FirstLetter;
@@ -76,6 +88,7 @@ private:
     class BlockFlow;
     class Inline;
     class SVG;
+    class MathML;
 
     FirstLetter& firstLetterBuilder() { return *m_firstLetterBuilder; }
     List& listBuilder() { return *m_listBuilder; }
@@ -87,6 +100,7 @@ private:
     BlockFlow& blockFlowBuilder() { return *m_blockFlowBuilder; }
     Inline& inlineBuilder() { return *m_inlineBuilder; }
     SVG& svgBuilder() { return *m_svgBuilder; }
+    MathML& mathMLBuilder() { return *m_mathMLBuilder; }
 
     RenderView& m_view;
 
@@ -103,6 +117,7 @@ private:
     std::unique_ptr<BlockFlow> m_blockFlowBuilder;
     std::unique_ptr<Inline> m_inlineBuilder;
     std::unique_ptr<SVG> m_svgBuilder;
+    std::unique_ptr<MathML> m_mathMLBuilder;
 };
 
 }

@@ -1132,7 +1132,7 @@ ServiceWorkersEnabled:
 
 StorageAccessAPIEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: true
   humanReadableName: "Storage Access API"
   humanReadableDescription: "Enable Storage Access API"
   category: experimental
@@ -1146,7 +1146,7 @@ SubresourceIntegrityEnabled:
 
 VisualViewportAPIEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
   humanReadableName: "VisualViewportAPI"
   humanReadableDescription: "Enable Visual Viewport API"
   category: experimental

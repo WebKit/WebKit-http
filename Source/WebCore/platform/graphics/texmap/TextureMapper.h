@@ -54,7 +54,7 @@ public:
 
     typedef unsigned PaintFlags;
 
-    static std::unique_ptr<TextureMapper> create(AccelerationMode newMode = SoftwareMode);
+    WEBCORE_EXPORT static std::unique_ptr<TextureMapper> create();
 
     explicit TextureMapper(AccelerationMode);
     virtual ~TextureMapper();

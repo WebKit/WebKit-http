@@ -1898,7 +1898,6 @@ rendering/shapes/ShapeOutsideInfo.cpp
 
 rendering/style/BasicShapes.cpp
 rendering/style/ContentData.cpp
-rendering/style/CounterDirectives.cpp
 rendering/style/FillLayer.cpp
 rendering/style/GridPosition.cpp
 rendering/style/GridPositionsResolver.cpp
@@ -1990,6 +1989,7 @@ rendering/updating/RenderTreeBuilderFirstLetter.cpp
 rendering/updating/RenderTreeBuilderFormControls.cpp
 rendering/updating/RenderTreeBuilderInline.cpp
 rendering/updating/RenderTreeBuilderList.cpp
+rendering/updating/RenderTreeBuilderMathML.cpp
 rendering/updating/RenderTreeBuilderMultiColumn.cpp
 rendering/updating/RenderTreeBuilderRuby.cpp
 rendering/updating/RenderTreeBuilderSVG.cpp

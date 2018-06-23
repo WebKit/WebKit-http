@@ -1,3 +1,406 @@
+2018-01-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r226667 and r226673.
+        https://bugs.webkit.org/show_bug.cgi?id=181488
+
+        This caused a flaky crash. (Requested by mlewis13 on #webkit).
+
+        Reverted changesets:
+
+        "CodeBlocks should be in IsoSubspaces"
+        https://bugs.webkit.org/show_bug.cgi?id=180884
+        https://trac.webkit.org/changeset/226667
+
+        "REGRESSION (r226667): CodeBlocks should be in IsoSubspaces"
+        https://bugs.webkit.org/show_bug.cgi?id=180884
+        https://trac.webkit.org/changeset/226673
+
+2018-01-09  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r226667): CodeBlocks should be in IsoSubspaces
+        <https://bugs.webkit.org/show_bug.cgi?id=180884>
+
+        Fixes the following build error:
+
+            heap/Heap.cpp:2708:10: error: lambda capture 'this' is not used [-Werror,-Wunused-lambda-capture]
+
+        * heap/Heap.cpp:
+        (JSC::Heap::addCoreConstraints): Remove 'this' from lambda to
+        fix the build.
+
+2018-01-09  Keith Miller  <keith_miller@apple.com>
+
+        and32 with an Address source on ARM64 did not invalidate dataTempRegister
+        https://bugs.webkit.org/show_bug.cgi?id=181467
+
+        Reviewed by Michael Saboff.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::and32):
+
+2018-01-04  Filip Pizlo  <fpizlo@apple.com>
+
+        CodeBlocks should be in IsoSubspaces
+        https://bugs.webkit.org/show_bug.cgi?id=180884
+
+        Reviewed by Saam Barati.
+        
+        This moves CodeBlocks into IsoSubspaces. Doing so means that we no longer need to have the
+        special CodeBlockSet HashSets of new and old CodeBlocks. We also no longer use
+        WeakReferenceHarvester or UnconditionalFinalizer. Instead:
+        
+        - Code block sweeping is now just eager sweeping. This means that it automatically takes
+          advantage of our unswept set, which roughly corresponds to what CodeBlockSet used to use
+          its eden set for.
+        
+        - Those idea of Executable "weakly visiting" the CodeBlock is replaced by Executable
+          marking a ExecutableToCodeBlockEdge object. That object being marked corresponds to what
+          we used to call CodeBlock "having been weakly visited". This means that CodeBlockSet no
+          longer has to clear the set of weakly visited code blocks. This also means that
+          determining CodeBlock liveness, propagating CodeBlock transitions, and jettisoning
+          CodeBlocks during GC are now the edge's job. The edge is also in an IsoSubspace and it
+          has IsoCellSets to tell us which edges have output constraints (what we used to call
+          CodeBlock's weak reference harvester) and which have unconditional finalizers.
+        
+        - CodeBlock now uses an IsoCellSet to tell if it has an unconditional finalizer.
+        
+        - CodeBlockSet still exists!  It has one unified HashSet of CodeBlocks that we use to
+          handle requests from the sampler, debugger, and other facilities. They may want to ask
+          if some pointer corresponds to a CodeBlock during stages of execution during which the
+          GC is unable to answer isLive() queries. The trickiest is the sampling profiler thread.
+          There is no way that the GC's isLive could tell us of a CodeBlock that had already been
+          allocated has now been full constructed.
+        
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::CodeBlock):
+        (JSC::CodeBlock::finishCreation):
+        (JSC::CodeBlock::finishCreationCommon):
+        (JSC::CodeBlock::~CodeBlock):
+        (JSC::CodeBlock::visitChildren):
+        (JSC::CodeBlock::propagateTransitions):
+        (JSC::CodeBlock::determineLiveness):
+        (JSC::CodeBlock::finalizeUnconditionally):
+        (JSC::CodeBlock::stronglyVisitStrongReferences):
+        (JSC::CodeBlock::hasInstalledVMTrapBreakpoints const):
+        (JSC::CodeBlock::installVMTrapBreakpoints):
+        (JSC::CodeBlock::dumpMathICStats):
+        (JSC::CodeBlock::visitWeakly): Deleted.
+        (JSC::CodeBlock::WeakReferenceHarvester::visitWeakReferences): Deleted.
+        (JSC::CodeBlock::UnconditionalFinalizer::finalizeUnconditionally): Deleted.
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::subspaceFor):
+        (JSC::CodeBlock::ownerEdge const):
+        (JSC::CodeBlock::clearVisitWeaklyHasBeenCalled): Deleted.
+        * bytecode/EvalCodeBlock.h:
+        (JSC::EvalCodeBlock::create): Deleted.
+        (JSC::EvalCodeBlock::createStructure): Deleted.
+        (JSC::EvalCodeBlock::variable): Deleted.
+        (JSC::EvalCodeBlock::numVariables): Deleted.
+        (JSC::EvalCodeBlock::functionHoistingCandidate): Deleted.
+        (JSC::EvalCodeBlock::numFunctionHoistingCandidates): Deleted.
+        (JSC::EvalCodeBlock::EvalCodeBlock): Deleted.
+        (JSC::EvalCodeBlock::unlinkedEvalCodeBlock const): Deleted.
+        * bytecode/ExecutableToCodeBlockEdge.cpp: Added.
+        (JSC::ExecutableToCodeBlockEdge::createStructure):
+        (JSC::ExecutableToCodeBlockEdge::create):
+        (JSC::ExecutableToCodeBlockEdge::visitChildren):
+        (JSC::ExecutableToCodeBlockEdge::visitOutputConstraints):
+        (JSC::ExecutableToCodeBlockEdge::finalizeUnconditionally):
+        (JSC::ExecutableToCodeBlockEdge::activate):
+        (JSC::ExecutableToCodeBlockEdge::deactivate):
+        (JSC::ExecutableToCodeBlockEdge::deactivateAndUnwrap):
+        (JSC::ExecutableToCodeBlockEdge::wrap):
+        (JSC::ExecutableToCodeBlockEdge::wrapAndActivate):
+        (JSC::ExecutableToCodeBlockEdge::ExecutableToCodeBlockEdge):
+        (JSC::ExecutableToCodeBlockEdge::runConstraint):
+        * bytecode/ExecutableToCodeBlockEdge.h: Added.
+        (JSC::ExecutableToCodeBlockEdge::subspaceFor):
+        (JSC::ExecutableToCodeBlockEdge::codeBlock const):
+        (JSC::ExecutableToCodeBlockEdge::unwrap):
+        * bytecode/FunctionCodeBlock.h:
+        (JSC::FunctionCodeBlock::subspaceFor):
+        (JSC::FunctionCodeBlock::createStructure):
+        * bytecode/ModuleProgramCodeBlock.h:
+        (JSC::ModuleProgramCodeBlock::create): Deleted.
+        (JSC::ModuleProgramCodeBlock::createStructure): Deleted.
+        (JSC::ModuleProgramCodeBlock::ModuleProgramCodeBlock): Deleted.
+        * bytecode/ProgramCodeBlock.h:
+        (JSC::ProgramCodeBlock::create): Deleted.
+        (JSC::ProgramCodeBlock::createStructure): Deleted.
+        (JSC::ProgramCodeBlock::ProgramCodeBlock): Deleted.
+        * debugger/Debugger.cpp:
+        (JSC::Debugger::SetSteppingModeFunctor::operator() const):
+        (JSC::Debugger::ToggleBreakpointFunctor::operator() const):
+        (JSC::Debugger::ClearCodeBlockDebuggerRequestsFunctor::operator() const):
+        (JSC::Debugger::ClearDebuggerRequestsFunctor::operator() const):
+        * heap/CodeBlockSet.cpp:
+        (JSC::CodeBlockSet::contains):
+        (JSC::CodeBlockSet::dump const):
+        (JSC::CodeBlockSet::add):
+        (JSC::CodeBlockSet::remove):
+        (JSC::CodeBlockSet::promoteYoungCodeBlocks): Deleted.
+        (JSC::CodeBlockSet::clearMarksForFullCollection): Deleted.
+        (JSC::CodeBlockSet::lastChanceToFinalize): Deleted.
+        (JSC::CodeBlockSet::deleteUnmarkedAndUnreferenced): Deleted.
+        * heap/CodeBlockSet.h:
+        * heap/CodeBlockSetInlines.h:
+        (JSC::CodeBlockSet::iterate):
+        (JSC::CodeBlockSet::iterateViaSubspaces):
+        * heap/ConservativeRoots.cpp:
+        (JSC::ConservativeRoots::genericAddPointer):
+        (JSC::DummyMarkHook::markKnownJSCell):
+        (JSC::CompositeMarkHook::mark):
+        (JSC::CompositeMarkHook::markKnownJSCell):
+        * heap/ConservativeRoots.h:
+        * heap/Heap.cpp:
+        (JSC::Heap::lastChanceToFinalize):
+        (JSC::Heap::finalizeMarkedUnconditionalFinalizers):
+        (JSC::Heap::finalizeUnconditionalFinalizers):
+        (JSC::Heap::beginMarking):
+        (JSC::Heap::deleteUnmarkedCompiledCode):
+        (JSC::Heap::sweepInFinalize):
+        (JSC::Heap::forEachCodeBlockImpl):
+        (JSC::Heap::forEachCodeBlockIgnoringJITPlansImpl):
+        (JSC::Heap::addCoreConstraints):
+        (JSC::Heap::finalizeUnconditionalFinalizersInIsoSubspace): Deleted.
+        * heap/Heap.h:
+        * heap/HeapCell.h:
+        * heap/HeapCellInlines.h:
+        (JSC::HeapCell::subspace const):
+        * heap/HeapInlines.h:
+        (JSC::Heap::forEachCodeBlock):
+        (JSC::Heap::forEachCodeBlockIgnoringJITPlans):
+        * heap/HeapUtil.h:
+        (JSC::HeapUtil::findGCObjectPointersForMarking):
+        * heap/IsoCellSet.cpp:
+        (JSC::IsoCellSet::parallelNotEmptyMarkedBlockSource):
+        * heap/IsoCellSet.h:
+        * heap/IsoCellSetInlines.h:
+        (JSC::IsoCellSet::forEachMarkedCellInParallel):
+        (JSC::IsoCellSet::forEachLiveCell):
+        * heap/LargeAllocation.h:
+        (JSC::LargeAllocation::subspace const):
+        * heap/MarkStackMergingConstraint.cpp:
+        (JSC::MarkStackMergingConstraint::executeImpl):
+        * heap/MarkStackMergingConstraint.h:
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::parallelNotEmptyBlockSource):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::Handle::didAddToAllocator):
+        (JSC::MarkedBlock::Handle::didRemoveFromAllocator):
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::subspace const):
+        * heap/MarkedBlockInlines.h:
+        (JSC::MarkedBlock::Handle::forEachLiveCell):
+        * heap/MarkedSpaceInlines.h:
+        (JSC::MarkedSpace::forEachLiveCell):
+        * heap/MarkingConstraint.cpp:
+        (JSC::MarkingConstraint::execute):
+        (JSC::MarkingConstraint::doParallelWork):
+        (JSC::MarkingConstraint::finishParallelWork): Deleted.
+        (JSC::MarkingConstraint::doParallelWorkImpl): Deleted.
+        (JSC::MarkingConstraint::finishParallelWorkImpl): Deleted.
+        * heap/MarkingConstraint.h:
+        * heap/MarkingConstraintSet.cpp:
+        (JSC::MarkingConstraintSet::add):
+        * heap/MarkingConstraintSet.h:
+        (JSC::MarkingConstraintSet::add):
+        * heap/MarkingConstraintSolver.cpp:
+        (JSC::MarkingConstraintSolver::execute):
+        (JSC::MarkingConstraintSolver::addParallelTask):
+        (JSC::MarkingConstraintSolver::runExecutionThread):
+        (JSC::MarkingConstraintSolver::didExecute): Deleted.
+        * heap/MarkingConstraintSolver.h:
+        (JSC::MarkingConstraintSolver::TaskWithConstraint::TaskWithConstraint):
+        (JSC::MarkingConstraintSolver::TaskWithConstraint::operator== const):
+        * heap/SimpleMarkingConstraint.cpp:
+        (JSC::SimpleMarkingConstraint::SimpleMarkingConstraint):
+        (JSC::SimpleMarkingConstraint::executeImpl):
+        * heap/SimpleMarkingConstraint.h:
+        (JSC::SimpleMarkingConstraint::SimpleMarkingConstraint):
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::addParallelConstraintTask):
+        * heap/SlotVisitor.h:
+        * heap/Subspace.cpp:
+        (JSC::Subspace::sweep):
+        * heap/Subspace.h:
+        * heap/SubspaceInlines.h:
+        (JSC::Subspace::forEachLiveCell):
+        * llint/LowLevelInterpreter.asm:
+        * runtime/EvalExecutable.cpp:
+        (JSC::EvalExecutable::visitChildren):
+        * runtime/EvalExecutable.h:
+        (JSC::EvalExecutable::codeBlock):
+        * runtime/FunctionExecutable.cpp:
+        (JSC::FunctionExecutable::baselineCodeBlockFor):
+        (JSC::FunctionExecutable::visitChildren):
+        * runtime/FunctionExecutable.h:
+        * runtime/JSType.h:
+        * runtime/ModuleProgramExecutable.cpp:
+        (JSC::ModuleProgramExecutable::visitChildren):
+        * runtime/ModuleProgramExecutable.h:
+        * runtime/ProgramExecutable.cpp:
+        (JSC::ProgramExecutable::visitChildren):
+        * runtime/ProgramExecutable.h:
+        * runtime/ScriptExecutable.cpp:
+        (JSC::ScriptExecutable::installCode):
+        (JSC::ScriptExecutable::newReplacementCodeBlockFor):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+        (JSC::VM::SpaceAndFinalizerSet::SpaceAndFinalizerSet):
+        (JSC::VM::SpaceAndFinalizerSet::finalizerSetFor):
+        (JSC::VM::forEachCodeBlockSpace):
+        * runtime/VMTraps.cpp:
+        (JSC::VMTraps::handleTraps):
+        * tools/VMInspector.cpp:
+        (JSC::VMInspector::codeBlockForMachinePC):
+        (JSC::VMInspector::isValidCodeBlock):
+
+2018-01-09  Michael Saboff  <msaboff@apple.com>
+
+        Unreviewed, rolling out r226600 and r226603
+        https://bugs.webkit.org/show_bug.cgi?id=181351
+
+        Add a DOM gadget for Spectre testing
+
+        * runtime/Options.h:
+
+2018-01-09  Saam Barati  <sbarati@apple.com>
+
+        Reduce graph size by replacing terminal nodes in blocks that have a ForceOSRExit with Unreachable
+        https://bugs.webkit.org/show_bug.cgi?id=181409
+
+        Reviewed by Keith Miller.
+
+        When I was looking at profiler data for Speedometer, I noticed that one of
+        the hottest functions in Speedometer is around 1100 bytecode operations long.
+        Only about 100 of those bytecode ops ever execute. However, we ended up
+        spending a lot of time compiling basic blocks that never executed. We often
+        plant ForceOSRExit nodes when we parse bytecodes that have a null value profile.
+        This is the case when such a node never executes.
+        
+        This patch makes it so that anytime a block has a ForceOSRExit, we replace its
+        terminal node with an Unreachable node (and remove all nodes after the
+        ForceOSRExit). This will cut down on graph size when such a block dominates
+        other blocks in the CFG. This allows us to get rid of huge chunks of the CFG
+        in certain programs. When doing this transformation, we also insert
+        Flushes/PhantomLocals to ensure we can recover values that are bytecode
+        live-in to the ForceOSRExit.
+        
+        Using ForceOSRExit as the signal for this is a bit of a hack. It definitely
+        does not get rid of all the CFG that it could. If we decide it's worth
+        it, we could use additional inputs into this mechanism. For example, we could
+        profile if a basic block ever executes inside the LLInt/Baseline, and
+        remove parts of the CFG based on that.
+        
+        When running Speedometer with the concurrent JIT turned off, this patch
+        improves DFG/FTL compile times by around 5%.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::addToGraph):
+        (JSC::DFG::ByteCodeParser::parse):
+
+2018-01-09  Mark Lam  <mark.lam@apple.com>
+
+        ASSERTION FAILED: pair.second->m_type & PropertyNode::Getter
+        https://bugs.webkit.org/show_bug.cgi?id=181388
+        <rdar://problem/36349351>
+
+        Reviewed by Saam Barati.
+
+        When there are duplicate setters or getters, we may end up overwriting a getter
+        with a setter, or vice versa.  This patch adds tracking for getters/setters that
+        have been overwritten with duplicates and ignore them.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::PropertyListNode::emitBytecode):
+        * parser/NodeConstructors.h:
+        (JSC::PropertyNode::PropertyNode):
+        * parser/Nodes.h:
+        (JSC::PropertyNode::isOverriddenByDuplicate const):
+        (JSC::PropertyNode::setIsOverriddenByDuplicate):
+
+2018-01-08  Zan Dobersek  <zdobersek@igalia.com>
+
+        REGRESSION(r225913): about 30 JSC test failures on ARMv7
+        https://bugs.webkit.org/show_bug.cgi?id=181162
+        <rdar://problem/36261349>
+
+        Unreviewed follow-up to r226298. Enable the fast case in
+        DFG::SpeculativeJIT::compileArraySlice() for any 64-bit platform,
+        assuming in good faith that enough GP registers are available on any
+        such configuration. The accompanying comment is adjusted to describe
+        this assumption.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArraySlice):
+
+2018-01-08  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: mask indexed accesses to Table
+        https://bugs.webkit.org/show_bug.cgi?id=181412
+        <rdar://problem/36363236>
+
+        Reviewed by Saam Barati.
+
+        WebAssembly Table indexed accesses are user-controlled and
+        bounds-checked. Force allocations of Table data to be a
+        power-of-two, and explicitly mask accesses after bounds-check
+        branches.
+
+        Rename misleading usage of "size" when "length" of a Table was
+        intended.
+
+        Rename the Spectre option from "disable" to "enable".
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::SpeculativeJIT):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::LowerDFGToB3):
+        * jit/JIT.cpp:
+        (JSC::JIT::JIT):
+        * runtime/Options.h:
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::emitCheckAndPreparePointer):
+        (JSC::Wasm::B3IRGenerator::addCallIndirect):
+        * wasm/WasmTable.cpp:
+        (JSC::Wasm::Table::allocatedLength):
+        (JSC::Wasm::Table::setLength):
+        (JSC::Wasm::Table::create):
+        (JSC::Wasm::Table::Table):
+        (JSC::Wasm::Table::grow):
+        (JSC::Wasm::Table::clearFunction):
+        (JSC::Wasm::Table::setFunction):
+        * wasm/WasmTable.h:
+        (JSC::Wasm::Table::length const):
+        (JSC::Wasm::Table::offsetOfLength):
+        (JSC::Wasm::Table::offsetOfMask):
+        (JSC::Wasm::Table::mask const):
+        (JSC::Wasm::Table::isValidLength):
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        (JSC::JSWebAssemblyInstance::create):
+        * wasm/js/JSWebAssemblyTable.cpp:
+        (JSC::JSWebAssemblyTable::JSWebAssemblyTable):
+        (JSC::JSWebAssemblyTable::visitChildren):
+        (JSC::JSWebAssemblyTable::grow):
+        (JSC::JSWebAssemblyTable::getFunction):
+        (JSC::JSWebAssemblyTable::clearFunction):
+        (JSC::JSWebAssemblyTable::setFunction):
+        * wasm/js/JSWebAssemblyTable.h:
+        (JSC::JSWebAssemblyTable::isValidLength):
+        (JSC::JSWebAssemblyTable::length const):
+        (JSC::JSWebAssemblyTable::allocatedLength const):
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::evaluate):
+        * wasm/js/WebAssemblyTablePrototype.cpp:
+        (JSC::webAssemblyTableProtoFuncLength):
+        (JSC::webAssemblyTableProtoFuncGrow):
+        (JSC::webAssemblyTableProtoFuncGet):
+        (JSC::webAssemblyTableProtoFuncSet):
+
 2018-01-08  Michael Saboff  <msaboff@apple.com>
 
         Add a DOM gadget for Spectre testing

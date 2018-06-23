@@ -246,7 +246,7 @@ class SimulatedDeviceManager(object):
 
         for device in SimulatedDeviceManager.available_devices(host):
             if device.platform_device.name == name:
-                device.platform_device.delete()
+                device.platform_device._delete()
                 break
 
         _log.debug("Creating device '{}', of type {}".format(name, device_type))
@@ -292,7 +292,7 @@ class SimulatedDeviceManager(object):
                 continue
             if request.device_type.software_variant == device.platform_device.device_type.software_variant:
                 _log.warn("The request for '{}' incomplete-matched {}".format(request.device_type, device))
-                _log.warn("This may cause unexpected behavior in code that expected the device type {}".format(request))
+                _log.warn("This may cause unexpected behavior in code that expected the device type {}".format(request.device_type))
                 return request
         return None
 
