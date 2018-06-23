@@ -13,6 +13,8 @@ swipe [ Pass ]
 fast/events/autoscroll-when-zoomed.html [ Pass ]
 fast/events/autoscroll-main-document.html [ Pass ]
 
+accessibility/smart-invert.html [ Pass ]
+accessibility/smart-invert-reference.html [ Pass ]
 fast/media/mq-inverted-colors-live-update.html [ Pass ]
 fast/media/mq-inverted-colors-live-update-in-subframes.html [ Pass ]
 fast/media/mq-monochrome-live-update.html [ Pass ]
@@ -525,10 +527,12 @@ webkit.org/b/141085 http/tests/media/video-query-url.html [ Pass Timeout ]
 ########################################
 
 # Content Extensions tests must be enabled explicitly on mac-wk2.
-http/tests/contentextensions [ Pass Failure  ]
-http/tests/websocket/tests/hybi/contentextensions [ Pass Failure ]
+http/tests/contentextensions [ Pass ]
+http/tests/websocket/tests/hybi/contentextensions [ Pass ]
+[ Sierra+ ] http/wpt/beacon/contentextensions [ Pass ]
+
+# The following tests are flaky.
 webkit.org/b/179557 http/tests/websocket/tests/hybi/contentextensions/upgrade-worker.html [ Pass Failure ]
-webkit.org/b/179256 [ Sierra+ ] http/wpt/beacon/contentextensions [ Pass Failure ]
 webkit.org/b/168081 http/tests/contentextensions/async-xhr-onerror.html [ Pass Timeout ]
 webkit.org/b/146400 http/tests/contentextensions/character-set-basic-support.html [ Pass Failure ]
 webkit.org/b/168082 [ Sierra ] http/tests/contentextensions/invalid-selector.html [ Pass ImageOnlyFailure ]
@@ -537,17 +541,11 @@ webkit.org/b/168082 [ Sierra ] http/tests/contentextensions/invalid-selector.htm
 webkit.org/b/103857 fast/events/mouse-cursor-change.html [ Pass ]
 
 # Imported Blink tests which have not been investigated. Partially covered with rdar://problem/23023848.
-imported/blink/fast/media/empty-media-rule.html [ Pass ImageOnlyFailure ]
 imported/blink/fast/multicol/basic-rtl.html [ Pass ImageOnlyFailure ]
 imported/blink/fast/multicol/dynamic/add-spanner-inside-overflow-hidden.html [ Pass ImageOnlyFailure ]
 imported/blink/http/tests/plugins/get-url-notify-on-removal.html [ Pass Timeout ]
 imported/blink/fast/multicol/newmulticol/multicol-becomes-regular-block.html [ Pass ImageOnlyFailure ]
-imported/blink/fast/multicol/vertical-lr/float-big-line.html  [ Pass ImageOnlyFailure ]
-imported/blink/fast/pagination/viewport-x-horizontal-bt-ltr.html [ Pass ImageOnlyFailure ]
 imported/blink/fast/transforms/transform-update-frame-overflow.html [ Pass ImageOnlyFailure ]
-imported/blink/fast/multicol/vertical-rl/float-big-line.html [ Pass ImageOnlyFailure ]
-imported/blink/fast/multicol/span/adjacent-spanners-with-margin.html [ Pass ImageOnlyFailure ]
-imported/blink/fast/overflow/hidden-html-auto-body.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/155757 [ ElCapitan+ ] media/media-document-audio-repaint.html [ Pass Failure ]
 
@@ -861,7 +859,9 @@ webkit.org/b/181107 http/wpt/cache-storage/cache-put-stream.https.any.html [ Pas
 
 webkit.org/b/181392 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-waits-for-activate.https.html [ Pass Failure ]
 
-webkit.org/b/181097 http/tests/workers/service/service-worker-importScript.html [ Pass Failure ]
-
 webkit.org/b/172879 webrtc/video-unmute.html [ Skip ]
+
+webkit.org/b/181502 swipe/pushstate-with-manual-scrollrestoration.html [ Failure ]
+
+webkit.org/b/181482 http/tests/resourceLoadStatistics/grandfathering.html [ Skip ]
 

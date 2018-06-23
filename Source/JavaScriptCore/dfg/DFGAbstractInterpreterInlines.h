@@ -1964,6 +1964,12 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             clobberWorld(node->origin.semantic, clobberLimit);
         forNode(node).setType(SpecBoolean);
         break;
+
+    case RegExpMatchFast:
+        ASSERT(node->child2().useKind() == RegExpObjectUse);
+        ASSERT(node->child3().useKind() == StringUse);
+        forNode(node).setType(m_graph, SpecOther | SpecArray);
+        break;
             
     case StringReplace:
     case StringReplaceRegExp:
@@ -2875,10 +2881,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         // contradiction then there must always be a contradiction even if subsequent passes don't
         // realize it. This is the case here.
         
-        // Ordinarily you have to be careful with calling setFoundConstants()
-        // because of the effect on compile times, but this node is FTL-only.
-        m_state.setFoundConstants(true);
-        
         UniquedStringImpl* uid = m_graph.identifiers()[node->multiGetByOffsetData().identifierNumber];
 
         AbstractValue base = forNode(node->child1());
@@ -2887,8 +2889,10 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         for (const MultiGetByOffsetCase& getCase : node->multiGetByOffsetData().cases) {
             RegisteredStructureSet set = getCase.set();
             set.filter(base);
-            if (set.isEmpty())
+            if (set.isEmpty()) {
+                m_state.setFoundConstants(true);
                 continue;
+            }
             baseSet.merge(set);
 
             switch (getCase.method().kind()) {
@@ -2995,6 +2999,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
 
+    case AssertNotEmpty:
     case CheckNotEmpty: {
         AbstractValue& value = forNode(node->child1());
         if (!(value.m_type & SpecEmpty)) {

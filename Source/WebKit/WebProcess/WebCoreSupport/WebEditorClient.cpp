@@ -159,9 +159,9 @@ bool WebEditorClient::shouldApplyStyle(StyleProperties* style, Range* range)
 
 #if ENABLE(ATTACHMENT_ELEMENT)
 
-void WebEditorClient::didInsertAttachment(const String& identifier)
+void WebEditorClient::didInsertAttachment(const String& identifier, const String& source)
 {
-    m_page->send(Messages::WebPageProxy::DidInsertAttachment(identifier));
+    m_page->send(Messages::WebPageProxy::DidInsertAttachment(identifier, source));
 }
 
 void WebEditorClient::didRemoveAttachment(const String& identifier)
@@ -261,6 +261,11 @@ void WebEditorClient::getClientPasteboardDataForRange(Range* range, Vector<Strin
 bool WebEditorClient::performTwoStepDrop(DocumentFragment& fragment, Range& destination, bool isMove)
 {
     return m_page->injectedBundleEditorClient().performTwoStepDrop(*m_page, fragment, destination, isMove);
+}
+
+String WebEditorClient::replacementURLForResource(Ref<WebCore::SharedBuffer>&& resourceData, const String& mimeType)
+{
+    return m_page->injectedBundleEditorClient().replacementURLForResource(*m_page, WTFMove(resourceData), mimeType);
 }
 
 void WebEditorClient::registerUndoStep(UndoStep& step)

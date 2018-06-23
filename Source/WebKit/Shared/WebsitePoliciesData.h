@@ -28,6 +28,7 @@
 #include "WebsiteAutoplayPolicy.h"
 #include "WebsiteAutoplayQuirk.h"
 #include "WebsiteDataStoreParameters.h"
+#include "WebsitePopUpPolicy.h"
 #include <WebCore/HTTPHeaderField.h>
 #include <wtf/OptionSet.h>
 
@@ -49,6 +50,7 @@ struct WebsitePoliciesData {
     OptionSet<WebsiteAutoplayQuirk> allowedAutoplayQuirks;
     WebsiteAutoplayPolicy autoplayPolicy { WebsiteAutoplayPolicy::Default };
     Vector<WebCore::HTTPHeaderField> customHeaderFields;
+    WebsitePopUpPolicy popUpPolicy { WebsitePopUpPolicy::Default };
     std::optional<WebsiteDataStoreParameters> websiteDataStoreParameters;
     
     void encode(IPC::Encoder&) const;

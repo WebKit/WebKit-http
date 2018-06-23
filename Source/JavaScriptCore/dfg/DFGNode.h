@@ -518,7 +518,7 @@ public:
             m_op = Int52Constant;
         else
             m_op = JSConstant;
-        m_flags &= ~NodeMustGenerate;
+        m_flags &= ~(NodeMustGenerate | NodeHasVarArgs);
         m_opInfo = value;
         children.reset();
     }
@@ -1570,6 +1570,7 @@ public:
         case ArrayPush:
         case RegExpExec:
         case RegExpTest:
+        case RegExpMatchFast:
         case GetGlobalVar:
         case GetGlobalLexicalVariable:
         case StringReplace:

@@ -318,7 +318,7 @@ static std::optional<WebCore::ScrollbarOverlayStyle> toCoreScrollbarStyle(_WKOve
     WebCore::FloatBoxExtent _obscuredInsetsWhenSaved;
 
     std::optional<WebCore::FloatPoint> _unobscuredCenterToRestore;
-    uint64_t _firstTransactionIDAfterPageRestore;
+    std::optional<uint64_t> _firstTransactionIDAfterPageRestore;
     double _scaleToRestore;
 
     std::unique_ptr<WebKit::ViewGestureController> _gestureController;
@@ -421,6 +421,12 @@ static bool shouldAllowPictureInPictureMediaPlayback()
 {
     static bool shouldAllowPictureInPictureMediaPlayback = dyld_get_program_sdk_version() >= DYLD_IOS_VERSION_9_0;
     return shouldAllowPictureInPictureMediaPlayback;
+}
+
+static bool shouldAllowSettingAnyXHRHeaderFromFileURLs()
+{
+    static bool shouldAllowSettingAnyXHRHeaderFromFileURLs = WebCore::IOSApplication::isCardiogram() && !linkedOnOrAfter(WebKit::SDKVersion::FirstThatDisallowsSettingAnyXHRHeaderFromFileURLs);
+    return shouldAllowSettingAnyXHRHeaderFromFileURLs;
 }
 
 #endif
@@ -570,6 +576,7 @@ static void validate(WKWebViewConfiguration *configuration)
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::allowsPictureInPictureMediaPlaybackKey(), WebKit::WebPreferencesStore::Value(!![_configuration allowsPictureInPictureMediaPlayback] && shouldAllowPictureInPictureMediaPlayback()));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::userInterfaceDirectionPolicyKey(), WebKit::WebPreferencesStore::Value(static_cast<uint32_t>(WebCore::UserInterfaceDirectionPolicy::Content)));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::systemLayoutDirectionKey(), WebKit::WebPreferencesStore::Value(static_cast<uint32_t>(WebCore::LTR)));
+    pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::allowSettingAnyXHRHeaderFromFileURLsKey(), WebKit::WebPreferencesStore::Value(shouldAllowSettingAnyXHRHeaderFromFileURLs()));
 #endif
 
     WKAudiovisualMediaTypes mediaTypesRequiringUserGesture = [_configuration mediaTypesRequiringUserActionForPlayback];
@@ -1216,10 +1223,12 @@ static NSDictionary *dictionaryRepresentationForEditorState(const WebKit::Editor
 
 #if ENABLE(ATTACHMENT_ELEMENT)
 
-- (void)_didInsertAttachment:(NSString *)identifier
+- (void)_didInsertAttachment:(NSString *)identifier withSource:(NSString *)source
 {
     id <WKUIDelegatePrivate> uiDelegate = (id <WKUIDelegatePrivate>)self.UIDelegate;
-    if ([uiDelegate respondsToSelector:@selector(_webView:didInsertAttachment:)])
+    if ([uiDelegate respondsToSelector:@selector(_webView:didInsertAttachment:withSource:)])
+        [uiDelegate _webView:self didInsertAttachment:[wrapper(API::Attachment::create(identifier, *_page).leakRef()) autorelease] withSource:source];
+    else if ([uiDelegate respondsToSelector:@selector(_webView:didInsertAttachment:)])
         [uiDelegate _webView:self didInsertAttachment:[wrapper(API::Attachment::create(identifier, *_page).leakRef()) autorelease]];
 }
 
@@ -1615,7 +1624,7 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
     _frozenUnobscuredContentRect = std::nullopt;
 
     _firstPaintAfterCommitLoadTransactionID = 0;
-    _firstTransactionIDAfterPageRestore = 0;
+    _firstTransactionIDAfterPageRestore = std::nullopt;
     _resizeAnimationTransformTransactionID = std::nullopt;
 
     _hasScheduledVisibleRectUpdate = NO;
@@ -1737,8 +1746,7 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
         needUpdateVisibleContentRects = true;
     }
 
-    if (layerTreeTransaction.transactionID() >= _firstTransactionIDAfterPageRestore) {
-        bool shouldRestoreScrollPosition = false;
+    if (_firstTransactionIDAfterPageRestore && layerTreeTransaction.transactionID() >= _firstTransactionIDAfterPageRestore.value()) {
         if (_scrollOffsetToRestore) {
             WebCore::FloatPoint scaledScrollOffset = _scrollOffsetToRestore.value();
             _scrollOffsetToRestore = std::nullopt;
@@ -1749,8 +1757,6 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
 
                 changeContentOffsetBoundedInValidRange(_scrollView.get(), contentOffsetInScrollViewCoordinates);
                 _commitDidRestoreScrollPosition = YES;
-
-                shouldRestoreScrollPosition = true;
             }
 
             needUpdateVisibleContentRects = true;
@@ -1769,15 +1775,15 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
                 topLeftInDocumentCoordinates.moveBy(WebCore::FloatPoint(-_obscuredInsets.left, -_obscuredInsets.top));
 
                 changeContentOffsetBoundedInValidRange(_scrollView.get(), topLeftInDocumentCoordinates);
-
-                shouldRestoreScrollPosition = true;
             }
 
             needUpdateVisibleContentRects = true;
         }
 
-        if (shouldRestoreScrollPosition && _gestureController)
+        if (_gestureController)
             _gestureController->didRestoreScrollPosition();
+
+        _firstTransactionIDAfterPageRestore = std::nullopt;
     }
 
     if (needUpdateVisibleContentRects)
@@ -3856,7 +3862,7 @@ WEBCORE_COMMAND(yankAndSelect)
 
 - (void)_web_gestureEventWasNotHandledByWebCore:(NSEvent *)event
 {
-    _impl->gestureEventWasNotHandledByWebCoreFromViewOnly(event);
+    [self _gestureEventWasNotHandledByWebCore:event];
 }
 
 #endif // PLATFORM(MAC)
@@ -6166,6 +6172,28 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 }
 
 #endif // PLATFORM(IOS)
+
+- (BOOL)_beginBackSwipeForTesting
+{
+#if PLATFORM(MAC)
+    return _impl->beginBackSwipeForTesting();
+#else
+    if (!_gestureController)
+        return NO;
+    return _gestureController->beginSimulatedSwipeInDirectionForTesting(WebKit::ViewGestureController::SwipeDirection::Back);
+#endif
+}
+
+- (BOOL)_completeBackSwipeForTesting
+{
+#if PLATFORM(MAC)
+    return _impl->completeBackSwipeForTesting();
+#else
+    if (!_gestureController)
+        return NO;
+    return _gestureController->completeSimulatedSwipeInDirectionForTesting(WebKit::ViewGestureController::SwipeDirection::Back);
+#endif
+}
 
 @end
 

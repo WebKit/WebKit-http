@@ -3438,6 +3438,11 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
+    case RegExpMatchFast: {
+        compileRegExpMatchFast(node);
+        break;
+    }
+
     case StringReplace:
     case StringReplaceRegExp: {
         compileStringReplace(node);
@@ -4215,6 +4220,18 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
+    case AssertNotEmpty: {
+        if (validationEnabled()) {
+            JSValueOperand operand(this, node->child1());
+            GPRReg input = operand.gpr();
+            auto done = m_jit.branchTest64(MacroAssembler::NonZero, input);
+            m_jit.breakpoint();
+            done.link(&m_jit);
+        }
+        noResult(node);
+        break;
+    }
+
     case CheckStringIdent:
         compileCheckStringIdent(node);
         break;
@@ -4320,6 +4337,89 @@ void SpeculativeJIT::compile(Node* node)
         jsValueResult(resultGPR, node);
         break;
     }
+
+    case MultiGetByOffset: {
+        SpeculateCellOperand base(this, node->child1());
+        GPRTemporary result(this);
+
+        GPRReg baseGPR = base.gpr();
+        GPRReg resultGPR = result.gpr();
+
+        MultiGetByOffsetData& data = node->multiGetByOffsetData();
+
+        MacroAssembler::JumpList success;
+        MacroAssembler::Jump next;
+        for (unsigned i = 0; i < data.cases.size(); i++) {
+            if (next.isSet())
+                next.link(&m_jit);
+
+            MultiGetByOffsetCase getCase = data.cases[i];
+            GetByOffsetMethod method = getCase.method();
+            const RegisteredStructureSet& structures = getCase.set();
+
+            if (structures.size() == 1) {
+                next = m_jit.branchWeakStructure(JITCompiler::NotEqual,
+                    JITCompiler::Address(baseGPR, JSCell::structureIDOffset()), structures[0]);
+            } else {
+                m_jit.load32(JITCompiler::Address(baseGPR, JSCell::structureIDOffset()), resultGPR);
+                JITCompiler::JumpList match;
+                for (size_t i = 0; i < structures.size() - 1; ++i) {
+                    match.append(
+                        m_jit.branchWeakStructure(JITCompiler::Equal, resultGPR, structures[i]));
+                }
+                next = m_jit.branchWeakStructure(JITCompiler::NotEqual, resultGPR, structures.last());
+                match.link(&m_jit);
+            }
+
+            switch (method.kind()) {
+            case GetByOffsetMethod::Invalid:
+                RELEASE_ASSERT_NOT_REACHED();
+                break;
+                
+            case GetByOffsetMethod::Constant:
+                m_jit.move(MacroAssembler::Imm64(JSValue::encode(method.constant()->value())), resultGPR);
+                break;
+                
+            case GetByOffsetMethod::Load:
+            case GetByOffsetMethod::LoadFromPrototype: {
+                PropertyOffset offset = method.offset();
+                if (method.kind() == GetByOffsetMethod::Load) {
+                    if (isInlineOffset(offset)) {
+                        m_jit.load64(
+                            CCallHelpers::Address(baseGPR, offsetRelativeToBase(offset)), resultGPR);
+                    } else {
+                        m_jit.loadPtr(MacroAssembler::Address(baseGPR, JSObject::butterflyOffset()), resultGPR);
+                        m_jit.load64(
+                            CCallHelpers::Address(resultGPR, offsetRelativeToBase(offset)), resultGPR);
+                    }
+                } else {
+                    JSObject* base = asObject(method.prototype()->value());
+                    if (isInlineOffset(offset)) {
+                        char* pointerToField = bitwise_cast<char*>(base) + offsetRelativeToBase(offset);
+                        m_jit.load64(pointerToField, resultGPR);
+                    } else {
+                        char* pointerToButterfly = bitwise_cast<char*>(base) + JSObject::butterflyOffset();
+                        m_jit.loadPtr(pointerToButterfly, resultGPR);
+                        m_jit.load64(
+                            CCallHelpers::Address(resultGPR, offsetRelativeToBase(offset)), resultGPR);
+                    }
+
+                }
+                break;
+            }
+            }
+            success.append(m_jit.jump());
+        }
+
+        if (next.isSet())
+            next.link(&m_jit);
+        speculationCheck(BadCache, JSValueRegs(baseGPR), node->child1(), m_jit.jump());
+        if (!success.empty())
+            success.link(&m_jit);
+        jsValueResult(resultGPR, node);
+        break;
+    }
+
         
     case GetGetter: {
         compileGetGetter(node);
@@ -5631,7 +5731,6 @@ void SpeculativeJIT::compile(Node* node)
     case ExtractOSREntryLocal:
     case CheckInBounds:
     case ArithIMul:
-    case MultiGetByOffset:
     case MultiPutByOffset:
     case FiatInt52:
     case CheckBadCell:

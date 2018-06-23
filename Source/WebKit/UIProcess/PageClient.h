@@ -172,7 +172,7 @@ public:
 #if PLATFORM(COCOA)
     virtual void accessibilityWebProcessTokenReceived(const IPC::DataReference&) = 0;
     virtual bool executeSavedCommandBySelector(const String& selector) = 0;
-    virtual void setDragImage(const WebCore::IntPoint& clientPosition, Ref<ShareableBitmap>&& dragImage, WebCore::DragSourceAction) = 0;
+    virtual void startDrag(const WebCore::DragItem&, const ShareableBitmap::Handle&) { }
     virtual void updateSecureInputState() = 0;
     virtual void resetSecureInputState() = 0;
     virtual void notifyInputContextAboutDiscardedComposition() = 0;
@@ -192,8 +192,6 @@ public:
 #if USE(APPKIT)
     virtual void setPromisedDataForImage(const String& pasteboardName, Ref<WebCore::SharedBuffer>&& imageBuffer, const String& filename, const String& extension, const String& title, const String& url, const String& visibleUrl, RefPtr<WebCore::SharedBuffer>&& archiveBuffer) = 0;
 #endif
-
-    virtual void prepareToDragPromisedBlob(const WebCore::PromisedBlobInfo&) { }
 
     virtual WebCore::FloatRect convertToDeviceSpace(const WebCore::FloatRect&) = 0;
     virtual WebCore::FloatRect convertToUserSpace(const WebCore::FloatRect&) = 0;
@@ -377,13 +375,12 @@ public:
     virtual void didPerformDataInteractionControllerOperation(bool handled) = 0;
     virtual void didHandleStartDataInteractionRequest(bool started) = 0;
     virtual void didHandleAdditionalDragItemsRequest(bool added) = 0;
-    virtual void startDrag(const WebCore::DragItem&, const ShareableBitmap::Handle& image) = 0;
     virtual void didConcludeEditDataInteraction(std::optional<WebCore::TextIndicatorData>) = 0;
     virtual void didChangeDataInteractionCaretRect(const WebCore::IntRect& previousCaretRect, const WebCore::IntRect& caretRect) = 0;
 #endif
 
 #if ENABLE(ATTACHMENT_ELEMENT)
-    virtual void didInsertAttachment(const String& identifier) { }
+    virtual void didInsertAttachment(const String& identifier, const String& source) { }
     virtual void didRemoveAttachment(const String& identifier) { }
 #endif
 

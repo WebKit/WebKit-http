@@ -361,6 +361,14 @@
       ],
       "status" : "reviewer"
    },
+   "Ali Juma" : {
+      "emails" : [
+         "ajuma@chromium.org"
+      ],
+      "nicks" : [
+         "ajuma"
+      ]
+   },
    "Alice Boxhall" : {
       "emails" : [
          "aboxhall@chromium.org"
@@ -389,7 +397,8 @@
       "nicks" : [
          "ntrrgc",
          "aboya"
-      ]
+      ],
+      "status" : "committer"
    },
    "Allan Sandfeld Jensen" : {
       "emails" : [
@@ -5324,6 +5333,16 @@
          "lacerda"
       ],
       "status" : "committer"
+   },
+   "Thibault Saunier" : {
+     "emails" : [
+       "tsaunier@igalia.com",
+       "tsaunier@gnome.org"
+     ],
+     "expertise" : "WebRTC",
+     "nicks" : [
+       "thiblahute"
+     ]
    },
    "Thomas Sepez" : {
       "emails" : [

@@ -283,7 +283,9 @@ void HTMLAttachmentElement::populateShadowRootIfNecessary()
         auto image = ensureInnerImage();
         if (image->attributeWithoutSynchronization(srcAttr).isEmpty()) {
             image->setAttributeWithoutSynchronization(srcAttr, DOMURL::createObjectURL(document(), *m_file));
+            image->setAttributeWithoutSynchronization(draggableAttr, AtomicString("false"));
             image->setInlineStyleProperty(CSSPropertyDisplay, CSSValueInline, true);
+            image->setInlineStyleProperty(CSSPropertyMaxWidth, 100, CSSPrimitiveValue::UnitType::CSS_PERCENTAGE, true);
         }
 
     } else if (MIMETypeRegistry::isSupportedMediaMIMEType(mimeType)) {
@@ -292,6 +294,7 @@ void HTMLAttachmentElement::populateShadowRootIfNecessary()
             video->setAttributeWithoutSynchronization(srcAttr, DOMURL::createObjectURL(document(), *m_file));
             video->setAttributeWithoutSynchronization(controlsAttr, emptyString());
             video->setInlineStyleProperty(CSSPropertyDisplay, CSSValueInline, true);
+            video->setInlineStyleProperty(CSSPropertyMaxWidth, 100, CSSPrimitiveValue::UnitType::CSS_PERCENTAGE, true);
         }
     }
 }
@@ -303,8 +306,14 @@ void HTMLAttachmentElement::requestInfo(Function<void(const AttachmentInfo&)>&& 
         return;
     }
 
-    m_attachmentReaders.append(AttachmentDataReader::create(*this, [protectedFile = makeRef(*m_file), callback = WTFMove(callback)] (RefPtr<SharedBuffer>&& data) {
-        callback({ protectedFile->type(), protectedFile->name(), protectedFile->path(), WTFMove(data) });
+    AttachmentInfo infoWithoutData { m_file->type(), m_file->name(), m_file->path(), nullptr };
+    if (!m_file->path().isEmpty()) {
+        callback(infoWithoutData);
+        return;
+    }
+
+    m_attachmentReaders.append(AttachmentDataReader::create(*this, [infoWithoutData = WTFMove(infoWithoutData), protectedFile = makeRef(*m_file), callback = WTFMove(callback)] (RefPtr<SharedBuffer>&& data) {
+        callback({ infoWithoutData.contentType, infoWithoutData.name, infoWithoutData.filePath, WTFMove(data) });
     }));
 }
 

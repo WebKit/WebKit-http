@@ -210,6 +210,7 @@ bytecode/DeferredCompilationCallback.cpp
 bytecode/DeferredSourceDump.cpp
 bytecode/DirectEvalCodeCache.cpp
 bytecode/EvalCodeBlock.cpp
+bytecode/ExecutableToCodeBlockEdge.cpp
 bytecode/ExecutionCounter.cpp
 bytecode/ExitKind.cpp
 bytecode/ExitingJITType.cpp
@@ -465,7 +466,8 @@ ftl/FTLThunks.cpp
 ftl/FTLValueRange.cpp
 
 heap/AlignedMemoryAllocator.cpp
-heap/AllocatorAttributes.cpp
+heap/BlockDirectory.cpp
+heap/CellAttributes.cpp
 heap/CellContainer.cpp
 heap/CodeBlockSet.cpp
 heap/CollectionScope.cpp
@@ -501,7 +503,6 @@ heap/LargeAllocation.cpp
 heap/MachineStackMarker.cpp
 heap/MarkStack.cpp
 heap/MarkStackMergingConstraint.cpp
-heap/MarkedAllocator.cpp
 heap/MarkedBlock.cpp
 heap/MarkedSpace.cpp
 heap/MarkingConstraint.cpp
@@ -778,7 +779,7 @@ runtime/JSAsyncGeneratorFunction.cpp
 runtime/JSBigInt.cpp
 runtime/JSBoundFunction.cpp
 runtime/JSCJSValue.cpp
-runtime/JSCPoisonedPtr.cpp
+runtime/JSCPoison.cpp
 runtime/JSCallee.cpp
 runtime/JSCell.cpp
 runtime/JSCustomGetterSetterFunction.cpp

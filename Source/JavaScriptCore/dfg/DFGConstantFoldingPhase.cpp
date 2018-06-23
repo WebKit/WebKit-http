@@ -175,8 +175,13 @@ private:
                 RegisteredStructureSet set;
                 if (node->op() == ArrayifyToStructure)
                     set = node->structure();
-                else
+                else {
                     set = node->structureSet();
+                    if ((SpecCellCheck & SpecEmpty) && node->child1().useKind() == CellUse && m_state.forNode(node->child1()).m_type & SpecEmpty) {
+                        m_insertionSet.insertNode(
+                            indexInBlock, SpecNone, AssertNotEmpty, node->origin, Edge(node->child1().node(), UntypedUse));
+                    }
+                }
                 if (value.m_structure.isSubsetOf(set)) {
                     m_interpreter.execute(indexInBlock); // Catch the fact that we may filter on cell.
                     node->remove();
@@ -293,6 +298,7 @@ private:
                 break;
             }
 
+            case AssertNotEmpty:
             case CheckNotEmpty: {
                 if (m_state.forNode(node->child1()).m_type & SpecEmpty)
                     break;
@@ -516,7 +522,7 @@ private:
                     break;
                 }
                 
-                if (!isFTL(m_graph.m_plan.mode))
+                if (!m_graph.supportsMultiGetByOffset(node->origin.semantic))
                     break;
                 
                 MultiGetByOffsetData* data = m_graph.m_multiGetByOffsetData.add();

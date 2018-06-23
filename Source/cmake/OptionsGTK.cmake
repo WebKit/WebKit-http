@@ -1,11 +1,11 @@
 include(GNUInstallDirs)
 include(VersioningUtils)
 
-SET_PROJECT_VERSION(2 19 5)
+SET_PROJECT_VERSION(2 19 6)
 set(WEBKITGTK_API_VERSION 4.0)
 
-CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT 64 1 27)
-CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(JAVASCRIPTCORE 25 3 7)
+CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT 64 2 27)
+CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(JAVASCRIPTCORE 25 4 7)
 
 # These are shared variables, but we special case their definition so that we can use the
 # CMAKE_INSTALL_* variables that are populated by the GNUInstallDirs macro.
@@ -376,6 +376,7 @@ set(WebKit_PKGCONFIG_FILE ${CMAKE_BINARY_DIR}/Source/WebKitLegacy/gtk/webkitgtk-
 set(WebKit2_PKGCONFIG_FILE ${CMAKE_BINARY_DIR}/Source/WebKit/webkit2gtk-${WEBKITGTK_API_VERSION}.pc)
 set(WebKit2WebExtension_PKGCONFIG_FILE ${CMAKE_BINARY_DIR}/Source/WebKit/webkit2gtk-web-extension-${WEBKITGTK_API_VERSION}.pc)
 
+set(JavaScriptCore_LIBRARY_TYPE SHARED)
 set(SHOULD_INSTALL_JS_SHELL ON)
 
 # Add a typelib file to the list of all typelib dependencies. This makes it easy to

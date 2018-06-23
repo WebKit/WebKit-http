@@ -1254,8 +1254,6 @@ public:
     void requestStorageAccess(String&& subFrameHost, String&& topFrameHost, uint64_t frameID, uint64_t pageID, uint64_t webProcessContextId);
 #endif
 
-    void prepareToDragPromisedBlob(const WebCore::PromisedBlobInfo&);
-
 #if ENABLE(ATTACHMENT_ELEMENT)
     void insertAttachment(const String& identifier, const WebCore::AttachmentDisplayOptions&, const String& filename, std::optional<String> contentType, WebCore::SharedBuffer& data, Function<void(CallbackBase::Error)>&&);
     void requestAttachmentInfo(const String& identifier, Function<void(const WebCore::AttachmentInfo&, CallbackBase::Error)>&&);
@@ -1695,7 +1693,7 @@ private:
     void stopAllURLSchemeTasks();
 
 #if ENABLE(ATTACHMENT_ELEMENT)
-    void didInsertAttachment(const String& identifier);
+    void didInsertAttachment(const String& identifier, const String& source);
     void didRemoveAttachment(const String& identifier);
 #endif
 

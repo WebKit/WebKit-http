@@ -39,17 +39,22 @@ TextStream& operator<<(TextStream& ts, const TimingFunction& timingFunction)
         ts << "linear";
         break;
     case TimingFunction::CubicBezierFunction: {
-        auto& function = static_cast<const CubicBezierTimingFunction&>(timingFunction);
+        auto& function = downcast<CubicBezierTimingFunction>(timingFunction);
         ts << "cubic-bezier(" << function.x1() << ", " << function.y1() << ", " <<  function.x2() << ", " << function.y2() << ")";
         break;
     }
     case TimingFunction::StepsFunction: {
-        auto& function = static_cast<const StepsTimingFunction&>(timingFunction);
+        auto& function = downcast<StepsTimingFunction>(timingFunction);
         ts << "steps(" << function.numberOfSteps() << ", " << (function.stepAtStart() ? "start" : "end") << ")";
         break;
     }
+    case TimingFunction::FramesFunction: {
+        auto& function = downcast<FramesTimingFunction>(timingFunction);
+        ts << "frames(" << function.numberOfFrames() << ")";
+        break;
+    }
     case TimingFunction::SpringFunction: {
-        auto& function = static_cast<const SpringTimingFunction&>(timingFunction);
+        auto& function = downcast<SpringTimingFunction>(timingFunction);
         ts << "spring(" << function.mass() << " " << function.stiffness() << " " <<  function.damping() << " " << function.initialVelocity() << ")";
         break;
     }
@@ -61,21 +66,31 @@ double TimingFunction::transformTime(double inputTime, double duration) const
 {
     switch (m_type) {
     case TimingFunction::CubicBezierFunction: {
-        auto& function = *static_cast<const CubicBezierTimingFunction*>(this);
+        auto& function = downcast<CubicBezierTimingFunction>(*this);
         // The epsilon value we pass to UnitBezier::solve given that the animation is going to run over |dur| seconds. The longer the
         // animation, the more precision we need in the timing function result to avoid ugly discontinuities.
         auto epsilon = 1.0 / (200.0 * duration);
         return UnitBezier(function.x1(), function.y1(), function.x2(), function.y2()).solve(inputTime, epsilon);
     }
     case TimingFunction::StepsFunction: {
-        auto& function = *static_cast<const StepsTimingFunction*>(this);
+        auto& function = downcast<StepsTimingFunction>(*this);
         auto numberOfSteps = function.numberOfSteps();
         if (function.stepAtStart())
             return std::min(1.0, (std::floor(numberOfSteps * inputTime) + 1) / numberOfSteps);
         return std::floor(numberOfSteps * inputTime) / numberOfSteps;
     }
+    case TimingFunction::FramesFunction: {
+        // https://drafts.csswg.org/css-timing/#frames-timing-functions
+        auto& function = downcast<FramesTimingFunction>(*this);
+        auto numberOfFrames = function.numberOfFrames();
+        ASSERT(numberOfFrames > 1);
+        auto outputTime = std::floor(inputTime * numberOfFrames) / (numberOfFrames - 1);
+        if (inputTime <= 1 && outputTime > 1)
+            return 1;
+        return outputTime;
+    }
     case TimingFunction::SpringFunction: {
-        auto& function = *static_cast<const SpringTimingFunction*>(this);
+        auto& function = downcast<SpringTimingFunction>(*this);
         return SpringSolver(function.mass(), function.stiffness(), function.damping(), function.initialVelocity()).solve(inputTime * duration);
     }
     case TimingFunction::LinearFunction:

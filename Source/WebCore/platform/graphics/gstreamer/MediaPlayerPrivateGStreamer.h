@@ -131,8 +131,6 @@ public:
 
     bool isLiveStream() const override { return m_isStreaming; }
 
-    bool handleSyncMessage(GstMessage*) override;
-
 private:
     static void getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>&);
     static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
@@ -239,6 +237,7 @@ private:
     float m_lastPlaybackRate;
     Timer m_fillTimer;
     MediaTime m_maxTimeLoaded;
+    bool m_loadingStalled { false };
     MediaPlayer::Preload m_preload;
     bool m_delayingLoad;
     mutable MediaTime m_maxTimeLoadedAtLastDidLoadingProgress;

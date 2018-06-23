@@ -189,6 +189,8 @@ set(WebKit_SOURCES
     Shared/SharedStringHashTableReadOnly.cpp
     Shared/SharedStringHashTable.cpp
     Shared/StatisticsData.cpp
+    Shared/TouchBarMenuData.cpp
+    Shared/TouchBarMenuItemData.cpp
     Shared/URLSchemeTaskParameters.cpp
     Shared/UpdateInfo.cpp
     Shared/UserData.cpp
@@ -317,6 +319,7 @@ set(WebKit_SOURCES
     UIProcess/WebContextClient.cpp
     UIProcess/WebContextConnectionClient.cpp
     UIProcess/WebContextInjectedBundleClient.cpp
+    UIProcess/WebContextMenuListenerProxy.cpp
     UIProcess/WebContextMenuProxy.cpp
     UIProcess/WebCookieManagerProxy.cpp
     UIProcess/WebCookieManagerProxyClient.cpp
@@ -705,6 +708,10 @@ set(WebKit_MESSAGES_IN_FILES
     WebProcess/WebStorage/StorageAreaMap.messages.in
 )
 
+set(WebKit_LIBRARIES
+    WebCore
+)
+
 set(WebProcess_LIBRARIES
     WebKit
 )
@@ -716,18 +723,6 @@ set(NetworkProcess_LIBRARIES
 set(StorageProcess_LIBRARIES
     WebKit
 )
-
-if (APPLE)
-    set(WebKit_LIBRARIES
-        PRIVATE WebCore
-        PUBLIC JavaScriptCore
-    )
-else ()
-    set(WebKit_LIBRARIES
-        WebCore
-        JavaScriptCore
-    )
-endif ()
 
 set(PluginProcess_LIBRARIES
     WebKit
@@ -941,10 +936,6 @@ list(APPEND WebKit_SOURCES ${WebKit_DERIVED_SOURCES})
 WEBKIT_FRAMEWORK(WebKit)
 add_dependencies(WebKit WebCore ${WEBKIT_EXTRA_DEPENDENCIES})
 ADD_WEBKIT_PREFIX_HEADER(WebKit)
-
-if (COMPILER_IS_GCC_OR_CLANG AND NOT APPLE)
-    target_link_libraries(WebKit -Wl,--start-group WebCore WebCoreDerivedSources -Wl,--end-group)
-endif ()
 
 add_executable(WebProcess ${WebProcess_SOURCES})
 ADD_WEBKIT_PREFIX_HEADER(WebProcess)

@@ -106,7 +106,7 @@ typedef const char* optionString;
 #define MAXIMUM_NUMBER_OF_FTL_COMPILER_THREADS 8
 #endif
 
-#if ENABLE(ASYNC_ITERATION)
+#if ENABLE(JS_ASYNC_ITERATION)
 constexpr bool enableAsyncIteration = true;
 #else
 constexpr bool enableAsyncIteration = false;
@@ -459,6 +459,8 @@ constexpr bool enableAsyncIteration = false;
     v(bool, useWebAssembly, true, Normal, "Expose the WebAssembly global object.") \
     \
     v(bool, enableSpectreMitigations, true, Restricted, "Enable Spectre mitigations.") \
+    v(bool, enableSpectreGadgets, false, Restricted, "enable gadgets to test Spectre mitigations.") \
+    v(bool, usePoisoning, true, Normal, "Poison is randomized at load time when true, and initialized to 0 if false which defeats some Spectre and type confusion mitigations, but allows tools such as leak detectors to function better.") \
     \
     v(bool, useAsyncIterator, enableAsyncIteration, Normal, "Allow to use Async Iterator in JS.") \
     \

@@ -50,6 +50,7 @@ public:
     virtual void hide() = 0;
     virtual void canMakePayment(WTF::Function<void(bool)>&& completionHandler) = 0;
     virtual ExceptionOr<void> detailsUpdated(const AtomicString& eventType, const String& error) = 0;
+    virtual ExceptionOr<void> merchantValidationCompleted(JSC::JSValue&&) = 0;
     virtual void complete(std::optional<PaymentComplete>&&) = 0;
 };
 

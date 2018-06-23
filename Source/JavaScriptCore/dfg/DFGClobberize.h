@@ -417,6 +417,10 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         def(PureValue(CheckNotEmpty, AdjacencyList(AdjacencyList::Fixed, node->child1())));
         return;
 
+    case AssertNotEmpty:
+        write(SideState);
+        return;
+
     case CheckStringIdent:
         def(PureValue(CheckStringIdent, AdjacencyList(AdjacencyList::Fixed, node->child1()), node->uidOperand()));
         return;
@@ -1487,6 +1491,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
 
     case RegExpExec:
     case RegExpTest:
+    case RegExpMatchFast:
         if (node->child2().useKind() == RegExpObjectUse
             && node->child3().useKind() == StringUse) {
             read(RegExpState);

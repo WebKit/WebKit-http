@@ -62,23 +62,9 @@ private:
 // pushed graphics state.
 class PlatformContextCairo::State {
 public:
-    State()
-        : m_globalAlpha(1)
-        , m_imageInterpolationQuality(InterpolationDefault)
-    {
-    }
-
-    State(float globalAlpha, InterpolationQuality imageInterpolationQuality)
-        : m_globalAlpha(globalAlpha)
-        , m_imageInterpolationQuality(imageInterpolationQuality)
-    {
-        // We do not copy m_imageMaskInformation because otherwise it would be applied
-        // more than once during subsequent calls to restore().
-    }
+    State() = default;
 
     ImageMaskInformation m_imageMaskInformation;
-    float m_globalAlpha;
-    InterpolationQuality m_imageInterpolationQuality;
 };
 
 PlatformContextCairo::PlatformContextCairo(cairo_t* cr)
@@ -108,7 +94,7 @@ PlatformContextCairo::~PlatformContextCairo() = default;
 
 void PlatformContextCairo::save()
 {
-    m_stateStack.append(State(m_state->m_globalAlpha, m_state->m_imageInterpolationQuality));
+    m_stateStack.append(State());
     m_state = &m_stateStack.last();
 
     cairo_save(m_cr.get());
@@ -157,7 +143,7 @@ static void drawPatternToCairoContext(cairo_t* cr, cairo_pattern_t* pattern, con
         cairo_fill(cr);
 }
 
-void PlatformContextCairo::drawSurfaceToContext(cairo_surface_t* surface, const FloatRect& destRect, const FloatRect& originalSrcRect, GraphicsContext& context)
+void PlatformContextCairo::drawSurfaceToContext(cairo_surface_t* surface, const FloatRect& destRect, const FloatRect& originalSrcRect, InterpolationQuality imageInterpolationQuality, float globalAlpha, const Cairo::ShadowState& shadowState, GraphicsContext& context)
 {
     // Avoid invalid cairo matrix with small values.
     if (std::fabs(destRect.width()) < 0.5f || std::fabs(destRect.height()) < 0.5f)
@@ -194,7 +180,7 @@ void PlatformContextCairo::drawSurfaceToContext(cairo_surface_t* surface, const 
     RefPtr<cairo_pattern_t> pattern = adoptRef(cairo_pattern_create_for_surface(patternSurface.get()));
 
     ASSERT(m_state);
-    switch (m_state->m_imageInterpolationQuality) {
+    switch (imageInterpolationQuality) {
     case InterpolationNone:
     case InterpolationLow:
         cairo_pattern_set_filter(pattern.get(), CAIRO_FILTER_FAST);
@@ -218,7 +204,7 @@ void PlatformContextCairo::drawSurfaceToContext(cairo_surface_t* surface, const 
     cairo_matrix_t matrix = { scaleX, 0, 0, scaleY, leftPadding, topPadding };
     cairo_pattern_set_matrix(pattern.get(), &matrix);
 
-    ShadowBlur& shadow = context.platformContext()->shadowBlur();
+    ShadowBlur shadow({ shadowState.blur, shadowState.blur }, shadowState.offset, shadowState.color, shadowState.ignoreTransforms);
     if (shadow.type() != ShadowBlur::NoShadow) {
         if (GraphicsContext* shadowContext = shadow.beginShadowLayer(context, destRect)) {
             drawPatternToCairoContext(shadowContext->platformContext()->cr(), pattern.get(), destRect, 1);
@@ -227,122 +213,8 @@ void PlatformContextCairo::drawSurfaceToContext(cairo_surface_t* surface, const 
     }
 
     cairo_save(m_cr.get());
-    drawPatternToCairoContext(m_cr.get(), pattern.get(), destRect, globalAlpha());
+    drawPatternToCairoContext(m_cr.get(), pattern.get(), destRect, globalAlpha);
     cairo_restore(m_cr.get());
-}
-
-void PlatformContextCairo::setImageInterpolationQuality(InterpolationQuality quality)
-{
-    ASSERT(m_state);
-    m_state->m_imageInterpolationQuality = quality;
-}
-
-InterpolationQuality PlatformContextCairo::imageInterpolationQuality() const
-{
-    ASSERT(m_state);
-    return m_state->m_imageInterpolationQuality;
-}
-
-
-float PlatformContextCairo::globalAlpha() const
-{
-    return m_state->m_globalAlpha;
-}
-
-void PlatformContextCairo::setGlobalAlpha(float globalAlpha)
-{
-    m_state->m_globalAlpha = globalAlpha;
-}
-
-static inline void reduceSourceByAlpha(cairo_t* cr, float alpha)
-{
-    if (alpha >= 1)
-        return;
-    cairo_push_group(cr);
-    cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-    cairo_paint_with_alpha(cr, alpha);
-    cairo_pop_group_to_source(cr);
-}
-
-static void prepareCairoContextSource(cairo_t* cr, cairo_pattern_t* pattern, cairo_pattern_t* gradient, const Color& color, float globalAlpha)
-{
-    if (pattern) {
-        // Pattern source
-        cairo_set_source(cr, pattern);
-        reduceSourceByAlpha(cr, globalAlpha);
-    } else if (gradient) {
-        // Gradient source
-        cairo_set_source(cr, gradient);
-    } else {
-        // Solid color source
-        if (globalAlpha < 1)
-            setSourceRGBAFromColor(cr, colorWithOverrideAlpha(color.rgb(), color.alpha() / 255.f * globalAlpha));
-        else
-            setSourceRGBAFromColor(cr, color);
-    }
-}
-
-void PlatformContextCairo::prepareForFilling(const Cairo::FillSource& fillSource, PatternAdjustment patternAdjustment)
-{
-    cairo_set_fill_rule(m_cr.get(), fillSource.fillRule == RULE_EVENODD ? CAIRO_FILL_RULE_EVEN_ODD : CAIRO_FILL_RULE_WINDING);
-
-    bool adjustForAlpha = patternAdjustment == AdjustPatternForGlobalAlpha;
-
-    auto* gradient = fillSource.gradient.base.get();
-    if (adjustForAlpha && fillSource.gradient.alphaAdjusted)
-        gradient = fillSource.gradient.alphaAdjusted.get();
-
-    prepareCairoContextSource(m_cr.get(), fillSource.pattern.object.get(), gradient,
-        fillSource.color, adjustForAlpha ? globalAlpha() : 1);
-
-    if (fillSource.pattern.object) {
-        clipForPatternFilling(fillSource.pattern.size, fillSource.pattern.transform,
-            fillSource.pattern.repeatX, fillSource.pattern.repeatY);
-    }
-}
-
-void PlatformContextCairo::prepareForStroking(const Cairo::StrokeSource& strokeSource, AlphaPreservation alphaPreservation)
-{
-    bool preserveAlpha = alphaPreservation == PreserveAlpha;
-
-    auto* gradient = strokeSource.gradient.base.get();
-    if (preserveAlpha && strokeSource.gradient.alphaAdjusted)
-        gradient = strokeSource.gradient.alphaAdjusted.get();
-
-    prepareCairoContextSource(m_cr.get(), strokeSource.pattern.get(), gradient,
-        strokeSource.color, preserveAlpha ? globalAlpha() : 1);
-}
-
-void PlatformContextCairo::clipForPatternFilling(const FloatSize& patternSize, const AffineTransform& patternTransform, bool repeatX, bool repeatY)
-{
-    // Hold current cairo path in a variable for restoring it after configuring the pattern clip rectangle.
-    auto currentPath = cairo_copy_path(m_cr.get());
-    cairo_new_path(m_cr.get());
-
-    // Initialize clipping extent from current cairo clip extents, then shrink if needed according to pattern.
-    // Inspired by GraphicsContextQt::drawRepeatPattern.
-    double x1, y1, x2, y2;
-    cairo_clip_extents(m_cr.get(), &x1, &y1, &x2, &y2);
-    FloatRect clipRect(x1, y1, x2 - x1, y2 - y1);
-
-    FloatRect patternRect = patternTransform.mapRect(FloatRect(FloatPoint(), patternSize));
-
-    if (!repeatX) {
-        clipRect.setX(patternRect.x());
-        clipRect.setWidth(patternRect.width());
-    }
-    if (!repeatY) {
-        clipRect.setY(patternRect.y());
-        clipRect.setHeight(patternRect.height());
-    }
-    if (!repeatX || !repeatY) {
-        cairo_rectangle(m_cr.get(), clipRect.x(), clipRect.y(), clipRect.width(), clipRect.height());
-        cairo_clip(m_cr.get());
-    }
-
-    // Restoring cairo path.
-    cairo_append_path(m_cr.get(), currentPath);
-    cairo_path_destroy(currentPath);
 }
 
 } // namespace WebCore

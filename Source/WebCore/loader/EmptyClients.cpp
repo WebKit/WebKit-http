@@ -134,7 +134,6 @@ class EmptyDragClient final : public DragClient {
     DragSourceAction dragSourceActionMaskForPoint(const IntPoint&) final { return DragSourceActionNone; }
     void startDrag(DragItem, DataTransfer&, Frame&) final { }
     void dragControllerDestroyed() final { }
-    void prepareToDragPromisedBlob(const PromisedBlobInfo&) final { }
 };
 
 #endif // ENABLE(DRAG_SUPPORT)
@@ -177,6 +176,7 @@ private:
     void willWriteSelectionToPasteboard(Range*) final { }
     void didWriteSelectionToPasteboard() final { }
     void getClientPasteboardDataForRange(Range*, Vector<String>&, Vector<RefPtr<SharedBuffer>>&) final { }
+    String replacementURLForResource(Ref<SharedBuffer>&&, const String&) final { return { }; }
     void requestCandidatesForSelection(const VisibleSelection&) final { }
     void handleAcceptedCandidateWithSoftSpaces(TextCheckingResult) final { }
 

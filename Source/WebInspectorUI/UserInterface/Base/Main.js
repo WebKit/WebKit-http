@@ -158,7 +158,7 @@ WI.loaded = function()
     // Create settings.
     this._showingSplitConsoleSetting = new WI.Setting("showing-split-console", false);
 
-    this._openTabsSetting = new WI.Setting("open-tab-types", ["elements", "network", "resources", "timeline", "debugger", "storage", "canvas", "console"]);
+    this._openTabsSetting = new WI.Setting("open-tab-types", ["elements", "network", "debugger", "resources", "timeline", "storage", "canvas", "console"]);
     this._selectedTabIndexSetting = new WI.Setting("selected-tab-index", 0);
 
     this.showShadowDOMSetting = new WI.Setting("show-shadow-dom", false);
@@ -373,7 +373,7 @@ WI.contentLoaded = function()
     this._togglePreviousDockConfigurationKeyboardShortcut = new WI.KeyboardShortcut(WI.KeyboardShortcut.Modifier.CommandOrControl | WI.KeyboardShortcut.Modifier.Shift, "D", this._togglePreviousDockConfiguration.bind(this));
 
     let reloadToolTip;
-    if (WI.debuggableType === WI.DebuggableType.JavaScript)
+    if (WI.sharedApp.debuggableType === WI.DebuggableType.JavaScript)
         reloadToolTip = WI.UIString("Restart (%s)").format(this._reloadPageKeyboardShortcut.displayName);
     else
         reloadToolTip = WI.UIString("Reload page (%s)\nReload page ignoring cache (%s)").format(this._reloadPageKeyboardShortcut.displayName, this._reloadPageFromOriginKeyboardShortcut.displayName);
@@ -428,18 +428,18 @@ WI.contentLoaded = function()
     // These tabs are always available for selecting, modulo isTabAllowed().
     // Other tabs may be engineering-only or toggled at runtime if incomplete.
     let productionTabClasses = [
-        WI.CanvasTabContentView,
-        WI.ConsoleTabContentView,
-        WI.DebuggerTabContentView,
         WI.ElementsTabContentView,
-        WI.LayersTabContentView,
         WI.NetworkTabContentView,
-        WI.NewTabContentView,
+        WI.DebuggerTabContentView,
         WI.ResourcesTabContentView,
-        WI.SearchTabContentView,
-        WI.SettingsTabContentView,
-        WI.StorageTabContentView,
         WI.TimelineTabContentView,
+        WI.StorageTabContentView,
+        WI.CanvasTabContentView,
+        WI.LayersTabContentView,
+        WI.ConsoleTabContentView,
+        WI.SearchTabContentView,
+        WI.NewTabContentView,
+        WI.SettingsTabContentView,
     ];
 
     this._knownTabClassesByType = new Map;
@@ -660,21 +660,6 @@ WI.createNewTabWithType = function(tabType, options = {})
 
     if (shouldShowNewTab)
         this.tabBrowser.showTabForContentView(tabContentView);
-};
-
-WI.registerTabClass = function(tabClass)
-{
-    console.assert(WI.TabContentView.isPrototypeOf(tabClass));
-    if (!WI.TabContentView.isPrototypeOf(tabClass))
-        return;
-
-    if (this._knownTabClassesByType.has(tabClass.Type))
-        return;
-
-    this._knownTabClassesByType.set(tabClass.Type, tabClass);
-
-    this._tryToRestorePendingTabs();
-    this.notifications.dispatchEventToListeners(WI.Notification.TabTypesChanged);
 };
 
 WI.activateExtraDomains = function(domains)
@@ -1832,8 +1817,7 @@ WI._updateReloadToolbarButton = function()
 
 WI._updateDownloadToolbarButton = function()
 {
-    // COMPATIBILITY (iOS 7): Page.archive did not exist yet.
-    if (!window.PageAgent || !PageAgent.archive || this.sharedApp.debuggableType !== WI.DebuggableType.Web) {
+    if (!window.PageAgent || this.sharedApp.debuggableType !== WI.DebuggableType.Web) {
         this._downloadToolbarButton.hidden = true;
         return;
     }
@@ -2594,8 +2578,7 @@ WI.archiveMainFrame = function()
 
 WI.canArchiveMainFrame = function()
 {
-    // COMPATIBILITY (iOS 7): Page.archive did not exist yet.
-    if (!PageAgent.archive || this.sharedApp.debuggableType !== WI.DebuggableType.Web)
+    if (this.sharedApp.debuggableType !== WI.DebuggableType.Web)
         return false;
 
     if (!WI.frameResourceManager.mainFrame || !WI.frameResourceManager.mainFrame.mainResource)

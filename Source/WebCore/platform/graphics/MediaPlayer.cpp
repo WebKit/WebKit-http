@@ -1200,6 +1200,9 @@ void MediaPlayer::volumeChanged(double newVolume)
 
 void MediaPlayer::muteChanged(bool newMuted)
 {
+    if (newMuted == m_muted)
+        return;
+
     m_muted = newMuted;
     client().mediaPlayerMuteChanged(this);
 }
@@ -1507,6 +1510,16 @@ bool MediaPlayer::shouldCheckHardwareSupport() const
     return client().mediaPlayerShouldCheckHardwareSupport();
 }
 
+void MediaPlayer::applicationWillResignActive()
+{
+    m_private->applicationWillResignActive();
+}
+
+void MediaPlayer::applicationDidBecomeActive()
+{
+    m_private->applicationDidBecomeActive();
+}
+
 #if !RELEASE_LOG_DISABLED
 const Logger& MediaPlayer::mediaPlayerLogger()
 {
@@ -1550,6 +1563,20 @@ String convertEnumerationToString(MediaPlayerEnums::NetworkState enumerationValu
     static_assert(static_cast<size_t>(MediaPlayerEnums::FormatError) == 4, "MediaPlayerEnums::FormatError is not 4 as expected");
     static_assert(static_cast<size_t>(MediaPlayerEnums::NetworkError) == 5, "MediaPlayerEnums::NetworkError is not 5 as expected");
     static_assert(static_cast<size_t>(MediaPlayerEnums::DecodeError) == 6, "MediaPlayerEnums::DecodeError is not 6 as expected");
+    ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
+    return values[static_cast<size_t>(enumerationValue)];
+}
+
+String convertEnumerationToString(MediaPlayerEnums::Preload enumerationValue)
+{
+    static const NeverDestroyed<String> values[] = {
+        MAKE_STATIC_STRING_IMPL("None"),
+        MAKE_STATIC_STRING_IMPL("MetaData"),
+        MAKE_STATIC_STRING_IMPL("Auto"),
+    };
+    static_assert(!static_cast<size_t>(MediaPlayerEnums::None), "MediaPlayerEnums::None is not 0 as expected");
+    static_assert(static_cast<size_t>(MediaPlayerEnums::MetaData) == 1, "MediaPlayerEnums::MetaData is not 1 as expected");
+    static_assert(static_cast<size_t>(MediaPlayerEnums::Auto) == 2, "MediaPlayerEnums::Auto is not 2 as expected");
     ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values));
     return values[static_cast<size_t>(enumerationValue)];
 }

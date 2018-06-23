@@ -111,7 +111,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/applepay/ApplePayShippingMethodSelectedEvent.idl \
 	$(WebCore)/Modules/applepay/ApplePayShippingMethodUpdate.idl \
     $(WebCore)/Modules/applepay/ApplePayValidateMerchantEvent.idl \
-    $(WebCore)/Modules/applepay/paymentrequest/ApplePayMerchantValidationEvent.idl \
     $(WebCore)/Modules/applepay/paymentrequest/ApplePayModifier.idl \
     $(WebCore)/Modules/applepay/paymentrequest/ApplePayRequest.idl \
     $(WebCore)/Modules/beacon/NavigatorBeacon.idl \
@@ -256,6 +255,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/notifications/Notification.idl \
     $(WebCore)/Modules/notifications/NotificationPermission.idl \
     $(WebCore)/Modules/notifications/NotificationPermissionCallback.idl \
+    $(WebCore)/Modules/paymentrequest/MerchantValidationEvent.idl \
     $(WebCore)/Modules/paymentrequest/PaymentAddress.idl \
     $(WebCore)/Modules/paymentrequest/PaymentComplete.idl \
     $(WebCore)/Modules/paymentrequest/PaymentCurrencyAmount.idl \
@@ -324,7 +324,14 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webaudio/PeriodicWave.idl \
     $(WebCore)/Modules/webaudio/ScriptProcessorNode.idl \
     $(WebCore)/Modules/webaudio/WaveShaperNode.idl \
+    $(WebCore)/Modules/webauthn/AuthenticatorAssertionResponse.idl \
+    $(WebCore)/Modules/webauthn/AuthenticatorAttestationResponse.idl \
+    $(WebCore)/Modules/webauthn/AuthenticatorResponse.idl \
     $(WebCore)/Modules/webauthn/PublicKeyCredential.idl \
+	$(WebCore)/Modules/webauthn/PublicKeyCredentialCreationOptions.idl \
+    $(WebCore)/Modules/webauthn/PublicKeyCredentialDescriptor.idl \
+	$(WebCore)/Modules/webauthn/PublicKeyCredentialRequestOptions.idl \
+    $(WebCore)/Modules/webauthn/PublicKeyCredentialType.idl \
     $(WebCore)/Modules/webdatabase/DOMWindowWebDatabase.idl \
     $(WebCore)/Modules/webdatabase/Database.idl \
     $(WebCore)/Modules/webdatabase/DatabaseCallback.idl \
@@ -513,6 +520,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/dom/ShadowRoot.idl \
     $(WebCore)/dom/ShadowRootMode.idl \
     $(WebCore)/dom/Slotable.idl \
+    $(WebCore)/dom/SpectreGadget.idl \
     $(WebCore)/dom/StaticRange.idl \
     $(WebCore)/dom/StringCallback.idl \
     $(WebCore)/dom/Text.idl \

@@ -670,6 +670,9 @@ private:
         case CheckNotEmpty:
             compileCheckNotEmpty();
             break;
+        case AssertNotEmpty:
+            compileAssertNotEmpty();
+            break;
         case CheckBadCell:
             compileCheckBadCell();
             break;
@@ -1181,6 +1184,9 @@ private:
             break;
         case RegExpTest:
             compileRegExpTest();
+            break;
+        case RegExpMatchFast:
+            compileRegExpMatchFast();
             break;
         case NewRegexp:
             compileNewRegexp();
@@ -1773,14 +1779,13 @@ private:
     void compileValueAdd()
     {
         ArithProfile* arithProfile = m_ftlState.graph.baselineCodeBlockFor(m_node->origin.semantic)->arithProfileForBytecodeOffset(m_node->origin.semantic.bytecodeIndex);
-        JITAddIC* addIC = codeBlock()->addJITAddIC(arithProfile);
         auto repatchingFunction = operationValueAddOptimize;
         auto nonRepatchingFunction = operationValueAdd;
-        compileMathIC(addIC, repatchingFunction, nonRepatchingFunction);
+        compileBinaryMathIC<JITAddGenerator>(arithProfile, repatchingFunction, nonRepatchingFunction);
     }
 
     template <typename Generator>
-    void compileMathIC(JITUnaryMathIC<Generator>* mathIC, FunctionPtr repatchingFunction, FunctionPtr nonRepatchingFunction)
+    void compileUnaryMathIC(ArithProfile* arithProfile, FunctionPtr repatchingFunction, FunctionPtr nonRepatchingFunction)
     {
         Node* node = m_node;
 
@@ -1806,6 +1811,7 @@ private:
 #endif
 
                 Box<MathICGenerationState> mathICGenerationState = Box<MathICGenerationState>::create();
+                JITUnaryMathIC<Generator>* mathIC = jit.codeBlock()->addMathIC<Generator>(arithProfile);
                 mathIC->m_generator = Generator(JSValueRegs(params[0].gpr()), JSValueRegs(params[1].gpr()), params.gpScratch(0));
 
                 bool shouldEmitProfiling = false;
@@ -1864,7 +1870,7 @@ private:
     }
 
     template <typename Generator>
-    void compileMathIC(JITBinaryMathIC<Generator>* mathIC, FunctionPtr repatchingFunction, FunctionPtr nonRepatchingFunction)
+    void compileBinaryMathIC(ArithProfile* arithProfile, FunctionPtr repatchingFunction, FunctionPtr nonRepatchingFunction)
     {
         Node* node = m_node;
         
@@ -1889,6 +1895,7 @@ private:
             [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
                 AllowMacroScratchRegisterUsage allowScratch(jit);
 
+
                 Box<CCallHelpers::JumpList> exceptions =
                     exceptionHandle->scheduleExitCreation(params)->jumps(jit);
 
@@ -1897,6 +1904,7 @@ private:
 #endif
 
                 Box<MathICGenerationState> mathICGenerationState = Box<MathICGenerationState>::create();
+                JITBinaryMathIC<Generator>* mathIC = jit.codeBlock()->addMathIC<Generator>(arithProfile);
                 mathIC->m_generator = Generator(leftOperand, rightOperand, JSValueRegs(params[0].gpr()),
                     JSValueRegs(params[1].gpr()), JSValueRegs(params[2].gpr()), params.fpScratch(0),
                     params.fpScratch(1), params.gpScratch(0), InvalidFPRReg);
@@ -2028,10 +2036,9 @@ private:
             }
 
             ArithProfile* arithProfile = m_ftlState.graph.baselineCodeBlockFor(m_node->origin.semantic)->arithProfileForBytecodeOffset(m_node->origin.semantic.bytecodeIndex);
-            JITSubIC* subIC = codeBlock()->addJITSubIC(arithProfile);
             auto repatchingFunction = operationValueSubOptimize;
             auto nonRepatchingFunction = operationValueSub;
-            compileMathIC(subIC, repatchingFunction, nonRepatchingFunction);
+            compileBinaryMathIC<JITSubGenerator>(arithProfile, repatchingFunction, nonRepatchingFunction);
             break;
         }
 
@@ -2123,10 +2130,9 @@ private:
 
         case UntypedUse: {
             ArithProfile* arithProfile = m_ftlState.graph.baselineCodeBlockFor(m_node->origin.semantic)->arithProfileForBytecodeOffset(m_node->origin.semantic.bytecodeIndex);
-            JITMulIC* mulIC = codeBlock()->addJITMulIC(arithProfile);
             auto repatchingFunction = operationValueMulOptimize;
             auto nonRepatchingFunction = operationValueMul;
-            compileMathIC(mulIC, repatchingFunction, nonRepatchingFunction);
+            compileBinaryMathIC<JITMulGenerator>(arithProfile, repatchingFunction, nonRepatchingFunction);
             break;
         }
 
@@ -2705,10 +2711,9 @@ private:
         default:
             DFG_ASSERT(m_graph, m_node, m_node->child1().useKind() == UntypedUse);
             ArithProfile* arithProfile = m_ftlState.graph.baselineCodeBlockFor(m_node->origin.semantic)->arithProfileForBytecodeOffset(m_node->origin.semantic.bytecodeIndex);
-            JITNegIC* negIC = codeBlock()->addJITNegIC(arithProfile);
             auto repatchingFunction = operationArithNegateOptimize;
             auto nonRepatchingFunction = operationArithNegate;
-            compileMathIC(negIC, repatchingFunction, nonRepatchingFunction);
+            compileUnaryMathIC<JITNegGenerator>(arithProfile, repatchingFunction, nonRepatchingFunction);
             break;
         }
     }
@@ -2891,6 +2896,23 @@ private:
     void compileCheckNotEmpty()
     {
         speculate(TDZFailure, noValue(), nullptr, m_out.isZero64(lowJSValue(m_node->child1())));
+    }
+
+    void compileAssertNotEmpty()
+    {
+        if (!validationEnabled())
+            return;
+
+        B3::PatchpointValue* patchpoint = m_out.patchpoint(Void);
+        patchpoint->appendSomeRegister(lowJSValue(m_node->child1()));
+        patchpoint->setGenerator(
+            [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+                AllowMacroScratchRegisterUsage allowScratch(jit);
+                GPRReg input =  params[0].gpr();
+                CCallHelpers::Jump done = jit.branchTest64(CCallHelpers::NonZero, input);
+                jit.breakpoint();
+                done.link(&jit);
+            });
     }
 
     void compileCheckStringIdent()
@@ -5831,7 +5853,7 @@ private:
         
         LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowPath);
         
-        MarkedAllocator* allocator = subspaceFor<JSRopeString>(vm())->allocatorForNonVirtual(sizeof(JSRopeString), AllocatorForMode::AllocatorIfExists);
+        BlockDirectory* allocator = subspaceFor<JSRopeString>(vm())->allocatorForNonVirtual(sizeof(JSRopeString), AllocatorForMode::AllocatorIfExists);
         
         LValue result = allocateCell(
             m_out.constIntPtr(allocator), vm().stringStructure.get(), slowPath);
@@ -9859,7 +9881,7 @@ private:
             
             if (structure->outOfLineCapacity() || hasIndexedProperties(structure->indexingType())) {
                 size_t allocationSize = JSFinalObject::allocationSize(structure->inlineCapacity());
-                MarkedAllocator* cellAllocator = subspaceFor<JSFinalObject>(vm())->allocatorForNonVirtual(allocationSize, AllocatorForMode::AllocatorIfExists);
+                BlockDirectory* cellAllocator = subspaceFor<JSFinalObject>(vm())->allocatorForNonVirtual(allocationSize, AllocatorForMode::AllocatorIfExists);
 
                 bool hasIndexingHeader = hasIndexedProperties(structure->indexingType());
                 unsigned indexingHeaderSize = 0;
@@ -10268,6 +10290,17 @@ private:
             Int32, m_out.operation(operationRegExpTestGeneric), m_callFrame, globalObject, base,
             argument);
         setBoolean(result);
+    }
+
+    void compileRegExpMatchFast()
+    {
+        LValue globalObject = lowCell(m_node->child1());
+        LValue base = lowRegExpObject(m_node->child2());
+        LValue argument = lowString(m_node->child3());
+        LValue result = vmCall(
+            Int64, m_out.operation(operationRegExpMatchFastString), m_callFrame, globalObject,
+            base, argument);
+        setJSValue(result);
     }
 
     void compileNewRegexp()
@@ -10879,7 +10912,7 @@ private:
         LBasicBlock lastNext = m_out.insertNewBlocksBefore(slowPath);
 
         size_t sizeInBytes = sizeInValues * sizeof(JSValue);
-        MarkedAllocator* allocator = vm().jsValueGigacageAuxiliarySpace.allocatorForNonVirtual(sizeInBytes, AllocatorForMode::AllocatorIfExists);
+        BlockDirectory* allocator = vm().jsValueGigacageAuxiliarySpace.allocatorForNonVirtual(sizeInBytes, AllocatorForMode::AllocatorIfExists);
         LValue startOfStorage = allocateHeapCell(m_out.constIntPtr(allocator), slowPath);
         ValueFromBlock fastButterfly = m_out.anchor(
             m_out.add(m_out.constIntPtr(sizeInBytes + sizeof(IndexingHeader)), startOfStorage));
@@ -11367,7 +11400,7 @@ private:
 
             LValue structure = loadStructure(cell);
             LValue poisonedClassInfo = m_out.loadPtr(structure, m_heaps.Structure_classInfo);
-            LValue classInfo = m_out.bitXor(poisonedClassInfo, m_out.constInt64(g_globalDataPoison));
+            LValue classInfo = m_out.bitXor(poisonedClassInfo, m_out.constInt64(POISON(GlobalData)));
             ValueFromBlock otherAtStart = m_out.anchor(classInfo);
             m_out.jump(loop);
 
@@ -11912,9 +11945,9 @@ private:
 
     LValue allocateHeapCell(LValue allocator, LBasicBlock slowPath)
     {
-        MarkedAllocator* actualAllocator = nullptr;
+        BlockDirectory* actualAllocator = nullptr;
         if (allocator->hasIntPtr())
-            actualAllocator = bitwise_cast<MarkedAllocator*>(allocator->asIntPtr());
+            actualAllocator = bitwise_cast<BlockDirectory*>(allocator->asIntPtr());
         
         if (!actualAllocator) {
             // This means that either we know that the allocator is null or we don't know what the
@@ -12041,7 +12074,7 @@ private:
     LValue allocateObject(
         size_t size, StructureType structure, LValue butterfly, LValue indexingMask, LBasicBlock slowPath)
     {
-        MarkedAllocator* allocator = subspaceFor<ClassType>(vm())->allocatorForNonVirtual(size, AllocatorForMode::AllocatorIfExists);
+        BlockDirectory* allocator = subspaceFor<ClassType>(vm())->allocatorForNonVirtual(size, AllocatorForMode::AllocatorIfExists);
         return allocateObject(m_out.constIntPtr(allocator), structure, butterfly, indexingMask, slowPath);
     }
     
@@ -12061,7 +12094,7 @@ private:
             CompleteSubspace* actualSubspace = bitwise_cast<CompleteSubspace*>(subspace->asIntPtr());
             size_t actualSize = size->asIntPtr();
             
-            MarkedAllocator* actualAllocator = actualSubspace->allocatorForNonVirtual(actualSize, AllocatorForMode::AllocatorIfExists);
+            BlockDirectory* actualAllocator = actualSubspace->allocatorForNonVirtual(actualSize, AllocatorForMode::AllocatorIfExists);
             if (!actualAllocator) {
                 LBasicBlock continuation = m_out.newBlock();
                 LBasicBlock lastNext = m_out.insertNewBlocksBefore(continuation);
@@ -12121,7 +12154,7 @@ private:
     LValue allocateObject(RegisteredStructure structure)
     {
         size_t allocationSize = JSFinalObject::allocationSize(structure.get()->inlineCapacity());
-        MarkedAllocator* allocator = subspaceFor<JSFinalObject>(vm())->allocatorForNonVirtual(allocationSize, AllocatorForMode::AllocatorIfExists);
+        BlockDirectory* allocator = subspaceFor<JSFinalObject>(vm())->allocatorForNonVirtual(allocationSize, AllocatorForMode::AllocatorIfExists);
         
         // FIXME: If the allocator is null, we could simply emit a normal C call to the allocator
         // instead of putting it on the slow path.

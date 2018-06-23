@@ -299,6 +299,27 @@ void ResourceLoadObserver::logUserInteractionWithReducedTimeResolution(const Doc
 
     m_notificationTimer.stop();
     notifyObserver();
+
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+    if (shouldLogUserInteraction()) {
+        auto counter = ++m_loggingCounter;
+#define LOCAL_LOG(str, ...) \
+        RELEASE_LOG(ResourceLoadStatistics, "ResourceLoadObserver::logUserInteraction: counter = %" PRIu64 ": " str, counter, ##__VA_ARGS__)
+
+        auto escapeForJSON = [](String s) {
+            s.replace('\\', "\\\\").replace('"', "\\\"");
+            return s;
+        };
+        auto escapedURL = escapeForJSON(url.string());
+        auto escapedDomain = escapeForJSON(domain);
+
+        LOCAL_LOG(R"({ "url": "%{public}s",)", escapedURL.utf8().data());
+        LOCAL_LOG(R"(  "domain" : "%{public}s",)", escapedDomain.utf8().data());
+        LOCAL_LOG(R"(  "until" : %f })", newTime.secondsSinceEpoch().seconds());
+
+#undef LOCAL_LOG
+    }
+#endif
 }
 
 ResourceLoadStatistics& ResourceLoadObserver::ensureResourceStatisticsForPrimaryDomain(const String& primaryDomain)

@@ -22,51 +22,19 @@ import os
 import errno
 import sys
 import re
-from signal import alarm, signal, SIGALRM, SIGKILL, SIGSEGV
+from signal import SIGKILL, SIGSEGV
+from glib_test_runner import GLibTestRunner
 
 top_level_directory = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, os.path.join(top_level_directory, "Tools", "glib"))
 import common
 from webkitpy.common.host import Host
-
-
-class SkippedTest:
-    ENTIRE_SUITE = None
-
-    def __init__(self, test, test_case, reason, bug, build_type=None):
-        self.test = test
-        self.test_case = test_case
-        self.reason = reason
-        self.bug = bug
-        self.build_type = build_type
-
-    def __str__(self):
-        skipped_test_str = "%s" % self.test
-
-        if not(self.skip_entire_suite()):
-            skipped_test_str += " [%s]" % self.test_case
-
-        skipped_test_str += ": %s (https://bugs.webkit.org/show_bug.cgi?id=%d)" % (self.reason, self.bug)
-        return skipped_test_str
-
-    def skip_entire_suite(self):
-        return self.test_case == SkippedTest.ENTIRE_SUITE
-
-    def skip_for_build_type(self, build_type):
-        if self.build_type is None:
-            return True
-
-        return self.build_type == build_type
-
-
-class TestTimeout(Exception):
-    pass
+from webkitpy.common.test_expectations import TestExpectations
+from webkitpy.common.timeout_context import Timeout
 
 
 class TestRunner(object):
     TEST_DIRS = []
-    SKIPPED = []
-    SLOW = []
 
     def __init__(self, port, options, tests=[]):
         self._options = options
@@ -77,8 +45,9 @@ class TestRunner(object):
         self._driver = self._create_driver()
 
         self._programs_path = common.binary_build_path()
+        expectations_file = os.path.join(common.top_level_path(), "Tools", "TestWebKitAPI", "glib", "TestExpectations.json")
+        self._expectations = TestExpectations(self._port.name(), expectations_file, self._build_type)
         self._tests = self._get_tests(tests)
-        self._skipped_tests = [skipped for skipped in TestRunner.SKIPPED if skipped.skip_for_build_type(self._build_type)]
         self._disabled_tests = []
 
     def _test_programs_base_dir(self):
@@ -136,11 +105,7 @@ class TestRunner(object):
         if self._options.skipped_action != 'skip':
             return []
 
-        test_cases = []
-        for skipped in self._skipped_tests:
-            if test_program.endswith(skipped.test) and not skipped.skip_entire_suite():
-                test_cases.append(skipped.test_case)
-        return test_cases
+        return self._expectations.skipped_subtests(os.path.basename(test_program))
 
     def _should_run_test_program(self, test_program):
         for disabled_test in self._disabled_tests:
@@ -150,10 +115,7 @@ class TestRunner(object):
         if self._options.skipped_action != 'skip':
             return True
 
-        for skipped in self._skipped_tests:
-            if test_program.endswith(skipped.test) and skipped.skip_entire_suite():
-                return False
-        return True
+        return os.path.basename(test_program) not in self._expectations.skipped_tests()
 
     def _kill_process(self, pid):
         try:
@@ -161,24 +123,6 @@ class TestRunner(object):
         except OSError:
             # Process already died.
             pass
-
-    @staticmethod
-    def _start_timeout(timeout):
-        if timeout <= 0:
-            return
-
-        def _alarm_handler(signum, frame):
-            raise TestTimeout
-
-        signal(SIGALRM, _alarm_handler)
-        alarm(timeout)
-
-    @staticmethod
-    def _stop_timeout(timeout):
-        if timeout <= 0:
-            return
-
-        alarm(0)
 
     def _waitpid(self, pid):
         while True:
@@ -202,80 +146,11 @@ class TestRunner(object):
                 raise
 
     def _run_test_glib(self, test_program):
-        command = ['gtester', '-k']
-        if self._options.verbose:
-            command.append('--verbose')
-        for test_case in self._test_cases_to_skip(test_program):
-            command.extend(['-s', test_case])
-        command.append(test_program)
-
         timeout = self._options.timeout
         test = os.path.join(os.path.basename(os.path.dirname(test_program)), os.path.basename(test_program))
-        if test in TestRunner.SLOW:
-            timeout *= 5
-
-        test_context = {"child-pid": -1, "did-timeout": False, "current_test": None}
-
-        def parse_line(line, test_context=test_context):
-            if not line:
-                return
-
-            match = re.search(r'\(pid=(?P<child_pid>[0-9]+)\)', line)
-            if match:
-                test_context["child-pid"] = int(match.group('child_pid'))
-                sys.stdout.write(line)
-                return
-
-            def set_test_result(test, result):
-                if result == "FAIL":
-                    if test_context["did-timeout"] and result == "FAIL":
-                        test_context[test] = "TIMEOUT"
-                    else:
-                        test_context[test] = result
-                test_context["did-timeout"] = False
-                test_context["current_test"] = None
-                self._stop_timeout(timeout)
-                self._start_timeout(timeout)
-
-            normalized_line = line.strip().replace(' ', '')
-            if not normalized_line:
-                return
-
-            if normalized_line[0] == '/':
-                test, result = normalized_line.split(':', 1)
-                if result in ["OK", "FAIL"]:
-                    set_test_result(test, result)
-                else:
-                    test_context["current_test"] = test
-            elif normalized_line in ["OK", "FAIL"]:
-                set_test_result(test_context["current_test"], normalized_line)
-
-            sys.stdout.write(line)
-
-        pid, fd = os.forkpty()
-        if pid == 0:
-            os.execvpe(command[0], command, self._test_env)
-            sys.exit(0)
-
-        self._start_timeout(timeout)
-
-        while (True):
-            try:
-                common.parse_output_lines(fd, parse_line)
-                break
-            except TestTimeout:
-                assert test_context["child-pid"] > 0
-                self._kill_process(test_context["child-pid"])
-                test_context["child-pid"] = -1
-                test_context["did-timeout"] = True
-
-        self._stop_timeout(timeout)
-        del test_context["child-pid"]
-        del test_context["did-timeout"]
-        del test_context["current_test"]
-
-        self._waitpid(pid)
-        return test_context
+        if self._expectations.is_slow(os.path.basename(test_program)):
+            timeout *= 10
+        return GLibTestRunner(test_program, timeout).run(skipped=self._test_cases_to_skip(test_program), env=self._test_env)
 
     def _get_tests_from_google_test_suite(self, test_program):
         try:
@@ -302,23 +177,23 @@ class TestRunner(object):
     def _run_google_test(self, test_program, subtest):
         command = [test_program, '--gtest_filter=%s' % (subtest)]
         timeout = self._options.timeout
-        if subtest in TestRunner.SLOW:
-            timeout *= 5
+        if self._expectations.is_slow(os.path.basename(test_program), subtest):
+            timeout *= 10
 
         pid, fd = os.forkpty()
         if pid == 0:
             os.execvpe(command[0], command, self._test_env)
             sys.exit(0)
 
-        self._start_timeout(timeout)
-        try:
-            common.parse_output_lines(fd, sys.stdout.write)
-            status = self._waitpid(pid)
-        except TestTimeout:
-            self._kill_process(pid)
-            return {subtest: "TIMEOUT"}
-
-        self._stop_timeout(timeout)
+        with Timeout(timeout):
+            try:
+                common.parse_output_lines(fd, sys.stdout.write)
+                status = self._waitpid(pid)
+            except RuntimeError:
+                self._kill_process(pid)
+                sys.stdout.write("**TIMEOUT** %s\n" % subtest)
+                sys.stdout.flush()
+                return {subtest: "TIMEOUT"}
 
         if status == -SIGSEGV:
             sys.stdout.write("**CRASH** %s\n" % subtest)
@@ -328,7 +203,7 @@ class TestRunner(object):
         if status != 0:
             return {subtest: "FAIL"}
 
-        return {}
+        return {subtest: "PASS"}
 
     def _run_google_test_suite(self, test_program):
         result = {}
@@ -367,42 +242,39 @@ class TestRunner(object):
         crashed_tests = {}
         failed_tests = {}
         timed_out_tests = {}
+        passed_tests = {}
         try:
             for test in self._tests:
                 results = self._run_test(test)
                 for test_case, result in results.iteritems():
+                    if result in self._expectations.get_expectation(os.path.basename(test), test_case):
+                        continue
+
                     if result == "FAIL":
                         failed_tests.setdefault(test, []).append(test_case)
                     elif result == "TIMEOUT":
                         timed_out_tests.setdefault(test, []).append(test_case)
                     elif result == "CRASH":
                         crashed_tests.setdefault(test, []).append(test_case)
+                    elif result == "PASS":
+                        passed_tests.setdefault(test, []).append(test_case)
         finally:
             self._tear_down_testing_environment()
 
-        if failed_tests:
-            sys.stdout.write("\nUnexpected failures (%d)\n" % (sum(len(value) for value in failed_tests.itervalues())))
-            for test in failed_tests:
-                sys.stdout.write("    %s\n" % (test.replace(self._test_programs_base_dir(), '', 1)))
-                for test_case in failed_tests[test]:
+        def report(tests, title, base_dir):
+            if not tests:
+                return
+            sys.stdout.write("\nUnexpected %s (%d)\n" % (title, sum(len(value) for value in tests.itervalues())))
+            for test in tests:
+                sys.stdout.write("    %s\n" % (test.replace(base_dir, '', 1)))
+                for test_case in tests[test]:
                     sys.stdout.write("        %s\n" % (test_case))
             sys.stdout.flush()
 
-        if crashed_tests:
-            sys.stdout.write("\nUnexpected crashes (%d)\n" % (sum(len(value) for value in crashed_tests.itervalues())))
-            for test in crashed_tests:
-                sys.stdout.write("    %s\n" % (test.replace(self._test_programs_base_dir(), '', 1)))
-                for test_case in crashed_tests[test]:
-                    sys.stdout.write("        %s\n" % (test_case))
-            sys.stdout.flush()
-
-        if timed_out_tests:
-            sys.stdout.write("\nUnexpected timeouts (%d)\n" % (sum(len(value) for value in timed_out_tests.itervalues())))
-            for test in timed_out_tests:
-                sys.stdout.write("    %s\n" % (test.replace(self._test_programs_base_dir(), '', 1)))
-                for test_case in timed_out_tests[test]:
-                    sys.stdout.write("        %s\n" % (test_case))
-            sys.stdout.flush()
+        report(failed_tests, "failures", self._test_programs_base_dir())
+        report(crashed_tests, "crashes", self._test_programs_base_dir())
+        report(timed_out_tests, "timeouts", self._test_programs_base_dir())
+        report(passed_tests, "passes", self._test_programs_base_dir())
 
         return len(failed_tests) + len(timed_out_tests)
 
@@ -414,13 +286,14 @@ def add_options(option_parser):
     option_parser.add_option('-d', '--debug',
                              action='store_true', dest='debug',
                              help='Run in Debug')
-    option_parser.add_option('-v', '--verbose',
-                             action='store_true', dest='verbose',
-                             help='Run gtester in verbose mode')
     option_parser.add_option('--skipped', action='store', dest='skipped_action',
                              choices=['skip', 'ignore', 'only'], default='skip',
                              metavar='skip|ignore|only',
                              help='Specifies how to treat the skipped tests')
     option_parser.add_option('-t', '--timeout',
-                             action='store', type='int', dest='timeout', default=10,
+                             action='store', type='int', dest='timeout', default=5,
                              help='Time in seconds until a test times out')
+    # FIXME: Remove this once bug #181676 is fixed and buildbot has been restarted.
+    option_parser.add_option('-v', '--verbose',
+                             action='store_true', dest='verbose',
+                             help='Run gtester in verbose mode')

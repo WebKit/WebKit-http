@@ -363,11 +363,6 @@ bool PageClientImpl::executeSavedCommandBySelector(const String&)
     return false;
 }
 
-void PageClientImpl::setDragImage(const IntPoint&, Ref<ShareableBitmap>&&, DragSourceAction)
-{
-    notImplemented();
-}
-
 void PageClientImpl::selectionDidChange()
 {
     [m_contentView _selectionChanged];
@@ -812,11 +807,6 @@ void PageClientImpl::requestPasswordForQuickLookDocument(const String& fileName,
     NavigationState::fromWebPage(*m_webView->_page).didRequestPasswordForQuickLookDocument();
 }
 #endif
-
-void PageClientImpl::prepareToDragPromisedBlob(const WebCore::PromisedBlobInfo& info)
-{
-    [m_contentView _prepareToDragPromisedBlob:info];
-}
 
 } // namespace WebKit
 

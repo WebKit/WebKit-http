@@ -1,3 +1,106 @@
+2018-01-17  Saam Barati  <sbarati@apple.com>
+
+        DFG::Node::convertToConstant needs to clear the varargs flags
+        https://bugs.webkit.org/show_bug.cgi?id=181697
+        <rdar://problem/36497332>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/dfg-node-convert-to-constant-must-clear-varargs-flags.js: Added.
+        (doIndexOf):
+        (bar):
+        (i.bar):
+
+2018-01-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r226937.
+
+        Tests added with this change are failing due to a missing
+        exception check.
+
+        Reverted changeset:
+
+        "[JSC] NumberPrototype::extractRadixFromArgs incorrectly cast
+        double to int32_t"
+        https://bugs.webkit.org/show_bug.cgi?id=181182
+        https://trac.webkit.org/changeset/226937
+
+2018-01-13  Caio Lima  <ticaiolima@gmail.com>
+
+        [JSC] NumberPrototype::extractRadixFromArgs incorrectly cast double to int32_t
+        https://bugs.webkit.org/show_bug.cgi?id=181182
+
+        Reviewed by Darin Adler.
+
+        * bigIntTests.yaml:
+        * stress/big-int-constructor.js:
+        * stress/big-int-prototype-to-string-cast-overflow.js: Added.
+        (assert):
+        (assertThrowRangeError):
+        * stress/number-prototype-to-string-cast-overflow.js: Added.
+        (assert):
+        (assertThrowRangeError):
+
+2018-01-12  Saam Barati  <sbarati@apple.com>
+
+        CheckStructure can be incorrectly subsumed by CheckStructureOrEmpty
+        https://bugs.webkit.org/show_bug.cgi?id=181177
+        <rdar://problem/36205704>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/check-structure-ir-ensures-empty-does-not-flow-through.js: Added.
+        (runNearStackLimit.t):
+        (runNearStackLimit):
+        (test.f):
+        (test):
+
+2018-01-12  Saam Barati  <sbarati@apple.com>
+
+        Each variant of a polymorphic inlined call should be exitOK at the top of the block
+        https://bugs.webkit.org/show_bug.cgi?id=181562
+        <rdar://problem/36445624>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/each-block-at-top-of-polymorphic-call-inlining-should-be-exitOK.js: Added.
+        (f):
+        (foo):
+
+2018-01-11  Saam Barati  <sbarati@apple.com>
+
+        When inserting Unreachable in byte code parser we need to flush all the right things
+        https://bugs.webkit.org/show_bug.cgi?id=181509
+        <rdar://problem/36423110>
+
+        Reviewed by Mark Lam.
+
+        * stress/proper-flushing-when-we-insert-unreachable-after-force-exit-in-bytecode-parser.js: Added.
+
+2018-01-11  Saam Barati  <sbarati@apple.com>
+
+        JITMathIC code in the FTL is wrong when code gets duplicated
+        https://bugs.webkit.org/show_bug.cgi?id=181525
+        <rdar://problem/36351993>
+
+        Reviewed by Michael Saboff and Keith Miller.
+
+        * stress/allow-math-ic-b3-code-duplication.js: Added.
+
+2018-01-11  Saam Barati  <sbarati@apple.com>
+
+        Our for-in caching is wrong when we add indexed properties on things in the prototype chain
+        https://bugs.webkit.org/show_bug.cgi?id=181508
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/for-in-prototype-with-indexed-properties-should-prevent-caching.js: Added.
+        (assert):
+        (test1.foo):
+        (test1):
+        (test2.foo):
+        (test2):
+
 2018-01-09  Mark Lam  <mark.lam@apple.com>
 
         ASSERTION FAILED: pair.second->m_type & PropertyNode::Getter

@@ -1,3 +1,1248 @@
+2018-01-17  Saam Barati  <sbarati@apple.com>
+
+        Support MultiGetByOffset in the DFG
+        https://bugs.webkit.org/show_bug.cgi?id=181466
+
+        Reviewed by Keith Miller.
+
+        This seems to benefit Speedometer in my local testing. It seems like this
+        might be around a 0.5% improvement.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleGetById):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::supportsMultiGetByOffset):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+
+2018-01-17  Saam Barati  <sbarati@apple.com>
+
+        DFG::Node::convertToConstant needs to clear the varargs flags
+        https://bugs.webkit.org/show_bug.cgi?id=181697
+        <rdar://problem/36497332>
+
+        Reviewed by Yusuke Suzuki.
+
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::convertToConstant):
+
+2018-01-16  JF Bastien  <jfbastien@apple.com>
+
+        Allow dangerous disabling of poison
+        https://bugs.webkit.org/show_bug.cgi?id=181685
+        <rdar://problem/36546265>
+
+        Reviewed by Keith Miller.
+
+        Some tools such as leak detectors and such like to look at real
+        pointers, and poisoned ones confuse them. Add a JSC option to
+        disable poisoning, but log to the console when this is done.
+
+        * runtime/JSCPoison.cpp:
+        (JSC::initializePoison):
+        * runtime/Options.h:
+
+2018-01-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r226937.
+
+        Tests added with this change are failing due to a missing
+        exception check.
+
+        Reverted changeset:
+
+        "[JSC] NumberPrototype::extractRadixFromArgs incorrectly cast
+        double to int32_t"
+        https://bugs.webkit.org/show_bug.cgi?id=181182
+        https://trac.webkit.org/changeset/226937
+
+2018-01-16  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Test programs should only be built in developer mode
+        https://bugs.webkit.org/show_bug.cgi?id=181653
+
+        Reviewed by Carlos Garcia Campos.
+
+        Build test programs only in developer mode, and fix code style.
+
+        * shell/CMakeLists.txt:
+
+2018-01-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Improve use of ExportMacros
+        https://bugs.webkit.org/show_bug.cgi?id=181652
+
+        Reviewed by Konstantin Tokarev.
+
+        * API/JSBase.h: Update a comment.
+        * inspector/InspectorBackendDispatcher.h: Use a better, yet equivalent, WTF macro.
+        * runtime/JSExportMacros.h: Simplify the #defines in this file.
+
+2018-01-15  JF Bastien  <jfbastien@apple.com>
+
+        Remove makePoisonedUnique
+        https://bugs.webkit.org/show_bug.cgi?id=181630
+        <rdar://problem/36498623>
+
+        Reviewed by Mark Lam.
+
+        I added a conversion from std::unique_ptr, so we can just use
+        std::make_unique and it'll auto-poison when converted.
+
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::makePoisonedUnique): Deleted.
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::makePoisonedUnique): Deleted.
+
+2018-01-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        REGRESSION(r226266): [GTK] RELEASE_ASSERT(reservedZoneSize >= minimumReservedZoneSize) in JSC::VM::updateStackLimits
+        https://bugs.webkit.org/show_bug.cgi?id=181438
+        <rdar://problem/36376724>
+
+        Reviewed by Carlos Garcia Campos.
+
+        Roll out the functional changes of r226266. We'll keep the minor CMake library type setting
+        cleanup, but we have to switch back to building JSC only as a shared library, and we have to
+        get rid of the version script.
+
+        * PlatformGTK.cmake:
+        * javascriptcoregtk-symbols.map: Removed.
+
+2018-01-14  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. r226928 broke the CLOOP build. This patch fixes the CLOOP build.
+
+        * bytecode/CallLinkStatus.cpp:
+        (JSC::CallLinkStatus::computeFromLLInt):
+        (JSC::CallLinkStatus::computeExitSiteData):
+
+2018-01-13  Mark Lam  <mark.lam@apple.com>
+
+        Replace all use of ConstExprPoisoned with Poisoned.
+        https://bugs.webkit.org/show_bug.cgi?id=181542
+        <rdar://problem/36442138>
+
+        Reviewed by JF Bastien.
+
+        1. All JSC poisons are now defined in JSCPoison.h.
+
+        2. Change all clients to use the new poison values via the POISON() macro.
+
+        3. The LLInt code has been updated to handle CodeBlock poison.  Some of this code
+           uses the t5 temp register, which is not available on the Windows port.
+           Fortunately, we don't currently do poisoning on the Windows port yet.  So,
+           it will just work for now.
+
+           When poisoning is enabled for the Windows port, this LLInt code will need a
+           Windows specific implementation to workaround its lack of a t5 register.
+
+        * API/JSAPIWrapperObject.h:
+        * API/JSCallbackFunction.h:
+        * API/JSCallbackObject.h:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * assembler/MacroAssemblerCodeRef.h:
+        (JSC::MacroAssemblerCodePtr::emptyValue):
+        (JSC::MacroAssemblerCodePtr::deletedValue):
+        * b3/B3LowerMacros.cpp:
+        * b3/testb3.cpp:
+        (JSC::B3::testInterpreter):
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::instructions):
+        (JSC::CodeBlock::instructions const):
+        (JSC::CodeBlock::makePoisonedUnique):
+        * dfg/DFGOSRExitCompilerCommon.h:
+        (JSC::DFG::adjustFrameAndStackInOSRExitCompilerThunk):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileCheckSubClass):
+        (JSC::DFG::SpeculativeJIT::emitSwitchIntJump):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileCheckSubClass):
+        * jit/JIT.h:
+        * jit/ThunkGenerators.cpp:
+        (JSC::virtualThunkFor):
+        (JSC::nativeForGenerator):
+        (JSC::boundThisNoArgsFunctionCallGenerator):
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * parser/UnlinkedSourceCode.h:
+        * runtime/ArrayPrototype.h:
+        * runtime/CustomGetterSetter.h:
+        * runtime/DateInstance.h:
+        * runtime/InternalFunction.h:
+        * runtime/JSArrayBuffer.h:
+        * runtime/JSCPoison.cpp: Copied from Source/JavaScriptCore/runtime/JSCPoisonedPtr.cpp.
+        (JSC::initializePoison):
+        * runtime/JSCPoison.h:
+        (): Deleted.
+        * runtime/JSCPoisonedPtr.cpp: Removed.
+        * runtime/JSCPoisonedPtr.h: Removed.
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::makePoisonedUnique):
+        * runtime/JSScriptFetchParameters.h:
+        * runtime/JSScriptFetcher.h:
+        * runtime/NativeExecutable.h:
+        * runtime/StructureTransitionTable.h:
+        (JSC::StructureTransitionTable::map const):
+        (JSC::StructureTransitionTable::weakImpl const):
+        * runtime/WriteBarrier.h:
+        (JSC::WriteBarrier::poison):
+        * wasm/js/JSToWasm.cpp:
+        (JSC::Wasm::createJSToWasmWrapper):
+        * wasm/js/JSWebAssemblyCodeBlock.cpp:
+        (JSC::JSWebAssemblyCodeBlock::JSWebAssemblyCodeBlock):
+        * wasm/js/JSWebAssemblyCodeBlock.h:
+        * wasm/js/JSWebAssemblyInstance.h:
+        * wasm/js/JSWebAssemblyMemory.h:
+        * wasm/js/JSWebAssemblyModule.h:
+        * wasm/js/JSWebAssemblyTable.h:
+        * wasm/js/WasmToJS.cpp:
+        (JSC::Wasm::handleBadI64Use):
+        (JSC::Wasm::wasmToJS):
+        * wasm/js/WebAssemblyFunctionBase.h:
+        * wasm/js/WebAssemblyModuleRecord.h:
+        * wasm/js/WebAssemblyToJSCallee.h:
+        * wasm/js/WebAssemblyWrapperFunction.h:
+
+2018-01-13  Caio Lima  <ticaiolima@gmail.com>
+
+        [JSC] NumberPrototype::extractRadixFromArgs incorrectly cast double to int32_t
+        https://bugs.webkit.org/show_bug.cgi?id=181182
+
+        Reviewed by Darin Adler.
+
+        Casting double to integer is undefined behavior when the truncation
+        results into a value that doesn't fit into integer size, according C++
+        spec[1]. Thus, we are changing bigIntProtoFuncToString and
+        numberProtoFuncToString to remove these source of undefined behavior.
+
+        [1] - http://en.cppreference.com/w/cpp/language/implicit_conversion
+
+        * runtime/BigIntPrototype.cpp:
+        (JSC::bigIntProtoFuncToString):
+        * runtime/NumberPrototype.cpp:
+        (JSC::numberProtoFuncToString):
+        (JSC::extractRadixFromArgs): Deleted.
+        (JSC::extractToStringRadixArgument): Added.
+
+2018-01-12  Saam Barati  <sbarati@apple.com>
+
+        Move ExitProfile to UnlinkedCodeBlock so it can be shared amongst CodeBlocks backed by the same UnlinkedCodeBlock
+        https://bugs.webkit.org/show_bug.cgi?id=181545
+
+        Reviewed by Michael Saboff.
+
+        This patch follows the theme of putting optimization profiling information on
+        UnlinkedCodeBlock. This allows the unlinked code cache to remember OSR exit data.
+        This often leads to the first compile of a CodeBlock, backed by an UnlinkedCodeBlock
+        pulled from the code cache, making better compilation decisions, usually
+        resulting in fewer exits, and fewer recompilations.
+        
+        This is a 1% Speedometer progression in my testing.
+
+        * bytecode/BytecodeDumper.cpp:
+        (JSC::BytecodeDumper<CodeBlock>::dumpProfilesForBytecodeOffset):
+        * bytecode/CallLinkStatus.cpp:
+        (JSC::CallLinkStatus::computeFromLLInt):
+        (JSC::CallLinkStatus::computeFor):
+        (JSC::CallLinkStatus::computeExitSiteData):
+        (JSC::CallLinkStatus::computeDFGStatuses):
+        * bytecode/CallLinkStatus.h:
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::addFrequentExitSite): Deleted.
+        (JSC::CodeBlock::hasExitSite const): Deleted.
+        (JSC::CodeBlock::exitProfile): Deleted.
+        * bytecode/DFGExitProfile.cpp:
+        (JSC::DFG::ExitProfile::add):
+        (JSC::DFG::QueryableExitProfile::initialize):
+        * bytecode/DFGExitProfile.h:
+        (JSC::DFG::ExitProfile::hasExitSite const):
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::hasExitSite):
+        (JSC::GetByIdStatus::computeFor):
+        (JSC::GetByIdStatus::computeForStubInfo):
+        * bytecode/GetByIdStatus.h:
+        * bytecode/PutByIdStatus.cpp:
+        (JSC::PutByIdStatus::hasExitSite):
+        (JSC::PutByIdStatus::computeFor):
+        (JSC::PutByIdStatus::computeForStubInfo):
+        * bytecode/PutByIdStatus.h:
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedCodeBlock::livenessAnalysisSlow):
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::hasExitSite const):
+        (JSC::UnlinkedCodeBlock::hasExitSite):
+        (JSC::UnlinkedCodeBlock::exitProfile):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::InlineStackEntry::InlineStackEntry):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::hasGlobalExitSite):
+        (JSC::DFG::Graph::hasExitSite):
+        * dfg/DFGLICMPhase.cpp:
+        (JSC::DFG::LICMPhase::attemptHoist):
+        * dfg/DFGOSRExitBase.cpp:
+        (JSC::DFG::OSRExitBase::considerAddingAsFrequentExitSiteSlow):
+
+2018-01-12  JF Bastien  <jfbastien@apple.com>
+
+        PoisonedWriteBarrier
+        https://bugs.webkit.org/show_bug.cgi?id=181599
+        <rdar://problem/36474351>
+
+        Reviewed by Mark Lam.
+
+        Allow poisoning of WriteBarrier objects, and use this for
+        WebAssembly because it is perf-neutral, at least on WasmBench on
+        my MBP. If it indeed is perf-neutral according to the bots, start
+        using it in more performance-sensitive places.
+
+        * heap/HandleTypes.h:
+        * heap/SlotVisitor.h:
+        * heap/SlotVisitorInlines.h:
+        (JSC::SlotVisitor::append):
+        (JSC::SlotVisitor::appendHidden):
+        * runtime/JSCJSValue.h:
+        * runtime/JSCPoison.h:
+        * runtime/Structure.h:
+        * runtime/StructureInlines.h:
+        (JSC::Structure::setPrototypeWithoutTransition):
+        (JSC::Structure::setGlobalObject):
+        (JSC::Structure::setPreviousID):
+        * runtime/WriteBarrier.h:
+        (JSC::WriteBarrierBase::copyFrom):
+        (JSC::WriteBarrierBase::get const):
+        (JSC::WriteBarrierBase::operator* const):
+        (JSC::WriteBarrierBase::operator-> const):
+        (JSC::WriteBarrierBase::clear):
+        (JSC::WriteBarrierBase::slot):
+        (JSC::WriteBarrierBase::operator bool const):
+        (JSC::WriteBarrierBase::setWithoutWriteBarrier):
+        (JSC::WriteBarrierBase::unvalidatedGet const):
+        (JSC::operator==):
+        * runtime/WriteBarrierInlines.h:
+        (JSC::Traits>::set):
+        (JSC::Traits>::setMayBeNull):
+        (JSC::Traits>::setEarlyValue):
+        (JSC::DumbValueTraits<Unknown>>::set):
+        * wasm/WasmInstance.h:
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        (JSC::JSWebAssemblyInstance::JSWebAssemblyInstance):
+        (JSC::JSWebAssemblyInstance::finishCreation):
+        (JSC::JSWebAssemblyInstance::visitChildren):
+        (JSC::JSWebAssemblyInstance::create):
+        * wasm/js/JSWebAssemblyInstance.h:
+        (JSC::JSWebAssemblyInstance::offsetOfPoisonedCallee):
+        * wasm/js/JSWebAssemblyMemory.h:
+        * wasm/js/JSWebAssemblyModule.h:
+        * wasm/js/JSWebAssemblyTable.cpp:
+        (JSC::JSWebAssemblyTable::JSWebAssemblyTable):
+        (JSC::JSWebAssemblyTable::grow):
+        (JSC::JSWebAssemblyTable::clearFunction):
+        * wasm/js/JSWebAssemblyTable.h:
+        * wasm/js/WasmToJS.cpp:
+        (JSC::Wasm::materializeImportJSCell):
+        (JSC::Wasm::handleBadI64Use):
+        (JSC::Wasm::wasmToJS):
+        * wasm/js/WebAssemblyFunctionBase.h:
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::link):
+        (JSC::WebAssemblyModuleRecord::evaluate):
+        * wasm/js/WebAssemblyModuleRecord.h:
+        * wasm/js/WebAssemblyToJSCallee.h:
+        * wasm/js/WebAssemblyWrapperFunction.h:
+
+2018-01-12  Saam Barati  <sbarati@apple.com>
+
+        CheckStructure can be incorrectly subsumed by CheckStructureOrEmpty
+        https://bugs.webkit.org/show_bug.cgi?id=181177
+        <rdar://problem/36205704>
+
+        Reviewed by Yusuke Suzuki.
+
+        The semantics of CheckStructure are such that it does not allow the empty value to flow through it.
+        However, we may eliminate a CheckStructure if it's preceded by a CheckStructureOrEmpty. This doesn't
+        have semantic consequences when validation is turned off. However, with validation on, this trips up
+        our OSR exit machinery that says when an exit is allowed to happen.
+        
+        Consider the following IR:
+        
+        a: GetClosureVar // Or any other node that produces BytecodeTop
+        ...
+        c: CheckStructure(Cell:@a, {s2})
+        d: PutByOffset(KnownCell:@a, KnownCell:@a, @value)
+        
+        In the TypeCheckHoistingPhase, we may insert CheckStructureOrEmptys like this:
+        a: GetClosureVar
+        e: CheckStructureOrEmpty(@a, {s1})
+        ...
+        f: CheckStructureOrEmpty(@a, {s2})
+        c: CheckStructure(Cell:@a, {s2})
+        d: PutByOffset(KnownCell:@a, KnownCell:@a, @value)
+        
+        This will cause constant folding to change the IR to:
+        a: GetClosureVar
+        e: CheckStructureOrEmpty(@a, {s1})
+        ...
+        f: CheckStructureOrEmpty(@a, {s2})
+        d: PutByOffset(KnownCell:@a, KnownCell:@a, @value)
+        
+        Our mayExit analysis determines that the PutByOffset should not exit. Note
+        that AI will determine the only value the PutByOffset can see in @a is 
+        the empty value. Because KnownCell filters SpecCell and not SpecCellCheck,
+        when lowering the PutByOffset, we reach a contradiction in AI and emit
+        an OSR exit. However, because mayExit said we couldn't exit, we assert.
+        
+        Note that if we did not run the TypeCheckHoistingPhase on this IR, AI
+        would have determined we would OSR exit at the second CheckStructure.
+        
+        This patch makes it so constant folding produces the following IR:
+        a: GetClosureVar
+        e: CheckStructureOrEmpty(@a, {s1})
+        g: AssertNotEmpty(@a)
+        ...
+        f: CheckStructureOrEmpty(@a, {s2})
+        h: AssertNotEmpty(@a)
+        d: PutByOffset(KnownCell:@a, KnownCell:@a, @value)
+        
+        This modification will cause AI to know we will OSR exit before even reaching
+        the PutByOffset. Note that in the original IR, the GetClosureVar won't
+        actually produce the TDZ value. If it did, bytecode would have caused us
+        to emit a CheckNotEmpty before the CheckStructure/PutByOffset combo. That's
+        why this bug is about IR bookkeeping and not an actual error in IR analysis.
+        This patch introduces AssertNotEmpty instead of using CheckNotEmpty to be
+        more congruous with CheckStructure's semantics of crashing on the empty value
+        as input (on 64 bit platforms).
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileAssertNotEmpty):
+
+2018-01-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unnecessary raw pointer in InspectorConsoleAgent
+        https://bugs.webkit.org/show_bug.cgi?id=181579
+        <rdar://problem/36193759>
+
+        Reviewed by Brian Burg.
+
+        * inspector/agents/InspectorConsoleAgent.h:
+        * inspector/agents/InspectorConsoleAgent.cpp:
+        (Inspector::InspectorConsoleAgent::clearMessages):
+        (Inspector::InspectorConsoleAgent::addConsoleMessage):
+        Switch from a raw pointer to m_consoleMessages.last().
+        Also move the expiration check into the if block since it can only
+        happen inside here when the number of console messages changes.
+
+        (Inspector::InspectorConsoleAgent::discardValues):
+        Also clear the expired message count when messages are cleared.
+
+2018-01-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Create parallel SlotVisitors apriori
+        https://bugs.webkit.org/show_bug.cgi?id=180907
+
+        Reviewed by Saam Barati.
+
+        The number of SlotVisitors are capped with the number of HeapHelperPool's threads + 2.
+        If we create these SlotVisitors apropri, we do not need to create SlotVisitors dynamically.
+        Then we do not need to grab locks while iterating all the SlotVisitors.
+
+        In addition, we do not need to consider the case that the number of SlotVisitors increases
+        after setting up VisitCounters in MarkingConstraintSolver since the number of SlotVisitors
+        does not increase any more.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        (JSC::Heap::runBeginPhase):
+        * heap/Heap.h:
+        * heap/HeapInlines.h:
+        (JSC::Heap::forEachSlotVisitor):
+        (JSC::Heap::numberOfSlotVisitors): Deleted.
+        * heap/MarkingConstraintSolver.cpp:
+        (JSC::MarkingConstraintSolver::didVisitSomething const):
+
+2018-01-12  Saam Barati  <sbarati@apple.com>
+
+        Each variant of a polymorphic inlined call should be exitOK at the top of the block
+        https://bugs.webkit.org/show_bug.cgi?id=181562
+        <rdar://problem/36445624>
+
+        Reviewed by Yusuke Suzuki.
+
+        Before this patch, the very first block in the switch for polymorphic call
+        inlining will have exitOK at the top. The others are not guaranteed to.
+        That was just a bug. They're all exitOK at the top. This will lead to crashes
+        in FixupPhase because we won't have a node in a block that has ExitOK, so
+        when we fixup various type checks, we assert out.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleInlining):
+
+2018-01-11  Keith Miller  <keith_miller@apple.com>
+
+        Rename ENABLE_ASYNC_ITERATION to ENABLE_JS_ASYNC_ITERATION
+        https://bugs.webkit.org/show_bug.cgi?id=181573
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * runtime/Options.h:
+
+2018-01-11  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(226788): AppStore Crashed @ JavaScriptCore: JSC::MacroAssemblerARM64::pushToSaveImmediateWithoutTouchingRegisters
+        https://bugs.webkit.org/show_bug.cgi?id=181570
+
+        Reviewed by Keith Miller.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::abortWithReason):
+        Reverting these functions to use dataTempRegister and memoryTempRegister as they are
+        JIT release asserts that will crash the program.
+
+        (JSC::MacroAssemblerARM64::pushToSaveImmediateWithoutTouchingRegisters):
+        Changed this so that it invalidates any cached dataTmpRegister contents if temp register
+        caching is enabled.
+
+2018-01-11  Filip Pizlo  <fpizlo@apple.com>
+
+        Rename MarkedAllocator to BlockDirectory and AllocatorAttributes to CellAttributes
+        https://bugs.webkit.org/show_bug.cgi?id=181543
+
+        Rubber stamped by Michael Saboff.
+        
+        In a world that has thread-local caches, the thing we now call the "MarkedAllocator" doesn't
+        really have anything to do with allocation anymore. The allocation will be done by something
+        in the TLC. When you move the allocation logic out of MarkedAllocator, it becomes just a
+        place to find blocks (a "block directory").
+
+        Once we do that renaming, the term "allocator attributes" becomes weird. Those are really the
+        attributes of the HeapCellType. So let's call them CellAttributes.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * bytecode/AccessCase.cpp:
+        (JSC::AccessCase::generateImpl):
+        * bytecode/ObjectAllocationProfile.h:
+        * bytecode/ObjectAllocationProfileInlines.h:
+        (JSC::ObjectAllocationProfile::initializeProfile):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::emitAllocateRawObject):
+        (JSC::DFG::SpeculativeJIT::compileMakeRope):
+        (JSC::DFG::SpeculativeJIT::compileAllocatePropertyStorage):
+        (JSC::DFG::SpeculativeJIT::compileReallocatePropertyStorage):
+        (JSC::DFG::SpeculativeJIT::compileNewObject):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::emitAllocateJSCell):
+        (JSC::DFG::SpeculativeJIT::emitAllocateJSObject):
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileMakeRope):
+        (JSC::FTL::DFG::LowerDFGToB3::compileMaterializeNewObject):
+        (JSC::FTL::DFG::LowerDFGToB3::allocatePropertyStorageWithSizeImpl):
+        (JSC::FTL::DFG::LowerDFGToB3::allocateHeapCell):
+        (JSC::FTL::DFG::LowerDFGToB3::allocateObject):
+        (JSC::FTL::DFG::LowerDFGToB3::allocatorForSize):
+        * heap/AlignedMemoryAllocator.cpp:
+        (JSC::AlignedMemoryAllocator::registerDirectory):
+        (JSC::AlignedMemoryAllocator::registerAllocator): Deleted.
+        * heap/AlignedMemoryAllocator.h:
+        (JSC::AlignedMemoryAllocator::firstDirectory const):
+        (JSC::AlignedMemoryAllocator::firstAllocator const): Deleted.
+        * heap/AllocatorAttributes.cpp: Removed.
+        * heap/AllocatorAttributes.h: Removed.
+        * heap/BlockDirectory.cpp: Copied from Source/JavaScriptCore/heap/MarkedAllocator.cpp.
+        (JSC::BlockDirectory::BlockDirectory):
+        (JSC::BlockDirectory::setSubspace):
+        (JSC::BlockDirectory::isPagedOut):
+        (JSC::BlockDirectory::findEmptyBlockToSteal):
+        (JSC::BlockDirectory::didConsumeFreeList):
+        (JSC::BlockDirectory::tryAllocateWithoutCollecting):
+        (JSC::BlockDirectory::allocateIn):
+        (JSC::BlockDirectory::tryAllocateIn):
+        (JSC::BlockDirectory::doTestCollectionsIfNeeded):
+        (JSC::BlockDirectory::allocateSlowCase):
+        (JSC::BlockDirectory::blockSizeForBytes):
+        (JSC::BlockDirectory::tryAllocateBlock):
+        (JSC::BlockDirectory::addBlock):
+        (JSC::BlockDirectory::removeBlock):
+        (JSC::BlockDirectory::stopAllocating):
+        (JSC::BlockDirectory::prepareForAllocation):
+        (JSC::BlockDirectory::lastChanceToFinalize):
+        (JSC::BlockDirectory::resumeAllocating):
+        (JSC::BlockDirectory::beginMarkingForFullCollection):
+        (JSC::BlockDirectory::endMarking):
+        (JSC::BlockDirectory::snapshotUnsweptForEdenCollection):
+        (JSC::BlockDirectory::snapshotUnsweptForFullCollection):
+        (JSC::BlockDirectory::findBlockToSweep):
+        (JSC::BlockDirectory::sweep):
+        (JSC::BlockDirectory::shrink):
+        (JSC::BlockDirectory::assertNoUnswept):
+        (JSC::BlockDirectory::parallelNotEmptyBlockSource):
+        (JSC::BlockDirectory::dump const):
+        (JSC::BlockDirectory::dumpBits):
+        (JSC::BlockDirectory::markedSpace const):
+        (JSC::MarkedAllocator::MarkedAllocator): Deleted.
+        (JSC::MarkedAllocator::setSubspace): Deleted.
+        (JSC::MarkedAllocator::isPagedOut): Deleted.
+        (JSC::MarkedAllocator::findEmptyBlockToSteal): Deleted.
+        (JSC::MarkedAllocator::didConsumeFreeList): Deleted.
+        (JSC::MarkedAllocator::tryAllocateWithoutCollecting): Deleted.
+        (JSC::MarkedAllocator::allocateIn): Deleted.
+        (JSC::MarkedAllocator::tryAllocateIn): Deleted.
+        (JSC::MarkedAllocator::doTestCollectionsIfNeeded): Deleted.
+        (JSC::MarkedAllocator::allocateSlowCase): Deleted.
+        (JSC::MarkedAllocator::blockSizeForBytes): Deleted.
+        (JSC::MarkedAllocator::tryAllocateBlock): Deleted.
+        (JSC::MarkedAllocator::addBlock): Deleted.
+        (JSC::MarkedAllocator::removeBlock): Deleted.
+        (JSC::MarkedAllocator::stopAllocating): Deleted.
+        (JSC::MarkedAllocator::prepareForAllocation): Deleted.
+        (JSC::MarkedAllocator::lastChanceToFinalize): Deleted.
+        (JSC::MarkedAllocator::resumeAllocating): Deleted.
+        (JSC::MarkedAllocator::beginMarkingForFullCollection): Deleted.
+        (JSC::MarkedAllocator::endMarking): Deleted.
+        (JSC::MarkedAllocator::snapshotUnsweptForEdenCollection): Deleted.
+        (JSC::MarkedAllocator::snapshotUnsweptForFullCollection): Deleted.
+        (JSC::MarkedAllocator::findBlockToSweep): Deleted.
+        (JSC::MarkedAllocator::sweep): Deleted.
+        (JSC::MarkedAllocator::shrink): Deleted.
+        (JSC::MarkedAllocator::assertNoUnswept): Deleted.
+        (JSC::MarkedAllocator::parallelNotEmptyBlockSource): Deleted.
+        (JSC::MarkedAllocator::dump const): Deleted.
+        (JSC::MarkedAllocator::dumpBits): Deleted.
+        (JSC::MarkedAllocator::markedSpace const): Deleted.
+        * heap/BlockDirectory.h: Copied from Source/JavaScriptCore/heap/MarkedAllocator.h.
+        (JSC::BlockDirectory::attributes const):
+        (JSC::BlockDirectory::forEachBitVector):
+        (JSC::BlockDirectory::forEachBitVectorWithName):
+        (JSC::BlockDirectory::nextDirectory const):
+        (JSC::BlockDirectory::nextDirectoryInSubspace const):
+        (JSC::BlockDirectory::nextDirectoryInAlignedMemoryAllocator const):
+        (JSC::BlockDirectory::setNextDirectory):
+        (JSC::BlockDirectory::setNextDirectoryInSubspace):
+        (JSC::BlockDirectory::setNextDirectoryInAlignedMemoryAllocator):
+        (JSC::BlockDirectory::offsetOfFreeList):
+        (JSC::BlockDirectory::offsetOfCellSize):
+        (JSC::MarkedAllocator::cellSize const): Deleted.
+        (JSC::MarkedAllocator::attributes const): Deleted.
+        (JSC::MarkedAllocator::needsDestruction const): Deleted.
+        (JSC::MarkedAllocator::destruction const): Deleted.
+        (JSC::MarkedAllocator::cellKind const): Deleted.
+        (JSC::MarkedAllocator::heap): Deleted.
+        (JSC::MarkedAllocator::bitvectorLock): Deleted.
+        (JSC::MarkedAllocator::forEachBitVector): Deleted.
+        (JSC::MarkedAllocator::forEachBitVectorWithName): Deleted.
+        (JSC::MarkedAllocator::nextAllocator const): Deleted.
+        (JSC::MarkedAllocator::nextAllocatorInSubspace const): Deleted.
+        (JSC::MarkedAllocator::nextAllocatorInAlignedMemoryAllocator const): Deleted.
+        (JSC::MarkedAllocator::setNextAllocator): Deleted.
+        (JSC::MarkedAllocator::setNextAllocatorInSubspace): Deleted.
+        (JSC::MarkedAllocator::setNextAllocatorInAlignedMemoryAllocator): Deleted.
+        (JSC::MarkedAllocator::subspace const): Deleted.
+        (JSC::MarkedAllocator::freeList const): Deleted.
+        (JSC::MarkedAllocator::offsetOfFreeList): Deleted.
+        (JSC::MarkedAllocator::offsetOfCellSize): Deleted.
+        * heap/BlockDirectoryInlines.h: Copied from Source/JavaScriptCore/heap/MarkedAllocatorInlines.h.
+        (JSC::BlockDirectory::isFreeListedCell const):
+        (JSC::BlockDirectory::allocate):
+        (JSC::BlockDirectory::forEachBlock):
+        (JSC::BlockDirectory::forEachNotEmptyBlock):
+        (JSC::MarkedAllocator::isFreeListedCell const): Deleted.
+        (JSC::MarkedAllocator::allocate): Deleted.
+        (JSC::MarkedAllocator::forEachBlock): Deleted.
+        (JSC::MarkedAllocator::forEachNotEmptyBlock): Deleted.
+        * heap/CellAttributes.cpp: Copied from Source/JavaScriptCore/heap/AllocatorAttributes.cpp.
+        (JSC::CellAttributes::dump const):
+        (JSC::AllocatorAttributes::dump const): Deleted.
+        * heap/CellAttributes.h: Copied from Source/JavaScriptCore/heap/AllocatorAttributes.h.
+        (JSC::CellAttributes::CellAttributes):
+        (JSC::AllocatorAttributes::AllocatorAttributes): Deleted.
+        * heap/CompleteSubspace.cpp:
+        (JSC::CompleteSubspace::allocatorFor):
+        (JSC::CompleteSubspace::allocateNonVirtual):
+        (JSC::CompleteSubspace::allocatorForSlow):
+        (JSC::CompleteSubspace::tryAllocateSlow):
+        * heap/CompleteSubspace.h:
+        (JSC::CompleteSubspace::allocatorForSizeStep):
+        (JSC::CompleteSubspace::allocatorForNonVirtual):
+        * heap/GCDeferralContext.h:
+        * heap/Heap.cpp:
+        (JSC::Heap::updateAllocationLimits):
+        * heap/Heap.h:
+        * heap/HeapCell.h:
+        * heap/HeapCellInlines.h:
+        (JSC::HeapCell::cellAttributes const):
+        (JSC::HeapCell::destructionMode const):
+        (JSC::HeapCell::cellKind const):
+        (JSC::HeapCell::allocatorAttributes const): Deleted.
+        * heap/HeapCellType.cpp:
+        (JSC::HeapCellType::HeapCellType):
+        * heap/HeapCellType.h:
+        (JSC::HeapCellType::attributes const):
+        * heap/IncrementalSweeper.cpp:
+        (JSC::IncrementalSweeper::IncrementalSweeper):
+        (JSC::IncrementalSweeper::sweepNextBlock):
+        (JSC::IncrementalSweeper::startSweeping):
+        (JSC::IncrementalSweeper::stopSweeping):
+        * heap/IncrementalSweeper.h:
+        * heap/IsoCellSet.cpp:
+        (JSC::IsoCellSet::IsoCellSet):
+        (JSC::IsoCellSet::parallelNotEmptyMarkedBlockSource):
+        (JSC::IsoCellSet::addSlow):
+        (JSC::IsoCellSet::didRemoveBlock):
+        (JSC::IsoCellSet::sweepToFreeList):
+        * heap/IsoCellSetInlines.h:
+        (JSC::IsoCellSet::forEachMarkedCell):
+        (JSC::IsoCellSet::forEachLiveCell):
+        * heap/IsoSubspace.cpp:
+        (JSC::IsoSubspace::IsoSubspace):
+        (JSC::IsoSubspace::allocatorFor):
+        (JSC::IsoSubspace::allocateNonVirtual):
+        * heap/IsoSubspace.h:
+        (JSC::IsoSubspace::allocatorForNonVirtual):
+        * heap/LargeAllocation.h:
+        (JSC::LargeAllocation::attributes const):
+        * heap/MarkedAllocator.cpp: Removed.
+        * heap/MarkedAllocator.h: Removed.
+        * heap/MarkedAllocatorInlines.h: Removed.
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::Handle::~Handle):
+        (JSC::MarkedBlock::Handle::setIsFreeListed):
+        (JSC::MarkedBlock::Handle::stopAllocating):
+        (JSC::MarkedBlock::Handle::lastChanceToFinalize):
+        (JSC::MarkedBlock::Handle::resumeAllocating):
+        (JSC::MarkedBlock::aboutToMarkSlow):
+        (JSC::MarkedBlock::Handle::didConsumeFreeList):
+        (JSC::MarkedBlock::noteMarkedSlow):
+        (JSC::MarkedBlock::Handle::removeFromDirectory):
+        (JSC::MarkedBlock::Handle::didAddToDirectory):
+        (JSC::MarkedBlock::Handle::didRemoveFromDirectory):
+        (JSC::MarkedBlock::Handle::dumpState):
+        (JSC::MarkedBlock::Handle::subspace const):
+        (JSC::MarkedBlock::Handle::sweep):
+        (JSC::MarkedBlock::Handle::isFreeListedCell const):
+        (JSC::MarkedBlock::Handle::removeFromAllocator): Deleted.
+        (JSC::MarkedBlock::Handle::didAddToAllocator): Deleted.
+        (JSC::MarkedBlock::Handle::didRemoveFromAllocator): Deleted.
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::Handle::directory const):
+        (JSC::MarkedBlock::Handle::attributes const):
+        (JSC::MarkedBlock::attributes const):
+        (JSC::MarkedBlock::Handle::allocator const): Deleted.
+        * heap/MarkedBlockInlines.h:
+        (JSC::MarkedBlock::Handle::isAllocated):
+        (JSC::MarkedBlock::Handle::isLive):
+        (JSC::MarkedBlock::Handle::specializedSweep):
+        (JSC::MarkedBlock::Handle::isEmpty):
+        * heap/MarkedSpace.cpp:
+        (JSC::MarkedSpace::lastChanceToFinalize):
+        (JSC::MarkedSpace::sweep):
+        (JSC::MarkedSpace::stopAllocating):
+        (JSC::MarkedSpace::resumeAllocating):
+        (JSC::MarkedSpace::isPagedOut):
+        (JSC::MarkedSpace::freeBlock):
+        (JSC::MarkedSpace::shrink):
+        (JSC::MarkedSpace::beginMarking):
+        (JSC::MarkedSpace::endMarking):
+        (JSC::MarkedSpace::snapshotUnswept):
+        (JSC::MarkedSpace::assertNoUnswept):
+        (JSC::MarkedSpace::dumpBits):
+        (JSC::MarkedSpace::addBlockDirectory):
+        (JSC::MarkedSpace::addMarkedAllocator): Deleted.
+        * heap/MarkedSpace.h:
+        (JSC::MarkedSpace::firstDirectory const):
+        (JSC::MarkedSpace::directoryLock):
+        (JSC::MarkedSpace::forEachBlock):
+        (JSC::MarkedSpace::forEachDirectory):
+        (JSC::MarkedSpace::firstAllocator const): Deleted.
+        (JSC::MarkedSpace::allocatorLock): Deleted.
+        (JSC::MarkedSpace::forEachAllocator): Deleted.
+        * heap/MarkedSpaceInlines.h:
+        * heap/Subspace.cpp:
+        (JSC::Subspace::initialize):
+        (JSC::Subspace::prepareForAllocation):
+        (JSC::Subspace::findEmptyBlockToSteal):
+        (JSC::Subspace::parallelDirectorySource):
+        (JSC::Subspace::parallelNotEmptyMarkedBlockSource):
+        (JSC::Subspace::sweep):
+        (JSC::Subspace::parallelAllocatorSource): Deleted.
+        * heap/Subspace.h:
+        (JSC::Subspace::attributes const):
+        (JSC::Subspace::didCreateFirstDirectory):
+        (JSC::Subspace::didCreateFirstAllocator): Deleted.
+        * heap/SubspaceInlines.h:
+        (JSC::Subspace::forEachDirectory):
+        (JSC::Subspace::forEachMarkedBlock):
+        (JSC::Subspace::forEachNotEmptyMarkedBlock):
+        (JSC::Subspace::forEachAllocator): Deleted.
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::emitAllocateWithNonNullAllocator):
+        (JSC::AssemblyHelpers::emitAllocate):
+        (JSC::AssemblyHelpers::emitAllocateJSCell):
+        (JSC::AssemblyHelpers::emitAllocateJSObject):
+        (JSC::AssemblyHelpers::emitAllocateJSObjectWithKnownSize):
+        * jit/JIT.h:
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_new_object):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_new_object):
+        * runtime/JSDestructibleObjectHeapCellType.cpp:
+        (JSC::JSDestructibleObjectHeapCellType::JSDestructibleObjectHeapCellType):
+        * runtime/JSSegmentedVariableObjectHeapCellType.cpp:
+        (JSC::JSSegmentedVariableObjectHeapCellType::JSSegmentedVariableObjectHeapCellType):
+        * runtime/JSStringHeapCellType.cpp:
+        (JSC::JSStringHeapCellType::JSStringHeapCellType):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * wasm/js/JSWebAssemblyCodeBlockHeapCellType.cpp:
+        (JSC::JSWebAssemblyCodeBlockHeapCellType::JSWebAssemblyCodeBlockHeapCellType):
+
+2018-01-11  Saam Barati  <sbarati@apple.com>
+
+        When inserting Unreachable in byte code parser we need to flush all the right things
+        https://bugs.webkit.org/show_bug.cgi?id=181509
+        <rdar://problem/36423110>
+
+        Reviewed by Mark Lam.
+
+        I added code in r226655 that had its own mechanism for preserving liveness when
+        inserting Unreachable nodes after ForceOSRExit. There are two ways to preserve
+        liveness: PhantomLocal and Flush. Certain values *must* be flushed to the stack.
+        I got some of these values wrong, which was leading to a crash when recovering the
+        callee value from an inlined frame. Instead of making the same mistake and repeating
+        similar code again, this patch refactors this logic to be shared with the other
+        liveness preservation code in the DFG bytecode parser. This is what I should have
+        done in my initial patch.
+
+        * bytecode/InlineCallFrame.h:
+        (JSC::remapOperand):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::flushImpl):
+        (JSC::DFG::flushForTerminalImpl):
+        (JSC::DFG::ByteCodeParser::flush):
+        (JSC::DFG::ByteCodeParser::flushForTerminal):
+        (JSC::DFG::ByteCodeParser::parse):
+
+2018-01-11  Saam Barati  <sbarati@apple.com>
+
+        JITMathIC code in the FTL is wrong when code gets duplicated
+        https://bugs.webkit.org/show_bug.cgi?id=181525
+        <rdar://problem/36351993>
+
+        Reviewed by Michael Saboff and Keith Miller.
+
+        B3/Air may duplicate code for various reasons. Patchpoint generators inside
+        FTLLower must be aware that they can be called multiple times because of this.
+        The patchpoint for math ICs was not aware of this, and shared state amongst
+        all invocations of the patchpoint's generator. This patch fixes this bug so
+        that each invocation of the patchpoint's generator gets a unique math IC.
+
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::addMathIC):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileValueAdd):
+        (JSC::FTL::DFG::LowerDFGToB3::compileUnaryMathIC):
+        (JSC::FTL::DFG::LowerDFGToB3::compileBinaryMathIC):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithAddOrSub):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithMul):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithNegate):
+        (JSC::FTL::DFG::LowerDFGToB3::compileMathIC): Deleted.
+        * jit/JITMathIC.h:
+        (JSC::isProfileEmpty):
+
+2018-01-11  Michael Saboff  <msaboff@apple.com>
+
+        Ensure there are no unsafe uses of MacroAssemblerARM64::dataTempRegister
+        https://bugs.webkit.org/show_bug.cgi?id=181512
+
+        Reviewed by Saam Barati.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::abortWithReason):
+        (JSC::MacroAssemblerARM64::pushToSaveImmediateWithoutTouchingRegisters):
+        All current uses of dataTempRegister in these functions are safe, but it makes sense to
+        fix them in case they might be used elsewhere.
+
+2018-01-04  Filip Pizlo  <fpizlo@apple.com>
+
+        CodeBlocks should be in IsoSubspaces
+        https://bugs.webkit.org/show_bug.cgi?id=180884
+
+        Reviewed by Saam Barati.
+        
+        This moves CodeBlocks into IsoSubspaces. Doing so means that we no longer need to have the
+        special CodeBlockSet HashSets of new and old CodeBlocks. We also no longer use
+        WeakReferenceHarvester or UnconditionalFinalizer. Instead:
+        
+        - Code block sweeping is now just eager sweeping. This means that it automatically takes
+          advantage of our unswept set, which roughly corresponds to what CodeBlockSet used to use
+          its eden set for.
+        
+        - Those idea of Executable "weakly visiting" the CodeBlock is replaced by Executable
+          marking a ExecutableToCodeBlockEdge object. That object being marked corresponds to what
+          we used to call CodeBlock "having been weakly visited". This means that CodeBlockSet no
+          longer has to clear the set of weakly visited code blocks. This also means that
+          determining CodeBlock liveness, propagating CodeBlock transitions, and jettisoning
+          CodeBlocks during GC are now the edge's job. The edge is also in an IsoSubspace and it
+          has IsoCellSets to tell us which edges have output constraints (what we used to call
+          CodeBlock's weak reference harvester) and which have unconditional finalizers.
+        
+        - CodeBlock now uses an IsoCellSet to tell if it has an unconditional finalizer.
+        
+        - CodeBlockSet still exists!  It has one unified HashSet of CodeBlocks that we use to
+          handle requests from the sampler, debugger, and other facilities. They may want to ask
+          if some pointer corresponds to a CodeBlock during stages of execution during which the
+          GC is unable to answer isLive() queries. The trickiest is the sampling profiler thread.
+          There is no way that the GC's isLive could tell us of a CodeBlock that had already been
+          allocated has now been full constructed.
+        
+        Rolling this back in because it was rolled out by mistake. There was a flaky crash that was
+        happening before and after this change, but we misread the revision numbers at first and
+        thought that this was the cause.
+        
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::CodeBlock):
+        (JSC::CodeBlock::finishCreation):
+        (JSC::CodeBlock::finishCreationCommon):
+        (JSC::CodeBlock::~CodeBlock):
+        (JSC::CodeBlock::visitChildren):
+        (JSC::CodeBlock::propagateTransitions):
+        (JSC::CodeBlock::determineLiveness):
+        (JSC::CodeBlock::finalizeUnconditionally):
+        (JSC::CodeBlock::stronglyVisitStrongReferences):
+        (JSC::CodeBlock::hasInstalledVMTrapBreakpoints const):
+        (JSC::CodeBlock::installVMTrapBreakpoints):
+        (JSC::CodeBlock::dumpMathICStats):
+        (JSC::CodeBlock::visitWeakly): Deleted.
+        (JSC::CodeBlock::WeakReferenceHarvester::visitWeakReferences): Deleted.
+        (JSC::CodeBlock::UnconditionalFinalizer::finalizeUnconditionally): Deleted.
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::subspaceFor):
+        (JSC::CodeBlock::ownerEdge const):
+        (JSC::CodeBlock::clearVisitWeaklyHasBeenCalled): Deleted.
+        * bytecode/EvalCodeBlock.h:
+        (JSC::EvalCodeBlock::create): Deleted.
+        (JSC::EvalCodeBlock::createStructure): Deleted.
+        (JSC::EvalCodeBlock::variable): Deleted.
+        (JSC::EvalCodeBlock::numVariables): Deleted.
+        (JSC::EvalCodeBlock::functionHoistingCandidate): Deleted.
+        (JSC::EvalCodeBlock::numFunctionHoistingCandidates): Deleted.
+        (JSC::EvalCodeBlock::EvalCodeBlock): Deleted.
+        (JSC::EvalCodeBlock::unlinkedEvalCodeBlock const): Deleted.
+        * bytecode/ExecutableToCodeBlockEdge.cpp: Added.
+        (JSC::ExecutableToCodeBlockEdge::createStructure):
+        (JSC::ExecutableToCodeBlockEdge::create):
+        (JSC::ExecutableToCodeBlockEdge::visitChildren):
+        (JSC::ExecutableToCodeBlockEdge::visitOutputConstraints):
+        (JSC::ExecutableToCodeBlockEdge::finalizeUnconditionally):
+        (JSC::ExecutableToCodeBlockEdge::activate):
+        (JSC::ExecutableToCodeBlockEdge::deactivate):
+        (JSC::ExecutableToCodeBlockEdge::deactivateAndUnwrap):
+        (JSC::ExecutableToCodeBlockEdge::wrap):
+        (JSC::ExecutableToCodeBlockEdge::wrapAndActivate):
+        (JSC::ExecutableToCodeBlockEdge::ExecutableToCodeBlockEdge):
+        (JSC::ExecutableToCodeBlockEdge::runConstraint):
+        * bytecode/ExecutableToCodeBlockEdge.h: Added.
+        (JSC::ExecutableToCodeBlockEdge::subspaceFor):
+        (JSC::ExecutableToCodeBlockEdge::codeBlock const):
+        (JSC::ExecutableToCodeBlockEdge::unwrap):
+        * bytecode/FunctionCodeBlock.h:
+        (JSC::FunctionCodeBlock::subspaceFor):
+        (JSC::FunctionCodeBlock::createStructure):
+        * bytecode/ModuleProgramCodeBlock.h:
+        (JSC::ModuleProgramCodeBlock::create): Deleted.
+        (JSC::ModuleProgramCodeBlock::createStructure): Deleted.
+        (JSC::ModuleProgramCodeBlock::ModuleProgramCodeBlock): Deleted.
+        * bytecode/ProgramCodeBlock.h:
+        (JSC::ProgramCodeBlock::create): Deleted.
+        (JSC::ProgramCodeBlock::createStructure): Deleted.
+        (JSC::ProgramCodeBlock::ProgramCodeBlock): Deleted.
+        * debugger/Debugger.cpp:
+        (JSC::Debugger::SetSteppingModeFunctor::operator() const):
+        (JSC::Debugger::ToggleBreakpointFunctor::operator() const):
+        (JSC::Debugger::ClearCodeBlockDebuggerRequestsFunctor::operator() const):
+        (JSC::Debugger::ClearDebuggerRequestsFunctor::operator() const):
+        * heap/CodeBlockSet.cpp:
+        (JSC::CodeBlockSet::contains):
+        (JSC::CodeBlockSet::dump const):
+        (JSC::CodeBlockSet::add):
+        (JSC::CodeBlockSet::remove):
+        (JSC::CodeBlockSet::promoteYoungCodeBlocks): Deleted.
+        (JSC::CodeBlockSet::clearMarksForFullCollection): Deleted.
+        (JSC::CodeBlockSet::lastChanceToFinalize): Deleted.
+        (JSC::CodeBlockSet::deleteUnmarkedAndUnreferenced): Deleted.
+        * heap/CodeBlockSet.h:
+        * heap/CodeBlockSetInlines.h:
+        (JSC::CodeBlockSet::iterate):
+        (JSC::CodeBlockSet::iterateViaSubspaces):
+        * heap/ConservativeRoots.cpp:
+        (JSC::ConservativeRoots::genericAddPointer):
+        (JSC::DummyMarkHook::markKnownJSCell):
+        (JSC::CompositeMarkHook::mark):
+        (JSC::CompositeMarkHook::markKnownJSCell):
+        * heap/ConservativeRoots.h:
+        * heap/Heap.cpp:
+        (JSC::Heap::lastChanceToFinalize):
+        (JSC::Heap::finalizeMarkedUnconditionalFinalizers):
+        (JSC::Heap::finalizeUnconditionalFinalizers):
+        (JSC::Heap::beginMarking):
+        (JSC::Heap::deleteUnmarkedCompiledCode):
+        (JSC::Heap::sweepInFinalize):
+        (JSC::Heap::forEachCodeBlockImpl):
+        (JSC::Heap::forEachCodeBlockIgnoringJITPlansImpl):
+        (JSC::Heap::addCoreConstraints):
+        (JSC::Heap::finalizeUnconditionalFinalizersInIsoSubspace): Deleted.
+        * heap/Heap.h:
+        * heap/HeapCell.h:
+        * heap/HeapCellInlines.h:
+        (JSC::HeapCell::subspace const):
+        * heap/HeapInlines.h:
+        (JSC::Heap::forEachCodeBlock):
+        (JSC::Heap::forEachCodeBlockIgnoringJITPlans):
+        * heap/HeapUtil.h:
+        (JSC::HeapUtil::findGCObjectPointersForMarking):
+        * heap/IsoCellSet.cpp:
+        (JSC::IsoCellSet::parallelNotEmptyMarkedBlockSource):
+        * heap/IsoCellSet.h:
+        * heap/IsoCellSetInlines.h:
+        (JSC::IsoCellSet::forEachMarkedCellInParallel):
+        (JSC::IsoCellSet::forEachLiveCell):
+        * heap/LargeAllocation.h:
+        (JSC::LargeAllocation::subspace const):
+        * heap/MarkStackMergingConstraint.cpp:
+        (JSC::MarkStackMergingConstraint::executeImpl):
+        * heap/MarkStackMergingConstraint.h:
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::parallelNotEmptyBlockSource):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::Handle::didAddToAllocator):
+        (JSC::MarkedBlock::Handle::didRemoveFromAllocator):
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::subspace const):
+        * heap/MarkedBlockInlines.h:
+        (JSC::MarkedBlock::Handle::forEachLiveCell):
+        * heap/MarkedSpaceInlines.h:
+        (JSC::MarkedSpace::forEachLiveCell):
+        * heap/MarkingConstraint.cpp:
+        (JSC::MarkingConstraint::execute):
+        (JSC::MarkingConstraint::doParallelWork):
+        (JSC::MarkingConstraint::finishParallelWork): Deleted.
+        (JSC::MarkingConstraint::doParallelWorkImpl): Deleted.
+        (JSC::MarkingConstraint::finishParallelWorkImpl): Deleted.
+        * heap/MarkingConstraint.h:
+        * heap/MarkingConstraintSet.cpp:
+        (JSC::MarkingConstraintSet::add):
+        * heap/MarkingConstraintSet.h:
+        (JSC::MarkingConstraintSet::add):
+        * heap/MarkingConstraintSolver.cpp:
+        (JSC::MarkingConstraintSolver::execute):
+        (JSC::MarkingConstraintSolver::addParallelTask):
+        (JSC::MarkingConstraintSolver::runExecutionThread):
+        (JSC::MarkingConstraintSolver::didExecute): Deleted.
+        * heap/MarkingConstraintSolver.h:
+        (JSC::MarkingConstraintSolver::TaskWithConstraint::TaskWithConstraint):
+        (JSC::MarkingConstraintSolver::TaskWithConstraint::operator== const):
+        * heap/SimpleMarkingConstraint.cpp:
+        (JSC::SimpleMarkingConstraint::SimpleMarkingConstraint):
+        (JSC::SimpleMarkingConstraint::executeImpl):
+        * heap/SimpleMarkingConstraint.h:
+        (JSC::SimpleMarkingConstraint::SimpleMarkingConstraint):
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::addParallelConstraintTask):
+        * heap/SlotVisitor.h:
+        * heap/Subspace.cpp:
+        (JSC::Subspace::sweep):
+        * heap/Subspace.h:
+        * heap/SubspaceInlines.h:
+        (JSC::Subspace::forEachLiveCell):
+        * llint/LowLevelInterpreter.asm:
+        * runtime/EvalExecutable.cpp:
+        (JSC::EvalExecutable::visitChildren):
+        * runtime/EvalExecutable.h:
+        (JSC::EvalExecutable::codeBlock):
+        * runtime/FunctionExecutable.cpp:
+        (JSC::FunctionExecutable::baselineCodeBlockFor):
+        (JSC::FunctionExecutable::visitChildren):
+        * runtime/FunctionExecutable.h:
+        * runtime/JSType.h:
+        * runtime/ModuleProgramExecutable.cpp:
+        (JSC::ModuleProgramExecutable::visitChildren):
+        * runtime/ModuleProgramExecutable.h:
+        * runtime/ProgramExecutable.cpp:
+        (JSC::ProgramExecutable::visitChildren):
+        * runtime/ProgramExecutable.h:
+        * runtime/ScriptExecutable.cpp:
+        (JSC::ScriptExecutable::installCode):
+        (JSC::ScriptExecutable::newReplacementCodeBlockFor):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+        (JSC::VM::SpaceAndFinalizerSet::SpaceAndFinalizerSet):
+        (JSC::VM::SpaceAndFinalizerSet::finalizerSetFor):
+        (JSC::VM::forEachCodeBlockSpace):
+        * runtime/VMTraps.cpp:
+        (JSC::VMTraps::handleTraps):
+        * tools/VMInspector.cpp:
+        (JSC::VMInspector::codeBlockForMachinePC):
+        (JSC::VMInspector::isValidCodeBlock):
+
+2018-01-11  Michael Saboff  <msaboff@apple.com>
+
+        Add a DOM gadget for Spectre testing
+        https://bugs.webkit.org/show_bug.cgi?id=181351
+
+        Reviewed by Ryosuke Niwa.
+
+        * runtime/Options.h:
+
+2018-01-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG][FTL] regExpMatchFast should be handled
+        https://bugs.webkit.org/show_bug.cgi?id=180988
+
+        Reviewed by Mark Lam.
+
+        RegExp.prototype.@@match has a fast path, @regExpMatchFast. This patch annotates this function
+        with RegExpMatchFastIntrinsic, and introduces RegExpMatch DFG node. This paves the way to
+        make NewRegexp PhantomNewRegexp if it is not used except for setting/getting its lastIndex property.
+
+        To improve RegExp.prototype.@@match's performance more, we make this builtin function small by moving
+        slow path part to `@matchSlow()` private function.
+
+        It improves SixSpeed regex-u.{es5,es6} largely since they stress String.prototype.match, which calls
+        this regExpMatchFast function.
+
+                                 baseline                  patched
+
+        regex-u.es5          55.3835+-6.3002     ^     36.2431+-2.0797        ^ definitely 1.5281x faster
+        regex-u.es6         110.4624+-6.2896     ^     94.1012+-7.2433        ^ definitely 1.1739x faster
+
+        * builtins/RegExpPrototype.js:
+        (globalPrivate.matchSlow):
+        (overriddenName.string_appeared_here.match):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasHeapPrediction):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileRegExpMatch):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileRegExpMatch):
+        * runtime/Intrinsic.cpp:
+        (JSC::intrinsicName):
+        * runtime/Intrinsic.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/RegExpPrototype.cpp:
+        (JSC::regExpProtoFuncMatchFast):
+
+2018-01-11  Saam Barati  <sbarati@apple.com>
+
+        Our for-in caching is wrong when we add indexed properties on things in the prototype chain
+        https://bugs.webkit.org/show_bug.cgi?id=181508
+
+        Reviewed by Yusuke Suzuki.
+
+        Our for-in caching would cache structure chains that had prototypes with
+        indexed properties. Clearly this is wrong. This caching breaks when a prototype
+        adds new indexed properties. We would continue to enumerate the old cached
+        state of properties, and not include the new indexed properties.
+        
+        The old code used to prevent caching only if the base structure had
+        indexed properties. This patch extends it to prevent caching if the
+        base, or any structure in the prototype chain, has indexed properties.
+
+        * runtime/Structure.cpp:
+        (JSC::Structure::canCachePropertyNameEnumerator const):
+
+2018-01-10  JF Bastien  <jfbastien@apple.com>
+
+        Poison small JSObject derivatives which only contain pointers
+        https://bugs.webkit.org/show_bug.cgi?id=181483
+        <rdar://problem/36407127>
+
+        Reviewed by Mark Lam.
+
+        I wrote a script that finds interesting things to poison or
+        generally harden. These stood out because they derive from
+        JSObject and only contain a few pointer or pointer-like fields,
+        and could therefore just be poisoned. This also requires some
+        template "improvements" to our poisoning machinery. Worth noting
+        is that I'm making PoisonedUniquePtr move-assignable and
+        move-constructible from unique_ptr, which makes it a better
+        drop-in replacement because we don't need to use
+        makePoisonedUniquePtr. This means function-locals can be
+        unique_ptr and get the nice RAII pattern, and once the function is
+        done you can just move to the class' PoisonedUniquePtr without
+        worrying.
+
+        * API/JSAPIWrapperObject.h:
+        (JSC::JSAPIWrapperObject::wrappedObject):
+        * API/JSAPIWrapperObject.mm:
+        (JSC::JSAPIWrapperObject::JSAPIWrapperObject):
+        * API/JSCallbackObject.h:
+        * runtime/ArrayPrototype.h:
+        * runtime/DateInstance.h:
+        * runtime/JSArrayBuffer.cpp:
+        (JSC::JSArrayBuffer::finishCreation):
+        (JSC::JSArrayBuffer::isShared const):
+        (JSC::JSArrayBuffer::sharingMode const):
+        * runtime/JSArrayBuffer.h:
+        * runtime/JSCPoison.h:
+
 2018-01-10  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r226667 and r226673.

@@ -735,7 +735,7 @@ public:
     void updateAccessibilityTree();
 #endif
 
-    void setCompositionForTesting(const String& compositionString, uint64_t from, uint64_t length);
+    void setCompositionForTesting(const String& compositionString, uint64_t from, uint64_t length, bool suppressUnderline);
     bool hasCompositionForTesting();
     void confirmCompositionForTesting(const String& compositionString);
 
@@ -778,8 +778,6 @@ public:
     void willStartDrag() { ASSERT(!m_isStartingDrag); m_isStartingDrag = true; }
     void didStartDrag();
     void dragCancelled();
-
-    void prepareToDragPromisedBlob(const WebCore::PromisedBlobInfo&);
 #endif
 
     void beginPrinting(uint64_t frameID, const PrintInfo&);

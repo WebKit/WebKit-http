@@ -1,3 +1,917 @@
+2018-01-17  Alicia Boya García  <aboya@igalia.com>
+
+        Unreviewed GTK+ gardening
+
+        * platform/gtk/TestExpectations:
+
+2018-01-17  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r227076.
+
+        This breaks internal builds
+
+        Reverted changeset:
+
+        "Resource Load Statistics: Block cookies for prevalent
+        resources without user interaction"
+        https://bugs.webkit.org/show_bug.cgi?id=177394
+        https://trac.webkit.org/changeset/227076
+
+2018-01-17  Matt Lewis  <jlewis3@apple.com>
+
+        Marked http/wpt/resource-timing/rt-resources-per-worker.html as flaky on High Sierra.
+        https://bugs.webkit.org/show_bug.cgi?id=180260
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-01-17  Zalan Bujtas  <zalan@apple.com>
+
+        Multicol: RenderMultiColumnFlow should not inherit the flow state
+        https://bugs.webkit.org/show_bug.cgi?id=181762
+        <rdar://problem/35448565>
+
+        Reviewed by Simon Fraser.
+
+        * fast/multicol/crash-when-out-of-flow-positioned-becomes-in-flow-expected.txt: Added.
+        * fast/multicol/crash-when-out-of-flow-positioned-becomes-in-flow.html: Added.
+
+2018-01-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        [iOS] Re-enable LayoutTests in the storage/indexeddb directory
+        https://bugs.webkit.org/show_bug.cgi?id=180958
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2018-01-17  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r226385?): Crash in com.apple.WebCore: WebCore::MediaQueryEvaluator::evaluate const + 32
+        https://bugs.webkit.org/show_bug.cgi?id=181742
+        <rdar://problem/36334726>
+
+        Reviewed by David Kilzer.
+
+        * fast/media/mediaqueryevaluator-crash-expected.txt: Added.
+        * fast/media/mediaqueryevaluator-crash.html: Added.
+
+2018-01-17  Matt Lewis  <jlewis3@apple.com>
+
+        Marked inspector/worker/worker-recover-if-inspector-close.html as flaky on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=181100
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-01-17  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r226902): fast/events/ios/rotation/layout-viewport-during-rotation.html and fast/events/ios/rotation/safe-area-insets-during-safari-type-rotation.html are timing out
+        <rdar://problem/36589755>
+
+        The first argument to a load event listener is an event, which meant that passing scriptCompleteCallback
+        didn't work as expected.
+
+        * fast/events/ios/rotation/layout-viewport-during-rotation.html:
+        * fast/events/ios/rotation/safe-area-insets-during-safari-type-rotation.html:
+
+2018-01-17  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Block cookies for prevalent resources without user interaction
+        https://bugs.webkit.org/show_bug.cgi?id=177394
+        <rdar://problem/34613960>
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/resourceLoadStatistics/add-blocking-to-redirect-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/add-blocking-to-redirect.html: Added.
+        * http/tests/resourceLoadStatistics/add-partitioning-to-redirect.html:
+        * http/tests/resourceLoadStatistics/non-prevalent-resources-can-access-cookies-in-a-third-party-context-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/non-prevalent-resources-can-access-cookies-in-a-third-party-context.html: Added.
+        * http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout.html:
+        * http/tests/resourceLoadStatistics/remove-blocking-in-redirect-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/remove-blocking-in-redirect.html: Added.
+        * http/tests/resourceLoadStatistics/remove-partitioning-from-redirect-expected.txt: Removed.
+        * http/tests/resourceLoadStatistics/remove-partitioning-from-redirect.html: Removed.
+            Test case reworked and is now remove-partitioning-in-redirect.html.
+        * http/tests/resourceLoadStatistics/remove-partitioning-in-redirect-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/remove-partitioning-in-redirect.html: Added.
+        * platform/ios/TestExpectations:
+            New tests marked as [ Pass ] for iOS.
+        * platform/mac-wk2/TestExpectations:
+            New tests marked as [ Pass ] for High Sierra+.
+        * platform/wk2/TestExpectations:
+            New tests skipped for WK2 in general.
+
+2018-01-17  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r222795): Cardiogram never signs in
+        https://bugs.webkit.org/show_bug.cgi?id=181693
+        <rdar://problem/36286293>
+
+        Reviewed by Ryosuke Niwa.
+
+        Adds a test to ensure that a file URL can set forbidden XHR headers when the setting
+        allowSettingAnyXHRHeaderFromFileURLs is enabled.
+
+        * fast/xmlhttprequest/set-dangerous-headers-from-file-when-setting-enabled-expected.txt: Added.
+        * fast/xmlhttprequest/set-dangerous-headers-from-file-when-setting-enabled.html: Added.
+
+2018-01-17  Daniel Bates  <dabates@apple.com>
+
+        ASSERTION FAILED: !m_completionHandler in PingHandle::~PingHandle()
+        https://bugs.webkit.org/show_bug.cgi?id=181746
+        <rdar://problem/36586248>
+
+        Reviewed by Chris Dumez.
+
+        Adds a test to ensure that loading a protected image from a beforeunload handler
+        does not cause an assertion failure.
+
+        * http/tests/misc/before-unload-load-image-expected.txt: Added.
+        * http/tests/misc/before-unload-load-image.html: Added.
+        * http/tests/misc/resources/before-unload-in-subframe-child.html: Added.
+        * http/tests/misc/resources/protected/protected-image.php: Added.
+
+2018-01-17  Yacine Bandou  <yacine.bandou_ext@softathome.com>
+
+        [EME][GStreamer] Add the full-sample encryption support in the GStreamer ClearKey decryptor
+        https://bugs.webkit.org/show_bug.cgi?id=180080
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * platform/wpe/TestExpectations:
+        This patch fixes the crash of the test clearKey-cenc-audio-playback-mse.
+
+2018-01-17  Ali Juma  <ajuma@chromium.org>
+
+        Update web platform tests for Visual Viewport API
+        https://bugs.webkit.org/show_bug.cgi?id=181689
+
+        Reviewed by Alex Christensen.
+
+        Rename the test directory from 'viewport' to 'visual-viewport', and update
+        viewport-resize-event-on-load-overflowing-page.html.
+
+        This corresponds to the following upstream commits:
+        1) https://github.com/w3c/web-platform-tests/commit/f878fee4df619e55c7fbfce1a2ff5e5d4d83a03b
+        2) https://github.com/w3c/web-platform-tests/commit/03a684d63e62d85cffed38bc942f468692d7d54f
+
+        * TestExpectations: Updated test path.
+        * platform/ios/imported/w3c/web-platform-tests/visual-viewport/viewport-unscaled-scroll-iframe-expected.txt: Renamed from LayoutTests/platform/ios/imported/w3c/web-platform-tests/viewport/viewport-unscaled-scroll-iframe-expected.txt.
+        * platform/ios/imported/w3c/web-platform-tests/visual-viewport/viewport-unscaled-size-expected.txt: Renamed from LayoutTests/platform/ios/imported/w3c/web-platform-tests/viewport/viewport-unscaled-size-expected.txt.
+        Updated expectation since tests in a directory named 'viewport' but not 'visual-viewport' get a flexible viewport on iOS.
+        * platform/ios/imported/w3c/web-platform-tests/visual-viewport/viewport-unscaled-size-iframe-expected.txt: Renamed from LayoutTests/platform/ios/imported/w3c/web-platform-tests/viewport/viewport-unscaled-size-iframe-expected.txt.
+
+2018-01-17  Zan Dobersek  <zdobersek@igalia.com>
+
+        CanvasImageData: createImageData() parameter should not be nullable
+        https://bugs.webkit.org/show_bug.cgi?id=181670
+
+        Reviewed by Sam Weinig.
+
+        Update createImageData(null) tests that should now throw a TypeError.
+
+        * canvas/philip/tests/2d.imageData.create1.zero.html:
+        * fast/canvas/canvas-createImageData-expected.txt:
+        * fast/canvas/canvas-createImageData.html:
+
+2018-01-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Can't scroll iframe after toggling it to display:none and back
+        https://bugs.webkit.org/show_bug.cgi?id=181708
+        rdar://problem/13234778
+
+        Reviewed by Tim Horton.
+
+        * tiled-drawing/scrolling/non-fast-region/non-fast-scrollable-region-hide-show-iframe-expected.txt: Added.
+        * tiled-drawing/scrolling/non-fast-region/non-fast-scrollable-region-hide-show-iframe.html: Added.
+
+2018-01-16  Jer Noble  <jer.noble@apple.com>
+
+        Reset MediaSourcePrivateAVFObjC's m_sourceBufferWithSelectedVideo when the underlying SourceBufferPrivate is removed.
+        https://bugs.webkit.org/show_bug.cgi?id=181707
+        <rdar://problem/34809474>
+
+        Reviewed by Eric Carlson.
+
+        * media/media-source/media-source-remove-unload-crash-expected.txt: Added.
+        * media/media-source/media-source-remove-unload-crash.html: Added.
+
+2018-01-12  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Implement dummy WebAuthN IDLs
+        https://bugs.webkit.org/show_bug.cgi?id=181627
+        <rdar://problem/36459864>
+
+        Reviewed by Alex Christensen.
+
+        Modify some tests to reflect the update.
+
+        * http/wpt/credential-management/credentialscontainer-create-basics.https-expected.txt:
+        * http/wpt/credential-management/credentialscontainer-create-basics.https.html:
+        * http/wpt/credential-management/credentialscontainer-get-basics.https-expected.txt:
+        * http/wpt/credential-management/credentialscontainer-get-basics.https.html:
+
+2018-01-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r226962.
+
+        The LayoutTest added with this change is a flaky timeout.
+
+        Reverted changeset:
+
+        "Support for preconnect Link headers"
+        https://bugs.webkit.org/show_bug.cgi?id=181657
+        https://trac.webkit.org/changeset/226962
+
+2018-01-16  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        REGRESSION(r221292): svg/animations/animateTransform-pattern-transform.html crashes with security assertion
+        https://bugs.webkit.org/show_bug.cgi?id=179986
+
+        Reviewed by Simon Fraser.
+
+        * svg/dom/SVGAnimatedListPropertyTearOff-leak.html:
+
+2018-01-16  Yacine Bandou  <yacine.bandou_ext@softathome.com>
+
+        [EME] Add layout test for the MSE playback of ClearKey encrypted audio and video
+        https://bugs.webkit.org/show_bug.cgi?id=181594
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Add new layout tests in order to test the playback of ClearKey encrypted content:
+        clearKey-cenc-audio-playback-mse : Tests the MSE playback of ClearKey encrypted audio track.
+        clearKey-cenc-video-playback-mse : Tests the MSE playback of ClearKey encrypted video track.
+
+        * media/content/encrypted/segments/AudioClearKeyCenc-seg-0.mp4: Added.
+        * media/content/encrypted/segments/AudioClearKeyCenc-seg-1.mp4: Added.
+        * media/content/encrypted/segments/AudioClearKeyCenc-seg-2.mp4: Added.
+        * media/content/encrypted/segments/AudioClearKeyCenc-seg-3.mp4: Added.
+            These are a simple encrypted audio fragments used in MSE playback.
+            They have been fragmented and encrypted with BENTO4. https://www.bento4.com/
+            Use full-sample encryption because they are not NAL Structured.
+        * media/content/encrypted/segments/VideoClearKeyCenc-seg-1.mp4: Added.
+        * media/content/encrypted/segments/VideoClearKeyCenc-seg-2.mp4: Added.
+        * media/content/encrypted/segments/VideoClearKeyCenc-seg-3.mp4: Added.
+            These are a simple encrypted video fragments used in MSE playback.
+            They have been fragmented and encrypted with BENTO4. https://www.bento4.com/
+            Use sub-sample encryption because they are NAL Structured.
+        * media/encrypted-media/clearKey/clearKey-cenc-audio-playback-mse-expected.txt: Added.
+        * media/encrypted-media/clearKey/clearKey-cenc-audio-playback-mse.html: Added.
+        * media/encrypted-media/clearKey/clearKey-cenc-video-playback-mse-expected.txt: Added.
+        * media/encrypted-media/clearKey/clearKey-cenc-video-playback-mse.html: Added.
+        * media/encrypted-media/medias-enc.js:
+        * platform/gtk/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/wpe/TestExpectations:
+            The test clearKey-cenc-audio-playback-mse crashes because the clearKey decryptor plugin doesn't
+            support yet the Full-sample encryption, see bug 180080.
+
+2018-01-16  Yacine Bandou  <yacine.bandou_ext@softathome.com>
+
+        [WPE] Two clearkey tests failing since r226621
+        https://bugs.webkit.org/show_bug.cgi?id=181532
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-generate-request-disallowed-input-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-unique-origin-expected.txt:
+            Since r226621 initDataType "cenc" is supported in clearKey, so we should update the expected result of these tests.
+
+2018-01-16  Yacine Bandou  <yacine.bandou_ext@softathome.com>
+
+        [EME] some fixes in clearKey-encrypted-cenc-event LayoutTest
+        https://bugs.webkit.org/show_bug.cgi?id=181526
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Update the TestExpectation files as it was done with clearKey-message-cenc-event
+        LayoutTest, the test should be pass in all platforms except gtk and mac.
+        Use const or let instead of var in JS when it's possible.
+
+        * TestExpectations:
+        * media/encrypted-media/clearKey/clearKey-encrypted-cenc-event.html:
+        * media/media-source/media-source-loader-simple.js:
+        * platform/gtk/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2018-01-15  Yoav Weiss  <yoav@yoav.ws>
+
+        Support for preconnect Link headers
+        https://bugs.webkit.org/show_bug.cgi?id=181657
+
+        Reviewed by Darin Adler.
+
+        Add test to see Link preconnect headers trigger a connection.
+
+        * http/tests/preconnect/link-header-rel-preconnect-http-expected.txt: Added.
+        * http/tests/preconnect/link-header-rel-preconnect-http.php: Added.
+
+2018-01-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed GTK layout test gardening
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+
+2018-01-15  Konstantin Tokarev  <annulen@yandex.ru>
+
+        image-rendering should affect scaling of border-image
+        https://bugs.webkit.org/show_bug.cgi?id=169440
+
+        Reviewed by Michael Catanzaro.
+
+        * fast/borders/border-image-pixelated-expected.html: Added.
+        * fast/borders/border-image-pixelated.html: Added.
+        * fast/borders/resources/border-image-pixelated.png: Added.
+
+2018-01-15  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed GTK gardening
+
+        * platform/gtk/TestExpectations: Skip
+        media/media-fullscreen-pause-inline.html as advised by Eric
+        Carlson.
+
+2018-01-15  Philippe Normand  <pnormand@igalia.com>
+
+        Prevent useless MediaPlayer mute state notifications
+        https://bugs.webkit.org/show_bug.cgi?id=181646
+
+        Reviewed by Carlos Garcia Campos.
+
+        Unflag tests depending on muted state and media session
+        restrictions, most of those are now passing.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/media/video-controls-no-scripting-expected.txt:
+
+2018-01-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [macOS] [WK2] Unskip some consistently-passing tests
+        https://bugs.webkit.org/show_bug.cgi?id=181226
+        <rdar://problem/23023848>
+
+        Reviewed by Simon Fraser.
+
+        According to the flakiness dashboard, these tests consistently pass now.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-13  Chris Dumez  <cdumez@apple.com>
+
+        Extend testing added in r226842
+        https://bugs.webkit.org/show_bug.cgi?id=181634
+
+        Reviewed by Darin Adler.
+
+        I have verified that the behavior is consistent with Chrome and Firefox.
+
+        * fast/dom/Window/window-opener-shadowing-expected.txt:
+        * fast/dom/Window/window-opener-shadowing.html:
+
+2018-01-13  Minsheng Liu  <lambda@liu.ms>
+
+        MathML Lengths should take zoom level into account
+        https://bugs.webkit.org/show_bug.cgi?id=180029
+
+        Reviewed by Frédéric Wang.
+
+        Add a testcase for MathML lengths where zoom factor is set.
+
+        * mathml/presentation/mspace-units-with-zoom-expected.html: Added.
+        * mathml/presentation/mspace-units-with-zoom.html: Added.
+
+2018-01-12  Simon Fraser  <simon.fraser@apple.com>
+
+        Touch events not received with initial-scale=1 viewport
+        https://bugs.webkit.org/show_bug.cgi?id=181566
+        rdar://problem/36460221
+
+        Reviewed by Tim Horton.
+
+        Add a testcase for this touch event case.
+
+        * fast/events/touch/ios/target-taller-than-view-expected.txt: Added.
+        * fast/events/touch/ios/target-taller-than-view.html: Added.
+
+2018-01-12  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Data URL fonts split in the middle of an alphabet cause random letters to disappear
+        https://bugs.webkit.org/show_bug.cgi?id=175845
+        <rdar://problem/33996578>
+
+        Reviewed by Brent Fulgham.
+
+        Make sure that the requests for both fonts are sent before either of the responses are received.
+
+        * fast/text/font-load-data-partitioned-alphabet-expected.txt: Added.
+        * fast/text/font-load-data-partitioned-alphabet.html: Added.
+        * platform/mac-wk1/fast/text/font-load-data-partitioned-alphabet-expected.txt: Added.
+
+2018-01-11  Dean Jackson  <dino@apple.com>
+
+        [WebGL] Simulated vertexAttrib0 can sometimes cause OUT_OF_MEMORY errors
+        https://bugs.webkit.org/show_bug.cgi?id=181558
+        <rdar://problem/36189833>
+
+        Reviewed by Eric Carlson.
+
+        * fast/canvas/webgl/simulated-vertexAttrib0-invalid-indicies-expected.txt: Added.
+        * fast/canvas/webgl/simulated-vertexAttrib0-invalid-indicies.html: Added.
+        * platform/mac/TestExpectations: Test crashes on Sierra and earlier.
+
+2018-01-12  Dean Jackson  <dino@apple.com>
+
+        drawElements should be invalid if vertexAttrib0 doesn't have data
+        https://bugs.webkit.org/show_bug.cgi?id=181609
+        <rdar://problem/36392883>
+
+        Reviewed by Antoine Quint.
+
+        * fast/canvas/webgl/drawElements-empty-vertex-data-expected.txt: Added.
+        * fast/canvas/webgl/drawElements-empty-vertex-data.html: Added.
+
+2018-01-12  Youenn Fablet  <youenn@apple.com>
+
+        FormDataElement::lengthInBytes should use ThreadableBlobRegistry
+        https://bugs.webkit.org/show_bug.cgi?id=181554
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/workers/service/resources/service-worker-cache-api-worker.js:
+        (async):
+        (event.event.request.url.indexOf): Deleted.
+        (event.event.request.url.endsWith): Deleted.
+        (event.event.respondWith.promise.then): Deleted.
+        * http/tests/workers/service/service-worker-cache-api.https-expected.txt:
+        * http/tests/workers/service/service-worker-cache-api.https.html:
+
+2018-01-12  Youenn Fablet  <youenn@apple.com>
+
+        WebProcess should pass the registration identifier and not the worker identifier for fetch events
+        https://bugs.webkit.org/show_bug.cgi?id=181591
+
+        Reviewed by Chris Dumez.
+
+        * http/wpt/service-workers/resources/empty.html: Added.
+        * http/wpt/service-workers/update-service-worker.https-expected.txt: Added.
+        * http/wpt/service-workers/update-service-worker.https.html: Added.
+        * http/wpt/service-workers/update-worker.py: Added.
+        (main):
+
+2018-01-11  Simon Fraser  <simon.fraser@apple.com>
+
+        fast/events/ios/rotation/layout-viewport-during-safari-type-rotation.html is flakey
+        https://bugs.webkit.org/show_bug.cgi?id=181569
+        rdar://problem/34117680
+
+        Reviewed by Zalan Bujtas.
+        
+        Wait a tick before starting the rotation, otherwise -[WKWebView _beginAnimatedResizeWithUpdates:]
+        can bail because the unobscuredRect is empty.
+
+        Also wait for both the rotation UI script to complete, and the receipt of the 
+        orientationchange event.
+
+        * fast/events/ios/rotation/layout-viewport-during-safari-type-rotation.html:
+        * fast/events/ios/rotation/resources/rotation-utils.js:
+        (doTest):
+
+2018-01-12  Matt Lewis  <jlewis3@apple.com>
+
+        Skipped http/tests/resourceLoadStatistics/grandfathering.html on macOS WK2.
+        https://bugs.webkit.org/show_bug.cgi?id=181482
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-12  Antoine Quint  <graouts@apple.com>
+
+        Add support for the frames() timing function
+        https://bugs.webkit.org/show_bug.cgi?id=181585
+        <rdar://problem/36463317>
+
+        Reviewed by Dean.
+
+        Add a new test that checks that the frames() timing function applies as expected
+        and expand an existing test to check that the frames() timing function is parsed
+        correctly. We also mark progressions in imported WPT tests.
+
+        * imported/w3c/web-platform-tests/css-timing-1/frames-timing-functions-output-expected.txt:
+        * imported/w3c/web-platform-tests/css-timing-1/frames-timing-functions-syntax-expected.txt:
+        * transitions/frames-timing-function-expected.txt: Added.
+        * transitions/frames-timing-function.html: Added.
+        * transitions/transitions-parsing-expected.txt:
+        * transitions/transitions-parsing.html:
+
+2018-01-11  Chris Dumez  <cdumez@apple.com>
+
+        Setting Window.opener to null should disown its opener
+        https://bugs.webkit.org/show_bug.cgi?id=181505
+        <rdar://problem/36443151>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add layout test coverage.
+
+        * fast/dom/Window/window-opener-set-to-null-expected.txt: Added.
+        * fast/dom/Window/window-opener-set-to-null.html: Added.
+        * fast/dom/Window/window-opener-shadowing-expected.txt: Added.
+        * fast/dom/Window/window-opener-shadowing.html: Added.
+
+2018-01-11  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Star character disappears when bolded
+        https://bugs.webkit.org/show_bug.cgi?id=181568
+        <rdar://problem/18755569>
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/unknown-font-expected-mismatch.html: Added.
+        * fast/text/unknown-font.html: Added.
+
+2018-01-11  James Craig  <jcraig@apple.com>
+
+        AX: when invert colors is on, double-invert video elements in UserAgentStyleSheet
+        https://bugs.webkit.org/show_bug.cgi?id=168447
+        <rdar://problem/30559874>
+
+        Reviewed by Simon Fraser.
+
+        Double-invert video when platform "invert colors" setting is enabled. Behavior matches 
+        current "Smart Invert" feature of Safari Reader on macOS/iOS and other iOS native apps.
+
+        * TestExpectations: Platform setting only available on Mac and iOS.
+        * accessibility/smart-invert-expected.txt: Added. 
+        * accessibility/smart-invert-reference-expected.html: Added.
+        * accessibility/smart-invert-reference.html: Added. Ref to ensure invert and grayscale filters render as expected.
+        * accessibility/smart-invert.html: Added. Computed expectatons of filter property text values.
+        * platform/ios-wk2/TestExpectations: Runs on iOS WK2.
+        * platform/mac-wk2/TestExpectations: Runs on Mac WK2.
+
+2018-01-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make elements of zero width or height focusable
+        https://bugs.webkit.org/show_bug.cgi?id=181516
+
+        Reviewed by Chris Dumez.
+
+        Added a regression test.
+
+        * fast/events/focus-zero-size-element-expected.txt: Added.
+        * fast/events/focus-zero-size-element.html: Added.
+
+2018-01-11  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION(r225003): Loading hangs in environments where dispatch_async does not work
+        https://bugs.webkit.org/show_bug.cgi?id=181553
+
+        Reviewed by Eric Carlson.
+
+        * media/video-src-remove.html:
+
+2018-01-11  Dean Jackson  <dino@apple.com>
+
+        Rolling out 226814. It crashes on some bots.
+
+2018-01-11  Dean Jackson  <dino@apple.com>
+
+        [WebGL] Simulated vertexAttrib0 can sometimes cause OUT_OF_MEMORY errors
+        https://bugs.webkit.org/show_bug.cgi?id=181558
+        <rdar://problem/36189833>
+
+        Reviewed by Eric Carlson.
+
+        * fast/canvas/webgl/simulated-vertexAttrib0-invalid-indicies-expected.txt: Added.
+        * fast/canvas/webgl/simulated-vertexAttrib0-invalid-indicies.html: Added.
+
+2018-01-11  Chris Dumez  <cdumez@apple.com>
+
+        ASSERTION FAILED: registration in WebCore::SWServerWorker::skipWaiting()
+        https://bugs.webkit.org/show_bug.cgi?id=181222
+        <rdar://problem/36332686>
+
+        Reviewed by Youenn Fablet.
+
+        Unskip test that is no longer flakily crashing.
+
+        * TestExpectations:
+
+2018-01-11  Youenn Fablet  <youenn@apple.com>
+
+        RTCController should disable ICE candidate filtering in case of getUserMedia based on the RTCPerrConnection origin
+        https://bugs.webkit.org/show_bug.cgi?id=180851
+
+        Reviewed by Eric Carlson.
+
+        * http/wpt/webrtc/resources/third-party-frame-ice-candidate-filtering-iframe.html: Added.
+        * http/wpt/webrtc/third-party-frame-ice-candidate-filtering-expected.txt: Added.
+        * http/wpt/webrtc/third-party-frame-ice-candidate-filtering.html: Added.
+
+2018-01-11  Ali Juma  <ajuma@chromium.org>
+
+        window.visualViewport should behave as [SameObject]
+        https://bugs.webkit.org/show_bug.cgi?id=181548
+
+        Reviewed by Chris Dumez.
+
+        * fast/visual-viewport/visual-viewport-same-object-expected.txt: Added.
+        * fast/visual-viewport/visual-viewport-same-object.html: Added.
+
+2018-01-11  Youenn Fablet  <youenn@apple.com>
+
+        imported/w3c/web-platform-tests/service-workers/service-worker/multiple-update.https.html is slow on Debug
+        https://bugs.webkit.org/show_bug.cgi?id=181541
+
+        Unreviewed.
+
+        * TestExpectations:
+
+2018-01-11  Matt Lewis  <jlewis3@apple.com>
+
+        Rebaseline of media/event-queue-crash.html after r226785
+        
+        Unreviewed test gardening.
+
+        * media/event-queue-crash-expected.txt:
+
+2018-01-11  Zalan Bujtas  <zalan@apple.com>
+
+        RenderTreeUpdater::current() returns null_ptr when mutation is done through Document::resolveStyle.
+        https://bugs.webkit.org/show_bug.cgi?id=181513
+        <rdar://problem/36367085>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/forms/button-set-text-crash-expected.txt: Added.
+        * fast/forms/button-set-text-crash.html: Added.
+
+2018-01-11  Antoine Quint  <graouts@apple.com>
+
+        Only listen to webkitplaybacktargetavailabilitychanged when media controls are visible to the user
+        https://bugs.webkit.org/show_bug.cgi?id=181547
+        <rdar://problem/35947650>
+
+        Reviewed by Eric Carlson.
+
+        Add a test that checks that enabling AirPlay routes when the controls are not visible to the user
+        does not incur any change, and that making the controls visible again shows the controls in the
+        expected state.
+
+        * media/modern-media-controls/airplay-support/airplay-support-disable-event-listeners-with-hidden-controls-expected.txt: Added.
+        * media/modern-media-controls/airplay-support/airplay-support-disable-event-listeners-with-hidden-controls.html: Added.
+
+2018-01-11  Antoine Quint  <graouts@apple.com>
+
+        [iOS] There should be no controls markup generated in fullscreen
+        https://bugs.webkit.org/show_bug.cgi?id=181540
+        <rdar://problem/35060379>
+
+        Reviewed by Eric Carlson.
+
+        We update this test to simply check that we're removing all child nodes.
+
+        * media/modern-media-controls/media-controller/ios/media-controller-stop-updates-in-fullscreen-expected.txt:
+        * media/modern-media-controls/media-controller/ios/media-controller-stop-updates-in-fullscreen.html:
+
+2018-01-11  Youenn Fablet  <youenn@apple.com>
+
+        Redirected iframe loading with Request.redirect=follow should fail
+        https://bugs.webkit.org/show_bug.cgi?id=181491
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations:
+
+2018-01-10  Simon Fraser  <simon.fraser@apple.com>
+
+        On macOS, getBoundingClientRect gives incorrect values when pinch-zoomed
+        https://bugs.webkit.org/show_bug.cgi?id=181511
+        rdar://problem/33741427
+
+        Reviewed by Zalan Bujtas.
+
+        New results in tests that get client coordinates after zooming.
+
+        * fast/visual-viewport/client-coordinates-relative-to-layout-viewport-expected.txt:
+        * fast/visual-viewport/client-rects-relative-to-layout-viewport-expected.txt:
+        * fast/visual-viewport/client-rects-relative-to-layout-viewport-zoomed.html:
+        * fast/visual-viewport/zoomed-fixed-expected.txt:
+        * fast/visual-viewport/zoomed-fixed-header-and-footer-expected.txt:
+        * fast/zooming/client-rect-in-fixed-zoomed-expected.txt:
+        * fast/zooming/client-rect-in-fixed-zoomed.html: Change the test to create passing results.
+
+2018-01-11  Eric Carlson  <eric.carlson@apple.com>
+
+        Layout Test media/event-queue-crash.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=180493
+        <rdar://problem/35914377>
+
+        Reviewed by Jer Noble.
+
+        * TestExpectations: Add DumpJSConsoleLogInStdErr.
+        * media/event-queue-crash.html: Increase the timeout from 10ms to 100ms.
+
+2018-01-11  Ms2ger  <Ms2ger@igalia.com>
+
+        Test gardening for GTK.
+        https://bugs.webkit.org/show_bug.cgi?id=181477
+
+        Unreviewed test gardening.
+
+        * http/tests/performance/performance-resource-timing-cached-entries-expected.txt:
+        * http/tests/performance/performance-resource-timing-cached-entries.html:
+          The code to debug this test's flakiness made it more flaky, as the
+          resources are not logged in a consistent order. This ensures they are
+          logged only in case of failure.
+        * platform/gtk/TestExpectations:
+          - svg/custom/non-scaling-stroke.svg was fixed in r226443.
+          - imported/w3c/web-platform-tests/css/css-shapes-1/shape-outside/values/shape-margin-001.html
+            was fixed in r226404.
+
+2018-01-11  Miguel Gomez  <magomez@igalia.com>
+
+        Unreviewed GTK+ and WPE gardening after r226773.
+
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2018-01-11  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK] Enable css2.1/20110323/vertical-align-boxes-001.htm.
+        https://bugs.webkit.org/show_bug.cgi?id=91339
+
+        Unreviewed test gardening.
+
+        It was fixed in r226404.
+
+        * platform/gtk/TestExpectations:
+
+2018-01-11  Youenn Fablet  <youenn@apple.com>
+
+        LayoutTests/http/tests/workers/service/resources/service-worker-importScript.js does not need to register two service workers
+        https://bugs.webkit.org/show_bug.cgi?id=181490
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/workers/service/resources/service-worker-importScript.js:
+        * http/tests/workers/service/service-worker-importScript-expected.txt:
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-11  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK] media/muted-video-is-playing-audio.html is timing out
+        https://bugs.webkit.org/show_bug.cgi?id=163781
+
+        Reviewed by Carlos Garcia Campos.
+
+        The test should un-mute the page because the IsPlayingAudio flag indirectly depends on this.
+
+        * media/muted-video-is-playing-audio.html: Un-mute the page.
+        * platform/gtk/TestExpectations: Unflag now-passing test.
+
+2018-01-10  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Rename ApplePayMerchantValidationEvent to MerchantValidationEvent
+        https://bugs.webkit.org/show_bug.cgi?id=181437
+        <rdar://problem/36376481>
+
+        Reviewed by Tim Horton.
+
+        * http/tests/paymentrequest/payment-request-change-shipping-address.https.html:
+        * http/tests/paymentrequest/payment-request-change-shipping-option.https.html:
+        * http/tests/paymentrequest/payment-request-merchant-validation.https-expected.txt: Added.
+        * http/tests/paymentrequest/payment-request-merchant-validation.https.html: Added.
+        * http/tests/paymentrequest/resources/helpers.js:
+        (async.getPaymentRequestResponse):
+        * http/tests/paymentrequest/updateWith-method-pmi-handling.https.html:
+        * http/tests/ssl/applepay/ApplePayMerchantValidationEvent.https-expected.txt: Removed.
+        * http/tests/ssl/applepay/ApplePayMerchantValidationEvent.https.html: Removed.
+
+2018-01-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update TestExpectations for http/tests/misc/submit-post-keygen.html.
+        https://bugs.webkit.org/show_bug.cgi?id=121331
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-01-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark swipe/pushstate-with-manual-scrollrestoration.html as failing.
+        https://bugs.webkit.org/show_bug.cgi?id=181502
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark accessibility/mac/aria-multiple-liveregions-notification.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=181494
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-01-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/misc/slow-loading-animated-image.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=181479
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-01-10  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Canvas tab: throttle recording slider updates
+        https://bugs.webkit.org/show_bug.cgi?id=180839
+        <rdar://problem/36057849>
+
+        Reviewed by Joseph Pecoraro
+
+        * inspector/unit-tests/throttle-expected.txt: Added.
+        * inspector/unit-tests/throttle.html: Added.
+        Added function throttling tests.
+
+2018-01-10  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION(r222507): Composition highlight doesn't render when using IME
+        https://bugs.webkit.org/show_bug.cgi?id=181485
+        <rdar://problem/35896516>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a new layout test to ensure that in the absence of custom composition underlines, a marked composition
+        string appears different once it is confirmed.
+
+        * editing/marked-text-appearance-expected-mismatch.html: Added.
+        * editing/marked-text-appearance.html: Added.
+
+2018-01-10  Chris Dumez  <cdumez@apple.com>
+
+        Multiple http/wpt/beacon/contentextensions/ test are flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=179256
+        <rdar://problem/35401978>
+
+        Reviewed by Alex Christensen.
+
+        Stop marking content extensions tests as flaky.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-10  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r213590): Swipe from edge to go to previous page is significantly slower than tapping back button on Twitter
+        https://bugs.webkit.org/show_bug.cgi?id=181269
+        <rdar://problem/35110344>
+
+        Reviewed by Simon Fraser.
+
+        * swipe/pushstate-with-manual-scrollrestoration-expected.txt: Added.
+        * swipe/pushstate-with-manual-scrollrestoration.html: Added.
+        Add a test (which previously would complain about taking too long)
+        that using manual scroll position restoration and pushState together
+        doesn't cause swipes to hang until the watchdog fires.
+
+2018-01-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip http/tests/workers/service/cors-image-fetch.html.
+        https://bugs.webkit.org/show_bug.cgi?id=181222
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-01-10  Youenn Fablet  <youenn@apple.com>
+
+        Use no-cache fetch mode when loading main documents with location.reload()
+        https://bugs.webkit.org/show_bug.cgi?id=181285
+        <rdar://problem/36356831>
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/inspector/network/har/har-page-expected.txt:
+        * http/tests/inspector/network/har/har-page.html:
+
+2018-01-10  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark accessibility/table-header-calculation-for-header-rows.html as failure on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=181501
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
 2018-01-10  Matt Lewis  <jlewis3@apple.com>
 
         Adjusted expectations for webrtc/video-unmute.html.

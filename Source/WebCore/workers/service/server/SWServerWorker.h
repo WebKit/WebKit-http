@@ -68,7 +68,7 @@ public:
     };
     bool isRunning() const { return m_state == State::Running; }
     bool isTerminating() const { return m_state == State::Terminating; }
-    void setState(State state) { m_state = state; }
+    void setState(State);
 
     SWServer& server() { return m_server; }
     const ServiceWorkerRegistrationKey& registrationKey() const { return m_registrationKey; }
@@ -77,7 +77,9 @@ public:
     WorkerType type() const { return m_data.type; }
 
     ServiceWorkerIdentifier identifier() const { return m_data.identifier; }
+
     SWServerToContextConnectionIdentifier contextConnectionIdentifier() const { return m_contextConnectionIdentifier; }
+    void setContextConnectionIdentifier(SWServerToContextConnectionIdentifier identifier) { m_contextConnectionIdentifier = identifier; }
 
     ServiceWorkerState state() const { return m_data.state; }
     void setState(ServiceWorkerState);

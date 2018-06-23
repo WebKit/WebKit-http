@@ -1,3 +1,78 @@
+2018-01-17  Youenn Fablet  <youenn@apple.com>
+
+        Put fetch Request.keepalive behind a runtime flag
+        https://bugs.webkit.org/show_bug.cgi?id=181592
+
+        Reviewed by Chris Dumez.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences fetchAPIKeepAliveEnabled]):
+        (-[WebPreferences setFetchAPIKeepAliveEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2018-01-17  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add injected bundle SPI to replace subresource URLs when dropping or pasting rich content
+        https://bugs.webkit.org/show_bug.cgi?id=181637
+        <rdar://problem/36508471>
+
+        Reviewed by Tim Horton.
+
+        Add a stub implementation of replacementURLForResource. See WebCore and WebKit ChangeLogs for more detail.
+
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::replacementURLForResource):
+
+2018-01-11  Keith Miller  <keith_miller@apple.com>
+
+        Rename ENABLE_ASYNC_ITERATION to ENABLE_JS_ASYNC_ITERATION
+        https://bugs.webkit.org/show_bug.cgi?id=181573
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-01-11  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Send PromisedBlobInfo to the client through DragItem instead of DragClient::prepareToDragPromisedBlob
+        https://bugs.webkit.org/show_bug.cgi?id=181497
+
+        Reviewed by Tim Horton.
+
+        See other ChangeLogs for more detail.
+
+        * WebCoreSupport/WebDragClient.h:
+
+2018-01-11  Tim Horton  <timothy_horton@apple.com>
+
+        Null deref in WebImmediateActionController _dictionaryPopupInfoForRange
+        https://bugs.webkit.org/show_bug.cgi?id=181523
+        <rdar://problem/28959131>
+
+        Reviewed by Alex Christensen.
+
+        * WebView/WebImmediateActionController.mm:
+        (+[WebImmediateActionController _dictionaryPopupInfoForRange:inFrame:withLookupOptions:indicatorOptions:transition:]):
+        Apply the change made in r216652 to WebKit1's immediate action controller.
+
+        Speculative (but successful in WebKit2) fix for non-reproducible crash when
+        the startContainer of the range is in an anonymous node.
+
+2018-01-11  Youenn Fablet  <youenn@apple.com>
+
+        Replace WebRTCLegacyAPIDisabled by WebRTCLegacyAPIEnabled and switch off WebRTC legacy flag by default
+        https://bugs.webkit.org/show_bug.cgi?id=181480
+
+        Reviewed by Eric Carlson.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
 2018-01-08  David Kilzer  <ddkilzer@apple.com>
 
         Fix check-webkit-style issues with WebNSDataExtras.mm

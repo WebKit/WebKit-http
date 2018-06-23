@@ -72,7 +72,7 @@ void ServiceWorkerClientFetch::start()
     cleanHTTPRequestHeadersForAccessControl(request, options.httpHeadersToKeep);
 
     ASSERT(options.serviceWorkersMode != ServiceWorkersMode::None);
-    m_connection->startFetch(m_loader->identifier(), options.serviceWorkerIdentifier.value(), request, options, referrer);
+    m_connection->startFetch(m_loader->identifier(), options.serviceWorkerRegistrationIdentifier.value(), request, options, referrer);
 }
 
 // https://fetch.spec.whatwg.org/#http-fetch step 3.3
@@ -90,7 +90,7 @@ std::optional<ResourceError> ServiceWorkerClientFetch::validateResponse(const Re
     if (options.redirect != FetchOptions::Redirect::Manual && options.mode != FetchOptions::Mode::Navigate && response.tainting() == ResourceResponse::Tainting::Opaqueredirect)
         return ResourceError { errorDomainWebKitInternal, 0, response.url(), ASCIILiteral("Response served by service worker is opaque redirect"), ResourceError::Type::AccessControl };
 
-    if (options.redirect != FetchOptions::Redirect::Follow && response.isRedirected())
+    if ((options.redirect != FetchOptions::Redirect::Follow || options.mode == FetchOptions::Mode::Navigate) && response.isRedirected())
         return ResourceError { errorDomainWebKitInternal, 0, response.url(), ASCIILiteral("Response served by service worker has redirections"), ResourceError::Type::AccessControl };
 
     return std::nullopt;

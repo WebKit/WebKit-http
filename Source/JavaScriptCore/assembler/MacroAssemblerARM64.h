@@ -1105,12 +1105,14 @@ public:
 
     void abortWithReason(AbortReason reason)
     {
+        // It is safe to use dataTempRegister directly since this is a crashing JIT Assert.
         move(TrustedImm32(reason), dataTempRegister);
         breakpoint();
     }
 
     void abortWithReason(AbortReason reason, intptr_t misc)
     {
+        // It is safe to use memoryTempRegister directly since this is a crashing JIT Assert.
         move(TrustedImm64(misc), memoryTempRegister);
         abortWithReason(reason);
     }
@@ -2201,7 +2203,8 @@ public:
     
     void pushToSaveImmediateWithoutTouchingRegisters(TrustedImm32 imm)
     {
-        RegisterID reg = dataTempRegister;
+        // We invalidate any cached values in dataTempRegister if temp register caching is enabled.
+        RegisterID reg = m_allowScratchRegister ? getCachedDataTempRegisterIDAndInvalidate() : dataTempRegister;
         pushPair(reg, reg);
         move(imm, reg);
         store64(reg, stackPointerRegister);

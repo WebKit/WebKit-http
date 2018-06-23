@@ -28,26 +28,13 @@
 #include "HTTPHeaderNames.h"
 #include "MainThreadNotifier.h"
 #include "MediaPlayer.h"
-#include "NotImplemented.h"
 #include "PlatformMediaResourceLoader.h"
 #include "ResourceError.h"
-#include "ResourceHandle.h"
-#include "ResourceHandleClient.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
-#include "SharedBuffer.h"
 #include <gst/app/gstappsrc.h>
-#include <gst/gst.h>
 #include <gst/pbutils/missing-plugins.h>
-#include <wtf/MainThread.h>
-#include <wtf/Noncopyable.h>
-#include <wtf/glib/GRefPtr.h>
-#include <wtf/glib/GUniquePtr.h>
 #include <wtf/text/CString.h>
-
-#if USE(SOUP)
-#include "SoupNetworkSession.h"
-#endif
 
 using namespace WebCore;
 
@@ -490,8 +477,8 @@ static void webKitWebSrcStart(WebKitWebSrc* src)
     }
     priv->offset = priv->requestedOffset;
 
+    GST_DEBUG_OBJECT(src, "Persistent connection support %s", priv->keepAlive ? "enabled" : "disabled");
     if (!priv->keepAlive) {
-        GST_DEBUG_OBJECT(src, "Persistent connection support disabled");
         request.setHTTPHeaderField(HTTPHeaderName::Connection, "close");
     }
 
@@ -580,7 +567,7 @@ static gboolean webKitWebSrcQueryWithParent(GstPad* pad, GstObject* parent, GstQ
 
         gst_query_parse_duration(query, &format, nullptr);
 
-        GST_DEBUG_OBJECT(src, "duration query in format %s", gst_format_get_name(format));
+        GST_LOG_OBJECT(src, "duration query in format %s, current size: %lu", gst_format_get_name(format), priv->size);
         if (format == GST_FORMAT_BYTES && priv->size > 0) {
             gst_query_set_duration(query, format, priv->size);
             result = TRUE;
@@ -688,7 +675,7 @@ static void webKitWebSrcNeedData(WebKitWebSrc* src)
 {
     WebKitWebSrcPrivate* priv = src->priv;
 
-    GST_DEBUG_OBJECT(src, "Need more data");
+    GST_LOG_OBJECT(src, "Need more data");
 
     if (!priv->paused)
         return;
@@ -807,11 +794,15 @@ void CachedResourceStreamingClient::responseReceived(PlatformMediaResource&, con
     priv->size = length >= 0 ? length : 0;
     priv->seekable = length > 0 && g_ascii_strcasecmp("none", response.httpHeaderField(HTTPHeaderName::AcceptRanges).utf8().data());
 
+    GST_DEBUG_OBJECT(src, "Size: %" G_GINT64_FORMAT ", seekable: %s", priv->size, priv->seekable ? "yes" : "no");
     // notify size/duration
-    if (length > 0) {
+    if (length > 0)
         gst_app_src_set_size(priv->appsrc, length);
-    } else
+    else {
         gst_app_src_set_size(priv->appsrc, -1);
+        if (!priv->seekable)
+            gst_app_src_set_stream_type(priv->appsrc, GST_APP_STREAM_TYPE_STREAM);
+    }
 
     // Signal to downstream if this is an Icecast stream.
     GRefPtr<GstCaps> caps;
@@ -819,24 +810,39 @@ void CachedResourceStreamingClient::responseReceived(PlatformMediaResource&, con
     if (!metadataIntervalAsString.isEmpty()) {
         bool isMetadataIntervalParsed;
         int metadataInterval = metadataIntervalAsString.toInt(&isMetadataIntervalParsed);
-        if (isMetadataIntervalParsed && metadataInterval > 0)
+        if (isMetadataIntervalParsed && metadataInterval > 0) {
             caps = adoptGRef(gst_caps_new_simple("application/x-icy", "metadata-interval", G_TYPE_INT, metadataInterval, nullptr));
+
+            String contentType = response.httpHeaderField(HTTPHeaderName::ContentType);
+            GST_DEBUG_OBJECT(src, "Response ContentType: %s", contentType.utf8().data());
+            gst_caps_set_simple(caps.get(), "content-type", G_TYPE_STRING, contentType.utf8().data(), nullptr);
+
+            gst_app_src_set_stream_type(priv->appsrc, GST_APP_STREAM_TYPE_STREAM);
+        }
     }
+
     gst_app_src_set_caps(priv->appsrc, caps.get());
 
-    // Emit a GST_EVENT_CUSTOM_DOWNSTREAM_STICKY event to let GStreamer know about the HTTP headers sent and received.
+    // Emit a GST_EVENT_CUSTOM_DOWNSTREAM_STICKY event and message to let
+    // GStreamer know about the HTTP headers sent and received.
     GstStructure* httpHeaders = gst_structure_new_empty("http-headers");
-    gst_structure_set(httpHeaders, "uri", G_TYPE_STRING, priv->originalURI.data(), nullptr);
+    gst_structure_set(httpHeaders, "uri", G_TYPE_STRING, priv->originalURI.data(),
+        "http-status-code", G_TYPE_UINT, response.httpStatusCode(), nullptr);
     if (!priv->redirectedURI.isNull())
         gst_structure_set(httpHeaders, "redirection-uri", G_TYPE_STRING, priv->redirectedURI.data(), nullptr);
     GUniquePtr<GstStructure> headers(gst_structure_new_empty("request-headers"));
     for (const auto& header : m_request.httpHeaderFields())
         gst_structure_set(headers.get(), header.key.utf8().data(), G_TYPE_STRING, header.value.utf8().data(), nullptr);
+    GST_DEBUG_OBJECT(src, "Request headers going downstream: %" GST_PTR_FORMAT, headers.get());
     gst_structure_set(httpHeaders, "request-headers", GST_TYPE_STRUCTURE, headers.get(), nullptr);
     headers.reset(gst_structure_new_empty("response-headers"));
     for (const auto& header : response.httpHeaderFields())
         gst_structure_set(headers.get(), header.key.utf8().data(), G_TYPE_STRING, header.value.utf8().data(), nullptr);
     gst_structure_set(httpHeaders, "response-headers", GST_TYPE_STRUCTURE, headers.get(), nullptr);
+    GST_DEBUG_OBJECT(src, "Response headers going downstream: %" GST_PTR_FORMAT, headers.get());
+
+    gst_element_post_message(GST_ELEMENT_CAST(src), gst_message_new_element(GST_OBJECT_CAST(src),
+        gst_structure_copy(httpHeaders)));
     gst_pad_push_event(GST_BASE_SRC_PAD(priv->appsrc), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_STICKY, httpHeaders));
 }
 
@@ -934,5 +940,4 @@ void CachedResourceStreamingClient::loadFinished(PlatformMediaResource&)
         gst_app_src_end_of_stream(priv->appsrc);
 }
 
-#endif // USE(GSTREAMER)
-
+#endif // ENABLE(VIDEO) && USE(GSTREAMER)

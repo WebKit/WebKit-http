@@ -1,3 +1,256 @@
+2018-01-17  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r222795): Cardiogram never signs in
+        https://bugs.webkit.org/show_bug.cgi?id=181693
+        <rdar://problem/36286293>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add macro define for future iOS.
+
+        * wtf/spi/darwin/dyldSPI.h:
+
+2018-01-17  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Compile error: 'wtf/text/icu/TextBreakIteratorICU.h' not found.
+        https://bugs.webkit.org/show_bug.cgi?id=181744
+        <rdar://problem/36582562>
+
+        Reviewed by Alex Christensen.
+
+        Add WTF folders to forwarding headers directories.
+
+        * wtf/PlatformWin.cmake:
+
+2018-01-16  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] JSC compile error in runtime/DateConversion.cpp.
+        https://bugs.webkit.org/show_bug.cgi?id=181690
+        <rdar://problem/36480409>
+ 
+        Reviewed by Brent Fulgham.
+
+        Add 'text/win' folder to list of forwarding headers directories.
+ 
+        * wtf/PlatformWin.cmake:
+
+2018-01-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Improve use of ExportMacros
+        https://bugs.webkit.org/show_bug.cgi?id=181652
+
+        Reviewed by Konstantin Tokarev.
+
+        * wtf/ExportMacros.h: Simplify the #defines in this file.
+        * wtf/Platform.h: Remove unneeded define. Remove comment that expects all ports to
+          eventually enable the export macros. WPE will never want these. We don't currently want
+          them for GTK either, though how we link GTK has been in flux recently.
+
+2018-01-15  JF Bastien  <jfbastien@apple.com>
+
+        Remove makePoisonedUnique
+        https://bugs.webkit.org/show_bug.cgi?id=181630
+        <rdar://problem/36498623>
+
+        Reviewed by Mark Lam.
+
+        I added a conversion from std::unique_ptr, so we can just use
+        std::make_unique and it'll auto-poison when converted.
+
+        * wtf/PoisonedUniquePtr.h:
+        (WTF::makePoisonedUnique): Deleted.
+
+2018-01-13  Mark Lam  <mark.lam@apple.com>
+
+        Replace all use of ConstExprPoisoned with Poisoned.
+        https://bugs.webkit.org/show_bug.cgi?id=181542
+        <rdar://problem/36442138>
+
+        Reviewed by JF Bastien.
+
+        1. Removed ConstExprPoisoned and its artifacts.
+
+        2. Consolidated Poisoned into PoisonedImpl.  PoisonedImpl is not more.
+
+        3. Changed all clients of ConstExprPoisoned to use Poisoned instead.
+
+        4. Worked around the GCC and Clang compiler bug that confuses an intptr_t&
+           template arg with intptr_t.
+           See use of std::enable_if_t<Other::isPoisoned> in Poisoned.h.
+
+        5. Removed ENABLE(MIXED_POISON) since we now have a workaround (3) that makes it
+           possible to use the mixed poison code.
+
+        6. Also fixed broken implementation of comparison operators in Poisoned.
+
+        * wtf/Bag.h:
+        * wtf/DumbPtrTraits.h:
+        (WTF::DumbPtrTraits::poison):
+        * wtf/DumbValueTraits.h:
+        (WTF::DumbValueTraits::poison):
+        * wtf/Poisoned.h:
+        (WTF::Poisoned::Poisoned):
+        (WTF::Poisoned::operator== const):
+        (WTF::Poisoned::operator!= const):
+        (WTF::Poisoned::operator< const):
+        (WTF::Poisoned::operator<= const):
+        (WTF::Poisoned::operator> const):
+        (WTF::Poisoned::operator>= const):
+        (WTF::Poisoned::operator=):
+        (WTF::Poisoned::swap):
+        (WTF::swap):
+        (WTF::PoisonedPtrTraits::poison):
+        (WTF::PoisonedPtrTraits::swap):
+        (WTF::PoisonedValueTraits::poison):
+        (WTF::PoisonedValueTraits::swap):
+        (WTF::PoisonedImpl::PoisonedImpl): Deleted.
+        (WTF::PoisonedImpl::assertIsPoisoned const): Deleted.
+        (WTF::PoisonedImpl::assertIsNotPoisoned const): Deleted.
+        (WTF::PoisonedImpl::unpoisoned const): Deleted.
+        (WTF::PoisonedImpl::clear): Deleted.
+        (WTF::PoisonedImpl::operator* const): Deleted.
+        (WTF::PoisonedImpl::operator-> const): Deleted.
+        (WTF::PoisonedImpl::bits const): Deleted.
+        (WTF::PoisonedImpl::operator! const): Deleted.
+        (WTF::PoisonedImpl::operator bool const): Deleted.
+        (WTF::PoisonedImpl::operator== const): Deleted.
+        (WTF::PoisonedImpl::operator!= const): Deleted.
+        (WTF::PoisonedImpl::operator< const): Deleted.
+        (WTF::PoisonedImpl::operator<= const): Deleted.
+        (WTF::PoisonedImpl::operator> const): Deleted.
+        (WTF::PoisonedImpl::operator>= const): Deleted.
+        (WTF::PoisonedImpl::operator=): Deleted.
+        (WTF::PoisonedImpl::swap): Deleted.
+        (WTF::PoisonedImpl::exchange): Deleted.
+        (WTF::PoisonedImpl::poison): Deleted.
+        (WTF::PoisonedImpl::unpoison): Deleted.
+        (WTF::constExprPoisonRandom): Deleted.
+        (WTF::makeConstExprPoison): Deleted.
+        (WTF::ConstExprPoisonedPtrTraits::exchange): Deleted.
+        (WTF::ConstExprPoisonedPtrTraits::swap): Deleted.
+        (WTF::ConstExprPoisonedPtrTraits::unwrap): Deleted.
+        (WTF::ConstExprPoisonedValueTraits::exchange): Deleted.
+        (WTF::ConstExprPoisonedValueTraits::swap): Deleted.
+        (WTF::ConstExprPoisonedValueTraits::unwrap): Deleted.
+        * wtf/PoisonedUniquePtr.h:
+        (WTF::PoisonedUniquePtr::PoisonedUniquePtr):
+        (WTF::PoisonedUniquePtr::operator=):
+        * wtf/Ref.h:
+        * wtf/RefCountedArray.h:
+        (WTF::RefCountedArray::RefCountedArray):
+        * wtf/RefPtr.h:
+        * wtf/WTFAssertions.cpp:
+
+2018-01-12  JF Bastien  <jfbastien@apple.com>
+
+        PoisonedWriteBarrier
+        https://bugs.webkit.org/show_bug.cgi?id=181599
+        <rdar://problem/36474351>
+
+        Reviewed by Mark Lam.
+
+        Supporting changes needed to allow poisoning of WriteBarrier
+        objects.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/DumbPtrTraits.h:
+        * wtf/DumbValueTraits.h: Copied from Source/WTF/wtf/DumbPtrTraits.h.
+        (WTF::DumbValueTraits::exchange):
+        (WTF::DumbValueTraits::swap):
+        (WTF::DumbValueTraits::unwrap):
+        * wtf/Forward.h:
+        * wtf/Poisoned.h:
+        (WTF::ConstExprPoisonedValueTraits::exchange):
+        (WTF::ConstExprPoisonedValueTraits::swap):
+        (WTF::ConstExprPoisonedValueTraits::unwrap):
+
+2018-01-11  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        Remove noexcept from definition of std::tie()
+        https://bugs.webkit.org/show_bug.cgi?id=181577
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/StdLibExtras.h:
+        (WTF::tie):
+
+2018-01-11  Filip Pizlo  <fpizlo@apple.com>
+
+        Reserve a fast TLS key for GC TLC
+        https://bugs.webkit.org/show_bug.cgi?id=181539
+
+        Reviewed by Alexey Proskuryakov.
+        
+        Who knew that thread-local caches would be a mitigation for timing attacks. Here's how it
+        works: if we have TLCs then we can "context switch" them when we "context switch" origins. 
+        This allows us to put some minimal distance between objects from different origins, which
+        gives us the ability to allow small overflows when doing certain bounds checks without
+        creating a useful Spectre information leak.
+        
+        So I think that means we have to implement thread-local caches (also known as thread-local
+        allocation buffers, but I prefer the TLC terminology).
+
+        * wtf/FastTLS.h:
+
+2018-01-04  Filip Pizlo  <fpizlo@apple.com>
+
+        CodeBlocks should be in IsoSubspaces
+        https://bugs.webkit.org/show_bug.cgi?id=180884
+
+        Reviewed by Saam Barati.
+        
+        Deque<>::contains() is helpful for a debug ASSERT.
+
+        * wtf/Deque.h:
+        (WTF::inlineCapacity>::contains):
+
+2018-01-11  JF Bastien  <jfbastien@apple.com>
+
+        NFC reorder headers
+        https://bugs.webkit.org/show_bug.cgi?id=181521
+
+        Reviewed by Darin Adler.
+
+        Follow-up on r226752. I misunderstood the header include order
+        style. No functional change.
+
+        * wtf/Poisoned.h:
+        * wtf/PoisonedUniquePtr.h:
+
+2018-01-10  JF Bastien  <jfbastien@apple.com>
+
+        Poison small JSObject derivatives which only contain pointers
+        https://bugs.webkit.org/show_bug.cgi?id=181483
+        <rdar://problem/36407127>
+
+        Reviewed by Mark Lam.
+
+        The associated JSC poisoning change requires some template
+        "improvements" to our poisoning machinery. Worth noting is that
+        I'm making PoisonedUniquePtr move-assignable and
+        move-constructible from unique_ptr, which makes it a better
+        drop-in replacement because we don't need to use
+        makePoisonedUniquePtr. This means function-locals can be
+        unique_ptr and get the nice RAII pattern, and once the function is
+        done you can just move to the class' PoisonedUniquePtr without
+        worrying.
+
+        * wtf/Poisoned.h:
+        (WTF::PoisonedImpl::PoisonedImpl):
+        * wtf/PoisonedUniquePtr.h:
+        (WTF::PoisonedUniquePtr::PoisonedUniquePtr):
+        (WTF::PoisonedUniquePtr::operator=):
+
+2018-01-10  Don Olmstead  <don.olmstead@sony.com>
+
+        Add nullptr_t specialization of poison
+        https://bugs.webkit.org/show_bug.cgi?id=181469
+
+        Reviewed by JF Bastien.
+
+        * wtf/Poisoned.h:
+        (WTF::PoisonedImpl::poison):
+
 2018-01-10  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r226667 and r226673.

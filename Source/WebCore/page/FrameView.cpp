@@ -4511,7 +4511,7 @@ FloatSize FrameView::documentToClientOffset() const
     FloatSize clientOrigin = -toFloatSize(visibleContentRect().location());
 
     // Layout and visual viewports are affected by page zoom, so we need to factor that out.
-    return clientOrigin.scaled(1 / frame().pageZoomFactor());
+    return clientOrigin.scaled(1 / (frame().pageZoomFactor() * frame().frameScaleFactor()));
 }
 
 FloatRect FrameView::documentToClientRect(FloatRect rect) const
@@ -4643,6 +4643,14 @@ void FrameView::sendScrollEvent()
 #if ENABLE(CSS_ANIMATIONS_LEVEL_2)
     frame().animation().scrollWasUpdated();
 #endif
+}
+
+void FrameView::addChild(Widget& widget)
+{
+    if (is<FrameView>(widget))
+        addScrollableArea(&downcast<FrameView>(widget));
+
+    ScrollView::addChild(widget);
 }
 
 void FrameView::removeChild(Widget& widget)

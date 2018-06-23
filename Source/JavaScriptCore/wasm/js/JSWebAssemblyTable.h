@@ -66,8 +66,12 @@ private:
     static void destroy(JSCell*);
     static void visitChildren(JSCell*, SlotVisitor&);
 
-    PoisonedRef<JSWebAssemblyTablePoison, Wasm::Table> m_table;
-    MallocPtr<WriteBarrier<JSObject>> m_jsFunctions;
+    PoisonedRef<POISON(JSWebAssemblyTable), Wasm::Table> m_table;
+
+    template<typename T>
+    using PoisonedBarrier = PoisonedWriteBarrier<POISON(JSWebAssemblyTable), T>;
+
+    MallocPtr<PoisonedBarrier<JSObject>> m_jsFunctions;
 };
 
 } // namespace JSC

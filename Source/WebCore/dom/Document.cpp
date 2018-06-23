@@ -29,6 +29,7 @@
 #include "Document.h"
 
 #include "AXObjectCache.h"
+#include "ApplicationStateChangeListener.h"
 #include "Attr.h"
 #include "BeforeUnloadEvent.h"
 #include "CDATASection.h"
@@ -1935,10 +1936,10 @@ bool Document::needsStyleRecalc() const
     return false;
 }
 
-inline bool static isSafeToUpdateStyleOrLayout(FrameView* frameView)
+bool Document::isSafeToUpdateStyleOrLayout() const
 {
     bool isSafeToExecuteScript = ScriptDisallowedScope::InMainThread::isScriptAllowed();
-    bool isInFrameFlattening = frameView && frameView->isInChildFrameWithFrameFlattening();
+    bool isInFrameFlattening = view() && view()->isInChildFrameWithFrameFlattening();
     return isSafeToExecuteScript || isInFrameFlattening || !isInWebProcess();
 }
 
@@ -1960,7 +1961,7 @@ bool Document::updateStyleIfNeeded()
     }
 
     // The early exit above for !needsStyleRecalc() is needed when updateWidgetPositions() is called in runOrScheduleAsynchronousTasks().
-    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(isSafeToUpdateStyleOrLayout(frameView.get()));
+    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(isSafeToUpdateStyleOrLayout());
 
     resolveStyle();
     return true;
@@ -1976,7 +1977,7 @@ void Document::updateLayout()
         ASSERT_NOT_REACHED();
         return;
     }
-    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(isSafeToUpdateStyleOrLayout(frameView.get()));
+    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(isSafeToUpdateStyleOrLayout());
 
     RenderView::RepaintRegionAccumulator repaintRegionAccumulator(renderView());
 
@@ -2359,6 +2360,8 @@ void Document::prepareForDestruction()
 
     if (m_domWindow && m_frame)
         m_domWindow->willDetachDocumentFromFrame();
+
+    styleScope().clearResolver();
 
     if (hasLivingRenderTree())
         destroyRenderTree();
@@ -7370,6 +7373,22 @@ void Document::mediaStreamCaptureStateChanged()
         mediaElement->mediaStreamCaptureStarted();
 }
 #endif
+
+void Document::addApplicationStateChangeListener(ApplicationStateChangeListener& listener)
+{
+    m_applicationStateChangeListeners.add(&listener);
+}
+
+void Document::removeApplicationStateChangeListener(ApplicationStateChangeListener& listener)
+{
+    m_applicationStateChangeListeners.remove(&listener);
+}
+
+void Document::forEachApplicationStateChangeListener(const Function<void(ApplicationStateChangeListener&)>& functor)
+{
+    for (auto* listener : m_applicationStateChangeListeners)
+        functor(*listener);
+}
 
 const AtomicString& Document::bgColor() const
 {

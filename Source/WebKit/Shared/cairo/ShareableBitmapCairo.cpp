@@ -29,6 +29,7 @@
 #include "ShareableBitmap.h"
 
 #include <WebCore/BitmapImage.h>
+#include <WebCore/CairoOperations.h>
 #include <WebCore/CairoUtilities.h>
 #include <WebCore/GraphicsContext.h>
 #include <WebCore/PlatformContextCairo.h>
@@ -74,7 +75,8 @@ void ShareableBitmap::paint(GraphicsContext& context, float scaleFactor, const I
     FloatRect destRect(dstPoint, srcRect.size());
     FloatRect srcRectScaled(srcRect);
     srcRectScaled.scale(scaleFactor);
-    context.platformContext()->drawSurfaceToContext(surface.get(), destRect, srcRectScaled, context);
+    auto& state = context.state();
+    context.platformContext()->drawSurfaceToContext(surface.get(), destRect, srcRectScaled, state.imageInterpolationQuality, state.alpha, Cairo::ShadowState(state), context);
 }
 
 RefPtr<cairo_surface_t> ShareableBitmap::createCairoSurface()

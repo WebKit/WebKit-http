@@ -19,6 +19,7 @@ include_directories(
 )
 
 include_directories(SYSTEM
+    ${CAIRO_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
 )
@@ -63,7 +64,7 @@ add_executable(TestWebCore
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/PublicSuffix.cpp
 )
 
-target_link_libraries(TestWebCore ${test_webcore_LIBRARIES} -Wl,--start-group WebCore WebCoreDerivedSources -Wl,--end-group)
+target_link_libraries(TestWebCore ${test_webcore_LIBRARIES})
 add_dependencies(TestWebCore ${ForwardingHeadersForTestWebKitAPI_NAME})
 
 add_test(TestWebCore ${TESTWEBKITAPI_RUNTIME_OUTPUT_DIRECTORY}/WebCore/TestWebCore)

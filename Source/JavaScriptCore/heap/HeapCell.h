@@ -33,8 +33,9 @@ class CellContainer;
 class Heap;
 class LargeAllocation;
 class MarkedBlock;
+class Subspace;
 class VM;
-struct AllocatorAttributes;
+struct CellAttributes;
 
 class HeapCell {
 public:
@@ -65,9 +66,10 @@ public:
     VM* vm() const;
     
     size_t cellSize() const;
-    AllocatorAttributes allocatorAttributes() const;
+    CellAttributes cellAttributes() const;
     DestructionMode destructionMode() const;
     Kind cellKind() const;
+    Subspace* subspace() const;
     
     // Call use() after the last point where you need `this` pointer to be kept alive. You usually don't
     // need to use this, but it might be necessary if you're otherwise referring to an object's innards

@@ -40,6 +40,9 @@ namespace WebCore {
     macro(ApplePaySession) \
     macro(AttachmentElement) \
     macro(Audio) \
+    macro(AuthenticatorAssertionResponse) \
+    macro(AuthenticatorAttestationResponse) \
+    macro(AuthenticatorResponse) \
     macro(Cache) \
     macro(CacheStorage) \
     macro(Client) \
@@ -139,6 +142,7 @@ namespace WebCore {
     macro(ServiceWorkerGlobalScope) \
     macro(ServiceWorkerRegistration) \
     macro(ShadowRoot) \
+    macro(SpectreGadget) \
     macro(StaticRange) \
     macro(VRDisplay) \
     macro(VRDisplayCapabilities) \

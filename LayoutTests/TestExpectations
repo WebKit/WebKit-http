@@ -118,6 +118,8 @@ editing/selection/character-granularity-rect.html [ Skip ]
 editing/input/focus-change-with-marked-text.html [ Skip ]
 
 # These only run on Mac and iOS WK2
+accessibility/smart-invert.html [ Skip ]
+accessibility/smart-invert-reference.html [ Skip ]
 fast/media/mq-inverted-colors-live-update.html [ Skip ]
 fast/media/mq-inverted-colors-live-update-in-subframes.html [ Skip ]
 fast/media/mq-monochrome-live-update.html [ Skip ]
@@ -167,8 +169,6 @@ imported/w3c/web-platform-tests/service-workers/service-worker/claim-shared-work
 imported/w3c/web-platform-tests/service-workers/service-worker/about-blank-replacement.https.html [ Pass Failure ]
 webkit.org/b/179248 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-event-within-sw.https.html [ Pass Failure ]
 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-event-respond-with-response-body-with-invalid-chunk.https.html [ Pass Failure ]
-imported/w3c/web-platform-tests/service-workers/service-worker/fetch-request-redirect.https.html [ Pass Failure ]
-imported/w3c/web-platform-tests/service-workers/service-worker/multiple-update.https.html [ Pass Failure ]
 imported/w3c/web-platform-tests/service-workers/service-worker/performance-timeline.https.html [ Pass Failure ]
 imported/w3c/web-platform-tests/service-workers/service-worker/registration-service-worker-attributes.https.html [ Pass Failure ]
 imported/w3c/web-platform-tests/service-workers/service-worker/service-worker-csp-connect.https.html [ Pass Failure ]
@@ -182,9 +182,11 @@ imported/w3c/web-platform-tests/service-workers/service-worker/fetch-cors-xhr.ht
 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-canvas-tainting.https.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-canvas-tainting-cache.https.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-response-taint.https.html [ DumpJSConsoleLogInStdErr ]
+imported/w3c/web-platform-tests/service-workers/service-worker/fetch-request-redirect.https.html [ Slow ]
 [ Debug ] imported/w3c/web-platform-tests/service-workers/service-worker/getregistrations.https.html [ Slow ]
 [ Debug ] imported/w3c/web-platform-tests/service-workers/service-worker/interfaces-sw.https.html [ Slow ]
 [ Debug ] imported/w3c/web-platform-tests/service-workers/service-worker/ready.https.html [ Slow ]
+[ Debug ] imported/w3c/web-platform-tests/service-workers/service-worker/multiple-update.https.html [ Slow ]
 
 # Reenable it when having a custom gc exposed in service workers.
 [ Debug ] http/wpt/service-workers/fetchEvent.https.html [ Skip ]
@@ -274,7 +276,7 @@ imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/trav
 imported/w3c/web-platform-tests/html/dom/interfaces.worker.html [ Pass Failure ]
 imported/w3c/web-platform-tests/mediacapture-fromelement/creation.html [ Pass Failure ]
 webkit.org/b/180240 imported/w3c/web-platform-tests/resource-timing/single-entry-per-resource.html [ Pass Failure ]
-webkit.org/b/181435 imported/w3c/web-platform-tests/viewport/viewport-resize-event-on-load-overflowing-page.html [ Pass Failure ]
+webkit.org/b/181435 imported/w3c/web-platform-tests/visual-viewport/viewport-resize-event-on-load-overflowing-page.html [ Pass Failure ]
 
 # The follow two tests change their output each run
 imported/w3c/web-platform-tests/fetch/api/abort/general.any.html [ Skip ]
@@ -353,9 +355,6 @@ webkit.org/b/53990 fast/forms/search-event-delay.html [ Pass Failure ]
 webkit.org/b/126142 css3/calc/transitions-dependent.html [ Pass Failure ]
 
 webkit.org/b/124932 media/video-size.html [ Pass Failure ]
-
-webkit.org/b/180430 media/encrypted-media/clearKey/clearKey-encrypted-cenc-event.html [ Skip ]
-webkit.org/b/180430 media/encrypted-media/clearKey/clearKey-encrypted-cenc-event-mse.html [ Skip ]
 
 webkit.org/b/126166 [ Debug ] js/dfg-int32array.html [ Skip ]
 webkit.org/b/126166 [ Debug ] js/dfg-uint16array.html [ Skip ]
@@ -1663,7 +1662,7 @@ webkit.org/b/179069 imported/w3c/web-platform-tests/html/semantics/embedded-cont
 
 webkit.org/b/181119 http/wpt/web-animations/interfaces/Animatable/animate-no-browsing-context.html [ Pass Failure ]
 webkit.org/b/181123 http/wpt/web-animations/interfaces/Animation/finish.html [ Pass Failure ]
-webkit.org/b/181116 http/wpt/web-animations/interfaces/Animation/finished.html [ Crash Failure ]
+webkit.org/b/181116 http/wpt/web-animations/interfaces/Animation/finished.html [ Pass Crash Failure ]
 webkit.org/b/181120 http/wpt/web-animations/interfaces/Animation/onfinish.html [ Pass Failure ]
 webkit.org/b/179287 http/wpt/web-animations/interfaces/Animation/startTime.html [ Pass Failure ]
 webkit.org/b/181122 http/wpt/web-animations/interfaces/AnimationEffectTiming/endDelay.html [ Pass Failure ]
@@ -1684,3 +1683,6 @@ webkit.org/b/178785 perf/object-keys.html [ Pass Failure ]
 
 # There is a bug in the test
 imported/w3c/web-platform-tests/workers/worker-performance.worker.html [ Pass Failure ]
+
+media/event-queue-crash.html [ DumpJSConsoleLogInStdErr ]
+

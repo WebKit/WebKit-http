@@ -697,6 +697,7 @@ private:
         case ArrayPush:
         case RegExpExec:
         case RegExpTest:
+        case RegExpMatchFast:
         case StringReplace:
         case StringReplaceRegExp:
         case GetById:
@@ -1162,6 +1163,7 @@ private:
         case CheckStructure:
         case CheckCell:
         case CheckNotEmpty:
+        case AssertNotEmpty:
         case CheckStringIdent:
         case CheckBadCell:
         case PutStructure:

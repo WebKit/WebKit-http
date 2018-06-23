@@ -40,7 +40,6 @@
 #include "CompilationResult.h"
 #include "ConcurrentJSLock.h"
 #include "DFGCommon.h"
-#include "DFGExitProfile.h"
 #include "DirectEvalCodeCache.h"
 #include "EvalExecutable.h"
 #include "ExecutionCounter.h"
@@ -87,6 +86,7 @@ struct OSRExitState;
 class BytecodeLivenessAnalysis;
 class CodeBlockSet;
 class ExecState;
+class ExecutableToCodeBlockEdge;
 class JSModuleEnvironment;
 class LLIntOffsetsExtractor;
 class PCToCodeOriginMap;
@@ -107,27 +107,15 @@ class CodeBlock : public JSCell {
     friend class JIT;
     friend class LLIntOffsetsExtractor;
 
-    struct UnconditionalFinalizer : public JSC::UnconditionalFinalizer {
-        UnconditionalFinalizer(CodeBlock& codeBlock)
-            : codeBlock(codeBlock)
-        { }
-        void finalizeUnconditionally() override;
-        CodeBlock& codeBlock;
-    };
-
-    struct WeakReferenceHarvester : public JSC::WeakReferenceHarvester {
-        WeakReferenceHarvester(CodeBlock& codeBlock)
-            : codeBlock(codeBlock)
-        { }
-        void visitWeakReferences(SlotVisitor&) override;
-        CodeBlock& codeBlock;
-    };
-
 public:
 
     enum CopyParsedBlockTag { CopyParsedBlock };
 
     static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
+    static const bool needsDestruction = true;
+
+    template<typename>
+    static void subspaceFor(VM&) { }
 
     DECLARE_INFO;
 
@@ -137,6 +125,8 @@ protected:
 
     void finishCreation(VM&, CopyParsedBlockTag, CodeBlock& other);
     bool finishCreation(VM&, ScriptExecutable* ownerExecutable, UnlinkedCodeBlock*, JSScope*);
+    
+    void finishCreationCommon(VM&);
 
     WriteBarrier<JSGlobalObject> m_globalObject;
 
@@ -200,8 +190,7 @@ public:
     static size_t estimatedSize(JSCell*);
     static void visitChildren(JSCell*, SlotVisitor&);
     void visitChildren(SlotVisitor&);
-    void visitWeakly(SlotVisitor&);
-    void clearVisitWeaklyHasBeenCalled();
+    void finalizeUnconditionally(VM&);
 
     void dumpSource();
     void dumpSource(PrintStream&);
@@ -259,11 +248,24 @@ public:
     void getByValInfoMap(ByValInfoMap& result);
     
 #if ENABLE(JIT)
-    StructureStubInfo* addStubInfo(AccessType);
     JITAddIC* addJITAddIC(ArithProfile*);
     JITMulIC* addJITMulIC(ArithProfile*);
     JITNegIC* addJITNegIC(ArithProfile*);
     JITSubIC* addJITSubIC(ArithProfile*);
+
+    template <typename Generator, typename = typename std::enable_if<std::is_same<Generator, JITAddGenerator>::value>::type>
+    JITAddIC* addMathIC(ArithProfile* profile) { return addJITAddIC(profile); }
+
+    template <typename Generator, typename = typename std::enable_if<std::is_same<Generator, JITMulGenerator>::value>::type>
+    JITMulIC* addMathIC(ArithProfile* profile) { return addJITMulIC(profile); }
+
+    template <typename Generator, typename = typename std::enable_if<std::is_same<Generator, JITNegGenerator>::value>::type>
+    JITNegIC* addMathIC(ArithProfile* profile) { return addJITNegIC(profile); }
+
+    template <typename Generator, typename = typename std::enable_if<std::is_same<Generator, JITSubGenerator>::value>::type>
+    JITSubIC* addMathIC(ArithProfile* profile) { return addJITSubIC(profile); }
+
+    StructureStubInfo* addStubInfo(AccessType);
     auto stubInfoBegin() { return m_stubInfos.begin(); }
     auto stubInfoEnd() { return m_stubInfos.end(); }
 
@@ -317,11 +319,11 @@ public:
     }
 
     typedef JSC::Instruction Instruction;
-    typedef PoisonedRefCountedArray<CodeBlockPoison, Instruction>& UnpackedInstructions;
+    typedef PoisonedRefCountedArray<POISON(CodeBlock), Instruction>& UnpackedInstructions;
 
     unsigned numberOfInstructions() const { return m_instructions.size(); }
-    PoisonedRefCountedArray<CodeBlockPoison, Instruction>& instructions() { return m_instructions; }
-    const PoisonedRefCountedArray<CodeBlockPoison, Instruction>& instructions() const { return m_instructions; }
+    PoisonedRefCountedArray<POISON(CodeBlock), Instruction>& instructions() { return m_instructions; }
+    const PoisonedRefCountedArray<POISON(CodeBlock), Instruction>& instructions() const { return m_instructions; }
 
     size_t predictedMachineCodeSize();
 
@@ -369,6 +371,8 @@ public:
     
     ExecutableBase* ownerExecutable() const { return m_ownerExecutable.get(); }
     ScriptExecutable* ownerScriptExecutable() const { return jsCast<ScriptExecutable*>(m_ownerExecutable.get()); }
+    
+    ExecutableToCodeBlockEdge* ownerEdge() const { return m_ownerEdge.get(); }
 
     VM* vm() const { return m_poisonedVM.unpoisoned(); }
 
@@ -506,25 +510,6 @@ public:
     {
         return codeOrigins()[index.bits()];
     }
-
-    bool addFrequentExitSite(const DFG::FrequentExitSite& site)
-    {
-        ASSERT(JITCode::isBaselineCode(jitType()));
-        ConcurrentJSLocker locker(m_lock);
-        return m_exitProfile.add(locker, this, site);
-    }
-
-    bool hasExitSite(const ConcurrentJSLocker& locker, const DFG::FrequentExitSite& site) const
-    {
-        return m_exitProfile.hasExitSite(locker, site);
-    }
-    bool hasExitSite(const DFG::FrequentExitSite& site) const
-    {
-        ConcurrentJSLocker locker(m_lock);
-        return hasExitSite(locker, site);
-    }
-
-    DFG::ExitProfile& exitProfile() { return m_exitProfile; }
 
     CompressedLazyOperandValueProfileHolder& lazyOperandValueProfiles()
     {
@@ -829,8 +814,6 @@ public:
     // concurrent compilation threads finish what they're doing.
     mutable ConcurrentJSLock m_lock;
 
-    bool m_visitWeaklyHasBeenCalled;
-
     bool m_shouldAlwaysBeInlined; // Not a bitfield because the JIT wants to store to it.
 
 #if ENABLE(JIT)
@@ -904,8 +887,6 @@ public:
 
     bool hasTailCalls() const { return m_unlinkedCode->hasTailCalls(); }
 
-    static constexpr uintptr_t s_poison = makeConstExprPoison(CodeBlockPoison);
-
 protected:
     void finalizeLLIntInlineCaches();
     void finalizeBaselineJITInlineCaches();
@@ -918,6 +899,7 @@ protected:
 
 private:
     friend class CodeBlockSet;
+    friend class ExecutableToCodeBlockEdge;
 
     BytecodeLivenessAnalysis& livenessAnalysisSlow();
     
@@ -964,12 +946,6 @@ private:
     void insertBasicBlockBoundariesForControlFlowProfiler(RefCountedArray<Instruction>&);
     void ensureCatchLivenessIsComputedForBytecodeOffsetSlow(unsigned);
 
-    template<typename T, typename... Arguments, typename Enable = void>
-    static PoisonedUniquePtr<CodeBlockPoison, T> makePoisonedUnique(Arguments&&... arguments)
-    {
-        return WTF::makePoisonedUnique<CodeBlockPoison, T>(std::forward<Arguments>(arguments)...);
-    }
-
     WriteBarrier<UnlinkedCodeBlock> m_unlinkedCode;
     int m_numParameters;
     int m_numberOfArgumentsToSkip { 0 };
@@ -982,30 +958,31 @@ private:
         };
     };
     WriteBarrier<ExecutableBase> m_ownerExecutable;
-    ConstExprPoisoned<CodeBlockPoison, VM*> m_poisonedVM;
+    WriteBarrier<ExecutableToCodeBlockEdge> m_ownerEdge;
+    Poisoned<POISON(CodeBlock), VM*> m_poisonedVM;
 
-    PoisonedRefCountedArray<CodeBlockPoison, Instruction> m_instructions;
+    PoisonedRefCountedArray<POISON(CodeBlock), Instruction> m_instructions;
     VirtualRegister m_thisRegister;
     VirtualRegister m_scopeRegister;
     mutable CodeBlockHash m_hash;
 
-    PoisonedRefPtr<CodeBlockPoison, SourceProvider> m_source;
+    PoisonedRefPtr<POISON(CodeBlock), SourceProvider> m_source;
     unsigned m_sourceOffset;
     unsigned m_firstLineColumnOffset;
 
     RefCountedArray<LLIntCallLinkInfo> m_llintCallLinkInfos;
     SentinelLinkedList<LLIntCallLinkInfo, BasicRawSentinelNode<LLIntCallLinkInfo>> m_incomingLLIntCalls;
     StructureWatchpointMap m_llintGetByIdWatchpointMap;
-    PoisonedRefPtr<CodeBlockPoison, JITCode> m_jitCode;
+    PoisonedRefPtr<POISON(CodeBlock), JITCode> m_jitCode;
 #if ENABLE(JIT)
     std::unique_ptr<RegisterAtOffsetList> m_calleeSaveRegisters;
-    PoisonedBag<CodeBlockPoison, StructureStubInfo> m_stubInfos;
-    PoisonedBag<CodeBlockPoison, JITAddIC> m_addICs;
-    PoisonedBag<CodeBlockPoison, JITMulIC> m_mulICs;
-    PoisonedBag<CodeBlockPoison, JITNegIC> m_negICs;
-    PoisonedBag<CodeBlockPoison, JITSubIC> m_subICs;
-    PoisonedBag<CodeBlockPoison, ByValInfo> m_byValInfos;
-    PoisonedBag<CodeBlockPoison, CallLinkInfo> m_callLinkInfos;
+    PoisonedBag<POISON(CodeBlock), StructureStubInfo> m_stubInfos;
+    PoisonedBag<POISON(CodeBlock), JITAddIC> m_addICs;
+    PoisonedBag<POISON(CodeBlock), JITMulIC> m_mulICs;
+    PoisonedBag<POISON(CodeBlock), JITNegIC> m_negICs;
+    PoisonedBag<POISON(CodeBlock), JITSubIC> m_subICs;
+    PoisonedBag<POISON(CodeBlock), ByValInfo> m_byValInfos;
+    PoisonedBag<POISON(CodeBlock), CallLinkInfo> m_callLinkInfos;
     SentinelLinkedList<CallLinkInfo, BasicRawSentinelNode<CallLinkInfo>> m_incomingCalls;
     SentinelLinkedList<PolymorphicCallNode, BasicRawSentinelNode<PolymorphicCallNode>> m_incomingPolymorphicCalls;
     std::unique_ptr<PCToCodeOriginMap> m_pcToCodeOriginMap;
@@ -1014,7 +991,6 @@ private:
 #if ENABLE(DFG_JIT)
     // This is relevant to non-DFG code blocks that serve as the profiled code block
     // for DFG code blocks.
-    DFG::ExitProfile m_exitProfile;
     CompressedLazyOperandValueProfileHolder m_lazyOperandValueProfiles;
 #endif
     RefCountedArray<ValueProfile> m_argumentValueProfiles;
@@ -1046,9 +1022,6 @@ private:
     MonotonicTime m_creationTime;
 
     std::unique_ptr<RareData> m_rareData;
-
-    PoisonedUniquePtr<CodeBlockPoison, UnconditionalFinalizer> m_unconditionalFinalizer;
-    PoisonedUniquePtr<CodeBlockPoison, WeakReferenceHarvester> m_weakReferenceHarvester;
 };
 
 inline Register& ExecState::r(int index)
@@ -1073,11 +1046,6 @@ inline Register& ExecState::uncheckedR(int index)
 inline Register& ExecState::uncheckedR(VirtualRegister reg)
 {
     return uncheckedR(reg.offset());
-}
-
-inline void CodeBlock::clearVisitWeaklyHasBeenCalled()
-{
-    m_visitWeaklyHasBeenCalled = false;
 }
 
 template <typename ExecutableType>

@@ -242,7 +242,7 @@ struct WKAutoCorrectionData {
 
 @end
 
-@interface WKContentView (WKInteraction) <UIGestureRecognizerDelegate, UIWebTouchEventsGestureRecognizerDelegate, UITextInputPrivate, UIWebFormAccessoryDelegate, UIWKInteractionViewProtocol, WKFileUploadPanelDelegate, WKActionSheetAssistantDelegate, UITextAutoscrolling
+@interface WKContentView (WKInteraction) <UIGestureRecognizerDelegate, UITextAutoscrolling, UITextInputMultiDocument, UITextInputPrivate, UIWebFormAccessoryDelegate, UIWebTouchEventsGestureRecognizerDelegate, UIWKInteractionViewProtocol, WKActionSheetAssistantDelegate, WKFileUploadPanelDelegate
 #if ENABLE(DATA_INTERACTION)
     , UIDragInteractionDelegate, UIDropInteractionDelegate
 #endif
@@ -327,7 +327,6 @@ FOR_EACH_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 - (void)_startDrag:(RetainPtr<CGImageRef>)image item:(const WebCore::DragItem&)item;
 - (void)_didConcludeEditDataInteraction:(std::optional<WebCore::TextIndicatorData>)data;
 - (void)_didChangeDataInteractionCaretRect:(CGRect)previousRect currentRect:(CGRect)rect;
-- (void)_prepareToDragPromisedBlob:(const WebCore::PromisedBlobInfo&)info;
 #endif
 
 @end

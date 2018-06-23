@@ -658,7 +658,7 @@ public:
 #endif
 #if ENABLE(WEB_RTC)
         [NSNumber numberWithBool:YES], WebKitPeerConnectionEnabledPreferenceKey,
-        [NSNumber numberWithBool:YES], WebKitWebRTCLegacyAPIEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO], WebKitWebRTCLegacyAPIEnabledPreferenceKey,
 #endif
 #if ENABLE(INTERSECTION_OBSERVER)
         @NO, WebKitIntersectionObserverEnabledPreferenceKey,
@@ -682,6 +682,7 @@ public:
         (NSString *)Settings::defaultMediaContentTypesRequiringHardwareSupport(), WebKitMediaContentTypesRequiringHardwareSupportPreferenceKey,
         @NO, WebKitAccessibilityObjectModelEnabledPreferenceKey,
         @NO, WebKitMediaCapabilitiesEnabledPreferenceKey,
+        @NO, WebKitFetchAPIKeepAliveEnabledPreferenceKey,
         nil];
 
 #if !PLATFORM(IOS)
@@ -3093,6 +3094,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setWebAnimationsEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitWebAnimationsEnabledPreferenceKey];
+}
+
+- (BOOL)fetchAPIKeepAliveEnabled
+{
+    return [self _boolValueForKey:WebKitFetchAPIEnabledPreferenceKey];
+}
+
+- (void)setFetchAPIKeepAliveEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitFetchAPIEnabledPreferenceKey];
 }
 
 - (BOOL)modernMediaControlsEnabled

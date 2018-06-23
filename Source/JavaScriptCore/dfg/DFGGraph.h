@@ -469,12 +469,12 @@ public:
     
     bool hasGlobalExitSite(const CodeOrigin& codeOrigin, ExitKind exitKind)
     {
-        return baselineCodeBlockFor(codeOrigin)->hasExitSite(FrequentExitSite(exitKind));
+        return baselineCodeBlockFor(codeOrigin)->unlinkedCodeBlock()->hasExitSite(FrequentExitSite(exitKind));
     }
     
     bool hasExitSite(const CodeOrigin& codeOrigin, ExitKind exitKind)
     {
-        return baselineCodeBlockFor(codeOrigin)->hasExitSite(FrequentExitSite(codeOrigin.bytecodeIndex, exitKind));
+        return baselineCodeBlockFor(codeOrigin)->unlinkedCodeBlock()->hasExitSite(FrequentExitSite(codeOrigin.bytecodeIndex, exitKind));
     }
     
     bool hasExitSite(Node* node, ExitKind exitKind)
@@ -968,6 +968,17 @@ public:
         bool result = m_rootToArguments.contains(block);
         ASSERT(result == m_roots.contains(block));
         return result;
+    }
+
+    bool supportsMultiGetByOffset(CodeOrigin origin)
+    {
+        if (!is64Bit())
+            return false;
+        if (isFTL(m_plan.mode))
+            return true;
+        // We want to ensure we get polyvariant profiling data from the GetById. This allows
+        // the same get_by_id inlined into two separate functions to get independent profiling data.
+        return !origin.inlineCallFrame;
     }
 
     VM& m_vm;

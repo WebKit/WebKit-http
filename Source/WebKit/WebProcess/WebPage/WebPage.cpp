@@ -3080,10 +3080,6 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setDataDetectorTypes(static_cast<DataDetectorTypes>(store.getUInt32ValueForKey(WebPreferencesKey::dataDetectorTypesKey())));
 #endif
 
-#if ENABLE(WEB_RTC)
-    RuntimeEnabledFeatures::sharedFeatures().setWebRTCLegacyAPIEnabled(!store.getBoolValueForKey(WebPreferencesKey::webRTCLegacyAPIDisabledKey()));
-#endif
-
     RuntimeEnabledFeatures::sharedFeatures().setWebAuthenticationEnabled(store.getBoolValueForKey(WebPreferencesKey::webAuthenticationEnabledKey()));
 
     DatabaseManager::singleton().setIsAvailable(store.getBoolValueForKey(WebPreferencesKey::databasesEnabledKey()));
@@ -3301,11 +3297,6 @@ bool WebPage::handleEditingKeyboardEvent(KeyboardEvent* evt)
 #endif
 
 #if ENABLE(DRAG_SUPPORT)
-
-void WebPage::prepareToDragPromisedBlob(const WebCore::PromisedBlobInfo& info)
-{
-    send(Messages::WebPageProxy::PrepareToDragPromisedBlob(info));
-}
 
 #if PLATFORM(GTK)
 void WebPage::performDragControllerAction(DragControllerAction action, const IntPoint& clientPosition, const IntPoint& globalPosition, uint64_t draggingSourceOperationMask, WebSelectionData&& selection, uint32_t flags)
@@ -4417,14 +4408,16 @@ void WebPage::simulateMouseMotion(WebCore::IntPoint position, WallTime time)
     mouseEvent(WebMouseEvent(WebMouseEvent::MouseMove, WebMouseEvent::NoButton, 0, position, position, 0, 0, 0, 0, WebMouseEvent::Modifiers(), time, 0, WebMouseEvent::NoTap));
 }
 
-void WebPage::setCompositionForTesting(const String& compositionString, uint64_t from, uint64_t length)
+void WebPage::setCompositionForTesting(const String& compositionString, uint64_t from, uint64_t length, bool suppressUnderline)
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
     if (!frame.editor().canEdit())
         return;
 
     Vector<CompositionUnderline> underlines;
-    underlines.append(CompositionUnderline(0, compositionString.length(), CompositionUnderlineColor::TextColor, Color(Color::black), false));
+    if (!suppressUnderline)
+        underlines.append(CompositionUnderline(0, compositionString.length(), CompositionUnderlineColor::TextColor, Color(Color::black), false));
+
     frame.editor().setComposition(compositionString, underlines, from, from + length);
 }
 

@@ -449,7 +449,6 @@ list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
 )
 
 list(APPEND WebKit_LIBRARIES
-    WebCore
     ${CAIRO_LIBRARIES}
     ${FREETYPE2_LIBRARIES}
     ${GLIB_LIBRARIES}
@@ -481,6 +480,9 @@ install(TARGETS WPEWebInspectorResources DESTINATION "${LIB_INSTALL_DIR}")
 add_library(WPEInjectedBundle MODULE "${WEBKIT_DIR}/WebProcess/InjectedBundle/API/glib/WebKitInjectedBundleMain.cpp")
 ADD_WEBKIT_PREFIX_HEADER(WPEInjectedBundle)
 target_link_libraries(WPEInjectedBundle WebKit)
+
+target_include_directories(WPEInjectedBundle PRIVATE ${WebKit_INCLUDE_DIRECTORIES})
+target_include_directories(WPEInjectedBundle SYSTEM PRIVATE ${WebKit_SYSTEM_INCLUDE_DIRECTORIES})
 
 install(FILES "${CMAKE_BINARY_DIR}/wpe-webkit.pc"
     DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig"

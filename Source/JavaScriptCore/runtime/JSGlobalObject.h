@@ -401,7 +401,7 @@ public:
 
     VM& m_vm;
 
-    template<typename T> using PoisonedUniquePtr = WTF::PoisonedUniquePtr<JSGlobalObjectPoison, T>;
+    template<typename T> using PoisonedUniquePtr = WTF::PoisonedUniquePtr<POISON(JSGlobalObject), T>;
 
 #if ENABLE(REMOTE_INSPECTOR)
     PoisonedUniquePtr<Inspector::JSGlobalObjectInspectorController> m_inspectorController;
@@ -919,12 +919,6 @@ private:
     JS_EXPORT_PRIVATE void init(VM&);
 
     JS_EXPORT_PRIVATE static void clearRareData(JSCell*);
-
-    template<typename T, typename... Arguments, typename Enable = void>
-    static JSGlobalObject::PoisonedUniquePtr<T> makePoisonedUnique(Arguments&&... arguments)
-    {
-        return WTF::makePoisonedUnique<JSGlobalObjectPoison, T>(std::forward<Arguments>(arguments)...);
-    }
 
     bool m_needsSiteSpecificQuirks { false };
 #if JSC_OBJC_API_ENABLED

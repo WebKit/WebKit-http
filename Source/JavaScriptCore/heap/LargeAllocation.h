@@ -58,6 +58,8 @@ public:
         return bitwise_cast<uintptr_t>(cell) & halfAlignment;
     }
     
+    Subspace* subspace() const { return m_subspace; }
+    
     void lastChanceToFinalize();
     
     Heap* heap() const { return m_weakSet.heap(); }
@@ -108,7 +110,7 @@ public:
         return aboveLowerBound(rawPtr) && belowUpperBound(rawPtr);
     }
     
-    const AllocatorAttributes& attributes() const { return m_attributes; }
+    const CellAttributes& attributes() const { return m_attributes; }
     
     Dependency aboutToMark(HeapVersion) { return Dependency(); }
     
@@ -150,7 +152,7 @@ private:
     bool m_isNewlyAllocated;
     bool m_hasValidCell;
     Atomic<bool> m_isMarked;
-    AllocatorAttributes m_attributes;
+    CellAttributes m_attributes;
     Subspace* m_subspace;
     WeakSet m_weakSet;
 };

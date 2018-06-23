@@ -772,6 +772,7 @@ typedef NS_ENUM(NSInteger, _UIBackdropViewStylePrivate) {
 
 @interface _UINavigationInteractiveTransitionBase ()
 - (id)initWithGestureRecognizerView:(UIView *)gestureRecognizerView animator:(id<UIViewControllerAnimatedTransitioning>)animator delegate:(id<_UINavigationInteractiveTransitionBaseDelegate>)delegate;
+- (void)_completeStoppedInteractiveTransition;
 @property (nonatomic, weak) UIPanGestureRecognizer *gestureRecognizer;
 @property (nonatomic, assign) BOOL shouldReverseTranslation;
 @property (nonatomic, retain) _UINavigationParallaxTransition *animationController;
@@ -966,8 +967,22 @@ typedef NS_OPTIONS(NSUInteger, UIDragOperation)
 - (void)forceReloadInputViews;
 @end
 
+#if __has_include(<UIKit/UITextInputMultiDocument.h>)
+#import <UIKit/UITextInputMultiDocument.h>
+#else
+@protocol UITextInputMultiDocument <NSObject>
+@optional
+- (void)_restoreFocusWithToken:(id <NSCopying, NSSecureCoding>)token completion:(void (^)(BOOL didRestore))completion;
+- (void)_preserveFocusWithToken:(id <NSCopying, NSSecureCoding>)token destructively:(BOOL)destructively;
+@end
+#endif
+
 @interface UIResponder ()
 - (UIResponder *)firstResponder;
+@end
+
+@interface _UINavigationInteractiveTransitionBase ()
+- (void)_stopInteractiveTransition;
 @end
 
 #if __has_include(<UIKit/UITextAutofillSuggestion.h>)

@@ -3168,6 +3168,11 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
+    case RegExpMatchFast: {
+        compileRegExpMatchFast(node);
+        break;
+    }
+
     case StringReplace:
     case StringReplaceRegExp: {
         compileStringReplace(node);
@@ -5181,6 +5186,7 @@ void SpeculativeJIT::compile(Node* node)
     case InitializeEntrypointArguments:
     case EntrySwitch:
     case CPUIntrinsic:
+    case AssertNotEmpty:
         DFG_CRASH(m_jit.graph(), node, "unexpected node in DFG backend");
         break;
     }

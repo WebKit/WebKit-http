@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,12 +25,15 @@
 
 #pragma once
 
+#include <cstdint>
 #include <utility>
 
 namespace WTF {
     
 template<typename T>
 struct DumbPtrTraits {
+    static uintptr_t poison() { return 0; }
+
     using StorageType = T*;
 
     template<typename U>
@@ -42,3 +45,4 @@ struct DumbPtrTraits {
 
 } // namespace WTF
 
+using WTF::DumbPtrTraits;

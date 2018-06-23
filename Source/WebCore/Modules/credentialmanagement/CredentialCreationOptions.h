@@ -26,6 +26,8 @@
 
 #pragma once
 
+#include "AbortSignal.h"
+#include "PublicKeyCredentialCreationOptions.h"
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -34,7 +36,7 @@ class AbortSignal;
 
 struct CredentialCreationOptions {
     RefPtr<AbortSignal> signal;
-    std::optional<bool> publicKey;
+    std::optional<PublicKeyCredentialCreationOptions> publicKey;
 };
 
 } // namespace WebCore

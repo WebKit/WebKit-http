@@ -73,7 +73,7 @@ public:
     virtual bool shouldMoveRangeAfterDelete(Range*, Range*) = 0;
 
 #if ENABLE(ATTACHMENT_ELEMENT)
-    virtual void didInsertAttachment(const String&) { }
+    virtual void didInsertAttachment(const String& /* identifier */, const String& /* source */) { }
     virtual void didRemoveAttachment(const String&) { }
 #endif
 
@@ -86,6 +86,7 @@ public:
     virtual void willWriteSelectionToPasteboard(Range*) = 0;
     virtual void didWriteSelectionToPasteboard() = 0;
     virtual void getClientPasteboardDataForRange(Range*, Vector<String>& pasteboardTypes, Vector<RefPtr<SharedBuffer>>& pasteboardData) = 0;
+    virtual String replacementURLForResource(Ref<SharedBuffer>&& resourceData, const String& mimeType) = 0;
     virtual void requestCandidatesForSelection(const VisibleSelection&) { }
     virtual void handleAcceptedCandidateWithSoftSpaces(TextCheckingResult) { }
 

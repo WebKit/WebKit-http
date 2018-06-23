@@ -612,7 +612,7 @@ webkit.org/b/112176 fast/css/sticky/sticky-both-sides.html [ ImageOnlyFailure Pa
 # Once the bug 112176 is fixed, potentially restore the following test expectations.
 
 # Always very slow, frequently timing out (only on bots, not locally).
-webkit.org/b/121331 [ ElCapitan ] http/tests/misc/submit-post-keygen.html [ Pass Failure Timeout ]
+webkit.org/b/121331 [ Sierra ] http/tests/misc/submit-post-keygen.html [ Pass Timeout ]
 
 # isProtocolHandlerRegistered() isn't supported yet.
 webkit.org/b/92749 fast/dom/NavigatorContentUtils/is-protocol-handler-registered.html [ Skip ]
@@ -1349,8 +1349,12 @@ media/encrypted-media/mock-MediaKeySession-load.html [ Skip ]
 media/encrypted-media/mock-MediaKeySession-remove.html [ Skip ]
 media/encrypted-media/mock-MediaKeySession-update.html [ Skip ]
 
+webkit.org/b/180430 media/encrypted-media/clearKey/clearKey-encrypted-cenc-event.html [ Skip ]
+webkit.org/b/180430 media/encrypted-media/clearKey/clearKey-encrypted-cenc-event-mse.html [ Skip ]
 webkit.org/b/180928 media/encrypted-media/clearKey/clearKey-message-cenc-event.html [ Skip ]
 webkit.org/b/180928 media/encrypted-media/clearKey/clearKey-message-cenc-event-mse.html [ Skip ]
+webkit.org/b/181594 media/encrypted-media/clearKey/clearKey-cenc-audio-playback-mse.html [ Skip ]
+webkit.org/b/181594 media/encrypted-media/clearKey/clearKey-cenc-video-playback-mse.html [ Skip ]
 
 webkit.org/b/162507 http/tests/media/hls/hls-video-resize.html [ Pass Failure ]
 
@@ -1761,3 +1765,18 @@ webkit.org/b/180560 accessibility/mac/html5-input-number.html [ Pass Failure ]
 webkit.org/b/180675 accessibility/mac/search-field-cancel-button.html [ Pass Failure ]
 
 webkit.org/b/181098 fast/workers/worker-terminate.html [ Pass Timeout ]
+
+webkit.org/b/181502 swipe/pushstate-with-manual-scrollrestoration.html [ Failure ]
+
+webkit.org/b/181479 http/tests/misc/slow-loading-animated-image.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/181494 accessibility/mac/aria-multiple-liveregions-notification.html [ Pass Failure ]
+
+# A lot of GPU hardware simply crashes with this test, since it allocates a lot of memory.
+# It is enabled on systems that instead return GL_OUT_OF_MEMORY.
+[ ElCapitan Sierra ] fast/canvas/webgl/simulated-vertexAttrib0-invalid-indicies.html [ Skip ]
+
+webkit.org/b/181100 inspector/worker/worker-recover-if-inspector-close.html [ Pass Failure ]
+
+webkit.org/b/180260 [ HighSierra ] http/wpt/resource-timing/rt-resources-per-worker.html [ Pass Failure ]
+

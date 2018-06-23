@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,8 +25,8 @@
 
 #pragma once
 
+#include "BlockDirectory.h"
 #include "JSCell.h"
-#include "MarkedAllocator.h"
 #include "MarkedBlock.h"
 #include "MarkedSpace.h"
 #include "Operations.h"
@@ -93,12 +93,12 @@ inline bool MarkedBlock::marksConveyLivenessDuringMarking(HeapVersion myMarkingV
 
 inline bool MarkedBlock::Handle::isAllocated()
 {
-    return m_allocator->isAllocated(NoLockingNecessary, this);
+    return m_directory->isAllocated(NoLockingNecessary, this);
 }
 
 ALWAYS_INLINE bool MarkedBlock::Handle::isLive(HeapVersion markingVersion, HeapVersion newlyAllocatedVersion, bool isMarking, const HeapCell* cell)
 {
-    if (allocator()->isAllocated(NoLockingNecessary, this))
+    if (directory()->isAllocated(NoLockingNecessary, this))
         return true;
     
     // We need to do this while holding the lock because marks might be stale. In that case, newly
@@ -255,7 +255,7 @@ void MarkedBlock::Handle::specializedSweep(FreeList* freeList, MarkedBlock::Hand
         }
     };
     
-    m_allocator->setIsDestructible(NoLockingNecessary, this, false);
+    m_directory->setIsDestructible(NoLockingNecessary, this, false);
     
     if (Options::useBumpAllocator()
         && emptyMode == IsEmpty
@@ -351,7 +351,7 @@ void MarkedBlock::Handle::specializedSweep(FreeList* freeList, MarkedBlock::Hand
         freeList->initializeList(head, secret, count * cellSize);
         setIsFreeListed();
     } else if (isEmpty)
-        m_allocator->setIsEmpty(NoLockingNecessary, this, true);
+        m_directory->setIsEmpty(NoLockingNecessary, this, true);
     if (false)
         dataLog("Slowly swept block ", RawPointer(&block), " with cell size ", cellSize, " and attributes ", m_attributes, ": ", pointerDump(freeList), "\n");
 }
@@ -441,7 +441,7 @@ inline MarkedBlock::Handle::SweepDestructionMode MarkedBlock::Handle::sweepDestr
 
 inline bool MarkedBlock::Handle::isEmpty()
 {
-    return m_allocator->isEmpty(NoLockingNecessary, this);
+    return m_directory->isEmpty(NoLockingNecessary, this);
 }
 
 inline MarkedBlock::Handle::EmptyMode MarkedBlock::Handle::emptyMode()
@@ -483,6 +483,12 @@ inline IterationStatus MarkedBlock::Handle::forEachLiveCell(const Functor& funct
     // happen, we will just overlook objects. I think that because of how aboutToMarkSlow() does things,
     // a race ought to mean that it just returns false when it should have returned true - but this is
     // something that would have to be verified carefully.
+    //
+    // NOTE: Some users of forEachLiveCell require that their callback is called exactly once for
+    // each live cell. We could optimize this function for those users by using a slow loop if the
+    // block is in marks-mean-live mode. That would only affect blocks that had partial survivors
+    // during the last collection and no survivors (yet) during this collection.
+    //
     // https://bugs.webkit.org/show_bug.cgi?id=180315
     
     HeapCell::Kind kind = m_attributes.cellKind;
@@ -491,7 +497,7 @@ inline IterationStatus MarkedBlock::Handle::forEachLiveCell(const Functor& funct
         if (!isLive(cell))
             continue;
 
-        if (functor(cell, kind) == IterationStatus::Done)
+        if (functor(i, cell, kind) == IterationStatus::Done)
             return IterationStatus::Done;
     }
     return IterationStatus::Continue;

@@ -82,7 +82,6 @@ private:
     void executeUndoRedo(WebPageProxy::UndoOrRedo) override;
     void accessibilityWebProcessTokenReceived(const IPC::DataReference&) override;
     bool executeSavedCommandBySelector(const String& selector) override;
-    void setDragImage(const WebCore::IntPoint& clientPosition, Ref<ShareableBitmap>&& dragImage, WebCore::DragSourceAction) override;
     void updateSecureInputState() override;
     void resetSecureInputState() override;
     void notifyInputContextAboutDiscardedComposition() override;
@@ -207,8 +206,6 @@ private:
     void didConcludeEditDataInteraction(std::optional<WebCore::TextIndicatorData>) override;
     void didChangeDataInteractionCaretRect(const WebCore::IntRect& previousCaretRect, const WebCore::IntRect& caretRect) override;
 #endif
-
-    void prepareToDragPromisedBlob(const WebCore::PromisedBlobInfo&) final;
 
     WKContentView *m_contentView;
     RetainPtr<WKEditorUndoTargetObjC> m_undoTarget;

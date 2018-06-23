@@ -26,6 +26,8 @@
 #include "config.h"
 #include "PublicKeyCredential.h"
 
+#include "JSDOMPromiseDeferred.h"
+
 namespace WebCore {
 
 PublicKeyCredential::PublicKeyCredential(const String& id)
@@ -53,4 +55,24 @@ ExceptionOr<RefPtr<BasicCredential>> PublicKeyCredential::create(const Credentia
     return Exception { NotSupportedError };
 }
 
+ArrayBuffer* PublicKeyCredential::rawId()
+{
+    return m_rawId.get();
 }
+
+AuthenticatorResponse* PublicKeyCredential::response()
+{
+    return m_response.get();
+}
+
+ExceptionOr<bool> PublicKeyCredential::getClientExtensionResults()
+{
+    return Exception { NotSupportedError };
+}
+
+void PublicKeyCredential::isUserVerifyingPlatformAuthenticatorAvailable(Ref<DeferredPromise>&& promise)
+{
+    promise->reject(Exception { NotSupportedError });
+}
+
+} // namespace WebCore

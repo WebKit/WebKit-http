@@ -101,6 +101,12 @@ std::optional<ServiceWorkerClientData> SWServer::serviceWorkerClientByID(const S
     return iterator->value;
 }
 
+SWServerWorker* SWServer::activeWorkerFromRegistrationID(ServiceWorkerRegistrationIdentifier identifier)
+{
+    auto* registration = m_registrationsByID.get(identifier);
+    return registration ? registration->activeWorker() : nullptr;
+}
+
 SWServerRegistration* SWServer::getRegistration(const ServiceWorkerRegistrationKey& registrationKey)
 {
     return m_registrations.get(registrationKey);
@@ -533,6 +539,11 @@ bool SWServer::runServiceWorker(ServiceWorkerIdentifier identifier)
 
     auto* connection = SWServerToContextConnection::globalServerToContextConnection();
     ASSERT(connection);
+
+    // When re-running a service worker after a context process crash, the connection identifier may have changed
+    // so we update it here.
+    worker->setContextConnectionIdentifier(connection->identifier());
+
     connection->installServiceWorkerContext(worker->contextData(), m_sessionID);
 
     return true;
@@ -550,16 +561,18 @@ void SWServer::syncTerminateWorker(SWServerWorker& worker)
 
 void SWServer::terminateWorkerInternal(SWServerWorker& worker, TerminationMode mode)
 {
-    auto* connection = SWServerToContextConnection::connectionForIdentifier(worker.contextConnectionIdentifier());
-    if (!connection) {
-        LOG_ERROR("Request to terminate a worker whose context connection does not exist");
-        return;
-    }
-
     ASSERT(m_runningOrTerminatingWorkers.get(worker.identifier()) == &worker);
-    ASSERT(!worker.isTerminating());
+    ASSERT(worker.isRunning());
 
     worker.setState(SWServerWorker::State::Terminating);
+
+    auto* connection = SWServerToContextConnection::connectionForIdentifier(worker.contextConnectionIdentifier());
+    ASSERT(connection);
+    if (!connection) {
+        LOG_ERROR("Request to terminate a worker whose context connection does not exist");
+        workerContextTerminated(worker);
+        return;
+    }
 
     switch (mode) {
     case Asynchronous:
@@ -731,7 +744,7 @@ void SWServer::unregisterServiceWorkerClient(const ClientOrigin& clientOrigin, S
         ASSERT(!iterator->value.terminateServiceWorkersTimer);
         iterator->value.terminateServiceWorkersTimer = std::make_unique<Timer>([clientOrigin, this] {
             for (auto& worker : m_runningOrTerminatingWorkers.values()) {
-                if (worker->origin() == clientOrigin)
+                if (worker->isRunning() && worker->origin() == clientOrigin)
                     terminateWorker(worker);
             }
             m_clientIdentifiersPerOrigin.remove(clientOrigin);

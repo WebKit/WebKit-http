@@ -1,3 +1,293 @@
+2018-01-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add back localized strings for Styles sidebar panels
+        https://bugs.webkit.org/show_bug.cgi?id=181748
+        <rdar://problem/36583184>
+
+        Reviewed by Brian Burg.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/ComputedStyleDetailsSidebarPanel.js:
+        (WI.ComputedStyleDetailsSidebarPanel):
+        * UserInterface/Views/RulesStyleDetailsSidebarPanel.js:
+        (WI.RulesStyleDetailsSidebarPanel):
+        * UserInterface/Views/VisualStyleDetailsSidebarPanel.js:
+        (WI.VisualStyleDetailsSidebarPanel):
+        Add back localized strings for panel titles lost in r225547.
+
+2018-01-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Super long URL string causes bad wrapping in Resources detail sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=181617
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/DetailsSection.css:
+        (.details-section > .content > .group > .row.simple > .value):
+        Set the break to all characters.
+
+2018-01-16  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Canvas tab: typing a "space" in the QuickConsole shouldn't trigger a recording
+        https://bugs.webkit.org/show_bug.cgi?id=181706
+        <rdar://problem/36558221>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CanvasOverviewContentView.js:
+        (WI.CanvasOverviewContentView):
+        (WI.CanvasOverviewContentView.prototype._handleSpace):
+
+2018-01-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Make Console's Execution Context picker stand out when it is non-default
+        https://bugs.webkit.org/show_bug.cgi?id=181628
+        <rdar://problem/36492044>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/HierarchicalPathComponent.css:
+        (.hierarchical-path-component > .selector-arrows):
+        * UserInterface/Views/HierarchicalPathComponent.js:
+        (WI.HierarchicalPathComponent.prototype.set selectorArrows):
+        Switch to SVG element so we can style the arrows.
+
+        * UserInterface/Views/QuickConsole.css:
+        (.quick-console > .navigation-bar > .hierarchical-path .execution-context):
+        (.quick-console > .navigation-bar > .hierarchical-path .execution-context .separator):
+        (.quick-console > .navigation-bar > .hierarchical-path.non-default-execution-context .execution-context):
+        (.quick-console > .navigation-bar > .hierarchical-path.non-default-execution-context .execution-context .selector-arrows):
+        Styles for the execution context picker. We hide the unused separator
+        and instead use margin so that the selected background and border don't
+        have an extra 7px on the right/end side.
+
+        * UserInterface/Views/QuickConsole.js:
+        (WI.QuickConsole.prototype._activeExecutionContextChanged):
+        Toggle the non-default class name on the path.
+
+2018-01-16  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: pressing down key should select first item from completion list when focusing on empty value
+        https://bugs.webkit.org/show_bug.cgi?id=181633
+        <rdar://problem/36501797>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/SpreadsheetTextField.js:
+        (WI.SpreadsheetTextField.prototype._updateCompletions):
+
+2018-01-16  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: Long value causes bad wrapping
+        https://bugs.webkit.org/show_bug.cgi?id=181618
+        <rdar://problem/36485175>
+
+        Reviewed by Joseph Pecoraro.
+
+        Wrap long values only when editing.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.spreadsheet-style-declaration-editor .value.editing):
+
+2018-01-16  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: clicking on the white space after the property sometimes places a blank property at the wrong index
+        https://bugs.webkit.org/show_bug.cgi?id=179585
+        <rdar://problem/35490780>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.spreadsheetStylePropertyRemoved):
+        Layout call is needed to update data-property-index attributes on the property views.
+
+2018-01-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network Tab - Export HAR Context Menu not working
+        https://bugs.webkit.org/show_bug.cgi?id=181694
+        <rdar://problem/36479197>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/NetworkTableContentView.js:
+        (WI.NetworkTableContentView.prototype.tableCellContextMenuClicked):
+        Ensure `this` works in the handler.
+
+2018-01-15  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: TabBar redesign: add context menu to TabBar for toggling available tabs
+        https://bugs.webkit.org/show_bug.cgi?id=181448
+        <rdar://problem/36383298>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Base/Main.js:
+        (WI.loaded):
+        (WI.contentLoaded):
+        Reorder production tab classes and default (open) tabs.
+        (WI.registerTabClass): Removed.
+        Not used.
+
+        * UserInterface/Base/Object.js:
+        Remove notification that is no longer used.
+
+        * UserInterface/Views/GeneralTabBarItem.js:
+        (WI.GeneralTabBarItem):
+        (WI.GeneralTabBarItem.prototype.set title):
+        (WI.GeneralTabBarItem.prototype._handleContextMenuEvent): Deleted.
+        Remove per-tab context menu (provided Close Tab and Close Other Tabs).
+
+        * UserInterface/Views/NewTabContentView.js:
+        (WI.NewTabContentView):
+
+        * UserInterface/Views/TabBar.js:
+        (WI.TabBar):
+        (WI.TabBar.prototype._handleContextMenu):
+
+        * UserInterface/Views/TabBrowser.js:
+        (WI.TabBrowser):
+        (WI.TabBrowser._handleNewTabContextMenu): Deleted.
+        No longer needed.
+
+2018-01-13  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: properties should never be semitransparent or crossed out while editing
+        https://bugs.webkit.org/show_bug.cgi?id=180793
+        <rdar://problem/36038813>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.spreadsheet-style-declaration-editor .value.editing):
+        (.spreadsheet-style-declaration-editor .property:matches(.invalid-name, .other-vendor, .overridden):not(.disabled) .content > *):
+        (.spreadsheet-style-declaration-editor .property.invalid-name:not(.disabled) .content > *):
+        (.spreadsheet-style-declaration-editor .property.invalid-value:not(.disabled) .content .value):
+        (.spreadsheet-style-declaration-editor .property.not-inherited .content > *):
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype._update):
+
+2018-01-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Drop support for iOS 7 targets
+        https://bugs.webkit.org/show_bug.cgi?id=181549
+        <rdar://problem/36444813>
+
+        Reviewed by Brian Burg.
+
+        * Versions/Inspector-iOS-7.0.json: Removed.
+        * UserInterface/Protocol/Legacy/7.0/InspectorBackendCommands.js: Removed.
+        Remove protocol snapshot and generated commands for iOS 7.
+
+        * UserInterface/Base/Main.js:
+        * UserInterface/Controllers/BreakpointPopoverController.js:
+        (WI.BreakpointPopoverController.prototype._createPopoverContent):
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager.prototype._setBreakpoint):
+        * UserInterface/Controllers/SourceMapManager.js:
+        (WI.SourceMapManager.prototype._loadAndParseSourceMap):
+        * UserInterface/Models/Instrument.js:
+        (WI.Instrument.startLegacyTimelineAgent):
+        * UserInterface/Models/ResourceTimingData.js:
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        (WI.ScriptTimelineRecord.EventType.displayName):
+        * UserInterface/Models/SourceMapResource.js:
+        (WI.SourceMapResource.prototype.requestContentFromBackend):
+        * UserInterface/Protocol/CSSObserver.js:
+        (WI.CSSObserver.prototype.regionLayoutUpdated): Deleted.
+        * UserInterface/Protocol/RemoteObject.js:
+        (WI.RemoteObject.fromPayload):
+        Remove code that was only necessary to support iOS 7.
+
+2018-01-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Support JSX (React) syntax highlighting
+        https://bugs.webkit.org/show_bug.cgi?id=181607
+        <rdar://problem/36442564>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/MIMETypeUtilities.js:
+        (WI.mimeTypeForFileExtension):
+        (WI.fileExtensionForMIMEType):
+        * UserInterface/Models/Resource.js:
+        Support the jsx extension and mime types.
+
+        * UserInterface/Main.html:
+        * Scripts/update-codemirror-resources.rb:
+        * UserInterface/External/CodeMirror/jsx.js: Added.
+        Include new mode from CodeMirror@d8926768.
+
+2018-01-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Rename "Query String" section as "Query String Parameters" for clarity
+        https://bugs.webkit.org/show_bug.cgi?id=181464
+
+        Reviewed by Darin Adler.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/ResourceHeadersContentView.js:
+        (WI.ResourceHeadersContentView.prototype.initialLayout):
+
+2018-01-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused variable in WI.DebuggerSidebarPanel
+        https://bugs.webkit.org/show_bug.cgi?id=181517
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+
+2018-01-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION(r218975): Web Inspector: Add back NavigationSidebarPanel initialization parameter used by SearchSidebarPanel (top overflow shadow)
+        https://bugs.webkit.org/show_bug.cgi?id=181518
+        <rdar://problem/36427197>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/NavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation > .overflow-shadow.top):
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WI.NavigationSidebarPanel):
+        Add back the initialization parameter still used by SearchSidebarPanel
+        and add back its implementation. There were still references to
+        dynamically update _topOverflowShadowElement in NavigationSidebarPanel.
+
+2018-01-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Incorrect check with WI.debuggableType
+        https://bugs.webkit.org/show_bug.cgi?id=181515
+        <rdar://problem/36425509>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded):
+        This moved to WI.sharedApp a while ago.
+
+2018-01-10  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Canvas tab: throttle recording slider updates
+        https://bugs.webkit.org/show_bug.cgi?id=180839
+        <rdar://problem/36057849>
+
+        Reviewed by Joseph Pecoraro
+
+        * UserInterface/Base/Utilities.js:
+        Add Object.throttle and Function.cancelThrottle. Repeated calls to a
+        function on a throttled object are delayed, so that the function isn't
+        invoked more frequently than the specified delay value.
+
+        For a description of throttling behavior see:
+          - http://www.chrislondon.co/throttling-vs-debouncing
+          - http://benalman.com/projects/jquery-throttle-debounce-plugin
+
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.RecordingContentView.prototype.updateActionIndex):
+        Throttle frequency of canvas snapshot creation to 200ms.
+        (WI.RecordingContentView.prototype.hidden):
+        Prevent trailing edge call after hiding the view.
+
 2018-01-10  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Should not try to autocomplete subsections of a string

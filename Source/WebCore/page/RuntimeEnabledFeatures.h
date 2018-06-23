@@ -220,6 +220,11 @@ public:
     void setServiceWorkerEnabled(bool isEnabled) { m_serviceWorkerEnabled = isEnabled; }
 #endif
 
+    bool fetchAPIKeepAliveEnabled() const { return m_fetchAPIKeepAliveEnabled; }
+    void setFetchAPIKeepAliveEnabled(bool isEnabled) { m_fetchAPIKeepAliveEnabled = isEnabled; }
+
+    bool spectreGadgetsEnabled() const;
+
 #if ENABLE(VIDEO)
     bool audioEnabled() const;
 #endif
@@ -275,7 +280,7 @@ private:
 
 #if ENABLE(WEB_RTC)
     bool m_isPeerConnectionEnabled { true };
-    bool m_webRTCLegacyAPIEnabled { true };
+    bool m_webRTCLegacyAPIEnabled { false };
 #endif
 
 #if ENABLE(LEGACY_CSS_VENDOR_PREFIXES)
@@ -355,6 +360,7 @@ private:
 #if ENABLE(SERVICE_WORKER)
     bool m_serviceWorkerEnabled { false };
 #endif
+    bool m_fetchAPIKeepAliveEnabled { false };
 
     bool m_inspectorAdditionsEnabled { false };
     bool m_webVREnabled { false };

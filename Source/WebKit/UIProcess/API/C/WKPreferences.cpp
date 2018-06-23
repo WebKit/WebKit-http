@@ -1416,12 +1416,12 @@ bool WKPreferencesGetPeerConnectionEnabled(WKPreferencesRef preferencesRef)
 
 void WKPreferencesSetWebRTCLegacyAPIEnabled(WKPreferencesRef preferencesRef, bool enabled)
 {
-    toImpl(preferencesRef)->setWebRTCLegacyAPIDisabled(!enabled);
+    toImpl(preferencesRef)->setWebRTCLegacyAPIEnabled(enabled);
 }
 
 bool WKPreferencesGetWebRTCLegacyAPIEnabled(WKPreferencesRef preferencesRef)
 {
-    return !toImpl(preferencesRef)->webRTCLegacyAPIDisabled();
+    return toImpl(preferencesRef)->webRTCLegacyAPIEnabled();
 }
 
 void WKPreferencesSetSpatialNavigationEnabled(WKPreferencesRef preferencesRef, bool enabled)
@@ -1752,6 +1752,16 @@ void WKPreferencesSetResourceTimingEnabled(WKPreferencesRef preferencesRef, bool
 bool WKPreferencesGetResourceTimingEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->resourceTimingEnabled();
+}
+
+void WKPreferencesSetFetchAPIKeepAliveEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setFetchAPIKeepAliveEnabled(flag);
+}
+
+bool WKPreferencesGetFetchAPIKeepAliveEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->fetchAPIKeepAliveEnabled();
 }
 
 void WKPreferencesSetSelectionPaintingWithoutSelectionGapsEnabled(WKPreferencesRef preferencesRef, bool flag)
