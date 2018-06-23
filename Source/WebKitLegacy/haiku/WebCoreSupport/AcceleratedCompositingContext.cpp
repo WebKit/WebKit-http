@@ -43,7 +43,7 @@ AcceleratedCompositingContext::AcceleratedCompositingContext(BWebView* view)
     ASSERT(m_view);
 
 #if USE(TEXTURE_MAPPER)
-    m_textureMapper = TextureMapper::create(TextureMapper::SoftwareMode);
+    m_textureMapper = TextureMapper::create();
 #endif
 }
 
