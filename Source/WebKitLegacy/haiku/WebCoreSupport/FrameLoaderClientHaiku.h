@@ -65,8 +65,8 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     void setDispatchTarget(const BMessenger& messenger);
     BWebPage* page() const;
 
-    uint64_t pageID() const final;
-    uint64_t frameID() const final;
+    std::optional<uint64_t> pageID() const final;
+    std::optional<uint64_t> frameID() const final;
     PAL::SessionID sessionID() const final;
 
     bool hasWebView() const override;

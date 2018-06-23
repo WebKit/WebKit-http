@@ -110,12 +110,12 @@ GraphicsContext& ImageBuffer::context() const
     return *m_data.m_context;
 }
 
-RefPtr<Image> ImageBuffer::sinkIntoImage(std::unique_ptr<ImageBuffer> imageBuffer, ScaleBehavior scaleBehavior)
+RefPtr<Image> ImageBuffer::sinkIntoImage(std::unique_ptr<ImageBuffer> imageBuffer, PreserveResolution preserveResolution)
 {
-    return imageBuffer->copyImage(DontCopyBackingStore, scaleBehavior);
+    return imageBuffer->copyImage(DontCopyBackingStore, preserveResolution);
 }
 
-RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavior) const
+RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, PreserveResolution) const
 {
     if (m_data.m_view)
         m_data.m_view->Sync();
@@ -403,8 +403,8 @@ void ImageBuffer::putByteArray(const Uint8ClampedArray& source, AlphaPremultipli
         rows, columns, multiplied == AlphaPremultiplication::Premultiplied);
 }
 
-// TODO: quality
-String ImageBuffer::toDataURL(const String& mimeType, std::optional<double> quality, CoordinateSystem) const
+// TODO: PreserveResolution
+String ImageBuffer::toDataURL(const String& mimeType, std::optional<double> quality, PreserveResolution) const
 {
     if (!MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType))
         return "data:,";
@@ -422,6 +422,7 @@ String ImageBuffer::toDataURL(const String& mimeType, std::optional<double> qual
 }
 
 
+// TODO: quality
 Vector<uint8_t> ImageBuffer::toData(const String& mimeType, std::optional<double> /*quality*/) const
 {
     BString mimeTypeString(mimeType);

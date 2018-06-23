@@ -51,7 +51,9 @@
 
 namespace WebCore {
 
-void setCookiesFromDOM(const NetworkStorageSession& session, const URL&, const URL& url, const String& value)
+void setCookiesFromDOM(const NetworkStorageSession& session, const URL&, const URL& url, 
+    std::optional<uint64_t>, std::optional<uint64_t>,
+    const String& value)
 {
 	BNetworkCookie* heapCookie
 		= new BNetworkCookie(value, BUrl(url));
@@ -65,7 +67,8 @@ void setCookiesFromDOM(const NetworkStorageSession& session, const URL&, const U
 }
 
 std::pair<String, bool> cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty,
-    const URL& url, IncludeSecureCookies includeSecure)
+    const URL& url, std::optional<uint64_t>, std::optional<uint64_t>,
+    IncludeSecureCookies includeSecure)
 {
 #if TRACE_COOKIE_JAR
 	printf("CookieJar: Request for %s\n", url.string().utf8().data());
@@ -100,6 +103,7 @@ std::pair<String, bool> cookiesForDOM(const NetworkStorageSession& session, cons
 }
 
 std::pair<String, bool> cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL&, const URL& url,
+    std::optional<uint64_t>, std::optional<uint64_t>,
 	IncludeSecureCookies includeSecure)
 {
 #if TRACE_COOKIE_JAR
@@ -134,7 +138,9 @@ bool cookiesEnabled(const NetworkStorageSession&)
     return true;
 }
 
-bool getRawCookies(const NetworkStorageSession&, const URL&, const URL& url, Vector<Cookie>& rawCookies)
+bool getRawCookies(const NetworkStorageSession&, const URL&, const URL& url,
+    std::optional<uint64_t>, std::optional<uint64_t>,
+    Vector<Cookie>& rawCookies)
 {
 #if TRACE_COOKIE_JAR
 	printf("CookieJar: get raw cookies for %s (NOT IMPLEMENTED)\n", url.string().utf8().data());

@@ -126,16 +126,14 @@ void FrameLoaderClientHaiku::frameLoaderDestroyed()
         // frame loader object is gone!
 }
 
-uint64_t FrameLoaderClientHaiku::pageID() const
+std::optional<uint64_t> FrameLoaderClientHaiku::pageID() const
 {
-    RELEASE_ASSERT_NOT_REACHED();
-    return 0;
+    return {};
 }
 
-uint64_t FrameLoaderClientHaiku::frameID() const
+std::optional<uint64_t> FrameLoaderClientHaiku::frameID() const
 {
-    RELEASE_ASSERT_NOT_REACHED();
-    return 0;
+    return {};
 }
 
 PAL::SessionID FrameLoaderClientHaiku::sessionID() const
