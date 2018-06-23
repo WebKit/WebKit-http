@@ -2318,8 +2318,12 @@ void Session::performActions(Vector<Vector<Action>>&& actionsByTick, Function<vo
                     }
                     if (currentState.pressedKey)
                         state->setString(ASCIILiteral("pressedCharKey"), currentState.pressedKey.value());
-                    if (currentState.pressedVirtualKey)
-                        state->setString(ASCIILiteral("pressedVirtualKey"), currentState.pressedVirtualKey.value());
+                    if (currentState.pressedVirtualKey) {
+                        // FIXME: support parsing and tracking multiple virtual keys.
+                        Ref<JSON::Array> virtualKeys = JSON::Array::create();
+                        virtualKeys->pushString(currentState.pressedVirtualKey.value());
+                        state->setArray(ASCIILiteral("pressedVirtualKeys"), WTFMove(virtualKeys));
+                    }
                     break;
                 }
                 states->pushObject(WTFMove(state));
