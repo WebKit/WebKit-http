@@ -61,7 +61,7 @@
 
 #if USE(OPENCDM)
 #include "CDMOpenCDM.h"
-#else
+#elif ENABLE(ENCRYPTED_MEDIA)
 #include "CDMClearKey.h"
 #endif
 
