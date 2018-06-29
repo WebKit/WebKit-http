@@ -83,7 +83,7 @@ public:
     bool ensureGstGLContext();
     GstContext* requestGLContext(const char* contextType);
 #endif
-    static bool initializeGStreamerAndRegisterWebKitElements();
+    static bool initializeGStreamerAndRegisterWebKitElements(bool shouldRegisterGStreamerElements = false);
     bool supportsMuting() const override { return true; }
     void setMuted(bool) override;
     bool muted() const;

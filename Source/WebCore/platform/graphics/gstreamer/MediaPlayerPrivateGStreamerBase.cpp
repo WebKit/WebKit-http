@@ -169,12 +169,13 @@ void registerWebKitGStreamerElements()
 #endif
 }
 
-bool MediaPlayerPrivateGStreamerBase::initializeGStreamerAndRegisterWebKitElements()
+bool MediaPlayerPrivateGStreamerBase::initializeGStreamerAndRegisterWebKitElements(bool shouldRegisterGStreamerElements)
 {
     if (!initializeGStreamer())
         return false;
 
-    registerWebKitGStreamerElements();
+    if (shouldRegisterGStreamerElements)
+        registerWebKitGStreamerElements();
 
     static bool gstDebugEnabled = false;
     if (!gstDebugEnabled) {
