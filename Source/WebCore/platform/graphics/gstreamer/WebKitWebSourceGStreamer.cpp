@@ -587,6 +587,21 @@ static gboolean webKitWebSrcQueryWithParent(GstPad* pad, GstObject* parent, GstQ
     gboolean result = FALSE;
 
     switch (GST_QUERY_TYPE(query)) {
+#if !GST_CHECK_VERSION(1, 14, 1)
+    case GST_QUERY_DURATION: {
+        // FIXME: This query handler should not be needed when we upgrade from 1.10.4
+        GstFormat format;
+
+        gst_query_parse_duration(query, &format, nullptr);
+
+        GST_DEBUG_OBJECT(src, "duration query in format %s", gst_format_get_name(format));
+        if (format == GST_FORMAT_BYTES && priv->size > 0) {
+            gst_query_set_duration(query, format, priv->size);
+            result = TRUE;
+        }
+        break;
+    }
+#endif
     case GST_QUERY_URI: {
         gst_query_set_uri(query, priv->originalURI.data());
         if (!priv->redirectedURI.isNull())
