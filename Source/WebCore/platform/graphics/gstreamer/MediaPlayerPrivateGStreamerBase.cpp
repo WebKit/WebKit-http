@@ -151,10 +151,10 @@ static const GstStreamVolumeFormat volumeFormat = GST_STREAM_VOLUME_FORMAT_CUBIC
 
 void registerWebKitGStreamerElements()
 {
+#if ENABLE(ENCRYPTED_MEDIA)
     if (!webkitGstCheckVersion(1, 6, 1))
         return;
 
-#if ENABLE(ENCRYPTED_MEDIA)
 #if USE(OPENCDM)
     GRefPtr<GstElementFactory> decryptorFactory = adoptGRef(gst_element_factory_find("webkitopencdm"));
     if (!decryptorFactory)
