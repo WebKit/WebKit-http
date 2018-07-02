@@ -242,7 +242,7 @@ void MediaPlayerPrivateGStreamer::setPlaybinURL(const URL& url)
 
 void MediaPlayerPrivateGStreamer::load(const String& urlString)
 {
-    if (!MediaPlayerPrivateGStreamerBase::initializeGStreamerAndRegisterWebKitElements())
+    if (!MediaPlayerPrivateGStreamerBase::initializeGStreamerAndRegisterWebKitElements(true))
         return;
 
     URL url(URL(), urlString);
