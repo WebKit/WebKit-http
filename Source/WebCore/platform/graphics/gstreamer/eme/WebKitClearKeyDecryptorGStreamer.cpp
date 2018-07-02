@@ -134,7 +134,6 @@ static bool webKitMediaClearKeyDecryptorSetupCipher(WebKitMediaCommonEncryptionD
             }
         }
 #endif
-    }
 
     if (!keyBuffer) {
         GST_ERROR_OBJECT(self, "Failed to find an appropriate key buffer");
@@ -205,7 +204,7 @@ static bool webKitMediaClearKeyDecryptorDecrypt(WebKitMediaCommonEncryptionDecry
     unsigned position = 0;
     unsigned sampleIndex = 0;
 
-    GST_DEBUG_OBJECT(self, "position: %d, size: %zu", position, map.size);
+    GST_DEBUG_OBJECT(self, "position: %d, size: %zu", position, mappedBuffer.size());
 
     while (position < mappedBuffer.size()) {
         guint16 nBytesClear = 0;

@@ -1277,7 +1277,7 @@ void MediaPlayerPrivateGStreamerBase::handleProtectionStructure(const GstStructu
 
     String keySystemUUIDString = keySystemUUID ? keySystemUUID.get() : "(unspecified)";
     InitData initData(mappedInitData.data(), mappedInitData.size());
-    GST_TRACE("init data encountered for %s of size %" G_GSIZE_FORMAT " with MD5 %s", keySystemUUIDString.utf8().data(), mappedInitData.size(), GStreamerEMEUtilities::initDataMD5(initData));
+    GST_TRACE("init data encountered for %s of size %" G_GSIZE_FORMAT " with MD5 %s", keySystemUUIDString.utf8().data(), mappedInitData.size(), GStreamerEMEUtilities::initDataMD5(initData).utf8().data());
     GST_MEMDUMP("init data", mappedInitData.data(), mappedInitData.size());
 
     RunLoop::main().dispatch([weakThis = m_weakPtrFactory.createWeakPtr(*this), keySystemUUID = keySystemUUIDString, initData] {

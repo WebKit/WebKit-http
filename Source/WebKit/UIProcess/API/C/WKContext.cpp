@@ -27,6 +27,7 @@
 #include "WKContextPrivate.h"
 
 #include "APIArray.h"
+#include "APIAutomationClient.h"
 #include "APIClient.h"
 #include "APIDownloadClient.h"
 #include "APILegacyContextHistoryClient.h"
