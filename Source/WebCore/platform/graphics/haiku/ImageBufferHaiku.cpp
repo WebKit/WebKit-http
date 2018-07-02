@@ -282,6 +282,8 @@ static inline void convertToInternalData(const uint8* sourceRows, unsigned sourc
 static RefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const ImageBufferData& imageData, const IntSize& size, bool premultiplied)
 {
     RefPtr<Uint8ClampedArray> result = Uint8ClampedArray::createUninitialized(rect.width() * rect.height() * 4);
+	if (!result)
+		return nullptr;
 
     // If the destination image is larger than the source image, the outside
     // regions need to be transparent. This way is simply, although with a
