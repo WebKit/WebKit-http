@@ -80,6 +80,7 @@ void BitmapImage::destroyDecodedData(bool destroyAll)
     else {
         m_source.destroyAllDecodedData();
         m_currentFrameDecodingStatus = DecodingStatus::Invalid;
+        m_currentFrame = 0;
     }
 
     // There's no need to throw away the decoder unless we're explicitly asked
