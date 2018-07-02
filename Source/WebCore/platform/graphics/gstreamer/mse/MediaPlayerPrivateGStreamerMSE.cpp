@@ -90,24 +90,28 @@ void MediaPlayerPrivateGStreamerMSE::registerMediaEngine(MediaEngineRegistrar re
     }
 }
 
-bool initializeGStreamerAndRegisterWebKitMSEElement()
+void MediaPlayerPrivateGStreamerMSE::ensureWebKitGStreamerElements()
 {
-    if (UNLIKELY(!initializeGStreamer()))
-        return false;
-
-    registerWebKitGStreamerElements();
-
-    GST_DEBUG_CATEGORY_INIT(webkit_mse_debug, "webkitmse", 0, "WebKit MSE media player");
-
     GRefPtr<GstElementFactory> WebKitMediaSrcFactory = adoptGRef(gst_element_factory_find("webkitmediasrc"));
     if (UNLIKELY(!WebKitMediaSrcFactory))
         gst_element_register(nullptr, "webkitmediasrc", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_MEDIA_SRC);
+
+    MediaPlayerPrivateGStreamerBase::ensureWebKitGStreamerElements();
+}
+
+bool MediaPlayerPrivateGStreamerMSE::initializeGStreamer()
+{
+    if (UNLIKELY(!WebCore::initializeGStreamer()))
+        return false;
+
+    GST_DEBUG_CATEGORY_INIT(webkit_mse_debug, "webkitmse", 0, "WebKit MSE media player");
+
     return true;
 }
 
 bool MediaPlayerPrivateGStreamerMSE::isAvailable()
 {
-    if (UNLIKELY(!initializeGStreamerAndRegisterWebKitMSEElement()))
+    if (UNLIKELY(!MediaPlayerPrivateGStreamerMSE::initializeGStreamer()))
         return false;
 
     GRefPtr<GstElementFactory> factory = adoptGRef(gst_element_factory_find("playbin"));
@@ -148,8 +152,10 @@ void MediaPlayerPrivateGStreamerMSE::load(const String& urlString)
         return;
     }
 
-    if (UNLIKELY(!initializeGStreamerAndRegisterWebKitMSEElement()))
+    if (UNLIKELY(!MediaPlayerPrivateGStreamerMSE::initializeGStreamer()))
         return;
+
+    MediaPlayerPrivateGStreamerMSE::ensureWebKitGStreamerElements();
 
     if (!m_playbackPipeline)
         m_playbackPipeline = PlaybackPipeline::create();
@@ -747,11 +753,11 @@ void MediaPlayerPrivateGStreamerMSE::durationChanged()
     }
 }
 
-static HashSet<String, ASCIICaseInsensitiveHash>& mimeTypeCache()
+HashSet<String, ASCIICaseInsensitiveHash>& MediaPlayerPrivateGStreamerMSE::mimeTypeCache()
 {
     static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash>> cache = []()
     {
-        initializeGStreamerAndRegisterWebKitMSEElement();
+        MediaPlayerPrivateGStreamerMSE::initializeGStreamer();
         HashSet<String, ASCIICaseInsensitiveHash> set;
         const char* mimeTypes[] = {
             "video/mp4",
@@ -768,7 +774,7 @@ static HashSet<String, ASCIICaseInsensitiveHash>& mimeTypeCache()
 
 void MediaPlayerPrivateGStreamerMSE::getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>& types)
 {
-    types = mimeTypeCache();
+    types = MediaPlayerPrivateGStreamerMSE::mimeTypeCache();
 }
 
 void MediaPlayerPrivateGStreamerMSE::trackDetected(RefPtr<AppendPipeline> appendPipeline, RefPtr<WebCore::TrackPrivateBase> newTrack, bool firstTrackDetected)
@@ -795,7 +801,7 @@ const static HashSet<AtomicString>& codecSet()
 {
     static NeverDestroyed<HashSet<AtomicString>> codecTypes = []()
     {
-        MediaPlayerPrivateGStreamerBase::initializeGStreamerAndRegisterWebKitElements();
+        MediaPlayerPrivateGStreamerBase::initializeGStreamer();
         HashSet<AtomicString> set;
 
 #if PLATFORM(BCM_NEXUS) || PLATFORM(BROADCOM)
@@ -952,7 +958,7 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerMSE::supportsType(const Med
         return result;
 
     // Spec says we should not return "probably" if the codecs string is empty.
-    if (mimeTypeCache().contains(containerType)) {
+    if (MediaPlayerPrivateGStreamerMSE::mimeTypeCache().contains(containerType)) {
         Vector<String> codecs = parameters.type.codecs();
         if (codecs.isEmpty())
             result = MediaPlayer::MayBeSupported;

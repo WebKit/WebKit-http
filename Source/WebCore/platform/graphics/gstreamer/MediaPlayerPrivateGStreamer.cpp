@@ -115,7 +115,7 @@ void MediaPlayerPrivateGStreamer::registerMediaEngine(MediaEngineRegistrar regis
 
 bool MediaPlayerPrivateGStreamer::isAvailable()
 {
-    if (!MediaPlayerPrivateGStreamerBase::initializeGStreamerAndRegisterWebKitElements())
+    if (!MediaPlayerPrivateGStreamerBase::initializeGStreamer())
         return false;
 
     GRefPtr<GstElementFactory> factory = adoptGRef(gst_element_factory_find("playbin"));
@@ -242,8 +242,10 @@ void MediaPlayerPrivateGStreamer::setPlaybinURL(const URL& url)
 
 void MediaPlayerPrivateGStreamer::load(const String& urlString)
 {
-    if (!MediaPlayerPrivateGStreamerBase::initializeGStreamerAndRegisterWebKitElements())
+    if (!MediaPlayerPrivateGStreamerBase::initializeGStreamer())
         return;
+
+    MediaPlayerPrivateGStreamerBase::ensureWebKitGStreamerElements();
 
     URL url(URL(), urlString);
     if (url.isBlankURL())
@@ -1953,7 +1955,7 @@ static HashSet<String, ASCIICaseInsensitiveHash>& mimeTypeSet()
 {
     static NeverDestroyed<HashSet<String, ASCIICaseInsensitiveHash>> mimeTypes = []()
     {
-        MediaPlayerPrivateGStreamerBase::initializeGStreamerAndRegisterWebKitElements();
+        MediaPlayerPrivateGStreamerBase::initializeGStreamer();
         HashSet<String, ASCIICaseInsensitiveHash> set;
 
 #if PLATFORM(BCM_NEXUS) || PLATFORM(BROADCOM)
