@@ -90,13 +90,12 @@ void MediaPlayerPrivateGStreamerMSE::registerMediaEngine(MediaEngineRegistrar re
     }
 }
 
-bool initializeGStreamerAndRegisterWebKitMSEElement(bool shouldRegisterGStreamerElements = false)
+bool initializeGStreamerAndRegisterWebKitMSEElement()
 {
     if (UNLIKELY(!initializeGStreamer()))
         return false;
 
-    if (shouldRegisterGStreamerElements)
-        registerWebKitGStreamerElements();
+    registerWebKitGStreamerElements();
 
     GST_DEBUG_CATEGORY_INIT(webkit_mse_debug, "webkitmse", 0, "WebKit MSE media player");
 
@@ -149,7 +148,7 @@ void MediaPlayerPrivateGStreamerMSE::load(const String& urlString)
         return;
     }
 
-    if (UNLIKELY(!initializeGStreamerAndRegisterWebKitMSEElement(true)))
+    if (UNLIKELY(!initializeGStreamerAndRegisterWebKitMSEElement()))
         return;
 
     if (!m_playbackPipeline)
