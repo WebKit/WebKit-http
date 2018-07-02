@@ -23,21 +23,24 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// FIXME: This should include SVGImageElement.
-#if defined(ENABLE_VIDEO) && ENABLE_VIDEO
-typedef (HTMLImageElement or HTMLVideoElement or HTMLCanvasElement or ImageBitmap) CanvasImageSource;
-#else
-typedef (HTMLImageElement or HTMLCanvasElement or ImageBitmap) CanvasImageSource;
-#endif
+#pragma once
 
-[
-    NoInterfaceObject,
-    Exposed=(Window,Worker)
-] interface CanvasDrawImage {
-    // FIXME: All the unrestricted float arguments below should be unrestricted doubles.
+#include <wtf/Optional.h>
 
-    // drawing images
-    [MayThrowException] void drawImage(CanvasImageSource image, unrestricted double dx, unrestricted double dy);
-    [MayThrowException] void drawImage(CanvasImageSource image, unrestricted double dx, unrestricted double dy, unrestricted double dw, unrestricted double dh);
-    [MayThrowException] void drawImage(CanvasImageSource image, unrestricted double sx, unrestricted double sy, unrestricted double sw, unrestricted double sh, unrestricted double dx, unrestricted double dy, unrestricted double dw, unrestricted double dh);
+namespace WebCore {
+
+struct ImageBitmapOptions {
+    enum class Orientation { None, FlipY };
+    enum class PremultiplyAlpha { None, Premultiply, Default };
+    enum class ColorSpaceConversion { None, Default };
+    enum class ResizeQuality { Pixelated, Low, Medium, High };
+
+    Orientation imageOrientation { Orientation::None };
+    PremultiplyAlpha premultiplyAlpha { PremultiplyAlpha::Default };
+    ColorSpaceConversion colorSpaceConversion { ColorSpaceConversion::Default };
+    std::optional<unsigned> resizeWidth;
+    std::optional<unsigned> resizeHeight;
+    ResizeQuality resizeQuality { ResizeQuality::Low };
 };
+
+}

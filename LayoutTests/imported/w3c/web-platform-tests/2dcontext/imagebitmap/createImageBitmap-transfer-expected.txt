@@ -1,0 +1,17 @@
+CONSOLE MESSAGE: Unhandled Promise Rejection: [object Event]
+CONSOLE MESSAGE: Unhandled Promise Rejection: [object Event]
+
+Harness Error (FAIL), message = undefined
+
+PASS Transfer ImageBitmap created from an HTMLCanvasElement 
+FAIL Transfer ImageBitmap created from an HTMLVideoElement promise_test: Unhandled rejection with value: object "[object Event]"
+FAIL Transfer ImageBitmap created from an HTMLVideoElement from a data URL promise_test: Unhandled rejection with value: object "[object Event]"
+PASS Transfer ImageBitmap created from a bitmap HTMLImageElement 
+PASS Transfer ImageBitmap created from a vector HTMLImageElement 
+FAIL Transfer ImageBitmap created from a bitmap SVGImageElement promise_test: Unhandled rejection with value: object "TypeError: Type error"
+FAIL Transfer ImageBitmap created from a vector SVGImageElement promise_test: Unhandled rejection with value: object "TypeError: Type error"
+FAIL Transfer ImageBitmap created from an OffscreenCanvas promise_test: Unhandled rejection with value: object "ReferenceError: Can't find variable: OffscreenCanvas"
+FAIL Transfer ImageBitmap created from an ImageData promise_test: Unhandled rejection with value: object "TypeError: createImageBitmap with ImageData is not implemented"
+PASS Transfer ImageBitmap created from an ImageBitmap 
+PASS Transfer ImageBitmap created from a Blob 
+

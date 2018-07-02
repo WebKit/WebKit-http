@@ -58,6 +58,7 @@ class GraphicsContext;
 class HTMLCanvasElement;
 class HTMLImageElement;
 class HTMLVideoElement;
+class ImageBitmap;
 class ImageData;
 class Path2D;
 class TextMetrics;
@@ -66,8 +67,10 @@ struct DOMMatrix2DInit;
 
 #if ENABLE(VIDEO)
 using CanvasImageSource = Variant<RefPtr<HTMLImageElement>, RefPtr<HTMLVideoElement>, RefPtr<HTMLCanvasElement>>;
+using CanvasImageSourceWithBitmap = Variant<RefPtr<HTMLImageElement>, RefPtr<HTMLVideoElement>, RefPtr<HTMLCanvasElement>, RefPtr<ImageBitmap>>;
 #else
 using CanvasImageSource = Variant<RefPtr<HTMLImageElement>, RefPtr<HTMLCanvasElement>>;
+using CanvasImageSourceWithBitmap = Variant<RefPtr<HTMLImageElement>, RefPtr<HTMLCanvasElement>, RefPtr<ImageBitmap>>;
 #endif
 
 class CanvasRenderingContext2D final : public CanvasRenderingContext, public CanvasPath {
@@ -165,9 +168,9 @@ public:
 
     void clearShadow();
 
-    ExceptionOr<void> drawImage(CanvasImageSource&&, float dx, float dy);
-    ExceptionOr<void> drawImage(CanvasImageSource&&, float dx, float dy, float dw, float dh);
-    ExceptionOr<void> drawImage(CanvasImageSource&&, float sx, float sy, float sw, float sh, float dx, float dy, float dw, float dh);
+    ExceptionOr<void> drawImage(CanvasImageSourceWithBitmap&&, float dx, float dy);
+    ExceptionOr<void> drawImage(CanvasImageSourceWithBitmap&&, float dx, float dy, float dw, float dh);
+    ExceptionOr<void> drawImage(CanvasImageSourceWithBitmap&&, float sx, float sy, float sw, float sh, float dx, float dy, float dw, float dh);
 
     void drawImageFromRect(HTMLImageElement&, float sx = 0, float sy = 0, float sw = 0, float sh = 0, float dx = 0, float dy = 0, float dw = 0, float dh = 0, const String& compositeOperation = emptyString());
 
@@ -343,6 +346,7 @@ private:
 #if ENABLE(VIDEO)
     ExceptionOr<void> drawImage(HTMLVideoElement&, const FloatRect& srcRect, const FloatRect& dstRect);
 #endif
+    ExceptionOr<void> drawImage(ImageBitmap&, const FloatRect& srcRect, const FloatRect& dstRect);
 
     void drawTextInternal(const String& text, float x, float y, bool fill, std::optional<float> maxWidth = std::nullopt);
 

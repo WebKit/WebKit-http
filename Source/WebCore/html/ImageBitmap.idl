@@ -23,21 +23,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// FIXME: This should include SVGImageElement.
-#if defined(ENABLE_VIDEO) && ENABLE_VIDEO
-typedef (HTMLImageElement or HTMLVideoElement or HTMLCanvasElement or ImageBitmap) CanvasImageSource;
-#else
-typedef (HTMLImageElement or HTMLCanvasElement or ImageBitmap) CanvasImageSource;
-#endif
-
 [
-    NoInterfaceObject,
-    Exposed=(Window,Worker)
-] interface CanvasDrawImage {
-    // FIXME: All the unrestricted float arguments below should be unrestricted doubles.
-
-    // drawing images
-    [MayThrowException] void drawImage(CanvasImageSource image, unrestricted double dx, unrestricted double dy);
-    [MayThrowException] void drawImage(CanvasImageSource image, unrestricted double dx, unrestricted double dy, unrestricted double dw, unrestricted double dh);
-    [MayThrowException] void drawImage(CanvasImageSource image, unrestricted double sx, unrestricted double sy, unrestricted double sw, unrestricted double sh, unrestricted double dx, unrestricted double dy, unrestricted double dw, unrestricted double dh);
+    EnabledAtRuntime=ImageBitmapOffscreenCanvas,
+    Exposed=(Window,Worker),
+    ImplementationLacksVTable
+] interface ImageBitmap {
+    readonly attribute unsigned long width;
+    readonly attribute unsigned long height;
+    void close();
 };
+

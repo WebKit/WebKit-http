@@ -47,6 +47,7 @@
 #include "FloatQuad.h"
 #include "HTMLImageElement.h"
 #include "HTMLVideoElement.h"
+#include "ImageBitmap.h"
 #include "ImageBuffer.h"
 #include "ImageData.h"
 #include "Path2D.h"
@@ -1422,6 +1423,11 @@ static inline FloatSize size(HTMLCanvasElement& canvasElement)
     return canvasElement.size();
 }
 
+static inline FloatSize size(ImageBitmap& imageBitmap)
+{
+    return FloatSize { static_cast<float>(imageBitmap.width()), static_cast<float>(imageBitmap.height()) };
+}
+
 #if ENABLE(VIDEO)
 
 static inline FloatSize size(HTMLVideoElement& video)
@@ -1442,7 +1448,7 @@ static inline FloatRect normalizeRect(const FloatRect& rect)
         std::max(rect.height(), -rect.height()));
 }
 
-ExceptionOr<void> CanvasRenderingContext2D::drawImage(CanvasImageSource&& image, float dx, float dy)
+ExceptionOr<void> CanvasRenderingContext2D::drawImage(CanvasImageSourceWithBitmap&& image, float dx, float dy)
 {
     return WTF::switchOn(image,
         [&] (RefPtr<HTMLImageElement>& imageElement) -> ExceptionOr<void> {
@@ -1457,7 +1463,7 @@ ExceptionOr<void> CanvasRenderingContext2D::drawImage(CanvasImageSource&& image,
     );
 }
 
-ExceptionOr<void> CanvasRenderingContext2D::drawImage(CanvasImageSource&& image, float dx, float dy, float dw, float dh)
+ExceptionOr<void> CanvasRenderingContext2D::drawImage(CanvasImageSourceWithBitmap&& image, float dx, float dy, float dw, float dh)
 {
     return WTF::switchOn(image,
         [&] (auto& element) -> ExceptionOr<void> {
@@ -1467,7 +1473,7 @@ ExceptionOr<void> CanvasRenderingContext2D::drawImage(CanvasImageSource&& image,
     );
 }
 
-ExceptionOr<void> CanvasRenderingContext2D::drawImage(CanvasImageSource&& image, float sx, float sy, float sw, float sh, float dx, float dy, float dw, float dh)
+ExceptionOr<void> CanvasRenderingContext2D::drawImage(CanvasImageSourceWithBitmap&& image, float sx, float sy, float sw, float sh, float dx, float dy, float dw, float dh)
 {
     return WTF::switchOn(image,
         [&] (auto& element) -> ExceptionOr<void> {
@@ -1663,6 +1669,49 @@ ExceptionOr<void> CanvasRenderingContext2D::drawImage(HTMLVideoElement& video, c
 }
 
 #endif
+
+ExceptionOr<void> CanvasRenderingContext2D::drawImage(ImageBitmap& imageBitmap, const FloatRect& srcRect, const FloatRect& dstRect)
+{
+    if (!imageBitmap.width() || !imageBitmap.height())
+        return Exception { InvalidStateError };
+
+    if (!srcRect.width() || !srcRect.height())
+        return Exception { IndexSizeError };
+
+    FloatRect srcBitmapRect = FloatRect(FloatPoint(), FloatSize(imageBitmap.width(), imageBitmap.height()));
+
+    if (!srcBitmapRect.contains(normalizeRect(srcRect)) || !dstRect.width() || !dstRect.height())
+        return { };
+
+    GraphicsContext* c = drawingContext();
+    if (!c)
+        return { };
+    if (!state().hasInvertibleTransform)
+        return { };
+
+    ImageBuffer* buffer = imageBitmap.buffer();
+    if (!buffer)
+        return { };
+
+    checkOrigin(&imageBitmap);
+
+    if (rectContainsCanvas(dstRect)) {
+        c->drawImageBuffer(*buffer, dstRect, srcRect, ImagePaintingOptions(state().globalComposite, state().globalBlend));
+        didDrawEntireCanvas();
+    } else if (isFullCanvasCompositeMode(state().globalComposite)) {
+        fullCanvasCompositedDrawImage(*buffer, dstRect, srcRect, state().globalComposite);
+        didDrawEntireCanvas();
+    } else if (state().globalComposite == CompositeCopy) {
+        clearCanvas();
+        c->drawImageBuffer(*buffer, dstRect, srcRect, ImagePaintingOptions(state().globalComposite, state().globalBlend));
+        didDrawEntireCanvas();
+    } else {
+        c->drawImageBuffer(*buffer, dstRect, srcRect, ImagePaintingOptions(state().globalComposite, state().globalBlend));
+        didDraw(dstRect);
+    }
+
+    return { };
+}
 
 void CanvasRenderingContext2D::drawImageFromRect(HTMLImageElement& imageElement, float sx, float sy, float sw, float sh, float dx, float dy, float dw, float dh, const String& compositeOperation)
 {

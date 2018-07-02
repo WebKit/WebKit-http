@@ -81,6 +81,7 @@ public:
     virtual ~Image();
     
     WEBCORE_EXPORT static Ref<Image> loadPlatformResource(const char* name);
+    WEBCORE_EXPORT static RefPtr<Image> create(ImageObserver&);
     WEBCORE_EXPORT static bool supportsType(const String&);
 
     virtual bool isBitmapImage() const { return false; }

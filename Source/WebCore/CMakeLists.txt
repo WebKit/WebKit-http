@@ -680,6 +680,8 @@ set(WebCore_NON_SVG_IDL_FILES
     html/HTMLUListElement.idl
     html/HTMLUnknownElement.idl
     html/HTMLVideoElement.idl
+    html/ImageBitmap.idl
+    html/ImageBitmapOptions.idl
     html/ImageData.idl
     html/MediaController.idl
     html/MediaError.idl
@@ -1941,6 +1943,7 @@ set(WebCore_SOURCES
     html/HTMLVideoElement.cpp
     html/HTMLWBRElement.cpp
     html/HiddenInputType.cpp
+    html/ImageBitmap.cpp
     html/ImageData.cpp
     html/ImageDocument.cpp
     html/ImageInputType.cpp

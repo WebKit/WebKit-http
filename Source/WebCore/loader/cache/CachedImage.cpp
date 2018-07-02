@@ -325,18 +325,12 @@ inline void CachedImage::createImage()
 
     m_imageObserver = CachedImageObserver::create(*this);
 
-    if (m_response.mimeType() == "image/svg+xml") {
-        auto svgImage = SVGImage::create(*m_imageObserver);
-        m_svgImageCache = std::make_unique<SVGImageCache>(svgImage.ptr());
-        m_image = WTFMove(svgImage);
-#if USE(CG) && !USE(WEBKIT_IMAGE_DECODERS)
-    } else if (m_response.mimeType() == "application/pdf") {
-        m_image = PDFDocumentImage::create(m_imageObserver.get());
-#endif
-    } else
-        m_image = BitmapImage::create(m_imageObserver.get());
+    m_image = Image::create(*m_imageObserver);
 
     if (m_image) {
+        if (is<SVGImage>(*m_image))
+            m_svgImageCache = std::make_unique<SVGImageCache>(&downcast<SVGImage>(*m_image));
+
         // Send queued container size requests.
         if (m_image->usesContainerSize()) {
             for (auto& request : m_pendingContainerContextRequests)

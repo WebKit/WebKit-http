@@ -23,21 +23,16 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// FIXME: This should include SVGImageElement.
-#if defined(ENABLE_VIDEO) && ENABLE_VIDEO
-typedef (HTMLImageElement or HTMLVideoElement or HTMLCanvasElement or ImageBitmap) CanvasImageSource;
-#else
-typedef (HTMLImageElement or HTMLCanvasElement or ImageBitmap) CanvasImageSource;
-#endif
+enum ImageOrientation { "none", "flipY" };
+enum PremultiplyAlpha { "none", "premultiply", "default" };
+enum ColorSpaceConversion { "none", "default" };
+enum ResizeQuality { "pixelated", "low", "medium", "high" };
 
-[
-    NoInterfaceObject,
-    Exposed=(Window,Worker)
-] interface CanvasDrawImage {
-    // FIXME: All the unrestricted float arguments below should be unrestricted doubles.
-
-    // drawing images
-    [MayThrowException] void drawImage(CanvasImageSource image, unrestricted double dx, unrestricted double dy);
-    [MayThrowException] void drawImage(CanvasImageSource image, unrestricted double dx, unrestricted double dy, unrestricted double dw, unrestricted double dh);
-    [MayThrowException] void drawImage(CanvasImageSource image, unrestricted double sx, unrestricted double sy, unrestricted double sw, unrestricted double sh, unrestricted double dx, unrestricted double dy, unrestricted double dw, unrestricted double dh);
+dictionary ImageBitmapOptions {
+    ImageOrientation imageOrientation = "none";
+    PremultiplyAlpha premultiplyAlpha = "default";
+    ColorSpaceConversion colorSpaceConversion = "default";
+    [EnforceRange] unsigned long resizeWidth;
+    [EnforceRange] unsigned long resizeHeight;
+    ResizeQuality resizeQuality = "low";
 };
