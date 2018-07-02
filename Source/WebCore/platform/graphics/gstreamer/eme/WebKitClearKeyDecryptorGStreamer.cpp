@@ -152,7 +152,7 @@ static bool webKitMediaClearKeyDecryptorSetupCipher(WebKitMediaCommonEncryptionD
         return false;
     }
 
-    ASSERT(keyBufferMapped.size() == CLEARKEY_SIZE);
+    ASSERT(mappedKeyBuffer.size() == CLEARKEY_SIZE);
     error = gcry_cipher_setkey(priv->handle, mappedKeyBuffer.data(), mappedKeyBuffer.size());
     if (error) {
         GST_ERROR_OBJECT(self, "gcry_cipher_setkey failed: %s", gpg_strerror(error));
