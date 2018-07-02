@@ -1,3 +1,13 @@
+2018-07-02  Alicia Boya García  <aboya@igalia.com>
+
+        [Linux] Fix memory leak in WTF::forEachLine()
+        https://bugs.webkit.org/show_bug.cgi?id=187174
+
+        Reviewed by Žan Doberšek.
+
+        * wtf/linux/MemoryFootprintLinux.cpp:
+        (WTF::forEachLine):
+
 2017-11-29  Stanislav Ocovaj  <stanislav.ocovaj@rt-rk.com>
 
         [DFG][MIPS] Enable DFG JIT on MIPS.
