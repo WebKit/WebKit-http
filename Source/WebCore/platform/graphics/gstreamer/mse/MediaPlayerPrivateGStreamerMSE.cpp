@@ -441,6 +441,12 @@ void MediaPlayerPrivateGStreamerMSE::setReadyState(MediaPlayer::ReadyState ready
     if (readyState == m_readyState)
         return;
 
+    if (readyState > m_readyState && GST_STATE_CHANGE_FAILURE == gst_element_get_state(m_pipeline.get(), 0, 0, 0))
+    {
+        GST_DEBUG("Skip reaction to ready state change due pipeline failure");
+        return;
+    }
+
     GST_DEBUG("Ready State Changed manually from %u to %u", m_readyState, readyState);
     MediaPlayer::ReadyState oldReadyState = m_readyState;
     m_readyState = readyState;
