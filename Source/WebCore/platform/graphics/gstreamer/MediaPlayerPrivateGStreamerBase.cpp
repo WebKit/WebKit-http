@@ -149,8 +149,14 @@ static const GstStreamVolumeFormat volumeFormat = GST_STREAM_VOLUME_FORMAT_LINEA
 static const GstStreamVolumeFormat volumeFormat = GST_STREAM_VOLUME_FORMAT_CUBIC;
 #endif
 
-void registerWebKitGStreamerElements()
+void MediaPlayerPrivateGStreamerBase::ensureWebKitGStreamerElements()
 {
+#if USE(GSTREAMER_WEBKIT_HTTP_SRC)
+    GRefPtr<GstElementFactory> srcFactory = adoptGRef(gst_element_factory_find("webkitwebsrc"));
+    if (!srcFactory)
+        gst_element_register(0, "webkitwebsrc", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_WEB_SRC);
+#endif
+
 #if ENABLE(ENCRYPTED_MEDIA)
     if (!webkitGstCheckVersion(1, 6, 1))
         return;
@@ -169,25 +175,16 @@ void registerWebKitGStreamerElements()
 #endif
 }
 
-bool MediaPlayerPrivateGStreamerBase::initializeGStreamerAndRegisterWebKitElements(bool shouldRegisterGStreamerElements)
+bool MediaPlayerPrivateGStreamerBase::initializeGStreamer()
 {
-    if (!initializeGStreamer())
+    if (!WebCore::initializeGStreamer())
         return false;
-
-    if (shouldRegisterGStreamerElements)
-        registerWebKitGStreamerElements();
 
     static bool gstDebugEnabled = false;
     if (!gstDebugEnabled) {
         GST_DEBUG_CATEGORY_INIT(webkit_media_player_debug, "webkitmediaplayer", 0, "WebKit media player");
         gstDebugEnabled = true;
     }
-
-#if USE(GSTREAMER_WEBKIT_HTTP_SRC)
-    GRefPtr<GstElementFactory> srcFactory = adoptGRef(gst_element_factory_find("webkitwebsrc"));
-    if (!srcFactory)
-        gst_element_register(0, "webkitwebsrc", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_WEB_SRC);
-#endif
 
     return true;
 }

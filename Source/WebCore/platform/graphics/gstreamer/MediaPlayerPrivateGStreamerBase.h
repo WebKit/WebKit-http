@@ -63,8 +63,6 @@ class TextureMapperPlatformLayerProxy;
 class PlayreadySession;
 #endif
 
-void registerWebKitGStreamerElements();
-
 class MediaPlayerPrivateGStreamerBase : public MediaPlayerPrivateInterface
 #if USE(TEXTURE_MAPPER_GL)
     , public PlatformLayer
@@ -83,7 +81,8 @@ public:
     bool ensureGstGLContext();
     GstContext* requestGLContext(const char* contextType);
 #endif
-    static bool initializeGStreamerAndRegisterWebKitElements(bool shouldRegisterGStreamerElements = false);
+    static bool initializeGStreamer();
+    static void ensureWebKitGStreamerElements();
     bool supportsMuting() const override { return true; }
     void setMuted(bool) override;
     bool muted() const;

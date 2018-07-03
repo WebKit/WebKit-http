@@ -96,6 +96,9 @@ public:
 private:
     static void getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>&);
     static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
+    static bool initializeGStreamer();
+    static void ensureWebKitGStreamerElements();
+    static HashSet<String, ASCIICaseInsensitiveHash>& mimeTypeCache();
 
     static bool isAvailable();
 
