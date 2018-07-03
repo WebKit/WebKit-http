@@ -69,6 +69,7 @@ void WKWebAutomationSessionSetClient(WKWebAutomationSessionRef session, const WK
             if (auto* page = m_client.requestNewPage(toAPI(&session), m_client.base.clientInfo)) {
                 WKPageSetControlledByAutomation(page, true);
                 completionHandler(toImpl(page));
+                return;
             }
             completionHandler(nullptr);
         }
