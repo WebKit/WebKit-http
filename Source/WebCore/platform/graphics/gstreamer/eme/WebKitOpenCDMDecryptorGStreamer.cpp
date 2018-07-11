@@ -141,11 +141,11 @@ static void webKitMediaOpenCDMDecryptorFinalize(GObject* object)
 static SessionResult webKitMediaOpenCDMDecryptorResetSessionFromInitDataIfNeeded(WebKitMediaCommonEncryptionDecrypt* self, const WebCore::InitData& initData)
 {
     WebKitOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(WEBKIT_OPENCDM_DECRYPT(self));
+
+    LockHolder locker(priv->m_mutex);
     RefPtr<WebCore::CDMInstance> cdmInstance = webKitMediaCommonEncryptionDecryptCDMInstance(self);
     ASSERT(cdmInstance && is<WebCore::CDMInstanceOpenCDM>(*cdmInstance));
     auto& cdmInstanceOpenCDM = downcast<WebCore::CDMInstanceOpenCDM>(*cdmInstance);
-
-    LockHolder locker(priv->m_mutex);
 
     SessionResult returnValue = InvalidSession;
     String session = cdmInstanceOpenCDM.sessionIdByInitData(initData);
