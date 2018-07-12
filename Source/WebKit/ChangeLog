@@ -1,3 +1,492 @@
+2018-06-18  Karl Leplat  <karl.leplat_ext@softathome.com>
+
+        [Threaded paintingEngine] Fix rendering glitches
+        https://bugs.webkit.org/show_bug.cgi?id=186764
+
+        Reviewed by Žan Doberšek.
+
+        * Shared/CoordinatedGraphics/CoordinatedBackingStore.cpp:
+        (WebKit::CoordinatedBackingStoreTile::swapBuffers):
+        We call Nicosia::Buffer function waitUntilPaintingComplete()
+        in order to synchronize of using Nicosia:buffer between MainThread
+        and ThreadedCompositor.
+
+
+2018-03-28  Miguel Gomez  <magomez@igalia.com>
+
+        [GTK][WPE] Remove UpdateAtlas
+        https://bugs.webkit.org/show_bug.cgi?id=184042
+
+        Reviewed by Žan Doberšek.
+
+        Remove all the code related to UpdateAtlas handling.
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp:
+        (WebKit::CoordinatedGraphicsScene::updateTilesIfNeeded):
+        (WebKit::CoordinatedGraphicsScene::commitSceneState):
+        (WebKit::CoordinatedGraphicsScene::purgeGLResources):
+        (WebKit::CoordinatedGraphicsScene::syncUpdateAtlases): Deleted.
+        (WebKit::CoordinatedGraphicsScene::createUpdateAtlas): Deleted.
+        (WebKit::CoordinatedGraphicsScene::removeUpdateAtlas): Deleted.
+        (WebKit::CoordinatedGraphicsScene::releaseUpdateAtlases): Deleted.
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.h:
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp:
+        (WebKit::ThreadedCompositor::renderLayerTree):
+        (WebKit::ThreadedCompositor::releaseUpdateAtlases): Deleted.
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.h:
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::delegatedScrollRequested):
+        (WebKit::WebChromeClient::resetUpdateAtlasForTesting): Deleted.
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        * WebProcess/WebPage/AcceleratedDrawingArea.cpp:
+        (WebKit::AcceleratedDrawingArea::resetUpdateAtlasForTesting): Deleted.
+        * WebProcess/WebPage/AcceleratedDrawingArea.h:
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp:
+        (WebKit::CompositingCoordinator::CompositingCoordinator):
+        (WebKit::CompositingCoordinator::flushPendingLayerChanges):
+        (WebKit::CompositingCoordinator::clearPendingStateChanges):
+        (WebKit::CompositingCoordinator::renderNextFrame):
+        (WebKit::CompositingCoordinator::purgeBackingStores):
+        (WebKit::CompositingCoordinator::createUpdateAtlas): Deleted.
+        (WebKit::CompositingCoordinator::removeUpdateAtlas): Deleted.
+        (WebKit::CompositingCoordinator::getCoordinatedBuffer): Deleted.
+        (): Deleted.
+        (WebKit::CompositingCoordinator::scheduleReleaseInactiveAtlases): Deleted.
+        (WebKit::CompositingCoordinator::releaseInactiveAtlasesTimerFired): Deleted.
+        (WebKit::CompositingCoordinator::releaseAtlases): Deleted.
+        (WebKit::CompositingCoordinator::clearUpdateAtlases): Deleted.
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.h:
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp:
+        (WebKit::CoordinatedLayerTreeHost::clearUpdateAtlases): Deleted.
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.h:
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp:
+        (WebKit::ThreadedCoordinatedLayerTreeHost::releaseUpdateAtlases): Deleted.
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.h:
+        * WebProcess/WebPage/DrawingArea.h:
+        * WebProcess/WebPage/LayerTreeHost.h:
+        (WebKit::LayerTreeHost::setIsDiscardable):
+
+2018-03-06  Zan Dobersek  <zdobersek@igalia.com>
+
+        CoordinatedGraphicsScene: properly limit data specific to state commit operation
+        https://bugs.webkit.org/show_bug.cgi?id=183326
+
+        Reviewed by Sergio Villar Senin.
+
+        In the process of state commit in CoordinatedGraphicsScene, the released
+        image backings and backing stores with pending updates are stored in
+        Vector and HashSet objects, respectively. Instead of these two objects
+        being member variables on the CoordinatedGraphicsScene class, keep them
+        in the CommitScope structure that's limited to the operations done in
+        the commitSceneState() method.
+
+        The two member variables are dropped, and the CommitScope object is
+        passed by reference to any helper method that needs to append either
+        kind of object to the respective container. At the end of the state
+        commit, backing stores with pending updates have those updates applied,
+        and the two containers are cleared out as the CommitScope object is
+        destroyed.
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp:
+        (WebKit::CoordinatedGraphicsScene::setLayerState):
+        (WebKit::CoordinatedGraphicsScene::prepareContentBackingStore):
+        (WebKit::CoordinatedGraphicsScene::resetBackingStoreSizeToLayerSize):
+        (WebKit::CoordinatedGraphicsScene::removeTilesIfNeeded):
+        (WebKit::CoordinatedGraphicsScene::updateTilesIfNeeded):
+        (WebKit::CoordinatedGraphicsScene::syncImageBackings):
+        (WebKit::CoordinatedGraphicsScene::updateImageBacking):
+        (WebKit::CoordinatedGraphicsScene::clearImageBackingContents):
+        (WebKit::CoordinatedGraphicsScene::removeImageBacking):
+        (WebKit::CoordinatedGraphicsScene::commitSceneState):
+        (WebKit::CoordinatedGraphicsScene::purgeGLResources):
+        (WebKit::CoordinatedGraphicsScene::removeReleasedImageBackingsIfNeeded): Deleted.
+        (WebKit::CoordinatedGraphicsScene::commitPendingBackingStoreOperations): Deleted.
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.h:
+
+2018-02-20  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Drop target GraphicsContext usage in Cairo operations
+        https://bugs.webkit.org/show_bug.cgi?id=182964
+
+        Reviewed by Carlos Garcia Campos.
+
+        The GraphicsContext parameters in various Cairo operations are not used
+        anymore, so they can be removed. Callsites are updated to reflect this.
+
+        * Shared/cairo/ShareableBitmapCairo.cpp:
+        (WebKit::ShareableBitmap::paint):
+        * WebProcess/WebCoreSupport/gtk/WebDragClientGtk.cpp:
+        (WebKit::convertCairoSurfaceToShareableBitmap):
+
+2018-01-29  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Add GraphicsContextImplCairo::createFactory() helpers
+        https://bugs.webkit.org/show_bug.cgi?id=182238
+
+        Reviewed by Carlos Garcia Campos.
+
+        Use GraphicsContextImplCairo::createFactory() helpers throughout the
+        Cairo-specific GraphicsContext constructors in the WebKit layer.
+
+        * Shared/cairo/ShareableBitmapCairo.cpp:
+        (WebKit::ShareableBitmap::createGraphicsContext):
+        * UIProcess/cairo/BackingStoreCairo.cpp:
+        (WebKit::BackingStore::incorporateUpdate):
+        * WebProcess/WebPage/gtk/WebPrintOperationGtk.cpp:
+        (WebKit::WebPrintOperationGtk::renderPage):
+
+2018-01-29  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Remove the GraphicsContext(cairo_t*) constructor
+        https://bugs.webkit.org/show_bug.cgi?id=182234
+
+        Reviewed by Carlos Garcia Campos.
+
+        Call sites of the GraphicsContext(cairo_t*) constructor are adjusted to
+        instead provide a factory function that returns a fresh
+        GraphicsContextImplCairo object, passing that cairo_t object to its
+        constructor.
+
+        * Shared/cairo/ShareableBitmapCairo.cpp:
+        (WebKit::ShareableBitmap::createGraphicsContext):
+        * UIProcess/cairo/BackingStoreCairo.cpp:
+        (WebKit::BackingStore::incorporateUpdate):
+        * WebProcess/WebPage/gtk/WebPrintOperationGtk.cpp:
+        (WebKit::WebPrintOperationGtk::renderPage):
+
+2018-01-22  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Refactor PlatformContextCairo::drawSurfaceToContext() into a Cairo operation
+        https://bugs.webkit.org/show_bug.cgi?id=181930
+
+        Reviewed by Carlos Garcia Campos.
+
+        Call sites of the PlatformContextCairo::drawSurfaceToContext() method
+        are adjusted to now call Cairo::drawSurface() and properly pass the
+        PlatformContextCairo object to the function.
+
+        * Shared/cairo/ShareableBitmapCairo.cpp:
+        (WebKit::ShareableBitmap::paint):
+        * WebProcess/WebCoreSupport/gtk/WebDragClientGtk.cpp:
+        (WebKit::convertCairoSurfaceToShareableBitmap):
+
+2018-01-17  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Don't mirror global alpha and image interpolation quality state values in PlatformContextCairo
+        https://bugs.webkit.org/show_bug.cgi?id=181725
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Shared/cairo/ShareableBitmapCairo.cpp:
+        (WebKit::ShareableBitmap::paint):
+        Adjust the PlatformContextCairo::drawSurfaceToContext() invocation.
+        * WebProcess/WebCoreSupport/gtk/WebDragClientGtk.cpp:
+        (WebKit::convertCairoSurfaceToShareableBitmap): Ditto.
+
+2018-01-17  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Use one-time ShadowBlur objects when performing shadowing
+        https://bugs.webkit.org/show_bug.cgi?id=181720
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Shared/cairo/ShareableBitmapCairo.cpp:
+        (WebKit::ShareableBitmap::paint):
+        Adjust the PlatformContextCairo::drawSurfaceToContext() invocation.
+        * WebProcess/WebCoreSupport/gtk/WebDragClientGtk.cpp:
+        (WebKit::convertCairoSurfaceToShareableBitmap): Ditto.
+
+2017-12-11  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Move UpdateAtlas, AreaAllocator into the platform layer
+        https://bugs.webkit.org/show_bug.cgi?id=180641
+
+        Reviewed by Michael Catanzaro.
+
+        Move the UpdateAtlas and AreaAllocator classes into the platform layer,
+        moving over build targets and adjust UpdateAtlas class references in
+        CompositingCoordinator.
+
+        * PlatformGTK.cmake:
+        * PlatformWPE.cmake:
+        * PlatformWin.cmake:
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.h:
+
+2017-12-06  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Introduce Nicosia::PaintingContext, add Cairo implementation
+        https://bugs.webkit.org/show_bug.cgi?id=180239
+
+        Reviewed by Michael Catanzaro.
+
+        With Nicosia::Buffer now only providing the memory area into which the
+        tile content was rasterized, we can simplify the BitmapTexture update
+        greatly -- we don't have to create a BitmapImage anymore and retrieve
+        memory pointer from the contained cairo_surface_t object. Instead, we
+        just copy to GPU the memory that Nicosia::Buffer controls.
+
+        * Shared/CoordinatedGraphics/CoordinatedBackingStore.cpp:
+        (WebKit::CoordinatedBackingStoreTile::swapBuffers):
+
+2017-11-30  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Move CoordinatedGraphicsLayer painting behind Nicosia::PaintingEngine
+        https://bugs.webkit.org/show_bug.cgi?id=180141
+
+        Reviewed by Carlos Garcia Campos.
+
+        CompositingCoordinator must implement the paintingEngine() method now
+        that the method's been added to the CoordinatedGraphicsLayerClient
+        interface. The CompositingCoordinator manages the Nicosia::PaintingEngine
+        object through the new m_paintingEngine member variable, and returns the
+        reference to this object in the paintingEngine() method.
+
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp:
+        (WebKit::CompositingCoordinator::CompositingCoordinator):
+        (WebKit::CompositingCoordinator::paintingEngine):
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.h:
+        Drop unnecessary typedefs.
+
+2017-11-29  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Rename CoordinatedBuffer to Nicosia::Buffer
+        https://bugs.webkit.org/show_bug.cgi?id=180135
+
+        Reviewed by Carlos Garcia Campos.
+
+        Adjust code to the CoordinatedBuffer -> Nicosia::Buffer transition.
+
+        * Shared/CoordinatedGraphics/CoordinatedBackingStore.cpp:
+        (WebKit::CoordinatedBackingStoreTile::setBackBuffer):
+        (WebKit::CoordinatedBackingStore::updateTile):
+        * Shared/CoordinatedGraphics/CoordinatedBackingStore.h:
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp:
+        (WebKit::CoordinatedGraphicsScene::createUpdateAtlas):
+        (WebKit::CoordinatedGraphicsScene::updateImageBacking):
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.h:
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp:
+        (WebKit::CompositingCoordinator::updateImageBacking):
+        (WebKit::CompositingCoordinator::createUpdateAtlas):
+        (WebKit::CompositingCoordinator::getCoordinatedBuffer):
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.h:
+        * WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.cpp:
+        (WebKit::UpdateAtlas::UpdateAtlas):
+        (WebKit::UpdateAtlas::getCoordinatedBuffer):
+        * WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.h:
+
+2017-11-27  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Prettify ID value handling in UpdateAtlas and UpdateAtlas::Client
+        https://bugs.webkit.org/show_bug.cgi?id=180038
+
+        Reviewed by Carlos Garcia Campos.
+
+        In the UpdateAtlas class, provide an ID type that aliases to uint32_t.
+        The m_id member variable (ex-m_ID) uses this type, and it's also now
+        used in the Client interface.
+
+        While poking around, the header is modified to use '#pragma once',
+        and m_id is moved to the more logical first position among member
+        variables.
+
+        The static ID variable is modified to use the new type, and renamed
+        to s_nextID. Comment alongside the namespace scope closure is fixed
+        to use the appropriate name.
+
+        createUpdateAtlas() and removeUpdateAtlas() methods in the
+        CompositingCoordinator class are modified to use the UpdateAtlas::ID
+        type, and the former has the second parameter changed from RefPtr<>
+        to Ref<>.
+
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp:
+        (WebKit::CompositingCoordinator::createUpdateAtlas):
+        (WebKit::CompositingCoordinator::removeUpdateAtlas):
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.h:
+        * WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.cpp:
+        (WebKit::UpdateAtlas::UpdateAtlas):
+        (WebKit::UpdateAtlas::~UpdateAtlas):
+        (WebKit::UpdateAtlas::getCoordinatedBuffer):
+        * WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.h:
+
+2017-11-27  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] CompositingCoordinator: clean up Client vtable, GraphicsLayerClient overrides
+        https://bugs.webkit.org/show_bug.cgi?id=180037
+
+        Reviewed by Carlos Garcia Campos.
+
+        Remove the CompositingCoordinator::Client::paintLayerContents() method since
+        the only implementation in CoordinatedLayerTreeHost was empty.
+
+        Subsequently, the CompositingCoordinator::paintContents() override of the
+        GraphicsLayerClient method can also be removed. The notifyAnimationStarted()
+        override is empty, just like the base method, so it's removed as well.
+
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp:
+        (WebKit::CompositingCoordinator::deviceScaleFactor const): Bring method up
+        to the notifyFlushRequired() code, since both are overrides of the
+        GraphicsLayerClient-inherited methods.
+        (WebKit::CompositingCoordinator::pageScaleFactor const): Ditto.
+        (WebKit::CompositingCoordinator::notifyAnimationStarted): Deleted.
+        (WebKit::CompositingCoordinator::paintContents): Deleted.
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.h:
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp:
+        (WebKit::CoordinatedLayerTreeHost::paintLayerContents): Deleted.
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.h:
+
+2017-11-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] CoordinatedGraphicsLayer::updateContentBuffers() should always assume a non-null CoordinatedBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=179977
+
+        Reviewed by Carlos Garcia Campos.
+
+        Make CompositingCoordinator::getCoordinatedBuffer() return a Ref<CoordinatedBuffer>
+        value. In case an UpdateAtlas with enough free area is found, its CoordinatedBuffer
+        is dereferenced into the return value. In case a new UpdateAtlas is created, the
+        returned CoordinatedBuffer pointer is asserted to be non-null and dereferenced.
+
+        The retrieved CoordinatedBuffer pointer on a newly-created UpdateAtlas should never
+        be null since the tiles are smaller in size than the UpdateAtlas area. The assert
+        is done in release configurations as well since the code in CoordinatedGraphicsLayer
+        assumes the returned pointer will be non-null, so it's just a matter of where to
+        crash first in case somehow a null value is returned.
+
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp:
+        (WebKit::CompositingCoordinator::getCoordinatedBuffer):
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.h:
+
+2017-11-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] UpdateAtlas constructor should receive an IntSize, not a dimension value
+        https://bugs.webkit.org/show_bug.cgi?id=179976
+
+        Reviewed by Carlos Garcia Campos.
+
+        Have the UpdateAtlas constructor receive an IntSize object that specifies
+        the desired size for the CoordinatedBuffer. Passing in a dimension doesn't
+        really make sense since this value isn't dynamically configurable, and
+        the only value that is passed in is already a power-of-two.
+
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp:
+        (WebKit::CompositingCoordinator::getCoordinatedBuffer):
+        * WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.cpp:
+        (WebKit::UpdateAtlas::UpdateAtlas):
+        * WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.h:
+
+2017-11-23  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Simplify CoordinatedGraphicsLayer's content buffer updates
+        https://bugs.webkit.org/show_bug.cgi?id=179972
+
+        Reviewed by Carlos Garcia Campos.
+
+        In CompositingCoordinator, add the getCoordinatedBuffer() method, replacing
+        paintToSurface(). The new method traverses the list of UpdateAtlases and
+        returns any CoordinatedBuffer object that was free to use. If none exist,
+        a new UpdateAtlas object is created, and its CoordinatedBuffer is returned.
+
+        In  UpdateAtlas, the paintOnAvailableBuffer() method is replaced with
+        getCoordinatedBuffer(). The latter allocates the necessary area but then
+        returns a reference to the CoordinatedBuffer buffer, along with the atlas ID
+        and the allocated rectangle information, and does not invoke any painting
+        operation like paintOnAvailableBuffer() did.
+
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp:
+        (WebKit::CompositingCoordinator::getCoordinatedBuffer):
+        (WebKit::CompositingCoordinator::paintToSurface): Deleted.
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.h:
+        * WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.cpp:
+        (WebKit::UpdateAtlas::getCoordinatedBuffer):
+        (WebKit::UpdateAtlas::paintOnAvailableBuffer): Deleted.
+        * WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.h:
+
+2017-11-23  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Remove relay CoordinatedBuffer::Client implementations
+        https://bugs.webkit.org/show_bug.cgi?id=179970
+
+        Reviewed by Carlos Garcia Campos.
+
+        Drop the helper UpdateAtlasSurfaceClient class and instead directly use
+        the CoordinatedBuffer's GraphicsContext to perform clip and translation
+        operations based on the allocated rectangle, to pre-fill the target rect
+        with transparent color in case the alpha channel is supported, and to
+        then invoke CoordinatedBuffer::Client::paintToSurfaceContext() method,
+        passing the GraphicsContext as the argument.
+
+        * WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.cpp:
+        (WebKit::UpdateAtlas::paintOnAvailableBuffer):
+        (): Deleted.
+
+2017-11-23  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Replace CoordinatedSurface, ThreadSafeCoordinatedSurface with CoordinatedBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=179967
+
+        Reviewed by Carlos Garcia Campos.
+
+        Replace uses of CoordinatedSurface class with CoordinatedBuffer. The
+        ThreadSafeCoordinatedSurface class is removed, along with the code in
+        CoordinatedLayerTreeHost that established a CoordinatedSurface factory.
+
+        * PlatformGTK.cmake:
+        * PlatformWPE.cmake:
+        * Shared/CoordinatedGraphics/CoordinatedBackingStore.cpp:
+        (WebKit::CoordinatedBackingStoreTile::swapBuffers):
+        (WebKit::CoordinatedBackingStoreTile::setBackBuffer):
+        (WebKit::CoordinatedBackingStore::updateTile):
+        * Shared/CoordinatedGraphics/CoordinatedBackingStore.h:
+        Rename m_surface to m_buffer, m_surfaceOffset to m_bufferOffset.
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp:
+        (WebKit::CoordinatedGraphicsScene::createUpdateAtlas):
+        (WebKit::CoordinatedGraphicsScene::updateImageBacking):
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.h:
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp: Removed.
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.h: Removed.
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp:
+        (WebKit::CompositingCoordinator::updateImageBacking):
+        (WebKit::CompositingCoordinator::createUpdateAtlas):
+        (WebKit::CompositingCoordinator::paintToSurface):
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.h:
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp:
+        (WebKit::CoordinatedLayerTreeHost::CoordinatedLayerTreeHost):
+        (WebKit::CoordinatedLayerTreeHost::createCoordinatedSurface): Deleted.
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.h:
+        * WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.cpp:
+        (WebKit::UpdateAtlas::UpdateAtlas):
+        (WebKit::UpdateAtlas::~UpdateAtlas):
+        (WebKit::UpdateAtlas::paintOnAvailableBuffer):
+        * WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.h:
+        Rename m_surface to m_buffer.
+        (WebKit::UpdateAtlas::size const):
+        (WebKit::UpdateAtlas::supportsAlpha const):
+
+2017-10-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK][WPE] generate-forwarding-headers.pl should also scan derived sources in WebKit framework
+        https://bugs.webkit.org/show_bug.cgi?id=178579
+
+        Reviewed by Carlos Garcia Campos.
+
+        * PlatformGTK.cmake: When generating forwarding headers, derived sources
+        should be scanned as well. The DERIVED_SOURCES_WEBKIT_DIR value has to
+        be passed as an include path to the generate-forward-headers.pl script
+        to achieve that. This target then also has to depend on all the derived
+        source files to be generated before this can be performed.
+        * PlatformWPE.cmake: Ditto.
+
+2017-09-28  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Remove the cairo_glyph_t complexity from GlyphBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=177598
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Shared/API/c/cairo/WKImageCairo.cpp: Explicitly include the <cairo.h>
+        header here now that it's not included in GlyphBuffer.h.
+        * WebProcess/WebCoreSupport/gtk/WebDragClientGtk.cpp: Ditto.
+
 2018-06-29  Miguel Gomez  <magomez@igalia.com>
 
         [WPE] Some frames are dropped when using rAF to animate an element

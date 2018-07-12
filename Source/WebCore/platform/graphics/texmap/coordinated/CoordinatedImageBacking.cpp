@@ -24,32 +24,16 @@
  */
 
 #include "config.h"
+#include "CoordinatedImageBacking.h"
 
 #if USE(COORDINATED_GRAPHICS)
-#include "CoordinatedImageBacking.h"
 
 #include "CoordinatedGraphicsState.h"
 #include "GraphicsContext.h"
+#include "NicosiaBuffer.h"
+#include "NicosiaPaintingContext.h"
 
 namespace WebCore {
-
-class ImageBackingSurfaceClient : public CoordinatedSurface::Client {
-public:
-    ImageBackingSurfaceClient(Image& image, const IntRect& rect)
-        : m_image(image)
-        , m_rect(rect)
-    {
-    }
-
-    void paintToSurfaceContext(GraphicsContext& context) override
-    {
-        context.drawImage(m_image, m_rect, m_rect);
-    }
-
-private:
-    Image& m_image;
-    IntRect m_rect;
-};
 
 CoordinatedImageBackingID CoordinatedImageBacking::getCoordinatedImageBackingID(Image* image)
 {
@@ -120,28 +104,28 @@ void CoordinatedImageBacking::update()
         }
     }
 
-    m_surface = CoordinatedSurface::create(IntSize(m_image->size()), !m_image->currentFrameKnownToBeOpaque() ? CoordinatedSurface::SupportsAlpha : CoordinatedSurface::NoFlags);
-    if (!m_surface) {
-        m_isDirty = false;
-        return;
-    }
+    m_buffer = Nicosia::Buffer::create(IntSize(m_image->size()), !m_image->currentFrameKnownToBeOpaque() ? Nicosia::Buffer::SupportsAlpha : Nicosia::Buffer::NoFlags);
+    ASSERT(m_buffer);
 
-    IntRect rect(IntPoint::zero(), IntSize(m_image->size()));
-
-    ImageBackingSurfaceClient surfaceClient(*m_image, rect);
-    m_surface->paintToSurface(rect, surfaceClient);
+    Nicosia::PaintingContext::paint(*m_buffer,
+        [this](GraphicsContext& context)
+        {
+            IntRect rect(IntPoint::zero(), IntSize(m_image->size()));
+            context.save();
+            context.clip(rect);
+            context.drawImage(*m_image, rect, rect);
+            context.restore();
+        });
 
     m_nativeImagePtr = m_image->nativeImageForCurrentFrame();
 
-    m_client->updateImageBacking(id(), m_surface.copyRef());
+    m_client->updateImageBacking(id(), m_buffer.copyRef());
     m_isDirty = false;
 }
 
 void CoordinatedImageBacking::releaseSurfaceIfNeeded()
 {
-    // We must keep m_surface until UI Process reads m_surface.
-    // If m_surface exists, it was created in the previous update.
-    m_surface = nullptr;
+    m_buffer = nullptr;
 }
 
 static const Seconds clearContentsTimerInterval { 3_s };

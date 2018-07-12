@@ -36,7 +36,7 @@ static IntPoint innerBottomRight(const IntRect& rect)
     return IntPoint(rect.maxX() - 1, rect.maxY() - 1);
 }
 
-TiledBackingStore::TiledBackingStore(TiledBackingStoreClient* client, float contentsScale)
+TiledBackingStore::TiledBackingStore(TiledBackingStoreClient& client, float contentsScale)
     : m_client(client)
     , m_tileSize(defaultTileDimension, defaultTileDimension)
     , m_coverAreaMultiplier(2.0f)
@@ -90,21 +90,15 @@ void TiledBackingStore::invalidate(const IntRect& contentsDirtyRect)
     }
 }
 
-void TiledBackingStore::updateTileBuffers()
+Vector<std::reference_wrapper<Tile>> TiledBackingStore::dirtyTiles()
 {
-    // FIXME: In single threaded case, tile back buffers could be updated asynchronously 
-    // one by one and then swapped to front in one go. This would minimize the time spent
-    // blocking on tile updates.
-    bool updated = false;
+    Vector<std::reference_wrapper<Tile>> tiles;
     for (auto& tile : m_tiles.values()) {
-        if (!tile->isDirty())
-            continue;
-
-        updated |= tile->updateBackBuffer();
+        if (tile->isDirty())
+            tiles.append(*tile);
     }
 
-    if (updated)
-        m_client->didUpdateTileBuffers();
+    return tiles;
 }
 
 double TiledBackingStore::tileDistance(const IntRect& viewport, const Tile::Coordinate& tileCoordinate) const
@@ -193,9 +187,8 @@ void TiledBackingStore::createTiles(const IntRect& visibleRect, const IntRect& s
 
     // Resize tiles at the edge in case the contents size has changed, but only do so
     // after having dropped tiles outside the keep rect.
-    bool didResizeTiles = false;
     if (previousRect != m_rect)
-        didResizeTiles = resizeEdgeTiles();
+        resizeEdgeTiles();
 
     // Search for the tile position closest to the viewport center that does not yet contain a tile.
     // Which position is considered the closest depends on the tileDistance function.
@@ -233,14 +226,10 @@ void TiledBackingStore::createTiles(const IntRect& visibleRect, const IntRect& s
     }
     requiredTileCount -= tilesToCreateCount;
 
-    // Paint the content of the newly created tiles or resized tiles.
-    if (tilesToCreateCount || didResizeTiles)
-        updateTileBuffers();
-
     // Re-call createTiles on a timer to cover the visible area with the newest shortest distance.
     m_pendingTileCreation = requiredTileCount;
     if (m_pendingTileCreation)
-        m_client->tiledBackingStoreHasPendingTileCreation();
+        m_client.tiledBackingStoreHasPendingTileCreation();
 }
 
 void TiledBackingStore::adjustForContentsRect(IntRect& rect) const
@@ -330,9 +319,8 @@ void TiledBackingStore::computeCoverAndKeepRect(const IntRect& visibleRect, IntR
     ASSERT(coverRect.isEmpty() || keepRect.contains(coverRect));
 }
 
-bool TiledBackingStore::resizeEdgeTiles()
+void TiledBackingStore::resizeEdgeTiles()
 {
-    bool wasResized = false;
     Vector<Tile::Coordinate> tilesToRemove;
     for (auto& tile : m_tiles.values()) {
         Tile::Coordinate tileCoordinate = tile->coordinate();
@@ -340,16 +328,12 @@ bool TiledBackingStore::resizeEdgeTiles()
         IntRect expectedTileRect = tileRectForCoordinate(tileCoordinate);
         if (expectedTileRect.isEmpty())
             tilesToRemove.append(tileCoordinate);
-        else if (expectedTileRect != tileRect) {
+        else if (expectedTileRect != tileRect)
             tile->resize(expectedTileRect.size());
-            wasResized = true;
-        }
     }
 
     for (auto& coordinateToRemove : tilesToRemove)
         m_tiles.remove(coordinateToRemove);
-
-    return wasResized;
 }
 
 void TiledBackingStore::setKeepRect(const IntRect& keepRect)

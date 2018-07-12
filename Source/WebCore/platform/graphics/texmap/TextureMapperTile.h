@@ -38,8 +38,8 @@ public:
 
     void updateContents(TextureMapper&, Image*, const IntRect&, BitmapTexture::UpdateContentsFlag UpdateCanModifyOriginalImageData);
     void updateContents(TextureMapper&, GraphicsLayer*, const IntRect&, BitmapTexture::UpdateContentsFlag UpdateCanModifyOriginalImageData, float scale = 1);
-    virtual void paint(TextureMapper&, const TransformationMatrix&, float, const unsigned exposedEdges);
-    virtual ~TextureMapperTile() { }
+    WEBCORE_EXPORT virtual void paint(TextureMapper&, const TransformationMatrix&, float, const unsigned exposedEdges);
+    virtual ~TextureMapperTile() = default;
 
     explicit TextureMapperTile(const FloatRect& rect)
         : m_rect(rect)

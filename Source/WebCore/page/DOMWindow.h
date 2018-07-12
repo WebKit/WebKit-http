@@ -294,7 +294,7 @@ public:
 #endif
 
     Performance* performance() const;
-    double nowTimestamp() const;
+    WEBCORE_EXPORT double nowTimestamp() const;
 
 #if PLATFORM(IOS)
     void incrementScrollEventListenersCount();

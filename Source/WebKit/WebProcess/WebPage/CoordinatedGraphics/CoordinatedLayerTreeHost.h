@@ -29,7 +29,6 @@
 #include <wtf/RunLoop.h>
 
 namespace WebCore {
-class CoordinatedSurface;
 class GraphicsLayerFactory;
 }
 
@@ -58,8 +57,6 @@ protected:
     void deviceOrPageScaleFactorChanged() override;
     void pageBackgroundTransparencyChanged() override;
 
-    void clearUpdateAtlases() override;
-
     void setVisibleContentsRect(const WebCore::FloatRect&, const WebCore::FloatPoint&);
     void renderNextFrame();
     void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset);
@@ -74,13 +71,9 @@ protected:
     void didFlushRootLayer(const WebCore::FloatRect& visibleContentRect) override;
     void notifyFlushRequired() override { scheduleLayerFlush(); };
     void commitSceneState(const WebCore::CoordinatedGraphicsState&) override;
-    void paintLayerContents(const WebCore::GraphicsLayer*, WebCore::GraphicsContext&, const WebCore::IntRect& clipRect) override;
-    void releaseUpdateAtlases(const Vector<uint32_t>&) override { };
 
 private:
     void layerFlushTimerFired();
-
-    static RefPtr<WebCore::CoordinatedSurface> createCoordinatedSurface(const WebCore::IntSize&, WebCore::CoordinatedSurface::Flags);
 
     CompositingCoordinator m_coordinator;
     bool m_isWaitingForRenderer { false };

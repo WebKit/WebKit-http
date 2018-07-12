@@ -37,10 +37,6 @@
 #include <WebCore/MainFrame.h>
 #include <WebCore/PageOverlayController.h>
 
-#if USE(COORDINATED_GRAPHICS_THREADED)
-#include "ThreadSafeCoordinatedSurface.h"
-#endif
-
 #if USE(GLIB_EVENT_LOOP)
 #include <wtf/glib/RunLoopSourcePriority.h>
 #endif
@@ -69,7 +65,6 @@ CoordinatedLayerTreeHost::CoordinatedLayerTreeHost(WebPage& webPage)
 #endif
     m_coordinator.createRootLayer(m_webPage.size());
 
-    CoordinatedSurface::setFactory(createCoordinatedSurface);
     scheduleLayerFlush();
 }
 
@@ -179,6 +174,11 @@ void CoordinatedLayerTreeHost::renderNextFrame()
     }
 }
 
+void CoordinatedLayerTreeHost::commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset)
+{
+    m_coordinator.commitScrollOffset(layerID, offset);
+}
+
 void CoordinatedLayerTreeHost::didFlushRootLayer(const FloatRect& visibleContentRect)
 {
     // Because our view-relative overlay root layer is not attached to the FrameView's GraphicsLayer tree, we need to flush it manually.
@@ -210,24 +210,9 @@ void CoordinatedLayerTreeHost::layerFlushTimerFired()
     }
 }
 
-void CoordinatedLayerTreeHost::paintLayerContents(const GraphicsLayer*, GraphicsContext&, const IntRect&)
-{
-}
-
 void CoordinatedLayerTreeHost::commitSceneState(const CoordinatedGraphicsState& state)
 {
     m_isWaitingForRenderer = true;
-}
-
-RefPtr<CoordinatedSurface> CoordinatedLayerTreeHost::createCoordinatedSurface(const IntSize& size, CoordinatedSurface::Flags flags)
-{
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    return ThreadSafeCoordinatedSurface::create(size, flags);
-#else
-    UNUSED_PARAM(size);
-    UNUSED_PARAM(flags);
-    return nullptr;
-#endif
 }
 
 void CoordinatedLayerTreeHost::deviceOrPageScaleFactorChanged()
@@ -255,16 +240,6 @@ void CoordinatedLayerTreeHost::scheduleAnimation()
 
     scheduleLayerFlush();
     m_layerFlushTimer.startOneShot(1_s * m_coordinator.nextAnimationServiceTime());
-}
-
-void CoordinatedLayerTreeHost::commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset)
-{
-    m_coordinator.commitScrollOffset(layerID, offset);
-}
-
-void CoordinatedLayerTreeHost::clearUpdateAtlases()
-{
-    m_coordinator.clearUpdateAtlases();
 }
 
 } // namespace WebKit

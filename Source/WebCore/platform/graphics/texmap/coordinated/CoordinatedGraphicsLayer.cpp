@@ -30,6 +30,7 @@
 #include "GraphicsContext.h"
 #include "GraphicsLayer.h"
 #include "GraphicsLayerFactory.h"
+#include "NicosiaPaintingEngine.h"
 #include "ScrollableArea.h"
 #include "TextureMapperPlatformLayerProxyProvider.h"
 #include <wtf/CurrentTime.h>
@@ -94,6 +95,15 @@ void CoordinatedGraphicsLayer::didChangeImageBacking()
     notifyFlushRequired();
 }
 
+void CoordinatedGraphicsLayer::didUpdateTileBuffers()
+{
+    if (!isShowingRepaintCounter())
+        return;
+
+    m_layerState.repaintCount = incrementRepaintCount();
+    m_layerState.repaintCountChanged = true;
+}
+
 void CoordinatedGraphicsLayer::setShouldUpdateVisibleRect()
 {
     m_shouldUpdateVisibleRect = true;
@@ -140,9 +150,6 @@ CoordinatedGraphicsLayer::CoordinatedGraphicsLayer(Type layerType, GraphicsLayer
 
 CoordinatedGraphicsLayer::~CoordinatedGraphicsLayer()
 {
-    if (m_platformLayer)
-        m_platformLayer->setClient(nullptr);
-
     if (m_coordinator) {
         purgeBackingStores();
         m_coordinator->detachLayer(this);
@@ -395,17 +402,12 @@ void CoordinatedGraphicsLayer::setContentsToPlatformLayer(PlatformLayer* platfor
 {
 #if USE(COORDINATED_GRAPHICS_THREADED)
     if (m_platformLayer != platformLayer) {
-        if (m_platformLayer)
-            m_platformLayer->setClient(nullptr);
         m_shouldSyncPlatformLayer = true;
         if (platformLayer)
             m_shouldUpdatePlatformLayer = true;
     }
 
     m_platformLayer = platformLayer;
-
-    if (m_platformLayer)
-        m_platformLayer->setClient(this);
 
     notifyFlushRequired();
 #else
@@ -874,24 +876,8 @@ void CoordinatedGraphicsLayer::adjustContentsScale()
 
 void CoordinatedGraphicsLayer::createBackingStore()
 {
-    m_mainBackingStore = std::make_unique<TiledBackingStore>(this, effectiveContentsScale());
+    m_mainBackingStore = std::make_unique<TiledBackingStore>(*this, effectiveContentsScale());
     m_mainBackingStore->setSupportsAlpha(!contentsOpaque());
-}
-
-void CoordinatedGraphicsLayer::tiledBackingStorePaint(GraphicsContext& context, const IntRect& rect)
-{
-    if (rect.isEmpty())
-        return;
-    paintGraphicsLayerContents(context, rect);
-}
-
-void CoordinatedGraphicsLayer::didUpdateTileBuffers()
-{
-    if (!isShowingRepaintCounter())
-        return;
-
-    m_layerState.repaintCount = incrementRepaintCount();
-    m_layerState.repaintCountChanged = true;
 }
 
 void CoordinatedGraphicsLayer::tiledBackingStoreHasPendingTileCreation()
@@ -926,13 +912,6 @@ IntRect CoordinatedGraphicsLayer::transformedVisibleRect()
     FloatRect rect = m_cachedInverseTransform.clampedBoundsOfProjectedQuad(FloatQuad(m_coordinator->visibleContentsRect()));
     clampToContentsRectIfRectIsInfinite(rect, size());
     return enclosingIntRect(rect);
-}
-
-bool CoordinatedGraphicsLayer::paintToSurface(const IntSize& size, uint32_t& atlas, IntPoint& offset, CoordinatedSurface::Client& client)
-{
-    ASSERT(m_coordinator);
-    ASSERT(m_coordinator->isFlushingLayerChanges());
-    return m_coordinator->paintToSurface(size, contentsOpaque() ? CoordinatedSurface::NoFlags : CoordinatedSurface::SupportsAlpha, atlas, offset, client);
 }
 
 void CoordinatedGraphicsLayer::createTile(uint32_t tileID, float scaleFactor)
@@ -1016,7 +995,39 @@ void CoordinatedGraphicsLayer::updateContentBuffers()
         m_mainBackingStore->createTilesIfNeeded(transformedVisibleRect(), IntRect(0, 0, size().width(), size().height()));
     }
 
-    m_mainBackingStore->updateTileBuffers();
+    ASSERT(m_coordinator && m_coordinator->isFlushingLayerChanges());
+
+    auto dirtyTiles = m_mainBackingStore->dirtyTiles();
+    if (!dirtyTiles.isEmpty()) {
+        bool didUpdateTiles = false;
+
+        for (auto& tileReference : dirtyTiles) {
+            auto& tile = tileReference.get();
+            tile.ensureTileID();
+
+            auto& tileRect = tile.rect();
+            auto& dirtyRect = tile.dirtyRect();
+
+            auto coordinatedBuffer = Nicosia::Buffer::create(dirtyRect.size(), contentsOpaque() ? Nicosia::Buffer::NoFlags : Nicosia::Buffer::SupportsAlpha);
+            SurfaceUpdateInfo updateInfo;
+            updateInfo.updateRect = dirtyRect;
+            updateInfo.updateRect.move(-tileRect.x(), -tileRect.y());
+            updateInfo.buffer = coordinatedBuffer.copyRef();
+
+            if (!m_coordinator->paintingEngine().paint(*this, WTFMove(coordinatedBuffer),
+                dirtyRect, m_mainBackingStore->mapToContents(dirtyRect),
+                IntRect { { 0, 0 }, dirtyRect.size() }, m_mainBackingStore->contentsScale()))
+                continue;
+
+            updateTile(tile.tileID(), updateInfo, tileRect);
+
+            tile.markClean();
+            didUpdateTiles |= true;
+        }
+
+        if (didUpdateTiles)
+            didUpdateTileBuffers();
+    }
 
     // The previous backing store is kept around to avoid flickering between
     // removing the existing tiles and painting the new ones. The first time
@@ -1221,17 +1232,6 @@ void CoordinatedGraphicsLayer::animationStartedTimerFired()
 {
     client().notifyAnimationStarted(this, "", m_lastAnimationStartTime);
 }
-
-#if USE(COORDINATED_GRAPHICS_THREADED)
-void CoordinatedGraphicsLayer::platformLayerWillBeDestroyed()
-{
-    setContentsToPlatformLayer(nullptr, NoContentsLayer);
-}
-
-void CoordinatedGraphicsLayer::setPlatformLayerNeedsDisplay()
-{
-}
-#endif
 
 } // namespace WebCore
 

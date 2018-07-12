@@ -66,6 +66,7 @@ class AffineTransform;
 class FloatPoint;
 class FloatSize;
 class GraphicsContext;
+class GraphicsContextImpl;
 class SharedBuffer;
 class URL;
 struct Length;
@@ -75,6 +76,7 @@ class ImageObserver;
 
 class Image : public RefCounted<Image> {
     friend class GraphicsContext;
+    friend class GraphicsContextImpl;
 public:
     virtual ~Image();
     
@@ -175,10 +177,6 @@ public:
 
     virtual void drawPattern(GraphicsContext&, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform,
         const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, BlendMode = BlendModeNormal);
-
-#if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
-    FloatRect adjustSourceRectForDownSampling(const FloatRect& srcRect, const IntSize& scaledSize) const;
-#endif
 
 #if !ASSERT_DISABLED
     virtual bool notSolidColor() { return true; }

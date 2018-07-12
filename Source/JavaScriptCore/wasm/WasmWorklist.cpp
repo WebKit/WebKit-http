@@ -116,6 +116,11 @@ protected:
         return complete(holdLock(*worklist.m_lock));
     }
 
+    const char* name() const override
+    {
+        return "Wasm Worklist Helper Thread";
+    }
+
 public:
     Condition synchronize;
     Worklist& worklist;

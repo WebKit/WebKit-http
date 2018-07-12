@@ -21,8 +21,9 @@
 #include "CoordinatedBackingStore.h"
 
 #if USE(COORDINATED_GRAPHICS)
-#include <WebCore/CoordinatedSurface.h>
+
 #include <WebCore/GraphicsLayer.h>
+#include <WebCore/NicosiaBuffer.h>
 #include <WebCore/TextureMapper.h>
 #include <WebCore/TextureMapperGL.h>
 
@@ -32,7 +33,7 @@ namespace WebKit {
 
 void CoordinatedBackingStoreTile::swapBuffers(TextureMapper& textureMapper)
 {
-    if (!m_surface)
+    if (!m_buffer)
         return;
 
     ASSERT(textureMapper.maxTextureSize().width() >= m_tileRect.size().width());
@@ -43,20 +44,21 @@ void CoordinatedBackingStoreTile::swapBuffers(TextureMapper& textureMapper)
 
     if (!m_texture || unscaledTileRect != rect()) {
         setRect(unscaledTileRect);
-        m_texture = textureMapper.acquireTextureFromPool(m_tileRect.size(), m_surface->supportsAlpha() ? BitmapTexture::SupportsAlpha : BitmapTexture::NoFlag);
-    } else if (m_surface->supportsAlpha() == m_texture->isOpaque())
-        m_texture->reset(m_tileRect.size(), m_surface->supportsAlpha());
+        m_texture = textureMapper.acquireTextureFromPool(m_tileRect.size(), m_buffer->supportsAlpha() ? BitmapTexture::SupportsAlpha : BitmapTexture::NoFlag);
+    } else if (m_buffer->supportsAlpha() == m_texture->isOpaque())
+        m_texture->reset(m_tileRect.size(), m_buffer->supportsAlpha());
 
-    m_surface->copyToTexture(*m_texture, m_sourceRect, m_surfaceOffset);
-    m_surface = nullptr;
+    m_buffer->waitUntilPaintingComplete();
+    m_texture->updateContents(m_buffer->data(), m_sourceRect, m_bufferOffset, m_buffer->stride(), BitmapTexture::UpdateCanModifyOriginalImageData);
+    m_buffer = nullptr;
 }
 
-void CoordinatedBackingStoreTile::setBackBuffer(const IntRect& tileRect, const IntRect& sourceRect, RefPtr<CoordinatedSurface>&& buffer, const IntPoint& offset)
+void CoordinatedBackingStoreTile::setBackBuffer(const IntRect& tileRect, const IntRect& sourceRect, RefPtr<Nicosia::Buffer>&& buffer, const IntPoint& offset)
 {
     m_sourceRect = sourceRect;
     m_tileRect = tileRect;
-    m_surfaceOffset = offset;
-    m_surface = WTFMove(buffer);
+    m_bufferOffset = offset;
+    m_buffer = WTFMove(buffer);
 }
 
 void CoordinatedBackingStore::createTile(uint32_t id, float scale)
@@ -77,11 +79,11 @@ void CoordinatedBackingStore::removeAllTiles()
         m_tilesToRemove.add(key);
 }
 
-void CoordinatedBackingStore::updateTile(uint32_t id, const IntRect& sourceRect, const IntRect& tileRect, RefPtr<CoordinatedSurface>&& backBuffer, const IntPoint& offset)
+void CoordinatedBackingStore::updateTile(uint32_t id, const IntRect& sourceRect, const IntRect& tileRect, RefPtr<Nicosia::Buffer>&& buffer, const IntPoint& offset)
 {
     CoordinatedBackingStoreTileMap::iterator it = m_tiles.find(id);
     ASSERT(it != m_tiles.end());
-    it->value.setBackBuffer(tileRect, sourceRect, WTFMove(backBuffer), offset);
+    it->value.setBackBuffer(tileRect, sourceRect, WTFMove(buffer), offset);
 }
 
 RefPtr<BitmapTexture> CoordinatedBackingStore::texture() const

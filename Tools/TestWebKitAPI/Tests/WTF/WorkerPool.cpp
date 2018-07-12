@@ -1,6 +1,5 @@
 /*
- * Copyright (C) 2016 Igalia S.L.
- * Copyright (C) 2016 Metrological
+ * Copyright (C) 2017 Yusuke Suzuki <utatane.tea@gmail.com>.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,33 +23,29 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Extensions3DCache_h
-#define Extensions3DCache_h
+#include "config.h"
 
-#include <mutex>
-#include <wtf/NeverDestroyed.h>
+#include <wtf/DataLog.h>
+#include <wtf/Seconds.h>
+#include <wtf/Threading.h>
+#include <wtf/WorkerPool.h>
 
-namespace WebCore {
-class Extensions3DCache {
-public:
-    static const Extensions3DCache& singleton();
+namespace TestWebKitAPI {
 
-    bool supportsUnpackSubimage() const { return m_supportsUnpackSubimage; }
-#if 0
-    bool GL_OES_packed_depth_stencil() const { return m_GL_OES_packed_depth_stencil; }
-    bool GL_EXT_multisampled_render_to_texture() const { return m_GL_EXT_multisampled_render_to_texture; }
-#endif
+TEST(WTF, WorkerPoolDecrease)
+{
+    std::atomic<unsigned> counter { 0 };
+    {
+        Ref<WorkerPool> pool = WorkerPool::create(ASCIILiteral("Worker Pool"));
+        for (int i = 0; i < 10000; ++i) {
+            pool->postTask([&] {
+                ++counter;
+                Thread::yield();
+            });
+        }
+        // When destroying WorkerPool, all the tasks are drained.
+    }
+    EXPECT_EQ(counter.load(), 10000U);
+}
 
-private:
-    friend class LazyNeverDestroyed<Extensions3DCache>;
-    Extensions3DCache();
-
-    bool m_supportsUnpackSubimage;
-#if 0
-    bool m_GL_OES_packed_depth_stencil;
-    bool m_GL_EXT_multisampled_render_to_texture;
-#endif
-};
-
-} // namespace WebCore
-#endif // Extensions3DCache_h
+} // namespace TestWebKitAPI

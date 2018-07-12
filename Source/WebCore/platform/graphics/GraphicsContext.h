@@ -80,6 +80,7 @@ const int cMisspellingLinePatternGapWidth = 1;
 class AffineTransform;
 class FloatRoundedRect;
 class Gradient;
+class GraphicsContextImpl;
 class GraphicsContextPlatformPrivate;
 class ImageBuffer;
 class IntRect;
@@ -251,6 +252,10 @@ class GraphicsContext {
     WTF_MAKE_NONCOPYABLE(GraphicsContext); WTF_MAKE_FAST_ALLOCATED;
 public:
     WEBCORE_EXPORT GraphicsContext(PlatformGraphicsContext*);
+    
+    using GraphicsContextImplFactory = WTF::Function<std::unique_ptr<GraphicsContextImpl>(GraphicsContext&)>;
+    WEBCORE_EXPORT GraphicsContext(const GraphicsContextImplFactory&);
+
     GraphicsContext() = default;
     WEBCORE_EXPORT ~GraphicsContext();
     
@@ -260,13 +265,11 @@ public:
     };
     GraphicsContext(NonPaintingReasons);
 
+    bool hasPlatformContext() const;
     WEBCORE_EXPORT PlatformGraphicsContext* platformContext() const;
 
-    bool paintingDisabled() const { return !m_data && !isRecording(); }
+    bool paintingDisabled() const { return !m_data && !m_impl; }
     bool updatingControlTints() const { return m_nonPaintingReasons == NonPaintingReasons::UpdatingControlTints; }
-
-    void setDisplayListRecorder(DisplayList::Recorder* recorder) { m_displayListRecorder = recorder; }
-    bool isRecording() const { return m_displayListRecorder; }
 
     void setStrokeThickness(float);
     float strokeThickness() const { return m_state.strokeThickness; }
@@ -393,7 +396,7 @@ public:
     TextDrawingModeFlags textDrawingMode() const { return m_state.textDrawingMode; }
 
     float drawText(const FontCascade&, const TextRun&, const FloatPoint&, unsigned from = 0, std::optional<unsigned> to = std::nullopt);
-    void drawGlyphs(const FontCascade&, const Font&, const GlyphBuffer&, unsigned from, unsigned numGlyphs, const FloatPoint&);
+    void drawGlyphs(const Font&, const GlyphBuffer&, unsigned from, unsigned numGlyphs, const FloatPoint&, FontSmoothingMode);
     void drawEmphasisMarks(const FontCascade&, const TextRun&, const AtomicString& mark, const FloatPoint&, unsigned from = 0, std::optional<unsigned> to = std::nullopt);
     void drawBidiText(const FontCascade&, const TextRun&, const FloatPoint&, FontCascade::CustomFontNotReadyAction = FontCascade::DoNotPaintIfFontNotReady);
 
@@ -435,10 +438,6 @@ public:
     bool hasVisibleShadow() const { return m_state.shadowColor.isVisible(); }
     bool hasShadow() const { return hasVisibleShadow() && (m_state.shadowBlur || m_state.shadowOffset.width() || m_state.shadowOffset.height()); }
     bool hasBlurredShadow() const { return hasVisibleShadow() && m_state.shadowBlur; }
-
-#if USE(CAIRO)
-    bool mustUseShadowBlur() const;
-#endif
 
     void drawFocusRing(const Vector<FloatRect>&, float width, float offset, const Color&);
     void drawFocusRing(const Path&, float width, float offset, const Color&);
@@ -489,13 +488,6 @@ public:
 
     enum IncludeDeviceScale { DefinitelyIncludeDeviceScale, PossiblyIncludeDeviceScale };
     AffineTransform getCTM(IncludeDeviceScale includeScale = PossiblyIncludeDeviceScale) const;
-
-#if ENABLE(3D_TRANSFORMS) && USE(TEXTURE_MAPPER)
-    // This is needed when using accelerated-compositing in software mode, like in TextureMapper.
-    void concat3DTransform(const TransformationMatrix&);
-    void set3DTransform(const TransformationMatrix&);
-    TransformationMatrix get3DTransform() const;
-#endif
 
     // This function applies the device scale factor to the context, making the context capable of
     // acting as a base-level context for a HiDPI environment.
@@ -584,10 +576,6 @@ public:
 #endif // PLATFORM(WIN)
 #endif // OS(WINDOWS)
 
-#if USE(CAIRO)
-    GraphicsContext(cairo_t*);
-#endif
-
     static void adjustLineToPixelBoundaries(FloatPoint& p1, FloatPoint& p2, float strokeWidth, StrokeStyle);
 
     bool supportsInternalLinks() const;
@@ -647,7 +635,7 @@ private:
     Vector<FloatPoint> centerLineAndCutOffCorners(bool isVerticalLine, float cornerWidth, FloatPoint point1, FloatPoint point2) const;
 
     GraphicsContextPlatformPrivate* m_data { nullptr };
-    DisplayList::Recorder* m_displayListRecorder { nullptr };
+    std::unique_ptr<GraphicsContextImpl> m_impl;
 
     GraphicsContextState m_state;
     Vector<GraphicsContextState, 1> m_stack;

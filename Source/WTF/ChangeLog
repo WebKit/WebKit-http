@@ -1,3 +1,98 @@
+2018-06-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [GTK][WPE][Nicosia] Add name for Nicosia Painting Threads
+        https://bugs.webkit.org/show_bug.cgi?id=186836
+
+        Reviewed by Carlos Garcia Campos.
+
+        AutomaticThread can take a name for the generated threads now.
+        This patch adds the above ability to WorkerPool.
+
+        * wtf/WorkerPool.cpp:
+        (WTF::WorkerPool::WorkerPool):
+        * wtf/WorkerPool.h:
+        (WTF::WorkerPool::create):
+        (WTF::WorkerPool::name const):
+
+2018-06-13  Keith Miller  <keith_miller@apple.com>
+
+        AutomaticThread should have a way to provide a thread name
+        https://bugs.webkit.org/show_bug.cgi?id=186604
+
+        Reviewed by Filip Pizlo.
+
+        AutomaticThread now has a virtual method to get a name, which can be
+        overridden to provide a custom name to the thread.
+
+        * wtf/AutomaticThread.cpp:
+        (WTF::AutomaticThread::start):
+        * wtf/AutomaticThread.h:
+        * wtf/WorkerPool.cpp:
+
+2018-06-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Add WorkerPool
+        https://bugs.webkit.org/show_bug.cgi?id=174569
+
+        Reviewed by Carlos Garcia Campos.
+
+        This patch adds WorkerPool, which is a thread pool that consists of AutomaticThread.
+        Since it is based on AutomaticThread, this WorkerPool can take `timeout`: once `timeout`
+        passes without any tasks, threads in WorkerPool will be destroyed.
+
+        We add shouldSleep handler to AutomaticThread to make destruction of threads in WorkerPool moderate.
+        Without this, all threads are destroyed at once after `timeout` passes.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/AutomaticThread.cpp:
+        (WTF::AutomaticThread::AutomaticThread):
+        (WTF::AutomaticThread::start):
+        * wtf/AutomaticThread.h:
+        * wtf/CMakeLists.txt:
+        * wtf/WorkerPool.cpp: Added.
+        (WTF::WorkerPool::WorkerPool):
+        (WTF::WorkerPool::~WorkerPool):
+        (WTF::WorkerPool::shouldSleep):
+        (WTF::WorkerPool::postTask):
+        * wtf/WorkerPool.h: Added.
+        (WTF::WorkerPool::create):
+
+2017-09-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Followup (r222427): SynchronizedFixedQueue should not have a public constructor
+        https://bugs.webkit.org/show_bug.cgi?id=177458
+
+        Reviewed by Tim Horton.
+
+        Since SynchronizedFixedQueue is now derived from ThreadSafeRefCounted<SynchronizedFixedQueue>,
+        the standard way to have an instance of it is to call SynchronizedFixedQueue::create()
+        which returns a Ref<SynchronizedFixedQueue>. Now it does not make sense to still
+        have the constructor public.
+
+        * wtf/SynchronizedFixedQueue.h:
+        (WTF::SynchronizedFixedQueue::SynchronizedFixedQueue):
+
+2017-11-21  Zan Dobersek  <zdobersek@igalia.com>
+
+        Drop ENABLE_IMAGE_DECODER_DOWN_SAMPLING code
+        https://bugs.webkit.org/show_bug.cgi?id=179921
+
+        Reviewed by Carlos Garcia Campos.
+
+        * wtf/FeatureDefines.h: Remove the ENABLE_IMAGE_DECODER_DOWN_SAMPLING
+        definition.
+
+2017-11-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Misc display list and other cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=179150
+
+        Reviewed by Tim Horton.
+
+        Add system trace points for display list recording.
+
+        * wtf/SystemTracing.h:
+
 2018-07-02  Alicia Boya García  <aboya@igalia.com>
 
         [Linux] Fix memory leak in WTF::forEachLine()

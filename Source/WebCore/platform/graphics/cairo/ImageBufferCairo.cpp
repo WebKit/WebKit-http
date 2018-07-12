@@ -34,8 +34,8 @@
 #include "BitmapImage.h"
 #include "CairoUtilities.h"
 #include "Color.h"
-#include "Extensions3DCache.h"
 #include "GraphicsContext.h"
+#include "GraphicsContextImplCairo.h"
 #include "MIMETypeRegistry.h"
 #include "NotImplemented.h"
 #include "Pattern.h"
@@ -279,7 +279,7 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpac
     // Disable antialiasing if cairo is using the NOAA compositor.
     if (cairoIsUsingNOAA())
         cairo_set_antialias(cr.get(), CAIRO_ANTIALIAS_NONE);
-    m_data.m_context = std::make_unique<GraphicsContext>(&m_data.m_platformContext);
+    m_data.m_context = std::make_unique<GraphicsContext>(GraphicsContextImplCairo::createFactory(m_data.m_platformContext));
     success = true;
 }
 

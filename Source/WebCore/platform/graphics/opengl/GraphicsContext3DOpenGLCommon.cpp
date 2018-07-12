@@ -132,19 +132,6 @@ static uint64_t nameHashForShader(const char* name, size_t length)
     return result;
 }
 
-RefPtr<GraphicsContext3D> GraphicsContext3D::createForCurrentGLContext()
-{
-    auto context = adoptRef(*new GraphicsContext3D({ }, 0, GraphicsContext3D::RenderToCurrentGLContext));
-#if USE(TEXTURE_MAPPER)
-    if (!context->m_texmapLayer)
-        return nullptr;
-#else
-    if (!context->m_private)
-        return nullptr;
-#endif
-    return WTFMove(context);
-}
-
 void GraphicsContext3D::validateDepthStencil(const char* packedDepthStencilExtension)
 {
     Extensions3D& extensions = getExtensions();
@@ -190,12 +177,7 @@ void GraphicsContext3D::paintRenderingResultsToCanvas(ImageBuffer* imageBuffer)
         }
     }
 
-#if USE(CG)
-    paintToCanvas(pixels.get(), m_currentWidth, m_currentHeight,
-                  imageBuffer->internalSize().width(), imageBuffer->internalSize().height(), imageBuffer->context());
-#else
-    paintToCanvas(pixels.get(), m_currentWidth, m_currentHeight, imageBuffer->internalSize().width(), imageBuffer->internalSize().height(), imageBuffer->context().platformContext());
-#endif
+    paintToCanvas(pixels.get(), IntSize(m_currentWidth, m_currentHeight), imageBuffer->internalSize(), imageBuffer->context());
 
 #if PLATFORM(IOS)
     endPaint();

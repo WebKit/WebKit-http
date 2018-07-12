@@ -76,7 +76,6 @@ protected:
 
 #if USE(COORDINATED_GRAPHICS)
     void didChangeViewportAttributes(WebCore::ViewportAttributes&&) override;
-    void resetUpdateAtlasForTesting() override;
 #endif
 
 #if USE(COORDINATED_GRAPHICS) || USE(TEXTURE_MAPPER)

@@ -2442,6 +2442,7 @@ set(WebCore_SOURCES
     platform/graphics/Gradient.cpp
     platform/graphics/GradientImage.cpp
     platform/graphics/GraphicsContext.cpp
+    platform/graphics/GraphicsContextImpl.cpp
     platform/graphics/GraphicsLayer.cpp
     platform/graphics/GraphicsLayerTransform.cpp
     platform/graphics/GraphicsLayerUpdater.cpp
@@ -2451,9 +2452,8 @@ set(WebCore_SOURCES
     platform/graphics/ImageBuffer.cpp
     platform/graphics/ImageDecoder.cpp
     platform/graphics/ImageFrame.cpp
-    platform/graphics/ImageFrameCache.cpp
-    platform/graphics/ImageOrientation.cpp
     platform/graphics/ImageSource.cpp
+    platform/graphics/ImageOrientation.cpp
     platform/graphics/IntPoint.cpp
     platform/graphics/IntRect.cpp
     platform/graphics/IntSize.cpp

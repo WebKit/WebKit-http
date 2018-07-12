@@ -1139,7 +1139,7 @@ public:
 
     const DocumentTiming& timing() const { return m_documentTiming; }
 
-    double monotonicTimestamp() const;
+    WEBCORE_EXPORT double monotonicTimestamp() const;
 
     int requestAnimationFrame(Ref<RequestAnimationFrameCallback>&&);
     void cancelAnimationFrame(int id);

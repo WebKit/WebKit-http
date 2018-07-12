@@ -28,6 +28,7 @@
 #include "Tile.h"
 #include <wtf/Assertions.h>
 #include <wtf/HashMap.h>
+#include <wtf/Vector.h>
 
 namespace WebCore {
 
@@ -37,21 +38,21 @@ class TiledBackingStoreClient;
 class TiledBackingStore {
     WTF_MAKE_NONCOPYABLE(TiledBackingStore); WTF_MAKE_FAST_ALLOCATED;
 public:
-    TiledBackingStore(TiledBackingStoreClient*, float contentsScale = 1.f);
+    TiledBackingStore(TiledBackingStoreClient&, float contentsScale = 1.f);
     ~TiledBackingStore();
 
-    TiledBackingStoreClient* client() { return m_client; }
+    TiledBackingStoreClient& client() { return m_client; }
 
     void setTrajectoryVector(const FloatPoint&);
     void createTilesIfNeeded(const IntRect& unscaledVisibleRect, const IntRect& contentsRect);
 
     float contentsScale() { return m_contentsScale; }
 
-    void updateTileBuffers();
+    Vector<std::reference_wrapper<Tile>> dirtyTiles();
 
     void invalidate(const IntRect& dirtyRect);
 
-    IntRect mapToContents(const IntRect&) const;
+    WEBCORE_EXPORT IntRect mapToContents(const IntRect&) const;
     IntRect mapFromContents(const IntRect&) const;
 
     IntRect tileRectForCoordinate(const Tile::Coordinate&) const;
@@ -68,7 +69,7 @@ private:
     void createTiles(const IntRect& visibleRect, const IntRect& scaledContentsRect, float coverAreaMultiplier);
     void computeCoverAndKeepRect(const IntRect& visibleRect, IntRect& coverRect, IntRect& keepRect) const;
 
-    bool resizeEdgeTiles();
+    void resizeEdgeTiles();
     void setCoverRect(const IntRect& rect) { m_coverRect = rect; }
     void setKeepRect(const IntRect&);
 
@@ -78,7 +79,7 @@ private:
     void paintCheckerPattern(GraphicsContext*, const IntRect&, const Tile::Coordinate&);
 
 private:
-    TiledBackingStoreClient* m_client;
+    TiledBackingStoreClient& m_client;
 
     typedef HashMap<Tile::Coordinate, std::unique_ptr<Tile>> TileMap;
     TileMap m_tiles;

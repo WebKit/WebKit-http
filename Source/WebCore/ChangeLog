@@ -1,3 +1,3269 @@
+2018-06-22  Miguel Gomez  <magomez@igalia.com>
+
+        [WPE][ThreadedRendering] WPE crashes rendering SVG content when using ThreadedRendering
+        https://bugs.webkit.org/show_bug.cgi?id=186914
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add GraphicsContextImpl::clipToImageBuffer() to the interface and the implementors. Forward
+        the call to GraphicsContext::clipToImageBuffer() to the implementation if possible in the
+        cairo case.
+
+        Covered by existent tests.
+
+        * platform/graphics/GraphicsContextImpl.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::clipToImageBuffer):
+        * platform/graphics/cairo/GraphicsContextImplCairo.cpp:
+        (WebCore::GraphicsContextImplCairo::clipToImageBuffer):
+        * platform/graphics/cairo/GraphicsContextImplCairo.h:
+        * platform/graphics/displaylists/DisplayListRecorder.cpp:
+        (WebCore::DisplayList::Recorder::clipToImageBuffer):
+        * platform/graphics/displaylists/DisplayListRecorder.h:
+        * platform/graphics/nicosia/cairo/NicosiaCairoOperationRecorder.cpp:
+        (Nicosia::CairoOperationRecorder::clipToImageBuffer):
+        * platform/graphics/nicosia/cairo/NicosiaCairoOperationRecorder.h:
+
+2018-06-22  Miguel Gomez  <magomez@igalia.com>
+
+        [WPE][ThreadedRendering] WPE crashes rendering some pieces of text when using ThreadedRendering
+        https://bugs.webkit.org/show_bug.cgi?id=186886
+
+        Reviewed by Žan Doberšek.
+
+        Modify DisplayList DrawGlyphs element to use a GraphicsContext for replaying. To do so, modify
+        GraphicsContext::drawGlyphs() API so it doesn't require a FontCascade, and update all the calls
+        to it.
+
+        Covered by existent tests.
+
+        * platform/graphics/FontCascade.cpp:
+        (WebCore::FontCascade::drawGlyphBuffer const):
+        * platform/graphics/GraphicsContext.cpp:
+        (WebCore::GraphicsContext::drawGlyphs):
+        * platform/graphics/GraphicsContext.h:
+        * platform/graphics/displaylists/DisplayListItems.cpp:
+        (WebCore::DisplayList::DrawGlyphs::apply const):
+        * rendering/mathml/MathOperator.cpp:
+        (WebCore::MathOperator::paintGlyph):
+        (WebCore::MathOperator::paint):
+        * rendering/mathml/RenderMathMLToken.cpp:
+        (WebCore::RenderMathMLToken::paint):
+
+2018-06-20  Miguel Gomez  <magomez@igalia.com>
+
+        [GTK][ThreadedRendering][Nicosia] Themed elements cannot be rendered using threaded rendering
+        https://bugs.webkit.org/show_bug.cgi?id=186840
+
+        Reviewed by Carlos Garcia Campos.
+
+        Disable threaded rendering for GTK port.
+
+        * platform/graphics/nicosia/NicosiaPaintingEngine.cpp:
+        (Nicosia::PaintingEngine::create):
+
+2018-06-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [GTK][WPE][Nicosia] Add name for Nicosia Painting Threads
+        https://bugs.webkit.org/show_bug.cgi?id=186836
+
+        Reviewed by Carlos Garcia Campos.
+
+        Use "PaintingThread" name.
+
+        * platform/graphics/nicosia/NicosiaPaintingEngineThreaded.cpp:
+        (Nicosia::PaintingEngineThreaded::PaintingEngineThreaded):
+
+2018-06-19  Miguel Gomez  <magomez@igalia.com>
+
+        [GTK][WPE][Nicosia] Add environment variable to enable threaded rendering and set the number of painting threads
+        https://bugs.webkit.org/show_bug.cgi?id=186801
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add and environment variable to enable the usage of the threaded renderer and define the number
+        of painting threads.
+
+        No new tests.
+
+        * platform/graphics/nicosia/NicosiaPaintingEngine.cpp:
+        (Nicosia::PaintingEngine::create):
+        * platform/graphics/nicosia/NicosiaPaintingEngineThreaded.cpp:
+        (Nicosia::PaintingEngineThreaded::PaintingEngineThreaded):
+        * platform/graphics/nicosia/NicosiaPaintingEngineThreaded.h:
+
+2018-06-18  Karl Leplat  <karl.leplat_ext@softathome.com>
+
+        [Threaded paintingEngine] Fix rendering glitches
+        https://bugs.webkit.org/show_bug.cgi?id=186764
+
+        Reviewed by Žan Doberšek.
+
+        * platform/graphics/nicosia/NicosiaPaintingEngineBasic.cpp:
+        (Nicosia::PaintingEngineBasic::paint):
+        To keep backwards compatibility with no multi-threaded,
+        we call Nicosia::Buffer functions beginPainting() and completePainting().
+
+
+2018-06-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Add WorkerPool
+        https://bugs.webkit.org/show_bug.cgi?id=174569
+
+        Reviewed by Carlos Garcia Campos.
+
+        We start using WorkerPool for NicosiaPaintingEngineThreaded instead of glib thread pool.
+        This makes NicosiaPaintingEngineThreaded platform-independent and usable for WinCairo.
+
+        * platform/graphics/nicosia/NicosiaPaintingEngineThreaded.cpp:
+        (Nicosia::PaintingEngineThreaded::PaintingEngineThreaded):
+        (Nicosia::PaintingEngineThreaded::~PaintingEngineThreaded):
+        (Nicosia::PaintingEngineThreaded::paint):
+        (Nicosia::s_threadFunc): Deleted.
+        * platform/graphics/nicosia/NicosiaPaintingEngineThreaded.h:
+
+2018-03-28  Miguel Gomez  <magomez@igalia.com>
+
+        [GTK][WPE] Remove UpdateAtlas
+        https://bugs.webkit.org/show_bug.cgi?id=184042
+
+        Reviewed by Žan Doberšek.
+
+        Remove UpdateAtlas and AreaAllocator classes. Instead of using UpdateAtlas as a cache
+        of buffers to render tiles with cairo, allocate a new buffer for each tile instead.
+
+        Covered by existent tests.
+
+        * loader/EmptyClients.h:
+        * page/ChromeClient.h:
+        * platform/TextureMapper.cmake:
+        * platform/graphics/texmap/coordinated/AreaAllocator.cpp: Removed.
+        * platform/graphics/texmap/coordinated/AreaAllocator.h: Removed.
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp:
+        (WebCore::CoordinatedGraphicsLayer::updateContentBuffers):
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.h:
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsState.h:
+        * platform/graphics/texmap/coordinated/SurfaceUpdateInfo.h:
+        (): Deleted.
+        * platform/graphics/texmap/coordinated/UpdateAtlas.cpp: Removed.
+        * platform/graphics/texmap/coordinated/UpdateAtlas.h: Removed.
+        * testing/Internals.cpp:
+        (WebCore::Internals::resetToConsistentState):
+
+2018-03-19  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GCC 4.9 build-fix after r229672.
+
+        * platform/graphics/nicosia/cairo/NicosiaCairoOperationRecorder.cpp:
+        (Nicosia::createCommand): Don't depend on implicit conversion of the
+        returning std::unique_ptr<> object, and instead only wrap the
+        heap-allocated PaintingOperation-derived in a std::unique_ptr<> at the
+        point of return.
+
+2018-03-16  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Nicosia] Add Cairo-specific GraphicsContext operation recorder
+        https://bugs.webkit.org/show_bug.cgi?id=183593
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add Nicosia::CairoOperationRecorder, GraphicsContextImpl implementation
+        that records all GraphicsContext operations for deferred replay on a
+        different thread. Recording here mostly consists of storing all the
+        Cairo resources in a thread-safe manner, which is eased by the atomic
+        reference counting used in Cairo.
+
+        Nicosia::PaintingOperation derivatives are used for operations or state
+        updates that require recording. Instances of these classes are appended
+        to a Vector<> object that is then pushed into a thread pool in
+        Nicosia::PaintingEngineThreaded , replaying all the operations against
+        the Cairo context established from an associated target Nicosia::Buffer.
+
+        This GraphicsContextImpl implementation is now used in the
+        PaintingContextCairo::ForRecording constructor to construct the
+        GraphicsContext implementation that will be used for recording.
+
+        * platform/TextureMapper.cmake:
+        * platform/graphics/nicosia/cairo/NicosiaCairoOperationRecorder.cpp: Added.
+        (Nicosia::getContext):
+        (Nicosia::OperationData::arg const const):
+        (Nicosia::createCommand):
+        (Nicosia::CairoOperationRecorder::CairoOperationRecorder):
+        (Nicosia::m_commandList):
+        (Nicosia::CairoOperationRecorder::updateState):
+        (Nicosia::CairoOperationRecorder::clearShadow):
+        (Nicosia::CairoOperationRecorder::setLineCap):
+        (Nicosia::CairoOperationRecorder::setLineDash):
+        (Nicosia::CairoOperationRecorder::setLineJoin):
+        (Nicosia::CairoOperationRecorder::setMiterLimit):
+        (Nicosia::CairoOperationRecorder::fillRect):
+        (Nicosia::CairoOperationRecorder::fillRoundedRect):
+        (Nicosia::CairoOperationRecorder::fillRectWithRoundedHole):
+        (Nicosia::CairoOperationRecorder::fillPath):
+        (Nicosia::CairoOperationRecorder::fillEllipse):
+        (Nicosia::CairoOperationRecorder::strokeRect):
+        (Nicosia::CairoOperationRecorder::strokePath):
+        (Nicosia::CairoOperationRecorder::strokeEllipse):
+        (Nicosia::CairoOperationRecorder::clearRect):
+        (Nicosia::CairoOperationRecorder::drawGlyphs):
+        (Nicosia::CairoOperationRecorder::drawImage):
+        (Nicosia::CairoOperationRecorder::drawTiledImage):
+        (Nicosia::CairoOperationRecorder::drawNativeImage):
+        (Nicosia::CairoOperationRecorder::drawPattern):
+        (Nicosia::CairoOperationRecorder::drawRect):
+        (Nicosia::CairoOperationRecorder::drawLine):
+        (Nicosia::CairoOperationRecorder::drawLinesForText):
+        (Nicosia::CairoOperationRecorder::drawLineForDocumentMarker):
+        (Nicosia::CairoOperationRecorder::drawEllipse):
+        (Nicosia::CairoOperationRecorder::drawPath):
+        (Nicosia::CairoOperationRecorder::drawFocusRing):
+        (Nicosia::CairoOperationRecorder::save):
+        (Nicosia::CairoOperationRecorder::restore):
+        (Nicosia::CairoOperationRecorder::translate):
+        (Nicosia::CairoOperationRecorder::rotate):
+        (Nicosia::CairoOperationRecorder::scale):
+        (Nicosia::CairoOperationRecorder::concatCTM):
+        (Nicosia::CairoOperationRecorder::setCTM):
+        (Nicosia::CairoOperationRecorder::getCTM):
+        (Nicosia::CairoOperationRecorder::beginTransparencyLayer):
+        (Nicosia::CairoOperationRecorder::endTransparencyLayer):
+        (Nicosia::CairoOperationRecorder::clip):
+        (Nicosia::CairoOperationRecorder::clipOut):
+        (Nicosia::CairoOperationRecorder::clipPath):
+        (Nicosia::CairoOperationRecorder::clipBounds):
+        (Nicosia::CairoOperationRecorder::applyDeviceScaleFactor):
+        (Nicosia::CairoOperationRecorder::roundToDevicePixels):
+        (Nicosia::CairoOperationRecorder::append):
+        * platform/graphics/nicosia/cairo/NicosiaCairoOperationRecorder.h: Added.
+        * platform/graphics/nicosia/cairo/NicosiaPaintingContextCairo.cpp:
+        (Nicosia::PaintingContextCairo::ForRecording::ForRecording):
+
+2018-03-09  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Nicosia] Add threaded PaintingEngine implementation
+        https://bugs.webkit.org/show_bug.cgi?id=183511
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add Nicosia::PaintingEngineThreaded, class that internally uses a thread
+        pool in which painting tasks are executed.
+
+        Implementation for now defaults to using GLib's GThreadPool, defaulting
+        to 4 threads that are exclusive to this pool. These parameters should be
+        fine-tuned in the future, or even made configurable, but are a solid
+        basis for testing.
+
+        In PaintingEngineThreaded::paint(), PaintingContext implementation is
+        used to record all the operations, and the gathered Vector is combined
+        with the Buffer object and dispatched into the thread pool. In the
+        thread function, the provided buffer and painting operations are run
+        through the PaintingContext implementation, replaying all the operations
+        on a painting context that draws into the given buffer.
+
+        The recorded operation objects implement the PaintingOperation interface
+        contain all the data necessary to replay a given operation. They can be
+        executed against a PaintingOperationReplay object, as is the case during
+        PaintingContext::replay(), or they can be dumped into a TextStream
+        object for debugging purposes.
+
+        PaintingContext now also provides the record() and replay() static
+        functions. PaintingContext objects now differ per purpose, which can be
+        either for painting or for recording. paint() and replay() use a
+        for-painting PaintingContext, and record() uses a for-recording one.
+        The for-painting PaintingContext receives a Buffer object, i.e. a memory
+        area on which it can draw, while the for-recording PaintingContext uses
+        the passed-in PaintingOperations Vector that should store all the
+        recorded operations.
+
+        The current Cairo implementation of PaintingContext is moved into
+        PaintingContextCairo::ForPainting. PaintingContextCairo::ForRecording is
+        added but is currently no-op until a Cairo-specific GraphicsContextImpl
+        with recording capabilities is added, allowing any call on the
+        GraphicsContext object used in PaintingContext::record() to be recorded
+        for later replay. PaintingOperationReplayCairo, inheriting from
+        PaintingOperationReplay, will be used for replay purposes, providing
+        only reference to the PlatformContextCairo object that is constructed in
+        PaintingContextCairo::ForPainting.
+
+        The Cairo-specific GraphicsContextImpl implementation will be added in
+        a separate patch. After that, PaintingEngine::create() will be modified
+        so that the Nicosia::PaintingEngineThreaded implementation can be used
+        for testing purposes, probably by setting an environment variable.
+
+        * platform/TextureMapper.cmake:
+        * platform/graphics/nicosia/NicosiaPaintingContext.cpp:
+        (Nicosia::PaintingContext::createForPainting):
+        (Nicosia::PaintingContext::createForRecording):
+        (Nicosia::PaintingContext::create): Deleted.
+        * platform/graphics/nicosia/NicosiaPaintingContext.h:
+        (Nicosia::PaintingContext::paint):
+        (Nicosia::PaintingContext::record):
+        (Nicosia::PaintingContext::replay):
+        * platform/graphics/nicosia/NicosiaPaintingEngineThreaded.cpp: Added.
+        (Nicosia::s_threadFunc):
+        (Nicosia::paintLayer):
+        (Nicosia::PaintingEngineThreaded::PaintingEngineThreaded):
+        (Nicosia::PaintingEngineThreaded::~PaintingEngineThreaded):
+        (Nicosia::PaintingEngineThreaded::paint):
+        * platform/graphics/nicosia/NicosiaPaintingEngineThreaded.h: Copied from Source/WebCore/platform/graphics/nicosia/NicosiaPaintingContext.cpp.
+        * platform/graphics/nicosia/NicosiaPaintingOperation.h: Copied from Source/WebCore/platform/graphics/nicosia/NicosiaPaintingContext.cpp.
+        * platform/graphics/nicosia/cairo/NicosiaPaintingContextCairo.cpp:
+        (Nicosia::PaintingContextCairo::ForPainting::ForPainting):
+        (Nicosia::PaintingContextCairo::ForPainting::~ForPainting):
+        (Nicosia::PaintingContextCairo::ForPainting::graphicsContext):
+        (Nicosia::PaintingContextCairo::ForPainting::replay):
+        (Nicosia::PaintingContextCairo::ForRecording::ForRecording):
+        (Nicosia::PaintingContextCairo::ForRecording::graphicsContext):
+        (Nicosia::PaintingContextCairo::ForRecording::replay):
+        (Nicosia::PaintingContextCairo::PaintingContextCairo): Deleted.
+        (Nicosia::PaintingContextCairo::~PaintingContextCairo): Deleted.
+        (Nicosia::PaintingContextCairo::graphicsContext): Deleted.
+        * platform/graphics/nicosia/cairo/NicosiaPaintingContextCairo.h:
+        * platform/graphics/nicosia/cairo/NicosiaPaintingOperationReplayCairo.h: Copied from Source/WebCore/platform/graphics/nicosia/NicosiaPaintingContext.cpp.
+        (Nicosia::PaintingOperationReplayCairo::PaintingOperationReplayCairo):
+
+2018-03-08  Zan Dobersek  <zdobersek@igalia.com>
+
+        Add basic synchronization capability to Nicosia::Buffer
+        https://bugs.webkit.org/show_bug.cgi?id=183500
+
+        Reviewed by Carlos Garcia Campos.
+
+        Have Nicosia::Buffer track a painting state, and allow that state to be
+        modified and accessed from different threads. The PaintingState enum
+        value is protected by a Lock object, and can be modified via the
+        beginPainting() and completePainting() methods. Additionally, the
+        waitUntilPaintingComplete() method allows the caller to wait until the
+        painting is complete for the given Nicosia::Buffer object.
+
+        This added state doesn't affect a Nicosia::Buffer object internally, and
+        doesn't have any effect on  existing usages of Nicosia::Buffer (which
+        are not multi-threaded).
+
+        * platform/graphics/nicosia/NicosiaBuffer.cpp:
+        (Nicosia::Buffer::beginPainting):
+        (Nicosia::Buffer::completePainting):
+        (Nicosia::Buffer::waitUntilPaintingComplete):
+        * platform/graphics/nicosia/NicosiaBuffer.h:
+
+2018-03-08  Zan Dobersek  <zdobersek@igalia.com>
+
+        Move NicosiaPaintingContextCairo files under Cairo-specific directory
+        https://bugs.webkit.org/show_bug.cgi?id=183497
+
+        Reviewed by Carlos Garcia Campos.
+
+        Pack Cairo-specific files in the Nicosia subsystem under cairo/.
+
+        * platform/TextureMapper.cmake:
+        * platform/graphics/nicosia/cairo/NicosiaPaintingContextCairo.cpp: Renamed from Source/WebCore/platform/graphics/nicosia/NicosiaPaintingContextCairo.cpp.
+        * platform/graphics/nicosia/cairo/NicosiaPaintingContextCairo.h: Renamed from Source/WebCore/platform/graphics/nicosia/NicosiaPaintingContextCairo.h.
+
+2018-02-20  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Drop target GraphicsContext usage in Cairo operations
+        https://bugs.webkit.org/show_bug.cgi?id=182964
+
+        Reviewed by Carlos Garcia Campos.
+
+        The GraphicsContext parameters in various Cairo operations are not used
+        anymore, so they can be removed. Callsites are updated to reflect this.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::drawShadowLayerBuffer):
+        (WebCore::Cairo::fillShadowBuffer):
+        (WebCore::Cairo::drawPathShadow):
+        (WebCore::Cairo::drawGlyphsShadow):
+        (WebCore::Cairo::fillRect):
+        (WebCore::Cairo::fillRoundedRect):
+        (WebCore::Cairo::fillRectWithRoundedHole):
+        (WebCore::Cairo::fillPath):
+        (WebCore::Cairo::strokeRect):
+        (WebCore::Cairo::strokePath):
+        (WebCore::Cairo::drawGlyphs):
+        (WebCore::Cairo::drawNativeImage):
+        (WebCore::Cairo::drawSurface):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/FontCairo.cpp:
+        (WebCore::FontCascade::drawGlyphs):
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::drawNativeImage):
+        (WebCore::GraphicsContext::fillPath):
+        (WebCore::GraphicsContext::strokePath):
+        (WebCore::GraphicsContext::fillRect):
+        (WebCore::GraphicsContext::strokeRect):
+        (WebCore::GraphicsContext::platformFillRoundedRect):
+        (WebCore::GraphicsContext::fillRectWithRoundedHole):
+        * platform/graphics/cairo/GraphicsContextImplCairo.cpp:
+        (WebCore::GraphicsContextImplCairo::fillRect):
+        (WebCore::GraphicsContextImplCairo::fillRoundedRect):
+        (WebCore::GraphicsContextImplCairo::fillRectWithRoundedHole):
+        (WebCore::GraphicsContextImplCairo::fillPath):
+        (WebCore::GraphicsContextImplCairo::strokeRect):
+        (WebCore::GraphicsContextImplCairo::strokePath):
+        (WebCore::GraphicsContextImplCairo::drawGlyphs):
+        (WebCore::GraphicsContextImplCairo::drawNativeImage):
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp:
+        (WebCore::MediaPlayerPrivateMediaFoundation::Direct3DPresenter::paintCurrentFrame):
+
+2018-02-20  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Leverage ShadowBlur without using scratch buffer, target GraphicsContext
+        https://bugs.webkit.org/show_bug.cgi?id=182958
+
+        Reviewed by Carlos Garcia Campos.
+
+        To allow ShadowBlur usage in different threads, avoid the ShadowBlur
+        class using the scratch buffer internally. The current implementation of
+        that scratch buffer is not thread-safe and its usage in such conditions
+        can lead to crashes.
+
+        Instead, the new methods use a temporary ImageBuffer object for drawing.
+        This does negate the efficiency of possibly reusing the scratch buffer,
+        but at this point that is not yet the priority. This only affects ports
+        using Cairo for drawing.
+
+        The added methods don't require a target GraphicsContext object to be
+        passed in, instead they accept buffer draw callbacks that are invoked
+        with the temporary ImageBuffer object containing the rasterized shadow,
+        as well as position and size parameters. The CTM and clip bounds values
+        also have to be passed in manually. In CairoOperations.cpp, the provided
+        callbacks invoke commands that are equivalent in effect to those that
+        would otherwise be invoked on the target GraphicsContext object in the
+        ShadowBlur class.
+
+        For now, this approach has to avoid the tiling-based drawing of the
+        rectangular shadows in drawRectShadow() and inset shadows in
+        drawInsetShadow(), and instead stick to the non-tiling fallback. While
+        only affecting Cairo-using ports, with some refactoring it should be
+        possible to again leverage the tiling-based approach as well.
+
+        The beginShadowLayer() and endShadowLayer() functions, which are only
+        used in CairoOperations.cpp, are replaced with the drawShadowLayer()
+        method. This one accepts an additional callback that allows the caller
+        to explicitly draw the shadow shape using the provided shadowing
+        GraphicsContext object. As with the other two new methods, a temporary
+        ImageBuffer object is used, and the buffer draw callback is invoked to
+        allow caller to properly handle the shadowing output.
+
+        In CairoOperations.cpp, the new ShadowBlur methods are exercised, with
+        direct Cairo operation invocation replacing the GraphicsContext calls
+        otherwise done through ShadowBlur. ShadowState object now also has to
+        track the global alpha and the global composite operator values so that
+        it can properly rasterize the resulting shadow into the final image.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/ShadowBlur.cpp:
+        (WebCore::ShadowBlur::adjustBlurRadius):
+        (WebCore::ShadowBlur::calculateLayerBoundingRect):
+        (WebCore::ShadowBlur::drawRectShadow):
+        (WebCore::ShadowBlur::drawInsetShadow):
+        (WebCore::ShadowBlur::drawShadowLayer):
+        (WebCore::ShadowBlur::beginShadowLayer): Deleted.
+        (WebCore::ShadowBlur::endShadowLayer): Deleted.
+        * platform/graphics/ShadowBlur.h:
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::drawShadowLayerBuffer):
+        (WebCore::Cairo::fillShadowBuffer):
+        (WebCore::Cairo::drawPathShadow):
+        (WebCore::Cairo::drawGlyphsShadow):
+        (WebCore::Cairo::ShadowState::ShadowState):
+        (WebCore::Cairo::fillRect):
+        (WebCore::Cairo::fillRoundedRect):
+        (WebCore::Cairo::fillRectWithRoundedHole):
+        (WebCore::Cairo::drawSurface):
+        * platform/graphics/cairo/CairoOperations.h:
+        Default-initialize FillSource::fillRule to RULE_NONZERO.
+        * platform/graphics/cairo/PlatformContextCairo.h:
+        Drop the ShadowBlur.h include, it's moved to CairoOperations.cpp.
+        * rendering/RenderThemeGtk.cpp:
+        Explicitly include the FloatRoundedRect.h header now that it's not
+        included through the ShadowBlur.h header via PlatformContextCairo.h.
+
+2018-02-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Split TexMap functionality out of GraphicsContext3DCairo
+        https://bugs.webkit.org/show_bug.cgi?id=182465
+
+        Reviewed by Michael Catanzaro.
+
+        Take the Non-Cairo GraphicsContext3D functionality that's stashed in
+        GraphicsContext3DCairo and move it into the GraphicsContext3DTextureMapper
+        file.
+
+        In GraphicsContext3DCairo.cpp, only the Cairo-specific GraphicsContext3D
+        functionality remains, specifically ImageExtractor and paintToCanvas().
+
+        Everything else is moved into GraphicsContext3DTextureMapper.cpp. This
+        filename and its location under platform/graphics/texmap/ was chosen
+        since all the ports using this file (GTK, WPE, WinCairo) are also using
+        the TextureMapper module. Various #if-guards are simplified in the
+        moved-over code to reflect this.
+
+        GraphicsContext3DCairo.cpp now better reflects GraphicsContext3DCG.cpp,
+        with both implementing functionality specific to a 2D painting library,
+        whereas GraphicsContext3DTextureMapper.cpp reflects
+        GraphicsContext3DCocoa.cpp in covering functionality needed to integrate
+        the GraphicsContext3D output into the platform-specific composition
+        system.
+
+        No new tests -- no change in behavior.
+
+        * platform/TextureMapper.cmake:
+        * platform/graphics/cairo/GraphicsContext3DCairo.cpp:
+        (WebCore::activeContexts): Deleted.
+        (WebCore::GraphicsContext3D::create): Deleted.
+        (WebCore::GraphicsContext3D::GraphicsContext3D): Deleted.
+        (WebCore::GraphicsContext3D::~GraphicsContext3D): Deleted.
+        (WebCore::GraphicsContext3D::setContextLostCallback): Deleted.
+        (WebCore::GraphicsContext3D::setErrorMessageCallback): Deleted.
+        (WebCore::GraphicsContext3D::makeContextCurrent): Deleted.
+        (WebCore::GraphicsContext3D::checkGPUStatus): Deleted.
+        (WebCore::GraphicsContext3D::platformGraphicsContext3D): Deleted.
+        (WebCore::GraphicsContext3D::platformTexture const): Deleted.
+        (WebCore::GraphicsContext3D::isGLES2Compliant const): Deleted.
+        (WebCore::GraphicsContext3D::platformLayer const): Deleted.
+        (WebCore::GraphicsContext3D::getExtensions): Deleted.
+        * platform/graphics/texmap/GraphicsContext3DTextureMapper.cpp: Copied from Source/WebCore/platform/graphics/cairo/GraphicsContext3DCairo.cpp.
+        (WebCore::activeContexts):
+        (WebCore::GraphicsContext3D::create):
+        (WebCore::GraphicsContext3D::GraphicsContext3D):
+        (WebCore::GraphicsContext3D::~GraphicsContext3D):
+        (WebCore::GraphicsContext3D::setContextLostCallback):
+        (WebCore::GraphicsContext3D::setErrorMessageCallback):
+        (WebCore::GraphicsContext3D::makeContextCurrent):
+        (WebCore::GraphicsContext3D::checkGPUStatus):
+        (WebCore::GraphicsContext3D::platformGraphicsContext3D):
+        (WebCore::GraphicsContext3D::platformTexture const):
+        (WebCore::GraphicsContext3D::isGLES2Compliant const):
+        (WebCore::GraphicsContext3D::platformLayer const):
+        (WebCore::GraphicsContext3D::getExtensions):
+
+2018-02-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        Simplify GraphicsContext3D::paintToCanvas()
+        https://bugs.webkit.org/show_bug.cgi?id=182459
+
+        Reviewed by Michael Catanzaro.
+
+        Cairo-specific paintToCanvas() method is dropped in favor of the more
+        common one that operates on a GraphicsContext object. The platform
+        context object is then retrieved inside the Cairo-speficic
+        paintToCanvas() implementation, and not at the call site in
+        GraphicsContext3D::paintRenderingResultsToCanvas().
+
+        GraphicsContext3D::paintToCanvas() is also modified so that the image
+        and canvas sizes are passed through IntSize objects, and not through
+        a width-and-height pair of integer values.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/GraphicsContext3D.h:
+        * platform/graphics/cairo/GraphicsContext3DCairo.cpp:
+        (WebCore::GraphicsContext3D::paintToCanvas):
+        * platform/graphics/cg/GraphicsContext3DCG.cpp:
+        (WebCore::GraphicsContext3D::paintToCanvas):
+        * platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp:
+        (WebCore::GraphicsContext3D::paintRenderingResultsToCanvas):
+
+2018-01-29  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Add GraphicsContextImplCairo::createFactory() helpers
+        https://bugs.webkit.org/show_bug.cgi?id=182238
+
+        Reviewed by Carlos Garcia Campos.
+
+        Instead of duplicating lambdas that return a newly-created
+        GraphicsContextImplCairo object, provide static createFactory() helpers
+        on that class that produce GraphicsContextImplFactory wrappers which are
+        then invoked in the GraphicsContext constructor. The static functions
+        accept either the PlatformContextCairo reference or the cairo_t pointer,
+        invoking the proper GraphicsContextImplCairo constructor in the returned
+        lambda wrapper.
+
+        No new tests -- no change in functionality.
+
+        * platform/graphics/cairo/GraphicsContextImplCairo.cpp:
+        (WebCore::GraphicsContextImplCairo::createFactory):
+        * platform/graphics/cairo/GraphicsContextImplCairo.h:
+        * platform/graphics/cairo/ImageBufferCairo.cpp:
+        (WebCore::ImageBuffer::ImageBuffer):
+        * platform/graphics/cairo/PathCairo.cpp:
+        (WebCore::Path::strokeBoundingRect const):
+        (WebCore::Path::strokeContains const):
+        * platform/graphics/nicosia/NicosiaPaintingContextCairo.cpp:
+        (Nicosia::PaintingContextCairo::PaintingContextCairo):
+        * platform/graphics/win/ImageCairoWin.cpp:
+        (WebCore::BitmapImage::getHBITMAPOfSize):
+
+2018-01-29  Zan Dobersek  <zdobersek@igalia.com>
+
+        Construct GraphicsContext with NonPaintingReasons::NoReason in FrameView::adjustPageHeightDeprecated()
+        https://bugs.webkit.org/show_bug.cgi?id=182235
+
+        Reviewed by Carlos Garcia Campos.
+
+        Pass the NonPaintingReasons::NoReason value to the GraphicsContext
+        constructor in FrameView::adjustPageHeightDeprecated(). This has the
+        same effect as when passing a null PlatformGraphicsContext to the
+        constructor, which effectively disables any painting through that
+        GraphicsContext, but doesn't have a platform-specific connotation.
+
+        No new tests -- no change in functionality.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::adjustPageHeightDeprecated):
+
+2018-01-29  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Remove the GraphicsContext(cairo_t*) constructor
+        https://bugs.webkit.org/show_bug.cgi?id=182234
+
+        Reviewed by Carlos Garcia Campos.
+
+        Instead of using the GraphicsContext(cairo_t*) constructor, leverage the
+        GraphicsContextImplCairo class and work with an existing Cairo context
+        through that GraphicsContextImpl implementation.
+
+        A new GraphicsContextImplCairo constructor is added, expecting pointer
+        to the cairo_t object. With that, a PlatformContextCairo object is
+        created, with ownership of that object now being handled by the
+        GraphicsContextImplCairo class.
+
+        Call sites of the GraphicsContext(cairo_t*) constructor are adjusted to
+        instead provide a factory function that returns a fresh
+        GraphicsContextImplCairo object, passing that cairo_t object to its
+        constructor.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/GraphicsContext.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::GraphicsContext): Deleted.
+        * platform/graphics/cairo/GraphicsContextImplCairo.cpp:
+        (WebCore::GraphicsContextImplCairo::GraphicsContextImplCairo):
+        (WebCore::m_private):
+        * platform/graphics/cairo/GraphicsContextImplCairo.h:
+        * platform/graphics/cairo/PathCairo.cpp:
+        (WebCore::Path::strokeBoundingRect const):
+        (WebCore::Path::strokeContains const):
+        * platform/graphics/win/ImageCairoWin.cpp:
+        (WebCore::BitmapImage::getHBITMAPOfSize):
+
+2018-01-25  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Use GraphicsContextImplCairo in Nicosia::PaintingContextCairo
+        https://bugs.webkit.org/show_bug.cgi?id=182094
+
+        Reviewed by Carlos Garcia Campos.
+
+        Have Nicosia::PaintingContextCairo create a GraphicsContext object that
+        utilizes a factory function which returns a freshly-allocated
+        GraphicsContextImplCairo through which all the painting is then done.
+        This moves GraphicsLayer painting over to using the GraphicsContextImpl
+        infrastructure.
+
+        No new tests -- no changes in behavior.
+
+        * platform/graphics/nicosia/NicosiaPaintingContextCairo.cpp:
+        (Nicosia::PaintingContextCairo::PaintingContextCairo):
+
+2018-01-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Use GraphicsContextImplCairo for ImageBuffer context
+        https://bugs.webkit.org/show_bug.cgi?id=181977
+
+        Reviewed by Carlos Garcia Campos.
+
+        Enhance the GraphicsContextImpl interface to the point of enabling the
+        Cairo-based implementation to be used for GraphicsContext construction
+        in ImageBufferCairo.cpp.
+
+        In order to enable GraphicsContextImpl implementations to properly
+        manage PlatformGraphicsContext objects, the hasPlatformContext() and
+        platformContext() methods are added. Cairo implementation returns true
+        in the first method, and returns pointer to the PlatformContextCairo
+        object in the second. The DisplayList::Recorder, due to its recording
+        nature, doesn't manage such an object, so it returns false and nullptr,
+        respectively.
+
+        GraphicsContextImpl also gains the setCTM(), getCTM(), clipBounds() and
+        roundToDevicePixels() methods, corresponding to the GraphicsContext
+        methods that now invoke these new methods on any existing m_impl object.
+        GraphicsContextImplCairo implementations mimic the existing behavior in
+        the Cairo-specific GraphicsContext methods, but DisplayList::Recorder
+        implementations remain no-op, logging the invocation but doing nothing
+        otherwise.
+
+        drawImage() and drawTiledImage() methods on the GraphicsContextImpl
+        interface are changed to return the ImageDrawResult value, corresponding
+        to what's been done in the method. In DisplayList::Recorder, the methods
+        return ImageDrawResult::DidRecord, while in GraphicsContextImplCairo the
+        methods return the return result of Image::draw() or Image::drawTiled()
+        call.
+
+        To make the protected Image::draw() and Image::drawTiled() methods
+        accessible, invocations of those are packed into static drawImageImpl()
+        and drawTiledImageImpl() functions on the GraphicsContextImpl class.
+        This makes it possible to simply declare GraphicsContextImpl class as a
+        friend class of Image, and not every specific GraphicsContextImpl
+        derivation. Implementations of these functions mirror behavior of the
+        drawImage() and drawTiledImage() methods on the GraphicsContext class,
+        when an m_impl object isn't present, constructing a scope-tied
+        InterpolationQualityMaintainer object and invoking the relevant Image
+        method.
+
+        To make immediate use of the new GraphicsContextImplCairo functionality,
+        the GraphicsContext construction in Cairo-specific ImageBuffer
+        implementation now uses a factory function that returns a new
+        GraphicsContextImplCairo object through which the given
+        PlatformContextCairo is used for painting.
+
+        No new tests -- no change in functionality.
+
+        * platform/graphics/GraphicsContext.cpp:
+        (WebCore::GraphicsContext::hasPlatformContext const):
+        (WebCore::GraphicsContext::drawImage):
+        (WebCore::GraphicsContext::drawTiledImage):
+        * platform/graphics/GraphicsContext.h:
+        (WebCore::GraphicsContext::hasPlatformContext const): Deleted.
+        * platform/graphics/GraphicsContextImpl.cpp:
+        (WebCore::GraphicsContextImpl::drawImageImpl):
+        (WebCore::GraphicsContextImpl::drawTiledImageImpl):
+        * platform/graphics/GraphicsContextImpl.h:
+        * platform/graphics/Image.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::getCTM const):
+        (WebCore::GraphicsContext::platformContext const):
+        (WebCore::GraphicsContext::clipBounds const):
+        (WebCore::GraphicsContext::roundToDevicePixels):
+        (WebCore::GraphicsContext::setCTM):
+        * platform/graphics/cairo/GraphicsContextImplCairo.cpp:
+        (WebCore::m_private):
+        (WebCore::GraphicsContextImplCairo::~GraphicsContextImplCairo):
+        (WebCore::GraphicsContextImplCairo::hasPlatformContext const):
+        (WebCore::GraphicsContextImplCairo::platformContext const):
+        (WebCore::GraphicsContextImplCairo::updateState):
+        (WebCore::GraphicsContextImplCairo::setLineCap):
+        (WebCore::GraphicsContextImplCairo::setLineDash):
+        (WebCore::GraphicsContextImplCairo::setLineJoin):
+        (WebCore::GraphicsContextImplCairo::setMiterLimit):
+        (WebCore::GraphicsContextImplCairo::fillRect):
+        (WebCore::GraphicsContextImplCairo::fillRoundedRect):
+        (WebCore::GraphicsContextImplCairo::fillRectWithRoundedHole):
+        (WebCore::GraphicsContextImplCairo::fillPath):
+        (WebCore::GraphicsContextImplCairo::fillEllipse):
+        (WebCore::GraphicsContextImplCairo::strokeRect):
+        (WebCore::GraphicsContextImplCairo::strokePath):
+        (WebCore::GraphicsContextImplCairo::strokeEllipse):
+        (WebCore::GraphicsContextImplCairo::clearRect):
+        (WebCore::GraphicsContextImplCairo::drawGlyphs):
+        (WebCore::GraphicsContextImplCairo::drawImage):
+        (WebCore::GraphicsContextImplCairo::drawTiledImage):
+        (WebCore::GraphicsContextImplCairo::drawNativeImage):
+        (WebCore::GraphicsContextImplCairo::drawPattern):
+        (WebCore::GraphicsContextImplCairo::drawRect):
+        (WebCore::GraphicsContextImplCairo::drawLine):
+        (WebCore::GraphicsContextImplCairo::drawLinesForText):
+        (WebCore::GraphicsContextImplCairo::drawLineForDocumentMarker):
+        (WebCore::GraphicsContextImplCairo::drawEllipse):
+        (WebCore::GraphicsContextImplCairo::drawFocusRing):
+        (WebCore::GraphicsContextImplCairo::save):
+        (WebCore::GraphicsContextImplCairo::restore):
+        (WebCore::GraphicsContextImplCairo::translate):
+        (WebCore::GraphicsContextImplCairo::rotate):
+        (WebCore::GraphicsContextImplCairo::scale):
+        (WebCore::GraphicsContextImplCairo::concatCTM):
+        (WebCore::GraphicsContextImplCairo::setCTM):
+        (WebCore::GraphicsContextImplCairo::getCTM):
+        (WebCore::GraphicsContextImplCairo::beginTransparencyLayer):
+        (WebCore::GraphicsContextImplCairo::endTransparencyLayer):
+        (WebCore::GraphicsContextImplCairo::clip):
+        (WebCore::GraphicsContextImplCairo::clipOut):
+        (WebCore::GraphicsContextImplCairo::clipPath):
+        (WebCore::GraphicsContextImplCairo::clipBounds):
+        (WebCore::GraphicsContextImplCairo::roundToDevicePixels):
+        (WebCore::m_platformContext): Deleted.
+        * platform/graphics/cairo/GraphicsContextImplCairo.h:
+        * platform/graphics/cairo/ImageBufferCairo.cpp:
+        (WebCore::ImageBuffer::ImageBuffer):
+        * platform/graphics/cg/GraphicsContextCG.cpp:
+        (WebCore::GraphicsContext::clipBounds const):
+        (WebCore::GraphicsContext::setCTM):
+        (WebCore::GraphicsContext::getCTM const):
+        (WebCore::GraphicsContext::roundToDevicePixels):
+        * platform/graphics/displaylists/DisplayListRecorder.cpp:
+        (WebCore::DisplayList::Recorder::drawImage):
+        (WebCore::DisplayList::Recorder::drawTiledImage):
+        (WebCore::DisplayList::Recorder::drawNativeImage):
+        (WebCore::DisplayList::Recorder::setCTM):
+        (WebCore::DisplayList::Recorder::getCTM):
+        (WebCore::DisplayList::Recorder::clipBounds):
+        (WebCore::DisplayList::Recorder::roundToDevicePixels):
+        * platform/graphics/displaylists/DisplayListRecorder.h:
+
+2018-01-24  Christopher Reid  <chris.reid@sony.com>
+
+        Linker error in ShareableBitmapCairo.cpp  undefined reference to WebCore::Cairo::ShadowState::ShadowState
+        https://bugs.webkit.org/show_bug.cgi?id=182060
+
+        Reviewed by Žan Doberšek.
+
+        No new tests, no change in behavior.
+
+        Added exports to WebCore::Cairo::ShadowState::ShadowState.
+
+        * platform/graphics/cairo/CairoOperations.h:
+
+2018-01-22  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Refactor PlatformContextCairo::drawSurfaceToContext() into a Cairo operation
+        https://bugs.webkit.org/show_bug.cgi?id=181930
+
+        Reviewed by Carlos Garcia Campos.
+
+        Move the PlatformContextCairo::drawSurfaceToContext() code into the
+        Cairo namespace as an operation, renaming it to drawSurface(). Mirroring
+        other operations, the PlatformContextCairo object is now passed through
+        a reference as the first argument to the function, and cairo_t context
+        object is retrieved from that.
+
+        Call sites of the PlatformContextCairo::drawSurfaceToContext() method
+        are adjusted to now call Cairo::drawSurface() and properly pass the
+        PlatformContextCairo object to the function.
+
+        No new tests -- no change in functionality.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::prepareForStroking): Make this static.
+        (WebCore::Cairo::drawPatternToCairoContext):
+        (WebCore::Cairo::drawNativeImage):
+        (WebCore::Cairo::drawSurface):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/PlatformContextCairo.cpp:
+        (WebCore::drawPatternToCairoContext): Deleted.
+        (WebCore::PlatformContextCairo::drawSurfaceToContext): Deleted.
+        * platform/graphics/cairo/PlatformContextCairo.h:
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp:
+        (WebCore::MediaPlayerPrivateMediaFoundation::Direct3DPresenter::paintCurrentFrame):
+
+2018-01-17  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed follow-up to r227051.
+
+        * platform/graphics/cairo/CairoOperations.h: Fix declaration of the
+        fillRoundedRect() function by removing the bool parameter that's not
+        used at all in the definition. This went unspotted due to the unified
+        source build including the implementation file before fillRoundedRect()
+        usage in GrapihcsContextCairo.cpp, leaving the declaration undefined
+        and instead using the definition directly.
+
+2018-01-17  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Don't mirror global alpha and image interpolation quality state values in PlatformContextCairo
+        https://bugs.webkit.org/show_bug.cgi?id=181725
+
+        Reviewed by Carlos Garcia Campos.
+
+        Don't duplicate global alpha and image interpolation quality state
+        values on the PlatformContextCairo. Instead, retrieve them from
+        the managing GraphicsContextState when necessary.
+
+        For Cairo operations, the FillSource and StrokeSource containers now
+        store the global alpha value, using it during the operation executions.
+        For drawNativeImage(), the global alpha and interpolation quality values
+        are passed through arguments.
+
+        In PlatformContextCairo, the two values are no longer stored on the
+        internally-managed stack, and the getter-setter pairs for the two values
+        are removed. In drawSurfaceToContext(), the two values are now expected
+        to be passed through the method arguments.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::prepareForFilling):
+        (WebCore::Cairo::prepareForStroking):
+        (WebCore::Cairo::drawPathShadow):
+        (WebCore::Cairo::fillCurrentCairoPath):
+        (WebCore::Cairo::FillSource::FillSource):
+        (WebCore::Cairo::StrokeSource::StrokeSource):
+        (WebCore::Cairo::strokeRect):
+        (WebCore::Cairo::strokePath):
+        (WebCore::Cairo::drawGlyphs):
+        (WebCore::Cairo::drawNativeImage):
+        (WebCore::Cairo::State::setGlobalAlpha): Deleted.
+        (WebCore::Cairo::State::setImageInterpolationQuality): Deleted.
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::drawNativeImage):
+        (WebCore::GraphicsContext::setPlatformAlpha):
+        (WebCore::GraphicsContext::setPlatformImageInterpolationQuality):
+        * platform/graphics/cairo/PlatformContextCairo.cpp:
+        (WebCore::PlatformContextCairo::save):
+        (WebCore::PlatformContextCairo::drawSurfaceToContext):
+        (WebCore::PlatformContextCairo::State::State): Deleted.
+        (WebCore::PlatformContextCairo::setImageInterpolationQuality): Deleted.
+        (WebCore::PlatformContextCairo::imageInterpolationQuality const): Deleted.
+        (WebCore::PlatformContextCairo::globalAlpha const): Deleted.
+        (WebCore::PlatformContextCairo::setGlobalAlpha): Deleted.
+        * platform/graphics/cairo/PlatformContextCairo.h:
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp:
+        (WebCore::MediaPlayerPrivateMediaFoundation::Direct3DPresenter::paintCurrentFrame):
+
+2018-01-17  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Move prepareForFilling(), prepareForStroking() code to CairoOperations
+        https://bugs.webkit.org/show_bug.cgi?id=181721
+
+        Reviewed by Carlos Garcia Campos.
+
+        Move the prepareForFilling() and prepareForStroking() code off of the
+        PlatformContextCairo class and into static functions inside the
+        CairoOperations implementation files. The original methods weren't
+        called from any place other than the Cairo operations, and they only
+        operated with the cairo_t object that's stored in and retrievable from
+        the PlatformContextCairo object.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::reduceSourceByAlpha):
+        (WebCore::Cairo::prepareCairoContextSource):
+        (WebCore::Cairo::clipForPatternFilling):
+        (WebCore::Cairo::prepareForFilling):
+        (WebCore::Cairo::prepareForStroking):
+        (WebCore::Cairo::drawPathShadow):
+        (WebCore::Cairo::fillCurrentCairoPath):
+        (WebCore::Cairo::strokeRect):
+        (WebCore::Cairo::strokePath):
+        (WebCore::Cairo::drawGlyphs):
+        * platform/graphics/cairo/PlatformContextCairo.cpp:
+        (WebCore::reduceSourceByAlpha): Deleted.
+        (WebCore::prepareCairoContextSource): Deleted.
+        (WebCore::PlatformContextCairo::prepareForFilling): Deleted.
+        (WebCore::PlatformContextCairo::prepareForStroking): Deleted.
+        (WebCore::PlatformContextCairo::clipForPatternFilling): Deleted.
+        * platform/graphics/cairo/PlatformContextCairo.h:
+
+2018-01-17  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Use one-time ShadowBlur objects when performing shadowing
+        https://bugs.webkit.org/show_bug.cgi?id=181720
+
+        Reviewed by Carlos Garcia Campos.
+
+        Don't maintain a ShadowBlur object in the PlatformContextCairo class.
+        Instead, use temporary ShadowBlur objects whenever shadowing is needed,
+        providing all the shadow state information to it and drawing shadow into
+        the given GraphicsContext object.
+
+        ShadowBlur constructors are cleaned up. The 'shadows ignored' argument
+        can now also be provided to the variant that accepts explicit shadow
+        attributes, but the argument is false by default.
+
+        In CairoOperations, the ShadowBlurUsage functionality is rolled into the
+        new ShadowState class. ShadowState parameter is now used for operations
+        that might need to perform shadow painting. Call sites are modified
+        accordingly.
+
+        Cairo::State::setShadowValues() and Cairo::State::clearShadow() are
+        removed, since the ShadowBlur object that was modified through those is
+        being removed from the PlatformContextCairo class. We still have to flip
+        the Y-axis of the shadow offset in GraphicsContext::setPlatformShadow()
+        when shadows are ignoring transformations.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/ShadowBlur.cpp:
+        (WebCore::ShadowBlur::ShadowBlur):
+        * platform/graphics/ShadowBlur.h:
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::drawPathShadow):
+        (WebCore::Cairo::drawGlyphsShadow):
+        (WebCore::Cairo::ShadowState::ShadowState):
+        (WebCore::Cairo::ShadowState::isVisible const):
+        (WebCore::Cairo::ShadowState::isRequired const):
+        (WebCore::Cairo::fillRect):
+        (WebCore::Cairo::fillRoundedRect):
+        (WebCore::Cairo::fillRectWithRoundedHole):
+        (WebCore::Cairo::fillPath):
+        (WebCore::Cairo::strokeRect):
+        (WebCore::Cairo::strokePath):
+        (WebCore::Cairo::drawGlyphs):
+        (WebCore::Cairo::drawNativeImage):
+        (WebCore::Cairo::State::setShadowValues): Deleted.
+        (WebCore::Cairo::State::clearShadow): Deleted.
+        (WebCore::Cairo::ShadowBlurUsage::ShadowBlurUsage): Deleted.
+        (WebCore::Cairo::ShadowBlurUsage::required const): Deleted.
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/FontCairo.cpp:
+        (WebCore::FontCascade::drawGlyphs):
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::restorePlatformState):
+        (WebCore::GraphicsContext::drawNativeImage):
+        (WebCore::GraphicsContext::fillPath):
+        (WebCore::GraphicsContext::strokePath):
+        (WebCore::GraphicsContext::fillRect):
+        (WebCore::GraphicsContext::setPlatformShadow):
+        (WebCore::GraphicsContext::clearPlatformShadow):
+        (WebCore::GraphicsContext::strokeRect):
+        (WebCore::GraphicsContext::platformFillRoundedRect):
+        (WebCore::GraphicsContext::fillRectWithRoundedHole):
+        * platform/graphics/cairo/PlatformContextCairo.cpp:
+        (WebCore::PlatformContextCairo::drawSurfaceToContext):
+        * platform/graphics/cairo/PlatformContextCairo.h:
+        (WebCore::PlatformContextCairo::shadowBlur): Deleted.
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp:
+        (WebCore::MediaPlayerPrivateMediaFoundation::Direct3DPresenter::paintCurrentFrame):
+
+2018-01-09  Don Olmstead  <don.olmstead@sony.com>
+
+        Add additional WEBCORE_EXPORTs
+        https://bugs.webkit.org/show_bug.cgi?id=181414
+
+        Reviewed by Alex Christensen.
+
+        No new tests. No change in behavior.
+
+        * dom/Document.h:
+        * dom/ViewportArguments.h:
+        * page/DOMWindow.h:
+        * page/FrameView.h:
+        * page/PageOverlayController.h:
+        * platform/ContextMenuItem.h:
+        * platform/Pasteboard.h:
+        * platform/SharedBuffer.h:
+        * platform/UserAgent.h:
+        * platform/graphics/GLContext.h:
+        * platform/graphics/GraphicsContext.h:
+        * platform/graphics/GraphicsLayerTransform.h:
+        * platform/graphics/PlatformDisplay.h:
+        * platform/graphics/cairo/BackingStoreBackendCairoImpl.h:
+        * platform/graphics/cairo/PlatformContextCairo.h:
+        * platform/graphics/cairo/RefPtrCairo.h:
+        * platform/graphics/nicosia/NicosiaBuffer.h:
+        * platform/graphics/nicosia/NicosiaPaintingEngine.h:
+        * platform/graphics/texmap/TextureMapper.h:
+        * platform/graphics/texmap/TextureMapperAnimation.h:
+        * platform/graphics/texmap/TextureMapperBackingStore.h:
+        * platform/graphics/texmap/TextureMapperFPSCounter.h:
+        * platform/graphics/texmap/TextureMapperLayer.h:
+        (WebCore::TextureMapperLayer::TextureMapperLayer): Deleted.
+        (WebCore::TextureMapperLayer::setID): Deleted.
+        (WebCore::TextureMapperLayer::id): Deleted.
+        (WebCore::TextureMapperLayer:: const): Deleted.
+        (WebCore::TextureMapperLayer::setScrollClient): Deleted.
+        (WebCore::TextureMapperLayer::setIsScrollable): Deleted.
+        (WebCore::TextureMapperLayer::isScrollable const): Deleted.
+        (WebCore::TextureMapperLayer::textureMapper const): Deleted.
+        (WebCore::TextureMapperLayer::setTextureMapper): Deleted.
+        (WebCore::TextureMapperLayer::drawsContent const): Deleted.
+        (WebCore::TextureMapperLayer::contentsAreVisible const): Deleted.
+        (WebCore::TextureMapperLayer::size const): Deleted.
+        (WebCore::TextureMapperLayer::opacity const): Deleted.
+        (WebCore::TextureMapperLayer::transform const): Deleted.
+        (WebCore::TextureMapperLayer::hasFilters const): Deleted.
+        (WebCore::TextureMapperLayer::isShowingRepaintCounter const): Deleted.
+        (WebCore::TextureMapperLayer::fixedToViewport const): Deleted.
+        (WebCore::TextureMapperLayer::rootLayer const): Deleted.
+        (WebCore::TextureMapperLayer::texture): Deleted.
+        (WebCore::TextureMapperLayer::adjustedPosition const): Deleted.
+        (WebCore::TextureMapperLayer::layerRect const): Deleted.
+        (WebCore::TextureMapperLayer::State::State): Deleted.
+        * platform/graphics/texmap/TextureMapperPlatformLayerProxy.h:
+        * platform/graphics/texmap/TextureMapperTile.h:
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.h:
+        (WebCore::CoordinatedGraphicsLayer::isScrollable const): Deleted.
+        (WebCore::CoordinatedGraphicsLayer::id const): Deleted.
+        (WebCore::CoordinatedGraphicsLayer::coverRect const): Deleted.
+        (WebCore::CoordinatedGraphicsLayer::fixedToViewport const): Deleted.
+        * platform/graphics/texmap/coordinated/CoordinatedImageBacking.h:
+        (WebCore::CoordinatedImageBacking::id const): Deleted.
+        * platform/graphics/texmap/coordinated/TiledBackingStore.h:
+        * platform/graphics/texmap/coordinated/UpdateAtlas.h:
+        * platform/network/AuthenticationChallengeBase.h:
+        * platform/network/CredentialBase.h:
+        * platform/network/ProtectionSpaceBase.h:
+        * platform/network/curl/SocketStreamHandleImpl.h:
+        * replay/UserInputBridge.h:
+
+2018-01-09  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Pass state values directly to Cairo operations
+        https://bugs.webkit.org/show_bug.cgi?id=181389
+
+        Reviewed by Carlos Garcia Campos.
+
+        Instead of passing reference to the GraphicsContextState object to
+        various Cairo operations, only pass the required state values. This
+        makes it explicit what state values are used in these operations, at the
+        expense of some long parameter lists, but this will be better addressed
+        by future refactoring of this code into more concise functions.
+
+        No new tests -- no change in functionality.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::drawGlyphsShadow):
+        (WebCore::Cairo::dashedLineCornerWidthForStrokeWidth):
+        (WebCore::Cairo::dashedLinePatternWidthForStrokeWidth):
+        (WebCore::Cairo::drawGlyphs):
+        (WebCore::Cairo::drawRect):
+        (WebCore::Cairo::drawLine):
+        (WebCore::Cairo::drawEllipse):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/FontCairo.cpp:
+        (WebCore::FontCascade::drawGlyphs):
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::drawRect):
+        (WebCore::GraphicsContext::drawLine):
+        (WebCore::GraphicsContext::drawEllipse):
+
+2018-01-08  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Use isolated fill and stroke source containers
+        https://bugs.webkit.org/show_bug.cgi?id=181386
+
+        Reviewed by Carlos Garcia Campos.
+
+        Generate fill and stroke source objects upon invocation of various Cairo
+        operations, initializing necessary data from the GraphicsContextState
+        object.
+
+        Cairo::FillSource and Cairo::StrokeSource structs are introduced, both
+        being default-constructible as well as providing a constructor that
+        accepts a GraphicsContextState object from which the appropriate
+        resources are created.
+
+        The FillSource and StrokeSource objects are then passed to
+        PlatformContextCairo's prepareForFilling() and prepareForStroking()
+        methods. Here the helper prepareCairoContextSource() function is now
+        invoked with cairo_pattern_t objects as pattern or gradient sources, or
+        the source color if neither cairo_pattern_t object is specified.
+
+        The FillSource and StrokeSource constructors mimic the previous behavior
+        of prepareCairoContextSource(). In case the source is a Pattern object,
+        a cairo_pattern_t object is created from that. In case of FillSource,
+        we also retrieve pattern size, transform and repetition information. In
+        case the source os a Gradient object, we create a 'base' cairo_pattern_t
+        object for a completely opaque alpha channel. Additionally, if the alpha
+        value on the state is not 1, we create an alpha-adjusted cairo_pattern_t
+        that is potentially used for any filling or stroking operation that has
+        to preserve transparency. If neither Pattern or Gradient objects are set
+        on the GraphicsContextState, we default to the current fill or stroke
+        color.
+
+        Overall, there's no change in behavior, this is simply a refactoring
+        that enables us to construct Cairo objects for filling and stroking
+        sources at the time of Cairo operation dispatch, instead of pulling down
+        GraphicsContextState deeper into the Cairo-specific code.
+
+        No new tests -- no change in functionality.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::drawPathShadow):
+        (WebCore::Cairo::fillCurrentCairoPath):
+        (WebCore::Cairo::FillSource::FillSource):
+        (WebCore::Cairo::StrokeSource::StrokeSource):
+        (WebCore::Cairo::fillRect):
+        (WebCore::Cairo::fillRectWithRoundedHole):
+        (WebCore::Cairo::fillPath):
+        (WebCore::Cairo::strokeRect):
+        (WebCore::Cairo::strokePath):
+        (WebCore::Cairo::drawGlyphs):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/FontCairo.cpp:
+        (WebCore::FontCascade::drawGlyphs):
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::fillPath):
+        (WebCore::GraphicsContext::strokePath):
+        (WebCore::GraphicsContext::fillRect):
+        (WebCore::GraphicsContext::strokeRect):
+        (WebCore::GraphicsContext::fillRectWithRoundedHole):
+        * platform/graphics/cairo/PlatformContextCairo.cpp:
+        (WebCore::prepareCairoContextSource):
+        (WebCore::PlatformContextCairo::prepareForFilling):
+        (WebCore::PlatformContextCairo::prepareForStroking):
+        (WebCore::PlatformContextCairo::clipForPatternFilling):
+        * platform/graphics/cairo/PlatformContextCairo.h:
+
+2017-11-23  Simon Fraser  <simon.fraser@apple.com>
+
+        Add support for CanvasPattern.setTransform()
+        https://bugs.webkit.org/show_bug.cgi?id=179935
+
+        Reviewed by Sam Weinig.
+        
+        Add support for setTransform() on CanvasPattern, per
+        <https://html.spec.whatwg.org/multipage/canvas.html#dom-canvaspattern-settransform>
+        It uses [MayThrowException] since the "validate and fixup" steps for DOMMatrix can throw
+        an exception.
+        
+        Under the hood, the transform is just pushed onto Pattern as the patternSpaceTransform().
+        
+        Minor cleanup in Pattern.
+
+        Test: fast/canvas/canvas-pattern-with-transform.html
+
+        * html/canvas/CanvasPattern.cpp:
+        (WebCore::CanvasPattern::setTransform):
+        * html/canvas/CanvasPattern.h:
+        * html/canvas/CanvasPattern.idl:
+        * platform/graphics/Pattern.h:
+
+2018-01-08  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Contain shadow blur requirement state in a separate object
+        https://bugs.webkit.org/show_bug.cgi?id=181380
+
+        Reviewed by Carlos Garcia Campos.
+
+        Instead of picking up the necessary state parameters from a
+        GraphicsContextState object, store the necessary parameters in a helper
+        ShadowBlurUsage struct. Mimicking the mustUseShadowBlur() function that
+        is being removed, values of the shadow color, shadow blur, and shadow
+        transform ignorance are stored there. Additionally, the required()
+        method accepts a PlatformContextCairo object through which it can
+        retrieve the current CTM and determine whether it's an identity, finally
+        deciding whether shadow blur can or cannot be ignored.
+
+        Goal of this change is to limit usage of GraphicsContextState directly
+        in operations implemented inside the Cairo namespace. Instead, the
+        state parameters should be passed directly, or an equivalent but limited
+        state object should be constructed for invocation of such operations.
+
+        This is likely only an intermediate solution. It's possible it will be
+        replaced by a more complete shadow state struct that would be used for
+        any operation that is required to draw shadows, if necessary.
+
+        No new tests -- no change in functionality.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::drawGlyphsShadow):
+        (WebCore::Cairo::ShadowBlurUsage::ShadowBlurUsage):
+        (WebCore::Cairo::ShadowBlurUsage::required const):
+        (WebCore::Cairo::fillRectWithRoundedHole):
+        (WebCore::Cairo::drawGlyphs):
+        (WebCore::Cairo::mustUseShadowBlur): Deleted.
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/FontCairo.cpp:
+        (WebCore::FontCascade::drawGlyphs):
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::fillRectWithRoundedHole):
+
+2018-01-05  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Cairo] Canvas: Path::clear should clear its transform
+        https://bugs.webkit.org/show_bug.cgi?id=181320
+
+        Reviewed by Carlos Garcia Campos.
+
+        Path of Cairo port has its cairo context. Path::clear() didn't
+        clear the transform matrix of the context.
+
+        Test: fast/canvas/reset-scaling-by-height-change.html
+
+        * platform/graphics/cairo/PathCairo.cpp:
+        (WebCore::Path::clear): Reset the transform matrix of Path.
+
+2017-12-12  Christopher Reid  <chris.reid@sony.com>
+
+        WebGL TextureMapperShaderProgram shaders don't compile in MSVC
+        https://bugs.webkit.org/show_bug.cgi?id=180709
+
+        Reviewed by Myles C. Maxfield.
+
+        No new tests, no change in behavior.
+
+        Vertex and Fragment shaders were not compiling because TextureMapperShaderProgram.cpp was
+        stringifying "#if USE(OPENGL_ES_2) ... #endif" into the shaders rather than evaluating these
+        preprocessor directives before the STRINGIFY expansion.
+
+        Moved these #if conditions outside of STRINGIFY to remove compiler ambiguity.
+
+        * platform/graphics/texmap/TextureMapperShaderProgram.cpp:
+
+2017-12-11  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Cairo::clipToImageBuffer() should operate on a cairo_surface_t
+        https://bugs.webkit.org/show_bug.cgi?id=180665
+
+        Reviewed by Michael Catanzaro.
+
+        Have the Cairo::clipToImageBuffer() function in the CairoUtilities code
+        operate on a cairo_surface_t object, instead of an Image object.
+
+        Call site in GraphicsContext::clipToImageBuffer() is adjusted to first
+        ensure a non-null Image object, and then retrieve a cairo_surface_t
+        object from that, passing it on to Cairo::clipToImageBuffer().
+
+        No new tests -- no change in functionality.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::clipToImageBuffer):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::clipToImageBuffer):
+
+2017-12-11  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Don't use a static cairo_surface_t object for CairoPath contexts
+        https://bugs.webkit.org/show_bug.cgi?id=180663
+
+        Reviewed by Michael Catanzaro.
+
+        Instead of using a single cairo_surface_t object and sharing it between
+        different cairo_t objects handled by CairoPath, create a new mock 1x1px
+        alpha-only surface for each cairo_t object that's allocated in the
+        CairoPath constructor.
+
+        This avoids potential issues in how Cairo's state handling internally
+        uses these surfaces, which is completely opaque to us and out of our
+        control. This also avoids crashes when using this one cairo_surface_t
+        object through different CairoPath objects across different threads.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/PlatformPathCairo.cpp:
+        (WebCore::CairoPath::CairoPath):
+        (WebCore::pathSurface): Deleted.
+        * platform/graphics/cairo/PlatformPathCairo.h:
+        (WebCore::CairoPath::context):
+
+2017-12-11  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Move UpdateAtlas, AreaAllocator into the platform layer
+        https://bugs.webkit.org/show_bug.cgi?id=180641
+
+        Reviewed by Michael Catanzaro.
+
+        Move the UpdateAtlas and AreaAllocator classes and their source files
+        into the platform layer. This still means using the WebCore namespace,
+        but apart from that these two classes have no dependency on anything in
+        the WebKit layer, so they can be moved from there.
+
+        No new tests -- no change in functionality.
+
+        * platform/TextureMapper.cmake:
+        * platform/graphics/texmap/coordinated/AreaAllocator.cpp: Renamed from Source/WebKit/WebProcess/WebPage/CoordinatedGraphics/AreaAllocator.cpp.
+        (WebCore::AreaAllocator::AreaAllocator):
+        (WebCore::AreaAllocator::~AreaAllocator):
+        (WebCore::AreaAllocator::expand):
+        (WebCore::AreaAllocator::expandBy):
+        (WebCore::AreaAllocator::release):
+        (WebCore::AreaAllocator::overhead const):
+        (WebCore::AreaAllocator::roundAllocation const):
+        (WebCore::GeneralAreaAllocator::GeneralAreaAllocator):
+        (WebCore::GeneralAreaAllocator::~GeneralAreaAllocator):
+        (WebCore::GeneralAreaAllocator::freeNode):
+        (WebCore::GeneralAreaAllocator::expand):
+        (WebCore::fitsWithin):
+        (WebCore::GeneralAreaAllocator::allocate):
+        (WebCore::GeneralAreaAllocator::allocateFromNode):
+        (WebCore::GeneralAreaAllocator::splitNode):
+        (WebCore::GeneralAreaAllocator::updateLargestFree):
+        (WebCore::GeneralAreaAllocator::release):
+        (WebCore::GeneralAreaAllocator::overhead const):
+        * platform/graphics/texmap/coordinated/AreaAllocator.h: Renamed from Source/WebKit/WebProcess/WebPage/CoordinatedGraphics/AreaAllocator.h.
+        (WebCore::nextPowerOfTwo):
+        (WebCore::AreaAllocator::size const):
+        (WebCore::AreaAllocator::minimumAllocation const):
+        (WebCore::AreaAllocator::setMinimumAllocation):
+        (WebCore::AreaAllocator::margin const):
+        (WebCore::AreaAllocator::setMargin):
+        * platform/graphics/texmap/coordinated/UpdateAtlas.cpp: Renamed from Source/WebKit/WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.cpp.
+        (WebCore::UpdateAtlas::UpdateAtlas):
+        (WebCore::UpdateAtlas::~UpdateAtlas):
+        (WebCore::UpdateAtlas::buildLayoutIfNeeded):
+        (WebCore::UpdateAtlas::didSwapBuffers):
+        (WebCore::UpdateAtlas::getCoordinatedBuffer):
+        * platform/graphics/texmap/coordinated/UpdateAtlas.h: Renamed from Source/WebKit/WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.h.
+        (WebCore::UpdateAtlas::size const):
+        (WebCore::UpdateAtlas::supportsAlpha const):
+        (WebCore::UpdateAtlas::addTimeInactive):
+        (WebCore::UpdateAtlas::isInactive const):
+        (WebCore::UpdateAtlas::isInUse const):
+
+2017-12-06  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Introduce Nicosia::PaintingContext, add Cairo implementation
+        https://bugs.webkit.org/show_bug.cgi?id=180239
+
+        Reviewed by Michael Catanzaro.
+
+        As the next step in the Nicosia abstraction formation, we introduce
+        Nicosia::PaintingContext. Implementations of this class will leverage a
+        chosen 2D graphics library to paint (through GraphicsContext) into the
+        memory area that's specified by a given Nicosia::Buffer object.
+
+        Nicosia::Buffer is slimmed down to only control the memory that's
+        required for rasterization of an RGBA32 painting output. It mimics the
+        Cairo ImageBuffer implementation by using FastMalloc to allocate the
+        necessary memory. In the future this class might become an interface of
+        which different implementations will be providing memory that's
+        allocated through different ways. For instance, when GLES3 is available,
+        it would be possible to map GPU memory into the process memory space and
+        rasterize into that, effectively eliminating need for GPU uploads.
+
+        Since the ImageBuffer use in Nicosia::Buffer is dropped, the context()
+        and uploadImage() methods are also removed. The functionality of
+        ImageBuffer that was leveraged for CoordinatedGraphics rasterization
+        still remains used through the PaintingContextCairo implementation. In
+        the constructor of that class, with the target Nicosia::Buffer provided,
+        we construct the cairo_surface_t and cairo_t objects that are necessary
+        to create a combination of PlatformContextCairo and GraphicsContext
+        objects that we can then use for rasterization.
+
+        Reference of the passed-in Nicosia::Buffer object is increased for the
+        lifetime of the cairo_surface_t object that will be drawing into that
+        buffer's memory area. This ensures the memory area doesn't disappear
+        from a live cairo_surface_t. Still, the expectation is that the
+        cairo_surface_t object won't outlive the PaintingContextCairo object's
+        lifetime, since the cairo_t object is also managed here and deleted in
+        the destructor. To test that, we use a cairo_surface_t user data key
+        that in its destroy callback dereferences the Nicosia::Buffer object and
+        also marks the deletion process for the related PaintingContextCairo
+        object as complete. This m_deletionComplete value is tested in the
+        destructor of the class, once all the Cairo references are nulled out.
+
+        The PaintingContext objects should be limited to a single scope,
+        enabling the implementation resources to assume that the lifetime of the
+        implementation object won't extend outside of the scope where it was
+        created. To ensure that, the PaintingContext::paint() static function is
+        added that creates the PaintingContext object and then executes the
+        passed-in functor, passing it the GraphicsContext that should be used
+        for drawing. Drawing is thus limited to that functor only, and the
+        PaintingContext's create() function and the virtual graphicsContext()
+        are not made public in the class.
+
+        No new tests -- no change in functionality.
+
+        * platform/TextureMapper.cmake:
+        * platform/graphics/nicosia/NicosiaBuffer.cpp:
+        (Nicosia::Buffer::Buffer):
+        (Nicosia::Buffer::context): Deleted.
+        (Nicosia::Buffer::uploadImage): Deleted.
+        * platform/graphics/nicosia/NicosiaBuffer.h:
+        (Nicosia::Buffer::stride const):
+        (Nicosia::Buffer::data const):
+        * platform/graphics/nicosia/NicosiaPaintingContext.cpp: Copied from Source/WebCore/platform/graphics/nicosia/NicosiaBuffer.cpp.
+        (Nicosia::PaintingContext::create):
+        * platform/graphics/nicosia/NicosiaPaintingContext.h: Copied from Source/WebCore/platform/graphics/nicosia/NicosiaBuffer.cpp.
+        (Nicosia::PaintingContext::paint):
+        * platform/graphics/nicosia/NicosiaPaintingContextCairo.cpp: Added.
+        (Nicosia::PaintingContextCairo::PaintingContextCairo):
+        (Nicosia::PaintingContextCairo::~PaintingContextCairo):
+        (Nicosia::PaintingContextCairo::graphicsContext):
+        * platform/graphics/nicosia/NicosiaPaintingContextCairo.h: Copied from Source/WebCore/platform/graphics/nicosia/NicosiaBuffer.h.
+        * platform/graphics/nicosia/NicosiaPaintingEngineBasic.cpp:
+        (Nicosia::PaintingEngineBasic::paint):
+        * platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp:
+        (WebCore::CoordinatedImageBacking::update):
+
+2017-12-01  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Rename ImageFrameCache to ImageSource
+        https://bugs.webkit.org/show_bug.cgi?id=180172
+
+        Reviewed by Per Arne Vollan.
+
+        This is a follow-up for r225300. ImageSource is the intended name after
+        merging ImageFrameCache and ImageSource.
+
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/graphics/BitmapImage.cpp:
+        (WebCore::BitmapImage::BitmapImage):
+        * platform/graphics/BitmapImage.h:
+        * platform/graphics/ImageFrame.h:
+        * platform/graphics/ImageFrameCache.cpp: Removed.
+        * platform/graphics/ImageFrameCache.h: Removed.
+        * platform/graphics/ImageSource.cpp: Added.
+        (WebCore::ImageSource::ImageSource):
+        (WebCore::ImageSource::~ImageSource):
+        (WebCore::ImageSource::ensureDecoderAvailable):
+        (WebCore::ImageSource::setData):
+        (WebCore::ImageSource::resetData):
+        (WebCore::ImageSource::dataChanged):
+        (WebCore::ImageSource::isAllDataReceived):
+        (WebCore::ImageSource::destroyDecodedData):
+        (WebCore::ImageSource::destroyIncompleteDecodedData):
+        (WebCore::ImageSource::clearFrameBufferCache):
+        (WebCore::ImageSource::decodedSizeChanged):
+        (WebCore::ImageSource::decodedSizeIncreased):
+        (WebCore::ImageSource::decodedSizeDecreased):
+        (WebCore::ImageSource::decodedSizeReset):
+        (WebCore::ImageSource::didDecodeProperties):
+        (WebCore::ImageSource::growFrames):
+        (WebCore::ImageSource::setNativeImage):
+        (WebCore::ImageSource::cacheMetadataAtIndex):
+        (WebCore::ImageSource::cacheNativeImageAtIndex):
+        (WebCore::ImageSource::cacheNativeImageAtIndexAsync):
+        (WebCore::ImageSource::decodingQueue):
+        (WebCore::ImageSource::frameRequestQueue):
+        (WebCore::ImageSource::canUseAsyncDecoding):
+        (WebCore::ImageSource::startAsyncDecodingQueue):
+        (WebCore::ImageSource::requestFrameAsyncDecodingAtIndex):
+        (WebCore::ImageSource::isAsyncDecodingQueueIdle const):
+        (WebCore::ImageSource::stopAsyncDecodingQueue):
+        (WebCore::ImageSource::frameAtIndexCacheIfNeeded):
+        (WebCore::ImageSource::clearMetadata):
+        (WebCore::ImageSource::sourceURL const):
+        (WebCore::ImageSource::mimeType const):
+        (WebCore::ImageSource::expectedContentLength const):
+        (WebCore::ImageSource::metadata):
+        (WebCore::ImageSource::frameMetadataAtIndex):
+        (WebCore::ImageSource::frameMetadataAtIndexCacheIfNeeded):
+        (WebCore::ImageSource::encodedDataStatus):
+        (WebCore::ImageSource::frameCount):
+        (WebCore::ImageSource::repetitionCount):
+        (WebCore::ImageSource::uti):
+        (WebCore::ImageSource::filenameExtension):
+        (WebCore::ImageSource::hotSpot):
+        (WebCore::ImageSource::size):
+        (WebCore::ImageSource::sizeRespectingOrientation):
+        (WebCore::ImageSource::singlePixelSolidColor):
+        (WebCore::ImageSource::maximumSubsamplingLevel):
+        (WebCore::ImageSource::frameIsBeingDecodedAndIsCompatibleWithOptionsAtIndex):
+        (WebCore::ImageSource::frameDecodingStatusAtIndex):
+        (WebCore::ImageSource::frameHasAlphaAtIndex):
+        (WebCore::ImageSource::frameHasFullSizeNativeImageAtIndex):
+        (WebCore::ImageSource::frameHasDecodedNativeImageCompatibleWithOptionsAtIndex):
+        (WebCore::ImageSource::frameSubsamplingLevelAtIndex):
+        (WebCore::ImageSource::frameSizeAtIndex):
+        (WebCore::ImageSource::frameBytesAtIndex):
+        (WebCore::ImageSource::frameDurationAtIndex):
+        (WebCore::ImageSource::frameOrientationAtIndex):
+        (WebCore::ImageSource::setTargetContext):
+        (WebCore::ImageSource::createFrameImageAtIndex):
+        (WebCore::ImageSource::frameImageAtIndex):
+        (WebCore::ImageSource::frameImageAtIndexCacheIfNeeded):
+        (WebCore::ImageSource::dump):
+        * platform/graphics/ImageSource.h: Added.
+        (WebCore::ImageSource::create):
+        (WebCore::ImageSource::decodedSize const):
+        (WebCore::ImageSource::destroyAllDecodedData):
+        (WebCore::ImageSource::destroyAllDecodedDataExcludeFrame):
+        (WebCore::ImageSource::destroyDecodedDataBeforeFrame):
+        (WebCore::ImageSource::clearImage):
+        (WebCore::ImageSource::requestFrameAsyncDecodingAtIndex):
+        (WebCore::ImageSource::hasAsyncDecodingQueue const):
+        (WebCore::ImageSource::isSizeAvailable):
+        (WebCore::ImageSource::isDecoderAvailable const):
+        (WebCore::ImageSource::frameAtIndexCacheIfNeeded):
+        (WebCore::ImageSource::ImageFrameRequest::operator== const):
+        * platform/graphics/cairo/GraphicsContext3DCairo.cpp:
+        (WebCore::GraphicsContext3D::ImageExtractor::extractImage):
+        * platform/graphics/cg/GraphicsContext3DCG.cpp:
+        (WebCore::GraphicsContext3D::ImageExtractor::extractImage):
+
+2017-11-29  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Remove the ImageSource from the class hierarchy that connects BitmapImage to ImageFrame
+        https://bugs.webkit.org/show_bug.cgi?id=175595
+
+        Reviewed by Darin Adler.
+
+        The class hierarchy that connects BitmapImage to ImageFrame has been
+        troublesome. ImageSource does not have a clear responsibility other than
+        a bridge that connects BitmapIamge to ImageFrameCache. Sharing the 
+        ImageDecoder between ImageSource and ImageFrameCache is ugly and caused
+        few crashes in the past.
+
+        This patch will do the first step for fixing this issue. First get rid of
+        ImageSource by moving its APIs to ImageFrameCache and BitmapImage. Replace
+        all the instances of ImageSource by ImageFrameCache. The next step will
+        be to rename ImageFrameCache to ImageSource. But this will be done in a
+        follow-up patch
+
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/graphics/BitmapImage.cpp:
+        (WebCore::BitmapImage::BitmapImage):
+        (WebCore::BitmapImage::~BitmapImage):
+        (WebCore::BitmapImage::destroyDecodedData):
+        (WebCore::BitmapImage::destroyDecodedDataIfNecessary):
+        (WebCore::BitmapImage::dataChanged):
+        (WebCore::BitmapImage::frameImageAtIndexCacheIfNeeded):
+        (WebCore::BitmapImage::draw):
+        (WebCore::BitmapImage::canUseAsyncDecodingForLargeImages const):
+        (WebCore::BitmapImage::shouldUseAsyncDecodingForAnimatedImages const):
+        (WebCore::BitmapImage::subsamplingLevelForScaleFactor):
+        (WebCore::BitmapImage::canDestroyDecodedData):
+        (WebCore::BitmapImage::internalStartAnimation):
+        (WebCore::BitmapImage::stopAnimation):
+        (WebCore::BitmapImage::decode):
+        (WebCore::BitmapImage::imageFrameAvailableAtIndex):
+        (WebCore::BitmapImage::dump const):
+        * platform/graphics/BitmapImage.h:
+        * platform/graphics/GraphicsContext3D.h:
+        * platform/graphics/ImageFrameCache.cpp:
+        (WebCore::ImageFrameCache::ImageFrameCache):
+        (WebCore::ImageFrameCache::ensureDecoderAvailable):
+        (WebCore::ImageFrameCache::setData):
+        (WebCore::ImageFrameCache::resetData):
+        (WebCore::ImageFrameCache::dataChanged):
+        (WebCore::ImageFrameCache::isAllDataReceived):
+        (WebCore::ImageFrameCache::clearFrameBufferCache):
+        (WebCore::ImageFrameCache::canUseAsyncDecoding):
+        (WebCore::ImageFrameCache::maximumSubsamplingLevel):
+        (WebCore::ImageFrameCache::setTargetContext):
+        (WebCore::ImageFrameCache::createFrameImageAtIndex):
+        (WebCore::ImageFrameCache::dump):
+        (WebCore::ImageFrameCache::setDecoder): Deleted.
+        (WebCore::ImageFrameCache::decoder const): Deleted.
+        * platform/graphics/ImageFrameCache.h:
+        (WebCore::ImageFrameCache::create):
+        (WebCore::ImageFrameCache::requestFrameAsyncDecodingAtIndex):
+        * platform/graphics/ImageSource.cpp: Removed.
+        * platform/graphics/ImageSource.h: Removed.
+        * platform/graphics/cairo/GraphicsContext3DCairo.cpp:
+        (WebCore::GraphicsContext3D::ImageExtractor::~ImageExtractor):
+        (WebCore::GraphicsContext3D::ImageExtractor::extractImage):
+        * platform/graphics/cg/GraphicsContext3DCG.cpp:
+        (WebCore::GraphicsContext3D::ImageExtractor::extractImage):
+        * platform/graphics/cg/ImageSourceCG.h:
+
+2017-09-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Followup (r222427): SynchronizedFixedQueue should not have a public constructor
+        https://bugs.webkit.org/show_bug.cgi?id=177458
+
+        Reviewed by Tim Horton.
+
+        ImageFrameCache::decodingQueue() and frameRequestQueue() should return
+        raw references instead of Ref objects.
+
+        * platform/graphics/ImageFrameCache.cpp:
+        (WebCore::ImageFrameCache::decodingQueue):
+        (WebCore::ImageFrameCache::frameRequestQueue):
+        (WebCore::ImageFrameCache::startAsyncDecodingQueue):
+        * platform/graphics/ImageFrameCache.h:
+
+2017-11-30  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Move CoordinatedGraphicsLayer painting behind Nicosia::PaintingEngine
+        https://bugs.webkit.org/show_bug.cgi?id=180141
+
+        Reviewed by Carlos Garcia Campos.
+
+        Introduce a painting engine concept that's used to perform painting
+        for a given GraphicsLayer object.
+
+        The Nicosia::PaintingEngine object is leveraged in the
+        CoordinatedGraphicsLayer::updateContentBuffers() method. It's retrieved
+        through the CoordinatedGraphicsLayerClient interface, with a new method
+        introduced there for this purpose.
+
+        The Nicosia::PaintingEngine interface is kept simple for now, with only
+        a single paint() method. The only current implementation is the
+        PaintingEngineBasic class, which simply reuses the code that was
+        previously in CoordinatedGraphicsLayer::updateContentBuffers(),
+        maintaining the current functionality.
+
+        The Nicosia::PaintingEngine::create() function returns a new
+        PaintingEngine object. For now it defaults to PaintingEngineBasic, but
+        it could be configured at configure-time or even runtime in the future
+        to return a more advanced engine implementation.
+
+        No new tests -- no change in behavior.
+
+        * platform/TextureMapper.cmake:
+        * platform/graphics/nicosia/NicosiaPaintingEngine.cpp: Added.
+        (Nicosia::PaintingEngine::create):
+        * platform/graphics/nicosia/NicosiaPaintingEngine.h: Added.
+        * platform/graphics/nicosia/NicosiaPaintingEngineBasic.cpp: Added.
+        (Nicosia::PaintingEngineBasic::paint):
+        * platform/graphics/nicosia/NicosiaPaintingEngineBasic.h: Added.
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp:
+        (WebCore::CoordinatedGraphicsLayer::updateContentBuffers):
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.h:
+
+2017-11-29  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Rename CoordinatedBuffer to Nicosia::Buffer
+        https://bugs.webkit.org/show_bug.cgi?id=180135
+
+        Reviewed by Carlos Garcia Campos.
+
+        Rename CoordinatedBuffer to Nicosia::Buffer, starting an abstraction
+        layer that will in the future allow us to prototype and potentially
+        support different 2D rasterization libraries. The layer is envisioned
+        as separate from the CoordinatedGraphics code, but will in the mid-term
+        only be used there.
+
+        In order to keep CMake changes to a minimum for now, the source code is
+        included in the build along with the CoordinatedGraphics source files,
+        in TextureMapper.cmake.
+
+        No new tests -- no change in functionality.
+
+        * platform/TextureMapper.cmake:
+        * platform/graphics/nicosia/NicosiaBuffer.cpp: Renamed from Source/WebCore/platform/graphics/texmap/coordinated/CoordinatedBuffer.cpp.
+        (Nicosia::Buffer::create):
+        (Nicosia::Buffer::Buffer):
+        (Nicosia::Buffer::context):
+        (Nicosia::Buffer::uploadImage):
+        * platform/graphics/nicosia/NicosiaBuffer.h: Renamed from Source/WebCore/platform/graphics/texmap/coordinated/CoordinatedBuffer.h.
+        (Nicosia::Buffer::size const):
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp:
+        (WebCore::CoordinatedGraphicsLayer::updateContentBuffers):
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.h:
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsState.h:
+        * platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp:
+        (WebCore::CoordinatedImageBacking::update):
+        * platform/graphics/texmap/coordinated/CoordinatedImageBacking.h:
+        * platform/graphics/texmap/coordinated/Tile.h:
+
+2017-11-28  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Limit the number of active contexts in GraphicsContext3DCairo
+        https://bugs.webkit.org/show_bug.cgi?id=166968
+
+        Reviewed by Alex Christensen.
+
+        Cairo's implementation of GraphicsContext3D should follow the Mac's
+        and limit the number of active GraphicsContext3D objects.
+
+        The active contexts are listed in a global Deque, with the first
+        among them being recycled when the GraphicsContext3D::create()
+        function sees that the limit has been reached. That function still
+        returns null if even after recycling the number of contexts didn't
+        decrease.
+
+        Finally, in the GraphicsContext3D destructor, the context being
+        destroyed is removed from the list of active contexts.
+
+        No new tests -- relevant tests are now passing.
+
+        * platform/graphics/cairo/GraphicsContext3DCairo.cpp:
+        (WebCore::activeContexts):
+        (WebCore::GraphicsContext3D::create):
+        (WebCore::GraphicsContext3D::~GraphicsContext3D):
+
+2017-11-27  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] CoordinatedGraphicsLayer doesn't need to inherit from TextureMapperPlatformLayer::Client
+        https://bugs.webkit.org/show_bug.cgi?id=180036
+
+        Reviewed by Carlos Garcia Campos.
+
+        There's no reason CoordinatedGraphicsLayer should inherit from
+        TextureMapperPlatformLayer::Client. CoordinatedGraphicsLayer objects are
+        not used anywhere through that type, and all the overridden methods are
+        empty anyway. The TextureMapperPlatformLayer::Client class (along with
+        TextureMapperPlatformLayer) is nowadays only used in the direct
+        TextureMapper implementation of GraphicsLayer.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp:
+        (WebCore::CoordinatedGraphicsLayer::platformLayerWillBeDestroyed): Deleted.
+        (WebCore::CoordinatedGraphicsLayer::setPlatformLayerNeedsDisplay): Deleted.
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.h:
+
+2017-11-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] CoordinatedGraphicsLayer::updateContentBuffers() should always assume a non-null CoordinatedBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=179977
+
+        Reviewed by Carlos Garcia Campos.
+
+        CoordinatedGraphicsLayer::updateContentBuffers() retrieves a RefPtr<CoordinatedBuffer>
+        from the CompositingCoordinator. This pointer should never be null since if no
+        existing UpdateAtlas can provide the necessary memory area, a fresh UpdateAtlas is
+        created and its buffer returned. This can't fail in theory since the tiles that are
+        being updated are smaller than the UpdateAtlas area.
+
+        The CoordinatedGraphicsLayerClient::getCoordinatedBuffer() method is updated to
+        always return a Ref<CoordinatedBuffer> value. Code in updateContentBuffers() is
+        updated to remove a null-check on what is now the Ref<CoordinatedBuffer> value.
+
+        No new tests -- no change in functionality.
+
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp:
+        (WebCore::CoordinatedGraphicsLayer::updateContentBuffers):
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.h:
+
+2017-11-23  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Simplify CoordinatedGraphicsLayer's content buffer updates
+        https://bugs.webkit.org/show_bug.cgi?id=179972
+
+        Reviewed by Carlos Garcia Campos.
+
+        During layer flushes, when a CoordinatedGraphicsLayer's tiled backing store
+        has dirty tiles that need to be updated, the following chain of calls would
+        be invoked to perform the painting, starting in
+        CoordinatedGraphicsLayer::updateContentBuffers():
+        |- CoordinatedGraphicsLayer::updateContentBuffers()
+         |- TiledBackingStore::updateTileBuffers()
+          |- Tile::updateBackBuffer()
+           |- CoordinatedGraphicsLayer::paintToSurface()
+            |- CompositingCoordinator::paintToSurface()
+             |- UpdateAtlas::paintOnAvailableBuffer()
+              |- ThreadSafeCoordinatedSurface::paintToSurface()
+               |- Tile::paintToSurfaceContext()
+                |- CoordinatedGraphicsLayer::tiledBackingStorePaint()
+                 |- GraphicsLayer::paintGraphicsLayerContents()
+
+        That's a bit much.
+
+        In CoordinatedGraphicsLayer::updateContentBuffers(), we now first retrieve
+        all the dirty layers in our TiledBackingStore. We then iterate through them,
+        first establishing their ID and then retrieving an available CoordinatedBuffer
+        that we can use for painting. The CoordinatedBuffer is retrieved through
+        CompositingCoordinator, which is still caching these buffers via UpdateAtlas
+        objects.
+
+        With a CoordinatedBuffer available, we can then proceed with painting. The
+        painting context has to be properly set up to paint into the correct area of
+        the given buffer, and the alpha channel, if necessary, has to be addressed.
+        After properly positioning and scaling ourselves on the given context, we
+        can proceed with the GraphicsLayer::paintGraphicsLayerContents() call.
+
+        What's left is filling out the missing SurfaceUpdateInfo information which is
+        then passed to the updateTile() method that properly registers the tile
+        update we've just performed. The tile itself is marked clean. After the
+        iteration, we call the didUpdateTileBuffers() method in case any successful
+        tile update was indeed performed, incrementing the repaint counter.
+
+        That's it -- we clipped 8 calls from the call chain. We can now also remove
+        the CoordinatedBuffer::Client interface, as well as slim down the
+        TiledBackingStore interface. The Tile class is cleaned up a bit, with methods
+        shifted into a more sensible order.
+
+        No new tests -- no change in functionality.
+
+        * platform/graphics/texmap/coordinated/CoordinatedBuffer.cpp:
+        * platform/graphics/texmap/coordinated/CoordinatedBuffer.h:
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp:
+        (WebCore::CoordinatedGraphicsLayer::didUpdateTileBuffers):
+        (WebCore::CoordinatedGraphicsLayer::updateContentBuffers):
+        (WebCore::CoordinatedGraphicsLayer::tiledBackingStorePaint): Deleted.
+        (WebCore::CoordinatedGraphicsLayer::paintToSurface): Deleted.
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.h:
+        * platform/graphics/texmap/coordinated/Tile.cpp:
+        (WebCore::Tile::ensureTileID):
+        (WebCore::Tile::isDirty const):
+        (WebCore::Tile::invalidate):
+        (WebCore::Tile::markClean):
+        (WebCore::Tile::updateBackBuffer): Deleted.
+        (WebCore::Tile::paintToSurfaceContext): Deleted.
+        * platform/graphics/texmap/coordinated/Tile.h:
+        (WebCore::Tile::tileID const):
+        (WebCore::Tile::dirtyRect const):
+        * platform/graphics/texmap/coordinated/TiledBackingStore.cpp:
+        (WebCore::TiledBackingStore::dirtyTiles):
+        (WebCore::TiledBackingStore::updateTileBuffers): Deleted.
+        * platform/graphics/texmap/coordinated/TiledBackingStore.h:
+        * platform/graphics/texmap/coordinated/TiledBackingStoreClient.h:
+
+2017-11-23  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Remove relay CoordinatedBuffer::Client implementations
+        https://bugs.webkit.org/show_bug.cgi?id=179970
+
+        Reviewed by Carlos Garcia Campos.
+
+        Drop CoordinatedBuffer::painToSurface() in favor of a simpler
+        GraphicsContext reference getter that returns a reference to the
+        GraphicsContext object of the internal ImageBuffer.
+
+        Remove the ImageBackingSurfaceClient class that only acted as a relay
+        that enabled a CoordinatedBuffer to draw an image through its context.
+        Instead, we use the GraphicsContext of the allocated CoordinatedBuffer
+        to draw the image directly. We still use a rectangle whose size
+        matches the size of the given Image as the clipping area and as the
+        source and destination rectangle for the image.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/texmap/coordinated/CoordinatedBuffer.cpp:
+        (WebCore::CoordinatedBuffer::context):
+        (WebCore::CoordinatedBuffer::paintToSurface): Deleted.
+        * platform/graphics/texmap/coordinated/CoordinatedBuffer.h:
+        * platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp:
+        (WebCore::CoordinatedImageBacking::update):
+        (WebCore::ImageBackingSurfaceClient::ImageBackingSurfaceClient): Deleted.
+
+2017-11-23  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] TiledBackingStore: use a reference to the client
+        https://bugs.webkit.org/show_bug.cgi?id=179969
+
+        Reviewed by Carlos Garcia Campos.
+
+        TiledBackingStore should keep a C++ reference to the TiledBackingStoreClient
+        object, and not a pointer. client() method is updated to reflect that, and
+        uses of this method and the member variable are updated accordingly.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp:
+        (WebCore::CoordinatedGraphicsLayer::createBackingStore):
+        * platform/graphics/texmap/coordinated/Tile.cpp:
+        (WebCore::Tile::~Tile):
+        (WebCore::Tile::updateBackBuffer):
+        (WebCore::Tile::paintToSurfaceContext):
+        * platform/graphics/texmap/coordinated/TiledBackingStore.cpp:
+        (WebCore::TiledBackingStore::TiledBackingStore):
+        (WebCore::TiledBackingStore::updateTileBuffers):
+        (WebCore::TiledBackingStore::createTiles):
+        * platform/graphics/texmap/coordinated/TiledBackingStore.h:
+        (WebCore::TiledBackingStore::client):
+
+2017-11-23  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Early tile buffer update in TiledBackingStore::createTiles() is unnecessary
+        https://bugs.webkit.org/show_bug.cgi?id=179968
+
+        Reviewed by Carlos Garcia Campos.
+
+        Under CoordinatedGraphicsLayer::updateContentBuffers(), the TiledBackingStore
+        object has the createTilesIfNeeded() method invoked, if necessary. This
+        invokes createTiles(), where the edge tiles are resized if necessary, and
+        the missing tiles are created. If any of those two cases is fulfilled, the
+        updateTileBuffers() method is invoked, updating any dirty tiles (i.e. the
+        ones that were resized or newly-created).
+
+        This specific invocation of updateTileBuffers() is not needed since it's the
+        very next method that's invoked on the TiledBackingStore object by
+        CoordinatedGraphicsLayer::updateContentBuffers(). It's therefore removed,
+        and the resizeEdgeTiles() method is changed to not return any value.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/texmap/coordinated/TiledBackingStore.cpp:
+        (WebCore::TiledBackingStore::createTiles):
+        (WebCore::TiledBackingStore::resizeEdgeTiles):
+        * platform/graphics/texmap/coordinated/TiledBackingStore.h:
+
+2017-11-23  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Replace CoordinatedSurface, ThreadSafeCoordinatedSurface with CoordinatedBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=179967
+
+        Reviewed by Carlos Garcia Campos.
+
+        Roll the CoordinatedSurface and ThreadSafeCoordinatedSurface classes
+        into one CoordinatedBuffer class.
+
+        CoordinatedBuffer class mimics CoordinatedSurface in providing the
+        Client class that allows specifying how the client should paint using a
+        GraphicsContext object. supportsAlpha() and size() methods are also
+        present, as well as paintToSurface(). uploadImage() retrieves the
+        Image that's created from the contained ImageBuffer, allowing the user
+        to then manually upload the buffer data onto the GPU.
+
+        CoordinatedBuffer otherwise serves as a drop-in replacement for the
+        CoordinatedSurface class, and the remaining changes in the
+        CoordiantedGraphics code reflect that.
+
+        No new tests -- no change in behavior.
+
+        * platform/TextureMapper.cmake:
+        * platform/graphics/texmap/coordinated/CoordinatedBuffer.cpp: Added.
+        (WebCore::CoordinatedBuffer::create):
+        (WebCore::CoordinatedBuffer::CoordinatedBuffer):
+        (WebCore::CoordinatedBuffer::paintToSurface):
+        (WebCore::CoordinatedBuffer::uploadImage):
+        * platform/graphics/texmap/coordinated/CoordinatedBuffer.h: Added.
+        (WebCore::CoordinatedBuffer::supportsAlpha const):
+        (WebCore::CoordinatedBuffer::size const):
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp:
+        (WebCore::CoordinatedGraphicsLayer::paintToSurface):
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.h:
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsState.h:
+        * platform/graphics/texmap/coordinated/CoordinatedImageBacking.cpp:
+        (WebCore::CoordinatedImageBacking::update):
+        (WebCore::CoordinatedImageBacking::releaseSurfaceIfNeeded):
+        * platform/graphics/texmap/coordinated/CoordinatedImageBacking.h:
+        * platform/graphics/texmap/coordinated/CoordinatedSurface.cpp: Removed.
+        * platform/graphics/texmap/coordinated/CoordinatedSurface.h: Removed.
+        * platform/graphics/texmap/coordinated/Tile.h:
+        * platform/graphics/texmap/coordinated/TiledBackingStoreClient.h:
+
+2017-11-21  Zan Dobersek  <zdobersek@igalia.com>
+
+        Drop ENABLE_IMAGE_DECODER_DOWN_SAMPLING code
+        https://bugs.webkit.org/show_bug.cgi?id=179921
+
+        Reviewed by Carlos Garcia Campos.
+
+        Drop the ENABLE_IMAGE_DECODER_DOWN_SAMPLING code, along with the build
+        guard definitions in WTF and CMake.
+
+        This was apparently in use in the Qt port, but since then no port
+        enables this. It's not exposed in the Xcode build, and the CMake option
+        is disabled by default, with no way to enable it through build-webkit.
+
+        While the code guarded with this build guard is removed, there's still
+        code in the ScalableImageDecoder class that only operated when this
+        feature was enabled. This should be addressed in the future, after
+        evaluating the need for this scaling capability.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/Image.cpp:
+        (WebCore::Image::adjustSourceRectForDownSampling const): Deleted.
+        * platform/graphics/Image.h:
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::drawNativeImage):
+        * platform/image-decoders/ScalableImageDecoder.h:
+        * platform/image-decoders/jpeg/JPEGImageDecoder.cpp:
+        (WebCore::JPEGImageReader::decode):
+        * platform/image-decoders/png/PNGImageDecoder.cpp:
+        (WebCore::PNGImageDecoder::rowAvailable):
+        (WebCore::PNGImageDecoder::frameComplete):
+
+2017-11-21  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] drawNativeImage(), drawPattern() in CairoOperations should operate directly with cairo_surface_t objects
+        https://bugs.webkit.org/show_bug.cgi?id=179888
+
+        Reviewed by Carlos Garcia Campos.
+
+        Cairo::drawNativeImage() should receive a valid cairo_surface_t pointer
+        and work with that, instead of using a NativeImagePtr. Callers are thus
+        forced to pass the pointer into the drawNativeImage() call, and the
+        CairoOperations implementation file drops the need to know about the
+        NativeImagePtr type alias.
+
+        Cairo::drawPattern() now accepts pointer to the cairo_surface_t object,
+        along with an IntSize object that descibes the surface's size. This way
+        it's up to the caller to retrieve any valid native image for the current
+        frame and pass that to the drawPattern() call. The need to use IntSize
+        here is strange, but we should investigate this later.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::drawNativeImage):
+        (WebCore::Cairo::drawPattern):
+        * platform/graphics/cairo/CairoOperations.h: Include the Cairo header.
+        Also fix forward declaration of Cairo::drawGlyphs().
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::drawNativeImage):
+        (WebCore::GraphicsContext::drawPattern):
+        * platform/graphics/cairo/NativeImageCairo.cpp:
+        (WebCore::drawNativeImage): Execute operation through GraphicsContext,
+        kicking into effect any recording that could be done this way.
+
+2017-11-21  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Gradient::fill() should only operate on PlatformContextCairo
+        https://bugs.webkit.org/show_bug.cgi?id=179887
+
+        Reviewed by Carlos Garcia Campos.
+
+        In Gradient::fill(), directly invoke Cairo::save() and Cairo::restore(),
+        instead of doing so indirectly through GraphicsContext::save() and
+        GraphicsContext::restore(). The latter pair stashes the internal state
+        that's managed in GraphicsContext, but that doesn't get modified at all
+        in this case.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/GradientCairo.cpp:
+        (WebCore::Gradient::fill):
+
+2017-11-16  Miguel Gomez  <magomez@igalia.com>
+
+        [TexMap] Remove use of GraphicsContext3D
+        https://bugs.webkit.org/show_bug.cgi?id=174860
+
+        Reviewed by Žan Doberšek.
+
+        Remove remaining uses of GC3D that are not WebGL related:
+        - Remove the option to create a GC3D to render to the curren OpenGL context.
+        - Remove the remaining usage of GC3D inside MediaPlayerPrivateGStreamerBase.
+        - Replace the usage inside TextureMapper with direct OpenGL calls, and use a
+        VAO when the OpenGL version is higher than 3.2.
+
+        This also modifies TextureMapperContextAttributes so all the tested features are
+        supported when using OpenGL, and we only check for the extensions when using GLES2.
+
+        No new tests as there's no behavior change.
+
+        * platform/graphics/GraphicsContext3D.h:
+        * platform/graphics/GraphicsContext3DPrivate.cpp:
+        (WebCore::GraphicsContext3DPrivate::GraphicsContext3DPrivate):
+        * platform/graphics/GraphicsContext3DPrivate.h:
+        * platform/graphics/cairo/GraphicsContext3DCairo.cpp:
+        (WebCore::GraphicsContext3D::~GraphicsContext3D):
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        (WebCore::MediaPlayerPrivateGStreamerBase::pushTextureToCompositor):
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.h:
+        * platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp:
+        * platform/graphics/texmap/TextureMapper.h:
+        * platform/graphics/texmap/TextureMapperContextAttributes.cpp:
+        (WebCore::TextureMapperContextAttributes::initialize):
+        * platform/graphics/texmap/TextureMapperContextAttributes.h:
+        * platform/graphics/texmap/TextureMapperGC3DPlatformLayer.cpp:
+        (WebCore::TextureMapperGC3DPlatformLayer::TextureMapperGC3DPlatformLayer):
+        (WebCore::TextureMapperGC3DPlatformLayer::makeContextCurrent):
+        (WebCore::TextureMapperGC3DPlatformLayer::platformContext):
+        (WebCore::TextureMapperGC3DPlatformLayer::swapBuffersIfNeeded):
+        (WebCore::TextureMapperGC3DPlatformLayer::paintToTextureMapper):
+        * platform/graphics/texmap/TextureMapperGC3DPlatformLayer.h:
+        * platform/graphics/texmap/TextureMapperGL.cpp:
+        (WebCore::TextureMapperGLData::SharedGLData::currentSharedGLData):
+        (WebCore::TextureMapperGLData::TextureMapperGLData):
+        (WebCore::TextureMapperGLData::~TextureMapperGLData):
+        (WebCore::TextureMapperGLData::initializeStencil):
+        (WebCore::TextureMapperGLData::getStaticVBO):
+        (WebCore::TextureMapperGLData::getVAO):
+        (WebCore::TextureMapperGLData::getShaderProgram):
+        (WebCore::TextureMapperGL::TextureMapperGL):
+        (WebCore::TextureMapperGL::beginPainting):
+        (WebCore::TextureMapperGL::endPainting):
+        (WebCore::TextureMapperGL::drawBorder):
+        (WebCore::prepareFilterProgram):
+        (WebCore::TextureMapperGL::drawTexture):
+        (WebCore::TextureMapperGL::drawSolidColor):
+        (WebCore::TextureMapperGL::clearColor):
+        (WebCore::TextureMapperGL::drawEdgeTriangles):
+        (WebCore::TextureMapperGL::drawUnitRect):
+        (WebCore::TextureMapperGL::draw):
+        (WebCore::TextureMapperGL::drawTexturedQuadWithProgram):
+        (WebCore::TextureMapperGL::drawFiltered):
+        (WebCore::TextureMapperGL::bindDefaultSurface):
+        (WebCore::TextureMapperGL::beginClip):
+        (WebCore::TextureMapperGL::createTexture):
+        * platform/graphics/texmap/TextureMapperGL.h:
+
+2017-11-15  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [Cairo] Clang warns about mismatched declaration type tag for GraphicsContextState
+        https://bugs.webkit.org/show_bug.cgi?id=179729
+
+        Reviewed by Michael Catanzaro.
+
+        No new tests needed.
+
+        * platform/graphics/cairo/CairoOperations.h: Make the forward declaration use "struct" 
+        as the actual implementation of the type does.
+
+2017-11-15  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] GraphicsContext::setPlatformShadow() has to update state's shadow offset when ignoring transforms
+        https://bugs.webkit.org/show_bug.cgi?id=179725
+
+        Reviewed by Carlos Garcia Campos.
+
+        In r224753, GraphicsContext::setPlatformShadow() stopped updating the
+        shadow offset value that's kept in GraphicsContextState. This regressed
+        a few tests, so the adjustment of the shadow offset value in the
+        GraphicsContext state is brought back.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::State::setShadowValues):
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::setPlatformShadow):
+
+2017-11-14  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Add GraphicsContextImplCairo stub
+        https://bugs.webkit.org/show_bug.cgi?id=179658
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add the GraphicsContextImplCairo class, which at this point is still
+        an empty implementation of the GraphicsContextImpl interface. Plan for
+        the near future is to start mapping method invocations to CairoOperation
+        functions, essentially mirroring what the Cairo-specific GraphicsContext
+        methods do today.
+
+        In the future this implementation would hopefully allow us to apply a
+        recorded list of GraphicsContext commands against a PlatformContextCairo
+        instance.
+
+        * platform/SourcesCairo.txt:
+        * platform/graphics/cairo/GraphicsContextImplCairo.cpp: Added.
+        (WebCore::GraphicsContextImplCairo::GraphicsContextImplCairo):
+        (WebCore::m_platformContext):
+        (WebCore::GraphicsContextImplCairo::updateState):
+        (WebCore::GraphicsContextImplCairo::clearShadow):
+        (WebCore::GraphicsContextImplCairo::setLineCap):
+        (WebCore::GraphicsContextImplCairo::setLineDash):
+        (WebCore::GraphicsContextImplCairo::setLineJoin):
+        (WebCore::GraphicsContextImplCairo::setMiterLimit):
+        (WebCore::GraphicsContextImplCairo::fillRect):
+        (WebCore::GraphicsContextImplCairo::fillRoundedRect):
+        (WebCore::GraphicsContextImplCairo::fillRectWithRoundedHole):
+        (WebCore::GraphicsContextImplCairo::fillPath):
+        (WebCore::GraphicsContextImplCairo::fillEllipse):
+        (WebCore::GraphicsContextImplCairo::strokeRect):
+        (WebCore::GraphicsContextImplCairo::strokePath):
+        (WebCore::GraphicsContextImplCairo::strokeEllipse):
+        (WebCore::GraphicsContextImplCairo::clearRect):
+        (WebCore::GraphicsContextImplCairo::drawGlyphs):
+        (WebCore::GraphicsContextImplCairo::drawImage):
+        (WebCore::GraphicsContextImplCairo::drawTiledImage):
+        (WebCore::GraphicsContextImplCairo::drawNativeImage):
+        (WebCore::GraphicsContextImplCairo::drawPattern):
+        (WebCore::GraphicsContextImplCairo::drawRect):
+        (WebCore::GraphicsContextImplCairo::drawLine):
+        (WebCore::GraphicsContextImplCairo::drawLinesForText):
+        (WebCore::GraphicsContextImplCairo::drawLineForDocumentMarker):
+        (WebCore::GraphicsContextImplCairo::drawEllipse):
+        (WebCore::GraphicsContextImplCairo::drawPath):
+        (WebCore::GraphicsContextImplCairo::drawFocusRing):
+        (WebCore::GraphicsContextImplCairo::save):
+        (WebCore::GraphicsContextImplCairo::restore):
+        (WebCore::GraphicsContextImplCairo::translate):
+        (WebCore::GraphicsContextImplCairo::rotate):
+        (WebCore::GraphicsContextImplCairo::scale):
+        (WebCore::GraphicsContextImplCairo::concatCTM):
+        (WebCore::GraphicsContextImplCairo::beginTransparencyLayer):
+        (WebCore::GraphicsContextImplCairo::endTransparencyLayer):
+        (WebCore::GraphicsContextImplCairo::clip):
+        (WebCore::GraphicsContextImplCairo::clipOut):
+        (WebCore::GraphicsContextImplCairo::clipPath):
+        (WebCore::GraphicsContextImplCairo::applyDeviceScaleFactor):
+        * platform/graphics/cairo/GraphicsContextImplCairo.h: Added.
+
+2017-11-14  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Clean up CairoOperations, GradientCairo, GraphicsContextCairo implementation files
+        https://bugs.webkit.org/show_bug.cgi?id=179679
+
+        Reviewed by Michael Catanzaro.
+
+        Clean up random tidbits in the CairoOperations, GradientCairo and
+        GraphicsContextCairo implementation files that I've been ravaging
+        through over the last few days.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        Add a missing <algorithms> include, drop an unnecessary empty line.
+        (WebCore::Cairo::drawLine):
+        * platform/graphics/cairo/GradientCairo.cpp:
+        Add a missing CairoOperations.h include.
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        Drop unnecessary includes and a bunch of redundant helper functions.
+        (WebCore::GraphicsContext::drawLineForText):
+        Inline the DashArray object construction into the relay call.
+        (WebCore::GraphicsContext::drawLinesForText):
+        size_t can't be negative, so just check for DashArray being empty.
+        (WebCore::fillRectWithColor): Deleted.
+        (): Deleted.
+        (WebCore::drawPathShadow): Deleted.
+        (WebCore::fillCurrentCairoPath): Deleted.
+        (WebCore::shadowAndFillCurrentCairoPath): Deleted.
+        (WebCore::shadowAndStrokeCurrentCairoPath): Deleted.
+
+2017-11-14  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Another attempt to fix GTK/WPE debug builds
+        https://bugs.webkit.org/show_bug.cgi?id=179660
+
+        * platform/graphics/cairo/NativeImageCairo.cpp:
+        (WebCore::drawNativeImage):
+
+2017-11-14  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, fix GTK/WPE debug builds even better after r224813
+        https://bugs.webkit.org/show_bug.cgi?id=179660
+
+        * platform/graphics/cairo/NativeImageCairo.cpp:
+        (WebCore::drawNativeImage):
+
+2017-11-14  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, fix GTK/WPE debug builds after r224813
+        https://bugs.webkit.org/show_bug.cgi?id=179660
+
+        * platform/graphics/cairo/NativeImageCairo.cpp:
+        (WebCore::drawNativeImage):
+
+2017-11-14  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Move drawLine operation from GraphicsContextCairo to CairoOperations
+        https://bugs.webkit.org/show_bug.cgi?id=179669
+
+        Reviewed by Carlos Garcia Campos.
+
+        Move the drawLine operation implementation into the CairoOperations
+        implementation file, with the Cairo::drawLine() function only expecting
+        a PlatformContextCairo object, two FloatingPoints, and a const reference
+        to a GraphicsContextState object.
+
+        As with drawLinesForText(), the drawLine() implementation utilized a few
+        private GraphicsContext methods that we for now reimplement in the
+        Cairo namespace as static functions, providing necessary state values to
+        perform the computations. The GraphicsContext methods should be changed
+        to become static public functions -- after that we'll be able to remove
+        the new duplicated helper functions.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::dashedLineCornerWidthForStrokeWidth):
+        (WebCore::Cairo::dashedLinePatternWidthForStrokeWidth):
+        (WebCore::Cairo::dashedLinePatternOffsetForPatternAndStrokeWidth):
+        (WebCore::Cairo::centerLineAndCutOffCorners):
+        (WebCore::Cairo::drawLine):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::drawLine):
+
+2017-11-14  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Move drawLinesForText operation from GraphicsContextCairo to CairoOperations
+        https://bugs.webkit.org/show_bug.cgi?id=179661
+
+        Reviewed by Carlos Garcia Campos.
+
+        Encapsulate the drawLinesForText() operation in the WebCore::Cairo
+        namespace. Apart from moving gist of the code from GraphicsContextCairo
+        to CairoOperations, we also (for the moment) have to duplicate the
+        GraphicsContext::computeLineBoundsAndAntialiasingModeForText() code.
+        This is necessary because the given method is private on the
+        GraphicsContext class, and relies on an underlying GraphicsContext
+        object to retrieve the current CTM and stroke thickness values.
+
+        The adjusted reimplementation uses PlatformContextCairo to retrieve
+        the CTM (just like Cairo's GraphicsContext::getCTM() does), and
+        requires the stroke thickness value to be passed in as an argument.
+        Similar modifications will be proposed for the existing
+        GraphicsContext::computeLineBoundsAndAntialiasingModeForText() code,
+        and once that's approved the duplicated code will be eliminated.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::computeLineBoundsAndAntialiasingModeForText):
+        (WebCore::Cairo::drawLinesForText):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::drawLinesForText):
+
+2017-11-14  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Move native image drawing operation to CairoOperations
+        https://bugs.webkit.org/show_bug.cgi?id=179660
+
+        Reviewed by Carlos Garcia Campos.
+
+        Unify the native image drawing operation behavior between the
+        Cairo-specific GraphicsContext and drawNativeImage() implementations and
+        then move the code into the Cairo::drawNativeImage() function, inside
+        the CairoOperations implementation file.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::cairoSurfaceHasAlpha):
+        (WebCore::Cairo::drawNativeImage):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::drawNativeImage):
+        * platform/graphics/cairo/NativeImageCairo.cpp:
+        (WebCore::drawNativeImage):
+
+2017-11-14  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Perform GraphicsContextPlatformPrivate method calls from CairoOperations
+        https://bugs.webkit.org/show_bug.cgi?id=179657
+
+        Reviewed by Carlos Garcia Campos.
+
+        To enable encapsulating remaining Cairo operations in static functions
+        inside the WebCore::Cairo namespace, we have to work around the
+        GraphicsContextPlatformPrivate methods that are invoked in the current
+        GraphicsContext implementation for Cairo.
+
+        A pointer to the GraphicsContextPlatformPrivate object is now kept on
+        the PlatformContextCairo instance, and we take care of setting it up
+        and clearing it out appropriate to the GraphicsContextPlatformPrivate
+        lifetime (as managed in Cairo-specific GraphicsContext implementation).
+        The GraphicsContextPlatformPrivate method invocations are then moved
+        to the appropriate CairoOperations functions.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::State::setCTM):
+        (WebCore::Cairo::save):
+        (WebCore::Cairo::restore):
+        (WebCore::Cairo::translate):
+        (WebCore::Cairo::rotate):
+        (WebCore::Cairo::scale):
+        (WebCore::Cairo::concatCTM):
+        (WebCore::Cairo::clip):
+        (WebCore::Cairo::clipPath):
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::GraphicsContext):
+        (WebCore::GraphicsContext::platformInit):
+        (WebCore::GraphicsContext::platformDestroy):
+        (WebCore::GraphicsContext::savePlatformState):
+        (WebCore::GraphicsContext::restorePlatformState):
+        (WebCore::GraphicsContext::clip):
+        (WebCore::GraphicsContext::clipPath):
+        (WebCore::GraphicsContext::translate):
+        (WebCore::GraphicsContext::concatCTM):
+        (WebCore::GraphicsContext::setCTM):
+        (WebCore::GraphicsContext::rotate):
+        (WebCore::GraphicsContext::scale):
+        * platform/graphics/cairo/PlatformContextCairo.h:
+        (WebCore::PlatformContextCairo::graphicsContextPrivate):
+        (WebCore::PlatformContextCairo::setGraphicsContextPrivate):
+
+2017-11-14  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Move simpler draw operations from GraphicsContextCairo to CairoOperations
+        https://bugs.webkit.org/show_bug.cgi?id=179614
+
+        Reviewed by Carlos Garcia Campos.
+
+        Move operations that perform simpler drawing to the CairoOperations
+        file. This isolates the Cairo code and encapsulates operation work
+        into a limited scope. This patch only covers drawing patterns,
+        rectangles, document marker lines and ellipses. A missing forward
+        declaration for the drawGlyphs() function is also added in the
+        CairoOperations header.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::drawPattern):
+        (WebCore::Cairo::drawRect):
+        (WebCore::Cairo::drawLineForDocumentMarker):
+        (WebCore::Cairo::drawEllipse):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::drawRect):
+        (WebCore::GraphicsContext::drawEllipse):
+        (WebCore::GraphicsContext::drawLineForDocumentMarker):
+        (WebCore::GraphicsContext::drawPattern):
+
+2017-11-13  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Remove GraphicsContext::mustUseShadowBlur()
+        https://bugs.webkit.org/show_bug.cgi?id=179612
+
+        Reviewed by Michael Catanzaro.
+
+        Remove the Cairo-specific mustUseShadowBlur() method on the
+        GraphicsContext class. It can now be implemented as a static function
+        in CairoOperations, using only a PlatformContextCairo object and a
+        const reference to the relevant GraphicsContextState.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/GraphicsContext.cpp:
+        (WebCore::GraphicsContext::mustUseShadowBlur const): Deleted.
+        * platform/graphics/GraphicsContext.h:
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::mustUseShadowBlur):
+        (WebCore::Cairo::drawGlyphsShadow):
+        (WebCore::Cairo::fillRectWithRoundedHole):
+        (WebCore::Cairo::drawGlyphs):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/FontCairo.cpp:
+        (WebCore::FontCascade::drawGlyphs):
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::fillRectWithRoundedHole):
+
+2017-11-13  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Move state change operations from GraphicsContextCairo to CairoOperations
+        https://bugs.webkit.org/show_bug.cgi?id=179610
+
+        Reviewed by Carlos Garcia Campos.
+
+        Move operations that perform Cairo state changes to the CairoOperations
+        file. This enforces only using the PlatformContextCairo object to
+        achieve the state change, leveraging the cairo_t and ShadowBlur objects
+        that are owned by PlatformContextCairo.
+
+        Along with state modification operations, various state query operations
+        are also placed under the Cairo::State namespace, again limited to the
+        PlatformContextCairo object.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::State::setStrokeThickness):
+        (WebCore::Cairo::State::setGlobalAlpha):
+        (WebCore::Cairo::State::setCompositeOperation):
+        (WebCore::Cairo::State::setShouldAntialias):
+        (WebCore::Cairo::State::setImageInterpolationQuality):
+        (WebCore::Cairo::State::setCTM):
+        (WebCore::Cairo::State::getCTM):
+        (WebCore::Cairo::State::setShadowValues):
+        (WebCore::Cairo::State::clearShadow):
+        (WebCore::Cairo::State::getClipBounds):
+        (WebCore::Cairo::State::roundToDevicePixels):
+        (WebCore::Cairo::State::isAcceleratedContext):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::getCTM const):
+        (WebCore::GraphicsContext::restorePlatformState):
+        (WebCore::GraphicsContext::clipBounds const):
+        (WebCore::GraphicsContext::roundToDevicePixels):
+        (WebCore::GraphicsContext::setPlatformStrokeThickness):
+        (WebCore::GraphicsContext::setCTM):
+        (WebCore::GraphicsContext::setPlatformShadow):
+        (WebCore::GraphicsContext::clearPlatformShadow):
+        (WebCore::GraphicsContext::setPlatformAlpha):
+        (WebCore::GraphicsContext::setPlatformCompositeOperation):
+        (WebCore::GraphicsContext::setPlatformShouldAntialias):
+        (WebCore::GraphicsContext::setPlatformImageInterpolationQuality):
+        (WebCore::GraphicsContext::isAcceleratedContext const):
+
+2017-11-13  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Move glyph drawing operations from FontCairo to CairoOperations
+        https://bugs.webkit.org/show_bug.cgi?id=179609
+
+        Reviewed by Carlos Garcia Campos.
+
+        Move operations that perform glyph drawing to the CairoOperations file.
+        This limits operations to only work with a PlatformContextCairo object,
+        along with other required parameters, and will help with future work
+        that will rely on isolated Cairo-specific code.
+
+        Along with moving the drawGlyphs() code, the helper functions are moved
+        and adjusted to work specifically on a PlatformContextCairo object and
+        a const GraphicsContextState reference, only using a GraphicsContext
+        reference for any required shadowed glyph drawing.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::drawGlyphsToContext):
+        (WebCore::Cairo::drawGlyphsShadow):
+        (WebCore::Cairo::drawGlyphs):
+        * platform/graphics/cairo/FontCairo.cpp:
+        (WebCore::FontCascade::drawGlyphs):
+        (WebCore::drawGlyphsToContext): Deleted.
+        (WebCore::drawGlyphsShadow): Deleted.
+
+2017-11-13  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Move focus ring drawing operations from GraphicsContextCairo to CairoOperations
+        https://bugs.webkit.org/show_bug.cgi?id=179603
+
+        Reviewed by Carlos Garcia Campos.
+
+        Move operations that perform focus ring drawing to the CairoOperations
+        file. This limits operations to only work with a PlatformContextCairo
+        object, along with other required parameters, and will help with future
+        work in this area.
+
+        The Cairo::State namespace is introduced, with the setStrokeStyle()
+        function placed there. The namespace will be used for operations that
+        only change an aspect of the Cairo state. More functions will be added
+        soon, and existing line and miter operations will likely move there as
+        well.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::adjustFocusRingColor):
+        (WebCore::Cairo::adjustFocusRingLineWidth):
+        (WebCore::Cairo::focusRingStrokeStyle):
+        (WebCore::Cairo::State::setStrokeStyle):
+        (WebCore::Cairo::drawFocusRing):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::drawFocusRing):
+        (WebCore::GraphicsContext::setPlatformStrokeStyle):
+        (WebCore::adjustFocusRingColor): Deleted.
+        (WebCore::adjustFocusRingLineWidth): Deleted.
+        (WebCore::focusRingStrokeStyle): Deleted.
+
+2017-11-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Move rectangle and path filling, stroking, clearing operations in GraphicsContextCairo to CairoOperations
+        https://bugs.webkit.org/show_bug.cgi?id=179599
+
+        Reviewed by Carlos Garcia Campos.
+
+        Move operations that perform filling, stroking and clearing for
+        specified rectangles and paths to the CairoOperations file. This limits
+        operations to only work with a PlatformContextCairo object, along with
+        any required parameter, and will help with future work in this area.
+
+        Helper functions are copied along for the time being, but will later be
+        removed from the GraphicsContextCairo implementation file.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::fillRectWithColor):
+        (WebCore::Cairo::drawPathShadow):
+        (WebCore::Cairo::fillCurrentCairoPath):
+        (WebCore::Cairo::fillRect):
+        (WebCore::Cairo::fillRoundedRect):
+        (WebCore::Cairo::fillRectWithRoundedHole):
+        (WebCore::Cairo::fillPath):
+        (WebCore::Cairo::strokeRect):
+        (WebCore::Cairo::strokePath):
+        (WebCore::Cairo::clearRect):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/GradientCairo.cpp:
+        (WebCore::Gradient::fill):
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::fillPath):
+        (WebCore::GraphicsContext::strokePath):
+        (WebCore::GraphicsContext::fillRect):
+        (WebCore::GraphicsContext::clearRect):
+        (WebCore::GraphicsContext::strokeRect):
+        (WebCore::GraphicsContext::platformFillRoundedRect):
+        (WebCore::GraphicsContext::fillRectWithRoundedHole):
+
+2017-11-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Move state stack, CTM, transparency layer operations in GraphicsContextCairo to CairoOperations
+        https://bugs.webkit.org/show_bug.cgi?id=179598
+
+        Reviewed by Carlos Garcia Campos.
+
+        Move operations that save and restore state, adjust CTM and modify the
+        transparency layer stack to the CairoOperations file. This limits
+        operations to only work with a PlatformContextCairo object, along with
+        any required parameter, and will help with future work in this area.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::save):
+        (WebCore::Cairo::restore):
+        (WebCore::Cairo::translate):
+        (WebCore::Cairo::rotate):
+        (WebCore::Cairo::scale):
+        (WebCore::Cairo::concatCTM):
+        (WebCore::Cairo::beginTransparencyLayer):
+        (WebCore::Cairo::endTransparencyLayer):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::savePlatformState):
+        (WebCore::GraphicsContext::restorePlatformState):
+        (WebCore::GraphicsContext::translate):
+        (WebCore::GraphicsContext::concatCTM):
+        (WebCore::GraphicsContext::beginPlatformTransparencyLayer):
+        (WebCore::GraphicsContext::endPlatformTransparencyLayer):
+        (WebCore::GraphicsContext::rotate):
+        (WebCore::GraphicsContext::scale):
+
+2017-11-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Move line, miter operations in GraphicsContextCairo to CairoOperations
+        https://bugs.webkit.org/show_bug.cgi?id=179597
+
+        Reviewed by Carlos Garcia Campos.
+
+        Move operations that adjust line cap, line dash, line join and miter
+        limit to the CairoOperations file. This limits operations to only work
+        with a PlatformContextCairo object, along with any required parameter,
+        and will help with future work in this area.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/CairoOperations.cpp:
+        (WebCore::Cairo::setLineCap):
+        (WebCore::Cairo::setLineDash):
+        (WebCore::Cairo::setLineJoin):
+        (WebCore::Cairo::setMiterLimit):
+        * platform/graphics/cairo/CairoOperations.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::setLineCap):
+        (WebCore::GraphicsContext::setLineDash):
+        (WebCore::GraphicsContext::setLineJoin):
+        (WebCore::GraphicsContext::setMiterLimit):
+        (WebCore::isDashArrayAllZero): Deleted.
+
+2017-11-11  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove redundant platform-specific implementations of Image::drawPattern()
+        https://bugs.webkit.org/show_bug.cgi?id=179580
+
+        Reviewed by Sam Weinig.
+
+        Platform-specific Image files had implementations of Image::drawPattern() but they
+        were all effectively identical, so put a single implementation into Image.cpp.
+
+        * SourcesCocoa.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/SourcesCairo.txt:
+        * platform/graphics/Image.cpp:
+        (WebCore::Image::drawPattern):
+        * platform/graphics/cairo/ImageCairo.cpp: Removed.
+        * platform/graphics/cg/ImageCG.cpp: Removed.
+        * platform/graphics/win/ImageDirect2D.cpp:
+        (WebCore::Image::drawPattern): Deleted.
+
+2017-11-10  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Start grouping Cairo GraphicsContext operations behind a separate interface
+        https://bugs.webkit.org/show_bug.cgi?id=179467
+
+        Reviewed by Carlos Garcia Campos.
+
+        Start moving the Cairo operations in GraphicsContext into a separate
+        translation unit, CairoOperations.cpp. This will ease leveraging these
+        operations from a pre-recorded list of GraphicsContext commands, or
+        from a Cairo-specific GraphicsContextImpl, without undermining the
+        current GraphicsContext implementation that we'll want to maintain
+        in a working state until necessary.
+
+        We start with the clipping operations. Each operation is encapsulated
+        in a static function inside the WebCore::Cairo namespace that expects
+        PlatformContextCairo reference as the first argument, which makes sense
+        since we have to utilize the cairo_t state object that's kept there.
+        Other parameters are passed as well, as required for some specific
+        operation.
+
+        In the Cairo implementation of GraphicsContext, the affected methods
+        are changed to assert presence of the platform context (i.e. this is a
+        GraphicsContext that operates on a valid cairo_t object, and is not
+        using an m_impl object or is in non-painting mode) before the
+        PlatformContextCairo object is dereferenced and passed along with
+        other arguments to the Cairo::clip*() function.
+
+        No new tests -- no change in behavior.
+
+        * platform/SourcesCairo.txt:
+        * platform/graphics/cairo/CairoOperations.cpp: Added.
+        (WebCore::Cairo::clip):
+        (WebCore::Cairo::clipOut):
+        (WebCore::Cairo::clipPath):
+        (WebCore::Cairo::clipToImageBuffer):
+        * platform/graphics/cairo/CairoOperations.h: Added.
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::clip):
+        (WebCore::GraphicsContext::clipPath):
+        (WebCore::GraphicsContext::clipToImageBuffer):
+        (WebCore::GraphicsContext::clipOut):
+
+2017-11-08  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Improve PlatformContextCairo lifetime management in GraphicsContextPlatformPrivate
+        https://bugs.webkit.org/show_bug.cgi?id=179424
+
+        Reviewed by Carlos Garcia Campos.
+
+        When the PlatformContextCairo object is owned by GraphicsContextPlatformPrivate,
+        the latter should hold it in a std::unique_ptr<>. When PlatformContextCairo is
+        not owned, the std::unique_ptr<> should remain null, and the PlatformContextCairo
+        reference should point to the externally-managed object.
+
+        A new GraphicsContextPlatformPrivate constructor accepts a std::unique_ptr<> that
+        manages a PlatformContextCairo object and moves it into the member variable, tying
+        lifetime of that PlatformContextCairo object to the private object.
+
+        This enables dropping the GraphicsContextPlatformPrivateToplevel class, and the
+        virtual table is no longer required. Small cleanups to the remaining class are
+        also performed.
+
+        No new tests -- no changes in behavior.
+
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::GraphicsContext):
+        (WebCore::GraphicsContext::platformInit):
+        (WebCore::GraphicsContext::platformContext const):
+        * platform/graphics/cairo/GraphicsContextPlatformPrivateCairo.h:
+        (WebCore::GraphicsContextPlatformPrivate::GraphicsContextPlatformPrivate):
+        (WebCore::GraphicsContextPlatformPrivate::save):
+        (WebCore::GraphicsContextPlatformPrivate::restore):
+        (WebCore::GraphicsContextPlatformPrivate::flush):
+        (WebCore::GraphicsContextPlatformPrivate::clip):
+        (WebCore::GraphicsContextPlatformPrivate::scale):
+        (WebCore::GraphicsContextPlatformPrivate::rotate):
+        (WebCore::GraphicsContextPlatformPrivate::translate):
+        (WebCore::GraphicsContextPlatformPrivate::concatCTM):
+        (WebCore::GraphicsContextPlatformPrivate::setCTM):
+        (WebCore::GraphicsContextPlatformPrivate::~GraphicsContextPlatformPrivate): Deleted.
+        (WebCore::GraphicsContextPlatformPrivateToplevel::GraphicsContextPlatformPrivateToplevel): Deleted.
+        (WebCore::GraphicsContextPlatformPrivateToplevel::~GraphicsContextPlatformPrivateToplevel): Deleted.
+        * platform/graphics/win/GraphicsContextCairoWin.cpp:
+        (WebCore::GraphicsContext::platformInit):
+
+2017-11-08  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Move transparency layers Vector to PlatformContextCairo
+        https://bugs.webkit.org/show_bug.cgi?id=179420
+
+        Reviewed by Carlos Garcia Campos.
+
+        Move the Vector of transparency layer float values from the
+        GraphicsContextPlatformPrivate class to PlatformContextCairo.
+        It fits better there since it's a platform-specific context
+        state, just like e.g. the ShadowBlur member.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::beginPlatformTransparencyLayer):
+        (WebCore::GraphicsContext::endPlatformTransparencyLayer):
+        * platform/graphics/cairo/GraphicsContextPlatformPrivateCairo.h:
+        * platform/graphics/cairo/PlatformContextCairo.h:
+        (WebCore::PlatformContextCairo::layers):
+        * platform/graphics/win/GraphicsContextCairoWin.cpp:
+        (WebCore::drawBitmapToContext):
+        (WebCore::GraphicsContext::releaseWindowsContext):
+        (WebCore::GraphicsContext::drawWindowsBitmap):
+
+2017-11-06  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] CairoGlyphToPathTranslator::path() shouldn't fill out the glyph path
+        https://bugs.webkit.org/show_bug.cgi?id=179159
+
+        Reviewed by Michael Catanzaro.
+
+        In case of non-zero synthetic bold offset in CairoGlyphToPathTranslator::path(),
+        cairo_glyph_path() should be called just like in the generic case.
+        cairo_show_glyphs() performs the actual rasterization of the glyph, but we're
+        only interested in the generated path operations.
+
+        No new tests -- covered by existing tests.
+
+        * platform/graphics/cairo/FontCairo.cpp:
+        (WebCore::CairoGlyphToPathTranslator::path):
+
+2017-11-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Add a GraphicsContextImpl and use it for DispayList::Recorder
+        https://bugs.webkit.org/show_bug.cgi?id=179286
+
+        Reviewed by Sam Weinig.
+
+        Start moving towards a model when GraphicsContext has a pointer to an implementation
+        ("pimpl") by adding GraphicsContextImpl, and converting display list recording to
+        be an implementation of a GraphicsContextImpl.
+
+        No behavior change.
+
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * html/canvas/CanvasRenderingContext2D.cpp:
+        (WebCore::DisplayListDrawingContext::DisplayListDrawingContext):
+        * platform/graphics/GraphicsContext.cpp:
+        (WebCore::GraphicsContext::GraphicsContext):
+        (WebCore::GraphicsContext::save):
+        (WebCore::GraphicsContext::restore):
+        (WebCore::GraphicsContext::setStrokeThickness):
+        (WebCore::GraphicsContext::setStrokeStyle):
+        (WebCore::GraphicsContext::setStrokeColor):
+        (WebCore::GraphicsContext::setShadow):
+        (WebCore::GraphicsContext::setLegacyShadow):
+        (WebCore::GraphicsContext::clearShadow):
+        (WebCore::GraphicsContext::setFillColor):
+        (WebCore::GraphicsContext::setShadowsIgnoreTransforms):
+        (WebCore::GraphicsContext::setShouldAntialias):
+        (WebCore::GraphicsContext::setShouldSmoothFonts):
+        (WebCore::GraphicsContext::setShouldSubpixelQuantizeFonts):
+        (WebCore::GraphicsContext::setImageInterpolationQuality):
+        (WebCore::GraphicsContext::setStrokePattern):
+        (WebCore::GraphicsContext::setFillPattern):
+        (WebCore::GraphicsContext::setStrokeGradient):
+        (WebCore::GraphicsContext::setFillRule):
+        (WebCore::GraphicsContext::setFillGradient):
+        (WebCore::GraphicsContext::beginTransparencyLayer):
+        (WebCore::GraphicsContext::endTransparencyLayer):
+        (WebCore::GraphicsContext::drawGlyphs):
+        (WebCore::GraphicsContext::drawImage):
+        (WebCore::GraphicsContext::drawTiledImage):
+        (WebCore::GraphicsContext::setTextDrawingMode):
+        (WebCore::GraphicsContext::fillRect):
+        (WebCore::GraphicsContext::fillRoundedRect):
+        (WebCore::GraphicsContext::setAlpha):
+        (WebCore::GraphicsContext::setCompositeOperation):
+        (WebCore::GraphicsContext::setDrawLuminanceMask):
+        (WebCore::GraphicsContext::applyDeviceScaleFactor):
+        (WebCore::GraphicsContext::fillEllipse):
+        (WebCore::GraphicsContext::strokeEllipse):
+        * platform/graphics/GraphicsContext.h:
+        (WebCore::GraphicsContext::hasPlatformContext const):
+        (WebCore::GraphicsContext::paintingDisabled const):
+        (WebCore::GraphicsContext::setDisplayListRecorder): Deleted.
+        (WebCore::GraphicsContext::isRecording const): Deleted.
+        * platform/graphics/GraphicsContextImpl.cpp: Added.
+        (WebCore::GraphicsContextImpl::GraphicsContextImpl):
+        (WebCore::GraphicsContextImpl::~GraphicsContextImpl):
+        * platform/graphics/GraphicsContextImpl.h: Added.
+        (WebCore::GraphicsContextImpl::graphicsContext const):
+        * platform/graphics/ca/GraphicsLayerCA.cpp:
+        (WebCore::GraphicsLayerCA::recursiveCommitChanges):
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::getCTM const):
+        (WebCore::GraphicsContext::savePlatformState):
+        (WebCore::GraphicsContext::restorePlatformState):
+        (WebCore::GraphicsContext::drawRect):
+        (WebCore::GraphicsContext::drawNativeImage):
+        (WebCore::GraphicsContext::drawLine):
+        (WebCore::GraphicsContext::drawEllipse):
+        (WebCore::GraphicsContext::fillPath):
+        (WebCore::GraphicsContext::strokePath):
+        (WebCore::GraphicsContext::fillRect):
+        (WebCore::GraphicsContext::clip):
+        (WebCore::GraphicsContext::clipPath):
+        (WebCore::GraphicsContext::clipBounds const):
+        (WebCore::GraphicsContext::drawLinesForText):
+        (WebCore::GraphicsContext::roundToDevicePixels):
+        (WebCore::GraphicsContext::translate):
+        (WebCore::GraphicsContext::setPlatformStrokeThickness):
+        (WebCore::GraphicsContext::setPlatformStrokeStyle):
+        (WebCore::GraphicsContext::concatCTM):
+        (WebCore::GraphicsContext::setCTM):
+        (WebCore::GraphicsContext::beginPlatformTransparencyLayer):
+        (WebCore::GraphicsContext::endPlatformTransparencyLayer):
+        (WebCore::GraphicsContext::clearRect):
+        (WebCore::GraphicsContext::strokeRect):
+        (WebCore::GraphicsContext::setLineCap):
+        (WebCore::GraphicsContext::setLineDash):
+        (WebCore::GraphicsContext::setLineJoin):
+        (WebCore::GraphicsContext::setMiterLimit):
+        (WebCore::GraphicsContext::clipOut):
+        (WebCore::GraphicsContext::rotate):
+        (WebCore::GraphicsContext::scale):
+        (WebCore::GraphicsContext::platformFillRoundedRect):
+        (WebCore::GraphicsContext::fillRectWithRoundedHole):
+        (WebCore::GraphicsContext::drawPattern):
+        (WebCore::GraphicsContext::setPlatformShouldAntialias):
+        (WebCore::GraphicsContext::setPlatformImageInterpolationQuality):
+        (WebCore::GraphicsContext::isAcceleratedContext const):
+        * platform/graphics/cg/GraphicsContextCG.cpp:
+        (WebCore::GraphicsContext::savePlatformState):
+        (WebCore::GraphicsContext::restorePlatformState):
+        (WebCore::GraphicsContext::drawNativeImage):
+        (WebCore::GraphicsContext::drawPattern):
+        (WebCore::GraphicsContext::drawRect):
+        (WebCore::GraphicsContext::drawLine):
+        (WebCore::GraphicsContext::drawEllipse):
+        (WebCore::GraphicsContext::applyStrokePattern):
+        (WebCore::GraphicsContext::applyFillPattern):
+        (WebCore::GraphicsContext::drawPath):
+        (WebCore::GraphicsContext::fillPath):
+        (WebCore::GraphicsContext::strokePath):
+        (WebCore::GraphicsContext::fillRect):
+        (WebCore::GraphicsContext::platformFillRoundedRect):
+        (WebCore::GraphicsContext::fillRectWithRoundedHole):
+        (WebCore::GraphicsContext::clip):
+        (WebCore::GraphicsContext::clipOut):
+        (WebCore::GraphicsContext::clipPath):
+        (WebCore::GraphicsContext::clipBounds const):
+        (WebCore::GraphicsContext::beginPlatformTransparencyLayer):
+        (WebCore::GraphicsContext::endPlatformTransparencyLayer):
+        (WebCore::GraphicsContext::setPlatformShadow):
+        (WebCore::GraphicsContext::setMiterLimit):
+        (WebCore::GraphicsContext::clearRect):
+        (WebCore::GraphicsContext::strokeRect):
+        (WebCore::GraphicsContext::setLineCap):
+        (WebCore::GraphicsContext::setLineDash):
+        (WebCore::GraphicsContext::setLineJoin):
+        (WebCore::GraphicsContext::scale):
+        (WebCore::GraphicsContext::rotate):
+        (WebCore::GraphicsContext::translate):
+        (WebCore::GraphicsContext::concatCTM):
+        (WebCore::GraphicsContext::setCTM):
+        (WebCore::GraphicsContext::getCTM const):
+        (WebCore::GraphicsContext::roundToDevicePixels):
+        (WebCore::GraphicsContext::drawLinesForText):
+        (WebCore::GraphicsContext::setURLForRect):
+        (WebCore::GraphicsContext::setIsCALayerContext):
+        (WebCore::GraphicsContext::isCALayerContext const):
+        (WebCore::GraphicsContext::setIsAcceleratedContext):
+        (WebCore::GraphicsContext::isAcceleratedContext const):
+        (WebCore::GraphicsContext::setPlatformTextDrawingMode):
+        (WebCore::GraphicsContext::setPlatformStrokeColor):
+        (WebCore::GraphicsContext::setPlatformStrokeThickness):
+        (WebCore::GraphicsContext::setPlatformFillColor):
+        (WebCore::GraphicsContext::setPlatformShouldAntialias):
+        (WebCore::GraphicsContext::setPlatformShouldSmoothFonts):
+        (WebCore::GraphicsContext::setPlatformAlpha):
+        (WebCore::GraphicsContext::setPlatformCompositeOperation):
+        (WebCore::GraphicsContext::platformApplyDeviceScaleFactor):
+        (WebCore::GraphicsContext::platformFillEllipse):
+        (WebCore::GraphicsContext::platformStrokeEllipse):
+        (WebCore::GraphicsContext::setDestinationForRect):
+        (WebCore::GraphicsContext::addDestinationAtPoint):
+        * platform/graphics/cocoa/GraphicsContextCocoa.mm:
+        (WebCore::GraphicsContext::drawFocusRing):
+        * platform/graphics/displaylists/DisplayListRecorder.cpp:
+        (WebCore::DisplayList::Recorder::Recorder):
+        (WebCore::DisplayList::Recorder::updateItemExtent const):
+        (WebCore::DisplayList::Recorder::extentFromLocalBounds const):
+        * platform/graphics/displaylists/DisplayListRecorder.h:
+        (WebCore::DisplayList::Recorder::itemCount const):
+        * rendering/RenderTheme.cpp:
+        (WebCore::RenderTheme::paint):
+
+2017-11-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Misc display list and other cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=179150
+
+        Reviewed by Tim Horton.
+
+        A few functions in GraphicsContext would assert when using display lists, because they
+        had no recording clause. Fix them (ellipse drawing, and focus ring drawing).
+        
+        Use #pragma once in more places.
+
+        Add system trace points for display list recording.
+
+        No behavior change for non-display list code.
+
+        * platform/graphics/GraphicsContext.cpp:
+        (WebCore::GraphicsContext::fillEllipse):
+        (WebCore::GraphicsContext::strokeEllipse):
+        * platform/graphics/PlatformLayer.h:
+        * platform/graphics/ca/GraphicsLayerCA.cpp:
+        (WebCore::GraphicsLayerCA::recursiveCommitChanges):
+        * platform/graphics/ca/cocoa/WebSystemBackdropLayer.h:
+        * platform/graphics/ca/cocoa/WebTiledBackingLayer.h:
+        * platform/graphics/cg/GraphicsContextCG.h:
+        * platform/graphics/cocoa/GraphicsContextCocoa.mm:
+        (WebCore::GraphicsContext::drawFocusRing):
+        * platform/graphics/displaylists/DisplayList.h:
+        * platform/graphics/displaylists/DisplayListItems.h:
+        (WebCore::DisplayList::DrawFocusRingPath::create):
+        (WebCore::DisplayList::DrawFocusRingPath::width const):
+        (WebCore::DisplayList::DrawFocusRingPath::offset const):
+        (WebCore::DisplayList::DrawFocusRingPath::DrawFocusRingPath):
+        (WebCore::DisplayList::DrawFocusRingRects::create):
+        (WebCore::DisplayList::DrawFocusRingRects::width const):
+        (WebCore::DisplayList::DrawFocusRingRects::offset const):
+        (WebCore::DisplayList::DrawFocusRingRects::DrawFocusRingRects):
+        * platform/graphics/displaylists/DisplayListRecorder.cpp:
+        (WebCore::DisplayList::Recorder::restore):
+        (WebCore::DisplayList::Recorder::drawFocusRing):
+        * platform/graphics/displaylists/DisplayListRecorder.h:
+        * platform/graphics/displaylists/DisplayListReplayer.h:
+        * platform/graphics/mac/WebLayer.h:
+
+2017-10-23  Miguel Gomez  <magomez@igalia.com>
+
+        [TexMap] Remove GraphicsContext3D usage from TextureMapperShaderProgram
+        https://bugs.webkit.org/show_bug.cgi?id=175425
+
+        Reviewed by Žan Doberšek.
+
+        Remove usage of the GraphicsContext3D class in TextureMapperShaderProgram.
+        Direct OpenGL API calls, types and constants are used instead.
+
+        By removing GraphicsContext3D, we don't use ANGLE anymore to perform the
+        shader adaptation to the used OpenGL/GLES2 version, so we need to do that
+        inside TextureMapperShaderProgram. The main changes required for this are
+        adding the #version directive and use in/out to define input/output parameters
+        when using OpenGL >= 3.2, and defining the default precision only when using
+        GLES2.
+
+        Besides that, now that VideoTextureCopierGStreamer doesn't have its own
+        GraphicsContext3D, we need to add a VAO to it when using OpenGL >= 3.2.
+
+        Based on a previous patch by Žan Doberšek <zdobersek@igalia.com>.
+
+        No behavior change.
+
+        * platform/graphics/gstreamer/VideoTextureCopierGStreamer.cpp:
+        (WebCore::VideoTextureCopierGStreamer::VideoTextureCopierGStreamer):
+        (WebCore::VideoTextureCopierGStreamer::~VideoTextureCopierGStreamer):
+        (WebCore::VideoTextureCopierGStreamer::copyVideoTextureToPlatformTexture):
+        * platform/graphics/gstreamer/VideoTextureCopierGStreamer.h:
+        * platform/graphics/texmap/TextureMapperGL.cpp:
+        (WebCore::TextureMapperGLData::getShaderProgram):
+        (WebCore::prepareFilterProgram):
+        (WebCore::TextureMapperGL::drawTexture):
+        (WebCore::TextureMapperGL::drawFiltered):
+        * platform/graphics/texmap/TextureMapperShaderProgram.cpp:
+        (WebCore::TextureMapperShaderProgram::create):
+        (WebCore::getShaderLog):
+        (WebCore::getProgramLog):
+        (WebCore::TextureMapperShaderProgram::TextureMapperShaderProgram):
+        (WebCore::TextureMapperShaderProgram::~TextureMapperShaderProgram):
+        (WebCore::TextureMapperShaderProgram::setMatrix):
+        (WebCore::TextureMapperShaderProgram::getLocation):
+        * platform/graphics/texmap/TextureMapperShaderProgram.h:
+        (WebCore::TextureMapperShaderProgram::programID const):
+
+2017-10-06  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Create Cairo patterns from Gradient objects on-the-fly
+        https://bugs.webkit.org/show_bug.cgi?id=177947
+
+        Reviewed by Carlos Garcia Campos.
+
+        Stop caching cairo_pattern_t objects for a specific global alpha value
+        in the Gradient class. Instead, create these as required, for whatever
+        alpha value. This drops some efficiency benefits in exchange for better
+        Cairo operation isolation, while also matching the same approach that
+        is used in the Pattern implementation for Cairo.
+
+        Introduce the createPlatformGradient() method for Cairo, resuing the
+        implementation of platformGradient() that's now removed. The
+        Cairo-specific setPlatformGradientSpaceTransform() method is also
+        removed since there's no cached cairo_pattern_t object that we can
+        update. The Cairo-specific m_platformGradientAlpha member float is also
+        deleted.
+
+        Gradient::fill() and prepareCairoContextSource() are the only two places
+        that need to create a cairo_pattern_t object off of Gradient, so they
+        are updated accordingly.
+
+        No new tests -- no changes in behavior.
+
+        * platform/graphics/Gradient.cpp:
+        (WebCore::Gradient::setGradientSpaceTransform):
+        (WebCore::Gradient::setPlatformGradientSpaceTransform): Deleted.
+        * platform/graphics/Gradient.h:
+        * platform/graphics/cairo/GradientCairo.cpp:
+        (WebCore::Gradient::platformDestroy):
+        (WebCore::Gradient::createPlatformGradient):
+        (WebCore::Gradient::fill):
+        (WebCore::Gradient::platformGradient): Deleted.
+        (WebCore::Gradient::setPlatformGradientSpaceTransform): Deleted.
+        * platform/graphics/cairo/PlatformContextCairo.cpp:
+        (WebCore::prepareCairoContextSource):
+
+2017-10-06  Zan Dobersek  <zdobersek@igalia.com>
+
+        Remove dead code from Pattern
+        https://bugs.webkit.org/show_bug.cgi?id=177945
+
+        Reviewed by Carlos Garcia Campos.
+
+        Drop the platormDestroy() and setPlatformPatternSpaceTransform() methods
+        from the Pattern class -- these were empty implementations, with no port
+        providing their own. The destructor is defaulted in the implementation
+        file. The m_pattern member variable is also dropped as it was unused.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/Pattern.cpp:
+        (WebCore::Pattern::setPatternSpaceTransform):
+        (WebCore::Pattern::~Pattern): Deleted.
+        (WebCore::Pattern::platformDestroy): Deleted.
+        (WebCore::Pattern::setPlatformPatternSpaceTransform): Deleted.
+        * platform/graphics/Pattern.h:
+
+2017-10-02  Zan Dobersek  <zdobersek@igalia.com>
+
+        GraphicsContext: remove unused ENABLE(3D_TRANSFORMS) && USE(TEXTURE_MAPPER)
+        https://bugs.webkit.org/show_bug.cgi?id=177757
+
+        Reviewed by Michael Catanzaro.
+
+        Remove three methods from the GraphicsContext class that were conditioned
+        with the ENABLE(3D_TRANSFORMS) and USE(TEXTURE_MAPPER) guards. These aren't
+        used anywhere at this point, but apparently used to be in the TextureMapper
+        implementation.
+
+        * platform/graphics/GraphicsContext.h:
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::get3DTransform const): Deleted.
+        (WebCore::GraphicsContext::concat3DTransform): Deleted.
+        (WebCore::GraphicsContext::set3DTransform): Deleted.
+
+2017-09-28  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Remove the cairo_glyph_t complexity from GlyphBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=177598
+
+        Reviewed by Carlos Garcia Campos.
+
+        Remove the decade-old use of cairo_glyph_t as the underlying type for
+        Glyph. The former spans 24 bytes in size, while the latte is just 2
+        bytes. The x and y coordinate attributes of cairo_glyph_t were only
+        used in FontCascade::drawGlyphs() implementation, where they were
+        overridden even if the same GlyphBuffer object was used here repeatedly.
+
+        FontCascade::drawGlyphs() now creates a new Vector<cairo_glyph_t> object
+        and fills it only with the glyph index and coordinates data for glyphs
+        that will actually be drawn. This will likely in the future be leveraged
+        to pack the necessary data and perform the drawing operations in
+        parallelized tasks. GlyphBuffer usages that before required USE(CAIRO)
+        special-casing can now be simplified.
+
+        This also removes the need for <cairo.h> header inclusion in the
+        GlyphBuffer.h header. This further removes Cairo header inclusion in
+        roughly 600 build targets.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/FontCascade.cpp:
+        (WebCore::FontCascade::widthForSimpleText const):
+        * platform/graphics/GlyphBuffer.h:
+        (WebCore::GlyphBuffer::glyphAt const):
+        (WebCore::GlyphBuffer::add):
+        * platform/graphics/cairo/FontCairo.cpp:
+        (WebCore::drawGlyphsToContext):
+        (WebCore::drawGlyphsShadow):
+        (WebCore::FontCascade::drawGlyphs):
+        * platform/graphics/displaylists/DisplayListItems.cpp:
+        (WebCore::DisplayList::DrawGlyphs::generateGlyphBuffer const):
+
+2017-09-27  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Remove unnecessary cairo.h includes
+        https://bugs.webkit.org/show_bug.cgi?id=177540
+
+        Reviewed by Carlos Garcia Campos.
+
+        Drop unnecessary includes of the cairo.h header from the Font.h,
+        FontPlatformData.h and Pattern.h headers. For the former two the
+        header isn't required, while in the last one we can use a forward
+        declaration for the cairo_pattern_t type instead of including
+        the whole Cairo headers to have that available.
+
+        * platform/graphics/Font.h:
+        * platform/graphics/FontPlatformData.h:
+        * platform/graphics/Pattern.h:
+
+2017-09-27  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Drop cairo_matrix_t conversion operators for AffineTransform, TransformationMatrix
+        https://bugs.webkit.org/show_bug.cgi?id=177539
+
+        Reviewed by Carlos Garcia Campos.
+
+        Remove the cairo_matrix_t conversion operators from the AffineTransform
+        and TransformationMatrix classes. These are rarely used, but enforce
+        including the cairo.h header in both headers, which leads to the Cairo
+        headers being included in around 800 build targets.
+
+        Instead, the toCairoMatrix() function is added to CairoUtilities.h that
+        creates a cairo_matrix_t object for the given AffineTransform. No
+        toCairoMatrix() is needed for TransformationMatrix since objects of
+        that type aren't converted to cairo_matrix_t anywhere in the codebase.
+
+        This patch excludes unnecessary Cairo headers from about 550 build
+        targets (with those headers being included in the other affected 250
+        targets by some other header inclusion chain). CairoUtilities.h header
+        is now included where necessary to make toCairoMatrix() available, and
+        duplicated cairo.h inclusions are removed.
+
+        No new tests -- no change in behavior.
+
+        * editing/gtk/EditorGtk.cpp: Explicitly include <cairo.h> since it's
+        necessary for Cairo operations used there.
+        * platform/Cairo.cmake:
+        * platform/graphics/cairo/CairoUtilities.cpp:
+        (WebCore::drawPatternToCairoContext):
+        (WebCore::toCairoMatrix):
+        * platform/graphics/cairo/CairoUtilities.h:
+        * platform/graphics/cairo/GradientCairo.cpp:
+        (WebCore::Gradient::platformGradient):
+        (WebCore::Gradient::setPlatformGradientSpaceTransform):
+        * platform/graphics/cairo/GraphicsContextCairo.cpp:
+        (WebCore::GraphicsContext::concatCTM):
+        (WebCore::GraphicsContext::setCTM):
+        * platform/graphics/cairo/PathCairo.cpp: No need to include AffineTransform.h.
+        (WebCore::Path::addPath):
+        (WebCore::Path::transform):
+        * platform/graphics/cairo/PatternCairo.cpp: Ditto.
+        (WebCore::Pattern::createPlatformPattern const):
+        * platform/graphics/cairo/TransformationMatrixCairo.cpp: Removed.
+        * platform/graphics/transforms/AffineTransform.h:
+        * platform/graphics/transforms/TransformationMatrix.h:
+
 2018-07-09  Charlie Turner  <cturner@igalia.com>
 
         [GStreamer] Return a valid time values in unprerolled states

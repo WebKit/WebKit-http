@@ -92,14 +92,10 @@ class Extensions3DOpenGL;
 class HostWindow;
 class Image;
 class ImageBuffer;
-class ImageSource;
 class ImageData;
 class IntRect;
 class IntSize;
 class WebGLRenderingContextBase;
-#if USE(CAIRO)
-class PlatformContextCairo;
-#endif
 #if USE(TEXTURE_MAPPER)
 class TextureMapperGC3DPlatformLayer;
 #endif
@@ -723,7 +719,6 @@ public:
     enum RenderStyle {
         RenderOffscreen,
         RenderDirectlyToHostWindow,
-        RenderToCurrentGLContext
     };
 
     class ContextLostCallback {
@@ -742,7 +737,6 @@ public:
     void setErrorMessageCallback(std::unique_ptr<ErrorMessageCallback>);
 
     static RefPtr<GraphicsContext3D> create(GraphicsContext3DAttributes, HostWindow*, RenderStyle = RenderOffscreen);
-    static RefPtr<GraphicsContext3D> createForCurrentGLContext();
     ~GraphicsContext3D();
 
 #if PLATFORM(COCOA)
@@ -1127,12 +1121,7 @@ public:
     GC3Dboolean isVertexArray(Platform3DObject);
     void bindVertexArray(Platform3DObject);
 
-#if PLATFORM(GTK) || USE(CAIRO)
-    void paintToCanvas(const unsigned char* imagePixels, int imageWidth, int imageHeight,
-                       int canvasWidth, int canvasHeight, PlatformContextCairo* context);
-#elif USE(CG)
-    void paintToCanvas(const unsigned char* imagePixels, int imageWidth, int imageHeight, int canvasWidth, int canvasHeight, GraphicsContext&);
-#endif
+    void paintToCanvas(const unsigned char* imagePixels, const IntSize& imageSize, const IntSize& canvasSize, GraphicsContext&);
 
     void markContextChanged();
     void markLayerComposited();
@@ -1254,7 +1243,6 @@ public:
         bool extractImage(bool premultiplyAlpha, bool ignoreGammaAndColorProfile);
 
 #if USE(CAIRO)
-        ImageSource* m_decoder;
         RefPtr<cairo_surface_t> m_imageSurface;
 #elif USE(CG)
         RetainPtr<CGImageRef> m_cgImage;

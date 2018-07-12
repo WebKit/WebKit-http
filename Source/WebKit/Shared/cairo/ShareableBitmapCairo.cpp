@@ -29,8 +29,9 @@
 #include "ShareableBitmap.h"
 
 #include <WebCore/BitmapImage.h>
+#include <WebCore/CairoOperations.h>
 #include <WebCore/CairoUtilities.h>
-#include <WebCore/GraphicsContext.h>
+#include <WebCore/GraphicsContextImplCairo.h>
 #include <WebCore/PlatformContextCairo.h>
 #include <WebCore/NotImplemented.h>
 
@@ -60,7 +61,7 @@ std::unique_ptr<GraphicsContext> ShareableBitmap::createGraphicsContext()
 {
     RefPtr<cairo_surface_t> image = createCairoSurface();
     RefPtr<cairo_t> bitmapContext = adoptRef(cairo_create(image.get()));
-    return std::make_unique<GraphicsContext>(bitmapContext.get());
+    return std::make_unique<GraphicsContext>(GraphicsContextImplCairo::createFactory(bitmapContext.get()));
 }
 
 void ShareableBitmap::paint(GraphicsContext& context, const IntPoint& dstPoint, const IntRect& srcRect)
@@ -74,7 +75,10 @@ void ShareableBitmap::paint(GraphicsContext& context, float scaleFactor, const I
     FloatRect destRect(dstPoint, srcRect.size());
     FloatRect srcRectScaled(srcRect);
     srcRectScaled.scale(scaleFactor);
-    context.platformContext()->drawSurfaceToContext(surface.get(), destRect, srcRectScaled, context);
+
+    ASSERT(context.hasPlatformContext());
+    auto& state = context.state();
+    Cairo::drawSurface(*context.platformContext(), surface.get(), destRect, srcRectScaled, state.imageInterpolationQuality, state.alpha, Cairo::ShadowState(state));
 }
 
 RefPtr<cairo_surface_t> ShareableBitmap::createCairoSurface()

@@ -90,6 +90,7 @@ public:
     WTF_EXPORT_PRIVATE void endGroup();
     WTF_EXPORT_PRIVATE void nextLine(); // Output newline and indent.
 
+    int indent() const { return m_indent; }
     void increaseIndent(int amount = 1) { m_indent += amount; }
     void decreaseIndent(int amount = 1) { m_indent -= amount; ASSERT(m_indent >= 0); }
 
@@ -117,6 +118,12 @@ private:
     int m_indent { 0 };
     bool m_multiLineMode { true };
 };
+
+inline TextStream& indent(TextStream& ts)
+{
+    ts.writeIndent();
+    return ts;
+}
 
 template<typename Item>
 TextStream& operator<<(TextStream& ts, const Vector<Item>& vector)
