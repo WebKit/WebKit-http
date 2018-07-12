@@ -122,6 +122,8 @@ struct _WebKitMediaSrcPrivate {
 
     GRefPtr<GstBus> bus;
     WebCore::MediaPlayerPrivateGStreamerMSE* mediaPlayerPrivate;
+
+    GUniquePtr<GstFlowCombiner> flowCombiner;
 };
 
 extern guint webKitMediaSrcSignals[LAST_SIGNAL];
