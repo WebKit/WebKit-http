@@ -35,8 +35,6 @@ WTF_DEFINE_GPTR_DELETER(GstInstallPluginsContext, gst_install_plugins_context_fr
 WTF_DEFINE_GPTR_DELETER(GstStructure, gst_structure_free)
 WTF_DEFINE_GPTR_DELETER(GstSegment, gst_segment_free)
 WTF_DEFINE_GPTR_DELETER(GstIterator, gst_iterator_free)
-
-// GstFlowCombiner becomes reference counted in 1.12.
 WTF_DEFINE_GPTR_DELETER(GstFlowCombiner, gst_flow_combiner_free)
 
 }

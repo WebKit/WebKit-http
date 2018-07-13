@@ -254,7 +254,7 @@ static GstFlowReturn webkitMediaSrcChain(GstPad* pad, GstObject* parent, GstBuff
 {
     GRefPtr<WebKitMediaSrc> self = adoptGRef(WEBKIT_MEDIA_SRC(gst_object_get_parent(parent)));
 
-    return gst_flow_combiner_update_pad_flow(self.get()->priv->flowCombiner.get(), pad, gst_proxy_pad_chain_default(pad, GST_OBJECT(self.get()), buffer));
+    return gst_flow_combiner_update_pad_flow(self->priv->flowCombiner.get(), pad, gst_proxy_pad_chain_default(pad, GST_OBJECT(self.get()), buffer));
 }
 
 static void webkit_media_src_init(WebKitMediaSrc* source)
@@ -480,16 +480,16 @@ void webKitMediaSrcLinkStreamToSrcPad(GstPad* sourcePad, Stream* stream)
     unsigned padId = static_cast<unsigned>(GPOINTER_TO_INT(g_object_get_data(G_OBJECT(sourcePad), "padId")));
     GST_DEBUG_OBJECT(stream->parent, "linking stream to src pad (id: %u)", padId);
 
-    auto padName = String::format("src_%u", padId);
-    GstPad* ghostPad = WebCore::webkitGstGhostPadFromStaticTemplate(&srcTemplate, padName.utf8().data(), sourcePad);
+    GUniquePtr<gchar> padName(g_strdup_printf("src_%u", padId));
+    GstPad* ghostpad = WebCore::webkitGstGhostPadFromStaticTemplate(&srcTemplate, padName.get(), sourcePad);
 
-    auto proxyPad = adoptGRef(GST_PAD(gst_proxy_pad_get_internal(GST_PROXY_PAD(ghostPad))));
-    gst_flow_combiner_add_pad(stream->parent->priv->flowCombiner.get(), proxyPad.get());
-    gst_pad_set_chain_function(proxyPad.get(), static_cast<GstPadChainFunction>(webkitMediaSrcChain));
-    gst_pad_set_query_function(ghostPad, webKitMediaSrcQueryWithParent);
+    auto proxypad = adoptGRef(GST_PAD(gst_proxy_pad_get_internal(GST_PROXY_PAD(ghostpad))));
+    gst_flow_combiner_add_pad(stream->parent->priv->flowCombiner.get(), proxypad.get());
+    gst_pad_set_chain_function(proxypad.get(), static_cast<GstPadChainFunction>(webkitMediaSrcChain));
+    gst_pad_set_query_function(ghostpad, webKitMediaSrcQueryWithParent);
 
-    gst_pad_set_active(ghostPad, TRUE);
-    gst_element_add_pad(GST_ELEMENT(stream->parent), ghostPad);
+    gst_pad_set_active(ghostpad, TRUE);
+    gst_element_add_pad(GST_ELEMENT(stream->parent), ghostpad);
 }
 
 void webKitMediaSrcLinkParser(GstPad* sourcePad, GstCaps* caps, Stream* stream)
