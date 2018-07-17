@@ -295,8 +295,6 @@ void CoordinatedGraphicsScene::setLayerState(CoordinatedLayerID id, const Coordi
     createTilesIfNeeded(layer, layerState);
     removeTilesIfNeeded(layer, layerState, commitScope);
     updateTilesIfNeeded(layer, layerState, commitScope);
-    setLayerFiltersIfNeeded(layer, layerState);
-    setLayerAnimationsIfNeeded(layer, layerState);
     syncPlatformLayerIfNeeded(layer, layerState);
     setLayerRepaintCountIfNeeded(layer, layerState);
 }
