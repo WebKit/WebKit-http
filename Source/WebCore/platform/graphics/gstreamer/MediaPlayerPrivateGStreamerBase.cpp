@@ -487,8 +487,16 @@ FloatSize MediaPlayerPrivateGStreamerBase::naturalSize() const
 	// If there's a sample, get the caps from it.
         caps = gst_sample_get_caps(m_sample.get());
     } else {
-	// If there's no sample, try to get the caps from the video sink.
-        GRefPtr<GstPad> videoSinkPad = adoptGRef(gst_element_get_static_pad(m_videoSink.get(), "sink"));
+        // If there's no sample, try to get the caps from the video sink.
+        GRefPtr<GstElement> videoSink = m_videoSink;
+
+        // m_videoSink can be null for auto-plugged sinks, but we can ask PlayBin.
+        if (!videoSink)
+          g_object_get(m_pipeline.get(), "video-sink", &videoSink.outPtr(), nullptr);
+        if (!videoSink)
+          return { };
+
+        GRefPtr<GstPad> videoSinkPad = adoptGRef(gst_element_get_static_pad(videoSink.get(), "sink"));
         if (videoSinkPad)
             caps = gst_pad_get_current_caps(videoSinkPad.get());
     }
