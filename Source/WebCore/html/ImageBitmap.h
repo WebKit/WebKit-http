@@ -82,6 +82,9 @@ public:
 
     std::unique_ptr<ImageBuffer> transferOwnershipAndClose();
 
+    size_t memoryCost() const;
+    size_t externalMemoryCost() const;
+
     static Vector<std::pair<std::unique_ptr<ImageBuffer>, bool>> detachBitmaps(Vector<RefPtr<ImageBitmap>>&&);
 
 private:
