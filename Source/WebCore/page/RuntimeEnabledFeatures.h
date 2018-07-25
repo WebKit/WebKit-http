@@ -178,6 +178,9 @@ public:
     bool webGPUEnabled() const { return m_isWebGPUEnabled; }
 #endif
 
+    void setImageBitmapOffscreenCanvasEnabled(bool isEnabled) { m_isImageBitmapOffscreenCanvasEnabled = isEnabled; }
+    bool imageBitmapOffscreenCanvasEnabled() const { return m_isImageBitmapOffscreenCanvasEnabled; }
+
     void setCacheAPIEnabled(bool isEnabled) { m_isCacheAPIEnabled = isEnabled; }
     bool cacheAPIEnabled() const { return m_isCacheAPIEnabled; }
 
@@ -326,6 +329,7 @@ private:
     bool m_isWebGPUEnabled { false };
 #endif
 
+    bool m_isImageBitmapOffscreenCanvasEnabled { true };
     bool m_isCacheAPIEnabled { false };
     bool m_isFetchAPIEnabled { true };
 

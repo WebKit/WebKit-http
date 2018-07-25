@@ -37,6 +37,7 @@ class CanvasPattern;
 class HTMLCanvasElement;
 class HTMLImageElement;
 class HTMLVideoElement;
+class ImageBitmap;
 class URL;
 class WebGLObject;
 
@@ -71,6 +72,7 @@ protected:
     bool wouldTaintOrigin(const HTMLCanvasElement*);
     bool wouldTaintOrigin(const HTMLImageElement*);
     bool wouldTaintOrigin(const HTMLVideoElement*);
+    bool wouldTaintOrigin(const ImageBitmap*);
     bool wouldTaintOrigin(const URL&);
 
     template<class T> void checkOrigin(const T* arg)

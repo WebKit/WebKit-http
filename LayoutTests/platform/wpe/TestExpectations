@@ -215,6 +215,8 @@ Bug(WPE) imported/mozilla [ Skip ]
 Bug(WPE) imported/w3c/css [ Skip ]
 Bug(WPE) imported/w3c/web-platform-tests [ Skip ]
 
+imported/w3c/web-platform-tests/2dcontext/imagebitmap [ Pass ]
+
 Bug(WPE) imported/w3c/IndexedDB-private-browsing/idb_webworkers.html [ Failure ]
 webkit.org/b/167576 imported/w3c/IndexedDB-private-browsing/idbcursor_iterating.html [ Crash ]
 webkit.org/b/167576 imported/w3c/IndexedDB-private-browsing/idbcursor_iterating_index.html [ Crash ]

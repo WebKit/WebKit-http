@@ -42,6 +42,7 @@ class CanvasPattern;
 class HTMLCanvasElement;
 class HTMLImageElement;
 class HTMLVideoElement;
+class ImageBitmap;
 class ImageData;
 class InstrumentingAgents;
 
@@ -89,6 +90,7 @@ private:
 #if ENABLE(VIDEO)
         HTMLVideoElement*,
 #endif
+        ImageBitmap*,
         ImageData*,
         Inspector::ScriptCallFrame,
         String

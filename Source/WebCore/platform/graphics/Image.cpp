@@ -33,6 +33,7 @@
 #include "ImageObserver.h"
 #include "Length.h"
 #include "MIMETypeRegistry.h"
+#include "SVGImage.h"
 #include "SharedBuffer.h"
 #include "URL.h"
 #include <math.h>
@@ -41,6 +42,7 @@
 #include <wtf/text/TextStream.h>
 
 #if USE(CG)
+#include "PDFDocumentImage.h"
 #include <CoreFoundation/CoreFoundation.h>
 #endif
 
@@ -61,6 +63,20 @@ Image& Image::nullImage()
     ASSERT(isMainThread());
     static Image& nullImage = BitmapImage::create().leakRef();
     return nullImage;
+}
+
+RefPtr<Image> Image::create(ImageObserver& observer)
+{
+    auto mimeType = observer.mimeType();
+    if (mimeType == "image/svg+xml")
+        return SVGImage::create(observer);
+
+#if USE(CG) && !USE(WEBKIT_IMAGE_DECODERS)
+    if (mimeType == "application/pdf")
+        return PDFDocumentImage::create(&observer);
+#endif
+
+    return BitmapImage::create(&observer);
 }
 
 bool Image::supportsType(const String& type)
