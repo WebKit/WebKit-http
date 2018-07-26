@@ -33,6 +33,7 @@
 #include "CoordinatedLayerTreeHost.h"
 #include "SimpleViewportController.h"
 #include "ThreadedCompositor.h"
+#include "ThreadedDisplayRefreshMonitor.h"
 #include <wtf/OptionSet.h>
 
 namespace WebCore {
@@ -72,7 +73,7 @@ private:
     void setNativeSurfaceHandleForCompositing(uint64_t) override;
 #endif
 
-    class CompositorClient final : public ThreadedCompositor::Client {
+    class CompositorClient final : public ThreadedCompositor::Client, public ThreadedDisplayRefreshMonitor::Client  {
         WTF_MAKE_NONCOPYABLE(CompositorClient);
     public:
         CompositorClient(ThreadedCoordinatedLayerTreeHost& layerTreeHost)
@@ -83,7 +84,7 @@ private:
     private:
         void renderNextFrame() override
         {
-            m_layerTreeHost.renderNextFrame();
+            m_layerTreeHost.renderNextFrame(false);
         }
 
         void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) override
@@ -111,6 +112,16 @@ private:
             m_layerTreeHost.didRenderFrame();
         }
 
+        void requestDisplayRefreshMonitorUpdate() override
+        {
+            m_layerTreeHost.requestDisplayRefreshMonitorUpdate();
+        }
+
+        void handleDisplayRefreshMonitorUpdate(bool hasBeenRescheduled)
+        {
+            m_layerTreeHost.handleDisplayRefreshMonitorUpdate(hasBeenRescheduled);
+        }
+
         ThreadedCoordinatedLayerTreeHost& m_layerTreeHost;
     };
 
@@ -131,6 +142,8 @@ private:
     void didDestroyGLContext();
     void willRenderFrame();
     void didRenderFrame();
+    void requestDisplayRefreshMonitorUpdate();
+    void handleDisplayRefreshMonitorUpdate(bool);
 
     enum class DiscardableSyncActions {
         UpdateSize = 1 << 1,

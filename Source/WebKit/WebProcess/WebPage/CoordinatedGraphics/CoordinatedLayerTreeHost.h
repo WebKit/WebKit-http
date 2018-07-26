@@ -58,7 +58,7 @@ protected:
     void pageBackgroundTransparencyChanged() override;
 
     void setVisibleContentsRect(const WebCore::FloatRect&, const WebCore::FloatPoint&);
-    void renderNextFrame();
+    void renderNextFrame(bool);
     void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset);
 
     WebCore::GraphicsLayerFactory* graphicsLayerFactory() override;
@@ -71,6 +71,8 @@ protected:
     void didFlushRootLayer(const WebCore::FloatRect& visibleContentRect) override;
     void notifyFlushRequired() override { scheduleLayerFlush(); };
     void commitSceneState(const WebCore::CoordinatedGraphicsState&) override;
+
+    void flushLayersAndForceRepaint();
 
 private:
     void layerFlushTimerFired();
