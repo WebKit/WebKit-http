@@ -1365,7 +1365,15 @@ bool MediaPlayerPrivateGStreamerBase::supportsKeySystem(const String& keySystem,
 
 MediaPlayer::SupportsType MediaPlayerPrivateGStreamerBase::extendedSupportsType(const MediaEngineSupportParameters& parameters, MediaPlayer::SupportsType result)
 {
+#if ENABLE(ENCRYPTED_MEDIA)
+    if (result != MediaPlayer::IsNotSupported) {
+        String cryptoblockformat = parameters.type.parameter("cryptoblockformat");
+        if (!cryptoblockformat.isEmpty() && cryptoblockformat != "subsample")
+            result = MediaPlayer::IsNotSupported;
+    }
+#else
     UNUSED_PARAM(parameters);
+#endif
     return result;
 }
 
