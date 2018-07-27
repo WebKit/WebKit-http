@@ -429,9 +429,9 @@ LayoutUnit RenderMultiColumnSet::columnGap() const
     // FIXME: Eventually we will cache the column gap when the widths of columns start varying, but for now we just
     // go to the parent block to get the gap.
     RenderBlockFlow& parentBlock = downcast<RenderBlockFlow>(*parent());
-    if (parentBlock.style().hasNormalColumnGap())
+    if (parentBlock.style().columnGap().isNormal())
         return parentBlock.style().fontDescription().computedPixelSize(); // "1em" is recommended as the normal gap setting. Matches <p> margins.
-    return parentBlock.style().columnGap();
+    return valueForLength(parentBlock.style().columnGap().length(), parentBlock.availableLogicalWidth());
 }
 
 unsigned RenderMultiColumnSet::columnCount() const
@@ -770,6 +770,9 @@ void RenderMultiColumnSet::collectLayerFragments(LayerFragments& fragments, cons
     LayoutUnit initialBlockOffset = initialBlockOffsetForPainting();
     
     for (unsigned i = startColumn; i <= endColumn; i++) {
+        if (skipLayerFragmentCollectionForColumn(i))
+            continue;
+
         // Get the portion of the flow thread that corresponds to this column.
         LayoutRect fragmentedFlowPortion = fragmentedFlowPortionRectAt(i);
         
@@ -798,7 +801,7 @@ void RenderMultiColumnSet::collectLayerFragments(LayerFragments& fragments, cons
         LayoutUnit blockOffset = initialBlockOffset + logicalTop() - fragmentedFlow()->logicalTop() + (isHorizontalWritingMode() ? -fragmentedFlowPortion.y() : -fragmentedFlowPortion.x());
         if (!progressionIsInline) {
             if (!progressionReversed)
-                blockOffset = i * colGap;
+                blockOffset = i * colGap + customBlockProgressionAdjustmentForColumn(i);
             else
                 blockOffset -= i * (computedColumnHeight() + colGap);
         }
@@ -850,7 +853,7 @@ LayoutPoint RenderMultiColumnSet::columnTranslationForOffset(const LayoutUnit& o
     LayoutUnit blockOffset = initialBlockOffset - (isHorizontalWritingMode() ? fragmentedFlowPortion.y() : fragmentedFlowPortion.x());
     if (!progressionIsInline) {
         if (!progressionReversed)
-            blockOffset = startColumn * colGap;
+            blockOffset = startColumn * colGap + customBlockProgressionAdjustmentForColumn(startColumn);
         else
             blockOffset -= startColumn * (computedColumnHeight() + colGap);
     }

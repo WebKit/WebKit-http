@@ -3162,6 +3162,11 @@ void SpeculativeJIT::compile(Node* node)
         compileRegExpExec(node);
         break;
     }
+
+    case RegExpExecNonGlobalOrSticky: {
+        compileRegExpExecNonGlobalOrSticky(node);
+        break;
+    }
         
     case RegExpTest: {
         compileRegExpTest(node);
@@ -3803,6 +3808,10 @@ void SpeculativeJIT::compile(Node* node)
         compileGetArgumentCountIncludingThis(node);
         break;
     }
+
+    case SetArgumentCountIncludingThis:
+        compileSetArgumentCountIncludingThis(node);
+        break;
         
     case GetScope:
         compileGetScope(node);
@@ -4520,6 +4529,14 @@ void SpeculativeJIT::compile(Node* node)
         compileWeakMapGet(node);
         break;
 
+    case WeakSetAdd:
+        compileWeakSetAdd(node);
+        break;
+
+    case WeakMapSet:
+        compileWeakMapSet(node);
+        break;
+
     case Flush:
         break;
 
@@ -5159,6 +5176,7 @@ void SpeculativeJIT::compile(Node* node)
     case PhantomNewAsyncFunction:
     case PhantomNewAsyncGeneratorFunction:
     case PhantomCreateActivation:
+    case PhantomNewRegexp:
     case PutHint:
     case CheckStructureImmediate:
     case MaterializeCreateActivation:

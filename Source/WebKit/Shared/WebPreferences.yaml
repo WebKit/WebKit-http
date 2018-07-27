@@ -415,13 +415,6 @@ TemporaryTileCohortRetentionEnabled:
   type: bool
   defaultValue: DEFAULT_TEMPORARY_TILE_COHORT_RETENTION_ENABLED
 
-QTKitEnabled:
-  type: bool
-  defaultValue: WebCore::DeprecatedGlobalSettings::isQTKitEnabled()
-  getter: isQTKitEnabled
-  webcoreBinding: DeprecatedGlobalSettings
-  condition: PLATFORM(COCOA)
-
 PageVisibilityBasedProcessSuppressionEnabled:
   type: bool
   defaultValue: true
@@ -723,7 +716,7 @@ ModernMediaControlsEnabled:
 
 ResourceTimingEnabled:
   type: bool
-  defaultValue: DEFAULT_RESOURCE_TIMING_ENABLED
+  defaultValue: true
   humanReadableName: "Resource Timing"
   humanReadableDescription: "Enable ResourceTiming API"
   webcoreBinding: RuntimeEnabledFeatures
@@ -740,7 +733,6 @@ BeaconAPIEnabled:
   defaultValue: true
   humanReadableName: "Beacon API"
   humanReadableDescription: "Beacon API"
-  condition: ENABLE(BEACON_API)
 
 LegacyEncryptedMediaAPIEnabled:
   type: bool
@@ -779,16 +771,9 @@ DataTransferItemsEnabled:
 
 CustomPasteboardDataEnabled:
   type: bool
-  defaultValue: WebCore::DeprecatedGlobalSettings::defaultCustomPasteboardDataEnabled()
+  defaultValue: defaultCustomPasteboardDataEnabled()
   humanReadableName: "Custom pateboard data"
   humanReadableDescription: "Enable custom clipboard types and better security model for clipboard API."
-  webcoreBinding: DeprecatedGlobalSettings
-
-WebVREnabled:
-  type: bool
-  defaultValue: false
-  humanReadableName: "WebVR"
-  humanReadableDescription: "WebVR Module support"
   webcoreBinding: RuntimeEnabledFeatures
 
 ViewportFitEnabled:
@@ -968,6 +953,10 @@ LongRunningMediaCaptureStreamRepromptIntervalInHours:
   defaultValue: 24
   webcoreBinding: none
 
+PassiveTouchListenersAsDefaultOnDocument:
+  type: bool
+  defaultValue: defaultPassiveTouchListenersAsDefaultOnDocument()
+  webcoreName: passiveTouchListenersAsDefaultOnDocument
 
 # Debug Preferences
 
@@ -1196,3 +1185,20 @@ AccessibilityObjectModelEnabled:
     humanReadableDescription: "Accessibility Object Model support"
     category: experimental
     webcoreBinding: RuntimeEnabledFeatures
+
+WebVREnabled:
+  type: bool
+  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
+  humanReadableName: "WebVR"
+  humanReadableDescription: "WebVR Module support"
+  webcoreBinding: RuntimeEnabledFeatures
+  category: experimental
+  condition: PLATFORM(GTK) || PLATFORM(WPE)
+
+ResourceLoadStatisticsDebugMode:
+  type: bool
+  defaultValue: false
+  humanReadableName: "ITP Debug Mode"
+  humanReadableDescription: "Intelligent Tracking Prevention Debug Mode"
+  category: experimental
+  webcoreBinding: RuntimeEnabledFeatures

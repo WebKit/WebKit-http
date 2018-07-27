@@ -22,11 +22,14 @@
 #include "FontCustomPlatformData.h"
 
 #include "FontCache.h"
+#include "FontCacheCoreText.h"
 #include "FontDescription.h"
 #include "FontPlatformData.h"
 #include "SharedBuffer.h"
+#include <CoreFoundation/CoreFoundation.h>
 #include <CoreGraphics/CoreGraphics.h>
 #include <CoreText/CoreText.h>
+#include <pal/spi/cocoa/CoreTextSPI.h>
 
 namespace WebCore {
 
@@ -34,20 +37,43 @@ FontCustomPlatformData::~FontCustomPlatformData() = default;
 
 FontPlatformData FontCustomPlatformData::fontPlatformData(const FontDescription& fontDescription, bool bold, bool italic, const FontFeatureSettings& fontFaceFeatures, const FontVariantSettings& fontFaceVariantSettings, FontSelectionSpecifiedCapabilities fontFaceCapabilities)
 {
+    auto attributes = adoptCF(CFDictionaryCreateMutable(kCFAllocatorDefault, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+    addAttributesForUserInstalledFonts(attributes.get(), fontDescription.shouldAllowUserInstalledFonts());
+    auto modifiedFontDescriptor = adoptCF(CTFontDescriptorCreateCopyWithAttributes(m_fontDescriptor.get(), attributes.get()));
+    RetainPtr<CFSetRef> mandatoryAttributes = mandatoryAttributesForUserInstalledFonts(fontDescription.shouldAllowUserInstalledFonts());
+    auto matchingFontDescriptor = adoptCF(CTFontDescriptorCreateMatchingFontDescriptor(modifiedFontDescriptor.get(), mandatoryAttributes.get()));
+    ASSERT(matchingFontDescriptor);
+
     int size = fontDescription.computedPixelSize();
     FontOrientation orientation = fontDescription.orientation();
     FontWidthVariant widthVariant = fontDescription.widthVariant();
-    RetainPtr<CTFontRef> font = adoptCF(CTFontCreateWithFontDescriptor(m_fontDescriptor.get(), size, nullptr));
+    RetainPtr<CTFontRef> font = adoptCF(CTFontCreateWithFontDescriptor(matchingFontDescriptor.get(), size, nullptr));
     font = preparePlatformFont(font.get(), fontDescription, &fontFaceFeatures, &fontFaceVariantSettings, fontFaceCapabilities, fontDescription.computedSize());
     ASSERT(font);
     return FontPlatformData(font.get(), size, bold, italic, orientation, widthVariant, fontDescription.textRenderingMode());
 }
 
-std::unique_ptr<FontCustomPlatformData> createFontCustomPlatformData(SharedBuffer& buffer)
+std::unique_ptr<FontCustomPlatformData> createFontCustomPlatformData(SharedBuffer& buffer, unsigned index)
 {
     RetainPtr<CFDataRef> bufferData = buffer.createCFData();
 
-    RetainPtr<CTFontDescriptorRef> fontDescriptor = adoptCF(CTFontManagerCreateFontDescriptorFromData(bufferData.get()));
+    RetainPtr<CTFontDescriptorRef> fontDescriptor;
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
+    auto array = adoptCF(CTFontManagerCreateFontDescriptorsFromData(bufferData.get()));
+    if (!array)
+        return nullptr;
+    auto length = CFArrayGetCount(array.get());
+    if (length <= 0)
+        return nullptr;
+    if (index > 0)
+        --index;
+    if (index >= static_cast<unsigned>(length))
+        index = 0;
+    fontDescriptor = static_cast<CTFontDescriptorRef>(CFArrayGetValueAtIndex(array.get(), index));
+#else
+    UNUSED_PARAM(index);
+    fontDescriptor = adoptCF(CTFontManagerCreateFontDescriptorFromData(bufferData.get()));
+#endif
     if (!fontDescriptor)
         return nullptr;
 
@@ -58,11 +84,9 @@ bool FontCustomPlatformData::supportsFormat(const String& format)
 {
     return equalLettersIgnoringASCIICase(format, "truetype")
         || equalLettersIgnoringASCIICase(format, "opentype")
-#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200)
         || equalLettersIgnoringASCIICase(format, "woff2")
 #if ENABLE(VARIATION_FONTS)
         || equalLettersIgnoringASCIICase(format, "woff2-variations")
-#endif
 #endif
 #if ENABLE(VARIATION_FONTS)
         || equalLettersIgnoringASCIICase(format, "woff-variations")

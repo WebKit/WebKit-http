@@ -1527,11 +1527,11 @@ bool WebViewImpl::frameSizeUpdatesDisabled() const
     return [m_layoutStrategy frameSizeUpdatesDisabled];
 }
 
-void WebViewImpl::setFrameAndScrollBy(CGRect frame, CGSize offset)
+void WebViewImpl::setFrameAndScrollBy(CGRect frame, CGSize scrollDelta)
 {
-    ASSERT(CGSizeEqualToSize(m_resizeScrollOffset, CGSizeZero));
+    if (!CGSizeEqualToSize(scrollDelta, CGSizeZero))
+        m_scrollOffsetAdjustment = scrollDelta;
 
-    m_resizeScrollOffset = offset;
     [m_view frame] = NSRectFromCGRect(frame);
 }
 
@@ -1600,8 +1600,8 @@ void WebViewImpl::setDrawingAreaSize(CGSize size)
     if (!m_page->drawingArea())
         return;
 
-    m_page->drawingArea()->setSize(WebCore::IntSize(size), WebCore::IntSize(), WebCore::IntSize(m_resizeScrollOffset));
-    m_resizeScrollOffset = CGSizeZero;
+    m_page->drawingArea()->setSize(WebCore::IntSize(size), WebCore::IntSize(m_scrollOffsetAdjustment));
+    m_scrollOffsetAdjustment = CGSizeZero;
 }
 
 void WebViewImpl::updateLayer()
@@ -2987,7 +2987,6 @@ void WebViewImpl::capitalizeWord()
     m_page->capitalizeWord();
 }
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
 void WebViewImpl::requestCandidatesForSelectionIfNeeded()
 {
     if (!shouldRequestCandidates())
@@ -3103,7 +3102,6 @@ void WebViewImpl::handleAcceptedCandidate(NSTextCheckingResult *acceptedCandidat
 
     m_page->handleAcceptedCandidate(textCheckingResultFromNSTextCheckingResult(acceptedCandidate));
 }
-#endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
 
 void WebViewImpl::preferencesDidChange()
 {
@@ -3710,9 +3708,7 @@ bool WebViewImpl::performDragOperation(id <NSDraggingInfo> draggingInfo)
         for (NSString *file in files)
             fileNames.append(file);
         m_page->createSandboxExtensionsIfNeeded(fileNames, sandboxExtensionHandle, sandboxExtensionForUpload);
-    }
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
-    else if (![types containsObject:PasteboardTypes::WebArchivePboardType] && [types containsObject:WebCore::legacyFilesPromisePasteboardType()]) {
+    } else if (![types containsObject:PasteboardTypes::WebArchivePboardType] && [types containsObject:WebCore::legacyFilesPromisePasteboardType()]) {
         NSArray *files = [draggingInfo.draggingPasteboard propertyListForType:WebCore::legacyFilesPromisePasteboardType()];
         if (![files isKindOfClass:[NSArray class]])
             return false;
@@ -3745,7 +3741,6 @@ bool WebViewImpl::performDragOperation(id <NSDraggingInfo> draggingInfo)
 
         return true;
     }
-#endif
 
     m_page->performDragOperation(dragData, draggingInfo.draggingPasteboard.name, WTFMove(sandboxExtensionHandle), WTFMove(sandboxExtensionForUpload));
 

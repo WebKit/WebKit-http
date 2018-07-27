@@ -1,3 +1,1456 @@
+2018-01-31  Saam Barati  <sbarati@apple.com>
+
+        JSC incorrectly interpreting script, sets Global Property instead of Global Lexical variable (LiteralParser / JSONP path)
+        https://bugs.webkit.org/show_bug.cgi?id=182074
+        <rdar://problem/36846261>
+
+        Reviewed by Mark Lam.
+
+        * web-platform-tests/service-workers/service-worker/import-scripts-updated-flag.https-expected.txt:
+
+2018-01-30  Youenn Fablet  <youenn@apple.com> and Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        FetchResponse should support ConsumeData callback on chunk data is received
+        https://bugs.webkit.org/show_bug.cgi?id=181600
+        <rdar://problem/36932547>
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/service-workers/service-worker/fetch-event-respond-with-body-loaded-in-chunk.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-event-respond-with-body-loaded-in-chunk.https.html: Added.
+        * web-platform-tests/service-workers/service-worker/resources/fetch-event-respond-with-body-loaded-in-chunk-worker.js: Added.
+
+2018-01-30  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-align] The 'baseline' value must be invalid for the 'justify-content' property
+        https://bugs.webkit.org/show_bug.cgi?id=181794
+
+        Reviewed by Antti Koivisto.
+
+        Adapted the test cases using <baseline-position> keywords to the new CSS syntax.
+        Imported the CSS/support folder.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/css/css-align/content-distribution/parse-align-content-001-expected.txt:
+        * web-platform-tests/css/css-align/content-distribution/parse-align-content-001.html:
+        * web-platform-tests/css/css-align/content-distribution/parse-align-content-003-expected.txt:
+        * web-platform-tests/css/css-align/content-distribution/parse-align-content-003.html:
+        * web-platform-tests/css/css-align/content-distribution/parse-justify-content-001-expected.txt:
+        * web-platform-tests/css/css-align/content-distribution/parse-justify-content-001.html:
+        * web-platform-tests/css/css-align/content-distribution/parse-justify-content-003-expected.txt:
+        * web-platform-tests/css/css-align/content-distribution/parse-justify-content-003.html:
+        * web-platform-tests/css/css-align/content-distribution/parse-justify-content-004-expected.txt:
+        * web-platform-tests/css/css-align/content-distribution/parse-justify-content-004.html:
+        * web-platform-tests/css/css-align/content-distribution/place-content-shorthand-001-expected.txt:
+        * web-platform-tests/css/css-align/content-distribution/place-content-shorthand-001.html:
+        * web-platform-tests/css/css-align/content-distribution/place-content-shorthand-002-expected.txt:
+        * web-platform-tests/css/css-align/content-distribution/place-content-shorthand-002.html:
+        * web-platform-tests/css/css-align/content-distribution/place-content-shorthand-004-expected.txt:
+        * web-platform-tests/css/css-align/content-distribution/place-content-shorthand-004.html:
+        * web-platform-tests/css/css-align/content-distribution/place-content-shorthand-006-expected.txt:
+        * web-platform-tests/css/css-align/content-distribution/place-content-shorthand-006.html:
+        * web-platform-tests/css/css-align/default-alignment/parse-align-items-001-expected.txt:
+        * web-platform-tests/css/css-align/default-alignment/parse-align-items-001.html:
+        * web-platform-tests/css/css-align/default-alignment/parse-align-items-003-expected.txt:
+        * web-platform-tests/css/css-align/default-alignment/parse-align-items-003.html:
+        * web-platform-tests/css/css-align/default-alignment/parse-justify-items-001-expected.txt:
+        * web-platform-tests/css/css-align/default-alignment/parse-justify-items-001.html:
+        * web-platform-tests/css/css-align/default-alignment/parse-justify-items-003-expected.txt:
+        * web-platform-tests/css/css-align/default-alignment/parse-justify-items-003.html:
+        * web-platform-tests/css/css-align/default-alignment/place-items-shorthand-001.html:
+        * web-platform-tests/css/css-align/default-alignment/place-items-shorthand-002.html:
+        * web-platform-tests/css/css-align/default-alignment/place-items-shorthand-004.html:
+        * web-platform-tests/css/css-align/default-alignment/place-items-shorthand-006.html:
+        * web-platform-tests/css/css-align/resources/alignment-parsing-utils.js:
+        (checkPlaceShorhand):
+        (checkPlaceShorhandLonghands):
+        * web-platform-tests/css/css-align/self-alignment/parse-align-self-001-expected.txt:
+        * web-platform-tests/css/css-align/self-alignment/parse-align-self-001.html:
+        * web-platform-tests/css/css-align/self-alignment/parse-align-self-003-expected.txt:
+        * web-platform-tests/css/css-align/self-alignment/parse-align-self-003.html:
+        * web-platform-tests/css/css-align/self-alignment/parse-justify-self-001-expected.txt:
+        * web-platform-tests/css/css-align/self-alignment/parse-justify-self-001.html:
+        * web-platform-tests/css/css-align/self-alignment/parse-justify-self-003-expected.txt:
+        * web-platform-tests/css/css-align/self-alignment/parse-justify-self-003.html:
+        * web-platform-tests/css/css-align/self-alignment/place-self-shorthand-001.html:
+        * web-platform-tests/css/css-align/self-alignment/place-self-shorthand-002.html:
+        * web-platform-tests/css/css-align/self-alignment/place-self-shorthand-004.html:
+        * web-platform-tests/css/css-align/self-alignment/place-self-shorthand-006.html:
+        * web-platform-tests/css/support/1x1-green.png: Added.
+        * web-platform-tests/css/support/1x1-lime.png: Added.
+        * web-platform-tests/css/support/1x1-maroon.png: Added.
+        * web-platform-tests/css/support/1x1-navy.png: Added.
+        * web-platform-tests/css/support/1x1-red.png: Added.
+        * web-platform-tests/css/support/1x1-white.png: Added.
+        * web-platform-tests/css/support/60x60-gg-rr.png: Added.
+        * web-platform-tests/css/support/60x60-green.png: Added.
+        * web-platform-tests/css/support/60x60-red.png: Added.
+        * web-platform-tests/css/support/OWNERS: Added.
+        * web-platform-tests/css/support/README: Added.
+        * web-platform-tests/css/support/a-green.css: Added.
+        (.a):
+        * web-platform-tests/css/support/alignment.css: Added.
+        (.alignSelfAuto):
+        (.alignSelfNormal):
+        (.alignSelfStretch):
+        (.alignSelfStart):
+        (.alignSelfEnd):
+        (.alignSelfCenter):
+        (.alignSelfRight):
+        (.alignSelfLeft):
+        (.alignSelfFlexStart):
+        (.alignSelfFlexEnd):
+        (.alignSelfSelfStart):
+        (.alignSelfSelfEnd):
+        (.alignSelfSafeCenter):
+        (.alignSelfUnsafeCenter):
+        (.alignSelfSafeEnd):
+        (.alignSelfUnsafeEnd):
+        (.alignSelfSafeSelfEnd):
+        (.alignSelfUnsafeSelfEnd):
+        (.alignSelfSafeSelfStart):
+        (.alignSelfUnsafeSelfStart):
+        (.alignSelfSafeRight):
+        (.alignSelfUnsafeRight):
+        (.alignSelfSafeLeft):
+        (.alignSelfUnsafeLeft):
+        (.alignSelfSafeFlexEnd):
+        (.alignSelfUnsafeFlexEnd):
+        (.alignSelfSafeFlexStart):
+        (.alignSelfUnsafeFlexStart):
+        (.alignSelfBaseline):
+        (.alignSelfFirstBaseline):
+        (.alignSelfLastBaseline):
+        (.alignItemsAuto):
+        (.alignItemsNormal):
+        (.alignItemsStretch):
+        (.alignItemsStart):
+        (.alignItemsCenter):
+        (.alignItemsEnd):
+        (.alignItemsLeft):
+        (.alignItemsRight):
+        (.alignItemsFlexStart):
+        (.alignItemsFlexEnd):
+        (.alignItemsSelfStart):
+        (.alignItemsSelfEnd):
+        (.alignItemsSafeCenter):
+        (.alignItemsUnsafeCenter):
+        (.alignItemsSafeEnd):
+        (.alignItemsUnsafeEnd):
+        (.alignItemsSafeSelfEnd):
+        (.alignItemsUnsafeSelfEnd):
+        (.alignItemsSafeSelfStart):
+        (.alignItemsUnsafeSelfStart):
+        (.alignItemsSafeRight):
+        (.alignItemsUnsafeRight):
+        (.alignItemsSafeLeft):
+        (.alignItemsUnsafeLeft):
+        (.alignItemsSafeFlexEnd):
+        (.alignItemsUnsafeFlexEnd):
+        (.alignItemsSafeFlexStart):
+        (.alignItemsUnsafeFlexStart):
+        (.alignItemsBaseline):
+        (.alignItemsFirstBaseline):
+        (.alignItemsLastBaseline):
+        (.alignContentBaseline):
+        (.alignContentLastBaseline):
+        (.alignContentStart):
+        (.alignContentEnd):
+        (.alignContentCenter):
+        (.alignContentLeft):
+        (.alignContentRight):
+        (.alignContentFlexStart):
+        (.alignContentFlexEnd):
+        (.alignContentSpaceBetween):
+        (.alignContentSpaceAround):
+        (.alignContentSpaceEvenly):
+        (.alignContentStretch):
+        (.alignContentSafeCenter):
+        (.alignContentUnsafeCenter):
+        (.alignContentSafeEnd):
+        (.alignContentUnsafeEnd):
+        (.alignContentSafeRight):
+        (.alignContentUnsafeRight):
+        (.alignContentSafeLeft):
+        (.alignContentUnsafeLeft):
+        (.alignContentSafeFlexEnd):
+        (.alignContentUnsafeFlexEnd):
+        (.alignContentSafeFlexStart):
+        (.alignContentUnsafeFlexStart):
+        (.alignContentFirstBaseline):
+        (.justifySelfAuto):
+        (.justifySelfNormal):
+        (.justifySelfStretch):
+        (.justifySelfStart):
+        (.justifySelfCenter):
+        (.justifySelfEnd):
+        (.justifySelfRight):
+        (.justifySelfLeft):
+        (.justifySelfFlexStart):
+        (.justifySelfFlexEnd):
+        (.justifySelfSelfStart):
+        (.justifySelfSelfEnd):
+        (.justifySelfSafeCenter):
+        (.justifySelfUnsafeCenter):
+        (.justifySelfSafeEnd):
+        (.justifySelfUnsafeEnd):
+        (.justifySelfSafeSelfEnd):
+        (.justifySelfUnsafeSelfEnd):
+        (.justifySelfSafeSelfStart):
+        (.justifySelfUnsafeSelfStart):
+        (.justifySelfSafeRight):
+        (.justifySelfUnsafeRight):
+        (.justifySelfSafeLeft):
+        (.justifySelfUnsafeLeft):
+        (.justifySelfSafeFlexEnd):
+        (.justifySelfUnsafeFlexEnd):
+        (.justifySelfSafeFlexStart):
+        (.justifySelfUnsafeFlexStart):
+        (.justifySelfBaseline):
+        (.justifySelfFirstBaseline):
+        (.justifySelfLastBaseline):
+        (.justifyItemsAuto):
+        (.justifyItemsNormal):
+        (.justifyItemsStretch):
+        (.justifyItemsStart):
+        (.justifyItemsCenter):
+        (.justifyItemsEnd):
+        (.justifyItemsLeft):
+        (.justifyItemsRight):
+        (.justifyItemsFlexStart):
+        (.justifyItemsFlexEnd):
+        (.justifyItemsSelfStart):
+        (.justifyItemsSelfEnd):
+        (.justifyItemsLegacy):
+        (.justifyItemsLegacyLeft):
+        (.justifyItemsLegacyCenter):
+        (.justifyItemsLegacyRight):
+        (.justifyItemsLeftLegacy):
+        (.justifyItemsCenterLegacy):
+        (.justifyItemsRightLegacy):
+        (.justifyItemsSafeCenter):
+        (.justifyItemsUnsafeCenter):
+        (.justifyItemsSafeEnd):
+        (.justifyItemsUnsafeEnd):
+        (.justifyItemsSafeSelfEnd):
+        (.justifyItemsUnsafeSelfEnd):
+        (.justifyItemsSafeSelfStart):
+        (.justifyItemsUnsafeSelfStart):
+        (.justifyItemsSafeRight):
+        (.justifyItemsUnsafeRight):
+        (.justifyItemsSafeLeft):
+        (.justifyItemsUnsafeLeft):
+        (.justifyItemsSafeFlexEnd):
+        (.justifyItemsUnsafeFlexEnd):
+        (.justifyItemsSafeFlexStart):
+        (.justifyItemsUnsafeFlexStart):
+        (.justifyItemsTest):
+        (.justifyItemsBaseline):
+        (.justifyItemsFirstBaseline):
+        (.justifyItemsLastBaseline):
+        (.justifyContentBaseline):
+        (.justifyContentLastBaseline):
+        (.justifyContentStart):
+        (.justifyContentEnd):
+        (.justifyContentCenter):
+        (.justifyContentLeft):
+        (.justifyContentRight):
+        (.justifyContentFlexStart):
+        (.justifyContentFlexEnd):
+        (.justifyContentSpaceBetween):
+        (.justifyContentSpaceAround):
+        (.justifyContentSpaceEvenly):
+        (.justifyContentStretch):
+        (.justifyContentSafeCenter):
+        (.justifyContentUnsafeCenter):
+        (.justifyContentSafeEnd):
+        (.justifyContentUnsafeEnd):
+        (.justifyContentSafeRight):
+        (.justifyContentUnsafeRight):
+        (.justifyContentSafeLeft):
+        (.justifyContentUnsafeLeft):
+        (.justifyContentSafeFlexEnd):
+        (.justifyContentUnsafeFlexEnd):
+        (.justifyContentSafeFlexStart):
+        (.justifyContentUnsafeFlexStart):
+        (.justifyContentFirstBaseline):
+        (.itemsNormal):
+        (.itemsStretch):
+        (.itemsStart):
+        (.itemsCenter):
+        (.itemsEnd):
+        (.itemsLeft):
+        (.itemsRight):
+        (.itemsSelfStart):
+        (.itemsSelfEnd):
+        (.itemsBaseline):
+        (.selfStretch):
+        (.selfStart):
+        (.selfEnd):
+        (.selfCenter):
+        (.selfRight):
+        (.selfLeft):
+        (.selfSelfStart):
+        (.selfSelfEnd):
+        (.selfBaseline):
+        (.contentStart):
+        (.contentCenter):
+        (.contentEnd):
+        (.contentCenterSafe):
+        (.contentCenterUnsafe):
+        (.contentEndSafe):
+        (.contentEndUnsafe):
+        (.contentSpaceBetween):
+        (.contentSpaceAround):
+        (.contentSpaceEvenly):
+        (.contentStretch):
+        * web-platform-tests/css/support/b-green.css: Added.
+        (.b):
+        * web-platform-tests/css/support/c-red.css: Added.
+        (.c):
+        * web-platform-tests/css/support/cat.png: Added.
+        * web-platform-tests/css/support/green.ico: Added.
+        * web-platform-tests/css/support/import-green.css: Added.
+        (.import):
+        * web-platform-tests/css/support/import-red.css: Added.
+        (.import):
+        * web-platform-tests/css/support/pattern-grg-rgr-grg.png: Added.
+        * web-platform-tests/css/support/pattern-grg-rrg-rgg.png: Added.
+        * web-platform-tests/css/support/pattern-rgr-grg-rgr.png: Added.
+        * web-platform-tests/css/support/pattern-tr.png: Added.
+        * web-platform-tests/css/support/red.ico: Added.
+        * web-platform-tests/css/support/ruler-h-50%.png: Added.
+        * web-platform-tests/css/support/ruler-h-50px.png: Added.
+        * web-platform-tests/css/support/ruler-v-100px.png: Added.
+        * web-platform-tests/css/support/ruler-v-50px.png: Added.
+        * web-platform-tests/css/support/square-purple.png: Added.
+        * web-platform-tests/css/support/square-teal.png: Added.
+        * web-platform-tests/css/support/square-white.png: Added.
+        * web-platform-tests/css/support/support/README: Added.
+        * web-platform-tests/css/support/support/swatch-green.png: Added.
+        * web-platform-tests/css/support/support/swatch-red.png: Added.
+        * web-platform-tests/css/support/support/w3c-import.log: Added.
+        * web-platform-tests/css/support/swatch-blue.png: Added.
+        * web-platform-tests/css/support/swatch-green.png: Added.
+        * web-platform-tests/css/support/swatch-lime.png: Added.
+        * web-platform-tests/css/support/swatch-orange.png: Added.
+        * web-platform-tests/css/support/swatch-red.png: Added.
+        * web-platform-tests/css/support/swatch-teal.png: Added.
+        * web-platform-tests/css/support/swatch-white.png: Added.
+        * web-platform-tests/css/support/swatch-yellow.png: Added.
+        * web-platform-tests/css/support/test-bl.png: Added.
+        * web-platform-tests/css/support/test-br.png: Added.
+        * web-platform-tests/css/support/test-inner-half-size.png: Added.
+        * web-platform-tests/css/support/test-outer.png: Added.
+        * web-platform-tests/css/support/test-tl.png: Added.
+        * web-platform-tests/css/support/test-tr.png: Added.
+        * web-platform-tests/css/support/w3c-import.log: Added.
+
+2018-01-30  Frederic Wang  <fwang@igalia.com>
+
+        Use document.scrollingElement to access viewport scroll properties in tests
+        https://bugs.webkit.org/show_bug.cgi?id=182241
+
+        Reviewed by Antonio Gomes.
+
+        Many tests use document.body in standard mode in order to access scroll properties of the
+        viewport. This is incorrect per the CSSOM View specification but WebKit does not follow the
+        spec at the moment (see bug 5991). This replaces several of these instances with
+        document.scrollingElement, so that tests will still work when WebKit's behavior is changed.
+        The change in that web-platform-tests test are imported from
+        https://github.com/w3c/web-platform-tests/commit/fc33ef7641427a3f1388093c54b24f292c21b34d
+
+        * web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/003.html:
+
+2018-01-29  Youenn Fablet  <youenn@apple.com>
+
+        ServiceWorkerClientFetch should not consider responses without Location headers as redirection responses
+        https://bugs.webkit.org/show_bug.cgi?id=182134
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/service-workers/service-worker/navigation-redirect.https-expected.txt:
+
+2018-01-29  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        FetchResponse should support ConsumeData callback on chunk data is received: handling ReadableStream bodies
+        https://bugs.webkit.org/show_bug.cgi?id=182008
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/service-workers/service-worker/fetch-event-respond-with-readable-stream-chunk.https-expected.txt: Added.
+        * web-platform-tests/service-workers/service-worker/fetch-event-respond-with-readable-stream-chunk.https.html: Added.
+        * web-platform-tests/service-workers/service-worker/resources/fetch-event-respond-with-readable-stream-chunk-iframe.html: Added.
+        * web-platform-tests/service-workers/service-worker/resources/fetch-event-respond-with-readable-stream-chunk-worker.js: Added.
+        (const.process):
+        (this.step):
+        (this.run):
+        (const.asyncSteps):
+
+2018-01-26  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Distinguish between an omitted and a null timeline argument to the Animation constructor
+        https://bugs.webkit.org/show_bug.cgi?id=179065
+
+        Reviewed by Dean Jackson.
+
+        Update WPT test output with progressions.
+
+        * web-platform-tests/web-animations/interfaces/Animation/constructor-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/reversing-an-animation-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/set-the-timeline-of-an-animation-expected.txt:
+
+2018-01-26  Youenn Fablet  <youenn@apple.com>
+
+        CSP post checks should be done for service worker responses
+        https://bugs.webkit.org/show_bug.cgi?id=182160
+
+        Reviewed by Daniel Bates.
+
+        * web-platform-tests/service-workers/service-worker/fetch-csp.https-expected.txt:
+
+2018-01-26  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-multicol] Support percentages in column-gap
+        https://bugs.webkit.org/show_bug.cgi?id=182004
+
+        Reviewed by Javier Fernandez.
+
+        New expected results for a few tests that are passing now.
+        One is the test for this specific patch, the other are tests related to animations
+        of "normal" and initial value, that were fixed with the introduction of GapLength.
+
+        * web-platform-tests/css/css-multicol/multicol-gap-animation-002-expected.txt:
+        * web-platform-tests/css/css-multicol/multicol-gap-animation-003-expected.txt:
+        * web-platform-tests/css/css-multicol/multicol-gap-percentage-001-expected.txt:
+
+2018-01-25  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/module/errorhandling.html crashes
+        https://bugs.webkit.org/show_bug.cgi?id=181980
+
+        Reviewed by Ryosuke Niwa.
+
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/dynamic-imports-script-error-expected.txt:
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/errorhandling-expected.txt: Added.
+
+2018-01-25  Chris Dumez  <cdumez@apple.com>
+
+        Access to service workers / Cache API should be disabled in sandboxed frames without allow-same-origin flag
+        https://bugs.webkit.org/show_bug.cgi?id=182140
+        <rdar://problem/36879952>
+
+        Reviewed by Youenn Fablet.
+
+        Rebaseline several WPT test that either pass or fail differently.
+
+        * web-platform-tests/service-workers/cache-storage/window/sandboxed-iframes.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/sandboxed-iframe-navigator-serviceworker.https-expected.txt:
+
+2018-01-25  Chris Dumez  <cdumez@apple.com>
+
+        Clients.get(id) should only returns clients in the service worker's origin
+        https://bugs.webkit.org/show_bug.cgi?id=182149
+        <rdar://problem/36882310>
+
+        Reviewed by Youenn Fablet.
+
+        Rebase WPT test that is now passing.
+
+        * web-platform-tests/service-workers/service-worker/clients-get-cross-origin.https-expected.txt:
+
+2018-01-25  Youenn Fablet  <youenn@apple.com>
+
+        ShapeOutside should use same origin credentials mode
+        https://bugs.webkit.org/show_bug.cgi?id=182141
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/service-workers/service-worker/fetch-request-css-images.https-expected.txt:
+
+2018-01-25  Youenn Fablet  <youenn@apple.com>
+
+        DocumentThreadableLoader should ensure service worker is not reused if redirection comes from the network
+        https://bugs.webkit.org/show_bug.cgi?id=182137
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/service-workers/service-worker/fetch-request-fallback.https-expected.txt:
+
+2018-01-25  Youenn Fablet  <youenn@apple.com>
+
+        DocumentLoader should interrupt ongoing load when getting a redirection from network that matches a service worker
+        https://bugs.webkit.org/show_bug.cgi?id=182115
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/service-workers/service-worker/navigation-redirect.https-expected.txt:
+
+2018-01-25  Chris Dumez  <cdumez@apple.com>
+
+        Registering same scope as the script directory without the last slash should fail
+        https://bugs.webkit.org/show_bug.cgi?id=182122
+        <rdar://problem/36877167>
+
+        Reviewed by Youenn Fablet.
+
+        Rebaseline WPT test now that one more check is passing.
+
+        * web-platform-tests/service-workers/service-worker/registration-security-error.https-expected.txt:
+
+2018-01-25  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Expose the reverse() method
+        https://bugs.webkit.org/show_bug.cgi?id=182100
+        <rdar://problem/36867117>
+
+        Reviewed by Dean Jackson.
+
+        Update WPT test output with progressions.
+
+        * web-platform-tests/web-animations/interfaces/Animation/idlharness-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/reversing-an-animation-expected.txt:
+
+2018-01-25  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Account for provided easings when computing progress and resolving keyframe effect values
+        https://bugs.webkit.org/show_bug.cgi?id=182098
+        <rdar://problem/36866149>
+
+        Reviewed by Dean Jackson.
+
+        Update expected values with a few adjusted failures and many progressions.
+
+        * web-platform-tests/css-timing-1/step-timing-functions-output-expected.txt:
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-iteration-composite-operation-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animation/effect-expected.txt:
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/easing-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/iterationComposite-expected.txt:
+        * web-platform-tests/web-animations/timing-model/time-transformations/transformed-progress-expected.txt:
+
+2018-01-25  Youenn Fablet  <youenn@apple.com>
+
+        Set integrity fetch options for loading scripts and CSS
+        https://bugs.webkit.org/show_bug.cgi?id=182077
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/service-workers/service-worker/fetch-request-resources.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-request-resources.https.html:
+
+2018-01-25  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-multicol] Update WPT test suite
+        https://bugs.webkit.org/show_bug.cgi?id=182087
+
+        Reviewed by Javier Fernandez.
+
+        * resources/import-expectations.json:
+        * resources/resource-files.json:
+        * web-platform-tests/css/css-multicol/OWNERS: Added.
+        * web-platform-tests/css/css-multicol/extremely-tall-multicol-with-extremely-tall-child-crash-expected.txt: Added.
+        * web-platform-tests/css/css-multicol/extremely-tall-multicol-with-extremely-tall-child-crash.html: Added.
+        * web-platform-tests/css/css-multicol/multicol-basic-001-expected.html:
+        * web-platform-tests/css/css-multicol/multicol-basic-001.html:
+        * web-platform-tests/css/css-multicol/multicol-basic-002-expected.html:
+        * web-platform-tests/css/css-multicol/multicol-basic-002.html:
+        * web-platform-tests/css/css-multicol/multicol-basic-003-expected.html:
+        * web-platform-tests/css/css-multicol/multicol-basic-003.html:
+        * web-platform-tests/css/css-multicol/multicol-basic-004-expected.html:
+        * web-platform-tests/css/css-multicol/multicol-basic-004.html:
+        * web-platform-tests/css/css-multicol/multicol-basic-005-expected.xht: Added.
+        * web-platform-tests/css/css-multicol/multicol-basic-005.xht: Added.
+        * web-platform-tests/css/css-multicol/multicol-basic-006-expected.xht: Added.
+        * web-platform-tests/css/css-multicol/multicol-basic-006.xht: Added.
+        * web-platform-tests/css/css-multicol/multicol-basic-007-expected.xht: Added.
+        * web-platform-tests/css/css-multicol/multicol-basic-007.xht: Added.
+        * web-platform-tests/css/css-multicol/multicol-basic-008-expected.xht: Added.
+        * web-platform-tests/css/css-multicol/multicol-basic-008.xht: Added.
+        * web-platform-tests/css/css-multicol/multicol-block-no-clip-001-expected.xht: Copied from LayoutTests/imported/w3c/web-platform-tests/css/css-multicol/multicol-width-002-expected.xht.
+        * web-platform-tests/css/css-multicol/multicol-block-no-clip-001.xht: Copied from LayoutTests/imported/w3c/web-platform-tests/css/css-multicol/multicol-clip-001.xht.
+        * web-platform-tests/css/css-multicol/multicol-block-no-clip-002-expected.xht: Added.
+        * web-platform-tests/css/css-multicol/multicol-block-no-clip-002.xht: Copied from LayoutTests/imported/w3c/web-platform-tests/css/css-multicol/multicol-clip-001.xht.
+        * web-platform-tests/css/css-multicol/multicol-br-inside-avoidcolumn-001-expected.html: Added.
+        * web-platform-tests/css/css-multicol/multicol-br-inside-avoidcolumn-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-break-000-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-break-001-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-break-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-clip-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-columns-001-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-columns-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-columns-002-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-columns-002.xht:
+        * web-platform-tests/css/css-multicol/multicol-columns-003-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-columns-003.xht:
+        * web-platform-tests/css/css-multicol/multicol-columns-004-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-columns-004.xht:
+        * web-platform-tests/css/css-multicol/multicol-columns-005-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-columns-005.xht:
+        * web-platform-tests/css/css-multicol/multicol-columns-006-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-columns-006.xht:
+        * web-platform-tests/css/css-multicol/multicol-columns-007-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-columns-007.xht:
+        * web-platform-tests/css/css-multicol/multicol-columns-invalid-002.xht:
+        * web-platform-tests/css/css-multicol/multicol-containing-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-containing-002.xht:
+        * web-platform-tests/css/css-multicol/multicol-count-001-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-count-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-count-002-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-count-computed-003-expected.xht: Added.
+        * web-platform-tests/css/css-multicol/multicol-count-computed-003.xht: Added.
+        * web-platform-tests/css/css-multicol/multicol-count-computed-005-expected.xht: Added.
+        * web-platform-tests/css/css-multicol/multicol-count-computed-005.xht: Added.
+        * web-platform-tests/css/css-multicol/multicol-fill-000.xht:
+        * web-platform-tests/css/css-multicol/multicol-fill-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-fill-auto-001-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-fill-auto-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-fill-auto-002-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-fill-auto-002.xht:
+        * web-platform-tests/css/css-multicol/multicol-fill-auto-003.xht:
+        * web-platform-tests/css/css-multicol/multicol-fill-auto-block-children-002-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-fill-auto-block-children-002.xht:
+        * web-platform-tests/css/css-multicol/multicol-fill-balance-001-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-fill-balance-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-fill-balance-002-expected.html: Added.
+        * web-platform-tests/css/css-multicol/multicol-fill-balance-002.html: Added.
+        * web-platform-tests/css/css-multicol/multicol-gap-000.xht:
+        * web-platform-tests/css/css-multicol/multicol-gap-001-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-gap-animation-001-expected.txt: Added.
+        * web-platform-tests/css/css-multicol/multicol-gap-animation-001.html: Added.
+        * web-platform-tests/css/css-multicol/multicol-gap-animation-002-expected.txt: Added.
+        * web-platform-tests/css/css-multicol/multicol-gap-animation-002.html: Added.
+        * web-platform-tests/css/css-multicol/multicol-gap-animation-003-expected.txt: Added.
+        * web-platform-tests/css/css-multicol/multicol-gap-animation-003.html: Added.
+        * web-platform-tests/css/css-multicol/multicol-gap-fraction-002-expected.html: Added.
+        * web-platform-tests/css/css-multicol/multicol-gap-fraction-002.html: Added.
+        * web-platform-tests/css/css-multicol/multicol-gap-large-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-gap-large-002-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-gap-percentage-001-expected.txt: Added.
+        * web-platform-tests/css/css-multicol/multicol-gap-percentage-001.html: Added.
+        * web-platform-tests/css/css-multicol/multicol-height-block-child-001-expected.xht: Added.
+        * web-platform-tests/css/css-multicol/multicol-height-block-child-001.xht: Added.
+        * web-platform-tests/css/css-multicol/multicol-inherit-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-inherit-002.xht:
+        * web-platform-tests/css/css-multicol/multicol-inherit-003.xht:
+        * web-platform-tests/css/css-multicol/multicol-margin-001-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-margin-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-margin-002-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-margin-002.xht:
+        * web-platform-tests/css/css-multicol/multicol-margin-child-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-nested-005.xht:
+        * web-platform-tests/css/css-multicol/multicol-nested-column-rule-001-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-nested-column-rule-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-nested-margin-002-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-nested-margin-002.xht:
+        * web-platform-tests/css/css-multicol/multicol-nested-margin-003.xht:
+        * web-platform-tests/css/css-multicol/multicol-nested-margin-004-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-nested-margin-004.xht:
+        * web-platform-tests/css/css-multicol/multicol-nested-margin-005-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-nested-margin-005.xht:
+        * web-platform-tests/css/css-multicol/multicol-overflow-000.xht:
+        * web-platform-tests/css/css-multicol/multicol-reduce-000-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-reduce-000.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-000-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-000.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-002-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-002.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-003.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-color-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-color-inherit-002.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-dashed-000.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-double-000.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-fraction-002.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-fraction-003-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-fraction-003.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-groove-000.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-hidden-000.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-inset-000.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-large-001-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-large-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-large-002.xht: Copied from LayoutTests/imported/w3c/web-platform-tests/css/css-multicol/multicol-rule-large-001.xht.
+        * web-platform-tests/css/css-multicol/multicol-rule-none-000.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-outset-000.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-px-001-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-px-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-ridge-000.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-samelength-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-shorthand-2-expected.xht: Copied from LayoutTests/imported/w3c/web-platform-tests/css/css-multicol/multicol-shorthand-001-expected.xht.
+        * web-platform-tests/css/css-multicol/multicol-rule-shorthand-2.xht: Copied from LayoutTests/imported/w3c/web-platform-tests/css/css-multicol/multicol-rule-002.xht.
+        * web-platform-tests/css/css-multicol/multicol-rule-solid-000.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-stacking-001-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-rule-stacking-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-shorthand-001-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-shorthand-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-span-000.xht:
+        * web-platform-tests/css/css-multicol/multicol-span-all-001-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-span-all-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-span-all-003-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-span-all-003.xht:
+        * web-platform-tests/css/css-multicol/multicol-span-all-block-sibling-003-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-span-all-block-sibling-003.xht:
+        * web-platform-tests/css/css-multicol/multicol-span-all-margin-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-span-all-margin-002-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-span-all-margin-bottom-001-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-span-all-margin-bottom-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-span-all-margin-nested-firstchild-001-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-span-all-margin-nested-firstchild-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-span-none-001-expected.xht: Added.
+        * web-platform-tests/css/css-multicol/multicol-span-none-001.xht: Added.
+        * web-platform-tests/css/css-multicol/multicol-table-cell-vertical-align-001-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-table-cell-vertical-align-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-width-001-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-width-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-width-002-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-width-003-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-width-ch-001-expected.xht: Added.
+        * web-platform-tests/css/css-multicol/multicol-width-ch-001.xht: Added.
+        * web-platform-tests/css/css-multicol/multicol-width-count-001-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-width-count-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-width-count-002-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-width-negative-001-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-width-small-001.xht:
+        * web-platform-tests/css/css-multicol/multicol-zero-height-001-expected.xht:
+        * web-platform-tests/css/css-multicol/multicol-zero-height-001.xht:
+        * web-platform-tests/css/css-multicol/support/w3c-import.log: Added.
+        * web-platform-tests/css/css-multicol/w3c-import.log: Added.
+
+2018-01-25  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Update WPT tests and move them to imported/w3c/web-platform-tests
+        https://bugs.webkit.org/show_bug.cgi?id=182092
+
+        Unreviewed test gardening.
+
+        * web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/animation-model/animation-types/accumulation-per-property-expected.txt.
+        * web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property.html: Renamed from LayoutTests/http/wpt/web-animations/animation-model/animation-types/accumulation-per-property.html.
+        * web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/animation-model/animation-types/addition-per-property-expected.txt.
+        * web-platform-tests/web-animations/animation-model/animation-types/addition-per-property.html: Renamed from LayoutTests/http/wpt/web-animations/animation-model/animation-types/addition-per-property.html.
+        * web-platform-tests/web-animations/animation-model/animation-types/discrete-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/animation-model/animation-types/discrete-animation-expected.txt.
+        * web-platform-tests/web-animations/animation-model/animation-types/discrete.html: Renamed from LayoutTests/http/wpt/web-animations/animation-model/animation-types/discrete-animation.html.
+        * web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/animation-model/animation-types/interpolation-per-property-expected.txt.
+        * web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property.html: Renamed from LayoutTests/http/wpt/web-animations/animation-model/animation-types/interpolation-per-property.html.
+        * web-platform-tests/web-animations/animation-model/animation-types/property-list.js: Renamed from LayoutTests/http/wpt/web-animations/animation-model/animation-types/property-list.js.
+        * web-platform-tests/web-animations/animation-model/animation-types/property-types.js: Renamed from LayoutTests/http/wpt/web-animations/animation-model/animation-types/property-types.js.
+        * web-platform-tests/web-animations/animation-model/animation-types/visibility-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/animation-model/keyframe-effects/effect-value-visibility-expected.txt.
+        * web-platform-tests/web-animations/animation-model/animation-types/visibility.html: Renamed from LayoutTests/http/wpt/web-animations/animation-model/keyframe-effects/effect-value-visibility.html.
+        * web-platform-tests/web-animations/animation-model/combining-effects/effect-composition-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/animation-model/combining-effects/effect-composition-expected.txt.
+        * web-platform-tests/web-animations/animation-model/combining-effects/effect-composition.html: Renamed from LayoutTests/http/wpt/web-animations/animation-model/combining-effects/effect-composition.html.
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-context-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/animation-model/keyframe-effects/effect-value-context-expected.txt.
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-context.html: Renamed from LayoutTests/http/wpt/web-animations/animation-model/keyframe-effects/effect-value-context.html.
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-iteration-composite-operation-expected.txt: Added.
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-iteration-composite-operation.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/KeyframeEffect/iterationComposite.html.
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-overlapping-keyframes-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/animation-model/keyframe-effects/effect-value-overlapping-keyframes-expected.txt.
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-overlapping-keyframes.html: Renamed from LayoutTests/http/wpt/web-animations/animation-model/keyframe-effects/effect-value-overlapping-keyframes.html.
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-transformed-distance-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/animation-model/keyframe-effects/effect-value-transformed-distance-expected.txt.
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-transformed-distance.html: Renamed from LayoutTests/http/wpt/web-animations/animation-model/keyframe-effects/effect-value-transformed-distance.html.
+        * web-platform-tests/web-animations/interfaces/Animatable/animate-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/Animatable/animate-no-browsing-context-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animatable/animate-no-browsing-context-expected.txt.
+        * web-platform-tests/web-animations/interfaces/Animatable/animate-no-browsing-context.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animatable/animate-no-browsing-context.html.
+        * web-platform-tests/web-animations/interfaces/Animatable/animate.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animatable/animate.html.
+        * web-platform-tests/web-animations/interfaces/Animatable/getAnimations-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/Animatable/getAnimations.html: Added.
+        * web-platform-tests/web-animations/interfaces/Animation/cancel-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/cancel-expected.txt.
+        * web-platform-tests/web-animations/interfaces/Animation/cancel.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/cancel.html.
+        * web-platform-tests/web-animations/interfaces/Animation/constructor-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/constructor-expected.txt.
+        * web-platform-tests/web-animations/interfaces/Animation/constructor.html: Added.
+        * web-platform-tests/web-animations/interfaces/Animation/effect-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/effect-expected.txt.
+        * web-platform-tests/web-animations/interfaces/Animation/effect.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/effect.html.
+        * web-platform-tests/web-animations/interfaces/Animation/finish-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/Animation/finish.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/finish.html.
+        * web-platform-tests/web-animations/interfaces/Animation/finished-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/Animation/finished.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/finished.html.
+        * web-platform-tests/web-animations/interfaces/Animation/id-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/id-expected.txt.
+        * web-platform-tests/web-animations/interfaces/Animation/id.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/id.html.
+        * web-platform-tests/web-animations/interfaces/Animation/idlharness-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/idlharness-expected.txt.
+        * web-platform-tests/web-animations/interfaces/Animation/idlharness.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/idlharness.html.
+        * web-platform-tests/web-animations/interfaces/Animation/oncancel-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/oncancel-expected.txt.
+        * web-platform-tests/web-animations/interfaces/Animation/oncancel.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/oncancel.html.
+        * web-platform-tests/web-animations/interfaces/Animation/onfinish-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/onfinish-expected.txt.
+        * web-platform-tests/web-animations/interfaces/Animation/onfinish.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/onfinish.html.
+        * web-platform-tests/web-animations/interfaces/Animation/pause-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/pause-expected.txt.
+        * web-platform-tests/web-animations/interfaces/Animation/pause.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/pause.html.
+        * web-platform-tests/web-animations/interfaces/Animation/pending-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/Animation/pending.html: Added.
+        * web-platform-tests/web-animations/interfaces/Animation/play-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/play-expected.txt.
+        * web-platform-tests/web-animations/interfaces/Animation/play.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/play.html.
+        * web-platform-tests/web-animations/interfaces/Animation/playbackRate-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/playbackRate-expected.txt.
+        * web-platform-tests/web-animations/interfaces/Animation/playbackRate.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/playbackRate.html.
+        * web-platform-tests/web-animations/interfaces/Animation/ready-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/ready-expected.txt.
+        * web-platform-tests/web-animations/interfaces/Animation/ready.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/ready.html.
+        * web-platform-tests/web-animations/interfaces/Animation/startTime-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/startTime-expected.txt.
+        * web-platform-tests/web-animations/interfaces/Animation/startTime.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Animation/startTime.html.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/delay-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/delay.html: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/direction-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/direction.html: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/duration-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/duration.html: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/easing-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/interfaces/AnimationEffectTiming/easing-expected.txt.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/easing.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/AnimationEffectTiming/easing.html.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/endDelay-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/endDelay.html: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/fill-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/fill.html: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/getComputedTiming-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/getComputedTiming.html: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/idlharness-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/idlharness.html: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/iterationStart-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/iterationStart.html: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/iterations-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/iterations.html: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationPlaybackEvent/constructor-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationPlaybackEvent/constructor.html: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationPlaybackEvent/idlharness-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/AnimationPlaybackEvent/idlharness.html: Added.
+        * web-platform-tests/web-animations/interfaces/Document/getAnimations-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Document/getAnimations-expected.txt.
+        * web-platform-tests/web-animations/interfaces/Document/getAnimations.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/Document/getAnimations.html.
+        * web-platform-tests/web-animations/interfaces/Document/timeline-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/Document/timeline.html: Added.
+        * web-platform-tests/web-animations/interfaces/DocumentTimeline/constructor-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/interfaces/DocumentTimeline/constructor-expected.txt.
+        * web-platform-tests/web-animations/interfaces/DocumentTimeline/constructor.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/DocumentTimeline/constructor.html.
+        * web-platform-tests/web-animations/interfaces/DocumentTimeline/idlharness-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/interfaces/AnimationTimeline/idlharness-expected.txt.
+        * web-platform-tests/web-animations/interfaces/DocumentTimeline/idlharness.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/AnimationTimeline/idlharness.html.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/composite-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/composite.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/KeyframeEffect/composite.html.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/constructor-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/constructor.html: Added.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/copy-constructor-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/copy-constructor.html: Added.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/idlharness-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/idlharness.html: Added.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/iterationComposite-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/iterationComposite.html: Added.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/processing-a-keyframes-argument-001-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/interfaces/KeyframeEffect/processing-a-keyframes-argument-001-expected.txt.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/processing-a-keyframes-argument-001.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/KeyframeEffect/processing-a-keyframes-argument-001.html.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/processing-a-keyframes-argument-002-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/interfaces/KeyframeEffect/processing-a-keyframes-argument-002-expected.txt.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/processing-a-keyframes-argument-002.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/KeyframeEffect/processing-a-keyframes-argument-002.html.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/setKeyframes-expected.txt: Added.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/setKeyframes.html: Added.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/target-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/interfaces/KeyframeEffect/setTarget-expected.txt.
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/target.html: Renamed from LayoutTests/http/wpt/web-animations/interfaces/KeyframeEffect/setTarget.html.
+        * web-platform-tests/web-animations/resources/easing-tests.js: Renamed from LayoutTests/http/wpt/web-animations/resources/easing-tests.js.
+        * web-platform-tests/web-animations/resources/effect-tests.js: Renamed from LayoutTests/http/wpt/web-animations/resources/effect-tests.js.
+        * web-platform-tests/web-animations/resources/keyframe-tests.js: Added.
+        * web-platform-tests/web-animations/resources/keyframe-utils.js: Added.
+        * web-platform-tests/web-animations/resources/xhr-doc.py: Renamed from LayoutTests/http/wpt/web-animations/resources/xhr-doc.py.
+        * web-platform-tests/web-animations/testcommon.js: Renamed from LayoutTests/http/wpt/web-animations/testcommon.js.
+        * web-platform-tests/web-animations/timing-model/animation-effects/active-time-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animation-effects/active-time-expected.txt.
+        * web-platform-tests/web-animations/timing-model/animation-effects/active-time.html: Added.
+        * web-platform-tests/web-animations/timing-model/animation-effects/current-iteration-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animation-effects/current-iteration-expected.txt.
+        * web-platform-tests/web-animations/timing-model/animation-effects/current-iteration.html: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animation-effects/current-iteration.html.
+        * web-platform-tests/web-animations/timing-model/animation-effects/local-time-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animation-effects/local-time-expected.txt.
+        * web-platform-tests/web-animations/timing-model/animation-effects/local-time.html: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animation-effects/local-time.html.
+        * web-platform-tests/web-animations/timing-model/animation-effects/phases-and-states-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animation-effects/phases-and-states-expected.txt.
+        * web-platform-tests/web-animations/timing-model/animation-effects/phases-and-states.html: Added.
+        * web-platform-tests/web-animations/timing-model/animation-effects/simple-iteration-progress-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animation-effects/simple-iteration-progress-expected.txt.
+        * web-platform-tests/web-animations/timing-model/animation-effects/simple-iteration-progress.html: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animation-effects/simple-iteration-progress.html.
+        * web-platform-tests/web-animations/timing-model/animations/canceling-an-animation-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animations/canceling-an-animation-expected.txt.
+        * web-platform-tests/web-animations/timing-model/animations/canceling-an-animation.html: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animations/canceling-an-animation.html.
+        * web-platform-tests/web-animations/timing-model/animations/current-time-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animations/current-time-expected.txt.
+        * web-platform-tests/web-animations/timing-model/animations/current-time.html: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animations/current-time.html.
+        * web-platform-tests/web-animations/timing-model/animations/finishing-an-animation-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animations/finishing-an-animation-expected.txt.
+        * web-platform-tests/web-animations/timing-model/animations/finishing-an-animation.html: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animations/finishing-an-animation.html.
+        * web-platform-tests/web-animations/timing-model/animations/pausing-an-animation-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animations/pausing-an-animation-expected.txt.
+        * web-platform-tests/web-animations/timing-model/animations/pausing-an-animation.html: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animations/pausing-an-animation.html.
+        * web-platform-tests/web-animations/timing-model/animations/play-states-expected.txt: Added.
+        * web-platform-tests/web-animations/timing-model/animations/play-states.html: Added.
+        * web-platform-tests/web-animations/timing-model/animations/playing-an-animation-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animations/playing-an-animation-expected.txt.
+        * web-platform-tests/web-animations/timing-model/animations/playing-an-animation.html: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animations/playing-an-animation.html.
+        * web-platform-tests/web-animations/timing-model/animations/reversing-an-animation-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animations/reversing-an-animation-expected.txt.
+        * web-platform-tests/web-animations/timing-model/animations/reversing-an-animation.html: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animations/reversing-an-animation.html.
+        * web-platform-tests/web-animations/timing-model/animations/set-the-animation-start-time-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animations/set-the-animation-start-time-expected.txt.
+        * web-platform-tests/web-animations/timing-model/animations/set-the-animation-start-time.html: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animations/set-the-animation-start-time.html.
+        * web-platform-tests/web-animations/timing-model/animations/set-the-target-effect-of-an-animation-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animations/set-the-target-effect-of-an-animation-expected.txt.
+        * web-platform-tests/web-animations/timing-model/animations/set-the-target-effect-of-an-animation.html: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animations/set-the-target-effect-of-an-animation.html.
+        * web-platform-tests/web-animations/timing-model/animations/set-the-timeline-of-an-animation-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animations/set-the-timeline-of-an-animation-expected.txt.
+        * web-platform-tests/web-animations/timing-model/animations/set-the-timeline-of-an-animation.html: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animations/set-the-timeline-of-an-animation.html.
+        * web-platform-tests/web-animations/timing-model/animations/updating-the-finished-state-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animations/updating-the-finished-state-expected.txt.
+        * web-platform-tests/web-animations/timing-model/animations/updating-the-finished-state.html: Renamed from LayoutTests/http/wpt/web-animations/timing-model/animations/updating-the-finished-state.html.
+        * web-platform-tests/web-animations/timing-model/time-transformations/transformed-progress-expected.txt: Renamed from LayoutTests/http/wpt/web-animations/timing-model/time-transformations/transformed-progress-expected.txt.
+        * web-platform-tests/web-animations/timing-model/time-transformations/transformed-progress.html: Renamed from LayoutTests/http/wpt/web-animations/timing-model/time-transformations/transformed-progress.html.
+        * web-platform-tests/web-animations/timing-model/timelines/document-timelines-expected.txt: Added.
+        * web-platform-tests/web-animations/timing-model/timelines/document-timelines.html: Added.
+        * web-platform-tests/web-animations/timing-model/timelines/timelines-expected.txt: Added.
+        * web-platform-tests/web-animations/timing-model/timelines/timelines.html: Added.
+
+2018-01-24  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        Move css-color & css-multicol WPT suites to the proper folder
+        https://bugs.webkit.org/show_bug.cgi?id=182044
+
+        Reviewed by Youenn Fablet.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/css/css-color/: Renamed from LayoutTests/imported/w3c/css/css-color-3/.
+        * web-platform-tests/css/css-multicol/: Renamed from LayoutTests/imported/w3c/css/css-multicol-1/.
+
+2018-01-24  Chris Dumez  <cdumez@apple.com>
+
+        close() operation should not be exposed inside a ServiceWorkerGlobalScope
+        https://bugs.webkit.org/show_bug.cgi?id=182057
+
+        Reviewed by Youenn Fablet.
+
+        Rebaseline WPT tests now that more checks are passing.
+
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/close.https-expected.txt:
+        * web-platform-tests/workers/interfaces.worker-expected.txt:
+
+2018-01-24  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rebaseline flaky service worker test
+
+        * web-platform-tests/service-workers/service-worker/windowclient-navigate.https-expected.txt:
+
+2018-01-24  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, unskip some service worker tests that no longer time out
+
+        * web-platform-tests/service-workers/service-worker/clients-matchall-include-uncontrolled.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/extendable-event-waituntil.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/indexeddb.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/navigation-redirect.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/postmessage-msgport-to-client.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/postmessage.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/sandboxed-iframe-fetch-event.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/update-recovery.https-expected.txt:
+
+2018-01-24  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        Update paths of CSS tests from WPT
+        https://bugs.webkit.org/show_bug.cgi?id=182043
+
+        Reviewed by Youenn Fablet.
+
+        * resources/import-expectations.json:
+        * resources/resource-files.json:
+        * web-platform-tests/css/css-display/: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-display-3/.
+        * web-platform-tests/css/css-pseudo/: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-pseudo-4/.
+        * web-platform-tests/css/css-scoping/: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-scoping-1/.
+        * web-platform-tests/css/css-shapes/: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-shapes-1/.
+        * web-platform-tests/css/css-ui/: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-ui-3/.
+        * web-platform-tests/css/geometry/: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/geometry-1/.
+        * web-platform-tests/css/selectors/: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/selectors4/.
+        * web-platform-tests/lint.whitelist:
+
+2018-01-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Import WPT for modules
+        https://bugs.webkit.org/show_bug.cgi?id=181981
+
+        Reviewed by Sam Weinig.
+
+        This patch just imports WPT for modules mechanically.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/bad-module-specifier.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/charset-01-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/charset-01.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/charset-02-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/charset-02.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/charset-03-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/charset-03.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/compilation-error-1-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/compilation-error-1.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/compilation-error-2-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/compilation-error-2.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/credentials.sub-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/credentials.sub.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/crossorigin-common.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/crossorigin-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/crossorigin-import-different.sub.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/crossorigin-import-missingheader.sub.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/crossorigin-import-same.sub.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/crossorigin-import-wrongheader.sub.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/crossorigin-root-different.sub.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/crossorigin-root-missingheader.sub.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/crossorigin-root-same.sub.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/crossorigin-root-wrongheader.sub.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/crossorigin-scripterror.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/crossorigin.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/currentScript-null-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/currentScript-null.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/currentscript.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/custom-element-exception-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/custom-element-exception.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/cycle-tdz-access-a.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/cycle-tdz-access.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/cycle-unresolvable-a.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/cycle-unresolvable.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/dynamic-imports-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/dynamic-imports-fetch-error.sub-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/dynamic-imports-fetch-error.sub.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/dynamic-imports-script-error-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/dynamic-imports-script-error.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/dynamic-imports.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/inline-event-handler-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/inline-event-handler.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/propagate-nonce-external-classic-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/propagate-nonce-external-classic.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/propagate-nonce-external-module-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/propagate-nonce-external-module.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/propagate-nonce-external.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/propagate-nonce-inline-classic-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/propagate-nonce-inline-classic.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/propagate-nonce-inline-module-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/propagate-nonce-inline-module.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/string-compilation-base-url-classic-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/string-compilation-base-url-classic.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/string-compilation-base-url-module-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/string-compilation-base-url-module.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/string-compilation-classic-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/string-compilation-classic.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/string-compilation-module-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/string-compilation-module.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/dynamic-import/w3c-import.log: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/error-and-slow-dependency-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/error-and-slow-dependency.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/errorhandling-parseerror-common.js: Added.
+        (errorHandler):
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/errorhandling-parseerror-dependent.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/errorhandling-parseerror-dependent.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/errorhandling-parseerror-dependentmultiple.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/errorhandling-parseerror-dependentmultiple.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/errorhandling-parseerror-root.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/errorhandling-wrongMimetype-import.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/errorhandling-wrongMimetype.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/errorhandling.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/evaluation-error-1-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/evaluation-error-1.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/evaluation-error-2-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/evaluation-error-2.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/evaluation-error-3-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/evaluation-error-3.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/evaluation-error-4-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/evaluation-error-4.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/execorder-dynamicordered2.js: Added.
+        (test_dynamicOrdered.step):
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/execorder-dynamicordered3.js: Added.
+        (test_dynamicOrdered.step):
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/execorder-dynamicordered4.js: Added.
+        (test_dynamicOrdered.step):
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/execorder-dynamicunordered1.js: Added.
+        (test_dynamicUnordered1.step):
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/execorder-dynamicunordered2.js: Added.
+        (test_dynamicUnordered2.step):
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/execorder-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/execorder-parsedordered2.js: Added.
+        (test_parsedOrdered.step):
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/execorder-parsedordered4.js: Added.
+        (test_parsedOrdered.step):
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/execorder-parsedunordered1.js: Added.
+        (test_parsedUnordered1.step):
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/execorder-parsedunordered2.js: Added.
+        (test_parsedUnordered2.step):
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/execorder.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/export-something-nested.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/export-something.js: Added.
+        (export.set_foo):
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/fetch-error-1-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/fetch-error-1.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/fetch-error-2-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/fetch-error-2.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/fetch-error-2.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/import-something-namespace.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/import-subgraph-404-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/import-subgraph-404.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/imports-a.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/imports-b.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/imports-cycle-a.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/imports-cycle-b.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/imports-cycle.js: Added.
+        (test_importCycle.step):
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/imports-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/imports-inc-a.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/imports-inc-ab.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/imports-inc-b.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/imports-self-inner.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/imports-self.js: Added.
+        (test_importSelf.step):
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/imports.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-1-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-1.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-1.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-2-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-2.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-3-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-3.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-4-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-4.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-4a.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-4b.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-4c.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-4d.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-5-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-5.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-5a.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-5b.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-5c.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-5d.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-5e.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-6-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-6.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-6a.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-6b.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-6c.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-6d.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-7-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-7.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-7a.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-7b.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-7c.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-7d.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-7e.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-7f.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/instantiation-error-8.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/integrity-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/integrity-matches-inner.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/integrity-matches.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/integrity-mismatches-inner.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/integrity-mismatches.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/integrity.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/late-namespace-request-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/late-namespace-request.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/late-star-export-request-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/late-star-export-request.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/load-error-events-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/load-error-events-inline-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/load-error-events-inline.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/load-error-events.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/missing-export-nested.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/missing-export.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/module-in-xhtml-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/module-in-xhtml.xhtml: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/module-vs-script-1-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/module-vs-script-1.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/module-vs-script-2-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/module-vs-script-2.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/nested-missing-export.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/nomodule-attribute-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/nomodule-attribute.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/resources/404-but-js.asis: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/resources/500-but-js.asis: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/resources/check-cookie.py: Added.
+        (main):
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/resources/credentials-iframe.sub.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/resources/delayed-modulescript.py: Added.
+        (main):
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/resources/import-non-utf8-with-charset-header.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/resources/import-non-utf8.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/resources/import-utf8-with-charset-header.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/resources/import-utf8.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/resources/imports-404-but-js.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/resources/imports-500-but-js.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/resources/imports-b-cross-origin.sub.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/resources/w3c-import.log: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/script-for-event-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/script-for-event.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/set-currentScript-on-window.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/single-evaluation-1-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/single-evaluation-1.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/single-evaluation-2-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/single-evaluation-2.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/slow-cycle-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/slow-cycle.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/slow-module-graph-a.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/slow-module-graph-b.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/specifier-error-expected.txt: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/specifier-error.html: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/syntaxerror-nested.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/syntaxerror.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/this-nested.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/this.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/throw-error.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/throw-nested.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/throw.js: Added.
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/module/w3c-import.log: Added.
+
+2018-01-23  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-align] 'left' and 'right' should parse as invalid in block/cross-axis alignment
+        https://bugs.webkit.org/show_bug.cgi?id=181792
+
+        Reviewed by Antti Koivisto.
+
+        Imported new Web Platform Tests for the css-align module.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/css/css-align-3/content-distribution/w3c-import.log: Removed.
+        * web-platform-tests/css/css-align-3/default-alignment/w3c-import.log: Removed.
+        * web-platform-tests/css/css-align-3/resources/alignment-parsing-utils.js: Removed.
+        * web-platform-tests/css/css-align-3/self-alignment/w3c-import.log: Removed.
+        * web-platform-tests/css/css-align/content-distribution/parse-align-content-001-expected.txt: Added.
+        * web-platform-tests/css/css-align/content-distribution/parse-align-content-001.html: Added.
+        * web-platform-tests/css/css-align/content-distribution/parse-align-content-002-expected.txt: Added.
+        * web-platform-tests/css/css-align/content-distribution/parse-align-content-002.html: Added.
+        * web-platform-tests/css/css-align/content-distribution/parse-align-content-003-expected.txt: Added.
+        * web-platform-tests/css/css-align/content-distribution/parse-align-content-003.html: Added.
+        * web-platform-tests/css/css-align/content-distribution/parse-align-content-004-expected.txt: Added.
+        * web-platform-tests/css/css-align/content-distribution/parse-align-content-004.html: Added.
+        * web-platform-tests/css/css-align/content-distribution/parse-align-content-005-expected.txt: Added.
+        * web-platform-tests/css/css-align/content-distribution/parse-align-content-005.html: Added.
+        * web-platform-tests/css/css-align/content-distribution/parse-justify-content-001-expected.txt: Added.
+        * web-platform-tests/css/css-align/content-distribution/parse-justify-content-001.html: Added.
+        * web-platform-tests/css/css-align/content-distribution/parse-justify-content-002-expected.txt: Added.
+        * web-platform-tests/css/css-align/content-distribution/parse-justify-content-002.html: Added.
+        * web-platform-tests/css/css-align/content-distribution/parse-justify-content-003-expected.txt: Added.
+        * web-platform-tests/css/css-align/content-distribution/parse-justify-content-003.html: Added.
+        * web-platform-tests/css/css-align/content-distribution/parse-justify-content-004-expected.txt: Added.
+        * web-platform-tests/css/css-align/content-distribution/parse-justify-content-004.html: Added.
+        * web-platform-tests/css/css-align/content-distribution/parse-justify-content-005-expected.txt: Added.
+        * web-platform-tests/css/css-align/content-distribution/parse-justify-content-005.html: Added.
+        * web-platform-tests/css/css-align/content-distribution/place-content-shorthand-001-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/content-distribution/place-content-shorthand-001-expected.txt.
+        * web-platform-tests/css/css-align/content-distribution/place-content-shorthand-001.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/content-distribution/place-content-shorthand-001.html.
+        * web-platform-tests/css/css-align/content-distribution/place-content-shorthand-002-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/content-distribution/place-content-shorthand-002-expected.txt.
+        * web-platform-tests/css/css-align/content-distribution/place-content-shorthand-002.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/content-distribution/place-content-shorthand-002.html.
+        * web-platform-tests/css/css-align/content-distribution/place-content-shorthand-003-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/content-distribution/place-content-shorthand-003-expected.txt.
+        * web-platform-tests/css/css-align/content-distribution/place-content-shorthand-003.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/content-distribution/place-content-shorthand-003.html.
+        * web-platform-tests/css/css-align/content-distribution/place-content-shorthand-004-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/content-distribution/place-content-shorthand-004-expected.txt.
+        * web-platform-tests/css/css-align/content-distribution/place-content-shorthand-004.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/content-distribution/place-content-shorthand-004.html.
+        * web-platform-tests/css/css-align/content-distribution/place-content-shorthand-005-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/content-distribution/place-content-shorthand-005-expected.txt.
+        * web-platform-tests/css/css-align/content-distribution/place-content-shorthand-005.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/content-distribution/place-content-shorthand-005.html.
+        * web-platform-tests/css/css-align/content-distribution/place-content-shorthand-006-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/content-distribution/place-content-shorthand-006-expected.txt.
+        * web-platform-tests/css/css-align/content-distribution/place-content-shorthand-006.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/content-distribution/place-content-shorthand-006.html.
+        * web-platform-tests/css/css-align/content-distribution/w3c-import.log: Added.
+        * web-platform-tests/css/css-align/default-alignment/justify-items-legacy-001-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/default-alignment/justify-items-legacy-001-expected.txt.
+        * web-platform-tests/css/css-align/default-alignment/justify-items-legacy-001.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/default-alignment/justify-items-legacy-001.html.
+        * web-platform-tests/css/css-align/default-alignment/parse-align-items-001-expected.txt: Added.
+        * web-platform-tests/css/css-align/default-alignment/parse-align-items-001.html: Added.
+        * web-platform-tests/css/css-align/default-alignment/parse-align-items-002-expected.txt: Added.
+        * web-platform-tests/css/css-align/default-alignment/parse-align-items-002.html: Added.
+        * web-platform-tests/css/css-align/default-alignment/parse-align-items-003-expected.txt: Added.
+        * web-platform-tests/css/css-align/default-alignment/parse-align-items-003.html: Added.
+        * web-platform-tests/css/css-align/default-alignment/parse-align-items-004-expected.txt: Added.
+        * web-platform-tests/css/css-align/default-alignment/parse-align-items-004.html: Added.
+        * web-platform-tests/css/css-align/default-alignment/parse-align-items-005-expected.txt: Added.
+        * web-platform-tests/css/css-align/default-alignment/parse-align-items-005.html: Added.
+        * web-platform-tests/css/css-align/default-alignment/parse-justify-items-001-expected.txt: Added.
+        * web-platform-tests/css/css-align/default-alignment/parse-justify-items-001.html: Added.
+        * web-platform-tests/css/css-align/default-alignment/parse-justify-items-002-expected.txt: Added.
+        * web-platform-tests/css/css-align/default-alignment/parse-justify-items-002.html: Added.
+        * web-platform-tests/css/css-align/default-alignment/parse-justify-items-003-expected.txt: Added.
+        * web-platform-tests/css/css-align/default-alignment/parse-justify-items-003.html: Added.
+        * web-platform-tests/css/css-align/default-alignment/parse-justify-items-004-expected.txt: Added.
+        * web-platform-tests/css/css-align/default-alignment/parse-justify-items-004.html: Added.
+        * web-platform-tests/css/css-align/default-alignment/parse-justify-items-005-expected.txt: Added.
+        * web-platform-tests/css/css-align/default-alignment/parse-justify-items-005.html: Added.
+        * web-platform-tests/css/css-align/default-alignment/parse-justify-items-006-expected.txt: Added.
+        * web-platform-tests/css/css-align/default-alignment/parse-justify-items-006.html: Added.
+        * web-platform-tests/css/css-align/default-alignment/place-items-shorthand-001-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/default-alignment/place-items-shorthand-001-expected.txt.
+        * web-platform-tests/css/css-align/default-alignment/place-items-shorthand-001.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/default-alignment/place-items-shorthand-001.html.
+        * web-platform-tests/css/css-align/default-alignment/place-items-shorthand-002-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/default-alignment/place-items-shorthand-002-expected.txt.
+        * web-platform-tests/css/css-align/default-alignment/place-items-shorthand-002.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/default-alignment/place-items-shorthand-002.html.
+        * web-platform-tests/css/css-align/default-alignment/place-items-shorthand-003-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/default-alignment/place-items-shorthand-003-expected.txt.
+        * web-platform-tests/css/css-align/default-alignment/place-items-shorthand-003.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/default-alignment/place-items-shorthand-003.html.
+        * web-platform-tests/css/css-align/default-alignment/place-items-shorthand-004-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/default-alignment/place-items-shorthand-004-expected.txt.
+        * web-platform-tests/css/css-align/default-alignment/place-items-shorthand-004.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/default-alignment/place-items-shorthand-004.html.
+        * web-platform-tests/css/css-align/default-alignment/place-items-shorthand-005-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/default-alignment/place-items-shorthand-005-expected.txt.
+        * web-platform-tests/css/css-align/default-alignment/place-items-shorthand-005.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/default-alignment/place-items-shorthand-005.html.
+        * web-platform-tests/css/css-align/default-alignment/place-items-shorthand-006-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/default-alignment/place-items-shorthand-006-expected.txt.
+        * web-platform-tests/css/css-align/default-alignment/place-items-shorthand-006.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/default-alignment/place-items-shorthand-006.html.
+        * web-platform-tests/css/css-align/default-alignment/w3c-import.log: Added.
+        * web-platform-tests/css/css-align/distribution-values/space-evenly-001-expected.xht: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/distribution-values/space-evenly-001-expected.xht.
+        * web-platform-tests/css/css-align/distribution-values/space-evenly-001.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/distribution-values/space-evenly-001.html.
+        * web-platform-tests/css/css-align/distribution-values/w3c-import.log: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/distribution-values/w3c-import.log.
+        * web-platform-tests/css/css-align/resources/alignment-parsing-utils.js: Added.
+        (checkPlaceShorhand):
+        (checkPlaceShorhandLonghands):
+        (checkPlaceShorthandInvalidValues):
+        (checkValues):
+        (checkBadValues):
+        (checkInitialValues):
+        (checkInheritValues):
+        (checkLegacyValues):
+        (checkSupportedValues):
+        * web-platform-tests/css/css-align/resources/w3c-import.log: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/resources/w3c-import.log.
+        * web-platform-tests/css/css-align/self-alignment/parse-align-self-001-expected.txt: Added.
+        * web-platform-tests/css/css-align/self-alignment/parse-align-self-001.html: Added.
+        * web-platform-tests/css/css-align/self-alignment/parse-align-self-002-expected.txt: Added.
+        * web-platform-tests/css/css-align/self-alignment/parse-align-self-002.html: Added.
+        * web-platform-tests/css/css-align/self-alignment/parse-align-self-003-expected.txt: Added.
+        * web-platform-tests/css/css-align/self-alignment/parse-align-self-003.html: Added.
+        * web-platform-tests/css/css-align/self-alignment/parse-align-self-004-expected.txt: Added.
+        * web-platform-tests/css/css-align/self-alignment/parse-align-self-004.html: Added.
+        * web-platform-tests/css/css-align/self-alignment/parse-align-self-005-expected.txt: Added.
+        * web-platform-tests/css/css-align/self-alignment/parse-align-self-005.html: Added.
+        * web-platform-tests/css/css-align/self-alignment/parse-justify-self-001-expected.txt: Added.
+        * web-platform-tests/css/css-align/self-alignment/parse-justify-self-001.html: Added.
+        * web-platform-tests/css/css-align/self-alignment/parse-justify-self-002-expected.txt: Added.
+        * web-platform-tests/css/css-align/self-alignment/parse-justify-self-002.html: Added.
+        * web-platform-tests/css/css-align/self-alignment/parse-justify-self-003-expected.txt: Added.
+        * web-platform-tests/css/css-align/self-alignment/parse-justify-self-003.html: Added.
+        * web-platform-tests/css/css-align/self-alignment/parse-justify-self-004-expected.txt: Added.
+        * web-platform-tests/css/css-align/self-alignment/parse-justify-self-004.html: Added.
+        * web-platform-tests/css/css-align/self-alignment/parse-justify-self-005-expected.txt: Added.
+        * web-platform-tests/css/css-align/self-alignment/parse-justify-self-005.html: Added.
+        * web-platform-tests/css/css-align/self-alignment/place-self-shorthand-001-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/self-alignment/place-self-shorthand-001-expected.txt.
+        * web-platform-tests/css/css-align/self-alignment/place-self-shorthand-001.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/self-alignment/place-self-shorthand-001.html.
+        * web-platform-tests/css/css-align/self-alignment/place-self-shorthand-002-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/self-alignment/place-self-shorthand-002-expected.txt.
+        * web-platform-tests/css/css-align/self-alignment/place-self-shorthand-002.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/self-alignment/place-self-shorthand-002.html.
+        * web-platform-tests/css/css-align/self-alignment/place-self-shorthand-003-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/self-alignment/place-self-shorthand-003-expected.txt.
+        * web-platform-tests/css/css-align/self-alignment/place-self-shorthand-003.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/self-alignment/place-self-shorthand-003.html.
+        * web-platform-tests/css/css-align/self-alignment/place-self-shorthand-004-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/self-alignment/place-self-shorthand-004-expected.txt.
+        * web-platform-tests/css/css-align/self-alignment/place-self-shorthand-004.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/self-alignment/place-self-shorthand-004.html.
+        * web-platform-tests/css/css-align/self-alignment/place-self-shorthand-005-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/self-alignment/place-self-shorthand-005-expected.txt.
+        * web-platform-tests/css/css-align/self-alignment/place-self-shorthand-005.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/self-alignment/place-self-shorthand-005.html.
+        * web-platform-tests/css/css-align/self-alignment/place-self-shorthand-006-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/self-alignment/place-self-shorthand-006-expected.txt.
+        * web-platform-tests/css/css-align/self-alignment/place-self-shorthand-006.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/css/css-align-3/self-alignment/place-self-shorthand-006.html.
+        * web-platform-tests/css/css-align/self-alignment/w3c-import.log: Added.
+
+2018-01-23  Brady Eidson  <beidson@apple.com>
+
+        Allow passing MessagePorts across processes (e.g. ServiceWorkers).
+        https://bugs.webkit.org/show_bug.cgi?id=181178
+
+        Reviewed by Andy Estes.
+
+        Re-baseline for many new passes and a few new failure modes.
+
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/extendable-message-event.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/postmessage.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/registration-attribute.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/ServiceWorkerGlobalScope/unregister.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/claim-affect-other-registration.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/claim-fetch.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/claim-not-using-registration.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/claim-using-registration.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/claim-worker-fetch.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/client-id.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/clients-get-cross-origin.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/clients-get.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/clients-matchall-client-types.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/clients-matchall-exact-controller.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/clients-matchall-order.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/clients-matchall.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/extendable-event-async-waituntil.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event-async-respond-with.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event-respond-with-stops-propagation.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event-throws-after-respond-with.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-request-css-base-url.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-request-css-images.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-request-fallback.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-request-no-freshness-headers.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-request-resources.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/immutable-prototype-serviceworker.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/registration-end-to-end.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/registration-events.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/skip-waiting-installed.https-expected.txt:
+
+2018-01-22  Chris Nardi  <csnardi1@gmail.com>
+
+        Parse calc() in CSS media queries
+        https://bugs.webkit.org/show_bug.cgi?id=181716
+
+        Reviewed by Antti Koivisto.
+
+        * resources/import-expectations.json:
+        * resources/resource-files.json:
+        * web-platform-tests/css/mediaqueries/OWNERS: Added.
+        * web-platform-tests/css/mediaqueries/aspect-ratio-001-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/aspect-ratio-001.html: Added.
+        * web-platform-tests/css/mediaqueries/aspect-ratio-002-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/aspect-ratio-002.html: Added.
+        * web-platform-tests/css/mediaqueries/aspect-ratio-003-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/aspect-ratio-003.html: Added.
+        * web-platform-tests/css/mediaqueries/aspect-ratio-004-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/aspect-ratio-004.html: Added.
+        * web-platform-tests/css/mediaqueries/device-aspect-ratio-001-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/device-aspect-ratio-001.html: Added.
+        * web-platform-tests/css/mediaqueries/device-aspect-ratio-002-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/device-aspect-ratio-002.html: Added.
+        * web-platform-tests/css/mediaqueries/device-aspect-ratio-003-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/device-aspect-ratio-003.html: Added.
+        * web-platform-tests/css/mediaqueries/device-aspect-ratio-004-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/device-aspect-ratio-004.html: Added.
+        * web-platform-tests/css/mediaqueries/device-aspect-ratio-005-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/device-aspect-ratio-005.html: Added.
+        * web-platform-tests/css/mediaqueries/device-aspect-ratio-006-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/device-aspect-ratio-006.html: Added.
+        * web-platform-tests/css/mediaqueries/min-width-001-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/min-width-001.xht: Added.
+        * web-platform-tests/css/mediaqueries/min-width-tables-001-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/min-width-tables-001.html: Added.
+        * web-platform-tests/css/mediaqueries/mq-calc-001-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/mq-calc-001.html: Added.
+        * web-platform-tests/css/mediaqueries/mq-calc-002-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/mq-calc-002.html: Added.
+        * web-platform-tests/css/mediaqueries/mq-calc-003-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/mq-calc-003.html: Added.
+        * web-platform-tests/css/mediaqueries/mq-calc-004-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/mq-calc-004.html: Added.
+        * web-platform-tests/css/mediaqueries/mq-calc-005-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/mq-calc-005.html: Added.
+        * web-platform-tests/css/mediaqueries/mq-invalid-media-type-001-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/mq-invalid-media-type-001.html: Added.
+        * web-platform-tests/css/mediaqueries/mq-invalid-media-type-002-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/mq-invalid-media-type-002.html: Added.
+        * web-platform-tests/css/mediaqueries/mq-invalid-media-type-003-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/mq-invalid-media-type-003.html: Added.
+        * web-platform-tests/css/mediaqueries/mq-invalid-media-type-004-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/mq-invalid-media-type-004.html: Added.
+        * web-platform-tests/css/mediaqueries/relative-units-001-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/relative-units-001.html: Added.
+        * web-platform-tests/css/mediaqueries/relative-units-002-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/relative-units-002.html: Added.
+        * web-platform-tests/css/mediaqueries/relative-units-003-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/relative-units-003.html: Added.
+        * web-platform-tests/css/mediaqueries/relative-units-004-expected.xht: Added.
+        * web-platform-tests/css/mediaqueries/relative-units-004.html: Added.
+        * web-platform-tests/css/mediaqueries/support/media_queries_iframe.html: Renamed from LayoutTests/fast/media/w3c/resources/media_queries_iframe.html.
+        * web-platform-tests/css/mediaqueries/support/min-width-tables-001-iframe.html: Added.
+        * web-platform-tests/css/mediaqueries/support/w3c-import.log: Added.
+        * web-platform-tests/css/mediaqueries/test_media_queries-expected.txt: Renamed from LayoutTests/fast/media/w3c/test_media_queries-expected.txt.
+        * web-platform-tests/css/mediaqueries/test_media_queries.html: Renamed from LayoutTests/fast/media/w3c/test_media_queries.html.
+        * web-platform-tests/css/mediaqueries/w3c-import.log: Added.
+
+2018-01-22  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Spanning Grid item has too much space at the bottom / is too high
+        https://bugs.webkit.org/show_bug.cgi?id=181677
+
+        Imported WPT tests to check this change.
+
+        Reviewed by Javier Fernandez.
+
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-find-fr-size-gutters-001-expected.txt: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-find-fr-size-gutters-001.html: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-find-fr-size-gutters-002-expected.txt: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/grid-find-fr-size-gutters-002.html: Added.
+        * web-platform-tests/css/css-grid/layout-algorithm/w3c-import.log:
+
+2018-01-20  Youenn Fablet  <youenn@apple.com>
+
+        fetch redirect is incompatible with "no-cors" mode
+        https://bugs.webkit.org/show_bug.cgi?id=181866
+        <rdar://problem/35827140>
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/fetch/api/redirect/redirect-mode-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-mode-worker-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-mode.js:
+        (redirectMode):
+        * web-platform-tests/service-workers/service-worker/fetch-event-redirect.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/fetch-event-redirect.https.html:
+        * web-platform-tests/service-workers/service-worker/fetch-request-redirect.https-expected.txt:
+
+2018-01-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        AppCache: Log a Deprecation warning to the Console when AppCache is used
+        https://bugs.webkit.org/show_bug.cgi?id=181778
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/html/browsers/offline/appcache/workers/appcache-worker-expected.txt:
+        * web-platform-tests/html/browsers/offline/introduction-4/event_cached-expected.txt:
+        * web-platform-tests/html/browsers/offline/introduction-4/event_checking-expected.txt:
+        * web-platform-tests/html/browsers/offline/introduction-4/event_noupdate-expected.txt:
+        * web-platform-tests/html/browsers/offline/introduction-4/event_progress-expected.txt:
+        * web-platform-tests/html/browsers/offline/manifest_url_check-expected.txt:
+        * web-platform-tests/service-workers/service-worker/appcache-ordering-main.https-expected.txt:
+
 2018-01-17  Ali Juma  <ajuma@chromium.org>
 
         Update web platform tests for Visual Viewport API

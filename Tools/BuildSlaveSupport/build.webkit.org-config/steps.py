@@ -628,28 +628,35 @@ class RunGLibAPITests(shell.Test):
 
         logText = cmd.logs['stdio'].getText()
 
-        self.incorrectTests = 0
-        self.crashedTests = 0
-        self.timedOutTests = 0
-        self.skippedTests = 0
+        failedTests = 0
+        crashedTests = 0
+        timedOutTests = 0
+        messages = []
         self.statusLine = []
 
         foundItems = re.findall("Unexpected failures \((\d+)\)", logText)
-        if (foundItems):
-            self.incorrectTests = int(foundItems[0])
+        if foundItems:
+            failedTests = int(foundItems[0])
+            messages.append("%d failures" % failedTests)
 
         foundItems = re.findall("Unexpected crashes \((\d+)\)", logText)
-        if (foundItems):
-            self.crashedTests = int(foundItems[0])
+        if foundItems:
+            crashedTests = int(foundItems[0])
+            messages.append("%d crashes" % crashedTests)
 
         foundItems = re.findall("Unexpected timeouts \((\d+)\)", logText)
-        if (foundItems):
-            self.timedOutTests = int(foundItems[0])
+        if foundItems:
+            timedOutTests = int(foundItems[0])
+            messages.append("%d timeouts" % timedOutTests)
 
-        self.totalFailedTests = self.incorrectTests + self.crashedTests + self.timedOutTests
+        foundItems = re.findall("Unexpected passes \((\d+)\)", logText)
+        if foundItems:
+            newPassTests = int(foundItems[0])
+            messages.append("%d new passes" % newPassTests)
 
-        if self.totalFailedTests > 0:
-            self.statusLine = ["%d API tests failed, %d crashed, %d timed out" % (self.incorrectTests, self.crashedTests, self.timedOutTests)]
+        self.totalFailedTests = failedTests + crashedTests + timedOutTests
+        if messages:
+            self.statusLine = ["API tests: %s" % ", ".join(messages)]
 
     def evaluateCommand(self, cmd):
         if self.totalFailedTests > 0:
@@ -676,6 +683,62 @@ class RunGtkAPITests(RunGLibAPITests):
 
 class RunWPEAPITests(RunGLibAPITests):
     command = ["python", "./Tools/Scripts/run-wpe-tests", WithProperties("--%(configuration)s")]
+
+
+class RunWebDriverTests(shell.Test):
+    name = "webdriver-test"
+    description = ["webdriver-tests running"]
+    descriptionDone = ["webdriver-tests"]
+    jsonFileName = "webdriver_tests.json"
+    command = ["python", "./Tools/Scripts/run-webdriver-tests", "--json-output={0}".format(jsonFileName), WithProperties("--%(configuration)s")]
+    logfiles = {"json": jsonFileName}
+
+    def start(self):
+        additionalArguments = self.getProperty('additionalArguments')
+        if additionalArguments:
+            self.setCommand(self.command + additionalArguments)
+
+        appendCustomBuildFlags(self, self.getProperty('platform'), self.getProperty('fullPlatform'))
+        return shell.Test.start(self)
+
+    def commandComplete(self, cmd):
+        shell.Test.commandComplete(self, cmd)
+        logText = cmd.logs['stdio'].getText()
+
+        self.failuresCount = 0
+        self.newPassesCount = 0
+        foundItems = re.findall("Unexpected.+\((\d+)\)", logText)
+        if foundItems:
+            self.failuresCount = int(foundItems[0])
+        foundItems = re.findall("Expected to .+, but passed \((\d+)\)", logText)
+        if foundItems:
+            self.newPassesCount = int(foundItems[0])
+
+    def evaluateCommand(self, cmd):
+        if self.failuresCount:
+            return FAILURE
+
+        if self.newPassesCount:
+            return WARNINGS
+
+        if cmd.rc != 0:
+            return FAILURE
+
+        return SUCCESS
+
+    def getText(self, cmd, results):
+        return self.getText2(cmd, results)
+
+    def getText2(self, cmd, results):
+        if results != SUCCESS and (self.failuresCount or self.newPassesCount):
+            lines = []
+            if self.failuresCount:
+                lines.append("%d failures" % self.failuresCount)
+            if self.newPassesCount:
+                lines.append("%d new passes" % self.newPassesCount)
+            return ["%s %s" % (self.name, ", ".join(lines))]
+
+        return [self.name]
 
 
 class RunWebKit1Tests(RunWebKitTests):

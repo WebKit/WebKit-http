@@ -123,7 +123,6 @@ class HTMLMediaElement
     : public HTMLElement
     , public ActiveDOMObject
     , public MediaControllerInterface
-    , public MediaPlayerSupportsTypeClient
     , public PlatformMediaSessionClient
     , private MediaCanStartListener
     , private MediaPlayerClient
@@ -551,6 +550,8 @@ public:
 
     bool willLog(WTFLogLevel) const;
 
+    bool isSuspended() const final;
+
 protected:
     HTMLMediaElement(const QualifiedName&, Document&, bool createdByParser);
     virtual void finishInitialization();
@@ -677,9 +678,6 @@ private:
     String mediaPlayerReferrer() const override;
     String mediaPlayerUserAgent() const override;
 
-    bool mediaPlayerNeedsSiteSpecificHacks() const override;
-    String mediaPlayerDocumentHost() const override;
-
     void mediaPlayerEnterFullscreen() override;
     void mediaPlayerExitFullscreen() override;
     bool mediaPlayerIsFullscreen() const override;
@@ -704,7 +702,6 @@ private:
 
     void mediaPlayerActiveSourceBuffersChanged(const MediaPlayer*) override;
 
-    bool mediaPlayerShouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge&) override;
     void mediaPlayerHandlePlaybackCommand(PlatformMediaSession::RemoteControlCommandType command) override { didReceiveRemoteControlCommand(command, nullptr); }
     String sourceApplicationIdentifier() const override;
     String mediaPlayerSourceApplicationIdentifier() const override { return sourceApplicationIdentifier(); }
@@ -864,7 +861,6 @@ private:
     bool shouldOverrideBackgroundLoadingRestriction() const override;
     bool canProduceAudio() const final;
     bool processingUserGestureForMedia() const final;
-    bool isSuspended() const final;
 
     void pageMutedStateDidChange() override;
 

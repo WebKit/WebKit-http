@@ -404,6 +404,7 @@ void StorageProcess::didGetSandboxExtensionsForBlobFiles(uint64_t requestID, San
 #if ENABLE(SERVICE_WORKER)
 SWServer& StorageProcess::swServerForSession(PAL::SessionID sessionID)
 {
+    ASSERT(sessionID.isValid());
     auto result = m_swServers.add(sessionID, nullptr);
     if (!result.isNewEntry) {
         ASSERT(result.iterator->value);
@@ -477,10 +478,10 @@ void StorageProcess::didFinishFetch(SWServerConnectionIdentifier serverConnectio
         connection->didFinishFetch(fetchIdentifier);
 }
 
-void StorageProcess::postMessageToServiceWorkerClient(const ServiceWorkerClientIdentifier& destinationIdentifier, const IPC::DataReference& message, ServiceWorkerIdentifier sourceIdentifier, const String& sourceOrigin)
+void StorageProcess::postMessageToServiceWorkerClient(const ServiceWorkerClientIdentifier& destinationIdentifier, MessageWithMessagePorts&& message, ServiceWorkerIdentifier sourceIdentifier, const String& sourceOrigin)
 {
     if (auto* connection = m_swServerConnections.get(destinationIdentifier.serverConnectionIdentifier))
-        connection->postMessageToServiceWorkerClient(destinationIdentifier.contextIdentifier, message, sourceIdentifier, sourceOrigin);
+        connection->postMessageToServiceWorkerClient(destinationIdentifier.contextIdentifier, WTFMove(message), sourceIdentifier, sourceOrigin);
 }
 
 void StorageProcess::registerSWServerConnection(WebSWServerConnection& connection)

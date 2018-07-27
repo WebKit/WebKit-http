@@ -128,6 +128,10 @@
 ;; <rdar://problem/31252371>
 (allow mach-lookup (xpc-service-name-regex #"\.viewservice$"))
 
+;; Power logging
+(allow mach-lookup
+    (global-name "com.apple.powerlog.plxpclogger.xpc")) ;;  <rdar://problem/36442803>
+
 (mobile-preferences-read
     "com.apple.EmojiPreferences"
     ; <rdar://problem/8477596> com.apple.InputModePreferences
@@ -135,7 +139,9 @@
     ; <rdar://problem/8206632> Weather(1038) deny file-read-data ~/Library/Preferences/com.apple.keyboard.plist
     "com.apple.keyboard"
     ; <rdar://problem/9384085>
-    "com.apple.Preferences")
+    "com.apple.Preferences"
+    "com.apple.lookup.shared" ; Needed for DataDetector (Spotlight) support
+)
 
 ;; <rdar://problem/12985925> Need read access to /var/mobile/Library/Fonts to all apps
 (allow file-read*
@@ -310,6 +316,7 @@
     "com.apple.LaunchServices"
     "com.apple.WebFoundation"
     "com.apple.mobileipod"
+    "com.apple.avfoundation.frecents" ;; <rdar://problem/33137029>
     "com.apple.avfoundation.videoperformancehud" ;; <rdar://problem/31594568>
     "com.apple.voiceservices.logging")
 

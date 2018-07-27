@@ -26,6 +26,7 @@
 
 #include "RenderBlockFlow.h"
 #include "RenderChildIterator.h"
+#include "RenderLinesClampFlow.h"
 #include "RenderMultiColumnFlow.h"
 #include "RenderMultiColumnSet.h"
 #include "RenderMultiColumnSpannerPlaceholder.h"
@@ -83,7 +84,7 @@ void RenderTreeBuilder::MultiColumn::createFragmentedFlow(RenderBlockFlow& flow)
         }
     }
 
-    auto newFragmentedFlow = WebCore::createRenderer<RenderMultiColumnFlow>(flow.document(), RenderStyle::createAnonymousStyleWithDisplay(flow.style(), BLOCK));
+    auto newFragmentedFlow = !flow.style().hasLinesClamp() ? WebCore::createRenderer<RenderMultiColumnFlow>(flow.document(), RenderStyle::createAnonymousStyleWithDisplay(flow.style(), BLOCK)) :  WebCore::createRenderer<RenderLinesClampFlow>(flow.document(), RenderStyle::createAnonymousStyleWithDisplay(flow.style(), BLOCK));
     newFragmentedFlow->initializeStyle();
     auto& fragmentedFlow = *newFragmentedFlow;
     m_builder.insertChildToRenderBlock(flow, WTFMove(newFragmentedFlow));
@@ -95,6 +96,14 @@ void RenderTreeBuilder::MultiColumn::createFragmentedFlow(RenderBlockFlow& flow)
         for (auto& box : childrenOfType<RenderBox>(fragmentedFlow)) {
             if (box.isLegend())
                 fragmentedFlow.moveChildTo(&flow, &box, RenderBoxModelObject::NormalizeAfterInsertion::Yes);
+        }
+    }
+
+    if (flow.style().hasLinesClamp()) {
+        // Keep the middle block out of the flow thread.
+        for (auto& element : childrenOfType<RenderElement>(fragmentedFlow)) {
+            if (!downcast<RenderLinesClampFlow>(fragmentedFlow).isChildAllowedInFragmentedFlow(flow, element))
+                fragmentedFlow.moveChildTo(&flow, &element, RenderBoxModelObject::NormalizeAfterInsertion::Yes);
         }
     }
 
@@ -128,6 +137,38 @@ void RenderTreeBuilder::MultiColumn::destroyFragmentedFlow(RenderBlockFlow& flow
     multiColumnFlow.removeFromParentAndDestroy();
     for (auto& parentAndSpanner : parentAndSpannerList)
         m_builder.insertChild(*parentAndSpanner.first, WTFMove(parentAndSpanner.second));
+}
+
+
+RenderObject* RenderTreeBuilder::MultiColumn::resolveMovedChild(RenderFragmentedFlow& enclosingFragmentedFlow, RenderObject* beforeChild)
+{
+    if (!beforeChild)
+        return nullptr;
+
+    if (!is<RenderBox>(*beforeChild))
+        return beforeChild;
+
+    if (!is<RenderMultiColumnFlow>(enclosingFragmentedFlow))
+        return beforeChild;
+
+    // We only need to resolve for column spanners.
+    if (beforeChild->style().columnSpan() != ColumnSpanAll)
+        return beforeChild;
+
+    // The renderer for the actual DOM node that establishes a spanner is moved from its original
+    // location in the render tree to becoming a sibling of the column sets. In other words, it's
+    // moved out from the flow thread (and becomes a sibling of it). When we for instance want to
+    // create and insert a renderer for the sibling node immediately preceding the spanner, we need
+    // to map that spanner renderer to the spanner's placeholder, which is where the new inserted
+    // renderer belongs.
+    if (auto* placeholder = downcast<RenderMultiColumnFlow>(enclosingFragmentedFlow).findColumnSpannerPlaceholder(downcast<RenderBox>(beforeChild)))
+        return placeholder;
+
+    // This is an invalid spanner, or its placeholder hasn't been created yet. This happens when
+    // moving an entire subtree into the flow thread, when we are processing the insertion of this
+    // spanner's preceding sibling, and we obviously haven't got as far as processing this spanner
+    // yet.
+    return beforeChild;
 }
 
 }

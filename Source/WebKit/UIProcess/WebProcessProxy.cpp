@@ -36,6 +36,7 @@
 #include "PluginProcessManager.h"
 #include "TextChecker.h"
 #include "TextCheckerState.h"
+#include "UIMessagePortChannelProvider.h"
 #include "UserData.h"
 #include "WebBackForwardListItem.h"
 #include "WebInspectorUtilities.h"
@@ -78,6 +79,18 @@ using namespace WebCore;
 
 namespace WebKit {
 
+static HashMap<ProcessIdentifier, WebProcessProxy*>& allProcesses()
+{
+    ASSERT(isMainThread());
+    static NeverDestroyed<HashMap<ProcessIdentifier, WebProcessProxy*>> map;
+    return map;
+}
+
+WebProcessProxy* WebProcessProxy::processForIdentifier(ProcessIdentifier identifier)
+{
+    return allProcesses().get(identifier);
+}
+
 uint64_t WebProcessProxy::generatePageID()
 {
     static uint64_t uniquePageID;
@@ -113,13 +126,19 @@ WebProcessProxy::WebProcessProxy(WebProcessPool& processPool, WebsiteDataStore& 
     , m_userMediaCaptureManagerProxy(std::make_unique<UserMediaCaptureManagerProxy>(*this))
 #endif
 {
+    auto result = allProcesses().add(coreProcessIdentifier(), this);
+    ASSERT_UNUSED(result, result.isNewEntry);
+
     WebPasteboardProxy::singleton().addWebProcessProxy(*this);
 }
 
 WebProcessProxy::~WebProcessProxy()
 {
     ASSERT(m_pageURLRetainCountMap.isEmpty());
-    
+
+    auto result = allProcesses().remove(coreProcessIdentifier());
+    ASSERT_UNUSED(result, result);
+
     WebPasteboardProxy::singleton().removeWebProcessProxy(*this);
 
     if (m_webConnection)
@@ -148,6 +167,8 @@ void WebProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launchOpt
         }
         launchOptions.extraInitializationData.add(ASCIILiteral("OverrideLanguages"), languageString.toString());
     }
+
+    launchOptions.nonValidInjectedCodeAllowed = shouldAllowNonValidInjectedCode();
 }
 
 void WebProcessProxy::connectionWillOpen(IPC::Connection& connection)
@@ -196,6 +217,9 @@ void WebProcessProxy::shutDown()
     m_webUserContentControllerProxies.clear();
 
     m_userInitiatedActionMap.clear();
+
+    for (auto& port : m_processEntangledPorts)
+        UIMessagePortChannelProvider::singleton().registry().didCloseMessagePort(port);
 
     m_processPool->disconnectProcess(this);
 }
@@ -588,6 +612,13 @@ bool WebProcessProxy::platformIsBeingDebugged() const
 }
 #endif
 
+#if !PLATFORM(MAC)
+bool WebProcessProxy::shouldAllowNonValidInjectedCode() const
+{
+    return false;
+}
+#endif
+
 void WebProcessProxy::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
     if (dispatchMessage(connection, decoder))
@@ -628,7 +659,7 @@ void WebProcessProxy::didClose(IPC::Connection&)
 
     webConnection()->didClose();
 
-    auto pages = copyToVector(m_pageMap.values());
+    auto pages = copyToVectorOf<RefPtr<WebPageProxy>>(m_pageMap.values());
 
     shutDown();
 
@@ -666,7 +697,7 @@ void WebProcessProxy::didBecomeUnresponsive()
 
     auto isResponsiveCallbacks = WTFMove(m_isResponsiveCallbacks);
 
-    for (auto& page : copyToVector(m_pageMap.values()))
+    for (auto& page : copyToVectorOf<RefPtr<WebPageProxy>>(m_pageMap.values()))
         page->processDidBecomeUnresponsive();
 
     bool isWebProcessResponsive = false;
@@ -678,19 +709,19 @@ void WebProcessProxy::didBecomeResponsive()
 {
     m_isResponsive = NoOrMaybe::Maybe;
 
-    for (auto& page : copyToVector(m_pageMap.values()))
+    for (auto& page : copyToVectorOf<RefPtr<WebPageProxy>>(m_pageMap.values()))
         page->processDidBecomeResponsive();
 }
 
 void WebProcessProxy::willChangeIsResponsive()
 {
-    for (auto& page : copyToVector(m_pageMap.values()))
+    for (auto& page : copyToVectorOf<RefPtr<WebPageProxy>>(m_pageMap.values()))
         page->willChangeProcessIsResponsive();
 }
 
 void WebProcessProxy::didChangeIsResponsive()
 {
-    for (auto& page : copyToVector(m_pageMap.values()))
+    for (auto& page : copyToVectorOf<RefPtr<WebPageProxy>>(m_pageMap.values()))
         page->didChangeProcessIsResponsive();
 }
 
@@ -811,6 +842,15 @@ void WebProcessProxy::shouldTerminate(bool& shouldTerminate)
     }
 }
 
+void WebProcessProxy::testIncomingSyncIPCMessageWhileWaitingForSyncReply(bool& handled)
+{
+    // Send Synchronous IPC back to the WebProcess while it is waiting for a sync reply from us.
+    // This should time out.
+    bool didSyncIPCsucceed = sendSync(Messages::WebProcess::SyncIPCMessageWhileWaitingForSyncReplyForTesting(), Messages::WebProcess::SyncIPCMessageWhileWaitingForSyncReplyForTesting::Reply(), 0, 100_ms);
+    RELEASE_ASSERT(!didSyncIPCsucceed);
+    handled = true;
+}
+
 void WebProcessProxy::updateTextCheckerState()
 {
     if (canSendMessage())
@@ -888,7 +928,7 @@ void WebProcessProxy::requestTermination(ProcessTerminationReason reason)
     if (webConnection())
         webConnection()->didClose();
 
-    auto pages = copyToVector(m_pageMap.values());
+    auto pages = copyToVectorOf<RefPtr<WebPageProxy>>(m_pageMap.values());
 
     shutDown();
 
@@ -1219,5 +1259,97 @@ const HashSet<String>& WebProcessProxy::platformPathsWithAssumedReadAccess()
     return platformPathsWithAssumedReadAccess;
 }
 #endif
+
+void WebProcessProxy::createNewMessagePortChannel(const MessagePortIdentifier& port1, const MessagePortIdentifier& port2)
+{
+    m_processEntangledPorts.add(port1);
+    m_processEntangledPorts.add(port2);
+    UIMessagePortChannelProvider::singleton().registry().didCreateMessagePortChannel(port1, port2);
+}
+
+void WebProcessProxy::entangleLocalPortInThisProcessToRemote(const MessagePortIdentifier& local, const MessagePortIdentifier& remote)
+{
+    m_processEntangledPorts.add(local);
+    UIMessagePortChannelProvider::singleton().registry().didEntangleLocalToRemote(local, remote, coreProcessIdentifier());
+
+    auto* channel = UIMessagePortChannelProvider::singleton().registry().existingChannelContainingPort(local);
+    if (channel && channel->hasAnyMessagesPendingOrInFlight())
+        send(Messages::WebProcess::MessagesAvailableForPort(local), 0);
+}
+
+void WebProcessProxy::messagePortDisentangled(const MessagePortIdentifier& port)
+{
+    auto result = m_processEntangledPorts.remove(port);
+    ASSERT_UNUSED(result, result);
+
+    UIMessagePortChannelProvider::singleton().registry().didDisentangleMessagePort(port);
+}
+
+void WebProcessProxy::messagePortClosed(const MessagePortIdentifier& port)
+{
+    UIMessagePortChannelProvider::singleton().registry().didCloseMessagePort(port);
+}
+
+void WebProcessProxy::takeAllMessagesForPort(const MessagePortIdentifier& port, uint64_t messagesCallbackIdentifier)
+{
+    UIMessagePortChannelProvider::singleton().registry().takeAllMessagesForPort(port, [this, protectedThis = makeRef(*this), messagesCallbackIdentifier](Vector<MessageWithMessagePorts>&& messages, Function<void()>&& deliveryCallback) {
+
+        static uint64_t currentMessageBatchIdentifier;
+        auto result = m_messageBatchDeliveryCompletionHandlers.ensure(++currentMessageBatchIdentifier, [deliveryCallback = WTFMove(deliveryCallback)]() mutable {
+            return WTFMove(deliveryCallback);
+        });
+        ASSERT_UNUSED(result, result.isNewEntry);
+
+        send(Messages::WebProcess::DidTakeAllMessagesForPort(WTFMove(messages), messagesCallbackIdentifier, currentMessageBatchIdentifier), 0);
+    });
+}
+
+void WebProcessProxy::didDeliverMessagePortMessages(uint64_t messageBatchIdentifier)
+{
+    auto callback = m_messageBatchDeliveryCompletionHandlers.take(messageBatchIdentifier);
+    ASSERT(callback);
+    callback();
+}
+
+void WebProcessProxy::postMessageToRemote(MessageWithMessagePorts&& message, const MessagePortIdentifier& port)
+{
+    if (UIMessagePortChannelProvider::singleton().registry().didPostMessageToRemote(WTFMove(message), port)) {
+        // Look up the process for that port
+        auto* channel = UIMessagePortChannelProvider::singleton().registry().existingChannelContainingPort(port);
+        ASSERT(channel);
+        auto processIdentifier = channel->processForPort(port);
+        if (processIdentifier) {
+            if (auto* process = WebProcessProxy::processForIdentifier(*processIdentifier))
+                process->send(Messages::WebProcess::MessagesAvailableForPort(port), 0);
+        }
+    }
+}
+
+void WebProcessProxy::checkRemotePortForActivity(const WebCore::MessagePortIdentifier port, uint64_t callbackIdentifier)
+{
+    UIMessagePortChannelProvider::singleton().registry().checkRemotePortForActivity(port, [this, protectedThis = makeRef(*this), callbackIdentifier](MessagePortChannelProvider::HasActivity hasActivity) {
+        send(Messages::WebProcess::DidCheckRemotePortForActivity(callbackIdentifier, hasActivity == MessagePortChannelProvider::HasActivity::Yes), 0);
+    });
+}
+
+void WebProcessProxy::checkProcessLocalPortForActivity(const MessagePortIdentifier& port, CompletionHandler<void(MessagePortChannelProvider::HasActivity)>&& callback)
+{
+    static uint64_t currentCallbackIdentifier;
+    auto result = m_localPortActivityCompletionHandlers.ensure(++currentCallbackIdentifier, [callback = WTFMove(callback)]() mutable {
+        return WTFMove(callback);
+    });
+    ASSERT_UNUSED(result, result.isNewEntry);
+
+    send(Messages::WebProcess::CheckProcessLocalPortForActivity(port, currentCallbackIdentifier), 0);
+}
+
+void WebProcessProxy::didCheckProcessLocalPortForActivity(uint64_t callbackIdentifier, bool isLocallyReachable)
+{
+    auto callback = m_localPortActivityCompletionHandlers.take(callbackIdentifier);
+    if (!callback)
+        return;
+
+    callback(isLocallyReachable ? MessagePortChannelProvider::HasActivity::Yes : MessagePortChannelProvider::HasActivity::No);
+}
 
 } // namespace WebKit

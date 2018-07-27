@@ -297,7 +297,7 @@ using DrawToPDFCallback = GenericCallback<const IPC::DataReference&>;
 
 #if PLATFORM(COCOA)
 typedef GenericCallback<const WebCore::MachSendRight&> MachSendRightCallback;
-typedef GenericCallback<bool, String, double, double, uint64_t> NowPlayingInfoCallback;
+typedef GenericCallback<bool, bool, String, double, double, uint64_t> NowPlayingInfoCallback;
 #endif
 
 class WebPageProxy : public API::ObjectImpl<API::Object::Type::Page>
@@ -542,6 +542,9 @@ public:
     void selectWithGesture(const WebCore::IntPoint, WebCore::TextGranularity, uint32_t gestureType, uint32_t gestureState, bool isInteractingWithAssistedNode, WTF::Function<void (const WebCore::IntPoint&, uint32_t, uint32_t, uint32_t, CallbackBase::Error)>&&);
     void updateSelectionWithTouches(const WebCore::IntPoint, uint32_t touches, bool baseIsStart, WTF::Function<void (const WebCore::IntPoint&, uint32_t, uint32_t, CallbackBase::Error)>&&);
     void selectWithTwoTouches(const WebCore::IntPoint from, const WebCore::IntPoint to, uint32_t gestureType, uint32_t gestureState, WTF::Function<void (const WebCore::IntPoint&, uint32_t, uint32_t, uint32_t, CallbackBase::Error)>&&);
+#if __IPHONE_OS_VERSION_MAX_ALLOWED < 120000
+    void updateBlockSelectionWithTouch(const WebCore::IntPoint, uint32_t touch, uint32_t handlePosition);
+#endif
     void extendSelection(WebCore::TextGranularity);
     void selectWordBackward();
     void moveSelectionByOffset(int32_t offset, WTF::Function<void (CallbackBase::Error)>&&);
@@ -566,6 +569,9 @@ public:
     void stopInteraction();
     void performActionOnElement(uint32_t action);
     void saveImageToLibrary(const SharedMemory::Handle& imageHandle, uint64_t imageSize);
+#if __IPHONE_OS_VERSION_MAX_ALLOWED < 120000
+    void didUpdateBlockSelectionWithTouch(uint32_t touch, uint32_t flags, float growThreshold, float shrinkThreshold);
+#endif
     void focusNextAssistedNode(bool isForward, WTF::Function<void (CallbackBase::Error)>&&);
     void setAssistedNodeValue(const String&);
     void setAssistedNodeValueAsNumber(double);
@@ -1120,7 +1126,7 @@ public:
 
 #if PLATFORM(COCOA)
     void requestActiveNowPlayingSessionInfo(Ref<NowPlayingInfoCallback>&&);
-    void nowPlayingInfoCallback(bool, const String&, double, double, uint64_t, CallbackID);
+    void nowPlayingInfoCallback(bool, bool, const String&, double, double, uint64_t, CallbackID);
 #endif
 
 #if ENABLE(MEDIA_SESSION)
@@ -1501,6 +1507,11 @@ private:
     bool appleMailPaginationQuirkEnabled();
 #endif
 
+#if PLATFORM(MAC)
+    // FIXME: Need to support iOS too, but there is no isAppleMail for iOS.
+    bool appleMailLinesClampEnabled();
+#endif
+
     // Spelling and grammar.
     void checkSpellingOfString(const String& text, int32_t& misspellingLocation, int32_t& misspellingLength);
     void checkGrammarOfString(const String& text, Vector<WebCore::GrammarDetail>&, int32_t& badGrammarLocation, int32_t& badGrammarLength);
@@ -1555,8 +1566,6 @@ private:
 
     void focusedFrameChanged(uint64_t frameID);
     void frameSetLargestFrameChanged(uint64_t frameID);
-
-    void didReceiveAuthenticationChallenge(uint64_t frameID, const WebCore::AuthenticationChallenge&, uint64_t challengeID);
 
     void didFinishLoadingDataForCustomContentProvider(const String& suggestedFilename, const IPC::DataReference&);
 

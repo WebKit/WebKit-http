@@ -1,3 +1,34 @@
+2018-01-24  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, another attempt to fix the Windows build after r227479.
+
+        * WebFrame.cpp:
+        (WebFrame::elementWithName):
+
+2018-01-24  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, try to fix the Windows build after r227479.
+
+        Tweak some Windows WebKitLegacy code to use updated HTMLFormElement methods.
+
+        * WebFrame.cpp:
+        (WebFrame::elementWithName):
+        (WebFrame::controlsInForm):
+
+2018-01-19  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Compile error: 'WebKitQuartzCoreAdditionsBase.h' not found.
+        https://bugs.webkit.org/show_bug.cgi?id=181859
+        <rdar://problem/36659886>
+
+        Reviewed by Alex Christensen.
+        
+        Use local include patch.
+
+        * WebKitQuartzCoreAdditions/API/WKCACFImage.h:
+        * WebKitQuartzCoreAdditions/API/WKCACFView.h:
+        * WebKitQuartzCoreAdditions/API/WKCACFViewPrivate.h:
+
 2018-01-17  Youenn Fablet  <youenn@apple.com>
 
         Put fetch Request.keepalive behind a runtime flag

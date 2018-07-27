@@ -138,6 +138,9 @@ enum class AccessibilityRole {
     Footer,
     Footnote,
     Form,
+    GraphicsDocument,
+    GraphicsObject,
+    GraphicsSymbol,
     Grid,
     GridCell,
     Group,
@@ -660,6 +663,7 @@ public:
     virtual float stepValueForRange() const { return 0.0f; }
     virtual AccessibilityObject* selectedRadioButton() { return nullptr; }
     virtual AccessibilityObject* selectedTabItem() { return nullptr; }
+    AccessibilityObject* selectedListItem();
     virtual int layoutCount() const { return 0; }
     virtual double estimatedLoadingProgress() const { return 0; }
     static bool isARIAControl(AccessibilityRole);

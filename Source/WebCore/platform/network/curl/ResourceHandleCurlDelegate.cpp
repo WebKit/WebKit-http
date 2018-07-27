@@ -180,6 +180,16 @@ bool ResourceHandleCurlDelegate::cancelledOrClientless()
     return !m_handle->client();
 }
 
+void ResourceHandleCurlDelegate::curlDidSendData(unsigned long long bytesSent, unsigned long long totalBytesToBeSent)
+{
+    ASSERT(isMainThread());
+
+    if (cancelledOrClientless())
+        return;
+
+    m_handle->client()->didSendData(m_handle, bytesSent, totalBytesToBeSent);
+}
+
 void ResourceHandleCurlDelegate::curlDidReceiveResponse(const CurlResponse& receivedResponse)
 {
     ASSERT(isMainThread());
@@ -221,7 +231,9 @@ void ResourceHandleCurlDelegate::curlDidReceiveResponse(const CurlResponse& rece
         CurlCacheManager::singleton().didReceiveResponse(*m_handle, response());
 
         auto protectedThis = makeRef(*m_handle);
-        m_handle->didReceiveResponse(ResourceResponse(response()));
+        m_handle->didReceiveResponse(ResourceResponse(response()), [this, protectedThis = makeRef(*this)] {
+            continueAfterDidReceiveResponse();
+        });
     }
 }
 
@@ -320,7 +332,7 @@ void ResourceHandleCurlDelegate::willSendRequest()
     }
 
     String location = response().httpHeaderField(HTTPHeaderName::Location);
-    URL newURL = URL(m_firstRequest.url(), location);
+    URL newURL = URL(m_handle->getInternal()->m_response.url(), location);
     bool crossOrigin = !protocolHostAndPortAreEqual(m_firstRequest.url(), newURL);
 
     ResourceRequest newRequest = m_firstRequest;
@@ -426,7 +438,9 @@ void ResourceHandleCurlDelegate::handleDataURL()
 
     if (base64) {
         data = decodeURLEscapeSequences(data);
-        m_handle->didReceiveResponse(WTFMove(response));
+        m_handle->didReceiveResponse(WTFMove(response), [this, protectedThis = makeRef(*this)] {
+            continueAfterDidReceiveResponse();
+        });
 
         // didReceiveResponse might cause the client to be deleted.
         if (m_handle->client()) {
@@ -437,7 +451,9 @@ void ResourceHandleCurlDelegate::handleDataURL()
     } else {
         TextEncoding encoding(charset);
         data = decodeURLEscapeSequences(data, encoding);
-        m_handle->didReceiveResponse(WTFMove(response));
+        m_handle->didReceiveResponse(WTFMove(response), [this, protectedThis = makeRef(*this)] {
+            continueAfterDidReceiveResponse();
+        });
 
         // didReceiveResponse might cause the client to be deleted.
         if (m_handle->client()) {

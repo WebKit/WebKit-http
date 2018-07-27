@@ -477,6 +477,9 @@ serviceControlsEnabled:
 appleMailPaginationQuirkEnabled:
   initial: false
 
+appleMailLinesClampEnabled:
+  initial: false
+
 deferredCSSParserEnabled:
   initial: false
 
@@ -698,10 +701,16 @@ needsAdobeFrameReloadingQuirk:
   initial: false
   getter: needsAcrobatFrameReloadingQuirk
 
+passiveTouchListenersAsDefaultOnDocument:
+  initial: true
+
 touchEventEmulationEnabled:
   initial: false
   getter: isTouchEventEmulationEnabled
   conditional: TOUCH_EVENTS
 
 mediaCapabilitiesEnabled:
+  initial: false
+
+resourceLoadStatisticsDebugMode:
   initial: false

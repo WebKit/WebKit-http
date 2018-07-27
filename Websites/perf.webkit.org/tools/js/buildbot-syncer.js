@@ -67,6 +67,7 @@ class BuildbotSyncer {
         this._platformPropertyName = commonConfigurations.platformArgument;
         this._buildRequestPropertyName = commonConfigurations.buildRequestArgument;
         this._builderName = object.builder;
+        this._builderID = object.builderID;
         this._slaveList = object.slaveList;
         this._entryList = null;
         this._slavesWithNewRequests = new Set;
@@ -282,7 +283,9 @@ class BuildbotSyncer {
             case 'conditional':
                 switch (value.condition) {
                 case 'built':
-                    if (!requestsInGroup.some((otherRequest) => otherRequest.isBuild() && otherRequest.commitSet() == buildRequest.commitSet()))
+                    const repositoryRequirement = value.repositoryRequirement;
+                    const meetRepositoryRequirement = !repositoryRequirement.length || repositoryRequirement.some((repository) => commitSet.requiresBuildForRepository(repository));
+                    if (!meetRepositoryRequirement || !requestsInGroup.some((otherRequest) => otherRequest.isBuild() && otherRequest.commitSet() == buildRequest.commitSet()))
                         continue;
                     break;
                 case 'requiresBuild':
@@ -317,8 +320,9 @@ class BuildbotSyncer {
         return revisionSet;
     }
 
-    static _loadConfig(remote, config)
+    static _loadConfig(remote, config, builderNameToIDMap)
     {
+        assert(builderNameToIDMap);
         const types = config['types'] || {};
         const builders = config['builders'] || {};
 
@@ -348,7 +352,7 @@ class BuildbotSyncer {
         }
 
         assert(Array.isArray(config['testConfigurations']), `The test configuration must be an array`);
-        this._resolveBuildersWithPlatforms('test', config['testConfigurations'], builders).forEach((entry, configurationIndex) => {
+        this._resolveBuildersWithPlatforms('test', config['testConfigurations'], builders, builderNameToIDMap).forEach((entry, configurationIndex) => {
             assert(Array.isArray(entry['types']), `The test configuration ${configurationIndex} does not specify "types" as an array`);
             for (const type of entry['types']) {
                 const typeConfig = this._validateAndMergeConfig({}, entry.builderConfig);
@@ -366,7 +370,7 @@ class BuildbotSyncer {
         const buildConfigurations = config['buildConfigurations'];
         if (buildConfigurations) {
             assert(Array.isArray(buildConfigurations), `The test configuration must be an array`);
-            this._resolveBuildersWithPlatforms('test', buildConfigurations, builders).forEach((entry, configurationIndex) => {
+            this._resolveBuildersWithPlatforms('test', buildConfigurations, builders, builderNameToIDMap).forEach((entry, configurationIndex) => {
                 const syncer = ensureBuildbotSyncer(entry.builderConfig);
                 assert(!syncer.isTester(), `The build configuration ${configurationIndex} uses a tester: ${syncer.builderName()}`);
                 syncer.addBuildConfiguration(entry.platform, entry.builderConfig.properties);
@@ -376,7 +380,7 @@ class BuildbotSyncer {
         return Array.from(syncerByBuilder.values());
     }
 
-    static _resolveBuildersWithPlatforms(configurationType, configurationList, builders)
+    static _resolveBuildersWithPlatforms(configurationType, configurationList, builders, builderNameToIDMap)
     {
         const resolvedConfigurations = [];
         let configurationIndex = 0;
@@ -388,6 +392,8 @@ class BuildbotSyncer {
                 const matchingBuilder = builders[builderKey];
                 assert(matchingBuilder, `"${builderKey}" is not a valid builder in the configuration`);
                 assert('builder' in matchingBuilder, `Builder ${builderKey} does not specify a buildbot builder name`);
+                assert(matchingBuilder.builder in builderNameToIDMap, `Builder ${matchingBuilder.builder} not found in Buildbot configuration.`);
+                matchingBuilder['builderID'] = builderNameToIDMap[matchingBuilder.builder];
                 const builderConfig = this._validateAndMergeConfig({}, matchingBuilder);
                 for (const platformName of entry['platforms']) {
                     const platform = Platform.findByName(platformName);
@@ -436,7 +442,7 @@ class BuildbotSyncer {
 
         const testRepositories = new Set;
         let specifiesRoots = false;
-        const testPropertiesTemplate = this._parseRepositoryGroupPropertyTemplate('test', name, group.testProperties, (type, value) => {
+        const testPropertiesTemplate = this._parseRepositoryGroupPropertyTemplate('test', name, group.testProperties, (type, value, condition) => {
             assert(type != 'patch', `Repository group "${name}" specifies a patch for "${value}" in the properties for testing`);
             switch (type) {
             case 'revision':
@@ -448,7 +454,8 @@ class BuildbotSyncer {
                 specifiesRoots = true;
                 return {type};
             case 'ifBuilt':
-                return {type: 'conditional', condition: 'built', value};
+                assert('condition', 'condition must set if type is "ifBuilt"');
+                return {type: 'conditional', condition: 'built', value, repositoryRequirement: condition.map(resolveRepository)};
             }
             return null;
         });
@@ -563,6 +570,10 @@ class BuildbotSyncer {
                 break;
             case 'builder': // Fallthrough
                 assert.equal(typeof(value), 'string', `${name} should be of string type`);
+                config[name] = value;
+                break;
+            case 'builderID':
+                assert(value, 'builderID should not be undefined.');
                 config[name] = value;
                 break;
             default:

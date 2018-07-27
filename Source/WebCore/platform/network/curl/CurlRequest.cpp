@@ -142,15 +142,19 @@ void CurlRequest::resume()
 }
 
 /* `this` is protected inside this method. */
-void CurlRequest::callClient(WTF::Function<void(CurlRequestClient*)> task)
+void CurlRequest::callClient(WTF::Function<void(CurlRequestClient&)> task)
 {
     if (isMainThread()) {
-        if (CurlRequestClient* client = m_client)
-            task(client);
+        if (CurlRequestClient* client = m_client) {
+            RefPtr<CurlRequestClient> protectedClient(client);
+            task(*client);
+        }
     } else {
         callOnMainThread([protectedThis = makeRef(*this), task = WTFMove(task)]() mutable {
-            if (CurlRequestClient* client = protectedThis->m_client)
-                task(client);
+            if (CurlRequestClient* client = protectedThis->m_client) {
+                RefPtr<CurlRequestClient> protectedClient(client);
+                task(*client);
+            }
         });
     }
 }
@@ -192,6 +196,9 @@ CURL* CurlRequest::setupTransfer()
     m_curlHandle->enableAcceptEncoding();
     m_curlHandle->enableTimeout();
 
+    long timeoutMilliseconds = (m_request.timeoutInterval() > 0.0) ? static_cast<long>(m_request.timeoutInterval() * 1000.0) : 0;
+    m_curlHandle->setTimeout(timeoutMilliseconds);
+
     m_curlHandle->enableProxyIfExists();
     m_curlHandle->enableCookieJarIfExists();
 
@@ -225,9 +232,7 @@ CURL* CurlRequest::setupTransfer()
 
 CURLcode CurlRequest::willSetupSslCtx(void* sslCtx)
 {
-    m_sslVerifier.setCurlHandle(m_curlHandle.get());
-    m_sslVerifier.setHostName(m_request.url().host());
-    m_sslVerifier.setSslCtx(sslCtx);
+    m_sslVerifier = std::make_unique<CurlSSLVerifier>(m_curlHandle.get(), m_request.url().host(), sslCtx);
 
     return CURLE_OK;
 }
@@ -254,6 +259,10 @@ size_t CurlRequest::willSendData(char* buffer, size_t blockSize, size_t numberOf
         // Something went wrong so error the job.
         return CURL_READFUNC_ABORT;
     }
+
+    callClient([this, totalReadSize = m_formDataStream.totalReadSize(), totalSize = m_formDataStream.totalSize()](CurlRequestClient& client) {
+        client.curlDidSendData(totalReadSize, totalSize);
+    });
 
     return *sendBytes;
 }
@@ -353,9 +362,8 @@ size_t CurlRequest::didReceiveData(Ref<SharedBuffer>&& buffer)
         if (m_multipartHandle)
             m_multipartHandle->didReceiveData(buffer);
         else {
-            callClient([this, buffer = WTFMove(buffer)](CurlRequestClient* client) mutable {
-                if (client)
-                    client->curlDidReceiveBuffer(WTFMove(buffer));
+            callClient([buffer = WTFMove(buffer)](CurlRequestClient& client) mutable {
+                client.curlDidReceiveBuffer(WTFMove(buffer));
             });
         }
     }
@@ -386,9 +394,8 @@ void CurlRequest::didReceiveDataFromMultipart(Ref<SharedBuffer>&& buffer)
     auto receiveBytes = buffer->size();
 
     if (receiveBytes) {
-        callClient([this, buffer = WTFMove(buffer)](CurlRequestClient* client) mutable {
-            if (client)
-                client->curlDidReceiveBuffer(WTFMove(buffer));
+        callClient([buffer = WTFMove(buffer)](CurlRequestClient& client) mutable {
+            client.curlDidReceiveBuffer(WTFMove(buffer));
         });
     }
 }
@@ -415,20 +422,19 @@ void CurlRequest::didCompleteTransfer(CURLcode result)
                 m_networkLoadMetrics = *metrics;
 
             finalizeTransfer();
-            callClient([this](CurlRequestClient* client) {
-                if (client)
-                    client->curlDidComplete();
+            callClient([](CurlRequestClient& client) {
+                client.curlDidComplete();
             });
         }
     } else {
-        auto resourceError = ResourceError::httpError(result, m_request.url());
-        if (m_sslVerifier.sslErrors())
-            resourceError.setSslErrors(m_sslVerifier.sslErrors());
+        auto type = (result == CURLE_OPERATION_TIMEDOUT && m_request.timeoutInterval() > 0.0) ? ResourceError::Type::Timeout : ResourceError::Type::General;
+        auto resourceError = ResourceError::httpError(result, m_request.url(), type);
+        if (m_sslVerifier && m_sslVerifier->sslErrors())
+            resourceError.setSslErrors(m_sslVerifier->sslErrors());
 
         finalizeTransfer();
-        callClient([this, error = resourceError.isolatedCopy()](CurlRequestClient* client) {
-            if (client)
-                client->curlDidFailWithError(error);
+        callClient([error = resourceError.isolatedCopy()](CurlRequestClient& client) {
+            client.curlDidFailWithError(error);
         });
     }
 }
@@ -443,6 +449,7 @@ void CurlRequest::finalizeTransfer()
 {
     closeDownloadFile();
     m_formDataStream.clean();
+    m_sslVerifier = nullptr;
     m_multipartHandle = nullptr;
     m_curlHandle = nullptr;
 }
@@ -527,9 +534,8 @@ void CurlRequest::invokeDidReceiveResponse(const CurlResponse& response, Action 
     m_didNotifyResponse = true;
     m_actionAfterInvoke = behaviorAfterInvoke;
 
-    callClient([this, response = response.isolatedCopy()](CurlRequestClient* client) {
-        if (client)
-            client->curlDidReceiveResponse(response);
+    callClient([response = response.isolatedCopy()](CurlRequestClient& client) {
+        client.curlDidReceiveResponse(response);
     });
 }
 

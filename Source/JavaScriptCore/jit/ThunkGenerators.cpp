@@ -214,7 +214,7 @@ MacroAssemblerCodeRef virtualThunkFor(VM* vm, CallLinkInfo& callLinkInfo)
     // Now we know that we have a CodeBlock, and we're committed to making a fast
     // call.
 #if USE(JSVALUE64)
-    jit.move(CCallHelpers::TrustedImm64(POISON(JITCode)), GPRInfo::regT1);
+    jit.move(CCallHelpers::TrustedImm64(JITCodePoison::key()), GPRInfo::regT1);
     jit.xor64(GPRInfo::regT1, GPRInfo::regT4);
 #endif
 
@@ -310,7 +310,7 @@ static MacroAssemblerCodeRef nativeForGenerator(VM* vm, ThunkFunctionType thunkF
         jit.loadPtr(JSInterfaceJIT::Address(X86Registers::r9, executableOffsetToFunction), X86Registers::r9);
     } else
         jit.loadPtr(JSInterfaceJIT::Address(X86Registers::esi, InternalFunction::offsetOfNativeFunctionFor(kind)), X86Registers::r9);
-    jit.move(JSInterfaceJIT::TrustedImm64(POISON(NativeCode)), X86Registers::esi);
+    jit.move(JSInterfaceJIT::TrustedImm64(NativeCodePoison::key()), X86Registers::esi);
     jit.xor64(X86Registers::esi, X86Registers::r9);
     jit.call(X86Registers::r9);
 
@@ -347,7 +347,7 @@ static MacroAssemblerCodeRef nativeForGenerator(VM* vm, ThunkFunctionType thunkF
         jit.loadPtr(JSInterfaceJIT::Address(ARM64Registers::x2, executableOffsetToFunction), ARM64Registers::x2);
     } else
         jit.loadPtr(JSInterfaceJIT::Address(ARM64Registers::x1, InternalFunction::offsetOfNativeFunctionFor(kind)), ARM64Registers::x2);
-    jit.move(JSInterfaceJIT::TrustedImm64(POISON(NativeCode)), ARM64Registers::x1);
+    jit.move(JSInterfaceJIT::TrustedImm64(NativeCodePoison::key()), ARM64Registers::x1);
     jit.xor64(ARM64Registers::x1, ARM64Registers::x2);
     jit.call(ARM64Registers::x2);
 
@@ -400,7 +400,7 @@ static MacroAssemblerCodeRef nativeForGenerator(VM* vm, ThunkFunctionType thunkF
     jit.storePtr(JSInterfaceJIT::callFrameRegister, &vm->topCallFrame);
 
 #if CPU(X86) && USE(JSVALUE32_64)
-    jit.addPtr(JSInterfaceJIT::TrustedImm32(-12), JSInterfaceJIT::stackPointerRegister);
+    jit.subPtr(JSInterfaceJIT::TrustedImm32(4), JSInterfaceJIT::stackPointerRegister);
     jit.move(JSInterfaceJIT::callFrameRegister, JSInterfaceJIT::regT0);
     jit.push(JSInterfaceJIT::regT0);
 #else
@@ -413,7 +413,7 @@ static MacroAssemblerCodeRef nativeForGenerator(VM* vm, ThunkFunctionType thunkF
     jit.move(JSInterfaceJIT::TrustedImmPtr(FunctionPtr(operationVMHandleException).value()), JSInterfaceJIT::regT3);
     jit.call(JSInterfaceJIT::regT3);
 #if CPU(X86) && USE(JSVALUE32_64)
-    jit.addPtr(JSInterfaceJIT::TrustedImm32(16), JSInterfaceJIT::stackPointerRegister);
+    jit.addPtr(JSInterfaceJIT::TrustedImm32(8), JSInterfaceJIT::stackPointerRegister);
 #elif OS(WINDOWS)
     jit.addPtr(JSInterfaceJIT::TrustedImm32(4 * sizeof(int64_t)), JSInterfaceJIT::stackPointerRegister);
 #endif
@@ -1171,7 +1171,7 @@ MacroAssemblerCodeRef boundThisNoArgsFunctionCallGenerator(VM* vm)
     CCallHelpers::Jump noCode = jit.branchTestPtr(CCallHelpers::Zero, GPRInfo::regT0);
     
 #if USE(JSVALUE64)
-    jit.move(CCallHelpers::TrustedImm64(POISON(JITCode)), GPRInfo::regT1);
+    jit.move(CCallHelpers::TrustedImm64(JITCodePoison::key()), GPRInfo::regT1);
     jit.xor64(GPRInfo::regT1, GPRInfo::regT0);
 #endif
     emitPointerValidation(jit, GPRInfo::regT0);

@@ -24,11 +24,14 @@
  */
 
 #include "config.h"
+#include "SWContextManager.h"
 
 #if ENABLE(SERVICE_WORKER)
-#include "SWContextManager.h"
+#include "Logging.h"
+#include "MessageWithMessagePorts.h"
 #include "ServiceWorkerClientIdentifier.h"
 #include "ServiceWorkerGlobalScope.h"
+#include <unistd.h>
 
 namespace WebCore {
 
@@ -74,14 +77,14 @@ ServiceWorkerThreadProxy* SWContextManager::serviceWorkerThreadProxy(ServiceWork
     return m_workerMap.get(identifier);
 }
 
-void SWContextManager::postMessageToServiceWorker(ServiceWorkerIdentifier destination, Ref<SerializedScriptValue>&& message, ServiceWorkerOrClientData&& sourceData)
+void SWContextManager::postMessageToServiceWorker(ServiceWorkerIdentifier destination, MessageWithMessagePorts&& message, ServiceWorkerOrClientData&& sourceData)
 {
     auto* serviceWorker = m_workerMap.get(destination);
     ASSERT(serviceWorker);
     ASSERT(!serviceWorker->isTerminatingOrTerminated());
 
     // FIXME: We should pass valid MessagePortChannels.
-    serviceWorker->thread().postMessageToServiceWorker(WTFMove(message), nullptr, WTFMove(sourceData));
+    serviceWorker->thread().postMessageToServiceWorker(WTFMove(message), WTFMove(sourceData));
 }
 
 void SWContextManager::fireInstallEvent(ServiceWorkerIdentifier identifier)
@@ -102,21 +105,28 @@ void SWContextManager::fireActivateEvent(ServiceWorkerIdentifier identifier)
     serviceWorker->thread().fireActivateEvent();
 }
 
-void SWContextManager::terminateWorker(ServiceWorkerIdentifier identifier, Function<void()>&& completionHandler)
+void SWContextManager::terminateWorker(ServiceWorkerIdentifier identifier, Seconds timeout, Function<void()>&& completionHandler)
 {
     auto serviceWorker = m_workerMap.take(identifier);
-    if (!serviceWorker)
+    if (!serviceWorker) {
+        if (completionHandler)
+            completionHandler();
         return;
+    }
 
     serviceWorker->setAsTerminatingOrTerminated();
 
-    serviceWorker->thread().stop([identifier, serviceWorker = WTFMove(serviceWorker), completionHandler = WTFMove(completionHandler)]() mutable {
+    m_pendingServiceWorkerTerminationRequests.add(identifier, std::make_unique<ServiceWorkerTerminationRequest>(*this, identifier, timeout));
+
+    serviceWorker->thread().stop([this, identifier, serviceWorker = WTFMove(serviceWorker), completionHandler = WTFMove(completionHandler)]() mutable {
+        m_pendingServiceWorkerTerminationRequests.remove(identifier);
+
         if (auto* connection = SWContextManager::singleton().connection())
             connection->workerTerminated(identifier);
 
         if (completionHandler)
             completionHandler();
-        
+
         // Spin the runloop before releasing the worker thread proxy, as there would otherwise be
         // a race towards its destruction.
         callOnMainThread([serviceWorker = WTFMove(serviceWorker)] { });
@@ -139,6 +149,19 @@ bool SWContextManager::postTaskToServiceWorker(ServiceWorkerIdentifier identifie
         task(downcast<ServiceWorkerGlobalScope>(context));
     });
     return true;
+}
+
+NO_RETURN_DUE_TO_CRASH void SWContextManager::serviceWorkerFailedToTerminate(ServiceWorkerIdentifier serviceWorkerIdentifier)
+{
+    UNUSED_PARAM(serviceWorkerIdentifier);
+    RELEASE_LOG_ERROR(ServiceWorker, "Failed to terminate service worker with identifier %s, killing the service worker process", serviceWorkerIdentifier.loggingString().utf8().data());
+    _exit(EXIT_FAILURE);
+}
+
+SWContextManager::ServiceWorkerTerminationRequest::ServiceWorkerTerminationRequest(SWContextManager& manager, ServiceWorkerIdentifier serviceWorkerIdentifier, Seconds timeout)
+    : m_timeoutTimer([&manager, serviceWorkerIdentifier] { manager.serviceWorkerFailedToTerminate(serviceWorkerIdentifier); })
+{
+    m_timeoutTimer.startOneShot(timeout);
 }
 
 } // namespace WebCore

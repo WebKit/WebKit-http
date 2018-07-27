@@ -53,14 +53,16 @@ using namespace WTF;
 
 namespace JSC {
 
+static_assert(sizeof(bool) == 1, "LLInt and JIT assume sizeof(bool) is always 1 when touching it directly from assembly code.");
+
 void initializeThreading()
 {
     static std::once_flag initializeThreadingOnceFlag;
 
     std::call_once(initializeThreadingOnceFlag, []{
         WTF::initializeThreading();
-        initializePoison();
         Options::initialize();
+        initializePoison();
 #if ENABLE(WRITE_BARRIER_PROFILING)
         WriteBarrierCounters::initialize();
 #endif

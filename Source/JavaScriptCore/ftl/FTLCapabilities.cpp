@@ -180,6 +180,7 @@ inline CapabilityLevel canCompile(Node* node)
     case GetScope:
     case GetCallee:
     case GetArgumentCountIncludingThis:
+    case SetArgumentCountIncludingThis:
     case ToNumber:
     case ToString:
     case ToObject:
@@ -212,6 +213,8 @@ inline CapabilityLevel canCompile(Node* node)
     case SetAdd:
     case MapSet:
     case WeakMapGet:
+    case WeakSetAdd:
+    case WeakMapSet:
     case IsEmpty:
     case IsUndefined:
     case IsBoolean:
@@ -246,6 +249,7 @@ inline CapabilityLevel canCompile(Node* node)
     case PhantomNewAsyncGeneratorFunction:
     case PhantomNewAsyncFunction:
     case PhantomCreateActivation:
+    case PhantomNewRegexp:
     case PutHint:
     case CheckStructureImmediate:
     case MaterializeNewObject:
@@ -276,6 +280,7 @@ inline CapabilityLevel canCompile(Node* node)
     case CreateRest:
     case GetRestLength:
     case RegExpExec:
+    case RegExpExecNonGlobalOrSticky:
     case RegExpTest:
     case RegExpMatchFast:
     case NewRegexp:

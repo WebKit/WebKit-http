@@ -365,15 +365,17 @@ static String toStringWithRadixInternal(int32_t number, unsigned radix)
     uint32_t positiveNumber = number;
     if (number < 0) {
         negative = true;
-        positiveNumber = -number;
+        positiveNumber = static_cast<uint32_t>(-static_cast<int64_t>(number));
     }
 
-    while (positiveNumber) {
+    // Always loop at least once, to emit at least '0'.
+    do {
         uint32_t index = positiveNumber % radix;
         ASSERT(index < sizeof(radixDigits));
         *--p = static_cast<LChar>(radixDigits[index]);
         positiveNumber /= radix;
-    }
+    } while (positiveNumber);
+
     if (negative)
         *--p = '-';
 
@@ -504,20 +506,6 @@ EncodedJSValue JSC_HOST_CALL numberProtoFuncToPrecision(ExecState* exec)
     return JSValue::encode(jsString(exec, String(numberToFixedPrecisionString(x, significantFigures, buffer))));
 }
 
-static inline int32_t extractRadixFromArgs(ExecState* exec)
-{
-    JSValue radixValue = exec->argument(0);
-    int32_t radix;
-    if (radixValue.isInt32())
-        radix = radixValue.asInt32();
-    else if (radixValue.isUndefined())
-        radix = 10;
-    else
-        radix = static_cast<int32_t>(radixValue.toInteger(exec)); // nan -> 0
-
-    return radix;
-}
-
 static ALWAYS_INLINE JSString* int32ToStringInternal(VM& vm, int32_t value, int32_t radix)
 {
     ASSERT(!(radix < 2 || radix > 36));
@@ -586,21 +574,18 @@ JSString* numberToString(VM& vm, double doubleValue, int32_t radix)
     return numberToStringInternal(vm, doubleValue, radix);
 }
 
-EncodedJSValue JSC_HOST_CALL numberProtoFuncToString(ExecState* exec)
+EncodedJSValue JSC_HOST_CALL numberProtoFuncToString(ExecState* state)
 {
-    VM& vm = exec->vm();
+    VM& vm = state->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     double doubleValue;
-    if (!toThisNumber(exec->thisValue(), doubleValue))
-        return throwVMTypeError(exec, scope);
+    if (!toThisNumber(state->thisValue(), doubleValue))
+        return throwVMTypeError(state, scope);
 
-    int32_t radix = extractRadixFromArgs(exec);
+    auto radix = extractToStringRadixArgument(state, state->argument(0), scope);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
-    if (radix < 2 || radix > 36)
-        return throwVMError(exec, scope, createRangeError(exec, ASCIILiteral("toString() radix argument must be between 2 and 36")));
 
-    scope.release();
     return JSValue::encode(numberToStringInternal(vm, doubleValue, radix));
 }
 
@@ -626,6 +611,26 @@ EncodedJSValue JSC_HOST_CALL numberProtoFuncValueOf(ExecState* exec)
     if (!toThisNumber(thisValue, x))
         return throwVMTypeError(exec, scope, WTF::makeString("thisNumberValue called on incompatible ", asString(jsTypeStringForValue(exec, thisValue))->value(exec)));
     return JSValue::encode(jsNumber(x));
+}
+
+int32_t extractToStringRadixArgument(ExecState* state, JSValue radixValue, ThrowScope& throwScope)
+{
+    if (radixValue.isUndefined())
+        return 10;
+
+    if (radixValue.isInt32()) {
+        int32_t radix = radixValue.asInt32();
+        if (radix >= 2 && radix <= 36)
+            return radix;
+    } else {
+        double radixDouble = radixValue.toInteger(state);
+        RETURN_IF_EXCEPTION(throwScope, 0);
+        if (radixDouble >= 2 && radixDouble <= 36)
+            return static_cast<int32_t>(radixDouble);   
+    }
+
+    throwRangeError(state, throwScope, ASCIILiteral("toString() radix argument must be between 2 and 36"));
+    return 0;
 }
 
 } // namespace JSC

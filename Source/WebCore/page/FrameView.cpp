@@ -181,6 +181,8 @@ FrameView::FrameView(Frame& frame)
     , m_inProgrammaticScroll(false)
     , m_safeToPropagateScrollToParent(true)
     , m_delayedScrollEventTimer(*this, &FrameView::sendScrollEvent)
+    , m_selectionRevealModeForFocusedElement(SelectionRevealMode::DoNotReveal)
+    , m_delayedScrollToFocusedElementTimer(*this, &FrameView::scrollToFocusedElementTimerFired)
     , m_isTrackingRepaints(false)
     , m_shouldUpdateWhileOffscreen(true)
     , m_speculativeTilingEnabled(false)
@@ -264,6 +266,8 @@ void FrameView::reset()
     m_wasScrolledByUser = false;
     m_safeToPropagateScrollToParent = true;
     m_delayedScrollEventTimer.stop();
+    m_shouldScrollToFocusedElement = false;
+    m_delayedScrollToFocusedElementTimer.stop();
     m_lastViewportSize = IntSize();
     m_lastZoomFactor = 1.0f;
     m_isTrackingRepaints = false;
@@ -716,7 +720,8 @@ void FrameView::applyPaginationToViewport()
     EOverflow overflowY = documentOrBodyRenderer->style().overflowY();
     if (overflowY == OPAGEDX || overflowY == OPAGEDY) {
         pagination.mode = WebCore::paginationModeForRenderStyle(documentOrBodyRenderer->style());
-        pagination.gap = static_cast<unsigned>(documentOrBodyRenderer->style().columnGap());
+        GapLength columnGapLength = documentOrBodyRenderer->style().columnGap();
+        pagination.gap = columnGapLength.isNormal() ? 0 : valueForLength(columnGapLength.length(), downcast<RenderBox>(documentOrBodyRenderer)->availableLogicalWidth()).toUnsigned();
     }
     setPagination(pagination);
 }
@@ -1675,8 +1680,10 @@ void FrameView::updateLayoutViewport()
             setLayoutViewportOverrideRect(LayoutRect(newOrigin, m_layoutViewportOverrideRect.value().size()));
         }
         if (frame().settings().visualViewportAPIEnabled()) {
-            if (Document* document = frame().document())
-                document->domWindow()->visualViewport()->update();
+            if (Document* document = frame().document()) {
+                if (VisualViewport* visualViewport = document->domWindow()->visualViewport())
+                    visualViewport->update();
+            }
         }
         return;
     }
@@ -1687,8 +1694,10 @@ void FrameView::updateLayoutViewport()
         LOG_WITH_STREAM(Scrolling, stream << "layoutViewport changed to " << layoutViewportRect());
     }
     if (frame().settings().visualViewportAPIEnabled()) {
-        if (Document* document = frame().document())
-            document->domWindow()->visualViewport()->update();
+        if (Document* document = frame().document()) {
+            if (VisualViewport* visualViewport = document->domWindow()->visualViewport())
+                visualViewport->update();
+        }
     }
 }
 
@@ -1938,12 +1947,7 @@ ScrollPosition FrameView::unscaledMaximumScrollPosition() const
     if (RenderView* renderView = this->renderView()) {
         IntRect unscaledDocumentRect = renderView->unscaledDocumentRect();
         unscaledDocumentRect.expand(0, headerHeight() + footerHeight());
-        IntSize visibleSize = this->visibleSize();
-#if PLATFORM(IOS)
-        // FIXME: visibleSize() is the unscaled size on macOS, but the scaled size on iOS. This should be consistent. webkit.org/b/174648.
-        visibleSize.scale(visibleContentScaleFactor());
-#endif        
-        ScrollPosition maximumPosition = ScrollPosition(unscaledDocumentRect.maxXMaxYCorner() - visibleSize).expandedTo({ 0, 0 });
+        ScrollPosition maximumPosition = ScrollPosition(unscaledDocumentRect.maxXMaxYCorner() - visibleSize()).expandedTo({ 0, 0 });
         if (frame().isMainFrame() && m_scrollPinningBehavior == PinToTop)
             maximumPosition.setY(unscaledMinimumScrollPosition().y());
 
@@ -2190,6 +2194,8 @@ void FrameView::maintainScrollPositionAtAnchor(ContainerNode* anchorNode)
     m_maintainScrollPositionAnchor = anchorNode;
     if (!m_maintainScrollPositionAnchor)
         return;
+    m_shouldScrollToFocusedElement = false;
+    m_delayedScrollToFocusedElementTimer.stop();
 
     // We need to update the layout before scrolling, otherwise we could
     // really mess things up if an anchor scroll comes at a bad moment.
@@ -2220,6 +2226,8 @@ void FrameView::setScrollPosition(const ScrollPosition& scrollPosition)
 
     SetForScope<bool> changeInProgrammaticScroll(m_inProgrammaticScroll, true);
     m_maintainScrollPositionAnchor = nullptr;
+    m_shouldScrollToFocusedElement = false;
+    m_delayedScrollToFocusedElementTimer.stop();
     Page* page = frame().page();
     if (page && page->expectsWheelEventTriggers())
         scrollAnimator().setWheelEventTestTrigger(page->testTrigger());
@@ -2244,6 +2252,60 @@ void FrameView::resetScrollAnchor()
             rootElement->resetScrollAnchor();
         }
     }
+}
+
+void FrameView::scheduleScrollToFocusedElement(SelectionRevealMode selectionRevealMode)
+{
+    if (selectionRevealMode == SelectionRevealMode::DoNotReveal)
+        return;
+
+    m_selectionRevealModeForFocusedElement = selectionRevealMode;
+    if (m_shouldScrollToFocusedElement)
+        return;
+    m_shouldScrollToFocusedElement = true;
+    m_delayedScrollToFocusedElementTimer.startOneShot(0_s);
+}
+
+void FrameView::scrollToFocusedElementImmediatelyIfNeeded()
+{
+    if (!m_shouldScrollToFocusedElement)
+        return;
+
+    m_delayedScrollToFocusedElementTimer.stop();
+    scrollToFocusedElementInternal();
+}
+
+void FrameView::scrollToFocusedElementTimerFired()
+{
+    scrollToFocusedElementInternal();
+}
+
+void FrameView::scrollToFocusedElementInternal()
+{
+    RELEASE_ASSERT(m_shouldScrollToFocusedElement);
+    auto document = makeRefPtr(frame().document());
+    if (!document)
+        return;
+
+    document->updateLayoutIgnorePendingStylesheets();
+    if (!m_shouldScrollToFocusedElement)
+        return; // Updating the layout may have ran scripts.
+    m_shouldScrollToFocusedElement = false;
+
+    auto focusedElement = makeRefPtr(document->focusedElement());
+    if (!focusedElement)
+        return;
+    auto updateTarget = focusedElement->focusAppearanceUpdateTarget();
+    if (!updateTarget)
+        return;
+
+    auto* renderer = updateTarget->renderer();
+    if (!renderer || renderer->isWidget())
+        return;
+
+    bool insideFixed;
+    LayoutRect absoluteBounds = renderer->absoluteAnchorRect(&insideFixed);
+    renderer->scrollRectToVisible(m_selectionRevealModeForFocusedElement, absoluteBounds, insideFixed);
 }
 
 void FrameView::contentsResized()
@@ -2989,6 +3051,8 @@ void FrameView::scrollToAnchor()
 
     if (!anchorNode->renderer())
         return;
+    m_shouldScrollToFocusedElement = false;
+    m_delayedScrollToFocusedElementTimer.stop();
 
     LayoutRect rect;
     bool insideFixed = false;
@@ -3012,6 +3076,8 @@ void FrameView::scrollToAnchor()
     // scrollRectToVisible can call into setScrollPosition(), which resets m_maintainScrollPositionAnchor.
     LOG_WITH_STREAM(Scrolling, stream << " restoring anchor node to " << anchorNode.get());
     m_maintainScrollPositionAnchor = anchorNode;
+    m_shouldScrollToFocusedElement = false;
+    m_delayedScrollToFocusedElementTimer.stop();
 }
 
 void FrameView::updateEmbeddedObject(RenderEmbeddedObject& embeddedObject)
@@ -3592,6 +3658,8 @@ bool FrameView::isScrollable(Scrollability definitionOfScrollable)
     // 2) display:none or visibility:hidden set to self or inherited.
     // 3) overflow{-x,-y}: hidden;
     // 4) scrolling: no;
+    if (!didFirstLayout())
+        return false;
 
     bool requiresActualOverflowToBeConsideredScrollable = !frame().isMainFrame() || definitionOfScrollable != Scrollability::ScrollableOrRubberbandable;
 #if !ENABLE(RUBBER_BANDING)
@@ -3924,6 +3992,8 @@ void FrameView::setWasScrolledByUser(bool wasScrolledByUser)
 {
     LOG(Scrolling, "FrameView::setWasScrolledByUser at %d", wasScrolledByUser);
 
+    m_shouldScrollToFocusedElement = false;
+    m_delayedScrollToFocusedElementTimer.stop();
     if (m_inProgrammaticScroll)
         return;
     m_maintainScrollPositionAnchor = nullptr;
@@ -4339,7 +4409,7 @@ void FrameView::adjustPageHeightDeprecated(float *newBottom, float oldTop, float
 
     }
     // Use a context with painting disabled.
-    GraphicsContext context((PlatformGraphicsContext*)nullptr);
+    GraphicsContext context(GraphicsContext::NonPaintingReasons::NoReasons);
     renderView->setTruncatedAt(static_cast<int>(floorf(oldBottom)));
     IntRect dirtyRect(0, static_cast<int>(floorf(oldTop)), renderView->layoutOverflowRect().maxX(), static_cast<int>(ceilf(oldBottom - oldTop)));
     renderView->setPrintRect(dirtyRect);
@@ -4647,8 +4717,11 @@ void FrameView::sendScrollEvent()
 
 void FrameView::addChild(Widget& widget)
 {
-    if (is<FrameView>(widget))
-        addScrollableArea(&downcast<FrameView>(widget));
+    if (is<FrameView>(widget)) {
+        auto& childFrameView = downcast<FrameView>(widget);
+        if (childFrameView.isScrollable())
+            addScrollableArea(&childFrameView);
+    }
 
     ScrollView::addChild(widget);
 }

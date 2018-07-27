@@ -1,3 +1,247 @@
+2018-01-30  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Make WTF headers copies
+        https://bugs.webkit.org/show_bug.cgi?id=182274
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt:
+
+2018-01-29  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: evaluateJavaScriptFunction should return null when return value is undefined
+        https://bugs.webkit.org/show_bug.cgi?id=180350
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Stop handling the empty string as a special case of evaluateJavaScriptFunction result.
+
+        * Session.cpp:
+        (WebDriver::Session::executeScript):
+
+2018-01-26  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: service hangs after a browser crash
+        https://bugs.webkit.org/show_bug.cgi?id=182170
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        This is currently happening in the GTK+ debug bot. There's a test that makes the browser crash due to an assert,
+        hanging the whole process and preventing the rest of the tests from running. When the browser crashes, we
+        correctly handle the pending requests, by completing them with an error. However, if the client tries to send
+        another command we fail to send the message to the browser and the reply is never sent to the client. In the
+        case of the tests, delete session command is sent, but never gets a reply.
+
+        * Session.cpp:
+        (WebDriver::Session::isConnected const): Return whether the session is connected to the browser.
+        * Session.h:
+        * SessionHost.cpp:
+        (WebDriver::SessionHost::sendCommandToBackend): Pass the message ID to SessionHost::sendMessageToBackend().
+        * SessionHost.h:
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::deleteSession): Ignore unknown errors if the session is no longer connected.
+        * glib/SessionHostGlib.cpp:
+        (WebDriver::SessionHost::sendMessageToBackend): Handle errors when sending the command by completing the request
+        with an error.
+
+2018-01-26  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: timeouts value and cookie expiry should be limited to max safe integer
+        https://bugs.webkit.org/show_bug.cgi?id=182167
+
+        Reviewed by Žan Doberšek.
+
+        This changed recently in the spec, but our implementation was wrong in any case since we were limiting to
+        INT_MAX. Use valueAsNumberInRange() to ensure we get a valid double value in the given range, and then convert
+        to unsigned if it's a valid integer.
+
+        Fixes: imported/w3c/webdriver/tests/sessions/new_session/create_firstMatch.py::test_valid[timeouts-value10]
+               imported/w3c/webdriver/tests/sessions/new_session/create_alwaysMatch.py::test_valid[timeouts-value10]
+
+        * Session.h:
+        * WebDriverService.cpp:
+        (WebDriver::valueAsNumberInRange):
+        (WebDriver::unsignedValue):
+        (WebDriver::deserializeTimeouts):
+        (WebDriver::deserializeCookie):
+
+2018-01-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: test imported/w3c/webdriver/tests/sessions/new_session/merge.py::test_merge_browserName fails
+        https://bugs.webkit.org/show_bug.cgi?id=181985
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        The problem is that we are considering a failure when the browser name doesn't match the capabilities, instead
+        of trying with the next merged capabilities. This is happening because when processing capabilities, we only
+        match the ones that we know without having to launch the browser. Browser name and version are provided by the
+        browser during the session initialization. This patch reworks the session creation to make it possible to try
+        with the next merged capabilities when matching fails after the browser is launched.
+
+        * Session.cpp:
+        (WebDriver::Session::Session): Initialize timeouts from capabilities, because now we have the final capabilities here.
+        (WebDriver::Session::id const): Return the session ID from the SessionHost, since it's now created there.
+        (WebDriver::Session::createTopLevelBrowsingContext): Do not start the session, it has already been started a
+        this point.
+        (WebDriver::Session::createElement): Use id() instead of m_id.
+        * Session.h:
+        * SessionHost.h:
+        (WebDriver::SessionHost::sessionID const): Return the session ID.
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::matchCapabilities const): Remove the error handling, and return a boolean instead,
+        since not mathing is not an error.
+        (WebDriver::WebDriverService::processCapabilities const): Return a list of matched capabilities, instead of the
+        JSON object corresponding to the first match.
+        (WebDriver::WebDriverService::newSession): Use helper connectToBrowser().
+        (WebDriver::WebDriverService::connectToBrowser): Create a session host for the next merged capabilities and
+        connect to the browser.
+        (WebDriver::WebDriverService::createSession): Start a new automation session. If capabilities didn't match,
+        start the process again calling connectToBrowser(), otherwise create the new session and top level.
+        * WebDriverService.h:
+        * glib/SessionHostGlib.cpp:
+        (WebDriver::matchBrowserOptions): Helper to check browser options.
+        (WebDriver::SessionHost::matchCapabilities): Use matchBrowserOptions() and return true or false instead of an
+        optional error message.
+        (WebDriver::SessionHost::startAutomationSession): Create the session ID here and notify the caller in case
+        capabilities didn't match.
+        (WebDriver::SessionHost::setTargetList): Notify that capabilities did match.
+        * gtk/WebDriverServiceGtk.cpp:
+        (WebDriver::WebDriverService::platformMatchCapability const): Make it return bool.
+        * wpe/WebDriverServiceWPE.cpp:
+        (WebDriver::WebDriverService::platformMatchCapability const): Ditto.
+
+2018-01-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: test imported/w3c/webdriver/tests/sessions/new_session/merge.py::test_merge_platformName fails
+        https://bugs.webkit.org/show_bug.cgi?id=181984
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Platform name is expected to be lower case, so do not compre ignoring case.
+
+        Fixes: imported/w3c/webdriver/tests/sessions/new_session/merge.py::test_merge_platformName
+
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::matchCapabilities const):
+
+2018-01-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: several tests in imported/w3c/webdriver/tests/sessions/new_session/merge.py are failing
+        https://bugs.webkit.org/show_bug.cgi?id=180407
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        This is actually a bug in the spec, see https://github.com/w3c/webdriver/issues/1203. It seems the idea in any
+        case is that we should check all the firstMatch capabilities before matching them, and return if there's any
+        error.
+
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::mergeCapabilities const):
+        (WebDriver::WebDriverService::processCapabilities const):
+
+2018-01-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: test imported/w3c/webdriver/tests/sessions/new_session/response.py::test_timeouts fails
+        https://bugs.webkit.org/show_bug.cgi?id=180412
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Include all missing capabilities in the new session response message.
+
+        Fixes: imported/w3c/webdriver/tests/sessions/new_session/response.py::test_resp_capabilites
+               imported/w3c/webdriver/tests/sessions/new_session/response.py::test_resp_data
+               imported/w3c/webdriver/tests/sessions/new_session/response.py::test_timeouts
+
+        * Session.h:
+        (WebDriver::Session::scriptTimeout const):
+        (WebDriver::Session::pageLoadTimeout const):
+        (WebDriver::Session::implicitWaitTimeout const):
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::newSession):
+
+2018-01-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: matched capabilities should include setWindowRect
+        https://bugs.webkit.org/show_bug.cgi?id=180411
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Handle setWindowRect in capabilities. It's always true for GTK and false for WPE.
+
+        * Capabilities.h:
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::parseCapabilities const):
+        (WebDriver::WebDriverService::matchCapabilities const):
+        (WebDriver::WebDriverService::newSession):
+        * gtk/WebDriverServiceGtk.cpp:
+        (WebDriver::WebDriverService::platformCapabilities):
+        * wpe/WebDriverServiceWPE.cpp:
+        (WebDriver::WebDriverService::platformCapabilities):
+
+2018-01-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: test imported/selenium/py/test/selenium/webdriver/common/api_example_tests.py::testChangeWindowSize fails
+        https://bugs.webkit.org/show_bug.cgi?id=181728
+
+        Reviewed by Sergio Villar Senin.
+
+        Due to a copy-paste error we are getting the window height using the width variable.
+
+        Fixes: imported/selenium/py/test/selenium/webdriver/common/api_example_tests.py::testChangeWindowSize
+               imported/selenium/py/test/selenium/webdriver/common/position_and_size_tests.py::testShouldScrollPageAndGetCoordinatesOfAnElementThatIsOutOfViewPort
+               imported/w3c/webdriver/tests/get_window_rect.py::test_payload
+               imported/w3c/webdriver/tests/set_window_rect.py::test_width_height_floats
+               imported/w3c/webdriver/tests/set_window_rect.py::test_height_width
+               imported/w3c/webdriver/tests/set_window_rect.py::test_height_width_larger_than_max
+               imported/w3c/webdriver/tests/contexts/resizing_and_positioning.py::test_window_resize
+
+        * Session.cpp:
+        (WebDriver::Session::getToplevelBrowsingContextRect):
+
+2018-01-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: implement get element CSS value command
+        https://bugs.webkit.org/show_bug.cgi?id=181736
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        13.4 Get Element CSS Value
+        https://w3c.github.io/webdriver/webdriver-spec.html#get-element-css-value
+
+        Fixes: imported/selenium/py/test/selenium/webdriver/common/rendered_webelement_tests.py::testShouldPickUpStyleOfAnElement
+               imported/selenium/py/test/selenium/webdriver/common/rendered_webelement_tests.py::testShouldAllowInheritedStylesToBeUsed
+
+        * Session.cpp:
+        (WebDriver::Session::getElementProperty):
+        (WebDriver::Session::getElementCSSValue):
+        * Session.h:
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::getElementCSSValue):
+        * WebDriverService.h:
+
+2018-01-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WebDriver: test imported/w3c/webdriver/tests/sessions/new_session/response.py is crashing in the bots
+        https://bugs.webkit.org/show_bug.cgi?id=181904
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Handle the case of failing to launch the browser. The test is actually failing because it's sending wrong
+        capabilities, the driver tries to fall back to the default driver, but since WebKit is not installed in the
+        bots, it fails to find the MiniBrowser. The test needs to be fixed, but we shouldn't crash when the browser
+        can't be spawned for whatever reason in any case. This patch handles that case and changes the boolean result of
+        connectToBrowser to be an optional error string instead. This way we can provide more detailed error message
+        when we reject the session creation because the browser failed to start.
+
+        * SessionHost.h:
+        * WebDriverService.cpp:
+        (WebDriver::WebDriverService::newSession):
+        * glib/SessionHostGlib.cpp:
+        (WebDriver::SessionHost::connectToBrowser):
+        (WebDriver::ConnectToBrowserAsyncData::ConnectToBrowserAsyncData):
+        (WebDriver::SessionHost::launchBrowser):
+        (WebDriver::SessionHost::setupConnection):
+
 2018-01-11  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         WebDriver: implement get timeouts command

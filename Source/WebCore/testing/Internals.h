@@ -139,6 +139,7 @@ public:
     bool isImageAnimating(HTMLImageElement&);
     void setClearDecoderAfterAsyncFrameRequestForTesting(HTMLImageElement&, bool enabled);
     unsigned imageDecodeCount(HTMLImageElement&);
+    unsigned pdfDocumentCachingCount(HTMLImageElement&);
     void setLargeImageAsyncDecodingEnabledForTesting(HTMLImageElement&, bool enabled);
 
     void setGridMaxTracksLimit(unsigned);
@@ -628,6 +629,7 @@ public:
     using HasRegistrationPromise = DOMPromiseDeferred<IDLBoolean>;
     void hasServiceWorkerRegistration(const String& clientURL, HasRegistrationPromise&&);
     void terminateServiceWorker(ServiceWorker&);
+    bool hasServiceWorkerConnection();
 #endif
 
 #if ENABLE(APPLE_PAY)
@@ -637,6 +639,8 @@ public:
     String timelineDescription(AnimationTimeline&);
     void pauseTimeline(AnimationTimeline&);
     void setTimelineCurrentTime(AnimationTimeline&, double);
+
+    void testIncomingSyncIPCMessageWhileWaitingForSyncReply();
 
 private:
     explicit Internals(Document&);

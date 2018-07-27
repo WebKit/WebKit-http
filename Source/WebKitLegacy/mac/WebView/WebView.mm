@@ -1489,6 +1489,10 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 #endif
 
 #if PLATFORM(IOS)
+    _private->page->settings().setPassiveTouchListenersAsDefaultOnDocument(linkedOnOrAfter(SDKVersion::FirstThatDefaultsToPassiveTouchListenersOnDocument));
+#endif
+
+#if PLATFORM(IOS)
     // Preserve the behavior we had before <rdar://problem/7580867>
     // by enforcing a 5MB limit for session storage.
     _private->page->settings().setSessionStorageQuota(5 * 1024 * 1024);
@@ -1755,6 +1759,8 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     
     SecurityPolicy::setLocalLoadPolicy(SecurityPolicy::AllowLocalLoadsForLocalAndSubstituteData);
     
+    RuntimeEnabledFeatures::sharedFeatures().setAttachmentElementEnabled(self.preferences.attachmentElementEnabled);
+
     return self;
 }
 
@@ -2148,16 +2154,6 @@ static NSMutableSet *knownPluginMIMETypes()
         webResourceLoadScheduler().suspendPendingRequests();
     else
         webResourceLoadScheduler().resumePendingRequests();
-}
-
-+ (void)_setAllowCookies:(BOOL)allow
-{
-    ResourceRequestBase::setDefaultAllowCookies(allow);
-}
-
-+ (BOOL)_allowCookies
-{
-    return ResourceRequestBase::defaultAllowCookies();
 }
 
 + (BOOL)_isUnderMemoryPressure
@@ -2939,7 +2935,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setExperimentalNotificationsEnabled([preferences experimentalNotificationsEnabled]);
     settings.setShowsURLsInToolTips([preferences showsURLsInToolTips]);
     settings.setShowsToolTipOverTruncatedText([preferences showsToolTipOverTruncatedText]);
-    DeprecatedGlobalSettings::setQTKitEnabled([preferences isQTKitEnabled]);
 #endif // PLATFORM(MAC)
 
     DatabaseManager::singleton().setIsAvailable([preferences databasesEnabled]);
@@ -3000,6 +2995,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setShadowDOMEnabled([preferences shadowDOMEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setCustomElementsEnabled([preferences customElementsEnabled]);
     RuntimeEnabledFeatures::sharedFeatures().setDataTransferItemsEnabled([preferences dataTransferItemsEnabled]);
+    RuntimeEnabledFeatures::sharedFeatures().setCustomPasteboardDataEnabled([preferences customPasteboardDataEnabled]);
 
 #if ENABLE(ATTACHMENT_ELEMENT)
     RuntimeEnabledFeatures::sharedFeatures().setAttachmentElementEnabled([preferences attachmentElementEnabled]);
@@ -3078,8 +3074,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
     [[self window] setAcceleratedDrawingEnabled:[preferences acceleratedDrawingEnabled]];
     [WAKView _setInterpolationQuality:[preferences _interpolationQuality]];
 #endif
-
-    DeprecatedGlobalSettings::setCustomPasteboardDataEnabled([preferences customPasteboardDataEnabled]);
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     settings.setMediaKeysStorageDirectory([preferences mediaKeysStorageDirectory]);

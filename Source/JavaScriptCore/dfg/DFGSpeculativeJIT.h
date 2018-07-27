@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -1262,6 +1262,11 @@ public:
         m_jit.setupArgumentsWithExecState(TrustedImmPtr::weakPointer(m_jit.graph(), arg1), arg2);
         return appendCall(operation);
     }
+    JITCompiler::Call callOperation(V_JITOperation_ECCZ operation, GPRReg arg1, GPRReg arg2, GPRReg arg3)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, arg2, arg3);
+        return appendCall(operation);
+    }
 
     JITCompiler::Call callOperationWithCallFrameRollbackOnException(V_JITOperation_ECb operation, void* pointer)
     {
@@ -1431,6 +1436,11 @@ public:
         m_jit.setupArgumentsWithExecState(arg1, arg2.gpr());
         return appendCallSetResult(operation, result);
     }
+    JITCompiler::Call callOperation(C_JITOperation_ECJ operation, GPRReg result, JSCell* arg1, JSValueRegs arg2)
+    {
+        m_jit.setupArgumentsWithExecState(TrustedImmPtr::weakPointer(m_jit.graph(), arg1), arg2.gpr());
+        return appendCallSetResult(operation, result);
+    }
     JITCompiler::Call callOperation(C_JITOperation_ECO operation, GPRReg result, GPRReg arg1, GPRReg arg2)
     {
         m_jit.setupArgumentsWithExecState(arg1, arg2);
@@ -1574,6 +1584,11 @@ public:
         return appendCallSetResult(operation, result.payloadGPR());
     }
     JITCompiler::Call callOperation(J_JITOperation_EGReoJss operation, JSValueRegs result, GPRReg arg1, GPRReg arg2, GPRReg arg3)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, arg2, arg3);
+        return appendCallSetResult(operation, result.payloadGPR());
+    }
+    JITCompiler::Call callOperation(J_JITOperation_EGReJss operation, JSValueRegs result, GPRReg arg1, TrustedImmPtr arg2, GPRReg arg3)
     {
         m_jit.setupArgumentsWithExecState(arg1, arg2, arg3);
         return appendCallSetResult(operation, result.payloadGPR());
@@ -1996,6 +2011,11 @@ public:
         m_jit.setupArgumentsWithExecState(arg1, arg2, arg3.payloadGPR());
         return appendCall(operation);
     }
+    JITCompiler::Call callOperation(V_JITOperation_ECCJZ operation, GPRReg arg1, GPRReg arg2, JSValueRegs arg3, GPRReg arg4)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, arg2, arg3.payloadGPR(), arg4);
+        return appendCall(operation);
+    }
 
     JITCompiler::Call callOperation(Z_JITOperation_EJ operation, GPRReg result, JSValueRegs arg1)
     {
@@ -2084,6 +2104,11 @@ public:
     JITCompiler::Call callOperation(C_JITOperation_ECJ operation, GPRReg result, GPRReg arg1, JSValueRegs arg2)
     {
         m_jit.setupArgumentsWithExecState(arg1, arg2.payloadGPR(), arg2.tagGPR());
+        return appendCallSetResult(operation, result);
+    }
+    JITCompiler::Call callOperation(C_JITOperation_ECJ operation, GPRReg result, JSCell* arg1, JSValueRegs arg2)
+    {
+        m_jit.setupArgumentsWithExecState(TrustedImmPtr::weakPointer(m_jit.graph(), arg1), arg2.payloadGPR(), arg2.tagGPR());
         return appendCallSetResult(operation, result);
     }
     JITCompiler::Call callOperation(C_JITOperation_ECO operation, GPRReg result, GPRReg arg1, GPRReg arg2)
@@ -2317,6 +2342,11 @@ public:
         return appendCallSetResult(operation, result.payloadGPR(), result.tagGPR());
     }
     JITCompiler::Call callOperation(J_JITOperation_EGReoJss operation, JSValueRegs result, GPRReg arg1, GPRReg arg2, GPRReg arg3)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, arg2, arg3);
+        return appendCallSetResult(operation, result.payloadGPR(), result.tagGPR());
+    }
+    JITCompiler::Call callOperation(J_JITOperation_EGReJss operation, JSValueRegs result, GPRReg arg1, TrustedImmPtr arg2, GPRReg arg3)
     {
         m_jit.setupArgumentsWithExecState(arg1, arg2, arg3);
         return appendCallSetResult(operation, result.payloadGPR(), result.tagGPR());
@@ -2569,6 +2599,11 @@ public:
     JITCompiler::Call callOperation(V_JITOperation_ECCJ operation, GPRReg arg1, GPRReg arg2, JSValueRegs arg3)
     {
         m_jit.setupArgumentsWithExecState(arg1, arg2, EABI_32BIT_DUMMY_ARG arg3.payloadGPR(), arg3.tagGPR());
+        return appendCall(operation);
+    }
+    JITCompiler::Call callOperation(V_JITOperation_ECCJZ operation, GPRReg arg1, GPRReg arg2, JSValueRegs arg3, GPRReg arg4)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, arg2, EABI_32BIT_DUMMY_ARG arg3.payloadGPR(), arg3.tagGPR(), arg4);
         return appendCall(operation);
     }
 
@@ -2944,6 +2979,8 @@ public:
     void compileSetAdd(Node*);
     void compileMapSet(Node*);
     void compileWeakMapGet(Node*);
+    void compileWeakSetAdd(Node*);
+    void compileWeakMapSet(Node*);
     void compileLoadKeyFromMapBucket(Node*);
     void compileLoadValueFromMapBucket(Node*);
     void compileExtractValueFromWeakMapGet(Node*);
@@ -3065,6 +3102,7 @@ public:
     void compileArrayPush(Node*);
     void compileNotifyWrite(Node*);
     void compileRegExpExec(Node*);
+    void compileRegExpExecNonGlobalOrSticky(Node*);
     void compileRegExpMatchFast(Node*);
     void compileRegExpTest(Node*);
     void compileStringReplace(Node*);
@@ -3104,6 +3142,7 @@ public:
     void compileGetSetter(Node*);
     void compileGetCallee(Node*);
     void compileGetArgumentCountIncludingThis(Node*);
+    void compileSetArgumentCountIncludingThis(Node*);
     void compileStrCat(Node*);
     void compileNewArrayWithSize(Node*);
     void compileNewTypedArray(Node*);
@@ -3120,7 +3159,7 @@ public:
     // Allocator for a cell of a specific size.
     template <typename StructureType> // StructureType can be GPR or ImmPtr.
     void emitAllocateJSCell(
-        GPRReg resultGPR, BlockDirectory* allocator, GPRReg allocatorGPR, StructureType structure,
+        GPRReg resultGPR, const JITAllocator& allocator, GPRReg allocatorGPR, StructureType structure,
         GPRReg scratchGPR, MacroAssembler::JumpList& slowPath)
     {
         m_jit.emitAllocateJSCell(resultGPR, allocator, allocatorGPR, structure, scratchGPR, slowPath);
@@ -3129,7 +3168,7 @@ public:
     // Allocator for an object of a specific size.
     template <typename StructureType, typename StorageType, typename MaskType> // StructureType, StorageType and, MaskType can be GPR or ImmPtr.
     void emitAllocateJSObject(
-        GPRReg resultGPR, BlockDirectory* allocator, GPRReg allocatorGPR, StructureType structure,
+        GPRReg resultGPR, const JITAllocator& allocator, GPRReg allocatorGPR, StructureType structure,
         StorageType storage, MaskType mask, GPRReg scratchGPR, MacroAssembler::JumpList& slowPath)
     {
         m_jit.emitAllocateJSObject(

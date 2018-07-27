@@ -51,6 +51,7 @@ class JSObject;
 class JSScope;
 class JSString;
 class JSValue;
+class RegExp;
 class RegExpObject;
 class Register;
 class Structure;
@@ -103,6 +104,7 @@ typedef char* UnusedPtr;
     Pc: Instruction* i.e. bytecode PC
     Q: int64_t
     R: Register
+    Re: RegExp*
     Reo: RegExpObject*
     S: size_t
     Sprt: SlowPathReturnType
@@ -136,6 +138,7 @@ typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EE)(ExecState*, ExecState*
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EGReoJ)(ExecState*, JSGlobalObject*, RegExpObject*, EncodedJSValue);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EGReoJss)(ExecState*, JSGlobalObject*, RegExpObject*, JSString*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EGJJ)(ExecState*, JSGlobalObject*, EncodedJSValue, EncodedJSValue);
+typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EGReJss)(ExecState*, JSGlobalObject*, RegExp*, JSString*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EI)(ExecState*, UniquedStringImpl*);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJ)(ExecState*, EncodedJSValue);
 typedef EncodedJSValue (JIT_OPERATION *J_JITOperation_EJZ)(ExecState*, EncodedJSValue, int32_t);
@@ -277,6 +280,8 @@ typedef void (JIT_OPERATION *V_JITOperation_ECZ)(ExecState*, JSCell*, int32_t);
 typedef void (JIT_OPERATION *V_JITOperation_ECC)(ExecState*, JSCell*, JSCell*);
 typedef void (JIT_OPERATION *V_JITOperation_ECliJsf)(ExecState*, CallLinkInfo*, JSFunction*);
 typedef void (JIT_OPERATION *V_JITOperation_ECCJ)(ExecState*, JSCell*, JSCell*, EncodedJSValue);
+typedef void (JIT_OPERATION *V_JITOperation_ECCZ)(ExecState*, JSCell*, JSCell*, int32_t);
+typedef void (JIT_OPERATION *V_JITOperation_ECCJZ)(ExecState*, JSCell*, JSCell*, EncodedJSValue, int32_t);
 typedef void (JIT_OPERATION *V_JITOperation_EZSymtabJ)(ExecState*, int32_t, SymbolTable*, EncodedJSValue);
 typedef void (JIT_OPERATION *V_JITOperation_EJ)(ExecState*, EncodedJSValue);
 typedef void (JIT_OPERATION *V_JITOperation_EJCI)(ExecState*, EncodedJSValue, JSCell*, UniquedStringImpl*);

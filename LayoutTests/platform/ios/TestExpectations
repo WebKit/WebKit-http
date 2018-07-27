@@ -558,6 +558,7 @@ fast/forms/input-readonly-focus.html [ Skip ]
 fast/forms/input-readonly-select.html [ Skip ]
 fast/forms/input-select-on-click.html [ Skip ]
 fast/forms/input-step-as-double.html [ Skip ]
+fast/forms/legend-overflow-hidden-hit-test.html [ Skip ]
 fast/forms/listbox-deselect-scroll.html [ Skip ]
 fast/forms/listbox-scrollbar-hit-test.html [ Skip ]
 fast/forms/listbox-selection-after-typeahead.html [ Skip ]
@@ -951,6 +952,7 @@ media/audio-playback-volume-changes-with-restrictions-and-user-gestures.html [ S
 media/audio-playback-volume-changes-with-restrictions.html [ Skip ]
 media/restricted-audio-playback-with-document-gesture.html [ Skip ]
 media/restricted-audio-playback-with-multiple-settimeouts.html [ Skip ]
+media/video-fullscreen-reload-crash.html [ Skip ]
 scrollbars/scrolling-backward-by-page-accounting-bottom-fixed-elements-on-keyboard-spacebar.html [ Skip ]
 scrollbars/scrolling-backward-by-page-on-keyboard-spacebar.html [ Skip ]
 scrollbars/scrolling-by-page-accounting-oversized-fixed-elements-on-keyboard-spacebar.html [ Skip ]
@@ -1790,7 +1792,7 @@ fast/events/tabindex-focus-blur-all.html [ Failure ]
 # Ref-test imported from W3C that is failing because type=image input elements have rounded corners on iOS.
 imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/image01.html [ ImageOnlyFailure ]
 # Ref-test imported form W3C that is failing because the test is off by a couple of pixels on iOS.
-imported/w3c/css/css-multicol-1/multicol-fill-auto-block-children-001.xht [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-multicol/multicol-fill-auto-block-children-001.xht [ ImageOnlyFailure ]
 
 fast/filter-image/clipped-filter.html [ ImageOnlyFailure ]
 fast/flexbox/flex-hang.html [ Failure ]
@@ -2449,12 +2451,12 @@ http/tests/security/mixedContent/websocket/insecure-websocket-in-main-frame.html
 
 webkit.org/b/149128 fast/text/control-characters [ ImageOnlyFailure ]
 
-webkit.org/b/148806 imported/w3c/css/css-multicol-1/multicol-rule-002.xht [ ImageOnlyFailure ]
-webkit.org/b/148806 imported/w3c/css/css-multicol-1/multicol-rule-px-001.xht [ ImageOnlyFailure ]
-webkit.org/b/148806 imported/w3c/css/css-multicol-1/multicol-rule-stacking-001.xht [ ImageOnlyFailure ]
-webkit.org/b/148806 imported/w3c/css/css-multicol-1/multicol-shorthand-001.xht [ ImageOnlyFailure ]
-webkit.org/b/148806 imported/w3c/css/css-multicol-1/multicol-span-all-block-sibling-003.xht [ ImageOnlyFailure ]
-webkit.org/b/148806 imported/w3c/css/css-multicol-1/multicol-span-all-margin-nested-firstchild-001.xht [ ImageOnlyFailure ]
+webkit.org/b/148806 imported/w3c/web-platform-tests/css/css-multicol/multicol-rule-002.xht [ ImageOnlyFailure ]
+webkit.org/b/148806 imported/w3c/web-platform-tests/css/css-multicol/multicol-rule-px-001.xht [ ImageOnlyFailure ]
+webkit.org/b/148806 imported/w3c/web-platform-tests/css/css-multicol/multicol-rule-stacking-001.xht [ ImageOnlyFailure ]
+webkit.org/b/148806 imported/w3c/web-platform-tests/css/css-multicol/multicol-shorthand-001.xht [ ImageOnlyFailure ]
+webkit.org/b/148806 imported/w3c/web-platform-tests/css/css-multicol/multicol-span-all-block-sibling-003.xht [ ImageOnlyFailure ]
+webkit.org/b/148806 imported/w3c/web-platform-tests/css/css-multicol/multicol-span-all-margin-nested-firstchild-001.xht [ ImageOnlyFailure ]
 
 # Enable "aria-current" test for iOS
 webkit.org/b/149297 accessibility/aria-current.html [ Pass ]
@@ -2797,6 +2799,7 @@ media/video-seek-to-current-time.html [ Failure ]
 
 fast/attachment/attachment-wrapping-action.html [ Pass ]
 fast/attachment/attachment-borderless.html [ Pass ]
+fast/images/pdf-as-image-dest-rect-change.html [ Pass ]
 
 fast/events/page-visibility-iframe-move-test.html [ Skip ]
 
@@ -2838,7 +2841,7 @@ webkit.org/b/163291 media/video-fullscreeen-only-playback.html [ Failure ]
 webkit.org/b/163291 media/video-play-audio-require-user-gesture.html [ Failure ]
 webkit.org/b/163291 media/video-play-require-user-gesture.html
 
-webkit.org/b/163755 imported/w3c/web-platform-tests/css/css-shapes-1 [ Skip ]
+webkit.org/b/163755 imported/w3c/web-platform-tests/css/css-shapes [ Skip ]
 
 # Variation fonts are not implemented earlier than iOS 11.
 fast/text/variations [ Pass Failure ImageOnlyFailure ]
@@ -3005,17 +3008,25 @@ webkit.org/b/174120 http/tests/resourceLoadStatistics/user-interaction-in-cross-
 http/tests/resourceLoadStatistics/user-interaction-only-reported-once-within-short-period-of-time.html [ Skip ]
 http/tests/resourceLoadStatistics/user-interaction-reported-after-website-data-removal.html [ Skip ]
 # Skipped in WK2 expectations because cookie partitioning is only available in macOS High Sierra and iOS 11.
-http/tests/resourceLoadStatistics/add-partitioning-to-redirect.html [ Pass ]
-http/tests/resourceLoadStatistics/remove-partitioning-from-redirect.html [ Pass ]
 http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html [ Pass ]
 http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout.html [ Pass ]
 http/tests/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction.html [ Pass ]
 http/tests/resourceLoadStatistics/third-party-cookie-with-and-without-user-interaction.html [ Pass ]
+http/tests/resourceLoadStatistics/non-prevalent-resources-can-access-cookies-in-a-third-party-context.html [ Pass ]
+http/tests/resourceLoadStatistics/add-partitioning-to-redirect.html [ Pass ]
+http/tests/resourceLoadStatistics/add-blocking-to-redirect.html [ Pass ]
+http/tests/resourceLoadStatistics/remove-partitioning-in-redirect.html [ Pass ]
+http/tests/resourceLoadStatistics/remove-blocking-in-redirect.html [ Pass ]
+http/tests/resourceLoadStatistics/grandfathering.html [ Pass ]
+http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store.html [ Pass ]
+http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour.html [ Pass ]
 
 webkit.org/b/175273 imported/w3c/web-platform-tests/html/browsers/windows/noreferrer-window-name.html [ Failure ]
 
-webkit.org/b/175353 imported/w3c/web-platform-tests/css/css-ui-3/outline-004.html [ ImageOnlyFailure ]
-webkit.org/b/175353 imported/w3c/web-platform-tests/css/css-ui-3/outline-style-014.html [ ImageOnlyFailure ]
+webkit.org/b/175353 imported/w3c/web-platform-tests/css/css-ui/outline-004.html [ ImageOnlyFailure ]
+webkit.org/b/175353 imported/w3c/web-platform-tests/css/css-ui/outline-style-014.html [ ImageOnlyFailure ]
+
+imported/w3c/web-platform-tests/css/mediaqueries/device-aspect-ratio-003.html [ ImageOnlyFailure ]
 
 webkit.org/b/170698 [ Release ] imported/w3c/web-platform-tests/IndexedDB/interleaved-cursors.html [ Pass Failure ]
 
@@ -3048,8 +3059,6 @@ crypto/subtle/ecdsa-import-pkcs8-key-p521-validate-ecprivatekey-parameters-publi
 webkit.org/b/155092 js/arraybuffer-wrappers.html [ Pass Timeout ]
 
 webkit.org/b/172052 [ Release ] imported/w3c/web-platform-tests/html/webappapis/timers/type-long-setinterval.html [ Pass Failure ]
-
-webkit.org/b/176878 [ Debug ] fast/multicol/spanner-crash-when-adding-summary.html [ Crash ]
 
 # <rdar://problem/32542437> REGRESSION (iOS 11): LayoutTest fast/events/ios/before-input-events-prevent-candidate-insertion.html is timing out
 fast/events/ios/before-input-events-prevent-candidate-insertion.html [ Timeout ]
@@ -3219,6 +3228,7 @@ media/modern-media-controls/scrubber-support [ Pass ]
 media/modern-media-controls/skip-back-button [ Pass ]
 media/modern-media-controls/skip-forward-button [ Pass ]
 media/modern-media-controls/slider [ Pass ]
+media/modern-media-controls/start-support [ Pass ]
 media/modern-media-controls/status-label [ Pass ]
 media/modern-media-controls/status-support [ Pass ]
 media/modern-media-controls/time-control [ Pass ]
@@ -3244,6 +3254,8 @@ media/modern-media-controls/mute-support/mute-support-press-on-button.html [ Ski
 media/modern-media-controls/pip-support/ipad/pip-support-tap.html [ Skip ]
 media/modern-media-controls/placard-support/ipad [ Skip ]
 media/modern-media-controls/scrubber-support/ipad/scrubber-support-drag.html [ Skip ]
+media/modern-media-controls/start-support/start-support-click-to-start.html [ Skip ]
+media/modern-media-controls/start-support/start-support-lowPowerMode.html [ Skip ]
 
 # There is no focus state for on iOS
 media/modern-media-controls/button/button-focus-state.html [ Skip ]
@@ -3258,6 +3270,7 @@ media/modern-media-controls/media-controller/media-controller-fullscreen-ltr.htm
 media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-inline.html [ Skip ]
 media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-pip-to-inline.html [ Skip ]
 media/modern-media-controls/placard-support/placard-support-airplay-fullscreen.html [ Skip ]
+media/modern-media-controls/start-support/start-support-fullscreen.html [ Skip ]
 
 # These tests specifically test iOS-only media controls features
 media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-button-padding.html [ Pass ]
@@ -3293,3 +3306,7 @@ webkit.org/b/180062 fast/text/user-installed-fonts/shadow-family.html [ ImageOnl
 webkit.org/b/180062 fast/text/user-installed-fonts/shadow-postscript.html [ ImageOnlyFailure ]
 webkit.org/b/180062 fast/text/user-installed-fonts/shadow.html [ ImageOnlyFailure ]
 webkit.org/b/180062 fast/text/user-installed-fonts/shadow-postscript-family.html [ ImageOnlyFailure ]
+
+webkit.org/b/181499 [ Release ] imported/w3c/web-platform-tests/service-workers/service-worker/update-after-navigation-fetch-event.https.html [ Pass Failure ]
+
+webkit.org/b/181838 js/slow-stress/Int32Array-alloc-huge-long-lived.html [ Slow ]

@@ -66,6 +66,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/css/parser"
     "${WEBCORE_DIR}/cssjit"
     "${WEBCORE_DIR}/dom/default"
+    "${WEBCORE_DIR}/dom/messageports"
     "${WEBCORE_DIR}/domjit"
     "${WEBCORE_DIR}/editing"
     "${WEBCORE_DIR}/history"
@@ -456,6 +457,7 @@ set(WebCore_NON_SVG_IDL_FILES
     animation/AnimationPlaybackEventInit.idl
     animation/AnimationTimeline.idl
     animation/CompositeOperation.idl
+    animation/ComputedTimingProperties.idl
     animation/DocumentTimeline.idl
     animation/FillMode.idl
     animation/IterationCompositeOperation.idl
@@ -1133,8 +1135,6 @@ if (ENABLE_ENCRYPTED_MEDIA)
         html/MediaEncryptedEvent.cpp
     )
     list(APPEND WebCore_IDL_FILES
-    )
-    list(APPEND WebCore_IDL_FILES
         Modules/encryptedmedia/MediaKeyMessageEvent.idl
         Modules/encryptedmedia/MediaKeySession.idl
         Modules/encryptedmedia/MediaKeySessionType.idl
@@ -1201,8 +1201,6 @@ if (ENABLE_WEBGL)
         html/canvas/WebGLVertexArrayObject.cpp
         html/canvas/WebGLVertexArrayObjectBase.cpp
         html/canvas/WebGLVertexArrayObjectOES.cpp
-
-        inspector/InspectorShaderProgram.cpp
     )
     list(APPEND WebCore_IDL_FILES
         html/canvas/ANGLEInstancedArrays.idl
@@ -1532,6 +1530,11 @@ if (ENABLE_USER_MESSAGE_HANDLERS)
         page/UserMessageHandlersNamespace.cpp
         page/WebKitNamespace.cpp
     )
+endif ()
+
+if (USE_OPENVR)
+  list(APPEND WebCore_INCLUDE_DIRECTORIES "${THIRDPARTY_DIR}/openvr/headers")
+  list(APPEND WebCore_LIBRARIES openvr_api)
 endif ()
 
 if (USE_WOFF2)

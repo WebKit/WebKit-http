@@ -37,6 +37,9 @@ http/tests/gzip-content-encoding [ Pass ]
 # FIXME: Mark as Pass once the fix for <rdar://problem/33822249> ships.
 http/tests/xmlhttprequest/gzip-content-type-no-content-encoding.html [ Pass Failure ]
 
+fast/text/mac [ Pass ]
+webkit.org/b/181964 fast/text/mac/select-character-before-zero-width-joiner.html [ ImageOnlyFailure ]
+
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
 #//////////////////////////////////////////////////////////////////////////////////////////
@@ -810,7 +813,7 @@ webkit.org/b/122033 media/video-duration-known-after-eos.html [ Pass Timeout ]
 webkit.org/b/122042 media/media-controller-playback.html [ Pass Timeout ]
 webkit.org/b/122126 media/click-volume-bar-not-pausing.html [ Pass Timeout ]
 webkit.org/b/122507 media/track/track-cue-rendering.html [ Pass Failure ]
-webkit.org/b/123010 media/W3C/audio/networkState/networkState_during_loadstart.html [ Pass Timeout ]
+webkit.org/b/123010 media/W3C/audio/networkState/networkState_during_loadstart.html [ Pass Failure ]
 webkit.org/b/123099 media/media-controller-time-clamp.html [ Pass Timeout ]
 webkit.org/b/123522 media/track/track-in-band-legacy-api.html [ Pass Failure Crash ]
 webkit.org/b/130490 media/video-remote-control-playpause.html [ Pass Failure ]
@@ -1084,6 +1087,7 @@ webkit.org/b/168090 [ Debug ] inspector/debugger/breakpoint-columns.html [ Pass 
 webkit.org/b/161951 [ Release ] inspector/debugger/breakpoints/resolved-dump-each-line.html [ Pass Timeout ]
 webkit.org/b/167711 [ Debug ] inspector/debugger/probe-manager-add-remove-actions.html [ Slow ]
 webkit.org/b/168399 [ Debug ] inspector/debugger/search-scripts.html [ Pass Timeout ]
+webkit.org/b/181952 [ Debug ] inspector/debugger/tail-deleted-frames-from-vm-entry.html [ Slow ]
 webkit.org/b/169119 [ Debug ] inspector/debugger/tail-deleted-frames-this-value.html [ Pass Timeout ]
 webkit.org/b/168387 [ Debug ] inspector/debugger/tail-recursion.html [ Pass Timeout ]
 webkit.org/b/170127 inspector/dom-debugger/dom-breakpoints.html [ Pass Timeout ]
@@ -1105,6 +1109,7 @@ webkit.org/b/153108 [ Debug ] inspector/model/scope-chain-node.html [ Pass Timeo
 webkit.org/b/164278 inspector/storage/domStorage-events.html [ Pass Failure ]
 webkit.org/b/155607 inspector/unit-tests/heap-snapshot.html [ Pass Timeout ]
 webkit.org/b/157999 inspector/unit-tests/heap-snapshot-collection-event.html [ Pass Timeout ]
+webkit.org/b/181832 inspector/unit-tests/throttle.html [ Pass Failure ]
 webkit.org/b/161361 inspector/unit-tests/yieldable-task.html [ Pass Failure ]
 webkit.org/b/169228 inspector/worker/console-basic.html [ Pass Timeout ]
 webkit.org/b/164872 inspector/worker/debugger-multiple-targets-pause.html [ Pass Failure Timeout ]
@@ -1178,7 +1183,6 @@ webkit.org/b/154753 js/basic-map.html [ Skip ]
 
 # outline: auto -focusring.
 accessibility/mac/selection-element-tabbing-to-link.html [ Pass Failure ]
-accessibility/mac/selection-notification-focus-change.html [ Pass Failure ]
 
 webkit.org/b/152506 webgl/1.0.2/conformance/extensions/get-extension.html [ Pass Timeout ]
 
@@ -1484,6 +1488,7 @@ media/modern-media-controls/seek-forward-support [ Pass ]
 media/modern-media-controls/skip-back-button [ Pass ]
 media/modern-media-controls/skip-forward-button [ Pass ]
 media/modern-media-controls/slider [ Pass ]
+media/modern-media-controls/start-support [ Pass ]
 media/modern-media-controls/status-label [ Pass ]
 media/modern-media-controls/status-support [ Pass ]
 media/modern-media-controls/text-tracks [ Pass ]
@@ -1580,8 +1585,6 @@ webkit.org/b/176444 fast/canvas/webgl/webgl2-getActiveUniforms.html [ Failure ]
 webkit.org/b/161491 media/video-main-content-allow-then-scroll.html [ Pass Failure ]
 
 webkit.org/b/172052 [ Debug ] imported/w3c/web-platform-tests/html/webappapis/timers/type-long-setinterval.html [ Pass Failure ]
-
-webkit.org/b/176878 [ Debug ] fast/multicol/spanner-crash-when-adding-summary.html [ Crash ]
 
 # <rdar://problem/29031509> REGRESSION? (FontParser-195): svg/W3C-SVG-1.1/fonts-elem-* and svg/W3C-SVG-1.1/text-intro-* tests failing
 [ HighSierra+ ] svg/W3C-SVG-1.1/fonts-elem-01-t.svg [ Failure ]
@@ -1746,19 +1749,14 @@ webkit.org/b/175998 http/tests/security/mixedContent/insecure-css-with-secure-co
 [ ElCapitan Sierra ] platform/mac/media/encrypted-media/fps-generateRequest.html [ Skip ]
 [ ElCapitan Sierra ] platform/mac/media/encrypted-media/fps-encrypted-event.html [ Skip ]
 
-# rdar://problem/35395437
-[ HighSierra+ ] imported/w3c/web-platform-tests/media-source/mediasource-play.html [ Failure ]
-[ HighSierra+ ] imported/w3c/web-platform-tests/media-source/mediasource-redundant-seek.html [ Failure ]
-[ HighSierra+ ] imported/w3c/web-platform-tests/media-source/mediasource-remove.html [ Failure ]
-
 webkit.org/b/165311 [ Sierra+ ] media/modern-media-controls/pip-support/pip-support-click.html [ Pass Failure ]
 
 webkit.org/b/176693 storage/indexeddb/modern/idbtransaction-objectstore-failures-private.html [ Pass Failure ]
 
 # User-installed font infrastructure is ony present on certain OSes.
 webkit.org/b/180062 [ ElCapitan Sierra HighSierra ] fast/text/user-installed-fonts/disable.html [ ImageOnlyFailure ]
-webkit.org/b/180062 [ ElCapitan Sierra HighSierra ] fast/text/user-installed-fonts/shadow-postscript.html [ ImageOnlyFailure ]
-webkit.org/b/180062 [ ElCapitan Sierra HighSierra ] fast/text/user-installed-fonts/shadow.html [ ImageOnlyFailure ]
+webkit.org/b/180062 fast/text/user-installed-fonts/shadow-postscript.html [ ImageOnlyFailure ]
+webkit.org/b/180062 fast/text/user-installed-fonts/shadow.html [ ImageOnlyFailure ]
 
 webkit.org/b/180560 accessibility/mac/html5-input-number.html [ Pass Failure ]
 
@@ -1779,4 +1777,21 @@ webkit.org/b/181494 accessibility/mac/aria-multiple-liveregions-notification.htm
 webkit.org/b/181100 inspector/worker/worker-recover-if-inspector-close.html [ Pass Failure ]
 
 webkit.org/b/180260 [ HighSierra ] http/wpt/resource-timing/rt-resources-per-worker.html [ Pass Failure ]
+
+webkit.org/b/181830 [ Debug ] media/video-main-content-allow-then-deny.html [ Pass Failure ]
+
+webkit.org/b/173928 storage/websql/database-lock-after-reload.html [ Pass Failure ]
+
+webkit.org/b/180171 [ HighSierra ] platform/mac/webrtc/captureCanvas-webrtc-software-encoder.html [ Pass Failure Timeout ]
+
+webkit.org/b/181565 imported/w3c/web-platform-tests/media-source/mediasource-config-change-mp4-a-bitrate.html [ Pass Failure ]
+webkit.org/b/181565 imported/w3c/web-platform-tests/media-source/mediasource-config-change-mp4-v-bitrate.html [ Pass Failure ]
+webkit.org/b/181565 imported/w3c/web-platform-tests/media-source/mediasource-config-change-mp4-v-framesize.html [ Pass Failure ]
+
+webkit.org/b/181966 [ Debug ] media/W3C/audio/events/event_progress.html [ Pass Failure ]
+webkit.org/b/181966 media/W3C/video/events/event_order_loadstart_progress.html [ Pass Failure ]
+
+webkit.org/b/181969 fast/events/message-port.html [ Skip ]
+
+webkit.org/b/181831 [ HighSierra+ ] fast/forms/searchfield-heights.html [ Pass Failure ]
 

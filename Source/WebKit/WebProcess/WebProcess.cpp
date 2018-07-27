@@ -57,6 +57,7 @@
 #include "WebLoaderStrategy.h"
 #include "WebMediaKeyStorageManager.h"
 #include "WebMemorySampler.h"
+#include "WebMessagePortChannelProvider.h"
 #include "WebPage.h"
 #include "WebPageGroupProxy.h"
 #include "WebPlatformStrategies.h"
@@ -101,12 +102,12 @@
 #include <WebCore/MainFrame.h>
 #include <WebCore/MemoryCache.h>
 #include <WebCore/MemoryRelease.h>
+#include <WebCore/MessagePort.h>
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/Page.h>
 #include <WebCore/PageCache.h>
 #include <WebCore/PageGroup.h>
 #include <WebCore/PlatformMediaSessionManager.h>
-#include <WebCore/ResourceHandle.h>
 #include <WebCore/ResourceLoadObserver.h>
 #include <WebCore/ResourceLoadStatistics.h>
 #include <WebCore/RuntimeApplicationChecks.h>
@@ -127,7 +128,6 @@
 #endif
 
 #if PLATFORM(COCOA)
-#include "CookieStorageShim.h"
 #include "ObjCObjectGraph.h"
 #include "UserMediaCaptureManager.h"
 #endif
@@ -186,7 +186,6 @@ WebProcess::WebProcess()
     // limited.
     addSupplement<WebGeolocationManager>();
     addSupplement<WebCookieManager>();
-    addSupplement<AuthenticationManager>();
 
 #if ENABLE(NOTIFICATIONS)
     addSupplement<WebNotificationManager>();
@@ -216,6 +215,8 @@ WebProcess::~WebProcess()
 
 void WebProcess::initializeProcess(const ChildProcessInitializationParameters& parameters)
 {
+    MessagePortChannelProvider::setSharedProvider(WebMessagePortChannelProvider::singleton());
+    
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
     // This call is needed when the WebProcess is not running the NSApplication event loop.
     // Otherwise, calling enableSandboxStyleFileQuarantine() will fail.
@@ -271,10 +272,6 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 #endif
 
     platformInitializeWebProcess(WTFMove(parameters));
-
-#if USE(NETWORK_SESSION)
-    SessionTracker::setSession(PAL::SessionID::defaultSessionID(), NetworkSession::create({ }));
-#endif
 
     // Match the QoS of the UIProcess and the scrolling thread but use a slightly lower priority.
     WTF::Thread::setCurrentThreadIsUserInteractive(-1);
@@ -385,9 +382,6 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 
     ensureNetworkProcessConnection();
 
-#if PLATFORM(COCOA) && !USE(NETWORK_SESSION)
-    CookieStorageShim::singleton().initialize();
-#endif
     setTerminationTimeout(parameters.terminationTimeout);
 
     resetPlugInAutoStartOriginHashes(parameters.plugInAutoStartOriginHashes);
@@ -417,7 +411,9 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-    ServiceWorkerProvider::setSharedProvider(WebServiceWorkerProvider::singleton());
+    auto& serviceWorkerProvider = WebServiceWorkerProvider::singleton();
+    serviceWorkerProvider.setHasRegisteredServiceWorkers(parameters.hasRegisteredServiceWorkers);
+    ServiceWorkerProvider::setSharedProvider(serviceWorkerProvider);
 #endif
 
 #if ENABLE(WEBASSEMBLY)
@@ -427,6 +423,8 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
     ResourceLoadObserver::shared().setShouldLogUserInteraction(parameters.shouldLogUserInteraction);
 #endif
+
+    RELEASE_LOG(Process, "%p - WebProcess::initializeWebProcess: Presenting process = %d", this, WebCore::presentingApplicationPID());
 }
 
 void WebProcess::registerURLSchemeAsEmptyDocument(const String& urlScheme)
@@ -554,12 +552,6 @@ void WebProcess::setCacheModel(uint32_t cm)
 void WebProcess::clearCachedCredentials()
 {
     NetworkStorageSession::defaultStorageSession().credentialStorage().clearCredentials();
-#if USE(NETWORK_SESSION)
-    if (auto* networkSession = SessionTracker::networkSession(PAL::SessionID::defaultSessionID()))
-        networkSession->clearCredentials();
-    else
-        ASSERT_NOT_REACHED();
-#endif
 }
 
 WebPage* WebProcess::focusedWebPage() const
@@ -1048,6 +1040,32 @@ void WebProcess::backgroundResponsivenessPing()
     parentProcessConnection()->send(Messages::WebProcessProxy::DidReceiveBackgroundResponsivenessPing(), 0);
 }
 
+void WebProcess::syncIPCMessageWhileWaitingForSyncReplyForTesting()
+{
+}
+
+void WebProcess::didTakeAllMessagesForPort(Vector<MessageWithMessagePorts>&& messages, uint64_t messageCallbackIdentifier, uint64_t messageBatchIdentifier)
+{
+    WebMessagePortChannelProvider::singleton().didTakeAllMessagesForPort(WTFMove(messages), messageCallbackIdentifier, messageBatchIdentifier);
+}
+
+void WebProcess::checkProcessLocalPortForActivity(const MessagePortIdentifier& port, uint64_t callbackIdentifier)
+{
+    WebMessagePortChannelProvider::singleton().checkProcessLocalPortForActivity(port, callbackIdentifier);
+}
+
+void WebProcess::didCheckRemotePortForActivity(uint64_t callbackIdentifier, bool hasActivity)
+{
+    WebMessagePortChannelProvider::singleton().didCheckRemotePortForActivity(callbackIdentifier, hasActivity);
+}
+
+void WebProcess::messagesAvailableForPort(const MessagePortIdentifier& identifier)
+{
+    auto port = MessagePort::existingMessagePortForIdentifier(identifier);
+    if (port)
+        port->messageAvailable();
+}
+
 #if ENABLE(GAMEPAD)
 
 void WebProcess::setInitialGamepads(const Vector<WebKit::GamepadData>& gamepadDatas)
@@ -1105,7 +1123,7 @@ NetworkProcessConnection& WebProcess::ensureNetworkProcessConnection()
     if (!m_networkProcessConnection) {
         IPC::Attachment encodedConnectionIdentifier;
 
-        if (!parentProcessConnection()->sendSync(Messages::WebProcessProxy::GetNetworkProcessConnection(), Messages::WebProcessProxy::GetNetworkProcessConnection::Reply(encodedConnectionIdentifier), 0))
+        if (!parentProcessConnection()->sendSync(Messages::WebProcessProxy::GetNetworkProcessConnection(), Messages::WebProcessProxy::GetNetworkProcessConnection::Reply(encodedConnectionIdentifier), 0, Seconds::infinity(), IPC::SendSyncOption::DoNotProcessIncomingMessagesWhenWaitingForSyncReply))
             CRASH();
 
 #if USE(UNIX_DOMAIN_SOCKETS)
@@ -1645,6 +1663,12 @@ void WebProcess::establishWorkerContextConnectionToStorageProcess(uint64_t pageI
     auto& ipcConnection = ensureWebToStorageProcessConnection(initialSessionID).connection();
     SWContextManager::singleton().setConnection(std::make_unique<WebSWContextManagerConnection>(ipcConnection, pageID, store));
 }
+
+void WebProcess::registerServiceWorkerClients(PAL::SessionID sessionID)
+{
+    ServiceWorkerProvider::singleton().registerServiceWorkerClients(sessionID);
+}
+
 #endif
 
 } // namespace WebKit

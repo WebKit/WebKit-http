@@ -41,7 +41,7 @@
 #include <wtf/WeakPtr.h>
 #include <wtf/text/WTFString.h>
 
-using _WKRectEdge = NSInteger;
+using _WKRectEdge = NSUInteger;
 
 OBJC_CLASS NSAccessibilityRemoteUIElement;
 OBJC_CLASS NSImmediateActionGestureRecognizer;
@@ -331,9 +331,7 @@ public:
     void lowercaseWord();
     void capitalizeWord();
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     void requestCandidatesForSelectionIfNeeded();
-#endif
 
     void preferencesDidChange();
 
@@ -509,9 +507,7 @@ public:
     WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection();
     void setUserInterfaceLayoutDirection(NSUserInterfaceLayoutDirection);
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200 
     void handleAcceptedCandidate(NSTextCheckingResult *acceptedCandidate);
-#endif
 
 #if HAVE(TOUCH_BAR)
     NSTouchBar *makeTouchBar();
@@ -604,9 +600,7 @@ private:
     bool mightBeginDragWhileInactive();
     bool mightBeginScrollWhileInactive();
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     void handleRequestedCandidates(NSInteger sequenceNumber, NSArray<NSTextCheckingResult *> *candidates);
-#endif
 
     WeakObjCPtr<NSView<WebViewImplDelegate>> m_view;
     std::unique_ptr<PageClient> m_pageClient;
@@ -628,8 +622,8 @@ private:
     bool m_automaticallyAdjustsContentInsets { false };
     CGFloat m_pendingTopContentInset { 0 };
     bool m_didScheduleSetTopContentInset { false };
-
-    CGSize m_resizeScrollOffset { 0, 0 };
+    
+    CGSize m_scrollOffsetAdjustment { 0, 0 };
 
     CGSize m_intrinsicContentSize { 0, 0 };
     CGFloat m_overrideDeviceScaleFactor { 0 };
@@ -719,10 +713,8 @@ private:
     RetainPtr<NSEvent> m_keyDownEventBeingResent;
     Vector<WebCore::KeypressCommand>* m_collectedKeypressCommands { nullptr };
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     String m_lastStringForCandidateRequest;
     NSInteger m_lastCandidateRequestSequenceNumber;
-#endif
     NSRange m_softSpaceRange { NSNotFound, 0 };
     bool m_isHandlingAcceptedCandidate { false };
     bool m_requiresUserActionForEditingControlsManager { false };

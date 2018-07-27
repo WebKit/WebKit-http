@@ -879,6 +879,7 @@ class Port(object):
             'DBUS_SESSION_BUS_ADDRESS',
             'LANG',
             'LD_LIBRARY_PATH',
+            'TERM',
             'XDG_DATA_DIRS',
             'XDG_RUNTIME_DIR',
 
@@ -1431,7 +1432,7 @@ class Port(object):
         if args:
             run_script_command.extend(args)
         output = self._executive.run_command(run_script_command, cwd=self.webkit_base(), decode_output=decode_output, env=env)
-        _log.debug('Output of %s:\n%s' % (run_script_command, output))
+        _log.debug('Output of %s:\n%s' % (run_script_command, output.encode('utf-8') if decode_output else output))
         return output
 
     def _build_driver(self):
@@ -1495,7 +1496,7 @@ class Port(object):
         symbols = ''
         for path_to_module in self._modules_to_search_for_symbols():
             try:
-                symbols += self._executive.run_command([self.nm_command(), path_to_module], error_handler=self._executive.ignore_error)
+                symbols += self._executive.run_command([self.nm_command(), path_to_module], ignore_errors=True)
             except OSError as e:
                 _log.warn("Failed to run nm: %s.  Can't determine supported features correctly." % e)
         return symbols

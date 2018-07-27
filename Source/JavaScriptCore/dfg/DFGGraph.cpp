@@ -217,6 +217,8 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
         out.print(comma, NodeFlagsDump(node->flags()));
     if (node->prediction())
         out.print(comma, SpeculationDump(node->prediction()));
+    if (node->hasNumberOfArgumentsToSkip())
+        out.print(comma, "numberOfArgumentsToSkip = ", node->numberOfArgumentsToSkip());
     if (node->hasArrayMode())
         out.print(comma, node->arrayMode());
     if (node->hasArithUnaryType())
@@ -346,6 +348,8 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
         out.print(comma, "id", data->identifierNumber, "{", identifiers()[data->identifierNumber], "}");
         out.print(", domJIT = ", RawPointer(data->domJIT));
     }
+    if (node->hasIgnoreLastIndexIsWritable())
+        out.print(comma, "ignoreLastIndexIsWritable = ", node->ignoreLastIndexIsWritable());
     if (node->isConstant())
         out.print(comma, pointerDumpInContext(node->constant(), context));
     if (node->isJump())

@@ -59,7 +59,6 @@ public:
     void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) override;
 
 protected:
-    void insertedIntoTree() override;
     void willBeDestroyed() override;
     
     // This method is called at the start of layout to wipe away all of the floats in our floating objects list. It also
@@ -78,7 +77,6 @@ protected:
     LayoutUnit collapsedMarginAfter() const final { return maxPositiveMarginAfter() - maxNegativeMarginAfter(); }
 
     void dirtyLinesFromChangedChild(RenderObject& child) final { lineBoxes().dirtyLinesFromChangedChild(*this, child); }
-    void updateLogicalHeight() override;
 
     void paintColumnRules(PaintInfo&, const LayoutPoint&) override;
 
@@ -349,7 +347,9 @@ public:
     // Helper methods for computing line counts and heights for line counts.
     RootInlineBox* lineAtIndex(int) const;
     int lineCount(const RootInlineBox* = nullptr, bool* = nullptr) const;
-    int heightForLineCount(int);
+    int logicalHeightForLineCount(int);
+    int logicalHeightExcludingLineCount(int);
+    
     void clearTruncation();
 
     void setHasMarkupTruncation(bool b) { setRenderBlockFlowHasMarkupTruncation(b); }
@@ -393,6 +393,8 @@ public:
     // unbreakable content, between orphans and widows, etc.). This will be used as a hint to the
     // column balancer to help set a good minimum column height.
     void updateMinimumPageHeight(LayoutUnit offset, LayoutUnit minHeight);
+    
+    void determineLogicalLeftPositionForChild(RenderBox& child, ApplyLayoutDeltaMode = DoNotApplyLayoutDelta);
 
     void addFloatsToNewParent(RenderBlockFlow& toBlockFlow) const;
 
@@ -458,8 +460,7 @@ protected:
     virtual void computeColumnCountAndWidth();
 
     virtual void cachePriorCharactersIfNeeded(const LazyLineBreakIterator&) {};
-    
-protected:
+
     // Called to lay out the legend for a fieldset or the ruby text of a ruby run. Also used by multi-column layout to handle
     // the flow thread child.
     void layoutExcludedChildren(bool relayoutChildren) override;
@@ -507,8 +508,6 @@ private:
     bool hasOverhangingFloats() { return parent() && containsFloats() && lowestFloatLogicalBottom() > logicalHeight(); }
     LayoutUnit getClearDelta(RenderBox& child, LayoutUnit yPos);
 
-    void determineLogicalLeftPositionForChild(RenderBox& child, ApplyLayoutDeltaMode = DoNotApplyLayoutDelta);
-    
     bool hitTestFloats(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset) override;
     bool hitTestInlineChildren(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override;
 

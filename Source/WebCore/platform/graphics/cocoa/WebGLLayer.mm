@@ -54,8 +54,7 @@ using namespace WebCore;
     self = [super init];
     _devicePixelRatio = context->getContextAttributes().devicePixelRatio;
 #if PLATFORM(MAC)
-    if (!context->getContextAttributes().alpha)
-        self.opaque = YES;
+    self.contentsOpaque = !context->getContextAttributes().alpha;
     self.transform = CATransform3DIdentity;
     self.contentsScale = _devicePixelRatio;
 #endif
@@ -154,9 +153,14 @@ static void freeData(void *, const void *data, size_t /* size */)
     _contentsBuffer = WebCore::IOSurface::create(size, sRGBColorSpaceRef());
     _drawingBuffer = WebCore::IOSurface::create(size, sRGBColorSpaceRef());
     _spareBuffer = WebCore::IOSurface::create(size, sRGBColorSpaceRef());
+
     ASSERT(_contentsBuffer);
     ASSERT(_drawingBuffer);
     ASSERT(_spareBuffer);
+
+    _contentsBuffer->migrateColorSpaceToProperties();
+    _drawingBuffer->migrateColorSpaceToProperties();
+    _spareBuffer->migrateColorSpaceToProperties();
 }
 
 - (void)bindFramebufferToNextAvailableSurface

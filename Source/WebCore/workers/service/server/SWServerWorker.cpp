@@ -44,7 +44,7 @@ SWServerWorker* SWServerWorker::existingWorkerForIdentifier(ServiceWorkerIdentif
 }
 
 // FIXME: Use r-value references for script and contentSecurityPolicy
-SWServerWorker::SWServerWorker(SWServer& server, SWServerRegistration& registration, SWServerToContextConnectionIdentifier contextConnectionIdentifier, const URL& scriptURL, const String& script, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicy, WorkerType type, ServiceWorkerIdentifier identifier)
+SWServerWorker::SWServerWorker(SWServer& server, SWServerRegistration& registration, std::optional<SWServerToContextConnectionIdentifier> contextConnectionIdentifier, const URL& scriptURL, const String& script, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicy, WorkerType type, ServiceWorkerIdentifier identifier)
     : m_server(server)
     , m_registrationKey(registration.key())
     , m_contextConnectionIdentifier(contextConnectionIdentifier)
@@ -117,7 +117,7 @@ void SWServerWorker::contextTerminated()
 
 std::optional<ServiceWorkerClientData> SWServerWorker::findClientByIdentifier(const ServiceWorkerClientIdentifier& clientId) const
 {
-    return m_server.serviceWorkerClientByID(clientId);
+    return m_server.serviceWorkerClientWithOriginByID(origin(), clientId);
 }
 
 void SWServerWorker::matchAll(const ServiceWorkerClientQueryOptions& options, ServiceWorkerClientsMatchAllCallback&& callback)

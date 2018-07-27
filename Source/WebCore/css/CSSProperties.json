@@ -4306,11 +4306,11 @@
                 "aliases": [
                     "-webkit-column-gap"
                 ],
-                "custom": "All"
+                "converter": "GapLength"
             },
             "specification":  {
                 "category": "css-multicol",
-                "url": ""
+                "url": "https://drafts.csswg.org/css-multicol/#column-gap"
             }
         },
         "-webkit-column-progression": {
@@ -5082,6 +5082,12 @@
         },
         "-webkit-line-clamp": {
             "status": "non-standard"
+        },
+        "-webkit-lines-clamp": {
+            "status": "non-standard",
+            "codegen-properties": {
+                "custom": "Value"
+            }
         },
         "-webkit-line-grid": {
             "inherited": true,

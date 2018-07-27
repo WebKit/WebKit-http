@@ -1,3 +1,145 @@
+2018-01-30  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        A disallowed user-installed font may be used if its PostScript name is specified
+        https://bugs.webkit.org/show_bug.cgi?id=180951
+
+        Reviewed by Brent Fulgham.
+
+        * pal/spi/cocoa/CoreTextSPI.h:
+
+2018-01-29  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Add a compile-time feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=182211
+        <rdar://problem/36936365>
+
+        Reviewed by Brent Fulgham.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-01-27  Dan Bernstein  <mitz@apple.com>
+
+        HaveInternalSDK includes should be "#include?"
+        https://bugs.webkit.org/show_bug.cgi?id=179670
+
+        * Configurations/Base.xcconfig:
+
+2018-01-24  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Windows build after r227552
+        https://bugs.webkit.org/show_bug.cgi?id=182026
+
+        * pal/spi/cg/CoreGraphicsSPI.h:
+
+2018-01-24  Alex Christensen  <achristensen@webkit.org>
+
+        Remove pre-Sierra-OS-specific code in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=182026
+
+        Reviewed by Tim Horton.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+        * pal/spi/cg/CoreGraphicsSPI.h:
+        * pal/spi/cocoa/DataDetectorsCoreSPI.h:
+        * pal/spi/cocoa/QuartzCoreSPI.h:
+        * pal/spi/mac/AVFoundationSPI.h:
+        * pal/spi/mac/NSMenuSPI.h:
+        * pal/spi/mac/NSScrollingMomentumCalculatorSPI.h:
+        * pal/spi/mac/PIPSPI.h:
+
+2018-01-23  Dean Jackson  <dino@apple.com>
+
+        REGRESSION (r222961?): sRGB images shown in WebGL are over-saturated on a wide gamut monitor
+        https://bugs.webkit.org/show_bug.cgi?id=182033
+        <rdar://problem/36377780>
+
+        Reviewed by Antoine Quint.
+
+        Expose an IOSurface colorspace property name, and a function to serialize a CGColorSpace.
+
+        * pal/spi/cg/CoreGraphicsSPI.h:
+        * pal/spi/cocoa/IOSurfaceSPI.h:
+
+2018-01-23  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Sleep inhibitors do not work under Flatpak
+        https://bugs.webkit.org/show_bug.cgi?id=180812
+
+        Reviewed by Carlos Garcia Campos.
+
+        Ensure SleepDisablerGLib works even when running inside a Flatpak sandbox by using the
+        Freedesktop inhibit portal D-Bus API.
+
+        Unfortunately this has to be tested manually.
+
+        * pal/system/glib/SleepDisablerGLib.cpp:
+        (PAL::SleepDisablerGLib::SleepDisablerGLib):
+        (PAL::SleepDisablerGLib::~SleepDisablerGLib):
+        (PAL::SleepDisablerGLib::acquireInhibitor):
+        (PAL::SleepDisablerGLib::acquireInhibitorViaScreenSaverProxy):
+        (PAL::SleepDisablerGLib::acquireInhibitorViaInhibitPortalProxy):
+        (PAL::SleepDisablerGLib::releaseInhibitor):
+        (PAL::SleepDisablerGLib::releaseInhibitorViaScreenSaverProxy):
+        (PAL::SleepDisablerGLib::releaseInhibitorViaInhibitPortalProxy):
+
+2018-01-22  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Support font collections
+        https://bugs.webkit.org/show_bug.cgi?id=181826
+        <rdar://problem/36455137>
+
+        Reviewed by Dean Jackson.
+
+        * pal/spi/cocoa/CoreTextSPI.h:
+
+2018-01-21  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add a new feature flag for EXTRA_ZOOM_MODE and reintroduce AdditionalFeatureDefines.h
+        https://bugs.webkit.org/show_bug.cgi?id=181918
+
+        Reviewed by Tim Horton.
+
+        Add EXTRA_ZOOM_MODE to FeatureDefines.xconfig (off by default).
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-01-18  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Streamline and future-proof target-macOS-version-dependent build setting definitions
+        https://bugs.webkit.org/show_bug.cgi?id=181803
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig: Updated.
+        * Configurations/DebugRelease.xcconfig: Ditto.
+        * Configurations/FeatureDefines.xcconfig: Adopted macOSTargetConditionals helpers.
+        * Configurations/Version.xcconfig: Updated.
+        * Configurations/macOSTargetConditionals.xcconfig: Added. Defines helper build settings
+          useful for defining settings that depend on the target macOS version.
+
+2018-01-17  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Block cookies for prevalent resources without user interaction
+        https://bugs.webkit.org/show_bug.cgi?id=177394
+        <rdar://problem/34613960>
+
+        Reviewed by Alex Christensen.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+            Declaration of _initWithIdentifier() on NSHTTPCookieStorage.
+
+2018-01-17  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r227098.
+
+        This broke the build.
+
+        Reverted changeset:
+
+        "Remove linked-on test for Snow Leopard"
+        https://bugs.webkit.org/show_bug.cgi?id=181770
+        https://trac.webkit.org/changeset/227098
+
 2018-01-17  Dean Jackson  <dino@apple.com>
 
         Remove linked-on test for Snow Leopard

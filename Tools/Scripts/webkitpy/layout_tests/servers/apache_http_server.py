@@ -64,7 +64,7 @@ class LayoutTestApacheHttpd(http_server_base.HttpServerBase):
 
         self._pid_file = self._filesystem.join(self._runtime_path, '%s.pid' % self._name)
 
-        if port_obj.host.platform.is_win():
+        if port_obj.host.platform.is_cygwin():
             # Convert to MSDOS file naming:
             precompiledBuildbot = re.compile('^/home/buildbot')
             precompiledDrive = re.compile('^/cygdrive/[cC]')
@@ -89,9 +89,10 @@ class LayoutTestApacheHttpd(http_server_base.HttpServerBase):
 
         # FIXME: We shouldn't be calling a protected method of _port_obj!
         executable = self._port_obj._path_to_apache()
+        config_file_path = self._copy_apache_config_file(self.tests_dir, output_dir)
 
         start_cmd = [executable,
-            '-f', "\"%s\"" % self._get_apache_config_file_path(self.tests_dir, output_dir),
+            '-f', "\"%s\"" % config_file_path,
             '-C', "\'DocumentRoot \"%s\"\'" % document_root,
             '-c', "\'TypesConfig \"%s\"\'" % mime_types_path,
             '-c', "\'PHPINIDir \"%s\"\'" % php_ini_dir,
@@ -141,7 +142,7 @@ class LayoutTestApacheHttpd(http_server_base.HttpServerBase):
                         '-c', "\'</Location>\'"]
 
         stop_cmd = [executable,
-            '-f', "\"%s\"" % self._get_apache_config_file_path(self.tests_dir, output_dir),
+            '-f', "\"%s\"" % config_file_path,
             '-c', "\'PidFile %s'" % self._pid_file,
             '-k', "stop"]
 
@@ -153,8 +154,8 @@ class LayoutTestApacheHttpd(http_server_base.HttpServerBase):
         self._start_cmd = " ".join(start_cmd)
         self._stop_cmd = " ".join(stop_cmd)
 
-    def _get_apache_config_file_path(self, test_dir, output_dir):
-        """Returns the path to the apache config file to use.
+    def _copy_apache_config_file(self, test_dir, output_dir):
+        """Copy apache config file and returns the path to use.
         Args:
           test_dir: absolute path to the LayoutTests directory.
           output_dir: absolute path to the layout test results directory.
@@ -166,7 +167,7 @@ class LayoutTestApacheHttpd(http_server_base.HttpServerBase):
         # FIXME: Why do we need to copy the config file since we're not modifying it?
         self._filesystem.write_text_file(httpd_config_copy, httpd_conf)
 
-        if self._port_obj.host.platform.is_win():
+        if self._port_obj.host.platform.is_cygwin():
             # Convert to MSDOS file naming:
             precompiledDrive = re.compile('^/cygdrive/[cC]')
             httpd_config_copy = precompiledDrive.sub("C:", httpd_config_copy)

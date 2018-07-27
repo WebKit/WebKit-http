@@ -609,24 +609,27 @@ webkit.org/b/149018 accessibility/aria-current.html [ Skip ]
 webkit.org/b/148967 accessibility/aria-table-attributes.html [ Skip ]
 
 # TODO webkit-font-smoothing is not supported.
-webkit.org/b/149245 imported/w3c/css/css-multicol-1/multicol-basic-001.html [ Skip ]
-webkit.org/b/149245 imported/w3c/css/css-multicol-1/multicol-basic-002.html [ Skip ]
-webkit.org/b/149245 imported/w3c/css/css-multicol-1/multicol-basic-003.html [ Skip ]
-webkit.org/b/149245 imported/w3c/css/css-multicol-1/multicol-basic-004.html [ Skip ]
-webkit.org/b/149245 imported/w3c/css/css-multicol-1/multicol-rule-002.xht [ Skip ]
-webkit.org/b/149245 imported/w3c/css/css-multicol-1/multicol-rule-px-001.xht [ Skip ]
-webkit.org/b/149245 imported/w3c/css/css-multicol-1/multicol-rule-stacking-001.xht [ Skip ]
-webkit.org/b/149245 imported/w3c/css/css-multicol-1/multicol-shorthand-001.xht [ Skip ]
-webkit.org/b/149245 imported/w3c/css/css-multicol-1/multicol-span-all-block-sibling-003.xht [ Skip ]
-webkit.org/b/149245 imported/w3c/css/css-multicol-1/multicol-span-all-margin-nested-firstchild-001.xht [ Skip ]
+webkit.org/b/149245 imported/w3c/web-platform-tests/css/css-multicol/multicol-basic-001.html [ Skip ]
+webkit.org/b/149245 imported/w3c/web-platform-tests/css/css-multicol/multicol-basic-002.html [ Skip ]
+webkit.org/b/149245 imported/w3c/web-platform-tests/css/css-multicol/multicol-basic-003.html [ Skip ]
+webkit.org/b/149245 imported/w3c/web-platform-tests/css/css-multicol/multicol-basic-004.html [ Skip ]
+webkit.org/b/149245 imported/w3c/web-platform-tests/css/css-multicol/multicol-rule-002.xht [ Skip ]
+webkit.org/b/149245 imported/w3c/web-platform-tests/css/css-multicol/multicol-rule-px-001.xht [ Skip ]
+webkit.org/b/149245 imported/w3c/web-platform-tests/css/css-multicol/multicol-rule-stacking-001.xht [ Skip ]
+webkit.org/b/149245 imported/w3c/web-platform-tests/css/css-multicol/multicol-shorthand-001.xht [ Skip ]
+webkit.org/b/149245 imported/w3c/web-platform-tests/css/css-multicol/multicol-span-all-block-sibling-003.xht [ Skip ]
+webkit.org/b/149245 imported/w3c/web-platform-tests/css/css-multicol/multicol-span-all-margin-nested-firstchild-001.xht [ Skip ]
 
 # font-variant-* not implemented on Windows
 webkit.org/b/149630 css3/font-variant-all.html [ ImageOnlyFailure ]
 
 webkit.org/b/158836 imported/w3c/web-platform-tests/encrypted-media [ Skip ]
 
-# Credential Management not supported
+# Skip anything related to WebAuthN
+http/tests/webauthn/ [ Skip ]
 http/wpt/credential-management/ [ Skip ]
+http/wpt/webauthn/ [ Skip ]
+imported/w3c/web-platform-tests/credential-management/ [ Skip ]
 
 # UIScriptController::zoomToScale is not implemented on Windows.
 webkit.org/b/180424 fast/visual-viewport/resize-event-fired.html [ Skip ]
@@ -1988,7 +1991,7 @@ fast/css/direct-adjacent-style-update-optimization.html [ Failure ]
 webkit.org/b/140767 fast/css/read-only-read-write-input-basics.html [ ImageOnlyFailure ]
 
 # Newly imported W3C CSS test that is off by 1 pixel on Windows.
-imported/w3c/css/css-multicol-1/multicol-span-all-001.xht [ ImageOnlyFailure ]
+imported/w3c/web-platform-tests/css/css-multicol/multicol-span-all-001.xht [ ImageOnlyFailure ]
 
 # https://bugs.webkit.org/show_bug.cgi?id=138025
 # Larger text and as a result, larger elements containing said text (as compared to Mac port)
@@ -3120,6 +3123,7 @@ accessibility/w3c-svg-content-language-attribute.html [ Failure ]
 accessibility/w3c-svg-description-calculation.html [ Failure ]
 accessibility/w3c-svg-name-calculation.html [ Failure ]
 accessibility/w3c-svg-roles.html [ Failure ]
+accessibility/svg-element-with-aria-role.html [ Failure ]
 accessibility/win/select-element-valuechange-event.html [ Failure ]
 css1/box_properties/float_on_text_elements.html [ Failure ]
 css1/units/length_units.html [ Failure ]
@@ -3652,6 +3656,7 @@ media/document-level-media-user-gesture-quirk.html [ Skip ]
 imported/w3c/web-platform-tests/webrtc [ Skip ]
 webrtc [ Skip ]
 http/tests/webrtc [ Skip ]
+http/wpt/webrtc [ Skip ]
 
 # Resource Timing Metrics not available.
 http/wpt/resource-timing/rt-nextHopProtocol.html [ Skip ]
@@ -3844,3 +3849,43 @@ webkit.org/b/181346 mathml/opentype/horizontal.html [ Failure ]
 webkit.org/b/181346 mathml/opentype/opentype-stretchy-horizontal.html [ Failure ]
 
 webkit.org/b/181501 accessibility/table-header-calculation-for-header-rows.html [ Failure ]
+
+webkit.org/b/181662 fast/forms/auto-fill-button/input-strong-password-auto-fill-button.html [ Failure ]
+webkit.org/b/181662 fast/forms/auto-fill-button/input-strong-confirmation-password-auto-fill-button.html [ Failure ]
+
+webkit.org/b/181854 svg/filters/feDiffuseLighting-bottomRightPixel.html [ ImageOnlyFailure ]
+
+webkit.org/b/181869 svg/filters/fePointLight-color.svg [ ImageOnlyFailure ]
+webkit.org/b/181869 svg/filters/feSpotLight-color.svg [ ImageOnlyFailure ]
+
+webkit.org/b/182119 js/dom/random-array-gc-stress.html [ Failure ]
+
+webkit.org/b/182120 http/tests/images/image-supports-video.html [ Failure ]
+
+webkit.org/b/182121 fast/text/unknown-font.html [ ImageOnlyFailure ]
+
+webkit.org/b/182123 fast/text/font-display/swap-flash.html [ ImageOnlyFailure ]
+
+webkit.org/b/182124 fast/selectors/placeholder-shown-style-update.html [ Failure ]
+
+webkit.org/b/182125 fast/forms/range/slider-mouse-events.html [ Failure ]
+
+webkit.org/b/182126 fast/forms/focus-selection-textarea.html [ Failure ]
+
+webkit.org/b/182127 fast/dom/navigator-userAgent-frozen.html [ Failure ]
+
+webkit.org/b/182128 fast/dom/navigator-detached-no-crash.html [ Failure ]
+
+webkit.org/b/182129 editing/input/reveal-edit-on-paste-vertically.html [ Failure ]
+
+webkit.org/b/182130 http/tests/misc/bubble-drag-events.html [ Crash Pass ]
+
+webkit.org/b/182132 accessibility/aria-combobox-control-owns-elements.html [ Skip ]
+
+webkit.org/b/182133 fast/text/font-load-data-partitioned-alphabet.html [ Failure ]
+
+webkit.org/b/182158 transitions/default-timing-function.html [ Failure ]
+webkit.org/b/182159 webanimations/opacity-animation-yields-compositing.html [ Failure ]
+
+webkit.org/b/182239 js/dom/array-with-double-assign.html [ Failure ]
+webkit.org/b/182239 js/dom/array-with-double-push.html [ Failure ]

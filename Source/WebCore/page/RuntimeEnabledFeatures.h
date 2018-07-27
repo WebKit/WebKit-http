@@ -82,6 +82,9 @@ public:
     void setDataTransferItemsEnabled(bool areEnabled) { m_areDataTransferItemsEnabled = areEnabled; }
     bool dataTransferItemsEnabled() const { return m_areDataTransferItemsEnabled; }
 
+    void setCustomPasteboardDataEnabled(bool isEnabled) { m_isCustomPasteboardDataEnabled = isEnabled; }
+    bool customPasteboardDataEnabled() const { return m_isCustomPasteboardDataEnabled; }
+
 #if ENABLE(ATTACHMENT_ELEMENT)
     void setAttachmentElementEnabled(bool areEnabled) { m_isAttachmentElementEnabled = areEnabled; }
     bool attachmentElementEnabled() const { return m_isAttachmentElementEnabled; }
@@ -241,6 +244,9 @@ public:
     void setMediaCapabilitiesEnabled(bool isEnabled) { m_mediaCapabilitiesEnabled = isEnabled; }
     bool mediaCapabilitiesEnabled() const { return m_mediaCapabilitiesEnabled; }
 
+    void setResourceLoadStatisticsDebugMode(bool isEnabled) { m_resourceLoadStatisticsDebugMode = isEnabled; }
+    bool resourceLoadStatisticsDebugMode() const { return m_resourceLoadStatisticsDebugMode; }
+
     WEBCORE_EXPORT static RuntimeEnabledFeatures& sharedFeatures();
 
 private:
@@ -262,6 +268,7 @@ private:
     bool m_isMenuItemElementEnabled { false };
     bool m_isDirectoryUploadEnabled { false };
     bool m_areDataTransferItemsEnabled { false };
+    bool m_isCustomPasteboardDataEnabled { false };
     bool m_inputEventsEnabled { true };
 
 #if ENABLE(ATTACHMENT_ELEMENT)
@@ -369,6 +376,8 @@ private:
 
     bool m_mediaCapabilitiesEnabled { false };
 
+    bool m_resourceLoadStatisticsDebugMode { false };
+    
     friend class WTF::NeverDestroyed<RuntimeEnabledFeatures>;
 };
 

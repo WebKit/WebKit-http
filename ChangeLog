@@ -1,3 +1,57 @@
+2018-01-30  Sergio Villar Senin  <svillar@igalia.com>
+
+        [WebVR][GTK][WPE] Exclude OpenVR from tarballs
+        https://bugs.webkit.org/show_bug.cgi?id=182284
+
+        Reviewed by Michael Catanzaro.
+
+        Added private build options for USE_OPENVR.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2018-01-30  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [WinCairo] Fix forwarding header conflict of WebKit on WinCairo
+        https://bugs.webkit.org/show_bug.cgi?id=177202
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/WebKitMacros.cmake:
+
+2018-01-29  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Add a compile-time feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=182211
+        <rdar://problem/36936365>
+
+        Reviewed by Brent Fulgham.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2018-01-18  Sergio Villar Senin  <svillar@igalia.com>
+
+        [WebVR] Add OpenVR to the tree and to the build
+        https://bugs.webkit.org/show_bug.cgi?id=177298
+
+        Reviewed by Žan Doberšek.
+
+        * Source/CMakeLists.txt:
+        * Source/cmake/OptionsGTK.cmake: Enable USE_OPENVR.
+        * Source/cmake/OptionsWPE.cmake: Ditto.
+
+2018-01-18  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Shared schemes in the WebKit workspace still have build pre-actions that invoke copy-webkitlibraries-to-product-directory
+        https://bugs.webkit.org/show_bug.cgi?id=181784
+
+        Reviewed by Anders Carlsson.
+
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Source.xcscheme: Remove the build pre-action.
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Tools.xcscheme: Ditto.
+
 2018-01-17  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         WEBKIT_FRAMEWORK should not modify file-global include directories

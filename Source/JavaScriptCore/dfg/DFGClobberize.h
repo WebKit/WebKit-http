@@ -706,6 +706,10 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         def(HeapLocation(StackPayloadLoc, AbstractHeap(Stack, CallFrameSlot::argumentCount)), LazyNode(node));
         return;
 
+    case SetArgumentCountIncludingThis:
+        write(AbstractHeap(Stack, CallFrameSlot::argumentCount));
+        return;
+
     case GetRestLength:
         read(Stack);
         return;
@@ -1321,21 +1325,13 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     }
 
     case Spread: {
-        if (node->child1()->op() == PhantomCreateRest)
+        if (node->child1()->op() == PhantomNewArrayBuffer) {
+            read(MiscFields);
+            return;
+        }
+
+        if (node->child1()->op() == PhantomCreateRest) {
             read(Stack);
-
-        if (node->child1().useKind() == ArrayUse) {
-            // FIXME: We can probably CSE these together, but we need to construct the right rules
-            // to prove that nobody writes to child1() in between two Spreads: https://bugs.webkit.org/show_bug.cgi?id=164531
-            read(HeapObjectCount); 
-            read(JSCell_indexingType);
-            read(JSObject_butterfly);
-            read(Butterfly_publicLength);
-            read(IndexedDoubleProperties);
-            read(IndexedInt32Properties);
-            read(IndexedContiguousProperties);
-            read(IndexedArrayStorageProperties);
-
             write(HeapObjectCount);
             return;
         }
@@ -1475,6 +1471,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case PhantomNewAsyncGeneratorFunction:
     case PhantomCreateActivation:
     case MaterializeCreateActivation:
+    case PhantomNewRegexp:
         read(HeapObjectCount);
         write(HeapObjectCount);
         return;
@@ -1502,6 +1499,11 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         }
         read(World);
         write(Heap);
+        return;
+
+    case RegExpExecNonGlobalOrSticky:
+        read(RegExpState);
+        write(RegExpState);
         return;
 
     case StringReplace:
@@ -1543,12 +1545,19 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             write(HeapObjectCount);
             return;
         }
-        if (!node->isBinaryUseKind(UntypedUse)) {
+
+        if (node->op() == CompareEq && node->isBinaryUseKind(ObjectUse)) {
             def(PureValue(node));
             return;
         }
-        read(World);
-        write(Heap);
+        if (node->child1().useKind() == UntypedUse || node->child1().useKind() == ObjectUse
+            || node->child2().useKind() == UntypedUse || node->child2().useKind() == ObjectUse) {
+            read(World);
+            write(Heap);
+            return;
+        }
+
+        def(PureValue(node));
         return;
 
     case ToNumber: {
@@ -1667,6 +1676,23 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         Edge& keyEdge = graph.varArgChild(node, 1);
         write(JSMapFields);
         def(HeapLocation(MapBucketLoc, JSMapFields, mapEdge, keyEdge), LazyNode(node));
+        return;
+    }
+
+    case WeakSetAdd: {
+        Edge& mapEdge = node->child1();
+        Edge& keyEdge = node->child2();
+        write(JSWeakSetFields);
+        def(HeapLocation(WeakMapGetLoc, JSWeakSetFields, mapEdge, keyEdge), LazyNode(keyEdge.node()));
+        return;
+    }
+
+    case WeakMapSet: {
+        Edge& mapEdge = graph.varArgChild(node, 0);
+        Edge& keyEdge = graph.varArgChild(node, 1);
+        Edge& valueEdge = graph.varArgChild(node, 2);
+        write(JSWeakMapFields);
+        def(HeapLocation(WeakMapGetLoc, JSWeakMapFields, mapEdge, keyEdge), LazyNode(valueEdge.node()));
         return;
     }
 

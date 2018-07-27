@@ -74,8 +74,10 @@ public:
     bool childRequiresTable(const RenderElement& parent, const RenderObject& child);
     void makeChildrenNonInline(RenderBlock& parent, RenderObject* insertionPoint = nullptr);
     RenderObject* splitAnonymousBoxesAroundChild(RenderBox& parent, RenderObject* beforeChild);
-    void splitFlow(RenderInline& parent, RenderObject* beforeChild, RenderPtr<RenderBlock> newBlockBox, RenderPtr<RenderObject> child, RenderBoxModelObject* oldCont);
     void moveRubyChildren(RenderRubyBase& from, RenderRubyBase& to);
+    void childFlowStateChangesAndAffectsParentBlock(RenderElement& child);
+    RenderObject* resolveMovedChildForMultiColumnFlow(RenderFragmentedFlow& enclosingFragmentedFlow, RenderObject* beforeChild);
+    void removeFromParentAndDestroyCleaningUpAnonymousWrappers(RenderObject& child);
 
 private:
     class FirstLetter;

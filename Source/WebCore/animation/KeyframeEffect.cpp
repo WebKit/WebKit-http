@@ -27,12 +27,18 @@
 #include "KeyframeEffect.h"
 
 #include "Animation.h"
+#include "CSSComputedStyleDeclaration.h"
 #include "CSSPropertyAnimation.h"
+#include "CSSPropertyNames.h"
 #include "CSSStyleDeclaration.h"
+#include "CSSTimingFunctionValue.h"
 #include "Element.h"
+#include "JSCompositeOperation.h"
+#include "JSKeyframeEffect.h"
 #include "RenderStyle.h"
 #include "StyleProperties.h"
 #include "StyleResolver.h"
+#include "TimingFunction.h"
 #include "WillChangeData.h"
 #include <wtf/UUID.h>
 
@@ -52,6 +58,19 @@ static inline CSSPropertyID IDLAttributeNameToAnimationPropertyName(String idlAt
     return CSSStyleDeclaration::getCSSPropertyIDFromJavaScriptPropertyName(idlAttributeName);
 }
 
+static inline String CSSPropertyIDToIDLAttributeName(CSSPropertyID cssPropertyId)
+{
+    // https://drafts.csswg.org/web-animations-1/#animation-property-name-to-idl-attribute-name
+    // 1. If property follows the <custom-property-name> production, return property.
+    // 2. If property refers to the CSS float property, return the string "cssFloat".
+    if (cssPropertyId == CSSPropertyFloat)
+        return "cssFloat";
+    // 3. If property refers to the CSS offset property, return the string "cssOffset".
+    // FIXME: we don't support the CSS "offset" property
+    // 4. Otherwise, return the result of applying the CSS property to IDL attribute algorithm [CSSOM] to property.
+    return getJSPropertyName(cssPropertyId);
+}
+
 static inline void computeMissingKeyframeOffsets(Vector<KeyframeEffect::ProcessedKeyframe>& keyframes)
 {
     // https://drafts.csswg.org/web-animations-1/#compute-missing-keyframe-offsets
@@ -60,15 +79,17 @@ static inline void computeMissingKeyframeOffsets(Vector<KeyframeEffect::Processe
         return;
 
     // 1. For each keyframe, in keyframes, let the computed keyframe offset of the keyframe be equal to its keyframe offset value.
+    for (auto& keyframe : keyframes)
+        keyframe.computedOffset = keyframe.offset;
 
     // 2. If keyframes contains more than one keyframe and the computed keyframe offset of the first keyframe in keyframes is null,
     //    set the computed keyframe offset of the first keyframe to 0.
-    if (keyframes.size() > 1 && !keyframes[0].offset)
-        keyframes[0].offset = 0;
+    if (keyframes.size() > 1 && !keyframes[0].computedOffset)
+        keyframes[0].computedOffset = 0;
 
     // 3. If the computed keyframe offset of the last keyframe in keyframes is null, set its computed keyframe offset to 1.
-    if (!keyframes.last().offset)
-        keyframes.last().offset = 1;
+    if (!keyframes.last().computedOffset)
+        keyframes.last().computedOffset = 1;
 
     // 4. For each pair of keyframes A and B where:
     //    - A appears before B in keyframes, and
@@ -81,18 +102,18 @@ static inline void computeMissingKeyframeOffsets(Vector<KeyframeEffect::Processe
     //    4. Set the computed keyframe offset of keyframe to offsetA + (offsetB − offsetA) × index / n.
     size_t indexOfLastKeyframeWithNonNullOffset = 0;
     for (size_t i = 1; i < keyframes.size(); ++i) {
-        auto keyframe = keyframes[i];
-        if (!keyframe.offset)
+        auto& keyframe = keyframes[i];
+        if (!keyframe.computedOffset)
             continue;
         if (indexOfLastKeyframeWithNonNullOffset == i - 1)
             continue;
 
-        double lastNonNullOffset = keyframes[indexOfLastKeyframeWithNonNullOffset].offset.value();
-        double offsetDelta = keyframe.offset.value() - lastNonNullOffset;
+        double lastNonNullOffset = keyframes[indexOfLastKeyframeWithNonNullOffset].computedOffset.value();
+        double offsetDelta = keyframe.computedOffset.value() - lastNonNullOffset;
         double offsetIncrement = offsetDelta / (i - indexOfLastKeyframeWithNonNullOffset);
         size_t indexOfFirstKeyframeWithNullOffset = indexOfLastKeyframeWithNonNullOffset + 1;
         for (size_t j = indexOfFirstKeyframeWithNullOffset; j < i; ++j)
-            keyframes[j].offset = lastNonNullOffset + (j - indexOfLastKeyframeWithNonNullOffset) * offsetIncrement;
+            keyframes[j].computedOffset = lastNonNullOffset + (j - indexOfLastKeyframeWithNonNullOffset) * offsetIncrement;
 
         indexOfLastKeyframeWithNonNullOffset = i;
     }
@@ -117,7 +138,7 @@ static inline ExceptionOr<void> processIterableKeyframes(ExecState& state, Stron
 
         KeyframeEffect::ProcessedKeyframe keyframeOutput;
 
-        String easing = "linear";
+        String easing("linear");
         std::optional<double> offset;
         std::optional<CompositeOperation> composite;
 
@@ -230,7 +251,7 @@ static inline ExceptionOr<KeyframeEffect::KeyframeLikeObject> processKeyframeLik
     return { WTFMove(keyframeOuput) };
 }
 
-static inline ExceptionOr<void> processPropertyIndexedKeyframes(ExecState& state, Strong<JSObject>&& keyframesInput, Vector<KeyframeEffect::ProcessedKeyframe>& processedKeyframes)
+static inline ExceptionOr<void> processPropertyIndexedKeyframes(ExecState& state, Strong<JSObject>&& keyframesInput, Vector<KeyframeEffect::ProcessedKeyframe>& processedKeyframes, Vector<String>& unusedEasings)
 {
     // 1. Let property-indexed keyframe be the result of running the procedure to process a keyframe-like object passing object as the keyframe input.
     auto processKeyframeLikeObjectResult = processKeyframeLikeObject(state, WTFMove(keyframesInput));
@@ -268,7 +289,7 @@ static inline ExceptionOr<void> processPropertyIndexedKeyframes(ExecState& state
 
     // 3. Sort processed keyframes by the computed keyframe offset of each keyframe in increasing order.
     std::sort(processedKeyframes.begin(), processedKeyframes.end(), [](auto& lhs, auto& rhs) {
-        return lhs.offset.value() < rhs.offset.value();
+        return lhs.computedOffset.value() < rhs.computedOffset.value();
     });
 
     // 4. Merge adjacent keyframes in processed keyframes when they have equal computed keyframe offsets.
@@ -279,7 +300,7 @@ static inline ExceptionOr<void> processPropertyIndexedKeyframes(ExecState& state
         // If the offsets of this keyframe and the previous keyframe are different,
         // this means that the two keyframes should not be merged and we can move
         // on to the next keyframe.
-        if (keyframe.offset.value() != previousKeyframe.offset.value()) {
+        if (keyframe.computedOffset.value() != previousKeyframe.computedOffset.value()) {
             i++;
             continue;
         }
@@ -296,7 +317,6 @@ static inline ExceptionOr<void> processPropertyIndexedKeyframes(ExecState& state
     // 5. Let offsets be a sequence of nullable double values assigned based on the type of the “offset” member of the property-indexed keyframe as follows:
     //    - sequence<double?>, the value of “offset” as-is.
     //    - double?, a sequence of length one with the value of “offset” as its single item, i.e. « offset »,
-    // FIXME: update this when we figure out how to deal with nullable doubles here.
     Vector<std::optional<double>> offsets;
     if (WTF::holds_alternative<Vector<std::optional<double>>>(propertyIndexedKeyframe.baseProperties.offset))
         offsets = WTF::get<Vector<std::optional<double>>>(propertyIndexedKeyframe.baseProperties.offset);
@@ -326,16 +346,17 @@ static inline ExceptionOr<void> processPropertyIndexedKeyframes(ExecState& state
     //    items as property keyframes.
     if (easings.size() < processedKeyframes.size()) {
         size_t initialNumberOfEasings = easings.size();
-        for (i = initialNumberOfEasings + 1; i < processedKeyframes.size() - 1; ++i)
+        for (i = initialNumberOfEasings + 1; i <= processedKeyframes.size(); ++i)
             easings.append(easings[i % initialNumberOfEasings]);
     }
 
     // 10. If easings has more items than property keyframes, store the excess items as unused easings.
-    // FIXME: We don't deal with this yet.
+    while (easings.size() > processedKeyframes.size())
+        unusedEasings.append(easings.takeLast());
 
     // 11. Assign each value in easings to a property named “easing” on the keyframe with the corresponding position in property keyframes until the end of property keyframes
     //     is reached.
-    for (size_t i = 0; i < easings.size() && i < processedKeyframes.size(); ++i)
+    for (size_t i = 0; i < processedKeyframes.size(); ++i)
         processedKeyframes[i].easing = easings[i];
 
     // 12. If the “composite” member of the property-indexed keyframe is not an empty sequence:
@@ -351,7 +372,7 @@ static inline ExceptionOr<void> processPropertyIndexedKeyframes(ExecState& state
         //    the list until composite modes has as many items as property keyframes.
         if (compositeModes.size() < processedKeyframes.size()) {
             size_t initialNumberOfCompositeModes = compositeModes.size();
-            for (i = initialNumberOfCompositeModes + 1; i < processedKeyframes.size() - 1; ++i)
+            for (i = initialNumberOfCompositeModes + 1; i <= processedKeyframes.size(); ++i)
                 compositeModes.append(compositeModes[i % initialNumberOfCompositeModes]);
         }
         // 3. Assign each value in composite modes to the keyframe-specific composite operation on the keyframe with the corresponding position in property keyframes until
@@ -376,8 +397,24 @@ ExceptionOr<Ref<KeyframeEffect>> KeyframeEffect::create(ExecState& state, Elemen
         Variant<double, String> bindingsDuration;
         if (WTF::holds_alternative<double>(optionsValue))
             bindingsDuration = WTF::get<double>(optionsValue);
-        else
-            bindingsDuration = WTF::get<KeyframeEffectOptions>(optionsValue).duration;
+        else {
+            auto keyframeEffectOptions = WTF::get<KeyframeEffectOptions>(optionsValue);
+            bindingsDuration = keyframeEffectOptions.duration;
+            keyframeEffect->timing()->setBindingsDelay(keyframeEffectOptions.delay);
+            keyframeEffect->timing()->setBindingsEndDelay(keyframeEffectOptions.endDelay);
+            keyframeEffect->timing()->setFill(keyframeEffectOptions.fill);
+            auto setIterationStartResult = keyframeEffect->timing()->setIterationStart(keyframeEffectOptions.iterationStart);
+            if (setIterationStartResult.hasException())
+                return setIterationStartResult.releaseException();
+            auto setIterationsResult = keyframeEffect->timing()->setIterations(keyframeEffectOptions.iterations);
+            if (setIterationsResult.hasException())
+                return setIterationsResult.releaseException();
+            keyframeEffect->timing()->setDirection(keyframeEffectOptions.direction);
+            auto setEasingResult = keyframeEffect->timing()->setEasing(keyframeEffectOptions.easing);
+            if (setEasingResult.hasException())
+                return setEasingResult.releaseException();
+        }
+
         auto setBindingsDurationResult = keyframeEffect->timing()->setBindingsDuration(WTFMove(bindingsDuration));
         if (setBindingsDurationResult.hasException())
             return setBindingsDurationResult.releaseException();
@@ -391,6 +428,74 @@ KeyframeEffect::KeyframeEffect(Element* target)
     , m_target(target)
     , m_keyframes(emptyString())
 {
+}
+
+Vector<Strong<JSObject>> KeyframeEffect::getKeyframes(ExecState& state)
+{
+    // https://drafts.csswg.org/web-animations-1/#dom-keyframeeffectreadonly-getkeyframes
+
+    auto lock = JSLockHolder { &state };
+
+    // Since keyframes are represented by a partially open-ended dictionary type that is not currently able to be expressed with WebIDL,
+    // the procedure used to prepare the result of this method is defined in prose below:
+    //
+    // 1. Let result be an empty sequence of objects.
+    Vector<Strong<JSObject>> result;
+
+    // 2. Let keyframes be the result of applying the procedure to compute missing keyframe offsets to the keyframes for this keyframe effect.
+
+    // 3. For each keyframe in keyframes perform the following steps:
+    for (size_t i = 0; i < m_keyframes.size(); ++i) {
+        auto& keyframe = m_keyframes[i];
+
+        // 1. Initialize a dictionary object, output keyframe, using the following definition:
+        //
+        // dictionary BaseComputedKeyframe {
+        //      double?            offset = null;
+        //      double             computedOffset;
+        //      DOMString          easing = "linear";
+        //      CompositeOperation composite;
+        // };
+
+        // 2. Set offset, computedOffset, easing members of output keyframe to the respective values keyframe offset, computed keyframe offset,
+        // and keyframe-specific timing function of keyframe.
+
+        // 3. If keyframe has a keyframe-specific composite operation, set composite to that value.
+        BaseComputedKeyframe computedKeyframe;
+        computedKeyframe.offset = m_offsets[i];
+        computedKeyframe.computedOffset = keyframe.key();
+        computedKeyframe.easing = m_timingFunctions[i]->cssText();
+
+        auto outputKeyframe = convertDictionaryToJS(state, *jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject()), computedKeyframe);
+
+        // If we have a non-null CompositeOperation for this keyframes, set the JS property for it.
+        if (auto compositeOperation = m_compositeOperations[i]) {
+            PropertyDescriptor propertyDescriptor(convertEnumerationToJS(state, compositeOperation.value()), 0);
+            JSObject::defineOwnProperty(outputKeyframe, &state, AtomicString("composite").impl(), propertyDescriptor, false);
+        }
+
+        auto& style = *keyframe.style();
+        auto computedStyleExtractor = ComputedStyleExtractor(m_target.get());
+
+        // 4. For each animation property-value pair specified on keyframe, declaration, perform the following steps:
+        for (auto cssPropertyId : keyframe.properties()) {
+            // 1. Let property name be the result of applying the animation property name to IDL attribute name algorithm to the property name of declaration.
+            auto propertyName = CSSPropertyIDToIDLAttributeName(cssPropertyId);
+            // 2. Let IDL value be the result of serializing the property value of declaration by passing declaration to the algorithm to serialize a CSS value.
+            auto idlValue = computedStyleExtractor.valueForPropertyinStyle(style, cssPropertyId)->cssText();
+            // 3. Let value be the result of converting IDL value to an ECMAScript String value.
+            auto value = toJS<IDLDOMString>(state, idlValue);
+            // 4. Call the [[DefineOwnProperty]] internal method on output keyframe with property name property name,
+            //    Property Descriptor { [[Writable]]: true, [[Enumerable]]: true, [[Configurable]]: true, [[Value]]: value } and Boolean flag false.
+            JSObject::defineOwnProperty(outputKeyframe, &state, AtomicString(propertyName).impl(), PropertyDescriptor(value, 0), false);
+        }
+
+        // 5. Append output keyframe to result.
+        result.append(JSC::Strong<JSC::JSObject> { state.vm(), outputKeyframe });
+    }
+
+    // 4. Return result.
+    return result;
 }
 
 ExceptionOr<void> KeyframeEffect::setKeyframes(ExecState& state, Strong<JSObject>&& keyframesInput)
@@ -417,13 +522,11 @@ ExceptionOr<void> KeyframeEffect::processKeyframes(ExecState& state, Strong<JSOb
     RETURN_IF_EXCEPTION(scope, Exception { TypeError });
 
     // 5. Perform the steps corresponding to the first matching condition from below,
+    Vector<String> unusedEasings;
     if (!method.isUndefined())
         processIterableKeyframes(state, WTFMove(keyframesInput), WTFMove(method), processedKeyframes);
     else
-        processPropertyIndexedKeyframes(state, WTFMove(keyframesInput), processedKeyframes);
-
-    if (!processedKeyframes.size())
-        return { };
+        processPropertyIndexedKeyframes(state, WTFMove(keyframesInput), processedKeyframes, unusedEasings);
 
     // 6. If processed keyframes is not loosely sorted by offset, throw a TypeError and abort these steps.
     // 7. If there exist any keyframe in processed keyframes whose keyframe offset is non-null and less than
@@ -443,11 +546,18 @@ ExceptionOr<void> KeyframeEffect::processKeyframes(ExecState& state, Strong<JSOb
     computeMissingKeyframeOffsets(processedKeyframes);
 
     KeyframeList keyframeList("keyframe-effect-" + createCanonicalUUIDString());
+    Vector<std::optional<double>> offsets;
+    Vector<RefPtr<TimingFunction>> timingFunctions;
+    Vector<std::optional<CompositeOperation>> compositeOperations;
+
     StyleResolver& styleResolver = m_target->styleResolver();
     auto parserContext = CSSParserContext(HTMLStandardMode);
 
     // 8. For each frame in processed keyframes, perform the following steps:
     for (auto& keyframe : processedKeyframes) {
+        offsets.append(keyframe.offset);
+        compositeOperations.append(keyframe.composite);
+
         // 1. For each property-value pair in frame, parse the property value using the syntax specified for that property.
         //    If the property value is invalid according to the syntax for the property, discard the property-value pair.
         //    User agents that provide support for diagnosing errors in content SHOULD produce an appropriate warning
@@ -461,7 +571,7 @@ ExceptionOr<void> KeyframeEffect::processKeyframes(ExecState& state, Strong<JSOb
             cssText.appendLiteral("; ");
         }
 
-        KeyframeValue keyframeValue(keyframe.offset.value(), nullptr);
+        KeyframeValue keyframeValue(keyframe.computedOffset.value(), nullptr);
         auto renderStyle = RenderStyle::createPtr();
         auto styleProperties = MutableStyleProperties::create();
         styleProperties->parseDeclaration(cssText.toString(), parserContext);
@@ -481,15 +591,25 @@ ExceptionOr<void> KeyframeEffect::processKeyframes(ExecState& state, Strong<JSOb
         // 2. Let the timing function of frame be the result of parsing the “easing” property on frame using the CSS syntax
         //    defined for the easing property of the AnimationEffectTimingReadOnly interface.
         //    If parsing the “easing” property fails, throw a TypeError and abort this procedure.
-        // FIXME: implement when we support easing.
+        auto timingFunctionResult = TimingFunction::createFromCSSText(keyframe.easing);
+        if (timingFunctionResult.hasException())
+            return timingFunctionResult.releaseException();
+        timingFunctions.append(timingFunctionResult.returnValue());
     }
 
     // 9. Parse each of the values in unused easings using the CSS syntax defined for easing property of the
     //    AnimationEffectTimingReadOnly interface, and if any of the values fail to parse, throw a TypeError
     //    and abort this procedure.
-    // FIXME: implement when we support easing.
+    for (auto& easing : unusedEasings) {
+        auto timingFunctionResult = TimingFunction::createFromCSSText(easing);
+        if (timingFunctionResult.hasException())
+            return timingFunctionResult.releaseException();
+    }
 
+    m_offsets = WTFMove(offsets);
     m_keyframes = WTFMove(keyframeList);
+    m_timingFunctions = WTFMove(timingFunctions);
+    m_compositeOperations = WTFMove(compositeOperations);
 
     computeStackingContextImpact();
 
@@ -507,23 +627,19 @@ void KeyframeEffect::computeStackingContextImpact()
     }
 }
 
-void KeyframeEffect::applyAtLocalTime(Seconds localTime, RenderStyle& targetStyle)
+void KeyframeEffect::apply(RenderStyle& targetStyle)
 {
     if (!m_target)
         return;
 
-    if (m_startedAccelerated && localTime >= timing()->duration()) {
+    auto progress = iterationProgress();
+    if (!progress)
+        return;
+
+    if (m_startedAccelerated && progress.value() >= 1) {
         m_startedAccelerated = false;
         animation()->acceleratedRunningStateDidChange();
     }
-
-    // FIXME: Assume animations only apply in the range [0, duration[
-    // until we support fill modes, delays and iterations.
-    if (localTime < 0_s || localTime >= timing()->duration())
-        return;
-
-    if (!timing()->duration())
-        return;
 
     bool needsToStartAccelerated = false;
 
@@ -536,7 +652,7 @@ void KeyframeEffect::applyAtLocalTime(Seconds localTime, RenderStyle& targetStyl
     m_started = true;
 
     if (!needsToStartAccelerated && !m_startedAccelerated)
-        setAnimatedPropertiesInStyle(targetStyle, localTime / timing()->duration());
+        setAnimatedPropertiesInStyle(targetStyle, progress.value());
 
     // https://w3c.github.io/web-animations/#side-effects-section
     // For every property targeted by at least one animation effect that is current or in effect, the user agent
@@ -556,69 +672,157 @@ bool KeyframeEffect::shouldRunAccelerated()
 
 void KeyframeEffect::getAnimatedStyle(std::unique_ptr<RenderStyle>& animatedStyle)
 {
-    if (!animation() || !timing()->duration())
-        return;
-
-    auto localTime = animation()->currentTime();
-
-    // FIXME: Assume animations only apply in the range [0, duration[
-    // until we support fill modes, delays and iterations.
-    if (!localTime || localTime < 0_s || localTime >= timing()->duration())
+    if (!animation())
         return;
 
     if (!m_keyframes.size())
         return;
 
+    auto progress = iterationProgress();
+    if (!progress)
+        return;
+
     if (!animatedStyle)
         animatedStyle = RenderStyle::clonePtr(renderer()->style());
 
-    setAnimatedPropertiesInStyle(*animatedStyle.get(), localTime.value() / timing()->duration());
+    setAnimatedPropertiesInStyle(*animatedStyle.get(), progress.value());
 }
 
-void KeyframeEffect::setAnimatedPropertiesInStyle(RenderStyle& targetStyle, double progress)
+void KeyframeEffect::setAnimatedPropertiesInStyle(RenderStyle& targetStyle, double iterationProgress)
 {
-    size_t numberOfKeyframes = m_keyframes.size();
-    for (auto cssPropertyId : m_keyframes.properties()) {
-        int startKeyframeIndex = -1;
-        int endKeyframeIndex = -1;
+    // 4.4.3. The effect value of a keyframe effect
+    // https://drafts.csswg.org/web-animations-1/#the-effect-value-of-a-keyframe-animation-effect
+    //
+    // The effect value of a single property referenced by a keyframe effect as one of its target properties,
+    // for a given iteration progress, current iteration and underlying value is calculated as follows.
 
-        for (size_t i = 0; i < numberOfKeyframes; ++i) {
+    for (auto cssPropertyId : m_keyframes.properties()) {
+        // 1. If iteration progress is unresolved abort this procedure.
+        // 2. Let target property be the longhand property for which the effect value is to be calculated.
+        // 3. If animation type of the target property is not animatable abort this procedure since the effect cannot be applied.
+        // 4. Define the neutral value for composition as a value which, when combined with an underlying value using the add composite operation,
+        //    produces the underlying value.
+
+        // 5. Let property-specific keyframes be the result of getting the set of computed keyframes for this keyframe effect.
+        // 6. Remove any keyframes from property-specific keyframes that do not have a property value for target property.
+        unsigned numberOfKeyframesWithZeroOffset = 0;
+        unsigned numberOfKeyframesWithOneOffset = 0;
+        Vector<std::optional<size_t>> propertySpecificKeyframes;
+        for (size_t i = 0; i < m_keyframes.size(); ++i) {
             auto& keyframe = m_keyframes[i];
             if (!keyframe.containsProperty(cssPropertyId))
                 continue;
+            auto offset = keyframe.key();
+            if (!offset)
+                numberOfKeyframesWithZeroOffset++;
+            if (offset == 1)
+                numberOfKeyframesWithOneOffset++;
+            propertySpecificKeyframes.append(i);
+        }
 
-            if (keyframe.key() > progress) {
-                endKeyframeIndex = i;
-                break;
+        // 7. If property-specific keyframes is empty, return underlying value.
+        if (propertySpecificKeyframes.isEmpty())
+            continue;
+
+        // 8. If there is no keyframe in property-specific keyframes with a computed keyframe offset of 0, create a new keyframe with a computed keyframe
+        //    offset of 0, a property value set to the neutral value for composition, and a composite operation of add, and prepend it to the beginning of
+        //    property-specific keyframes.
+        if (!numberOfKeyframesWithZeroOffset) {
+            propertySpecificKeyframes.insert(0, std::nullopt);
+            numberOfKeyframesWithZeroOffset = 1;
+        }
+
+        // 9. Similarly, if there is no keyframe in property-specific keyframes with a computed keyframe offset of 1, create a new keyframe with a computed
+        //    keyframe offset of 1, a property value set to the neutral value for composition, and a composite operation of add, and append it to the end of
+        //    property-specific keyframes.
+        if (!numberOfKeyframesWithOneOffset) {
+            propertySpecificKeyframes.append(std::nullopt);
+            numberOfKeyframesWithOneOffset = 1;
+        }
+
+        // 10. Let interval endpoints be an empty sequence of keyframes.
+        Vector<std::optional<size_t>> intervalEndpoints;
+
+        // 11. Populate interval endpoints by following the steps from the first matching condition from below:
+        if (iterationProgress < 0 && numberOfKeyframesWithZeroOffset > 1) {
+            // If iteration progress < 0 and there is more than one keyframe in property-specific keyframes with a computed keyframe offset of 0,
+            // Add the first keyframe in property-specific keyframes to interval endpoints.
+            intervalEndpoints.append(propertySpecificKeyframes.first());
+        } else if (iterationProgress >= 1 && numberOfKeyframesWithOneOffset > 1) {
+            // If iteration progress ≥ 1 and there is more than one keyframe in property-specific keyframes with a computed keyframe offset of 1,
+            // Add the last keyframe in property-specific keyframes to interval endpoints.
+            intervalEndpoints.append(propertySpecificKeyframes.last());
+        } else {
+            // Otherwise,
+            // 1. Append to interval endpoints the last keyframe in property-specific keyframes whose computed keyframe offset is less than or equal
+            //    to iteration progress and less than 1. If there is no such keyframe (because, for example, the iteration progress is negative),
+            //    add the last keyframe whose computed keyframe offset is 0.
+            // 2. Append to interval endpoints the next keyframe in property-specific keyframes after the one added in the previous step.
+            size_t indexOfLastKeyframeWithZeroOffset = 0;
+            int indexOfFirstKeyframeToAddToIntervalEndpoints = -1;
+            for (size_t i = 0; i < propertySpecificKeyframes.size(); ++i) {
+                auto keyframeIndex = propertySpecificKeyframes[i];
+                auto offset = [&] () -> double {
+                    if (!keyframeIndex)
+                        return i ? 1 : 0;
+                    return m_keyframes[keyframeIndex.value()].key();
+                }();
+                if (!offset)
+                    indexOfLastKeyframeWithZeroOffset = i;
+                if (offset <= iterationProgress && offset < 1)
+                    indexOfFirstKeyframeToAddToIntervalEndpoints = i;
+                else
+                    break;
             }
 
-            startKeyframeIndex = i;
+            if (indexOfFirstKeyframeToAddToIntervalEndpoints >= 0) {
+                intervalEndpoints.append(propertySpecificKeyframes[indexOfFirstKeyframeToAddToIntervalEndpoints]);
+                intervalEndpoints.append(propertySpecificKeyframes[indexOfFirstKeyframeToAddToIntervalEndpoints + 1]);
+            } else {
+                ASSERT(indexOfLastKeyframeWithZeroOffset < propertySpecificKeyframes.size() - 1);
+                intervalEndpoints.append(propertySpecificKeyframes[indexOfLastKeyframeWithZeroOffset]);
+                intervalEndpoints.append(propertySpecificKeyframes[indexOfLastKeyframeWithZeroOffset + 1]);
+            }
         }
 
-        // If we didn't find a start keyframe, this means there is an implicit start keyframe.
-        double startOffset;
-        const RenderStyle* startStyle;
-        if (startKeyframeIndex == -1) {
-            startOffset = 0;
-            startStyle = &targetStyle;
-        } else {
-            startOffset = m_keyframes[startKeyframeIndex].key();
-            startStyle = m_keyframes[startKeyframeIndex].style();
+        // 12. For each keyframe in interval endpoints…
+        // FIXME: we don't support this step yet since we don't deal with any composite operation other than "replace".
+
+        // 13. If there is only one keyframe in interval endpoints return the property value of target property on that keyframe.
+        if (intervalEndpoints.size() == 1) {
+            auto keyframeIndex = intervalEndpoints[0];
+            auto keyframeStyle = !keyframeIndex ? &targetStyle : m_keyframes[keyframeIndex.value()].style();
+            CSSPropertyAnimation::blendProperties(this, cssPropertyId, &targetStyle, keyframeStyle, keyframeStyle, 0);
+            continue;
         }
 
-        // If we didn't find an end keyframe, this means there is an implicit end keyframe.
-        double endOffset;
-        const RenderStyle* endStyle;
-        if (endKeyframeIndex == -1) {
-            endOffset = 1;
-            endStyle = &targetStyle;
-        } else {
-            endOffset = m_keyframes[endKeyframeIndex].key();
-            endStyle = m_keyframes[endKeyframeIndex].style();
+        // 14. Let start offset be the computed keyframe offset of the first keyframe in interval endpoints.
+        auto startKeyframeIndex = intervalEndpoints.first();
+        auto startOffset = !startKeyframeIndex ? 0 : m_keyframes[startKeyframeIndex.value()].key();
+
+        // 15. Let end offset be the computed keyframe offset of last keyframe in interval endpoints.
+        auto endKeyframeIndex = intervalEndpoints.last();
+        auto endOffset = !endKeyframeIndex ? 1 : m_keyframes[endKeyframeIndex.value()].key();
+
+        // 16. Let interval distance be the result of evaluating (iteration progress - start offset) / (end offset - start offset).
+        auto intervalDistance = (iterationProgress - startOffset) / (endOffset - startOffset);
+
+        // 17. Let transformed distance be the result of evaluating the timing function associated with the first keyframe in interval endpoints
+        //     passing interval distance as the input progress.
+        auto transformedDistance = intervalDistance;
+        if (startKeyframeIndex) {
+            if (auto iterationDuration = timing()->iterationDuration()) {
+                auto rangeDuration = (endOffset - startOffset) * iterationDuration.seconds();
+                transformedDistance = m_timingFunctions[startKeyframeIndex.value()]->transformTime(intervalDistance, rangeDuration);
+            }
         }
 
-        auto progressInRange = (progress - startOffset) / (endOffset - startOffset);
-        CSSPropertyAnimation::blendProperties(this, cssPropertyId, &targetStyle, startStyle, endStyle, progressInRange);
+        // 18. Return the result of applying the interpolation procedure defined by the animation type of the target property, to the values of the target
+        //     property specified on the two keyframes in interval endpoints taking the first such value as Vstart and the second as Vend and using transformed
+        //     distance as the interpolation parameter p.
+        auto startStyle = !startKeyframeIndex ? &targetStyle : m_keyframes[startKeyframeIndex.value()].style();
+        auto endStyle = !endKeyframeIndex ? &targetStyle : m_keyframes[endKeyframeIndex.value()].style();
+        CSSPropertyAnimation::blendProperties(this, cssPropertyId, &targetStyle, startStyle, endStyle, transformedDistance);
     }
 }
 
@@ -631,7 +835,7 @@ void KeyframeEffect::startOrStopAccelerated()
     auto* compositedRenderer = downcast<RenderBoxModelObject>(renderer);
     if (m_startedAccelerated) {
         auto animation = Animation::create();
-        animation->setDuration(timing()->duration().value());
+        animation->setDuration(timing()->iterationDuration().seconds());
         compositedRenderer->startAnimation(0, animation.ptr(), m_keyframes);
     } else {
         compositedRenderer->animationFinished(m_keyframes.animationName());

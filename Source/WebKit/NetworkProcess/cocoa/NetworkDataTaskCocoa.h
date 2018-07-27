@@ -25,13 +25,12 @@
 
 #pragma once
 
-#if USE(NETWORK_SESSION)
-
 #include "NetworkDataTask.h"
 #include "NetworkLoadParameters.h"
 #include <WebCore/NetworkLoadMetrics.h>
 #include <wtf/RetainPtr.h>
 
+OBJC_CLASS NSHTTPCookieStorage;
 OBJC_CLASS NSURLSessionDataTask;
 
 namespace WebKit {
@@ -78,15 +77,23 @@ private:
     bool tryPasswordBasedAuthentication(const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler&);
     void applySniffingPoliciesAndBindRequestToInferfaceIfNeeded(NSURLRequest*&, bool shouldContentSniff, bool shouldContentEncodingSniff);
 
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    static NSHTTPCookieStorage *statelessCookieStorage();
+    void applyCookieBlockingPolicy(bool shouldBlock);
+    void applyCookiePartitioningPolicy(const String& requiredStoragePartition, const String& currentStoragePartition);
+#endif
+
     RefPtr<SandboxExtension> m_sandboxExtension;
     RetainPtr<NSURLSessionDataTask> m_task;
     WebCore::NetworkLoadMetrics m_networkLoadMetrics;
     uint64_t m_frameID;
     uint64_t m_pageID;
+
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    bool m_hasBeenSetToUseStatelessCookieStorage { false };
+#endif
 };
 
 WebCore::Credential serverTrustCredential(const WebCore::AuthenticationChallenge&);
 
 } // namespace WebKit
-
-#endif // USE(NETWORK_SESSION)

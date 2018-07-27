@@ -1,3 +1,282 @@
+2018-01-29  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Should fetch owner commits in build-requests-fetcher.
+        https://bugs.webkit.org/show_bug.cgi?id=182266
+
+        Reviewed by Ryosuke Niwa.
+
+        In a build request, owner commit of a commit is not always one of a commit in the commit set.
+        Build request api should contain owner commits in the 'commits' field of the return value.
+
+        * public/include/build-requests-fetcher.php: Added logic to fetch owner commits and added them into 'commits'.
+        * server-tests/api-build-requests-tests.js: Added a unit test.
+        * server-tests/resources/mock-data.js:
+        (MockData.set addTestGroupWithOwnerCommitNotInCommitSet): Added a test group with a build request, the commit set of which does
+        not contain owner commit of one commit.
+
+2018-01-29  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add the support for reporting Speedometer 2.0 results to perf dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=182089
+        <rdar://problem/36172346>
+
+        Rubber-stamped by Chris Dumez.
+
+        Apparently, this has always worked since the very first version of the perf dashboard added in r163688.
+        The relevant code is at the line 313 of report-processor.php now.
+
+        Added regression tests for this feature since we didn't have any tests four years ago.
+
+        * server-tests/api-report-tests.js:
+
+2018-01-29  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r225898): The perf dashboard fails to open when there are no summary pages
+        https://bugs.webkit.org/show_bug.cgi?id=182210
+
+        Rubber-stamped by Chris Dumez.
+
+        The bug was caused by TestFreshnessPage unconditionally assuming that summaryPageConfiguration is set.
+        Fixed it by not creating TestFreshnessPage when there are no summary pages specified.
+
+        Also modernized the code to use const & let instead of var.
+
+        * public/v3/main.js:
+        (main):
+
+2018-01-29  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Perf dashboard's page title can be set to a previously visited page
+        https://bugs.webkit.org/show_bug.cgi?id=182209
+
+        Rubber-stamped by Chris Dumez.
+
+        Before this patch, opening a page and navigating away from it could result in the page title
+        getting set to that of the previously visited page after the new page had been opened.
+
+        This bug was caused by Page.render keep setting document.title even though the page is no longer
+        the currently open page of the router. Fixed it by exiting early in Page.enqueueToRender when
+        this page is not the currently open page of the router.
+
+        Also added basic tests for Page.
+
+        * browser-tests/index.html:
+        * browser-tests/page-tests.js: Added.
+        * public/v3/pages/page.js:
+        (Page): Removed the unused second constructor argument.
+        (Page.prototype.enqueueToRender): Fixed the bug.
+        (Page.prototype.render): Use const instead of var.
+
+2018-01-29  Ryosuke Niwa  <rniwa@webkit.org>
+
+        CommitLogViewer should not fetch commits in serial
+        https://bugs.webkit.org/show_bug.cgi?id=182207
+
+        Rubber-stamped by Chris Dumez.
+
+        Fetch both the commits in the range as well as the preceding commit at once instead of
+        fetching the preceding commit only after the commits in the range had been fetched.
+
+        * browser-tests/commit-log-viewer-tests.js: Fixed the tcoest case after r224227.
+        * public/v3/components/commit-log-viewer.js:
+        (CommitLogViewer.prototype._fetchCommitLogs): Fetch commits in parallel.
+
+2018-01-24  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Check existence of 'node_modules_dir' before creating it.
+        https://bugs.webkit.org/show_bug.cgi?id=182040
+
+        Reviewed by Aakash Jain.
+
+        Fix the bug introduced in r227395.
+
+        * tools/run-tests.py: Added directory existence check.
+
+2018-01-22  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Fix the bug that 'TestGroupResultsViewer' creates unnecessary rows.
+        https://bugs.webkit.org/show_bug.cgi?id=181967
+
+        Reviewed by Ryosuke Niwa.
+
+        Fixed a bug caused by a typo in CommitSet.equals, which makes it returns incorrect results for most
+        comparison between a CommitSet and a MeasurementCommitSet.
+
+        MeasurementCommitSet does not have full information for the commits, thus, it cannot build mappings
+        between root/patch/owner commit/requires build to repository. When querying whether a given repository
+        needs to be built, MeasurementCommitSet will return undefined. Due to 'undefined != false', this
+        equality check will fail. Making 'CommitSet.requiresBuildForRepository' defaults to 'false' would fix
+        this bug.
+
+        * public/v3/models/commit-set.js:
+        (CommitSet.prototype.requiresBuildForRepository): Make it return false when key does not exist
+        instead of 'undefined'.
+        (CommitSet.prototype.equals): Fixed the typo that causes the bug.
+        Use wrapped functions instead of querying the mapping directly.
+        * unit-tests/commit-set-tests.js: Added unit tests.
+
+2018-01-18  Dewei Zhu  <dewei_zhu@apple.com>
+
+        'run-test.py' script should make sure 'node_modules' directory exists before installing node packages.
+        https://bugs.webkit.org/show_bug.cgi?id=181808
+
+        Reviewed by Ryosuke Niwa.
+
+        'run-test.py' will fail if 'node_modules' does not exist before running this script.
+        Instead of calling 'os.chdir' to change directory, use 'cwd' in subprocess instead.
+
+        * tools/run-tests.py: Added the logic to ensure 'node_modules' exists.
+        Also use 'cwd' in subprocess.call instead of calling 'os.chdir' ahead.
+
+2018-01-20  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Extend 'ifBuilt' config key to set property based on whether certain repositories are built or not.
+        https://bugs.webkit.org/show_bug.cgi?id=181906
+
+        Reviewed by Ryosuke Niwa.
+
+        Before this change, 'ifBuilt' will always set specified property for test properties as long as there
+        is a build type build in the same build request group. However, this is no longer valid as we don't
+        want to set specified property for testing when only owned commit is built in previous build.
+        'ifBuilt' needs to conditionally set property based on whether certain required repositories are built.
+        Empty required repository list means no requirement on repository to set property.
+
+        * tools/js/buildbot-syncer.js:
+        (BuildbotSyncer.prototype._propertiesForBuildRequest):In the case of 'built', only set property when
+        repository requirment is meet and there is a 'build' root request in the same build request group.
+        (BuildbotSyncer._parseRepositoryGroup): Extend 'ifBuild' to pass information based on contition.
+        * unit-tests/buildbot-syncer-tests.js: Added unit tests.
+
+2018-01-19  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Should reject updating a build request which has an associated build.
+        https://bugs.webkit.org/show_bug.cgi?id=181893
+
+        Reviewed by Ryosuke Niwa.
+
+        Current code does not prevent submitting to same build request multiple times.
+        This could lead to a build losing its associated build request.
+        As a result, this build will be visible in charts which is not right.
+        Added a check when a build request is reported.
+        Addressed a 'FIXME' for the race condition inside ReportProcessor->resolve_build_id by surrounding
+        it with a database transaction.
+
+        * public/include/report-processor.php:
+        Wrap adding platform and resolve_build_id with a database transaction.
+        Add a check to make sure only a build request has no associated build can be updated.
+        * server-tests/api-report-tests.js: Added unit tests accordingly.
+
+2018-01-18  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Should allow updating a build-request to 'canceled'.
+        https://bugs.webkit.org/show_bug.cgi?id=181819
+
+        Reviewed by Ryosuke Niwa.
+
+        It's possible syncing script update a build-request to 'canceled' state.
+
+        * public/api/build-requests.php: Added 'canceled' as an acceptable update state.
+        * server-tests/api-build-requests-tests.js: Added a unit test to update a build-request to 'canceled'.
+
+2018-01-18  Aakash Jain  <aakash_jain@apple.com>
+
+        Add support for builderNameToIDMap in BuildbotSyncer
+        https://bugs.webkit.org/show_bug.cgi?id=176526
+
+        Reviewed by Ryosuke Niwa.
+
+        * tools/js/buildbot-syncer.js:
+        (BuildbotSyncer._loadConfig): Added builderNameToIDMap parameter. It would be used later on.
+        (BuildbotSyncer._resolveBuildersWithPlatforms): Ditto.
+        (BuildbotSyncer._validateAndMergeConfig): Added builderID as a valid config parameter.
+        * tools/js/buildbot-triggerable.js:
+        (BuildbotTriggerable.prototype.getBuilderNameToIDMap): Method to fetch BuilderNameToIDMap from Buildbot 0.9.
+        (BuildbotTriggerable.prototype.getBuilderNameToIDMapDeprecated): Method to fetch BuilderNameToIDMap from Buildbot 0.8.
+        (BuildbotTriggerable.prototype.initSyncers): Updated to use getBuilderNameToIDMap.
+        * unit-tests/buildbot-syncer-tests.js: Updated unit-tests.
+        * server-tests/resources/mock-data.js:
+        (MockData.buildbotBuildersURLDeprecated): URL for fetching Builders list.
+        (MockData.buildbotBuildersURL): Ditto for Buildbot 0.9
+        (MockData.mockBuildbotBuildersDeprecated): Sample builders data for Buildbot 0.8
+        (MockData.mockBuildbotBuilders): Ditto for Buildbot 0.9
+        * server-tests/tools-buildbot-triggerable-tests.js: Added test for getBuilderNameToIDMap. Updated tests to handle
+        newly added promise for fetching builders list from Buildbot.
+        * server-tests/tools-sync-buildbot-integration-tests.js: Ditto.
+
+2018-01-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Charts can be empty when values are all identical
+        https://bugs.webkit.org/show_bug.cgi?id=181828
+
+        Reviewed by Alexey Proskuryakov.
+
+        Fixed the bug that when SampleVarianceUpperTriangularMatrix can store -Infinity as the initial cost
+        of some entries when the sample standard deviation between two points turns out to be 0,
+        and cause splitIntoSegmentsUntilGoodEnough to return undefiend because no segmentation has a finite cost.
+
+        Also fixed the bug that the time series chart fails to show any data points when all data points have
+        identical values as the entire y-coordinate gets collapsed to an empty value range by adjusting the max value
+        when min & max values are identical.
+
+        * public/v3/components/time-series-chart.js:
+        (TimeSeriesChart.prototype._ensureValueRangeCache): Raise the max slightly when min & max are identical
+        to avoid the chart becoming empty. Otherwise valueDiff in _computeVerticalRenderingMetrics becomes 0
+        and value-to-y-coordinate conversion always results in NaN.
+        * public/shared/statistics.js:
+        (Statistics..SampleVarianceUpperTriangularMatrix):
+        * unit-tests/statistics-tests.js: Added a test case.
+
+2018-01-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Don't fetch more than two builds to check duplicity of builds in ReportProcessor
+        https://bugs.webkit.org/show_bug.cgi?id=181786
+
+        Reviewed by Wenson Hsieh.
+
+        Limit the number of builds to check to avoid using a lot of memory with a long delay.
+
+        * public/include/report-processor.php:
+        (ReportProcessor::resolve_build_id): 
+
+2018-01-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Rename config.json to config.json.sample
+        https://bugs.webkit.org/show_bug.cgi?id=181785
+
+        Reviewed by Wenson Hsieh.
+
+        * .gitignore: Added config.json.
+        * ReadMe.md: Updated the instruction.
+        * config.json.sample: Renamed from config.json.
+
+2018-01-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed build fixes in TestGroupResultsViewer.
+
+        * public/v3/components/test-group-results-viewer.js:
+        (TestGroupResultsViewer.prototype.render): _renderCurrentMetricsLazily was never called.
+        (TestGroupResultsViewer.prototype._buildRowForMetric): Don't try to render null or NaN.
+
+2018-01-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fix perf dashboard tests for node v8
+        https://bugs.webkit.org/show_bug.cgi?id=181782
+
+        Reviewed by Wenson Hsieh.
+
+        Fixed the various tests for node.js v8, which is the latest LTS version.
+
+        * server-tests/api-manifest-tests.js: Replaced the missing Triggerable.acceptsTest by Triggerable.acceptedTests
+        after r226836.
+        * server-tests/api-measurement-set-tests.js: Added "Z" to the end timestamps to force UTF timezone now that Date
+        in node.js parses using the local timezone by default.
+        * server-tests/resources/test-server.js:
+        (TestServer.prototype._restoreDataDirectory): Fixed the bug that this function was erroneously using the async
+        function to rename a directory per new warnings. This code was racy, and it used to cause a test error occasionally.
+        * server-tests/tools-os-build-fetcher-tests.js: Fixed the assertions to make it work in the latest node.js.
+        * unit-tests/measurement-set-tests.js:
+        (waitForMeasurementSet): Wait for setTimeout to cycle through all microtasks instead of just two microtask cycles.
+
 2018-01-11  Ryosuke Niwa  <rniwa@webkit.org>
 
         Cannot trigger Dromaeo tests on internal perf try bots

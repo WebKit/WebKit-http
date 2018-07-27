@@ -34,20 +34,25 @@
 #include "JSWebAnimation.h"
 #include "KeyframeEffect.h"
 #include "Microtasks.h"
+#include "WebAnimationUtilities.h"
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
+Ref<WebAnimation> WebAnimation::create(Document& document, AnimationEffect* effect)
+{
+    auto result = adoptRef(*new WebAnimation(document));
+    result->setEffect(effect);
+    result->setTimeline(&document.timeline());
+    return result;
+}
+
 Ref<WebAnimation> WebAnimation::create(Document& document, AnimationEffect* effect, AnimationTimeline* timeline)
 {
     auto result = adoptRef(*new WebAnimation(document));
-
     result->setEffect(effect);
-
-    // FIXME: the spec mandates distinguishing between an omitted timeline parameter
-    // and an explicit null or undefined value (webkit.org/b/179065).
-    result->setTimeline(timeline ? timeline : &document.timeline());
-
+    if (timeline)
+        result->setTimeline(timeline);
     return result;
 }
 
@@ -151,7 +156,7 @@ std::optional<double> WebAnimation::bindingsStartTime() const
 {
     if (!m_startTime)
         return std::nullopt;
-    return m_startTime->milliseconds();
+    return secondsToWebAnimationsAPITime(m_startTime.value());
 }
 
 void WebAnimation::setBindingsStartTime(std::optional<double> startTime)
@@ -183,7 +188,7 @@ std::optional<double> WebAnimation::bindingsCurrentTime() const
     auto time = currentTime();
     if (!time)
         return std::nullopt;
-    return time->milliseconds();
+    return secondsToWebAnimationsAPITime(time.value());
 }
 
 ExceptionOr<void> WebAnimation::setBindingsCurrentTime(std::optional<double> currentTime)
@@ -287,17 +292,34 @@ ExceptionOr<void> WebAnimation::setCurrentTime(std::optional<Seconds> seekTime)
     return { };
 }
 
-void WebAnimation::setPlaybackRate(double newPlaybackRate)
+void WebAnimation::setPlaybackRate(double newPlaybackRate, Silently silently)
 {
+    // 3.4.17.1. Updating the playback rate of an animation
+    // https://drafts.csswg.org/web-animations-1/#updating-the-playback-rate-of-an-animation
+
     if (m_playbackRate == newPlaybackRate)
         return;
 
-    // 3.5.17.1. Updating the playback rate of an animation
+    // The procedure to set the animation playback rate of an animation, animation to new playback rate is as follows.
+    // The procedure to silently set the animation playback rate of animation, animation to new playback rate is identical
+    // to the above procedure except that rather than invoking the procedure to set the current time in the final step,
+    // the procedure to silently set the current time is invoked instead.
+
+    // 1. Let previous time be the value of the current time of animation before changing the playback rate.
+    auto previousTime = currentTime();
+
+    // 2. Set the playback rate to new playback rate.
+    m_playbackRate = newPlaybackRate;
+
+    // 3. If previous time is resolved, set the current time of animation to previous time.
     // Changes to the playback rate trigger a compensatory seek so that that the animation's current time
     // is unaffected by the change to the playback rate.
-    auto previousTime = currentTime();
-    m_playbackRate = newPlaybackRate;
-    if (previousTime)
+    if (!previousTime)
+        return;
+
+    if (silently == Silently::Yes)
+        silentlySetCurrentTime(previousTime);
+    else
         setCurrentTime(previousTime);
 }
 
@@ -310,7 +332,8 @@ auto WebAnimation::playState() const -> PlayState
         return PlayState::Pending;
 
     // The current time of animation is unresolved → idle
-    if (!currentTime())
+    auto animationCurrentTime = currentTime();
+    if (!animationCurrentTime)
         return PlayState::Idle;
 
     // The start time of animation is unresolved → paused
@@ -319,7 +342,7 @@ auto WebAnimation::playState() const -> PlayState
 
     // For animation, animation playback rate > 0 and current time ≥ target effect end; or
     // animation playback rate < 0 and current time ≤ 0 → finished
-    if ((m_playbackRate > 0 && currentTime().value() >= effectEndTime()) || (m_playbackRate < 0 && currentTime().value() <= 0_s))
+    if ((m_playbackRate > 0 && animationCurrentTime.value() >= effectEndTime()) || (m_playbackRate < 0 && animationCurrentTime.value() <= 0_s))
         return PlayState::Finished;
 
     // Otherwise → running
@@ -330,8 +353,7 @@ Seconds WebAnimation::effectEndTime() const
 {
     // The target effect end of an animation is equal to the end time of the animation's target effect.
     // If the animation has no target effect, the target effect end is zero.
-    // FIXME: Use the effect's computed end time once we support it (webkit.org/b/179170).
-    return m_effect ? m_effect->timing()->duration() : 0_s;
+    return m_effect ? m_effect->timing()->endTime() : 0_s;
 }
 
 void WebAnimation::cancel()
@@ -745,6 +767,38 @@ ExceptionOr<void> WebAnimation::pause()
     return { };
 }
 
+ExceptionOr<void> WebAnimation::reverse()
+{
+    // 3.4.18. Reversing an animation
+    // https://drafts.csswg.org/web-animations-1/#reverse-an-animation
+
+    // The procedure to reverse an animation of animation animation is as follows:
+
+    // 1. If there is no timeline associated with animation, or the associated timeline is inactive
+    //    throw an InvalidStateError and abort these steps.
+    if (!m_timeline || !m_timeline->currentTime())
+        return Exception { InvalidStateError };
+
+    // 2. Silently set the animation playback rate of animation to −animation playback rate.
+    //    This must be done silently or else we may end up resolving the current ready promise when
+    //    we do the compensatory seek despite the fact that we will most likely still have a pending
+    //    task queued at the end of the operation.
+    setPlaybackRate(-m_playbackRate, Silently::Yes);
+
+    // 3. Run the steps to play an animation for animation with the auto-rewind flag set to true.
+    auto playResult = play(AutoRewind::Yes);
+
+    // If the steps to play an animation throw an exception, restore the original animation playback rate
+    // by re-running the procedure to silently set the animation playback rate with the original animation
+    // playback rate.
+    if (playResult.hasException()) {
+        setPlaybackRate(-m_playbackRate, Silently::Yes);
+        return playResult.releaseException();
+    }
+
+    return { };
+}
+
 void WebAnimation::setTimeToRunPendingPauseTask(TimeToRunPendingTask timeToRunPendingTask)
 {
     m_timeToRunPendingPauseTask = timeToRunPendingTask;
@@ -797,7 +851,7 @@ Seconds WebAnimation::timeToNextRequiredTick(Seconds timelineTime) const
         return Seconds::infinity();
 
     auto startTime = m_startTime.value();
-    auto endTime = startTime + (m_effect->timing()->duration() / m_playbackRate);
+    auto endTime = startTime + (m_effect->timing()->iterationDuration() / m_playbackRate);
 
     // If we haven't started yet, return the interval until our active start time.
     auto activeStartTime = std::min(startTime, endTime);
@@ -816,8 +870,8 @@ Seconds WebAnimation::timeToNextRequiredTick(Seconds timelineTime) const
 
 void WebAnimation::resolve(RenderStyle& targetStyle)
 {
-    if (m_effect && currentTime())
-        m_effect->applyAtLocalTime(currentTime().value(), targetStyle);
+    if (m_effect)
+        m_effect->apply(targetStyle);
 }
 
 void WebAnimation::acceleratedRunningStateDidChange()

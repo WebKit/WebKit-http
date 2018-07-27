@@ -43,7 +43,16 @@ public:
     WEBCORE_EXPORT static ServiceWorkerProvider& singleton();
     WEBCORE_EXPORT static void setSharedProvider(ServiceWorkerProvider&);
 
+    bool mayHaveServiceWorkerRegisteredForOrigin(PAL::SessionID, const WebCore::SecurityOrigin&);
+    virtual SWClientConnection* existingServiceWorkerConnectionForSession(PAL::SessionID) = 0;
     virtual SWClientConnection& serviceWorkerConnectionForSession(PAL::SessionID) = 0;
+
+    WEBCORE_EXPORT void registerServiceWorkerClients(PAL::SessionID);
+
+    void setHasRegisteredServiceWorkers(bool value) { m_hasRegisteredServiceWorkers = value; }
+
+private:
+    bool m_hasRegisteredServiceWorkers { true };
 };
 
 } // namespace WebCore

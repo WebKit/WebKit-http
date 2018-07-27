@@ -249,15 +249,6 @@ bool CGContextGetAllowsFontSubpixelPositioning(CGContextRef);
 bool CGContextDrawsWithCorrectShadowOffsets(CGContextRef);
 CGPatternRef CGPatternCreateWithImage2(CGImageRef, CGAffineTransform, CGPatternTiling);
 
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200) || PLATFORM(IOS)
-bool CGColorSpaceUsesExtendedRange(CGColorSpaceRef);
-
-typedef struct CGPDFAnnotation *CGPDFAnnotationRef;
-typedef bool (^CGPDFAnnotationDrawCallbackType)(CGContextRef context, CGPDFPageRef page, CGPDFAnnotationRef annotation);
-void CGContextDrawPDFPageWithAnnotations(CGContextRef, CGPDFPageRef, CGPDFAnnotationDrawCallbackType);
-void CGContextDrawPathDirect(CGContextRef, CGPathDrawingMode, CGPathRef, const CGRect* boundingBox);
-#endif
-
 #if USE(IOSURFACE)
 CGContextRef CGIOSurfaceContextCreate(IOSurfaceRef, size_t, size_t, size_t, size_t, CGColorSpaceRef, CGBitmapInfo);
 CGImageRef CGIOSurfaceContextCreateImage(CGContextRef);
@@ -266,7 +257,15 @@ CGColorSpaceRef CGIOSurfaceContextGetColorSpace(CGContextRef);
 #endif
 
 #if PLATFORM(COCOA)
+bool CGColorSpaceUsesExtendedRange(CGColorSpaceRef);
+
+typedef struct CGPDFAnnotation *CGPDFAnnotationRef;
+typedef bool (^CGPDFAnnotationDrawCallbackType)(CGContextRef context, CGPDFPageRef page, CGPDFAnnotationRef annotation);
+void CGContextDrawPDFPageWithAnnotations(CGContextRef, CGPDFPageRef, CGPDFAnnotationDrawCallbackType);
+void CGContextDrawPathDirect(CGContextRef, CGPathDrawingMode, CGPathRef, const CGRect* boundingBox);
+
 CGColorSpaceRef CGContextCopyDeviceColorSpace(CGContextRef);
+CFPropertyListRef CGColorSpaceCopyPropertyList(CGColorSpaceRef);
 CGError CGSNewRegionWithRect(const CGRect*, CGRegionRef*);
 CGError CGSPackagesEnableConnectionOcclusionNotifications(CGSConnectionID, bool flag, bool* outCurrentVisibilityState);
 CGError CGSPackagesEnableConnectionWindowModificationNotifications(CGSConnectionID, bool flag, bool* outConnectionIsCurrentlyIdle);

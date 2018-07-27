@@ -106,7 +106,7 @@ public:
     static FontPlatformData cloneWithSyntheticOblique(const FontPlatformData&, bool);
     static FontPlatformData cloneWithSize(const FontPlatformData&, float);
 
-#if USE(CG) && (PLATFORM(WIN) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200))
+#if USE(CG) && PLATFORM(WIN)
     FontPlatformData(CGFontRef, float size, bool syntheticBold, bool syntheticOblique, FontOrientation, FontWidthVariant, TextRenderingMode);
 #endif
 
@@ -164,7 +164,7 @@ public:
 
     bool hasVariations() const { return m_hasVariations; }
 
-#if USE(CG) && (PLATFORM(WIN) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200))
+#if USE(CG) && PLATFORM(WIN)
     CGFontRef cgFont() const { return m_cgFont.get(); }
 #endif
 
@@ -265,7 +265,7 @@ private:
 	std::unique_ptr<BFont> m_font;
 #endif
 
-#if USE(CG) && (PLATFORM(WIN) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200))
+#if USE(CG) && PLATFORM(WIN)
     RetainPtr<CGFontRef> m_cgFont;
 #endif
 

@@ -78,8 +78,8 @@ public:
 
     ServiceWorkerIdentifier identifier() const { return m_data.identifier; }
 
-    SWServerToContextConnectionIdentifier contextConnectionIdentifier() const { return m_contextConnectionIdentifier; }
-    void setContextConnectionIdentifier(SWServerToContextConnectionIdentifier identifier) { m_contextConnectionIdentifier = identifier; }
+    std::optional<SWServerToContextConnectionIdentifier> contextConnectionIdentifier() const { return m_contextConnectionIdentifier; }
+    void setContextConnectionIdentifier(std::optional<SWServerToContextConnectionIdentifier> identifier) { m_contextConnectionIdentifier = identifier; }
 
     ServiceWorkerState state() const { return m_data.state; }
     void setState(ServiceWorkerState);
@@ -92,7 +92,7 @@ public:
     void didFinishInstall(const std::optional<ServiceWorkerJobDataIdentifier>&, bool wasSuccessful);
     void didFinishActivation();
     void contextTerminated();
-    std::optional<ServiceWorkerClientData> findClientByIdentifier(const ServiceWorkerClientIdentifier&) const;
+    WEBCORE_EXPORT std::optional<ServiceWorkerClientData> findClientByIdentifier(const ServiceWorkerClientIdentifier&) const;
     void matchAll(const ServiceWorkerClientQueryOptions&, ServiceWorkerClientsMatchAllCallback&&);
     void claim();
 
@@ -106,13 +106,13 @@ public:
     const ClientOrigin& origin() const;
 
 private:
-    SWServerWorker(SWServer&, SWServerRegistration&, SWServerToContextConnectionIdentifier, const URL&, const String& script, const ContentSecurityPolicyResponseHeaders&,  WorkerType, ServiceWorkerIdentifier);
+    SWServerWorker(SWServer&, SWServerRegistration&, std::optional<SWServerToContextConnectionIdentifier>, const URL&, const String& script, const ContentSecurityPolicyResponseHeaders&,  WorkerType, ServiceWorkerIdentifier);
 
     void callWhenActivatedHandler(bool success);
 
     SWServer& m_server;
     ServiceWorkerRegistrationKey m_registrationKey;
-    SWServerToContextConnectionIdentifier m_contextConnectionIdentifier;
+    std::optional<SWServerToContextConnectionIdentifier> m_contextConnectionIdentifier;
     ServiceWorkerData m_data;
     String m_script;
     ContentSecurityPolicyResponseHeaders m_contentSecurityPolicy;

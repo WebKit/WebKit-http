@@ -252,15 +252,15 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
     m_logCookieInformation = parameters.logCookieInformation;
 #endif
 
-#if USE(NETWORK_SESSION)
 #if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
     parameters.defaultSessionParameters.legacyCustomProtocolManager = supplement<LegacyCustomProtocolManager>();
 #endif
     SessionTracker::setSession(PAL::SessionID::defaultSessionID(), NetworkSession::create(WTFMove(parameters.defaultSessionParameters)));
-#endif
 
     for (auto& supplement : m_supplements.values())
         supplement->initialize(parameters);
+
+    RELEASE_LOG(Process, "%p - NetworkProcess::initializeNetworkProcess: Presenting process = %d", this, WebCore::presentingApplicationPID());
 }
 
 void NetworkProcess::initializeConnection(IPC::Connection* connection)
@@ -300,12 +300,10 @@ void NetworkProcess::createNetworkConnectionToWebProcess()
 void NetworkProcess::clearCachedCredentials()
 {
     NetworkStorageSession::defaultStorageSession().credentialStorage().clearCredentials();
-#if USE(NETWORK_SESSION)
     if (auto* networkSession = SessionTracker::networkSession(PAL::SessionID::defaultSessionID()))
         networkSession->clearCredentials();
     else
         ASSERT_NOT_REACHED();
-#endif
 }
 
 void NetworkProcess::addWebsiteDataStore(WebsiteDataStoreParameters&& parameters)
@@ -593,7 +591,6 @@ void NetworkProcess::continueCanAuthenticateAgainstProtectionSpace(uint64_t load
 
 #endif
 
-#if USE(NETWORK_SESSION)
 void NetworkProcess::continueWillSendRequest(DownloadID downloadID, WebCore::ResourceRequest&& request)
 {
     downloadManager().continueWillSendRequest(downloadID, WTFMove(request));
@@ -618,7 +615,6 @@ void NetworkProcess::findPendingDownloadLocation(NetworkDataTask& networkDataTas
 
     downloadProxyConnection()->send(Messages::DownloadProxy::DecideDestinationWithSuggestedFilenameAsync(networkDataTask.pendingDownloadID(), suggestedFilename), destinationID);
 }
-#endif
 
 void NetworkProcess::continueDecidePendingDownloadDestination(DownloadID downloadID, String destination, SandboxExtension::Handle&& sandboxExtensionHandle, bool allowOverwrite)
 {

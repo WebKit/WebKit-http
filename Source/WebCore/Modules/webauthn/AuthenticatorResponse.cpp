@@ -26,6 +26,8 @@
 #include "config.h"
 #include "AuthenticatorResponse.h"
 
+#if ENABLE(WEB_AUTHN)
+
 namespace WebCore {
 
 AuthenticatorResponse::AuthenticatorResponse(RefPtr<ArrayBuffer>&& clientDataJSON)
@@ -33,13 +35,11 @@ AuthenticatorResponse::AuthenticatorResponse(RefPtr<ArrayBuffer>&& clientDataJSO
 {
 }
 
-AuthenticatorResponse::~AuthenticatorResponse()
-{
-}
-
-ArrayBuffer* AuthenticatorResponse::clientDataJSON()
+ArrayBuffer* AuthenticatorResponse::clientDataJSON() const
 {
     return m_clientDataJSON.get();
 }
 
 } // namespace WebCore
+
+#endif // ENABLE(WEB_AUTHN)

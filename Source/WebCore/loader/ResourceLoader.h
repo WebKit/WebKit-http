@@ -107,7 +107,6 @@ public:
     virtual void didRetrieveDerivedDataFromCache(const String& type, SharedBuffer&);
 
     virtual bool shouldUseCredentialStorage();
-    virtual void didReceiveAuthenticationChallenge(const AuthenticationChallenge&);
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     virtual bool canAuthenticateAgainstProtectionSpace(const ProtectionSpace&);
 #endif
@@ -185,7 +184,7 @@ private:
 
     // ResourceHandleClient
     void didSendData(ResourceHandle*, unsigned long long bytesSent, unsigned long long totalBytesToBeSent) override;
-    void didReceiveResponseAsync(ResourceHandle*, ResourceResponse&&) override;
+    void didReceiveResponseAsync(ResourceHandle*, ResourceResponse&&, CompletionHandler<void()>&&) override;
     void willSendRequestAsync(ResourceHandle*, ResourceRequest&&, ResourceResponse&&, CompletionHandler<void(ResourceRequest&&)>&&) override;
     void didReceiveData(ResourceHandle*, const char*, unsigned, int encodedDataLength) override;
     void didReceiveBuffer(ResourceHandle*, Ref<SharedBuffer>&&, int encodedDataLength) override;
@@ -194,7 +193,7 @@ private:
     void wasBlocked(ResourceHandle*) override;
     void cannotShowURL(ResourceHandle*) override;
     bool shouldUseCredentialStorage(ResourceHandle*) override { return shouldUseCredentialStorage(); }
-    void didReceiveAuthenticationChallenge(ResourceHandle*, const AuthenticationChallenge& challenge) override { didReceiveAuthenticationChallenge(challenge); } 
+    void didReceiveAuthenticationChallenge(ResourceHandle*, const AuthenticationChallenge&) override;
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     void canAuthenticateAgainstProtectionSpaceAsync(ResourceHandle*, const ProtectionSpace&) override;
 #endif

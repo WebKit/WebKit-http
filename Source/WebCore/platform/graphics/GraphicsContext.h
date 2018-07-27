@@ -269,7 +269,7 @@ public:
     };
     GraphicsContext(NonPaintingReasons);
 
-    bool hasPlatformContext() const { return m_data; }
+    bool hasPlatformContext() const;
     WEBCORE_EXPORT PlatformGraphicsContext* platformContext() const;
 
     bool paintingDisabled() const { return !m_data && !m_impl; }
@@ -579,10 +579,6 @@ public:
     bool shouldIncludeChildWindows() const { return false; }
 #endif // PLATFORM(WIN)
 #endif // OS(WINDOWS)
-
-#if USE(CAIRO)
-    WEBCORE_EXPORT GraphicsContext(cairo_t*);
-#endif
 
     static void adjustLineToPixelBoundaries(FloatPoint& p1, FloatPoint& p2, float strokeWidth, StrokeStyle);
 

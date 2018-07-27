@@ -26,6 +26,7 @@
 #pragma once
 
 #include "AnimationEffectTiming.h"
+#include "ComputedTimingProperties.h"
 #include "WebAnimation.h"
 #include <wtf/Forward.h>
 #include <wtf/Ref.h>
@@ -40,10 +41,18 @@ public:
 
     bool isKeyframeEffect() const { return m_classType == KeyframeEffectClass; }
     AnimationEffectTiming* timing() const { return m_timing.get(); }
-    virtual void applyAtLocalTime(Seconds, RenderStyle&) = 0;
+    ComputedTimingProperties getComputedTiming();
+    virtual void apply(RenderStyle&) = 0;
 
     WebAnimation* animation() const { return m_animation.get(); }
     void setAnimation(RefPtr<WebAnimation>&& animation) { m_animation = animation; }
+
+    std::optional<Seconds> localTime() const;
+    std::optional<Seconds> activeTime() const;
+    std::optional<double> iterationProgress() const;
+
+    enum class Phase { Before, Active, After, Idle };
+    Phase phase() const;
 
 protected:
     enum ClassType {
@@ -55,6 +64,15 @@ protected:
     explicit AnimationEffect(ClassType);
 
 private:
+    enum class ComputedDirection { Forwards, Reverse };
+
+    std::optional<double> overallProgress() const;
+    std::optional<double> simpleIterationProgress() const;
+    std::optional<double> currentIteration() const;
+    AnimationEffect::ComputedDirection currentDirection() const;
+    std::optional<double> directedProgress() const;
+    std::optional<double> transformedProgress() const;
+
     ClassType m_classType;
     RefPtr<WebAnimation> m_animation;
     RefPtr<AnimationEffectTiming> m_timing;

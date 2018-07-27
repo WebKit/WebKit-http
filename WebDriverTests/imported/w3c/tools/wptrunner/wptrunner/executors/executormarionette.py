@@ -96,7 +96,7 @@ class MarionetteProtocol(Protocol):
     def teardown(self):
         try:
             self.marionette._request_in_app_shutdown()
-            self.marionette.delete_session(send_request=False, reset_session_id=True)
+            self.marionette.delete_session(send_request=False)
         except Exception:
             # This is typically because the session never started
             pass
@@ -131,13 +131,14 @@ class MarionetteProtocol(Protocol):
         self.logger.debug("Loading %s" % url)
         self.runner_handle = self.marionette.current_window_handle
         try:
-            self.marionette.navigate(url)
+            self.dismiss_alert(lambda: self.marionette.navigate(url))
         except Exception as e:
             self.logger.critical(
                 "Loading initial page %s failed. Ensure that the "
                 "there are no other programs bound to this port and "
                 "that your firewall rules or network setup does not "
                 "prevent access.\e%s" % (url, traceback.format_exc(e)))
+            raise
         self.marionette.execute_script(
             "document.title = '%s'" % threading.current_thread().name.replace("'", '"'))
 
@@ -157,6 +158,7 @@ class MarionetteProtocol(Protocol):
 
         for handle in handles:
             try:
+                self.dismiss_alert(lambda: self.marionette.switch_to_window(handle))
                 self.marionette.switch_to_window(handle)
                 self.marionette.close()
             except errors.NoSuchWindowException:
@@ -167,6 +169,19 @@ class MarionetteProtocol(Protocol):
         self.marionette.switch_to_window(runner_handle)
         if runner_handle != self.runner_handle:
             self.load_runner(protocol)
+
+    def dismiss_alert(self, f):
+        while True:
+            try:
+                f()
+            except errors.UnexpectedAlertOpen:
+                alert = self.marionette.switch_to_alert()
+                try:
+                    alert.dismiss()
+                except errors.NoAlertPresentException:
+                    pass
+            else:
+                break
 
     def wait(self):
         try:
@@ -304,7 +319,7 @@ class ExecuteAsyncScriptRun(object):
         self.result_flag = threading.Event()
 
     def run(self):
-        index = self.url.rfind("/storage/");
+        index = self.url.rfind("/storage/")
         if index != -1:
             # Clear storage
             self.protocol.clear_origin(self.url)
@@ -503,7 +518,7 @@ class MarionetteRefTestExecutor(RefTestExecutor):
         assert viewport_size is None
         assert dpi is None
 
-        timeout =  self.timeout_multiplier * test.timeout if self.debug_info is None else None
+        timeout = self.timeout_multiplier * test.timeout if self.debug_info is None else None
 
         test_url = self.test_url(test)
 

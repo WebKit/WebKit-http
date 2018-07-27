@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -151,6 +151,7 @@ struct WebPageCreationParameters {
     bool smartInsertDeleteEnabled;
 #endif
     bool appleMailPaginationQuirkEnabled;
+    bool appleMailLinesClampEnabled;
     bool shouldScaleViewToFitDocument;
 
     WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection;
@@ -176,10 +177,6 @@ struct WebPageCreationParameters {
     Vector<WebScriptMessageHandlerData> messageHandlers;
 #if ENABLE(CONTENT_EXTENSIONS)
     Vector<std::pair<String, WebCompiledContentRuleListData>> contentRuleLists;
-#endif
-
-#if ENABLE(APPLE_PAY)
-    Vector<String> availablePaymentNetworks;
 #endif
 };
 

@@ -971,6 +971,9 @@ void HTMLMediaElement::removedFromAncestor(RemovalType removalType, ContainerNod
         m_pauseAfterDetachedTaskQueue.enqueueTask(std::bind(&HTMLMediaElement::pauseAfterDetachedTask, this));
     }
 
+    if (m_mediaSession)
+        m_mediaSession->clientCharacteristicsChanged();
+
     HTMLElement::removedFromAncestor(removalType, oldParentOfRemovedTree);
 }
 
@@ -1189,7 +1192,7 @@ String HTMLMediaElement::canPlayType(const String& mimeType) const
     ContentType contentType(mimeType);
     parameters.type = contentType;
     parameters.contentTypesRequiringHardwareSupport = mediaContentTypesRequiringHardwareSupport();
-    MediaPlayer::SupportsType support = MediaPlayer::supportsType(parameters, this);
+    MediaPlayer::SupportsType support = MediaPlayer::supportsType(parameters);
     String canPlay;
 
     // 4.8.10.3
@@ -3442,6 +3445,11 @@ void HTMLMediaElement::playInternal()
 {
     ALWAYS_LOG(LOGIDENTIFIER);
 
+    if (isSuspended()) {
+        ALWAYS_LOG(LOGIDENTIFIER, "  returning because context is suspended");
+        return;
+    }
+
     if (!m_mediaSession->clientWillBeginPlayback()) {
         ALWAYS_LOG(LOGIDENTIFIER, "  returning because of interruption");
         return;
@@ -3526,6 +3534,11 @@ void HTMLMediaElement::pause()
 void HTMLMediaElement::pauseInternal()
 {
     ALWAYS_LOG(LOGIDENTIFIER);
+
+    if (isSuspended()) {
+        ALWAYS_LOG(LOGIDENTIFIER, "  returning because context is suspended");
+        return;
+    }
 
     if (!m_mediaSession->clientWillPausePlayback()) {
         ALWAYS_LOG(LOGIDENTIFIER, "  returning because of interruption");
@@ -4541,7 +4554,7 @@ URL HTMLMediaElement::selectNextSourceChild(ContentType* contentType, String* ke
             if (!document().settings().allowMediaContentTypesRequiringHardwareSupportAsFallback() || Traversal<HTMLSourceElement>::nextSkippingChildren(source))
                 parameters.contentTypesRequiringHardwareSupport = mediaContentTypesRequiringHardwareSupport();
 
-            if (!MediaPlayer::supportsType(parameters, this))
+            if (!MediaPlayer::supportsType(parameters))
                 goto CheckAgain;
         }
 
@@ -6761,16 +6774,6 @@ Vector<RefPtr<PlatformTextTrack>> HTMLMediaElement::outOfBandTrackSources()
 
 #endif
 
-bool HTMLMediaElement::mediaPlayerNeedsSiteSpecificHacks() const
-{
-    return document().settings().needsSiteSpecificQuirks();
-}
-
-String HTMLMediaElement::mediaPlayerDocumentHost() const
-{
-    return document().url().host();
-}
-
 void HTMLMediaElement::mediaPlayerEnterFullscreen()
 {
     enterFullscreen();
@@ -6872,27 +6875,6 @@ bool HTMLMediaElement::mediaPlayerShouldUsePersistentCache() const
 const String& HTMLMediaElement::mediaPlayerMediaCacheDirectory() const
 {
     return mediaCacheDirectory();
-}
-
-bool HTMLMediaElement::mediaPlayerShouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge& challenge)
-{
-    RefPtr<Frame> frame = document().frame();
-    if (!frame)
-        return false;
-
-    Page* page = frame->page();
-    if (!page)
-        return false;
-
-    ResourceRequest request(m_currentSrc);
-    ResourceLoadNotifier& notifier = frame->loader().notifier();
-    RefPtr<DocumentLoader> documentLoader = document().loader();
-    unsigned long identifier = page->progress().createUniqueIdentifier();
-
-    notifier.assignIdentifierToInitialRequest(identifier, documentLoader.get(), request);
-    notifier.didReceiveAuthenticationChallenge(identifier, documentLoader.get(), challenge);
-
-    return true;
 }
 
 String HTMLMediaElement::sourceApplicationIdentifier() const

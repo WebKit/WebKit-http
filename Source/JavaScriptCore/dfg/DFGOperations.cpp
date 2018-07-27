@@ -57,9 +57,13 @@
 #include "JSMap.h"
 #include "JSPropertyNameEnumerator.h"
 #include "JSSet.h"
+#include "JSWeakMap.h"
+#include "JSWeakSet.h"
 #include "ObjectConstructor.h"
 #include "Operations.h"
 #include "ParseInt.h"
+#include "RegExpConstructor.h"
+#include "RegExpMatchesArray.h"
 #include "RegExpObject.h"
 #include "Repatch.h"
 #include "ScopedArguments.h"
@@ -1023,6 +1027,32 @@ EncodedJSValue JIT_OPERATION operationRegExpExecGeneric(ExecState* exec, JSGloba
     return JSValue::encode(asRegExpObject(base)->exec(exec, globalObject, input));
 }
 
+EncodedJSValue JIT_OPERATION operationRegExpExecNonGlobalOrSticky(ExecState* exec, JSGlobalObject* globalObject, RegExp* regExp, JSString* string)
+{
+    SuperSamplerScope superSamplerScope(false);
+
+    VM& vm = globalObject->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    RegExpConstructor* regExpConstructor = globalObject->regExpConstructor();
+    String input = string->value(exec);
+    RETURN_IF_EXCEPTION(scope, { });
+
+    unsigned lastIndex = 0;
+    MatchResult result;
+    JSArray* array = createRegExpMatchesArray(vm, globalObject, string, input, regExp, lastIndex, result);
+    if (!array) {
+        ASSERT(!scope.exception());
+        return JSValue::encode(jsNull());
+    }
+
+    RETURN_IF_EXCEPTION(scope, { });
+    regExpConstructor->recordMatch(vm, regExp, string, result);
+    return JSValue::encode(array);
+}
+
 EncodedJSValue JIT_OPERATION operationRegExpMatchFastString(ExecState* exec, JSGlobalObject* globalObject, RegExpObject* regExpObject, JSString* argument)
 {
     SuperSamplerScope superSamplerScope(false);
@@ -1876,6 +1906,16 @@ JSCell* JIT_OPERATION operationToIndexString(ExecState* exec, int32_t index)
     return jsString(exec, Identifier::from(exec, index).string());
 }
 
+JSCell* JIT_OPERATION operationNewRegexpWithLastIndex(ExecState* exec, JSCell* regexpPtr, EncodedJSValue encodedLastIndex)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+
+    RegExp* regexp = static_cast<RegExp*>(regexpPtr);
+    ASSERT(regexp->isValid());
+    return RegExpObject::create(vm, exec->lexicalGlobalObject()->regExpStructure(), regexp, JSValue::decode(encodedLastIndex));
+}
+
 StringImpl* JIT_OPERATION operationResolveRope(ExecState* exec, JSString* string)
 {
     VM& vm = exec->vm();
@@ -2655,6 +2695,20 @@ JSCell* JIT_OPERATION operationMapSet(ExecState* exec, JSCell* map, EncodedJSVal
     if (!bucket)
         return vm.sentinelMapBucket.get();
     return bucket;
+}
+
+void JIT_OPERATION operationWeakSetAdd(ExecState* exec, JSCell* set, JSCell* key, int32_t hash)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    jsCast<JSWeakSet*>(set)->add(vm, asObject(key), JSValue(), hash);
+}
+
+void JIT_OPERATION operationWeakMapSet(ExecState* exec, JSCell* map, JSCell* key, EncodedJSValue value, int32_t hash)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    jsCast<JSWeakMap*>(map)->add(vm, asObject(key), JSValue::decode(value), hash);
 }
 
 EncodedJSValue JIT_OPERATION operationGetPrototypeOfObject(ExecState* exec, JSObject* thisObject)

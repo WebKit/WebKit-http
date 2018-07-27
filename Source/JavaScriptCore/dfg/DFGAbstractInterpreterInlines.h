@@ -764,6 +764,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             break;
         default:
             DFG_ASSERT(m_graph, node, node->child1().useKind() == UntypedUse);
+            clobberWorld(node->origin.semantic, clobberLimit);
             forNode(node).setType(SpecBytecodeNumber);
             break;
         }
@@ -978,6 +979,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             break;
         default:
             DFG_ASSERT(m_graph, node, node->child1().useKind() == UntypedUse);
+            clobberWorld(node->origin.semantic, clobberLimit);
             forNode(node).setType(SpecFullNumber);
             break;
         }
@@ -1054,21 +1056,22 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                 forNode(node).setType(typeOfDoubleRounding(forNode(node->child1()).m_type));
         } else {
             DFG_ASSERT(m_graph, node, node->child1().useKind() == UntypedUse);
+            clobberWorld(node->origin.semantic, clobberLimit);
             forNode(node).setType(SpecFullNumber);
         }
         break;
     }
             
     case ArithSqrt:
-        executeDoubleUnaryOpEffects(node, sqrt);
+        executeDoubleUnaryOpEffects(node, clobberLimit, sqrt);
         break;
 
     case ArithFRound:
-        executeDoubleUnaryOpEffects(node, [](double value) -> double { return static_cast<float>(value); });
+        executeDoubleUnaryOpEffects(node, clobberLimit, [](double value) -> double { return static_cast<float>(value); });
         break;
         
     case ArithUnary:
-        executeDoubleUnaryOpEffects(node, arithUnaryFunction(node->arithUnaryType()));
+        executeDoubleUnaryOpEffects(node, clobberLimit, arithUnaryFunction(node->arithUnaryType()));
         break;
             
     case LogicalNot: {
@@ -1159,6 +1162,10 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
 
     case MapSet:
         forNode(node).set(m_graph, m_vm.hashMapBucketMapStructure.get());
+        break;
+
+    case WeakSetAdd:
+    case WeakMapSet:
         break;
 
     case WeakMapGet:
@@ -1607,7 +1614,9 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                 break;
             }
         }
-        
+
+        if (node->child1().useKind() == UntypedUse || node->child2().useKind() == UntypedUse)
+            clobberWorld(node->origin.semantic, clobberLimit);
         forNode(node).setType(SpecBoolean);
         break;
     }
@@ -1935,11 +1944,15 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     }
             
     case RegExpExec:
-        if (node->child2().useKind() == RegExpObjectUse
-            && node->child3().useKind() == StringUse) {
-            // This doesn't clobber the world since there are no conversions to perform.
-        } else
-            clobberWorld(node->origin.semantic, clobberLimit);
+    case RegExpExecNonGlobalOrSticky:
+        if (node->op() == RegExpExec) {
+            if (node->child2().useKind() == RegExpObjectUse
+                && node->child3().useKind() == StringUse) {
+                // This doesn't clobber the world since there are no conversions to perform.
+            } else
+                clobberWorld(node->origin.semantic, clobberLimit);
+        }
+
         if (JSValue globalObjectValue = forNode(node->child1()).m_value) {
             if (JSGlobalObject* globalObject = jsDynamicCast<JSGlobalObject*>(m_vm, globalObjectValue)) {
                 if (!globalObject->isHavingABadTime()) {
@@ -2145,6 +2158,9 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
 
     case Spread:
+        if (!m_graph.canDoFastSpread(node, forNode(node->child1())))
+            clobberWorld(node->origin.semantic, clobberLimit);
+
         forNode(node).set(
             m_graph, m_vm.fixedArrayStructure.get());
         break;
@@ -2254,6 +2270,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case PhantomSpread:
     case PhantomNewArrayWithSpread:
     case PhantomNewArrayBuffer:
+    case PhantomNewRegexp:
     case BottomValue:
         m_state.setDidClobber(true); // Prevent constant folding.
         // This claims to return bottom.
@@ -2331,6 +2348,9 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         
     case GetArgumentCountIncludingThis:
         forNode(node).setType(SpecInt32Only);
+        break;
+
+    case SetArgumentCountIncludingThis:
         break;
         
     case GetRestLength:
@@ -2881,6 +2901,10 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         // contradiction then there must always be a contradiction even if subsequent passes don't
         // realize it. This is the case here.
         
+        // Ordinarily you have to be careful with calling setFoundConstants()
+        // because of the effect on compile times, but this node is FTL-only.
+        m_state.setFoundConstants(true);
+        
         UniquedStringImpl* uid = m_graph.identifiers()[node->multiGetByOffsetData().identifierNumber];
 
         AbstractValue base = forNode(node->child1());
@@ -2889,10 +2913,8 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         for (const MultiGetByOffsetCase& getCase : node->multiGetByOffsetData().cases) {
             RegisteredStructureSet set = getCase.set();
             set.filter(base);
-            if (set.isEmpty()) {
-                m_state.setFoundConstants(true);
+            if (set.isEmpty())
                 continue;
-            }
             baseSet.merge(set);
 
             switch (getCase.method().kind()) {
@@ -3563,7 +3585,7 @@ FiltrationResult AbstractInterpreter<AbstractStateType>::filterClassInfo(
 }
 
 template<typename AbstractStateType>
-void AbstractInterpreter<AbstractStateType>::executeDoubleUnaryOpEffects(Node* node, double(*equivalentFunction)(double))
+void AbstractInterpreter<AbstractStateType>::executeDoubleUnaryOpEffects(Node* node, unsigned clobberLimit, double(*equivalentFunction)(double))
 {
     JSValue child = forNode(node->child1()).value();
     if (std::optional<double> number = child.toNumberFromPrimitive()) {
@@ -3573,6 +3595,8 @@ void AbstractInterpreter<AbstractStateType>::executeDoubleUnaryOpEffects(Node* n
     SpeculatedType type = SpecFullNumber;
     if (node->child1().useKind() == DoubleRepUse)
         type = typeOfDoubleUnaryOp(forNode(node->child1()).m_type);
+    else
+        clobberWorld(node->origin.semantic, clobberLimit);
     forNode(node).setType(type);
 }
 

@@ -281,6 +281,50 @@ describe('/api/build-requests', function () {
         });
     });
 
+    it('a repository group of a build request should accepts the commit set of the same build request', async () => {
+        await MockData.addTestGroupWithOwnerCommitNotInCommitSet(TestServer.database());
+        await Manifest.fetch();
+        const buildRequests = await BuildRequest.fetchForTriggerable('build-webkit');
+        assert.equal(buildRequests.length, 1);
+
+        const test = Test.findById(200);
+        assert(test);
+
+        const platform = Platform.findById(65);
+        assert(platform);
+
+        const buildRequest = buildRequests[0];
+
+        assert.equal(buildRequest.id(), 704);
+        assert.equal(buildRequest.testGroupId(), 900);
+        assert.equal(buildRequest.test(), test);
+        assert.equal(buildRequest.platform(), platform);
+        assert.equal(buildRequest.order(), 0);
+        assert.ok(buildRequest.commitSet() instanceof CommitSet);
+        assert.ok(!buildRequest.hasFinished());
+        assert.ok(!buildRequest.hasStarted());
+        assert.ok(buildRequest.isPending());
+        assert.equal(buildRequest.statusLabel(), 'Waiting');
+
+        const osx = Repository.findById(9);
+        assert.equal(osx.name(), 'macOS');
+
+        const webkit = Repository.findById(11);
+        assert.equal(webkit.name(), 'WebKit');
+
+        const jsc = Repository.findById(213);
+        assert.equal(jsc.name(), 'JavaScriptCore');
+
+        const commitSet = buildRequest.commitSet();
+
+        assert.equal(commitSet.revisionForRepository(osx), '10.11 15A284');
+        assert.equal(commitSet.revisionForRepository(webkit), '192736');
+        assert.equal(commitSet.revisionForRepository(jsc), 'owned-jsc-9191');
+        assert.equal(commitSet.ownerRevisionForRepository(jsc), '191622');
+        assert.deepEqual(commitSet.topLevelRepositories().sort((one, another) => one.id() < another.id()), [osx, webkit]);
+        assert.ok(buildRequest.repositoryGroup().accepts(commitSet));
+    });
+
     it('should be fetchable by BuildRequest.fetchForTriggerable', () => {
         return MockData.addMockData(TestServer.database()).then(() => {
             return Manifest.fetch();
@@ -540,6 +584,50 @@ describe('/api/build-requests', function () {
             assert.equal(buildRequests[7].id(), 703);
             assert.equal(buildRequests[7].testGroupId(), 600);
             assert.strictEqual(buildRequests[7].order(), 3);
+        });
+    });
+
+    it('should not return "UnknownBuildRequestStatus" when updating a canceled build request', () => {
+        const updates = {'700': {status: 'canceled', url: 'http://build.webkit.org/someBuilder/builds'}};
+        return MockData.addMockData(TestServer.database()).then(() => {
+            return TestServer.remoteAPI().postJSONWithStatus('/api/build-requests/build-webkit', {
+                'slaveName': 'sync-slave',
+                'slavePassword': 'password',
+                'buildRequestUpdates': updates
+            }).then((response) => {
+                assert.equal(response['status'], 'OK');
+
+                assert.equal(response['buildRequests'].length, 4);
+                assert.deepEqual(response['buildRequests'][0].id, 700);
+                assert.deepEqual(response['buildRequests'][0].order, 0);
+                assert.deepEqual(response['buildRequests'][0].platform, '65');
+                assert.deepEqual(response['buildRequests'][0].commitSet, 401);
+                assert.deepEqual(response['buildRequests'][0].status, 'canceled');
+                assert.deepEqual(response['buildRequests'][0].test, '200');
+
+                assert.deepEqual(response['buildRequests'][1].id, 701);
+                assert.deepEqual(response['buildRequests'][1].order, 1);
+                assert.deepEqual(response['buildRequests'][1].platform, '65');
+                assert.deepEqual(response['buildRequests'][1].commitSet, 402);
+                assert.deepEqual(response['buildRequests'][1].status, 'pending');
+                assert.deepEqual(response['buildRequests'][1].test, '200');
+
+                assert.deepEqual(response['buildRequests'][2].id, 702);
+                assert.deepEqual(response['buildRequests'][2].order, 2);
+                assert.deepEqual(response['buildRequests'][2].platform, '65');
+                assert.deepEqual(response['buildRequests'][2].commitSet, 401);
+                assert.deepEqual(response['buildRequests'][2].status, 'pending');
+                assert.deepEqual(response['buildRequests'][2].test, '200');
+
+                assert.deepEqual(response['buildRequests'][3].id, 703);
+                assert.deepEqual(response['buildRequests'][3].order, 3);
+                assert.deepEqual(response['buildRequests'][3].platform, '65');
+                assert.deepEqual(response['buildRequests'][3].commitSet, 402);
+                assert.deepEqual(response['buildRequests'][3].status, 'pending');
+                assert.deepEqual(response['buildRequests'][3].test, '200');
+            }, () => {
+                assert(false, 'Should not be reached');
+            });
         });
     });
 });

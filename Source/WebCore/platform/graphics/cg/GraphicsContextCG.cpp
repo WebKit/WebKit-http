@@ -92,8 +92,6 @@ CGColorSpaceRef sRGBColorSpaceRef()
     return sRGBColorSpace;
 }
 
-#if PLATFORM(WIN) || PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200)
-// See GraphicsContextCocoa for the pre-10.12 implementation.
 CGColorSpaceRef linearRGBColorSpaceRef()
 {
     static CGColorSpaceRef linearRGBColorSpace;
@@ -108,7 +106,6 @@ CGColorSpaceRef linearRGBColorSpaceRef()
     });
     return linearRGBColorSpace;
 }
-#endif
 
 CGColorSpaceRef extendedSRGBColorSpaceRef()
 {
@@ -116,7 +113,7 @@ CGColorSpaceRef extendedSRGBColorSpaceRef()
     static std::once_flag onceFlag;
     std::call_once(onceFlag, [] {
         CGColorSpaceRef colorSpace = NULL;
-#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200)
+#if PLATFORM(COCOA)
         colorSpace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedSRGB);
 #endif
         // If there is no support for extended sRGB, fall back to sRGB.
@@ -1145,10 +1142,8 @@ IntRect GraphicsContext::clipBounds() const
     if (paintingDisabled())
         return IntRect();
 
-    if (m_impl) {
-        WTFLogAlways("Getting the clip bounds not yet supported with display lists");
-        return IntRect(-2048, -2048, 4096, 4096); // FIXME: display lists.
-    }
+    if (m_impl)
+        return m_impl->clipBounds();
 
     return enclosingIntRect(CGContextGetClipBoundingBox(platformContext()));
 }
@@ -1500,7 +1495,7 @@ void GraphicsContext::setCTM(const AffineTransform& transform)
         return;
 
     if (m_impl) {
-        WTFLogAlways("GraphicsContext::setCTM() is not compatible with recording contexts.");
+        m_impl->setCTM(transform);
         return;
     }
 
@@ -1514,10 +1509,8 @@ AffineTransform GraphicsContext::getCTM(IncludeDeviceScale includeScale) const
     if (paintingDisabled())
         return AffineTransform();
 
-    if (m_impl) {
-        WTFLogAlways("GraphicsContext::getCTM() is not yet compatible with recording contexts.");
-        return AffineTransform();
-    }
+    if (m_impl)
+        return m_impl->getCTM(includeScale);
 
     // The CTM usually includes the deviceScaleFactor except in WebKit 1 when the
     // content is non-composited, since the scale factor is integrated at a lower
@@ -1533,10 +1526,8 @@ FloatRect GraphicsContext::roundToDevicePixels(const FloatRect& rect, RoundingMo
     if (paintingDisabled())
         return rect;
 
-    if (m_impl) {
-        WTFLogAlways("GraphicsContext::roundToDevicePixels() is not yet compatible with recording contexts.");
-        return rect;
-    }
+    if (m_impl)
+        return m_impl->roundToDevicePixels(rect, roundingMode);
 
     // It is not enough just to round to pixels in device space. The rotation part of the
     // affine transform matrix to device space can mess with this conversion if we have a

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -125,6 +125,10 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << hasImageServices;
     encoder << hasSelectionServices;
     encoder << hasRichContentServices;
+#endif
+
+#if ENABLE(SERVICE_WORKER)
+    encoder << hasRegisteredServiceWorkers;
 #endif
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -358,6 +362,11 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
     if (!decoder.decode(parameters.hasSelectionServices))
         return false;
     if (!decoder.decode(parameters.hasRichContentServices))
+        return false;
+#endif
+
+#if ENABLE(SERVICE_WORKER)
+    if (!decoder.decode(parameters.hasRegisteredServiceWorkers))
         return false;
 #endif
 

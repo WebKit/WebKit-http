@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,10 +31,6 @@
 #include "WebPreferences.h"
 #include <WebCore/Settings.h>
 #include <wtf/RefPtr.h>
-
-#if ENABLE(APPLE_PAY)
-#include "WebPaymentCoordinatorProxy.h"
-#endif
 
 using namespace WebKit;
 
@@ -830,18 +826,12 @@ bool WKPreferencesGetInlineMediaPlaybackRequiresPlaysInlineAttribute(WKPreferenc
 
 void WKPreferencesSetBeaconAPIEnabled(WKPreferencesRef preferencesRef, bool flag)
 {
-#if ENABLE(BEACON_API)
     toImpl(preferencesRef)->setBeaconAPIEnabled(flag);
-#endif
 }
 
 bool WKPreferencesGetBeaconAPIEnabled(WKPreferencesRef preferencesRef)
 {
-#if ENABLE(BEACON_API)
     return toImpl(preferencesRef)->beaconAPIEnabled();
-#else
-    return false;
-#endif
 }
 
 void WKPreferencesSetDirectoryUploadEnabled(WKPreferencesRef preferencesRef, bool flag)
@@ -1211,16 +1201,6 @@ void WKPreferencesSetAggressiveTileRetentionEnabled(WKPreferencesRef preferences
 bool WKPreferencesGetAggressiveTileRetentionEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->aggressiveTileRetentionEnabled();
-}
-
-void WKPreferencesSetQTKitEnabled(WKPreferencesRef preferencesRef, bool enabled)
-{
-    toImpl(preferencesRef)->setQTKitEnabled(enabled);
-}
-
-bool WKPreferencesGetQTKitEnabled(WKPreferencesRef preferencesRef)
-{
-    return toImpl(preferencesRef)->isQTKitEnabled();
 }
 
 void WKPreferencesSetLogsPageMessagesToSystemConsoleEnabled(WKPreferencesRef preferencesRef, bool enabled)
@@ -1791,10 +1771,6 @@ WK_EXPORT bool WKPreferencesGetApplePayEnabled(WKPreferencesRef preferencesRef)
 
 void WKPreferencesSetApplePayEnabled(WKPreferencesRef preferencesRef, bool enabled)
 {
-#if ENABLE(APPLE_PAY)
-    if (!WebPaymentCoordinatorProxy::platformSupportsPayments())
-        enabled = false;
-#endif
     WebKit::toImpl(preferencesRef)->setApplePayEnabled(enabled);
 }
 

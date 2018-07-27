@@ -394,6 +394,12 @@ WI.Table = class Table extends WI.View
         if (column.headerView)
             this.addSubview(column.headerView);
 
+        if (this._sortColumnIdentifier === column.identifier) {
+            let headerCell = this._headerElement.children[newColumnIndex];
+            headerCell.classList.toggle("sort-ascending", this._sortOrder === WI.Table.SortOrder.Ascending);
+            headerCell.classList.toggle("sort-descending", this._sortOrder === WI.Table.SortOrder.Descending);
+        }
+
         // We haven't yet done any layout, nothing to do.
         if (!this._columnWidths)
             return;
@@ -709,8 +715,8 @@ WI.Table = class Table extends WI.View
 
         if (isNaN(this._cachedWidth)) {
             let boundingClientRect = this._scrollContainerElement.getBoundingClientRect();
-            this._cachedWidth = boundingClientRect.width;
-            this._cachedHeight = boundingClientRect.height;
+            this._cachedWidth = Math.floor(boundingClientRect.width);
+            this._cachedHeight = Math.floor(boundingClientRect.height);
         }
 
         // Not visible yet.
@@ -1250,14 +1256,20 @@ WI.Table = class Table extends WI.View
 
         contextMenu.appendSeparator();
 
-        const disabled = true;
-        contextMenu.appendItem(WI.UIString("Displayed Columns"), () => {}, disabled);
+        let didAppendHeaderItem = false;
 
         for (let [columnIdentifier, column] of this._columnSpecs) {
             if (column.locked)
                 continue;
             if (!column.hideable)
                 continue;
+
+            // Add a header item before the list of toggleable columns.
+            if (!didAppendHeaderItem) {
+                const disabled = true;
+                contextMenu.appendItem(WI.UIString("Displayed Columns"), () => {}, disabled);
+                didAppendHeaderItem = true;
+            }
 
             let checked = !column.hidden;
             contextMenu.appendCheckboxItem(column.name, () => {

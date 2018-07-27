@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
- * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -104,6 +104,9 @@
 #include "MockLibWebRTCPeerConnection.h"
 #include "MockPageOverlay.h"
 #include "MockPageOverlayClient.h"
+#if USE(CG)
+#include "PDFDocumentImage.h"
+#endif
 #include "Page.h"
 #include "PageCache.h"
 #include "PageOverlay.h"
@@ -520,7 +523,7 @@ Internals::Internals(Document& document)
     auto* frame = document.frame();
     if (frame && frame->isMainFrame()) {
         m_mockPaymentCoordinator = new MockPaymentCoordinator(frame->mainFrame());
-        frame->mainFrame().setPaymentCoordinator(std::make_unique<PaymentCoordinator>(*m_mockPaymentCoordinator, m_mockPaymentCoordinator->availablePaymentNetworks()));
+        frame->mainFrame().setPaymentCoordinator(std::make_unique<PaymentCoordinator>(*m_mockPaymentCoordinator));
     }
 #endif
 }
@@ -773,6 +776,14 @@ static BitmapImage* bitmapImageFromImageElement(HTMLImageElement& element)
     return image && is<BitmapImage>(image) ? &downcast<BitmapImage>(*image) : nullptr;
 }
 
+#if USE(CG)
+static PDFDocumentImage* pdfDocumentImageFromImageElement(HTMLImageElement& element)
+{
+    auto* image = imageFromImageElement(element);
+    return image && is<PDFDocumentImage>(image) ? &downcast<PDFDocumentImage>(*image) : nullptr;
+}
+#endif
+
 unsigned Internals::imageFrameIndex(HTMLImageElement& element)
 {
     auto* bitmapImage = bitmapImageFromImageElement(element);
@@ -807,6 +818,17 @@ unsigned Internals::imageDecodeCount(HTMLImageElement& element)
 {
     auto* bitmapImage = bitmapImageFromImageElement(element);
     return bitmapImage ? bitmapImage->decodeCountForTesting() : 0;
+}
+
+unsigned Internals::pdfDocumentCachingCount(HTMLImageElement& element)
+{
+#if USE(CG)
+    auto* pdfDocumentImage = pdfDocumentImageFromImageElement(element);
+    return pdfDocumentImage ? pdfDocumentImage->cachingCountForTesting() : 0;
+#else
+    UNUSED_PARAM(element);
+    return 0;
+#endif
 }
 
 void Internals::setLargeImageAsyncDecodingEnabledForTesting(HTMLImageElement& element, bool enabled)
@@ -4309,6 +4331,14 @@ void Internals::terminateServiceWorker(ServiceWorker& worker)
 
     ServiceWorkerProvider::singleton().serviceWorkerConnectionForSession(contextDocument()->sessionID()).syncTerminateWorker(worker.identifier());
 }
+
+bool Internals::hasServiceWorkerConnection()
+{
+    if (!contextDocument())
+        return false;
+
+    return ServiceWorkerProvider::singleton().existingServiceWorkerConnectionForSession(contextDocument()->sessionID());
+}
 #endif
 
 String Internals::timelineDescription(AnimationTimeline& timeline)
@@ -4324,6 +4354,13 @@ void Internals::pauseTimeline(AnimationTimeline& timeline)
 void Internals::setTimelineCurrentTime(AnimationTimeline& timeline, double currentTime)
 {
     timeline.setCurrentTime(Seconds::fromMilliseconds(currentTime));
+}
+
+void Internals::testIncomingSyncIPCMessageWhileWaitingForSyncReply()
+{
+    ASSERT(contextDocument());
+    ASSERT(contextDocument()->page());
+    contextDocument()->page()->chrome().client().testIncomingSyncIPCMessageWhileWaitingForSyncReply();
 }
 
 #if ENABLE(APPLE_PAY)

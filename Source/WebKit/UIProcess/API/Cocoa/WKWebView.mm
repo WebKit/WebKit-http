@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -74,7 +74,6 @@
 #import "WebFullScreenManagerProxy.h"
 #import "WebPageGroup.h"
 #import "WebPageProxy.h"
-#import "WebPaymentCoordinatorProxy.h"
 #import "WebPreferencesKeys.h"
 #import "WebProcessPool.h"
 #import "WebProcessProxy.h"
@@ -596,8 +595,7 @@ static void validate(WKWebViewConfiguration *configuration)
 #endif
 
 #if ENABLE(APPLE_PAY)
-    bool applePayEnabled = [_configuration _applePayEnabled] && WebKit::WebPaymentCoordinatorProxy::platformSupportsPayments();
-    pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::applePayEnabledKey(), WebKit::WebPreferencesStore::Value(applePayEnabled));
+    pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::applePayEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _applePayEnabled]));
 #endif
 
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::needsStorageAccessFromFileURLsQuirkKey(), WebKit::WebPreferencesStore::Value(!![_configuration _needsStorageAccessFromFileURLsQuirk]));
@@ -1569,7 +1567,7 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
 
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
     if (self._safeAreaShouldAffectObscuredInsets)
-        insets = UIEdgeInsetsAdd(insets, [_scrollView _systemContentInset], self._effectiveObscuredInsetEdgesAffectedBySafeArea);
+        insets = UIEdgeInsetsAdd(insets, self._scrollViewSystemContentInset, self._effectiveObscuredInsetEdgesAffectedBySafeArea);
 #endif
 
     return insets;
@@ -2465,14 +2463,22 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     _enclosingScrollViewScrollTimer = nil;
 }
 
+- (UIEdgeInsets)_scrollViewSystemContentInset
+{
+    // It's not safe to access the scroll view's safeAreaInsets or _systemContentInset from
+    // inside our layoutSubviews implementation, because they aren't updated until afterwards.
+    // Instead, depend on the fact that the UIScrollView and WKWebView are in the same coordinate
+    // space, and map the WKWebView's own insets into the scroll view manually.
+    return UIEdgeInsetsAdd([_scrollView _contentScrollInset], self.safeAreaInsets, [_scrollView _edgesApplyingSafeAreaInsetsToContentInset]);
+}
+
 static WebCore::FloatSize activeMinimumLayoutSize(WKWebView *webView, const CGRect& bounds)
 {
     if (webView->_overridesMinimumLayoutSize)
         return WebCore::FloatSize(webView->_minimumLayoutSizeOverride);
 
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
-    UIEdgeInsets systemContentInset = [webView->_scrollView _systemContentInset];
-    return WebCore::FloatSize(UIEdgeInsetsInsetRect(CGRectMake(0, 0, bounds.size.width, bounds.size.height), systemContentInset).size);
+    return WebCore::FloatSize(UIEdgeInsetsInsetRect(CGRectMake(0, 0, bounds.size.width, bounds.size.height), webView._scrollViewSystemContentInset).size);
 #else
     return WebCore::FloatSize(bounds.size);
 #endif
@@ -2519,7 +2525,7 @@ static WebCore::FloatSize activeMinimumLayoutSize(WKWebView *webView, const CGRe
 
         BOOL sizeChanged = NO;
         if (auto drawingArea = _page->drawingArea())
-            sizeChanged = drawingArea->setSize(WebCore::IntSize(bounds.size), WebCore::IntSize(), WebCore::IntSize());
+            sizeChanged = drawingArea->setSize(WebCore::IntSize(bounds.size));
 
         if (sizeChanged & [self usesStandardContentView])
             [_contentView setSizeChangedSinceLastVisibleContentRectUpdate:YES];
@@ -5138,7 +5144,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
     _page->dynamicViewportSizeUpdate(newMinimumLayoutSize, newMaximumUnobscuredSize, visibleRectInContentCoordinates, unobscuredRectInContentCoordinates, futureUnobscuredRectInSelfCoordinates, unobscuredSafeAreaInsetsExtent, targetScale, newOrientation);
     if (WebKit::DrawingAreaProxy* drawingArea = _page->drawingArea())
-        drawingArea->setSize(WebCore::IntSize(newBounds.size), WebCore::IntSize(), WebCore::IntSize());
+        drawingArea->setSize(WebCore::IntSize(newBounds.size));
 }
 
 - (void)_endAnimatedResize
@@ -6029,9 +6035,7 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 
 - (void)_handleAcceptedCandidate:(NSTextCheckingResult *)candidate
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     _impl->handleAcceptedCandidate(candidate);
-#endif
 }
 
 - (void)_didHandleAcceptedCandidate
@@ -6076,16 +6080,16 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 
 #endif // PLATFORM(MAC)
 
-- (void)_requestActiveNowPlayingSessionInfo:(void(^)(BOOL, NSString*, double, double, NSInteger))callback
+- (void)_requestActiveNowPlayingSessionInfo:(void(^)(BOOL, BOOL, NSString*, double, double, NSInteger))callback
 {
     if (!_page) {
-        callback(NO, @"", std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(), 0);
+        callback(NO, NO, @"", std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(), 0);
         return;
     }
 
     auto handler = makeBlockPtr(callback);
-    auto localCallback = WebKit::NowPlayingInfoCallback::create([handler](bool active, String title, double duration, double elapsedTime, uint64_t uniqueIdentifier, WebKit::CallbackBase::Error) {
-        handler(active, title, duration, elapsedTime, uniqueIdentifier);
+    auto localCallback = WebKit::NowPlayingInfoCallback::create([handler](bool active, bool registeredAsNowPlayingApplication, String title, double duration, double elapsedTime, uint64_t uniqueIdentifier, WebKit::CallbackBase::Error) {
+        handler(active, registeredAsNowPlayingApplication, title, duration, elapsedTime, uniqueIdentifier);
     });
 
     _page->requestActiveNowPlayingSessionInfo(WTFMove(localCallback));

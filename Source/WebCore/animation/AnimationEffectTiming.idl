@@ -27,5 +27,12 @@
     EnabledAtRuntime=WebAnimations,
     ImplementationLacksVTable
 ] interface AnimationEffectTiming {
+    [ImplementedAs=bindingsDelay] attribute double delay;
+    [ImplementedAs=bindingsEndDelay] attribute double endDelay;
+    attribute FillMode fill;
+    [MayThrowException] attribute double iterationStart;
+    [MayThrowException] attribute unrestricted double iterations;
     [MayThrowException, ImplementedAs=bindingsDuration] attribute (unrestricted double or DOMString) duration;
+    attribute PlaybackDirection direction;
+    [MayThrowException] attribute DOMString easing;
 };

@@ -123,14 +123,7 @@ void AsyncScrollingCoordinator::frameViewLayoutUpdated(FrameView& frameView)
     if (!m_scrollingStateTree->rootStateNode())
         return;
 
-    // Compute the region of the page that we can't do fast scrolling for. This currently includes
-    // all scrollable areas, such as subframes, overflow divs and list boxes. We need to do this even if the
-    // frame view whose layout was updated is not the main frame.
-    // In the future, we may want to have the ability to set non-fast scrolling regions for more than
-    // just the root node. But right now, this concept only applies to the root.
-    m_scrollingStateTree->rootStateNode()->setEventTrackingRegions(absoluteEventTrackingRegions());
-    m_eventTrackingRegionsDirty = false;
-
+    setEventTrackingRegionsDirty();
     if (!coordinatesScrollingForFrameView(frameView))
         return;
 
@@ -498,15 +491,9 @@ void AsyncScrollingCoordinator::reconcileViewportConstrainedLayerPositions(const
     if (!m_scrollingStateTree->rootStateNode())
         return;
 
-    auto children = m_scrollingStateTree->rootStateNode()->children();
-    if (!children)
-        return;
-
     LOG_WITH_STREAM(Scrolling, stream << getpid() << " AsyncScrollingCoordinator::reconcileViewportConstrainedLayerPositions for viewport rect " << viewportRect);
 
-    // FIXME: We'll have to traverse deeper into the tree at some point.
-    for (auto& child : *children)
-        child->reconcileLayerPositionForViewportRect(viewportRect, action);
+    m_scrollingStateTree->rootStateNode()->reconcileLayerPositionForViewportRect(viewportRect, action);
 }
 
 void AsyncScrollingCoordinator::ensureRootStateNodeForFrameView(FrameView& frameView)

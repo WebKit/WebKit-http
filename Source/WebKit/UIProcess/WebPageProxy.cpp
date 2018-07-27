@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  * Copyright (C) 2012 Intel Corporation. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -77,6 +77,7 @@
 #include "PrintInfo.h"
 #include "TextChecker.h"
 #include "TextCheckerState.h"
+#include "UIMessagePortChannelProvider.h"
 #include "URLSchemeTaskParameters.h"
 #include "UserMediaPermissionRequestProxy.h"
 #include "UserMediaProcessManager.h"
@@ -5822,6 +5823,14 @@ WebPageCreationParameters WebPageProxy::creationParameters()
 #else
     parameters.appleMailPaginationQuirkEnabled = false;
 #endif
+    
+#if PLATFORM(MAC)
+    // FIXME: Need to support iOS too, but there is no isAppleMail for iOS.
+    parameters.appleMailLinesClampEnabled = appleMailLinesClampEnabled();
+#else
+    parameters.appleMailLinesClampEnabled = false;
+#endif
+
 #if PLATFORM(COCOA)
     parameters.smartInsertDeleteEnabled = m_isSmartInsertDeleteEnabled;
 #endif
@@ -5843,10 +5852,6 @@ WebPageCreationParameters WebPageProxy::creationParameters()
 
 #if ENABLE(APPLICATION_MANIFEST)
     parameters.applicationManifest = m_configuration->applicationManifest() ? std::optional<WebCore::ApplicationManifest>(m_configuration->applicationManifest()->applicationManifest()) : std::nullopt;
-#endif
-
-#if ENABLE(APPLE_PAY)
-    parameters.availablePaymentNetworks = WebPaymentCoordinatorProxy::availablePaymentNetworks();
 #endif
 
     m_process->addWebUserContentControllerProxy(m_userContentController, parameters);
@@ -5899,11 +5904,6 @@ void WebPageProxy::canAuthenticateAgainstProtectionSpace(uint64_t loaderID, uint
 
     m_process->processPool().sendToNetworkingProcess(Messages::NetworkProcess::ContinueCanAuthenticateAgainstProtectionSpace(loaderID, canAuthenticate));
 #endif
-}
-
-void WebPageProxy::didReceiveAuthenticationChallenge(uint64_t frameID, const AuthenticationChallenge& coreChallenge, uint64_t challengeID)
-{
-    didReceiveAuthenticationChallengeProxy(frameID, AuthenticationChallengeProxy::create(coreChallenge, challengeID, m_process->connection()));
 }
 
 void WebPageProxy::didReceiveAuthenticationChallengeProxy(uint64_t frameID, Ref<AuthenticationChallengeProxy>&& authenticationChallenge)
@@ -6285,6 +6285,9 @@ void WebPageProxy::drawPagesForPrinting(WebFrameProxy* frame, const PrintInfo& p
 void WebPageProxy::updateBackingStoreDiscardableState()
 {
     ASSERT(isValid());
+
+    if (!m_drawingArea)
+        return;
 
     bool isDiscardable;
 
@@ -6811,7 +6814,7 @@ void WebPageProxy::requestActiveNowPlayingSessionInfo(Ref<NowPlayingInfoCallback
     m_process->send(Messages::WebPage::RequestActiveNowPlayingSessionInfo(callbackID), m_pageID);
 }
 
-void WebPageProxy::nowPlayingInfoCallback(bool hasActiveSession, const String& title, double duration, double elapsedTime, uint64_t uniqueIdentifier, CallbackID callbackID)
+void WebPageProxy::nowPlayingInfoCallback(bool hasActiveSession, bool registeredAsNowPlayingApplication, const String& title, double duration, double elapsedTime, uint64_t uniqueIdentifier, CallbackID callbackID)
 {
     auto callback = m_callbacks.take<NowPlayingInfoCallback>(callbackID);
     if (!callback) {
@@ -6819,7 +6822,7 @@ void WebPageProxy::nowPlayingInfoCallback(bool hasActiveSession, const String& t
         return;
     }
 
-    callback->performCallbackWithReturnValue(hasActiveSession, title, duration, elapsedTime, uniqueIdentifier);
+    callback->performCallbackWithReturnValue(hasActiveSession, registeredAsNowPlayingApplication, title, duration, elapsedTime, uniqueIdentifier);
 }
 #endif
 

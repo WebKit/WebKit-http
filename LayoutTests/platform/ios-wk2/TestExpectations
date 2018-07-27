@@ -32,7 +32,6 @@ fast/viewport/ios/viewport-fit-auto.html [ Skip ]
 
 http/tests/paymentrequest [ Pass ]
 imported/w3c/web-platform-tests/payment-request [ Pass ]
-webkit.org/b/178107 http/tests/paymentrequest/payment-request-abort-method.https.html [ Pass Failure ]
 webkit.org/b/175611 imported/w3c/web-platform-tests/payment-request/allowpaymentrequest/allowpaymentrequest-attribute-cross-origin-bc-containers.https.html [ Skip ]
 webkit.org/b/175611 imported/w3c/web-platform-tests/payment-request/allowpaymentrequest/no-attribute-cross-origin-bc-containers.https.html [ Skip ]
 webkit.org/b/175611 imported/w3c/web-platform-tests/payment-request/allowpaymentrequest/removing-allowpaymentrequest.https.sub.html [ Skip ]
@@ -43,6 +42,7 @@ webkit.org/b/175611 imported/w3c/web-platform-tests/payment-request/allowpayment
 imported/w3c/web-platform-tests/payment-request/payment-request-show-method.https.html [ WontFix ]
 imported/w3c/web-platform-tests/payment-request/payment-request-abort-method.https.html [ WontFix ]
 imported/w3c/web-platform-tests/payment-request/payment-request-canmakepayment-method.https.html [ WontFix ]
+imported/w3c/web-platform-tests/payment-request/rejects_if_not_active.https.html [ WontFix ]
 
  # skip manual payment-request tests
 imported/w3c/web-platform-tests/payment-request/algorithms-manual.https.html [ Skip ]
@@ -61,7 +61,7 @@ imported/w3c/web-platform-tests/payment-request/updateWith-method-pmi-handling-m
 imported/w3c/web-platform-tests/payment-request/user-abort-algorithm-manual.https.html [ Skip ]
 imported/w3c/web-platform-tests/payment-request/user-accepts-payment-request-algo-manual.https.html [ Skip ]
 
-webkit.org/b/170713 imported/w3c/web-platform-tests/css/css-ui-3/text-overflow-022.html [ ImageOnlyFailure ]
+webkit.org/b/170713 imported/w3c/web-platform-tests/css/css-ui/text-overflow-022.html [ ImageOnlyFailure ]
 
 http/tests/security/contentSecurityPolicy/manifest-src-allowed.html [ Pass ]
 http/tests/security/contentSecurityPolicy/manifest-src-blocked.html [ Pass ]
@@ -972,6 +972,20 @@ fast/forms/validation-message-in-relative-body.html [ Skip ]
 fast/forms/validation-message-appearance.html [ Skip ]
 fast/forms/validation-message-on-textarea.html  [ Skip ]
 
+# iOS doesn’t support mouse events simulation using the eventSender.
+editing/selection/select-out-of-floated-non-editable-01.html [ Skip ]
+editing/selection/select-out-of-floated-non-editable-02.html [ Skip ]
+editing/selection/select-out-of-floated-non-editable-03.html [ Skip ]
+editing/selection/select-out-of-floated-non-editable-04.html [ Skip ]
+editing/selection/select-out-of-floated-non-editable-05.html [ Skip ]
+editing/selection/select-out-of-floated-non-editable-06.html [ Skip ]
+editing/selection/select-out-of-floated-non-editable-07.html [ Skip ]
+editing/selection/select-out-of-floated-non-editable-08.html [ Skip ]
+editing/selection/select-out-of-floated-non-editable-09.html [ Skip ]
+editing/selection/select-out-of-floated-non-editable-10.html [ Skip ]
+editing/selection/select-out-of-floated-non-editable-11.html [ Skip ]
+editing/selection/select-out-of-floated-non-editable-12.html [ Skip ]
+
 # Flaky as of 06/08/2015
 fast/loader/fragment-navigation-base-blank.html [ Failure Pass ]
 fast/loader/iframe-meta-refresh-base-blank.html [ Failure Pass ]
@@ -1281,8 +1295,6 @@ imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-content-type.htm
 
 webkit.org/b/176240 http/tests/websocket/tests/hybi/handshake-ok-with-legacy-websocket-response-headers.html [ Pass Failure ]
 
-webkit.org/b/177832 imported/w3c/web-platform-tests/payment-request/rejects_if_not_active.https.html [ Skip ]
-
 webkit.org/b/173608 webrtc/video-replace-muted-track.html [ Skip ]
 
 webkit.org/b/177501 webrtc/video-mute.html [ Pass Timeout ]
@@ -1300,4 +1312,8 @@ webkit.org/b/181167 imported/w3c/web-platform-tests/service-workers/service-work
 webkit.org/b/181392 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-waits-for-activate.https.html [ Pass Failure ]
 
 webkit.org/b/172879 webrtc/video-unmute.html [ Skip ]
+
+webkit.org/b/181957 [ Release ] http/tests/misc/resource-timing-resolution.html [ Pass Failure ]
+
+webkit.org/b/181821 fast/visual-viewport/ios/caret-after-focus-in-fixed.html [ Pass Failure ]
 

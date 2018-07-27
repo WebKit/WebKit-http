@@ -25,6 +25,8 @@
 
 #pragma once
 
+#if ENABLE(WEB_AUTHN)
+
 #include "BufferSource.h"
 #include "PublicKeyCredentialDescriptor.h"
 #include "PublicKeyCredentialType.h"
@@ -39,7 +41,7 @@ struct PublicKeyCredentialCreationOptions {
     };
 
     struct RpEntity : public Entity {
-        String id;
+        mutable String id;
     };
 
     struct UserEntity : public Entity {
@@ -49,7 +51,7 @@ struct PublicKeyCredentialCreationOptions {
 
     struct Parameters {
         PublicKeyCredentialType type;
-        long alg { 0 };
+        long alg;
     };
 
     RpEntity rp;
@@ -58,8 +60,10 @@ struct PublicKeyCredentialCreationOptions {
     BufferSource challenge;
     Vector<Parameters> pubKeyCredParams;
 
-    unsigned long timeout { 0 };
+    std::optional<unsigned long> timeout;
     Vector<PublicKeyCredentialDescriptor> excludeCredentials;
 };
 
 } // namespace WebCore
+
+#endif // ENABLE(WEB_AUTHN)

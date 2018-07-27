@@ -42,7 +42,6 @@
 #import <WebCore/DeprecatedGlobalSettings.h>
 #import <WebCore/NetworkStorageSession.h>
 #import <WebCore/PlatformCookieJar.h>
-#import <WebCore/ResourceHandle.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/Settings.h>
 #import <WebCore/TextEncodingRegistry.h>
@@ -597,7 +596,6 @@ public:
 #endif
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheTotalQuota,
         [NSNumber numberWithLongLong:ApplicationCacheStorage::noQuota()], WebKitApplicationCacheDefaultOriginQuota,
-        [NSNumber numberWithBool:DeprecatedGlobalSettings::isQTKitEnabled()], WebKitQTKitEnabledPreferenceKey,
         [NSNumber numberWithBool:NO], WebKitHiddenPageDOMTimerThrottlingEnabledPreferenceKey,
         [NSNumber numberWithBool:NO], WebKitHiddenPageCSSAnimationSuspensionEnabledPreferenceKey,
         [NSNumber numberWithBool:NO], WebKitLowPowerVideoAudioBufferSizeEnabledPreferenceKey,
@@ -622,7 +620,7 @@ public:
         [NSNumber numberWithBool:YES], WebKitShadowDOMEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitCustomElementsEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitDataTransferItemsEnabledPreferenceKey,
-        [NSNumber numberWithBool:DeprecatedGlobalSettings::defaultCustomPasteboardDataEnabled()], WebKitCustomPasteboardDataEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO], WebKitCustomPasteboardDataEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitModernMediaControlsEnabledPreferenceKey,
 #if ENABLE(WEBGL2)
         [NSNumber numberWithBool:NO], WebKitWebGL2EnabledPreferenceKey,
@@ -2263,16 +2261,6 @@ static NSString *classIBCreatorID = nil;
 - (BOOL)isAVFoundationNSURLSessionEnabled
 {
     return [self _boolValueForKey:WebKitAVFoundationNSURLSessionEnabledKey];
-}
-
-- (void)setQTKitEnabled:(BOOL)flag
-{
-    [self _setBoolValue:flag forKey:WebKitQTKitEnabledPreferenceKey];
-}
-
-- (BOOL)isQTKitEnabled
-{
-    return [self _boolValueForKey:WebKitQTKitEnabledPreferenceKey];
 }
 
 - (void)setVideoPluginProxyEnabled:(BOOL)flag

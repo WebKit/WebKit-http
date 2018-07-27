@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -48,7 +48,7 @@ template<typename T> static inline String primaryDomain(const T& value)
     return ResourceLoadStatistics::primaryDomain(value);
 }
 
-static Seconds timestampResolution { 1_h };
+static Seconds timestampResolution { 5_s };
 static const Seconds minimumNotificationInterval { 5_s };
 
 ResourceLoadObserver& ResourceLoadObserver::shared()
@@ -127,7 +127,7 @@ bool ResourceLoadObserver::shouldLog(Page* page) const
     return DeprecatedGlobalSettings::resourceLoadStatisticsEnabled() && !page->usesEphemeralSession() && m_notificationCallback;
 }
 
-static WallTime reduceToHourlyTimeResolution(WallTime time)
+static WallTime reduceTimeResolution(WallTime time)
 {
     return WallTime::fromRawSeconds(std::floor(time.secondsSinceEpoch() / timestampResolution) * timestampResolution.seconds());
 }
@@ -170,7 +170,7 @@ void ResourceLoadObserver::logFrameNavigation(const Frame& frame, const Frame& t
     if (targetHost != mainFrameHost
         && !(areDomainsAssociated(page, targetPrimaryDomain, mainFramePrimaryDomain) || areDomainsAssociated(page, targetPrimaryDomain, sourcePrimaryDomain))) {
         auto& targetStatistics = ensureResourceStatisticsForPrimaryDomain(targetPrimaryDomain);
-        targetStatistics.lastSeen = reduceToHourlyTimeResolution(WallTime::now());
+        targetStatistics.lastSeen = reduceTimeResolution(WallTime::now());
         if (targetStatistics.subframeUnderTopFrameOrigins.add(mainFramePrimaryDomain).isNewEntry)
             shouldCallNotificationCallback = true;
     }
@@ -227,7 +227,7 @@ void ResourceLoadObserver::logSubresourceLoading(const Frame* frame, const Resou
     bool shouldCallNotificationCallback = false;
     {
         auto& targetStatistics = ensureResourceStatisticsForPrimaryDomain(targetPrimaryDomain);
-        targetStatistics.lastSeen = reduceToHourlyTimeResolution(WallTime::now());
+        targetStatistics.lastSeen = reduceTimeResolution(WallTime::now());
         if (targetStatistics.subresourceUnderTopFrameOrigins.add(mainFramePrimaryDomain).isNewEntry)
             shouldCallNotificationCallback = true;
     }
@@ -268,7 +268,7 @@ void ResourceLoadObserver::logWebSocketLoading(const Frame* frame, const URL& ta
         return;
 
     auto& targetStatistics = ensureResourceStatisticsForPrimaryDomain(targetPrimaryDomain);
-    targetStatistics.lastSeen = reduceToHourlyTimeResolution(WallTime::now());
+    targetStatistics.lastSeen = reduceTimeResolution(WallTime::now());
     if (targetStatistics.subresourceUnderTopFrameOrigins.add(mainFramePrimaryDomain).isNewEntry)
         scheduleNotificationIfNeeded();
 }
@@ -285,7 +285,7 @@ void ResourceLoadObserver::logUserInteractionWithReducedTimeResolution(const Doc
         return;
 
     auto domain = primaryDomain(url);
-    auto newTime = reduceToHourlyTimeResolution(WallTime::now());
+    auto newTime = reduceTimeResolution(WallTime::now());
     auto lastReportedUserInteraction = m_lastReportedUserInteractionMap.get(domain);
     if (newTime == lastReportedUserInteraction)
         return;
@@ -383,7 +383,7 @@ URL ResourceLoadObserver::nonNullOwnerURL(const Document& document) const
     auto* frame = document.frame();
     auto host = document.url().host();
 
-    while ((host.isNull() || host.isEmpty()) && !frame->isMainFrame()) {
+    while ((host.isNull() || host.isEmpty()) && frame && !frame->isMainFrame()) {
         auto* ownerElement = frame->ownerElement();
 
         ASSERT(ownerElement != nullptr);

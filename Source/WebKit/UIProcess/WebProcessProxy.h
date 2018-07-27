@@ -38,6 +38,9 @@
 #include "VisibleWebPageCounter.h"
 #include "WebConnectionToWebProcess.h"
 #include "WebProcessProxyMessages.h"
+#include <WebCore/MessagePortChannelProvider.h>
+#include <WebCore/MessagePortIdentifier.h>
+#include <WebCore/Process.h>
 #include <WebCore/SharedStringHash.h>
 #include <memory>
 #include <pal/SessionID.h>
@@ -103,6 +106,7 @@ public:
     // FIXME: WebsiteDataStores should be made per-WebPageProxy throughout WebKit2
     WebsiteDataStore& websiteDataStore() const { return m_websiteDataStore.get(); }
 
+    static WebProcessProxy* processForIdentifier(WebCore::ProcessIdentifier);
     static WebPageProxy* webPage(uint64_t pageID);
     Ref<WebPageProxy> createWebPage(PageClient&, Ref<API::PageConfiguration>&&);
     void addExistingWebPage(WebPageProxy&, uint64_t pageID);
@@ -132,6 +136,8 @@ public:
     size_t frameCountInPage(WebPageProxy*) const; // Including main frame.
 
     VisibleWebPageToken visiblePageToken() const;
+
+    void testIncomingSyncIPCMessageWhileWaitingForSyncReply(bool& handled);
 
     void updateTextCheckerState();
 
@@ -197,6 +203,8 @@ public:
     void didExceedActiveMemoryLimit();
     void didExceedInactiveMemoryLimit();
 
+    void checkProcessLocalPortForActivity(const WebCore::MessagePortIdentifier&, CompletionHandler<void(WebCore::MessagePortChannelProvider::HasActivity)>&&);
+
 protected:
     static uint64_t generatePageID();
     WebProcessProxy(WebProcessPool&, WebsiteDataStore&);
@@ -218,6 +226,16 @@ private:
 
     void shouldTerminate(bool& shouldTerminate);
 
+    void createNewMessagePortChannel(const WebCore::MessagePortIdentifier& port1, const WebCore::MessagePortIdentifier& port2);
+    void entangleLocalPortInThisProcessToRemote(const WebCore::MessagePortIdentifier& local, const WebCore::MessagePortIdentifier& remote);
+    void messagePortDisentangled(const WebCore::MessagePortIdentifier&);
+    void messagePortClosed(const WebCore::MessagePortIdentifier&);
+    void takeAllMessagesForPort(const WebCore::MessagePortIdentifier&, uint64_t messagesCallbackIdentifier);
+    void postMessageToRemote(WebCore::MessageWithMessagePorts&&, const WebCore::MessagePortIdentifier&);
+    void checkRemotePortForActivity(const WebCore::MessagePortIdentifier, uint64_t callbackIdentifier);
+    void didDeliverMessagePortMessages(uint64_t messageBatchIdentifier);
+    void didCheckProcessLocalPortForActivity(uint64_t callbackIdentifier, bool isLocallyReachable);
+
     // Plugins
 #if ENABLE(NETSCAPE_PLUGIN_API)
     void getPlugins(bool refresh, Vector<WebCore::PluginInfo>& plugins, Vector<WebCore::PluginInfo>& applicationPlugins);
@@ -229,6 +247,7 @@ private:
     void getStorageProcessConnection(PAL::SessionID initialSessionID, Ref<Messages::WebProcessProxy::GetStorageProcessConnection::DelayedReply>&&);
 
     bool platformIsBeingDebugged() const;
+    bool shouldAllowNonValidInjectedCode() const;
 
     static const HashSet<String>& platformPathsWithAssumedReadAccess();
 
@@ -306,6 +325,10 @@ private:
 #if PLATFORM(COCOA) && ENABLE(MEDIA_STREAM)
     std::unique_ptr<UserMediaCaptureManagerProxy> m_userMediaCaptureManagerProxy;
 #endif
+
+    HashSet<WebCore::MessagePortIdentifier> m_processEntangledPorts;
+    HashMap<uint64_t, CompletionHandler<void()>> m_messageBatchDeliveryCompletionHandlers;
+    HashMap<uint64_t, CompletionHandler<void(WebCore::MessagePortChannelProvider::HasActivity)>> m_localPortActivityCompletionHandlers;
 };
 
 } // namespace WebKit

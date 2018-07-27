@@ -244,6 +244,7 @@ Modules/webaudio/WaveShaperDSPKernel.cpp
 Modules/webaudio/WaveShaperNode.cpp
 Modules/webaudio/WaveShaperProcessor.cpp
 
+Modules/webauthn/Authenticator.cpp
 Modules/webauthn/AuthenticatorAssertionResponse.cpp
 Modules/webauthn/AuthenticatorAttestationResponse.cpp
 Modules/webauthn/AuthenticatorResponse.cpp
@@ -345,11 +346,13 @@ bindings/js/DOMGCOutputConstraint.cpp
 bindings/js/DOMWrapperWorld.cpp
 bindings/js/GCController.cpp
 bindings/js/IDBBindingUtilities.cpp
+bindings/js/JSAuthenticatorResponseCustom.cpp
 bindings/js/JSAnimationEffectCustom.cpp
 bindings/js/JSAnimationTimelineCustom.cpp
 bindings/js/JSAttrCustom.cpp
 bindings/js/JSAudioTrackCustom.cpp
 bindings/js/JSAudioTrackListCustom.cpp
+bindings/js/JSBasicCredentialCustom.cpp
 bindings/js/JSBlobCustom.cpp
 bindings/js/JSCSSRuleCustom.cpp
 bindings/js/JSCSSRuleListCustom.cpp
@@ -435,6 +438,7 @@ bindings/js/JSTrackCustom.cpp
 bindings/js/JSTreeWalkerCustom.cpp
 bindings/js/JSVideoTrackCustom.cpp
 bindings/js/JSVideoTrackListCustom.cpp
+bindings/js/JSWebAnimationCustom.cpp
 bindings/js/JSWebGL2RenderingContextCustom.cpp
 bindings/js/JSWebGLRenderingContextCustom.cpp
 bindings/js/JSWebGPURenderPassAttachmentDescriptorCustom.cpp
@@ -735,7 +739,6 @@ dom/FocusEvent.cpp
 dom/GenericEventQueue.cpp
 dom/IdTargetObserver.cpp
 dom/IdTargetObserverRegistry.cpp
-dom/InProcessMessagePortChannel.cpp
 dom/InlineClassicScript.cpp
 dom/InlineStyleSheetOwner.cpp
 dom/InputEvent.cpp
@@ -747,7 +750,6 @@ dom/LoadableScript.cpp
 dom/MessageChannel.cpp
 dom/MessageEvent.cpp
 dom/MessagePort.cpp
-dom/MessagePortChannel.cpp
 dom/Microtasks.cpp
 dom/MouseEvent.cpp
 dom/MouseRelatedEvent.cpp
@@ -822,6 +824,12 @@ dom/VisitedLinkState.cpp
 dom/WebKitAnimationEvent.cpp
 dom/WebKitTransitionEvent.cpp
 dom/WheelEvent.cpp
+
+dom/messageports/MessagePortChannel.cpp
+dom/messageports/MessagePortChannelProvider.cpp
+dom/messageports/MessagePortChannelProviderImpl.cpp
+dom/messageports/MessagePortChannelRegistry.cpp
+dom/messageports/MessageWithMessagePorts.cpp
 
 domjit/DOMJITHelpers.cpp
 domjit/JSDocumentDOMJIT.cpp
@@ -1148,6 +1156,7 @@ inspector/InspectorInstrumentation.cpp
 inspector/InspectorInstrumentationCookie.cpp
 inspector/InspectorNodeFinder.cpp
 inspector/InspectorOverlay.cpp
+inspector/InspectorShaderProgram.cpp
 inspector/InspectorStyleSheet.cpp
 inspector/InstrumentingAgents.cpp
 inspector/NetworkResourcesData.cpp
@@ -1595,7 +1604,7 @@ platform/graphics/filters/FEFlood.cpp
 platform/graphics/filters/FEGaussianBlur.cpp
 platform/graphics/filters/FELighting.cpp
 platform/graphics/filters/FEMerge.cpp
-platform/graphics/filters/FEMorphology.cpp @no-unify // FIXME: Unified sources for FEMorphology.cpp seems to break the windows build. https://bugs.webkit.org/show_bug.cgi?id=178847
+platform/graphics/filters/FEMorphology.cpp
 platform/graphics/filters/FEOffset.cpp
 platform/graphics/filters/FESpecularLighting.cpp
 platform/graphics/filters/FETile.cpp
@@ -1813,6 +1822,8 @@ rendering/RenderLayerFilterInfo.cpp
 rendering/RenderLayerModelObject.cpp
 rendering/RenderLineBoxList.cpp
 rendering/RenderLineBreak.cpp
+rendering/RenderLinesClampFlow.cpp
+rendering/RenderLinesClampSet.cpp
 rendering/RenderListBox.cpp
 rendering/RenderListItem.cpp
 rendering/RenderListMarker.cpp
@@ -1906,6 +1917,7 @@ rendering/shapes/ShapeOutsideInfo.cpp
 rendering/style/BasicShapes.cpp
 rendering/style/ContentData.cpp
 rendering/style/FillLayer.cpp
+rendering/style/GapLength.cpp
 rendering/style/GridPosition.cpp
 rendering/style/GridPositionsResolver.cpp
 rendering/style/KeyframeList.cpp
@@ -2393,6 +2405,7 @@ JSCommandLineAPIHost.cpp
 JSComment.cpp
 JSCompositionEvent.cpp
 JSCompositeOperation.cpp
+JSComputedTimingProperties.cpp
 JSConvolverNode.cpp
 JSCoordinates.cpp
 JSCountQueuingStrategy.cpp

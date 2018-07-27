@@ -45,6 +45,7 @@
 #include <WebCore/EmptyClients.h>
 #include <WebCore/EmptyFrameLoaderClient.h>
 #include <WebCore/LibWebRTCProvider.h>
+#include <WebCore/MessageWithMessagePorts.h>
 #include <WebCore/PageConfiguration.h>
 #include <WebCore/RuntimeEnabledFeatures.h>
 #include <WebCore/SerializedScriptValue.h>
@@ -61,6 +62,9 @@ using namespace PAL;
 using namespace WebCore;
 
 namespace WebKit {
+
+static const Seconds asyncWorkerTerminationTimeout { 10_s };
+static const Seconds syncWorkerTerminationTimeout { 100_ms }; // Only used by layout tests.
 
 class ServiceWorkerFrameLoaderClient final : public EmptyFrameLoaderClient {
 public:
@@ -179,9 +183,9 @@ void WebSWContextManagerConnection::startFetch(SWServerConnectionIdentifier serv
     serviceWorkerThreadProxy->thread().postFetchTask(WTFMove(client), WTFMove(clientId), WTFMove(request), WTFMove(referrer), WTFMove(options));
 }
 
-void WebSWContextManagerConnection::postMessageToServiceWorker(ServiceWorkerIdentifier destinationIdentifier, const IPC::DataReference& message, ServiceWorkerOrClientData&& sourceData)
+void WebSWContextManagerConnection::postMessageToServiceWorker(ServiceWorkerIdentifier destinationIdentifier, MessageWithMessagePorts&& message, ServiceWorkerOrClientData&& sourceData)
 {
-    SWContextManager::singleton().postMessageToServiceWorker(destinationIdentifier, SerializedScriptValue::adopt(message.vector()), WTFMove(sourceData));
+    SWContextManager::singleton().postMessageToServiceWorker(destinationIdentifier, WTFMove(message), WTFMove(sourceData));
 }
 
 void WebSWContextManagerConnection::fireInstallEvent(ServiceWorkerIdentifier identifier)
@@ -196,19 +200,19 @@ void WebSWContextManagerConnection::fireActivateEvent(ServiceWorkerIdentifier id
 
 void WebSWContextManagerConnection::terminateWorker(ServiceWorkerIdentifier identifier)
 {
-    SWContextManager::singleton().terminateWorker(identifier, nullptr);
+    SWContextManager::singleton().terminateWorker(identifier, asyncWorkerTerminationTimeout, nullptr);
 }
 
 void WebSWContextManagerConnection::syncTerminateWorker(ServiceWorkerIdentifier identifier, Ref<Messages::WebSWContextManagerConnection::SyncTerminateWorker::DelayedReply>&& reply)
 {
-    SWContextManager::singleton().terminateWorker(identifier, [reply = WTFMove(reply)] {
+    SWContextManager::singleton().terminateWorker(identifier, syncWorkerTerminationTimeout, [reply = WTFMove(reply)] {
         reply->send();
     });
 }
 
-void WebSWContextManagerConnection::postMessageToServiceWorkerClient(const ServiceWorkerClientIdentifier& destinationIdentifier, Ref<SerializedScriptValue>&& message, ServiceWorkerIdentifier sourceIdentifier, const String& sourceOrigin)
+void WebSWContextManagerConnection::postMessageToServiceWorkerClient(const ServiceWorkerClientIdentifier& destinationIdentifier, MessageWithMessagePorts&& message, ServiceWorkerIdentifier sourceIdentifier, const String& sourceOrigin)
 {
-    m_connectionToStorageProcess->send(Messages::StorageProcess::PostMessageToServiceWorkerClient(destinationIdentifier, IPC::DataReference { message->data() }, sourceIdentifier, sourceOrigin), 0);
+    m_connectionToStorageProcess->send(Messages::StorageProcess::PostMessageToServiceWorkerClient(destinationIdentifier, WTFMove(message), sourceIdentifier, sourceOrigin), 0);
 }
 
 void WebSWContextManagerConnection::didFinishInstall(std::optional<ServiceWorkerJobDataIdentifier> jobDataIdentifier, ServiceWorkerIdentifier serviceWorkerIdentifier, bool wasSuccessful)

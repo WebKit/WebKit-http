@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2018 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -28,6 +28,7 @@
 #include "JSCInlines.h"
 #include "MachineStackMarker.h"
 #include "SamplingProfiler.h"
+#include "ThreadLocalCacheInlines.h"
 #include "WasmMachineThreads.h"
 #include <thread>
 #include <wtf/Threading.h>
@@ -123,6 +124,8 @@ void JSLock::lock(intptr_t lockCount)
 
 void JSLock::didAcquireLock()
 {
+    WTF::speculationFence();
+    
     // FIXME: What should happen to the per-thread identifier table if we don't have a VM?
     if (!m_vm)
         return;
@@ -145,7 +148,9 @@ void JSLock::didAcquireLock()
 
     m_vm->setLastStackTop(thread.savedLastStackTop());
     ASSERT(thread.stack().contains(m_vm->lastStackTop()));
-
+    
+    m_vm->defaultThreadLocalCache->install(*m_vm);
+    
     m_vm->heap.machineThreads().addCurrentThread();
 #if ENABLE(WEBASSEMBLY)
     Wasm::startTrackingCurrentThread();
@@ -191,6 +196,8 @@ void JSLock::unlock(intptr_t unlockCount)
 
 void JSLock::willReleaseLock()
 {
+    WTF::speculationFence();
+    
     RefPtr<VM> vm = m_vm;
     if (vm) {
         vm->drainMicrotasks();

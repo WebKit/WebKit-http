@@ -62,6 +62,7 @@ template<typename T> inline T forwardInheritedValue(T&& value) { return std::for
 inline Length forwardInheritedValue(const Length& value) { auto copy = value; return copy; }
 inline LengthSize forwardInheritedValue(const LengthSize& value) { auto copy = value; return copy; }
 inline LengthBox forwardInheritedValue(const LengthBox& value) { auto copy = value; return copy; }
+inline GapLength forwardInheritedValue(const GapLength& value) { auto copy = value; return copy; }
 
 // Note that we assume the CSS parser only allows valid CSSValue types.
 class StyleBuilderCustom {
@@ -73,7 +74,6 @@ public:
     DECLARE_PROPERTY_CUSTOM_HANDLERS(BorderImageWidth);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(BoxShadow);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(Clip);
-    DECLARE_PROPERTY_CUSTOM_HANDLERS(ColumnGap);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(Content);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(CounterIncrement);
     DECLARE_PROPERTY_CUSTOM_HANDLERS(CounterReset);
@@ -144,6 +144,8 @@ public:
 
     static void applyValueStrokeWidth(StyleResolver&, CSSValue&);
     static void applyValueStrokeColor(StyleResolver&, CSSValue&);
+    
+    static void applyValueWebkitLinesClamp(StyleResolver&, CSSValue&);
 
 private:
     static void resetEffectiveZoom(StyleResolver&);
@@ -1364,27 +1366,6 @@ inline void StyleBuilderCustom::applyValueWebkitSvgShadow(StyleResolver& styleRe
     svgStyle.setShadow(std::make_unique<ShadowData>(location, blur, 0, Normal, false, color.isValid() ? color : Color::transparent));
 }
 
-inline void StyleBuilderCustom::applyInitialColumnGap(StyleResolver& styleResolver)
-{
-    styleResolver.style()->setHasNormalColumnGap();
-}
-
-inline void StyleBuilderCustom::applyInheritColumnGap(StyleResolver& styleResolver)
-{
-    if (styleResolver.parentStyle()->hasNormalColumnGap())
-        styleResolver.style()->setHasNormalColumnGap();
-    else
-        styleResolver.style()->setColumnGap(styleResolver.parentStyle()->columnGap());
-}
-
-inline void StyleBuilderCustom::applyValueColumnGap(StyleResolver& styleResolver, CSSValue& value)
-{
-    if (downcast<CSSPrimitiveValue>(value).valueID() == CSSValueNormal)
-        styleResolver.style()->setHasNormalColumnGap();
-    else
-        styleResolver.style()->setColumnGap(StyleBuilderConverter::convertComputedLength<float>(styleResolver, value));
-}
-
 inline void StyleBuilderCustom::applyInitialContent(StyleResolver& styleResolver)
 {
     styleResolver.style()->clearContent();
@@ -1889,6 +1870,20 @@ inline void StyleBuilderCustom::applyValueStrokeColor(StyleResolver& styleResolv
     if (styleResolver.applyPropertyToVisitedLinkStyle())
         styleResolver.style()->setVisitedLinkStrokeColor(styleResolver.colorFromPrimitiveValue(primitiveValue, /* forVisitedLink */ true));
     styleResolver.style()->setHasExplicitlySetStrokeColor(true);
+}
+
+inline void StyleBuilderCustom::applyValueWebkitLinesClamp(StyleResolver& styleResolver, CSSValue& value)
+{
+    if (is<CSSValueList>(value)) {
+        auto& list = downcast<CSSValueList>(value);
+        if (list.length() != 3)
+            return;
+        LineClampValue start = downcast<CSSPrimitiveValue>(*list.itemWithoutBoundsCheck(0));
+        LineClampValue end = downcast<CSSPrimitiveValue>(*list.itemWithoutBoundsCheck(1));
+        AtomicString center = downcast<CSSPrimitiveValue>(*list.itemWithoutBoundsCheck(2)).stringValue();
+        styleResolver.style()->setLinesClamp(LinesClampValue(start, end, center));
+    } else
+        styleResolver.style()->setLinesClamp(RenderStyle::initialLinesClamp());
 }
 
 } // namespace WebCore

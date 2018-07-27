@@ -293,6 +293,10 @@ void DocumentThreadableLoader::redirectReceived(CachedResource& resource, Resour
         m_originalHeaders->remove(HTTPHeaderName::Authorization);
     request.setHTTPHeaderFields(*m_originalHeaders);
 
+#if ENABLE(SERVICE_WORKER)
+    if (redirectResponse.source() != ResourceResponse::Source::ServiceWorker && redirectResponse.source() != ResourceResponse::Source::MemoryCache)
+        m_options.serviceWorkersMode = ServiceWorkersMode::None;
+#endif
     makeCrossOriginAccessRequest(ResourceRequest(request));
     completionHandler(WTFMove(request));
 }
@@ -334,7 +338,7 @@ void DocumentThreadableLoader::didReceiveResponse(unsigned long identifier, cons
         }
         return;
     }
-    ASSERT(response.type() == ResourceResponse::Type::Opaqueredirect || response.source() == ResourceResponse::Source::ServiceWorker);
+    ASSERT(response.type() == ResourceResponse::Type::Opaqueredirect || response.source() == ResourceResponse::Source::ServiceWorker || response.source() == ResourceResponse::Source::MemoryCache);
     m_client->didReceiveResponse(identifier, response);
 }
 

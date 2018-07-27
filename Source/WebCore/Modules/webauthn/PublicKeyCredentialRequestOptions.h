@@ -25,6 +25,8 @@
 
 #pragma once
 
+#if ENABLE(WEB_AUTHN)
+
 #include "BufferSource.h"
 #include "PublicKeyCredentialDescriptor.h"
 #include <wtf/Forward.h>
@@ -33,9 +35,11 @@ namespace WebCore {
 
 struct PublicKeyCredentialRequestOptions {
     BufferSource challenge;
-    unsigned long timeout { 0 };
-    String rpId;
+    std::optional<unsigned long> timeout;
+    mutable String rpId;
     Vector<PublicKeyCredentialDescriptor> allowCredentials;
 };
 
 } // namespace WebCore
+
+#endif // ENABLE(WEB_AUTHN)

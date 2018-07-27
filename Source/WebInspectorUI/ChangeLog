@@ -1,3 +1,434 @@
+2018-01-30  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Replace Object.shallowMerge with ES2018 spread operator
+        https://bugs.webkit.org/show_bug.cgi?id=182219
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Utilities.js:
+        (Object.shallowMerge): Deleted.
+        * UserInterface/Base/DOMUtilities.js:
+        (WI.linkifyNodeReference):
+        * UserInterface/Base/Main.js:
+        (WI.handlePossibleLinkClick):
+        (WI.openURL):
+        (WI.showSourceCodeLocation):
+        (WI.showOriginalUnformattedSourceCodeLocation):
+        (WI.showOriginalOrFormattedSourceCodeLocation):
+        (WI.showOriginalOrFormattedSourceCodeTextRange):
+        (WI.linkifyLocation):
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement.prototype._insertAdjacentHTML):
+        * UserInterface/Views/WebSocketContentView.js:
+        (WI.WebSocketContentView.prototype._addRow):
+
+2018-01-26  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Timelines content browser NavigationBar is squashed at narrow heights
+        https://bugs.webkit.org/show_bug.cgi?id=182196
+        <rdar://problem/36929899>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/NavigationBar.css:
+        (.navigation-bar):
+
+2018-01-26  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: TabBar redesign: improvements to tab layout and resize behavior
+        https://bugs.webkit.org/show_bug.cgi?id=181468
+        <rdar://problem/36395439>
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Images/TabPicker.svg: Added.
+        New ">>" icon for the tab picker button.
+
+        * UserInterface/Views/CanvasTabContentView.js:
+        (WI.CanvasTabContentView):
+        * UserInterface/Views/ConsoleTabContentView.js:
+        (WI.ConsoleTabContentView):
+        * UserInterface/Views/DebuggerTabContentView.js:
+        (WI.DebuggerTabContentView):
+        * UserInterface/Views/ElementsTabContentView.js:
+        (WI.ElementsTabContentView):
+
+        * UserInterface/Views/GeneralTabBarItem.js:
+        (WI.GeneralTabBarItem):
+        (WI.GeneralTabBarItem.fromTabContentViewConstructor):
+        (WI.GeneralTabBarItem.prototype.get title):
+        Add missing override for getter/setter pair.
+        (WI.GeneralTabBarItem.prototype.set title):
+        (WI.GeneralTabBarItem.prototype._handleContextMenuEvent):
+        Show the close button on ephemeral tabs only (Search, New Tab).
+        Replace unused `representedObject` parameter with `isEphemeral`, which
+        determines whether to show a close button for the tab.
+
+        * UserInterface/Views/LayersTabContentView.js:
+        (WI.LayersTabContentView):
+
+        * UserInterface/Views/NavigationBar.js:
+        Remove unused symbol.
+
+        * UserInterface/Views/NetworkTabContentView.js:
+        (WI.NetworkTabContentView):
+        * UserInterface/Views/NewTabContentView.js:
+        (WI.NewTabContentView):
+
+        * UserInterface/Views/PinnedTabBarItem.js:
+        (WI.PinnedTabBarItem):
+        Remove unused parameter.
+
+        * UserInterface/Views/ResourcesTabContentView.js:
+        (WI.ResourcesTabContentView):
+        * UserInterface/Views/SearchTabContentView.js:
+        (WI.SearchTabContentView):
+        * UserInterface/Views/StorageTabContentView.js:
+        (WI.StorageTabContentView):
+
+        * UserInterface/Views/TabBar.css:
+        (.tab-bar > .item):
+        (.tab-bar.calculate-width > .item):
+        (.tab-bar > .item.pinned.tab-picker):
+        (.tab-bar > .item > .close):
+        (.tab-bar > .item > .title):
+        (.tab-bar:not(.collapsed) > .item > .title):
+        (.tab-bar.collapsed > .item:not(.pinned) > .icon):
+        (.tab-bar > .item:hover > .close):
+        (.tab-bar.collapsed > .item:hover > .close):
+        (.tab-bar:not(.collapsed) > .item.ephemeral:hover > .icon):
+        (.tab-bar.collapsed > .item.ephemeral:hover > .title):
+        (body[dir=ltr] .tab-bar > .item > .close): Deleted.
+        (body[dir=rtl] .tab-bar > .item > .close): Deleted.
+        (.tab-bar > .item > .flex-space): Deleted.
+        (.tab-bar > .item:not(.pinned) > .flex-space:last-child): Deleted.
+        (body[dir=ltr] .tab-bar > .item:not(.pinned) > .flex-space:last-child): Deleted.
+        (body[dir=rtl] .tab-bar > .item:not(.pinned) > .flex-space:last-child): Deleted.
+        (body[dir=ltr] .tab-bar > .item > .title): Deleted.
+        (body[dir=rtl] .tab-bar > .item > .title): Deleted.
+        (.tab-bar.collapsed > .item): Deleted.
+        (.tab-bar.collapsed > .item > .flex-space): Deleted.
+        (.tab-bar.collapsed > .item > .close): Deleted.
+        (body[dir=ltr] .tab-bar.collapsed > .item > .close): Deleted.
+        (body[dir=rtl] .tab-bar.collapsed > .item > .close): Deleted.
+        (.tab-bar.hide-titles > .item > .title): Deleted.
+        (.tab-bar.collapsed:not(.hide-titles) > .item:not(.pinned):hover > .icon,): Deleted.
+        (.tab-bar.collapsed:not(.hide-titles) > .item:hover > .close,): Deleted.
+        Clean up tab styles and prevent tabs from shrinking during flex layout.
+        Added new `calculate-width` class, to disable flex layout when measuring
+        the minimum width of the TabBar required to fit all tab items.
+
+        * UserInterface/Views/TabBar.js:
+        (WI.TabBar):
+        (WI.TabBar.prototype.set selectedTabBarItem):
+        (WI.TabBar.prototype.layout.forceItemHidden):
+        (WI.TabBar.prototype.layout):
+        Perform two layout passes, similar to NavigationBar. The first pass disables
+        flex layout and measures tab items at full size. If the bar isn't wide enough
+        to show all the tabs, hide their icons and measure again. If there still isn't
+        room, hide tabs starting from the end of the bar and display the tab picker.
+
+        (WI.TabBar.prototype._handleMouseDown):
+        (WI.TabBar.prototype._handleTabPickerTabContextMenu):
+
+        * UserInterface/Views/TabBarItem.js:
+        (WI.TabBarItem):
+
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WI.TimelineTabContentView):
+
+2018-01-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network Table: Sort indicator is not displayed when sorted column is hidden and re-shown
+        https://bugs.webkit.org/show_bug.cgi?id=182164
+        <rdar://problem/36892619>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/Table.js:
+        (WI.Table.prototype.showColumn):
+        Re-add the sort classes if the column being shown is the active sort column.
+
+2018-01-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network - Cookies view should behave better at narrow widths, all data is hidden
+        https://bugs.webkit.org/show_bug.cgi?id=182163
+        <rdar://problem/36893241>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/ResourceCookiesContentView.css:
+        (.resource-cookies .table):
+        Give these tables a reasonable minimum size so that if the inspector
+        is narrow, the content view can still be scrolled to see all of
+        the table data.
+
+        * UserInterface/Views/Table.css:
+        (.table > .header):
+        Match the data-container and mark overflow as hidden, otherwise
+        super narrow widths show header content beyond the edge.
+
+2018-01-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: "Displayed Columns" should not be displayed in context menu if all columns are required columns
+        https://bugs.webkit.org/show_bug.cgi?id=182162
+        <rdar://problem/36893758>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/Table.js:
+        (WI.Table.prototype._handleHeaderContextMenu):
+        Only add the header column when we know there are hideable columns.
+
+2018-01-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Simplify update-LegacyInspectorBackendCommands.rb
+        https://bugs.webkit.org/show_bug.cgi?id=182067
+
+        Reviewed by Brian Burg.
+
+        * Scripts/update-LegacyInspectorBackendCommands.rb:
+        Remove stale dependency_json, it has always been empty for a while now.
+        Switch to framework WebInspectorUI to generate only the backend commands
+        and not spend time generating a bunch of cpp files.
+
+2018-01-24  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r226994): Web Inspector: Styles: Suggestions popover floats in top-left corner of Web Inspector after tabbing
+        https://bugs.webkit.org/show_bug.cgi?id=182027
+
+        Reviewed by Matt Baker.
+
+        r226994 added a layout of all properties on property removal. Layout caused
+        a property element to be removed from DOM right before dislaying the suggestion
+        popover, resulting in the popover being displayed at the top left corner.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.layout):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.spreadsheetStylePropertyRemoved):
+        Only update property view indices when a property is removed.
+
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty):
+        (WI.SpreadsheetStyleProperty.prototype.set index):
+
+        * UserInterface/Views/SpreadsheetTextField.js:
+        (WI.SpreadsheetTextField.prototype._updateCompletions):
+        Checking this._element.parentNode to see if the element is attached to the DOM tree is unreliable,
+        since the element may have a non-null parent node that is detached from the DOM tree. To fix that,
+        we could traverse element's ancestors, but I used a concise isConnected property instead.
+
+2018-01-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ReferenceError:​ Can't find variable:​ DOMAgent (at ScriptSyntaxTree.js:​178:​22)​
+        https://bugs.webkit.org/show_bug.cgi?id=182059
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Models/ScriptSyntaxTree.js:
+        (WI.ScriptSyntaxTree.functionReturnDivot):
+        DOMAgent won't be available in a ServiceWorker or JSContext inspector. So add
+        a check for DOMAgent, and assume if DOMAgent doesn't exist that we should fall
+        back to the latest path (non-iOS 9) target.
+
+2018-01-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Network's columns shake when scrolling at non-default zoom level
+        https://bugs.webkit.org/show_bug.cgi?id=181998
+        <rdar://problem/36449808>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/Table.js:
+        When zoomed the bounding client rect values were fractional, which was
+        unexpected by this area of code. Floor the values to get a value we expect
+        to be able to evenly distribute.
+
+2018-01-22  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: data corruption when updating values quickly
+        https://bugs.webkit.org/show_bug.cgi?id=179461
+        <rdar://problem/35431882>
+
+        Reviewed by Joseph Pecoraro.
+
+        Data corruption used to happen because CSSStyleDeclaration.prototype.text didn't
+        update synchronously. Making two or more quick changes resulted in corrupted data.
+
+        Imagine we modify a CSS value 3 times:
+
+        Front-end:  (1)-(2)---(3)
+        Back-end:          (1)-----(2)-(3)
+
+        The first response from the backend could happen after the 2nd edit. In this patch,
+        CSSStyleDeclaration is locked when its view is being edited.
+
+        To correctly display invalid and overridden properties, the backend is allowed to update
+        CSSStyleDeclaration and CSSProperty when they're locked if the text from the backend
+        matches the model's text. This should happen when the backend is caught up with the
+        front-end changes.
+
+        * UserInterface/Models/CSSProperty.js:
+        (WI.CSSProperty.prototype.update):
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        (WI.CSSStyleDeclaration):
+        (WI.CSSStyleDeclaration.prototype.get locked):
+        (WI.CSSStyleDeclaration.prototype.set locked):
+        (WI.CSSStyleDeclaration.prototype.set text):
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.initialLayout):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.detached):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.get editing):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.set focused):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.set inlineSwatchActive):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.stylePropertyInlineSwatchActivated):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.stylePropertyInlineSwatchDeactivated):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype._propertiesChanged):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype._updateStyleLock):
+        Lock CSSStyleDeclaration when a CSS property name or value is focused or
+        an inline widget is active.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._handleMouseDown):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype._handleClick):
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty):
+        (WI.SpreadsheetStyleProperty.prototype._createInlineSwatch):
+        When selector is focused, clicking on the white-space should not add a new blank property.
+
+2018-01-19  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Web Inspector: Layers tab should do away with popovers (if possible)
+        https://bugs.webkit.org/show_bug.cgi?id=181805
+
+        Reviewed by Matt Baker.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        Remove superfluous colon from a string.
+
+        * UserInterface/Main.html:
+        * UserInterface/Views/LayerDetailsSidebarPanel.css:
+        * UserInterface/Views/Layers3DContentView.css: Added.
+        Remove popover styling from sidebar, add new file with similar styling for canvas overlay.
+
+        * UserInterface/Views/LayerDetailsSidebarPanel.js:
+        (WI.LayerDetailsSidebarPanel):
+        (WI.LayerDetailsSidebarPanel.prototype.selectNodeByLayerId):
+        (WI.LayerDetailsSidebarPanel.prototype._dataGridSelectedNodeChanged):
+        (WI.LayerDetailsSidebarPanel.prototype._updateLayers):
+        (WI.LayerDetailsSidebarPanel.prototype._updateBottomBar):
+        (WI.LayerDetailsSidebarPanel.prototype.willDismissPopover): Deleted.
+        (WI.LayerDetailsSidebarPanel.prototype._showPopoverForSelectedNode): Deleted.
+        (WI.LayerDetailsSidebarPanel.prototype._presentPopover): Deleted.
+        (WI.LayerDetailsSidebarPanel.prototype._contentForPopover): Deleted.
+        (WI.LayerDetailsSidebarPanel.prototype._populateListOfCompositingReasons.addReason): Deleted.
+        (WI.LayerDetailsSidebarPanel.prototype._populateListOfCompositingReasons): Deleted.
+        * UserInterface/Views/Layers3DContentView.js:
+        (WI.Layers3DContentView):
+        (WI.Layers3DContentView.prototype.shown):
+        (WI.Layers3DContentView.prototype.selectLayerById):
+        (WI.Layers3DContentView.prototype._canvasMouseDown):
+        (WI.Layers3DContentView.prototype._buildLayerInfoElement):
+        (WI.Layers3DContentView.prototype._updateLayerInfoElement):
+        (WI.Layers3DContentView.prototype._updateReasonsList):
+        Remove popover from sidebar table, overlay div with same data arrangement on top of the canvas.
+        Also reverse the fix from r226671 since the visualization is no longer unusable without the sidebar!
+
+2018-01-19  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Canvas Tab: Multiple "waiting for frames" messages displayed
+        https://bugs.webkit.org/show_bug.cgi?id=181865
+        <rdar://problem/36664737>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/CanvasContentView.js:
+        (WI.CanvasContentView.prototype._recordingStarted):
+        (WI.CanvasContentView.prototype._recordingStopped):
+
+2018-01-19  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: tabbing on commented out property throws exception
+        https://bugs.webkit.org/show_bug.cgi?id=180676
+        <rdar://problem/35981058>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.startEditingFirstProperty):
+        Tabbing from the selector field should focus on the first editable property.
+        When no editable properties are present, a new blank property should be added after the commented out ones.
+
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.startEditingLastProperty):
+        Shift-tabbing from the selector field should focus on the last editable property of the previous CSS rule.
+        When no editable properties are present, a new blank property should be added after the commented out ones.
+
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.spreadsheetCSSStyleDeclarationEditorFocusMoved):
+        When navigating between properties skip the commented out ones.
+
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype._editablePropertyAfter):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype._editablePropertyBefore):
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype.get enabled):
+        (WI.SpreadsheetStyleProperty.prototype._update):
+
+2018-01-19  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Make styles sidebar always LTR
+        https://bugs.webkit.org/show_bug.cgi?id=175357
+        <rdar://problem/33787988>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        (WI.SpreadsheetRulesStyleDetailsPanel):
+
+2018-01-19  Keith Miller  <keith_miller@apple.com>
+
+        HaveInternalSDK includes should be "#include?"
+        https://bugs.webkit.org/show_bug.cgi?id=179670
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+
+2018-01-18  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Streamline and future-proof target-macOS-version-dependent build setting definitions
+        https://bugs.webkit.org/show_bug.cgi?id=181803
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig: Updated.
+        * Configurations/DebugRelease.xcconfig: Ditto.
+        * Configurations/Version.xcconfig: Ditto.
+
+2018-01-18  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Canvas Tab: record button on canvas card doesn't always show on hover, or is misplaced
+        https://bugs.webkit.org/show_bug.cgi?id=179183
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CanvasOverviewContentView.css:
+        (.content-view.canvas-overview .content-view.canvas:not(.is-recording) > header > .navigation-bar > .item.record-start-stop): Deleted.
+
+2018-01-17  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: clicking on a path component that has no siblings should select it
+        https://bugs.webkit.org/show_bug.cgi?id=181772
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/HierarchicalPathComponent.js:
+        (WI.HierarchicalPathComponent.prototype._updateSelectElement):
+        (WI.HierarchicalPathComponent.prototype._selectElementMouseDown):
+
 2018-01-17  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Add back localized strings for Styles sidebar panels

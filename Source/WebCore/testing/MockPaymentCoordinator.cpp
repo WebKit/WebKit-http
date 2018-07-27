@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,15 +41,15 @@ namespace WebCore {
 MockPaymentCoordinator::MockPaymentCoordinator(MainFrame& mainFrame)
     : m_mainFrame { mainFrame }
 {
-    m_availablePaymentNetworks.append("amex");
-    m_availablePaymentNetworks.append("carteBancaire");
-    m_availablePaymentNetworks.append("chinaUnionPay");
-    m_availablePaymentNetworks.append("discover");
-    m_availablePaymentNetworks.append("interac");
-    m_availablePaymentNetworks.append("jcb");
-    m_availablePaymentNetworks.append("masterCard");
-    m_availablePaymentNetworks.append("privateLabel");
-    m_availablePaymentNetworks.append("visa");
+    m_availablePaymentNetworks.add("amex");
+    m_availablePaymentNetworks.add("carteBancaire");
+    m_availablePaymentNetworks.add("chinaUnionPay");
+    m_availablePaymentNetworks.add("discover");
+    m_availablePaymentNetworks.add("interac");
+    m_availablePaymentNetworks.add("jcb");
+    m_availablePaymentNetworks.add("masterCard");
+    m_availablePaymentNetworks.add("privateLabel");
+    m_availablePaymentNetworks.add("visa");
 }
 
 bool MockPaymentCoordinator::supportsVersion(unsigned version)
@@ -63,6 +63,14 @@ bool MockPaymentCoordinator::supportsVersion(unsigned version)
 #endif
 
     return version <= currentVersion;
+}
+
+std::optional<String> MockPaymentCoordinator::validatedPaymentNetwork(const String& paymentNetwork)
+{
+    auto result = m_availablePaymentNetworks.find(paymentNetwork);
+    if (result == m_availablePaymentNetworks.end())
+        return std::nullopt;
+    return *result;
 }
 
 bool MockPaymentCoordinator::canMakePayments()
@@ -96,8 +104,11 @@ static void dispatchIfShowing(Function<void()>&& function)
     });
 }
 
-bool MockPaymentCoordinator::showPaymentUI(const URL&, const Vector<URL>&, const ApplePaySessionPaymentRequest&)
+bool MockPaymentCoordinator::showPaymentUI(const URL&, const Vector<URL>&, const ApplePaySessionPaymentRequest& request)
 {
+    if (request.shippingContact().pkContact())
+        m_shippingAddress = request.shippingContact().toApplePayPaymentContact(request.version());
+
     ASSERT(showCount == hideCount);
     ++showCount;
     dispatchIfShowing([mainFrame = makeRef(m_mainFrame)]() {
@@ -108,9 +119,8 @@ bool MockPaymentCoordinator::showPaymentUI(const URL&, const Vector<URL>&, const
 
 void MockPaymentCoordinator::completeMerchantValidation(const PaymentMerchantSession&)
 {
-    dispatchIfShowing([mainFrame = makeRef(m_mainFrame), shippingAddress = m_shippingAddress]() {
-        ApplePayPaymentContact contact = shippingAddress;
-        mainFrame->paymentCoordinator().didSelectShippingContact(MockPaymentContact { WTFMove(contact) });
+    dispatchIfShowing([mainFrame = makeRef(m_mainFrame), shippingAddress = m_shippingAddress]() mutable {
+        mainFrame->paymentCoordinator().didSelectShippingContact(MockPaymentContact { WTFMove(shippingAddress) });
     });
 }
 

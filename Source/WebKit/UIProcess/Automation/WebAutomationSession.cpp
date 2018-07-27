@@ -508,7 +508,7 @@ void WebAutomationSession::waitForNavigationToCompleteOnFrame(WebFrameProxy& fra
 void WebAutomationSession::respondToPendingPageNavigationCallbacksWithTimeout(HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>>& map)
 {
     Inspector::ErrorString timeoutError = STRING_FOR_PREDEFINED_ERROR_NAME(Timeout);
-    for (auto id : map.keys()) {
+    for (auto id : copyToVector(map.keys())) {
         auto page = WebProcessProxy::webPage(id);
         auto callback = map.take(id);
         if (page && m_client->isShowingJavaScriptDialogOnPage(*this, *page))
@@ -530,7 +530,7 @@ static WebPageProxy* findPageForFrameID(const WebProcessPool& processPool, uint6
 void WebAutomationSession::respondToPendingFrameNavigationCallbacksWithTimeout(HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>>& map)
 {
     Inspector::ErrorString timeoutError = STRING_FOR_PREDEFINED_ERROR_NAME(Timeout);
-    for (auto id : map.keys()) {
+    for (auto id : copyToVector(map.keys())) {
         auto* page = findPageForFrameID(*m_processPool, id);
         auto callback = map.take(id);
         if (page && m_client->isShowingJavaScriptDialogOnPage(*this, *page))
@@ -560,13 +560,14 @@ void WebAutomationSession::willShowJavaScriptDialog(WebPageProxy& page)
             return;
 
         if (page->pageLoadState().isLoading()) {
+            m_loadTimer.stop();
             respondToPendingFrameNavigationCallbacksWithTimeout(m_pendingNormalNavigationInBrowsingContextCallbacksPerFrame);
             respondToPendingPageNavigationCallbacksWithTimeout(m_pendingNormalNavigationInBrowsingContextCallbacksPerPage);
         }
 
         if (!m_evaluateJavaScriptFunctionCallbacks.isEmpty()) {
             Inspector::ErrorString unexpectedAlertOpenError = STRING_FOR_PREDEFINED_ERROR_NAME(UnexpectedAlertOpen);
-            for (auto key : m_evaluateJavaScriptFunctionCallbacks.keys()) {
+            for (auto key : copyToVector(m_evaluateJavaScriptFunctionCallbacks.keys())) {
                 auto callback = m_evaluateJavaScriptFunctionCallbacks.take(key);
                 callback->sendFailure(unexpectedAlertOpenError);
             }
@@ -1121,7 +1122,7 @@ static Ref<Inspector::Protocol::Automation::Cookie> buildObjectForCookie(const W
         .setValue(cookie.value)
         .setDomain(cookie.domain)
         .setPath(cookie.path)
-        .setExpires(cookie.expires)
+        .setExpires(cookie.expires ? cookie.expires / 1000 : 0)
         .setSize((cookie.name.length() + cookie.value.length()))
         .setHttpOnly(cookie.httpOnly)
         .setSecure(cookie.secure)

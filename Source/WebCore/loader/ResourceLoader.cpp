@@ -657,14 +657,14 @@ void ResourceLoader::didSendData(ResourceHandle*, unsigned long long bytesSent, 
     didSendData(bytesSent, totalBytesToBeSent);
 }
 
-void ResourceLoader::didReceiveResponseAsync(ResourceHandle* handle, ResourceResponse&& response)
+void ResourceLoader::didReceiveResponseAsync(ResourceHandle*, ResourceResponse&& response, CompletionHandler<void()>&& completionHandler)
 {
     if (documentLoader()->applicationCacheHost().maybeLoadFallbackForResponse(this, response)) {
-        handle->continueDidReceiveResponse();
+        completionHandler();
         return;
     }
     didReceiveResponse(response);
-    handle->continueDidReceiveResponse();
+    completionHandler();
 }
 
 void ResourceLoader::didReceiveData(ResourceHandle*, const char* data, unsigned length, int encodedDataLength)
@@ -716,8 +716,9 @@ bool ResourceLoader::isAllowedToAskUserForCredentials() const
     return m_options.credentials == FetchOptions::Credentials::Include || (m_options.credentials == FetchOptions::Credentials::SameOrigin && m_frame->document()->securityOrigin().canRequest(originalRequest().url()));
 }
 
-void ResourceLoader::didReceiveAuthenticationChallenge(const AuthenticationChallenge& challenge)
+void ResourceLoader::didReceiveAuthenticationChallenge(ResourceHandle* handle, const AuthenticationChallenge& challenge)
 {
+    ASSERT_UNUSED(handle, handle == m_handle);
     ASSERT(m_handle->hasAuthenticationChallenge());
 
     // Protect this in this delegate method since the additional processing can do

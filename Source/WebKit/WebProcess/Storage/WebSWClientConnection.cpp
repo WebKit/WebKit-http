@@ -53,7 +53,8 @@ WebSWClientConnection::WebSWClientConnection(IPC::Connection& connection, Sessio
     , m_connection(connection)
     , m_swOriginTable(makeUniqueRef<WebSWOriginTable>())
 {
-    bool result = sendSync(Messages::StorageToWebProcessConnection::EstablishSWServerConnection(sessionID), Messages::StorageToWebProcessConnection::EstablishSWServerConnection::Reply(m_identifier));
+    ASSERT(sessionID.isValid());
+    bool result = sendSync(Messages::StorageToWebProcessConnection::EstablishSWServerConnection(sessionID), Messages::StorageToWebProcessConnection::EstablishSWServerConnection::Reply(m_identifier), Seconds::infinity(), IPC::SendSyncOption::DoNotProcessIncomingMessagesWhenWaitingForSyncReply);
 
     ASSERT_UNUSED(result, result);
 }
@@ -82,9 +83,9 @@ void WebSWClientConnection::removeServiceWorkerRegistrationInServer(ServiceWorke
     send(Messages::WebSWServerConnection::RemoveServiceWorkerRegistrationInServer(identifier));
 }
 
-void WebSWClientConnection::postMessageToServiceWorker(ServiceWorkerIdentifier destinationIdentifier, Ref<SerializedScriptValue>&& scriptValue, const ServiceWorkerOrClientIdentifier& sourceIdentifier)
+void WebSWClientConnection::postMessageToServiceWorker(ServiceWorkerIdentifier destinationIdentifier, MessageWithMessagePorts&& message, const ServiceWorkerOrClientIdentifier& sourceIdentifier)
 {
-    send(Messages::WebSWServerConnection::PostMessageToServiceWorker(destinationIdentifier, IPC::DataReference { scriptValue->data() }, sourceIdentifier) );
+    send(Messages::WebSWServerConnection::PostMessageToServiceWorker(destinationIdentifier, WTFMove(message), sourceIdentifier) );
 }
 
 void WebSWClientConnection::registerServiceWorkerClient(const SecurityOrigin& topOrigin, const WebCore::ServiceWorkerClientData& data, const std::optional<WebCore::ServiceWorkerIdentifier>& controllingServiceWorkerIdentifier)
@@ -197,9 +198,9 @@ void WebSWClientConnection::startFetch(uint64_t fetchIdentifier, WebCore::Servic
     send(Messages::WebSWServerConnection::StartFetch { fetchIdentifier, serviceWorkerRegistrationIdentifier, request, options, IPC::FormDataReference { request.httpBody() }, referrer });
 }
 
-void WebSWClientConnection::postMessageToServiceWorkerClient(DocumentIdentifier destinationContextIdentifier, const IPC::DataReference& message, ServiceWorkerData&& source, const String& sourceOrigin)
+void WebSWClientConnection::postMessageToServiceWorkerClient(DocumentIdentifier destinationContextIdentifier, MessageWithMessagePorts&& message, ServiceWorkerData&& source, const String& sourceOrigin)
 {
-    SWClientConnection::postMessageToServiceWorkerClient(destinationContextIdentifier, SerializedScriptValue::adopt(message.vector()), WTFMove(source), sourceOrigin);
+    SWClientConnection::postMessageToServiceWorkerClient(destinationContextIdentifier, WTFMove(message), WTFMove(source), sourceOrigin);
 }
 
 void WebSWClientConnection::connectionToServerLost()

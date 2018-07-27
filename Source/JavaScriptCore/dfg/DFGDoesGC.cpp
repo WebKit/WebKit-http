@@ -52,6 +52,7 @@ bool doesGC(Graph& graph, Node* node)
     case IdentityWithProfile:
     case GetCallee:
     case GetArgumentCountIncludingThis:
+    case SetArgumentCountIncludingThis:
     case GetRestLength:
     case GetLocal:
     case SetLocal:
@@ -137,6 +138,7 @@ bool doesGC(Graph& graph, Node* node)
     case AssertNotEmpty:
     case CheckStringIdent:
     case RegExpExec:
+    case RegExpExecNonGlobalOrSticky:
     case RegExpTest:
     case RegExpMatchFast:
     case CompareLess:
@@ -212,6 +214,8 @@ bool doesGC(Graph& graph, Node* node)
     case LoadValueFromMapBucket:
     case ExtractValueFromWeakMapGet:
     case WeakMapGet:
+    case WeakSetAdd:
+    case WeakMapSet:
     case Unreachable:
     case ExtractCatchLocal:
     case ExtractOSREntryLocal:
@@ -272,6 +276,7 @@ bool doesGC(Graph& graph, Node* node)
     case PhantomNewArrayBuffer:
     case PhantomSpread:
     case PhantomClonedArguments:
+    case PhantomNewRegexp:
     case GetMyArgumentByVal:
     case GetMyArgumentByValOutOfBounds:
     case ForwardVarargs:

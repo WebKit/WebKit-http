@@ -106,7 +106,7 @@ void RenderTreeBuilder::Inline::insertChild(RenderInline& parent, RenderPtr<Rend
 {
     auto* beforeChildOrPlaceholder = beforeChild;
     if (auto* fragmentedFlow = parent.enclosingFragmentedFlow())
-        beforeChildOrPlaceholder = fragmentedFlow->resolveMovedChild(beforeChild);
+        beforeChildOrPlaceholder = m_builder.resolveMovedChildForMultiColumnFlow(*fragmentedFlow, beforeChild);
     if (parent.continuation()) {
         insertChildToContinuation(parent, WTFMove(child), beforeChildOrPlaceholder);
         return;
@@ -377,6 +377,20 @@ bool RenderTreeBuilder::Inline::newChildIsInline(const RenderInline& parent, con
 {
     // inline parent generates inline-table.
     return child.isInline() || (m_builder.tableBuilder().childRequiresTable(parent, child) && parent.style().display() == INLINE);
+}
+
+void RenderTreeBuilder::Inline::childBecameNonInline(RenderInline& parent, RenderElement& child)
+{
+    // We have to split the parent flow.
+    auto newBox = parent.containingBlock()->createAnonymousBlock();
+    newBox->setIsContinuation();
+    auto* oldContinuation = parent.continuation();
+    if (oldContinuation)
+        oldContinuation->removeFromContinuationChain();
+    newBox->insertIntoContinuationChainAfter(parent);
+    auto* beforeChild = child.nextSibling();
+    auto removedChild = parent.takeChildInternal(child);
+    splitFlow(parent, beforeChild, WTFMove(newBox), WTFMove(removedChild), oldContinuation);
 }
 
 }

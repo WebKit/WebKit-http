@@ -102,7 +102,7 @@ private:
 
     void startWithJobManager();
 
-    void callClient(WTF::Function<void(CurlRequestClient*)>);
+    void callClient(WTF::Function<void(CurlRequestClient&)>);
 
     // Transfer processing of Request body, Response header/body
     // Called by worker thread in case of async, main thread in case of sync.
@@ -157,7 +157,7 @@ private:
 
     std::unique_ptr<CurlHandle> m_curlHandle;
     CurlFormDataStream m_formDataStream;
-    CurlSSLVerifier m_sslVerifier;
+    std::unique_ptr<CurlSSLVerifier> m_sslVerifier;
     std::unique_ptr<CurlMultipartHandle> m_multipartHandle;
 
     CurlResponse m_response;

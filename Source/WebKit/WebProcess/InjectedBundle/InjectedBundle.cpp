@@ -68,7 +68,6 @@
 #include <WebCore/Page.h>
 #include <WebCore/PageGroup.h>
 #include <WebCore/PrintContext.h>
-#include <WebCore/ResourceHandle.h>
 #include <WebCore/RuntimeEnabledFeatures.h>
 #include <WebCore/SWContextManager.h>
 #include <WebCore/ScriptController.h>
@@ -331,7 +330,7 @@ void InjectedBundle::setPrivateBrowsingEnabled(WebPageGroupProxy* pageGroup, boo
 {
     if (enabled) {
         WebProcess::singleton().ensureLegacyPrivateBrowsingSessionInNetworkProcess();
-        WebFrameNetworkingContext::ensureWebsiteDataStoreSession({ { }, { }, { }, { }, { }, { }, { PAL::SessionID::legacyPrivateSessionID(), { }, { }, AllowsCellularAccess::Yes }});
+        WebFrameNetworkingContext::ensureWebsiteDataStoreSession(WebsiteDataStoreParameters::legacyPrivateSessionParameters());
     } else
         SessionTracker::destroySession(PAL::SessionID::legacyPrivateSessionID());
 

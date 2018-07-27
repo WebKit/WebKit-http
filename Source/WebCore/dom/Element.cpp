@@ -1746,6 +1746,9 @@ void Element::removedFromAncestor(RemovalType removalType, ContainerNode& oldPar
             shadowRoot->hostChildElementDidChange(*this);
     }
 
+    clearBeforePseudoElement();
+    clearAfterPseudoElement();
+
     ContainerNode::removedFromAncestor(removalType, oldParentOfRemovedTree);
 
     if (hasPendingResources())
@@ -2433,7 +2436,16 @@ void Element::focus(bool restorePreviousSelection, FocusDirection direction)
         revealMode = SelectionRevealMode::RevealUpToMainFrame;
 #endif
 
-    updateFocusAppearance(restorePreviousSelection ? SelectionRestorationMode::Restore : SelectionRestorationMode::SetDefault, revealMode);
+    auto target = focusAppearanceUpdateTarget();
+    if (!target)
+        return;
+
+    target->updateFocusAppearance(restorePreviousSelection ? SelectionRestorationMode::Restore : SelectionRestorationMode::SetDefault, revealMode);
+}
+
+RefPtr<Element> Element::focusAppearanceUpdateTarget()
+{
+    return this;
 }
 
 void Element::updateFocusAppearance(SelectionRestorationMode, SelectionRevealMode revealMode)
@@ -2455,11 +2467,10 @@ void Element::updateFocusAppearance(SelectionRestorationMode, SelectionRevealMod
             frame->selection().setSelection(newSelection, FrameSelection::defaultSetSelectionOptions(), Element::defaultFocusTextStateChangeIntent());
             frame->selection().revealSelection(revealMode);
         }
-    } else if (renderer() && !renderer()->isWidget()) {
-        bool insideFixed;
-        LayoutRect absoluteBounds = renderer()->absoluteAnchorRect(&insideFixed);
-        renderer()->scrollRectToVisible(revealMode, absoluteBounds, insideFixed);
     }
+
+    if (RefPtr<FrameView> view = document().view())
+        view->scheduleScrollToFocusedElement(revealMode);
 }
 
 void Element::blur()
@@ -3707,7 +3718,7 @@ ExceptionOr<Ref<WebAnimation>> Element::animate(JSC::ExecState& state, JSC::Stro
     if (keyframeEffectResult.hasException())
         return keyframeEffectResult.releaseException();
 
-    auto animation = WebAnimation::create(document(), &keyframeEffectResult.returnValue().get(), nullptr);
+    auto animation = WebAnimation::create(document(), &keyframeEffectResult.returnValue().get());
     animation->setId(id);
 
     auto animationPlayResult = animation->play();

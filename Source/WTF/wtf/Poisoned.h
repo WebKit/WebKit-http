@@ -29,14 +29,9 @@
 #include <utility>
 #include <wtf/Assertions.h>
 
-#define ENABLE_POISON 1
 #define ENABLE_POISON_ASSERTS 0
 
-// Not currently supported for 32-bit or OS(WINDOWS) builds (because of missing llint support).
-// Make sure it's disabled.
-#if USE(JSVALUE32_64) || OS(WINDOWS)
-#undef ENABLE_POISON
-#define ENABLE_POISON 0
+#if !ENABLE(POISON)
 #undef ENABLE_POISON_ASSERTS
 #define ENABLE_POISON_ASSERTS 0
 #endif
@@ -68,10 +63,17 @@ asReference(T ptr) { return *ptr; }
 
 enum AlreadyPoisonedTag { AlreadyPoisoned };
 
-template<uintptr_t& key, typename T, typename = std::enable_if_t<std::is_pointer<T>::value>>
+template<uintptr_t& poisonKey>
+class Poison {
+public:
+    template<typename PoisonedType = void>
+    static uintptr_t key(const PoisonedType* = nullptr) { return poisonKey; }
+};
+
+template<typename Poison, typename T, typename = std::enable_if_t<std::is_pointer<T>::value>>
 class Poisoned {
 public:
-    static constexpr bool isPoisoned = true;
+    static constexpr bool isPoisonedType = true;
 
     Poisoned() { }
 
@@ -83,7 +85,7 @@ public:
 
     Poisoned(const Poisoned&) = default;
 
-    template<typename Other, typename = std::enable_if_t<Other::isPoisoned>>
+    template<typename Other, typename = std::enable_if_t<Other::isPoisonedType>>
     Poisoned(const Other& other)
         : m_poisonedBits(poison<T>(other.unpoisoned()))
     { }
@@ -145,7 +147,7 @@ public:
         return *this;
     }
 
-    template<typename Other, typename = std::enable_if_t<Other::isPoisoned>>
+    template<typename Other, typename = std::enable_if_t<Other::isPoisonedType>>
     Poisoned& operator=(const Other& other)
     {
         m_poisonedBits = poison<T>(other.unpoisoned());
@@ -159,14 +161,14 @@ public:
 
     void swap(std::nullptr_t) { clear(); }
 
-    template<typename Other, typename = std::enable_if_t<Other::isPoisoned>>
+    template<typename Other, typename = std::enable_if_t<Other::isPoisonedType>>
     void swap(Other& other)
     {
         T t1 = this->unpoisoned();
         T t2 = other.unpoisoned();
         std::swap(t1, t2);
         m_poisonedBits = poison(t1);
-        other.m_poisonedBits = Other::poison(t2);
+        other.m_poisonedBits = other.poison(t2);
     }
 
     void swap(T& t2)
@@ -185,43 +187,48 @@ public:
     }
 
 private:
-    constexpr static PoisonedBits poison(std::nullptr_t) { return 0; }
+    template<typename U>
+    ALWAYS_INLINE PoisonedBits poison(U ptr) const { return poison<PoisonedBits>(this, bitwise_cast<uintptr_t>(ptr)); }
+    template<typename U = T>
+    ALWAYS_INLINE U unpoison(PoisonedBits poisonedBits) const { return unpoison<U>(this, poisonedBits); }
+
+    constexpr static PoisonedBits poison(const Poisoned*, std::nullptr_t) { return 0; }
 #if ENABLE(POISON)
     template<typename U>
-    ALWAYS_INLINE static PoisonedBits poison(U ptr) { return ptr ? bitwise_cast<PoisonedBits>(ptr) ^ key : 0; }
+    ALWAYS_INLINE static PoisonedBits poison(const Poisoned* thisPoisoned, U ptr) { return ptr ? bitwise_cast<PoisonedBits>(ptr) ^ Poison::key(thisPoisoned) : 0; }
     template<typename U = T>
-    ALWAYS_INLINE static U unpoison(PoisonedBits poisonedBits) { return poisonedBits ? bitwise_cast<U>(poisonedBits ^ key) : bitwise_cast<U>(0ll); }
+    ALWAYS_INLINE static U unpoison(const Poisoned* thisPoisoned, PoisonedBits poisonedBits) { return poisonedBits ? bitwise_cast<U>(poisonedBits ^ Poison::key(thisPoisoned)) : bitwise_cast<U>(0ll); }
 #else
     template<typename U>
-    ALWAYS_INLINE static PoisonedBits poison(U ptr) { return bitwise_cast<PoisonedBits>(ptr); }
+    ALWAYS_INLINE static PoisonedBits poison(const Poisoned*, U ptr) { return bitwise_cast<PoisonedBits>(ptr); }
     template<typename U = T>
-    ALWAYS_INLINE static U unpoison(PoisonedBits poisonedBits) { return bitwise_cast<U>(poisonedBits); }
+    ALWAYS_INLINE static U unpoison(const Poisoned*, PoisonedBits poisonedBits) { return bitwise_cast<U>(poisonedBits); }
 #endif
 
     PoisonedBits m_poisonedBits { 0 };
 
-    template<uintptr_t&, typename, typename> friend class Poisoned;
+    template<typename, typename, typename> friend class Poisoned;
 };
 
-template<typename T, typename U, typename = std::enable_if_t<T::isPoisoned && U::isPoisoned && !std::is_same<T, U>::value>>
+template<typename T, typename U, typename = std::enable_if_t<T::isPoisonedType && U::isPoisonedType && !std::is_same<T, U>::value>>
 inline bool operator==(const T& a, const U& b) { return a.unpoisoned() == b.unpoisoned(); }
 
-template<typename T, typename U, typename = std::enable_if_t<T::isPoisoned && U::isPoisoned && !std::is_same<T, U>::value>>
+template<typename T, typename U, typename = std::enable_if_t<T::isPoisonedType && U::isPoisonedType && !std::is_same<T, U>::value>>
 inline bool operator!=(const T& a, const U& b) { return a.unpoisoned() != b.unpoisoned(); }
 
-template<typename T, typename U, typename = std::enable_if_t<T::isPoisoned && U::isPoisoned>>
+template<typename T, typename U, typename = std::enable_if_t<T::isPoisonedType && U::isPoisonedType>>
 inline bool operator<(const T& a, const U& b) { return a.unpoisoned() < b.unpoisoned(); }
 
-template<typename T, typename U, typename = std::enable_if_t<T::isPoisoned && U::isPoisoned>>
+template<typename T, typename U, typename = std::enable_if_t<T::isPoisonedType && U::isPoisonedType>>
 inline bool operator<=(const T& a, const U& b) { return a.unpoisoned() <= b.unpoisoned(); }
 
-template<typename T, typename U, typename = std::enable_if_t<T::isPoisoned && U::isPoisoned>>
+template<typename T, typename U, typename = std::enable_if_t<T::isPoisonedType && U::isPoisonedType>>
 inline bool operator>(const T& a, const U& b) { return a.unpoisoned() > b.unpoisoned(); }
 
-template<typename T, typename U, typename = std::enable_if_t<T::isPoisoned && U::isPoisoned>>
+template<typename T, typename U, typename = std::enable_if_t<T::isPoisonedType && U::isPoisonedType>>
 inline bool operator>=(const T& a, const U& b) { return a.unpoisoned() >= b.unpoisoned(); }
 
-template<typename T, typename U, typename = std::enable_if_t<T::isPoisoned>>
+template<typename T, typename U, typename = std::enable_if_t<T::isPoisonedType>>
 inline void swap(T& a, U& b)
 {
     a.swap(b);
@@ -229,30 +236,26 @@ inline void swap(T& a, U& b)
 
 WTF_EXPORT_PRIVATE uintptr_t makePoison();
 
-template<uintptr_t& key, typename T>
+template<typename Poison, typename T>
 struct PoisonedPtrTraits {
-    static auto poison() { return key; }
-
-    using StorageType = Poisoned<key, T*>;
+    using StorageType = Poisoned<Poison, T*>;
 
     template<class U> static ALWAYS_INLINE T* exchange(StorageType& ptr, U&& newValue) { return ptr.exchange(newValue); }
 
     template<typename Other>
-    static ALWAYS_INLINE void swap(Poisoned<key, T*>& a, Other& b) { a.swap(b); }
+    static ALWAYS_INLINE void swap(Poisoned<Poison, T*>& a, Other& b) { a.swap(b); }
 
     static ALWAYS_INLINE T* unwrap(const StorageType& ptr) { return ptr.unpoisoned(); }
 };
 
-template<uintptr_t& key, typename T>
+template<typename Poison, typename T>
 struct PoisonedValueTraits {
-    static auto poison() { return key; }
-
-    using StorageType = Poisoned<key, T>;
+    using StorageType = Poisoned<Poison, T>;
 
     template<class U> static ALWAYS_INLINE T exchange(StorageType& val, U&& newValue) { return val.exchange(newValue); }
 
     template<typename Other>
-    static ALWAYS_INLINE void swap(Poisoned<key, T>& a, Other& b) { a.swap(b); }
+    static ALWAYS_INLINE void swap(Poisoned<Poison, T>& a, Other& b) { a.swap(b); }
 
     static ALWAYS_INLINE T unwrap(const StorageType& val) { return val.unpoisoned(); }
 };
@@ -260,6 +263,9 @@ struct PoisonedValueTraits {
 } // namespace WTF
 
 using WTF::AlreadyPoisoned;
+using WTF::Poison;
 using WTF::Poisoned;
 using WTF::PoisonedBits;
+using WTF::PoisonedPtrTraits;
+using WTF::PoisonedValueTraits;
 using WTF::makePoison;

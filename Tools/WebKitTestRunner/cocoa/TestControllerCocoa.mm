@@ -71,10 +71,7 @@ void initializeWebViewConfiguration(const char* libraryPath, WKStringRef injecte
     globalWebViewConfiguration.processPool = (WKProcessPool *)context;
     globalWebViewConfiguration.websiteDataStore = (WKWebsiteDataStore *)WKContextGetWebsiteDataStore(context);
     globalWebViewConfiguration._allowUniversalAccessFromFileURLs = YES;
-
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200) || PLATFORM(IOS)
     globalWebViewConfiguration._applePayEnabled = YES;
-#endif
 
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || PLATFORM(IOS)
     WKCookieManagerSetCookieStoragePartitioningEnabled(WKContextGetCookieManager(context), true);
@@ -379,12 +376,16 @@ void TestController::statisticsProcessStatisticsAndDataRecords()
 
 void TestController::statisticsUpdateCookiePartitioning()
 {
-    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsUpdateCookiePartitioning];
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsUpdateCookiePartitioning:^() {
+        m_currentInvocation->didSetPartitionOrBlockCookiesForHost();
+    }];
 }
 
 void TestController::statisticsSetShouldPartitionCookiesForHost(WKStringRef hostName, bool value)
 {
-    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetShouldPartitionCookies:value forHost:toNSString(hostName)];
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetShouldPartitionCookies:value forHost:toNSString(hostName) completionHandler:^() {
+        m_currentInvocation->didSetPartitionOrBlockCookiesForHost();
+    }];
 }
 
 void TestController::statisticsSubmitTelemetry()
@@ -429,12 +430,16 @@ void TestController::setStatisticsPruneEntriesDownTo(unsigned entries)
     
 void TestController::statisticsClearInMemoryAndPersistentStore()
 {
-    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsClearInMemoryAndPersistentStore];
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsClearInMemoryAndPersistentStore:^() {
+        m_currentInvocation->didClearStatisticsThroughWebsiteDataRemoval();
+    }];
 }
 
 void TestController::statisticsClearInMemoryAndPersistentStoreModifiedSinceHours(unsigned hours)
 {
-    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsClearInMemoryAndPersistentStoreModifiedSinceHours:hours];
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsClearInMemoryAndPersistentStoreModifiedSinceHours:hours completionHandler:^() {
+        m_currentInvocation->didClearStatisticsThroughWebsiteDataRemoval();
+    }];
 }
 
 void TestController::statisticsClearThroughWebsiteDataRemoval()

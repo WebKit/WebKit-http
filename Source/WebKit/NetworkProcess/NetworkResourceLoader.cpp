@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,6 +38,7 @@
 #include "WebCoreArgumentCoders.h"
 #include "WebErrors.h"
 #include "WebResourceLoaderMessages.h"
+#include "WebsiteDataStoreParameters.h"
 #include <WebCore/BlobDataFileReference.h>
 #include <WebCore/CertificateInfo.h>
 #include <WebCore/DiagnosticLoggingKeys.h>
@@ -105,14 +106,6 @@ NetworkResourceLoader::NetworkResourceLoader(const NetworkResourceLoadParameters
                 m_fileReferences.appendVector(NetworkBlobRegistry::singleton().filesInBlob(connection, element.m_url));
         }
     }
-
-#if !USE(NETWORK_SESSION)
-    if (originalRequest().url().protocolIsBlob()) {
-        ASSERT(!m_parameters.resourceSandboxExtension);
-        m_fileReferences.appendVector(NetworkBlobRegistry::singleton().filesInBlob(connection, originalRequest().url()));
-    }
-#endif
-
 
     if (synchronousReply)
         m_synchronousLoadData = std::make_unique<SynchronousLoadData>(WTFMove(synchronousReply));
@@ -229,11 +222,14 @@ void NetworkResourceLoader::startNetworkLoad(const ResourceRequest& request)
     parameters.defersLoading = m_defersLoading;
     parameters.request = request;
 
-#if USE(NETWORK_SESSION)
     if (request.url().protocolIsBlob())
         parameters.blobFileReferences = NetworkBlobRegistry::singleton().filesInBlob(m_connection, originalRequest().url());
 
     auto* networkSession = SessionTracker::networkSession(parameters.sessionID);
+    if (!networkSession && parameters.sessionID.isEphemeral()) {
+        NetworkProcess::singleton().addWebsiteDataStore(WebsiteDataStoreParameters::privateSessionParameters(parameters.sessionID));
+        networkSession = SessionTracker::networkSession(parameters.sessionID);
+    }
     if (!networkSession) {
         WTFLogAlways("Attempted to create a NetworkLoad with a session (id=%" PRIu64 ") that does not exist.", parameters.sessionID.sessionID());
         RELEASE_LOG_ERROR_IF_ALLOWED("startNetworkLoad: Attempted to create a NetworkLoad with a session that does not exist (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ", sessionID=%" PRIu64 ")", m_parameters.webPageID, m_parameters.webFrameID, m_parameters.identifier, parameters.sessionID.sessionID());
@@ -242,9 +238,6 @@ void NetworkResourceLoader::startNetworkLoad(const ResourceRequest& request)
         return;
     }
     m_networkLoad = std::make_unique<NetworkLoad>(*this, WTFMove(parameters), *networkSession);
-#else
-    m_networkLoad = std::make_unique<NetworkLoad>(*this, WTFMove(parameters));
-#endif
 
     if (m_defersLoading) {
         RELEASE_LOG_IF_ALLOWED("startNetworkLoad: Created, but deferred (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ")",
@@ -729,6 +722,7 @@ void NetworkResourceLoader::logCookieInformation() const
 
     auto url = originalRequest().url();
     auto partition = WebCore::URL(ParsedURLString, networkStorageSession->cookieStoragePartition(originalRequest(), frameID(), pageID()));
+    bool hasStorageAccessForFrame = networkStorageSession->hasStorageAccessForFrame(originalRequest(), frameID(), pageID());
 
     Vector<WebCore::Cookie> cookies;
     bool result = WebCore::getRawCookies(*networkStorageSession, partition, url, frameID(), pageID(), cookies);
@@ -747,6 +741,7 @@ void NetworkResourceLoader::logCookieInformation() const
 
         LOCAL_LOG(R"({ "url": "%{public}s",)", escapedURL.utf8().data());
         LOCAL_LOG(R"(  "partition": "%{public}s",)", escapedPartition.utf8().data());
+        LOCAL_LOG(R"(  "hasStorageAccess": %{public}s,)", hasStorageAccessForFrame ? "true" : "false");
         LOCAL_LOG(R"(  "referer": "%{public}s",)", escapedReferrer.utf8().data());
         LOCAL_LOG(R"(  "cookies": [)");
 

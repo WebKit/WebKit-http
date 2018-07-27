@@ -54,6 +54,7 @@ SWServerRegistration::SWServerRegistration(SWServer& server, const ServiceWorker
 
 SWServerRegistration::~SWServerRegistration()
 {
+    ASSERT(!m_preInstallationWorker || !m_preInstallationWorker->isRunning());
     ASSERT(!m_installingWorker || !m_installingWorker->isRunning());
     ASSERT(!m_waitingWorker || !m_waitingWorker->isRunning());
     ASSERT(!m_activeWorker || !m_activeWorker->isRunning());
@@ -67,6 +68,12 @@ SWServerWorker* SWServerRegistration::getNewestWorker()
         return m_waitingWorker.get();
 
     return m_activeWorker.get();
+}
+
+void SWServerRegistration::setPreInstallationWorker(SWServerWorker* worker)
+{
+    ASSERT(!m_preInstallationWorker || !worker);
+    m_preInstallationWorker = worker;
 }
 
 void SWServerRegistration::updateRegistrationState(ServiceWorkerRegistrationState state, SWServerWorker* worker)
@@ -174,6 +181,9 @@ void SWServerRegistration::removeClientUsingRegistration(const ServiceWorkerClie
 {
     auto iterator = m_clientsUsingRegistration.find(clientIdentifier.serverConnectionIdentifier);
     ASSERT(iterator != m_clientsUsingRegistration.end());
+    if (iterator == m_clientsUsingRegistration.end())
+        return;
+
     bool wasRemoved = iterator->value.remove(clientIdentifier.contextIdentifier);
     ASSERT_UNUSED(wasRemoved, wasRemoved);
 
@@ -231,6 +241,12 @@ static void clearRegistrationWorker(SWServerRegistration& registration, SWServer
 // https://w3c.github.io/ServiceWorker/#clear-registration
 void SWServerRegistration::clear()
 {
+    if (m_preInstallationWorker) {
+        ASSERT(m_preInstallationWorker->state() == ServiceWorkerState::Redundant);
+        m_preInstallationWorker->terminate();
+        m_preInstallationWorker = nullptr;
+    }
+
     clearRegistrationWorker(*this, installingWorker(), ServiceWorkerRegistrationState::Installing);
     clearRegistrationWorker(*this, waitingWorker(), ServiceWorkerRegistrationState::Waiting);
     clearRegistrationWorker(*this, activeWorker(), ServiceWorkerRegistrationState::Active);

@@ -31,7 +31,6 @@
 #include "WebDriverAtoms.h"
 #include <wtf/CryptographicallyRandomNumber.h>
 #include <wtf/HexNumber.h>
-#include <wtf/UUID.h>
 
 namespace WebDriver {
 
@@ -48,20 +47,31 @@ static const Seconds defaultImplicitWaitTimeout = 0_s;
 
 Session::Session(std::unique_ptr<SessionHost>&& host)
     : m_host(WTFMove(host))
-    , m_id(createCanonicalUUIDString())
     , m_scriptTimeout(defaultScriptTimeout)
     , m_pageLoadTimeout(defaultPageLoadTimeout)
     , m_implicitWaitTimeout(defaultImplicitWaitTimeout)
 {
+    if (capabilities().timeouts)
+        setTimeouts(capabilities().timeouts.value(), [](CommandResult&&) { });
 }
 
 Session::~Session()
 {
 }
 
+const String& Session::id() const
+{
+    return m_host->sessionID();
+}
+
 const Capabilities& Session::capabilities() const
 {
     return m_host->capabilities();
+}
+
+bool Session::isConnected() const
+{
+    return m_host->isConnected();
 }
 
 static std::optional<String> firstWindowHandleInResult(JSON::Value& result)
@@ -162,24 +172,18 @@ std::optional<String> Session::pageLoadStrategyString() const
 void Session::createTopLevelBrowsingContext(Function<void (CommandResult&&)>&& completionHandler)
 {
     ASSERT(!m_toplevelBrowsingContext.value());
-    m_host->startAutomationSession(m_id, [this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)](std::optional<String> errorMessage) mutable {
-        if (errorMessage) {
-            completionHandler(CommandResult::fail(CommandResult::ErrorCode::UnknownError, errorMessage.value()));
+    m_host->sendCommandToBackend(ASCIILiteral("createBrowsingContext"), nullptr, [this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)](SessionHost::CommandResponse&& response) mutable {
+        if (response.isError || !response.responseObject) {
+            completionHandler(CommandResult::fail(WTFMove(response.responseObject)));
             return;
         }
-        m_host->sendCommandToBackend(ASCIILiteral("createBrowsingContext"), nullptr, [this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)](SessionHost::CommandResponse&& response) mutable {
-            if (response.isError || !response.responseObject) {
-                completionHandler(CommandResult::fail(WTFMove(response.responseObject)));
-                return;
-            }
-            String handle;
-            if (!response.responseObject->getString(ASCIILiteral("handle"), handle)) {
-                completionHandler(CommandResult::fail(CommandResult::ErrorCode::UnknownError));
-                return;
-            }
-            switchToTopLevelBrowsingContext(handle);
-            completionHandler(CommandResult::success());
-        });
+        String handle;
+        if (!response.responseObject->getString(ASCIILiteral("handle"), handle)) {
+            completionHandler(CommandResult::fail(CommandResult::ErrorCode::UnknownError));
+            return;
+        }
+        switchToTopLevelBrowsingContext(handle);
+        completionHandler(CommandResult::success());
     });
 }
 
@@ -698,7 +702,7 @@ void Session::getToplevelBrowsingContextRect(Function<void (CommandResult&&)>&& 
         double width, height;
         if (!browsingContext->getObject(ASCIILiteral("windowSize"), windowSize)
             || !windowSize->getDouble(ASCIILiteral("width"), width)
-            || !windowSize->getDouble(ASCIILiteral("height"), width)) {
+            || !windowSize->getDouble(ASCIILiteral("height"), height)) {
             completionHandler(CommandResult::fail(CommandResult::ErrorCode::UnknownError));
             return;
         }
@@ -818,7 +822,7 @@ RefPtr<JSON::Object> Session::createElement(RefPtr<JSON::Value>&& value)
         return nullptr;
 
     String elementID;
-    if (!valueObject->getString("session-node-" + m_id, elementID))
+    if (!valueObject->getString("session-node-" + id(), elementID))
         return nullptr;
 
     RefPtr<JSON::Object> elementObject = JSON::Object::create();
@@ -829,7 +833,7 @@ RefPtr<JSON::Object> Session::createElement(RefPtr<JSON::Value>&& value)
 RefPtr<JSON::Object> Session::createElement(const String& elementID)
 {
     RefPtr<JSON::Object> elementObject = JSON::Object::create();
-    elementObject->setString("session-node-" + m_id, elementID);
+    elementObject->setString("session-node-" + id(), elementID);
     return elementObject;
 }
 
@@ -1363,6 +1367,47 @@ void Session::getElementProperty(const String& elementID, const String& property
     });
 }
 
+void Session::getElementCSSValue(const String& elementID, const String& cssProperty, Function<void (CommandResult&&)>&& completionHandler)
+{
+    if (!m_toplevelBrowsingContext) {
+        completionHandler(CommandResult::fail(CommandResult::ErrorCode::NoSuchWindow));
+        return;
+    }
+
+    handleUserPrompts([this, elementID, cssProperty, completionHandler = WTFMove(completionHandler)](CommandResult&& result) mutable {
+        if (result.isError()) {
+            completionHandler(WTFMove(result));
+            return;
+        }
+        RefPtr<JSON::Array> arguments = JSON::Array::create();
+        arguments->pushString(createElement(elementID)->toJSONString());
+
+        RefPtr<JSON::Object> parameters = JSON::Object::create();
+        parameters->setString(ASCIILiteral("browsingContextHandle"), m_toplevelBrowsingContext.value());
+        if (m_currentBrowsingContext)
+            parameters->setString(ASCIILiteral("frameHandle"), m_currentBrowsingContext.value());
+        parameters->setString(ASCIILiteral("function"), makeString("function(element) { return document.defaultView.getComputedStyle(element).getPropertyValue('", cssProperty, "'); }"));
+        parameters->setArray(ASCIILiteral("arguments"), WTFMove(arguments));
+        m_host->sendCommandToBackend(ASCIILiteral("evaluateJavaScriptFunction"), WTFMove(parameters), [this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler)](SessionHost::CommandResponse&& response) {
+            if (response.isError || !response.responseObject) {
+                completionHandler(CommandResult::fail(WTFMove(response.responseObject)));
+                return;
+            }
+            String valueString;
+            if (!response.responseObject->getString(ASCIILiteral("result"), valueString)) {
+                completionHandler(CommandResult::fail(CommandResult::ErrorCode::UnknownError));
+                return;
+            }
+            RefPtr<JSON::Value> resultValue;
+            if (!JSON::Value::parseJSON(valueString, resultValue)) {
+                completionHandler(CommandResult::fail(CommandResult::ErrorCode::UnknownError));
+                return;
+            }
+            completionHandler(CommandResult::success(WTFMove(resultValue)));
+        });
+    });
+}
+
 void Session::waitForNavigationToComplete(Function<void (CommandResult&&)>&& completionHandler)
 {
     if (!m_toplevelBrowsingContext) {
@@ -1753,10 +1798,6 @@ void Session::executeScript(const String& script, RefPtr<JSON::Array>&& argument
             String valueString;
             if (!response.responseObject->getString(ASCIILiteral("result"), valueString)) {
                 completionHandler(CommandResult::fail(CommandResult::ErrorCode::UnknownError));
-                return;
-            }
-            if (valueString.isEmpty()) {
-                completionHandler(CommandResult::success());
                 return;
             }
             RefPtr<JSON::Value> resultValue;

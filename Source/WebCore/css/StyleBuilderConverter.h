@@ -150,6 +150,8 @@ public:
 
     static Length convertPositionComponentX(StyleResolver&, const CSSValue&);
     static Length convertPositionComponentY(StyleResolver&, const CSSValue&);
+
+    static GapLength convertGapLength(StyleResolver&, const CSSValue&);
     
 private:
     friend class StyleBuilderCustom;
@@ -1360,8 +1362,8 @@ inline StyleSelfAlignmentData StyleBuilderConverter::convertSelfOrDefaultAlignme
         } else if (pairValue->first()->valueID() == CSSValueLast) {
             alignmentData.setPosition(ItemPositionLastBaseline);
         } else {
-            alignmentData.setPosition(*pairValue->first());
-            alignmentData.setOverflow(*pairValue->second());
+            alignmentData.setOverflow(*pairValue->first());
+            alignmentData.setPosition(*pairValue->second());
         }
     } else
         alignmentData.setPosition(primitiveValue);
@@ -1536,6 +1538,11 @@ inline HangingPunctuation StyleBuilderConverter::convertHangingPunctuation(Style
             result |= downcast<CSSPrimitiveValue>(currentValue.get());
     }
     return result;
+}
+
+inline GapLength StyleBuilderConverter::convertGapLength(StyleResolver& styleResolver, const CSSValue& value)
+{
+    return (downcast<CSSPrimitiveValue>(value).valueID() == CSSValueNormal) ? GapLength() : GapLength(convertLength(styleResolver, value));
 }
 
 } // namespace WebCore

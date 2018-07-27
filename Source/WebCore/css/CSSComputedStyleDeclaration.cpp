@@ -361,6 +361,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitLineBoxContain,
     CSSPropertyLineBreak,
     CSSPropertyWebkitLineClamp,
+    CSSPropertyWebkitLinesClamp,
     CSSPropertyWebkitLineGrid,
     CSSPropertyWebkitLineSnap,
     CSSPropertyWebkitLocale,
@@ -2521,10 +2522,11 @@ static Ref<CSSValueList> valueForItemPositionWithOverflowAlignment(const StyleSe
     else if (data.position() == ItemPositionLastBaseline) {
         result->append(cssValuePool.createIdentifierValue(CSSValueLast));
         result->append(cssValuePool.createIdentifierValue(CSSValueBaseline));
-    } else
+    } else {
+        if (data.position() >= ItemPositionCenter && data.overflow() != OverflowAlignmentDefault)
+            result->append(cssValuePool.createValue(data.overflow()));
         result->append(cssValuePool.createValue(data.position()));
-    if (data.position() >= ItemPositionCenter && data.overflow() != OverflowAlignmentDefault)
-        result->append(cssValuePool.createValue(data.overflow()));
+    }
     ASSERT(result->length() <= 2);
     return result;
 }
@@ -2552,12 +2554,12 @@ static Ref<CSSValueList> valueForContentPositionAndDistributionWithOverflowAlign
         result->append(cssValuePool.createIdentifierValue(CSSValueBaseline));
         break;
     default:
+        // Handle overflow-alignment (only allowed for content-position values)
+        if ((data.position() >= ContentPositionCenter || data.distribution() != ContentDistributionDefault) && data.overflow() != OverflowAlignmentDefault)
+            result->append(cssValuePool.createValue(data.overflow()));
         result->append(cssValuePool.createValue(data.position()));
     }
 
-    // Handle overflow-alignment (only allowed for content-position values)
-    if ((data.position() >= ContentPositionCenter || data.distribution() != ContentDistributionDefault) && data.overflow() != OverflowAlignmentDefault)
-        result->append(cssValuePool.createValue(data.overflow()));
     ASSERT(result->length() > 0);
     ASSERT(result->length() <= 3);
     return result;
@@ -2924,9 +2926,9 @@ RefPtr<CSSValue> ComputedStyleExtractor::valueForPropertyinStyle(const RenderSty
         case CSSPropertyColumnFill:
             return cssValuePool.createValue(style.columnFill());
         case CSSPropertyColumnGap:
-            if (style.hasNormalColumnGap())
+            if (style.columnGap().isNormal())
                 return cssValuePool.createIdentifierValue(CSSValueNormal);
-            return zoomAdjustedPixelValue(style.columnGap(), style);
+            return zoomAdjustedPixelValueForLength(style.columnGap().length(), style);
         case CSSPropertyWebkitColumnProgression:
             return cssValuePool.createValue(style.columnProgression());
         case CSSPropertyColumnRuleColor:
@@ -3166,6 +3168,15 @@ RefPtr<CSSValue> ComputedStyleExtractor::valueForPropertyinStyle(const RenderSty
             if (style.lineClamp().isNone())
                 return cssValuePool.createIdentifierValue(CSSValueNone);
             return cssValuePool.createValue(style.lineClamp().value(), style.lineClamp().isPercentage() ? CSSPrimitiveValue::CSS_PERCENTAGE : CSSPrimitiveValue::CSS_NUMBER);
+        case CSSPropertyWebkitLinesClamp: {
+            if (style.linesClamp().isNone())
+                return cssValuePool.createIdentifierValue(CSSValueNone);
+            auto list = CSSValueList::createSpaceSeparated();
+            list->append(cssValuePool.createValue(style.linesClamp().start().value(), style.linesClamp().start().isPercentage() ? CSSPrimitiveValue::CSS_PERCENTAGE : CSSPrimitiveValue::CSS_NUMBER));
+            list->append(cssValuePool.createValue(style.linesClamp().end().value(), style.linesClamp().end().isPercentage() ? CSSPrimitiveValue::CSS_PERCENTAGE : CSSPrimitiveValue::CSS_NUMBER));
+            list->append(cssValuePool.createValue(style.linesClamp().center(), CSSPrimitiveValue::CSS_STRING));
+            return WTFMove(list);
+        }
         case CSSPropertyLineHeight:
             return lineHeightFromStyle(style);
         case CSSPropertyListStyleImage:

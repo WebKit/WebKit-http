@@ -280,7 +280,7 @@ end
 _handleUncaughtException:
     loadp Callee[cfr], t3
     andp MarkedBlockMask, t3
-    loadp MarkedBlock::m_vm[t3], t3
+    loadp MarkedBlockFooterOffset + MarkedBlock::Footer::m_vm[t3], t3
     restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer(t3, t0)
     loadp VM::callFrameForCatch[t3], cfr
     storep 0, VM::callFrameForCatch[t3]
@@ -376,15 +376,32 @@ macro checkSwitchToJITForLoop()
         end)
 end
 
-macro loadCaged(basePtr, mask, source, dest, scratch)
-    loadp source, dest
+macro uncage(basePtr, mask, ptr, scratch)
     if GIGACAGE_ENABLED and not C_LOOP
         loadp basePtr, scratch
         btpz scratch, .done
-        andp mask, dest
-        addp scratch, dest
+        andp mask, ptr
+        addp scratch, ptr
     .done:
     end
+end
+
+macro loadCaged(basePtr, mask, source, dest, scratch)
+    loadp source, dest
+    uncage(basePtr, mask, dest, scratch)
+end
+
+macro loadTypedArrayCaged(basePtr, mask, source, typeIndex, dest, scratch)
+    if POISON
+        andp TypedArrayPoisonIndexMask, typeIndex
+        leap _g_typedArrayPoisons, dest
+        loadp [dest, typeIndex, 8], dest
+        loadp source, scratch
+        xorp scratch, dest
+    else
+        loadp source, dest
+    end
+    uncage(basePtr, mask, dest, scratch)
 end
 
 macro loadVariable(operand, value)
@@ -561,7 +578,7 @@ end
 macro branchIfException(label)
     loadp Callee[cfr], t3
     andp MarkedBlockMask, t3
-    loadp MarkedBlock::m_vm[t3], t3
+    loadp MarkedBlockFooterOffset + MarkedBlock::Footer::m_vm[t3], t3
     btqz VM::m_exception[t3], .noException
     jmp label
 .noException:
@@ -1538,60 +1555,72 @@ _llint_op_get_by_val:
     # First lets check if we even have a typed array. This lets us do some boilerplate up front.
     loadb JSCell::m_type[t0], t2
     subi FirstArrayType, t2
-    bia t2, LastArrayType - FirstArrayType, .opGetByValSlow
+    biaeq t2, NumberOfTypedArrayTypesExcludingDataView, .opGetByValSlow
     
     # Sweet, now we know that we have a typed array. Do some basic things now.
-    loadCaged(_g_gigacageBasePtrs + Gigacage::BasePtrs::primitive, constexpr PRIMITIVE_GIGACAGE_MASK, JSArrayBufferView::m_vector[t0], t3, t5)
     biaeq t1, JSArrayBufferView::m_length[t0], .opGetByValSlow
-    
-    # Now bisect through the various types. Note that we can treat Uint8ArrayType and
-    # Uint8ClampedArrayType the same.
-    bia t2, Uint8ClampedArrayType - FirstArrayType, .opGetByValAboveUint8ClampedArray
-    
-    # We have one of Int8ArrayType .. Uint8ClampedArrayType.
-    bia t2, Int16ArrayType - FirstArrayType, .opGetByValInt32ArrayOrUint8Array
-    
-    # We have one of Int8ArrayType or Int16ArrayType
-    bineq t2, Int8ArrayType - FirstArrayType, .opGetByValInt16Array
-    
+    loadTypedArrayCaged(_g_gigacageBasePtrs + Gigacage::BasePtrs::primitive, constexpr PRIMITIVE_GIGACAGE_MASK, JSArrayBufferView::m_poisonedVector[t0], t2, t3, t5)
+
+    # Now bisect through the various types:
+    #    Int8ArrayType,
+    #    Uint8ArrayType,
+    #    Uint8ClampedArrayType,
+    #    Int16ArrayType,
+    #    Uint16ArrayType,
+    #    Int32ArrayType,
+    #    Uint32ArrayType,
+    #    Float32ArrayType,
+    #    Float64ArrayType,
+
+    bia t2, Uint16ArrayType - FirstArrayType, .opGetByValAboveUint16Array
+
+    # We have one of Int8ArrayType .. Uint16ArrayType.
+    bia t2, Uint8ClampedArrayType - FirstArrayType, .opGetByValInt16ArrayOrUint16Array
+
+    # We have one of Int8ArrayType ... Uint8ClampedArrayType
+    bineq t2, Int8ArrayType - FirstArrayType, .opGetByValUint8ArrayOrUint8ClampedArray
+
     # We have Int8ArrayType
     loadbs [t3, t1], t0
     finishIntGetByVal(t0, t1)
 
-.opGetByValInt16Array:
-    loadhs [t3, t1, 2], t0
-    finishIntGetByVal(t0, t1)
-
-.opGetByValInt32ArrayOrUint8Array:
-    # We have one of Int16Array, Uint8Array, or Uint8ClampedArray.
-    bieq t2, Int32ArrayType - FirstArrayType, .opGetByValInt32Array
-    
-    # We have either Uint8Array or Uint8ClampedArray. They behave the same so that's cool.
+.opGetByValUint8ArrayOrUint8ClampedArray:
+    # We have either Uint8ArrayType or Uint8ClampedArrayType. They behave the same so that's cool.
     loadb [t3, t1], t0
     finishIntGetByVal(t0, t1)
 
-.opGetByValInt32Array:
-    loadi [t3, t1, 4], t0
+.opGetByValInt16ArrayOrUint16Array:
+    # We have either Int16ArrayType or Uint16ClampedArrayType.
+    bieq t2, Uint16ArrayType - FirstArrayType, .opGetByValUint16Array
+
+    # We have Int16ArrayType.
+    loadhs [t3, t1, 2], t0
     finishIntGetByVal(t0, t1)
 
-.opGetByValAboveUint8ClampedArray:
-    # We have one of Uint16ArrayType .. Float64ArrayType.
-    bia t2, Uint32ArrayType - FirstArrayType, .opGetByValAboveUint32Array
-    
-    # We have either Uint16ArrayType or Uint32ArrayType.
-    bieq t2, Uint32ArrayType - FirstArrayType, .opGetByValUint32Array
-
+.opGetByValUint16Array:
     # We have Uint16ArrayType.
     loadh [t3, t1, 2], t0
     finishIntGetByVal(t0, t1)
 
+.opGetByValAboveUint16Array:
+    # We have one of Int32ArrayType .. Float64ArrayType.
+    bia t2, Uint32ArrayType - FirstArrayType, .opGetByValFloat32ArrayOrFloat64Array
+
+    # We have either Int32ArrayType or Uint32ArrayType
+    bineq t2, Int32ArrayType - FirstArrayType, .opGetByValUint32Array
+
+    # We have Int32ArrayType
+    loadi [t3, t1, 4], t0
+    finishIntGetByVal(t0, t1)
+
 .opGetByValUint32Array:
+    # We have Uint32ArrayType.
     # This is the hardest part because of large unsigned values.
     loadi [t3, t1, 4], t0
     bilt t0, 0, .opGetByValSlow # This case is still awkward to implement in LLInt.
     finishIntGetByVal(t0, t1)
 
-.opGetByValAboveUint32Array:
+.opGetByValFloat32ArrayOrFloat64Array:
     # We have one of Float32ArrayType or Float64ArrayType. Sadly, we cannot handle Float32Array
     # inline yet. That would require some offlineasm changes.
     bieq t2, Float32ArrayType - FirstArrayType, .opGetByValSlow
@@ -1990,7 +2019,7 @@ _llint_op_catch:
     # and have set VM::targetInterpreterPCForThrow.
     loadp Callee[cfr], t3
     andp MarkedBlockMask, t3
-    loadp MarkedBlock::m_vm[t3], t3
+    loadp MarkedBlockFooterOffset + MarkedBlock::Footer::m_vm[t3], t3
     restoreCalleeSavesFromVMEntryFrameCalleeSavesBuffer(t3, t0)
     loadp VM::callFrameForCatch[t3], cfr
     storep 0, VM::callFrameForCatch[t3]
@@ -2010,7 +2039,7 @@ _llint_op_catch:
 .isCatchableException:
     loadp Callee[cfr], t3
     andp MarkedBlockMask, t3
-    loadp MarkedBlock::m_vm[t3], t3
+    loadp MarkedBlockFooterOffset + MarkedBlock::Footer::m_vm[t3], t3
 
     loadq VM::m_exception[t3], t0
     storeq 0, VM::m_exception[t3]
@@ -2040,7 +2069,7 @@ _llint_op_end:
 _llint_throw_from_slow_path_trampoline:
     loadp Callee[cfr], t1
     andp MarkedBlockMask, t1
-    loadp MarkedBlock::m_vm[t1], t1
+    loadp MarkedBlockFooterOffset + MarkedBlock::Footer::m_vm[t1], t1
     copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(t1, t2)
 
     callSlowPath(_llint_slow_path_handle_exception)
@@ -2050,7 +2079,7 @@ _llint_throw_from_slow_path_trampoline:
     # This essentially emulates the JIT's throwing protocol.
     loadp Callee[cfr], t1
     andp MarkedBlockMask, t1
-    loadp MarkedBlock::m_vm[t1], t1
+    loadp MarkedBlockFooterOffset + MarkedBlock::Footer::m_vm[t1], t1
     jmp VM::targetMachinePCForThrow[t1]
 
 
@@ -2065,7 +2094,7 @@ macro nativeCallTrampoline(executableOffsetToFunction)
     storep 0, CodeBlock[cfr]
     loadp Callee[cfr], t0
     andp MarkedBlockMask, t0, t1
-    loadp MarkedBlock::m_vm[t1], t1
+    loadp MarkedBlockFooterOffset + MarkedBlock::Footer::m_vm[t1], t1
     storep cfr, VM::topCallFrame[t1]
     if ARM64 or C_LOOP
         storep lr, ReturnPC[cfr]
@@ -2092,7 +2121,7 @@ macro nativeCallTrampoline(executableOffsetToFunction)
 
     loadp Callee[cfr], t3
     andp MarkedBlockMask, t3
-    loadp MarkedBlock::m_vm[t3], t3
+    loadp MarkedBlockFooterOffset + MarkedBlock::Footer::m_vm[t3], t3
 
     btqnz VM::m_exception[t3], .handleException
 
@@ -2109,7 +2138,7 @@ macro internalFunctionCallTrampoline(offsetOfFunction)
     storep 0, CodeBlock[cfr]
     loadp Callee[cfr], t0
     andp MarkedBlockMask, t0, t1
-    loadp MarkedBlock::m_vm[t1], t1
+    loadp MarkedBlockFooterOffset + MarkedBlock::Footer::m_vm[t1], t1
     storep cfr, VM::topCallFrame[t1]
     if ARM64 or C_LOOP
         storep lr, ReturnPC[cfr]
@@ -2135,7 +2164,7 @@ macro internalFunctionCallTrampoline(offsetOfFunction)
 
     loadp Callee[cfr], t3
     andp MarkedBlockMask, t3
-    loadp MarkedBlock::m_vm[t3], t3
+    loadp MarkedBlockFooterOffset + MarkedBlock::Footer::m_vm[t3], t3
 
     btqnz VM::m_exception[t3], .handleException
 

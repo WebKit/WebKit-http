@@ -106,9 +106,9 @@ public:
     void setSubframeUnderTopFrameOrigin(const WebCore::URL& subframe, const WebCore::URL& topFrame);
     void setSubresourceUnderTopFrameOrigin(const WebCore::URL& subresource, const WebCore::URL& topFrame);
     void setSubresourceUniqueRedirectTo(const WebCore::URL& subresource, const WebCore::URL& hostNameRedirectedTo);
-    void scheduleCookiePartitioningUpdate();
-    void scheduleCookiePartitioningUpdateForDomains(const Vector<String>& domainsToPartition, const Vector<String>& domainsToBlock, const Vector<String>& domainsToNeitherPartitionNorBlock, ShouldClearFirst);
-    void scheduleClearPartitioningStateForDomains(const Vector<String>& domains);
+    void scheduleCookiePartitioningUpdate(CompletionHandler<void()>&&);
+    void scheduleCookiePartitioningUpdateForDomains(const Vector<String>& domainsToPartition, const Vector<String>& domainsToBlock, const Vector<String>& domainsToNeitherPartitionNorBlock, ShouldClearFirst, CompletionHandler<void()>&&);
+    void scheduleClearPartitioningStateForDomains(const Vector<String>& domains, CompletionHandler<void()>&&);
     void scheduleStatisticsAndDataRecordsProcessing();
     void submitTelemetry();
     void scheduleCookiePartitioningStateReset();
@@ -119,8 +119,8 @@ public:
         No,
         Yes,
     };
-    void scheduleClearInMemoryAndPersistent(ShouldGrandfather);
-    void scheduleClearInMemoryAndPersistent(WallTime modifiedSince, ShouldGrandfather);
+    void scheduleClearInMemoryAndPersistent(ShouldGrandfather, CompletionHandler<void()>&&);
+    void scheduleClearInMemoryAndPersistent(WallTime modifiedSince, ShouldGrandfather, CompletionHandler<void()>&&);
 
     void setTimeToLiveUserInteraction(Seconds);
     void setTimeToLiveCookiePartitionFree(Seconds);
@@ -137,7 +137,9 @@ public:
     std::unique_ptr<WebCore::KeyedEncoder> createEncoderFromData() const;
     void mergeWithDataFromDecoder(WebCore::KeyedDecoder&);
     void clearInMemory();
-    void grandfatherExistingWebsiteData();
+    void grandfatherExistingWebsiteData(CompletionHandler<void()>&&);
+
+    void setResourceLoadStatisticsDebugMode(bool);
 
     void setStatisticsTestingCallback(Function<void (const String&)>&& callback) { m_statisticsTestingCallback = WTFMove(callback); }
     void logTestingEvent(const String&);
@@ -160,9 +162,9 @@ private:
     bool hasHadUnexpiredRecentUserInteraction(WebCore::ResourceLoadStatistics&) const;
     void includeTodayAsOperatingDateIfNecessary();
     Vector<String> topPrivatelyControlledDomainsToRemoveWebsiteDataFor();
-    void updateCookiePartitioning();
-    void updateCookiePartitioningForDomains(const Vector<String>& domainsToPartition, const Vector<String>& domainsToBlock, const Vector<String>& domainsToNeitherPartitionNorBlock, ShouldClearFirst);
-    void clearPartitioningStateForDomains(const Vector<String>& domains);
+    void updateCookiePartitioning(CompletionHandler<void()>&&);
+    void updateCookiePartitioningForDomains(const Vector<String>& domainsToPartition, const Vector<String>& domainsToBlock, const Vector<String>& domainsToNeitherPartitionNorBlock, ShouldClearFirst, CompletionHandler<void()>&&);
+    void clearPartitioningStateForDomains(const Vector<String>& domains, CompletionHandler<void()>&&);
     void mergeStatistics(Vector<WebCore::ResourceLoadStatistics>&&);
     WebCore::ResourceLoadStatistics& ensureResourceStatisticsForPrimaryDomain(const String&);
     void processStatisticsAndDataRecords();
@@ -172,6 +174,8 @@ private:
 #if PLATFORM(COCOA)
     void registerUserDefaultsIfNeeded();
 #endif
+
+    bool wasAccessedAsFirstPartyDueToUserInteraction(const WebCore::ResourceLoadStatistics& current, const WebCore::ResourceLoadStatistics& updated);
 
     struct Parameters {
         size_t pruneEntriesDownTo { 800 };

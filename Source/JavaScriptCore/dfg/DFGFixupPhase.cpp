@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -1443,7 +1443,7 @@ private:
                 
                 if (uid == vm().propertyNames->lastIndex.impl()
                     && node->child1()->shouldSpeculateRegExpObject()) {
-                    node->setOp(SetRegExpObjectLastIndex);
+                    node->convertToSetRegExpObjectLastIndex();
                     fixEdge<RegExpObjectUse>(node->child1());
                     speculateForBarrier(node->child2());
                     break;
@@ -1651,6 +1651,7 @@ private:
         case PhantomNewArrayWithSpread:
         case PhantomNewArrayBuffer:
         case PhantomClonedArguments:
+        case PhantomNewRegexp:
         case GetMyArgumentByVal:
         case GetMyArgumentByValOutOfBounds:
         case GetVectorLength:
@@ -1667,6 +1668,7 @@ private:
         case GetRegExpObjectLastIndex:
         case SetRegExpObjectLastIndex:
         case RecordRegExpCachedResult:
+        case RegExpExecNonGlobalOrSticky:
             // These are just nodes that we don't currently expect to see during fixup.
             // If we ever wanted to insert them prior to fixup, then we just have to create
             // fixup rules for them.
@@ -1977,6 +1979,20 @@ private:
             break;
         }
 
+        case WeakSetAdd: {
+            fixEdge<WeakSetObjectUse>(node->child1());
+            fixEdge<ObjectUse>(node->child2());
+            fixEdge<Int32Use>(node->child3());
+            break;
+        }
+
+        case WeakMapSet: {
+            fixEdge<WeakMapObjectUse>(m_graph.varArgChild(node, 0));
+            fixEdge<ObjectUse>(m_graph.varArgChild(node, 1));
+            fixEdge<Int32Use>(m_graph.varArgChild(node, 3));
+            break;
+        }
+
         case DefineDataProperty: {
             fixEdge<CellUse>(m_graph.varArgChild(node, 0));
             Edge& propertyEdge = m_graph.varArgChild(node, 1);
@@ -2097,6 +2113,7 @@ private:
         case GetLocal:
         case GetCallee:
         case GetArgumentCountIncludingThis:
+        case SetArgumentCountIncludingThis:
         case GetRestLength:
         case GetArgument:
         case Flush:
@@ -2853,6 +2870,7 @@ private:
                 m_indexInBlock, SpecNone, GetButterfly, origin, Edge(array, CellUse));
         }
         
+        ASSERT(arrayMode.type() == Array::String || arrayMode.typedArrayType() != NotTypedArray);
         return m_insertionSet.insertNode(
             m_indexInBlock, SpecNone, GetIndexedPropertyStorage, origin,
             OpInfo(arrayMode.asWord()), Edge(array, KnownCellUse));

@@ -1,3 +1,222 @@
+2018-01-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed gardening. Update expectations of several WebDriver tests.
+
+        * TestExpectations.json:
+
+2018-01-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update W3C WebDriver imported tests.
+
+        * imported/w3c/importer.json:
+        * imported/w3c/tools/wptrunner/requirements_sauce.txt:
+        * imported/w3c/tools/wptrunner/tox.ini:
+        * imported/w3c/tools/wptrunner/wptrunner/browsers/sauce.py:
+        * imported/w3c/tools/wptrunner/wptrunner/executors/executormarionette.py:
+        * imported/w3c/tools/wptrunner/wptrunner/executors/pytestrunner/runner.py:
+        * imported/w3c/tools/wptrunner/wptrunner/metadata.py:
+        * imported/w3c/webdriver/OWNERS:
+        * imported/w3c/webdriver/tests/__init__.py:
+        * imported/w3c/webdriver/tests/actions/mouse.py:
+        * imported/w3c/webdriver/tests/actions/mouse_dblclick.py:
+        * imported/w3c/webdriver/tests/actions/support/mouse.py:
+        * imported/w3c/webdriver/tests/cookies/add_cookie.py:
+        * imported/w3c/webdriver/tests/cookies/delete_cookie.py:
+        * imported/w3c/webdriver/tests/cookies/get_named_cookie.py:
+        * imported/w3c/webdriver/tests/element_send_keys/form_controls.py: Added.
+        * imported/w3c/webdriver/tests/element_send_keys/interactability.py:
+        * imported/w3c/webdriver/tests/interaction/element_clear.py:
+        * imported/w3c/webdriver/tests/support/asserts.py:
+
+2018-01-26  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update W3C WebDriver imported tests.
+
+        * imported/w3c/importer.json:
+        * imported/w3c/tools/wptrunner/wptrunner/executors/executormarionette.py:
+        * imported/w3c/tools/wptrunner/wptrunner/executors/pytestrunner/runner.py:
+        * imported/w3c/webdriver/tests/element_click/select.py:
+        * imported/w3c/webdriver/tests/interaction/element_clear.py:
+        * imported/w3c/webdriver/tests/sessions/new_session/support/create.py:
+        * imported/w3c/webdriver/tests/state/get_element_attribute.py:
+        * imported/w3c/webdriver/tests/state/get_element_property.py:
+        * imported/w3c/webdriver/tests/state/get_element_tag_name.py:
+        * imported/w3c/webdriver/tests/state/is_element_selected.py:
+
+2018-01-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: add support for slow tests
+        https://bugs.webkit.org/show_bug.cgi?id=182095
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Mark several tests as slow.
+
+        * TestExpectations.json:
+
+2018-01-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: test imported/w3c/webdriver/tests/sessions/new_session/merge.py::test_merge_browserName fails
+        https://bugs.webkit.org/show_bug.cgi?id=181985
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Remove expectations for imported/w3c/webdriver/tests/sessions/new_session/merge.py::test_merge_browserName.
+
+        * TestExpectations.json:
+
+2018-01-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: test imported/w3c/webdriver/tests/sessions/new_session/merge.py::test_merge_platformName fails
+        https://bugs.webkit.org/show_bug.cgi?id=181984
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Remove expectations for imported/w3c/webdriver/tests/sessions/new_session/merge.py::test_merge_platformName.
+
+        * TestExpectations.json:
+
+2018-01-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: several tests in imported/w3c/webdriver/tests/sessions/new_session/merge.py are failing
+        https://bugs.webkit.org/show_bug.cgi?id=180407
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Remove expectations for tests that are passing now and update the bug number of the other ones referencing
+        #180407.
+
+        * TestExpectations.json:
+
+2018-01-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: test imported/w3c/webdriver/tests/sessions/new_session/response.py::test_timeouts fails
+        https://bugs.webkit.org/show_bug.cgi?id=180412
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Remove expectations for imported/w3c/webdriver/tests/sessions/new_session/response.py since all tests are
+        passing now.
+
+        * TestExpectations.json:
+
+2018-01-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: matched capabilities should include setWindowRect
+        https://bugs.webkit.org/show_bug.cgi?id=180411
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Change the bug number of test imported/w3c/webdriver/tests/sessions/new_session/response.py::test_resp_data,
+        since now it's failing due to missing timeouts value.
+
+        * TestExpectations.json:
+
+2018-01-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: test imported/selenium/py/test/selenium/webdriver/common/api_example_tests.py::testChangeWindowSize fails
+        https://bugs.webkit.org/show_bug.cgi?id=181728
+
+        Reviewed by Sergio Villar Senin.
+
+        Remove expectations for tests that are now passing.
+
+        * TestExpectations.json:
+
+2018-01-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: implement get element CSS value command
+        https://bugs.webkit.org/show_bug.cgi?id=181736
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * TestExpectations.json: Unskip tests passing now.
+
+2018-01-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update W3C WebDriver imported tests.
+
+        * imported/w3c/importer.json:
+        * imported/w3c/tools/webdriver/webdriver/client.py:
+        * imported/w3c/tools/webdriver/webdriver/protocol.py:
+        * imported/w3c/tools/webdriver/webdriver/servo.py: Removed.
+        * imported/w3c/tools/webdriver/webdriver/transport.py:
+        * imported/w3c/tools/wptrunner/MANIFEST.in:
+        * imported/w3c/tools/wptrunner/README.rst:
+        * imported/w3c/tools/wptrunner/docs/conf.py:
+        * imported/w3c/tools/wptrunner/docs/usage.rst:
+        * imported/w3c/tools/wptrunner/setup.py:
+        * imported/w3c/tools/wptrunner/tox.ini:
+        * imported/w3c/tools/wptrunner/wptrunner/browsers/__init__.py:
+        * imported/w3c/tools/wptrunner/wptrunner/browsers/b2g_setup/certtest_app.zip: Removed.
+        * imported/w3c/tools/wptrunner/wptrunner/browsers/chrome_android.py: Copied from WebDriverTests/imported/w3c/tools/wptrunner/wptrunner/browsers/ie.py.
+        * imported/w3c/tools/wptrunner/wptrunner/browsers/firefox.py:
+        * imported/w3c/tools/wptrunner/wptrunner/browsers/ie.py:
+        * imported/w3c/tools/wptrunner/wptrunner/browsers/servo.py:
+        * imported/w3c/tools/wptrunner/wptrunner/environment.py:
+        * imported/w3c/tools/wptrunner/wptrunner/executors/base.py:
+        * imported/w3c/tools/wptrunner/wptrunner/executors/executormarionette.py:
+        * imported/w3c/tools/wptrunner/wptrunner/executors/executorselenium.py:
+        * imported/w3c/tools/wptrunner/wptrunner/executors/executorservo.py:
+        * imported/w3c/tools/wptrunner/wptrunner/executors/executorservodriver.py:
+        * imported/w3c/tools/wptrunner/wptrunner/manifestupdate.py:
+        * imported/w3c/tools/wptrunner/wptrunner/metadata.py:
+        * imported/w3c/tools/wptrunner/wptrunner/stability.py:
+        * imported/w3c/tools/wptrunner/wptrunner/testloader.py:
+        * imported/w3c/tools/wptrunner/wptrunner/testrunner.py:
+        * imported/w3c/tools/wptrunner/wptrunner/tests/test_hosts.py:
+        * imported/w3c/tools/wptrunner/wptrunner/update/__init__.py:
+        * imported/w3c/tools/wptrunner/wptrunner/update/sync.py:
+        * imported/w3c/tools/wptrunner/wptrunner/update/tree.py:
+        * imported/w3c/tools/wptrunner/wptrunner/vcs.py:
+        * imported/w3c/tools/wptrunner/wptrunner/webdriver_server.py:
+        * imported/w3c/tools/wptrunner/wptrunner/wptcommandline.py:
+        * imported/w3c/tools/wptrunner/wptrunner/wptmanifest/tests/test_serializer.py:
+        * imported/w3c/tools/wptrunner/wptrunner/wptmanifest/tests/test_tokenizer.py:
+        * imported/w3c/tools/wptrunner/wptrunner/wptrunner.py:
+        * imported/w3c/tools/wptrunner/wptrunner/wpttest.py:
+        * imported/w3c/webdriver/tests/execute_async_script/__init__.py: Added.
+        * imported/w3c/webdriver/tests/execute_script/__init__.py: Added.
+        * imported/w3c/webdriver/tests/sessions/new_session/response.py:
+
+2018-01-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WebDriver: test imported/w3c/webdriver/tests/sessions/new_session/response.py is crashing in the bots
+        https://bugs.webkit.org/show_bug.cgi?id=181904
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Unskip imported/w3c/webdriver/tests/sessions/new_session/response.py.
+
+        * TestExpectations.json:
+
+2018-01-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Skip imported/w3c/webdriver/tests/sessions/new_session/response.py.
+
+        It's causing a crash in the driver process and affecting all other tests.
+
+        * TestExpectations.json:
+
+2018-01-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update Selenium WebDriver imported tests.
+
+        * imported/selenium/importer.json:
+        * imported/selenium/py/test/selenium/webdriver/common/executing_async_javascript_tests.py:
+        (reset_timeouts):
+
+2018-01-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: ignore the driver in selenium test names when getting expectations
+        https://bugs.webkit.org/show_bug.cgi?id=181738
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Add some expectations for selenium tests.
+
+        * TestExpectations.json:
+
 2018-01-17  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         WebDriver: add support for test expectations

@@ -82,51 +82,6 @@ if (DFGByteCodeParserInternal::verbose && Options::verboseDFGBytecodeParsing()) 
 dataLog(__VA_ARGS__); \
 } while (false)
 
-template <typename F1, typename F2>
-static ALWAYS_INLINE void flushImpl(Graph& graph, InlineCallFrame* inlineCallFrame, const F1& addFlushDirect, const F2& addPhantomLocalDirect)
-{
-    int numArguments;
-    if (inlineCallFrame) {
-        ASSERT(!graph.hasDebuggerEnabled());
-        numArguments = inlineCallFrame->argumentsWithFixup.size();
-        if (inlineCallFrame->isClosureCall)
-            addFlushDirect(remapOperand(inlineCallFrame, VirtualRegister(CallFrameSlot::callee)));
-        if (inlineCallFrame->isVarargs())
-            addFlushDirect(remapOperand(inlineCallFrame, VirtualRegister(CallFrameSlot::argumentCount)));
-    } else
-        numArguments = graph.baselineCodeBlockFor(inlineCallFrame)->numParameters();
-
-    for (unsigned argument = numArguments; argument-- > 1;)
-        addFlushDirect(remapOperand(inlineCallFrame, virtualRegisterForArgument(argument)));
-
-    if (!inlineCallFrame && graph.needsFlushedThis())
-        addFlushDirect(remapOperand(inlineCallFrame, virtualRegisterForArgument(0)));
-    else
-        addPhantomLocalDirect(remapOperand(inlineCallFrame, virtualRegisterForArgument(0)));
-
-    if (graph.needsScopeRegister())
-        addFlushDirect(graph.m_codeBlock->scopeRegister());
-}
-
-template <typename F1, typename F2>
-static ALWAYS_INLINE void flushForTerminalImpl(Graph& graph, CodeOrigin origin, const F1& addFlushDirect, const F2& addPhantomLocalDirect)
-{
-    origin.walkUpInlineStack([&] (CodeOrigin origin) {
-        unsigned bytecodeIndex = origin.bytecodeIndex;
-        InlineCallFrame* inlineCallFrame = origin.inlineCallFrame;
-        flushImpl(graph, inlineCallFrame, addFlushDirect, addPhantomLocalDirect);
-
-        CodeBlock* codeBlock = graph.baselineCodeBlockFor(inlineCallFrame);
-        FullBytecodeLiveness& fullLiveness = graph.livenessFor(codeBlock);
-        const FastBitVector& livenessAtBytecode = fullLiveness.getLiveness(bytecodeIndex);
-
-        for (unsigned local = codeBlock->m_numCalleeLocals; local--;) {
-            if (livenessAtBytecode[local])
-                addPhantomLocalDirect(remapOperand(inlineCallFrame, virtualRegisterForLocal(local)));
-        }
-    });
-}
-
 // === ByteCodeParser ===
 //
 // This class is used to compile the dataflow graph from a CodeBlock.
@@ -547,8 +502,6 @@ private:
                 break;
             if (operand.offset() < static_cast<int>(inlineCallFrame->stackOffset + CallFrame::headerSizeInRegisters))
                 continue;
-            if (operand.offset() == inlineCallFrame->stackOffset + CallFrame::thisArgumentOffset())
-                continue;
             if (operand.offset() >= static_cast<int>(inlineCallFrame->stackOffset + CallFrame::thisArgumentOffset() + inlineCallFrame->argumentsWithFixup.size()))
                 continue;
             int argument = VirtualRegister(operand.offset() - inlineCallFrame->stackOffset).toArgument();
@@ -562,6 +515,47 @@ private:
         if (operand.isArgument())
             return findArgumentPositionForArgument(operand.toArgument());
         return findArgumentPositionForLocal(operand);
+    }
+
+    template<typename AddFlushDirectFunc>
+    void flushImpl(InlineCallFrame* inlineCallFrame, const AddFlushDirectFunc& addFlushDirect)
+    {
+        int numArguments;
+        if (inlineCallFrame) {
+            ASSERT(!m_graph.hasDebuggerEnabled());
+            numArguments = inlineCallFrame->argumentsWithFixup.size();
+            if (inlineCallFrame->isClosureCall)
+                addFlushDirect(remapOperand(inlineCallFrame, VirtualRegister(CallFrameSlot::callee)));
+            if (inlineCallFrame->isVarargs())
+                addFlushDirect(remapOperand(inlineCallFrame, VirtualRegister(CallFrameSlot::argumentCount)));
+        } else
+            numArguments = m_graph.baselineCodeBlockFor(inlineCallFrame)->numParameters();
+
+        for (unsigned argument = numArguments; argument--;)
+            addFlushDirect(remapOperand(inlineCallFrame, virtualRegisterForArgument(argument)));
+
+        if (m_graph.needsScopeRegister())
+            addFlushDirect(m_graph.m_codeBlock->scopeRegister());
+    }
+
+    template<typename AddFlushDirectFunc, typename AddPhantomLocalDirectFunc>
+    void flushForTerminalImpl(CodeOrigin origin, const AddFlushDirectFunc& addFlushDirect, const AddPhantomLocalDirectFunc& addPhantomLocalDirect)
+    {
+        origin.walkUpInlineStack(
+            [&] (CodeOrigin origin) {
+                unsigned bytecodeIndex = origin.bytecodeIndex;
+                InlineCallFrame* inlineCallFrame = origin.inlineCallFrame;
+                flushImpl(inlineCallFrame, addFlushDirect);
+
+                CodeBlock* codeBlock = m_graph.baselineCodeBlockFor(inlineCallFrame);
+                FullBytecodeLiveness& fullLiveness = m_graph.livenessFor(codeBlock);
+                const FastBitVector& livenessAtBytecode = fullLiveness.getLiveness(bytecodeIndex);
+
+                for (unsigned local = codeBlock->m_numCalleeLocals; local--;) {
+                    if (livenessAtBytecode[local])
+                        addPhantomLocalDirect(remapOperand(inlineCallFrame, virtualRegisterForLocal(local)));
+                }
+            });
     }
 
     void flush(VirtualRegister operand)
@@ -607,15 +601,14 @@ private:
     void flush(InlineStackEntry* inlineStackEntry)
     {
         auto addFlushDirect = [&] (VirtualRegister reg) { flushDirect(reg); };
-        auto addPhantomLocalDirect = [&] (VirtualRegister reg) { phantomLocalDirect(reg); };
-        flushImpl(m_graph, inlineStackEntry->m_inlineCallFrame, addFlushDirect, addPhantomLocalDirect);
+        flushImpl(inlineStackEntry->m_inlineCallFrame, addFlushDirect);
     }
 
     void flushForTerminal()
     {
         auto addFlushDirect = [&] (VirtualRegister reg) { flushDirect(reg); };
         auto addPhantomLocalDirect = [&] (VirtualRegister reg) { phantomLocalDirect(reg); };
-        flushForTerminalImpl(m_graph, currentCodeOrigin(), addFlushDirect, addPhantomLocalDirect);
+        flushForTerminalImpl(currentCodeOrigin(), addFlushDirect, addPhantomLocalDirect);
     }
 
     void flushForReturn()
@@ -764,6 +757,12 @@ private:
     void addVarArgChild(Node* child)
     {
         m_graph.m_varArgChildren.append(Edge(child));
+        m_numPassedVarArgs++;
+    }
+
+    void addVarArgChild(Edge child)
+    {
+        m_graph.m_varArgChildren.append(child);
         m_numPassedVarArgs++;
     }
     
@@ -940,8 +939,10 @@ private:
                     break;
                 }
                 case ArithNegate: {
-                    ASSERT_WITH_MESSAGE(!arithProfile->didObserveNonNumber(), "op_negate starts with a toNumber() on the argument, it should only produce numbers.");
-
+                    // We'd like to assert here that the arith profile for the result of negate never
+                    // sees a non-number, but we can't. It's true that negate never produces a non-number.
+                    // But sometimes we'll end up grabbing the wrong ArithProfile during OSR exit, and
+                    // profiling the wrong value, leading the ArithProfile to think it observed a non-number result.
                     if (arithProfile->lhsObservedType().sawNumber() || arithProfile->didObserveDouble())
                         node->mergeFlags(NodeMayHaveDoubleResult);
                     if (arithProfile->didObserveNegZeroDouble() || m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, NegativeZero))
@@ -1401,6 +1402,8 @@ bool ByteCodeParser::handleRecursiveTailCall(CallVariant callVariant, int regist
         flushForTerminal();
 
         // We must set the arguments to the right values
+        if (!stackEntry->m_inlineCallFrame)
+            addToGraph(SetArgumentCountIncludingThis, OpInfo(argumentCountIncludingThis));
         int argIndex = 0;
         for (; argIndex < argumentCountIncludingThis; ++argIndex) {
             Node* value = get(virtualRegisterForArgument(argIndex, registerOffset));
@@ -3005,6 +3008,47 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
         return true;
     }
 
+    case JSWeakSetAddIntrinsic: {
+        if (argumentCountIncludingThis != 2)
+            return false;
+
+        if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType))
+            return false;
+
+        insertChecks();
+        Node* base = get(virtualRegisterForArgument(0, registerOffset));
+        Node* key = get(virtualRegisterForArgument(1, registerOffset));
+        addToGraph(Check, Edge(key, ObjectUse));
+        Node* hash = addToGraph(MapHash, key);
+        addToGraph(WeakSetAdd, Edge(base, WeakSetObjectUse), Edge(key, ObjectUse), Edge(hash, Int32Use));
+        set(VirtualRegister(resultOperand), base);
+        return true;
+    }
+
+    case JSWeakMapSetIntrinsic: {
+        if (argumentCountIncludingThis != 3)
+            return false;
+
+        if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType))
+            return false;
+
+        insertChecks();
+        Node* base = get(virtualRegisterForArgument(0, registerOffset));
+        Node* key = get(virtualRegisterForArgument(1, registerOffset));
+        Node* value = get(virtualRegisterForArgument(2, registerOffset));
+
+        addToGraph(Check, Edge(key, ObjectUse));
+        Node* hash = addToGraph(MapHash, key);
+
+        addVarArgChild(Edge(base, WeakMapObjectUse));
+        addVarArgChild(Edge(key, ObjectUse));
+        addVarArgChild(Edge(value));
+        addVarArgChild(Edge(hash, Int32Use));
+        addToGraph(Node::VarArg, WeakMapSet, OpInfo(0), OpInfo(0));
+        set(VirtualRegister(resultOperand), base);
+        return true;
+    }
+
     case HasOwnPropertyIntrinsic: {
         if (argumentCountIncludingThis != 2)
             return false;
@@ -3441,7 +3485,7 @@ bool ByteCodeParser::handleConstantInternalFunction(
         return true;
     }
 
-    for (unsigned typeIndex = 0; typeIndex < NUMBER_OF_TYPED_ARRAY_TYPES; ++typeIndex) {
+    for (unsigned typeIndex = 0; typeIndex < NumberOfTypedArrayTypes; ++typeIndex) {
         bool result = handleTypedArrayConstructor(
             resultOperand, function, registerOffset, argumentCountIncludingThis,
             indexToTypedArrayType(typeIndex), insertChecks);
@@ -3933,7 +3977,8 @@ void ByteCodeParser::handleGetById(
     }
     
     if (getByIdStatus.numVariants() > 1) {
-        if (getByIdStatus.makesCalls() || !m_graph.supportsMultiGetByOffset(currentCodeOrigin()) || !Options::usePolymorphicAccessInlining()) {
+        if (getByIdStatus.makesCalls() || !isFTL(m_graph.m_plan.mode)
+            || !Options::usePolymorphicAccessInlining()) {
             set(VirtualRegister(destinationOperand),
                 addToGraph(getById, OpInfo(identifierNumber), OpInfo(prediction), base));
             return;
@@ -4499,7 +4544,7 @@ void ByteCodeParser::parseBlock(unsigned limit)
         case op_new_regexp: {
             RegExp* regexp = m_inlineStackTop->m_codeBlock->regexp(currentInstruction[2].u.operand);
             FrozenValue* frozen = m_graph.freezeStrong(regexp);
-            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(NewRegexp, OpInfo(frozen)));
+            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(NewRegexp, OpInfo(frozen), jsConstant(jsNumber(0))));
             NEXT_OPCODE(op_new_regexp);
         }
 
@@ -6627,7 +6672,7 @@ void ByteCodeParser::parse()
                     auto addFlushDirect = [&] (VirtualRegister operand) { insertLivenessPreservingOp(Flush, operand); };
                     auto addPhantomLocalDirect = [&] (VirtualRegister operand) { insertLivenessPreservingOp(PhantomLocal, operand); };
 
-                    flushForTerminalImpl(m_graph, endOrigin.semantic, addFlushDirect, addPhantomLocalDirect);
+                    flushForTerminalImpl(endOrigin.semantic, addFlushDirect, addPhantomLocalDirect);
 
                     insertionSet.insertNode(block->size(), SpecNone, Unreachable, endOrigin);
                     insertionSet.execute(block);

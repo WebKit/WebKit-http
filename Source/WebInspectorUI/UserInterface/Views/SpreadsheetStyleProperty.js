@@ -25,7 +25,7 @@
 
 WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
 {
-    constructor(delegate, property, index)
+    constructor(delegate, property)
     {
         super();
 
@@ -34,7 +34,6 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
         this._delegate = delegate || null;
         this._property = property;
         this._element = document.createElement("div");
-        this._element.dataset.propertyIndex = index;
 
         this._contentElement = null;
         this._nameElement = null;
@@ -57,6 +56,12 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
     get element() { return this._element; }
     get nameTextField() { return this._nameTextField; }
     get valueTextField() { return this._valueTextField; }
+    get enabled() { return this._property.enabled; }
+
+    set index(index)
+    {
+        this._element.dataset.propertyIndex = index;
+    }
 
     detached()
     {
@@ -353,6 +358,18 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
             innerElement.textContent = value;
             this._handleValueChange();
         }, this);
+
+        if (typeof this._delegate.stylePropertyInlineSwatchActivated === "function") {
+            swatch.addEventListener(WI.InlineSwatch.Event.Activated, () => {
+                this._delegate.stylePropertyInlineSwatchActivated();
+            });
+        }
+
+        if (typeof this._delegate.stylePropertyInlineSwatchDeactivated === "function") {
+            swatch.addEventListener(WI.InlineSwatch.Event.Deactivated, () => {
+                this._delegate.stylePropertyInlineSwatchDeactivated();
+            });
+        }
 
         tokenElement.append(swatch.element, innerElement);
 

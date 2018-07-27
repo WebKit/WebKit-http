@@ -586,12 +586,6 @@ public:
         m_op = MultiPutByOffset;
     }
     
-    void convertToPutHint(const PromotedLocationDescriptor&, Node* base, Node* value);
-    
-    void convertToPutByOffsetHint();
-    void convertToPutStructureHint(Node* structure);
-    void convertToPutClosureVarHint();
-    
     void convertToPhantomNewObject()
     {
         ASSERT(m_op == NewObject || m_op == MaterializeNewObject);
@@ -649,6 +643,15 @@ public:
         m_op = PhantomCreateActivation;
         m_flags &= ~NodeHasVarArgs;
         m_flags |= NodeMustGenerate;
+        m_opInfo = OpInfoWrapper();
+        m_opInfo2 = OpInfoWrapper();
+        children = AdjacencyList();
+    }
+
+    void convertToPhantomNewRegexp()
+    {
+        ASSERT(m_op == NewRegexp);
+        setOpAndDefaultFlags(PhantomNewRegexp);
         m_opInfo = OpInfoWrapper();
         m_opInfo2 = OpInfoWrapper();
         children = AdjacencyList();
@@ -733,6 +736,14 @@ public:
     void convertToDirectCall(FrozenValue*);
 
     void convertToCallDOM(Graph&);
+
+    void convertToRegExpExecNonGlobalOrSticky(FrozenValue* regExp);
+
+    void convertToSetRegExpObjectLastIndex()
+    {
+        setOp(SetRegExpObjectLastIndex);
+        m_opInfo = false;
+    }
     
     JSValue asJSValue()
     {
@@ -959,6 +970,12 @@ public:
     {
         ASSERT(hasStackAccessData());
         return m_opInfo.as<StackAccessData*>();
+    }
+
+    unsigned argumentCountIncludingThis()
+    {
+        ASSERT(op() == SetArgumentCountIncludingThis);
+        return m_opInfo.as<unsigned>();
     }
     
     bool hasPhi()
@@ -1569,6 +1586,7 @@ public:
         case ArrayPop:
         case ArrayPush:
         case RegExpExec:
+        case RegExpExecNonGlobalOrSticky:
         case RegExpTest:
         case RegExpMatchFast:
         case GetGlobalVar:
@@ -1651,6 +1669,7 @@ public:
         case DirectTailCall:
         case DirectConstruct:
         case DirectTailCallInlinedCaller:
+        case RegExpExecNonGlobalOrSticky:
             return true;
         default:
             return false;
@@ -1915,6 +1934,7 @@ public:
         case PhantomNewAsyncFunction:
         case PhantomNewAsyncGeneratorFunction:
         case PhantomCreateActivation:
+        case PhantomNewRegexp:
             return true;
         default:
             return false;
@@ -2620,10 +2640,15 @@ public:
     {
         m_misc.epoch = epoch.toUnsigned();
     }
+    
+    bool hasNumberOfArgumentsToSkip()
+    {
+        return op() == CreateRest || op() == PhantomCreateRest || op() == GetRestLength || op() == GetMyArgumentByVal || op() == GetMyArgumentByValOutOfBounds;
+    }
 
     unsigned numberOfArgumentsToSkip()
     {
-        ASSERT(op() == CreateRest || op() == PhantomCreateRest || op() == GetRestLength || op() == GetMyArgumentByVal || op() == GetMyArgumentByValOutOfBounds);
+        ASSERT(hasNumberOfArgumentsToSkip());
         return m_opInfo.as<unsigned>();
     }
 
@@ -2658,6 +2683,17 @@ public:
     {
         ASSERT(hasValidRadixConstant());
         return m_opInfo.as<int32_t>();
+    }
+
+    bool hasIgnoreLastIndexIsWritable()
+    {
+        return op() == SetRegExpObjectLastIndex;
+    }
+
+    bool ignoreLastIndexIsWritable()
+    {
+        ASSERT(hasIgnoreLastIndexIsWritable());
+        return m_opInfo.as<uint32_t>();
     }
 
     uint32_t errorType()

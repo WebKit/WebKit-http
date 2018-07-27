@@ -1,3 +1,2660 @@
+2018-01-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Release assertion in Performance::resourceTimingBufferFullTimerFired when the resource timing buffer is shrunk
+        https://bugs.webkit.org/show_bug.cgi?id=182319
+        <rdar://problem/36904312>
+
+        Reviewed by Chris Dumez.
+
+        Added regression tests for shrinking the resoruce timing buffer and queuing a new resource timing entry while
+        resourcetimingbufferfull event is being dispatched.
+
+        * http/tests/performance/performance-resource-timing-resourcetimingbufferfull-queue-resource-entry-expected.txt: Added.
+        * http/tests/performance/performance-resource-timing-resourcetimingbufferfull-queue-resource-entry.html: Added.
+        * http/tests/performance/performance-resource-timing-resourcetimingbufferfull-shrinking-buffer-crash-expected.txt: Added.
+        * http/tests/performance/performance-resource-timing-resourcetimingbufferfull-shrinking-buffer-crash.html: Added.
+
+        * http/tests/performance/performance-resource-timing-resourcetimingbufferfull-shrinking-buffer-crash-expected.txt: Added.
+        * http/tests/performance/performance-resource-timing-resourcetimingbufferfull-shrinking-buffer-crash.html: Added.
+
+2018-01-31  Matt Lewis  <jlewis3@apple.com>
+
+        Adjusted expectations for fast/forms/searchfield-heights.html.
+        https://bugs.webkit.org/show_bug.cgi?id=181831
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2018-01-31  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Turn media/modern-media-controls/start-support tests back on
+        https://bugs.webkit.org/show_bug.cgi?id=182297
+
+        Reviewed by Jon Lee and Eric Carlson.
+
+        Update tests to account for the new variable name for the playPauseButton and ensure we only listen to the
+        fullscreen event once to avoid flakiness in cases where we might exit fullscreen before the test completes.
+
+        We also update other tests that tested the behavior of ButtonsContainer.
+
+        * media/modern-media-controls/buttons-container/buttons-container-buttons-property-expected.txt:
+        * media/modern-media-controls/buttons-container/buttons-container-buttons-property.html:
+        * media/modern-media-controls/buttons-container/buttons-container-constructor-expected.txt:
+        * media/modern-media-controls/buttons-container/buttons-container-constructor.html:
+        * media/modern-media-controls/buttons-container/buttons-container-layout-expected.txt:
+        * media/modern-media-controls/buttons-container/buttons-container-layout.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-rtl-expected.txt:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-rtl.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-top-right-controls-bar-hidden-when-mute-button-disabled-expected.txt:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-top-right-controls-bar-hidden-when-mute-button-disabled.html:
+        * media/modern-media-controls/pip-support/pip-support-click.html:
+        * media/modern-media-controls/start-support/start-support-click-to-start.html:
+        * media/modern-media-controls/start-support/start-support-fullscreen.html:
+        * media/modern-media-controls/start-support/start-support-lowPowerMode-expected.txt:
+        * media/modern-media-controls/start-support/start-support-lowPowerMode.html:
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2018-01-31  Saam Barati  <sbarati@apple.com>
+
+        JSC incorrectly interpreting script, sets Global Property instead of Global Lexical variable (LiteralParser / JSONP path)
+        https://bugs.webkit.org/show_bug.cgi?id=182074
+        <rdar://problem/36846261>
+
+        Reviewed by Mark Lam.
+
+        * http/tests/security/regress-52192-expected.txt:
+
+2018-01-30  John Wilander  <wilander@apple.com>
+
+        Add callbacks to testRunner.statisticsSetShouldPartitionCookiesForHost() and testRunner.statisticsUpdateCookiePartitioning()
+        https://bugs.webkit.org/show_bug.cgi?id=181958
+        https://bugs.webkit.org/show_bug.cgi?id=182072
+        <rdar://problem/36801804>
+        <rdar://problem/36845795>
+
+        Reviewed by Brent Fulgham.
+
+        Because of the asynchronous nature of XPC and cookies,
+        we need callbacks in these TestRunner functions so that
+        the layout tests can wait for state changes to finish
+        before checking test conditions.
+
+        * http/tests/resourceLoadStatistics/add-blocking-to-redirect-expected.txt:
+        * http/tests/resourceLoadStatistics/add-blocking-to-redirect.html:
+        * http/tests/resourceLoadStatistics/add-partitioning-to-redirect-expected.txt:
+        * http/tests/resourceLoadStatistics/add-partitioning-to-redirect.html:
+        * http/tests/resourceLoadStatistics/non-prevalent-resources-can-access-cookies-in-a-third-party-context.html:
+        * http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html:
+        * http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout.html:
+        * http/tests/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction-expected.txt:
+        * http/tests/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction.html:
+        * http/tests/resourceLoadStatistics/remove-blocking-in-redirect-expected.txt:
+        * http/tests/resourceLoadStatistics/remove-blocking-in-redirect.html:
+        * http/tests/resourceLoadStatistics/remove-partitioning-in-redirect-expected.txt:
+        * http/tests/resourceLoadStatistics/remove-partitioning-in-redirect.html:
+        * http/tests/resourceLoadStatistics/third-party-cookie-with-and-without-user-interaction.html:
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-30  Youenn Fablet  <youenn@apple.com>
+
+        Move http/wpt/service-workers/clone-opaque-being-loaded-response.https.html to use HTTP
+        https://bugs.webkit.org/show_bug.cgi?id=182202
+        <rdar://problem/36912402>
+
+        Reviewed by Chris Dumez.
+        Follow-up to ensure subresource load is also done in HTTP and not HTTPS
+
+        * http/wpt/service-workers/clone-opaque-being-loaded-response-worker.js:
+
+2018-01-30  Matt Lewis  <jlewis3@apple.com>
+
+        Marked fast/workers/worker-cloneport.html as flaky on macOS Release.
+        https://bugs.webkit.org/show_bug.cgi?id=182007
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-30  Chris Nardi  <cnardi@chromium.org>
+
+        Use double-quotes when serializing font-feature-settings
+        https://bugs.webkit.org/show_bug.cgi?id=182201
+
+        Update tests with double-quotes instead of single-quotes.
+
+        Reviewed by Myles C. Maxfield.
+
+        * css3/font-feature-settings-parsing-expected.txt:
+        * css3/font-feature-settings-parsing.html:
+        * fast/css/inherited-properties-rare-text-expected.txt:
+        * fast/text/font-face-javascript-expected.txt:
+        * fast/text/font-face-javascript.html:
+
+2018-01-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Release assert in updateLayout() via AXObjectCache::childrenChanged
+        https://bugs.webkit.org/show_bug.cgi?id=182279
+        <rdar://problem/36994456>
+
+        Reviewed by Antti Koivisto.
+
+        Added a regression test.
+
+        * accessibility/accessibility-object-update-during-style-resolution-crash-expected.txt: Added.
+        * accessibility/accessibility-object-update-during-style-resolution-crash.html: Added.
+
+2018-01-30  Matt Lewis  <jlewis3@apple.com>
+
+        Skipping imported/w3c/web-platform-tests/service-workers/service-worker/navigation-redirect.https.html.
+        https://bugs.webkit.org/show_bug.cgi?id=182311
+
+        Unreviewed test expectations.
+
+        * TestExpectations:
+
+2018-01-30  Megan Gardner  <megan_gardner@apple.com>
+
+        Make preserve and restore focus more likely to be symmetrical
+        https://bugs.webkit.org/show_bug.cgi?id=182264
+
+        Reviewed by Tim Horton.
+
+        Added new test to verify that opening a selection form twice works.
+
+        * fast/forms/ios/ipad/select-form-run-twice-expected.txt: Added.
+        * fast/forms/ios/ipad/select-form-run-twice.html: Added.
+
+2018-01-30  Dean Jackson  <dino@apple.com>
+
+        CrashTracer: com.apple.WebKit.WebContent at WebCore: WebCore::Document::updateStyleIfNeeded
+        https://bugs.webkit.org/show_bug.cgi?id=182299
+        <rdar://problem/36853088>
+
+        Reviewed by Simon Fraser.
+
+        * svg/animated-svgImage-scroll-expected.txt: Added.
+        * svg/animated-svgImage-scroll.html: Added.
+
+2018-01-30  Frederic Wang  <fwang@igalia.com>
+
+        Unreviewed test gardening.
+
+        * TestExpectations: Add Bugzilla references for scrollingElement-quirks-dynamic tests.
+
+2018-01-30  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed WPE test gardening
+
+        This test now has a global flakiness expectation
+
+        * platform/wpe/TestExpectations:
+
+2018-01-30  Frederic Wang  <fwang@igalia.com>
+
+        Use document.scrollingElement to access viewport scroll properties in tests
+        https://bugs.webkit.org/show_bug.cgi?id=182241
+
+        Reviewed by Antonio Gomes.
+
+        Many tests use document.body in standard mode in order to access scroll properties of the
+        viewport. This is incorrect per the CSSOM View specification but WebKit does not follow the
+        spec at the moment (see bug 5991). This replaces several of these instances with
+        document.scrollingElement, so that tests will still work when WebKit's behavior is changed.
+
+        * fast/multicol/scrolling-overflow.html:
+        * fast/scrolling/latching/iframe_in_iframe.html:
+        * fast/scrolling/latching/scroll-div-no-latching.html:
+        * fast/scrolling/latching/scroll-latched-nested-div.html:
+        * fast/scrolling/latching/scroll-nested-iframe.html:
+        * http/tests/navigation/anchor-frames-expected.txt:
+        * http/tests/navigation/anchor-frames-gbk-expected.txt:
+        * http/tests/navigation/anchor-frames-same-origin-expected.txt:
+        * http/tests/navigation/resources/frame-with-anchor-gbk.html:
+        * http/tests/navigation/resources/frame-with-anchor-same-origin.html:
+        * http/tests/navigation/resources/frame-with-anchor.html:
+        * tiled-drawing/resources/scroll-and-load-page.html:
+        * tiled-drawing/scrolling/fast-scroll-mainframe-zoom.html:
+        * tiled-drawing/scrolling/frames/resources/autoscrolling-frame-with-fixed.html:
+        * tiled-drawing/scrolling/iframe_in_iframe.html:
+        * tiled-drawing/tiled-drawing-scroll-position-page-cache-restoration-expected.txt:
+
+2018-01-29  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Implement trimStart and trimEnd
+        https://bugs.webkit.org/show_bug.cgi?id=182233
+
+        Reviewed by Mark Lam.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+
+2018-01-29  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Relax line terminators in String to make JSON subset of JS
+        https://bugs.webkit.org/show_bug.cgi?id=182232
+
+        Reviewed by Keith Miller.
+
+        * sputnik/Conformance/07_Lexical_Conventions/7.3_Line_Terminators/S7.3_A2.3-expected.txt:
+        * sputnik/Conformance/07_Lexical_Conventions/7.3_Line_Terminators/S7.3_A2.3.html:
+        * sputnik/Conformance/07_Lexical_Conventions/7.3_Line_Terminators/S7.3_A2.4-expected.txt:
+        * sputnik/Conformance/07_Lexical_Conventions/7.3_Line_Terminators/S7.3_A2.4.html:
+
+2018-01-29  Youenn Fablet  <youenn@apple.com>
+
+        ServiceWorkerClientFetch should not consider responses without Location headers as redirection responses
+        https://bugs.webkit.org/show_bug.cgi?id=182134
+
+        Reviewed by Chris Dumez.
+
+        * TestExpectations:
+
+2018-01-29  Youenn Fablet  <youenn@apple.com>
+
+        Cache API should make sure to resolve caches.open promises in the same order as called
+        https://bugs.webkit.org/show_bug.cgi?id=182193
+        <rdar://problem/36930363>
+
+        Reviewed by Chris Dumez.
+
+        * http/wpt/cache-storage/cache-open.https-expected.txt: Added.
+        * http/wpt/cache-storage/cache-open.https.html: Added.
+
+2018-01-29  Matt Lewis  <jlewis3@apple.com>
+
+        Marked imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/module/errorhandling.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=182177
+
+        Unreviewed test expectations.
+
+        * TestExpectations:
+
+2018-01-29  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Add a compile-time feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=182211
+        <rdar://problem/36936365>
+
+        Reviewed by Brent Fulgham.
+
+        Skip WebAuthN related tests on certain platforms as they won't
+        support it immediately.
+
+        * platform/gtk/TestExpectations:
+        * platform/ios-wk1/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2018-01-29  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark webrtc/captureCanvas-webrtc.html as flaky on macOS.
+        https://bugs.webkit.org/show_bug.cgi?id=181835
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-29  John Wilander  <wilander@apple.com>
+
+        Switch grandfathering layout test to trigger on data record scanning instead of data record modification
+        https://bugs.webkit.org/show_bug.cgi?id=181482
+        <rdar://problem/36549026>
+
+        Unreviewed test gardening.
+
+        * http/tests/resourceLoadStatistics/grandfathering.html:
+            Switched from
+            testRunner.installStatisticsDidModifyDataRecordsCallback()
+            to
+            testRunner.installStatisticsDidScanDataRecordsCallback().
+        * platform/mac-wk2/TestExpectations:
+            Marked as [ Pass ] again.
+
+2018-01-29  Andy Estes  <aestes@apple.com>
+
+        [iOS] Restrict synthetic clicks to the origin that handled the underlying touch event
+        https://bugs.webkit.org/show_bug.cgi?id=182252
+        <rdar://problem/21555881>
+
+        Reviewed by Tim Horton.
+
+        * TestExpectations:
+        * http/tests/events/touch/ios/cross-frame-single-tap-same-origin.https-expected.txt: Added.
+        * http/tests/events/touch/ios/cross-frame-single-tap-same-origin.https.html: Added.
+        * http/tests/events/touch/ios/resources/click-target.html: Added.
+
+2018-01-29  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r227731.
+
+        This caused and assertion failure in API tests.
+
+        Reverted changeset:
+
+        "Layout Test fast/events/beforeunload-dom-manipulation-
+        crash.html is crashing"
+        https://bugs.webkit.org/show_bug.cgi?id=181204
+        https://trac.webkit.org/changeset/227731
+
+2018-01-29  Youenn Fablet  <youenn@apple.com>
+
+        Move http/wpt/service-workers/clone-opaque-being-loaded-response.https.html to use HTTP
+        https://bugs.webkit.org/show_bug.cgi?id=182202
+
+        Reviewed by Chris Dumez.
+
+        Some bots dislike cross origin HTTPS fetches.
+
+        * http/wpt/service-workers/clone-opaque-being-loaded-response-expected.txt: Renamed from LayoutTests/http/wpt/service-workers/clone-opaque-being-loaded-response.https-expected.txt.
+        * http/wpt/service-workers/clone-opaque-being-loaded-response.html: Renamed from LayoutTests/http/wpt/service-workers/clone-opaque-being-loaded-response.https.html.
+
+2018-01-29  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed WPE test gardening
+
+        * platform/wpe/TestExpectations:
+
+2018-01-29  Per Arne Vollan  <pvollan@apple.com>
+
+        Layout Test fast/events/beforeunload-dom-manipulation-crash.html is crashing
+        https://bugs.webkit.org/show_bug.cgi?id=181204
+        <rdar://problem/36256274>
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/events/beforeunload-dom-manipulation-crash.html: Make it clear that the
+        frame element is a child of the 'del' element.
+        * fast/events/beforeunload-dom-manipulation-crash-expected.html:
+        * platform/mac-wk1/TestExpectations: Unskip test.
+
+2018-01-29  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark js/dom/array-with-double-assign.html as a failure on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=182239
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-01-28  Minsheng Liu  <lambda@liu.ms>
+
+        Overflow of formulas is hidden for display mathematics
+        https://bugs.webkit.org/show_bug.cgi?id=160547
+
+        Reviewed by Frédéric Wang.
+
+        Add a test to ensure <math> with display="block" will not truncate overflowed contents.
+
+        * mathml/presentation/display-math-horizontal-overflow-expected.txt: Added.
+        * mathml/presentation/display-math-horizontal-overflow.html: Added.
+
+2018-01-28  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed WPE gardening.
+
+        * platform/wpe/TestExpectations: Add test failure expectations. Shuffle
+        around a few expectations and eliminate duplicate ones, removing overlap
+        warnings printed out when invoking run-webkit-tests.
+
+2018-01-28  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK+ gardening.
+
+        * platform/gtk/TestExpectations: Add failure expectations for three tests.
+        * platform/gtk/imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/module/errorhandling-expected.txt:
+        Added a test baseline due to console messages being output in a slightly different order.
+
+2018-01-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make accessibility/mac/selection-notification-focus-change.html more reliable and re-enable it
+        https://bugs.webkit.org/show_bug.cgi?id=182198
+        <rdar://problem/36930258>
+
+        Reviewed by Tim Horton.
+
+        Refactored the test by splitting each test case into its own function split by setTimeout by zero seconds
+        instead of triggering the next test case when receiving a specific notification to make the test more robust.
+
+        Also moved functions which trigger the focus move into evalAndLog so that they appear in the expected result,
+        and added more logging to make the debugging of the test easier.
+
+        Finally, added WebKit2 specific expected result because it has one extra test failure compared to WebKit1.
+
+        * accessibility/mac/selection-notification-focus-change-expected.txt:
+        * accessibility/mac/selection-notification-focus-change.html:
+        * platform/mac-wk2/accessibility/mac: Added.
+        * platform/mac-wk2/accessibility/mac/selection-notification-focus-change-expected.txt: Added.
+        * platform/mac/TestExpectations: Removed the flaky test failure expectation since this test should now have
+        the same expected result everywhere on macOS.
+
+2018-01-26  Chris Dumez  <cdumez@apple.com>
+
+        Layout Test http/wpt/beacon/beacon-async-error-logging.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=182184
+        <rdar://problem/36929478>
+
+        Reviewed by Youenn Fablet.
+
+        Stop relying on a setTimeout(500) to end the test. Instead rely on the
+        internals.setConsoleMessageListener() API to wait for the console message
+        we are expecting.
+
+        * http/wpt/beacon/beacon-async-error-logging.html:
+
+2018-01-26  Ricky Mondello  <rmondello@apple.com>
+
+        Use the standard -webkit-autofill color on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=182182
+
+        Reviewed by Tim Horton.
+
+        Update test expectations.
+
+        * platform/ios/fast/forms/auto-fill-button/input-strong-confirmation-password-auto-fill-button-expected.txt:
+        * platform/ios/fast/forms/auto-fill-button/input-strong-password-auto-fill-button-expected.txt:
+
+2018-01-26  Megan Gardner  <megan_gardner@apple.com>
+
+        Don't retain focus for input peripheral views
+        https://bugs.webkit.org/show_bug.cgi?id=182204
+
+        Reviewed by Tim Horton.
+
+        Fixed a spelling error while fixing a bug this test caught.
+
+        * fast/forms/ios/ipad/unfocus-inside-fixed-hittest.html:
+        * fast/forms/ios/ipad/unfocus-inside-fixed-hittest-expected.txt:
+
+2018-01-26  Youenn Fablet  <youenn@apple.com>
+
+        Layout Test imported/w3c/web-platform-tests/service-workers/service-worker/appcache-ordering-main.https.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=182176
+        <rdar://problem/36915685>
+
+        Unreviewed.
+
+        * TestExpectations: Skiping test for now.
+
+2018-01-26  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/blink/fast/text/international-iteration-simple-text.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=179853
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-01-26  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Update test expectations.
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-01-25  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make scrolling to the focused element async
+        https://bugs.webkit.org/show_bug.cgi?id=181575
+        <rdar://problem/36459767>
+
+        Reviewed by Simon Fraser.
+
+        Updated the tests per the behavioral change and added two more tests for scrolling to the focused element.
+
+        * accessibility/mac/webkit-scrollarea-position.html: Wait for the focus scrolling to take effect.
+        * fast/events/reveal-link-when-focused.html: Ditto.
+        * fast/images/imagemap-scroll.html: Ditto.
+        * fast/overflow/scroll-nested-positioned-layer-in-overflow.html: Ditto.
+        * fast/overflow/scrollRevealButton.html: Ditto.
+        * fast/transforms/scrollIntoView-transformed.html: Ditto. We need to focus each element in a seperate task
+        since only the last focused element will be revealed otherwise.
+        * fast/scrolling/scroll-to-focused-element-asynchronously-expected.txt: Added.
+        * fast/scrolling/scroll-to-focused-element-asynchronously.html: Added.
+        * fast/scrolling/scroll-to-focused-element-canceled-by-fragment-navigation-expected.txt: Added.
+        * fast/scrolling/scroll-to-focused-element-canceled-by-fragment-navigation.html: Added.
+
+2018-01-25  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        REGRESSION(r217236): [iOS] PDFDocumentImage does not update its cached ImageBuffer if it has a sub-rectangle of the image
+        https://bugs.webkit.org/show_bug.cgi?id=182083
+
+        Reviewed by Simon Fraser.
+
+        PDFDocumentImage renders only on CG platforms. Enable the new test for
+        iOS only.
+
+        * TestExpectations:
+        * fast/images/pdf-as-image-dest-rect-change-expected.txt: Added.
+        * fast/images/pdf-as-image-dest-rect-change.html: Added.
+        * platform/ios/TestExpectations:
+
+2018-01-25  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        imported/w3c/web-platform-tests/html/semantics/scripting-1/the-script-element/module/errorhandling.html crashes
+        https://bugs.webkit.org/show_bug.cgi?id=181980
+
+        Reviewed by Ryosuke Niwa.
+
+        * TestExpectations:
+
+2018-01-25  Jer Noble  <jer.noble@apple.com>
+
+        Move ImageDecoderAVFObjC from using AVSampleBufferGenerator to AVAssetReaderOutput for parsing
+        https://bugs.webkit.org/show_bug.cgi?id=182091
+
+        Reviewed by Eric Carlson.
+
+        * platform/ios/imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/update-the-source-set-expected.txt: Added.
+
+2018-01-25  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Account for provided easings when computing progress and resolving keyframe effect values
+        https://bugs.webkit.org/show_bug.cgi?id=182098
+        <rdar://problem/36866149>
+
+        Reviewed by Dean Jackson.
+
+        Update an animated value due to more accurate resolution of cubic-bezier() timing functions.
+
+        * platform/mac/transitions/default-timing-function-expected.txt:
+
+2018-01-25  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Update test expectations.
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-01-25  Matt Lewis  <jlewis3@apple.com>
+
+        Adjusted expectation for memory/memory-pressure-simulation.html.
+        https://bugs.webkit.org/show_bug.cgi?id=170629
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-25  Miguel Gomez  <magomez@igalia.com>
+
+        Unreviewed GTK+ gardening after r227599.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/fast/overflow/line-clamp-expected.png:
+        * platform/gtk/fast/overflow/line-clamp-expected.txt:
+
+2018-01-25  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-multicol] Some test imported in r227600 are failing
+
+        Unreviewed gardening.
+
+        * TestExpectations:
+
+2018-01-25  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-multicol] Update WPT test suite
+        https://bugs.webkit.org/show_bug.cgi?id=182087
+
+        Reviewed by Javier Fernandez.
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+
+2018-01-25  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Update WPT tests and move them to imported/w3c/web-platform-tests
+        https://bugs.webkit.org/show_bug.cgi?id=182092
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+        * http/wpt/web-animations/OWNERS: Removed.
+        * http/wpt/web-animations/README.md: Removed.
+        * http/wpt/web-animations/interfaces/Animatable/animate-expected.txt: Removed.
+        * http/wpt/web-animations/interfaces/Animatable/getAnimations-expected.txt: Removed.
+        * http/wpt/web-animations/interfaces/Animatable/getAnimations.html: Removed.
+        * http/wpt/web-animations/interfaces/Animation/constructor.html: Removed.
+        * http/wpt/web-animations/interfaces/Animation/finish-expected.txt: Removed.
+        * http/wpt/web-animations/interfaces/Animation/finished-expected.txt: Removed.
+        * http/wpt/web-animations/interfaces/Animation/playState-expected.txt: Removed.
+        * http/wpt/web-animations/interfaces/Animation/playState.html: Removed.
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/delay-expected.txt: Removed.
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/delay.html: Removed.
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/direction-expected.txt: Removed.
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/direction.html: Removed.
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/duration-expected.txt: Removed.
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/duration.html: Removed.
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/endDelay-expected.txt: Removed.
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/endDelay.html: Removed.
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/fill-expected.txt: Removed.
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/fill.html: Removed.
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/getAnimations-expected.txt: Removed.
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/getAnimations.html: Removed.
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/getComputedStyle-expected.txt: Removed.
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/getComputedStyle.html: Removed.
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/iterationStart-expected.txt: Removed.
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/iterationStart.html: Removed.
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/iterations-expected.txt: Removed.
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/iterations.html: Removed.
+        * http/wpt/web-animations/interfaces/AnimationTimeline/document-timeline-expected.txt: Removed.
+        * http/wpt/web-animations/interfaces/AnimationTimeline/document-timeline.html: Removed.
+        * http/wpt/web-animations/interfaces/KeyframeEffect/composite-expected.txt: Removed.
+        * http/wpt/web-animations/interfaces/KeyframeEffect/constructor-expected.txt: Removed.
+        * http/wpt/web-animations/interfaces/KeyframeEffect/constructor.html: Removed.
+        * http/wpt/web-animations/interfaces/KeyframeEffect/copy-constructor-expected.txt: Removed.
+        * http/wpt/web-animations/interfaces/KeyframeEffect/copy-constructor.html: Removed.
+        * http/wpt/web-animations/interfaces/KeyframeEffect/getComputedTiming-expected.txt: Removed.
+        * http/wpt/web-animations/interfaces/KeyframeEffect/getComputedTiming.html: Removed.
+        * http/wpt/web-animations/interfaces/KeyframeEffect/iterationComposite-expected.txt: Removed.
+        * http/wpt/web-animations/interfaces/KeyframeEffect/setKeyframes-expected.txt: Removed.
+        * http/wpt/web-animations/interfaces/KeyframeEffect/setKeyframes.html: Removed.
+        * http/wpt/web-animations/interfaces/KeyframeEffectReadOnly/copy-constructor-expected.txt: Removed.
+        * http/wpt/web-animations/interfaces/KeyframeEffectReadOnly/copy-constructor.html: Removed.
+        * http/wpt/web-animations/resources/keyframe-utils.js: Removed.
+        * http/wpt/web-animations/timing-model/animation-effects/active-time.html: Removed.
+        * http/wpt/web-animations/timing-model/animation-effects/phases-and-states.html: Removed.
+
+2018-01-24  Frederic Wang  <fwang@igalia.com>
+
+        ScrollingStateNode::reconcileLayerPositionForViewportRect is only called on direct children of the root
+        https://bugs.webkit.org/show_bug.cgi?id=179946
+
+        Reviewed by Simon Fraser.
+
+        Add a test that verifies the correct update of the graphic layer of a "position: fixed" and
+        "position: sticky" nodes inside a non-flat scrolling tree. The test checks recursive call
+        on overflow, "position: sticky" and "position: fixed" nodes.
+
+        * fast/scrolling/ios/reconcile-layer-position-recursive-expected.txt: Added.
+        * fast/scrolling/ios/reconcile-layer-position-recursive.html: Added.
+
+2018-01-24  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        Move css-color & css-multicol WPT suites to the proper folder
+        https://bugs.webkit.org/show_bug.cgi?id=182044
+
+        Reviewed by Youenn Fablet.
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios-wk1/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/win/TestExpectations:
+
+2018-01-24  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Implement PublicKeyCredential’s [[DiscoverFromExternalSource]] with a dummy authenticator
+        https://bugs.webkit.org/show_bug.cgi?id=182032
+        <rdar://problem/36459922>
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/webauthn/public-key-credential-get-with-invalid-parameters.https-expected.txt: Added.
+        * http/tests/webauthn/public-key-credential-get-with-invalid-parameters.https.html: Added.
+        * http/tests/webauthn/public-key-credential-same-origin-with-ancestors-2.https-expected.txt:
+        * http/tests/webauthn/public-key-credential-same-origin-with-ancestors.https-expected.txt:
+        * http/tests/webauthn/resources/last-layer-frame.https.html:
+        * http/wpt/credential-management/credentialscontainer-store-basics.https-expected.txt: Added.
+        * http/wpt/credential-management/credentialscontainer-store-basics.https.html: Added.
+        * http/wpt/webauthn/idl.https-expected.txt:
+        * http/wpt/webauthn/idl.https.html:
+        * http/wpt/webauthn/public-key-credential-create-success.https.html:
+        * http/wpt/webauthn/public-key-credential-get-failure.https-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-get-failure.https.html: Added.
+        * http/wpt/webauthn/public-key-credential-get-success.https-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-get-success.https.html: Added.
+
+2018-01-24  Youenn Fablet  <youenn@apple.com>
+
+        Opaque being-loaded responses should clone their body
+        https://bugs.webkit.org/show_bug.cgi?id=182056
+
+        Reviewed by Brady Eidson.
+
+        * http/wpt/service-workers/clone-opaque-being-loaded-response-worker.js: Added.
+        * http/wpt/service-workers/clone-opaque-being-loaded-response.html: Added.
+        * http/wpt/service-workers/clone-opaque-being-loaded-response.https-expected.txt: Added.
+        * http/wpt/service-workers/resources/clone-opaque-being-loaded-response-iframe.html: Added.
+        * http/wpt/service-workers/resources/lengthy-pass.py: Added.
+        (main):
+
+2018-01-24  David Hyatt  <hyatt@apple.com>
+
+        Implement line clamp for mail.
+        https://bugs.webkit.org/show_bug.cgi?id=180818
+
+        Reviewed by Dean Jackson.
+
+        Added parsing tests, basic and advanced clamping examples, and vertical
+        writing tests. Revised an iOS clamp test to account for a slight change
+        in rendering caused by altering clamping to be consistent with the pagination
+        model of breaking beteween lines.
+
+        * fast/block/lines-clamp-advanced-expected.html: Added.
+        * fast/block/lines-clamp-advanced-rl-expected.html: Added.
+        * fast/block/lines-clamp-advanced-rl.html: Added.
+        * fast/block/lines-clamp-advanced.html: Added.
+        * fast/block/lines-clamp-basic-expected.html: Added.
+        * fast/block/lines-clamp-basic-rl-expected.html: Added.
+        * fast/block/lines-clamp-basic-rl.html: Added.
+        * fast/block/lines-clamp-basic.html: Added.
+        * fast/css/lines-clamp-parsing-expected.txt: Added.
+        * fast/css/lines-clamp-parsing.html: Added.
+        * platform/ios-simulator-wk2/fast/overflow: Added.
+        * platform/ios-simulator-wk2/fast/overflow/line-clamp-expected.txt: Added.
+
+2018-01-24  Matt Lewis  <jlewis3@apple.com>
+
+        Marked http/tests/storageAccess/request-and-grant-access-then-detach-should-not-have-access.html as flaky on High Sierra Release.
+        https://bugs.webkit.org/show_bug.cgi?id=181601
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-24  Jonathan Bedard  <jbedard@apple.com>
+
+        Fix race-condition in fast/text/click-ellipsis-assertion-failure.html
+        https://bugs.webkit.org/show_bug.cgi?id=182055
+        <rdar://problem/36830203>
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/click-ellipsis-assertion-failure.html: Wait for promise before ending test.
+
+2018-01-24  Antti Koivisto  <antti@apple.com>
+
+        Assertion failure in RenderMultiColumnSet::requiresBalancing() on fast/multicol/spanner-crash-when-adding-summary.html
+        https://bugs.webkit.org/show_bug.cgi?id=179308
+        <rdar://problem/34592771>
+
+        Reviewed by Zalan Bujtas.
+
+        Unskip fast/multicol/spanner-crash-when-adding-summary.html
+
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2018-01-24  Daniel Bates  <dabates@apple.com>
+
+        [CSP] Check policy for targeted windows when navigating to a JavaScript URL
+        https://bugs.webkit.org/show_bug.cgi?id=182018
+        <rdar://problem/36795781>
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/security/contentSecurityPolicy/resources/window-open-javascript-url-with-target-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/resources/window-open-javascript-url-with-target-blocked.js: Added.
+        (done):
+        * http/tests/security/contentSecurityPolicy/window-open-javascript-url-with-target-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/window-open-javascript-url-with-target-blocked.html: Added.
+
+2018-01-24  Chris Dumez  <cdumez@apple.com>
+
+        Add a IPC::SendSyncOption indicating we should not process incoming IPC while waiting for the sync reply
+        https://bugs.webkit.org/show_bug.cgi?id=182021
+        <rdar://problem/21629943>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add layout test coverage for the new flag.
+
+        * fast/misc/testIncomingSyncIPCMessageWhileWaitingForSyncReply-expected.txt: Added.
+        * fast/misc/testIncomingSyncIPCMessageWhileWaitingForSyncReply.html: Added.
+
+2018-01-24  Matt Lewis  <jlewis3@apple.com>
+
+        Adjusted expectations for http/tests/cache/disk-cache/memory-cache-revalidation-updates-disk-cache.html.
+        https://bugs.webkit.org/show_bug.cgi?id=162975
+
+        Unreviewed test gardening.
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-24  Chris Dumez  <cdumez@apple.com>
+
+        Layout Test http/tests/workers/service/basic-unregister-then-register-again-reuse.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=182030
+        <rdar://problem/36802933>
+
+        Reviewed by Youenn Fablet.
+
+        The service worker was only extending its lifetime using waitUntil() for 10 seconds. On the flakiness
+        dashboard, I see that the test sometimes takes more than 10 seconds to run on some bots, which can
+        cause the test to fail since the service worker is not keeping the registration alive anymore.
+        To address the issue, raise the lifetime to 30 seconds.
+
+        * http/tests/workers/service/resources/basic-unregister-then-register-again-reuse-worker.js:
+        (event.waitUntil.new.Promise):
+
+2018-01-24  Alex Christensen  <achristensen@webkit.org>
+
+        Remove El Capitan test expectations.
+
+        * platform/mac-elcapitan: Removed.
+        * platform/mac-elcapitan-wk2: Removed.
+        * platform/mac-elcapitan-wk2/fast: Removed.
+        * platform/mac-elcapitan-wk2/fast/dom: Removed.
+        * platform/mac-elcapitan-wk2/fast/dom/HTMLLinkElement: Removed.
+        * platform/mac-elcapitan-wk2/fast/dom/HTMLLinkElement/preconnect-support-expected.txt: Removed.
+        * platform/mac-elcapitan-wk2/fast/dom/navigator-detached-no-crash-expected.txt: Removed.
+        * platform/mac-elcapitan-wk2/http: Removed.
+        * platform/mac-elcapitan-wk2/http/tests: Removed.
+        * platform/mac-elcapitan-wk2/http/tests/contentextensions: Removed.
+        * platform/mac-elcapitan-wk2/http/tests/contentextensions/make-https-expected.txt: Removed.
+        * platform/mac-elcapitan-wk2/imported: Removed.
+        * platform/mac-elcapitan-wk2/imported/w3c: Removed.
+        * platform/mac-elcapitan-wk2/imported/w3c/web-platform-tests: Removed.
+        * platform/mac-elcapitan-wk2/imported/w3c/web-platform-tests/fetch: Removed.
+        * platform/mac-elcapitan-wk2/imported/w3c/web-platform-tests/fetch/api: Removed.
+        * platform/mac-elcapitan-wk2/imported/w3c/web-platform-tests/fetch/api/basic: Removed.
+        * platform/mac-elcapitan-wk2/imported/w3c/web-platform-tests/fetch/api/cors: Removed.
+        * platform/mac-elcapitan-wk2/imported/w3c/web-platform-tests/url: Removed.
+        * platform/mac-elcapitan-wk2/imported/w3c/web-platform-tests/url/failure-expected.txt: Removed.
+        * platform/mac-elcapitan/TestExpectations: Removed.
+        * platform/mac-elcapitan/accessibility: Removed.
+        * platform/mac-elcapitan/accessibility/form-control-value-settable-expected.txt: Removed.
+        * platform/mac-elcapitan/compositing: Removed.
+        * platform/mac-elcapitan/compositing/contents-opaque: Removed.
+        * platform/mac-elcapitan/compositing/contents-opaque/control-layer-expected.txt: Removed.
+        * platform/mac-elcapitan/compositing/repaint: Removed.
+        * platform/mac-elcapitan/compositing/repaint/iframes: Removed.
+        * platform/mac-elcapitan/compositing/repaint/iframes/composited-iframe-with-fixed-background-doc-repaint-expected.txt: Removed.
+        * platform/mac-elcapitan/compositing/rtl: Removed.
+        * platform/mac-elcapitan/compositing/rtl/rtl-overflow-scrolling-expected.txt: Removed.
+        * platform/mac-elcapitan/css2.1: Removed.
+        * platform/mac-elcapitan/css3: Removed.
+        * platform/mac-elcapitan/css3/selectors3: Removed.
+        * platform/mac-elcapitan/css3/selectors3/html: Removed.
+        * platform/mac-elcapitan/css3/selectors3/html/css3-modsel-19b-expected.txt: Removed.
+        * platform/mac-elcapitan/css3/selectors3/html/css3-modsel-23-expected.txt: Removed.
+        * platform/mac-elcapitan/css3/selectors3/html/css3-modsel-24-expected.txt: Removed.
+        * platform/mac-elcapitan/css3/selectors3/html/css3-modsel-64-expected.txt: Removed.
+        * platform/mac-elcapitan/css3/selectors3/html/css3-modsel-68-expected.txt: Removed.
+        * platform/mac-elcapitan/css3/selectors3/html/css3-modsel-69-expected.txt: Removed.
+        * platform/mac-elcapitan/css3/selectors3/xhtml: Removed.
+        * platform/mac-elcapitan/css3/selectors3/xhtml/css3-modsel-19b-expected.txt: Removed.
+        * platform/mac-elcapitan/css3/selectors3/xhtml/css3-modsel-23-expected.txt: Removed.
+        * platform/mac-elcapitan/css3/selectors3/xhtml/css3-modsel-24-expected.txt: Removed.
+        * platform/mac-elcapitan/css3/selectors3/xhtml/css3-modsel-64-expected.txt: Removed.
+        * platform/mac-elcapitan/css3/selectors3/xhtml/css3-modsel-68-expected.txt: Removed.
+        * platform/mac-elcapitan/css3/selectors3/xhtml/css3-modsel-69-expected.txt: Removed.
+        * platform/mac-elcapitan/css3/selectors3/xml: Removed.
+        * platform/mac-elcapitan/css3/selectors3/xml/css3-modsel-19b-expected.txt: Removed.
+        * platform/mac-elcapitan/css3/selectors3/xml/css3-modsel-23-expected.txt: Removed.
+        * platform/mac-elcapitan/css3/selectors3/xml/css3-modsel-24-expected.txt: Removed.
+        * platform/mac-elcapitan/css3/selectors3/xml/css3-modsel-64-expected.txt: Removed.
+        * platform/mac-elcapitan/css3/selectors3/xml/css3-modsel-68-expected.txt: Removed.
+        * platform/mac-elcapitan/css3/selectors3/xml/css3-modsel-69-expected.txt: Removed.
+        * platform/mac-elcapitan/editing: Removed.
+        * platform/mac-elcapitan/editing/deleting: Removed.
+        * platform/mac-elcapitan/editing/deleting/delete-emoji-2-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/deleting/delete-emoji-3-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/deleting/delete-emoji-4-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/deleting/delete-emoji-5-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/deleting/delete-emoji-6-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/deleting/delete-emoji-7-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/deleting/delete-emoji-8-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/deleting/delete-emoji-9-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/deleting/delete-emoji-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/input: Removed.
+        * platform/mac-elcapitan/editing/input/caret-at-the-edge-of-input-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/input/reveal-caret-of-multiline-input-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/inserting: Removed.
+        * platform/mac-elcapitan/editing/inserting/4960120-1-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/inserting/before-after-input-element-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/mac: Removed.
+        * platform/mac-elcapitan/editing/mac/attributed-string: Removed.
+        * platform/mac-elcapitan/editing/mac/attributed-string/font-style-variant-effect-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/mac/spelling: Removed.
+        * platform/mac-elcapitan/editing/mac/spelling/autocorrection-at-beginning-of-word-1-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/mac/spelling/autocorrection-at-beginning-of-word-2-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/mac/spelling/delete-autocorrected-word-2-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/pasteboard: Removed.
+        * platform/mac-elcapitan/editing/pasteboard/4641033-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/pasteboard/4806874-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/pasteboard/4944770-1-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/pasteboard/4944770-2-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/pasteboard/drop-text-without-selection-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/pasteboard/input-field-1-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/pasteboard/pasting-tabs-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/selection: Removed.
+        * platform/mac-elcapitan/editing/selection/3690703-2-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/selection/3690703-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/selection/3690719-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/selection/4397952-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/selection/4895428-3-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/selection/4975120-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/selection/5240265-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/selection/drag-select-1-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/selection/replaced-boundaries-3-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/selection/select-across-readonly-input-3-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/selection/select-box-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/selection/select-element-paragraph-boundary-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/selection/select-from-textfield-outwards-expected.txt: Removed.
+        * platform/mac-elcapitan/editing/selection/selection-button-text-expected.txt: Removed.
+        * platform/mac-elcapitan/fast: Removed.
+        * platform/mac-elcapitan/fast/attachment: Removed.
+        * platform/mac-elcapitan/fast/attachment/attachment-label-highlight-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/attachment/attachment-progress-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/attachment/attachment-select-on-click-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/attachment/attachment-select-on-click-inside-user-select-all-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/attachment/attachment-subtitle-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/block: Removed.
+        * platform/mac-elcapitan/fast/block/float: Removed.
+        * platform/mac-elcapitan/fast/block/float/026-expected.png: Removed.
+        * platform/mac-elcapitan/fast/block/float/026-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/block/float/028-expected.png: Removed.
+        * platform/mac-elcapitan/fast/block/float/028-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/block/float/float-avoidance-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/block/float/overhanging-tall-block-expected.png: Removed.
+        * platform/mac-elcapitan/fast/block/float/overhanging-tall-block-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/block/margin-collapse: Removed.
+        * platform/mac-elcapitan/fast/block/margin-collapse/103-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/block/positioning: Removed.
+        * platform/mac-elcapitan/fast/block/positioning/inline-block-relposition-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/canvas: Removed.
+        * platform/mac-elcapitan/fast/canvas/canvas-strokePath-gradient-shadow-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/canvas/canvas-strokeRect-gradient-shadow-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/css: Removed.
+        * platform/mac-elcapitan/fast/css/continuationCrash-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/css/focus-ring-exists-for-search-field-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/css/line-height-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/css/margin-top-bottom-dynamic-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/css/text-overflow-input-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/css/text-transform-select-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/dom: Removed.
+        * platform/mac-elcapitan/fast/dom/HTMLInputElement: Removed.
+        * platform/mac-elcapitan/fast/dom/HTMLInputElement/input-image-alt-text-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/dom/HTMLTableColElement: Removed.
+        * platform/mac-elcapitan/fast/dom/HTMLTableColElement/resize-table-using-col-width-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/dom/HTMLTextAreaElement: Removed.
+        * platform/mac-elcapitan/fast/dom/HTMLTextAreaElement/reset-textarea-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/dynamic: Removed.
+        * platform/mac-elcapitan/fast/dynamic/008-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/dynamic/positioned-movement-with-positioned-children-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/events: Removed.
+        * platform/mac-elcapitan/fast/events/context-no-deselect-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/events/shadow-event-path-2-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms: Removed.
+        * platform/mac-elcapitan/fast/forms/001-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/004-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/alternative-presentation-button: Removed.
+        * platform/mac-elcapitan/fast/forms/alternative-presentation-button/replacement-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/auto-fill-button: Removed.
+        * platform/mac-elcapitan/fast/forms/auto-fill-button/input-auto-fill-button-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/auto-fill-button/input-contacts-auto-fill-button-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/auto-fill-button/input-strong-password-auto-fill-button-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/basic-buttons-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/basic-inputs-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/basic-selects-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/basic-textareas-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/basic-textareas-quirks-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/blankbuttons-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/box-shadow-override-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/button-align-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/button-cannot-be-nested-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/button-default-title-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/button-generated-content-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/button-positioned-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/button-sizes-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/button-style-color-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/button-table-styles-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/button-text-transform-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/button-white-space-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/control-clip-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/control-clip-overflow-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/control-restrict-line-height-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/disabled-select-change-index-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/encoding-test-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/fieldset-align-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/file: Removed.
+        * platform/mac-elcapitan/fast/forms/file/file-input-direction-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/file/file-input-disabled-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/file/input-file-re-render-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/floating-textfield-relayout-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/form-element-geometry-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/hidden-listbox-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-align-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-appearance-bkcolor-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-appearance-default-bkcolor-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-appearance-disabled-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-appearance-focus-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-appearance-height-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-appearance-preventDefault-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-appearance-readonly-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-appearance-selection-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-appearance-spinbutton-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-appearance-spinbutton-up-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-appearance-visibility-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-appearance-width-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-baseline-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-button-sizes-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-disabled-color-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-double-click-selection-gap-bug-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-field-text-truncated-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-first-letter-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-placeholder-visibility-1-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-placeholder-visibility-3-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-readonly-autoscroll-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-readonly-dimmed-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-readonly-empty-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-spaces-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-table-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-text-click-inside-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-text-click-outside-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-text-double-click-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-text-drag-down-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-text-option-delete-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-text-scroll-left-on-blur-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-text-self-emptying-click-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-text-word-wrap-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-value-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/input-width-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/listbox-bidi-align-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/listbox-scrollbar-incremental-load-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/listbox-width-change-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/menulist-clip-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/menulist-deselect-update-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/menulist-narrow-width-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/menulist-no-overflow-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/menulist-restrict-line-height-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/menulist-style-color-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/menulist-width-change-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/minWidthPercent-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/number: Removed.
+        * platform/mac-elcapitan/fast/forms/number/number-appearance-rtl-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/number/number-appearance-spinbutton-disabled-readonly-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/number/number-appearance-spinbutton-layer-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/option-script-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/option-strip-whitespace-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/option-text-clip-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/placeholder-position-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/placeholder-pseudo-style-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/plaintext-mode-2-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/search: Removed.
+        * platform/mac-elcapitan/fast/forms/search-cancel-button-style-sharing-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/search-display-none-cancel-button-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/search-input-rtl-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/search-rtl-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/search-styled-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/search-vertical-alignment-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/search/search-padding-cancel-results-buttons-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/search/search-size-with-decorations-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/searchfield-heights-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/select: Removed.
+        * platform/mac-elcapitan/fast/forms/select-background-none-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/select-baseline-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/select-block-background-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/select-change-listbox-size-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/select-change-listbox-to-popup-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/select-change-popup-to-listbox-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/select-dirty-parent-pref-widths-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/select-disabled-appearance-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/select-empty-option-height-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/select-initial-position-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/select-item-background-clip-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/select-list-box-with-height-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/select-listbox-multiple-no-focusring-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/select-non-native-rendering-direction-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/select-overflow-scroll-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/select-overflow-scroll-inherited-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/select-selected-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/select-style-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/select-writing-direction-natural-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/select/optgroup-rendering-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/stuff-on-my-optgroup-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/tabbing-input-iframe-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/textAreaLineHeight-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/textarea-align-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/textarea-placeholder-pseudo-style-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/textarea-placeholder-visibility-1-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/textarea-placeholder-visibility-2-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/textarea-scroll-height-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/textarea-scrollbar-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/textarea-scrolled-type-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/textarea-setinnerhtml-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/textfield-focus-ring-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/textfield-outline-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/textfield-overflow-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/validation-message-appearance-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/forms/visual-hebrew-text-field-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/frames: Removed.
+        * platform/mac-elcapitan/fast/frames/take-focus-from-iframe-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/hidpi: Removed.
+        * platform/mac-elcapitan/fast/hidpi/resize-corner-hidpi-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/html: Removed.
+        * platform/mac-elcapitan/fast/html/details-no-summary4-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/html/details-open-javascript-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/html/details-open2-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/html/details-open4-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/html/keygen-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/inline: Removed.
+        * platform/mac-elcapitan/fast/lists: Removed.
+        * platform/mac-elcapitan/fast/lists/dynamic-marker-crash-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/overflow: Removed.
+        * platform/mac-elcapitan/fast/overflow/overflow-x-y-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/overflow/scroll-nested-positioned-layer-in-overflow-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/overflow/scrollRevealButton-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/overflow/unreachable-overflow-rtl-bug-expected.png: Removed.
+        * platform/mac-elcapitan/fast/overflow/unreachable-overflow-rtl-bug-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/parser: Removed.
+        * platform/mac-elcapitan/fast/parser/document-write-option-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/parser/entity-comment-in-textarea-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/parser/open-comment-in-textarea-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/repaint: Removed.
+        * platform/mac-elcapitan/fast/repaint/renderer-destruction-by-invalidateSelection-crash-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/repaint/search-field-cancel-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/repaint/subtree-root-skipped-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/replaced: Removed.
+        * platform/mac-elcapitan/fast/replaced/replaced-breaking-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/replaced/replaced-breaking-mixture-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/replaced/width100percent-button-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/replaced/width100percent-menulist-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/replaced/width100percent-textarea-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/selectors: Removed.
+        * platform/mac-elcapitan/fast/selectors/064-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/spatial-navigation: Removed.
+        * platform/mac-elcapitan/fast/spatial-navigation/snav-multiple-select-focusring-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/table: Removed.
+        * platform/mac-elcapitan/fast/table/003-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/table/append-cells2-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/table/colspanMinWidth-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/table/colspanMinWidth-vertical-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/table/remove-td-display-none-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/table/spanOverlapRepaint-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/table/text-field-baseline-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/text: Removed.
+        * platform/mac-elcapitan/fast/text/backslash-to-yen-sign-euc-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/text/crash-complex-text-surrogate-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/text/drawBidiText-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/text/emoji-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/text/font-weights-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/text/font-weights-zh-expected.png: Removed.
+        * platform/mac-elcapitan/fast/text/font-weights-zh-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/text/international: Removed.
+        * platform/mac-elcapitan/fast/text/international/hindi-spacing-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/text/international/pop-up-button-text-alignment-and-direction-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/text/international/unicode-bidi-plaintext-in-textarea-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/text/justify-ideograph-complex-expected.png: Removed.
+        * platform/mac-elcapitan/fast/text/justify-ideograph-complex-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/text/line-initial-and-final-swashes-expected.png: Removed.
+        * platform/mac-elcapitan/fast/text/line-initial-and-final-swashes-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/text/textIteratorNilRenderer-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/transforms: Removed.
+        * platform/mac-elcapitan/fast/transforms/transformed-focused-text-input-expected.txt: Removed.
+        * platform/mac-elcapitan/http: Removed.
+        * platform/mac-elcapitan/http/tests: Removed.
+        * platform/mac-elcapitan/http/tests/navigation: Removed.
+        * platform/mac-elcapitan/http/tests/navigation/javascriptlink-frames-expected.txt: Removed.
+        * platform/mac-elcapitan/http/tests/security: Removed.
+        * platform/mac-elcapitan/http/tests/security/mixedContent: Removed.
+        * platform/mac-elcapitan/http/tests/security/mixedContent/insecure-audio-video-in-main-frame-expected.txt: Removed.
+        * platform/mac-elcapitan/imported: Removed.
+        * platform/mac-elcapitan/imported/w3c: Removed.
+        * platform/mac-elcapitan/imported/w3c/web-platform-tests: Removed.
+        * platform/mac-elcapitan/imported/w3c/web-platform-tests/fetch: Removed.
+        * platform/mac-elcapitan/imported/w3c/web-platform-tests/fetch/api: Removed.
+        * platform/mac-elcapitan/imported/w3c/web-platform-tests/fetch/api/basic: Removed.
+        * platform/mac-elcapitan/imported/w3c/web-platform-tests/fetch/api/cors: Removed.
+        * platform/mac-elcapitan/imported/w3c/web-platform-tests/media-source: Removed.
+        * platform/mac-elcapitan/imported/w3c/web-platform-tests/media-source/mediasource-duration-boundaryconditions-expected.txt: Removed.
+        * platform/mac-elcapitan/imported/w3c/web-platform-tests/resource-timing: Removed.
+        * platform/mac-elcapitan/imported/w3c/web-platform-tests/resource-timing/test_resource_timing-expected.txt: Removed.
+        * platform/mac-elcapitan/media: Removed.
+        * platform/mac-elcapitan/media/controls: Removed.
+        * platform/mac-elcapitan/media/controls-after-reload-expected.txt: Removed.
+        * platform/mac-elcapitan/media/controls-strict-expected.png: Removed.
+        * platform/mac-elcapitan/media/controls-styling-expected.txt: Removed.
+        * platform/mac-elcapitan/media/controls-without-preload-expected.png: Removed.
+        * platform/mac-elcapitan/media/controls/inline-elements-dropoff-order-expected.txt: Removed.
+        * platform/mac-elcapitan/media/media-document-audio-repaint-expected.txt: Removed.
+        * platform/mac-elcapitan/media/media-fullscreen-inline-expected.txt: Removed.
+        * platform/mac-elcapitan/media/media-fullscreen-not-in-document-expected.txt: Removed.
+        * platform/mac-elcapitan/media/track: Removed.
+        * platform/mac-elcapitan/media/track/video-track-alternate-groups-expected.txt: Removed.
+        * platform/mac-elcapitan/media/video-controls-rendering-expected.txt: Removed.
+        * platform/mac-elcapitan/media/video-display-toggle-expected.png: Removed.
+        * platform/mac-elcapitan/media/video-display-toggle-expected.txt: Removed.
+        * platform/mac-elcapitan/media/video-no-audio-expected.txt: Removed.
+        * platform/mac-elcapitan/media/video-volume-slider-expected.txt: Removed.
+        * platform/mac-elcapitan/platform: Removed.
+        * platform/mac-elcapitan/platform/mac: Removed.
+        * platform/mac-elcapitan/platform/mac/scrollbars: Removed.
+        * platform/mac-elcapitan/platform/mac/scrollbars/key-window-not-first-responder-expected.txt: Removed.
+        * platform/mac-elcapitan/plugins: Removed.
+        * platform/mac-elcapitan/plugins/mouse-click-plugin-clears-selection-expected.txt: Removed.
+        * platform/mac-elcapitan/svg: Removed.
+        * platform/mac-elcapitan/svg/custom: Removed.
+        * platform/mac-elcapitan/svg/custom/inline-svg-in-xhtml-expected.txt: Removed.
+        * platform/mac-elcapitan/svg/hixie: Removed.
+        * platform/mac-elcapitan/svg/hixie/mixed: Removed.
+        * platform/mac-elcapitan/svg/hixie/mixed/003-expected.txt: Removed.
+        * platform/mac-elcapitan/tables: Removed.
+        * platform/mac-elcapitan/tables/mozilla: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug1188-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug12384-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug138725-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug18359-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug194024-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug24200-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug2479-2-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug2479-3-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug2479-4-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug26178-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug28928-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug29326-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug30559-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug30692-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug33855-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug39209-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug4382-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug4429-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug4527-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug46368-1-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug46368-2-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug51037-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug51727-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug52505-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug52506-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug55545-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug59354-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug68912-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug7342-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug96334-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/bugs/bug99948-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/collapsing_borders: Removed.
+        * platform/mac-elcapitan/tables/mozilla/collapsing_borders/bug41262-4-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/core: Removed.
+        * platform/mac-elcapitan/tables/mozilla/core/margins-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/dom: Removed.
+        * platform/mac-elcapitan/tables/mozilla/dom/tableDom-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla/other: Removed.
+        * platform/mac-elcapitan/tables/mozilla/other/move_row-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla_expected_failures: Removed.
+        * platform/mac-elcapitan/tables/mozilla_expected_failures/bugs: Removed.
+        * platform/mac-elcapitan/tables/mozilla_expected_failures/bugs/bug1725-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla_expected_failures/bugs/bug2479-5-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla_expected_failures/bugs/bug58402-2-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla_expected_failures/bugs/bug92647-1-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla_expected_failures/collapsing_borders: Removed.
+        * platform/mac-elcapitan/tables/mozilla_expected_failures/collapsing_borders/bug41262-5-expected.txt: Removed.
+        * platform/mac-elcapitan/tables/mozilla_expected_failures/collapsing_borders/bug41262-6-expected.txt: Removed.
+        * platform/mac-elcapitan/transforms: Removed.
+        * platform/mac-elcapitan/transforms/2d: Removed.
+        * platform/mac-elcapitan/transforms/2d/zoom-menulist-expected.txt: Removed.
+        * platform/mac-elcapitan/transforms/3d: Removed.
+        * platform/mac-elcapitan/transforms/3d/general: Removed.
+        * platform/mac-elcapitan/transforms/3d/general/perspective-non-layer-expected.txt: Removed.
+
+2018-01-24  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, unskip some service worker tests that no longer time out
+
+        * TestExpectations:
+
+2018-01-24  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: SVG AAM mapping trumps ARIA role attribute in the case of SVG root
+        https://bugs.webkit.org/show_bug.cgi?id=181994
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/svg-element-with-aria-role.html: Added.
+        * platform/gtk/accessibility/svg-element-with-aria-role-expected.txt: Added.
+        * platform/mac/accessibility/svg-element-with-aria-role-expected.txt: Added.
+        * platform/win/TestExpectations: Skip test.
+
+2018-01-24  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Compute the progress and currentIteration properties on getComputedTiming()
+        https://bugs.webkit.org/show_bug.cgi?id=182039
+        <rdar://problem/36813568>
+
+        Reviewed by Dean Jackson.
+
+        Update expectations with progressions as we expose more of the API.
+
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/delay-expected.txt:
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/easing-expected.txt:
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/iterationStart-expected.txt:
+        * http/wpt/web-animations/timing-model/animation-effects/active-time-expected.txt:
+        * http/wpt/web-animations/timing-model/animation-effects/current-iteration-expected.txt:
+        * http/wpt/web-animations/timing-model/animation-effects/phases-and-states-expected.txt:
+        * http/wpt/web-animations/timing-model/animation-effects/simple-iteration-progress-expected.txt:
+        * http/wpt/web-animations/timing-model/animations/set-the-target-effect-of-an-animation-expected.txt:
+        * http/wpt/web-animations/timing-model/time-transformations/transformed-progress-expected.txt:
+
+2018-01-24  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r226138): Selecting a line that ends with zero-width joiner (ZWJ) may cause text transformation
+        https://bugs.webkit.org/show_bug.cgi?id=181993
+        <rdar://problem/36421080>
+
+        Reviewed by David Hyatt.
+
+        Add a Mac-specific test to ensure that selecting the last visible character on a line
+        that ends with a zero-width joiner (ZWJ) does not cause a text transformation of the
+        selected character.
+
+        We need to fix <https://bugs.webkit.org/show_bug.cgi?id=181964> for this test to
+        pass on Mac.
+
+        * TestExpectations: Skip the test directory on non-Mac platforms.
+        * fast/text/mac/select-character-before-zero-width-joiner-expected.html: Added.
+        * fast/text/mac/select-character-before-zero-width-joiner.html: Added.
+        * platform/mac/TestExpectations: Mark the test directory as PASS on Mac so that we run
+        all containing tests. Mark the test as ImageOnlyFailure until we fix <https://bugs.webkit.org/show_bug.cgi?id=181964>.
+
+2018-01-24  Youenn Fablet  <youenn@apple.com>
+
+        Fetch response should copy its url from the request if null
+        https://bugs.webkit.org/show_bug.cgi?id=182048
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/workers/service/basic-fetch.https-expected.txt:
+        * http/tests/workers/service/resources/basic-fetch.js:
+        (async.test):
+
+2018-01-24  Ms2ger  <Ms2ger@igalia.com>
+
+        WPE-focused test gardening.
+        https://bugs.webkit.org/show_bug.cgi?id=182051
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+          - Remove expectation for css3/parse-alignment-of-root-elements.html (rebaselined in r227432).
+        * css3/flexbox/csswg/flexbox_flex-natural-mixed-basis-auto.html:
+          Started failing in r226404; this applies the change from
+          https://github.com/w3c/web-platform-tests/commit/b4fa639477ba204f175fd242a335be888ce91371
+          to make it pass again.
+        * platform/gtk/TestExpectations:
+          - Add expectation for http/wpt/fetch/response-opaque-clone.html (failing since the test change in r227339).
+        * platform/wpe/TestExpectations:
+          - Remove expectation for fast/canvas/fallback-content.html (started passing in r226814-r226837, inclusive).
+          - Override generic failure expectation for imported/w3c/web-platform-tests/2dcontext/transformations/canvas_transformations_reset_001.html
+            (it has been passing for as long as it has run).
+          - Update path for imported/w3c/web-platform-tests/css/css-grid/grid-items/grid-items-sizing-alignment-001.html after r225561.
+          - Remove expectation for fast/events/tabindex-focus-blur-all.html (started passing in r226814-r226837, inclusive).
+          - Add expectation for http/wpt/fetch/response-opaque-clone.html (failing since the test change in r227339).
+          - Add expectation for http/wpt/webrtc/third-party-frame-ice-candidate-filtering.html (failing since it was added).
+          - Add expectation for fast/canvas/webgl/simulated-vertexAttrib0-invalid-indicies.html (failing since it was added).
+          - Skip fast/text/user-installed-fonts/ (the feature is not supported).
+          - Remove expectation for imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-unique-origin.html (rebaselined in r226965).
+          - Remove expectation for imported/w3c/web-platform-tests/encrypted-media/clearkey-generate-request-disallowed-input.html (rebaselined in r226965).
+          - Mark perf/show-hide-table-rows.html as flaky (as was intended).
+
+2018-01-24  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Provide a way for VoiceOver to uniquely identify a web session
+        https://bugs.webkit.org/show_bug.cgi?id=181894
+
+        Reviewed by Joanmarie Diggs.
+
+        * accessibility/mac/document-attributes-expected.txt:
+        * accessibility/mac/session-id-expected.txt: Added.
+        * accessibility/mac/session-id.html: Added.
+        * platform/mac/accessibility/parent-delete-expected.txt: Added.
+
+2018-01-24  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK] Fix some test failures in ATK selection handling.
+        https://bugs.webkit.org/show_bug.cgi?id=168369
+        <rdar://problem/30534881>
+
+        Reviewed by Joanmarie Diggs.
+
+        Update test expectations for tests that pass again.
+
+        * platform/gtk/TestExpectations:
+
+2018-01-24  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        Update paths of CSS tests from WPT
+        https://bugs.webkit.org/show_bug.cgi?id=182043
+
+        Reviewed by Youenn Fablet.
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios-wk2/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2018-01-24  Frederic Wang  <fwang@igalia.com>
+
+        Use basic-gestures.js for fixed-inside-overflow-inside-iframe.html
+        https://bugs.webkit.org/show_bug.cgi?id=182041
+
+        Reviewed by Antonio Gomes.
+
+        * fast/scrolling/ios/fixed-inside-overflow-inside-iframe.html: Insert basic-gestures.js,
+        remove definition of getSwipeUIScript(), make runTest() async and use functions from
+        basic-gestures.js
+
+2018-01-24  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        Remove unneeded -expected.txt files for reftest
+
+        Unreviewed gardening.
+
+        The test fast/multicol/pagination/RightToLeft-max-width.html was converted
+        into a reftest in r217943, however expectations for GTK+ and Win port were not removed.
+
+        * platform/gtk/fast/multicol/pagination/RightToLeft-max-width-expected.txt: Removed.
+        * platform/win/fast/multicol/pagination/RightToLeft-max-width-expected.txt: Removed.
+
+2018-01-23  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Harden against layout passes triggered when iterating through HTMLFormElement::associatedElements
+        https://bugs.webkit.org/show_bug.cgi?id=182037
+        <rdar://problem/36747812>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a new layout test covering these hardening changes. See WebCore ChangeLog for more details.
+
+        * fast/forms/form-data-associated-element-iteration-expected.txt: Added.
+        * fast/forms/form-data-associated-element-iteration.html: Added.
+
+2018-01-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Import WPT for modules
+        https://bugs.webkit.org/show_bug.cgi?id=181981
+
+        Reviewed by Sam Weinig.
+
+        * TestExpectations:
+
+2018-01-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Add more module scope related tests with code evaluation by string
+        https://bugs.webkit.org/show_bug.cgi?id=181983
+
+        Reviewed by Sam Weinig.
+
+        * js/dom/modules/module-scope-event-handler-expected.txt: Added.
+        * js/dom/modules/module-scope-event-handler.html: Added.
+        * js/dom/modules/module-scope-set-interval-expected.txt: Added.
+        * js/dom/modules/module-scope-set-interval.html: Added.
+        * js/dom/modules/module-scope-set-timeout-expected.txt: Added.
+        * js/dom/modules/module-scope-set-timeout.html: Added.
+
+2018-01-23  Matt Lewis  <jlewis3@apple.com>
+
+        Marked http/tests/resourceLoadStatistics/non-prevalent-resources-can-access-cookies-in-a-third-party-context.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=181958
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-23  Matt Lewis  <jlewis3@apple.com>
+
+        Marked fast/visual-viewport/ios/caret-after-focus-in-fixed.html as flaky
+        https://bugs.webkit.org/show_bug.cgi?id=181821
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2018-01-23  Matt Lewis  <jlewis3@apple.com>
+
+        Skipped fast/events/message-port.html on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=181969
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-01-23  Matt Lewis  <jlewis3@apple.com>
+
+        Marked media/W3C/audio/events/event_progress.html and media/W3C/video/events/event_order_loadstart_progress.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=181966
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-01-23  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rollout r227216 as it seems to be causing deadlocks
+        https://bugs.webkit.org/show_bug.cgi?id=182013
+
+        * fast/misc/testIncomingSyncIPCMessageWhileWaitingForSyncReply-expected.txt: Removed.
+        * fast/misc/testIncomingSyncIPCMessageWhileWaitingForSyncReply.html: Removed.
+
+2018-01-23  Matt Lewis  <jlewis3@apple.com>
+
+        Marked http/tests/misc/resource-timing-resolution.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=181957 
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-23  Simon Fraser  <simon.fraser@apple.com>
+
+        feMorphology stops applying if either x or y radius is 0 but should not.
+        https://bugs.webkit.org/show_bug.cgi?id=181903
+
+        Reviewed by Dean Jackson.
+
+        * svg/filters/feMorphology-zero-radius-one-axis-expected.svg: Added.
+        * svg/filters/feMorphology-zero-radius-one-axis.svg: Added.
+
+2018-01-23  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-align] 'left' and 'right' should parse as invalid in block/cross-axis alignment
+        https://bugs.webkit.org/show_bug.cgi?id=181792
+
+        Reviewed by Antti Koivisto.
+
+        Rebaseline tests because of the removal of the 'left' and right' CSS values.
+
+        * css3/parse-align-content.html:
+        * css3/parse-align-items.html:
+        * css3/parse-align-self-expected.txt:
+        * css3/parse-align-self.html:
+        * css3/parse-alignment-of-root-elements-expected.txt:
+
+2018-01-23  Simon Fraser  <simon.fraser@apple.com>
+
+        Element with position:fixed stops scrolling at the bottom of the page, but is painted in the right place on Chacos.com.
+        https://bugs.webkit.org/show_bug.cgi?id=181741
+        rdar://problem/36593581
+
+        Reviewed by Tim Horton.
+
+        * fast/visual-viewport/ios/min-scale-greater-than-one-expected.txt: Added.
+        * fast/visual-viewport/ios/min-scale-greater-than-one.html: Added.
+
+2018-01-23  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Expose getKeyframes() and parsing of remaining keyframe properties
+        https://bugs.webkit.org/show_bug.cgi?id=181978
+        <rdar://problem/36772586>
+
+        Reviewed by Dean Jackson.
+
+        Update expectations with progressions and new failure points now we expose more of the API.
+
+        * http/wpt/web-animations/interfaces/Animatable/animate-expected.txt:
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/easing-expected.txt:
+        * http/wpt/web-animations/interfaces/KeyframeEffect/composite-expected.txt:
+        * http/wpt/web-animations/interfaces/KeyframeEffect/processing-a-keyframes-argument-001-expected.txt:
+        * http/wpt/web-animations/interfaces/KeyframeEffect/processing-a-keyframes-argument-002-expected.txt:
+        * http/wpt/web-animations/interfaces/KeyframeEffect/setKeyframes-expected.txt:
+
+2018-01-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark inspector/unit-tests/throttle.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=181832
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-01-23  Brady Eidson  <beidson@apple.com>
+
+        Allow passing MessagePorts across processes (e.g. ServiceWorkers).
+        https://bugs.webkit.org/show_bug.cgi?id=181178
+
+        Reviewed by Andy Estes.
+
+        * http/tests/workers/service/basic-messageport-expected.txt: Added.
+        * http/tests/workers/service/basic-messageport.html: Added.
+        * http/tests/workers/service/resources/basic-messageport.js: Added.
+        * http/tests/workers/service/resources/messageport-echo-worker.js: Added.
+
+2018-01-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unskip http/tests/ssl/applepay/ApplePayRequestShippingContact.https.html on Sierra.
+        https://bugs.webkit.org/show_bug.cgi?id=181833
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-23  Andy Estes  <aestes@apple.com>
+
+        Follow-up layout test fix after r227260.
+
+        I missed a few places that were still using version 3 API requests.
+
+        * http/tests/ssl/applepay/ApplePayRequestShippingContact.https.html:
+
+2018-01-23  Youenn Fablet  <youenn@apple.com>
+
+        Mark some service-worker fetch tests as DumpJSConsoleLogInStdErr
+        https://bugs.webkit.org/show_bug.cgi?id=181975
+
+        Unreviewed.
+
+        * TestExpectations:
+
+2018-01-22  Simon Fraser  <simon.fraser@apple.com>
+
+        Optimize building the non-fast scrollable region with multiple iframes
+        https://bugs.webkit.org/show_bug.cgi?id=181971
+
+        Reviewed by Zalan Bujtas.
+
+        * platform/mac-wk2/TestExpectations: fast/frames/lots-of-objects.html is no longer always a timeout.
+
+2018-01-22  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Implement PublicKeyCredential's [[Create]] with a dummy authenticator
+        https://bugs.webkit.org/show_bug.cgi?id=181928
+        <rdar://problem/36459893>
+
+        Reviewed by Brent Fulgham.
+
+        Test cases are divided into two different folders. One follows wpt style. The other contains tests
+        that I don't know how to write them in wpt style.
+
+        * http/tests/webauthn/public-key-credential-create-with-invalid-parameters.https-expected.txt: Added.
+        * http/tests/webauthn/public-key-credential-create-with-invalid-parameters.https.html: Added.
+        * http/tests/webauthn/public-key-credential-same-origin-with-ancestors-2.https-expected.txt: Added.
+        * http/tests/webauthn/public-key-credential-same-origin-with-ancestors-2.https.html: Added.
+        * http/tests/webauthn/public-key-credential-same-origin-with-ancestors.https-expected.txt: Added.
+        * http/tests/webauthn/public-key-credential-same-origin-with-ancestors.https.html: Added.
+        * http/tests/webauthn/resources/last-layer-frame.https.html: Added.
+        * http/tests/webauthn/resources/second-layer-frame.https.html: Added.
+        * http/tests/webauthn/resources/util.js: Added.
+        It will be good to convert them into wpt style.
+        * http/wpt/webauthn/WebAuthN.idl: Added.
+        * http/wpt/webauthn/idl.https-expected.txt: Added.
+        * http/wpt/webauthn/idl.https.html: Added.
+        * http/wpt/webauthn/public-key-credential-create-failure.https-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-create-failure.https.html: Added.
+        * http/wpt/webauthn/public-key-credential-create-success.https-expected.txt: Added.
+        * http/wpt/webauthn/public-key-credential-create-success.https.html: Added.
+        * http/wpt/webauthn/resources/util.js: Added.
+
+2018-01-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip http/tests/ssl/applepay/ApplePayRequestShippingContact.https.html on Sierra.
+        https://bugs.webkit.org/show_bug.cgi?id=181833
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-22  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r226981): ASSERTION FAILED: startY >= 0 && endY <= height && startY < endY in WebCore::FEMorphology::platformApplyGeneric
+        https://bugs.webkit.org/show_bug.cgi?id=181836
+
+        Reviewed by Tim Horton.
+
+        * svg/filters/feLighting-parallel-jobs.svg: Added.
+        * svg/filters/feMorphology-invalid-radius.svg: Change the test to detect the bug on non-Retina too.
+        * svg/filters/feTurbulence-parallel-jobs-wide.svg: Added.
+
+2018-01-22  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: data corruption when updating values quickly
+        https://bugs.webkit.org/show_bug.cgi?id=179461
+        <rdar://problem/35431882>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/css/modify-css-property-expected.txt: Added.
+        * inspector/css/modify-css-property.html: Added.
+
+2018-01-22  Matt Lewis  <jlewis3@apple.com>
+
+        Marked fast/forms/searchfield-heights.html as flaky on High Sierra.
+        https://bugs.webkit.org/show_bug.cgi?id=181914
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-22  Matt Lewis  <jlewis3@apple.com>
+
+        Skipped http/tests/resourceLoadStatistics/grandfathering.html.
+        https://bugs.webkit.org/show_bug.cgi?id=181482
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark inspector/debugger/tail-deleted-frames-from-vm-entry.html as slow on macOS Debug.
+        https://bugs.webkit.org/show_bug.cgi?id=181952
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2018-01-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/html/browsers/offline/manifest_url_check.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=179851
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-01-22  Matt Lewis  <jlewis3@apple.com>
+
+        Marked http/wpt/service-workers/update-service-worker.https.html as flaky on High Sierra release.
+        https://bugs.webkit.org/show_bug.cgi?id=181753
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-22  Youenn Fablet  <youenn@apple.com>
+
+        Safari Tech Preview can't use GitHub login at forums.swift.org
+        https://bugs.webkit.org/show_bug.cgi?id=181908
+        <rdar://problem/36715111>
+
+        Reviewed by Chris Dumez.
+
+        * http/wpt/service-workers/navigation-redirect-worker.js: Added.
+        (async):
+        * http/wpt/service-workers/navigation-redirect.https-expected.txt: Added.
+        * http/wpt/service-workers/navigation-redirect.https.html: Added.
+
+2018-01-22  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (Safari 11): Buttons inside a fieldset legend cannot be clicked on in Safari 11
+        https://bugs.webkit.org/show_bug.cgi?id=179666
+        <rdar://problem/35534292>
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/forms/legend-overflow-hidden-hit-test-expected.txt: Added.
+        * fast/forms/legend-overflow-hidden-hit-test.html: Added.
+        * platform/ios/TestExpectations:
+
+2018-01-22  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Implement support for Graphics ARIA roles
+        https://bugs.webkit.org/show_bug.cgi?id=181796
+
+        Reviewed by Chris Fleizach.
+
+        Add new test cases and update expectations accordingly.
+
+        * accessibility/gtk/xml-roles-exposed-expected.txt:
+        * accessibility/gtk/xml-roles-exposed.html:
+        * accessibility/roles-computedRoleString.html:
+        * accessibility/roles-exposed.html:
+        * platform/gtk/accessibility/roles-computedRoleString-expected.txt:
+        * platform/gtk/accessibility/roles-exposed-expected.txt:
+        * platform/mac/accessibility/roles-computedRoleString-expected.txt:
+        * platform/mac/accessibility/roles-exposed-expected.txt:
+
+2018-01-22  Youenn Fablet  <youenn@apple.com>
+
+        Fetch Headers from an Opaque response should be filtered out
+        https://bugs.webkit.org/show_bug.cgi?id=181926
+
+        Reviewed by Chris Dumez.
+
+        * http/wpt/fetch/response-opaque-clone-expected.txt:
+        * http/wpt/fetch/response-opaque-clone.html:
+
+2018-01-22  Andy Estes  <aestes@apple.com>
+
+        LayoutTest http/tests/paymentrequest/payment-request-abort-method.https.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=178107
+        <rdar://problem/34901064>
+
+        Reviewed by Brady Eidson.
+
+        Modified the test to call show() with user activation.
+
+        * http/tests/paymentrequest/payment-request-abort-method.https.html:
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-22  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-align] 'overflow' keyword must precede the self-position and content-position value
+        https://bugs.webkit.org/show_bug.cgi?id=181793
+
+        Reviewed by Antti Koivisto.
+
+        Rebaseline expected results of the test cases affected by this change.
+
+        * css3/parse-align-content.html:
+        * css3/parse-align-items.html:
+        * css3/parse-align-self.html:
+        * css3/parse-justify-content.html:
+        * css3/overwrite-self-alignment.html:
+        * css3/flexbox/new-alignment-values-invalid-if-grid-not-enabled.html:
+        * css3/overwrite-content-alignment.html:
+        * fast/css-grid-layout/grid-content-alignment-overflow.html:
+        * fast/css-grid-layout/grid-align-justify-overflow.html:
+        * fast/css/parse-justify-items.html:
+        * fast/css/parse-justify-self.html:
+        * fast/repaint/align-items-overflow-change.html:
+        * fast/repaint/align-self-overflow-change.html:
+        * fast/repaint/justify-items-overflow-change.html:
+        * fast/repaint/justify-self-overflow-change.html:
+
+2018-01-19  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark svg/filters/fePointLight-color.svg as failure on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=181869
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-01-22  Chris Nardi  <csnardi1@gmail.com>
+
+        Parse calc() in CSS media queries
+        https://bugs.webkit.org/show_bug.cgi?id=181716
+
+        Imported CSS mediaqueries tests from WPT, deleting our (old) copy of one test. Updated
+        expectations.
+
+        Reviewed by Antti Koivisto.
+
+        * TestExpectations:
+        * fast/dom/HTMLImageElement/sizes/image-sizes-w3c-1-expected.txt:
+        * fast/dom/HTMLImageElement/sizes/image-sizes-w3c-2-expected.txt:
+        * fast/dom/HTMLImageElement/sizes/image-sizes-w3c-3-expected.txt:
+        * fast/dom/HTMLImageElement/sizes/image-sizes-w3c-4-expected.txt:
+        * fast/media/w3c/README: Removed.
+        * fast/media/w3c/test_media_queries-expected.txt: Removed.
+        * platform/ios/TestExpectations:
+        * platform/ios/fast/dom/HTMLImageElement/sizes/image-sizes-w3c-1-expected.txt:
+        * platform/ios/fast/dom/HTMLImageElement/sizes/image-sizes-w3c-2-expected.txt:
+        * platform/ios/fast/dom/HTMLImageElement/sizes/image-sizes-w3c-3-expected.txt:
+        * platform/ios/fast/dom/HTMLImageElement/sizes/image-sizes-w3c-4-expected.txt:
+
+2018-01-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Release assertion in canExecuteScript when executing scripts during page cache restore
+        https://bugs.webkit.org/show_bug.cgi?id=181902
+
+        Reviewed by Antti Koivisto.
+
+        Added regression tests for the release assertion and navigating while a document is being restored from the page cache.
+        WebKit should not hit any assertions in either situations.
+
+        * fast/history/page-cache-execute-script-during-restore-expected.txt: Added.
+        * fast/history/page-cache-execute-script-during-restore.html: Added.
+        * fast/history/page-cache-navigate-during-restore-expected.txt: Added.
+        * fast/history/page-cache-navigate-during-restore.html: Added.
+        * fast/history/resources/navigate-back-with-finish-test-stage.html: Added.
+
+2018-01-21  Jer Noble  <jer.noble@apple.com>
+
+        REGRESSION (macOS 10.13.2): imported/w3c/web-platform-tests/media-source/mediasource-* LayoutTests failing
+        https://bugs.webkit.org/show_bug.cgi?id=181891
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac/TestExpectations:
+
+2018-01-21  Andy Estes  <aestes@apple.com>
+
+        [ios] LayoutTest imported/w3c/web-platform-tests/payment-request/rejects_if_not_active.https.html is crashing in JSC::JSONParse
+        https://bugs.webkit.org/show_bug.cgi?id=177832
+        <rdar://problem/34805315>
+
+        Reviewed by Tim Horton.
+
+        Made a copy of imported/w3c/web-platform-tests/payment-request/rejects_if_not_active.https.html
+        and modified it to handle Apple Pay and user gesture requirements.
+
+        * http/tests/paymentrequest/rejects_if_not_active.https-expected.txt: Added.
+        * http/tests/paymentrequest/rejects_if_not_active.https.html: Added.
+        * http/tests/paymentrequest/resources/page1.html: Added.
+        * http/tests/paymentrequest/resources/page2.html: Added.
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-20  Jer Noble  <jer.noble@apple.com>
+
+        Release ASSERT when reloading Vimeo page @ WebCore: WebCore::Document::updateLayout
+        https://bugs.webkit.org/show_bug.cgi?id=181840
+        <rdar://problem/36186214>
+
+        Reviewed by Simon Fraser.
+
+        * media/video-fullscreen-reload-crash-expected.txt: Added.
+        * media/video-fullscreen-reload-crash.html: Added.
+        * platform/ios/TestExpectations:
+
+2018-01-20  Youenn Fablet  <youenn@apple.com>
+
+        fetch redirect is incompatible with "no-cors" mode
+        https://bugs.webkit.org/show_bug.cgi?id=181866
+        <rdar://problem/35827140>
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/fetch/redirectmode-and-preload-expected.txt:
+        * http/tests/fetch/redirectmode-and-preload.html:
+
+2018-01-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/service-workers/service-worker/fetch-cors-xhr.https.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=181901
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-01-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/service-workers/service-worker/fetch-canvas-tainting-cache.https.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=181900
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-01-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/service-workers/service-worker/fetch-canvas-tainting.https.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=181897
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-01-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r227235.
+
+        The test for this change consistently times out on High
+        Sierra.
+
+        Reverted changeset:
+
+        "Support for preconnect Link headers"
+        https://bugs.webkit.org/show_bug.cgi?id=181657
+        https://trac.webkit.org/changeset/227235
+
+2018-01-19  Andy Estes  <aestes@apple.com>
+
+        [Sierra Debug WK2] ASSERTION FAILED: paymentCoordinator().supportsVersion(version)
+        https://bugs.webkit.org/show_bug.cgi?id=181833
+
+        Reviewed by Youenn Fablet.
+
+        Moved the version 3 test into its own file that only runs on High Sierra and later.
+
+        * http/tests/ssl/applepay/ApplePayRequestShippingContactV3.https-expected.txt: Added.
+        * http/tests/ssl/applepay/ApplePayRequestShippingContactV3.https.html: Added.
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/wpt/web-animations/timing-model/animation-effects/current-iteration.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=181888
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-01-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update TestExpectations for webrtc/video-mute.html.
+        https://bugs.webkit.org/show_bug.cgi?id=177501
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/media-source/mediasource-config-change-mp4-* tests as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=181565
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-01-19  Youenn Fablet  <youenn@apple.com>
+
+        Cache storage errors like Quota should trigger console messages
+        https://bugs.webkit.org/show_bug.cgi?id=181879
+        <rdar://problem/36669048>
+
+        Reviewed by Chris Dumez.
+
+        * http/wpt/cache-storage/cache-quota.any-expected.txt:
+
+2018-01-19  Dean Jackson  <dino@apple.com>
+
+        REGRESSION (r221092): Swipe actions are hard to perform in FastMail app
+        https://bugs.webkit.org/show_bug.cgi?id=181817
+        <rdar://problem/35274055>
+
+        Reviewed by Simon Fraser.
+
+        * fast/events/touch/ios/passive-by-default-on-document-and-window-expected.txt:
+
+2018-01-19  Daniel Bates  <dabates@apple.com>
+
+        Update frame-ancestor directive to match Content Security Policy Level 3
+        https://bugs.webkit.org/show_bug.cgi?id=178891
+        <rdar://problem/35209458>
+
+        Reviewed by Alex Christensen.
+
+        Derived from Blink e667cc2e501fabab3605b838e4ee0d642a9c4a59:
+        <https://chromium.googlesource.com/chromium/src.git/+/e667cc2e501fabab3605b838e4ee0d642a9c4a59>
+
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-allow-same-origin-sandboxed-cross-url-allow-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-allow-same-origin-sandboxed-cross-url-allow.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-sandboxed-cross-url-block-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/frame-ancestors/frame-ancestors-nested-cross-in-sandboxed-cross-url-block.html: Added.
+        * http/tests/security/contentSecurityPolicy/resources/frame-ancestors-test.js:
+        (injectNestedIframe):
+        (window.onload):
+        (testNestedIFrame):
+
+2018-01-19  Yoav Weiss  <yoav@yoav.ws>
+
+        Support for preconnect Link headers
+        https://bugs.webkit.org/show_bug.cgi?id=181657
+
+        Reviewed by Darin Adler.
+
+        Add test to see Link preconnect headers trigger a connection.
+
+        * http/tests/preconnect/link-header-rel-preconnect-http-expected.txt: Added.
+        * http/tests/preconnect/link-header-rel-preconnect-http.html: Added.
+        * http/tests/preconnect/resources/header-preconnect.php: Added.
+        * platform/ios-simulator/TestExpectations: Skipped the test, as ios-simulator doesn't process Link headers for subresources.
+        * platform/win/TestExpectations: Skipped the preconnect test directory, as it doesn't work on Windows.
+
+2018-01-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        AppCache: Log a Deprecation warning to the Console when AppCache is used
+        https://bugs.webkit.org/show_bug.cgi?id=181778
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/appcache/404-manifest-expected.txt:
+        * http/tests/appcache/404-resource-expected.txt:
+        * http/tests/appcache/404-resource-with-slow-main-resource-expected.txt:
+        * http/tests/appcache/abort-cache-onchecking-expected.txt:
+        * http/tests/appcache/abort-cache-onchecking-manifest-404-expected.txt:
+        * http/tests/appcache/abort-cache-onchecking-resource-404-expected.txt:
+        * http/tests/appcache/abort-cache-ondownloading-expected.txt:
+        * http/tests/appcache/abort-cache-ondownloading-manifest-404-expected.txt:
+        * http/tests/appcache/abort-cache-ondownloading-resource-404-expected.txt:
+        * http/tests/appcache/abort-cache-onprogress-expected.txt:
+        * http/tests/appcache/access-via-redirect-expected.txt:
+        * http/tests/appcache/crash-when-navigating-away-then-back-expected.txt:
+        * http/tests/appcache/credential-url-expected.txt:
+        * http/tests/appcache/cyrillic-uri-expected.txt:
+        * http/tests/appcache/decide-navigation-policy-after-delay-expected.txt:
+        * http/tests/appcache/deferred-events-delete-while-raising-expected.txt:
+        * http/tests/appcache/deferred-events-delete-while-raising-timer-expected.txt:
+        * http/tests/appcache/deferred-events-expected.txt:
+        * http/tests/appcache/different-https-origin-resource-main-expected.txt:
+        * http/tests/appcache/different-origin-manifest-expected.txt:
+        * http/tests/appcache/different-scheme-expected.txt:
+        * http/tests/appcache/document-write-html-element-2-expected.txt:
+        * http/tests/appcache/empty-manifest-expected.txt:
+        * http/tests/appcache/fail-on-update-2-expected.txt:
+        * http/tests/appcache/fail-on-update-expected.txt:
+        * http/tests/appcache/fallback-expected.txt:
+        * http/tests/appcache/fallback-namespace-outside-manifest-path-expected.txt:
+        * http/tests/appcache/foreign-fallback-expected.txt:
+        * http/tests/appcache/foreign-iframe-main-expected.txt:
+        * http/tests/appcache/history-test-expected.txt:
+        * http/tests/appcache/idempotent-update-expected.txt:
+        * http/tests/appcache/identifier-test-expected.txt:
+        * http/tests/appcache/interrupted-update-expected.txt:
+        * http/tests/appcache/local-content-expected.txt:
+        * http/tests/appcache/main-resource-fallback-for-network-error-crash-expected.txt:
+        * http/tests/appcache/main-resource-hash-expected.txt:
+        * http/tests/appcache/main-resource-redirect-expected.txt:
+        * http/tests/appcache/manifest-containing-itself-expected.txt:
+        * http/tests/appcache/manifest-parsing-expected.txt:
+        * http/tests/appcache/manifest-redirect-2-expected.txt:
+        * http/tests/appcache/manifest-redirect-expected.txt:
+        * http/tests/appcache/manifest-with-empty-file-expected.txt:
+        * http/tests/appcache/max-size-expected.txt:
+        * http/tests/appcache/multi-fallback-expected.txt:
+        * http/tests/appcache/navigating-away-while-cache-attempt-in-progress-expected.txt:
+        * http/tests/appcache/non-html-expected.txt:
+        * http/tests/appcache/offline-access-expected.txt:
+        * http/tests/appcache/online-fallback-layering-expected.txt:
+        * http/tests/appcache/online-whitelist-expected.txt:
+        * http/tests/appcache/origin-delete-expected.txt:
+        * http/tests/appcache/origin-quota-continued-download-expected.txt:
+        * http/tests/appcache/origin-quota-continued-download-multiple-manifests-expected.txt:
+        * http/tests/appcache/origin-quota-expected.txt:
+        * http/tests/appcache/origin-usage-expected.txt:
+        * http/tests/appcache/origins-with-appcache-expected.txt:
+        * http/tests/appcache/progress-counter-expected.txt:
+        * http/tests/appcache/reload-expected.txt:
+        * http/tests/appcache/remove-cache-expected.txt:
+        * http/tests/appcache/resource-redirect-2-expected.txt:
+        * http/tests/appcache/resource-redirect-expected.txt:
+        * http/tests/appcache/simple-expected.txt:
+        * http/tests/appcache/simple-video-async-expected.txt:
+        * http/tests/appcache/simple-video-sync-expected.txt:
+        * http/tests/appcache/top-frame-1-expected.txt:
+        * http/tests/appcache/top-frame-2-expected.txt:
+        * http/tests/appcache/top-frame-3-expected.txt:
+        * http/tests/appcache/top-frame-4-expected.txt:
+        * http/tests/appcache/update-cache-expected.txt:
+        * http/tests/appcache/video-expected.txt:
+        * http/tests/appcache/whitelist-wildcard-expected.txt:
+        * http/tests/appcache/wrong-content-type-expected.txt:
+        * http/tests/appcache/wrong-signature-2-expected.txt:
+        * http/tests/appcache/wrong-signature-expected.txt:
+        * http/tests/appcache/x-frame-options-prevents-framing-expected.txt:
+        * http/tests/appcache/xhr-foreign-resource-expected.txt:
+        * http/tests/contentfiltering/load-substitute-data-from-appcache-expected.txt:
+        * http/tests/security/appcache-switching-private-browsing-expected.txt:
+        * http/tests/security/cross-origin-appcache-allowed-expected.txt:
+        * http/tests/security/cross-origin-appcache-expected.txt:
+        * http/tests/security/same-origin-appcache-blocked-expected.txt:
+        * http/tests/ssl/upgrade-origin-usage-expected.txt:
+
+2018-01-19  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Implement callback support for removal of WebsiteDataType::ResourceLoadStatistics
+        https://bugs.webkit.org/show_bug.cgi?id=181822
+        https://bugs.webkit.org/show_bug.cgi?id=175263
+        https://bugs.webkit.org/show_bug.cgi?id=178536
+        https://bugs.webkit.org/show_bug.cgi?id=181223
+        https://bugs.webkit.org/show_bug.cgi?id=181482
+        <rdar://problem/33491222>
+        <rdar://problem/33805293>
+        <rdar://problem/36332683>
+        <rdar://problem/36549026>
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour.html:
+        * http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store.html:
+        * http/tests/resourceLoadStatistics/grandfathering.html:
+        * platform/ios/TestExpectations:
+            Marked the three updated tests as [ Pass ].
+        * platform/mac-wk2/TestExpectations:
+            Marked the three updated tests as [ Pass ].
+
+2018-01-19  James Craig  <jcraig@apple.com>
+
+        AX: when invert colors is on, double-invert image and picture elements in UserAgentStyleSheet
+        https://bugs.webkit.org/show_bug.cgi?id=181281
+        <rdar://problem/36291776>
+
+        Reviewed by Simon Fraser.
+
+        Updated to include img and picture element tests.
+
+        * accessibility/smart-invert-expected.txt:
+        * accessibility/smart-invert-reference-expected.html:
+        * accessibility/smart-invert.html:
+
+2018-01-19  Chris Dumez  <cdumez@apple.com>
+
+        The WebContent process should not process incoming IPC while waiting for a sync IPC reply
+        https://bugs.webkit.org/show_bug.cgi?id=181560
+
+        Reviewed by Ryosuke Niwa.
+
+        Add layout test coverage.
+
+        * fast/misc/testIncomingSyncIPCMessageWhileWaitingForSyncReply-expected.txt: Added.
+        * fast/misc/testIncomingSyncIPCMessageWhileWaitingForSyncReply.html: Added.
+
+2018-01-19  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Remove http/wpt/wk-web-animations tests
+        https://bugs.webkit.org/show_bug.cgi?id=181861
+
+        These tests were written early on during our Web Animations implementation before we had a good sense of the quality
+        of the coverage of the W3C WPT suite. That suite is extremely comprehensive and all of the assertions we wrote ourselves
+        are redundant and should be removed so that all testing, unless specific to our implementation, is done through the WPT
+        suite.
+
+        Reviewed by Dean Jackson.
+
+        * http/wpt/wk-web-animations/interfaces/document-get-animations-expected.txt: Removed.
+        * http/wpt/wk-web-animations/interfaces/document-get-animations.html: Removed.
+        * http/wpt/wk-web-animations/interfaces/element-get-animations-expected.txt: Removed.
+        * http/wpt/wk-web-animations/interfaces/element-get-animations.html: Removed.
+        * http/wpt/wk-web-animations/interfaces/keyframe-effect-getComputedStyle-expected.txt: Removed.
+        * http/wpt/wk-web-animations/interfaces/keyframe-effect-getComputedStyle.html: Removed.
+        * http/wpt/wk-web-animations/timing-model/animation-creation-basic-expected.txt: Removed.
+        * http/wpt/wk-web-animations/timing-model/animation-creation-basic.html: Removed.
+        * http/wpt/wk-web-animations/timing-model/animation-current-time-expected.txt: Removed.
+        * http/wpt/wk-web-animations/timing-model/animation-current-time.html: Removed.
+        * http/wpt/wk-web-animations/timing-model/animation-effect-expected.txt: Removed.
+        * http/wpt/wk-web-animations/timing-model/animation-effect-timing-expected.txt: Removed.
+        * http/wpt/wk-web-animations/timing-model/animation-effect-timing.html: Removed.
+        * http/wpt/wk-web-animations/timing-model/animation-effect-unique-relationship-expected.txt: Removed.
+        * http/wpt/wk-web-animations/timing-model/animation-effect-unique-relationship.html: Removed.
+        * http/wpt/wk-web-animations/timing-model/animation-effect.html: Removed.
+        * http/wpt/wk-web-animations/timing-model/animation-interface-effect-property-expected.txt: Removed.
+        * http/wpt/wk-web-animations/timing-model/animation-interface-effect-property.html: Removed.
+        * http/wpt/wk-web-animations/timing-model/animation-interface-start-time-property-expected.txt: Removed.
+        * http/wpt/wk-web-animations/timing-model/animation-interface-start-time-property.html: Removed.
+        * http/wpt/wk-web-animations/timing-model/document-timeline-expected.txt: Removed.
+        * http/wpt/wk-web-animations/timing-model/document-timeline.html: Removed.
+        * http/wpt/wk-web-animations/timing-model/keyframe-effect-expected.txt: Removed.
+        * http/wpt/wk-web-animations/timing-model/keyframe-effect-interface-timing-duration-expected.txt: Removed.
+        * http/wpt/wk-web-animations/timing-model/keyframe-effect-interface-timing-duration.html: Removed.
+        * http/wpt/wk-web-animations/timing-model/keyframe-effect.html: Removed.
+        * http/wpt/wk-web-animations/timing-model/timeline-current-time-expected.txt: Removed.
+        * http/wpt/wk-web-animations/timing-model/timeline-current-time.html: Removed.
+
+2018-01-19  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Expose timing properties (delay, endDelay, fill, iterationStart, iterations, direction) and getComputedTiming()
+        https://bugs.webkit.org/show_bug.cgi?id=181857
+        <rdar://problem/36660081>
+
+        Reviewed by Dean Jackson.
+
+        Update expectations with progressions and new failure points now we expose more of the API.
+
+        * http/wpt/web-animations/animation-model/animation-types/discrete-animation-expected.txt:
+        * http/wpt/web-animations/interfaces/Animatable/animate-expected.txt:
+        * http/wpt/web-animations/interfaces/Animation/finish-expected.txt:
+        * http/wpt/web-animations/interfaces/Animation/finished-expected.txt:
+        * http/wpt/web-animations/interfaces/Animation/pause-expected.txt:
+        * http/wpt/web-animations/interfaces/Animation/play-expected.txt:
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/delay-expected.txt:
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/direction-expected.txt:
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/duration-expected.txt:
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/easing-expected.txt:
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/endDelay-expected.txt:
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/fill-expected.txt:
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/iterationStart-expected.txt:
+        * http/wpt/web-animations/interfaces/AnimationEffectTiming/iterations-expected.txt:
+        * http/wpt/web-animations/interfaces/AnimationTimeline/document-timeline-expected.txt:
+        * http/wpt/web-animations/timing-model/animation-effects/active-time-expected.txt:
+        * http/wpt/web-animations/timing-model/animation-effects/current-iteration-expected.txt:
+        * http/wpt/web-animations/timing-model/animation-effects/local-time-expected.txt:
+        * http/wpt/web-animations/timing-model/animation-effects/phases-and-states-expected.txt:
+        * http/wpt/web-animations/timing-model/animation-effects/simple-iteration-progress-expected.txt:
+        * http/wpt/web-animations/timing-model/animations/set-the-animation-start-time-expected.txt:
+        * http/wpt/web-animations/timing-model/animations/set-the-target-effect-of-an-animation-expected.txt:
+        * http/wpt/web-animations/timing-model/time-transformations/transformed-progress-expected.txt:
+        * http/wpt/wk-web-animations/timing-model/keyframe-effect-interface-timing-duration.html:
+
+2018-01-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/images/image-supports-video.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=181862
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-01-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update TestExpectations for media/W3C/audio/networkState/networkState_during_loadstart.html.
+        https://bugs.webkit.org/show_bug.cgi?id=123010
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-01-19  Jonathan Bedard  <jbedard@apple.com>
+
+        Move select-out-of-floated-non-editable iOS Simulator expectations to iOS
+
+        Unreviewed test gardening.
+
+        r222317 introduced these test expectations. These expectations should apply to both
+        Simulator and device testing.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-wk2/TestExpectations:
+
+2018-01-19  Frederic Wang  <fwang@igalia.com>
+
+        Use promises for basic-gestures.js and 'await' for the corresponding tests
+        https://bugs.webkit.org/show_bug.cgi?id=181841
+
+        Reviewed by Megan Gardner.
+
+        * fast/events/touch/ios/drag-to-autoscroll-in-single-line-editable.html: Remove redundant
+        check for testRunner.runUIScript, rewrite runUIScript calls to just await a promise, add the
+        async keyword to runTest and reindent.
+        Also remove extraneous space after + operator.
+        * fast/events/touch/ios/long-press-then-drag-down-to-change-selected-text.html: Ditto.
+        * fast/events/touch/ios/long-press-then-drag-left-to-change-selected-text.html: Ditto.
+        * fast/events/touch/ios/long-press-then-drag-right-to-change-selected-text.html: Ditto.
+        * fast/events/touch/ios/long-press-then-drag-to-select-text.html: Ditto.
+        * fast/events/touch/ios/long-press-then-drag-up-to-change-selected-text.html: Ditto.
+        * fast/events/touch/ios/long-press-to-select-and-tap-to-clear.html: Ditto.
+        * fast/events/touch/ios/long-press-to-select-text.html: Ditto.
+        * resources/basic-gestures.js: For all functions in this file, wrap the script source into a
+        runUIScript call and a new promise, reindent.
+
+2018-01-19  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark svg/filters/feDiffuseLighting-bottomRightPixel.html as failing on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=181854
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-01-19  Antoine Quint  <graouts@apple.com>
+
+        [iOS] LayoutTest media/modern-media-controls/media-controller/ios/media-controller-ios-do-not-hide-controls-when-tapping-button.html fails on Internal bots
+        https://bugs.webkit.org/show_bug.cgi?id=181843
+        <rdar://problem/36061363>
+
+        The button we were trying to press was outside of the viewable screen area and so the tap wouldn't occur.
+        Resizing the video to fit in the window fixes the issue.
+
+        Reviewed by Youenn Fablet.
+
+        * media/modern-media-controls/media-controller/ios/media-controller-ios-do-not-hide-controls-when-tapping-button.html:
+
+2018-01-18  Frederic Wang  <fwang@igalia.com>
+
+        Move helper files for iOS touch gestures into LayoutTests/resources
+        https://bugs.webkit.org/show_bug.cgi?id=181798
+
+        Reviewed by Wenson Hsieh.
+
+        * fast/events/touch/ios/drag-to-autoscroll-in-single-line-editable.html: Change URL of
+        basic-gestures.js ; remove gesture-helpers.js it seems unused and has the wrong URL anyway.
+        * fast/events/touch/ios/long-press-then-drag-down-to-change-selected-text.html: Change URL
+        of basic-gestures.js.
+        * fast/events/touch/ios/long-press-then-drag-left-to-change-selected-text.html: Ditto.
+        * fast/events/touch/ios/long-press-then-drag-right-to-change-selected-text.html: Ditto.
+        * fast/events/touch/ios/long-press-then-drag-to-select-text.html: Ditto.
+        * fast/events/touch/ios/long-press-then-drag-up-to-change-selected-text.html: Ditto.
+        * fast/events/touch/ios/long-press-to-select-and-tap-to-clear.html: Ditto.
+        * fast/events/touch/ios/long-press-to-select-text.html: Ditto.
+        * resources/basic-gestures.js: Renamed from LayoutTests/fast/events/touch/ios/resources/basic-gestures.js.
+        * resources/ui-debugging.js: Renamed from LayoutTests/fast/events/touch/ios/resources/ui-debugging.js.
+        Note that this file was introduced in r222517 but seems unused for now.
+
+2018-01-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark platform/mac/webrtc/captureCanvas-webrtc-software-encoder.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=180171
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-01-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark inspector/debugger/breakpoint-action-log.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=181839
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark storage/websql/database-lock-after-reload.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=173928
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-01-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/IndexedDB/idbdatabase-createObjectStore-exception-order.htm as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=172243
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-01-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark js/slow-stress/Int32Array-alloc-huge-long-lived.html as slow on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=181838
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2018-01-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/W3C/video/networkState/networkState_during_loadstart.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=179643
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-01-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/video-main-content-allow-then-deny.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=181830
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-01-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update TestExpectations for fast/multicol/spanner-crash-when-adding-summary.html.
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2018-01-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/service-workers/service-worker/update-after-navigation-fetch-event.https.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=181499
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2018-01-18  Chris Dumez  <cdumez@apple.com>
+
+        We should be able to terminate service workers that are unresponsive
+        https://bugs.webkit.org/show_bug.cgi?id=181563
+        <rdar://problem/35280031>
+
+        Reviewed by Alex Christensen.
+
+        Add layout test coverage.
+
+        * http/tests/workers/service/postmessage-after-terminating-hung-worker-expected.txt: Added.
+        * http/tests/workers/service/postmessage-after-terminating-hung-worker.html: Added.
+        * http/tests/workers/service/resources/postmessage-after-terminating-hung-worker.js: Added.
+        * http/tests/workers/service/resources/postmessage-echo-worker-mayhang.js: Added.
+
+2018-01-18  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: roles-computedRoleString.html layout test should support enabling/disabling individual test cases
+        https://bugs.webkit.org/show_bug.cgi?id=181806
+
+        Reviewed by Chris Fleizach.
+
+        Add a "data-platform" attribute to each element so that we can enable or disable
+        a given test case on a given platform. Update the platform expectations for GTK
+        to reflect changes and new support which happened in the interim. And remove the
+        test from the list of expected failures.
+
+        * accessibility/roles-computedRoleString.html:
+        * platform/gtk/TestExpectations:
+        * platform/gtk/accessibility/roles-computedRoleString-expected.txt:
+
+2018-01-18  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [GTK] AX: Two layout tests crash with error 'g_strstr_len: assertion 'haystack != NULL' failed' in Accessibility::UIElement::url
+        https://bugs.webkit.org/show_bug.cgi?id=176796
+
+        Reviewed by Chris Fleizach.
+
+        Remove failing tests from Test Expectations. Update expected results of
+        xml-roles-exposed to reflect several bug fixes which were made in the
+        interim. Modify add-children-pseudo-element.html to account for platform
+        differences in the accessibility tree. Add an additional URL test because
+        we didn't have coverage for getting the URL of accessible links resulting
+        from native anchor elements.
+
+        * accessibility/add-children-pseudo-element.html: Modified.
+        * accessibility/gtk/link-url-expected.txt: Added.
+        * accessibility/gtk/link-url.html: Added.
+        * accessibility/gtk/xml-roles-exposed-expected.txt: Updated.
+        * platform/gtk/TestExpectations: Removed failing tests.
+        * platform/gtk/accessibility/add-children-pseudo-element-expected.txt: Added.
+
+2018-01-18  Matt Lewis  <jlewis3@apple.com>
+
+        Marked multiple imported/w3c/web-platform-tests/service-workers/ test as flaky
+        https://bugs.webkit.org/show_bug.cgi?id=181750
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-18  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r223604): Setting :before/after pseudo element on <noscript> asserts
+        https://bugs.webkit.org/show_bug.cgi?id=181795
+        <rdar://problem/36334524>
+
+        Reviewed by David Kilzer.
+
+        * fast/css-generated-content/noscript-pseudo-anim-crash-expected.txt: Added.
+        * fast/css-generated-content/noscript-pseudo-anim-crash.html: Added.
+
+2018-01-18  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Aria-activedescendant not supported
+        https://bugs.webkit.org/show_bug.cgi?id=161734
+        <rdar://problem/28202679>
+
+        Reviewed by Joanmarie Diggs.
+
+        * accessibility/aria-combobox-control-owns-elements-expected.txt: Added.
+        * accessibility/aria-combobox-control-owns-elements.html: Added.
+
+2018-01-18  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark fast/forms/auto-fill-button/input-strong-password-auto-fill-button.html as failing on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=181662
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-01-17  Per Arne Vollan  <pvollan@apple.com>
+
+        REGRESSION (r224780): Text stroke not applied to video captions.
+        https://bugs.webkit.org/show_bug.cgi?id=181743
+        <rdar://problem/35874338>
+
+        Reviewed by Simon Fraser.
+
+        * media/track/track-css-stroke-cues-expected.txt:
+        * media/track/track-css-stroke-cues.html:
+        * media/track/track-css-visible-stroke-expected.html: Added.
+        * media/track/track-css-visible-stroke.html: Added.
+
+2018-01-18  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Support a default shipping address for Apple Pay
+        https://bugs.webkit.org/show_bug.cgi?id=181754
+        <rdar://problem/36009733>
+
+        Reviewed by Brady Eidson.
+
+        * http/tests/ssl/applepay/ApplePayRequestShippingContact.https-expected.txt: Added.
+        * http/tests/ssl/applepay/ApplePayRequestShippingContact.https.html: Added.
+
+2018-01-18  Ali Juma  <ajuma@chromium.org>
+
+        imported/w3c/web-platform-tests/viewport/viewport-resize-event-on-load-overflowing-page.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=181435
+
+        Reviewed by Frédéric Wang.
+
+        Test gardening. The flakiness was fixed by r227054, so remove the test expectation.
+
+        * TestExpectations:
+
+2018-01-18  Jer Noble  <jer.noble@apple.com>
+
+        Layout Test http/tests/images/image-supports-video.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=181008
+        <rdar://problem/36143943>
+
+        Reviewed by Youenn Fablet.
+
+        Send a "Cache-control: nocache" header from the HTTP server when the image resource is
+        requested.
+
+        * http/tests/resources/redirect-to-video-if-accepted.php:
+        * platform/mac-wk1/TestExpectations:
+
+2018-01-17  Jer Noble  <jer.noble@apple.com>
+
+        WebVTT served via HLS never results in cues
+        https://bugs.webkit.org/show_bug.cgi?id=181773
+
+        Reviewed by Eric Carlson.
+
+        * http/tests/media/hls/hls-webvtt-tracks-expected.txt: Added.
+        * http/tests/media/hls/hls-webvtt-tracks.html: Added.
+        * http/tests/media/resources/hls/subtitles/fileSequence0.webvtt: Added.
+        * http/tests/media/resources/hls/subtitles/prog_index.m3u8: Added.
+        * http/tests/media/resources/hls/test-webvtt.m3u8: Added.
+
+2018-01-17  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Block cookies for prevalent resources without user interaction
+        https://bugs.webkit.org/show_bug.cgi?id=177394
+        <rdar://problem/34613960>
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/resourceLoadStatistics/add-blocking-to-redirect-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/add-blocking-to-redirect.html: Added.
+        * http/tests/resourceLoadStatistics/add-partitioning-to-redirect.html:
+        * http/tests/resourceLoadStatistics/non-prevalent-resources-can-access-cookies-in-a-third-party-context-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/non-prevalent-resources-can-access-cookies-in-a-third-party-context.html: Added.
+        * http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout.html:
+        * http/tests/resourceLoadStatistics/remove-blocking-in-redirect-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/remove-blocking-in-redirect.html: Added.
+        * http/tests/resourceLoadStatistics/remove-partitioning-from-redirect-expected.txt: Removed.
+        * http/tests/resourceLoadStatistics/remove-partitioning-from-redirect.html: Removed.
+            Test case reworked and is now remove-partitioning-in-redirect.html.
+        * http/tests/resourceLoadStatistics/remove-partitioning-in-redirect-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/remove-partitioning-in-redirect.html: Added.
+        * platform/ios/TestExpectations:
+            New tests marked as [ Pass ] for iOS.
+        * platform/mac-wk2/TestExpectations:
+            New tests marked as [ Pass ] for High Sierra+.
+        * platform/wk2/TestExpectations:
+            New tests skipped for WK2 in general.
+
 2018-01-17  Alicia Boya García  <aboya@igalia.com>
 
         Unreviewed GTK+ gardening

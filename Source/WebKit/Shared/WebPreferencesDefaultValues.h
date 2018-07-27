@@ -129,13 +129,6 @@
 #define DEFAULT_MODERN_MEDIA_CONTROLS_ENABLED false
 #endif
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200
-// <https://webkit.org/b/168415> El Capitan NetworkLoadTiming values are sometimes jumbled
-#define DEFAULT_RESOURCE_TIMING_ENABLED false
-#else
-#define DEFAULT_RESOURCE_TIMING_ENABLED true
-#endif
-
 #if PLATFORM(COCOA)
 #define DEFAULT_DATA_TRANSFER_ITEMS_ENABLED true
 #define DEFAULT_DIRECTORY_UPLOAD_ENABLED true
@@ -184,3 +177,6 @@
 #else
 #define DEFAULT_SERVICE_WORKERS_ENABLED false
 #endif
+
+bool defaultPassiveTouchListenersAsDefaultOnDocument();
+bool defaultCustomPasteboardDataEnabled();

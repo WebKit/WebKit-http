@@ -234,6 +234,16 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
     _websiteDataStore->websiteDataStore().setResourceLoadStatisticsEnabled(enabled);
 }
 
+- (BOOL)_resourceLoadStatisticsDebugMode
+{
+    return _websiteDataStore->websiteDataStore().resourceLoadStatisticsDebugMode();
+}
+
+- (void)_setResourceLoadStatisticsDebugMode:(BOOL)enabled
+{
+    _websiteDataStore->websiteDataStore().setResourceLoadStatisticsDebugMode(enabled);
+}
+
 - (NSUInteger)_cacheStoragePerOriginQuota
 {
     return _websiteDataStore->websiteDataStore().cacheStoragePerOriginQuota();
@@ -487,23 +497,43 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
 
 - (void)_resourceLoadStatisticsUpdateCookiePartitioning
 {
-    auto* store = _websiteDataStore->websiteDataStore().resourceLoadStatistics();
-    if (!store)
-        return;
+    [self _resourceLoadStatisticsUpdateCookiePartitioning:^() { }];
+}
 
-    store->scheduleCookiePartitioningUpdate();
+- (void)_resourceLoadStatisticsUpdateCookiePartitioning:(void (^)())completionHandler
+{
+    auto* store = _websiteDataStore->websiteDataStore().resourceLoadStatistics();
+    if (!store) {
+        completionHandler();
+        return;
+    }
+    
+    store->scheduleCookiePartitioningUpdate([completionHandler = makeBlockPtr(completionHandler)]() {
+        completionHandler();
+    });
 }
 
 - (void)_resourceLoadStatisticsSetShouldPartitionCookies:(BOOL)value forHost:(NSString *)host
 {
+    [self _resourceLoadStatisticsSetShouldPartitionCookies:value forHost:host completionHandler:^() { }];
+}
+
+- (void)_resourceLoadStatisticsSetShouldPartitionCookies:(BOOL)value forHost:(NSString *)host completionHandler:(void (^)())completionHandler
+{
     auto* store = _websiteDataStore->websiteDataStore().resourceLoadStatistics();
-    if (!store)
+    if (!store) {
+        completionHandler();
         return;
+    }
 
     if (value)
-        store->scheduleCookiePartitioningUpdateForDomains({ host }, { }, { }, WebKit::ShouldClearFirst::No);
+        store->scheduleCookiePartitioningUpdateForDomains({ host }, { }, { }, WebKit::ShouldClearFirst::No, [completionHandler = makeBlockPtr(completionHandler)]() {
+            completionHandler();
+        });
     else
-        store->scheduleClearPartitioningStateForDomains({ host });
+        store->scheduleClearPartitioningStateForDomains({ host }, [completionHandler = makeBlockPtr(completionHandler)]() {
+            completionHandler();
+        });
 }
 
 - (void)_resourceLoadStatisticsSubmitTelemetry
@@ -549,20 +579,38 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
 
 - (void)_resourceLoadStatisticsClearInMemoryAndPersistentStore
 {
-    auto* store = _websiteDataStore->websiteDataStore().resourceLoadStatistics();
-    if (!store)
-        return;
+    [self _resourceLoadStatisticsClearInMemoryAndPersistentStore:^() { }];
+}
 
-    store->scheduleClearInMemoryAndPersistent(WebKit::WebResourceLoadStatisticsStore::ShouldGrandfather::Yes);
+- (void)_resourceLoadStatisticsClearInMemoryAndPersistentStore:(void (^)())completionHandler
+{
+    auto* store = _websiteDataStore->websiteDataStore().resourceLoadStatistics();
+    if (!store) {
+        completionHandler();
+        return;
+    }
+
+    store->scheduleClearInMemoryAndPersistent(WebKit::WebResourceLoadStatisticsStore::ShouldGrandfather::Yes, [completionHandler = makeBlockPtr(completionHandler)]() {
+        completionHandler();
+    });
 }
 
 - (void)_resourceLoadStatisticsClearInMemoryAndPersistentStoreModifiedSinceHours:(unsigned)hours
 {
-    auto* store = _websiteDataStore->websiteDataStore().resourceLoadStatistics();
-    if (!store)
-        return;
+    [self _resourceLoadStatisticsClearInMemoryAndPersistentStoreModifiedSinceHours:hours completionHandler:^() { }];
+}
 
-    store->scheduleClearInMemoryAndPersistent(WallTime::now() - Seconds::fromHours(hours), WebKit::WebResourceLoadStatisticsStore::ShouldGrandfather::Yes);
+- (void)_resourceLoadStatisticsClearInMemoryAndPersistentStoreModifiedSinceHours:(unsigned)hours completionHandler:(void (^)())completionHandler
+{
+    auto* store = _websiteDataStore->websiteDataStore().resourceLoadStatistics();
+    if (!store) {
+        completionHandler();
+        return;
+    }
+
+    store->scheduleClearInMemoryAndPersistent(WallTime::now() - Seconds::fromHours(hours), WebKit::WebResourceLoadStatisticsStore::ShouldGrandfather::Yes, [completionHandler = makeBlockPtr(completionHandler)]() {
+        completionHandler();
+    });
 }
 
 - (void)_resourceLoadStatisticsResetToConsistentState

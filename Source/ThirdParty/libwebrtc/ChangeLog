@@ -1,3 +1,61 @@
+2018-01-27  Dan Bernstein  <mitz@apple.com>
+
+        HaveInternalSDK includes should be "#include?"
+        https://bugs.webkit.org/show_bug.cgi?id=179670
+
+        * Configurations/Base.xcconfig:
+
+2018-01-26  Youenn Fablet  <youenn@apple.com>
+
+        Disable VCP for MacOS
+        https://bugs.webkit.org/show_bug.cgi?id=182183
+        <rdar://problem/36919791>
+
+        Reviewed by Eric Carlson.
+
+        * Source/webrtc/sdk/objc/Framework/Classes/VideoProcessing/VideoProcessingSoftLink.h:
+
+2018-01-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Follow-up build fix for r227206.
+
+        Unreviewed.
+
+        * Source/webrtc/sdk/objc/Framework/Classes/VideoProcessing/VideoProcessingSoftLink.h:
+        Avoid duplicate and different definitions of ALWAYS_INLINE.
+
+2018-01-19  Youenn Fablet  <youenn@apple.com>
+
+        Softlink VideoProcessing in WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=181853
+        <rdar://problem/36590005>
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/libwebrtc.xcconfig:
+        * Source/webrtc/sdk/objc/Framework/Classes/VideoProcessing/VideoProcessingSoftLink.cpp: Added.
+        * Source/webrtc/sdk/objc/Framework/Classes/VideoProcessing/VideoProcessingSoftLink.h: Added.
+        * Source/webrtc/sdk/objc/Framework/Classes/VideoProcessing/encoder_vcp.h:
+        * Source/webrtc/sdk/objc/Framework/Classes/VideoProcessing/encoder_vcp.mm:
+        (internal::SetVTSessionProperty):
+        (webrtc::H264VideoToolboxEncoderVCP::Encode):
+        * Source/webrtc/sdk/objc/Framework/Classes/VideoToolbox/videocodecfactory.mm:
+        (webrtc::VideoToolboxVideoEncoderFactory::VideoToolboxVideoEncoderFactory):
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2018-01-18  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Streamline and future-proof target-macOS-version-dependent build setting definitions
+        https://bugs.webkit.org/show_bug.cgi?id=181803
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig: Updated.
+        * Configurations/DebugRelease.xcconfig: Ditto.
+        * Configurations/macOSTargetConditionals.xcconfig: Added. Defines helper build settings
+          useful for defining settings that depend on the target macOS version.
+        * Configurations/opus.xcconfig: Adopted macOSTargetConditionals helper.
+
 2018-01-08  David Kilzer  <ddkilzer@apple.com>
 
         libwebrtc: Fix 'ld: warning: cannot export hidden symbol' messages

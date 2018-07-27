@@ -73,6 +73,8 @@ void ServiceWorkerClientFetch::start()
 
     ASSERT(options.serviceWorkersMode != ServiceWorkersMode::None);
     m_connection->startFetch(m_loader->identifier(), options.serviceWorkerRegistrationIdentifier.value(), request, options, referrer);
+
+    m_redirectionStatus = RedirectionStatus::None;
 }
 
 // https://fetch.spec.whatwg.org/#http-fetch step 3.3
@@ -106,10 +108,10 @@ void ServiceWorkerClientFetch::didReceiveResponse(ResourceResponse&& response)
             callback(Result::Succeeded);
         return;
     }
+    response.setSource(ResourceResponse::Source::ServiceWorker);
 
-    if (response.isRedirection()) {
+    if (response.isRedirection() && response.httpHeaderFields().contains(HTTPHeaderName::Location)) {
         m_redirectionStatus = RedirectionStatus::Receiving;
-        // FIXME: Get shouldClearReferrerOnHTTPSToHTTPRedirect value from
         m_loader->willSendRequest(m_loader->request().redirectedRequest(response, m_shouldClearReferrerOnHTTPSToHTTPRedirect), response, [protectedThis = makeRef(*this), this](ResourceRequest&& request) {
             if (request.isNull() || !m_callback)
                 return;
@@ -132,7 +134,10 @@ void ServiceWorkerClientFetch::didReceiveResponse(ResourceResponse&& response)
             response.setTextEncodingName(ASCIILiteral("UTF-8"));
         }
     }
-    response.setSource(ResourceResponse::Source::ServiceWorker);
+
+    // As per https://fetch.spec.whatwg.org/#main-fetch step 9, copy request's url list in response's url list if empty.
+    if (response.url().isNull())
+        response.setURL(m_loader->request().url());
 
     m_loader->didReceiveResponse(response);
     if (auto callback = WTFMove(m_callback))
@@ -158,7 +163,6 @@ void ServiceWorkerClientFetch::didFinish()
         m_redirectionStatus = RedirectionStatus::Received;
         return;
     case RedirectionStatus::Following:
-        m_redirectionStatus = RedirectionStatus::None;
         start();
         return;
     case RedirectionStatus::Received:

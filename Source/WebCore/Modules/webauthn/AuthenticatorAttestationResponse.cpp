@@ -26,6 +26,8 @@
 #include "config.h"
 #include "AuthenticatorAttestationResponse.h"
 
+#if ENABLE(WEB_AUTHN)
+
 namespace WebCore {
 
 AuthenticatorAttestationResponse::AuthenticatorAttestationResponse(RefPtr<ArrayBuffer>&& clientDataJSON, RefPtr<ArrayBuffer>&& attestationObject)
@@ -34,13 +36,11 @@ AuthenticatorAttestationResponse::AuthenticatorAttestationResponse(RefPtr<ArrayB
 {
 }
 
-AuthenticatorAttestationResponse::~AuthenticatorAttestationResponse()
-{
-}
-
-ArrayBuffer* AuthenticatorAttestationResponse::attestationObject()
+ArrayBuffer* AuthenticatorAttestationResponse::attestationObject() const
 {
     return m_attestationObject.get();
 }
 
 } // namespace WebCore
+
+#endif // ENABLE(WEB_AUTHN)

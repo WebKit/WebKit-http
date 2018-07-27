@@ -122,7 +122,7 @@ void LayoutContext::layout()
 {
     LOG_WITH_STREAM(Layout, stream << "FrameView " << &view() << " LayoutContext::layout() with size " << view().layoutSize());
 
-    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(!frame().document()->inRenderTreeUpdate());
+    RELEASE_ASSERT_WITH_SECURITY_IMPLICATION(!frame().document()->inRenderTreeUpdate() || ScriptDisallowedScope::LayoutAssertionDisableScope::shouldDisable());
     ASSERT(LayoutDisallowedScope::isLayoutAllowed());
     ASSERT(!view().isPainting());
     ASSERT(frame().view() == &view());
@@ -482,6 +482,11 @@ void LayoutContext::applyTextSizingIfNeeded(RenderElement& layoutRoot)
 void LayoutContext::updateStyleForLayout()
 {
     Document& document = *frame().document();
+
+    // FIXME: This shouldn't be necessary, but see rdar://problem/36670246.
+    if (!document.styleScope().resolverIfExists())
+        document.styleScope().didChangeStyleSheetEnvironment();
+
     // Viewport-dependent media queries may cause us to need completely different style information.
     document.styleScope().evaluateMediaQueriesForViewportChange();
 

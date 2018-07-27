@@ -109,11 +109,19 @@ messages -> WebProcess LegacyReceiver {
     GamepadDisconnected(unsigned index)
 #endif
 
+    SyncIPCMessageWhileWaitingForSyncReplyForTesting() -> ()
+
 #if USE(SOUP)
     SetNetworkProxySettings(struct WebCore::SoupNetworkProxySettings settings)
 #endif
 
 #if ENABLE(SERVICE_WORKER)
     EstablishWorkerContextConnectionToStorageProcess(uint64_t pageID, struct WebKit::WebPreferencesStore store, PAL::SessionID initialSessionID)
+    RegisterServiceWorkerClients(PAL::SessionID sessionID)
 #endif
+
+    DidTakeAllMessagesForPort(Vector<WebCore::MessageWithMessagePorts> messages, uint64_t messageCallbackIdentifier, uint64_t messageBatchIdentifier)
+    DidCheckRemotePortForActivity(uint64_t callbackIdentifier, bool hasActivity)
+    CheckProcessLocalPortForActivity(struct WebCore::MessagePortIdentifier port, uint64_t callbackIdentifier)
+    MessagesAvailableForPort(struct WebCore::MessagePortIdentifier port)
 }

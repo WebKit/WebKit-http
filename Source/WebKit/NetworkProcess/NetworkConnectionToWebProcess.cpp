@@ -43,8 +43,8 @@
 #include "NetworkResourceLoaderMessages.h"
 #include "NetworkSocketStream.h"
 #include "NetworkSocketStreamMessages.h"
+#include "PingLoad.h"
 #include "PreconnectTask.h"
-#include "RemoteNetworkingContext.h"
 #include "SessionTracker.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebErrors.h"
@@ -56,10 +56,6 @@
 #include <WebCore/ResourceLoaderOptions.h>
 #include <WebCore/ResourceRequest.h>
 #include <pal/SessionID.h>
-
-#if USE(NETWORK_SESSION)
-#include "PingLoad.h"
-#endif
 
 using namespace WebCore;
 
@@ -243,16 +239,8 @@ void NetworkConnectionToWebProcess::loadPing(NetworkResourceLoadParameters&& loa
         didFinishPingLoad(identifier, error, response);
     };
 
-#if USE(NETWORK_SESSION)
     // PingLoad manages its own lifetime, deleting itself when its purpose has been fulfilled.
     new PingLoad(WTFMove(loadParameters), WTFMove(originalRequestHeaders), WTFMove(completionHandler));
-#else
-    UNUSED_PARAM(originalRequestHeaders);
-    auto context = RemoteNetworkingContext::create(loadParameters.sessionID, loadParameters.shouldClearReferrerOnHTTPSToHTTPRedirect);
-
-    // PingHandle manages its own lifetime, deleting itself when its purpose has been fulfilled.
-    new PingHandle(context.ptr(), loadParameters.request, loadParameters.storedCredentialsPolicy == StoredCredentialsPolicy::Use, loadParameters.shouldFollowRedirects, WTFMove(completionHandler));
-#endif
 }
 
 void NetworkConnectionToWebProcess::didFinishPingLoad(uint64_t pingLoadIdentifier, const ResourceError& error, const ResourceResponse& response)
@@ -474,7 +462,8 @@ void NetworkConnectionToWebProcess::ensureLegacyPrivateBrowsingSession()
 void NetworkConnectionToWebProcess::removeStorageAccessForFrame(PAL::SessionID sessionID, uint64_t frameID, uint64_t pageID)
 {
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
-    storageSession(sessionID).removeStorageAccessForFrame(frameID, pageID);
+    if (auto* storageSession = NetworkStorageSession::storageSession(sessionID))
+        storageSession->removeStorageAccessForFrame(frameID, pageID);
 #else
     UNUSED_PARAM(sessionID);
     UNUSED_PARAM(frameID);
@@ -485,7 +474,8 @@ void NetworkConnectionToWebProcess::removeStorageAccessForFrame(PAL::SessionID s
 void NetworkConnectionToWebProcess::removeStorageAccessForAllFramesOnPage(PAL::SessionID sessionID, uint64_t pageID)
 {
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
-    storageSession(sessionID).removeStorageAccessForAllFramesOnPage(pageID);
+    if (auto* storageSession = NetworkStorageSession::storageSession(sessionID))
+        storageSession->removeStorageAccessForAllFramesOnPage(pageID);
 #else
     UNUSED_PARAM(sessionID);
     UNUSED_PARAM(pageID);

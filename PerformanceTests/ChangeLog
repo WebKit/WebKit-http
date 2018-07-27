@@ -1,3 +1,116 @@
+2018-01-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        StyleBench: Generate more mutation steps
+        https://bugs.webkit.org/show_bug.cgi?id=182291
+
+        Rubber-stamped by Antti Koivisto
+
+        Use zero-based index instead of one-based index.
+
+        * StyleBench/resources/tests.js:
+        (makeSteps):
+
+2018-01-30  Antti Koivisto  <antti@apple.com>
+
+        StyleBench: Generate more mutation steps
+        https://bugs.webkit.org/show_bug.cgi?id=182291
+
+        Reviewed by Ryosuke Niwa.
+
+        The test should be doing multiple rounds of mutations in a single document to test what is supposed to test (like it did before r227756).
+        This also makes test results more stable and less dependent on possible first-time costs.
+
+        * StyleBench/resources/benchmark-runner.js:
+
+        Adjust correctionFactor to match the new steps count. With 1.5 Firefox is ~72rpm.
+
+        * StyleBench/resources/tests.js:
+        (makeSteps):
+
+        Generate 10 rounds of class/element mutation steps.
+        Give each generated step unique name so reporting works.
+        Make individual steps do fewer mutations.
+
+2018-01-29  Antti Koivisto  <antti@apple.com>
+
+        StyleBench: Remove : from a test name
+        https://bugs.webkit.org/show_bug.cgi?id=182258
+
+        Reviewed by Ryosuke Niwa.
+
+        It breaks reporting.
+
+        * StyleBench/resources/style-bench.js:
+        (nthPseudoClassConfiguration):
+
+2018-01-29  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Temporarily skip StyleBench until webkit.org/b/182088 is fixed.
+
+        * Skipped:
+
+2018-01-29  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make StyleBench compatible with run-benchmark and run-perf-tests
+        https://bugs.webkit.org/show_bug.cgi?id=182262
+
+        Reviewed by Antti Koivisto.
+
+        Copied resource files referenced from Speedometer directory since run-benchmark needs to be able
+        to checkout each benchmark separately.
+
+        Removed the code to create tests of the same name five times in makeSteps since this
+        won't be compatible with either run-benchmark or run-perf-tests.
+
+        * StyleBench/index.html: Removed the code to show warnings for local files since run-benchmark
+        doesn't use HTTP server in WebDriver mode.
+        * StyleBench/resources/benchmark-report.js: Copied from resources/benchmark-report.js.
+        * StyleBench/resources/benchmark-runner.js: Copied from resources/benchmark-runner.js.
+        (BenchmarkRunner.prototype._finalize): Use the correction factor of 8 instead of 5 in StyleBench.
+        * StyleBench/resources/gauge.png: Copied from resources/gauge.png.
+        * StyleBench/resources/gauge@2x.png: Copied from resources/gauge@2x.png.
+        * StyleBench/resources/main.css: Copied from resources/main.css.
+        * StyleBench/resources/main.js: Copied from resources/main.js.
+        * StyleBench/resources/tests.js:
+        (makeSteps): Only make each test once.
+
+2018-01-26  Chris Nardi  <cnardi@chromium.org>
+
+        Addressing post-review comments after r226614
+        https://bugs.webkit.org/show_bug.cgi?id=182151
+
+        Reviewed by Myles C. Maxfield.
+
+        * StitchMarker/wtf/text/StringImpl.h:
+        (WTF::isSpaceOrNewline):
+        * StitchMarker/wtf/text/TextBreakIterator.cpp:
+        (WTF::numCodeUnitsInGraphemeClusters):
+        * StitchMarker/wtf/text/TextBreakIterator.h:
+
+2018-01-22  Antti Koivisto  <antti@apple.com>
+
+        StyleBench: Separate test for :nth pseudo classes
+        https://bugs.webkit.org/show_bug.cgi?id=181932
+
+        Reviewed by Sam Weinig.
+
+        Optimization strategies for nth are different from other structural pseudo classes (:first-child etc). Move them to a separate test.
+
+        * StyleBench/resources/style-bench.js:
+        (structuralPseudoClassConfiguration):
+        (nthPseudoClassConfiguration):
+
+            Add a new configuration.
+
+        (predefinedConfigurations):
+        (pseudoClassConfiguration): Deleted.
+
+2018-01-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Temporarily skip Speedometer until we fix the metrics.
+
+        * Skipped:
+
 2018-01-16  Alex Christensen  <achristensen@webkit.org>
 
         Fix Mac CMake build after r222900

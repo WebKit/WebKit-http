@@ -393,6 +393,10 @@ using namespace HTMLNames;
 #define NSAccessibilityCaretBrowsingEnabledAttribute @"AXCaretBrowsingEnabled"
 #endif
 
+#ifndef NSAccessibilityWebSessionIDAttribute
+#define NSAccessibilityWebSessionIDAttribute @"AXWebSessionID"
+#endif
+
 #ifndef NSAccessibilitFocusableAncestorAttribute
 #define NSAccessibilityFocusableAncestorAttribute @"AXFocusableAncestor"
 #endif
@@ -1359,6 +1363,7 @@ static id textMarkerRangeFromVisiblePositions(AXObjectCache* cache, const Visibl
         [tempArray addObject:NSAccessibilityURLAttribute];
         [tempArray addObject:NSAccessibilityCaretBrowsingEnabledAttribute];
         [tempArray addObject:NSAccessibilityPreventKeyboardDOMEventDispatchAttribute];
+        [tempArray addObject:NSAccessibilityWebSessionIDAttribute];
         webAreaAttrs = [[NSArray alloc] initWithArray:tempArray];
         [tempArray release];
     }
@@ -1986,6 +1991,9 @@ static const AccessibilityRoleMap& createAccessibilityRoleMap()
         { AccessibilityRole::Feed, NSAccessibilityGroupRole },
         { AccessibilityRole::Figure, NSAccessibilityGroupRole },
         { AccessibilityRole::Footnote, NSAccessibilityGroupRole },
+        { AccessibilityRole::GraphicsDocument, NSAccessibilityGroupRole },
+        { AccessibilityRole::GraphicsObject, NSAccessibilityGroupRole },
+        { AccessibilityRole::GraphicsSymbol, NSAccessibilityImageRole },
     };
     AccessibilityRoleMap& roleMap = *new AccessibilityRoleMap;
     
@@ -2113,6 +2121,7 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     case AccessibilityRole::ApplicationTimer:
         return @"AXApplicationTimer";
     case AccessibilityRole::Document:
+    case AccessibilityRole::GraphicsDocument:
         return @"AXDocument";
     case AccessibilityRole::DocumentArticle:
         return @"AXDocumentArticle";
@@ -2286,6 +2295,8 @@ static NSString* roleValueToNSString(AccessibilityRole value)
             return AXMarkText();
         case AccessibilityRole::Video:
             return localizedMediaControlElementString("VideoElement");
+        case AccessibilityRole::GraphicsDocument:
+            return AXARIAContentGroupText(@"ARIADocument");
         default:
             return NSAccessibilityRoleDescription(NSAccessibilityGroupRole, [self subrole]);
         }
@@ -2529,6 +2540,14 @@ static NSString* roleValueToNSString(AccessibilityRole value)
             return [NSNumber numberWithInt:m_object->layoutCount()];
         if ([attributeName isEqualToString:NSAccessibilityLoadingProgressAttribute])
             return [NSNumber numberWithDouble:m_object->estimatedLoadingProgress()];
+        if ([attributeName isEqualToString:NSAccessibilityPreventKeyboardDOMEventDispatchAttribute])
+            return [NSNumber numberWithBool:m_object->preventKeyboardDOMEventDispatch()];
+        if ([attributeName isEqualToString:NSAccessibilityCaretBrowsingEnabledAttribute])
+            return [NSNumber numberWithBool:m_object->caretBrowsingEnabled()];
+        if ([attributeName isEqualToString:NSAccessibilityWebSessionIDAttribute]) {
+            if (Document* doc = m_object->topDocument())
+                return [NSNumber numberWithUnsignedLongLong:doc->sessionID().sessionID()];
+        }
     }
     
     if (m_object->isTextControl()) {
@@ -3208,12 +3227,6 @@ static NSString* roleValueToNSString(AccessibilityRole value)
         return convertToNSArray(errorMessages);
     }
 
-    if (m_object->isWebArea() && [attributeName isEqualToString:NSAccessibilityPreventKeyboardDOMEventDispatchAttribute])
-        return [NSNumber numberWithBool:m_object->preventKeyboardDOMEventDispatch()];
-    
-    if (m_object->isWebArea() && [attributeName isEqualToString:NSAccessibilityCaretBrowsingEnabledAttribute])
-        return [NSNumber numberWithBool:m_object->caretBrowsingEnabled()];
-    
     // Multi-selectable
     if ([attributeName isEqualToString:NSAccessibilityIsMultiSelectableAttribute])
         return [NSNumber numberWithBool:m_object->isMultiSelectable()];

@@ -74,33 +74,3 @@
 .panel.details.layer .layers-memory-label {
     justify-content: flex-end;
 }
-
-.layer-popover {
-    max-width: 300px;
-    padding: 5px;
-}
-
-.layer-popover > div {
-    font-size: 1.1em;
-    font-weight: bold;
-}
-
-.layer-popover table {
-    margin: 10px 0;
-}
-.layer-popover td {
-    padding: 0 5px;
-    line-height: 1.3em;
-}
-
-.layer-popover ul {
-    margin: 10px 0 0;
-    padding: 0;
-
-    -webkit-margin-start: 1em;
-    -webkit-padding-start: 1em;
-}
-
-.layer-popover li {
-    line-height: 1.3em;
-}

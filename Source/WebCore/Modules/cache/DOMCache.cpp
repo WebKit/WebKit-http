@@ -31,6 +31,7 @@
 #include "HTTPParsers.h"
 #include "JSFetchRequest.h"
 #include "JSFetchResponse.h"
+#include "ReadableStreamChunk.h"
 #include "ScriptExecutionContext.h"
 #include "URL.h"
 
@@ -273,7 +274,7 @@ void DOMCache::addAll(Vector<RequestInfo>&& infos, DOMPromiseDeferred<void>&& pr
             }
             size_t recordPosition = taskHandler->addRecord(toConnectionRecord(request.get(), response, nullptr));
 
-            response.consumeBodyWhenLoaded([taskHandler = WTFMove(taskHandler), recordPosition](ExceptionOr<RefPtr<SharedBuffer>>&& result) mutable {
+            response.consumeBodyReceivedByChunk([taskHandler = WTFMove(taskHandler), recordPosition, data = SharedBuffer::create()] (ExceptionOr<ReadableStreamChunk*>&& result) mutable {
                 if (taskHandler->isDone())
                     return;
 
@@ -281,8 +282,11 @@ void DOMCache::addAll(Vector<RequestInfo>&& infos, DOMPromiseDeferred<void>&& pr
                     taskHandler->error(result.releaseException());
                     return;
                 }
-                if (auto value = result.releaseReturnValue())
-                    taskHandler->addResponseBody(recordPosition, value.releaseNonNull());
+
+                if (auto chunk = result.returnValue())
+                    data->append(reinterpret_cast<const char*>(chunk->data), chunk->size);
+                else
+                    taskHandler->addResponseBody(recordPosition, WTFMove(data));
             });
         });
     }
@@ -331,20 +335,18 @@ void DOMCache::put(RequestInfo&& info, Ref<FetchResponse>&& response, DOMPromise
         return;
     }
 
-    if (response->hasReadableStreamBody()) {
-        setPendingActivity(this);
-        response->consumeBodyFromReadableStream([promise = WTFMove(promise), request = WTFMove(request), response = WTFMove(response), this](ExceptionOr<RefPtr<SharedBuffer>>&& result) mutable {
-            putWithResponseData(WTFMove(promise), WTFMove(request), WTFMove(response), WTFMove(result));
-            unsetPendingActivity(this);
-        });
-        return;
-    }
+    if (response->isBodyReceivedByChunk()) {
+        response->consumeBodyReceivedByChunk([promise = WTFMove(promise), request = WTFMove(request), response = WTFMove(response), data = SharedBuffer::create(), pendingActivity = makePendingActivity(*this), this](auto&& result) mutable {
 
-    if (response->isLoading()) {
-        setPendingActivity(this);
-        response->consumeBodyWhenLoaded([promise = WTFMove(promise), request = WTFMove(request), response = WTFMove(response), this](ExceptionOr<RefPtr<SharedBuffer>>&& result) mutable {
-            putWithResponseData(WTFMove(promise), WTFMove(request), WTFMove(response), WTFMove(result));
-            unsetPendingActivity(this);
+            if (result.hasException()) {
+                this->putWithResponseData(WTFMove(promise), WTFMove(request), WTFMove(response), result.releaseException().isolatedCopy());
+                return;
+            }
+
+            if (auto chunk = result.returnValue())
+                data->append(reinterpret_cast<const char*>(chunk->data), chunk->size);
+            else
+                this->putWithResponseData(WTFMove(promise), WTFMove(request), WTFMove(response), RefPtr<SharedBuffer> { WTFMove(data) });
         });
         return;
     }
@@ -421,7 +423,7 @@ void DOMCache::retrieveRecords(const URL& url, WTF::Function<void(std::optional<
     m_connection->retrieveRecords(m_identifier, retrieveURL, [this, callback = WTFMove(callback)](RecordsOrError&& result) {
         if (!m_isStopped) {
             if (!result.has_value()) {
-                callback(DOMCacheEngine::errorToException(result.error()));
+                callback(DOMCacheEngine::convertToExceptionAndLog(scriptExecutionContext(), result.error()));
                 return;
             }
 
@@ -470,7 +472,7 @@ void DOMCache::batchDeleteOperation(const FetchRequest& request, CacheQueryOptio
     m_connection->batchDeleteOperation(m_identifier, request.internalRequest(), WTFMove(options), [this, callback = WTFMove(callback)](RecordIdentifiersOrError&& result) {
         if (!m_isStopped) {
             if (!result.has_value())
-                callback(DOMCacheEngine::errorToException(result.error()));
+                callback(DOMCacheEngine::convertToExceptionAndLog(scriptExecutionContext(), result.error()));
             else
                 callback(!result.value().isEmpty());
         }
@@ -513,7 +515,7 @@ void DOMCache::batchPutOperation(Vector<Record>&& records, WTF::Function<void(Ex
     m_connection->batchPutOperation(m_identifier, WTFMove(records), [this, callback = WTFMove(callback)](RecordIdentifiersOrError&& result) {
         if (!m_isStopped) {
             if (!result.has_value())
-                callback(DOMCacheEngine::errorToException(result.error()));
+                callback(DOMCacheEngine::convertToExceptionAndLog(scriptExecutionContext(), result.error()));
             else
                 callback({ });
         }
@@ -531,8 +533,7 @@ void DOMCache::updateRecords(Vector<Record>&& records)
         if (index != notFound) {
             auto& current = m_records[index];
             if (current.updateResponseCounter != record.updateResponseCounter) {
-                auto responseHeaders = FetchHeaders::create(record.responseHeadersGuard, HTTPHeaderMap { record.response.httpHeaderFields() });
-                auto response = FetchResponse::create(*scriptExecutionContext(), std::nullopt, WTFMove(responseHeaders), WTFMove(record.response));
+                auto response = FetchResponse::create(*scriptExecutionContext(), std::nullopt, record.responseHeadersGuard, WTFMove(record.response));
                 response->setBodyData(WTFMove(record.responseBody), record.responseBodySize);
 
                 current.response = WTFMove(response);
@@ -543,8 +544,7 @@ void DOMCache::updateRecords(Vector<Record>&& records)
             auto requestHeaders = FetchHeaders::create(record.requestHeadersGuard, HTTPHeaderMap { record.request.httpHeaderFields() });
             auto request = FetchRequest::create(*scriptExecutionContext(), std::nullopt, WTFMove(requestHeaders),  WTFMove(record.request), WTFMove(record.options), WTFMove(record.referrer));
 
-            auto responseHeaders = FetchHeaders::create(record.responseHeadersGuard, HTTPHeaderMap { record.response.httpHeaderFields() });
-            auto response = FetchResponse::create(*scriptExecutionContext(), std::nullopt, WTFMove(responseHeaders), WTFMove(record.response));
+            auto response = FetchResponse::create(*scriptExecutionContext(), std::nullopt, record.responseHeadersGuard, WTFMove(record.response));
             response->setBodyData(WTFMove(record.responseBody), record.responseBodySize);
 
             newRecords.append(CacheStorageRecord { record.identifier, record.updateResponseCounter, WTFMove(request), WTFMove(response) });

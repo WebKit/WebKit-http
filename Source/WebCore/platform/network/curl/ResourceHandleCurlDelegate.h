@@ -43,6 +43,9 @@ public:
     ResourceHandleCurlDelegate(ResourceHandle*);
     ~ResourceHandleCurlDelegate();
 
+    void ref() override { ThreadSafeRefCounted<ResourceHandleCurlDelegate>::ref(); }
+    void deref() override { ThreadSafeRefCounted<ResourceHandleCurlDelegate>::deref(); }
+
     bool hasHandle() const;
     void releaseHandle();
 
@@ -68,6 +71,7 @@ private:
     bool cancelledOrClientless();
 
     Ref<CurlRequest> createCurlRequest(ResourceRequest&);
+    void curlDidSendData(unsigned long long bytesSent, unsigned long long totalBytesToBeSent) override;
     void curlDidReceiveResponse(const CurlResponse&) override;
     void curlDidReceiveBuffer(Ref<SharedBuffer>&&) override;
     void curlDidComplete() override;

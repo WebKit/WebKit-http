@@ -138,7 +138,7 @@ void Engine::retrieveCaches(const WebCore::ClientOrigin& origin, uint64_t update
             return;
         }
 
-        callback(cachesOrError.value().get().cacheInfos(updateCounter));
+        cachesOrError.value().get().cacheInfos(updateCounter, WTFMove(callback));
     });
 }
 
@@ -414,13 +414,14 @@ void Engine::clearCachesForOrigin(const WebCore::SecurityOriginData& origin, Cal
     for (auto& folderPath : WebCore::FileSystem::listDirectory(m_rootPath, "*")) {
         if (!WebCore::FileSystem::fileIsDirectory(folderPath, WebCore::FileSystem::ShouldFollowSymbolicLinks::No))
             continue;
-        Caches::retrieveOriginFromDirectory(folderPath, *m_ioQueue, [this, protectedThis = makeRef(*this), origin, taskHandler = makeRef(taskHandler)] (std::optional<WebCore::ClientOrigin>&& folderOrigin) mutable {
+        Caches::retrieveOriginFromDirectory(folderPath, *m_ioQueue, [this, protectedThis = makeRef(*this), origin, taskHandler = makeRef(taskHandler), folderPath] (std::optional<WebCore::ClientOrigin>&& folderOrigin) mutable {
             if (!folderOrigin)
                 return;
             if (folderOrigin->topOrigin != origin && folderOrigin->clientOrigin != origin)
                 return;
 
-            m_ioQueue->dispatch([path = cachesRootPath(*folderOrigin), taskHandler = WTFMove(taskHandler)] {
+            ASSERT(folderPath == cachesRootPath(*folderOrigin));
+            m_ioQueue->dispatch([path = folderPath.isolatedCopy(), taskHandler = WTFMove(taskHandler)] {
                 deleteDirectoryRecursively(path);
             });
         });

@@ -78,8 +78,9 @@ CSSParserContext::CSSParserContext(Document& document, const URL& sheetBaseURL, 
     , mode(document.inQuirksMode() ? HTMLQuirksMode : HTMLStandardMode)
     , isHTMLDocument(document.isHTMLDocument())
     , cssGridLayoutEnabled(document.isCSSGridLayoutEnabled())
-    , hasDocumentSecurityOrigin(document.securityOrigin().canRequest(baseURL))
+    , hasDocumentSecurityOrigin(sheetBaseURL.isNull() || document.securityOrigin().canRequest(baseURL))
 {
+    
     needsSiteSpecificQuirks = document.settings().needsSiteSpecificQuirks();
     enforcesCSSMIMETypeInNoQuirksMode = document.settings().enforceCSSMIMETypeInNoQuirksMode();
     useLegacyBackgroundSizeShorthandBehavior = document.settings().useLegacyBackgroundSizeShorthandBehavior();
@@ -90,7 +91,8 @@ CSSParserContext::CSSParserContext(Document& document, const URL& sheetBaseURL, 
     constantPropertiesEnabled = document.settings().constantPropertiesEnabled();
     conicGradientsEnabled = document.settings().conicGradientsEnabled();
     deferredCSSParserEnabled = document.settings().deferredCSSParserEnabled();
-
+    allowNewLinesClamp = document.settings().appleMailLinesClampEnabled();
+    
 #if PLATFORM(IOS)
     // FIXME: Force the site specific quirk below to work on iOS. Investigating other site specific quirks
     // to see if we can enable the preference all together is to be handled by:

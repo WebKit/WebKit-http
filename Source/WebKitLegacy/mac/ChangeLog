@@ -1,3 +1,215 @@
+2018-01-30  Don Olmstead  <don.olmstead@sony.com>
+
+        JSExports.h should be included as <JavaScriptCore/JSExportMacros.h>
+        https://bugs.webkit.org/show_bug.cgi?id=182312
+
+        Reviewed by Michael Catanzaro.
+
+        * WebKitPrefix.h:
+
+2018-01-29  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Add a compile-time feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=182211
+        <rdar://problem/36936365>
+
+        Reviewed by Brent Fulgham.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-01-27  Dan Bernstein  <mitz@apple.com>
+
+        HaveInternalSDK includes should be "#include?"
+        https://bugs.webkit.org/show_bug.cgi?id=179670
+
+        * Configurations/Base.xcconfig:
+
+2018-01-24  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused QTKit preference
+        https://bugs.webkit.org/show_bug.cgi?id=181968
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences setQTKitEnabled:]): Deleted.
+        (-[WebPreferences isQTKitEnabled]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2018-01-23  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Harden against layout passes triggered when iterating through HTMLFormElement::associatedElements
+        https://bugs.webkit.org/show_bug.cgi?id=182037
+        <rdar://problem/36747812>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rename associatedElements() to unsafeAssociatedElements(), and add ScriptDisallowedScopes. See WebCore ChangeLog
+        for more details.
+
+        * WebView/WebHTMLRepresentation.mm:
+        (-[WebHTMLRepresentation elementWithName:inForm:]):
+        (-[WebHTMLRepresentation controlsInForm:]):
+
+2018-01-23  Alex Christensen  <achristensen@webkit.org>
+
+        Use CompletionHandlers for ResourceHandleClient::didReceiveResponseAsync
+        https://bugs.webkit.org/show_bug.cgi?id=181961
+
+        Reviewed by Michael Catanzaro.
+
+        * WebView/WebPreferences.mm:
+
+2018-01-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r227437.
+        https://bugs.webkit.org/show_bug.cgi?id=182011
+
+        broke build (Requested by alexchristensen on #webkit).
+
+        Reverted changeset:
+
+        "Remove unused QTKit preference"
+        https://bugs.webkit.org/show_bug.cgi?id=181968
+        https://trac.webkit.org/changeset/227437
+
+2018-01-23  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused QTKit preference
+        https://bugs.webkit.org/show_bug.cgi?id=181968
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences setQTKitEnabled:]): Deleted.
+        (-[WebPreferences isQTKitEnabled]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2018-01-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        WebViews created via -initSimpleHTMLDocumentWithStyle: don't propagate attachmentElementEnabled state
+        https://bugs.webkit.org/show_bug.cgi?id=181960
+        <rdar://problem/36431678>
+
+        Reviewed by Tim Horton.
+
+        Mail's compose view is initialized via the -initSimpleHTMLDocumentWithStyle: codepath. This is intended to be
+        a fast path for initializing WebViews, which bypasses certain initialization steps present in the regular -init
+        path, such as calling -_preferencesChanged: to sync RuntimeEnabledFeatures with WebPreferences.
+
+        This means that even though we set -[WebPreferences attachmentElementEnabled] to YES for Mail, the value of the
+        RuntimeEnabledFeature isn't updated to match. To fix this, we explicitly invoke
+        RuntimeEnabledFeatures::setAttachmentElementEnabled here to make sure the value is in sync with WebPreferences.
+
+        * WebView/WebView.mm:
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+
+2018-01-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Turning off custom pasteboard data doesn't actually turn it off in WK2
+        https://bugs.webkit.org/show_bug.cgi?id=181920
+        <rdar://problem/36686429>
+
+        Reviewed by Wenson Hsieh.
+
+        Always disable custom pasteboard data in WebKit1. See r226156 for details.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2018-01-21  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add a new feature flag for EXTRA_ZOOM_MODE and reintroduce AdditionalFeatureDefines.h
+        https://bugs.webkit.org/show_bug.cgi?id=181918
+
+        Reviewed by Tim Horton.
+
+        Add EXTRA_ZOOM_MODE to FeatureDefines.xconfig (off by default).
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-01-20  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Stop eagerly loading PassKit.framework
+        https://bugs.webkit.org/show_bug.cgi?id=181911
+        <rdar://problem/36555369>
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebPaymentCoordinatorClient.h:
+        * WebCoreSupport/WebPaymentCoordinatorClient.mm:
+        (WebPaymentCoordinatorClient::validatedPaymentNetwork):
+
+        Implemented PaymentCoordinatorClient::validatedPaymentNetwork().
+
+2018-01-19  Dean Jackson  <dino@apple.com>
+
+        REGRESSION (r221092): Swipe actions are hard to perform in FastMail app
+        https://bugs.webkit.org/show_bug.cgi?id=181817
+        <rdar://problem/35274055>
+
+        Reviewed by Simon Fraser.
+
+        Add a linked-on-or-after check to set passive touch listeners on document in WebCore.
+
+        * Misc/WebKitVersionChecks.h:
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+
+2018-01-19  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused WebViewPrivate _allowCookies
+        https://bugs.webkit.org/show_bug.cgi?id=181812
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebView.mm:
+        (+[WebView _setAllowCookies:]): Deleted.
+        (+[WebView _allowCookies]): Deleted.
+        * WebView/WebViewPrivate.h:
+
+2018-01-18  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix, remove a call to -[NSWindow setOneShot:]
+        https://bugs.webkit.org/show_bug.cgi?id=181809
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebTextCompletionController.mm:
+        (-[WebTextCompletionController _buildUI]):
+
+2018-01-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, suppress deprecation warnings to fix the build with a newer SDK.
+
+        * Carbon/HIWebView.mm:
+        (overrideCGContext):
+        (restoreCGContext):
+
+2018-01-18  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Streamline and future-proof target-macOS-version-dependent build setting definitions
+        https://bugs.webkit.org/show_bug.cgi?id=181803
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig: Updated.
+        * Configurations/DebugRelease.xcconfig: Ditto.
+        * Configurations/FeatureDefines.xcconfig: Adopted macOSTargetConditionals helpers.
+        * Configurations/Version.xcconfig: Updated.
+        * Configurations/macOSTargetConditionals.xcconfig: Added. Defines helper build settings
+          useful for defining settings that depend on the target macOS version.
+
 2018-01-17  Youenn Fablet  <youenn@apple.com>
 
         Put fetch Request.keepalive behind a runtime flag
