@@ -168,18 +168,17 @@ static MediaKeyStatus mediaKeyStatusFromOpenCDM(std::string& keyStatus)
     return MediaKeyStatus::InternalError;
 }
 
-static size_t messageLength(std::string& message, std::string& request)
+static RefPtr<SharedBuffer> cleanResponseMessage(std::string& message)
 {
-    size_t length = 0;
-    std::string delimiter = ":Type:";
-    std::string requestType = message.substr(0, message.find(delimiter));
-    // FIXME: What is with this weirdness?
-    if (requestType.size() && requestType.size() == (request.size() + 1))
-        length = requestType.size() + delimiter.size();
-    else
-        length = request.length();
-    GST_TRACE("delimiter.size = %u, delimiter = %s, requestType.size = %u, requestType = %s, request.size = %u, request = %s", delimiter.size(), delimiter.c_str(), requestType.size(), requestType.c_str(), request.size(), request.c_str());
-    return length;
+    // If message does not begin with "message:", we bail out empty.
+    if (message.compare(0, 8, "message:"))
+        return { };
+
+    // Check the following 5 characters, if they are Type: we skip them as well.
+    unsigned offset = !message.compare(8, 5, "Type:") ? 13 : 8;
+
+    RefPtr<SharedBuffer> cleanResponseMessage = SharedBuffer::create(message.c_str() + offset, message.size() - offset);
+    return cleanResponseMessage;
 }
 
 Ref<CDMInstanceOpenCDM::Session> CDMInstanceOpenCDM::Session::create(const media::OpenCdm& source, Ref<WebCore::SharedBuffer>&& initData)
@@ -293,15 +292,10 @@ void CDMInstanceOpenCDM::updateLicense(const String& sessionId, LicenseType, con
     } else if (keyStatus != media::OpenCdm::KeyStatus::InternalError) {
         // FIXME: Using JSON reponse messages is much cleaner than using string prefixes, I believe there
         // will even be other parts of the spec where not having structured data will be bad.
-        std::string request = "message:";
-        if (!responseMessage.compare(0, request.length(), request.c_str())) {
-            size_t offset = messageLength(responseMessage, request);
-            const uint8_t* messageStart = reinterpret_cast<const uint8_t*>(responseMessage.c_str() + offset);
-            size_t messageLength = responseMessage.length() - offset;
-            GST_MEMDUMP("OpenCDM::update got this message for us", messageStart, messageLength);
-            Ref<SharedBuffer> nextMessage = SharedBuffer::create(messageStart, messageLength);
-            CDMInstance::Message message = std::make_pair(MediaKeyMessageType::LicenseRequest, WTFMove(nextMessage));
-            callback(false, std::nullopt, std::nullopt, std::move(message), SuccessValue::Succeeded);
+        RefPtr<SharedBuffer> cleanMessage = cleanResponseMessage(responseMessage);
+        if (cleanMessage) {
+            GST_MEMDUMP("OpenCDM::update got this message for us", reinterpret_cast<const uint8_t*>(cleanMessage->data()), cleanMessage->size());
+            callback(false, std::nullopt, std::nullopt, std::make_pair(MediaKeyMessageType::LicenseRequest, cleanMessage.releaseNonNull()), SuccessValue::Succeeded);
         } else {
             GST_ERROR("OpenCDM::update claimed to have a message, but it was not correctly formatted");
             callback(false, std::nullopt, std::nullopt, std::nullopt, SuccessValue::Failed);
@@ -323,11 +317,8 @@ void CDMInstanceOpenCDM::loadSession(LicenseType, const String& sessionId, const
     SessionLoadFailure sessionFailure(SessionLoadFailure::None);
 
     if (!session->load(responseMessage)) {
-        std::string request = "message:";
-        if (!responseMessage.compare(0, request.length(), request.c_str())) {
-            size_t length = messageLength(responseMessage, request);
-            GST_TRACE("message length %u", length);
-            auto message = SharedBuffer::create(responseMessage.c_str() + length, responseMessage.length() - length);
+        if (!responseMessage.compare(0, 8, "message:")) {
+            GST_TRACE("message length %u", responseMessage.size());
             callback(std::nullopt, std::nullopt, std::nullopt, SuccessValue::Succeeded, sessionFailure);
         } else {
             SharedBuffer& initData(session->initData());
@@ -354,17 +345,15 @@ void CDMInstanceOpenCDM::removeSessionData(const String& sessionId, LicenseType,
     KeyStatusVector keys;
 
     if (!session->remove(responseMessage)) {
-        std::string request = "message:";
-        if (!responseMessage.compare(0, request.length(), request.c_str())) {
-            size_t length = messageLength(responseMessage, request);
-            GST_TRACE("message length %u", length);
-
-            auto message = SharedBuffer::create(responseMessage.c_str() + length, responseMessage.length() - length);
+        RefPtr<SharedBuffer> cleanMessage = cleanResponseMessage(responseMessage);
+        if (cleanMessage) {
+            GST_TRACE("message length %u", cleanMessage->size());
             SharedBuffer& initData = session->initData();
-            std::string status = "KeyReleased";
-            MediaKeyStatus keyStatus = mediaKeyStatusFromOpenCDM(status);
-            keys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus>{initData, keyStatus});
-            callback(WTFMove(keys), std::move(WTFMove(message)), SuccessValue::Succeeded);
+            keys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus>{initData, MediaKeyStatus::Released});
+            callback(WTFMove(keys), cleanMessage.releaseNonNull(), SuccessValue::Succeeded);
+        } else {
+            GST_ERROR("OpenCDM::update claimed to have a message, but it was not correctly formatted");
+            callback(WTFMove(keys), std::nullopt, SuccessValue::Failed);
         }
     } else {
         SharedBuffer& initData(session->initData());
