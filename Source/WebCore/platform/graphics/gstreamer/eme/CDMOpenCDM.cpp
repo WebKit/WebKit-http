@@ -190,6 +190,7 @@ CDMInstanceOpenCDM::Session::Session(const media::OpenCdm& source, Ref<WebCore::
     : m_session(source)
     , m_initData(WTFMove(initData))
 {
+    // FIXME: This can be a source of overflows and other big errors. This should be fixed in the framework and then fixed here.
     uint8_t temporaryURL[1024];
     uint16_t temporaryURLLength = sizeof(temporaryURL);
 
