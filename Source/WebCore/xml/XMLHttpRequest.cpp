@@ -733,8 +733,11 @@ ExceptionOr<void> XMLHttpRequest::createRequest()
     options.sameOriginDataURLFlag = SameOriginDataURLFlag::Set;
     options.filteringPolicy = ResponseFilteringPolicy::Enable;
 
-    if (m_responseType == ResponseType::Arraybuffer || getenv("WPE_DISABLE_XHR_RESPONSE_CACHING"))
+    if (m_responseType == ResponseType::Arraybuffer || getenv("WPE_DISABLE_XHR_RESPONSE_CACHING")) {
         options.dataBufferingPolicy = DoNotBufferData;
+        options.cachingPolicy = CachingPolicy::DisallowCaching;
+        request.setCachePolicy(DoNotUseAnyCache);
+    }
 
     if (m_timeoutMilliseconds) {
         if (!m_async)
