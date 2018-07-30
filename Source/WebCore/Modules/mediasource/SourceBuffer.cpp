@@ -689,9 +689,6 @@ static PlatformTimeRanges removeSamplesFromTrackBuffer(const DecodeOrderSampleMa
     UNUSED_PARAM(buffer);
 #endif
 
-#if USE(GSTREAMER)
-    MediaTime microsecond = MediaTime::createWithDouble(0.000001);
-#endif
     PlatformTimeRanges erasedRanges;
     for (auto& sampleIt : samples) {
         const DecodeOrderSampleMap::KeyType& decodeKey = sampleIt.first;
@@ -710,11 +707,7 @@ static PlatformTimeRanges removeSamplesFromTrackBuffer(const DecodeOrderSampleMa
             trackBuffer.decodeQueue.erase(decodeKey);
 
         auto startTime = sample->presentationTime();
-#if USE(GSTREAMER)
-        auto endTime = startTime + sample->duration() + microsecond;
-#else
         auto endTime = startTime + sample->duration();
-#endif
         erasedRanges.add(startTime, endTime);
 
 #if !LOG_DISABLED
@@ -959,6 +952,11 @@ void SourceBuffer::evictCodedFrames(size_t newDataSize)
 
     MediaTime rangeStart = buffered.start(0);
     MediaTime rangeEnd = rangeStart + thirtySeconds;
+
+    if (MediaTime::zeroTime() != rangeStart && rangeStart < maximumRangeEnd) {
+        removeCodedFrames(MediaTime::zeroTime(), rangeStart, true);
+    }
+
     while (rangeStart < maximumRangeEnd) {
         auto removalRange = PlatformTimeRanges(rangeStart, std::min(rangeEnd, maximumRangeEnd));
         removalRange.intersectWith(buffered);
