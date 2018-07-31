@@ -975,32 +975,34 @@ void CachedResourceStreamingClient::dataReceived(PlatformMediaResource&, const c
     // Now split the recv'd buffer into buffers that are of a size basesrc suggests. It is important not
     // to push buffers that are too large, otherwise incorrect buffering messages can be sent from the
     // pipeline.
-    uint64_t bufferSize = gst_buffer_get_size(priv->buffer.get());
-    uint64_t blockSize = static_cast<uint64_t>(GST_BASE_SRC_CAST(priv->appsrc)->blocksize);
-    ASSERT(blockSize);
-    GST_LOG_OBJECT(src, "Splitting the received buffer into %" PRIu64 " blocks", bufferSize / blockSize);
-    for (uint64_t currentOffset = 0; currentOffset < bufferSize; currentOffset += blockSize) {
+    uint64_t blockSize = static_cast<uint64_t>(gst_base_src_get_blocksize(GST_BASE_SRC_CAST(priv->appsrc)));
+    GST_LOG_OBJECT(src, "Splitting the received buffer into %" PRIu64 " blocks", length / blockSize);
+    // FIXME: Use GstBufferLists when we upgrade to 1.14.1 instead of pushing individual buffers.
+    for (uint64_t currentOffset = 0; currentOffset < length; currentOffset += blockSize) {
         uint64_t subBufferOffset = startingOffset + currentOffset;
-        uint64_t currentOffsetSize = std::min(blockSize, bufferSize - currentOffset);
+        uint64_t currentOffsetSize = std::min(blockSize, length - currentOffset);
 
         GST_TRACE_OBJECT(src, "Create sub-buffer from [%" PRIu64 ", %" PRIu64 "]", currentOffset, currentOffset + currentOffsetSize);
-        GstBuffer* subBuffer = gst_buffer_copy_region(priv->buffer.get(), GST_BUFFER_COPY_ALL, currentOffset, currentOffsetSize);
+        GRefPtr<GstBuffer> subBuffer = adoptGRef(gst_buffer_copy_region(priv->buffer.get(), GST_BUFFER_COPY_ALL, currentOffset, currentOffsetSize));
         if (UNLIKELY(!subBuffer)) {
             GST_ELEMENT_ERROR(src, CORE, FAILED, ("Failed to allocate sub-buffer"), (nullptr));
             break;
         }
 
-        GST_BUFFER_OFFSET(subBuffer) = subBufferOffset;
-        GST_BUFFER_OFFSET_END(subBuffer) = subBufferOffset + currentOffsetSize;
-        GST_TRACE_OBJECT(src, "Set sub-buffer offset bounds [%" PRIu64 ", %" PRIu64 "]", GST_BUFFER_OFFSET(subBuffer), GST_BUFFER_OFFSET_END(subBuffer));
+        GST_BUFFER_OFFSET(subBuffer.get()) = subBufferOffset;
+        GST_BUFFER_OFFSET_END(subBuffer.get()) = subBufferOffset + currentOffsetSize;
+        GST_TRACE_OBJECT(src, "Set sub-buffer offset bounds [%" PRIu64 ", %" PRIu64 "]", GST_BUFFER_OFFSET(subBuffer.get()), GST_BUFFER_OFFSET_END(subBuffer.get()));
 
-        GST_TRACE_OBJECT(src, "Pushing buffer of size %" G_GSIZE_FORMAT " bytes", gst_buffer_get_size(subBuffer));
-        GstFlowReturn ret = gst_app_src_push_buffer(priv->appsrc, subBuffer);
+        GST_TRACE_OBJECT(src, "Pushing buffer of size %" G_GSIZE_FORMAT " bytes", gst_buffer_get_size(subBuffer.get()));
+        GstFlowReturn ret = gst_app_src_push_buffer(priv->appsrc, subBuffer.leakRef());
 
-       if (UNLIKELY(ret != GST_FLOW_OK && ret != GST_FLOW_EOS && ret != GST_FLOW_FLUSHING)) {
+        if (UNLIKELY(ret != GST_FLOW_OK && ret != GST_FLOW_EOS && ret != GST_FLOW_FLUSHING)) {
             GST_ELEMENT_ERROR(src, CORE, FAILED, (nullptr), (nullptr));
             break;
         }
+
+        if (priv->isSeeking)
+            break;
     }
 
     priv->buffer.clear();
