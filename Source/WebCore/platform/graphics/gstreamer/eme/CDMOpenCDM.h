@@ -63,8 +63,7 @@ private:
     public:
         static Ref<Session> create(const media::OpenCdm& source, Ref<WebCore::SharedBuffer>&& initData);
 
-        bool isValid() const { return m_url.empty() == false; }
-        const std::string& url() const { return m_url; }
+        bool isValid() const { return m_isValid; }
         const std::string& message() const { return m_message; }
         bool needsIndividualization() const { return m_needsIndividualization; }
         const Ref<WebCore::SharedBuffer>& initData() const { return m_initData; }
@@ -84,7 +83,7 @@ private:
 
         media::OpenCdm m_session;
         std::string m_message;
-        std::string m_url;
+        bool m_isValid { false };
         bool m_needsIndividualization { false };
         Ref<WebCore::SharedBuffer> m_initData;
         media::OpenCdm::KeyStatus m_lastStatus { media::OpenCdm::KeyStatus::StatusPending };

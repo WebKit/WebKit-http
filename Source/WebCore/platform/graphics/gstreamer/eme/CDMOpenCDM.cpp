@@ -201,10 +201,10 @@ CDMInstanceOpenCDM::Session::Session(const media::OpenCdm& source, Ref<WebCore::
         return;
     }
 
+    m_isValid = temporaryURLLength;
+
     std::string delimiter(":Type:");
     std::string requestType(m_message.substr(0, m_message.find(delimiter)));
-
-    m_url = std::string(reinterpret_cast<const char*>(temporaryURL), temporaryURLLength);
 
     if (requestType.size() && requestType.size() != m_message.size())
         m_message.erase(0, m_message.find(delimiter) + delimiter.length());
