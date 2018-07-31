@@ -289,11 +289,6 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
     m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(0, m_size, TextureMapperGL::ShouldOverwriteRect, GL_DONT_CARE));
 #endif
 #endif
-
-#if ENABLE(ENCRYPTED_MEDIA)
-    // We usually have have two.
-    m_reportedProtectionEvents.reserveInitialCapacity(2);
-#endif
 }
 
 MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
@@ -1340,8 +1335,7 @@ void MediaPlayerPrivateGStreamerBase::dispatchDecryptionKey(GstBuffer* buffer)
 {
     bool eventHandled = gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
         gst_structure_new("drm-cipher", "key", GST_TYPE_BUFFER, buffer, nullptr)));
-    m_needToResendCredentials = m_reportedProtectionEvents.size() > 0;
-    GST_TRACE("emitted decryption cipher key on pipeline, event handled %s, need to resend credentials %s", boolForPrinting(eventHandled), boolForPrinting(m_needToResendCredentials));
+    GST_TRACE("emitted decryption cipher key on pipeline, event handled %s, need to resend credentials %s", boolForPrinting(eventHandled));
 }
 
 void MediaPlayerPrivateGStreamerBase::dispatchDecryptionStructure(GUniquePtr<GstStructure>&& structure)
