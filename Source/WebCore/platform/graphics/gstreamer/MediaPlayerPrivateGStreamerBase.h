@@ -276,8 +276,6 @@ protected:
 
 #if ENABLE(ENCRYPTED_MEDIA)
     RefPtr<const CDMInstance> m_cdmInstance;
-    Vector<GstEventSeqNum> m_reportedProtectionEvents;
-    bool m_needToResendCredentials { false };
 #endif
 
     WeakPtrFactory<MediaPlayerPrivateGStreamerBase> m_weakPtrFactory;
