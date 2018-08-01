@@ -113,7 +113,7 @@ public:
     void removeSessionData(const String&, LicenseType, RemoveSessionDataCallback) final;
     void storeRecordOfKeyUsage(const String&) final { }
 
-    // The init data, is the only way to find a proper session id.
+    // FIXME: For now, the init data is the only way to find a proper session id.
     String sessionIdByInitData(const InitData&) const;
     bool isSessionIdUsable(const String&) const;
 
@@ -122,15 +122,14 @@ private:
     bool removeSession(const String& sessionId);
     RefPtr<Session> lookupSession(const String& sessionId) const;
 
-    media::OpenCdm m_openCDM;
+    String m_keySystem;
     const char* m_mimeType;
+    media::OpenCdm m_openCDM;
     // Protects against concurrent access to m_sessionsMap. In addition to the main thread
     // the GStreamer decryptor elements running in the streaming threads have a need to
     // lookup values in this map.
     mutable Lock m_sessionMapMutex;
     HashMap<String, RefPtr<CDMInstanceOpenCDM::Session>> m_sessionsMap;
-
-    String m_keySystem;
 };
 
 } // namespace WebCore
