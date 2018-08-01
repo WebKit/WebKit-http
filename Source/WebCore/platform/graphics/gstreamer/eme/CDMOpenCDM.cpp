@@ -138,7 +138,7 @@ static CDMInstance::KeyStatus keyStatusFromOpenCDM(media::OpenCdm::KeyStatus key
     }
 }
 
-static CDMInstance::SessionLoadFailure sessionLoadFailureFromOpenCDM(std::string& loadStatus)
+static CDMInstance::SessionLoadFailure sessionLoadFailureFromOpenCDM(const std::string& loadStatus)
 {
     if (loadStatus != "None")
         return CDMInstance::SessionLoadFailure::None;
@@ -151,7 +151,7 @@ static CDMInstance::SessionLoadFailure sessionLoadFailureFromOpenCDM(std::string
     return CDMInstance::SessionLoadFailure::Other;
 }
 
-static MediaKeyStatus mediaKeyStatusFromOpenCDM(std::string& keyStatus)
+static MediaKeyStatus mediaKeyStatusFromOpenCDM(const std::string& keyStatus)
 {
     if (keyStatus == "KeyUsable")
         return MediaKeyStatus::Usable;
@@ -168,7 +168,7 @@ static MediaKeyStatus mediaKeyStatusFromOpenCDM(std::string& keyStatus)
     return MediaKeyStatus::InternalError;
 }
 
-static RefPtr<SharedBuffer> cleanResponseMessage(std::string& message)
+static RefPtr<SharedBuffer> cleanResponseMessage(const std::string& message)
 {
     // If message does not begin with "message:", we bail out empty.
     if (message.compare(0, 8, "message:"))
@@ -214,9 +214,9 @@ CDMInstanceOpenCDM::Session::Session(const media::OpenCdm& source, Ref<WebCore::
 }
 
 CDMInstanceOpenCDM::CDMInstanceOpenCDM(media::OpenCdm& system, const String& keySystem)
-    : m_openCDM(system)
+    : m_keySystem(keySystem)
     , m_mimeType("video/x-h264")
-    , m_keySystem(keySystem)
+    , m_openCDM(system)
 {
     m_openCDM.SelectKeySystem(keySystem.utf8().data());
 }
@@ -241,10 +241,9 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicStr
         return;
     }
 
-    std::string sessionId;
+    // FIXME: Why do we have this weirdness here? It looks like this is a way to reference count on the OpenCDM object.
     media::OpenCdm openCDM(m_openCDM);
-
-    sessionId = openCDM.CreateSession(m_mimeType, reinterpret_cast<const uint8_t*>(rawInitData->data()), rawInitData->size(), openCDMLicenseType(licenseType));
+    std::string sessionId = openCDM.CreateSession(m_mimeType, reinterpret_cast<const uint8_t*>(rawInitData->data()), rawInitData->size(), openCDMLicenseType(licenseType));
 
     if (sessionId.empty()) {
         GST_ERROR("could not create session id");
@@ -314,7 +313,7 @@ void CDMInstanceOpenCDM::loadSession(LicenseType, const String& sessionId, const
         return;
     }
     std::string responseMessage;
-    SessionLoadFailure sessionFailure(SessionLoadFailure::None);
+    SessionLoadFailure sessionFailure = SessionLoadFailure::None;
 
     if (!session->load(responseMessage)) {
         if (!responseMessage.compare(0, 8, "message:")) {
