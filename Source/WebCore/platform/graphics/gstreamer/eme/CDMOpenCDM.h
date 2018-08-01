@@ -64,7 +64,7 @@ private:
         static Ref<Session> create(const media::OpenCdm& source, Ref<WebCore::SharedBuffer>&& initData);
 
         bool isValid() const { return m_isValid; }
-        const std::string& message() const { return m_message; }
+        Ref<SharedBuffer> message() const { ASSERT(m_message); return Ref<SharedBuffer>(*m_message.get()); }
         bool needsIndividualization() const { return m_needsIndividualization; }
         const Ref<WebCore::SharedBuffer>& initData() const { return m_initData; }
         media::OpenCdm::KeyStatus update(const uint8_t* data, const uint16_t length, std::string& response) { m_lastStatus = m_session.Update(data, length, response); return m_lastStatus; }
@@ -82,7 +82,7 @@ private:
         WTF_MAKE_NONCOPYABLE(Session);
 
         media::OpenCdm m_session;
-        std::string m_message;
+        RefPtr<SharedBuffer> m_message;
         bool m_isValid { false };
         bool m_needsIndividualization { false };
         Ref<WebCore::SharedBuffer> m_initData;

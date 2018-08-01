@@ -194,22 +194,23 @@ CDMInstanceOpenCDM::Session::Session(const media::OpenCdm& source, Ref<WebCore::
     uint8_t temporaryURL[1024];
     uint16_t temporaryURLLength = sizeof(temporaryURL);
 
-    m_session.GetKeyMessage(m_message, temporaryURL, temporaryURLLength);
+    std::string message;
+    m_session.GetKeyMessage(message, temporaryURL, temporaryURLLength);
 
-    if (m_message.empty() || !temporaryURLLength) {
-        m_message.clear();
+    if (message.empty() || !temporaryURLLength)
         return;
-    }
 
     m_isValid = temporaryURLLength;
 
-    std::string delimiter(":Type:");
-    std::string requestType(m_message.substr(0, m_message.find(delimiter)));
+    // We could do all operations with String but this way we can save some copies.
+    size_t typePosition = message.find(":Type:");
+    String requestType(message.c_str(), typePosition != std::string::npos ? typePosition : 0);
+    unsigned offset = 0;
+    if (!requestType.isEmpty() && requestType.length() != message.size())
+        offset = typePosition + 6;
 
-    if (requestType.size() && requestType.size() != m_message.size())
-        m_message.erase(0, m_message.find(delimiter) + delimiter.length());
-
-    m_needsIndividualization = requestType.size() == 1 && static_cast<WebCore::MediaKeyMessageType>(std::stoi(requestType)) == CDMInstance::MessageType::IndividualizationRequest;
+    m_message = SharedBuffer::create(message.c_str() + offset, message.size() - offset);
+    m_needsIndividualization = requestType.length() == 1 && static_cast<WebCore::MediaKeyMessageType>(requestType.toInt()) == CDMInstance::MessageType::IndividualizationRequest;
 }
 
 CDMInstanceOpenCDM::CDMInstanceOpenCDM(media::OpenCdm& system, const String& keySystem)
@@ -261,9 +262,7 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicStr
     }
 
     GST_DEBUG("created valid session %s", sessionIdAsString.utf8().data());
-    std::string message = newSession->message();
-    Ref<SharedBuffer> licenseRequestMessage = SharedBuffer::create(message.c_str(), message.size());
-    callback(WTFMove(licenseRequestMessage), sessionIdAsString, newSession->needsIndividualization(), Succeeded);
+    callback(newSession->message(), sessionIdAsString, newSession->needsIndividualization(), Succeeded);
 
     if (!addSession(sessionIdAsString, newSession.ptr()))
         GST_WARNING("Failed to add session %s, the session might already exist, or the allocation failed", sessionId.c_str());
