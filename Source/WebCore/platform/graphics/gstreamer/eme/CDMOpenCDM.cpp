@@ -80,9 +80,9 @@ public:
     bool needsIndividualization() const { return m_needsIndividualization; }
     const Ref<WebCore::SharedBuffer>& initData() const { return m_initData; }
     media::OpenCdm::KeyStatus update(const uint8_t* data, const uint16_t length, std::string& response) { m_lastStatus = m_session.Update(data, length, response); return m_lastStatus; }
-    int load(std::string& response) { return m_session.Load(response); }
-    int remove(std::string& response) { return m_session.Remove(response); }
-    int close() { return m_session.Close(); }
+    bool load(std::string& response) { return !m_session.Load(response); }
+    bool remove(std::string& response) { return !m_session.Remove(response); }
+    bool close() { return !m_session.Close(); }
     media::OpenCdm::KeyStatus lastStatus() const { return m_lastStatus; }
     bool containsInitData(const String& initData) const {
         return m_initData->size() >= initData.sizeInBytes() && memmem(m_initData->data(), m_initData->size(), initData.characters8(), initData.sizeInBytes());
@@ -345,16 +345,16 @@ void CDMInstanceOpenCDM::loadSession(LicenseType, const String& sessionId, const
     std::string responseMessage;
     SessionLoadFailure sessionFailure = SessionLoadFailure::None;
 
-    if (!session->load(responseMessage)) {
-        if (!responseMessage.compare(0, 8, "message:")) {
-            GST_TRACE("message length %u", responseMessage.size());
-            callback(std::nullopt, std::nullopt, std::nullopt, SuccessValue::Succeeded, sessionFailure);
-        } else {
+    if (session->load(responseMessage)) {
+        if (responseMessage.compare(0, 8, "message:")) {
             SharedBuffer& initData(session->initData());
             KeyStatusVector knownKeys;
             MediaKeyStatus keyStatus = mediaKeyStatusFromOpenCDM(responseMessage);
             knownKeys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus>{initData, keyStatus});
             callback(WTFMove(knownKeys), std::nullopt, std::nullopt, SuccessValue::Succeeded, sessionFailure);
+        } else {
+            GST_TRACE("message length %u", responseMessage.size());
+            callback(std::nullopt, std::nullopt, std::nullopt, SuccessValue::Succeeded, sessionFailure);
         }
     } else {
         sessionFailure = sessionLoadFailureFromOpenCDM(responseMessage);
@@ -373,7 +373,7 @@ void CDMInstanceOpenCDM::removeSessionData(const String& sessionId, LicenseType,
     std::string responseMessage;
     KeyStatusVector keys;
 
-    if (!session->remove(responseMessage)) {
+    if (session->remove(responseMessage)) {
         RefPtr<SharedBuffer> cleanMessage = cleanResponseMessage(responseMessage);
         if (cleanMessage) {
             GST_TRACE("message length %u", cleanMessage->size());
