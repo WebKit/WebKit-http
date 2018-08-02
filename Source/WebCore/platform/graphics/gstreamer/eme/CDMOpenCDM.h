@@ -59,35 +59,7 @@ private:
     CDMInstanceOpenCDM(const CDMInstanceOpenCDM&) = delete;
     CDMInstanceOpenCDM& operator=(const CDMInstanceOpenCDM&) = delete;
 
-    class Session : public ThreadSafeRefCounted<Session> {
-    public:
-        static Ref<Session> create(const media::OpenCdm& source, Ref<WebCore::SharedBuffer>&& initData);
-
-        bool isValid() const { return m_isValid; }
-        Ref<SharedBuffer> message() const { ASSERT(m_message); return Ref<SharedBuffer>(*m_message.get()); }
-        bool needsIndividualization() const { return m_needsIndividualization; }
-        const Ref<WebCore::SharedBuffer>& initData() const { return m_initData; }
-        media::OpenCdm::KeyStatus update(const uint8_t* data, const uint16_t length, std::string& response) { m_lastStatus = m_session.Update(data, length, response); return m_lastStatus; }
-        int load(std::string& response) { return m_session.Load(response); }
-        int remove(std::string& response) { return m_session.Remove(response); }
-        int close() { return m_session.Close(); }
-        media::OpenCdm::KeyStatus lastStatus() const { return m_lastStatus; }
-        bool containsInitData(const String& initData) const {
-            return m_initData->size() >= initData.sizeInBytes() && memmem(m_initData->data(), m_initData->size(), initData.characters8(), initData.sizeInBytes());
-        }
-
-    private:
-        Session() = delete;
-        Session(const media::OpenCdm& source, Ref<WebCore::SharedBuffer>&& initData);
-        WTF_MAKE_NONCOPYABLE(Session);
-
-        media::OpenCdm m_session;
-        RefPtr<SharedBuffer> m_message;
-        bool m_isValid { false };
-        bool m_needsIndividualization { false };
-        Ref<WebCore::SharedBuffer> m_initData;
-        media::OpenCdm::KeyStatus m_lastStatus { media::OpenCdm::KeyStatus::StatusPending };
-    };
+    class Session;
 
 public:
     CDMInstanceOpenCDM(media::OpenCdm&, const String&);
@@ -129,7 +101,7 @@ private:
     // the GStreamer decryptor elements running in the streaming threads have a need to
     // lookup values in this map.
     mutable Lock m_sessionMapMutex;
-    HashMap<String, RefPtr<CDMInstanceOpenCDM::Session>> m_sessionsMap;
+    HashMap<String, RefPtr<Session>> m_sessionsMap;
 };
 
 } // namespace WebCore

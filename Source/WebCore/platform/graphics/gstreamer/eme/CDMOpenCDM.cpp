@@ -71,6 +71,36 @@ private:
     media::OpenCdm m_openCDM;
 };
 
+class CDMInstanceOpenCDM::Session : public ThreadSafeRefCounted<CDMInstanceOpenCDM::Session> {
+public:
+    static Ref<Session> create(const media::OpenCdm& source, Ref<WebCore::SharedBuffer>&& initData);
+
+    bool isValid() const { return m_isValid; }
+    Ref<SharedBuffer> message() const { ASSERT(m_message); return Ref<SharedBuffer>(*m_message.get()); }
+    bool needsIndividualization() const { return m_needsIndividualization; }
+    const Ref<WebCore::SharedBuffer>& initData() const { return m_initData; }
+    media::OpenCdm::KeyStatus update(const uint8_t* data, const uint16_t length, std::string& response) { m_lastStatus = m_session.Update(data, length, response); return m_lastStatus; }
+    int load(std::string& response) { return m_session.Load(response); }
+    int remove(std::string& response) { return m_session.Remove(response); }
+    int close() { return m_session.Close(); }
+    media::OpenCdm::KeyStatus lastStatus() const { return m_lastStatus; }
+    bool containsInitData(const String& initData) const {
+        return m_initData->size() >= initData.sizeInBytes() && memmem(m_initData->data(), m_initData->size(), initData.characters8(), initData.sizeInBytes());
+    }
+
+private:
+    Session() = delete;
+    Session(const media::OpenCdm& source, Ref<WebCore::SharedBuffer>&& initData);
+    WTF_MAKE_NONCOPYABLE(Session);
+
+    media::OpenCdm m_session;
+    RefPtr<SharedBuffer> m_message;
+    bool m_isValid { false };
+    bool m_needsIndividualization { false };
+    Ref<WebCore::SharedBuffer> m_initData;
+    media::OpenCdm::KeyStatus m_lastStatus { media::OpenCdm::KeyStatus::StatusPending };
+};
+
 bool CDMPrivateOpenCDM::supportsConfiguration(const MediaKeySystemConfiguration& config) const
 {
     for (auto& audioCapability : config.audioCapabilities)
