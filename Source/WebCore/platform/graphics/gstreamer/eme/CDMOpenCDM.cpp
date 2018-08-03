@@ -312,9 +312,6 @@ void CDMInstanceOpenCDM::updateLicense(const String& sessionId, LicenseType, con
     if (keyStatus == media::OpenCdm::KeyStatus::Usable) {
         KeyStatusVector changedKeys;
         SharedBuffer& initData(session->initData());
-
-        GST_TRACE("OpenCDM::update returned key is usable");
-
         // FIXME: Why are we passing initData here, we are supposed to be passing key ids.
         changedKeys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus>{initData, keyStatusFromOpenCDM(keyStatus)});
         callback(false, WTFMove(changedKeys), std::nullopt, std::nullopt, SuccessValue::Succeeded);
@@ -323,14 +320,15 @@ void CDMInstanceOpenCDM::updateLicense(const String& sessionId, LicenseType, con
         // will even be other parts of the spec where not having structured data will be bad.
         RefPtr<SharedBuffer> cleanMessage = cleanResponseMessage(responseMessage);
         if (cleanMessage) {
-            GST_MEMDUMP("OpenCDM::update got this message for us", reinterpret_cast<const uint8_t*>(cleanMessage->data()), cleanMessage->size());
+            GST_DEBUG("got message of size %u", cleanMessage->size());
+            GST_MEMDUMP("message", reinterpret_cast<const uint8_t*>(cleanMessage->data()), cleanMessage->size());
             callback(false, std::nullopt, std::nullopt, std::make_pair(MediaKeyMessageType::LicenseRequest, cleanMessage.releaseNonNull()), SuccessValue::Succeeded);
         } else {
-            GST_ERROR("OpenCDM::update claimed to have a message, but it was not correctly formatted");
+            GST_ERROR("message of size %u incorrectly formatted", responseMessage.size());
             callback(false, std::nullopt, std::nullopt, std::nullopt, SuccessValue::Failed);
         }
     } else {
-        GST_ERROR("OpenCDM::update reported error state, update license failed");
+        GST_ERROR("update license reported error state");
         callback(false, std::nullopt, std::nullopt, std::nullopt, SuccessValue::Failed);
     }
 }
@@ -351,13 +349,15 @@ void CDMInstanceOpenCDM::loadSession(LicenseType, const String& sessionId, const
             KeyStatusVector knownKeys;
             MediaKeyStatus keyStatus = mediaKeyStatusFromOpenCDM(responseMessage);
             knownKeys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus>{initData, keyStatus});
+            GST_DEBUG("session %s loaded, status %s", sessionId.utf8().data(), responseMessage.c_str());
             callback(WTFMove(knownKeys), std::nullopt, std::nullopt, SuccessValue::Succeeded, sessionFailure);
         } else {
-            GST_TRACE("message length %u", responseMessage.size());
+            GST_WARNING("session %s loaded, status unknown, message length %u", sessionId.utf8().data(), responseMessage.size());
             callback(std::nullopt, std::nullopt, std::nullopt, SuccessValue::Succeeded, sessionFailure);
         }
     } else {
         sessionFailure = sessionLoadFailureFromOpenCDM(responseMessage);
+        GST_ERROR("session %s not loaded, reason %s", sessionId.utf8().data(), responseMessage.c_str());
         callback(std::nullopt, std::nullopt, std::nullopt, SuccessValue::Failed, sessionFailure);
     }
 }
@@ -366,7 +366,7 @@ void CDMInstanceOpenCDM::removeSessionData(const String& sessionId, LicenseType,
 {
     auto session = lookupSession(sessionId);
     if (!session) {
-        GST_WARNING("cannot remove session's data of %s cause we can't find it", sessionId.utf8().data());
+        GST_WARNING("cannot remove non-existing session %s data", sessionId.utf8().data());
         return;
     }
 
@@ -376,36 +376,47 @@ void CDMInstanceOpenCDM::removeSessionData(const String& sessionId, LicenseType,
     if (session->remove(responseMessage)) {
         RefPtr<SharedBuffer> cleanMessage = cleanResponseMessage(responseMessage);
         if (cleanMessage) {
-            GST_TRACE("message length %u", cleanMessage->size());
             SharedBuffer& initData = session->initData();
             keys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus>{initData, MediaKeyStatus::Released});
+            GST_DEBUG("session %s removed, message length %u", sessionId.utf8().data(), cleanMessage->size());
             callback(WTFMove(keys), cleanMessage.releaseNonNull(), SuccessValue::Succeeded);
         } else {
-            GST_ERROR("OpenCDM::update claimed to have a message, but it was not correctly formatted");
+            GST_WARNING("message of size %u incorrectly formatted as session %s removal answer", responseMessage.size(), sessionId.utf8().data());
             callback(WTFMove(keys), std::nullopt, SuccessValue::Failed);
         }
     } else {
         SharedBuffer& initData(session->initData());
         MediaKeyStatus keyStatus = mediaKeyStatusFromOpenCDM(responseMessage);
         keys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus>{initData, keyStatus});
+        GST_WARNING("could not remove session %s", sessionId.utf8().data());
         callback(WTFMove(keys), std::nullopt, SuccessValue::Failed);
     }
 
-    if (!removeSession(sessionId))
-        GST_WARNING("Failed to remove session %s", sessionId.utf8().data());
+#ifndef NDEBUG
+    bool result =
+#endif
+        removeSession(sessionId);
+    ASSERT(result);
 }
 
 void CDMInstanceOpenCDM::closeSession(const String& sessionId, CloseSessionCallback callback)
 {
     auto session = lookupSession(sessionId);
     if (!session) {
-        GST_WARNING("cannot close session %s because it does not exist", sessionId.utf8().data());
+        GST_WARNING("cannot close non-existing session %s", sessionId.utf8().data());
         return;
     }
-    session->close();
+#ifndef NDEBUG
+    bool result =
+#endif
+        session->close();
+    ASSERT(result);
 
-    if (!removeSession(sessionId))
-        GST_WARNING("Failed to remove session %s", sessionId.utf8().data());
+#ifndef NDEBUG
+    result =
+#endif
+        removeSession(sessionId);
+    ASSERT(result);
 
     callback();
 }
