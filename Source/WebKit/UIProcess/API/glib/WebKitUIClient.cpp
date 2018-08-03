@@ -21,6 +21,7 @@
 #include "WebKitUIClient.h"
 
 #include "APIUIClient.h"
+#include "DrawingAreaProxy.h"
 #include "WebKitFileChooserRequestPrivate.h"
 #include "WebKitGeolocationPermissionRequestPrivate.h"
 #include "WebKitNavigationActionPrivate.h"
@@ -159,7 +160,11 @@ private:
         completionHandler(WebCore::FloatRect(geometry));
 #elif PLATFORM(WPE)
         // FIXME: I guess this is actually the view size in WPE. We need more refactoring here.
-        completionHandler({ });
+        WebCore::FloatRect rect;
+        auto& page = webkitWebViewGetPage(m_webView);
+        if (page.drawingArea())
+            rect.setSize(page.drawingArea()->size());
+        completionHandler(WTFMove(rect));
 #endif
     }
 

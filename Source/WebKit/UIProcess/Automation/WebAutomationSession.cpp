@@ -1505,7 +1505,7 @@ void WebAutomationSession::simulateKeyboardInteraction(WebPageProxy& page, Keybo
     // Wait for keyboardEventsFlushedCallback to run when all events are handled.
 }
 
-#if USE(APPKIT) || PLATFORM(GTK)
+#if USE(APPKIT) || PLATFORM(GTK) || PLATFORM(WPE)
 static WebEvent::Modifiers protocolModifierToWebEventModifier(Inspector::Protocol::Automation::KeyModifier modifier)
 {
     switch (modifier) {
@@ -1539,11 +1539,11 @@ static WebMouseEvent::Button protocolMouseButtonToWebMouseEventButton(Inspector:
 
     RELEASE_ASSERT_NOT_REACHED();
 }
-#endif // USE(APPKIT) || PLATFORM(GTK)
+#endif // USE(APPKIT) || PLATFORM(GTK) || PLATFORM(WPE)
 
 void WebAutomationSession::performMouseInteraction(Inspector::ErrorString& errorString, const String& handle, const JSON::Object& requestedPositionObject, const String& mouseButtonString, const String& mouseInteractionString, const JSON::Array& keyModifierStrings, Ref<PerformMouseInteractionCallback>&& callback)
 {
-#if !USE(APPKIT) && !PLATFORM(GTK)
+#if !USE(APPKIT) && !PLATFORM(GTK) && !PLATFORM(WPE)
     FAIL_WITH_PREDEFINED_ERROR(NotImplemented);
 #else
     WebPageProxy* page = webPageProxyForHandle(handle);
@@ -1612,12 +1612,12 @@ void WebAutomationSession::performMouseInteraction(Inspector::ErrorString& error
             callbackToCancel(std::nullopt);
         }
     });
-#endif // USE(APPKIT) || PLATFORM(GTK)
+#endif // USE(APPKIT) || PLATFORM(GTK) || PLATFORM(WPE)
 }
 
 void WebAutomationSession::performKeyboardInteractions(ErrorString& errorString, const String& handle, const JSON::Array& interactions, Ref<PerformKeyboardInteractionsCallback>&& callback)
 {
-#if !PLATFORM(COCOA) && !PLATFORM(GTK)
+#if !PLATFORM(COCOA) && !PLATFORM(GTK) && !PLATFORM(WPE)
     FAIL_WITH_PREDEFINED_ERROR(NotImplemented);
 #else
     WebPageProxy* page = webPageProxyForHandle(handle);
@@ -1694,10 +1694,10 @@ void WebAutomationSession::performKeyboardInteractions(ErrorString& errorString,
 
     for (auto& action : actionsToPerform)
         action();
-#endif // PLATFORM(COCOA) || PLATFORM(GTK)
+#endif // PLATFORM(COCOA) || PLATFORM(GTK) || PLATFORM(WPE)
 }
 
-#if USE(APPKIT) || PLATFORM(GTK)
+#if USE(APPKIT) || PLATFORM(GTK) || PLATFORM(WPE)
 static SimulatedInputSourceType simulatedInputSourceTypeFromProtocolSourceType(Inspector::Protocol::Automation::InputSourceType protocolType)
 {
     switch (protocolType) {
@@ -1713,13 +1713,13 @@ static SimulatedInputSourceType simulatedInputSourceTypeFromProtocolSourceType(I
 
     RELEASE_ASSERT_NOT_REACHED();
 }
-#endif // USE(APPKIT) || PLATFORM(GTK)
+#endif // USE(APPKIT) || PLATFORM(GTK) || PLATFORM(WPE)
 
 void WebAutomationSession::performInteractionSequence(ErrorString& errorString, const String& handle, const String* optionalFrameHandle, const JSON::Array& inputSources, const JSON::Array& steps, Ref<WebAutomationSession::PerformInteractionSequenceCallback>&& callback)
 {
     // This command implements WebKit support for §17.5 Perform Actions.
 
-#if !USE(APPKIT) && !PLATFORM(GTK)
+#if !USE(APPKIT) && !PLATFORM(GTK) && !PLATFORM(WPE)
     FAIL_WITH_PREDEFINED_ERROR(NotImplemented);
 #else
     WebPageProxy* page = webPageProxyForHandle(handle);
@@ -1870,14 +1870,14 @@ void WebAutomationSession::performInteractionSequence(ErrorString& errorString, 
         else
             callback->sendSuccess();
     });
-#endif // PLATFORM(COCOA) || PLATFORM(GTK)
+#endif // PLATFORM(COCOA) || PLATFORM(GTK) || PLATFORM(WPE)
 }
 
 void WebAutomationSession::cancelInteractionSequence(ErrorString& errorString, const String& handle, const String* optionalFrameHandle, Ref<CancelInteractionSequenceCallback>&& callback)
 {
     // This command implements WebKit support for §17.6 Release Actions.
 
-#if !USE(APPKIT) && !PLATFORM(GTK)
+#if !USE(APPKIT) && !PLATFORM(GTK) && !PLATFORM(WPE)
     FAIL_WITH_PREDEFINED_ERROR(NotImplemented);
 #else
     WebPageProxy* page = webPageProxyForHandle(handle);
@@ -1898,7 +1898,7 @@ void WebAutomationSession::cancelInteractionSequence(ErrorString& errorString, c
         else
             callback->sendSuccess();
     });
-#endif // PLATFORM(COCOA) || PLATFORM(GTK)
+#endif // PLATFORM(COCOA) || PLATFORM(GTK) || PLATFORM(WPE)
 }
 
 void WebAutomationSession::takeScreenshot(ErrorString& errorString, const String& handle, const String* optionalFrameHandle, const String* optionalNodeHandle, const bool* optionalScrollIntoViewIfNeeded, const bool* optionalClipToViewport, Ref<TakeScreenshotCallback>&& callback)
@@ -1943,19 +1943,19 @@ void WebAutomationSession::didTakeScreenshot(uint64_t callbackID, const Shareabl
 
 // Platform-dependent Implementation Stubs.
 
-#if !PLATFORM(MAC) && !PLATFORM(GTK)
+#if !PLATFORM(MAC) && !PLATFORM(GTK) && !PLATFORM(WPE)
 void WebAutomationSession::platformSimulateMouseInteraction(WebPageProxy&, MouseInteraction, WebMouseEvent::Button, const WebCore::IntPoint&, WebEvent::Modifiers)
 {
 }
-#endif // !PLATFORM(MAC) && !PLATFORM(GTK)
+#endif // !PLATFORM(MAC) && !PLATFORM(GTK) && !PLATFORM(WPE)
 
-#if !PLATFORM(COCOA) && !PLATFORM(GTK)
+#if !PLATFORM(COCOA) && !PLATFORM(GTK) && !PLATFORM(WPE)
 
 
 void WebAutomationSession::platformSimulateKeyboardInteraction(WebPageProxy&, KeyboardInteraction, WTF::Variant<VirtualKey, CharKey>&&)
 {
 }
-#endif // !PLATFORM(COCOA) && !PLATFORM(GTK)
+#endif // !PLATFORM(COCOA) && !PLATFORM(GTK) && !PLATFORM(WPE)
 
 #if !PLATFORM(COCOA) && !USE(CAIRO)
 std::optional<String> WebAutomationSession::platformGetBase64EncodedPNGData(const ShareableBitmap::Handle&)

@@ -43,6 +43,11 @@ JSGlobalContextRef WebPageProxy::javascriptGlobalContext()
     return m_pageClient.javascriptGlobalContext();
 }
 
+struct wpe_view_backend* WebPageProxy::viewBackend()
+{
+    return static_cast<PageClientImpl&>(m_pageClient).viewBackend();
+}
+
 String WebPageProxy::standardUserAgent(const String& applicationNameForUserAgent)
 {
     return "Mozilla/5.0 (Linux; x86_64 GNU/Linux) AppleWebKit/601.1 (KHTML, like Gecko) Version/8.0 Safari/601.1 WPE";

@@ -182,6 +182,10 @@ using FloatBoxExtent = RectEdges<float>;
 typedef GtkWidget* PlatformWidget;
 #endif
 
+#if PLATFORM(WPE)
+struct wpe_view_backend;
+#endif
+
 #if PLATFORM(GTK) || PLATFORM(WPE)
 typedef struct OpaqueJSContext* JSGlobalContextRef;
 #endif
@@ -650,6 +654,9 @@ public:
 
 #if PLATFORM(GTK) || PLATFORM(WPE)
     JSGlobalContextRef javascriptGlobalContext();
+#endif
+#if PLATFORM(WPE)
+    struct wpe_view_backend* viewBackend();
 #endif
 
     bool isProcessingMouseEvents() const;

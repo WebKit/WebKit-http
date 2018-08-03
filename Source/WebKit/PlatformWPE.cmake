@@ -222,6 +222,8 @@ list(APPEND WebKit_SOURCES
 
     UIProcess/Automation/cairo/WebAutomationSessionCairo.cpp
 
+    UIProcess/Automation/wpe/WebAutomationSessionWPE.cpp
+
     UIProcess/Launcher/glib/ProcessLauncherGLib.cpp
 
     UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp
