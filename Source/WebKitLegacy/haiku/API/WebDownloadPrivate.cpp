@@ -66,7 +66,7 @@ WebDownloadPrivate::WebDownloadPrivate(const ResourceRequest& request,
 {
 }
 
-void WebDownloadPrivate::didReceiveResponseAsync(ResourceHandle*, ResourceResponse&& response)
+void WebDownloadPrivate::didReceiveResponseAsync(ResourceHandle*, ResourceResponse&& response, WTF::CompletionHandler<void()>&& handler)
 {
     if (!response.isNull()) {
     	if (!response.suggestedFilename().isEmpty())

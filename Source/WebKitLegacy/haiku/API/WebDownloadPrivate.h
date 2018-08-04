@@ -60,7 +60,7 @@ public:
     WebDownloadPrivate(const ResourceRequest&, WebCore::NetworkingContext*);
 
     // ResourceHandleClient implementation
-    virtual void didReceiveResponseAsync(ResourceHandle*, ResourceResponse&&) override;
+    virtual void didReceiveResponseAsync(ResourceHandle*, ResourceResponse&&, WTF::CompletionHandler<void()>&&) override;
     virtual void didReceiveData(ResourceHandle*, const char*, unsigned, int) override;
     virtual void didFinishLoading(ResourceHandle*) override;
     virtual void didFail(ResourceHandle*, const ResourceError&) override;

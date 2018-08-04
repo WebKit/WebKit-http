@@ -579,7 +579,9 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* caller,
         // didReceiveResponse would crash. Keep a reference to it so it can be
         // deleted cleanly after the function returns.
         RefPtr<ResourceHandle> protectedHandle(m_resourceHandle);
-        protectedHandle->didReceiveResponse(WTFMove(responseCopy));
+        protectedHandle->didReceiveResponse(WTFMove(responseCopy), [this/*, protectedThis = makeRef(*this)*/] {
+            //continueAfterDidReceiveResponse();
+        });
     }
 }
 
