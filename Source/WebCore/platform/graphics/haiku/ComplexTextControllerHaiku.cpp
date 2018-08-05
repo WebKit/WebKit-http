@@ -25,12 +25,13 @@
 #include "config.h"
 #include "ComplexTextController.h"
 
+#include "FontCascade.h"
+
 namespace WebCore {
 
-void ComplexTextController::collectComplexTextRunsForCharacters(const UChar*, unsigned, unsigned, const Font*)
+void ComplexTextController::collectComplexTextRunsForCharacters(const UChar* characters, unsigned length, unsigned stringLocation, const Font* font)
 {
-    // FIXME: Implement this.
-    ASSERT_NOT_REACHED();
+    m_complexTextRuns.append(ComplexTextRun::create(m_font.primaryFont(), characters, stringLocation, length, 0, length, m_run.ltr()));
 }
 
 }
