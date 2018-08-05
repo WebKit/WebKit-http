@@ -42,6 +42,7 @@ class HaikuPort(Port):
         super(HaikuPort, self).__init__(*args, **kwargs)
 
         self.webprocess_cmd_prefix = self.get_option('webprocess_cmd_prefix')
+        self._version = "1.4"
 
     def _port_flag_for_scripts(self):
         return "--haiku"
