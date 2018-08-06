@@ -1218,7 +1218,16 @@ void RenderLayerBacking::updateAfterDescendants()
     if (!m_owningLayer.isRenderViewLayer()) {
         bool didUpdateContentsRect = false;
         updateDirectlyCompositedBoxDecorations(contentsInfo, didUpdateContentsRect);
-        if (!didUpdateContentsRect && m_graphicsLayer->usesContentsLayer())
+
+        // When using hole punch, video GraphicsLayers may not have their platformLayer set when
+        // this is called, which causes the contentsRect not to be set for them. As we are guaranteed
+        // that video elements have a layer using the hole punch, ensure that resetContentsRect() is called
+        // for them.
+        if (!didUpdateContentsRect && (m_graphicsLayer->usesContentsLayer()
+#if USE(HOLE_PUNCH_GSTREAMER) || USE(HOLE_PUNCH_EXTERNAL)
+            || is<RenderVideo>(renderer())
+#endif
+        ))
             resetContentsRect();
     }
 
