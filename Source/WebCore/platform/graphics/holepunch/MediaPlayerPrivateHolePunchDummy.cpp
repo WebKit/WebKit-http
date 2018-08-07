@@ -27,14 +27,11 @@
 #include "config.h"
 #include "MediaPlayerPrivateHolePunchDummy.h"
 
+#if USE(COORDINATED_GRAPHICS_THREADED)
 #include "MediaPlayer.h"
 #include "NotImplemented.h"
 #include "TimeRanges.h"
 #include <wtf/NeverDestroyed.h>
-
-#if ENABLE(MEDIA_SOURCE)
-#include "MediaSource.h"
-#endif
 
 using namespace std;
 
@@ -95,19 +92,16 @@ void MediaPlayerPrivateHolePunchDummy::getSupportedTypes(HashSet<String, ASCIICa
     types = mimeTypeCache();
 }
 
-MediaPlayer::SupportsType MediaPlayerPrivateHolePunchDummy::supportsType(const MediaEngineSupportParameters& parameters)
+MediaPlayer::SupportsType MediaPlayerPrivateHolePunchDummy::supportsType(const MediaEngineSupportParameters&)
 {
-    if (parameters.type.isNull() || parameters.type.isEmpty())
-        return MediaPlayer::IsNotSupported;
-
-    return mimeTypeCache().contains(parameters.type) ? MediaPlayer::IsSupported : MediaPlayer::IsNotSupported;
+    return MediaPlayer::MayBeSupported;
 }
 
 void MediaPlayerPrivateHolePunchDummy::registerMediaEngine(MediaEngineRegistrar registrar)
 {
     registrar([](MediaPlayer* player) { return std::make_unique<MediaPlayerPrivateHolePunchDummy>(player); },
             getSupportedTypes, supportsType, 0, 0, 0,
-              [](const String&, const String&) { return false; });
+              [](const String&, const String&) { return true; });
 }
 
 MediaPlayerPrivateHolePunchDummy::MediaPlayerPrivateHolePunchDummy(MediaPlayer* player)
@@ -120,3 +114,5 @@ MediaPlayerPrivateHolePunchDummy::~MediaPlayerPrivateHolePunchDummy()
 }
 
 }
+
+#endif // USE(COORDINATED_GRAPHICS_THREADED)

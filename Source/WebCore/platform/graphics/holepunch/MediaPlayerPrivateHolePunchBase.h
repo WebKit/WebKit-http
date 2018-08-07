@@ -24,23 +24,20 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaPlayerPrivateHolePunchBase_h
-#define MediaPlayerPrivateHolePunchBase_h
-
-#include "MediaPlayerPrivate.h"
+#pragma once
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
+
+#include "MediaPlayerPrivate.h"
 #include "TextureMapperPlatformLayerProxy.h"
-#endif
+#include "TextureMapperPlatformLayerProxyProvider.h"
 
 namespace WebCore {
 
 class IntSize;
 
 class MediaPlayerPrivateHolePunchBase : public MediaPlayerPrivateInterface
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    , public TextureMapperPlatformLayerProxyProvider
-#endif
+    , public PlatformLayer
 {
 
 public:
@@ -63,21 +60,17 @@ public:
 
     virtual void paint(GraphicsContext&, const FloatRect&) override { };
 
-#if USE(COORDINATED_GRAPHICS_THREADED)
     virtual PlatformLayer* platformLayer() const override { return const_cast<MediaPlayerPrivateHolePunchBase*>(this); }
     virtual bool supportsAcceleratedRendering() const override { return true; }
     virtual RefPtr<TextureMapperPlatformLayerProxy> proxy() const override { return m_platformLayerProxy.copyRef(); }
-    virtual void swapBuffersIfNeeded() override { };
-#endif
+    virtual void swapBuffersIfNeeded() override;
 
 private:
     MediaPlayer* m_player;
     IntSize m_size;
-#if USE(COORDINATED_GRAPHICS_THREADED)
     RefPtr<TextureMapperPlatformLayerProxy> m_platformLayerProxy;
-#endif
 
 };
 }
 
-#endif
+#endif // USE(COORDINATED_GRAPHICS_THREADED)

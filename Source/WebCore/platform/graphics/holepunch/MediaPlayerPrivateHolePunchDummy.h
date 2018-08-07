@@ -24,8 +24,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaPlayerPrivateHolePunchDummy_h
-#define MediaPlayerPrivateHolePunchDummy_h
+#pragma once
+
+#if USE(COORDINATED_GRAPHICS_THREADED)
 
 #include "MediaPlayerPrivateHolePunchBase.h"
 
@@ -63,4 +64,5 @@ private:
     static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
 };
 }
-#endif
+
+#endif // USE(COORDINATED_GRAPHICS_THREADED)
