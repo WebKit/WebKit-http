@@ -229,14 +229,14 @@ uint32_t ConvertIceTransportTypeToCandidateFilter(
 }
 
 // Helper to set an error and return from a method.
-bool SafeSetError(webrtc::RTCErrorType type, webrtc::RTCError* error) {
+static bool SafeSetError(webrtc::RTCErrorType type, webrtc::RTCError* error) {
   if (error) {
     error->set_type(type);
   }
   return type == webrtc::RTCErrorType::NONE;
 }
 
-bool SafeSetError(webrtc::RTCError error, webrtc::RTCError* error_out) {
+static bool SafeSetError(webrtc::RTCError&& error, webrtc::RTCError* error_out) {
   bool ok = error.ok();
   if (error_out) {
     *error_out = std::move(error);
