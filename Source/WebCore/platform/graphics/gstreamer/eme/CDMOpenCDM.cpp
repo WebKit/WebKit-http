@@ -425,10 +425,14 @@ void CDMInstanceOpenCDM::closeSession(const String& sessionId, CloseSessionCallb
         GST_WARNING("cannot close non-existing session %s", sessionId.utf8().data());
         return;
     }
-    session->close();
-
 #ifndef NDEBUG
     bool result =
+#endif
+        session->close();
+    ASSERT(result);
+
+#ifndef NDEBUG
+    result =
 #endif
         removeSession(sessionId);
     ASSERT(result);
