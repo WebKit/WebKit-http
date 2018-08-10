@@ -1084,6 +1084,13 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
         }
 #endif
 
+#if USE(HOLE_PUNCH_GSTREAMER)
+        // Ensure that the video rectangle is set to the videoSink once we are sure that the
+        // videoSink was created.
+        if (currentState == GST_STATE_NULL && newState == GST_STATE_READY)
+            updateVideoRectangle();
+#endif
+
         if (!messageSourceIsPlaybin || m_delayingLoad)
             break;
         updateStates();
