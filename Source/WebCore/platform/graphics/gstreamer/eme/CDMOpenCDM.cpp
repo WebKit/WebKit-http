@@ -198,16 +198,19 @@ static MediaKeyStatus mediaKeyStatusFromOpenCDM(const String& keyStatus)
     return MediaKeyStatus::InternalError;
 }
 
-static RefPtr<SharedBuffer> cleanResponseMessage(const String& message)
+static RefPtr<SharedBuffer> parseResponseMessage(const String& message)
 {
-    if (!message.startsWith("message:"))
+    const char messageKey[] = "message:";
+    if (!message.startsWith(messageKey))
         return { };
 
     // Check the following 5 characters, if they are Type: we skip them as well.
-    unsigned offset = message.contains("Type:", 8) ? 13 : 8;
+    const char typeKey[] = "Type:";
+    unsigned offset = sizeof(messageKey) - 1;
+    if (message.contains(typeKey, offset))
+        offset += sizeof(typeKey) - 1;
 
-    RefPtr<SharedBuffer> cleanResponseMessage = SharedBuffer::create(message.characters8() + offset, message.sizeInBytes() - offset);
-    return cleanResponseMessage;
+    return SharedBuffer::create(message.characters8() + offset, message.sizeInBytes() - offset);
 }
 
 Ref<CDMInstanceOpenCDM::Session> CDMInstanceOpenCDM::Session::create(const media::OpenCdm& source, Ref<WebCore::SharedBuffer>&& initData)
@@ -337,7 +340,7 @@ void CDMInstanceOpenCDM::updateLicense(const String& sessionId, LicenseType, con
     } else if (result.first != media::OpenCdm::KeyStatus::InternalError) {
         // FIXME: Using JSON reponse messages is much cleaner than using string prefixes, I believe there
         // will even be other parts of the spec where not having structured data will be bad.
-        RefPtr<SharedBuffer> cleanMessage = cleanResponseMessage(result.second);
+        RefPtr<SharedBuffer> cleanMessage = parseResponseMessage(result.second);
         if (cleanMessage) {
             GST_DEBUG("got message of size %u", cleanMessage->size());
             GST_MEMDUMP("message", reinterpret_cast<const uint8_t*>(cleanMessage->data()), cleanMessage->size());
@@ -393,7 +396,7 @@ void CDMInstanceOpenCDM::removeSessionData(const String& sessionId, LicenseType,
 
     auto result = session->remove();
     if (result.first) {
-        RefPtr<SharedBuffer> cleanMessage = cleanResponseMessage(result.second);
+        RefPtr<SharedBuffer> cleanMessage = parseResponseMessage(result.second);
         if (cleanMessage) {
             SharedBuffer& initData = session->initData();
             keys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus>{initData, MediaKeyStatus::Released});
@@ -412,10 +415,10 @@ void CDMInstanceOpenCDM::removeSessionData(const String& sessionId, LicenseType,
     }
 
 #ifndef NDEBUG
-    bool result =
+    bool removeSessionResult =
 #endif
         removeSession(sessionId);
-    ASSERT(result);
+    ASSERT(removeSessionResult);
 }
 
 void CDMInstanceOpenCDM::closeSession(const String& sessionId, CloseSessionCallback callback)
@@ -425,17 +428,13 @@ void CDMInstanceOpenCDM::closeSession(const String& sessionId, CloseSessionCallb
         GST_WARNING("cannot close non-existing session %s", sessionId.utf8().data());
         return;
     }
-#ifndef NDEBUG
-    bool result =
-#endif
-        session->close();
-    ASSERT(result);
+    session->close();
 
 #ifndef NDEBUG
-    result =
+    bool removeSessionResult =
 #endif
         removeSession(sessionId);
-    ASSERT(result);
+    ASSERT(removeSessionResult);
 
     callback();
 }
