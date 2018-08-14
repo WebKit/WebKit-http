@@ -154,6 +154,9 @@ CoordinatedGraphicsLayer::~CoordinatedGraphicsLayer()
         purgeBackingStores();
         m_coordinator->detachLayer(this);
     }
+    if (m_platformLayer)
+        m_platformLayer->setClient(0);
+
     ASSERT(!m_coordinatedImageBacking);
     ASSERT(!m_mainBackingStore);
     willBeDestroyed();
@@ -407,7 +410,13 @@ void CoordinatedGraphicsLayer::setContentsToPlatformLayer(PlatformLayer* platfor
             m_shouldUpdatePlatformLayer = true;
     }
 
+    if (m_platformLayer)
+        m_platformLayer->setClient(0);
+
     m_platformLayer = platformLayer;
+
+    if (m_platformLayer)
+        m_platformLayer->setClient(this);
 
     notifyFlushRequired();
 #else

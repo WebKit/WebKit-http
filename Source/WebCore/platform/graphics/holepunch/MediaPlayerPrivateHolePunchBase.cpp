@@ -52,6 +52,10 @@ MediaPlayerPrivateHolePunchBase::MediaPlayerPrivateHolePunchBase(MediaPlayer* pl
 
 MediaPlayerPrivateHolePunchBase::~MediaPlayerPrivateHolePunchBase()
 {
+#if USE(TEXTURE_MAPPER_GL)
+    if (client())
+        client()->platformLayerWillBeDestroyed();
+#endif
     m_player = 0;
 }
 

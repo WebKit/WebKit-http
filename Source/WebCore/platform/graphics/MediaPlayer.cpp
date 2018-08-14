@@ -265,10 +265,6 @@ static void buildMediaEnginesVector()
         MediaPlayerPrivateQTKit::registerMediaEngine(addMediaEngine);
 #endif
 
-#if USE(HOLE_PUNCH_EXTERNAL)
-    MediaPlayerPrivateHolePunchDummy::registerMediaEngine(addMediaEngine);
-#endif
-
 #if defined(PlatformMediaEngineClassName)
 #if USE(GSTREAMER)
     if (Settings::isGStreamerEnabled())
@@ -284,6 +280,10 @@ static void buildMediaEnginesVector()
 #if ENABLE(VIDEO) && USE(GSTREAMER) && ENABLE(MEDIA_SOURCE) && ENABLE(VIDEO_TRACK)
     if (Settings::isGStreamerEnabled())
         MediaPlayerPrivateGStreamerMSE::registerMediaEngine(addMediaEngine);
+#endif
+
+#if USE(HOLE_PUNCH_EXTERNAL)
+    MediaPlayerPrivateHolePunchDummy::registerMediaEngine(addMediaEngine);
 #endif
 
     haveMediaEnginesVector() = true;

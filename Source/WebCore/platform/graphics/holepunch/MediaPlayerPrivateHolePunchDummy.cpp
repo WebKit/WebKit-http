@@ -46,38 +46,7 @@ static HashSet<String, ASCIICaseInsensitiveHash>& mimeTypeCache()
         return cache;
 
     const char* mimeTypes[] = {
-        "application/ogg",
-        "application/vnd.apple.mpegurl",
-        "application/vnd.rn-realmedia",
-        "application/x-3gp",
-        "application/x-pn-realaudio",
-        "application/x-mpegurl",
-        "video/3gpp",
-        "video/flv",
-        "video/mj2",
-        "video/mp2t",
-        "video/mp4",
-        "video/mpeg",
-        "video/mpegts",
-        "video/ogg",
-        "video/quicktime",
-        "video/vivo",
-        "video/webm",
-        "video/x-cdxa",
-        "video/x-dirac",
-        "video/x-dv",
-        "video/x-fli",
-        "video/x-flv",
-        "video/x-h263",
-        "video/x-ivf",
-        "video/x-m4v",
-        "video/x-matroska",
-        "video/x-mng",
-        "video/x-ms-asf",
-        "video/x-msvideo",
-        "video/x-mve",
-        "video/x-nuv",
-        "video/x-vcd"
+        "video/holepunch"
     };
 
     for (unsigned i = 0; i < (sizeof(mimeTypes) / sizeof(*mimeTypes)); ++i)
@@ -92,9 +61,18 @@ void MediaPlayerPrivateHolePunchDummy::getSupportedTypes(HashSet<String, ASCIICa
     types = mimeTypeCache();
 }
 
-MediaPlayer::SupportsType MediaPlayerPrivateHolePunchDummy::supportsType(const MediaEngineSupportParameters&)
+MediaPlayer::SupportsType MediaPlayerPrivateHolePunchDummy::supportsType(const MediaEngineSupportParameters& parameters)
 {
-    return MediaPlayer::MayBeSupported;
+    auto containerType = parameters.type.containerType();
+
+    // Spec says we should not return "probably" if the codecs string is empty.
+    if (!containerType.isEmpty() && mimeTypeCache().contains(containerType))
+        if (parameters.type.codecs().isEmpty())
+            return MediaPlayer::MayBeSupported;
+        else
+            return MediaPlayer::IsSupported;
+
+    return MediaPlayer::IsNotSupported;
 }
 
 void MediaPlayerPrivateHolePunchDummy::registerMediaEngine(MediaEngineRegistrar registrar)
