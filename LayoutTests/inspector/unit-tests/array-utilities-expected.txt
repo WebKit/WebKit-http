@@ -1,0 +1,77 @@
+
+== Running test suite: ArrayUtilities
+-- Running test case: Array.prototype.lowerBound
+PASS: lowerBound of a value before the first value should produce the first index.
+PASS: lowerBound of a value in the list should return the value's index.
+PASS: lowerBound of a value in the list should return the value's index.
+PASS: lowerBound of a value in the list should return the value's index.
+PASS: lowerBound of a duplicate value in the list should return the value's first index.
+PASS: lowerBound of a value in a gap in the list should return the index where the value would be.
+PASS: lowerBound of a value after the last value should produce the index after the last index (length).
+PASS: lowerBound with a comparator should invoke the comparator with the search value and a value in the list.
+
+-- Running test case: Array.prototype.upperBound
+PASS: upperBound of a value before the first value should produce the first index.
+PASS: upperBound of a value in the list should return the next index after the value.
+PASS: upperBound of a value in the list should return the next index after the value.
+PASS: upperBound of a value in the list should return the next index after the value.
+PASS: upperBound of a duplicate value in the list should return the next index after the value's last index.
+PASS: upperBound of a value in a gap in the list should return the index where the value would be.
+PASS: upperBound of a value after the last value should produce the index after the last index (length).
+PASS: upperBound with a comparator should invoke the comparator with the search value and a value in the list.
+
+-- Running test case: Array.prototype.binaryIndexOf
+PASS: binaryIndexOf of a value not in the list should be -1.
+PASS: binaryIndexOf of a value not in the list should be -1.
+PASS: binaryIndexOf of a value in the list should return the index of the value.
+PASS: binaryIndexOf of a duplicate value in the list should return the first index of the value.
+
+-- Running test case: Array.prototype.partition
+PASS: partition should not lose any elements.
+PASS: partition should keep the order of elements in the sublists.
+PASS: partition should handle duplicates.
+PASS: partition should produce an empty list for the negative side.
+PASS: partition should produce an empty list for the positive side.
+
+-- Running test case: Array.shallowEqual
+PASS: shallowEqual of empty arrays should be true.
+PASS: shallowEqual of an array with itself should be true.
+PASS: shallowEqual of equal arrays should be true.
+PASS: shallowEqual of equal arrays should be true.
+PASS: shallowEqual of unequal arrays should be false.
+PASS: shallowEqual of unequal arrays should be false.
+PASS: shallowEqual of an array and null should be false.
+PASS: shallowEqual of an array and non-array should be false.
+PASS: shallowEqual of a non-array with itself should be false.
+PASS: shallowEqual of non-arrays should be false.
+
+-- Running test case: Array.prototype.lastValue
+PASS: lastValue of a nonempty array should be the last value.
+PASS: lastValue of an empty array should be undefined.
+
+-- Running test case: Array.prototype.remove
+PASS: remove should only remove the first matching value.
+PASS: remove should only remove values that strictly match.
+
+-- Running test case: Array.prototype.removeAll
+PASS: removeAll should remove all matching values.
+PASS: removeAll should only remove values that strictly match.
+
+-- Running test case: Array.prototype.toggleIncludes
+PASS: toggleIncludes of an existing item with force true should have no effect.
+PASS: toggleIncludes of an existing item with force false should remove the item.
+PASS: toggleIncludes of a nonexistent item with force true should add the item.
+PASS: toggleIncludes of a nonexistent item with force false should have no effect.
+
+-- Running test case: Array.prototype.insertAtIndex
+PASS: insertAtIndex with index unspecified should insert at the beginning.
+PASS: insertAtIndex with index zero should insert at the beginning.
+PASS: insertAtIndex with 0 < index < length should insert at the correct location.
+PASS: insertAtIndex with negative index should insert from the end.
+PASS: insertAtIndex with index greater than array length should insert at the end.
+
+-- Running test case: Array.prototype.keySet
+PASS: keySet should create an object with keys equal to the array values.
+PASS: keySet should create an object with all values equal to true.
+PASS: keySet should create an object with keys equal to stringified array values.
+

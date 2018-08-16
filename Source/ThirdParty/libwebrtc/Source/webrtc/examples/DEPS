@@ -1,0 +1,9 @@
+include_rules = [
+  "+WebRTC",
+  "+api",
+  "+media",
+  "+modules/audio_device",
+  "+modules/video_capture",
+  "+p2p",
+  "+pc",
+]

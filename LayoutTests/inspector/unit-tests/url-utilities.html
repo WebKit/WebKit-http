@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="../../http/tests/inspector/resources/inspector-test.js"></script>
+<script>
+function test()
+{
+    let suite = InspectorTest.createSyncSuite("URLUtilities");
+
+    suite.addTestCase({
+        name: "parseURL",
+        test() {
+            function testInvalid(url) {
+                InspectorTest.log("");
+                InspectorTest.log("Test Invalid: " + url);
+                InspectorTest.expectThat(parseURL(url).scheme === null, "Should not be a complete URL");
+
+                try {
+                    new URL(url);
+                    InspectorTest.fail("URL constructor thinks this is valid");
+                } catch (e) {
+                    InspectorTest.pass("URL constructor thinks this is invalid");
+                }
+            }
+
+            function testValid(url, expected) {
+                InspectorTest.log("");
+                InspectorTest.log("Test Valid: " + url);
+
+                let {scheme: expectedScheme, userinfo: expectedUserInfo, host: expectedHost, port: expectedPort, path: expectedPath, queryString: expectedQueryString, fragment: expectedFragment, lastPathComponent: expectedLastPathComponent} = expected;
+                let {scheme: actualScheme, userinfo: actualUserInfo, host: actualHost, port: actualPort, path: actualPath, queryString: actualQueryString, fragment: actualFragment, lastPathComponent: actualLastPathComponent} = parseURL(url);
+
+                InspectorTest.expectEqual(actualScheme, expectedScheme, `scheme should be: '${expectedScheme}'`);
+                InspectorTest.expectEqual(actualUserInfo, expectedUserInfo, `userinfo should be: '${expectedUserInfo}'`);
+                InspectorTest.expectEqual(actualHost, expectedHost, `host should be: '${expectedHost}'`);
+                InspectorTest.expectEqual(actualPort, expectedPort, `port should be: '${expectedPort}'`);
+                InspectorTest.expectEqual(actualPath, expectedPath, `path should be: '${expectedPath}'`);
+                InspectorTest.expectEqual(actualQueryString, expectedQueryString, `queryString should be: '${expectedQueryString}'`);
+                InspectorTest.expectEqual(actualFragment, expectedFragment, `fragment should be: '${expectedFragment}'`);
+                InspectorTest.expectEqual(actualLastPathComponent, expectedLastPathComponent, `lastPathComponent should be: '${expectedLastPathComponent}'`);
+            }
+
+            testInvalid("a");
+            testInvalid("/http://example.com");
+
+            testValid("http://example.com", {
+                scheme: "http",
+                userinfo: null,
+                host: "example.com",
+                port: null,
+                path: null,
+                queryString: null,
+                fragment: null,
+                lastPathComponent: null,
+            });
+
+            testValid("http://example.com/", {
+                scheme: "http",
+                userinfo: null,
+                host: "example.com",
+                port: null,
+                path: "/",
+                queryString: null,
+                fragment: null,
+                lastPathComponent: null,
+            });
+
+            testValid("http://example.com:80/", {
+                scheme: "http",
+                userinfo: null,
+                host: "example.com",
+                port: 80,
+                path: "/",
+                queryString: null,
+                fragment: null,
+                lastPathComponent: null,
+            });
+
+            testValid("http://example.com/path/to/page.html", {
+                scheme: "http",
+                userinfo: null,
+                host: "example.com",
+                port: null,
+                path: "/path/to/page.html",
+                queryString: null,
+                fragment: null,
+                lastPathComponent: "page.html",
+            });
+
+            testValid("http://example.com/path/to/page.html?", {
+                scheme: "http",
+                userinfo: null,
+                host: "example.com",
+                port: null,
+                path: "/path/to/page.html",
+                queryString: "",
+                fragment: null,
+                lastPathComponent: "page.html",
+            });
+
+            testValid("http://example.com/path/to/page.html?a=1", {
+                scheme: "http",
+                userinfo: null,
+                host: "example.com",
+                port: null,
+                path: "/path/to/page.html",
+                queryString: "a=1",
+                fragment: null,
+                lastPathComponent: "page.html",
+            });
+
+            testValid("http://example.com/path/to/page.html?a=1&b=2", {
+                scheme: "http",
+                userinfo: null,
+                host: "example.com",
+                port: null,
+                path: "/path/to/page.html",
+                queryString: "a=1&b=2",
+                fragment: null,
+                lastPathComponent: "page.html",
+            });
+
+            testValid("http://example.com/path/to/page.html?a=1&b=2#test", {
+                scheme: "http",
+                userinfo: null,
+                host: "example.com",
+                port: null,
+                path: "/path/to/page.html",
+                queryString: "a=1&b=2",
+                fragment: "test",
+                lastPathComponent: "page.html",
+            });
+
+            testValid("http://example.com:123/path/to/page.html?a=1&b=2#test", {
+                scheme: "http",
+                userinfo: null,
+                host: "example.com",
+                port: 123,
+                path: "/path/to/page.html",
+                queryString: "a=1&b=2",
+                fragment: "test",
+                lastPathComponent: "page.html",
+            });
+
+            testValid("http://example.com/path/to/page.html#test", {
+                scheme: "http",
+                userinfo: null,
+                host: "example.com",
+                port: null,
+                path: "/path/to/page.html",
+                queryString: null,
+                fragment: "test",
+                lastPathComponent: "page.html",
+            });
+
+            testValid("http://example.com#alpha/beta", {
+                scheme: "http",
+                userinfo: null,
+                host: "example.com",
+                port: null,
+                path: null,
+                queryString: null,
+                fragment: "alpha/beta",
+                lastPathComponent: null,
+            });
+
+            testValid("app-specific://example.com", {
+                scheme: "app-specific",
+                userinfo: null,
+                host: "example.com",
+                port: null,
+                path: null,
+                queryString: null,
+                fragment: null,
+                lastPathComponent: null,
+            });
+
+            testValid("http://example", {
+                scheme: "http",
+                userinfo: null,
+                host: "example",
+                port: null,
+                path: null,
+                queryString: null,
+                fragment: null,
+                lastPathComponent: null,
+            });
+
+            testValid("http://my.example.com", {
+                scheme: "http",
+                userinfo: null,
+                host: "my.example.com",
+                port: null,
+                path: null,
+                queryString: null,
+                fragment: null,
+                lastPathComponent: null,
+            });
+
+            // Data URLs just spit back the scheme.
+            testValid("data:text/plain,test", {
+                scheme: "data",
+                userinfo: null,
+                host: null,
+                port: null,
+                path: null,
+                queryString: null,
+                fragment: null,
+                lastPathComponent: null,
+            });
+
+            // FIXME: <https://webkit.org/b/165155> Web Inspector: Use URL constructor to better handle all kinds of URLs
+            InspectorTest.log("");
+            InspectorTest.log("-- Known issues <https://webkit.org/b/165155>");
+
+            testInvalid("http://");
+            testInvalid("http://example.com:999999999");
+
+            testValid("http:example.com/", {
+                scheme: "http",
+                userinfo: null,
+                host: "example.com",
+                port: null,
+                path: "/",
+                queryString: null,
+                fragment: null,
+                lastPathComponent: null,
+            });
+
+            testValid("http:/example.com/", {
+                scheme: "http",
+                userinfo: null,
+                host: "example.com",
+                port: null,
+                path: "/",
+                queryString: null,
+                fragment: null,
+                lastPathComponent: null,
+            });
+
+            testValid("http://user:pass@example.com/", {
+                scheme: "http",
+                userinfo: "user:pass",
+                host: "example.com",
+                port: null,
+                path: "/",
+                queryString: null,
+                fragment: null,
+                lastPathComponent: null,
+            });
+
+            testValid("http://user@pass:example.com/", {
+                scheme: "http",
+                userinfo: null,
+                host: "example.com",
+                port: null,
+                path: "/",
+                queryString: null,
+                fragment: null,
+                lastPathComponent: null,
+            });
+
+            testValid("http://example.com?key=alpha/beta", {
+                scheme: "http",
+                userinfo: null,
+                host: "example.com",
+                port: null,
+                path: null,
+                queryString: "key=alpha/beta",
+                fragment: null,
+                lastPathComponent: null,
+            });
+
+            return true;
+        }
+    });
+
+    suite.addTestCase({
+        name: "parseDataURL",
+        test() {
+            function testInvalid(url) {
+                InspectorTest.log("");
+                InspectorTest.log("Test Invalid: " + url);
+                InspectorTest.expectThat(parseDataURL(url) === null, "Should not be a data URL");
+            }
+
+            function testValid(url, expected) {
+                InspectorTest.log("");
+                InspectorTest.log("Test Valid: " + url);
+
+                let {mimeType: expectedMimeType, charset: expectedCharset, base64: expectedBase64, data: expectedData, content: expectedContent} = expected;
+                let {mimeType: actualMimeType, charset: actualCharset, base64: actualBase64, data: actualData, scheme: actualScheme} = parseDataURL(url);
+                let actualContent = actualData;
+                if (actualBase64)
+                    actualContent = atob(actualContent);
+
+                InspectorTest.expectEqual(actualScheme, "data", "scheme should always be 'data'");
+                InspectorTest.expectEqual(actualMimeType, expectedMimeType, `mimeType should be: '${expectedMimeType}'`);
+                InspectorTest.expectEqual(actualCharset, expectedCharset, `charset should be: '${expectedCharset}'`);
+                InspectorTest.expectEqual(actualBase64, expectedBase64, `base64 should be: '${expectedBase64}'`);
+                InspectorTest.expectEqual(actualData, expectedData, `data should be: '${expectedData}'`);
+                if (expectedContent !== null)
+                    InspectorTest.expectThat(actualContent === expectedContent, `Resolved content should be: '${expectedContent}'`);
+            }
+
+            testInvalid("https://webkit.org");
+            testInvalid("data:");
+            testInvalid("data:text/plain;test");
+            testInvalid("data:text/plain;base64;test");
+
+            testValid("data:,", {
+                mimeType: "text/plain",
+                charset: "US-ASCII",
+                base64: false,
+                data: "",
+                content: "",
+            });
+
+            testValid("data:,test", {
+                mimeType: "text/plain",
+                charset: "US-ASCII",
+                base64: false,
+                data: "test",
+                content: "test",
+            });
+
+            testValid("data:text/plain,test", {
+                mimeType: "text/plain",
+                charset: "US-ASCII",
+                base64: false,
+                data: "test",
+                content: "test",
+            });
+
+            testValid("data:text/plain;charset=TEST,test", {
+                mimeType: "text/plain",
+                charset: "TEST",
+                base64: false,
+                data: "test",
+                content: "test",
+            });
+
+            testValid("data:application/json,{\"name\":\"test\",\"list\":[1,2,3]}", {
+                mimeType: "application/json",
+                charset: "US-ASCII",
+                base64: false,
+                data: '{"name":"test","list":[1,2,3]}',
+                content: '{"name":"test","list":[1,2,3]}',
+            });
+
+            InspectorTest.assert(encodeURIComponent('{"name":"test","list":[1,2,3]}') === "%7B%22name%22%3A%22test%22%2C%22list%22%3A%5B1%2C2%2C3%5D%7D");
+            testValid("data:application/json,%7B%22name%22%3A%22test%22%2C%22list%22%3A%5B1%2C2%2C3%5D%7D", {
+                mimeType: "application/json",
+                charset: "US-ASCII",
+                base64: false,
+                data: '{"name":"test","list":[1,2,3]}',
+                content: '{"name":"test","list":[1,2,3]}',
+            });
+
+            testValid("data:application/json;base64,eyJuYW1lIjoidGVzdCIsImxpc3QiOlsxLDIsM119", {
+                mimeType: "application/json",
+                charset: "US-ASCII",
+                base64: true,
+                data: "eyJuYW1lIjoidGVzdCIsImxpc3QiOlsxLDIsM119",
+                content: '{"name":"test","list":[1,2,3]}',
+            });
+
+            testValid("data:application/json;charset=utf-8;base64,eyJuYW1lIjoidGVzdCIsImxpc3QiOlsxLDIsM119", {
+                mimeType: "application/json",
+                charset: "utf-8",
+                base64: true,
+                data: "eyJuYW1lIjoidGVzdCIsImxpc3QiOlsxLDIsM119",
+                content: '{"name":"test","list":[1,2,3]}',
+            });
+
+            testValid("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==", {
+                mimeType: "image/png",
+                charset: "US-ASCII",
+                base64: true,
+                data: "iVBORw0KGgoAAAANSUhEUgAAAAUAAAAFCAYAAACNbyblAAAAHElEQVQI12P4//8/w38GIAXDIBKE0DHxgljNBAAO9TXL0Y4OHwAAAABJRU5ErkJggg==",
+                content: null, // Skip content check.
+            });
+
+            return true;
+        }
+    });
+
+    suite.addTestCase({
+        name: "WI.h2Authority",
+        test() {
+            function test(url, expected) {
+                let components = parseURL(url);
+                InspectorTest.expectEqual(WI.h2Authority(components), expected, `HTTP/2 :authority of '${url}' should be '${expected}'.`);
+            }
+
+            test("http://example.com", "example.com");
+            test("https://example.com", "example.com");
+            test("ftp://example.com", "example.com");
+
+            test("http://example.com/foo", "example.com");
+            test("https://example.com/foo", "example.com");
+            test("ftp://example.com/foo", "example.com");
+
+            test("http://example.com:123", "example.com:123");
+            test("https://example.com:123", "example.com:123");
+            test("ftp://example.com:123", "example.com:123");
+
+            test("ftp://user:pass@example.com/foo", "user:pass@example.com");
+            test("http://user:pass@example.com/foo", "example.com");
+            test("https://user:pass@example.com/foo", "example.com");
+
+            test("ftp://user:pass@example.com:123/foo", "user:pass@example.com:123");
+            test("http://user:pass@example.com:123/foo", "example.com:123");
+            test("https://user:pass@example.com:123/foo", "example.com:123");
+
+            return true;
+        }
+    });
+
+    suite.addTestCase({
+        name: "WI.h2Path",
+        test() {
+            function test(url, expected) {
+                let components = parseURL(url);
+                InspectorTest.expectEqual(WI.h2Path(components), expected, `HTTP/2 :path of '${url}' should be '${expected}'.`);
+            }
+
+            test("http://example.com", "/");
+            test("https://example.com", "/");
+            test("ftp://example.com", "");
+
+            test("http://example.com/foo", "/foo");
+            test("https://example.com/foo", "/foo");
+            test("ftp://example.com/foo", "/foo");
+            test("http://example.com/foo#hash", "/foo");
+            test("https://example.com/foo#hash", "/foo");
+            test("ftp://example.com/foo#hash", "/foo");
+
+            test("http://example.com/foo/bar.js", "/foo/bar.js");
+            test("https://example.com/foo/bar.js", "/foo/bar.js");
+            test("ftp://example.com/foo/bar.js", "/foo/bar.js");
+            test("http://example.com/foo/bar.js#hash", "/foo/bar.js");
+            test("https://example.com/foo/bar.js#hash", "/foo/bar.js");
+            test("ftp://example.com/foo/bar.js#hash", "/foo/bar.js");
+
+            test("http://example.com/?t=1", "/?t=1");
+            test("https://example.com/?t=1", "/?t=1");
+            test("ftp://example.com/?t=1", "/?t=1");
+
+            test("http://example.com/foo/bar.js?t=1", "/foo/bar.js?t=1");
+            test("https://example.com/foo/bar.js?t=1", "/foo/bar.js?t=1");
+            test("ftp://example.com/foo/bar.js?t=1", "/foo/bar.js?t=1");
+            test("http://example.com/foo/bar.js?t=1#hash", "/foo/bar.js?t=1");
+            test("https://example.com/foo/bar.js?t=1#hash", "/foo/bar.js?t=1");
+            test("ftp://example.com/foo/bar.js?t=1#hash", "/foo/bar.js?t=1");
+
+            return true;
+        }
+    });
+
+    suite.runTestCasesAndFinish();
+}
+</script>
+</head>
+<body onLoad="runTest()">
+</body>
+</html>

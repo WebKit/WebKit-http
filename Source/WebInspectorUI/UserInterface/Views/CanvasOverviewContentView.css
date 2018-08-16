@@ -1,0 +1,197 @@
+/*
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+.content-view.canvas-overview {
+    justify-content: center;
+    align-items: flex-start;
+    background-color: hsl(0, 0%, 90%);
+
+    --item-margin: 10px;
+}
+
+.content-view.canvas-overview .content-view.canvas {
+    flex-grow: 0;
+    margin: var(--item-margin);
+    width: 400px;
+    background-color: white;
+}
+
+.content-view.canvas-overview .content-view.canvas {
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+}
+
+.content-view.canvas-overview .content-view.canvas.is-recording {
+    border-color: red;
+}
+
+.content-view.canvas-overview .content-view.canvas > :matches(header, footer) {
+    display: flex;
+    flex-direction: row;
+    flex-shrink: 0;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 6px;
+    height: var(--navigation-bar-height);
+    cursor: default;
+}
+
+.content-view.canvas-overview .content-view.canvas > header {
+    font-size: 13px;
+}
+
+.content-view.canvas-overview .content-view.canvas.is-recording > header {
+    background-color: red;
+}
+
+.content-view.canvas-overview .content-view.canvas > header > .titles,
+.content-view.canvas-overview .content-view.canvas > footer > .size {
+    white-space: nowrap;
+}
+
+.content-view.canvas-overview .content-view.canvas > header > .titles > .title {
+    color: var(--text-color-gray-dark);
+}
+
+.content-view.canvas-overview .content-view.canvas > header > .titles > .subtitle,
+.content-view.canvas-overview .content-view.canvas > footer .memory-cost {
+    color: var(--text-color-gray-medium);
+}
+
+.content-view.canvas-overview .content-view.canvas > header .subtitle::before {
+    content: " — ";
+}
+
+.content-view.canvas-overview .content-view.canvas.is-recording > header > .titles > .title {
+    color: white;
+}
+
+.content-view.canvas-overview .content-view.canvas.is-recording > header > .titles > .subtitle {
+    color: var(--selected-secondary-text-color);
+}
+
+.content-view.canvas-overview .content-view.canvas.is-recording > header > .navigation-bar > .item {
+    filter: brightness(0) invert();
+}
+
+.content-view.canvas-overview .content-view.canvas > header > .navigation-bar {
+    align-items: initial;
+    border: none;
+    opacity: 0;
+    transition: opacity 200ms ease-in-out;
+}
+
+.content-view.canvas-overview .content-view.canvas:matches(:hover, .is-recording) > header > .navigation-bar {
+    opacity: 1;
+    transition: opacity 200ms ease-in-out;
+}
+
+.content-view.canvas-overview .content-view.canvas:not(.is-recording) > header > .navigation-bar > .item.record-start-stop.disabled {
+    filter: grayscale();
+    opacity: 0.5;
+}
+
+.content-view.canvas-overview .content-view.canvas:not(.is-recording) > header > .navigation-bar > .item.record-start-stop:not(.disabled):hover {
+    filter: brightness(95%);
+}
+
+.content-view.canvas-overview .content-view.canvas:not(.is-recording) > header > .navigation-bar > .item.record-start-stop:not(.disabled):active {
+    filter: brightness(80%);
+}
+
+.content-view.canvas-overview .content-view.canvas.is-recording > .progress-view,
+.content-view.canvas-overview .content-view.canvas > .preview {
+    height: 280px;
+}
+
+.content-view.canvas-overview .content-view.canvas.is-recording > .preview {
+    display: none;
+}
+
+.content-view.canvas-overview .content-view.canvas > .preview > img {
+    border-radius: 4px;
+    box-shadow: 1px 2px 6px rgba(0, 0, 0, 0.58);
+}
+
+.content-view.canvas-overview .content-view.canvas > .preview > .message-text-view {
+    position: static;
+}
+
+.content-view.canvas-overview .content-view.canvas > footer {
+    border-top: none;
+}
+
+.content-view.canvas-overview .content-view.canvas > footer > .recordings {
+    position: absolute;
+    display: flex;
+    align-items: center;
+}
+
+.content-view.canvas-overview .content-view.canvas > footer > .recordings::before {
+    display: inline-block;
+    width: 16px;
+    margin-top: 3px;
+    -webkit-padding-end: 4px;
+    content: url(../Images/Recording.svg);
+}
+
+.content-view.canvas-overview .content-view.canvas > footer > .recordings > select {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    margin: 0;
+    padding: 0;
+    border: none;
+    opacity: 0;
+    -webkit-appearance: none;
+}
+
+.content-view.canvas-overview .content-view.canvas > footer .recordings > select:focus {
+    -webkit-margin-start: 11px;
+}
+
+.content-view.canvas-overview .content-view.canvas > footer > .flexible-space {
+    flex: 1;
+}
+
+.content-view.canvas-overview .content-view.canvas > footer .memory-cost {
+    -webkit-padding-start: 4px;
+}
+
+.popover-content > .tree-outline .item.recording > .icon {
+    content: url(../Images/Recording.svg);
+}
+
+.popover-content > .tree-outline .item.recording:hover {
+    color: var(--selected-foreground-color);
+    background-color: var(--selected-background-color);
+    border-radius: 3px;
+}
+
+.popover-content > .tree-outline .item.recording:hover > .icon {
+    filter: invert();
+}

@@ -1,0 +1,8 @@
+
+
+PASS Unregister then register resolves to a new value 
+PASS Unregister then register resolves to the original value if the registration is in use. 
+PASS Reloading the last controlled iframe after unregistration should ensure the deletion of the registration 
+PASS Unregister then register does not affect existing controllee 
+PASS Unregister then register resurrects the registration 
+

@@ -1,0 +1,101 @@
+<html>
+<head>
+<script src="../../http/tests/inspector/resources/protocol-test.js"></script>
+<script>
+function test()
+{
+    var suite = ProtocolTest.createAsyncSuite("Runtime.getProperties");
+
+    addGetPropertiesTestCase({
+        name: "CheckPropertiesOfWrapperObject",
+        description: "Check properties of `Object(5)`.",
+        expression: "(function(){var r = Object(5); r.foo = 'cat';return r;})()",
+    });
+
+    addGetPropertiesTestCase({
+        name: "CheckPropertiesOfArray",
+        description: "Check properties of `['red', 'green', 'blue']`.",
+        expression: "['red', 'green', 'blue']",
+    });
+
+    addGetPropertiesTestCase({
+        name: "CheckPropertiesOfBoundConstructor",
+        description: "Check properties of a bound function (has a bunch of internal properties).",
+        expression: "Number.bind({}, 5)",
+    });
+
+    addGetPropertiesTestCase({
+        name: "CheckPropertiesOfBoundFunctionNoArguments",
+        description: "Check properties of a bound function with no bound arguments.",
+        expression: "(function(){}).bind(null)",
+    });
+
+    suite.runTestCasesAndFinish();
+
+    function addGetPropertiesTestCase(args) {
+        var {name, description, expression} = args;
+
+        suite.addTestCase({
+            name,
+            description,
+            test(resolve, reject) {
+                ProtocolTest.log("Evaluating expression: " + expression);
+                InspectorProtocol.awaitCommand({
+                    method: "Runtime.evaluate",
+                    params: {expression}
+                })
+                .then(function(reply) {
+                    var objectId = reply.result.objectId;
+                    if (objectId === undefined)
+                        throw new Error("objectId is expected");
+
+                    return InspectorProtocol.awaitCommand({
+                        method: "Runtime.getProperties",
+                        params: {objectId, ownProperties: true}
+                    });
+                })
+                .then(function(reply) {
+                    dumpGetPropertiesResult(reply);
+                    resolve();
+                })
+                .catch(reject);
+            }
+        });
+    }
+
+    // A helper function that dumps object properties and internal properties in sorted order.
+    function dumpGetPropertiesResult(protocolResult) {
+        var properties = protocolResult.result;
+        if (properties) {
+            ProtocolTest.log("Properties:");
+            properties.sort(NamedThingComparator);
+            properties.map(dumpSingleProperty);
+        }
+
+        var internalProperties = protocolResult.internalProperties;
+        if (internalProperties) {
+            ProtocolTest.log("Internal properties:");
+            internalProperties.sort(NamedThingComparator);
+            internalProperties.map(dumpSingleProperty);
+        }
+
+        function dumpSingleProperty(property) {
+            var {name, value, get, set} = property;
+            if (value)
+                ProtocolTest.log(`  ${name} ${value.type} ${value.value || value.description}`);
+            else if (get || set)
+                ProtocolTest.log(`  ${name} ${get ? "getter" : "-"} ${set ? "setter" : ""}`);
+            else
+                ProtocolTest.log(`  ${name}`);
+        }
+
+        function NamedThingComparator(o1, o2) {
+            return o1.name.localeCompare(o2.name);
+        }
+    }
+}
+</script>
+</head>
+<body onLoad="runTest()">
+</body>
+</html>

@@ -1,0 +1,140 @@
+/*
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+:root {
+    --z-index-highlight: 64;
+    --z-index-header: 128;
+    --z-index-resizer: 256;
+    --z-index-popover: 512;
+    --z-index-tooltip: 1024;
+    --z-index-glass-pane-for-drag: 2048;
+    --z-index-uncaught-exception-sheet: 4096;
+
+    --text-color-active: black;
+
+    --background-color-content: white;
+
+    --selected-foreground-color: white;
+    --selected-secondary-text-color: hsla(0, 100%, 100%, 0.7);
+    --selected-background-color: hsl(212, 92%, 54%);
+    --selected-background-color-unfocused: hsl(0, 0%, 83%);
+    --selected-background-color-active: hsl(218, 85%, 52%);
+    --selected-background-color-hover: hsla(212, 92%, 54%, 0.5);
+    --selected-background-color-highlight: hsla(0, 0%, 100%, 0.3);
+
+    --glyph-color: hsl(0, 0%, 30%);
+    --glyph-color-pressed: hsl(0, 0%, 15%);
+    --glyph-color-disabled: hsla(0, 0%, 30%, 0.55);
+    --glyph-color-active: hsl(212, 92%, 54%);
+    --glyph-color-active-pressed: hsl(218, 85%, 52%);
+
+    --border-color: hsl(0, 0%, 70%);
+    --border-color-dark: hsl(0, 0%, 57%);
+
+    --button-background-color: white;
+    --button-background-color-hover: hsl(0, 0%, 88%);
+    --button-background-color-pressed: hsl(0, 0%, 85%);
+
+    --panel-background-color: hsl(0, 0%, 93%);
+    --panel-background-color-light: hsl(0, 0%, 96%);
+
+    --console-secondary-text-color: hsla(0, 0%, 0%, 0.33);
+    --console-prompt-min-height: 30px;
+
+    --message-text-view-font-size: 16px;
+    --message-text-view-large-font-size: 28px;
+
+    --text-color-gray-dark: hsl(0, 0%, 20%);
+    --text-color-gray-medium: hsl(0, 0%, 52%);
+    --error-text-color: hsl(0, 86%, 47%);
+
+    --value-changed-highlight: hsla(83, 100%, 48%, 0.4);
+
+    --breakpoint-fill-color: hsl(212, 45%, 54%);
+    --breakpoint-stroke-color: hsl(212, 45%, 48%);
+    --breakpoint-disabled-fill-color: hsl(212, 40%, 84%);
+    --breakpoint-disabled-stroke-color: hsl(212, 40%, 78%);
+    --breakpoint-unresolved-fill-color: hsl(0, 0%, 60%);
+    --breakpoint-unresolved-stroke-color: hsl(0, 0%, 54%);
+    --breakpoint-unresolved-disabled-fill-color: hsl(0, 0%, 84%);
+    --breakpoint-unresolved-disabled-stroke-color: hsl(0, 0%, 78%);
+
+    --syntax-highlight-number-color: hsl(248, 100%, 40%);
+    --syntax-highlight-boolean-color: hsl(309, 85%, 35%);
+    --syntax-highlight-string-color: hsl(1, 79%, 42%);
+    --syntax-highlight-link-color: hsl(240, 100%, 52%);
+    --syntax-highlight-regexp-color: hsl(20, 100%, 44%);
+    --syntax-highlight-symbol-color: hsl(172, 45%, 45%);
+    --syntax-highlight-comment-color: hsl(119, 100%, 22%);
+
+    --syntax-highlight-regex-group-color: var(--text-color-gray-medium);
+
+    --memory-javascript-fill-color: hsl(269, 65%, 75%);
+    --memory-javascript-stroke-color: hsl(269, 33%, 50%);
+    --memory-images-fill-color: hsl(0, 65%, 75%);
+    --memory-images-stroke-color: hsl(0, 54%, 50%);
+    --memory-layers-fill-color: hsl(76, 49%, 75%);
+    --memory-layers-stroke-color: hsl(79, 45%, 50%);
+    --memory-page-fill-color: hsl(22, 60%, 70%);
+    --memory-page-stroke-color: hsl(22, 40%, 50%);
+    --memory-max-comparison-fill-color: hsl(220, 10%, 75%);
+    --memory-max-comparison-stroke-color: hsl(220, 10%, 55%);
+
+    --network-header-color: hsl(204, 52%, 55%);
+    --network-system-color: hsl(79, 32%, 50%);
+    --network-pseudo-header-color: hsl(312, 35%, 51%);
+    --network-error-color: hsl(0, 54%, 50%);
+
+    --network-queue-color: hsl(0, 0%, 54%);
+    --network-dns-color: hsl(265, 82%, 60%);
+    --network-connect-color: hsl(46, 92%, 62%);
+    --network-secure-color: hsl(352, 81%, 59%);
+    --network-request-color: hsl(118, 56%, 65%);
+    --network-response-color: hsl(202, 61%, 59%);
+
+    --even-zebra-stripe-row-background-color: white;
+    --odd-zebra-stripe-row-background-color: hsl(0, 0%, 95%);
+    --transparent-stripe-background-gradient: linear-gradient(to bottom, transparent, transparent 50%, hsla(0, 0%, 0%, 0.03) 50%, hsla(0, 0%, 0%, 0.03)) top left / 100% 40px;
+
+    --toolbar-height: 36px;
+    --tab-bar-height: 24px;
+    --navigation-bar-height: 29px;
+
+    --slider-height: 11px;
+}
+
+body.window-inactive {
+    /* FIXME: Use CSS4 color blend functions once they're available. */
+    --selected-background-color: hsla(212, 92%, 54%, 0.5);
+
+    --glyph-color-active: hsla(212, 92%, 54%, 0.5);
+    --glyph-color: hsla(0, 0%, 30%, 0.65);
+    --glyph-color-disabled: hsla(0, 0%, 30%, 0.35);
+}
+
+body.window-inactive * {
+    --border-color: hsl(0, 0%, 85%);
+    --border-color-dark: hsl(0, 0%, 72%);
+}

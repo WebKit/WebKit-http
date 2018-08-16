@@ -1,0 +1,18 @@
+after
+before
+#if ENABLE(VIDEO_TRACK)
+cue
+#endif
+first-letter
+first-line
+marker
+placeholder, PseudoElementWebKitCustom
+-webkit-input-placeholder, PseudoElementWebKitCustomLegacyPrefixed
+-webkit-resizer
+-webkit-scrollbar
+-webkit-scrollbar-button
+-webkit-scrollbar-corner
+-webkit-scrollbar-thumb
+-webkit-scrollbar-track
+-webkit-scrollbar-track-piece
+selection

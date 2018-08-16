@@ -1,0 +1,13 @@
+
+PASS Returns an empty array for an element with no animations 
+PASS Returns both animations for an element with two animations 
+PASS Returns only the animations specific to each sibling element 
+PASS Returns only the animations specific to each parent/child element 
+PASS Does not return finished animations that do not fill forwards 
+PASS Returns finished animations that fill forwards 
+PASS Returns animations in their delay phase 
+PASS Returns animations based on dynamic changes to individual animations' duration 
+PASS Returns animations based on dynamic changes to individual animations' end delay 
+PASS Returns animations based on dynamic changes to individual animations' iteration count 
+PASS Returns animations based on dynamic changes to individual animations' current time 
+

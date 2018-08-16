@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<title>ServiceWorker: navigator.serviceWorker.waiting</title>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
+<script src="resources/test-helpers.sub.js"></script>
+<body>
+<script>
+promise_test(t => {
+    var script = 'resources/empty-worker.js';
+    var scope = 'resources/blank.html';
+    var frame;
+    var registration;
+
+    return service_worker_unregister(t, scope)
+      .then(() => { return with_iframe(scope); })
+      .then(f => {
+          frame = f;
+          return navigator.serviceWorker.register(script, {scope: scope});
+        })
+      .then(r => {
+          registration = r;
+          add_result_callback(() => { registration.unregister(); });
+          return wait_for_state(t, r.installing, 'installed');
+        })
+      .then(() => {
+          const controller =
+            frame.contentWindow.navigator.serviceWorker.controller;
+          assert_equals(controller, null, '.controller');
+
+          assert_equals(registration.active, null, '.active');
+          assert_equals(registration.waiting.state, 'installed', '.waiting');
+          assert_equals(registration.installing, null, '.installing');
+        })
+      .then(() => {
+          frame.remove();
+          return registration.unregister();
+        });
+  }, 'waiting is set after installation');
+</script>
+</body>

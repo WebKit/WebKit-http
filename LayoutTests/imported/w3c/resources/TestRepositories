@@ -1,0 +1,23 @@
+[
+    {
+        "name": "web-platform-tests",
+        "url": "https://github.com/web-platform-tests/wpt.git",
+        "revision": "94b33b5",
+        "paths_to_skip": [
+            "conformance-checkers",
+            "docs",
+            "old-tests",
+            "resources/testharness.css",
+            "resources/testharnessreport.js"
+        ],
+        "paths_to_import": [
+            "common",
+            "config.default.json",
+            "fonts",
+            "images",
+            "resources",
+            "serve.py"
+        ],
+        "import_options": ["generate_init_py"]
+    }
+]

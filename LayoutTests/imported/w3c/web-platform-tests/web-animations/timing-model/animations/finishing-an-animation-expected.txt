@@ -1,0 +1,3 @@
+
+PASS A pending ready promise should be resolved and not replaced when the animation is finished 
+

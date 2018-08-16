@@ -1,0 +1,6 @@
+
+Harness Error (TIMEOUT), message = null
+
+PASS importScripts() supports redirects 
+TIMEOUT importScripts() supports redirects and can be updated Test timed out
+

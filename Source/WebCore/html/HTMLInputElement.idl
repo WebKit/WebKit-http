@@ -1,0 +1,95 @@
+/*
+ * Copyright (C) 2006, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2006 Samuel Weinig <sam.weinig@gmail.com>
+ * Copyright (C) 2012 Samsung Electronics. All rights reserved.
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Library General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Library General Public License for more details.
+ *
+ * You should have received a copy of the GNU Library General Public License
+ * along with this library; see the file COPYING.LIB.  If not, write to
+ * the Free Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
+ * Boston, MA 02110-1301, USA.
+ */
+
+[
+    ExportMacro=WEBCORE_EXPORT,
+    JSGenerateToNativeObject,
+] interface HTMLInputElement : HTMLElement {
+    [Reflect] attribute DOMString accept;
+    [Reflect] attribute DOMString alt;
+    attribute DOMString autocomplete;
+    [Reflect] attribute boolean autofocus;
+    [Reflect=checked] attribute boolean defaultChecked;
+    attribute boolean checked;
+    [Reflect] attribute DOMString dirName;
+    [Reflect] attribute boolean disabled;
+    readonly attribute HTMLFormElement form;
+    attribute FileList? files;
+    attribute USVString formAction;
+
+    attribute DOMString formEnctype;
+    attribute DOMString formMethod;
+
+    [Reflect] attribute boolean formNoValidate;
+    [Reflect] attribute DOMString formTarget;
+    attribute unsigned long height;
+    attribute boolean indeterminate;
+    [Conditional=DATALIST_ELEMENT] readonly attribute HTMLElement list;
+    [Reflect] attribute DOMString max;
+    attribute long minLength;
+    attribute long maxLength;
+    [Reflect] attribute DOMString min;
+    [Reflect] attribute boolean multiple;
+    [Reflect] attribute DOMString name;
+    [Reflect] attribute DOMString pattern;
+    [Reflect] attribute DOMString placeholder;
+    [Reflect] attribute boolean readOnly;
+    [Reflect] attribute boolean required;
+    attribute unsigned long size;
+    [Reflect, URL] attribute USVString src;
+    [Reflect] attribute DOMString step;
+    attribute DOMString type; // readonly dropped as part of DOM level 2
+    attribute DOMString defaultValue;
+    // See the discussion in https://bugs.webkit.org/show_bug.cgi?id=100085
+    attribute [TreatNullAs=EmptyString] DOMString value;
+    attribute Date? valueAsDate;
+    attribute unrestricted double valueAsNumber;
+
+    [MayThrowException] void stepUp(optional long n = 1);
+    [MayThrowException] void stepDown(optional long n = 1);
+
+    attribute unsigned long width;
+    readonly attribute boolean willValidate;
+    readonly attribute ValidityState validity;
+    readonly attribute DOMString validationMessage;
+    boolean checkValidity();
+    [EnabledAtRuntime=InteractiveFormValidation] boolean reportValidity();
+    void setCustomValidity(DOMString error);
+
+    readonly attribute NodeList labels;
+
+    void select();
+    [ImplementedAs=selectionStartForBindings] attribute long selectionStart;
+    [ImplementedAs=selectionEndForBindings] attribute long selectionEnd;
+    [ImplementedAs=selectionDirectionForBindings] attribute DOMString selectionDirection;
+
+    [MayThrowException] void setRangeText(DOMString replacement);
+    [MayThrowException] void setRangeText(DOMString replacement, unsigned long start, unsigned long end, optional DOMString selectionMode);
+
+    [ImplementedAs=setSelectionRangeForBindings, MayThrowException] void setSelectionRange(long start, long end, optional DOMString direction);
+
+    [Reflect] attribute DOMString align;
+    [Reflect] attribute DOMString useMap;
+    [Reflect] attribute boolean incremental;
+
+    // See http://www.w3.org/TR/html-media-capture/
+    [Conditional=MEDIA_CAPTURE, Reflect] attribute DOMString capture;
+};

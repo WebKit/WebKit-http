@@ -1,0 +1,123 @@
+/*
+ * Copyright (C) 2014 Apple Inc. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+.timeline-record-bar {
+    position: absolute;
+    height: 12px;
+    z-index: 1;
+
+    --timeline-record-bar-has-inactive-segment-not-inactive-segment-border-start: 1px solid hsla(215, 67%, 53%, 0.7) !important;
+}
+
+.timeline-record-bar > .segment {
+    position: absolute;
+    height: 100%;
+    background-color: hsl(0, 0%, 88%);
+    border: 1px solid hsl(0, 0%, 78%);
+    border-radius: 3px;
+    min-width: 4px;
+    z-index: 1;
+}
+
+.timeline-record-bar:not(.has-inactive-segment) > .segment {
+    left: 0;
+    width: 100%;
+}
+
+.timeline-record-bar > .segment.inactive {
+    z-index: 0;
+}
+
+/*
+The selector `.timeline-record-bar.has-inactive-segment > .segment:not(.inactive)` is used to
+differentiate between the "active" and "inactive" parts of a network entry.  As an example, the
+"active" part would be the Response and the "inactive" part would be the Request.  This selector
+ensures that there is a different style between "active" and "inactive" only when the network entry
+has an "inactive" segment.
+*/
+
+body[dir=ltr] .timeline-record-bar > .segment.inactive,
+body[dir=ltr] .timeline-record-bar.unfinished > .segment,
+body[dir=rtl] .timeline-record-bar.has-inactive-segment > .segment:not(.inactive) {
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-right: none;
+}
+
+body[dir=ltr] .timeline-record-bar.has-inactive-segment > .segment:not(.inactive),
+body[dir=rtl] .timeline-record-bar > .segment.inactive,
+body[dir=rtl] .timeline-record-bar.unfinished > .segment {
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+}
+
+:matches(:focus, .force-focus) .selected .timeline-record-bar > .segment {
+    background-color: white !important;
+    border: none !important;
+}
+
+:matches(:focus, .force-focus) .selected .timeline-record-bar > .segment.inactive {
+    background-color: hsl(215, 63%, 85%) !important;
+}
+
+body[dir=ltr] :matches(:focus, .force-focus) .selected .timeline-record-bar.has-inactive-segment > .segment:not(.inactive) {
+    border-left: var(--timeline-record-bar-has-inactive-segment-not-inactive-segment-border-start);
+}
+
+body[dir=rtl] :matches(:focus, .force-focus) .selected .timeline-record-bar.has-inactive-segment > .segment:not(.inactive) {
+    border-right: var(--timeline-record-bar-has-inactive-segment-not-inactive-segment-border-start);
+}
+
+.timeline-record-bar.timeline-record-type-network > .segment {
+    background-color: hsl(207, 63%, 67%);
+    border-color: hsl(202, 55%, 51%);
+}
+
+.timeline-record-bar.timeline-record-type-network > .segment.inactive {
+    background-color: hsl(208, 66%, 79%);
+    border-color: hsl(202, 57%, 68%);
+}
+
+.timeline-record-bar.timeline-record-type-layout > .segment {
+    background-color: hsl(0, 65%, 75%);
+    border-color: hsl(0, 54%, 62%);
+}
+
+
+.timeline-record-bar.timeline-record-type-layout.layout-timeline-record-paint > .segment,
+.timeline-record-bar.timeline-record-type-layout.layout-timeline-record-composite > .segment {
+    background-color: hsl(76, 49%, 60%);
+    border-color: hsl(79, 45%, 51%);
+}
+
+.timeline-record-bar.timeline-record-type-script > .segment {
+    background-color: hsl(269, 65%, 74%);
+    border-color: hsl(273, 33%, 58%);
+}
+
+.timeline-record-bar.timeline-record-type-script.script-timeline-record-garbage-collected > .segment {
+    background-color: hsl(23, 69%, 73%);
+    border-color: hsl(11, 54%, 62%);    
+}

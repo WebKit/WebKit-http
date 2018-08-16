@@ -1,0 +1,1233 @@
+2018-07-30  Thibault Saunier  <tsaunier@igalia.com>
+
+        [GStreamer] Make codecparsers optionnal
+        https://bugs.webkit.org/show_bug.cgi?id=188010
+
+        And avoid building libWebRTC if it won't be used. While there is no other
+        WebRTC backend, it makes no sense to expose an option.
+
+        Error out when WEBRTC or MEDIA_STREAM is enabled but GStreamer < 1.10
+
+        Reviewed by Alejandro G. Castro.
+
+        * Source/cmake/GStreamerChecks.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2018-07-26  Andy VanWagoner  <andy@vanwagoner.family>
+
+        [INTL] Remove INTL sub-feature compile flags
+        https://bugs.webkit.org/show_bug.cgi?id=188081
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsJSCOnly.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2018-07-24  Thibault Saunier  <tsaunier@igalia.com>
+
+        [WPE][GTK] Implement PeerConnection API on top of libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=186932
+
+        Reviewed by Philippe Normand.
+
+        * Source/cmake/FindGStreamer.cmake: Look for gstreamer-codecparser as it needed for GStreamerVideoDecoder
+
+2018-07-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.21.5 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2018-07-19  Stephan Szabo  <stephan.szabo@sony.com>
+
+        [WinCairo] Support DEVELOPER_MODE for allowing inspection of web inspector
+        https://bugs.webkit.org/show_bug.cgi?id=187786
+
+        Reviewed by Fujii Hironori.
+
+        * Source/cmake/OptionsWinCairo.cmake: Add ENABLE_DEVELOPER_MODE
+        to build when DEVELOPER_MODE is turned on at cmake time.
+
+2018-07-18  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Switch CMake ports back to C++ 14
+        https://bugs.webkit.org/show_bug.cgi?id=187744
+
+        Reviewed by Ryosuke Niwa.
+
+        The XCode build is still not using C++ 17, it's been several months since CMake ports
+        switched, everything builds fine without changes if we switch back, and there have been some
+        unfixed problems. Let's go back to C++ 14 for now. We can switch back to C++ 17 whenever we
+        are ready to switch over XCode at the same time, to ensure we don't wind up with divergent
+        behavior for std::optional.
+
+        * Source/cmake/WebKitCompilerFlags.cmake:
+
+2018-07-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Update ReadMe.md line 68
+        https://bugs.webkit.org/show_bug.cgi?id=187533
+
+        Reviewed by Wenson Hsieh.
+
+        * ReadMe.md:
+
+2018-07-02  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [CMake] Use JOB_POOLS to avoid memory-hungry linker processes running at the same time
+        https://bugs.webkit.org/show_bug.cgi?id=187254
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/WebKitCommon.cmake: Set the maximum number of
+        concurrent link processes using job pools (four for release builds,
+        two otherwise) to avoid running out of memory during builds.
+
+2018-07-02  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Repository fix after r233427 and r233443.
+
+        * jstests: Removed.
+
+2018-06-30  Adam Barth  <abarth@webkit.org>
+
+        Port JavaScriptCore to OS(FUCHSIA)
+        https://bugs.webkit.org/show_bug.cgi?id=187223
+
+        Reviewed by Daniel Bates.
+
+        * Source/cmake/OptionsJSCOnly.cmake: Add back ICU.
+
+2018-06-29  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [JSCOnly] Restore Windows build.
+        https://bugs.webkit.org/show_bug.cgi?id=187127
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsJSCOnly.cmake:
+        Don't forget to set -DUCHAR_TYPE=wchar_t for ICU on Windows.
+        Use bin64/lib64 on Windows (for consistency with full WebKit build).
+
+2018-06-28  Adam Barth  <abarth@webkit.org>
+
+        Switch OS(FUCHSIA) to using JSCOnly
+        https://bugs.webkit.org/show_bug.cgi?id=187133
+
+        Reviewed by Yusuke Suzuki.
+
+        Rather than creating a Fuchsia port, OS(FUCHSIA) now uses the JSCOnly
+        port.
+
+        * CMakeLists.txt: Set the WTF_OS_FUCHSIA flag
+        * Source/cmake/OptionsFuchsia.cmake: Removed.
+        * Source/cmake/OptionsJSCOnly.cmake: Temporarily disable ICU for
+        OS(FUCHSIA). We'll get ICU wired in, but I'd like to work through the
+        other compile errors first.
+
+2018-06-27  Adam Barth  <abarth@webkit.org>
+
+        Add Fuchsia support to build-jsc
+        https://bugs.webkit.org/show_bug.cgi?id=187086
+
+        Reviewed by Yusuke Suzuki.
+
+        Add Fuchsia port to cmake build system. After this patch, the build
+        errors out due to a missing sysroot.
+
+        * CMakeLists.txt:
+        * Source/cmake/OptionsFuchsia.cmake: Added.
+
+2018-06-18  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK+ gardening. Updating the WPT expectations by removing
+        failure expectations for 2dcontext tests covering CSS HSL/HSLA color
+        parsing and createImageBitmap() API that are nowadays passing.
+
+        * WebPlatformTests/gtk/TestExpectations.json:
+
+2018-06-17  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Automatically disable JIT and enable USE_SYSTEM_MALLOC on unfamiliar architectures
+        https://bugs.webkit.org/show_bug.cgi?id=186722
+
+        Reviewed by Darin Adler.
+
+        We know that the JSC JIT and bmalloc both work on only a limited set of architectures. In
+        Fedora, we have to manually disable these when building for s390x, ppc64, and ppc64le. But
+        it's really easy to do the right thing automatically, so we might as well.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2018-06-13  Thibault Saunier  <tsaunier@igalia.com>
+
+        [WPE] Build getUserMedia support
+        https://bugs.webkit.org/show_bug.cgi?id=186547
+
+        Reviewed by Alejandro G. Castro.
+
+        * Source/cmake/OptionsWPE.cmake: Build MediaStream support
+
+2018-06-12  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] Bump required version to 1.8.3
+        https://bugs.webkit.org/show_bug.cgi?id=186558
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * Source/cmake/GStreamerChecks.cmake: Bump to 1.8.3 which is the
+        version shipped in the current Ubuntu LTS we support (16.04).
+
+2018-06-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        Add run-web-platform-tests script
+        https://bugs.webkit.org/show_bug.cgi?id=183356
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Store port-specific test expectations and test manifest files for the
+        web-platform-tests test runs under the top-level WebPlatformTests
+        directory.
+
+        TestExpectations.json file lists all the failing or disabled tests
+        or subtests that are to be expected in the test run. This information is
+        parsed in the run-web-platform-tests script and used to build
+        test-specific metadata files (ending with .ini) inside a temporary
+        directory that is then used during the test run. JSON format is used to
+        follow the WebDriver test suite in how it manages expectations, and to
+        avoid having to manually manage .ini files for every deviant test case.
+
+        TestManifest.ini file is used to fine-tune which tests are to be enabled
+        by default. For the GTK+ port, we currently disable all tests by default
+        but then specifically enable tests under the 2dcontext and WebCryptoAPI
+        directories. This will allow for gradual enabling of further tests.
+
+        * WebPlatformTests/gtk/TestExpectations.json: Added.
+        * WebPlatformTests/gtk/TestManifest.ini: Added.
+
+2018-06-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.21.4 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2018-06-11  Michael Saboff  <msaboff@apple.com>
+
+        JavaScriptCore: Disable 32-bit JIT on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=185989
+
+        Reviewed by Mark Lam.
+
+        * Source/cmake/OptionsWin.cmake:
+
+2018-06-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE] Add a MiniBrowser and use it to run WebDriver tests
+        https://bugs.webkit.org/show_bug.cgi?id=186345
+
+        Reviewed by Žan Doberšek.
+
+        Add an option to enable building the MiniBrowser.
+
+        * Source/cmake/FindWaylandProtocols.cmake: Added.
+        * Source/cmake/OptionsWPE.cmake:
+
+2018-06-06  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Opt out of the New Build System
+        https://bugs.webkit.org/show_bug.cgi?id=186380
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebKit.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings: Use the Legacy Build System.
+
+2018-06-06  Dan Bernstein  <mitz@apple.com>
+
+        Check in a file created by the Xcode 10 beta.
+
+        * WebKit.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist: Added.
+
+2018-05-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.21.3 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2018-05-25  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Unreviewed. Update OptionsWPE.cmake and NEWS for 2.21.2 release.
+
+        * Source/cmake/OptionsWPE.cmake: Bump version numbers.
+
+2018-05-22  Alberto Garcia  <berto@igalia.com>
+
+        [CMake] Properly detect compiler flags, needed libs, and fallbacks for usage of 64-bit atomic operations
+        https://bugs.webkit.org/show_bug.cgi?id=182622
+        <rdar://problem/40292317>
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/WebKitCompilerFlags.cmake:
+        Move the test to detect whether we need to link against libatomic
+        to a common CMake file so it can be used from both JavaScriptCore
+        and WebKit.
+
+2018-05-22  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r231843.
+
+        Broke cross build
+
+        Reverted changeset:
+
+        "[CMake] Properly detect compiler flags, needed libs, and
+        fallbacks for usage of 64-bit atomic operations"
+        https://bugs.webkit.org/show_bug.cgi?id=182622
+        https://trac.webkit.org/changeset/231843
+
+2018-05-21  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WinCairo] Enable WebKit build by default
+        https://bugs.webkit.org/show_bug.cgi?id=185141
+
+        Reviewed by Per Arne Vollan.
+
+        * Source/cmake/OptionsWin.cmake: Disable
+        ENABLE_NETSCAPE_PLUGIN_API unconditionally for WinCairo port
+        because it builds both WK1 and WK2.
+        * Source/cmake/OptionsWinCairo.cmake: Turn ENABLE_WEBKIT on by default.
+        Remove BUILDING_WIN_CAIRO_WEBKIT macro.
+
+2018-05-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.21.2 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2018-05-17  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [WPE] Implement and enable FULLSCREEN_API
+        https://bugs.webkit.org/show_bug.cgi?id=185676
+
+        Reviewed by Žan Doberšek.
+
+        Remove the CMake option to disable this option for WPE.
+        This feature gets enabled now via Source/cmake/WebKitFeatures.cmake
+
+        * Source/cmake/OptionsWPE.cmake:
+
+2018-05-16  Don Olmstead  <don.olmstead@sony.com>
+
+        [WinCairo] Update WinCairoRequirements
+        https://bugs.webkit.org/show_bug.cgi?id=185700
+
+        Reviewed by Per Arne Vollan.
+
+        * Source/cmake/OptionsWinCairo.cmake:
+
+2018-05-16  Andy VanWagoner  <andy@vanwagoner.family>
+
+        Add support for Intl NumberFormat formatToParts
+        https://bugs.webkit.org/show_bug.cgi?id=185375
+
+        Reviewed by Yusuke Suzuki.
+
+        Add flag for NumberFormat formatToParts.
+
+        * Source/cmake/OptionsJSCOnly.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2018-05-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [Win] Use C++17 in MSVC
+        https://bugs.webkit.org/show_bug.cgi?id=185232
+
+        Reviewed by Alex Christensen.
+
+        Use /std:c++17 option.
+
+        * Source/cmake/OptionsMSVC.cmake:
+
+2018-05-16  Alberto Garcia  <berto@igalia.com>
+
+        [CMake] Properly detect compiler flags, needed libs, and fallbacks for usage of 64-bit atomic operations
+        https://bugs.webkit.org/show_bug.cgi?id=182622
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsJSCOnly.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+        Enable THREADS_PREFER_PTHREAD_FLAG. This uses -pthread instead of
+        -lpthread, fixing the 64-bit RISC-V build of the GTK+ port due to
+        missing atomic primitives.
+
+        * Source/cmake/WebKitCompilerFlags.cmake:
+        Move the test to detect whether we need to link against libatomic
+        to a common CMake file so it can be used from both JavaScriptCore
+        and WebKit.
+
+2018-05-14  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] REGRESSION(r231170) Build broken with Clang 5.0
+        https://bugs.webkit.org/show_bug.cgi?id=185198
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/WebKitCompilerFlags.cmake: Fall back to the -std=c++1z
+        compiler flag if -std=c++17 is not supported. If that flag is not
+        supported either, bail with an error message.
+
+2018-05-09  Jan Alexander Steffens  <jan.steffens@gmail.com>
+
+        [GTK] gtk-doc installation subdir duplicated
+        https://bugs.webkit.org/show_bug.cgi?id=185468
+
+        Reviewed by Carlos Garcia Campos.
+
+        The GTK docs are installed into a duplicated subdir,
+        e.g. /usr/share/doc/gtk-doc/html/webkit2gtk-4.0/webkit2gtk-4.0.
+
+        * Source/PlatformGTK.cmake:
+
+2018-05-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed. Bump WPE soname for good measure.
+
+        * Source/cmake/OptionsWPE.cmake:
+
+2018-05-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed. Update OptionsWPE.cmake and NEWS for 2.21.1 release.
+
+        * Source/cmake/OptionsWPE.cmake: Bump version numbers.
+
+2018-05-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][GTK][JSCONLY] Use capstone disassembler
+        https://bugs.webkit.org/show_bug.cgi?id=185283
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/CMakeLists.txt:
+        * Source/cmake/FindLLVM.cmake: Removed.
+        * Source/cmake/OptionsCommon.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsJSCOnly.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2018-05-08  Valerie R Young  <valerie@bocoup.com>
+
+        test262/Runner.pm: create results dir for results of test262 run
+        https://bugs.webkit.org/show_bug.cgi?id=185392
+
+        Reviewed by Michael Saboff.
+
+        Remove reference to no longer existing files.
+
+        * .gitignore:
+
+2018-05-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSCOnly] Enable Intl.PluralRules
+        https://bugs.webkit.org/show_bug.cgi?id=185359
+
+        Reviewed by Daniel Bates.
+
+        Enable Intl.PluralRules because JSCOnly port enables features aggressively.
+
+        * Source/cmake/OptionsJSCOnly.cmake:
+
+2018-05-07  Don Olmstead  <don.olmstead@sony.com>
+
+        [WinCairo] Disable plugin api when building modern WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=185312
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsWin.cmake:
+
+2018-05-02  Valerie R Young  <valerie@bocoup.com>
+
+        test262/Runner.pm: save summary to file
+        https://bugs.webkit.org/show_bug.cgi?id=185200
+
+        Reviewed by Michael Saboff.
+
+        * .gitignore:
+
+2018-05-01  Leo Balter  <leonardo.balter@gmail.com>
+
+        Auto save the results for Test262
+        https://bugs.webkit.org/show_bug.cgi?id=184926
+
+        Reviewed by Michael Saboff.
+
+2018-05-01  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        WebAssembly: add support for stream APIs - JavaScript API
+        https://bugs.webkit.org/show_bug.cgi?id=183442
+
+        Reviewed by Yusuke Suzuki and JF Bastien.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2018-04-30  JF Bastien  <jfbastien@apple.com>
+
+        Use some C++17 features
+        https://bugs.webkit.org/show_bug.cgi?id=185135
+
+        Reviewed by Alex Christensen.
+
+        As discussed here [0] let's move WebKit to a subset of C++17. We
+        now require GCC 6 [1] which means that, according to [2] we can
+        use the following C++17 language features (I removed some
+        uninteresting ones):
+
+         - New auto rules for direct-list-initialization
+         - static_assert with no message
+         - typename in a template template parameter
+         - Nested namespace definition
+         - Attributes for namespaces and enumerators
+         - u8 character literals
+         - Allow constant evaluation for all non-type template arguments
+         - Fold Expressions
+         - Unary fold expressions and empty parameter packs
+         - __has_include in preprocessor conditional
+         - Differing begin and end types in range-based for
+         - Improving std::pair and std::tuple
+
+        Consult the Tony Tables [3] to see before / after examples.
+
+        Of course we can use any library feature if we're willing to
+        import them to WTF (and they don't require language support).
+
+
+          [0]: https://lists.webkit.org/pipermail/webkit-dev/2018-March/029922.html
+          [1]: https://trac.webkit.org/changeset/231152/webkit
+          [2]: https://en.cppreference.com/w/cpp/compiler_support
+          [3]: https://github.com/tvaneerd/cpp17_in_TTs/blob/master/ALL_IN_ONE.md
+
+        * Source/cmake/WebKitCompilerFlags.cmake:
+
+2018-04-29  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Require GCC 6
+        https://bugs.webkit.org/show_bug.cgi?id=184985
+
+        Reviewed by Alex Christensen.
+
+        Require it.
+
+        * CMakeLists.txt:
+
+2018-04-26  Daniel Bates  <dabates@apple.com>
+
+        ASSERTION FAILED: ASSERT(!containsImage || MIMETypeRegistry::isSupportedImageResourceMIMEType([resource MIMEType])) in -[NSPasteboard(WebExtras) _web_writePromisedRTFDFromArchive:containsImage:]
+        https://bugs.webkit.org/show_bug.cgi?id=184161
+        <rdar://problem/39051645>
+
+        Reviewed by Dan Bernstein.
+
+        * ManualTests/DragInlinePDFImageDocument.html: Added.
+        * ManualTests/resources/simple.pdf: Added.
+
+2018-04-26  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Implement Intl.PluralRules
+        https://bugs.webkit.org/show_bug.cgi?id=184312
+
+        Reviewed by JF Bastien.
+
+        Added Intl.PluralRules feature flag.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2018-04-26  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK][WPE] Initial ASYNC_SCROLLING support
+        https://bugs.webkit.org/show_bug.cgi?id=184961
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsGTK.cmake: Enable ASYNC_SCROLLING as a private option.
+        * Source/cmake/OptionsWPE.cmake: Ditto.
+
+2018-04-25  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] Build and link against latest WPEBackend and WPEBackend-fdo
+        https://bugs.webkit.org/show_bug.cgi?id=184643
+
+        Reviewed by Žan Doberšek.
+
+        Update find modules to include the API versions.
+
+        * Source/cmake/FindWPEBackend-fdo.cmake:
+        * Source/cmake/FindWPEBackend.cmake:
+
+2018-04-25  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Some options should be marked as advanced
+        https://bugs.webkit.org/show_bug.cgi?id=184972
+
+        Reviewed by Konstantin Tokarev.
+
+        * Source/cmake/FindLibGcrypt.cmake:
+        * Source/cmake/FindWebP.cmake:
+
+2018-04-25  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Miscellaneous build cleanups
+        https://bugs.webkit.org/show_bug.cgi?id=184399
+
+        Reviewed by Žan Doberšek.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2018-04-24  Leo Balter  <leonardo.balter@gmail.com>
+
+        Land test262 test results associated with Test262 runner
+        https://bugs.webkit.org/show_bug.cgi?id=184667
+
+        Reviewed by Michael Saboff.
+
+        * .gitignore: Ignore test262 results file.
+
+2018-04-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Remove libgbm dependency
+        https://bugs.webkit.org/show_bug.cgi?id=184906
+
+        Reviewed by Carlos Garcia Campos.
+
+        Remove the libgbm CMake search module. It's not necessary anymore
+        after r230562.
+
+        * Source/cmake/FindLibGBM.cmake: Removed.
+
+2018-04-23  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] check target looks broken
+        https://bugs.webkit.org/show_bug.cgi?id=184407
+
+        Reviewed by Carlos Garcia Campos.
+
+        It's pretty clear that nobody has been using check for a long time.
+
+        We got rid of check-for-webkitdom-api-breaks a long time ago, when we stopped autogenerating
+        the DOM API, but it's still used in the check target. Fix this.
+
+        Also, the check target for some reason runs itself from the Source subdirectory of the
+        builddir, but the test script expects to be run from the toplevel build directory. Fix this
+        too.
+
+        Add VERBATIM for good measure.
+
+        * Source/PlatformGTK.cmake:
+
+2018-04-20  Daniel Bates  <dabates@apple.com>
+
+        Unreviewed, rolling out r230117.
+
+        Broke find-in-page for PDFs
+
+        Reverted changeset:
+
+        "ASSERTION FAILED: ASSERT(!containsImage ||
+        MIMETypeRegistry::isSupportedImageResourceMIMEType([resource
+        MIMEType])) in -[NSPasteboard(WebExtras)
+        _web_writePromisedRTFDFromArchive:containsImage:]"
+        https://bugs.webkit.org/show_bug.cgi?id=184161
+        https://trac.webkit.org/changeset/230117
+
+2018-04-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Local cross references are broken in API documentation
+        https://bugs.webkit.org/show_bug.cgi?id=184771
+
+        Reviewed by Michael Catanzaro.
+
+        Update the documentation html paths and install the JSC GLib API too.
+
+        * Source/PlatformGTK.cmake:
+
+2018-04-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.21.1 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2018-04-17  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CMake] Add and enable the ENABLE_CSS_ANIMATIONS_LEVEL_2 feature define
+        https://bugs.webkit.org/show_bug.cgi?id=184681
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/WebKitFeatures.cmake: Add the ENABLE_CSS_ANIMATIONS_LEVEL_2
+        feature define. Follow Cocoa ports and enable it by default.
+
+2018-04-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] Install files needed for WebKitWebExtensions
+        https://bugs.webkit.org/show_bug.cgi?id=179915
+
+        Reviewed by Žan Doberšek.
+
+        * Source/cmake/OptionsWPE.cmake:
+
+2018-04-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r230554.
+
+        The non-ASCII character in the filename causes issues with SVN
+
+        Reverted changeset:
+
+        "input.webkitEntries does not work as expected when folder
+        contains accented chars"
+        https://bugs.webkit.org/show_bug.cgi?id=184517
+        https://trac.webkit.org/changeset/230554
+
+2018-04-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Switch testing process to using WPEBackend-fdo
+        https://bugs.webkit.org/show_bug.cgi?id=184357
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * Source/cmake/FindWPEBackend-fdo.cmake: Renamed from Source/cmake/FindWPEBackend-mesa.cmake.
+
+2018-04-11  Thibault Saunier  <tsaunier@igalia.com>
+
+        [GStreamer] Use of playbin3 when USE_PLAYBIN3 environment variable is set
+        https://bugs.webkit.org/show_bug.cgi?id=184498
+
+        Reviewed by Philippe Normand.
+
+        This is the same behaviour as with playbin itself.
+
+        Make sure to keep using "playbin" for MediaSource.
+
+        * Source/cmake/GStreamerDefinitions.cmake:
+
+2018-04-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] Use GNU install directories
+        https://bugs.webkit.org/show_bug.cgi?id=184377
+
+        Reviewed by Carlos Garcia Campos.
+
+        Notably, this means all the CMake arguments that distributors use to customize install
+        directories (-DCMAKE_INSTALL_*DIR) will no longer be ignored.
+
+        * Source/cmake/OptionsCommon.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2018-04-08  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [CMake] WebKit should link to WebCore as a PRIVATE library if WebCore is a static library
+        https://bugs.webkit.org/show_bug.cgi?id=184127
+
+        Reviewed by Konstantin Tokarev.
+
+        Building TestWebKitLib on Windows causes a linkage error of
+        multiply defined symbols because TestWebKitLib links to
+        both WebCore and WebKit. TestWebKitLib explicitly links only with
+        WebKit, But, WebCore is propagated because WebKit links WebCore as
+        public.
+
+        * Source/cmake/OptionsGTK.cmake (ADD_WHOLE_ARCHIVE_TO_LIBRARIES):
+        Do not wrap PRIVATE and PUBLIC keywords with -Wl,--whole-archive.
+
+2018-04-08  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Remove applicationDirectoryPath() and sharedResourcePath()
+        https://bugs.webkit.org/show_bug.cgi?id=184381
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2018-04-02  Per Arne Vollan  <pvollan@apple.com>
+
+        Remove references to internal version of WebKitQuartzCoreAdditions in CMake files.
+        https://bugs.webkit.org/show_bug.cgi?id=184246
+        <rdar://problem/39116563>
+
+        Unreviewed build fix.
+
+        * Source/PlatformWin.cmake:
+
+2018-04-02  Alejandro G. Castro  <alex@igalia.com>
+
+        [GTK] Make libwebrtc backend buildable for GTK  port
+        https://bugs.webkit.org/show_bug.cgi?id=178860
+
+        Reviewed by Youenn Fablet.
+
+        * Source/CMakeLists.txt: Add the libwebrtc directory to the compilation.
+        * Source/cmake/OptionsGTK.cmake: Add the USE_LIBWEBRTC option to
+        allow compilation of the specific code.
+
+2018-03-30  Daniel Bates  <dabates@apple.com>
+
+        ASSERTION FAILED: ASSERT(!containsImage || MIMETypeRegistry::isSupportedImageResourceMIMEType([resource MIMEType])) in -[NSPasteboard(WebExtras) _web_writePromisedRTFDFromArchive:containsImage:]
+        https://bugs.webkit.org/show_bug.cgi?id=184161
+
+        Reviewed by Per Arne Vollan.
+
+        * ManualTests/DragInlinePDFImageDocument.html: Added.
+        * ManualTests/resources/simple.pdf: Added.
+
+2018-03-28  Tim Horton  <timothy_horton@apple.com>
+
+        Make it possible to disable building the tools with Make
+        https://bugs.webkit.org/show_bug.cgi?id=184109
+
+        Reviewed by Simon Fraser.
+
+        * Makefile:
+
+2018-03-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Add API to convert between DOM and JSCValue
+        https://bugs.webkit.org/show_bug.cgi?id=183448
+
+        Reviewed by Michael Catanzaro.
+
+        Define FORWARDING_HEADERS_WPE_DOM_DIR.
+
+        * Source/cmake/OptionsWPE.cmake:
+
+2018-03-22  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [WPE] Enable WOFF2 support
+        https://bugs.webkit.org/show_bug.cgi?id=178158
+
+        Reviewed by Frédéric Wang.
+
+        * Source/cmake/OptionsWPE.cmake: Add needed logic to detect the Brotli and WOFF2 libraries.
+
+2018-03-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Initial implementation of JavaScriptCore glib bindings
+        https://bugs.webkit.org/show_bug.cgi?id=164061
+
+        Reviewed by Michael Catanzaro.
+
+        Set global variables used by the makefiles.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2018-03-15  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK][WPE] Enable service workers
+        https://bugs.webkit.org/show_bug.cgi?id=178576
+
+        Reviewed by Žan Doberšek.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2018-03-12  Yoav Weiss  <yoav@yoav.ws>
+
+        Runtime flag for link prefetch and remove link subresource.
+        https://bugs.webkit.org/show_bug.cgi?id=183540
+
+        Reviewed by Chris Dumez.
+
+        Remove the LINK_PREFETCH build time flag.
+
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2018-03-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed. Unbreak the WPE layout testing that's been broken since
+        r229470. Due to disassociation between ENABLE(ACCESSIBILITY) and
+        HAVE(ACCESSIBILITY), the injected bundle for the WPE port was left with
+        undefined symbols. This is fixed with ENABLE_ACCESSIBILITY being enabled
+        for the WPE port as well.
+
+        * Source/cmake/OptionsWPE.cmake:
+
+2018-03-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix library version of JavaScriptCoreGTK.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2018-03-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Bump WebKitGTK+ version to 2.21.0.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2018-03-08  Tim Horton  <timothy_horton@apple.com>
+
+        Add a way to not build libwebrtc when building WebKit via Makefiles
+        https://bugs.webkit.org/show_bug.cgi?id=183437
+        <rdar://problem/38254840>
+
+        Reviewed by Dan Bernstein.
+
+        * Source/Makefile:
+
+2018-03-05  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Split JSC header copying into public and private targets
+        https://bugs.webkit.org/show_bug.cgi?id=183251
+
+        Reviewed by Konstantin Tokarev.
+
+        * Source/cmake/WebKitMacros.cmake:
+
+2018-03-02  Don Olmstead  <don.olmstead@sony.com>
+
+        Add clang-format configuration
+        https://bugs.webkit.org/show_bug.cgi?id=183302
+
+        Reviewed by Ryosuke Niwa.
+
+        * .clang-format: Added.
+
+2018-03-01  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] configure failure for aarch64
+        https://bugs.webkit.org/show_bug.cgi?id=183268
+
+        Unreviewed build fix. This failure is caused by a simple typo.
+
+        * Source/cmake/OptionsCommon.cmake:
+
+2018-02-26  Yousuke Kimoto  <yousuke.kimoto@sony.com>
+
+        [WinCairo] WebKit2_C.h should be included for TestWebKit
+        https://bugs.webkit.org/show_bug.cgi?id=182682
+
+        Reviewed by Yusuke Suzuki.
+
+        Added a new definition "BUILDING_WIN_CAIRO_WEBKIT" to specify
+        the wincairo webkit build.
+
+        * Source/cmake/OptionsWinCairo.cmake:
+
+2018-02-26  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [CMake][OpenVR] Linkage errors happen because only OpenVR is compiled with -stdlib=libc++ if Clang is used
+        https://bugs.webkit.org/show_bug.cgi?id=183116
+
+        Reviewed by Žan Doberšek.
+
+        OpenVR has a option USE_LIBCXX to enable/disable that behavior. Let's disable it.
+
+        * Source/CMakeLists.txt: Added a option command for USE_LIBCXX to set OFF as default.
+
+2018-02-21  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Expose HAVE macros globally
+        https://bugs.webkit.org/show_bug.cgi?id=183011
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsCommon.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2018-02-21  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake][Win] Use cmakeconfig.h rather than config.h and Platform.h
+        https://bugs.webkit.org/show_bug.cgi?id=182883
+
+        Reviewed by Per Arne Vollan.
+
+        * Source/cmake/OptionsAppleWin.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/OptionsWinCairo.cmake:
+
+2018-02-21  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] USE_UPOWER causes crashes inside a chroot or on systems with broken dbus/upower
+        https://bugs.webkit.org/show_bug.cgi?id=181825
+
+        Reviewed by Carlos Garcia Campos.
+
+        Get rid of the upower-glib dependency. We will use upower's D-Bus API instead.
+
+        * Source/cmake/FindUPowerGLib.cmake: Removed.
+        * Source/cmake/OptionsGTK.cmake:
+
+2018-02-20  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK][CMake] Support building with Enchant 2.x
+        https://bugs.webkit.org/show_bug.cgi?id=182933
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/FindEnchant.cmake: Check for both the "enchant" and "enchant-2"
+        pkg-config components, picking the first available for which the headers and
+        library are usable.
+
+2018-02-19  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] Playbin3 support
+        https://bugs.webkit.org/show_bug.cgi?id=182530
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * Source/cmake/GStreamerDefinitions.cmake: New
+        USE(GSTREAMER_PLAYBIN3) feature. This should be enabled only for
+        very recent versions of GStreamer (1.14 at least) and is optional, for now.
+
+2018-02-18  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK][WPE] Fullscreen video is broken
+        https://bugs.webkit.org/show_bug.cgi?id=182740
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/WebKitFeatures.cmake: Enable the
+        VIDEO_USES_ELEMENT_FULLSCREEN feature on CMake ports.
+
+2018-02-16  Dean Jackson  <dino@apple.com>
+
+        Use OPENGL macros to be more clear about which OpenGL/ES WebGL uses on Cocoa
+        https://bugs.webkit.org/show_bug.cgi?id=182894
+
+        Reviewed by Tim Horton.
+
+        Rename OPENGL_ES_2 to OPENGL_ES.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2018-02-09  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Simplify .gitignore's WebKitLibraries/win section.
+        https://bugs.webkit.org/show_bug.cgi?id=182618
+
+        Reviewed by Per Arne Vollan.
+
+        We need to update this section for WinCairoRequirements regardless, but
+        it never needed to be this longwinded in the first place.
+
+        * .gitignore:
+
+2018-02-08  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Meta][Win] Support ICU 59.1+
+        https://bugs.webkit.org/show_bug.cgi?id=181004
+
+        Reviewed by Alex Christensen.
+
+        ICU 59 changed the type of UChar from wchar_t to char16_t on
+        Windows. We need a lot of conversions between UChar* and wchar_t*
+        to call Windows API because it takes string as wchar_t*.
+
+        Fortunately, ICU is configurable to define UChar as wchar_t as
+        well as the prior ICU.
+        <http://icu-project.org/apiref/icu4c/umachine_8h.html#a6bb9fad572d65b305324ef288165e2ac>
+
+        * Source/cmake/OptionsWin.cmake: Add a compile option -DUCHAR_TYPE=wchar_t.
+
+2018-02-08  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, switch -pthread to -lpthread per recommendation from Adrian
+        https://bugs.webkit.org/show_bug.cgi?id=182400
+        <rdar://problem/37252242>
+
+        This is tested and works fine.
+
+        * Source/cmake/WebKitCompilerFlags.cmake:
+
+2018-02-05  Yousuke Kimoto  <yousuke.kimoto@sony.com>
+
+        [WinCairo] Refine WebKitLegacy and WebKit build for wincairo
+        https://bugs.webkit.org/show_bug.cgi?id=182478
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/OptionsWinCairo.cmake: Added a ENABLE_WIN_CAIRO_WEBKIT option to build webkit for wincairo.
+
+2018-02-05  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, fix build using the new ENABLE_ADDRESS_SANITIZER option
+        https://bugs.webkit.org/show_bug.cgi?id=182400
+        <rdar://problem/37252242>
+
+        I failed to properly test a last-minute change.
+
+        * Source/cmake/WebKitCompilerFlags.cmake:
+
+2018-02-05  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Add ENABLE_ADDRESS_SANITIZER to make it easier to build with asan support
+        https://bugs.webkit.org/show_bug.cgi?id=182400
+
+        Reviewed by Konstantin Tokarev.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitCompilerFlags.cmake:
+
+2018-01-31  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Update ReadMe.md
+        https://bugs.webkit.org/show_bug.cgi?id=182314
+
+        Reviewed by Alex Christensen.
+
+        Add download link for Epiphany Technology Preview. Improve build instructions for GTK. Add
+        build instructions for WPE. Add instructions to run MiniBrowser on Linux. Miscellaneous
+        typographical adjustments.
+
+        * ReadMe.md:
+
+2018-01-30  Sergio Villar Senin  <svillar@igalia.com>
+
+        [WebVR][GTK][WPE] Exclude OpenVR from tarballs
+        https://bugs.webkit.org/show_bug.cgi?id=182284
+
+        Reviewed by Michael Catanzaro.
+
+        Added private build options for USE_OPENVR.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2018-01-30  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [WinCairo] Fix forwarding header conflict of WebKit on WinCairo
+        https://bugs.webkit.org/show_bug.cgi?id=177202
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/WebKitMacros.cmake:
+
+2018-01-29  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Add a compile-time feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=182211
+        <rdar://problem/36936365>
+
+        Reviewed by Brent Fulgham.
+
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2018-01-18  Sergio Villar Senin  <svillar@igalia.com>
+
+        [WebVR] Add OpenVR to the tree and to the build
+        https://bugs.webkit.org/show_bug.cgi?id=177298
+
+        Reviewed by Žan Doberšek.
+
+        * Source/CMakeLists.txt:
+        * Source/cmake/OptionsGTK.cmake: Enable USE_OPENVR.
+        * Source/cmake/OptionsWPE.cmake: Ditto.
+
+2018-01-18  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Shared schemes in the WebKit workspace still have build pre-actions that invoke copy-webkitlibraries-to-product-directory
+        https://bugs.webkit.org/show_bug.cgi?id=181784
+
+        Reviewed by Anders Carlsson.
+
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Source.xcscheme: Remove the build pre-action.
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Tools.xcscheme: Ditto.
+
+2018-01-17  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        WEBKIT_FRAMEWORK should not modify file-global include directories
+        https://bugs.webkit.org/show_bug.cgi?id=181656
+
+        Reviewed by Konstantin Tokarev.
+
+        Only modify the system include directories of the target passed to WEBKIT_FRAMEWORK.
+
+        * Source/cmake/WebKitMacros.cmake:
+
+2018-01-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.19.6 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2018-01-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        REGRESSION(r226266): [GTK] RELEASE_ASSERT(reservedZoneSize >= minimumReservedZoneSize) in JSC::VM::updateStackLimits
+        https://bugs.webkit.org/show_bug.cgi?id=181438
+        <rdar://problem/36376724>
+
+        Reviewed by Carlos Garcia Campos.
+
+        Build JSC as a shared library.
+
+        Stop using -fvisibility=hidden. This is a shame, but it is causing problems that I don't
+        know how to fix.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitCompilerFlags.cmake:
+
+2018-01-11  Keith Miller  <keith_miller@apple.com>
+
+        Rename ENABLE_ASYNC_ITERATION to ENABLE_JS_ASYNC_ITERATION
+        https://bugs.webkit.org/show_bug.cgi?id=181573
+
+        Reviewed by Simon Fraser.
+
+        * Source/cmake/WebKitFeatures.cmake:
+
+2018-01-10  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] WebKitLegacy should be a dll, not a static library.
+        https://bugs.webkit.org/show_bug.cgi?id=181500
+
+        Reviewed by Alex Christensen.
+
+        Set WebKitLegacy library type to shared.
+
+        * Source/cmake/OptionsWin.cmake:
+
+2018-01-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.19.5 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2018-01-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.19.4 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2018-01-05  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        REGRESSION(r226306)[Win][CMake] Unnecessary recompilations triggered by unconditionally copied header files of DerivedSources
+        https://bugs.webkit.org/show_bug.cgi?id=181324
+
+        Reviewed by Konstantin Tokarev.
+
+        r226306 changed to use cmake -E copy to copy header files of
+        DerivedSources. This command copies files unconditionally, then
+        introduced unnecessary recompilations.
+
+        * Source/cmake/WebKitMacros.cmake: Use copy_if_different instead of copy.
+
+2018-01-03  Ting-Wei Lan  <lantw44@gmail.com>
+
+        Replace hard-coded paths in shebangs with #!/usr/bin/env
+        https://bugs.webkit.org/show_bug.cgi?id=181040
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/tools/scripts/auto-version.pl:
+        * Source/cmake/tools/scripts/feature-defines.pl:
+        * Source/cmake/tools/scripts/version-stamp.pl:
+
+== Rolled over to ChangeLog-2018-01-01 ==

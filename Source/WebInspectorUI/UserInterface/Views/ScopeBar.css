@@ -1,0 +1,117 @@
+/*
+ * Copyright (C) 2013 Apple Inc. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+.scope-bar {
+    padding: 0 3px;
+    overflow: hidden;
+}
+
+.scope-bar > li {
+    display: inline-block;
+    margin: 0 2px;
+    padding: 1px 8px 3px;
+    font-size: 11px;
+    line-height: 11px;
+    color: hsl(0, 0%, 18%);
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    text-align: center;
+}
+
+.scope-bar > li.multiple {
+    position: relative;
+}
+
+.scope-bar > li.multiple > select {
+    display: none;
+    opacity: 0;
+
+ /* Positioned so the text in the menu aligns with the content text. */
+    position: absolute;
+    top: -5px;
+    left: -4px;
+    right: 0;
+    bottom: 0;
+}
+
+body[dir=ltr] .scope-bar > li.multiple > select {
+    top: -5px;
+    left: -4px;
+}
+
+body[dir=rtl] .scope-bar > li.multiple > select {
+    top: -6px;
+    left: -10px;
+}
+
+.scope-bar > li.multiple.selected > select {
+    display: block;
+}
+
+.scope-bar > li.multiple > .arrows {
+    width: 5px;
+    height: 12px;
+    display: inline-block;
+    vertical-align: -2px;
+    margin-top: -1px;
+    margin-bottom: -1px;
+    --scope-bar-select-arrows-margin-start: 6px;
+}
+
+body[dir=ltr] .scope-bar > li.multiple > .arrows {
+    margin-left: var(--scope-bar-select-arrows-margin-start);
+}
+
+body[dir=rtl] .scope-bar > li.multiple > .arrows {
+    margin-right: var(--scope-bar-select-arrows-margin-start);
+}
+
+.scope-bar > li.multiple:matches(.selected, :hover, :active) > .arrows {
+    color: var(--selected-foreground-color);
+}
+
+.scope-bar > li:matches(.selected, :active) {
+    transition-duration: 75ms;
+}
+
+.scope-bar > li:hover {
+    color: var(--selected-foreground-color);
+    background-color: var(--selected-background-color-hover);
+}
+
+.scope-bar > li.selected {
+    color: var(--selected-foreground-color);
+    background-color: var(--selected-background-color);
+}
+
+.scope-bar > li:active {
+    color: var(--selected-foreground-color);
+    background-color: var(--selected-background-color-active);
+}
+
+.scope-bar > li.selected:active {
+    background-color: var(--selected-background-color-active);
+}

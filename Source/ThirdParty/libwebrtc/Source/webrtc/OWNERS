@@ -1,0 +1,17 @@
+henrika@webrtc.org
+kwiberg@webrtc.org
+mflodman@webrtc.org
+niklas.enbom@webrtc.org
+stefan@webrtc.org
+tina.legrand@webrtc.org
+tommi@webrtc.org
+per-file .gitignore=*
+per-file .gn=phoglund@webrtc.org
+per-file *.gn=phoglund@webrtc.org
+per-file *.gni=phoglund@webrtc.org
+per-file *.py=phoglund@webrtc.org
+per-file AUTHORS=*
+per-file BUILD.gn=phoglund@webrtc.org
+per-file DEPS=*
+per-file pylintrc=phoglund@webrtc.org
+per-file WATCHLISTS=*

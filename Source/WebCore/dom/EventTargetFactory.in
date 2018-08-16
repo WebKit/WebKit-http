@@ -1,0 +1,55 @@
+namespace="EventTarget"
+factoryFunction=toJS
+useNamespaceAsSuffix=true
+
+AbortSignal
+ApplePaySession conditional=APPLE_PAY
+AudioNode conditional=WEB_AUDIO
+AudioContext conditional=WEB_AUDIO
+AudioTrackList conditional=VIDEO_TRACK
+DedicatedWorkerGlobalScope
+DOMApplicationCache
+DOMWindow
+EventSource
+FileReader
+FontFaceSet
+IDBDatabase conditional=INDEXED_DATABASE
+IDBOpenDBRequest conditional=INDEXED_DATABASE
+IDBRequest conditional=INDEXED_DATABASE
+IDBTransaction conditional=INDEXED_DATABASE
+MediaController conditional=VIDEO
+MediaDevices conditional=MEDIA_STREAM
+MediaKeySession conditional=ENCRYPTED_MEDIA
+MediaRemoteControls conditional=MEDIA_SESSION
+MediaSource conditional=MEDIA_SOURCE
+MediaStream conditional=MEDIA_STREAM
+MediaStreamTrack conditional=MEDIA_STREAM
+MessagePort
+Node
+Notification conditional=NOTIFICATIONS
+OffscreenCanvas
+PaymentRequest conditional=PAYMENT_REQUEST
+Performance
+RTCDataChannel conditional=WEB_RTC
+RTCDTMFSender conditional=WEB_RTC_DTMF
+RTCPeerConnection conditional=WEB_RTC
+ServiceWorker conditional=SERVICE_WORKER
+ServiceWorkerContainer conditional=SERVICE_WORKER
+ServiceWorkerGlobalScope conditional=SERVICE_WORKER
+ServiceWorkerRegistration conditional=SERVICE_WORKER
+SourceBuffer conditional=MEDIA_SOURCE
+SourceBufferList conditional=MEDIA_SOURCE
+SpeechSynthesisUtterance conditional=SPEECH_SYNTHESIS
+TextTrack conditional=VIDEO_TRACK
+TextTrackCue conditional=VIDEO_TRACK
+TextTrackList conditional=VIDEO_TRACK
+VRDisplay
+VideoTrackList conditional=VIDEO_TRACK
+VisualViewport
+WebAnimation
+WebKitMediaKeySession conditional=LEGACY_ENCRYPTED_MEDIA
+WebSocket
+Worker
+XMLHttpRequest
+XMLHttpRequestUpload
+

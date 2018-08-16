@@ -1,0 +1,52 @@
+
+PASS non-animatable property 'animation' is not accessed when using a property-indexed keyframe object 
+PASS non-animatable property 'animationDelay' is not accessed when using a property-indexed keyframe object 
+PASS non-animatable property 'animationDirection' is not accessed when using a property-indexed keyframe object 
+PASS non-animatable property 'animationDuration' is not accessed when using a property-indexed keyframe object 
+PASS non-animatable property 'animationFillMode' is not accessed when using a property-indexed keyframe object 
+PASS non-animatable property 'animationIterationCount' is not accessed when using a property-indexed keyframe object 
+PASS non-animatable property 'animationName' is not accessed when using a property-indexed keyframe object 
+PASS non-animatable property 'animationPlayState' is not accessed when using a property-indexed keyframe object 
+PASS non-animatable property 'animationTimingFunction' is not accessed when using a property-indexed keyframe object 
+PASS non-animatable property 'transition' is not accessed when using a property-indexed keyframe object 
+PASS non-animatable property 'transitionDelay' is not accessed when using a property-indexed keyframe object 
+PASS non-animatable property 'transitionDuration' is not accessed when using a property-indexed keyframe object 
+PASS non-animatable property 'transitionProperty' is not accessed when using a property-indexed keyframe object 
+PASS non-animatable property 'transitionTimingFunction' is not accessed when using a property-indexed keyframe object 
+PASS non-animatable property 'display' is not accessed when using a property-indexed keyframe object 
+PASS non-animatable property 'unsupportedProperty' is not accessed when using a property-indexed keyframe object 
+PASS non-animatable property 'font-size' is not accessed when using a property-indexed keyframe object 
+PASS non-animatable property 'animation' is not accessed when using a keyframe sequence 
+PASS non-animatable property 'animationDelay' is not accessed when using a keyframe sequence 
+PASS non-animatable property 'animationDirection' is not accessed when using a keyframe sequence 
+PASS non-animatable property 'animationDuration' is not accessed when using a keyframe sequence 
+PASS non-animatable property 'animationFillMode' is not accessed when using a keyframe sequence 
+PASS non-animatable property 'animationIterationCount' is not accessed when using a keyframe sequence 
+PASS non-animatable property 'animationName' is not accessed when using a keyframe sequence 
+PASS non-animatable property 'animationPlayState' is not accessed when using a keyframe sequence 
+PASS non-animatable property 'animationTimingFunction' is not accessed when using a keyframe sequence 
+PASS non-animatable property 'transition' is not accessed when using a keyframe sequence 
+PASS non-animatable property 'transitionDelay' is not accessed when using a keyframe sequence 
+PASS non-animatable property 'transitionDuration' is not accessed when using a keyframe sequence 
+PASS non-animatable property 'transitionProperty' is not accessed when using a keyframe sequence 
+PASS non-animatable property 'transitionTimingFunction' is not accessed when using a keyframe sequence 
+PASS non-animatable property 'display' is not accessed when using a keyframe sequence 
+PASS non-animatable property 'unsupportedProperty' is not accessed when using a keyframe sequence 
+PASS non-animatable property 'font-size' is not accessed when using a keyframe sequence 
+PASS Equivalent property-indexed and sequenced keyframes: two properties with one value 
+PASS Equivalent property-indexed and sequenced keyframes: two properties with three values 
+PASS Equivalent property-indexed and sequenced keyframes: two properties with different numbers of values 
+PASS Equivalent property-indexed and sequenced keyframes: same easing applied to all keyframes 
+PASS Equivalent property-indexed and sequenced keyframes: same composite applied to all keyframes 
+PASS Keyframes are read from a custom iterator 
+PASS 'easing' and 'offset' are ignored on iterable objects 
+PASS Keyframes are read from a custom iterator with multiple properties specified 
+PASS Keyframes are read from a custom iterator with where an offset is specified 
+PASS Reading from a custom iterator that returns a non-object keyframe should throw 
+PASS A list of values returned from a custom iterator should be ignored 
+PASS Only enumerable properties on keyframes are read 
+PASS Only properties defined directly on keyframes are read 
+PASS Only enumerable properties on property-indexed keyframes are read 
+PASS Only properties defined directly on property-indexed keyframes are read 
+PASS Properties are read in ascending order by Unicode codepoint 
+

@@ -1,0 +1,234 @@
+<?xml version="1.0"?>
+<!DOCTYPE moduleset SYSTEM "moduleset.dtd">
+<?xml-stylesheet type="text/xsl" href="moduleset.xsl"?>
+<moduleset>
+
+  <include href="../gstreamer/jhbuild.modules"/>
+
+  <metamodule id="webkitwpe-testing-dependencies">
+    <dependencies>
+      <dep package="brotli"/>
+      <dep package="glib"/>
+      <dep package="libsoup"/>
+      <dep package="cairo"/>
+      <dep package="fonts"/>
+      <dep package="dicts"/>
+      <dep package="fontconfig"/>
+      <dep package="freetype6"/>
+      <dep package="harfbuzz"/>
+      <dep package="webkit-gstreamer-testing-dependencies"/>
+      <dep package="woff2"/>
+      <dep package="wpebackend"/>
+      <dep package="wpebackend-fdo"/>
+      <dep package="libgpg-error"/>
+      <dep package="libgcrypt"/>
+      <dep package="libepoxy"/>
+      <dep package="wayland-protocols"/>
+    </dependencies>
+  </metamodule>
+
+  <!-- Please use http/https to access repositories to be friendly to users stuck behind firewalls. -->
+  <repository type="tarball" name="sourceware.org-mirror"
+      href="http://mirrors.kernel.org/sources.redhat.com/"/>
+  <repository type="tarball" name="ftp.gnome.org"
+      href="http://ftp.gnome.org"/>
+  <repository type="tarball" name="cairographics.org"
+      href="http://cairographics.org"/>
+  <repository type="tarball" name="freedesktop.org"
+      href="http://www.freedesktop.org"/>
+  <repository type="tarball" name="wayland.freedesktop.org"
+      href="http://wayland.freedesktop.org"/>
+  <repository type="git" name="github.com"
+      href="https://github.com"/>
+  <repository type="tarball" name="github-tarball"
+      href="https://github.com/"/>
+  <repository type="tarball" name="savannah.gnu.org"
+      href="http://download.savannah.gnu.org/releases/"/>
+  <repository type="tarball" name="gnupg.org"
+      href="https://www.gnupg.org/ftp/gcrypt/"/>
+
+  <cmake id="brotli">
+    <branch repo="github.com" module="google/brotli.git" checkoutdir="brotli" tag="v1.0.1"/>
+  </cmake>
+
+  <cmake id="woff2">
+    <branch repo="github.com" module="google/woff2.git" checkoutdir="woff2" tag="v1.0.2"/>
+    <dependencies>
+      <dep package="brotli"/>
+    </dependencies>
+  </cmake>
+
+  <autotools id="libffi" autogen-sh="configure">
+    <branch module="libffi/libffi-3.0.10.tar.gz" version="3.0.10"
+             repo="sourceware.org-mirror"
+             hash="sha256:f01eb9027e9eb56aeaeef636649877756d475d714ef8b47f627f65bc5f3b492f"/>
+  </autotools>
+
+  <autotools id="glib"
+             autogen-sh="configure"
+             autogenargs="--disable-dtrace">
+    <dependencies>
+      <dep package="libffi"/>
+    </dependencies>
+    <branch module="/pub/GNOME/sources/glib/2.54/glib-2.54.3.tar.xz" version="2.54.3"
+            repo="ftp.gnome.org"
+            hash="sha256:963fdc6685dc3da8e5381dfb9f15ca4b5709b28be84d9d05a9bb8e446abac0a8">
+      <patch file="gdate-suppress-string-format-literal-warning.patch" strip="1"/>
+      <patch file="glib-revert-wakeup-changes.patch" strip="1"/>
+      <patch file="glib-cast-function-type.patch" strip="1"/>
+    </branch>
+  </autotools>
+
+  <autotools id="glib-networking"
+             autogen-sh="configure">
+    <dependencies>
+      <dep package="glib"/>
+    </dependencies>
+    <branch module="/pub/GNOME/sources/glib-networking/2.54/glib-networking-2.54.1.tar.xz" version="2.54.1"
+            repo="ftp.gnome.org"
+            hash="sha256:eaa787b653015a0de31c928e9a17eb57b4ce23c8cf6f277afaec0d685335012f"/>
+  </autotools>
+
+  <autotools id="libsoup"
+             autogen-sh="configure"
+             autogenargs="--without-gnome --disable-introspection">
+    <dependencies>
+      <dep package="glib-networking"/>
+    </dependencies>
+    <branch module="/pub/GNOME/sources/libsoup/2.60/libsoup-2.60.3.tar.xz" version="2.60.3"
+            repo="ftp.gnome.org"
+            hash="sha256:1b0dc762f23abe4e0d29b77370e539fd35f31d8e8e0318d6ddccff395be68a22"/>
+  </autotools>
+
+  <autotools id="fonts" supports-non-srcdir-builds="no"
+             skip-autogen="true">
+    <branch repo="github.com" module="WebKitGTK/webkitgtk-test-fonts.git" checkoutdir="webkitgtk-test-fonts" tag="0.0.6"/>
+  </autotools>
+
+  <autotools id="dicts" supports-non-srcdir-builds="no"
+             skip-autogen="true">
+    <branch repo="github.com" module="mrobinson/webkitgtk-test-dicts.git" checkoutdir="webkitgtk-test-dicts" tag="0.0.1"/>
+  </autotools>
+
+  <autotools id="freetype6" autogen-sh="configure"
+        autogenargs="--with-harfbuzz=no">
+    <branch module="freetype/freetype-2.8.tar.bz2" version="2.8"
+            repo="savannah.gnu.org"
+            hash="sha256:a3c603ed84c3c2495f9c9331fe6bba3bb0ee65e06ec331e0a0fb52158291b40b"/>
+  </autotools>
+
+  <autotools id="fontconfig" autogen-sh="configure"
+             autogenargs="--disable-docs"
+             supports-non-srcdir-builds="no">
+    <dependencies>
+      <dep package="freetype6"/>
+    </dependencies>
+    <branch module="software/fontconfig/release/fontconfig-2.12.4.tar.bz2" version="2.12.4"
+            repo="freedesktop.org"
+            hash="sha256:668293fcc4b3c59765cdee5cee05941091c0879edcc24dfec5455ef83912e45c"/>
+  </autotools>
+
+  <autotools id="harfbuzz" autogen-sh="configure"
+        autogenargs="--with-cairo=no --with-glib=yes --with-freetype=yes --with-fontconfig=yes">
+    <dependencies>
+      <dep package="glib"/>
+      <dep package="freetype6"/>
+      <dep package="fontconfig"/>
+    </dependencies>
+    <branch module="software/harfbuzz/release/harfbuzz-1.3.3.tar.bz2"
+            version="1.3.3"
+            checkoutdir="harfbuzz-1.3.3"
+            repo="freedesktop.org"
+            hash="sha256:2620987115a4122b47321610dccbcc18f7f121115fd7b88dc8a695c8b66cb3c9"
+            md5sum="97ae15a72a93f1f27324a2b8d9bd3b1d">
+    </branch>
+  </autotools>
+
+  <autotools id="pixman"
+             autogen-sh="configure"
+             autogenargs="--enable-gtk=no">
+    <branch module="releases/pixman-0.32.6.tar.gz" version="0.32.6"
+            repo="cairographics.org"
+            hash="sha256:3dfed13b8060eadabf0a4945c7045b7793cc7e3e910e748a8bb0f0dc3e794904"/>
+  </autotools>
+
+  <autotools id="cairo"
+             autogen-sh="configure"
+             autogenargs="--enable-egl=yes --enable-glesv2">
+    <dependencies>
+      <dep package="glib"/>
+      <dep package="fontconfig"/>
+      <dep package="pixman"/>
+    </dependencies>
+    <branch module="releases/cairo-1.14.8.tar.xz" version="1.14.8"
+            repo="cairographics.org"
+            hash="sha1:c6f7b99986f93c9df78653c3e6a3b5043f65145e"/>
+  </autotools>
+
+  <cmake id="wpebackend">
+    <branch repo="github.com" module="WebPlatformForEmbedded/WPEBackend.git"
+            tag="45148ff5e802c6cd1d30d3c318ff6bb5bdf2c4aa" />
+  </cmake>
+
+  <cmake id="wpebackend-fdo">
+    <dependencies>
+      <dep package="wpebackend"/>
+      <dep package="glib"/>
+    </dependencies>
+    <branch repo="github.com" module="Igalia/WPEBackend-fdo.git"
+            tag="fac3fe1ea78b6fc5b6005adfceb93eeb46681485"/>
+  </cmake>
+
+  <autotools id="libgpg-error" autogen-sh="configure">
+    <branch module="libgpg-error/libgpg-error-1.27.tar.bz2"
+            version="1.27"
+            repo="gnupg.org"
+            hash="sha256:4f93aac6fecb7da2b92871bb9ee33032be6a87b174f54abf8ddf0911a22d29d2">
+    </branch>
+  </autotools>
+
+  <autotools id="libgcrypt" autogen-sh="configure">
+    <branch module="libgcrypt/libgcrypt-1.7.6.tar.bz2"
+            version="1.7.6"
+            repo="gnupg.org"
+            hash="sha256:626aafee84af9d2ce253d2c143dc1c0902dda045780cc241f39970fc60be05bc">
+        <patch file="libgcrypt-use-only-dev-urandom-for-testing.patch" strip="1"/>
+    </branch>
+    <dependencies>
+      <dep package="libgpg-error"/>
+    </dependencies>
+  </autotools>
+
+  <autotools id="libepoxy" autogen-sh="configure">
+    <branch module="anholt/libepoxy/releases/download/1.4.3/libepoxy-1.4.3.tar.xz"
+            version="1.4.3" repo="github-tarball"/>
+  </autotools>
+
+  <autotools id="wayland-protocols" autogen-sh="configure">
+    <branch module="releases/wayland-protocols-${version}.tar.xz"
+            version="1.12"
+	    repo="wayland.freedesktop.org"
+	    hash="sha256:3b19e8a9e1e19474756a7069db23b90ca9b8ebb438448c6063b4a7fc89b7c8b2"/>
+  </autotools>
+
+  <meson id="graphene">
+    <branch repo="github.com"
+            module="ebassi/graphene.git"
+            tag="1.6.0"/>
+    <dependencies>
+      <dep package="glib"/>
+    </dependencies>
+  </meson>
+
+  <distutils id="meson" python3="1">
+    <branch repo="github-tarball"
+            version="0.42.0"
+            module="mesonbuild/meson/releases/download/${version}/meson-${version}.tar.gz"
+            checkoutdir="meson-${version}"
+            hash="sha256:a74c7387a3dd8171e931bcd948355f7f9529368eae72c3c22a9beef6c2e73498"/>
+    <dependencies>
+      <dep package="ninja"/>
+    </dependencies>
+  </distutils>
+
+</moduleset>
