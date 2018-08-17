@@ -23,7 +23,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 "use strict";
-
+const featureURLSupported = typeof URL === 'function';
+const autoStartParam = 'autoload';
 class Driver {
     constructor(statusCell, triggerCell, triggerLink, magicCell, summaryCell, key)
     {
@@ -48,6 +49,8 @@ class Driver {
         if (isInBrowser) {
             this._triggerCell.addEventListener('click', this._triggerLink);
             this._triggerCell.classList.add('ready');
+            (featureURLSupported && new URL(window.location.href).searchParams.get(autoStartParam)) ? this._triggerLink() : null;
+
         }
     }
     
