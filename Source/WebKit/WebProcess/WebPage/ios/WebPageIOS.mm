@@ -2450,8 +2450,12 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
             }
         }
 #if ENABLE(INPUT_TYPE_COLOR)
-        else if (element.isColorControl())
+        else if (element.isColorControl()) {
             information.elementType = InputType::Color;
+#if ENABLE(DATALIST_ELEMENT)
+            information.suggestedColors = element.suggestedColors();
+#endif
+        }
 #endif
 
         information.isReadOnly = element.isReadOnly();
