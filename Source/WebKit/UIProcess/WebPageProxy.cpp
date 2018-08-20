@@ -3858,7 +3858,7 @@ void WebPageProxy::didChangeMainDocument(uint64_t frameID)
 void WebPageProxy::viewIsBecomingVisible()
 {
 #if ENABLE(MEDIA_STREAM)
-    userMediaPermissionRequestManager().processPregrantedRequests();
+    userMediaPermissionRequestManager().viewIsBecomingVisible();
 #endif
 }
 
@@ -6483,6 +6483,13 @@ void WebPageProxy::enumerateMediaDevicesForFrame(uint64_t userMediaID, uint64_t 
     UNUSED_PARAM(frameID);
     UNUSED_PARAM(userMediaDocumentOriginData);
     UNUSED_PARAM(topLevelDocumentOriginData);
+#endif
+}
+
+void WebPageProxy::beginMonitoringCaptureDevices()
+{
+#if ENABLE(MEDIA_STREAM)
+    UserMediaProcessManager::singleton().beginMonitoringCaptureDevices();
 #endif
 }
 
