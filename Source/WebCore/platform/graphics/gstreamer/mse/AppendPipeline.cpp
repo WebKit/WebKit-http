@@ -1275,18 +1275,14 @@ void AppendPipeline::handleProtectedBufferProbeInformation(GstPadProbeInfo* info
 
     m_isProcessingProtectionEvents = false;
 
+    GstBuffer* buffer = gst_pad_probe_info_get_buffer(info);
+    GstProtectionMeta* protectionMeta = reinterpret_cast<GstProtectionMeta*>(gst_buffer_get_protection_meta(buffer));
     unsigned listSize = gst_value_list_get_size(&m_cachedProtectionEvents);
-    if (!listSize)
+    if (!listSize || !protectionMeta)
         return;
 
-    GstBuffer* buffer = gst_pad_probe_info_get_buffer(info);
     GST_DEBUG("adding %u protection events to buffer %p", listSize, buffer);
-
-    GstProtectionMeta* protectionMeta = reinterpret_cast<GstProtectionMeta*>(gst_buffer_get_protection_meta(buffer));
-    GstStructure* structure = protectionMeta ? protectionMeta->info : gst_structure_new_empty("webkit-protection-events");
-    gst_structure_set_value(structure, "stream-encryption-events", &m_cachedProtectionEvents);
-    if (!protectionMeta)
-        gst_buffer_add_protection_meta(buffer, structure);
+    gst_structure_set_value(protectionMeta->info, "stream-encryption-events", &m_cachedProtectionEvents);
 }
 
 static GstPadProbeReturn appendPipelineAppsinkPadProtectionProbe(GstPad*, GstPadProbeInfo* info, struct PadProbeInformation *padProbeInformation)

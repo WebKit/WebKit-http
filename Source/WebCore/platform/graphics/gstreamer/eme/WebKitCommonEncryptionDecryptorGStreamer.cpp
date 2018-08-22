@@ -207,28 +207,27 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
     WebKitMediaCommonEncryptionDecryptPrivate* priv = WEBKIT_MEDIA_CENC_DECRYPT_GET_PRIVATE(self);
 
     GstProtectionMeta* protectionMeta = reinterpret_cast<GstProtectionMeta*>(gst_buffer_get_protection_meta(buffer));
-    bool isBufferEncrypted = protectionMeta;
+    if (!protectionMeta) {
+        GST_TRACE_OBJECT(self, "buffer %p has no protection meta, assuming it's not encrypted", buffer);
+        return GST_FLOW_OK;
+    }
 
     LockHolder locker(priv->m_mutex);
 
-    if (protectionMeta) {
-        const GValue* streamEncryptionEventsList = gst_structure_get_value(protectionMeta->info, "stream-encryption-events");
-        if (streamEncryptionEventsList && GST_VALUE_HOLDS_LIST(streamEncryptionEventsList)) {
-            unsigned streamEncryptionEventsListSize = gst_value_list_get_size(streamEncryptionEventsList);
-            for (unsigned i = 0; i < streamEncryptionEventsListSize; ++i)
-                priv->m_pendingProtectionEvents.append(GRefPtr<GstEvent>(static_cast<GstEvent*>(g_value_get_boxed(gst_value_list_get_value(streamEncryptionEventsList, i)))));
-            gst_structure_remove_field(protectionMeta->info, "stream-encryption-events");
-            isBufferEncrypted = gst_structure_n_fields(protectionMeta->info) > 0;
+    const GValue* streamEncryptionEventsList = gst_structure_get_value(protectionMeta->info, "stream-encryption-events");
+    if (streamEncryptionEventsList && GST_VALUE_HOLDS_LIST(streamEncryptionEventsList)) {
+        unsigned streamEncryptionEventsListSize = gst_value_list_get_size(streamEncryptionEventsList);
+        for (unsigned i = 0; i < streamEncryptionEventsListSize; ++i)
+            priv->m_pendingProtectionEvents.append(GRefPtr<GstEvent>(static_cast<GstEvent*>(g_value_get_boxed(gst_value_list_get_value(streamEncryptionEventsList, i)))));
+        gst_structure_remove_field(protectionMeta->info, "stream-encryption-events");
+        if (!gst_structure_n_fields(protectionMeta->info)) {
+            GST_ERROR_OBJECT(self, "buffer %p did not have enough protection meta-data", buffer);
+            return GST_FLOW_NOT_SUPPORTED;
         }
     }
 
     if (!priv->m_pendingProtectionEvents.isEmpty())
         webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(self);
-
-    if (!isBufferEncrypted) {
-        GST_TRACE_OBJECT(self, "failed to get original protection metadata from buffer %p, assuming it's not encrypted", buffer);
-        return GST_FLOW_OK;
-    }
 
     // The key might not have been received yet. Wait for it.
     if (!priv->m_keyReceived) {
