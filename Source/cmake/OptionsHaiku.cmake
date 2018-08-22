@@ -1,3 +1,6 @@
+include(GNUInstallDirs)
+include(VersioningUtils)
+
 SET(PROJECT_VERSION_MAJOR 1)
 SET(PROJECT_VERSION_MINOR 6)
 SET(PROJECT_VERSION_PATCH 6)
@@ -5,6 +8,8 @@ SET(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_
 
 add_definitions(-DHAIKU_WEBKIT_VERSION=\"${PROJECT_VERSION}\")
 add_definitions(-DBUILDING_HAIKU__=1)
+
+CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(JAVASCRIPTCORE 25 4 7)
 
 # Force libstdc++ to export std::isinf and friends. This should be fixed on
 # Haiku side ultimately.
@@ -231,6 +236,7 @@ if (ENABLE_INDEXED_DATABASE)
     add_definitions(-DUSE_LEVELDB=1)
 endif ()
 
+set(JavaScriptCore_LIBRARY_TYPE SHARED)
 set(SHOULD_INSTALL_JS_SHELL ON)
 
 set(WEBKIT_CPACK_ALL_PORTS 1) # Until we can safely extract only the sources used by Haiku
