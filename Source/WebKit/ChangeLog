@@ -1,3 +1,833 @@
+2018-08-22  Aditya Keerthi  <akeerthi@apple.com>
+
+        [iOS] Add support for the inputmode attribute
+        https://bugs.webkit.org/show_bug.cgi?id=183621
+
+        Reviewed by Tim Horton.
+
+        The inputmode attribute specifies which input mechanism would be most helpful for
+        users entering content in textfield inputs and textareas. This patch adds support
+        for seven values: text, tel, url, email, numeric, decimal and search.
+
+        On iOS, we can specify UIKeyboardTypes that best match the supplied inputmode.
+        - text: UIKeyboardTypeDefault
+        - tel: UIKeyboardTypePhonePad
+        - url: UIKeyboardTypeURL
+        - email: UIKeyboardTypeEmailAddress
+        - numeric: UIKeyboardTypeNumbersAndPunctuation
+        - decimal: UIKeyboardTypeDecimalPad
+        - search: UIKeyboardTypeWebSearch
+
+        In the case that the inputmode attribute is not specified, we fall back to using
+        our existing heuristic to determine what kind of keyboard to show for textfields.
+
+        * Shared/AssistedNodeInformation.cpp:
+        (WebKit::AssistedNodeInformation::encode const):
+        (WebKit::AssistedNodeInformation::decode):
+        * Shared/AssistedNodeInformation.h: Added inputMode field.
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView textInputTraits]):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::inputModeForElement):
+        (WebKit::WebPage::getAssistedNodeInformation):
+
+2018-08-22  Jeff Miller  <jeffm@apple.com>
+
+        WKNavigationDelegate needs to allow clients to specify a custom blocked plug-in message
+        https://bugs.webkit.org/show_bug.cgi?id=188764
+
+        Reviewed by Alex Christensen.
+
+        Add a new private WKNavigationDelegate method that takes a completion handler so clients can return
+        a custom unavailability description in addition to the policy. Change WebPageProxy::findPlugin() to
+        send a delayed reply and API::LoaderClient::pluginLoadPolicy()/API::NavigationClient::decidePolicyForPluginLoad()
+        to take a completion handler to support this.
+    
+        * UIProcess/API/APILoaderClient.h:
+        (API::LoaderClient::pluginLoadPolicy):
+        Changed to take a completion handler. The default implementation doesn't return a custom
+        unavailability description.
+
+        * UIProcess/API/APINavigationClient.h:
+        (API::NavigationClient::decidePolicyForPluginLoad):
+        Ditto.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageLoaderClient):
+        Changed pluginLoadPolicy() to take a completion handler.
+
+        (WKPageSetPageNavigationClient):
+        Changed decidePolicyForPluginLoad() to take a completion handler.
+
+        * UIProcess/API/Cocoa/WKNavigationDelegatePrivate.h:
+        Add alternate version of -decidePolicyForPluginLoadWithCurrentPolicy: that allows clients to return
+        the unavailibility description.
+    
+        * UIProcess/Cocoa/NavigationState.h:
+        Add flag for new delegate method.
+        Changed decidePolicyForPluginLoad() to take a completion handler.
+    
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::setNavigationDelegate):
+        Calculate flag for new delegate method.
+    
+        (WebKit::NavigationState::NavigationClient::decidePolicyForPluginLoad):
+        Changed to take a completion handler.
+        Prefer new delegate method, if available.
+    
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::findPlugin):
+        Changed to send a delayed reply.
+        Refactored some code into a lambda so it can be shared when using m_navigationClient->decidePolicyForPluginLoad().
+        Removed unneeded UNUSED_PARAM() macros.
+    
+        * UIProcess/WebPageProxy.h:
+        Changed findPlugin() to send a delayed reply.
+    
+        * UIProcess/WebPageProxy.messages.in:
+        Ditto.
+
+2018-08-22  Sihui Liu  <sihui_liu@apple.com>
+
+        Try removing defaultSessionParameters from NetworkProcessCreationParameters
+        https://bugs.webkit.org/show_bug.cgi?id=188831
+
+        Reviewed by Alex Christensen.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::initializeNetworkProcess):
+        * NetworkProcess/NetworkProcessCreationParameters.cpp:
+        (WebKit::NetworkProcessCreationParameters::encode const):
+        (WebKit::NetworkProcessCreationParameters::decode):
+        * NetworkProcess/NetworkProcessCreationParameters.h:
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::ensureNetworkProcess):
+
+2018-08-22  Tim Horton  <timothy_horton@apple.com>
+
+        Use unified build for WebProcess
+        https://bugs.webkit.org/show_bug.cgi?id=185015
+
+        Reviewed by Alex Christensen.
+
+        * Sources.txt:
+        * SourcesCocoa.txt:
+        * UIProcess/WebPageProxy.h:
+        * WebKit.xcodeproj/project.pbxproj:
+        * WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.cpp:
+        * WebProcess/Databases/WebDatabaseProvider.cpp:
+        * WebProcess/EntryPoint/mac/XPCService/WebContentServiceEntryPoint.mm:
+        * WebProcess/FileAPI/BlobRegistryProxy.cpp:
+        * WebProcess/FullScreen/WebFullScreenManager.cpp:
+        * WebProcess/Gamepad/WebGamepadProvider.cpp:
+        * WebProcess/Geolocation/GeolocationPermissionRequestManager.cpp:
+        * WebProcess/Geolocation/WebGeolocationManager.cpp:
+        * WebProcess/InjectedBundle/API/c/mac/WKBundlePageBannerMac.mm:
+        * WebProcess/InjectedBundle/API/gtk/DOM/GObjectEventListener.cpp:
+        * WebProcess/InjectedBundle/DOM/InjectedBundleCSSStyleDeclarationHandle.cpp:
+        * WebProcess/InjectedBundle/DOM/InjectedBundleFileHandle.cpp:
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.cpp:
+        * WebProcess/InjectedBundle/DOM/InjectedBundleRangeHandle.cpp:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        * WebProcess/InjectedBundle/InjectedBundleBackForwardList.cpp:
+        * WebProcess/InjectedBundle/InjectedBundleBackForwardListItem.cpp:
+        * WebProcess/InjectedBundle/InjectedBundleDOMWindowExtension.cpp:
+        * WebProcess/InjectedBundle/InjectedBundleHitTestResult.cpp:
+        * WebProcess/InjectedBundle/InjectedBundleNavigationAction.cpp:
+        * WebProcess/InjectedBundle/InjectedBundlePageContextMenuClient.cpp:
+        * WebProcess/InjectedBundle/InjectedBundlePageEditorClient.cpp:
+        * WebProcess/InjectedBundle/InjectedBundlePageFormClient.cpp:
+        * WebProcess/InjectedBundle/InjectedBundlePageFullScreenClient.cpp:
+        * WebProcess/InjectedBundle/InjectedBundlePageLoaderClient.cpp:
+        * WebProcess/InjectedBundle/InjectedBundlePagePolicyClient.cpp:
+        * WebProcess/InjectedBundle/InjectedBundlePageResourceLoadClient.cpp:
+        * WebProcess/InjectedBundle/InjectedBundlePageUIClient.cpp:
+        * WebProcess/InjectedBundle/InjectedBundleScriptWorld.cpp:
+        * WebProcess/InjectedBundle/mac/InjectedBundleMac.mm:
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.cpp:
+        * WebProcess/Network/NetworkProcessConnection.cpp:
+        * WebProcess/Network/WebLoaderStrategy.cpp:
+        * WebProcess/Network/WebResourceLoader.cpp:
+        * WebProcess/Network/WebSocketProvider.cpp:
+        * WebProcess/Network/WebSocketStream.cpp:
+        * WebProcess/Network/webrtc/LibWebRTCProvider.cpp:
+        * WebProcess/Network/webrtc/LibWebRTCResolver.cpp:
+        * WebProcess/Network/webrtc/LibWebRTCResolver.h:
+        * WebProcess/Network/webrtc/LibWebRTCSocket.cpp:
+        * WebProcess/Network/webrtc/LibWebRTCSocket.h:
+        * WebProcess/Network/webrtc/WebMDNSRegister.cpp:
+        * WebProcess/Network/webrtc/WebRTCMonitor.cpp:
+        * WebProcess/Network/webrtc/WebRTCMonitor.h:
+        * WebProcess/Notifications/NotificationPermissionRequestManager.cpp:
+        * WebProcess/Notifications/WebNotificationManager.cpp:
+        * WebProcess/Plugins/Netscape/JSNPMethod.cpp:
+        * WebProcess/Plugins/Netscape/JSNPObject.cpp:
+        * WebProcess/Plugins/Netscape/NPJSObject.cpp:
+        * WebProcess/Plugins/Netscape/NPRuntimeObjectMap.cpp:
+        * WebProcess/Plugins/Netscape/NetscapeBrowserFuncs.cpp:
+        * WebProcess/Plugins/Netscape/NetscapePlugin.cpp:
+        * WebProcess/Plugins/Netscape/NetscapePluginNone.cpp:
+        * WebProcess/Plugins/Netscape/NetscapePluginStream.cpp:
+        * WebProcess/Plugins/Netscape/mac/NetscapePluginMac.mm:
+        * WebProcess/Plugins/PDF/PDFPlugin.mm:
+        * WebProcess/Plugins/PDF/PDFPluginAnnotation.mm:
+        * WebProcess/Plugins/PDF/PDFPluginChoiceAnnotation.mm:
+        * WebProcess/Plugins/PDF/PDFPluginPasswordField.mm:
+        * WebProcess/Plugins/PDF/PDFPluginTextAnnotation.mm:
+        * WebProcess/Plugins/Plugin.cpp:
+        * WebProcess/Plugins/PluginProcessConnection.cpp:
+        * WebProcess/Plugins/PluginProxy.cpp:
+        * WebProcess/Plugins/PluginView.cpp:
+        * WebProcess/Plugins/WebPluginInfoProvider.cpp:
+        * WebProcess/Storage/ServiceWorkerClientFetch.cpp:
+        * WebProcess/Storage/WebSWClientConnection.cpp:
+        * WebProcess/Storage/WebSWContextManagerConnection.cpp:
+        * WebProcess/Storage/WebSWOriginTable.cpp:
+        * WebProcess/Storage/WebServiceWorkerFetchTaskClient.cpp:
+        * WebProcess/Storage/WebServiceWorkerProvider.cpp:
+        * WebProcess/Storage/WebToStorageProcessConnection.cpp:
+        * WebProcess/UserContent/WebUserContentController.cpp:
+        * WebProcess/WebConnectionToUIProcess.cpp:
+        * WebProcess/WebCoreSupport/SessionStateConversion.cpp:
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        * WebProcess/WebCoreSupport/WebColorChooser.cpp:
+        * WebProcess/WebCoreSupport/WebContextMenuClient.cpp:
+        * WebProcess/WebCoreSupport/WebDataListSuggestionPicker.cpp:
+        * WebProcess/WebCoreSupport/WebDiagnosticLoggingClient.cpp:
+        * WebProcess/WebCoreSupport/WebDragClient.cpp:
+        * WebProcess/WebCoreSupport/WebEditorClient.cpp:
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        * WebProcess/WebCoreSupport/WebGeolocationClient.cpp:
+        * WebProcess/WebCoreSupport/WebInspectorClient.cpp:
+        * WebProcess/WebCoreSupport/WebMessagePortChannelProvider.cpp:
+        * WebProcess/WebCoreSupport/WebNotificationClient.cpp:
+        * WebProcess/WebCoreSupport/WebPerformanceLoggingClient.cpp:
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        * WebProcess/WebCoreSupport/WebPopupMenu.cpp:
+        * WebProcess/WebCoreSupport/WebProgressTrackerClient.cpp:
+        * WebProcess/WebCoreSupport/WebSearchPopupMenu.cpp:
+        * WebProcess/WebCoreSupport/WebUserMediaClient.cpp:
+        * WebProcess/WebCoreSupport/WebValidationMessageClient.cpp:
+        * WebProcess/WebCoreSupport/ios/WebChromeClientIOS.mm:
+        * WebProcess/WebCoreSupport/ios/WebEditorClientIOS.mm:
+        * WebProcess/WebCoreSupport/ios/WebFrameLoaderClientIOS.mm:
+        * WebProcess/WebCoreSupport/mac/WebAlternativeTextClient.cpp:
+        * WebProcess/WebCoreSupport/mac/WebContextMenuClientMac.mm:
+        * WebProcess/WebCoreSupport/mac/WebDragClientMac.mm:
+        * WebProcess/WebCoreSupport/mac/WebEditorClientMac.mm:
+        * WebProcess/WebCoreSupport/mac/WebFrameNetworkingContext.mm:
+        * WebProcess/WebCoreSupport/mac/WebPopupMenuMac.mm:
+        * WebProcess/WebCoreSupport/soup/WebFrameNetworkingContext.cpp:
+        * WebProcess/WebCoreSupport/win/WebContextMenuClientWin.cpp:
+        * WebProcess/WebCoreSupport/win/WebPopupMenuWin.cpp:
+        * WebProcess/WebCoreSupport/wpe/WebEditorClientWPE.cpp:
+        * WebProcess/WebPage/Cocoa/WebPageCocoa.mm:
+        * WebProcess/WebPage/DrawingArea.cpp:
+        * WebProcess/WebPage/EventDispatcher.cpp:
+        * WebProcess/WebPage/FindController.cpp:
+        * WebProcess/WebPage/LayerTreeHost.cpp:
+        * WebProcess/WebPage/RemoteLayerTree/GraphicsLayerCARemote.cpp:
+        * WebProcess/WebPage/RemoteLayerTree/PlatformCALayerRemote.cpp:
+        * WebProcess/WebPage/RemoteLayerTree/PlatformCALayerRemoteCustom.mm:
+        * WebProcess/WebPage/RemoteLayerTree/PlatformCALayerRemoteTiledBacking.cpp:
+        * WebProcess/WebPage/RemoteLayerTree/RemoteLayerTreeContext.mm:
+        * WebProcess/WebPage/RemoteLayerTree/RemoteLayerTreeDisplayRefreshMonitor.mm:
+        * WebProcess/WebPage/RemoteLayerTree/RemoteLayerTreeDrawingArea.mm:
+        * WebProcess/WebPage/RemoteLayerTree/RemoteScrollingCoordinator.mm:
+        * WebProcess/WebPage/RemoteWebInspectorUI.cpp:
+        * WebProcess/WebPage/ViewGestureGeometryCollector.cpp:
+        * WebProcess/WebPage/VisitedLinkTableController.cpp:
+        * WebProcess/WebPage/WebBackForwardListProxy.cpp:
+        * WebProcess/WebPage/WebContextMenu.cpp:
+        * WebProcess/WebPage/WebDocumentLoader.cpp:
+        * WebProcess/WebPage/WebFrame.cpp:
+        * WebProcess/WebPage/WebInspector.cpp:
+        * WebProcess/WebPage/WebInspectorUI.cpp:
+        * WebProcess/WebPage/WebPage.cpp:
+        * WebProcess/WebPage/WebPageOverlay.cpp:
+        * WebProcess/WebPage/WebURLSchemeHandlerProxy.cpp:
+        * WebProcess/WebPage/WebURLSchemeTaskProxy.cpp:
+        * WebProcess/WebPage/ios/FindControllerIOS.mm:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        * WebProcess/WebPage/mac/DrawingAreaMac.cpp:
+        * WebProcess/WebPage/mac/PageBannerMac.mm:
+        * WebProcess/WebPage/mac/TiledCoreAnimationDrawingArea.mm:
+        * WebProcess/WebPage/mac/WKAccessibilityWebPageObjectBase.mm:
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        * WebProcess/WebPage/win/WebPageWin.cpp:
+        * WebProcess/WebPage/wpe/AcceleratedSurfaceWPE.cpp:
+        * WebProcess/WebPage/wpe/WebPageWPE.cpp:
+        * WebProcess/WebProcess.cpp:
+        * WebProcess/WebStorage/StorageAreaImpl.cpp:
+        * WebProcess/WebStorage/StorageAreaMap.cpp:
+        * WebProcess/WebStorage/StorageNamespaceImpl.cpp:
+        * WebProcess/WebStorage/WebStorageNamespaceProvider.cpp:
+        * WebProcess/cocoa/PlaybackSessionManager.mm:
+        * WebProcess/cocoa/UserMediaCaptureManager.cpp:
+        * WebProcess/cocoa/VideoFullscreenManager.mm:
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        * WebProcess/win/WebProcessMainWin.cpp:
+        * WebProcess/win/WebProcessWin.cpp:
+        * WebProcess/wpe/WebProcessMainWPE.cpp:
+
+2018-08-22  Daniel Bates  <dabates@apple.com>
+
+        Cleanup: Add type alias for spell document tag
+        https://bugs.webkit.org/show_bug.cgi?id=188817
+
+        Reviewed by Simon Fraser.
+
+        * UIProcess/TextChecker.h:
+        * UIProcess/TextCheckerCompletion.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::~WebPageProxy):
+        (WebKit::WebPageProxy::spellDocumentTag):
+        * UIProcess/WebPageProxy.h: Also addressed FIXME comment and modernized the code to use a std::optional
+        while I am here.
+        * UIProcess/gtk/TextCheckerGtk.cpp:
+        (WebKit::TextChecker::uniqueSpellDocumentTag):
+        (WebKit::TextChecker::closeSpellDocumentWithTag):
+        (WebKit::TextChecker::checkSpellingOfString):
+        (WebKit::TextChecker::checkGrammarOfString):
+        (WebKit::TextChecker::updateSpellingUIWithMisspelledWord):
+        (WebKit::TextChecker::updateSpellingUIWithGrammarString):
+        (WebKit::TextChecker::getGuessesForWord):
+        (WebKit::TextChecker::learnWord):
+        (WebKit::TextChecker::ignoreWord):
+        (WebKit::TextChecker::checkTextOfParagraph):
+        * UIProcess/ios/TextCheckerIOS.mm:
+        (WebKit::spellDocumentTagMap):
+        (WebKit::TextChecker::uniqueSpellDocumentTag):
+        (WebKit::TextChecker::closeSpellDocumentWithTag):
+        (WebKit::textCheckerFor):
+        (WebKit::TextChecker::checkTextOfParagraph):
+        (WebKit::TextChecker::checkSpellingOfString):
+        (WebKit::TextChecker::checkGrammarOfString):
+        (WebKit::TextChecker::updateSpellingUIWithMisspelledWord):
+        (WebKit::TextChecker::updateSpellingUIWithGrammarString):
+        (WebKit::TextChecker::getGuessesForWord):
+        (WebKit::TextChecker::learnWord):
+        (WebKit::TextChecker::ignoreWord):
+        * UIProcess/mac/TextCheckerMac.mm:
+        (WebKit::TextChecker::uniqueSpellDocumentTag):
+        (WebKit::TextChecker::closeSpellDocumentWithTag):
+        (WebKit::TextChecker::checkTextOfParagraph):
+        (WebKit::TextChecker::checkSpellingOfString):
+        (WebKit::TextChecker::checkGrammarOfString):
+        (WebKit::TextChecker::updateSpellingUIWithMisspelledWord):
+        (WebKit::TextChecker::updateSpellingUIWithGrammarString):
+        (WebKit::TextChecker::getGuessesForWord):
+        (WebKit::TextChecker::learnWord):
+        (WebKit::TextChecker::ignoreWord):
+        * UIProcess/win/TextCheckerWin.cpp:
+        (WebKit::TextChecker::uniqueSpellDocumentTag):
+        (WebKit::TextChecker::closeSpellDocumentWithTag):
+        (WebKit::TextChecker::checkSpellingOfString):
+        (WebKit::TextChecker::checkGrammarOfString):
+        (WebKit::TextChecker::updateSpellingUIWithMisspelledWord):
+        (WebKit::TextChecker::updateSpellingUIWithGrammarString):
+        (WebKit::TextChecker::getGuessesForWord):
+        (WebKit::TextChecker::learnWord):
+        (WebKit::TextChecker::ignoreWord):
+        (WebKit::TextChecker::checkTextOfParagraph):
+        * UIProcess/wpe/TextCheckerWPE.cpp:
+        (WebKit::TextChecker::uniqueSpellDocumentTag):
+        (WebKit::TextChecker::closeSpellDocumentWithTag):
+        (WebKit::TextChecker::checkSpellingOfString):
+        (WebKit::TextChecker::checkGrammarOfString):
+        (WebKit::TextChecker::updateSpellingUIWithMisspelledWord):
+        (WebKit::TextChecker::updateSpellingUIWithGrammarString):
+        (WebKit::TextChecker::getGuessesForWord):
+        (WebKit::TextChecker::learnWord):
+        (WebKit::TextChecker::ignoreWord):
+
+2018-08-22  Antti Koivisto  <antti@apple.com>
+
+        Use OptionSet for NetworkCache::Storage::TraverseFlags
+        https://bugs.webkit.org/show_bug.cgi?id=188837
+
+        Reviewed by Anders Carlsson.
+
+        Type safe flags.
+
+        * NetworkProcess/cache/CacheStorageEngineCaches.cpp:
+        (WebKit::CacheStorage::Caches::initializeSize):
+        (WebKit::CacheStorage::Caches::readRecordsList):
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::Cache::traverse):
+        (WebKit::NetworkCache::Cache::dumpContentsToFile):
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::Storage::TraverseOperation::TraverseOperation):
+        (WebKit::NetworkCache::Storage::traverse):
+        * NetworkProcess/cache/NetworkCacheStorage.h:
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.cpp:
+        (WebKit::UserMediaPermissionRequestManager::captureDevicesChanged):
+        (WebKit::UserMediaPermissionRequestManager::activityStateDidChange):
+
+        Also use OptionSet<>::containsAll() in a few places.
+
+2018-08-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE] pkg-config files should require libwpe
+        https://bugs.webkit.org/show_bug.cgi?id=188835
+
+        Reviewed by Žan Doberšek.
+
+        * wpe/wpe-web-extension.pc.in:
+        * wpe/wpe-webkit.pc.in:
+
+2018-08-22  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Switch to Nicosia::CompositionLayer state tracking
+        https://bugs.webkit.org/show_bug.cgi?id=188693
+
+        Reviewed by Carlos Garcia Campos.
+
+        Switch CoordinatedGraphicsScene to utilizing Nicosia::CompositionLayer
+        objects for state updates of the TextureMapper layer tree.
+
+        CoordinatedGraphicsScene::paintToCurrentGLContext() now calls
+        updateSceneState() at the beginning. This is a new method that manages
+        all updates for a given Nicosia::Scene instance. Any removed layers
+        have their composition-side state cleaned up, and the current set of
+        layers is then iterated to ensure and update the corresponding
+        TextureMapperLayer objects.
+
+        Layers with any backing (painted backing store, platform-layer or image
+        content) are temporarly stored for updating outside of mutex-controlled
+        scene update. Performing all other state updates outside of this mutex
+        area will be investigated at a later point.
+
+        We then iterate over vectors for each layer backing, gathering any
+        affected CoordinatedBackingStore or TextureMapperPlatformLayerProxy
+        objects that we have to update.
+
+        This drops a bunch of member variables and helper methods off the
+        CoordinatedGraphicsScene class. The applyStateChanges() method will be
+        further simplified in the future. coordinateUpdateCompletionWithClient
+        logic in ThreadedCompositor should be checked to see whether it still
+        addresses any real-life problem, because at the moment it imposes a few
+        additional operations in terms of scene updates that we could really do
+        without. This will be checked later and removed if possible.
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp:
+        (WebKit::CoordinatedGraphicsScene::applyStateChanges):
+        (WebKit::CoordinatedGraphicsScene::paintToCurrentGLContext):
+        (WebKit::compositionLayerImpl):
+        (WebKit::contentLayerImpl):
+        (WebKit::backingStoreImpl):
+        (WebKit::imageBackingImpl):
+        (WebKit::texmapLayer):
+        (WebKit::updateBackingStore):
+        (WebKit::updateImageBacking):
+        (WebKit::removeLayer):
+        (WebKit::CoordinatedGraphicsScene::commitSceneState):
+        (WebKit::CoordinatedGraphicsScene::updateSceneState):
+        (WebKit::CoordinatedGraphicsScene::purgeGLResources):
+        (WebKit::CoordinatedGraphicsScene::syncPlatformLayerIfNeeded): Deleted.
+        (WebKit::CoordinatedGraphicsScene::setLayerChildrenIfNeeded): Deleted.
+        (WebKit::CoordinatedGraphicsScene::setLayerFiltersIfNeeded): Deleted.
+        (WebKit::CoordinatedGraphicsScene::setLayerState): Deleted.
+        (WebKit::CoordinatedGraphicsScene::getLayerByIDIfExists): Deleted.
+        (WebKit::CoordinatedGraphicsScene::createLayers): Deleted.
+        (WebKit::CoordinatedGraphicsScene::createLayer): Deleted.
+        (WebKit::CoordinatedGraphicsScene::deleteLayers): Deleted.
+        (WebKit::CoordinatedGraphicsScene::deleteLayer): Deleted.
+        (WebKit::CoordinatedGraphicsScene::setRootLayerID): Deleted.
+        (WebKit::CoordinatedGraphicsScene::prepareContentBackingStore): Deleted.
+        (WebKit::CoordinatedGraphicsScene::createBackingStoreIfNeeded): Deleted.
+        (WebKit::CoordinatedGraphicsScene::removeBackingStoreIfNeeded): Deleted.
+        (WebKit::CoordinatedGraphicsScene::resetBackingStoreSizeToLayerSize): Deleted.
+        (WebKit::CoordinatedGraphicsScene::createTilesIfNeeded): Deleted.
+        (WebKit::CoordinatedGraphicsScene::removeTilesIfNeeded): Deleted.
+        (WebKit::CoordinatedGraphicsScene::updateTilesIfNeeded): Deleted.
+        (WebKit::CoordinatedGraphicsScene::syncImageBackings): Deleted.
+        (WebKit::CoordinatedGraphicsScene::createImageBacking): Deleted.
+        (WebKit::CoordinatedGraphicsScene::updateImageBacking): Deleted.
+        (WebKit::CoordinatedGraphicsScene::clearImageBackingContents): Deleted.
+        (WebKit::CoordinatedGraphicsScene::removeImageBacking): Deleted.
+        (WebKit::CoordinatedGraphicsScene::assignImageBackingToLayer): Deleted.
+        (WebKit::CoordinatedGraphicsScene::setLayerAnimationsIfNeeded): Deleted.
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.h:
+        (WebKit::CoordinatedGraphicsScene::layerByID): Deleted.
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp:
+        (WebKit::ThreadedCompositor::renderLayerTree):
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp:
+        (WebKit::CompositingCoordinator::flushPendingLayerChanges):
+
+2018-08-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Replace booleans for modifier keys in UIEventWithKeyState with OptionSet<Modifier>
+        https://bugs.webkit.org/show_bug.cgi?id=188777
+
+        Reviewed by Simon Fraser.
+
+        Added two FIXMEs.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::navigateToPDFLinkWithSimulatedClick):
+
+2018-08-21  Alex Christensen  <achristensen@webkit.org>
+
+        Roll out r235139 and r235146
+        https://bugs.webkit.org/show_bug.cgi?id=188805
+
+        It turns out shouldKeepCurrentBackForwardListItemInList has one use left.
+
+        * UIProcess/API/APILoaderClient.h:
+        (API::LoaderClient::shouldKeepCurrentBackForwardListItemInList):
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageLoaderClient):
+        * UIProcess/WebBackForwardList.cpp:
+        (WebKit::WebBackForwardList::addItem):
+        (WebKit::WebBackForwardList::goToItem):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::shouldKeepCurrentBackForwardListItemInList):
+        * UIProcess/WebPageProxy.h:
+
+2018-08-21  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Attachment Support] Remove _WKAttachments and notify the UI client upon mainframe navigation
+        https://bugs.webkit.org/show_bug.cgi?id=188715
+        <rdar://problem/43541790>
+
+        Reviewed by Tim Horton.
+
+        Adds logic for invalidating Attachment objects upon mainframe navigation, or upon web content process
+        termination. An invalid Attachment's wrapper may still be retained by a UI client; however, calls to -info and
+        other SPI methods will either return nil or immediately invoke their completion handlers with a nil result and
+        an NSError. See changes below for more detail.
+
+        This patch also takes some extra measures to avoid sending redundant or unexpected removal updates to the UI
+        client upon invalidating all Attachments.
+
+        See Tools changes for new API tests.
+
+        * UIProcess/API/APIAttachment.cpp:
+        (API::Attachment::invalidate):
+        * UIProcess/API/APIAttachment.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _didInsertAttachment:withSource:]):
+        (-[WKWebView _didRemoveAttachment:]):
+
+        Refactor these methods to take references to the API::Attachment that is being inserted or removed, rather than
+        take attachment identifiers. This allows us to keep logic for setting the InsertionState of Attachment objects
+        in WebPageProxy, rather than in platform code.
+
+        * UIProcess/API/Cocoa/WKWebViewInternal.h:
+        * UIProcess/API/Cocoa/_WKAttachment.h:
+        * UIProcess/API/Cocoa/_WKAttachment.mm:
+        (-[_WKAttachment info]):
+
+        If the attachment object is invalid, return nil.
+
+        (-[_WKAttachment setDisplayOptions:completion:]):
+        (-[_WKAttachment setFileWrapper:contentType:completion:]):
+
+        If the attachment object is invalid, immediately invoke the completion block with an error.
+
+        (-[_WKAttachment isConnected]):
+
+        Add a new readonly property for a client to easily determine whether a _WKAttachment is connected to the
+        document, without having to maintain the current set of connected attachment objects by observing insertion and
+        removal callbacks.
+
+        * UIProcess/Cocoa/PageClientImplCocoa.h:
+        * UIProcess/Cocoa/PageClientImplCocoa.mm:
+        (WebKit::PageClientImplCocoa::didInsertAttachment):
+        (WebKit::PageClientImplCocoa::didRemoveAttachment):
+
+        Make these take API::Attachment&s rather than identifier strings.
+
+        * UIProcess/PageClient.h:
+        (WebKit::PageClient::didInsertAttachment):
+        (WebKit::PageClient::didRemoveAttachment):
+
+        Also make these take API::Attachment&s rather than identifier strings.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::didCommitLoadForFrame):
+        (WebKit::WebPageProxy::resetStateAfterProcessExited):
+        (WebKit::WebPageProxy::invalidateAllAttachments):
+
+        Introduce a helper function that invalidates all Attachments and notifies the UI client if needed. This is
+        invoked upon mainframe navigation, and when the web content process terminates.
+
+        (WebKit::WebPageProxy::platformRegisterAttachment):
+        (WebKit::WebPageProxy::didInsertAttachmentWithIdentifier):
+        (WebKit::WebPageProxy::didRemoveAttachmentWithIdentifier):
+        (WebKit::WebPageProxy::didInsertAttachment):
+        (WebKit::WebPageProxy::didRemoveAttachment):
+
+        Keep track of whether we've notified the UI client that an Attachment has been inserted into the document. This
+        allows us to send removal updates to the UI client only for Attachments that are currently in the document, from
+        the perspective of the UI client, and allows us to avoid sending extra removal updates in
+        invalidateAllAttachments for Attachments that either have already been removed, or Attachments which we haven't
+        inserted yet.
+
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebProcess/WebCoreSupport/WebEditorClient.cpp:
+        (WebKit::WebEditorClient::didInsertAttachmentWithIdentifier):
+        (WebKit::WebEditorClient::didRemoveAttachmentWithIdentifier):
+        (WebKit::WebEditorClient::didInsertAttachment): Deleted.
+        (WebKit::WebEditorClient::didRemoveAttachment): Deleted.
+        * WebProcess/WebCoreSupport/WebEditorClient.h:
+
+        Rename did{Insert|Remove}Attachment to did{Insert|Remove}AttachmentWithIdentifier.
+
+2018-08-21  Megan Gardner  <megan_gardner@apple.com>
+
+        Change Selection modification to not snap the grabber when selecting above or below the selection anchor
+        https://bugs.webkit.org/show_bug.cgi?id=188826
+
+        Reviewed by Tim Horton.
+
+        Selecting single lines is sometimes difficult because we currently snap selections to single
+        characters if we move past the position of the other anchor in our selection. This patch changes
+        this behaviour to reflect the behaviour in the rest of this system, which snaps the selection
+        to the position on the line of the other anchor, rather than snapping it all the way a single
+        character.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::rangeForPointInRootViewCoordinates):
+
+2018-08-21  Daniel Bates  <dabates@apple.com>
+
+        Cleanup: Remove unused file-local static variable from TextCheckerIOS.mm
+        https://bugs.webkit.org/show_bug.cgi?id=188818
+
+        Reviewed by Wenson Hsieh.
+
+        * UIProcess/ios/TextCheckerIOS.mm:
+        (WebKit::TextChecker::isSmartInsertDeleteEnabled):
+
+2018-08-21  Daniel Bates  <dabates@apple.com>
+
+        [iOS][WK2] Misspelled words are not underlined
+        https://bugs.webkit.org/show_bug.cgi?id=188800
+        <rdar://problem/34811332>
+
+        Reviewed by Wenson Hsieh.
+
+        Implement enough of TextChecker for iOS to compute the list of misspelled words in a
+        paragraph and advertise support for continuous spell checking. The WebCore editing
+        machinery queries TextChecker for the list of the misspelled words, creating document
+        markers that demarcate the misspelled words. When we paint a line of text we paint
+        the spelling correction dots under each misspelled word.
+
+        On iOS we make use of UITextChecker to perform spell checking of a string. We maintain
+        a side table that maps a "spell document tag" to a UITextChecker* to conform to the
+        shape of the TextChecker interface.
+
+        * Platform/spi/ios/UIKitSPI.h: Forward declare some SPI.
+        * UIProcess/ios/TextCheckerIOS.mm:
+        (WebKit::mutableState): Added.
+        (WebKit::TextChecker::state): Turns around and returns mutableState().
+        (WebKit::TextChecker::isContinuousSpellCheckingAllowed): Returns true if we are building
+        with USE(UNIFIED_TEXT_CHECKING). Otherwise, do what we do now.
+        (WebKit::TextChecker::setContinuousSpellCheckingEnabled): Update state.
+        (WebKit::TextChecker::continuousSpellCheckingEnabledStateChanged): Ditto.
+        (WebKit::spellDocumentTagMap): Returns HashMap that maps a "spell document tag" (int64_t) to
+        a RetainPtr<UITextChecker>>.
+        (WebKit::TextChecker::uniqueSpellDocumentTag): Generates a unique identifier for the page
+        this text checker is associated with.
+        (WebKit::TextChecker::closeSpellDocumentWithTag): Removes the entry for the specified identifier
+        from the HashMap.
+        (WebKit::textCheckerFor): Query the HashMap for the UITextChecker for the specified spell
+        document tag, if it exists. Otherwise, create a new UITextChecker and add a new map entry
+        that associates it with the specified spell document tag. 
+        (WebKit::TextChecker::checkTextOfParagraph): Spell check the specified string and return a list
+        that represents the misspelled words.
+        (WebKit::TextChecker::checkSpellingOfString): Added a comment to explain that iOS does not implement
+        this function and instead implements checkTextOfParagraph().
+        (WebKit::TextChecker::checkGrammarOfString): Ditto.
+
+2018-08-21  Alex Christensen  <achristensen@webkit.org>
+
+        Transition ResizeReversePaginatedWebView API test from WKPageLoaderClient to WKPageNavigationClient
+        https://bugs.webkit.org/show_bug.cgi?id=188821
+
+        Reviewed by Simon Fraser.
+
+        Add some more values to WKPageRenderingProgressEvents which were already supported by _WKRenderingProgressEvents and WKLayoutMilestones.
+
+        * UIProcess/API/C/WKPageRenderingProgressEvents.h:
+        * UIProcess/API/C/WKPageRenderingProgressEventsInternal.h:
+        (pageRenderingProgressEvents):
+
+2018-08-21  Alex Christensen  <achristensen@webkit.org>
+
+        Fix API tests after r235139
+        https://bugs.webkit.org/show_bug.cgi?id=188805
+
+        Apparently the call to didChangeBackForwardList with no changes was observable.  We should rename, but I'm restoring existing behavior for now.
+
+        * UIProcess/WebBackForwardList.cpp:
+        (WebKit::WebBackForwardList::goToItem):
+
+2018-08-21  John Wilander  <wilander@apple.com>
+
+        Storage Access API: The call to ResourceLoadStatisticsMemoryStore::grantStorageAccessInternal() should send eTLD+1s, not full host names
+        https://bugs.webkit.org/show_bug.cgi?id=188783
+        <rdar://problem/43559215>
+
+        Reviewed by Alex Christensen.
+
+        * UIProcess/ResourceLoadStatisticsMemoryStore.cpp:
+        (WebKit::ResourceLoadStatisticsMemoryStore::grantStorageAccess):
+            Now sends the eTLD+1 for the top frame and sub frame.
+
+2018-08-21  Megan Gardner  <megan_gardner@apple.com>
+
+        Use VisiblePosition to calculate selection ranges
+        https://bugs.webkit.org/show_bug.cgi?id=188767
+        <rdar://problem/43577166>
+
+        Reviewed by Ryosuke Niwa.
+
+        Switches to using VisiblePosition, instead of Position. This code used to use VisiblePosiiton,
+        but it has been changed a lot lately, and using Position causes issues with next and previous
+        when trying to snap a selection. VisiblePosition gives us the correct information, and does not 
+        result in collapsed ranges.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::rangeForPointInRootViewCoordinates):
+
+2018-08-21  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused shouldKeepCurrentBackForwardListItemInList check
+        https://bugs.webkit.org/show_bug.cgi?id=188805
+
+        Reviewed by Andy Estes.
+
+        The check was only done in WKPageLoaderClient, and nobody implements the check.
+        It was not needed to put in WKPageNavigationClient or WKNavigationDelegate, so let's remove it!
+        This removes the unused ability to go back and remove the current back/forward list item.
+
+        * UIProcess/API/APILoaderClient.h:
+        (API::LoaderClient::didChangeBackForwardList):
+        (API::LoaderClient::shouldKeepCurrentBackForwardListItemInList): Deleted.
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageLoaderClient):
+        * UIProcess/WebBackForwardList.cpp:
+        (WebKit::WebBackForwardList::addItem):
+        (WebKit::WebBackForwardList::goToItem):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::shouldKeepCurrentBackForwardListItemInList): Deleted.
+        * UIProcess/WebPageProxy.h:
+
+2018-08-21  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Attachment Support] Augment _WKAttachment SPI to handle NSFileWrappers in addition to NSData
+        https://bugs.webkit.org/show_bug.cgi?id=188496
+        <rdar://problem/43216836>
+
+        Reviewed by Tim Horton.
+
+        Adjusts WebKit's attachment editing SPI with the following modifications:
+        •   Deprecate `-_insertAttachmentWithFilename:contentType:data:options:completion:` in favor of
+            `-_insertAttachmentWithFileWrapper:contentType:options:completion:`.
+        •   Deprecate `-requestInfo:` and in favor of just `-info`.
+        •   Add a `-fileWrapper` property to `_WKAttachmentInfo` that returns an `NSFileWrapper`.
+        •   Remove some SPI methods that would otherwise be deprecated, but are not even necessary, since they're no
+            longer even used by Mail.
+
+        To make this possible, we refactor where and how attachment data is tracked. Currently, the data is stored in
+        the network process, and made accessible to the web process via blob URLs stored in the File object in the
+        attachment element. As such, requests from the UI process for attachment data would first be routed through the
+        web process to network process and back.
+
+        Instead, we now keep the relevant attachment data (in the form of NSFileWrapper on Cocoa platforms) in the UI
+        process, on API::Attachment. We additionally keep a map of attachment identifiers to API::Attachments, which
+        allows us to propagate the same _WKAttachment wrapper object to the SPI client for each uniquely identified
+        attachment element. This also has the benefit of allowing us to remove the asynchronous version of `-requestInfo:`
+        and replace it with just an `info` property.
+
+        Changes are covered by new and existing API tests.
+
+        * PlatformMac.cmake:
+
+        Remove APIAttachment.cpp, now that APIAttachment.cpp is listed in Sources.txt.
+
+        * Scripts/webkit/messages.py:
+        * Shared/Cocoa/APIObject.mm:
+        (API::Object::newObject):
+
+        Guard _WKAttachment creation with ENABLE_ATTACHMENT_ELEMENT.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<PromisedAttachmentInfo>::encode):
+        (IPC::ArgumentCoder<PromisedAttachmentInfo>::decode):
+        (IPC::ArgumentCoder<PromisedBlobInfo>::encode): Deleted.
+        (IPC::ArgumentCoder<PromisedBlobInfo>::decode): Deleted.
+        (IPC::ArgumentCoder<AttachmentInfo>::encode): Deleted.
+        (IPC::ArgumentCoder<AttachmentInfo>::decode): Deleted.
+        * Shared/WebCoreArgumentCoders.h:
+
+        Continue removing encoding support for WebCore::AttachmentInfo. Additionally, rename PromisedBlobInfo to
+        PromisedAttachmentInfo.
+
+        * Sources.txt:
+        * SourcesCocoa.txt:
+
+        Move APIAttachment.cpp from the SourcesCocoa.txt to the platform-agnostic Sources.txt.
+
+        * UIProcess/API/APIAttachment.cpp:
+        (API::Attachment::updateAttributes):
+
+        Rename setDataAndContentType to just updateAttributes; instead of sending data, only send the information needed
+        to update the presentational attributes of the attachment element.
+
+        (API::Attachment::requestInfo): Deleted.
+
+        Just call the completion handler with the result of `self.info`.
+
+        (API::Attachment::setDataAndContentType): Deleted.
+        * UIProcess/API/APIAttachment.h:
+
+        Add additional attributes: a content type, a file path, and (on Cocoa platforms) an NSFileWrapper.
+
+        * UIProcess/API/Cocoa/WKUIDelegatePrivate.h:
+
+        Remove -_webView:didInsertAttachment:, since this is unused by any client currently, and is superceded by
+        -_webView:didInsertAttachment:withSource:.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _didInsertAttachment:withSource:]):
+        (-[WKWebView _didRemoveAttachment:]):
+
+        Look up the API::Attachment corresponding to the identifier, and send its wrapper object to the client.
+
+        (-[WKWebView _insertAttachmentWithFilename:contentType:data:options:completion:]):
+        (-[WKWebView _insertAttachmentWithFileWrapper:contentType:options:completion:]):
+
+        Add a way to insert an attachment using NSFileWrapper, and reimplement _insertAttachmentWithFilename: using it.
+
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/API/Cocoa/_WKAttachment.h:
+        * UIProcess/API/Cocoa/_WKAttachment.mm:
+        (-[_WKAttachmentInfo initWithFileWrapper:filePath:contentType:]):
+        (-[_WKAttachmentInfo data]):
+        (-[_WKAttachmentInfo name]):
+        (isDeclaredOrDynamicTypeIdentifier):
+        (-[_WKAttachmentInfo _typeIdentifierFromPathExtension]):
+        (-[_WKAttachmentInfo contentType]):
+        (-[_WKAttachmentInfo mimeType]):
+        (-[_WKAttachmentInfo utiType]):
+        (-[_WKAttachmentInfo fileWrapper]):
+        (-[_WKAttachment info]):
+        (-[_WKAttachment requestInfo:]):
+
+        Add a property on _WKAttachment to retrieve a _WKAttachmentInfo (a snapshot of the current state of the
+        attachment, along with the NSFileWrapper). Reimplement requestInfo using this property.
+
+        (-[_WKAttachment setFileWrapper:contentType:completion:]):
+        (-[_WKAttachment setData:newContentType:newFilename:completion:]):
+
+        Reimplemented by calling -setFileWrapper:contentType:completion: with an NSFileWrapper created using the given
+        data. Additionally, create and associate the unique identifier with an API::Attachment right away.
+
 2018-08-20  Eric Carlson  <eric.carlson@apple.com>
 
         [MediaStream] Move capture device monitoring to WebKit
