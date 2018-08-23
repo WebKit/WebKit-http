@@ -79,18 +79,17 @@ static void addKeySystemToSinkPadCaps(GRefPtr<GstCaps>& caps, const char* uuid)
 
 static GRefPtr<GstCaps> createSinkPadTemplateCaps()
 {
-    // OpenCdm tears down the WebProcess if we do not leak here.
-    media::OpenCdm* openCdm = new media::OpenCdm;
+    media::OpenCdm& openCdm = media::OpenCdm::Instance();
     std::string emptyString;
     GRefPtr<GstCaps> caps = adoptGRef(gst_caps_new_empty());
 
-    if (openCdm->IsTypeSupported(WebCore::GStreamerEMEUtilities::s_ClearKeyKeySystem, emptyString))
+    if (openCdm.IsTypeSupported(WebCore::GStreamerEMEUtilities::s_ClearKeyKeySystem, emptyString))
         addKeySystemToSinkPadCaps(caps, WEBCORE_GSTREAMER_EME_UTILITIES_CLEARKEY_UUID);
 
-    if (openCdm->IsTypeSupported(WebCore::GStreamerEMEUtilities::s_PlayReadyKeySystems[0], emptyString))
+    if (openCdm.IsTypeSupported(WebCore::GStreamerEMEUtilities::s_PlayReadyKeySystems[0], emptyString))
         addKeySystemToSinkPadCaps(caps, WEBCORE_GSTREAMER_EME_UTILITIES_PLAYREADY_UUID);
 
-    if (openCdm->IsTypeSupported(WebCore::GStreamerEMEUtilities::s_WidevineKeySystem, emptyString))
+    if (openCdm.IsTypeSupported(WebCore::GStreamerEMEUtilities::s_WidevineKeySystem, emptyString))
         addKeySystemToSinkPadCaps(caps, WEBCORE_GSTREAMER_EME_UTILITIES_WIDEVINE_UUID);
 
     return caps;
