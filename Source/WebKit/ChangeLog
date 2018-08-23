@@ -1,3 +1,347 @@
+2018-08-23  Aditya Keerthi  <akeerthi@apple.com>
+
+        [iOS] Support the inputmode attribute on contenteditable elements
+        https://bugs.webkit.org/show_bug.cgi?id=188878
+
+        Reviewed by Ryosuke Niwa.
+
+        Ensured that the assistedNodeInformation for a contenteditable element reflects
+        the value of the element's inputmode attribute.
+
+        Moved logic to obtain the InputMode from the attribute value into WebCore.
+
+        * Shared/AssistedNodeInformation.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::getAssistedNodeInformation):
+
+2018-08-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Assert in NetworkBlobRegistry::unregisterBlobURL after network process had terminated
+        https://bugs.webkit.org/show_bug.cgi?id=188880
+
+        Reviewed by Saam Barati.
+
+        Removed the debug assertion. WebContent process might be asking this network process
+        to unregister a blob registered from another network processs which had since crashed.
+
+        We could keep track of which blob had been registered with which network process
+        in WebContent process and avoid sending IPC to the network process but that's a lot of
+        house-keeping for virtually no benefit other than not hitting this assertion.
+
+        * NetworkProcess/FileAPI/NetworkBlobRegistry.cpp:
+        (WebKit::NetworkBlobRegistry::unregisterBlobURL):
+
+2018-08-23  Sihui Liu  <sihui_liu@apple.com>
+
+        Remove keys of defaults that are no longer used in webProcessPool
+        https://bugs.webkit.org/show_bug.cgi?id=188855
+
+        Reviewed by Alex Christensen.
+
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::registerUserDefaultsIfNeeded):
+
+2018-08-23  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] First scroll gesture in pinned, non-rubber-banding WKWebView may fail to initiate back/forward swipe
+        https://bugs.webkit.org/show_bug.cgi?id=188894
+        <rdar://problem/43651434>
+
+        Reviewed by Tim Horton.
+
+        * WebProcess/WebPage/EventDispatcher.cpp:
+        (WebKit::EventDispatcher::wheelEvent): Set the rubber-band state on the ScrollingTree
+          synchronously rather than dispatching doing that to the scrolling thread. This is safe to
+          do because ScrollingTree synchrnoizes access to the rubber-band state with an internal
+          mutex.
+
+2018-08-23  Youenn Fablet  <youenn@apple.com>
+
+        self.isSecureContext undefined in Service Worker
+        https://bugs.webkit.org/show_bug.cgi?id=188842
+
+        Reviewed by Alex Christensen.
+
+        Enable isSecureContext runtime flag.
+
+        * WebProcess/Storage/WebSWContextManagerConnection.cpp:
+        (WebKit::WebSWContextManagerConnection::updatePreferencesStore):
+
+2018-08-23  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r235216.
+        https://bugs.webkit.org/show_bug.cgi?id=188887
+
+        Caused 50+ Layout Tests to Crash and 173 api Failures on Debug
+        builds (Requested by Truitt on #webkit).
+
+        Reverted changeset:
+
+        "Move legacy directory configuration from WebProcessPool to
+        API::WebsiteDataStore"
+        https://bugs.webkit.org/show_bug.cgi?id=188765
+        https://trac.webkit.org/changeset/235216
+
+2018-08-23  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Remove the remaining CoordinatedGraphicsLayerState cruft
+        https://bugs.webkit.org/show_bug.cgi?id=188881
+
+        Reviewed by Carlos Garcia Campos.
+
+        Rid CompositingCoordinator class of code that manages now-deleted state
+        tracking of layer creation, update and removal on the
+        CoordinatedGraphicsState class. The syncLayerState() method is changed
+        accordingly, now only enforcing a frame synchronization when called.
+
+        Use of Nicosia::PlatformLayer::LayerID is adopted since the
+        CoordinatedLayerID type has been removed.
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp:
+        (WebKit::CoordinatedGraphicsScene::purgeGLResources):
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.h:
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp:
+        (WebKit::CompositingCoordinator::flushPendingLayerChanges):
+        (WebKit::CompositingCoordinator::initializeRootCompositingLayerIfNeeded):
+        (WebKit::CompositingCoordinator::syncLayerState):
+        (WebKit::CompositingCoordinator::createGraphicsLayer):
+        (WebKit::CompositingCoordinator::detachLayer):
+        (WebKit::CompositingCoordinator::attachLayer):
+        (WebKit::CompositingCoordinator::clearPendingStateChanges): Deleted.
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.h:
+
+2018-08-22  Antti Koivisto  <antti@apple.com>
+
+        NetworkCache::Storage::lastStableVersion should be a developer-only feature
+        https://bugs.webkit.org/show_bug.cgi?id=188843
+        <rdar://problem/43574100>
+
+        Reviewed by Geoffrey Garen.
+
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::Storage::deleteOldVersions):
+
+        Delete old cache versions unconditionally if we are system WebKit.
+
+        * Shared/ChildProcess.h:
+        * Shared/mac/ChildProcessMac.mm:
+        (WebKit::ChildProcess::isSystemWebKit):
+
+        Find out if WebKit is installed under '/System/'.
+
+2018-08-22  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CoordGraphics] Remove CoordinatedImageBacking and related functionality
+        https://bugs.webkit.org/show_bug.cgi?id=188847
+
+        Reviewed by Michael Catanzaro.
+
+        Remove the CoordinatedImageBacking class and its intertwining use in the
+        CoordinatedGraphics system.
+
+        Drop the CoordinatedImageBacking object management from the
+        CompositingCoordinator class, along with the
+        CoordinatedImageBacking::Client inheritance. The corresponding image
+        backing state management on the CoordinatedGraphicsState class can be
+        removed accordingly.
+
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp:
+        (WebKit::CompositingCoordinator::flushPendingLayerChanges):
+        (WebKit::CompositingCoordinator::clearPendingStateChanges):
+        (WebKit::CompositingCoordinator::purgeBackingStores):
+        (WebKit::CompositingCoordinator::createImageBackingIfNeeded): Deleted.
+        (WebKit::CompositingCoordinator::createImageBacking): Deleted.
+        (WebKit::CompositingCoordinator::updateImageBacking): Deleted.
+        (WebKit::CompositingCoordinator::clearImageBackingContents): Deleted.
+        (WebKit::CompositingCoordinator::removeImageBacking): Deleted.
+        (WebKit::CompositingCoordinator::flushPendingImageBackingChanges): Deleted.
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.h:
+
+2018-08-22  Sihui Liu  <sihui_liu@apple.com>
+
+        Move legacy directory configuration from WebProcessPool to API::WebsiteDataStore
+        https://bugs.webkit.org/show_bug.cgi?id=188765
+
+        Reviewed by Geoffrey Garen.
+
+        Diretories are parameters of websiteDataStore instead of webProcessPool, so we should move
+        legacy default paths to API::WebsiteDataStore, which already stores default paths for 
+        non-legacy cases.
+
+        * UIProcess/API/APIProcessPoolConfiguration.cpp:
+        (API::ProcessPoolConfiguration::createWithLegacyOptions):
+        (API::ProcessPoolConfiguration::createWithWebsiteDataStoreConfiguration):
+        * UIProcess/API/APIWebsiteDataStore.cpp:
+        (API::WebsiteDataStore::legacyDefaultDataStoreConfiguration):
+        * UIProcess/API/APIWebsiteDataStore.h:
+        * UIProcess/API/Cocoa/APIWebsiteDataStoreCocoa.mm:
+        (API::WebsiteDataStore::legacyDefaultApplicationCacheDirectory):
+        (API::WebsiteDataStore::legacyDefaultNetworkCacheDirectory):
+        (API::WebsiteDataStore::legacyDefaultWebSQLDatabaseDirectory):
+        (API::WebsiteDataStore::legacyDefaultIndexedDBDatabaseDirectory):
+        (API::WebsiteDataStore::legacyDefaultLocalStorageDirectory):
+        (API::WebsiteDataStore::legacyDefaultMediaCacheDirectory):
+        (API::WebsiteDataStore::legacyDefaultMediaKeysStorageDirectory):
+        (API::WebsiteDataStore::legacyDefaultJavaScriptConfigurationDirectory):
+        * UIProcess/API/glib/APIWebsiteDataStoreGLib.cpp:
+        (API::WebsiteDataStore::legacyDefaultApplicationCacheDirectory):
+        (API::WebsiteDataStore::legacyDefaultNetworkCacheDirectory):
+        (API::WebsiteDataStore::legacyDefaultWebSQLDatabaseDirectory):
+        (API::WebsiteDataStore::legacyDefaultIndexedDBDatabaseDirectory):
+        (API::WebsiteDataStore::legacyDefaultLocalStorageDirectory):
+        (API::WebsiteDataStore::legacyDefaultMediaCacheDirectory):
+        (API::WebsiteDataStore::legacyDefaultMediaKeysStorageDirectory):
+        (API::WebsiteDataStore::legacyDefaultJavaScriptConfigurationDirectory):
+        * UIProcess/API/win/APIWebsiteDataStoreWin.cpp:
+        (API::WebsiteDataStore::legacyDefaultApplicationCacheDirectory):
+        (API::WebsiteDataStore::legacyDefaultNetworkCacheDirectory):
+        (API::WebsiteDataStore::legacyDefaultWebSQLDatabaseDirectory):
+        (API::WebsiteDataStore::legacyDefaultIndexedDBDatabaseDirectory):
+        (API::WebsiteDataStore::legacyDefaultLocalStorageDirectory):
+        (API::WebsiteDataStore::legacyDefaultMediaCacheDirectory):
+        (API::WebsiteDataStore::legacyDefaultMediaKeysStorageDirectory):
+        (API::WebsiteDataStore::legacyDefaultJavaScriptConfigurationDirectory):
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::WebProcessPool::legacyPlatformDefaultWebSQLDatabaseDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultIndexedDBDatabaseDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultLocalStorageDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultMediaCacheDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultJavaScriptConfigurationDirectory): Deleted.
+        * UIProcess/WebProcessPool.h:
+        * UIProcess/gtk/WebProcessPoolGtk.cpp:
+        (WebKit::WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultMediaCacheDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultWebSQLDatabaseDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultIndexedDBDatabaseDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultLocalStorageDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultJavaScriptConfigurationDirectory): Deleted.
+        * UIProcess/win/WebProcessPoolWin.cpp:
+        (WebKit::WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultMediaCacheDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultWebSQLDatabaseDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultIndexedDBDatabaseDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultLocalStorageDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultJavaScriptConfigurationDirectory): Deleted.
+        * UIProcess/wpe/WebProcessPoolWPE.cpp:
+        (WebKit::WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultMediaCacheDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultWebSQLDatabaseDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultIndexedDBDatabaseDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultLocalStorageDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory): Deleted.
+        (WebKit::WebProcessPool::legacyPlatformDefaultJavaScriptConfigurationDirectory): Deleted.
+
+2018-08-22  John Wilander  <wilander@apple.com>
+
+        The Storage Access API prompt should show the eTLD+1s, not the full host names
+        https://bugs.webkit.org/show_bug.cgi?id=188830
+        <rdar://problem/43380645>
+
+        Reviewed by Brent Fulgham.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::requestStorageAccess):
+
+2018-08-22  Tim Horton  <timothy_horton@apple.com>
+
+        De-unify WebPage
+        https://bugs.webkit.org/show_bug.cgi?id=188865
+
+        Reviewed by Wenson Hsieh.
+
+        * Sources.txt:
+        * WebKit.xcodeproj/project.pbxproj:
+        WebPage being unified is causing mysterious build issues inside Carbon headers
+        on High Sierra only. Also, WebPage by itself takes longer to build than
+        most full unified source files, so it might not make sense to unify it
+        with others (to maximize parallelism).
+
+2018-08-22  David Fenton  <david_fenton@apple.com>
+
+        Unreviewed, rolling out r235204.
+
+        reverting previous rollout
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r235176."
+        https://bugs.webkit.org/show_bug.cgi?id=185015
+        https://trac.webkit.org/changeset/235204
+
+2018-08-22  David Fenton  <david_fenton@apple.com>
+
+        Unreviewed, rolling out r235176.
+
+        broke internal builds
+
+        Reverted changeset:
+
+        "Use unified build for WebProcess"
+        https://bugs.webkit.org/show_bug.cgi?id=185015
+        https://trac.webkit.org/changeset/235176
+
+2018-08-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Attachment Support] Support dragging attachment elements out as files on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=181294
+        <rdar://problem/36298801>
+
+        Reviewed by Tim Horton.
+
+        Add support for dragging attachment elements on macOS by writing promised files to drag pasteboard. See changes
+        below for more details.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView filePromiseProvider:fileNameForType:]):
+        (-[WKWebView filePromiseProvider:writePromiseToURL:completionHandler:]):
+        (-[WKWebView draggingSession:sourceOperationMaskForDraggingContext:]):
+        (-[WKWebView draggingSession:endedAtPoint:operation:]):
+        * UIProcess/API/mac/WKView.mm:
+        (-[WKView filePromiseProvider:fileNameForType:]):
+        (-[WKView filePromiseProvider:writePromiseToURL:completionHandler:]):
+        (-[WKView draggingSession:sourceOperationMaskForDraggingContext:]):
+        (-[WKView draggingSession:endedAtPoint:operation:]):
+
+        Plumb NSFilePromiseProviderDelegate and NSDraggingSource method implementations to WebViewImpl.
+
+        * UIProcess/Cocoa/WebViewImpl.h:
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (-[WKPromisedAttachmentContext initWithAttachmentInfo:]):
+        (-[WKPromisedAttachmentContext blobURL]):
+        (-[WKPromisedAttachmentContext filename]):
+        (-[WKPromisedAttachmentContext attachmentIdentifier]):
+
+        Add an object that contains the information needed to deliver a dragged attachment element's data via
+        NSFilePromiseProvider. This is stored as the userInfo of the NSFilePromiseProvider created upon drag start.
+
+        (WebKit::WebViewImpl::draggedImage):
+        (WebKit::WebViewImpl::sendDragEndToPage):
+
+        Add a helper method to handle cleanup after the dragging has finished, and call it from -draggedImage:… and
+        -draggingSessionEnded:…. The latter is only triggered in the where -beginDraggingSessionWithItems:… is used,
+        which currently only happens when dragging attachment elements.
+
+        (WebKit::WebViewImpl::fileNameForFilePromiseProvider):
+        (WebKit::webKitUnknownError):
+        (WebKit::WebViewImpl::writeToURLForFilePromiseProvider):
+
+        Deliver either NSFileWrapper data to the destination URL (in the case where an attachment identifier is known
+        and the corresponding API::Attachment is backed by a file wrapper), or save the contents of the blob URL to the
+        destination.
+
+        (WebKit::WebViewImpl::dragSourceOperationMask):
+        (WebKit::WebViewImpl::draggingSessionEnded):
+        (WebKit::WebViewImpl::startDrag):
+
 2018-08-22  Aditya Keerthi  <akeerthi@apple.com>
 
         [iOS] Add support for the inputmode attribute
