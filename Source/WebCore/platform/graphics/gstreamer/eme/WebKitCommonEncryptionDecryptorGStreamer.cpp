@@ -107,9 +107,14 @@ static void webKitMediaCommonEncryptionDecryptorPrivClearStateWithInstance(WebKi
 {
     ASSERT(priv);
     ASSERT(priv->m_mutex.isLocked());
+
+    // If this is the first CDM instance that has been set, do not
+    // clear out the old init datas, since doing so will trigger an
+    // invalid repeated onEncrypted event.
+    if (priv->m_cdmInstance)
+        priv->m_initDatas.clear();
     priv->m_cdmInstance = cdmInstance;
     priv->m_keyReceived = false;
-    priv->m_initDatas.clear();
 }
 
 static GstCaps* webkitMediaCommonEncryptionDecryptTransformCaps(GstBaseTransform* base, GstPadDirection direction, GstCaps* caps, GstCaps* filter)
