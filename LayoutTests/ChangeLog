@@ -1,3 +1,120 @@
+2018-08-24  Youenn Fablet  <youenn@apple.com>
+
+        libwebrtc PeerConnection::AddTrack sometimes fail
+        https://bugs.webkit.org/show_bug.cgi?id=188914
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/RTCPeerConnection-add-removeTrack-expected.txt:
+
+2018-08-24  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/video-load-preload-metadata.html as flaky on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=128312
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2018-08-24  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Allow $0 totals
+        https://bugs.webkit.org/show_bug.cgi?id=185150
+        <rdar://problem/39212331>
+
+        Reviewed by Dan Bernstein.
+
+        * http/tests/ssl/applepay/ApplePaySession-expected.txt:
+        * http/tests/ssl/applepay/ApplePaySession.html:
+        * http/tests/ssl/applepay/ApplePaySessionV3-expected.txt:
+        * http/tests/ssl/applepay/ApplePaySessionV3.html:
+        * http/tests/ssl/applepay/ApplePaySessionV4-expected.txt:
+        * http/tests/ssl/applepay/ApplePaySessionV4.html:
+        * http/tests/ssl/applepay/PaymentRequest.https-expected.txt:
+        * http/tests/ssl/applepay/PaymentRequest.https.html:
+
+2018-08-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        fast/files/blob-network-process-crash.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=188911
+
+        Reviewed by Saam Barati.
+
+        The flakiness appears to come from the web content process not getting notified of
+        the termination of the network process in time. Wait for the network process to
+        relaunch after terminating one by continuously fetch'ing itself with an increasing
+        time interval until it succeeds.
+
+        * fast/files/blob-network-process-crash.html:
+
+2018-08-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add a flaky failing test expectation to fast/files/blob-network-process-crash.html
+        while we investigate the root cause in webkit.org/b/188911.
+
+        * platform/wk2/TestExpectations:
+
+2018-08-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        initKeyboardEvent doesn't clear CapsLock state
+        https://bugs.webkit.org/show_bug.cgi?id=188909
+
+        Reviewed by Wenson Hsieh.
+
+        Added a regression test. Note that altGraph is only supported in WebKit
+        so Chrome and Firefox would fail to reset it via initKeyboardEvent.
+
+        * fast/events/init-event-clears-capslock-expected.txt: Added.
+        * fast/events/init-event-clears-capslock.html: Added.
+
+2018-08-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Store the timer we scheduled in the global object.
+        The underlying bug is tracked by https://webkit.org/b/188911.
+
+        * fast/files/blob-network-process-crash.html:
+
+2018-08-23  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Introduce Apple Pay JS v4 on iOS 12 and macOS Mojave
+        https://bugs.webkit.org/show_bug.cgi?id=188829
+
+        Reviewed by Tim Horton.
+
+        * http/tests/ssl/applepay/ApplePaySession-expected.txt:
+        * http/tests/ssl/applepay/ApplePaySession.html:
+        * http/tests/ssl/applepay/ApplePaySessionV3-expected.txt:
+        * http/tests/ssl/applepay/ApplePaySessionV3.html:
+        * http/tests/ssl/applepay/ApplePaySessionV4-expected.txt: Added.
+        * http/tests/ssl/applepay/ApplePaySessionV4.html: Added.
+        * platform/mac-wk2/TestExpectations:
+
+2018-08-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: support breakpoints for timers and animation-frame events
+        https://bugs.webkit.org/show_bug.cgi?id=188778
+
+        Reviewed by Brian Burg.
+
+        * inspector/dom-debugger/event-animation-frame-breakpoints-expected.txt: Added.
+        * inspector/dom-debugger/event-animation-frame-breakpoints.html: Added.
+
+        * inspector/dom-debugger/event-breakpoint-with-navigation.html:
+
+        * inspector/dom-debugger/event-timer-breakpoints-expected.txt: Added.
+        * inspector/dom-debugger/event-timer-breakpoints.html: Added.
+
+        * inspector/dom-debugger/event-listener-breakpoints-expected.txt: Renamed from LayoutTests/inspector/dom-debugger/event-breakpoints-expected.txt.
+        * inspector/dom-debugger/event-listener-breakpoints.html: Renamed from LayoutTests/inspector/dom-debugger/event-breakpoints.html.
+
+        * inspector/dom-debugger/resources/event-breakpoint-utilities.js: Added.
+        (TestPage.registerInitializer.window.teardown):
+        (TestPage.registerInitializer.window.failOnPause):
+        (TestPage.registerInitializer.window.addBreakpoint):
+        (TestPage.registerInitializer.window.removeBreakpoint):
+        (TestPage.registerInitializer.window.disableBreakpoint):
+        (TestPage.registerInitializer.window.awaitEvent):
+
 2018-08-23  Aditya Keerthi  <akeerthi@apple.com>
 
         [iOS] Support the inputmode attribute on contenteditable elements
