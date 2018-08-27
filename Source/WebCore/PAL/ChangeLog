@@ -1,3 +1,42 @@
+2018-08-27  Keith Rollin  <krollin@apple.com>
+
+        Build system support for LTO
+        https://bugs.webkit.org/show_bug.cgi?id=187785
+        <rdar://problem/42353132>
+
+        Reviewed by Dan Bernstein.
+
+        Update Base.xcconfig and DebugRelease.xcconfig to optionally enable
+        LTO.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2018-08-26  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Introduce new values for -apple-pay-button-type
+        https://bugs.webkit.org/show_bug.cgi?id=188949
+        <rdar://problem/39992228>
+
+        Reviewed by Anders Carlsson.
+
+        * pal/spi/cocoa/PassKitSPI.h:
+
+2018-08-23  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Introduce Apple Pay JS v4 on iOS 12 and macOS Mojave
+        https://bugs.webkit.org/show_bug.cgi?id=188829
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-08-21  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Unreviewed macOS Mojave build fix after r235125.
+
+        * pal/spi/cg/CoreGraphicsSPI.h:
+
 2018-08-15  Ansh Shukla  <ansh_shukla@apple.com>
 
         NSURLAuthenticationMethodOAuth challenges are surfaced to clients in -didReceiveAuthenticationChallenge as NSURLAuthenticationMethodDefault

@@ -1,3 +1,291 @@
+2018-08-27  Keith Rollin  <krollin@apple.com>
+
+        Build system support for LTO
+        https://bugs.webkit.org/show_bug.cgi?id=187785
+        <rdar://problem/42353132>
+
+        Reviewed by Dan Bernstein.
+
+        Update Base.xcconfig and DebugRelease.xcconfig to optionally enable
+        LTO.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
+2018-08-27  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION: virtualized TreeOutline is empty when filtering
+        https://bugs.webkit.org/show_bug.cgi?id=188959
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/TreeElement.js:
+        (WI.TreeElement.prototype.set hidden):
+        Only set `focusedTreeElement` if the `WI.TreeElement` is selected and not hidden. There is
+        no reason to focus a hidden or unselected `WI.TreeElement`.
+
+2018-08-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Color picker: can't enter decimal numbers for opacity
+        https://bugs.webkit.org/show_bug.cgi?id=187026
+        <rdar://problem/41446500>
+
+        Reviewed by Brian Burg.
+
+        After every "input" event, we update the `color` value of the `WI.ColorPicker` based on a
+        generated string using the values of the various <input>. The issue with this approach is
+        that adding a decimal point (e.g. "0.") would still be construed as 0, meaning that the
+        color wouldn't change and would instead be reset back to it's old value. This patch adds an
+        early return if the newly generated color has the same value as the current color, thereby
+        meaning that the `color` wouldn't change when changing from "0" to "0.".
+
+        * UserInterface/Views/ColorPicker.js:
+        (WI.ColorPicker):
+        (WI.ColorPicker.createColorInput):
+        (WI.ColorPicker.prototype._handleColorInputInput):
+
+2018-08-23  Simon Fraser  <simon.fraser@apple.com>
+
+        Add support for dumping GC heap snapshots, and a viewer
+        https://bugs.webkit.org/show_bug.cgi?id=186416
+
+        Reviewed by Joseph Pecoraro.
+
+        Make a way to dump information about the GC heap that is useful for looking for leaked
+        or abandoned objects. This dump is obtained (on Apple platforms) via:
+            notifyutil -p com.apple.WebKit.dumpGCHeap
+        which writes a JSON file to /tmp which can then be loaded into the viewer in Tools/GCHeapInspector.
+
+        This leverages the heap snapshot used by Web Inspector, adding an alternate format for
+        the snapshot JSON that adds additional data about objects and why they are GC roots.
+
+        The generated bindings code is changed to include the output root reason from isReachableFromOpaqueRoots(),
+        and to implement heapSnapshot() which provides the address of the wrapped object. A new IDL attribute,
+        CustomHeapSnapshot, is used to allow custom heapSnapshot() implementations for classes like JSDocument
+        that need to decorate the heap snapshot cell data with things like the document URL.
+
+        GCController registers a notifyutil callback which gathers the debug heap snapshot, and dumps it
+        to a file in /tmp. The file path is printed out to the system log.
+
+        * UserInterface/Workers/HeapSnapshot/HeapSnapshot.js:
+        (HeapSnapshot):
+
+2018-08-23  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: fix typos in some compositing reasons
+        https://bugs.webkit.org/show_bug.cgi?id=188905
+        <rdar://problem/43624825>
+
+        Reviewed by Simon Fraser.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.js:
+        (WI.LayerTreeDetailsSidebarPanel.prototype._populateListOfCompositingReasons):
+        (WI.LayerTreeDetailsSidebarPanel):
+        * UserInterface/Views/Layers3DContentView.js:
+        (WI.Layers3DContentView.prototype._updateReasonsList):
+        (WI.Layers3DContentView):
+
+2018-08-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: support breakpoints for timers and animation-frame events
+        https://bugs.webkit.org/show_bug.cgi?id=188778
+
+        Reviewed by Brian Burg.
+
+        Add a `type` to `WI.EventBreakpoint` that matches `DOMDebugger.EventBreakpointType`:
+         - `AnimationFrame` for `requestAnimationFrame`
+         - `Listener` for any named DOM Event
+         - `Timer` for `setTimeout` and `setInterval`
+
+        Modified `WI.EventBreakpointPopover` to provide ways for selecting these other types, which
+        is then passed to `WI.DOMDebuggerManager`, which now calls through to the newly added
+        `DOMDebugger.removeEventBreakpoint` and `DOMDebugger.setEventBreakpoint` that sets
+        breakpoints for all event types.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Images/EventBreakpointAnimationFrame.svg: Added.
+        * UserInterface/Images/EventBreakpointListener.svg: Renamed from Source/WebInspectorUI/UserInterface/Images/EventBreakpoint.svg.
+        * UserInterface/Images/EventBreakpointTimer.svg: Added.
+
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        (WI.DOMDebuggerManager.supportsEventBreakpoints): Added.
+        (WI.DOMDebuggerManager.prototype.eventBreakpointForTypeAndEventName): Added.
+        (WI.DOMDebuggerManager.prototype.addEventBreakpoint):
+        (WI.DOMDebuggerManager.prototype.removeEventBreakpoint.breakpointRemoved): Added.
+        (WI.DOMDebuggerManager.prototype.removeEventBreakpoint):
+        (WI.DOMDebuggerManager.prototype._updateEventBreakpoint):
+        (WI.DOMDebuggerManager.prototype.eventBreakpointForEventName): Deleted.
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WI.DOMTreeManager.prototype.setBreakpointForEventListener):
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager.prototype._pauseReasonFromPayload):
+
+        * UserInterface/Models/EventBreakpoint.js:
+        (WI.EventBreakpoint):
+        (WI.EventBreakpoint.fromPayload):
+        (WI.EventBreakpoint.prototype.get type): Added.
+        (WI.EventBreakpoint.prototype.get serializableInfo):
+        (WI.EventBreakpoint.prototype.saveIdentityToCookie):
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel.prototype._updatePauseReasonSection):
+        (WI.DebuggerSidebarPanel.prototype.willDismissPopover):
+
+        * UserInterface/Views/EventBreakpointPopover.js:
+        (WI.EventBreakpointPopover):
+        (WI.EventBreakpointPopover.prototype.get breakpoint): Added.
+        (WI.EventBreakpointPopover.prototype.show):
+        (WI.EventBreakpointPopover.prototype.show.createOption): Added.
+        (WI.EventBreakpointPopover.prototype.dismiss): Added.
+        (WI.EventBreakpointPopover.prototype._presentOverTargetElement):
+        (WI.EventBreakpointPopover.prototype._handleTypeSelectChange): Added.
+        (WI.EventBreakpointPopover.prototype.get result): Deleted.
+        (WI.EventBreakpointPopover.prototype.get value): Deleted.
+        * UserInterface/Views/EventBreakpointPopover.css:
+        (.popover .event-breakpoint-content > .event-type): Added.
+        (.popover .event-breakpoint-content > input): Deleted.
+
+        * UserInterface/Views/EventBreakpointTreeElement.js:
+        (WI.EventBreakpointTreeElement):
+        * UserInterface/Views/EventBreakpointTreeElement.css:
+        (.breakpoint.event.animation-frame:not(.breakpoint-paused-icon) .icon): Added.
+        (.breakpoint.event.listener:not(.breakpoint-paused-icon) .icon): Added.
+        (.breakpoint.event.timer:not(.breakpoint-paused-icon) .icon): Added.
+        (.breakpoint.event:not(.breakpoint-paused-icon) .icon): Deleted.
+
+2018-08-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: `console.inspect(sessionStorage)` first time does not show Session Storage content view if Storage tab was previously unvisited
+        https://bugs.webkit.org/show_bug.cgi?id=188801
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/Main.js:
+        (WI.tabContentViewClassForRepresentedObject):
+        (WI._storageWasInspected):
+        Since the `WI.StorageSidebarPanel` is not created until the `WI.StorageTabContentView` is
+        created, the `WI.StorageManager.Event.DOMStorageObjectWasInspected` and
+        `WI.StorageManager.Event.DatabaseWasInspected` events do not reach the sidebar. We should
+        follow what `WI._domNodeWasInspected` does and additionally call `WI.showRepresentedObject`
+        on the inspected object.
+
+2018-08-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION: InspectorStyleSheet not visible in the resources sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=188819
+        <rdar://problem/43579039>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/ResourceCollection.js:
+        (WI.ResourceCollection.prototype.objectIsRequiredType):
+
+2018-08-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        JSContext Inspector: Scripts not showing up in Resources tab
+        https://bugs.webkit.org/show_bug.cgi?id=188814
+        <rdar://problem/43576117>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WI.ResourceSidebarPanel.prototype._addScript):
+        This path shouldn't apply to JSContext inspection which will
+        never have a pageTarget and but doesn't have a mainResource.
+
+2018-08-22  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: cannot delete multiple event breakpoints by repeatedly hitting delete
+        https://bugs.webkit.org/show_bug.cgi?id=188803
+        <rdar://problem/43572838>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WI.DebuggerSidebarPanel.prototype._domBreakpointAddedOrRemoved):
+        (WI.DebuggerSidebarPanel.prototype._eventBreakpointAddedOrRemoved):
+
+2018-08-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Do not include TreeOutlineDataGridSynchronizer.js in inspector main.
+
+        The script was removed in r235151.
+
+        * UserInterface/Main.html:
+
+2018-08-21  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Remove TreeOutlineDataGridSynchronizer
+        https://bugs.webkit.org/show_bug.cgi?id=188449
+        <rdar://problem/43107980>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/HeapAllocationsTimelineView.js:
+        (WI.HeapAllocationsTimelineView.prototype.layout):
+        * UserInterface/Views/LayoutTimelineView.js:
+        (WI.LayoutTimelineView.prototype._processPendingRecords):
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WI.NetworkTimelineView.prototype._processPendingRecords):
+        * UserInterface/Views/RenderingFrameTimelineView.js:
+        (WI.RenderingFrameTimelineView.prototype._processPendingRecords):
+        (WI.RenderingFrameTimelineView.prototype.dataGridNodeForTreeElement): Deleted.
+        * UserInterface/Views/ScriptDetailsTimelineView.js:
+        (WI.ScriptDetailsTimelineView.prototype._processPendingRecords):
+        * UserInterface/Views/TimelineDataGrid.js:
+        (WI.TimelineDataGrid):
+        (WI.TimelineDataGrid.prototype.reset):
+        (WI.TimelineDataGrid.prototype.shown):
+        (WI.TimelineDataGrid.prototype.addRowInSortOrder):
+        (WI.TimelineDataGrid.prototype._refreshDirtyDataGridNodes):
+        (WI.TimelineDataGrid.prototype._sort):
+        (WI.TimelineDataGrid.prototype.treeElementForDataGridNode): Deleted.
+        (WI.TimelineDataGrid.prototype.dataGridNodeForTreeElement): Deleted.
+        * UserInterface/Views/TreeOutlineDataGridSynchronizer.js: Removed.
+
+2018-08-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ⌘G does not while find banner is focused
+        https://bugs.webkit.org/show_bug.cgi?id=188815
+        <rdar://problem/43577158>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/Main.js:
+        Allow an <input> element to be the current focus element, which is what will
+        our global KeyboardShortcut handlers will interact with. Also make sure
+        that showing the find banner for the first time still focuses it.
+
+2018-08-21  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r235095): duplicate actions existing in WI.CanvasSidebarPanel
+        https://bugs.webkit.org/show_bug.cgi?id=188808
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CanvasSidebarPanel.js:
+        (WI.CanvasSidebarPanel.prototype._recordingChanged):
+        Check that the `WI.RecordingAction` is not already represented in the `WI.TreeOutline`
+        before adding it.
+
+        * UserInterface/Views/CanvasSidebarPanel.css:
+        (.sidebar > .panel.navigation.canvas > .content > .recording-content > .tree-outline .item.processing .subtitle > progress):
+        Drive-by: vertically center the <progress> shown for `WI.RecordingFrame` during processing.
+
+2018-08-21  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: provide default icon for all actions
+        https://bugs.webkit.org/show_bug.cgi?id=188807
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/RecordingActionTreeElement.css:
+        (.item.action > .icon):
+        (.item.action.initial-state > .icon): Deleted.
+
 2018-08-21  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Rulers.svg is missing

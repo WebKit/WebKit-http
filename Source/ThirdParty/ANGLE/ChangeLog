@@ -14,6 +14,20 @@
         ANGLE_USE_X11 is defined and, for consistency with Mesa's version
         of the header, when MESA_EGL_NO_X11_HEADERS is not defined.
 
+2018-08-27  Keith Rollin  <krollin@apple.com>
+
+        Build system support for LTO
+        https://bugs.webkit.org/show_bug.cgi?id=187785
+        <rdar://problem/42353132>
+
+        Reviewed by Dan Bernstein.
+
+        Update Base.xcconfig and DebugRelease.xcconfig to optionally enable
+        LTO.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
 2018-08-03  Alex Christensen  <achristensen@webkit.org>
 
         Fix spelling of "overridden"

@@ -610,6 +610,20 @@
         (JSC::JITGetByIdWithThisGenerator::JITGetByIdWithThisGenerator):
         (JSC::JITInstanceOfGenerator::JITInstanceOfGenerator):
 
+2018-08-27  Keith Rollin  <krollin@apple.com>
+
+        Build system support for LTO
+        https://bugs.webkit.org/show_bug.cgi?id=187785
+        <rdar://problem/42353132>
+
+        Reviewed by Dan Bernstein.
+
+        Update Base.xcconfig and DebugRelease.xcconfig to optionally enable
+        LTO.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
 2018-08-30  Saam barati  <sbarati@apple.com>
 
         InlineAccess should do StringLength
