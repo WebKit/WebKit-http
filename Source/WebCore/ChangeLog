@@ -1,3 +1,109 @@
+2018-08-27  Keith Rollin  <krollin@apple.com>
+
+        Unreviewed build fix -- disable LTO for production builds
+
+        * Configurations/Base.xcconfig:
+
+2018-08-27  Youenn Fablet  <youenn@apple.com>
+
+        Various IndexDB tests abandon documents
+        https://bugs.webkit.org/show_bug.cgi?id=188728
+        <rdar://problem/43651095>
+
+        Reviewed by Alex Christensen.
+
+        Some IDB objects implement hasPendingActivity but there are some possibilities that they continue returning true after being stopped.
+        This is the case for requests that get stopped while still waiting for some pending activity.
+        This is also the case for requests that emits upgradeneeded or blocked events.
+
+        Enforce that these objects return false to hasPendingActivity once being stopped.
+        This ensures that they can be garbage collected once their context is preparing for destruction like in Document::prepareForDestruction.
+
+        Test: http/tests/IndexedDB/collect-IDB-objects.https.html
+
+        * Modules/indexeddb/IDBIndex.cpp:
+        (WebCore::IDBIndex::hasPendingActivity const):
+        * Modules/indexeddb/IDBObjectStore.cpp:
+        (WebCore::IDBObjectStore::hasPendingActivity const):
+        * Modules/indexeddb/IDBRequest.cpp:
+        (WebCore::IDBRequest::hasPendingActivity const):
+        (WebCore::IDBRequest::enqueueEvent):
+        * Modules/indexeddb/IDBTransaction.cpp:
+        (WebCore::IDBTransaction::notifyDidAbort):
+        In case the context is stopped, IDBTransaction should not ask IDBRequest to fire an event.
+
+2018-08-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Teach WebKitTestRunner and DumpRenderTree about detecting world leaks
+        https://bugs.webkit.org/show_bug.cgi?id=188994
+
+        Reviewed by Tim Horton.
+
+        Export Document::postTask() for use by WTR's injected bundle.
+
+        * dom/Document.h:
+
+2018-08-27  Aditya Keerthi  <akeerthi@apple.com>
+
+        Consolidate ENABLE_INPUT_TYPE_COLOR and ENABLE_INPUT_TYPE_COLOR_POPOVER
+        https://bugs.webkit.org/show_bug.cgi?id=188931
+
+        Reviewed by Wenson Hsieh.
+
+        * Configurations/FeatureDefines.xcconfig: Removed ENABLE_INPUT_TYPE_COLOR_POPOVER.
+
+2018-08-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Improve the showAllDocuments logging
+        https://bugs.webkit.org/show_bug.cgi?id=188990
+
+        Reviewed by Tim Horton.
+        
+        Improve the output triggered by "notifyutil -p com.apple.WebKit.showAllDocuments" to denote
+        SVG documents (which often have no URL), and to show the refCount and referencingNodeCount,
+        which helps with leak debugging.
+        
+        Sample output:
+
+        2 live documents:
+        Document 0x1236f1200 3 (refCount 6, referencingNodeCount 580) https://webkit.org/
+        SVGDocument 0x134b60000 13 (refCount 1, referencingNodeCount 197) 
+
+        * page/mac/PageMac.mm:
+        (WebCore::Page::platformInitialize):
+
+2018-08-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Cocoa] Exception (fileType 'dyn.agq8u' is not a valid UTI) raised when dragging an attachment whose file wrapper is a directory
+        https://bugs.webkit.org/show_bug.cgi?id=188903
+        <rdar://problem/43702993>
+
+        Reviewed by Tim Horton.
+
+        Fixes the exception for attachments that are created when dropping files with extensions that don't map to any
+        known UTIs, and when dropping folders. See below for more detail.
+
+        Tests:  WKAttachmentTests.InsertFolderAndFileWithUnknownExtension
+                WKAttachmentTests.DropFolderAsAttachmentAndMoveByDragging
+                WKAttachmentTests.ChangeAttachmentDataAndFileInformation
+
+        * editing/Editor.cpp:
+        (WebCore::Editor::insertAttachment):
+        * editing/Editor.h:
+        * editing/cocoa/WebContentReaderCocoa.mm:
+        (WebCore::WebContentReader::readFilePaths):
+
+        When creating an attachment by dropping or pasting a file backed by a file path, handle the cases where…
+        (1)     the dropped path is a directory, by setting the UTI to "public.directory". This allows us to show a
+                folder icon for the dropped attachment element on macOS.
+        (2)     the dropped path is a file whose UTI is unknown, by defaulting to "public.data".
+
+        By ensuring that the UTI of a dropped file-backed attachment is set to a concrete type in any case, we avoid an
+        exception when dragging the attachment on macOS, and on iOS, avoid silently failing to drag an attachment.
+
+        * html/HTMLAttachmentElement.cpp:
+        (WebCore::HTMLAttachmentElement::updateAttributes):
+
 2018-08-28  Alejandro G. Castro  <alex@igalia.com>
 
         Fix gcc compilation warnings after r235230
