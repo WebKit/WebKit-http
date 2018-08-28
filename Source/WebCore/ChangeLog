@@ -1,3 +1,175 @@
+2018-08-28  Youenn Fablet  <youenn@apple.com>
+
+        MediaDevices should be collectable as soon as its document is stopped
+        https://bugs.webkit.org/show_bug.cgi?id=189021
+
+        Reviewed by Eric Carlson.
+
+        Introduce ActiveDOMObject::isContextStopped to check whether the context is stopped.
+        Use this check in MediaDevices::hasPendingActivity so that it returns false as soon as active dom objects are stopped.
+
+        Test: http/tests/media/collect-media-devices.https.html
+
+        * Modules/mediastream/MediaDevices.cpp:
+        (WebCore::MediaDevices::hasPendingActivity const):
+        * dom/ActiveDOMObject.cpp:
+        (WebCore::ActiveDOMObject::hasPendingActivity const):
+        (WebCore::ActiveDOMObject::isContextStopped const):
+        * dom/ActiveDOMObject.h:
+
+2018-08-28  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl] Fix issue that extra cookie is added when redirect happens.
+        https://bugs.webkit.org/show_bug.cgi?id=187874
+
+        Reviewed by Alex Christensen.
+
+        When initial request has cookie set and redirect happens, it add extra Cookie header to that
+        abd request was broken. Just stop modifying the original request by passing a value.
+
+        Test: http/tests/cookies/multiple-redirect-and-set-cookie.php
+
+        * platform/network/ResourceHandle.h:
+        * platform/network/curl/ResourceHandleCurl.cpp:
+        (WebCore::ResourceHandle::createCurlRequest):
+
+2018-08-28  Aditya Keerthi  <akeerthi@apple.com>
+
+        [macOS] Color wells should appear rounded and textured
+        https://bugs.webkit.org/show_bug.cgi?id=189039
+
+        Reviewed by Tim Horton.
+
+        Color wells should have a rounded and textured appearance on macOS. We can use
+        NSBezelStyleTexturedSquare to achieve this appearance.
+
+        Also updated the user-agent stylesheet to match the system appearance.
+
+        Rebaselined existing test: fast/forms/color/input-appearance-color.html
+
+        * css/html.css:
+        (input[type="color"]::-webkit-color-swatch-wrapper):
+        (input[type="color"]::-webkit-color-swatch):
+        * platform/mac/ThemeMac.mm:
+        (WebCore::setUpButtonCell):
+        * rendering/RenderThemeMac.h: Build fix.
+
+2018-08-28  Youenn Fablet  <youenn@apple.com>
+
+        WebKitMediaSession should be GC collectable when its document is being stopped
+        https://bugs.webkit.org/show_bug.cgi?id=189016
+
+        Reviewed by Eric Carlson.
+
+        Make sure WebKitMediaSession is  collectable after its document is stopped.
+        This is done by nullifying m_session when calling close.
+        This way hasPendingActivity() returns false when stop() is called.
+
+        Test: http/tests/media/clearkey/collect-webkit-media-session.html
+
+        * Modules/encryptedmedia/legacy/WebKitMediaKeySession.cpp:
+        (WebCore::WebKitMediaKeySession::WebKitMediaKeySession):
+        (WebCore::WebKitMediaKeySession::close):
+        * Modules/encryptedmedia/legacy/WebKitMediaKeySession.h:
+
+2018-08-28  Ali Juma  <ajuma@chromium.org>
+
+        [IntersectionObserver] Fix build after r235424
+        https://bugs.webkit.org/show_bug.cgi?id=189051
+
+        Rubber-stamped by Simon Fraser.
+
+        Fix unused variable warning by using the variable.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::viewportContentsChanged):
+
+2018-08-28  Aditya Keerthi  <akeerthi@apple.com>
+
+        [iOS] Support inputmode=none
+        https://bugs.webkit.org/show_bug.cgi?id=188896
+
+        Reviewed by Tim Horton.
+
+        Updated InputMode.cpp to ensure that "none" is recognized as a valid value for the
+        inputmode attribute. This keyword is useful for content that renders its own
+        keyboard control.
+
+        Spec: https://html.spec.whatwg.org/multipage/interaction.html#input-modalities%3A-the-inputmode-attribute
+
+        Test: fast/forms/ios/inputmode-none.html
+
+        * html/InputMode.cpp:
+        (WebCore::inputModeForAttributeValue):
+        (WebCore::stringForInputMode):
+        (WebCore::InputModeNames::none):
+        * html/InputMode.h:
+
+2018-08-28  Ali Juma  <ajuma@chromium.org>
+
+        [IntersectionObserver] Schedule intersection observation updates
+        https://bugs.webkit.org/show_bug.cgi?id=189007
+
+        Reviewed by Simon Fraser.
+
+        Schedule intersection observation updates in the following situations:
+        1) A new observation target is added.
+        2) FrameView::viewportContentsChanged -- this covers changes to layout and
+           to scroll positions for same-document observation. Scheduling for
+           cross-document observation will be handled in a future patch.
+        3) Style is resolved without triggering layout -- this handles updates that
+           were deferred because of a pending style recalculation.
+
+        Tested by existing tests in imported/w3c/web-platform-tests/intersection-observer.
+
+        * dom/Document.cpp:
+        (WebCore::Document::resolveStyle):
+        (WebCore::Document::updateIntersectionObservations):
+        (WebCore::Document::scheduleIntersectionObservationUpdate):
+        * dom/Document.h:
+        * page/FrameView.cpp:
+        (WebCore::FrameView::viewportContentsChanged):
+        * page/IntersectionObserver.cpp:
+        (WebCore::IntersectionObserver::observe):
+
+2018-08-28  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Floating] Remove redundant FloatAvoider functions.
+        https://bugs.webkit.org/show_bug.cgi?id=189035
+
+        Reviewed by Antti Koivisto.
+
+        and move some code from FloatContext to FloatAvoider.
+
+        * layout/floats/FloatAvoider.cpp:
+        (WebCore::Layout::FloatAvoider::initializePosition):
+        (WebCore::Layout::FloatAvoider::rect const):
+        (WebCore::Layout::FloatAvoider::setVerticalConstraint):
+        (WebCore::Layout::FloatAvoider::setHorizontalConstraints):
+        (WebCore::Layout::FloatAvoider::resetHorizontalConstraint):
+        (WebCore::Layout::FloatAvoider::initialVerticalPosition const):
+        (WebCore::Layout::FloatAvoider::initialHorizontalPosition const):
+        (WebCore::Layout::FloatAvoider::rectInContainingBlock const):
+        (WebCore::Layout::FloatAvoider::setLeft): Deleted.
+        (WebCore::Layout::FloatAvoider::setTopLeft): Deleted.
+        (WebCore::Layout::FloatAvoider::resetVertically): Deleted.
+        (WebCore::Layout::FloatAvoider::resetHorizontally): Deleted.
+        (WebCore::Layout::FloatAvoider::topLeftInContainingBlock const): Deleted.
+        * layout/floats/FloatAvoider.h:
+        (WebCore::Layout::FloatAvoider::top const): Deleted.
+        (WebCore::Layout::FloatAvoider::left const): Deleted.
+        (WebCore::Layout::FloatAvoider::marginTop const): Deleted.
+        (WebCore::Layout::FloatAvoider::marginLeft const): Deleted.
+        (WebCore::Layout::FloatAvoider::marginBottom const): Deleted.
+        (WebCore::Layout::FloatAvoider::marginRight const): Deleted.
+        (WebCore::Layout::FloatAvoider::rectWithMargin const): Deleted.
+        (WebCore::Layout::FloatAvoider::setTop): Deleted.
+        * layout/floats/FloatingContext.cpp:
+        (WebCore::Layout::FloatingContext::positionForFloat const):
+        (WebCore::Layout::FloatingContext::floatingPosition const):
+        (WebCore::Layout::FloatingPair::horizontalConstraints const):
+        (WebCore::Layout::FloatingPair::horiztonalPosition const): Deleted.
+
 2018-08-28  Eric Carlson  <eric.carlson@apple.com>
 
         Revert changes to RealtimeMediaSource.cpp made in r235086
