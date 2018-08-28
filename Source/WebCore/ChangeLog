@@ -1,3 +1,63 @@
+2018-08-28  Alejandro G. Castro  <alex@igalia.com>
+
+        Fix gcc compilation warnings after r235230
+        https://bugs.webkit.org/show_bug.cgi?id=188981
+
+        Reviewed by Eric Carlson.
+
+        Replace the pragma clang with pragma GCC, it is understood by
+        clang and gcc.
+
+        * Modules/mediastream/libwebrtc/LibWebRTCDataChannelHandler.h:
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.h:
+        * platform/mediastream/RealtimeIncomingAudioSource.h:
+        * platform/mediastream/RealtimeIncomingVideoSource.h:
+        * platform/mediastream/RealtimeOutgoingAudioSource.h:
+        * platform/mediastream/RealtimeOutgoingVideoSource.h:
+        * platform/mediastream/libwebrtc/LibWebRTCAudioModule.h:
+        * platform/mediastream/libwebrtc/LibWebRTCProvider.cpp:
+        * platform/mediastream/libwebrtc/LibWebRTCProvider.h:
+        * testing/MockLibWebRTCPeerConnection.h:
+
+2018-08-27  Justin Fan  <justin_fan@apple.com>
+
+        WebGL 2 conformance: framebuffer-test
+        https://bugs.webkit.org/show_bug.cgi?id=188812
+
+        Reviewed by Jon Lee.
+
+        Update WebGL 2 implementation to handle READ_FRAMEBUFFER and default framebuffer conformance. Also taking this
+        chance to fix memory leak in PlatformScreenMac/gpuIDForDisplayMask().
+
+        Covered by existing WebGL tests as well as newly-enabled webgl/2.0.0/conformance2/renderbuffers/framebuffer-test.html.
+
+        * html/canvas/WebGL2RenderingContext.cpp:
+        (WebCore::WebGL2RenderingContext::blitFramebuffer):
+        (WebCore::WebGL2RenderingContext::framebufferTextureLayer):
+        (WebCore::validateDefaultFramebufferAttachment):
+        (WebCore::WebGL2RenderingContext::getFramebufferAttachmentParameter):
+        (WebCore::WebGL2RenderingContext::validateFramebufferFuncParameters):
+        (WebCore::WebGL2RenderingContext::validateFramebufferTarget):
+        (WebCore::WebGL2RenderingContext::validateNonDefaultFramebufferAttachment):
+        (WebCore::WebGL2RenderingContext::getParameter):
+        * html/canvas/WebGL2RenderingContext.h:
+        * html/canvas/WebGLFramebuffer.cpp:
+        (WebCore::WebGLFramebuffer::isBound const):
+        * html/canvas/WebGLRenderingContextBase.cpp:
+        (WebCore::WebGLRenderingContextBase::initializeNewContext):
+        (WebCore::WebGLRenderingContextBase::~WebGLRenderingContextBase):
+        (WebCore::WebGLRenderingContextBase::bindFramebuffer):
+        (WebCore::WebGLRenderingContextBase::checkFramebufferStatus):
+        (WebCore::WebGLRenderingContextBase::deleteFramebuffer):
+        (WebCore::WebGLRenderingContextBase::framebufferRenderbuffer):
+        (WebCore::WebGLRenderingContextBase::framebufferTexture2D):
+        * html/canvas/WebGLRenderingContextBase.h:
+        * platform/graphics/GraphicsContext3D.h:
+        * platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp:
+        (WebCore::GraphicsContext3D::blitFramebuffer):
+        * platform/mac/PlatformScreenMac.mm:
+        (WebCore::gpuIDForDisplayMask):
+
 2018-08-27  Alex Christensen  <achristensen@webkit.org>
 
         Fix IOSMAC build
