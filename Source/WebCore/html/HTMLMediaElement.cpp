@@ -3737,7 +3737,7 @@ void HTMLMediaElement::scanTimerFired()
 
 // The spec says to fire periodic timeupdate events (those sent while playing) every
 // "15 to 250ms", we choose the slowest frequency
-static const Seconds maxTimeupdateEventFrequency { 250_ms };
+static const Seconds maxTimeupdateEventFrequency { 200_ms };
 
 void HTMLMediaElement::startPlaybackProgressTimer()
 {
@@ -3788,8 +3788,8 @@ void HTMLMediaElement::scheduleTimeupdateEvent(bool periodicEvent)
     MonotonicTime now = MonotonicTime::now();
     Seconds timedelta = now - m_clockTimeAtLastUpdateEvent;
 
-    // throttle the periodic events
-    if (periodicEvent && timedelta < maxTimeupdateEventFrequency)
+    // Throttle the periodic events, but leave some room for timers that run slightly faster than expected.
+    if (periodicEvent && timedelta < (maxTimeupdateEventFrequency - 50_ms))
         return;
 
     // Some media engines make multiple "time changed" callbacks at the same time, but we only want one
