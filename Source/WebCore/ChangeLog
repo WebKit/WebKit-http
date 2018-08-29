@@ -1,3 +1,164 @@
+2018-08-29  David Kilzer  <ddkilzer@apple.com>
+
+        Remove empty directories from from svn.webkit.org repository
+        <https://webkit.org/b/189081>
+
+        * Modules/proximity: Removed.
+
+2018-08-28  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Floating] Introduce FloatBox, a FloatAvoider subclass.
+        https://bugs.webkit.org/show_bug.cgi?id=189074
+
+        Reviewed by Antti Koivisto.
+
+        FloatBox is a float avoider and a float positioned box as well.
+        This is in preparation for the float avoidance feature where formatting context root boxes avoid existing floats.
+
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * layout/displaytree/DisplayBox.h:
+        * layout/floats/FloatAvoider.cpp:
+        (WebCore::Layout::FloatAvoider::FloatAvoider):
+        (WebCore::Layout::FloatAvoider::setHorizontalConstraints):
+        (WebCore::Layout::FloatAvoider::setVerticalConstraint):
+        (WebCore::Layout::FloatAvoider::horizontalPositionCandidate):
+        (WebCore::Layout::FloatAvoider::verticalPositionCandidate):
+        (WebCore::Layout::FloatAvoider::resetPosition):
+        (WebCore::Layout::FloatAvoider::rectInContainingBlock const):
+        (WebCore::Layout::FloatAvoider::initializePosition): Deleted.
+        (WebCore::Layout::FloatAvoider::isLeftAligned const): Deleted.
+        (WebCore::Layout::FloatAvoider::rect const): Deleted.
+        (WebCore::Layout::FloatAvoider::resetHorizontalConstraints): Deleted.
+        (WebCore::Layout::FloatAvoider::initialVerticalPosition const): Deleted.
+        * layout/floats/FloatAvoider.h:
+        (WebCore::Layout::FloatAvoider::rect const):
+        (WebCore::Layout::FloatAvoider::isLeftAligned const):
+        (WebCore::Layout::FloatAvoider::initialVerticalPosition const):
+        (WebCore::Layout::FloatAvoider::floatingState const):
+        (WebCore::Layout::FloatAvoider::layoutBox const):
+        (WebCore::Layout::FloatAvoider::displayBox const):
+        * layout/floats/FloatBox.cpp: Copied from Source/WebCore/layout/floats/FloatAvoider.h.
+        (WebCore::Layout::FloatBox::FloatBox):
+        (WebCore::Layout::FloatBox::horizontalPositionCandidate):
+        (WebCore::Layout::FloatBox::verticalPositionCandidate):
+        (WebCore::Layout::FloatBox::initialVerticalPosition const):
+        * layout/floats/FloatBox.h: Copied from Source/WebCore/layout/floats/FloatAvoider.h.
+        * layout/floats/FloatingContext.cpp:
+        (WebCore::Layout::FloatingContext::positionForFloat const):
+        (WebCore::Layout::FloatingContext::floatingPosition const):
+
+2018-08-29  Ali Juma  <ajuma@chromium.org>
+
+        [IntersectionObserver]  Implement intersection logic for the same-document implicit root case
+        https://bugs.webkit.org/show_bug.cgi?id=189055
+
+        Reviewed by Simon Fraser.
+
+        Extend the intersection logic to handle computing the intersection of the target and the
+        viewport, for the case where the target is in the main frame.
+
+        Tested by existing tests in imported/w3c/web-platform-tests/intersection-observer.
+
+        * dom/Document.cpp:
+        (WebCore::computeIntersectionRects):
+        (WebCore::Document::updateIntersectionObservations):
+
+2018-08-28  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Changes to slot children should trigger slotchange
+        https://bugs.webkit.org/show_bug.cgi?id=169718
+        <rdar://problem/43317496>
+
+        Reviewed by Darin Adler.
+
+        Fix the bug that slotchange event is not fired when a slot's fallback content is updated now that slotchange event
+        is more formally specified.
+
+        This particular behavior corresponds to step 7.5. of the concept *to insert a node* where it says:
+        "[I]f parent’s root is a shadow root, and parent is a slot whose assigned nodes is the empty list, then run signal
+        a slot change for parent."
+
+        See https://dom.spec.whatwg.org/#concept-node-insert
+
+        Tests: fast/shadow-dom/slotchange-in-fallback.html
+               imported/w3c/web-platform-tests/shadow-dom/slotchange.html 
+
+        * dom/Element.cpp:
+        (WebCore::Element::childrenChanged): Updated the comment.
+        * dom/ShadowRoot.cpp:
+        (WebCore::ShadowRoot::addSlotElementByName): Added an assertion.
+        (WebCore::ShadowRoot::slotFallbackDidChange): Added.
+        * dom/ShadowRoot.h:
+        * dom/SlotAssignment.cpp:
+        (WebCore::SlotAssignment::slotFallbackDidChange): Added. When the assigned nodes is empty, we enqueue a slotchange.
+        Because assignedNodesForSlot invokes assignSlots, this can be O(n) but we don't expect mutating slot's fallback
+        contents and shadow host's children in turn to be a common scenario so this shouldn't be an issue in practice.
+        * dom/SlotAssignment.h:
+        * html/HTMLSlotElement.cpp:
+        (WebCore::HTMLSlotElement::insertedIntoAncestor): Be explicit about auto* being used here.
+        (WebCore::HTMLSlotElement::childrenChanged): Added. Invokes slotFallbackDidChange whenver child node is muated.
+        * html/HTMLSlotElement.h:
+
+2018-08-28  Don Olmstead  <don.olmstead@sony.com>
+
+        Check for null renderer in canBeScrolledIntoView
+        https://bugs.webkit.org/show_bug.cgi?id=188935
+
+        Reviewed by Simon Fraser.
+
+        Test: fast/spatial-navigation/snav-display-contents-crash.html
+
+        * page/SpatialNavigation.cpp:
+        (WebCore::canBeScrolledIntoView):
+
+2018-08-28  Youenn Fablet  <youenn@apple.com>
+
+        IDBDatabase should not return true to hasPendingActivity after being stopped
+        https://bugs.webkit.org/show_bug.cgi?id=189073
+
+        Reviewed by Darin Adler.
+
+        There is a chance that IDBDatabase::hasPendingActivity returns true.
+        The case that might happen is when stop() is called but there are still some active/being committed transactions.
+        In that case, hasPendingActivity will return true until these transactions get finalized.
+        While these transactions will probably be finalized at some point, it delays GC for no good reason.
+        And we might want in a follow-up patch to assert that ActiveDOMObject are GC-able whenever their context is stopped.
+        For that purpose, make sure hasPendingActivity returns false when context is stopped.
+
+        * Modules/indexeddb/IDBDatabase.cpp:
+        (WebCore::IDBDatabase::hasPendingActivity const):
+
+2018-08-28  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Use CMake's FindFreetype
+        https://bugs.webkit.org/show_bug.cgi?id=189071
+
+        Reviewed by Michael Catanzaro.
+
+        No new tests. No change in behavior.
+
+        * platform/FreeType.cmake:
+
+2018-08-28  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Work towards: [iOS] Consolidate the implementations of readString, stringForType, and readURL in PlatformPasteboardIOS.mm
+        https://bugs.webkit.org/show_bug.cgi?id=189054
+
+        Reviewed by Andy Estes.
+
+        Remove the pasteboard type argument from PlatformPasteboard::readURL(). Currently, we only ever pass it
+        "public.url" anyways; for reading other types of strings, readString() already exists, which takes an arbitrary
+        pasteboard type.
+
+        * platform/PasteboardStrategy.h:
+        * platform/PlatformPasteboard.h:
+        * platform/ios/PasteboardIOS.mm:
+        (WebCore::Pasteboard::readPasteboardWebContentDataForType):
+        (WebCore::Pasteboard::readPlatformValueAsString):
+        * platform/ios/PlatformPasteboardIOS.mm:
+        (WebCore::PlatformPasteboard::readURL):
+
 2018-08-28  Youenn Fablet  <youenn@apple.com>
 
         MediaDevices should be collectable as soon as its document is stopped

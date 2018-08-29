@@ -1,3 +1,383 @@
+2018-08-29  David Kilzer  <ddkilzer@apple.com>
+
+        Remove empty directories from from svn.webkit.org repository
+        <https://webkit.org/b/189081>
+
+        * DumpRenderTree/TestNetscapePlugIn/unix: Removed.
+        * WebKitTestRunner/UIScriptContext: Removed.
+
+2018-08-29  Pablo Saavedra  <psaavedra@igalia.com>
+
+        [GTK][WPE] Add JSCOnly Release bot for Linux ARMv7 Thumb2 SoftFP
+        https://bugs.webkit.org/show_bug.cgi?id=189077
+
+        Reviewed by Michael Catanzaro.
+
+        Deployed new bot for WPE Release in Linux ARMv7 Thumb2 SoftFP
+        This bot (jsconly-linux-igalia-bot-5) will run the 'JSCOnly
+        Linux ARMv7 Thumb2 SoftFP Release' buildjob.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * BuildSlaveSupport/build.webkit.org-config/steps_unittest.py:
+
+2018-08-28  Daniel Bates  <dabates@apple.com>
+
+        lldb-webkit: KeyError thrown for OptionSet
+        https://bugs.webkit.org/show_bug.cgi?id=189062
+
+        Reviewed by Simon Fraser.
+
+        For some reason lldb(1) may not retrieve the enumerator names for an enum value
+        when it calls update() on the synthetic children provider. If this occurs then
+        bail out as we cannot compute what enumerators are in the set.
+
+        * lldb/lldb_webkit.py:
+        (WTFOptionSetProvider.update):
+
+2018-08-28  Sihui Liu  <sihui_liu@apple.com>
+
+        Add error information to help debug test failure in WKNavigation.ProcessCrashDuringCallback
+        https://bugs.webkit.org/show_bug.cgi?id=189037
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WebContentProcessDidTerminate.mm:
+        (TEST):
+
+2018-08-28  David Kilzer  <ddkilzer@apple.com>
+
+        Fix incorrect use of `sourceTree = "<group>";` for built products and frameworks in Xcode projects
+
+        Found by tidy-Xcode-project-file script (see Bug 188754).
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj:
+        (IOKit.framework): Use `sourceTree = "<absolute>";` to match
+        other frameworks in the project.
+        * MobileMiniBrowser/MobileMiniBrowser.xcodeproj/project.pbxproj:
+        (WebKit.framework): Use `sourceTree = BUILT_PRODUCTS_DIR;` for
+        built product instead of relative build directory path.
+        * jsc-cli/jsc-cli.xcodeproj/project.pbxproj:
+        (JavaScriptCore.framework): Ditto.
+        * lldb/lldbWebKitTester/lldbWebKitTester.xcodeproj/project.pbxproj:
+        (libWTF.a): Use `sourceTree = BUILT_PRODUCTS_DIR;` for built
+        product.
+
+2018-08-28  Alex Christensen  <achristensen@webkit.org>
+
+        Fix 32-bit Mac build.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/RestoreSessionStateWithoutNavigation.mm:
+
+2018-08-28  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION (r235391): [iOS] TestWebKitAPI.WebKit.RestoreSessionStateWithoutNavigation is timing out
+        https://bugs.webkit.org/show_bug.cgi?id=189050
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/RestoreSessionStateWithoutNavigation.mm:
+        This test wasn't run on iOS before.  Let's re-introduce the WK_HAVE_C_SPI guard.
+
+2018-08-28  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] WKAttachmentTests.DropFolderAsAttachmentAndMoveByDragging encounters an exception on iOS simulator
+        https://bugs.webkit.org/show_bug.cgi?id=189049
+
+        Reviewed by Tim Horton.
+
+        Wrap an NSURL in a RetainPtr to prevent it from being freed prematurely. It seems this broke when I changed the
+        load handler from an Objective-C block that captured `folderURL` to a C++ lambda that didn't retain `folderURL`.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (simulateFolderDragWithURL):
+
+2018-08-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Attachment Support] Remove WebCore::AttachmentDisplayOptions and friends
+        https://bugs.webkit.org/show_bug.cgi?id=189004
+
+        Reviewed by Dan Bernstein.
+
+        Move off of deprecated attachment insertion SPI.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (-[TestWKWebView synchronouslyInsertAttachmentWithFileWrapper:contentType:]):
+        (-[TestWKWebView synchronouslyInsertAttachmentWithFilename:contentType:data:]):
+        (-[_WKAttachment synchronouslySetDisplayOptions:error:]): Deleted.
+
+2018-08-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Teach WebKitTestRunner and DumpRenderTree about detecting world leaks
+        https://bugs.webkit.org/show_bug.cgi?id=188994
+
+        Reviewed by Tim Horton.
+        
+        This patch adds the notion of a "control command" in the protocol between webkitpy and 
+        WebKitTestRunner/DumpRenderTree. A command is simply an input string starting with a #
+        that is checked for before trying to parse the input as test URL. For now, just one
+        commmand is supported, which is "#CHECK FOR WORLD LEAKS".
+        
+        In response to the command, the tool dumps an output block in the usual pseudo-MIME-style,
+        with a trailing "#EOF". Future patches will add support to webkitpy to parse this output.
+        
+        DumpRenderTree stubs out the command, returning an empty block.
+        
+        WebKitTestRunner responds to the command by dumping the list of live documents, if it was
+        run with the --check-for-world-leaks option.
+        
+        When run with --check-for-world-leaks, WebKitTestRunner gets the list of live documents via
+        WKBundleGetLiveDocumentURLs() after every test (this allows it to detect the first test
+        that leaked a document), and keeps them in a map of document identifier to test and live document URL.
+        Then when it receives the "#CHECK FOR WORLD LEAKS" command, it calls into the bundle to
+        clear the page and memory caches, runs a GC, then posts a task (in the Document::postTaks() sense)
+        after which it requests the list of live documents for a final time, excluding any that are loaded
+        in live Frames (thus omitting the about:blank that will be loaded at this point). Documents in this
+        list are therefore leaked (or abandoned).
+        
+        Future patches will hook up webkitpy reporting for leaked documents.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (initializeGlobalsFromCommandLineOptions):
+        (handleControlCommand):
+        (runTestingServerLoop):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (handleControlCommand):
+        (main):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::postGCTask):
+        (WTR::InjectedBundle::reportLiveDocuments):
+        (WTR::InjectedBundle::didReceiveMessageToPage):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+        * WebKitTestRunner/Options.cpp:
+        (WTR::handleOptionCheckForWorldLeaks):
+        (WTR::OptionsHandler::OptionsHandler):
+        * WebKitTestRunner/Options.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::AsyncTask::run):
+        (WTR::AsyncTask::currentTask):
+        (WTR::TestController::initialize):
+        (WTR::TestController::ensureViewSupportsOptionsForTest):
+        (WTR::TestController::resetStateToConsistentValues):
+        (WTR::TestController::updateLiveDocumentsAfterTest):
+        (WTR::TestController::checkForWorldLeaks):
+        (WTR::TestController::findAndDumpWorldLeaks):
+        (WTR::TestController::willDestroyWebView):
+        (WTR::parseInputLine):
+        (WTR::TestController::waitForCompletion):
+        (WTR::TestController::handleControlCommand):
+        (WTR::TestController::runTestingServerLoop):
+        (WTR::TestController::run):
+        (WTR::TestController::didReceiveLiveDocumentsList):
+        (WTR::TestController::didReceiveMessageFromInjectedBundle):
+        * WebKitTestRunner/TestController.h:
+        (WTR::AsyncTask::AsyncTask):
+        (WTR::AsyncTask::taskComplete):
+        (WTR::TestController::AbandonedDocumentInfo::AbandonedDocumentInfo):
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::invoke):
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::hasSameInitializationOptions const):
+
+2018-08-27  Alex Christensen  <achristensen@webkit.org>
+
+        Fix API test after r235398
+        https://bugs.webkit.org/show_bug.cgi?id=188997
+
+        * TestWebKitAPI/Tests/WebKit/ShouldKeepCurrentBackForwardListItemInList.cpp:
+        (TestWebKitAPI::setPageLoaderClient):
+        (TestWebKitAPI::willGoToBackForwardListItem): Deleted.
+        willGoToBackForwardListItem is unused and unsupported.  Removing its check.
+
+2018-08-27  Daniel Bates  <dabates@apple.com>
+
+        Partial revert of r235376
+        https://bugs.webkit.org/show_bug.cgi?id=189011
+
+        For now revert the unit tests added in r235376 as the following tests are failing on Apple Sierra
+        Debug and Apple High Sierra Debug bots:
+
+            lldb_webkit_unittest.TestSummaryProviders.serial_test_WTFOptionSetProvider_simple
+            lldb_webkit_unittest.TestSummaryProviders.serial_test_WTFOptionSet_SummaryProvider_simple
+
+        Will investigate offline.
+
+        * lldb/lldbWebKitTester/main.cpp:
+        (testSummaryProviders):
+        * lldb/lldb_webkit_unittest.py:
+        (TestSummaryProviders.serial_test_WTFHashSet_tablesize_and_size):
+        (TestSummaryProviders.serial_test_WTFOptionSet_SummaryProvider_empty): Deleted.
+        (TestSummaryProviders.serial_test_WTFOptionSet_SummaryProvider_simple): Deleted.
+        (TestSummaryProviders.serial_test_WTFOptionSetProvider_empty): Deleted.
+        (TestSummaryProviders.serial_test_WTFOptionSetProvider_simple): Deleted.
+
+2018-08-27  Aditya Keerthi  <akeerthi@apple.com>
+
+        Consolidate ENABLE_INPUT_TYPE_COLOR and ENABLE_INPUT_TYPE_COLOR_POPOVER
+        https://bugs.webkit.org/show_bug.cgi?id=188931
+
+        Reviewed by Wenson Hsieh.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig: Removed ENABLE_INPUT_TYPE_COLOR_POPOVER.
+
+2018-08-27  Justin Fan  <justin_fan@apple.com>
+
+        Add Justin Fan to list of WebKit contributors
+        https://bugs.webkit.org/show_bug.cgi?id=184431
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2018-08-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Convert timeout values in WebKitTestRunner to WTF::Seconds
+        https://bugs.webkit.org/show_bug.cgi?id=188987
+
+        Reviewed by Ryosuke Niwa.
+        
+        Replace various 'int' timeout values with WTF::Seconds. The timeout argument
+        comes in as milliseconds, so convert on input. When sending messages to the InjectedBundle
+        using integers, convert to and from milliseconds.
+        
+        Also do some #pragma once, and initializer cleanup.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didReceiveMessageToPage):
+        (WTR::InjectedBundle::beginTesting):
+        (WTR::InjectedBundle::InjectedBundle): Deleted.
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        (WTR::TestRunner::timeout):
+        (WTR::TestRunner::setCustomTimeout):
+        * WebKitTestRunner/InjectedBundle/gtk/TestRunnerGtk.cpp:
+        (WTR::TestRunner::initializeWaitToDumpWatchdogTimerIfNeeded):
+        * WebKitTestRunner/InjectedBundle/mac/TestRunnerMac.mm:
+        (WTR::TestRunner::invalidateWaitToDumpWatchdogTimer):
+        (WTR::TestRunner::initializeWaitToDumpWatchdogTimerIfNeeded):
+        * WebKitTestRunner/InjectedBundle/wpe/TestRunnerWPE.cpp:
+        (WTR::TestRunner::initializeWaitToDumpWatchdogTimerIfNeeded):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::TestController):
+        (WTR::parseInputLine):
+        (WTR::TestController::runTest):
+        (WTR::TestController::runUntil):
+        (WTR::TestController::didReceiveMessageFromInjectedBundle):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::shortTimeout const):
+        (WTR::TestInvocation::createTestSettingsDictionary):
+        * WebKitTestRunner/TestInvocation.h:
+        * WebKitTestRunner/TestOptions.h:
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::platformRunUntil):
+        * WebKitTestRunner/gtk/TestControllerGtk.cpp:
+        (WTR::TestController::platformRunUntil):
+        * WebKitTestRunner/wpe/TestControllerWPE.cpp:
+        (WTR::TestController::platformRunUntil):
+
+2018-08-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Convert timeout values in WebKitTestRunner to WTF::Seconds
+        https://bugs.webkit.org/show_bug.cgi?id=188987
+
+        Reviewed by Ryosuke Niwa.
+        
+        Replace various 'int' timeout values with WTF::Seconds. The timeout argument
+        comes in as milliseconds, so convert on input. When sending messages to the InjectedBundle
+        using integers, convert to and from milliseconds.
+        
+        Also do some #pragma once, and initializer cleanup.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didReceiveMessageToPage):
+        (WTR::InjectedBundle::beginTesting):
+        (WTR::InjectedBundle::InjectedBundle): Deleted.
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        (WTR::TestRunner::timeout):
+        (WTR::TestRunner::setCustomTimeout):
+        * WebKitTestRunner/InjectedBundle/gtk/TestRunnerGtk.cpp:
+        (WTR::TestRunner::initializeWaitToDumpWatchdogTimerIfNeeded):
+        * WebKitTestRunner/InjectedBundle/mac/TestRunnerMac.mm:
+        (WTR::TestRunner::invalidateWaitToDumpWatchdogTimer):
+        (WTR::TestRunner::initializeWaitToDumpWatchdogTimerIfNeeded):
+        * WebKitTestRunner/InjectedBundle/wpe/TestRunnerWPE.cpp:
+        (WTR::TestRunner::initializeWaitToDumpWatchdogTimerIfNeeded):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::TestController):
+        (WTR::parseInputLine):
+        (WTR::TestController::runTest):
+        (WTR::TestController::runUntil):
+        (WTR::TestController::didReceiveMessageFromInjectedBundle):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::shortTimeout const):
+        (WTR::TestInvocation::createTestSettingsDictionary):
+        * WebKitTestRunner/TestInvocation.h:
+        * WebKitTestRunner/TestOptions.h:
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::platformRunUntil):
+        * WebKitTestRunner/gtk/TestControllerGtk.cpp:
+        (WTR::TestController::platformRunUntil):
+        * WebKitTestRunner/wpe/TestControllerWPE.cpp:
+        (WTR::TestController::platformRunUntil):
+
+2018-08-27  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION(r234985/r234989) WKPageLoadHTMLString with a 16-bit String has the wrong encoding
+        https://bugs.webkit.org/show_bug.cgi?id=189002
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKit/WillLoad.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2018-08-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Cocoa] Exception (fileType 'dyn.agq8u' is not a valid UTI) raised when dragging an attachment whose file wrapper is a directory
+        https://bugs.webkit.org/show_bug.cgi?id=188903
+        <rdar://problem/43702993>
+
+        Reviewed by Tim Horton.
+
+        Add two API tests and adjust existing WKAttachment API tests. The new tests exercise the following scenarios, in
+        both iOS and macOS:
+        •       Dropping a folder as an attachment element, and then moving that attachment element in the document by
+                dragging and dropping.
+        •       Using WKWebView SPI to insert a folder and a file with an unknown extension, and then using more
+                _WKAttachment SPI to swap the attachments' backing file wrappers.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WKAttachmentTests.mm:
+        (runTestWithTemporaryFolder):
+
+        Add a helper function to run a test with a new folder path, created in the temporary directory and populated
+        with some sample content. This folder is deleted after running the test.
+
+        (simulateFolderDragWithURL):
+
+        Add a helper function to prepare a given DragAndDropSimulator for simulating a dragged folder from a source
+        external to the web view.
+
+        (platformCopyRichTextWithMultipleAttachments):
+        (platformCopyRichTextWithImage):
+        (platformCopyPNG):
+        (TestWebKitAPI::TEST):
+
+        Add new API tests, and adjust existing tests to reflect new -setFileWrapper:…: behavior. Specifically,
+        ChangeAttachmentDataAndFileInformation previously required that changing a _WKAttachment's NSFileWrapper would
+        preserve the previous NSFileWrapper's preferred name if the new file wrapper does not have a preferred name, but
+        this quirk is no longer supported.
+
+        Also add a few bridging casts for the eventual transition of TestWebKitAPI to ARC.
+
+        * TestWebKitAPI/cocoa/DragAndDropSimulator.h:
+
+        Add a new hook to clear any external drag information on an existing DragAndDropSimulator. This is convenient
+        when using the same DragAndDropSimulator to perform multiple drags in a single test.
+
+        * TestWebKitAPI/ios/DragAndDropSimulatorIOS.mm:
+        (-[DragAndDropSimulator clearExternalDragInformation]):
+        * TestWebKitAPI/mac/DragAndDropSimulatorMac.mm:
+        (-[DragAndDropSimulator clearExternalDragInformation]):
+
 2018-08-22  Aditya Keerthi  <akeerthi@apple.com>
 
         [iOS] Add support for the inputmode attribute
