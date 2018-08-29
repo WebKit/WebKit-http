@@ -1,3 +1,80 @@
+2018-08-29  Youenn Fablet  <youenn@apple.com>
+
+        Add a runtime flag for WebRTC unified plan
+        https://bugs.webkit.org/show_bug.cgi?id=189068
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/RTCPeerConnection-add-removeTrack-expected.txt:
+        * webrtc/peer-connection-audio-mute2.html:
+        * webrtc/peer-connection-remote-audio-mute2.html:
+        * webrtc/video-addTrack-expected.txt:
+        * webrtc/video-addTrack.html:
+        * webrtc/video-addTransceiver.html:
+
+2018-08-29  Ali Juma  <ajuma@chromium.org>
+
+        Generalize suppresion for flaky IntersectionObserver web platform tests
+        https://bugs.webkit.org/show_bug.cgi?id=189091
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+
+2018-08-28  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix crash when reflections and backdrop filter are combined
+        https://bugs.webkit.org/show_bug.cgi?id=188504
+        rdar://problem/43225590
+
+        Reviewed by Dan Bates.
+
+        * compositing/filters/backdrop-filter-update-rect-expected.txt: Added.
+        * compositing/filters/backdrop-filter-update-rect.html: Added.
+
+2018-08-29  Ali Juma  <ajuma@chromium.org>
+
+        [mac-wk1] Mark three IntersectionObserver web platform tests as flaky
+        https://bugs.webkit.org/show_bug.cgi?id=189091
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-08-29  Truitt Savell  <tsavell@apple.com>
+
+        Layout Test svg/animations/animate-end-attribute-numeric-precision.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=189087
+
+        Unreviewed test gardening. 
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+
+2018-08-29  Simon Fraser  <simon.fraser@apple.com>
+
+        Teach webkitpy how to check leaks and treat leaks as test failures
+        https://bugs.webkit.org/show_bug.cgi?id=189067
+
+        Reviewed by Darin Adler.
+        
+        Put some fake leaks in full_results.json, and update results.html to show a table
+        of leaks when results are expanded.
+
+        * fast/harness/full_results.json:
+        * fast/harness/results-expected.txt:
+        * fast/harness/results.html:
+
+2018-08-29  Truitt Savell  <tsavell@apple.com>
+
+        Missed adding expctations to ios for webkit.org/b/188985
+        https://bugs.webkit.org/show_bug.cgi?id=188985
+
+        Unreviewed test gardening. 
+
+        * platform/ios-wk2/TestExpectations:
+
 2018-08-29  David Kilzer  <ddkilzer@apple.com>
 
         Remove empty directories from from svn.webkit.org repository
