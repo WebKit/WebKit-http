@@ -1,3 +1,103 @@
+2018-08-30  Eric Carlson  <eric.carlson@apple.com>
+
+        Mock video devices should only support discrete sizes
+        https://bugs.webkit.org/show_bug.cgi?id=189000
+        <rdar://problem/43766551>
+
+        Reviewed by Youenn Fablet.
+
+        Updated tests and results now that we have better support for width and height constraints.
+
+        * fast/mediastream/MediaDevices-getUserMedia.html:
+        * fast/mediastream/MediaStreamTrack-getCapabilities-expected.txt:
+        * fast/mediastream/apply-constraints-advanced-expected.txt:
+        * fast/mediastream/apply-constraints-advanced.html:
+        * fast/mediastream/apply-constraints-video-expected.txt:
+        * fast/mediastream/apply-constraints-video.html:
+        * fast/mediastream/getUserMedia-default-expected.txt:
+        * fast/mediastream/getUserMedia-default.html:
+        * imported/w3c/web-platform-tests/mediacapture-streams/MediaStreamTrack-getSettings.https-expected.txt:
+        * webrtc/video-interruption.html:
+        * webrtc/video.html:
+
+2018-08-30  Youenn Fablet  <youenn@apple.com>
+
+        fast/mediastream/RTCPeerConnection-overloaded-operations.html is flaky after r235484
+        https://bugs.webkit.org/show_bug.cgi?id=189155
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/RTCPeerConnection-overloaded-operations.html:
+        createOffer/createAnswer will now reject promises if callbacks are passed as parameters.
+        Make sure that these promises are handled.
+
+2018-08-30  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Floating] Formatting context roots avoid floats.
+        https://bugs.webkit.org/show_bug.cgi?id=189150
+
+        Reviewed by Antti Koivisto.
+
+        * fast/block/block-only/float-avoider-multiple-roots-expected.txt: Added.
+        * fast/block/block-only/float-avoider-multiple-roots.html: Added.
+        * fast/block/block-only/float-avoider-simple-left-expected.txt: Added.
+        * fast/block/block-only/float-avoider-simple-left.html: Added.
+        * fast/block/block-only/float-avoider-simple-right-expected.txt: Added.
+        * fast/block/block-only/float-avoider-simple-right.html: Added.
+        * fast/block/block-only/float-avoider-with-margins-expected.txt: Added.
+        * fast/block/block-only/float-avoider-with-margins.html: Added.
+
+2018-08-29  Aditya Keerthi  <akeerthi@apple.com>
+
+        [Datalist] Display prefix-matched suggestions first
+        https://bugs.webkit.org/show_bug.cgi?id=189106
+
+        Reviewed by Tim Horton.
+
+        Added a test to verify that prefix-matched suggestions are shown before other
+        matches.
+
+        * fast/forms/datalist/datalist-textinput-suggestions-order-expected.txt: Added.
+        * fast/forms/datalist/datalist-textinput-suggestions-order.html: Added.
+        * platform/ios/TestExpectations:
+
+2018-08-29  Olivia Barnett  <obarnett@apple.com>
+
+        Implement the Web Share API
+        https://bugs.webkit.org/show_bug.cgi?id=171100
+        <rdar://problem/31751734>
+
+        Reviewed by Tim Horton.
+
+        * fast/dom/navigator-detached-no-crash-expected.txt:
+        Updated expected results.
+
+2018-08-29  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Layout Test js/error-should-not-strong-reference-global-object.html is flaky on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=187103
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations: Consolidate expectations.
+
+2018-08-29  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r226138): WebCore::subdivide() may return an empty vector; Web process can crash when performing find in Epiphany
+        https://bugs.webkit.org/show_bug.cgi?id=184390
+        <rdar://problem/41804994>
+        And
+        <rdar://problem/39771867>
+
+        Reviewed by Simon Fraser.
+
+        Add a test to ensure that we do not crash when painting an empty inline text box associated
+        with combined text.
+
+        * fast/text/text-combine-surroundContents-crash-expected.txt: Added.
+        * fast/text/text-combine-surroundContents-crash.html: Added.
+
 2018-08-29  Youenn Fablet  <youenn@apple.com>
 
         Remove WebRTC legacy API implementation
