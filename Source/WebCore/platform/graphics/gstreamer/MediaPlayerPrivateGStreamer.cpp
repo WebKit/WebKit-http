@@ -1016,8 +1016,6 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
     const GstStructure* structure = gst_message_get_structure(message);
     GstState requestedState, currentState, newState;
 
-    m_canFallBackToLastFinishedSeekPosition = false;
-
     if (structure) {
         const gchar* messageTypeName = gst_structure_get_name(structure);
 
@@ -1630,6 +1628,8 @@ void MediaPlayerPrivateGStreamer::asyncStateChangeDone()
 {
     if (!m_pipeline || m_errorOccured)
         return;
+
+    m_canFallBackToLastFinishedSeekPosition = false;
 
     if (m_seeking) {
         if (m_seekIsPending)
