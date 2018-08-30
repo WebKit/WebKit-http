@@ -1,3 +1,306 @@
+2018-08-30  Tim Horton  <timothy_horton@apple.com>
+
+        Bundle unified sources more tightly in projects with deep directory structures
+        https://bugs.webkit.org/show_bug.cgi?id=189009
+
+        Reviewed by Simon Fraser.
+
+        Fix a variety of unification errors due to reshuffling the bundles.
+
+        * Shared/APIWebArchive.mm:
+        * Shared/APIWebArchiveResource.mm:
+        * Shared/Plugins/Netscape/mac/NetscapePluginModuleMac.mm:
+        * Shared/Plugins/Netscape/mac/PluginInformationMac.mm:
+        * SourcesCocoa.txt:
+        * SourcesGTK.txt:
+        * UIProcess/API/APIAutomationSessionClient.h:
+        (API::AutomationSessionClient::sessionIdentifier const):
+        (API::AutomationSessionClient::messageOfCurrentJavaScriptDialogOnPage):
+        (API::AutomationSessionClient::setUserInputForCurrentJavaScriptPromptOnPage):
+        * UIProcess/Cocoa/LegacyCustomProtocolManagerClient.mm:
+        (-[WKCustomProtocolLoader initWithLegacyCustomProtocolManagerProxy:customProtocolID:request:]):
+        (-[WKCustomProtocolLoader connection:didFailWithError:]):
+        (-[WKCustomProtocolLoader connection:didReceiveResponse:]):
+        * UIProcess/Plugins/PluginProcessProxy.cpp:
+        (WebKit::generatePluginProcessCallbackID):
+        (WebKit::PluginProcessProxy::fetchWebsiteData):
+        (WebKit::PluginProcessProxy::deleteWebsiteData):
+        (WebKit::PluginProcessProxy::deleteWebsiteDataForHostNames):
+        (WebKit::generateCallbackID): Deleted.
+        * UIProcess/RemoteLayerTree/ios/ScrollingTreeScrollingNodeDelegateIOS.mm:
+        (-[WKScrollingNodeScrollViewDelegate scrollViewWillEndDragging:withVelocity:targetContentOffset:]):
+        * UIProcess/Storage/StorageProcessProxy.cpp:
+        (WebKit::generateStorageProcessCallbackID):
+        (WebKit::StorageProcessProxy::fetchWebsiteData):
+        (WebKit::StorageProcessProxy::deleteWebsiteData):
+        (WebKit::StorageProcessProxy::deleteWebsiteDataForOrigins):
+        (WebKit::generateCallbackID): Deleted.
+        * WebKit.xcodeproj/project.pbxproj:
+        * WebProcess/Plugins/PDF/PDFPlugin.mm:
+        (-[WKPDFPluginAccessibilityObject accessibilityPerformAction:]):
+        (-[WKPDFPluginAccessibilityObject accessibilityFocusedUIElement]):
+        (-[WKPDFPluginAccessibilityObject accessibilityAssociatedControlForAnnotation:]):
+        (-[WKPDFPluginAccessibilityObject accessibilityHitTest:]):
+        (-[WKPDFLayerControllerDelegate updateScrollPosition:]):
+        (WebKit::PDFPlugin::updateCursor):
+        (WebKit::coreCursor):
+        (appendValuesInPDFNameSubtreeToVector): Deleted.
+        (getAllValuesInPDFNameTree): Deleted.
+        (getAllScriptsInPDFDocument): Deleted.
+
+2018-08-30  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the watchOS and tvOS build
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView cleanupInteraction]):
+        (-[WKContentView invokeShareSheetWithResolution:]):
+
+2018-08-30  Eric Carlson  <eric.carlson@apple.com>
+
+        Mock video devices should only support discrete sizes
+        https://bugs.webkit.org/show_bug.cgi?id=189000
+        <rdar://problem/43766551>
+
+        Reviewed by Youenn Fablet.
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::resetMockMediaDevices):
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::resetMockMediaDevices):
+
+2018-08-30  Olivia Barnett  <obarnett@apple.com>
+
+        Web Share API compatible with AppleTV and WatchOS
+        https://bugs.webkit.org/show_bug.cgi?id=189157
+
+        Reviewed by Tim Horton.
+
+        * Shared/WebPreferencesDefaultValues.h:
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView fileUploadPanelDidDismiss:]):
+        * UIProcess/ios/forms/WKShareSheet.h:
+        * UIProcess/ios/forms/WKShareSheet.mm:
+        (-[WKShareSheet invokeShareSheetWithResolution:]):
+        Added platform checks.
+
+2018-08-30  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r235413 and r235444.
+        https://bugs.webkit.org/show_bug.cgi?id=189163
+
+        Causes crashes when running layout tests under GuardMalloc
+        (Requested by ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "NetworkLoad::didReceiveResponse should pass its completion
+        handler to its client"
+        https://bugs.webkit.org/show_bug.cgi?id=188701
+        https://trac.webkit.org/changeset/235413
+
+        "Remove assertion introduced in r235413"
+        https://bugs.webkit.org/show_bug.cgi?id=188701
+        https://trac.webkit.org/changeset/235444
+
+2018-08-30  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl][WebKit] Bugfix on redirect.
+        https://bugs.webkit.org/show_bug.cgi?id=189056
+
+        Reviewed by Alex Christensen.
+
+        Forget to call updateFromDelegatePreservingOldProperties in continueWillSendRequest like other ports do.
+
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::continueWillSendRequest):
+
+2018-08-30  Aditya Keerthi  <akeerthi@apple.com>
+
+        [macOS] Color picker layout is broken if suggested colors are specified
+        https://bugs.webkit.org/show_bug.cgi?id=189117
+
+        Reviewed by Tim Horton.
+
+        NSPopoverColorWell recently changed the size of its swatches. We need to update
+        the width of the swatches we provide to match the width of the other swatches,
+        in order to avoid breaking the layout.
+
+        While such a solution is not a good precedent, we do not have fully-functional SPI
+        to customize the suggested colors. A FIXME has been added for this reason.
+        However, even once we obtain SPI, we will need to find a way to support older
+        clients, making conditional compilation a potential necessity.
+
+        * UIProcess/mac/WebColorPickerMac.mm:
+
+2018-08-30  Brent Fulgham  <bfulgham@apple.com>
+
+        [macOS] Whitelist Network process features for VPN
+        https://bugs.webkit.org/show_bug.cgi?id=189023
+        <rdar://problem/43310000>
+
+        Reviewed by Eric Carlson.
+
+        CFNetwork needs access to some VPN preference files to configure networking, and
+        need to be allowed to communicate with the VPN process from the Network Process
+        sandbox.
+
+        * NetworkProcess/mac/com.apple.WebKit.NetworkProcess.sb.in:
+
+2018-08-30  Yoshiaki Jitsukawa  <yoshiaki.jitsukawa@sony.com>
+
+        [ConnectionUnix] Shrink sizeof AttachmentInfo by reordering members
+        https://bugs.webkit.org/show_bug.cgi?id=189149
+
+        Reviewed by Michael Catanzaro.
+
+        Reorder members to shrink the size of AttachmentInfo so that
+        we can attach more attachments. 
+
+        * Platform/IPC/unix/ConnectionUnix.cpp:
+
+2018-08-29  Chris Dumez  <cdumez@apple.com>
+
+        Avoid code duplication in ResourceLoadStatisticsMemoryStore::processStatisticsAndDataRecords()
+        https://bugs.webkit.org/show_bug.cgi?id=189130
+
+        Reviewed by Youenn Fablet.
+
+        Move if check inside the lambda instead of outside to avoid code duplication.
+
+        * UIProcess/ResourceLoadStatisticsMemoryStore.cpp:
+        (WebKit::ResourceLoadStatisticsMemoryStore::processStatisticsAndDataRecords):
+
+2018-08-29  Alex Christensen  <achristensen@webkit.org>
+
+        Revert some of r235398
+        https://bugs.webkit.org/show_bug.cgi?id=189133
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/API/APILoaderClient.h:
+        (API::LoaderClient::processDidCrash):
+        (API::LoaderClient::didChangeBackForwardList):
+        (API::LoaderClient::didCommitLoadForFrame):
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageLoaderClient):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::didChangeBackForwardList):
+        (WebKit::WebPageProxy::didCommitLoadForFrame):
+        (WebKit::WebPageProxy::dispatchProcessDidTerminate):
+
+2018-08-29  Olivia Barnett  <obarnett@apple.com>
+
+        Implement the Web Share API
+        https://bugs.webkit.org/show_bug.cgi?id=171100
+        <rdar://problem/31751734>
+
+        Reviewed by Tim Horton.
+
+        * Platform/spi/ios/UIKitSPI.h:
+        Added NSURL _title property as in the WebCore UIKitSPI.
+
+        * Scripts/webkit/messages.py:
+        ShareDataWithParsedURL special case for header for type.
+        
+        * Shared/ShareSheetCallbackID.h:
+        Added a typedef for a share sheet callback id.       
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<ShareData>::encode):
+        (IPC::ArgumentCoder<ShareData>::decode):
+        (IPC::ArgumentCoder<ShareDataWithParsedURL>::encode):
+        (IPC::ArgumentCoder<ShareDataWithParsedURL>::decode):
+        * Shared/WebCoreArgumentCoders.h:
+        Added encoding and decoding functionality for new structs.
+
+        * Shared/WebPreferences.yaml:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetWebShareEnabled):
+        (WKPreferencesGetWebShareEnabled):
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+        Added switch for RuntimeEnabledFeature.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        Added hook for share sheet testing.
+
+        * UIProcess/PageClient.h:
+        (WebKit::PageClient::showShareSheet):
+        Page client call to invoke share sheet.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::showShareSheet):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        Web page proxy handling of call to invoke share sheet.
+        Creates completion handler to send to WKShareSheet.mm
+        Completion handler sends message to WebPage with message id.
+
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::showShareSheet):
+        Page client implementation call to invoke share sheet. 
+
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView cleanupInteraction]):
+        (-[WKContentView _showShareSheet:completionHandler:]):
+        (-[WKContentView shareSheetDidDismiss:]):
+        (-[WKContentView invokeShareSheetWithResolution:resolved):
+        Call to WKShareSheet to invoke the share sheet and callback.
+        Hook for share sheet resolution testing.
+
+        * UIProcess/ios/forms/WKShareSheet.h: Added.
+        * UIProcess/ios/forms/WKShareSheet.mm: Added.
+        (-[WKShareSheet initWithView:]):
+        (-[WKShareSheet presentWithParameters:completionHandler:]):
+        (-[WKShareSheet _dispatchDidDismiss]):
+        (-[WKShareSheet _cancel]):
+        (-[WKShareSheet dismiss]):
+        (-[WKShareSheet _dismissDisplayAnimated:]):
+        (-[WKShareSheet _presentFullscreenViewController:animated:]):
+        (-[WKShareSheet invokeShareSheetWithResolution:resolved:]):
+        Completion handler call and creation of share sheet with parameters.
+        Hook that force resolves the share sheet completion handler for testing. 
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::showShareSheet):
+        Call to page to invoke share sheet.
+
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::nextShareSheetContextId):
+        (WebKit::WebPage::showShareSheet):
+        (WebKit::WebPage::showShareSheetResponse):
+        WebPage calls proxy and saves context id for promise.        
+
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+        Callback for completed response.
+
+2018-08-29  Chris Dumez  <cdumez@apple.com>
+
+        Crash under WebKit: WTF::Function<void ()>::CallableWrapper<WebKit::ResourceLoadStatisticsMemoryStore::removeDataRecords(WTF::CompletionHandler<void ()>&&)::$_1>::call()
+        https://bugs.webkit.org/show_bug.cgi?id=189098
+        <rdar://problem/43179891>
+
+        Reviewed by Youenn Fablet.
+
+        The crash was caused by implicitly using |this| on the main thread by accessing member variables, even though
+        |this| gets destroyed on the statistics queue. To address the issue, capture what we need on the statistics
+        queue, *before* dispatching to the main thread.
+
+        Also stop capturing |this| in the lambdas to make this less error prone.
+
+        * UIProcess/ResourceLoadStatisticsMemoryStore.cpp:
+        (WebKit::ResourceLoadStatisticsMemoryStore::removeDataRecords):
+        (WebKit::ResourceLoadStatisticsMemoryStore::grandfatherExistingWebsiteData):
+        (WebKit::ResourceLoadStatisticsMemoryStore::updateCookieBlocking):
+
 2018-08-29  Youenn Fablet  <youenn@apple.com>
 
         Remove WebRTC legacy API implementation

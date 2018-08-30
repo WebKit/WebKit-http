@@ -1,3 +1,440 @@
+2018-08-30  Tim Horton  <timothy_horton@apple.com>
+
+        Bundle unified sources more tightly in projects with deep directory structures
+        https://bugs.webkit.org/show_bug.cgi?id=189009
+
+        Reviewed by Simon Fraser.
+
+        Fix a variety of unification errors due to reshuffling the bundles.
+
+        * Modules/mediastream/RTCController.cpp:
+        * SourcesCocoa.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * crypto/algorithms/CryptoAlgorithmECDSA.cpp:
+        (WebCore::CryptoAlgorithmECDSA::importKey):
+        * dom/Document.h:
+        * html/parser/HTMLTreeBuilder.cpp:
+        * loader/appcache/ApplicationCacheResourceLoader.h:
+        * page/AlternativeTextClient.h:
+        * platform/Pasteboard.h:
+        * platform/graphics/DisplayRefreshMonitor.cpp:
+        * platform/graphics/FontFamilySpecificationNull.cpp:
+        * platform/graphics/cocoa/WebGLLayer.mm:
+        (-[WebGLLayer initWithGraphicsContext3D:]):
+        (-[WebGLLayer copyImageSnapshotWithColorSpace:]):
+        (-[WebGLLayer display]):
+        (-[WebGLLayer allocateIOSurfaceBackingStoreWithSize:usingAlpha:]):
+        * platform/graphics/cocoa/WebGPULayer.mm:
+        (-[WebGPULayer initWithGPUDevice:]):
+        * platform/graphics/metal/GPUCommandQueueMetal.mm:
+        * platform/mac/PasteboardMac.mm:
+        * platform/mediastream/mac/DisplayCaptureManagerCocoa.cpp:
+        * platform/network/ResourceRequestBase.cpp:
+        * rendering/updating/RenderTreeBuilderBlockFlow.cpp:
+        * rendering/updating/RenderTreeBuilderInline.cpp:
+
+2018-08-30  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Implement the PaymentMethodChangeEvent and PaymentMethodChangeEventInit interfaces
+        https://bugs.webkit.org/show_bug.cgi?id=189100
+
+        Reviewed by Daniel Bates.
+
+        Implement the PaymentMethodChangeEvent interface and PaymentMethodChangeEventInit dictionary
+        defined in the Payment Request API W3C Editor's Draft of 30 August 2018.
+
+        <https://w3c.github.io/payment-request/#paymentmethodchangeevent-interface>
+
+        The "payment method changed" algorithm will be implemented in a follow-up.
+
+        Covered by existing web platform tests.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * Modules/paymentrequest/PaymentMethodChangeEvent.cpp: Added.
+        (WebCore::PaymentMethodChangeEvent::eventInterface const):
+        (WebCore::PaymentMethodChangeEvent::PaymentMethodChangeEvent):
+        * Modules/paymentrequest/PaymentMethodChangeEvent.h: Added.
+        * Modules/paymentrequest/PaymentMethodChangeEvent.idl: Added.
+        * Modules/paymentrequest/PaymentMethodChangeEventInit.h: Added.
+        * Modules/paymentrequest/PaymentMethodChangeEventInit.idl: Added.
+        * Modules/paymentrequest/PaymentRequest.idl:
+        * Modules/paymentrequest/PaymentRequestUpdateEvent.cpp:
+        (WebCore::PaymentRequestUpdateEvent::PaymentRequestUpdateEvent):
+        * Modules/paymentrequest/PaymentRequestUpdateEvent.h:
+        * Modules/paymentrequest/PaymentRequestUpdateEventInit.h:
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * bindings/js/WebCoreBuiltinNames.h:
+        * dom/EventNames.h:
+        * dom/EventNames.in:
+
+2018-08-30  Brent Fulgham  <bfulgham@apple.com>
+
+        The width of a nullptr TextRun should be zero
+        https://bugs.webkit.org/show_bug.cgi?id=189154
+        <rdar://problem/43685926>
+
+        Reviewed by Zalan Bujtas.
+
+        If a page has an empty TextRun and attempts to paint it we can crash with a nullptr.
+
+        This patch recognizes that an empty TextRun should always produce a zero width, rather than
+        attempt to compute this value from font data.
+
+        Test: fast/text/null-string-textrun.html
+
+        * platform/graphics/FontCascade.cpp:
+        (WebCore::FontCascade::widthOfTextRange const): An empty TextRun has zero width.
+        (WebCore::FontCascade::width const): Ditto.
+        (WebCore::FontCascade::codePath const): ASSERT that the TextRun is non-empty.
+
+2018-08-30  Eric Carlson  <eric.carlson@apple.com>
+
+        Mock video devices should only support discrete sizes
+        https://bugs.webkit.org/show_bug.cgi?id=189000
+        <rdar://problem/43766551>
+
+        Reviewed by Youenn Fablet.
+        
+        While many/most video capture devices only support a finite number of discrete width/height
+        pairs, our mock video capture devices supported arbitrary width and height combinations which
+        made it difficult to write realistic tests using them. Change the mock devices to support
+        finite "presets" like those supported by AVFoundation. Create a RealtimeVideoSource base
+        class with support for these presets, so the same code will eventually be used by the mock
+        and real capture devices.
+
+        No new tests, existing tests updated for these changes.
+
+        * Sources.txt: Add RealtimeVideoSource.cpp, remove MockRealtimeMediaSource.cpp.
+
+        * WebCore.xcodeproj/project.pbxproj: Ditto.
+
+        * platform/mediastream/MediaConstraints.h: Deal with min constraint less than the supported minimum
+        and max larger than the supported maximum when there is no ideal.
+
+        * platform/mediastream/RealtimeMediaSource.cpp:
+        (WebCore::RealtimeMediaSource::selectSettings): Use supportsSizeAndFrameRate for widths,
+        heights, and framerates in advanced constraints so a width and height that are supported but
+        in the same preset are filtered out.
+        (WebCore::RealtimeMediaSource::setSize): New.
+        * platform/mediastream/RealtimeMediaSource.h:
+
+        * platform/mediastream/RealtimeMediaSourceSettings.h: Remove an unneeded include.
+
+        * platform/mediastream/RealtimeVideoSource.cpp: Added.
+        (WebCore::RealtimeVideoSource::RealtimeVideoSource):
+        (WebCore::RealtimeVideoSource::~RealtimeVideoSource):
+        (WebCore::RealtimeVideoSource::startProducingData):
+        (WebCore::RealtimeVideoSource::setSupportedFrameRates):
+        (WebCore::RealtimeVideoSource::addSupportedCapabilities const):
+        (WebCore::RealtimeVideoSource::supportsSizeAndFrameRate):
+        (WebCore::RealtimeVideoSource::bestSupportedCaptureSizeForWidthAndHeight):
+        (WebCore::RealtimeVideoSource::applySize):
+        (WebCore::RealtimeVideoSource::applySizeAndFrameRate):
+        (WebCore::RealtimeVideoSource::videoSampleAvailable):
+        (WebCore::RealtimeVideoSource::applyFrameRate):
+        (WebCore::RealtimeVideoSource::supportsFrameRate):
+
+        * platform/mediastream/RealtimeVideoSource.h: Copied from Source/WebCore/platform/mock/MockRealtimeAudioSource.h.
+        (WebCore::RealtimeVideoSource::setSupportedCaptureSizes):
+        (WebCore::RealtimeVideoSource::setDefaultSize):
+        (WebCore::RealtimeVideoSource::observedFrameRate const):
+
+        * platform/mediastream/mac/AVMediaCaptureSource.mm:
+        (WebCore::AVMediaCaptureSource::initializeSettings): Don't set label, it isn't used.
+
+        * platform/mediastream/mac/MockRealtimeVideoSourceMac.mm:
+        (WebCore::MockRealtimeVideoSourceMac::applySize): Call the base class.
+
+        * platform/mock/MockMediaDevice.h:
+        (WebCore::MockCameraProperties::encode const): Add frame rates, sizes, and facing mode.
+        (WebCore::MockCameraProperties::decode): Ditto.
+
+        * platform/mock/MockRealtimeAudioSource.cpp:
+        (WebCore::MockRealtimeAudioSource::MockRealtimeAudioSource): No more MockRealtimeMediaSource.
+        (WebCore::MockRealtimeAudioSource::settings const): Clean up.
+        (WebCore::MockRealtimeAudioSource::capabilities const): Ditto.
+        (WebCore::MockRealtimeAudioSource::settingsDidChange): Ditto.
+        (WebCore::MockRealtimeAudioSource::stopProducingData): m_elapsedTime isn't used, delete it.
+        (WebCore::MockRealtimeAudioSource::updateSettings): Deleted.
+        (WebCore::MockRealtimeAudioSource::initializeCapabilities): Deleted.
+        (WebCore::MockRealtimeAudioSource::initializeSupportedConstraints): Deleted.
+        (WebCore::MockRealtimeAudioSource::elapsedTime): Deleted.
+        * platform/mock/MockRealtimeAudioSource.h:
+
+        * platform/mock/MockRealtimeMediaSourceCenter.cpp: Moved all of the mock device management
+        code from MockRealtimeMediaSource.cpp here.
+        (WebCore::defaultDevices):
+        (WebCore::devices):
+        (WebCore::deviceMap):
+        (WebCore::deviceListForDevice):
+        (WebCore::createCaptureDevice):
+        (WebCore::MockRealtimeMediaSourceCenter::resetDevices):
+        (WebCore::MockRealtimeMediaSourceCenter::setDevices):
+        (WebCore::MockRealtimeMediaSourceCenter::addDevice):
+        (WebCore::MockRealtimeMediaSourceCenter::removeDevice):
+        (WebCore::MockRealtimeMediaSourceCenter::mockDeviceWithPersistentID):
+        (WebCore::MockRealtimeMediaSourceCenter::captureDeviceWithPersistentID):
+        (WebCore::MockRealtimeMediaSourceCenter::audioDevices):
+        (WebCore::MockRealtimeMediaSourceCenter::videoDevices):
+        (WebCore::MockRealtimeMediaSourceCenter::displayDevices):
+
+        * platform/mock/MockRealtimeVideoSource.cpp:
+        (WebCore::MockRealtimeVideoSource::MockRealtimeVideoSource): Use RealtimeVideoSource, no
+        more MockRealtimeMediaSource.
+        (WebCore::MockRealtimeVideoSource::capabilities const): Ditto, cleanup.
+        (WebCore::MockRealtimeVideoSource::settings const): Ditto.
+        (WebCore::MockRealtimeVideoSource::settingsDidChange): Ditto.
+        (WebCore::MockRealtimeVideoSource::startCaptureTimer): Ditto.
+        (WebCore::MockRealtimeVideoSource::startProducingData): Ditto.
+        (WebCore::MockRealtimeVideoSource::stopProducingData): Ditto.
+        (WebCore::MockRealtimeVideoSource::elapsedTime): Ditto.
+        (WebCore::MockRealtimeVideoSource::applySize): Ditto.
+        (WebCore::MockRealtimeVideoSource::drawText): Render the actual frame rate.
+        (WebCore::MockRealtimeVideoSource::generateFrame): Use m_fillColor.
+        (WebCore::MockRealtimeVideoSource::~MockRealtimeVideoSource): Deleted.
+        (WebCore::MockRealtimeVideoSource::updateSettings): Deleted.
+        (WebCore::MockRealtimeVideoSource::initializeCapabilities): Deleted.
+        (WebCore::MockRealtimeVideoSource::initializeSupportedConstraints): Deleted.
+        (WebCore::MockRealtimeVideoSource::applyFrameRate): Deleted.
+        * platform/mock/MockRealtimeVideoSource.h:
+        (WebCore::MockRealtimeVideoSource::updateSampleBuffer): Deleted.
+
+2018-08-30  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Floating] Block formatting context roots avoid floats.
+        https://bugs.webkit.org/show_bug.cgi?id=189150
+
+        Reviewed by Antti Koivisto.
+
+        This patch implements the float avoiding behaviour for block formatting context roots.
+
+        When a box establishes a block formatting context, floats from outside of the context can't interfere with content inside. In order
+        to achive this, such formatting root boxes need to be positioned so that they don't overlap with floats (floats that share the same
+        context with the formatting root). In ltr block direction, roots start with avoiding floats on the left, while in rtl on the right.
+
+        Tests: fast/block/block-only/float-avoider-multiple-roots.html
+               fast/block/block-only/float-avoider-simple-left.html
+               fast/block/block-only/float-avoider-simple-right.html
+               fast/block/block-only/float-avoider-with-margins.html
+
+        * layout/blockformatting/BlockFormattingContext.cpp:
+        (WebCore::Layout::BlockFormattingContext::layoutFormattingContextRoot const):
+        (WebCore::Layout::BlockFormattingContext::computeEstimatedMarginTopForAncestors const):
+        (WebCore::Layout::BlockFormattingContext::computePositionToAvoidFloats const):
+        * layout/blockformatting/BlockFormattingContext.h:
+        * layout/floats/FloatAvoider.cpp:
+        (WebCore::Layout::FloatAvoider::FloatAvoider):
+        * layout/floats/FloatingContext.cpp:
+        (WebCore::Layout::FloatingContext::positionForFloatAvoiding const):
+        * layout/floats/FloatingContext.h:
+
+2018-08-30  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Floating] Move containing block constraint logic from FloatAvoider to FloatingContext
+        https://bugs.webkit.org/show_bug.cgi?id=189145
+
+        Reviewed by Antti Koivisto.
+
+        When the float avoider is constrained horizontally, simply align it with the left/right edge of its containing block (with the combination of the constraints)
+        and check the overflow as part of the FloatingContext::floatingPosition() logic. It simplifies the constraint logic/helps implementing the non-float avoider
+        case.
+
+        * layout/floats/FloatAvoider.cpp:
+        (WebCore::Layout::FloatAvoider::setHorizontalConstraints):
+        (WebCore::Layout::FloatAvoider::overflowsContainingBlock const):
+        * layout/floats/FloatAvoider.h:
+        * layout/floats/FloatingContext.cpp:
+        (WebCore::Layout::FloatingContext::floatingPosition const):
+
+2018-08-30  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Floating] Use non-computed horizontal margins when intersecting floats with float avoiders.
+        https://bugs.webkit.org/show_bug.cgi?id=189143
+
+        Reviewed by Antti Koivisto.
+
+        * layout/Verification.cpp:
+        (WebCore::Layout::LayoutContext::verifyAndOutputMismatchingLayoutTree const):
+        * layout/floats/FloatAvoider.cpp:
+        (WebCore::Layout::FloatAvoider::setHorizontalConstraints):
+        (WebCore::Layout::FloatAvoider::initialHorizontalPosition const):
+        * layout/floats/FloatAvoider.h:
+        (WebCore::Layout::FloatAvoider::marginTop const):
+        (WebCore::Layout::FloatAvoider::marginBottom const):
+        (WebCore::Layout::FloatAvoider::marginLeft const):
+        (WebCore::Layout::FloatAvoider::marginRight const):
+        (WebCore::Layout::FloatAvoider::marginBoxWidth const):
+        * layout/floats/FloatBox.cpp:
+        (WebCore::Layout::FloatBox::rect const):
+        (WebCore::Layout::FloatBox::horizontalPositionCandidate):
+        (WebCore::Layout::FloatBox::verticalPositionCandidate):
+        (WebCore::Layout::FloatBox::initialVerticalPosition const):
+        * layout/floats/FloatBox.h:
+
+2018-08-30  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Margins] Add non-computed horizontal margins to DisplayBox
+        https://bugs.webkit.org/show_bug.cgi?id=189141
+
+        Reviewed by Antti Koivisto.
+
+        Inflow block boxes' horizontal margins extend all the way to the left/right edge of their containing block.
+        See https://www.w3.org/TR/CSS22/visudet.html#blockwidth for example
+        "...
+        10.3.3 Block-level, non-replaced elements in normal flow
+        'margin-left' + 'border-left-width' + 'padding-left' + 'width' + 'padding-right' + 'border-right-width' + 'margin-right' = width of containing block
+        ..."
+
+        In certain cases (float avoiding) we need to know the original (non-extended) horiztonal margin values.
+
+        * layout/FormattingContext.cpp:
+        (WebCore::Layout::FormattingContext::computeFloatingWidthAndMargin const):
+        (WebCore::Layout::FormattingContext::computeOutOfFlowHorizontalGeometry const):
+        * layout/FormattingContextGeometry.cpp:
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowNonReplacedHorizontalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowReplacedHorizontalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::floatingNonReplacedWidthAndMargin):
+        (WebCore::Layout::FormattingContext::Geometry::inlineReplacedWidthAndMargin):
+        * layout/LayoutContext.cpp:
+        (WebCore::Layout::LayoutContext::initializeRoot):
+        * layout/LayoutUnits.h:
+        * layout/blockformatting/BlockFormattingContext.cpp:
+        (WebCore::Layout::BlockFormattingContext::computeInFlowWidthAndMargin const):
+        * layout/blockformatting/BlockFormattingContextGeometry.cpp:
+        (WebCore::Layout::BlockFormattingContext::Geometry::inFlowNonReplacedWidthAndMargin):
+        (WebCore::Layout::BlockFormattingContext::Geometry::inFlowReplacedWidthAndMargin):
+        * layout/displaytree/DisplayBox.h:
+        (WebCore::Display::Box::setHasValidHorizontalNonComputedMargin):
+        (WebCore::Display::Box::setHorizontalNonComputedMargin):
+        (WebCore::Display::Box::nonComputedMarginLeft const):
+        (WebCore::Display::Box::nonComputedMarginRight const):
+
+2018-08-30  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Unreviewed, add comments about enum names to bitfields
+        https://bugs.webkit.org/show_bug.cgi?id=188944
+
+        * xml/XMLHttpRequest.h:
+
+2018-08-30  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Unreviewed, add comments about enum names to bitfields
+        https://bugs.webkit.org/show_bug.cgi?id=188945
+
+        * html/HTMLCollection.h:
+
+2018-08-29  Andy Estes  <aestes@apple.com>
+
+        Addressed additional review feedback after r235342.
+
+        * Modules/applepay/ApplePayRequestBase.cpp:
+        (WebCore::convertAndValidate):
+
+        Used '"' instead of "\"" with makeString().
+
+2018-08-29  Aditya Keerthi  <akeerthi@apple.com>
+
+        [Datalist] Display prefix-matched suggestions first
+        https://bugs.webkit.org/show_bug.cgi?id=189106
+
+        Reviewed by Tim Horton.
+
+        In order to increase suggestion relevancy, we should display suggestions that have
+        the same prefix as the input value first. In order to achieve this, we can place
+        the suggestions into two buckets, one that contains prefix-matched values and
+        another that contains only substring-matched values.
+
+        TextFieldInputType::suggestions() can be called up to three times before we
+        display the values. In order to avoid generating the same suggestions multiple
+        times, the most recent values can be stored and reused. We clear the cached values
+        whenever the datalist element is modified or when the suggestions view is hidden.
+
+        Finally, removed logic to de-duplicate the list of suggested values. This behavior
+        is not a part of the specification and leads to unnecessary slowdown when
+        populating the suggestions view.
+
+        Test: fast/forms/datalist/datalist-textinput-suggestions-order.html
+
+        * html/TextFieldInputType.cpp:
+        (WebCore::TextFieldInputType::listAttributeTargetChanged):
+        (WebCore::TextFieldInputType::suggestions):
+        (WebCore::TextFieldInputType::didCloseSuggestions):
+        * html/TextFieldInputType.h:
+        * platform/DataListSuggestionsClient.h:
+
+2018-08-29  Olivia Barnett  <obarnett@apple.com>
+
+        Implement the Web Share API
+        https://bugs.webkit.org/show_bug.cgi?id=171100
+        <rdar://problem/31751734>
+
+        Reviewed by Tim Horton.
+
+        Added one test in fast/events/ios called share.html; adjusted expectations for existing tests.
+
+        * DerivedSources.make:
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * features.json:
+        * loader/EmptyClients.cpp:
+        (WebCore::EmptyChromeClient::showShareSheet):
+        * loader/EmptyClients.h:
+        Added empty showShareSheet function.
+
+        * page/Chrome.cpp:
+        (WebCore::Chrome::showShareSheet):
+        * page/Chrome.h:
+        Added call to showShareSheet on client.
+
+        * page/ChromeClient.h:
+        Virtual showShareSheet function.
+
+        * page/Navigator.cpp:
+        (WebCore::Navigator::share):
+        * page/Navigator.h:
+        Share function that returns a promise and invokes the share sheet.
+
+        * page/Navigator.idl:
+        Implements NavigatorShare
+
+        * page/NavigatorShare.idl: Added.
+        Added definition of share function returning a promise.
+
+        * page/RuntimeEnabledFeatures.h:
+        (WebCore::RuntimeEnabledFeatures::setWebShareEnabled):
+        (WebCore::RuntimeEnabledFeatures::webShareEnabled const):
+        Added RuntimeEnabledFeature switch.
+
+        * page/ShareData.h: Added.
+        * page/ShareData.idl: Added.
+        Definition of ShareData struct.
+
+2018-08-29  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r226138): WebCore::subdivide() may return an empty vector; Web process can crash when performing find in Epiphany
+        https://bugs.webkit.org/show_bug.cgi?id=184390
+        <rdar://problem/41804994>
+        And
+        <rdar://problem/39771867>
+
+        Reviewed by Simon Fraser.
+
+        Speculative fix for Epiphany.
+
+        In theory, WebCore::subdivide() should never return an empty vector - no subdivisions - as such a
+        result represents a programmer error. In practice, InlineTextBox can invoke WebCore::subdivide()
+        such that it returns an empty vector. One way this can happen is when subdividing an empty inline
+        text box associated with combined text (RenderCombineText). For now we add a check to bail out of
+        resolving the style of subdivisions when WebCore::subdivide() returns no subdivisions. In a
+        subsequent patch we will look to assert that WebCore::subdivide() always returns subdivisions.
+
+        Test: fast/text/text-combine-surroundContents-crash.html
+
+        * rendering/InlineTextBox.cpp:
+        (WebCore::InlineTextBox::subdivideAndResolveStyle):
+
 2018-08-29  Youenn Fablet  <youenn@apple.com>
 
         Remove WebRTC legacy API implementation

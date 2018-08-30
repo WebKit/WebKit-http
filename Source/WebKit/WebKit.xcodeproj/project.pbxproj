@@ -681,6 +681,73 @@
 		2D8786241BDB58FF00D02ABB /* APIUserStyleSheet.h in Headers */ = {isa = PBXBuildFile; fileRef = 2D8786221BDB58FF00D02ABB /* APIUserStyleSheet.h */; };
 		2D8949F0182044F600E898AA /* PlatformCALayerRemoteTiledBacking.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2D8949EE182044F600E898AA /* PlatformCALayerRemoteTiledBacking.cpp */; };
 		2D8949F1182044F600E898AA /* PlatformCALayerRemoteTiledBacking.h in Headers */ = {isa = PBXBuildFile; fileRef = 2D8949EF182044F600E898AA /* PlatformCALayerRemoteTiledBacking.h */; };
+		2D913428212C84F500128AFD /* WKWebProcessBundleParameters.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1AA2E56418D77508003814BD /* WKWebProcessBundleParameters.mm */; };
+		2D913429212C84F500128AFD /* WKWebProcessPlugInFrame.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1F01816A1858DC1500F92884 /* WKWebProcessPlugInFrame.mm */; };
+		2D91342A212C84F500128AFD /* WKWebProcessPlugInHitTestResult.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1F01816D1858DC1600F92884 /* WKWebProcessPlugInHitTestResult.mm */; };
+		2D91342B212C84F500128AFD /* WKWebProcessPlugInNodeHandle.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1F0181701858DC1600F92884 /* WKWebProcessPlugInNodeHandle.mm */; };
+		2D91342C212C84F500128AFD /* WKWebProcessPlugInPageGroup.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1FB00AC5185F76460019142E /* WKWebProcessPlugInPageGroup.mm */; };
+		2D91342D212C84F500128AFD /* WKWebProcessPlugInRangeHandle.mm in Sources */ = {isa = PBXBuildFile; fileRef = 374942181DF1F9FF0033C19F /* WKWebProcessPlugInRangeHandle.mm */; };
+		2D91342E212C84F500128AFD /* WKWebProcessPlugInScriptWorld.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1F0181731858DC1600F92884 /* WKWebProcessPlugInScriptWorld.mm */; };
+		2D91342F212C850100128AFD /* WKWebProcessPlugIn.mm in Sources */ = {isa = PBXBuildFile; fileRef = BC989D7F161A7E5B000D46D3 /* WKWebProcessPlugIn.mm */; };
+		2D913430212C850100128AFD /* WKWebProcessPlugInBrowserContextController.mm in Sources */ = {isa = PBXBuildFile; fileRef = BC8F2F2816273A2B005FACB5 /* WKWebProcessPlugInBrowserContextController.mm */; };
+		2D913431212C853D00128AFD /* WKDOMDocument.mm in Sources */ = {isa = PBXBuildFile; fileRef = BC017D0016260FF4007054F5 /* WKDOMDocument.mm */; };
+		2D913432212C853D00128AFD /* WKDOMElement.mm in Sources */ = {isa = PBXBuildFile; fileRef = BC017D0216260FF4007054F5 /* WKDOMElement.mm */; };
+		2D913433212C853D00128AFD /* WKDOMInternals.mm in Sources */ = {isa = PBXBuildFile; fileRef = BC017D0416260FF4007054F5 /* WKDOMInternals.mm */; };
+		2D913434212C853D00128AFD /* WKDOMNode.mm in Sources */ = {isa = PBXBuildFile; fileRef = BC017D0616260FF4007054F5 /* WKDOMNode.mm */; };
+		2D913435212C853D00128AFD /* WKDOMRange.mm in Sources */ = {isa = PBXBuildFile; fileRef = BC39C4331626366F008BC689 /* WKDOMRange.mm */; };
+		2D913436212C853D00128AFD /* WKDOMText.mm in Sources */ = {isa = PBXBuildFile; fileRef = 293EBEAA1627D9C9005F89F1 /* WKDOMText.mm */; };
+		2D913437212C853D00128AFD /* WKDOMTextIterator.mm in Sources */ = {isa = PBXBuildFile; fileRef = BC017D1E16263308007054F5 /* WKDOMTextIterator.mm */; };
+		2D913439212C8F8600128AFD /* WKBundleMac.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1A8B66B11BC45B010082DF77 /* WKBundleMac.mm */; };
+		2D91343A212C8F8600128AFD /* WKBundlePageBannerMac.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7CF47FFC17276AE3008ACB91 /* WKBundlePageBannerMac.mm */; };
+		2D913441212CF9F000128AFD /* JSNPMethod.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE49A4811FFA8CE0048B464 /* JSNPMethod.cpp */; };
+		2D913442212CF9F000128AFD /* JSNPObject.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE4987711FF7FAA0048B464 /* JSNPObject.cpp */; };
+		2D913443212CF9F000128AFD /* NetscapeBrowserFuncs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A6FBA2911E6862700DB1371 /* NetscapeBrowserFuncs.cpp */; };
+		2D913444212CF9F000128AFD /* NetscapePlugin.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A6FBD2711E69BC200DB1371 /* NetscapePlugin.cpp */; };
+		2D913445212CF9F000128AFD /* NetscapePluginStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AA5889111EE70400061B882 /* NetscapePluginStream.cpp */; };
+		2D913446212CF9F000128AFD /* NPJSObject.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE4976711FF658E0048B464 /* NPJSObject.cpp */; };
+		2D913447212CF9F000128AFD /* NPRuntimeObjectMap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A2161AF11F37664008AD0F5 /* NPRuntimeObjectMap.cpp */; };
+		2D913448212CF9F000128AFD /* NPRuntimeUtilities.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A2162AE11F38971008AD0F5 /* NPRuntimeUtilities.cpp */; };
+		2D913449212CF9F000128AFD /* Plugin.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A6FB7D011E651E200DB1371 /* Plugin.cpp */; };
+		2D91344A212CF9F000128AFD /* PluginProcessConnection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0EC905124C0AB8007EF4A5 /* PluginProcessConnection.cpp */; };
+		2D91344B212CF9F000128AFD /* PluginProcessConnectionManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A0EC90E124C0AF5007EF4A5 /* PluginProcessConnectionManager.cpp */; };
+		2D91344C212CF9F000128AFD /* PluginProxy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A043DC0124FF87500FFBFB5 /* PluginProxy.cpp */; };
+		2D91344D212CF9F000128AFD /* PluginView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A6FB7AC11E64B6800DB1371 /* PluginView.cpp */; };
+		2D91344E212CF9F000128AFD /* WebPluginInfoProvider.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A08FEE21D593CF1008BA8CB /* WebPluginInfoProvider.cpp */; };
+		2D92A779212B6A6100F493FD /* Logging.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 51A7F2F4125BF8D4008AEB1D /* Logging.cpp */; };
+		2D92A77A212B6A6100F493FD /* Module.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C0E3AA451209E2BA00A49D01 /* Module.cpp */; };
+		2D92A77B212B6A7100F493FD /* ArgumentCoders.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A3D610413A7F03A00F95D4E /* ArgumentCoders.cpp */; };
+		2D92A77C212B6A7100F493FD /* Attachment.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BCEE966A112FAF57006BCC24 /* Attachment.cpp */; };
+		2D92A77D212B6A7100F493FD /* Connection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BC032DA210F437D10058C15A /* Connection.cpp */; };
+		2D92A77E212B6A7100F493FD /* DataReference.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AC7537D183BE50F0072CB15 /* DataReference.cpp */; };
+		2D92A77F212B6A7100F493FD /* Decoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BC032D9D10F437D10058C15A /* Decoder.cpp */; };
+		2D92A780212B6A7100F493FD /* Encoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BC032D9F10F437D10058C15A /* Encoder.cpp */; };
+		2D92A781212B6A7100F493FD /* MessageReceiverMap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A3EED0C161A535300AEB4F5 /* MessageReceiverMap.cpp */; };
+		2D92A782212B6A7100F493FD /* MessageSender.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AAB0377185A7C6A00EDF501 /* MessageSender.cpp */; };
+		2D92A783212B6A7100F493FD /* StringReference.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1AE00D6918327C1200087DD7 /* StringReference.cpp */; };
+		2D92A784212B6AB100F493FD /* ActivityAssertion.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A7D792D51767CB6E00881CBE /* ActivityAssertion.cpp */; };
+		2D92A785212B6AB100F493FD /* BlobDataFileReferenceWithSandboxExtension.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E164A2EF191AF14E0010737D /* BlobDataFileReferenceWithSandboxExtension.cpp */; };
+		2D92A786212B6AB100F493FD /* ChildProcess.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A2D956E12848564001EB962 /* ChildProcess.cpp */; };
+		2D92A787212B6AB100F493FD /* ShareableBitmap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A6420E212DCE2FF00CAAE2C /* ShareableBitmap.cpp */; };
+		2D92A788212B6AB100F493FD /* WebCoreArgumentCoders.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 939AE7651316E99C00AE06A6 /* WebCoreArgumentCoders.cpp */; };
+		2D92A789212B6AB100F493FD /* WebEvent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C0337DAD127A24FE008FF4F4 /* WebEvent.cpp */; };
+		2D92A78A212B6AB100F493FD /* WebKeyboardEvent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C0337DD2127A2A0E008FF4F4 /* WebKeyboardEvent.cpp */; };
+		2D92A78B212B6AB100F493FD /* WebKit2Initialize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BC9BA5021697C45300E44616 /* WebKit2Initialize.cpp */; };
+		2D92A78C212B6AB100F493FD /* WebMouseEvent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C0337DAF127A28D0008FF4F4 /* WebMouseEvent.cpp */; };
+		2D92A78D212B6AB100F493FD /* WebPlatformTouchPoint.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C0337DDC127A521C008FF4F4 /* WebPlatformTouchPoint.cpp */; };
+		2D92A78E212B6AB100F493FD /* WebTouchEvent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C0337DD7127A51B6008FF4F4 /* WebTouchEvent.cpp */; };
+		2D92A78F212B6AB100F493FD /* WebWheelEvent.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C0337DD0127A2980008FF4F4 /* WebWheelEvent.cpp */; };
+		2D92A790212B6AD400F493FD /* NPIdentifierData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A2D848A127F6A49001EB962 /* NPIdentifierData.cpp */; };
+		2D92A791212B6AD400F493FD /* NPObjectMessageReceiver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A1FA35C127A45BF0050E709 /* NPObjectMessageReceiver.cpp */; };
+		2D92A792212B6AD400F493FD /* NPObjectProxy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A1FA284127A13BC0050E709 /* NPObjectProxy.cpp */; };
+		2D92A793212B6AD400F493FD /* NPRemoteObjectMap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A1FA252127A0E4F0050E709 /* NPRemoteObjectMap.cpp */; };
+		2D92A794212B6AD400F493FD /* NPVariantData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A2D84A2127F6AD1001EB962 /* NPVariantData.cpp */; };
+		2D92A795212B6AD400F493FD /* PluginProcessCreationParameters.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A2D90D11281C966001EB962 /* PluginProcessCreationParameters.cpp */; };
+		2D92A796212B6ADA00F493FD /* NetscapePluginModule.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 1A4A9C5312B816CF008FE984 /* NetscapePluginModule.cpp */; };
+		2D92A797212B6ADA00F493FD /* PluginInformation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7C3F8C8E173AF52D007B7F39 /* PluginInformation.cpp */; };
+		2D92A79821348D8500F493FD /* WebPaymentCoordinatorProxyMac.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1AB1F77D1D1B30A9007C9BD1 /* WebPaymentCoordinatorProxyMac.mm */; };
+		2D92A79F2134B07E00F493FD /* WebPaymentCoordinatorProxyIOS.mm in Sources */ = {isa = PBXBuildFile; fileRef = 1AB1F77B1D1B30A9007C9BD1 /* WebPaymentCoordinatorProxyIOS.mm */; };
+		2D931169212F61B200044BFE /* WKContentView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0FCB4E3D18BBE044000FCFC9 /* WKContentView.mm */; };
+		2D93116A212F61B500044BFE /* WKContentViewInteraction.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0FCB4E6B18BBF26A000FCFC9 /* WKContentViewInteraction.mm */; };
 		2D9EA30D1A96CB59002D2807 /* WKPageInjectedBundleClient.h in Headers */ = {isa = PBXBuildFile; fileRef = 2D9EA30C1A96CB59002D2807 /* WKPageInjectedBundleClient.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		2D9EA30F1A96CBFF002D2807 /* WebPageInjectedBundleClient.h in Headers */ = {isa = PBXBuildFile; fileRef = 2D9EA30E1A96CBFF002D2807 /* WebPageInjectedBundleClient.h */; };
 		2D9EA3111A96D9EB002D2807 /* WebPageInjectedBundleClient.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2D9EA3101A96D9EB002D2807 /* WebPageInjectedBundleClient.cpp */; };
@@ -11497,6 +11564,8 @@
 				1AB1F77F1D1B30A9007C9BD1 /* WebPaymentCoordinatorProxyCocoa.mm in Sources */,
 				1AB1F7801D1B30A9007C9BD1 /* WebPaymentCoordinatorProxyIOS.mm in Sources */,
 				1AB1F7811D1B30A9007C9BD1 /* WebPaymentCoordinatorProxyMac.mm in Sources */,
+				2D92A79F2134B07E00F493FD /* WebPaymentCoordinatorProxyIOS.mm in Sources */,
+				2D92A79821348D8500F493FD /* WebPaymentCoordinatorProxyMac.mm in Sources */,
 				1AB1F7981D1B3613007C9BD1 /* WebPaymentCoordinatorProxyMessageReceiver.cpp in Sources */,
 				0F850FE61ED7C39F00FB77A7 /* WebPerformanceLoggingClient.cpp in Sources */,
 				1A3E736211CC2659007BD539 /* WebPlatformStrategies.cpp in Sources */,

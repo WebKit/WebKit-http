@@ -90,8 +90,6 @@
 #include <WebCore/LocalDefaultSystemAppearance.h>
 #endif
 
-using namespace WebCore;
-
 // Set overflow: hidden on the annotation container so <input> elements scrolled out of view don't show
 // scrollbars on the body. We can't add annotations directly to the body, because overflow: hidden on the body
 // will break rubber-banding.
@@ -292,7 +290,7 @@ static const int defaultScrollMagnitudeThresholdForPageFlip = 20;
 - (void)accessibilityPerformAction:(NSString *)action
 {
     if ([action isEqualToString:NSAccessibilityShowMenuAction])
-        _pdfPlugin->showContextMenuAtPoint(IntRect(IntPoint(), _pdfPlugin->size()).center());
+        _pdfPlugin->showContextMenuAtPoint(WebCore::IntRect(WebCore::IntPoint(), _pdfPlugin->size()).center());
 }
 
 - (BOOL)accessibilityIsAttributeSettable:(NSString *)attribute
@@ -318,8 +316,8 @@ static const int defaultScrollMagnitudeThresholdForPageFlip = 20;
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
     if (WebKit::PDFPluginAnnotation* activeAnnotation = _pdfPlugin->activeAnnotation()) {
-        if (AXObjectCache* existingCache = _pdfPlugin->axObjectCache()) {
-            if (AccessibilityObject* object = existingCache->getOrCreate(activeAnnotation->element()))
+        if (WebCore::AXObjectCache* existingCache = _pdfPlugin->axObjectCache()) {
+            if (WebCore::AccessibilityObject* object = existingCache->getOrCreate(activeAnnotation->element()))
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
                 return [object->wrapper() accessibilityAttributeValue:@"_AXAssociatedPluginParent"];
@@ -340,11 +338,11 @@ static const int defaultScrollMagnitudeThresholdForPageFlip = 20;
     if (!activeAnnotation || ![activeAnnotation->annotation() isEqual:annotation])
         return nil;
     
-    AXObjectCache* cache = _pdfPlugin->axObjectCache();
+    WebCore::AXObjectCache* cache = _pdfPlugin->axObjectCache();
     if (!cache)
         return nil;
     
-    AccessibilityObject* object = cache->getOrCreate(activeAnnotation->element());
+    WebCore::AccessibilityObject* object = cache->getOrCreate(activeAnnotation->element());
     if (!object)
         return nil;
 
@@ -355,7 +353,7 @@ static const int defaultScrollMagnitudeThresholdForPageFlip = 20;
 - (id)accessibilityHitTest:(NSPoint)point
 {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
-    point = _pdfPlugin->convertFromRootViewToPDFView(IntPoint(point));
+    point = _pdfPlugin->convertFromRootViewToPDFView(WebCore::IntPoint(point));
     return [_pdfLayerController accessibilityHitTest:point];
 #else
     return self;
@@ -423,7 +421,7 @@ static const int defaultScrollMagnitudeThresholdForPageFlip = 20;
 
 - (void)updateScrollPosition:(CGPoint)newPosition
 {
-    _pdfPlugin->notifyScrollPositionChanged(IntPoint(newPosition));
+    _pdfPlugin->notifyScrollPositionChanged(WebCore::IntPoint(newPosition));
 }
 
 - (void)writeItemsToPasteboard:(NSArray *)items withTypes:(NSArray *)types
@@ -501,6 +499,10 @@ static const int defaultScrollMagnitudeThresholdForPageFlip = 20;
 - (NSRect)convertRect:(NSRect)rect fromPage:(PDFPage *) page forScaleFactor:(CGFloat) scaleFactor;
 - (PDFPage *)pageNearestPoint:(NSPoint)point currentPage:(PDFPage *)currentPage;
 @end
+
+namespace WebKit {
+using namespace WebCore;
+using namespace HTMLNames;
 
 static const char* postScriptMIMEType = "application/postscript";
 const uint64_t pdfDocumentRequestID = 1; // PluginController supports loading multiple streams, but we only need one for PDF.
@@ -597,9 +599,6 @@ static void getAllScriptsInPDFDocument(CGPDFDocumentRef pdfDocument, Vector<Reta
         scripts.append(script);
     }
 }
-
-namespace WebKit {
-using namespace HTMLNames;
 
 Ref<PDFPlugin> PDFPlugin::create(WebFrame& frame)
 {
@@ -1452,7 +1451,7 @@ void PDFPlugin::updateCursor(const WebMouseEvent& event, UpdateCursorMode mode)
     if (hitTestResult == m_lastHitTestResult && mode == UpdateIfNeeded)
         return;
 
-    webFrame()->page()->send(Messages::WebPageProxy::SetCursor(hitTestResult == Text ? iBeamCursor() : pointerCursor()));
+    webFrame()->page()->send(Messages::WebPageProxy::SetCursor(hitTestResult == Text ? WebCore::iBeamCursor() : WebCore::pointerCursor()));
     m_lastHitTestResult = hitTestResult;
 }
 #endif
@@ -1983,16 +1982,16 @@ void PDFPlugin::notifySelectionChanged(PDFSelection *)
     webFrame()->page()->didChangeSelection();
 }
 
-static const Cursor& coreCursor(PDFLayerControllerCursorType type)
+static const WebCore::Cursor& coreCursor(PDFLayerControllerCursorType type)
 {
     switch (type) {
     case kPDFLayerControllerCursorTypeHand:
-        return handCursor();
+        return WebCore::handCursor();
     case kPDFLayerControllerCursorTypeIBeam:
-        return iBeamCursor();
+        return WebCore::iBeamCursor();
     case kPDFLayerControllerCursorTypePointer:
     default:
-        return pointerCursor();
+        return WebCore::pointerCursor();
     }
 }
 
