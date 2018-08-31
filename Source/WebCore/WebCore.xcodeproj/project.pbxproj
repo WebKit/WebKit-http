@@ -73,8 +73,6 @@
 		070334D9145A006F008D8D45 /* TrackBase.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 070334D8145A006F008D8D45 /* TrackBase.cpp */; };
 		070363E2181A1CDC00C074A5 /* AVCaptureDeviceManager.h in Headers */ = {isa = PBXBuildFile; fileRef = 070363DA181A1CDC00C074A5 /* AVCaptureDeviceManager.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		070363E3181A1CDC00C074A5 /* AVCaptureDeviceManager.mm in Sources */ = {isa = PBXBuildFile; fileRef = 070363DB181A1CDC00C074A5 /* AVCaptureDeviceManager.mm */; };
-		070363E4181A1CDC00C074A5 /* AVMediaCaptureSource.h in Headers */ = {isa = PBXBuildFile; fileRef = 070363DC181A1CDC00C074A5 /* AVMediaCaptureSource.h */; };
-		070363E5181A1CDC00C074A5 /* AVMediaCaptureSource.mm in Sources */ = {isa = PBXBuildFile; fileRef = 070363DD181A1CDC00C074A5 /* AVMediaCaptureSource.mm */; };
 		070363E6181A1CDC00C074A5 /* AVVideoCaptureSource.h in Headers */ = {isa = PBXBuildFile; fileRef = 070363DE181A1CDC00C074A5 /* AVVideoCaptureSource.h */; };
 		070363E7181A1CDC00C074A5 /* AVVideoCaptureSource.mm in Sources */ = {isa = PBXBuildFile; fileRef = 070363DF181A1CDC00C074A5 /* AVVideoCaptureSource.mm */; };
 		0704A4081D6DE9F10086DCDB /* OverconstrainedError.h in Headers */ = {isa = PBXBuildFile; fileRef = 0704A4051D6DE9F10086DCDB /* OverconstrainedError.h */; };
@@ -5180,8 +5178,6 @@
 		070334E8145A1F35008D8D45 /* JSTrackCustom.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSTrackCustom.cpp; sourceTree = "<group>"; };
 		070363DA181A1CDC00C074A5 /* AVCaptureDeviceManager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AVCaptureDeviceManager.h; sourceTree = "<group>"; };
 		070363DB181A1CDC00C074A5 /* AVCaptureDeviceManager.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = AVCaptureDeviceManager.mm; sourceTree = "<group>"; };
-		070363DC181A1CDC00C074A5 /* AVMediaCaptureSource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AVMediaCaptureSource.h; sourceTree = "<group>"; };
-		070363DD181A1CDC00C074A5 /* AVMediaCaptureSource.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = AVMediaCaptureSource.mm; sourceTree = "<group>"; };
 		070363DE181A1CDC00C074A5 /* AVVideoCaptureSource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AVVideoCaptureSource.h; sourceTree = "<group>"; };
 		070363DF181A1CDC00C074A5 /* AVVideoCaptureSource.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = AVVideoCaptureSource.mm; sourceTree = "<group>"; };
 		0704A4031D6DE9F10086DCDB /* OverconstrainedError.idl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = OverconstrainedError.idl; sourceTree = "<group>"; };
@@ -15301,8 +15297,6 @@
 				07C046C61E42512F007201E7 /* AudioTrackPrivateMediaStreamCocoa.h */,
 				070363DA181A1CDC00C074A5 /* AVCaptureDeviceManager.h */,
 				070363DB181A1CDC00C074A5 /* AVCaptureDeviceManager.mm */,
-				070363DC181A1CDC00C074A5 /* AVMediaCaptureSource.h */,
-				070363DD181A1CDC00C074A5 /* AVMediaCaptureSource.mm */,
 				070363DE181A1CDC00C074A5 /* AVVideoCaptureSource.h */,
 				070363DF181A1CDC00C074A5 /* AVVideoCaptureSource.mm */,
 				3F8020311E9E381D00DEC61D /* CoreAudioCaptureDevice.cpp */,
@@ -27283,7 +27277,6 @@
 				CDC675231EAEA9B700727C84 /* AVAudioSessionCaptureDeviceManager.h in Headers */,
 				070363E2181A1CDC00C074A5 /* AVCaptureDeviceManager.h in Headers */,
 				07F4E93320B3587F002E3803 /* AVFoundationMIMETypeCache.h in Headers */,
-				070363E4181A1CDC00C074A5 /* AVMediaCaptureSource.h in Headers */,
 				CD336F6217F9F64700DDDCD0 /* AVTrackPrivateAVFObjCImpl.h in Headers */,
 				070363E6181A1CDC00C074A5 /* AVVideoCaptureSource.h in Headers */,
 				F45C231E1995B73B00A6E2E3 /* AxisScrollSnapOffsets.h in Headers */,
@@ -31515,7 +31508,6 @@
 				CDC675221EAEA9B700727C84 /* AVAudioSessionCaptureDeviceManager.mm in Sources */,
 				070363E3181A1CDC00C074A5 /* AVCaptureDeviceManager.mm in Sources */,
 				0719427F1D088F21002AA51D /* AVFoundationMIMETypeCache.mm in Sources */,
-				070363E5181A1CDC00C074A5 /* AVMediaCaptureSource.mm in Sources */,
 				CD336F6117F9F64700DDDCD0 /* AVTrackPrivateAVFObjCImpl.mm in Sources */,
 				070363E7181A1CDC00C074A5 /* AVVideoCaptureSource.mm in Sources */,
 				7A45032F18DB717200377B34 /* BufferedLineReader.cpp in Sources */,
