@@ -239,8 +239,8 @@ using namespace WebKit;
         return;
 
     OptionSet<WebCore::ReloadOption> reloadOptions;
-    if (linkedOnOrAfter(WebKit::SDKVersion::FirstWithExpiredOnlyReloadBehavior))
-        reloadOptions |= WebCore::ReloadOption::ExpiredOnly;
+    if (WebKit::linkedOnOrAfter(WebKit::SDKVersion::FirstWithExpiredOnlyReloadBehavior))
+        reloadOptions.add(WebCore::ReloadOption::ExpiredOnly);
 
     _inspectedPage->reload(reloadOptions);
 }

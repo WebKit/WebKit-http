@@ -1,3 +1,197 @@
+2018-08-31  Antti Koivisto  <antti@apple.com>
+
+        Replace OptionSet |= and -= operators with add() and remove() functions
+        https://bugs.webkit.org/show_bug.cgi?id=189169
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/Tests/WTF/OptionSet.cpp:
+        (TestWebKitAPI::TEST):
+
+2018-08-31  Daniel Bates  <dabates@apple.com>
+
+        lldb-webkit: KeyError thrown for OptionSet with invalid value
+        https://bugs.webkit.org/show_bug.cgi?id=189070
+
+        Update comment to explain that we return early and do not compute the set of enumerators in the
+        OptionSet when the underlying value of the set is an invalid value.
+
+        Additionally, update the change log entry for r235482 to reflect the updated title for the bug
+        and to better describe the change that was made.
+
+        * lldb/lldb_webkit.py:
+        (WTFOptionSetProvider.update):
+
+2018-08-31  David Kilzer  <ddkilzer@apple.com>
+
+        WebKitLauncher: Move WebKitLauncher.entitlements into Configurations directory
+
+        This makes the Configurations folder in the Xcode project match
+        what's in the Configurations directory on disk.  Found by
+        tidy-Xcode-project-file (see Bug 188754).
+
+        * WebKitLauncher/Configurations/WebKitLauncher.entitlements: Rename from Tools/WebKitLauncher/WebKitLauncher.entitlements.
+        * WebKitLauncher/WebKitLauncher.xcodeproj/project.pbxproj:
+        - Update project for file move.
+
+2018-08-31  David Kilzer  <ddkilzer@apple.com>
+
+        WebKitLauncher: Fix build failures
+
+        * WebKitLauncher/Configurations/Base.xcconfig:
+        (ARCHS): Use $(ARCHS_STANDARD_32_64_BIT).
+        (MACOSX_DEPLOYMENT_TARGET): Update from Snow Leopard to Sierra.
+
+        * WebKitLauncher/WebKitNightlyEnabler.m:
+        (myApplicationWillFinishLaunching):
+        * WebKitLauncher/main.m:
+        (displayErrorAndQuit):
+        (locateSafariBundle):
+        - Use pragma to ignore deprecation warnings.
+
+2018-08-31  David Kilzer  <ddkilzer@apple.com>
+
+        MobileMiniBrowser: Move test2s.mp4 into Resources directory
+
+        This makes the Resources folder in the Xcode project match
+        what's in the Resources directory on disk.  Found by
+        tidy-Xcode-project-file (see Bug 188754).
+
+        * MobileMiniBrowser/MobileMiniBrowser.xcodeproj/project.pbxproj:
+        - Update project for file move.
+        * MobileMiniBrowser/MobileMiniBrowserFramework/Resources/test2s.mp4: Rename from Tools/MobileMiniBrowser/MobileMiniBrowserFramework/test2s.mp4.
+
+2018-08-31  Frederic Wang  <fwang@igalia.com>
+
+        Bug 182053 - [CSSOM View] Implement standard behavior for scrollingElement
+        https://bugs.webkit.org/show_bug.cgi?id=182053
+
+        Reviewed by Simon Fraser.
+
+        Add FIXMEs comments to add the new developer flag in the future and  disable it for now.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+        (resetWebPreferencesToConsistentValues):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (enableExperimentalFeatures):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+2018-08-30  Thomas Denney  <tdenney@apple.com>
+
+        [WHLSL] Fix array indexing behavior
+        https://bugs.webkit.org/show_bug.cgi?id=189175
+
+        Array, pointer, and array ref types are now parsed and then constructed
+        in reverse so that the declaration order matches the indexing order, as
+        in C/C++.
+
+        Reviewed by Myles C. Maxfield.
+
+        * WebGPUShadingLanguageRI/Parse.js:
+        (parseType):
+        * WebGPUShadingLanguageRI/Test.js:
+
+2018-08-30  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Followup to [iOS] TestWebKitAPI.PasteImage tests are flaky failures
+        https://bugs.webkit.org/show_bug.cgi?id=185965
+
+        Reviewed by Andy Estes.
+
+        The first attempt to fix these flaky tests on iOS caused timeouts on macOS while waiting for a "loaded" message
+        from the page. To (hopefully) fix this across both platforms, make sure that we first register our script
+        message handlers in the UI process *before* evaluating script that could propagate the script message.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/PasteImage.mm:
+        (-[TestWKWebView waitForMessage:afterEvaluatingScript:]):
+        (TEST):
+
+2018-08-30  Thomas Denney  <tdenney@apple.com>
+
+        [WHLSL] Implement tests to verify array indexing order matches our desires
+        https://bugs.webkit.org/show_bug.cgi?id=189099
+
+        Reviewed by Myles C. Maxfield.
+
+        * WebGPUShadingLanguageRI/Test.js: Add new test for array indexing order
+        and the option to explicitly disable tests (this test is disabled by
+        default).
+        * WebGPUShadingLanguageRI/TypeRef.js:
+        (TypeRef.wrap): Fixes  typo.
+
+2018-08-30  Sihui Liu  <sihui_liu@apple.com>
+
+        WKNavigation.ProcessCrashDuringCallback is failing on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=189148
+
+        Reviewed by Chris Dumez.
+
+        We should not deference WebView or we may get WKErrorWebViewInvalidated error, because 
+        WebView could be destroyed before Web Process termination is noticed.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WebContentProcessDidTerminate.mm:
+        (TEST):
+
+2018-08-30  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][Floating] Formatting context roots avoid floats.
+        https://bugs.webkit.org/show_bug.cgi?id=189150
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/misc/LFC-passing-tests.txt:
+
+2018-08-30  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] TestWebKitAPI.PasteImage tests are flaky failures
+        https://bugs.webkit.org/show_bug.cgi?id=185965
+
+        Reviewed by Andy Estes.
+
+        These tests pass reliably when run locally, but sometimes fail in automation when checking that the image
+        element with its "src" attribute set to a new blob URL has an empty size. It's possible that this is happening
+        because we're checking the size of the image element prior to image load after setting the blob URL; we can fix
+        this by waiting for the "load" event (which is also done in some of the other tests in this file).
+
+        * TestWebKitAPI/Tests/WebKitCocoa/PasteImage.mm:
+        (TEST):
+
+2018-08-30  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r235114.
+
+        ostree server deleted our commits?
+
+        Reverted changeset:
+
+        "[Flatpak] Update to GNOME master runtime"
+        https://bugs.webkit.org/show_bug.cgi?id=188731
+        https://trac.webkit.org/changeset/235114
+
+2018-08-29  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WHLSL] Test row-majorness of matrices
+        https://bugs.webkit.org/show_bug.cgi?id=189101
+
+        The matrix multiplication functions are temporarily commented out of the standard library,
+        so I've temporarily copy/pasted them into the test. Matrix multiplication is not
+        commutative, so it requires the right indexing order.
+
+        Reviewed by Dean Jackson and Thomas Denney.
+
+        * WebGPUShadingLanguageRI/Intrinsics.js:
+        * WebGPUShadingLanguageRI/StandardLibrary.js:
+        (let.standardLibrary):
+        * WebGPUShadingLanguageRI/Test.js:
+
+2018-08-29  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed test gardening; NowPlayingTest API tests require High Sierra.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/NowPlaying.mm:
+
 2018-08-29  Youenn Fablet  <youenn@apple.com>
 
         Remove WebRTC legacy API implementation

@@ -989,7 +989,7 @@ static void validate(WKWebViewConfiguration *configuration)
 {
     OptionSet<WebCore::ReloadOption> reloadOptions;
     if (linkedOnOrAfter(WebKit::SDKVersion::FirstWithExpiredOnlyReloadBehavior))
-        reloadOptions |= WebCore::ReloadOption::ExpiredOnly;
+        reloadOptions.add(WebCore::ReloadOption::ExpiredOnly);
 
     auto navigation = _page->reload(reloadOptions);
     if (!navigation)

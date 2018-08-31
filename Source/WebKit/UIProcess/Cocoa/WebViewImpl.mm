@@ -2068,7 +2068,7 @@ void WebViewImpl::viewDidMoveToWindow()
         if (m_shouldDeferViewInWindowChanges)
             m_viewInWindowChangeWasDeferred = true;
         else
-            activityStateChanges |= WebCore::ActivityState::IsInWindow;
+            activityStateChanges.add(WebCore::ActivityState::IsInWindow);
         m_page->activityStateDidChange(activityStateChanges);
 
         updateWindowAndViewFrames();
@@ -2094,7 +2094,7 @@ void WebViewImpl::viewDidMoveToWindow()
         if (m_shouldDeferViewInWindowChanges)
             m_viewInWindowChangeWasDeferred = true;
         else
-            activityStateChanges |= WebCore::ActivityState::IsInWindow;
+            activityStateChanges.add(WebCore::ActivityState::IsInWindow);
         m_page->activityStateDidChange(activityStateChanges);
 
         [NSEvent removeMonitor:m_flagsChangedEventMonitor];

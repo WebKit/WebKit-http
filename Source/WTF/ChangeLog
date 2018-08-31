@@ -1,3 +1,45 @@
+2018-08-31  Antti Koivisto  <antti@apple.com>
+
+        Replace OptionSet |= and -= operators with add() and remove() functions
+        https://bugs.webkit.org/show_bug.cgi?id=189169
+
+        Reviewed by Anders Carlsson.
+
+        Improve code readability.
+
+        * wtf/OptionSet.h:
+        (WTF::OptionSet::add):
+        (WTF::OptionSet::remove):
+        (WTF::OptionSet::operator==):
+        (WTF::OptionSet::operator!=):
+        (WTF::OptionSet::operator|=): Deleted.
+        (WTF::OptionSet::operator-=): Deleted.
+        * wtf/ProcessPrivilege.cpp:
+        (WTF::addProcessPrivilege):
+        (WTF::removeProcessPrivilege):
+
+2018-08-31  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r226407): Remove unused BlockStack.h
+        <https://webkit.org/b/189189>
+
+        Reviewed by Yusuke Suzuki.
+
+        * WTF.xcodeproj/project.pbxproj: Remove references to BlockStack.h.
+        * wtf/BlockStack.h: Remove.
+        * wtf/CMakeLists.txt: Remove references to BlockStack.h.
+
+2018-08-30  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Replace AVFoundationSupport.py using CMake
+        https://bugs.webkit.org/show_bug.cgi?id=182891
+
+        Reviewed by Per Arne Vollan.
+
+        Rely on CMake values for the added HAVE_* checks.
+
+        * wtf/Platform.h:
+
 2018-08-30  Tim Horton  <timothy_horton@apple.com>
 
         Bundle unified sources more tightly in projects with deep directory structures
