@@ -4602,7 +4602,10 @@ void WebPageProxy::pageDidScroll()
     if (m_isKeyboardAnimatingIn)
         return;
 #endif
+
+#if !PLATFORM(IOS)
     closeOverlayedViews();
+#endif
 }
 
 void WebPageProxy::runOpenPanel(uint64_t frameID, const SecurityOriginData& frameSecurityOrigin, const FileChooserSettings& settings)
@@ -4826,7 +4829,7 @@ void WebPageProxy::didCloseSuggestions()
     m_process->send(Messages::WebPage::DidCloseSuggestions(), m_pageID);
 }
 
-void WebPageProxy::didSelectOption(String& selectedOption)
+void WebPageProxy::didSelectOption(const String& selectedOption)
 {
     if (!isValid())
         return;

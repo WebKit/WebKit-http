@@ -1541,7 +1541,7 @@ private:
     void showDataListSuggestions(WebCore::DataListSuggestionInformation&&);
     void handleKeydownInDataList(const String&);
     void endDataListSuggestions();
-    void didSelectOption(String&) final;
+    void didSelectOption(const String&) final;
     void didCloseSuggestions() final;
 #endif
 

@@ -60,6 +60,7 @@
 #import "WKWebViewConfigurationPrivate.h"
 #import "WKWebViewInternal.h"
 #import "WKWebViewPrivate.h"
+#import "WebDataListSuggestionsDropdownIOS.h"
 #import "WebEvent.h"
 #import "WebIOSEventFactory.h"
 #import "WebPageMessages.h"
@@ -67,7 +68,6 @@
 #import "_WKActivatedElementInfoInternal.h"
 #import "_WKElementAction.h"
 #import "_WKFocusedElementInfo.h"
-#import "_WKFormInputSession.h"
 #import "_WKInputDelegate.h"
 #import <CoreText/CTFont.h>
 #import <CoreText/CTFontDescriptor.h>
@@ -284,13 +284,6 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 - (instancetype)initWithAssistedNodeInformation:(const AssistedNodeInformation&)information isUserInitiated:(BOOL)isUserInitiated userObject:(NSObject <NSSecureCoding> *)userObject;
 @end
 
-@interface WKFormInputSession : NSObject <_WKFormInputSession>
-
-- (instancetype)initWithContentView:(WKContentView *)view focusedElementInfo:(WKFocusedElementInfo *)elementInfo requiresStrongPasswordAssistance:(BOOL)requiresStrongPasswordAssistance;
-- (void)invalidate;
-
-@end
-
 @implementation WKFormInputSession {
     WeakObjCPtr<WKContentView> _contentView;
     RetainPtr<WKFocusedElementInfo> _focusedElementInfo;
@@ -385,6 +378,12 @@ const CGFloat minimumTapHighlightRadius = 2.0;
     [_contentView reloadInputViews];
 }
 
+- (void)endEditing
+{
+    if ([_customInputView conformsToProtocol:@protocol(WKFormControl)])
+        [(id<WKFormControl>)_customInputView.get() controlEndEditing];
+}
+
 - (NSArray<UITextSuggestion *> *)suggestions
 {
     return _suggestions.get();
@@ -392,6 +391,12 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 
 - (void)setSuggestions:(NSArray<UITextSuggestion *> *)suggestions
 {
+    // Suggestions that come from a <datalist> should not be overwritten by other clients.
+#if ENABLE(DATALIST_ELEMENT)
+    if ([_contentView assistedNodeInformation].hasSuggestions && ![suggestions.firstObject isKindOfClass:[WKDataListTextSuggestion class]])
+        return;
+#endif
+
     id <UITextInputSuggestionDelegate> suggestionDelegate = (id <UITextInputSuggestionDelegate>)[_contentView inputDelegate];
     _suggestions = adoptNS([suggestions copy]);
     [suggestionDelegate setSuggestions:suggestions];
@@ -593,6 +598,11 @@ static WKDragSessionContext *ensureLocalDragSessionContext(id <UIDragSession> se
 static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeInformation)
 {
     return (assistedNodeInformation.elementType != InputType::None);
+}
+
+- (WKFormInputSession *)_formInputSession
+{
+    return _formInputSession.get();
 }
 
 - (void)_createAndConfigureDoubleTapGestureRecognizer
@@ -995,6 +1005,8 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
     if (!_webView->_activeFocusedStateRetainCount) {
         // We need to complete the editing operation before we blur the element.
         [_inputPeripheral endEditing];
+        [_formInputSession endEditing];
+
         _page->blurAssistedNode();
     }
 
@@ -1737,6 +1749,11 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
         // If the position might initiate data interaction, we don't want to change the selection.
         return NO;
     }
+#endif
+
+#if ENABLE(DATALIST_ELEMENT)
+    if (_positionInformation.preventTextInteraction)
+        return NO;
 #endif
 
     // If we're currently editing an assisted node, only allow the selection to move within that assisted node.
@@ -3085,6 +3102,8 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 
 - (void)accessoryTab:(BOOL)isNext
 {
+    [_formInputSession endEditing];
+
     [_inputPeripheral endEditing];
     _inputPeripheral = nil;
 
@@ -3095,7 +3114,6 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
         [view endSelectionChange];
         [view reloadInputViews];
     });
-
 }
 
 - (void)_becomeFirstResponderWithSelectionMovingForward:(BOOL)selectingForward completionHandler:(void (^)(BOOL didBecomeFirstResponder))completionHandler
@@ -3194,6 +3212,12 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
         _page->autofillLoginCredentials([(UITextAutofillSuggestion *)textSuggestion username], [(UITextAutofillSuggestion *)textSuggestion password]);
         return;
     }
+#if ENABLE(DATALIST_ELEMENT)
+    if ([textSuggestion isKindOfClass:[WKDataListTextSuggestion class]]) {
+        _page->setAssistedNodeValue([textSuggestion inputText]);
+        return;
+    }
+#endif
     id <_WKInputDelegate> inputDelegate = [_webView _inputDelegate];
     if ([inputDelegate respondsToSelector:@selector(_webView:insertTextSuggestion:inInputSession:)])
         [inputDelegate _webView:_webView insertTextSuggestion:textSuggestion inInputSession:_formInputSession.get()];
