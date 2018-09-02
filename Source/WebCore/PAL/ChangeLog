@@ -1,3 +1,41 @@
+2018-09-01  Darin Adler  <darin@apple.com>
+
+        [CFNetwork] Update CFNetwork SPI use to use CFNetworkSPI.h more consistently
+        https://bugs.webkit.org/show_bug.cgi?id=189072
+
+        Reviewed by Dan Bernstein.
+
+        * pal/spi/cf/CFNetworkSPI.h: Added a FIXME about USE(CFNETWORK_IGNORE_HSTS).
+        Sorted Objective-C class interfaces alphabetically instead of having them
+        relatively randomly ordered in the file. Reduced the platform #if statements
+        since it's not critical to have these SPIs declared only where they are
+        present, as long as they are used only when they are present. Moved some
+        additional declarations into this file.
+
+        * pal/spi/cocoa/NSURLDownloadSPI.h: Added more NSURLDownload methods.
+
+2018-08-30  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Replace AVFoundationSupport.py using CMake
+        https://bugs.webkit.org/show_bug.cgi?id=182891
+
+        Reviewed by Per Arne Vollan.
+
+        Remove AVFoundationSupport.py file and its invocation.
+
+        * AVFoundationSupport.py: Removed.
+        * config.h:
+        * pal/PlatformWin.cmake:
+
+2018-08-29  Jer Noble  <jer.noble@apple.com>
+
+        Muted elements do not have their Now Playing status updated when unmuted.
+        https://bugs.webkit.org/show_bug.cgi?id=189069
+
+        Reviewed by Eric Carlson.
+
+        * pal/spi/mac/MediaRemoteSPI.h:
+
 2018-08-27  Keith Rollin  <krollin@apple.com>
 
         Unreviewed build fix -- disable LTO for production builds
