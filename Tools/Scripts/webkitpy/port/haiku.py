@@ -38,8 +38,8 @@ from webkitpy.port.haiku_get_crash_log import HaikuCrashLogGenerator
 class HaikuPort(Port):
     port_name = 'haiku'
 
-    def __init__(self, *args, **kwargs):
-        super(HaikuPort, self).__init__(*args, **kwargs)
+    def __init__(self, host, port_name, **kwargs):
+        super(HaikuPort, self).__init__(host, port_name, **kwargs)
 
         self.webprocess_cmd_prefix = self.get_option('webprocess_cmd_prefix')
         self._version = "1.4"
@@ -69,7 +69,7 @@ class HaikuPort(Port):
         super(HaikuPort, self).clean_up_test_run()
 
     def _generate_all_test_configurations(self):
-        return [TestConfiguration(version=self._version, architecture='x86', build_type=build_type) for build_type in self.ALL_BUILD_TYPES]
+        return [TestConfiguration(version=self.version_name(), architecture='x86', build_type=build_type) for build_type in self.ALL_BUILD_TYPES]
 
     def _driver_class(self):
         return HaikuDriver
