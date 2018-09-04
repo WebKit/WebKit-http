@@ -40,7 +40,7 @@ typedef struct CGImage* CGImageRef;
 #elif USE(HAIKU)
 #include <interface/Rect.h>
 #include <interface/Bitmap.h>
-#include <Referenceable.h>
+#include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #endif
 
@@ -65,7 +65,7 @@ typedef RefPtr<cairo_surface_t> NativeImagePtr;
 #elif USE(WINGDI)
 typedef RefPtr<SharedBitmap> NativeImagePtr;
 #elif USE(HAIKU)
-class BitmapRef: public BBitmap, public BReferenceable
+class BitmapRef: public BBitmap, public RefCounted<BitmapRef>
 {
        public:
                BitmapRef(BRect r, uint32 f, color_space c, int32 b)
@@ -78,13 +78,16 @@ class BitmapRef: public BBitmap, public BReferenceable
                {
                }
 
-               BitmapRef(BBitmap& other)
+               BitmapRef(const BBitmap& other)
                        : BBitmap(other)
                {
                }
 
-               void ref() { AcquireReference(); }
-               void deref() { ReleaseReference(); }
+               BitmapRef(const BitmapRef& other) = delete;
+
+               ~BitmapRef()
+               {
+               }
 };
 
 typedef RefPtr<BitmapRef> NativeImagePtr;

@@ -48,8 +48,9 @@
 
 namespace WebCore {
 
+
 ImageBufferData::ImageBufferData(const FloatSize& size)
-    : m_bitmap(new BitmapRef(BRect(0, 0, size.width() - 1., size.height() - 1.), B_RGBA32, true))
+    : m_bitmap(adoptRef(new BitmapRef(BRect(0, 0, size.width() - 1., size.height() - 1.), B_RGBA32, true)))
     , m_view(NULL)
     , m_context(NULL)
 {
@@ -88,15 +89,23 @@ ImageBufferData::~ImageBufferData()
     m_bitmap->Unlock();
 }
 
-ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, ColorSpace, RenderingMode, bool& success)
+ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpace, RenderingMode, bool& success)
     : m_data(size)
     , m_size(size)
     , m_logicalSize(size)
+    , m_resolutionScale(resolutionScale)
 {
-    if (size.isEmpty()) {
-        success = false;
+    success = false;  // Make early return mean error.
+
+    float scaledWidth = ceilf(m_resolutionScale * size.width());
+    float scaledHeight = ceilf(m_resolutionScale * size.height());
+
+    // FIXME: Should we automatically use a lower resolution?
+    if (!FloatSize(scaledWidth, scaledHeight).isExpressibleAsIntSize())
         return;
-    }
+
+    if (m_size.isEmpty())
+        return;
 
     success = m_data.m_view != nullptr;
 }
@@ -121,7 +130,7 @@ RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, PreserveReso
         m_data.m_view->Sync();
 
     if (copyBehavior == CopyBackingStore)
-        return StillImage::create(NativeImagePtr(new BitmapRef(*m_data.m_bitmap.get())));
+        return StillImage::create(NativeImagePtr(new BitmapRef(*dynamic_cast<BBitmap*>(m_data.m_bitmap.get()))));
 
     return StillImage::createForRendering(m_data.m_bitmap);
 }
