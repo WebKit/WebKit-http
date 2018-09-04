@@ -48,11 +48,8 @@
 
 namespace WebCore {
 
-#if USE(IOSURFACE_CANVAS_BACKING_STORE) || ENABLE(ACCELERATED_2D_CANVAS)
-static RenderingMode bufferRenderingMode = Accelerated;
-#else
+// TODO: Properly support accelerated mode as well
 static RenderingMode bufferRenderingMode = Unaccelerated;
-#endif
 
 Ref<ImageBitmap> ImageBitmap::create(IntSize size)
 {
