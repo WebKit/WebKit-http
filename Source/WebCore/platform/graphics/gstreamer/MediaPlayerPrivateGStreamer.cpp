@@ -534,6 +534,14 @@ MediaTime MediaPlayerPrivateGStreamer::durationMediaTime() const
 
     if (!gst_element_query_duration(m_pipeline.get(), GST_FORMAT_TIME, &timeLength) || !GST_CLOCK_TIME_IS_VALID(timeLength)) {
         GST_DEBUG("Time duration query failed for %s", m_url.string().utf8().data());
+        // For some mp3 files duration query fails even at EOS.
+        // Below is workaround for the case when we reach EOS and duration query still fails
+        // then we return the cached position if it is valid.
+        if (m_isEndReached) {
+            if (m_cachedPosition.isValid())
+                return m_cachedPosition;
+        }
+
         return MediaTime::positiveInfiniteTime();
     }
 
