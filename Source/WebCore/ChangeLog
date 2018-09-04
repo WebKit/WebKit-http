@@ -1,3 +1,471 @@
+2018-09-04  Youenn Fablet  <youenn@apple.com>
+
+        Introduce LibWebRTC backends for sender and receiver
+        https://bugs.webkit.org/show_bug.cgi?id=189171
+
+        Reviewed by Alejandro G. Castro.
+
+        Rename RTCRtpSender::Backend to RTCRtpSenderBackend, ditto for RTCRtpReceiver::Backend.
+        Make RTCRtpSender/RTCRtpReceiver own their backend.
+        This will allow the backends to own a libwebrtc sender/receiver ref counted object
+        and might allow us to cleanly separate code from unified plan vs plan B.
+
+        Update code so that libwebrtc code specific code is now creating senders and receivers.
+        This moves code from RTCPeerConnection down to LibWebRTCPeerConnectionBackend, in particular for
+        addTrack and addTransceiver methods.
+
+        Moved some code from LibWebRTCMediaEndpoint to LibWebRTCUtils to ease readability.
+
+        A future patch will allow to tie the libwebrtc sender/receiver to WebKit DOM sender/receiver.
+
+        Covered by existing tests.
+
+        * Modules/mediastream/PeerConnectionBackend.cpp:
+        (WebCore::PeerConnectionBackend::addTrack):
+        (WebCore::PeerConnectionBackend::addTransceiver):
+        * Modules/mediastream/PeerConnectionBackend.h:
+        * Modules/mediastream/RTCPeerConnection.cpp:
+        (WebCore::RTCPeerConnection::addTrack):
+        (WebCore::RTCPeerConnection::addTransceiver):
+        (WebCore::RTCPeerConnection::enqueueReplaceTrackTask):
+        * Modules/mediastream/RTCPeerConnection.h:
+        * Modules/mediastream/RTCRtpReceiver.cpp:
+        (WebCore::RTCRtpReceiver::RTCRtpReceiver):
+        * Modules/mediastream/RTCRtpReceiver.h:
+        (WebCore::RTCRtpReceiver::create):
+        (WebCore::RTCRtpReceiver::setBackend):
+        * Modules/mediastream/RTCRtpReceiverBackend.h: Added.
+        (WebCore::RTCRtpReceiverBackend::getParameters):
+        * Modules/mediastream/RTCRtpSender.cpp:
+        (WebCore::RTCRtpSender::create):
+        (WebCore::RTCRtpSender::RTCRtpSender):
+        * Modules/mediastream/RTCRtpSender.h:
+        * Modules/mediastream/RTCRtpSenderBackend.h: Added.
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.cpp:
+        (WebCore::LibWebRTCMediaEndpoint::addRemoteTrack):
+        * Modules/mediastream/libwebrtc/LibWebRTCPeerConnectionBackend.cpp:
+        (WebCore::LibWebRTCPeerConnectionBackend::videoReceiver):
+        (WebCore::LibWebRTCPeerConnectionBackend::audioReceiver):
+        (WebCore::LibWebRTCPeerConnectionBackend::addTrack):
+        (WebCore::LibWebRTCPeerConnectionBackend::addTransceiver):
+        (WebCore::LibWebRTCPeerConnectionBackend::completeAddTransceiver):
+        * Modules/mediastream/libwebrtc/LibWebRTCPeerConnectionBackend.h:
+        * Modules/mediastream/libwebrtc/LibWebRTCRtpReceiverBackend.cpp: Added.
+        (WebCore::LibWebRTCRtpReceiverBackend::getParameters):
+        * Modules/mediastream/libwebrtc/LibWebRTCRtpReceiverBackend.h: Added.
+        * Modules/mediastream/libwebrtc/LibWebRTCRtpSenderBackend.cpp: Added.
+        (WebCore::LibWebRTCRtpSenderBackend::replaceTrack):
+        (WebCore::LibWebRTCRtpSenderBackend::getParameters const):
+        * Modules/mediastream/libwebrtc/LibWebRTCRtpSenderBackend.h: Added.
+        * Modules/mediastream/libwebrtc/LibWebRTCUtils.cpp: Added.
+        (WebCore::fillEncodingParameters):
+        (WebCore::fillHeaderExtensionParameters):
+        (WebCore::fillCodecParameters):
+        (WebCore::fillRtpParameters):
+        * Modules/mediastream/libwebrtc/LibWebRTCUtils.h: Added.
+        (WebCore::fromStdString):
+        * WebCore.xcodeproj/project.pbxproj:
+
+2018-09-04  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Disabling both fullscreen and picture-in-picture shows an empty top left container
+        https://bugs.webkit.org/show_bug.cgi?id=189259
+        <rdar://problem/42026625>
+
+        Reviewed by Dean Jackson.
+
+        Test: media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-disabled-fullscreen-and-pip.html
+
+        Ensure the top left controls bar is hidden when none of its children are visible.
+
+        * Modules/modern-media-controls/controls/inline-media-controls.js:
+        (InlineMediaControls.prototype.layout):
+
+2018-09-04  Daniel Bates  <dabates@apple.com>
+
+        Attempt to fix failing tests following r235615 (https://bugs.webkit.org/show_bug.cgi?id=187925)
+
+        An inline text box that does not have combined text and contains a single character
+        should be considered as having text content.
+
+        * rendering/InlineTextBox.cpp:
+        (WebCore::InlineTextBox::hasTextContent const):
+
+2018-09-04  Per Arne Vollan  <pvollan@apple.com>
+
+        Add test for fix in https://bugs.webkit.org/show_bug.cgi?id=187922
+        https://bugs.webkit.org/show_bug.cgi?id=187925
+
+        Reviewed by Simon Fraser.
+
+        This will test that the function primaryScreenDisplayID() returns a valid display ID.
+
+        Test: fast/misc/valid-primary-screen-displayID.html
+
+        * platform/PlatformScreen.h:
+        * platform/mac/PlatformScreenMac.mm:
+        (WebCore::primaryScreenDisplayID):
+        * testing/Internals.cpp:
+        (WebCore::Internals::primaryScreenDisplayID):
+        * testing/Internals.h:
+        * testing/Internals.idl:
+
+2018-09-04  Daniel Bates  <dabates@apple.com>
+
+        Add helper function to create a potential CORS request
+        https://bugs.webkit.org/show_bug.cgi?id=189251
+
+        Reviewed by Andy Estes.
+
+        Add a new function, createPotentialAccessControlRequest, that we will use to implement the algorithm Create a potential-
+        CORS request from the HTML standard: <https://html.spec.whatwg.org/multipage/urls-and-fetching.html#create-a-potential-cors-request> (31 August 2018).
+        This function replaces CachedResourceRequest::setAsPotentiallyCrossOrigin() and is the first step towards separating
+        the concepts of CORS settings states and module script credentials mode as well as implementing the aforementioned
+        algorithm. Rename CachedResourceRequest::setAsPotentiallyCrossOrigin() to deprecatedSetAsPotentiallyCrossOrigin()
+        and switch existing callers to use createPotentialAccessControlRequest(). For now, createPotentialAccessControlRequest()
+        is implemented in terms of deprecatedSetAsPotentiallyCrossOrigin().
+
+        No functionality changed. So, no new tests.
+
+        * bindings/js/CachedScriptFetcher.cpp:
+        (WebCore::CachedScriptFetcher::requestScriptWithCache const): Write in terms of WebCore::createPotentialAccessControlRequest().
+        * html/HTMLLinkElement.cpp:
+        (WebCore::HTMLLinkElement::process): Ditto.
+        * html/parser/HTMLResourcePreloader.cpp:
+        (WebCore::PreloadRequest::resourceRequest): Ditto.
+        * loader/CrossOriginAccessControl.cpp:
+        (WebCore::createPotentialAccessControlRequest): For now, implemented in terms of CachedResourceRequest::deprecatedSetAsPotentiallyCrossOrigin().
+        * loader/CrossOriginAccessControl.h:
+        * loader/ImageLoader.cpp:
+        (WebCore::ImageLoader::updateFromElement): Write in terms of WebCore::createPotentialAccessControlRequest().
+        * loader/LinkLoader.cpp:
+        (WebCore::LinkLoader::preloadIfNeeded): Ditto.
+        * loader/MediaResourceLoader.cpp:
+        (WebCore::MediaResourceLoader::requestResource): Ditto. Also renamed local variable cacheRequest to cachedRequest.
+        * loader/TextTrackLoader.cpp:
+        (WebCore::TextTrackLoader::load): Write in terms of WebCore::createPotentialAccessControlRequest(). Also change local variable
+        document from a pointer to a reference since this function asserts that the script execution context is a non-null Document.
+        * loader/cache/CachedResourceRequest.cpp:
+        (WebCore::CachedResourceRequest::deprecatedSetAsPotentiallyCrossOrigin): Renamed; formerly named setAsPotentiallyCrossOrigin.
+        (WebCore::CachedResourceRequest::setAsPotentiallyCrossOrigin): Deleted.
+        * loader/cache/CachedResourceRequest.h:
+        (WebCore::CachedResourceRequest::setPriority): Added.
+
+2018-09-04  Daniel Bates  <dabates@apple.com>
+
+        Remove redundant inline text boxes for empty combined text
+        https://bugs.webkit.org/show_bug.cgi?id=189119
+
+        Reviewed by Zalan Bujtas.
+
+        We should consider inline text boxes that have a combined text renderer (RenderCombineText)
+        whose composed string is empty as "redundant" just as we do for inline text boxes that have
+        a non-combined text renderer that have zero length so that we remove them. Such boxes are
+        visibly empty and do not take up space visually. By removing them we reduce memory and make
+        it easier to reason about the line box tree.
+
+        Currently RenderBlockFlow::computeBlockDirectionPositionsForLine() tests if an inline text
+        box is empty by checking if it has a zero length (InlineTextBox::len()). However an inline
+        text box associated with a RenderCombineText always has length 1 regardless of whether the
+        composed string it represents is the empty string. Instead we should expose a way to check
+        if an inline text box is visually empty and have RenderBlockFlow::computeBlockDirectionPositionsForLine()
+        query the inline text box for this answer.
+
+        * rendering/InlineTextBox.cpp:
+        (WebCore::InlineTextBox::hasTextContent const): Added. Returns whether an inline text box
+        has text content. We do not need to consider hypenation since hypens are an embellishment (i.e.
+        they are not part of the markup of the page).
+        (WebCore::InlineTextBox::paint): Write in terms of hasTextContent().
+        (WebCore::InlineTextBox::subdivideAndResolveStyle): Assert that WebCore::subdivide() always
+        returns a non-empty list of subdivisions. A non-empty text box should always have at least
+        one subdivision, say for the unmarked text. I left the existing conditonal (though marked
+        it as UNLIKELY()) so as to be forgiving and avoid a bad user experience should WebCore::subdivide()
+        return an empty vector in a non-debug build.
+        * rendering/InlineTextBox.h:
+        * rendering/RenderBlockLineLayout.cpp:
+        (WebCore::RenderBlockFlow::computeBlockDirectionPositionsForLine): Write in terms of InlineTextBox::hasTextContent()
+        so that we remove empty inline text boxes associated with combined text.
+        * rendering/RenderText.cpp:
+        (WebCore::RenderText::positionLineBox): Write in terms of InlineTextBox::hasTextContent().
+
+2018-09-04  Zan Dobersek  <zdobersek@igalia.com> and Ms2ger  <Ms2ger@igalia.com>
+
+        Implement support for passing ImageBitmap to texImage2D/texSubImage2D
+        https://bugs.webkit.org/show_bug.cgi?id=187584
+
+        Reviewed by Dean Jackson.
+
+        Test: fast/canvas/webgl/gl-teximage-imagebitmap.html
+
+        * html/canvas/WebGL2RenderingContext.h: Update union type definition.
+        * html/canvas/WebGL2RenderingContext.idl: Update union type definition.
+        * html/canvas/WebGLRenderingContext.idl: Update union type definition.
+        * html/canvas/WebGLRenderingContextBase.cpp:
+        (WebCore::WebGLRenderingContextBase::texSubImage2D): implement.
+        (WebCore::WebGLRenderingContextBase::texImage2D): implement.
+        * html/canvas/WebGLRenderingContextBase.h: Update union type definition; add to TexFuncValidationSourceType.
+        * html/canvas/WebGLRenderingContextBase.idl: Remove unused union type definition.
+
+2018-09-04  Yacine Bandou  <yacine.bandou_ext@softathome.com>
+
+        [EME] Add the WebM initData support in ClearKey CDM
+        https://bugs.webkit.org/show_bug.cgi?id=189240
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Add the "webm" initDataType support in ClearKey CDM.
+        Read the WebM initData by following the W3C spec https://www.w3.org/TR/eme-initdata-webm/#common-system,
+        and put it in JSON object format like is specified in https://www.w3.org/TR/encrypted-media/#clear-key-request-format.
+
+        Tests: media/encrypted-media/clearKey/clearKey-encrypted-webm-event-mse.html
+               media/encrypted-media/clearKey/clearKey-webm-video-playback-mse.html
+
+        * platform/encryptedmedia/clearkey/CDMClearKey.cpp:
+        (WebCore::extractKeyIdFromWebMInitData):
+        (WebCore::CDMPrivateClearKey::supportsInitDataType const):
+        (WebCore::CDMPrivateClearKey::supportsInitData const):
+        (WebCore::CDMInstanceClearKey::requestLicense):
+
+2018-09-03  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Remove PaymentAddress.languageCode
+        https://bugs.webkit.org/show_bug.cgi?id=189254
+
+        Reviewed by Sam Weinig.
+
+        PaymentAddress.languageCode is marked as "at risk" in the latest Payment Request Editor's
+        Draft (30 August 2018). Firefox has already removed it, and Chrome is considering it.
+
+        There is some compatibility risk in removing this attribute, but considering we never
+        populated it with a meaningful value, the risk seems very low. If we learn about
+        compatibility problems, we can address them by evangelising or even reverting this change.
+
+        Updated existing tests.
+
+        * Modules/applepay/paymentrequest/ApplePayPaymentHandler.cpp:
+        (WebCore::convert):
+        * Modules/paymentrequest/PaymentAddress.cpp:
+        (WebCore::PaymentAddress::PaymentAddress):
+        * Modules/paymentrequest/PaymentAddress.h:
+        * Modules/paymentrequest/PaymentAddress.idl:
+
+2018-09-03  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Add a stub for PaymentResponse.retry
+        https://bugs.webkit.org/show_bug.cgi?id=189253
+
+        Reviewed by Sam Weinig.
+
+        Implemented the AddressErrors, PayerErrorFields, and PaymentValidationErrors dictionaries as
+        defined in the Payment Request API W3C Editor's Draft of 30 August 2018.
+
+        Also added a stub implementation of PaymentResponse.retry. This method will be implemented
+        with tests in a follow-up patch.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * Modules/paymentrequest/AddressErrors.h: Added.
+        * Modules/paymentrequest/AddressErrors.idl: Added.
+        * Modules/paymentrequest/PayerErrorFields.h: Added.
+        * Modules/paymentrequest/PayerErrorFields.idl: Added.
+        * Modules/paymentrequest/PaymentResponse.cpp:
+        (WebCore::PaymentResponse::retry):
+        * Modules/paymentrequest/PaymentResponse.h:
+        * Modules/paymentrequest/PaymentResponse.idl:
+        * Modules/paymentrequest/PaymentValidationErrors.h: Added.
+        * Modules/paymentrequest/PaymentValidationErrors.idl: Added.
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+
+2018-09-03  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] MerchantValidationEvent should be enabled by the PaymentRequest setting
+        https://bugs.webkit.org/show_bug.cgi?id=189250
+
+        Reviewed by Daniel Bates.
+
+        * Modules/paymentrequest/MerchantValidationEvent.idl:
+
+2018-09-03  Youenn Fablet  <youenn@apple.com>
+
+        REGRESSION: Layout Test http/tests/security/bypassing-cors-checks-for-extension-urls.html is Flaky
+        https://bugs.webkit.org/show_bug.cgi?id=187658
+        <rdar://problem/42306442>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Test is flaky as a previous test was setting the isRunningUserScripts state on the Page and it was never reset.
+        This patch moves this state to the topDocument so that it will be reset for every navigation.
+        Covered by existing test being no longer flaky.
+
+        * dom/Document.h:
+        (WebCore::Document::setAsRunningUserScripts):
+        (WebCore::Document::isRunningUserScripts const):
+        * loader/DocumentThreadableLoader.cpp:
+        (WebCore::DocumentThreadableLoader::DocumentThreadableLoader):
+        * page/Frame.cpp:
+        (WebCore::Frame::injectUserScriptImmediately):
+        * page/Page.h:
+        (WebCore::Page::setAsRunningUserScripts): Deleted.
+        (WebCore::Page::isRunningUserScripts const): Deleted.
+        * testing/Internals.cpp:
+        (WebCore::Internals::setAsRunningUserScripts):
+
+2018-09-03  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Implement the MerchantValidationEvent constructor
+        https://bugs.webkit.org/show_bug.cgi?id=189235
+
+        Reviewed by Daniel Bates.
+
+        Implemented the constructor for MerchantValidationEvent as defined in the Payment Request API W3C Editor's Draft of 30 August 2018.
+
+        Updated the payment-request web platform tests to include MerchantValidationEvent tests.
+
+        Tests: imported/w3c/web-platform-tests/payment-request/MerchantValidationEvent/constructor.http.html
+               imported/w3c/web-platform-tests/payment-request/MerchantValidationEvent/constructor.https.html
+               imported/w3c/web-platform-tests/payment-request/PaymentRequestUpdateEvent/constructor.http.html
+               imported/w3c/web-platform-tests/payment-request/PaymentRequestUpdateEvent/constructor.https.html
+               imported/w3c/web-platform-tests/payment-request/PaymentRequestUpdateEvent/updatewith-method.https.html
+               imported/w3c/web-platform-tests/payment-request/onmerchantvalidation-attribute.https.html
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * Modules/paymentrequest/MerchantValidationEvent.cpp:
+        (WebCore::MerchantValidationEvent::create):
+        (WebCore::MerchantValidationEvent::MerchantValidationEvent):
+        (WebCore::MerchantValidationEvent::complete):
+        * Modules/paymentrequest/MerchantValidationEvent.h:
+        * Modules/paymentrequest/MerchantValidationEvent.idl:
+        * Modules/paymentrequest/MerchantValidationEventInit.h: Added.
+        * Modules/paymentrequest/MerchantValidationEventInit.idl: Added.
+        * Modules/paymentrequest/PaymentRequest.idl:
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * bindings/js/WebCoreBuiltinNames.h:
+
+2018-09-03  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] elements registration clean-ups
+        https://bugs.webkit.org/show_bug.cgi?id=189192
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Register all our elements from the base player class. This
+        simplifies the MSE player by removing duplicated code.
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.h:
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        (WebCore::MediaPlayerPrivateGStreamerBase::initializeGStreamerAndRegisterWebKitElements):
+        (WebCore::registerWebKitGStreamerElements): Deleted.
+        * platform/graphics/gstreamer/mse/MediaPlayerPrivateGStreamerMSE.cpp:
+        (WebCore::MediaPlayerPrivateGStreamerMSE::registerMediaEngine):
+        (WebCore::MediaPlayerPrivateGStreamerMSE::load):
+        (WebCore::mimeTypeCache):
+        (WebCore::initializeGStreamerAndRegisterWebKitMSEElement): Deleted.
+        (WebCore::MediaPlayerPrivateGStreamerMSE::isAvailable): Deleted.
+        * platform/graphics/gstreamer/mse/MediaPlayerPrivateGStreamerMSE.h:
+
+2018-09-02  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r191336): RenderFlexibleBox::adjustChildSizeForMinAndMax crashes in std::optional<>::value()
+        https://bugs.webkit.org/show_bug.cgi?id=189232
+        <rdar://problem/43886373>
+
+        Reviewed by Brent Fulgham.
+
+        It's not guaranteed that RenderFlexibleBox::computeMainAxisExtentForChild() always returns with a valid value.
+
+        Test: fast/flexbox/crash-when-min-max-content-is-not-computed.html
+
+        * rendering/RenderFlexibleBox.cpp:
+        (WebCore::RenderFlexibleBox::adjustChildSizeForMinAndMax):
+
+2018-09-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Rename FilterEffectRenderer to CSSFilter
+        https://bugs.webkit.org/show_bug.cgi?id=189223
+
+        Reviewed by Sam Weinig.
+
+        Filter was subclassed by SVGFilter for SVG, and FilterEffectRenderer for CSS,
+        which was very confusing, especially when the code uses renderer() to get it.
+        
+        Rename FilterEffectRenderer to CSSFilter, and access via filter().
+        
+        Future cleanup will deal with FilterEffectRendererHelper.
+
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * css/CSSFilterImageValue.cpp:
+        (WebCore::CSSFilterImageValue::image):
+        * platform/graphics/ca/cocoa/PlatformCAFiltersCocoa.mm:
+        * platform/graphics/filters/Filter.h:
+        (WebCore::Filter::isCSSFilter const):
+        * rendering/CSSFilter.cpp: Copied from Source/WebCore/rendering/FilterEffectRenderer.cpp.
+        (WebCore::endMatrixRow):
+        (WebCore::lastMatrixRow):
+        (WebCore::CSSFilter::create):
+        (WebCore::CSSFilter::CSSFilter):
+        (WebCore::m_sourceGraphic):
+        (WebCore::CSSFilter::inputContext):
+        (WebCore::CSSFilter::buildReferenceFilter):
+        (WebCore::CSSFilter::build):
+        (WebCore::CSSFilter::updateBackingStoreRect):
+        (WebCore::CSSFilter::allocateBackingStoreIfNeeded):
+        (WebCore::CSSFilter::clearIntermediateResults):
+        (WebCore::CSSFilter::apply):
+        (WebCore::CSSFilter::computeSourceImageRectForDirtyRect):
+        (WebCore::CSSFilter::output const):
+        (WebCore::CSSFilter::setSourceImageRect):
+        (WebCore::CSSFilter::setMaxEffectRects):
+        (WebCore::CSSFilter::outputRect const):
+        * rendering/CSSFilter.h: Copied from Source/WebCore/rendering/FilterEffectRenderer.h.
+        (isType):
+        * rendering/FilterEffectRenderer.cpp:
+        (WebCore::FilterEffectRendererHelper::prepareFilterEffect):
+        (WebCore::FilterEffectRendererHelper::filterContext const):
+        (WebCore::FilterEffectRendererHelper::beginFilterEffect):
+        (WebCore::FilterEffectRendererHelper::applyFilterEffect):
+        (WebCore::endMatrixRow): Deleted.
+        (WebCore::lastMatrixRow): Deleted.
+        (WebCore::FilterEffectRenderer::FilterEffectRenderer): Deleted.
+        (WebCore::m_sourceGraphic): Deleted.
+        (WebCore::FilterEffectRenderer::create): Deleted.
+        (WebCore::FilterEffectRenderer::inputContext): Deleted.
+        (WebCore::FilterEffectRenderer::buildReferenceFilter): Deleted.
+        (WebCore::FilterEffectRenderer::build): Deleted.
+        (WebCore::FilterEffectRenderer::updateBackingStoreRect): Deleted.
+        (WebCore::FilterEffectRenderer::allocateBackingStoreIfNeeded): Deleted.
+        (WebCore::FilterEffectRenderer::clearIntermediateResults): Deleted.
+        (WebCore::FilterEffectRenderer::apply): Deleted.
+        (WebCore::FilterEffectRenderer::computeSourceImageRectForDirtyRect): Deleted.
+        (WebCore::FilterEffectRenderer::output const): Deleted.
+        (WebCore::FilterEffectRenderer::setMaxEffectRects): Deleted.
+        (WebCore::FilterEffectRenderer::outputRect const): Deleted.
+        * rendering/FilterEffectRenderer.h:
+        (WebCore::FilterEffectRendererHelper::FilterEffectRendererHelper):
+        (WebCore::FilterEffectRenderer::setSourceImageRect): Deleted.
+        * rendering/RenderBlockFlow.cpp:
+        * rendering/RenderFrame.cpp:
+        * rendering/RenderImage.cpp:
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::requiresFullLayerImageForFilters const):
+        (WebCore::RenderLayer::filter const):
+        (WebCore::RenderLayer::filterPainter const):
+        (WebCore::RenderLayer::setupFilters):
+        (WebCore::RenderLayer::calculateClipRects const):
+        (WebCore::RenderLayer::filterRenderer const): Deleted.
+        * rendering/RenderLayer.h:
+        * rendering/RenderLayerBacking.cpp:
+        * rendering/RenderLayerFilterInfo.cpp:
+        (WebCore::RenderLayer::FilterInfo::setFilter):
+        (WebCore::RenderLayer::FilterInfo::updateReferenceFilterClients):
+        (WebCore::RenderLayer::FilterInfo::removeReferenceFilterClients):
+        (WebCore::RenderLayer::FilterInfo::setRenderer): Deleted.
+        * rendering/RenderLayerFilterInfo.h:
+        * rendering/updating/RenderTreeBuilderBlock.cpp:
+
 2018-09-01  Darin Adler  <darin@apple.com>
 
         [CFNetwork] Update CFNetwork SPI use to use CFNetworkSPI.h more consistently
