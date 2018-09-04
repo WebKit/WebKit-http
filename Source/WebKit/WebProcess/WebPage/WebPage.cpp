@@ -884,7 +884,7 @@ RefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* pluginE
 }
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
-#if ENABLE(WEBGL) && !PLATFORM(COCOA)
+#if ENABLE(WEBGL) && !PLATFORM(MAC)
 WebCore::WebGLLoadPolicy WebPage::webGLPolicyForURL(WebFrame*, const URL&)
 {
     return WebGLAllowCreation;

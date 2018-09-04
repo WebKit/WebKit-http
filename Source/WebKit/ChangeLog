@@ -1,3 +1,38 @@
+2018-09-04  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up WebGL policy getting code path
+        https://bugs.webkit.org/show_bug.cgi?id=189003
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/API/APINavigationClient.h:
+        (API::NavigationClient::webGLLoadPolicy const):
+        (API::NavigationClient::resolveWebGLLoadPolicy const):
+        * UIProcess/Cocoa/NavigationState.h:
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::NavigationClient::webGLLoadPolicy const):
+        (WebKit::NavigationState::NavigationClient::resolveWebGLLoadPolicy const):
+        * WebProcess/WebPage/WebPage.cpp:
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::webGLPolicyForURL): Deleted.
+        (WebKit::WebPage::resolveWebGLPolicyForURL): Deleted.
+
+2018-09-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        REGRESSION(r235165): [GStreamer] Major video performance regression
+        https://bugs.webkit.org/show_bug.cgi?id=189224
+
+        Reviewed by Michael Catanzaro.
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp:
+        (WebKit::CoordinatedGraphicsScene::updateSceneState): Drop the early
+        return used when the scene state wasn't updated through a layer flush,
+        and instead always run through layer changes and backings. This way we
+        won't miss proxy objects that need swapping even if none of the layer
+        states were changed. Reducing the amount of work done here when scene
+        hasn't been updated might be possible, but it's not a huge bottleneck.
+
 2018-09-01  Darin Adler  <darin@apple.com>
 
         [CFNetwork] Update CFNetwork SPI use to use CFNetworkSPI.h more consistently

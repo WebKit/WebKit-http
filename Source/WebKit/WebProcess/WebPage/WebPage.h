@@ -1698,10 +1698,6 @@ private:
 
     uint64_t m_pendingNavigationID { 0 };
 
-#if ENABLE(WEBGL)
-    WebCore::WebGLLoadPolicy m_systemWebGLPolicy { WebCore::WebGLAllowCreation };
-#endif
-
     bool m_mainFrameProgressCompleted { false };
     bool m_shouldDispatchFakeMouseMoveEvents { true };
     bool m_isEditorStateMissingPostLayoutData { false };
