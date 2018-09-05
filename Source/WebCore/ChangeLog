@@ -1,3 +1,185 @@
+2018-09-05  Youenn Fablet  <youenn@apple.com>
+
+        Move replaceTrack logic to LibWebRTCPeerConnectionBackend
+        https://bugs.webkit.org/show_bug.cgi?id=189281
+
+        Reviewed by Eric Carlson.
+
+        Move replaceTrack handling code from RTCPeerConnection to LibWebRTCPeerConnectionBackend.
+        This makes the logic easier to understand.
+        Future refactoring will further try to put more handling in RTCRtpSenderBackend.
+        No change of behavior.
+
+        * Modules/mediastream/RTCPeerConnection.cpp:
+        * Modules/mediastream/RTCPeerConnection.h:
+        * Modules/mediastream/libwebrtc/LibWebRTCPeerConnectionBackend.cpp:
+        (WebCore::tryUpdatingTrackSource):
+        (WebCore::LibWebRTCPeerConnectionBackend::replaceTrack):
+        (WebCore::LibWebRTCPeerConnectionBackend::enqueueReplaceTrackTask):
+        * Modules/mediastream/libwebrtc/LibWebRTCPeerConnectionBackend.h:
+        * Modules/mediastream/libwebrtc/LibWebRTCRtpSenderBackend.cpp:
+        (WebCore::LibWebRTCRtpSenderBackend::replaceTrack):
+
+2018-09-05  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] LayoutContext::displayBoxForLayoutBox() should return a Display::Box&
+        https://bugs.webkit.org/show_bug.cgi?id=189311
+
+        Reviewed by Antti Koivisto.
+
+        When the layout logic needs a Display::Box, we must have already created one for the associated Layout::Box.
+        (It does not necessarily mean that evey Layout::Box has a Display::Box. For example in case of inline formatting context,
+        we don't create a Display::Box for every inline box, but the formatting logic does not require such pairs.)
+
+        * layout/FormattingContext.cpp:
+        (WebCore::Layout::FormattingContext::computeOutOfFlowHorizontalGeometry const):
+        (WebCore::Layout::FormattingContext::computeOutOfFlowVerticalGeometry const):
+        (WebCore::Layout::FormattingContext::computeBorderAndPadding const):
+        (WebCore::Layout::FormattingContext::mapBoxToAncestor):
+        (WebCore::Layout::FormattingContext::mapTopLeftToAncestor):
+        (WebCore::Layout::FormattingContext::mapCoordinateToAncestor):
+        (WebCore::Layout::FormattingContext::validateGeometryConstraintsAfterLayout const):
+        * layout/FormattingContextGeometry.cpp:
+        (WebCore::Layout::contentHeightForFormattingContextRoot):
+        (WebCore::Layout::staticVerticalPositionForOutOfFlowPositioned):
+        (WebCore::Layout::staticHorizontalPositionForOutOfFlowPositioned):
+        (WebCore::Layout::FormattingContext::Geometry::shrinkToFitWidth):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowNonReplacedVerticalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowNonReplacedHorizontalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowReplacedVerticalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowReplacedHorizontalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::complicatedCases):
+        (WebCore::Layout::FormattingContext::Geometry::floatingNonReplacedWidthAndMargin):
+        (WebCore::Layout::FormattingContext::Geometry::inlineReplacedHeightAndMargin):
+        (WebCore::Layout::FormattingContext::Geometry::inlineReplacedWidthAndMargin):
+        (WebCore::Layout::FormattingContext::Geometry::computedPadding):
+        (WebCore::Layout::FormattingContext::Geometry::computedNonCollapsedHorizontalMarginValue):
+        (WebCore::Layout::FormattingContext::Geometry::computedNonCollapsedVerticalMarginValue):
+        * layout/LayoutContext.h:
+        (WebCore::Layout::LayoutContext::displayBoxForLayoutBox const):
+        * layout/Verification.cpp:
+        (WebCore::Layout::outputMismatchingBlockBoxInformationIfNeeded):
+        * layout/blockformatting/BlockFormattingContext.cpp:
+        (WebCore::Layout::BlockFormattingContext::computeStaticPosition const):
+        (WebCore::Layout::BlockFormattingContext::computeEstimatedMarginTop const):
+        (WebCore::Layout::BlockFormattingContext::computeEstimatedMarginTopForAncestors const):
+        (WebCore::Layout::BlockFormattingContext::computeFloatingPosition const):
+        (WebCore::Layout::BlockFormattingContext::computePositionToAvoidFloats const):
+        (WebCore::Layout::BlockFormattingContext::computeVerticalPositionForFloatClear const):
+        (WebCore::Layout::BlockFormattingContext::computeInFlowPositionedPosition const):
+        (WebCore::Layout::BlockFormattingContext::computeWidthAndMargin const):
+        (WebCore::Layout::BlockFormattingContext::computeHeightAndMargin const):
+        * layout/blockformatting/BlockFormattingContextGeometry.cpp:
+        (WebCore::Layout::BlockFormattingContext::Geometry::inFlowNonReplacedHeightAndMargin):
+        (WebCore::Layout::BlockFormattingContext::Geometry::inFlowNonReplacedWidthAndMargin):
+        (WebCore::Layout::BlockFormattingContext::Geometry::staticPosition):
+        (WebCore::Layout::BlockFormattingContext::Geometry::inFlowPositionedPosition):
+        (WebCore::Layout::BlockFormattingContext::Geometry::inFlowHeightAndMargin):
+        * layout/blockformatting/BlockMarginCollapse.cpp:
+        (WebCore::Layout::isMarginTopCollapsedWithParent):
+        (WebCore::Layout::isMarginBottomCollapsedThrough):
+        (WebCore::Layout::BlockFormattingContext::Geometry::MarginCollapse::isMarginBottomCollapsedWithParent):
+        * layout/floats/FloatingContext.cpp:
+        (WebCore::Layout::FloatingContext::positionForFloat const):
+        (WebCore::Layout::FloatingContext::verticalPositionWithClearance const):
+        * layout/floats/FloatingState.cpp:
+        (WebCore::Layout::FloatingState::append):
+        * layout/inlineformatting/InlineFormattingContext.cpp:
+        (WebCore::Layout::InlineFormattingContext::layout const):
+        * layout/layouttree/LayoutTreeBuilder.cpp:
+        (WebCore::Layout::outputLayoutTree):
+        (WebCore::Layout::showLayoutTree):
+
+2018-09-05  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Drop Display:Box from FormattingContext::compute* functions
+        https://bugs.webkit.org/show_bug.cgi?id=189309
+
+        Reviewed by Antti Koivisto.
+
+        They are redundant and could get out of sync.
+
+        * layout/FormattingContext.cpp:
+        (WebCore::Layout::FormattingContext::computeOutOfFlowHorizontalGeometry const):
+        (WebCore::Layout::FormattingContext::computeOutOfFlowVerticalGeometry const):
+        (WebCore::Layout::FormattingContext::computeBorderAndPadding const):
+        (WebCore::Layout::FormattingContext::placeInFlowPositionedChildren const):
+        (WebCore::Layout::FormattingContext::layoutOutOfFlowDescendants const):
+        * layout/FormattingContext.h:
+        * layout/blockformatting/BlockFormattingContext.cpp:
+        (WebCore::Layout::BlockFormattingContext::layout const):
+        (WebCore::Layout::BlockFormattingContext::layoutFormattingContextRoot const):
+        (WebCore::Layout::BlockFormattingContext::computeStaticPosition const):
+        (WebCore::Layout::BlockFormattingContext::computeEstimatedMarginTop const):
+        (WebCore::Layout::BlockFormattingContext::computeEstimatedMarginTopForAncestors const):
+        (WebCore::Layout::BlockFormattingContext::computeFloatingPosition const):
+        (WebCore::Layout::BlockFormattingContext::computePositionToAvoidFloats const):
+        (WebCore::Layout::BlockFormattingContext::computeVerticalPositionForFloatClear const):
+        (WebCore::Layout::BlockFormattingContext::computeInFlowPositionedPosition const):
+        (WebCore::Layout::BlockFormattingContext::computeWidthAndMargin const):
+        (WebCore::Layout::BlockFormattingContext::computeHeightAndMargin const):
+        * layout/blockformatting/BlockFormattingContext.h:
+        * layout/inlineformatting/InlineFormattingContext.cpp:
+        (WebCore::Layout::InlineFormattingContext::computeStaticPosition const):
+        (WebCore::Layout::InlineFormattingContext::computeInFlowPositionedPosition const):
+        * layout/inlineformatting/InlineFormattingContext.h:
+
+2018-09-05  Jer Noble  <jer.noble@apple.com>
+
+        Add MediaCapabilities as an Experimental Feature
+        https://bugs.webkit.org/show_bug.cgi?id=189209
+
+        Reviewed by Eric Carlson.
+
+        Move mediaCapabilitiesEnabled out of RuntimeEnabledFeatures. It already (also) exists in Settings.
+
+        * Modules/mediacapabilities/MediaCapabilities.idl:
+        * Modules/mediacapabilities/MediaCapabilitiesInfo.idl:
+        * Modules/mediacapabilities/NavigatorMediaCapabilities.idl:
+        * Modules/mediacapabilities/ScreenLuminance.idl:
+        * page/RuntimeEnabledFeatures.h:
+        (WebCore::RuntimeEnabledFeatures::setMediaCapabilitiesEnabled): Deleted.
+        (WebCore::RuntimeEnabledFeatures::mediaCapabilitiesEnabled const): Deleted.
+
+2018-09-05  Woodrow Wang  <woodrow_wang@apple.com>
+
+        Add functionality to encode and decode a uint64_t in KeyedCoding
+        https://bugs.webkit.org/show_bug.cgi?id=189216
+
+        Reviewed by Daniel Bates.
+
+        I've added this functionality in order to be able to encode and decode the raw uint64_t 
+        representation of an OptionSet for my patch here <https://bugs.webkit.org/show_bug.cgi?id=187773>. 
+
+        The changes in the KeyedEncoder/KeyedDecoder for Glib were made because they are derived classes
+        of KeyedCoding which contains pure virtual functions that need to be implemented.
+
+        * platform/KeyedCoding.h:
+        * platform/cf/KeyedDecoderCF.cpp:
+        (WebCore::KeyedDecoderCF::decodeUInt64):
+        * platform/cf/KeyedDecoderCF.h:
+        * platform/cf/KeyedEncoderCF.cpp:
+        (WebCore::KeyedEncoderCF::encodeUInt64):
+        * platform/cf/KeyedEncoderCF.h:
+        * platform/glib/KeyedDecoderGlib.cpp:
+        (WebCore::KeyedDecoderGlib::decodeUInt64):
+        * platform/glib/KeyedDecoderGlib.h:
+        * platform/glib/KeyedEncoderGlib.cpp:
+        (WebCore::KeyedEncoderGlib::encodeUInt64):
+        * platform/glib/KeyedEncoderGlib.h:
+
+2018-09-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] ASSERT(!m_nicosia.imageBacking) when starting any YouTube video
+        https://bugs.webkit.org/show_bug.cgi?id=189215
+
+        Reviewed by Carlos Garcia Campos.
+
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp:
+        (WebCore::CoordinatedGraphicsLayer::purgeBackingStores):
+        Manually clear out any layer-side state of any image backing that is
+        associated with this layer, much like we do for backing stores.
+
 2018-09-05  Eric Carlson  <eric.carlson@apple.com>
 
         [MediaStream] Simplify logic when changing RealtimeMediaSource settings
