@@ -1,5 +1,365 @@
 2018-09-04  Youenn Fablet  <youenn@apple.com>
 
+        Make LibWebRTCRtpSenderBackend own its libwebrtc RTP sender backend
+        https://bugs.webkit.org/show_bug.cgi?id=189270
+
+        Reviewed by Eric Carlson.
+
+        Previously, the libwebrtc senders were owned in LibWebRTCMediaEndpoint.
+        This patch makes them be owned by LibWebRTCRtpSenderBackend.
+        This simplifies the implementation of RTCRtpSender::getParameters.
+        This will help simplify the implementation of RTCRtpSender::replaceTrack.
+
+        removeTrack is also refactored so that LibWebRTCMediaEndpoint directly uses libwebrtc constructs and not WebCore libwebrtc-agnostic ones.
+
+        No change of behavior.
+
+        * Modules/mediastream/PeerConnectionBackend.h:
+        (WebCore::PeerConnectionBackend::removeTrack):
+        (WebCore::PeerConnectionBackend::notifyRemovedTrack): Deleted.
+        * Modules/mediastream/RTCPeerConnection.cpp:
+        (WebCore::RTCPeerConnection::removeTrack):
+        * Modules/mediastream/RTCRtpSender.cpp:
+        (WebCore::RTCRtpSender::getParameters):
+        * Modules/mediastream/RTCRtpSender.h:
+        (WebCore::RTCRtpSender::backend):
+        * Modules/mediastream/RTCRtpSenderBackend.h:
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.cpp:
+        (WebCore::LibWebRTCMediaEndpoint::addTrack):
+        (WebCore::LibWebRTCMediaEndpoint::removeTrack):
+        (WebCore::LibWebRTCMediaEndpoint::doCreateOffer):
+        (WebCore::LibWebRTCMediaEndpoint::stop):
+        (WebCore::LibWebRTCMediaEndpoint::shouldOfferAllowToReceiveAudio const): Deleted.
+        (WebCore::LibWebRTCMediaEndpoint::shouldOfferAllowToReceiveVideo const): Deleted.
+        (WebCore::LibWebRTCMediaEndpoint::getRTCRtpSenderParameters): Deleted.
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.h:
+        * Modules/mediastream/libwebrtc/LibWebRTCPeerConnectionBackend.cpp:
+        (WebCore::backendFromRTPSender):
+        (WebCore::LibWebRTCPeerConnectionBackend::addTrack):
+        (WebCore::LibWebRTCPeerConnectionBackend::addTransceiver):
+        (WebCore::LibWebRTCPeerConnectionBackend::removeTrack):
+        (WebCore::LibWebRTCPeerConnectionBackend::shouldOfferAllowToReceive const):
+        (WebCore::LibWebRTCPeerConnectionBackend::notifyRemovedTrack): Deleted.
+        (WebCore::LibWebRTCPeerConnectionBackend::getParameters const): Deleted.
+        * Modules/mediastream/libwebrtc/LibWebRTCPeerConnectionBackend.h:
+        * Modules/mediastream/libwebrtc/LibWebRTCRtpSenderBackend.cpp:
+        (WebCore::LibWebRTCRtpSenderBackend::getParameters const):
+        * Modules/mediastream/libwebrtc/LibWebRTCRtpSenderBackend.h:
+
+2018-09-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Populate "text/uri-list" with multiple URLs when the pasteboard contains multiple URLs
+        https://bugs.webkit.org/show_bug.cgi?id=188890
+        <rdar://problem/43648605>
+
+        Reviewed by Tim Horton.
+
+        Adds support for exposing a newline separated list of URLs via DataTransfer's "text/uri-list" type when pasting
+        or dropping multiple items on the pasteboard that can be represented as URLs. Currently on iOS, only the URL of
+        the first item (if present) is exposed, and on macOS, only the first out of all the URLs in the pasteboard is
+        exposed.
+
+        To fix this, we introduce `Pasteboard::readAllStrings`, which reads a list of pasteboard strings collected from
+        all available items on the platform pasteboard. Currently, this is only used to provide a list of URL strings
+        when fetching data for the "text/uri-list" type when calling `DataTransfer.getData()` and
+        `DataTransferItem.getAsString()`.
+
+        Tests:  DragAndDropTests.ExposeMultipleURLsInDataTransfer
+                UIPasteboardTests.DataTransferURIListContainsMultipleURLs
+                PasteMixedContent.PasteOneOrMoreURLs
+
+        * dom/DataTransfer.cpp:
+        (WebCore::readURLsFromPasteboardAsString):
+
+        Add a helper method that reads all URL strings from the pasteboard (for the MIME type "text/uri-list", which
+        corresponds to NSURLPboardType and "public.url" on macOS and iOS, respectively) and returns a single string
+        containing all non-empty URLs joined by newline characters. Also takes a filtering block which may be used to
+        reject URLs from being included in "text/uri-list" output.
+
+        (WebCore::DataTransfer::getDataForItem const):
+        (WebCore::DataTransfer::readStringFromPasteboard const):
+
+        Insteading of reading a single string from the pasteboard for "text/uri-list", call the above helper function to
+        read all URL strings in the pasteboard. If there are files present in the pasteboard, we also filter out URLs
+        whose schemes are not in the set of schemes that are safe to expose to the page (i.e. http(s), blob, and data).
+
+        * platform/Pasteboard.cpp:
+        (WebCore::Pasteboard::readAllStrings):
+
+        Add a default non-Cocoa implementation of readAllStrings() that returns a vector, which may contain the result
+        of readString().
+
+        * platform/Pasteboard.h:
+        * platform/PasteboardStrategy.h:
+        * platform/PlatformPasteboard.h:
+
+        Add plumbing to grab a list of strings from the pasteboard for a given type.
+
+        * platform/cocoa/PasteboardCocoa.mm:
+        (WebCore::Pasteboard::readAllStrings):
+        (WebCore::Pasteboard::readString):
+
+        Implement these two methods in terms of `readPlatformValuesAsStrings`. `readAllStrings` returns the full list of
+        results, while `readString` only returns the first result.
+
+        * platform/ios/PasteboardIOS.mm:
+        (WebCore::Pasteboard::readPlatformValuesAsStrings):
+        (WebCore::Pasteboard::readPlatformValueAsString): Deleted.
+
+        Refactor this Cocoa helper function to return a list of pasteboard string values for the given type, rather than
+        a single string.
+
+        * platform/ios/PlatformPasteboardIOS.mm:
+        (WebCore::PlatformPasteboard::allStringsForType const):
+
+        Grab a string for each item (represented by an NSItemProvider) in the pasteboard that has data for the given
+        type identifier.
+
+        (WebCore::PlatformPasteboard::readString const):
+
+        Return the absolute string of the NSURL, instead of WebCore::URL::string(). This is needed to handle the case
+        where the NSURL is constructed from absolute and relative parts using a Plist. While -absoluteString gets us the
+        full URL string, URL::string() only returns the relative portion.
+
+        * platform/mac/PasteboardMac.mm:
+        (WebCore::Pasteboard::readPlatformValuesAsStrings):
+        (WebCore::Pasteboard::readPlatformValueAsString): Deleted.
+
+        Also refactor this to retrieve a list of pasteboard strings, rather than a single result.
+
+        * platform/mac/PlatformPasteboardMac.mm:
+        (WebCore::typeIdentifierForPasteboardType):
+        (WebCore::PlatformPasteboard::allStringsForType const):
+
+        Add an implementation for `allStringsForType` on macOS. Unlike iOS, it's much trickier to get this right since
+        we need to maintain compatibility with legacy "NS*Pboard" types, and `NSPasteboardItem` can only provide data
+        for `NSPasteboardType`s (i.e. UTIs), so there's no way to just iterate through each pasteboard item and ask it
+        for data that matches the given type, if the types are not UTIs. However, in the case where we have multiple
+        items, the client must have used NSPasteboardWriting-conformant objects and/or NSPasteboardItem itself to write
+        data to the pasteboard. Since NSPasteboardWriting-conformant objects register modern pasteboard types when
+        writing to the pasteboard, we can simply iterate over these pasteboard items and ask for property lists using
+        type identifiers instead of having to worry about legacy pasteboard types. Furthermore, in the case where there
+        is only a single item in the pasteboard and we do need to handle legacy pasteboard types, using `-[NSPasteboard
+        stringForType:]` in the same way we do currently should yield the correct result.
+
+        As such, in the case where there is a single pasteboard item, we use `-[NSPasteboard stringForType:]` with the
+        original legacy type, and in the case where there are multiple items on the pasteboard, we iterate over each of
+        the pasteboard items and call `-[NSPasteboardItem propertyListForType:]` with the modern pasteboard type
+        corresponding to the given legacy pasteboard type.
+
+        The different corner cases in this logic are tested by the new API test, PasteMixedContent.PasteOneOrMoreURLs,
+        which exercises several different ways of writing one or more URLs to the pasteboard on macOS, which each result
+        in different legacy and modern pasteboard types being written to the pasteboard; our implementation of
+        `PlatformPasteboard::allStringsForType` on macOS handles all cases correctly.
+
+2018-09-04  Simon Fraser  <simon.fraser@apple.com>
+
+        CSS reference filter that references a tiled feTurbulence is blank
+        https://bugs.webkit.org/show_bug.cgi?id=188950
+
+        Reviewed by Dean Jackson.
+        
+        We need to run the code that was in RenderSVGResourceFilterPrimitive::determineFilterPrimitiveSubregion()
+        for CSS reference filters, to set up the various rects in the filter effects.
+        
+        Do this by moving the code to FilterEffect::determineFilterPrimitiveSubregion(), which makes sense
+        because it recurses on the FilterEffect input chain. To make it CSS/SVGFilter agnostic, we move filterRegionInUserSpace()
+        to the Filter base class (for CSSFilter, it just returns m_filterRegion).
+
+        Test: css3/filters/reference-filter-set-filter-regions.html
+
+        * platform/graphics/filters/Filter.h:
+        * platform/graphics/filters/FilterEffect.cpp:
+        (WebCore::FilterEffect::determineFilterPrimitiveSubregion):
+        * platform/graphics/filters/FilterEffect.h:
+        * rendering/CSSFilter.cpp:
+        (WebCore::CSSFilter::determineFilterPrimitiveSubregion):
+        * rendering/CSSFilter.h:
+        * rendering/RenderLayerFilters.cpp:
+        (WebCore::RenderLayerFilters::beginFilterEffect):
+        * rendering/svg/RenderSVGResourceFilter.cpp:
+        (WebCore::RenderSVGResourceFilter::applyResource):
+        * rendering/svg/RenderSVGResourceFilterPrimitive.cpp:
+        (WebCore::RenderSVGResourceFilterPrimitive::determineFilterPrimitiveSubregion): Deleted.
+        * rendering/svg/RenderSVGResourceFilterPrimitive.h:
+        * svg/graphics/filters/SVGFilter.h:
+
+2018-09-04  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Rename LayoutPair to BoxPair
+        https://bugs.webkit.org/show_bug.cgi?id=189276
+
+        Reviewed by Antti Koivisto.
+
+        * layout/FormattingContext.h:
+        * layout/blockformatting/BlockFormattingContext.cpp:
+        (WebCore::Layout::BlockFormattingContext::layout const):
+
+2018-09-04  Youenn Fablet  <youenn@apple.com>
+
+        Disable WebRTC unified plan runtime flag by default
+        https://bugs.webkit.org/show_bug.cgi?id=189264
+
+        Reviewed by Jer Noble.
+
+        Covered by existing tests.
+
+        * testing/Internals.cpp:
+        (WebCore::Internals::resetToConsistentState):
+        Activate unified plan for testing.
+
+2018-09-04  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC] Merge computeInFlowWidth(Height)AndMargin and computeFloatingWidth(Height)AndMargin.
+        https://bugs.webkit.org/show_bug.cgi?id=189271
+
+        Reviewed by Antti Koivisto.
+
+        This is in preparation for adding min/max-widht(height).
+
+        * layout/FormattingContext.cpp:
+        (WebCore::Layout::FormattingContext::computeFloatingHeightAndMargin const): Deleted.
+        (WebCore::Layout::FormattingContext::computeFloatingWidthAndMargin const): Deleted.
+        * layout/FormattingContext.h:
+        * layout/blockformatting/BlockFormattingContext.cpp:
+        (WebCore::Layout::BlockFormattingContext::computeWidthAndMargin const):
+        (WebCore::Layout::BlockFormattingContext::computeHeightAndMargin const):
+        (WebCore::Layout::BlockFormattingContext::computeInFlowHeightAndMargin const): Deleted.
+        (WebCore::Layout::BlockFormattingContext::computeInFlowWidthAndMargin const): Deleted.
+        * layout/blockformatting/BlockFormattingContext.h:
+
+2018-09-04  Rob Buis  <rbuis@igalia.com>
+
+        Adjust XMLHttpRequest username/password precedence rules
+        https://bugs.webkit.org/show_bug.cgi?id=184910
+
+        Reviewed by Chris Dumez.
+
+        Steps 9.1 and 9.2 in the XMLHTTPRequest::open [1] algorithm
+        specify that non null user or non null password ought
+        to be set on the URL, so implement this.
+
+        Behavior matches Firefox and Chrome.
+
+        [1] https://xhr.spec.whatwg.org/#dom-xmlhttprequest-open
+
+        Test: xhr/send-authentication-competing-names-passwords.htm
+
+        * xml/XMLHttpRequest.cpp:
+        (WebCore::XMLHttpRequest::open):
+
+2018-09-04  Simon Fraser  <simon.fraser@apple.com>
+
+        Simplify RenderLayer filter code
+        https://bugs.webkit.org/show_bug.cgi?id=189248
+
+        Reviewed by Dean Jackson.
+        
+        Painting filters in RenderLayer involved the confusingly named RenderLayer::FilterInfo,
+        and FilterEffectRenderer/FilterEffectRendererHelper. Reduce confusion by just collapsing
+        these together into RenderLayerFilters. RenderLayerFilters stores a reference to the
+        CSSFilter, and knows how to set it up, and vend a GraphicsContext* for painting the content
+        to be filtered.
+        
+        It's also simpler to just give RenderLayer a member variable for RenderLayerFilters, rather
+        than using a side hash (we can recoup the space in other ways layer).
+
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * css/CSSFilterImageValue.cpp:
+        * rendering/CSSFilter.h:
+        * rendering/FilterEffectRenderer.cpp: Removed.
+        * rendering/FilterEffectRenderer.h: Removed.
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::RenderLayer):
+        (WebCore::RenderLayer::~RenderLayer):
+        (WebCore::RenderLayer::paintsWithFilters const):
+        (WebCore::RenderLayer::requiresFullLayerImageForFilters const):
+        (WebCore::RenderLayer::setFilterBackendNeedsRepaintingInRect):
+        (WebCore::RenderLayer::filtersForPainting const):
+        (WebCore::RenderLayer::setupFilters):
+        (WebCore::RenderLayer::applyFilters):
+        (WebCore::RenderLayer::paintLayerContents):
+        (WebCore::RenderLayer::calculateClipRects const):
+        (WebCore::RenderLayer::filter const): Deleted.
+        (WebCore::RenderLayer::filterPainter const): Deleted.
+        (WebCore::RenderLayer::hasFilterThatIsPainting const): Deleted.
+        * rendering/RenderLayer.h:
+        * rendering/RenderLayerFilterInfo.cpp: Removed.
+        * rendering/RenderLayerFilters.cpp: Added.
+        (WebCore::RenderLayerFilters::RenderLayerFilters):
+        (WebCore::RenderLayerFilters::~RenderLayerFilters):
+        (WebCore::RenderLayerFilters::setFilter):
+        (WebCore::RenderLayerFilters::hasFilterThatMovesPixels const):
+        (WebCore::RenderLayerFilters::hasFilterThatShouldBeRestrictedBySecurityOrigin const):
+        (WebCore::RenderLayerFilters::notifyFinished):
+        (WebCore::RenderLayerFilters::updateReferenceFilterClients):
+        (WebCore::RenderLayerFilters::removeReferenceFilterClients):
+        (WebCore::RenderLayerFilters::buildFilter):
+        (WebCore::RenderLayerFilters::beginFilterEffect):
+        (WebCore::RenderLayerFilters::applyFilterEffect):
+        * rendering/RenderLayerFilters.h: Renamed from Source/WebCore/rendering/RenderLayerFilterInfo.h.
+
+2018-09-04  Dean Jackson  <dino@apple.com>
+
+        Build fix.
+
+        * testing/Internals.cpp:
+
+2018-09-03  Dean Jackson  <dino@apple.com>
+
+        Move SystemPreview code from WebKitAdditions to WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=189252
+        <rdar://problem/44080245>
+
+        Reviewed by Wenson Hsieh.
+
+        Move the WebKitAdditions code into WebKit/WebCore.
+
+        * html/HTMLAnchorElement.cpp:
+        (WebCore::HTMLAnchorElement::relList const): Look for "ar".
+        (WebCore::HTMLAnchorElement::isSystemPreviewLink const): Ditto.
+
+        * platform/MIMETypeRegistry.cpp: Add a couple of new static methods
+        for System Preview MIME types.
+        (WebCore::initializeSystemPreviewMIMETypes):
+        (WebCore::MIMETypeRegistry::getSystemPreviewMIMETypes):
+        (WebCore::MIMETypeRegistry::isSystemPreviewMIMEType):
+        * platform/MIMETypeRegistry.h:
+
+        * rendering/RenderThemeIOS.mm: Load the ARKit artwork from the framework.
+        (WebCore::arKitBundle):
+        (WebCore::loadARKitPDFPage):
+        (WebCore::systemPreviewLogo):
+        (WebCore::RenderThemeIOS::paintSystemPreviewBadge):
+
+        * testing/Internals.cpp: Remove internal helper.
+        (WebCore::Internals::systemPreviewRelType): Deleted.
+        * testing/Internals.h:
+        * testing/Internals.idl:
+
+2018-09-04  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] PaymentResponse should have an onpayerdetailchange event handler
+        https://bugs.webkit.org/show_bug.cgi?id=189249
+
+        Reviewed by Alex Christensen.
+
+        Implemented the onpayerdetailchange event handler as defined in the Payment Request API W3C Editor's Draft of 30 August 2018.
+
+        The "payer detail changed" algorithm will be implemented in a follow-up patch.
+
+        Covered by existing web platform tests.
+
+        * Modules/paymentrequest/PaymentResponse.cpp:
+        (WebCore::PaymentResponse::scriptExecutionContext const):
+        * Modules/paymentrequest/PaymentResponse.h:
+        * Modules/paymentrequest/PaymentResponse.idl:
+        * dom/EventNames.h:
+        * dom/EventTargetFactory.in:
+
+2018-09-04  Youenn Fablet  <youenn@apple.com>
+
         Introduce LibWebRTC backends for sender and receiver
         https://bugs.webkit.org/show_bug.cgi?id=189171
 
