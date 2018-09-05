@@ -1,3 +1,182 @@
+2018-09-05  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Simplify logic when changing RealtimeMediaSource settings
+        https://bugs.webkit.org/show_bug.cgi?id=189284
+        <rdar://problem/44117948>
+
+        Reviewed by Youenn Fablet.
+
+        * WebProcess/cocoa/UserMediaCaptureManager.cpp:
+        (WebKit::UserMediaCaptureManager::Source::setSettings):
+
+2018-09-04  Frederic Wang  <fwang@igalia.com>
+
+        Add basic support for ScrollIntoViewOptions
+        https://bugs.webkit.org/show_bug.cgi?id=189258
+
+        Reviewed by Simon Fraser.
+
+        * DOM/DOMElement.mm: Add ScrollIntoViewOptions
+        header so that this file can build despite the new scrollIntoView function.
+
+2018-09-04  Chris Dumez  <cdumez@apple.com>
+
+        Rename experimental feature for process swap on navigation
+        https://bugs.webkit.org/show_bug.cgi?id=189280
+
+        Reviewed by Antti Koivisto.
+
+        The "process swap on navigation" experimental feature on macOS Mojave does not work due to missing
+        browser changes, resulting in frequent load hangs. When enabling the experimental feature in WebKit
+        ToT or Safari Technology Preview for testing, it enables it as well for Mojave's system Safari which
+        is annoying.
+
+        This patch renames the experimental feature so that the feature stays disabled in Mojave's system
+        Safari even when enabled in WebKit ToT / STP.
+
+        * Shared/WebPreferences.yaml:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetProcessSwapOnNavigationEnabled):
+        (WKPreferencesGetProcessSwapOnNavigationEnabled):
+        * UIProcess/WebPreferences.cpp:
+        (WebKit::WebPreferences::updateBoolValueForExperimentalFeatureKey):
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::createWebPage):
+
+2018-09-04  Dean Jackson  <dino@apple.com>
+
+        Post review Weinig fix-ups
+        https://bugs.webkit.org/show_bug.cgi?id=189288
+
+        Reviewed by Sam Weinig.
+
+        Fix-ups from https://bugs.webkit.org/show_bug.cgi?id=189252
+
+        * UIProcess/Cocoa/SystemPreviewControllerCocoa.mm:
+        (-[_WKPreviewControllerDataSource previewController:previewItemAtIndex:]):
+        (getUTIForMIMEType): Deleted.
+        * UIProcess/ios/WKSystemPreviewView.mm:
+        (getUTIForSystemPreviewMIMEType):
+        (-[WKSystemPreviewView web_setContentProviderData:suggestedFilename:]):
+        (getUTIForMIMEType): Deleted.
+
+2018-09-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Populate "text/uri-list" with multiple URLs when the pasteboard contains multiple URLs
+        https://bugs.webkit.org/show_bug.cgi?id=188890
+        <rdar://problem/43648605>
+
+        Reviewed by Tim Horton.
+
+        Add some plumbing through pasteboard classes to support `Pasteboard::readAllStrings`. See WebCore ChangeLog for
+        more detail.
+
+        * UIProcess/Cocoa/WebPasteboardProxyCocoa.mm:
+        (WebKit::WebPasteboardProxy::getPasteboardStringsForType):
+        * UIProcess/WebPasteboardProxy.h:
+        * UIProcess/WebPasteboardProxy.messages.in:
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebKit::WebPlatformStrategies::allStringsForType):
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.h:
+
+2018-09-04  Youenn Fablet  <youenn@apple.com>
+
+        Disable WebRTC unified plan runtime flag by default
+        https://bugs.webkit.org/show_bug.cgi?id=189264
+
+        Reviewed by Jer Noble.
+
+        * Shared/WebPreferences.yaml:
+        Disable unified plan flag by default.
+
+2018-09-04  Chris Dumez  <cdumez@apple.com>
+
+        Add process pool configuration flag to turn on automatic process pre-warming
+        https://bugs.webkit.org/show_bug.cgi?id=189263
+        <rdar://problem/44101941>
+
+        Reviewed by Antti Koivisto.
+
+        Add process pool configuration flag to turn on automatic process pre-warming and disassociate
+        it from the warmInitialProcess() SPI.
+
+        For now, turning on "process swap on navigation" via experimental features also turns on
+        automatic process pre-warming.
+
+        * UIProcess/API/APIProcessPoolConfiguration.cpp:
+        (API::ProcessPoolConfiguration::copy):
+        * UIProcess/API/APIProcessPoolConfiguration.h:
+        * UIProcess/API/C/WKContext.cpp:
+        (WKContextSetPrewarmsProcessesAutomatically):
+        (WKContextWarmInitialProcess):
+        * UIProcess/API/C/WKContextPrivate.h:
+        * UIProcess/API/Cocoa/WKProcessPool.mm:
+        (-[WKProcessPool _warmInitialProcess]):
+        (-[WKProcessPool _hasPrewarmedWebProcess]):
+        (-[WKProcessPool _webProcessCountIgnoringPrewarmed]):
+        * UIProcess/API/Cocoa/WKProcessPoolPrivate.h:
+        * UIProcess/API/Cocoa/_WKProcessPoolConfiguration.h:
+        * UIProcess/API/Cocoa/_WKProcessPoolConfiguration.mm:
+        (-[_WKProcessPoolConfiguration setPrewarmsProcessesAutomatically:]):
+        (-[_WKProcessPoolConfiguration prewarmsProcessesAutomatically]):
+        * UIProcess/ServiceWorkerProcessProxy.cpp:
+        (WebKit::ServiceWorkerProcessProxy::ServiceWorkerProcessProxy):
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::setMaximumNumberOfProcesses):
+        (WebKit::WebProcessPool::createNewWebProcess):
+        (WebKit::WebProcessPool::tryTakePrewarmedProcess):
+        (WebKit::WebProcessPool::prewarmProcess):
+        (WebKit::WebProcessPool::disconnectProcess):
+        (WebKit::WebProcessPool::createWebPage):
+        (WebKit::WebProcessPool::didReachGoodTimeToPrewarm):
+        * UIProcess/WebProcessPool.h:
+        (WebKit::WebProcessPool::sendToOneProcess):
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::create):
+        (WebKit::WebProcessProxy::WebProcessProxy):
+        (WebKit::m_isInPrewarmedPool):
+        * UIProcess/WebProcessProxy.h:
+
+2018-09-03  Dean Jackson  <dino@apple.com>
+
+        Move SystemPreview code from WebKitAdditions to WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=189252
+        <rdar://problem/44080245>
+
+        Reviewed by Wenson Hsieh.
+
+        Move the WebKitAdditions code into WebKit/WebCore.
+
+        * UIProcess/Cocoa/SystemPreviewControllerCocoa.mm:
+        (getUTIForMIMEType): Helper to get the system UTI for USDZ files.
+        (-[_WKPreviewControllerDataSource previewController:previewItemAtIndex:]):
+
+        * UIProcess/Cocoa/WKWebViewContentProviderRegistry.mm: Use the new methods
+        in MIMETypeRegistry.
+        (-[WKWebViewContentProviderRegistry initWithConfiguration:]):
+
+        * UIProcess/SystemPreviewController.cpp: Ditto.
+        (WebKit::SystemPreviewController::canPreview const):
+
+        * UIProcess/ios/WKSystemPreviewView.mm:
+        (getUTIForMIMEType): Similar helper to above.
+        (-[WKSystemPreviewView web_setContentProviderData:suggestedFilename:]):
+
+2018-09-04  Frederic Wang  <fwang@igalia.com>
+
+        Bug 189190 - REGRESSION(r235398) ASSERTION failure !m_client.didFinishDocumentLoadForFrame
+        https://bugs.webkit.org/show_bug.cgi?id=189190
+
+        Reviewed by Alex Christensen.
+
+        Assertions to prevent use of the deprecated WKPageSetPageLoaderClient class are hit when
+        running system Safari with the current macOS/iOS releases, making impossible to launch it.
+        This patch conditionally skips these assertions so that they are only verified for
+        macOS > 10.14 or other platforms.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageLoaderClient): Only assert on future OS releases.
+
 2018-09-04  Alex Christensen  <achristensen@webkit.org>
 
         Clean up WebGL policy getting code path
