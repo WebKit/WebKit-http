@@ -1,3 +1,429 @@
+2018-09-05  Youenn Fablet  <youenn@apple.com>
+
+        Expose RTCRtpSender.setParameters
+        https://bugs.webkit.org/show_bug.cgi?id=189307
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-getParameters.html:
+
+2018-09-05  Truitt Savell  <tsavell@apple.com>
+
+        Rebaseline test after changes in https://trac.webkit.org/changeset/235669/webkit deleted the expectation. 
+        https://bugs.webkit.org/show_bug.cgi?id=188816
+
+        Unreviewed Test Gardening.
+
+        * platform/mac-wk1/imported/w3c/web-platform-tests/xhr/send-network-error-async-events.sub-expected.txt:
+
+2018-09-05  Ms2ger  <Ms2ger@igalia.com>
+
+        GTK-focused gardening
+        https://bugs.webkit.org/show_bug.cgi?id=189305
+
+        Unreviewed test gardening.
+
+        * TestExpectations: Remove passing test.
+        * fast/mediastream/RTCPeerConnection-media-setup-callbacks-single-dialog.html: Speculative fix for r235484.
+        * platform/gtk/http/tests/inspector/network/resource-request-headers-expected.txt: Added.
+        * platform/gtk/http/tests/loading/oauth-expected.txt: Added.
+        * platform/gtk/http/tests/websocket/connection-refusal-in-frame-resource-load-statistics-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/xhr/send-network-error-sync-events.sub-expected.txt: Updated for r235354.
+        * platform/gtk/js/dom/dom-static-property-for-in-iteration-expected.txt: Updated for r235245.
+
+2018-09-04  Yacine Bandou  <yacine.bandou_ext@softathome.com>
+
+        [EME] Add a layoutTest for ClearKey WebM video playback
+        https://bugs.webkit.org/show_bug.cgi?id=189200
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Add a new layoutTest in order to test the playback of ClearKey encrypted WebM.
+
+        * media/encrypted-media/clearKey/clearKey-webm-video-playback-mse-expected.txt: Added.
+        * media/encrypted-media/clearKey/clearKey-webm-video-playback-mse.html: Added.
+        * platform/gtk/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2018-09-04  Frederic Wang  <fwang@igalia.com>
+
+        Add basic support for ScrollIntoViewOptions
+        https://bugs.webkit.org/show_bug.cgi?id=189258
+
+        Reviewed by Simon Fraser.
+
+        Update test expectations for WPT scrollIntoView tests.
+
+        * platform/ios-wk2/imported/w3c/web-platform-tests/css/cssom-view/scrollIntoView-smooth-expected.txt: Removed.
+
+2018-09-04  Michael Saboff  <msaboff@apple.com>
+
+        YARR: Add new RegExp back reference tests to specifically test back reference JIT code
+        https://bugs.webkit.org/show_bug.cgi?id=189291
+
+        Reviewed by Saam Barati.
+
+        New tests.
+
+        * fast/regex/backreferences-expected.txt: Added.
+        * fast/regex/backreferences.html: Added.
+        * fast/regex/script-tests/backreferences.js: Added.
+
+2018-09-04  Ryosuke Niwa  <rniwa@webkit.org>
+
+        slotchange event doesn't get fired when inserting, removing, or renaming slot elements
+        https://bugs.webkit.org/show_bug.cgi?id=189144
+        <rdar://problem/43871061>
+
+        Reviewed by Antti Koivisto.
+
+        Added a W3C style testharness.js test for inserting, removing, and renaming slot elements.
+
+        It has 62 distinct test cases for closed/open shadow roots in connected and disconnected trees
+        for the total of 248 test cases.
+
+        This test presumes the resolution of https://github.com/w3c/webcomponents/issues/764 in our favor.
+
+        Chrome fails 48 test cases because it doesn't follow the tree order when dispatching slotchange event
+        on the previously first slot element, and Firefox fails 84 test cases because it fails to fire slotchange
+        in the tree order when a node is inserted.
+
+        * fast/shadow-dom/slotchange-for-slot-mutation-expected.txt: Added.
+        * fast/shadow-dom/slotchange-for-slot-mutation.html: Added.
+
+2018-09-04  Simon Fraser  <simon.fraser@apple.com>
+
+        CSS reference filter that references a tiled feTurbulence is blank
+        https://bugs.webkit.org/show_bug.cgi?id=188950
+
+        Reviewed by Dean Jackson.
+
+        * css3/filters/reference-filter-set-filter-regions-expected.html: Added.
+        * css3/filters/reference-filter-set-filter-regions.html: Added.
+
+2018-09-04  Rob Buis  <rbuis@igalia.com>
+
+        Adjust XMLHttpRequest username/password precedence rules
+        https://bugs.webkit.org/show_bug.cgi?id=184910
+
+        Reviewed by Chris Dumez.
+
+        Adjust test because now we do set password on the url in
+        open(), even if the username is null.
+
+        * http/tests/xmlhttprequest/basic-auth.html:
+
+2018-09-03  Dean Jackson  <dino@apple.com>
+
+        Move SystemPreview code from WebKitAdditions to WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=189252
+        <rdar://problem/44080245>
+
+        Reviewed by Wenson Hsieh.
+
+        This test no longer needs an internal helper.
+
+        * system-preview/detection.html:
+
+2018-09-04  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Disabling both fullscreen and picture-in-picture shows an empty top left container
+        https://bugs.webkit.org/show_bug.cgi?id=189259
+        <rdar://problem/42026625>
+
+        Reviewed by Dean Jackson.
+
+        Adding a new test that checks that the top left container is hidden when both the fullscreen and picture-in-picture buttons are disabled.
+
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-disabled-fullscreen-and-pip-expected.txt: Added.
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-disabled-fullscreen-and-pip.html: Added.
+
+2018-09-04  Per Arne Vollan  <pvollan@apple.com>
+
+        Add test for fix in https://bugs.webkit.org/show_bug.cgi?id=187922
+        https://bugs.webkit.org/show_bug.cgi?id=187925
+
+        Reviewed by Simon Fraser.
+
+        This will test that the function primaryScreenDisplayID() returns a valid display ID.
+
+        * TestExpectations:
+        * fast/misc/valid-primary-screen-displayID-expected.txt: Added.
+        * fast/misc/valid-primary-screen-displayID.html: Added.
+        * platform/mac-wk2/TestExpectations:
+
+2018-09-04  Daniel Bates  <dabates@apple.com>
+
+        Remove redundant inline text boxes for empty combined text
+        https://bugs.webkit.org/show_bug.cgi?id=189119
+
+        Reviewed by Zalan Bujtas.
+
+        Update expected result now that we do not create an inline text box associated with combined text
+        when we do not have any combined text to render.
+
+        * fast/text/text-combine-surroundContents-crash-expected.txt:
+
+2018-09-04  Zan Dobersek  <zdobersek@igalia.com> and Ms2ger  <Ms2ger@igalia.com>
+
+        Implement support for passing ImageBitmap to texImage2D/texSubImage2D
+        https://bugs.webkit.org/show_bug.cgi?id=187584
+
+        Reviewed by Dean Jackson.
+
+        * fast/canvas/webgl/gl-teximage-imagebitmap-expected.txt: Added.
+        * fast/canvas/webgl/gl-teximage-imagebitmap.html: Added.
+
+2018-09-04  Yacine Bandou  <yacine.bandou@softathome.com>
+
+        [EME] Add layout test for InitData and InitDataType in WebM encrypted event
+        https://bugs.webkit.org/show_bug.cgi?id=189196
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        This commit adds a new layoutTest in order to test the reception of the encrypted WebM
+        event with an expected initData and initDataType fields.
+
+        * media/content/encrypted/VideoClearKeyWebM.webm: Added.
+            This is a simple encrypted video.
+            It has been encrypted with webm_crypt see https://github.com/webmproject/webm-tools.
+            #webm_crypt  -i VideoWebM.webm -audio false -video true -video_options base_file=bear.key,content_id="0123456789012345" -o VideoClearKeyWebM.webm
+        * media/encrypted-media/clearKey/clearKey-encrypted-webm-event-mse-expected.txt: Added.
+        * media/encrypted-media/clearKey/clearKey-encrypted-webm-event-mse.html: Added.
+        * media/encrypted-media/medias-enc.js:
+        * platform/gtk/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2018-09-03  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Remove PaymentAddress.languageCode
+        https://bugs.webkit.org/show_bug.cgi?id=189254
+
+        Reviewed by Sam Weinig.
+
+        * http/tests/paymentrequest/payment-address-attributes-and-toJSON-method.https.html:
+        * http/tests/ssl/applepay/ApplePayRequestShippingContact.https-expected.txt:
+        * http/tests/ssl/applepay/ApplePayRequestShippingContact.https.html:
+
+2018-09-03  Youenn Fablet  <youenn@apple.com>
+
+        REGRESSION: Layout Test http/tests/security/bypassing-cors-checks-for-extension-urls.html is Flaky
+        https://bugs.webkit.org/show_bug.cgi?id=187658
+        <rdar://problem/42306442>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-09-03  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Implement the MerchantValidationEvent constructor
+        https://bugs.webkit.org/show_bug.cgi?id=189235
+
+        Reviewed by Daniel Bates.
+
+        Skipped new manual tests.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2018-09-03  Frederic Wang  <fwang@free.fr>
+
+        Remove duplicate directory web-platform-tests/cssom-view
+        https://bugs.webkit.org/show_bug.cgi?id=189241
+
+        Reviewed by Daniel Bates.
+
+        cssom-view tests were moved into web-platform-tests/css at r232903 but the old
+        directory and expectation were left. This patch finishes the migration.
+
+        * TestExpectations:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/cssom-view/Screen-pixelDepth-Screen-colorDepth001-expected.txt: Removed.
+        * platform/ios-simulator/imported/w3c/web-platform-tests/cssom-view/scrolling-quirks-vs-nonquirks-expected.txt: Removed.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/cssom-view/elementFromPoint-expected.txt: Removed.
+        * platform/ios-wk2/imported/w3c/web-platform-tests/cssom-view/scrollIntoView-smooth-expected.txt: Removed.
+        * platform/ios/TestExpectations:
+
+2018-09-02  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r191336): RenderFlexibleBox::adjustChildSizeForMinAndMax crashes in std::optional<>::value()
+        https://bugs.webkit.org/show_bug.cgi?id=189232
+        <rdar://problem/43886373>
+
+        Reviewed by Brent Fulgham.
+
+        * fast/flexbox/crash-when-min-max-content-is-not-computed-expected.txt: Added.
+        * fast/flexbox/crash-when-min-max-content-is-not-computed.html: Added.
+
+2018-09-02  Yusuke Suzuki  <yusukesuzuki@slowstart.org>
+
+        Implement Object.fromEntries
+        https://bugs.webkit.org/show_bug.cgi?id=188481
+
+        Reviewed by Darin Adler.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+
+2018-08-31  Simon Fraser  <simon.fraser@apple.com>
+
+        Clean up TestExpectations so that ./Tools/Scripts/lint-test-expectations
+        succeeds now.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2018-08-31  Chris Dumez  <cdumez@apple.com>
+
+        [ WK2 ] http/tests/workers/service/client-*-page-cache.html LayoutTests are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=183705
+        <rdar://problem/42440606>
+
+        Reviewed by Youenn Fablet.
+
+        Update Layout tests to not rely on the total number of clients as this is flaky. Instead, check for specific client
+        identifiers to see if they are present or not.
+
+        * http/tests/workers/service/client-added-to-clients-when-restored-from-page-cache.html:
+        * http/tests/workers/service/client-removed-from-clients-while-in-page-cache.html:
+        * http/tests/workers/service/resources/getClientIds-worker.js: Renamed from LayoutTests/http/tests/workers/service/resources/getClientCount-worker.js.
+        (event.then):
+        * http/tests/workers/service/serviceworkerclients-matchAll-worker.js:
+        (async.doTestAfterMessage):
+        * http/tests/workers/service/serviceworkerclients-matchAll.https.html:
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        Unskip tests as they should no longer be flaky.
+
+2018-08-31  John Wilander  <wilander@apple.com>
+
+        Storage Access API: Maintain access through same-site navigations
+        https://bugs.webkit.org/show_bug.cgi?id=188564
+        <rdar://problem/43445160>
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-user-interaction-and-access-from-right-frame-expected.txt:
+        * http/tests/storageAccess/request-and-grant-access-cross-origin-sandboxed-iframe-from-prevalent-domain-with-user-interaction-and-access-from-right-frame.html:
+            Added both a same-site and a cross-site navigation to the sub frame to test maintained and cleared access.
+        * http/tests/storageAccess/request-and-grant-access-then-navigate-cross-site-should-not-have-access-expected.txt: Copied from LayoutTests/http/tests/storageAccess/request-and-grant-access-then-navigate-should-not-have-access-expected.txt.
+        * http/tests/storageAccess/request-and-grant-access-then-navigate-cross-site-should-not-have-access.html: Copied from LayoutTests/http/tests/storageAccess/request-and-grant-access-then-navigate-should-not-have-access.html.
+        * http/tests/storageAccess/request-and-grant-access-then-navigate-same-site-should-have-access-expected.txt: Renamed from LayoutTests/http/tests/storageAccess/request-and-grant-access-then-navigate-should-not-have-access-expected.txt.
+        * http/tests/storageAccess/request-and-grant-access-then-navigate-same-site-should-have-access.html: Renamed from LayoutTests/http/tests/storageAccess/request-and-grant-access-then-navigate-should-not-have-access.html.
+        * http/tests/storageAccess/resources/get-cookies.php:
+            Support for the new test scenarios.
+        * http/tests/storageAccess/resources/self-navigating-frame-after-granted-access.html:
+            Support for the new test scenarios.
+        * platform/mac-wk2/TestExpectations:
+            Marked the new and the renamed tests as [ Pass ].
+
+2018-08-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        slotchange-event-bubbling.html fails in Chrome & Firefox
+        https://bugs.webkit.org/show_bug.cgi?id=189183
+
+        Reviewed by Chris Dumez.
+
+        slotchange event is supposed to fire when a slot element is inserted and there are assigned nodes.
+
+        Firefox and Chrome implement this behavior and fail this test since the test doesn't let microstask
+        check point run before start mutating the DOM.
+
+        Fixed the test by manually waiting for the current microtask queue to be emptied after constructing
+        the test shadow tree so that slotchange event from the initial tree construction doesn't get merged
+        with slotchange event fired for the actual DOM mutation being tested.
+
+        Also fixed typos in slotchange-in-fallback.html and a bug that we were removing the slot instead
+        of the shadow host at the end of each test case.
+
+        * fast/shadow-dom/slotchange-event-bubbling.html:
+        * fast/shadow-dom/slotchange-in-fallback.html:
+
+2018-08-31  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Add margin box verification back now that Display::Box has non-computed horizontal margin.
+        https://bugs.webkit.org/show_bug.cgi?id=189193
+
+        Reviewed by Antti Koivisto.
+
+        * fast/block/block-only/floating-and-next-previous-inflow-with-margin-with-no-border-expected.txt: Added.
+        * fast/block/block-only/floating-and-next-previous-inflow-with-margin-with-no-border.html: Added.
+
+2018-08-31  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Some tests are failing on ews200 after upgrading iTunes.
+        https://bugs.webkit.org/show_bug.cgi?id=189194
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-08-31  Frederic Wang  <fwang@igalia.com>
+
+        Bug 182053 - [CSSOM View] Implement standard behavior for scrollingElement
+        https://bugs.webkit.org/show_bug.cgi?id=182053
+
+        Reviewed by Simon Fraser.
+
+        Add a test to check that in Quirks mode, the <body> element returned by
+        document.scrollingElement is indeed a child of a <html> root (i.e. in the HTML namespace).
+        Adjust scrollingElement*.html tests so that they are executed with the flag
+        CSSOMViewScrollingAPI enabled and update expectations now that these tests pass.
+
+        * fast/dom/Document/scrollingElement-quirks-mode.html:
+        * fast/dom/Document/scrollingElement-quirks-mode-expected.txt:
+        * fast/dom/Document/scrollingElement-standards-mode.html:
+        * fast/dom/Document/scrollingElement-standards-mode-expected.txt:
+
+2018-08-30  Zalan Bujtas  <zalan@apple.com>
+
+        CounterMaps should hold a unique_ptr of CounterMap.
+        https://bugs.webkit.org/show_bug.cgi?id=189174
+        <rdar://problem/43686458>
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/css/counters/crash-when-cloning-body-expected.txt: Added.
+        * fast/css/counters/crash-when-cloning-body.html: Added.
+
+2018-08-30  Truitt Savell  <tsavell@apple.com>
+
+        Unreviewed, rolling out r235516.
+
+        Caused 50 Crashes on Sierra
+
+        Reverted changeset:
+
+        "The width of a nullptr TextRun should be zero"
+        https://bugs.webkit.org/show_bug.cgi?id=189154
+        https://trac.webkit.org/changeset/235516
+
+2018-08-30  Youenn Fablet  <youenn@apple.com>
+
+        Remove WebRTC legacy API implementation
+        https://bugs.webkit.org/show_bug.cgi?id=189040
+        <rdar://problem/43861361>
+
+        Unreviewed.
+
+        * platform/ios/TestExpectations: Use default expectations for the folder.
+        This allows skipping imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/setRemoteDescription.html
+
+2018-08-30  Brent Fulgham  <bfulgham@apple.com>
+
+        The width of a nullptr TextRun should be zero
+        https://bugs.webkit.org/show_bug.cgi?id=189154
+        <rdar://problem/43685926>
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/text/null-string-textrun-expected.txt: Added.
+        * fast/text/null-string-textrun.html: Added.
+
 2018-08-30  Eric Carlson  <eric.carlson@apple.com>
 
         Mock video devices should only support discrete sizes
