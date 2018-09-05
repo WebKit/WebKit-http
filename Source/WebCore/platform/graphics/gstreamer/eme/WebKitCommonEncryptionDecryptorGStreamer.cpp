@@ -465,7 +465,7 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
                 if (!priv->m_pendingProtectionEvents.isEmpty())
                     webkitMediaCommonEncryptionDecryptProcessPendingProtectionEvents(self);
             } else
-                GST_TRACE_OBJECT(self, "got attach CDMInstance for the same instance %p we already have", cdmInstance);
+                GST_TRACE_OBJECT(self, "ignoring cdm-instance %p, we already have it", cdmInstance);
         } else if (gst_structure_has_name(structure, "drm-cdm-instance-detached")) {
             WebCore::CDMInstance* cdmInstance = nullptr;
             gst_structure_get(structure, "cdm-instance", G_TYPE_POINTER, &cdmInstance, nullptr);
@@ -475,9 +475,9 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
             LockHolder locker(priv->m_mutex);
             if (priv->m_cdmInstance == cdmInstance) {
                 webKitMediaCommonEncryptionDecryptorPrivClearStateWithInstance(priv, nullptr);
-                GST_INFO_OBJECT(self, "got CDMInstance %p detached and cleared state", cdmInstance);
+                GST_INFO_OBJECT(self, "our cdm-instance %p was detached, state cleared", cdmInstance);
             } else
-                GST_TRACE_OBJECT(self, "got detaching message for CDMInstance %p but ours is %p", cdmInstance, priv->m_cdmInstance.get());
+                GST_TRACE_OBJECT(self, "cdm-instance %p detached, ignored since ours was %p", cdmInstance, priv->m_cdmInstance.get());
         } else if (gst_structure_has_name(structure, "drm-attempt-to-decrypt-with-local-instance")) {
             gst_event_unref(event);
             result = TRUE;
