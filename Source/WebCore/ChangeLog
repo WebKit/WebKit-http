@@ -1,3 +1,412 @@
+2018-09-06  Youenn Fablet  <youenn@apple.com>
+
+        Move replaceTrack logic to RTCRtpSender backend
+        https://bugs.webkit.org/show_bug.cgi?id=189359
+
+        Reviewed by Eric Carlson.
+
+        Move replaceTrack handling from LibWebRTCPeerConnectionBackend to LibWebRTCRtpSenderBackend.
+        This will allow using SetTrack when fully implementing unified plan.
+        No change of behavior.
+
+        * Modules/mediastream/RTCRtpSender.cpp:
+        (WebCore::RTCRtpSender::replaceTrack):
+        * Modules/mediastream/RTCRtpSender.h:
+        * Modules/mediastream/RTCRtpSender.idl:
+        * Modules/mediastream/RTCRtpSenderBackend.h:
+        * Modules/mediastream/libwebrtc/LibWebRTCPeerConnectionBackend.cpp:
+        (WebCore::LibWebRTCPeerConnectionBackend::replaceTrack): Deleted.
+        (WebCore::LibWebRTCPeerConnectionBackend::enqueueReplaceTrackTask): Deleted.
+        * Modules/mediastream/libwebrtc/LibWebRTCPeerConnectionBackend.h:
+        * Modules/mediastream/libwebrtc/LibWebRTCRtpSenderBackend.cpp:
+        (WebCore::updateTrackSource):
+        (WebCore::LibWebRTCRtpSenderBackend::replaceTrack):
+        * Modules/mediastream/libwebrtc/LibWebRTCRtpSenderBackend.h:
+
+2018-09-06  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Rename the -apple-pay-button-type value "checkout" to "check-out"
+        https://bugs.webkit.org/show_bug.cgi?id=189366
+        <rdar://problem/44193218>
+
+        Reviewed by Sam Weinig.
+
+        The button title is "Check out with Apple Pay", so we should use the verb phrase "check out"
+        rather than the noun "checkout" for naming this value.
+
+        Updated http/tests/ssl/applepay/ApplePayButtonV4.html.
+
+        * css/CSSPrimitiveValueMappings.h:
+        (WebCore::CSSPrimitiveValue::CSSPrimitiveValue):
+        (WebCore::CSSPrimitiveValue::operator ApplePayButtonType const):
+        * css/CSSValueKeywords.in:
+        * css/parser/CSSParserFastPaths.cpp:
+        (WebCore::CSSParserFastPaths::isValidKeywordPropertyAndValue):
+        * rendering/RenderThemeCocoa.mm:
+        (WebCore::toPKPaymentButtonType):
+        * rendering/style/RenderStyleConstants.h:
+
+2018-09-06  Jer Noble  <jer.noble@apple.com>
+
+        Don't pause playback when locking screen if video is being displayed on second screen.
+        https://bugs.webkit.org/show_bug.cgi?id=189321
+
+        Reviewed by Eric Carlson.
+
+        Expand the existing behavior when AirPlaying to an external device to playing to a local
+        external screen. Don't pause when the screen locks, and don't stop buffering in that mode either.
+
+        Add a KVO-observer to the WebAVPlayerController's playingOnSecondScreen property, and pass
+        that observed value on to the media element.
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::setShouldPlayToPlaybackTarget):
+        (WebCore::HTMLMediaElement::setPlayingOnSecondScreen):
+        (WebCore::HTMLMediaElement::shouldOverrideBackgroundPlaybackRestriction const):
+        (WebCore::HTMLMediaElement::processingUserGestureForMedia const):
+        (WebCore::HTMLMediaElement::mediaState const):
+        (WebCore::HTMLMediaElement::purgeBufferedDataIfPossible):
+        (WebCore::HTMLMediaElement::shouldOverrideBackgroundLoadingRestriction const):
+        (WebCore::HTMLMediaElement::webkitCurrentPlaybackTargetIsWireless const): Deleted.
+        (WebCore::HTMLMediaElement::canPlayToWirelessPlaybackTarget const): Deleted.
+        (WebCore::HTMLMediaElement::isPlayingToWirelessPlaybackTarget const): Deleted.
+        * html/HTMLMediaElement.h:
+        (WebCore::HTMLMediaElement::webkitCurrentPlaybackTargetIsWireless const):
+        (WebCore::HTMLMediaElement::isPlayingToExternalTarget const):
+        * html/MediaElementSession.cpp:
+        (WebCore::MediaElementSession::canPlayToWirelessPlaybackTarget const): Deleted.
+        * html/MediaElementSession.h:
+        * platform/audio/PlatformMediaSession.h:
+        (WebCore::PlatformMediaSessionClient::setWirelessPlaybackTarget):
+        (WebCore::PlatformMediaSessionClient::isPlayingOnSecondScreen const):
+        (WebCore::PlatformMediaSession::canPlayToWirelessPlaybackTarget const): Deleted.
+        (WebCore::PlatformMediaSessionClient::canPlayToWirelessPlaybackTarget const): Deleted.
+        * platform/cocoa/PlaybackSessionModel.h:
+        * platform/cocoa/PlaybackSessionModelMediaElement.h:
+        * platform/cocoa/PlaybackSessionModelMediaElement.mm:
+        (WebCore::PlaybackSessionModelMediaElement::setPlayingOnSecondScreen):
+        * platform/ios/WebAVPlayerController.mm:
+        (-[WebAVPlayerController init]):
+        (-[WebAVPlayerController dealloc]):
+        (-[WebAVPlayerController observeValueForKeyPath:ofObject:change:context:]):
+        * platform/ios/WebVideoFullscreenControllerAVKit.mm:
+        (VideoFullscreenControllerContext::setPlayingOnSecondScreen):
+
+2018-09-06  Frederic Wang  <fwang@igalia.com>
+
+        Group options of scrollRectToVisible into a struct
+        https://bugs.webkit.org/show_bug.cgi?id=189352
+
+        Reviewed by Simon Fraser.
+
+        RenderLayer::scrollRectToVisible and RenderObject::scrollRectToVisible have several
+        parameters to configure the type of scrolling. This patch groups the const options into a
+        single struct to make easier to handle them in the future. For example, an #ifdefed scroll
+        behavior option will be added in bug 188043. This refactoring can maybe help too for other
+        scroll extensions (e.g. bug 176454 and bug 161611).
+
+        No new tests, behavior unchanged.
+
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::AccessibilityObject::scrollToMakeVisible const): Pass options via a struct.
+        * dom/Element.cpp:
+        (WebCore::Element::scrollIntoView): Ditto.
+        (WebCore::Element::scrollIntoViewIfNeeded): Ditto.
+        (WebCore::Element::scrollIntoViewIfNotVisible): Ditto.
+        * editing/FrameSelection.cpp: Include RenderLayer.h in all WebKit ports in order to define
+        ScrollRectToVisibleOptions.
+        (WebCore::FrameSelection::revealSelection): Pass options via a struct.
+        * page/FrameView.cpp:
+        (WebCore::FrameView::scrollToFocusedElementInternal): Ditto.
+        (WebCore::FrameView::scrollToAnchor): Ditto.
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::scrollRectToVisible): Pass options via a struct. Note that
+        absoluteRect and insideFixed are modified in this function.
+        (WebCore::RenderLayer::autoscroll): Pass options via a struct.
+        * rendering/RenderLayer.h: Add ScrollRectToVisibleOptions and use it in order to pass
+        scrollRectToVisible options.
+        * rendering/RenderObject.cpp:
+        (WebCore::RenderObject::scrollRectToVisible): Pass options via a struct
+        * rendering/RenderObject.h: Forward-declare ScrollRectToVisibleOptions and use in order to
+        pass scrollRectToVisible options.
+
+2018-09-06  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [macOS] Cannot change font size at selection until font panel is shown
+        https://bugs.webkit.org/show_bug.cgi?id=189295
+        <rdar://problem/35593389>
+
+        Reviewed by Ryosuke Niwa.
+
+        Currently, attempting to alter the font size of currently selected editable text in WKWebView via menu items
+        will fail if the font panel has never been shown. This is because WebViewImpl::changeFontFromFontPanel, which is
+        responsible for converting the current font at the selection to the new font using -[NSFontManager convertFont:]
+        bails as a result of NSFontManager's currently selected font always being nil.
+
+        WKWebView is responsible for keeping NSFontManager up-to-date with the currently selected font; in fact, this
+        was initially the case in r180465, which introduced NSFontManager support in WebKit2 by propagating EditorState
+        updates that contained font information for the current selection. However, this regressed performance due to
+        selected font computation triggering extra layout passes; r180768 addressed this by introducing a mechanism for
+        requesting the font at the current selection, and only updating NSFontManager with the new selected font when
+        the shared font panel is visible (determined by KVO on NSFontPanel). However, this again regressed WKWebView
+        launch performance, due to KVO registration always forcing the shared NSFontPanel to be created. r182037
+        addressed this by only registering for KVO on the font panel if the WKWebView has been made editable (SPI on
+        WKWebView).
+
+        This leads to two issues when attempting to alter font attributes using macOS UI: (1) in web views that have not
+        been made editable using SPI, showing the font panel and attempting to change the font fails due to the selected
+        font staying nil, because we've never begun registering for KVO notifications on the font panel so we don't try
+        to keep the font manager up to date. (2) Even if the web view is made editable, if the font panel is never
+        shown, then the font manager still won't be kept up to date with the current selection, so changing fonts using
+        menu items still does not work.
+
+        We fix both of these problems by refactoring font manager support on WebKit2 such that an up-to-date selected
+        font in the UI process is no longer necessary in order to alter the font at the current selection. To do this,
+        we figure out what changes the NSFontManager would've made to the currently selected font in the UI process, and
+        then propagate this information to the web process, where we convert this information into an EditingStyle which
+        we apply to the current selection.
+
+        The code to both determine the attributes changed by NSFontManager and to convert these attributes into editing
+        styles to be applied via Editor already exists in WebKitLegacy, in WebHTMLView.mm. This patch moves this
+        existing logic into WebCore and teases it apart into two portions: the first portion probes NSFontManager to
+        determine which aspects of the font changed and constructs FontChanges, which captures these differences. The
+        second portion maps FontChanges to an EditingStyle, which can then be applied to the current selection. In
+        WebKitLegacy, we construct FontChanges using the font manager, and then immediately use it to create and apply
+        an EditingStyle. In WebKit, we construct FontChanges in the UI process using the font manager, and then send
+        this over to the web process via WebPage::changeFont, which then creates and applies the EditingStyle.
+
+        Note that this patch also introduces FontAttributeChanges, which is similar in concept to FontChanges, but
+        captures a broader range of changes possible via NSFontPanel. This was done so that we can eliminate all of the
+        font manager probing code (along with the two specimen fonts) from WebHTMLView, but is also necessary in order
+        to allow changing font shadow, strikethrough, and underlines via the font panel to work in WebKit2. This will be
+        fixed in a followup, by making FontAttributeChanges IPC encodable and by making WKWebView/WKView respond to the
+        -changeAttributes: selector.
+
+        Changes in behavior to WebKit2 are covered by new API tests; legacy WebKit behavior should remain unchanged.
+
+        Tests:  FontManagerTests.ChangeFontSizeWithMenuItems
+                FontManagerTests.ChangeFontWithPanel
+
+        * SourcesCocoa.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * editing/Editor.h:
+
+        Remove applyFontStyles.
+
+        * editing/FontAttributeChanges.cpp: Added.
+        (WebCore::FontChanges::platformFontFamilyNameForCSS const):
+
+        Given a font family name and a font name, returns the string to use as the "font-family" style property value.
+        Originally from WebHTMLView.mm.
+
+        (WebCore::FontChanges::createEditingStyle const):
+
+        Converts font changes to an EditingStyle that can be used to apply these changes.
+
+        (WebCore::FontChanges::createStyleProperties const):
+
+        Introduce FontChanges, which encapsulates changes which are to be applied to the font in the current selection.
+
+        (WebCore::cssValueListForShadow):
+        (WebCore::FontAttributeChanges::createEditingStyle const):
+
+        Converts font attribute changes to an EditingStyle that can be used to apply these changes.
+
+        * editing/FontAttributeChanges.h: Added.
+
+        Introduce FontAttributeChanges, which encapsulates changes which are to be applied to the font attributes in the
+        current selection. This includes a set of FontChanges, as well as additional attributes such as strike-through
+        and underlines.
+
+        (WebCore::FontChanges::setFontName):
+        (WebCore::FontChanges::setFontFamily):
+        (WebCore::FontChanges::setFontSize):
+        (WebCore::FontChanges::setFontSizeDelta):
+        (WebCore::FontChanges::setBold):
+        (WebCore::FontChanges::setItalic):
+        (WebCore::FontAttributeChanges::setVerticalAlign):
+        (WebCore::FontAttributeChanges::setBackgroundColor):
+        (WebCore::FontAttributeChanges::setForegroundColor):
+        (WebCore::FontAttributeChanges::setShadow):
+        (WebCore::FontAttributeChanges::setStrikeThrough):
+        (WebCore::FontAttributeChanges::setUnderline):
+        (WebCore::FontAttributeChanges::setFontChanges):
+
+        Setters for FontChanges and FontAttributeChanges. Initially, most of these values are optional, indicating that
+        there should be no change.
+
+        (WebCore::FontChanges::encode const):
+        (WebCore::FontChanges::decode):
+
+        Add encoding/decoding support to FontChanges, so that it can be sent over IPC for WebKit2.
+
+        * editing/cocoa/FontAttributeChangesCocoa.mm: Added.
+        (WebCore::FontChanges::platformFontFamilyNameForCSS const):
+
+        Helper method to determine whether the font family or the font name should be used, by looking up the PostScript
+        font name using a FontDescriptor and comparing it against the result of -[NSFont fontName]. This logic was
+        originally in WebHTMLView.mm.
+
+        * editing/mac/EditorMac.mm:
+        (WebCore::Editor::applyFontStyles): Deleted.
+        * platform/mac/WebCoreNSFontManagerExtras.h: Added.
+        * platform/mac/WebCoreNSFontManagerExtras.mm: Added.
+
+        Add helper functions to compute FontChanges and FontAttributeChanges from NSFontManager.
+
+        (WebCore::firstFontConversionSpecimen):
+        (WebCore::secondFontConversionSpecimen):
+
+        Two "specimen fonts" used to determine what changes NSFontManager or NSFontPanel makes when performing font or
+        font attribute conversion. Moved from WebHTMLView.mm.
+
+        (WebCore::computedFontChanges):
+        (WebCore::computedFontAttributeChanges):
+
+        Moved here from WebHTMLView.mm. Instead of converting font attributes to NSStrings and setting properties on
+        DOMCSSStyleDeclaration, we instead specify properties on MutableStyleProperties using CSSValues.
+
+2018-09-06  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC] Add support for min(max)-width
+        https://bugs.webkit.org/show_bug.cgi?id=189358
+
+        Reviewed by Antti Koivisto.
+
+        See https://www.w3.org/TR/CSS22/visudet.html#min-max-widths for details.
+
+        Tests: fast/block/block-only/absolute-position-min-max-width.html
+               fast/block/block-only/float-min-max-width.html
+               fast/block/block-only/inflow-min-max-width.html
+
+        * layout/FormattingContext.cpp:
+        (WebCore::Layout::FormattingContext::computeOutOfFlowHorizontalGeometry const):
+        * layout/FormattingContext.h:
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowHorizontalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::floatingWidthAndMargin):
+        (WebCore::Layout::FormattingContext::Geometry::inlineReplacedWidthAndMargin):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowReplacedHorizontalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowNonReplacedHorizontalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::floatingReplacedWidthAndMargin):
+        (WebCore::Layout::FormattingContext::Geometry::floatingNonReplacedWidthAndMargin):
+        * layout/FormattingContextGeometry.cpp:
+        (WebCore::Layout::FormattingContext::Geometry::computedValueIfNotAuto):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowNonReplacedHorizontalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowReplacedHorizontalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::floatingNonReplacedWidthAndMargin):
+        (WebCore::Layout::FormattingContext::Geometry::floatingReplacedWidthAndMargin):
+        (WebCore::Layout::FormattingContext::Geometry::outOfFlowHorizontalGeometry):
+        (WebCore::Layout::FormattingContext::Geometry::floatingWidthAndMargin):
+        (WebCore::Layout::FormattingContext::Geometry::inlineReplacedWidthAndMargin):
+        * layout/blockformatting/BlockFormattingContext.cpp:
+        (WebCore::Layout::BlockFormattingContext::computeWidthAndMargin const):
+        * layout/blockformatting/BlockFormattingContext.h:
+        (WebCore::Layout::BlockFormattingContext::Geometry::inFlowWidthAndMargin):
+        (WebCore::Layout::BlockFormattingContext::Geometry::inFlowNonReplacedWidthAndMargin):
+        (WebCore::Layout::BlockFormattingContext::Geometry::inFlowReplacedWidthAndMargin):
+        * layout/blockformatting/BlockFormattingContextGeometry.cpp:
+        (WebCore::Layout::BlockFormattingContext::Geometry::inFlowNonReplacedWidthAndMargin):
+        (WebCore::Layout::BlockFormattingContext::Geometry::inFlowReplacedWidthAndMargin):
+        (WebCore::Layout::BlockFormattingContext::Geometry::inFlowWidthAndMargin):
+
+2018-09-06  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Initialize AVVideoCapture video presets
+        https://bugs.webkit.org/show_bug.cgi?id=189355
+
+        Reviewed by Youenn Fablet.
+
+        No new tests, no functionality changed.
+
+        * platform/mediastream/mac/AVVideoCaptureSource.mm:
+        (WebCore::AVVideoCaptureSource::AVVideoCaptureSource): Don't try to load symbols if they
+        aren't available.
+
+2018-09-06  Ali Juma  <ajuma@chromium.org>
+
+        IntersectionObserver leaks documents
+        https://bugs.webkit.org/show_bug.cgi?id=189128
+
+        Reviewed by Simon Fraser.
+
+        Currently, Documents own IntersectionObservers while IntersectionObservers own callbacks
+        that have strong references to Documents. To break this cycle, make Documents only have
+        weak pointers to IntersectionObservers. Instead, manage the lifetime of an
+        IntersectionObserver as an ActiveDOMObject, overriding hasPendingActivity to keep
+        the observer alive while there are ongoing observations.
+
+        However, there is a still a potential reference cycle. The callback keeps global
+        references alive, so if there's a global reference to the observer in JavaScript,
+        we have an observer->callback->observer cycle, keeping the callback (and hence the Document)
+        alive. To break this cycle, make IntersectionObserver release the callback when its
+        Document is stopped.
+
+        With these changes, there are no longer any leaks reported with run-webkit-tests --world-leaks
+        on LayoutTests/intersection-observer and LayoutTests/imported/w3c/web-platform-tests/intersection-observer.
+
+        Tests: intersection-observer/no-document-leak.html
+               intersection-observer/observer-and-callback-without-js-references.html
+
+        * dom/Document.cpp:
+        (WebCore::Document::addIntersectionObserver):
+        (WebCore::Document::removeIntersectionObserver):
+        * dom/Document.h:
+        * dom/Element.cpp:
+        (WebCore::Element::didMoveToNewDocument):
+        * page/IntersectionObserver.cpp:
+        (WebCore::IntersectionObserver::IntersectionObserver):
+        (WebCore::IntersectionObserver::~IntersectionObserver):
+        (WebCore::IntersectionObserver::observe):
+        (WebCore::IntersectionObserver::rootDestroyed):
+        (WebCore::IntersectionObserver::createTimestamp const):
+        (WebCore::IntersectionObserver::notify):
+        (WebCore::IntersectionObserver::hasPendingActivity const):
+        (WebCore::IntersectionObserver::activeDOMObjectName const):
+        (WebCore::IntersectionObserver::canSuspendForDocumentSuspension const):
+        (WebCore::IntersectionObserver::stop):
+        * page/IntersectionObserver.h:
+        (WebCore::IntersectionObserver::trackingDocument const):
+        (WebCore::IntersectionObserver::trackingDocument): Deleted.
+        * page/IntersectionObserver.idl:
+
+2018-09-05  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Adapt to the new const WeakPtr<>
+        https://bugs.webkit.org/show_bug.cgi?id=189334
+
+        Reviewed by Antti Koivisto.
+
+        * layout/FormattingContext.cpp:
+        (WebCore::Layout::FormattingContext::FormattingContext):
+        * layout/FormattingContext.h:
+        * layout/LayoutContext.cpp:
+        (WebCore::Layout::LayoutContext::initializeRoot):
+        * layout/LayoutContext.h:
+        * layout/floats/FloatAvoider.cpp:
+        (WebCore::Layout::FloatAvoider::FloatAvoider):
+        * layout/floats/FloatAvoider.h:
+        * layout/floats/FloatingState.cpp:
+        (WebCore::Layout::FloatingState::FloatItem::FloatItem):
+        (WebCore::Layout::FloatingState::FloatingState):
+        * layout/floats/FloatingState.h:
+        * layout/layouttree/LayoutContainer.cpp:
+        (WebCore::Layout::Container::addOutOfFlowDescendant):
+        * layout/layouttree/LayoutContainer.h:
+        (WebCore::Layout::Container::outOfFlowDescendants const):
+
+2018-09-06  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GStreamer] Extra ASSERTs at MainThreadNotifier
+        https://bugs.webkit.org/show_bug.cgi?id=188786
+
+        Reviewed by Carlos Garcia Campos.
+
+        We add a couple of checks in debug mode: there is only one bit on
+        per notification and ensure a notifier was invalidated before
+        being destroyed.
+
+        * platform/graphics/gstreamer/MainThreadNotifier.h:
+
 2018-09-05  Youenn Fablet  <youenn@apple.com>
 
         Move ownership of outgoing source to RTCRtpSender backend
