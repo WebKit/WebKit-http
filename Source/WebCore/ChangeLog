@@ -1,5 +1,96 @@
 2018-09-07  Youenn Fablet  <youenn@apple.com>
 
+        RTCRtpReceiver::track should return a MediaStreamTrack reference
+        https://bugs.webkit.org/show_bug.cgi?id=189420
+
+        Reviewed by Eric Carlson.
+
+        As per spec, a receiver always has a track.
+        Remove unneeded RTCRtpSenderReceiverBase and make RTCRtpReceiver have a Ref<MediaStreamTrack>.
+        RTCRtpSender keeps having a RefPtr<MediaStreamTrack>.
+        Update call sites accordingly. 
+        No change of behavior.
+
+        * Modules/mediastream/RTCRtpReceiver.cpp:
+        (WebCore::RTCRtpReceiver::RTCRtpReceiver):
+        (WebCore::RTCRtpReceiver::stop):
+        * Modules/mediastream/RTCRtpReceiver.h:
+        (WebCore::RTCRtpReceiver::track):
+        * Modules/mediastream/RTCRtpReceiver.idl:
+        * Modules/mediastream/RTCRtpSender.cpp:
+        (WebCore::RTCRtpSender::RTCRtpSender):
+        * Modules/mediastream/RTCRtpSender.h:
+        (WebCore::RTCRtpSender::track):
+        * Modules/mediastream/RTCRtpSender.idl:
+        * Modules/mediastream/RTCRtpSenderReceiverBase.h: Removed.
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.cpp:
+        (WebCore::LibWebRTCMediaEndpoint::addRemoteTrack):
+        * Modules/mediastream/libwebrtc/LibWebRTCPeerConnectionBackend.cpp:
+        (WebCore::LibWebRTCPeerConnectionBackend::videoReceiver):
+        (WebCore::LibWebRTCPeerConnectionBackend::audioReceiver):
+        * WebCore.xcodeproj/project.pbxproj:
+
+2018-09-07  Daniel Bates  <dabates@apple.com>
+
+        Cleanup: Remove extraneous "using namespace" and scope WebCore::LogThreading
+        https://bugs.webkit.org/show_bug.cgi?id=189381
+
+        Reviewed by Simon Fraser.
+
+        * platform/ios/wak/WKGraphics.mm:
+        * platform/ios/wak/WebCoreThread.mm:
+        (WebThreadEnable):
+
+2018-09-07  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Clean up FontAttributeChanges.cpp after r235748
+        https://bugs.webkit.org/show_bug.cgi?id=189394
+
+        Reviewed by Tim Horton.
+
+        * Sources.txt: Move FontAttributeChanges.cpp into unified sources.
+        * WebCore.xcodeproj/project.pbxproj:
+        * editing/FontAttributeChanges.cpp: Replace `#import`s with `#include`s.
+
+2018-09-07  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl][WebKitLegacy] Stop sending credential embedded in the url via XHR.
+        https://bugs.webkit.org/show_bug.cgi?id=189198
+
+        Reviewed by Alexey Proskuryakov.
+
+        Because sync XHR of Curl port uses passed request directly, the credential information in
+        url is not removed. Use ResourceHandleInternal's firstRequest because those are
+        already takne out.
+
+        Test: http/tests/xmlhttprequest/url-with-credentials.html
+
+        * platform/network/curl/ResourceHandleCurl.cpp:
+        (WebCore::ResourceHandle::platformLoadResourceSynchronously):
+
+2018-09-07  Youenn Fablet  <youenn@apple.com>
+
+        RealtimeOutgoingVideoSourceCocoa should use VTImageRotationSession to rotate CVPixelBuffers
+        https://bugs.webkit.org/show_bug.cgi?id=189427
+
+        Reviewed by Eric Carlson.
+
+        Previously, we were relying on libwebrtc utils to do the rotation.
+        This is inefficient compared to VTImageRotateSession and also induces additional memory cost
+        since libwebrtc is rotating using its own buffers and the encoder will convert this buffer back to a CVPixelBuffer.
+
+        Instead use VTImageRotationSession when rotation must be done at sending side.
+        Covered by webrtc/video-rotation.html.
+
+        * platform/mediastream/mac/RealtimeOutgoingVideoSourceCocoa.cpp:
+        (WebCore::RealtimeOutgoingVideoSourceCocoa::sampleBufferUpdated):
+        * platform/mediastream/mac/RealtimeOutgoingVideoSourceCocoa.h:
+        * platform/mediastream/mac/RealtimeOutgoingVideoSourceCocoa.mm:
+        (WebCore::computeRotatedWidthAndHeight):
+        (WebCore::RealtimeOutgoingVideoSourceCocoa::rotatePixelBuffer):
+
+2018-09-07  Youenn Fablet  <youenn@apple.com>
+
         Add support for unified plan transceivers
         https://bugs.webkit.org/show_bug.cgi?id=189390
 
