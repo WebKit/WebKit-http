@@ -142,6 +142,7 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
     , m_seekTime(MediaTime::invalidTime())
     , m_source(nullptr)
     , m_volumeAndMuteInitialized(false)
+    , m_previousDuration(MediaTime::invalidTime())
     , m_mediaLocations(nullptr)
     , m_mediaLocationCurrentIndex(0)
     , m_playbackRatePause(false)
@@ -370,16 +371,21 @@ MediaTime MediaPlayerPrivateGStreamer::playbackPosition() const
 
     // Position is only available if no async state change is going on and the state is either paused or playing.
     gint64 position = GST_CLOCK_TIME_NONE;
-    GstElement* videoDec = nullptr;
+    GstElement* positionElement = nullptr;
     GstQuery* query = gst_query_new_position(GST_FORMAT_TIME);
 #if USE(FUSION_SINK)
-    g_object_get(m_pipeline.get(), "video-sink", &videoDec, nullptr);
-    if (!GST_IS_ELEMENT(videoDec))
-        return MediaTime::zeroTime();
+    g_object_get(m_pipeline.get(), "video-sink", &positionElement, nullptr);
+    if (!GST_IS_ELEMENT(positionElement)) {
+        g_object_get(m_pipeline.get(), "audio-sink", &positionElement, nullptr);
+        if(!GST_IS_ELEMENT(positionElement)) {
+            GST_DEBUG("Returning zero time");
+            return MediaTime::zeroTime();
+        }
+    }
 #else
-    videoDec = m_pipeline.get();
+    positionElement = m_pipeline.get();
 #endif
-    if (gst_element_query(videoDec, query))
+    if (gst_element_query(positionElement, query))
         gst_query_parse_position(query, 0, &position);
     gst_query_unref(query);
 
@@ -395,7 +401,7 @@ MediaTime MediaPlayerPrivateGStreamer::playbackPosition() const
 #if PLATFORM(BCM_NEXUS)
     // implement getting pts time from broadcom decoder directly for seek functionality
     gint64 currentPts = -1;
-    /*GstElement**/ videoDec = findVideoDecoder(m_pipeline.get());
+    GstElement* videoDec = findVideoDecoder(m_pipeline.get());
     const char* videoPtsPropertyName = "video_pts";
     if (videoDec)
         g_object_get(videoDec, videoPtsPropertyName, &currentPts, nullptr);
@@ -527,8 +533,12 @@ MediaTime MediaPlayerPrivateGStreamer::durationMediaTime() const
 #endif
 
     // The duration query would fail on a not-prerolled pipeline.
-    if (GST_STATE(m_pipeline.get()) < GST_STATE_PAUSED)
+    if (GST_STATE(m_pipeline.get()) < GST_STATE_PAUSED) {
+        if(m_isEndReached && m_previousDuration.isValid()) {
+            return m_previousDuration;
+        }
         return MediaTime::positiveInfiniteTime();
+    }
 
     gint64 timeLength = 0;
 
@@ -1944,16 +1954,13 @@ void MediaPlayerPrivateGStreamer::didEnd()
 
 void MediaPlayerPrivateGStreamer::durationChanged()
 {
-    MediaTime previousDuration = durationMediaTime();
+    MediaTime newDuration = durationMediaTime();
 
-    // FIXME: Check if this method is still useful, because it's not doing its work at all
-    // since bug #159458 removed a cacheDuration() call here.
-
-    // Avoid emiting durationchanged in the case where the previous
-    // duration was 0 because that case is already handled by the
-    // HTMLMediaElement.
-    if (previousDuration && durationMediaTime() != previousDuration)
+    if (newDuration != m_previousDuration) {
+        GST_DEBUG("Triggering durationChanged");
         m_player->durationChanged();
+    }
+    m_previousDuration = newDuration;
 }
 
 void MediaPlayerPrivateGStreamer::loadingFailed(MediaPlayer::NetworkState error)
