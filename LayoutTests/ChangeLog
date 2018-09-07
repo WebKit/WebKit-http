@@ -1,3 +1,183 @@
+2018-09-07  Youenn Fablet  <youenn@apple.com>
+
+        Add support for unified plan transceivers
+        https://bugs.webkit.org/show_bug.cgi?id=189390
+
+        Reviewed by Eric Carlson.
+
+        Update tests using mock to enforce plan B for now until unified plan mocks are supported.
+
+        * fast/mediastream/RTCPeerConnection-addIceCandidate-expected.txt:
+        * fast/mediastream/RTCPeerConnection-icecandidate-event.html:
+        * fast/mediastream/RTCPeerConnection-iceconnectionstatechange-event.html:
+        * fast/mediastream/RTCPeerConnection-inspect-answer.html:
+        * fast/mediastream/RTCPeerConnection-inspect-offer.html:
+        * fast/mediastream/RTCPeerConnection-media-setup-single-dialog.html:
+        * fast/mediastream/RTCPeerConnection-media-setup-two-dialogs.html:
+        * fast/mediastream/RTCPeerConnection-remotely-assigned-transceiver-mid.html:
+        * fast/mediastream/RTCPeerConnection-setLocalDescription-offer.html:
+        * fast/mediastream/RTCPeerConnection-setRemoteDescription-offer.html:
+        * webrtc/calling-peerconnection-once-closed.html:
+        Once closed, addTransceiver is expected to throw.
+        * webrtc/libwebrtc/release-while-creating-offer.html:
+        * webrtc/libwebrtc/release-while-getting-stats.html:
+        * webrtc/libwebrtc/release-while-setting-local-description.html:
+        * webrtc/video-getParameters.html: sender and receiver parameters are no longer the same.
+        Testing them individually.
+        * webrtc/video-with-receiver.html:
+        Test is working only with legacy mode.
+
+2018-09-07  Frederic Wang  <fwang@igalia.com>
+
+        [CSSOM View] Handle the scrollingElement in Element::scroll(Left/Top/Width/Height/To)
+        https://bugs.webkit.org/show_bug.cgi?id=182230
+
+        Reviewed by Simon Fraser.
+
+        This commit updates some tests to work when CSSOMViewScrollingAPI is enabled.
+
+        * TestExpectations: Enable web-platform-tests/cssom-view/scrollingElement.html.
+        * fast/dom/Document/scrollingElement-quirks-mode.html: Do not enable explictly enable
+        CSSOMViewScrollingAPI.
+        * fast/dom/Document/scrollingElement-standards-mode.html: Ditto.
+        * fast/dom/Element/body-scrollLeft-expected.txt: Updated to follow the CSSOMView spec.
+        * fast/dom/Element/body-scrollLeft.html: Ditto.
+        * fast/dom/Element/body-scrollTop-expected.txt: Ditto.
+        * fast/dom/Element/body-scrollTop.html: Ditto.
+        * fast/dom/Element/documentElement-scrollLeft-expected.txt: Ditto.
+        * fast/dom/Element/documentElement-scrollLeft.html: Ditto.
+        * fast/dom/Element/documentElement-scrollTop-expected.txt: Ditto.
+        * fast/dom/Element/documentElement-scrollTop.html: Ditto.
+        * fast/dom/Element/scrollLeft-expected.txt: Ditto.
+        * fast/dom/Element/scrollLeft.html: Ditto.
+        * fast/dom/Element/scrollTop-expected.txt: Ditto.
+        * fast/dom/Element/scrollTop.html: Ditto.
+        * fast/dom/Element/scrolling-funtions-on-body-expected.txt: Ditto.
+        * fast/dom/Element/scrolling-funtions-on-body.html: Ditto.
+        * platform/ios/TestExpectations: Add expectation for one WPT test that was already failing
+        on iOS.
+        * platform/ios/ios/fast/coordinates/page-offsets-expected.txt: Use documentElement instead
+        of body for this test when running in standard mode.
+        * platform/ios/ios/fast/coordinates/resources/helpers.js: Ditto.
+        (verifyScrollOffsets):
+        * tiled-drawing/scrolling/fast-scroll-div-latched-mainframe.html: Use
+        document.scrollingElement instead of document.body to access viewport scroll offset.
+
+2018-09-07  Zalan Bujtas  <zalan@apple.com>
+
+        [iOS] Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2018-09-06  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC] Add support for min/max-height percentage values.
+        https://bugs.webkit.org/show_bug.cgi?id=189391
+
+        Reviewed by Antti Koivisto.
+
+        * fast/block/block-only/min-max-height-percentage-expected.txt: Added.
+        * fast/block/block-only/min-max-height-percentage.html: Added.
+
+2018-09-06  Megan Gardner  <megan_gardner@apple.com>
+
+        Add Support for Conic Gradients
+        https://bugs.webkit.org/show_bug.cgi?id=189329
+        <rdar://problem/21444701>
+
+        Reviewed by Simon Fraser.
+
+        Simple tests to see if conic gradients are rendered properly.
+
+        * fast/gradients/conic-expected.html: Added.
+        * fast/gradients/conic-repeating-expected.html: Added.
+        * fast/gradients/conic-repeating.html: Added.
+        * fast/gradients/conic.html: Added.
+
+2018-09-06  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC] Add support for min(max)-height
+        https://bugs.webkit.org/show_bug.cgi?id=189377
+
+        Reviewed by Antti Koivisto.
+
+        * fast/block/block-only/absolute-position-min-max-height-expected.txt: Added.
+        * fast/block/block-only/absolute-position-min-max-height.html: Added.
+        * fast/block/block-only/float-min-max-height-expected.txt: Added.
+        * fast/block/block-only/float-min-max-height.html: Added.
+        * fast/block/block-only/inflow-min-max-height-expected.txt: Added.
+        * fast/block/block-only/inflow-min-max-height.html: Added.
+
+2018-09-06  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Add a test to ensure that DOM keyup events have the correct details
+        https://bugs.webkit.org/show_bug.cgi?id=189327
+
+        Reviewed by Wenson Hsieh.
+
+        Until we fix <rdar://problem/35282761> DOM keyup events will have incorrect details on iOS
+        when dispatched in response to a hardware keyboard press. For now, land expected failure results.
+
+        * fast/events/ios/keyup-expected.txt: Added.
+        * fast/events/ios/keyup.html: Added.
+        * resources/ui-helper.js:
+        (window.UIHelper.typeCharacter): Escape backslash characters in order to build up
+        a well-formed UI script to evaluate.
+
+2018-09-06  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Rename the -apple-pay-button-type value "checkout" to "check-out"
+        https://bugs.webkit.org/show_bug.cgi?id=189366
+        <rdar://problem/44193218>
+
+        Reviewed by Sam Weinig.
+
+        * http/tests/ssl/applepay/ApplePayButtonV4.html:
+
+2018-09-06  Zalan Bujtas  <zalan@apple.com>
+
+        [LFC][BFC] Add support for min(max)-width
+        https://bugs.webkit.org/show_bug.cgi?id=189358
+
+        Reviewed by Antti Koivisto.
+
+        * fast/block/block-only/absolute-position-min-max-width-expected.txt: Added.
+        * fast/block/block-only/absolute-position-min-max-width.html: Added.
+        * fast/block/block-only/float-min-max-width-expected.txt: Added.
+        * fast/block/block-only/float-min-max-width.html: Added.
+        * fast/block/block-only/inflow-min-max-width-expected.txt: Added.
+        * fast/block/block-only/inflow-min-max-width.html: Added.
+
+2018-09-06  Miguel Gomez  <magomez@igalia.com>
+
+        Unreviewed GTK+ gardening after r235732.
+
+        * platform/gtk/TestExpectations:
+
+2018-09-06  Ali Juma  <ajuma@chromium.org>
+
+        IntersectionObserver leaks documents
+        https://bugs.webkit.org/show_bug.cgi?id=189128
+
+        Reviewed by Simon Fraser.
+
+        * intersection-observer/no-document-leak-expected.txt: Added.
+        * intersection-observer/no-document-leak.html: Added.
+        * intersection-observer/observer-and-callback-without-js-references-expected.txt: Added.
+        * intersection-observer/observer-and-callback-without-js-references.html: Added.
+        * intersection-observer/resources/no-document-leak-frame.html: Added.
+
+2018-09-05  Brent Fulgham  <bfulgham@apple.com>
+
+        The width of a nullptr TextRun should be zero
+        https://bugs.webkit.org/show_bug.cgi?id=189154
+        <rdar://problem/43685926>
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/text/null-string-textrun-expected.txt: Added.
+        * fast/text/null-string-textrun.html: Added.
+
 2018-09-05  Youenn Fablet  <youenn@apple.com>
 
         Expose RTCRtpSender.setParameters
