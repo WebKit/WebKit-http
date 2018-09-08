@@ -446,6 +446,11 @@ endif ()
 # From PlatformWin.cmake
 
 if (WIN32)
+    # Eliminate C2139 errors
+    if (MSVC)
+        add_compile_options(/D_ENABLE_EXTENDED_ALIGNED_STORAGE)
+    endif ()
+
     if (${JavaScriptCore_LIBRARY_TYPE} MATCHES STATIC)
         add_definitions(-DSTATICALLY_LINKED_WITH_WTF -DSTATICALLY_LINKED_WITH_JavaScriptCore)
     endif ()
