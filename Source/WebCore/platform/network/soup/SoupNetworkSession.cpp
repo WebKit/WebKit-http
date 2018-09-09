@@ -260,24 +260,14 @@ void SoupNetworkSession::setupProxy()
 void SoupNetworkSession::setProxies(const Vector<WebCore::Proxy>& proxies)
 {
 #if PLATFORM(WPE)
+    const char *ignore_hosts[] = { "localhost", "127.0.0.1", NULL };
     const char* httpProxy = getenv("http_proxy");
-    GProxyResolver* resolver = g_wildcard_proxy_resolver_new(httpProxy);
-
-    GWildcardProxyResolver* w_resolver = G_WILDCARD_PROXY_RESOLVER(resolver);
-
-    GPtrArray* array = g_ptr_array_sized_new(proxies.size());
-    for (size_t i = 0; i < proxies.size(); ++i)
-    {
-        GWildcardProxyResolverProxy* p = g_new(GWildcardProxyResolverProxy, 1);
-        p->pattern = g_strdup(proxies[i].pattern.utf8().data());
-        p->proxy = g_strdup(proxies[i].proxy.utf8().data());
-        g_ptr_array_add(array, p);
+    if (httpProxy) {
+        GProxyResolver* resolver = g_simple_proxy_resolver_new(httpProxy, (char **) ignore_hosts);
+        g_object_set(m_soupSession.get(), SOUP_SESSION_PROXY_RESOLVER, resolver, nullptr);
     }
-    g_wildcard_proxy_resolver_set_proxies(w_resolver, array);
-    g_object_set(m_soupSession.get(), SOUP_SESSION_PROXY_RESOLVER, resolver, nullptr);
-#else
-    UNUSED_PARAM(proxies);
 #endif
+    UNUSED_PARAM(proxies);
 }
 
 #if PLATFORM(WPE)
