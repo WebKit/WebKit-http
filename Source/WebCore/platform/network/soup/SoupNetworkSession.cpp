@@ -260,10 +260,10 @@ void SoupNetworkSession::setupProxy()
 void SoupNetworkSession::setProxies(const Vector<WebCore::Proxy>& proxies)
 {
 #if PLATFORM(WPE)
-    const char *ignore_hosts[] = { "localhost", "127.0.0.1", NULL };
     const char* httpProxy = getenv("http_proxy");
+    const char* noProxy = getenv("no_proxy");
     if (httpProxy) {
-        GProxyResolver* resolver = g_simple_proxy_resolver_new(httpProxy, (char **) ignore_hosts);
+        GProxyResolver* resolver = g_simple_proxy_resolver_new(httpProxy, (noProxy && strcmp(noProxy, "")) ? g_strsplit(noProxy, ",", -1) : nullptr);
         g_object_set(m_soupSession.get(), SOUP_SESSION_PROXY_RESOLVER, resolver, nullptr);
     }
 #endif
