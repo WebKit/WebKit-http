@@ -1,3 +1,272 @@
+2018-09-10  Youenn Fablet  <youenn@apple.com>
+
+        ontrack events should be fired even if an existing transceiver exists
+        https://bugs.webkit.org/show_bug.cgi?id=189477
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-addLegacyTransceiver-expected.txt: Added.
+        * webrtc/video-addLegacyTransceiver.html: Copied from LayoutTests/webrtc/video-addTransceiver.html.
+        * webrtc/video-addTransceiver.html:
+
+2018-09-10  Megan Gardner  <megan_gardner@apple.com>
+
+        Correctly interpret from angle for conic gradients
+        https://bugs.webkit.org/show_bug.cgi?id=189445
+        <rdar://problem/44158271>
+
+        Reviewed by Tim Horton.
+
+        Adding a test for a conic gradient that starts at an angle.
+        Cover the edges because triangles and conic gradients aren't rendered
+        exactly the same.
+
+        * TestExpectations:
+        * fast/gradients/conic-from-angle-expected.html: Added.
+        * fast/gradients/conic-from-angle.html: Added.
+        * platform/ios-12/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2018-09-10  James Savage  <james.savage@apple.com>
+
+        Expose -apple-system-container-border color to internal web views.
+        https://bugs.webkit.org/show_bug.cgi?id=189178.
+
+        Reviewed by Timothy Hatcher.
+
+        * fast/css/apple-system-control-colors-expected.txt:
+        * fast/css/apple-system-control-colors.html:
+        * platform/mac-highsierra/fast/css/apple-system-control-colors-expected.txt:
+        * platform/mac-sierra/fast/css/apple-system-control-colors-expected.txt:
+        * platform/mac/fast/css/apple-system-control-colors-expected.txt:
+
+2018-09-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        mouseenter and mouseleave events don't get dispatched even when there is a capturing event listener for a slot ancestor
+        https://bugs.webkit.org/show_bug.cgi?id=188561
+
+        Reviewed by Darin Adler.
+
+        Added tests for listening to mouseenter and mouseleave events using capturing and bubbling event listeners
+        across shadow boundaries.
+
+        * fast/shadow-dom/mouseenter-mouseleave-across-shadow-boundary-expected.txt: Added.
+        * fast/shadow-dom/mouseenter-mouseleave-across-shadow-boundary.html: Added.
+        * fast/shadow-dom/mouseenter-mouseleave-inside-shadow-tree-expected.txt: Added.
+        * fast/shadow-dom/mouseenter-mouseleave-inside-shadow-tree.html: Added.
+        * fast/shadow-dom/mouseenter-mouseleave-on-slot-parent-expected.txt: Added.
+        * fast/shadow-dom/mouseenter-mouseleave-on-slot-parent.html: Added.
+        * platform/ios/TestExpectations: Skip the new tests since mouse events aren't supported on iOS.
+
+2018-09-10  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Arrow keys do not dispatch DOM events to non-editable elements
+        https://bugs.webkit.org/show_bug.cgi?id=189389
+
+        Reviewed by Simon Fraser.
+
+        Update expected result now that we compute the correct keyIdentifier, keycode, and which properties
+        for DOM keyboard events dispatched when the arrow keys are pressed.
+
+        * fast/events/ios/keydown-keyup-in-non-editable-content-expected.txt:
+
+2018-09-10  Daniel Bates  <dabates@apple.com>
+
+        [iOS] Make WKWebView become the first responder to support testing key presses to non-editable elements
+        https://bugs.webkit.org/show_bug.cgi?id=189432
+
+        Reviewed by Simon Fraser.
+
+        Add a test that DOM keyboard events are dispatched to a non-editable <body> when simulating key
+        presses using a hardware keyboard.
+
+        * fast/events/ios/keydown-keyup-in-non-editable-content-expected.txt: Added.
+        * fast/events/ios/keydown-keyup-in-non-editable-content.html: Added.
+
+2018-09-10  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Use JSValueInWrappedObject for PaymentResponse's details attribute
+        https://bugs.webkit.org/show_bug.cgi?id=189458
+
+        Reviewed by Youenn Fablet.
+
+        * fast/dom/reference-cycle-leaks.html:
+        * http/tests/paymentrequest/payment-response-reference-cycle-leak.https-expected.txt: Added.
+        * http/tests/paymentrequest/payment-response-reference-cycle-leak.https.html: Added.
+
+2018-09-10  Frederic Wang  <fwang@igalia.com>
+
+        [CSSOM View] Handle the scrollingElement in Element::scroll(Left/Top/Width/Height/To)
+        https://bugs.webkit.org/show_bug.cgi?id=182230
+
+        Follow-up patch replacing document.body with document.scrollingElement in
+        fast-scroll-iframe-latched-mainframe.html. This fixes flaky behavior.
+
+        Reviewed by Antonio Gomes.
+
+        * tiled-drawing/scrolling/fast-scroll-iframe-latched-mainframe.html: Replace document.body
+        with document.scrollingElement since this document is in standard mode.
+
+2018-09-10  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Positive delays of accelerated animations are not respected
+        https://bugs.webkit.org/show_bug.cgi?id=189411
+        <rdar://problem/44151416>
+
+        Reviewed by Dean Jackson.
+
+        Add a test that checks that positive delays are accounted for during accelerated actions, including a seek.
+
+        * webanimations/accelerated-animation-with-delay-and-seek-expected.html: Added.
+        * webanimations/accelerated-animation-with-delay-and-seek.html: Added.
+
+2018-09-10  Per Arne Vollan  <pvollan@apple.com>
+
+        [Windows] Layout Test webanimations/accelerated-transition-interrupted-on-composited-element.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=189468
+
+        Unreviewed test gardening.
+
+        The test is timing out. Skip it on Windows.
+
+        * platform/win/TestExpectations:
+
+2018-09-10  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] Several media related tests timing out around the same revision
+        https://bugs.webkit.org/show_bug.cgi?id=189349
+
+        Reviewed by Carlos Garcia Campos.
+
+        * platform/gtk/TestExpectations: Unflag Timeout from now-unaffected tests.
+
+2018-09-10  Rob Buis  <rbuis@igalia.com>
+
+        XMLHttpRequest: overrideMimeType should not update the response's "Content-Type" header
+        https://bugs.webkit.org/show_bug.cgi?id=189465
+
+        Reviewed by Frédéric Wang.
+
+        Change existing test to reflect new behavior.
+
+        * http/tests/xmlhttprequest/xmlhttprequest-overridemimetype-content-type-header-expected.txt:
+        * http/tests/xmlhttprequest/xmlhttprequest-overridemimetype-content-type-header.html:
+
+2018-09-10  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Interrupting an accelerated CSS transition on a composited element in flight fails
+        https://bugs.webkit.org/show_bug.cgi?id=189405
+        <rdar://problem/43342639>
+
+        Reviewed by Simon Fraser.
+
+        Add a new test that checks that interrupting a CSS transition targeting an accelerated property for an element
+        that is composited outside the duration of the transition correctly interrupts the animation and jumps straight
+        to the target value.
+
+        * platform/win/TestExpectations:
+        * webanimations/accelerated-transition-interrupted-on-composited-element-expected.html: Added.
+        * webanimations/accelerated-transition-interrupted-on-composited-element.html: Added.
+
+2018-09-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION (r235153): [iOS] Can't move selection start grabber when selecting text in a subframe
+        https://bugs.webkit.org/show_bug.cgi?id=189454
+        <rdar://problem/44265956>
+
+        Reviewed by Darin Adler.
+
+        Adds a test that selects a word inside an iframe, moves the selection start handle down past the selection end,
+        and then moves the selection end handle up above the selection start. The test verifies that the entire word
+        remains selected.
+
+        * editing/selection/ios/selection-handle-clamping-in-iframe-expected.txt: Added.
+        * editing/selection/ios/selection-handle-clamping-in-iframe.html: Added.
+
+2018-09-08  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Dispatch a paymentmethodchange event when the payment method changes
+        https://bugs.webkit.org/show_bug.cgi?id=189386
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/reference-cycle-leaks-expected.txt:
+        * fast/dom/reference-cycle-leaks.html:
+        * http/tests/ssl/applepay/ApplePayPaymentMethodChangeEvent.https-expected.txt: Added.
+        * http/tests/ssl/applepay/ApplePayPaymentMethodChangeEvent.https.html: Added.
+        * platform/ios-wk2/fast/dom/reference-cycle-leaks-expected.txt: Added.
+        * platform/mac-wk2/fast/dom/reference-cycle-leaks-expected.txt: Added.
+
+2018-09-07  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [LayoutTests] Add digest access authentication test.
+        https://bugs.webkit.org/show_bug.cgi?id=189286
+
+        Reviewed by Alex Christensen.
+
+        Add digest auth tests
+
+        * http/tests/resources/digest-auth/authorize.php: Added.
+        * http/tests/resources/digest-auth/digest.php: Added.
+        * http/tests/xmlhttprequest/digest-auth-expected.txt: Added.
+        * http/tests/xmlhttprequest/digest-auth.html: Added.
+
+2018-09-07  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl] Stop sending request with credential if no authorization requested.
+        https://bugs.webkit.org/show_bug.cgi?id=189057
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/xmlhttprequest/resources/no-authenticate-header-401.php: Added.
+        * http/tests/xmlhttprequest/unauthorized-without-authenticate-header-expected.txt: Added.
+        * http/tests/xmlhttprequest/unauthorized-without-authenticate-header.html: Added.
+
+2018-09-07  Youenn Fablet  <youenn@apple.com>
+
+        Tests checking document GC in case of ActiveDOMObjects are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=189413
+
+        Reviewed by Eric Carlson.
+
+        Instead of calling parent.done() use postMessage.
+        The assumption is that GC might not always collect 'parent' as it is in the call stack.
+        With postMessage, no flakiness is observed locally.
+        Added a related MediaDevices test that was missing from r235438.
+
+        * http/tests/IndexedDB/collect-IDB-objects.https.html:
+        * http/tests/IndexedDB/resources/myidbframe.htm:
+        * http/tests/media/clearkey/collect-webkit-media-session.html:
+        * http/tests/media/clearkey/resources/mywebkitmediasessionframe.htm:
+        * http/tests/media/media-stream/collect-media-devices.https-expected.txt: Added.
+        * http/tests/media/media-stream/collect-media-devices.https.html: Added.
+        * http/tests/media/media-stream/resources/mymediadevicesframe.htm: Added.
+
+2018-09-07  Daniel Bates  <dabates@apple.com>
+
+        [iOS] uiController.typeCharacterUsingHardwareKeyboard("`", ...) dispatches DOM key events for ~
+        https://bugs.webkit.org/show_bug.cgi?id=189325
+
+        Reviewed by Wenson Hsieh.
+
+        Add a test to ensure that we dispatch the correct DOM key events when using uiController.typeCharacterUsingHardwareKeyboard("`")
+        (by way of UIHelper.typeCharacter()).
+
+        * fast/events/ios/keypress-grave-accent-expected.txt: Added.
+        * fast/events/ios/keypress-grave-accent.html: Added.
+
+2018-09-07  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl][WebKitLegacy] Stop sending credential embedded in the url via XHR.
+        https://bugs.webkit.org/show_bug.cgi?id=189198
+
+        Reviewed by Alexey Proskuryakov.
+
+        * http/tests/xmlhttprequest/resources/url-with-credentials/authenticate.php: Added.
+        * http/tests/xmlhttprequest/resources/url-with-credentials/authorize.php: Added.
+        * http/tests/xmlhttprequest/url-with-credentials-expected.txt: Added.
+        * http/tests/xmlhttprequest/url-with-credentials.html: Added.
+
 2018-09-07  Youenn Fablet  <youenn@apple.com>
 
         Add support for unified plan transceivers
