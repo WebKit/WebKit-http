@@ -15,6 +15,17 @@
         * Modules/mediastream/MediaDevices.h:
         Add class Document forward declaration.
 
+2018-09-11  Youenn Fablet  <youenn@apple.com>
+
+        Remove MediaDevices NoInterfaceObject
+        https://bugs.webkit.org/show_bug.cgi?id=189512
+
+        Reviewed by Alex Christensen.
+
+        Covered by rebased WPT tests.
+
+        * Modules/mediastream/MediaDevices.idl:
+
 2018-09-10  Youenn Fablet  <youenn@apple.com>
 
         ontrack events should be fired even if an existing transceiver exists
