@@ -527,18 +527,12 @@ MediaTime MediaPlayerPrivateGStreamer::durationMediaTime() const
     if (!m_pipeline || m_errorOccured)
         return MediaTime::invalidTime();
 
-#if !USE(FUSION_SINK)
     if (m_durationAtEOS.isValid())
         return m_durationAtEOS;
-#endif
 
     // The duration query would fail on a not-prerolled pipeline.
-    if (GST_STATE(m_pipeline.get()) < GST_STATE_PAUSED) {
-        if(m_isEndReached && m_previousDuration.isValid()) {
-            return m_previousDuration;
-        }
+    if (GST_STATE(m_pipeline.get()) < GST_STATE_PAUSED)
         return MediaTime::positiveInfiniteTime();
-    }
 
     gint64 timeLength = 0;
 
