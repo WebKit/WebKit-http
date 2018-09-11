@@ -512,8 +512,8 @@ static void webKitWebSrcStart(WebKitWebSrc* src)
     }
     priv->offset = priv->requestedOffset;
 
+    GST_DEBUG_OBJECT(src, "Persistent connection support %s", priv->keepAlive ? "enabled" : "disabled");
     if (!priv->keepAlive) {
-        GST_DEBUG_OBJECT(src, "Persistent connection support disabled");
         request.setHTTPHeaderField(HTTPHeaderName::Connection, "close");
     }
 
@@ -807,9 +807,8 @@ CachedResourceStreamingClient::CachedResourceStreamingClient(WebKitWebSrc* src, 
 {
 }
 
-CachedResourceStreamingClient::~CachedResourceStreamingClient()
-{
-}
+CachedResourceStreamingClient::~CachedResourceStreamingClient() = default;
+
 
 #if USE(SOUP)
 char* CachedResourceStreamingClient::getOrCreateReadBuffer(PlatformMediaResource&, size_t requestedSize, size_t& actualSize)
@@ -890,20 +889,6 @@ void CachedResourceStreamingClient::responseReceived(PlatformMediaResource&, con
         return;
     }
 
-    // FIXME: priv->uri disappeared.
-#if 0
-    if (response.isRedirected()) {
-        if (!urlHasSupportedProtocol(response.url())) {
-            GST_ELEMENT_ERROR(src, RESOURCE, READ, ("Invalid URI '%s'", response.url().string().utf8().data()), (nullptr));
-            gst_app_src_end_of_stream(priv->appsrc);
-            webKitWebSrcStop(src);
-            return;
-        }
-        g_free(priv->uri);
-        priv->uri = g_strdup(response.url().string().utf8().data());
-    }
-#endif
-
     if (priv->requestedOffset) {
         // Seeking ... we expect a 206 == PARTIAL_CONTENT
         if (response.httpStatusCode() == 200) {
@@ -945,24 +930,39 @@ void CachedResourceStreamingClient::responseReceived(PlatformMediaResource&, con
     if (!metadataIntervalAsString.isEmpty()) {
         bool isMetadataIntervalParsed;
         int metadataInterval = metadataIntervalAsString.toInt(&isMetadataIntervalParsed);
-        if (isMetadataIntervalParsed && metadataInterval > 0)
+        if (isMetadataIntervalParsed && metadataInterval > 0) {
             caps = adoptGRef(gst_caps_new_simple("application/x-icy", "metadata-interval", G_TYPE_INT, metadataInterval, nullptr));
+
+            String contentType = response.httpHeaderField(HTTPHeaderName::ContentType);
+            GST_DEBUG_OBJECT(src, "Response ContentType: %s", contentType.utf8().data());
+            gst_caps_set_simple(caps.get(), "content-type", G_TYPE_STRING, contentType.utf8().data(), nullptr);
+
+            gst_app_src_set_stream_type(priv->appsrc, GST_APP_STREAM_TYPE_STREAM);
+        }
     }
+
     gst_app_src_set_caps(priv->appsrc, caps.get());
 
-    // Emit a GST_EVENT_CUSTOM_DOWNSTREAM_STICKY event to let GStreamer know about the HTTP headers sent and received.
+    // Emit a GST_EVENT_CUSTOM_DOWNSTREAM_STICKY event and message to let
+    // GStreamer know about the HTTP headers sent and received.
     GstStructure* httpHeaders = gst_structure_new_empty("http-headers");
-    gst_structure_set(httpHeaders, "uri", G_TYPE_STRING, priv->originalURI.data(), nullptr);
+    gst_structure_set(httpHeaders, "uri", G_TYPE_STRING, priv->originalURI.data(),
+        "http-status-code", G_TYPE_UINT, response.httpStatusCode(), nullptr);
     if (!priv->redirectedURI.isNull())
         gst_structure_set(httpHeaders, "redirection-uri", G_TYPE_STRING, priv->redirectedURI.data(), nullptr);
     GUniquePtr<GstStructure> headers(gst_structure_new_empty("request-headers"));
     for (const auto& header : m_request.httpHeaderFields())
         gst_structure_set(headers.get(), header.key.utf8().data(), G_TYPE_STRING, header.value.utf8().data(), nullptr);
+    GST_DEBUG_OBJECT(src, "Request headers going downstream: %" GST_PTR_FORMAT, headers.get());
     gst_structure_set(httpHeaders, "request-headers", GST_TYPE_STRUCTURE, headers.get(), nullptr);
     headers.reset(gst_structure_new_empty("response-headers"));
     for (const auto& header : response.httpHeaderFields())
         gst_structure_set(headers.get(), header.key.utf8().data(), G_TYPE_STRING, header.value.utf8().data(), nullptr);
     gst_structure_set(httpHeaders, "response-headers", GST_TYPE_STRUCTURE, headers.get(), nullptr);
+    GST_DEBUG_OBJECT(src, "Response headers going downstream: %" GST_PTR_FORMAT, headers.get());
+
+    gst_element_post_message(GST_ELEMENT_CAST(src), gst_message_new_element(GST_OBJECT_CAST(src),
+        gst_structure_copy(httpHeaders)));
     gst_pad_push_event(GST_BASE_SRC_PAD(priv->appsrc), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_STICKY, httpHeaders));
 }
 
@@ -1022,6 +1022,7 @@ void CachedResourceStreamingClient::dataReceived(PlatformMediaResource&, const c
     // priv->size == 0 if received length on didReceiveResponse < 0.
     if (priv->size > 0 && priv->offset > priv->size) {
         GST_DEBUG_OBJECT(src, "Updating internal size from %" G_GUINT64_FORMAT " to %" G_GUINT64_FORMAT, priv->size, priv->offset);
+        gst_app_src_set_size(priv->appsrc, priv->offset);
         priv->size = priv->offset;
     }
 
@@ -1099,4 +1100,4 @@ void CachedResourceStreamingClient::loadFinished(PlatformMediaResource&)
         gst_app_src_end_of_stream(priv->appsrc);
 }
 
-#endif // USE(GSTREAMER)
+#endif // ENABLE(VIDEO) && USE(GSTREAMER)
