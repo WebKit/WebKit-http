@@ -318,10 +318,9 @@ static const int defaultScrollMagnitudeThresholdForPageFlip = 20;
     if (WebKit::PDFPluginAnnotation* activeAnnotation = _pdfPlugin->activeAnnotation()) {
         if (WebCore::AXObjectCache* existingCache = _pdfPlugin->axObjectCache()) {
             if (WebCore::AccessibilityObject* object = existingCache->getOrCreate(activeAnnotation->element()))
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+                ALLOW_DEPRECATED_DECLARATIONS_BEGIN
                 return [object->wrapper() accessibilityAttributeValue:@"_AXAssociatedPluginParent"];
-#pragma clang diagnostic pop
+                ALLOW_DEPRECATED_DECLARATIONS_END
         }
     }
     return nil;
@@ -426,10 +425,9 @@ static const int defaultScrollMagnitudeThresholdForPageFlip = 20;
 
 - (void)writeItemsToPasteboard:(NSArray *)items withTypes:(NSArray *)types
 {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     _pdfPlugin->writeItemsToPasteboard(NSGeneralPboard, items, types);
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
 }
 
 - (void)showDefinitionForAttributedString:(NSAttributedString *)string atPoint:(CGPoint)point
@@ -1652,11 +1650,10 @@ bool PDFPlugin::handleEditingCommand(const String& commandName, const String& ar
         [m_pdfLayerController selectAll];
     else if (commandName == "takeFindStringFromSelection") {
         NSString *string = [m_pdfLayerController currentSelection].string;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         if (string.length)
             writeItemsToPasteboard(NSFindPboard, @[ [string dataUsingEncoding:NSUTF8StringEncoding] ], @[ NSPasteboardTypeString ]);
-#pragma clang diagnostic pop
+        ALLOW_DEPRECATED_DECLARATIONS_END
     }
 
     return true;
@@ -1736,13 +1733,12 @@ void PDFPlugin::setActiveAnnotation(PDFAnnotation *annotation)
         m_activeAnnotation->commit();
 
     if (annotation) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         if ([annotation isKindOfClass:pdfAnnotationTextWidgetClass()] && static_cast<PDFAnnotationTextWidget *>(annotation).isReadOnly) {
             m_activeAnnotation = nullptr;
             return;
         }
-#pragma clang diagnostic pop
+        ALLOW_DEPRECATED_DECLARATIONS_END
 
         m_activeAnnotation = PDFPluginAnnotation::create(annotation, m_pdfLayerController.get(), this);
         m_activeAnnotation->attach(m_annotationContainer.get());
@@ -2080,10 +2076,9 @@ std::tuple<String, PDFSelection *, NSDictionary *> PDFPlugin::lookupTextAtLocati
         if (!NSPointInRect(pointInPageSpace, bounds))
             continue;
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         PDFAnnotationLink *linkAnnotation = (PDFAnnotationLink *)annotation;
-#pragma clang diagnostic pop
+        ALLOW_DEPRECATED_DECLARATIONS_END
         NSURL *url = linkAnnotation.URL;
         if (!url)
             continue;

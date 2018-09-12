@@ -818,11 +818,10 @@ static void drawPDFPage(PDFDocument *pdfDocument, CFIndex pageIndex, CGContextRe
     }
 
     [NSGraphicsContext saveGraphicsState];
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    ALLOW_DEPRECATED_DECLARATIONS_BEGIN
     [NSGraphicsContext setCurrentContext:[NSGraphicsContext graphicsContextWithGraphicsPort:context flipped:NO]];
     [pdfPage drawWithBox:kPDFDisplayBoxCropBox];
-#pragma clang diagnostic pop
+    ALLOW_DEPRECATED_DECLARATIONS_END
     [NSGraphicsContext restoreGraphicsState];
 
     CGAffineTransform transform = CGContextGetCTM(context);
@@ -831,10 +830,9 @@ static void drawPDFPage(PDFDocument *pdfDocument, CFIndex pageIndex, CGContextRe
         if (![annotation isKindOfClass:pdfAnnotationLinkClass()])
             continue;
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        ALLOW_DEPRECATED_DECLARATIONS_BEGIN
         PDFAnnotationLink *linkAnnotation = (PDFAnnotationLink *)annotation;
-#pragma clang diagnostic pop
+        ALLOW_DEPRECATED_DECLARATIONS_END
         NSURL *url = [linkAnnotation URL];
         if (!url)
             continue;
