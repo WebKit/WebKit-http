@@ -1,3 +1,27 @@
+2018-09-14  Mike Gorse  <mgorse@suse.com>
+
+        builtins directory causes name conflict on Python 3
+        https://bugs.webkit.org/show_bug.cgi?id=189552
+
+        Reviewed by Michael Catanzaro.
+
+        * CMakeLists.txt: builtins -> wkbuiltins.
+        * DerivedSources.make: builtins -> wkbuiltins.
+        * Scripts/generate-js-builtins.py: import wkbuiltins, rather than
+          builtins.
+        * Scripts/wkbuiltins/__init__.py: Renamed from Source/JavaScriptCore/Scripts/builtins/__init__.py.
+        * Scripts/wkbuiltins/builtins_generate_combined_header.py: Renamed from Source/JavaScriptCore/Scripts/builtins/builtins_generate_combined_header.py.
+        * Scripts/wkbuiltins/builtins_generate_internals_wrapper_implementation.py: Renamed from Source/JavaScriptCore/Scripts/builtins/builtins_generate_internals_wrapper_implementation.py.
+        * Scripts/wkbuiltins/builtins_generate_separate_header.py: Renamed from Source/JavaScriptCore/Scripts/builtins/builtins_generate_separate_header.py.
+        * Scripts/wkbuiltins/builtins_generate_separate_implementation.py: Renamed from Source/JavaScriptCore/Scripts/builtins/builtins_generate_separate_implementation.py.
+        * Scripts/wkbuiltins/builtins_generate_wrapper_header.py: Renamed from Source/JavaScriptCore/Scripts/builtins/builtins_generate_wrapper_header.py.
+        * Scripts/wkbuiltins/builtins_generate_wrapper_implementation.py: Renamed from Source/JavaScriptCore/Scripts/builtins/builtins_generate_wrapper_implementation.py.
+        * Scripts/wkbuiltins/builtins_generator.py: Renamed from Source/JavaScriptCore/Scripts/builtins/builtins_generator.py.
+        * Scripts/wkbuiltins/builtins_model.py: Renamed from Source/JavaScriptCore/Scripts/builtins/builtins_model.py.
+        * Scripts/wkbuiltins/builtins_templates.py: Renamed from Source/JavaScriptCore/Scripts/builtins/builtins_templates.py.
+        * Scripts/wkbuiltins/wkbuiltins.py: Renamed from Source/JavaScriptCore/Scripts/builtins/builtins.py.
+        * JavaScriptCore.xcodeproj/project.pbxproj: Update for the renaming.
+
 2020-03-09  Caio Lima  <ticaiolima@gmail.com>
 
         Tail calls are broken on ARM_THUMB2 and MIPS
@@ -658,20 +682,6 @@
         (JSC::JITByIdGenerator::JITByIdGenerator):
         (JSC::JITGetByIdWithThisGenerator::JITGetByIdWithThisGenerator):
         (JSC::JITInstanceOfGenerator::JITInstanceOfGenerator):
-
-2018-08-27  Keith Rollin  <krollin@apple.com>
-
-        Build system support for LTO
-        https://bugs.webkit.org/show_bug.cgi?id=187785
-        <rdar://problem/42353132>
-
-        Reviewed by Dan Bernstein.
-
-        Update Base.xcconfig and DebugRelease.xcconfig to optionally enable
-        LTO.
-
-        * Configurations/Base.xcconfig:
-        * Configurations/DebugRelease.xcconfig:
 
 2018-08-30  Saam barati  <sbarati@apple.com>
 
@@ -29419,46 +29429,3 @@
         but it doesn't have to, and it makes the compiler sad.
 
 == Rolled over to ChangeLog-2018-01-01 ==
-2018-09-12  Guillaume Emont  <guijemont@igalia.com>
-
-        Add IGNORE_WARNING_.* macros
-        https://bugs.webkit.org/show_bug.cgi?id=188996
-
-        Reviewed by Michael Catanzaro.
-
-        * API/JSCallbackObject.h:
-        * API/tests/testapi.c:
-        * assembler/LinkBuffer.h:
-        (JSC::LinkBuffer::finalizeCodeWithDisassembly):
-        * b3/B3LowerToAir.cpp:
-        * b3/B3Opcode.cpp:
-        * b3/B3Type.h:
-        * b3/B3TypeMap.h:
-        * b3/B3Width.h:
-        * b3/air/AirArg.cpp:
-        * b3/air/AirArg.h:
-        * b3/air/AirCode.h:
-        * bytecode/Opcode.h:
-        (JSC::padOpcodeName):
-        * dfg/DFGSpeculativeJIT.cpp:
-        (JSC::DFG::SpeculativeJIT::speculateNumber):
-        (JSC::DFG::SpeculativeJIT::speculateMisc):
-        * dfg/DFGSpeculativeJIT64.cpp:
-        * ftl/FTLOutput.h:
-        * jit/CCallHelpers.h:
-        (JSC::CCallHelpers::calculatePokeOffset):
-        * llint/LLIntData.cpp:
-        * llint/LLIntSlowPaths.cpp:
-        (JSC::LLInt::slowPathLogF):
-        * runtime/ConfigFile.cpp:
-        (JSC::ConfigFile::canonicalizePaths):
-        * runtime/JSDataViewPrototype.cpp:
-        * runtime/JSGenericTypedArrayViewConstructor.h:
-        * runtime/JSGenericTypedArrayViewPrototype.h:
-        * runtime/Options.cpp:
-        (JSC::Options::setAliasedOption):
-        * tools/CodeProfiling.cpp:
-        * wasm/WasmSections.h:
-        * wasm/generateWasmValidateInlinesHeader.py:
-
-== Rolled over to ChangeLog-2018-09-11 ==
