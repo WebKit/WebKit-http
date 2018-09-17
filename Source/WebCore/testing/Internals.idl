@@ -667,4 +667,8 @@ enum CompositingPolicy {
     unsigned long pluginCount();
 
     void notifyResourceLoadObserver();
+
+    unsigned long primaryScreenDisplayID();
+
+    boolean supportsVCPEncoder();
 };
