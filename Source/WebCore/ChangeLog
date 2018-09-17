@@ -1,3 +1,562 @@
+2018-09-17  Youenn Fablet  <youenn@apple.com>
+
+        track.onmute isn't called for a remote MediaStreamTrack when its counter part track is removed from the peer connection
+        https://bugs.webkit.org/show_bug.cgi?id=176281
+        <rdar://problem/44525674>
+
+        Reviewed by Eric Carlson.
+
+        Listen to libwebrtc remove track callbacks.
+        Implement handling as per https://w3c.github.io/webrtc-pc/#process-remote-track-removal.
+        This triggers a mute event on the track.
+
+        Test: webrtc/remove-track.html
+
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.cpp:
+        (WebCore::LibWebRTCMediaEndpoint::removeRemoteTrack):
+        (WebCore::LibWebRTCMediaEndpoint::OnRemoveTrack):
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.h:
+        * Modules/mediastream/libwebrtc/LibWebRTCPeerConnectionBackend.cpp:
+        (WebCore::LibWebRTCPeerConnectionBackend::shouldOfferAllowToReceive const):
+        Drive by fix: Plan B code path does not mandate having an rtc backend for each sender.
+
+2018-09-17  Simon Fraser  <simon.fraser@apple.com>
+
+        Add more Fullscreen logging
+        https://bugs.webkit.org/show_bug.cgi?id=189656
+
+        Reviewed by Jer Noble.
+
+        Add some fullscreen logging so I can tell whether WebFullScreenManager ever releases
+        the fullscreen element.
+
+        * platform/cocoa/VideoFullscreenModelVideoElement.mm:
+        (VideoFullscreenModelVideoElement::VideoFullscreenModelVideoElement):
+        (VideoFullscreenModelVideoElement::~VideoFullscreenModelVideoElement):
+        (VideoFullscreenModelVideoElement::setVideoElement):
+
+2018-09-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Add support for dumping the GraphicsLayer tree via notifyutil
+        https://bugs.webkit.org/show_bug.cgi?id=189639
+
+        Reviewed by Zalan Bujtas.
+
+        Make "notifyutil -p com.apple.WebKit.showGraphicsLayerTree" work. It dumps the GraphicsLayer tree
+        for each top-level document (GraphicsLayers are connected across frame boundaries, so this prints
+        the entire tree for each main frame).
+        
+        It uses WTFLogAlways rather than fprintf() so output shows on all platforms (other tree dumps should
+        be converted in the same way).
+
+        * page/mac/PageMac.mm:
+        (WebCore::Page::platformInitialize):
+        * platform/graphics/GraphicsLayer.cpp:
+        (showGraphicsLayerTree):
+        * rendering/RenderLayerCompositor.cpp:
+        (showGraphicsLayerTreeForCompositor):
+        * rendering/RenderLayerCompositor.h:
+        * rendering/RenderObject.cpp:
+        (WebCore::printGraphicsLayerTreeForLiveDocuments):
+        * rendering/RenderObject.h:
+
+2018-09-17  Christopher Reid  <chris.reid@sony.com>
+
+        [Curl] Add schema version and enable auto vacuum for cookie database.
+        https://bugs.webkit.org/show_bug.cgi?id=189669
+
+        Reviewed by Alex Christensen.
+
+        Turning on auto incremental vacuuming and adding versioning to the database. Right now we
+        reset tables if there's an unknown schema or if the none is set. There is placeholder logic
+        in place to upgrade databases as the schema changes in the future.
+
+        Tested by checking the database manually after launching MiniBrowser.
+
+        * platform/network/curl/CookieJarDB.cpp:
+        (WebCore::CookieJarDB::openDatabase):
+        (WebCore::CookieJarDB::verifySchemaVersion):
+        (WebCore::CookieJarDB::deleteAllTables):
+        (WebCore::CookieJarDB::createPrepareStatement):
+        (WebCore::CookieJarDB::getPrepareStatement):
+        (WebCore::CookieJarDB::executeSimpleSql):
+        * platform/network/curl/CookieJarDB.h:
+        * platform/network/curl/NetworkStorageSessionCurl.cpp:
+        (WebCore::defaultSession):
+        * platform/sql/SQLiteDatabase.cpp:
+        (WebCore::SQLiteDatabase::turnOnIncrementalAutoVacuum): fixed a bug.
+
+2018-09-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Re-order Node flags based on semantics
+        https://bugs.webkit.org/show_bug.cgi?id=189643
+
+        Reviewed by Simon Fraser.
+
+        Re-ordered Node flags based on their category and subclasses of Node which use them.
+
+        * dom/Node.h:
+
+2018-09-17  Simon Fraser  <simon.fraser@apple.com>
+
+        Add more ResourceLoading logging, particularly in MemoryCache code
+        https://bugs.webkit.org/show_bug.cgi?id=189651
+
+        Reviewed by Tim Horton.
+
+        Adding more logging to the ResourceLoading log channel, which I found useful
+        when trying to understand cached SVGImage lifetimes (bug 189437).
+
+        * loader/cache/CachedResource.cpp:
+        (WebCore::CachedResource::deleteIfPossible):
+        * loader/cache/CachedResourceLoader.cpp:
+        (WebCore::CachedResourceLoader::requestResource):
+        (WebCore::CachedResourceLoader::garbageCollectDocumentResources):
+        * loader/cache/MemoryCache.cpp:
+        (WebCore::MemoryCache::add):
+        (WebCore::MemoryCache::pruneLiveResourcesToSize):
+        (WebCore::MemoryCache::pruneDeadResources):
+        (WebCore::MemoryCache::pruneDeadResourcesToSize):
+        (WebCore::MemoryCache::remove):
+        (WebCore::MemoryCache::dumpLRULists const):
+
+2018-09-17  Jer Noble  <jer.noble@apple.com>
+
+        Enable USE_MEDIAREMOTE on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=189096
+
+        Reviewed by Eric Carlson.
+
+        Migrate to using MediaRemote.framework on iOS from MediaPlayer.framework. This unifies the
+        Now Playing implementation on iOS and Mac.
+
+        * SourcesCocoa.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/audio/cocoa/MediaSessionManagerCocoa.cpp: Removed.
+        * platform/audio/cocoa/MediaSessionManagerCocoa.h:
+        * platform/audio/cocoa/MediaSessionManagerCocoa.mm: Renamed from Source/WebCore/platform/audio/mac/MediaSessionManagerMac.mm.
+        (PlatformMediaSessionManager::sharedManager):
+        (PlatformMediaSessionManager::sharedManagerIfExists):
+        (MediaSessionManagerCocoa::updateSessionState):
+        (MediaSessionManagerCocoa::beginInterruption):
+        (MediaSessionManagerCocoa::scheduleUpdateNowPlayingInfo):
+        (MediaSessionManagerCocoa::sessionWillBeginPlayback):
+        (MediaSessionManagerCocoa::sessionDidEndRemoteScrubbing):
+        (MediaSessionManagerCocoa::removeSession):
+        (MediaSessionManagerCocoa::sessionWillEndPlayback):
+        (MediaSessionManagerCocoa::clientCharacteristicsChanged):
+        (MediaSessionManagerCocoa::sessionCanProduceAudioChanged):
+        (MediaSessionManagerCocoa::nowPlayingEligibleSession):
+        (MediaSessionManagerCocoa::updateNowPlayingInfo):
+        * platform/audio/ios/MediaSessionManagerIOS.h:
+        (): Deleted.
+        * platform/audio/ios/MediaSessionManagerIOS.mm:
+        (WebCore::MediaSessionManageriOS::nowPlayingEligibleSession): Deleted.
+        (WebCore::MediaSessionManageriOS::updateNowPlayingInfo): Deleted.
+        (WebCore::MediaSessionManageriOS::sessionWillBeginPlayback): Deleted.
+        (WebCore::MediaSessionManageriOS::removeSession): Deleted.
+        (WebCore::MediaSessionManageriOS::sessionWillEndPlayback): Deleted.
+        (WebCore::MediaSessionManageriOS::clientCharacteristicsChanged): Deleted.
+        * platform/audio/mac/MediaSessionManagerMac.h: Removed.
+
+2018-09-17  Frederic Wang  <fwang@igalia.com>
+
+        Build error in ImageBufferCG when compiled with IOSurfacePool
+        https://bugs.webkit.org/show_bug.cgi?id=189579
+
+        Reviewed by Tim Horton.
+
+        IOSurface.h might be included with different value of IOSURFACE_CANVAS_BACKING_STORE, causing
+        compilation errors when files in the same unified source do not agree on the definition.
+        This patch moves the definition of IOSURFACE_CANVAS_BACKING_STORE from ImageBufferDataCG.h
+        to Platform.h so that IOSURFACE_CANVAS_BACKING_STORE is set to the same value in all files.
+        Finally some minors changes to explicitly declare/define ImageBuffer are performed in order
+        to prevent future issues with Unified build rotating.
+
+        No new tests, behavior unchanged.
+
+        * html/HTMLCanvasElement.cpp: Explicitly include ImageBuffer.h since it's used in this file.
+        * platform/graphics/cg/ImageBufferDataCG.h: Move definition into Platform.h.
+        * platform/graphics/cocoa/IOSurface.h: Forward-declare ImageBuffer since it's used in this
+        header.
+
+2018-09-17  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl] Respond with requested authentication scheme for authentication challenge.
+        https://bugs.webkit.org/show_bug.cgi?id=189318
+
+        Reviewed by Alex Christensen.
+
+        Curl port depends on libcurl's authentication handling by enabling CURLAUTH_ANY. With this
+        mode, the round-trip communication between the client and the server is handled by libcurl
+        internally. That's okay for many cases. But when initial request has a credentials
+        (i.e. XMLHttpRequest), there's no valid chance to store credential to the storage because
+        the returned response is not 401.
+
+        Passes following tests:
+        - http/tests/websocket/tests/hybi/httponly-cookie.pl
+        - http/tests/websocket/tests/hybi/secure-cookie-insecure-connection.pl
+        - http/tests/websocket/tests/hybi/secure-cookie-secure-connection.pl
+        - http/tests/xmlhttprequest/basic-auth-default.html
+        - http/tests/xmlhttprequest/cross-origin-authorization.html
+        - http/tests/xmlhttprequest/logout.html
+        - http/tests/xmlhttprequest/null-auth.php
+        - http/tests/xmlhttprequest/re-login-async.html
+        - http/tests/xmlhttprequest/re-login.html
+        - http/tests/xmlhttprequest/redirect-credentials-responseURL.html
+        - http/tests/xmlhttprequest/remember-bad-password.html
+
+        * platform/network/ResourceHandle.h:
+        * platform/network/curl/CurlContext.cpp:
+        (WebCore::CurlHandle::setHttpAuthUserPass):
+        (WebCore::CurlHandle::enableHttpAuthentication): Deleted.
+        * platform/network/curl/CurlContext.h:
+        * platform/network/curl/CurlRequest.cpp:
+        (WebCore::CurlRequest::setAuthenticationScheme):
+        (WebCore::CurlRequest::setupTransfer):
+        * platform/network/curl/CurlRequest.h:
+        * platform/network/curl/ResourceHandleCurl.cpp:
+        (WebCore::ResourceHandle::start):
+        (WebCore::ResourceHandle::didReceiveAuthenticationChallenge):
+        (WebCore::ResourceHandle::receivedCredential):
+        (WebCore::ResourceHandle::getCredential):
+        (WebCore::ResourceHandle::restartRequestWithCredential):
+        (WebCore::ResourceHandle::platformLoadResourceSynchronously):
+        (WebCore::ResourceHandle::continueAfterWillSendRequest):
+
+2018-09-17  Youenn Fablet  <youenn@apple.com>
+
+        Enable VCP for iOS and reenable it for MacOS
+        https://bugs.webkit.org/show_bug.cgi?id=189635
+        <rdar://problem/43621029>
+
+        Reviewed by Eric Carlson.
+
+        Covered by exsiting and modified tests.
+        Instead of using libwebrtc YUV frames for black frames, use CVPixelBuffer to make it efficient.
+        Add internal API to know whether VCP is enabled so as to make capture-webrtc test pass on all platforms.
+
+        * platform/mediastream/RealtimeOutgoingVideoSource.cpp:
+        (WebCore::RealtimeOutgoingVideoSource::sendBlackFramesIfNeeded):
+        * platform/mediastream/RealtimeOutgoingVideoSource.h:
+        * platform/mediastream/gstreamer/RealtimeOutgoingVideoSourceLibWebRTC.h:
+        * platform/mediastream/mac/RealtimeIncomingVideoSourceCocoa.h:
+        * platform/mediastream/mac/RealtimeIncomingVideoSourceCocoa.mm:
+        (WebCore::createBlackPixelBuffer):
+        (WebCore::RealtimeIncomingVideoSourceCocoa::pixelBufferFromVideoFrame):
+        * platform/mediastream/mac/RealtimeOutgoingVideoSourceCocoa.cpp:
+        (WebCore::RealtimeOutgoingVideoSourceCocoa::createBlackFrame):
+        * platform/mediastream/mac/RealtimeOutgoingVideoSourceCocoa.h:
+        * testing/Internals.cpp:
+        (WebCore::Internals::supportsVCPEncoder):
+        * testing/Internals.h:
+        * testing/Internals.idl:
+
+2018-09-17  Chris Dumez  <cdumez@apple.com>
+
+        PSON: window.open() with 'noopener' should only process-swap cross-site, not cross-origin
+        https://bugs.webkit.org/show_bug.cgi?id=189602
+        <rdar://problem/44430549>
+
+        Reviewed by Geoff Garen.
+
+        * loader/DocumentLoader.cpp:
+        (WebCore::DocumentLoader::setTriggeringAction):
+        * loader/DocumentLoader.h:
+        * loader/FrameLoadRequest.h:
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::loadURL):
+        (WebCore::FrameLoader::loadWithNavigationAction):
+        (WebCore::FrameLoader::loadWithDocumentLoader):
+        (WebCore::FrameLoader::loadPostRequest):
+        (WebCore::FrameLoader::continueLoadAfterNewWindowPolicy):
+        (WebCore::FrameLoader::loadDifferentDocumentItem):
+        Move NavigationAction's opener setting to loadWithNavigationAction() as this is a better bottleneck.
+        Otherwise, we'd have to set it at several call sites. Also move the NavigationAction around instead
+        of copying it.
+
+        * loader/FrameLoader.h:
+        (WebCore::FrameLoader::loadWithNavigationAction):
+        * loader/NavigationAction.h:
+        (WebCore::NavigationAction::setShouldOpenExternalURLsPolicy):
+        * loader/PolicyChecker.cpp:
+        (WebCore::PolicyChecker::checkNavigationPolicy):
+        * page/DOMWindow.cpp:
+        (WebCore::DOMWindow::createWindow):
+
+2018-09-17  Darin Adler  <darin@apple.com>
+
+        Use OpaqueJSString rather than JSRetainPtr inside WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=189652
+
+        Reviewed by Saam Barati.
+
+        * Modules/plugins/QuickTimePluginReplacement.mm:
+        (WebCore::jsValueWithDictionaryInContext): Use OpaqueJSString::create.
+        (WebCore::jsValueWithAVMetadataItemInContext): Use adoptCF.
+
+        * platform/mac/SerializedPlatformRepresentationMac.mm:
+        (WebCore::jsValueWithDictionaryInContext): Use OpaqueJSString::create.
+
+2018-09-08  Darin Adler  <darin@apple.com>
+
+        Streamline JSRetainPtr, fix leaks of JSString and JSGlobalContext
+        https://bugs.webkit.org/show_bug.cgi?id=189455
+
+        Reviewed by Keith Miller.
+
+        * Modules/plugins/QuickTimePluginReplacement.mm:
+        (WebCore::jsValueWithDictionaryInContext): Adding a missing
+        JSStringRelease to fix a leak.
+
+2018-09-15  Rob Buis  <rbuis@igalia.com>
+
+        XMLHttpRequest::createResponseBlob() should create a Blob with type for empty response
+        https://bugs.webkit.org/show_bug.cgi?id=189627
+
+        Reviewed by Alexey Proskuryakov.
+
+        Right now we return an empty Blob without type when the response is empty, but
+        it should always include the type [1].
+
+        Test: web-platform-tests/xhr/overridemimetype-blob.html
+
+        [1] https://xhr.spec.whatwg.org/#blob-response
+
+        * xml/XMLHttpRequest.cpp:
+        (WebCore::XMLHttpRequest::createResponseBlob):
+
+2018-09-14  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl] Bug fix on some inaccurate values in NetworkLoadMetrics.
+        https://bugs.webkit.org/show_bug.cgi?id=189530
+
+        Reviewed by Alex Christensen.
+
+        Curl port uses the start time libcurl provided. But there's a lug between main thread and Curl thread.
+        Record the start time of request instead of libcurl's start timing and use it to measure the metrics.
+        Also respondEnd was not correctly recorded and fixed.
+
+        No new tests because it cannot be measured from DRT.
+
+        * platform/network/ResourceHandleInternal.h:
+        * platform/network/curl/CurlContext.cpp:
+        (WebCore::CurlHandle::getNetworkLoadMetrics):
+        * platform/network/curl/CurlContext.h:
+        * platform/network/curl/CurlRequest.cpp:
+        (WebCore::CurlRequest::start):
+        (WebCore::CurlRequest::setupTransfer):
+        (WebCore::CurlRequest::didCompleteTransfer):
+        (WebCore::CurlRequest::updateNetworkLoadMetrics):
+        * platform/network/curl/CurlRequest.h:
+        (WebCore::CurlRequest::setStartTime):
+        * platform/network/curl/ResourceHandleCurl.cpp:
+        (WebCore::ResourceHandle::start):
+        (WebCore::ResourceHandle::restartRequestWithCredential):
+        (WebCore::ResourceHandle::platformLoadResourceSynchronously):
+        (WebCore::ResourceHandle::willSendRequest):
+        (WebCore::ResourceHandle::continueAfterWillSendRequest):
+
+2018-09-14  Justin Fan  <justin_fan@apple.com>
+
+        WebGL 2 conformance: rgb-format-support.html
+        https://bugs.webkit.org/show_bug.cgi?id=189610
+        <rdar://problem/44403343>
+
+        Reviewed by Dean Jackson.
+
+        Implementing getInternalformatParameter (emulating on macOS) and updating 
+        renderbufferStorage{Multisample} for WebGL 2 conformance. 
+
+        Test: webgl/2.0.0/conformance2/rendering/rgb-format-support.html enabled.
+
+        * html/canvas/WebGL2RenderingContext.cpp:
+        (WebCore::isRenderableInternalformat):
+        (WebCore::WebGL2RenderingContext::getInternalformatParameter):
+        (WebCore::WebGL2RenderingContext::renderbufferStorageMultisample):
+        (WebCore::WebGL2RenderingContext::renderbufferStorage):
+        (WebCore::WebGL2RenderingContext::baseInternalFormatFromInternalFormat):
+        (WebCore::WebGL2RenderingContext::isIntegerFormat):
+        * platform/graphics/GraphicsContext3D.h:
+        * platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp:
+        (WebCore::GraphicsContext3D::getInternalformativ):
+        (WebCore::GraphicsContext3D::renderbufferStorageMultisample):
+
+2018-09-14  Justin Michaud  <justin_michaud@apple.com>
+
+        Add support for spreadMethod=reflect and repeat on SVG gradients (for CoreGraphics platforms)
+        https://bugs.webkit.org/show_bug.cgi?id=5968
+
+        Add support for spreadMethod=repeat and reflect. Also, the opacity of a gradient is now
+        the result of multiplying stop-opacity with the opacity of the color.
+
+        Reviewed by Simon Fraser.
+
+        Tests: svg/gradients/spreadMethod-expected.svg
+               svg/gradients/spreadMethod.svg
+               svg/gradients/spreadMethodAlpha-expected.svg
+               svg/gradients/spreadMethodAlpha.svg
+               svg/gradients/spreadMethodClose0-expected-mismatch.svg
+               svg/gradients/spreadMethodClose0.svg
+               svg/gradients/spreadMethodClose1-expected-mismatch.svg
+               svg/gradients/spreadMethodClose1.svg
+               svg/gradients/spreadMethodClose2-expected.svg
+               svg/gradients/spreadMethodClose2.svg
+               svg/gradients/spreadMethodDiagonal-expected.svg
+               svg/gradients/spreadMethodDiagonal.svg
+               svg/gradients/spreadMethodDiagonal2-expected.svg
+               svg/gradients/spreadMethodDiagonal2.svg
+               svg/gradients/spreadMethodDuplicateStop-expected.svg
+               svg/gradients/spreadMethodDuplicateStop.svg
+               svg/gradients/spreadMethodReversed-expected.svg
+               svg/gradients/spreadMethodReversed.svg
+               svg/gradients/stopAlpha-expected.svg
+               svg/gradients/stopAlpha.svg
+
+        * platform/graphics/cg/GradientCG.cpp:
+        (WebCore::Gradient::paint):
+        * svg/SVGStopElement.cpp:
+        (WebCore::SVGStopElement::stopColorIncludingOpacity const):
+
+2018-09-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, attempt to fix the iOSMac build after r236015.
+
+        * platform/graphics/cv/PixelBufferResizer.mm:
+        (WebCore::PixelBufferResizer::PixelBufferResizer):
+
+2018-09-11  Simon Fraser  <simon.fraser@apple.com>
+
+        Make GraphicsLayers ref-counted, so their tree can persist when disconnected from RenderLayerBackings
+        https://bugs.webkit.org/show_bug.cgi?id=189521
+
+        Reviewed by Tim Horton.
+        
+        Make GraphicsLayer be RefCounted<GraphicsLayer>. GraphicsLayers own their children, via a Vector<Ref<GraphicsLayer>>.
+        
+        RenderLayerBacking and other holders of GraphicsLayers use RefPtr<GraphicsLayer>.
+        
+        All the other changes are just to adapt to the new ownership patterns.
+        
+        I verified that no GraphicsLayers were leaked or abandoned after this change.
+
+        No behavior change.
+
+        * page/PageOverlayController.cpp:
+        (WebCore::PageOverlayController::layerWithDocumentOverlays):
+        (WebCore::PageOverlayController::layerWithViewOverlays):
+        (WebCore::PageOverlayController::installPageOverlay):
+        (WebCore::PageOverlayController::uninstallPageOverlay):
+        (WebCore::PageOverlayController::setPageOverlayNeedsDisplay):
+        (WebCore::PageOverlayController::didChangeViewSize):
+        (WebCore::PageOverlayController::didChangeDocumentSize):
+        (WebCore::PageOverlayController::didChangeSettings):
+        (WebCore::PageOverlayController::paintContents):
+        (WebCore::PageOverlayController::didChangeOverlayFrame):
+        (WebCore::PageOverlayController::didChangeOverlayBackgroundColor):
+        * page/PageOverlayController.h:
+        * page/mac/ServicesOverlayController.h:
+        (WebCore::ServicesOverlayController::Highlight::layer const):
+        * page/mac/ServicesOverlayController.mm:
+        (WebCore::ServicesOverlayController::Highlight::Highlight):
+        (WebCore::ServicesOverlayController::Highlight::invalidate):
+        (WebCore::ServicesOverlayController::Highlight::fadeIn):
+        (WebCore::ServicesOverlayController::Highlight::fadeOut):
+        (WebCore::ServicesOverlayController::Highlight::didFinishFadeOutAnimation):
+        (WebCore::ServicesOverlayController::determineActiveHighlight):
+        * platform/graphics/GraphicsLayer.cpp:
+        (WebCore::GraphicsLayer::GraphicsLayer):
+        (WebCore::GraphicsLayer::willBeDestroyed):
+        (WebCore::GraphicsLayer::setChildren):
+        (WebCore::GraphicsLayer::addChild):
+        (WebCore::GraphicsLayer::addChildAtIndex):
+        (WebCore::GraphicsLayer::addChildBelow):
+        (WebCore::GraphicsLayer::addChildAbove):
+        (WebCore::GraphicsLayer::replaceChild):
+        (WebCore::GraphicsLayer::removeAllChildren):
+        (WebCore::GraphicsLayer::removeFromParent):
+        (WebCore::GraphicsLayer::setMaskLayer):
+        (WebCore::GraphicsLayer::noteDeviceOrPageScaleFactorChangedIncludingDescendants):
+        (WebCore::GraphicsLayer::distributeOpacity):
+        (WebCore::GraphicsLayer::traverse):
+        (WebCore::dumpChildren):
+        * platform/graphics/GraphicsLayer.h:
+        (WebCore::GraphicsLayer::children const):
+        (WebCore::GraphicsLayer::children):
+        (WebCore::GraphicsLayer::maskLayer const):
+        (WebCore::GraphicsLayer::replicaLayer const):
+        (WebCore::GraphicsLayer::beingDestroyed const):
+        (WebCore::GraphicsLayer:: const): Deleted.
+        * platform/graphics/GraphicsLayerFactory.h:
+        * platform/graphics/ca/GraphicsLayerCA.cpp:
+        (WebCore::GraphicsLayer::create):
+        (WebCore::GraphicsLayerCA::setChildren):
+        (WebCore::GraphicsLayerCA::addChild):
+        (WebCore::GraphicsLayerCA::addChildAtIndex):
+        (WebCore::GraphicsLayerCA::addChildBelow):
+        (WebCore::GraphicsLayerCA::addChildAbove):
+        (WebCore::GraphicsLayerCA::replaceChild):
+        (WebCore::GraphicsLayerCA::setMaskLayer):
+        (WebCore::GraphicsLayerCA::recursiveVisibleRectChangeRequiresFlush const):
+        (WebCore::GraphicsLayerCA::recursiveCommitChanges):
+        (WebCore::GraphicsLayerCA::updateSublayerList):
+        (WebCore::GraphicsLayerCA::createTransformAnimationsFromKeyframes):
+        * platform/graphics/ca/GraphicsLayerCA.h:
+        * platform/graphics/texmap/GraphicsLayerTextureMapper.cpp:
+        (WebCore::GraphicsLayer::create):
+        (WebCore::GraphicsLayerTextureMapper::setChildren):
+        (WebCore::GraphicsLayerTextureMapper::addChild):
+        (WebCore::GraphicsLayerTextureMapper::addChildAtIndex):
+        (WebCore::GraphicsLayerTextureMapper::addChildAbove):
+        (WebCore::GraphicsLayerTextureMapper::addChildBelow):
+        (WebCore::GraphicsLayerTextureMapper::replaceChild):
+        (WebCore::GraphicsLayerTextureMapper::setMaskLayer):
+        (WebCore::GraphicsLayerTextureMapper::updateBackingStoreIncludingSubLayers):
+        * platform/graphics/texmap/GraphicsLayerTextureMapper.h:
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.cpp:
+        (WebCore::GraphicsLayer::create):
+        (WebCore::CoordinatedGraphicsLayer::setShouldUpdateVisibleRect):
+        (WebCore::CoordinatedGraphicsLayer::addChild):
+        (WebCore::CoordinatedGraphicsLayer::addChildAtIndex):
+        (WebCore::CoordinatedGraphicsLayer::addChildAbove):
+        (WebCore::CoordinatedGraphicsLayer::addChildBelow):
+        (WebCore::CoordinatedGraphicsLayer::replaceChild):
+        (WebCore::CoordinatedGraphicsLayer::setMaskLayer):
+        (WebCore::CoordinatedGraphicsLayer::syncPendingStateChangesIncludingSubLayers):
+        (WebCore::CoordinatedGraphicsLayer::updateContentBuffersIncludingSubLayers):
+        (WebCore::CoordinatedGraphicsLayer::setCoordinatorIncludingSubLayersIfNeeded):
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsLayer.h:
+        * platform/graphics/win/GraphicsLayerDirect2D.cpp:
+        (WebCore::GraphicsLayer::create):
+        (WebCore::GraphicsLayerDirect2D::GraphicsLayerDirect2D): Deleted.
+        (WebCore::GraphicsLayerDirect2D::initialize): Deleted.
+        (WebCore::GraphicsLayerDirect2D::~GraphicsLayerDirect2D): Deleted.
+        (WebCore::GraphicsLayerDirect2D::setNeedsDisplay): Deleted.
+        (WebCore::GraphicsLayerDirect2D::setNeedsDisplayInRect): Deleted.
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::createGraphicsLayer):
+        (WebCore::RenderLayerBacking::createPrimaryGraphicsLayer):
+        (WebCore::RenderLayerBacking::updateConfiguration):
+        (WebCore::RenderLayerBacking::updateInternalHierarchy):
+        (WebCore::RenderLayerBacking::updateMaskingLayer):
+        (WebCore::RenderLayerBacking::updateChildClippingStrategy):
+        (WebCore::RenderLayerBacking::updateScrollingLayers):
+        * rendering/RenderLayerBacking.h:
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::updateCompositingLayers):
+        (WebCore::RenderLayerCompositor::appendDocumentOverlayLayers):
+        (WebCore::RenderLayerCompositor::setCompositingParent):
+        (WebCore::RenderLayerCompositor::rebuildCompositingLayerTree):
+        (WebCore::RenderLayerCompositor::parentFrameContentLayers):
+        (WebCore::RenderLayerCompositor::updateLayerForTopOverhangArea):
+        (WebCore::RenderLayerCompositor::updateLayerForBottomOverhangArea):
+        (WebCore::RenderLayerCompositor::updateLayerForHeader):
+        (WebCore::RenderLayerCompositor::updateLayerForFooter):
+        (WebCore::RenderLayerCompositor::updateOverflowControlsLayers):
+        (WebCore::RenderLayerCompositor::ensureRootLayer):
+        (WebCore::RenderLayerCompositor::rootLayerAttachmentChanged):
+        * rendering/RenderLayerCompositor.h:
+
 2018-09-14  Eric Carlson  <eric.carlson@apple.com>
 
         Support arbitrary video resolution in getUserMedia API
