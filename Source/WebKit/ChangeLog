@@ -1,3 +1,37 @@
+2018-09-18  Youenn Fablet  <youenn@apple.com>
+
+        Enable Unified Plan by default
+        https://bugs.webkit.org/show_bug.cgi?id=189675
+
+        Reviewed by Eric Carlson.
+
+        * Shared/WebPreferences.yaml:
+
+2018-09-18  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (PSON): White or Black flash occurs when process swapping on navigation on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=189663
+        <rdar://problem/44184955>
+
+        Reviewed by Geoff Garen.
+
+        We need to keep the layer tree of the previous page alive and visible until we have something
+        to render on the new page. With PSON on Mac this means that we should keep displaying the
+        layer tree from the previus process.
+
+        This patch moves the management of 'attaching' the drawing area (Mac only concept) from web process
+        to UI process. This is when we parent the layer tree to the view root layer. It also ensures that
+        the layer tree is not deleted too early on process swap and that it still eventually gets deleted.
+
+        * UIProcess/DrawingAreaProxy.h:
+        (WebKit::DrawingAreaProxy::attachInWebProcess):
+        * UIProcess/SuspendedPageProxy.cpp:
+        (WebKit::messageNamesToIgnoreWhileSuspended):
+        (WebKit::SuspendedPageProxy::tearDownDrawingAreaInWebProcess):
+
+        We no longer tear down drawing area (layer tree) for suspended pages automatically. Send an explicit
+        message for it.
+
 2018-09-14  Eric Carlson  <eric.carlson@apple.com>
 
         Support arbitrary video resolution in getUserMedia API

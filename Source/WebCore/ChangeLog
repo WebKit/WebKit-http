@@ -1,3 +1,323 @@
+2018-09-18  Youenn Fablet  <youenn@apple.com>
+
+        Enable Unified Plan by default
+        https://bugs.webkit.org/show_bug.cgi?id=189675
+
+        Reviewed by Eric Carlson.
+
+        RTCRtpTransceiver.currentDirection is now gated by the unified plan runtime flag.
+        This will allow easy feature detection of unified plan support.
+        Covered by updated test.
+
+        * Modules/mediastream/RTCRtpTransceiver.idl:
+
+2018-09-18  Per Arne Vollan  <pvollan@apple.com>
+
+        [WebVTT] change "middle" to "center" for consistency with CSS
+        https://bugs.webkit.org/show_bug.cgi?id=158478
+
+        Reviewed by Eric Carlson.
+
+        No new tests, covered by existing tests.
+
+        * html/track/TextTrackCueGeneric.cpp:
+        (WebCore::TextTrackCueGenericBoxElement::applyCSSProperties):
+        * html/track/VTTCue.cpp:
+        (WebCore::centerKeyword):
+        (WebCore::VTTCue::initialize):
+        (WebCore::VTTCue::align const):
+        (WebCore::VTTCue::setAlign):
+        (WebCore::VTTCue::calculateDisplayParameters):
+        (WebCore::VTTCue::setCueSettings):
+        (WebCore::middleKeyword): Deleted.
+        * html/track/VTTCue.h:
+        * html/track/WebVTTParser.cpp:
+        (WebCore::WebVTTTreeBuilder::buildFromString):
+
+2018-09-18  Chris Dumez  <cdumez@apple.com>
+
+        "DidFirstVisuallyNonEmptyLayout" callback does not get called when restoring a page from PageCache
+        https://bugs.webkit.org/show_bug.cgi?id=189681
+        <rdar://problem/44526171>
+
+        Reviewed by Alex Christensen and Zalan Bujtas.
+
+        The "DidFirstVisuallyNonEmptyLayout" callback was not getting called when restoring a page from PageCache
+        because the FrameView is restored from PageCache and we would fail to restore its flags (such as
+        m_firstVisuallyNonEmptyLayoutCallbackPending) when entering Page Cache. We now call reset those flags that
+        are related to layout miletones when entering PageCache so that layout milestone events properly get sent
+        again when restoring from Page Cache.
+
+        * history/CachedFrame.cpp:
+        (WebCore::CachedFrame::CachedFrame):
+
+2018-09-18  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Static position should use content-box, not padding-box
+        https://bugs.webkit.org/show_bug.cgi?id=189698
+
+        Reviewed by Javier Fernandez.
+
+        This is a recent change by the CSSWG:
+        https://github.com/w3c/csswg-drafts/issues/3020
+
+        The spec text (https://drafts.csswg.org/css-grid/#static-position):
+          "The static position of an absolutely-positioned child
+           of a grid container is determined as if it were the sole grid item
+           in a grid area whose edges coincide with the content edges
+           of the grid container."
+
+        Test: imported/w3c/web-platform-tests/css/css-grid/abspos/absolute-positioning-grid-container-parent-001.html
+
+        * rendering/RenderGrid.cpp:
+        (WebCore::RenderGrid::prepareChildForPositionedLayout):
+        Simple change to use border and padding.
+
+2018-09-18  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [EME][GStreamer] The current EME implementation doesn't support the waitingforkey event
+        https://bugs.webkit.org/show_bug.cgi?id=185590
+
+        Reviewed by Philippe Normand.
+
+        When decryptors are blocked waiting for the key, instruct the
+        player to run the Wait for key algorithm. As per spec, if we run
+        out of blocks pending to decrypt because we don't have the key, we
+        request running the algorithm again.
+
+        Test: imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-waitingforkey.https.html.
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.cpp:
+        (WebCore::MediaPlayerPrivateGStreamer::handleMessage):
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        (WebCore::MediaPlayerPrivateGStreamerBase::initializationDataEncountered):
+        (WebCore::MediaPlayerPrivateGStreamerBase::reportWaitingForKey):
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.h:
+        * platform/graphics/gstreamer/eme/WebKitCommonEncryptionDecryptorGStreamer.cpp:
+        (webkitMediaCommonEncryptionDecryptTransformInPlace):
+        (webkitMediaCommonEncryptionDecryptSinkEventHandler):
+
+2018-09-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Update composedPath to match the latest spec
+        https://bugs.webkit.org/show_bug.cgi?id=180378
+        <rdar://problem/42843004>
+
+        Reviewed by Darin Adler.
+
+        This patch makes the check for whether a given node in the event path be included in composedPath
+        pre-determined at the time of the event dispatching per https://github.com/whatwg/dom/issues/525.
+        This was a fix for the issue that if an event listener in a closed shadow tree removes a node in the
+        same tree in the event path, then composedPath called on its shadow host, for example, will include
+        the removed node since it's no longer in the closed shadow tree.
+
+        Naively, implementing this behavior would require remembering the original document or shadow root
+        of each node in the event path as well as its parent shadow root, or worse which node is disclosed
+        to every other node at the time of computing the event path.
+
+        This patch takes a more novel and efficient approach to implement the new behavior by adding a single
+        integer indicating the number of closed-mode shadow root ancestors of each node in the event path.
+        In computePathUnclosedToTarget, any node whose *depth* is greater than the context object is excluded.
+
+        Consider the following example:
+        div ------- ShadowRoot (closed)
+          +- span     +- slot
+        If an event is dispatched on span, then the event path would be [span, slot, ShadowRoot, div]. Then
+        the values of integers assigned to each node would be: [0, 1, 1, 0] respectively. When composedPath
+        is called on span or div, slot and ShadowRoot are excluded because they have a greater *depth* value.
+
+        Unfortunately, this simplistic solution doesn't work when there are multiple shadow roots of the same
+        depth through which an event is dispatched as in:
+        section -- ShadowRoot (closed, SR2)
+          |          +- slot (s2)
+          +div ------ ShadowRoot (closed, SR1)
+            +- span     +- slot (s1)
+        If an event is dispatched on span, the event path would be [span, s1, SR1, div, s2, SR2, section].
+        The values of integers assigned are: [0, 1, 1, 0, 1, 1, 0] respectively. When composedPath is called
+        on SR1, the simplistic approach would include s2 and SR2, which would be wrong.
+
+        To account for this case, in computePathUnclosedToTarget, we traverse the event path upwards (i.e.
+        ancestors) and downwards (i.e. descendants) from the context object and decrease the *allowed depth*
+        of shadow trees when we traverse out of a shadow tree in either direction. When traversing upwards,
+        therefore, moving out of a shadow root to its host would would decrease the allowed depth. When
+        traversing dowards, moving from a slot element to its assigned node would decrease the allowed depth.
+
+        Note that the depths can be negative when a composed event is dispatched inside a closed shadow tree,
+        and it gets out of its shadow host.
+
+        Unfortunately, the latest DOM specification has a bug and doesn't match the behavior of Chrome. This
+        patch proposes a new algorithm which can be adopted in https://github.com/whatwg/dom/issues/684.
+
+        Test: imported/w3c/web-platform-tests/shadow-dom/event-composed-path-after-dom-mutation.html
+
+        * dom/EventContext.cpp:
+        (WebCore::EventContext::EventContext):
+        (WebCore::MouseOrFocusEventContext::MouseOrFocusEventContext):
+        (WebCore::TouchEventContext::TouchEventContext):
+        * dom/EventContext.h:
+        (WebCore::EventContext::closedShadowDepth const): Added.
+        * dom/EventPath.cpp:
+        (WebCore::WindowEventContext::WindowEventContext):
+        (WebCore::EventPath::buildPath): Compute the closed shadow tree's depths for each node in the path.
+        (WebCore::computePathUnclosedToTarget const): Implemented the aforementioned algorithm.
+        (WebCore::EventPath::EventPath):
+
+2018-09-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Use Semaphore and BinarySemaphore instead of dispatch_semaphore_t
+        https://bugs.webkit.org/show_bug.cgi?id=185339
+
+        Reviewed by Mark Lam.
+
+        * fileapi/ThreadableBlobRegistry.cpp:
+        (WebCore::ThreadableBlobRegistry::blobSize):
+        * platform/cocoa/NetworkExtensionContentFilter.h:
+        * platform/cocoa/NetworkExtensionContentFilter.mm:
+        (WebCore::NetworkExtensionContentFilter::initialize):
+        (WebCore::NetworkExtensionContentFilter::willSendRequest):
+        (WebCore::NetworkExtensionContentFilter::responseReceived):
+        (WebCore::NetworkExtensionContentFilter::addData):
+        (WebCore::NetworkExtensionContentFilter::finishedAddingData):
+        (WebCore::NetworkExtensionContentFilter::handleDecision):
+        Use per-function BinarySemaphore instead of holding it in NetworkExtensionContentFilter's field.
+
+        * platform/glib/FileMonitorGLib.cpp:
+        (WebCore::FileMonitor::FileMonitor):
+        (WebCore::FileMonitor::~FileMonitor):
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.h:
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm:
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::MediaPlayerPrivateAVFoundationObjC):
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::~MediaPlayerPrivateAVFoundationObjC):
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::waitForVideoOutputMediaDataWillChange):
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::outputMediaDataWillChange):
+        Use BinarySemaphore. And remove unused dispatch_semaphore_t.
+
+        * platform/graphics/avfoundation/objc/SourceBufferPrivateAVFObjC.h:
+        * platform/graphics/avfoundation/objc/SourceBufferPrivateAVFObjC.mm:
+        (-[WebAVStreamDataParserListener streamDataParserWillProvideContentKeyRequestInitializationData:forTrackID:]):
+        (-[WebAVStreamDataParserListener streamDataParser:didProvideContentKeyRequestInitializationData:forTrackID:]):
+        (WebCore::SourceBufferPrivateAVFObjC::SourceBufferPrivateAVFObjC):
+        (WebCore::SourceBufferPrivateAVFObjC::~SourceBufferPrivateAVFObjC):
+        (WebCore::SourceBufferPrivateAVFObjC::didProvideContentKeyRequestInitializationDataForTrackID):
+        (WebCore::SourceBufferPrivateAVFObjC::abort):
+        (WebCore::SourceBufferPrivateAVFObjC::setCDMSession):
+        (WebCore::SourceBufferPrivateAVFObjC::setCDMInstance):
+        Use Box<Semaphore> and Box<BinarySemaphore>.
+
+        * platform/graphics/cocoa/WebCoreDecompressionSession.h:
+        * platform/graphics/cocoa/WebCoreDecompressionSession.mm:
+        (WebCore::WebCoreDecompressionSession::WebCoreDecompressionSession):
+        Remove unused dispatch_semaphore_t.
+
+        * platform/network/cf/ResourceHandleCFNet.cpp:
+        (WebCore::ResourceHandle::platformLoadResourceSynchronously):
+        * platform/network/cf/ResourceHandleCFURLConnectionDelegateWithOperationQueue.cpp:
+        (WebCore::getRunLoop):
+        (WebCore::ResourceHandleCFURLConnectionDelegateWithOperationQueue::willSendRequest):
+        (WebCore::ResourceHandleCFURLConnectionDelegateWithOperationQueue::didReceiveResponse):
+        (WebCore::ResourceHandleCFURLConnectionDelegateWithOperationQueue::willCacheResponse):
+        (WebCore::ResourceHandleCFURLConnectionDelegateWithOperationQueue::canRespondToProtectionSpace):
+        * platform/network/mac/WebCoreResourceHandleAsOperationQueueDelegate.h:
+        * platform/network/mac/WebCoreResourceHandleAsOperationQueueDelegate.mm:
+        (-[WebCoreResourceHandleAsOperationQueueDelegate initWithHandle:messageQueue:]):
+        (-[WebCoreResourceHandleAsOperationQueueDelegate detachHandle]):
+        (-[WebCoreResourceHandleAsOperationQueueDelegate dealloc]):
+        (-[WebCoreResourceHandleAsOperationQueueDelegate connection:willSendRequest:redirectResponse:]):
+        (-[WebCoreResourceHandleAsOperationQueueDelegate connection:canAuthenticateAgainstProtectionSpace:]):
+        (-[WebCoreResourceHandleAsOperationQueueDelegate connection:didReceiveResponse:]):
+        (-[WebCoreResourceHandleAsOperationQueueDelegate connection:willCacheResponse:]):
+        Use BinarySemaphore instead.
+
+2018-09-17  Simon Fraser  <simon.fraser@apple.com>
+
+        Many modern media control tests leak documents in testing
+        https://bugs.webkit.org/show_bug.cgi?id=189437
+
+        Reviewed by Darin Adler.
+
+        In order to accurately detect leaks in media controls tests which use lots of
+        SVGImages, we have to:
+        - Fire a zero-delay timer after the postTask, in order for ImagesLoader's m_derefElementTimer
+          to clear references to elements.
+        - Have releaseCriticalMemory() call CachedResourceLoader's garbageCollectDocumentResources()
+          to drop the last handle to the CachedResource for an SVGImage.
+        - Call WKBundleReleaseMemory() after the GC and timer, since we need garbageCollectDocumentResources()
+          to run again after that timer has fired.
+        
+        This should fix most of the spurious leak reports involving SVGImage documents.
+
+        * page/MemoryRelease.cpp:
+        (WebCore::releaseCriticalMemory):
+
+2018-09-17  Jer Noble  <jer.noble@apple.com>
+
+        Add support for HEVC codec types in Media Capabilities
+        https://bugs.webkit.org/show_bug.cgi?id=189565
+
+        Reviewed by Eric Carlson.
+
+        Test: media/hevc-codec-parameters.html
+
+        Add some utility methods for parsing HEVC codec strings, and using those parsed
+        values to query the platform for detailed support for HEVC decoding.
+
+        Drive-by fix: Modify MediaEngineConfigurationFactory to allow for null function
+        pointers in the encode/decode factory pair.
+
+        * Sources.txt:
+        * SourcesCocoa.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/cocoa/VideoToolboxSoftLink.cpp:
+        * platform/cocoa/VideoToolboxSoftLink.h:
+        * platform/graphics/HEVCUtilities.cpp: Added.
+        (WebCore::parseHEVCCodecParameters):
+        * platform/graphics/HEVCUtilities.h: Added.
+        * platform/graphics/cocoa/HEVCUtilitiesCocoa.cpp: Added.
+        (WebCore::validateHEVCParameters):
+        * platform/graphics/cocoa/HEVCUtilitiesCocoa.h: Added.
+        * platform/graphics/cocoa/MediaEngineConfigurationFactoryCocoa.cpp: Added.
+        (WebCore::videoCodecTypeFromRFC4281Type):
+        (WebCore::createMediaPlayerDecodingConfigurationCocoa):
+        * platform/graphics/cocoa/MediaEngineConfigurationFactoryCocoa.h: Added.
+        * platform/mediacapabilities/MediaEngineConfigurationFactory.cpp:
+        (WebCore::factories):
+        (WebCore::MediaEngineConfigurationFactory::createDecodingConfiguration):
+        (WebCore::MediaEngineConfigurationFactory::createEncodingConfiguration):
+        * testing/Internals.cpp:
+        (WebCore::Internals::parseHEVCCodecParameters):
+        * testing/Internals.h:
+        * testing/Internals.idl:
+
+2018-09-17  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: generate CSSKeywordCompletions from backend values
+        https://bugs.webkit.org/show_bug.cgi?id=189041
+
+        Reviewed by Joseph Pecoraro.
+
+        Modified existing test inspector/css/getSupportedCSSProperties.html.
+
+        * inspector/agents/InspectorCSSAgent.cpp:
+        (WebCore::InspectorCSSAgent::getSupportedCSSProperties):
+        Send alias and longhand information for all properties, and any known keyword values for
+        those applicable. This makes use of `CSSParserFastPaths::isValidKeywordPropertyAndValue` to
+        determine if a given keyword is a valid value for each property. This only generates a list
+        for properties who have no non-keyword values.
+
+        * css/makeprop.pl:
+        * css/makevalues.pl:
+        Create additional helper functions/constants for retrieving strings of each CSS keyword.
+
+        * css/CSSProperty.h:
+        (WebCore::CSSProperty::aliasesForProperty):
+
+        * css/CSSPrimitiveValue.cpp:
+        (WebCore::valueName):
+
+        * css/CSSValuePool.cpp:
+        (WebCore::CSSValuePool::CSSValuePool):
+        (WebCore::CSSValuePool::createIdentifierValue):
+
 2018-09-17  Youenn Fablet  <youenn@apple.com>
 
         track.onmute isn't called for a remote MediaStreamTrack when its counter part track is removed from the peer connection
