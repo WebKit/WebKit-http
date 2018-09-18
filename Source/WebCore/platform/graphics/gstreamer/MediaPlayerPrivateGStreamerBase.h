@@ -148,6 +148,7 @@ public:
     void attemptToDecryptWithInstance(const CDMInstance&) final;
     void handleProtectionStructure(const GstStructure*);
     void dispatchLocalCDMInstance();
+    void reportWaitingForKey();
 #endif
 
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);

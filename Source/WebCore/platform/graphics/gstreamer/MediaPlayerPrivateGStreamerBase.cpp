@@ -1260,7 +1260,6 @@ void MediaPlayerPrivateGStreamerBase::handleProtectionStructure(const GstStructu
 {
     ASSERT(isMainThread());
 
-    // FIXME: Inform that we are waiting for a key.
     GUniqueOutPtr<char> keySystemUUID;
     GRefPtr<GstBuffer> data;
     gst_structure_get(structure, "init-data", GST_TYPE_BUFFER, &data.outPtr(), "key-system-uuid", G_TYPE_STRING, &keySystemUUID.outPtr(), nullptr);
@@ -1342,6 +1341,12 @@ void MediaPlayerPrivateGStreamerBase::dispatchDecryptionStructure(GUniquePtr<Gst
 {
     bool eventHandled = gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB, structure.release()));
     GST_TRACE("emitted decryption structure on pipeline, event handled %s", boolForPrinting(eventHandled));
+}
+
+void MediaPlayerPrivateGStreamerBase::reportWaitingForKey()
+{
+    GST_TRACE("waiting for key");
+    m_player->waitingForKey();
 }
 #endif
 

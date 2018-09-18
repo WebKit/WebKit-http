@@ -822,8 +822,160 @@ media/encrypted-media/encrypted-media-syntax.html [ Skip ]
 media/encrypted-media/encrypted-media-v2-events.html [ Skip ]
 media/encrypted-media/encrypted-media-v2-syntax.html [ Skip ]
 
-# No support for resource load statistics in test controller.
-webkit.org/b/168171 http/tests/loading/resourceLoadStatistics [ Timeout Failure ]
+#"waitingforkey" event is not supported yet
+webkit.org/b/189618 imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-multikey-sequential-readyState.https.html [ Failure ]
+webkit.org/b/189618 imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-multikey-sequential.https.html [ Failure ]
+webkit.org/b/189619 imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-waiting-for-a-key.https.html [ Failure ]
+
+webkit.org/b/185594 imported/w3c/web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-clear-encrypted.https.html [ Failure ]
+
+webkit.org/b/177873 http/wpt/beacon/beacon-async-error-logging.html [ Failure ]
+
+webkit.org/b/182050 http/wpt/fetch/response-opaque-clone.html [ Pass Crash ]
+webkit.org/b/180749 http/wpt/offscreen-canvas/transferToImageBitmap-webgl.html [ ImageOnlyFailure Timeout ]
+webkit.org/b/168543 http/wpt/resource-timing/rt-nextHopProtocol.html [ Failure ]
+webkit.org/b/168543 http/wpt/resource-timing/rt-nextHopProtocol.worker.html [ Failure ]
+webkit.org/b/177871 http/wpt/resource-timing/rt-shared-resource-in-workers.html [ Failure ]
+webkit.org/b/168357 http/wpt/resource-timing/rt-initiatorType-media.html [ Pass Failure ]
+webkit.org/b/181661 http/wpt/webrtc/third-party-frame-ice-candidate-filtering.html [ Failure ]
+
+webkit.org/b/178577 http/tests/dom/document-attributes-null-handling.html [ Failure ]
+webkit.org/b/178578 http/tests/images/hidpi-srcset-copy.html [ Failure ]
+webkit.org/b/180370 http/tests/images/image-supports-video.html [ Skip ]
+
+webkit.org/b/175422 http/tests/blink/sendbeacon/beacon-same-origin.html [ Failure ]
+
+http/tests/cookies/double-quoted-value-with-semi-colon.html [ Failure ]
+
+Bug(WPE) svg/animations/animations-paused-in-background-page-iframe.html [ Skip ]
+Bug(WPE) svg/animations/animations-paused-in-background-page.html [ Skip ]
+Bug(WPE) svg/animations/animations-paused-page-non-visible.html [ Skip ]
+Bug(WPE) svg/animations/animations-paused-when-inserted-in-hidden-document.html [ Skip ]
+Bug(WPE) svg/animations/animations-paused-when-inserted-in-hidden-document2.html [ Skip ]
+
+webkit.org/b/135529 svg/animations/animate-css-xml-attributeType.html [ Failure ]
+webkit.org/b/141831 svg/animations/animate-text-nested-transforms.html [ Failure ]
+webkit.org/b/107018 svg/animations/animate-linear-discrete-additive.svg [ ImageOnlyFailure Pass ]
+webkit.org/b/107018 svg/animations/animate-linear-discrete-additive-b.svg [ ImageOnlyFailure Pass ]
+webkit.org/b/107018 svg/animations/animate-linear-discrete-additive-c.svg [ ImageOnlyFailure Pass ]
+webkit.org/b/107018 svg/animations/mozilla/animateMotion-mpath-pathLength-1.svg [ ImageOnlyFailure Pass ]
+webkit.org/b/99893 svg/animations/mozilla/animateMotion-mpath-targetChange-1.svg [ ImageOnlyFailure ]
+webkit.org/b/110446 svg/as-background-image/svg-transformed-background.html [ ImageOnlyFailure ]
+webkit.org/b/129958 svg/clip-path/mask-nested-clip-path-006.svg [ ImageOnlyFailure ]
+webkit.org/b/129958 svg/clip-path/mask-nested-clip-path-007.svg [ ImageOnlyFailure ]
+webkit.org/b/129958 svg/clip-path/mask-nested-clip-path-008.svg [ ImageOnlyFailure ]
+webkit.org/b/129958 svg/clip-path/mask-nested-clip-path-009.svg [ ImageOnlyFailure ]
+webkit.org/b/129958 svg/clip-path/mask-nested-clip-path-010.svg [ ImageOnlyFailure ]
+webkit.org/b/129958 svg/clip-path/mask-objectboundingbox-content-clip-transform.svg [ ImageOnlyFailure ]
+webkit.org/b/129958 svg/clip-path/mask-objectboundingbox-content-clip.svg [ ImageOnlyFailure ]
+webkit.org/b/129958 svg/clip-path/mask-userspaceonuse-content-clip-transform.svg [ ImageOnlyFailure ]
+webkit.org/b/129958 svg/clip-path/mask-userspaceonuse-content-clip.svg [ ImageOnlyFailure ]
+webkit.org/b/163830 svg/css/mix-blend-mode-background-root.svg [ ImageOnlyFailure ]
+webkit.org/b/163830 svg/css/mix-blend-mode-opacity-root.svg [ ImageOnlyFailure ]
+webkit.org/b/163830 svg/css/mix-blend-mode-with-inline-svg.html [ ImageOnlyFailure ]
+webkit.org/b/135529 svg/css/parse-height.html [ Failure ]
+webkit.org/b/135529 svg/css/parse-length.html [ Failure ]
+webkit.org/b/163831 svg/custom/acid3-test-77.html [ Failure ]
+webkit.org/b/134758 svg/custom/composited-svg-with-opacity.html [ ImageOnlyFailure Pass ]
+webkit.org/b/131347 svg/custom/hidpi-masking-clipping.svg [ Failure ImageOnlyFailure Timeout ]
+webkit.org/b/160137 svg/custom/non-scaling-stroke.svg [ Failure Pass ]
+webkit.org/b/160137 svg/custom/non-scaling-stroke-update.svg [ ImageOnlyFailure Pass ]
+webkit.org/b/112228 svg/custom/resources-css-scaled.html [ ImageOnlyFailure ]
+webkit.org/b/115440 svg/stroke/animated-non-scaling-stroke.html [ ImageOnlyFailure Pass ]
+webkit.org/b/88230 svg/stroke/non-scaling-stroke-pattern.svg [ ImageOnlyFailure Pass ]
+webkit.org/b/137096 svg/text/alt-glyph-for-surrogate-pair.svg [ ImageOnlyFailure ]
+webkit.org/b/98653  svg/text/lengthAdjust-text-metrics.html [ Failure ]
+webkit.org/b/131347 svg/text/hidpi-text-selection-rect-position.html [ ImageOnlyFailure ]
+Bug(WPE) svg/text/select-text-svgfont.html [ Failure ]
+Bug(WPE) svg/text/offset-square-svg-font.html [ ImageOnlyFailure ]
+webkit.org/b/176648 svg/transforms/transformed-text-fill-gradient.html [ ImageOnlyFailure ]
+Bug(WPE) svg/zoom/page/zoom-zoom-coords.xhtml [ Failure ]
+webkit.org/b/178704 svg/as-image/svg-as-image-canvas.html [ Crash Pass ImageOnlyFailure ]
+webkit.org/b/178704 svg/css/svg-resource-fragment-identifier-img-src.html [ Crash Pass ImageOnlyFailure ]
+
+webkit.org/b/178705 webgl/1.0.2/conformance/rendering/multisample-corruption.html [ Failure ]
+
+webkit.org/b/181659 fast/canvas/webgl/simulated-vertexAttrib0-invalid-indicies.html [ Failure ]
+webkit.org/b/179760 fast/canvas/webgl/texImage2D-mse-flipY-false.html [ Timeout ]
+webkit.org/b/179760 fast/canvas/webgl/texImage2D-mse-flipY-true.html [ Timeout ]
+
+webkit.org/b/180134 webanimations/left-and-opacity-animation-yields-no-compositing.html [ Failure ]
+webkit.org/b/180134 webanimations/opacity-animation-no-longer-composited-upon-completion.html [ Failure ]
+webkit.org/b/180134 webanimations/width-and-opacity-separate-animation-yields-no-compositing.html [ Failure ]
+
+webkit.org/b/182317 http/tests/resourceLoadStatistics/grandfathering.html [ Failure ]
+
+webkit.org/b/184086 imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property.html [ Failure ]
+webkit.org/b/184086 imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property.html [ Failure ]
+
+webkit.org/b/184295 http/wpt/loading/redirect-headers.html [ Skip ]
+
+# This 3 fullscreen tests are still not passing.
+webkit.org/b/185676 fullscreen/requestFullscreen-escape-key.html [ Failure ]
+webkit.org/b/185676 fullscreen/video-controls-rtl.html [ Failure ]
+webkit.org/b/185676 fullscreen/full-screen-plugin.html [ Timeout ]
+
+webkit.org/b/185714 js/intl-numberformat-format-to-parts.html [ Failure ]
+webkit.org/b/185714 js/intl-pluralrules.html [ Failure ]
+
+webkit.org/b/184779 transitions/clip-path-path-transitions.html [ Failure ]
+webkit.org/b/184779 transitions/clip-path-transitions.html [ Failure ]
+
+webkit.org/b/186141 svg/dom/SVGGeometry-isPointInStroke.xhtml [ Failure ]
+
+webkit.org/b/185254 http/tests/cache/disk-cache/redirect-chain-limits.html [ Failure ]
+
+webkit.org/b/186100 css3/color-filters/color-filter-color-property-list-item.html [ ImageOnlyFailure ]
+webkit.org/b/186100 css3/color-filters/color-filter-ignore-semantic.html [ ImageOnlyFailure ]
+webkit.org/b/186100 css3/color-filters/color-filter-opacity.html [ ImageOnlyFailure ]
+
+webkit.org/b/186754 legacy-animation-engine/accessibility/transformed-bounds.html [ Failure ]
+webkit.org/b/186252 legacy-animation-engine/css3/filters/backdrop/animation.html [ Timeout ]
+webkit.org/b/168426 legacy-animation-engine/imported/blink/animations/display-inline-style-adjust.html [ ImageOnlyFailure ]
+
+webkit.org/b/187044 webanimations/opacity-animation-yields-compositing-span.html [ Failure ]
+
+webkit.org/b/187601 fullscreen/full-screen-layer-dump.html [ Failure ]
+
+webkit.org/b/188098 webanimations/accelerated-animation-with-delay.html [ ImageOnlyFailure ]
+
+webkit.org/b/188159 svg/text/text-default-font-size.html [ ImageOnlyFailure ]
+webkit.org/b/188159 svg/as-image/svg-image-with-data-uri-background.html [ ImageOnlyFailure ]
+
+webkit.org/b/188433 svg/custom/href-svg-namespace-static.svg [ ImageOnlyFailure ]
+
+webkit.org/b/177934 fast/dom/HTMLLinkElement/preconnect-support.html [ Failure ]
+
+webkit.org/b/131934 fast/dom/Window/mozilla-focus-blur.html [ Failure ]
+
+webkit.org/b/188505 fast/dom/horizontal-scrollbar-in-rtl.html [ Failure ]
+webkit.org/b/188505 fast/dom/title-directionality-removeChild.html [ Failure ]
+webkit.org/b/188505 fast/dom/title-directionality.html [ Failure ]
+webkit.org/b/188505 fast/dom/vertical-scrollbar-in-rtl.html [ Failure ]
+webkit.org/b/188505 fast/dom/rtl-scroll-to-leftmost-and-resize.html [ Timeout ]
+
+webkit.org/b/188506 fast/dom/timer-throttling-hidden-page.html [ Failure ]
+
+webkit.org/b/188507 fast/dom/Window/webkitConvertPoint.html [ Failure ]
+
+webkit.org/b/188508 fast/dom/Window/window-postmessage-clone.html [ Timeout ]
+webkit.org/b/188508 fast/dom/Window/window-postmessage-clone-frames.html [ Timeout ]
+
+webkit.org/b/188509 fast/dom/Window/child-window-focus.html [ Timeout ]
+webkit.org/b/188509 fast/dom/Window/new-window-opener.html [ Failure ]
+webkit.org/b/188509 fast/dom/Window/open-window-min-size.html [ Failure ]
+webkit.org/b/188509 fast/dom/Window/timeout-released-on-close.html [ Failure ]
+webkit.org/b/188509 fast/dom/Window/window-onFocus.html [ Failure ]
+webkit.org/b/188509 fast/dom/Window/window-property-invalid-characters-ignored.html [ Failure ]
+webkit.org/b/188509 fast/dom/Window/window-resize.html [ Failure ]
+webkit.org/b/188509 fast/dom/Window/window-resize-and-move-arguments.html [ Failure ]
+webkit.org/b/188509 fast/dom/Window/window-resize-contents.html [ Timeout ]
+webkit.org/b/188509 fast/dom/Window/window-resize-nan.html [ Failure ]
+webkit.org/b/188509 fast/dom/Window/window-resize-update-scrollbars.html [ Timeout ]
+
+webkit.org/b/188657 fast/shadow-dom/range-input-element-shadow-manipulation.html [ Failure ]
+
+webkit.org/b/188658 fast/shadow-dom/trusted-event-scoped-flags.html [ Failure ]
 
 webkit.org/b/172815 imported/w3c/i18n/bidi/bidi-plaintext-011.html [ ImageOnlyFailure ]
 
