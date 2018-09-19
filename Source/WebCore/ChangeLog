@@ -1,3 +1,157 @@
+2018-09-19  Youenn Fablet  <youenn@apple.com>
+
+        Implement sender/receiver getStats
+        https://bugs.webkit.org/show_bug.cgi?id=189707
+
+        Reviewed by Eric Carlson.
+
+        Add support for sender and receiver getStats.
+        Also add support for peer connection selector parameter.
+
+        Add the plumbing of the selector to LibWebRTCMediaEndpoint.
+        Then make use of libwebrtc overloaded methods to retrieve the right stats.
+
+        Covered by updated/rebased tests.
+
+        * Modules/mediastream/PeerConnectionBackend.h:
+        * Modules/mediastream/RTCPeerConnection.cpp:
+        (WebCore::RTCPeerConnection::getStats):
+        * Modules/mediastream/RTCPeerConnection.h:
+        * Modules/mediastream/RTCPeerConnection.idl:
+        * Modules/mediastream/RTCRtpReceiver.cpp:
+        (WebCore::RTCRtpReceiver::RTCRtpReceiver):
+        (WebCore::RTCRtpReceiver::getStats):
+        * Modules/mediastream/RTCRtpReceiver.h:
+        (WebCore::RTCRtpReceiver::create):
+        (WebCore::RTCRtpReceiver::backend):
+        * Modules/mediastream/RTCRtpReceiver.idl:
+        * Modules/mediastream/RTCRtpSender.cpp:
+        (WebCore::RTCRtpSender::create):
+        (WebCore::RTCRtpSender::RTCRtpSender):
+        (WebCore::RTCRtpSender::getStats):
+        * Modules/mediastream/RTCRtpSender.h:
+        * Modules/mediastream/RTCRtpSender.idl:
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.cpp:
+        (WebCore::LibWebRTCMediaEndpoint::getStats):
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.h:
+        * Modules/mediastream/libwebrtc/LibWebRTCPeerConnectionBackend.cpp:
+        (WebCore::LibWebRTCPeerConnectionBackend::getStats):
+        (WebCore::backendFromRTPSender):
+        (WebCore::createReceiverForSource):
+        (WebCore::LibWebRTCPeerConnectionBackend::createReceiver):
+        (WebCore::LibWebRTCPeerConnectionBackend::videoReceiver):
+        (WebCore::LibWebRTCPeerConnectionBackend::audioReceiver):
+        (WebCore::LibWebRTCPeerConnectionBackend::addTrack):
+        (WebCore::LibWebRTCPeerConnectionBackend::addUnifiedPlanTransceiver):
+        (WebCore::LibWebRTCPeerConnectionBackend::addTransceiver):
+        (WebCore::LibWebRTCPeerConnectionBackend::newRemoteTransceiver):
+        * Modules/mediastream/libwebrtc/LibWebRTCPeerConnectionBackend.h:
+        * Modules/mediastream/libwebrtc/LibWebRTCRtpReceiverBackend.h:
+
+2018-09-19  Jer Noble  <jer.noble@apple.com>
+
+        REGRESSION (r236006): New waitingForKey() requirement breaks Modern EME tests.
+        https://bugs.webkit.org/show_bug.cgi?id=189720
+        <rdar://problem/44572140>
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Always call waitingForKey() after calling initializationDataEncountered().
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm:
+        (WebCore::MediaPlayerPrivateAVFoundationObjC::shouldWaitForLoadingOfResource):
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaSourceAVFObjC.mm:
+        (WebCore::MediaPlayerPrivateMediaSourceAVFObjC::initializationDataEncountered):
+
+2018-09-19  Philippe Normand <pnormand@igalia.com>
+
+        [GStreamer] Add support for AV1 decoding
+        https://bugs.webkit.org/show_bug.cgi?id=189647
+
+        Tweaked by Xabier Rodriguez Calvar <calvaris@igalia.com>.
+        Reviewed by Žan Doberšek.
+
+        AV1 can be muxed in MP4 and WebM containers. The test is an adaptation from Chromium's unittest:
+        https://chromium.googlesource.com/chromium/src/+/master/content/browser/media/media_canplaytype_browsertest.cc
+
+        Test: media/media-can-play-av1.html
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.cpp:
+        (WebCore::MediaPlayerPrivateGStreamer::supportsType): Add AV1
+        support. The av01 codec has to be explicitely checked, along with
+        the presence of a compatible AV1 decoder.
+
+2018-09-18  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Curl] Limit capturing extra metrics for Web Inspector when not required.
+        https://bugs.webkit.org/show_bug.cgi?id=189520
+
+        Reviewed by Alex Christensen.
+
+        Respect the value of NetworkDataTask::shouldCaptureExtraNetworkLoadMetrics() to reduce the process
+        time when they are not needed.
+
+        No new tests because there's no behavior change.
+
+        * platform/network/curl/CurlContext.cpp:
+        (WebCore::CurlHandle::getNetworkLoadMetrics):
+        (WebCore::CurlHandle::addExtraNetworkLoadMetrics):
+        * platform/network/curl/CurlContext.h:
+        * platform/network/curl/CurlRequest.cpp:
+        (WebCore::CurlRequest::CurlRequest):
+        (WebCore::CurlRequest::updateNetworkLoadMetrics):
+        * platform/network/curl/CurlRequest.h:
+        (WebCore::CurlRequest::create):
+        * platform/network/curl/ResourceHandleCurl.cpp:
+        (WebCore::ResourceHandle::createCurlRequest):
+
+2018-09-18  Megan Gardner  <megan_gardner@apple.com>
+
+        Support Images Module Level 4's double-position gradient color stop syntax
+        https://bugs.webkit.org/show_bug.cgi?id=186154
+        <rdar://problem/44158152>
+
+        Reviewed by Simon Fraser.
+
+        The CSS spec for all gradients allows for each color stop to have two angles to be used for hints.
+        This makes pie chart and checkerboard conic gradients much simpler to write.
+        Any time you want to have a hard line in a gradient, this syntax simplifies the gradient specification.
+
+        Test: fast/gradients/conic-two-hints.html
+        Test: fast/gradients/linear-two-hints-angle.html
+        Test: fast/gradients/linear-two-hints.html
+        Test: fast/gradients/radial-two-hints.html
+
+        * css/parser/CSSPropertyParserHelpers.cpp:
+        (WebCore::CSSPropertyParserHelpers::consumeAngularGradientColorStops): Removed.
+        (WebCore::CSSPropertyParserHelpers::consumeGradientColorStops):
+
+2018-09-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove the unused RenderLayerCompositor::enclosingCompositorFlushingLayers()
+        https://bugs.webkit.org/show_bug.cgi?id=189689
+
+        Reviewed by Alex Christensen.
+
+        enclosingCompositorFlushingLayers() was added in r76196 but never used. Also use
+        a SetForScope<>.
+
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::flushPendingLayerChanges):
+        (WebCore::RenderLayerCompositor::enclosingCompositorFlushingLayers const): Deleted.
+        * rendering/RenderLayerCompositor.h:
+
+2018-09-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [macOS] Frequent leaks seen under WebCore::gpuIDForDisplayMask
+        https://bugs.webkit.org/show_bug.cgi?id=189685
+        <rdar://problem/44541974>
+
+        Reviewed by Per Arne Vollan.
+
+        * platform/mac/PlatformScreenMac.mm:
+        (WebCore::gpuIDForDisplayMask):
+
 2018-09-18  Youenn Fablet  <youenn@apple.com>
 
         Implement RTCRtpReceiver getContributingSources/getSynchronizationSources
