@@ -468,6 +468,24 @@
         * platform/graphics/gstreamer/mse/AppendPipeline.cpp:
         (WebCore::AppendPipeline::connectDemuxerSrcPadToAppsink):
 
+2018-09-20  Yacine Bandou  <yacine.bandou@softathome.com>
+
+        [EME] Add WebM sanitization
+        https://bugs.webkit.org/show_bug.cgi?id=189740
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        This patch adds support for sanitizing the WebM initialization data,
+        ensures there are no bogus values.
+        See https://www.w3.org/TR/encrypted-media/#dom-mediakeysession-generaterequest.
+
+        Tests: imported/w3c/web-platform-tests/encrypted-media/clearkey-generate-request-disallowed-input.https.html
+
+        * Modules/encryptedmedia/InitDataRegistry.cpp:
+        (WebCore::sanitizeWebM): Added implementation, check if the initialization data doesn't empty and its size
+        should be less than 64KB, return the buffer copy if it is ok, otherwise a nullptr.
+        (WebCore::extractKeyIDsWebM): Added implementation.
+
 2018-08-30  Ross Kirsling  <ross.kirsling@sony.com>
 
         Speculative build fix for WPE after r235531.
