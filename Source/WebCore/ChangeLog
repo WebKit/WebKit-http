@@ -468,6 +468,19 @@
         * platform/graphics/gstreamer/mse/AppendPipeline.cpp:
         (WebCore::AppendPipeline::connectDemuxerSrcPadToAppsink):
 
+2018-09-21  Yacine Bandou  <yacine.bandou@softathome.com>
+
+        [EME] Fix typo in WebM sanitization variable
+        https://bugs.webkit.org/show_bug.cgi?id=189789
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        This commit corrects a typo in the name of a local variable, sanitizedBuffer
+        instead of sanitazedBuffer.
+
+        * Modules/encryptedmedia/InitDataRegistry.cpp:
+        (WebCore::extractKeyIDsWebM):
+
 2018-09-20  Yacine Bandou  <yacine.bandou@softathome.com>
 
         [EME] Add WebM sanitization
