@@ -29,7 +29,6 @@
 
 #include "config.h"
 #include "ImageData.h"
-#include "TypedArrayInlines.h"
 
 #include <runtime/JSCInlines.h>
 #include <runtime/TypedArrayInlines.h>

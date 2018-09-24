@@ -123,6 +123,14 @@ void TestRunner::notifyDone()
     waitForPolicy = false;
 }
 
+void TestRunner::forceImmediateCompletion()
+{
+    // Same as on mac. This can be shared.
+    if (m_waitToDump && !WorkQueue::singleton().count())
+        dump();
+    m_waitToDump = false;
+}
+
 JSStringRef TestRunner::pathToLocalResource(JSContextRef context, JSStringRef url)
 {
     String requestedUrl(url->characters(), url->length());

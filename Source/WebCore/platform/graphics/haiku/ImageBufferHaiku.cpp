@@ -27,16 +27,11 @@
 #include "ImageBuffer.h"
 
 #include "GraphicsContext.h"
-#include "HeapInlines.h"
 #include "ImageData.h"
 #include "IntRect.h"
-#include "JSCellInlines.h"
-#include "JSCJSValueInlines.h"
 #include "MIMETypeRegistry.h"
 #include "NotImplemented.h"
 #include "StillImageHaiku.h"
-#include "TypedArrayInlines.h"
-#include "TypedArrays.h"
 #include <wtf/text/Base64.h>
 #include <wtf/text/CString.h>
 #include <BitmapStream.h>

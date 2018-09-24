@@ -58,7 +58,6 @@
 #include "GeolocationClientMock.h"
 #include "GraphicsContext.h"
 #include "IconDatabase.h"
-#include "InitializeThreading.h"
 #include "InspectorClientHaiku.h"
 #include "LibWebRTCProvider.h"
 #include "LogInitialization.h"

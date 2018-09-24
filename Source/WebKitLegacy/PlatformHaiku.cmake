@@ -6,8 +6,6 @@ LIST(APPEND WebKitLegacy_INCLUDE_DIRECTORIES
 	"${WEBKITLEGACY_DIR}/haiku"
 	"${WEBKITLEGACY_DIR}/haiku/API"
 	"${WEBKITLEGACY_DIR}/haiku/WebCoreSupport"
-    "${JAVASCRIPTCORE_DIR}"
-    "${JAVASCRIPTCORE_DIR}/ForwardingHeaders"
     "${WEBCORE_DIR}"
     "${WEBCORE_DIR}/accessibility"
     "${WEBCORE_DIR}/bindings/js"

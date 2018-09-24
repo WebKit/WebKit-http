@@ -31,7 +31,7 @@
 
 #pragma once
 
-#include "debugger/DebuggerPrimitives.h"
+#include "DebuggerPrimitives.h"
 #include "InspectorProtocolObjects.h"
 #include <wtf/Forward.h>
 #include <wtf/text/WTFString.h>
