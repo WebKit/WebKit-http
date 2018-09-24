@@ -550,7 +550,6 @@ void AVVideoCaptureSource::processNewFrame(RetainPtr<CMSampleBufferRef> sampleBu
     if (!isProducingData() || muted())
         return;
 
-
     CMFormatDescriptionRef formatDescription = CMSampleBufferGetFormatDescription(sampleBuffer.get());
     if (!formatDescription)
         return;
