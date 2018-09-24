@@ -1,3 +1,104 @@
+2018-01-31  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Make JavaScriptCore headers copies
+        https://bugs.webkit.org/show_bug.cgi?id=182303
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt:
+        * Scripts/generate-forwarding-headers.pl:
+
+2018-01-31  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r227942.
+
+        r227875 should not have been rolled out.
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r227875."
+        https://bugs.webkit.org/show_bug.cgi?id=182357
+        https://trac.webkit.org/changeset/227942
+
+2018-01-31  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r227875.
+        https://bugs.webkit.org/show_bug.cgi?id=182357
+
+        Missing cross-platform TestController implementation
+
+        Reverted changeset:
+
+        "Add callbacks to testRunner.statisticsSetShouldPartitionCookiesForHost() and testRunner.statisticsUpdateCookiePartitioning()"
+        https://bugs.webkit.org/show_bug.cgi?id=181958
+        https://trac.webkit.org/changeset/227875
+
+        * UIProcess/API/C/WKWebsiteDataStoreRef.cpp:
+        (WKWebsiteDataStoreStatisticsUpdateCookiePartitioning):
+        (WKWebsiteDataStoreSetStatisticsShouldPartitionCookiesForHost):
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.mm:
+        (-[WKWebsiteDataStore _resourceLoadStatisticsUpdateCookiePartitioning]):
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetShouldPartitionCookies:forHost:]):
+        (-[WKWebsiteDataStore _resourceLoadStatisticsUpdateCookiePartitioning:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetShouldPartitionCookies:forHost:completionHandler:]): Deleted.
+        * UIProcess/API/Cocoa/WKWebsiteDataStorePrivate.h:
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::resourceLoadStatisticsUpdated):
+        (WebKit::WebResourceLoadStatisticsStore::logUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::logNonRecentUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleCookiePartitioningUpdate):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleCookiePartitioningUpdateForDomains):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleClearPartitioningStateForDomains):
+        (WebKit::WebResourceLoadStatisticsStore::mergeWithDataFromDecoder):
+        (WebKit::WebResourceLoadStatisticsStore::clearInMemory):
+        (WebKit::WebResourceLoadStatisticsStore::updateCookiePartitioning):
+        (WebKit::WebResourceLoadStatisticsStore::updateCookiePartitioningForDomains):
+        (WebKit::WebResourceLoadStatisticsStore::clearPartitioningStateForDomains):
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+
+2018-01-31  Brent Fulgham  <bfulgham@apple.com>
+
+        Follow-up to r227939.
+        https://bugs.webkit.org/show_bug.cgi?id=182354
+        <rdar://problem/37046844>
+
+        Make sure the correct sandbox is used on iOS as well.
+
+        * StorageProcess/ios/StorageProcessIOS.mm:
+        (WebKit::StorageProcess::initializeSandbox):
+
+2018-01-31  Brent Fulgham  <bfulgham@apple.com>
+
+        REGRESSION(r220094): com.apple.WebKit.Storage lost its sandbox
+        https://bugs.webkit.org/show_bug.cgi?id=182354
+        <rdar://problem/37046844>
+
+        Reviewed by Ryosuke Niwa.
+
+        The Database process was renamed to Storage, but it's sandbox was not updated.
+
+        * Configurations/WebKit.xcconfig: Update for sandbox rename.
+        * DerivedSources.make: Ditto.
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.Databases.sb: Removed.
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.Storage.sb: Copied from Resources/SandboxProfiles/ios/com.apple.WebKit.Databases.sb.
+        * StorageProcess/mac/com.apple.WebKit.Databases.sb.in: Removed.
+        * StorageProcess/mac/com.apple.WebKit.Storage.sb.in: Copied from StorageProcess/mac/com.apple.WebKit.Databases.sb.in.
+        * WebKit.xcodeproj/project.pbxproj: Update for sandbox rename.
+
+2018-01-31  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        REGRESSION(r227223): http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour.html, http/tests/resourceLoadStatistics/grandfathering.html timing out on GTK, WPE
+        https://bugs.webkit.org/show_bug.cgi?id=182222
+
+        Reviewed by Alex Christensen.
+
+        Add callbacks to notify when resource load statistics deletion is complete.
+
+        * UIProcess/API/C/WKWebsiteDataStoreRef.cpp:
+        (WKWebsiteDataStoreStatisticsClearInMemoryAndPersistentStore):
+        (WKWebsiteDataStoreStatisticsClearInMemoryAndPersistentStoreModifiedSinceHours):
+        * UIProcess/API/C/WKWebsiteDataStoreRef.h:
+
 2018-01-31  Tim Horton  <timothy_horton@apple.com>
 
         Occasional null deref under WebPageProxy::updateBackingStoreDiscardableState()

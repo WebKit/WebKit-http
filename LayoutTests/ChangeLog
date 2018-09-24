@@ -1,3 +1,153 @@
+2018-01-31  Per Arne Vollan  <pvollan@apple.com>
+
+        Layout Test fast/events/beforeunload-dom-manipulation-crash.html is crashing
+        https://bugs.webkit.org/show_bug.cgi?id=181204
+        <rdar://problem/36256274>
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/events/beforeunload-dom-manipulation-crash.html: Make it clear that the
+        frame element is a child of the 'del' element.
+        * fast/events/beforeunload-dom-manipulation-crash-expected.html:
+        * platform/mac-wk1/TestExpectations: Unskip test.
+
+2018-01-31  Javier Fernandez  <jfernandez@igalia.com>
+
+        inline-block baseline not computed correctly for vertical-lr
+        https://bugs.webkit.org/show_bug.cgi?id=170176
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        Tests to evaluate the baseline alignment in vertical modes.
+        Additionally, several tests were rebaselined.
+
+        Some of the new tests are marked as Failure for the ios-sim
+        platform because of pixel rounding errors in the absolute
+        positioned elements used as reference.
+
+        Finally, there are color differences in the border-styles-vertical-lr-expected.png
+        caused by changes in the gtk+ platform. Those differences were not noticeable until
+        now that the patch causes diffs in the expected.txt files.
+
+        * fast/inline-block/baseline-vertical-01-expected.html: Added.
+        * fast/inline-block/baseline-vertical-01.html: Added.
+        * fast/inline-block/baseline-vertical-02-expected.html: Added.
+        * fast/inline-block/baseline-vertical-02.html: Added.
+        * fast/inline-block/baseline-vertical-03-expected.html: Added.
+        * fast/inline-block/baseline-vertical-03.html: Added.
+        * fast/inline-block/baseline-vertical-04-expected.html: Added.
+        * fast/inline-block/baseline-vertical-04.html: Added.
+        * fast/inline-block/baseline-vertical-05-expected.html: Added.
+        * fast/inline-block/baseline-vertical-05.html: Added.
+        * fast/inline-block/baseline-vertical-06-expected.html: Added.
+        * fast/inline-block/baseline-vertical-06.html: Added.
+        * fast/inline-block/baseline-vertical-07-expected.html: Added.
+        * fast/inline-block/baseline-vertical-07.html: Added.
+        * fast/inline-block/baseline-vertical-08-expected.html: Added.
+        * fast/inline-block/baseline-vertical-08.html: Added.
+        * fast/text/emphasis-avoid-ruby-expected.png:
+        * fast/text/emphasis-avoid-ruby-expected.txt:
+        * fast/text/emphasis-overlap-expected.png:
+        * fast/text/emphasis-overlap-expected.txt:
+        * platform/gtk/fast/backgrounds/background-leakage-transforms-expected.png:
+        * platform/gtk/fast/backgrounds/background-leakage-transforms-expected.txt:
+        * platform/gtk/fast/writing-mode/border-styles-vertical-lr-expected.png:
+        * platform/gtk/fast/writing-mode/border-styles-vertical-lr-expected.txt:
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios/fast/backgrounds/background-leakage-transforms-expected.png: Added.
+        * platform/ios/fast/backgrounds/background-leakage-transforms-expected.txt:
+        * platform/ios/fast/writing-mode/border-styles-vertical-lr-expected.png:
+        * platform/ios/fast/writing-mode/border-styles-vertical-lr-expected.txt:
+        * platform/mac/fast/backgrounds/background-leakage-transforms-expected.png:
+        * platform/mac/fast/backgrounds/background-leakage-transforms-expected.txt:
+        * platform/mac/fast/writing-mode/border-styles-vertical-lr-expected.txt:
+        * platform/win/fast/writing-mode/text-orientation-basic-expected.txt:
+
+2018-01-31  Alicia Boya García  <aboya@igalia.com>
+
+        Unreviewed GTK+ test gardening.
+
+        * platform/gtk/TestExpectations:
+
+2018-01-31  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r227942.
+
+        r227875 should not have been rolled out.
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r227875."
+        https://bugs.webkit.org/show_bug.cgi?id=182357
+        https://trac.webkit.org/changeset/227942
+
+2018-01-31  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r227875.
+        https://bugs.webkit.org/show_bug.cgi?id=182357
+
+        Missing cross-platform TestController implementation
+
+        Reverted changeset:
+
+        "Add callbacks to testRunner.statisticsSetShouldPartitionCookiesForHost() and testRunner.statisticsUpdateCookiePartitioning()"
+        https://bugs.webkit.org/show_bug.cgi?id=181958
+        https://trac.webkit.org/changeset/227875
+
+        * http/tests/resourceLoadStatistics/add-blocking-to-redirect-expected.txt:
+        * http/tests/resourceLoadStatistics/add-blocking-to-redirect.html:
+        * http/tests/resourceLoadStatistics/add-partitioning-to-redirect-expected.txt:
+        * http/tests/resourceLoadStatistics/add-partitioning-to-redirect.html:
+        * http/tests/resourceLoadStatistics/non-prevalent-resources-can-access-cookies-in-a-third-party-context.html:
+        * http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html:
+        * http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout.html:
+        * http/tests/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction-expected.txt:
+        * http/tests/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction.html:
+        * http/tests/resourceLoadStatistics/remove-blocking-in-redirect-expected.txt:
+        * http/tests/resourceLoadStatistics/remove-blocking-in-redirect.html:
+        * http/tests/resourceLoadStatistics/remove-partitioning-in-redirect-expected.txt:
+        * http/tests/resourceLoadStatistics/remove-partitioning-in-redirect.html:
+        * http/tests/resourceLoadStatistics/third-party-cookie-with-and-without-user-interaction.html:
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-31  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        BitmapImage::drawPattern() may not draw a complete frame even after all the data is received
+        https://bugs.webkit.org/show_bug.cgi?id=182277
+
+        Reviewed by Simon Fraser.
+
+        * http/tests/images/draw-pattern-slow-load-large-image-expected.html: Added.
+        * http/tests/images/draw-pattern-slow-load-large-image.html: Added.
+        * http/tests/resources/load-and-stall.php: Add a new argument to allow
+        repeating the stall till the end of the file. This simulates real slow
+        network where sending data and stalling happens constantly and not only
+        a single time.
+
+2018-01-31  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (r227340): Layout Test fast/workers/worker-cloneport.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=182007
+        <rdar://problem/37005504>
+
+        Reviewed by Ryosuke Niwa.
+
+        Increase the test's timeout. The test sometimes takes more than 1 second to run and would
+        log a FAIL line, even though the test eventually succeeds.
+
+        * fast/workers/worker-cloneport.html:
+        * platform/mac-wk2/TestExpectations:
+
+2018-01-31  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        REGRESSION(r227223): http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour.html, http/tests/resourceLoadStatistics/grandfathering.html timing out on GTK, WPE
+        https://bugs.webkit.org/show_bug.cgi?id=182222
+
+        Reviewed by Alex Christensen.
+
+        * platform/gtk/TestExpectations:
+        * platform/wpe/TestExpectations:
+
 2018-01-31  Ryosuke Niwa  <rniwa@webkit.org>
 
         Release assertion in Performance::resourceTimingBufferFullTimerFired when the resource timing buffer is shrunk

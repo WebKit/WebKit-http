@@ -1,3 +1,143 @@
+2018-01-31  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Make JavaScriptCore headers copies
+        https://bugs.webkit.org/show_bug.cgi?id=182303
+
+        Reviewed by Alex Christensen.
+
+        No new tests. No change in behavior.
+
+        * CMakeLists.txt:
+        * PlatformMac.cmake:
+        * PlatformWPE.cmake:
+        * PlatformWin.cmake:
+        * PlatformWinCairo.cmake:
+
+2018-01-31  Per Arne Vollan  <pvollan@apple.com>
+
+        Layout Test fast/events/beforeunload-dom-manipulation-crash.html is crashing
+        https://bugs.webkit.org/show_bug.cgi?id=181204
+        <rdar://problem/36256274>
+
+        Reviewed by Ryosuke Niwa.
+
+        When a frame element is moved in the DOM tree during the execution of a beforeunload handler,
+        the frame will be detached when removed from its previous position in the DOM tree. When being
+        detached, an attempt will also be made to stop the load by calling FrameLoader::stopAllLoaders().
+        However, this method will return early when executed in a beforeunload handler, since navigation
+        is not allowed then. The end result is a detached frame which will continue to load, and hitting
+        asserts in DocumentLoader::dataReceived(), and DocumentLoader::notifyFinished(). It should be
+        possible to stop a frame load, even when executing a beforeunload handler.
+
+        No new tests. Covered by the existing test fast/events/beforeunload-dom-manipulation-crash.html.
+
+        * history/PageCache.cpp:
+        (WebCore::PageCache::addIfCacheable): Fix a failing API test by allowing scripts to be executed
+        under the PageCache::prune method.
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::isStopLoadingAllowed const):
+        (WebCore::FrameLoader::stopAllLoaders):
+        * loader/FrameLoader.h:
+        * svg/graphics/SVGImage.cpp:
+        (WebCore::SVGImage::~SVGImage): Disable scripts disallowed assertions in this scope, since it is
+        safe in this context.
+
+2018-01-31  Javier Fernandez  <jfernandez@igalia.com>
+
+        inline-block baseline not computed correctly for vertical-lr
+        https://bugs.webkit.org/show_bug.cgi?id=170176
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        When computing the baseline position of inline-block elements we use the
+        InlineFlow logicalTop and the FontMetrics ascent. The issue comes from
+        the fact that these units are incompatible. The logicalTop of a
+        vertical-lr element is offset to the left edge, while the ascent is the
+        distance from the right edge.
+
+        We need to either use logical value for the FontMetrics ascent so we can
+        compute the correctly the baselines of vertical-lr elements, or just using
+        the logicalBottom for these cases.
+
+        The approach based on a logicalAscent API for FontMetrics would require
+        a lot of work because inline-block logic assumes everything is vertical-rl
+        and at some point, flips the elements along the block-axis in case of
+        vertical-lr mode.
+
+        While it'd be desirable to get rid of this flipping logic, this patch tries
+        first the simpler approach of using logicalBottom, which aligns with the
+        currently implemented logic.
+
+        Tests: fast/inline-block/baseline-vertical-01.html
+               fast/inline-block/baseline-vertical-02.html
+               fast/inline-block/baseline-vertical-03.html
+               fast/inline-block/baseline-vertical-04.html
+               fast/inline-block/baseline-vertical-05.html
+               fast/inline-block/baseline-vertical-06.html
+               fast/inline-block/baseline-vertical-07.html
+               fast/inline-block/baseline-vertical-08.html
+
+        * rendering/InlineFlowBox.cpp:
+        (WebCore::InlineFlowBox::placeBoxesInBlockDirection):
+        * rendering/RenderBlockFlow.cpp:
+        (WebCore::RenderBlockFlow::inlineBlockBaseline const):
+
+2018-01-31  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        BitmapImage::drawPattern() may not draw a complete frame even after all the data is received
+        https://bugs.webkit.org/show_bug.cgi?id=182277
+
+        Reviewed by Simon Fraser.
+
+        BitmapImage::drawPattern() needs to destroy the incomplete decoded frame
+        before trying to draw it as a pattern.
+
+        Test: http/tests/images/draw-pattern-slow-load-large-image.html
+
+        * loader/cache/CachedImage.cpp:
+        (WebCore::CachedImage::updateBufferInternal): We need to disable CachedImage
+        data buffering for testing. This simulates slow network where intervals
+        between data chunks can last for seconds.
+        * loader/cache/CachedImage.h:
+        * platform/graphics/BitmapImage.cpp:
+        (WebCore::BitmapImage::drawPattern): Destroy the incomplete decoded frame
+        before drawing this frame as a pattern. We do not destroy incomplete decoded
+        frame once new data is received because it may be drawn by async image
+        drawing while waiting for the newer frame to finish decoding.
+        * testing/Internals.cpp:
+        (WebCore::Internals::setForceUpdateImageDataEnabledForTesting):
+        * testing/Internals.h:
+        * testing/Internals.idl:
+
+2018-01-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add a release assertion to ensure timers are deleted in the right thread
+        https://bugs.webkit.org/show_bug.cgi?id=182351
+
+        Reviewed by David Kilzer.
+
+        Added a relese assertion in ~TimerBase that the current thread is the one in which the timer was created.
+
+        We use canAccessThreadLocalDataForThread for this purpose since the condition is more complicated
+        when WebThread is being used.
+
+        * platform/Timer.cpp:
+        (WebCore::TimerBase::~TimerBase): Added the assertion.
+        * platform/Timer.h:
+        (WebCore::TimerBase::m_thread): Always store the current thread in a timer.
+
+2018-01-31  Youenn Fablet  <youenn@apple.com>
+
+        Change SWServer::claim to set the iterator value as soon as possible
+        https://bugs.webkit.org/show_bug.cgi?id=182337
+
+        Reviewed by Chris Dumez.
+
+        No change of behavior, this is a "let's go safe way" fix.
+
+        * workers/service/server/SWServer.cpp:
+        (WebCore::SWServer::claim):
+
 2018-01-31  Zalan Bujtas  <zalan@apple.com>
 
         [RenderTreeBuilder] Move RenderObject::removeFromParentAndDestroyCleaningUpAnonymousWrappers to RenderTreeBuilder.

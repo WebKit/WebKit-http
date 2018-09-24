@@ -1,3 +1,31 @@
+2018-01-31  Saam Barati  <sbarati@apple.com>
+
+        Replace tryLargeMemalignVirtual with tryLargeZeroedMemalignVirtual and use it to allocate large zeroed memory in Wasm
+        https://bugs.webkit.org/show_bug.cgi?id=182064
+        <rdar://problem/36840132>
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/Gigacage.cpp:
+        (Gigacage::tryAllocateZeroedVirtualPages):
+        (Gigacage::freeVirtualPages):
+        (Gigacage::tryAllocateVirtualPages): Deleted.
+        * wtf/Gigacage.h:
+        * wtf/OSAllocator.h:
+
+2018-01-31  Mark Lam  <mark.lam@apple.com>
+
+        Fix some ARM64_32 build failures.
+        https://bugs.webkit.org/show_bug.cgi?id=182356
+        <rdar://problem/37057690>
+
+        Reviewed by Michael Saboff.
+
+        * wtf/MathExtras.h:
+        (WTF::dynamicPoison):
+        * wtf/text/ASCIIFastPath.h:
+        (WTF::copyLCharsFromUCharSource):
+
 2018-01-30  Mark Lam  <mark.lam@apple.com>
 
         Apply poisoning to TypedArray vector pointers.

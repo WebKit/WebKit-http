@@ -1,3 +1,71 @@
+2018-01-31  Per Arne Vollan  <pvollan@apple.com>
+
+        Layout Test fast/events/beforeunload-dom-manipulation-crash.html is crashing
+        https://bugs.webkit.org/show_bug.cgi?id=181204
+        <rdar://problem/36256274>
+
+        Reviewed by Ryosuke Niwa.
+
+        Implement 'testRunner.forceImmediateCompletion()' for WK1.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (forceImmediateCompletionCallback):
+        (TestRunner::staticFunctions):
+
+2018-01-31  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r227942.
+
+        r227875 should not have been rolled out.
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r227875."
+        https://bugs.webkit.org/show_bug.cgi?id=182357
+        https://trac.webkit.org/changeset/227942
+
+2018-01-31  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r227875.
+        https://bugs.webkit.org/show_bug.cgi?id=182357
+
+        Missing cross-platform TestController implementation
+
+        Reverted changeset:
+
+        "Add callbacks to testRunner.statisticsSetShouldPartitionCookiesForHost() and testRunner.statisticsUpdateCookiePartitioning()"
+        https://bugs.webkit.org/show_bug.cgi?id=181958
+        https://trac.webkit.org/changeset/227875
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didReceiveMessageToPage):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::statisticsUpdateCookiePartitioning):
+        (WTR::TestRunner::statisticsSetShouldPartitionCookiesForHost):
+        (WTR::TestRunner::statisticsCallDidSetPartitionOrBlockCookiesForHostCallback): Deleted.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didSetPartitionOrBlockCookiesForHost): Deleted.
+        * WebKitTestRunner/TestInvocation.h:
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::statisticsUpdateCookiePartitioning):
+        (WTR::TestController::statisticsSetShouldPartitionCookiesForHost):
+
+2018-01-31  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        REGRESSION(r227223): http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour.html, http/tests/resourceLoadStatistics/grandfathering.html timing out on GTK, WPE
+        https://bugs.webkit.org/show_bug.cgi?id=182222
+
+        Reviewed by Alex Christensen.
+
+        Use the new API to notify when resource load statistics deletion is complete.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::statisticsClearThroughWebsiteDataRemovalCallback):
+        (WTR::TestController::statisticsClearInMemoryAndPersistentStore):
+        (WTR::TestController::statisticsClearInMemoryAndPersistentStoreModifiedSinceHours):
+
 2018-01-31  Ryosuke Niwa  <rniwa@webkit.org>
 
         Add the support for running StyleBench to run-benchmark
