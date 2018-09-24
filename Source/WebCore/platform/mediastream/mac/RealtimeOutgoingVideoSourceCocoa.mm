@@ -29,6 +29,7 @@
 #if USE(LIBWEBRTC)
 
 #import "PixelBufferConformerCV.h"
+#import "RealtimeVideoUtilities.h"
 #import <pal/cf/CoreMediaSoftLink.h>
 #import "CoreVideoSoftLink.h"
 
@@ -40,7 +41,7 @@ RetainPtr<CVPixelBufferRef> RealtimeOutgoingVideoSourceCocoa::convertToYUV(CVPix
         return nullptr;
 
     if (!m_pixelBufferConformer)
-        m_pixelBufferConformer = std::make_unique<PixelBufferConformerCV>((__bridge CFDictionaryRef)@{ (__bridge NSString *)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_420YpCbCr8Planar) });
+        m_pixelBufferConformer = std::make_unique<PixelBufferConformerCV>((__bridge CFDictionaryRef)@{ (__bridge NSString *)kCVPixelBufferPixelFormatTypeKey: @(preferedPixelBufferFormat()) });
 
     return m_pixelBufferConformer->convert(pixelBuffer);
 }
