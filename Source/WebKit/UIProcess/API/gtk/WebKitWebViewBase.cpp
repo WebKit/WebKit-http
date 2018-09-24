@@ -830,6 +830,27 @@ static gboolean webkitWebViewBaseScrollEvent(GtkWidget* widget, GdkEventScroll* 
     if (priv->authenticationDialog)
         return GDK_EVENT_PROPAGATE;
 
+    // Shift+Wheel scrolls in the perpendicular direction.
+    if (event->state & GDK_SHIFT_MASK) {
+        switch (event->direction) {
+        case GDK_SCROLL_UP:
+            event->direction = GDK_SCROLL_LEFT;
+            break;
+        case GDK_SCROLL_LEFT:
+            event->direction = GDK_SCROLL_UP;
+            break;
+        case GDK_SCROLL_DOWN:
+            event->direction = GDK_SCROLL_RIGHT;
+            break;
+        case GDK_SCROLL_RIGHT:
+            event->direction = GDK_SCROLL_DOWN;
+            break;
+        case GDK_SCROLL_SMOOTH:
+            std::swap(event->delta_x, event->delta_y);
+            break;
+        }
+    }
+
     webkitWebViewBaseHandleWheelEvent(webViewBase, reinterpret_cast<GdkEvent*>(event));
 
     return GDK_EVENT_STOP;
@@ -1021,10 +1042,15 @@ private:
 #else
         UNUSED_PARAM(isStop);
 #endif
+        scrollEvent->scroll.window = event->window ? GDK_WINDOW(g_object_ref(event->window)) : nullptr;
+        auto* touchEvent = reinterpret_cast<GdkEvent*>(event);
+        gdk_event_set_screen(scrollEvent.get(), gdk_event_get_screen(touchEvent));
+        gdk_event_set_device(scrollEvent.get(), gdk_event_get_device(touchEvent));
+        gdk_event_set_source_device(scrollEvent.get(), gdk_event_get_source_device(touchEvent));
         return scrollEvent;
     }
 
-    void simulateMouseClick(const GdkEventTouch* event, unsigned button)
+    void simulateMouseClick(GdkEventTouch* event, unsigned button)
     {
         GUniquePtr<GdkEvent> pointerEvent(gdk_event_new(GDK_MOTION_NOTIFY));
         pointerEvent->motion.time = event->time;
@@ -1033,6 +1059,11 @@ private:
         pointerEvent->motion.x_root = event->x_root;
         pointerEvent->motion.y_root = event->y_root;
         pointerEvent->motion.state = event->state;
+        pointerEvent->motion.window = event->window ? GDK_WINDOW(g_object_ref(event->window)) : nullptr;
+        auto* touchEvent = reinterpret_cast<GdkEvent*>(event);
+        gdk_event_set_screen(pointerEvent.get(), gdk_event_get_screen(touchEvent));
+        gdk_event_set_device(pointerEvent.get(), gdk_event_get_device(touchEvent));
+        gdk_event_set_source_device(pointerEvent.get(), gdk_event_get_source_device(touchEvent));
         webkitWebViewBaseHandleMouseEvent(m_webView, pointerEvent.get());
 
         pointerEvent.reset(gdk_event_new(GDK_BUTTON_PRESS));
@@ -1042,6 +1073,10 @@ private:
         pointerEvent->button.y = event->y;
         pointerEvent->button.x_root = event->x_root;
         pointerEvent->button.y_root = event->y_root;
+        pointerEvent->button.window = event->window ? GDK_WINDOW(g_object_ref(event->window)) : nullptr;
+        gdk_event_set_screen(pointerEvent.get(), gdk_event_get_screen(touchEvent));
+        gdk_event_set_device(pointerEvent.get(), gdk_event_get_device(touchEvent));
+        gdk_event_set_source_device(pointerEvent.get(), gdk_event_get_source_device(touchEvent));
         webkitWebViewBaseHandleMouseEvent(m_webView, pointerEvent.get());
 
         pointerEvent->type = GDK_BUTTON_RELEASE;

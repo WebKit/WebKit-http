@@ -214,7 +214,7 @@ DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, webPageProxyCounter, ("WebP
 
 class ExceededDatabaseQuotaRecords {
     WTF_MAKE_NONCOPYABLE(ExceededDatabaseQuotaRecords); WTF_MAKE_FAST_ALLOCATED;
-    friend class NeverDestroyed<ExceededDatabaseQuotaRecords>;
+    friend NeverDestroyed<ExceededDatabaseQuotaRecords>;
 public:
     struct Record {
         uint64_t frameID;
@@ -6559,6 +6559,12 @@ void WebPageProxy::addMIMETypeWithCustomContentProvider(const String& mimeType)
 }
 
 #if PLATFORM(COCOA)
+
+void WebPageProxy::setTextAsync(const String& text)
+{
+    if (isValid())
+        process().send(Messages::WebPage::SetTextAsync(text), m_pageID);
+}
 
 void WebPageProxy::insertTextAsync(const String& text, const EditingRange& replacementRange, bool registerUndoGroup, EditingRangeIsRelativeTo editingRangeIsRelativeTo, bool suppressSelectionUpdate)
 {

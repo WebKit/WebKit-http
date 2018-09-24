@@ -1,3 +1,60 @@
+2018-02-02  Mark Lam  <mark.lam@apple.com>
+
+        More ARM64_32 fixes.
+        https://bugs.webkit.org/show_bug.cgi?id=182441
+        <rdar://problem/37162310>
+
+        Reviewed by Dan Bernstein.
+
+        My previous speculative ARM64_32 build fix in copyLCharsFromUCharSource() was wrong.
+        I've now fixed it to choose the default implementation case instead of the ARM64
+        case if the target is ARM64_32.
+
+        * wtf/text/ASCIIFastPath.h:
+        (WTF::copyLCharsFromUCharSource):
+
+2018-02-02  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Unreviewed build fix for JSCOnly on macOS after r227845.
+        https://bugs.webkit.org/show_bug.cgi?id=182274
+
+        Reverted part of r227845 that moved CommonCryptoSPI.h
+        handling into PlatformMac, because it is needed for all
+        ports which can be built on macOS.
+
+        * wtf/CMakeLists.txt:
+        * wtf/PlatformMac.cmake:
+
+2018-02-02  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] fast/events/message-channel-gc-4.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=182104
+
+        Reviewed by Carlos Garcia Campos.
+
+        RELEASE_ASSERT of ThreadSpecific::set fails because
+        RunLoop::current is called even in GC thread since r227275.
+
+        * wtf/RunLoop.cpp:
+        (WTF::RunLoop::current):
+        Let the second template argument of ThreadSpecific CanBeGCThread::True.
+
+2018-02-01  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Make RunLoop::TimerBase robust to its own deletion inside its source callback
+        https://bugs.webkit.org/show_bug.cgi?id=182271
+
+        Reviewed by Carlos Garcia Campos.
+
+        RunLoopTimer::fired executes the user's callback, which could delete the RunLoopTimer
+        itself. But the source callback is not prepared to handle this case. We can detect it
+        easily, because TimerBase's destructor will call g_source_destroy(), which confusingly
+        removes the GSource from its GMainContext without actually destroying the GSource. Then we
+        can check if the GSource is still attached using g_source_is_destroyed().
+
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::RunLoop::TimerBase::TimerBase):
+
 2018-01-31  Saam Barati  <sbarati@apple.com>
 
         Replace tryLargeMemalignVirtual with tryLargeZeroedMemalignVirtual and use it to allocate large zeroed memory in Wasm

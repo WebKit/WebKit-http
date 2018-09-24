@@ -1,3 +1,314 @@
+2018-02-02  Youenn Fablet  <youenn@apple.com>
+
+        Configure serviceWorkerRegistrationDirectory on the web site data store and move it to a Caches subfolder as a default
+        https://bugs.webkit.org/show_bug.cgi?id=182403
+        <rdar://problem/36673358>
+
+        Reviewed by Alex Christensen.
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::legacyWebsiteDataStoreConfiguration): Setting serviceWorkerRegistrationDirectory for legacy stores.
+
+2018-02-02  Youenn Fablet  <youenn@apple.com>
+
+        Clearing all service worker registrations should wait for importing service worker registration to finish
+        https://bugs.webkit.org/show_bug.cgi?id=182407
+
+        Reviewed by Chris Dumez.
+
+        Updating API to take a completion handler.
+
+        * UIProcess/API/C/WKWebsiteDataStoreRef.cpp:
+        (WKWebsiteDataStoreRemoveAllServiceWorkerRegistrations):
+        * UIProcess/API/C/WKWebsiteDataStoreRef.h:
+
+2018-02-02  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win] MSVC doesn't seem to like "friend class NeverDestroyed<Foo>"
+        https://bugs.webkit.org/show_bug.cgi?id=182081
+
+        Reviewed by Yusuke Suzuki.
+
+        The template friend class, which belongs to a different namespace,
+        can't access private member if its friend declaration is specified
+        without the namespace and with class keyword.
+
+        Replaced "friend class NeverDestroyed<Foo>" with "friend NeverDestroyed<Foo>".
+
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/capture/NetworkCaptureManager.h:
+        * PluginProcess/PluginProcess.h:
+        * Shared/CallbackID.h:
+        * Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.cpp:
+        * StorageProcess/StorageProcess.h:
+        * UIProcess/Plugins/PluginProcessManager.h:
+        * UIProcess/Plugins/gtk/PluginInfoCache.h:
+        * UIProcess/WebPageProxy.cpp:
+        * UIProcess/WebPasteboardProxy.h:
+        * UIProcess/gtk/AcceleratedBackingStoreX11.cpp:
+        * UIProcess/gtk/HardwareAccelerationManager.h:
+        * UIProcess/gtk/WaylandCompositor.h:
+        * UIProcess/linux/MemoryPressureMonitor.h:
+        * UIProcess/mac/ServicesController.h:
+        * WebProcess/InjectedBundle/API/glib/WebKitExtensionManager.h:
+        * WebProcess/Plugins/WebPluginInfoProvider.h:
+        * WebProcess/WebCoreSupport/WebPasteboardOverrides.h:
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.h:
+
+2018-02-02  Youenn Fablet  <youenn@apple.com>
+
+        Configure serviceWorkerRegistrationDirectory on the web site data store and move it to a Caches subfolder as a default
+        https://bugs.webkit.org/show_bug.cgi?id=182403
+
+        Reviewed by Alex Christensen.
+
+        WebsiteDataStore is the place to set configuration information such as service worker registration path.
+        This patch updates WebKit code accordingly.
+        By default, the service worker registration path is in a Caches subfolder, similarly to cache API path.
+
+        * UIProcess/API/APIProcessPoolConfiguration.cpp:
+        (API::ProcessPoolConfiguration::createWithLegacyOptions):
+        (API::ProcessPoolConfiguration::createWithWebsiteDataStoreConfiguration):
+        (API::ProcessPoolConfiguration::ProcessPoolConfiguration):
+        (API::ProcessPoolConfiguration::copy):
+        * UIProcess/API/APIProcessPoolConfiguration.h:
+        * UIProcess/API/C/WKContextConfigurationRef.cpp:
+        (WKContextConfigurationCopyServiceWorkerDatabaseDirectory): Deleted.
+        (WKContextConfigurationSetServiceWorkerDatabaseDirectory): Deleted.
+        * UIProcess/API/C/WKContextConfigurationRef.h:
+        * UIProcess/API/Cocoa/APIWebsiteDataStoreCocoa.mm:
+        (API::WebsiteDataStore::defaultServiceWorkerRegistrationDirectory):
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.mm:
+        (-[WKWebsiteDataStore _serviceWorkerRegistrationDirectory]):
+        (-[WKWebsiteDataStore _setServiceWorkerRegistrationDirectory:]):
+        * UIProcess/API/Cocoa/WKWebsiteDataStorePrivate.h:
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::ensureStorageProcessAndWebsiteDataStore):
+        (WebKit::WebProcessPool::initializeNewWebProcess):
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+        (WebKit::WebsiteDataStore::serviceWorkerRegistrationDirectory const):
+        (WebKit::WebsiteDataStore::setServiceWorkerRegistrationDirectory):
+        * UIProcess/gtk/WebProcessPoolGtk.cpp:
+        * UIProcess/gtk/WebProcessPoolWPE.cpp:
+
+2018-02-02  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra Zoom Mode] Implement support for indirect mainframe scrolling
+        https://bugs.webkit.org/show_bug.cgi?id=182421
+        <rdar://problem/35142694>
+
+        Reviewed by Tim Horton.
+
+        Makes a few small adjustments to WKScrollView to improve mainframe scrolling, and disable the pinch gesture for
+        zooming. See below for more details.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+
+        Remove a now-unneeded WebKitAdditions import.
+
+        * UIProcess/ios/WKScrollView.mm:
+        (-[WKScrollView initWithFrame:]):
+
+        Add imports for -Before and -After versions of WKScrollViewAdditions.
+
+        (-[WKScrollView addGestureRecognizer:]):
+
+        Override -addGestureRecognizer here to prevent touches on the pinch gesture recognizer from being recognized.
+        I chose this approach instead of just disabling the gesture in -initWithFrame: because (1) the pinch gesture
+        recognizer is lazily created when setting minimum or maximum zoom scales, rather than immediately in
+        -initWithFrame:, and (2) even if we set the -enabled to NO, UIKit later resets it to YES in other codepaths.
+
+2018-02-01  Tim Horton  <timothy_horton@apple.com>
+
+        WebKit fails to build (_startAssistingNode has conflicting parameters)
+        https://bugs.webkit.org/show_bug.cgi?id=182417
+        <rdar://problem/36965318>
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/ios/WKContentViewInteraction.h:
+        Use Big BOOL like in the implementation.
+
+2018-02-01  Brent Fulgham  <bfulgham@apple.com>
+
+        Improve NetworkResourceLogger to report blocked (versus non-partitioned) cookies
+        https://bugs.webkit.org/show_bug.cgi?id=182408
+        <rdar://problem/36918028>
+
+        Reviewed by Chris Dumez.
+
+        Update the logging method to report blocked origins, rather than logging them as non-partitioned
+        loads that have no cookies or other content.
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::logCookieInformation const):
+
+2018-02-01  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r222824): UI process crashes in WebKit::WebBackForwardList::backItem const
+        <https://webkit.org/b/182409>
+        <rdar://problem/35495094>
+
+        Reviewed by Alex Christensen.
+
+        * UIProcess/WebBackForwardList.cpp:
+        (WebKit::WebBackForwardList::goToItem): Fix typo so the for loop
+        actually checks each value in m_entries.
+
+2018-02-01  Youenn Fablet  <youenn@apple.com>
+
+        Delay service worker process creation until actually needed by SWServer
+        https://bugs.webkit.org/show_bug.cgi?id=182301
+
+        Reviewed by Chris Dumez.
+
+        Do not create a service worker process at creation of the first SWServerConnection.
+        Wait for a WebProcess message that needs it:
+        - postMessage message
+        - fetchEvent message
+        - job scheduling.
+
+        * StorageProcess/ServiceWorker/WebSWServerConnection.cpp:
+        (WebKit::WebSWServerConnection::startFetch):
+        (WebKit::WebSWServerConnection::postMessageToServiceWorker):
+        (WebKit::WebSWServerConnection::scheduleJobInServer):
+        * StorageProcess/ServiceWorker/WebSWServerConnection.h:
+        * StorageProcess/StorageToWebProcessConnection.cpp:
+        (WebKit::StorageToWebProcessConnection::establishSWServerConnection):
+
+2018-02-01  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] Implement basic support for interacting with text form controls
+        https://bugs.webkit.org/show_bug.cgi?id=182401
+        <rdar://problem/35143035>
+
+        Reviewed by Tim Horton.
+
+        Add UI support for interacting with and editing text form controls when extra zoom mode is enabled. See below
+        for more details.
+
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration init]):
+        (-[WKWebViewConfiguration encodeWithCoder:]):
+        (-[WKWebViewConfiguration initWithCoder:]):
+        (-[WKWebViewConfiguration copyWithZone:]):
+        (-[WKWebViewConfiguration _textInteractionGesturesEnabled]):
+        (-[WKWebViewConfiguration _setTextInteractionGesturesEnabled:]):
+        (-[WKWebViewConfiguration _longPressActionsEnabled]):
+        (-[WKWebViewConfiguration _setLongPressActionsEnabled:]):
+
+        Introduce two new web view configuration flags: `textInteractionGesturesEnabled` and `longPressActionsEnabled`.
+        The former determines whether text interaction gestures (i.e. text selection, moving the caret, showing UI for
+        IME, etc.) are enabled. The latter determines whether or not long press actions (i.e. touch callout, share
+        sheet, etc.) are enabled. These are disabled by default only in extra zoom mode.
+
+        * UIProcess/API/Cocoa/WKWebViewConfigurationPrivate.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::setTextAsync):
+
+        Add a way to set the text value of a currently edited text form control. This will either set the text value of
+        an input, a. la. autofill, or overwrite the contents of a contenteditable area by selecting everything and
+        inserting the given text.
+
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::focusNextAssistedNode):
+
+        Add a default argument for the completion callback.
+
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView setupInteraction]):
+        (-[WKContentView _displayFormNodeInputView]):
+        (-[WKContentView _actionForLongPressFromPositionInformation:]):
+        (-[WKContentView hasSelectablePositionAtPoint:]):
+        (-[WKContentView pointIsNearMarkedText:]):
+        (-[WKContentView textInteractionGesture:shouldBeginAtPoint:]):
+        (-[WKContentView insertionPointColor]):
+
+        Respect the web view configuration flags above by bailing early from text interaction and long press action
+        sheet methods.
+
+        (-[WKContentView _startAssistingKeyboard]):
+        (-[WKContentView _startAssistingNode:userIsInteracting:blurPreviousNode:changingActivityState:userObject:]):
+
+        Add a flag indicating whether we are in the process of changing focus from one node to another. We use this to
+        decide whether or not we want to present the text input view controller right away, or just reload the focused
+        form control overlay. When we stop "assisting" a node, we also keep the focused form control overlay up if we're
+        only changing focus to another form control.
+
+        (-[WKContentView _stopAssistingNode]):
+        (-[WKContentView presentFocusedFormControlViewController:]):
+        (-[WKContentView dismissFocusedFormControlViewController:]):
+        (-[WKContentView shouldPresentTextInputViewController:]):
+        (-[WKContentView presentTextInputViewController:]):
+        (-[WKContentView dismissTextInputViewController:]):
+
+        Introduce helpers for managing presentation of the focused form control overlay and text input view controller.
+        All -present and -dismiss helpers here are idempotent. These view controllers are presented from the content
+        view's view controller for fullscreen presentation.
+
+        (-[WKContentView textInputController:didCommitText:]):
+        (-[WKContentView textInputController:didRequestDismissalWithAction:]):
+        (-[WKContentView focusedFormControlControllerDidSubmit:]):
+        (-[WKContentView focusedFormControlControllerDidCancel:]):
+        (-[WKContentView focusedFormControlControllerDidBeginEditing:]):
+        (-[WKContentView highlightedRectForFocusedFormControlController:inCoordinateSpace:]):
+        (-[WKContentView actionNameForFocusedFormControlController:]):
+        (-[WKContentView focusedFormControlControllerDidRequestNextNode:]):
+        (-[WKContentView focusedFormControlControllerDidRequestPreviousNode:]):
+        (-[WKContentView hasNextNodeForFocusedFormControlController:]):
+        (-[WKContentView hasPreviousNodeForFocusedFormControlController:]):
+
+        Implement delegate methods for the focused form control and text input view controllers. This mainly involves
+        straightforward plumbing of pieces of AssistedNodeInformation on the content view.
+
+        (-[WKContentView pointIsInAssistedNode:]): Deleted.
+
+        Remove a method that was still implemented only for binary compatibility with iOS 10.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::setTextAsync):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2018-02-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Shift + mouse scroll should scroll horizontally
+        https://bugs.webkit.org/show_bug.cgi?id=181629
+
+        Reviewed by Michael Catanzaro.
+
+        Swap scroll direction when Shift is pressed for consistency with GtkScrolledWindow.
+
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseScrollEvent):
+
+2018-02-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r227893): fast/events/touch/touch-stale-node-crash.html and other tests crash
+        https://bugs.webkit.org/show_bug.cgi?id=182350
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Ensure events synthesized from touch gestures have a valid window, screen and device.
+
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        * UIProcess/gtk/GestureController.h: Add virtual destructor to GestureControllerclient.
+
+2018-01-31  Simon Fraser  <simon.fraser@apple.com>
+
+        Use different debug red colors for different contexts
+        https://bugs.webkit.org/show_bug.cgi?id=182362
+
+        Reviewed by Tim Horton.
+        
+        Pure red is used elsehwere in the system as a debug color indicator, so use different
+        shades of red for WebKit in the two places where we paint a reddish wash in debug builds,
+        so they are identifiable.
+
+        * Shared/RemoteLayerTree/RemoteLayerBackingStore.mm:
+        (WebKit::RemoteLayerBackingStore::drawInContext):
+
 2018-01-31  Don Olmstead  <don.olmstead@sony.com>
 
         [CMake] Make JavaScriptCore headers copies

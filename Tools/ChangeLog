@@ -1,3 +1,190 @@
+2018-02-02  Youenn Fablet  <youenn@apple.com>
+
+        W3C test exporter should allow exporting newly added files
+        https://bugs.webkit.org/show_bug.cgi?id=182369
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/webkitpy/common/checkout/scm/git.py:
+        (Git.apply_mail_patch):
+
+2018-02-02  David Quesada  <david_quesada@apple.com>
+
+        WebAppManifest scope should default to the containing directory of start_url if 'scope' is not specified
+        https://bugs.webkit.org/show_bug.cgi?id=182363
+        rdar://problem/37093498
+
+        Reviewed by Ryosuke Niwa.
+
+        Updated ApplicationManifestParserTests to account for the new default scope behavior.
+
+        * TestWebKitAPI/Tests/WebCore/ApplicationManifestParser.cpp:
+        (assertManifestHasDefaultValues):
+        (TEST_F):
+
+2018-02-02  Youenn Fablet  <youenn@apple.com>
+
+        Clearing all service worker registrations should wait for importing service worker registration to finish
+        https://bugs.webkit.org/show_bug.cgi?id=182407
+
+        Reviewed by Chris Dumez.
+
+        Make sure we finish clearing service worker registrations before running tests.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetStateToConsistentValues):
+        (WTR::ClearServiceWorkerRegistrationsCallbackContext::ClearServiceWorkerRegistrationsCallbackContext):
+        (WTR::clearServiceWorkerRegistrationsCallback):
+        (WTR::TestController::clearServiceWorkerRegistrations):
+        * WebKitTestRunner/TestController.h:
+
+2018-02-02  Youenn Fablet  <youenn@apple.com>
+
+        Configure serviceWorkerRegistrationDirectory on the web site data store and move it to a Caches subfolder as a default
+        https://bugs.webkit.org/show_bug.cgi?id=182403
+
+        Reviewed by Alex Christensen.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::generateContextConfiguration const):
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::initializeWebViewConfiguration):
+
+2018-02-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WebDriver: tests step always times out in the bot
+        https://bugs.webkit.org/show_bug.cgi?id=182437
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        The process itself is not timing out, but the buildbot step is. This is because we are leaking the Xvfb
+        processes. We should ensure that only one driver is executed and it's stopped before the process finishes.
+
+        * Scripts/run-webdriver-tests: Call teardown() after run().
+        * Scripts/webkitpy/webdriver_tests/webdriver_selenium_executor.py:
+        (WebDriverSeleniumExecutor.__init__): Receive the env directly instead of the display driver.
+        * Scripts/webkitpy/webdriver_tests/webdriver_test_runner.py:
+        (WebDriverTestRunner.__init__): Use the driver class directly instead of using the DriverProxy. Get the env from
+        the display driver once and pass it to the test runners.
+        (WebDriverTestRunner.teardown): Stop the display server.
+        * Scripts/webkitpy/webdriver_tests/webdriver_test_runner_selenium.py:
+        (WebDriverTestRunnerSelenium.__init__): Receive the env directly instead of the display driver.
+        (WebDriverTestRunnerSelenium.collect_tests): Pass the env to the executor.
+        (WebDriverTestRunnerSelenium.run): Ditto.
+        * Scripts/webkitpy/webdriver_tests/webdriver_test_runner_w3c.py:
+        (WebDriverTestRunnerW3C.__init__): Receive the env directly instead of the display driver.
+        (WebDriverTestRunnerW3C.run): Pass the env to the executor.
+        * Scripts/webkitpy/webdriver_tests/webdriver_w3c_executor.py:
+        (WebDriverW3CExecutor.__init__): Receive the env directly instead of the display driver.
+
+2018-02-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed, rolling out r227999.
+
+        It didn't fix the problem
+
+        Reverted changeset:
+
+        "Unreviewed. Try to avoid webdriver tests step timing out in
+        the bots."
+        https://trac.webkit.org/changeset/227999
+
+2018-02-02  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Start timeout for the run-buildbot-test script is too aggressive
+        https://bugs.webkit.org/show_bug.cgi?id=182429
+
+        Reviewed by Carlos Garcia Campos.
+
+        15 seconds is not enough waiting for the update database process
+        to complete on a system backed with rotational HDDs. Raise it to 60.
+
+        * BuildSlaveSupport/build.webkit.org-config/run-buildbot-test.py:
+        (wait_for_master_ready):
+
+2018-02-02  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        re-add ARM JSCOnly bots on buildbot waterfall
+        https://bugs.webkit.org/show_bug.cgi?id=182428
+
+        Reviewed by Csaba Osztrogonác.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * BuildSlaveSupport/build.webkit.org-config/steps_unittest.py:
+
+2018-02-02  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove ARM JSCOnly bots from buildbot waterfall
+        https://bugs.webkit.org/show_bug.cgi?id=182398
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * BuildSlaveSupport/build.webkit.org-config/steps_unittest.py:
+
+2018-02-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Try to avoid webdriver tests step timing out in the bots.
+
+        This is another speculative workaround. Carlos Lopez suggested to use os._exit() instead of sys.exit() as a
+        workaround for a bug in python2.7 when using multiprocess module.
+
+        * Scripts/run-webdriver-tests:
+
+2018-02-01  Youenn Fablet  <youenn@apple.com>
+
+        Delay service worker process creation until actually needed by SWServer
+        https://bugs.webkit.org/show_bug.cgi?id=182301
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ServiceWorkerBasic.mm:
+        (function):
+
+2018-02-01  Aakash Jain  <aakash_jain@apple.com>
+
+        Bubbles intermittently disappear from bot watchers dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=182085
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BuildbotIteration.js:
+        (BuildbotIteration.prototype.failureLogURL): failureLogURL doesn't depend on step in Buildbot 0.9.
+        Return the Build Page URL for Buildbot Buildbot 0.9. Earlier code was also doing the same using a
+        confusing if (!this._firstFailedStep.logs) statement which is always false for Buildbot 0.9.
+
+2018-02-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Problem with Washington Post images
+        https://bugs.webkit.org/show_bug.cgi?id=181421
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Add test case for the new user agent quirk.
+
+        * TestWebKitAPI/Tests/WebCore/UserAgentQuirks.cpp:
+        (TestWebKitAPI::TEST):
+
+2018-02-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] MiniBrowser settings are just a list of names
+        https://bugs.webkit.org/show_bug.cgi?id=182005
+
+        Reviewed by Sergio Villar Senin.
+
+        The default size we are using is too small to show the values column, and the window is not resizable because
+        GObjectClass::constructed() is not called in the parent class.
+
+        * MiniBrowser/gtk/BrowserSettingsDialog.c:
+        (browser_settings_dialog_init): Use 600x400 as default size.
+        (browserSettingsDialogConstructed): Chain up to parent constructed.
+
+2018-01-31  Andres Gomez  <agomez@igalia.com>
+
+        Unreviewed. Remove WebInspectorUI watchlist and remove myself from 2 watchlists more
+
+        * Scripts/webkitpy/common/config/watchlist:
+
 2018-01-31  Per Arne Vollan  <pvollan@apple.com>
 
         Layout Test fast/events/beforeunload-dom-manipulation-crash.html is crashing

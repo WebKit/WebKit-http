@@ -92,7 +92,6 @@ public:
         WEBCORE_EXPORT explicit Connection(SWServer&);
         SWServer& server() { return m_server; }
 
-        WEBCORE_EXPORT void scheduleJobInServer(ServiceWorkerJobData&&);
         WEBCORE_EXPORT void finishFetchingScriptInServer(const ServiceWorkerFetchResult&);
         WEBCORE_EXPORT void addServiceWorkerRegistrationInServer(ServiceWorkerRegistrationIdentifier);
         WEBCORE_EXPORT void removeServiceWorkerRegistrationInServer(ServiceWorkerRegistrationIdentifier);
@@ -129,7 +128,7 @@ public:
     void removeRegistration(const ServiceWorkerRegistrationKey&);
     WEBCORE_EXPORT Vector<ServiceWorkerRegistrationData> getRegistrations(const SecurityOriginData& topOrigin, const URL& clientURL);
 
-    void scheduleJob(ServiceWorkerJobData&&);
+    WEBCORE_EXPORT void scheduleJob(ServiceWorkerJobData&&);
     void rejectJob(const ServiceWorkerJobData&, const ExceptionData&);
     void resolveRegistrationJob(const ServiceWorkerJobData&, const ServiceWorkerRegistrationData&, ShouldNotifyWhenResolved);
     void resolveUnregistrationJob(const ServiceWorkerJobData&, const ServiceWorkerRegistrationKey&, bool unregistrationResult);
@@ -175,7 +174,9 @@ public:
     void registrationStoreImportComplete();
     void registrationStoreDatabaseFailedToOpen();
 
-    WEBCORE_EXPORT void getOriginsWithRegistrations(WTF::Function<void(const HashSet<SecurityOriginData>&)>);
+    WEBCORE_EXPORT void getOriginsWithRegistrations(Function<void(const HashSet<SecurityOriginData>&)>&&);
+
+    PAL::SessionID sessionID() const { return m_sessionID; }
 
 private:
     void registerConnection(Connection&);
@@ -223,11 +224,11 @@ private:
     UniqueRef<SWOriginStore> m_originStore;
     RegistrationStore m_registrationStore;
     Vector<ServiceWorkerContextData> m_pendingContextDatas;
-    Vector<ServiceWorkerJobData> m_pendingJobs;
     HashMap<ServiceWorkerIdentifier, Vector<RunServiceWorkerCallback>> m_serviceWorkerRunRequests;
     PAL::SessionID m_sessionID;
     bool m_importCompleted { false };
-    Vector<WTF::Function<void(const HashSet<SecurityOriginData>&)>> m_getOriginsWithRegistrationsCallbacks;
+    Vector<CompletionHandler<void()>> m_clearCompletionCallbacks;
+    Vector<Function<void(const HashSet<SecurityOriginData>&)>> m_getOriginsWithRegistrationsCallbacks;
 };
 
 } // namespace WebCore

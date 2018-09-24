@@ -196,6 +196,7 @@ static WebsiteDataStore::Configuration legacyWebsiteDataStoreConfiguration(API::
     WebsiteDataStore::Configuration configuration;
 
     configuration.cacheStorageDirectory = API::WebsiteDataStore::defaultCacheStorageDirectory();
+    configuration.serviceWorkerRegistrationDirectory = API::WebsiteDataStore::defaultServiceWorkerRegistrationDirectory();
     configuration.localStorageDirectory = processPoolConfiguration.localStorageDirectory();
     configuration.webSQLDatabaseDirectory = processPoolConfiguration.webSQLDatabaseDirectory();
     configuration.applicationCacheDirectory = processPoolConfiguration.applicationCacheDirectory();
@@ -555,7 +556,7 @@ void WebProcessPool::ensureStorageProcessAndWebsiteDataStore(WebsiteDataStore* r
 #endif
 #if ENABLE(SERVICE_WORKER)
         if (parameters.serviceWorkerRegistrationDirectory.isEmpty()) {
-            parameters.serviceWorkerRegistrationDirectory = m_configuration->serviceWorkerRegistrationDirectory();
+            parameters.serviceWorkerRegistrationDirectory = API::WebsiteDataStore::defaultServiceWorkerRegistrationDirectory();
             SandboxExtension::createHandleForReadWriteDirectory(parameters.serviceWorkerRegistrationDirectory, parameters.serviceWorkerRegistrationDirectoryExtensionHandle);
         }
 
@@ -816,7 +817,10 @@ void WebProcessPool::initializeNewWebProcess(WebProcessProxy& process, WebsiteDa
 #endif
 
 #if ENABLE(SERVICE_WORKER)
-    parameters.hasRegisteredServiceWorkers = ServiceWorkerProcessProxy::hasRegisteredServiceWorkers(m_configuration->serviceWorkerRegistrationDirectory());
+    String serviceWorkerRegistrationDirectory = websiteDataStore.resolvedServiceWorkerRegistrationDirectory();
+    if (serviceWorkerRegistrationDirectory.isEmpty())
+        serviceWorkerRegistrationDirectory = API::WebsiteDataStore::defaultServiceWorkerRegistrationDirectory();
+    parameters.hasRegisteredServiceWorkers = ServiceWorkerProcessProxy::hasRegisteredServiceWorkers(serviceWorkerRegistrationDirectory);
 #endif
 
 #if ENABLE(NETSCAPE_PLUGIN_API)

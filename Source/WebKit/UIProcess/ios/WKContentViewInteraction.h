@@ -83,8 +83,9 @@ class WebPageProxy;
 @class _UIHighlightView;
 @class _UIWebHighlightLongPressGestureRecognizer;
 
-#if ENABLE(DATA_INTERACTION)
-@class _UITextDragCaretView;
+#if ENABLE(EXTRA_ZOOM_MODE)
+@class WKFocusedFormControlViewController;
+@class WKTextInputViewController;
 #endif
 
 typedef void (^UIWKAutocorrectionCompletionHandler)(UIWKAutocorrectionRects *rectsForInput);
@@ -229,6 +230,7 @@ struct WKAutoCorrectionData {
     BOOL _becomingFirstResponder;
     BOOL _resigningFirstResponder;
     BOOL _needsDeferredEndScrollingSelectionUpdate;
+    BOOL _isChangingFocus;
 
 #if ENABLE(DATA_INTERACTION)
     WebKit::DragDropInteractionState _dragDropInteractionState;
@@ -238,6 +240,11 @@ struct WKAutoCorrectionData {
     BOOL _isAnimatingConcludeEditDrag;
     RetainPtr<UIView> _visibleContentViewSnapshot;
     RetainPtr<_UITextDragCaretView> _editDropCaretView;
+#endif
+
+#if ENABLE(EXTRA_ZOOM_MODE)
+    RetainPtr<WKTextInputViewController> _textInputViewController;
+    RetainPtr<WKFocusedFormControlViewController> _focusedFormControlViewController;
 #endif
 }
 
@@ -284,7 +291,7 @@ FOR_EACH_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 
 - (BOOL)_mayDisableDoubleTapGesturesDuringSingleTap;
 - (void)_disableDoubleTapGesturesDuringTapIfNecessary:(uint64_t)requestID;
-- (void)_startAssistingNode:(const WebKit::AssistedNodeInformation&)information userIsInteracting:(BOOL)userIsInteracting blurPreviousNode:(BOOL)blurPreviousNode changingActivityState:(bool)changingActivityState userObject:(NSObject <NSSecureCoding> *)userObject;
+- (void)_startAssistingNode:(const WebKit::AssistedNodeInformation&)information userIsInteracting:(BOOL)userIsInteracting blurPreviousNode:(BOOL)blurPreviousNode changingActivityState:(BOOL)changingActivityState userObject:(NSObject <NSSecureCoding> *)userObject;
 - (void)_stopAssistingNode;
 - (void)_selectionChanged;
 - (void)_updateChangedSelection;

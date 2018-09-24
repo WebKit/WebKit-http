@@ -1,3 +1,73 @@
+2018-02-02  Saam Barati  <sbarati@apple.com>
+
+        When BytecodeParser inserts Unreachable after ForceOSRExit it needs to update ArgumentPositions for Flushes it inserts
+        https://bugs.webkit.org/show_bug.cgi?id=182368
+        <rdar://problem/36932466>
+
+        Reviewed by Mark Lam.
+
+        * stress/flush-after-force-exit-in-bytecodeparser-needs-to-update-argument-positions.js: Added.
+        (runNearStackLimit.t):
+        (runNearStackLimit):
+        (try.runNearStackLimit):
+        (catch):
+
+2018-02-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Update test262 to Jan 30 version
+        https://bugs.webkit.org/show_bug.cgi?id=182288
+
+        Rubber stamped by Saam Barati.
+
+        This patch updates test262 to the latest one, Jan 30 version.
+        Since added and changed files are too many, we cannot create ChangeLog.
+        The following files are changed.
+
+        Several files are intentionally omitted due to merge failures. We should investigate how to merge files
+        including some special line terminators (like u2028, u2029).
+
+        * test262.yaml:
+        * test262/test262-Revision.txt:
+        * test262/*:
+
+2018-02-02  Guillaume Emont  <guijemont@igalia.com>
+
+        JSTests: Skip mozilla/js1_5/Array/regress-157652.js on all memory limited platforms
+        https://bugs.webkit.org/show_bug.cgi?id=182411
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        This is skipped only on arm memory limited platforms. Until recently
+        it was not a problem on MIPS as the butterfly was not initialized. But
+        since r227435, the butterfly is initialized in that test and therefore
+        memory is allocated, and the test typically takes around 512M, which
+        means it generally gets OOM-killed on the MIPS buildbot.
+
+        * mozilla/mozilla-tests.yaml:
+
+2018-02-01  Mark Lam  <mark.lam@apple.com>
+
+        Fix broken bounds check in FTL's compileGetMyArgumentByVal().
+        https://bugs.webkit.org/show_bug.cgi?id=182419
+        <rdar://problem/37044945>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-182419.js: Added.
+
+2018-02-01  Keith Miller  <keith_miller@apple.com>
+
+        Fix crashes due to mishandling custom sections.
+        https://bugs.webkit.org/show_bug.cgi?id=182404
+        <rdar://problem/36935863>
+
+        Reviewed by Saam Barati.
+
+        * wasm/Builder.js:
+        (export.default.Builder.prototype._registerSectionBuilders.const.section.in.WASM.description.section.switch.section.case.string_appeared_here.this.section):
+        * wasm/js-api/validate.js:
+        (assert.truthy):
+
 2018-01-31  Saam Barati  <sbarati@apple.com>
 
         JSC incorrectly interpreting script, sets Global Property instead of Global Lexical variable (LiteralParser / JSONP path)

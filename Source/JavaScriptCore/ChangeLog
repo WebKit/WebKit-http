@@ -1,3 +1,222 @@
+2018-02-02  Saam Barati  <sbarati@apple.com>
+
+        Make various DFG_ASSERTs provide more data to WTFCrashWithInfo
+        https://bugs.webkit.org/show_bug.cgi?id=182453
+        <rdar://problem/37174236>
+
+        Reviewed by JF Bastien and Mark Lam.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+        * dfg/DFGArgumentsUtilities.cpp:
+        (JSC::DFG::emitCodeToGetArgumentsArrayLength):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupChecksInBlock):
+        * dfg/DFGFlowIndexing.h:
+        (JSC::DFG::FlowIndexing::shadowIndex const):
+        * dfg/DFGLICMPhase.cpp:
+        (JSC::DFG::LICMPhase::run):
+        (JSC::DFG::LICMPhase::attemptHoist):
+        * dfg/DFGLoopPreHeaderCreationPhase.cpp:
+        (JSC::DFG::LoopPreHeaderCreationPhase::run):
+        * dfg/DFGPutStackSinkingPhase.cpp:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArithAbs):
+        (JSC::DFG::SpeculativeJIT::compileArithRounding):
+        (JSC::DFG::SpeculativeJIT::compileToPrimitive):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::fillJSValue):
+        (JSC::DFG::SpeculativeJIT::fillSpeculateInt32Internal):
+        (JSC::DFG::SpeculativeJIT::fillSpeculateInt32Strict):
+        (JSC::DFG::SpeculativeJIT::fillSpeculateInt52):
+        (JSC::DFG::SpeculativeJIT::fillSpeculateDouble):
+        (JSC::DFG::SpeculativeJIT::fillSpeculateBoolean):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStoreBarrierClusteringPhase.cpp:
+        * dfg/DFGStoreBarrierInsertionPhase.cpp:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetStack):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithClz32):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithAbs):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithRound):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithFloor):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithCeil):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithTrunc):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithNegate):
+        (JSC::FTL::DFG::LowerDFGToB3::compilePutById):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetIndexedPropertyStorage):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetByVal):
+        (JSC::FTL::DFG::LowerDFGToB3::compileStringFromCharCode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileMultiPutByOffset):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCompareEq):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCompareStrictEq):
+        (JSC::FTL::DFG::LowerDFGToB3::compileIn):
+        (JSC::FTL::DFG::LowerDFGToB3::compare):
+        (JSC::FTL::DFG::LowerDFGToB3::switchStringRecurse):
+        (JSC::FTL::DFG::LowerDFGToB3::lowInt32):
+        (JSC::FTL::DFG::LowerDFGToB3::lowInt52):
+        (JSC::FTL::DFG::LowerDFGToB3::lowCell):
+        (JSC::FTL::DFG::LowerDFGToB3::lowBoolean):
+        (JSC::FTL::DFG::LowerDFGToB3::lowDouble):
+        (JSC::FTL::DFG::LowerDFGToB3::lowJSValue):
+
+2018-02-02  Don Olmstead  <don.olmstead@sony.com>
+
+        JS Builtins should include JavaScriptCore headers directly
+        https://bugs.webkit.org/show_bug.cgi?id=182445
+
+        Reviewed by Yusuke Suzuki.
+
+        * Scripts/builtins/builtins_generator.py:
+        * Scripts/tests/builtins/expected/WebCore-AnotherGuardedInternalBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-ArbitraryConditionalGuard-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-GuardedBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-GuardedInternalBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-UnguardedBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-xmlCasingTest-Separate.js-result:
+
+2018-02-02  Saam Barati  <sbarati@apple.com>
+
+        When BytecodeParser inserts Unreachable after ForceOSRExit it needs to update ArgumentPositions for Flushes it inserts
+        https://bugs.webkit.org/show_bug.cgi?id=182368
+        <rdar://problem/36932466>
+
+        Reviewed by Mark Lam.
+
+        When preserving liveness when inserting Unreachable nodes after ForceOSRExit,
+        we must add the VariableAccessData to the given argument position. Otherwise,
+        we may end up with a VariableAccessData that doesn't respect the shouldNeverUnbox bit.
+        If we end up with such a situation, it can lead to invalid IR after the
+        arguments elimination phase optimizes a GetByVal to a GetStack.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::flushImpl):
+        (JSC::DFG::ByteCodeParser::flushForTerminalImpl):
+        (JSC::DFG::ByteCodeParser::flush):
+        (JSC::DFG::ByteCodeParser::flushForTerminal):
+        (JSC::DFG::ByteCodeParser::InlineStackEntry::InlineStackEntry):
+        (JSC::DFG::ByteCodeParser::parse):
+
+2018-02-02  Mark Lam  <mark.lam@apple.com>
+
+        More ARM64_32 fixes.
+        https://bugs.webkit.org/show_bug.cgi?id=182441
+        <rdar://problem/37162310>
+
+        Reviewed by Dan Bernstein.
+
+        I also disabled more dynamicPoisoning code in ARM64_32.  This code assumes a
+        64-bit pointer which is not applicable here.
+
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::emitDynamicPoison):
+        (JSC::AssemblyHelpers::emitDynamicPoisonOnLoadedType):
+        (JSC::AssemblyHelpers::emitDynamicPoisonOnType):
+
+2018-02-02  Saam Barati  <sbarati@apple.com>
+
+        MapHash should return true to doesGC in the DFG depending on useKind because it might resolve a rope
+        https://bugs.webkit.org/show_bug.cgi?id=182402
+
+        Reviewed by Yusuke Suzuki.
+
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+
+2018-02-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Clean up ArraySpeciesCreate
+        https://bugs.webkit.org/show_bug.cgi?id=182434
+
+        Reviewed by Saam Barati.
+
+        We have duplicate code in filter, map, concatSlowPath.
+        This patch creates a new global private function @arraySpeciesCreate,
+        and use it.
+
+        * builtins/ArrayPrototype.js:
+        (globalPrivate.arraySpeciesCreate):
+        (filter):
+        (map):
+        (globalPrivate.concatSlowPath):
+
+2018-02-01  Mark Lam  <mark.lam@apple.com>
+
+        Fix broken bounds check in FTL's compileGetMyArgumentByVal().
+        https://bugs.webkit.org/show_bug.cgi?id=182419
+        <rdar://problem/37044945>
+
+        Reviewed by Saam Barati.
+
+        In compileGetMyArgumentByVal(), it computes:
+            limit = m_out.sub(limit, m_out.constInt32(m_node->numberOfArgumentsToSkip()));
+            ...
+            LValue isOutOfBounds = m_out.aboveOrEqual(originalIndex, limit);
+
+        where the original "limit" is the number of arguments passed in by the caller.
+        If the original limit is less than numberOfArgumentsToSkip, the resultant limit
+        will be a large unsigned number.  As a result, this will defeat the bounds check
+        that follows it.
+
+        Note: later on in compileGetMyArgumentByVal(), we have to adjust adjust the index
+        value by adding numberOfArgumentsToSkip to it, in order to determine the actual
+        entry in the arguments array to get.
+
+        The fix is to just add numberOfArgumentsToSkip to index upfront (instead of
+        subtracting it from limit), and doing an overflow speculation check on that
+        addition before doing the bounds check.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetMyArgumentByVal):
+
+2018-02-01  Keith Miller  <keith_miller@apple.com>
+
+        Fix crashes due to mishandling custom sections.
+        https://bugs.webkit.org/show_bug.cgi?id=182404
+        <rdar://problem/36935863>
+
+        Reviewed by Saam Barati.
+
+        This also cleans up some of our validation code. We also
+        mistakenly, allowed unknown (different from custom sections with
+        id: 0) section ids.
+
+        * wasm/WasmModuleParser.cpp:
+        (JSC::Wasm::ModuleParser::parse):
+        * wasm/WasmModuleParser.h:
+        * wasm/WasmSections.h:
+        (JSC::Wasm::isKnownSection):
+        (JSC::Wasm::decodeSection):
+        (JSC::Wasm::validateOrder):
+        (JSC::Wasm::makeString):
+        (JSC::Wasm::isValidSection): Deleted.
+
+2018-02-01  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        -Wreturn-type warning in DFGObjectAllocationSinkingPhase.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=182389
+
+        Reviewed by Yusuke Suzuki.
+
+        Fix the warning.
+
+        As a bonus, remove a couple unreachable breaks for good measure.
+
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+
+2018-02-01  Chris Dumez  <cdumez@apple.com>
+
+        Queue a microtask when a waitUntil() promise is settled
+        https://bugs.webkit.org/show_bug.cgi?id=182372
+        <rdar://problem/37101019>
+
+        Reviewed by Mark Lam.
+
+        Export a symbol so it can be used in WebCore.
+
+        * runtime/JSGlobalObject.h:
+
 2018-01-31  Don Olmstead  <don.olmstead@sony.com>
 
         [CMake] Make JavaScriptCore headers copies

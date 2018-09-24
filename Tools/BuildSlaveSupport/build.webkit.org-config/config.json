@@ -68,10 +68,10 @@
                     { "name": "gtk-linux-slave-10", "platform": "gtk" },
                     { "name": "gtk-linux-slave-11", "platform": "gtk" },
 
-                    { "name": "jsconly-linux-szeged-slave-1", "platform": "jsc-only" },
-                    { "name": "jsconly-linux-szeged-slave-2", "platform": "jsc-only" },
-                    { "name": "jsconly-linux-szeged-slave-3", "platform": "jsc-only" },
                     { "name": "jsconly-linux-igalia-bot-1", "platform": "jsc-only" },
+                    { "name": "jsconly-linux-igalia-bot-2", "platform": "jsc-only" },
+                    { "name": "jsconly-linux-igalia-bot-3", "platform": "jsc-only" },
+                    { "name": "jsconly-linux-igalia-bot-4", "platform": "jsc-only" },
 
                     { "name": "wpe-linux-bot-1", "platform": "wpe" },
                     { "name": "wpe-linux-bot-2", "platform": "wpe" }
@@ -294,20 +294,17 @@
                     {
                       "name": "JSCOnly Linux AArch64 Release", "type": "BuildAndRemoteJSCTests", "builddir": "jsconly-linux-aarch64-release",
                       "platform": "jsc-only", "configuration": "release", "architectures": ["aarch64"],
-                      "SVNMirror": "svn://webkit.inf.u-szeged.hu/webkit/",
-                      "slavenames": ["jsconly-linux-szeged-slave-1"]
+                      "slavenames": ["jsconly-linux-igalia-bot-2"]
                     },
                     {
                       "name": "JSCOnly Linux ARMv7 Thumb2 Release", "type": "BuildAndRemoteJSCTests", "builddir": "jsconly-linux-armv7-thumb2-release",
                       "platform": "jsc-only", "configuration": "release", "architectures": ["armv7"],
-                      "SVNMirror": "svn://webkit.inf.u-szeged.hu/webkit/",
-                      "slavenames": ["jsconly-linux-szeged-slave-2"]
+                      "slavenames": ["jsconly-linux-igalia-bot-3"]
                     },
                     {
                       "name": "JSCOnly Linux ARMv7 Traditional Release", "type": "BuildAndRemoteJSCTests", "builddir": "jsconly-linux-armv7-traditional-release",
                       "platform": "jsc-only", "configuration": "release", "architectures": ["armv7"],
-                      "SVNMirror": "svn://webkit.inf.u-szeged.hu/webkit/",
-                      "slavenames": ["jsconly-linux-szeged-slave-3"]
+                      "slavenames": ["jsconly-linux-igalia-bot-4"]
                     },
                     {
                       "name": "JSCOnly Linux MIPS32el Release", "type": "BuildAndRemoteJSCTests", "builddir": "jsconly-linux-mips32el-release",

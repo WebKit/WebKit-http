@@ -411,7 +411,6 @@ WKRetainPtr<WKContextConfigurationRef> TestController::generateContextConfigurat
         WKContextConfigurationSetApplicationCacheDirectory(configuration.get(), toWK(temporaryFolder + separator + "ApplicationCache").get());
         WKContextConfigurationSetDiskCacheDirectory(configuration.get(), toWK(temporaryFolder + separator + "Cache").get());
         WKContextConfigurationSetIndexedDBDatabaseDirectory(configuration.get(), toWK(temporaryFolder + separator + "Databases" + separator + "IndexedDB").get());
-        WKContextConfigurationSetServiceWorkerDatabaseDirectory(configuration.get(), toWK(temporaryFolder + separator + "ServiceWorkers").get());
         WKContextConfigurationSetLocalStorageDirectory(configuration.get(), toWK(temporaryFolder + separator + "LocalStorage").get());
         WKContextConfigurationSetWebSQLDatabaseDirectory(configuration.get(), toWK(temporaryFolder + separator + "Databases" + separator + "WebSQL").get());
         WKContextConfigurationSetMediaKeysStorageDirectory(configuration.get(), toWK(temporaryFolder + separator + "MediaKeys").get());
@@ -783,8 +782,7 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
 
     WKContextClearCachedCredentials(TestController::singleton().context());
 
-    WKWebsiteDataStoreRemoveAllServiceWorkerRegistrations(WKContextGetWebsiteDataStore(platformContext()));
-
+    clearServiceWorkerRegistrations();
     clearDOMCaches();
 
     WKContextSetAllowsAnySSLCertificateForServiceWorkerTesting(platformContext(), true);
@@ -2328,6 +2326,38 @@ void TestController::removeAllSessionCredentials()
 }
 
 #endif
+
+#if PLATFORM(COCOA) && WK_API_ENABLED
+struct ClearServiceWorkerRegistrationsCallbackContext {
+    explicit ClearServiceWorkerRegistrationsCallbackContext(TestController& controller)
+        : testController(controller)
+    {
+    }
+
+    TestController& testController;
+    bool done { false };
+};
+
+static void clearServiceWorkerRegistrationsCallback(void* userData)
+{
+    auto* context = static_cast<ClearServiceWorkerRegistrationsCallbackContext*>(userData);
+    context->done = true;
+    context->testController.notifyDone();
+}
+#endif
+
+void TestController::clearServiceWorkerRegistrations()
+{
+#if PLATFORM(COCOA) && WK_API_ENABLED
+    auto websiteDataStore = WKContextGetWebsiteDataStore(platformContext());
+    ClearServiceWorkerRegistrationsCallbackContext context(*this);
+
+    WKWebsiteDataStoreRemoveAllServiceWorkerRegistrations(websiteDataStore, &context, clearServiceWorkerRegistrationsCallback);
+
+    if (!context.done)
+        runUntil(context.done, m_currentInvocation->shortTimeout());
+#endif
+}
 
 #if PLATFORM(COCOA) && WK_API_ENABLED
 struct ClearDOMCacheCallbackContext {

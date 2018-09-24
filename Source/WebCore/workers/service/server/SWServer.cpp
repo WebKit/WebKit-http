@@ -114,6 +114,11 @@ void SWServer::registrationStoreImportComplete()
     ASSERT(!m_importCompleted);
     m_importCompleted = true;
     m_originStore->importComplete();
+
+    auto clearCallbacks = WTFMove(m_clearCompletionCallbacks);
+    for (auto& callback : clearCallbacks)
+        callback();
+
     performGetOriginsWithRegistrationsCallbacks();
 }
 
@@ -182,20 +187,35 @@ Vector<ServiceWorkerRegistrationData> SWServer::getRegistrations(const SecurityO
     return matchingRegistrationDatas;
 }
 
-void SWServer::clearAll(WTF::CompletionHandler<void()>&& completionHandler)
+void SWServer::clearAll(CompletionHandler<void()>&& completionHandler)
 {
+    if (!m_importCompleted) {
+        m_clearCompletionCallbacks.append([this, completionHandler = WTFMove(completionHandler)] () mutable {
+            ASSERT(m_importCompleted);
+            clearAll(WTFMove(completionHandler));
+        });
+        return;
+    }
+
     m_jobQueues.clear();
     while (!m_registrations.isEmpty())
         m_registrations.begin()->value->clear();
     ASSERT(m_registrationsByID.isEmpty());
     m_pendingContextDatas.clear();
-    m_pendingJobs.clear();
     m_originStore->clearAll();
     m_registrationStore.clearAll(WTFMove(completionHandler));
 }
 
-void SWServer::clear(const SecurityOrigin& origin, WTF::CompletionHandler<void()>&& completionHandler)
+void SWServer::clear(const SecurityOrigin& origin, CompletionHandler<void()>&& completionHandler)
 {
+    if (!m_importCompleted) {
+        m_clearCompletionCallbacks.append([this, origin = makeRef(origin), completionHandler = WTFMove(completionHandler)] () mutable {
+            ASSERT(m_importCompleted);
+            clear(origin, WTFMove(completionHandler));
+        });
+        return;
+    }
+
     m_jobQueues.removeIf([&](auto& keyAndValue) {
         return keyAndValue.key.relatesToOrigin(origin);
     });
@@ -210,23 +230,16 @@ void SWServer::clear(const SecurityOrigin& origin, WTF::CompletionHandler<void()
         return contextData.registration.key.relatesToOrigin(origin);
     });
 
-    m_pendingJobs.removeAllMatching([&](auto& job) {
-        return job.registrationKey().relatesToOrigin(origin);
-    });
+    if (registrationsToRemove.isEmpty()) {
+        completionHandler();
+        return;
+    }
 
     // Calling SWServerRegistration::clear() takes care of updating m_registrations, m_originStore and m_registrationStore.
     for (auto* registration : registrationsToRemove)
         registration->clear();
 
     m_registrationStore.flushChanges(WTFMove(completionHandler));
-}
-
-void SWServer::Connection::scheduleJobInServer(ServiceWorkerJobData&& jobData)
-{
-    LOG(ServiceWorker, "Scheduling ServiceWorker job %s in server", jobData.identifier().loggingString().utf8().data());
-    ASSERT(identifier() == jobData.connectionIdentifier());
-
-    m_server.scheduleJob(WTFMove(jobData));
 }
 
 void SWServer::Connection::finishFetchingScriptInServer(const ServiceWorkerFetchResult& result)
@@ -268,11 +281,6 @@ SWServer::SWServer(UniqueRef<SWOriginStore>&& originStore, String&& registration
 void SWServer::scheduleJob(ServiceWorkerJobData&& jobData)
 {
     ASSERT(m_connections.contains(jobData.connectionIdentifier()));
-
-    if (!SWServerToContextConnection::globalServerToContextConnection()) {
-        m_pendingJobs.append(WTFMove(jobData));
-        return;
-    }
 
     // FIXME: Per the spec, check if this job is equivalent to the last job on the queue.
     // If it is, stack it along with that job.
@@ -494,10 +502,6 @@ void SWServer::serverToContextConnectionCreated()
         for (auto& callback : item.value)
             callback(success, *connection);
     }
-
-    auto pendingJobs = WTFMove(m_pendingJobs);
-    for (auto& jobData : pendingJobs)
-        scheduleJob(WTFMove(jobData));
 }
 
 void SWServer::installContextData(const ServiceWorkerContextData& data)
@@ -793,7 +797,7 @@ void SWServer::Connection::resolveRegistrationReadyRequests(SWServerRegistration
     });
 }
 
-void SWServer::getOriginsWithRegistrations(WTF::Function<void(const HashSet<SecurityOriginData>&)> callback)
+void SWServer::getOriginsWithRegistrations(Function<void(const HashSet<SecurityOriginData>&)>&& callback)
 {
     m_getOriginsWithRegistrationsCallbacks.append(WTFMove(callback));
 

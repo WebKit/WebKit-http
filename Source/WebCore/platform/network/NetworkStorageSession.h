@@ -45,6 +45,12 @@ class BUrlContext;
 typedef struct _SoupCookieJar SoupCookieJar;
 #endif
 
+#if USE(CURL)
+#include "CookieJarCurl.h"
+#include "CookieJarDB.h"
+#include <wtf/UniqueRef.h>
+#endif
+
 #ifdef __OBJC__
 #include <objc/objc.h>
 #endif
@@ -124,6 +130,14 @@ public:
 
     BUrlContext& platformSession() const;
     void setPlatformSession(BUrlContext*);
+#elif USE(CURL)
+    NetworkStorageSession(PAL::SessionID, NetworkingContext*);
+    ~NetworkStorageSession();
+
+    const CookieJarCurl& cookieStorage() const { return m_cookieStorage; };
+    CookieJarDB& cookieDatabase() const { return m_cookieDatabase; };
+
+    NetworkingContext* context() const;
 #else
     NetworkStorageSession(PAL::SessionID, NetworkingContext*);
     ~NetworkStorageSession();
@@ -157,6 +171,11 @@ private:
 #endif
 #elif USE(HAIKU)
     BUrlContext* m_context;
+#elif USE(CURL)
+    UniqueRef<CookieJarCurl> m_cookieStorage;
+    mutable CookieJarDB m_cookieDatabase;
+
+    RefPtr<NetworkingContext> m_context;
 #else
     RefPtr<NetworkingContext> m_context;
 #endif
