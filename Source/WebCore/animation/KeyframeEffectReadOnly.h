@@ -34,6 +34,7 @@
 #include "KeyframeEffectOptions.h"
 #include "KeyframeList.h"
 #include "RenderStyle.h"
+#include "StyleProperties.h"
 #include <wtf/Ref.h>
 
 namespace WebCore {
@@ -50,7 +51,7 @@ public:
     struct BasePropertyIndexedKeyframe {
         Variant<std::nullptr_t, Vector<std::optional<double>>, double> offset = Vector<std::optional<double>>();
         Variant<Vector<String>, String> easing = Vector<String>();
-        Variant<Vector<CompositeOperation>, CompositeOperation> composite = Vector<CompositeOperation>();
+        Variant<std::nullptr_t, Vector<std::optional<CompositeOperation>>, CompositeOperation> composite = Vector<std::optional<CompositeOperation>>();
     };
 
     struct PropertyAndValues {
@@ -63,12 +64,19 @@ public:
         Vector<PropertyAndValues> propertiesAndValues;
     };
 
-    struct ProcessedKeyframe {
-        String easing;
+    struct ParsedKeyframe {
         std::optional<double> offset;
-        std::optional<double> computedOffset;
+        double computedOffset;
         std::optional<CompositeOperation> composite;
-        HashMap<CSSPropertyID, String> cssPropertiesAndValues;
+        String easing;
+        RefPtr<TimingFunction> timingFunction;
+        Ref<MutableStyleProperties> style;
+        HashMap<CSSPropertyID, String> unparsedStyle;
+
+        ParsedKeyframe()
+            : style(MutableStyleProperties::create())
+        {
+        }
     };
 
     struct BaseComputedKeyframe {
@@ -79,6 +87,8 @@ public:
     };
 
     Element* target() const { return m_target.get(); }
+    void setTarget(RefPtr<Element>&&);
+
     Vector<JSC::Strong<JSC::JSObject>> getKeyframes(JSC::ExecState&);
 
     IterationCompositeOperation iterationComposite() const { return m_iterationCompositeOperation; }
@@ -111,17 +121,16 @@ protected:
 private:
     void setAnimatedPropertiesInStyle(RenderStyle&, double);
     void computeStackingContextImpact();
+    void updateBlendingKeyframes();
     bool shouldRunAccelerated();
 
-    Vector<std::optional<double>> m_offsets;
-    Vector<RefPtr<TimingFunction>> m_timingFunctions;
-    Vector<std::optional<CompositeOperation>> m_compositeOperations;
     bool m_triggersStackingContext { false };
     bool m_started { false };
     bool m_startedAccelerated { false };
 
     RefPtr<Element> m_target;
-    KeyframeList m_keyframes;
+    KeyframeList m_blendingKeyframes;
+    Vector<ParsedKeyframe> m_parsedKeyframes;
 };
 
 } // namespace WebCore

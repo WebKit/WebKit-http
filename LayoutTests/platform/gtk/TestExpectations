@@ -1063,10 +1063,6 @@ webkit.org/b/169531 fast/text/font-selection-font-face-parse.html [ Skip ]
 
 webkit.org/b/158836 imported/w3c/web-platform-tests/encrypted-media [ Skip ]
 
-# CSS3 Text each-line and hanging indent not supported
-webkit.org/b/112755 fast/css3-text/css3-text-indent/getComputedStyle/getComputedStyle-text-indent.html [ Failure ]
-webkit.org/b/112755 fast/css3-text/css3-text-indent/getComputedStyle/getComputedStyle-text-indent-inherited.html [ Failure ]
-
 # CSS image-orientation is not yet enabled.
 webkit.org/b/89052 fast/css/image-orientation [ Skip ]
 
@@ -1082,6 +1078,7 @@ webkit.org/b/168189 fast/scrolling/scroll-container-horizontally.html [ Failure 
 
 # Requires CACHE_PARTITIONING or an alternative implementation
 webkit.org/b/168366 http/tests/security/credentials-iframes.html
+webkit.org/b/168366 http/tests/security/credentials-iframes-allowCrossOriginSubresourcesToAskForCredentials.html
 
 # DASHBOARD_SUPPORT is mac only
 http/tests/xmlhttprequest/default-content-type-dashboard.html [ Skip ]
@@ -1204,20 +1201,6 @@ webkit.org/b/177633 http/tests/security/clipboard/copy-paste-html-across-origin-
 webkit.org/b/177633 http/tests/security/clipboard/copy-paste-url-across-origin-sanitizes-url.html [ Failure ]
 webkit.org/b/177633 http/tests/security/clipboard/copy-paste-html-across-origin-strips-mso-list.html [ Failure ]
 
-# We should consider enabling ENABLE_LINK_PREFETCH and ENABLE_CSS3_TEXT
-webkit.org/b/179989 http/tests/misc/prefetch-purpose.html [ Skip ]
-webkit.org/b/179989 http/tests/misc/link-rel-prefetch-and-subresource.html [ Skip ]
-webkit.org/b/179989 fast/dom/HTMLLinkElement/subresource.html [ Skip ]
-webkit.org/b/179989 fast/dom/HTMLLinkElement/prefetch-onload.html [ Skip ]
-webkit.org/b/179989 fast/dom/HTMLLinkElement/prefetch-onerror.html [ Skip ]
-webkit.org/b/179989 fast/dom/HTMLLinkElement/prefetch.html [ Skip ]
-webkit.org/b/179989 fast/dom/HTMLLinkElement/link-and-subresource-test-nonexistent.html [ Skip ]
-webkit.org/b/179989 fast/dom/HTMLLinkElement/link-and-subresource-test.html [ Skip ]
-webkit.org/b/179989 fast/css3-text/css3-text-justify/getComputedStyle/getComputedStyle-text-justify-inherited.html [ Failure ]
-webkit.org/b/179989 fast/css3-text/css3-text-justify/getComputedStyle/getComputedStyle-text-justify.html [ Failure ]
-webkit.org/b/179989 fast/css3-text/css3-text-align-last/getComputedStyle/getComputedStyle-text-align-last-inherited.html [ Failure ]
-webkit.org/b/179989 fast/css3-text/css3-text-align-last/getComputedStyle/getComputedStyle-text-align-last.html [ Failure ]
-
 webkit.org/b/180062 fast/text/user-installed-fonts [ Skip ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -1231,8 +1214,6 @@ webkit.org/b/180062 fast/text/user-installed-fonts [ Skip ]
 #////////////////////////////////////////////////////////////////////////////////////////
 
 webkit.org/b/86443 [ Debug ] plugins/npruntime/delete-plugin-within-invoke.html [ Crash ]
-
-webkit.org/b/86176 [ Debug ] ietestcenter/css3/valuesandunits/units-000.htm [ Crash ]
 
 webkit.org/b/90957 [ Release ] js/dom/random-array-gc-stress.html [ Timeout Crash Pass ]
 
@@ -1294,24 +1275,14 @@ webkit.org/b/131546 media/track/track-in-band.html [ Crash Timeout Failure ]
 
 webkit.org/b/163782 media/video-played-ranges-1.html [ Crash Pass ]
 
-webkit.org/b/167576 imported/w3c/IndexedDB-private-browsing/idbcursor_iterating.html [ Crash Timeout ]
-webkit.org/b/167576 imported/w3c/IndexedDB-private-browsing/idbcursor_iterating_index.html [ Crash Timeout ]
-webkit.org/b/167576 storage/indexeddb/modern/index-3-private.html [ Crash ]
-
 webkit.org/b/169811 fast/mediastream/captureStream/canvas2d.html [ Crash Timeout ]
 webkit.org/b/169811 fast/mediastream/captureStream/canvas3d.html [ Crash Timeout ]
 
 webkit.org/b/172281 accessibility/insert-children-assert.html [ Crash ]
 
-webkit.org/b/172951 editing/execCommand/crash-replacing-list-by-list.html [ Crash ]
-webkit.org/b/172951 editing/inserting/insert-table-in-paragraph-crash.html [ Crash ]
-webkit.org/b/172952 fast/frames/sandboxed-iframe-navigation-top-denied.html [ Crash ]
-
 webkit.org/b/172955 media/video-preload.html [ Crash Pass ]
 
 webkit.org/b/175575 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/ready-states/autoplay-with-slow-text-tracks.html [ Crash Pass ]
-
-webkit.org/b/176797 accessibility/aria-listbox-no-selection.html [ Crash ]
 
 webkit.org/b/176799 editing/deleting/delete-surrogatepair.html [ Crash ]
 
@@ -1327,7 +1298,6 @@ webkit.org/b/177534 fast/attachment/attachment-respects-css-size.html [ Crash Im
 webkit.org/b/177535 fast/mediastream/media-device-info.html [ Crash Pass ]
 # See also webkit.org/b/163528 Threaded compositor failures caused by one of r203496, r203497, or r203498
 webkit.org/b/177536 media/video-object-fit.html [ Crash ImageOnlyFailure ]
-webkit.org/b/177537 http/tests/multipart/multipart-html.php [ Crash ]
 
 webkit.org/b/177816 webgl/1.0.2/conformance/ogles/GL/vec/vec_001_to_008.html [ Crash Pass ]
 
@@ -1336,8 +1306,7 @@ webkit.org/b/180098 security/isSecureContext-disabled.html [ Crash Pass ]
 
 webkit.org/b/180803 http/tests/media/hls/video-cookie.html [ Crash ]
 
-webkit.org/b/182106 imported/w3c/web-platform-tests/html/semantics/forms/textfieldselection/selection-start-end.html [ Crash ]
-webkit.org/b/182106 media/video-multiple-concurrent-playback.html [ Crash ]
+webkit.org/b/182106 media/video-multiple-concurrent-playback.html [ Crash Pass Timeout ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Crashing tests
@@ -1877,8 +1846,6 @@ webkit.org/b/174240 svg/dom/SVGScriptElement/script-change-externalResourcesRequ
 
 webkit.org/b/174353 media/video-restricted-invisible-autoplay-not-allowed.html [ Crash Pass ]
 
-webkit.org/b/174354 imported/w3c/IndexedDB-private-browsing/idbfactory_open.html [ Crash Pass ]
-
 webkit.org/b/175933 media/audio-controls-timeline-in-media-document.html [ Pass Failure ]
 
 webkit.org/b/176105 http/tests/security/video-cross-origin-accessfailure.html [ Pass Failure ]
@@ -1886,8 +1853,6 @@ webkit.org/b/176105 http/tests/security/video-cross-origin-accessfailure.html [ 
 webkit.org/b/176110 imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt/rsa.worker.html [ Pass Failure ]
 
 webkit.org/b/176174 media/event-queue-crash.html [ Pass Failure ]
-
-webkit.org/b/176756 inspector/heap/getPreview.html [ Timeout Pass ]
 
 webkit.org/b/176757 fast/hidpi/filters-invert.html [ Pass ImageOnlyFailure ]
 webkit.org/b/176757 fast/hidpi/filters-multiple.html [ Pass ImageOnlyFailure ]
@@ -1948,6 +1913,8 @@ webkit.org/b/182761 accessibility/gtk/aria-required-changed-notification.html [ 
 
 webkit.org/b/182789 fast/events/touch/touch-scaled-scrolled.html [ Pass Failure ]
 webkit.org/b/182790 imported/w3c/web-platform-tests/IndexedDB/idbdatabase-deleteObjectStore-exception-order.htm [ Pass Failure ]
+
+webkit.org/b/182989 http/wpt/beacon/beacon-quota.html [ Pass Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
@@ -2256,7 +2223,7 @@ webkit.org/b/177934 http/tests/preconnect/link-rel-preconnect-https.html [ Timeo
 
 webkit.org/b/177941 http/tests/inspector/network/ping-type.html [ Timeout ]
 
-webkit.org/b/178792 fast/events/touch/touch-inside-iframe.html [ Timeout ]
+webkit.org/b/178792 fast/events/touch/touch-inside-iframe.html [ Timeout Pass ]
 
 webkit.org/b/179258 fast/canvas/webgl/texImage2D-mse-flipY-false.html [ Timeout ]
 webkit.org/b/179258 fast/canvas/webgl/texImage2D-mse-flipY-true.html [ Timeout ]
@@ -2270,8 +2237,6 @@ webkit.org/b/180096 inspector/runtime/getPreview.html [ Timeout Pass ]
 webkit.org/b/182107 accessibility/aria-combobox-control-owns-elements.html [ Timeout ]
 
 webkit.org/b/182108 http/tests/media/hls/hls-webvtt-tracks.html [ Timeout ]
-
-webkit.org/b/182109 media/video-fullscreen-reload-crash.html [ Timeout ]
 
 webkit.org/b/182317 http/tests/resourceLoadStatistics/grandfathering.html [ Pass Failure ]
 
@@ -2644,8 +2609,6 @@ webkit.org/b/85689 fast/animation/request-animation-frame-disabled.html [ Skip ]
 
 # Started failing after it was added in r116473
 webkit.org/b/85969 http/tests/loading/post-in-iframe-with-back-navigation.html [ Failure ]
-
-webkit.org/b/85308 [ Release ] ietestcenter/css3/valuesandunits/units-000.htm [ ImageOnlyFailure ]
 
 webkit.org/b/86443 plugins/npruntime/delete-plugin-within-hasProperty-return-false.html [ Failure ]
 webkit.org/b/86443 plugins/npruntime/delete-plugin-within-hasProperty-return-true.html [ Failure ]
@@ -3090,12 +3053,7 @@ webkit.org/b/163976 fast/css/user-drag-none.html [ Failure ]
 webkit.org/b/163977 fast/css/will-change/will-change-creates-stacking-context-inline.html [ ImageOnlyFailure ]
 webkit.org/b/163979 fast/css/will-change/will-change-creates-stacking-context.html [ ImageOnlyFailure ]
 
-webkit.org/b/163980 fast/css3-text/css3-text-align-last/text-align-last-with-text-align-justify.html [ ImageOnlyFailure ]
-webkit.org/b/163980 fast/css3-text/css3-text-justify/text-justify-none.html [ ImageOnlyFailure ]
-
 webkit.org/b/163981 fast/css3-text/css3-text-decoration/text-underline-position/underline-visual-overflow-with-subpixel-position.html [ Failure ]
-
-webkit.org/b/163982 fast/css3-text/css3-text-indent/text-indent-each-line-hanging.html [ ImageOnlyFailure ]
 
 webkit.org/b/163984 fast/dom/Window/child-window-focus.html [ Failure ]
 
@@ -3290,13 +3248,6 @@ webkit.org/b/178591 http/tests/navigation/keyboard-events-during-provisional-nav
 webkit.org/b/178591 http/tests/navigation/keyboard-events-during-provisional-subframe-navigation.html [ Failure ]
 
 webkit.org/b/179605 editing/execCommand/underline-selection-containing-image.html [ Failure ]
-
-webkit.org/b/179721 media/video-fullscreen-restriction-removed.html [ Failure ]
-webkit.org/b/179721 fullscreen/full-screen-iframe-legacy.html [ Timeout ]
-webkit.org/b/179721 media/media-fullscreen-inline.html [ Timeout ]
-webkit.org/b/179721 media/media-fullscreen-not-in-document.html [ Timeout ]
-webkit.org/b/179721 media/media-fullscreen-return-to-inline.html [ Timeout Crash ]
-webkit.org/b/179721 media/video-fullscreeen-only-playback.html [ Timeout ]
 
 webkit.org/b/179722 compositing/accelerated-layers-after-back.html [ Failure ]
 

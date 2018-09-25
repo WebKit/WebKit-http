@@ -22,26 +22,36 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 #include "config.h"
 #include "VRStageParameters.h"
 
+#include <JavaScriptCore/GenericTypedArrayViewInlines.h>
+#include <JavaScriptCore/JSGenericTypedArrayViewInlines.h>
+
 namespace WebCore {
 
-VRStageParameters::VRStageParameters() = default;
-
-Float32Array* VRStageParameters::sittingToStandingTransform() const
+VRStageParameters::VRStageParameters(const TransformationMatrix& sittingToStandingTransform, const FloatSize& playAreaBounds)
+    : m_playAreaBounds(playAreaBounds)
+    , m_sittingToStandingTransform(sittingToStandingTransform)
 {
-    return nullptr;
+}
+
+Ref<Float32Array> VRStageParameters::sittingToStandingTransform() const
+{
+    TransformationMatrix::FloatMatrix4 columnMajorMatrix;
+    m_sittingToStandingTransform.toColumnMajorFloatArray(columnMajorMatrix);
+    return Float32Array::create(columnMajorMatrix, 16).releaseNonNull();
 }
 
 float VRStageParameters::sizeX() const
 {
-    return 0;
+    return m_playAreaBounds.width();
 }
 
 float VRStageParameters::sizeZ() const
 {
-    return 0;
+    return m_playAreaBounds.height();
 }
 
 } // namespace WebCore

@@ -36,6 +36,7 @@
 #include <wtf/HashMap.h>
 #include <wtf/ListHashSet.h>
 #include <wtf/RefCounted.h>
+#include <wtf/RetainPtr.h>
 #include <wtf/text/WTFString.h>
 
 #if USE(CA)
@@ -51,38 +52,36 @@
 #endif
 
 #if PLATFORM(COCOA)
-#if PLATFORM(IOS)
+
+#if USE(OPENGL_ES)
 #include <OpenGLES/ES2/gl.h>
 #ifdef __OBJC__
 #import <OpenGLES/EAGL.h>
-#endif // __OBJC__
-#endif // PLATFORM(IOS)
-#include <wtf/RetainPtr.h>
-OBJC_CLASS CALayer;
-OBJC_CLASS WebGLLayer;
-typedef struct __IOSurface* IOSurfaceRef;
+typedef EAGLContext* PlatformGraphicsContext3D;
 #else
-typedef unsigned int GLuint;
-#endif
+typedef void* PlatformGraphicsContext3D;
+#endif // __OBJC__
+#endif // USE(OPENGL_ES)
 
 #if PLATFORM(HAIKU)
 class BView;
 #endif
 
-#if PLATFORM(IOS)
-#ifdef __OBJC__
-typedef EAGLContext* PlatformGraphicsContext3D;
-#else
-typedef void* PlatformGraphicsContext3D;
-#endif // __OBJC__
-#elif PLATFORM(MAC)
+#if !USE(OPENGL_ES)
 typedef struct _CGLContextObject *CGLContextObj;
-
 typedef CGLContextObj PlatformGraphicsContext3D;
-#else
+#endif
+
+OBJC_CLASS CALayer;
+OBJC_CLASS WebGLLayer;
+typedef struct __IOSurface* IOSurfaceRef;
+#endif // PLATFORM(COCOA)
+
+#if !PLATFORM(COCOA)
+typedef unsigned GLuint;
 typedef void* PlatformGraphicsContext3D;
 typedef void* PlatformGraphicsSurface3D;
-#endif
+#endif // !PLATFORM(COCOA)
 
 // These are currently the same among all implementations.
 const PlatformGraphicsContext3D NullPlatformGraphicsContext3D = 0;
@@ -90,7 +89,7 @@ const Platform3DObject NullPlatform3DObject = 0;
 
 namespace WebCore {
 class Extensions3D;
-#if USE(OPENGL_ES_2)
+#if !PLATFORM(COCOA) && USE(OPENGL_ES)
 class Extensions3DOpenGLES;
 #else
 class Extensions3DOpenGL;
@@ -1398,7 +1397,7 @@ private:
 
     std::unique_ptr<ShaderNameHash> nameHashMapForShaders;
 
-#if USE(OPENGL_ES_2)
+#if !PLATFORM(COCOA) && USE(OPENGL_ES)
     friend class Extensions3DOpenGLES;
     std::unique_ptr<Extensions3DOpenGLES> m_extensions;
 #else

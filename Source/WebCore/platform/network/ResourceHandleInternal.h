@@ -37,13 +37,8 @@
 #include <pal/spi/cf/CFNetworkSPI.h>
 #endif
 
-#if USE(CURL) && PLATFORM(WIN)
-#include <winsock2.h>
-#include <windows.h>
-#endif
-
 #if USE(CURL)
-#include "ResourceHandleCurlDelegate.h"
+#include "CurlRequest.h"
 #endif
 
 #if PLATFORM(HAIKU)
@@ -86,7 +81,7 @@ public:
         , m_defersLoading(defersLoading)
         , m_shouldContentSniff(shouldContentSniff)
         , m_shouldContentEncodingSniff(shouldContentEncodingSniff)
-#if USE(CFURLCONNECTION)
+#if USE(CFURLCONNECTION) || USE(CURL)
         , m_currentRequest(request)
 #endif
 #if PLATFORM(HAIKU)
@@ -140,8 +135,14 @@ public:
     RetainPtr<CFURLStorageSessionRef> m_storageSession;
 #endif
 #if USE(CURL)
-    RefPtr<ResourceHandleCurlDelegate> m_delegate;
-    ResourceResponse m_response;
+    std::unique_ptr<CurlResourceHandleDelegate> m_delegate;
+    
+    ResourceRequest m_currentRequest;
+    bool m_cancelled { false };
+    unsigned m_redirectCount { 0 };
+    unsigned m_authFailureCount { 0 };
+    bool m_addedCacheValidationHeaders { false };
+    RefPtr<CurlRequest> m_curlRequest;
 #endif
 
 #if PLATFORM(HAIKU)

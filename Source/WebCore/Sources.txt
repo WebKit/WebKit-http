@@ -293,7 +293,6 @@ Modules/webvr/VRDisplay.cpp
 Modules/webvr/VRDisplayCapabilities.cpp
 Modules/webvr/VRDisplayEvent.cpp
 Modules/webvr/VREyeParameters.cpp
-Modules/webvr/VRFieldOfView.cpp
 Modules/webvr/VRFrameData.cpp
 Modules/webvr/VRPose.cpp
 Modules/webvr/VRStageParameters.cpp
@@ -1253,6 +1252,7 @@ loader/appcache/ApplicationCache.cpp
 loader/appcache/ApplicationCacheGroup.cpp
 loader/appcache/ApplicationCacheHost.cpp
 loader/appcache/ApplicationCacheResource.cpp
+loader/appcache/ApplicationCacheResourceLoader.cpp
 loader/appcache/ApplicationCacheStorage.cpp
 loader/appcache/DOMApplicationCache.cpp
 loader/appcache/ManifestParser.cpp
@@ -1755,6 +1755,10 @@ platform/text/TextEncoding.cpp
 platform/text/TextEncodingDetectorICU.cpp
 platform/text/TextEncodingRegistry.cpp
 
+platform/vr/VRManager.cpp
+platform/vr/openvr/VRPlatformDisplayOpenVR.cpp
+platform/vr/openvr/VRPlatformManagerOpenVR.cpp
+
 plugins/DOMMimeType.cpp
 plugins/DOMMimeTypeArray.cpp
 plugins/DOMPlugin.cpp
@@ -2012,6 +2016,7 @@ rendering/updating/RenderTreeBuilderBlock.cpp
 rendering/updating/RenderTreeBuilderBlockFlow.cpp
 rendering/updating/RenderTreeBuilderFirstLetter.cpp
 rendering/updating/RenderTreeBuilderFormControls.cpp
+rendering/updating/RenderTreeBuilderFullScreen.cpp
 rendering/updating/RenderTreeBuilderInline.cpp
 rendering/updating/RenderTreeBuilderList.cpp
 rendering/updating/RenderTreeBuilderMathML.cpp

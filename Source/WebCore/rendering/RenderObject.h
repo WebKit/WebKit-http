@@ -753,8 +753,6 @@ public:
     void imageChanged(CachedImage*, const IntRect* = nullptr) override;
     virtual void imageChanged(WrappedImagePtr, const IntRect* = nullptr) { }
 
-    void removeFromParentAndDestroy(RenderTreeBuilder&);
-
     CSSAnimationController& animation() const;
 
     // Map points and quads through elements, potentially via 3d transforms. You should never need to call these directly; use
@@ -778,6 +776,8 @@ public:
 
     virtual void willBeRemovedFromTree();
     void resetFragmentedFlowStateOnRemoval();
+    void initializeFragmentedFlowStateOnInsertion();
+    virtual void insertedIntoTree();
 
 protected:
     //////////////////////////////////////////
@@ -793,8 +793,6 @@ protected:
 
     virtual void willBeDestroyed(RenderTreeBuilder&);
 
-    virtual void insertedIntoTree();
-
     void setNeedsPositionedMovementLayoutBit(bool b) { m_bitfields.setNeedsPositionedMovementLayout(b); }
     void setNormalChildNeedsLayoutBit(bool b) { m_bitfields.setNormalChildNeedsLayout(b); }
     void setPosChildNeedsLayoutBit(bool b) { m_bitfields.setPosChildNeedsLayout(b); }
@@ -803,7 +801,6 @@ protected:
     virtual RenderFragmentedFlow* locateEnclosingFragmentedFlow() const;
     static void calculateBorderStyleColor(const EBorderStyle&, const BoxSide&, Color&);
 
-    void initializeFragmentedFlowStateOnInsertion();
     static FragmentedFlowState computedFragmentedFlowState(const RenderObject&);
 
 private:

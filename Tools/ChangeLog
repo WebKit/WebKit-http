@@ -1,3 +1,268 @@
+2018-02-21  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake][Win] Use cmakeconfig.h rather than config.h and Platform.h
+        https://bugs.webkit.org/show_bug.cgi?id=182883
+
+        Reviewed by Per Arne Vollan.
+
+        * DumpRenderTree/config.h:
+        * TestWebKitAPI/config.h:
+
+2018-02-21  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Unsafe g_setenv use in MiniBrowser main
+        https://bugs.webkit.org/show_bug.cgi?id=182978
+
+        Reviewed by Carlos Garcia Campos.
+
+        setenv (and g_setenv) will randomly crash if called too late.
+
+        * MiniBrowser/gtk/main.c:
+        (main):
+
+2018-02-21  Aakash Jain  <aakash_jain@apple.com>
+
+        webkitpy NetworkTransaction should retry on URLError
+        https://bugs.webkit.org/show_bug.cgi?id=182987
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/net/networktransaction.py:
+        (NetworkTransaction.run): Retry on urllib2.URLError.
+
+2018-02-21  Ms2ger  <Ms2ger@igalia.com>
+
+        [WTR][WPE] Correct the process names in TestController.
+        https://bugs.webkit.org/show_bug.cgi?id=178700
+
+        Reviewed by Michael Catanzaro.
+
+        Similar to r228731 for GTK.
+
+        * Scripts/webkitpy/port/wpe.py:
+        (WPEPort._get_crash_log): removed the code to convert WebProcess name.
+        * WebKitTestRunner/TestController.cpp: return the correct process names for WPE.
+        (WTR::TestController::webProcessName):
+        (WTR::TestController::networkProcessName):
+        (WTR::TestController::databaseProcessName):
+
+2018-02-21  Ms2ger  <Ms2ger@igalia.com>
+
+        [ATK] Remove attributeSet variable from AccessibilityUIElement::attributedStringForRange().
+        https://bugs.webkit.org/show_bug.cgi?id=183000
+
+        Reviewed by Joanmarie Diggs.
+
+        It is never initialized, but is passed to atk_attribute_set_free.
+        This caused a crash in accessibility/content-editable-as-textarea.html on the debug bots.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::attributedStringForRange):
+
+2018-02-21  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Make system-ui obey the user-installed-font policy
+        https://bugs.webkit.org/show_bug.cgi?id=182860
+        <rdar://problem/36158249>
+
+        Reviewed by Antti Koivisto.
+
+        Create a font, FakeHelvetica-ArmenianCharacter.ttf, which supports a particular Armenian
+        character which isn't isn't supported by any other font on the system.
+
+        * WebKitTestRunner/FakeHelvetica-ArmenianCharacter.ttf:
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+
+2018-02-20  Timothy Horton  <timothy_horton@apple.com>
+
+        Try to fix the 32-bit build after r228857
+
+        * WebKitTestRunner/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::firstResponderSuppressionForWebView):
+
+2018-02-20  Nan Wang  <n_wang@apple.com>
+
+        AX: Keyboard focus not following VoiceOver cursor into web content or within web content.
+        https://bugs.webkit.org/show_bug.cgi?id=182752
+        <rdar://problem/37518233>
+
+        Reviewed by Ryosuke Niwa.
+
+        * DumpRenderTree/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::firstResponderSuppressionForWebView):
+        (WTR::UIScriptController::makeWindowContentViewFirstResponder):
+        (WTR::UIScriptController::isWindowContentViewFirstResponder const):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::firstResponderSuppressionForWebView):
+        (WTR::UIScriptController::makeWindowContentViewFirstResponder):
+        (WTR::UIScriptController::isWindowContentViewFirstResponder const):
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::firstResponderSuppressionForWebView):
+        (WTR::UIScriptController::makeWindowContentViewFirstResponder):
+        (WTR::UIScriptController::isWindowContentViewFirstResponder const):
+
+2018-02-20  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] jhbuild: Remove gtk-doc
+        https://bugs.webkit.org/show_bug.cgi?id=182956
+
+        Reviewed by Michael Catanzaro.
+
+        jhbuild doesn't need to build gtk-doc because major LTS Linux
+        distributions have gtk-doc v1.25, and
+        Tools/gtk/install-dependencies installs gtk-doc.
+
+        * gtk/jhbuild.modules: Removed gtk-doc.
+
+2018-02-20  Tim Horton  <timothy_horton@apple.com>
+
+        Introduce HAVE(IOSURFACE_ACCELERATOR)
+        https://bugs.webkit.org/show_bug.cgi?id=182955
+        <rdar://problem/37699510>
+
+        Reviewed by Sam Weinig.
+
+        * DumpRenderTree/ios/PixelDumpSupportIOS.mm:
+        (createBitmapContextFromWebView):
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        (WTR::PlatformWebView::windowSnapshotImage):
+
+2018-02-20  Chris Dumez  <cdumez@apple.com>
+
+        Provisional load may get committed before receiving the decidePolicyForNavigationResponse response
+        https://bugs.webkit.org/show_bug.cgi?id=182720
+        <rdar://problem/37515204>
+
+        Reviewed by Alex Christensen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/AsyncPolicyForNavigationResponse.mm:
+        (-[TestAsyncNavigationDelegate webView:decidePolicyForNavigationResponse:decisionHandler:]):
+        (TestWebKitAPI::TEST):
+
+2018-02-20  Nan Wang  <n_wang@apple.com>
+
+        AX: AOM: Dispatch accessibleclick event
+        https://bugs.webkit.org/show_bug.cgi?id=180898
+        <rdar://problem/36086710>
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        (WTR::AccessibilityUIElement::syncPress):
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::syncPress):
+
+2018-02-20  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS 11.3 Beta] Can't copy a URL from Safari and paste it into the Gmail app
+        https://bugs.webkit.org/show_bug.cgi?id=182952
+        <rdar://problem/37636190>
+
+        Reviewed by Tim Horton.
+
+        Adds a new iOS copy/paste test that copies an anchor element via action sheet, and checks that upon pasting,
+        both "text/plain" and "text/uri-list" are provided. Additionally tweaks an existing iOS drag and drop test to
+        check for the same behavior.
+
+        * TestWebKitAPI/Tests/ios/ActionSheetTests.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+
+2018-02-20  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer][MiniBrowser] Honor GStreamer command line parameters in MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=173655
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        The FIXME in GStreamerUtilities.cpp asks to pass the command line
+        parameters to the GStreamer initialization function.
+
+        Based on initial patch by: Vanessa Chipirrás Navalón  <vchipirras@igalia.com>
+
+        * MiniBrowser/gtk/main.c:
+        (main): Add the group containing the Gstreamer options that the console displays.
+
+2018-02-19  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WTR][GTK] crash log backtrace doesn't show symbol names for DatabaseProcess and NetworkProcess
+        https://bugs.webkit.org/show_bug.cgi?id=182953
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort._get_crash_log): Removed the code to convert WebProcess name.
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::webProcessName): Return the correct program name for GTK+ port.
+        (WTR::TestController::networkProcessName): Ditto.
+        (WTR::TestController::databaseProcessName): Ditto.
+
+2018-02-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r228696.
+
+        The API test added with this change is timing out on macOS.
+
+        Reverted changeset:
+
+        "Null pointer dereference in
+        WebPageProxy::urlSchemeHandlerForScheme()"
+        https://bugs.webkit.org/show_bug.cgi?id=182905
+        https://trac.webkit.org/changeset/228696
+
+2018-02-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add an entitlement check for service worker on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=182865
+        <rdar://problem/37505903>
+
+        Reviewed by Brady Eidson.
+
+        Added the service worker entitlements to WebKitTestRunner and TestWebKitAPI on iOS.
+
+        * TestWebKitAPI/Configurations/TestWebKitAPI-iOS.entitlements:
+        * WebKitTestRunner/Configurations/WebKitTestRunnerApp-iOS.entitlements:
+        * WebKitTestRunner/Configurations/WebKitTestRunnerApp.xcconfig:
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+
+2018-02-16  Youenn Fablet  <youenn@apple.com>
+
+        Allow specifying which plug-ins are supported
+        https://bugs.webkit.org/show_bug.cgi?id=182748
+
+        Reviewed by Chris Dumez.
+
+        Add support for a test runner API to specificy supported plug-ins.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setPluginsAsUnsupported):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetStateToConsistentValues):
+        (WTR::TestController::setPluginsAsUnsupported):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle):
+
+2018-02-16  Per Arne Vollan  <pvollan@apple.com>
+
+        Implement stopping of run loop in the WebContent process when using NSRunLoop.
+        https://bugs.webkit.org/show_bug.cgi?id=182499
+        <rdar://problem/37247424>
+
+        Reviewed by Brent Fulgham.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/WebProcessTerminate.mm: Added.
+        (TEST):
+
 2018-02-15  Alexey Proskuryakov  <ap@apple.com>
 
         Speed up dSYM generation on build.webkit.org with -gline-tables-only

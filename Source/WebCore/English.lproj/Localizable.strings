@@ -115,6 +115,9 @@
 /* Label text to be used when an insecure plug-in version was blocked from loading */
 "Blocked Plug-In (Insecure plug-in)" = "Blocked Plug-in";
 
+/* Label text to be used when an insecure plug-in version was blocked from loading */
+"Unsupported Plug-In" = "Unsupported Plug-in";
+
 /* Bold context menu item */
 "Bold" = "Bold";
 
@@ -210,6 +213,9 @@
 
 /* Undo action name */
 "Cut (Undo action name)" = "Cut";
+
+/* Day label in date picker */
+"Day label in date picker" = "Day";
 
 /* Default writing direction context menu item */
 "Default" = "Default";
@@ -408,6 +414,9 @@
 
 /* Label text to be used when a plugin is missing */
 "Missing Plug-in" = "Missing Plug-in";
+
+/* Month label in date picker */
+"Month label in date picker" = "Month";
 
 /* Media Mute context menu item */
 "Mute" = "Mute";
@@ -816,6 +825,9 @@
 
 /* Title of the writing button for zoomed form controls. */
 "Write" = "Write";
+
+/* Year label in date picker */
+"Year label in date picker" = "Year";
 
 /* message in authentication panel */
 "Your login information will be sent securely." = "Your login information will be sent securely.";

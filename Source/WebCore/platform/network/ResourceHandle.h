@@ -36,6 +36,10 @@
 #include <wtf/RetainPtr.h>
 #endif
 
+#if USE(CURL)
+#include "CurlResourceHandleDelegate.h"
+#endif
+
 #if USE(SOUP)
 typedef struct _GTlsCertificate GTlsCertificate;
 typedef struct _SoupSession SoupSession;
@@ -95,6 +99,11 @@ class ResourceResponse;
 class SoupNetworkSession;
 class SharedBuffer;
 class Timer;
+
+#if USE(CURL)
+class CurlRequest;
+class CurlResourceHandleDelegate;
+#endif
 
 class ResourceHandle : public RefCounted<ResourceHandle>, public AuthenticationClient {
 public:
@@ -193,6 +202,15 @@ public:
     MonotonicTime m_requestTime;
 #endif
 
+#if USE(CURL)
+    bool cancelledOrClientless();
+    CurlResourceHandleDelegate* delegate();
+
+    void continueAfterDidReceiveResponse();
+    void willSendRequest();
+    void continueAfterWillSendRequest(ResourceRequest&&);
+#endif
+
     bool hasAuthenticationChallenge() const;
     void clearAuthentication();
     WEBCORE_EXPORT virtual void cancel();
@@ -284,6 +302,17 @@ private:
 
 #if USE(SOUP)
     void timeoutFired();
+#endif
+
+#if USE(CURL)
+    Ref<CurlRequest> createCurlRequest(ResourceRequest&);
+
+    bool shouldRedirectAsGET(const ResourceRequest&, bool crossOrigin);
+
+    std::optional<std::pair<String, String>> getCredential(ResourceRequest&, bool);
+    void restartRequestWithCredential(const String& user, const String& password);
+
+    void handleDataURL();
 #endif
 
     friend class ResourceHandleInternal;

@@ -37,13 +37,14 @@ class RequestAnimationFrameCallback;
 class VRDisplayCapabilities;
 class VREyeParameters;
 class VRFrameData;
+class VRPlatformDisplay;
 class VRPose;
 class VRStageParameters;
 struct VRLayerInit;
 
 class VRDisplay : public RefCounted<VRDisplay>, public EventTargetWithInlineData, public ActiveDOMObject {
 public:
-    static Ref<VRDisplay> create(ScriptExecutionContext&);
+    static Ref<VRDisplay> create(ScriptExecutionContext&, WeakPtr<VRPlatformDisplay>&&);
 
     virtual ~VRDisplay();
 
@@ -54,7 +55,7 @@ public:
     bool isPresenting() const;
 
     const VRDisplayCapabilities& capabilities() const;
-    VRStageParameters* stageParameters() const;
+    RefPtr<VRStageParameters> stageParameters() const;
 
     const VREyeParameters& getEyeParameters(VREye) const;
 
@@ -82,7 +83,7 @@ public:
     void submitFrame();
 
 private:
-    VRDisplay(ScriptExecutionContext&);
+    VRDisplay(ScriptExecutionContext&, WeakPtr<VRPlatformDisplay>&&);
 
     // EventTarget
     EventTargetInterface eventTargetInterface() const override { return VRDisplayEventTargetInterfaceType; }
@@ -96,8 +97,16 @@ private:
     bool canSuspendForDocumentSuspension() const override;
     void stop() override;
 
-    Ref<VRDisplayCapabilities> m_capabilities;
-    Ref<VREyeParameters> m_eyeParameters;
+    WeakPtr<VRPlatformDisplay> m_display;
+
+    RefPtr<VRDisplayCapabilities> m_capabilities;
+    // We could likely store just one of the two following ones as the values should be identical
+    // (except the sign of the eye to head transform offset).
+    RefPtr<VREyeParameters> m_leftEyeParameters;
+    RefPtr<VREyeParameters> m_rightEyeParameters;
+    RefPtr<VRStageParameters> m_stageParameters;
+
+    String m_displayName;
 };
 
 } // namespace WebCore

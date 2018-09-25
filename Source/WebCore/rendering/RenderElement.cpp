@@ -456,11 +456,8 @@ void RenderElement::setStyle(RenderStyle&& style, StyleDifference minimalStyleDi
     }
 }
 
-void RenderElement::addChild(RenderTreeBuilder& builder, RenderPtr<RenderObject> newChild, RenderObject* beforeChild)
+void RenderElement::didInsertChild(RenderObject& child, RenderObject*)
 {
-    auto& child = *newChild;
-    builder.insertChildToRenderElement(*this, WTFMove(newChild), beforeChild);
-
     if (is<RenderText>(child))
         downcast<RenderText>(child).styleDidChange(StyleDifferenceEqual, nullptr);
     // SVG creates renderers for <g display="none">, as SVG requires children of hidden
@@ -474,25 +471,6 @@ void RenderElement::addChild(RenderTreeBuilder& builder, RenderPtr<RenderObject>
     if (child.hasLayer() && !layerCreationAllowedForSubtree())
         downcast<RenderLayerModelObject>(child).layer()->removeOnlyThisLayer();
     SVGRenderSupport::childAdded(*this, child);
-}
-
-void RenderElement::addChildIgnoringContinuation(RenderTreeBuilder& builder, RenderPtr<RenderObject> newChild, RenderObject* beforeChild)
-{
-    builder.insertChild(*this, WTFMove(newChild), beforeChild);
-}
-
-void RenderElement::removeAndDestroyChild(RenderTreeBuilder& builder, RenderObject& oldChild)
-{
-    if (is<RenderElement>(oldChild)) {
-        auto& child = downcast<RenderElement>(oldChild);
-        while (child.firstChild()) {
-            auto& firstChild = *child.firstChild();
-            if (auto* node = firstChild.node())
-                node->setRenderer(nullptr);
-            child.removeAndDestroyChild(builder, firstChild);
-        }
-    }
-    auto toDestroy = builder.takeChild(*this, oldChild);
 }
 
 RenderObject* RenderElement::attachRendererInternal(RenderPtr<RenderObject> child, RenderObject* beforeChild)
@@ -538,43 +516,6 @@ RenderPtr<RenderObject> RenderElement::detachRendererInternal(RenderObject& rend
     renderer.setNextSibling(nullptr);
     renderer.setParent(nullptr);
     return RenderPtr<RenderObject>(&renderer);
-}
-
-void RenderElement::insertChildInternal(RenderPtr<RenderObject> newChildPtr, RenderObject* beforeChild)
-{
-    RELEASE_ASSERT_WITH_MESSAGE(!view().frameView().layoutContext().layoutState(), "Layout must not mutate render tree");
-
-    ASSERT(canHaveChildren() || canHaveGeneratedChildren());
-    ASSERT(!newChildPtr->parent());
-    ASSERT(!isRenderBlockFlow() || (!newChildPtr->isTableSection() && !newChildPtr->isTableRow() && !newChildPtr->isTableCell()));
-
-    while (beforeChild && beforeChild->parent() && beforeChild->parent() != this)
-        beforeChild = beforeChild->parent();
-
-    ASSERT(!beforeChild || beforeChild->parent() == this);
-    ASSERT(!is<RenderText>(beforeChild) || !downcast<RenderText>(*beforeChild).inlineWrapperForDisplayContents());
-
-    // Take the ownership.
-    auto* newChild = attachRendererInternal(WTFMove(newChildPtr), beforeChild);
-
-    newChild->initializeFragmentedFlowStateOnInsertion();
-    if (!renderTreeBeingDestroyed()) {
-        newChild->insertedIntoTree();
-        if (is<RenderElement>(*newChild))
-            RenderCounter::rendererSubtreeAttached(downcast<RenderElement>(*newChild));
-    }
-
-    newChild->setNeedsLayoutAndPrefWidthsRecalc();
-    setPreferredLogicalWidthsDirty(true);
-    if (!normalChildNeedsLayout())
-        setChildNeedsLayout(); // We may supply the static position for an absolute positioned child.
-
-    if (AXObjectCache* cache = document().axObjectCache())
-        cache->childrenChanged(this, newChild);
-    if (is<RenderBlockFlow>(*this))
-        downcast<RenderBlockFlow>(*this).invalidateLineLayoutPath();
-    if (hasOutlineAutoAncestor() || outlineStyleForRepaint().outlineStyleIsAuto())
-        newChild->setHasOutlineAutoAncestor();
 }
 
 RenderBlock* RenderElement::containingBlockForFixedPosition() const

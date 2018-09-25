@@ -40,6 +40,7 @@
 #import "TextInputSPI.h"
 #import "UIKitSPI.h"
 #import "WKActionSheetAssistant.h"
+#import "WKDatePickerViewController.h"
 #import "WKError.h"
 #import "WKFocusedFormControlViewController.h"
 #import "WKFormInputControl.h"
@@ -275,7 +276,7 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 
 @interface WKFormInputSession : NSObject <_WKFormInputSession>
 
-- (instancetype)initWithContentView:(WKContentView *)view focusedElementInfo:(WKFocusedElementInfo *)elementInfo;
+- (instancetype)initWithContentView:(WKContentView *)view focusedElementInfo:(WKFocusedElementInfo *)elementInfo requiresStrongPasswordAssistance:(BOOL)requiresStrongPasswordAssistance;
 - (void)invalidate;
 
 @end
@@ -287,15 +288,17 @@ const CGFloat minimumTapHighlightRadius = 2.0;
     RetainPtr<NSArray<UITextSuggestion *>> _suggestions;
     BOOL _accessoryViewShouldNotShow;
     BOOL _forceSecureTextEntry;
+    BOOL _requiresStrongPasswordAssistance;
 }
 
-- (instancetype)initWithContentView:(WKContentView *)view focusedElementInfo:(WKFocusedElementInfo *)elementInfo
+- (instancetype)initWithContentView:(WKContentView *)view focusedElementInfo:(WKFocusedElementInfo *)elementInfo requiresStrongPasswordAssistance:(BOOL)requiresStrongPasswordAssistance
 {
     if (!(self = [super init]))
         return nil;
 
     _contentView = view;
     _focusedElementInfo = elementInfo;
+    _requiresStrongPasswordAssistance = requiresStrongPasswordAssistance;
 
     return self;
 }
@@ -382,6 +385,11 @@ const CGFloat minimumTapHighlightRadius = 2.0;
     id <UITextInputSuggestionDelegate> suggestionDelegate = (id <UITextInputSuggestionDelegate>)_contentView.inputDelegate;
     _suggestions = adoptNS([suggestions copy]);
     [suggestionDelegate setSuggestions:suggestions];
+}
+
+- (BOOL)requiresStrongPasswordAssistance
+{
+    return _requiresStrongPasswordAssistance;
 }
 
 - (void)invalidate
@@ -659,6 +667,8 @@ static WKDragSessionContext *ensureLocalDragSessionContext(id <UIDragSession> se
     [_highlightView removeFromSuperview];
     _outstandingPositionInformationRequest = std::nullopt;
 
+    _focusRequiresStrongPasswordAssistance = NO;
+
     if (_interactionViewsContainerView) {
         [self.layer removeObserver:self forKeyPath:@"transform"];
         [_interactionViewsContainerView removeFromSuperview];
@@ -716,6 +726,7 @@ static WKDragSessionContext *ensureLocalDragSessionContext(id <UIDragSession> se
     }
     
     _inputViewUpdateDeferrer = nullptr;
+    _assistedNodeInformation = { };
 }
 
 - (void)_removeDefaultGestureRecognizers
@@ -762,9 +773,9 @@ static WKDragSessionContext *ensureLocalDragSessionContext(id <UIDragSession> se
 
 
 #pragma mark - UITextAutoscrolling
-- (void)startAutoscroll:(CGPoint)point
+- (void)startAutoscroll:(CGPoint)pointInDocument
 {
-    _page->startAutoscrollAtPosition(point);
+    _page->startAutoscrollAtPosition(pointInDocument);
 }
 
 - (void)cancelAutoscroll
@@ -917,7 +928,6 @@ static WKDragSessionContext *ensureLocalDragSessionContext(id <UIDragSession> se
     // and do nothing if the return value is NO.
 
     _resigningFirstResponder = YES;
-
     if (!_webView->_activeFocusedStateRetainCount) {
         // We need to complete the editing operation before we blur the element.
         [_inputPeripheral endEditing];
@@ -3133,7 +3143,7 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 
 - (UITextRange *)selectedTextRange
 {
-    if (_page->editorState().selectionIsNone)
+    if (_page->editorState().selectionIsNone || _page->editorState().isMissingPostLayoutData)
         return nil;
     auto& postLayoutEditorStateData = _page->editorState().postLayoutData();
     FloatRect startRect = postLayoutEditorStateData.caretRectAtStart;
@@ -4021,6 +4031,10 @@ static bool isAssistableInputType(InputType type)
     if (_assistedNodeInformation.elementType == information.elementType && _assistedNodeInformation.elementRect == information.elementRect)
         return;
 
+    _focusRequiresStrongPasswordAssistance = NO;
+    if ([inputDelegate respondsToSelector:@selector(_webView:focusRequiresStrongPasswordAssistance:)])
+        _focusRequiresStrongPasswordAssistance = [inputDelegate _webView:_webView focusRequiresStrongPasswordAssistance:focusedElementInfo.get()];
+
     BOOL editableChanged = [self setIsEditable:YES];
     _assistedNodeInformation = information;
     _inputPeripheral = nil;
@@ -4032,7 +4046,7 @@ static bool isAssistableInputType(InputType type)
 #if ENABLE(EXTRA_ZOOM_MODE)
     [self presentFocusedFormControlViewController:NO];
     if (!_isChangingFocus)
-        [self presentViewControllerForAssistedNode:_assistedNodeInformation];
+        [self presentViewControllerForCurrentAssistedNode];
 #else
     [self reloadInputViews];
 #endif
@@ -4064,7 +4078,7 @@ static bool isAssistableInputType(InputType type)
     [_inputPeripheral beginEditing];
 
     if ([inputDelegate respondsToSelector:@selector(_webView:didStartInputSession:)]) {
-        _formInputSession = adoptNS([[WKFormInputSession alloc] initWithContentView:self focusedElementInfo:focusedElementInfo.get()]);
+        _formInputSession = adoptNS([[WKFormInputSession alloc] initWithContentView:self focusedElementInfo:focusedElementInfo.get() requiresStrongPasswordAssistance:_focusRequiresStrongPasswordAssistance]);
         [inputDelegate _webView:_webView didStartInputSession:_formInputSession.get()];
     }
     
@@ -4080,6 +4094,7 @@ static bool isAssistableInputType(InputType type)
 
     _assistedNodeInformation.elementType = InputType::None;
     _inputPeripheral = nil;
+    _focusRequiresStrongPasswordAssistance = NO;
 
     [self _stopAssistingKeyboard];
     [_formAccessoryView hideAutoFillButton];
@@ -4089,10 +4104,7 @@ static bool isAssistableInputType(InputType type)
     [_webSelectionAssistant resignedFirstResponder];
 
 #if ENABLE(EXTRA_ZOOM_MODE)
-    [self dismissTextInputViewController:YES];
-    [self dismissNumberPadViewController:YES];
-    [self dismissSelectMenuViewController:YES];
-    [self dismissTimePickerViewController:YES];
+    [self dismissAllInputViewControllers];
     if (!_isChangingFocus)
         [self dismissFocusedFormControlViewController:[_focusedFormControlViewController isVisible]];
 #endif
@@ -4104,7 +4116,51 @@ static bool isAssistableInputType(InputType type)
     [_webView didEndFormControlInteraction];
 }
 
+- (void)updateCurrentAssistedNodeInformation:(Function<void(bool didUpdate)>&&)callback
+{
+    WeakObjCPtr<WKContentView> weakSelf { self };
+    auto identifierBeforeUpdate = _assistedNodeInformation.assistedNodeIdentifier;
+    _page->requestAssistedNodeInformation([callback = WTFMove(callback), identifierBeforeUpdate, weakSelf] (auto& info, auto error) {
+        if (!weakSelf || error != CallbackBase::Error::None || info.assistedNodeIdentifier != identifierBeforeUpdate) {
+            // If the assisted node may have changed in the meantime, don't overwrite assisted node information.
+            callback(false);
+            return;
+        }
+
+        weakSelf.get()->_assistedNodeInformation = info;
+        callback(true);
+    });
+}
+
 #if ENABLE(EXTRA_ZOOM_MODE)
+
+- (void)dismissAllInputViewControllers
+{
+    [self dismissTextInputViewController:YES];
+    [self dismissNumberPadViewController:YES];
+    [self dismissSelectMenuViewController:YES];
+    [self dismissTimePickerViewController:YES];
+    [self dismissDatePickerViewController:YES];
+}
+
+- (void)presentDatePickerViewController:(BOOL)animated
+{
+    if (_datePickerViewController)
+        return;
+
+    _datePickerViewController = adoptNS([[WKDatePickerViewController alloc] initWithText:_assistedNodeInformation.value textSuggestions:@[ ]]);
+    [_datePickerViewController setDelegate:self];
+    [_focusedFormControlViewController presentViewController:_datePickerViewController.get() animated:animated completion:nil];
+}
+
+- (void)dismissDatePickerViewController:(BOOL)animated
+{
+    if (!_datePickerViewController)
+        return;
+
+    auto datePickerViewController = WTFMove(_datePickerViewController);
+    [datePickerViewController dismissViewControllerAnimated:animated completion:nil];
+}
 
 - (void)presentTimePickerViewController:(BOOL)animated
 {
@@ -4182,9 +4238,11 @@ static bool isAssistableInputType(InputType type)
     [_focusedFormControlViewController presentViewController:_numberPadViewController.get() animated:animated completion:nil];
 }
 
-- (void)presentViewControllerForAssistedNode:(const AssistedNodeInformation&)info
+- (void)presentViewControllerForCurrentAssistedNode
 {
-    switch (info.elementType) {
+    [self dismissAllInputViewControllers];
+
+    switch (_assistedNodeInformation.elementType) {
     case InputType::Number:
     case InputType::NumberPad:
     case InputType::Phone:
@@ -4195,6 +4253,9 @@ static bool isAssistableInputType(InputType type)
         break;
     case InputType::Time:
         [self presentTimePickerViewController:YES];
+        break;
+    case InputType::Date:
+        [self presentDatePickerViewController:YES];
         break;
     case InputType::None:
         break;
@@ -4225,7 +4286,6 @@ static bool isAssistableInputType(InputType type)
 
 - (void)textInputController:(WKTextFormControlViewController *)controller didCommitText:(NSString *)text
 {
-    // FIXME: Update cached AssistedNodeInformation state in the UI process.
     _page->setTextAsync(text);
 
     if (![self actionNameForFocusedFormControlController:_focusedFormControlViewController.get()] && !_assistedNodeInformation.hasNextNode && !_assistedNodeInformation.hasPreviousNode) {
@@ -4236,9 +4296,11 @@ static bool isAssistableInputType(InputType type)
     }
 
     [_focusedFormControlViewController show:NO];
-    [self dismissTextInputViewController:YES];
-    [self dismissNumberPadViewController:YES];
-    [self dismissTimePickerViewController:YES];
+    [self dismissAllInputViewControllers];
+    [self updateCurrentAssistedNodeInformation:[weakSelf = WeakObjCPtr<WKContentView>(self)] (bool didUpdate) {
+        if (didUpdate)
+            [weakSelf.get()->_focusedFormControlViewController reloadData:YES];
+    }];
 }
 
 - (void)textInputControllerDidRequestDismissal:(WKTextFormControlViewController *)controller
@@ -4259,7 +4321,10 @@ static bool isAssistableInputType(InputType type)
 
 - (void)focusedFormControlControllerDidBeginEditing:(WKFocusedFormControlViewController *)controller
 {
-    [self presentViewControllerForAssistedNode:_assistedNodeInformation];
+    [self updateCurrentAssistedNodeInformation:[weakSelf = WeakObjCPtr<WKContentView>(self)] (bool didUpdate) {
+        if (didUpdate)
+            [weakSelf presentViewControllerForCurrentAssistedNode];
+    }];
 }
 
 - (CGRect)highlightedRectForFocusedFormControlController:(WKFocusedFormControlViewController *)controller inCoordinateSpace:(id <UICoordinateSpace>)coordinateSpace
@@ -4397,6 +4462,9 @@ static bool isAssistableInputType(InputType type)
         return;
 
     if ([_timePickerViewController handleWheelEvent:event])
+        return;
+
+    if ([_datePickerViewController handleWheelEvent:event])
         return;
 
     if ([_focusedFormControlViewController handleWheelEvent:event])
@@ -5051,14 +5119,18 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
 
 - (NSDictionary *)_autofillContext
 {
-    if (_assistedNodeInformation.elementType == InputType::None || !_assistedNodeInformation.acceptsAutofilledLoginCredentials)
+    BOOL provideStrongPasswordAssistance = _focusRequiresStrongPasswordAssistance && _assistedNodeInformation.elementType == InputType::Password;
+    if (_assistedNodeInformation.elementType == InputType::None || (!_assistedNodeInformation.acceptsAutofilledLoginCredentials && !provideStrongPasswordAssistance))
         return nil;
+
+    if (provideStrongPasswordAssistance)
+        return @{ @"_automaticPasswordKeyboard" : @YES };
 
     NSURL *platformURL = _assistedNodeInformation.representingPageURL;
-    if (!platformURL)
-        return nil;
+    if (platformURL)
+        return @{ @"_WebViewURL" : platformURL };
 
-    return @{ @"_WebViewURL" : platformURL };
+    return nil;
 }
 
 #pragma mark - UIDragInteractionDelegate

@@ -1,3 +1,604 @@
+2018-02-20  Saam Barati  <sbarati@apple.com>
+
+        DFG::VarargsForwardingPhase should eliminate getting argument length
+        https://bugs.webkit.org/show_bug.cgi?id=182959
+
+        Reviewed by Keith Miller.
+
+        This patch teaches the DFG VarargsForwardingPhase to not treat
+        length accesses on Cloned/Direct Arguments objects as escapes.
+        It teaches this phase to materialize the length in the same
+        way the ArgumentsEliminationPhase does.
+        
+        This is around a 0.5-1% speedup on ARES6 on my iMac. It speeds
+        up the ML subtest by 2-4%.
+        
+        This patch also extends compileGetArgumentCountIncludingThis to take
+        a parameter that is the inline call frame to load from (in the case
+        where the inline call frame is a varargs frame). This allows the
+        the emitCodeToGetArgumentsArrayLength helper function to just emit
+        a GetArgumentCountIncludingThis node instead of a GetLocal. If we
+        emitted a GetLocal, we'd need to rerun CPS rethreading.
+
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+        * dfg/DFGArgumentsUtilities.cpp:
+        (JSC::DFG::emitCodeToGetArgumentsArrayLength):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::getArgumentCount):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::argumentsInlineCallFrame):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileGetArgumentCountIncludingThis):
+        * dfg/DFGVarargsForwardingPhase.cpp:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetArgumentCountIncludingThis):
+
+2018-02-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [FTL] Support ArrayPush for ArrayStorage
+        https://bugs.webkit.org/show_bug.cgi?id=182782
+
+        Reviewed by Saam Barati.
+
+        This patch adds support for ArrayPush(ArrayStorage). We just port ArrayPush(ArrayStorage) in DFG to FTL.
+
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileArrayPush):
+
+2018-02-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [FTL] Support ArrayPop for ArrayStorage
+        https://bugs.webkit.org/show_bug.cgi?id=182783
+
+        Reviewed by Saam Barati.
+
+        This patch adds ArrayPop(ArrayStorage) support to FTL. We port the implementation in DFG to FTL.
+
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileArrayPop):
+
+2018-02-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [FTL] Add Arrayify for ArrayStorage and SlowPutArrayStorage
+        https://bugs.webkit.org/show_bug.cgi?id=182731
+
+        Reviewed by Saam Barati.
+
+        This patch adds support for Arrayify(ArrayStorage/SlowPutArrayStorage) to FTL.
+        Due to ArrayifyToStructure and CheckArray changes, necessary changes for
+        supporting Arrayify in FTL are already done. Just allowing it in FTLCapabilities.cpp
+        is enough.
+
+        We fix FTL's CheckArray logic. Previously, CheckArray(SlowPutArrayStorage) does not pass
+        ArrayStorage in FTL. But now it passes this as DFG does. Moreover, we fix DFG's CheckArray
+        where CheckArray(ArrayStorage+NonArray) can pass ArrayStorage+Array.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::silentFill):
+        (JSC::DFG::SpeculativeJIT::jumpSlowForUnwantedArrayMode):
+        * dfg/DFGSpeculativeJIT.h:
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::isArrayTypeForArrayify):
+
+2018-02-19  Saam Barati  <sbarati@apple.com>
+
+        Don't use JSFunction's allocation profile when getting the prototype can be effectful
+        https://bugs.webkit.org/show_bug.cgi?id=182942
+        <rdar://problem/37584764>
+
+        Reviewed by Mark Lam.
+
+        Prior to this patch, the create_this implementation assumed that anything
+        that is a JSFunction can use the object allocation profile and go down the
+        fast path to allocate the |this| object. Implied by this approach is that
+        accessing the 'prototype' property of the incoming function is not an
+        effectful operation. This is inherent to the ObjectAllocationProfile 
+        data structure: it caches the prototype field. However, getting the
+        'prototype' property might be an effectful operation, e.g, it could
+        be a getter. Many variants of functions in JS have the 'prototype' property
+        as non-configurable. However, some functions, like bound functions, do not
+        have the 'prototype' field with these attributes.
+        
+        This patch adds the notion of 'canUseAllocationProfile' to JSFunction
+        and threads it through so that we only go down the fast path and use
+        the allocation profile when the prototype property is non-configurable.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ClassExprNode::emitBytecode):
+        * dfg/DFGOperations.cpp:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::prototypeForConstruction):
+        (JSC::JSFunction::allocateAndInitializeRareData):
+        (JSC::JSFunction::initializeRareData):
+        (JSC::JSFunction::getOwnPropertySlot):
+        (JSC::JSFunction::canUseAllocationProfileNonInline):
+        * runtime/JSFunction.h:
+        (JSC::JSFunction::ensureRareDataAndAllocationProfile):
+        * runtime/JSFunctionInlines.h:
+        (JSC::JSFunction::canUseAllocationProfile):
+
+2018-02-19  Saam Barati  <sbarati@apple.com>
+
+        Don't mark an array profile out of bounds for the cases where the DFG will convert the access to SaneChain
+        https://bugs.webkit.org/show_bug.cgi?id=182912
+        <rdar://problem/37685083>
+
+        Reviewed by Keith Miller.
+
+        In the baseline JIT and LLInt, when we loading a hole from an original array,
+        with the array prototype chain being normal, we end up marking the ArrayProfile
+        for that GetByVal as out of bounds. However, the DFG knows exactly how to
+        optimize this case by returning undefined when loading from a hole. Currently,
+        it only does this for Contiguous arrays (and sometimes Double arrays).
+        This patch just makes sure to not mark the ArrayProfile as out of bounds
+        in this scenario for Contiguous arrays, since the DFG will always optimize
+        this case.
+        
+        However, we should extend this by profiling when a GetByVal loads a hole. By
+        doing so, we can optimize this for Int32, ArrayStorage, and maybe even Double
+        arrays. That work will happen in:
+        https://bugs.webkit.org/show_bug.cgi?id=182940
+        
+        This patch is a 30-50%  speedup on JetStream's hash-map test. This patch
+        speeds up JetStream by 1% when testing on my iMac.
+
+        * dfg/DFGArrayMode.cpp:
+        (JSC::DFG::ArrayMode::refine const):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * jit/JITOperations.cpp:
+        (JSC::getByVal):
+        (JSC::canAccessArgumentIndexQuickly): Deleted.
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::getByVal):
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/CommonSlowPaths.h:
+        (JSC::CommonSlowPaths::canAccessArgumentIndexQuickly):
+
+2018-02-17  Filip Pizlo  <fpizlo@apple.com>
+
+        GetArrayMask should support constant folding
+        https://bugs.webkit.org/show_bug.cgi?id=182907
+
+        Reviewed by Saam Barati.
+        
+        Implement constant folding for GetArrayMask. This revealed a bug in tryGetFoldableView, where it was
+        ignoring the result of a jsDynamicCast<>(). This wasn't a bug before because it would have been
+        impossible for that function to get called with a non-null value if the value was not an array view,
+        due to type filtering in CheckArray, the fact that CheckArray had to dominate GetArrayLength, and
+        the fact that the other tryGetFoldableView overload made sure that the array mode was some typed
+        array.
+        
+        This isn't a measurable progression, but it does save a register in the codegen for typed array
+        accesses. Hopefully these improvements add up.
+
+        * assembler/AssemblerBuffer.h:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::tryGetFoldableView):
+
+2018-02-18  Dominik Inführ  <dominik.infuehr@gmail.com>
+
+        Offlineasm/MIPS: immediates need to be within 16-bit signed values
+        https://bugs.webkit.org/show_bug.cgi?id=182890
+
+        Reviewed by Michael Catanzaro.
+
+        In Sequence.getModifiedListMIPS(), we allow immediate values within
+        the range -0xffff..0xffff for immediates (addresses and other
+        immediates), but then in Immediate.mipsOperand() and
+        Address.mipsOperand() we raise if immediate values are not within
+        -0x7fff..0x7fff. This is inconsistent, and broke compilation on mips
+        since r228552 made the VM structure bigger meaning we address values
+        with bigger offsets in llint. This change restricts the allowed range,
+        so that a separate load of the value is done for values outside of
+        that range.
+
+        * offlineasm/mips.rb:
+
+2018-02-17  Darin Adler  <darin@apple.com>
+
+        Web Inspector: get rid of remaining uses of OptOutput<T>
+        https://bugs.webkit.org/show_bug.cgi?id=180607
+
+        Reviewed by Brian Burg.
+
+        * inspector/AsyncStackTrace.cpp: Removed explicit Inspector prefix from code that
+        is inside the Inspector namespace already. Also use auto a bit.
+        * inspector/AsyncStackTrace.h: Ditto.
+        * inspector/ConsoleMessage.cpp: Ditto.
+
+        * inspector/ContentSearchUtilities.cpp: More Inspector namespace removal and ...
+        (Inspector::ContentSearchUtilities::getRegularExpressionMatchesByLines): Use a
+        Vector instead of a unique_ptr<Vector>.
+        (Inspector::ContentSearchUtilities::lineEndings): Ditto.
+        (Inspector::ContentSearchUtilities::stylesheetCommentPattern): Deleted.
+        (Inspector::ContentSearchUtilities::findMagicComment): Use std::array instead of
+        a Vector for a fixed size array; also got rid of reinterpret_cast.
+        (Inspector::ContentSearchUtilities::findStylesheetSourceMapURL): Moved the regular
+        expression here since it's the only place it was used.
+
+        * inspector/ContentSearchUtilities.h: Cut down on unneeded includes.
+
+        * inspector/InjectedScript.cpp: Removed explicit Inspector prefix from code that
+        is inside the Inspector namespace already. Also use auto a bit.
+
+        * inspector/InspectorProtocolTypes.h: Removed OptOutput. Simplified assertions.
+        Removed base template for BindingTraits; we only need the specializations.
+
+        * inspector/ScriptCallFrame.cpp: Removed explicit Inspector prefix from code that
+        is inside the Inspector namespace already. Also use auto a bit.
+        * inspector/ScriptCallFrame.h: Ditto.
+        * inspector/ScriptCallStack.cpp: Ditto.
+        * inspector/ScriptCallStack.h: Ditto.
+        * inspector/agents/InspectorConsoleAgent.cpp: Ditto.
+        * inspector/agents/InspectorConsoleAgent.h: Ditto.
+
+        * inspector/agents/InspectorDebuggerAgent.cpp: More Inspector namespace removal and ...
+        (Inspector::InspectorDebuggerAgent::evaluateOnCallFrame): Use std::optional& intead of
+        OptOutput* for out arguments.
+        * inspector/agents/InspectorDebuggerAgent.h: Ditto.
+
+        * inspector/agents/InspectorHeapAgent.cpp: More Inspector namespace removal and ...
+        (Inspector::InspectorHeapAgent::getPreview): Use std::optional& intead of OptOutput*
+        for out arguments.
+        * inspector/agents/InspectorHeapAgent.h: Ditto.
+
+        * inspector/agents/InspectorRuntimeAgent.cpp: More Inspector namespace removal and ...
+        (Inspector::InspectorRuntimeAgent::parse): Use std::optional& intead of OptOutput*
+        for out arguments.
+        (Inspector::InspectorRuntimeAgent::evaluate): Ditto.
+        (Inspector::InspectorRuntimeAgent::callFunctionOn): Ditto.
+        (Inspector::InspectorRuntimeAgent::saveResult): Ditto.
+        * inspector/agents/InspectorRuntimeAgent.h: Ditto.
+
+        * inspector/agents/InspectorScriptProfilerAgent.cpp: More Inspector namespace removal
+        and removed some bogus const.
+        * inspector/agents/InspectorScriptProfilerAgent.h: Ditto.
+
+        * inspector/scripts/codegen/cpp_generator.py:
+        (CppGenerator.cpp_type_for_unchecked_formal_in_parameter): Removed some bogus const.
+        (CppGenerator.cpp_type_for_type_with_name): Ditto.
+        (CppGenerator.cpp_type_for_formal_out_parameter): Use std::optional& instead of
+        Inspector::Protocol::OptOutput*.
+        (CppGenerator.cpp_type_for_formal_async_parameter): Ditto.
+        (CppGenerator.cpp_type_for_stack_in_parameter): Ditto.
+        (CppGenerator.cpp_type_for_stack_out_parameter): Ditto.
+
+        * inspector/scripts/codegen/cpp_generator_templates.py: Removed ASSERT_DISABLED
+        conditional around assertion code which will now compile to nothing if ASSERT is disabled.
+        Build strings more simply in a few cases.
+
+        * inspector/scripts/codegen/generate_cpp_backend_dispatcher_implementation.py:
+        (CppBackendDispatcherImplementationGenerator._generate_async_dispatcher_class_for_domain):
+        Use has_value instead of isAssigned and * operator instead of getValue() since std::optional
+        replace OptOutput here.
+        (CppBackendDispatcherImplementationGenerator._generate_dispatcher_implementation_for_command):
+        Pass by reference instead of pointer now.
+
+        * inspector/scripts/codegen/generate_cpp_protocol_types_header.py:
+        Removed ASSERT_DISABLED conditional around assertion code which will now compile to nothing
+        if ASSERT is disabled.
+
+        * inspector/scripts/codegen/generate_cpp_protocol_types_implementation.py:
+        (CppProtocolTypesImplementationGenerator._generate_assertion_for_object_declaration): Generate
+        the assertion function unconditionally, but leave out the assertions if ASSERT_DISABLED is true.
+        (CppProtocolTypesImplementationGenerator): Use auto instead of writing out JSON::Object::iterator.
+
+        * inspector/scripts/codegen/generate_objc_backend_dispatcher_implementation.py:
+        (ObjCBackendDispatcherImplementationGenerator._generate_conversions_for_command): Build strings
+        more simply.
+
+        * inspector/scripts/tests/generic/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/generic/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/type-requiring-runtime-casts.json-result:
+        Rebaselined.
+
+2018-02-16  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r228318.
+
+        The patch that this attempted to fix was rolled out already.
+
+        Reverted changeset:
+
+        "Fix build on ARMv7 traditional JSCOnly bot after r228306"
+        https://bugs.webkit.org/show_bug.cgi?id=182563
+        https://trac.webkit.org/changeset/228318
+
+2018-02-16  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, roll out r228306 (custom memcpy/memset) because the bots say that it was not a
+        progression.
+
+        * assembler/AssemblerBuffer.h:
+        (JSC::AssemblerBuffer::append):
+        * heap/LargeAllocation.cpp:
+        (JSC::LargeAllocation::tryCreate):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::Handle::didAddToDirectory):
+        * runtime/ArrayBuffer.cpp:
+        (JSC::ArrayBufferContents::tryAllocate):
+        (JSC::ArrayBufferContents::copyTo):
+        (JSC::ArrayBuffer::createInternal):
+        * runtime/ArrayBufferView.h:
+        (JSC::ArrayBufferView::zeroRangeImpl):
+        * runtime/ArrayConventions.cpp:
+        (JSC::clearArrayMemset):
+        * runtime/ArrayConventions.h:
+        (JSC::clearArray):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoPrivateFuncConcatMemcpy):
+        * runtime/ButterflyInlines.h:
+        (JSC::Butterfly::tryCreate):
+        (JSC::Butterfly::createOrGrowPropertyStorage):
+        (JSC::Butterfly::growArrayRight):
+        (JSC::Butterfly::resizeArray):
+        * runtime/GenericTypedArrayViewInlines.h:
+        (JSC::GenericTypedArrayView<Adaptor>::create):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::appendMemcpy):
+        (JSC::JSArray::fastSlice):
+        * runtime/JSArrayBufferView.cpp:
+        (JSC::JSArrayBufferView::ConstructionContext::ConstructionContext):
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::set):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::constructConvertedArrayStorageWithoutCopyingElements):
+        (JSC::JSObject::shiftButterflyAfterFlattening):
+        * runtime/PropertyTable.cpp:
+        (JSC::PropertyTable::PropertyTable):
+
+2018-02-16  Saam Barati  <sbarati@apple.com>
+
+        Fix bugs from r228411
+        https://bugs.webkit.org/show_bug.cgi?id=182851
+        <rdar://problem/37577732>
+
+        Reviewed by JF Bastien.
+
+        There was a bug from r228411 where inside the constant folding phase,
+        we used an insertCheck method that didn't handle varargs. This would
+        lead to a crash. When thinking about the fix for that function, I realized
+        a made a couple of mistakes in r228411. One is probably a security bug, and
+        the other is a performance bug because it'll prevent CSE for certain flavors
+        of GetByVal nodes. Both blunders are similar in nature.
+        
+        In r228411, I added code in LICM that inserted a CheckVarargs node with children
+        of another varargs node. However, to construct this new node's children,
+        I just copied the AdjacencyList. This does a shallow copy. What we needed
+        was a deep copy. We needed to create a new vararg AdjacencyList that points
+        to edges that are deep copies of the original varargs children. This patch
+        fixes this goof in LICM.
+        
+        r228411 made it so that PureValue over a varargs node would just compare actual
+        AdjacencyLists structs. So, if you had two GetByVals that had equal santized
+        children, their actual AdjacencyList structs are *not* bitwise equal, since they'll
+        have different firstChild values. Instead, we need to do a deep compare of their
+        adjacency lists. This patch teaches PureValue how to do that.
+
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::copyVarargChildren):
+        * dfg/DFGInsertionSet.h:
+        (JSC::DFG::InsertionSet::insertCheck):
+        * dfg/DFGLICMPhase.cpp:
+        (JSC::DFG::LICMPhase::attemptHoist):
+        * dfg/DFGPureValue.cpp:
+        (JSC::DFG::PureValue::dump const):
+        * dfg/DFGPureValue.h:
+        (JSC::DFG::PureValue::PureValue):
+        (JSC::DFG::PureValue::op const):
+        (JSC::DFG::PureValue::hash const):
+        (JSC::DFG::PureValue::operator== const):
+        (JSC::DFG::PureValue::isVarargs const):
+        (JSC::DFG::PureValue::children const): Deleted.
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        (JSC::DFG::StrengthReductionPhase::convertToIdentityOverChild):
+
+2018-02-16  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r228546.
+
+        This caused a consistent crash on all macOS WK2 platforms.
+
+        Reverted changeset:
+
+        "Web Inspector: get rid of remaining uses of OptOutput<T>"
+        https://bugs.webkit.org/show_bug.cgi?id=180607
+        https://trac.webkit.org/changeset/228546
+
+2018-02-16  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        fast/frames/sandboxed-iframe-navigation-top-denied.html is crashing in Inspector::createScriptCallStackForConsole::Exec for GTK
+        https://bugs.webkit.org/show_bug.cgi?id=172952
+
+        Reviewed by Michael Catanzaro.
+
+        Null dereference of VM::topCallFrame happens in
+        Inspector::createScriptCallStackForConsole if the ExecState has no
+        call frames.
+
+        * inspector/ScriptCallStackFactory.cpp:
+        (Inspector::createScriptCallStack): Do null check of topCallFrame.
+        (Inspector::createScriptCallStackForConsole): Ditto.
+
+2018-02-15  Filip Pizlo  <fpizlo@apple.com>
+
+        Objects that contain dangerous things should be allocated far away from objects that can do OOB
+        https://bugs.webkit.org/show_bug.cgi?id=182843
+
+        Reviewed by Saam Barati.
+        
+        To complete our object distancing plan, we need to put objects that can contain unpoisoned data
+        far away from objects that cannot. Objects referenceable from JSValues cannot contain
+        unpoisoned data, but auxiliary data can. This further divides auxiliary data that is meant for
+        storing mostly JSValues from data that is meant for storing anything.
+        
+        This is achieved by having three SecurityKinds that are used for MarkedBlock selection and
+        zeroing sort of the same way SecurityOriginToken already was.
+        
+        This change shouldn't make anything slower. If anything, it will be a small speed-up because it
+        removes some cases of MarkedBlock zeroing since we don't need to zero blocks used for two of
+        the SecurityKinds.
+
+        * Sources.txt:
+        * bytecode/ObjectAllocationProfileInlines.h:
+        (JSC::ObjectAllocationProfile::initializeProfile):
+        * heap/BlockDirectory.cpp:
+        (JSC::BlockDirectory::addBlock):
+        * heap/BlockDirectory.h:
+        * heap/CellAttributes.cpp:
+        (JSC::CellAttributes::dump const):
+        * heap/CellAttributes.h:
+        (JSC::CellAttributes::CellAttributes):
+        * heap/LocalAllocator.cpp:
+        (JSC::LocalAllocator::allocateSlowCase):
+        (JSC::LocalAllocator::tryAllocateWithoutCollecting):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::Handle::didAddToDirectory):
+        (JSC::MarkedBlock::Handle::associateWithOrigin): Deleted.
+        * heap/MarkedBlock.h:
+        * heap/SecurityKind.cpp: Added.
+        (WTF::printInternal):
+        * heap/SecurityKind.h: Added.
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::subspaceFor):
+        * runtime/JSDestructibleObjectHeapCellType.cpp:
+        (JSC::JSDestructibleObjectHeapCellType::JSDestructibleObjectHeapCellType):
+        * runtime/JSObject.h:
+        (JSC::JSObject::subspaceFor):
+        * runtime/JSSegmentedVariableObjectHeapCellType.cpp:
+        (JSC::JSSegmentedVariableObjectHeapCellType::JSSegmentedVariableObjectHeapCellType):
+        * runtime/JSStringHeapCellType.cpp:
+        (JSC::JSStringHeapCellType::JSStringHeapCellType):
+        * runtime/Symbol.h:
+        (JSC::Symbol::subspaceFor):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+        * wasm/js/JSWebAssemblyCodeBlockHeapCellType.cpp:
+        (JSC::JSWebAssemblyCodeBlockHeapCellType::JSWebAssemblyCodeBlockHeapCellType):
+
+2018-02-15  Darin Adler  <darin@apple.com>
+
+        Web Inspector: get rid of remaining uses of OptOutput<T>
+        https://bugs.webkit.org/show_bug.cgi?id=180607
+
+        Reviewed by Brian Burg.
+
+        * inspector/AsyncStackTrace.cpp: Removed explicit Inspector prefix from code that
+        is inside the Inspector namespace already. Also use auto a bit.
+        * inspector/AsyncStackTrace.h: Ditto.
+        * inspector/ConsoleMessage.cpp: Ditto.
+
+        * inspector/ContentSearchUtilities.cpp: More Inspector namespace removal and ...
+        (Inspector::ContentSearchUtilities::getRegularExpressionMatchesByLines): Use a
+        Vector instead of a unique_ptr<Vector>.
+        (Inspector::ContentSearchUtilities::lineEndings): Ditto.
+        (Inspector::ContentSearchUtilities::stylesheetCommentPattern): Deleted.
+        (Inspector::ContentSearchUtilities::findMagicComment): Use std::array instead of
+        a Vector for a fixed size array; also got rid of reinterpret_cast.
+        (Inspector::ContentSearchUtilities::findStylesheetSourceMapURL): Moved the regular
+        expression here since it's the only place it was used.
+
+        * inspector/ContentSearchUtilities.h: Cut down on unneeded includes.
+
+        * inspector/InjectedScript.cpp: Removed explicit Inspector prefix from code that
+        is inside the Inspector namespace already. Also use auto a bit.
+
+        * inspector/InspectorProtocolTypes.h: Removed OptOutput. Simplified assertions.
+        Removed base template for BindingTraits; we only need the specializations.
+
+        * inspector/ScriptCallFrame.cpp: Removed explicit Inspector prefix from code that
+        is inside the Inspector namespace already. Also use auto a bit.
+        * inspector/ScriptCallFrame.h: Ditto.
+        * inspector/ScriptCallStack.cpp: Ditto.
+        * inspector/ScriptCallStack.h: Ditto.
+        * inspector/agents/InspectorConsoleAgent.cpp: Ditto.
+        * inspector/agents/InspectorConsoleAgent.h: Ditto.
+
+        * inspector/agents/InspectorDebuggerAgent.cpp: More Inspector namespace removal and ...
+        (Inspector::InspectorDebuggerAgent::evaluateOnCallFrame): Use std::optional& intead of
+        OptOutput* for out arguments.
+        * inspector/agents/InspectorDebuggerAgent.h: Ditto.
+
+        * inspector/agents/InspectorHeapAgent.cpp: More Inspector namespace removal and ...
+        (Inspector::InspectorHeapAgent::getPreview): Use std::optional& intead of OptOutput*
+        for out arguments.
+        * inspector/agents/InspectorHeapAgent.h: Ditto.
+
+        * inspector/agents/InspectorRuntimeAgent.cpp: More Inspector namespace removal and ...
+        (Inspector::InspectorRuntimeAgent::parse): Use std::optional& intead of OptOutput*
+        for out arguments.
+        (Inspector::InspectorRuntimeAgent::evaluate): Ditto.
+        (Inspector::InspectorRuntimeAgent::callFunctionOn): Ditto.
+        (Inspector::InspectorRuntimeAgent::saveResult): Ditto.
+        * inspector/agents/InspectorRuntimeAgent.h: Ditto.
+
+        * inspector/agents/InspectorScriptProfilerAgent.cpp: More Inspector namespace removal
+        and removed some bogus const.
+        * inspector/agents/InspectorScriptProfilerAgent.h: Ditto.
+
+        * inspector/scripts/codegen/cpp_generator.py:
+        (CppGenerator.cpp_type_for_unchecked_formal_in_parameter): Removed some bogus const.
+        (CppGenerator.cpp_type_for_type_with_name): Ditto.
+        (CppGenerator.cpp_type_for_formal_out_parameter): Use std::optional& instead of
+        Inspector::Protocol::OptOutput*.
+        (CppGenerator.cpp_type_for_formal_async_parameter): Ditto.
+        (CppGenerator.cpp_type_for_stack_in_parameter): Ditto.
+        (CppGenerator.cpp_type_for_stack_out_parameter): Ditto.
+
+        * inspector/scripts/codegen/cpp_generator_templates.py: Removed ASSERT_DISABLED
+        conditional around assertion code which will now compile to nothing if ASSERT is disabled.
+        Build strings more simply in a few cases.
+
+        * inspector/scripts/codegen/generate_cpp_backend_dispatcher_implementation.py:
+        (CppBackendDispatcherImplementationGenerator._generate_async_dispatcher_class_for_domain):
+        Use has_value instead of isAssigned and * operator instead of getValue() since std::optional
+        replace OptOutput here.
+        (CppBackendDispatcherImplementationGenerator._generate_dispatcher_implementation_for_command):
+        Pass by reference instead of pointer now.
+
+        * inspector/scripts/codegen/generate_cpp_protocol_types_header.py:
+        Removed ASSERT_DISABLED conditional around assertion code which will now compile to nothing
+        if ASSERT is disabled.
+
+        * inspector/scripts/codegen/generate_cpp_protocol_types_implementation.py:
+        (CppProtocolTypesImplementationGenerator._generate_assertion_for_object_declaration): Generate
+        the assertion function unconditionally, but leave out the assertions if ASSERT_DISABLED is true.
+        (CppProtocolTypesImplementationGenerator): Use auto instead of writing out JSON::Object::iterator.
+
+        * inspector/scripts/codegen/generate_objc_backend_dispatcher_implementation.py:
+        (ObjCBackendDispatcherImplementationGenerator._generate_conversions_for_command): Build strings
+        more simply.
+
+        * inspector/scripts/tests/generic/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/generic/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/type-requiring-runtime-casts.json-result:
+        Rebaselined.
+
 2018-02-15  Filip Pizlo  <fpizlo@apple.com>
 
         Unreviewed, roll out r228366 since it did not progress anything.

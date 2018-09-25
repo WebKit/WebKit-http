@@ -674,6 +674,11 @@ String insecurePluginVersionText()
     return WEB_UI_STRING_KEY("Blocked Plug-in", "Blocked Plug-In (Insecure plug-in)", "Label text to be used when an insecure plug-in version was blocked from loading");
 }
 
+String unsupportedPluginText()
+{
+    return WEB_UI_STRING_KEY("Unsupported Plug-in", "Unsupported Plug-In", "Label text to be used when an unsupported plug-in was blocked from loading");
+}
+
 String multipleFileUploadText(unsigned numberOfFiles)
 {
     return formatLocalizedString(WEB_UI_STRING("%d files", "Label to describe the number of files selected in a file upload control that allows multiple files"), numberOfFiles);
@@ -1070,14 +1075,29 @@ String formControlSearchButtonTitle()
     return WEB_UI_STRING("Search", "Title of the Search button for zoomed form controls.");
 }
 
-String textInputModeWriteButton()
+String textInputModeWriteButtonTitle()
 {
     return WEB_UI_STRING("Write", "Title of the writing button for zoomed form controls.");
 }
 
-String textInputModeSpeechButton()
+String textInputModeSpeechButtonTitle()
 {
     return WEB_UI_STRING("Speak", "Title of the dictation button for zoomed form controls.");
+}
+
+String datePickerDayLabelTitle()
+{
+    return WEB_UI_STRING("Day label in date picker", "Day label in date picker");
+}
+
+String datePickerMonthLabelTitle()
+{
+    return WEB_UI_STRING("Month label in date picker", "Month label in date picker");
+}
+
+String datePickerYearLabelTitle()
+{
+    return WEB_UI_STRING("Year label in date picker", "Year label in date picker");
 }
 
 #endif

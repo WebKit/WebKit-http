@@ -40,6 +40,7 @@
 #import "PluginView.h"
 #import "PrintInfo.h"
 #import "RemoteLayerTreeDrawingArea.h"
+#import "SandboxUtilities.h"
 #import "UserData.h"
 #import "VisibleContentRectUpdateInfo.h"
 #import "WKAccessibilityWebPageObjectIOS.h"
@@ -389,6 +390,12 @@ bool WebPage::handleEditingKeyboardEvent(KeyboardEvent* event)
     return sendResult && eventWasHandled;
 }
 
+bool WebPage::parentProcessHasServiceWorkerEntitlement() const
+{
+    static bool hasEntitlement = connectedProcessHasEntitlement(WebProcess::singleton().parentProcessConnection()->xpcConnection(), @"com.apple.developer.WebKit.ServiceWorkers");
+    return hasEntitlement;
+}
+
 void WebPage::sendComplexTextInputToPlugin(uint64_t, const String&)
 {
     notImplemented();
@@ -647,6 +654,15 @@ void WebPage::handleTap(const IntPoint& point, uint64_t lastLayerTreeTransaction
 #endif
     else
         handleSyntheticClick(nodeRespondingToClick, adjustedPoint);
+}
+
+void WebPage::requestAssistedNodeInformation(WebKit::CallbackID callbackID)
+{
+    AssistedNodeInformation info;
+    if (m_assistedNode)
+        getAssistedNodeInformation(info);
+
+    send(Messages::WebPageProxy::AssistedNodeInformationCallback(info, callbackID));
 }
 
 #if ENABLE(DATA_INTERACTION)
@@ -1824,12 +1840,23 @@ void WebPage::moveSelectionByOffset(int32_t offset, CallbackID callbackID)
 void WebPage::startAutoscrollAtPosition(const WebCore::FloatPoint& positionInWindow)
 {
     if (m_assistedNode && m_assistedNode->renderer())
-        m_page->mainFrame().eventHandler().startTextAutoscroll(m_assistedNode->renderer(), positionInWindow);
+        m_page->mainFrame().eventHandler().startSelectionAutoscroll(m_assistedNode->renderer(), positionInWindow);
+    else {
+        Frame& frame = m_page->focusController().focusedOrMainFrame();
+        VisibleSelection selection = frame.selection().selection();
+        if (selection.isRange()) {
+            RefPtr<Range> range = frame.selection().toNormalizedRange();
+            Node& node = range->startContainer();
+            auto* renderer = node.renderer();
+            if (renderer)
+                m_page->mainFrame().eventHandler().startSelectionAutoscroll(renderer, positionInWindow);
+        }
+    }
 }
     
 void WebPage::cancelAutoscroll()
 {
-    m_page->mainFrame().eventHandler().cancelTextAutoscroll();
+    m_page->mainFrame().eventHandler().cancelSelectionAutoscroll();
 }
 
 void WebPage::getRectsForGranularityWithSelectionOffset(uint32_t granularity, int32_t offset, CallbackID callbackID)
@@ -2720,6 +2747,7 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
     information.allowsUserScalingIgnoringAlwaysScalable = m_viewportConfiguration.allowsUserScalingIgnoringAlwaysScalable();
     information.hasNextNode = hasAssistableElement(m_assistedNode.get(), *m_page, true);
     information.hasPreviousNode = hasAssistableElement(m_assistedNode.get(), *m_page, false);
+    information.assistedNodeIdentifier = m_currentAssistedNodeIdentifier;
 
     if (is<HTMLSelectElement>(*m_assistedNode)) {
         HTMLSelectElement& element = downcast<HTMLSelectElement>(*m_assistedNode);

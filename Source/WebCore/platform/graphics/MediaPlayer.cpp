@@ -1383,6 +1383,18 @@ void MediaPlayer::simulateAudioInterruption()
 }
 #endif
 
+void MediaPlayer::beginSimulatedHDCPError()
+{
+    if (m_private)
+        m_private->beginSimulatedHDCPError();
+}
+
+void MediaPlayer::endSimulatedHDCPError()
+{
+    if (m_private)
+        m_private->endSimulatedHDCPError();
+}
+
 String MediaPlayer::languageOfPrimaryAudioTrack() const
 {
     if (!m_private)

@@ -59,7 +59,10 @@ RenderTextFragment::RenderTextFragment(Document& textNode, const String& text)
 {
 }
 
-RenderTextFragment::~RenderTextFragment() = default;
+RenderTextFragment::~RenderTextFragment()
+{
+    ASSERT(!m_firstLetter);
+}
 
 bool RenderTextFragment::canBeSelectionLeaf() const
 {
@@ -74,13 +77,6 @@ void RenderTextFragment::styleDidChange(StyleDifference diff, const RenderStyle*
         block->mutableStyle().removeCachedPseudoStyle(FIRST_LETTER);
 }
 
-void RenderTextFragment::willBeDestroyed(RenderTreeBuilder& builder)
-{
-    if (m_firstLetter)
-        m_firstLetter->removeFromParentAndDestroy(builder);
-    RenderText::willBeDestroyed(builder);
-}
-
 void RenderTextFragment::setText(const String& newText, bool force)
 {
     RenderText::setText(newText, force);
@@ -89,11 +85,9 @@ void RenderTextFragment::setText(const String& newText, bool force)
     if (!m_firstLetter)
         return;
     if (RenderTreeBuilder::current())
-        m_firstLetter->removeFromParentAndDestroy(*RenderTreeBuilder::current());
-    else {
-        RenderTreeBuilder builder(*document().renderView());
-        m_firstLetter->removeFromParentAndDestroy(builder);
-    }
+        RenderTreeBuilder::current()->removeAndDestroy(*m_firstLetter);
+    else
+        RenderTreeBuilder(*document().renderView()).removeAndDestroy(*m_firstLetter);
     ASSERT(!m_firstLetter);
     ASSERT(!textNode() || textNode()->renderer() == this);
 }

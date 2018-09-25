@@ -37,6 +37,9 @@
 #if USE(SOUP)
 #include "NetworkSessionSoup.h"
 #endif
+#if USE(CURL)
+#include "NetworkSessionCurl.h"
+#endif
 
 
 using namespace WebCore;
@@ -50,6 +53,9 @@ Ref<NetworkSession> NetworkSession::create(NetworkSessionCreationParameters&& pa
 #endif
 #if USE(SOUP)
     return NetworkSessionSoup::create(WTFMove(parameters));
+#endif
+#if USE(CURL)
+    return NetworkSessionCurl::create(WTFMove(parameters));
 #endif
 }
 

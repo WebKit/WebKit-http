@@ -168,7 +168,7 @@ void RenderTreeBuilder::Table::insertChild(RenderTableRow& parent, RenderPtr<Ren
 
     auto& newChild = *child.get();
     ASSERT(!beforeChild || is<RenderTableCell>(*beforeChild));
-    parent.RenderBox::addChild(m_builder, WTFMove(child), beforeChild);
+    m_builder.insertChildToRenderElement(parent, WTFMove(child), beforeChild);
     // FIXME: child should always be a RenderTableCell at this point.
     if (is<RenderTableCell>(newChild))
         parent.didInsertTableCell(downcast<RenderTableCell>(newChild), beforeChild);
@@ -183,7 +183,7 @@ void RenderTreeBuilder::Table::insertChild(RenderTableSection& parent, RenderPtr
     if (is<RenderTableRow>(*child.get()))
         parent.willInsertTableRow(downcast<RenderTableRow>(*child.get()), beforeChild);
     ASSERT(!beforeChild || is<RenderTableRow>(*beforeChild));
-    parent.RenderBox::addChild(m_builder, WTFMove(child), beforeChild);
+    m_builder.insertChildToRenderElement(parent, WTFMove(child), beforeChild);
 }
 
 void RenderTreeBuilder::Table::insertChild(RenderTable& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild)
@@ -197,7 +197,7 @@ void RenderTreeBuilder::Table::insertChild(RenderTable& parent, RenderPtr<Render
     else if (is<RenderTableCol>(newChild))
         parent.willInsertTableColumn(downcast<RenderTableCol>(newChild), beforeChild);
 
-    parent.RenderBox::addChild(m_builder, WTFMove(child), beforeChild);
+    m_builder.insertChildToRenderElement(parent, WTFMove(child), beforeChild);
 }
 
 bool RenderTreeBuilder::Table::childRequiresTable(const RenderElement& parent, const RenderObject& child)
@@ -248,7 +248,7 @@ void RenderTreeBuilder::Table::collapseAndDestroyAnonymousSiblingRows(RenderTabl
             currentRow = currentRow->nextRow();
             continue;
         }
-        currentRow->moveAllChildrenTo(m_builder, rowToInsertInto, RenderBoxModelObject::NormalizeAfterInsertion::No);
+        m_builder.moveAllChildrenTo(*currentRow, *rowToInsertInto, RenderTreeBuilder::NormalizeAfterInsertion::No);
         auto toDestroy = m_builder.takeChild(*section, *currentRow);
         currentRow = currentRow->nextRow();
     }

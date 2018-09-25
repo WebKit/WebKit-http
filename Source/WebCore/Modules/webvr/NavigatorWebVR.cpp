@@ -26,23 +26,40 @@
 #include "config.h"
 #include "NavigatorWebVR.h"
 
+#include "Document.h"
+#include "JSVRDisplay.h"
+#include "Navigator.h"
+#include "RuntimeEnabledFeatures.h"
 #include "VRDisplay.h"
+#include "VRManager.h"
 
 namespace WebCore {
 
-void NavigatorWebVR::getVRDisplays(Navigator&, Ref<DeferredPromise>&&)
+void NavigatorWebVR::getVRDisplays(Navigator&, Document& document, GetVRDisplaysPromise&& promise)
 {
+    if (!RuntimeEnabledFeatures::sharedFeatures().webVREnabled()) {
+        promise.reject();
+        return;
+    }
+
+    document.postTask([promise = WTFMove(promise)] (ScriptExecutionContext& context) mutable {
+        std::optional<VRManager::VRDisplaysVector> platformDisplays = VRManager::singleton().getVRDisplays();
+        if (!platformDisplays) {
+            promise.reject();
+            return;
+        }
+
+        Vector<Ref<VRDisplay>> displays;
+        for (auto& platformDisplay : platformDisplays.value())
+            displays.append(VRDisplay::create(context, WTFMove(platformDisplay)));
+        promise.resolve(displays);
+    });
 }
 
 const Vector<RefPtr<VRDisplay>>& NavigatorWebVR::activeVRDisplays(Navigator&)
 {
     static auto mockVector = makeNeverDestroyed(Vector<RefPtr<VRDisplay>> { });
     return mockVector;
-}
-
-bool NavigatorWebVR::vrEnabled(Navigator&)
-{
-    return false;
 }
 
 } // namespace WebCore

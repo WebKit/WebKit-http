@@ -1,3 +1,547 @@
+2018-02-21  Youenn Fablet  <youenn@apple.com>
+
+        Use ResourceLoader to load appcache manifest
+        https://bugs.webkit.org/show_bug.cgi?id=182861
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/appcache/fail-on-update-2-expected.txt:
+        * http/tests/appcache/manifest-redirect-2-expected.txt:
+        * http/tests/appcache/offline-access-expected.txt:
+
+2018-02-21  Chris Dumez  <cdumez@apple.com>
+
+        VTTCue constructor should use 'double' type for startTime / endTime
+        https://bugs.webkit.org/show_bug.cgi?id=182988
+
+        Reviewed by Eric Carlson.
+
+        Update existing test to reflect behavior change.
+
+        * media/track/track-add-remove-cue-expected.txt:
+        * media/track/track-add-remove-cue.html:
+
+2018-02-21  Ms2ger  <Ms2ger@gmail.com>
+
+        Test gardening.
+        https://bugs.webkit.org/show_bug.cgi?id=183006
+
+        Unreviewed test gardening.
+
+        * TestExpectations: add ietestcenter/css3/valuesandunits/units-000.htm.
+        * platform/gtk/TestExpectations: remove ietestcenter/css3/valuesandunits/units-000.htm.
+        * platform/gtk/js/dom/dom-static-property-for-in-iteration-expected.txt: update for r228827.
+        * platform/ios/TestExpectations: remove ietestcenter/css3/valuesandunits/units-000.htm.
+        * platform/mac/TestExpectations: remove ietestcenter/css3/valuesandunits/units-000.htm.
+        * platform/win/TestExpectations: remove ietestcenter/css3/valuesandunits/units-000.htm.
+        * platform/wpe/TestExpectations: remove ietestcenter/css3/valuesandunits/units-000.htm.
+        * platform/wpe/js/dom/dom-static-property-for-in-iteration-expected.txt: update for r228827.
+
+2018-02-21  Charlie Turner  <cturner@igalia.com>
+
+        Update test expectations
+        https://bugs.webkit.org/show_bug.cgi?id=182973
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations:
+
+2018-02-21  Charlie Turner  <cturner@igalia.com>
+
+        Rebaseline web animations tests after r228717
+        https://bugs.webkit.org/show_bug.cgi?id=182970
+
+        Reviewed by Antoine Quint.
+
+        * platform/gtk/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property-expected.txt: Added.
+
+2018-02-21  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Make system-ui obey the user-installed-font policy
+        https://bugs.webkit.org/show_bug.cgi?id=182860
+        <rdar://problem/36158249>
+
+        Reviewed by Antti Koivisto.
+
+        FakeHelvetica-ArmenianCharacter.ttf is a font which supports a particular Armenian character which
+        isn't supported by any other font on the system. Installing this font will cause it to be added to
+        the 'system-ui' font cascade list. When we disable user-installed-fonts, this font should not be
+        used to render the character.
+
+        * fast/text/user-installed-fonts/system-ui-expected-mismatch.html:
+        * fast/text/user-installed-fonts/system-ui.html:
+
+2018-02-20  Nan Wang  <n_wang@apple.com>
+
+        AX: Keyboard focus not following VoiceOver cursor into web content or within web content.
+        https://bugs.webkit.org/show_bug.cgi?id=182752
+        <rdar://problem/37518233>
+
+        Reviewed by Ryosuke Niwa.
+
+        * accessibility/mac/accessibility-make-first-responder-expected.txt: Added.
+        * accessibility/mac/accessibility-make-first-responder.html: Added.
+        * platform/mac-wk1/TestExpectations:
+
+2018-02-20  Chris Dumez  <cdumez@apple.com>
+
+        Crash under JSC::JSCell::toNumber(JSC::ExecState*)
+        https://bugs.webkit.org/show_bug.cgi?id=182984
+        <rdar://problem/37694346>
+
+        Reviewed by Mark Lam.
+
+        Add layout test coverage.
+
+        * js/dom/webidl-type-mapping-expected.txt:
+        * js/dom/webidl-type-mapping.html:
+
+2018-02-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark two imported/w3c/web-platform-tests/2dcontext/imagebitmap tests as flaky on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=182833
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2018-02-20  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        Skip tests that need ENABLE_LINK_PREFETCH
+        https://bugs.webkit.org/show_bug.cgi?id=182981
+
+        Unreviewed gardening.
+
+        These tests were marked in the different TestExpectations fails of each port,
+        when actually none of them were testing this code as ENABLE_LINK_PREFETCH is disabled by default
+        (even in development builds).
+
+        The patch just moves the flagged tests from the port specific TestExpectations files
+        to the generic TestExpectations file skipping them.
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+
+2018-02-20  John Wilander  <wilander@apple.com>
+
+        Make WebResourceLoadStatisticsStore::processStatisticsAndDataRecords() call WebProcessProxy::notifyPageStatisticsAndDataRecordsProcessed() in a proper callback
+        https://bugs.webkit.org/show_bug.cgi?id=182719
+        <rdar://problem/37517370>
+
+        Reviewed by Brent Fulgham.
+
+        * platform/mac-wk2/TestExpectations:
+            Marked http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html
+            as [ Pass ].
+        * platform/wk2/TestExpectations:
+            Marked http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store.html
+            as [ Pass ]. This should have been done already in r227223:
+            https://bugs.webkit.org/show_bug.cgi?id=181822
+
+2018-02-20  Nan Wang  <n_wang@apple.com>
+
+        AX: AOM: Dispatch accessibleclick event
+        https://bugs.webkit.org/show_bug.cgi?id=180898
+        <rdar://problem/36086710>
+
+        Reviewed by Ryosuke Niwa.
+
+        * accessibility/mac/AOM-events-expected.txt: Added.
+        * accessibility/mac/AOM-events.html: Added.
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+        * platform/mac-wk1/TestExpectations:
+
+2018-02-19  Dean Jackson  <dino@apple.com>
+
+        Handle all writing-modes in downcast
+        https://bugs.webkit.org/show_bug.cgi?id=182949
+        <rdar://problem/37710687>
+
+        Reviewed by Myles Maxfield.
+
+        Test all the deprecated SVG writing modes.
+
+        * fast/writing-mode/svg-writing-modes-expected.html: Added.
+        * fast/writing-mode/svg-writing-modes.html: Added.
+
+2018-02-20  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css3-text] Skip tests that need ENABLE_CSS3_TEXT
+        https://bugs.webkit.org/show_bug.cgi?id=182963
+
+        Unreviewed gardening.
+
+        These tests were marked in the different TestExpectations fails of each port,
+        when actually none of them were testing this code as ENABLE_CSS3_TEXT is disabled by default
+        (even in development builds).
+
+        The patch just moves the flagged tests from the port specific TestExpectations files
+        to the generic TestExpectations file skipping them.
+
+        It also removes editing/pasteboard/insert-text-decoration.html from the skipping list
+        as it should be passing for Mac an iOs too.
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2018-02-19  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        null m_lastNodeInserted dereference at ReplaceSelectionCommand::InsertedNodes::lastLeafInserted
+        https://bugs.webkit.org/show_bug.cgi?id=161947
+
+        Reviewed by Ryosuke Niwa.
+
+        * platform/gtk/TestExpectations:
+        Unmarked editing/execCommand/crash-replacing-list-by-list.html and editing/inserting/insert-table-in-paragraph-crash.html.
+
+2018-02-19  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Implement a compact set of media controls
+        https://bugs.webkit.org/show_bug.cgi?id=182937
+        <rdar://problem/37682257>
+
+        Reviewed by Eric Carlson.
+
+        Add new tests that cover the basic properties and layout under different situations of the new CompactMediaControls.
+
+        * media/modern-media-controls/compact-media-controls/compact-media-controls-constructor-expected.txt: Added.
+        * media/modern-media-controls/compact-media-controls/compact-media-controls-constructor.html: Added.
+        * media/modern-media-controls/compact-media-controls/compact-media-controls-layout-expected.txt: Added.
+        * media/modern-media-controls/compact-media-controls/compact-media-controls-layout.html: Added.
+
+2018-02-19  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make KeyframeEffect target nullable and read-write
+        https://bugs.webkit.org/show_bug.cgi?id=182741
+
+        Reviewed by Dean Jackson.
+
+        Add some platform-specific results for Sierra where we don't support the "font-variation-settings" property.
+
+        * platform/mac-sierra/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property-expected.txt: Added.
+        * platform/mac-sierra/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt: Added.
+        * platform/mac-sierra/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property-expected.txt: Added.
+
+2018-02-19  Dean Jackson  <dino@apple.com>
+
+        SIGFPE @ int WebCore::SVGToOTFFontConverter::scaleUnitsPerEm<int> const + 45
+        https://bugs.webkit.org/show_bug.cgi?id=182944
+        <rdar://problem/35369984>
+
+        Reviewed by Myles Maxfield.
+
+        Add a test with a 0 unitsperem SVG font.
+
+        * svg/text/font-bad-unitsperem-expected.txt: Added.
+        * svg/text/font-bad-unitsperem.html: Added.
+        * svg/text/resources/font-bad-unitsperem.svg: Added.
+
+2018-02-19  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r219342): Touch event coordinates and elementFromPoint coordinates differ
+        https://bugs.webkit.org/show_bug.cgi?id=182910
+        <rdar://problem/37533950>
+
+        Reviewed by Simon Fraser.
+
+        * fast/dom/elementFromPoint-scaled-scrolled.html:
+        Revert changes to this test made in r219342.
+
+        * fast/dom/elementFromPoint-scaled-scrolled-layout-viewport.html:
+        * fast/dom/elementFromPoint-scaled-scrolled-layout-viewport-expected.txt:
+        Add a test that is equivalent to elementFromPoint-scaled-scrolled.html after r219342,
+        which turns on the new setting. This test is disabled on iOS (like it was
+        in r219342) because it needs window.scrollTo.
+
+        * platform/ios-wk2/fast/dom/elementFromPoint-relative-to-viewport-expected.txt:
+        This now passes.
+
+        * platform/ios/TestExpectations:
+        Re-mark-failing a test that was un-marked-failing by r219342.
+
+2018-02-19  Daniel Bates  <dabates@apple.com>
+
+        Do not block authentication challenge to navigated resources
+        https://bugs.webkit.org/show_bug.cgi?id=182807
+        <rdar://problem/37481619>
+
+        Reviewed by Brent Fulgham.
+
+        Update tests based on the new behavior.
+
+        * http/tests/security/mixedContent/insecure-basic-auth-image-allowCrossOriginSubresourcesToAskForCredentials.https-expected.txt:
+        * http/tests/security/mixedContent/insecure-basic-auth-image-allowCrossOriginSubresourcesToAskForCredentials.https.html:
+        * http/tests/security/mixedContent/insecure-download-redirects-to-basic-auth-secure-download.https-expected.txt: Removed.
+        * http/tests/security/mixedContent/insecure-download-redirects-to-basic-auth-secure-download.https.html: Removed.
+        * http/tests/security/mixedContent/insecure-image-redirects-to-basic-auth-secure-image-allowCrossOriginSubresourcesToAskForCredentials-expected.txt:
+        * http/tests/security/mixedContent/insecure-image-redirects-to-basic-auth-secure-image-allowCrossOriginSubresourcesToAskForCredentials.html:
+        * http/tests/security/mixedContent/insecure-image-redirects-to-basic-auth-secure-image-expected.txt:
+        * http/tests/security/mixedContent/resources/frame-with-insecure-image-redirects-to-basic-auth-secure-image.html:
+        * http/tests/security/mixedContent/resources/subresource/protected-pdf.php: Removed.
+        * http/tests/security/mixedContent/secure-page-navigates-to-basic-auth-insecure-page.https-expected.txt:
+        * http/tests/security/mixedContent/secure-page-navigates-to-basic-auth-secure-page-via-insecure-redirect.https-expected.txt:
+        * http/tests/security/mixedContent/secure-redirect-to-insecure-redirect-to-basic-auth-secure-image-allowCrossOriginSubresourcesToAskForCredentials.https-expected.txt:
+        * http/tests/security/mixedContent/secure-redirect-to-insecure-redirect-to-basic-auth-secure-image-allowCrossOriginSubresourcesToAskForCredentials.https.html:
+        * http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-insecure-image-allowCrossOriginSubresourcesToAskForCredentials.https-expected.txt:
+        * http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-insecure-image-allowCrossOriginSubresourcesToAskForCredentials.https.html:
+        * platform/wk2/http/tests/security/mixedContent/insecure-basic-auth-image-allowCrossOriginSubresourcesToAskForCredentials.https-expected.txt: Copied from LayoutTests/http/tests/security/mixedContent/insecure-basic-auth-image-allowCrossOriginSubresourcesToAskForCredentials.https-expected.txt.
+        * platform/wk2/http/tests/security/mixedContent/insecure-image-redirects-to-basic-auth-secure-image-allowCrossOriginSubresourcesToAskForCredentials-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/secure-page-navigates-to-basic-auth-insecure-page.https-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/secure-page-navigates-to-basic-auth-secure-page-via-insecure-redirect.https-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/secure-redirect-to-insecure-redirect-to-basic-auth-secure-image-allowCrossOriginSubresourcesToAskForCredentials.https-expected.txt: Copied from LayoutTests/http/tests/security/mixedContent/secure-redirect-to-insecure-redirect-to-basic-auth-secure-image-allowCrossOriginSubresourcesToAskForCredentials.https-expected.txt.
+        * platform/wk2/http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-insecure-image-allowCrossOriginSubresourcesToAskForCredentials.https-expected.txt: Copied from LayoutTests/http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-insecure-image-allowCrossOriginSubresourcesToAskForCredentials.https-expected.txt.
+
+2018-02-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/track/track-css-matching-default.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=182932
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-02-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip editing/pasteboard/data-transfer-set-data-sanitizes-html-when-copying-in-null-origin.html on iOS Release.
+        https://bugs.webkit.org/show_bug.cgi?id=182850
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2018-02-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/cache-storage/cache-representation.https.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=182928
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-02-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark inspector/console/messageRepeatCountUpdated.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=152452
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-02-19  Frederic Wang  <fwang@igalia.com>
+
+        IFrame is resized incorrectly on orientation change
+        https://bugs.webkit.org/show_bug.cgi?id=155198
+
+        Reviewed by Antonio Gomes.
+
+        Add a non-regression test to verify that iframes are properly resized after orientation
+        changes. This bug happened in iOS 10.0 but not in trunk.
+
+        * fast/events/ios/rotation/resize-iframe-after-orientation-change-expected.txt: Added.
+        * fast/events/ios/rotation/resize-iframe-after-orientation-change.html: Added.
+
+2018-02-19  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK] Update test expectations
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations: inspector/heap/getPreview.html is
+        passing again after r228600.
+
+2018-02-19  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        REGRESSION(r219298): RELEASE_ASSERT(!m_owningPointerForClose) fails in WebCore::IDBServer::UniqueIDBDatabase::scheduleShutdownForClose
+        https://bugs.webkit.org/show_bug.cgi?id=174354
+        <rdar://problem/33294987>
+
+        Reviewed by Michael Catanzaro.
+
+        * platform/gtk/TestExpectations:
+        Unmarked imported/w3c/IndexedDB-private-browsing/idbfactory_open.html.
+        * platform/ios-wk2/TestExpectations:
+        Unmarked imported/w3c/IndexedDB-private-browsing/idbfactory_open12.html.
+        * platform/mac/TestExpectations: Ditto.
+        * platform/wpe/TestExpectations: Unmarked
+        imported/w3c/IndexedDB-private-browsing/idbfactory_open.html and
+        imported/w3c/IndexedDB-private-browsing/idbfactory_open12.html.
+
+2018-02-18  Philippe Normand  <pnormand@igalia.com>
+
+        [GTK][WPE] Fullscreen video is broken
+        https://bugs.webkit.org/show_bug.cgi?id=182740
+
+        Reviewed by Michael Catanzaro.
+
+        * platform/gtk/TestExpectations: Unflag now-passing fullscreen tests.
+
+2018-02-18  Zalan Bujtas  <zalan@apple.com>
+
+        [RenderTreeBuilder] REGRESSION(r228238) Detach renderer before destroying its subtree.
+        https://bugs.webkit.org/show_bug.cgi?id=182908
+        <rdar://problem/37619394>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/block/crash-when-subtree-is-still-attached-expected.txt: Added.
+        * fast/block/crash-when-subtree-is-still-attached.html: Added.
+
+2018-02-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r228575.
+
+        Introduced LayoutTest crashes under GuardMalloc.
+
+        Reverted changeset:
+
+        "Use ResourceLoader to load appcache manifest"
+        https://bugs.webkit.org/show_bug.cgi?id=182861
+        https://trac.webkit.org/changeset/228575
+
+2018-02-16  Youenn Fablet  <youenn@apple.com>
+
+        Allow specifying which plug-ins are supported
+        https://bugs.webkit.org/show_bug.cgi?id=182748
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/plugins/nounsupported-plugin-expected.txt: Added.
+        * http/tests/plugins/nounsupported-plugin.html: Added.
+        * http/tests/plugins/supported-plugin-all-origin-visibility-expected.txt: Added.
+        * http/tests/plugins/supported-plugin-all-origin-visibility.html: Added.
+        * http/tests/plugins/supported-plugin-on-specific-origin-expected.txt: Added.
+        * http/tests/plugins/supported-plugin-on-specific-origin.html: Added.
+        * http/tests/plugins/supported-plugin-origin-specific-visibility-expected.txt: Added.
+        * http/tests/plugins/supported-plugin-origin-specific-visibility.html: Added.
+        * http/tests/plugins/unsupported-plugin-on-specific-origin-expected.txt: Added.
+        * http/tests/plugins/unsupported-plugin-on-specific-origin.html: Added.
+        * plugins/unsupported-plugin-expected.txt: Added.
+        * plugins/unsupported-plugin.html: Added.
+        * platform/ios-wk1/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+
+2018-02-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark fast/block/positioning/fixed-container-with-relative-parent.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=181834
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-02-16  Youenn Fablet  <youenn@apple.com>
+
+        Use ResourceLoader to load appcache manifest
+        https://bugs.webkit.org/show_bug.cgi?id=182861
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/appcache/fail-on-update-2-expected.txt:
+        * http/tests/appcache/manifest-redirect-2-expected.txt:
+        * http/tests/appcache/offline-access-expected.txt:
+
+2018-02-16  Chris Dumez  <cdumez@apple.com>
+
+        Crash under WebCore::EventTarget::fireEventListeners
+        https://bugs.webkit.org/show_bug.cgi?id=182880
+        <rdar://problem/20788804>
+
+        Reviewed by Youenn Fablet.
+
+        Add layout test coverage.
+
+        * webaudio/audiobuffersource-ended-detached-frame-expected.txt: Added.
+        * webaudio/audiobuffersource-ended-detached-frame.html: Added.
+        * webaudio/resources/audiobuffersource-ended-detached-frame-iframe.html: Added.
+
+2018-02-16  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Implement PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+        https://bugs.webkit.org/show_bug.cgi?id=182771
+        <rdar://problem/36459988>
+
+        Reviewed by Brent Fulgham.
+
+        * http/wpt/webauthn/public-key-is-user-verifying-platform-authenticator-available-expected.txt: Added.
+        * http/wpt/webauthn/public-key-is-user-verifying-platform-authenticator-available.html: Added.
+
+2018-02-16  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        fast/frames/sandboxed-iframe-navigation-top-denied.html is crashing in Inspector::createScriptCallStackForConsole::Exec for GTK
+        https://bugs.webkit.org/show_bug.cgi?id=172952
+
+        Reviewed by Michael Catanzaro.
+
+        * platform/gtk/TestExpectations: Unmarked fast/frames/sandboxed-iframe-navigation-top-denied.html.
+
+2018-02-16  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        IndexedDB: Several test crash in when destroying a IDBKeyData
+        https://bugs.webkit.org/show_bug.cgi?id=167576
+
+        Reviewed by Michael Catanzaro.
+
+        * platform/gtk/TestExpectations: Unmarked
+        imported/w3c/IndexedDB-private-browsing/idbcursor_iterating.html,
+        imported/w3c/IndexedDB-private-browsing/idbcursor_iterating_index.html
+        and storage/indexeddb/modern/index-3-private.html.
+        * platform/wpe/TestExpectations: Unmarked
+        imported/w3c/IndexedDB-private-browsing/idbcursor_iterating.html and
+        imported/w3c/IndexedDB-private-browsing/idbcursor_iterating_index.html.
+
+2018-02-16  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] Update expectations for a couple of flaky tests
+
+        Unreviewed gardening.
+
+        http/tests/appcache/fail-on-update.html and
+        svg/as-image/svg-as-image-canvas.html are flaky.
+        * platform/wpe/TestExpectations:
+
+2018-02-16  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] New rebaseline after r228427
+
+        Unreviewed gardening
+        * platform/wpe/js/dom/dom-static-property-for-in-iteration-expected.txt: Remove
+        gone AccessibleNode class.
+
+2018-02-16  Claudio Saavedra  <csaavedra@igalia.com>
+
+        Update expectations for a couple of failing tests.
+
+        Unreviewed gardening.
+        * platform/gtk/TestExpectations:
+
+2018-02-15  Youenn Fablet  <youenn@apple.com>
+
+        Resources loaded from service workers are not downloadable
+        https://bugs.webkit.org/show_bug.cgi?id=182848
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/workers/service/resources/download-binary.php: Added.
+        * http/tests/workers/service/resources/service-worker-download-worker.js: Added.
+        * http/tests/workers/service/service-worker-download.https-expected.txt: Added.
+        * http/tests/workers/service/service-worker-download.https.html: Added.
+
+2018-02-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/service-workers/service-worker/register-closed-window.https.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=182853
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
 2018-02-15  Ryan Haddad  <ryanhaddad@apple.com>
 
         Mark imported/w3c/web-platform-tests/XMLHttpRequest/event-upload-progress-crossorigin.htm as flaky.

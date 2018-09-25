@@ -170,7 +170,7 @@ WI.TabBrowser = class TabBrowser extends WI.View
         else
             this._tabBar.addTabBarItem(tabBarItem, options);
 
-        console.assert(this._recentTabContentViews.length === this._tabBar.normalTabCount);
+        console.assert(this._recentTabContentViews.length === this._tabBar.saveableTabCount);
         console.assert(!this.selectedTabContentView || this.selectedTabContentView === this._recentTabContentViews[0]);
 
         return true;
@@ -209,7 +209,7 @@ WI.TabBrowser = class TabBrowser extends WI.View
 
         this._tabBar.removeTabBarItem(tabContentView.tabBarItem, options);
 
-        console.assert(this._recentTabContentViews.length === this._tabBar.normalTabCount);
+        console.assert(this._recentTabContentViews.length === this._tabBar.saveableTabCount);
         console.assert(!this.selectedTabContentView || this.selectedTabContentView === this._recentTabContentViews[0]);
 
         return true;
@@ -233,8 +233,8 @@ WI.TabBrowser = class TabBrowser extends WI.View
         let tabContentView = this._tabBar.selectedTabBarItem ? this._tabBar.selectedTabBarItem.representedObject : null;
 
         if (tabContentView) {
-            let isSettingsTab = tabContentView instanceof WI.SettingsTabContentView;
-            if (!isSettingsTab) {
+            let shouldSaveTab = tabContentView.constructor.shouldSaveTab();
+            if (shouldSaveTab) {
                 this._recentTabContentViews.remove(tabContentView);
                 this._recentTabContentViews.unshift(tabContentView);
             }
@@ -242,8 +242,8 @@ WI.TabBrowser = class TabBrowser extends WI.View
             this._contentViewContainer.showContentView(tabContentView);
 
             console.assert(this.selectedTabContentView);
-            console.assert(this._recentTabContentViews.length === this._tabBar.normalTabCount);
-            console.assert(this.selectedTabContentView === this._recentTabContentViews[0] || isSettingsTab);
+            console.assert(this._recentTabContentViews.length === this._tabBar.saveableTabCount);
+            console.assert(this.selectedTabContentView === this._recentTabContentViews[0] || !shouldSaveTab);
         } else {
             this._contentViewContainer.closeAllContentViews();
 
@@ -290,7 +290,7 @@ WI.TabBrowser = class TabBrowser extends WI.View
 
         tabContentView.parentTabBrowser = null;
 
-        console.assert(this._recentTabContentViews.length === this._tabBar.normalTabCount);
+        console.assert(this._recentTabContentViews.length === this._tabBar.saveableTabCount);
         console.assert(!this.selectedTabContentView || this.selectedTabContentView === this._recentTabContentViews[0]);
     }
 
@@ -321,7 +321,7 @@ WI.TabBrowser = class TabBrowser extends WI.View
         if (!tabContentView)
             return;
 
-        if (event.target === this._navigationSidebar)
+        if (event.target === this._navigationSidebar && !tabContentView.managesNavigationSidebarPanel)
             tabContentView.navigationSidebarCollapsedSetting.value = this._navigationSidebar.collapsed;
         else if (event.target === this._detailsSidebar && !tabContentView.managesDetailsSidebarPanels)
             tabContentView.detailsSidebarCollapsedSetting.value = this._detailsSidebar.collapsed;
@@ -369,6 +369,12 @@ WI.TabBrowser = class TabBrowser extends WI.View
         var navigationSidebarPanel = tabContentView.navigationSidebarPanel;
         if (!navigationSidebarPanel) {
             this._navigationSidebar.collapsed = true;
+            this._ignoreSidebarEvents = false;
+            return;
+        }
+
+        if (tabContentView.managesNavigationSidebarPanel) {
+            tabContentView.showNavigationSidebarPanel();
             this._ignoreSidebarEvents = false;
             return;
         }

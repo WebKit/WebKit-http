@@ -529,10 +529,8 @@
 /* Graphics engines */
 
 /* USE(CG) and PLATFORM(CI) */
-#if PLATFORM(COCOA) || (PLATFORM(WIN) && !USE(WINGDI) && !PLATFORM(WIN_CAIRO) && !USE(DIRECT2D))
+#if PLATFORM(COCOA)
 #define USE_CG 1
-#endif
-#if PLATFORM(COCOA) || (PLATFORM(WIN) && USE(CG) && !USE(DIRECT2D))
 #define USE_CA 1
 #endif
 
@@ -624,10 +622,6 @@
 #endif
 
 #endif /* PLATFORM(IOS) */
-
-#if PLATFORM(WIN) && !USE(WINGDI) && !PLATFORM(WIN_CAIRO)
-#define USE_CFURLCONNECTION 1
-#endif
 
 #if PLATFORM(HAIKU)
 #define USE_HAIKU 1
@@ -776,8 +770,7 @@
 /* The JIT is enabled by default on all x86, x86-64, ARM & MIPS platforms except ARMv7k. */
 #if !defined(ENABLE_JIT) \
     && (CPU(X86) || CPU(X86_64) || CPU(ARM) || (CPU(ARM64) && !defined(__ILP32__)) || CPU(MIPS)) \
-    && !CPU(APPLE_ARMV7K) \
-    && !CPU(ARM64E)
+    && !CPU(APPLE_ARMV7K)
 #define ENABLE_JIT 1
 #endif
 
@@ -1069,24 +1062,20 @@
 #endif
 #endif
 
+#if ENABLE(WEBGL) && PLATFORM(COCOA)
+#if PLATFORM(MAC)
+#define USE_OPENGL 1
+#define USE_OPENGL_ES 0
+#else
+#define USE_OPENGL 0
+#define USE_OPENGL_ES 1
+#endif
+#endif
+
 #if ENABLE(WEBGL) && PLATFORM(WIN)
 #define USE_OPENGL 1
-#define USE_OPENGL_ES_2 1
+#define USE_OPENGL_ES 1
 #define USE_EGL 1
-#endif
-
-#if ENABLE(VIDEO) && PLATFORM(WIN_CAIRO)
-#if ENABLE(GSTREAMER_WINCAIRO)
-#define USE_MEDIA_FOUNDATION 0
-#define USE_GLIB 1
-#define USE_GSTREAMER 1
-#else
-#define USE_MEDIA_FOUNDATION 1
-#endif
-#endif
-
-#if PLATFORM(WIN_CAIRO)
-#define USE_TEXTURE_MAPPER 1
 #endif
 
 #if USE(TEXTURE_MAPPER) && ENABLE(GRAPHICS_CONTEXT_3D) && !defined(USE_TEXTURE_MAPPER_GL)
@@ -1228,7 +1217,11 @@
 #endif
 
 #if PLATFORM(COCOA) && !PLATFORM(IOS_SIMULATOR)
-#define USE_IOSURFACE 1
+#define HAVE_IOSURFACE 1
+#endif
+
+#if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
+#define HAVE_IOSURFACE_ACCELERATOR 1
 #endif
 
 #if PLATFORM(COCOA)

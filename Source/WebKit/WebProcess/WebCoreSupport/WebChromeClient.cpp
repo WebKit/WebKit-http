@@ -212,6 +212,11 @@ void WebChromeClient::makeFirstResponder()
     m_page.send(Messages::WebPageProxy::MakeFirstResponder());
 }
 
+void WebChromeClient::assistiveTechnologyMakeFirstResponder()
+{
+    m_page.send(Messages::WebPageProxy::AssistiveTechnologyMakeFirstResponder());
+}
+
 #endif    
 
 bool WebChromeClient::canTakeFocus(FocusDirection)
@@ -633,6 +638,7 @@ bool WebChromeClient::shouldUnavailablePluginMessageBeButton(RenderEmbeddedObjec
 
     case RenderEmbeddedObject::PluginCrashed:
     case RenderEmbeddedObject::PluginBlockedByContentSecurityPolicy:
+    case RenderEmbeddedObject::UnsupportedPlugin:
         return false;
     }
 

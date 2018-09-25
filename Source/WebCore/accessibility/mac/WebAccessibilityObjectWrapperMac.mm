@@ -3577,6 +3577,10 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     if ([action isEqualToString:NSAccessibilityPressAction])
         [self accessibilityPerformPressAction];
     
+    // Used in layout tests, so that we don't have to wait for the async press action.
+    else if ([action isEqualToString:@"AXSyncPressAction"])
+        [self _accessibilityPerformPressAction];
+    
     else if ([action isEqualToString:NSAccessibilityShowMenuAction])
         [self accessibilityPerformShowMenuAction];
     
@@ -3641,16 +3645,18 @@ static NSString* roleValueToNSString(AccessibilityRole value)
         bool focus = [number boolValue];
         
         // If focus is just set without making the view the first responder, then keyboard focus won't move to the right place.
-        if (focus && m_object->isWebArea() && !m_object->document()->frame()->selection().isFocusedAndActive()) {
+        if (focus && !m_object->document()->frame()->selection().isFocusedAndActive()) {
             FrameView* frameView = m_object->documentFrameView();
             Page* page = m_object->page();
             if (page && frameView) {
                 ChromeClient& chromeClient = page->chrome().client();
                 chromeClient.focus();
+                
+                // Legacy WebKit1 case.
                 if (frameView->platformWidget())
                     chromeClient.makeFirstResponder(frameView->platformWidget());
                 else
-                    chromeClient.makeFirstResponder();
+                    chromeClient.assistiveTechnologyMakeFirstResponder();
             }
         }
         
