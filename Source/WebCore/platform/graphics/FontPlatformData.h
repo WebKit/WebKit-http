@@ -229,7 +229,7 @@ public:
 #endif
     }
 
-#if PLATFORM(COCOA) || PLATFORM(WIN) || USE(FREETYPE)
+#if PLATFORM(COCOA) || PLATFORM(WIN) || PLATFORM(HAIKU) || USE(FREETYPE)
     RefPtr<SharedBuffer> openTypeTable(uint32_t table) const;
 #endif
 

@@ -50,7 +50,7 @@ namespace WebCore {
 
 const WTF::Seconds EventHandler::TextDragDelay = WTF::Seconds(0.0);
 
-bool EventHandler::tabsToAllFormControls(KeyboardEvent&) const
+bool EventHandler::tabsToAllFormControls(KeyboardEvent*) const
 {
     return true;
 }

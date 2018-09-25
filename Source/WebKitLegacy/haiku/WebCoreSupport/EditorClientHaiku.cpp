@@ -391,135 +391,13 @@ static const char* interpretEditorCommandKeyEvent(const KeyboardEvent* evt)
 
 void EditorClientHaiku::handleKeyboardEvent(KeyboardEvent* event)
 {
-    const PlatformKeyboardEvent* platformEvent = event->keyEvent();
+    const PlatformKeyboardEvent* platformEvent = event->underlyingPlatformEvent();
     if (!platformEvent || platformEvent->type() == PlatformKeyboardEvent::KeyUp)
         return;
 
 	if (handleEditingKeyboardEvent(event, platformEvent)) {
 	    event->setDefaultHandled();
-	    return;
 	}
-
-    Frame& frame = m_page->page()->focusController().focusedOrMainFrame();
-
-#if 1
-    switch (platformEvent->windowsVirtualKeyCode()) {
-#if 0
-// Handled in upper layer
-    case VK_UP:
-        frame->editor()->command("MoveUp").execute();
-        break;
-    case VK_DOWN:
-        frame->editor()->command("MoveDown").execute();
-        break;
-    case VK_PRIOR:  // PageUp
-        frame->editor()->command("MoveUpByPageAndModifyCaret").execute();
-        break;
-    case VK_NEXT:  // PageDown
-        frame->editor()->command("MoveDownByPageAndModifyCaret").execute();
-        break;
-#endif
-    default:
-        if (platformEvent->ctrlKey()) {
-        	switch (platformEvent->windowsVirtualKeyCode()) {
-#if 0
-// Handled in upper layer
-		    case VK_HOME:
-		        frame->editor().command("MoveToBeginningOfDocument").execute();
-		        break;
-		    case VK_END:
-                frame->editor().command("MoveToEndOfDocument").execute();
-		        break;
-#endif
-		    case VK_A:
-	            frame.editor().command("SelectAll").execute();
-		        break;
-		    case VK_C: case VK_X:
-	            frame.editor().command("Copy").execute();
-		        break;
-        	}
-        } else
-            return;
-    }
-    event->setDefaultHandled();
-#else
-    // Don't allow editor commands or text insertion for nodes that
-    // cannot edit, unless we are in caret mode.
-    if (!frame.editor()->canEdit() && !(frame.settings() && frame.settings()->caretBrowsingEnabled()))
-        return;
-
-    const char* editorCommandString = interpretEditorCommandKeyEvent(event);
-    if (editorCommandString) {
-        Editor::Command command = frame.editor()->command(editorCommandString);
-
-#if 0
-// FIXME: This doesn't work correctly, since for example VK_RETURN ends up here as
-// PlatformKeyboardEvent::RawKeyDown and isTextInsertion() on the other hand, so it
-// doesn't get executed. Can't say if the error is somehow that it ends up being a
-// RawKeyDown, or if this code (from GTK) is broken.
-        // On editor commands from key down events, we only want to let the event bubble up to
-        // the DOM if it inserts text. If it doesn't insert text (e.g. Tab that changes focus)
-        // we just want WebKit to handle it immediately without a DOM event.
-        if (platformEvent->type() == PlatformKeyboardEvent::RawKeyDown) {
-            if (!command.isTextInsertion() && command.execute(event))
-                event->setDefaultHandled();
-
-            return;
-        } else if (command.execute(event)) {
-            event->setDefaultHandled();
-            return;
-        }
-#endif
-        if (command.execute(event)) {
-            event->setDefaultHandled();
-            return;
-        }
-    }
-
-    // This is just a normal text insertion, so wait to execute the insertion
-    // until a keypress event happens. This will ensure that the insertion will not
-    // be reflected in the contents of the field until the keyup DOM event.
-    if (event->type() == eventNames().keypressEvent) {
-
-#define ENABLE_INPUT_METHOD_STUFF 0
-#if ENABLE_INPUT_METHOD_STUFF
-        if (m_pendingComposition.Length()) {
-            frame->editor()->confirmComposition(m_pendingComposition);
-
-            clearPendingIMData();
-            event->setDefaultHandled();
-
-        } else if (m_pendingPreedit.Length()) {
-            String preeditString = m_pendingPreedit;
-
-            // Don't use an empty preedit as it will destroy the current
-            // selection, even if the composition is cancelled or fails later on.
-            if (!preeditString.isEmpty()) {
-                Vector<CompositionUnderline> underlines;
-                underlines.append(CompositionUnderline(0, preeditString.length(), Color(0, 0, 0), false));
-                frame->editor()->setComposition(preeditString, underlines, 0, 0);
-            }
-
-            clearPendingIMData();
-            event->setDefaultHandled();
-
-        } else {
-#endif
-            // Don't insert null or control characters as they can result in unexpected behaviour
-            if (event->charCode() < ' ')
-                return;
-
-            // Don't insert anything if a modifier is pressed
-            if (platformEvent->ctrlKey() || platformEvent->altKey())
-                return;
-
-            if (frame->editor()->insertText(platformEvent->text(), event))
-                event->setDefaultHandled();
-#if ENABLE_INPUT_METHOD_STUFF
-        }
-#endif
-    }
-#endif
 }
 
 void EditorClientHaiku::handleInputMethodKeydown(KeyboardEvent*)
@@ -761,6 +639,12 @@ bool EditorClientHaiku::handleEditingKeyboardEvent(KeyboardEvent* event,
                 else
                     frame.editor().command("Undo").execute();
                 break;
+		    case VK_A:
+	            frame.editor().command("SelectAll").execute();
+		        break;
+		    case VK_C:
+	            frame.editor().command("Copy").execute();
+		        break;
             default:
                 return false;
             }

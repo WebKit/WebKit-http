@@ -2,6 +2,9 @@ include(platform/ImageDecoders.cmake)
 include(platform/TextureMapper.cmake)
 
 list(APPEND WebCore_INCLUDE_DIRECTORIES
+  "${THIRDPARTY_DIR}/ANGLE/"
+  "${THIRDPARTY_DIR}/ANGLE/include/KHR"
+  "${WEBCORE_DIR}/PAL"
   "${WEBCORE_DIR}/page/scrolling/coordinatedgraphics"
   "${WEBCORE_DIR}/platform/haiku"
   "${WEBCORE_DIR}/platform/graphics/haiku"

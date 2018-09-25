@@ -234,7 +234,7 @@ bool Pasteboard::canSmartReplace()
 }
 
 
-void Pasteboard::read(PasteboardWebContentReader&)
+void Pasteboard::read(PasteboardWebContentReader&, WebContentReadingPolicy)
 {
     notImplemented();
 }

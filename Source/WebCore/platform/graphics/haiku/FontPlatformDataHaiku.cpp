@@ -25,6 +25,7 @@
 #include "FontDescription.h"
 #include "FontPlatformData.h"
 #include "SharedBuffer.h"
+#include "NotImplemented.h"
 
 #include <String.h>
 
@@ -200,6 +201,12 @@ void
 FontPlatformData::SetFallBackStandardFont(const BString& font)
 {
 	strncpy(m_FallbackStandardFontFamily, font.String(), B_FONT_FAMILY_LENGTH + 1);
+}
+
+RefPtr<SharedBuffer> FontPlatformData::openTypeTable(uint32_t table) const
+{
+	notImplemented();
+	return nullptr;
 }
 
 } // namespace WebCore
