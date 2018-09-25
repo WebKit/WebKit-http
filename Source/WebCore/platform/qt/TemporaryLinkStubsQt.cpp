@@ -58,11 +58,6 @@ void setCookieStoragePrivateBrowsingEnabled(bool)
     notImplemented();
 }
 
-void startObservingCookieChanges(CookieChangeCallbackPtr)
-{
-    notImplemented();
-}
-
 void stopObservingCookieChanges()
 {
     notImplemented();

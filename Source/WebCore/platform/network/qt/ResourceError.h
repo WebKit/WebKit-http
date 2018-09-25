@@ -41,6 +41,9 @@ public:
         : ResourceErrorBase(domain, errorCode, failingURL, localizedDescription)
     {
     }
+
+    void doPlatformIsolatedCopy(const ResourceError&);
+
 };
 
 }

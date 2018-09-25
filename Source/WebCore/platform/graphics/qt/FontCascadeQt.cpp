@@ -140,16 +140,17 @@ static void drawQtGlyphRun(GraphicsContext& context, const QGlyphRun& qtGlyphRun
             const QRawFont& font = qtGlyphRun.rawFont();
             const qreal height = font.ascent() + font.descent();
             const QRectF boundingRect(point.x(), point.y() - font.ascent() + baseLineOffset, width, height);
-            GraphicsContext* shadowContext = shadow.beginShadowLayer(context, boundingRect);
-            if (shadowContext) {
-                QPainter* shadowPainter = shadowContext->platformContext();
+
+            shadow.drawShadowLayer(context.getCTM(), context.clipBounds(), boundingRect,
+                [state, point, qtGlyphRun, textStrokePath](GraphicsContext& shadowContext)
+            {
+                QPainter* shadowPainter = shadowContext.platformContext();
                 shadowPainter->setPen(state.shadowColor);
-                if (shadowContext->textDrawingMode() & TextModeFill)
+                if (shadowContext.textDrawingMode() & TextModeFill)
                     shadowPainter->drawGlyphRun(point, qtGlyphRun);
                 else if (shadowContext->textDrawingMode() & TextModeStroke)
                     shadowPainter->strokePath(textStrokePath, shadowPainter->pen());
-                shadow.endShadowLayer(context);
-            }
+            });
         } else {
             QPen previousPen = painter->pen();
             painter->setPen(state.shadowColor);
@@ -224,7 +225,7 @@ int FontCascade::offsetForPositionForComplexText(const TextRun& run, float posit
     return line.xToCursor(position);
 }
 
-void FontCascade::adjustSelectionRectForComplexText(const TextRun& run, LayoutRect& selectionRect, int from, int to) const
+void FontCascade::adjustSelectionRectForComplexText(const TextRun& run, LayoutRect& selectionRect, unsigned from, unsigned to) const
 {
     QString string = toNormalizedQString(run);
 
@@ -276,19 +277,19 @@ bool FontCascade::canReturnFallbackFontsForComplexText()
     return false;
 }
 
-float FontCascade::getGlyphsAndAdvancesForComplexText(const TextRun&, int, int, GlyphBuffer&, ForTextEmphasisOrNot) const
+float FontCascade::getGlyphsAndAdvancesForComplexText(const TextRun&, unsigned, unsigned, GlyphBuffer&, ForTextEmphasisOrNot) const
 {
     // FIXME
     notImplemented();
     return 0.f;
 }
 
-void FontCascade::drawEmphasisMarksForComplexText(GraphicsContext& /* context */, const TextRun& /* run */, const AtomicString& /* mark */, const FloatPoint& /* point */, int /* from */, int /* to */) const
+void FontCascade::drawEmphasisMarksForComplexText(GraphicsContext& /* context */, const TextRun& /* run */, const AtomicString& /* mark */, const FloatPoint& /* point */, unsigned /* from */, unsigned /* to */) const
 {
     notImplemented();
 }
 
-void FontCascade::drawGlyphs(GraphicsContext& context, const Font& font, const GlyphBuffer& glyphBuffer, int from, int numGlyphs, const FloatPoint& point, FontSmoothingMode)
+void FontCascade::drawGlyphs(GraphicsContext& context, const Font& font, const GlyphBuffer& glyphBuffer, unsigned from, unsigned numGlyphs, const FloatPoint& point, FontSmoothingMode)
 {
     if (!font.platformData().size())
         return;

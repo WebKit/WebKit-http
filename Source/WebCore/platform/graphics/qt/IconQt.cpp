@@ -37,7 +37,7 @@ Icon::~Icon()
 }
 
 // FIXME: Move the code to ChromeClient::iconForFiles().
-PassRefPtr<Icon> Icon::createIconForFiles(const Vector<String>& filenames)
+RefPtr<Icon> Icon::createIconForFiles(const Vector<String>& filenames)
 {
     if (filenames.isEmpty())
         return 0;
@@ -71,7 +71,7 @@ PassRefPtr<Icon> Icon::createIconForFiles(const Vector<String>& filenames)
 
     if (icon->m_icon.isNull())
         return 0;
-    return icon.release();
+    return icon;
 }
 
 void Icon::paint(GraphicsContext& context, const FloatRect& rect)

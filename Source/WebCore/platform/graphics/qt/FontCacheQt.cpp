@@ -88,13 +88,7 @@ Ref<Font> FontCache::lastResortFallbackFont(const FontDescription& fontDescripti
     return fontForPlatformData(platformData);
 }
 
-Vector<FontTraitsMask> FontCache::getTraitsInFamily(const AtomicString&)
-{
-    Vector<FontTraitsMask> result;
-    return result;
-}
-
-std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDescription& fontDescription, const AtomicString& familyName, const FontFeatureSettings*, const FontVariantSettings*)
+std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDescription& fontDescription, const AtomicString& familyName, const FontFeatureSettings*, const FontVariantSettings*, FontSelectionSpecifiedCapabilities)
 {
     QFontDatabase db;
     if (!db.hasFamily(familyName))

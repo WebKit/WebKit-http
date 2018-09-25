@@ -49,15 +49,15 @@ namespace WebCore {
             return adoptRef(new StillImage(WTFMove(pixmap)));
         }
 
-        bool currentFrameKnownToBeOpaque() override;
+        bool currentFrameKnownToBeOpaque();
 
         // FIXME: StillImages are underreporting decoded sizes and will be unable
         // to prune because these functions are not implemented yet.
         void destroyDecodedData(bool destroyAll = true) override { Q_UNUSED(destroyAll); }
 
         FloatSize size() const override;
-        PassNativeImagePtr nativeImageForCurrentFrame() override;
-        void draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, ImageOrientationDescription) override;
+        NativeImagePtr nativeImageForCurrentFrame();
+        void draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, ImageOrientationDescription);
 
     private:
         StillImage(const QPixmap&);

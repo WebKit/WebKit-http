@@ -308,7 +308,7 @@ void TextureMapperGL::drawNumber(int number, const Color& color, const FloatPoin
 
     RefPtr<BitmapTexture> texture = acquireTextureFromPool(size);
     const uchar* bits = image.bits();
-    static_cast<BitmapTextureGL*>(texture.get())->updateContentsNoSwizzle(bits, sourceRect, IntPoint::zero(), image.bytesPerLine());
+    static_cast<BitmapTextureGL*>(texture.get())->updateContents(bits, sourceRect, IntPoint::zero(), image.bytesPerLine());
     drawTexture(*texture, targetRect, modelViewMatrix, 1.0f, AllEdges);
 
 #elif USE(CAIRO)

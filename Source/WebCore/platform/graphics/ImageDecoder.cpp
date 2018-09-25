@@ -30,6 +30,8 @@
 #include "ImageDecoderCG.h"
 #elif USE(DIRECT2D)
 #include "ImageDecoderDirect2D.h"
+#elif PLATFORM(QT)
+#include "ImageDecoderQt.h"
 #else
 #include "ScalableImageDecoder.h"
 #endif
@@ -53,6 +55,8 @@ RefPtr<ImageDecoder> ImageDecoder::create(SharedBuffer& data, const String& mime
     return ImageDecoderCG::create(data, alphaOption, gammaAndColorProfileOption);
 #elif USE(DIRECT2D)
     return ImageDecoderDirect2D::create(data, alphaOption, gammaAndColorProfileOption);
+#elif PLATFORM(QT)
+    return ImageDecoderQt::create(data, alphaOption, gammaAndColorProfileOption);
 #else
     return ScalableImageDecoder::create(data, alphaOption, gammaAndColorProfileOption);
 #endif
@@ -65,6 +69,9 @@ bool ImageDecoder::supportsMediaType(MediaType type)
         return true;
 #elif USE(DIRECT2D)
     if (ImageDecoderDirect2D::supportsMediaType(type))
+        return true;
+#elif PLATFORM(QT)
+    if (ImageDecoderQt::supportsMediaType(type))
         return true;
 #else
     if (ScalableImageDecoder::supportsMediaType(type))

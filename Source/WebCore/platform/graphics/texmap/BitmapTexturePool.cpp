@@ -43,7 +43,7 @@ static const Seconds releaseUnusedTexturesTimerInterval { 500_ms };
 
 #if PLATFORM(QT)
 BitmapTexturePool::BitmapTexturePool()
-    : m_releaseUnusedTexturesTimer(*this, &BitmapTexturePool::releaseUnusedTexturesTimerFired)
+    : m_releaseUnusedTexturesTimer(RunLoop::current(), this, &BitmapTexturePool::releaseUnusedTexturesTimerFired)
 {
 }
 #endif

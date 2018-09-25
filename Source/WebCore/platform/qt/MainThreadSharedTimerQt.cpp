@@ -106,12 +106,12 @@ void SharedTimerQt::timerEvent(QTimerEvent* ev)
         MainThreadSharedTimer::singleton().fired();
 }
 
-void MainThreadSharedTimer::setFireInterval(double interval)
+void MainThreadSharedTimer::setFireInterval(Seconds interval)
 {
     if (!QCoreApplication::instance())
         return;
 
-    SharedTimerQt::inst()->start(interval);
+    SharedTimerQt::inst()->start(interval.value());
 }
 
 void MainThreadSharedTimer::stop()

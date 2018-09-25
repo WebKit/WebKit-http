@@ -215,32 +215,60 @@ static inline void getAnimationParametersForGranularity(ScrollGranularity granul
     case ScrollByDocument:
         animationTime = tickTime * 10;
         repeatMinimumSustainTime = tickTime * 10;
+#if !PLATFORM(QT)
         attackTime = tickTime * 10;
         releaseTime = tickTime * 10;
         coastTimeCurve = ScrollAnimationSmooth::Curve::Linear;
         maximumCoastTime = 1_s;
+#else
+        attackTime = tickTime * 6;
+        releaseTime = tickTime * 10;
+        coastTimeCurve = ScrollAnimationSmooth::Curve::Quadratic;
+        maximumCoastTime = 22_s;
+#endif
         break;
     case ScrollByLine:
+#if !PLATFORM(QT)
         animationTime = tickTime * 10;
         repeatMinimumSustainTime = tickTime * 7;
         attackTime = tickTime * 3;
         releaseTime = tickTime * 3;
+#else
+        animationTime = tickTime * 6;
+        repeatMinimumSustainTime = tickTime * 5;
+        attackTime = tickTime * 1;
+        releaseTime = tickTime * 4;
+#endif
         coastTimeCurve = ScrollAnimationSmooth::Curve::Linear;
         maximumCoastTime = 1_s;
         break;
     case ScrollByPage:
+#if !PLATFORM(QT)
         animationTime = tickTime * 15;
         repeatMinimumSustainTime = tickTime * 10;
         attackTime = tickTime * 5;
         releaseTime = tickTime * 5;
+#else
+        animationTime = tickTime * 12;
+        repeatMinimumSustainTime = tickTime * 10;
+        attackTime = tickTime * 3;
+        releaseTime = tickTime * 6;
+#endif
         coastTimeCurve = ScrollAnimationSmooth::Curve::Linear;
         maximumCoastTime = 1_s;
         break;
     case ScrollByPixel:
+#if !PLATFORM(QT)
         animationTime = tickTime * 11;
         repeatMinimumSustainTime = tickTime * 2;
         attackTime = tickTime * 3;
         releaseTime = tickTime * 3;
+#else
+        animationTime = tickTime * 8;
+        repeatMinimumSustainTime = tickTime * 3;
+        attackTime = tickTime * 2;
+        releaseTime = tickTime * 5;
+#endif
         coastTimeCurve = ScrollAnimationSmooth::Curve::Quadratic;
         maximumCoastTime = 1250_ms;
         break;
@@ -327,7 +355,11 @@ bool ScrollAnimationSmooth::updatePerAxisData(PerAxisData& data, ScrollGranulari
     }
 
     double releaseSpot = (data.releaseTime - releaseTimeLeft) / data.releaseTime;
+#if !PLATFORM(QT)
     double releaseAreaLeft = releaseArea(Curve::Cubic, releaseSpot, 1) * data.releaseTime.value();
+#else
+    double releaseAreaLeft = releaseArea(Curve::Quadratic, releaseSpot, 1) * data.releaseTime.value();
+#endif
 
     data.desiredVelocity = remainingDelta / (attackAreaLeft + sustainTimeLeft.value() + releaseAreaLeft);
     data.releasePosition = data.desiredPosition - data.desiredVelocity * releaseAreaLeft;

@@ -44,7 +44,7 @@ RefPtr<GestureEvent> GestureEvent::create(AbstractView* view, const PlatformGest
     default:
         return 0;
     }
-    return adoptRef(new GestureEvent(eventType, event.timestamp(), view, event.globalPosition().x(), event.globalPosition().y(), event.position().x(), event.position().y(), event.ctrlKey(), event.altKey(), event.shiftKey(), event.metaKey()));
+    return adoptRef(new GestureEvent(eventType, MonotonicTime(event.timestamp()), view, event.globalPosition().x(), event.globalPosition().y(), event.position().x(), event.position().y(), event.modifierKeys()));
 }
 
 EventInterface GestureEvent::eventInterface() const
@@ -53,12 +53,12 @@ EventInterface GestureEvent::eventInterface() const
     return EventInterfaceType;
 }
 
-GestureEvent::GestureEvent(const AtomicString& type, double timestamp, AbstractView* view, int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey)
-    : MouseRelatedEvent(type, true, true, timestamp, view, 0, IntPoint(screenX, screenY), IntPoint(clientX, clientY)
+GestureEvent::GestureEvent(const AtomicString& type, MonotonicTime timestamp, AbstractView* view, int screenX, int screenY, int clientX, int clientY, OptionSet<Modifier> modifiers)
+    : MouseRelatedEvent(type, CanBubble::Yes, IsCancelable::Yes, IsComposed::Yes, timestamp, view, 0, IntPoint(screenX, screenY), IntPoint(clientX, clientY)
 #if ENABLE(POINTER_LOCK)
         , IntPoint(0, 0)
 #endif
-        , ctrlKey, altKey, shiftKey, metaKey)
+        , modifierKeys)
 {
 }
 

@@ -45,7 +45,7 @@ public:
     QRawFont m_rawFont;
 };
 
-std::unique_ptr<FontCustomPlatformData> createFontCustomPlatformData(SharedBuffer&);
+std::unique_ptr<FontCustomPlatformData> createFontCustomPlatformData(SharedBuffer&, const String&);
 
 } // namespace WebCore
 

@@ -55,15 +55,15 @@ namespace WebCore {
 
 #if ENABLE(DRAG_SUPPORT)
 #if defined(Q_OS_MACOS)
-const double EventHandler::TextDragDelay = 0.15;
+const double EventHandler::TextDragDelay { 0.15_s };
 #else
-const double EventHandler::TextDragDelay = 0.0;
+const Seconds EventHandler::TextDragDelay { 0.0_s };
 #endif
 #endif
 
 bool EventHandler::tabsToAllFormControls(KeyboardEvent* event) const
 {
-    return !isKeyboardOptionTab(event);
+    return !isKeyboardOptionTab(*event);
 }
 
 void EventHandler::focusDocumentView()
@@ -88,20 +88,13 @@ bool EventHandler::eventActivatedView(const PlatformMouseEvent&) const
     return false;
 }
 
-bool EventHandler::passWheelEventToWidget(const PlatformWheelEvent& event, Widget& widget)
+bool EventHandler::widgetDidHandleWheelEvent(const PlatformWheelEvent& event, Widget& widget)
 {
     if (!widget.isFrameView())
         return false;
 
     return downcast<FrameView>(widget).frame().eventHandler().handleWheelEvent(event);
 }
-
-#if ENABLE(DRAG_SUPPORT)
-PassRefPtr<DataTransfer> EventHandler::createDraggingDataTransfer() const
-{
-    return DataTransfer::createForDragAndDrop();
-}
-#endif
 
 bool EventHandler::passMousePressEventToSubframe(MouseEventWithHitTestResults& mev, Frame* subframe)
 {
@@ -121,7 +114,7 @@ bool EventHandler::passMouseReleaseEventToSubframe(MouseEventWithHitTestResults&
     return true;
 }
 
-unsigned EventHandler::accessKeyModifiers()
+OptionSet<PlatformEvent::Modifier> EventHandler::accessKeyModifiers()
 {
 #if OS(DARWIN)
     // On macOS, the ControlModifier value corresponds
@@ -129,11 +122,11 @@ unsigned EventHandler::accessKeyModifiers()
     // and the MetaModifier value corresponds to the Control keys.
     // See http://doc.qt.io/qt-5/qt.html#KeyboardModifier-enum
     if (UNLIKELY(QCoreApplication::testAttribute(Qt::AA_MacDontSwapCtrlAndMeta)))
-        return PlatformEvent::CtrlKey | PlatformEvent::AltKey;
+        return { PlatformEvent::CtrlKey, PlatformEvent::AltKey };
     else
-        return PlatformEvent::MetaKey | PlatformEvent::AltKey;
+        return { PlatformEvent::MetaKey, PlatformEvent::AltKey };
 #else
-    return PlatformEvent::AltKey;
+    return PlatformEvent::Modifier::AltKey;
 #endif
 }
 

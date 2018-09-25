@@ -28,6 +28,7 @@
 
 #include "config.h"
 #include "ImageDecoderQt.h"
+#include "ImageSource.h"
 
 #include <QtCore/QBuffer>
 #include <QtCore/QByteArray>
@@ -37,8 +38,8 @@
 namespace WebCore {
 
 ImageDecoderQt::ImageDecoderQt(ImageSource::AlphaOption alphaOption, ImageSource::GammaAndColorProfileOption gammaAndColorProfileOption)
-    : ImageDecoder(alphaOption, gammaAndColorProfileOption)
-    , m_repetitionCount(cAnimationNone)
+    : ScalableImageDecoder(alphaOption, gammaAndColorProfileOption)
+    , m_repetitionCount(RepetitionCountNone)
 {
 }
 
@@ -65,7 +66,7 @@ static bool isFormatWhiteListed(const QByteArray &format)
     return whiteListSet.contains(format);
 }
 
-void ImageDecoderQt::setData(SharedBuffer* data, bool allDataReceived)
+void ImageDecoderQt::setData(&SharedBuffer data, bool allDataReceived)
 {
     if (failed())
         return;
@@ -75,7 +76,7 @@ void ImageDecoderQt::setData(SharedBuffer* data, bool allDataReceived)
         return;
 
     // Cache our own new data.
-    ImageDecoder::setData(data, allDataReceived);
+    ScalableImageDecoder::setData(data, allDataReceived);
 
     // We expect to be only called once with allDataReceived
     ASSERT(!m_buffer);
@@ -100,15 +101,15 @@ void ImageDecoderQt::setData(SharedBuffer* data, bool allDataReceived)
     }
 }
 
-bool ImageDecoderQt::isSizeAvailable()
+bool ImageDecoderQt::isSizeAvailable() const
 {
-    if (!ImageDecoder::isSizeAvailable() && m_reader)
+    if (!ScalableImageDecoder::isSizeAvailable() && m_reader)
         internalDecodeSize();
 
-    return ImageDecoder::isSizeAvailable();
+    return ScalableImageDecoder::isSizeAvailable();
 }
 
-size_t ImageDecoderQt::frameCount()
+size_t ImageDecoderQt::frameCount() const
 {
     if (m_frameBufferCache.isEmpty() && m_reader) {
         if (m_reader->supportsAnimation()) {
@@ -133,7 +134,7 @@ size_t ImageDecoderQt::frameCount()
     return m_frameBufferCache.size();
 }
 
-int ImageDecoderQt::repetitionCount() const
+RepetitionCount ImageDecoderQt::repetitionCount() const
 {
     if (m_reader && m_reader->supportsAnimation())
         m_repetitionCount = m_reader->loopCount();
@@ -183,7 +184,7 @@ void ImageDecoderQt::internalDecodeSize()
     setSize(size.width(), size.height());
 
     // We don't need the tables set by prepareScaleDataIfNecessary,
-    // but their dimensions are used by ImageDecoder::scaledSize().
+    // but their dimensions are used by ScalableImageDecoder::scaledSize().
     prepareScaleDataIfNecessary();
     if (m_scaled)
         m_reader->setScaledSize(scaledSize());

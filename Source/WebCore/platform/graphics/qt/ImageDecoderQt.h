@@ -27,7 +27,8 @@
 #ifndef ImageDecoderQt_h
 #define ImageDecoderQt_h
 
-#include "ImageDecoder.h"
+#include "ScalableImageDecoder.h"
+#include "ImageSource.h"
 #include <QtCore/QBuffer>
 #include <QtCore/QHash>
 #include <QtCore/QList>
@@ -37,16 +38,16 @@
 namespace WebCore {
 
 
-class ImageDecoderQt final : public ImageDecoder
+class ImageDecoderQt final : public ScalableImageDecoder
 {
 public:
-    ImageDecoderQt(ImageSource::AlphaOption, ImageSource::GammaAndColorProfileOption);
+    ImageDecoderQt(AlphaOption, GammaAndColorProfileOption);
     ~ImageDecoderQt();
 
-    void setData(SharedBuffer* data, bool allDataReceived) final;
-    bool isSizeAvailable() final;
-    size_t frameCount() final;
-    int repetitionCount() const final;
+    void setData(&SharedBuffer data, bool allDataReceived) final;
+    bool isSizeAvailable() const final;
+    size_t frameCount() const final;
+    RepetitionCount repetitionCount() const final;
     ImageFrame* frameBufferAtIndex(size_t index) final;
 
     String filenameExtension() const final;
@@ -68,7 +69,7 @@ private:
     QByteArray m_format;
     std::unique_ptr<QBuffer> m_buffer;
     std::unique_ptr<QImageReader> m_reader;
-    mutable int m_repetitionCount;
+    mutable RepetitionCount m_repetitionCount;
 };
 
 
@@ -76,4 +77,3 @@ private:
 }
 
 #endif
-

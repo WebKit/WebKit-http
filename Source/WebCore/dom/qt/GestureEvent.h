@@ -47,7 +47,7 @@ public:
     EventInterface eventInterface() const override;
 
 private:
-    GestureEvent(const AtomicString& type, double timestamp, AbstractView*, int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey);
+    GestureEvent(const AtomicString& type, MonotonicTime timestamp, AbstractView*, int screenX, int screenY, int clientX, int clientY, OptionSet<Modifier> modifiers);
 };
 
 } // namespace WebCore

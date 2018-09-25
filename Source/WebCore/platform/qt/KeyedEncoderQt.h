@@ -39,7 +39,7 @@ namespace WebCore {
 class KeyedEncoderQt final : public KeyedEncoder {
 public:
     KeyedEncoderQt();
-    PassRefPtr<WebCore::SharedBuffer> finishEncoding() override;
+    RefPtr<WebCore::SharedBuffer> finishEncoding() override;
 
     QVariantMap& toMap();
     void encodeVariant(const String& key, const QVariant&);

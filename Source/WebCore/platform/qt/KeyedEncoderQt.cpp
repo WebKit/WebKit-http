@@ -121,7 +121,7 @@ void KeyedEncoderQt::endArray()
     currentObject().insert(arrayKV.first, arrayKV.second);
 }
 
-PassRefPtr<SharedBuffer> KeyedEncoderQt::finishEncoding()
+RefPtr<SharedBuffer> KeyedEncoderQt::finishEncoding()
 {
     QByteArray data;
     QDataStream stream(&data, QIODevice::WriteOnly);

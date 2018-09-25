@@ -373,7 +373,7 @@ extern const char* const WebURLNamePboardType;
 extern const char* const WebURLsWithTitlesPboardType;
 #endif
 
-#if !(PLATFORM(GTK) || PLATFORM(QT))
+#if !PLATFORM(GTK) && !PLATFORM(QT)
 
 inline Pasteboard::~Pasteboard()
 {

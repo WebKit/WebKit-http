@@ -42,71 +42,71 @@ String keyIdentifierForQtKeyCode(int keyCode)
     // Based on http://www.w3.org/TR/DOM-Level-3-Events/#key-values-list
     switch (keyCode) {
     case Qt::Key_unknown:
-        return ASCIILiteral("Unidentified");
+        return "Unidentified"_s;
     case Qt::Key_Alt:
-        return ASCIILiteral("Alt");
+        return "Alt"_s;
     case Qt::Key_AltGr:
-        return ASCIILiteral("AltGraph");
+        return "AltGraph"_s;
     case Qt::Key_Control:
-        return ASCIILiteral("Control");
+        return "Control"_s;
     case Qt::Key_Meta:
-        return ASCIILiteral("Meta");
+        return "Meta"_s;
     case Qt::Key_Shift:
-        return ASCIILiteral("Shift");
+        return "Shift"_s;
     case Qt::Key_Multi_key:
-        return ASCIILiteral("Compose");
+        return "Compose"_s;
     case Qt::Key_F1:
-        return ASCIILiteral("F1");
+        return "F1"_s;
     case Qt::Key_F2:
-        return ASCIILiteral("F2");
+        return "F2"_s;
     case Qt::Key_F3:
-        return ASCIILiteral("F3");
+        return "F3"_s;
     case Qt::Key_F4:
-        return ASCIILiteral("F4");
+        return "F4"_s;
     case Qt::Key_F5:
-        return ASCIILiteral("F5");
+        return "F5"_s;
     case Qt::Key_F6:
-        return ASCIILiteral("F6");
+        return "F6"_s;
     case Qt::Key_F7:
-        return ASCIILiteral("F7");
+        return "F7"_s;
     case Qt::Key_F8:
-        return ASCIILiteral("F8");
+        return "F8"_s;
     case Qt::Key_F9:
-        return ASCIILiteral("F9");
+        return "F9"_s;
     case Qt::Key_F10:
-        return ASCIILiteral("F10");
+        return "F10"_s;
     case Qt::Key_F11:
-        return ASCIILiteral("F11");
+        return "F11"_s;
     case Qt::Key_F12:
-        return ASCIILiteral("F12");
+        return "F12"_s;
     case Qt::Key_F13:
-        return ASCIILiteral("F13");
+        return "F13"_s;
     case Qt::Key_F14:
-        return ASCIILiteral("F14");
+        return "F14"_s;
     case Qt::Key_F15:
-        return ASCIILiteral("F15");
+        return "F15"_s;
     case Qt::Key_F16:
-        return ASCIILiteral("F16");
+        return "F16"_s;
     case Qt::Key_F17:
-        return ASCIILiteral("F17");
+        return "F17"_s;
     case Qt::Key_F18:
-        return ASCIILiteral("F18");
+        return "F18"_s;
     case Qt::Key_F19:
-        return ASCIILiteral("F19");
+        return "F19"_s;
     case Qt::Key_F20:
-        return ASCIILiteral("F20");
+        return "F20"_s;
     case Qt::Key_F21:
-        return ASCIILiteral("F21");
+        return "F21"_s;
     case Qt::Key_F22:
-        return ASCIILiteral("F22");
+        return "F22"_s;
     case Qt::Key_F23:
-        return ASCIILiteral("F23");
+        return "F23"_s;
     case Qt::Key_F24:
-        return ASCIILiteral("F24");
+        return "F24"_s;
     // 'LaunchApplication1'
     // 'LaunchApplication2'
     case Qt::Key_LaunchMail:
-        return ASCIILiteral("LaunchMail");
+        return "LaunchMail"_s;
     // 'List'
     // 'Props'
     // 'Soft1'
@@ -114,235 +114,235 @@ String keyIdentifierForQtKeyCode(int keyCode)
     // 'Soft3'
     // 'Soft4'
     case Qt::Key_Yes:
-        return ASCIILiteral("Accept");
+        return "Accept"_s;
     // 'Again'
     case Qt::Key_Return:
     case Qt::Key_Enter:
-        return ASCIILiteral("Enter");
+        return "Enter"_s;
     case Qt::Key_Help:
-        return ASCIILiteral("Help");
+        return "Help"_s;
     case Qt::Key_Menu:
     case Qt::Key_MenuKB:
-        return ASCIILiteral("Menu");
+        return "Menu"_s;
     case Qt::Key_Pause:
-        return ASCIILiteral("Pause");
+        return "Pause"_s;
     case Qt::Key_Play:
-        return ASCIILiteral("Play");
+        return "Play"_s;
     case Qt::Key_Execute:
-        return ASCIILiteral("Execute");
+        return "Execute"_s;
     case Qt::Key_Cancel:
-        return ASCIILiteral("Cancel");
+        return "Cancel"_s;
     case Qt::Key_Escape:
-        return ASCIILiteral("Esc");
+        return "Esc"_s;
     case Qt::Key_Zoom:
-        return ASCIILiteral("Zoom");
+        return "Zoom"_s;
     case Qt::Key_Comma:
-        return ASCIILiteral("Separator");
+        return "Separator"_s;
     case Qt::Key_Plus:
-        return ASCIILiteral("Add");
+        return "Add"_s;
     case Qt::Key_Minus:
-        return ASCIILiteral("Subtract");
+        return "Subtract"_s;
     case Qt::Key_Asterisk:
-        return ASCIILiteral("Multiply");
+        return "Multiply"_s;
     case Qt::Key_Slash:
-        return ASCIILiteral("Divide");
+        return "Divide"_s;
     case Qt::Key_Equal:
-        return ASCIILiteral("Equals");
+        return "Equals"_s;
     case Qt::Key_Period:
-        return ASCIILiteral("Decimal");
+        return "Decimal"_s;
     case Qt::Key_MonBrightnessDown:
-        return ASCIILiteral("BrightnessDown");
+        return "BrightnessDown"_s;
     case Qt::Key_MonBrightnessUp:
-        return ASCIILiteral("BrightnessUp");
+        return "BrightnessUp"_s;
     case Qt::Key_Camera:
-        return ASCIILiteral("Camera");
+        return "Camera"_s;
     case Qt::Key_Eject:
-        return ASCIILiteral("Eject");
+        return "Eject"_s;
     case Qt::Key_PowerDown:
     case Qt::Key_PowerOff:
-        return ASCIILiteral("Power");
+        return "Power"_s;
     case Qt::Key_Print:
-        return ASCIILiteral("PrintScreen");
+        return "PrintScreen"_s;
     case Qt::Key_Favorites:
-        return ASCIILiteral("BrowserFavorites");
+        return "BrowserFavorites"_s;
     case Qt::Key_HomePage:
-        return ASCIILiteral("BrowserHome");
+        return "BrowserHome"_s;
     case Qt::Key_Refresh:
-        return ASCIILiteral("BrowserRefresh");
+        return "BrowserRefresh"_s;
     case Qt::Key_Search:
-        return ASCIILiteral("BrowserSearch");
+        return "BrowserSearch"_s;
     case Qt::Key_Stop:
-        return ASCIILiteral("BrowserStop");
+        return "BrowserStop"_s;
     case Qt::Key_Back:
-        return ASCIILiteral("BrowserBack");
+        return "BrowserBack"_s;
     case Qt::Key_Forward:
-        return ASCIILiteral("BrowserForward");
+        return "BrowserForward"_s;
     case Qt::Key_Left:
-        return ASCIILiteral("Left");
+        return "Left"_s;
     case Qt::Key_PageDown:
-        return ASCIILiteral("PageDown");
+        return "PageDown"_s;
     case Qt::Key_PageUp:
-        return ASCIILiteral("PageUp");
+        return "PageUp"_s;
     case Qt::Key_Right:
-        return ASCIILiteral("Right");
+        return "Right"_s;
     case Qt::Key_Up:
-        return ASCIILiteral("Up");
+        return "Up"_s;
     // 'UpLeft'
     // 'UpRight'
     case Qt::Key_Down:
-        return ASCIILiteral("Down");
+        return "Down"_s;
     // 'DownLeft'
     // 'DownRight'
     case Qt::Key_Home:
-        return ASCIILiteral("Home");
+        return "Home"_s;
     case Qt::Key_End:
-        return ASCIILiteral("End");
+        return "End"_s;
     case Qt::Key_Select:
-        return ASCIILiteral("Select");
+        return "Select"_s;
     case Qt::Key_Clear:
-        return ASCIILiteral("Clear");
+        return "Clear"_s;
     case Qt::Key_Copy:
-        return ASCIILiteral("Copy");
+        return "Copy"_s;
     case Qt::Key_Cut:
-        return ASCIILiteral("Cut");
+        return "Cut"_s;
     // 'EraseEof'
     case Qt::Key_Insert:
-        return ASCIILiteral("Insert");
+        return "Insert"_s;
     case Qt::Key_Paste:
-        return ASCIILiteral("Paste");
+        return "Paste"_s;
     case Qt::Key_Dead_Grave:
-        return ASCIILiteral("DeadGrave");
+        return "DeadGrave"_s;
     case Qt::Key_Dead_Acute:
-        return ASCIILiteral("DeadAcute");
+        return "DeadAcute"_s;
     case Qt::Key_Dead_Circumflex:
-        return ASCIILiteral("DeadCircumflex");
+        return "DeadCircumflex"_s;
     case Qt::Key_Dead_Tilde:
-        return ASCIILiteral("DeadTilde");
+        return "DeadTilde"_s;
     case Qt::Key_Dead_Macron:
-        return ASCIILiteral("DeadMacron");
+        return "DeadMacron"_s;
     case Qt::Key_Dead_Breve:
-        return ASCIILiteral("DeadBreve");
+        return "DeadBreve"_s;
     case Qt::Key_Dead_Abovedot:
-        return ASCIILiteral("DeadAboveDot");
+        return "DeadAboveDot"_s;
     case Qt::Key_Dead_Diaeresis:
-        return ASCIILiteral("DeadUmlaut");
+        return "DeadUmlaut"_s;
     case Qt::Key_Dead_Abovering:
-        return ASCIILiteral("DeadAboveRing");
+        return "DeadAboveRing"_s;
     case Qt::Key_Dead_Doubleacute:
-        return ASCIILiteral("DeadDoubleAcute");
+        return "DeadDoubleAcute"_s;
     case Qt::Key_Dead_Caron:
-        return ASCIILiteral("DeadCaron");
+        return "DeadCaron"_s;
     case Qt::Key_Dead_Cedilla:
-        return ASCIILiteral("DeadCedilla");
+        return "DeadCedilla"_s;
     case Qt::Key_Dead_Ogonek:
-        return ASCIILiteral("DeadOgonek");
+        return "DeadOgonek"_s;
     case Qt::Key_Dead_Iota:
-        return ASCIILiteral("DeadIota");
+        return "DeadIota"_s;
     case Qt::Key_Dead_Voiced_Sound:
-        return ASCIILiteral("DeadVoicedSound");
+        return "DeadVoicedSound"_s;
     case Qt::Key_Dead_Semivoiced_Sound:
-        return ASCIILiteral("DeadSemivoicedSound");
+        return "DeadSemivoicedSound"_s;
 
     case Qt::Key_MultipleCandidate:
-        return ASCIILiteral("AllCandidate");
+        return "AllCandidate"_s;
     case Qt::Key_SingleCandidate:
-        return ASCIILiteral("NextCandidate");
+        return "NextCandidate"_s;
     case Qt::Key_PreviousCandidate:
-        return ASCIILiteral("PreviousCandidate");
+        return "PreviousCandidate"_s;
     case Qt::Key_Codeinput:
-        return ASCIILiteral("CodeInput");
+        return "CodeInput"_s;
 
     case Qt::Key_Mode_switch:
-        return ASCIILiteral("ModeChange");
+        return "ModeChange"_s;
     case Qt::Key_Hangul:
-        return ASCIILiteral("HangulMode");
+        return "HangulMode"_s;
     case Qt::Key_Hangul_Hanja:
-        return ASCIILiteral("HanjaMode");
+        return "HanjaMode"_s;
     case Qt::Key_Hiragana:
-        return ASCIILiteral("Hiragana");
+        return "Hiragana"_s;
     case Qt::Key_Kana_Lock:
     case Qt::Key_Kana_Shift:
-        return ASCIILiteral("KanaMode");
+        return "KanaMode"_s;
     case Qt::Key_Kanji:
-        return ASCIILiteral("KanjiMode");
+        return "KanjiMode"_s;
     case Qt::Key_Katakana:
-        return ASCIILiteral("Katakana");
+        return "Katakana"_s;
 
     // 'AudioFaderFront'
     // 'AudioFaderRear'
     // 'AudioBalanceLeft'
     // 'AudioBalanceRight'
     case Qt::Key_BassDown:
-        return ASCIILiteral("AudioBassBoostDown");
+        return "AudioBassBoostDown"_s;
     case Qt::Key_BassUp:
-        return ASCIILiteral("AudioBassBoostUp");
+        return "AudioBassBoostUp"_s;
     case Qt::Key_VolumeMute:
-        return ASCIILiteral("VolumeMute");
+        return "VolumeMute"_s;
     case Qt::Key_VolumeDown:
-        return ASCIILiteral("VolumeDown");
+        return "VolumeDown"_s;
     case Qt::Key_VolumeUp:
-        return ASCIILiteral("VolumeUp");
+        return "VolumeUp"_s;
     case Qt::Key_MediaPause:
-        return ASCIILiteral("MediaPause");
+        return "MediaPause"_s;
     case Qt::Key_MediaPlay:
-        return ASCIILiteral("MediaPlay");
+        return "MediaPlay"_s;
     // 'MediaTrackEnd'
     case Qt::Key_MediaNext:
-        return ASCIILiteral("MediaNextTrack");
+        return "MediaNextTrack"_s;
     case Qt::Key_MediaTogglePlayPause:
-        return ASCIILiteral("MediaPlayPause");
+        return "MediaPlayPause"_s;
     case Qt::Key_MediaPrevious:
-        return ASCIILiteral("MediaPreviousTrack");
+        return "MediaPreviousTrack"_s;
     // 'MediaTrackSkip'
     // 'MediaTrackStart'
     case Qt::Key_MediaStop:
-        return ASCIILiteral("MediaStop");
+        return "MediaStop"_s;
     case Qt::Key_LaunchMedia:
-        return ASCIILiteral("SelectMedia");
+        return "SelectMedia"_s;
 
     case Qt::Key_AudioForward:
-        return ASCIILiteral("FastFwd");
+        return "FastFwd"_s;
     case Qt::Key_MediaRecord:
-        return ASCIILiteral("MediaRecord");
+        return "MediaRecord"_s;
     case Qt::Key_AudioRewind:
-        return ASCIILiteral("MediaRewind");
+        return "MediaRewind"_s;
     case Qt::Key_Subtitle:
-        return ASCIILiteral("Subtitle");
+        return "Subtitle"_s;
     case Qt::Key_Blue:
-        return ASCIILiteral("Blue");
+        return "Blue"_s;
     case Qt::Key_ChannelDown:
-        return ASCIILiteral("ChannelDown");
+        return "ChannelDown"_s;
     case Qt::Key_ChannelUp:
-        return ASCIILiteral("ChannelUp");
+        return "ChannelUp"_s;
     case Qt::Key_Green:
-        return ASCIILiteral("Green");
+        return "Green"_s;
     case Qt::Key_Red:
-        return ASCIILiteral("Red");
+        return "Red"_s;
     case Qt::Key_Yellow:
-        return ASCIILiteral("Yellow");
+        return "Yellow"_s;
 #if QT_VERSION >= QT_VERSION_CHECK(5,4,0)
     case Qt::Key_Find:
-        return ASCIILiteral("Find");
+        return "Find"_s;
     case Qt::Key_Info:
-        return ASCIILiteral("Info");
+        return "Info"_s;
     case Qt::Key_Exit:
-        return ASCIILiteral("Exit");
+        return "Exit"_s;
     case Qt::Key_Undo:
-        return ASCIILiteral("Undo");
+        return "Undo"_s;
     case Qt::Key_Guide:
-        return ASCIILiteral("Guide");
+        return "Guide"_s;
     case Qt::Key_Settings:
-        return ASCIILiteral("Settings");
+        return "Settings"_s;
 #endif
     // Keys we have returned U+charcode for in the past.
     // FIXME: Change them to correct standard values if others do.
     case Qt::Key_Tab:
     case Qt::Key_Backtab:
-        return ASCIILiteral("U+0009"); // return ASCIILiteral("Tab");
+        return "U+0009"_s; // return "Tab"_s;
     case Qt::Key_Backspace:
-        return ASCIILiteral("U+0008"); // return ASCIILiteral("Backspace");
+        return "U+0008"_s; // return "Backspace"_s;
     case Qt::Key_Delete:
-        return ASCIILiteral("U+007F"); // return ASCIILiteral("Del");
+        return "U+007F"_s; // return "Del"_s;
     default:
         if (keyCode < 128)
             return String::format("U+%04X", toASCIIUpper(keyCode));
@@ -815,12 +815,12 @@ static String keyTextForKeyEvent(const QKeyEvent* event)
     case Qt::Key_Tab:
     case Qt::Key_Backtab:
         if (event->text().isNull())
-            return ASCIILiteral("\t");
+            return "\t"_s;
         break;
     case Qt::Key_Return:
     case Qt::Key_Enter:
         if (event->text().isNull())
-            return ASCIILiteral("\r");
+            return "\r"_s;
         break;
 
 // Workaround for broken accesskey when QKeyEvent has modifier, see QTBUG-64891

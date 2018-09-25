@@ -45,17 +45,21 @@ QGradient* Gradient::platformGradient()
     if (m_gradient)
         return m_gradient;
 
-    bool reversed = m_r0 > m_r1;
+    bool reversed = m_data.startRadius > m_data.endRadius;
 
-    qreal innerRadius = reversed ? m_r1 : m_r0;
-    qreal outerRadius = reversed ? m_r0 : m_r1;
-    QPointF center = reversed ? m_p0 : m_p1;
-    QPointF focalPoint = reversed ? m_p1 : m_p0;
+    qreal innerRadius = reversed ? m_data.endRadius : m_data.startRadius;
+    qreal outerRadius = reversed ? m_data.startRadius : m_data.endRadius;
+    QPointF center = reversed ? m_data.point0 : m_data.point1;
+    QPointF focalPoint = reversed ? m_data.point1 : m_data.point0;
 
-    if (m_radial)
-        m_gradient = new QRadialGradient(center, outerRadius, focalPoint);
-    else
-        m_gradient = new QLinearGradient(m_p0.x(), m_p0.y(), m_p1.x(), m_p1.y());
+    WTF::switchOn(m_data,
+        [&] (const LinearData& data) {
+            m_gradient = new QLinearGradient(m_data.point0.x(), m_data.point0.y(), m_data.point1.x(), m_data.point1.y());
+        },
+        [&] (const RadialData& data) {
+            m_gradient = new QRadialGradient(center, outerRadius, focalPoint);
+        }
+    );
 
     m_gradient->setInterpolationMode(QGradient::ComponentInterpolation);
 
@@ -66,8 +70,8 @@ QGradient* Gradient::platformGradient()
     qreal lastStop(0.0);
     const qreal lastStopDiff = 0.0000001;
     while (stopIterator != m_stops.end()) {
-        stopColor.setRgbF(stopIterator->red, stopIterator->green, stopIterator->blue, stopIterator->alpha);
-        if (qFuzzyCompare(lastStop, qreal(stopIterator->stop)))
+        stopColor.setRgbF(stopIterator->color.red(), stopIterator->color.green(), stopIterator->color.blue(), stopIterator->color.alpha());
+        if (qFuzzyCompare(lastStop, qreal(stopIterator->color.stop)))
             lastStop = stopIterator->stop + lastStopDiff;
         else
             lastStop = stopIterator->stop;

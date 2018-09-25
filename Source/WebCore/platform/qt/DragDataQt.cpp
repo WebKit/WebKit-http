@@ -68,16 +68,19 @@ unsigned DragData::numberOfFiles() const
     return 0;
 }
 
-void DragData::asFilenames(Vector<String>& result) const
+Vector<String> DragData::asFilenames() const
 {
+    Vector<String> result;
     if (!m_platformDragData)
-        return;
+        return result;
     QList<QUrl> urls = m_platformDragData->urls();
     foreach (const QUrl &url, urls) {
         QString file = url.toLocalFile();
         if (!file.isEmpty())
             result.append(file);
     }
+
+    return result;
 }
 
 bool DragData::containsPlainText() const
@@ -106,7 +109,7 @@ Color DragData::asColor() const
     return qvariant_cast<QColor>(m_platformDragData->colorData());
 }
 
-bool DragData::containsCompatibleContent() const
+bool DragData::containsCompatibleContent(DraggingPurpose) const
 {
     if (!m_platformDragData)
         return false;

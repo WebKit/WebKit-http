@@ -31,7 +31,6 @@
 #include "ImageBuffer.h"
 
 #include "GraphicsContext.h"
-#include "GraphicsSurface.h"
 #include "IntRect.h"
 #include "StillImageQt.h"
 

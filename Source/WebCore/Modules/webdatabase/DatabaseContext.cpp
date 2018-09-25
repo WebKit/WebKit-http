@@ -41,6 +41,10 @@
 #include "SecurityOrigin.h"
 #include "SecurityOriginData.h"
 
+#if PLATFORM(QT)
+#include "Settings.h"
+#endif
+
 namespace WebCore {
 
 // How the DatabaseContext Life-Cycle works?

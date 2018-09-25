@@ -764,6 +764,13 @@ if (USE_LIBHYPHEN)
     endif ()
 endif ()
 
+if (USE_WOFF2)
+    find_package(WOFF2Dec 1.0.2)
+    if (NOT WOFF2DEC_FOUND)
+       message(FATAL_ERROR "libwoff2dec is needed for USE_WOFF2.")
+    endif ()
+endif ()
+
 # From OptionsGTK.cmake
 if (CMAKE_MAJOR_VERSION LESS 3)
     # Before CMake 3 it was necessary to use a build script instead of using cmake --build directly

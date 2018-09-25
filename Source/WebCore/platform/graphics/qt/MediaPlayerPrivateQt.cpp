@@ -21,6 +21,7 @@
 #include "MediaPlayerPrivateQt.h"
 
 #include "Frame.h"
+#include "FrameLoader.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
 #include "GraphicsLayer.h"
@@ -80,20 +81,16 @@ MediaPlayer::SupportsType MediaPlayerPrivateQt::supportsType(const MediaEngineSu
     if (parameters.isMediaStream || parameters.isMediaSource)
         return MediaPlayer::IsNotSupported;
 
-    if (!parameters.type.startsWithIgnoringASCIICase("audio/") && !parameters.type.startsWithIgnoringASCIICase("video/"))
+    if (!parameters.type.raw().startsWithIgnoringASCIICase("audio/") && !parameters.type.raw().startsWithIgnoringASCIICase("video/"))
         return MediaPlayer::IsNotSupported;
 
-    // Parse and trim codecs.
-    QString codecStr = parameters.codecs;
-    QStringList codecList = codecStr.split(QLatin1Char(','), QString::SkipEmptyParts);
-    QStringList codecListTrimmed;
-    foreach (const QString& codecStrNotTrimmed, codecList) {
-        QString codecStrTrimmed = codecStrNotTrimmed.trimmed();
-        if (!codecStrTrimmed.isEmpty())
-            codecListTrimmed.append(codecStrTrimmed);
+    // Parse and trim codecs
+    QStringList codecList;
+    foreach (const String& codec, parameters.codecs) {
+        codecList.append(QString(codec));
     }
 
-    if (QMediaPlayer::hasSupport(parameters.type, codecListTrimmed) >= QMultimedia::ProbablySupported)
+    if (QMediaPlayer::hasSupport(parameters.type, codecList) >= QMultimedia::ProbablySupported)
         return MediaPlayer::IsSupported;
 
     return MediaPlayer::MayBeSupported;
@@ -648,14 +645,6 @@ void MediaPlayerPrivateQt::paintCurrentFrameInContext(GraphicsContext& context, 
 
 void MediaPlayerPrivateQt::paintToTextureMapper(TextureMapper& textureMapper, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity)
 {
-}
-
-PlatformMedia MediaPlayerPrivateQt::platformMedia() const
-{
-    PlatformMedia pm;
-    pm.type = PlatformMedia::QtMediaPlayerType;
-    pm.media.qtMediaPlayer = const_cast<MediaPlayerPrivateQt*>(this);
-    return pm;
 }
 
 } // namespace WebCore

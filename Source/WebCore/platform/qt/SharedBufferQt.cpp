@@ -41,7 +41,7 @@ RefPtr<SharedBuffer> SharedBuffer::createFromReadingFile(const String& fileName)
 
     Vector<char> buffer(file.size());
     file.read(buffer.data(), buffer.size());
-    return SharedBuffer::adoptVector(buffer);
+    return SharedBuffer::create(WTFMove(buffer));
 }
 
 } // namespace WebCore

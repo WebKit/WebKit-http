@@ -32,7 +32,7 @@ namespace WebCore {
 
 // See http://www.w3.org/TR/css3-fonts/#font-weight-prop
 #if QT_VERSION >= QT_VERSION_CHECK(5, 5, 0)
-static inline QFont::Weight toQFontWeight(FontWeight fontWeight)
+static inline QFont::Weight toQFontWeight(FontSelectionValue fontWeight)
 {
     switch (fontWeight) {
     case FontWeight100:
@@ -57,7 +57,7 @@ static inline QFont::Weight toQFontWeight(FontWeight fontWeight)
     Q_UNREACHABLE();
 }
 #else
-static inline QFont::Weight toQFontWeight(FontWeight fontWeight)
+static inline QFont::Weight toQFontWeight(FontSelectionValue fontWeight)
 {
     switch (fontWeight) {
     case FontWeight100:
@@ -85,7 +85,7 @@ static inline bool isEmptyValue(const float size, const bool bold, const bool ob
     return !bold && !oblique && size == 0.f;
 }
 
-FontPlatformData::FontPlatformData(float size, bool bold, bool oblique)
+FontPlatformData::FontPlatformData(float size, bool bold, bool oblique, FontOrientation = FontOrientation::Horizontal, FontWidthVariant = FontWidthVariant::RegularWidth, TextRenderingMode = TextRenderingMode::AutoTextRendering)
 {
     if (!isEmptyValue(size, bold, oblique))
         m_data = adoptRef(new FontPlatformDataPrivate(size, bold, oblique));
@@ -99,7 +99,7 @@ FontPlatformData::FontPlatformData(const FontDescription& description, const Ato
     font.setFamily(familyName);
     if (requestedSize)
         font.setPixelSize(requestedSize);
-    font.setItalic(description.italic());
+    font.setIsItalic(description.italic());
     font.setWeight(toQFontWeight(description.weight()));
     font.setWordSpacing(wordSpacing);
     font.setLetterSpacing(QFont::AbsoluteSpacing, letterSpacing);
@@ -140,7 +140,7 @@ bool FontPlatformData::operator==(const FontPlatformData& other) const
     return equals;
 }
 
-PassRefPtr<SharedBuffer> FontPlatformData::openTypeTable(uint32_t table) const
+RefPtr<SharedBuffer> FontPlatformData::openTypeTable(uint32_t table) const
 {
     const char tag[4] = {
         char(table & 0xff),

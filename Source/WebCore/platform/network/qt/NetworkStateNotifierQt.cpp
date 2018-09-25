@@ -78,7 +78,9 @@ void NetworkStateNotifier::updateState()
         return;
 
     m_isOnLine = p->effectivelyOnline();
-    notifyNetworkStateChange();
+
+    for (auto& listener : m_listeners)
+        listener(m_isOnLine.value());
 }
 
 NetworkStateNotifier::NetworkStateNotifier()

@@ -127,34 +127,34 @@ static inline QPainter::CompositionMode toQtCompositionMode(CompositeOperator op
 static inline QPainter::CompositionMode toQtCompositionMode(BlendMode op)
 {
     switch (op) {
-    case BlendModeNormal:
+    case BlendMode::Normal:
         return QPainter::CompositionMode_SourceOver;
-    case BlendModeMultiply:
+    case BlendMode::Multiply:
         return QPainter::CompositionMode_Multiply;
-    case BlendModeScreen:
+    case BlendMode::Screen:
         return QPainter::CompositionMode_Screen;
-    case BlendModeOverlay:
+    case BlendMode::Overlay:
         return QPainter::CompositionMode_Overlay;
-    case BlendModeDarken:
+    case BlendMode::Darken:
         return QPainter::CompositionMode_Darken;
-    case BlendModeLighten:
+    case BlendMode::Lighten:
         return QPainter::CompositionMode_Lighten;
-    case BlendModeColorDodge:
+    case BlendMode::ColorDodge:
         return QPainter::CompositionMode_ColorDodge;
-    case BlendModeColorBurn:
+    case BlendMode::ColorBurn:
         return QPainter::CompositionMode_ColorBurn;
-    case BlendModeHardLight:
+    case BlendMode::HardLight:
         return QPainter::CompositionMode_HardLight;
-    case BlendModeSoftLight:
+    case BlendMode::SoftLight:
         return QPainter::CompositionMode_SoftLight;
-    case BlendModeDifference:
+    case BlendMode::Difference:
         return QPainter::CompositionMode_Difference;
-    case BlendModeExclusion:
+    case BlendMode::Exclusion:
         return QPainter::CompositionMode_Exclusion;
-    case BlendModeHue:
-    case BlendModeSaturation:
-    case BlendModeColor:
-    case BlendModeLuminosity:
+    case BlendMode::Hue:
+    case BlendMode::Saturation:
+    case BlendMode::Color:
+    case BlendMode::Luminosity:
         // Not supported.
         break;
     default:

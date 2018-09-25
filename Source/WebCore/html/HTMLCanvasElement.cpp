@@ -33,6 +33,8 @@
 #include "CanvasGradient.h"
 #include "CanvasPattern.h"
 #include "CanvasRenderingContext2D.h"
+#include "Chrome.h"
+#include "ChromeClient.h"
 #include "Document.h"
 #include "Frame.h"
 #include "FrameLoaderClient.h"
@@ -932,7 +934,7 @@ void HTMLCanvasElement::createImageBuffer() const
         QWebPageClient* client = document().page()->chrome().platformPageClient();
         // The WebKit2 Chrome does not have a pageclient.
         QOpenGLContext* context = client ? client->openGLContextIfAvailable() : 0;
-        setImageBuffer(ImageBuffer::createCompatibleBuffer(size(), ColorSpaceDeviceRGB, context));
+        setImageBuffer(ImageBuffer::createCompatibleBuffer(size(), ColorSpaceSRGB, context));
     } else
 #endif
     {

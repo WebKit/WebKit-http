@@ -42,8 +42,6 @@ class HTMLMediaElement;
 class StylePainter;
 class ScrollbarTheme;
 
-typedef PassRefPtr<RenderTheme> (*QtThemeFactoryFunction)(Page* page);
-
 class RenderThemeQt : public RenderTheme {
 
 public:
@@ -68,25 +66,25 @@ public:
     void adjustRepaintRect(const RenderObject&, FloatRect&) override;
 
     // The platform selection color.
-    Color platformActiveSelectionBackgroundColor() const override;
-    Color platformInactiveSelectionBackgroundColor() const override;
-    Color platformActiveSelectionForegroundColor() const override;
-    Color platformInactiveSelectionForegroundColor() const override;
+    Color platformActiveSelectionBackgroundColor(OptionSet<StyleColor::Options>) const override;
+    Color platformInactiveSelectionBackgroundColor(OptionSet<StyleColor::Options>) const override;
+    Color platformActiveSelectionForegroundColor(OptionSet<StyleColor::Options>) const override;
+    Color platformInactiveSelectionForegroundColor(OptionSet<StyleColor::Options>) const override;
 
-    Color platformFocusRingColor() const override;
+    Color platformFocusRingColor(OptionSet<StyleColor::Options>) const override;
 
-    Color systemColor(CSSValueID) const override;
+    Color systemColor(CSSValueID, OptionSet<StyleColor::Options>) const override;
 
     int minimumMenuListSize(const RenderStyle&) const override;
 
-    void adjustSliderThumbSize(RenderStyle&, Element*) const override;
+    void adjustSliderThumbSize(RenderStyle&, const Element*) const override;
 
 #if ENABLE(DATALIST_ELEMENT)
     IntSize sliderTickSize() const override;
     int sliderTickOffsetFromTrackCenter() const override;
 #endif
 
-    double caretBlinkInterval() const override;
+    Seconds caretBlinkInterval() const override;
 
     bool isControlStyled(const RenderStyle&, const BorderData&, const FillLayer&, const Color&) const override;
 
@@ -109,37 +107,37 @@ protected:
 
     void setButtonSize(RenderStyle&) const override;
 
-    void adjustTextFieldStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    void adjustTextFieldStyle(StyleResolver&, RenderStyle&, const Element*) const override;
 
     bool paintTextArea(const RenderObject&, const PaintInfo&, const FloatRect&) override;
-    void adjustTextAreaStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    void adjustTextAreaStyle(StyleResolver&, RenderStyle&, const Element*) const override;
 
-    void adjustMenuListStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    void adjustMenuListStyle(StyleResolver&, RenderStyle&, const Element*) const override;
 
-    void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, const Element*) const override;
 
-    void adjustProgressBarStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    void adjustProgressBarStyle(StyleResolver&, RenderStyle&, const Element*) const override;
     // Returns the repeat interval of the animation for the progress bar.
-    double animationRepeatIntervalForProgressBar(RenderProgress&) const override;
+    Seconds animationRepeatIntervalForProgressBar(RenderProgress&) const override;
 
-    void adjustSliderTrackStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    void adjustSliderTrackStyle(StyleResolver&, RenderStyle&, const Element*) const override;
 
-    void adjustSliderThumbStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    void adjustSliderThumbStyle(StyleResolver&, RenderStyle&, const Element*) const override;
 
     bool paintSearchField(const RenderObject&, const PaintInfo&, const IntRect&) override;
-    void adjustSearchFieldStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    void adjustSearchFieldStyle(StyleResolver&, RenderStyle&, const Element*) const override;
 
-    void adjustSearchFieldCancelButtonStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    void adjustSearchFieldCancelButtonStyle(StyleResolver&, RenderStyle&, const Element*) const override;
     bool paintSearchFieldCancelButton(const RenderBox&, const PaintInfo&, const IntRect&) override;
 
-    void adjustSearchFieldDecorationPartStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    void adjustSearchFieldDecorationPartStyle(StyleResolver&, RenderStyle&, const Element*) const override;
     bool paintSearchFieldDecorationPart(const RenderObject&, const PaintInfo&, const IntRect&) override;
 
-    void adjustSearchFieldResultsDecorationPartStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    void adjustSearchFieldResultsDecorationPartStyle(StyleResolver&, RenderStyle&, const Element*) const override;
     bool paintSearchFieldResultsDecorationPart(const RenderBox&, const PaintInfo&, const IntRect&) override;
 
 #ifndef QT_NO_SPINBOX
-    void adjustInnerSpinButtonStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    void adjustInnerSpinButtonStyle(StyleResolver&, RenderStyle&, const Element*) const override;
 #endif
 
 #if 0 //ENABLE(VIDEO)

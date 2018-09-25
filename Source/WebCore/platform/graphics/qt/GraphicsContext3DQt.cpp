@@ -21,7 +21,6 @@
 
 #include "Extensions3DOpenGLCommon.h"
 #include "GraphicsContext.h"
-#include "GraphicsSurface.h"
 #include "HostWindow.h"
 #include "ImageBuffer.h"
 #include "NativeImageQt.h"

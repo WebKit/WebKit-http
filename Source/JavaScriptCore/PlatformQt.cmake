@@ -2,10 +2,6 @@ if (${JavaScriptCore_LIBRARY_TYPE} MATCHES STATIC)
     add_definitions(-DSTATICALLY_LINKED_WITH_WTF)
 endif ()
 
-list(APPEND JavaScriptCore_INCLUDE_DIRECTORIES
-    ${WTF_DIR}
-)
-
 list(APPEND JavaScriptCore_SOURCES
     API/JSStringRefQt.cpp
 )

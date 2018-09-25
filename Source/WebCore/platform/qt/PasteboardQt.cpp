@@ -64,9 +64,9 @@ static String normalizeMimeType(const String& type)
     String qType = type.convertToASCIILowercase();
 
     if (qType == "text")
-        qType = ASCIILiteral("text/plain");
+        qType = "text/plain"_s;
     else if (qType == "url")
-        qType = ASCIILiteral("text/uri-list");
+        qType = "text/uri-list"_s;
 
     return qType;
 }
@@ -86,11 +86,6 @@ std::unique_ptr<Pasteboard> Pasteboard::createForGlobalSelection()
     auto pasteboard = createForCopyAndPaste();
     pasteboard->m_selectionMode = true;
     return pasteboard;
-}
-
-std::unique_ptr<Pasteboard> Pasteboard::createPrivate()
-{
-    return create(0, true /* Not really for drag-and-drop, but shouldn't actively update the system pasteboard */);
 }
 
 #if ENABLE(DRAG_SUPPORT)
@@ -159,7 +154,7 @@ void Pasteboard::read(PasteboardPlainText& text)
         text.text =  data->text();
 }
 
-PassRefPtr<DocumentFragment> Pasteboard::documentFragment(Frame& frame, Range& context,
+RefPtr<DocumentFragment> Pasteboard::documentFragment(Frame& frame, Range& context,
                                                           bool allowPlainText, bool& chosePlainText)
 {
     const QMimeData* mimeData = readData();

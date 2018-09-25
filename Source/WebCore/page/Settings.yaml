@@ -205,6 +205,10 @@ useLegacyTextAlignPositionedElementBehavior:
 javaScriptRuntimeFlags:
   type: JSC::RuntimeFlags
 
+# PLATFORM(QT) only
+offlineStorageDatabaseEnabled:
+  initial: true
+
 # FIXME: This should really be disabled by default as it makes platforms that don't support the feature download files
 # they can't use by. Leaving enabled for now to not change existing behavior.
 downloadableBinaryFontsEnabled:

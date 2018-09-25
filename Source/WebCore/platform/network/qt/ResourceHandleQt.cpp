@@ -56,8 +56,8 @@ public:
     void willSendRequest(ResourceHandle*, ResourceRequest&, const ResourceResponse&) override;
     void didReceiveResponse(ResourceHandle*, const ResourceResponse& response) override { m_response = response; }
     void didReceiveData(ResourceHandle*, const char*, unsigned, int) override;
-    void didReceiveBuffer(ResourceHandle*, PassRefPtr<SharedBuffer>, int /*encodedDataLength*/) override;
-    void didFinishLoading(ResourceHandle*, double /*finishTime*/) override {}
+    void didReceiveBuffer(ResourceHandle*, RefPtr<SharedBuffer>&&, int /*encodedDataLength*/) override;
+    void didFinishLoading(ResourceHandle*) override {}
     void didFail(ResourceHandle*, const ResourceError& error) override { m_error = error; }
 private:
     ResourceError& m_error;
@@ -70,7 +70,7 @@ void WebCoreSynchronousLoader::willSendRequest(ResourceHandle* handle, ResourceR
     // FIXME: This needs to be fixed to follow the redirect correctly even for cross-domain requests.
     if (!protocolHostAndPortAreEqual(handle->firstRequest().url(), request.url())) {
         ASSERT(m_error.isNull());
-        m_error.setIsCancellation(true);
+        m_error.setType(ResourceErrorBase::Type::Cancellation);
         request = ResourceRequest();
         return;
     }
@@ -81,12 +81,12 @@ void WebCoreSynchronousLoader::didReceiveData(ResourceHandle*, const char*, unsi
     ASSERT_NOT_REACHED();
 }
 
-void WebCoreSynchronousLoader::didReceiveBuffer(ResourceHandle*, PassRefPtr<SharedBuffer> buffer, int)
+void WebCoreSynchronousLoader::didReceiveBuffer(ResourceHandle*, RefPtr<SharedBuffer>&& buffer, int)
 {
     // This pattern is suggested by SharedBuffer.h.
     const char* segment;
     unsigned position = 0;
-    while (unsigned length = buffer->getSomeData(segment, position)) {
+    while (unsigned length = WTFMove(buffer)->getSomeData(segment, position)) {
         m_data.append(segment, length);
         position += length;
     }
@@ -131,24 +131,10 @@ void ResourceHandle::cancel()
     }
 }
 
-void ResourceHandle::continueWillSendRequest(const ResourceRequest& request)
-{
-    ASSERT(!client() || client()->usesAsyncCallbacks());
-    ASSERT(d->m_job);
-    d->m_job->continueWillSendRequest(request);
-}
-
-void ResourceHandle::continueDidReceiveResponse()
-{
-    ASSERT(!client() || client()->usesAsyncCallbacks());
-    ASSERT(d->m_job);
-    d->m_job->continueDidReceiveResponse();
-}
-
-void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentials /*storedCredentials*/, ResourceError& error, ResourceResponse& response, Vector<char>& data)
+void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentialsPolicy /*storedCredentials*/, ResourceError& error, ResourceResponse& response, Vector<char>& data)
 {
     WebCoreSynchronousLoader syncLoader(error, response, data);
-    RefPtr<ResourceHandle> handle = adoptRef(new ResourceHandle(context, request, &syncLoader, true, false));
+    auto handle = adoptRef(*new ResourceHandle(context, request, &syncLoader, true, false));
 
     ResourceHandleInternal* d = handle->getInternal();
     if (!d->m_user.isEmpty() || !d->m_pass.isEmpty()) {
@@ -161,7 +147,7 @@ void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* contex
     }
 
     // starting in deferred mode gives d->m_job the chance of being set before sending the request.
-    d->m_job = new QNetworkReplyHandler(handle.get(), QNetworkReplyHandler::SynchronousLoad, true);
+    d->m_job = new QNetworkReplyHandler(handle.ptr(), QNetworkReplyHandler::SynchronousLoad, true);
     d->m_job->setLoadingDeferred(false);
 }
 

@@ -101,16 +101,16 @@ QNetworkRequest ResourceRequest::toNetworkRequest(NetworkingContext *context) co
         request.setRawHeader("Accept", "*/*");
 
     switch (cachePolicy()) {
-    case ReloadIgnoringCacheData:
+    case ResourceRequestCachePolicy::ReloadIgnoringCacheData:
         request.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork);
         break;
-    case ReturnCacheDataElseLoad:
+    case ResourceRequestCachePolicy::ReturnCacheDataElseLoad:
         request.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::PreferCache);
         break;
-    case ReturnCacheDataDontLoad:
+    case ResourceRequestCachePolicy::ReturnCacheDataDontLoad:
         request.setAttribute(QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysCache);
         break;
-    case UseProtocolCachePolicy:
+    case ResourceRequestCachePolicy::UseProtocolCachePolicy:
         // QNetworkRequest::PreferNetwork
     default:
         break;
@@ -128,4 +128,3 @@ QNetworkRequest ResourceRequest::toNetworkRequest(NetworkingContext *context) co
 }
 
 }
-
