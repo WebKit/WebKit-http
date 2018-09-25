@@ -129,7 +129,6 @@
 #include <JavaScriptCore/JSLock.h>
 #include <JavaScriptCore/ProfilerDatabase.h>
 #include <JavaScriptCore/SamplingProfiler.h>
-#include <JavaScriptCore/ScriptValue.h>
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/ArchiveResource.h>
 #include <WebCore/BackForwardController.h>
@@ -261,6 +260,11 @@
 #include <WebCore/MediaPlayerRequestInstallMissingPluginsCallback.h>
 #endif
 
+#if ENABLE(WEB_AUTHN)
+#include "WebCredentialsMessenger.h"
+#include <WebCore/AuthenticatorManager.h>
+#endif
+
 using namespace JSC;
 using namespace WebCore;
 
@@ -371,6 +375,9 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     , m_userInterfaceLayoutDirection(parameters.userInterfaceLayoutDirection)
     , m_overrideContentSecurityPolicy { parameters.overrideContentSecurityPolicy }
     , m_cpuLimit(parameters.cpuLimit)
+#if ENABLE(WEB_AUTHN)
+    , m_credentialsMessenger(std::make_unique<WebCredentialsMessenger>(*this))
+#endif
 {
     ASSERT(m_pageID);
 
@@ -579,6 +586,10 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     if (parameters.enumeratingAllNetworkInterfacesEnabled)
         enableEnumeratingAllNetworkInterfaces();
 #endif
+#endif
+
+#if ENABLE(WEB_AUTHN)
+    WebCore::AuthenticatorManager::singleton().setMessenger(*m_credentialsMessenger);
 #endif
 
     for (auto iterator : parameters.urlSchemeHandlers)
@@ -3297,42 +3308,6 @@ NotificationPermissionRequestManager* WebPage::notificationPermissionRequestMana
     m_notificationPermissionRequestManager = NotificationPermissionRequestManager::create(this);
     return m_notificationPermissionRequestManager.get();
 }
-
-#if !PLATFORM(GTK) && !PLATFORM(COCOA) && !PLATFORM(WPE)
-
-bool WebPage::handleEditingKeyboardEvent(KeyboardEvent* evt)
-{
-    Frame* frame = downcast<Node>(*evt->target()).document().frame();
-    ASSERT(frame);
-
-    const PlatformKeyboardEvent* keyEvent = evt->keyEvent();
-    if (!keyEvent)
-        return false;
-
-    Editor::Command command = frame->editor().command(interpretKeyEvent(evt));
-
-    if (keyEvent->type() == PlatformEvent::RawKeyDown) {
-        // WebKit doesn't have enough information about mode to decide how commands that just insert text if executed via Editor should be treated,
-        // so we leave it upon WebCore to either handle them immediately (e.g. Tab that changes focus) or let a keypress event be generated
-        // (e.g. Tab that inserts a Tab character, or Enter).
-        return !command.isTextInsertion() && command.execute(evt);
-    }
-
-    if (command.execute(evt))
-        return true;
-
-    // Don't allow text insertion for nodes that cannot edit.
-    if (!frame->editor().canEdit())
-        return false;
-
-    // Don't insert null or control characters as they can result in unexpected behaviour
-    if (evt->charCode() < ' ')
-        return false;
-
-    return frame->editor().insertText(evt->keyEvent()->text(), evt);
-}
-
-#endif
 
 #if ENABLE(DRAG_SUPPORT)
 

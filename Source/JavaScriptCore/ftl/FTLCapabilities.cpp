@@ -173,6 +173,7 @@ inline CapabilityLevel canCompile(Node* node)
     case CheckInBounds:
     case ConstantStoragePointer:
     case Check:
+    case CheckVarargs:
     case CountExecution:
     case SuperSamplerBegin:
     case SuperSamplerEnd:
@@ -329,6 +330,7 @@ inline CapabilityLevel canCompile(Node* node)
     case AtomicsIsLockFree:
     case InitializeEntrypointArguments:
     case CPUIntrinsic:
+    case GetArrayMask:
         // These are OK.
         break;
 
@@ -353,6 +355,9 @@ inline CapabilityLevel canCompile(Node* node)
         case Array::Int32:
         case Array::Double:
         case Array::Contiguous:
+        case Array::Undecided:
+        case Array::ArrayStorage:
+        case Array::SlowPutArrayStorage:
         case Array::DirectArguments:
         case Array::ScopedArguments:
             break;
@@ -368,6 +373,8 @@ inline CapabilityLevel canCompile(Node* node)
         case Array::Int32:
         case Array::Double:
         case Array::Contiguous:
+        case Array::ArrayStorage:
+        case Array::SlowPutArrayStorage:
         case Array::String:
         case Array::DirectArguments:
         case Array::ScopedArguments:

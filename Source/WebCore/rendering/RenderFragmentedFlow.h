@@ -86,10 +86,6 @@ public:
 
     virtual bool singleFragmentHasUniformLogicalHeight() const { return true; }
     
-    // Called when a descendant of the flow thread has been inserted.
-    virtual void fragmentedFlowDescendantInserted(RenderObject&) { }
-    // Called when a sibling or descendant of the flow thread is about to be removed.
-    virtual void fragmentedFlowRelativeWillBeRemoved(RenderObject&) { }
     // Called when a descendant box's layout is finished and it has been positioned within its container.
     virtual void fragmentedFlowDescendantBoxLaidOut(RenderBox*) { }
 
@@ -198,7 +194,7 @@ protected:
     virtual LayoutUnit initialLogicalWidth() const { return 0; };
     
     void clearLinesToFragmentMap();
-    void willBeDestroyed() override;
+    void willBeDestroyed(RenderTreeBuilder&) override;
 
     void mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState&, MapCoordinatesFlags, bool* wasFixed) const override;
 

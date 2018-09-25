@@ -26,7 +26,7 @@
 #import "config.h"
 #import "ScrollingTreeFrameScrollingNodeIOS.h"
 
-#if ENABLE(ASYNC_SCROLLING)
+#if ENABLE(ASYNC_SCROLLING) && PLATFORM(IOS)
 
 #import "FrameView.h"
 #import "ScrollingCoordinator.h"
@@ -38,13 +38,13 @@
 
 namespace WebCore {
 
-Ref<ScrollingTreeFrameScrollingNodeIOS> ScrollingTreeFrameScrollingNodeIOS::create(ScrollingTree& scrollingTree, ScrollingNodeID nodeID)
+Ref<ScrollingTreeFrameScrollingNodeIOS> ScrollingTreeFrameScrollingNodeIOS::create(ScrollingTree& scrollingTree, ScrollingNodeType nodeType, ScrollingNodeID nodeID)
 {
-    return adoptRef(*new ScrollingTreeFrameScrollingNodeIOS(scrollingTree, nodeID));
+    return adoptRef(*new ScrollingTreeFrameScrollingNodeIOS(scrollingTree, nodeType, nodeID));
 }
 
-ScrollingTreeFrameScrollingNodeIOS::ScrollingTreeFrameScrollingNodeIOS(ScrollingTree& scrollingTree, ScrollingNodeID nodeID)
-    : ScrollingTreeFrameScrollingNode(scrollingTree, nodeID)
+ScrollingTreeFrameScrollingNodeIOS::ScrollingTreeFrameScrollingNodeIOS(ScrollingTree& scrollingTree, ScrollingNodeType nodeType, ScrollingNodeID nodeID)
+    : ScrollingTreeFrameScrollingNode(scrollingTree, nodeType, nodeID)
 {
 }
 
@@ -201,4 +201,4 @@ FloatPoint ScrollingTreeFrameScrollingNodeIOS::maximumScrollPosition() const
 
 } // namespace WebCore
 
-#endif // ENABLE(ASYNC_SCROLLING)
+#endif // ENABLE(ASYNC_SCROLLING) && PLATFORM(IOS)

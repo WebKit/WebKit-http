@@ -637,6 +637,18 @@ template<> TestObj::Dictionary convertDictionary<TestObj::Dictionary>(ExecState&
         RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.largeIntegerWithDefault = 0;
+    JSValue nullableEnumValue;
+    if (isNullOrUndefined)
+        nullableEnumValue = jsUndefined();
+    else {
+        nullableEnumValue = object->get(&state, Identifier::fromString(&state, "nullableEnum"));
+        RETURN_IF_EXCEPTION(throwScope, { });
+    }
+    if (!nullableEnumValue.isUndefined()) {
+        result.nullableEnum = convert<IDLNullable<IDLEnumeration<TestObj::EnumType>>>(state, nullableEnumValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else
+        result.nullableEnum = std::nullopt;
     JSValue nullableIntegerWithDefaultValue;
     if (isNullOrUndefined)
         nullableIntegerWithDefaultValue = jsUndefined();
@@ -999,6 +1011,8 @@ JSC::JSObject* convertDictionaryToJS(JSC::ExecState& state, JSDOMGlobalObject& g
     }
     auto largeIntegerWithDefaultValue = toJS<IDLLongLong>(dictionary.largeIntegerWithDefault);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "largeIntegerWithDefault"), largeIntegerWithDefaultValue);
+    auto nullableEnumValue = toJS<IDLNullable<IDLEnumeration<TestObj::EnumType>>>(state, dictionary.nullableEnum);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "nullableEnum"), nullableEnumValue);
     auto nullableIntegerWithDefaultValue = toJS<IDLNullable<IDLLong>>(dictionary.nullableIntegerWithDefault);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "nullableIntegerWithDefault"), nullableIntegerWithDefaultValue);
     auto nullableNodeValue = toJS<IDLNullable<IDLInterface<Node>>>(state, globalObject, dictionary.nullableNode);
@@ -2276,12 +2290,12 @@ void JSTestObjPrototype::finishCreation(VM& vm)
         JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
     }
 #endif
-    if (!(worldForDOMObject(this).someWorld() && RuntimeEnabledFeatures::sharedFeatures().testFeatureEnabled())) {
+    if (!(worldForDOMObject(*this).someWorld() && RuntimeEnabledFeatures::sharedFeatures().testFeatureEnabled())) {
         auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("enabledInSpecificWorldWhenRuntimeFeatureEnabled"), strlen("enabledInSpecificWorldWhenRuntimeFeatureEnabled"));
         VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
         JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
     }
-    if (!worldForDOMObject(this).someWorld()) {
+    if (!worldForDOMObject(*this).someWorld()) {
         auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("worldSpecificMethod"), strlen("worldSpecificMethod"));
         VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
         JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
@@ -3991,7 +4005,7 @@ static inline JSValue jsTestObjOnfooGetter(ExecState& state, JSTestObj& thisObje
 {
     UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
-    return eventHandlerAttribute(thisObject.wrapped(), eventNames().fooEvent, worldForDOMObject(&thisObject));
+    return eventHandlerAttribute(thisObject.wrapped(), eventNames().fooEvent, worldForDOMObject(thisObject));
 }
 
 EncodedJSValue jsTestObjOnfoo(ExecState* state, EncodedJSValue thisValue, PropertyName)
@@ -4015,7 +4029,7 @@ static inline JSValue jsTestObjOnwebkitfooGetter(ExecState& state, JSTestObj& th
 {
     UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
-    return eventHandlerAttribute(thisObject.wrapped(), eventNames().fooEvent, worldForDOMObject(&thisObject));
+    return eventHandlerAttribute(thisObject.wrapped(), eventNames().fooEvent, worldForDOMObject(thisObject));
 }
 
 EncodedJSValue jsTestObjOnwebkitfoo(ExecState* state, EncodedJSValue thisValue, PropertyName)

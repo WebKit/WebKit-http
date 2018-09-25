@@ -425,6 +425,7 @@ webkit.org/b/172807 imported/w3c/web-platform-tests/css/selectors/focus-within-d
 webkit.org/b/168409 media/modern-media-controls/airplay-button/airplay-button.html [ Pass Timeout ]
 webkit.org/b/175195 media/modern-media-controls/css/webkit-cursor-visibility-auto-hide.html [ Pass Failure ]
 webkit.org/b/168265 media/modern-media-controls/forward-button/forward-button.html [ Pass Timeout ]
+webkit.org/b/182571 media/modern-media-controls/tracks-support/tracks-support-show-panel-fullscreen.html [ Pass Timeout ]
 
 webkit.org/b/173432 [ Debug ] imported/w3c/web-platform-tests/fetch/nosniff/importscripts.html [ Pass Crash ]
 
@@ -477,8 +478,6 @@ webkit.org/b/172397 [ Debug ] animations/needs-layout.html [ Pass ImageOnlyFailu
 webkit.org/b/179775 imported/w3c/web-platform-tests/XMLHttpRequest/firing-events-http-no-content-length.html [ Pass Failure ]
 
 webkit.org/b/172044 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/open-request-queue.html [ Pass Timeout ]
-
-webkit.org/b/179500 accessibility/mac/AOM-relation-property.html [ Skip ]
 
 # User-installed fonts test infrastructure is not present in WK1
 webkit.org/b/180062 fast/text/user-installed-fonts [ ImageOnlyFailure ]

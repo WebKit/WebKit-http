@@ -30,8 +30,15 @@
 #include "RenderRubyBase.h"
 #include "RenderRubyRun.h"
 #include "RenderTreeBuilder.h"
+#include "RenderTreeBuilderBlock.h"
+#include "RenderTreeBuilderInline.h"
 
 namespace WebCore {
+
+static inline RenderRubyRun& findRubyRunParent(RenderObject& child)
+{
+    return *lineageOfType<RenderRubyRun>(child).first();
+}
 
 static inline bool isAnonymousRubyInlineBlock(const RenderObject* object)
 {
@@ -135,7 +142,7 @@ void RenderTreeBuilder::Ruby::moveInlineChildren(RenderRubyBase& from, RenderRub
         }
     }
     // Move our inline children into the target block we determined above.
-    from.moveChildrenTo(toBlock, from.firstChild(), beforeChild, RenderBoxModelObject::NormalizeAfterInsertion::No);
+    from.moveChildrenTo(m_builder, toBlock, from.firstChild(), beforeChild, RenderBoxModelObject::NormalizeAfterInsertion::No);
 }
 
 void RenderTreeBuilder::Ruby::moveBlockChildren(RenderRubyBase& from, RenderRubyBase& to, RenderObject* beforeChild)
@@ -155,12 +162,12 @@ void RenderTreeBuilder::Ruby::moveBlockChildren(RenderRubyBase& from, RenderRuby
         && lastChildThere && lastChildThere->isAnonymousBlock() && lastChildThere->childrenInline()) {
         auto* anonBlockHere = downcast<RenderBlock>(firstChildHere);
         auto* anonBlockThere = downcast<RenderBlock>(lastChildThere);
-        anonBlockHere->moveAllChildrenTo(anonBlockThere, RenderBoxModelObject::NormalizeAfterInsertion::Yes);
+        anonBlockHere->moveAllChildrenTo(m_builder, anonBlockThere, RenderBoxModelObject::NormalizeAfterInsertion::Yes);
         anonBlockHere->deleteLines();
-        anonBlockHere->removeFromParentAndDestroy();
+        anonBlockHere->removeFromParentAndDestroy(m_builder);
     }
     // Move all remaining children normally.
-    from.moveChildrenTo(&to, from.firstChild(), beforeChild, RenderBoxModelObject::NormalizeAfterInsertion::No);
+    from.moveChildrenTo(m_builder, &to, from.firstChild(), beforeChild, RenderBoxModelObject::NormalizeAfterInsertion::No);
 }
 
 void RenderTreeBuilder::Ruby::moveChildren(RenderRubyBase& from, RenderRubyBase& to)
@@ -209,7 +216,8 @@ void RenderTreeBuilder::Ruby::insertChild(RenderRubyRun& parent, RenderPtr<Rende
             // in order to avoid automatic removal of the ruby run in case there is no
             // other child besides the old ruby text.
             parent.addChild(m_builder, WTFMove(child), beforeChild);
-            auto takenBeforeChild = parent.RenderBlockFlow::takeChild(m_builder, *beforeChild);
+            auto takenBeforeChild = m_builder.blockBuilder().takeChild(parent, *beforeChild);
+
             m_builder.insertChild(*newRun, WTFMove(takenBeforeChild));
             return;
         }
@@ -306,7 +314,7 @@ RenderElement& RenderTreeBuilder::Ruby::findOrCreateParentForChild(RenderRubyAsI
         if (!beforeBlock) {
             auto newBlock = createAnonymousRubyInlineBlock(parent);
             beforeBlock = newBlock.get();
-            m_builder.insertChildToRenderInline(parent, WTFMove(newBlock), parent.firstChild());
+            m_builder.inlineBuilder().insertChild(parent, WTFMove(newBlock), parent.firstChild());
         }
         beforeChild = nullptr;
         return *beforeBlock;
@@ -321,7 +329,7 @@ RenderElement& RenderTreeBuilder::Ruby::findOrCreateParentForChild(RenderRubyAsI
         if (!afterBlock) {
             auto newBlock = createAnonymousRubyInlineBlock(parent);
             afterBlock = newBlock.get();
-            m_builder.insertChildToRenderInline(parent, WTFMove(newBlock));
+            m_builder.inlineBuilder().insertChild(parent, WTFMove(newBlock), nullptr);
         }
         beforeChild = nullptr;
         return *afterBlock;
@@ -350,7 +358,7 @@ RenderElement& RenderTreeBuilder::Ruby::findOrCreateParentForChild(RenderRubyAsI
     if (!lastRun || lastRun->hasRubyText()) {
         auto newRun = RenderRubyRun::staticCreateRubyRun(&parent);
         lastRun = newRun.get();
-        m_builder.insertChildToRenderInline(parent, WTFMove(newRun), beforeChild);
+        m_builder.inlineBuilder().insertChild(parent, WTFMove(newRun), beforeChild);
     }
     beforeChild = nullptr;
     return *lastRun;
@@ -365,6 +373,89 @@ RenderRubyBase& RenderTreeBuilder::Ruby::rubyBaseSafe(RenderRubyRun& rubyRun)
         m_builder.insertChildToRenderBlockFlow(rubyRun, WTFMove(newBase));
     }
     return *base;
+}
+
+RenderPtr<RenderObject> RenderTreeBuilder::Ruby::takeChild(RenderRubyAsInline& parent, RenderObject& child)
+{
+    // If the child's parent is *this (must be a ruby run or generated content or anonymous block),
+    // just use the normal remove method.
+    if (child.parent() == &parent) {
+#ifndef ASSERT_DISABLED
+        ASSERT(isRubyChildForNormalRemoval(child));
+#endif
+        return m_builder.takeChildFromRenderElement(parent, child);
+    }
+    // If the child's parent is an anoymous block (must be generated :before/:after content)
+    // just use the block's remove method.
+    if (isAnonymousRubyInlineBlock(child.parent())) {
+        ASSERT(child.isBeforeContent() || child.isAfterContent());
+        auto& parent = *child.parent();
+        auto takenChild = m_builder.takeChild(parent, child);
+        parent.removeFromParentAndDestroy(m_builder);
+        return takenChild;
+    }
+
+    // Otherwise find the containing run and remove it from there.
+    return m_builder.takeChild(findRubyRunParent(child), child);
+}
+
+RenderPtr<RenderObject> RenderTreeBuilder::Ruby::takeChild(RenderRubyAsBlock& parent, RenderObject& child)
+{
+    // If the child's parent is *this (must be a ruby run or generated content or anonymous block),
+    // just use the normal remove method.
+    if (child.parent() == &parent) {
+#ifndef ASSERT_DISABLED
+        ASSERT(isRubyChildForNormalRemoval(child));
+#endif
+        return m_builder.blockBuilder().takeChild(parent, child);
+    }
+    // If the child's parent is an anoymous block (must be generated :before/:after content)
+    // just use the block's remove method.
+    if (isAnonymousRubyInlineBlock(child.parent())) {
+        ASSERT(child.isBeforeContent() || child.isAfterContent());
+        auto& parent = *child.parent();
+        auto takenChild = m_builder.takeChild(parent, child);
+        parent.removeFromParentAndDestroy(m_builder);
+        return takenChild;
+    }
+
+    // Otherwise find the containing run and remove it from there.
+    return m_builder.takeChild(findRubyRunParent(child), child);
+}
+
+RenderPtr<RenderObject> RenderTreeBuilder::Ruby::takeChild(RenderRubyRun& parent, RenderObject& child)
+{
+    // If the child is a ruby text, then merge the ruby base with the base of
+    // the right sibling run, if possible.
+    if (!parent.beingDestroyed() && !parent.renderTreeBeingDestroyed() && child.isRubyText()) {
+        RenderRubyBase* base = parent.rubyBase();
+        RenderObject* rightNeighbour = parent.nextSibling();
+        if (base && is<RenderRubyRun>(rightNeighbour)) {
+            // Ruby run without a base can happen only at the first run.
+            RenderRubyRun& rightRun = downcast<RenderRubyRun>(*rightNeighbour);
+            if (rightRun.hasRubyBase()) {
+                RenderRubyBase* rightBase = rightRun.rubyBase();
+                // Collect all children in a single base, then swap the bases.
+                moveChildren(*rightBase, *base);
+                parent.moveChildTo(m_builder, &rightRun, base, RenderBoxModelObject::NormalizeAfterInsertion::No);
+                rightRun.moveChildTo(m_builder, &parent, rightBase, RenderBoxModelObject::NormalizeAfterInsertion::No);
+                // The now empty ruby base will be removed below.
+                ASSERT(!parent.rubyBase()->firstChild());
+            }
+        }
+    }
+
+    auto takenChild = m_builder.blockBuilder().takeChild(parent, child);
+
+    if (!parent.beingDestroyed() && !parent.renderTreeBeingDestroyed()) {
+        // Check if our base (if any) is now empty. If so, destroy it.
+        RenderBlock* base = parent.rubyBase();
+        if (base && !base->firstChild()) {
+            auto takenBase = m_builder.blockBuilder().takeChild(parent, *base);
+            base->deleteLines();
+        }
+    }
+    return takenChild;
 }
 
 }

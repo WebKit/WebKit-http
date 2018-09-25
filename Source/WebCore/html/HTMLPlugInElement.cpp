@@ -220,7 +220,7 @@ void HTMLPlugInElement::defaultEventHandler(Event& event)
     HTMLFrameOwnerElement::defaultEventHandler(event);
 }
 
-bool HTMLPlugInElement::isKeyboardFocusable(KeyboardEvent&) const
+bool HTMLPlugInElement::isKeyboardFocusable(KeyboardEvent*) const
 {
     // FIXME: Why is this check needed?
     if (!document().page())
@@ -286,9 +286,13 @@ void HTMLPlugInElement::swapRendererTimerFired()
 
 void HTMLPlugInElement::setDisplayState(DisplayState state)
 {
+    if (state == m_displayState)
+        return;
+
     m_displayState = state;
     
-    if ((state == DisplayingSnapshot || displayState() == PreparingPluginReplacement) && !m_swapRendererTimer.isActive())
+    m_swapRendererTimer.stop();
+    if (state == DisplayingSnapshot || displayState() == PreparingPluginReplacement)
         m_swapRendererTimer.startOneShot(0_s);
 }
 

@@ -135,7 +135,6 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/xml"
     "${WEBCORE_DIR}/xml/parser"
     "${DERIVED_SOURCES_WEBCORE_DIR}"
-    "${PAL_DIR}"
 )
 
 set(WebCore_SYSTEM_INCLUDE_DIRECTORIES
@@ -446,12 +445,11 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/webvr/VRPose.idl
     Modules/webvr/VRStageParameters.idl
 
-    accessibility/AccessibleNode.idl
-
     animation/Animatable.idl
-    animation/AnimationEffect.idl
+    animation/AnimationEffectReadOnly.idl
     animation/AnimationEffectTiming.idl
     animation/AnimationEffectTimingProperties.idl
+    animation/AnimationEffectTimingReadOnly.idl
     animation/AnimationPlaybackEvent.idl
     animation/AnimationPlaybackEventInit.idl
     animation/AnimationTimeline.idl
@@ -463,6 +461,7 @@ set(WebCore_NON_SVG_IDL_FILES
     animation/KeyframeAnimationOptions.idl
     animation/KeyframeEffect.idl
     animation/KeyframeEffectOptions.idl
+    animation/KeyframeEffectReadOnly.idl
     animation/PlaybackDirection.idl
     animation/WebAnimation.idl
 

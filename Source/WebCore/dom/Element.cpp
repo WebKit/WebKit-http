@@ -27,7 +27,6 @@
 #include "Element.h"
 
 #include "AXObjectCache.h"
-#include "AccessibleNode.h"
 #include "Attr.h"
 #include "AttributeChangeInvalidation.h"
 #include "CSSAnimationController.h"
@@ -244,7 +243,7 @@ void Element::setTabIndex(int value)
     setIntegralAttribute(tabindexAttr, value);
 }
 
-bool Element::isKeyboardFocusable(KeyboardEvent&) const
+bool Element::isKeyboardFocusable(KeyboardEvent*) const
 {
     return isFocusable() && tabIndex() >= 0;
 }
@@ -1389,7 +1388,7 @@ void Element::attributeChanged(const QualifiedName& name, const AtomicString& ol
     invalidateNodeListAndCollectionCachesInAncestorsForAttribute(name);
 
     if (AXObjectCache* cache = document().existingAXObjectCache())
-        cache->handleAttributeChanged(name, this);
+        cache->deferAttributeChangeIfNeeded(name, this);
 }
 
 template <typename CharacterType>
@@ -1482,24 +1481,54 @@ ElementStyle Element::resolveStyle(const RenderStyle* parentStyle)
     return styleResolver().styleForElement(*this, parentStyle);
 }
 
+static void invalidateSiblingsIfNeeded(Element& element)
+{
+    if (!element.affectsNextSiblingElementStyle())
+        return;
+    auto* parent = element.parentElement();
+    if (parent && parent->styleValidity() >= Style::Validity::SubtreeInvalid)
+        return;
+
+    for (auto* sibling = element.nextElementSibling(); sibling; sibling = sibling->nextElementSibling()) {
+        if (sibling->styleIsAffectedByPreviousSibling())
+            sibling->invalidateStyleForSubtreeInternal();
+        if (!sibling->affectsNextSiblingElementStyle())
+            return;
+    }
+}
+
 void Element::invalidateStyle()
 {
     Node::invalidateStyle(Style::Validity::ElementInvalid);
+    invalidateSiblingsIfNeeded(*this);
 }
 
 void Element::invalidateStyleAndLayerComposition()
 {
     Node::invalidateStyle(Style::Validity::ElementInvalid, Style::InvalidationMode::RecompositeLayer);
+    invalidateSiblingsIfNeeded(*this);
 }
 
 void Element::invalidateStyleForSubtree()
 {
     Node::invalidateStyle(Style::Validity::SubtreeInvalid);
+    invalidateSiblingsIfNeeded(*this);
 }
 
 void Element::invalidateStyleAndRenderersForSubtree()
 {
     Node::invalidateStyle(Style::Validity::SubtreeAndRenderersInvalid);
+    invalidateSiblingsIfNeeded(*this);
+}
+
+void Element::invalidateStyleInternal()
+{
+    Node::invalidateStyle(Style::Validity::ElementInvalid);
+}
+
+void Element::invalidateStyleForSubtreeInternal()
+{
+    Node::invalidateStyle(Style::Validity::SubtreeInvalid);
 }
 
 bool Element::hasDisplayContents() const
@@ -3546,7 +3575,7 @@ void Element::clearHasCSSAnimation()
 
 bool Element::canContainRangeEndPoint() const
 {
-    return !equalLettersIgnoringASCIICase(AccessibleNode::effectiveStringValueForElement(const_cast<Element&>(*this), AXPropertyName::Role), "img");
+    return !equalLettersIgnoringASCIICase(attributeWithoutSynchronization(roleAttr), "img");
 }
 
 String Element::completeURLsInAttributeValue(const URL& base, const Attribute& attribute) const
@@ -3731,27 +3760,6 @@ Vector<RefPtr<WebAnimation>> Element::getAnimations()
     if (auto timeline = document().existingTimeline())
         return timeline->animationsForElement(*this);
     return { };
-}
-
-AccessibleNode* Element::accessibleNode()
-{
-    if (!RuntimeEnabledFeatures::sharedFeatures().accessibilityObjectModelEnabled())
-        return nullptr;
-
-    ElementRareData& data = ensureElementRareData();
-    if (!data.accessibleNode())
-        data.setAccessibleNode(std::make_unique<AccessibleNode>(*this));
-    return data.accessibleNode();
-}
-
-AccessibleNode* Element::existingAccessibleNode() const
-{
-    if (!RuntimeEnabledFeatures::sharedFeatures().accessibilityObjectModelEnabled())
-        return nullptr;
-
-    if (!hasRareData())
-        return nullptr;
-    return elementRareData()->accessibleNode();
 }
 
 } // namespace WebCore

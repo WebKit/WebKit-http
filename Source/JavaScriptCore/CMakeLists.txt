@@ -13,9 +13,7 @@ set(JavaScriptCore_INCLUDE_DIRECTORIES
 set(JavaScriptCore_PRIVATE_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}"
     "${JAVASCRIPTCORE_DIR}"
-    "${JAVASCRIPTCORE_DIR}/.."
     "${JAVASCRIPTCORE_DIR}/API"
-    "${JAVASCRIPTCORE_DIR}/ForwardingHeaders"
     "${JAVASCRIPTCORE_DIR}/assembler"
     "${JAVASCRIPTCORE_DIR}/b3"
     "${JAVASCRIPTCORE_DIR}/b3/air"
@@ -117,6 +115,16 @@ set(JavaScriptCore_LIBRARIES
     ${ICU_I18N_LIBRARIES}
     ${LLVM_LIBRARIES}
 )
+
+# Since r228149, on MIPS we need to link with -latomic, because
+# __atomic_fetch_add_8 is not available as a compiler intrinsic. It is
+# available on other platforms (including 32-bit Arm), so the link with
+# libatomic is only neede on MIPS.
+if (WTF_CPU_MIPS)
+    list(APPEND JavaScriptCore_LIBRARIES
+        -latomic
+    )
+endif ()
 
 set(JavaScriptCore_SCRIPTS_SOURCES_DIR "${JAVASCRIPTCORE_DIR}/Scripts")
 
@@ -739,6 +747,7 @@ set(JavaScriptCore_FORWARDING_HEADERS
     runtime/JSCJSValueInlines.h
     runtime/JSCPoison.h
     runtime/JSCallee.h
+    runtime/JSCast.h
     runtime/JSCell.h
     runtime/JSCellInlines.h
     runtime/JSDataView.h
@@ -850,9 +859,7 @@ set(JavaScriptCore_FORWARDING_HEADERS
     runtime/Symbol.h
     runtime/SymbolPrototype.h
     runtime/SymbolTable.h
-    runtime/TemplateRegistry.h
-    runtime/TemplateRegistryKey.h
-    runtime/TemplateRegistryKeyTable.h
+    runtime/TemplateObjectDescriptor.h
     runtime/TestRunnerUtils.h
     runtime/ThrowScope.h
     runtime/ToNativeFromValue.h

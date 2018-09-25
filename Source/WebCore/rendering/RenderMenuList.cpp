@@ -27,7 +27,6 @@
 
 #include "AXObjectCache.h"
 #include "AccessibilityMenuList.h"
-#include "AccessibleNode.h"
 #include "CSSFontSelector.h"
 #include "Chrome.h"
 #include "Frame.h"
@@ -89,7 +88,7 @@ RenderMenuList::~RenderMenuList()
     // Do not add any code here. Add it to willBeDestroyed() instead.
 }
 
-void RenderMenuList::willBeDestroyed()
+void RenderMenuList::willBeDestroyed(RenderTreeBuilder& builder)
 {
 #if !PLATFORM(IOS)
     if (m_popup)
@@ -97,7 +96,7 @@ void RenderMenuList::willBeDestroyed()
     m_popup = nullptr;
 #endif
 
-    RenderFlexibleBox::willBeDestroyed();
+    RenderFlexibleBox::willBeDestroyed(builder);
 }
 
 void RenderMenuList::setInnerRenderer(RenderBlock& innerRenderer)
@@ -170,13 +169,6 @@ void RenderMenuList::addChild(RenderTreeBuilder&, RenderPtr<RenderObject> child,
 {
     if (AXObjectCache* cache = document().existingAXObjectCache())
         cache->childrenChanged(this, child.get());
-}
-
-RenderPtr<RenderObject> RenderMenuList::takeChild(RenderTreeBuilder& builder, RenderObject& oldChild)
-{
-    if (!m_innerBlock || &oldChild == m_innerBlock)
-        return RenderFlexibleBox::takeChild(builder, oldChild);
-    return m_innerBlock->takeChild(builder, oldChild);
 }
 
 void RenderMenuList::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
@@ -464,7 +456,7 @@ String RenderMenuList::itemAccessibilityText(unsigned listIndex) const
     const Vector<HTMLElement*>& listItems = selectElement().listItems();
     if (listIndex >= listItems.size())
         return String();
-    return AccessibleNode::effectiveStringValueForElement(*listItems[listIndex], AXPropertyName::Label);
+    return listItems[listIndex]->attributeWithoutSynchronization(aria_labelAttr);
 }
     
 String RenderMenuList::itemToolTip(unsigned listIndex) const

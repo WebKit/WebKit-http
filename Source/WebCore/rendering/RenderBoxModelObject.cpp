@@ -237,10 +237,10 @@ RenderBoxModelObject::~RenderBoxModelObject()
     // Do not add any code here. Add it to willBeDestroyed() instead.
 }
 
-void RenderBoxModelObject::willBeDestroyed()
+void RenderBoxModelObject::willBeDestroyed(RenderTreeBuilder& builder)
 {
     if (continuation() && !isContinuation()) {
-        removeAndDestroyAllContinuations();
+        removeAndDestroyAllContinuations(builder);
         ASSERT(!continuation());
     }
     if (hasContinuationChainNode())
@@ -252,7 +252,7 @@ void RenderBoxModelObject::willBeDestroyed()
     if (!renderTreeBeingDestroyed())
         view().imageQualityController().rendererWillBeDestroyed(*this);
 
-    RenderLayerModelObject::willBeDestroyed();
+    RenderLayerModelObject::willBeDestroyed(builder);
 }
 
 bool RenderBoxModelObject::hasVisibleBoxDecorationStyle() const
@@ -2551,14 +2551,14 @@ auto RenderBoxModelObject::ensureContinuationChainNode() -> ContinuationChainNod
     }).iterator->value;
 }
 
-void RenderBoxModelObject::removeAndDestroyAllContinuations()
+void RenderBoxModelObject::removeAndDestroyAllContinuations(RenderTreeBuilder& builder)
 {
     ASSERT(!isContinuation());
     ASSERT(hasContinuationChainNode());
     ASSERT(continuationChainNodeMap().contains(this));
     auto& continuationChainNode = *continuationChainNodeMap().get(this);
     while (continuationChainNode.next)
-        continuationChainNode.next->renderer->removeFromParentAndDestroy();
+        continuationChainNode.next->renderer->removeFromParentAndDestroy(builder);
     removeFromContinuationChain();
 }
 
@@ -2685,7 +2685,7 @@ void RenderBoxModelObject::mapAbsoluteToLocalPoint(MapCoordinatesFlags mode, Tra
         transformState.move(containerOffset.width(), containerOffset.height(), preserve3D ? TransformState::AccumulateTransform : TransformState::FlattenTransform);
 }
 
-void RenderBoxModelObject::moveChildTo(RenderBoxModelObject* toBoxModelObject, RenderObject* child, RenderObject* beforeChild, NormalizeAfterInsertion normalizeAfterInsertion)
+void RenderBoxModelObject::moveChildTo(RenderTreeBuilder& builder, RenderBoxModelObject* toBoxModelObject, RenderObject* child, RenderObject* beforeChild, NormalizeAfterInsertion normalizeAfterInsertion)
 {
     // We assume that callers have cleared their positioned objects list for child moves so the
     // positioned renderer maps don't become stale. It would be too slow to do the map lookup on each call.
@@ -2696,15 +2696,15 @@ void RenderBoxModelObject::moveChildTo(RenderBoxModelObject* toBoxModelObject, R
     if (normalizeAfterInsertion == NormalizeAfterInsertion::Yes && (toBoxModelObject->isRenderBlock() || toBoxModelObject->isRenderInline())) {
         // Takes care of adding the new child correctly if toBlock and fromBlock
         // have different kind of children (block vs inline).
-        auto childToMove = takeChildInternal(*child);
-        RenderTreeBuilder::current()->insertChild(*toBoxModelObject, WTFMove(childToMove), beforeChild);
+        auto childToMove = builder.takeChildFromRenderElement(*this, *child);
+        builder.insertChild(*toBoxModelObject, WTFMove(childToMove), beforeChild);
     } else {
-        auto childToMove = takeChildInternal(*child);
+        auto childToMove = builder.takeChildFromRenderElement(*this, *child);
         toBoxModelObject->insertChildInternal(WTFMove(childToMove), beforeChild);
     }
 }
 
-void RenderBoxModelObject::moveChildrenTo(RenderBoxModelObject* toBoxModelObject, RenderObject* startChild, RenderObject* endChild, RenderObject* beforeChild, NormalizeAfterInsertion normalizeAfterInsertion)
+void RenderBoxModelObject::moveChildrenTo(RenderTreeBuilder& builder, RenderBoxModelObject* toBoxModelObject, RenderObject* startChild, RenderObject* endChild, RenderObject* beforeChild, NormalizeAfterInsertion normalizeAfterInsertion)
 {
     // This condition is rarely hit since this function is usually called on
     // anonymous blocks which can no longer carry positioned objects (see r120761)
@@ -2737,7 +2737,7 @@ void RenderBoxModelObject::moveChildrenTo(RenderBoxModelObject* toBoxModelObject
                 nextSibling = nextSibling->nextSibling();
         }
 
-        moveChildTo(toBoxModelObject, child, beforeChild, normalizeAfterInsertion);
+        moveChildTo(builder, toBoxModelObject, child, beforeChild, normalizeAfterInsertion);
         child = nextSibling;
     }
 }

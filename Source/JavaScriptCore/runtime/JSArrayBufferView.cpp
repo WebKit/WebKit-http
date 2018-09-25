@@ -94,7 +94,7 @@ JSArrayBufferView::ConstructionContext::ConstructionContext(
     if (!m_vector)
         return;
     if (mode == ZeroFill)
-        memset(m_vector.get(), 0, size);
+        fastZeroFillBytes(m_vector.get(), size);
     
     vm.heap.reportExtraMemoryAllocated(static_cast<size_t>(length) * elementSize);
     
@@ -138,6 +138,7 @@ JSArrayBufferView::JSArrayBufferView(VM& vm, ConstructionContext& context)
 void JSArrayBufferView::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
+    ASSERT(jsDynamicCast<JSArrayBufferView*>(vm, this));
     switch (m_mode) {
     case FastTypedArray:
         return;

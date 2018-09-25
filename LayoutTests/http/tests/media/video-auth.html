@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
     <head>
         <script src=../../media-resources/video-test.js></script>
@@ -18,36 +19,15 @@
             {
                 findMediaElement();
                 waitForEventAndFail('error');
-                waitForEvent('canplay', runNextTest);
+                waitForEventAndEnd('canplay');
 
-                tests = [
-                    testSameDomain,
-                    testCrossDomain,
-                ];
-
-                runNextTest();
-            }
-
-            function runNextTest()
-            {
-                var test = tests.shift();
-                if (test)
-                    test();
-                else
-                    endTest();
+                testSameDomain();
             }
 
             function testSameDomain()
             {
                 consoleWrite('Testing same domain (127.0.0.1)');
                 video.src = 'http://127.0.0.1:8000/media/resources/video-auth.php?name=' + media + '&type=' + type;
-                video.load();
-            }
-
-            function testCrossDomain()
-            {
-                consoleWrite('Testing cross domain (localhost)');
-                video.src = 'http://localhost:8000/media/resources/video-auth.php?name=' + media + '&type=' + type;
                 video.load();
             }
         </script>

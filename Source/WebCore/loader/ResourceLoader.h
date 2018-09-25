@@ -98,7 +98,7 @@ public:
     SharedBuffer* resourceData() const { return m_resourceData.get(); }
     void clearResourceData();
     
-    virtual bool isSubresourceLoader();
+    virtual bool isSubresourceLoader() const;
 
     virtual void willSendRequest(ResourceRequest&&, const ResourceResponse& redirectResponse, CompletionHandler<void(ResourceRequest&&)>&& callback);
     virtual void didSendData(unsigned long long bytesSent, unsigned long long totalBytesToBeSent);
@@ -180,6 +180,7 @@ protected:
 #if USE(QUICK_LOOK)
     std::unique_ptr<PreviewLoader> m_previewLoader;
 #endif
+    bool m_canCrossOriginRequestsAskUserForCredentials { true };
 
 private:
     virtual void willCancel(const ResourceError&) = 0;
@@ -188,6 +189,8 @@ private:
     void addDataOrBuffer(const char*, unsigned, SharedBuffer*, DataPayloadType);
     void loadDataURL();
     void finishNetworkLoad();
+
+    bool shouldAllowResourceToAskForCredentials() const;
 
     // ResourceHandleClient
     void didSendData(ResourceHandle*, unsigned long long bytesSent, unsigned long long totalBytesToBeSent) override;

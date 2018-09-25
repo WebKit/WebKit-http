@@ -344,19 +344,7 @@ void WebAutomationSession::resizeWindowOfBrowsingContext(Inspector::ErrorString&
             return callback->sendSuccess();
 
         page->setWindowFrame(newFrame);
-
-#if PLATFORM(GTK)
         callback->sendSuccess();
-#else
-        // If nothing changed at all, it's probably fair to report that something went wrong.
-        // (We can't assume that the requested frame size will be honored exactly, however.)
-        page->getWindowFrameWithCallback([callback = WTFMove(callback), originalFrame](WebCore::FloatRect updatedFrame) {
-            if (originalFrame == updatedFrame)
-                callback->sendFailure(STRING_FOR_PREDEFINED_ERROR_NAME_AND_DETAILS(InternalError, "The window size was expected to have changed, but did not."));
-            else
-                callback->sendSuccess();
-        });
-#endif
     });
 #endif
 }
@@ -392,19 +380,7 @@ void WebAutomationSession::moveWindowOfBrowsingContext(Inspector::ErrorString& e
             return callback->sendSuccess();
 
         page->setWindowFrame(newFrame);
-
-#if PLATFORM(GTK)
         callback->sendSuccess();
-#else
-        // If nothing changed at all, it's probably fair to report that something went wrong.
-        // (We can't assume that the requested frame size will be honored exactly, however.)
-        page->getWindowFrameWithCallback([callback = WTFMove(callback), originalFrame](WebCore::FloatRect updatedFrame) {
-            if (originalFrame == updatedFrame)
-                callback->sendFailure(STRING_FOR_PREDEFINED_ERROR_NAME_AND_DETAILS(InternalError, "The window position was expected to have changed, but did not."));
-            else
-                callback->sendSuccess();
-        });
-#endif
     });
 #endif
 }
@@ -1207,7 +1183,12 @@ void WebAutomationSession::addSingleCookie(ErrorString& errorString, const Strin
     // Inherit the domain/host from the main frame's URL if it is not explicitly set.
     if (domain.isEmpty())
         domain = activeURL.host();
-
+    else if (domain[0] != '.') {
+        // RFC 2965: If an explicitly specified value does not start with a dot, the user agent supplies a leading dot.
+        // Assume that any host that ends with a digit is trying to be an IP address.
+        if (!WebCore::URL::hostIsIPAddress(domain))
+            domain = makeString('.', domain);
+    }
     cookie.domain = domain;
 
     if (!cookieObject.getString(WTF::ASCIILiteral("path"), cookie.path))

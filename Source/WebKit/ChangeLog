@@ -1,3 +1,1491 @@
+2018-02-15  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Make sure WebResourceLoadStatisticsStore::mergeWithDataFromDecoder() can ingest older plist versions and not reset the database
+        https://bugs.webkit.org/show_bug.cgi?id=182812
+        <rdar://problem/37511406>
+
+        Reviewed by Brent Fulgham.
+
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::mergeWithDataFromDecoder):
+            Now does the following:
+            - Logs when there is a model version mismatch.
+            - Does not ingest statistics if the version on disk is newer than the supported one.
+            - Does ingest statistics if the version on disk is older than the supported one.
+            - Passes on the version found on disk to WebCore::ResourceLoadStatistics::decode().
+
+2018-02-15  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Revisit the whole async model of task dispatching, timeout and aborting
+        https://bugs.webkit.org/show_bug.cgi?id=181946
+        <rdar://problem/37258262>
+
+        Reviewed by Chris Dumez.
+
+        Dummy WebCredentialsMessenger and WebCredentialsMessengerProxy are crafted to establish
+        a message exchange channel between UIProcess and WebProcess.
+
+        * DerivedSources.make:
+        * UIProcess/CredentialManagement/WebCredentialsMessengerProxy.cpp: Copied from Source/WebCore/Modules/webauthn/AuthenticatorResponse.h.
+        (WebKit::WebCredentialsMessengerProxy::WebCredentialsMessengerProxy):
+        (WebKit::WebCredentialsMessengerProxy::~WebCredentialsMessengerProxy):
+        (WebKit::WebCredentialsMessengerProxy::makeCredential):
+        (WebKit::WebCredentialsMessengerProxy::getAssertion):
+        * UIProcess/CredentialManagement/WebCredentialsMessengerProxy.h: Copied from Source/WebCore/Modules/webauthn/AuthenticatorResponse.h.
+        * UIProcess/CredentialManagement/WebCredentialsMessengerProxy.messages.in: Added.
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::m_configurationPreferenceValues):
+        (WebKit::WebPageProxy::reattachToWebProcess):
+        (WebKit::WebPageProxy::resetState):
+        * UIProcess/WebPageProxy.h:
+        * WebKit.xcodeproj/project.pbxproj:
+        * WebProcess/CredentialManagement/WebCredentialsMessenger.cpp: Copied from Source/WebCore/Modules/webauthn/AuthenticatorResponse.h.
+        (WebKit::WebCredentialsMessenger::WebCredentialsMessenger):
+        (WebKit::WebCredentialsMessenger::~WebCredentialsMessenger):
+        (WebKit::WebCredentialsMessenger::makeCredential):
+        (WebKit::WebCredentialsMessenger::getAssertion):
+        (WebKit::WebCredentialsMessenger::makeCredentialReply):
+        (WebKit::WebCredentialsMessenger::getAssertionReply):
+        * WebProcess/CredentialManagement/WebCredentialsMessenger.h: Copied from Source/WebCore/Modules/webauthn/AuthenticatorResponse.h.
+        * WebProcess/CredentialManagement/WebCredentialsMessenger.messages.in: Added.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::m_credentialsMessenger):
+        (WebKit::m_cpuLimit): Deleted.
+        * WebProcess/WebPage/WebPage.h:
+
+2018-02-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] Unify build of platform-specific files in WebKit layer
+        https://bugs.webkit.org/show_bug.cgi?id=182696
+
+        Reviewed by Žan Doberšek.
+
+        This is easy, because all needed changes were made in the previously-landed patch.
+
+        * CMakeLists.txt:
+        * PlatformWPE.cmake:
+
+2018-02-15  Don Olmstead  <don.olmstead@sony.com>
+
+        WebCore headers should not be included relatively within dependent projects
+        https://bugs.webkit.org/show_bug.cgi?id=182805
+
+        Reviewed by Chris Dumez.
+
+        * NetworkProcess/capture/NetworkCaptureManager.cpp:
+        * NetworkProcess/webrtc/NetworkRTCMonitor.h:
+        * Shared/gtk/WebEventFactory.cpp:
+        * UIProcess/API/gtk/PageClientImpl.cpp:
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        * UIProcess/gtk/WebPageProxyGtk.cpp:
+        * WebProcess/Plugins/Netscape/x11/NetscapePluginX11.cpp:
+        * WebProcess/WebCoreSupport/gtk/WebEditorClientGtk.cpp:
+        * WebProcess/WebCoreSupport/wpe/WebEditorClientWPE.cpp:
+        * WebProcess/WebPage/gtk/WebPageGtk.cpp:
+        * WebProcess/WebPage/wpe/WebPageWPE.cpp:
+
+2018-02-15  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r228495.
+
+        This caused mulitple perf tests to fail consistently.
+
+        Reverted changeset:
+
+        "Resource Load Statistics: Make sure
+        WebResourceLoadStatisticsStore::mergeWithDataFromDecoder() can
+        ingest older plist versions and not reset the database"
+        https://bugs.webkit.org/show_bug.cgi?id=182812
+        https://trac.webkit.org/changeset/228495
+
+2018-02-14  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Default definition of InjectedBundle::PlatformBundle should not be Windows-specific.
+        https://bugs.webkit.org/show_bug.cgi?id=182810
+
+        Reviewed by Michael Catanzaro.
+
+        This branch was added in r228455, but should not be limited to OS(WINDOWS).
+
+        * WebProcess/InjectedBundle/InjectedBundle.h:
+
+2018-02-14  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Default implementations of nativeEvent() should be platform-agnostic.
+        https://bugs.webkit.org/show_bug.cgi?id=182806
+
+        Reviewed by Darin Adler.
+
+        * Shared/NativeWebKeyboardEvent.h:
+        * Shared/NativeWebMouseEvent.h:
+        * Shared/NativeWebWheelEvent.h:
+
+2018-02-14  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Make sure WebResourceLoadStatisticsStore::mergeWithDataFromDecoder() can ingest older plist versions and not reset the database
+        https://bugs.webkit.org/show_bug.cgi?id=182812
+        <rdar://problem/37511406>
+
+        Reviewed by Brent Fulgham.
+
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::mergeWithDataFromDecoder):
+            Now does the following:
+            - Logs when there is a model version mismatch.
+            - Does not ingest statistics if the version on disk is newer than the supported one.
+            - Does ingest statistics if the version on disk is older than the supported one.
+            - Passes on the version found on disk to WebCore::ResourceLoadStatistics::decode().
+
+2018-02-14  Daniel Bates  <dabates@apple.com>
+
+        Disallow cross-origin subresources from asking for credentials
+        https://bugs.webkit.org/show_bug.cgi?id=182579
+        <rdar://problem/36162271>
+
+        Reviewed by Andy Estes.
+
+        Add a private preference to toggle allowing non-mixed content cross-origin subresources to load.
+        WebKitTestRunner toggles this preference when it sees the test option allowCrossOriginSubresourcesToAskForCredential.
+
+        * Shared/WebPreferences.yaml:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetAllowCrossOriginSubresourcesToAskForCredentials):
+        (WKPreferencesGetAllowCrossOriginSubresourcesToAskForCredentials):
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+
+2018-02-14  John Wilander  <wilander@apple.com>
+
+        Make maximumParallelReadCount static to fix lambda capture error in WebKit::NetworkCache::Storage::traverse()
+        https://bugs.webkit.org/show_bug.cgi?id=182797
+        <rdar://problem/37540594>
+
+        Reviewed by Tim Horton.
+
+        This capture was added in r228455 and causes a build failure when
+        run with -Wunused-lambda-capture. Xcode also warns about it.
+
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::Storage::traverse):
+
+2018-02-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        EventDispatcher::wheelEvent uses a wrong enum values in switch
+        https://bugs.webkit.org/show_bug.cgi?id=182796
+
+        Reviewed by Chris Dumez.
+
+        EventDispatcher::wheelEvent is using PlatformWheelEventPhaseBegan and PlatformWheelEventPhaseEnded
+        but the enum type of wheelEvent.phase() is WebWheelEvent::Phase.
+
+        The enum values are indentical for both so there is no behavioral change.
+
+        * WebProcess/WebPage/EventDispatcher.cpp:
+        (WebKit::EventDispatcher::wheelEvent):
+
+2018-02-14  Maureen Daum  <mdaum@apple.com>
+
+        Add C SPI for support of Website Data Store in Website Policies
+        https://bugs.webkit.org/show_bug.cgi?id=182698
+        <rdar://problem/37412008>
+
+        Reviewed by Andy Estes.
+
+        Expand the API added for _WKWebsitePolicies.websiteDataStore in r225989 and r226325
+        to be available in the C API. In the ObjC API, we handle setting the website data
+        store in NavigationState::NavigationClient::decidePolicyForNavigationAction. There
+        we throw an exception if setting the website data store isn't supported, and then
+        change the website data store. The equivalent place to do this work in the C API is
+        in WKFramePolicyListenerUseWithPolicies. However, instead of throwing exceptions,
+        release asserts are used.
+
+        * UIProcess/API/C/WKFramePolicyListener.cpp:
+        (WKFramePolicyListenerUseWithPolicies):
+        If the website policies data contains a website data store, do the same checks that
+        are done in NavigationState::NavigationClient::decidePolicyForNavigationAction. Namely,
+        that it is a valid website data store and it is a policy decision for a main frame navigation.
+        If these checks are met, change the website data store.
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageUpdateWebsitePolicies):
+        * UIProcess/API/C/WKWebsitePolicies.cpp:
+        (WKWebsitePoliciesGetDataStore):
+        (WKWebsitePoliciesSetDataStore):
+        * UIProcess/API/C/WKWebsitePolicies.h:
+        * UIProcess/WebFrameListenerProxy.cpp:
+        (WebKit::WebFrameListenerProxy::changeWebsiteDataStore):
+        (WebKit::WebFrameListenerProxy::isMainFrame):
+        Expose whether the frame proxy is for a main frame, which is required to verify that
+        website policies only specify a website data store for main frame policy decisions.
+        * UIProcess/WebFrameListenerProxy.h:
+        * UIProcess/WebFramePolicyListenerProxy.cpp:
+        * UIProcess/WebFrameProxy.cpp:
+        (WebKit::WebFrameProxy::changeWebsiteDataStore):
+        * UIProcess/WebFrameProxy.h:
+
+2018-02-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r228444.
+
+        Introduced API and Layout test failures.
+
+        Reverted changeset:
+
+        "[WebAuthN] Revisit the whole async model of task dispatching,
+        timeout and aborting"
+        https://bugs.webkit.org/show_bug.cgi?id=181946
+        https://trac.webkit.org/changeset/228444
+
+2018-02-13  Yousuke Kimoto  <yousuke.kimoto@sony.com>
+
+        [WinCairo] Fix build errors which come from including headers and not suitable implementation for windows
+        https://bugs.webkit.org/show_bug.cgi?id=182679
+
+        Reviewed by Michael Catanzaro.
+
+        * NetworkProcess/cache/NetworkCacheBlobStorage.cpp:
+        (WebKit::NetworkCache::BlobStorage::add):
+        * NetworkProcess/cache/NetworkCacheData.cpp:
+        (WebKit::NetworkCache::Data::mapToFile const):
+        (WebKit::NetworkCache::mapFile):
+        (WebKit::NetworkCache::adoptAndMapFile):
+        (WebKit::NetworkCache::readOrMakeSalt):
+        * NetworkProcess/cache/NetworkCacheFileSystem.cpp:
+        (WebKit::NetworkCache::directoryEntryType):
+        (WebKit::NetworkCache::traverseDirectory):
+        (WebKit::NetworkCache::fileTimes):
+        (WebKit::NetworkCache::updateFileModificationTimeIfNeeded):
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::Storage::traverse):
+        * NetworkProcess/win/SystemProxyWin.h:
+        * Platform/IPC/Attachment.h:
+        * Platform/Module.h:
+        * Platform/SharedMemory.h:
+        * PluginProcess/WebProcessConnection.cpp:
+        * Shared/API/c/WKBase.h:
+        * Shared/ChildProcess.cpp:
+        * Shared/WebCoreArgumentCoders.h:
+        * UIProcess/ProcessAssertion.h:
+        * WebProcess/InjectedBundle/InjectedBundle.h:
+        * WebProcess/WebProcess.cpp:
+
+2018-02-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r228431.
+        https://bugs.webkit.org/show_bug.cgi?id=182766
+
+        Regressed CMake build stability (Requested by dolmstead on
+        #webkit).
+
+        Reverted changeset:
+
+        "[CMake] Make WebCore headers copies"
+        https://bugs.webkit.org/show_bug.cgi?id=182512
+        https://trac.webkit.org/changeset/228431
+
+2018-02-13  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Revisit the whole async model of task dispatching, timeout and aborting
+        https://bugs.webkit.org/show_bug.cgi?id=181946
+        <rdar://problem/37258262>
+
+        Reviewed by Chris Dumez.
+
+        Dummy WebCredentialsMessenger and WebCredentialsMessengerProxy are crafted to establish
+        a message exchange channel between UIProcess and WebProcess.
+
+        * DerivedSources.make:
+        * UIProcess/CredentialManagement/WebCredentialsMessengerProxy.cpp: Copied from Source/WebCore/Modules/webauthn/AuthenticatorResponse.h.
+        (WebKit::WebCredentialsMessengerProxy::WebCredentialsMessengerProxy):
+        (WebKit::WebCredentialsMessengerProxy::~WebCredentialsMessengerProxy):
+        (WebKit::WebCredentialsMessengerProxy::makeCredential):
+        (WebKit::WebCredentialsMessengerProxy::getAssertion):
+        * UIProcess/CredentialManagement/WebCredentialsMessengerProxy.h: Copied from Source/WebCore/Modules/webauthn/AuthenticatorResponse.h.
+        * UIProcess/CredentialManagement/WebCredentialsMessengerProxy.messages.in: Added.
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::m_configurationPreferenceValues):
+        (WebKit::WebPageProxy::reattachToWebProcess):
+        * UIProcess/WebPageProxy.h:
+        * WebKit.xcodeproj/project.pbxproj:
+        * WebProcess/CredentialManagement/WebCredentialsMessenger.cpp: Copied from Source/WebCore/Modules/webauthn/AuthenticatorResponse.h.
+        (WebKit::WebCredentialsMessenger::WebCredentialsMessenger):
+        (WebKit::WebCredentialsMessenger::~WebCredentialsMessenger):
+        (WebKit::WebCredentialsMessenger::makeCredential):
+        (WebKit::WebCredentialsMessenger::getAssertion):
+        (WebKit::WebCredentialsMessenger::makeCredentialReply):
+        (WebKit::WebCredentialsMessenger::getAssertionReply):
+        * WebProcess/CredentialManagement/WebCredentialsMessenger.h: Copied from Source/WebCore/Modules/webauthn/AuthenticatorResponse.h.
+        * WebProcess/CredentialManagement/WebCredentialsMessenger.messages.in: Added.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::m_credentialsMessenger):
+        (WebKit::m_cpuLimit): Deleted.
+        * WebProcess/WebPage/WebPage.h:
+
+2018-02-13  Youenn Fablet  <youenn@apple.com>
+
+        Add support for configuring WebsiteDatastore service worker and cache storage path
+        https://bugs.webkit.org/show_bug.cgi?id=182674
+
+        Reviewed by Chris Dumez.
+
+        Beef up WKWebsiteDataStoreConfiguration to easily set the WebsiteDataStore
+        service worker registration and cache storage directory path.
+
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.mm:
+        (-[WKWebsiteDataStore _initWithConfiguration:]):
+        * UIProcess/API/Cocoa/_WKWebsiteDataStoreConfiguration.h:
+        * UIProcess/API/Cocoa/_WKWebsiteDataStoreConfiguration.mm:
+        (-[_WKWebsiteDataStoreConfiguration _cacheStorageDirectory]):
+        (-[_WKWebsiteDataStoreConfiguration _setCacheStorageDirectory:]):
+        (-[_WKWebsiteDataStoreConfiguration _serviceWorkerRegistrationDirectory]):
+        (-[_WKWebsiteDataStoreConfiguration _setServiceWorkerRegistrationDirectory:]):
+
+2018-02-13  Brian Burg  <bburg@apple.com>
+
+        Web Automation: don't return an error if resizing/moving a window has no effect
+        https://bugs.webkit.org/show_bug.cgi?id=182742
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::resizeWindowOfBrowsingContext):
+        (WebKit::WebAutomationSession::moveWindowOfBrowsingContext):
+        Unify the behavior for all ports. Don't raise an error if the command was
+        idempotent (by mistake or not). It should not be an error to re-maximize a window.
+
+2018-02-13  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Make WebCore headers copies
+        https://bugs.webkit.org/show_bug.cgi?id=182512
+
+        Reviewed by Keith Miller.
+
+        * CMakeLists.txt:
+        * NetworkProcess/capture/NetworkCaptureManager.cpp:
+        * NetworkProcess/webrtc/NetworkRTCMonitor.h:
+        * PlatformWPE.cmake:
+        * Scripts/generate-forwarding-headers.pl:
+        * Shared/gtk/WebEventFactory.cpp:
+        * UIProcess/API/gtk/PageClientImpl.cpp:
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        * UIProcess/gtk/WebPageProxyGtk.cpp:
+        * WebProcess/Plugins/Netscape/x11/NetscapePluginX11.cpp:
+        * WebProcess/WebCoreSupport/gtk/WebEditorClientGtk.cpp:
+        * WebProcess/WebCoreSupport/wpe/WebEditorClientWPE.cpp:
+        * WebProcess/WebPage/gtk/WebPageGtk.cpp:
+        * WebProcess/WebPage/wpe/WebPageWPE.cpp:
+
+2018-02-13  Brent Fulgham  <bfulgham@apple.com>
+
+        [iOS] whitelist iokit-get-properties
+        https://bugs.webkit.org/show_bug.cgi?id=182722
+        <rdar://problem/30929165>
+
+        Reviewed by Eric Carlson.
+
+        Update the iOS sandbox to block access to IOKit properties that are not needed for
+        legitimate WebContent process use. This brings the iOS sandbox in line with the
+        work done under macOS.
+
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.WebContent.sb:
+
+2018-02-12  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Classify resources as prevalent based on redirects to other prevalent resources
+        https://bugs.webkit.org/show_bug.cgi?id=182664
+        <rdar://problem/37372572>
+
+        Reviewed by Brent Fulgham.
+
+        * Platform/classifier/ResourceLoadStatisticsClassifier.cpp:
+        (WebKit::ResourceLoadStatisticsClassifier::hasPrevalentResourceCharacteristics):
+            Unique top frame redirects now counts toward classification as prevalent.
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<ResourceLoadStatistics>::encode):
+        (IPC::ArgumentCoder<ResourceLoadStatistics>::decode):
+        * UIProcess/API/C/WKWebsiteDataStoreRef.cpp:
+        (WKWebsiteDataStoreSetStatisticsSubresourceUniqueRedirectFrom):
+        (WKWebsiteDataStoreSetStatisticsTopFrameUniqueRedirectTo):
+        (WKWebsiteDataStoreSetStatisticsTopFrameUniqueRedirectFrom):
+            Test infrastructure.
+        * UIProcess/API/C/WKWebsiteDataStoreRef.h:
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+            Bumped the statistics model to 11 because of the added fields.
+        (WebKit::WebResourceLoadStatisticsStore::recursivelyGetAllDomainsThatHaveRedirectedToThisDomain):
+            This function back traces redirect chains to classify domains
+            that have redirected to a newly classified prevalent resource.
+        (WebKit::WebResourceLoadStatisticsStore::processStatisticsAndDataRecords):
+            Now uses the new convenience function WebResourceLoadStatisticsStore::setPrevalentResource().
+        (WebKit::WebResourceLoadStatisticsStore::setPrevalentResource):
+            New convenience function to make sure we always call
+            WebResourceLoadStatisticsStore::recursivelyGetAllDomainsThatHaveRedirectedToThisDomain()
+            and capture redirect chains backward.
+        (WebKit::WebResourceLoadStatisticsStore::setSubframeUnderTopFrameOrigin):
+        (WebKit::WebResourceLoadStatisticsStore::setSubresourceUnderTopFrameOrigin):
+        (WebKit::WebResourceLoadStatisticsStore::setSubresourceUniqueRedirectTo):
+        (WebKit::WebResourceLoadStatisticsStore::setSubresourceUniqueRedirectFrom):
+        (WebKit::WebResourceLoadStatisticsStore::setTopFrameUniqueRedirectTo):
+        (WebKit::WebResourceLoadStatisticsStore::setTopFrameUniqueRedirectFrom):
+            Test infrastructure.
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+
+2018-02-12  Antti Koivisto  <antti@apple.com>
+
+        Update NetworkCache::Storage::lastStableVersion after r226349
+        https://bugs.webkit.org/show_bug.cgi?id=182723
+        <rdar://problem/37469554>
+        
+        Reviewed by Ryosuke Niwa.
+
+        * NetworkProcess/cache/NetworkCacheStorage.h:
+
+        Allow deleting version 11 caches.
+
+2018-02-12  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] Add support for <input type='time'> using time picker UI
+        https://bugs.webkit.org/show_bug.cgi?id=182683
+        <rdar://problem/35143162>
+
+        Reviewed by Tim Horton.
+
+        Adds support for showing a time picker when an input of type time is focused in extra zoomed mode.
+
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _stopAssistingNode]):
+        (-[WKContentView presentTimePickerViewController:]):
+        (-[WKContentView dismissTimePickerViewController:]):
+
+        Add helpers to dismiss and present the time picker view controller.
+
+        (-[WKContentView presentViewControllerForAssistedNode:]):
+
+        When focusing InputType::Time, present a time picker. Additionally, tweak the logic here to use the generic text
+        input view controller as a fallback when the other input view controllers (number pads, select menus and time
+        pickers thus far) are not relevant. This prevents us from completely being unable to edit form controls that are
+        currently unsupported.
+
+        (-[WKContentView textInputController:didCommitText:]):
+        (-[WKContentView textInputControllerDidRequestDismissal:]):
+
+        Tweak WKContentView for changes to WKTextFormControlViewControllerDelegate.
+
+        (-[WKContentView actionNameForFocusedFormControlController:]):
+
+        Adjust this implementation to hide the focused form control "Go" button for selects and time inputs. This
+        currently doesn't work for these form controls because it relies on implicit form submission; this should be
+        fixed by future changes, after which we should revert this adjustment.
+
+        (-[WKContentView _wheelChangedWithEvent:]):
+
+        Delegate wheel events to the time picker if needed.
+
+        (-[WKContentView textInputController:didRequestDismissalWithAction:]): Deleted.
+
+        Renamed to -textInputControllerDidRequestDismissal:.
+
+        * UIProcess/ios/forms/WKTimePickerViewController.h: Added.
+        * UIProcess/ios/forms/WKTimePickerViewController.mm: Added.
+        * WebKit.xcodeproj/project.pbxproj:
+
+2018-02-11  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Unify builds for platform-specific files in WebKit layer
+        https://bugs.webkit.org/show_bug.cgi?id=182450
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add most GTK-specific sources to unified build. API files are exempted, except for the DOM
+        API. Files shared with PluginProcessGTK2 are also exempted. Finally, files with name
+        conflicts in headers, which appears difficult to fix, are also exempted.
+
+        * CMakeLists.txt:
+        * NetworkProcess/CustomProtocols/soup/LegacyCustomProtocolManagerSoup.cpp:
+        * NetworkProcess/soup/NetworkDataTaskSoup.cpp:
+        * NetworkProcess/soup/NetworkProcessSoup.cpp:
+        * NetworkProcess/soup/NetworkSessionSoup.cpp:
+        * NetworkProcess/soup/RemoteNetworkingContextSoup.cpp:
+        * Platform/classifier/ResourceLoadStatisticsClassifier.cpp:
+        * PlatformGTK.cmake:
+        * PluginProcess/unix/PluginControllerProxyUnix.cpp:
+        * Shared/CoordinatedGraphics/CoordinatedBackingStore.cpp:
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp:
+        * Shared/CoordinatedGraphics/SimpleViewportController.cpp:
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp:
+        * Shared/Plugins/Netscape/unix/NetscapePluginModuleUnix.cpp:
+        * Shared/Plugins/unix/PluginSearchPath.cpp:
+        * Shared/cairo/ShareableBitmapCairo.cpp:
+        * Shared/glib/WebContextMenuItemGlib.cpp:
+        * Shared/glib/WebErrorsGlib.cpp:
+        * Shared/gtk/ArgumentCodersGtk.cpp:
+        * Shared/gtk/NativeWebKeyboardEventGtk.cpp:
+        * Shared/gtk/ProcessExecutablePathGtk.cpp:
+        * Shared/gtk/WebErrorsGtk.cpp:
+        * Shared/gtk/WebEventFactory.cpp:
+        * Shared/linux/WebMemorySamplerLinux.cpp:
+        * Shared/soup/WebCoreArgumentCodersSoup.cpp:
+        * Shared/soup/WebErrorsSoup.cpp:
+        * SourcesGTK.txt: Added.
+        * UIProcess/AcceleratedDrawingAreaProxy.cpp:
+        * UIProcess/Automation/cairo/WebAutomationSessionCairo.cpp:
+        * UIProcess/Automation/gtk/WebAutomationSessionGtk.cpp:
+        * UIProcess/BackingStore.cpp:
+        * UIProcess/DrawingAreaProxyImpl.cpp:
+        * UIProcess/Launcher/glib/ProcessLauncherGLib.cpp:
+        * UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp:
+        * UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp:
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        * UIProcess/WebResourceLoadStatisticsTelemetry.cpp:
+        * UIProcess/WebStorage/StorageManager.cpp:
+        * UIProcess/cairo/BackingStoreCairo.cpp:
+        * UIProcess/gtk/AcceleratedBackingStore.cpp:
+        * UIProcess/gtk/DragAndDropHandler.cpp:
+        * UIProcess/gtk/GestureController.cpp:
+        * UIProcess/gtk/HardwareAccelerationManager.cpp:
+        * UIProcess/gtk/InputMethodFilter.cpp:
+        * UIProcess/gtk/TextCheckerGtk.cpp:
+        * UIProcess/gtk/WaylandCompositor.cpp:
+        * UIProcess/gtk/WebColorPickerGtk.cpp:
+        * UIProcess/gtk/WebContextMenuProxyGtk.cpp:
+        * UIProcess/gtk/WebPasteboardProxyGtk.cpp:
+        * UIProcess/gtk/WebPopupMenuProxyGtk.cpp:
+        * WebProcess/Cookies/soup/WebCookieManagerSoup.cpp:
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMAttr.cpp:
+        (webkit_dom_attr_dom_event_target_init):
+        (webkit_dom_attr_set_property):
+        (webkit_dom_attr_get_property):
+        (webkit_dom_attr_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMCDATASection.cpp:
+        (webkit_dom_cdata_section_dom_event_target_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMCSSRule.cpp:
+        (webkit_dom_css_rule_set_property):
+        (webkit_dom_css_rule_get_property):
+        (webkit_dom_css_rule_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMCSSRuleList.cpp:
+        (webkit_dom_css_rule_list_get_property):
+        (webkit_dom_css_rule_list_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMCSSStyleDeclaration.cpp:
+        (webkit_dom_css_style_declaration_set_property):
+        (webkit_dom_css_style_declaration_get_property):
+        (webkit_dom_css_style_declaration_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMCSSStyleSheet.cpp:
+        (webkit_dom_css_style_sheet_get_property):
+        (webkit_dom_css_style_sheet_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMCSSValue.cpp:
+        (webkit_dom_css_value_set_property):
+        (webkit_dom_css_value_get_property):
+        (webkit_dom_css_value_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMCharacterData.cpp:
+        (webkit_dom_character_data_dom_event_target_init):
+        (webkit_dom_character_data_set_property):
+        (webkit_dom_character_data_get_property):
+        (webkit_dom_character_data_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMClientRect.cpp:
+        (webkit_dom_client_rect_get_property):
+        (webkit_dom_client_rect_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMClientRectList.cpp:
+        (webkit_dom_client_rect_list_get_property):
+        (webkit_dom_client_rect_list_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMComment.cpp:
+        (webkit_dom_comment_dom_event_target_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMDOMSelection.cpp:
+        (webkit_dom_dom_selection_get_property):
+        (webkit_dom_dom_selection_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMDOMTokenList.cpp:
+        (webkit_dom_dom_token_list_set_property):
+        (webkit_dom_dom_token_list_get_property):
+        (webkit_dom_dom_token_list_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMDOMWindow.cpp:
+        (webkit_dom_dom_window_dom_event_target_init):
+        (webkit_dom_dom_window_set_property):
+        (webkit_dom_dom_window_get_property):
+        (webkit_dom_dom_window_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMDocument.cpp:
+        (webkit_dom_document_dom_event_target_init):
+        (webkit_dom_document_set_property):
+        (webkit_dom_document_get_property):
+        (webkit_dom_document_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMDocumentFragment.cpp:
+        (webkit_dom_document_fragment_dom_event_target_init):
+        (webkit_dom_document_fragment_get_property):
+        (webkit_dom_document_fragment_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMDocumentType.cpp:
+        (webkit_dom_document_type_dom_event_target_init):
+        (webkit_dom_document_type_get_property):
+        (webkit_dom_document_type_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMElement.cpp:
+        (webkit_dom_element_dom_event_target_init):
+        (webkit_dom_element_set_property):
+        (webkit_dom_element_get_property):
+        (webkit_dom_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMEvent.cpp:
+        (webkit_dom_event_set_property):
+        (webkit_dom_event_get_property):
+        (webkit_dom_event_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMFile.cpp:
+        (webkit_dom_file_get_property):
+        (webkit_dom_file_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMFileList.cpp:
+        (webkit_dom_file_list_get_property):
+        (webkit_dom_file_list_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLAnchorElement.cpp:
+        (webkit_dom_html_anchor_element_dom_event_target_init):
+        (webkit_dom_html_anchor_element_set_property):
+        (webkit_dom_html_anchor_element_get_property):
+        (webkit_dom_html_anchor_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLAppletElement.cpp:
+        (webkit_dom_html_applet_element_dom_event_target_init):
+        (webkit_dom_html_applet_element_set_property):
+        (webkit_dom_html_applet_element_get_property):
+        (webkit_dom_html_applet_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLAreaElement.cpp:
+        (webkit_dom_html_area_element_dom_event_target_init):
+        (webkit_dom_html_area_element_set_property):
+        (webkit_dom_html_area_element_get_property):
+        (webkit_dom_html_area_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLBRElement.cpp:
+        (webkit_dom_html_br_element_dom_event_target_init):
+        (webkit_dom_html_br_element_set_property):
+        (webkit_dom_html_br_element_get_property):
+        (webkit_dom_html_br_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLBaseElement.cpp:
+        (webkit_dom_html_base_element_dom_event_target_init):
+        (webkit_dom_html_base_element_set_property):
+        (webkit_dom_html_base_element_get_property):
+        (webkit_dom_html_base_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLBodyElement.cpp:
+        (webkit_dom_html_body_element_dom_event_target_init):
+        (webkit_dom_html_body_element_set_property):
+        (webkit_dom_html_body_element_get_property):
+        (webkit_dom_html_body_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLButtonElement.cpp:
+        (webkit_dom_html_button_element_dom_event_target_init):
+        (webkit_dom_html_button_element_set_property):
+        (webkit_dom_html_button_element_get_property):
+        (webkit_dom_html_button_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLCanvasElement.cpp:
+        (webkit_dom_html_canvas_element_dom_event_target_init):
+        (webkit_dom_html_canvas_element_set_property):
+        (webkit_dom_html_canvas_element_get_property):
+        (webkit_dom_html_canvas_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLCollection.cpp:
+        (webkit_dom_html_collection_get_property):
+        (webkit_dom_html_collection_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLDListElement.cpp:
+        (webkit_dom_html_d_list_element_dom_event_target_init):
+        (webkit_dom_html_d_list_element_set_property):
+        (webkit_dom_html_d_list_element_get_property):
+        (webkit_dom_html_d_list_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLDirectoryElement.cpp:
+        (webkit_dom_html_directory_element_dom_event_target_init):
+        (webkit_dom_html_directory_element_set_property):
+        (webkit_dom_html_directory_element_get_property):
+        (webkit_dom_html_directory_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLDivElement.cpp:
+        (webkit_dom_html_div_element_dom_event_target_init):
+        (webkit_dom_html_div_element_set_property):
+        (webkit_dom_html_div_element_get_property):
+        (webkit_dom_html_div_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLDocument.cpp:
+        (webkit_dom_html_document_dom_event_target_init):
+        (webkit_dom_html_document_set_property):
+        (webkit_dom_html_document_get_property):
+        (webkit_dom_html_document_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLElement.cpp:
+        (webkit_dom_html_element_dom_event_target_init):
+        (webkit_dom_html_element_set_property):
+        (webkit_dom_html_element_get_property):
+        (webkit_dom_html_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLEmbedElement.cpp:
+        (webkit_dom_html_embed_element_dom_event_target_init):
+        (webkit_dom_html_embed_element_set_property):
+        (webkit_dom_html_embed_element_get_property):
+        (webkit_dom_html_embed_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLFieldSetElement.cpp:
+        (webkit_dom_html_field_set_element_dom_event_target_init):
+        (webkit_dom_html_field_set_element_get_property):
+        (webkit_dom_html_field_set_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLFontElement.cpp:
+        (webkit_dom_html_font_element_dom_event_target_init):
+        (webkit_dom_html_font_element_set_property):
+        (webkit_dom_html_font_element_get_property):
+        (webkit_dom_html_font_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLFormElement.cpp:
+        (webkit_dom_html_form_element_dom_event_target_init):
+        (webkit_dom_html_form_element_set_property):
+        (webkit_dom_html_form_element_get_property):
+        (webkit_dom_html_form_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLFrameElement.cpp:
+        (webkit_dom_html_frame_element_dom_event_target_init):
+        (webkit_dom_html_frame_element_set_property):
+        (webkit_dom_html_frame_element_get_property):
+        (webkit_dom_html_frame_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLFrameSetElement.cpp:
+        (webkit_dom_html_frame_set_element_dom_event_target_init):
+        (webkit_dom_html_frame_set_element_set_property):
+        (webkit_dom_html_frame_set_element_get_property):
+        (webkit_dom_html_frame_set_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLHRElement.cpp:
+        (webkit_dom_html_hr_element_dom_event_target_init):
+        (webkit_dom_html_hr_element_set_property):
+        (webkit_dom_html_hr_element_get_property):
+        (webkit_dom_html_hr_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLHeadElement.cpp:
+        (webkit_dom_html_head_element_dom_event_target_init):
+        (webkit_dom_html_head_element_set_property):
+        (webkit_dom_html_head_element_get_property):
+        (webkit_dom_html_head_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLHeadingElement.cpp:
+        (webkit_dom_html_heading_element_dom_event_target_init):
+        (webkit_dom_html_heading_element_set_property):
+        (webkit_dom_html_heading_element_get_property):
+        (webkit_dom_html_heading_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLHtmlElement.cpp:
+        (webkit_dom_html_html_element_dom_event_target_init):
+        (webkit_dom_html_html_element_set_property):
+        (webkit_dom_html_html_element_get_property):
+        (webkit_dom_html_html_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLIFrameElement.cpp:
+        (webkit_dom_html_iframe_element_dom_event_target_init):
+        (webkit_dom_html_iframe_element_set_property):
+        (webkit_dom_html_iframe_element_get_property):
+        (webkit_dom_html_iframe_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLImageElement.cpp:
+        (webkit_dom_html_image_element_dom_event_target_init):
+        (webkit_dom_html_image_element_set_property):
+        (webkit_dom_html_image_element_get_property):
+        (webkit_dom_html_image_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLInputElement.cpp:
+        (webkit_dom_html_input_element_dom_event_target_init):
+        (webkit_dom_html_input_element_set_property):
+        (webkit_dom_html_input_element_get_property):
+        (webkit_dom_html_input_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLLIElement.cpp:
+        (webkit_dom_html_li_element_dom_event_target_init):
+        (webkit_dom_html_li_element_set_property):
+        (webkit_dom_html_li_element_get_property):
+        (webkit_dom_html_li_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLLabelElement.cpp:
+        (webkit_dom_html_label_element_dom_event_target_init):
+        (webkit_dom_html_label_element_set_property):
+        (webkit_dom_html_label_element_get_property):
+        (webkit_dom_html_label_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLLegendElement.cpp:
+        (webkit_dom_html_legend_element_dom_event_target_init):
+        (webkit_dom_html_legend_element_set_property):
+        (webkit_dom_html_legend_element_get_property):
+        (webkit_dom_html_legend_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLLinkElement.cpp:
+        (webkit_dom_html_link_element_dom_event_target_init):
+        (webkit_dom_html_link_element_set_property):
+        (webkit_dom_html_link_element_get_property):
+        (webkit_dom_html_link_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLMapElement.cpp:
+        (webkit_dom_html_map_element_dom_event_target_init):
+        (webkit_dom_html_map_element_set_property):
+        (webkit_dom_html_map_element_get_property):
+        (webkit_dom_html_map_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLMarqueeElement.cpp:
+        (webkit_dom_html_marquee_element_dom_event_target_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLMenuElement.cpp:
+        (webkit_dom_html_menu_element_dom_event_target_init):
+        (webkit_dom_html_menu_element_set_property):
+        (webkit_dom_html_menu_element_get_property):
+        (webkit_dom_html_menu_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLMetaElement.cpp:
+        (webkit_dom_html_meta_element_dom_event_target_init):
+        (webkit_dom_html_meta_element_set_property):
+        (webkit_dom_html_meta_element_get_property):
+        (webkit_dom_html_meta_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLModElement.cpp:
+        (webkit_dom_html_mod_element_dom_event_target_init):
+        (webkit_dom_html_mod_element_set_property):
+        (webkit_dom_html_mod_element_get_property):
+        (webkit_dom_html_mod_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLOListElement.cpp:
+        (webkit_dom_html_o_list_element_dom_event_target_init):
+        (webkit_dom_html_o_list_element_set_property):
+        (webkit_dom_html_o_list_element_get_property):
+        (webkit_dom_html_o_list_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLObjectElement.cpp:
+        (webkit_dom_html_object_element_dom_event_target_init):
+        (webkit_dom_html_object_element_set_property):
+        (webkit_dom_html_object_element_get_property):
+        (webkit_dom_html_object_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLOptGroupElement.cpp:
+        (webkit_dom_html_opt_group_element_dom_event_target_init):
+        (webkit_dom_html_opt_group_element_set_property):
+        (webkit_dom_html_opt_group_element_get_property):
+        (webkit_dom_html_opt_group_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLOptionElement.cpp:
+        (webkit_dom_html_option_element_dom_event_target_init):
+        (webkit_dom_html_option_element_set_property):
+        (webkit_dom_html_option_element_get_property):
+        (webkit_dom_html_option_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLOptionsCollection.cpp:
+        (webkit_dom_html_options_collection_set_property):
+        (webkit_dom_html_options_collection_get_property):
+        (webkit_dom_html_options_collection_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLParagraphElement.cpp:
+        (webkit_dom_html_paragraph_element_dom_event_target_init):
+        (webkit_dom_html_paragraph_element_set_property):
+        (webkit_dom_html_paragraph_element_get_property):
+        (webkit_dom_html_paragraph_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLParamElement.cpp:
+        (webkit_dom_html_param_element_dom_event_target_init):
+        (webkit_dom_html_param_element_set_property):
+        (webkit_dom_html_param_element_get_property):
+        (webkit_dom_html_param_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLPreElement.cpp:
+        (webkit_dom_html_pre_element_dom_event_target_init):
+        (webkit_dom_html_pre_element_set_property):
+        (webkit_dom_html_pre_element_get_property):
+        (webkit_dom_html_pre_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLQuoteElement.cpp:
+        (webkit_dom_html_quote_element_dom_event_target_init):
+        (webkit_dom_html_quote_element_set_property):
+        (webkit_dom_html_quote_element_get_property):
+        (webkit_dom_html_quote_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLScriptElement.cpp:
+        (webkit_dom_html_script_element_dom_event_target_init):
+        (webkit_dom_html_script_element_set_property):
+        (webkit_dom_html_script_element_get_property):
+        (webkit_dom_html_script_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLSelectElement.cpp:
+        (webkit_dom_html_select_element_dom_event_target_init):
+        (webkit_dom_html_select_element_set_property):
+        (webkit_dom_html_select_element_get_property):
+        (webkit_dom_html_select_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLStyleElement.cpp:
+        (webkit_dom_html_style_element_dom_event_target_init):
+        (webkit_dom_html_style_element_set_property):
+        (webkit_dom_html_style_element_get_property):
+        (webkit_dom_html_style_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLTableCaptionElement.cpp:
+        (webkit_dom_html_table_caption_element_dom_event_target_init):
+        (webkit_dom_html_table_caption_element_set_property):
+        (webkit_dom_html_table_caption_element_get_property):
+        (webkit_dom_html_table_caption_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLTableCellElement.cpp:
+        (webkit_dom_html_table_cell_element_dom_event_target_init):
+        (webkit_dom_html_table_cell_element_set_property):
+        (webkit_dom_html_table_cell_element_get_property):
+        (webkit_dom_html_table_cell_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLTableColElement.cpp:
+        (webkit_dom_html_table_col_element_dom_event_target_init):
+        (webkit_dom_html_table_col_element_set_property):
+        (webkit_dom_html_table_col_element_get_property):
+        (webkit_dom_html_table_col_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLTableElement.cpp:
+        (webkit_dom_html_table_element_dom_event_target_init):
+        (webkit_dom_html_table_element_set_property):
+        (webkit_dom_html_table_element_get_property):
+        (webkit_dom_html_table_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLTableRowElement.cpp:
+        (webkit_dom_html_table_row_element_dom_event_target_init):
+        (webkit_dom_html_table_row_element_set_property):
+        (webkit_dom_html_table_row_element_get_property):
+        (webkit_dom_html_table_row_element_class_init):
+        (webkit_dom_html_table_row_element_insert_cell):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLTableSectionElement.cpp:
+        (webkit_dom_html_table_section_element_dom_event_target_init):
+        (webkit_dom_html_table_section_element_set_property):
+        (webkit_dom_html_table_section_element_get_property):
+        (webkit_dom_html_table_section_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLTextAreaElement.cpp:
+        (webkit_dom_html_text_area_element_dom_event_target_init):
+        (webkit_dom_html_text_area_element_set_property):
+        (webkit_dom_html_text_area_element_get_property):
+        (webkit_dom_html_text_area_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLTitleElement.cpp:
+        (webkit_dom_html_title_element_dom_event_target_init):
+        (webkit_dom_html_title_element_set_property):
+        (webkit_dom_html_title_element_get_property):
+        (webkit_dom_html_title_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMHTMLUListElement.cpp:
+        (webkit_dom_html_u_list_element_dom_event_target_init):
+        (webkit_dom_html_u_list_element_set_property):
+        (webkit_dom_html_u_list_element_get_property):
+        (webkit_dom_html_u_list_element_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMKeyboardEvent.cpp:
+        (webkit_dom_keyboard_event_get_property):
+        (webkit_dom_keyboard_event_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMMediaList.cpp:
+        (webkit_dom_media_list_set_property):
+        (webkit_dom_media_list_get_property):
+        (webkit_dom_media_list_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMMouseEvent.cpp:
+        (webkit_dom_mouse_event_get_property):
+        (webkit_dom_mouse_event_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMNamedNodeMap.cpp:
+        (webkit_dom_named_node_map_get_property):
+        (webkit_dom_named_node_map_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMNode.cpp:
+        (webkit_dom_node_dom_event_target_init):
+        (webkit_dom_node_set_property):
+        (webkit_dom_node_get_property):
+        (webkit_dom_node_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMNodeIterator.cpp:
+        (webkit_dom_node_iterator_get_property):
+        (webkit_dom_node_iterator_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMNodeList.cpp:
+        (webkit_dom_node_list_get_property):
+        (webkit_dom_node_list_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMObject.cpp:
+        (webkitDOMObjectSetProperty):
+        (webkit_dom_object_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMProcessingInstruction.cpp:
+        (webkit_dom_processing_instruction_dom_event_target_init):
+        (webkit_dom_processing_instruction_get_property):
+        (webkit_dom_processing_instruction_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMRange.cpp:
+        (webkit_dom_range_get_property):
+        (webkit_dom_range_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMStyleSheet.cpp:
+        (webkit_dom_style_sheet_set_property):
+        (webkit_dom_style_sheet_get_property):
+        (webkit_dom_style_sheet_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMStyleSheetList.cpp:
+        (webkit_dom_style_sheet_list_get_property):
+        (webkit_dom_style_sheet_list_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMText.cpp:
+        (webkit_dom_text_dom_event_target_init):
+        (webkit_dom_text_get_property):
+        (webkit_dom_text_class_init):
+        (webkit_dom_event_target_init): Deleted.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMTreeWalker.cpp:
+        (webkit_dom_tree_walker_get_property):
+        (webkit_dom_tree_walker_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMUIEvent.cpp:
+        (webkit_dom_ui_event_get_property):
+        (webkit_dom_ui_event_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMWheelEvent.cpp:
+        (webkit_dom_wheel_event_get_property):
+        (webkit_dom_wheel_event_class_init):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMXPathResult.cpp:
+        (webkit_dom_xpath_result_get_property):
+        (webkit_dom_xpath_result_class_init):
+        * WebProcess/InjectedBundle/glib/InjectedBundleGlib.cpp:
+        * WebProcess/MediaCache/WebMediaKeyStorageManager.cpp:
+        * WebProcess/Plugins/Netscape/unix/NetscapePluginUnix.cpp:
+        * WebProcess/Plugins/Netscape/x11/NetscapePluginX11.cpp:
+        * WebProcess/WebCoreSupport/curl/WebFrameNetworkingContext.cpp:
+        * WebProcess/WebCoreSupport/gtk/WebContextMenuClientGtk.cpp:
+        * WebProcess/WebCoreSupport/gtk/WebDragClientGtk.cpp:
+        * WebProcess/WebCoreSupport/gtk/WebEditorClientGtk.cpp:
+        * WebProcess/WebCoreSupport/gtk/WebPopupMenuGtk.cpp:
+        * WebProcess/WebPage/AcceleratedDrawingArea.cpp:
+        * WebProcess/WebPage/AcceleratedSurface.cpp:
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp:
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp:
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp:
+        * WebProcess/WebPage/DrawingAreaImpl.cpp:
+        * WebProcess/WebPage/gtk/AcceleratedSurfaceWayland.cpp:
+        * WebProcess/WebPage/gtk/AcceleratedSurfaceX11.cpp:
+        * WebProcess/WebPage/gtk/WebPageGtk.cpp:
+        * WebProcess/gtk/WaylandCompositorDisplay.cpp:
+        * WebProcess/gtk/WebProcessMainGtk.cpp:
+
+2018-02-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: addCookie command should prepend a dot to domain if missing
+        https://bugs.webkit.org/show_bug.cgi?id=182328
+        <rdar://problem/37116398>
+
+        Reviewed by Michael Catanzaro.
+
+        RFC 2965: If an explicitly specified value does not start with a dot, the user agent supplies a leading dot.
+
+        Fixes: imported/w3c/webdriver/tests/cookies/add_cookie.py::test_add_domain_cookie
+
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::addSingleCookie):
+
+2018-02-11  Yousuke Kimoto  <yousuke.kimoto@sony.com>
+
+        [WinCairo] Add WKBaseWin.h
+        https://bugs.webkit.org/show_bug.cgi?id=182681
+
+        Reviewed by Yusuke Suzuki.
+
+        * PlatformWin.cmake:
+        * Shared/API/c/win/WKBaseWin.h: Added.
+
+2018-02-09  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Remove invalidated WebPage::handleEditingKeyboardEvent default implementation after r228260.
+        https://bugs.webkit.org/show_bug.cgi?id=182663
+
+        Reviewed by Chris Dumez.
+
+        This would need to be updated to turn `keyEvent` into `underlyingPlatformEvent`;
+        instead, we can remove it, as it's only for Windows, which doesn't yet support WK2.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::handleEditingKeyboardEvent): Deleted.
+
+2018-02-09  Nan Wang  <n_wang@apple.com>
+
+        AX: Accessibility is not notified when a web process cancels the suspension
+        https://bugs.webkit.org/show_bug.cgi?id=182659
+
+        Reviewed by Ryosuke Niwa.
+
+        We were notifying Accessibility with the web process suspended information in actualPrepareToSuspend
+        and processDidResume. However, the suspension can be canceled during the prepare call. So that we
+        should also post a notification in cancelPrepareToSuspend.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::cancelPrepareToSuspend):
+
+2018-02-09  Brent Fulgham  <bfulgham@apple.com>
+
+        Sandbox violating attempting to read log formatting preference file
+        https://bugs.webkit.org/show_bug.cgi?id=182648
+        <rdar://problem/36629495>
+
+        Reviewed by Eric Carlson.
+
+        Various frameworks attempt to read logging format information from /usr/local/lib/log. The sandbox is blocking
+        this, generating log spam and preventing some logging features from working properly. We should allow read
+        access to this path.
+
+        * NetworkProcess/mac/com.apple.WebKit.NetworkProcess.sb.in:
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.Networking.sb:
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.WebContent.sb:
+        * WebProcess/com.apple.WebProcess.sb.in:
+
+2018-02-08  Chris Dumez  <cdumez@apple.com>
+
+        There should be a way to disable [OverrideBuiltins] behavior in a given DOMWrapperWorld
+        https://bugs.webkit.org/show_bug.cgi?id=182524
+        <rdar://problem/9057327>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add C API on WKBundleScriptWorld and Cocoa API on WKWebProcessPlugInScriptWorld to
+        disable the [OverrideBuiltins] behavior on a given script world.
+
+        The [OverrideBuiltins] behavior [1] is legacy behavior that is needed for Web compatibility
+        but allowing the client to disable this behavior in a given world makes development easier
+        and running injected script on uncontrolled content a lot more reliable.
+
+        [1] https://heycam.github.io/webidl/#OverrideBuiltins
+
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInScriptWorld.h:
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInScriptWorld.mm:
+        (-[WKWebProcessPlugInScriptWorld disableOverrideBuiltinsBehavior]):
+        * WebProcess/InjectedBundle/API/c/WKBundleScriptWorld.cpp:
+        (WKBundleScriptWorldDisableOverrideBuiltinsBehavior):
+        * WebProcess/InjectedBundle/API/c/WKBundleScriptWorld.h:
+        * WebProcess/InjectedBundle/InjectedBundleScriptWorld.cpp:
+        (WebKit::InjectedBundleScriptWorld::disableOverrideBuiltinsBehavior):
+        * WebProcess/InjectedBundle/InjectedBundleScriptWorld.h:
+
+2018-02-08  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Remove WebProcessPool::platformInitialize stub.
+        https://bugs.webkit.org/show_bug.cgi?id=182621
+
+        Reviewed by Alex Christensen.
+
+        The #if here could be simplified to PLATFORM(WIN), but Windows too will need a proper implementation
+        as part of WK2 support, so this stub shouldn't need to exist at all.
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::platformInitialize): Deleted.
+
+2018-02-08  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        TestController should not exercise cocoa-specific resource load statistics APIs
+        https://bugs.webkit.org/show_bug.cgi?id=182355
+
+        Reviewed by Alex Christensen.
+
+        Remove the Cocoa testing SPI, since it's redundant with the C API. Also, add a couple
+        missing cookie partitioning callbacks to the C API.
+
+        * UIProcess/API/C/WKWebsiteDataStoreRef.cpp:
+        (WKWebsiteDataStoreStatisticsUpdateCookiePartitioning):
+        (WKWebsiteDataStoreSetStatisticsShouldPartitionCookiesForHost):
+        * UIProcess/API/C/WKWebsiteDataStoreRef.h:
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.mm:
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetLastSeen:forHost:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetIsPrevalentResource:forHost:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsIsPrevalentResource:completionHandler:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsIsRegisteredAsSubFrameUnder:topFrameHost:completionHandler:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsIsRegisteredAsRedirectingTo:hostRedirectedTo:completionHandler:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetHadUserInteraction:forHost:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetHasHadNonRecentUserInteractionForHost:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsHadUserInteraction:completionHandler:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetIsGrandfathered:forHost:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsIsGrandfathered:completionHandler:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetSubframeUnderTopFrameOrigin:forHost:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetSubresourceUnderTopFrameOrigin:forHost:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetSubresourceUniqueRedirectTo:forHost:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetTimeToLiveUserInteraction:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetTimeToLiveCookiePartitionFree:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetMinimumTimeBetweenDataRecordsRemoval:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetGrandfatheringTime:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetMaxStatisticsEntries:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetPruneEntriesDownTo:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsProcessStatisticsAndDataRecords]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsUpdateCookiePartitioning]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsUpdateCookiePartitioning:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetShouldPartitionCookies:forHost:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetShouldPartitionCookies:forHost:completionHandler:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSubmitTelemetry]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetNotifyPagesWhenDataRecordsWereScanned:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetShouldClassifyResourcesBeforeDataRecordsRemoval:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetNotifyPagesWhenTelemetryWasCaptured:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsClearInMemoryAndPersistentStore]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsClearInMemoryAndPersistentStore:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsClearInMemoryAndPersistentStoreModifiedSinceHours:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsClearInMemoryAndPersistentStoreModifiedSinceHours:completionHandler:]): Deleted.
+        (-[WKWebsiteDataStore _resourceLoadStatisticsResetToConsistentState]): Deleted.
+        * UIProcess/API/Cocoa/WKWebsiteDataStorePrivate.h:
+
+2018-02-08  Don Olmstead  <don.olmstead@sony.com>
+
+        Remove JavaScriptCore/ForwardingHeaders directory
+        https://bugs.webkit.org/show_bug.cgi?id=182594
+
+        Reviewed by Mark Lam.
+
+        * PlatformGTK.cmake:
+
+2018-02-08  Tim Horton  <timothy_horton@apple.com>
+
+        Make WebKit public headers modules-safe
+        https://bugs.webkit.org/show_bug.cgi?id=182611
+        <rdar://problem/37160164>
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/Cocoa/WKPreviewElementInfo.h:
+        * UIProcess/API/Cocoa/WKSnapshotConfiguration.h:
+        Import headers without which these WebKit headers can not be used alone.
+
+        * WebKit.xcodeproj/project.pbxproj:
+        Make WKWindowFeaturesPrivate a private header like it was supposed to be.
+
+2018-02-08  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r228262.
+
+        This broke an internal build alongside r228261.
+
+        Reverted changeset:
+
+        "WebDriver: addCookie command should prepend a dot to domain
+        if missing"
+        https://bugs.webkit.org/show_bug.cgi?id=182328
+        https://trac.webkit.org/changeset/228262
+
+2018-02-08  Miguel Gomez  <magomez@igalia.com>
+
+        [GTK] WaylandCompositor misusing eglGetProcAddress
+        https://bugs.webkit.org/show_bug.cgi?id=182490
+
+        Reviewed by Michael Catanzaro.
+
+        Check that the appropriate extensions are available before calling eglGetProcAddress, as even
+        getting a non null value from it, the functionality can be disabled at runtime.
+
+        * UIProcess/gtk/WaylandCompositor.cpp:
+        (WebKit::WaylandCompositor::initializeEGL):
+
+2018-02-08  Frederic Wang  <fwang@igalia.com>
+
+        Add scrolling node types to distinguish main frames and subframes.
+        https://bugs.webkit.org/show_bug.cgi?id=182533
+
+        Reviewed by Simon Fraser.
+
+        * Shared/RemoteLayerTree/RemoteScrollingCoordinatorTransaction.cpp: Replace the case of
+        FrameScrollingNode with MainFrameScrollingNode and SubframeScrollingNode.
+        (WebKit::encodeNodeAndDescendants):
+        (WebKit::RemoteScrollingCoordinatorTransaction::decode):
+        (WebKit::dump):
+        * UIProcess/RemoteLayerTree/RemoteScrollingCoordinatorProxy.cpp: Ditto.
+        (WebKit::RemoteScrollingCoordinatorProxy::connectStateNodeLayers):
+        * UIProcess/RemoteLayerTree/RemoteScrollingTree.cpp: Ditto and pass the node type to the
+        constructor of the frame scrolling node.
+        (WebKit::RemoteScrollingTree::createScrollingTreeNode):
+        * UIProcess/RemoteLayerTree/ios/RemoteScrollingCoordinatorProxyIOS.mm: Replace the case of
+        FrameScrollingNode with MainFrameScrollingNode and SubframeScrollingNode.
+        (WebKit::RemoteScrollingCoordinatorProxy::connectStateNodeLayers):
+        * UIProcess/RemoteLayerTree/ios/ScrollingTreeScrollingNodeDelegateIOS.mm: In order to
+        determine whether the node is a main frame or subframe, use the node type instead of checking
+        whether the node as a parent.
+        (WebKit::ScrollingTreeScrollingNodeDelegateIOS::updateChildNodesAfterScroll):
+
+2018-02-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: addCookie command should prepend a dot to domain if missing
+        https://bugs.webkit.org/show_bug.cgi?id=182328
+        <rdar://problem/37116398>
+
+        Reviewed by Michael Catanzaro.
+
+        RFC 2965: If an explicitly specified value does not start with a dot, the user agent supplies a leading dot.
+
+        Fixes: imported/w3c/webdriver/tests/cookies/add_cookie.py::test_add_domain_cookie
+
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::addSingleCookie):
+
+2018-01-13  Darin Adler  <darin@apple.com>
+
+        Event improvements
+        https://bugs.webkit.org/show_bug.cgi?id=179591
+
+        Reviewed by Chris Dumez.
+
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMWheelEvent.cpp:
+        (webkit_dom_wheel_event_init_wheel_event): Updated to call initWebKitWheelEvent.
+
+        * WebProcess/Plugins/PluginView.cpp: Removed include of ScriptValue.h.
+
+        * WebProcess/WebCoreSupport/gtk/WebEditorClientGtk.cpp:
+        (WebKit::WebEditorClient::executePendingEditorCommands):
+        Updated for name change from keyEvent to underlyingPlatformEvent.
+        (WebKit::WebEditorClient::handleInputMethodKeydown): Ditto.
+        * WebProcess/WebCoreSupport/wpe/WebEditorClientWPE.cpp:
+        (WebKit::WebEditorClient::handleKeyboardEvent): Ditto.
+        (WebKit::WebEditorClient::handleInputMethodKeydown): Ditto.
+
+        * WebProcess/WebPage/WebPage.cpp: Removed include of ScriptValue.h.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::handleEditingKeyboardEvent): Updated for name change from
+        keyEvent to underlyingPlatformEvent.
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::executeKeypressCommandsInternal): Ditto.
+        (WebKit::WebPage::handleEditingKeyboardEvent): Ditto.
+
+2018-02-07  Antti Koivisto  <antti@apple.com> and Youenn Fablet  <youenn@apple.com>
+
+        REGRESSION(r227758): Webpage fails to load due to crash in com.apple.WebKit: WebKit::WebFrameLoaderClient::dispatchDecidePolicyForResponse + 267
+        https://bugs.webkit.org/show_bug.cgi?id=182532
+        <rdar://problem/36414017>
+
+        Reviewed by Chris Dumez.
+
+        No test case, don't know how to make one. The repro involves multipart HTTP streaming and details are hazy.
+        We were calling a function that was WTFMoved away just a few lines above.
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDecidePolicyForResponse):
+
+2018-02-07  Tim Horton  <timothy_horton@apple.com>
+
+        Evernote device management web view sometimes displays at the wrong scale
+        https://bugs.webkit.org/show_bug.cgi?id=182590
+        <rdar://problem/36633687>
+
+        Reviewed by Simon Fraser.
+
+        Evernote implements the WKWebView's scroll view's delegate method
+        viewForZoomingInScrollView: and returns nil. This results in
+        WKScrollView's zoomScale always returning 1, no matter what the
+        WKContentView's actual scale is. This will result in us never updating
+        the WKContentView's scale to 1. When loading a page that has a few
+        scale changes during load but ends up at scale 1, we get stuck at whatever
+        intermediate scale immediately preceded settling on 1.
+
+        Fix this by not forwarding viewForZoomingInScrollView: to the external
+        WKScrollView delegate; we are in charge of the contents of the scroll
+        view (including which view scrollView's zoomScale should track), and
+        overriding viewForZoomingInScrollView: is only ever going to lead to
+        a broken WebKit.
+
+        * UIProcess/ios/WKScrollView.mm:
+        (shouldForwardScrollViewDelegateMethodToExternalDelegate):
+        (-[WKScrollViewDelegateForwarder forwardInvocation:]):
+        (-[WKScrollViewDelegateForwarder forwardingTargetForSelector:]):
+
+2018-02-07  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] Delegate scrolling from the content view to input view controllers
+        https://bugs.webkit.org/show_bug.cgi?id=182534
+        <rdar://problem/37276625>
+
+        Reviewed by Tim Horton.
+
+        Override -_wheelChangedWithEvent: on the content view, and give extra zoomed input view controllers a chance to
+        handle the event.
+
+        * Platform/spi/ios/UIKitSPI.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _wheelChangedWithEvent:]):
+
+2018-02-07  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] Implement multiple and single select menus
+        https://bugs.webkit.org/show_bug.cgi?id=182525
+        <rdar://problem/35143016>
+
+        Reviewed by Tim Horton.
+
+        Add support for presenting picker views when focusing single or multiple select elements. See changes below for
+        additional detail.
+
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _startAssistingKeyboard]):
+
+        Move logic for presenting view controllers when focusing elements out of _startAssistingKeyboard, and into
+        _startAssistingNode:(...). This is because _startAssistingKeyboard is only invoked for certain types of focused
+        element types; importantly, this set excludes select elements. Putting the call to present the focused view
+        controller there also didn't make much since, considering that these new view controllers are not tied to
+        keyboards in any way.
+
+        (-[WKContentView _startAssistingNode:userIsInteracting:blurPreviousNode:changingActivityState:userObject:]):
+        (-[WKContentView _stopAssistingNode]):
+
+        Dismiss any select menu that is being presented.
+
+        (-[WKContentView presentSelectMenuViewController:]):
+        (-[WKContentView dismissSelectMenuViewController:]):
+
+        Introduce idempotent helpers for presenting and dismissing the select menu view controller.
+
+        (-[WKContentView presentViewControllerForAssistedNode:]):
+        (-[WKContentView selectMenu:didSelectItemAtIndex:]):
+
+        For single select menus. Called when the user selects a row.
+
+        (-[WKContentView didCancelSelectionInSelectMenu:]):
+        (-[WKContentView numberOfItemsInSelectMenu:]):
+        (-[WKContentView selectMenu:displayTextForItemAtIndex:]):
+
+        Indicates the text value to show at a given index.
+
+        (-[WKContentView selectMenu:didCheckItemAtIndex:checked:]):
+
+        For multiple select menus, invoked when an item is checked. The `checked` parameter indicates whether or not the
+        item is now checked.
+
+        (-[WKContentView selectMenuSupportsMultipleSelection:]):
+
+        Indicates whether this select menu is single-item-only, or allows multiple items to be selected (checked).
+
+        (-[WKContentView selectMenu:hasCheckedOptionAtIndex:]):
+
+        For multiple select menus. Determines whether an option at the given index is checked.
+
+        (-[WKContentView startingIndexForSelectMenu:]):
+
+        Determines the index to instantly scroll to when presenting the select menu.
+
+        * UIProcess/ios/forms/WKSelectMenuViewController.h: Added.
+        * UIProcess/ios/forms/WKSelectMenuViewController.mm: Added.
+
+        Add new harness files for WKSelectMenuViewController's header and implementation (see WebKitAdditions).
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2018-02-07  Brent Fulgham  <bfulgham@apple.com>
+
+        Improve NetworkResourceLoader logging to capture redirect cases
+        https://bugs.webkit.org/show_bug.cgi?id=182573
+        <rdar://problem/37316714>
+
+        Reviewed by Chris Dumez.
+
+        Add logging for cookie partitioning or blocking during redirects.
+
+        * NetworkProcess/cocoa/NetworkDataTaskCocoa.mm:
+        (WebKit::NetworkDataTaskCocoa::willPerformHTTPRedirection):
+
+2018-02-07  John Wilander  <wilander@apple.com>
+
+        Restrict Referer to just the origin for third parties in private mode and third parties ITP blocks cookies for in regular mode
+        https://bugs.webkit.org/show_bug.cgi?id=182559
+        <rdar://problem/36990337>
+
+        Reviewed by Andy Estes.
+
+        * NetworkProcess/cocoa/NetworkDataTaskCocoa.h:
+        * NetworkProcess/cocoa/NetworkDataTaskCocoa.mm:
+        (WebKit::NetworkDataTaskCocoa::isThirdPartyRequest):
+            New convenience function. Checks whether the resource shares
+            partition with the first party.
+        (WebKit::NetworkDataTaskCocoa::NetworkDataTaskCocoa):
+            Now strips the referrer to just the origin for:
+            1. All third party requests in private mode.
+            2. Third party requests to domains that ITP blocks cookies for.
+        (WebKit::NetworkDataTaskCocoa::willPerformHTTPRedirection):
+            Now strips the referrer in redirects to just the origin for:
+            1. All third party requests in private mode.
+            2. Third party requests to domains that ITP blocks cookies for.
+
 2018-02-07  Daniel Bates  <dabates@apple.com>
 
         Log error when authentication challenge is blocked due to an insecure request

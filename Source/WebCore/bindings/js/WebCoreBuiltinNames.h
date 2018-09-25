@@ -31,10 +31,10 @@
 namespace WebCore {
 
 #define WEBCORE_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(macro) \
-    macro(AccessibleNode) \
     macro(Animation) \
-    macro(AnimationEffect) \
+    macro(AnimationEffectReadOnly) \
     macro(AnimationEffectTiming) \
+    macro(AnimationEffectTimingReadOnly) \
     macro(AnimationPlaybackEvent) \
     macro(AnimationTimeline) \
     macro(ApplePaySession) \
@@ -81,10 +81,12 @@ namespace WebCore {
     macro(IDBTransaction) \
     macro(IDBVersionChangeEvent) \
     macro(ImageBitmap) \
+    macro(ImageBitmapRenderingContext) \
     macro(InputEvent) \
     macro(IntersectionObserver) \
     macro(IntersectionObserverEntry) \
     macro(KeyframeEffect) \
+    macro(KeyframeEffectReadOnly) \
     macro(MediaCapabilities) \
     macro(MediaCapabilitiesInfo) \
     macro(MediaEncryptedEvent) \

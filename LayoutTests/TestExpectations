@@ -128,6 +128,8 @@ fast/media/mq-inverted-colors-live-update-in-subframes.html [ Skip ]
 fast/media/mq-monochrome-live-update.html [ Skip ]
 fast/media/mq-prefers-reduced-motion-live-update.html [ Skip ]
 http/tests/loading/basic-auth-remove-credentials.html [ Skip ]
+http/tests/security/strip-referrer-to-origin-for-third-party-redirects-in-private-mode.html [ Skip ]
+http/tests/security/strip-referrer-to-origin-for-third-party-requests-in-private-mode.html [ Skip ]
 
 # ApplePay is only available on iOS (greater than iOS 10) and macOS (greater than macOS 10.12) and only for WebKit2.
 http/tests/ssl/applepay/ [ Skip ]
@@ -151,7 +153,6 @@ imported/w3c/web-platform-tests/service-workers/service-worker/import-scripts-re
 
 # Skip service worker tests that are timing out.
 imported/w3c/web-platform-tests/fetch/api/abort/general-serviceworker.https.html [ Skip ]
-imported/w3c/web-platform-tests/service-workers/service-worker/http-to-https-redirect-and-register.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/performance-timeline.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/postmessage.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers/service-worker/respond-with-body-accessed-response.https.html [ Skip ]
@@ -1701,3 +1702,4 @@ webkit.org/b/182177 imported/w3c/web-platform-tests/html/semantics/scripting-1/t
 
 webkit.org/b/182311 imported/w3c/web-platform-tests/service-workers/service-worker/navigation-redirect.https.html [ Skip ]
 
+webkit.org/b/90980 fast/forms/textarea/textarea-state-restore.html [ Pass Timeout ]

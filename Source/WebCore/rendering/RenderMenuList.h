@@ -63,14 +63,13 @@ public:
     void setInnerRenderer(RenderBlock&);
 
 private:
-    void willBeDestroyed() override;
+    void willBeDestroyed(RenderTreeBuilder&) override;
 
     void element() const = delete;
 
     bool isMenuList() const override { return true; }
 
     void addChild(RenderTreeBuilder&, RenderPtr<RenderObject> newChild, RenderObject* beforeChild = 0) override;
-    RenderPtr<RenderObject> takeChild(RenderTreeBuilder&, RenderObject&) override;
     bool createsAnonymousWrapper() const override { return true; }
 
     void updateFromElement() override;

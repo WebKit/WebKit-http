@@ -29,7 +29,7 @@
 #include "AlignedMemoryAllocator.h"
 #include "BlockDirectoryInlines.h"
 #include "FreeListInlines.h"
-#include "JSCell.h"
+#include "JSCast.h"
 #include "JSDestructibleObject.h"
 #include "JSCInlines.h"
 #include "MarkedBlockInlines.h"
@@ -493,7 +493,7 @@ void MarkedBlock::Handle::associateWithOrigin(SecurityOriginToken securityOrigin
     if (m_securityOriginToken == securityOriginToken)
         return;
     
-    memset(&block(), 0, endAtom * atomSize);
+    fastZeroFillBytes(&block(), endAtom * atomSize);
     m_securityOriginToken = securityOriginToken;
 }
 

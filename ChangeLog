@@ -1,3 +1,42 @@
+2018-02-09  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Simplify .gitignore's WebKitLibraries/win section.
+        https://bugs.webkit.org/show_bug.cgi?id=182618
+
+        Reviewed by Per Arne Vollan.
+
+        We need to update this section for WinCairoRequirements regardless, but
+        it never needed to be this longwinded in the first place.
+
+        * .gitignore:
+
+2018-02-08  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Meta][Win] Support ICU 59.1+
+        https://bugs.webkit.org/show_bug.cgi?id=181004
+
+        Reviewed by Alex Christensen.
+
+        ICU 59 changed the type of UChar from wchar_t to char16_t on
+        Windows. We need a lot of conversions between UChar* and wchar_t*
+        to call Windows API because it takes string as wchar_t*.
+
+        Fortunately, ICU is configurable to define UChar as wchar_t as
+        well as the prior ICU.
+        <http://icu-project.org/apiref/icu4c/umachine_8h.html#a6bb9fad572d65b305324ef288165e2ac>
+
+        * Source/cmake/OptionsWin.cmake: Add a compile option -DUCHAR_TYPE=wchar_t.
+
+2018-02-08  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, switch -pthread to -lpthread per recommendation from Adrian
+        https://bugs.webkit.org/show_bug.cgi?id=182400
+        <rdar://problem/37252242>
+
+        This is tested and works fine.
+
+        * Source/cmake/WebKitCompilerFlags.cmake:
+
 2018-02-05  Yousuke Kimoto  <yousuke.kimoto@sony.com>
 
         [WinCairo] Refine WebKitLegacy and WebKit build for wincairo

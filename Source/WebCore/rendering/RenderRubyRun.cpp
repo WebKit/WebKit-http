@@ -97,42 +97,6 @@ bool RenderRubyRun::isChildAllowed(const RenderObject& child, const RenderStyle&
     return child.isInline() || child.isRubyText();
 }
 
-RenderPtr<RenderObject> RenderRubyRun::takeChild(RenderTreeBuilder& builder, RenderObject& child)
-{
-    // If the child is a ruby text, then merge the ruby base with the base of
-    // the right sibling run, if possible.
-    if (!beingDestroyed() && !renderTreeBeingDestroyed() && child.isRubyText()) {
-        RenderRubyBase* base = rubyBase();
-        RenderObject* rightNeighbour = nextSibling();
-        if (base && is<RenderRubyRun>(rightNeighbour)) {
-            // Ruby run without a base can happen only at the first run.
-            RenderRubyRun& rightRun = downcast<RenderRubyRun>(*rightNeighbour);
-            if (rightRun.hasRubyBase()) {
-                RenderRubyBase* rightBase = rightRun.rubyBase();
-                // Collect all children in a single base, then swap the bases.
-                RenderTreeBuilder::current()->moveRubyChildren(*rightBase, *base);
-                moveChildTo(&rightRun, base, RenderBoxModelObject::NormalizeAfterInsertion::No);
-                rightRun.moveChildTo(this, rightBase, RenderBoxModelObject::NormalizeAfterInsertion::No);
-                // The now empty ruby base will be removed below.
-                ASSERT(!rubyBase()->firstChild());
-            }
-        }
-    }
-
-    auto takenChild = RenderBlockFlow::takeChild(builder, child);
-
-    if (!beingDestroyed() && !renderTreeBeingDestroyed()) {
-        // Check if our base (if any) is now empty. If so, destroy it.
-        RenderBlock* base = rubyBase();
-        if (base && !base->firstChild()) {
-            auto takenBase = RenderBlockFlow::takeChild(builder, *base);
-            base->deleteLines();
-        }
-    }
-
-    return takenChild;
-}
-
 RenderPtr<RenderRubyBase> RenderRubyRun::createRubyBase() const
 {
     auto newStyle = RenderStyle::createAnonymousStyleWithDisplay(style(), BLOCK);

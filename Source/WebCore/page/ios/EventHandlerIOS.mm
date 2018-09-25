@@ -26,6 +26,8 @@
 #import "config.h"
 #import "EventHandler.h"
 
+#if PLATFORM(IOS)
+
 #import "AXObjectCache.h"
 #import "AutoscrollController.h"
 #import "Chrome.h"
@@ -125,14 +127,14 @@ void EventHandler::touchEvent(WebEvent *event)
 }
 #endif
 
-bool EventHandler::tabsToAllFormControls(KeyboardEvent& event) const
+bool EventHandler::tabsToAllFormControls(KeyboardEvent* event) const
 {
     Page* page = m_frame.page();
     if (!page)
         return false;
 
     KeyboardUIMode keyboardUIMode = page->chrome().client().keyboardUIMode();
-    bool handlingOptionTab = isKeyboardOptionTab(event);
+    bool handlingOptionTab = event && isKeyboardOptionTab(*event);
 
     // If tab-to-links is off, option-tab always highlights all controls.
     if ((keyboardUIMode & KeyboardAccessTabsToLinks) == 0 && handlingOptionTab)
@@ -632,3 +634,5 @@ bool EventHandler::tryToBeginDataInteractionAtPoint(const IntPoint& clientPositi
 #endif
 
 }
+
+#endif // PLATFORM(IOS)

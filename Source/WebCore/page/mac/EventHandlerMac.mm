@@ -26,6 +26,8 @@
 #include "config.h"
 #include "EventHandler.h"
 
+#if PLATFORM(MAC)
+
 #include "AXObjectCache.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
@@ -195,6 +197,8 @@ static bool lastEventIsMouseUp()
     // the WebCore state with this mouseUp, which we never saw. This method lets us detect
     // that state. Handling this was critical when we used AppKit widgets for form elements.
     // It's not clear in what cases this is helpful now -- it's possible it can be removed. 
+
+    ASSERT([NSApp isRunning]);
 
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
     NSEvent *currentEventAfterHandlingMouseDown = [NSApp currentEvent];
@@ -570,6 +574,7 @@ void EventHandler::sendFakeEventsAfterWidgetTracking(NSEvent *initiatingEvent)
     m_sendingEventToSubview = false;
     int eventType = [initiatingEvent type];
     if (eventType == NSEventTypeLeftMouseDown || eventType == NSEventTypeKeyDown) {
+        ASSERT([NSApp isRunning]);
         NSEvent *fakeEvent = nil;
         if (eventType == NSEventTypeLeftMouseDown) {
             fakeEvent = [NSEvent mouseEventWithType:NSEventTypeLeftMouseUp
@@ -717,14 +722,14 @@ bool EventHandler::eventActivatedView(const PlatformMouseEvent& event) const
     return m_activationEventNumber == event.eventNumber();
 }
 
-bool EventHandler::tabsToAllFormControls(KeyboardEvent& event) const
+bool EventHandler::tabsToAllFormControls(KeyboardEvent* event) const
 {
     Page* page = m_frame.page();
     if (!page)
         return false;
 
     KeyboardUIMode keyboardUIMode = page->chrome().client().keyboardUIMode();
-    bool handlingOptionTab = isKeyboardOptionTab(event);
+    bool handlingOptionTab = event && isKeyboardOptionTab(*event);
 
     // If tab-to-links is off, option-tab always highlights all controls
     if ((keyboardUIMode & KeyboardAccessTabsToLinks) == 0 && handlingOptionTab)
@@ -1152,3 +1157,5 @@ IntPoint EventHandler::targetPositionInWindowForSelectionAutoscroll() const
 }
 
 }
+
+#endif // PLATFORM(MAC)

@@ -31,14 +31,6 @@
 
 namespace WebCore {
 
-DocumentFragment& WebContentReader::ensureFragment()
-{
-    ASSERT(frame.document());
-    if (!fragment)
-        fragment = frame.document()->createDocumentFragment();
-    return *fragment;
-}
-
 void WebContentReader::addFragment(Ref<DocumentFragment>&& newFragment)
 {
     if (!fragment)
@@ -51,6 +43,11 @@ bool FrameWebContentReader::shouldSanitize() const
 {
     ASSERT(frame.document());
     return frame.document()->originIdentifierForPasteboard() != contentOrigin;
+}
+
+MSOListQuirks FrameWebContentReader::msoListQuirksForMarkup() const
+{
+    return contentOrigin.isNull() ? MSOListQuirks::CheckIfNeeded : MSOListQuirks::Disabled;
 }
 
 }

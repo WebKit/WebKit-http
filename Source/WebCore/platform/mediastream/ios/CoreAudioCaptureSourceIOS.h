@@ -33,16 +33,15 @@ OBJC_CLASS WebCoreAudioCaptureSourceIOSListener;
 
 namespace WebCore {
 
-class CoreAudioCaptureSourceIOS final : public CoreAudioCaptureSource {
+class CoreAudioCaptureSourceFactoryIOS final : public CoreAudioCaptureSourceFactory {
+public:
+    CoreAudioCaptureSourceFactoryIOS();
+    ~CoreAudioCaptureSourceFactoryIOS();
+
 private:
-    friend class CoreAudioCaptureSource;
-
-    CoreAudioCaptureSourceIOS(const String& deviceID, const String& label);
-    ~CoreAudioCaptureSourceIOS();
-
     RetainPtr<WebCoreAudioCaptureSourceIOSListener> m_listener;
 };
 
 } // namespace WebCore
 
-#endif // ENABLE(MEDIA_STREAM)
+#endif // ENABLE(MEDIA_STREAM) && PLATFORM(IOS)

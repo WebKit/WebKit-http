@@ -259,6 +259,11 @@
 #include "PaymentCoordinator.h"
 #endif
 
+#if ENABLE(WEB_AUTHN)
+#include "AuthenticatorManager.h"
+#include "MockCredentialsMessenger.h"
+#endif
+
 using JSC::CallData;
 using JSC::CallType;
 using JSC::CodeBlock;
@@ -525,6 +530,11 @@ Internals::Internals(Document& document)
         m_mockPaymentCoordinator = new MockPaymentCoordinator(frame->mainFrame());
         frame->mainFrame().setPaymentCoordinator(std::make_unique<PaymentCoordinator>(*m_mockPaymentCoordinator));
     }
+#endif
+
+#if ENABLE(WEB_AUTHN)
+    m_mockCredentialsMessenger = std::make_unique<MockCredentialsMessenger>(*this);
+    AuthenticatorManager::singleton().setMessenger(*m_mockCredentialsMessenger);
 #endif
 }
 
@@ -3029,8 +3039,7 @@ Ref<SerializedScriptValue> Internals::deserializeBuffer(ArrayBuffer& buffer) con
 
 bool Internals::isFromCurrentWorld(JSC::JSValue value) const
 {
-    auto& state = *contextDocument()->vm().topCallFrame;
-    return !value.isObject() || &worldForDOMObject(asObject(value)) == &currentWorld(&state);
+    return isWorldCompatible(*contextDocument()->vm().topCallFrame, value);
 }
 
 void Internals::setUsesOverlayScrollbars(bool enabled)
@@ -4373,6 +4382,13 @@ void Internals::testIncomingSyncIPCMessageWhileWaitingForSyncReply()
 MockPaymentCoordinator& Internals::mockPaymentCoordinator() const
 {
     return *m_mockPaymentCoordinator;
+}
+#endif
+
+#if ENABLE(WEB_AUTHN)
+MockCredentialsMessenger& Internals::mockCredentialsMessenger() const
+{
+    return *m_mockCredentialsMessenger;
 }
 #endif
 

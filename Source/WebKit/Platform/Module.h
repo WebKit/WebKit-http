@@ -41,6 +41,10 @@ typedef struct _GModule GModule;
 #include <image.h>
 #endif
 
+#if OS(WINDOWS)
+#include <windows.h>
+#endif
+
 namespace WebKit {
 
 class Module {
@@ -68,7 +72,7 @@ private:
     void* platformFunctionPointer(const char* functionName) const;
 
     String m_path;
-#if PLATFORM(WIN)
+#if OS(WINDOWS)
     HMODULE m_module;
 #endif
 #if USE(CF)

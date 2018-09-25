@@ -101,10 +101,10 @@ void RenderSVGInline::absoluteQuads(Vector<FloatQuad>& quads, bool* wasFixed) co
         quads.append(localToAbsoluteQuad(FloatRect(textBoundingBox.x() + box->x(), textBoundingBox.y() + box->y(), box->logicalWidth(), box->logicalHeight()), UseTransforms, wasFixed));
 }
 
-void RenderSVGInline::willBeDestroyed()
+void RenderSVGInline::willBeDestroyed(RenderTreeBuilder& builder)
 {
     SVGResourcesCache::clientDestroyed(*this);
-    RenderInline::willBeDestroyed();
+    RenderInline::willBeDestroyed(builder);
 }
 
 void RenderSVGInline::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
@@ -121,26 +121,6 @@ void RenderSVGInline::updateFromStyle()
 
     // SVG text layout code expects us to be an inline-level element.
     setInline(true);
-}
-
-void RenderSVGInline::addChild(RenderTreeBuilder& builder, RenderPtr<RenderObject> newChild, RenderObject* beforeChild)
-{
-    builder.insertChildToSVGInline(*this, WTFMove(newChild), beforeChild);
-}
-
-RenderPtr<RenderObject> RenderSVGInline::takeChild(RenderTreeBuilder& builder, RenderObject& child)
-{
-    SVGResourcesCache::clientWillBeRemovedFromTree(child);
-
-    auto* textAncestor = RenderSVGText::locateRenderSVGTextAncestor(*this);
-    if (!textAncestor)
-        return RenderInline::takeChild(builder, child);
-
-    Vector<SVGTextLayoutAttributes*, 2> affectedAttributes;
-    textAncestor->subtreeChildWillBeRemoved(&child, affectedAttributes);
-    auto takenChild = RenderInline::takeChild(builder, child);
-    textAncestor->subtreeChildWasRemoved(affectedAttributes);
-    return takenChild;
 }
 
 }

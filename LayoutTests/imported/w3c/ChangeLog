@@ -1,3 +1,168 @@
+2018-02-15  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Ensure that changing the timing model updates styles synchronously
+        https://bugs.webkit.org/show_bug.cgi?id=182836
+
+        Reviewed by Dean Jackson.
+
+        Update test expectations for progressions.
+
+        * web-platform-tests/css-timing-1/cubic-bezier-timing-functions-output-expected.txt:
+        * web-platform-tests/css-timing-1/frames-timing-functions-output-expected.txt:
+        * web-platform-tests/css-timing-1/step-timing-functions-output-expected.txt:
+        * web-platform-tests/css/css-multicol/multicol-gap-animation-001-expected.txt:
+        * web-platform-tests/web-animations/animation-model/animation-types/discrete-expected.txt:
+        * web-platform-tests/web-animations/animation-model/animation-types/visibility-expected.txt:
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-iteration-composite-operation-expected.txt:
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-transformed-distance-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animation/cancel-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/iterationComposite-expected.txt:
+
+2018-02-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r228444.
+
+        Introduced API and Layout test failures.
+
+        Reverted changeset:
+
+        "[WebAuthN] Revisit the whole async model of task dispatching,
+        timeout and aborting"
+        https://bugs.webkit.org/show_bug.cgi?id=181946
+        https://trac.webkit.org/changeset/228444
+
+2018-02-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r228437, r228439, and r228440.
+        https://bugs.webkit.org/show_bug.cgi?id=182756
+
+        Introduced LayoutTest failures (Requested by ryanhadd_ on
+        #webkit).
+
+        Reverted changesets:
+
+        "[Web Animations] Make KeyframeEffect target nullable and
+        read-write"
+        https://bugs.webkit.org/show_bug.cgi?id=182741
+        https://trac.webkit.org/changeset/228437
+
+        "Unreviewed attempt to fix build after r228437."
+        https://trac.webkit.org/changeset/228439
+
+        "[Web Animations] Make KeyframeEffect target nullable and
+        read-write"
+        https://bugs.webkit.org/show_bug.cgi?id=182741
+        https://trac.webkit.org/changeset/228440
+
+2018-02-13  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make KeyframeEffect target nullable and read-write
+        https://bugs.webkit.org/show_bug.cgi?id=182741
+
+        Reviewed by Dean Jackson.
+
+        Update test expectations for tests that use null KeyframeEffect targets and tests that update their target.
+
+        * web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property-expected.txt:
+        * web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt:
+        * web-platform-tests/web-animations/animation-model/animation-types/discrete-expected.txt:
+        * web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property-expected.txt:
+        * web-platform-tests/web-animations/animation-model/animation-types/visibility-expected.txt:
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-iteration-composite-operation-expected.txt:
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-transformed-distance-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animatable/animate-no-browsing-context-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animation/cancel-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/idlharness-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/iterationComposite-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/processing-a-keyframes-argument-001-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/target-expected.txt:
+        * web-platform-tests/web-animations/timing-model/timelines/document-timelines-expected.txt:
+
+2018-02-12  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Support the copy constructors for KeyframeEffectReadOnly and KeyframeEffect
+        https://bugs.webkit.org/show_bug.cgi?id=182712
+
+        Reviewed by Dean Jackson.
+
+        Update test expectations for tests relevant to the copy constructors.
+
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/copy-constructor-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/idlharness-expected.txt:
+
+2018-02-08  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Refactor AnimationEffect and KeyframeEffect into AnimationEffectReadOnly, KeyframeEffectReadOnly and KeyframeEffect
+        https://bugs.webkit.org/show_bug.cgi?id=182608
+
+        Reviewed by Dean Jackson.
+
+        Update WPT expectations with progressions and updated failure points for all tests that involved
+        either AnimationEffectReadOnly or KeyframeEffectReadOnly.
+
+        * web-platform-tests/web-animations/interfaces/Animation/constructor-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animation/effect-expected.txt:
+        * web-platform-tests/web-animations/interfaces/AnimationEffectTiming/idlharness-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Document/getAnimations-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/constructor-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/copy-constructor-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/idlharness-expected.txt:
+
+2018-02-09  Youenn Fablet  <youenn@apple.com>
+
+        Add support for cache storage of blob response
+        https://bugs.webkit.org/show_bug.cgi?id=182637
+
+        Reviewed by Brady Eidson.
+
+        * web-platform-tests/service-workers/cache-storage/script-tests/cache-put.js:
+        (cache_test.async):
+        * web-platform-tests/service-workers/cache-storage/serviceworker/cache-put.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/window/cache-put.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/worker/cache-put.https-expected.txt:
+        * web-platform-tests/service-workers/cache-storage/window/cache-put.https.html:
+
+2018-02-09  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-align] Implement the new behavior of 'legacy' for justify-items
+        https://bugs.webkit.org/show_bug.cgi?id=172712
+
+        Reviewed by Antti Koivisto.
+
+        Rebaselined Default Alignment related tests because of the new 'legacy' value.
+
+        * web-platform-tests/css/css-align/content-distribution/place-content-shorthand-004-expected.txt:
+        * web-platform-tests/css/css-align/content-distribution/place-content-shorthand-004.html:
+        * web-platform-tests/css/css-align/default-alignment/parse-justify-items-002-expected.txt:
+        * web-platform-tests/css/css-align/default-alignment/parse-justify-items-002.html:
+        * web-platform-tests/css/css-align/default-alignment/parse-justify-items-004-expected.txt:
+        * web-platform-tests/css/css-align/default-alignment/place-items-shorthand-004-expected.txt:
+        * web-platform-tests/css/css-align/default-alignment/place-items-shorthand-004.html:
+
+2018-02-08  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Always expose "composite" in output of getKeyframes()
+        https://bugs.webkit.org/show_bug.cgi?id=182600
+
+        Reviewed by Dean Jackson.
+
+        Update expected results to account for a number of progressions.
+
+        * web-platform-tests/web-animations/interfaces/Animatable/animate-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/composite-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/setKeyframes-expected.txt:
+
+2018-02-07  Youenn Fablet  <youenn@apple.com>
+
+        Remove www1/www2 URLs from service worker tests
+        https://bugs.webkit.org/show_bug.cgi?id=182548
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/service-workers/service-worker/http-to-https-redirect-and-register.https-expected.txt:
+        * web-platform-tests/service-workers/service-worker/http-to-https-redirect-and-register.https.html:
+        * web-platform-tests/service-workers/service-worker/update-bytecheck.https.html:
+
 2018-02-07  Chris Dumez  <cdumez@apple.com>
 
         IndexedDB in service workers is using a memory backed store

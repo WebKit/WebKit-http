@@ -26,6 +26,8 @@
 #import "config.h"
 #import "Pasteboard.h"
 
+#if PLATFORM(MAC)
+
 #import "DragData.h"
 #import "Image.h"
 #import "LegacyNSPasteboardTypes.h"
@@ -331,7 +333,7 @@ void Pasteboard::read(PasteboardPlainText& text)
     text.isURL = !text.text.isNull();
 }
 
-void Pasteboard::read(PasteboardWebContentReader& reader)
+void Pasteboard::read(PasteboardWebContentReader& reader, WebContentReadingPolicy policy)
 {
     PasteboardStrategy& strategy = *platformStrategies()->pasteboardStrategy();
 
@@ -347,7 +349,7 @@ void Pasteboard::read(PasteboardWebContentReader& reader)
         }
     }
 
-    if (types.contains(String(legacyFilenamesPasteboardType()))) {
+    if (policy == WebContentReadingPolicy::AnyType && types.contains(String(legacyFilenamesPasteboardType()))) {
         Vector<String> paths;
         strategy.getPathnamesForType(paths, legacyFilenamesPasteboardType(), m_pasteboardName);
         if (m_changeCount != changeCount() || reader.readFilePaths(paths))
@@ -373,6 +375,9 @@ void Pasteboard::read(PasteboardWebContentReader& reader)
                 return;
         }
     }
+
+    if (policy == WebContentReadingPolicy::OnlyRichTextTypes)
+        return;
 
     if (types.contains(String(legacyTIFFPasteboardType()))) {
         if (RefPtr<SharedBuffer> buffer = strategy.bufferForType(legacyTIFFPasteboardType(), m_pasteboardName)) {
@@ -658,11 +663,17 @@ void Pasteboard::setDragImage(DragImage image, const IntPoint& location)
 
     // Hack: We must post an event to wake up the NSDragManager, which is sitting in a nextEvent call
     // up the stack from us because the CoreFoundation drag manager does not use the run loop by itself.
-    // This is the most innocuous event to use, per Kristen Forster.
-    NSEvent* event = [NSEvent mouseEventWithType:NSEventTypeMouseMoved location:NSZeroPoint
-        modifierFlags:0 timestamp:0 windowNumber:0 context:nil eventNumber:0 clickCount:0 pressure:0];
-    [NSApp postEvent:event atStart:YES];
+    // This is the most innocuous event to use, per Kristin Forster.
+    // This is only relevant in WK1. Do not execute in the WebContent process, since it is now using
+    // NSRunLoop, and not the NSApplication run loop.
+    if ([NSApp isRunning]) {
+        NSEvent* event = [NSEvent mouseEventWithType:NSEventTypeMouseMoved location:NSZeroPoint
+            modifierFlags:0 timestamp:0 windowNumber:0 context:nil eventNumber:0 clickCount:0 pressure:0];
+        [NSApp postEvent:event atStart:YES];
+    }
 }
 #endif
 
 }
+
+#endif // PLATFORM(MAC)

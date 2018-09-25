@@ -68,6 +68,8 @@ typedef NSBundle *PlatformBundle;
 typedef ::GModule* PlatformBundle;
 #elif PLATFORM(HAIKU)
 typedef image_id PlatformBundle;
+#else
+typedef void* PlatformBundle;
 #endif
 
 class InjectedBundleScriptWorld;

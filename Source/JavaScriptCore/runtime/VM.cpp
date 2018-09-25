@@ -68,8 +68,11 @@
 #include "JITWorklist.h"
 #include "JSAPIValueWrapper.h"
 #include "JSArray.h"
+#include "JSAsyncFunction.h"
 #include "JSBigInt.h"
+#include "JSBoundFunction.h"
 #include "JSCInlines.h"
+#include "JSCustomGetterSetterFunction.h"
 #include "JSDestructibleObjectHeapCellType.h"
 #include "JSFixedArray.h"
 #include "JSFunction.h"
@@ -87,7 +90,7 @@
 #include "JSSetIterator.h"
 #include "JSSourceCode.h"
 #include "JSStringHeapCellType.h"
-#include "JSTemplateRegistryKey.h"
+#include "JSTemplateObjectDescriptor.h"
 #include "JSWeakMap.h"
 #include "JSWeakSet.h"
 #include "JSWebAssembly.h"
@@ -131,6 +134,8 @@
 #include "WasmWorklist.h"
 #include "Watchdog.h"
 #include "WeakGCMapInlines.h"
+#include "WebAssemblyFunction.h"
+#include "WebAssemblyWrapperFunction.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/ProcessID.h>
 #include <wtf/ReadWriteLock.h>
@@ -250,20 +255,31 @@ VM::VM(VMType vmType, HeapType heapType)
 #if ENABLE(WEBASSEMBLY)
     , webAssemblyCodeBlockSpace("JSWebAssemblyCodeBlockSpace", heap, webAssemblyCodeBlockHeapCellType.get(), fastMallocAllocator.get())
 #endif
+    , asyncFunctionSpace ISO_SUBSPACE_INIT(heap, cellHeapCellType.get(), JSAsyncFunction)
+    , asyncGeneratorFunctionSpace ISO_SUBSPACE_INIT(heap, cellHeapCellType.get(), JSAsyncGeneratorFunction)
+    , boundFunctionSpace ISO_SUBSPACE_INIT(heap, cellHeapCellType.get(), JSBoundFunction)
+    , customGetterSetterFunctionSpace ISO_SUBSPACE_INIT(heap, cellHeapCellType.get(), JSCustomGetterSetterFunction)
     , directEvalExecutableSpace ISO_SUBSPACE_INIT(heap, destructibleCellHeapCellType.get(), DirectEvalExecutable)
     , executableToCodeBlockEdgeSpace ISO_SUBSPACE_INIT(heap, cellHeapCellType.get(), ExecutableToCodeBlockEdge)
     , functionExecutableSpace ISO_SUBSPACE_INIT(heap, destructibleCellHeapCellType.get(), FunctionExecutable)
+    , functionSpace ISO_SUBSPACE_INIT(heap, cellHeapCellType.get(), JSFunction)
+    , generatorFunctionSpace ISO_SUBSPACE_INIT(heap, cellHeapCellType.get(), JSGeneratorFunction)
     , indirectEvalExecutableSpace ISO_SUBSPACE_INIT(heap, destructibleCellHeapCellType.get(), IndirectEvalExecutable)
     , inferredTypeSpace ISO_SUBSPACE_INIT(heap, destructibleCellHeapCellType.get(), InferredType)
     , inferredValueSpace ISO_SUBSPACE_INIT(heap, destructibleCellHeapCellType.get(), InferredValue)
     , moduleProgramExecutableSpace ISO_SUBSPACE_INIT(heap, destructibleCellHeapCellType.get(), ModuleProgramExecutable)
     , nativeExecutableSpace ISO_SUBSPACE_INIT(heap, destructibleCellHeapCellType.get(), NativeExecutable)
+    , nativeStdFunctionSpace ISO_SUBSPACE_INIT(heap, cellHeapCellType.get(), JSNativeStdFunction)
     , programExecutableSpace ISO_SUBSPACE_INIT(heap, destructibleCellHeapCellType.get(), ProgramExecutable)
     , propertyTableSpace ISO_SUBSPACE_INIT(heap, destructibleCellHeapCellType.get(), PropertyTable)
     , structureRareDataSpace ISO_SUBSPACE_INIT(heap, destructibleCellHeapCellType.get(), StructureRareData)
     , structureSpace ISO_SUBSPACE_INIT(heap, destructibleCellHeapCellType.get(), Structure)
     , weakSetSpace ISO_SUBSPACE_INIT(heap, destructibleObjectHeapCellType.get(), JSWeakSet)
     , weakMapSpace ISO_SUBSPACE_INIT(heap, destructibleObjectHeapCellType.get(), JSWeakMap)
+#if ENABLE(WEBASSEMBLY)
+    , webAssemblyFunctionSpace ISO_SUBSPACE_INIT(heap, cellHeapCellType.get(), WebAssemblyFunction)
+    , webAssemblyWrapperFunctionSpace ISO_SUBSPACE_INIT(heap, cellHeapCellType.get(), WebAssemblyWrapperFunction)
+#endif
     , executableToCodeBlockEdgesWithConstraints(executableToCodeBlockEdgeSpace)
     , executableToCodeBlockEdgesWithFinalizers(executableToCodeBlockEdgeSpace)
     , inferredTypesWithFinalizers(inferredTypeSpace)
@@ -340,7 +356,7 @@ VM::VM(VMType vmType, HeapType heapType)
     scriptFetchParametersStructure.set(*this, JSScriptFetchParameters::createStructure(*this, 0, jsNull()));
     structureChainStructure.set(*this, StructureChain::createStructure(*this, 0, jsNull()));
     sparseArrayValueMapStructure.set(*this, SparseArrayValueMap::createStructure(*this, 0, jsNull()));
-    templateRegistryKeyStructure.set(*this, JSTemplateRegistryKey::createStructure(*this, 0, jsNull()));
+    templateObjectDescriptorStructure.set(*this, JSTemplateObjectDescriptor::createStructure(*this, 0, jsNull()));
     arrayBufferNeuteringWatchpointStructure.set(*this, ArrayBufferNeuteringWatchpoint::createStructure(*this));
     unlinkedFunctionExecutableStructure.set(*this, UnlinkedFunctionExecutable::createStructure(*this, 0, jsNull()));
     unlinkedProgramCodeBlockStructure.set(*this, UnlinkedProgramCodeBlock::createStructure(*this, 0, jsNull()));
@@ -516,6 +532,12 @@ VM::~VM()
 
     delete clientData;
     delete m_regExpCache;
+
+#if ENABLE(YARR_JIT_ALL_PARENS_EXPRESSIONS)
+    if (m_regExpPatternContexBuffer)
+        delete[] m_regExpPatternContexBuffer;
+#endif
+
 #if ENABLE(REGEXP_TRACING)
     delete m_rtTraceList;
 #endif
@@ -556,11 +578,6 @@ Ref<VM> VM::createContextGroup(HeapType heapType)
 Ref<VM> VM::create(HeapType heapType)
 {
     return adoptRef(*new VM(Default, heapType));
-}
-
-Ref<VM> VM::createLeaked(HeapType heapType)
-{
-    return create(heapType);
 }
 
 bool VM::sharedInstanceExists()
@@ -879,6 +896,25 @@ void logSanitizeStack(VM* vm)
             vm->topCallFrame->codeOrigin(), ", last stack top = ", RawPointer(vm->lastStackTop()), ", in stack range [", RawPointer(stackBounds.origin()), ", ", RawPointer(stackBounds.end()), "]\n");
     }
 }
+
+#if ENABLE(YARR_JIT_ALL_PARENS_EXPRESSIONS)
+char* VM::acquireRegExpPatternContexBuffer()
+{
+    ASSERT(!m_regExpPatternContextLock.isLocked());
+
+    m_regExpPatternContextLock.lock();
+    if (!m_regExpPatternContexBuffer)
+        m_regExpPatternContexBuffer = new char[VM::patternContextBufferSize];
+    return m_regExpPatternContexBuffer;
+}
+
+void VM::releaseRegExpPatternContexBuffer()
+{
+    ASSERT(m_regExpPatternContextLock.isLocked());
+
+    m_regExpPatternContextLock.unlock();
+}
+#endif
 
 #if ENABLE(REGEXP_TRACING)
 void VM::addRegExpToTrace(RegExp* regExp)

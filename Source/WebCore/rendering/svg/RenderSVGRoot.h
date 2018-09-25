@@ -76,14 +76,12 @@ private:
     void layout() override;
     void paintReplaced(PaintInfo&, const LayoutPoint&) override;
 
-    void willBeDestroyed() override;
+    void willBeDestroyed(RenderTreeBuilder&) override;
 
     void insertedIntoTree() override;
     void willBeRemovedFromTree() override;
 
     void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
-    void addChild(RenderTreeBuilder&, RenderPtr<RenderObject> child, RenderObject* beforeChild = 0) override;
-    RenderPtr<RenderObject> takeChild(RenderTreeBuilder&, RenderObject&) override;
 
     const AffineTransform& localToParentTransform() const override;
 

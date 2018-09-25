@@ -54,7 +54,7 @@ struct ResourceLoadStatistics {
     WEBCORE_EXPORT static String primaryDomain(const String& host);
 
     WEBCORE_EXPORT void encode(KeyedEncoder&) const;
-    WEBCORE_EXPORT bool decode(KeyedDecoder&);
+    WEBCORE_EXPORT bool decode(KeyedDecoder&, unsigned modelVersion);
 
     String toString() const;
 
@@ -73,13 +73,18 @@ struct ResourceLoadStatistics {
     // Storage access
     HashSet<String> storageAccessUnderTopFrameOrigins;
 
+    // Top frame stats
+    HashCountedSet<String> topFrameUniqueRedirectsTo;
+    HashCountedSet<String> topFrameUniqueRedirectsFrom;
+
     // Subframe stats
     HashCountedSet<String> subframeUnderTopFrameOrigins;
     
     // Subresource stats
     HashCountedSet<String> subresourceUnderTopFrameOrigins;
     HashCountedSet<String> subresourceUniqueRedirectsTo;
-    
+    HashCountedSet<String> subresourceUniqueRedirectsFrom;
+
     // Prevalent resource stats
     bool isPrevalentResource { false };
     unsigned dataRecordsRemoved { 0 };

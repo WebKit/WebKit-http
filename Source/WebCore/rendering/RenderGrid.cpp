@@ -70,36 +70,6 @@ RenderGrid::RenderGrid(Element& element, RenderStyle&& style)
 
 RenderGrid::~RenderGrid() = default;
 
-void RenderGrid::addChild(RenderTreeBuilder& builder, RenderPtr<RenderObject> newChild, RenderObject* beforeChild)
-{
-    auto& child = *newChild;
-    builder.insertChildToRenderBlock(*this, WTFMove(newChild), beforeChild);
-
-    // Positioned grid items do not take up space or otherwise participate in the layout of the grid,
-    // for that reason we don't need to mark the grid as dirty when they are added.
-    if (child.isOutOfFlowPositioned())
-        return;
-
-    // The grid needs to be recomputed as it might contain auto-placed items that
-    // will change their position.
-    dirtyGrid();
-}
-
-RenderPtr<RenderObject> RenderGrid::takeChild(RenderTreeBuilder& builder, RenderObject& child)
-{
-    auto takenChild = RenderBlock::takeChild(builder, child);
-
-    // Positioned grid items do not take up space or otherwise participate in the layout of the grid,
-    // for that reason we don't need to mark the grid as dirty when they are removed.
-    if (child.isOutOfFlowPositioned())
-        return takenChild;
-
-    // The grid needs to be recomputed as it might contain auto-placed items that
-    // will change their position.
-    dirtyGrid();
-    return takenChild;
-}
-
 StyleSelfAlignmentData RenderGrid::selfAlignmentForChild(GridAxis axis, const RenderBox& child, const RenderStyle* gridStyle) const
 {
     return axis == GridRowAxis ? justifySelfForChild(child, gridStyle) : alignSelfForChild(child, gridStyle);
@@ -1296,6 +1266,7 @@ GridAxisPosition RenderGrid::columnAxisPositionForChild(const RenderBox& child) 
     case ItemPositionLastBaseline:
         // FIXME: Implement the previous values. For now, we always 'start' align the child.
         return GridAxisStart;
+    case ItemPositionLegacy:
     case ItemPositionAuto:
     case ItemPositionNormal:
         break;
@@ -1363,6 +1334,7 @@ GridAxisPosition RenderGrid::rowAxisPositionForChild(const RenderBox& child) con
     case ItemPositionLastBaseline:
         // FIXME: Implement the previous values. For now, we always 'start' align the child.
         return GridAxisStart;
+    case ItemPositionLegacy:
     case ItemPositionAuto:
     case ItemPositionNormal:
         break;

@@ -907,7 +907,7 @@ void Storage::traverse(const String& type, TraverseFlags flags, TraverseHandler&
                 traverseOperation.activeCondition.notifyOne();
             });
 
-            const unsigned maximumParallelReadCount = 5;
+            static const unsigned maximumParallelReadCount = 5;
             traverseOperation.activeCondition.wait(lock, [&traverseOperation] {
                 return traverseOperation.activeCount <= maximumParallelReadCount;
             });

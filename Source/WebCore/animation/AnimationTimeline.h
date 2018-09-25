@@ -37,7 +37,6 @@
 
 namespace WebCore {
 
-class AnimationEffect;
 class Element;
 class WebAnimation;
 
@@ -52,7 +51,7 @@ public:
     WEBCORE_EXPORT String description();
     WEBCORE_EXPORT virtual void pause() { };
 
-    virtual void animationTimingModelDidChange() { };
+    virtual void timingModelDidChange() { };
 
     const HashSet<RefPtr<WebAnimation>>& animations() const { return m_animations; }
     Vector<RefPtr<WebAnimation>> animationsForElement(Element&);

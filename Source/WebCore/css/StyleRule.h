@@ -22,6 +22,7 @@
 #pragma once
 
 #include "CSSSelectorList.h"
+#include "CompiledSelector.h"
 #include "StyleProperties.h"
 #include <wtf/RefPtr.h>
 #include <wtf/TypeCasts.h>
@@ -131,13 +132,31 @@ public:
 
     using StyleRuleBase::hasDocumentSecurityOrigin;
 
-    void parserAdoptSelectorVector(Vector<std::unique_ptr<CSSParserSelector>>& selectors) { m_selectorList.adoptSelectorVector(selectors); }
-    void wrapperAdoptSelectorList(CSSSelectorList& selectors) { m_selectorList = WTFMove(selectors); }
+    void wrapperAdoptSelectorList(CSSSelectorList& selectors)
+    {
+        m_selectorList = WTFMove(selectors);
+#if ENABLE(CSS_SELECTOR_JIT)
+        m_compiledSelectors = nullptr;
+#endif
+    }
     void parserAdoptSelectorArray(CSSSelector* selectors) { m_selectorList.adoptSelectorArray(selectors); }
 
     Ref<StyleRule> copy() const { return adoptRef(*new StyleRule(*this)); }
 
     Vector<RefPtr<StyleRule>> splitIntoMultipleRulesWithMaximumSelectorComponentCount(unsigned) const;
+
+#if ENABLE(CSS_SELECTOR_JIT)
+    CompiledSelector& compiledSelectorForListIndex(unsigned index)
+    {
+        if (!m_compiledSelectors)
+            m_compiledSelectors = std::make_unique<CompiledSelector[]>(m_selectorList.listSize());
+        return m_compiledSelectors[index];
+    }
+    void releaseCompiledSelectors() const
+    {
+        m_compiledSelectors = nullptr;
+    }
+#endif
 
     static unsigned averageSizeInBytes();
 
@@ -149,6 +168,10 @@ private:
 
     mutable Ref<StylePropertiesBase> m_properties;
     CSSSelectorList m_selectorList;
+
+#if ENABLE(CSS_SELECTOR_JIT)
+    mutable std::unique_ptr<CompiledSelector[]> m_compiledSelectors;
+#endif
 };
 
 inline const StyleProperties* StyleRule::propertiesWithoutDeferredParsing() const

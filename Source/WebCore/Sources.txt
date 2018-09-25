@@ -45,6 +45,7 @@ Modules/cache/WorkerGlobalScopeCaches.cpp
 
 Modules/credentialmanagement/BasicCredential.cpp
 Modules/credentialmanagement/CredentialsContainer.cpp
+Modules/credentialmanagement/CredentialsMessenger.cpp
 Modules/credentialmanagement/NavigatorCredentials.cpp
 
 Modules/entriesapi/ErrorCallback.cpp
@@ -186,6 +187,8 @@ Modules/navigatorcontentutils/NavigatorContentUtils.cpp
 Modules/notifications/Notification.cpp
 Modules/notifications/NotificationController.cpp
 
+Modules/paymentrequest/MerchantValidationEvent.cpp
+Modules/paymentrequest/PaymentAddress.cpp
 Modules/paymentrequest/PaymentHandler.cpp
 Modules/paymentrequest/PaymentRequest.cpp
 Modules/paymentrequest/PaymentRequestUpdateEvent.cpp
@@ -244,9 +247,9 @@ Modules/webaudio/WaveShaperDSPKernel.cpp
 Modules/webaudio/WaveShaperNode.cpp
 Modules/webaudio/WaveShaperProcessor.cpp
 
-Modules/webauthn/Authenticator.cpp
 Modules/webauthn/AuthenticatorAssertionResponse.cpp
 Modules/webauthn/AuthenticatorAttestationResponse.cpp
+Modules/webauthn/AuthenticatorManager.cpp
 Modules/webauthn/AuthenticatorResponse.cpp
 Modules/webauthn/PublicKeyCredential.cpp
 Modules/webauthn/cbor/CBORReader.cpp
@@ -328,14 +331,15 @@ accessibility/AccessibilityTableHeaderContainer.cpp
 accessibility/AccessibilityTableRow.cpp
 accessibility/AccessibilityTree.cpp
 accessibility/AccessibilityTreeItem.cpp
-accessibility/AccessibleNode.cpp
 
-animation/AnimationEffect.cpp
+animation/AnimationEffectReadOnly.cpp
 animation/AnimationEffectTiming.cpp
+animation/AnimationEffectTimingReadOnly.cpp
 animation/AnimationPlaybackEvent.cpp
 animation/AnimationTimeline.cpp
 animation/DocumentTimeline.cpp
 animation/KeyframeEffect.cpp
+animation/KeyframeEffectReadOnly.cpp
 animation/WebAnimation.cpp
 
 bindings/js/CachedModuleScriptLoader.cpp
@@ -347,7 +351,8 @@ bindings/js/DOMWrapperWorld.cpp
 bindings/js/GCController.cpp
 bindings/js/IDBBindingUtilities.cpp
 bindings/js/JSAuthenticatorResponseCustom.cpp
-bindings/js/JSAnimationEffectCustom.cpp
+bindings/js/JSAnimationEffectReadOnlyCustom.cpp
+bindings/js/JSAnimationEffectTimingReadOnlyCustom.cpp
 bindings/js/JSAnimationTimelineCustom.cpp
 bindings/js/JSAttrCustom.cpp
 bindings/js/JSAudioTrackCustom.cpp
@@ -2317,16 +2322,16 @@ JSHTMLElementWrapperFactory.cpp
 JSAbortController.cpp
 JSAbortSignal.cpp
 JSAbstractWorker.cpp
-JSAccessibleNode.cpp
 JSAesCbcCfbParams.cpp
 JSAesCtrParams.cpp
 JSAesGcmParams.cpp
 JSAesKeyParams.cpp
 JSAnalyserNode.cpp
 JSAnimationEvent.cpp
-JSAnimationEffect.cpp
+JSAnimationEffectReadOnly.cpp
 JSAnimationEffectTiming.cpp
 JSAnimationEffectTimingProperties.cpp
+JSAnimationEffectTimingReadOnly.cpp
 JSAnimationPlaybackEvent.cpp
 JSAnimationPlaybackEventInit.cpp
 JSAnimationTimeline.cpp
@@ -2652,6 +2657,7 @@ JSKeyboardEvent.cpp
 JSKeyframeAnimationOptions.cpp
 JSKeyframeEffect.cpp
 JSKeyframeEffectOptions.cpp
+JSKeyframeEffectReadOnly.cpp
 JSLocation.cpp
 JSLongRange.cpp
 JSMediaCapabilities.cpp
@@ -2680,6 +2686,7 @@ JSMediaStreamTrack.cpp
 JSMediaStreamTrackEvent.cpp
 JSMediaTrackConstraints.cpp
 JSMediaTrackSupportedConstraints.cpp
+JSMerchantValidationEvent.cpp
 JSMessageChannel.cpp
 JSMessageEvent.cpp
 JSMessagePort.cpp

@@ -84,7 +84,7 @@ public:
     const BMessage* nativeEvent() const { return m_nativeEvent; }
 #elif PLATFORM(IOS)
     ::WebEvent* nativeEvent() const { return m_nativeEvent.get(); }
-#elif PLATFORM(WPE)
+#else
     const void* nativeEvent() const { return nullptr; }
 #endif
 

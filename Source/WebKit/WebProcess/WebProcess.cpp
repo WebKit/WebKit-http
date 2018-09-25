@@ -117,11 +117,14 @@
 #include <WebCore/Settings.h>
 #include <WebCore/URLParser.h>
 #include <WebCore/UserGestureIndicator.h>
-#include <unistd.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/Language.h>
 #include <wtf/RunLoop.h>
 #include <wtf/text/StringHash.h>
+
+#if !OS(WINDOWS)
+#include <unistd.h>
+#endif
 
 #if PLATFORM(WAYLAND)
 #include "WaylandCompositorDisplay.h"
@@ -1407,6 +1410,10 @@ void WebProcess::cancelPrepareToSuspend()
         return;
 
     cancelMarkAllLayersVolatile();
+    
+#if PLATFORM(IOS)
+    accessibilityProcessSuspendedNotification(false);
+#endif
 
     RELEASE_LOG(ProcessSuspension, "%p - WebProcess::cancelPrepareToSuspend() Sending DidCancelProcessSuspension IPC message", this);
     parentProcessConnection()->send(Messages::WebProcessProxy::DidCancelProcessSuspension(), 0);

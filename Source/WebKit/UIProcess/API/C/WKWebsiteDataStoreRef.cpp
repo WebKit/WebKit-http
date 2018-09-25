@@ -211,6 +211,33 @@ void WKWebsiteDataStoreSetStatisticsSubresourceUniqueRedirectTo(WKWebsiteDataSto
     store->setSubresourceUniqueRedirectTo(WebCore::URL(WebCore::URL(), WebKit::toImpl(host)->string()), WebCore::URL(WebCore::URL(), WebKit::toImpl(hostRedirectedTo)->string()));
 }
 
+void WKWebsiteDataStoreSetStatisticsSubresourceUniqueRedirectFrom(WKWebsiteDataStoreRef dataStoreRef, WKStringRef host, WKStringRef hostRedirectedFrom)
+{
+    auto* store = WebKit::toImpl(dataStoreRef)->websiteDataStore().resourceLoadStatistics();
+    if (!store)
+        return;
+    
+    store->setSubresourceUniqueRedirectFrom(WebCore::URL(WebCore::URL(), WebKit::toImpl(host)->string()), WebCore::URL(WebCore::URL(), WebKit::toImpl(hostRedirectedFrom)->string()));
+}
+
+void WKWebsiteDataStoreSetStatisticsTopFrameUniqueRedirectTo(WKWebsiteDataStoreRef dataStoreRef, WKStringRef host, WKStringRef hostRedirectedTo)
+{
+    auto* store = WebKit::toImpl(dataStoreRef)->websiteDataStore().resourceLoadStatistics();
+    if (!store)
+        return;
+    
+    store->setTopFrameUniqueRedirectTo(WebCore::URL(WebCore::URL(), WebKit::toImpl(host)->string()), WebCore::URL(WebCore::URL(), WebKit::toImpl(hostRedirectedTo)->string()));
+}
+
+void WKWebsiteDataStoreSetStatisticsTopFrameUniqueRedirectFrom(WKWebsiteDataStoreRef dataStoreRef, WKStringRef host, WKStringRef hostRedirectedFrom)
+{
+    auto* store = WebKit::toImpl(dataStoreRef)->websiteDataStore().resourceLoadStatistics();
+    if (!store)
+        return;
+    
+    store->setTopFrameUniqueRedirectFrom(WebCore::URL(WebCore::URL(), WebKit::toImpl(host)->string()), WebCore::URL(WebCore::URL(), WebKit::toImpl(hostRedirectedFrom)->string()));
+}
+
 void WKWebsiteDataStoreSetStatisticsTimeToLiveUserInteraction(WKWebsiteDataStoreRef dataStoreRef, double seconds)
 {
     auto* store = WebKit::toImpl(dataStoreRef)->websiteDataStore().resourceLoadStatistics();
@@ -238,25 +265,31 @@ void WKWebsiteDataStoreStatisticsProcessStatisticsAndDataRecords(WKWebsiteDataSt
     store->scheduleStatisticsAndDataRecordsProcessing();
 }
 
-void WKWebsiteDataStoreStatisticsUpdateCookiePartitioning(WKWebsiteDataStoreRef dataStoreRef)
+void WKWebsiteDataStoreStatisticsUpdateCookiePartitioning(WKWebsiteDataStoreRef dataStoreRef, void* context, WKWebsiteDataStoreStatisticsUpdateCookiePartitioningFunction callback)
 {
     auto* store = WebKit::toImpl(dataStoreRef)->websiteDataStore().resourceLoadStatistics();
     if (!store)
         return;
 
-    store->scheduleCookiePartitioningUpdate([]() { });
+    store->scheduleCookiePartitioningUpdate([context, callback]() {
+        callback(context);
+    });
 }
 
-void WKWebsiteDataStoreSetStatisticsShouldPartitionCookiesForHost(WKWebsiteDataStoreRef dataStoreRef, WKStringRef host, bool value)
+void WKWebsiteDataStoreSetStatisticsShouldPartitionCookiesForHost(WKWebsiteDataStoreRef dataStoreRef, WKStringRef host, bool value, void* context, WKWebsiteDataStoreSetStatisticsShouldPartitionCookiesForHostFunction callback)
 {
     auto* store = WebKit::toImpl(dataStoreRef)->websiteDataStore().resourceLoadStatistics();
     if (!store)
         return;
 
     if (value)
-        store->scheduleCookiePartitioningUpdateForDomains({ WebKit::toImpl(host)->string() }, { }, { }, WebKit::ShouldClearFirst::No, []() { });
+        store->scheduleCookiePartitioningUpdateForDomains({ WebKit::toImpl(host)->string() }, { }, { }, WebKit::ShouldClearFirst::No, [context, callback]() {
+            callback(context);
+        });
     else
-        store->scheduleClearPartitioningStateForDomains({ WebKit::toImpl(host)->string() }, []() { });
+        store->scheduleClearPartitioningStateForDomains({ WebKit::toImpl(host)->string() }, [context, callback]() {
+            callback(context);
+        });
 }
 
 void WKWebsiteDataStoreStatisticsSubmitTelemetry(WKWebsiteDataStoreRef dataStoreRef)

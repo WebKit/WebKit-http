@@ -270,12 +270,12 @@ void RenderSVGRoot::paintReplaced(PaintInfo& paintInfo, const LayoutPoint& paint
     childPaintInfo.context().restore();
 }
 
-void RenderSVGRoot::willBeDestroyed()
+void RenderSVGRoot::willBeDestroyed(RenderTreeBuilder& builder)
 {
     RenderBlock::removePercentHeightDescendant(const_cast<RenderSVGRoot&>(*this));
 
     SVGResourcesCache::clientDestroyed(*this);
-    RenderReplaced::willBeDestroyed();
+    RenderReplaced::willBeDestroyed(builder);
 }
 
 void RenderSVGRoot::insertedIntoTree()
@@ -301,17 +301,6 @@ void RenderSVGRoot::styleDidChange(StyleDifference diff, const RenderStyle* oldS
 
     RenderReplaced::styleDidChange(diff, oldStyle);
     SVGResourcesCache::clientStyleChanged(*this, diff, style());
-}
-
-void RenderSVGRoot::addChild(RenderTreeBuilder& builder, RenderPtr<RenderObject> newChild, RenderObject* beforeChild)
-{
-    builder.insertChildToSVGRoot(*this, WTFMove(newChild), beforeChild);
-}
-
-RenderPtr<RenderObject> RenderSVGRoot::takeChild(RenderTreeBuilder& builder, RenderObject& child)
-{
-    SVGResourcesCache::clientWillBeRemovedFromTree(child);
-    return RenderReplaced::takeChild(builder, child);
 }
 
 // RenderBox methods will expect coordinates w/o any transforms in coordinates

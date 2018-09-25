@@ -30,6 +30,7 @@
 #include "RenderSVGInline.h"
 #include "RenderSVGRoot.h"
 #include "RenderSVGText.h"
+#include "RenderTreeBuilderInline.h"
 #include "SVGResourcesCache.h"
 
 namespace WebCore {
@@ -49,7 +50,7 @@ void RenderTreeBuilder::SVG::insertChild(RenderSVGContainer& parent, RenderPtr<R
 void RenderTreeBuilder::SVG::insertChild(RenderSVGInline& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild)
 {
     auto& childToAdd = *child;
-    m_builder.insertChildToRenderInline(parent, WTFMove(child), beforeChild);
+    m_builder.inlineBuilder().insertChild(parent, WTFMove(child), beforeChild);
     SVGResourcesCache::clientWasAddedToTree(childToAdd);
 
     if (auto* textAncestor = RenderSVGText::locateRenderSVGTextAncestor(parent))
@@ -70,6 +71,44 @@ void RenderTreeBuilder::SVG::insertChild(RenderSVGText& parent, RenderPtr<Render
 
     SVGResourcesCache::clientWasAddedToTree(childToAdd);
     parent.subtreeChildWasAdded(&childToAdd);
+}
+
+RenderPtr<RenderObject> RenderTreeBuilder::SVG::takeChild(RenderSVGText& parent, RenderObject& child)
+{
+    SVGResourcesCache::clientWillBeRemovedFromTree(child);
+
+    Vector<SVGTextLayoutAttributes*, 2> affectedAttributes;
+    parent.subtreeChildWillBeRemoved(&child, affectedAttributes);
+    auto takenChild = m_builder.blockBuilder().takeChild(parent, child);
+    parent.subtreeChildWasRemoved(affectedAttributes);
+    return takenChild;
+}
+
+RenderPtr<RenderObject> RenderTreeBuilder::SVG::takeChild(RenderSVGInline& parent, RenderObject& child)
+{
+    SVGResourcesCache::clientWillBeRemovedFromTree(child);
+
+    auto* textAncestor = RenderSVGText::locateRenderSVGTextAncestor(parent);
+    if (!textAncestor)
+        return m_builder.takeChildFromRenderElement(parent, child);
+
+    Vector<SVGTextLayoutAttributes*, 2> affectedAttributes;
+    textAncestor->subtreeChildWillBeRemoved(&child, affectedAttributes);
+    auto takenChild = m_builder.takeChildFromRenderElement(parent, child);
+    textAncestor->subtreeChildWasRemoved(affectedAttributes);
+    return takenChild;
+}
+
+RenderPtr<RenderObject> RenderTreeBuilder::SVG::takeChild(RenderSVGContainer& parent, RenderObject& child)
+{
+    SVGResourcesCache::clientWillBeRemovedFromTree(child);
+    return m_builder.takeChildFromRenderElement(parent, child);
+}
+
+RenderPtr<RenderObject> RenderTreeBuilder::SVG::takeChild(RenderSVGRoot& parent, RenderObject& child)
+{
+    SVGResourcesCache::clientWillBeRemovedFromTree(child);
+    return m_builder.takeChildFromRenderElement(parent, child);
 }
 
 }

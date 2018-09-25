@@ -37,7 +37,6 @@
 
 namespace WebCore {
 
-class AccessibleNode;
 class CustomElementReactionQueue;
 class DatasetDOMStringMap;
 class DOMRect;
@@ -305,7 +304,7 @@ public:
     bool tabIndexSetExplicitly() const;
     virtual bool supportsFocus() const;
     virtual bool isFocusable() const;
-    virtual bool isKeyboardFocusable(KeyboardEvent&) const;
+    virtual bool isKeyboardFocusable(KeyboardEvent*) const;
     virtual bool isMouseFocusable() const;
 
     virtual bool shouldUseInputMethod();
@@ -546,6 +545,9 @@ public:
     // Elements newly added to the tree are also in this state.
     void invalidateStyleAndRenderersForSubtree();
 
+    void invalidateStyleInternal();
+    void invalidateStyleForSubtreeInternal();
+
     bool hasDisplayContents() const;
     void storeDisplayContentsStyle(std::unique_ptr<RenderStyle>);
 
@@ -553,9 +555,6 @@ public:
     void setAttributeEventListener(const AtomicString& eventType, const QualifiedName& attributeName, const AtomicString& value);
 
     Element* findAnchorElementForLink(String& outAnchorName);
-
-    AccessibleNode* existingAccessibleNode() const;
-    AccessibleNode* accessibleNode();
 
     ExceptionOr<Ref<WebAnimation>> animate(JSC::ExecState&, JSC::Strong<JSC::JSObject>&&, std::optional<Variant<double, KeyframeAnimationOptions>>&&);
     Vector<RefPtr<WebAnimation>> getAnimations();

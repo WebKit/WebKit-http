@@ -125,7 +125,6 @@
 #import <JavaScriptCore/JSCJSValue.h>
 #import <JavaScriptCore/JSLock.h>
 #import <JavaScriptCore/JSValueRef.h>
-#import <JavaScriptCore/ScriptValue.h>
 #import <WebCore/AlternativeTextUIController.h>
 #import <WebCore/ApplicationCacheStorage.h>
 #import <WebCore/BackForwardController.h>
@@ -245,9 +244,9 @@
 #import "WebNSPasteboardExtras.h"
 #import "WebNSPrintOperationExtras.h"
 #import "WebPDFView.h"
+#import "WebVideoFullscreenController.h"
 #import <WebCore/TextIndicator.h>
 #import <WebCore/TextIndicatorWindow.h>
-#import <WebCore/WebVideoFullscreenController.h>
 #import <pal/spi/cocoa/AVKitSPI.h>
 #import <pal/spi/mac/LookupSPI.h>
 #import <pal/spi/mac/NSImmediateActionGestureRecognizerSPI.h>
@@ -2761,6 +2760,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setWebSecurityEnabled([preferences isWebSecurityEnabled]);
     settings.setAllowUniversalAccessFromFileURLs([preferences allowUniversalAccessFromFileURLs]);
     settings.setAllowFileAccessFromFileURLs([preferences allowFileAccessFromFileURLs]);
+    settings.setAllowCrossOriginSubresourcesToAskForCredentials([preferences allowCrossOriginSubresourcesToAskForCredentials]);
     settings.setNeedsStorageAccessFromFileURLsQuirk([preferences needsStorageAccessFromFileURLsQuirk]);
     settings.setMinimumFontSize([preferences minimumFontSize]);
     settings.setMinimumLogicalFontSize([preferences minimumLogicalFontSize]);

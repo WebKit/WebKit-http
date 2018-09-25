@@ -267,7 +267,7 @@
 		5CB5B3C21FFC55CF00C27BB0 /* FrameHandleSerialization.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5CB5B3BD1FFC517E00C27BB0 /* FrameHandleSerialization.mm */; };
 		5CE354D91E70DA5C00BEFE3B /* WKContentExtensionStore.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5CE354D81E70D9C300BEFE3B /* WKContentExtensionStore.mm */; };
 		5CEAB5E11FA939F400A77FAA /* _WKInputDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5CEAB5DF1FA937CB00A77FAA /* _WKInputDelegate.mm */; };
-		5E4B1D2E1D404C6100053621 /* WKScrollViewDelegateCrash.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5E4B1D2C1D404C6100053621 /* WKScrollViewDelegateCrash.mm */; };
+		5E4B1D2E1D404C6100053621 /* WKScrollViewDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5E4B1D2C1D404C6100053621 /* WKScrollViewDelegate.mm */; };
 		631EFFF61E7B5E8D00D2EBB8 /* Geolocation.mm in Sources */ = {isa = PBXBuildFile; fileRef = 631EFFF51E7B5E8D00D2EBB8 /* Geolocation.mm */; };
 		634910E01E9D3FF300880309 /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 634910DF1E9D3FF300880309 /* CoreLocation.framework */; };
 		6354F4D11F7C3AB500D89DF3 /* ApplicationManifestParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6354F4D01F7C3AB500D89DF3 /* ApplicationManifestParser.cpp */; };
@@ -534,6 +534,10 @@
 		7CD4C26E1E2C0E6E00929470 /* StringConcatenate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7CD4C26C1E2C0E6E00929470 /* StringConcatenate.cpp */; };
 		7CEFA9661AC0B9E200B910FD /* _WKUserContentExtensionStore.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7CEFA9641AC0B9E200B910FD /* _WKUserContentExtensionStore.mm */; };
 		7CFBCAE51743238F00B2BFCF /* WillLoad_Bundle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7CFBCAE31743238E00B2BFCF /* WillLoad_Bundle.cpp */; };
+		83148B06202AC6A400BADE99 /* InjectedBundleDisableOverrideBuiltinsBehavior.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 83148B05202AC68200BADE99 /* InjectedBundleDisableOverrideBuiltinsBehavior.cpp */; };
+		83148B07202AC6AD00BADE99 /* InjectedBundleDisableOverrideBuiltinsBehavior_Bundle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 83148B04202AC68200BADE99 /* InjectedBundleDisableOverrideBuiltinsBehavior_Bundle.cpp */; };
+		83148B09202AC78D00BADE99 /* override-builtins-test.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 83148B08202AC76800BADE99 /* override-builtins-test.html */; };
+		834138C7203261CA00F26960 /* AsyncPolicyForNavigationResponse.mm in Sources */ = {isa = PBXBuildFile; fileRef = 834138C6203261B900F26960 /* AsyncPolicyForNavigationResponse.mm */; };
 		8349D3C21DB96DDE004A9F65 /* ContextMenuDownload.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8349D3C11DB96DDA004A9F65 /* ContextMenuDownload.mm */; };
 		8349D3C41DB9728E004A9F65 /* link-with-download-attribute.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 8349D3C31DB9724F004A9F65 /* link-with-download-attribute.html */; };
 		835CF9671D25FCD6001A65D4 /* RestoreSessionStateWithoutNavigation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 835CF9661D25FCD6001A65D4 /* RestoreSessionStateWithoutNavigation.cpp */; };
@@ -576,6 +580,7 @@
 		9B26FCCA159D16DE00CC3765 /* HTMLFormCollectionNamedItem.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 9B26FCB4159D15E700CC3765 /* HTMLFormCollectionNamedItem.html */; };
 		9B270FEE1DDC2C0B002D53F3 /* closed-shadow-tree-test.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 9B270FED1DDC25FD002D53F3 /* closed-shadow-tree-test.html */; };
 		9B4F8FA7159D52DD002D9F94 /* HTMLCollectionNamedItem.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 9B4F8FA6159D52CA002D9F94 /* HTMLCollectionNamedItem.html */; };
+		9B59F12A2034086F009E63D5 /* mso-list-compat-mode.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 9B59F12920340854009E63D5 /* mso-list-compat-mode.html */; };
 		9B62630C1F8C25C8007EE29B /* copy-url.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 9B62630B1F8C2510007EE29B /* copy-url.html */; };
 		9B7A37C41F8AEBA5004AA228 /* CopyURL.mm in Sources */ = {isa = PBXBuildFile; fileRef = 9B7A37C21F8AEBA5004AA228 /* CopyURL.mm */; };
 		9B7D740F1F8378770006C432 /* paste-rtfd.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 9B7D740E1F8377E60006C432 /* paste-rtfd.html */; };
@@ -590,6 +595,7 @@
 		9BD6D3A71F7B21DC00BD4962 /* paste-image.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 9BD6D3A61F7B21CC00BD4962 /* paste-image.html */; };
 		9BDCCD871F7D0B0700009A18 /* PasteImage.mm in Sources */ = {isa = PBXBuildFile; fileRef = 9BDCCD851F7D0B0700009A18 /* PasteImage.mm */; };
 		9BDD95581F83683600D20C60 /* PasteRTFD.mm in Sources */ = {isa = PBXBuildFile; fileRef = 9BDD95561F83683600D20C60 /* PasteRTFD.mm */; };
+		9BF356CD202D458500F71160 /* mso-list.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 9BF356CC202D44F200F71160 /* mso-list.html */; };
 		9C64DC321D76198A004B598E /* YouTubePluginReplacement.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9C64DC311D76198A004B598E /* YouTubePluginReplacement.cpp */; };
 		A10F047E1E3AD29C00C95E19 /* NSFileManagerExtras.mm in Sources */ = {isa = PBXBuildFile; fileRef = A10F047C1E3AD29C00C95E19 /* NSFileManagerExtras.mm */; };
 		A1146A8D1D2D7115000FE710 /* ContentFiltering.mm in Sources */ = {isa = PBXBuildFile; fileRef = A1146A8A1D2D704F000FE710 /* ContentFiltering.mm */; };
@@ -738,6 +744,8 @@
 		F44D064A1F3962F2001A0E29 /* EditingTestHarness.mm in Sources */ = {isa = PBXBuildFile; fileRef = F44D06491F3962E3001A0E29 /* EditingTestHarness.mm */; };
 		F4512E131F60C44600BB369E /* DataTransferItem-getAsEntry.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = F4512E121F60C43400BB369E /* DataTransferItem-getAsEntry.html */; };
 		F4538EF71E8473E600B5C953 /* large-red-square.png in Copy Resources */ = {isa = PBXBuildFile; fileRef = F4538EF01E846B4100B5C953 /* large-red-square.png */; };
+		F457A9B8202D5CDC00F7E9D5 /* PasteMixedContent.mm in Sources */ = {isa = PBXBuildFile; fileRef = F457A9B6202D5CDC00F7E9D5 /* PasteMixedContent.mm */; };
+		F457A9D6202D68AF00F7E9D5 /* DataTransfer.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = F457A9B3202D535300F7E9D5 /* DataTransfer.html */; };
 		F45B63FB1F197F4A009D38B9 /* image-map.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = F45B63FA1F197F33009D38B9 /* image-map.html */; };
 		F45B63FE1F19D410009D38B9 /* ActionSheetTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = F45B63FC1F19D410009D38B9 /* ActionSheetTests.mm */; };
 		F46849BE1EEF58E400B937FE /* UIPasteboardTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = F46849BD1EEF58E400B937FE /* UIPasteboardTests.mm */; };
@@ -891,6 +899,7 @@
 				F4AB578A1F65165400DB0DA1 /* custom-draggable-div.html in Copy Resources */,
 				290F4275172A221C00939FF0 /* custom-protocol-sync-xhr.html in Copy Resources */,
 				F486B1D01F67952300F34BDD /* DataTransfer-setDragImage.html in Copy Resources */,
+				F457A9D6202D68AF00F7E9D5 /* DataTransfer.html in Copy Resources */,
 				F4512E131F60C44600BB369E /* DataTransferItem-getAsEntry.html in Copy Resources */,
 				C07E6CB213FD73930038B22B /* devicePixelRatio.html in Copy Resources */,
 				0799C34B1EBA3301003B7532 /* disableGetUserMedia.html in Copy Resources */,
@@ -1014,12 +1023,15 @@
 				51CD1C721B38D48400142CA5 /* modal-alerts-in-new-about-blank-window.html in Copy Resources */,
 				7A1458FC1AD5C07000E06772 /* mouse-button-listener.html in Copy Resources */,
 				33E79E06137B5FD900E32D99 /* mouse-move-listener.html in Copy Resources */,
+				9B59F12A2034086F009E63D5 /* mso-list-compat-mode.html in Copy Resources */,
+				9BF356CD202D458500F71160 /* mso-list.html in Copy Resources */,
 				5797FE331EB15AB100B2F4A0 /* navigation-client-default-crypto.html in Copy Resources */,
 				C99B675F1E39736F00FC6C80 /* no-autoplay-with-controls.html in Copy Resources */,
 				93E2D2761ED7D53200FA76F6 /* offscreen-iframe-of-media-document.html in Copy Resources */,
 				CEA6CF2819CCF69D0064F5A7 /* open-and-close-window.html in Copy Resources */,
 				7CCB99231D3B4A46003922F6 /* open-multiple-external-url.html in Copy Resources */,
 				290A9BB91735F63800D71BBC /* OpenNewWindow.html in Copy Resources */,
+				83148B09202AC78D00BADE99 /* override-builtins-test.html in Copy Resources */,
 				CEBCA1391E3A807A00C73293 /* page-with-csp-iframe.html in Copy Resources */,
 				CEBCA1381E3A807A00C73293 /* page-with-csp.html in Copy Resources */,
 				CEBCA13B1E3A807A00C73293 /* page-without-csp-iframe.html in Copy Resources */,
@@ -1438,7 +1450,7 @@
 		5CB5B3BD1FFC517E00C27BB0 /* FrameHandleSerialization.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = FrameHandleSerialization.mm; sourceTree = "<group>"; };
 		5CE354D81E70D9C300BEFE3B /* WKContentExtensionStore.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WKContentExtensionStore.mm; sourceTree = "<group>"; };
 		5CEAB5DF1FA937CB00A77FAA /* _WKInputDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = _WKInputDelegate.mm; sourceTree = "<group>"; };
-		5E4B1D2C1D404C6100053621 /* WKScrollViewDelegateCrash.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = WKScrollViewDelegateCrash.mm; path = ../ios/WKScrollViewDelegateCrash.mm; sourceTree = "<group>"; };
+		5E4B1D2C1D404C6100053621 /* WKScrollViewDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = WKScrollViewDelegate.mm; path = ../ios/WKScrollViewDelegate.mm; sourceTree = "<group>"; };
 		631EFFF51E7B5E8D00D2EBB8 /* Geolocation.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = Geolocation.mm; sourceTree = "<group>"; };
 		634910DF1E9D3FF300880309 /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
 		6354F4D01F7C3AB500D89DF3 /* ApplicationManifestParser.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = ApplicationManifestParser.cpp; sourceTree = "<group>"; };
@@ -1522,6 +1534,10 @@
 		7CFBCADD1743234F00B2BFCF /* WillLoad.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WillLoad.cpp; sourceTree = "<group>"; };
 		7CFBCAE31743238E00B2BFCF /* WillLoad_Bundle.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WillLoad_Bundle.cpp; sourceTree = "<group>"; };
 		81B50192140F232300D9EB58 /* StringBuilder.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = StringBuilder.cpp; sourceTree = "<group>"; };
+		83148B04202AC68200BADE99 /* InjectedBundleDisableOverrideBuiltinsBehavior_Bundle.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = InjectedBundleDisableOverrideBuiltinsBehavior_Bundle.cpp; sourceTree = "<group>"; };
+		83148B05202AC68200BADE99 /* InjectedBundleDisableOverrideBuiltinsBehavior.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = InjectedBundleDisableOverrideBuiltinsBehavior.cpp; sourceTree = "<group>"; };
+		83148B08202AC76800BADE99 /* override-builtins-test.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "override-builtins-test.html"; sourceTree = "<group>"; };
+		834138C6203261B900F26960 /* AsyncPolicyForNavigationResponse.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = AsyncPolicyForNavigationResponse.mm; sourceTree = "<group>"; };
 		8349D3C11DB96DDA004A9F65 /* ContextMenuDownload.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ContextMenuDownload.mm; sourceTree = "<group>"; };
 		8349D3C31DB9724F004A9F65 /* link-with-download-attribute.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "link-with-download-attribute.html"; sourceTree = "<group>"; };
 		835CF9661D25FCD6001A65D4 /* RestoreSessionStateWithoutNavigation.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RestoreSessionStateWithoutNavigation.cpp; sourceTree = "<group>"; };
@@ -1590,6 +1606,7 @@
 		9B270FED1DDC25FD002D53F3 /* closed-shadow-tree-test.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "closed-shadow-tree-test.html"; sourceTree = "<group>"; };
 		9B4F8FA3159D52B1002D9F94 /* HTMLCollectionNamedItem.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = HTMLCollectionNamedItem.mm; sourceTree = "<group>"; };
 		9B4F8FA6159D52CA002D9F94 /* HTMLCollectionNamedItem.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = HTMLCollectionNamedItem.html; sourceTree = "<group>"; };
+		9B59F12920340854009E63D5 /* mso-list-compat-mode.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "mso-list-compat-mode.html"; sourceTree = "<group>"; };
 		9B62630B1F8C2510007EE29B /* copy-url.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "copy-url.html"; sourceTree = "<group>"; };
 		9B79164F1BD89D0D00D50B8F /* FirstResponderScrollingPosition.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FirstResponderScrollingPosition.mm; sourceTree = "<group>"; };
 		9B7A37C21F8AEBA5004AA228 /* CopyURL.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = CopyURL.mm; sourceTree = "<group>"; };
@@ -1605,6 +1622,7 @@
 		9BD6D3A61F7B21CC00BD4962 /* paste-image.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "paste-image.html"; sourceTree = "<group>"; };
 		9BDCCD851F7D0B0700009A18 /* PasteImage.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = PasteImage.mm; sourceTree = "<group>"; };
 		9BDD95561F83683600D20C60 /* PasteRTFD.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = PasteRTFD.mm; sourceTree = "<group>"; };
+		9BF356CC202D44F200F71160 /* mso-list.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "mso-list.html"; sourceTree = "<group>"; };
 		9C64DC311D76198A004B598E /* YouTubePluginReplacement.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = YouTubePluginReplacement.cpp; sourceTree = "<group>"; };
 		A10F047C1E3AD29C00C95E19 /* NSFileManagerExtras.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = NSFileManagerExtras.mm; sourceTree = "<group>"; };
 		A1146A8A1D2D704F000FE710 /* ContentFiltering.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ContentFiltering.mm; sourceTree = "<group>"; };
@@ -1855,6 +1873,8 @@
 		F44D06491F3962E3001A0E29 /* EditingTestHarness.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = EditingTestHarness.mm; sourceTree = "<group>"; };
 		F4512E121F60C43400BB369E /* DataTransferItem-getAsEntry.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "DataTransferItem-getAsEntry.html"; sourceTree = "<group>"; };
 		F4538EF01E846B4100B5C953 /* large-red-square.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "large-red-square.png"; sourceTree = "<group>"; };
+		F457A9B3202D535300F7E9D5 /* DataTransfer.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = DataTransfer.html; sourceTree = "<group>"; };
+		F457A9B6202D5CDC00F7E9D5 /* PasteMixedContent.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = PasteMixedContent.mm; sourceTree = "<group>"; };
 		F45B63FA1F197F33009D38B9 /* image-map.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "image-map.html"; sourceTree = "<group>"; };
 		F45B63FC1F19D410009D38B9 /* ActionSheetTests.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = ActionSheetTests.mm; sourceTree = "<group>"; };
 		F46849BD1EEF58E400B937FE /* UIPasteboardTests.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = UIPasteboardTests.mm; sourceTree = "<group>"; };
@@ -2056,6 +2076,7 @@
 				A1DF74301C41B65800A2F4D0 /* AlwaysRevalidatedURLSchemes.mm */,
 				2DE71AFD1D49C0BD00904094 /* AnimatedResize.mm */,
 				63F668201F97C3AA0032EE51 /* ApplicationManifest.mm */,
+				834138C6203261B900F26960 /* AsyncPolicyForNavigationResponse.mm */,
 				754CEC801F6722DC00D0039A /* AutoFillAvailable.mm */,
 				2DD355351BD08378005DF4A7 /* AutoLayoutIntegration.mm */,
 				374B7A5E1DF36EEE00ACCB6C /* BundleEditingDelegate.mm */,
@@ -2123,6 +2144,7 @@
 				CEBCA12E1E3A660100C73293 /* OverrideContentSecurityPolicy.mm */,
 				9BCB7C2620130600003E7C0C /* PasteHTML.mm */,
 				9BDCCD851F7D0B0700009A18 /* PasteImage.mm */,
+				F457A9B6202D5CDC00F7E9D5 /* PasteMixedContent.mm */,
 				9BDD95561F83683600D20C60 /* PasteRTFD.mm */,
 				9B2346411F943A2400DB1D23 /* PasteWebArchive.mm */,
 				3FCC4FE41EC4E8520076E37C /* PictureInPictureDelegate.mm */,
@@ -2172,7 +2194,7 @@
 				2D00065D1C1F58940088E6A7 /* WKPDFViewResizeCrash.mm */,
 				2D21FE581F04642800B58E7D /* WKPDFViewStablePresentationUpdateCallback.mm */,
 				44817A2E1F0486BF00003810 /* WKRequestActivatedElementInfo.mm */,
-				5E4B1D2C1D404C6100053621 /* WKScrollViewDelegateCrash.mm */,
+				5E4B1D2C1D404C6100053621 /* WKScrollViewDelegate.mm */,
 				51C683DD1EA134DB00650183 /* WKURLSchemeHandler-1.mm */,
 				5182C22D1F2BCB410059BA7C /* WKURLSchemeHandler-leaks.mm */,
 				371195AA1FE5797700A1FB92 /* WKWebViewAlwaysShowsScroller.mm */,
@@ -2357,6 +2379,7 @@
 				9B62630B1F8C2510007EE29B /* copy-url.html */,
 				F4AB57891F65164B00DB0DA1 /* custom-draggable-div.html */,
 				F486B1CF1F6794FF00F34BDD /* DataTransfer-setDragImage.html */,
+				F457A9B3202D535300F7E9D5 /* DataTransfer.html */,
 				F4512E121F60C43400BB369E /* DataTransferItem-getAsEntry.html */,
 				0799C34A1EBA32F4003B7532 /* disableGetUserMedia.html */,
 				63A61B8A1FAD204D00F06885 /* display-mode.html */,
@@ -2433,6 +2456,8 @@
 				46C519E31D35629600DAA51A /* LocalStorageNullEntries.localstorage */,
 				46C519E41D35629600DAA51A /* LocalStorageNullEntries.localstorage-shm */,
 				7A6A2C711DCCFB0200C0D085 /* LocalStorageQuirkEnabled.html */,
+				9B59F12920340854009E63D5 /* mso-list-compat-mode.html */,
+				9BF356CC202D44F200F71160 /* mso-list.html */,
 				93E2D2751ED7D51700FA76F6 /* offscreen-iframe-of-media-document.html */,
 				7CCB99221D3B44E7003922F6 /* open-multiple-external-url.html */,
 				CEBCA1341E3A803400C73293 /* page-with-csp-iframe.html */,
@@ -2585,6 +2610,8 @@
 				4BFDFFA61314776C0061F24B /* HitTestResultNodeHandle_Bundle.cpp */,
 				BC575AAC126E83B9006F0F12 /* InjectedBundleBasic.cpp */,
 				BC575AAF126E83C8006F0F12 /* InjectedBundleBasic_Bundle.cpp */,
+				83148B05202AC68200BADE99 /* InjectedBundleDisableOverrideBuiltinsBehavior.cpp */,
+				83148B04202AC68200BADE99 /* InjectedBundleDisableOverrideBuiltinsBehavior_Bundle.cpp */,
 				378E64711632646D00B6C676 /* InjectedBundleFrameHitTest.cpp */,
 				378E64751632655D00B6C676 /* InjectedBundleFrameHitTest_Bundle.cpp */,
 				F660AA1215A619C8003A1243 /* InjectedBundleInitializationUserDataCallbackWins.cpp */,
@@ -2810,6 +2837,7 @@
 				5797FE321EB15A8900B2F4A0 /* navigation-client-default-crypto.html */,
 				C99B675E1E39735C00FC6C80 /* no-autoplay-with-controls.html */,
 				CEA6CF2719CCF69D0064F5A7 /* open-and-close-window.html */,
+				83148B08202AC76800BADE99 /* override-builtins-test.html */,
 				0EBBCC651FFF9DCE00FA42AB /* pop-up-check.html */,
 				F6FDDDD514241C48004F1729 /* push-state.html */,
 				0F5651F81FCE50E800310FBC /* scroll-to-anchor.html */,
@@ -3343,6 +3371,7 @@
 				2DE71AFE1D49C0BD00904094 /* AnimatedResize.mm in Sources */,
 				63F668221F97F7F90032EE51 /* ApplicationManifest.mm in Sources */,
 				6354F4D11F7C3AB500D89DF3 /* ApplicationManifestParser.cpp in Sources */,
+				834138C7203261CA00F26960 /* AsyncPolicyForNavigationResponse.mm in Sources */,
 				7CCE7EB41A411A7E00447C4C /* AttributedString.mm in Sources */,
 				CDC8E48D1BC5CB4500594FEC /* AudioSessionCategoryIOS.mm in Sources */,
 				7C83E0B91D0A64F100FEBCF3 /* AutoLayoutIntegration.mm in Sources */,
@@ -3476,6 +3505,7 @@
 				5198A2401EA7E59F008910B7 /* InitialWarmedProcessUsed.mm in Sources */,
 				7A95BDE11E9BEC5F00865498 /* InjectedBundleAppleEvent.cpp in Sources */,
 				7CCE7EFB1A411AE600447C4C /* InjectedBundleBasic.cpp in Sources */,
+				83148B06202AC6A400BADE99 /* InjectedBundleDisableOverrideBuiltinsBehavior.cpp in Sources */,
 				7CCE7EFC1A411AE600447C4C /* InjectedBundleFrameHitTest.cpp in Sources */,
 				7CCE7EFD1A411AE600447C4C /* InjectedBundleInitializationUserDataCallbackWins.cpp in Sources */,
 				7C83E0B81D0A64BD00FEBCF3 /* InjectedBundleMakeAllShadowRootsOpen.cpp in Sources */,
@@ -3516,6 +3546,7 @@
 				5C0BF88D1DD5964D00B00328 /* MemoryPressureHandler.mm in Sources */,
 				7C83E0B71D0A64B800FEBCF3 /* MenuTypesForMouseEvents.cpp in Sources */,
 				5C0BF8941DD599C900B00328 /* MenuTypesForMouseEvents.mm in Sources */,
+				5165FE04201EE620009F7EC3 /* MessagePortProviders.mm in Sources */,
 				A5B149DE1F5A19EA00C6DAFF /* MIMETypeRegistry.cpp in Sources */,
 				51CD1C6C1B38CE4300142CA5 /* ModalAlerts.mm in Sources */,
 				7C83E0B61D0A64B300FEBCF3 /* ModalAlertsSPI.cpp in Sources */,
@@ -3543,6 +3574,7 @@
 				7CCE7F0A1A411AE600447C4C /* PasteboardNotifications.mm in Sources */,
 				9BCB7C2820130600003E7C0C /* PasteHTML.mm in Sources */,
 				9BDCCD871F7D0B0700009A18 /* PasteImage.mm in Sources */,
+				F457A9B8202D5CDC00F7E9D5 /* PasteMixedContent.mm in Sources */,
 				9BDD95581F83683600D20C60 /* PasteRTFD.mm in Sources */,
 				9B2346421F943E2700DB1D23 /* PasteWebArchive.mm in Sources */,
 				7C83E0531D0A643A00FEBCF3 /* PendingAPIRequestURL.cpp in Sources */,
@@ -3560,7 +3592,6 @@
 				7CCE7F0C1A411AE600447C4C /* PrivateBrowsingPushStateNoHistoryCallback.cpp in Sources */,
 				4647B1261EBA3B850041D7EF /* ProcessDidTerminate.cpp in Sources */,
 				7C83E0C11D0A652F00FEBCF3 /* ProvisionalURLNotChange.mm in Sources */,
-				5165FE04201EE620009F7EC3 /* MessagePortProviders.mm in Sources */,
 				7CCE7EC81A411A7E00447C4C /* PublicSuffix.mm in Sources */,
 				7C83E0C21D0A653500FEBCF3 /* QuickLook.mm in Sources */,
 				7CCE7F0D1A411AE600447C4C /* ReloadPageAfterCrash.cpp in Sources */,
@@ -3680,7 +3711,7 @@
 				7CCE7F211A411AE600447C4C /* WKPreferences.cpp in Sources */,
 				44817A2F1F0486BF00003810 /* WKRequestActivatedElementInfo.mm in Sources */,
 				7C83E0B51D0A649300FEBCF3 /* WKRetainPtr.cpp in Sources */,
-				5E4B1D2E1D404C6100053621 /* WKScrollViewDelegateCrash.mm in Sources */,
+				5E4B1D2E1D404C6100053621 /* WKScrollViewDelegate.mm in Sources */,
 				7CCE7F221A411AE600447C4C /* WKString.cpp in Sources */,
 				7CCE7F1E1A411AE600447C4C /* WKStringJSString.cpp in Sources */,
 				2D4CF8BD1D8360CC0001CE8D /* WKThumbnailView.mm in Sources */,
@@ -3756,6 +3787,7 @@
 				BC575AB0126E83C8006F0F12 /* InjectedBundleBasic_Bundle.cpp in Sources */,
 				BC575AA2126E7660006F0F12 /* InjectedBundleController.cpp in Sources */,
 				1AEDE22613E5E7E700E62FE8 /* InjectedBundleControllerMac.mm in Sources */,
+				83148B07202AC6AD00BADE99 /* InjectedBundleDisableOverrideBuiltinsBehavior_Bundle.cpp in Sources */,
 				378E64771632655E00B6C676 /* InjectedBundleFrameHitTest_Bundle.cpp in Sources */,
 				F660AA1515A61ABF003A1243 /* InjectedBundleInitializationUserDataCallbackWins_Bundle.cpp in Sources */,
 				BC575A97126E74F1006F0F12 /* InjectedBundleMain.cpp in Sources */,

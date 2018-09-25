@@ -28,19 +28,18 @@
 #include "config.h"
 #include "WebEventFactory.h"
 
-#include "PlatformKeyboardEvent.h"
-#include "Scrollbar.h"
-#include "WindowsKeyboardCodes.h"
 #include <WebCore/GtkUtilities.h>
 #include <WebCore/GtkVersioning.h>
+#include <WebCore/PlatformKeyboardEvent.h>
+#include <WebCore/Scrollbar.h>
+#include <WebCore/WindowsKeyboardCodes.h>
 #include <gdk/gdk.h>
 #include <gdk/gdkkeysyms.h>
 #include <gtk/gtk.h>
 #include <wtf/ASCIICType.h>
 
-using namespace WebCore;
-
 namespace WebKit {
+using namespace WebCore;
 
 static inline bool isGdkKeyCodeFromKeyPad(unsigned keyval)
 {

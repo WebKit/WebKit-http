@@ -26,13 +26,13 @@
 #include "config.h"
 #include "WebEditorClient.h"
 
-#include "PlatformKeyboardEvent.h"
 #include <WebCore/Document.h>
 #include <WebCore/Editor.h>
 #include <WebCore/EventNames.h>
 #include <WebCore/Frame.h>
 #include <WebCore/KeyboardEvent.h>
 #include <WebCore/Node.h>
+#include <WebCore/PlatformKeyboardEvent.h>
 #include <WebCore/WindowsKeyboardCodes.h>
 #include <wtf/NeverDestroyed.h>
 
@@ -214,7 +214,7 @@ void WebEditorClient::handleKeyboardEvent(WebCore::KeyboardEvent* event)
 
     // FIXME: Reorder the checks in a more sensible way.
 
-    const PlatformKeyboardEvent* platformEvent = event->keyEvent();
+    auto* platformEvent = event->underlyingPlatformEvent();
     if (!platformEvent)
         return;
 
@@ -237,7 +237,7 @@ void WebEditorClient::handleKeyboardEvent(WebCore::KeyboardEvent* event)
 
 void WebEditorClient::handleInputMethodKeydown(WebCore::KeyboardEvent* event)
 {
-    const PlatformKeyboardEvent* platformEvent = event->keyEvent();
+    auto* platformEvent = event->underlyingPlatformEvent();
     if (platformEvent && platformEvent->windowsVirtualKeyCode() == VK_PROCESSKEY)
         event->preventDefault();
 }

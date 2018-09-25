@@ -233,6 +233,14 @@ void MediaPlayerPrivateGStreamer::setPlaybinURL(const URL& url)
 
 void MediaPlayerPrivateGStreamer::load(const String& urlString)
 {
+    // FIXME: This method is still called even if supportsType() returned
+    // IsNotSupported. This would deserve more investigation but meanwhile make
+    // sure we don't ever try to play animated gif assets.
+    if (m_player->contentMIMEType() == "image/gif") {
+        loadingFailed(MediaPlayer::FormatError);
+        return;
+    }
+
     if (!MediaPlayerPrivateGStreamerBase::initializeGStreamerAndRegisterWebKitElements())
         return;
 
@@ -2158,7 +2166,11 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
     m_textAppSinkPad = adoptGRef(gst_element_get_static_pad(m_textAppSink.get(), "sink"));
     ASSERT(m_textAppSinkPad);
 
-    GRefPtr<GstCaps> textCaps = adoptGRef(gst_caps_new_empty_simple("text/vtt"));
+    GRefPtr<GstCaps> textCaps;
+    if (webkitGstCheckVersion(1, 13, 0))
+        textCaps = adoptGRef(gst_caps_new_empty_simple("application/x-subtitle-vtt"));
+    else
+        textCaps = adoptGRef(gst_caps_new_empty_simple("text/vtt"));
     g_object_set(m_textAppSink.get(), "emit-signals", TRUE, "enable-last-sample", FALSE, "caps", textCaps.get(), nullptr);
     g_signal_connect_swapped(m_textAppSink.get(), "new-sample", G_CALLBACK(newTextSampleCallback), this);
 
@@ -2185,8 +2197,11 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
         // If not using accelerated compositing, let GStreamer handle
         // the image-orientation tag.
         GstElement* videoFlip = gst_element_factory_make("videoflip", nullptr);
-        g_object_set(videoFlip, "method", 8, nullptr);
-        g_object_set(m_pipeline.get(), "video-filter", videoFlip, nullptr);
+        if (videoFlip) {
+            g_object_set(videoFlip, "method", 8, nullptr);
+            g_object_set(m_pipeline.get(), "video-filter", videoFlip, nullptr);
+        } else
+            GST_WARNING("The videoflip element is missing, video rotation support is now disabled. Please check your gst-plugins-good installation.");
     }
 
     GRefPtr<GstPad> videoSinkPad = adoptGRef(gst_element_get_static_pad(m_videoSink.get(), "sink"));

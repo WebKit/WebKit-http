@@ -255,10 +255,10 @@ void RenderObject::setParent(RenderElement* parent)
     m_parent = parent;
 }
 
-void RenderObject::removeFromParentAndDestroy()
+void RenderObject::removeFromParentAndDestroy(RenderTreeBuilder& builder)
 {
     ASSERT(m_parent);
-    m_parent->removeAndDestroyChild(*RenderTreeBuilder::current(), *this);
+    m_parent->removeAndDestroyChild(builder, *this);
 }
 
 RenderObject* RenderObject::nextInPreOrder() const
@@ -1434,7 +1434,7 @@ bool RenderObject::isSelectionBorder() const
         || view().selection().end() == this;
 }
 
-void RenderObject::willBeDestroyed()
+void RenderObject::willBeDestroyed(RenderTreeBuilder&)
 {
     ASSERT(!m_parent);
     ASSERT(renderTreeBeingDestroyed() || !is<RenderElement>(*this) || !view().frameView().hasSlowRepaintObject(downcast<RenderElement>(*this)));
@@ -1459,8 +1459,9 @@ void RenderObject::insertedIntoTree()
     if (!isFloating() && parent()->childrenInline())
         parent()->dirtyLinesFromChangedChild(*this);
 
-    if (RenderFragmentedFlow* fragmentedFlow = enclosingFragmentedFlow())
-        fragmentedFlow->fragmentedFlowDescendantInserted(*this);
+    auto* fragmentedFlow = enclosingFragmentedFlow();
+    if (is<RenderMultiColumnFlow>(fragmentedFlow))
+        RenderTreeBuilder::current()->multiColumnDescendantInserted(downcast<RenderMultiColumnFlow>(*fragmentedFlow), *this);
 }
 
 void RenderObject::willBeRemovedFromTree()
@@ -1477,9 +1478,6 @@ void RenderObject::destroy()
     RELEASE_ASSERT(!m_previous);
     RELEASE_ASSERT(!m_bitfields.beingDestroyed());
 
-    if (is<RenderElement>(*this))
-        downcast<RenderElement>(*this).destroyLeftoverChildren();
-
     m_bitfields.setBeingDestroyed(true);
 
 #if PLATFORM(IOS)
@@ -1487,7 +1485,7 @@ void RenderObject::destroy()
         downcast<RenderBoxModelObject>(*this).layer()->willBeDestroyed();
 #endif
 
-    willBeDestroyed();
+    willBeDestroyed(*RenderTreeBuilder::current());
 
     if (is<RenderWidget>(*this)) {
         downcast<RenderWidget>(*this).deref();

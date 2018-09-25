@@ -58,14 +58,14 @@ RenderFullScreen::RenderFullScreen(Document& document, RenderStyle&& style)
     setReplaced(false); 
 }
 
-void RenderFullScreen::willBeDestroyed()
+void RenderFullScreen::willBeDestroyed(RenderTreeBuilder& builder)
 {
     if (m_placeholder) {
-        m_placeholder->removeFromParentAndDestroy();
+        m_placeholder->removeFromParentAndDestroy(builder);
         ASSERT(!m_placeholder);
     }
 
-    RenderFlexibleBox::willBeDestroyed();
+    RenderFlexibleBox::willBeDestroyed(builder);
 }
 
 static RenderStyle createFullScreenStyle()
@@ -106,7 +106,7 @@ RenderPtr<RenderFullScreen> RenderFullScreen::wrapNewRenderer(RenderTreeBuilder&
     builder.insertChild(fullscreenRenderer, WTFMove(renderer));
     fullscreenRenderer.setNeedsLayoutAndPrefWidthsRecalc();
 
-    document.setFullScreenRenderer(&fullscreenRenderer);
+    document.setFullScreenRenderer(builder, &fullscreenRenderer);
 
     return newFullscreenRenderer;
 }
@@ -132,7 +132,7 @@ void RenderFullScreen::wrapExistingRenderer(RenderElement& renderer, Document& d
 
     builder.insertChild(parent, WTFMove(newFullscreenRenderer), &renderer);
 
-    auto toMove = parent.takeChild(builder, renderer);
+    auto toMove = builder.takeChild(parent, renderer);
 
     // Always just do a full layout to ensure that line boxes get deleted properly.
     // Because objects moved from |parent| to |fullscreenRenderer|, we want to
@@ -143,7 +143,7 @@ void RenderFullScreen::wrapExistingRenderer(RenderElement& renderer, Document& d
     builder.insertChild(fullscreenRenderer, WTFMove(toMove));
     fullscreenRenderer.setNeedsLayoutAndPrefWidthsRecalc();
 
-    document.setFullScreenRenderer(&fullscreenRenderer);
+    document.setFullScreenRenderer(builder, &fullscreenRenderer);
 }
 
 void RenderFullScreen::unwrapRenderer(bool& requiresRenderTreeRebuild)
@@ -169,7 +169,7 @@ void RenderFullScreen::unwrapRenderer(bool& requiresRenderTreeRebuild)
                 if (auto* nonAnonymousChild = downcast<RenderBlock>(*child).firstChild())
                     child = nonAnonymousChild;
                 else {
-                    child->removeFromParentAndDestroy();
+                    child->removeFromParentAndDestroy(builder);
                     continue;
                 }
             }
@@ -178,16 +178,16 @@ void RenderFullScreen::unwrapRenderer(bool& requiresRenderTreeRebuild)
             // lying around on the child.
             if (is<RenderBox>(*child))
                 downcast<RenderBox>(*child).clearOverrideSize();
-            auto childToMove = child->parent()->takeChild(builder, *child);
+            auto childToMove = builder.takeChild(*child->parent(), *child);
             builder.insertChild(*parent(), WTFMove(childToMove), this);
             parent()->setNeedsLayoutAndPrefWidthsRecalc();
         }
     }
     if (placeholder())
-        placeholder()->removeFromParentAndDestroy();
+        placeholder()->removeFromParentAndDestroy(builder);
     ASSERT(!placeholder());
 
-    removeFromParentAndDestroy();
+    removeFromParentAndDestroy(builder);
 }
 
 void RenderFullScreen::createPlaceholder(std::unique_ptr<RenderStyle> style, const LayoutRect& frameRect)

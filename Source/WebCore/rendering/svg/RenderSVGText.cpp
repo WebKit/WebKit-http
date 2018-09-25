@@ -225,12 +225,12 @@ static inline void checkLayoutAttributesConsistency(RenderSVGText* text, Vector<
 #endif
 }
 
-void RenderSVGText::willBeDestroyed()
+void RenderSVGText::willBeDestroyed(RenderTreeBuilder& builder)
 {
     m_layoutAttributes.clear();
     m_layoutAttributesBuilder.clearTextPositioningElements();
 
-    RenderSVGBlock::willBeDestroyed();
+    RenderSVGBlock::willBeDestroyed(builder);
 }
 
 void RenderSVGText::subtreeChildWillBeRemoved(RenderObject* child, Vector<SVGTextLayoutAttributes*, 2>& affectedAttributes)
@@ -518,22 +518,6 @@ FloatRect RenderSVGText::repaintRectInLocalCoordinates() const
         textShadow->adjustRectForShadow(repaintRect);
 
     return repaintRect;
-}
-
-void RenderSVGText::addChild(RenderTreeBuilder& builder, RenderPtr<RenderObject> newChild, RenderObject* beforeChild)
-{
-    builder.insertChildToSVGText(*this, WTFMove(newChild), beforeChild);
-}
-
-RenderPtr<RenderObject> RenderSVGText::takeChild(RenderTreeBuilder& builder, RenderObject& child)
-{
-    SVGResourcesCache::clientWillBeRemovedFromTree(child);
-
-    Vector<SVGTextLayoutAttributes*, 2> affectedAttributes;
-    subtreeChildWillBeRemoved(&child, affectedAttributes);
-    auto takenChild = RenderSVGBlock::takeChild(builder, child);
-    subtreeChildWasRemoved(affectedAttributes);
-    return takenChild;
 }
 
 // Fix for <rdar://problem/8048875>. We should not render :first-line CSS Style

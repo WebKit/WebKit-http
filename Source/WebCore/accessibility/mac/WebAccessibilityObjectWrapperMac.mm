@@ -29,7 +29,7 @@
 #import "config.h"
 #import "WebAccessibilityObjectWrapperMac.h"
 
-#if HAVE(ACCESSIBILITY)
+#if HAVE(ACCESSIBILITY) && PLATFORM(MAC)
 
 #import "AXObjectCache.h"
 #import "AccessibilityARIAGridRow.h"
@@ -44,7 +44,6 @@
 #import "AccessibilityTableCell.h"
 #import "AccessibilityTableColumn.h"
 #import "AccessibilityTableRow.h"
-#import "AccessibleNode.h"
 #import "Chrome.h"
 #import "ChromeClient.h"
 #import "ColorMac.h"
@@ -2690,14 +2689,14 @@ static NSString* roleValueToNSString(AccessibilityRole value)
     
     if ([attributeName isEqualToString: NSAccessibilityMinValueAttribute]) {
         // Indeterminate progress indicator should return 0.
-        if (m_object->ariaRoleAttribute() == AccessibilityRole::ProgressIndicator && !m_object->hasProperty(AXPropertyName::ValueNow))
+        if (m_object->ariaRoleAttribute() == AccessibilityRole::ProgressIndicator && !m_object->hasAttribute(aria_valuenowAttr))
             return @0;
         return [NSNumber numberWithFloat:m_object->minValueForRange()];
     }
     
     if ([attributeName isEqualToString: NSAccessibilityMaxValueAttribute]) {
         // Indeterminate progress indicator should return 0.
-        if (m_object->ariaRoleAttribute() == AccessibilityRole::ProgressIndicator && !m_object->hasProperty(AXPropertyName::ValueNow))
+        if (m_object->ariaRoleAttribute() == AccessibilityRole::ProgressIndicator && !m_object->hasAttribute(aria_valuenowAttr))
             return @0;
         return [NSNumber numberWithFloat:m_object->maxValueForRange()];
     }
@@ -4366,5 +4365,4 @@ static void formatForDebugger(const VisiblePositionRange& range, char* buffer, u
 
 @end
 
-#endif // HAVE(ACCESSIBILITY)
-
+#endif // HAVE(ACCESSIBILITY) && PLATFORM(MAC)

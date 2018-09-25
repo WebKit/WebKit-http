@@ -29,7 +29,12 @@
 
 namespace WebCore {
 
+class RenderButton;
+class RenderGrid;
 class RenderMathMLFenced;
+class RenderMenuList;
+class RenderRubyAsBlock;
+class RenderRubyAsInline;
 class RenderRubyBase;
 class RenderRubyRun;
 class RenderSVGContainer;
@@ -49,6 +54,8 @@ public:
     void insertChild(RenderElement& parent, RenderPtr<RenderObject>, RenderObject* beforeChild = nullptr);
     void insertChild(RenderTreePosition&, RenderPtr<RenderObject>);
 
+    RenderPtr<RenderObject> takeChild(RenderElement&, RenderObject&) WARN_UNUSED_RETURN;
+
     void updateAfterDescendants(RenderElement&);
 
     // This avoids having to convert all sites that need RenderTreeBuilder in one go.
@@ -60,24 +67,14 @@ public:
     void insertChildToRenderBlock(RenderBlock& parent, RenderPtr<RenderObject>, RenderObject* beforeChild = nullptr);
     void insertChildToRenderBlockIgnoringContinuation(RenderBlock& parent, RenderPtr<RenderObject>, RenderObject* beforeChild = nullptr);
     void insertChildToRenderBlockFlow(RenderBlockFlow& parent, RenderPtr<RenderObject>, RenderObject* beforeChild = nullptr);
-    void insertChildToRenderInline(RenderInline& parent, RenderPtr<RenderObject>, RenderObject* beforeChild = nullptr);
     void insertChildToRenderInlineIgnoringContinuation(RenderInline& parent, RenderPtr<RenderObject>, RenderObject* beforeChild = nullptr);
-    void insertChildToSVGContainer(RenderSVGContainer& parent, RenderPtr<RenderObject>, RenderObject* beforeChild = nullptr);
-    void insertChildToSVGInline(RenderSVGInline& parent, RenderPtr<RenderObject>, RenderObject* beforeChild = nullptr);
-    void insertChildToSVGRoot(RenderSVGRoot& parent, RenderPtr<RenderObject>, RenderObject* beforeChild = nullptr);
-    void insertChildToSVGText(RenderSVGText& parent, RenderPtr<RenderObject>, RenderObject* beforeChild = nullptr);
-    void insertChildToRenderTable(RenderTable& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild = nullptr);
-    void insertChildToRenderTableSection(RenderTableSection& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild = nullptr);
-    void insertChildToRenderTableRow(RenderTableRow& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild = nullptr);
-    void insertChildToRenderMathMLFenced(RenderMathMLFenced& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild = nullptr);
 
-    bool childRequiresTable(const RenderElement& parent, const RenderObject& child);
-    void makeChildrenNonInline(RenderBlock& parent, RenderObject* insertionPoint = nullptr);
-    RenderObject* splitAnonymousBoxesAroundChild(RenderBox& parent, RenderObject* beforeChild);
-    void moveRubyChildren(RenderRubyBase& from, RenderRubyBase& to);
+    RenderPtr<RenderObject> takeChildFromRenderElement(RenderElement& parent, RenderObject& child) WARN_UNUSED_RETURN;
+
     void childFlowStateChangesAndAffectsParentBlock(RenderElement& child);
-    RenderObject* resolveMovedChildForMultiColumnFlow(RenderFragmentedFlow& enclosingFragmentedFlow, RenderObject* beforeChild);
+    void childFlowStateChangesAndNoLongerAffectsParentBlock(RenderElement& child);
     void removeFromParentAndDestroyCleaningUpAnonymousWrappers(RenderObject& child);
+    void multiColumnDescendantInserted(RenderMultiColumnFlow&, RenderObject& newDescendant);
 
 private:
     class FirstLetter;
@@ -91,6 +88,15 @@ private:
     class Inline;
     class SVG;
     class MathML;
+
+    RenderObject* splitAnonymousBoxesAroundChild(RenderBox& parent, RenderObject* beforeChild);
+    void makeChildrenNonInline(RenderBlock& parent, RenderObject* insertionPoint = nullptr);
+    void removeAnonymousWrappersForInlineChildrenIfNeeded(RenderElement& parent);
+    RenderPtr<RenderObject> takeChildFromRenderMenuList(RenderMenuList& parent, RenderObject& child);
+    RenderPtr<RenderObject> takeChildFromRenderButton(RenderButton& parent, RenderObject& child);
+    RenderPtr<RenderObject> takeChildFromRenderGrid(RenderGrid& parent, RenderObject& child);
+
+    void insertChildToRenderGrid(RenderGrid& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild = nullptr);
 
     FirstLetter& firstLetterBuilder() { return *m_firstLetterBuilder; }
     List& listBuilder() { return *m_listBuilder; }

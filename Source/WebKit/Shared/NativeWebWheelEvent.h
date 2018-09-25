@@ -66,9 +66,7 @@ public:
     GdkEvent* nativeEvent() const { return m_nativeEvent.get(); }
 #elif PLATFORM(HAIKU)
     const BMessage* nativeEvent() const { return m_nativeEvent; }
-#elif PLATFORM(IOS)
-    const void* nativeEvent() const { return 0; }
-#elif PLATFORM(WPE)
+#else
     const void* nativeEvent() const { return nullptr; }
 #endif
 

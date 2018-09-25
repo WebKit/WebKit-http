@@ -700,7 +700,7 @@ webkit.org/b/171763 compositing/tiling/non-active-window-tiles-size.html [ Pass 
 
 webkit.org/b/171837 [ Debug ] http/tests/security/storage-blocking-loosened-plugin.html [ Pass Failure ]
 
-webkit.org/b/171862 [ Sierra Debug ] storage/indexeddb/modern/idbtransaction-objectstore-failures.html [ Pass Failure ]
+webkit.org/b/171862  storage/indexeddb/modern/idbtransaction-objectstore-failures.html [ Pass Failure ]
 
 webkit.org/b/171935 [ Sierra ] tiled-drawing/scrolling/fast-scroll-select-latched-mainframe.html [ Pass Failure ]
 
@@ -741,7 +741,6 @@ webkit.org/b/172397 [ Debug ] animations/needs-layout.html [ Pass ImageOnlyFailu
 
 # Touch events are not available on open source bots, thus only tested on Mac.
 http/tests/resourceLoadStatistics/user-interaction-in-cross-origin-sub-frame.html [ Pass ]
-http/tests/resourceLoadStatistics/user-interaction-only-reported-once-within-short-period-of-time.html [ Pass ]
 http/tests/resourceLoadStatistics/user-interaction-reported-after-website-data-removal.html [ Pass ]
 [ HighSierra+ ] http/tests/storageAccess/request-and-grant-storage-access-cross-origin-non-sandboxed-iframe.html [ Pass ]
 [ HighSierra+ ] http/tests/storageAccess/request-and-grant-storage-access-cross-origin-sandboxed-iframe.html [ Pass ]
@@ -761,6 +760,9 @@ http/tests/resourceLoadStatistics/user-interaction-reported-after-website-data-r
 [ HighSierra+ ] http/tests/storageAccess/has-storage-access-from-prevalent-domain-with-recent-user-interaction.html [ Pass ]
 [ HighSierra+ ] http/tests/storageAccess/request-and-grant-access-then-detach-should-not-have-access.html [ Pass ]
 [ HighSierra+ ] http/tests/storageAccess/request-and-grant-access-then-navigate-should-not-have-access.html [ Pass ]
+
+# As of https://trac.webkit.org/changeset/227762 the timestampResolution is just 5 seconds which makes this test flaky
+http/tests/resourceLoadStatistics/user-interaction-only-reported-once-within-short-period-of-time.html [ Skip ]
 
 webkit.org/b/173861 [ Release ] http/tests/webrtc/filtering-ice-candidate-same-origin-frame.html [ Pass Timeout ]
 webkit.org/b/173861 [ Release ] http/tests/webrtc/filtering-ice-candidate-cross-origin-frame.html [ Pass Timeout ]
@@ -801,7 +803,7 @@ webkit.org/b/176122 media/video-controls-drop-and-restore-timeline.html [ Pass F
 [ HighSierra+ ] http/tests/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/third-party-cookie-with-and-without-user-interaction.html [ Pass ]
-[ HighSierra+ ] http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html [ Pass Timeout ]
+[ HighSierra+ ] http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html [ Pass Failure ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/non-prevalent-resources-can-access-cookies-in-a-third-party-context.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/add-partitioning-to-redirect.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/add-blocking-to-redirect.html [ Pass ]
@@ -810,6 +812,12 @@ webkit.org/b/176122 media/video-controls-drop-and-restore-timeline.html [ Pass F
 [ HighSierra+ ] http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour.html [ Pass ]
 [ HighSierra+ ] http/tests/resourceLoadStatistics/grandfathering.html [ Pass ]
+[ HighSierra+ ] http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-redirects.html [ Pass ]
+[ HighSierra+ ] http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-requests.html [ Pass ]
+
+# Skipped in general expectations since they only work on iOS and Mac, WK2.
+http/tests/security/strip-referrer-to-origin-for-third-party-redirects-in-private-mode.html [ Pass ]
+http/tests/security/strip-referrer-to-origin-for-third-party-requests-in-private-mode.html [ Pass ]
 
 # <rdar://problem/33555759>
 webkit.org/b/177616 [ HighSierra+ ] http/tests/media/video-buffered-range-contains-currentTime.html [ Pass Timeout ]
@@ -825,7 +833,7 @@ webkit.org/b/177214 [ ElCapitan Debug ] imported/w3c/web-platform-tests/FileAPI/
 
 webkit.org/b/177687 http/tests/inspector/network/resource-sizes-memory-cache.html [ Pass Failure ]
 
-webkit.org/b/178472 http/tests/resourceLoadStatistics/prevalent-resource-handled-keydown.html [ Pass ]
+webkit.org/b/178472 http/tests/resourceLoadStatistics/prevalent-resource-handled-keydown.html [ Skip ]
 
 webkit.org/b/176881 plugins/js-from-destroy.html [ Pass Failure ]
 
@@ -874,5 +882,14 @@ webkit.org/b/181957 [ Release ] http/tests/misc/resource-timing-resolution.html 
 
 webkit.org/b/181835 webrtc/captureCanvas-webrtc.html [ Pass Timeout ]
 
-webkit.org/b/182366 http/tests/resourceLoadStatistics/non-prevalent-resource-with-user-interaction.html [ Skip ]
+webkit.org/b/177663 media/W3C/video/events/event_progress_manual.html [ Pass Failure ]
 
+webkit.org/b/182341 imported/w3c/web-platform-tests/service-workers/service-worker/clients-matchall-client-types.https.html [ Pass Failure ]
+
+webkit.org/b/179352 imported/w3c/web-platform-tests/service-workers/service-worker/windowclient-navigate.https.html [ Pass Failure ]
+
+webkit.org/b/182630 http/tests/workers/service/basic-messageport.html [ Pass Failure ]
+
+webkit.org/b/177198 imported/w3c/web-platform-tests/service-workers/cache-storage/worker/cache-storage-match.https.html [ Pass Failure ]
+
+webkit.org/b/182849 imported/w3c/web-platform-tests/XMLHttpRequest/event-upload-progress-crossorigin.htm [ Pass Failure ]

@@ -2315,7 +2315,10 @@ void Document::destroyRenderTree()
     unscheduleStyleRecalc();
 
     // FIXME: RenderObject::view() uses m_renderView and we can't null it before destruction is completed
-    m_renderView->destroy();
+    {
+        RenderTreeBuilder builder(*m_renderView);
+        m_renderView->destroy();
+    }
     m_renderView.release();
 
     Node::setRenderer(nullptr);
@@ -2477,13 +2480,9 @@ void Document::resumeDeviceMotionAndOrientationUpdates()
 
 bool Document::shouldBypassMainWorldContentSecurityPolicy() const
 {
-    JSC::CallFrame* callFrame = commonVM().topCallFrame;
-    if (callFrame == JSC::CallFrame::noCaller())
-        return false;
-    DOMWrapperWorld& domWrapperWorld = currentWorld(callFrame);
-    if (domWrapperWorld.isNormal())
-        return false;
-    return true;
+    // Bypass this policy when the world is known, and it not the normal world.
+    auto& callFrame = *commonVM().topCallFrame;
+    return &callFrame != JSC::CallFrame::noCaller() && !currentWorld(callFrame).isNormal();
 }
 
 void Document::platformSuspendOrStopActiveDOMObjects()
@@ -3969,7 +3968,7 @@ bool Document::setFocusedElement(Element* element, FocusDirection direction, Foc
     if (!focusChangeBlocked && m_focusedElement) {
         // Create the AXObject cache in a focus change because GTK relies on it.
         if (AXObjectCache* cache = axObjectCache())
-            cache->handleFocusedUIElementChanged(oldFocusedElement.get(), newFocusedElement.get());
+            cache->deferFocusedUIElementChangeIfNeeded(oldFocusedElement.get(), newFocusedElement.get());
     }
 
     if (!focusChangeBlocked && page())
@@ -6301,7 +6300,7 @@ void Document::webkitDidExitFullScreenForElement(Element*)
     exitingDocument.m_fullScreenChangeDelayTimer.startOneShot(0_s);
 }
 
-void Document::setFullScreenRenderer(RenderFullScreen* renderer)
+void Document::setFullScreenRenderer(RenderTreeBuilder& builder, RenderFullScreen* renderer)
 {
     if (renderer == m_fullScreenRenderer)
         return;
@@ -6316,7 +6315,7 @@ void Document::setFullScreenRenderer(RenderFullScreen* renderer)
     }
 
     if (m_fullScreenRenderer)
-        m_fullScreenRenderer->removeFromParentAndDestroy();
+        m_fullScreenRenderer->removeFromParentAndDestroy(builder);
     ASSERT(!m_fullScreenRenderer);
 
     m_fullScreenRenderer = makeWeakPtr(renderer);

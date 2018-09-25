@@ -70,13 +70,18 @@ void ResourceLoadStatistics::encode(KeyedEncoder& encoder) const
     // Storage access
     encodeHashSet(encoder, "storageAccessUnderTopFrameOrigins", storageAccessUnderTopFrameOrigins);
 
+    // Top frame stats
+    encodeHashCountedSet(encoder, "topFrameUniqueRedirectsTo", topFrameUniqueRedirectsTo);
+    encodeHashCountedSet(encoder, "topFrameUniqueRedirectsFrom", topFrameUniqueRedirectsFrom);
+
     // Subframe stats
     encodeHashCountedSet(encoder, "subframeUnderTopFrameOrigins", subframeUnderTopFrameOrigins);
     
     // Subresource stats
     encodeHashCountedSet(encoder, "subresourceUnderTopFrameOrigins", subresourceUnderTopFrameOrigins);
     encodeHashCountedSet(encoder, "subresourceUniqueRedirectsTo", subresourceUniqueRedirectsTo);
-    
+    encodeHashCountedSet(encoder, "subresourceUniqueRedirectsFrom", subresourceUniqueRedirectsFrom);
+
     // Prevalent Resource
     encoder.encodeBool("isPrevalentResource", isPrevalentResource);
     encoder.encodeUInt32("dataRecordsRemoved", dataRecordsRemoved);
@@ -113,7 +118,7 @@ static void decodeHashSet(KeyedDecoder& decoder, const String& label, HashSet<St
     });
 }
 
-bool ResourceLoadStatistics::decode(KeyedDecoder& decoder)
+bool ResourceLoadStatistics::decode(KeyedDecoder& decoder, unsigned modelVersion)
 {
     if (!decoder.decodeString("PrevalentResourceOrigin", highLevelDomain))
         return false;
@@ -125,13 +130,21 @@ bool ResourceLoadStatistics::decode(KeyedDecoder& decoder)
     // Storage access
     decodeHashSet(decoder, "storageAccessUnderTopFrameOrigins", storageAccessUnderTopFrameOrigins);
 
+    // Top frame stats
+    if (modelVersion >= 11) {
+        decodeHashCountedSet(decoder, "topFrameUniqueRedirectsTo", topFrameUniqueRedirectsTo);
+        decodeHashCountedSet(decoder, "topFrameUniqueRedirectsFrom", topFrameUniqueRedirectsFrom);
+    }
+
     // Subframe stats
     decodeHashCountedSet(decoder, "subframeUnderTopFrameOrigins", subframeUnderTopFrameOrigins);
     
     // Subresource stats
     decodeHashCountedSet(decoder, "subresourceUnderTopFrameOrigins", subresourceUnderTopFrameOrigins);
     decodeHashCountedSet(decoder, "subresourceUniqueRedirectsTo", subresourceUniqueRedirectsTo);
-    
+    if (modelVersion >= 11)
+        decodeHashCountedSet(decoder, "subresourceUniqueRedirectsFrom", subresourceUniqueRedirectsFrom);
+
     // Prevalent Resource
     if (!decoder.decodeBool("isPrevalentResource", isPrevalentResource))
         return false;
@@ -152,11 +165,12 @@ bool ResourceLoadStatistics::decode(KeyedDecoder& decoder)
         return false;
     lastSeen = WallTime::fromRawSeconds(lastSeenTimeAsDouble);
 
-    if (!decoder.decodeUInt32("timesAccessedAsFirstPartyDueToUserInteraction", timesAccessedAsFirstPartyDueToUserInteraction))
-        timesAccessedAsFirstPartyDueToUserInteraction = 0;
-    if (!decoder.decodeUInt32("timesAccessedAsFirstPartyDueToStorageAccessAPI", timesAccessedAsFirstPartyDueToStorageAccessAPI))
-        timesAccessedAsFirstPartyDueToStorageAccessAPI = 0;
-
+    if (modelVersion >= 11) {
+        if (!decoder.decodeUInt32("timesAccessedAsFirstPartyDueToUserInteraction", timesAccessedAsFirstPartyDueToUserInteraction))
+            timesAccessedAsFirstPartyDueToUserInteraction = 0;
+        if (!decoder.decodeUInt32("timesAccessedAsFirstPartyDueToStorageAccessAPI", timesAccessedAsFirstPartyDueToStorageAccessAPI))
+            timesAccessedAsFirstPartyDueToStorageAccessAPI = 0;
+    }
     return true;
 }
 
@@ -222,13 +236,18 @@ String ResourceLoadStatistics::toString() const
     // Storage access
     appendHashSet(builder, "storageAccessUnderTopFrameOrigins", storageAccessUnderTopFrameOrigins);
 
+    // Top frame stats
+    appendHashCountedSet(builder, "topFrameUniqueRedirectsTo", topFrameUniqueRedirectsTo);
+    appendHashCountedSet(builder, "topFrameUniqueRedirectsFrom", topFrameUniqueRedirectsFrom);
+
     // Subframe stats
     appendHashCountedSet(builder, "subframeUnderTopFrameOrigins", subframeUnderTopFrameOrigins);
     
     // Subresource stats
     appendHashCountedSet(builder, "subresourceUnderTopFrameOrigins", subresourceUnderTopFrameOrigins);
     appendHashCountedSet(builder, "subresourceUniqueRedirectsTo", subresourceUniqueRedirectsTo);
-    
+    appendHashCountedSet(builder, "subresourceUniqueRedirectsFrom", subresourceUniqueRedirectsFrom);
+
     // Prevalent Resource
     appendBoolean(builder, "isPrevalentResource", isPrevalentResource);
     builder.appendLiteral("    dataRecordsRemoved: ");
@@ -283,13 +302,18 @@ void ResourceLoadStatistics::merge(const ResourceLoadStatistics& other)
     // Storage access
     mergeHashSet(storageAccessUnderTopFrameOrigins, other.storageAccessUnderTopFrameOrigins);
 
+    // Top frame stats
+    mergeHashCountedSet(topFrameUniqueRedirectsTo, other.topFrameUniqueRedirectsTo);
+    mergeHashCountedSet(topFrameUniqueRedirectsFrom, other.topFrameUniqueRedirectsFrom);
+
     // Subframe stats
     mergeHashCountedSet(subframeUnderTopFrameOrigins, other.subframeUnderTopFrameOrigins);
     
     // Subresource stats
     mergeHashCountedSet(subresourceUnderTopFrameOrigins, other.subresourceUnderTopFrameOrigins);
     mergeHashCountedSet(subresourceUniqueRedirectsTo, other.subresourceUniqueRedirectsTo);
-    
+    mergeHashCountedSet(subresourceUniqueRedirectsFrom, other.subresourceUniqueRedirectsFrom);
+
     // Prevalent resource stats
     isPrevalentResource |= other.isPrevalentResource;
     dataRecordsRemoved = std::max(dataRecordsRemoved, other.dataRecordsRemoved);

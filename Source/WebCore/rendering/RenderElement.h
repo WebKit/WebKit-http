@@ -89,7 +89,6 @@ public:
     virtual bool isChildAllowed(const RenderObject&, const RenderStyle&) const { return true; }
     virtual void addChild(RenderTreeBuilder&, RenderPtr<RenderObject>, RenderObject* beforeChild);
     virtual void addChildIgnoringContinuation(RenderTreeBuilder&, RenderPtr<RenderObject> newChild, RenderObject* beforeChild = nullptr);
-    virtual RenderPtr<RenderObject> takeChild(RenderTreeBuilder&, RenderObject&) WARN_UNUSED_RETURN;
     void removeAndDestroyChild(RenderTreeBuilder&, RenderObject&);
 
     // The following functions are used when the render tree hierarchy changes to make sure layers get
@@ -101,7 +100,6 @@ public:
     RenderLayer* findNextLayer(RenderLayer* parentLayer, RenderObject* startPoint, bool checkParent = true);
 
     void insertChildInternal(RenderPtr<RenderObject>, RenderObject* beforeChild);
-    RenderPtr<RenderObject> takeChildInternal(RenderObject&) WARN_UNUSED_RETURN;
 
     virtual RenderElement* hoverAncestor() const;
 
@@ -220,15 +218,12 @@ public:
     // the child.
     virtual void updateAnonymousChildStyle(RenderStyle&) const { };
 
-    void removeAnonymousWrappersForInlinesIfNecessary();
-
     bool hasContinuationChainNode() const { return m_hasContinuationChainNode; }
     bool isContinuation() const { return m_isContinuation; }
     void setIsContinuation() { m_isContinuation = true; }
     bool isFirstLetter() const { return m_isFirstLetter; }
     void setIsFirstLetter() { m_isFirstLetter = true; }
 
-    void destroyLeftoverChildren();
     RenderObject* attachRendererInternal(RenderPtr<RenderObject> child, RenderObject* beforeChild);
     RenderPtr<RenderObject> detachRendererInternal(RenderObject&);
 
@@ -263,7 +258,7 @@ protected:
 
     void insertedIntoTree() override;
     void willBeRemovedFromTree() override;
-    void willBeDestroyed() override;
+    void willBeDestroyed(RenderTreeBuilder&) override;
 
     void setRenderInlineAlwaysCreatesLineBoxes(bool b) { m_renderInlineAlwaysCreatesLineBoxes = b; }
     bool renderInlineAlwaysCreatesLineBoxes() const { return m_renderInlineAlwaysCreatesLineBoxes; }

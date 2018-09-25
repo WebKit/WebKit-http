@@ -172,10 +172,10 @@ private:
 #elif USE(HAIKU)
     BUrlContext* m_context;
 #elif USE(CURL)
+    RefPtr<NetworkingContext> m_context;
+
     UniqueRef<CookieJarCurl> m_cookieStorage;
     mutable CookieJarDB m_cookieDatabase;
-
-    RefPtr<NetworkingContext> m_context;
 #else
     RefPtr<NetworkingContext> m_context;
 #endif

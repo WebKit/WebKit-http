@@ -25,7 +25,6 @@
 
 #pragma once
 
-#include "PlatformExportMacros.h"
 #include <wtf/Forward.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/text/WTFString.h>
@@ -178,6 +177,8 @@ public:
 
     unsigned hostStart() const;
     unsigned hostEnd() const;
+
+    WEBCORE_EXPORT static bool hostIsIPAddress(const String&);
 
     unsigned pathStart() const;
     unsigned pathEnd() const;

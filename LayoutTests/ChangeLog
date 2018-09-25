@@ -1,3 +1,698 @@
+2018-02-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/XMLHttpRequest/event-upload-progress-crossorigin.htm as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=182849
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2018-02-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update TestExpectations for imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap tests.
+        https://bugs.webkit.org/show_bug.cgi?id=182833
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-02-15  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Revisit the whole async model of task dispatching, timeout and aborting
+        https://bugs.webkit.org/show_bug.cgi?id=181946
+        <rdar://problem/37258262>
+
+        Reviewed by Chris Dumez.
+
+        * http/wpt/credential-management/credentialscontainer-store-basics.https.html:
+        * http/wpt/webauthn/idl.https.html:
+        * http/wpt/webauthn/public-key-credential-create-failure.https.html:
+        * http/wpt/webauthn/public-key-credential-create-success.https.html:
+        * http/wpt/webauthn/public-key-credential-get-failure.https.html:
+        * http/wpt/webauthn/public-key-credential-get-success.https.html:
+        * http/wpt/webauthn/resources/util.js:
+
+2018-02-14  Antti Koivisto  <antti@apple.com>
+
+        Do sibling invalidation on mutation
+        https://bugs.webkit.org/show_bug.cgi?id=182809
+
+        Reviewed by Zalan Bujtas.
+
+        Sibling invalidation now happens on mutation. Update the tests.
+
+        * fast/css/indirect-adjacent-style-invalidation-1-expected.txt:
+        * fast/css/indirect-adjacent-style-invalidation-1.html:
+        * fast/css/indirect-adjacent-style-invalidation-2-expected.txt:
+        * fast/css/indirect-adjacent-style-invalidation-2.html:
+        * fast/css/indirect-adjacent-style-invalidation-3-expected.txt:
+        * fast/css/indirect-adjacent-style-invalidation-3.html:
+
+2018-02-14  Daniel Bates  <dabates@apple.com>
+
+        Disallow cross-origin subresources from asking for credentials
+        https://bugs.webkit.org/show_bug.cgi?id=182579
+        <rdar://problem/36162271>
+
+        Reviewed by Andy Estes.
+
+        Copied existing tests that depended on cross-origin subresources being able prompt for credentials
+        to files with suffix allowCrossOriginSubresourcesToAskForCredentials. These copies were modified
+        to set allowCrossOriginSubresourcesToAskForCredentials to false so as to opt-into the behavior
+        before this change. Updated existing tests to reflect the new behavior and added new tests to
+        ensure that we do not regress the new behavior.
+
+        * http/tests/media/video-auth-expected.txt:
+        * http/tests/media/video-auth-with-allowCrossOriginSubresourcesToAskForCredentials-expected.txt: Copied from LayoutTests/http/tests/media/video-auth-expected.txt.
+        * http/tests/media/video-auth-with-allowCrossOriginSubresourcesToAskForCredentials.html: Copied from LayoutTests/http/tests/media/video-auth.html.
+        * http/tests/media/video-auth.html:
+        * http/tests/security/basic-auth-subresource-expected.txt: Added.
+        * http/tests/security/basic-auth-subresource.html: Added.
+        * http/tests/security/credentials-iframes-allowCrossOriginSubresourcesToAskForCredentials-expected.txt: Renamed from LayoutTests/platform/mac-wk1/http/tests/security/credentials-iframes-expected.txt.
+        * http/tests/security/credentials-iframes-allowCrossOriginSubresourcesToAskForCredentials.html: Added.
+        * http/tests/security/credentials-iframes-expected.txt:
+        * http/tests/security/mixedContent/insecure-basic-auth-image-allowCrossOriginSubresourcesToAskForCredentials.https-expected.txt: Copied from LayoutTests/http/tests/security/mixedContent/insecure-basic-auth-image.https-expected.txt.
+        * http/tests/security/mixedContent/insecure-basic-auth-image-allowCrossOriginSubresourcesToAskForCredentials.https.html: Copied from LayoutTests/http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-secure-image.https.html.
+        * http/tests/security/mixedContent/insecure-basic-auth-image.https-expected.txt:
+        * http/tests/security/mixedContent/insecure-image-redirects-to-basic-auth-secure-image-allowCrossOriginSubresourcesToAskForCredentials-expected.txt: Copied from LayoutTests/http/tests/security/mixedContent/insecure-image-redirects-to-basic-auth-secure-image-expected.txt.
+        * http/tests/security/mixedContent/insecure-image-redirects-to-basic-auth-secure-image-allowCrossOriginSubresourcesToAskForCredentials.html: Added.
+        * http/tests/security/mixedContent/insecure-image-redirects-to-basic-auth-secure-image-expected.txt:
+        * http/tests/security/mixedContent/secure-redirect-to-insecure-redirect-to-basic-auth-secure-image-allowCrossOriginSubresourcesToAskForCredentials.https-expected.txt: Copied from LayoutTests/http/tests/security/mixedContent/secure-redirect-to-insecure-redirect-to-basic-auth-secure-image.https-expected.txt.
+        * http/tests/security/mixedContent/secure-redirect-to-insecure-redirect-to-basic-auth-secure-image-allowCrossOriginSubresourcesToAskForCredentials.https.html: Copied from LayoutTests/http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-secure-image.https.html.
+        * http/tests/security/mixedContent/secure-redirect-to-insecure-redirect-to-basic-auth-secure-image.https-expected.txt:
+        * http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-insecure-image-allowCrossOriginSubresourcesToAskForCredentials.https-expected.txt: Copied from LayoutTests/http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-insecure-image.https-expected.txt.
+        * http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-insecure-image-allowCrossOriginSubresourcesToAskForCredentials.https.html: Copied from LayoutTests/http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-secure-image.https.html.
+        * http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-insecure-image.https-expected.txt:
+        * http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-secure-image-allowCrossOriginSubresourcesToAskForCredentials.https-expected.txt: Renamed from LayoutTests/platform/mac-wk1/http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-secure-image.https-expected.txt.
+        * http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-secure-image-allowCrossOriginSubresourcesToAskForCredentials.https.html: Copied from LayoutTests/http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-secure-image.https.html.
+        * http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-secure-image.https-expected.txt:
+        * http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-secure-image.https.html:
+        * http/tests/security/resources/basic-auth-subresource.html: Added.
+        * http/tests/security/resources/subresource1/protected-image.php: Added.
+        * http/tests/security/resources/subresource2/protected-image.php: Added.
+        * platform/win/TestExpectations: Skip allowCrossOriginSubresourcesToAskForCredentials-suffixed tests as
+        DumpRenderTree on Windows does not support parsing test options. See <https://bugs.webkit.org/show_bug.cgi?id=173281>.
+        * platform/win/http/tests/security/basic-auth-subresource-expected.txt: Added Windows-specific result. For some reason
+        connections to localhost:8443 are not allowed. See <https://bugs.webkit.org/show_bug.cgi?id=182609> for more details.
+        * platform/wk2/http/tests/media/video-auth-expected.txt:
+        * platform/wk2/http/tests/media/video-auth-with-allowCrossOriginSubresourcesToAskForCredentials-expected.txt: Copied from LayoutTests/platform/wk2/http/tests/media/video-auth-expected.txt.
+        * platform/wk2/http/tests/security/basic-auth-subresource-expected.txt: Added.
+        * platform/wk2/http/tests/security/credentials-iframes-allowCrossOriginSubresourcesToAskForCredentials-expected.txt: Copied from LayoutTests/http/tests/security/credentials-iframes-expected.txt.
+        * platform/wk2/http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-secure-image-allowCrossOriginSubresourcesToAskForCredentials.https-expected.txt: Copied from LayoutTests/http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-secure-image.https-expected.txt.
+
+2018-02-14  Matt Lewis  <jlewis3@apple.com>
+
+        Marked imported/w3c/web-platform-tests/service-workers/cache-storage/worker/cache-storage-match.https.html as flaky on macOS WK2.
+        https://bugs.webkit.org/show_bug.cgi?id=177198
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-02-14  Alicia Boya García  <aboya@igalia.com>
+
+        Unreviewed GTK test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=182794
+
+        * platform/gtk/TestExpectations:
+
+2018-02-14  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Don't use arrays as values for localisable strings
+        https://bugs.webkit.org/show_bug.cgi?id=182791
+        <rdar://problem/36007262>
+
+        Reviewed by Dean Jackson.
+
+        * media/modern-media-controls/localized-strings/replaced-string-expected.txt:
+        * media/modern-media-controls/localized-strings/replaced-string.html:
+
+2018-02-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r228444.
+
+        Introduced API and Layout test failures.
+
+        Reverted changeset:
+
+        "[WebAuthN] Revisit the whole async model of task dispatching,
+        timeout and aborting"
+        https://bugs.webkit.org/show_bug.cgi?id=181946
+        https://trac.webkit.org/changeset/228444
+
+2018-02-13  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed GTK test gardening
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/js/dom/dom-static-property-for-in-iteration-expected.txt:
+
+2018-02-13  Antoine Quint  <graouts@apple.com>
+
+        Removing the controls attribute from a <video> element does not tear down the controls shadow DOM nor cancel event listeners.
+        https://bugs.webkit.org/show_bug.cgi?id=182668
+
+        Reviewed by Jer Noble.
+
+        Ensure controls are turned on for a number of tests that would fail otherwise since media events would not be handled by media
+        controls without it.
+
+        * http/tests/media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-live-broadcast.html:
+        * http/tests/media/modern-media-controls/pip-support/pip-support-live-broadcast.html:
+        * http/tests/media/modern-media-controls/skip-back-support/skip-back-support-button-click.html:
+        * http/tests/media/modern-media-controls/skip-back-support/skip-back-support-live-broadcast.html:
+        * http/tests/media/modern-media-controls/status-support/status-support-live-broadcast.html:
+        * http/tests/media/modern-media-controls/status-support/status-support-loading.html:
+        * media/modern-media-controls/airplay-support/airplay-support.html:
+        * media/modern-media-controls/mute-support/mute-support-media-api.html:
+        * media/modern-media-controls/playback-support/playback-support-autoplay.html:
+        * media/modern-media-controls/playback-support/playback-support-media-api.html:
+        * media/modern-media-controls/start-support/start-support-error.html:
+        * media/modern-media-controls/start-support/start-support-lowPowerMode.html:
+        * media/modern-media-controls/start-support/start-support-manual-play.html:
+        * media/modern-media-controls/status-support/status-support-error.html:
+        * media/modern-media-controls/time-labels-support/elapsed-time.html:
+        * media/modern-media-controls/time-labels-support/remaining-time.html:
+        * media/modern-media-controls/tracks-support/tracks-support-audio-tracks.html:
+        * media/modern-media-controls/tracks-support/tracks-support-text-tracks.html:
+        * media/modern-media-controls/volume-support/volume-support-media-api-mute.html:
+        * media/modern-media-controls/volume-support/volume-support-media-api.html:
+
+2018-02-13  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Revisit the whole async model of task dispatching, timeout and aborting
+        https://bugs.webkit.org/show_bug.cgi?id=181946
+        <rdar://problem/37258262>
+
+        Reviewed by Chris Dumez.
+
+        * http/wpt/credential-management/credentialscontainer-store-basics.https.html:
+        * http/wpt/webauthn/idl.https.html:
+        * http/wpt/webauthn/public-key-credential-create-failure.https.html:
+        * http/wpt/webauthn/public-key-credential-create-success.https.html:
+        * http/wpt/webauthn/public-key-credential-get-failure.https.html:
+        * http/wpt/webauthn/public-key-credential-get-success.https.html:
+        * http/wpt/webauthn/resources/util.js:
+
+2018-02-13  Antti Koivisto  <antti@apple.com>
+
+        Crash when breakpoint hit in unload handler
+        https://bugs.webkit.org/show_bug.cgi?id=169855
+        <rdar://problem/28683567>
+
+        Reviewed by Daniel Bates and Joseph Pecoraro.
+
+        * inspector/debugger/reload-paused-expected.txt: Added.
+        * inspector/debugger/reload-paused.html: Added.
+
+2018-02-13  Nan Wang  <n_wang@apple.com>
+
+        AX: Remove AccessibleNode class
+        https://bugs.webkit.org/show_bug.cgi?id=182724
+        <rdar://problem/37486024>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/accessibility-object-model-expected.txt: Removed.
+        * accessibility/accessibility-object-model.html: Removed.
+        * accessibility/mac/AOM-bool-properties-expected.txt: Removed.
+        * accessibility/mac/AOM-bool-properties.html: Removed.
+        * accessibility/mac/AOM-number-properties-expected.txt: Removed.
+        * accessibility/mac/AOM-number-properties.html: Removed.
+        * accessibility/mac/AOM-relation-property-expected.txt: Removed.
+        * accessibility/mac/AOM-relation-property.html: Removed.
+        * accessibility/mac/AOM-string-properties-expected.txt: Removed.
+        * accessibility/mac/AOM-string-properties.html: Removed.
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2018-02-12  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: defer focusedUIElement notifications
+        https://bugs.webkit.org/show_bug.cgi?id=182643
+        <rdar://problem/37394310>
+
+        Reviewed by Zalan Bujtas.
+
+        * accessibility/mac/aria-menu-item-selected-notification.html:
+             Rewrite test to accomodate that focus changes happen asynchronously.
+        * accessibility/mac/selection-notification-focus-change-expected.txt:
+        * platform/mac-wk2/accessibility/mac/selection-notification-focus-change-expected.txt:
+             The order of notifications is different now that focus changes happen later.
+
+2018-02-12  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Classify resources as prevalent based on redirects to other prevalent resources
+        https://bugs.webkit.org/show_bug.cgi?id=182664
+        <rdar://problem/37372572>
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-redirect-collusion-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-redirect-collusion.html: Added.
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-top-frame-redirect-collusion-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-top-frame-redirect-collusion.html: Added.
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-top-frame-unique-redirects-to-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-top-frame-unique-redirects-to.html: Added.
+        * platform/wk2/TestExpectations:
+            New tests added as [ Pass ].
+
+2018-02-12  Matt Lewis  <jlewis3@apple.com>
+
+        Marked multiple http/tests/resourceLoadStatistics tests as flaky and skip.
+        
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-02-12  Matt Lewis  <jlewis3@apple.com>
+
+        Marked http/tests/workers/service/basic-messageport.html as flaky on macOS WK2.
+        https://bugs.webkit.org/show_bug.cgi?id=182630
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-02-12  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r228376.
+
+        This caused accessibility/mac/selection-notification-focus-
+        change.html to become flaky on macOS.
+
+        Reverted changeset:
+
+        "AX: defer focusedUIElement notifications"
+        https://bugs.webkit.org/show_bug.cgi?id=182643
+        https://trac.webkit.org/changeset/228376
+
+2018-02-12  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark imported/mozilla/svg/conditions-07.svg as a flaky failure on Windows.
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-02-12  Matt Lewis  <jlewis3@apple.com>
+
+        Skipped webgl/1.0.3/conformance/rendering/many-draw-calls.html on iOS Simulator Debug WK2
+        https://bugs.webkit.org/show_bug.cgi?id=182144
+
+        Unreviewed test expectations.
+
+        * platform/ios-wk2/TestExpectations:
+
+2018-02-12  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: defer focusedUIElement notifications
+        https://bugs.webkit.org/show_bug.cgi?id=182643
+        <rdar://problem/37394310>
+
+        Reviewed by Zalan Bujtas.
+
+        * accessibility/mac/aria-menu-item-selected-notification.html:
+             Rewrite test to accomodate that focus changes happen asynchronously.
+        * accessibility/mac/selection-notification-focus-change-expected.txt:
+        * platform/mac-wk2/accessibility/mac/selection-notification-focus-change-expected.txt:
+             The order of notifications is different now that focus changes happen later.        
+
+2018-02-12  Per Arne Vollan  <pvollan@apple.com>
+
+        Update test expectations for some tests which are failing on only one ews Windows bot.
+        https://bugs.webkit.org/show_bug.cgi?id=182694
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-02-08  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION (r223440): Copying & pasting a list from Microsoft Word to TinyMCE fails
+        https://bugs.webkit.org/show_bug.cgi?id=182564
+
+        Reviewed by Wenson Hsieh.
+
+        Added a test to make sure special Microsoft Word quirks would not get triggered
+        when pasting content copied within WebKit.
+
+        * http/tests/security/clipboard/copy-paste-html-across-origin-strips-mso-list-expected.txt: Added.
+        * http/tests/security/clipboard/copy-paste-html-across-origin-strips-mso-list.html: Added.
+        * http/tests/security/clipboard/resources/copy-mso-list.html: Added.
+
+2018-02-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark two service worker LayoutTests as flaky.
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-02-09  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, updated GTK test expectations after r228276
+
+        * platform/gtk/TestExpectations:
+
+2018-02-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Pasting from Excel no longer provides text/html data
+        https://bugs.webkit.org/show_bug.cgi?id=182636
+        <rdar://problem/37087060>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline some existing layout tests. We now expose "text/html" alongside "Files" on DataTransfer.types() in
+        some circumstances. This also provides some test coverage for ensuring that the paste codepath iOS allows the
+        page to request HTML, even if there are files on the pasteboard. See the WebCore ChangeLog for more detail.
+
+        * editing/pasteboard/data-transfer-item-list-add-file-multiple-times-expected.txt:
+        * editing/pasteboard/data-transfer-item-list-add-file-on-copy-expected.txt:
+        * editing/pasteboard/data-transfer-item-list-add-file-on-drag-expected.txt:
+
+        Adjust test expectations for the additional "text/html" type.
+
+        * editing/pasteboard/paste-image-does-not-reveal-file-url-expected.txt:
+        * editing/pasteboard/paste-image-does-not-reveal-file-url.html:
+
+        Instead of checking that types is [ "Files" ], just check that types contains "Files". On iOS, copying a
+        selected image does not also copy HTML, but on macOS it does; this covers both cases.
+
+2018-02-09  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Object.shallowEqual always fails when comparing array property values
+        https://bugs.webkit.org/show_bug.cgi?id=182634
+        <rdar://problem/37374639>
+
+        Reviewed by Devin Rousso.
+
+        * inspector/unit-tests/object-utilities-expected.txt:
+        * inspector/unit-tests/object-utilities.html:
+
+2018-02-09  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Crash in PaymentRequest::canMakePayment() when Apple Pay payment method data is missing required fields
+        https://bugs.webkit.org/show_bug.cgi?id=182631
+
+        Reviewed by Mark Lam.
+
+        * http/tests/paymentrequest/payment-request-canmakepayment-method.https-expected.txt:
+        * http/tests/paymentrequest/payment-request-canmakepayment-method.https.html:
+
+2018-02-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update TestExpectations for fast/forms/textarea/textarea-state-restore.html
+        https://bugs.webkit.org/show_bug.cgi?id=90980
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+        * platform/wk2/TestExpectations:
+
+2018-02-09  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer][WebAudio] Winamp2-js woes
+        https://bugs.webkit.org/show_bug.cgi?id=182612
+
+        Reviewed by Xabier Rodriguez Calvar and Carlos Alberto Lopez Perez.
+
+        * webaudio/silence-after-playback-expected.wav: Added.
+        * webaudio/silence-after-playback.html: Added.
+
+2018-02-09  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-align] Implement the new behavior of 'legacy' for justify-items
+        https://bugs.webkit.org/show_bug.cgi?id=172712
+
+        Reviewed by Antti Koivisto.
+
+        Rebaselined Default Alignment related tests because of the new 'legacy' value.
+
+        * css3/parse-alignment-of-root-elements.html:
+        * css3/parse-place-items.html:
+        * fast/css/parse-justify-items.html:
+
+2018-02-08  Matt Lewis  <jlewis3@apple.com>
+
+        Marked media/W3C/video/events/event_progress_manual.html as flaky on macOS WK2.
+        https://bugs.webkit.org/show_bug.cgi?id=177663
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-02-08  Chris Dumez  <cdumez@apple.com>
+
+        Form submission after navigation fails when decidePolicyForNavigationAction is async
+        https://bugs.webkit.org/show_bug.cgi?id=182412
+        <rdar://problem/35181099>
+
+        Reviewed by Alex Christensen.
+
+        Import layout test coverage from Alex's earlier patch.
+
+        * http/tests/navigation/resources/a.html: Added.
+        * http/tests/navigation/resources/b.html: Added.
+        * http/tests/navigation/sync-form-submit-iframe-expected.txt: Added.
+        * http/tests/navigation/sync-form-submit-iframe.html: Added.
+
+2018-02-08  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark accessibility/aria-hidden-updates-alldescendants.html as a failure on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=182626
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-02-08  John Wilander  <wilander@apple.com>
+
+        Switch http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html from testRunner.installStatisticsDidModifyDataRecordsCallback() to testRunner.installStatisticsDidScanDataRecordsCallback()
+        https://bugs.webkit.org/show_bug.cgi?id=182624
+        <rdar://problem/37364749>
+
+        Unreviewed test gardening.
+
+        * http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html:
+        * platform/mac-wk2/TestExpectations:
+            Changed from [ Pass Timeout ] to [ Pass ] for the given test.
+
+2018-02-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark inspector/console/clearMessages.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=182620
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-02-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/tracks-support/tracks-support-show-panel-fullscreen.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=182571
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-02-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark webanimations/animation-opacity-animation-crash.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=181612
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2018-02-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark fast/dom/adopt-node-crash-2.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=182589
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-02-08  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Defer attribute computation until needed.
+        https://bugs.webkit.org/show_bug.cgi?id=182386
+        <rdar://problem/37115277>
+
+        Reviewed by Zalan Bujtas.
+
+        Update tests to reflect new world of delayed attribute handling for accessibility.
+
+        * accessibility/canvas-fallback-content.html:
+             Make test async so attributes can be checked after deferred handling.
+        * accessibility/mac/aria-expanded-notifications.html:
+             Access elements through AX tree so attribute changes generate notifications.
+        * accessibility/mac/aria-listbox-selectedchildren-change.html:
+             Make test async so attributes can be checked after deferred handling.
+        * accessibility/mac/aria-menu-item-selected-notification.html:
+             Access menu item through AX tree so attribute changes generate notifications.
+        * accessibility/mac/aria-modal-auto-focus.html:
+             Access buttons after delay so attributes have time to be deferred.
+        * accessibility/mac/element-busy-changed.html:
+             Process second attribute change after delay so we generate two notifications.
+        * accessibility/mac/expanded-notification.html:
+             Set attributes after a delay so they generate individual notifications.
+        * accessibility/notification-listeners.html:
+              Access elements through AX tree so attribute changes generate notifications.
+
+2018-02-08  Miguel Gomez  <magomez@igalia.com>
+
+        Unreviewed GTK+ gardening after r228270.
+
+        * platform/gtk/TestExpectations:
+
+2018-02-08  Philippe Normand  <pnormand@igalia.com>
+
+        [GStreamer] LayoutTest webaudio/silent-audio-interrupted-in-background.html makes its subsequent test flaky crash
+        https://bugs.webkit.org/show_bug.cgi?id=173916
+
+        Reviewed by Xabier Rodriguez Calvar.
+
+        * platform/gtk/TestExpectations: Unskip fixed test.
+
+2018-02-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Implement Array.prototype.flatMap and Array.prototype.flatten
+        https://bugs.webkit.org/show_bug.cgi?id=182440
+
+        Reviewed by Darin Adler.
+
+        * inspector/model/remote-object-get-properties-expected.txt:
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+
+2018-01-13  Darin Adler  <darin@apple.com>
+
+        Event improvements
+        https://bugs.webkit.org/show_bug.cgi?id=179591
+
+        Reviewed by Chris Dumez.
+
+        * fast/dom/reference-cycle-leaks-expected.txt: Expect success for the
+        CustomEvent, MessageEvent, and PopStateEvent cycle leak checks.
+
+2018-02-07  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [iOS] Skip webgl/webgl-texture-image-buffer-reuse.html
+        https://bugs.webkit.org/show_bug.cgi?id=182592
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2018-02-07  Youenn Fablet  <youenn@apple.com>
+
+        Remove www1/www2 URLs from service worker tests
+        https://bugs.webkit.org/show_bug.cgi?id=182548
+
+        Reviewed by Chris Dumez.
+
+        * TestExpectations:
+
+2018-02-07  John Wilander  <wilander@apple.com>
+
+        Switch testRunner.installStatisticsDidModifyDataRecordsCallback() to testRunner.installStatisticsDidScanDataRecordsCallback() in two tests
+        https://bugs.webkit.org/show_bug.cgi?id=182366
+        <rdar://problem/37094805>
+
+        Unreviewed test gardening.
+
+        This change is an attempt to make two flaky test cases stable.
+        It also skips http/tests/resourceLoadStatistics/user-interaction-only-reported-once-within-short-period-of-time.html
+        because the timestamp resolution of 5 seconds is now so short that we run into timing flakiness.
+
+        * http/tests/resourceLoadStatistics/non-prevalent-resource-with-user-interaction.html:
+        * http/tests/resourceLoadStatistics/non-prevalent-resource-without-user-interaction.html:
+        * platform/mac-wk2/TestExpectations:
+            Removed [ Skip ] entry for http/tests/resourceLoadStatistics/non-prevalent-resource-with-user-interaction.html
+            Added [ Skip ] entry for http/tests/resourceLoadStatistics/user-interaction-only-reported-once-within-short-period-of-time.html
+        * platform/wk2/TestExpectations:
+            Now both the above test cases are marked [ Pass ].
+
+2018-02-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip media/modern-media-controls/tracks-support/tracks-support-show-panel-after-dragging-controls.html.
+        https://bugs.webkit.org/show_bug.cgi?id=169158
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-02-07  Youenn Fablet  <youenn@apple.com>
+
+        ASSERTION FAILED: m_timeOrigin in Performance::Performance()
+        https://bugs.webkit.org/show_bug.cgi?id=182558
+        <rdar://problem/37297551>
+
+        Reviewed by Chris Dumez.
+
+        Make use of WPT cors-preflight-star.any.js test in service worker.
+        This test should be removed once WPT will run any.js tests in service workers as well as workers and window.
+
+        * http/wpt/service-workers/cors-preflight-star.any.js: Added.
+        * http/wpt/service-workers/cors-preflight-star.any.serviceworker-expected.txt: Added.
+        * http/wpt/service-workers/cors-preflight-star.any.serviceworker.html: Added.
+
+2018-02-07  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION(r226396): File paths are inserted when dropping image files
+        https://bugs.webkit.org/show_bug.cgi?id=182557
+        <rdar://problem/37294120>
+
+        Reviewed by Ryosuke Niwa.
+
+        Tweak an existing layout test that drops a file into a contenteditable, to check that no text is inserted into
+        the editable element after dropping.
+
+        * editing/pasteboard/drag-files-to-editable-element-as-URLs-expected.txt:
+        * editing/pasteboard/drag-files-to-editable-element-as-URLs.html:
+
+2018-02-07  John Wilander  <wilander@apple.com>
+
+        Restrict Referer to just the origin for third parties in private mode and third parties ITP blocks cookies for in regular mode
+        https://bugs.webkit.org/show_bug.cgi?id=182559
+        <rdar://problem/36990337>
+
+        Reviewed by Andy Estes.
+
+        * TestExpectations:
+            New tests marked as [ Skip ]. The change only applies to iOS and Mac.
+        * http/tests/resourceLoadStatistics/resources/echo-referrer.php: Added.
+        * http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-redirects-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-redirects.html: Added.
+        * http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-requests-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-requests.html: Added.
+        * http/tests/security/resources/echo-referrer.php: Added.
+        * http/tests/security/resources/redirect.php: Added.
+        * http/tests/security/strip-referrer-to-origin-for-third-party-redirects-in-private-mode-expected.txt: Added.
+        * http/tests/security/strip-referrer-to-origin-for-third-party-redirects-in-private-mode.html: Added.
+        * http/tests/security/strip-referrer-to-origin-for-third-party-requests-in-private-mode-expected.txt: Added.
+        * http/tests/security/strip-referrer-to-origin-for-third-party-requests-in-private-mode.html: Added.
+        * platform/ios/TestExpectations:
+            New tests marked as [ Pass ].
+        * platform/mac-wk2/TestExpectations:
+            New tests marked as [ Pass ].
+        * platform/wk2/TestExpectations:
+            New tests marked as [ Skip ].
+
+2018-02-07  Matt Lewis  <jlewis3@apple.com>
+
+        Adjusted test expectations for storage/indexeddb/modern/idbtransaction-objectstore-failures.html.
+        https://bugs.webkit.org/show_bug.cgi?id=171862
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
 2018-02-07  Daniel Bates  <dabates@apple.com>
 
         Log error when authentication challenge is blocked due to an insecure request

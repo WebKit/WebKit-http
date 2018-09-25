@@ -168,24 +168,16 @@ public:
     void childrenChanged(RenderObject*, RenderObject* newChild = nullptr);
     void childrenChanged(AccessibilityObject*);
     void checkedStateChanged(Node*);
-    void selectedChildrenChanged(Node*);
-    void selectedChildrenChanged(RenderObject*);
-    // Called by a node when text or a text equivalent (e.g. alt) attribute is changed.
-    void textChanged(Node*);
     // Called when a node has just been attached, so we can make sure we have the right subclass of AccessibilityObject.
     void updateCacheAfterNodeIsAttached(Node*);
 
-    void handleActiveDescendantChanged(Node*);
-    void handleAriaRoleChanged(Node*);
-    void handleFocusedUIElementChanged(Node* oldFocusedNode, Node* newFocusedNode);
+    void deferFocusedUIElementChangeIfNeeded(Node* oldFocusedNode, Node* newFocusedNode);
     void handleScrolledToAnchor(const Node* anchorNode);
-    void handleAriaExpandedChange(Node*);
     void handleScrollbarUpdate(ScrollView*);
     
-    void handleModalChange(Node*);
     Node* modalNode();
 
-    void handleAttributeChanged(const QualifiedName& attrName, Element*);
+    void deferAttributeChangeIfNeeded(const QualifiedName&, Element*);
     void recomputeIsIgnored(RenderObject* renderer);
 
 #if HAVE(ACCESSIBILITY)
@@ -409,11 +401,22 @@ private:
     void handleMenuOpened(Node*);
     void handleLiveRegionCreated(Node*);
     void handleMenuItemSelected(Node*);
-    
+    void handleAttributeChange(const QualifiedName&, Element*);
+    bool shouldProcessAttributeChange(const QualifiedName&, Element*);
+    void selectedChildrenChanged(Node*);
+    void selectedChildrenChanged(RenderObject*);
+    // Called by a node when text or a text equivalent (e.g. alt) attribute is changed.
+    void textChanged(Node*);
+    void handleActiveDescendantChanged(Node*);
+    void handleAriaRoleChanged(Node*);
+    void handleAriaExpandedChange(Node*);
+    void handleFocusedUIElementChanged(Node* oldFocusedNode, Node* newFocusedNode);
+
     // aria-modal related
     void findModalNodes();
     void updateCurrentModalNode();
     bool isNodeVisible(Node*) const;
+    void handleModalChange(Node*);
 
     Document& m_document;
     HashMap<AXID, RefPtr<AccessibilityObject>> m_objects;
@@ -446,6 +449,8 @@ private:
     ListHashSet<Node*> m_deferredTextChangedList;
     ListHashSet<Element*> m_deferredSelectedChildredChangedList;
     HashMap<Element*, String> m_deferredTextFormControlValue;
+    HashMap<Element*, QualifiedName> m_deferredAttributeChange;
+    Vector<std::pair<Node*, Node*>> m_deferredFocusedNodeChange;
     bool m_isSynchronizingSelection { false };
     bool m_performingDeferredCacheUpdate { false };
 };
@@ -507,7 +512,9 @@ inline void AXObjectCache::handleActiveDescendantChanged(Node*) { }
 inline void AXObjectCache::handleAriaExpandedChange(Node*) { }
 inline void AXObjectCache::handleModalChange(Node*) { }
 inline void AXObjectCache::handleAriaRoleChanged(Node*) { }
-inline void AXObjectCache::handleAttributeChanged(const QualifiedName&, Element*) { }
+inline void AXObjectCache::deferAttributeChangeIfNeeded(const QualifiedName&, Element*) { }
+inline void AXObjectCache::handleAttributeChange(const QualifiedName&, Element*) { }
+inline bool AXObjectCache::shouldProcessAttributeChange(const QualifiedName&, Element*) { return false; }
 inline void AXObjectCache::handleFocusedUIElementChanged(Node*, Node*) { }
 inline void AXObjectCache::handleScrollbarUpdate(ScrollView*) { }
 inline void AXObjectCache::handleScrolledToAnchor(const Node*) { }

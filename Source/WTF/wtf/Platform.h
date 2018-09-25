@@ -1013,6 +1013,13 @@
 #define ENABLE_YARR_JIT_DEBUG 0
 #endif
 
+#if ENABLE(YARR_JIT)
+#if CPU(ARM64) || (CPU(X86_64) && !OS(WINDOWS))
+/* Enable JIT'ing Regular Expressions that have nested parenthesis. */
+#define ENABLE_YARR_JIT_ALL_PARENS_EXPRESSIONS 1
+#endif
+#endif
+
 /* If either the JIT or the RegExp JIT is enabled, then the Assembler must be
    enabled as well: */
 #if ENABLE(JIT) || ENABLE(YARR_JIT)
@@ -1161,7 +1168,7 @@
 #define HAVE_AVFOUNDATION_LOADER_DELEGATE 1
 #endif
 
-#if PLATFORM(COCOA) || PLATFORM(GTK) || PLATFORM(WPE)
+#if !PLATFORM(WIN)
 #define USE_REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR 1
 #endif
 

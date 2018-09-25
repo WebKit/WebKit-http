@@ -79,11 +79,13 @@ static void copyGStreamerBuffersToAudioChannel(GstAdapter* adapter, AudioBus* bu
     if (gst_adapter_available(adapter) >= bytes) {
         gst_adapter_copy(adapter, bus->channel(channelNumber)->mutableData(), 0, bytes);
         gst_adapter_flush(adapter, bytes);
-    }
+    } else
+        bus->zero();
 }
 
 AudioSourceProviderGStreamer::AudioSourceProviderGStreamer()
-    : m_client(nullptr)
+    : m_notifier(MainThreadNotifier<MainThreadNotification>::create())
+    , m_client(nullptr)
     , m_deinterleaveSourcePads(0)
     , m_deinterleavePadAddedHandlerId(0)
     , m_deinterleaveNoMorePadsHandlerId(0)
@@ -96,8 +98,10 @@ AudioSourceProviderGStreamer::AudioSourceProviderGStreamer()
 
 AudioSourceProviderGStreamer::~AudioSourceProviderGStreamer()
 {
+    m_notifier->invalidate();
+
     GRefPtr<GstElement> deinterleave = adoptGRef(gst_bin_get_by_name(GST_BIN(m_audioSinkBin.get()), "deinterleave"));
-    if (deinterleave) {
+    if (deinterleave && m_client) {
         g_signal_handler_disconnect(deinterleave.get(), m_deinterleavePadAddedHandlerId);
         g_signal_handler_disconnect(deinterleave.get(), m_deinterleaveNoMorePadsHandlerId);
         g_signal_handler_disconnect(deinterleave.get(), m_deinterleavePadRemovedHandlerId);
@@ -198,6 +202,9 @@ GstFlowReturn AudioSourceProviderGStreamer::handleAudioBuffer(GstAppSink* sink)
 
 void AudioSourceProviderGStreamer::setClient(AudioSourceProviderClient* client)
 {
+    if (m_client)
+        return;
+
     ASSERT(client);
     m_client = client;
 
@@ -318,7 +325,10 @@ void AudioSourceProviderGStreamer::handleRemovedDeinterleavePad(GstPad* pad)
 
     // Remove the queue ! appsink chain downstream of deinterleave.
     GQuark quark = g_quark_from_static_string("peer");
-    GstPad* sinkPad = reinterpret_cast<GstPad*>(g_object_get_qdata(G_OBJECT(pad), quark));
+    GstPad* sinkPad = GST_PAD_CAST(g_object_get_qdata(G_OBJECT(pad), quark));
+    if (!sinkPad)
+        return;
+
     GRefPtr<GstElement> queue = adoptGRef(gst_pad_get_parent_element(sinkPad));
     GRefPtr<GstPad> queueSrcPad = adoptGRef(gst_element_get_static_pad(queue.get(), "src"));
     GRefPtr<GstPad> appsinkSinkPad = adoptGRef(gst_pad_get_peer(queueSrcPad.get()));
@@ -331,10 +341,12 @@ void AudioSourceProviderGStreamer::handleRemovedDeinterleavePad(GstPad* pad)
 
 void AudioSourceProviderGStreamer::deinterleavePadsConfigured()
 {
-    ASSERT(m_client);
-    ASSERT(m_deinterleaveSourcePads == gNumberOfChannels);
+    m_notifier->notify(MainThreadNotification::DeinterleavePadsConfigured, [this] {
+        ASSERT(m_client);
+        ASSERT(m_deinterleaveSourcePads == gNumberOfChannels);
 
-    m_client->setFormat(m_deinterleaveSourcePads, gSampleBitRate);
+        m_client->setFormat(m_deinterleaveSourcePads, gSampleBitRate);
+    });
 }
 
 void AudioSourceProviderGStreamer::clearAdapters()

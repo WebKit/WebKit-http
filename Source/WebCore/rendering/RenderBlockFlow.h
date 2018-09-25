@@ -59,7 +59,7 @@ public:
     void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) override;
 
 protected:
-    void willBeDestroyed() override;
+    void willBeDestroyed(RenderTreeBuilder&) override;
     
     // This method is called at the start of layout to wipe away all of the floats in our floating objects list. It also
     // repopulates the list with any floats that intrude from previous siblings or parents. Floats that were added by
@@ -379,7 +379,6 @@ public:
     bool hasNextPage(LayoutUnit logicalOffset, PageBoundaryRule = ExcludePageBoundary) const;
 
     void addChild(RenderTreeBuilder&, RenderPtr<RenderObject> newChild, RenderObject* beforeChild = 0) override;
-    RenderPtr<RenderObject> takeChild(RenderTreeBuilder&, RenderObject&) override;
 
     void updateColumnProgressionFromStyle(RenderStyle&);
     void updateStylesForColumnChildren();
@@ -464,7 +463,8 @@ protected:
     // Called to lay out the legend for a fieldset or the ruby text of a ruby run. Also used by multi-column layout to handle
     // the flow thread child.
     void layoutExcludedChildren(bool relayoutChildren) override;
-    
+    void moveAllChildrenIncludingFloatsTo(RenderTreeBuilder&, RenderBlock& toBlock, RenderBoxModelObject::NormalizeAfterInsertion) override;
+
 private:
     bool recomputeLogicalWidthAndColumnWidth();
     LayoutUnit columnGap() const;
@@ -476,7 +476,6 @@ private:
     void paintInlineChildren(PaintInfo&, const LayoutPoint&) override;
     void paintFloats(PaintInfo&, const LayoutPoint&, bool preservePhase = false) override;
 
-    void moveAllChildrenIncludingFloatsTo(RenderBlock& toBlock, RenderBoxModelObject::NormalizeAfterInsertion) override;
     void repaintOverhangingFloats(bool paintAllDescendants) final;
     void clipOutFloatingObjects(RenderBlock&, const PaintInfo*, const LayoutPoint&, const LayoutSize&) override;
 
