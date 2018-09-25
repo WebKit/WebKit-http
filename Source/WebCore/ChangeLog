@@ -1,3 +1,89 @@
+2018-09-25  YUHAN WU  <yuhan_wu@apple.com>
+
+        Implement MediaStreamTrack Content Hints
+        https://bugs.webkit.org/show_bug.cgi?id=189262
+        <rdar://problem/44101773>
+
+        Reviewed by Youenn Fablet.
+
+        contentHint is a new attribute which is stored in MediaStreamTrackPrivate.
+        https://w3c.github.io/mst-content-hint/
+
+        Covered by tests: 
+        LayoutTests/imported/w3c/web-platform-tests/mst-content-hint/MediaStreamTrack-contentHint.html
+        LayoutTests/imported/w3c/web-platform-tests/mst-content-hint/idlharness.window.html
+
+        * Modules/mediastream/MediaStreamTrack.cpp:
+        (WebCore::MediaStreamTrack::contentHint const):
+        (WebCore::MediaStreamTrack::setContentHint):
+        * Modules/mediastream/MediaStreamTrack.h:
+        * Modules/mediastream/MediaStreamTrack.idl:
+        * platform/mediastream/MediaStreamTrackPrivate.cpp:
+        (WebCore::MediaStreamTrackPrivate::setContentHint):
+        (WebCore::MediaStreamTrackPrivate::clone):
+        * platform/mediastream/MediaStreamTrackPrivate.h:
+        (WebCore::MediaStreamTrackPrivate::contentHint):
+
+2018-09-25  Alex Christensen  <achristensen@webkit.org>
+
+        Allow for suffixes to com.apple.WebKit.WebContent
+        https://bugs.webkit.org/show_bug.cgi?id=189972
+
+        Reviewed by Chris Dumez.
+
+        * platform/cocoa/RuntimeApplicationChecksCocoa.mm:
+        (WebCore::isInWebProcess):
+
+2018-09-25  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Fix the open source iOS 12 build after r236445
+        https://bugs.webkit.org/show_bug.cgi?id=189953
+
+        Reviewed by Alex Christensen.
+
+        Remove soft-linking macros from several sources in WebCore, and instead import UIKitSoftLink from PAL. This
+        allows different WebCore sources to soft-link UIKit (and its classes and symbols) without reimplementing
+        WebCore::UIKitLibrary.
+
+        * editing/cocoa/FontAttributesCocoa.mm:
+        * editing/cocoa/FontShadowCocoa.mm:
+        (WebCore::FontShadow::createShadow const):
+        * platform/graphics/cocoa/ColorCocoa.mm:
+        (WebCore::platformColor):
+        * platform/ios/PlatformScreenIOS.mm:
+        (WebCore::screenIsMonochrome):
+        (WebCore::screenHasInvertedColors):
+        (WebCore::screenSize):
+        (WebCore::availableScreenSize):
+        (WebCore::screenScaleFactor):
+
+2018-09-25  Thibault Saunier  <tsaunier@igalia.com>
+
+        [WPE][GTK][WebRTC] Fixup VP8 encoding support
+        https://bugs.webkit.org/show_bug.cgi?id=189921
+
+        Previous leak fixing commit introduced a regression in
+        the way the encoded buffer were prepared in the default
+        GStreamerVideoEncoder::Fragmentize implementation (when
+        encoding with VP8 basically).
+
+        + Fix a build warning in the decoder.
+        + Fix some wrong object members namings.
+        + Properly move the caps reference when setting restriction caps.
+        + Do not raise a GStreamer error when GStreamerVideoEncoder::OnEncodedImage
+          fails - this might be a network issue and other encoders do not consider that
+          fatal.
+        + Use GstMappedBuffer where appropriate.
+
+        Reviewed by Philippe Normand.
+
+        * platform/mediastream/libwebrtc/GStreamerVideoDecoderFactory.cpp:
+        * platform/mediastream/libwebrtc/GStreamerVideoEncoderFactory.cpp:
+        (WebCore::GStreamerVideoEncoder::InitEncode):
+        (WebCore::GStreamerVideoEncoder::newSampleCallback):
+        (WebCore::GStreamerVideoEncoder::Fragmentize):
+        (WebCore::GStreamerVideoEncoder::SetRestrictionCaps):
+
 2018-09-25  Eric Carlson  <eric.carlson@apple.com>
 
         [MediaStream] Update constraints supported by getDisplayMedia
