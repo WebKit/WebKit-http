@@ -438,6 +438,8 @@ sub determineNumberOfCPUs
         $numberOfCPUs = `ls /proc/registry/HKEY_LOCAL_MACHINE/HARDWARE/DESCRIPTION/System/CentralProcessor | wc -w`;
     } elsif (isDarwin() || isBSD()) {
         chomp($numberOfCPUs = `sysctl -n hw.ncpu`);
+    } else {
+        $numberOfCPUs = 1;
     }
 }
 
@@ -1937,7 +1939,9 @@ sub buildVisualStudioProject
     chomp($warningLogFile = `cygpath -w "$warningLogFile"`) if isCygwin();
     my $warningLogging = "/flp1:LogFile=" . $warningLogFile . ";WarningsOnly";
 
-    my @command = ($vcBuildPath, "/verbosity:minimal", $project, $action, $config, $platform, "/fl", $errorLogging, "/fl1", $warningLogging);
+    my $maxCPUCount = '/maxcpucount:' . numberOfCPUs();
+
+    my @command = ($vcBuildPath, "/verbosity:minimal", $project, $action, $config, $platform, "/fl", $errorLogging, "/fl1", $warningLogging, $maxCPUCount);
     print join(" ", @command), "\n";
     return system @command;
 }

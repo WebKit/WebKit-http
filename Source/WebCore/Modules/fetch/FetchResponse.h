@@ -32,7 +32,7 @@
 #include "FetchHeaders.h"
 #include "ReadableStreamSink.h"
 #include "ResourceResponse.h"
-#include <runtime/TypedArrays.h>
+#include <JavaScriptCore/TypedArrays.h>
 
 namespace JSC {
 class ExecState;
@@ -104,6 +104,8 @@ public:
     uint64_t opaqueLoadIdentifier() const { return m_opaqueLoadIdentifier; }
 
     void initializeOpaqueLoadIdentifierForTesting() { m_opaqueLoadIdentifier = 1; }
+
+    const std::optional<ResourceError>& loadingError() const { return m_loadingError; }
 
 private:
     FetchResponse(ScriptExecutionContext&, std::optional<FetchBody>&&, Ref<FetchHeaders>&&, ResourceResponse&&);

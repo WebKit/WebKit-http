@@ -920,6 +920,11 @@ WI.showElementsTab = function()
     this.tabBrowser.showTabForContentView(tabContentView);
 };
 
+WI.isShowingElementsTab = function()
+{
+    return this.tabBrowser.selectedTabContentView instanceof WI.ElementsTabContentView;
+};
+
 WI.showDebuggerTab = function(options)
 {
     var tabContentView = this.tabBrowser.bestTabContentViewForClass(WI.DebuggerTabContentView);
@@ -988,6 +993,21 @@ WI.showTimelineTab = function()
     this.tabBrowser.showTabForContentView(tabContentView);
 };
 
+WI.showLayersTab = function(options = {})
+{
+    let tabContentView = this.tabBrowser.bestTabContentViewForClass(WI.LayersTabContentView);
+    if (!tabContentView)
+        tabContentView = new WI.LayersTabContentView;
+    if (options.nodeToSelect)
+        tabContentView.selectLayerForNode(options.nodeToSelect);
+    this.tabBrowser.showTabForContentView(tabContentView);
+};
+
+WI.isShowingLayersTab = function()
+{
+    return this.tabBrowser.selectedTabContentView instanceof WI.LayersTabContentView;
+};
+
 WI.indentString = function()
 {
     if (WI.settings.indentWithTabs.value)
@@ -997,7 +1017,7 @@ WI.indentString = function()
 
 WI.restoreFocusFromElement = function(element)
 {
-    if (element && element.isSelfOrAncestor(this.currentFocusElement))
+    if (element && element.contains(this.currentFocusElement))
         this.previousFocusElement.focus();
 };
 
@@ -1456,7 +1476,7 @@ WI._windowKeyUp = function(event)
 
 WI._mouseDown = function(event)
 {
-    if (this.toolbar.element.isSelfOrAncestor(event.target))
+    if (this.toolbar.element.contains(event.target))
         this._toolbarMouseDown(event);
 };
 
@@ -1873,15 +1893,15 @@ WI._focusedContentBrowser = function()
             return contentBrowserElement.__view;
     }
 
-    if (this.tabBrowser.element.isSelfOrAncestor(this.currentFocusElement) || document.activeElement === document.body) {
+    if (this.tabBrowser.element.contains(this.currentFocusElement) || document.activeElement === document.body) {
         let tabContentView = this.tabBrowser.selectedTabContentView;
         if (tabContentView.contentBrowser)
             return tabContentView.contentBrowser;
         return null;
     }
 
-    if (this.consoleDrawer.element.isSelfOrAncestor(this.currentFocusElement)
-        || (WI.isShowingSplitConsole() && this.quickConsole.element.isSelfOrAncestor(this.currentFocusElement)))
+    if (this.consoleDrawer.element.contains(this.currentFocusElement)
+        || (WI.isShowingSplitConsole() && this.quickConsole.element.contains(this.currentFocusElement)))
         return this.consoleDrawer;
 
     return null;
@@ -1889,15 +1909,15 @@ WI._focusedContentBrowser = function()
 
 WI._focusedContentView = function()
 {
-    if (this.tabBrowser.element.isSelfOrAncestor(this.currentFocusElement) || document.activeElement === document.body) {
+    if (this.tabBrowser.element.contains(this.currentFocusElement) || document.activeElement === document.body) {
         var tabContentView = this.tabBrowser.selectedTabContentView;
         if (tabContentView.contentBrowser)
             return tabContentView.contentBrowser.currentContentView;
         return tabContentView;
     }
 
-    if (this.consoleDrawer.element.isSelfOrAncestor(this.currentFocusElement)
-        || (WI.isShowingSplitConsole() && this.quickConsole.element.isSelfOrAncestor(this.currentFocusElement)))
+    if (this.consoleDrawer.element.contains(this.currentFocusElement)
+        || (WI.isShowingSplitConsole() && this.quickConsole.element.contains(this.currentFocusElement)))
         return this.consoleDrawer.currentContentView;
 
     return null;

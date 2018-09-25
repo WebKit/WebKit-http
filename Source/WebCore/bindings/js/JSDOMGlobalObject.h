@@ -28,10 +28,11 @@
 
 #include "PlatformExportMacros.h"
 #include "WebCoreJSBuiltinInternals.h"
-#include <heap/HeapInlines.h>
-#include <heap/LockDuringMarking.h>
-#include <runtime/JSGlobalObject.h>
-#include <runtime/StructureInlines.h>
+#include <JavaScriptCore/HeapInlines.h>
+#include <JavaScriptCore/JSGlobalObject.h>
+#include <JavaScriptCore/LockDuringMarking.h>
+#include <JavaScriptCore/StructureInlines.h>
+#include <JavaScriptCore/ThreadLocalCache.h>
 
 namespace WebCore {
 
@@ -50,7 +51,7 @@ class WEBCORE_EXPORT JSDOMGlobalObject : public JSC::JSGlobalObject {
 protected:
     struct JSDOMGlobalObjectData;
 
-    JSDOMGlobalObject(JSC::VM&, JSC::Structure*, Ref<DOMWrapperWorld>&&, const JSC::GlobalObjectMethodTable* = 0);
+    JSDOMGlobalObject(JSC::VM&, JSC::Structure*, Ref<DOMWrapperWorld>&&, const JSC::GlobalObjectMethodTable* = nullptr, RefPtr<JSC::ThreadLocalCache>&& = nullptr);
     static void destroy(JSC::JSCell*);
     void finishCreation(JSC::VM&);
     void finishCreation(JSC::VM&, JSC::JSObject*);

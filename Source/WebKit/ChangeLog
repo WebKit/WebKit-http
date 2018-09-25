@@ -1,3 +1,548 @@
+2018-02-07  Daniel Bates  <dabates@apple.com>
+
+        Log error when authentication challenge is blocked due to an insecure request
+        https://bugs.webkit.org/show_bug.cgi?id=182358
+
+        Reviewed by Andy Estes.
+
+        Have network process notify the web process when it blocks an authentication challenge.
+
+        * NetworkProcess/NetworkLoad.cpp:
+        (WebKit::NetworkLoad::completeAuthenticationChallenge):
+        * NetworkProcess/NetworkLoadClient.h:
+        (WebKit::NetworkLoadClient::didBlockAuthenticationChallenge):
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::didBlockAuthenticationChallenge):
+        * NetworkProcess/NetworkResourceLoader.h:
+        * WebProcess/Network/WebResourceLoader.cpp:
+        (WebKit::WebResourceLoader::didBlockAuthenticationChallenge):
+        * WebProcess/Network/WebResourceLoader.h:
+        * WebProcess/Network/WebResourceLoader.messages.in:
+
+2018-02-07  Chris Dumez  <cdumez@apple.com>
+
+        IndexedDB in service workers is using a memory backed store
+        https://bugs.webkit.org/show_bug.cgi?id=182574
+        <rdar://problem/37316205>
+
+        Reviewed by Youenn Fablet.
+
+        Make sure we pass a proper WebDatabaseProvider to the ServiceWorkerProcess via
+        PageConfiguration. Otherwise, we end up using the default EmptyDatabaseProvider
+        which uses an InProcessIDBServer and a memory-backed store for IndexedDB.
+
+        * UIProcess/ServiceWorkerProcessProxy.cpp:
+        (WebKit::ServiceWorkerProcessProxy::start):
+        * UIProcess/WebProcessPool.h:
+        * WebProcess/Storage/WebSWContextManagerConnection.cpp:
+        (WebKit::WebSWContextManagerConnection::WebSWContextManagerConnection):
+        (WebKit::WebSWContextManagerConnection::installServiceWorker):
+        * WebProcess/Storage/WebSWContextManagerConnection.h:
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::establishWorkerContextConnectionToStorageProcess):
+        * WebProcess/WebProcess.h:
+        * WebProcess/WebProcess.messages.in:
+
+2018-02-07  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Typo in a translatable string
+        https://bugs.webkit.org/show_bug.cgi?id=182570
+
+        Unreviewed. Fix a typo.
+
+        * UIProcess/API/glib/WebKitWebsiteDataManager.cpp:
+        (webkit_website_data_manager_class_init):
+
+2018-02-06  Don Olmstead  <don.olmstead@sony.com>
+
+        Remove WebCore/ForwardingHeaders directory
+        https://bugs.webkit.org/show_bug.cgi?id=182347
+
+        Reviewed by Keith Miller.
+
+        * Platform/mac/StringUtilities.mm:
+        * Shared/Cocoa/WebKit2InitializeCocoa.mm:
+        * Shared/WebKit2Initialize.cpp:
+        * Shared/linux/WebMemorySamplerLinux.cpp:
+        * Shared/mac/WebMemorySampler.mac.mm:
+        * UIProcess/WebProcessPool.cpp:
+        * WebProcess/InjectedBundle/API/APIInjectedBundlePageUIClient.h:
+        * WebProcess/InjectedBundle/API/glib/WebKitConsoleMessagePrivate.h:
+        * WebProcess/Plugins/Netscape/NPRuntimeObjectMap.h:
+        * WebProcess/Plugins/Netscape/NetscapePlugin.cpp:
+        * WebProcess/Plugins/PluginProcessConnection.cpp:
+        * WebProcess/Plugins/PluginView.cpp:
+        * WebProcess/WebPage/WebInspector.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+
+2018-02-06  Chris Dumez  <cdumez@apple.com>
+
+        Layout Test imported/w3c/web-platform-tests/service-workers/service-worker/fetch-waits-for-activate.https.html is a flaky failure on macOS and iOS
+        https://bugs.webkit.org/show_bug.cgi?id=181392
+        <rdar://problem/36384136>
+
+        Reviewed by Youenn Fablet.
+
+        All tasks from the StorageProcess to the WebContent process to update registrations
+        and service workers state are posted to the runloop. However, the fetch callbacks
+        do not do so. This means that fetch results might come in out of order with regards
+        to the registration / service worker state updates. The test was flaky because an
+        intercepted load would sometimes finish before the task to update the service worker
+        state to "activated" was processed by the runloop. We address the issue by having
+        the ServiceWorkerClientFetch callbacks schedule tasks to the runloop too.
+
+        * WebProcess/Storage/ServiceWorkerClientFetch.cpp:
+        (WebKit::ServiceWorkerClientFetch::didReceiveResponse):
+        (WebKit::ServiceWorkerClientFetch::didReceiveData):
+        (WebKit::ServiceWorkerClientFetch::didFinish):
+        (WebKit::ServiceWorkerClientFetch::didFail):
+        (WebKit::ServiceWorkerClientFetch::didNotHandle):
+
+2018-02-06  Brent Fulgham  <bfulgham@apple.com>
+
+        [macOS] Correct sandbox violation triggered by Chase.com
+        https://bugs.webkit.org/show_bug.cgi?id=182519
+        <rdar://problem/37121757>
+
+        Reviewed by Eric Carlson.
+
+        Hitting a sandbox violation when attempting to check status of IOAV*En/Decode support.
+
+        * WebProcess/com.apple.WebProcess.sb.in:
+
+2018-02-06  Jeff Miller  <jeffm@apple.com>
+
+        Add WKNavigationDelegate SPI to tell the client when an insecure plug-in is blocked
+        https://bugs.webkit.org/show_bug.cgi?id=182540
+
+        Reviewed by Alex Christensen.
+
+        * UIProcess/API/APILoaderClient.h:
+        (API::LoaderClient::didBlockInsecurePluginVersion):
+        Changed to take a dictionary reference.
+
+        * UIProcess/API/APINavigationClient.h:
+        (API::NavigationClient::didBlockInsecurePluginVersion):
+        Added.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageLoaderClient):
+        Changed didBlockInsecurePluginVersion() to take a dictionary reference.
+
+        * UIProcess/API/Cocoa/WKNavigationDelegatePrivate.h:
+        Added -_webView:didBlockInsecurePluginVersionWithInfo:.
+
+        * UIProcess/Cocoa/NavigationState.h:
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::setNavigationDelegate):
+        Initialize webViewDidBlockInsecurePluginVersionWithInfo.
+
+        (WebKit::NavigationState::NavigationClient::didBlockInsecurePluginVersion):
+        Added.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::didBlockInsecurePluginVersion):
+        Remove check for PLATFORM(COCOA) (we don't check for this in didFailToInitializePlugin() where we
+        also use createPluginInformationDictionary()) and ENABLE(NETSCAPE_PLUGIN_API) (we're already inside
+        an #if ENABLE(NETSCAPE_PLUGIN_API block) and use auto for pluginInformation. Attempt to use the
+        navigation client before the loader client.
+
+2018-02-06  Youenn Fablet  <youenn@apple.com>
+
+        HasServiceWorkerRegistration bit should be sent when creating a new page
+        https://bugs.webkit.org/show_bug.cgi?id=182410
+
+        Reviewed by Chris Dumez.
+
+        Move the bit computation at page creation time.
+        This allows computing the bit based on the web site data store and not only on the pool configuration.
+        WebPage uses that bit to activate service worker registration matching for the whole process.
+
+        In case there is a service worker process proxy created, the bit is set to true by default.
+
+        Bit is computed by checking for database file presence.
+        This information is cached in a map for efficiency reasons and cleared when a service worker process proxy is created.
+
+        * Shared/WebPageCreationParameters.cpp:
+        (WebKit::WebPageCreationParameters::encode const):
+        (WebKit::WebPageCreationParameters::decode):
+        * Shared/WebPageCreationParameters.h:
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::encode const):
+        (WebKit::WebProcessCreationParameters::decode):
+        * Shared/WebProcessCreationParameters.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::initializeWebPage):
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::establishWorkerContextConnectionToStorageProcess):
+        (WebKit::WebProcessPool::initializeNewWebProcess):
+        (WebKit::WebProcessPool::mayHaveRegisteredServiceWorkers):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::m_cpuLimit):
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::initializeWebProcess):
+
+2018-02-06  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, fix format specifiers added in r228116
+        https://bugs.webkit.org/show_bug.cgi?id=182456
+        <rdar://problem/37181006>
+
+        * NetworkProcess/cache/CacheStorageEngineConnection.cpp:
+        (WebKit::CacheStorageEngineConnection::open):
+        (WebKit::CacheStorageEngineConnection::remove):
+        (WebKit::CacheStorageEngineConnection::caches):
+        (WebKit::CacheStorageEngineConnection::retrieveRecords):
+        (WebKit::CacheStorageEngineConnection::deleteMatchingRecords):
+        (WebKit::CacheStorageEngineConnection::putRecords):
+        (WebKit::CacheStorageEngineConnection::reference):
+        (WebKit::CacheStorageEngineConnection::dereference):
+
+2018-02-05  Chris Dumez  <cdumez@apple.com>
+
+        Avoid unnecessarily constructing RunLoops for GC AutomaticThreads in Connection::sendMessage() after r228001
+        https://bugs.webkit.org/show_bug.cgi?id=182494
+        <rdar://problem/37147632>
+
+        Reviewed by Ryosuke Niwa.
+
+        Somebody fixed a GC crash in r228001 by allowing RunLoop::current() to be called from a
+        GC thread. However, this is still unnecessarily inefficient. Calling RunLoop::current()
+        will construct RunLoops for background GC threads (WTF::AutomaticThreads). This patches
+        updates the IPC code to call isMainThread() instead of RunLoop::isMain() in
+        Connection::sendMessage(). This should mean the same thing since this code runs in
+        WebKit2 and should be more efficient as it ends up simply calling pthread_main_np(),
+        without constructing a RunLoop.
+
+        * Platform/IPC/Connection.cpp:
+        (IPC::Connection::sendMessage):
+
+2018-02-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Release assertion in inlineVideoFrame
+        https://bugs.webkit.org/show_bug.cgi?id=182513
+        <rdar://problem/37159363>
+
+        Reviewed by Zalan Bujtas.
+
+        Fixed the bug. Don't try to update the layout when there is no live render tree or active DOM objects
+        had been stopped: i.e. during a document destruction.
+
+        * WebProcess/cocoa/VideoFullscreenManager.mm:
+        (WebKit::inlineVideoFrame):
+
+2018-02-05  Yousuke Kimoto  <yousuke.kimoto@sony.com>
+
+        [WinCairo] Refine WebKitLegacy and WebKit build for wincairo
+        https://bugs.webkit.org/show_bug.cgi?id=182478
+
+        Reviewed by Alex Christensen.
+
+        Fixed a typo of forwarding header path for InjectedBundle and copying header
+        method, which should use FLATTENED.
+
+        * PlatformWin.cmake: Fix a typo of a forwarding header path for InjectedBundle and use FLATTENED.
+
+2018-02-05  Youenn Fablet  <youenn@apple.com>
+
+        WebsiteDataStore::resolveDirectoriesIfNecessary() should not overwrite its resolved serviceWorkerRegistrationDirectory  if already set
+        https://bugs.webkit.org/show_bug.cgi?id=182514
+
+        Reviewed by Chris Dumez.
+
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::resolveDirectoriesIfNecessary):
+
+2018-02-05  Brent Fulgham  <bfulgham@apple.com>
+
+        [iOS] Storage process is using the wrong sandbox profile filename
+        https://bugs.webkit.org/show_bug.cgi?id=182500
+        <rdar://problem/37232614>
+
+        Reviewed by David Kilzer.
+
+        The iOS entitlements file was still referencing the old Databases sandbox profile, even though the
+        process has been renamed 'Storage'.
+
+        * Configurations/Databases-iOS.entitlements:
+
+2018-02-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add DoNotProcessIncomingMessagesWhenWaitingForSyncReply to GetPlugins and RootViewToScreen
+        https://bugs.webkit.org/show_bug.cgi?id=182458
+
+        Reviewed by Chris Dumez.
+
+        Added DoNotProcessIncomingMessagesWhenWaitingForSyncReply to GetPlugins and RootViewToScreen
+        which are found to get sent from WebContent process while ScriptDisallowedScope is present
+        by a work-in-progress patch on webkit.org/b/182449.
+
+        * WebProcess/Plugins/WebPluginInfoProvider.cpp:
+        (WebKit::WebPluginInfoProvider::populatePluginCache):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::rootViewToScreen):
+
+2018-02-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r227964 and r228087.
+        https://bugs.webkit.org/show_bug.cgi?id=182508
+
+        These introduced an API test  failure with
+        URLTest.HostIsIPAddress alongside commit r228086 (Requested by
+        mlewis13 on #webkit).
+
+        Reverted changesets:
+
+        "[SOUP] Ensure domain is valid when converting a WebCore
+        Cookie to Soup"
+        https://bugs.webkit.org/show_bug.cgi?id=182328
+        https://trac.webkit.org/changeset/227964
+
+        "WebDriver: addCookie command should prepend a dot to domain
+        if missing"
+        https://bugs.webkit.org/show_bug.cgi?id=182328
+        https://trac.webkit.org/changeset/228087
+
+2018-02-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] Implement number pad UI when editing `tel` and `number` inputs
+        https://bugs.webkit.org/show_bug.cgi?id=182472
+        <rdar://problem/35143057>
+
+        Reviewed by Tim Horton.
+
+        Allows the user to edit numeric input types using a number pad. See below comments for more detail.
+
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _startAssistingKeyboard]):
+        (-[WKContentView _stopAssistingNode]):
+
+        Dismiss the number pad, if it is present.
+
+        (-[WKContentView dismissNumberPadViewController:]):
+        (-[WKContentView presentNumberPadViewController:]):
+
+        Add new helpers for showing and hiding the number pad view controller.
+
+        (-[WKContentView presentViewControllerForAssistedNode:]):
+        (-[WKContentView textInputController:didRequestDismissalWithAction:]):
+
+        Dismiss the number pad, if it is present.
+
+        (-[WKContentView focusedFormControlControllerDidBeginEditing:]):
+        (-[WKContentView shouldPresentTextInputViewController:]): Deleted.
+
+        Remove -shouldPresentTextInputViewController and replace it with -presentViewControllerForAssistedNode:, which
+        presents the appropriate view controller given "assisted" node information.
+
+        * UIProcess/ios/forms/WKNumberPadView.h: Added.
+        * UIProcess/ios/forms/WKNumberPadView.mm: Added.
+        * UIProcess/ios/forms/WKNumberPadViewController.h: Added.
+        * UIProcess/ios/forms/WKNumberPadViewController.mm: Added.
+
+        Add "WebKitAdditions harness" files for the new number pad view and view controller classes.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2018-02-05  Youenn Fablet  <youenn@apple.com>
+
+        Add logging to CacheStorageEngineConnection
+        https://bugs.webkit.org/show_bug.cgi?id=182456
+
+        Reviewed by Chris Dumez.
+
+        * NetworkProcess/cache/CacheStorageEngineConnection.cpp:
+        (WebKit::CacheStorageEngineConnection::open):
+        (WebKit::CacheStorageEngineConnection::remove):
+        (WebKit::CacheStorageEngineConnection::caches):
+        (WebKit::CacheStorageEngineConnection::retrieveRecords):
+        (WebKit::CacheStorageEngineConnection::deleteMatchingRecords):
+        (WebKit::CacheStorageEngineConnection::putRecords):
+        (WebKit::CacheStorageEngineConnection::reference):
+        (WebKit::CacheStorageEngineConnection::dereference):
+        * Platform/Logging.h:
+
+2018-02-05  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r222795): Nike app "Refused to set unsafe header" when adding and viewing cart
+        https://bugs.webkit.org/show_bug.cgi?id=182491
+        <rdar://problem/36533447>
+
+        Reviewed by Brent Fulgham.
+
+        Exempt Nike from the XHR header restrictions in r222795.
+
+        Following r222795 only Dashboard widgets are allowed to set arbitrary XHR headers.
+        However Nike also depends on such functionality.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (shouldAllowSettingAnyXHRHeaderFromFileURLs):
+
+2018-02-02  Brent Fulgham  <bfulgham@apple.com>
+
+        Improve NetworkResourceLoader logging so it can be used for 'setCookiesFromDOM'
+        https://bugs.webkit.org/show_bug.cgi?id=182455
+        <rdar://problem/36626601>
+
+        Reviewed by Chris Dumez.
+
+        Refactor "logCookieInformation" so that it can be used for resource loads and DOM cookie
+        manipulation. Place the generally useful logic in a static method that can be invoked
+        from other places in the NetworkProcess.
+
+        Call the new refactored method from NetworkConnectionToWebProcess::setCookiesFromDOM so
+        we can perform logging there as well.
+
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::setCookiesFromDOM): Call the new logging method
+        (when enabled).
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::shouldLogCookieInformation): Changed to static method.
+        (WebKit::escapeForJSON): Made a static function so it could be shared between multiple
+        methods.
+        (WebKit::NetworkResourceLoader::logCookieInformation const): Refactor into two methods.
+        (WebKit::NetworkResourceLoader::logCookieInformation): Ditto.
+        (WebKit::NetworkResourceLoader::shouldLogCookieInformation const): Deleted.
+        * NetworkProcess/NetworkResourceLoader.h:
+        * NetworkProcess/cocoa/NetworkDataTaskCocoa.mm:
+        (WebKit::NetworkDataTaskCocoa::NetworkDataTaskCocoa): Switch to user-enabled release logging
+        to track partitioning and blocking behavior.
+
+2018-02-05  John Wilander  <wilander@apple.com>
+
+        Storage Access API: Add testRunner.getAllStorageAccessEntries() to make testing easier and more explicit
+        https://bugs.webkit.org/show_bug.cgi?id=181601
+        <rdar://problem/36475837>
+
+        Reviewed by Alex Christensen.
+
+        http/tests/storageAccess/request-and-grant-access-then-detach-should-not-have-access.html
+        was found to be flaky. With the testRunner.hasStorageAccessEntry() getter
+        it's possible to check access even if a frame doesn't respond timely to
+        postMessage after detach and attach.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::getAllStorageAccessEntries):
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/NetworkProcess.messages.in:
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.mm:
+        (-[WKWebsiteDataStore _getAllStorageAccessEntries:]):
+        * UIProcess/API/Cocoa/WKWebsiteDataStorePrivate.h:
+        * UIProcess/Network/NetworkProcessProxy.cpp:
+        (WebKit::NetworkProcessProxy::getAllStorageAccessEntries):
+        (WebKit::NetworkProcessProxy::allStorageAccessEntriesResult):
+        * UIProcess/Network/NetworkProcessProxy.h:
+        * UIProcess/Network/NetworkProcessProxy.messages.in:
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::getAllStorageAccessEntries):
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+
+2018-02-05  Daniel Bates  <dabates@apple.com>
+
+        Disallow evaluating JavaScript from NPP_Destroy() in WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=181889
+        <rdar://problem/36674701>
+
+        Reviewed by Brent Fulgham.
+
+        Make the behavior of WebKit match the behavior of WebKitLegacy on Mac.
+
+        * Shared/Plugins/NPObjectMessageReceiver.cpp:
+        (WebKit::NPObjectMessageReceiver::hasMethod):
+        (WebKit::NPObjectMessageReceiver::invoke):
+        (WebKit::NPObjectMessageReceiver::invokeDefault):
+        (WebKit::NPObjectMessageReceiver::hasProperty):
+        (WebKit::NPObjectMessageReceiver::getProperty):
+        (WebKit::NPObjectMessageReceiver::setProperty):
+        (WebKit::NPObjectMessageReceiver::removeProperty):
+        (WebKit::NPObjectMessageReceiver::enumerate):
+        (WebKit::NPObjectMessageReceiver::construct):
+        Bail out if the plugin is executing NPP_Destroy().
+
+        * WebProcess/Plugins/Plugin.cpp:
+        (WebKit::Plugin::destroyPlugin):
+        * WebProcess/Plugins/Plugin.h:
+        (WebKit::Plugin::isBeingDestroyed const):
+        Move bookkeeping of whether the plugin is being destroyed from PluginView
+        to here. This makes it straightforward for NPObjectMessageReceiver to query
+        this information.
+
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::~PluginView):
+        (WebKit::PluginView::destroyPluginAndReset):
+        (WebKit::PluginView::recreateAndInitialize):
+        (WebKit::PluginView::protectPluginFromDestruction):
+        (WebKit::PluginView::unprotectPluginFromDestruction):
+        Move bookkeeping of whether the plugin is being destroyed from here
+        to Plugin.
+
+        * WebProcess/Plugins/PluginView.h:
+        (WebKit::PluginView::isBeingDestroyed const): Turn around and ask the plugin if it
+        is being destroyed, if we have one.
+
+2018-02-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        WebDriver: addCookie command should prepend a dot to domain if missing
+        https://bugs.webkit.org/show_bug.cgi?id=182328
+        <rdar://problem/37116398>
+
+        Reviewed by Michael Catanzaro.
+
+        RFC 2965: If an explicitly specified value does not start with a dot, the user agent supplies a leading dot.
+
+        Fixes: imported/w3c/webdriver/tests/cookies/add_cookie.py::test_add_domain_cookie
+
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::addSingleCookie):
+
+2018-02-03  Tim Horton  <timothy_horton@apple.com>
+
+        UI process sometimes crashes under -[WKContentView _lookupForWebView:]
+        https://bugs.webkit.org/show_bug.cgi?id=182460
+        <rdar://problem/33260602>
+
+        Reviewed by Wenson Hsieh.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _lookupForWebView:]):
+        If you have a range selection, but no rects for the selection, retrieving
+        the 0th element of selectionRects will crash the UI process. To fix, in
+        this case, use the rect for the starting caret instead.
+
+        It doesn't seem like the presentationRect is actually currently used for
+        the Lookup service, so the only impact is that we shouldn't crash anymore.
+
+2018-02-02  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Remove remaining dead !USE(NETWORK_SESSION) code
+        https://bugs.webkit.org/show_bug.cgi?id=182451
+
+        Reviewed by Alex Christensen.
+
+        DownloadCurl.cpp and AuthenticationManagerSoup.cpp have been dead code since NETWORK_SESSION
+        became mandatory.
+
+        * NetworkProcess/Downloads/curl/DownloadCurl.cpp: Removed.
+        * PlatformGTK.cmake:
+        * PlatformWPE.cmake:
+        * PlatformWin.cmake:
+        * Shared/Authentication/soup/AuthenticationManagerSoup.cpp: Removed.
+
+2018-02-02  Youenn Fablet  <youenn@apple.com>
+
+        CacheStorage should check for origin file presence when computing the origin of a folder
+        https://bugs.webkit.org/show_bug.cgi?id=182454
+
+        Reviewed by Chris Dumez.
+
+        In case caches is opened for an origin but no cache is added, we do not have a caches name file but we do have an origin filename.
+        We should be checking the origin filename anyway since we will be reading it afterwards.
+
+        * NetworkProcess/cache/CacheStorageEngineCaches.cpp:
+        (WebKit::CacheStorage::Caches::retrieveOriginFromDirectory):
+
 2018-02-02  Youenn Fablet  <youenn@apple.com>
 
         Configure serviceWorkerRegistrationDirectory on the web site data store and move it to a Caches subfolder as a default

@@ -32,8 +32,8 @@
 #pragma once
 
 #include "PageScriptDebugServer.h"
-#include <inspector/InspectorAgentRegistry.h>
-#include <inspector/InspectorEnvironment.h>
+#include <JavaScriptCore/InspectorAgentRegistry.h>
+#include <JavaScriptCore/InspectorEnvironment.h>
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/text/WTFString.h>

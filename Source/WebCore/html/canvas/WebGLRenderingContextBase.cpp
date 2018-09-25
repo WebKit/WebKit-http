@@ -91,12 +91,12 @@
 #include "WebGLShaderPrecisionFormat.h"
 #include "WebGLTexture.h"
 #include "WebGLUniformLocation.h"
-#include <inspector/ConsoleMessage.h>
-#include <inspector/ScriptCallStack.h>
-#include <inspector/ScriptCallStackFactory.h>
-#include <runtime/JSCInlines.h>
-#include <runtime/TypedArrayInlines.h>
-#include <runtime/Uint32Array.h>
+#include <JavaScriptCore/ConsoleMessage.h>
+#include <JavaScriptCore/JSCInlines.h>
+#include <JavaScriptCore/ScriptCallStack.h>
+#include <JavaScriptCore/ScriptCallStackFactory.h>
+#include <JavaScriptCore/TypedArrayInlines.h>
+#include <JavaScriptCore/Uint32Array.h>
 #include <wtf/CheckedArithmetic.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/CString.h>
@@ -5922,6 +5922,7 @@ ImageBuffer* WebGLRenderingContextBase::LRUImageBufferCache::imageBuffer(const I
         if (buf->logicalSize() != size)
             continue;
         bubbleToFront(i);
+        buf->context().clearRect(FloatRect({ }, FloatSize(size)));
         return buf;
     }
 

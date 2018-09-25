@@ -49,13 +49,13 @@
 #include "Logging.h"
 #include "TemporaryOpenGLSetting.h"
 #include "WebGLRenderingContextBase.h"
+#include <JavaScriptCore/RegularExpression.h>
 #include <cstring>
 #include <wtf/HexNumber.h>
 #include <wtf/MainThread.h>
 #include <wtf/ThreadSpecific.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
-#include <yarr/RegularExpression.h>
 
 #if PLATFORM(IOS)
 #import <OpenGLES/ES2/glext.h>
@@ -177,12 +177,7 @@ void GraphicsContext3D::paintRenderingResultsToCanvas(ImageBuffer* imageBuffer)
         }
     }
 
-#if USE(CG)
-    paintToCanvas(pixels.get(), m_currentWidth, m_currentHeight,
-                  imageBuffer->internalSize().width(), imageBuffer->internalSize().height(), imageBuffer->context());
-#else
-    paintToCanvas(pixels.get(), m_currentWidth, m_currentHeight, imageBuffer->internalSize().width(), imageBuffer->internalSize().height(), imageBuffer->context().platformContext());
-#endif
+    paintToCanvas(pixels.get(), IntSize(m_currentWidth, m_currentHeight), imageBuffer->internalSize(), imageBuffer->context());
 
 #if PLATFORM(IOS)
     presentRenderbuffer();

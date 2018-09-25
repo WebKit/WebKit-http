@@ -296,14 +296,17 @@ bool NetworkStorageSession::hasStorageAccessForFrame(const String& resourceDomai
     return it2->value == resourceDomain;
 }
 
-bool NetworkStorageSession::hasStorageAccessForFrame(const ResourceRequest& request, uint64_t frameID, uint64_t pageID) const
+Vector<String> NetworkStorageSession::getAllStorageAccessEntries() const
 {
-    if (!cookieStoragePartitioningEnabled)
-        return false;
-
-    return hasStorageAccessForFrame(getPartitioningDomain(request.url()), getPartitioningDomain(request.firstPartyForCookies()), frameID, pageID);
+    Vector<String> entries;
+    for (auto& pageID : m_framesGrantedStorageAccess.keys()) {
+        auto it1 = m_framesGrantedStorageAccess.find(pageID);
+        for (auto& frameID : it1->value.keys())
+            entries.append(it1->value.find(frameID)->value);
+    }
+    return entries;
 }
-
+    
 void NetworkStorageSession::grantStorageAccessForFrame(const String& resourceDomain, const String& firstPartyDomain, uint64_t frameID, uint64_t pageID)
 {
     UNUSED_PARAM(firstPartyDomain);

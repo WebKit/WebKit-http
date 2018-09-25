@@ -205,6 +205,8 @@ public:
     ProcessID networkProcessIdentifier();
     ProcessID storageProcessIdentifier();
 
+    WebPageGroup& defaultPageGroup() { return m_defaultPageGroup.get(); }
+
     void setAlwaysUsesComplexTextCodePath(bool);
     void setShouldUseFontSmoothing(bool);
     
@@ -330,6 +332,7 @@ public:
     void setAllowsAnySSLCertificateForServiceWorker(bool allows) { m_allowsAnySSLCertificateForServiceWorker = allows; }
     bool allowsAnySSLCertificateForServiceWorker() const { return m_allowsAnySSLCertificateForServiceWorker; }
     void updateServiceWorkerUserAgent(const String& userAgent);
+    bool mayHaveRegisteredServiceWorkers(const WebsiteDataStore&);
 #endif
 
 #if PLATFORM(COCOA)
@@ -505,6 +508,7 @@ private:
     bool m_allowsAnySSLCertificateForServiceWorker { false };
     String m_serviceWorkerUserAgent;
     std::optional<WebPreferencesStore> m_serviceWorkerPreferences;
+    HashMap<String, bool> m_mayHaveRegisteredServiceWorkers;
 #endif
 
     Ref<WebPageGroup> m_defaultPageGroup;

@@ -51,6 +51,7 @@
 #include "UserActionElementSet.h"
 #include "ViewportArguments.h"
 #include "VisibilityState.h"
+#include <JavaScriptCore/ThreadLocalCache.h>
 #include <pal/SessionID.h>
 #include <wtf/Deque.h>
 #include <wtf/Forward.h>
@@ -1251,7 +1252,6 @@ public:
 
     bool inStyleRecalc() const { return m_inStyleRecalc; }
     bool inRenderTreeUpdate() const { return m_inRenderTreeUpdate; }
-    WEBCORE_EXPORT bool isSafeToUpdateStyleOrLayout() const;
 
     void updateTextRenderer(Text&, unsigned offsetOfReplacedText, unsigned lengthOfReplacedText);
 
@@ -1410,6 +1410,8 @@ public:
 #if ENABLE(IOS_TOUCH_EVENTS)
     bool handlingTouchEvent() const { return m_handlingTouchEvent; }
 #endif
+
+    JSC::ThreadLocalCache& threadLocalCache();
 
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
@@ -1895,6 +1897,8 @@ private:
 #endif
 
     HashSet<ApplicationStateChangeListener*> m_applicationStateChangeListeners;
+    
+    RefPtr<JSC::ThreadLocalCache> m_threadLocalCache;
 };
 
 Element* eventTargetElementForDocument(Document*);

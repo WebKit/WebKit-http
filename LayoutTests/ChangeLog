@@ -1,3 +1,404 @@
+2018-02-07  Daniel Bates  <dabates@apple.com>
+
+        Log error when authentication challenge is blocked due to an insecure request
+        https://bugs.webkit.org/show_bug.cgi?id=182358
+
+        Reviewed by Andy Estes.
+
+        Add more tests and update expected results of existing tests now that we emit console messages.
+
+        Also fixed a typo in LayoutTests/http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-insecure-image.https.html
+        so that it tests what it actually claims to test and made the test programmatically load the image
+        to avoid output flakiness caused by the preload scanner preloading it. The preload scanner performs
+        mixed content checks and this can cause duplicate mixed content warnings in the test output.
+
+        * http/tests/security/mixedContent/insecure-basic-auth-image.https-expected.txt: Added.
+        * http/tests/security/mixedContent/insecure-basic-auth-image.https.html: Copied from LayoutTests/http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-insecure-image.https.html.
+        * http/tests/security/mixedContent/insecure-download-redirects-to-basic-auth-secure-download.https-expected.txt:
+        * http/tests/security/mixedContent/insecure-image-redirects-to-basic-auth-secure-image-expected.txt:
+        * http/tests/security/mixedContent/resources/subresource/protected-page.php: Added.
+        * http/tests/security/mixedContent/resources/subresource2/protected-image.php: Added.
+        * http/tests/security/mixedContent/secure-page-navigates-to-basic-auth-insecure-page.https-expected.txt: Added.
+        * http/tests/security/mixedContent/secure-page-navigates-to-basic-auth-insecure-page.https.html: Added.
+        * http/tests/security/mixedContent/secure-page-navigates-to-basic-auth-secure-page-via-insecure-redirect.https-expected.txt: Added.
+        * http/tests/security/mixedContent/secure-page-navigates-to-basic-auth-secure-page-via-insecure-redirect.https.html: Added.
+        * http/tests/security/mixedContent/secure-redirect-to-insecure-redirect-to-basic-auth-secure-image.https-expected.txt:
+        * http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-insecure-image.https-expected.txt:
+        * http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-insecure-image.https.html:
+
+2018-02-07  Chris Dumez  <cdumez@apple.com>
+
+        IndexedDB in service workers is using a memory backed store
+        https://bugs.webkit.org/show_bug.cgi?id=182574
+        <rdar://problem/37316205>
+
+        Reviewed by Youenn Fablet.
+
+        Unskip test that no longer times out.
+
+        * TestExpectations:
+
+2018-02-07  Ms2ger  <Ms2ger@igalia.com>
+
+        [WPE] Enable http/wpt/fetch/response-status-text.html
+        https://bugs.webkit.org/show_bug.cgi?id=177872
+
+        Unreviewed test gardening.
+
+        * platform/wpe/TestExpectations: the test appears to pass since r227900.
+
+2018-02-07  Ms2ger  <Ms2ger@igalia.com>
+
+        [WPE] Test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=182568
+
+        Unreviewed test gardening.
+
+        * platform/wpe/TestExpectations:
+          - imported/w3c/web-platform-tests/css/css-shapes/shape-outside/values/shape-margin-001.html: fixed in r226404.
+          - imported/w3c/web-platform-tests/css/css-shapes/shape-outside/values/shape-outside-shape-arguments-000.html: fixed in r226404.
+          - imported/w3c/web-platform-tests/XMLHttpRequest/getallresponseheaders.htm: fixed in r227900.
+          - imported/w3c/web-platform-tests/XMLHttpRequest/status-async.htm: fixed in r227900.
+          - imported/w3c/web-platform-tests/XMLHttpRequest/status-basic.htm: fixed in r227900.
+          - imported/w3c/web-platform-tests/XMLHttpRequest/status-error.htm: fixed in r227900.
+          - svg/custom/filter-update-different-root.html: fixed in r225797.
+          - svg/filters/color-space-conversion.svg: fixed in r225797.
+          - svg/filters/container-with-filters.svg: fixed in r225797.
+          - svg/filters/feComposite-background-rect-control-operators.svg: fixed in r225797.
+          - svg/filters/feDisplacementMap-filterUnits.svg: fixed in r225797.
+        * platform/wpe/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+          update for error message change, probably in r227900.
+
+2018-02-06  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Rename String.prototype.trimEnd to avoid conflicts with native trimEnd
+        https://bugs.webkit.org/show_bug.cgi?id=182545
+
+        Reviewed by Brian Burg.
+
+        * inspector/unit-tests/string-utilities-expected.txt:
+        * inspector/unit-tests/string-utilities.html:
+
+2018-02-06  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Rendering SVG images with same size as WebGL texture doesn't work correctly
+        https://bugs.webkit.org/show_bug.cgi?id=182367
+
+        Reviewed by Dean Jackson.
+
+        * webgl/webgl-texture-image-buffer-reuse-expected.html: Added.
+        * webgl/webgl-texture-image-buffer-reuse.html: Added.
+
+2018-02-06  Matt Lewis  <jlewis3@apple.com>
+
+        Marked transitions/transition-display-property.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=182554
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-02-06  Youenn Fablet  <youenn@apple.com>
+
+        imported/w3c/web-platform-tests/service-workers/service-worker/fetch-event-respond-with-response-body-with-invalid-chunk.https.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=182541
+
+        Reviewed by Chris Dumez.
+
+        * TestExpectations:
+
+2018-02-06  Chris Dumez  <cdumez@apple.com>
+
+        Layout Test imported/w3c/web-platform-tests/service-workers/service-worker/fetch-waits-for-activate.https.html is a flaky failure on macOS and iOS
+        https://bugs.webkit.org/show_bug.cgi?id=181392
+        <rdar://problem/36384136>
+
+        Reviewed by Youenn Fablet.
+
+        Unskip test that is no longer flaky.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-02-06  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] show() should take an optional PaymentDetailsUpdate promise
+        https://bugs.webkit.org/show_bug.cgi?id=182538
+        <rdar://problem/36754552>
+
+        Reviewed by Tim Horton.
+
+        * http/tests/paymentrequest/payment-request-show-method.https-expected.txt:
+        * http/tests/paymentrequest/payment-request-show-method.https.html:
+
+2018-02-06  Daniel Bates  <dabates@apple.com>
+
+        Make mixed content basic auth tests more robust
+        https://bugs.webkit.org/show_bug.cgi?id=182537
+
+        Reviewed by Chris Dumez.
+
+        Load the test image programmatically instead of declaratively to avoid output flakiness caused by
+        the preload scanner preloading the test image. The preload scanner performs mixed content checks
+        and this can cause duplicate mixed content warnings in the test output.
+
+        * http/tests/security/mixedContent/secure-redirect-to-insecure-redirect-to-basic-auth-secure-image.https.html:
+        * http/tests/security/mixedContent/secure-redirect-to-secure-redirect-to-basic-auth-secure-image.https.html:
+
+2018-02-06  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Test at media/modern-media-controls/tracks-panel/tracks-panel-controls-bar-remains-visible-after-clicking-over-it.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=182425
+
+        Reviewed by Dean Jackson.
+
+        Turn the test back on now that it works.
+
+        * platform/mac/TestExpectations:
+
+2018-02-06  Antoine Quint  <graouts@apple.com>
+
+        Layout Test media/modern-media-controls/slider/slider-value.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=182515
+
+        Reviewed by Dean Jackson.
+
+        Ensure we stop printing messages once the test has completed since the bots show that this could happen,
+        although I couldn't reproduce locally.
+
+        * media/modern-media-controls/slider/slider-value.html:
+
+2018-02-06  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, unskip readable-byte-streams/detached-buffers.serviceworker.https.html as it is no longer flaky
+
+        * TestExpectations:
+
+2018-02-06  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, add bug number of service-worker/fetch-event-respond-with-response-body-with-invalid-chunk.https.html
+
+        * TestExpectations:
+
+2018-02-06  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, unskip service-worker/about-blank-replacement.https.html as it is no longer flaky
+
+        * TestExpectations:
+
+2018-02-06  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, unskip service-worker/service-worker-csp-connect.https.html as it is no longer flaky
+
+        * TestExpectations:
+
+2018-02-06  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, unskip service-worker/uncontrolled-page.https.html as it no longer seems flaky
+
+        * TestExpectations:
+
+2018-02-06  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, mark service-worker/windowclient-navigate.https.html as slow instead of flaky
+
+        * TestExpectations:
+
+2018-02-06  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, unskip service-worker/registration-service-worker-attributes.https.html now that it is no longer flaky
+
+        * TestExpectations:
+
+2018-02-06  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, unskip service-worker/update.https.html now that it is no longer flaky
+
+        * TestExpectations:
+
+2018-02-05  Youenn Fablet  <youenn@apple.com>
+
+        Crash in imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-origin.sub.html
+        https://bugs.webkit.org/show_bug.cgi?id=182422
+        <rdar://problem/37182665>
+
+        Reviewed by Alex Christensen.
+
+        * platform/mac/TestExpectations:
+
+2018-02-05  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test gardening after r228044
+        https://bugs.webkit.org/show_bug.cgi?id=182517
+
+        Unreviewed.
+
+        * platform/ios/fast/css-generated-content/initial-letter-basic-expected.txt:
+        * platform/ios/fast/css-generated-content/initial-letter-border-padding-expected.txt:
+        * platform/ios/fast/css-generated-content/initial-letter-raised-expected.txt:
+        * platform/ios/fast/css-generated-content/initial-letter-sunken-expected.txt:
+
+2018-02-05  Simon Fraser  <simon.fraser@apple.com>
+
+        iOS WK2: fast/visual-viewport/resize-event-fired.html crashes with GuardMalloc
+        https://bugs.webkit.org/show_bug.cgi?id=182504
+        rdar://problem/36386435
+
+        Reviewed by Wenson Hsieh.
+        
+        Don't end the test until both the resize handler has been called, and the zoom is complete, to
+        avoid leaving dangling zoom completion handlers.
+
+        * fast/visual-viewport/resize-event-fired.html:
+        * platform/ios/TestExpectations:
+
+2018-02-05  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, unskip fetch-event-respond-with-partial-stream.https.html as it no longer times out
+
+        * TestExpectations:
+
+2018-02-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK+ gardening.
+
+        * platform/gtk/TestExpectations: Re-skip the modern media controls tests
+        on the GTK+ port after they were unskipped in r228097. They're timing
+        out in large enough numbers to cause early exits. They should be
+        examined in more detail and unskipped once fixed.
+
+2018-02-05  John Wilander  <wilander@apple.com>
+
+        Storage Access API: Add testRunner.getAllStorageAccessEntries() to make testing easier and more explicit
+        https://bugs.webkit.org/show_bug.cgi?id=181601
+        <rdar://problem/36475837>
+
+        Reviewed by Alex Christensen.
+
+        http/tests/storageAccess/request-and-grant-access-then-detach-should-not-have-access.html
+        was found to be flaky. With the testRunner.hasStorageAccessEntry() getter
+        it's possible to check access even if a frame doesn't respond timely to
+        postMessage after detach and attach.
+
+        * http/tests/storageAccess/request-and-grant-access-then-detach-should-not-have-access-expected.txt:
+        * http/tests/storageAccess/request-and-grant-access-then-detach-should-not-have-access.html:
+        * platform/mac-wk2/TestExpectations:
+            http/tests/storageAccess/request-and-grant-access-then-navigate-should-not-have-access.html
+            no longer marked as flaky. Note that the wrong test was marked flaky. It should have been
+            http/tests/storageAccess/request-and-grant-access-then-detach-should-not-have-access.html.
+
+2018-02-05  Matt Lewis  <jlewis3@apple.com>
+
+        Skipped imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-origin.sub.html
+        https://bugs.webkit.org/show_bug.cgi?id=182422
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2018-02-05  Chris Dumez  <cdumez@apple.com>
+
+        Layout Test imported/w3c/web-platform-tests/service-workers/service-worker/register-same-scope-different-script-url.https.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=181166
+        <rdar://problem/37169508>
+
+        Reviewed by Youenn Fablet.
+
+        Unskip test that is no longer flaky.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-02-05  Daniel Bates  <dabates@apple.com>
+
+        Disallow evaluating JavaScript from NPP_Destroy() in WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=181889
+        <rdar://problem/36674701>
+
+        Reviewed by Brent Fulgham.
+
+        Consolidate all the plugin tests that evaluate JavaScript from NPP_Destroy()
+        and mark them as Wont Fix. In a subsequent change we will look to replace
+        these tests with tests that ensure that we do not evaluate JavaScript from
+        NPP_Destroy().
+
+        * platform/mac/TestExpectations:
+        * platform/wk2/TestExpectations:
+
+2018-02-05  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Turn media/modern-media-controls tests back on by default
+        https://bugs.webkit.org/show_bug.cgi?id=182482
+
+        Reviewed by Eric Carlson.
+
+        After updating a significant amount of tests under media/modern-media-controls over the last week, we can stop skipping
+        tests in this directory by default, and instead skip tests that do not apply on a per-platform basis. This patch does that
+        along with fixing a few remaining tests and adding some more for the new behavior of display 3, 4, 5 or 6 digits for time
+        labels depending on the overall video duration.
+
+        * TestExpectations:
+        * http/tests/media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-live-broadcast-expected.txt:
+        * http/tests/media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-live-broadcast.html:
+        * http/tests/media/modern-media-controls/skip-back-support/skip-back-support-button-click-expected.txt:
+        * http/tests/media/modern-media-controls/skip-back-support/skip-back-support-button-click.html:
+        * http/tests/media/modern-media-controls/status-support/status-support-loading-expected.txt:
+        * http/tests/media/modern-media-controls/status-support/status-support-loading.html:
+        * http/tests/media/modern-media-controls/time-control/1-to-10-hours-expected.txt: Added.
+        * http/tests/media/modern-media-controls/time-control/1-to-10-hours.html: Added.
+        * http/tests/media/modern-media-controls/time-control/10-hours-or-more-expected.txt: Added.
+        * http/tests/media/modern-media-controls/time-control/10-hours-or-more.html: Added.
+        * http/tests/media/modern-media-controls/time-control/10-minutes-to-1-hour-expected.txt: Added.
+        * http/tests/media/modern-media-controls/time-control/10-minutes-to-1-hour.html: Added.
+        * http/tests/media/modern-media-controls/time-control/less-than-10-minutes-expected.txt: Renamed from LayoutTests/http/tests/media/modern-media-controls/time-labels-support/long-time-expected.txt.
+        * http/tests/media/modern-media-controls/time-control/less-than-10-minutes.html: Renamed from LayoutTests/http/tests/media/modern-media-controls/time-labels-support/long-time.html.
+        * media/modern-media-controls/scrubber-support/scrubber-support-drag.html: Make this test more reliable by going a little further
+        left of the slider's left-most point to ensure we always get a 0-value.
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2018-02-05  Antti Koivisto  <antti@apple.com>
+
+        Crash on sfgate.com because mismatching link preload types
+        https://bugs.webkit.org/show_bug.cgi?id=182483
+        <rdar://problem/37065331>
+
+        Reviewed by Daniel Bates.
+
+        * http/tests/preload/link-preload-type-mismatch-expected.txt: Added.
+        * http/tests/preload/link-preload-type-mismatch.html: Added.
+
+2018-02-05  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Rename gutter properties to remove "grid-" prefix
+        https://bugs.webkit.org/show_bug.cgi?id=180290
+
+        Reviewed by Javier Fernandez.
+
+        * TestExpectations: We're now passing some gutters tests,
+        so removing them from TestExpectations.
+        * fast/css-grid-layout/grid-gutters-get-set.html: Removed. This is now covered by WPT tests.
+        * fast/css-grid-layout/grid-shorthand-get-set-expected.txt: Update results for gutter properties
+        as default value is now "normal".
+        * fast/css-grid-layout/grid-shorthand-get-set.html: Update checks for gutter properties
+        as default value is now "normal".
+
+2018-02-05  Ms2ger  <Ms2ger@igalia.com>
+
+        Implement createImageBitmap(HTMLVideoElement)
+        https://bugs.webkit.org/show_bug.cgi?id=182388
+
+        Reviewed by Žan Doberšek.
+
+        * platform/gtk/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-invalid-args-expected.txt:
+        * platform/ios/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-invalid-args-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-invalid-args-expected.txt:
+
+2018-02-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening, skip fast/visual-viewport/resize-event-fired.html on iOS.
+
+        * platform/ios/TestExpectations:
+
 2018-02-02  Ryan Haddad  <ryanhaddad@apple.com>
 
         Rebaseline imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-invalid-args.html for iOS.

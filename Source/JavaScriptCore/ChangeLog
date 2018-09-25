@@ -1,3 +1,216 @@
+2018-02-06  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: protocol generator should automatically deduce the correct include style to use
+        https://bugs.webkit.org/show_bug.cgi?id=182505
+
+        Reviewed by Timothy Hatcher.
+
+        Currently the generated imports use a mix of system header imports (powered by forwarding headers)
+        and framework-style includes. Since forwarding headers are going away, this patch stops
+        using system header includes for headers that are JavaScriptCore private headers. Instead,
+        use either a relative include or a framework include.
+
+        * inspector/scripts/codegen/generate_cpp_alternate_backend_dispatcher_header.py:
+        (CppAlternateBackendDispatcherHeaderGenerator.generate_output):
+        (CppAlternateBackendDispatcherHeaderGenerator):
+        (CppAlternateBackendDispatcherHeaderGenerator._generate_secondary_header_includes):
+        * inspector/scripts/codegen/generate_cpp_backend_dispatcher_header.py:
+        (CppBackendDispatcherHeaderGenerator.generate_output):
+        (CppBackendDispatcherHeaderGenerator._generate_secondary_header_includes):
+        * inspector/scripts/codegen/generate_cpp_backend_dispatcher_implementation.py:
+        (CppBackendDispatcherImplementationGenerator.generate_output):
+        (CppBackendDispatcherImplementationGenerator._generate_secondary_header_includes):
+        * inspector/scripts/codegen/generate_cpp_frontend_dispatcher_header.py:
+        (CppFrontendDispatcherHeaderGenerator.generate_output):
+        (CppFrontendDispatcherHeaderGenerator._generate_secondary_header_includes):
+        * inspector/scripts/codegen/generate_cpp_frontend_dispatcher_implementation.py:
+        (CppFrontendDispatcherImplementationGenerator.generate_output):
+        (CppFrontendDispatcherImplementationGenerator._generate_secondary_header_includes):
+        * inspector/scripts/codegen/generate_cpp_protocol_types_header.py:
+        (CppProtocolTypesHeaderGenerator.generate_output):
+        (CppProtocolTypesHeaderGenerator._generate_secondary_header_includes):
+        * inspector/scripts/codegen/generate_cpp_protocol_types_implementation.py:
+        (CppProtocolTypesImplementationGenerator.generate_output):
+        (CppProtocolTypesImplementationGenerator._generate_secondary_header_includes):
+        * inspector/scripts/codegen/generate_objc_backend_dispatcher_header.py:
+        (ObjCBackendDispatcherHeaderGenerator):
+        Convert existing header lists to the new entries format, which includes the
+        allowable target frameworks and the relative path to the header.
+
+        * inspector/scripts/codegen/generator.py:
+        (Generator.generate_includes_from_entries):
+        Copied from the same in the builtins code generator. It still works great.
+
+        * inspector/scripts/tests/all/expected/definitions-with-mac-platform.json-result:
+        * inspector/scripts/tests/generic/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/generic/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/definitions-with-mac-platform.json-result:
+        * inspector/scripts/tests/generic/expected/domain-availability.json-result:
+        * inspector/scripts/tests/generic/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/generic/expected/enum-values.json-result:
+        * inspector/scripts/tests/generic/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/generic/expected/same-type-id-different-domain.json-result:
+        * inspector/scripts/tests/generic/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-aliased-primitive-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-array-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-enum-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-requiring-runtime-casts.json-result:
+        * inspector/scripts/tests/generic/expected/type-with-open-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/worker-supported-domains.json-result:
+        * inspector/scripts/tests/ios/expected/definitions-with-mac-platform.json-result:
+        * inspector/scripts/tests/mac/expected/definitions-with-mac-platform.json-result:
+        Rebaseline.
+
+2018-02-06  Keith Miller  <keith_miller@apple.com>
+
+        put_to_scope/get_from_scope should not cache lexical scopes when expecting a global object
+        https://bugs.webkit.org/show_bug.cgi?id=182549
+        <rdar://problem/36189995>
+
+        Reviewed by Saam Barati.
+
+        Previously, the llint/baseline caching for put_to_scope and
+        get_from_scope would cache lexical environments when the
+        varInjectionWatchpoint had been fired for global properties. Code
+        in the DFG does not follow this same assumption so we could
+        potentially return the wrong result. Additionally, the baseline
+        would write barrier the global object rather than the lexical
+        enviroment object. This patch makes it so that we do not cache
+        anything other than the global object for when the resolve type is
+        GlobalPropertyWithVarInjectionChecks or GlobalProperty.
+
+        * assembler/MacroAssembler.cpp:
+        (JSC::MacroAssembler::jitAssert):
+        * assembler/MacroAssembler.h:
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emit_op_get_from_scope):
+        (JSC::JIT::emit_op_put_to_scope):
+        * runtime/CommonSlowPaths.h:
+        (JSC::CommonSlowPaths::tryCachePutToScopeGlobal):
+        (JSC::CommonSlowPaths::tryCacheGetFromScopeGlobal):
+        * runtime/Options.h:
+
+2018-01-28  Filip Pizlo  <fpizlo@apple.com>
+
+        Global objects should be able to use TLCs to allocate from different blocks from each other
+        https://bugs.webkit.org/show_bug.cgi?id=182227
+
+        Reviewed by JF Bastien.
+        
+        This uses TLCs to create at least `minimumDistanceBetweenCellsFromDifferenOrigins` bytes of
+        distance between objects from different origins, using the following combination of things. For
+        short lets refer to that constant as K.
+        
+        - Since r227721, LargeAllocation puts K bytes padding at the end of each allocation.
+        
+        - Since r227718, MarkedBlock puts at least K bytes in its footer.
+        
+        - Since r227617, global objects can have their own TLCs, which make them allocate from a
+          different set of blocks than other global objects. The TLC of a global object comes into
+          effect when you enter the VM via that global object.
+        
+        - With this change, TLCs and blocks both have security origins. A TLC will only use blocks that
+          share the same security origin or empty blocks (in which case we zero the block and change
+          its security origin).
+        
+        WebCore determines the TLC-GlobalObject mapping. By default, global objects would simply use
+        the VM's default TLC. WebCore makes it so that DOM windows (but not worker global objects) get
+        a TLC based on their document's SecurityOrigin.
+        
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * heap/BlockDirectory.cpp:
+        (JSC::BlockDirectory::findBlockForAllocation):
+        (JSC::BlockDirectory::prepareForAllocation):
+        * heap/BlockDirectory.h:
+        * heap/LocalAllocator.cpp:
+        (JSC::LocalAllocator::LocalAllocator):
+        (JSC::LocalAllocator::reset):
+        (JSC::LocalAllocator::~LocalAllocator):
+        (JSC::LocalAllocator::allocateSlowCase):
+        (JSC::LocalAllocator::tryAllocateWithoutCollecting):
+        * heap/LocalAllocator.h:
+        (JSC::LocalAllocator::tlc const):
+        * heap/MarkStackMergingConstraint.cpp:
+        * heap/MarkStackMergingConstraint.h:
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::Handle::associateWithOrigin):
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::Handle::securityOriginToken const):
+        * heap/SecurityOriginToken.cpp: Added.
+        (JSC::uniqueSecurityOriginToken):
+        * heap/SecurityOriginToken.h: Added.
+        * heap/ThreadLocalCache.cpp:
+        (JSC::ThreadLocalCache::create):
+        (JSC::ThreadLocalCache::ThreadLocalCache):
+        (JSC::ThreadLocalCache::allocateData):
+        (JSC::ThreadLocalCache::installSlow):
+        * heap/ThreadLocalCache.h:
+        (JSC::ThreadLocalCache::securityOriginToken const):
+        * heap/ThreadLocalCacheInlines.h:
+        (JSC::ThreadLocalCache::install):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::JSGlobalObject):
+        (JSC::JSGlobalObject::createThreadLocalCache):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::threadLocalCache):
+        (JSC::JSGlobalObject::threadLocalCache const): Deleted.
+        * runtime/VMEntryScope.cpp:
+        (JSC::VMEntryScope::VMEntryScope):
+        (JSC::VMEntryScope::~VMEntryScope):
+        * runtime/VMEntryScope.h:
+
+2018-02-05  Don Olmstead  <don.olmstead@sony.com>
+
+        JavaScriptCore files should not be included relatively
+        https://bugs.webkit.org/show_bug.cgi?id=182452
+
+        Reviewed by Keith Miller.
+
+        * API/JSCallbackConstructor.h:
+        * CMakeLists.txt:
+        * disassembler/ARM64Disassembler.cpp:
+        * disassembler/ARMv7Disassembler.cpp:
+        * heap/LockDuringMarking.h:
+        * inspector/InjectedScriptBase.h:
+        * inspector/InjectedScriptHost.h:
+        * inspector/JavaScriptCallFrame.h:
+        * inspector/ScriptArguments.h:
+        * inspector/ScriptDebugListener.h:
+        * inspector/ScriptDebugServer.h:
+        * inspector/agents/InspectorAgent.h:
+        * inspector/agents/InspectorConsoleAgent.h:
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * inspector/agents/InspectorHeapAgent.h:
+        * inspector/agents/InspectorRuntimeAgent.h:
+        * inspector/agents/InspectorScriptProfilerAgent.h:
+        * runtime/RegExp.h:
+
+2018-02-05  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r228012.
+        https://bugs.webkit.org/show_bug.cgi?id=182493
+
+        "It regressed ARES-6 by 2-4%" (Requested by saamyjoon on
+        #webkit).
+
+        Reverted changeset:
+
+        "[JSC] Clean up ArraySpeciesCreate"
+        https://bugs.webkit.org/show_bug.cgi?id=182434
+        https://trac.webkit.org/changeset/228012
+
+2018-02-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline bindings generator tests after r228032.
+        https://bugs.webkit.org/show_bug.cgi?id=182445
+
+        Unreviewed test gardening.
+
+        * Scripts/tests/builtins/expected/WebCoreJSBuiltins.h-result:
+
 2018-02-02  Saam Barati  <sbarati@apple.com>
 
         Make various DFG_ASSERTs provide more data to WTFCrashWithInfo

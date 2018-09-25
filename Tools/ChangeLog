@@ -1,3 +1,349 @@
+2018-02-07  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK] Enable WebKit.GeolocationTransitionTo{High,Low}Accuracy tests
+        https://bugs.webkit.org/show_bug.cgi?id=125068
+
+        Unreviewed test gardening.
+
+        They do not appear to have failed since we started running them again in r226944.
+
+        * TestWebKitAPI/glib/TestExpectations.json:
+
+2018-02-07  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK] Enable WebKit.InjectedBundleFrameHitTest test
+        https://bugs.webkit.org/show_bug.cgi?id=120303
+
+        Unreviewed test gardening.
+
+        It does not appear to have failed since we started running it again in r226944.
+
+        * TestWebKitAPI/glib/TestExpectations.json:
+
+2018-02-07  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK] Enable WebKit.ForceRepaint test
+        https://bugs.webkit.org/show_bug.cgi?id=105532
+
+        Unreviewed test gardening.
+
+        It does not appear to have failed since we started running it again in r226944.
+
+        * TestWebKitAPI/glib/TestExpectations.json:
+
+2018-02-07  Philippe Normand  <pnormand@igalia.com>
+
+        [JHBuild] Add libva in moduleset
+        https://bugs.webkit.org/show_bug.cgi?id=182384
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * gstreamer/jhbuild.modules: Add libva and disable spurious message output.
+        * gtk/install-dependencies: Remove libva from dependencies.
+        * wpe/install-dependencies: Ditto.
+
+2018-02-07  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK] Enable WebKit.NewFirstVisuallyNonEmptyLayoutFrames test
+        https://bugs.webkit.org/show_bug.cgi?id=85037
+
+        Unreviewed test gardening.
+
+        It does not appear to have failed since we started running it again in r226944.
+
+        * TestWebKitAPI/glib/TestExpectations.json:
+
+2018-02-06  Leo Balter  <leonardo.balter@gmail.com>
+
+        Nit fix for ruby script called through Perl
+        https://bugs.webkit.org/show_bug.cgi?id=182552
+
+        Reviewed by Yusuke Suzuki.
+
+        * BuildSlaveSupport/build.webkit.org-config/steps.py:
+        (RunTest262Tests):
+
+2018-02-06  Don Olmstead  <don.olmstead@sony.com>
+
+        Remove WebCore/ForwardingHeaders directory
+        https://bugs.webkit.org/show_bug.cgi?id=182347
+
+        Reviewed by Keith Miller.
+
+        * WebKitTestRunner/TestController.cpp:
+
+2018-02-06  Ross Kirsling  <ross.kirsling@sony.com>
+
+        webkit-patch upload should ask for confirmation before creating a new bug
+        https://bugs.webkit.org/show_bug.cgi?id=182551
+
+        Reviewed by Daniel Bates.
+
+        It is quite easy to paste unintended text into the bug number prompt. This creates a junk bug with an uneditable
+        first comment, which could result in embarrassment or potentially even a proprietary information leak.
+
+        * Scripts/webkitpy/tool/commands/upload_unittest.py:
+        (test_prepare):
+        * Scripts/webkitpy/tool/steps/promptforbugortitle.py:
+        (PromptForBugOrTitle):
+        (PromptForBugOrTitle.options):
+        (PromptForBugOrTitle.run):
+
+2018-02-06  Youenn Fablet  <youenn@apple.com>
+
+        HasServiceWorkerRegistration bit should be sent when creating a new page
+        https://bugs.webkit.org/show_bug.cgi?id=182410
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ServiceWorkerBasic.mm:
+
+2018-02-06  Andres Gomez  <agomez@igalia.com>
+
+        [GTK][WPE] Add dependencies watching lists for WKGTK+ and WPE
+        https://bugs.webkit.org/show_bug.cgi?id=182346
+
+        Reviewed by Michael Catanzaro.
+
+        Loren, Carlos and Andres are interested on the WKGTK+ dependencies
+        watchlist since they are running WKGTK+ EWS.
+
+        Similarly, Adrian and Carlos are running a WPE EWS.
+
+        * Scripts/webkitpy/common/config/watchlist: Added WPEDependencies
+          and WebKitGTKDependencies watchlists with the proper people.
+
+2018-02-06  Andres Gomez  <agomez@igalia.com>
+
+        Unreviewed, canonicalize contributors.json
+
+        After Thibault's addition, automatic checks complain about
+        contributors.json with:
+
+        "[...] Use "validate-committer-lists --canonicalize" to reformat
+        it. [...]"
+
+        * Scripts/webkitpy/common/config/contributors.json: Canonicalize.
+
+2018-02-06  Andres Gomez  <agomez@igalia.com>
+
+        Unreviewed, add Lorenzo Tilve to contributors.json
+
+        We need to add Loren to the contributors list in order to CC him
+        in Bugzilla.
+
+        * Scripts/webkitpy/common/config/contributors.json: Added Lorenzo
+          Tilve.
+
+2018-02-05  Yousuke Kimoto  <yousuke.kimoto@sony.com>
+
+        [WinCairo] Refine WebKitLegacy and WebKit build for wincairo
+        https://bugs.webkit.org/show_bug.cgi?id=182478
+
+        Reviewed by Alex Christensen.
+
+        For TestWebKitAPI, sources related to WebKitLegacy are built
+        at WebKit build. Those files should be reffered for WebKitLegacy build.
+
+        * TestWebKitAPI/PlatformWin.cmake:
+
+2018-02-05  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r217572): run-webkit-tests exits without emitting newline character
+        https://bugs.webkit.org/show_bug.cgi?id=182360
+
+        Rubber-stamped by Aakash Jain.
+
+        Fixes an annoyance where run-webkit-tests always exits without printing a newline character.
+        In the terminal this looks like:
+
+            $ Tools/Scripts/run-webkit-tests
+            Expected to fail, but passed: (7)
+            ...
+            Stopping WebSocket server ...$
+
+        This bug was caused by code added in r217572 to stop all run-webkit-tests started servers (e.g. an HTTP
+        server) from an at-exit handler. When run-webkit-tests runs successfully (i.e. without error or
+        control-C interruption) we would stop all such servers twice: once as part of ending the test
+        run and once from the at-exit handler. The latter never prints a trailing newline character hence
+        the state of the terminal (as depicted above). Instead LayoutTestRunner.stop_servers() should only
+        stop servers that it started in LayoutTestRunner.start_servers().
+
+        * Scripts/webkitpy/layout_tests/controllers/layout_test_runner.py:
+        (LayoutTestRunner.__init__):
+        (LayoutTestRunner.start_servers):
+        (LayoutTestRunner.stop_servers):
+        Only start servers that run-webkit-tests has not already started and only stop servers that
+        run-webkit-tests started.
+
+        * Scripts/webkitpy/layout_tests/controllers/layout_test_runner_unittest.py:
+        (LayoutTestRunnerTests.test_servers_started.is_websocket_server_running):
+        (LayoutTestRunnerTests.test_servers_started):
+        (LayoutTestRunnerTests.test_servers_started.is_websocket_servers_running): Deleted.
+        Update due to rename below.
+
+        * Scripts/webkitpy/layout_tests/servers/websocket_server.py:
+        (is_web_socket_server_running): Added.
+        (PyWebSocket.is_running): Deleted.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port.is_http_server_running): Check if we already started the server ourself.
+        (Port.is_websocket_server_running): Formerly named is_websocket_servers_running. Modified
+        to check if we already started the server ourself. Take a similar approach as the other
+        Port.is_*_running methods and only check if an existing WebSocket server is running on the
+        non-secure server port. This is a simple heuristic and should be sufficient in practice.
+        (Port.is_wpt_server_running): Check if we already started the server ourself.
+        (Port.is_websocket_servers_running): Deleted; renamed to is_websocket_server_running().
+
+2018-02-05  Daniel Bates  <dabates@apple.com>
+
+        prepare-ChangeLog gets confused about Python docstrings that contain the word "class" or "def"
+        https://bugs.webkit.org/show_bug.cgi?id=182405
+
+        Reviewed by David Kilzer.
+
+        String literal statements, including docstrings, do not demarcate a new scope in Python.
+        So, do not treat them like they do when building up the list of modified functions.
+
+        * Scripts/prepare-ChangeLog:
+        (get_function_line_ranges_for_python):
+        * Scripts/webkitperl/prepare-ChangeLog_unittest/resources/python_unittests-expected.txt:
+        The expected ending line number for the last "pass" statement inside the scope of Class5 changed
+        from 97 to 98 because empty lines do not effect scope. This is consistent with the parsing
+        of the second "pass" statement in the scope of class Class5. A "pass" is a null operation that
+        is used as a syntactic placeholder when a statement is required. Ideally we would make
+        the parsing code smarter so as to avoid emitting ranges for "pass" statements that serve
+        not syntactic purpose.
+        * Scripts/webkitperl/prepare-ChangeLog_unittest/resources/python_unittests.py:
+        (Class5):
+        (Class6):
+        (Class6.__init__):
+        (Class7):
+        (Class7.__init__):
+        (Class8):
+        (Class8.__init__):
+        Add some more tests.
+
+2018-02-05  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r228086.
+
+        This introduced a failure with API test
+        URLTest.HostIsIPAddress.
+
+        Reverted changeset:
+
+        "Add a way to check if a host is an IP address"
+        https://bugs.webkit.org/show_bug.cgi?id=182427
+        https://trac.webkit.org/changeset/228086
+
+2018-02-05  John Wilander  <wilander@apple.com>
+
+        Storage Access API: Add testRunner.getAllStorageAccessEntries() to make testing easier and more explicit
+        https://bugs.webkit.org/show_bug.cgi?id=181601
+        <rdar://problem/36475837>
+
+        Reviewed by Alex Christensen.
+
+        http/tests/storageAccess/request-and-grant-access-then-detach-should-not-have-access.html
+        was found to be flaky. With the testRunner.hasStorageAccessEntry() getter
+        it's possible to check access even if a frame doesn't respond timely to
+        postMessage after detach and attach.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didReceiveMessageToPage):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setStorageAccessAPIEnabled):
+            Just moved for source file grouping.
+        (WTR::TestRunner::getAllStorageAccessEntries):
+        (WTR::TestRunner::callDidReceiveAllStorageAccessEntriesCallback):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::getAllStorageAccessEntries):
+            Note that this is just stubbed out, i.e. not implemented.
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+        (WTR::TestInvocation::didReceiveAllStorageAccessEntries):
+        * WebKitTestRunner/TestInvocation.h:
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::getAllStorageAccessEntries):
+            This is the Cocoa-specific version of this test infrastructure.
+
+2018-02-05  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Win] Enable multi CPU building on MSBuild.
+        https://bugs.webkit.org/show_bug.cgi?id=182446
+
+        Compiling itself already uses multi cores, but other stuff is still on single core.
+        This patch enables that by passing an argument to MSBuild.exe.
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitdirs.pm:
+        (determineNumberOfCPUs):
+        (buildVisualStudioProject):
+
+2018-02-05  Alicia Boya García  <aboya@igalia.com>
+
+        Fix bug in MediaTime comparison for negative values with different scale.
+        https://bugs.webkit.org/show_bug.cgi?id=182433
+
+        Improved test coverage for MediaTime::compare().
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * TestWebKitAPI/Tests/WTF/MediaTime.cpp:
+        (TestWebKitAPI::TEST):
+
+2018-02-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] WebSockets must use system proxy settings
+        https://bugs.webkit.org/show_bug.cgi?id=126384
+
+        Reviewed by Michael Catanzaro.
+
+        Check also WebSockets in /webkit2/WebKitWebContext/proxy.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitWebContext.cpp:
+        (ProxyTest::webSocketProxyServerCallback):
+        (ProxyTest::ProxyTest):
+        (ProxyTest::webSocketConnected):
+        (ProxyTest::createWebSocketAndWaitUntilConnected):
+        (webSocketServerCallback):
+        (testWebContextProxySettings):
+        * TestWebKitAPI/glib/WebKitGLib/WebKitTestServer.cpp:
+        (WebKitTestServer::~WebKitTestServer):
+        (WebKitTestServer::addWebSocketHandler):
+        (WebKitTestServer::removeWebSocketHandler):
+        (WebKitTestServer::getWebSocketURIForPath const):
+        (WebKitTestServer::getURIForPath const):
+        * TestWebKitAPI/glib/WebKitGLib/WebKitTestServer.h:
+        (WebKitTestServer::baseURI const):
+        (WebKitTestServer::baseWebSocketURI const):
+
+2018-02-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Add a way to check if a host is an IP address
+        https://bugs.webkit.org/show_bug.cgi?id=182427
+
+        Reviewed by Alex Christensen.
+
+        Add unit test for URL::hostIsIPAddress().
+
+        * TestWebKitAPI/Tests/WebCore/URL.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2018-02-03  Charlie Turner  <cturner@igalia.com>
+
+        Add libmount to WPE dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=182345
+
+        Reviewed by Michael Catanzaro.
+
+        * wpe/install-dependencies:
+
 2018-02-02  Youenn Fablet  <youenn@apple.com>
 
         W3C test exporter should allow exporting newly added files

@@ -74,6 +74,14 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
             this._valueTextField.detached();
     }
 
+    hidden()
+    {
+        if (this._nameTextField && this._nameTextField.editing)
+            this._nameTextField.element.blur();
+        else if (this._valueTextField && this._valueTextField.editing)
+            this._valueTextField.element.blur();
+    }
+
     highlight()
     {
         this._element.classList.add("highlighted");
@@ -336,7 +344,7 @@ WI.SpreadsheetStyleProperty = class SpreadsheetStyleProperty extends WI.Object
             if (className) {
                 let span = document.createElement("span");
                 span.classList.add(className);
-                span.textContent = token.value.trimMiddle(maxValueLength);
+                span.textContent = token.value.truncateMiddle(maxValueLength);
                 return span;
             }
 

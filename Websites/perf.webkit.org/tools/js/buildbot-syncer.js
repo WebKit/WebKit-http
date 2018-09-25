@@ -140,6 +140,7 @@ class BuildbotSyncer {
         assert(!this._slavesWithNewRequests.has(slaveName));
         let properties = this._propertiesForBuildRequest(newRequest, requestsInGroup);
 
+        assert(properties['forcescheduler'], `forcescheduler was not specified in buildbot properties for build request ${newRequest.id()} on platform "${newRequest.platform().name()}" for builder "${this.builderName()}"`);
         assert.equal(!this._slavePropertyName, !slaveName);
         if (this._slavePropertyName)
             properties[this._slavePropertyName] = slaveName;
@@ -148,7 +149,19 @@ class BuildbotSyncer {
             properties[this._platformPropertyName] = newRequest.platform().name();
 
         this._slavesWithNewRequests.add(slaveName);
-        return this._remote.postFormUrlencodedData(this.pathForForceBuild(), properties);
+        return this.scheduleBuildOnBuildbotDeprecated(properties);
+    }
+
+    scheduleBuildOnBuildbotDeprecated(properties)
+    {
+        return this._remote.postFormUrlencodedData(this.pathForForceBuildDeprecated(), properties);
+    }
+
+    scheduleBuildOnBuildbot(properties)
+    {
+        const data = {jsonrpc: '2.0', method: 'force', id: properties[this._buildRequestPropertyName], params: properties};
+        const path = this.pathForForceBuild(properties['forcescheduler']);
+        return this._remote.postJSON(path, data);
     }
 
     scheduleRequestInGroupIfAvailable(newRequest, requestsInGroup, slaveName)
@@ -198,7 +211,7 @@ class BuildbotSyncer {
     {
         return this._remote.getJSON(this.pathForPendingBuildsJSONDeprecated()).then((content) => {
             let pendingEntries = content.map((entry) => new BuildbotBuildEntryDeprecated(this, entry));
-            return this._pullRecentBuilds(count).then((entries) => {
+            return this._pullRecentBuildsDeprecated(count).then((entries) => {
                 let entryByRequest = {};
 
                 for (let entry of pendingEntries)
@@ -219,7 +232,7 @@ class BuildbotSyncer {
         });
     }
 
-    _pullRecentBuilds(count)
+    _pullRecentBuildsDeprecated(count)
     {
         if (!count)
             return Promise.resolve([]);
@@ -228,7 +241,7 @@ class BuildbotSyncer {
         for (let i = 0; i < count; i++)
             selectedBuilds[i] = -i - 1;
 
-        return this._remote.getJSON(this.pathForBuildJSON(selectedBuilds)).then((content) => {
+        return this._remote.getJSON(this.pathForBuildJSONDeprecated(selectedBuilds)).then((content) => {
             const entries = [];
             for (let index of selectedBuilds) {
                 const entry = content[index];
@@ -239,13 +252,27 @@ class BuildbotSyncer {
         });
     }
 
+    _pullRecentBuilds(count)
+    {
+        if (!count)
+            return Promise.resolve([]);
+
+        return this._remote.getJSON(this.pathForRecentBuilds(count)).then((content) => {
+            if (!('builds' in content))
+                return [];
+            return content.builds.map((build) => new BuildbotBuildEntry(this, build));
+        });
+    }
+
     pathForPendingBuildsJSONDeprecated() { return `/json/builders/${escape(this._builderName)}/pendingBuilds`; }
     pathForPendingBuilds() { return `/api/v2/builders/${this._builderID}/buildrequests?complete=false&claimed=false`; }
-    pathForBuildJSON(selectedBuilds)
+    pathForBuildJSONDeprecated(selectedBuilds)
     {
         return `/json/builders/${escape(this._builderName)}/builds/?` + selectedBuilds.map((number) => 'select=' + number).join('&');
     }
-    pathForForceBuild() { return `/builders/${escape(this._builderName)}/force`; }
+    pathForRecentBuilds(count) { return `/api/v2/builders/${this._builderID}/builds?limit=${count}&order=-number&property=*`; }
+    pathForForceBuildDeprecated() { return `/builders/${escape(this._builderName)}/force`; }
+    pathForForceBuild(schedulerName) { return `/api/v2/forceschedulers/${schedulerName}`; }
 
     url() { return this._remote.url(`/builders/${escape(this._builderName)}/`); }
     urlForBuildNumberDeprecated(number) { return this._remote.url(`/builders/${escape(this._builderName)}/builds/${number}`); }

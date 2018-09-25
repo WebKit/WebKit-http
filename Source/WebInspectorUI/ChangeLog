@@ -1,3 +1,137 @@
+2018-02-07  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: completion popover doesn't hide when switching panels
+        https://bugs.webkit.org/show_bug.cgi?id=182464
+        <rdar://problem/37202763>
+
+        Reviewed by Timothy Hatcher.
+
+        Hide completion popover by triggering blur event on the focused text field.
+        Removing text fields from the DOM tree would hide the completion popovers as well,
+        but switching sidebar panels doesn't remove them from the DOM.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.hidden):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js:
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.hidden):
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.hidden):
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype.hidden):
+
+2018-02-06  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Replace isAncestor and isDescendant with native DOM contains method
+        https://bugs.webkit.org/show_bug.cgi?id=182069
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Main.js:
+        (WI.restoreFocusFromElement):
+        (WI._mouseDown):
+        (WI._focusedContentBrowser):
+        (WI._focusedContentView):
+        * UserInterface/Base/Utilities.js:
+        (Node.prototype.traverseNextNode):
+        (Node.prototype.isAncestor): Deleted.
+        (Node.prototype.isDescendant): Deleted.
+        (Node.prototype.isSelfOrAncestor): Deleted.
+        (Node.prototype.isSelfOrDescendant): Deleted.
+        * UserInterface/Views/BoxModelDetailsSectionRow.js:
+        (WI.BoxModelDetailsSectionRow.prototype._handleKeyDown):
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WI.CSSStyleDeclarationSection.prototype._handleSelectorPaste):
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WI.DOMTreeOutline.prototype._onmouseout):
+        * UserInterface/Views/DetailsSection.js:
+        (WI.DetailsSection.prototype._headerElementClicked):
+        * UserInterface/Views/EditingSupport.js:
+        (WI.incrementElementValue):
+        * UserInterface/Views/LogContentView.js:
+        (WI.LogContentView.prototype._handleContextMenuEvent):
+        * UserInterface/Views/ShaderProgramTreeElement.js:
+        (WI.ShaderProgramTreeElement.prototype.selectOnMouseDown):
+        * UserInterface/Views/SoftContextMenu.js:
+        (WI.SoftContextMenu.prototype._menuItemMouseOut):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.initialLayout):
+        * UserInterface/Views/TabBar.js:
+        (WI.TabBar.prototype.insertTabBarItem):
+
+2018-02-06  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Elements tab should have "Jump to Layer" functionality
+        https://bugs.webkit.org/show_bug.cgi?id=181800
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Base/Main.js:
+        (WI.isShowingElementsTab):
+        (WI.showLayersTab):
+        (WI.isShowingLayersTab):
+
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.appendContextMenuItemsForDOMNode):
+
+        * UserInterface/Views/LayersTabContentView.js:
+        (WI.LayersTabContentView.prototype.selectLayerForNode):
+
+        * UserInterface/Views/Layers3DContentView.js:
+        (WI.Layers3DContentView):
+        (WI.Layers3DContentView.prototype.selectLayerForNode):
+        (WI.Layers3DContentView.prototype.layout):
+
+        * UserInterface/Views/LayerDetailsSidebarPanel.js:
+        (WI.LayerDetailsSidebarPanel):
+        (WI.LayerDetailsSidebarPanel.prototype.selectNodeByLayerId):
+        (WI.LayerDetailsSidebarPanel.prototype._updateDataGrid):
+
+2018-02-06  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Rename String.prototype.trimEnd to avoid conflicts with native trimEnd
+        https://bugs.webkit.org/show_bug.cgi?id=182545
+
+        Reviewed by Brian Burg.
+
+        Rename:
+        - trimEnd to truncateEnd
+        - trimMiddle to truncateMiddle
+
+        * UserInterface/Base/Utilities.js:
+        (String.prototype.trimMiddle): Deleted.
+        (String.prototype.trimEnd): Deleted.
+        (String.prototype.truncateMiddle): Added.
+        (String.prototype.truncateEnd): Added.
+        Use strict mode. Scrict mode allows `this` to be a primitive (a string, in our case).
+        In non-strict mode, `this` is always an object. Without the strict mode,
+        "a".truncateEnd(42) !== "a", because truncateEnd returns a string object.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WI.DOMTreeElement.prototype._buildAttributeDOM):
+        * UserInterface/Views/DOMTreeElementPathComponent.js:
+        (WI.DOMTreeElementPathComponent):
+        * UserInterface/Views/SearchResultTreeElement.js:
+        Remove an obvious comment.
+
+        (WI.SearchResultTreeElement.truncateAndHighlightTitle):
+        * UserInterface/Views/SpreadsheetStyleProperty.js:
+        (WI.SpreadsheetStyleProperty.prototype._renderValue):
+
+2018-02-05  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Add an experimental setting to enable Sources tab
+        https://bugs.webkit.org/show_bug.cgi?id=182461
+
+        Reviewed by Brian Burg.
+
+        This patch only adds a setting. It doesn't add the Sources tab.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Views/SettingsTabContentView.js:
+
 2018-02-02  Devin Rousso  <webkit@devinrousso.com>
 
         Web Inspector: Styles Redesign: Pasting multiple properties should create properties instead of a bad property

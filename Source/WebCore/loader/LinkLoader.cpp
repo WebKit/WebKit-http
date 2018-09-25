@@ -135,26 +135,26 @@ std::optional<CachedResource::Type> LinkLoader::resourceTypeFromAsAttribute(cons
     return std::nullopt;
 }
 
-static std::unique_ptr<LinkPreloadResourceClient> createLinkPreloadResourceClient(CachedResource& resource, LinkLoader& loader, CachedResource::Type type)
+static std::unique_ptr<LinkPreloadResourceClient> createLinkPreloadResourceClient(CachedResource& resource, LinkLoader& loader)
 {
-    switch (type) {
+    switch (resource.type()) {
     case CachedResource::ImageResource:
-        return LinkPreloadImageResourceClient::create(loader, static_cast<CachedImage&>(resource));
+        return LinkPreloadImageResourceClient::create(loader, downcast<CachedImage>(resource));
     case CachedResource::Script:
-        return LinkPreloadScriptResourceClient::create(loader, static_cast<CachedScript&>(resource));
+        return LinkPreloadDefaultResourceClient::create(loader, downcast<CachedScript>(resource));
     case CachedResource::CSSStyleSheet:
-        return LinkPreloadStyleResourceClient::create(loader, static_cast<CachedCSSStyleSheet&>(resource));
+        return LinkPreloadStyleResourceClient::create(loader, downcast<CachedCSSStyleSheet>(resource));
     case CachedResource::FontResource:
-        return LinkPreloadFontResourceClient::create(loader, static_cast<CachedFont&>(resource));
-    case CachedResource::MediaResource:
-        if (!RuntimeEnabledFeatures::sharedFeatures().mediaPreloadingEnabled())
-            ASSERT_NOT_REACHED();
-        FALLTHROUGH;
+        return LinkPreloadFontResourceClient::create(loader, downcast<CachedFont>(resource));
 #if ENABLE(VIDEO_TRACK)
     case CachedResource::TextTrackResource:
+        return LinkPreloadDefaultResourceClient::create(loader, downcast<CachedTextTrack>(resource));
 #endif
+    case CachedResource::MediaResource:
+        ASSERT(RuntimeEnabledFeatures::sharedFeatures().mediaPreloadingEnabled());
+        FALLTHROUGH;
     case CachedResource::RawResource:
-        return LinkPreloadRawResourceClient::create(loader, static_cast<CachedRawResource&>(resource));
+        return LinkPreloadRawResourceClient::create(loader, downcast<CachedRawResource>(resource));
     case CachedResource::MainResource:
     case CachedResource::Icon:
 #if ENABLE(SVG_FONTS)
@@ -239,8 +239,11 @@ std::unique_ptr<LinkPreloadResourceClient> LinkLoader::preloadIfNeeded(const Lin
     linkRequest.setAsPotentiallyCrossOrigin(crossOriginMode, document);
     auto cachedLinkResource = document.cachedResourceLoader().preload(type.value(), WTFMove(linkRequest)).value_or(nullptr);
 
+    if (cachedLinkResource && cachedLinkResource->type() != *type)
+        return nullptr;
+
     if (cachedLinkResource && loader)
-        return createLinkPreloadResourceClient(*cachedLinkResource, *loader, type.value());
+        return createLinkPreloadResourceClient(*cachedLinkResource, *loader);
     return nullptr;
 }
 

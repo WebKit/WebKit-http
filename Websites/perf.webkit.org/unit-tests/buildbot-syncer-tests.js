@@ -134,6 +134,7 @@ function smallConfiguration()
         'builders': {
             'some-builder': {
                 'builder': 'some builder',
+                'properties': {'forcescheduler': 'some-builder-ForceScheduler'}
             }
         },
         'testConfigurations': [{
@@ -1352,6 +1353,64 @@ describe('BuildbotSyncer', () => {
         });
     });
 
+    describe('_pullRecentBuilds()', () => {
+        it('should not fetch recent builds when count is zero', async () => {
+            const syncer = BuildbotSyncer._loadConfig(MockRemoteAPI, sampleiOSConfig(), builderNameToIDMap())[1];
+            const promise = syncer._pullRecentBuilds(0);
+            assert.equal(requests.length, 0);
+            const content = await promise;
+            assert.deepEqual(content, []);
+        });
+
+        it('should pull the right number of recent builds', () => {
+            const syncer = BuildbotSyncer._loadConfig(MockRemoteAPI, sampleiOSConfig(), builderNameToIDMap())[1];
+            syncer._pullRecentBuilds(12);
+            assert.equal(requests.length, 1);
+            assert.equal(requests[0].url, '/api/v2/builders/102/builds?limit=12&order=-number&property=*');
+        });
+
+        it('should handle unexpected error while fetching recent builds', async () => {
+            const syncer = BuildbotSyncer._loadConfig(MockRemoteAPI, sampleiOSConfig(), builderNameToIDMap())[1];
+            const promise = syncer._pullRecentBuilds(2);
+            assert.equal(requests.length, 1);
+            assert.equal(requests[0].url, '/api/v2/builders/102/builds?limit=2&order=-number&property=*');
+            requests[0].resolve({'error': 'Unexpected error'});
+            const content = await promise;
+            assert.deepEqual(content, []);
+        });
+
+        it('should create BuildbotBuildEntry after fetching recent builds', async () => {
+            const syncer = BuildbotSyncer._loadConfig(MockRemoteAPI, sampleiOSConfig(), builderNameToIDMap())[1];
+            const promise = syncer._pullRecentBuilds(2);
+            assert.equal(requests.length, 1);
+            assert.equal(requests[0].url, '/api/v2/builders/102/builds?limit=2&order=-number&property=*');
+            requests[0].resolve({'builds': [sampleFinishedBuildData(), sampleInProgressBuildData()]});
+
+            const entries = await promise;
+            assert.deepEqual(entries.length, 2);
+
+            let entry = entries[0];
+            assert.ok(entry instanceof BuildbotBuildEntry);
+            assert.equal(entry.buildNumber(), 1755);
+            assert.equal(entry.workerName(), 'ABTest-iPad-0');
+            assert.equal(entry.buildRequestId(), 18935);
+            assert.ok(!entry.isPending());
+            assert.ok(!entry.isInProgress());
+            assert.ok(entry.hasFinished());
+            assert.equal(entry.url(), 'http://build.webkit.org/#/builders/102/builds/1755');
+
+            entry = entries[1];
+            assert.ok(entry instanceof BuildbotBuildEntry);
+            assert.equal(entry.buildNumber(), 614);
+            assert.equal(entry.slaveName(), 'ABTest-iPad-0');
+            assert.equal(entry.buildRequestId(), 16733);
+            assert.ok(!entry.isPending());
+            assert.ok(entry.isInProgress());
+            assert.ok(!entry.hasFinished());
+            assert.equal(entry.url(), 'http://build.webkit.org/#/builders/102/builds/614');
+        });
+    });
+
     describe('pullBuildbot', () => {
         it('should fetch pending builds from the right URL', () => {
             let syncer = BuildbotSyncer._loadConfig(MockRemoteAPI, sampleiOSConfig(), builderNameToIDMap())[1];
@@ -1615,6 +1674,33 @@ describe('BuildbotSyncer', () => {
         });
     });
 
+    describe('scheduleBuildOnBuildbot', () => {
+        it('should schedule a build request on Buildbot', async () => {
+            const syncer = BuildbotSyncer._loadConfig(MockRemoteAPI, sampleiOSConfig(), builderNameToIDMap())[0];
+            const request = createSampleBuildRequest(MockModels.iphone, MockModels.speedometer);
+            const properties = syncer._propertiesForBuildRequest(request, [request]);
+            const promise  = syncer.scheduleBuildOnBuildbot(properties);
+
+            assert.equal(requests.length, 1);
+            assert.equal(requests[0].method, 'POST');
+            assert.equal(requests[0].url, '/api/v2/forceschedulers/ABTest-iPhone-RunBenchmark-Tests-ForceScheduler');
+            requests[0].resolve();
+            await promise;
+            assert.deepEqual(requests[0].data, {
+                'id': '16733-' + MockModels.iphone.id(),
+                'jsonrpc': '2.0',
+                'method': 'force',
+                'params': {
+                    'build_request_id': '16733-' + MockModels.iphone.id(),
+                    'desired_image': '13A452',
+                    'opensource': '197463',
+                    'forcescheduler': 'ABTest-iPhone-RunBenchmark-Tests-ForceScheduler',
+                    'test_name': 'speedometer'
+                }
+            });
+        });
+    });
+
     describe('scheduleRequest', () => {
         it('should schedule a build request on a specified slave', () => {
             let syncer = BuildbotSyncer._loadConfig(MockRemoteAPI, sampleiOSConfig(), builderNameToIDMap())[0];
@@ -1662,7 +1748,7 @@ describe('BuildbotSyncer', () => {
                 assert.equal(requests.length, 1);
                 assert.equal(requests[0].url, '/builders/some%20builder/force');
                 assert.equal(requests[0].method, 'POST');
-                assert.deepEqual(requests[0].data, {id: '16733-' + MockModels.somePlatform.id(), 'os': '13A452', 'wk': '197463'});
+                assert.deepEqual(requests[0].data, {id: '16733-' + MockModels.somePlatform.id(), 'os': '13A452', 'wk': '197463', 'forcescheduler': 'some-builder-ForceScheduler'});
             });
         });
 
@@ -1675,7 +1761,7 @@ describe('BuildbotSyncer', () => {
                 assert.equal(requests.length, 1);
                 assert.equal(requests[0].url, '/builders/some%20builder/force');
                 assert.equal(requests[0].method, 'POST');
-                assert.deepEqual(requests[0].data, {id: '16733-' + MockModels.somePlatform.id(), 'os': '13A452', 'wk': '197463'});
+                assert.deepEqual(requests[0].data, {id: '16733-' + MockModels.somePlatform.id(), 'os': '13A452', 'wk': '197463', 'forcescheduler': 'some-builder-ForceScheduler'});
             });
         });
 

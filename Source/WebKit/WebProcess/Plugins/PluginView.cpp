@@ -35,6 +35,7 @@
 #include "WebPage.h"
 #include "WebPageProxyMessages.h"
 #include "WebProcess.h"
+#include <JavaScriptCore/ScriptValue.h>
 #include <WebCore/BitmapImage.h>
 #include <WebCore/Chrome.h>
 #include <WebCore/CookieJar.h>
@@ -69,7 +70,6 @@
 #include <WebCore/SecurityPolicy.h>
 #include <WebCore/Settings.h>
 #include <WebCore/UserGestureIndicator.h>
-#include <bindings/ScriptValue.h>
 #include <wtf/CompletionHandler.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -319,7 +319,7 @@ PluginView::~PluginView()
     if (m_webPage)
         m_webPage->removePluginView(this);
 
-    ASSERT(!m_isBeingDestroyed);
+    ASSERT(!m_plugin || !m_plugin->isBeingDestroyed());
 
     if (m_isWaitingUntilMediaCanStart)
         m_pluginElement->document().removeMediaCanStartListener(this);
@@ -340,9 +340,7 @@ void PluginView::destroyPluginAndReset()
         it->key->setLoadListener(0);
 
     if (m_plugin) {
-        m_isBeingDestroyed = true;
         m_plugin->destroyPlugin();
-        m_isBeingDestroyed = false;
 
         m_pendingURLRequests.clear();
         m_pendingURLRequestsTimer.stop();
@@ -373,7 +371,6 @@ void PluginView::recreateAndInitialize(Ref<Plugin>&& plugin)
     m_isInitialized = false;
     m_isWaitingForSynchronousInitialization = false;
     m_isWaitingUntilMediaCanStart = false;
-    m_isBeingDestroyed = false;
     m_manualStreamState = ManualStreamState::Initial;
     m_transientPaintingSnapshot = nullptr;
 
@@ -1641,13 +1638,13 @@ bool PluginView::artificialPluginInitializationDelayEnabled() const
 
 void PluginView::protectPluginFromDestruction()
 {
-    if (!m_isBeingDestroyed)
+    if (m_plugin && !m_plugin->isBeingDestroyed())
         ref();
 }
 
 void PluginView::unprotectPluginFromDestruction()
 {
-    if (m_isBeingDestroyed)
+    if (!m_plugin || m_plugin->isBeingDestroyed())
         return;
 
     // A plug-in may ask us to evaluate JavaScript that removes the plug-in from the

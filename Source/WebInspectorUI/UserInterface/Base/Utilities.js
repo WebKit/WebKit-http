@@ -160,50 +160,6 @@ Object.defineProperty(Node.prototype, "enclosingNodeOrSelfWithNodeName",
     }
 });
 
-Object.defineProperty(Node.prototype, "isAncestor",
-{
-    value(node)
-    {
-        if (!node)
-            return false;
-
-        var currentNode = node.parentNode;
-        while (currentNode) {
-            if (this === currentNode)
-                return true;
-            currentNode = currentNode.parentNode;
-        }
-
-        return false;
-    }
-});
-
-Object.defineProperty(Node.prototype, "isDescendant",
-{
-    value(descendant)
-    {
-        return !!descendant && descendant.isAncestor(this);
-    }
-});
-
-
-Object.defineProperty(Node.prototype, "isSelfOrAncestor",
-{
-    value(node)
-    {
-        return !!node && (node === this || this.isAncestor(node));
-    }
-});
-
-
-Object.defineProperty(Node.prototype, "isSelfOrDescendant",
-{
-    value(node)
-    {
-        return !!node && (node === this || this.isDescendant(node));
-    }
-});
-
 Object.defineProperty(Node.prototype, "traverseNextNode",
 {
     value(stayWithin)
@@ -394,7 +350,7 @@ Object.defineProperty(Element.prototype, "isInsertionCaretInside",
         if (!selection.rangeCount || !selection.isCollapsed)
             return false;
         var selectionRange = selection.getRangeAt(0);
-        return selectionRange.startContainer === this || selectionRange.startContainer.isDescendant(this);
+        return selectionRange.startContainer === this || this.contains(selectionRange.startContainer);
     }
 });
 
@@ -579,10 +535,12 @@ Object.defineProperty(String.prototype, "isUpperCase",
     }
 });
 
-Object.defineProperty(String.prototype, "trimMiddle",
+Object.defineProperty(String.prototype, "truncateMiddle",
 {
     value(maxLength)
     {
+        "use strict";
+
         if (this.length <= maxLength)
             return this;
         var leftHalf = maxLength >> 1;
@@ -591,10 +549,12 @@ Object.defineProperty(String.prototype, "trimMiddle",
     }
 });
 
-Object.defineProperty(String.prototype, "trimEnd",
+Object.defineProperty(String.prototype, "truncateEnd",
 {
     value(maxLength)
     {
+        "use strict";
+
         if (this.length <= maxLength)
             return this;
         return this.substr(0, maxLength - 1) + ellipsis;

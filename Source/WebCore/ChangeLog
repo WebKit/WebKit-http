@@ -1,3 +1,1605 @@
+2018-02-07  Daniel Bates  <dabates@apple.com>
+
+        Log error when authentication challenge is blocked due to an insecure request
+        https://bugs.webkit.org/show_bug.cgi?id=182358
+
+        Reviewed by Andy Estes.
+
+        Emit an error message to Web Inspector console that explains why an authentication
+        challenge was blocked so that a developer can fix up their site.
+
+        Tests: http/tests/security/mixedContent/insecure-basic-auth-image.https.html
+               http/tests/security/mixedContent/secure-page-navigates-to-basic-auth-insecure-page.https.html
+               http/tests/security/mixedContent/secure-page-navigates-to-basic-auth-secure-page-via-insecure-redirect.https.html
+
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::receivedFirstData): Log to the console an error message
+        if the document we are loading was forbidden from prompting for credentials.
+        Also removed duplicate assertion to ensure document is non-null and update
+        call to LinkLoader::loadLinksFromHeader() to use local variable to access
+        the document we are loading instead of asking the frame for it, again.
+        (WebCore::FrameLoader::reportAuthenticationChallengeBlocked): Added.
+        * loader/FrameLoader.h:
+
+        * loader/ResourceLoader.cpp:
+        (WebCore::ResourceLoader::init):
+        (WebCore::ResourceLoader::willSendRequestInternal):
+        Track the decision to forbid asking for credentials due to Fetch spec. requirements (m_canAskClientForCredentials)
+        independently from the decision to forbid them due to making an insecure request (m_wasInsecureRequestSeen)
+        so that we know the reason why we blocked asking for credentials when we receive an authentication challenge.
+
+        (WebCore::ResourceLoader::didBlockAuthenticationChallenge): Added.
+        (WebCore::ResourceLoader::isAllowedToAskUserForCredentials const): Modified code now that we track
+        whether we have seen an insecure request so far independently from decision to forbid prompting for
+        credentials due to a Fetch spec. requirement.
+
+        (WebCore::ResourceLoader::didReceiveAuthenticationChallenge):
+        Store a bit whether we have seen an insecure request when loading the resource so far. Disallow
+        asking for credentials if we have seen an insecure request so far. Once we receive a response
+
+        * loader/ResourceLoader.h:
+        (WebCore::ResourceLoader::wasAuthenticationChallengeBlocked const): Added.
+        (WebCore::ResourceLoader::wasInsecureRequestSeen const): Added.
+
+2018-02-06  Matt Lewis  <jlewis3@apple.com>
+
+        Removed the assertions from VideoFullscreenInterfaceAVKit.mm temporarily to stop the resulting crashes during debugging.
+        https://bugs.webkit.org/show_bug.cgi?id=182527
+
+        Unreviewed build fix.
+
+        * platform/ios/VideoFullscreenInterfaceAVKit.mm:
+        (VideoFullscreenInterfaceAVKit::exitFullscreen):
+        (VideoFullscreenInterfaceAVKit::cleanupFullscreen):
+
+2018-02-07  Zalan Bujtas  <zalan@apple.com>
+
+        [RenderTreeBuilder] Move RenderBlock::removeLeftoverAnonymousBlock to RenderTreeBuilder
+        https://bugs.webkit.org/show_bug.cgi?id=182510
+        <rdar://problem/37250037>
+
+        Reviewed by Antti Koivisto.
+
+        Do not reinvent subtree reparenting.
+
+        Covered by existing tests.
+
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::removeLeftoverAnonymousBlock): Deleted.
+        * rendering/RenderBlock.h:
+        * rendering/RenderBoxModelObject.cpp:
+        (WebCore::RenderBoxModelObject::moveAllChildrenToInternal):
+        * rendering/RenderBoxModelObject.h:
+        * rendering/RenderButton.h:
+        * rendering/RenderElement.cpp:
+        (WebCore::RenderElement::detachRendererInternal):
+        (WebCore::RenderElement::attachRendererInternal):
+        (WebCore::RenderElement::insertChildInternal):
+        (WebCore::RenderElement::takeChildInternal):
+        * rendering/RenderElement.h:
+        * rendering/RenderRuby.h:
+        * rendering/RenderRubyRun.h:
+        * rendering/RenderTextControl.h:
+        * rendering/updating/RenderTreeBuilderBlock.cpp:
+        (WebCore::RenderTreeBuilder::Block::insertChildIgnoringContinuation):
+        (WebCore::RenderTreeBuilder::Block::childBecameNonInline):
+        (WebCore::RenderTreeBuilder::Block::removeLeftoverAnonymousBlock):
+        * rendering/updating/RenderTreeBuilderBlock.h:
+
+2018-02-06  Don Olmstead  <don.olmstead@sony.com>
+
+        Remove WebCore/ForwardingHeaders directory
+        https://bugs.webkit.org/show_bug.cgi?id=182347
+
+        Reviewed by Keith Miller.
+
+        No new tests. No change in behavior.
+
+        * CMakeLists.txt:
+        * ForwardingHeaders/bindings/ScriptFunctionCall.h: Removed.
+        * ForwardingHeaders/bindings/ScriptObject.h: Removed.
+        * ForwardingHeaders/bindings/ScriptValue.h: Removed.
+        * ForwardingHeaders/builtins/BuiltinNames.h: Removed.
+        * ForwardingHeaders/builtins/BuiltinUtils.h: Removed.
+        * ForwardingHeaders/builtins/JSCBuiltins.h: Removed.
+        * ForwardingHeaders/bytecode/CodeBlock.h: Removed.
+        * ForwardingHeaders/bytecode/SpeculatedType.h: Removed.
+        * ForwardingHeaders/bytecode/UnlinkedFunctionExecutable.h: Removed.
+        * ForwardingHeaders/debugger/Debugger.h: Removed.
+        * ForwardingHeaders/domjit/DOMJITAbstractHeap.h: Removed.
+        * ForwardingHeaders/domjit/DOMJITEffect.h: Removed.
+        * ForwardingHeaders/domjit/DOMJITGetterSetter.h: Removed.
+        * ForwardingHeaders/domjit/DOMJITHeapRange.h: Removed.
+        * ForwardingHeaders/domjit/DOMJITSignature.h: Removed.
+        * ForwardingHeaders/heap/BlockDirectoryInlines.h: Removed.
+        * ForwardingHeaders/heap/DeleteAllCodeEffort.h: Removed.
+        * ForwardingHeaders/heap/FastMallocAlignedMemoryAllocator.h: Removed.
+        * ForwardingHeaders/heap/GCActivityCallback.h: Removed.
+        * ForwardingHeaders/heap/GCFinalizationCallback.h: Removed.
+        * ForwardingHeaders/heap/HandleTypes.h: Removed.
+        * ForwardingHeaders/heap/Heap.h: Removed.
+        * ForwardingHeaders/heap/HeapInlines.h: Removed.
+        * ForwardingHeaders/heap/HeapObserver.h: Removed.
+        * ForwardingHeaders/heap/IncrementalSweeper.h: Removed.
+        * ForwardingHeaders/heap/LockDuringMarking.h: Removed.
+        * ForwardingHeaders/heap/MachineStackMarker.h: Removed.
+        * ForwardingHeaders/heap/MarkedBlockInlines.h: Removed.
+        * ForwardingHeaders/heap/MarkingConstraint.h: Removed.
+        * ForwardingHeaders/heap/RunningScope.h: Removed.
+        * ForwardingHeaders/heap/SimpleMarkingConstraint.h: Removed.
+        * ForwardingHeaders/heap/SlotVisitor.h: Removed.
+        * ForwardingHeaders/heap/SlotVisitorInlines.h: Removed.
+        * ForwardingHeaders/heap/Strong.h: Removed.
+        * ForwardingHeaders/heap/StrongInlines.h: Removed.
+        * ForwardingHeaders/heap/SubspaceInlines.h: Removed.
+        * ForwardingHeaders/heap/ThreadLocalCache.h: Removed.
+        * ForwardingHeaders/heap/Weak.h: Removed.
+        * ForwardingHeaders/heap/WeakInlines.h: Removed.
+        * ForwardingHeaders/inspector/ConsoleMessage.h: Removed.
+        * ForwardingHeaders/inspector/ContentSearchUtilities.h: Removed.
+        * ForwardingHeaders/inspector/IdentifiersFactory.h: Removed.
+        * ForwardingHeaders/inspector/InjectedScript.h: Removed.
+        * ForwardingHeaders/inspector/InjectedScriptBase.h: Removed.
+        * ForwardingHeaders/inspector/InjectedScriptHost.h: Removed.
+        * ForwardingHeaders/inspector/InjectedScriptManager.h: Removed.
+        * ForwardingHeaders/inspector/InjectedScriptModule.h: Removed.
+        * ForwardingHeaders/inspector/InspectorAgentBase.h: Removed.
+        * ForwardingHeaders/inspector/InspectorAgentRegistry.h: Removed.
+        * ForwardingHeaders/inspector/InspectorBackendDispatcher.h: Removed.
+        * ForwardingHeaders/inspector/InspectorBackendDispatchers.h: Removed.
+        * ForwardingHeaders/inspector/InspectorEnvironment.h: Removed.
+        * ForwardingHeaders/inspector/InspectorFrontendChannel.h: Removed.
+        * ForwardingHeaders/inspector/InspectorFrontendDispatchers.h: Removed.
+        * ForwardingHeaders/inspector/InspectorFrontendRouter.h: Removed.
+        * ForwardingHeaders/inspector/InspectorProtocolObjects.h: Removed.
+        * ForwardingHeaders/inspector/InspectorProtocolTypes.h: Removed.
+        * ForwardingHeaders/inspector/PerGlobalObjectWrapperWorld.h: Removed.
+        * ForwardingHeaders/inspector/ScriptArguments.h: Removed.
+        * ForwardingHeaders/inspector/ScriptBreakpoint.h: Removed.
+        * ForwardingHeaders/inspector/ScriptCallFrame.h: Removed.
+        * ForwardingHeaders/inspector/ScriptCallStack.h: Removed.
+        * ForwardingHeaders/inspector/ScriptCallStackFactory.h: Removed.
+        * ForwardingHeaders/inspector/ScriptDebugListener.h: Removed.
+        * ForwardingHeaders/inspector/ScriptDebugServer.h: Removed.
+        * ForwardingHeaders/inspector/agents/InspectorAgent.h: Removed.
+        * ForwardingHeaders/inspector/agents/InspectorConsoleAgent.h: Removed.
+        * ForwardingHeaders/inspector/agents/InspectorDebuggerAgent.h: Removed.
+        * ForwardingHeaders/inspector/agents/InspectorHeapAgent.h: Removed.
+        * ForwardingHeaders/inspector/agents/InspectorRuntimeAgent.h: Removed.
+        * ForwardingHeaders/inspector/agents/InspectorScriptProfilerAgent.h: Removed.
+        * ForwardingHeaders/interpreter/CallFrame.h: Removed.
+        * ForwardingHeaders/interpreter/FrameTracers.h: Removed.
+        * ForwardingHeaders/interpreter/ShadowChicken.h: Removed.
+        * ForwardingHeaders/interpreter/StackVisitor.h: Removed.
+        * ForwardingHeaders/jit/JITCode.h: Removed.
+        * ForwardingHeaders/jit/JITMathICForwards.h: Removed.
+        * ForwardingHeaders/jit/Snippet.h: Removed.
+        * ForwardingHeaders/jit/SnippetParams.h: Removed.
+        * ForwardingHeaders/jit/SpillRegistersMode.h: Removed.
+        * ForwardingHeaders/masm/X86Assembler.h: Removed.
+        * ForwardingHeaders/parser/ParserError.h: Removed.
+        * ForwardingHeaders/parser/SourceCode.h: Removed.
+        * ForwardingHeaders/parser/SourceProvider.h: Removed.
+        * ForwardingHeaders/parser/SourceProviderCache.h: Removed.
+        * ForwardingHeaders/profiler/ProfilerDatabase.h: Removed.
+        * ForwardingHeaders/runtime/ArgList.h: Removed.
+        * ForwardingHeaders/runtime/ArrayBuffer.h: Removed.
+        * ForwardingHeaders/runtime/ArrayBufferView.h: Removed.
+        * ForwardingHeaders/runtime/ArrayPrototype.h: Removed.
+        * ForwardingHeaders/runtime/AuxiliaryBarrierInlines.h: Removed.
+        * ForwardingHeaders/runtime/BooleanObject.h: Removed.
+        * ForwardingHeaders/runtime/CallData.h: Removed.
+        * ForwardingHeaders/runtime/CatchScope.h: Removed.
+        * ForwardingHeaders/runtime/CommonIdentifiers.h: Removed.
+        * ForwardingHeaders/runtime/Completion.h: Removed.
+        * ForwardingHeaders/runtime/ConfigFile.h: Removed.
+        * ForwardingHeaders/runtime/ConsoleClient.h: Removed.
+        * ForwardingHeaders/runtime/ConsoleTypes.h: Removed.
+        * ForwardingHeaders/runtime/ConstructAbility.h: Removed.
+        * ForwardingHeaders/runtime/ConstructData.h: Removed.
+        * ForwardingHeaders/runtime/DataView.h: Removed.
+        * ForwardingHeaders/runtime/DateInstance.h: Removed.
+        * ForwardingHeaders/runtime/Error.h: Removed.
+        * ForwardingHeaders/runtime/ErrorHandlingScope.h: Removed.
+        * ForwardingHeaders/runtime/ErrorInstance.h: Removed.
+        * ForwardingHeaders/runtime/ErrorPrototype.h: Removed.
+        * ForwardingHeaders/runtime/Exception.h: Removed.
+        * ForwardingHeaders/runtime/ExceptionHelpers.h: Removed.
+        * ForwardingHeaders/runtime/Float32Array.h: Removed.
+        * ForwardingHeaders/runtime/Float64Array.h: Removed.
+        * ForwardingHeaders/runtime/FunctionConstructor.h: Removed.
+        * ForwardingHeaders/runtime/FunctionExecutable.h: Removed.
+        * ForwardingHeaders/runtime/FunctionPrototype.h: Removed.
+        * ForwardingHeaders/runtime/HashMapImpl.h: Removed.
+        * ForwardingHeaders/runtime/Identifier.h: Removed.
+        * ForwardingHeaders/runtime/IdentifierInlines.h: Removed.
+        * ForwardingHeaders/runtime/InitializeThreading.h: Removed.
+        * ForwardingHeaders/runtime/Int16Array.h: Removed.
+        * ForwardingHeaders/runtime/Int32Array.h: Removed.
+        * ForwardingHeaders/runtime/Int8Array.h: Removed.
+        * ForwardingHeaders/runtime/InternalFunction.h: Removed.
+        * ForwardingHeaders/runtime/Intrinsic.h: Removed.
+        * ForwardingHeaders/runtime/IterationKind.h: Removed.
+        * ForwardingHeaders/runtime/IteratorOperations.h: Removed.
+        * ForwardingHeaders/runtime/IteratorPrototype.h: Removed.
+        * ForwardingHeaders/runtime/JSAPIValueWrapper.h: Removed.
+        * ForwardingHeaders/runtime/JSArray.h: Removed.
+        * ForwardingHeaders/runtime/JSArrayBuffer.h: Removed.
+        * ForwardingHeaders/runtime/JSArrayBufferView.h: Removed.
+        * ForwardingHeaders/runtime/JSCInlines.h: Removed.
+        * ForwardingHeaders/runtime/JSCJSValue.h: Removed.
+        * ForwardingHeaders/runtime/JSCJSValueInlines.h: Removed.
+        * ForwardingHeaders/runtime/JSCallee.h: Removed.
+        * ForwardingHeaders/runtime/JSCell.h: Removed.
+        * ForwardingHeaders/runtime/JSCellInlines.h: Removed.
+        * ForwardingHeaders/runtime/JSDataView.h: Removed.
+        * ForwardingHeaders/runtime/JSDestructibleObject.h: Removed.
+        * ForwardingHeaders/runtime/JSDestructibleObjectHeapCellType.h: Removed.
+        * ForwardingHeaders/runtime/JSExportMacros.h: Removed.
+        * ForwardingHeaders/runtime/JSFunction.h: Removed.
+        * ForwardingHeaders/runtime/JSGlobalObject.h: Removed.
+        * ForwardingHeaders/runtime/JSGlobalObjectInlines.h: Removed.
+        * ForwardingHeaders/runtime/JSInternalPromise.h: Removed.
+        * ForwardingHeaders/runtime/JSInternalPromiseDeferred.h: Removed.
+        * ForwardingHeaders/runtime/JSLock.h: Removed.
+        * ForwardingHeaders/runtime/JSMap.h: Removed.
+        * ForwardingHeaders/runtime/JSMapIterator.h: Removed.
+        * ForwardingHeaders/runtime/JSModuleLoader.h: Removed.
+        * ForwardingHeaders/runtime/JSModuleRecord.h: Removed.
+        * ForwardingHeaders/runtime/JSNativeStdFunction.h: Removed.
+        * ForwardingHeaders/runtime/JSONObject.h: Removed.
+        * ForwardingHeaders/runtime/JSObject.h: Removed.
+        * ForwardingHeaders/runtime/JSObjectInlines.h: Removed.
+        * ForwardingHeaders/runtime/JSPromise.h: Removed.
+        * ForwardingHeaders/runtime/JSPromiseConstructor.h: Removed.
+        * ForwardingHeaders/runtime/JSPromiseDeferred.h: Removed.
+        * ForwardingHeaders/runtime/JSProxy.h: Removed.
+        * ForwardingHeaders/runtime/JSRunLoopTimer.h: Removed.
+        * ForwardingHeaders/runtime/JSScriptFetchParameters.h: Removed.
+        * ForwardingHeaders/runtime/JSScriptFetcher.h: Removed.
+        * ForwardingHeaders/runtime/JSSegmentedVariableObjectHeapCellType.h: Removed.
+        * ForwardingHeaders/runtime/JSSet.h: Removed.
+        * ForwardingHeaders/runtime/JSSetIterator.h: Removed.
+        * ForwardingHeaders/runtime/JSSourceCode.h: Removed.
+        * ForwardingHeaders/runtime/JSString.h: Removed.
+        * ForwardingHeaders/runtime/JSTypedArrays.h: Removed.
+        * ForwardingHeaders/runtime/JSWithScope.h: Removed.
+        * ForwardingHeaders/runtime/Lookup.h: Removed.
+        * ForwardingHeaders/runtime/MapBase.h: Removed.
+        * ForwardingHeaders/runtime/MapData.h: Removed.
+        * ForwardingHeaders/runtime/MapDataInlines.h: Removed.
+        * ForwardingHeaders/runtime/MatchResult.h: Removed.
+        * ForwardingHeaders/runtime/Microtask.h: Removed.
+        * ForwardingHeaders/runtime/ObjectConstructor.h: Removed.
+        * ForwardingHeaders/runtime/ObjectPrototype.h: Removed.
+        * ForwardingHeaders/runtime/Operations.h: Removed.
+        * ForwardingHeaders/runtime/PrivateName.h: Removed.
+        * ForwardingHeaders/runtime/PromiseDeferredTimer.h: Removed.
+        * ForwardingHeaders/runtime/PropertyNameArray.h: Removed.
+        * ForwardingHeaders/runtime/Protect.h: Removed.
+        * ForwardingHeaders/runtime/RegExp.h: Removed.
+        * ForwardingHeaders/runtime/RegExpObject.h: Removed.
+        * ForwardingHeaders/runtime/RuntimeFlags.h: Removed.
+        * ForwardingHeaders/runtime/SamplingProfiler.h: Removed.
+        * ForwardingHeaders/runtime/ScriptFetchParameters.h: Removed.
+        * ForwardingHeaders/runtime/ScriptFetcher.h: Removed.
+        * ForwardingHeaders/runtime/StringObject.h: Removed.
+        * ForwardingHeaders/runtime/StringPrototype.h: Removed.
+        * ForwardingHeaders/runtime/Structure.h: Removed.
+        * ForwardingHeaders/runtime/StructureChain.h: Removed.
+        * ForwardingHeaders/runtime/StructureInlines.h: Removed.
+        * ForwardingHeaders/runtime/Symbol.h: Removed.
+        * ForwardingHeaders/runtime/SymbolTable.h: Removed.
+        * ForwardingHeaders/runtime/ThrowScope.h: Removed.
+        * ForwardingHeaders/runtime/TypedArrayController.h: Removed.
+        * ForwardingHeaders/runtime/TypedArrayInlines.h: Removed.
+        * ForwardingHeaders/runtime/TypedArrays.h: Removed.
+        * ForwardingHeaders/runtime/Uint16Array.h: Removed.
+        * ForwardingHeaders/runtime/Uint32Array.h: Removed.
+        * ForwardingHeaders/runtime/Uint8Array.h: Removed.
+        * ForwardingHeaders/runtime/Uint8ClampedArray.h: Removed.
+        * ForwardingHeaders/runtime/VM.h: Removed.
+        * ForwardingHeaders/runtime/VMEntryScope.h: Removed.
+        * ForwardingHeaders/runtime/Watchdog.h: Removed.
+        * ForwardingHeaders/runtime/WeakGCMap.h: Removed.
+        * ForwardingHeaders/runtime/WeakGCMapInlines.h: Removed.
+        * ForwardingHeaders/runtime/WriteBarrier.h: Removed.
+        * ForwardingHeaders/wasm/WasmModule.h: Removed.
+        * ForwardingHeaders/wasm/js/JSWebAssemblyModule.h: Removed.
+        * ForwardingHeaders/yarr/RegularExpression.h: Removed.
+        * ForwardingHeaders/yarr/Yarr.h: Removed.
+        * ForwardingHeaders/yarr/YarrInterpreter.h: Removed.
+        * ForwardingHeaders/yarr/YarrJIT.h: Removed.
+        * ForwardingHeaders/yarr/YarrPattern.h: Removed.
+        * Modules/applepay/cocoa/PaymentMerchantSessionCocoa.mm:
+        * Modules/encryptedmedia/MediaKeyMessageEvent.h:
+        * Modules/encryptedmedia/MediaKeyMessageEventInit.h:
+        * Modules/encryptedmedia/MediaKeyStatusMap.h:
+        * Modules/encryptedmedia/legacy/LegacyCDM.h:
+        * Modules/encryptedmedia/legacy/LegacyCDMSessionClearKey.cpp:
+        * Modules/encryptedmedia/legacy/WebKitMediaKeyMessageEvent.cpp:
+        * Modules/encryptedmedia/legacy/WebKitMediaKeyNeededEvent.cpp:
+        * Modules/encryptedmedia/legacy/WebKitMediaKeySession.h:
+        * Modules/encryptedmedia/legacy/WebKitMediaKeys.h:
+        * Modules/fetch/FetchBody.cpp:
+        * Modules/fetch/FetchRequestInit.h:
+        * Modules/fetch/FetchResponse.h:
+        * Modules/indexeddb/IDBCursor.cpp:
+        * Modules/indexeddb/IDBCursor.h:
+        * Modules/indexeddb/IDBCursorWithValue.cpp:
+        * Modules/indexeddb/IDBDatabase.cpp:
+        * Modules/indexeddb/IDBIndex.cpp:
+        * Modules/indexeddb/IDBKey.cpp:
+        * Modules/indexeddb/IDBKeyRange.cpp:
+        * Modules/indexeddb/IDBObjectStore.cpp:
+        * Modules/indexeddb/IDBRequest.cpp:
+        * Modules/indexeddb/IDBRequest.h:
+        * Modules/indexeddb/client/TransactionOperation.cpp:
+        * Modules/indexeddb/server/MemoryObjectStore.cpp:
+        * Modules/indexeddb/server/SQLiteIDBBackingStore.cpp:
+        * Modules/indexeddb/server/UniqueIDBDatabase.cpp:
+        * Modules/mediacontrols/MediaControlsHost.cpp:
+        * Modules/mediasource/SourceBuffer.cpp:
+        * Modules/mediastream/RTCDataChannel.cpp:
+        * Modules/plugins/QuickTimePluginReplacement.mm:
+        * Modules/webaudio/AsyncAudioDecoder.cpp:
+        * Modules/webaudio/AudioBuffer.cpp:
+        * Modules/webaudio/AudioBuffer.h:
+        * Modules/webaudio/AudioContext.cpp:
+        * Modules/webaudio/AudioContext.h:
+        * Modules/webaudio/AudioParam.h:
+        * Modules/webaudio/AudioParamTimeline.h:
+        * Modules/webaudio/PeriodicWave.h:
+        * Modules/webaudio/RealtimeAnalyser.cpp:
+        * Modules/webaudio/RealtimeAnalyser.h:
+        * Modules/webaudio/ScriptProcessorNode.cpp:
+        * Modules/webaudio/WaveShaperProcessor.h:
+        * Modules/webauthn/AuthenticatorResponse.h:
+        * Modules/webauthn/PublicKeyCredential.h:
+        * Modules/websockets/WebSocket.cpp:
+        * Modules/websockets/WebSocketChannel.cpp:
+        * Modules/websockets/WorkerThreadableWebSocketChannel.cpp:
+        * Modules/webvr/VREyeParameters.h:
+        * Modules/webvr/VRFrameData.h:
+        * Modules/webvr/VRPose.h:
+        * Modules/webvr/VRStageParameters.h:
+        * PlatformWin.cmake:
+        * bindings/IDLTypes.h:
+        * bindings/js/BufferSource.h:
+        * bindings/js/CachedScriptFetcher.h:
+        * bindings/js/CachedScriptSourceProvider.h:
+        * bindings/js/CallTracerTypes.h:
+        * bindings/js/CommonVM.cpp:
+        * bindings/js/DOMGCOutputConstraint.cpp:
+        * bindings/js/DOMGCOutputConstraint.h:
+        * bindings/js/GCController.cpp:
+        * bindings/js/GCController.h:
+        * bindings/js/IDBBindingUtilities.cpp:
+        * bindings/js/JSCallbackData.cpp:
+        * bindings/js/JSCallbackData.h:
+        * bindings/js/JSCustomElementInterface.cpp:
+        * bindings/js/JSCustomElementInterface.h:
+        * bindings/js/JSCustomEventCustom.cpp:
+        * bindings/js/JSCustomXPathNSResolver.cpp:
+        * bindings/js/JSCustomXPathNSResolver.h:
+        * bindings/js/JSDOMBinding.h:
+        * bindings/js/JSDOMBuiltinConstructorBase.cpp:
+        * bindings/js/JSDOMConstructorBase.cpp:
+        * bindings/js/JSDOMConvertBase.h:
+        * bindings/js/JSDOMConvertBufferSource.h:
+        * bindings/js/JSDOMConvertDate.cpp:
+        * bindings/js/JSDOMConvertInterface.h:
+        * bindings/js/JSDOMConvertJSON.h:
+        * bindings/js/JSDOMConvertNumbers.cpp:
+        * bindings/js/JSDOMConvertNumbers.h:
+        * bindings/js/JSDOMConvertObject.h:
+        * bindings/js/JSDOMConvertRecord.h:
+        * bindings/js/JSDOMConvertSequences.h:
+        * bindings/js/JSDOMConvertStrings.cpp:
+        * bindings/js/JSDOMConvertUnion.h:
+        * bindings/js/JSDOMExceptionHandling.cpp:
+        * bindings/js/JSDOMExceptionHandling.h:
+        * bindings/js/JSDOMGlobalObject.cpp:
+        * bindings/js/JSDOMGlobalObject.h:
+        * bindings/js/JSDOMGlobalObjectTask.cpp:
+        * bindings/js/JSDOMGuardedObject.h:
+        * bindings/js/JSDOMIterator.cpp:
+        * bindings/js/JSDOMIterator.h:
+        * bindings/js/JSDOMMapLike.cpp:
+        * bindings/js/JSDOMMapLike.h:
+        * bindings/js/JSDOMPromise.cpp:
+        * bindings/js/JSDOMPromise.h:
+        * bindings/js/JSDOMPromiseDeferred.cpp:
+        * bindings/js/JSDOMPromiseDeferred.h:
+        * bindings/js/JSDOMWindowBase.cpp:
+        * bindings/js/JSDOMWindowCustom.cpp:
+        * bindings/js/JSDOMWindowProxy.cpp:
+        * bindings/js/JSDOMWindowProxy.h:
+        * bindings/js/JSDOMWrapper.cpp:
+        * bindings/js/JSDOMWrapper.h:
+        * bindings/js/JSDOMWrapperCache.cpp:
+        * bindings/js/JSDOMWrapperCache.h:
+        * bindings/js/JSDynamicDowncast.h:
+        * bindings/js/JSErrorHandler.cpp:
+        * bindings/js/JSEventCustom.cpp:
+        * bindings/js/JSEventListener.cpp:
+        * bindings/js/JSEventListener.h:
+        * bindings/js/JSHTMLElementCustom.cpp:
+        * bindings/js/JSHistoryCustom.cpp:
+        * bindings/js/JSIDBCursorWithValueCustom.cpp:
+        * bindings/js/JSIDBIndexCustom.cpp:
+        * bindings/js/JSImageDataCustom.cpp:
+        * bindings/js/JSLazyEventListener.cpp:
+        * bindings/js/JSLocationCustom.cpp:
+        * bindings/js/JSMainThreadExecState.h:
+        * bindings/js/JSMainThreadExecStateInstrumentation.h:
+        * bindings/js/JSMessageChannelCustom.cpp:
+        * bindings/js/JSMessageEventCustom.cpp:
+        * bindings/js/JSNodeIteratorCustom.cpp:
+        * bindings/js/JSPopStateEventCustom.cpp:
+        * bindings/js/JSReadableStreamPrivateConstructors.cpp:
+        * bindings/js/JSTreeWalkerCustom.cpp:
+        * bindings/js/JSWebGL2RenderingContextCustom.cpp:
+        * bindings/js/JSWorkerGlobalScopeBase.cpp:
+        * bindings/js/ReadableStreamDefaultController.cpp:
+        * bindings/js/ReadableStreamDefaultController.h:
+        * bindings/js/ScheduledAction.cpp:
+        * bindings/js/ScheduledAction.h:
+        * bindings/js/ScriptCachedFrameData.cpp:
+        * bindings/js/ScriptCachedFrameData.h:
+        * bindings/js/ScriptController.cpp:
+        * bindings/js/ScriptController.h:
+        * bindings/js/ScriptControllerMac.mm:
+        * bindings/js/ScriptModuleLoader.cpp:
+        * bindings/js/ScriptModuleLoader.h:
+        * bindings/js/ScriptSourceCode.h:
+        * bindings/js/ScriptState.cpp:
+        * bindings/js/ScriptWrappable.h:
+        * bindings/js/ScriptWrappableInlines.h:
+        * bindings/js/SerializedScriptValue.cpp:
+        * bindings/js/SerializedScriptValue.h:
+        * bindings/js/StructuredClone.cpp:
+        * bindings/js/WebCoreBuiltinNames.h:
+        * bindings/js/WebCoreJSClientData.cpp:
+        * bindings/js/WebCoreTypedArrayController.cpp:
+        * bindings/js/WebCoreTypedArrayController.h:
+        * bindings/js/WorkerScriptController.cpp:
+        * bindings/js/WorkerScriptController.h:
+        * bridge/NP_jsobject.cpp:
+        * bridge/c/CRuntimeObject.cpp:
+        * bridge/c/c_class.cpp:
+        * bridge/c/c_instance.cpp:
+        * bridge/c/c_runtime.cpp:
+        * bridge/c/c_utility.cpp:
+        * bridge/c/c_utility.h:
+        * bridge/jsc/BridgeJSC.cpp:
+        * bridge/jsc/BridgeJSC.h:
+        * bridge/npruntime.cpp:
+        * bridge/objc/ObjCRuntimeObject.mm:
+        * bridge/objc/WebScriptObject.mm:
+        * bridge/objc/WebScriptObjectPrivate.h:
+        * bridge/objc/objc_instance.mm:
+        * bridge/objc/objc_runtime.h:
+        * bridge/objc/objc_runtime.mm:
+        * bridge/objc/objc_utility.h:
+        * bridge/objc/objc_utility.mm:
+        * bridge/runtime_array.cpp:
+        * bridge/runtime_array.h:
+        * bridge/runtime_method.cpp:
+        * bridge/runtime_method.h:
+        * bridge/runtime_object.cpp:
+        * bridge/runtime_object.h:
+        * bridge/runtime_root.cpp:
+        * bridge/runtime_root.h:
+        * crypto/SubtleCrypto.cpp:
+        * crypto/SubtleCrypto.h:
+        * crypto/gcrypt/CryptoKeyRSAGCrypt.cpp:
+        * crypto/keys/CryptoRsaKeyAlgorithm.h:
+        * crypto/mac/CryptoKeyRSAMac.cpp:
+        * crypto/parameters/CryptoAlgorithmEcdsaParams.h:
+        * crypto/parameters/CryptoAlgorithmHkdfParams.h:
+        * crypto/parameters/CryptoAlgorithmHmacKeyParams.h:
+        * crypto/parameters/CryptoAlgorithmPbkdf2Params.h:
+        * crypto/parameters/CryptoAlgorithmRsaHashedImportParams.h:
+        * crypto/parameters/CryptoAlgorithmRsaHashedKeyGenParams.h:
+        * crypto/parameters/CryptoAlgorithmRsaKeyGenParams.h:
+        * css/CSSFontFaceSource.h:
+        * css/DOMMatrixReadOnly.cpp:
+        * css/DOMMatrixReadOnly.h:
+        * css/FontFace.cpp:
+        * dom/CustomElementReactionQueue.cpp:
+        * dom/CustomElementRegistry.cpp:
+        * dom/CustomEvent.cpp:
+        * dom/CustomEvent.h:
+        * dom/Document.cpp:
+        * dom/Document.h:
+        * dom/ErrorEvent.cpp:
+        * dom/ErrorEvent.h:
+        * dom/LoadableScript.h:
+        * dom/MessageEvent.cpp:
+        * dom/MessageEvent.h:
+        * dom/ModuleFetchParameters.h:
+        * dom/PopStateEvent.cpp:
+        * dom/PopStateEvent.h:
+        * dom/PromiseRejectionEvent.cpp:
+        * dom/PromiseRejectionEvent.h:
+        * dom/RejectedPromiseTracker.cpp:
+        * dom/RejectedPromiseTracker.h:
+        * dom/ScriptExecutionContext.cpp:
+        * dom/ScriptExecutionContext.h:
+        * dom/TextEncoder.cpp:
+        * dom/TextEncoder.h:
+        * domjit/DOMJITHelpers.h:
+        * domjit/DOMJITIDLTypeFilter.h:
+        * domjit/JSDocumentDOMJIT.cpp:
+        * domjit/JSNodeDOMJIT.cpp:
+        * fileapi/BlobBuilder.cpp:
+        * fileapi/FileReader.cpp:
+        * fileapi/FileReaderLoader.cpp:
+        * fileapi/FileReaderSync.cpp:
+        * html/BaseTextInputType.cpp:
+        * html/EmailInputType.cpp:
+        * html/HTMLAllCollection.cpp:
+        * html/HTMLCanvasElement.cpp:
+        * html/HTMLImageLoader.cpp:
+        * html/HTMLMediaElement.cpp:
+        * html/HTMLPlugInImageElement.cpp:
+        * html/ImageData.cpp:
+        * html/ImageData.h:
+        * html/MediaEncryptedEventInit.h:
+        * html/WebKitMediaKeyError.h:
+        * html/canvas/WebGLAny.h:
+        * html/canvas/WebGLRenderingContext.cpp:
+        * html/canvas/WebGLRenderingContextBase.cpp:
+        * html/canvas/WebGLRenderingContextBase.h:
+        * html/canvas/WebGPUBuffer.cpp:
+        * html/canvas/WebGPURenderingContext.cpp:
+        * html/canvas/WebGPURenderingContext.h:
+        * html/track/DataCue.cpp:
+        * html/track/DataCue.h:
+        * inspector/CommandLineAPIHost.cpp:
+        * inspector/CommandLineAPIHost.h:
+        * inspector/CommandLineAPIModule.cpp:
+        * inspector/CommandLineAPIModule.h:
+        * inspector/InspectorCanvas.cpp:
+        * inspector/InspectorCanvas.h:
+        * inspector/InspectorClient.cpp:
+        * inspector/InspectorController.cpp:
+        * inspector/InspectorController.h:
+        * inspector/InspectorDatabaseResource.h:
+        * inspector/InspectorFrontendClientLocal.cpp:
+        * inspector/InspectorFrontendHost.cpp:
+        * inspector/InspectorInstrumentation.cpp:
+        * inspector/InspectorInstrumentation.h:
+        * inspector/InspectorOverlay.cpp:
+        * inspector/InspectorOverlay.h:
+        * inspector/InspectorShaderProgram.cpp:
+        * inspector/InspectorShaderProgram.h:
+        * inspector/InspectorStyleSheet.cpp:
+        * inspector/InspectorStyleSheet.h:
+        * inspector/InspectorWebAgentBase.h:
+        * inspector/InstrumentingAgents.h:
+        * inspector/PageScriptDebugServer.cpp:
+        * inspector/PageScriptDebugServer.h:
+        * inspector/TimelineRecordFactory.cpp:
+        * inspector/WebInjectedScriptHost.h:
+        * inspector/WebInjectedScriptManager.h:
+        * inspector/WorkerInspectorController.cpp:
+        * inspector/WorkerInspectorController.h:
+        * inspector/WorkerScriptDebugServer.cpp:
+        * inspector/WorkerScriptDebugServer.h:
+        * inspector/WorkerToPageFrontendChannel.h:
+        * inspector/agents/InspectorApplicationCacheAgent.h:
+        * inspector/agents/InspectorCSSAgent.cpp:
+        * inspector/agents/InspectorCSSAgent.h:
+        * inspector/agents/InspectorCanvasAgent.cpp:
+        * inspector/agents/InspectorCanvasAgent.h:
+        * inspector/agents/InspectorDOMAgent.cpp:
+        * inspector/agents/InspectorDOMAgent.h:
+        * inspector/agents/InspectorDOMDebuggerAgent.cpp:
+        * inspector/agents/InspectorDOMDebuggerAgent.h:
+        * inspector/agents/InspectorDOMStorageAgent.cpp:
+        * inspector/agents/InspectorDOMStorageAgent.h:
+        * inspector/agents/InspectorDatabaseAgent.cpp:
+        * inspector/agents/InspectorDatabaseAgent.h:
+        * inspector/agents/InspectorIndexedDBAgent.cpp:
+        * inspector/agents/InspectorIndexedDBAgent.h:
+        * inspector/agents/InspectorLayerTreeAgent.cpp:
+        * inspector/agents/InspectorLayerTreeAgent.h:
+        * inspector/agents/InspectorMemoryAgent.cpp:
+        * inspector/agents/InspectorMemoryAgent.h:
+        * inspector/agents/InspectorNetworkAgent.cpp:
+        * inspector/agents/InspectorNetworkAgent.h:
+        * inspector/agents/InspectorPageAgent.cpp:
+        * inspector/agents/InspectorPageAgent.h:
+        * inspector/agents/InspectorTimelineAgent.cpp:
+        * inspector/agents/InspectorTimelineAgent.h:
+        * inspector/agents/InspectorWorkerAgent.h:
+        * inspector/agents/WebConsoleAgent.cpp:
+        * inspector/agents/WebConsoleAgent.h:
+        * inspector/agents/WebDebuggerAgent.h:
+        * inspector/agents/WebHeapAgent.h:
+        * inspector/agents/page/PageDebuggerAgent.cpp:
+        * inspector/agents/page/PageRuntimeAgent.cpp:
+        * inspector/agents/page/PageRuntimeAgent.h:
+        * inspector/agents/worker/ServiceWorkerAgent.h:
+        * inspector/agents/worker/WorkerDebuggerAgent.cpp:
+        * inspector/agents/worker/WorkerRuntimeAgent.cpp:
+        * inspector/agents/worker/WorkerRuntimeAgent.h:
+        * loader/EmptyClients.cpp:
+        * page/CaptionUserPreferences.cpp:
+        * page/Chrome.cpp:
+        * page/ChromeClient.h:
+        * page/Crypto.cpp:
+        * page/DOMWindow.cpp:
+        * page/DOMWindow.h:
+        * page/Frame.cpp:
+        * page/OriginThreadLocalCache.h:
+        * page/PageConsoleClient.cpp:
+        * page/PageConsoleClient.h:
+        * page/PageDebuggable.cpp:
+        * page/PageGroup.cpp:
+        * page/SettingsBase.h:
+        * page/UserContentController.cpp:
+        * page/cocoa/ResourceUsageThreadCocoa.mm:
+        * page/csp/ContentSecurityPolicy.cpp:
+        * page/ios/FrameIOS.mm:
+        * page/linux/ResourceUsageOverlayLinux.cpp:
+        * page/linux/ResourceUsageThreadLinux.cpp:
+        * platform/MediaSample.h:
+        * platform/SerializedPlatformRepresentation.h:
+        * platform/SharedBuffer.h:
+        * platform/audio/mac/CARingBuffer.h:
+        * platform/cocoa/SharedBufferCocoa.mm:
+        * platform/graphics/ImageBuffer.h:
+        * platform/graphics/LegacyCDMSession.h:
+        * platform/graphics/MediaPlayer.h:
+        * platform/graphics/avfoundation/CDMFairPlayStreaming.cpp:
+        * platform/graphics/avfoundation/CDMPrivateMediaSourceAVFObjC.mm:
+        * platform/graphics/avfoundation/InbandTextTrackPrivateAVF.cpp:
+        * platform/graphics/avfoundation/MediaPlayerPrivateAVFoundation.cpp:
+        * platform/graphics/avfoundation/MediaSampleAVFObjC.h:
+        * platform/graphics/avfoundation/cf/MediaPlayerPrivateAVFoundationCF.cpp:
+        * platform/graphics/avfoundation/objc/CDMSessionAVContentKeySession.mm:
+        * platform/graphics/avfoundation/objc/CDMSessionAVFoundationObjC.mm:
+        * platform/graphics/avfoundation/objc/CDMSessionAVStreamSession.mm:
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateAVFoundationObjC.mm:
+        * platform/graphics/avfoundation/objc/MediaSampleAVFObjC.mm:
+        * platform/graphics/avfoundation/objc/SourceBufferPrivateAVFObjC.mm:
+        * platform/graphics/cairo/ImageBufferCairo.cpp:
+        * platform/graphics/cg/ImageBufferDataCG.cpp:
+        * platform/graphics/cg/ImageBufferDataCG.h:
+        * platform/graphics/cocoa/GPUDeviceMetal.mm:
+        * platform/graphics/filters/FEBlend.cpp:
+        * platform/graphics/filters/FEColorMatrix.cpp:
+        * platform/graphics/filters/FEComponentTransfer.cpp:
+        * platform/graphics/filters/FEComposite.cpp:
+        * platform/graphics/filters/FEConvolveMatrix.cpp:
+        * platform/graphics/filters/FEDisplacementMap.cpp:
+        * platform/graphics/filters/FEDropShadow.cpp:
+        * platform/graphics/filters/FEGaussianBlur.cpp:
+        * platform/graphics/filters/FELighting.h:
+        * platform/graphics/filters/FEMorphology.cpp:
+        * platform/graphics/filters/FETurbulence.cpp:
+        * platform/graphics/filters/FilterEffect.cpp:
+        * platform/graphics/filters/FilterEffect.h:
+        * platform/graphics/gpu/GPUBuffer.h:
+        * platform/graphics/gpu/GPUDevice.h:
+        * platform/graphics/iso/ISOBox.cpp:
+        * platform/graphics/iso/ISOOriginalFormatBox.cpp:
+        * platform/graphics/iso/ISOProtectionSchemeInfoBox.cpp:
+        * platform/graphics/iso/ISOSchemeInformationBox.cpp:
+        * platform/graphics/iso/ISOSchemeTypeBox.cpp:
+        * platform/graphics/iso/ISOTrackEncryptionBox.cpp:
+        * platform/graphics/iso/ISOVTTCue.cpp:
+        * platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp:
+        * platform/graphics/win/ImageBufferDataDirect2D.cpp:
+        * platform/graphics/win/ImageBufferDataDirect2D.h:
+        * platform/ios/wak/WebCoreThread.mm:
+        * platform/mac/SerializedPlatformRepresentationMac.mm:
+        * platform/mac/StringUtilities.mm:
+        * platform/mock/mediasource/MockBox.cpp:
+        * platform/mock/mediasource/MockSourceBufferPrivate.cpp:
+        * svg/graphics/SVGImage.cpp:
+        * testing/GCObservation.cpp:
+        * testing/GCObservation.h:
+        * testing/Internals.cpp:
+        * testing/Internals.h:
+        * testing/LegacyMockCDM.cpp:
+        * testing/MockCDMFactory.cpp:
+        * testing/js/WebCoreTestSupport.cpp:
+        * workers/Worker.cpp:
+        * workers/Worker.h:
+        * workers/WorkerConsoleClient.cpp:
+        * workers/WorkerConsoleClient.h:
+        * workers/WorkerGlobalScope.cpp:
+        * workers/WorkerGlobalScope.h:
+        * workers/WorkerGlobalScopeProxy.h:
+        * workers/WorkerInspectorProxy.cpp:
+        * workers/WorkerMessagingProxy.cpp:
+        * workers/WorkerThread.h:
+        * workers/service/ExtendableEvent.cpp:
+        * workers/service/ServiceWorker.cpp:
+        * workers/service/ServiceWorker.h:
+        * workers/service/ServiceWorkerClient.h:
+        * workers/service/context/ServiceWorkerInspectorProxy.cpp:
+        * workers/service/context/ServiceWorkerThread.cpp:
+        * xml/XMLHttpRequest.cpp:
+
+2018-02-06  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Rendering SVG images with same size as WebGL texture doesn't work correctly
+        https://bugs.webkit.org/show_bug.cgi?id=182367
+
+        Reviewed by Dean Jackson.
+
+        If am image buffer is created for a webgl texture and then it is reused 
+        for another texture, it has to be cleared before drawing.
+
+        Test: webgl/webgl-texture-image-buffer-reuse.html
+
+        * html/canvas/WebGLRenderingContextBase.cpp:
+        (WebCore::WebGLRenderingContextBase::LRUImageBufferCache::imageBuffer):
+
+2018-02-06  Youenn Fablet  <youenn@apple.com>
+
+        Use downcast in createLinkPreloadResourceClient
+        https://bugs.webkit.org/show_bug.cgi?id=182488
+
+        Reviewed by Antti Koivisto.
+
+        No observable change of behavior.
+        Add a new link preloader client for text track.
+
+        * loader/LinkLoader.cpp:
+        (WebCore::createLinkPreloadResourceClient):
+        * loader/LinkPreloadResourceClients.h:
+
+2018-02-06  Youenn Fablet  <youenn@apple.com>
+
+        imported/w3c/web-platform-tests/service-workers/service-worker/fetch-event-respond-with-response-body-with-invalid-chunk.https.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=182541
+
+        Reviewed by Chris Dumez.
+
+        Covered by test being no longer flaky.
+        In case of loading error when getting the response body, we were only reporting
+        the error if there was a callback set or a ReadableStream already created.
+        Otherwise, we were just stopping loading and if creating a ReadableStream, we were just returning an empty body.
+
+        FetchBodyOwner now stores a loading error.
+        In case a readable stream is created, it will error it if there is a loading error.
+        If there is not and the loading failed later on, the stream will be errored using the current code path.
+
+        * Modules/cache/DOMCache.cpp:
+        (WebCore::DOMCache::put):
+        * Modules/fetch/FetchResponse.cpp:
+        (WebCore::FetchResponse::clone):
+        (WebCore::FetchResponse::BodyLoader::didFail):
+        * Modules/fetch/FetchResponse.h:
+        * workers/service/context/ServiceWorkerFetch.cpp:
+        (WebCore::ServiceWorkerFetch::processResponse):
+
+2018-02-06  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] show() should take an optional PaymentDetailsUpdate promise
+        https://bugs.webkit.org/show_bug.cgi?id=182538
+        <rdar://problem/36754552>
+
+        Reviewed by Tim Horton.
+
+        Taught show() to take an optional promise for a PaymentDetailsUpdate.
+
+        Added test cases to http/tests/paymentrequest/payment-request-show-method.https.html.
+
+        * Modules/applepay/paymentrequest/ApplePayPaymentHandler.cpp:
+        (WebCore::ApplePayPaymentHandler::detailsUpdated):
+
+        Changed to take a PaymentRequest::UpdateReason instead of a eventType string.
+
+        (WebCore::ApplePayPaymentHandler::shippingAddressUpdated):
+        (WebCore::ApplePayPaymentHandler::shippingOptionUpdated):
+        (WebCore::ApplePayPaymentHandler::paymentMethodUpdated):
+        (WebCore::ApplePayPaymentHandler::didAuthorizePayment):
+        (WebCore::ApplePayPaymentHandler::didSelectShippingMethod):
+        (WebCore::ApplePayPaymentHandler::didSelectShippingContact):
+        (WebCore::ApplePayPaymentHandler::didSelectPaymentMethod):
+
+        Asserted that only one of the PaymentSession delegates is executing at a time.
+
+        * Modules/applepay/paymentrequest/ApplePayPaymentHandler.h:
+        * Modules/paymentrequest/PaymentHandler.h:
+
+        Changed detailsUpdated to take a PaymentRequest::UpdateReason instead of a eventType string.
+
+        * Modules/paymentrequest/PaymentRequest.cpp:
+        (WebCore::PaymentRequest::show):
+
+        If there is a details promise, call updateWith() with UpdateReason::ShowDetailsResolved.
+
+        (WebCore::PaymentRequest::shippingAddressChanged):
+        (WebCore::PaymentRequest::shippingOptionChanged):
+        (WebCore::PaymentRequest::paymentMethodChanged):
+
+        Used whenDetailsSettled() to ensure that update events do not start before the show()
+        details promise settles.
+
+        (WebCore::PaymentRequest::updateWith):
+        (WebCore::PaymentRequest::settleDetailsPromise):
+
+        Changed to use a PaymentRequest::UpdateReason instead of a eventType string.
+
+        (WebCore::PaymentRequest::whenDetailsSettled):
+
+        If there is a details promise, wait for it to settle before executing the callback.
+
+        * Modules/paymentrequest/PaymentRequest.h:
+
+        Defined enum class UpdateReason.
+
+        * Modules/paymentrequest/PaymentRequest.idl:
+
+        Updated show() to take an optional Promise<PaymentDetailsUpdate>.
+
+        * Modules/paymentrequest/PaymentRequestUpdateEvent.cpp:
+        (WebCore::PaymentRequestUpdateEvent::updateWith):
+
+        Map the event type to a PaymentRequest::UpdateReason.
+
+2018-02-06  Dean Jackson  <dino@apple.com>
+
+        REGRESSION: WebGL no longer producing a transparent canvas on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=182550
+        <rdar://problem/37234491>
+
+        Reviewed by Eric Carlson.
+
+        Due to some weirdness GL_RGBA8 is sometimes different between iOS and
+        other platforms. Only tell the WebGLLayer that it is opaque when it really
+        is not transparent.
+
+        Covered by existing test: fast/canvas/webgl/context-attributes-alpha
+
+        * platform/graphics/cocoa/GraphicsContext3DCocoa.mm:
+        (WebCore::GraphicsContext3D::setRenderbufferStorageFromDrawable): Look at the context
+        attributes to decide if we should use an opaque layer.
+        * platform/graphics/cocoa/WebGLLayer.mm: Ditto.
+        (-[WebGLLayer initWithGraphicsContext3D:]):
+
+2018-02-06  Andy Estes  <aestes@apple.com>
+
+        [WebIDL] Support optional Promise arguments
+        https://bugs.webkit.org/show_bug.cgi?id=182399
+        <rdar://problem/36754552>
+
+        Reviewed by Sam Weinig and Chris Dumez.
+
+        Previously, declaring a Promise argument as optional would result in a native type of
+        std::optional<RefPtr<DOMPromise>>. This is wasteful, since RefPtr can represent an optional
+        argument by storing nullptr. Further, PassArgumentExpression() assumed Promises were never
+        optional and tried to pass the argument as a Ref by calling RefPtr::releaseNonNull().
+
+        This patch removes the std::optional wrapper around optional Promises and simply passes the
+        promise as a RefPtr to native code.
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (PassArgumentExpression):
+        (GenerateParametersCheck):
+        * bindings/scripts/test/JS/JSTestObj.cpp:
+        (WebCore::jsTestObjPrototypeFunctionMethodWithOptionalPromiseBody):
+        (WebCore::jsTestObjPrototypeFunctionMethodWithOptionalPromise):
+        * bindings/scripts/test/TestObj.idl:
+
+2018-02-06  Youenn Fablet  <youenn@apple.com>
+
+        HasServiceWorkerRegistration bit should be sent when creating a new page
+        https://bugs.webkit.org/show_bug.cgi?id=182410
+
+        Reviewed by Chris Dumez.
+
+        Covered by new API test.
+
+        Changed the default value of service workers being registered to false.
+        Every page created in the process will be responsible to change the value to true,
+        at which time the value will be kept to true for the lifetime of the process.
+
+        * workers/service/ServiceWorkerProvider.h:
+
+2018-02-06  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Add missing #if ENABLE(VIDEO) after r228092.
+        https://bugs.webkit.org/show_bug.cgi?id=182539
+
+        Reviewed by Michael Catanzaro.
+
+        * html/ImageBitmap.cpp:
+
+2018-02-06  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Test at media/modern-media-controls/tracks-panel/tracks-panel-controls-bar-remains-visible-after-clicking-over-it.html fails
+        https://bugs.webkit.org/show_bug.cgi?id=182425
+
+        Reviewed by Dean Jackson.
+
+        This test failed because the controls bar would not hit test at the moment we synthesized a mousemove over the controls bar as the first step towards
+        synthesizing a click on the controls bar to dismiss the tracks panel. Indeed, it would have "pointer-events" set to "none" until the tracks panel was
+        dismissed, which would only happen after the click event had been propagated. All we need to do is to ensure that none of the controls within the controls
+        bar get activated as a result of clicking over them when the tracks panel is visible, so we instead set "pointer-events" to "none" on all children of a
+        controls bar rather than the controls bar itself, which can thus still hit test.
+
+        * Modules/modern-media-controls/controls/media-controls.css:
+        (.media-controls.shows-tracks-panel > .controls-bar > *,):
+        (.media-controls.shows-tracks-panel > .controls-bar,): Deleted.
+
+2018-02-06  Chris Dumez  <cdumez@apple.com>
+
+        Service workers registrations are saved to disk before the install / activation succeeds
+        https://bugs.webkit.org/show_bug.cgi?id=182535
+        <rdar://problem/36591485>
+
+        Reviewed by Youenn Fablet.
+
+        Service workers registrations are saved to disk before the install / activation succeeds.
+        This means if the browser exits before the install / activation succeeds, we may restore
+        from disk a registration with an “active” worker which may have never been installed /
+        activated.
+
+        To address the issue, we now delay saving the registration to disk until after the service
+        worker has been activated.
+
+        No new tests, restoration from disk is covered by API tests that still pass.
+
+        * workers/service/server/SWServer.cpp:
+        (WebCore::SWServer::didFinishActivation):
+        (WebCore::SWServer::installContextData):
+
+2018-02-06  Ms2ger  <Ms2ger@igalia.com>
+
+        Initialize ImageBitmap::m_bitmapData in the constructor.
+        https://bugs.webkit.org/show_bug.cgi?id=182487
+
+        Reviewed by Sam Weinig.
+
+        This removes the span of time where an ImageBitmap object would exist
+        with a null m_bitmapData during its construction.
+
+        No new tests: no behavior changes.
+
+        * html/ImageBitmap.cpp:
+        (WebCore::ImageBitmap::create): update signature
+        (WebCore::ImageBitmap::createPromise): update callers
+        (WebCore::ImageBitmap::ImageBitmap): update signature
+        * html/ImageBitmap.h: update signatures
+
+2018-02-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Release assertion in inlineVideoFrame
+        https://bugs.webkit.org/show_bug.cgi?id=182513
+        <rdar://problem/37159363>
+
+        Reviewed by Zalan Bujtas.
+
+        The bug was caused by the fact it's not always safe to invoke updateLayout even when isSafeToUpdateStyleOrLayout
+        on a document of a flattened frame on iOS. isSafeToUpdateStyleOrLayout returns true when the frame view is in
+        the frame-flattening mode to avoid hitting a release asssertion in updateLayout of the frame. However, it's still
+        not safe to invoke updateLayout on a parent frame in this case.
+
+        As a result, inlineVideoFrame (in Source/WebKit/WebProcess/cocoa/VideoFullscreenManager.mm) invokes updateLayout
+        even when the top-level document is not safe to update when the video element is in a frame-flattened document.
+
+        Fixed this bug by explicitly checking that we still have a live render tree and document hasn't been stopped.
+        Also replaced other uses of isSafeToUpdateStyleOrLayout by more explicit checks.
+
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::AccessibilityObject::updateBackingStore): Made the early exit condition added in r227006 more explicit.
+        Namely, InspectorDOMAgent::pseudoElementCreated is invoked during style recalc.
+        * dom/Document.cpp:
+        (WebCore::isSafeToUpdateStyleOrLayout): Made this local to the file.
+        (WebCore::Document::updateStyleIfNeeded):
+        (WebCore::Document::updateLayout):
+        * dom/Document.h:
+        * html/MediaElementSession.cpp:
+        (WebCore::isMainContentForPurposesOfAutoplay): Made the early exit condition added in r227529 more explicit. Don't
+        update the layout when the render tree had been destroyed or the active DOM objects had been stopped.
+
+2018-02-05  Youenn Fablet  <youenn@apple.com>
+
+        Crash in imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-origin.sub.html
+        https://bugs.webkit.org/show_bug.cgi?id=182422
+        <rdar://problem/37182665>
+
+        Reviewed by Alex Christensen.
+
+        Covered by test no longer crashing in Debug mode.
+        Make sure completionHandler is called on the main thread.
+
+        * platform/network/cocoa/WebCoreNSURLSession.mm:
+        (-[WebCoreNSURLSessionDataTask resource:receivedRedirect:request:completionHandler:]):
+
+2018-02-05  Filip Pizlo  <fpizlo@apple.com>
+
+        Global objects should be able to use TLCs to allocate from different blocks from each other
+        https://bugs.webkit.org/show_bug.cgi?id=182227
+
+        Reviewed by Daniel Bates and Chris Dumez.
+
+        No new tests because no change in behavior.
+        
+        Adopt JSC TLC API to put distance between objects from different security origins. WebCore has
+        a subclass of ThreadLocalCache that supports hash-consing based on the relevant origin data
+        using the existing SecurityOriginHash. It's Document's job to initiate this, but all of the
+        logic is in WebCore::OriginThreadLocalCache.
+        
+        Workers don't opt into this. They just get the VM's default TLC all the time.
+
+        * ForwardingHeaders/heap/ThreadLocalCache.h: Added.
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * bindings/js/JSDOMGlobalObject.cpp:
+        (WebCore::JSDOMGlobalObject::JSDOMGlobalObject):
+        * bindings/js/JSDOMGlobalObject.h:
+        * bindings/js/JSDOMWindowBase.cpp:
+        (WebCore::JSDOMWindowBase::JSDOMWindowBase):
+        * dom/Document.cpp:
+        (WebCore::Document::initSecurityContext):
+        (WebCore::Document::threadLocalCache):
+        * dom/Document.h:
+        * page/OriginThreadLocalCache.cpp: Added.
+        (WebCore::threadLocalCacheMap):
+        (WebCore::OriginThreadLocalCache::create):
+        (WebCore::OriginThreadLocalCache::~OriginThreadLocalCache):
+        (WebCore::OriginThreadLocalCache::OriginThreadLocalCache):
+        * page/OriginThreadLocalCache.h: Added.
+        * page/SecurityOrigin.cpp:
+        (WebCore::SecurityOrigin::passesFileCheck const):
+        (WebCore::SecurityOrigin::setEnforcesFilePathSeparation):
+        (WebCore::SecurityOrigin::toString const):
+        (WebCore::SecurityOrigin::enforceFilePathSeparation): Deleted.
+        * page/SecurityOrigin.h:
+        (WebCore::SecurityOrigin::enforcesFilePathSeparation const):
+
+2018-02-05  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Release assert failed under NetworkStateNotifier::singleton.
+        https://bugs.webkit.org/show_bug.cgi?id=182516
+
+        Reviewed by Brent Fulgham.
+
+        The callback NetworkStateNotifier::addressChangeCallback will always be called on a
+        worker thread on Windows. Since the method NetworkStateNotifier::singleton() is
+        called by NetworkStateNotifier::addressChangeCallback, but has to be called on the
+        on the main thread, the call has to be moved there.
+
+        No new tests. I have not been able to reproduce the crash.
+
+        * platform/network/win/NetworkStateNotifierWin.cpp:
+        (WebCore::NetworkStateNotifier::addressChangeCallback):
+
+2018-02-05  Don Olmstead  <don.olmstead@sony.com>
+
+        Abstract heap generator should include JavaScriptCore headers directly
+        https://bugs.webkit.org/show_bug.cgi?id=182501
+
+        Reviewed by Alex Christensen.
+
+        No new tests. No change in behavior.
+
+        * domjit/generate-abstract-heap.rb:
+
+2018-02-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] Implement number pad UI when editing `tel` and `number` inputs
+        https://bugs.webkit.org/show_bug.cgi?id=182472
+        <rdar://problem/35143057>
+
+        Reviewed by Tim Horton.
+
+        Adds a localized string for the "Done" button text in extra zoomed form controls.
+
+        * English.lproj/Localizable.strings:
+        * platform/LocalizedStrings.cpp:
+        (WebCore::formControlDoneButtonTitle):
+        * platform/LocalizedStrings.h:
+
+2018-02-05  John Wilander  <wilander@apple.com>
+
+        Build fix for r228115, simple naming issue succeeded —> success.
+        https://bugs.webkit.org/show_bug.cgi?id=182507
+        <rdar://problem/37248566>
+
+        Reviewed by Eric Carlson.
+
+        No new tests. Build fix.
+
+        * platform/ios/VideoFullscreenInterfaceAVKit.mm:
+        (VideoFullscreenInterfaceAVKit::enterFullscreenHandler):
+            succeeded —> success
+
+2018-02-05  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r228086.
+
+        This introduced a failure with API test
+        URLTest.HostIsIPAddress.
+
+        Reverted changeset:
+
+        "Add a way to check if a host is an IP address"
+        https://bugs.webkit.org/show_bug.cgi?id=182427
+        https://trac.webkit.org/changeset/228086
+
+2018-02-05  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r228103.
+
+        This caused multiple tests to crash.
+
+        Reverted changeset:
+
+        "Use downcast in createLinkPreloadResourceClient"
+        https://bugs.webkit.org/show_bug.cgi?id=182488
+        https://trac.webkit.org/changeset/228103
+
+2018-02-05  Eric Carlson  <eric.carlson@apple.com>
+
+        [iOS] VideoFullscreenInterfaceAVKit should not ignore errors
+        https://bugs.webkit.org/show_bug.cgi?id=182497
+        <rdar://problem/36986898>
+
+        Reviewed by Jer Noble.
+        
+        Always call layoutIfNeeded before calling -[AVPlayerViewController enterFullScreenAnimated:completionHandler]
+        or -[AVPlayerViewController exitFullScreenAnimated:completionHandler] because they both fail
+        if the view needs layout. Also don't ignore errors returned by those calls.
+
+        No new tests, the failure is non deterministic and I was not able to reproduce in a test.
+
+        * platform/ios/VideoFullscreenInterfaceAVKit.mm:
+        (VideoFullscreenInterfaceAVKit::applicationDidBecomeActive):
+        (VideoFullscreenInterfaceAVKit::enterFullscreenStandard):
+        (VideoFullscreenInterfaceAVKit::exitFullscreen):
+        (VideoFullscreenInterfaceAVKit::cleanupFullscreen):
+        (VideoFullscreenInterfaceAVKit::didStartPictureInPicture):
+        (VideoFullscreenInterfaceAVKit::prepareForPictureInPictureStopWithCompletionHandler):
+        (VideoFullscreenInterfaceAVKit::doEnterFullscreen):
+        (VideoFullscreenInterfaceAVKit::exitFullscreenHandler):
+        (VideoFullscreenInterfaceAVKit::enterFullscreenHandler):
+
+2018-02-05  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r222795): Nike app "Refused to set unsafe header" when adding and viewing cart
+        https://bugs.webkit.org/show_bug.cgi?id=182491
+        <rdar://problem/36533447>
+
+        Reviewed by Brent Fulgham.
+
+        Exempt Nike from the XHR header restrictions in r222795.
+
+        Following r222795 only Dashboard widgets are allowed to set arbitrary XHR headers.
+        However Nike also depends on such functionality.
+
+        * platform/RuntimeApplicationChecks.h:
+        * platform/cocoa/RuntimeApplicationChecksCocoa.mm:
+        (WebCore::IOSApplication::isNike):
+
+2018-02-02  Brent Fulgham  <bfulgham@apple.com>
+
+        Improve NetworkResourceLoader logging so it can be used for 'setCookiesFromDOM'
+        https://bugs.webkit.org/show_bug.cgi?id=182455
+        <rdar://problem/36626601>
+
+        Reviewed by Chris Dumez.
+
+        After this refactoring, a convenience method I added in r227860 is no longer needed.
+        This patch removes this dead code.
+
+        * platform/network/NetworkStorageSession.h: Export 'cookieStoragePartition' so it can
+        be used in WebKit.
+        * platform/network/cf/NetworkStorageSessionCFNet.cpp: 
+        (WebCore::NetworkStorageSession::hasStorageAccessForFrame): Deleted unused method.
+
+2018-02-05  Antti Koivisto  <antti@apple.com>
+
+        Make ASSERT_WITH_SECURITY_IMPLICATION in CachedResourceClientWalker::next a release assert
+        https://bugs.webkit.org/show_bug.cgi?id=182492
+
+        Reviewed by Youenn Fablet.
+
+        * loader/cache/CachedResourceClientWalker.h:
+        (WebCore::CachedResourceClientWalker::next):
+
+2018-02-05  John Wilander  <wilander@apple.com>
+
+        Storage Access API: Add testRunner.getAllStorageAccessEntries() to make testing easier and more explicit
+        https://bugs.webkit.org/show_bug.cgi?id=181601
+        <rdar://problem/36475837>
+
+        Reviewed by Alex Christensen.
+
+        No new tests. Existing test updated.
+
+        http/tests/storageAccess/request-and-grant-access-then-detach-should-not-have-access.html
+        was found to be flaky. With the testRunner.hasStorageAccessEntry() getter
+        it's possible to check access even if a frame doesn't respond timely to
+        postMessage after detach and attach.
+
+        * platform/network/NetworkStorageSession.h:
+        * platform/network/cf/NetworkStorageSessionCFNet.cpp:
+        (WebCore::NetworkStorageSession::getAllStorageAccessEntries const):
+
+2018-02-05  Youenn Fablet  <youenn@apple.com>
+
+        Use downcast in createLinkPreloadResourceClient
+        https://bugs.webkit.org/show_bug.cgi?id=182488
+
+        Reviewed by Antti Koivisto.
+
+        No observable change of behavior.
+
+        * loader/LinkLoader.cpp:
+        (WebCore::createLinkPreloadResourceClient):
+
+2018-02-05  Chris Dumez  <cdumez@apple.com>
+
+        Layout Test imported/w3c/web-platform-tests/service-workers/service-worker/register-same-scope-different-script-url.https.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=181166
+        <rdar://problem/37169508>
+
+        Reviewed by Youenn Fablet.
+
+        I found out that this test was flakily timing out because our jobQueues would sometimes get stuck
+        when their current job's connection or service worker (when scheduled by a service worker) would
+        go away before the job is complete.
+
+        This patch makes our job queues operation more robust by:
+        1. Cancelling all jobs from a given connection when a SWServerConnection goes away
+        2. Cancelling all jobs from a given service worker when a service worker gets terminated
+
+        We also make sure service workers created by a job get properly terminated when a job
+        is canceled to avoid leaving service workers in limbo.
+
+        No new tests, unskipped existing flaky test.
+
+        * workers/service/ServiceWorkerContainer.cpp:
+        (WebCore::ServiceWorkerContainer::addRegistration):
+        (WebCore::ServiceWorkerContainer::removeRegistration):
+        (WebCore::ServiceWorkerContainer::updateRegistration):
+        * workers/service/ServiceWorkerJobData.cpp:
+        (WebCore::ServiceWorkerJobData::ServiceWorkerJobData):
+        (WebCore::ServiceWorkerJobData::isolatedCopy const):
+        * workers/service/ServiceWorkerJobData.h:
+        (WebCore::ServiceWorkerJobData::encode const):
+        (WebCore::ServiceWorkerJobData::decode):
+        * workers/service/server/SWServer.cpp:
+        (WebCore::SWServer::startScriptFetch):
+        (WebCore::SWServer::scriptContextFailedToStart):
+        (WebCore::SWServer::scriptContextStarted):
+        (WebCore::SWServer::terminatePreinstallationWorker):
+        (WebCore::SWServer::installContextData):
+        (WebCore::SWServer::workerContextTerminated):
+        (WebCore::SWServer::unregisterConnection):
+        * workers/service/server/SWServer.h:
+        * workers/service/server/SWServerJobQueue.cpp:
+        (WebCore::SWServerJobQueue::removeAllJobsMatching):
+        (WebCore::SWServerJobQueue::cancelJobsFromConnection):
+        (WebCore::SWServerJobQueue::cancelJobsFromServiceWorker):
+        * workers/service/server/SWServerJobQueue.h:
+        * workers/service/server/SWServerRegistration.cpp:
+        (WebCore::SWServerRegistration::setPreInstallationWorker):
+
+2018-02-05  Antti Koivisto  <antti@apple.com>
+
+        Crash on sfgate.com because mismatching link preload types
+        https://bugs.webkit.org/show_bug.cgi?id=182483
+        <rdar://problem/37065331>
+
+        Reviewed by Daniel Bates.
+
+        Preloading the same URL with different 'as' types causes some confusion.
+
+        Test: http/tests/preload/link-preload-type-mismatch.html
+
+        * loader/LinkLoader.cpp:
+        (WebCore::createLinkPreloadResourceClient):
+
+            Ensure we use the actual resource type when creating the client.
+
+        (WebCore::LinkLoader::preloadIfNeeded):
+
+            Don't construct client if the types don't match. This can happen if there is an existing
+            preload for the same resource with different type.
+
+2018-02-05  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Rename gutter properties to remove "grid-" prefix
+        https://bugs.webkit.org/show_bug.cgi?id=180290
+
+        Reviewed by Javier Fernandez.
+
+        This patch applies the resoultion of the CSS WG to unprefix
+        the CSS Grid Layout gutter properties:
+        https://github.com/w3c/csswg-drafts/issues/1696
+
+        column-gap already existed before, as it's part of Multicol.
+        The patch adds the new properties row-gap and gap, and keep the legacy ones
+        as aliases:
+        - grid-column-gap => column-gap
+        - grid-row-gap => row-gap
+        - grid-gap => gap
+
+        As column-gap was already animatable, this change takes advantage
+        to make animatable row-gap too.
+
+        Tests: imported/w3c/web-platform-tests/css/css-align/gaps/
+
+        * css/CSSComputedStyleDeclaration.cpp:
+        (WebCore::ComputedStyleExtractor::valueForPropertyinStyle):
+        * css/CSSProperties.json:
+        * css/StyleProperties.cpp:
+        * css/parser/CSSParserFastPaths.cpp:
+        (WebCore::isSimpleLengthPropertyID):
+        * css/parser/CSSPropertyParser.cpp:
+        (WebCore::CSSPropertyParser::parseSingleValue):
+        (WebCore::CSSPropertyParser::parseShorthand):
+        * page/animation/CSSPropertyAnimation.cpp:
+        (WebCore::CSSPropertyAnimationWrapperMap::CSSPropertyAnimationWrapperMap):
+        * rendering/RenderGrid.cpp:
+        (WebCore::RenderGrid::availableSpaceForGutters const):
+        (WebCore::RenderGrid::gridGap const):
+        * rendering/style/RenderStyle.h:
+        (WebCore::RenderStyle::gridAutoRows const):
+        (WebCore::RenderStyle::columnGap const):
+        (WebCore::RenderStyle::rowGap const):
+        (WebCore::RenderStyle::setGridItemRowEnd):
+        (WebCore::RenderStyle::setColumnGap):
+        (WebCore::RenderStyle::setRowGap):
+        (WebCore::RenderStyle::initialRowGap):
+        * rendering/style/StyleGridData.cpp:
+        (WebCore::StyleGridData::StyleGridData):
+        * rendering/style/StyleGridData.h:
+        (WebCore::StyleGridData::operator== const):
+        * rendering/style/StyleMultiColData.cpp:
+        (WebCore::StyleMultiColData::StyleMultiColData):
+        (WebCore::StyleMultiColData::operator== const):
+        * rendering/style/StyleMultiColData.h:
+        * rendering/style/StyleRareNonInheritedData.cpp:
+        (WebCore::StyleRareNonInheritedData::StyleRareNonInheritedData):
+        (WebCore::StyleRareNonInheritedData::operator== const):
+        * rendering/style/StyleRareNonInheritedData.h:
+
+2018-02-05  Ms2ger  <Ms2ger@igalia.com>
+
+        Implement createImageBitmap(HTMLVideoElement)
+        https://bugs.webkit.org/show_bug.cgi?id=182388
+
+        Reviewed by Žan Doberšek.
+
+        The implementation is inspired by CanvasRenderingContext2DBase::drawImage().
+
+        Tests:
+
+        - web-platform-tests/2dcontext/imagebitmap/createImageBitmap-drawImage.html
+        - web-platform-tests/2dcontext/imagebitmap/createImageBitmap-invalid-args.html
+
+
+        * html/ImageBitmap.cpp:
+        (WebCore::taintsOrigin): Add function to help with the implementation.
+        (WebCore::ImageBitmap::createPromise): Fill in implementation.
+
+2018-02-05  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed, rolling out r228085.
+
+        Pixel data stride is imposed by OpenGL and shouldn't be
+        adjusted for Cairo
+
+        Reverted changeset:
+
+        "[Cairo] Correctly calculate stride in
+        GraphicsContext3D::paintToCanvas()"
+        https://bugs.webkit.org/show_bug.cgi?id=182466
+        https://trac.webkit.org/changeset/228085
+
+2018-02-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] WebSockets must use system proxy settings
+        https://bugs.webkit.org/show_bug.cgi?id=126384
+
+        Reviewed by Michael Catanzaro.
+
+        Use soup_session_connect_async() when available to create the WebSockets connection instead of GSocketClient
+        directly.
+
+        * platform/network/soup/SocketStreamHandleImpl.h:
+        * platform/network/soup/SocketStreamHandleImplSoup.cpp:
+        (WebCore::wssSocketClientEventCallback):
+        (WebCore::SocketStreamHandleImpl::create):
+        (WebCore::SocketStreamHandleImpl::connected):
+        (WebCore::SocketStreamHandleImpl::connectedCallback):
+        (WebCore::SocketStreamHandleImpl::platformClose):
+
+2018-02-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Add a way to check if a host is an IP address
+        https://bugs.webkit.org/show_bug.cgi?id=182427
+
+        Reviewed by Alex Christensen.
+
+        There are several places where this is needed. We currently just assume that any host ending in a digit is an IP
+        address, except in PublicSuffix where platform specific code is used. This patch adds URL::hostIsIPAddress()
+        platform specific implementations, falling back to current assumption if there isn't an implementation for the
+        platform.
+
+        * page/OriginAccessEntry.cpp:
+        (WebCore::OriginAccessEntry::OriginAccessEntry): Use URL::hostIsIPAddress().
+        * platform/URL.cpp:
+        (WebCore::URL::hostIsIPAddress): Fallback implementation.
+        * platform/URL.h:
+        * platform/mac/PublicSuffixMac.mm:
+        (WebCore::topPrivatelyControlledDomain): Use URL::hostIsIPAddress().
+        * platform/mac/URLMac.mm:
+        (WebCore::URL::hostIsIPAddress): Move implementation from PublicSuffixMac.mm.
+        * platform/network/curl/CookieUtil.cpp:
+        (WebCore::CookieUtil::isIPAddress): Use URL::hostIsIPAddress().
+        * platform/soup/URLSoup.cpp:
+        (WebCore::URL::hostIsIPAddress): Use g_hostname_is_ip_address().
+
+2018-02-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Correctly calculate stride in GraphicsContext3D::paintToCanvas()
+        https://bugs.webkit.org/show_bug.cgi?id=182466
+
+        Reviewed by Michael Catanzaro.
+
+        * platform/graphics/cairo/GraphicsContext3DCairo.cpp:
+        (WebCore::GraphicsContext3D::paintToCanvas):
+        Use cairo_format_stride_for_width() to obtain stride that Cairo thinks
+        is appropriate for the given width, taking into account internal
+        alignment requirements.
+
+2018-02-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        [Cairo] Split TexMap functionality out of GraphicsContext3DCairo
+        https://bugs.webkit.org/show_bug.cgi?id=182465
+
+        Reviewed by Michael Catanzaro.
+
+        Take the Non-Cairo GraphicsContext3D functionality that's stashed in
+        GraphicsContext3DCairo and move it into the GraphicsContext3DTextureMapper
+        file.
+
+        In GraphicsContext3DCairo.cpp, only the Cairo-specific GraphicsContext3D
+        functionality remains, specifically ImageExtractor and paintToCanvas().
+
+        Everything else is moved into GraphicsContext3DTextureMapper.cpp. This
+        filename and its location under platform/graphics/texmap/ was chosen
+        since all the ports using this file (GTK, WPE, WinCairo) are also using
+        the TextureMapper module. Various #if-guards are simplified in the
+        moved-over code to reflect this.
+
+        GraphicsContext3DCairo.cpp now better reflects GraphicsContext3DCG.cpp,
+        with both implementing functionality specific to a 2D painting library,
+        whereas GraphicsContext3DTextureMapper.cpp reflects
+        GraphicsContext3DCocoa.cpp in covering functionality needed to integrate
+        the GraphicsContext3D output into the platform-specific composition
+        system.
+
+        No new tests -- no change in behavior.
+
+        * platform/TextureMapper.cmake:
+        * platform/graphics/cairo/GraphicsContext3DCairo.cpp:
+        (WebCore::activeContexts): Deleted.
+        (WebCore::GraphicsContext3D::create): Deleted.
+        (WebCore::GraphicsContext3D::GraphicsContext3D): Deleted.
+        (WebCore::GraphicsContext3D::~GraphicsContext3D): Deleted.
+        (WebCore::GraphicsContext3D::setContextLostCallback): Deleted.
+        (WebCore::GraphicsContext3D::setErrorMessageCallback): Deleted.
+        (WebCore::GraphicsContext3D::makeContextCurrent): Deleted.
+        (WebCore::GraphicsContext3D::checkGPUStatus): Deleted.
+        (WebCore::GraphicsContext3D::platformGraphicsContext3D): Deleted.
+        (WebCore::GraphicsContext3D::platformTexture const): Deleted.
+        (WebCore::GraphicsContext3D::isGLES2Compliant const): Deleted.
+        (WebCore::GraphicsContext3D::platformLayer const): Deleted.
+        (WebCore::GraphicsContext3D::getExtensions): Deleted.
+        * platform/graphics/texmap/GraphicsContext3DTextureMapper.cpp: Copied from Source/WebCore/platform/graphics/cairo/GraphicsContext3DCairo.cpp.
+        (WebCore::activeContexts):
+        (WebCore::GraphicsContext3D::create):
+        (WebCore::GraphicsContext3D::GraphicsContext3D):
+        (WebCore::GraphicsContext3D::~GraphicsContext3D):
+        (WebCore::GraphicsContext3D::setContextLostCallback):
+        (WebCore::GraphicsContext3D::setErrorMessageCallback):
+        (WebCore::GraphicsContext3D::makeContextCurrent):
+        (WebCore::GraphicsContext3D::checkGPUStatus):
+        (WebCore::GraphicsContext3D::platformGraphicsContext3D):
+        (WebCore::GraphicsContext3D::platformTexture const):
+        (WebCore::GraphicsContext3D::isGLES2Compliant const):
+        (WebCore::GraphicsContext3D::platformLayer const):
+        (WebCore::GraphicsContext3D::getExtensions):
+
+2018-02-04  Zan Dobersek  <zdobersek@igalia.com>
+
+        Simplify GraphicsContext3D::paintToCanvas()
+        https://bugs.webkit.org/show_bug.cgi?id=182459
+
+        Reviewed by Michael Catanzaro.
+
+        Cairo-specific paintToCanvas() method is dropped in favor of the more
+        common one that operates on a GraphicsContext object. The platform
+        context object is then retrieved inside the Cairo-speficic
+        paintToCanvas() implementation, and not at the call site in
+        GraphicsContext3D::paintRenderingResultsToCanvas().
+
+        GraphicsContext3D::paintToCanvas() is also modified so that the image
+        and canvas sizes are passed through IntSize objects, and not through
+        a width-and-height pair of integer values.
+
+        No new tests -- no change in behavior.
+
+        * platform/graphics/GraphicsContext3D.h:
+        * platform/graphics/cairo/GraphicsContext3DCairo.cpp:
+        (WebCore::GraphicsContext3D::paintToCanvas):
+        * platform/graphics/cg/GraphicsContext3DCG.cpp:
+        (WebCore::GraphicsContext3D::paintToCanvas):
+        * platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp:
+        (WebCore::GraphicsContext3D::paintRenderingResultsToCanvas):
+
+2018-02-03  Alexey Proskuryakov  <ap@apple.com>
+
+        Tweak availability macros for CAN_DISALLOW_USER_INSTALLED_FONTS
+
+        Rubber-stamped by Maciej Stachowiak.
+
+        * platform/graphics/cocoa/FontCacheCoreText.cpp:
+
+2018-02-02  Daniel Bates  <dabates@apple.com>
+
+        Clean up FrameLoader::receivedFirstData()
+        https://bugs.webkit.org/show_bug.cgi?id=182361
+
+        Reviewed by Andy Estes.
+
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::receivedFirstData):
+
+2018-02-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test fix after r227995
+        https://bugs.webkit.org/show_bug.cgi?id=180951
+
+        Unreviewed.
+
+        Webfonts shouldn't be run through CTFontDescriptorCreateMatchingFontDescriptor().
+        Also, unify macOS's and iOS's implementation of FontCache::lastResortFallbackFont().
+
+        Covered by existing tests.
+
+        * platform/graphics/cocoa/FontCacheCoreText.cpp:
+        (WebCore::FontDatabase::collectionForFamily):
+        (WebCore::FontDatabase::fontForPostScriptName):
+        (WebCore::addAttributesForInstalledFonts):
+        (WebCore::addAttributesForWebFonts):
+        (WebCore::installedFontMandatoryAttributes):
+        (WebCore::FontCache::lastResortFallbackFont):
+        (WebCore::addAttributesForUserInstalledFonts): Deleted.
+        (WebCore::mandatoryAttributesForUserInstalledFonts): Deleted.
+        * platform/graphics/cocoa/FontCacheCoreText.h:
+        * platform/graphics/ios/FontCacheIOS.mm:
+        (WebCore::FontCache::lastResortFallbackFont): Deleted.
+        * platform/graphics/mac/FontCacheMac.mm:
+        (WebCore::FontCache::lastResortFallbackFont): Deleted.
+        * platform/graphics/mac/FontCustomPlatformData.cpp:
+        (WebCore::FontCustomPlatformData::fontPlatformData):
+
+2018-02-02  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        Fix build error after r 227457 with VIDEO and WEB_AUDIO disabled
+        https://bugs.webkit.org/show_bug.cgi?id=182395
+
+        Reviewed by Eric Carlson
+
+        * platform/audio/PlatformMediaSessionManager.cpp:
+        (WebCore::PlatformMediaSessionManager::updateNowPlayingInfoIfNecessary):
+
 2018-02-02  Don Olmstead  <don.olmstead@sony.com>
 
         Remove WebCore/ForwardingHeaders directory
