@@ -1,3 +1,432 @@
+2018-09-25  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Update constraints supported by getDisplayMedia
+        https://bugs.webkit.org/show_bug.cgi?id=189930
+
+        Reviewed by Youenn Fablet.
+
+        No new tests, updated http/tests/media/media-stream/get-display-media-prompt.html.
+
+        * Modules/mediastream/MediaDevices.cpp:
+        (WebCore::MediaDevices::getDisplayMedia const): Ignore audio constraints.
+
+        * Modules/mediastream/UserMediaRequest.cpp:
+        (WebCore::hasInvalidGetDisplayMediaConstraint): Check for invalid constraints.
+        (WebCore::UserMediaRequest::start): Check for invalid constraints.
+        (WebCore::UserMediaRequest::deny): Support new error.
+        * Modules/mediastream/UserMediaRequest.h:
+
+        * platform/mediastream/RealtimeMediaSourceCenter.cpp:
+        (WebCore::RealtimeMediaSourceCenter::validateRequestConstraints):
+
+2018-09-25  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [EME] Fix variable name that should have gone in r236317
+        https://bugs.webkit.org/show_bug.cgi?id=189944
+
+        Reviewed by Jer Noble.
+
+        m_cdmInstanceClientWeakPtrFactory becomes
+        m_cdmInstanceSessionClientWeakPtrFactory as its type changes to
+        CDMInstanceSessionClient.
+
+        * Modules/encryptedmedia/MediaKeySession.cpp:
+        (WebCore::MediaKeySession::MediaKeySession):
+        * Modules/encryptedmedia/MediaKeySession.h:
+
+2018-09-25  Simon Fraser  <simon.fraser@apple.com>
+
+        Clean up code around RenderLayer's "has accelerated scrolling" functions
+        https://bugs.webkit.org/show_bug.cgi?id=189932
+
+        Reviewed by Zalan Bujtas.
+        
+        RenderLayer had:
+        
+        bool hasAcceleratedTouchScrolling()
+        bool hasTouchScrollableOverflow()
+        bool usesAcceleratedScrolling()
+        bool usesCompositedScrolling()
+        bool usesAsyncScrolling()
+        
+        which are hard to keep in your head. Removed usesAcceleratedScrolling() since it just returns hasTouchScrollableOverflow().
+        Renamed hasAcceleratedTouchScrolling() to canUseAcceleratedTouchScrolling() to indicate that it just looks at style,
+        not whether layout has given the layer scrollable overflow yet. Tidy up some #ifdefs.
+        
+        usesCompositedScrolling() and usesAsyncScrolling() are ScrollableArea overrides, and
+        look at backing layers, so require that compositing has run already. Note this in comments.
+
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::canUseAcceleratedTouchScrolling const):
+        (WebCore::RenderLayer::hasTouchScrollableOverflow const):
+        (WebCore::RenderLayer::handleTouchEvent):
+        (WebCore::RenderLayer::usesAsyncScrolling const):
+        (WebCore::RenderLayer::showsOverflowControls const):
+        (WebCore::RenderLayer::calculateClipRects const):
+        (WebCore::RenderLayer::hasAcceleratedTouchScrolling const): Deleted.
+        (WebCore::RenderLayer::usesAcceleratedScrolling const): Deleted.
+        * rendering/RenderLayer.h:
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::layerOrAncestorIsTransformedOrUsingCompositedScrolling):
+        (WebCore::RenderLayerBacking::updateConfiguration):
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::useCoordinatedScrollingForLayer const):
+        (WebCore::RenderLayerCompositor::requiresCompositingForOverflowScrolling const):
+
+2018-09-24  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Rename WTF_COMPILER_GCC_OR_CLANG to WTF_COMPILER_GCC_COMPATIBLE
+        https://bugs.webkit.org/show_bug.cgi?id=189733
+
+        Reviewed by Michael Catanzaro.
+
+        No new tests (No behavior change).
+
+        * platform/graphics/cpu/arm/filters/FELightingNEON.cpp:
+        * platform/graphics/cpu/arm/filters/FELightingNEON.h:
+        * platform/graphics/filters/FELighting.cpp:
+        (WebCore::FELighting::platformApply):
+        * platform/graphics/filters/FELighting.h:
+
+2018-09-24  John Wilander  <wilander@apple.com>
+
+        Cap lifetime of persistent cookies created client-side through document.cookie
+        https://bugs.webkit.org/show_bug.cgi?id=189933
+        <rdar://problem/44741888>
+
+        Reviewed by Chris Dumez.
+
+        Test: http/tests/cookies/capped-lifetime-for-cookie-set-in-js.html
+
+        As pointed out in https://github.com/mikewest/http-state-tokens:
+
+        1) Cookies are available to JavaScript by default via document.cookie, which
+        enables a smooth upgrade from one-time XSS to theft of persistent credentials
+        and also makes cookies available to Spectre-like attacks on memory.
+
+        2) Though the HttpOnly attribute was introduced well over a decade ago, only
+        ~8.31% of Set-Cookie operations use it today (stats from Chrome). We need
+        developer incentives to put proper protections in place.
+
+        3) The median (uncompressed) Cookie request header is 409 bytes, while the 90th
+        percentile is 1,589 bytes, the 95th 2,549 bytes, the 99th 4,601 bytes, and
+        ~0.1% of Cookie headers are over 10kB (stats from Chrome). This is bad for load
+        performance.
+
+        In addition to this, third-party scripts running in first-party contexts can
+        read user data through document.cookie and even store cross-site tracking data
+        in them.
+
+        Authentication cookies should be HttpOnly and thus not be affected by
+        restrictions to document.cookie. Cookies that persist for a long time should
+        be Secure, HttpOnly, and SameSite to provide good security and privacy.
+
+        By capping the lifetime of persistent cookies set through document.cookie we
+        embark on a journey towards better cookie management on the web.
+
+        * platform/network/cocoa/NetworkStorageSessionCocoa.mm:
+        (WebCore::filterCookies):
+            Now caps the life time of persistent cookies to one week (seven days).
+        * testing/Internals.cpp:
+        (WebCore::Internals::getCookies const):
+            New test function to get to cookie meta data such as expiry.
+        * testing/Internals.h:
+        * testing/Internals.idl:
+
+2018-09-24  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove filterRes parameter from SVG filters
+        https://bugs.webkit.org/show_bug.cgi?id=129565
+        <rdar://problem/44714340>
+
+        Reviewed by Dean Jackson.
+        
+        Remove support for the "filterRes" attribute on SVG filters. It's marked as
+        deprecated in https://drafts.fxtf.org/filter-effects/#element-attrdef-filter-filterres
+        and no longer supported by Chrome or Firefox.
+        
+        Removed existing filterRes tests, added new test checking that it has no effect.
+
+        Tests: svg/filters/filterRes-is-noop.svg
+
+        * rendering/svg/RenderSVGResourceFilter.cpp:
+        (WebCore::RenderSVGResourceFilter::applyResource):
+        * svg/SVGElement.cpp:
+        (WebCore::SVGElement::animatableAttributeForName):
+        * svg/SVGFilterElement.cpp:
+        (WebCore::SVGFilterElement::registerAttributes):
+        (WebCore::SVGFilterElement::parseAttribute):
+        (WebCore::SVGFilterElement::filterResXIdentifier): Deleted.
+        (WebCore::SVGFilterElement::filterResYIdentifier): Deleted.
+        (WebCore::SVGFilterElement::setFilterRes): Deleted.
+        * svg/SVGFilterElement.h:
+        * svg/SVGFilterElement.idl:
+        * svg/svgattrs.in:
+
+2018-09-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Don't cause a crash even when some IDL attribute is missing CEReactions
+        https://bugs.webkit.org/show_bug.cgi?id=189937
+
+        Reviewed by Simon Fraser.
+
+        Replaced release assertions in ElementQueue::add and ElementQueue::invokeAll by debug assertions
+        since a missing CEReactions resulting in a crash is a terrible user experience.
+
+        Also made the iteration in invokeAll safe when more elements were added to m_elements.
+
+        No new tests since we would still hit debug assertions, and this behavior should only come up
+        when some IDL attribute is erroneously missing CEReactions.
+
+        * dom/CustomElementReactionQueue.cpp:
+        (WebCore::CustomElementReactionQueue::ElementQueue::add):
+        (WebCore::CustomElementReactionQueue::ElementQueue::invokeAll):
+
+2018-09-24  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Refactor Editor::fontAttributesForSelectionStart to be platform-agnostic
+        https://bugs.webkit.org/show_bug.cgi?id=189918
+        Work towards <rdar://problem/44648705>
+
+        Reviewed by Tim Horton.
+
+        Refactors the functionality in Editor::fontAttributesForSelectionStart to not be Cocoa-only. Rename this to
+        fontAttributesAtSelectionStart (to be consistent with `EditingStyle::styleAtSelectionStart`) and move it from
+        EditorCocoa.mm to Editor.cpp; instead of creating and populating an NSDictionary with font attribute
+        information, create and populate a new `FontAttributes` struct that contains the same information. Cocoa clients
+        in WebKitLegacy may then create an `NSDictionary` as needed from the `FontAttributes`.
+
+        * SourcesCocoa.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * editing/Editor.cpp:
+        (WebCore::Editor::platformFontAttributesAtSelectionStart const):
+
+        Add a hook to allow platforms to supply additional information in FontAttributes. On Cocoa, this adds a UIFont
+        or NSFont to FontAttributes; otherwise, this is a no-op.
+
+        (WebCore::Editor::fontAttributesAtSelectionStart const):
+        * editing/Editor.h:
+        * editing/FontAttributeChanges.cpp:
+        (WebCore::cssValueListForShadow):
+        * editing/FontAttributeChanges.h:
+        (): Deleted.
+        (WebCore::FontShadow::encode const): Deleted.
+        (WebCore::FontShadow::decode): Deleted.
+        * editing/FontAttributes.h: Added.
+
+        Introduce a new struct that contains font attribute information. May be converted into an NSDictionary for use
+        by Cocoa clients in WebKitLegacy and WebKit. In a future patch, this will become serializable over IPC for use
+        in WebKit2.
+
+        * editing/FontShadow.h: Added.
+
+        Move FontShadow out into a separate header file, included in `FontAttributeChanges.h` and `FontAttributes.h`.
+
+        (WebCore::FontShadow::encode const):
+        (WebCore::FontShadow::decode):
+        * editing/cocoa/EditorCocoa.mm:
+
+        Add a helper function to convert a WebCore::Color to either `UIColor` on iOS or `NSColor` when AppKit is being
+        used.
+
+        (WebCore::Editor::platformFontAttributesAtSelectionStart const):
+        (WebCore::Editor::getTextDecorationAttributesRespectingTypingStyle const): Deleted.
+
+        Remove a helper function that was only used to compute text decoration attributes in
+        fontAttributesForSelectionStart.
+
+        (WebCore::Editor::fontAttributesForSelectionStart const): Deleted.
+        * editing/cocoa/FontAttributesCocoa.mm: Added.
+        (WebCore::FontAttributes::createDictionary const):
+        * editing/cocoa/FontShadowCocoa.mm: Added.
+        (WebCore::FontShadow::createShadow const):
+        * editing/cocoa/HTMLConverter.mm:
+        (_webKitBundle):
+        (HTMLConverter::_colorForElement):
+        (_platformColor): Deleted.
+
+        Adopt platformColor().
+
+        * platform/graphics/cocoa/ColorCocoa.h: Added.
+        * platform/graphics/cocoa/ColorCocoa.mm: Added.
+        (WebCore::platformColor):
+        * platform/graphics/metal/GPURenderPassDescriptorMetal.mm:
+
+        Build fix due to changes in unified sources.
+
+        * platform/mac/WebCoreNSFontManagerExtras.mm:
+        (WebCore::computedFontAttributeChanges):
+        * platform/mediastream/mac/RealtimeIncomingVideoSourceCocoa.mm:
+        * platform/mediastream/mac/RealtimeIncomingVideoSourceCocoa.mm:
+
+        More build fixes due to changes in unified sources.
+
+2018-09-24  Jer Noble  <jer.noble@apple.com>
+
+        SharedBuffer should have an equality test
+        https://bugs.webkit.org/show_bug.cgi?id=189919
+
+        Reviewed by Alex Christensen.
+
+        Test: TestWebKitAPI SharedBuffer.isEqualTo.
+
+        * platform/SharedBuffer.cpp:
+        * platform/SharedBuffer.h:
+        (WebCore::operator==):
+        (WebCore::operator!=):
+
+2018-09-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        imported/w3c/web-platform-tests/shadow-dom/slotchange.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=167652
+
+        Reviewed by Saam Barati.
+
+        The bug appears to be caused by the JS wrappers of slot elements getting prematurely collected.
+        Deployed GCReachableRef introduced in r236376 to fix the bug.
+
+        Test: fast/shadow-dom/signal-slot-list-retains-js-wrappers.html
+
+        * dom/MutationObserver.cpp:
+        (WebCore::signalSlotList):
+        (WebCore::MutationObserver::enqueueSlotChangeEvent):
+        (WebCore::MutationObserver::notifyMutationObservers):
+
+2018-09-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Release assert when using paper-textarea due to autocorrect IDL attribute missing CEReactions
+        https://bugs.webkit.org/show_bug.cgi?id=174629
+        <rdar://problem/33407620>
+
+        Reviewed by Simon Fraser.
+
+        The bug was caused by autocorrect and autocapitalize IDL attributes missing CEReactions.
+
+        Test: fast/custom-elements/autocorrect-autocapitalize-idl-attributes-crash.html
+
+        * html/HTMLElement.idl:
+
+2018-09-24  Chris Dumez  <cdumez@apple.com>
+
+        No-op document.open() calls should not have any side effects
+        https://bugs.webkit.org/show_bug.cgi?id=189373
+        <rdar://problem/44282702>
+
+        Reviewed by Geoffrey Garen.
+
+        Update document.open() implementation to match the specification [1] more closely.
+        In particular, URLs updates should happen much later, at step 11. They were happening
+        too early and would cause side effects when returning early.
+
+        [1] https://html.spec.whatwg.org/multipage/dynamic-markup-insertion.html#document-open-steps
+
+        No new tests, rebaselined existing test.
+
+        * dom/Document.cpp:
+        (WebCore::Document::open):
+
+2018-09-24  Daniel Bates  <dabates@apple.com>
+
+        Include more headers in IOSurface.mm, PixelBufferResizer.{h, mm}
+        https://bugs.webkit.org/show_bug.cgi?id=189928
+
+        Reviewed by Andy Estes.
+
+        Make building IOSurface.mm and PixelBufferResizer.mm deterministic regardless of
+        which bundle of unified sources they are built in.
+
+        * platform/graphics/cocoa/IOSurface.mm: Include headers HostWindow.h and PlatformScreen.h
+        since we make use of functionality from these headers.
+        * platform/graphics/cv/PixelBufferResizer.h: Include header IntSize.h since
+        we need the size of an IntSize for m_size.
+        * platform/graphics/cv/PixelBufferResizer.mm: Include header Logging.h since
+        this file makes use of logging facilities. Also substitute #import for #include
+        while I am here since this file is an Objective-C++ file.
+
+2018-09-24  Andy Estes  <aestes@apple.com>
+
+        [Payment Request] Events cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=189925
+
+        Reviewed by Simon Fraser.
+
+        1. Constructed MerchantValidationEvents (and ApplePayValidateMerchantEvents) with rvalue
+        references to validationURLs.
+        2. Instead of MerchantValidationEvent and PaymentRequestUpdateEvent having a
+        RefPtr<PaymentRequest>, downcasted their target to a PaymentRequest. Trusted versions of
+        these events are always dispatched to a PaymentRequest object.
+        3. Defined MerchantValidationEventInit in MerchantValidationEvent.idl instead of having a
+        separate .idl and .h for this dictionary.
+
+        No new tests. No change in behavior.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * Modules/applepay/ApplePaySession.cpp:
+        (WebCore::ApplePaySession::validateMerchant):
+        * Modules/applepay/ApplePaySession.h:
+        * Modules/applepay/ApplePayValidateMerchantEvent.cpp:
+        (WebCore::ApplePayValidateMerchantEvent::ApplePayValidateMerchantEvent):
+        * Modules/applepay/ApplePayValidateMerchantEvent.h:
+        (WebCore::ApplePayValidateMerchantEvent::create):
+        * Modules/applepay/PaymentCoordinator.cpp:
+        (WebCore::PaymentCoordinator::validateMerchant):
+        * Modules/applepay/PaymentCoordinator.h:
+        * Modules/applepay/PaymentSession.h:
+        * Modules/applepay/paymentrequest/ApplePayPaymentHandler.cpp:
+        (WebCore::ApplePayPaymentHandler::validateMerchant):
+        * Modules/applepay/paymentrequest/ApplePayPaymentHandler.h:
+        * Modules/paymentrequest/MerchantValidationEvent.cpp:
+        (WebCore::MerchantValidationEvent::create):
+        (WebCore::MerchantValidationEvent::MerchantValidationEvent):
+        (WebCore::MerchantValidationEvent::complete):
+        * Modules/paymentrequest/MerchantValidationEvent.h:
+        * Modules/paymentrequest/MerchantValidationEvent.idl:
+        * Modules/paymentrequest/MerchantValidationEventInit.h: Removed.
+        * Modules/paymentrequest/MerchantValidationEventInit.idl: Removed.
+        * Modules/paymentrequest/PaymentMethodChangeEvent.cpp:
+        (WebCore::PaymentMethodChangeEvent::PaymentMethodChangeEvent):
+        * Modules/paymentrequest/PaymentMethodChangeEvent.h:
+        * Modules/paymentrequest/PaymentRequest.cpp:
+        (WebCore::PaymentRequest::shippingAddressChanged):
+        (WebCore::PaymentRequest::shippingOptionChanged):
+        (WebCore::PaymentRequest::paymentMethodChanged):
+        * Modules/paymentrequest/PaymentRequest.h:
+        (isType):
+        * Modules/paymentrequest/PaymentRequestUpdateEvent.cpp:
+        (WebCore::PaymentRequestUpdateEvent::PaymentRequestUpdateEvent):
+        (WebCore::PaymentRequestUpdateEvent::updateWith):
+        * Modules/paymentrequest/PaymentRequestUpdateEvent.h:
+        * Sources.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * dom/EventTarget.cpp:
+        (WebCore::EventTarget::isPaymentRequest const):
+        * dom/EventTarget.h:
+
+2018-09-24  Daniel Bates  <dabates@apple.com>
+
+        Separate Mac and iOS implementation of windowsKeyCodeForCharCode()
+        https://bugs.webkit.org/show_bug.cgi?id=189898
+
+        Reviewed by Tim Horton.
+
+        Extract the Mac and iOS implementations into a windowsKeyCodeForCharCode() defined in file
+        KeyEventMac.mm and file KeyEventIOS, respectively.
+
+        Mac and iOS have significant differences in how they represent function keys. It is not worthwhile
+        to share windowsKeyCodeForCharCode() between them given these differences. On Mac function keys
+        are represented by a char code in the range 0xF700-0xF8FF. On iOS these keys may not have a unique
+        char code (e.g. F1 = 0x10 = F10) and must be identified either by special string (e.g. UIKeyInputUpArrow)
+        or key code.
+
+        * platform/cocoa/KeyEventCocoa.mm:
+        (WebCore::windowsKeyCodeForCharCode): Deleted.
+        * platform/ios/KeyEventIOS.mm:
+        (WebCore::windowsKeyCodeForCharCode): Added. Remove the handling of NS*FunctionKey char codes
+        as function keys are not represented using them as of iOS 12.
+        * platform/mac/KeyEventMac.mm:
+        (WebCore::windowsKeyCodeForCharCode): Added.
+
 2018-09-24  Thibault Saunier  <tsaunier@igalia.com>
 
         [WPE][GTK][WebRTC] Fix leaks in the libwebrtc Decoder and Encoder
