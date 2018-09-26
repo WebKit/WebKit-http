@@ -6492,6 +6492,7 @@ void WebPageProxy::enumerateMediaDevicesForFrame(uint64_t userMediaID, uint64_t 
 void WebPageProxy::beginMonitoringCaptureDevices()
 {
 #if ENABLE(MEDIA_STREAM)
+    userMediaPermissionRequestManager().syncWithWebCorePrefs();
     UserMediaProcessManager::singleton().beginMonitoringCaptureDevices();
 #endif
 }

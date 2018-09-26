@@ -67,6 +67,10 @@ PixelBufferResizer::PixelBufferResizer(IntSize size, OSType videoFormat)
 
 RetainPtr<CVPixelBufferRef> PixelBufferResizer::resize(CVPixelBufferRef inputBuffer)
 {
+    ASSERT(m_bufferPool && !m_size.isEmpty());
+    if (!m_bufferPool || m_size.isEmpty())
+        return nullptr;
+
     RetainPtr<CVPixelBufferRef> result;
     CVPixelBufferRef outputBuffer = nullptr;
 

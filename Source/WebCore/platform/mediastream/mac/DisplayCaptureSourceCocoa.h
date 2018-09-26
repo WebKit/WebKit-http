@@ -41,15 +41,19 @@ class MediaTime;
 namespace WebCore {
 
 class CaptureDeviceInfo;
+class PixelBufferConformerCV;
+class PixelBufferResizer;
 
 class DisplayCaptureSourceCocoa : public RealtimeMediaSource {
 public:
 
 protected:
-    DisplayCaptureSourceCocoa(const String& name);
+    DisplayCaptureSourceCocoa(String&&);
     virtual ~DisplayCaptureSourceCocoa();
 
-    virtual void generateFrame() = 0;
+    virtual RetainPtr<CVPixelBufferRef> generateFrame() = 0;
+    virtual RealtimeMediaSourceSettings::DisplaySurfaceType surfaceType() const = 0;
+
     void startProducingData() override;
     void stopProducingData() override;
 
@@ -62,6 +66,10 @@ protected:
 
     void settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag>) override;
 
+    const IntSize& intrinsicSize() const { return m_intrinsicSize; }
+    void setIntrinsicSize(const IntSize&);
+    IntSize frameSize() const;
+
 private:
 
     bool isCaptureSource() const final { return true; }
@@ -71,6 +79,7 @@ private:
 
     void emitFrame();
 
+    IntSize m_intrinsicSize;
     std::optional<RealtimeMediaSourceCapabilities> m_capabilities;
     std::optional<RealtimeMediaSourceSettings> m_currentSettings;
     RealtimeMediaSourceSupportedConstraints m_supportedConstraints;
@@ -80,6 +89,11 @@ private:
 
     RetainPtr<CFMutableDictionaryRef> m_bufferAttributes;
     RunLoop::Timer<DisplayCaptureSourceCocoa> m_timer;
+
+    std::unique_ptr<PixelBufferResizer> m_pixelBufferResizer;
+    std::unique_ptr<PixelBufferConformerCV> m_pixelBufferConformer;
+    RetainPtr<CVPixelBufferRef> m_lastFullSizedPixelBuffer;
+    RetainPtr<CMSampleBufferRef> m_lastSampleBuffer;
 };
 
 } // namespace WebCore
