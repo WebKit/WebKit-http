@@ -490,6 +490,7 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
             GST_DEBUG_OBJECT(self, "attempted to decrypt with local instance %p, key received %s, waiting for key %s", priv->m_cdmInstance.get(), WTF::boolForPrinting(priv->m_keyReceived), WTF::boolForPrinting(priv->m_waitingForKey));
             if (priv->m_keyReceived) {
                 priv->m_waitingForKey = false;
+                gst_element_post_message(GST_ELEMENT(self), gst_message_new_element(GST_OBJECT(self), gst_structure_new_empty("drm-key-received")));
                 priv->m_condition.notifyOne();
             } else if (priv->m_waitingForKey)
                 gst_element_post_message(GST_ELEMENT(self), gst_message_new_element(GST_OBJECT(self), gst_structure_new_empty("drm-waiting-for-key")));
