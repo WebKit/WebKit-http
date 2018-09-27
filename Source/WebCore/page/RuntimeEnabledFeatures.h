@@ -101,6 +101,11 @@ public:
     void setIsSecureContextAttributeEnabled(bool isEnabled) { m_isSecureContextAttributeEnabled = isEnabled; }
     bool isSecureContextAttributeEnabled() const { return m_isSecureContextAttributeEnabled; }
 
+#if ENABLE(INDEXED_DATABASE)
+    void setIndexedDBEnabled(bool isEnabled) { m_isIndexedDBEnabled = isEnabled; }
+    bool indexedDBEnabled() const { return m_isIndexedDBEnabled; }
+#endif
+
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
     void setIndexedDBWorkersEnabled(bool isEnabled) { m_isIndexedDBWorkersEnabled = isEnabled; }
     bool indexedDBWorkersEnabled() const { return m_isIndexedDBWorkersEnabled; }
@@ -308,6 +313,10 @@ private:
 
 #if ENABLE(ATTACHMENT_ELEMENT)
     bool m_isAttachmentElementEnabled { false };
+#endif
+
+#if ENABLE(INDEXED_DATABASE)
+    bool m_isIndexedDBEnabled;
 #endif
 
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)

@@ -185,8 +185,13 @@ void* fastMalloc(size_t n)
 {
     ASSERT_IS_WITHIN_LIMIT(n);
     void* result = malloc(n);
-    if (!result)
+    if (!result) {
+        #if INTPTR_MAX == INT32_MAX
+            printf("Allocation of %d bytes failed \n", n);
+        #endif
         CRASH();
+    }
+        
 
     return result;
 }

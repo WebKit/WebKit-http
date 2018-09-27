@@ -23,7 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// FIXME: This should include SVGImageElement and ImageBitmap.
+// FIXME: This should include SVGImageElement.
 #if defined(ENABLE_VIDEO) && ENABLE_VIDEO
 typedef (HTMLImageElement or HTMLVideoElement or HTMLCanvasElement or ImageBitmap) CanvasImageSource;
 #else

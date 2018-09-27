@@ -48,6 +48,9 @@ public:
     void drawFocusIfNeeded(Element&);
     void drawFocusIfNeeded(Path2D&, Element&);
 
+    void drawSystemFocusRing(Element& element);
+    void drawSystemFocusRing(Path2D& path, Element& element);
+
     float webkitBackingStorePixelRatio() const { return 1; }
 
     String font() const;

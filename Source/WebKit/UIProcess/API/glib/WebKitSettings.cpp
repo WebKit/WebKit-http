@@ -161,6 +161,9 @@ enum {
 #if PLATFORM(GTK)
     PROP_HARDWARE_ACCELERATION_POLICY,
 #endif
+#if PLATFORM(WPE)
+    PROP_ENABLE_NON_COMPOSITED_WEBGL,
+#endif
 };
 
 static void webKitSettingsDispose(GObject* object)
@@ -371,6 +374,11 @@ static void webKitSettingsSetProperty(GObject* object, guint propId, const GValu
         webkit_settings_set_hardware_acceleration_policy(settings, static_cast<WebKitHardwareAccelerationPolicy>(g_value_get_enum(value)));
         break;
 #endif
+#if PLATFORM(WPE)
+    case PROP_ENABLE_NON_COMPOSITED_WEBGL:
+        webkit_settings_set_enable_non_composited_webgl(settings, g_value_get_boolean(value));
+        break;
+#endif
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, propId, paramSpec);
         break;
@@ -545,6 +553,11 @@ static void webKitSettingsGetProperty(GObject* object, guint propId, GValue* val
 #if PLATFORM(GTK)
     case PROP_HARDWARE_ACCELERATION_POLICY:
         g_value_set_enum(value, webkit_settings_get_hardware_acceleration_policy(settings));
+        break;
+#endif
+#if PLATFORM(WPE)
+    case PROP_ENABLE_NON_COMPOSITED_WEBGL:
+        g_value_set_boolean(value, webkit_settings_get_enable_non_composited_webgl(settings));
         break;
 #endif
     default:
@@ -1414,6 +1427,22 @@ static void webkit_settings_class_init(WebKitSettingsClass* klass)
             WEBKIT_HARDWARE_ACCELERATION_POLICY_ON_DEMAND,
             readWriteConstructParamFlags));
 #endif // PLATFOTM(GTK)
+
+#if PLATFORM(WPE)
+    /**
+     * WebKitSettings:enable-non-composited-webgl:
+     *
+     * Enable or disable WebGL non composited mode. When this is enabled, accelerated compositing
+     * gets disabled, and only WebGL content will be rendered.
+     */
+    g_object_class_install_property(gObjectClass,
+                                    PROP_ENABLE_NON_COMPOSITED_WEBGL,
+                                    g_param_spec_boolean("enable-non-composited-webgl",
+                                                         _("Enable non composited WebGL"),
+                                                         _("Whether to enable non composited WebGL"),
+                                                         FALSE,
+                                                         readWriteConstructParamFlags));
+#endif
 }
 
 WebPreferences* webkitSettingsGetPreferences(WebKitSettings* settings)
@@ -3482,3 +3511,40 @@ guint32 webkit_settings_font_size_to_pixels(guint32 points)
     return std::round(points * WebCore::screenDPI() / 72);
 }
 #endif // PLATFORM(GTK)
+
+#if PLATFORM(WPE)
+/**
+ * webkit_settings_get_enable_non_composited_webgl:
+ * @settings: a #WebKitSettings
+ *
+ * Get the #WebKitSettings:enable-non-composited-webgl property.
+ *
+ * Returns: %TRUE if non composited WebGL is enabled or %FALSE otherwise.
+ */
+gboolean webkit_settings_get_enable_non_composited_webgl(WebKitSettings* settings)
+{
+    g_return_val_if_fail(WEBKIT_IS_SETTINGS(settings), FALSE);
+
+    return settings->priv->preferences->nonCompositedWebGLEnabled();
+}
+
+/**
+ * webkit_settings_set_enable_non_composited_webgl:
+ * @settings: a #WebKitSettings
+ * @enabled: Value to be set
+ *
+ * Set the #WebKitSettings:enable-non-composited-webgl property.
+ */
+void webkit_settings_set_enable_non_composited_webgl(WebKitSettings* settings, gboolean enabled)
+{
+    g_return_if_fail(WEBKIT_IS_SETTINGS(settings));
+
+    WebKitSettingsPrivate* priv = settings->priv;
+    bool currentValue = priv->preferences->nonCompositedWebGLEnabled();
+    if (currentValue == enabled)
+        return;
+
+    priv->preferences->setNonCompositedWebGLEnabled(enabled);
+    g_object_notify(G_OBJECT(settings), "enable-non-composited-webgl");
+}
+#endif // PLATFORM(WPE)

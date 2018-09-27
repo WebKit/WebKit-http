@@ -153,6 +153,8 @@ public:
 
     virtual void attachDrawingArea() { };
 
+    virtual uint64_t nativeWindowID() const { return 0; }
+
 protected:
     DrawingArea(DrawingAreaType, WebPage&);
 

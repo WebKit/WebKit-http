@@ -37,6 +37,7 @@ class AcceleratedDrawingArea : public DrawingArea {
 public:
     AcceleratedDrawingArea(WebPage&, const WebPageCreationParameters&);
     virtual ~AcceleratedDrawingArea();
+    virtual uint64_t nativeWindowID() const override;
 
 protected:
     // DrawingArea

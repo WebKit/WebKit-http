@@ -133,6 +133,12 @@ public:
     static FloatSize clampedSize(const FloatSize&, FloatSize& scale);
     static FloatRect clampedRect(const FloatRect&);
 
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    void markBufferChanged();
+#endif
+
+    void blur(const IntSize& size, const FloatSize& blurRadius);
+
 private:
 #if USE(CG)
     // The returned image might be larger than the internalSize(). If you want the smaller

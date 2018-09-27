@@ -116,7 +116,7 @@ private:
     void characteristicsChanged();
     void updateActiveVideoTrack();
 
-    void scheduleDeferredTask(Function<void ()>&&);
+    void scheduleDeferredTask(WTF::Function<void ()>&&);
 
     Vector<Observer*> m_observers;
     String m_id;

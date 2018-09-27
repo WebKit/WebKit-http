@@ -313,6 +313,17 @@ void UserMediaPermissionRequestManagerProxy::requestUserMediaPermissionForFrame(
             pendingRequest->allow();
             return;
         }
+        
+        if (m_page.isControlledByAutomation()) {
+            if (WebAutomationSession* automationSession = m_page.process().processPool().automationSession()) {
+                if (automationSession->shouldAllowGetUserMediaForPage(m_page))
+                    allowRequest(request);
+                else
+                    userMediaAccessWasDenied(userMediaID, UserMediaPermissionRequestProxy::UserMediaAccessDenialReason::UserMediaDisabled);
+
+                return;
+            }
+        }
 
         if (!m_page.uiClient().decidePolicyForUserMediaPermissionRequest(m_page, *m_page.process().webFrame(frameID), WTFMove(userMediaOrigin), WTFMove(topLevelOrigin), pendingRequest.get()))
             userMediaAccessWasDenied(userMediaID, UserMediaPermissionRequestProxy::UserMediaAccessDenialReason::UserMediaDisabled);

@@ -109,6 +109,8 @@
 #include <WebCore/MediaConstraints.h>
 #endif
 
+#include <WebCore/Proxy.h>
+
 using namespace WebCore;
 using namespace WebKit;
 
@@ -2939,6 +2941,27 @@ bool ArgumentCoder<Vector<RefPtr<SecurityOrigin>>>::decode(Decoder& decoder, Vec
         origins.uncheckedAppend(decodedOriginRefPtr.releaseNonNull());
     }
     return true;
+}
+
+void ArgumentCoder<Proxy>::encode(Encoder& encoder, const Proxy& proxy)
+{
+    encoder << proxy.pattern;
+    encoder << proxy.proxy;
+}
+
+std::optional<Proxy> ArgumentCoder<Proxy>::decode(Decoder& decoder)
+{
+    std::optional<String> pattern;
+    decoder >> pattern;
+    if (!pattern)
+        return std::nullopt;
+
+    std::optional<String> proxy;
+    decoder >> proxy;
+    if (!proxy)
+        return std::nullopt;
+
+    return { { WTFMove(*pattern), WTFMove(*proxy) } };
 }
 
 } // namespace IPC

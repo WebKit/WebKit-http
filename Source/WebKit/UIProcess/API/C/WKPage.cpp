@@ -36,6 +36,7 @@
 #include "APIFrameHandle.h"
 #include "APIFrameInfo.h"
 #include "APIGeometry.h"
+#include "APIHTTPCookieStorage.h"
 #include "APIHitTestResult.h"
 #include "APILoaderClient.h"
 #include "APINavigation.h"
@@ -47,6 +48,7 @@
 #include "APIPolicyClient.h"
 #include "APISessionState.h"
 #include "APIUIClient.h"
+#include "APIWebProxy.h"
 #include "APIWebsitePolicies.h"
 #include "APIWindowFeatures.h"
 #include "AuthenticationChallengeProxy.h"
@@ -58,9 +60,12 @@
 #include "PluginInformation.h"
 #include "PrintInfo.h"
 #include "WKAPICast.h"
+#include "WKArray.h"
 #include "WKPagePolicyClientInternal.h"
 #include "WKPageRenderingProgressEventsInternal.h"
 #include "WKPluginInformation.h"
+#include "WKProxy.h"
+#include "WKType.h"
 #include "WebBackForwardList.h"
 #include "WebFormClient.h"
 #include "WebImage.h"
@@ -100,7 +105,7 @@ using namespace WebKit;
 
 namespace API {
 template<> struct ClientTraits<WKPageLoaderClientBase> {
-    typedef std::tuple<WKPageLoaderClientV0, WKPageLoaderClientV1, WKPageLoaderClientV2, WKPageLoaderClientV3, WKPageLoaderClientV4, WKPageLoaderClientV5, WKPageLoaderClientV6> Versions;
+    typedef std::tuple<WKPageLoaderClientV0, WKPageLoaderClientV1, WKPageLoaderClientV2, WKPageLoaderClientV3, WKPageLoaderClientV4, WKPageLoaderClientV5, WKPageLoaderClientV6, WKPageLoaderClientV7> Versions;
 };
 
 template<> struct ClientTraits<WKPageNavigationClientBase> {
@@ -221,12 +226,12 @@ void WKPageLoadAlternateHTMLStringWithUserData(WKPageRef pageRef, WKStringRef ht
 
 void WKPageLoadPlainTextString(WKPageRef pageRef, WKStringRef plainTextStringRef)
 {
-    toImpl(pageRef)->loadPlainTextString(toWTFString(plainTextStringRef));    
+    toImpl(pageRef)->loadPlainTextString(toWTFString(plainTextStringRef));
 }
 
 void WKPageLoadPlainTextStringWithUserData(WKPageRef pageRef, WKStringRef plainTextStringRef, WKTypeRef userDataRef)
 {
-    toImpl(pageRef)->loadPlainTextString(toWTFString(plainTextStringRef), toImpl(userDataRef));    
+    toImpl(pageRef)->loadPlainTextString(toWTFString(plainTextStringRef), toImpl(userDataRef));
 }
 
 void WKPageLoadWebArchiveData(WKPageRef pageRef, WKDataRef webArchiveDataRef)
@@ -242,6 +247,11 @@ void WKPageLoadWebArchiveDataWithUserData(WKPageRef pageRef, WKDataRef webArchiv
 void WKPageStopLoading(WKPageRef pageRef)
 {
     toImpl(pageRef)->stopLoading();
+}
+
+bool WKPageCanShowMIMEType(WKPageRef pageRef, WKStringRef mimeType)
+{
+    return toImpl(pageRef)->canShowMIMEType(toWTFString (mimeType));
 }
 
 void WKPageReload(WKPageRef pageRef)
@@ -390,6 +400,21 @@ WKStringRef WKPageCopyCustomUserAgent(WKPageRef pageRef)
 void WKPageSetCustomUserAgent(WKPageRef pageRef, WKStringRef userAgentRef)
 {
     toImpl(pageRef)->setCustomUserAgent(toWTFString(userAgentRef));
+}
+
+void WKPageSetProxies(WKPageRef pageRef, WKArrayRef proxies)
+{
+    size_t size = proxies ? WKArrayGetSize(proxies) : 0;
+
+    Vector<WebCore::Proxy> passProxies(size);
+
+    for (size_t i = 0; i < size; ++i)
+    {
+        WKTypeRef proxy = WKArrayGetItemAtIndex(proxies, i);
+        ASSERT(WKGetTypeID(proxy) == WKProxyGetTypeID());
+        passProxies[i] = toImpl(static_cast<WKProxyRef>(proxy))->proxy();
+    }
+    toImpl(pageRef)->setProxies(passProxies);
 }
 
 void WKPageSetUserContentExtensionsEnabled(WKPageRef pageRef, bool enabled)
@@ -664,6 +689,11 @@ void WKPageSetBackgroundExtendsBeyondPage(WKPageRef pageRef, bool backgroundExte
 bool WKPageBackgroundExtendsBeyondPage(WKPageRef pageRef)
 {
     return toImpl(pageRef)->backgroundExtendsBeyondPage();
+}
+
+void WKPageSetDrawsBackground(WKPageRef pageRef, bool drawsBackground)
+{
+    toImpl(pageRef)->setDrawsBackground(drawsBackground);
 }
 
 void WKPageSetPaginationMode(WKPageRef pageRef, WKPaginationMode paginationMode)
@@ -1257,6 +1287,12 @@ void WKPageSetPageLoaderClient(WKPageRef pageRef, const WKPageLoaderClientBase* 
         {
             if (m_client.navigationGestureDidEnd)
                 m_client.navigationGestureDidEnd(toAPI(&page), willNavigate, toAPI(&item), m_client.base.clientInfo);
+        }
+
+        void cookiesDidChange(WebPageProxy& page) override
+        {
+            if (m_client.cookiesDidChange)
+                m_client.cookiesDidChange(toAPI(&page), m_client.base.clientInfo);
         }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -2135,6 +2171,17 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             m_client.mediaSessionMetadataDidChange(toAPI(&page), toAPI(metadata), m_client.base.clientInfo);
         }
 #endif
+
+        void willAddDetailedMessageToConsole(WebPageProxy* page, const String& source, const String& level,
+            uint64_t line, uint64_t column, const String& message, const String& url) override
+        {
+            if (!m_client.willAddDetailedMessageToConsole)
+                return;
+
+            m_client.willAddDetailedMessageToConsole(toAPI(page), toAPI(source.impl()), toAPI(level.impl()),
+                    line, column, toAPI(message.impl()), toAPI(url.impl()), m_client.base.clientInfo);
+        }
+
 #if ENABLE(POINTER_LOCK)
         void requestPointerLock(WebPageProxy* page) final
         {
@@ -2686,6 +2733,11 @@ void WKPagePostMessageToInjectedBundle(WKPageRef pageRef, WKStringRef messageNam
     toImpl(pageRef)->postMessageToInjectedBundle(toImpl(messageNameRef)->string(), toImpl(messageBodyRef));
 }
 
+void WKPagePostSynchronousMessageToInjectedBundle(WKPageRef pageRef, WKStringRef messageNameRef, WKTypeRef messageBodyRef)
+{
+    toImpl(pageRef)->postSynchronousMessageToInjectedBundle(toImpl(messageNameRef)->string(), toImpl(messageBodyRef));
+}
+
 WKArrayRef WKPageCopyRelatedPages(WKPageRef pageRef)
 {
     Vector<RefPtr<API::Object>> relatedPages;
@@ -2845,3 +2897,8 @@ void WKPageGetApplicationManifest_b(WKPageRef page, WKPageGetApplicationManifest
 #endif // not ENABLE(APPLICATION_MANIFEST)
 }
 #endif
+
+WKHTTPCookieStorageRef WKPageGetHTTPCookieStorage(WKPageRef page)
+{
+    return toAPI(&toImpl(page)->httpCookieStorage());
+}

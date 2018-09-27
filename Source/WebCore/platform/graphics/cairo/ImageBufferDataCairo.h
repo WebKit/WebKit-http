@@ -30,6 +30,7 @@
 
 #include "PlatformContextCairo.h"
 #include "RefPtrCairo.h"
+#include <wtf/MallocPtr.h>
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
 #include "PlatformLayer.h"
@@ -60,6 +61,7 @@ public:
     ImageBufferData(const IntSize&, RenderingMode);
     virtual ~ImageBufferData();
 
+    MallocPtr<unsigned char> m_surfaceData;
     RefPtr<cairo_surface_t> m_surface;
     PlatformContextCairo m_platformContext;
     std::unique_ptr<GraphicsContext> m_context;
@@ -76,8 +78,11 @@ public:
     RefPtr<TextureMapperPlatformLayerProxy> proxy() const override;
     void swapBuffersIfNeeded() override;
 #endif
+
+    void markBufferChanged();
     void createCompositorBuffer();
 
+    bool m_bufferChanged;
     RefPtr<cairo_surface_t> m_compositorSurface;
     uint32_t m_compositorTexture;
     RefPtr<cairo_t> m_compositorCr;

@@ -81,6 +81,7 @@ public:
     ExceptionOr<void> remove(const MediaTime&, const MediaTime&);
 
     const TimeRanges& bufferedInternal() const { ASSERT(m_buffered); return *m_buffered; }
+    MediaTime& currentTimeFudgeFactor() const;
 
     void abortIfUpdating();
     void removedFromMediaSource();
@@ -106,6 +107,8 @@ public:
     ExceptionOr<void> setMode(AppendMode);
 
     void setShouldGenerateTimestamps(bool flag) { m_shouldGenerateTimestamps = flag; }
+
+    void rangeRemoval(const MediaTime&, const MediaTime&);
 
     bool isBufferedDirty() const { return m_bufferedDirty; }
     void setBufferedDirty(bool flag) { m_bufferedDirty = flag; }
@@ -171,7 +174,7 @@ private:
     void monitorBufferingRate();
 
     void removeTimerFired();
-    void removeCodedFrames(const MediaTime& start, const MediaTime& end);
+    void removeCodedFrames(const MediaTime& start, const MediaTime& end, bool keepDecodeQueue);
 
     size_t extraMemoryCost() const;
     void reportExtraMemoryAllocated();
@@ -181,8 +184,6 @@ private:
     void appendError(bool);
 
     bool hasAudio() const;
-
-    void rangeRemoval(const MediaTime&, const MediaTime&);
 
     void trySignalAllSamplesInTrackEnqueued(const AtomicString&);
 
@@ -235,6 +236,10 @@ private:
     bool m_active { false };
     bool m_bufferFull { false };
     bool m_shouldGenerateTimestamps { false };
+
+    static size_t maxBufferSizeVideo;
+    static size_t maxBufferSizeAudio;
+    static size_t maxBufferSizeText;
 };
 
 } // namespace WebCore

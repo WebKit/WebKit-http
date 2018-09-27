@@ -244,6 +244,7 @@ messages -> WebPage LegacyReceiver {
     SetPaginationLineGridEnabled(bool lineGridEnabled)
 
     PostInjectedBundleMessage(String messageName, WebKit::UserData messageBody)
+    PostSynchronousInjectedBundleMessage(String messageName, WebKit::UserData messageBody) -> ()
 
     # Find.
     FindString(String string, uint32_t findOptions, unsigned maxMatchCount)

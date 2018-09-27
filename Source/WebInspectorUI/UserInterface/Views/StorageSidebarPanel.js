@@ -30,7 +30,7 @@ WI.StorageSidebarPanel = class StorageSidebarPanel extends WI.NavigationSidebarP
         super("storage", WI.UIString("Storage"));
 
         this._navigationBar = new WI.NavigationBar;
-        this.addSubview(this._navigationBar);
+        this.insertSubviewBefore(this._navigationBar, this._contentView);
 
         var scopeItemPrefix = "storage-sidebar-";
         var scopeBarItems = [];

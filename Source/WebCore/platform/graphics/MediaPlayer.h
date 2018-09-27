@@ -81,6 +81,7 @@ struct MediaPlayerFactory;
 struct MediaEngineSupportParameters {
     ContentType type;
     URL url;
+    String keySystem;
     bool isMediaSource { false };
     bool isMediaStream { false };
     Vector<ContentType> contentTypesRequiringHardwareSupport;
@@ -290,7 +291,8 @@ public:
     bool inMediaDocument() const;
 
     IntSize size() const { return m_size; }
-    void setSize(const IntSize& size);
+    void setSize(const IntSize&);
+    void setPosition(const IntPoint&);
 
     bool load(const URL&, const ContentType&, const String& keySystem);
 #if ENABLE(MEDIA_SOURCE)

@@ -35,6 +35,30 @@ enum {
 };
 typedef uint32_t WKBundlePageUIElementVisibility;
 
+enum {
+    WKConsoleMessageSourceXML,
+    WKConsoleMessageSourceJS,
+    WKConsoleMessageSourceNetwork,
+    WKConsoleMessageSourceConsoleAPI,
+    WKConsoleMessageSourceStorage,
+    WKConsoleMessageSourceAppCache,
+    WKConsoleMessageSourceRendering,
+    WKConsoleMessageSourceCSS,
+    WKConsoleMessageSourceSecurity,
+    WKConsoleMessageSourceContentBlocker,
+    WKConsoleMessageSourceOther
+};
+typedef uint32_t WKConsoleMessageSource;
+
+enum {
+    WKConsoleMessageLevelLog,
+    WKConsoleMessageLevelWarning,
+    WKConsoleMessageLevelError,
+    WKConsoleMessageLevelDebug,
+    WKConsoleMessageLevelInfo,
+};
+typedef uint32_t WKConsoleMessageLevel;
+
 
 typedef void (*WKBundlePageWillAddMessageToConsoleCallback)(WKBundlePageRef page, WKStringRef message, uint32_t lineNumber, const void *clientInfo);
 typedef void (*WKBundlePageWillSetStatusbarTextCallback)(WKBundlePageRef page, WKStringRef statusbarText, const void *clientInfo);
@@ -55,6 +79,7 @@ typedef WKStringRef (*WKBundlePagePlugInCreateExtraStyleSheetCallback)(const voi
 typedef WKStringRef (*WKBundlePagePlugInCreateExtraScriptCallback)(const void *clientInfo);
 typedef void (*WKBundlePageDidClickAutoFillButtonCallback)(WKBundlePageRef page, WKBundleNodeHandleRef inputElement, WKTypeRef* userData, const void *clientInfo);
 typedef void (*WKBundlePageDidResignInputElementStrongPasswordAppearance)(WKBundlePageRef page, WKBundleNodeHandleRef inputElement, WKTypeRef* userData, const void *clientInfo);
+typedef void (*WKBundlePageWillAddDetailedMessageToConsoleCallback)(WKBundlePageRef page, WKConsoleMessageSource, WKConsoleMessageLevel, WKStringRef message, uint32_t lineNumber, uint32_t columnNumber, WKStringRef url, const void *clientInfo);
 
 typedef struct WKBundlePageUIClientBase {
     int                                                                 version;
@@ -209,4 +234,5 @@ typedef struct WKBundlePageUIClientV4 {
 
     // Version 4.
     WKBundlePageDidResignInputElementStrongPasswordAppearance           didResignInputElementStrongPasswordAppearance;
+    WKBundlePageWillAddDetailedMessageToConsoleCallback                 willAddDetailedMessageToConsole;
 } WKBundlePageUIClientV4;

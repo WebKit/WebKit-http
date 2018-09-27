@@ -331,6 +331,58 @@ WK_EXPORT void WKPreferencesSetCrossOriginWindowPolicyEnabled(WKPreferencesRef p
 WK_EXPORT bool WKPreferencesGetProcessSwapOnNavigationEnabled(WKPreferencesRef preferencesRef);
 WK_EXPORT void WKPreferencesSetProcessSwapOnNavigationEnabled(WKPreferencesRef preferencesRef, bool enabled);
 
+// Defaults to false.
+WK_EXPORT void WKPreferencesSetConsoleLogWithPrivateBrowsingEnabled(WKPreferencesRef preferencesRef, bool enabled);
+WK_EXPORT bool WKPreferencesGetConsoleLogWithPrivateBrowsingEnabled(WKPreferencesRef preferencesRef);
+
+
+// Defaults to false.
+WK_EXPORT void WKPreferencesSetAllowRunningOfInsecureContent(WKPreferencesRef preferencesRef, bool enabled);
+WK_EXPORT bool WKPreferencesGetAllowRunningOfInsecureContent(WKPreferencesRef preferencesRef);
+
+// Defaults to false.
+WK_EXPORT void WKPreferencesSetAllowDisplayOfInsecureContent(WKPreferencesRef preferencesRef, bool enabled);
+WK_EXPORT bool WKPreferencesGetAllowDisplayOfInsecureContent(WKPreferencesRef preferencesRef);
+
+// Defaults to false
+WK_EXPORT void WKPreferencesSetLogsPageMessagesToSystemConsoleEnabled(WKPreferencesRef preferences, bool enabled);
+WK_EXPORT bool WKPreferencesGetLogsPageMessagesToSystemConsoleEnabled(WKPreferencesRef preferences);
+
+// Default to false.
+WK_EXPORT void WKPreferencesSetGamepadsEnabled(WKPreferencesRef preferencesRef, bool enabled);
+WK_EXPORT bool WKPreferencesGetGamepadsEnabled(WKPreferencesRef preferencesRef);
+
+// Defaults to false.
+WK_EXPORT void WKPreferencesSetAllowRunningOfInsecureContent(WKPreferencesRef preferencesRef, bool enabled);
+WK_EXPORT bool WKPreferencesGetAllowRunningOfInsecureContent(WKPreferencesRef preferencesRef);
+
+// Defaults to false.
+WK_EXPORT void WKPreferencesSetAllowDisplayOfInsecureContent(WKPreferencesRef preferencesRef, bool enabled);
+WK_EXPORT bool WKPreferencesGetAllowDisplayOfInsecureContent(WKPreferencesRef preferencesRef);
+
+// Default to false.
+WK_EXPORT void WKPreferencesSetAllowScriptsToCloseWindow(WKPreferencesRef preferencesRef, bool allow);
+WK_EXPORT bool WKPreferencesGetAllowScriptsToCloseWindow(WKPreferencesRef preferencesRef);
+
+// Defaults to true.
+WK_EXPORT void WKPreferencesSetWebSecurityEnabled(WKPreferencesRef preferences, bool enabled);
+WK_EXPORT bool WKPreferencesGetWebSecurityEnabled(WKPreferencesRef preferences);
+
+//Defaults to true
+WK_EXPORT void WKPreferencesSetScrollToFocusedElementEnabled(WKPreferencesRef preferences, bool enabled);
+WK_EXPORT bool WKPreferencesGetScrollToFocusedElementEnabled(WKPreferencesRef preferences);
+
+WK_EXPORT void WKPreferencesSetNonCompositedWebGLEnabled(WKPreferencesRef preferences, bool enabled);
+WK_EXPORT bool WKPreferencesGetNonCompositedWebGLEnabled(WKPreferencesRef preferences);
+
+// Defaults to true
+WK_EXPORT void WKPreferencesSetCookieEnabled(WKPreferencesRef preferences, bool enabled);
+WK_EXPORT bool WKPreferencesGetCookieEnabled(WKPreferencesRef preferences);
+
+// Defaults to true.
+WK_EXPORT void WKPreferencesSetWebGLEnabled(WKPreferencesRef, bool);
+WK_EXPORT bool WKPreferencesGetWebGLEnabled(WKPreferencesRef);
+
 #ifdef __cplusplus
 }
 #endif

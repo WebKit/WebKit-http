@@ -675,6 +675,7 @@ private:
 
     // CDMClient
     void cdmClientAttemptToResumePlaybackIfNecessary() final;
+    void cdmClientAttemptToDecryptWithInstance(const CDMInstance&) final;
 #endif
     
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -1144,6 +1145,10 @@ private:
 #if ENABLE(ENCRYPTED_MEDIA)
     RefPtr<MediaKeys> m_mediaKeys;
     bool m_attachingMediaKeys { false };
+    // encrypted block queue
+    bool m_decryptionBlockedWaitingForKey { false };
+    // playback blocked waiting for key
+    bool m_playbackBlockedWaitingForKey { false };
     GenericTaskQueue<Timer> m_encryptedMediaQueue;
 #endif
 

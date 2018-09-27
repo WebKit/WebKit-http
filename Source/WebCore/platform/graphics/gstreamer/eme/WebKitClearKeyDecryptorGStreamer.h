@@ -21,7 +21,7 @@
 
 #pragma once
 
-#if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)
+#if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && !USE(OPENCDM)
 
 #include "WebKitCommonEncryptionDecryptorGStreamer.h"
 

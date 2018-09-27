@@ -176,6 +176,9 @@ public:
     virtual void imageOrMediaDocumentSizeChanged(const WebCore::IntSize&) { }
 
     virtual void didExceedBackgroundResourceLimitWhileInForeground(WebKit::WebPageProxy&, WKResourceLimit) { }
+
+    virtual void willAddDetailedMessageToConsole( WebKit::WebPageProxy* page, const WTF::String& source, const WTF::String& level,
+            uint64_t line, uint64_t col, const WTF::String& message, const WTF::String& url) { }
 };
 
 } // namespace API

@@ -65,6 +65,10 @@
 #include <WebCore/SoupNetworkProxySettings.h>
 #endif
 
+#if PLATFORM(WPE)
+#include "WPEAutomationClient.h"
+#endif
+
 #if PLATFORM(COCOA)
 OBJC_CLASS NSMutableDictionary;
 OBJC_CLASS NSObject;
@@ -255,6 +259,7 @@ public:
 #if USE(SOUP)
     void setInitialHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicy policy) { m_initialHTTPCookieAcceptPolicy = policy; }
     void setNetworkProxySettings(const WebCore::SoupNetworkProxySettings&);
+    void setInitialCookiesLimit(uint64_t limit) { m_initialCookiesLimit = limit; }
 #endif
     void setEnhancedAccessibility(bool);
     
@@ -304,6 +309,11 @@ public:
     void disableProcessTermination() { m_processTerminationEnabled = false; }
     void enableProcessTermination();
 
+#if PLATFORM(WPE)
+    void didSetAutomationClient();
+    void setAutomationAllowed(bool);
+    bool isAutomationAllowed() const;
+#endif
     void updateAutomationCapabilities() const;
     void setAutomationSession(RefPtr<WebAutomationSession>&&);
     WebAutomationSession* automationSession() const { return m_automationSession.get(); }
@@ -613,6 +623,7 @@ private:
 #if USE(SOUP)
     HTTPCookieAcceptPolicy m_initialHTTPCookieAcceptPolicy { HTTPCookieAcceptPolicyOnlyFromMainDocumentDomain };
     WebCore::SoupNetworkProxySettings m_networkProxySettings;
+    uint64_t m_initialCookiesLimit { 0 };
 #endif
     HashSet<String, ASCIICaseInsensitiveHash> m_urlSchemesRegisteredForCustomProtocols;
 
@@ -679,6 +690,10 @@ private:
 #if PLATFORM(COCOA)
     bool m_cookieStoragePartitioningEnabled { false };
     bool m_storageAccessAPIEnabled { false };
+#endif
+
+#if PLATFORM(WPE) && ENABLE(REMOTE_INSPECTOR)
+    std::unique_ptr<WPEAutomationClient> m_wpeAutomationClient;
 #endif
 
     struct Paths {

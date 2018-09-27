@@ -117,7 +117,7 @@ static void getParserLocationForConsoleMessage(Document* document, String& url, 
 
 void PageConsoleClient::addMessage(std::unique_ptr<Inspector::ConsoleMessage>&& consoleMessage)
 {
-    if (consoleMessage->source() != MessageSource::CSS && !m_page.usesEphemeralSession()) {
+    if (consoleMessage->source() != MessageSource::CSS && !(m_page.usesEphemeralSession() && !m_page.settings().consoleLogWithPrivateBrowsingEnabled())) {
         m_page.chrome().client().addMessageToConsole(consoleMessage->source(), consoleMessage->level(), consoleMessage->message(), consoleMessage->line(), consoleMessage->column(), consoleMessage->url());
 
         if (m_page.settings().logsPageMessagesToSystemConsoleEnabled() || shouldPrintExceptions())
@@ -171,7 +171,7 @@ void PageConsoleClient::messageWithTypeAndLevel(MessageType type, MessageLevel l
 
     InspectorInstrumentation::addMessageToConsole(m_page, WTFMove(message));
 
-    if (m_page.usesEphemeralSession())
+    if (m_page.usesEphemeralSession() && !m_page.settings().consoleLogWithPrivateBrowsingEnabled())
         return;
 
     if (gotMessage)

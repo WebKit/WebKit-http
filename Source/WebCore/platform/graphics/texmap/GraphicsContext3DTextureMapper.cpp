@@ -105,14 +105,16 @@ RefPtr<GraphicsContext3D> GraphicsContext3D::create(GraphicsContext3DAttributes 
     return context;
 }
 
-GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attributes, HostWindow*, GraphicsContext3D::RenderStyle renderStyle, GraphicsContext3D* sharedContext)
+GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attributes, HostWindow* hostWindow, GraphicsContext3D::RenderStyle renderStyle, GraphicsContext3D* sharedContext)
     : m_attrs(attributes)
+    , m_renderStyle(renderStyle)
 {
     ASSERT_UNUSED(sharedContext, !sharedContext);
 #if USE(NICOSIA)
+    UNUSED_PARAM(hostWindow);
     m_nicosiaLayer = std::make_unique<Nicosia::GC3DLayer>(*this, renderStyle);
 #else
-    m_texmapLayer = std::make_unique<TextureMapperGC3DPlatformLayer>(*this, renderStyle);
+    m_texmapLayer = std::make_unique<TextureMapperGC3DPlatformLayer>(*this, renderStyle, hostWindow);
 #endif
 
     makeContextCurrent();
@@ -232,6 +234,9 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attributes, Hos
 
 GraphicsContext3D::~GraphicsContext3D()
 {
+    if (m_renderStyle == RenderDirectlyToHostWindow)
+        return;
+
     makeContextCurrent();
     if (m_texture)
         ::glDeleteTextures(1, &m_texture);

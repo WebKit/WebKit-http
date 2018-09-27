@@ -41,6 +41,8 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/Base64.h>
 #include <wtf/text/CString.h>
+#include <wtf/text/StringBuilder.h>
+#include <gwildcardproxyresolver.h>
 
 namespace WebCore {
 
@@ -240,6 +242,51 @@ void SoupNetworkSession::setupProxy()
     g_object_set(m_soupSession.get(), SOUP_SESSION_PROXY_RESOLVER, resolver.get(), nullptr);
     soup_session_abort(m_soupSession.get());
 }
+
+void SoupNetworkSession::setProxies(const Vector<WebCore::Proxy>& proxies)
+{
+#if PLATFORM(WPE)
+    const char* httpProxy = getenv("http_proxy");
+    GProxyResolver* resolver = g_wildcard_proxy_resolver_new(httpProxy);
+
+    GWildcardProxyResolver* w_resolver = G_WILDCARD_PROXY_RESOLVER(resolver);
+
+    GPtrArray* array = g_ptr_array_sized_new(proxies.size());
+    for (size_t i = 0; i < proxies.size(); ++i)
+    {
+        GWildcardProxyResolverProxy* p = g_new(GWildcardProxyResolverProxy, 1);
+        p->pattern = g_strdup(proxies[i].pattern.utf8().data());
+        p->proxy = g_strdup(proxies[i].proxy.utf8().data());
+        g_ptr_array_add(array, p);
+    }
+    g_wildcard_proxy_resolver_set_proxies(w_resolver, array);
+    g_object_set(m_soupSession.get(), SOUP_SESSION_PROXY_RESOLVER, resolver, nullptr);
+#else
+    UNUSED_PARAM(proxies);
+#endif
+}
+
+#if PLATFORM(WPE)
+void SoupNetworkSession::setProxySettingsFromEnvironment()
+{
+// FIXME: This function should not exist at all and we don't want to accidentally use it in other ports.
+// The correct way to set proxy settings from the environment is to use a GProxyResolver that does so.
+// It also lacks the rather important https_proxy and ftp_proxy variables, and the uppercase versions of
+// all four variables, all of which you almost surely want to be respected if you're setting http_proxy,
+// and all of which would be supported via the default proxy resolver in non-GNOME/Ubuntu environments
+// (at least, I think that's right). Additionally, it is incorrect for WebKit to respect this environment
+// variable when running in a GNOME or Ubuntu environment, where GNOME proxy configuration should be
+// respected instead. The only reason to retain this function is to not alter the incorrect behavior for EFL.
+    const char* httpProxy = getenv("http_proxy");
+    if (!httpProxy)
+        return;
+
+    proxySettings().defaultProxyURL = httpProxy;
+    const char* httpProxyExceptions = getenv("no_proxy");
+    if (httpProxyExceptions)
+        proxySettings().ignoreHosts.reset(g_strsplit(httpProxyExceptions, ",", -1));
+}
+#endif
 
 void SoupNetworkSession::setProxySettings(const SoupNetworkProxySettings& settings)
 {

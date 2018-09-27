@@ -49,6 +49,7 @@ extern "C" {
     M(Gamepad) \
     M(IconDatabase) \
     M(IndexedDB) \
+    M(InspectorServer) \
     M(IPC) \
     M(KeyHandling) \
     M(Layers) \

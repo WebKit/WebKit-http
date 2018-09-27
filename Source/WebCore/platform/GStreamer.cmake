@@ -17,11 +17,10 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
         platform/graphics/gstreamer/TextCombinerGStreamer.cpp
         platform/graphics/gstreamer/TextSinkGStreamer.cpp
         platform/graphics/gstreamer/TrackPrivateBaseGStreamer.cpp
-        platform/graphics/gstreamer/VideoSinkGStreamer.cpp
         platform/graphics/gstreamer/VideoTrackPrivateGStreamer.cpp
         platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp
 
-        platform/graphics/gstreamer/eme/WebKitClearKeyDecryptorGStreamer.cpp
+        platform/graphics/gstreamer/eme/GStreamerEMEUtilities.cpp
         platform/graphics/gstreamer/eme/WebKitCommonEncryptionDecryptorGStreamer.cpp
 
         platform/graphics/gstreamer/mse/AppendPipeline.cpp
@@ -94,6 +93,12 @@ if (ENABLE_VIDEO)
         )
     endif ()
 
+    if (NOT USE_HOLE_PUNCH_GSTREAMER)
+        list(APPEND WebCore_SOURCES
+            platform/graphics/gstreamer/VideoSinkGStreamer.cpp
+        )
+    endif()
+
     if (USE_GSTREAMER_GL)
         list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
             ${GSTREAMER_GL_INCLUDE_DIRS}
@@ -149,12 +154,34 @@ if (ENABLE_ENCRYPTED_MEDIA)
         ${LIBGCRYPT_INCLUDE_DIRS}
     )
     list(APPEND WebCore_SOURCES
-        platform/encryptedmedia/clearkey/CDMClearKey.cpp
 
         platform/graphics/gstreamer/eme/CDMFactoryGStreamer.cpp
     )
     list(APPEND WebCore_LIBRARIES
         ${LIBGCRYPT_LIBRARIES} -lgpg-error
+    )
+
+    if (ENABLE_OPENCDM)
+        list(APPEND WebCore_SOURCES
+            platform/graphics/gstreamer/eme/CDMOpenCDM.cpp
+            platform/graphics/gstreamer/eme/WebKitOpenCDMDecryptorGStreamer.cpp
+        )
+    else()
+        list(APPEND WebCore_SOURCES
+            platform/encryptedmedia/clearkey/CDMClearKey.cpp
+            platform/graphics/gstreamer/eme/WebKitClearKeyDecryptorGStreamer.cpp
+        )
+    endif ()
+endif ()
+
+if (USE_HOLE_PUNCH_EXTERNAL)
+    list(APPEND WebCore_SOURCES
+        platform/graphics/holepunch/MediaPlayerPrivateHolePunchBase.cpp
+        platform/graphics/holepunch/MediaPlayerPrivateHolePunchDummy.cpp
+    )
+
+    list(APPEND WebCore_INCLUDE_DIRECTORIES
+        "${WEBCORE_DIR}/platform/graphics/holepunch"
     )
 endif ()
 

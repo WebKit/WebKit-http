@@ -489,7 +489,9 @@ public:
 
     virtual bool isViewVisible() { return true; }
 
-protected:
+    virtual uint64_t nativeWindowID() const { return 0; }
+
+ protected:
     virtual ~ChromeClient() = default;
 };
 

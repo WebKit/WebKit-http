@@ -52,3 +52,29 @@
     top: calc(var(--navigation-bar-height) - 1px);
     bottom: initial;
 }
+
+.sidebar > .panel.navigation > .content .empty-content-placeholder {
+    left: 0;
+    right: 0;
+    padding-top: 15px;
+    padding-bottom: 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.sidebar > .panel.navigation > .content > .empty-content-placeholder {
+    top: 0;
+    bottom: 0;
+}
+
+.sidebar > .panel.navigation > .content .empty-content-placeholder > .message {
+    display: inline-block;
+    white-space: nowrap;
+
+    font-size: var(--sidebar-no-results-message-font-size);
+    color: var(--text-color-gray-medium);
+
+    padding: 5px 15px 6px;
+}

@@ -131,6 +131,7 @@ body[dir=rtl] .tree-outline .item .disclosure-button {
 }
 
 .tree-outline .item .icon {
+    float: left;
     position: relative;
     width: 16px;
     height: 16px;

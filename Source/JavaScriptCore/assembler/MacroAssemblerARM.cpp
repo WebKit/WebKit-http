@@ -280,6 +280,7 @@ static_assert(IN_SIZE == sizeof(IncomingRecord), "IN_SIZE is incorrect");
 
 asm (
     ".text" "\n"
+    ".align 2" "\n"
     ".globl " SYMBOL_STRING(ctiMasmProbeTrampoline) "\n"
     HIDE_SYMBOL(ctiMasmProbeTrampoline) "\n"
     INLINE_ARM_FUNCTION(ctiMasmProbeTrampoline) "\n"

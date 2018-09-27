@@ -127,6 +127,7 @@ typedef void (*WKPageDidClickAutoFillButtonCallback)(WKPageRef page, WKTypeRef u
 typedef void (*WKPageMediaSessionMetadataDidChangeCallback)(WKPageRef page, WKMediaSessionMetadataRef metadata, const void* clientInfo);
 typedef void (*WKHandleAutoplayEventCallback)(WKPageRef page, WKAutoplayEvent event, WKAutoplayEventFlags flags, const void* clientInfo);
 typedef void (*WKFullscreenMayReturnToInlineCallback)(WKPageRef page, const void* clientInfo);
+typedef void (*WKPageWillAddDetailedMessageToConsoleCallback)(WKPageRef page, WKStringRef source, WKStringRef level, uint64_t line, uint64_t column, WKStringRef message, WKStringRef url, const void* clientInfo);
 typedef void (*WKRequestPointerLockCallback)(WKPageRef page, const void* clientInfo);
 typedef void (*WKDidLosePointerLockCallback)(WKPageRef page, const void* clientInfo);
 typedef void (*WKHasVideoInPictureInPictureDidChangeCallback)(WKPageRef page, bool hasVideoInPictureInPicture, const void* clientInfo);
@@ -749,6 +750,7 @@ typedef struct WKPageUIClientV8 {
     WKFullscreenMayReturnToInlineCallback                               fullscreenMayReturnToInline;
     
     // Version 8.
+    WKPageWillAddDetailedMessageToConsoleCallback                       willAddDetailedMessageToConsole;
     WKRequestPointerLockCallback                                        requestPointerLock;
     WKDidLosePointerLockCallback                                        didLosePointerLock;
 } WKPageUIClientV8;
@@ -837,6 +839,7 @@ typedef struct WKPageUIClientV9 {
     WKFullscreenMayReturnToInlineCallback                               fullscreenMayReturnToInline;
 
     // Version 8.
+    WKPageWillAddDetailedMessageToConsoleCallback                       willAddDetailedMessageToConsole;
     WKRequestPointerLockCallback                                        requestPointerLock;
     WKDidLosePointerLockCallback                                        didLosePointerLock;
 
@@ -928,6 +931,7 @@ typedef struct WKPageUIClientV10 {
     WKFullscreenMayReturnToInlineCallback                               fullscreenMayReturnToInline;
     
     // Version 8.
+    WKPageWillAddDetailedMessageToConsoleCallback                       willAddDetailedMessageToConsole;
     WKRequestPointerLockCallback                                        requestPointerLock;
     WKDidLosePointerLockCallback                                        didLosePointerLock;
     
@@ -1023,6 +1027,7 @@ typedef struct WKPageUIClientV11 {
     WKFullscreenMayReturnToInlineCallback                               fullscreenMayReturnToInline;
 
     // Version 8.
+    WKPageWillAddDetailedMessageToConsoleCallback                       willAddDetailedMessageToConsole;
     WKRequestPointerLockCallback                                        requestPointerLock;
     WKDidLosePointerLockCallback                                        didLosePointerLock;
 
@@ -1121,6 +1126,7 @@ typedef struct WKPageUIClientV12 {
     WKFullscreenMayReturnToInlineCallback                               fullscreenMayReturnToInline;
     
     // Version 8.
+    WKPageWillAddDetailedMessageToConsoleCallback                       willAddDetailedMessageToConsole;
     WKRequestPointerLockCallback                                        requestPointerLock;
     WKDidLosePointerLockCallback                                        didLosePointerLock;
     

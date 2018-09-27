@@ -28,6 +28,7 @@
 
 #include "APIArray.h"
 #include "APISecurityOrigin.h"
+#include "APIWebCookie.h"
 #include "NetworkProcessMessages.h"
 #include "OptionalCallbackID.h"
 #include "WebCookieManagerMessages.h"
@@ -279,6 +280,26 @@ void WebCookieManagerProxy::setStorageAccessAPIEnabled(bool enabled)
 #else
     UNUSED_PARAM(enabled);
 #endif
+}
+
+void WebCookieManagerProxy::setCookies2(PAL::SessionID sessionID, const Vector<WebCore::Cookie>& cookies)
+{
+    processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::SetCookies2(sessionID, cookies));
+}
+
+void WebCookieManagerProxy::getCookies2(PAL::SessionID sessionID, Function<void (API::Array*, CallbackBase::Error)>&& callbackFunction)
+{
+    auto callbackID = m_callbacks.put(WTFMove(callbackFunction), processPool()->ensureNetworkProcess().throttler().backgroundActivityToken());
+    processPool()->sendToNetworkingProcessRelaunchingIfNecessary(Messages::WebCookieManager::GetCookies2(sessionID, callbackID));
+}
+
+void WebCookieManagerProxy::didGetCookies2(const Vector<Cookie>& cookies, WebKit::CallbackID callbackID)
+{
+    const size_t cookiesSize = cookies.size();
+    Vector<RefPtr<API::Object> > passCookies(cookiesSize);
+    for (size_t i = 0; i < cookiesSize; ++i)
+        passCookies[i] = WebCookie::create(cookies[i]);
+    m_callbacks.take<ArrayCallback>(callbackID)->performCallbackWithReturnValue(API::Array::create(WTFMove(passCookies)).ptr());
 }
 
 } // namespace WebKit

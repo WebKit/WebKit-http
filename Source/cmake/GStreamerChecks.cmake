@@ -42,6 +42,14 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
         endif ()
     endif ()
 
+    if (ENABLE_ENCRYPTED_MEDIA)
+      find_package(LibGcrypt REQUIRED)
+      if (ENABLE_OPENCDM)
+        find_package(OpenCDM REQUIRED)
+        add_definitions(-DUSE_OPENCDM=1)
+      endif()
+    endif ()
+
     SET_AND_EXPOSE_TO_BUILD(USE_GSTREAMER TRUE)
 endif ()
 

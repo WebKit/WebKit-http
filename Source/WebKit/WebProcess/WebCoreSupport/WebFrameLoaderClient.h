@@ -276,6 +276,8 @@ private:
     void finishedLoadingApplicationManifest(uint64_t, const std::optional<WebCore::ApplicationManifest>&) final;
 #endif
 
+    bool shouldPaintBrokenImage(const WebCore::URL&) const override;
+
     WebFrame* m_frame;
     RefPtr<PluginView> m_pluginView;
     bool m_hasSentResponseToPluginView;

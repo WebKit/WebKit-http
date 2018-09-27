@@ -32,6 +32,7 @@
 #include <wtf/Noncopyable.h>
 #include <wtf/glib/GRefPtr.h>
 #include <wtf/text/WTFString.h>
+#include "Proxy.h"
 
 typedef struct _SoupCache SoupCache;
 typedef struct _SoupCookieJar SoupCookieJar;
@@ -59,8 +60,13 @@ public:
 
     static void clearOldSoupCache(const String& cacheDirectory);
 
+#if PLATFORM(WPE)
+    static void setProxySettingsFromEnvironment();
+#endif
     static void setProxySettings(const SoupNetworkProxySettings&);
     void setupProxy();
+
+    void setProxies(const Vector<WebCore::Proxy>&);
 
     static void setInitialAcceptLanguages(const CString&);
     void setAcceptLanguages(const CString&);
@@ -73,6 +79,8 @@ public:
     void setupCustomProtocols();
 
 private:
+    void setHTTPProxy(const char* httpProxy, const char* httpProxyExceptions);
+
     void setupLogger();
 
     GRefPtr<SoupSession> m_soupSession;

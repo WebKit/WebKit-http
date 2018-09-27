@@ -25,6 +25,8 @@
 
 #include "config.h"
 #include "CacheModel.h"
+#include <cstdlib>
+#include <wtf/text/WTFString.h>
 
 #include <algorithm>
 #include <wtf/RAMSize.h>
@@ -35,6 +37,8 @@ namespace WebKit {
 
 void calculateMemoryCacheSizes(CacheModel cacheModel, unsigned& cacheTotalCapacity, unsigned& cacheMinDeadCapacity, unsigned& cacheMaxDeadCapacity, Seconds& deadDecodedDataDeletionInterval, unsigned& pageCacheCapacity)
 {
+    // Note: urlCacheDiskCapacity can be overridden by the WPE_DISK_CACHE_SIZE environment variable (see below).
+
     uint64_t memorySize = ramSize() / MB;
 
     switch (cacheModel) {
@@ -202,6 +206,22 @@ void calculateURLCacheSizes(CacheModel cacheModel, uint64_t diskFreeSize, unsign
     default:
         ASSERT_NOT_REACHED();
     };
+
+    String s(std::getenv("WPE_DISK_CACHE_SIZE"));
+    if (!s.isEmpty()) {
+        String value = s.stripWhiteSpace().convertToLowercaseWithoutLocale();
+        size_t units = 1;
+        if (value.endsWith('k'))
+            units = 1024;
+        else if (value.endsWith('m'))
+            units = 1024 * 1024;
+        if (units != 1)
+            value = value.substring(0, value.length()-1);
+        bool ok = false;
+        size_t size = size_t(value.toUInt64(&ok) * units);
+        if (ok)
+            urlCacheDiskCapacity = (unsigned long)(size);
+    }
 }
 
 } // namespace WebKit

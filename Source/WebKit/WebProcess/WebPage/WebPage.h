@@ -481,6 +481,7 @@ public:
     void setPaginationLineGridEnabled(bool);
     
     void postInjectedBundleMessage(const String& messageName, const UserData&);
+    void postSynchronousInjectedBundleMessage(const String& messageName, const UserData&);
 
     bool drawsBackground() const { return m_drawsBackground; }
 

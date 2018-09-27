@@ -2691,17 +2691,17 @@ MediaKeys* HTMLMediaElement::mediaKeys() const
 void HTMLMediaElement::setMediaKeys(MediaKeys* mediaKeys, Ref<DeferredPromise>&& promise)
 {
     // https://w3c.github.io/encrypted-media/#dom-htmlmediaelement-setmediakeys
-    // W3C Editor's Draft 23 June 2017
+    // W3C Editor's Draft 09 November 2016
 
-    // 1. If this object's attaching media keys value is true, return a promise rejected with an InvalidStateError.
-    if (m_attachingMediaKeys) {
-        promise->reject(InvalidStateError);
+    // 1. If mediaKeys and the mediaKeys attribute are the same object, return a resolved promise.
+    if (mediaKeys == m_mediaKeys) {
+        promise->resolve();
         return;
     }
 
-    // 2. If mediaKeys and the mediaKeys attribute are the same object, return a resolved promise.
-    if (mediaKeys == m_mediaKeys) {
-        promise->resolve();
+    // 2. If this object's attaching media keys value is true, return a promise rejected with an InvalidStateError.
+    if (m_attachingMediaKeys) {
+        promise->reject(InvalidStateError);
         return;
     }
 
@@ -2727,8 +2727,6 @@ void HTMLMediaElement::setMediaKeys(MediaKeys* mediaKeys, Ref<DeferredPromise>&&
             // FIXME: ^
 
             m_mediaKeys->detachCDMClient(*this);
-            if (m_player)
-                m_player->cdmInstanceDetached(m_mediaKeys->cdmInstance());
         }
 
         // 5.3. If mediaKeys is not null, run the following steps:
@@ -2742,12 +2740,8 @@ void HTMLMediaElement::setMediaKeys(MediaKeys* mediaKeys, Ref<DeferredPromise>&&
             //   5.3.2.1. Set the mediaKeys attribute to null.
             //   5.3.2.2. Let this object's attaching media keys value be false.
             //   5.3.2.3. Reject promise with a new DOMException whose name is the appropriate error name.
-            // FIXME: ^
-
             // 5.3.3. Queue a task to run the Attempt to Resume Playback If Necessary algorithm on the media element.
-            m_encryptedMediaQueue.enqueueTask([this] {
-                attemptToResumePlaybackIfNecessary();
-            });
+            // FIXME: ^
         }
 
         // 5.4. Set the mediaKeys attribute to mediaKeys.
@@ -2844,6 +2838,11 @@ void HTMLMediaElement::cdmClientAttemptToResumePlaybackIfNecessary()
     attemptToResumePlaybackIfNecessary();
 }
 
+void HTMLMediaElement::cdmClientAttemptToDecryptWithInstance(const CDMInstance& instance)
+{
+    if (m_player)
+        m_player->attemptToDecryptWithInstance(const_cast<CDMInstance&>(instance));
+}
 #endif // ENABLE(ENCRYPTED_MEDIA)
 
 void HTMLMediaElement::progressEventTimerFired()
@@ -3183,7 +3182,7 @@ MediaTime HTMLMediaElement::currentMediaTime() const
         return m_lastSeekTime;
     }
 
-    if (m_cachedTime.isValid() && m_paused) {
+    if (m_cachedTime.isValid() && m_cachedTime > MediaTime::zeroTime() && m_paused) {
 #if LOG_CACHED_TIME_WARNINGS
         MediaTime delta = m_cachedTime - m_player->currentTime();
         if (delta > minCachedDeltaForWarning)
@@ -3897,7 +3896,7 @@ void HTMLMediaElement::playbackProgressTimerFired()
 #endif
 
 #if ENABLE(MEDIA_SOURCE)
-    if (m_mediaSource)
+    if (m_mediaSource && !m_player->seeking())
         m_mediaSource->monitorSourceBuffers();
 #endif
 
@@ -4733,7 +4732,7 @@ void HTMLMediaElement::mediaPlayerTimeChanged(MediaPlayer*)
     invalidateCachedTime();
     bool wasSeeking = seeking();
 
-    // 4.8.10.9 step 14 & 15.  Needed if no ReadyState change is associated with the seek.
+    // 4.8.10.9 step 14 & 15. Needed if no ReadyState change is associated with the seek.
     if (m_seekRequested && m_readyState >= HAVE_CURRENT_DATA && !m_player->seeking())
         finishSeek();
 
@@ -4967,6 +4966,15 @@ void HTMLMediaElement::mediaPlayerSizeChanged(MediaPlayer*)
     if (m_readyState > HAVE_NOTHING)
         scheduleResizeEventIfSizeChanged();
     updateRenderer();
+
+#if USE(HOLE_PUNCH_GSTREAMER) || USE(HOLE_PUNCH_EXTERNAL)
+    if (renderer()) {
+        IntRect windowRect = document().view()->contentsToScreen(renderer()->absoluteBoundingBoxRect(true));
+        //style() is having relative values w.r.t immediate container. Hence we need to substract left,top values from immediate container to get correct x,y values.
+        player()->setPosition(IntPoint(windowRect.x() - renderer()->style().left().intValue(),windowRect.y() -renderer()->style().top().intValue()));
+    }
+#endif
+
     endProcessingMediaPlayerCallback();
 }
 

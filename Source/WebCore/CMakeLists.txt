@@ -29,6 +29,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/entriesapi"
     "${WEBCORE_DIR}/Modules/fetch"
     "${WEBCORE_DIR}/Modules/geolocation"
+    "${WEBCORE_DIR}/Modules/beacon"
     "${WEBCORE_DIR}/Modules/indexeddb"
     "${WEBCORE_DIR}/Modules/indexeddb/client"
     "${WEBCORE_DIR}/Modules/indexeddb/server"
@@ -173,6 +174,7 @@ set(WebCore_IDL_INCLUDES
     Modules/entriesapi
     Modules/fetch
     Modules/geolocation
+    Modules/beacon
     Modules/indexeddb
     Modules/mediacapabilities
     Modules/mediasession
@@ -245,6 +247,8 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/geolocation/PositionError.idl
     Modules/geolocation/PositionErrorCallback.idl
     Modules/geolocation/PositionOptions.idl
+
+    # Modules/beacon/NavigatorBeacon.idl
 
     Modules/indexeddb/DOMWindowIndexedDatabase.idl
     Modules/indexeddb/IDBCursor.idl
@@ -808,6 +812,7 @@ set(WebCore_NON_SVG_IDL_FILES
     page/IntersectionObserverCallback.idl
     page/IntersectionObserverEntry.idl
     page/Location.idl
+    page/MemoryInfo.idl
     page/Navigator.idl
     page/NavigatorID.idl
     page/NavigatorLanguage.idl
@@ -1093,6 +1098,7 @@ set(WebCore_LIBRARIES
     ${ICU_LIBRARIES}
     ${LIBXML2_LIBRARIES}
     ${LIBXSLT_LIBRARIES}
+    ${OPENCDM_LIBRARIES}
     ${SQLITE_LIBRARIES}
     ${ZLIB_LIBRARIES}
     PAL${DEBUG_SUFFIX}
@@ -1579,7 +1585,6 @@ set(WebCoreTestSupport_IDL_FILES
     testing/InternalSettings.idl
     testing/Internals.idl
     testing/MallocStatistics.idl
-    testing/MemoryInfo.idl
     testing/MockCDMFactory.idl
     testing/MockContentFilterSettings.idl
     testing/MockPageOverlay.idl

@@ -34,6 +34,7 @@
 
 #if ENABLE(MEDIA_SOURCE)
 
+#include "ActiveDOMCallbackMicrotask.h"
 #include "AudioTrackList.h"
 #include "BufferSource.h"
 #include "Event.h"
@@ -57,6 +58,15 @@
 #include <limits>
 
 namespace WebCore {
+
+static inline bool mediaSourceLogEnabled()
+{
+#if !LOG_DISABLED
+    return LOG_CHANNEL(MediaSource).state == WTFLogChannelOn;
+#else
+    return false;
+#endif
+}
 
 static const double ExponentialMovingAverageCoefficient = 0.1;
 
@@ -120,6 +130,15 @@ SourceBuffer::~SourceBuffer()
     ASSERT(isRemoved());
 
     m_private->setClient(nullptr);
+}
+
+// Allow hasCurrentTime() to be off by as much as the length of two 24fps video frames
+MediaTime& SourceBuffer::currentTimeFudgeFactor() const
+{
+    static NeverDestroyed<MediaTime> fudgeFactorVideo(2002, 24000);
+    static NeverDestroyed<MediaTime> fudgeFactorAudio(299999, 10000000); // "Almost" 0.03 in integer form.
+
+    return (hasAudio())?fudgeFactorAudio:fudgeFactorVideo;
 }
 
 ExceptionOr<Ref<TimeRanges>> SourceBuffer::buffered() const
@@ -410,7 +429,7 @@ void SourceBuffer::seekToTime(const MediaTime& time)
 
     for (auto& trackBufferPair : m_trackBufferMap) {
         TrackBuffer& trackBuffer = trackBufferPair.value;
-        const AtomicString& trackID = trackBufferPair.key;
+        const auto& trackID = trackBufferPair.key;
 
         trackBuffer.needsReenqueueing = true;
         reenqueueMediaForTime(trackBuffer, trackID, time);
@@ -552,6 +571,15 @@ ExceptionOr<void> SourceBuffer::appendBufferInternal(const unsigned char* data, 
     // 6. Asynchronously run the buffer append algorithm.
     m_appendBufferTimer.startOneShot(0_s);
 
+    // Add microtask to start append right after leaving current script context. Keep the timer active to check if append was aborted.
+    auto microtask = std::make_unique<ActiveDOMCallbackMicrotask>(MicrotaskQueue::mainThreadQueue(), *scriptExecutionContext(), [protectedThis = makeRef(*this)]() mutable {
+        if (protectedThis->m_appendBufferTimer.isActive()) {
+            protectedThis->m_appendBufferTimer.stop();
+            protectedThis->appendBufferTimerFired();
+        }
+    });
+    MicrotaskQueue::mainThreadQueue().append(WTFMove(microtask));
+
     reportExtraMemoryAllocated();
 
     return { };
@@ -629,10 +657,13 @@ void SourceBuffer::sourceBufferPrivateAppendComplete(AppendResult result)
     if (m_source)
         m_source->monitorSourceBuffers();
 
+    if (isRemoved())
+        return;
+
     MediaTime currentMediaTime = m_source->currentTime();
     for (auto& trackBufferPair : m_trackBufferMap) {
         TrackBuffer& trackBuffer = trackBufferPair.value;
-        const AtomicString& trackID = trackBufferPair.key;
+        const auto& trackID = trackBufferPair.key;
 
         if (trackBuffer.needsReenqueueing) {
             LOG(MediaSource, "SourceBuffer::sourceBufferPrivateAppendComplete(%p) - reenqueuing at time (%s)", this, toString(currentMediaTime).utf8().data());
@@ -665,7 +696,7 @@ static bool decodeTimeComparator(const PresentationOrderSampleMap::MapType::valu
     return a.second->decodeTime() < b.second->decodeTime();
 }
 
-static PlatformTimeRanges removeSamplesFromTrackBuffer(const DecodeOrderSampleMap::MapType& samples, SourceBuffer::TrackBuffer& trackBuffer, const SourceBuffer* buffer, const char* logPrefix)
+static PlatformTimeRanges removeSamplesFromTrackBuffer(const DecodeOrderSampleMap::MapType& samples, SourceBuffer::TrackBuffer& trackBuffer, const SourceBuffer* buffer, const char* logPrefix, bool keepDecodeQueue)
 {
 #if !LOG_DISABLED
     MediaTime earliestSample = MediaTime::positiveInfiniteTime();
@@ -677,20 +708,21 @@ static PlatformTimeRanges removeSamplesFromTrackBuffer(const DecodeOrderSampleMa
 #endif
 
     PlatformTimeRanges erasedRanges;
-    for (auto sampleIt : samples) {
+    for (auto& sampleIt : samples) {
         const DecodeOrderSampleMap::KeyType& decodeKey = sampleIt.first;
 #if !LOG_DISABLED
         size_t startBufferSize = trackBuffer.samples.sizeInBytes();
 #endif
 
-        RefPtr<MediaSample>& sample = sampleIt.second;
-        LOG(MediaSource, "SourceBuffer::%s(%p) - removing sample(%s)", logPrefix, buffer, toString(*sampleIt.second).utf8().data());
-
+        const RefPtr<MediaSample>& sample = sampleIt.second;
+        if (UNLIKELY(mediaSourceLogEnabled()))
+            LOG(MediaSource, "SourceBuffer::%s(%p) - removing sample(%s)", logPrefix, buffer, toString(*sampleIt.second).utf8().data());
         // Remove the erased samples from the TrackBuffer sample map.
         trackBuffer.samples.removeSample(sample.get());
 
         // Also remove the erased samples from the TrackBuffer decodeQueue.
-        trackBuffer.decodeQueue.erase(decodeKey);
+        if (!keepDecodeQueue)
+            trackBuffer.decodeQueue.erase(decodeKey);
 
         auto startTime = sample->presentationTime();
         auto endTime = startTime + sample->duration();
@@ -741,7 +773,7 @@ static PlatformTimeRanges removeSamplesFromTrackBuffer(const DecodeOrderSampleMa
     return erasedRanges;
 }
 
-void SourceBuffer::removeCodedFrames(const MediaTime& start, const MediaTime& end)
+void SourceBuffer::removeCodedFrames(const MediaTime& start, const MediaTime& end, bool keepDecodeQueue)
 {
     LOG(MediaSource, "SourceBuffer::removeCodedFrames(%p) - start(%s), end(%s)", this, toString(start).utf8().data(), toString(end).utf8().data());
 
@@ -763,7 +795,7 @@ void SourceBuffer::removeCodedFrames(const MediaTime& start, const MediaTime& en
 
         // NOTE: To handle MediaSamples which may be an amalgamation of multiple shorter samples, find samples whose presentation
         // interval straddles the start and end times, and divide them if possible:
-        auto divideSampleIfPossibleAtPresentationTime = [&] (const MediaTime& time) {
+        auto divideSampleIfPossibleAtPresentationTime = [&] (const MediaTime& time, bool insertLowerHalf = true, bool insertHigherHalf = true) {
             auto sampleIterator = trackBuffer.samples.presentationOrder().findSampleContainingPresentationTime(time);
             if (sampleIterator == trackBuffer.samples.presentationOrder().end())
                 return;
@@ -778,11 +810,31 @@ void SourceBuffer::removeCodedFrames(const MediaTime& start, const MediaTime& en
                 toString(replacementSamples.first).utf8().data(),
                 toString(replacementSamples.second).utf8().data());
             trackBuffer.samples.removeSample(sample.get());
-            trackBuffer.samples.addSample(*replacementSamples.first);
-            trackBuffer.samples.addSample(*replacementSamples.second);
+
+            if (insertLowerHalf)
+                trackBuffer.samples.addSample(*replacementSamples.first);
+            else {
+                PlatformTimeRanges notInserted(replacementSamples.first->presentationTime(), replacementSamples.first->presentationTime() + replacementSamples.first->duration());
+                notInserted.invert();
+                trackBuffer.buffered.intersectWith(notInserted);
+            }
+
+            if (insertHigherHalf)
+                trackBuffer.samples.addSample(*replacementSamples.second);
+            else {
+                PlatformTimeRanges notInserted(replacementSamples.second->presentationTime(), replacementSamples.second->presentationTime() + replacementSamples.second->duration());
+                notInserted.invert();
+                trackBuffer.buffered.intersectWith(notInserted);
+            }
         };
+
+#if (USE(GSTREAMER))
+        divideSampleIfPossibleAtPresentationTime(start, true, false);
+        divideSampleIfPossibleAtPresentationTime(end, false, true);
+#else
         divideSampleIfPossibleAtPresentationTime(start);
         divideSampleIfPossibleAtPresentationTime(end);
+#endif
 
         auto removePresentationStart = trackBuffer.samples.presentationOrder().findSampleContainingOrAfterPresentationTime(start);
         auto removePresentationEnd = trackBuffer.samples.presentationOrder().findSampleStartingOnOrAfterPresentationTime(end);
@@ -802,11 +854,16 @@ void SourceBuffer::removeCodedFrames(const MediaTime& start, const MediaTime& en
         auto removeDecodeEnd = trackBuffer.samples.decodeOrder().findSyncSampleAfterDecodeIterator(removeDecodeLast);
 
         DecodeOrderSampleMap::MapType erasedSamples(removeDecodeStart, removeDecodeEnd);
-        PlatformTimeRanges erasedRanges = removeSamplesFromTrackBuffer(erasedSamples, trackBuffer, this, "removeCodedFrames");
+        PlatformTimeRanges erasedRanges = removeSamplesFromTrackBuffer(erasedSamples, trackBuffer, this, "removeCodedFrames", keepDecodeQueue);
 
         // Only force the TrackBuffer to re-enqueue if the removed ranges overlap with enqueued and possibly
         // not yet displayed samples.
-        if (trackBuffer.lastEnqueuedPresentationTime.isValid() && currentMediaTime < trackBuffer.lastEnqueuedPresentationTime) {
+        if (trackBuffer.lastEnqueuedPresentationTime.isValid() && currentMediaTime < trackBuffer.lastEnqueuedPresentationTime
+#if defined(METROLOGICAL)
+            && !hasAudio()
+            && !keepDecodeQueue
+#endif
+            ) {
             PlatformTimeRanges possiblyEnqueuedRanges(currentMediaTime, trackBuffer.lastEnqueuedPresentationTime);
             possiblyEnqueuedRanges.intersectWith(erasedRanges);
             if (possiblyEnqueuedRanges.length())
@@ -845,7 +902,7 @@ void SourceBuffer::removeTimerFired()
     // http://w3c.github.io/media-source/#sourcebuffer-range-removal
 
     // 6. Run the coded frame removal algorithm with start and end as the start and end of the removal range.
-    removeCodedFrames(m_pendingRemoveStart, m_pendingRemoveEnd);
+    removeCodedFrames(m_pendingRemoveStart, m_pendingRemoveEnd, false);
 
     // 7. Set the updating attribute to false.
     m_updating = false;
@@ -870,10 +927,20 @@ void SourceBuffer::evictCodedFrames(size_t newDataSize)
     // This algorithm is run to free up space in this source buffer when new data is appended.
     // 1. Let new data equal the data that is about to be appended to this SourceBuffer.
     // 2. If the buffer full flag equals false, then abort these steps.
-    if (!m_bufferFull)
+    if (!m_bufferFull) {
+        LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - buffer is not full, current buffer size %zu", this, extraMemoryCost());
         return;
+    }
 
     size_t maximumBufferSize = this->maximumBufferSize();
+
+    // Check if app has removed enough already
+    if (extraMemoryCost() + newDataSize < maximumBufferSize) {
+        m_bufferFull = false;
+        return;
+    }
+
+    auto& buffered = m_buffered->ranges();
 
     // 3. Let removal ranges equal a list of presentation time ranges that can be evicted from
     // the presentation to make room for the new data.
@@ -884,21 +951,47 @@ void SourceBuffer::evictCodedFrames(size_t newDataSize)
     MediaTime currentTime = m_source->currentTime();
     MediaTime maximumRangeEnd = currentTime - thirtySeconds;
 
+#if defined(METROLOGICAL)
+    MediaTime microSecond = MediaTime(1, 1000000);
+    for (auto& trackBuffer : m_trackBufferMap.values()) {
+        auto prevSync =
+            trackBuffer.samples.decodeOrder().findSyncSamplePriorToPresentationTime(currentTime);
+        if (prevSync != trackBuffer.samples.decodeOrder().rend()) {
+            // Don't include the sync frame in the range, just finish right before it.
+            maximumRangeEnd = prevSync->second->presentationTime() - microSecond;
+        }
+    }
+#endif
+
 #if !LOG_DISABLED
     LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - currentTime = %lf, require %zu bytes, maximum buffer size is %zu", this, m_source->currentTime().toDouble(), extraMemoryCost() + newDataSize, maximumBufferSize);
     size_t initialBufferedSize = extraMemoryCost();
 #endif
 
-    MediaTime rangeStart = MediaTime::zeroTime();
+    MediaTime rangeStart = buffered.start(0);
     MediaTime rangeEnd = rangeStart + thirtySeconds;
+
+    if (MediaTime::zeroTime() != rangeStart && rangeStart < maximumRangeEnd) {
+        removeCodedFrames(MediaTime::zeroTime(), rangeStart, true);
+    }
+
     while (rangeStart < maximumRangeEnd) {
+        auto removalRange = PlatformTimeRanges(rangeStart, std::min(rangeEnd, maximumRangeEnd));
+        removalRange.intersectWith(buffered);
+
         // 4. For each range in removal ranges, run the coded frame removal algorithm with start and
         // end equal to the removal range start and end timestamp respectively.
-        removeCodedFrames(rangeStart, std::min(rangeEnd, maximumRangeEnd));
-        if (extraMemoryCost() + newDataSize < maximumBufferSize) {
-            m_bufferFull = false;
-            break;
+        for (unsigned i = 0; i < removalRange.length(); ++i) {
+            removeCodedFrames(removalRange.start(i), removalRange.end(i), true);
+            if (extraMemoryCost() + newDataSize < maximumBufferSize) {
+                LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - the buffer is not full anymore.", this);
+                m_bufferFull = false;
+                break;
+            }
         }
+
+        if (!m_bufferFull)
+            break;
 
         rangeStart += thirtySeconds;
         rangeEnd += thirtySeconds;
@@ -912,9 +1005,24 @@ void SourceBuffer::evictCodedFrames(size_t newDataSize)
     // If there still isn't enough free space and there buffers in time ranges after the current range (ie. there is a gap after
     // the current buffered range), delete 30 seconds at a time from duration back to the current time range or 30 seconds after
     // currenTime whichever we hit first.
-    auto buffered = m_buffered->ranges();
     size_t currentTimeRange = buffered.find(currentTime);
-    if (currentTimeRange == notFound || currentTimeRange == buffered.length() - 1) {
+
+#if defined(METROLOGICAL)
+    MediaTime minimumRangeStart = currentTime + thirtySeconds;
+
+    if (currentTimeRange == buffered.length() - 1) {
+        LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - evicted %zu bytes from the beginning but failed to free enough.", this, initialBufferedSize - extraMemoryCost());
+        minimumRangeStart = m_groupEndTimestamp;
+    }
+
+    if (m_source->duration().isPositiveInfinite()) {
+        if (!buffered.length())
+            return;
+        rangeEnd = buffered.end(buffered.length() - 1);
+    } else
+        rangeEnd = m_source->duration();
+#else
+    if (currentTimeRange == buffered.length() - 1) {
         LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - evicted %zu bytes but FAILED to free enough", this, initialBufferedSize - extraMemoryCost());
         return;
     }
@@ -922,32 +1030,98 @@ void SourceBuffer::evictCodedFrames(size_t newDataSize)
     MediaTime minimumRangeStart = currentTime + thirtySeconds;
 
     rangeEnd = m_source->duration();
+#endif
     rangeStart = rangeEnd - thirtySeconds;
-    while (rangeStart > minimumRangeStart) {
 
-        // Do not evict data from the time range that contains currentTime.
-        size_t startTimeRange = buffered.find(rangeStart);
-        if (startTimeRange == currentTimeRange) {
-            size_t endTimeRange = buffered.find(rangeEnd);
-            if (endTimeRange == currentTimeRange)
+    LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - minimumRangeStart: %f, duration: %f", this, minimumRangeStart.toDouble(), m_source->duration().toDouble());
+
+    auto removeFramesWhileFull = [&] (PlatformTimeRanges& ranges) {
+        for (int i = ranges.length()-1; i >= 0; --i) {
+            LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - removing coded frames in range [%f, %f)", this, ranges.start(i).toDouble(), ranges.end(i).toDouble());
+            removeCodedFrames(ranges.start(i), ranges.end(i), true);
+            if (extraMemoryCost() + newDataSize < maximumBufferSize) {
+                LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - buffer is not full anymore.", this);
+                m_bufferFull = false;
                 break;
-
-            rangeEnd = buffered.start(endTimeRange);
+            }
         }
+    };
 
-        // 4. For each range in removal ranges, run the coded frame removal algorithm with start and
-        // end equal to the removal range start and end timestamp respectively.
-        removeCodedFrames(std::max(minimumRangeStart, rangeStart), rangeEnd);
-        if (extraMemoryCost() + newDataSize < maximumBufferSize) {
-            m_bufferFull = false;
+    const auto safeToRemoveRange = PlatformTimeRanges(minimumRangeStart, rangeEnd);
+    while (rangeStart > minimumRangeStart) {
+        LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - evicting: extraMemoryCost: %zu, rangeStart: %f, rangeEnd: %f",
+                this, extraMemoryCost(), rangeStart.toDouble(), rangeEnd.toDouble());
+
+        auto removalRange = PlatformTimeRanges(rangeStart, rangeEnd);
+        removalRange.intersectWith(safeToRemoveRange);
+        auto intersectedRanges = removalRange;
+        intersectedRanges.intersectWith(buffered);
+
+        removeFramesWhileFull(intersectedRanges);
+
+        if (!m_bufferFull)
             break;
-        }
 
         rangeStart -= thirtySeconds;
         rangeEnd -= thirtySeconds;
     }
 
-    LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - evicted %zu bytes%s", this, initialBufferedSize - extraMemoryCost(), m_bufferFull ? "" : " but FAILED to free enough");
+    if (m_bufferFull && currentTimeRange == notFound) {
+        LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - We tried hard to evict, but the buffer is still full and current time is unbuffered, let's try to remove more buffered data.", this);
+        removeFramesWhileFull(buffered);
+    }
+
+    LOG(MediaSource, "SourceBuffer::evictCodedFrames(%p) - evicted %zu bytes%s", this, initialBufferedSize - extraMemoryCost(), m_bufferFull ? " but FAILED to free enough" : "");
+}
+
+size_t SourceBuffer::maxBufferSizeVideo = 0;
+size_t SourceBuffer::maxBufferSizeAudio = 0;
+size_t SourceBuffer::maxBufferSizeText = 0;
+
+static void maximumBufferSizeDefaults(size_t& maxBufferSizeVideo, size_t& maxBufferSizeAudio, size_t& maxBufferSizeText)
+{
+    // Syntax: Case insensitive, full type (audio, video, text), compact type (a, v, t),
+    //         wildcard (*), unit multipliers (M=Mb, K=Kb, <empty>=bytes).
+    // Examples: MSE_MAX_BUFFER_SIZE='V:50M,audio:12k,TeXT:500K'
+    //           MSE_MAX_BUFFER_SIZE='*:100M'
+    //           MSE_MAX_BUFFER_SIZE='video:90M,T:100000'
+
+    String s(getenv("MSE_MAX_BUFFER_SIZE"));
+    if (!s.isEmpty()) {
+        Vector<String> entries = s.split(',');
+        for (const String& entry : entries) {
+            Vector<String> keyvalue = entry.split(':');
+            if (keyvalue.size() != 2)
+                continue;
+            String key = keyvalue[0].stripWhiteSpace().convertToLowercaseWithoutLocale();
+            String value = keyvalue[1].stripWhiteSpace().convertToLowercaseWithoutLocale();
+            size_t units = 1;
+            if (value.endsWith('k'))
+                units = 1024;
+            else if (value.endsWith('m'))
+                units = 1024 * 1024;
+            if (units != 1)
+                value = value.substring(0, value.length()-1);
+            bool ok = false;
+            size_t size = size_t(value.toUInt64(&ok));
+            if (!ok)
+                continue;
+
+            if (key == "a" || key == "audio" || key == "*")
+                maxBufferSizeAudio = size * units;
+            if (key == "v" || key == "video" || key == "*")
+                maxBufferSizeVideo = size * units;
+            if (key == "t" || key == "text" || key == "*")
+                maxBufferSizeText = size * units;
+        }
+    }
+
+    if (!maxBufferSizeAudio)
+        maxBufferSizeAudio = 3 * 1024 * 1024;
+    if (!maxBufferSizeVideo)
+        maxBufferSizeVideo = 30 * 1024 * 1024;
+    if (!maxBufferSizeText)
+        maxBufferSizeText = 1 * 1024 * 1024;
 }
 
 size_t SourceBuffer::maximumBufferSize() const
@@ -955,11 +1129,14 @@ size_t SourceBuffer::maximumBufferSize() const
     if (isRemoved())
         return 0;
 
-    auto* element = m_source->mediaElement();
-    if (!element)
-        return 0;
+    if (!maxBufferSizeVideo)
+        maximumBufferSizeDefaults(maxBufferSizeVideo, maxBufferSizeAudio, maxBufferSizeText);
 
-    return element->maximumSourceBufferSize(*this);
+    if (m_videoTracks && m_videoTracks->length() > 0)
+        return maxBufferSizeVideo;
+    if (m_audioTracks && m_audioTracks->length() > 0)
+        return maxBufferSizeAudio;
+    return maxBufferSizeText;
 }
 
 VideoTrackList& SourceBuffer::videoTracks()
@@ -1567,7 +1744,7 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
 
                 if (range.first != trackBuffer.samples.presentationOrder().end())
                     erasedSamples.addRange(range.first, range.second);
-            } while(false);
+            } while (false);
         }
 
         // 1.16 Remove decoding dependencies of the coded frames removed in the previous step:
@@ -1583,12 +1760,16 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
             auto nextSyncIter = trackBuffer.samples.decodeOrder().findSyncSampleAfterDecodeIterator(lastDecodeIter);
             dependentSamples.insert(firstDecodeIter, nextSyncIter);
 
-            PlatformTimeRanges erasedRanges = removeSamplesFromTrackBuffer(dependentSamples, trackBuffer, this, "sourceBufferPrivateDidReceiveSample");
+            PlatformTimeRanges erasedRanges = removeSamplesFromTrackBuffer(dependentSamples, trackBuffer, this, "sourceBufferPrivateDidReceiveSample", false);
 
             // Only force the TrackBuffer to re-enqueue if the removed ranges overlap with enqueued and possibly
             // not yet displayed samples.
             MediaTime currentMediaTime = m_source->currentTime();
-            if (trackBuffer.lastEnqueuedPresentationTime.isValid() && currentMediaTime < trackBuffer.lastEnqueuedPresentationTime) {
+            if (trackBuffer.lastEnqueuedPresentationTime.isValid() && currentMediaTime < trackBuffer.lastEnqueuedPresentationTime
+#if defined(METROLOGICAL)
+                && !hasAudio()
+#endif
+                ) {
                 PlatformTimeRanges possiblyEnqueuedRanges(currentMediaTime, trackBuffer.lastEnqueuedPresentationTime);
                 possiblyEnqueuedRanges.intersectWith(erasedRanges);
                 if (possiblyEnqueuedRanges.length())
@@ -1648,11 +1829,11 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
         // disjoint ranges separated by less than a "fudge factor".
         auto presentationEndTime = presentationTimestamp + frameDuration;
         auto nearestToPresentationStartTime = trackBuffer.buffered.nearest(presentationTimestamp);
-        if (nearestToPresentationStartTime.isValid() && (presentationTimestamp - nearestToPresentationStartTime).isBetween(MediaTime::zeroTime(), MediaSource::currentTimeFudgeFactor()))
+        if (nearestToPresentationStartTime.isValid() && (presentationTimestamp - nearestToPresentationStartTime).isBetween(MediaTime::zeroTime(), currentTimeFudgeFactor()))
             presentationTimestamp = nearestToPresentationStartTime;
 
         auto nearestToPresentationEndTime = trackBuffer.buffered.nearest(presentationEndTime);
-        if (nearestToPresentationEndTime.isValid() && (nearestToPresentationEndTime - presentationEndTime).isBetween(MediaTime::zeroTime(), MediaSource::currentTimeFudgeFactor()))
+        if (nearestToPresentationEndTime.isValid() && (nearestToPresentationEndTime - presentationEndTime).isBetween(MediaTime::zeroTime(), currentTimeFudgeFactor()))
             presentationEndTime = nearestToPresentationEndTime;
 
         trackBuffer.buffered.add(presentationTimestamp, presentationEndTime);
@@ -1668,6 +1849,19 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(MediaSample& sample)
     // duration set to the maximum of the current duration and the group end timestamp.
     if (m_groupEndTimestamp > m_source->duration())
         m_source->setDurationInternal(m_groupEndTimestamp);
+
+    // To avoid playback pipeline starvation start providing media data as soon as we can
+    const auto& trackID = sample.trackID();
+    auto it = m_trackBufferMap.find(trackID);
+    if (it != m_trackBufferMap.end() && m_private->isReadyForMoreSamples(trackID)) {
+        TrackBuffer& trackBuffer = it->value;
+        if (!trackBuffer.needsReenqueueing
+            && trackBuffer.lastEnqueuedDecodeEndTime.isValid()
+            && trackBuffer.lastDecodeTimestamp.isValid()
+            && abs(trackBuffer.lastEnqueuedDecodeEndTime - trackBuffer.lastDecodeTimestamp) > MediaTime::createWithDouble(0.350)) {
+            provideMediaData(trackBuffer, trackID);
+        }
+    }
 }
 
 bool SourceBuffer::hasAudio() const
@@ -1903,7 +2097,7 @@ void SourceBuffer::reenqueueMediaForTime(TrackBuffer& trackBuffer, const AtomicS
         currentSamplePTSIterator = trackBuffer.samples.presentationOrder().findSampleStartingOnOrAfterPresentationTime(time);
 
     if (currentSamplePTSIterator == trackBuffer.samples.presentationOrder().end()
-        || (currentSamplePTSIterator->first - time) > MediaSource::currentTimeFudgeFactor())
+        || (currentSamplePTSIterator->first - time) > currentTimeFudgeFactor())
         return;
 
     // Seach backward for the previous sync sample.

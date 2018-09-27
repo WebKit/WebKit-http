@@ -85,7 +85,7 @@ void MediaSourceClientGStreamerMSE::durationChanged(const MediaTime& duration)
     ASSERT(WTF::isMainThread());
 
     GST_TRACE("duration: %f", duration.toFloat());
-    if (!duration.isValid() || duration.isPositiveInfinite() || duration.isNegativeInfinite())
+    if (!duration.isValid() || duration.isNegativeInfinite())
         return;
 
     m_duration = duration;
@@ -158,6 +158,16 @@ void MediaSourceClientGStreamerMSE::markEndOfStream(MediaSourcePrivate::EndOfStr
         return;
 
     m_playerPrivate->markEndOfStream(status);
+}
+
+void MediaSourceClientGStreamerMSE::unmarkEndOfStream()
+{
+    ASSERT(WTF::isMainThread());
+
+    if (!m_playerPrivate)
+        return;
+
+    m_playerPrivate->unmarkEndOfStream();
 }
 
 void MediaSourceClientGStreamerMSE::removedFromMediaSource(RefPtr<SourceBufferPrivateGStreamer> sourceBufferPrivate)

@@ -383,6 +383,7 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     v(double, percentCPUPerMBForFullTimer, 0.0003125, Normal, nullptr) \
     v(double, percentCPUPerMBForEdenTimer, 0.0025, Normal, nullptr) \
     v(double, collectionTimerMaxPercentCPU, 0.05, Normal, nullptr) \
+    v(unsigned, maxDelayForGCTimers, 0, Normal, "max delay in seconds for GC timers, if 0 means no delay") \
     \
     v(bool, forceWeakRandomSeed, false, Normal, nullptr) \
     v(unsigned, forcedWeakRandomSeed, 0, Normal, nullptr) \
@@ -391,6 +392,7 @@ constexpr bool enableWebAssemblyStreamingApi = false;
     v(bool, useImmortalObjects, false, Normal, "debugging option to keep all objects alive forever") \
     v(bool, sweepSynchronously, false, Normal, "debugging option to sweep all dead objects synchronously at GC end before resuming mutator") \
     v(unsigned, maxSingleAllocationSize, 0, Configurable, "debugging option to limit individual allocations to a max size (0 = limit not set, N = limit size in bytes)") \
+    v(bool, showAllocationBacktraces, false, Normal, nullptr) \
     \
     v(gcLogLevel, logGC, GCLogging::None, Normal, "debugging option to log GC activity (0 = None, 1 = Basic, 2 = Verbose)") \
     v(bool, useGC, true, Normal, nullptr) \

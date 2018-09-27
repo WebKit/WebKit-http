@@ -76,6 +76,7 @@ public:
 #if ENABLE(MEDIA_SOURCE)
     void load(const String& url, MediaSourcePrivateClient*) override;
 #endif
+
 #if ENABLE(MEDIA_STREAM)
     void load(MediaStreamPrivate&) override;
 #endif
@@ -185,8 +186,6 @@ private:
 #endif
 
 protected:
-    void cacheDuration();
-
     bool m_buffering;
     int m_bufferingPercentage;
     mutable MediaTime m_cachedPosition;
@@ -194,7 +193,6 @@ protected:
     bool m_changingRate;
     bool m_downloadFinished;
     bool m_errorOccured;
-    mutable bool m_isEndReached;
     mutable bool m_isStreaming;
     mutable MediaTime m_durationAtEOS;
     bool m_paused;
@@ -209,6 +207,7 @@ protected:
     GRefPtr<GstElement> m_source;
     bool m_volumeAndMuteInitialized;
 
+    static GstSeekFlags hardwareDependantSeekFlags();
     void readyTimerFired();
 
     void notifyPlayerOfVideo();
@@ -233,6 +232,7 @@ protected:
     static void textChangedCallback(MediaPlayerPrivateGStreamer*);
     static GstFlowReturn newTextSampleCallback(MediaPlayerPrivateGStreamer*);
 #endif
+    static gboolean durationChangedCallback(MediaPlayerPrivateGStreamer*);
 
 private:
 
@@ -260,7 +260,7 @@ private:
     bool m_isLegacyPlaybin;
 #if GST_CHECK_VERSION(1, 10, 0)
     GRefPtr<GstStreamCollection> m_streamCollection;
-    FloatSize naturalSize() const final;
+    FloatSize naturalSize() const override;
 #if ENABLE(MEDIA_STREAM)
     RefPtr<MediaStreamPrivate> m_streamPrivate;
 #endif // ENABLE(MEDIA_STREAM)
@@ -268,6 +268,7 @@ private:
     String m_currentAudioStreamId;
     String m_currentVideoStreamId;
     String m_currentTextStreamId;
+    mutable double m_lastQuery;
 #if ENABLE(WEB_AUDIO)
     std::unique_ptr<AudioSourceProviderGStreamer> m_audioSourceProvider;
 #endif

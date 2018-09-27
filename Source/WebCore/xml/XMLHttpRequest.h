@@ -178,6 +178,10 @@ private:
     void resumeTimerFired();
     Ref<TextResourceDecoder> createDecoder() const;
 
+    size_t extraMemoryCost() const;
+    void reportExtraMemoryCost();
+    size_t m_reportedExtraMemoryCost;
+
     std::unique_ptr<XMLHttpRequestUpload> m_upload;
 
     URL m_url;

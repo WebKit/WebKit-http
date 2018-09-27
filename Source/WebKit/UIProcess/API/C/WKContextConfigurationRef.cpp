@@ -198,3 +198,12 @@ void WKContextConfigurationSetDiskCacheSizeOverride(WKContextConfigurationRef co
     toImpl(configuration)->setDiskCacheSizeOverride(size);
 }
 
+uint32_t WKContextConfigurationLocalStorageQuota(WKContextConfigurationRef configuration)
+{
+    return toImpl(configuration)->localStorageQuota();
+}
+
+void WKContextConfigurationSetLocalStorageQuota(WKContextConfigurationRef configuration, uint32_t quota)
+{
+    toImpl(configuration)->setLocalStorageQuota(quota);
+}

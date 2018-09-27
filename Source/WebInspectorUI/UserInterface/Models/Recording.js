@@ -286,7 +286,7 @@ WI.Recording = class Recording extends WI.Object
                     this._swizzle[index][type] = await createImageBitmap(image);
                     break;
                 }
-            } catch { }
+            } catch (e) { }
         }
 
         return this._swizzle[index][type];

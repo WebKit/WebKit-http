@@ -356,6 +356,16 @@ bool WKPreferencesGetPrivateBrowsingEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->privateBrowsingEnabled();
 }
 
+void WKPreferencesSetConsoleLogWithPrivateBrowsingEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setConsoleLogWithPrivateBrowsingEnabled(enabled);
+}
+
+bool WKPreferencesGetConsoleLogWithPrivateBrowsingEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->consoleLogWithPrivateBrowsingEnabled();
+}
+
 void WKPreferencesSetDeveloperExtrasEnabled(WKPreferencesRef preferencesRef, bool enabled)
 {
     toImpl(preferencesRef)->setDeveloperExtrasEnabled(enabled);
@@ -2066,4 +2076,54 @@ void WKPreferencesSetPunchOutWhiteBackgroundsInDarkMode(WKPreferencesRef prefere
 bool WKPreferencesGetPunchOutWhiteBackgroundsInDarkMode(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->punchOutWhiteBackgroundsInDarkMode();
+}
+
+void WKPreferencesSetAllowRunningOfInsecureContent(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setAllowRunningOfInsecureContent(enabled);
+}
+
+bool WKPreferencesGetAllowRunningOfInsecureContent(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->allowRunningOfInsecureContent();
+}
+
+void WKPreferencesSetAllowDisplayOfInsecureContent(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setAllowDisplayOfInsecureContent(enabled);
+}
+
+bool WKPreferencesGetAllowDisplayOfInsecureContent(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->allowDisplayOfInsecureContent();
+}
+
+void WKPreferencesSetAllowScriptsToCloseWindow(WKPreferencesRef preferencesRef, bool allow)
+{
+    toImpl(preferencesRef)->setAllowScriptsToCloseWindows(allow);
+}
+
+bool WKPreferencesGetAllowScriptsToCloseWindow(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->allowScriptsToCloseWindows();
+}
+
+void WKPreferencesSetScrollToFocusedElementEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setScrollToFocusedElementEnabled(enabled);
+}
+
+bool WKPreferencesGetScrollToFocusedElementEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->scrollToFocusedElementEnabled();
+}
+
+void WKPreferencesSetNonCompositedWebGLEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setNonCompositedWebGLEnabled(enabled);
+}
+
+bool WKPreferencesGetNonCompositedWebGLEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->nonCompositedWebGLEnabled();
 }

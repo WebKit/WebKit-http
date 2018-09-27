@@ -31,6 +31,7 @@
 #include "MessageReceiverMap.h"
 #include "NetworkContentRuleListManager.h"
 #include <WebCore/DiagnosticLoggingClient.h>
+#include <WebCore/Proxy.h>
 #include <memory>
 #include <pal/SessionID.h>
 #include <wtf/Forward.h>
@@ -245,6 +246,7 @@ private:
 #if USE(SOUP)
     void setIgnoreTLSErrors(bool);
     void userPreferredLanguagesChanged(const Vector<String>&);
+    void setProxies(PAL::SessionID, const Vector<WebCore::Proxy>& proxies);
     void setNetworkProxySettings(const WebCore::SoupNetworkProxySettings&);
 #endif
 

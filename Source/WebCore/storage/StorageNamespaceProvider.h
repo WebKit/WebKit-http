@@ -56,8 +56,8 @@ protected:
     StorageNamespace* optionalLocalStorageNamespace() { return m_localStorageNamespace.get(); }
 
 private:
-    StorageNamespace& localStorageNamespace();
-    StorageNamespace& transientLocalStorageNamespace(SecurityOrigin&);
+    StorageNamespace& localStorageNamespace(unsigned);
+    StorageNamespace& transientLocalStorageNamespace(SecurityOrigin&, unsigned);
 
     virtual RefPtr<StorageNamespace> createLocalStorageNamespace(unsigned quota) = 0;
     virtual RefPtr<StorageNamespace> createTransientLocalStorageNamespace(SecurityOrigin&, unsigned quota) = 0;

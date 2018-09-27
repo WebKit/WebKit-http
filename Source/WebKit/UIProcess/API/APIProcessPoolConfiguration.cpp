@@ -139,6 +139,8 @@ Ref<ProcessPoolConfiguration> ProcessPoolConfiguration::copy()
     copy->m_suppressesConnectionTerminationOnSystemChange = this->m_suppressesConnectionTerminationOnSystemChange;
 #endif
 
+    copy->m_localStorageQuota = this->m_localStorageQuota;
+
     return copy;
 }
 

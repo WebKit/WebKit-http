@@ -50,6 +50,7 @@ void WTFGetBacktrace(void** stack, int* size)
 #elif OS(WINDOWS)
     *size = RtlCaptureStackBackTrace(0, *size, stack, 0);
 #else
+    UNUSED_PARAM(stack);
     *size = 0;
 #endif
 }

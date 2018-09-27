@@ -33,7 +33,6 @@
 extern "C" {
 #endif
 
-WK_EXPORT WKStringRef WKStringCreateWithJSString(JSStringRef jsString);
 WK_EXPORT JSStringRef WKStringCopyJSString(WKStringRef string);
 
 #ifdef __cplusplus

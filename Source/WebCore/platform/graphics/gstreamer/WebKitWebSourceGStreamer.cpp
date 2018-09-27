@@ -22,6 +22,8 @@
 
 #if ENABLE(VIDEO) && USE(GSTREAMER)
 
+#include "CachedResourceLoader.h"
+#include "CookieJar.h"
 #include "GStreamerCommon.h"
 #include "HTTPHeaderNames.h"
 #include "MainThreadNotifier.h"
@@ -33,6 +35,11 @@
 #include <cstdint>
 #include <gst/app/gstappsrc.h>
 #include <gst/pbutils/missing-plugins.h>
+#include <wtf/MainThread.h>
+#include <wtf/Noncopyable.h>
+#include <wtf/glib/GMutexLocker.h>
+#include <wtf/glib/GRefPtr.h>
+#include <wtf/glib/GUniquePtr.h>
 #include <wtf/text/CString.h>
 
 using namespace WebCore;
@@ -83,6 +90,7 @@ struct _WebKitWebSrcPrivate {
     GUniquePtr<GstStructure> extraHeaders;
     bool compress;
     GUniquePtr<gchar> httpMethod;
+    GUniquePtr<gchar> cookies;
 
     WebCore::MediaPlayer* player;
 
@@ -387,7 +395,7 @@ static void webKitWebSrcStop(WebKitWebSrc* src)
             gst_app_src_set_size(priv->appsrc, -1);
     }
 
-    GST_DEBUG_OBJECT(src, "Stopped request");
+    GST_DEBUG_OBJECT(src, "Stopped request. Was seeking: %s", wasSeeking ? "yes":"no");
 }
 
 static bool webKitWebSrcSetExtraHeader(GQuark fieldId, const GValue* value, gpointer userData)
@@ -485,6 +493,7 @@ static void webKitWebSrcStart(WebKitWebSrc* src)
         || !g_ascii_strcasecmp("trailers.apple.com", url.host().utf8().data()))
         request.setHTTPUserAgent("Quicktime/7.6.6");
 
+    GST_DEBUG_OBJECT(src, "Requested offset: %" G_GUINT64_FORMAT, priv->requestedOffset);
     if (priv->requestedOffset) {
         GUniquePtr<gchar> val(g_strdup_printf("bytes=%" G_GUINT64_FORMAT "-", priv->requestedOffset));
         request.setHTTPHeaderField(HTTPHeaderName::Range, val.get());
@@ -508,6 +517,11 @@ static void webKitWebSrcStart(WebKitWebSrc* src)
 
         if (!priv->loader)
             priv->loader = priv->player->createResourceLoader();
+
+        {
+            String cookies = WebCore::cookies(*priv->player->cachedResourceLoader()->document(), request.url());
+            priv->cookies = GUniquePtr<gchar>(g_strdup(cookies.utf8().data()));
+        }
 
         PlatformMediaResourceLoader::LoadOptions loadOptions = 0;
         if (request.url().protocolIsBlob())
@@ -576,6 +590,21 @@ static gboolean webKitWebSrcQueryWithParent(GstPad* pad, GstObject* parent, GstQ
     gboolean result = FALSE;
 
     switch (GST_QUERY_TYPE(query)) {
+#if !GST_CHECK_VERSION(1, 14, 1)
+    case GST_QUERY_DURATION: {
+        // FIXME: This query handler should not be needed when we upgrade from 1.10.4
+        GstFormat format;
+
+        gst_query_parse_duration(query, &format, nullptr);
+
+        GST_DEBUG_OBJECT(src, "duration query in format %s", gst_format_get_name(format));
+        if (format == GST_FORMAT_BYTES && priv->size > 0) {
+            gst_query_set_duration(query, format, priv->size);
+            result = TRUE;
+        }
+        break;
+    }
+#endif
     case GST_QUERY_URI: {
         gst_query_set_uri(query, priv->originalURI.data());
         if (!priv->redirectedURI.isNull())
@@ -591,6 +620,23 @@ static gboolean webKitWebSrcQueryWithParent(GstPad* pad, GstObject* parent, GstQ
         gst_query_set_scheduling(query, static_cast<GstSchedulingFlags>(flags | GST_SCHEDULING_FLAG_BANDWIDTH_LIMITED), minSize, maxSize, align);
         result = TRUE;
         break;
+    }
+    case GST_QUERY_CONTEXT: {
+        const gchar* contextType;
+        if (gst_query_parse_context_type(query, &contextType) && !g_strcmp0(contextType, "http-headers")) {
+            WTF::GMutexLocker<GMutex> gstLocker(*GST_OBJECT_GET_LOCK(src));
+
+            GstContext* context = gst_context_new("http-headers", FALSE);
+            context = gst_context_make_writable(context);
+            GstStructure* contextStructure = gst_context_writable_structure(context);
+
+            const gchar* cookiesArray[] = { src->priv->cookies.get(), nullptr};
+            gst_structure_set(contextStructure, "cookies", G_TYPE_STRV, cookiesArray, nullptr);
+
+            gst_query_set_context(query, context);
+            result = TRUE;
+            break;
+        }
     }
     default: {
         GRefPtr<GstPad> target = adoptGRef(gst_ghost_pad_get_target(GST_GHOST_PAD_CAST(pad)));
@@ -810,6 +856,20 @@ void CachedResourceStreamingClient::responseReceived(PlatformMediaResource&, con
         return;
     }
 
+    // FIXME: priv->uri disappeared.
+#if 0
+    if (response.isRedirected()) {
+        if (!urlHasSupportedProtocol(response.url())) {
+            GST_ELEMENT_ERROR(src, RESOURCE, READ, ("Invalid URI '%s'", response.url().string().utf8().data()), (nullptr));
+            gst_app_src_end_of_stream(priv->appsrc);
+            webKitWebSrcStop(src);
+            return;
+        }
+        g_free(priv->uri);
+        priv->uri = g_strdup(response.url().string().utf8().data());
+    }
+#endif
+
     if (priv->requestedOffset) {
         // Seeking ... we expect a 206 == PARTIAL_CONTENT
         if (response.httpStatusCode() == 200) {
@@ -825,6 +885,7 @@ void CachedResourceStreamingClient::responseReceived(PlatformMediaResource&, con
     }
 
     long long length = response.expectedContentLength();
+    GST_DEBUG_OBJECT(src, "response: %d, content length: %lld, requested offset: %" G_GUINT64_FORMAT, response.httpStatusCode(), length, priv->requestedOffset);
     if (length > 0 && priv->requestedOffset && response.httpStatusCode() == 206)
         length += priv->requestedOffset;
 

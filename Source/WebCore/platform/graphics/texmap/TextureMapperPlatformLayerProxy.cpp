@@ -217,7 +217,7 @@ void TextureMapperPlatformLayerProxy::dropCurrentBufferWhilePreservingTexture()
     m_compositorThreadUpdateTimer->startOneShot(0_s);
 }
 
-bool TextureMapperPlatformLayerProxy::scheduleUpdateOnCompositorThread(Function<void()>&& updateFunction)
+bool TextureMapperPlatformLayerProxy::scheduleUpdateOnCompositorThread(WTF::Function<void()>&& updateFunction)
 {
     LockHolder locker(m_lock);
     if (!m_compositorThreadUpdateTimer)
@@ -230,7 +230,7 @@ bool TextureMapperPlatformLayerProxy::scheduleUpdateOnCompositorThread(Function<
 
 void TextureMapperPlatformLayerProxy::compositorThreadUpdateTimerFired()
 {
-    Function<void()> updateFunction;
+    WTF::Function<void()> updateFunction;
     {
         LockHolder locker(m_lock);
         if (!m_compositorThreadUpdateFunction)

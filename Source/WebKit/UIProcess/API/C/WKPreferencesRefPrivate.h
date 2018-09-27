@@ -99,10 +99,6 @@ WK_EXPORT bool WKPreferencesGetCompositingRepaintCountersVisible(WKPreferencesRe
 WK_EXPORT void WKPreferencesSetTiledScrollingIndicatorVisible(WKPreferencesRef, bool);
 WK_EXPORT bool WKPreferencesGetTiledScrollingIndicatorVisible(WKPreferencesRef);
 
-// Defaults to true.
-WK_EXPORT void WKPreferencesSetWebGLEnabled(WKPreferencesRef, bool);
-WK_EXPORT bool WKPreferencesGetWebGLEnabled(WKPreferencesRef);
-
 // Defaults to false.
 WK_EXPORT void WKPreferencesSetForceSoftwareWebGLRendering(WKPreferencesRef, bool);
 WK_EXPORT bool WKPreferencesGetForceSoftwareWebGLRendering(WKPreferencesRef);
@@ -162,10 +158,6 @@ WK_EXPORT bool WKPreferencesGetPaginateDuringLayoutEnabled(WKPreferencesRef pref
 // Defaults to false.
 WK_EXPORT void WKPreferencesSetDOMPasteAllowed(WKPreferencesRef preferences, bool enabled);
 WK_EXPORT bool WKPreferencesGetDOMPasteAllowed(WKPreferencesRef preferences);
-
-// Defaults to true.
-WK_EXPORT void WKPreferencesSetWebSecurityEnabled(WKPreferencesRef preferences, bool enabled);
-WK_EXPORT bool WKPreferencesGetWebSecurityEnabled(WKPreferencesRef preferences);
 
 // Defaults to false.
 WK_EXPORT void WKPreferencesSetUniversalAccessFromFileURLsAllowed(WKPreferencesRef preferences, bool allowed);
@@ -279,10 +271,6 @@ WK_EXPORT bool WKPreferencesGetInteractiveFormValidationEnabled(WKPreferencesRef
 WK_EXPORT void WKPreferencesSetScrollingPerformanceLoggingEnabled(WKPreferencesRef preferencesRef, bool enabled);
 WK_EXPORT bool WKPreferencesGetScrollingPerformanceLoggingEnabled(WKPreferencesRef preferencesRef);
 
-// Defaults to true
-WK_EXPORT void WKPreferencesSetCookieEnabled(WKPreferencesRef preferences, bool enabled);
-WK_EXPORT bool WKPreferencesGetCookieEnabled(WKPreferencesRef preferences);
-
 // Defaults to true on Mac, false elsewhere
 WK_EXPORT void WKPreferencesSetPDFPluginEnabled(WKPreferencesRef preferences, bool enabled);
 WK_EXPORT bool WKPreferencesGetPDFPluginEnabled(WKPreferencesRef preferences);
@@ -290,10 +278,6 @@ WK_EXPORT bool WKPreferencesGetPDFPluginEnabled(WKPreferencesRef preferences);
 // Defaults to false
 WK_EXPORT void WKPreferencesSetAggressiveTileRetentionEnabled(WKPreferencesRef preferences, bool enabled);
 WK_EXPORT bool WKPreferencesGetAggressiveTileRetentionEnabled(WKPreferencesRef preferences);
-
-// Defaults to false
-WK_EXPORT void WKPreferencesSetLogsPageMessagesToSystemConsoleEnabled(WKPreferencesRef preferences, bool enabled);
-WK_EXPORT bool WKPreferencesGetLogsPageMessagesToSystemConsoleEnabled(WKPreferencesRef preferences);
 
 // Defaults to true
 WK_EXPORT void WKPreferencesSetPageVisibilityBasedProcessSuppressionEnabled(WKPreferencesRef preferences, bool enabled);
@@ -400,10 +384,6 @@ WK_EXPORT bool WKPreferencesGetServiceControlsEnabled(WKPreferencesRef preferenc
 // Default to false.
 WK_EXPORT void WKPreferencesSetImageControlsEnabled(WKPreferencesRef preferencesRef, bool enabled);
 WK_EXPORT bool WKPreferencesGetImageControlsEnabled(WKPreferencesRef preferencesRef);
-
-// Default to false.
-WK_EXPORT void WKPreferencesSetGamepadsEnabled(WKPreferencesRef preferencesRef, bool enabled);
-WK_EXPORT bool WKPreferencesGetGamepadsEnabled(WKPreferencesRef preferencesRef);
 
 // Not implemented, should be deleted once there are no callers.
 WK_EXPORT void WKPreferencesSetLongMousePressEnabled(WKPreferencesRef preferencesRef, bool enabled);

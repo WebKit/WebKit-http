@@ -26,8 +26,10 @@
 #include "config.h"
 #include "WebPage.h"
 
+#include "RuntimeEnabledFeatures.h"
 #include "WebPreferencesKeys.h"
 #include "WebPreferencesStore.h"
+#include "WindowsKeyboardCodes.h"
 #include <WebCore/NotImplemented.h>
 #include <WebCore/Settings.h>
 #include <WebCore/SharedBuffer.h>
@@ -49,9 +51,22 @@ void WebPage::platformEditorState(Frame&, EditorState&, IncludePostLayoutDataHin
     notImplemented();
 }
 
-bool WebPage::performDefaultBehaviorForKeyEvent(const WebKeyboardEvent&)
+bool WebPage::performDefaultBehaviorForKeyEvent(const WebKeyboardEvent& keyboardEvent)
 {
-    notImplemented();
+    if (keyboardEvent.type() != WebEvent::KeyDown && keyboardEvent.type() != WebEvent::RawKeyDown)
+        return false;
+
+    switch (keyboardEvent.windowsVirtualKeyCode()) {
+    case VK_PRIOR:
+        scroll(m_page.get(), ScrollUp, ScrollByPage);
+        break;
+    case VK_NEXT:
+        scroll(m_page.get(), ScrollDown, ScrollByPage);
+        break;
+    default:
+        break;
+    }
+
     return false;
 }
 

@@ -35,6 +35,7 @@
 
 #include "AffineTransform.h"
 #include "CairoUtilities.h"
+#include "CairoOperations.h"
 #include "Font.h"
 #include "GlyphBuffer.h"
 #include "Gradient.h"

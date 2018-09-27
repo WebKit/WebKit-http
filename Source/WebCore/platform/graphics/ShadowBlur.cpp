@@ -209,7 +209,8 @@ void ShadowBlur::setShadowValues(const FloatSize& radius, const FloatSize& offse
 void ShadowBlur::updateShadowBlurValues()
 {
     // Limit blur radius to 128 to avoid lots of very expensive blurring.
-    m_blurRadius = m_blurRadius.shrunkTo(FloatSize(128, 128));
+    // Or better yet, 32.
+    m_blurRadius = m_blurRadius.shrunkTo(FloatSize(32, 32));
 
     // The type of shadow is decided by the blur radius, shadow offset, and shadow color.
     if (!m_color.isVisible()) {
@@ -864,6 +865,9 @@ void ShadowBlur::drawLayerPieces(GraphicsContext& graphicsContext, const FloatRe
     graphicsContext.setFillColor(m_color);
     graphicsContext.clearShadow();
 
+    ImagePaintingOptions imagePaintingOptions;
+    imagePaintingOptions.m_interpolationQuality = InterpolationNone;
+
     // Note that drawing the ImageBuffer is faster than creating a Image and drawing that,
     // because ImageBuffer::draw() knows that it doesn't have to copy the image bits.
     FloatRect centerRect(shadowBounds.x() + leftSlice, shadowBounds.y() + topSlice, centerWidth, centerHeight);
@@ -872,46 +876,46 @@ void ShadowBlur::drawLayerPieces(GraphicsContext& graphicsContext, const FloatRe
     // Top side.
     FloatRect tileRect = FloatRect(leftSlice, 0, templateSideLength, topSlice);
     FloatRect destRect = FloatRect(centerRect.x(), centerRect.y() - topSlice, centerRect.width(), topSlice);
-    graphicsContext.drawImageBuffer(*m_layerImage, destRect, tileRect);
+    graphicsContext.drawImageBuffer(*m_layerImage, destRect, tileRect, imagePaintingOptions);
 
     // Draw the bottom side.
     tileRect.setY(templateSize.height() - bottomSlice);
     tileRect.setHeight(bottomSlice);
     destRect.setY(centerRect.maxY());
     destRect.setHeight(bottomSlice);
-    graphicsContext.drawImageBuffer(*m_layerImage, destRect, tileRect);
+    graphicsContext.drawImageBuffer(*m_layerImage, destRect, tileRect, imagePaintingOptions);
 
     // Left side.
     tileRect = FloatRect(0, topSlice, leftSlice, templateSideLength);
     destRect = FloatRect(centerRect.x() - leftSlice, centerRect.y(), leftSlice, centerRect.height());
-    graphicsContext.drawImageBuffer(*m_layerImage, destRect, tileRect);
+    graphicsContext.drawImageBuffer(*m_layerImage, destRect, tileRect, imagePaintingOptions);
 
     // Right side.
     tileRect.setX(templateSize.width() - rightSlice);
     tileRect.setWidth(rightSlice);
     destRect.setX(centerRect.maxX());
     destRect.setWidth(rightSlice);
-    graphicsContext.drawImageBuffer(*m_layerImage, destRect, tileRect);
+    graphicsContext.drawImageBuffer(*m_layerImage, destRect, tileRect, imagePaintingOptions);
 
     // Top left corner.
     tileRect = FloatRect(0, 0, leftSlice, topSlice);
     destRect = FloatRect(centerRect.x() - leftSlice, centerRect.y() - topSlice, leftSlice, topSlice);
-    graphicsContext.drawImageBuffer(*m_layerImage, destRect, tileRect);
+    graphicsContext.drawImageBuffer(*m_layerImage, destRect, tileRect, imagePaintingOptions);
 
     // Top right corner.
     tileRect = FloatRect(templateSize.width() - rightSlice, 0, rightSlice, topSlice);
     destRect = FloatRect(centerRect.maxX(), centerRect.y() - topSlice, rightSlice, topSlice);
-    graphicsContext.drawImageBuffer(*m_layerImage, destRect, tileRect);
+    graphicsContext.drawImageBuffer(*m_layerImage, destRect, tileRect, imagePaintingOptions);
 
     // Bottom right corner.
     tileRect = FloatRect(templateSize.width() - rightSlice, templateSize.height() - bottomSlice, rightSlice, bottomSlice);
     destRect = FloatRect(centerRect.maxX(), centerRect.maxY(), rightSlice, bottomSlice);
-    graphicsContext.drawImageBuffer(*m_layerImage, destRect, tileRect);
+    graphicsContext.drawImageBuffer(*m_layerImage, destRect, tileRect, imagePaintingOptions);
 
     // Bottom left corner.
     tileRect = FloatRect(0, templateSize.height() - bottomSlice, leftSlice, bottomSlice);
     destRect = FloatRect(centerRect.x() - leftSlice, centerRect.maxY(), leftSlice, bottomSlice);
-    graphicsContext.drawImageBuffer(*m_layerImage, destRect, tileRect);
+    graphicsContext.drawImageBuffer(*m_layerImage, destRect, tileRect, imagePaintingOptions);
 }
 
 
@@ -920,13 +924,7 @@ void ShadowBlur::blurShadowBuffer(const IntSize& templateSize)
     if (m_type != BlurShadow)
         return;
 
-    IntRect blurRect(IntPoint(), templateSize);
-    auto layerData = m_layerImage->getUnmultipliedImageData(blurRect);
-    if (!layerData)
-        return;
-
-    blurLayerImage(layerData->data(), blurRect.size(), blurRect.width() * 4);
-    m_layerImage->putByteArray(*layerData, AlphaPremultiplication::Unpremultiplied, blurRect.size(), blurRect, { });
+    m_layerImage->blur(templateSize, m_blurRadius);
 }
 
 void ShadowBlur::blurAndColorShadowBuffer(const IntSize& templateSize)

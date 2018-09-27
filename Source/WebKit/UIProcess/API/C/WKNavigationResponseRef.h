@@ -36,6 +36,10 @@ WK_EXPORT WKTypeID WKNavigationResponseGetTypeID();
     
 WK_EXPORT bool WKNavigationResponseCanShowMIMEType(WKNavigationResponseRef);
 
+WK_EXPORT WKURLResponseRef WKNavigationResponseGetURLResponse(WKNavigationResponseRef response);
+
+WK_EXPORT bool WKNavigationResponseIsMainFrame(WKNavigationResponseRef response);
+
 #ifdef __cplusplus
 }
 #endif

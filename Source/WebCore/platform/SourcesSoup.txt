@@ -38,6 +38,7 @@ platform/network/soup/SocketStreamHandleImplSoup.cpp
 platform/network/soup/SoupNetworkSession.cpp
 platform/network/soup/SynchronousLoaderClientSoup.cpp
 platform/network/soup/WebKitSoupRequestGeneric.cpp
+platform/network/soup/gwildcardproxyresolver.c
 
 platform/soup/PublicSuffixSoup.cpp
 platform/soup/SharedBufferSoup.cpp

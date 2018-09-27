@@ -78,6 +78,7 @@
 #include <WebCore/MediaPlaybackTargetContext.h>
 #include <WebCore/MediaProducer.h>
 #include <WebCore/PlatformScreen.h>
+#include <WebCore/Proxy.h>
 #include <WebCore/ScrollTypes.h>
 #include <WebCore/SearchPopupMenu.h>
 #include <WebCore/TextChecking.h>
@@ -140,6 +141,7 @@ class FindClient;
 class FindMatchesClient;
 class FormClient;
 class FullscreenClient;
+class HTTPCookieStorage;
 class HistoryClient;
 class IconLoadingClient;
 class LoaderClient;
@@ -438,6 +440,8 @@ public:
 
     API::IconLoadingClient& iconLoadingClient() { return *m_iconLoadingClient; }
     void setIconLoadingClient(std::unique_ptr<API::IconLoadingClient>&&);
+
+    API::HTTPCookieStorage& httpCookieStorage() { return m_httpCookieStorage.get(); }
 
     void initializeWebPage();
 
@@ -749,6 +753,8 @@ public:
     void setCustomUserAgent(const String&);
     const String& customUserAgent() const { return m_customUserAgent; }
     static String standardUserAgent(const String& applicationName = String());
+
+    void setProxies(const Vector<WebCore::Proxy>& proxies);
 
     bool supportsTextEncoding() const;
     void setCustomTextEncodingName(const String&);
@@ -1108,6 +1114,7 @@ public:
 #endif
 
     void postMessageToInjectedBundle(const String& messageName, API::Object* messageBody);
+    void postSynchronousMessageToInjectedBundle(const String& messageName, API::Object* messageBody);
 
 #if ENABLE(INPUT_TYPE_COLOR)
     void setColorPickerColor(const WebCore::Color&);
@@ -1291,6 +1298,8 @@ public:
     bool isAlwaysOnLoggingAllowed() const;
 
     void canAuthenticateAgainstProtectionSpace(uint64_t loaderID, uint64_t frameID, const WebCore::ProtectionSpace&);
+
+    void cookiesDidChange();
 
 #if ENABLE(GAMEPAD)
     void gamepadActivity(const Vector<GamepadData>&, bool shouldMakeGamepadsVisible);
@@ -1797,6 +1806,8 @@ private:
     void stopURLSchemeTask(uint64_t handlerIdentifier, uint64_t taskIdentifier);
     void loadSynchronousURLSchemeTask(URLSchemeTaskParameters&&, Messages::WebPageProxy::LoadSynchronousURLSchemeTask::DelayedReply&&);
 
+    void willAddDetailedMessageToConsole(const String& src, const String& level, uint64_t line, uint64_t col, const String& message, const String& url);
+
     void handleAutoFillButtonClick(const UserData&);
 
     void didResignInputElementStrongPasswordAppearance(const UserData&);
@@ -2187,6 +2198,8 @@ private:
     bool m_hasHadSelectionChangesFromUserInteraction { false };
     bool m_needsHiddenContentEditableQuirk { false };
     bool m_needsPlainTextQuirk { false };
+
+    Ref<API::HTTPCookieStorage> m_httpCookieStorage;
 
 #if ENABLE(MEDIA_SESSION)
     bool m_hasMediaSessionWithActiveMediaElements { false };

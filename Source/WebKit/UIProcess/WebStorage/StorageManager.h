@@ -44,7 +44,7 @@ class WebProcessProxy;
 
 class StorageManager : public IPC::Connection::WorkQueueMessageReceiver {
 public:
-    static Ref<StorageManager> create(const String& localStorageDirectory);
+    static Ref<StorageManager> create(const String& localStorageDirectory, const uint32_t localStorageQuota);
     ~StorageManager();
 
     void createSessionStorageNamespace(uint64_t storageNamespaceID, unsigned quotaInBytes);
@@ -69,7 +69,7 @@ public:
     void getLocalStorageOriginDetails(Function<void(Vector<LocalStorageDatabaseTracker::OriginDetails>)>&& completionHandler);
 
 private:
-    explicit StorageManager(const String& localStorageDirectory);
+    explicit StorageManager(const String& localStorageDirectory, const uint32_t localStorageQuota);
 
     // IPC::Connection::WorkQueueMessageReceiver.
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
@@ -106,6 +106,8 @@ private:
     HashMap<uint64_t, RefPtr<SessionStorageNamespace>> m_sessionStorageNamespaces;
 
     HashMap<std::pair<IPC::Connection::UniqueID, uint64_t>, RefPtr<StorageArea>> m_storageAreasByConnection;
+
+    uint32_t m_localStorageQuota { 5 * 1024 * 1024 };
 };
 
 } // namespace WebKit

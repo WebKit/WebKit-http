@@ -712,4 +712,18 @@ std::unique_ptr<ImageBuffer> ImageBitmap::transferOwnershipAndClose()
     return WTFMove(m_bitmapData);
 }
 
+size_t ImageBitmap::memoryCost() const
+{
+    if (m_bitmapData)
+        return m_bitmapData->memoryCost();
+    return 0;
+}
+
+size_t ImageBitmap::externalMemoryCost() const
+{
+    if (m_bitmapData)
+        return m_bitmapData->externalMemoryCost();
+    return 0;
+}
+
 }

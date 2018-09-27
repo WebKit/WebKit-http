@@ -31,6 +31,7 @@
 #if USE(CAIRO)
 
 #include "CairoUtilities.h"
+#include "CairoOperations.h"
 #include "Gradient.h"
 #include "GraphicsContext.h"
 #include "Pattern.h"

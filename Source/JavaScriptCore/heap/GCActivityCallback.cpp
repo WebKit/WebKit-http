@@ -88,6 +88,8 @@ void GCActivityCallback::scheduleTimer(Seconds newDelay)
     Seconds delta = m_delay - newDelay;
     m_delay = newDelay;
 
+    // FIXME: Options::maxDelayForGCTimers() ?
+
     Seconds secondsUntilFire = m_timer.secondsUntilFire();
     m_timer.startOneShot(std::max<Seconds>(secondsUntilFire - delta, 0_s));
 }

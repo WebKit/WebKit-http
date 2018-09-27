@@ -43,5 +43,9 @@
 
 #if USE(SOUP)
     SetCookiePersistentStorage(String storagePath, uint32_t storageType)
+    SetLimit(uint64_t limit)
 #endif
+
+    void SetCookies2(PAL::SessionID sessionID, Vector<WebCore::Cookie> cookies)
+    void GetCookies2(PAL::SessionID sessionID, WebKit::CallbackID callbackID)
 }

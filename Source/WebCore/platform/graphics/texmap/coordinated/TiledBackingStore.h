@@ -28,6 +28,7 @@
 #include "Tile.h"
 #include <wtf/Assertions.h>
 #include <wtf/HashMap.h>
+#include <wtf/Vector.h>
 
 namespace WebCore {
 

@@ -31,7 +31,7 @@ JavaEnabledForLocalFiles:
 
 OfflineWebApplicationCacheEnabled:
   type: bool
-  defaultValue: true
+  defaultValue: false
 
 LocalStorageEnabled:
   type: bool
@@ -1294,7 +1294,7 @@ FullScreenEnabled:
 
 EncryptedMediaAPIEnabled:
   type: bool
-  defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
+  defaultValue: true
   humanReadableName: "Modern Encrypted Media API"
   humanReadableDescription: "Modern Encrypted Media API"
   webcoreBinding: RuntimeEnabledFeatures
@@ -1309,3 +1309,26 @@ ProcessSwapOnNavigationEnabled:
   category: experimental
   webcoreBinding: none
 
+ConsoleLogWithPrivateBrowsingEnabled:
+  type: bool
+  defaultValue: false
+
+NonCompositedWebGLEnabled:
+  type: bool
+  defaultValue: false
+
+AllowRunningOfInsecureContent:
+  type: bool
+  defaultValue: false
+
+AllowDisplayOfInsecureContent:
+  type: bool
+  defaultValue: false
+
+AllowScriptsToCloseWindows:
+  type: bool
+  defaultValue: false
+
+ScrollToFocusedElementEnabled:
+  type: bool
+  defaultValue: false

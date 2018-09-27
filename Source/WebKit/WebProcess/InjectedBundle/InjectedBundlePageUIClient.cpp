@@ -44,10 +44,13 @@ InjectedBundlePageUIClient::InjectedBundlePageUIClient(const WKBundlePageUIClien
     initialize(client);
 }
 
-void InjectedBundlePageUIClient::willAddMessageToConsole(WebPage* page, MessageSource, MessageLevel, const String& message, unsigned lineNumber, unsigned /*columnNumber*/, const String& /*sourceID*/)
+void InjectedBundlePageUIClient::willAddMessageToConsole(WebPage* page, MessageSource source, MessageLevel level, const String& message, unsigned lineNumber, unsigned columnNumber, const String& url)
 {
     if (m_client.willAddMessageToConsole)
         m_client.willAddMessageToConsole(toAPI(page), toAPI(message.impl()), lineNumber, m_client.base.clientInfo);
+
+    if (m_client.willAddDetailedMessageToConsole)
+        m_client.willAddDetailedMessageToConsole(toAPI(page), toAPI(source), toAPI(level), toAPI(message.impl()), lineNumber, columnNumber, toAPI(url.impl()), m_client.base.clientInfo);
 }
 
 void InjectedBundlePageUIClient::willSetStatusbarText(WebPage* page, const String& statusbarText)

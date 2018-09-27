@@ -54,6 +54,7 @@
 #include "RenderReplica.h"
 #include "RenderVideo.h"
 #include "RenderView.h"
+#include "ResourceUsageThread.h"
 #include "RuntimeEnabledFeatures.h"
 #include "ScrollingConstraints.h"
 #include "ScrollingCoordinator.h"
@@ -267,10 +268,16 @@ struct RenderLayerCompositor::OverlapExtent {
     bool knownToBeHaveExtentUncertainty() const { return extentComputed && animationCausesExtentUncertainty; }
 };
 
-#if !LOG_DISABLED
+#if !LOG_DISABLED || ENABLE(RESOURCE_USAGE)
 static inline bool compositingLogEnabled()
 {
+#if ENABLE(RESOURCE_USAGE)
+    return true;
+#endif
+#if !LOG_DISABLED
     return LogCompositing.state == WTFLogChannelOn;
+#endif
+    return false;
 }
 #endif
 
@@ -721,7 +728,7 @@ bool RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
 
     LOG(Compositing, " checkForHierarchyUpdate %d, needGeometryUpdate %d", checkForHierarchyUpdate, needHierarchyUpdate);
 
-#if !LOG_DISABLED
+#if !LOG_DISABLED || ENABLE(RESOURCE_USAGE)
     MonotonicTime startTime;
     if (compositingLogEnabled()) {
         ++m_rootLayerUpdateCount;
@@ -740,7 +747,7 @@ bool RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
         needHierarchyUpdate |= layersChanged;
     }
 
-#if !LOG_DISABLED
+#if !LOG_DISABLED || ENABLE(RESOURCE_USAGE)
     if (compositingLogEnabled() && isFullUpdate && (needHierarchyUpdate || needGeometryUpdate)) {
         m_obligateCompositedLayerCount = 0;
         m_secondaryCompositedLayerCount = 0;
@@ -778,7 +785,7 @@ bool RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
     } else if (needRootLayerConfigurationUpdate)
         m_renderView.layer()->backing()->updateConfiguration();
     
-#if !LOG_DISABLED
+#if !LOG_DISABLED || ENABLE(RESOURCE_USAGE)
     if (compositingLogEnabled() && isFullUpdate && (needHierarchyUpdate || needGeometryUpdate)) {
         MonotonicTime endTime = MonotonicTime::now();
         LOG(Compositing, "Total layers   primary   secondary   obligatory backing (KB)   secondary backing(KB)   total backing (KB)  update time (ms)\n");
@@ -786,6 +793,10 @@ bool RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
         LOG(Compositing, "%8d %11d %9d %20.2f %22.2f %22.2f %18.2f\n",
             m_obligateCompositedLayerCount + m_secondaryCompositedLayerCount, m_obligateCompositedLayerCount,
             m_secondaryCompositedLayerCount, m_obligatoryBackingStoreBytes / 1024, m_secondaryBackingStoreBytes / 1024, (m_obligatoryBackingStoreBytes + m_secondaryBackingStoreBytes) / 1024, (endTime - startTime).milliseconds());
+#if ENABLE(RESOURCE_USAGE)
+        // set the total layer memory into ResourceUsageThread for Inspector layers memorytimeline.
+        WebCore::ResourceUsageThread::setTotalLayerInfo(m_obligatoryBackingStoreBytes + m_secondaryBackingStoreBytes);
+#endif
     }
 #endif
     ASSERT(updateRoot || !m_compositingLayersNeedRebuild);
@@ -816,7 +827,7 @@ void RenderLayerCompositor::layerBecameNonComposited(const RenderLayer& layer)
     --m_compositedLayerCount;
 }
 
-#if !LOG_DISABLED
+#if !LOG_DISABLED || ENABLE(RESOURCE_USAGE)
 void RenderLayerCompositor::logLayerInfo(const RenderLayer& layer, int depth)
 {
     if (!compositingLogEnabled())
@@ -1567,7 +1578,7 @@ void RenderLayerCompositor::rebuildCompositingLayerTree(RenderLayer& layer, Vect
         if (!layer.parent())
             updateRootLayerPosition();
 
-#if !LOG_DISABLED
+#if !LOG_DISABLED || ENABLE(RESOURCE_USAGE)
         logLayerInfo(layer, depth);
 #else
         UNUSED_PARAM(depth);
@@ -1832,7 +1843,7 @@ void RenderLayerCompositor::updateLayerTreeGeometry(RenderLayer& layer, int dept
         if (!layer.parent())
             updateRootLayerPosition();
 
-#if !LOG_DISABLED
+#if !LOG_DISABLED || ENABLE(RESOURCE_USAGE)
         logLayerInfo(layer, depth);
 #else
         UNUSED_PARAM(depth);
@@ -2248,7 +2259,7 @@ OptionSet<CompositingReason> RenderLayerCompositor::reasonsForCompositing(const 
     return reasons;
 }
 
-#if !LOG_DISABLED
+#if !LOG_DISABLED || ENABLE(RESOURCE_USAGE)
 const char* RenderLayerCompositor::logReasonsForCompositing(const RenderLayer& layer)
 {
     OptionSet<CompositingReason> reasons = reasonsForCompositing(layer);
@@ -2446,11 +2457,20 @@ bool RenderLayerCompositor::requiresCompositingForVideo(RenderLayerModelObject& 
         return false;
 
 #if ENABLE(VIDEO)
-    if (!is<RenderVideo>(renderer))
-        return false;
-
-    auto& video = downcast<RenderVideo>(renderer);
-    return (video.requiresImmediateCompositing() || video.shouldDisplayVideo()) && canAccelerateVideoRendering(video);
+    if (is<RenderVideo>(renderer)) {
+#if USE(HOLE_PUNCH_GSTREAMER) || USE(HOLE_PUNCH_EXTERNAL)
+        // In normal conditions, the video GraphicsLayer is not created until we receive feedback
+        // from the player. Concretely, when we get a valid naturalSize for the video frames, a layout
+        // is triggered that causes the creation of the GraphicsLayer.
+        // When using hole punch, we may not be able to get a valid naturalSize. Using HOLE_PUNCH_GSTREAMER
+        // we have problems to get it on brcm boxes, and using HOLE_PUNCH_EXTERNAL we don't have a way to get
+        // it at all. So instead of using the normal approach, we force the creation of the layer from the
+        // very beginning.
+        return true;
+#endif
+        auto& video = downcast<RenderVideo>(renderer);
+        return (video.requiresImmediateCompositing() || video.shouldDisplayVideo()) && canAccelerateVideoRendering(video);
+    }
 #else
     UNUSED_PARAM(renderer);
     return false;

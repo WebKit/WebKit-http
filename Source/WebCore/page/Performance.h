@@ -42,6 +42,7 @@
 namespace WebCore {
 
 class LoadTiming;
+class MemoryInfo;
 class PerformanceEntry;
 class PerformanceNavigation;
 class PerformanceObserver;
@@ -74,6 +75,8 @@ public:
 
     ExceptionOr<void> measure(const String& measureName, const String& startMark, const String& endMark);
     void clearMeasures(const String& measureName);
+
+    Ref<MemoryInfo> memory() const;
 
     void addResourceTiming(ResourceTiming&&);
 

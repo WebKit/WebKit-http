@@ -58,6 +58,9 @@ public:
 
     enum class ImplementationType {
         Mock,
+#if USE(OPENCDM)
+        OpenCDM,
+#endif
         ClearKey,
         FairPlayStreaming,
     };

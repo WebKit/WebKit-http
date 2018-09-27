@@ -31,6 +31,7 @@
 #include <WebKit/WKEvent.h>
 #include <WebKit/WKFindOptions.h>
 #include <WebKit/WKGeometry.h>
+#include <WebKit/WKHTTPCookieStorageRef.h>
 #include <WebKit/WKNativeEvent.h>
 #include <WebKit/WKPageContextMenuClient.h>
 #include <WebKit/WKPageDiagnosticLoggingClient.h>
@@ -80,6 +81,7 @@ WK_EXPORT void WKPageLoadPlainTextStringWithUserData(WKPageRef page, WKStringRef
 WK_EXPORT void WKPageLoadWebArchiveData(WKPageRef page, WKDataRef webArchiveData);
 WK_EXPORT void WKPageLoadWebArchiveDataWithUserData(WKPageRef page, WKDataRef webArchiveData, WKTypeRef userData);
 
+WK_EXPORT bool WKPageCanShowMIMEType(WKPageRef pageRef, WKStringRef mimeType);
 WK_EXPORT void WKPageStopLoading(WKPageRef page);
 WK_EXPORT void WKPageReload(WKPageRef page);
 WK_EXPORT void WKPageReloadWithoutContentBlockers(WKPageRef page);
@@ -125,6 +127,8 @@ WK_EXPORT void WKPageSetApplicationNameForUserAgent(WKPageRef page, WKStringRef 
 
 WK_EXPORT WKStringRef WKPageCopyCustomUserAgent(WKPageRef page);
 WK_EXPORT void WKPageSetCustomUserAgent(WKPageRef page, WKStringRef userAgent);
+
+WK_EXPORT void WKPageSetProxies(WKPageRef page, WKArrayRef proxies);
 
 WK_EXPORT void WKPageSetUserContentExtensionsEnabled(WKPageRef, bool);
     
@@ -201,6 +205,8 @@ WK_EXPORT void WKPageSetEnableHorizontalRubberBanding(WKPageRef, bool enableHori
 WK_EXPORT void WKPageSetBackgroundExtendsBeyondPage(WKPageRef, bool backgroundExtendsBeyondPage);
 WK_EXPORT bool WKPageBackgroundExtendsBeyondPage(WKPageRef);
 
+WK_EXPORT void WKPageSetDrawsBackground(WKPageRef, bool drawsBackground);
+
 WK_EXPORT bool WKPageCanDelete(WKPageRef page);
 WK_EXPORT bool WKPageHasSelectedRange(WKPageRef page);
 WK_EXPORT bool WKPageIsContentEditable(WKPageRef page);
@@ -267,8 +273,11 @@ WK_EXPORT void WKPageValidateCommand(WKPageRef page, WKStringRef command, void* 
 WK_EXPORT void WKPageExecuteCommand(WKPageRef page, WKStringRef command);
 
 WK_EXPORT void WKPagePostMessageToInjectedBundle(WKPageRef page, WKStringRef messageName, WKTypeRef messageBody);
+WK_EXPORT void WKPagePostSynchronousMessageToInjectedBundle(WKPageRef page, WKStringRef messageName, WKTypeRef messageBody);
 
 WK_EXPORT void WKPageSelectContextMenuItem(WKPageRef page, WKContextMenuItemRef item);
+
+WK_EXPORT WKHTTPCookieStorageRef WKPageGetHTTPCookieStorage(WKPageRef page);
 
 #ifdef __cplusplus
 }

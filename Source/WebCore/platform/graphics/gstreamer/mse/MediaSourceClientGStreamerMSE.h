@@ -44,6 +44,7 @@ public:
     MediaSourcePrivate::AddStatus addSourceBuffer(RefPtr<SourceBufferPrivateGStreamer>, const ContentType&);
     void durationChanged(const MediaTime&);
     void markEndOfStream(MediaSourcePrivate::EndOfStreamStatus);
+    void unmarkEndOfStream();
 
     // From SourceBufferPrivateGStreamer.
     void abort(RefPtr<SourceBufferPrivateGStreamer>);

@@ -85,6 +85,7 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << cookiePersistentStoragePath;
     encoder << cookiePersistentStorageType;
     encoder.encodeEnum(cookieAcceptPolicy);
+    encoder << cookiesLimit;
     encoder << ignoreTLSErrors;
     encoder << languages;
     encoder << proxySettings;
@@ -212,6 +213,8 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
     if (!decoder.decode(result.cookiePersistentStorageType))
         return false;
     if (!decoder.decodeEnum(result.cookieAcceptPolicy))
+        return false;
+    if (!decoder.decode(result.cookiesLimit))
         return false;
     if (!decoder.decode(result.ignoreTLSErrors))
         return false;

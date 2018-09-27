@@ -98,11 +98,6 @@ static SubstringRange parseQuotedString(const String& input, unsigned& startInde
     return SubstringRange(quotedStringStart, quotedStringEnd - quotedStringStart - 1);
 }
 
-static String substringForRange(const String& string, const SubstringRange& range)
-{
-    return string.substring(range.first, range.second);
-}
-
 // From http://tools.ietf.org/html/rfc2045#section-5.1:
 //
 // content := "Content-Type" ":" type "/" subtype
@@ -217,7 +212,7 @@ bool isValidContentType(const String& contentType)
         return false;
 
     DummyParsedContentType parsedContentType = DummyParsedContentType();
-    return parseContentType<DummyParsedContentType>(contentType, parsedContentType);
+    return parseContentType<DummyParsedContentType>(contentType.stripWhiteSpace(), parsedContentType);
 }
 
 ParsedContentType::ParsedContentType(const String& contentType)
@@ -241,9 +236,14 @@ size_t ParsedContentType::parameterCount() const
     return m_parameters.size();
 }
 
+static String substringForRange(const String& string, const SubstringRange& range)
+{
+    return string.substring(range.first, range.second).stripWhiteSpace().convertToASCIILowercase();
+}
+
 void ParsedContentType::setContentType(const SubstringRange& contentRange)
 {
-    m_mimeType = substringForRange(m_contentType, contentRange).stripWhiteSpace();
+    m_mimeType = substringForRange(m_contentType, contentRange);
 }
 
 void ParsedContentType::setContentTypeParameter(const SubstringRange& key, const SubstringRange& value)

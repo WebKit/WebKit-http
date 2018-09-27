@@ -28,7 +28,10 @@
 
 #include "APIArray.h"
 #include "WKAPICast.h"
+#include "WKArray.h"
 #include "WebCookieManagerProxy.h"
+#include "APIWebCookie.h"
+#include "WKCookie.h"
 
 using namespace WebKit;
 
@@ -77,6 +80,23 @@ void WKCookieManagerSetStorageAccessAPIEnabled(WKCookieManagerRef cookieManager,
     toImpl(cookieManager)->setStorageAccessAPIEnabled(enabled);
 }
 
+void WKCookieManagerSetCookies(WKCookieManagerRef cookieManager, WKArrayRef cookies)
+{
+    size_t size = cookies ? WKArrayGetSize(cookies) : 0;
+
+    Vector<WebCore::Cookie> passCookies(size);
+
+    for (size_t i = 0; i < size; ++i)
+        passCookies[i] = toImpl(static_cast<WKCookieRef>(WKArrayGetItemAtIndex(cookies, i)))->cookie();
+
+    toImpl(cookieManager)->setCookies2(PAL::SessionID::defaultSessionID(), passCookies);
+}
+
+void WKCookieManagerGetCookies(WKCookieManagerRef cookieManager, void* context, WKCookieManagerGetCookiesFunction callback)
+{
+    // toImpl(cookieManager)->getCookies2(PAL::SessionID::defaultSessionID(), toGenericCallbackFunction(context, callback));
+}
+
 void WKCookieManagerStartObservingCookieChanges(WKCookieManagerRef cookieManager)
 {
     toImpl(cookieManager)->startObservingCookieChanges(PAL::SessionID::defaultSessionID());
@@ -85,4 +105,11 @@ void WKCookieManagerStartObservingCookieChanges(WKCookieManagerRef cookieManager
 void WKCookieManagerStopObservingCookieChanges(WKCookieManagerRef cookieManager)
 {
     toImpl(cookieManager)->stopObservingCookieChanges(PAL::SessionID::defaultSessionID());
+}
+
+void WKCookieManagerSetLimit(WKCookieManagerRef cookieManager, uint64_t limit)
+{
+#if USE(SOUP)
+    toImpl(cookieManager)->setLimit(limit);
+#endif
 }

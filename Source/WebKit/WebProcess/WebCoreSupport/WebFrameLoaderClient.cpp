@@ -646,7 +646,7 @@ void WebFrameLoaderClient::dispatchDidReachLayoutMilestone(LayoutMilestones mile
         webPage->injectedBundleLoaderClient().didFirstLayoutForFrame(*webPage, *m_frame, userData);
         webPage->send(Messages::WebPageProxy::DidFirstLayoutForFrame(m_frame->frameID(), UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
 
-#if PLATFORM(MAC)
+#if PLATFORM(MAC) || PLATFORM(WPE)
         // FIXME: Do this on DidFirstVisuallyNonEmptyLayout when Mac Safari is able to handle it (<rdar://problem/17580021>)
         if (m_frame->isMainFrame() && !m_didCompletePageTransition && !webPage->corePage()->settings().suppressesIncrementalRendering()) {
             webPage->didCompletePageTransition();
@@ -1875,5 +1875,14 @@ void WebFrameLoaderClient::finishedLoadingApplicationManifest(uint64_t callbackI
     webPage->didFinishLoadingApplicationManifest(callbackIdentifier, manifest);
 }
 #endif // ENABLE(APPLICATION_MANIFEST)
+
+bool WebFrameLoaderClient::shouldPaintBrokenImage(const WebCore::URL&) const
+{
+#if PLATFORM(WPE)
+    return false;
+#else
+    return true;
+#endif
+}
 
 } // namespace WebKit

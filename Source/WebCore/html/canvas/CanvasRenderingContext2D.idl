@@ -76,6 +76,9 @@
     // Inspector-only.
     [EnabledAtRuntime=InspectorAdditions] void setPath(Path2D path);
     [EnabledAtRuntime=InspectorAdditions, NewObject] Path2D getPath();
+
+    void drawSystemFocusRing(Element element);
+    void drawSystemFocusRing(Path2D path, Element element);
 };
 
 CanvasRenderingContext2D implements CanvasState;

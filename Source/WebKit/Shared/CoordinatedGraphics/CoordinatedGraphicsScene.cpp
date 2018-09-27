@@ -37,12 +37,18 @@ using namespace WebCore;
 
 static bool layerShouldHaveBackingStore(TextureMapperLayer* layer)
 {
-    return layer->drawsContent() && layer->contentsAreVisible() && !layer->size().isEmpty();
+    return layer->drawsContent() && layer->contentsAreVisible() && !layer->size().isEmpty()
+        && (!!layer->opacity() || layer->animations().hasActiveAnimationsOfType(AnimatedPropertyOpacity));
 }
 
 CoordinatedGraphicsScene::CoordinatedGraphicsScene(CoordinatedGraphicsSceneClient* client)
     : m_client(client)
 {
+#if PLATFORM(INTEL_CE) || PLATFORM(WESTEROS)
+    m_viewBackgroundColor = Color::transparent;
+#else
+    m_viewBackgroundColor = Color::black;
+#endif
 }
 
 CoordinatedGraphicsScene::~CoordinatedGraphicsScene() = default;

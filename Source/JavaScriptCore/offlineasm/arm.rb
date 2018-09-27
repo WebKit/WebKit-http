@@ -553,8 +553,10 @@ class Instruction
                 $asm.puts "mov #{armFlippedOperands(operands)}"
             end
         when "mvlbl"
-                $asm.puts "movw #{operands[1].armOperand}, \#:lower16:#{operands[0].value}"
-                $asm.puts "movt #{operands[1].armOperand}, \#:upper16:#{operands[0].value}"
+            $asm.puts "movw #{operands[1].armOperand}, \#:lower16:#{operands[0].value}"
+            $asm.puts "movt #{operands[1].armOperand}, \#:upper16:#{operands[0].value}"
+        when "ldlbl"
+            $asm.puts "ldr #{operands[1].armOperand}, =#{operands[0].value}"
         when "nop"
             $asm.puts "nop"
         when "bieq", "bpeq", "bbeq"
@@ -627,10 +629,15 @@ class Instruction
             else
                 $asm.puts "blx #{operands[0].armOperand}"
             end
+        when "calllbl"
+            $asm.puts "bl #{operands[0].asmLabel}"
         when "break"
             $asm.puts "bkpt #0"
         when "ret"
             $asm.puts "bx lr"
+            if not isARMv7 and not isARMv7Traditional
+                $asm.puts ".ltorg"
+            end
         when "cieq", "cpeq", "cbeq"
             emitArmCompare(operands, "eq")
         when "cineq", "cpneq", "cbneq"
@@ -679,7 +686,11 @@ class Instruction
             raise "Wrong number of arguments to smull in #{self.inspect} at #{codeOriginString}" unless operands.length == 4
             $asm.puts "smull #{operands[2].armOperand}, #{operands[3].armOperand}, #{operands[0].armOperand}, #{operands[1].armOperand}"
         when "memfence"
-            $asm.puts "dmb sy"
+            if isARMv7 or isARMv7Traditional
+                $asm.puts "dmb sy"
+            else
+                $asm.puts "mcr p15, 0, r6, c7, c10, 5"
+            end
         when "clrbp"
             $asm.puts "bic #{operands[2].armOperand}, #{operands[0].armOperand}, #{operands[1].armOperand}"
         else

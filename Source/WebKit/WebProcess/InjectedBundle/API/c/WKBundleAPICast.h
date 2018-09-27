@@ -29,6 +29,7 @@
 #include "WKBundlePage.h"
 #include "WKBundlePagePrivate.h"
 #include "WKBundlePrivate.h"
+#include <JavaScriptCore/ConsoleTypes.h>
 #include <WebCore/EditorInsertAction.h>
 #include <WebCore/TextAffinity.h>
 
@@ -94,6 +95,54 @@ inline WKAffinityType toAPI(WebCore::EAffinity affinity)
     }
     ASSERT_NOT_REACHED();
     return kWKAffinityUpstream;
+}
+
+inline WKConsoleMessageSource toAPI(JSC::MessageSource source)
+{
+    switch (source) {
+    case JSC::MessageSource::XML:
+        return WKConsoleMessageSourceXML;
+    case JSC::MessageSource::JS:
+        return WKConsoleMessageSourceJS;
+    case JSC::MessageSource::Network:
+        return WKConsoleMessageSourceNetwork;
+    case JSC::MessageSource::ConsoleAPI:
+        return WKConsoleMessageSourceConsoleAPI;
+    case JSC::MessageSource::Storage:
+        return WKConsoleMessageSourceStorage;
+    case JSC::MessageSource::AppCache:
+        return WKConsoleMessageSourceAppCache;
+    case JSC::MessageSource::Rendering:
+        return WKConsoleMessageSourceRendering;
+    case JSC::MessageSource::CSS:
+        return WKConsoleMessageSourceCSS;
+    case JSC::MessageSource::Security:
+        return WKConsoleMessageSourceSecurity;
+    case JSC::MessageSource::ContentBlocker:
+        return WKConsoleMessageSourceContentBlocker;
+    case JSC::MessageSource::Other:
+        return WKConsoleMessageSourceOther;
+    }
+    ASSERT_NOT_REACHED();
+    return WKConsoleMessageSourceOther;
+}
+
+inline WKConsoleMessageLevel toAPI(JSC::MessageLevel level)
+{
+    switch (level) {
+    case JSC::MessageLevel::Log:
+        return WKConsoleMessageLevelLog;
+    case JSC::MessageLevel::Warning:
+        return WKConsoleMessageLevelWarning;
+    case JSC::MessageLevel::Error:
+        return WKConsoleMessageLevelError;
+    case JSC::MessageLevel::Debug:
+        return WKConsoleMessageLevelDebug;
+    case JSC::MessageLevel::Info:
+        return WKConsoleMessageLevelInfo;
+    }
+    ASSERT_NOT_REACHED();
+    return WKConsoleMessageLevelLog;
 }
 
 } // namespace WebKit

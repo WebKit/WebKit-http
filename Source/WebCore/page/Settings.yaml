@@ -38,7 +38,7 @@ validationMessageTimerMagnification:
 # draw canvas in software.
 minimumAccelerated2dCanvasSize:
   type: int
-  initial: 257*256
+  initial: 275*256
 
 maximumAccelerated2dCanvasSize:
   type: unsigned
@@ -475,9 +475,10 @@ dataDetectorTypes:
 
 # Allow SourceBuffers to store up to 304MB each, enough for approximately five minutes
 # of 1080p video and stereo audio.
+# But, use a lower default value to make the "29. VideoBufferSize" YoutubeTV 2016 test pass.
 maximumSourceBufferSize:
   type: int
-  initial: 318767104
+  initial: 130*1024*1024
   conditional: MEDIA_SOURCE
 
 serviceControlsEnabled:
@@ -758,3 +759,13 @@ incompleteImageBorderEnabled:
 
 shouldDeferAsynchronousScriptsUntilAfterDocumentLoad:
   initial: false
+
+consoleLogWithPrivateBrowsingEnabled:
+  initial: false
+scrollToFocusedElementEnabled:
+  initial: true
+nonCompositedWebGLEnabled:
+  initial: false
+localStorageQuota:
+  type: unsigned
+  initial: 5*1024*1024

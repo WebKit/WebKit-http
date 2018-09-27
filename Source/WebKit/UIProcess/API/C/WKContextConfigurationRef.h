@@ -80,6 +80,9 @@ WK_EXPORT void WKContextConfigurationSetProcessSwapsOnWindowOpenWithOpener(WKCon
 WK_EXPORT int64_t WKContextConfigurationDiskCacheSizeOverride(WKContextConfigurationRef configuration);
 WK_EXPORT void WKContextConfigurationSetDiskCacheSizeOverride(WKContextConfigurationRef configuration, int64_t size);
     
+WK_EXPORT uint32_t WKContextConfigurationLocalStorageQuota(WKContextConfigurationRef configuration);
+WK_EXPORT void WKContextConfigurationSetLocalStorageQuota(WKContextConfigurationRef configuration, uint32_t quota);
+
 #ifdef __cplusplus
 }
 #endif

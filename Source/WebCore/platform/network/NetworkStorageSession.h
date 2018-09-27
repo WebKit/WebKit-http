@@ -123,6 +123,7 @@ public:
     void setCookieObserverHandler(Function<void ()>&&);
     void getCredentialFromPersistentStorage(const ProtectionSpace&, GCancellable*, Function<void (Credential&&)>&& completionHandler);
     void saveCredentialToPersistentStorage(const ProtectionSpace&, const Credential&);
+    void setCookiesLimit(uint64_t limit);
 #elif USE(CURL)
     NetworkStorageSession(PAL::SessionID, NetworkingContext*);
     ~NetworkStorageSession();
@@ -157,6 +158,9 @@ public:
     WEBCORE_EXPORT std::pair<String, bool> cookieRequestHeaderFieldValue(const URL& firstParty, const SameSiteInfo&, const URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, IncludeSecureCookies) const;
     WEBCORE_EXPORT std::pair<String, bool> cookieRequestHeaderFieldValue(const CookieRequestHeaderFieldProxy&) const;
 
+    WEBCORE_EXPORT void setCookies(const Vector<Cookie>&);
+    WEBCORE_EXPORT bool getCookies(Vector<Cookie>&);
+
 
 private:
     static HashMap<PAL::SessionID, std::unique_ptr<NetworkStorageSession>>& globalSessionMap();
@@ -171,6 +175,7 @@ private:
     mutable std::unique_ptr<SoupNetworkSession> m_session;
     GRefPtr<SoupCookieJar> m_cookieStorage;
     Function<void ()> m_cookieObserverHandler;
+    uint64_t m_cookiesLimit { 0 };
 #elif USE(CURL)
     RefPtr<NetworkingContext> m_context;
 

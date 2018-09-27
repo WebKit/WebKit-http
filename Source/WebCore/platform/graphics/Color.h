@@ -410,7 +410,11 @@ inline uint8_t roundAndClampColorChannel(int value)
 
 inline uint8_t roundAndClampColorChannel(float value)
 {
+#if defined(__UCLIBC__)
+    return std::max(0.f, std::min(255.f, static_cast<float>(std::ceil(value - 0.5))));
+#else
     return std::max(0.f, std::min(255.f, std::round(value)));
+#endif
 }
 
 inline uint16_t fastMultiplyBy255(uint16_t value)

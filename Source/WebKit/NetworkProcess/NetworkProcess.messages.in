@@ -30,6 +30,7 @@ messages -> NetworkProcess LegacyReceiver {
 #if USE(SOUP)
     SetIgnoreTLSErrors(bool ignoreTLSErrors)
     UserPreferredLanguagesChanged(Vector<String> languages)
+    SetProxies(PAL::SessionID sessionID, Vector<WebCore::Proxy> proxies);
     SetNetworkProxySettings(struct WebCore::SoupNetworkProxySettings settings)
 #endif
 

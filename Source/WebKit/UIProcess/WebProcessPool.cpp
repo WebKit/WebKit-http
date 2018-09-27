@@ -209,6 +209,7 @@ static WebsiteDataStore::Configuration legacyWebsiteDataStoreConfiguration(API::
     configuration.cacheStorageDirectory = API::WebsiteDataStore::defaultCacheStorageDirectory();
     configuration.serviceWorkerRegistrationDirectory = API::WebsiteDataStore::defaultServiceWorkerRegistrationDirectory();
     configuration.localStorageDirectory = processPoolConfiguration.localStorageDirectory();
+    configuration.localStorageQuota = processPoolConfiguration.localStorageQuota();
     configuration.webSQLDatabaseDirectory = processPoolConfiguration.webSQLDatabaseDirectory();
     configuration.applicationCacheDirectory = processPoolConfiguration.applicationCacheDirectory();
     configuration.applicationCacheFlatFileSubdirectoryName = processPoolConfiguration.applicationCacheFlatFileSubdirectoryName();
@@ -388,6 +389,9 @@ void WebProcessPool::setAutomationClient(std::unique_ptr<API::AutomationClient>&
         m_automationClient = std::make_unique<API::AutomationClient>();
     else
         m_automationClient = WTFMove(automationClient);
+#if PLATFORM(WPE)
+    didSetAutomationClient();
+#endif
 }
 
 void WebProcessPool::setLegacyCustomProtocolManagerClient(std::unique_ptr<API::CustomProtocolManagerClient>&& customProtocolManagerClient)
@@ -1698,15 +1702,15 @@ void WebProcessPool::setAutomationSession(RefPtr<WebAutomationSession>&& automat
     
     m_automationSession = WTFMove(automationSession);
 
-#if ENABLE(REMOTE_INSPECTOR)
     if (m_automationSession) {
+#if ENABLE(REMOTE_INSPECTOR)
         m_automationSession->init();
+#endif
         m_automationSession->setProcessPool(this);
 
         sendToAllProcesses(Messages::WebProcess::EnsureAutomationSessionProxy(m_automationSession->sessionIdentifier()));
     } else
         sendToAllProcesses(Messages::WebProcess::DestroyAutomationSessionProxy());
-#endif
 }
 
 void WebProcessPool::setHTTPPipeliningEnabled(bool enabled)

@@ -27,6 +27,10 @@
 
 #include <cstdlib>
 
+#if defined (USE_BREAKPAD)
+#include "BreakpadExceptionHandler.h"
+#endif
+
 #if USE(GCRYPT)
 #include <pal/crypto/gcrypt/Initialization.h>
 #endif
@@ -35,6 +39,10 @@ using namespace WebKit;
 
 int main(int argc, char** argv)
 {
+#if defined (USE_BREAKPAD)
+    installExceptionHandler();
+#endif
+
     // Disable SSLv3 very early because it is practically impossible to safely
     // use setenv() when multiple threads are running, as another thread calling
     // getenv() could cause a crash, and many functions use getenv() internally.

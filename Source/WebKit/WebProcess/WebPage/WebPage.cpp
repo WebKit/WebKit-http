@@ -624,6 +624,8 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     setViewportConfigurationViewLayoutSize(parameters.viewportConfigurationViewLayoutSize);
     setMaximumUnobscuredSize(parameters.maximumUnobscuredSize);
 #endif
+
+    m_page->settings().setLocalStorageQuota(parameters.localStorageQuota);
 }
 
 #if ENABLE(WEB_RTC)
@@ -1898,6 +1900,16 @@ void WebPage::setPaginationLineGridEnabled(bool lineGridEnabled)
 }
 
 void WebPage::postInjectedBundleMessage(const String& messageName, const UserData& userData)
+{
+    auto& webProcess = WebProcess::singleton();
+    InjectedBundle* injectedBundle = webProcess.injectedBundle();
+    if (!injectedBundle)
+        return;
+
+    injectedBundle->didReceiveMessageToPage(this, messageName, webProcess.transformHandlesToObjects(userData.object()).get());
+}
+
+void WebPage::postSynchronousInjectedBundleMessage(const String& messageName, const UserData& userData)
 {
     auto& webProcess = WebProcess::singleton();
     InjectedBundle* injectedBundle = webProcess.injectedBundle();
@@ -3223,6 +3235,13 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 #endif
 
     settings.setLayoutViewportHeightExpansionFactor(store.getDoubleValueForKey(WebPreferencesKey::layoutViewportHeightExpansionFactorKey()));
+
+    settings.setAllowRunningOfInsecureContent(store.getBoolValueForKey(WebPreferencesKey::allowRunningOfInsecureContentKey()));
+    settings.setAllowDisplayOfInsecureContent(store.getBoolValueForKey(WebPreferencesKey::allowDisplayOfInsecureContentKey()));
+    settings.setScrollToFocusedElementEnabled(store.getBoolValueForKey(WebPreferencesKey::scrollToFocusedElementEnabledKey()));
+#if ENABLE(INDEXED_DATABASE)
+    RuntimeEnabledFeatures::sharedFeatures().setIndexedDBEnabled(store.getBoolValueForKey(WebPreferencesKey::databasesEnabledKey()));
+#endif
 
     if (m_drawingArea)
         m_drawingArea->updatePreferences(store);

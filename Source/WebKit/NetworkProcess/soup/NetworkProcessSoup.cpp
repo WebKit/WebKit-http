@@ -101,6 +101,16 @@ void NetworkProcess::userPreferredLanguagesChanged(const Vector<String>& languag
     });
 }
 
+void NetworkProcess::setProxies(PAL::SessionID sessionID, const Vector<WebCore::Proxy>& proxies)
+{
+    if (auto *storageSession = NetworkStorageSession::storageSession(sessionID)){
+        storageSession->getOrCreateSoupNetworkSession().setProxies(proxies);
+        return;
+    }
+    
+    NetworkStorageSession::defaultStorageSession().getOrCreateSoupNetworkSession().setProxies(proxies);
+}
+
 void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreationParameters& parameters)
 {
     if (parameters.proxySettings.mode != SoupNetworkProxySettings::Mode::Default)
@@ -126,6 +136,7 @@ void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreati
             parameters.cookiePersistentStorageType);
     }
     supplement<WebCookieManager>()->setHTTPCookieAcceptPolicy(parameters.cookieAcceptPolicy, OptionalCallbackID());
+    supplement<WebCookieManager>()->setLimit(parameters.cookiesLimit);
 
     if (!parameters.languages.isEmpty())
         userPreferredLanguagesChanged(parameters.languages);

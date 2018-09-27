@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WKURLRequest_h
-#define WKURLRequest_h
+#pragma once
 
 #include <WebKit/WKBase.h>
 
@@ -46,8 +45,8 @@ WK_EXPORT WKURLRequestRef WKURLRequestCopySettingHTTPBody(WKURLRequestRef, WKDat
 
 WK_EXPORT void WKURLRequestSetDefaultTimeoutInterval(double);
 
+WK_EXPORT void WKURLRequestSetHTTPHeaderField(WKURLRequestRef, WKStringRef, WKStringRef);
+
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* WKURLRequest_h */

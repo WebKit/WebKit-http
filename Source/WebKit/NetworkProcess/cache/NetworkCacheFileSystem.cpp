@@ -76,7 +76,18 @@ void traverseDirectory(const String& path, const Function<void (const String&, D
         return;
     dirent* dp;
     while ((dp = readdir(dir))) {
-        if (dp->d_type != DT_DIR && dp->d_type != DT_REG)
+        auto d_type = dp->d_type;
+        if (d_type == DT_UNKNOWN)
+        {
+            struct stat stat;
+            auto filePath = WebCore::FileSystem::pathByAppendingComponent(path, dp->d_name);
+            ::stat(WebCore::FileSystem::fileSystemRepresentation(filePath).data(), &stat);
+            if (S_ISDIR(stat.st_mode))
+                d_type = DT_DIR;
+            else if (S_ISREG(stat.st_mode))
+                d_type = DT_REG;
+        }
+        if (d_type != DT_DIR && d_type != DT_REG)
             continue;
         const char* name = dp->d_name;
         if (!strcmp(name, ".") || !strcmp(name, ".."))
@@ -84,7 +95,7 @@ void traverseDirectory(const String& path, const Function<void (const String&, D
         auto nameString = String::fromUTF8(name);
         if (nameString.isNull())
             continue;
-        function(nameString, directoryEntryType(dp->d_type));
+        function(nameString, directoryEntryType(d_type));
     }
     closedir(dir);
 #else

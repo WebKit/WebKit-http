@@ -363,6 +363,7 @@ set(WebKit_SOURCES
     UIProcess/API/APIContentRuleListStore.cpp
     UIProcess/API/APIExperimentalFeature.cpp
     UIProcess/API/APIFrameInfo.cpp
+    UIProcess/API/APIHTTPCookieStorage.cpp
     UIProcess/API/APIHTTPCookieStore.cpp
     UIProcess/API/APIHitTestResult.cpp
     UIProcess/API/APINavigation.cpp
@@ -386,6 +387,7 @@ set(WebKit_SOURCES
     UIProcess/API/C/WKBackForwardListRef.cpp
     UIProcess/API/C/WKContext.cpp
     UIProcess/API/C/WKContextConfigurationRef.cpp
+    UIProcess/API/C/WKCookie.cpp
     UIProcess/API/C/WKCookieManager.cpp
     UIProcess/API/C/WKCredential.cpp
     UIProcess/API/C/WKDownload.cpp
@@ -397,6 +399,7 @@ set(WebKit_SOURCES
     UIProcess/API/C/WKGeolocationManager.cpp
     UIProcess/API/C/WKGeolocationPermissionRequest.cpp
     UIProcess/API/C/WKGeolocationPosition.cpp
+    UIProcess/API/C/WKHTTPCookieStorageRef.cpp
     UIProcess/API/C/WKHitTestResult.cpp
     UIProcess/API/C/WKIconDatabase.cpp
     UIProcess/API/C/WKInspector.cpp
@@ -417,6 +420,7 @@ set(WebKit_SOURCES
     UIProcess/API/C/WKPageGroup.cpp
     UIProcess/API/C/WKPreferences.cpp
     UIProcess/API/C/WKProtectionSpace.cpp
+    UIProcess/API/C/WKProxy.cpp
     UIProcess/API/C/WKResourceCacheManager.cpp
     UIProcess/API/C/WKSessionStateRef.cpp
     UIProcess/API/C/WKTextChecker.cpp
@@ -424,6 +428,7 @@ set(WebKit_SOURCES
     UIProcess/API/C/WKUserMediaPermissionCheck.cpp
     UIProcess/API/C/WKUserMediaPermissionRequest.cpp
     UIProcess/API/C/WKViewportAttributes.cpp
+    UIProcess/API/C/WKWebAutomationSession.cpp
     UIProcess/API/C/WKWebsiteDataStoreRef.cpp
     UIProcess/API/C/WKWebsitePolicies.cpp
     UIProcess/API/C/WKWindowFeaturesRef.cpp

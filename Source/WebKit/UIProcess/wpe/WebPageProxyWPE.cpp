@@ -45,7 +45,10 @@ struct wpe_view_backend* WebPageProxy::viewBackend()
 
 String WebPageProxy::standardUserAgent(const String& applicationNameForUserAgent)
 {
-    return WebCore::standardUserAgent(applicationNameForUserAgent);
+    return "Mozilla/5.0 (Linux; x86_64 GNU/Linux) AppleWebKit/601.1 (KHTML, like Gecko) Version/8.0 Safari/601.1 WPE";
+
+    // FIXME: determine whether the WPE-branded UA string can be pushed into WebCore::standardUserAgent().
+    // return WebCore::standardUserAgent(applicationNameForUserAgent);
 }
 
 void WebPageProxy::saveRecentSearches(const String&, const Vector<WebCore::RecentSearch>&)

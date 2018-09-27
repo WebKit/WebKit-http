@@ -241,7 +241,9 @@
     || defined(__ARM_ARCH_7K__) \
     || defined(__ARM_ARCH_7M__) \
     || defined(__ARM_ARCH_7R__) \
-    || defined(__ARM_ARCH_7S__)
+    || defined(__ARM_ARCH_7S__) \
+    || defined(__ARM_ARCH_8__) \
+    || defined(__ARM_ARCH_8A__)
 #define WTF_THUMB_ARCH_VERSION 4
 
 /* RVCT sets __TARGET_ARCH_THUMB */
@@ -566,8 +568,11 @@
 #define USE_FREETYPE 1
 #define USE_HARFBUZZ 1
 #define USE_SOUP 1
+
+#if PLATFORM(GTK)
 #define USE_WEBP 1
 #define USE_FILE_LOCK 1
+#endif
 #endif
 
 #if PLATFORM(GTK)
@@ -1124,6 +1129,10 @@
 #define ENABLE_BINDING_INTEGRITY 1
 #endif
 
+#if !defined(ENABLE_JS_MEMORY_TRACKING) && !defined(NDEBUG)
+#define ENABLE_JS_MEMORY_TRACKING 1
+#endif
+
 #if !defined(ENABLE_TREE_DEBUGGING)
 #if !defined(NDEBUG)
 #define ENABLE_TREE_DEBUGGING 1
@@ -1243,6 +1252,17 @@
 #define __STDC_FORMAT_MACROS
 #undef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS
+#endif
+
+#if OS(LINUX) && defined(__UCLIBC__)
+#include <features.h>
+#endif
+
+#if defined(__UCLIBC__)
+#undef __STDC_LIMIT_MACROS
+#define __STDC_LIMIT_MACROS
+#undef _GLIBCXX_USE_C99_MATH
+#define _GLIBCXX_USE_C99_MATH
 #endif
 
 #if PLATFORM(MAC)

@@ -27,14 +27,24 @@
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
+#include "TextureMapperPlatformLayer.h"
+
 namespace WebCore {
 
 class TextureMapperPlatformLayerProxy;
 
 class TextureMapperPlatformLayerProxyProvider {
 public:
+    virtual ~TextureMapperPlatformLayerProxyProvider() { m_client = nullptr; }
+
     virtual RefPtr<TextureMapperPlatformLayerProxy> proxy() const = 0;
     virtual void swapBuffersIfNeeded() = 0;
+
+    void setClient(TextureMapperPlatformLayer::Client* client) { m_client = client; };
+    TextureMapperPlatformLayer::Client* client() { return m_client; }
+
+private:
+    TextureMapperPlatformLayer::Client* m_client = nullptr;
 };
 
 } // namespace WebCore

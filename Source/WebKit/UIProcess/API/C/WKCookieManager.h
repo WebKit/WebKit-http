@@ -74,8 +74,15 @@ WK_EXPORT void WKCookieManagerGetHTTPCookieAcceptPolicy(WKCookieManagerRef cooki
 
 WK_EXPORT void WKCookieManagerSetStorageAccessAPIEnabled(WKCookieManagerRef cookieManager, bool enabled);
 
+WK_EXPORT void WKCookieManagerSetCookies(WKCookieManagerRef cookieManager, WKArrayRef cookieList);
+
+typedef void (*WKCookieManagerGetCookiesFunction)(WKArrayRef, WKErrorRef, void*);
+WK_EXPORT void WKCookieManagerGetCookies(WKCookieManagerRef cookieManager, void* context, WKCookieManagerGetCookiesFunction callback);
+
 WK_EXPORT void WKCookieManagerStartObservingCookieChanges(WKCookieManagerRef cookieManager);
 WK_EXPORT void WKCookieManagerStopObservingCookieChanges(WKCookieManagerRef cookieManager);
+
+WK_EXPORT void WKCookieManagerSetLimit(WKCookieManagerRef cookieManager, uint64_t limit);
 
 #ifdef __cplusplus
 }

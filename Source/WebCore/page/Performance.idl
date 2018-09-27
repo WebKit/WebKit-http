@@ -59,6 +59,10 @@ typedef double DOMHighResTimeStamp;
     [EnabledAtRuntime=UserTiming] void clearMarks(optional DOMString markName);
     [EnabledAtRuntime=UserTiming, MayThrowException] void measure(DOMString measureName, optional DOMString startMark, optional DOMString endMark);
     [EnabledAtRuntime=UserTiming] void clearMeasures(optional DOMString measureName);
+
+    // YTTV compliance requirement, otherwise non-standard:
+    // https://webplatform.github.io/docs/apis/timing/properties/memory/
+    readonly attribute MemoryInfo memory;
 };
 
 typedef sequence<PerformanceEntry> PerformanceEntryList;

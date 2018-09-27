@@ -32,8 +32,11 @@
 
 namespace WebCore {
 
+class SourceBufferPrivate;
+#if ENABLE(VIDEO_TRACK)
 class AudioTrackPrivate;
 class InbandTextTrackPrivate;
+#endif
 class MediaSample;
 class MediaDescription;
 class VideoTrackPrivate;
@@ -42,6 +45,7 @@ class SourceBufferPrivateClient {
 public:
     virtual ~SourceBufferPrivateClient() = default;
 
+#if ENABLE(VIDEO_TRACK)
     struct InitializationSegment {
         MediaTime duration;
 
@@ -70,6 +74,7 @@ public:
 
     virtual void sourceBufferPrivateReenqueSamples(const AtomicString& trackID) = 0;
     virtual void sourceBufferPrivateDidBecomeReadyForMoreSamples(const AtomicString& trackID) = 0;
+#endif
 
     virtual MediaTime sourceBufferPrivateFastSeekTimeForMediaTime(const MediaTime& time, const MediaTime&, const MediaTime&) { return time; }
     virtual void sourceBufferPrivateSeekToTime(const MediaTime&) { };
@@ -77,6 +82,8 @@ public:
     enum AppendResult { AppendSucceeded, ReadStreamFailed, ParsingFailed };
     virtual void sourceBufferPrivateAppendComplete(AppendResult) = 0;
     virtual void sourceBufferPrivateDidReceiveRenderingError(int errorCode) = 0;
+
+    virtual double timestampOffset() const = 0;
 };
 
 }

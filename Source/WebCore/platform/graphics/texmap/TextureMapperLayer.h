@@ -87,6 +87,7 @@ public:
     void setRepaintCounter(bool showRepaintCounter, int repaintCount);
     void setContentsLayer(TextureMapperPlatformLayer*);
     void setAnimations(const TextureMapperAnimations&);
+    const TextureMapperAnimations& animations() const { return m_animations; }
     void setBackingStore(TextureMapperBackingStore*);
 
     bool applyAnimationsRecursively(MonotonicTime);
@@ -121,6 +122,7 @@ private:
     void computeOverlapRegions(Region& overlapRegion, Region& nonOverlapRegion, ResolveSelfOverlapMode);
 
     void paintRecursive(const TextureMapperPaintOptions&);
+    bool shouldPaintUsingOverlapRegions() const;
     void paintUsingOverlapRegions(const TextureMapperPaintOptions&);
     RefPtr<BitmapTexture> paintIntoSurface(const TextureMapperPaintOptions&, const IntSize&);
     void paintWithIntermediateSurface(const TextureMapperPaintOptions&, const IntRect&);
@@ -130,8 +132,6 @@ private:
     void applyMask(const TextureMapperPaintOptions&);
 
     bool isVisible() const;
-
-    bool shouldBlend() const;
 
     inline FloatRect layerRect() const
     {

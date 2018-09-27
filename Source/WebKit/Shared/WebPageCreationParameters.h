@@ -185,6 +185,9 @@ struct WebPageCreationParameters {
 #if ENABLE(CONTENT_EXTENSIONS)
     Vector<std::pair<String, WebCompiledContentRuleListData>> contentRuleLists;
 #endif
+
+    // LocalStorageQuota setting
+    uint32_t localStorageQuota;
 };
 
 } // namespace WebKit

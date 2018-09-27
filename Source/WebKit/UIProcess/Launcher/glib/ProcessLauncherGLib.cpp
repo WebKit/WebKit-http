@@ -144,12 +144,20 @@ void ProcessLauncher::launchProcess()
     argv[i++] = nullptr;
 
     GUniqueOutPtr<GError> error;
-    if (!g_spawn_async(nullptr, argv, nullptr, G_SPAWN_LEAVE_DESCRIPTORS_OPEN, childSetupFunction, GINT_TO_POINTER(socketPair.server), &pid, &error.outPtr()))
+    if (!g_spawn_async(nullptr, argv, nullptr, static_cast<GSpawnFlags>(G_SPAWN_LEAVE_DESCRIPTORS_OPEN | G_SPAWN_DO_NOT_REAP_CHILD), childSetupFunction, GINT_TO_POINTER(socketPair.server), &pid, &error.outPtr()))
         g_error("Unable to fork a new child process: %s", error->message);
 
     // Don't expose the parent socket to potential future children.
     if (!setCloseOnExec(socketPair.client))
         RELEASE_ASSERT_NOT_REACHED();
+
+    auto childWatchFunc = [](GPid pid, gint status, gpointer) {
+        GUniqueOutPtr<GError> error;
+        if (!g_spawn_check_exit_status(status, &error.outPtr()))
+            g_warning("%s", error->message);
+        g_spawn_close_pid(pid);
+    };
+    g_child_watch_add(pid, childWatchFunc, nullptr);
 
     close(socketPair.client);
     m_processIdentifier = pid;

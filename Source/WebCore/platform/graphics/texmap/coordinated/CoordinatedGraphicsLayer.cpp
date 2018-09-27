@@ -158,6 +158,9 @@ CoordinatedGraphicsLayer::~CoordinatedGraphicsLayer()
         purgeBackingStores();
         m_coordinator->detachLayer(this);
     }
+    if (m_platformLayer)
+        m_platformLayer->setClient(0);
+
     ASSERT(!m_coordinatedImageBacking);
     ASSERT(!m_mainBackingStore);
     willBeDestroyed();
@@ -435,9 +438,19 @@ void CoordinatedGraphicsLayer::setContentsToPlatformLayer(PlatformLayer* platfor
 #if USE(NICOSIA)
 #else
     if (m_platformLayer != platformLayer)
+    if (m_platformLayer != platformLayer) {
         m_shouldSyncPlatformLayer = true;
+        if (platformLayer)
+            m_shouldUpdatePlatformLayer = true;
+    }
+
+    if (m_platformLayer)
+        m_platformLayer->setClient(0);
 
     m_platformLayer = platformLayer;
+
+    if (m_platformLayer)
+        m_platformLayer->setClient(this);
 #endif
     notifyFlushRequired();
 #else
@@ -1241,7 +1254,8 @@ void CoordinatedGraphicsLayer::computeTransformedVisibleRect()
 
 bool CoordinatedGraphicsLayer::shouldHaveBackingStore() const
 {
-    return drawsContent() && contentsAreVisible() && !m_size.isEmpty();
+    return drawsContent() && contentsAreVisible() && !m_size.isEmpty()
+        && (!!opacity() || m_animations.hasActiveAnimationsOfType(AnimatedPropertyOpacity));
 }
 
 bool CoordinatedGraphicsLayer::selfOrAncestorHasActiveTransformAnimation() const

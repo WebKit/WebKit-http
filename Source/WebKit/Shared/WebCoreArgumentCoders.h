@@ -166,6 +166,8 @@ struct MediaConstraints;
 #if ENABLE(INDEXED_DATABASE)
 using IDBKeyPath = Variant<String, Vector<String>>;
 #endif
+
+struct Proxy;
 }
 
 namespace IPC {
@@ -715,6 +717,11 @@ template<> struct ArgumentCoder<WebCore::AttachmentInfo> {
 template<> struct ArgumentCoder<Vector<RefPtr<WebCore::SecurityOrigin>>> {
     static void encode(Encoder&, const Vector<RefPtr<WebCore::SecurityOrigin>>&);
     static bool decode(Decoder&, Vector<RefPtr<WebCore::SecurityOrigin>>&);
+};
+
+template<> struct ArgumentCoder<WebCore::Proxy> {
+    static void encode(Encoder&, const WebCore::Proxy&);
+    static std::optional<WebCore::Proxy> decode(Decoder&);
 };
 
 } // namespace IPC

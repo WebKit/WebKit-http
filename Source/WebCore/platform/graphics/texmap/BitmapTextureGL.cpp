@@ -310,7 +310,6 @@ IntSize BitmapTextureGL::size() const
     return m_textureSize;
 }
 
-
 void BitmapTextureGL::copyFromExternalTexture(GLuint sourceTextureID)
 {
     GLint boundTexture = 0;

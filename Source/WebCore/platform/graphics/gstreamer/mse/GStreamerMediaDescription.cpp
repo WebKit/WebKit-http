@@ -20,8 +20,8 @@
 
 #include "config.h"
 #include "GStreamerMediaDescription.h"
-#include "GStreamerCommon.h"
 
+#include "GStreamerCommon.h"
 #include <gst/pbutils/pbutils.h>
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/WTFString.h>

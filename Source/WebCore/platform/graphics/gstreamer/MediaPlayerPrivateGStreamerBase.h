@@ -63,7 +63,9 @@ class VideoTextureCopierGStreamer;
 class TextureMapperPlatformLayerProxy;
 #endif
 
-void registerWebKitGStreamerElements();
+#if USE(PLAYREADY)
+class PlayreadySession;
+#endif
 
 class MediaPlayerPrivateGStreamerBase : public MediaPlayerPrivateInterface, public CanMakeWeakPtr<MediaPlayerPrivateGStreamerBase>
 #if USE(TEXTURE_MAPPER_GL)
@@ -87,7 +89,8 @@ public:
     bool ensureGstGLContext();
     GstContext* requestGLContext(const char* contextType);
 #endif
-    static bool initializeGStreamerAndRegisterWebKitElements();
+    static bool initializeGStreamer();
+    static void ensureWebKitGStreamerElements();
     bool supportsMuting() const override { return true; }
     void setMuted(bool) override;
     bool muted() const;
@@ -95,8 +98,11 @@ public:
     MediaPlayer::NetworkState networkState() const override;
     MediaPlayer::ReadyState readyState() const override;
 
+    bool ended() const override { return m_isEndReached; }
+
     void setVisible(bool) override { }
     void setSize(const IntSize&) override;
+    void setPosition(const IntPoint&) override;
     void sizeChanged();
 
     // Prefer MediaTime based methods over float based.
@@ -146,11 +152,9 @@ public:
 #if ENABLE(ENCRYPTED_MEDIA)
     void cdmInstanceAttached(CDMInstance&) override;
     void cdmInstanceDetached(CDMInstance&) override;
-    void dispatchDecryptionKey(GstBuffer*);
-    void handleProtectionEvent(GstEvent*);
-    void attemptToDecryptWithLocalInstance();
     void attemptToDecryptWithInstance(CDMInstance&) override;
-    void dispatchCDMInstance();
+    void handleProtectionStructure(const GstStructure*);
+    void dispatchLocalCDMInstance();
     void initializationDataEncountered(GstEvent*);
 #endif
 
@@ -160,21 +164,25 @@ public:
 #if USE(GSTREAMER_GL)
     bool copyVideoTextureToPlatformTexture(GraphicsContext3D*, Platform3DObject, GC3Denum, GC3Dint, GC3Denum, GC3Denum, GC3Denum, bool, bool) override;
     NativeImagePtr nativeImageForCurrentTime() override;
+    void clearCurrentBuffer();
 #endif
 
     void setVideoSourceOrientation(const ImageOrientation&);
+
     GstElement* pipeline() const { return m_pipeline.get(); }
 
     virtual bool handleSyncMessage(GstMessage*);
 
 protected:
     MediaPlayerPrivateGStreamerBase(MediaPlayer*);
+
+#if !USE(HOLE_PUNCH_GSTREAMER)
     virtual GstElement* createVideoSink();
+#endif
 
 #if USE(GSTREAMER_GL)
     static GstFlowReturn newSampleCallback(GstElement*, MediaPlayerPrivateGStreamerBase*);
     static GstFlowReturn newPrerollCallback(GstElement*, MediaPlayerPrivateGStreamerBase*);
-    void flushCurrentBuffer();
     GstElement* createGLAppSink();
     GstElement* createVideoSinkGL();
     GstGLContext* gstGLContext() const { return m_glContext.get(); }
@@ -199,19 +207,28 @@ protected:
     virtual GstElement* audioSink() const { return 0; }
 
     void setPipeline(GstElement*);
+    void clearSamples();
 
     void triggerRepaint(GstSample*);
     void repaint();
     void cancelRepaint(bool destroying = false);
 
+#if !USE(HOLE_PUNCH_GSTREAMER)
     static void repaintCallback(MediaPlayerPrivateGStreamerBase*, GstSample*);
     static void repaintCancelledCallback(MediaPlayerPrivateGStreamerBase*);
+#endif
 
     void notifyPlayerOfVolumeChange();
     void notifyPlayerOfMute();
 
     static void volumeChangedCallback(MediaPlayerPrivateGStreamerBase*);
     static void muteChangedCallback(MediaPlayerPrivateGStreamerBase*);
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    void dispatchDecryptionKey(GstBuffer*);
+    void attemptToDecryptWithLocalInstance();
+    virtual void dispatchDecryptionStructure(GUniquePtr<GstStructure>&&);
+#endif
 
     enum MainThreadNotification {
         VideoChanged = 1 << 0,
@@ -236,9 +253,14 @@ protected:
     GRefPtr<GstElement> m_fpsSink;
     MediaPlayer::ReadyState m_readyState;
     mutable MediaPlayer::NetworkState m_networkState;
+    mutable bool m_isEndReached;
     IntSize m_size;
+    IntPoint m_position;
     mutable Lock m_sampleMutex;
     GRefPtr<GstSample> m_sample;
+    unsigned long m_repaintRequestedHandler { 0 };
+    unsigned long m_repaintCancelledHandler { 0 };
+    unsigned long m_drainHandler { 0 };
 
     mutable FloatSize m_videoSize;
     bool m_usingFallbackVideoSink { false };
@@ -267,13 +289,15 @@ protected:
 
     ImageOrientation m_videoSourceOrientation;
 
-#if ENABLE(ENCRYPTED_MEDIA)
-    Lock m_protectionMutex;
-    Condition m_protectionCondition;
-    RefPtr<const CDMInstance> m_cdmInstance;
-    HashSet<uint32_t> m_handledProtectionEvents;
-    bool m_needToResendCredentials { false };
+#if USE(HOLE_PUNCH_GSTREAMER)
+    void updateVideoRectangle();
 #endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    RefPtr<const CDMInstance> m_cdmInstance;
+#endif
+
+    WeakPtrFactory<MediaPlayerPrivateGStreamerBase> m_weakPtrFactory;
 };
 
 }

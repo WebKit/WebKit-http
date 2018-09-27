@@ -30,7 +30,7 @@ WI.ResourceSidebarPanel = class ResourceSidebarPanel extends WI.NavigationSideba
         super("resource", WI.UIString("Resources"), true);
 
         this._navigationBar = new WI.NavigationBar;
-        this.addSubview(this._navigationBar);
+        this.insertSubviewBefore(this._navigationBar, this._contentView);
 
         this._targetTreeElementMap = new Map;
 

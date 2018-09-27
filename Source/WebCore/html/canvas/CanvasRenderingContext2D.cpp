@@ -79,6 +79,16 @@ void CanvasRenderingContext2D::drawFocusIfNeeded(Path2D& path, Element& element)
     drawFocusIfNeededInternal(path.path(), element);
 }
 
+void CanvasRenderingContext2D::drawSystemFocusRing(Element& element)
+{
+    drawFocusIfNeededInternal(m_path, element);
+}
+
+void CanvasRenderingContext2D::drawSystemFocusRing(Path2D& path, Element& element)
+{
+    drawFocusIfNeededInternal(path.path(), element);
+}
+
 void CanvasRenderingContext2D::drawFocusIfNeededInternal(const Path& path, Element& element)
 {
     auto* context = drawingContext();

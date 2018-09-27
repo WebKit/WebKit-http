@@ -163,6 +163,9 @@ public:
     void setSuppressesConnectionTerminationOnSystemChange(bool suppressesConnectionTerminationOnSystemChange) { m_suppressesConnectionTerminationOnSystemChange = suppressesConnectionTerminationOnSystemChange; }
 #endif
 
+    uint32_t localStorageQuota() const { return m_localStorageQuota; }
+    void setLocalStorageQuota(uint32_t quota) { m_localStorageQuota = quota; }
+
 private:
     bool m_shouldHaveLegacyDataStore { false };
 
@@ -212,6 +215,8 @@ private:
 #if PLATFORM(COCOA)
     bool m_suppressesConnectionTerminationOnSystemChange { false };
 #endif
+
+    uint32_t m_localStorageQuota { 5 * 1024 * 1024 };
 };
 
 } // namespace API

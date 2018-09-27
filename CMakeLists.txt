@@ -19,6 +19,8 @@ else ()
     message(STATUS "The CMake build type is: ${CMAKE_BUILD_TYPE}")
 endif ()
 
+add_definitions(-DMETROLOGICAL=1)
+
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/Source/cmake")
 
 set(ENABLE_WEBCORE ON)

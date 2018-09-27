@@ -36,6 +36,7 @@
 #include "APIFrameInfo.h"
 #include "APIFullscreenClient.h"
 #include "APIGeometry.h"
+#include "APIHTTPCookieStorage.h"
 #include "APIHistoryClient.h"
 #include "APIHitTestResult.h"
 #include "APIIconLoadingClient.h"
@@ -418,6 +419,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_pageLoadState(*this)
     , m_configurationPreferenceValues(m_configuration->preferenceValues())
     , m_resetRecentCrashCountTimer(RunLoop::main(), this, &WebPageProxy::resetRecentCrashCount)
+    , m_httpCookieStorage(API::HTTPCookieStorage::create(*this))
 {
     m_webProcessLifetimeTracker.addObserver(m_visitedLinkStore);
     m_webProcessLifetimeTracker.addObserver(m_websiteDataStore);
@@ -849,6 +851,11 @@ void WebPageProxy::initializeWebPage()
 #endif
 
     process().send(Messages::WebProcess::CreateWebPage(m_pageID, parameters), 0);
+
+#if ENABLE(INSPECTOR_SERVER)
+    if (m_preferences->developerExtrasEnabled())
+        inspector()->enableRemoteInspection();
+#endif
 
     m_needsToFinishInitializingWebPageAfterProcessLaunch = true;
     finishInitializingWebPageAfterProcessLaunch();
@@ -2602,6 +2609,13 @@ void WebPageProxy::setCustomUserAgent(const String& customUserAgent)
     setUserAgent(String { m_customUserAgent });
 }
 
+void WebPageProxy::setProxies(const Vector<WebCore::Proxy>& proxies)
+{
+#if USE(SOUP)
+    m_process->processPool().sendToNetworkingProcessRelaunchingIfNecessary(Messages::NetworkProcess::SetProxies(sessionID(), proxies));
+#endif
+}
+
 void WebPageProxy::resumeActiveDOMObjectsAndAnimations()
 {
     if (!isValid() || !m_isPageSuspended)
@@ -3351,6 +3365,11 @@ void WebPageProxy::preferencesDidChange()
 {
     if (!isValid())
         return;
+
+#if ENABLE(INSPECTOR_SERVER)
+    if (m_preferences->developerExtrasEnabled())
+        inspector()->enableRemoteInspection();
+#endif
 
     updateThrottleState();
     updateHiddenPageThrottlingAutoIncreases();
@@ -5118,6 +5137,11 @@ void WebPageProxy::postMessageToInjectedBundle(const String& messageName, API::O
     process().send(Messages::WebPage::PostInjectedBundleMessage(messageName, UserData(process().transformObjectsToHandles(messageBody).get())), m_pageID);
 }
 
+void WebPageProxy::postSynchronousMessageToInjectedBundle(const String& messageName, API::Object* messageBody)
+{
+    process().sendSync(Messages::WebPage::PostSynchronousInjectedBundleMessage(messageName, UserData(process().transformObjectsToHandles(messageBody).get())), Messages::WebPage::PostSynchronousInjectedBundleMessage::Reply(), m_pageID);
+}
+
 #if PLATFORM(GTK)
 void WebPageProxy::failedToShowPopupMenu()
 {
@@ -6350,6 +6374,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.enumeratingAllNetworkInterfacesEnabled = m_preferences->enumeratingAllNetworkInterfacesEnabled();
 #endif
 #endif
+    parameters.localStorageQuota = m_websiteDataStore->localStorageQuota();
 
 #if ENABLE(APPLICATION_MANIFEST)
     parameters.applicationManifest = m_configuration->applicationManifest() ? std::optional<WebCore::ApplicationManifest>(m_configuration->applicationManifest()->applicationManifest()) : std::nullopt;
@@ -6378,6 +6403,11 @@ void WebPageProxy::updateAcceleratedCompositingMode(const LayerTreeContext& laye
 void WebPageProxy::backForwardClear()
 {
     m_backForwardList->clear();
+}
+
+void WebPageProxy::cookiesDidChange()
+{
+    m_loaderClient->cookiesDidChange(*this);
 }
 
 #if ENABLE(GAMEPAD)
@@ -7458,6 +7488,11 @@ void WebPageProxy::setFooterBannerHeightForTesting(int height)
 void WebPageProxy::imageOrMediaDocumentSizeChanged(const WebCore::IntSize& newSize)
 {
     m_uiClient->imageOrMediaDocumentSizeChanged(newSize);
+}
+
+void WebPageProxy::willAddDetailedMessageToConsole(const String& src, const String& level, uint64_t line, uint64_t col, const String& message, const String& url)
+{
+    m_uiClient->willAddDetailedMessageToConsole(this, src, level, line, col, message, url);
 }
 
 void WebPageProxy::setShouldDispatchFakeMouseMoveEvents(bool shouldDispatchFakeMouseMoveEvents)

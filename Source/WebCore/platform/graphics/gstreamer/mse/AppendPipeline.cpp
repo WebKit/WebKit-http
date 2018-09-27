@@ -38,6 +38,7 @@
 #include <gst/pbutils/pbutils.h>
 #include <gst/video/video.h>
 #include <wtf/Condition.h>
+#include <wtf/SetForScope.h>
 #include <wtf/glib/GLibUtilities.h>
 #include <wtf/glib/RunLoopSourcePriority.h>
 
@@ -78,12 +79,13 @@ static GstPadProbeReturn appendPipelinePadProbeDebugInformation(GstPad*, GstPadP
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
-static GstPadProbeReturn appendPipelineAppsinkPadEventProbe(GstPad*, GstPadProbeInfo*, struct PadProbeInformation*);
+static GstPadProbeReturn appendPipelineAppsinkPadProtectionProbe(GstPad*, GstPadProbeInfo*, struct PadProbeInformation*);
 #endif
 
 static GstPadProbeReturn appendPipelineDemuxerBlackHolePadProbe(GstPad*, GstPadProbeInfo*, gpointer);
 static GstFlowReturn appendPipelineAppsinkNewSample(GstElement*, AppendPipeline*);
 static void appendPipelineAppsinkEOS(GstElement*, AppendPipeline*);
+static void appendPipelineDemuxerNoMorePads(GstElement*, AppendPipeline* appendPipeline);
 
 static GstPadProbeReturn matroskademuxForceSegmentStartToEqualZero(GstPad*, GstPadProbeInfo*, void*);
 
@@ -103,11 +105,81 @@ static void appendPipelineStateChangeMessageCallback(GstBus*, GstMessage* messag
     appendPipeline->handleStateChangeMessage(message);
 }
 
+// Auxiliary class to compute the sample duration when GStreamer provides an invalid one.
+class BufferMetadataCompleter {
+public:
+    BufferMetadataCompleter()
+        : m_sampleDuration(MediaTime::invalidTime())
+        , m_lastPts(MediaTime::invalidTime())
+        , m_lastDts(MediaTime::invalidTime())
+        , m_ptsOffset(MediaTime::invalidTime())
+    {
+    }
+
+    void completeMissingMetadata(GstBuffer* buffer)
+    {
+        if (buffer) {
+	    GST_TRACE("Before: PTS=%" GST_TIME_FORMAT "  DTS=%" GST_TIME_FORMAT "  DUR=%" GST_TIME_FORMAT "\n", 
+			    GST_TIME_ARGS(GST_BUFFER_PTS(buffer)),
+			    GST_TIME_ARGS(GST_BUFFER_DTS(buffer)),
+			    GST_TIME_ARGS(GST_BUFFER_DURATION(buffer)));
+
+            if (!GST_BUFFER_DURATION_IS_VALID(buffer)) {
+                if (m_sampleDuration.isValid()) {
+                    // Some containers like webm and audio/x-opus don't supply a duration. Let's use the one supplied by the caps.
+                    GST_BUFFER_DURATION(buffer) = toGstClockTime(m_sampleDuration);
+                } else if (m_lastPts.isValid()) {
+                    m_sampleDuration = MediaTime(GST_BUFFER_PTS(buffer), GST_SECOND) - m_lastPts;
+                    GST_BUFFER_DURATION(buffer) = toGstClockTime(m_sampleDuration);
+                } else if (GST_BUFFER_PTS_IS_VALID(buffer)) {
+                    // Some containers like webm don't supply a duration. Let's assume 60fps and let the gap sample hack fill the gaps if the duration was actually longer.
+                    // The duration for the next samples will be computed using PTS differences.
+                    GST_BUFFER_DURATION(buffer) = toGstClockTime(MediaTime(1, 60));
+                }
+            }
+
+            if (!GST_BUFFER_DTS_IS_VALID(buffer) && GST_BUFFER_PTS_IS_VALID(buffer)) {
+                // If we had a last DTS and the PTS hasn't varied too much (continuous samples), DTS++.
+                if (m_lastDts.isValid() && abs(m_lastPts + MediaTime(GST_BUFFER_DURATION(buffer), GST_SECOND) - MediaTime(GST_BUFFER_PTS(buffer), GST_SECOND)) < MediaTime(1, 2))
+                    GST_BUFFER_DTS(buffer) = toGstClockTime(m_lastDts + MediaTime(GST_BUFFER_DURATION(buffer), GST_SECOND));
+                else
+                    GST_BUFFER_DTS(buffer) = toGstClockTime(MediaTime(GST_BUFFER_PTS(buffer), GST_SECOND) + MediaTime(GST_BUFFER_DURATION(buffer), GST_SECOND));
+		GST_TRACE("DTS FILLED: %" GST_TIME_FORMAT "\n", GST_TIME_ARGS(GST_BUFFER_DTS(buffer)));
+            }
+
+            // If the first sample (DTS=0) doesn't start with PTS=0, compute a negative offset.
+            if (!GST_BUFFER_DTS(buffer) && GST_BUFFER_PTS(buffer) && !m_ptsOffset.isValid()) {
+                m_ptsOffset = MediaTime(GST_BUFFER_DTS(buffer), GST_SECOND) - MediaTime(GST_BUFFER_PTS(buffer), GST_SECOND);
+                GST_TRACE("Setting an offset of %s\n", m_ptsOffset.toString().utf8().data());
+            }
+
+            // Apply the offset to zero-align the first sample and also correct the next ones.
+            if (m_ptsOffset.isValid())
+                GST_BUFFER_PTS(buffer) += toGstClockTime(m_ptsOffset);
+
+            m_lastPts = MediaTime(GST_BUFFER_PTS(buffer), GST_SECOND);
+            m_lastDts = MediaTime(GST_BUFFER_DTS(buffer), GST_SECOND);
+
+	    GST_TRACE("After: PTS=%" GST_TIME_FORMAT "  DTS=%" GST_TIME_FORMAT "  DUR=%" GST_TIME_FORMAT "\n", 
+			    GST_TIME_ARGS(GST_BUFFER_PTS(buffer)),
+			    GST_TIME_ARGS(GST_BUFFER_DTS(buffer)),
+			    GST_TIME_ARGS(GST_BUFFER_DURATION(buffer)));
+        }
+    }
+
+private:
+    MediaTime m_sampleDuration;
+    MediaTime m_lastPts;
+    MediaTime m_lastDts;
+    MediaTime m_ptsOffset;
+};
+
 AppendPipeline::AppendPipeline(Ref<MediaSourceClientGStreamerMSE> mediaSourceClient, Ref<SourceBufferPrivateGStreamer> sourceBufferPrivate, MediaPlayerPrivateGStreamerMSE& playerPrivate)
     : m_mediaSourceClient(mediaSourceClient.get())
     , m_sourceBufferPrivate(sourceBufferPrivate.get())
     , m_playerPrivate(&playerPrivate)
     , m_id(0)
+    , m_busAlreadyNotifiedOfAvailablesamples(false)
     , m_appsrcAtLeastABufferLeft(false)
     , m_appsrcNeedDataReceived(false)
     , m_appsrcDataLeavingProbeId(0)
@@ -164,15 +236,19 @@ AppendPipeline::AppendPipeline(Ref<MediaSourceClientGStreamerMSE> mediaSourceCli
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
-    m_appsinkPadEventProbeInformation.appendPipeline = this;
-    m_appsinkPadEventProbeInformation.description = "appsink event probe";
-    m_appsinkPadEventProbeInformation.probeId = gst_pad_add_probe(appsinkPad.get(), GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM, reinterpret_cast<GstPadProbeCallback>(appendPipelineAppsinkPadEventProbe), &m_appsinkPadEventProbeInformation, nullptr);
+    m_appsinkPadProtectionProbeInformation.appendPipeline = this;
+    m_appsinkPadProtectionProbeInformation.description = "appsink protection probe";
+    m_appsinkPadProtectionProbeInformation.probeId = gst_pad_add_probe(appsinkPad.get(), static_cast<GstPadProbeType>(static_cast<int>(GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM) | static_cast<int>(GST_PAD_PROBE_TYPE_BUFFER)), reinterpret_cast<GstPadProbeCallback>(appendPipelineAppsinkPadProtectionProbe), &m_appsinkPadProtectionProbeInformation, nullptr);
+
+    m_cachedProtectionEvents = G_VALUE_INIT;
+    g_value_init(&m_cachedProtectionEvents, GST_TYPE_LIST);
 #endif
 
     // These signals won't be connected outside of the lifetime of "this".
     g_signal_connect(m_appsrc.get(), "need-data", G_CALLBACK(appendPipelineAppsrcNeedData), this);
     g_signal_connect(m_demux.get(), "pad-added", G_CALLBACK(appendPipelineDemuxerPadAdded), this);
     g_signal_connect(m_demux.get(), "pad-removed", G_CALLBACK(appendPipelineDemuxerPadRemoved), this);
+    g_signal_connect(m_demux.get(), "no-more-pads", G_CALLBACK(appendPipelineDemuxerNoMorePads), this);
     g_signal_connect(m_appsink.get(), "new-sample", G_CALLBACK(appendPipelineAppsinkNewSample), this);
     g_signal_connect(m_appsink.get(), "eos", G_CALLBACK(appendPipelineAppsinkEOS), this);
 
@@ -187,11 +263,9 @@ AppendPipeline::~AppendPipeline()
 {
     ASSERT(WTF::isMainThread());
 
-    {
-        LockHolder locker(m_newSampleLock);
-        setAppendState(AppendState::Invalid);
-        m_newSampleCondition.notifyOne();
-    }
+    GST_TRACE("Destroying AppendPipeline (%p)", this);
+
+    setAppendState(AppendState::Invalid);
 
     {
         LockHolder locker(m_padAddRemoveLock);
@@ -199,7 +273,11 @@ AppendPipeline::~AppendPipeline()
         m_padAddRemoveCondition.notifyOne();
     }
 
-    GST_TRACE("Destroying AppendPipeline (%p)", this);
+    if (m_appsink) {
+        GstSample *sample;
+        while ((sample = gst_app_sink_try_pull_sample(GST_APP_SINK(m_appsink.get()), 0)))
+            gst_sample_unref(sample);
+    }
 
     // FIXME: Maybe notify appendComplete here?
 
@@ -238,13 +316,17 @@ AppendPipeline::~AppendPipeline()
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
-        gst_pad_remove_probe(appsinkPad.get(), m_appsinkPadEventProbeInformation.probeId);
+        gst_pad_remove_probe(appsinkPad.get(), m_appsinkPadProtectionProbeInformation.probeId);
 #endif
         m_appsink = nullptr;
     }
 
     m_appsinkCaps = nullptr;
     m_demuxerSrcPadCaps = nullptr;
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    g_value_unset(&m_cachedProtectionEvents);
+#endif
 };
 
 void AppendPipeline::clearPlayerPrivate()
@@ -252,20 +334,20 @@ void AppendPipeline::clearPlayerPrivate()
     ASSERT(WTF::isMainThread());
     GST_DEBUG("cleaning private player");
 
-    {
-        LockHolder locker(m_newSampleLock);
-        // Make sure that AppendPipeline won't process more data from now on and
-        // instruct handleNewSample to abort itself from now on as well.
-        setAppendState(AppendState::Invalid);
-
-        // Awake any pending handleNewSample operation in the streaming thread.
-        m_newSampleCondition.notifyOne();
-    }
+    // Make sure that AppendPipeline won't process more data from now on and
+    // instruct handleNewSample to abort itself from now on as well.
+    setAppendState(AppendState::Invalid);
 
     {
         LockHolder locker(m_padAddRemoveLock);
         m_playerPrivate = nullptr;
         m_padAddRemoveCondition.notifyOne();
+    }
+
+    if (m_appsink) {
+        GstSample *sample;
+        while ((sample = gst_app_sink_try_pull_sample(GST_APP_SINK(m_appsink.get()), 0)))
+            gst_sample_unref(sample);
     }
 
     // And now that no handleNewSample operations will remain stalled waiting
@@ -280,7 +362,11 @@ void AppendPipeline::handleNeedContextSyncMessage(GstMessage* message)
     gst_message_parse_context_type(message, &contextType);
     GST_TRACE("context type: %s", contextType);
 
-    // MediaPlayerPrivateGStreamerBase will take care of setting up encryption.
+    LockHolder locker(m_appendStateTransitionLock);
+    if (m_appendState == AppendState::Invalid)
+        return;
+
+    // MediaPlayerPrivateGStreamerBase will take care of setting up encryption if needed.
     if (m_playerPrivate)
         m_playerPrivate->handleSyncMessage(message);
 }
@@ -288,6 +374,8 @@ void AppendPipeline::handleNeedContextSyncMessage(GstMessage* message)
 void AppendPipeline::handleApplicationMessage(GstMessage* message)
 {
     ASSERT(WTF::isMainThread());
+
+    RefPtr<AppendPipeline> protectedThis(this);
 
     const GstStructure* structure = gst_message_get_structure(message);
 
@@ -309,16 +397,22 @@ void AppendPipeline::handleApplicationMessage(GstMessage* message)
         return;
     }
 
+    if (gst_structure_has_name(structure, "transition-main-thread")) {
+        GST_TRACE("Received transition-main-thread in main thread");
+        AppendState nextState;
+        gst_structure_get(structure, "transition", G_TYPE_INT, &nextState, nullptr);
+        transitionTo(nextState, false);
+        return;
+    }
+
     if (gst_structure_has_name(structure, "appsink-caps-changed")) {
         appsinkCapsChanged();
         return;
     }
 
     if (gst_structure_has_name(structure, "appsink-new-sample")) {
-        GRefPtr<GstSample> newSample;
-        gst_structure_get(structure, "new-sample", GST_TYPE_SAMPLE, &newSample.outPtr(), nullptr);
-
-        appsinkNewSample(newSample.get());
+        m_busAlreadyNotifiedOfAvailablesamples = false;
+        consumeAppSinkAvailableSamples();
         return;
     }
 
@@ -327,7 +421,20 @@ void AppendPipeline::handleApplicationMessage(GstMessage* message)
         return;
     }
 
+    if (gst_structure_has_name(structure, "demuxer-no-more-pads")) {
+        demuxerNoMorePads();
+        return;
+    }
+
     ASSERT_NOT_REACHED();
+}
+
+void AppendPipeline::demuxerNoMorePads()
+{
+    GST_TRACE("calling didReceiveInitializationSegment");
+    didReceiveInitializationSegment();
+    GST_TRACE("set pipeline to playing");
+    gst_element_set_state(m_pipeline.get(), GST_STATE_PLAYING);
 }
 
 void AppendPipeline::handleStateChangeMessage(GstMessage* message)
@@ -422,6 +529,7 @@ void AppendPipeline::setAppendState(AppendState newAppendState)
         GST_TRACE("%s --> %s", dumpAppendState(oldAppendState), dumpAppendState(newAppendState));
 
     bool ok = false;
+    bool mustCheckEndOfAppend = false;
 
     switch (oldAppendState) {
     case AppendState::NotStarted:
@@ -542,6 +650,9 @@ void AppendPipeline::setAppendState(AppendState newAppendState)
 
     ASSERT(ok);
 
+    if (mustCheckEndOfAppend)
+        checkEndOfAppend();
+
     if (nextAppendState != AppendState::Invalid)
         setAppendState(nextAppendState);
 }
@@ -594,7 +705,6 @@ void AppendPipeline::appsinkCapsChanged()
         m_appsinkCaps = WTFMove(caps);
         if (m_playerPrivate)
             m_playerPrivate->trackDetected(this, m_track, previousCapsWereNull);
-        didReceiveInitializationSegment();
         gst_element_set_state(m_pipeline.get(), GST_STATE_PLAYING);
     }
 }
@@ -629,54 +739,56 @@ void AppendPipeline::appsinkNewSample(GstSample* sample)
 {
     ASSERT(WTF::isMainThread());
 
-    {
-        LockHolder locker(m_newSampleLock);
-
-        // Ignore samples if we're not expecting them. Refuse processing if we're in Invalid state.
-        if (m_appendState != AppendState::Ongoing && m_appendState != AppendState::Sampling) {
-            GST_WARNING("Unexpected sample, appendState=%s", dumpAppendState(m_appendState));
-            // FIXME: Return ERROR and find a more robust way to detect that all the
-            // data has been processed, so we don't need to resort to these hacks.
-            // All in all, return OK, even if it's not the proper thing to do. We don't want to break the demuxer.
-            m_flowReturn = GST_FLOW_OK;
-            m_newSampleCondition.notifyOne();
-            return;
-        }
-
-        RefPtr<MediaSampleGStreamer> mediaSample = WebCore::MediaSampleGStreamer::create(sample, m_presentationSize, trackId());
-
-        GST_TRACE("append: trackId=%s PTS=%s DTS=%s DUR=%s presentationSize=%.0fx%.0f",
-            mediaSample->trackID().string().utf8().data(),
-            mediaSample->presentationTime().toString().utf8().data(),
-            mediaSample->decodeTime().toString().utf8().data(),
-            mediaSample->duration().toString().utf8().data(),
-            mediaSample->presentationSize().width(), mediaSample->presentationSize().height());
-
-        // If we're beyond the duration, ignore this sample and the remaining ones.
-        MediaTime duration = m_mediaSourceClient->duration();
-        if (duration.isValid() && !duration.indefiniteTime() && mediaSample->presentationTime() > duration) {
-            GST_DEBUG("Detected sample (%f) beyond the duration (%f), declaring LastSample", mediaSample->presentationTime().toFloat(), duration.toFloat());
-            setAppendState(AppendState::LastSample);
-            m_flowReturn = GST_FLOW_OK;
-            m_newSampleCondition.notifyOne();
-            return;
-        }
-
-        // Add a gap sample if a gap is detected before the first sample.
-        if (mediaSample->decodeTime() == MediaTime::zeroTime()
-            && mediaSample->presentationTime() > MediaTime::zeroTime()
-            && mediaSample->presentationTime() <= MediaTime(1, 10)) {
-            GST_DEBUG("Adding gap offset");
-            mediaSample->applyPtsOffset(MediaTime::zeroTime());
-        }
-
-        m_sourceBufferPrivate->didReceiveSample(*mediaSample);
-        setAppendState(AppendState::Sampling);
-        m_flowReturn = GST_FLOW_OK;
-        m_newSampleCondition.notifyOne();
+    // Ignore samples if we're not expecting them. Refuse processing if we're in Invalid state.
+    if (m_appendState != AppendState::Ongoing && m_appendState != AppendState::Sampling) {
+        GST_WARNING("Unexpected sample, appendState=%s", dumpAppendState(m_appendState));
+        // FIXME: Return ERROR and find a more robust way to detect that all the
+        // data has been processed, so we don't need to resort to these hacks.
+        // All in all, return OK, even if it's not the proper thing to do. We don't want to break the demuxer.
+        gst_sample_unref(sample);
+        return;
     }
 
-    checkEndOfAppend();
+    GstBuffer* buffer = gst_sample_get_buffer(sample);
+    if (!buffer) {
+        GST_WARNING("Received sample without buffer from appsink. Why?");
+        gst_sample_unref(sample);
+        return;
+    }
+
+    // This increases sample refcount, as GStreamerMediaSample manages its own reference.
+    // We must still unref our own current ref before exiting this method.
+    RefPtr<MediaSampleGStreamer> mediaSample = WebCore::MediaSampleGStreamer::create(sample, m_presentationSize, trackId());
+
+    GST_TRACE("append: trackId=%s PTS=%s DTS=%s DUR=%s presentationSize=%.0fx%.0f %s%s",
+        mediaSample->trackID().string().utf8().data(),
+        mediaSample->presentationTime().toString().utf8().data(),
+        mediaSample->decodeTime().toString().utf8().data(),
+        mediaSample->duration().toString().utf8().data(),
+        mediaSample->presentationSize().width(), mediaSample->presentationSize().height(),
+        mediaSample->flags() == MediaSample::SampleFlags::IsSync ? "[SYNC]" : "",
+        mediaSample->flags() == MediaSample::SampleFlags::IsNonDisplaying ? "[NON-DISPLAYING]" : "");
+
+    // If we're beyond the duration, ignore this sample and the remaining ones.
+    MediaTime duration = m_mediaSourceClient->duration();
+    if (duration.isValid() && !duration.isIndefinite() && mediaSample->presentationTime() > duration) {
+        GST_DEBUG("Detected sample (%f) beyond the duration (%f), declaring LastSample", mediaSample->presentationTime().toFloat(), duration.toFloat());
+        setAppendState(AppendState::LastSample);
+        gst_sample_unref(sample);
+        return;
+    }
+
+    // Add a gap sample if a gap is detected before the first sample.
+    if (mediaSample->decodeTime() == MediaTime::zeroTime()
+        && mediaSample->presentationTime() > MediaTime::zeroTime()
+        && mediaSample->presentationTime() <= MediaTime(1, 10)) {
+        GST_DEBUG("Adding gap offset");
+        mediaSample->applyPtsOffset(MediaTime::zeroTime());
+    }
+
+    m_sourceBufferPrivate->didReceiveSample(*mediaSample);
+    setAppendState(AppendState::Sampling);
+    gst_sample_unref(sample);
 }
 
 void AppendPipeline::appsinkEOS()
@@ -742,6 +854,24 @@ AtomicString AppendPipeline::trackId()
     return m_track->id();
 }
 
+void AppendPipeline::consumeAppSinkAvailableSamples()
+{
+    ASSERT(WTF::isMainThread());
+
+    GstSample *sample;
+    int batchedSampleCount = 0;
+    while ((sample = gst_app_sink_try_pull_sample(GST_APP_SINK(m_appsink.get()), 0))) {
+        appsinkNewSample(sample);
+        batchedSampleCount++;
+    }
+
+    GST_DEBUG("batchedSampleCount = %d", batchedSampleCount);
+
+    if (batchedSampleCount > 0) {
+        checkEndOfAppend();
+    }
+}
+
 void AppendPipeline::resetPipeline()
 {
     ASSERT(WTF::isMainThread());
@@ -749,12 +879,8 @@ void AppendPipeline::resetPipeline()
     m_appsrcAtLeastABufferLeft = false;
     setAppsrcDataLeavingProbe();
 
-    {
-        LockHolder locker(m_newSampleLock);
-        m_newSampleCondition.notifyOne();
-        gst_element_set_state(m_pipeline.get(), GST_STATE_READY);
-        gst_element_get_state(m_pipeline.get(), nullptr, nullptr, 0);
-    }
+    gst_element_set_state(m_pipeline.get(), GST_STATE_READY);
+    gst_element_get_state(m_pipeline.get(), nullptr, nullptr, 0);
 
 #if (!(LOG_DISABLED || defined(GST_DISABLE_GST_DEBUG)))
     {
@@ -843,27 +969,23 @@ GstFlowReturn AppendPipeline::handleNewAppsinkSample(GstElement* appsink)
 {
     ASSERT(!WTF::isMainThread());
 
-    // Even if we're disabled, it's important to pull the sample out anyway to
-    // avoid deadlocks when changing to GST_STATE_NULL having a non empty appsink.
-    GRefPtr<GstSample> sample = adoptGRef(gst_app_sink_pull_sample(GST_APP_SINK(appsink)));
-    LockHolder locker(m_newSampleLock);
-
     if (!m_playerPrivate || m_appendState == AppendState::Invalid) {
+        GstSample *sample;
+        while ((sample = gst_app_sink_try_pull_sample(GST_APP_SINK(appsink), 0)))
+            gst_sample_unref(sample);
         GST_WARNING("AppendPipeline has been disabled, ignoring this sample");
         return GST_FLOW_ERROR;
     }
 
-    GstStructure* structure = gst_structure_new("appsink-new-sample", "new-sample", GST_TYPE_SAMPLE, sample.get(), nullptr);
-    GstMessage* message = gst_message_new_application(GST_OBJECT(appsink), structure);
-    gst_bus_post(m_bus.get(), message);
-    GST_TRACE("appsink-new-sample message posted to bus");
+    if (!m_busAlreadyNotifiedOfAvailablesamples) {
+        m_busAlreadyNotifiedOfAvailablesamples = true;
+        GstStructure* structure = gst_structure_new_empty("appsink-new-sample");
+        GstMessage* message = gst_message_new_application(GST_OBJECT(appsink), structure);
+        gst_bus_post(m_bus.get(), message);
+        GST_TRACE("appsink-new-sample message posted to bus");
+    }
 
-    m_newSampleCondition.wait(m_newSampleLock);
-    // We've been awaken because the sample was processed or because of
-    // an exceptional condition (entered in Invalid state, destructor, etc.).
-    // We can't reliably delete info here, appendPipelineAppsinkNewSampleMainThread will do it.
-
-    return m_flowReturn;
+    return GST_FLOW_OK;
 }
 
 static GRefPtr<GstElement>
@@ -927,7 +1049,7 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
         GstStructure* structure = gst_structure_new("demuxer-connect-to-appsink", "demuxer-src-pad", G_TYPE_OBJECT, demuxerSrcPad, nullptr);
         GstMessage* message = gst_message_new_application(GST_OBJECT(m_demux.get()), structure);
         gst_bus_post(m_bus.get(), message);
-        GST_TRACE("demuxer-connect-to-appsink message posted to bus");
+        GST_TRACE("demuxer-connect-to-appsink message posted to bus, waiting...");
 
         m_padAddRemoveCondition.wait(m_padAddRemoveLock);
 
@@ -939,6 +1061,8 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
     bool isData = (m_streamType == WebCore::MediaSourceStreamTypeGStreamer::Audio)
         || (m_streamType == WebCore::MediaSourceStreamTypeGStreamer::Video)
         || (m_streamType == WebCore::MediaSourceStreamTypeGStreamer::Text);
+
+    GST_TRACE("isData = %s", boolForPrinting(isData));
 
     if (isData) {
         // FIXME: Only add appsink one time. This method can be called several times.
@@ -954,6 +1078,7 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
         // This is known to be an issue with YouTube WebM files containing Opus audio as of YTTV2018.
         m_parser = createOptionalParserForFormat(currentSrcPad.get());
         if (m_parser) {
+            GST_INFO("created parser %s", GST_ELEMENT_NAME(m_parser.get()));
             gst_bin_add(GST_BIN(m_pipeline.get()), m_parser.get());
             gst_element_sync_state_with_parent(m_parser.get());
 
@@ -962,7 +1087,22 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
 
             gst_pad_link(currentSrcPad.get(), parserSinkPad.get());
             currentSrcPad = parserSrcPad;
-        }
+        } else
+            GST_INFO("no parser");
+
+        gst_pad_add_probe(currentSrcPad.get(), GST_PAD_PROBE_TYPE_BUFFER,
+            [] (GstPad*, GstPadProbeInfo* info, void* userData) -> GstPadProbeReturn {
+                ASSERT(GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_BUFFER);
+                BufferMetadataCompleter* completer = static_cast<BufferMetadataCompleter*>(userData);
+                GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
+                completer->completeMissingMetadata(buffer);
+                return GST_PAD_PROBE_OK;
+            },
+            new BufferMetadataCompleter(),
+            [] (gpointer userData) {
+                BufferMetadataCompleter* completer = static_cast<BufferMetadataCompleter*>(userData);
+                delete completer;
+            });
 
         gst_pad_link(currentSrcPad.get(), appsinkSinkPad.get());
 
@@ -973,6 +1113,22 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
 
         GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(m_pipeline.get()), GST_DEBUG_GRAPH_SHOW_ALL, "webkit-after-link");
     }
+}
+
+void AppendPipeline::transitionTo(AppendState nextState, bool isAlreadyLocked)
+{
+    ASSERT(WTF::isMainThread());
+
+    LockHolder locker(isAlreadyLocked ? nullptr : &m_appendStateTransitionLock);
+
+    if (m_appendState == AppendState::Invalid || m_appendState == nextState || !m_playerPrivate) {
+        m_appendStateTransitionCondition.notifyOne();
+        return;
+    }
+
+    setAppendState(nextState);
+
+    m_appendStateTransitionCondition.notifyOne();
 }
 
 void AppendPipeline::connectDemuxerSrcPadToAppsink(GstPad* demuxerSrcPad)
@@ -1004,8 +1160,7 @@ void AppendPipeline::connectDemuxerSrcPadToAppsink(GstPad* demuxerSrcPad)
     }
 #endif
 
-    if (m_initialDuration > m_mediaSourceClient->duration()
-        || (m_mediaSourceClient->duration().isInvalid() && m_initialDuration > MediaTime::zeroTime()))
+    if (m_mediaSourceClient->duration().isInvalid() && m_initialDuration > MediaTime::zeroTime())
         m_mediaSourceClient->durationChanged(m_initialDuration);
 
     parseDemuxerSrcPadCaps(gst_caps_ref(caps.get()));
@@ -1041,6 +1196,10 @@ void AppendPipeline::connectDemuxerSrcPadToAppsink(GstPad* demuxerSrcPad)
         break;
     }
 
+    m_appsinkCaps = WTFMove(caps);
+    if (m_playerPrivate)
+        m_playerPrivate->trackDetected(this, m_track, true);
+
     m_padAddRemoveCondition.notifyOne();
 }
 
@@ -1057,6 +1216,15 @@ void AppendPipeline::disconnectDemuxerSrcPadFromAppsinkFromAnyThread(GstPad*)
     }
 
     GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(m_pipeline.get()), GST_DEBUG_GRAPH_SHOW_ALL, "pad-removed-after");
+}
+
+void AppendPipeline::appendPipelineDemuxerNoMorePadsFromAnyThread()
+{
+    GST_TRACE("appendPipelineDemuxerNoMorePadsFromAnyThread");
+    GstStructure* structure = gst_structure_new_empty("demuxer-no-more-pads");
+    GstMessage* message = gst_message_new_application(GST_OBJECT(m_appsrc.get()), structure);
+    gst_bus_post(m_bus.get(), message);
+    GST_TRACE("appendPipelineDemuxerNoMorePadsFromAnyThread - posted to bus");
 }
 
 static void appendPipelineAppsinkCapsChanged(GObject* appsinkPad, GParamSpec*, AppendPipeline* appendPipeline)
@@ -1092,20 +1260,56 @@ static GstPadProbeReturn appendPipelinePadProbeDebugInformation(GstPad*, GstPadP
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
-static GstPadProbeReturn appendPipelineAppsinkPadEventProbe(GstPad*, GstPadProbeInfo* info, struct PadProbeInformation *padProbeInformation)
+void AppendPipeline::cacheProtectionEvent(GRefPtr<GstEvent>&& event)
 {
-    ASSERT(GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM);
-    GstEvent* event = gst_pad_probe_info_get_event(info);
-    GST_DEBUG("Handling event %s on append pipeline appsinkPad", GST_EVENT_TYPE_NAME(event));
-    WebCore::AppendPipeline* appendPipeline = padProbeInformation->appendPipeline;
+    if (!m_isProcessingProtectionEvents) {
+        GST_TRACE("first event, resetting list");
+        m_isProcessingProtectionEvents = true;
+        g_value_reset(&m_cachedProtectionEvents);
+    }
 
-    switch (GST_EVENT_TYPE(event)) {
-    case GST_EVENT_PROTECTION:
-        if (appendPipeline && appendPipeline->playerPrivate())
-            appendPipeline->playerPrivate()->handleProtectionEvent(event);
-        return GST_PAD_PROBE_DROP;
-    default:
-        break;
+    GST_DEBUG("caching protection event %u on append pipeline appsink pad", GST_EVENT_SEQNUM(event.get()));
+    GValue* eventValue = g_new0(GValue, 1);
+    g_value_init(eventValue, GST_TYPE_EVENT);
+    g_value_take_boxed(eventValue, event.leakRef());
+    gst_value_list_append_and_take_value(&m_cachedProtectionEvents, eventValue);
+}
+
+void AppendPipeline::handleProtectedBufferProbeInformation(GstPadProbeInfo* info)
+{
+    ASSERT(GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_BUFFER);
+
+    m_isProcessingProtectionEvents = false;
+
+    GstBuffer* buffer = gst_pad_probe_info_get_buffer(info);
+    GstProtectionMeta* protectionMeta = reinterpret_cast<GstProtectionMeta*>(gst_buffer_get_protection_meta(buffer));
+    unsigned listSize = gst_value_list_get_size(&m_cachedProtectionEvents);
+    if (!listSize || !protectionMeta)
+        return;
+
+    GST_DEBUG("adding %u protection events to buffer %p", listSize, buffer);
+    gst_structure_set_value(protectionMeta->info, "stream-encryption-events", &m_cachedProtectionEvents);
+}
+
+static GstPadProbeReturn appendPipelineAppsinkPadProtectionProbe(GstPad*, GstPadProbeInfo* info, struct PadProbeInformation *padProbeInformation)
+{
+    WebCore::AppendPipeline* appendPipeline = padProbeInformation->appendPipeline;
+    ASSERT(appendPipeline);
+
+    if (GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_EVENT_DOWNSTREAM) {
+        GstEvent* event = gst_pad_probe_info_get_event(info);
+
+        switch (GST_EVENT_TYPE(event)) {
+        case GST_EVENT_PROTECTION:
+            appendPipeline->cacheProtectionEvent(adoptGRef(event));
+            return GST_PAD_PROBE_HANDLED;
+        default:
+            break;
+        }
+    } else if (GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_BUFFER)
+        appendPipeline->handleProtectedBufferProbeInformation(info);
+    else {
+        ASSERT_NOT_REACHED();
     }
 
     return GST_PAD_PROBE_OK;
@@ -1133,6 +1337,11 @@ static void appendPipelineDemuxerPadAdded(GstElement*, GstPad* demuxerSrcPad, Ap
 static void appendPipelineDemuxerPadRemoved(GstElement*, GstPad* demuxerSrcPad, AppendPipeline* appendPipeline)
 {
     appendPipeline->disconnectDemuxerSrcPadFromAppsinkFromAnyThread(demuxerSrcPad);
+}
+
+static void appendPipelineDemuxerNoMorePads(GstElement*, AppendPipeline* appendPipeline)
+{
+    appendPipeline->appendPipelineDemuxerNoMorePadsFromAnyThread();
 }
 
 static GstFlowReturn appendPipelineAppsinkNewSample(GstElement* appsink, AppendPipeline* appendPipeline)

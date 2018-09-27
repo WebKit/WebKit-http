@@ -39,6 +39,7 @@ public:
     virtual ~CDMClient() = default;
 
     virtual void cdmClientAttemptToResumePlaybackIfNecessary() = 0;
+    virtual void cdmClientAttemptToDecryptWithInstance(const CDMInstance&) = 0;
 };
 
 } // namespace WebCore

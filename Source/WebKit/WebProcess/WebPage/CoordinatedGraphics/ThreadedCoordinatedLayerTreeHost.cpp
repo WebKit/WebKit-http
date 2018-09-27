@@ -77,10 +77,10 @@ ThreadedCoordinatedLayerTreeHost::ThreadedCoordinatedLayerTreeHost(WebPage& webP
         if (m_surface->shouldPaintMirrored())
             paintFlags |= TextureMapper::PaintingMirrored;
 
-        m_compositor = ThreadedCompositor::create(m_compositorClient, m_compositorClient, compositingDisplayID, scaledSize, scaleFactor, ThreadedCompositor::ShouldDoFrameSync::Yes, paintFlags);
+        m_compositor = ThreadedCompositor::create(m_compositorClient, m_compositorClient, compositingDisplayID, webPage, scaledSize, scaleFactor, ThreadedCompositor::ShouldDoFrameSync::Yes, paintFlags);
         m_layerTreeContext.contextID = m_surface->surfaceID();
     } else
-        m_compositor = ThreadedCompositor::create(m_compositorClient, m_compositorClient, compositingDisplayID, scaledSize, scaleFactor);
+        m_compositor = ThreadedCompositor::create(m_compositorClient, m_compositorClient, compositingDisplayID, webPage, scaledSize, scaleFactor);
 
     m_webPage.windowScreenDidChange(compositingDisplayID);
 

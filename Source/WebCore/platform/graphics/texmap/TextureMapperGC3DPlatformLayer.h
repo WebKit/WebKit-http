@@ -29,11 +29,12 @@
 namespace WebCore {
 
 class GLContext;
+class HostWindow;
 class TextureMapperPlatformLayerProxy;
 
 class TextureMapperGC3DPlatformLayer : public PlatformLayer {
 public:
-    TextureMapperGC3DPlatformLayer(GraphicsContext3D&, GraphicsContext3D::RenderStyle);
+    TextureMapperGC3DPlatformLayer(GraphicsContext3D&, GraphicsContext3D::RenderStyle, HostWindow*);
     virtual ~TextureMapperGC3DPlatformLayer();
 
     bool makeContextCurrent();
@@ -49,6 +50,7 @@ public:
 private:
     GraphicsContext3D& m_context;
     std::unique_ptr<GLContext> m_glContext;
+    GraphicsContext3D::RenderStyle m_renderStyle;
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
     RefPtr<TextureMapperPlatformLayerProxy> m_platformLayerProxy;

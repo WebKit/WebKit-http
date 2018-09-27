@@ -32,6 +32,9 @@ namespace WebKit {
 
 bool ScrollGestureController::handleEvent(const struct wpe_input_touch_event_raw* touchPoint)
 {
+    // FIXME: We shouldn't hard-code this.
+    enum Axis { Vertical, Horizontal, Smooth };
+
     switch (touchPoint->type) {
     case wpe_input_touch_event_type_down:
         m_start.time = touchPoint->time;
@@ -55,7 +58,7 @@ bool ScrollGestureController::handleEvent(const struct wpe_input_touch_event_raw
             m_axisEvent = {
                 wpe_input_axis_event_type_motion,
                 touchPoint->time, m_start.x, m_start.y,
-                2, (touchPoint->y - m_offset.y)
+                Smooth, (touchPoint->y - m_offset.y)
             };
             m_offset.x = touchPoint->x;
             m_offset.y = touchPoint->y;

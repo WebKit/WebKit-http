@@ -60,6 +60,7 @@ public:
 
 #if USE(SOUP)
     void setCookiePersistentStorage(const String& storagePath, uint32_t storageType);
+    void setLimit(uint64_t limit);
 #elif USE(CURL)
     void setCookiePersistentStorage(const String& storagePath);
 #endif
@@ -88,6 +89,9 @@ private:
 
     void startObservingCookieChanges(PAL::SessionID);
     void stopObservingCookieChanges(PAL::SessionID);
+
+    void setCookies2(PAL::SessionID, const Vector<WebCore::Cookie>& cookies);
+    void getCookies2(PAL::SessionID, CallbackID);
 
     ChildProcess& m_process;
 };

@@ -696,6 +696,9 @@ ExceptionOr<UncachedString> HTMLCanvasElement::toDataURL(const String& mimeType,
     if (!originClean())
         return Exception { SecurityError };
 
+    if (mimeType == "image/webp")
+        return UncachedString { "data:image/webp;base64,"_s };
+
     if (m_size.isEmpty() || !buffer())
         return UncachedString { "data:,"_s };
 

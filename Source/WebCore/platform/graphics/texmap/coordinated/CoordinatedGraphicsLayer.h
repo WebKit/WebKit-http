@@ -33,6 +33,7 @@
 #include "NicosiaBuffer.h"
 #include "NicosiaPlatformLayer.h"
 #include "TextureMapperAnimation.h"
+#include "TextureMapperPlatformLayer.h"
 #include "TiledBackingStore.h"
 #include "TiledBackingStoreClient.h"
 #include "TransformationMatrix.h"
@@ -60,7 +61,8 @@ public:
 
 class WEBCORE_EXPORT CoordinatedGraphicsLayer : public GraphicsLayer
     , public TiledBackingStoreClient
-    , public CoordinatedImageBacking::Host {
+    , public CoordinatedImageBacking::Host
+    , public TextureMapperPlatformLayer::Client {
 public:
     explicit CoordinatedGraphicsLayer(Type, GraphicsLayerClient&);
     virtual ~CoordinatedGraphicsLayer();
@@ -127,6 +129,10 @@ public:
     void createTile(uint32_t tileID, float) override;
     void updateTile(uint32_t tileID, const SurfaceUpdateInfo&, const IntRect&) override;
     void removeTile(uint32_t tileID) override;
+
+    // TextureMapperPlatformLayer::Client
+    void platformLayerWillBeDestroyed() override { setContentsToPlatformLayer(0, ContentsLayerPurpose::None); }
+    void setPlatformLayerNeedsDisplay() override { setContentsNeedsDisplay(); }
 
     void setCoordinator(CoordinatedGraphicsLayerClient*);
     void setCoordinatorIncludingSubLayersIfNeeded(CoordinatedGraphicsLayerClient*);

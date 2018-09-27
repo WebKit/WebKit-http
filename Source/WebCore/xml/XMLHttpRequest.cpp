@@ -591,6 +591,12 @@ ExceptionOr<void> XMLHttpRequest::createRequest()
     options.filteringPolicy = ResponseFilteringPolicy::Enable;
     options.sniffContentEncoding = ContentEncodingSniffingPolicy::DoNotSniff;
 
+    if (m_responseType == ResponseType::Arraybuffer || getenv("WPE_DISABLE_XHR_RESPONSE_CACHING")) {
+        options.dataBufferingPolicy = DataBufferingPolicy::DoNotBufferData;
+        options.cachingPolicy = CachingPolicy::DisallowCaching;
+        request.setCachePolicy(ResourceRequestCachePolicy::DoNotUseAnyCache);
+    }
+
     if (m_timeoutMilliseconds) {
         if (!m_async)
             request.setTimeoutInterval(m_timeoutMilliseconds / 1000.0);
@@ -702,6 +708,7 @@ void XMLHttpRequest::clearResponse()
 
 void XMLHttpRequest::clearResponseBuffers()
 {
+    m_reportedExtraMemoryCost = 0;
     m_responseBuilder.clear();
     m_responseEncoding = String();
     m_createdDocument = false;
@@ -746,20 +753,31 @@ void XMLHttpRequest::abortError()
     dispatchErrorEvents(eventNames().abortEvent);
 }
 
+size_t XMLHttpRequest::extraMemoryCost() const
+{
+    size_t extraMemoryCost = m_responseBuilder.length();
+    extraMemoryCost += m_binaryResponseBuilder ?  m_binaryResponseBuilder->size() : 0;
+    return extraMemoryCost;
+}
+
+void XMLHttpRequest::reportExtraMemoryCost()
+{
+    size_t extraMemoryCost = this->extraMemoryCost();
+    if (extraMemoryCost < m_reportedExtraMemoryCost)
+        return;
+    size_t extraMemoryCostDelta = extraMemoryCost - m_reportedExtraMemoryCost;
+    if (extraMemoryCostDelta > 0) {
+        JSC::VM& vm = scriptExecutionContext()->vm();
+        JSC::JSLockHolder lock(vm);
+        // FIXME: Adopt reportExtraMemoryVisited, and switch to reportExtraMemoryAllocated.
+        // https://bugs.webkit.org/show_bug.cgi?id=142595
+        vm.heap.deprecatedReportExtraMemory(extraMemoryCostDelta);
+        m_reportedExtraMemoryCost = extraMemoryCost;
+    }
+}
+
 void XMLHttpRequest::dropProtection()
 {
-    // The XHR object itself holds on to the responseText, and
-    // thus has extra cost even independent of any
-    // responseText or responseXML objects it has handed
-    // out. But it is protected from GC while loading, so this
-    // can't be recouped until the load is done, so only
-    // report the extra cost at that point.
-    JSC::VM& vm = scriptExecutionContext()->vm();
-    JSC::JSLockHolder lock(vm);
-    // FIXME: Adopt reportExtraMemoryVisited, and switch to reportExtraMemoryAllocated.
-    // https://bugs.webkit.org/show_bug.cgi?id=142595
-    vm.heap.deprecatedReportExtraMemory(m_responseBuilder.length() * 2);
-
     unsetPendingActivity(this);
 }
 
@@ -915,6 +933,8 @@ void XMLHttpRequest::didFinishLoading(unsigned long)
         m_responseBuilder.append(m_decoder->flush());
 
     m_responseBuilder.shrinkToFit();
+
+    reportExtraMemoryCost();
 
     bool hadLoader = m_loader;
     m_loader = nullptr;

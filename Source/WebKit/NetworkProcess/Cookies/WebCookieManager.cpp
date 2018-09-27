@@ -161,4 +161,18 @@ void WebCookieManager::getHTTPCookieAcceptPolicy(CallbackID callbackID)
     m_process.send(Messages::WebCookieManagerProxy::DidGetHTTPCookieAcceptPolicy(platformGetHTTPCookieAcceptPolicy(), callbackID), 0);
 }
 
+void WebCookieManager::setCookies2(PAL::SessionID sessionID, const Vector<WebCore::Cookie>& cookies)
+{
+    if (auto* storageSession = NetworkStorageSession::storageSession(sessionID))
+        storageSession->setCookies(cookies);
+}
+
+void WebCookieManager::getCookies2(PAL::SessionID sessionID, CallbackID callbackID)
+{
+    Vector<WebCore::Cookie> cookies;
+    if (auto* storageSession = NetworkStorageSession::storageSession(sessionID))
+        storageSession->getCookies(cookies);
+    m_process.send(Messages::WebCookieManagerProxy::DidGetCookies2(cookies, callbackID), 0);
+}
+
 } // namespace WebKit

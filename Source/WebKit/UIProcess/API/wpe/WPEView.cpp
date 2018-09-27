@@ -31,7 +31,9 @@
 #include "DrawingAreaProxy.h"
 #include "NativeWebKeyboardEvent.h"
 #include "NativeWebMouseEvent.h"
+#if ENABLE(TOUCH_EVENTS)
 #include "NativeWebTouchEvent.h"
+#endif
 #include "NativeWebWheelEvent.h"
 #include "WebPageGroup.h"
 #include "WebProcessPool.h"
@@ -61,7 +63,6 @@ View::View(struct wpe_view_backend* backend, const API::PageConfiguration& baseC
         preferences->setAcceleratedCompositingEnabled(true);
         preferences->setForceCompositingMode(true);
         preferences->setAccelerated2dCanvasEnabled(true);
-        preferences->setWebGLEnabled(true);
         preferences->setDeveloperExtrasEnabled(true);
     }
 
@@ -71,6 +72,10 @@ View::View(struct wpe_view_backend* backend, const API::PageConfiguration& baseC
 #if ENABLE(MEMORY_SAMPLER)
     if (getenv("WEBKIT_SAMPLE_MEMORY"))
         pool->startMemorySampler(0);
+#endif
+
+#if PLATFORM(INTEL_CE)
+    m_pageProxy->setDrawsBackground(false);
 #endif
 
     m_compositingManagerProxy.initialize();
@@ -126,8 +131,10 @@ View::View(struct wpe_view_backend* backend, const API::PageConfiguration& baseC
         // handle_touch_event
         [](void* data, struct wpe_input_touch_event* event)
         {
+#if ENABLE(TOUCH_EVENTS)
             auto& page = reinterpret_cast<View*>(data)->page();
             page.handleTouchEvent(WebKit::NativeWebTouchEvent(event, page.deviceScaleFactor()));
+#endif
         },
         // padding
         nullptr,

@@ -84,6 +84,9 @@
 #include "MediaPlayerPrivateAVFoundationCF.h"
 #endif
 
+#if USE(HOLE_PUNCH_EXTERNAL)
+#include "MediaPlayerPrivateHolePunchDummy.h"
+#endif
 namespace WebCore {
 
 #if !RELEASE_LOG_DISABLED
@@ -154,6 +157,7 @@ public:
     bool didLoadingProgress() const override { return false; }
 
     void setSize(const IntSize&) override { }
+    void setPosition(const IntPoint&) override { }
 
     void paint(GraphicsContext&, const FloatRect&) override { }
 
@@ -255,6 +259,10 @@ static void buildMediaEnginesVector()
         MediaPlayerPrivateGStreamerMSE::registerMediaEngine(addMediaEngine);
 #endif
 
+#if USE(HOLE_PUNCH_EXTERNAL)
+    MediaPlayerPrivateHolePunchDummy::registerMediaEngine(addMediaEngine);
+#endif
+
     haveMediaEnginesVector() = true;
 }
 
@@ -297,7 +305,7 @@ static const MediaPlayerFactory* bestMediaEngineForSupportParameters(const Media
         return nullptr;
 
     // 4.8.10.3 MIME types - In the absence of a specification to the contrary, the MIME type "application/octet-stream"
-    // when used with parameters, e.g. "application/octet-stream;codecs=theora", is a type that the user agent knows 
+    // when used with parameters, e.g. "application/octet-stream;codecs=theora", is a type that the user agent knows
     // it cannot render.
     if (parameters.type.containerType() == applicationOctetStream()) {
         if (!parameters.type.codecs().isEmpty())
@@ -815,6 +823,7 @@ void MediaPlayer::setPreservesPitch(bool preservesPitch)
 
 std::unique_ptr<PlatformTimeRanges> MediaPlayer::buffered()
 {
+    RELEASE_ASSERT(m_private.get() != nullptr);
     return m_private->buffered();
 }
 
@@ -853,6 +862,12 @@ void MediaPlayer::setSize(const IntSize& size)
     m_size = size;
     m_private->setSize(size);
 }
+
+void MediaPlayer::setPosition(const IntPoint& position)
+{
+    m_private->setPosition(position);
+}
+
 
 bool MediaPlayer::visible() const
 {

@@ -52,6 +52,8 @@ public:
     void load(const String&) override;
     void load(const String&, MediaSourcePrivateClient*) override;
 
+    FloatSize naturalSize() const final;
+
     void setDownloadBuffering() override { };
 
     bool isLiveStream() const override { return false; }
@@ -78,6 +80,7 @@ public:
     MediaSourcePrivateClient* mediaSourcePrivateClient() { return m_mediaSource.get(); }
 
     void markEndOfStream(MediaSourcePrivate::EndOfStreamStatus);
+    void unmarkEndOfStream();
 
     void trackDetected(RefPtr<AppendPipeline>, RefPtr<WebCore::TrackPrivateBase>, bool firstTrackDetected);
     void notifySeekNeedsDataForTime(const MediaTime&);
@@ -87,11 +90,15 @@ public:
 
 #if ENABLE(ENCRYPTED_MEDIA)
     void attemptToDecryptWithInstance(CDMInstance&) final;
+    void dispatchDecryptionStructure(GUniquePtr<GstStructure>&&) final;
 #endif
 
 private:
     static void getSupportedTypes(HashSet<String, ASCIICaseInsensitiveHash>&);
     static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
+    static bool initializeGStreamer();
+    static void ensureWebKitGStreamerElements();
+    static HashSet<String, ASCIICaseInsensitiveHash>& mimeTypeCache();
 
     static bool isAvailable();
 
@@ -106,6 +113,7 @@ private:
 
     // FIXME: Implement videoPlaybackQualityMetrics.
     bool isTimeBuffered(const MediaTime&) const;
+    bool playbackPipelineHasFutureData() const;
 
     bool isMediaSource() const override { return true; }
 

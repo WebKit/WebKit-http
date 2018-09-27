@@ -30,7 +30,9 @@
 
 #include "CompositingRunLoop.h"
 #include "ThreadedDisplayRefreshMonitor.h"
+#include "WebPage.h"
 #include <WebCore/PlatformDisplay.h>
+#include <WebCore/Settings.h>
 #include <WebCore/TransformationMatrix.h>
 #include <wtf/SetForScope.h>
 
@@ -45,15 +47,16 @@
 namespace WebKit {
 using namespace WebCore;
 
-Ref<ThreadedCompositor> ThreadedCompositor::create(Client& client, ThreadedDisplayRefreshMonitor::Client& displayRefreshMonitorClient, PlatformDisplayID displayID, const IntSize& viewportSize, float scaleFactor, ShouldDoFrameSync doFrameSync, TextureMapper::PaintFlags paintFlags)
+Ref<ThreadedCompositor> ThreadedCompositor::create(Client& client, ThreadedDisplayRefreshMonitor::Client& displayRefreshMonitorClient, PlatformDisplayID displayID, WebPage& webPage, const IntSize& viewportSize, float scaleFactor, ShouldDoFrameSync doFrameSync, TextureMapper::PaintFlags paintFlags)
 {
-    return adoptRef(*new ThreadedCompositor(client, displayRefreshMonitorClient, displayID, viewportSize, scaleFactor, doFrameSync, paintFlags));
+    return adoptRef(*new ThreadedCompositor(client, displayRefreshMonitorClient, displayID, webPage, viewportSize, scaleFactor, doFrameSync, paintFlags));
 }
 
-ThreadedCompositor::ThreadedCompositor(Client& client, ThreadedDisplayRefreshMonitor::Client& displayRefreshMonitorClient, PlatformDisplayID displayID, const IntSize& viewportSize, float scaleFactor, ShouldDoFrameSync doFrameSync, TextureMapper::PaintFlags paintFlags)
+ThreadedCompositor::ThreadedCompositor(Client& client, ThreadedDisplayRefreshMonitor::Client& displayRefreshMonitorClient, PlatformDisplayID displayID, WebPage& webPage, const IntSize& viewportSize, float scaleFactor, ShouldDoFrameSync doFrameSync, TextureMapper::PaintFlags paintFlags)
     : m_client(client)
     , m_doFrameSync(doFrameSync)
     , m_paintFlags(paintFlags)
+    , m_nonCompositedWebGLEnabled(webPage.corePage()->settings().nonCompositedWebGLEnabled())
     , m_compositingRunLoop(std::make_unique<CompositingRunLoop>([this] { renderLayerTree(); }))
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     , m_displayRefreshMonitor(ThreadedDisplayRefreshMonitor::create(displayID, displayRefreshMonitorClient))
@@ -84,6 +87,11 @@ ThreadedCompositor::~ThreadedCompositor()
 void ThreadedCompositor::createGLContext()
 {
     ASSERT(!RunLoop::isMain());
+
+    // If nonCompositedWebGL is enabled there will be a gl context created for the window to render webgl. We can't
+    // create another context for the same window as this breaks the rendering on some platforms.
+    if (m_nonCompositedWebGLEnabled)
+        return;
 
     ASSERT(m_nativeSurfaceHandle);
 
@@ -180,8 +188,30 @@ void ThreadedCompositor::forceRepaint()
 #endif
 }
 
+void ThreadedCompositor::renderNonCompositedWebGL()
+{
+    m_client.willRenderFrame();
+
+    // Retrieve the scene attributes in a thread-safe manner.
+    // Do this in order to free the structures memory, as they are not really used in this case.
+    Vector<WebCore::CoordinatedGraphicsState> states;
+
+    {
+        LockHolder locker(m_attributes.lock);
+        states = WTFMove(m_attributes.states);
+        m_attributes.clientRendersNextFrame = true;
+    }
+
+    m_client.didRenderFrame();
+}
+
 void ThreadedCompositor::renderLayerTree()
 {
+    if (m_nonCompositedWebGLEnabled) {
+        renderNonCompositedWebGL();
+        return;
+    }
+
     if (!m_scene || !m_scene->isActive())
         return;
 

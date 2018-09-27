@@ -56,11 +56,13 @@ public:
     static ClearKeyState& singleton();
 
     KeyStore& keys() { return m_keys; }
+    HashSet<String>& persistentSessions() { return m_persistentSessions; }
 
 private:
     friend class NeverDestroyed<ClearKeyState>;
     ClearKeyState();
     KeyStore m_keys;
+    HashSet<String> m_persistentSessions;
 };
 
 ClearKeyState& ClearKeyState::singleton()

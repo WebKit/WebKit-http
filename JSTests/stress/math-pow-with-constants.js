@@ -218,7 +218,7 @@ noInline(exponentIsDoubleConstant);
 function testExponentIsDoubleConstant() {
     for (var i = 0; i < 1000; ++i) {
         var result = exponentIsDoubleConstant(2);
-        if (result !== 6219777023950.95)
+        if (Math.abs(result - 6219777023950.95) > 0.01)
             throw "Error: exponentIsDoubleConstant(2) should be 6219777023950.95, was = " + result;
     }
     for (var i = 0; i < 1000; ++i) {

@@ -78,6 +78,9 @@ VideoTextureCopierGStreamer::~VideoTextureCopierGStreamer()
 void VideoTextureCopierGStreamer::updateColorConversionMatrix(ColorConversion colorConversion)
 {
     switch (colorConversion) {
+    case ColorConversion::AlreadyRGBA:
+        m_colorConversionMatrix.setMatrix(1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0);
+        break;
     case ColorConversion::ConvertBGRAToRGBA:
         m_colorConversionMatrix.setMatrix(0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0);
         break;
@@ -152,7 +155,6 @@ bool VideoTextureCopierGStreamer::copyVideoTextureToPlatformTexture(GLuint input
 
     // Save previous context and activate the sharing one.
     GLContext* previousContext = GLContext::current();
-    ASSERT(previousContext);
     PlatformDisplay::sharedDisplayForCompositing().sharingGLContext()->makeContextCurrent();
 
     // Save previous bound framebuffer, texture and viewport.
@@ -216,7 +218,8 @@ bool VideoTextureCopierGStreamer::copyVideoTextureToPlatformTexture(GLuint input
     bool ok = (glGetError() == GL_NO_ERROR);
 
     // Restore previous context.
-    previousContext->makeContextCurrent();
+    if (previousContext)
+        previousContext->makeContextCurrent();
     return ok;
 }
 

@@ -35,6 +35,7 @@ class ImageOrientation;
 class VideoTextureCopierGStreamer {
 public:
     enum class ColorConversion {
+        AlreadyRGBA,
         ConvertBGRAToRGBA,
         ConvertARGBToRGBA
     };

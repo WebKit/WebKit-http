@@ -41,6 +41,7 @@
 #include "Pattern.h"
 #include "PlatformContextCairo.h"
 #include "RefPtrCairo.h"
+#include "image-encoders/JPEGImageEncoder.h"
 #include <JavaScriptCore/JSCInlines.h>
 #include <JavaScriptCore/TypedArrayInlines.h>
 #include <cairo.h>
@@ -79,12 +80,20 @@
 namespace WebCore {
 using namespace std;
 
+bool cairoIsUsingNOAA()
+{
+    // Check whether cairo is using the NOAA compositor using the CAIRO_GL_COMPOSITOR env variable.
+    const char *env = getenv ("CAIRO_GL_COMPOSITOR");
+    return env && !strcmp(env, "noaa");
+}
+
 ImageBufferData::ImageBufferData(const IntSize& size, RenderingMode renderingMode)
     : m_platformContext(0)
     , m_size(size)
     , m_renderingMode(renderingMode)
 #if ENABLE(ACCELERATED_2D_CANVAS)
 #if USE(COORDINATED_GRAPHICS_THREADED)
+    , m_bufferChanged(false)
     , m_compositorTexture(0)
 #endif
     , m_texture(0)
@@ -148,6 +157,11 @@ void ImageBufferData::createCompositorBuffer()
     cairo_set_antialias(m_compositorCr.get(), CAIRO_ANTIALIAS_NONE);
 }
 
+void ImageBufferData::markBufferChanged()
+{
+    m_bufferChanged = true;
+}
+
 #if !USE(NICOSIA)
 RefPtr<TextureMapperPlatformLayerProxy> ImageBufferData::proxy() const
 {
@@ -157,7 +171,13 @@ RefPtr<TextureMapperPlatformLayerProxy> ImageBufferData::proxy() const
 
 void ImageBufferData::swapBuffersIfNeeded()
 {
+    ASSERT(m_renderingMode == RenderingMode::Accelerated);
+
+    if (!m_bufferChanged)
+        return;
+
     GLContext* previousActiveContext = GLContext::current();
+    cairo_surface_flush(m_surface.get());
 
     if (!m_compositorTexture) {
         createCompositorBuffer();
@@ -181,7 +201,10 @@ void ImageBufferData::swapBuffersIfNeeded()
     cairo_set_source_surface(m_compositorCr.get(), m_surface.get(), 0, 0);
     cairo_set_operator(m_compositorCr.get(), CAIRO_OPERATOR_SOURCE);
     cairo_paint(m_compositorCr.get());
+    cairo_surface_flush(m_compositorSurface.get());
+    glFlush();
 
+    m_bufferChanged = false;
     if (previousActiveContext)
         previousActiveContext->makeContextCurrent();
 }
@@ -285,6 +308,12 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpac
         m_data.createCairoGLSurface();
         if (!m_data.m_surface || cairo_surface_status(m_data.m_surface.get()) != CAIRO_STATUS_SUCCESS)
             m_data.m_renderingMode = Unaccelerated; // If allocation fails, fall back to non-accelerated path.
+#if USE(COORDINATED_GRAPHICS_THREADED)
+        else {
+            LockHolder locker(m_data.m_platformLayerProxy->lock());
+            m_data.m_platformLayerProxy->pushNextBuffer(std::make_unique<TextureMapperPlatformLayerBuffer>(m_data.m_texture, m_size, TextureMapperGL::ShouldBlend, GraphicsContext3D::RGBA));
+        }
+#endif
     }
     if (m_data.m_renderingMode == Unaccelerated)
 #else
@@ -309,6 +338,9 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpac
 
     RefPtr<cairo_t> cr = adoptRef(cairo_create(m_data.m_surface.get()));
     m_data.m_platformContext.setCr(cr.get());
+    // Disable antialiasing if cairo is using the NOAA compositor.
+    if (cairoIsUsingNOAA())
+        cairo_set_antialias(cr.get(), CAIRO_ANTIALIAS_NONE);
     m_data.m_context = std::make_unique<GraphicsContext>(GraphicsContextImplCairo::createFactory(m_data.m_platformContext));
     success = true;
 }
@@ -353,8 +385,12 @@ void ImageBuffer::drawConsuming(std::unique_ptr<ImageBuffer> imageBuffer, Graphi
 void ImageBuffer::draw(GraphicsContext& destinationContext, const FloatRect& destRect, const FloatRect& srcRect,
     CompositeOperator op, BlendMode blendMode)
 {
-    BackingStoreCopy copyMode = &destinationContext == &context() ? CopyBackingStore : DontCopyBackingStore;
-    RefPtr<Image> image = copyImage(copyMode);
+    if (&destinationContext == &context()) {
+        drawNativeImage(m_data.m_surface, destinationContext, destRect, srcRect, m_size, op, blendMode, ImageOrientation());
+        return;
+    }
+
+    RefPtr<Image> image = copyImage(CopyBackingStore);
     destinationContext.drawImage(*image, destRect, srcRect, ImagePaintingOptions(op, blendMode, DecodingMode::Synchronous, ImageOrientationDescription()));
 }
 
@@ -641,11 +677,21 @@ static cairo_status_t writeFunction(void* output, const unsigned char* data, uns
     return CAIRO_STATUS_SUCCESS;
 }
 
-static bool encodeImage(cairo_surface_t* image, const String& mimeType, Vector<uint8_t>* output)
+static bool encodeImage(cairo_surface_t* image, const String& mimeType, Vector<uint8_t>* output, optional<double> quality)
 {
-    ASSERT_UNUSED(mimeType, mimeType == "image/png"); // Only PNG output is supported for now.
+    ASSERT_UNUSED(mimeType, mimeType == "image/png" || mimeType == "image/jpeg"); // Only PNG  and JPEG output are supported for now.
 
-    return cairo_surface_write_to_png_stream(image, writeFunction, output) == CAIRO_STATUS_SUCCESS;
+    if (mimeType == "image/png")
+        return cairo_surface_write_to_png_stream(image, writeFunction, output) == CAIRO_STATUS_SUCCESS;
+
+    if (mimeType == "image/jpeg") {
+        unsigned char* imageData = cairo_image_surface_get_data(image);
+        int width = cairo_image_surface_get_width(image);
+        int height = cairo_image_surface_get_height(image);
+        return compressRGBABigEndianToJPEG(imageData, IntSize(width, height), *output, quality);
+    }
+
+    return false;
 }
 
 String ImageBuffer::toDataURL(const String& mimeType, std::optional<double> quality, PreserveResolution) const
@@ -660,14 +706,14 @@ String ImageBuffer::toDataURL(const String& mimeType, std::optional<double> qual
     return "data:" + mimeType + ";base64," + base64Data;
 }
 
-Vector<uint8_t> ImageBuffer::toData(const String& mimeType, std::optional<double>) const
+Vector<uint8_t> ImageBuffer::toData(const String& mimeType, std::optional<double> quality) const
 {
     ASSERT(MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType));
 
     cairo_surface_t* image = cairo_get_target(context().platformContext()->cr());
 
     Vector<uint8_t> encodedImage;
-    if (!image || !encodeImage(image, mimeType, &encodedImage))
+    if (!image || !encodeImage(image, mimeType, &encodedImage, quality))
         return { };
 
     return encodedImage;
@@ -702,6 +748,15 @@ PlatformLayer* ImageBuffer::platformLayer() const
 #endif
     return 0;
 }
+
+#if USE(COORDINATED_GRAPHICS_THREADED)
+void ImageBuffer::markBufferChanged()
+{
+#if ENABLE(ACCELERATED_2D_CANVAS)
+    m_data.markBufferChanged();
+#endif
+}
+#endif
 
 bool ImageBuffer::copyToPlatformTexture(GraphicsContext3D&, GC3Denum target, Platform3DObject destinationTexture, GC3Denum internalformat, bool premultiplyAlpha, bool flipY)
 {
@@ -753,6 +808,214 @@ bool ImageBuffer::copyToPlatformTexture(GraphicsContext3D&, GC3Denum target, Pla
     UNUSED_PARAM(flipY);
     return false;
 #endif
+}
+
+void blurLayerImage_SIMDFriendly(unsigned char* data, uint32_t width, uint32_t height, uint32_t stride, float blur_width, float blur_height)
+{
+    UNUSED_PARAM(blur_height);
+    uint32_t adjusted_blur;
+    {
+        const float gaussianKernelFactor = 3 / 4.f * sqrtf(2 * M_PI);
+        const float fudgeFactor = 0.88f;
+        adjusted_blur = std::max<uint32_t>(2, static_cast<uint32_t>(floorf((blur_width / 2) * gaussianKernelFactor * fudgeFactor + 0.5f)));
+    }
+
+    uint32_t curve_sigma = adjusted_blur;
+    uint32_t curve_sum = curve_sigma * 2 + 1;
+
+    // Blurring vertically.
+    {
+        uint32_t remainder = width % 4;
+        uint32_t four_count = (width - remainder) / 4;
+
+        for (uint32_t i = 0; i < four_count; ++i) {
+            unsigned char* pixels[4];
+            {
+                auto* pixels_base = data + 16 * i;
+                pixels[0] = pixels_base + 4 * 0;
+                pixels[1] = pixels_base + 4 * 1;
+                pixels[2] = pixels_base + 4 * 2;
+                pixels[3] = pixels_base + 4 * 3;
+            }
+
+            uint32_t last_value[4] = { pixels[0][3], pixels[1][3], pixels[2][3], pixels[3][3] };
+            uint32_t grouping_sum[4] = { 0, 0, 0, 0 };
+            for (uint32_t j = 0, limit = curve_sigma + 1; j < limit; ++j) {
+                uint32_t target_pixel = stride * j + 3;
+                grouping_sum[0] += pixels[0][target_pixel];
+                grouping_sum[1] += pixels[1][target_pixel];
+                grouping_sum[2] += pixels[2][target_pixel];
+                grouping_sum[3] += pixels[3][target_pixel];
+            }
+
+            for (uint32_t j = 0; j < height; ++j) {
+                uint32_t value[4] = { 0, 0, 0, 0 };
+                {
+                    if (j > curve_sigma) {
+                        grouping_sum[0] -= last_value[0];
+                        grouping_sum[1] -= last_value[1];
+                        grouping_sum[2] -= last_value[2];
+                        grouping_sum[3] -= last_value[3];
+
+                        uint32_t target_pixel = stride * (j - curve_sigma) + 3;
+                        last_value[0] = pixels[0][target_pixel];
+                        last_value[1] = pixels[1][target_pixel];
+                        last_value[2] = pixels[2][target_pixel];
+                        last_value[3] = pixels[3][target_pixel];
+                    }
+
+                    value[0] = grouping_sum[0];
+                    value[1] = grouping_sum[1];
+                    value[2] = grouping_sum[2];
+                    value[3] = grouping_sum[3];
+
+                    if (j + curve_sigma + 1 < height) {
+                        uint32_t target_pixel = stride * (j + curve_sigma + 1) + 3;
+                        grouping_sum[0] += pixels[0][target_pixel];
+                        grouping_sum[1] += pixels[1][target_pixel];
+                        grouping_sum[2] += pixels[2][target_pixel];
+                        grouping_sum[3] += pixels[3][target_pixel];
+                    }
+                }
+
+                {
+                    uint32_t target_pixel = stride * j + 2;
+                    pixels[0][target_pixel] = value[0] / curve_sum;
+                    pixels[1][target_pixel] = value[1] / curve_sum;
+                    pixels[2][target_pixel] = value[2] / curve_sum;
+                    pixels[3][target_pixel] = value[3] / curve_sum;
+                }
+            }
+        }
+
+        for (uint32_t i = 0; i < remainder; ++i) {
+            auto* pixels = data + 4 * i;
+
+            uint32_t last_value = pixels[3];
+            uint32_t grouping_sum = 0;
+            for (uint32_t j = 0, limit = curve_sigma + 1; j < limit; ++j)
+                grouping_sum += pixels[stride * j + 3];
+
+            for (uint32_t j = 0; j < height; ++j) {
+                uint32_t value = 0;
+                {
+                    if (j > curve_sigma) {
+                        grouping_sum -= last_value;
+                        last_value = pixels[stride * (j - curve_sigma) + 3];
+                    }
+
+                    value = grouping_sum;
+
+                    if (j + curve_sigma + 1 < height)
+                        grouping_sum += pixels[stride * (j + curve_sigma + 1) + 3];
+                }
+
+                pixels[stride * j + 2] = value / curve_sum;
+            }
+        }
+    }
+
+    // Blurring horizontally
+    {
+        uint32_t remainder = height % 4;
+        uint32_t four_count = (height - remainder) / 4;
+
+        for (uint32_t j = 0; j < four_count; ++j) {
+            unsigned char* pixels[4];
+            {
+                auto* pixels_base = data + 4 * j * stride;
+                pixels[0] = pixels_base + stride * 0;
+                pixels[1] = pixels_base + stride * 1;
+                pixels[2] = pixels_base + stride * 2;
+                pixels[3] = pixels_base + stride * 3;
+            }
+
+            uint32_t last_value[4] = { pixels[0][2], pixels[1][2], pixels[2][2], pixels[3][2] };
+            uint32_t grouping_sum[4] = { 0, 0, 0, 0 };
+            for (uint32_t i = 0, limit = curve_sigma + 1; i < limit; ++i) {
+                uint32_t target_pixel = 4 * i + 2;
+                grouping_sum[0] += pixels[0][target_pixel];
+                grouping_sum[1] += pixels[1][target_pixel];
+                grouping_sum[2] += pixels[2][target_pixel];
+                grouping_sum[3] += pixels[3][target_pixel];
+            }
+
+            for (uint32_t i = 0; i < width; ++i) {
+                uint32_t value[4] = { 0, 0, 0, 0 };
+                {
+                    if (i > curve_sigma) {
+                        grouping_sum[0] -= last_value[0];
+                        grouping_sum[1] -= last_value[1];
+                        grouping_sum[2] -= last_value[2];
+                        grouping_sum[3] -= last_value[3];
+
+                        uint32_t target_pixel = 4 * (i - curve_sigma) + 2;
+                        last_value[0] = pixels[0][target_pixel];
+                        last_value[1] = pixels[1][target_pixel];
+                        last_value[2] = pixels[2][target_pixel];
+                        last_value[3] = pixels[3][target_pixel];
+                    }
+
+                    value[0] = grouping_sum[0];
+                    value[1] = grouping_sum[1];
+                    value[2] = grouping_sum[2];
+                    value[3] = grouping_sum[3];
+
+                    if (i + curve_sigma + 1 < width) {
+                        uint32_t target_pixel = 4 * (i + curve_sigma + 1) + 2;
+                        grouping_sum[0] += pixels[0][target_pixel];
+                        grouping_sum[1] += pixels[1][target_pixel];
+                        grouping_sum[2] += pixels[2][target_pixel];
+                        grouping_sum[3] += pixels[3][target_pixel];
+                    }
+                }
+
+                {
+                    uint32_t target_pixel = 4 * i + 3;
+                    pixels[0][target_pixel] = value[0] / curve_sum;
+                    pixels[1][target_pixel] = value[1] / curve_sum;
+                    pixels[2][target_pixel] = value[2] / curve_sum;
+                    pixels[3][target_pixel] = value[3] / curve_sum;
+                }
+            }
+        }
+
+        for (uint32_t j = 0; j < remainder; ++j) {
+            auto* pixels = data + j * stride;
+
+            uint32_t last_value = pixels[2];
+            uint32_t grouping_sum = 0;
+            for (uint32_t i = 0, limit = curve_sigma + 1; i < limit; ++i)
+                grouping_sum += pixels[4 * i + 2];
+
+            for (uint32_t i = 0; i < width; ++i) {
+                uint32_t value = 0;
+                {
+                    if (i > curve_sigma) {
+                        grouping_sum -= last_value;
+                        last_value = pixels[4 * (i - curve_sigma) + 2];
+                    }
+
+                    value = grouping_sum;
+
+                    if (i + curve_sigma + 1 < width)
+                        grouping_sum += pixels[4 * (i + curve_sigma + 1) + 2];
+                }
+
+                pixels[4 * i + 3] = value / curve_sum;
+            }
+        }
+    }
+}
+
+void ImageBuffer::blur(const IntSize& size, const FloatSize& blurRadius)
+{
+    if (cairo_surface_get_type(m_data.m_surface.get()) != CAIRO_SURFACE_TYPE_IMAGE)
+        return;
+
+    unsigned char* data = cairo_image_surface_get_data(m_data.m_surface.get());
+    int stride = cairo_image_surface_get_stride(m_data.m_surface.get());
+    blurLayerImage_SIMDFriendly(data, size.width(), size.height(), stride, blurRadius.width(), blurRadius.height());
 }
 
 } // namespace WebCore

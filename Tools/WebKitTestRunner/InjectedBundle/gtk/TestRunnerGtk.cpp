@@ -77,4 +77,9 @@ void TestRunner::installFakeHelvetica(JSStringRef configuration)
     WTR::installFakeHelvetica(toWK(configuration).get());
 }
 
+void TestRunner::installFakeHelvetica(JSStringRef configuration)
+{
+    WTR::installFakeHelvetica(toWK(configuration).get());
+}
+
 } // namespace WTR
