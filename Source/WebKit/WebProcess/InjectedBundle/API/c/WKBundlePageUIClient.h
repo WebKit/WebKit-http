@@ -233,6 +233,6 @@ typedef struct WKBundlePageUIClientV4 {
     WKBundlePageDidClickAutoFillButtonCallback                          didClickAutoFillButton;
 
     // Version 4.
-    WKBundlePageDidResignInputElementStrongPasswordAppearance           didResignInputElementStrongPasswordAppearance;
     WKBundlePageWillAddDetailedMessageToConsoleCallback                 willAddDetailedMessageToConsole;
+    WKBundlePageDidResignInputElementStrongPasswordAppearance           didResignInputElementStrongPasswordAppearance;
 } WKBundlePageUIClientV4;

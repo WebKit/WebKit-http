@@ -32,5 +32,10 @@ install(FILES ${JavaScriptCore_INSTALLED_HEADERS}
     COMPONENT "Development"
 )
 
+install(FILES ${JavaScriptCore_PUBLIC_FRAMEWORK_HEADERS}
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/wpe-${WPE_API_VERSION}/WPE/JavaScriptCore"
+    COMPONENT "Development"
+)
+
 add_definitions(-DJSC_COMPILATION)
 add_definitions(-DPKGLIBDIR="${CMAKE_INSTALL_FULL_LIBDIR}/wpe-webkit-${WPE_API_VERSION}")

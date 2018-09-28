@@ -484,6 +484,15 @@ if (EXPORT_DEPRECATED_WEBKIT2_C_API)
         DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/wpe-${WPE_API_VERSION}/WPE/WebKit"
         COMPONENT "Development"
     )
+
+    set(WPE_INSTALLED_HEADERS
+        ${WEBKIT_DIR}/Shared/API/c/wpe/WebKit.h
+    )
+
+    install(FILES ${WPE_INSTALLED_HEADERS}
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/wpe-${WPE_API_VERSION}/WPE"
+        COMPONENT "Development"
+    )
 endif()
 
 install(TARGETS WPEInjectedBundle
