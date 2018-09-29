@@ -108,7 +108,6 @@
 #include "XMLNSNames.h"
 #include "XMLNames.h"
 #include "markup.h"
-#include <wtf/CurrentTime.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/CString.h>
 
@@ -585,7 +584,7 @@ void Element::setActive(bool flag, bool pause)
         // "up" state. Once you assume this, you can just delay for 100ms - that time (assuming that after you
         // leave this method, it will be about that long before the flush of the up state happens again).
 #ifdef HAVE_FUNC_USLEEP
-        double startTime = monotonicallyIncreasingTime();
+        MonotonicTime startTime = MonotonicTime::now();
 #endif
 
         document().updateStyleIfNeeded();
@@ -597,9 +596,9 @@ void Element::setActive(bool flag, bool pause)
         // FIXME: Come up with a less ridiculous way of doing this.
 #ifdef HAVE_FUNC_USLEEP
         // Now pause for a small amount of time (1/10th of a second from before we repainted in the pressed state)
-        double remainingTime = 0.1 - (monotonicallyIncreasingTime() - startTime);
-        if (remainingTime > 0)
-            usleep(static_cast<useconds_t>(remainingTime * 1000000.0));
+        Seconds remainingTime = 100_ms - (MonotonicTime::now() - startTime);
+        if (remainingTime > 0_s)
+            usleep(static_cast<useconds_t>(remainingTime.microseconds()));
 #endif
     }
 }
@@ -2074,14 +2073,17 @@ static void checkForSiblingStyleChanges(Element& parent, SiblingCheckType checkT
         }
     }
 
-    // Backward positional selectors include nth-last-child, nth-last-of-type, last-of-type and only-of-type.
     // We have to invalidate everything following the insertion point in the forward case, and everything before the insertion point in the
     // backward case.
-    // |afterChange| is 0 in the parser callback case, so we won't do any work for the forward case if we don't have to.
-    // For performance reasons we just mark the parent node as changed, since we don't want to make childrenChanged O(n^2) by crawling all our kids
-    // here.  recalcStyle will then force a walk of the children when it sees that this has happened.
-    if (parent.childrenAffectedByBackwardPositionalRules() && elementBeforeChange)
-        parent.invalidateStyleForSubtree();
+    if (parent.childrenAffectedByForwardPositionalRules()) {
+        for (auto* next = elementAfterChange; next; next = next->nextElementSibling())
+            next->invalidateStyleForSubtree();
+    }
+    // Backward positional selectors include nth-last-child, nth-last-of-type, last-of-type and only-of-type.
+    if (parent.childrenAffectedByBackwardPositionalRules()) {
+        for (auto* previous = elementBeforeChange; previous; previous = previous->previousElementSibling())
+            previous->invalidateStyleForSubtree();
+    }
 }
 
 void Element::childrenChanged(const ChildChange& change)
@@ -2811,6 +2813,11 @@ void Element::setChildrenAffectedByDrag()
     ensureElementRareData().setChildrenAffectedByDrag(true);
 }
 
+void Element::setChildrenAffectedByForwardPositionalRules()
+{
+    ensureElementRareData().setChildrenAffectedByForwardPositionalRules(true);
+}
+
 void Element::setChildrenAffectedByBackwardPositionalRules()
 {
     ensureElementRareData().setChildrenAffectedByBackwardPositionalRules(true);
@@ -2836,6 +2843,7 @@ bool Element::hasFlagsSetDuringStylingOfChildren() const
         return false;
     return rareDataStyleAffectedByActive()
         || rareDataChildrenAffectedByDrag()
+        || rareDataChildrenAffectedByForwardPositionalRules()
         || rareDataChildrenAffectedByBackwardPositionalRules()
         || rareDataChildrenAffectedByPropertyBasedBackwardPositionalRules();
 }
@@ -2862,6 +2870,12 @@ bool Element::rareDataChildrenAffectedByDrag() const
 {
     ASSERT(hasRareData());
     return elementRareData()->childrenAffectedByDrag();
+}
+
+bool Element::rareDataChildrenAffectedByForwardPositionalRules() const
+{
+    ASSERT(hasRareData());
+    return elementRareData()->childrenAffectedByForwardPositionalRules();
 }
 
 bool Element::rareDataChildrenAffectedByBackwardPositionalRules() const

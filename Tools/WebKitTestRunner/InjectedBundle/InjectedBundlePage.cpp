@@ -1006,10 +1006,10 @@ void InjectedBundlePage::didCancelClientRedirectForFrame(WKBundleFrameRef frame)
     if (!injectedBundle.isTestRunning())
         return;
 
-    if (!injectedBundle.testRunner()->shouldDumpFrameLoadCallbacks())
-        return;
+    if (injectedBundle.testRunner()->shouldDumpFrameLoadCallbacks())
+        dumpLoadEvent(frame, "didCancelClientRedirectForFrame");
 
-    dumpLoadEvent(frame, "didCancelClientRedirectForFrame");
+    injectedBundle.testRunner()->setDidCancelClientRedirect(true);
 }
 
 void InjectedBundlePage::willPerformClientRedirectForFrame(WKBundlePageRef, WKBundleFrameRef frame, WKURLRef url, double delay, double date)
@@ -1321,9 +1321,6 @@ WKBundlePagePolicyAction InjectedBundlePage::decidePolicyForNavigationAction(WKB
         injectedBundle.outputText(stringBuilder.toString());
     }
 
-    if (injectedBundle.testRunner()->shouldDecideNavigationPolicyAfterDelay())
-        return WKBundlePagePolicyActionPassThrough;
-
     if (!injectedBundle.testRunner()->isPolicyDelegateEnabled()) {
         WKRetainPtr<WKStringRef> downloadAttributeRef(AdoptWK, WKBundleNavigationActionCopyDownloadAttribute(navigationAction));
         String downloadAttribute = toWTFString(downloadAttributeRef);
@@ -1353,6 +1350,10 @@ WKBundlePagePolicyAction InjectedBundlePage::decidePolicyForNavigationAction(WKB
 
     stringBuilder.append('\n');
     injectedBundle.outputText(stringBuilder.toString());
+
+    if (injectedBundle.testRunner()->shouldDecideNavigationPolicyAfterDelay())
+        return WKBundlePagePolicyActionPassThrough;
+
     injectedBundle.testRunner()->notifyDone();
 
     if (injectedBundle.testRunner()->isPolicyDelegatePermissive())
@@ -1367,7 +1368,8 @@ WKBundlePagePolicyAction InjectedBundlePage::decidePolicyForNewWindowAction(WKBu
 
 WKBundlePagePolicyAction InjectedBundlePage::decidePolicyForResponse(WKBundlePageRef page, WKBundleFrameRef, WKURLResponseRef response, WKURLRequestRef, WKTypeRef*)
 {
-    if (InjectedBundle::singleton().testRunner()->isPolicyDelegateEnabled() && WKURLResponseIsAttachment(response)) {
+    auto& injectedBundle = InjectedBundle::singleton();
+    if (injectedBundle.testRunner()->isPolicyDelegateEnabled() && WKURLResponseIsAttachment(response)) {
         StringBuilder stringBuilder;
         WKRetainPtr<WKStringRef> filename = adoptWK(WKURLResponseCopySuggestedFilename(response));
         stringBuilder.appendLiteral("Policy delegate: resource is an attachment, suggested file name \'");
@@ -1375,6 +1377,9 @@ WKBundlePagePolicyAction InjectedBundlePage::decidePolicyForResponse(WKBundlePag
         stringBuilder.appendLiteral("\'\n");
         InjectedBundle::singleton().outputText(stringBuilder.toString());
     }
+
+    if (injectedBundle.testRunner()->shouldDecideResponsePolicyAfterDelay())
+        return WKBundlePagePolicyActionPassThrough;
 
     WKRetainPtr<WKStringRef> mimeType = adoptWK(WKURLResponseCopyMIMEType(response));
     return WKBundlePageCanShowMIMEType(page, mimeType.get()) ? WKBundlePagePolicyActionUse : WKBundlePagePolicyActionPassThrough;
@@ -1978,11 +1983,11 @@ void InjectedBundlePage::dumpBackForwardList(StringBuilder& stringBuilder)
     for (unsigned i = WKBundleBackForwardListGetForwardListCount(list); i; --i) {
         WKRetainPtr<WKBundleBackForwardListItemRef> item = adoptWK(WKBundleBackForwardListCopyItemAtIndex(list, i));
         // Something is wrong if the item from the last test is in the forward part of the list.
-        ASSERT(!WKBundleBackForwardListItemIsSame(item.get(), m_previousTestBackForwardListItem.get()));
+        ASSERT(!m_previousTestBackForwardListItem || !WKBundleBackForwardListItemIsSame(item.get(), m_previousTestBackForwardListItem.get()));
         itemsToPrint.append(item);
     }
 
-    ASSERT(!WKBundleBackForwardListItemIsSame(adoptWK(WKBundleBackForwardListCopyItemAtIndex(list, 0)).get(), m_previousTestBackForwardListItem.get()));
+    ASSERT(!m_previousTestBackForwardListItem || !WKBundleBackForwardListItemIsSame(adoptWK(WKBundleBackForwardListCopyItemAtIndex(list, 0)).get(), m_previousTestBackForwardListItem.get()));
 
     itemsToPrint.append(adoptWK(WKBundleBackForwardListCopyItemAtIndex(list, 0)));
 
@@ -1991,7 +1996,7 @@ void InjectedBundlePage::dumpBackForwardList(StringBuilder& stringBuilder)
     int backListCount = WKBundleBackForwardListGetBackListCount(list);
     for (int i = -1; i >= -backListCount; --i) {
         WKRetainPtr<WKBundleBackForwardListItemRef> item = adoptWK(WKBundleBackForwardListCopyItemAtIndex(list, i));
-        if (WKBundleBackForwardListItemIsSame(item.get(), m_previousTestBackForwardListItem.get()))
+        if (m_previousTestBackForwardListItem && WKBundleBackForwardListItemIsSame(item.get(), m_previousTestBackForwardListItem.get()))
             break;
         itemsToPrint.append(item);
     }

@@ -89,7 +89,6 @@
 #include "SelectionRect.h"
 #endif
 
-#include <wtf/CurrentTime.h>
 #include <wtf/RefPtr.h>
 #include <wtf/SetForScope.h>
 #endif
@@ -539,15 +538,15 @@ bool DragController::concludeEditDrag(const DragData& dragData)
         Color color = dragData.asColor();
         if (!color.isValid())
             return false;
-        RefPtr<Range> innerRange = innerFrame->selection().toNormalizedRange();
+        auto innerRange = innerFrame->selection().toNormalizedRange();
         if (!innerRange)
             return false;
-        RefPtr<MutableStyleProperties> style = MutableStyleProperties::create();
+        auto style = MutableStyleProperties::create();
         style->setProperty(CSSPropertyColor, color.serialized(), false);
-        if (!innerFrame->editor().shouldApplyStyle(style.get(), innerRange.get()))
+        if (!innerFrame->editor().shouldApplyStyle(style.ptr(), innerRange.get()))
             return false;
         m_client.willPerformDragDestinationAction(DragDestinationActionEdit, dragData);
-        innerFrame->editor().applyStyle(style.get(), EditActionSetColor);
+        innerFrame->editor().applyStyle(style.ptr(), EditActionSetColor);
         return true;
     }
 

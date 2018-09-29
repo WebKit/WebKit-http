@@ -51,7 +51,6 @@
 #include <WebCore/ResourceHandle.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/ResourceResponse.h>
-#include <wtf/CurrentTime.h>
 
 using namespace WebCore;
 
@@ -345,9 +344,9 @@ HRESULT WebDownload::useCredential(_In_opt_ IWebURLCredential* credential, _In_o
 void WebDownload::didStart()
 {
 #ifndef NDEBUG
-    m_startTime = m_dataTime = currentTime();
+    m_startTime = m_dataTime = WallTime::now();
     m_received = 0;
-    LOG(Download, "DOWNLOAD - Started %p at %.3f seconds", this, m_startTime);
+    LOG(Download, "DOWNLOAD - Started %p at %.3f seconds", this, m_startTime.secondsSinceEpoch().seconds());
 #endif
     if (FAILED(m_delegate->didBegin(this)))
         LOG_ERROR("DownloadDelegate->didBegin failed");
@@ -411,9 +410,9 @@ void WebDownload::didReceiveData(CFIndex length)
 {
 #ifndef NDEBUG
     m_received += length;
-    double current = currentTime();
-    if (current - m_dataTime > 2.0)
-        LOG(Download, "DOWNLOAD - %p hanged for %.3f seconds - Received %i bytes for a total of %i", this, current - m_dataTime, length, m_received);
+    WallTime current = WallTime::now();
+    if ((current - m_dataTime) > 2_s)
+        LOG(Download, "DOWNLOAD - %p hanged for %.3f seconds - Received %i bytes for a total of %i", this, (current - m_dataTime).seconds(), length, m_received);
     m_dataTime = current;
 #endif
     if (FAILED(m_delegate->didReceiveDataOfLength(this, length)))
@@ -458,7 +457,7 @@ void WebDownload::didCreateDestination(CFURLRef destination)
 void WebDownload::didFinish()
 {
 #ifndef NDEBUG
-    LOG(Download, "DOWNLOAD - Finished %p after %i bytes and %.3f seconds", this, m_received, currentTime() - m_startTime);
+    LOG(Download, "DOWNLOAD - Finished %p after %i bytes and %.3f seconds", this, m_received, (WallTime::now() - m_startTime).seconds());
 #endif
 
     ASSERT(!m_bundlePath.isEmpty() && !m_destination.isEmpty());

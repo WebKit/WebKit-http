@@ -28,7 +28,6 @@
 #include "FloatRoundedRect.h"
 #include "GraphicsLayer.h"
 #include <QuartzCore/CABase.h>
-#include <wtf/CurrentTime.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/TypeCasts.h>
@@ -56,7 +55,7 @@ class WEBCORE_EXPORT PlatformCALayer : public RefCounted<PlatformCALayer> {
     friend class PlatformCALayerWin;
 #endif
 public:
-    static CFTimeInterval currentTimeToMediaTime(double t) { return CACurrentMediaTime() + t - monotonicallyIncreasingTime(); }
+    static CFTimeInterval currentTimeToMediaTime(MonotonicTime t) { return CACurrentMediaTime() + (t - MonotonicTime::now()).seconds(); }
 
     // LayerTypeRootLayer is used on some platforms. It has no backing store, so setNeedsDisplay
     // should not call CACFLayerSetNeedsDisplay, but rather just notify the renderer that it
@@ -102,7 +101,7 @@ public:
     PlatformCALayerClient* owner() const { return m_owner; }
     virtual void setOwner(PlatformCALayerClient* owner) { m_owner = owner; }
 
-    virtual void animationStarted(const String& key, CFTimeInterval beginTime) = 0;
+    virtual void animationStarted(const String& key, MonotonicTime beginTime) = 0;
     virtual void animationEnded(const String& key) = 0;
 
     virtual void setNeedsDisplay() = 0;

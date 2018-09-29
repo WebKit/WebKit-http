@@ -194,10 +194,10 @@ static Ref<JSON::Object> buildObjectForHeaders(const HTTPHeaderMap& headers)
 Ref<Inspector::Protocol::Network::ResourceTiming> InspectorNetworkAgent::buildObjectForTiming(const NetworkLoadMetrics& timing, ResourceLoader& resourceLoader)
 {
     MonotonicTime startTime = resourceLoader.loadTiming().startTime();
-    double startTimeInInspector = m_environment.executionStopwatch()->elapsedTimeSince(startTime);
+    Seconds startTimeInInspector = m_environment.executionStopwatch()->elapsedTimeSince(startTime);
 
     return Inspector::Protocol::Network::ResourceTiming::create()
-        .setStartTime(startTimeInInspector)
+        .setStartTime(startTimeInInspector.seconds())
         .setDomainLookupStart(timing.domainLookupStart.milliseconds())
         .setDomainLookupEnd(timing.domainLookupEnd.milliseconds())
         .setConnectStart(timing.connectStart.milliseconds())
@@ -269,6 +269,8 @@ static Ref<Inspector::Protocol::Network::Request> buildObjectForResourceRequest(
 static Inspector::Protocol::Network::Response::Source responseSource(ResourceResponse::Source source)
 {
     switch (source) {
+    case ResourceResponse::Source::ApplicationCache:
+        // FIXME: Add support for ApplicationCache in inspector.
     case ResourceResponse::Source::Unknown:
         return Inspector::Protocol::Network::Response::Source::Unknown;
     case ResourceResponse::Source::Network:
@@ -338,7 +340,7 @@ InspectorNetworkAgent::~InspectorNetworkAgent()
 
 double InspectorNetworkAgent::timestamp()
 {
-    return m_environment.executionStopwatch()->elapsedTime();
+    return m_environment.executionStopwatch()->elapsedTime().seconds();
 }
 
 void InspectorNetworkAgent::willSendRequest(unsigned long identifier, DocumentLoader* loader, ResourceRequest& request, const ResourceResponse& redirectResponse, InspectorPageAgent::ResourceType type)
@@ -349,7 +351,7 @@ void InspectorNetworkAgent::willSendRequest(unsigned long identifier, DocumentLo
     }
 
     double sendTimestamp = timestamp();
-    double walltime = currentTime();
+    WallTime walltime = WallTime::now();
 
     String requestId = IdentifiersFactory::requestId(identifier);
     String frameId = frameIdentifier(loader);
@@ -382,7 +384,7 @@ void InspectorNetworkAgent::willSendRequest(unsigned long identifier, DocumentLo
     auto initiatorObject = buildInitiatorObject(document);
 
     String url = loader ? loader->url().string() : request.url();
-    m_frontendDispatcher->requestWillBeSent(requestId, frameId, loaderId, url, buildObjectForResourceRequest(request), sendTimestamp, walltime, initiatorObject, buildObjectForResourceResponse(redirectResponse, nullptr), type != InspectorPageAgent::OtherResource ? &protocolResourceType : nullptr, targetId.isEmpty() ? nullptr : &targetId);
+    m_frontendDispatcher->requestWillBeSent(requestId, frameId, loaderId, url, buildObjectForResourceRequest(request), sendTimestamp, walltime.secondsSinceEpoch().seconds(), initiatorObject, buildObjectForResourceResponse(redirectResponse, nullptr), type != InspectorPageAgent::OtherResource ? &protocolResourceType : nullptr, targetId.isEmpty() ? nullptr : &targetId);
 }
 
 static InspectorPageAgent::ResourceType resourceTypeForCachedResource(CachedResource* resource)
@@ -484,8 +486,8 @@ void InspectorNetworkAgent::didFinishLoading(unsigned long identifier, DocumentL
     double elapsedFinishTime;
     if (resourceLoader && networkLoadMetrics.isComplete()) {
         MonotonicTime startTime = resourceLoader->loadTiming().startTime();
-        double startTimeInInspector = m_environment.executionStopwatch()->elapsedTimeSince(startTime);
-        elapsedFinishTime = startTimeInInspector + networkLoadMetrics.responseEnd.seconds();
+        Seconds startTimeInInspector = m_environment.executionStopwatch()->elapsedTimeSince(startTime);
+        elapsedFinishTime = (startTimeInInspector + networkLoadMetrics.responseEnd).seconds();
     } else
         elapsedFinishTime = timestamp();
 
@@ -653,7 +655,7 @@ void InspectorNetworkAgent::willSendWebSocketHandshakeRequest(unsigned long iden
     auto requestObject = Inspector::Protocol::Network::WebSocketRequest::create()
         .setHeaders(buildObjectForHeaders(request.httpHeaderFields()))
         .release();
-    m_frontendDispatcher->webSocketWillSendHandshakeRequest(IdentifiersFactory::requestId(identifier), timestamp(), currentTime(), WTFMove(requestObject));
+    m_frontendDispatcher->webSocketWillSendHandshakeRequest(IdentifiersFactory::requestId(identifier), timestamp(), WallTime::now().secondsSinceEpoch().seconds(), WTFMove(requestObject));
 }
 
 void InspectorNetworkAgent::didReceiveWebSocketHandshakeResponse(unsigned long identifier, const ResourceResponse& response)

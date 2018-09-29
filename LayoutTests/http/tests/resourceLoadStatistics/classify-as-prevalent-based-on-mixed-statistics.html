@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Tests for Classification Based on Mixed Statistics</title>
-    <script src="../../resources/js-test-pre.js"></script>
+    <script src="/js-test-resources/js-test.js"></script>
 </head>
 <body>
 <script>
@@ -17,6 +17,8 @@
     function completeTest() {
         if (!testRunner.isStatisticsPrevalentResource(statisticsUrl))
             testFailed("Host did not get classified as prevalent resource.");
+        if (testRunner.isStatisticsVeryPrevalentResource(statisticsUrl))
+            testFailed("Host got classified as very prevalent resource.");
         else
             testPassed("Host classified as prevalent resource.");
 

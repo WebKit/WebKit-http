@@ -46,6 +46,7 @@ from .bug import Bug
 from webkitpy.common.config import committers
 import webkitpy.common.config.urls as config_urls
 from webkitpy.common.net.credentials import Credentials
+from webkitpy.common.net.networktransaction import NetworkTransaction
 from webkitpy.common.system.user import User
 from webkitpy.thirdparty.BeautifulSoup import BeautifulSoup, BeautifulStoneSoup, SoupStrainer
 
@@ -327,14 +328,17 @@ class Bugzilla(object):
     def setdefaulttimeout(self, value):
         socket.setdefaulttimeout(value)
 
+    def open_url(self, url):
+        return NetworkTransaction().run(lambda: self.browser.open(url))
+
     def fetch_user(self, user_id):
         self.authenticate()
-        edit_user_page = self.browser.open(self.edit_user_url_for_id(user_id))
+        edit_user_page = self.open_url(self.edit_user_url_for_id(user_id))
         return self.edit_user_parser.user_dict_from_edit_user_page(edit_user_page)
 
     def add_user_to_groups(self, user_id, group_names):
         self.authenticate()
-        user_edit_page = self.browser.open(self.edit_user_url_for_id(user_id))
+        user_edit_page = self.open_url(self.edit_user_url_for_id(user_id))
         self.browser.select_form(nr=1)
         for group_name in group_names:
             group_string = self.edit_user_parser.group_string_from_name(user_edit_page, group_name)
@@ -468,7 +472,7 @@ class Bugzilla(object):
     def _fetch_bug_page(self, bug_id):
         bug_url = self.bug_url_for_bug_id(bug_id, xml=True)
         _log.info("Fetching: %s" % bug_url)
-        return self.browser.open(bug_url)
+        return self.open_url(bug_url)
 
     def fetch_bug_dictionary(self, bug_id):
         try:
@@ -484,9 +488,10 @@ class Bugzilla(object):
 
     def fetch_attachment_contents(self, attachment_id):
         attachment_url = self.attachment_url_for_id(attachment_id)
+        _log.info("Fetching: %s" % attachment_url)
         # We need to authenticate to download patches from security bugs.
         self.authenticate()
-        return self.browser.open(attachment_url).read()
+        return self.open_url(attachment_url).read()
 
     def _parse_bug_id_from_attachment_page(self, page):
         # The "Up" relation happens to point to the bug.
@@ -501,11 +506,14 @@ class Bugzilla(object):
         return int(match.group('bug_id'))
 
     def bug_id_for_attachment_id(self, attachment_id):
+        return NetworkTransaction().run(lambda: self.get_bug_id_for_attachment_id(attachment_id))
+
+    def get_bug_id_for_attachment_id(self, attachment_id):
         self.authenticate()
 
         attachment_url = self.attachment_url_for_id(attachment_id, 'edit')
         _log.info("Fetching: %s" % attachment_url)
-        page = self.browser.open(attachment_url)
+        page = self.open_url(attachment_url)
         return self._parse_bug_id_from_attachment_page(page)
 
     # FIXME: This should just return Attachment(id), which should be able to
@@ -538,7 +546,7 @@ class Bugzilla(object):
             username, password = credentials.read_credentials(use_stored_credentials=attempts == 1)
 
             _log.info("Logging in as %s..." % username)
-            self.browser.open(config_urls.bug_server_url +
+            self.open_url(config_urls.bug_server_url +
                               "index.cgi?GoAheadAndLogIn=1")
             self.browser.select_form(name="login")
             self.browser['Bugzilla_login'] = username
@@ -614,7 +622,7 @@ class Bugzilla(object):
     def add_attachment_to_bug(self, bug_id, file_or_string, description, filename=None, comment_text=None, mimetype=None):
         self.authenticate()
         _log.info('Adding attachment "%s" to %s' % (description, self.bug_url_for_bug_id(bug_id)))
-        self.browser.open(self.add_attachment_url(bug_id))
+        self.open_url(self.add_attachment_url(bug_id))
         self.browser.select_form(name="entryform")
         file_object = self._file_object_for_upload(file_or_string)
         filename = filename or self._filename_for_upload(file_object, bug_id)
@@ -645,7 +653,7 @@ class Bugzilla(object):
         self.authenticate()
         _log.info('Adding patch "%s" to %s' % (description, self.bug_url_for_bug_id(bug_id)))
 
-        self.browser.open(self.add_attachment_url(bug_id))
+        self.open_url(self.add_attachment_url(bug_id))
         self.browser.select_form(name="entryform")
         file_object = self._file_object_for_upload(file_or_string)
         filename = self._filename_for_upload(file_object, bug_id, extension="patch")
@@ -701,7 +709,7 @@ class Bugzilla(object):
         self.authenticate()
 
         _log.info('Creating bug with title "%s"' % bug_title)
-        self.browser.open(config_urls.bug_server_url + "enter_bug.cgi?product=WebKit")
+        self.open_url(config_urls.bug_server_url + "enter_bug.cgi?product=WebKit")
         self.browser.select_form(name="Create")
         component_items = self.browser.find_control('component').items
         component_names = map(lambda item: item.name, component_items)
@@ -762,7 +770,7 @@ class Bugzilla(object):
             comment_text += "\n\n%s" % additional_comment_text
         _log.info(comment_text)
 
-        self.browser.open(self.attachment_url_for_id(attachment_id, 'edit'))
+        self.open_url(self.attachment_url_for_id(attachment_id, 'edit'))
         self.browser.select_form(nr=1)
         self.browser.set_value(comment_text, name='comment', nr=1)
         self._find_select_element_for_flag('review').value = ("X",)
@@ -779,7 +787,7 @@ class Bugzilla(object):
 
         self.authenticate()
         _log.info(comment_text)
-        self.browser.open(self.attachment_url_for_id(attachment_id, 'edit'))
+        self.open_url(self.attachment_url_for_id(attachment_id, 'edit'))
         self.browser.select_form(nr=1)
 
         if comment_text:
@@ -795,7 +803,7 @@ class Bugzilla(object):
         self.authenticate()
 
         _log.info("Obsoleting attachment: %s" % attachment_id)
-        self.browser.open(self.attachment_url_for_id(attachment_id, 'edit'))
+        self.open_url(self.attachment_url_for_id(attachment_id, 'edit'))
         self.browser.select_form(nr=1)
         self.browser.find_control('isobsolete').items[0].selected = True
         # Also clear any review flag (to remove it from review/commit queues)
@@ -812,7 +820,7 @@ class Bugzilla(object):
         self.authenticate()
 
         _log.info("Adding %s to the CC list for bug %s" % (email_address_list, bug_id))
-        self.browser.open(self.bug_url_for_bug_id(bug_id))
+        self.open_url(self.bug_url_for_bug_id(bug_id))
         self.browser.select_form(name="changeform")
         self.browser["newcc"] = ", ".join(email_address_list)
         self.browser.submit()
@@ -821,7 +829,7 @@ class Bugzilla(object):
         self.authenticate()
 
         _log.info("Adding comment to bug %s" % bug_id)
-        self.browser.open(self.bug_url_for_bug_id(bug_id))
+        self.open_url(self.bug_url_for_bug_id(bug_id))
         self.browser.select_form(name="changeform")
         self.browser["comment"] = comment_text
         if cc:
@@ -832,7 +840,7 @@ class Bugzilla(object):
         self.authenticate()
 
         _log.info("Closing bug %s as fixed" % bug_id)
-        self.browser.open(self.bug_url_for_bug_id(bug_id))
+        self.open_url(self.bug_url_for_bug_id(bug_id))
         self.browser.select_form(name="changeform")
         if comment_text:
             self.browser['comment'] = comment_text
@@ -850,7 +858,7 @@ class Bugzilla(object):
             assignee = self.username
 
         _log.info("Assigning bug %s to %s" % (bug_id, assignee))
-        self.browser.open(self.bug_url_for_bug_id(bug_id))
+        self.open_url(self.bug_url_for_bug_id(bug_id))
         self.browser.select_form(name="changeform")
 
         if not self._has_control(self.browser, "assigned_to"):
@@ -871,7 +879,7 @@ Ignore this message if you don't have EditBugs privileges (https://bugs.webkit.o
         # Bugzilla requires a comment when re-opening a bug, so we know it will
         # never be None.
         _log.info(comment_text)
-        self.browser.open(self.bug_url_for_bug_id(bug_id))
+        self.open_url(self.bug_url_for_bug_id(bug_id))
         self.browser.select_form(name="changeform")
         bug_status = self.browser.find_control("bug_status", type="select")
         # This is a hack around the fact that ClientForm.ListControl seems to

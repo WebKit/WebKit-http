@@ -40,7 +40,6 @@
 #include "WebTiledBackingLayerWin.h"
 #include <QuartzCore/CoreAnimationCF.h>
 #include <WebKitSystemInterface/WebKitSystemInterface.h>
-#include <wtf/CurrentTime.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -208,7 +207,7 @@ PlatformCALayer* PlatformCALayerWin::rootLayer() const
     return host ? host->rootLayer() : nullptr;
 }
 
-void PlatformCALayerWin::animationStarted(const String& animationKey, CFTimeInterval beginTime)
+void PlatformCALayerWin::animationStarted(const String& animationKey, MonotonicTime beginTime)
 {
     // Update start time for any animation not yet started
     CFTimeInterval cacfBeginTime = currentTimeToMediaTime(beginTime);
@@ -921,7 +920,7 @@ String PlatformCALayerWin::layerTreeAsString() const
 
     StringBuilder builder;
     builder.append("\n\n** Render tree at time ");
-    builder.appendNumber(monotonicallyIncreasingTime());
+    builder.appendNumber(MonotonicTime::now().secondsSinceEpoch().seconds());
     builder.append(" (bounds ");
     builder.appendNumber(rootBounds.origin.x);
     builder.append(", ");

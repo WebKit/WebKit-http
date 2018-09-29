@@ -66,7 +66,7 @@ void MemoryPressureHandler::setShouldUsePeriodicMemoryMonitor(bool use)
 
     if (use) {
         m_measurementTimer = std::make_unique<RunLoop::Timer<MemoryPressureHandler>>(RunLoop::main(), this, &MemoryPressureHandler::measurementTimerFired);
-        m_measurementTimer->startRepeating(30);
+        m_measurementTimer->startRepeating(30_s);
     } else
         m_measurementTimer = nullptr;
 }
@@ -286,7 +286,7 @@ void MemoryPressureHandler::ReliefLogger::logMemoryUsageChange()
 #if !PLATFORM(COCOA) && !OS(LINUX) && !OS(WINDOWS)
 void MemoryPressureHandler::install() { }
 void MemoryPressureHandler::uninstall() { }
-void MemoryPressureHandler::holdOff(unsigned) { }
+void MemoryPressureHandler::holdOff(Seconds) { }
 void MemoryPressureHandler::respondToMemoryPressure(Critical, Synchronous) { }
 void MemoryPressureHandler::platformReleaseMemory(Critical) { }
 std::optional<MemoryPressureHandler::ReliefLogger::MemoryUsage> MemoryPressureHandler::ReliefLogger::platformMemoryUsage() { return std::nullopt; }

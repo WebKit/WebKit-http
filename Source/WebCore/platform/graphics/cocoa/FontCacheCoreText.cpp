@@ -36,7 +36,7 @@
 #include <wtf/NeverDestroyed.h>
 
 #define HAS_CORE_TEXT_WIDTH_ATTRIBUTE ((PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000))
-#define CAN_DISALLOW_USER_INSTALLED_FONTS ((PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 130000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101500))
+#define CAN_DISALLOW_USER_INSTALLED_FONTS ((PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000))
 
 namespace WebCore {
 
@@ -1473,8 +1473,8 @@ RetainPtr<CFSetRef> installedFontMandatoryAttributes(AllowUserInstalledFonts all
     }
 #else
     UNUSED_PARAM(allowUserInstalledFonts);
-    return nullptr;
 #endif
+    return nullptr;
 }
 
 Ref<Font> FontCache::lastResortFallbackFont(const FontDescription& fontDescription)

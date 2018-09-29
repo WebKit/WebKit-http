@@ -1281,8 +1281,11 @@ void WebPageProxy::setControlledByAutomation(bool controlled)
 
     m_controlledByAutomation = controlled;
 
-    if (isValid())
-        m_process->send(Messages::WebPage::SetControlledByAutomation(controlled), m_pageID);
+    if (!isValid())
+        return;
+
+    m_process->send(Messages::WebPage::SetControlledByAutomation(controlled), m_pageID);
+    m_process->processPool().sendToNetworkingProcess(Messages::NetworkProcess::SetSessionIsControlledByAutomation(m_websiteDataStore->sessionID(), m_controlledByAutomation));
 }
 
 #if ENABLE(REMOTE_INSPECTOR)
@@ -5853,6 +5856,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.mimeTypesWithCustomContentProviders = m_pageClient.mimeTypesWithCustomContentProviders();
     parameters.ignoresViewportScaleLimits = m_forceAlwaysUserScalable;
     parameters.viewportConfigurationMinimumLayoutSize = m_viewportConfigurationMinimumLayoutSize;
+    parameters.viewportConfigurationViewSize = m_viewportConfigurationViewSize;
     parameters.maximumUnobscuredSize = m_maximumUnobscuredSize;
 #endif
 

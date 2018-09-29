@@ -32,7 +32,6 @@
 #include "JSCInlines.h"
 #include "SlotVisitor.h"
 #include "TypeLocation.h"
-#include <wtf/CurrentTime.h>
 
 
 namespace JSC {
@@ -41,13 +40,13 @@ namespace TypeProfilerLogInternal {
 static const bool verbose = false;
 }
 
-void TypeProfilerLog::initializeLog()
+TypeProfilerLog::TypeProfilerLog()
+    : m_logSize(50000)
+    , m_logStartPtr(new LogEntry[m_logSize])
+    , m_currentLogEntryPtr(m_logStartPtr)
+    , m_logEndPtr(m_logStartPtr + m_logSize)
 {
-    ASSERT(!m_logStartPtr);
-    m_logSize = 50000;
-    m_logStartPtr = new LogEntry[m_logSize];
-    m_currentLogEntryPtr = m_logStartPtr;
-    m_logEndPtr = m_logStartPtr + m_logSize;
+    ASSERT(m_logStartPtr);
 }
 
 TypeProfilerLog::~TypeProfilerLog()

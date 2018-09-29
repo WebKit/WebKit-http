@@ -35,14 +35,10 @@
 #include "MarshallingHelpers.h"
 #include "PluginDatabase.h"
 #include "PluginView.h"
-#include "SocketProvider.h"
-#include "SubframeLoader.h"
-#include "TextIterator.h"
 #include "WebApplicationCache.h"
 #include "WebBackForwardList.h"
 #include "WebChromeClient.h"
 #include "WebContextMenuClient.h"
-#include "WebCoreTextRenderer.h"
 #include "WebDatabaseManager.h"
 #include "WebDatabaseProvider.h"
 #include "WebDocumentLoader.h"
@@ -160,10 +156,14 @@
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/SecurityPolicy.h>
 #include <WebCore/Settings.h>
+#include <WebCore/SocketProvider.h>
+#include <WebCore/SubframeLoader.h>
 #include <WebCore/SystemInfo.h>
+#include <WebCore/TextIterator.h>
 #include <WebCore/UserContentController.h>
 #include <WebCore/UserScript.h>
 #include <WebCore/UserStyleSheet.h>
+#include <WebCore/WebCoreTextRenderer.h>
 #include <WebCore/WindowMessageBroadcaster.h>
 #include <WebCore/WindowsTouch.h>
 #include <comdef.h>
@@ -1785,8 +1785,8 @@ void WebView::onMenuCommand(WPARAM wParam, LPARAM lParam)
     menuItemInfo.fMask = MIIM_STRING;
     ::GetMenuItemInfo(hMenu, index, true, &menuItemInfo);
 
-    auto buffer = std::make_unique<WCHAR[]>(menuItemInfo.cch + 1);
-    menuItemInfo.dwTypeData = buffer.get();
+    Vector<WCHAR> buffer(menuItemInfo.cch + 1);
+    menuItemInfo.dwTypeData = buffer.data();
     menuItemInfo.cch++;
     menuItemInfo.fMask |= MIIM_ID;
 
@@ -1795,7 +1795,7 @@ void WebView::onMenuCommand(WPARAM wParam, LPARAM lParam)
     ::DestroyMenu(m_currentContextMenu);
     m_currentContextMenu = nullptr;
 
-    String title(buffer.get(), menuItemInfo.cch);
+    String title(buffer.data(), menuItemInfo.cch);
     ContextMenuAction action = static_cast<ContextMenuAction>(menuItemInfo.wID);
 
     if (action >= ContextMenuItemBaseApplicationTag) {
@@ -5475,6 +5475,11 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     settings.setWebGLEnabled(true);
 #endif // ENABLE(WEBGL)
 
+    hr = prefsPrivate->spatialNavigationEnabled(&enabled);
+    if (FAILED(hr))
+        return hr;
+    settings.setSpatialNavigationEnabled(!!enabled);
+
     hr = prefsPrivate->isDNSPrefetchingEnabled(&enabled);
     if (FAILED(hr))
         return hr;
@@ -7306,7 +7311,7 @@ HRESULT WebView::nextDisplayIsSynchronous()
     return S_OK;
 }
 
-void WebView::notifyAnimationStarted(const GraphicsLayer*, const String&, double)
+void WebView::notifyAnimationStarted(const GraphicsLayer*, const String&, MonotonicTime)
 {
     // We never set any animations on our backing layer.
     ASSERT_NOT_REACHED();

@@ -24,6 +24,7 @@
 #include "config.h"
 #include "StyledElement.h"
 
+#include "AttributeChangeInvalidation.h"
 #include "CSSImageValue.h"
 #include "CSSParser.h"
 #include "CSSStyleSheet.h"
@@ -152,6 +153,16 @@ void StyledElement::invalidateStyleAttribute()
 
     elementData()->setStyleAttributeIsDirty(true);
     invalidateStyle();
+
+    // In the rare case of selectors like "[style] ~ div" we need to synchronize immediately to invalidate.
+    if (styleResolver().ruleSets().hasComplexSelectorsForStyleAttribute()) {
+        if (auto* inlineStyle = this->inlineStyle()) {
+            elementData()->setStyleAttributeIsDirty(false);
+            auto newValue = inlineStyle->asText();
+            Style::AttributeChangeInvalidation styleInvalidation(*this, styleAttr, attributeWithoutSynchronization(styleAttr), newValue);
+            setSynchronizedLazyAttribute(styleAttr, newValue);
+        }
+    }
 }
 
 void StyledElement::inlineStyleChanged()

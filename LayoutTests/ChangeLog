@@ -1,3 +1,854 @@
+2018-03-06  Youenn Fablet  <youenn@apple.com>
+
+        didReceiveServerRedirectForProvisionalNavigation is not called in case of document redirection with service worker registration change
+        https://bugs.webkit.org/show_bug.cgi?id=183299
+        <rdar://problem/37547029>
+
+        Reviewed by Alex Christensen.
+
+        * http/wpt/service-workers/navigation-redirect-main-frame-worker.js: Added.
+        * http/wpt/service-workers/navigation-redirect-main-frame.https-expected.txt: Added.
+        * http/wpt/service-workers/navigation-redirect-main-frame.https.html: Added.
+
+2018-03-06  Chris Dumez  <cdumez@apple.com>
+
+        http/wpt/html/browsers/history/the-location-interface/location-protocol-setter-non-broken-async-delegate.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=183390
+
+        Unreviewed, temporarily mark the test as flaky while I investigate.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-03-06  Per Arne Vollan  <pvollan@apple.com>
+
+        Unreviewed, fixed incorrect name of test expectation file.
+
+        * platform/win/fast/text/combining-enclosing-keycap-expected.txt: Copied from LayoutTests/platform/win/fast/text/combining-enclosing-keycap.txt.
+        * platform/win/fast/text/combining-enclosing-keycap.txt: Removed.
+
+2018-03-06  Nan Wang  <n_wang@apple.com>
+
+        AX: Flaky test after r229310
+        https://bugs.webkit.org/show_bug.cgi?id=183376
+        <rdar://problem/38188685>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/AOM-events-all-expected.txt:
+        * accessibility/mac/AOM-events-all.html:
+
+2018-03-06  Chris Dumez  <cdumez@apple.com>
+
+        fast/loader/redirect-to-invalid-url-using-meta-refresh-disallowed.html fails with async policy delegates
+        https://bugs.webkit.org/show_bug.cgi?id=183345
+
+        Reviewed by Alex Christensen.
+
+        * fast/loader/redirect-to-invalid-url-using-meta-refresh-disallowed-async-delegates-expected.txt: Added.
+        * fast/loader/redirect-to-invalid-url-using-meta-refresh-disallowed-async-delegates.html: Added.
+        Add layout test coverage.
+
+        * fast/loader/redirect-to-invalid-url-using-javascript-disallowed-expected.txt:
+        * fast/loader/redirect-to-invalid-url-using-javascript-disallowed.html:
+        * fast/loader/redirect-to-invalid-url-using-meta-refresh-disallowed-expected.txt:
+        * fast/loader/redirect-to-invalid-url-using-meta-refresh-disallowed.html:
+        * fast/loader/window-open-to-invalid-url-disallowed-expected.txt:
+        * fast/loader/window-open-to-invalid-url-disallowed.html:
+        * platform/mac-wk1/fast/loader/redirect-to-invalid-url-using-javascript-disallowed-expected.txt:
+        * platform/mac-wk1/fast/loader/redirect-to-invalid-url-using-meta-refresh-disallowed-async-delegates-expected.txt: Added.
+        * platform/mac-wk1/fast/loader/redirect-to-invalid-url-using-meta-refresh-disallowed-expected.txt:
+        * platform/mac-wk1/fast/loader/window-open-to-invalid-url-disallowed-expected.txt:
+        Update tests that were relying on a 0-timer to make sure that didCancelClientRedirectForFrame was
+        called to rely on our new test infrastructure instead. This is needed so that these tests keep passing
+        once we make policy delegates asynchronous by default. Without this, the didCancelClientRedirectForFrame lines
+        would be missing in the tests' output.
+
+2018-03-06  Youenn Fablet  <youenn@apple.com>
+
+        Service worker test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=183264
+        <rdar://problem/38048743>
+
+        Unreviewed.
+
+        * TestExpectations: mark test as slow in Debug.
+
+2018-03-06  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK] Add new baseline after r229177
+
+        Unreviewed gardening.
+
+        This baseline is needed because our mimetype database recognizes
+        the type of the file in the test and therefore the extension gets
+        added to the downloaded file.
+        * platform/gtk/fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download-async-delegate-expected.txt: Added.
+
+2018-03-06  Per Arne Vollan  <pvollan@apple.com>
+
+        Unreviewed, add baseline for fast/text/combining-enclosing-keycap.html.
+
+        * platform/win/fast/text/combining-enclosing-keycap.txt: Added.
+
+2018-03-06  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK] Mark a few Wayland tests as failing
+
+        Unreviewed gardening
+        * platform/gtk-wayland/TestExpectations:
+
+2018-03-06  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        [ARM] Disable tests that run out of memory
+        https://bugs.webkit.org/show_bug.cgi?id=182699
+
+        Reviewed by Žan Doberšek.
+
+        Do not run test with LLInt disabled on Linux.
+
+        * js/script-tests/dfg-osr-entry-hoisted-clobbered-structure-check.js:
+
+2018-03-06  Nan Wang  <n_wang@apple.com>
+
+        AX: AOM: More accessibility events support
+        https://bugs.webkit.org/show_bug.cgi?id=183023
+        <rdar://problem/37764380>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/AOM-events-all-expected.txt: Added.
+        * accessibility/mac/AOM-events-all.html: Added.
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+
+2018-03-05  Yoav Weiss  <yoav@yoav.ws>
+
+        Support for preconnect Link headers
+        https://bugs.webkit.org/show_bug.cgi?id=181657
+
+        Reviewed by Darin Adler.
+
+        Add test to see Link preconnect headers trigger a connection.
+
+        * http/tests/preconnect/link-header-rel-preconnect-http-expected.txt: Added.
+        * http/tests/preconnect/link-header-rel-preconnect-http.html: Added.
+        * http/tests/preconnect/resources/header-preconnect.php: Added.
+        * platform/win/TestExpectations: Skipped the preconnect test directory, rather than the individual files in it.
+
+2018-03-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/service-workers/service-worker/registration-updateviacache.https.html as slow.
+        https://bugs.webkit.org/show_bug.cgi?id=180982
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-03-05  Chris Dumez  <cdumez@apple.com>
+
+        fast/loader/onload-policy-ignore-for-frame.html is timing out with async policy delegates
+        https://bugs.webkit.org/show_bug.cgi?id=183337
+
+        Reviewed by Ryosuke Niwa.
+
+        Add layout test coverage.
+
+        * fast/loader/onload-policy-ignore-for-frame-async-delegates-expected.txt: Added.
+        * fast/loader/onload-policy-ignore-for-frame-async-delegates.html: Added.
+
+2018-03-05  Andy Estes  <aestes@apple.com>
+
+        [Mac] Teach WebCore::Pasteboard about file promise drags
+        https://bugs.webkit.org/show_bug.cgi?id=183314
+        <rdar://problem/38105493>
+
+        Reviewed by Darin Adler.
+
+        Added versions of file dragging tests in editing/pasteboard/ that use
+        beginDragWithFilePromises() instead of beginDragWithFiles().
+
+        * TestExpectations: Skipped the new tests.
+        * editing/pasteboard/data-transfer-items-drag-drop-file-promise-expected.txt: Added.
+        * editing/pasteboard/data-transfer-items-drag-drop-file-promise.html: Added.
+        * editing/pasteboard/data-transfer-items-drop-file-promise-expected.txt: Added.
+        * editing/pasteboard/data-transfer-items-drop-file-promise.html: Added.
+        * editing/pasteboard/datatransfer-items-drop-plaintext-file-promise-expected.txt: Added.
+        * editing/pasteboard/datatransfer-items-drop-plaintext-file-promise.html: Added.
+        * editing/pasteboard/datatransfer-types-dropping-text-file-promise-expected.txt: Added.
+        * editing/pasteboard/datatransfer-types-dropping-text-file-promise.html: Added.
+        * editing/pasteboard/drag-file-promises-to-editable-element-as-URLs-expected.txt: Added.
+        * editing/pasteboard/drag-file-promises-to-editable-element-as-URLs.html: Added.
+        * editing/pasteboard/drag-file-promises-to-editable-element-as-attachment-expected.txt: Added.
+        * editing/pasteboard/drag-file-promises-to-editable-element-as-attachment.html: Added.
+        * editing/pasteboard/file-input-files-access-promise-expected.txt: Added.
+        * editing/pasteboard/file-input-files-access-promise.html: Added.
+        * platform/mac-wk1/TestExpectations: Un-skipped the new tests.
+        * platform/win/TestExpectations: Skipped the new tests.
+
+2018-03-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, add baseline for fast/text/combining-enclosing-keycap.html.
+
+        * platform/ios/fast/text/combining-enclosing-keycap-expected.txt: Added.
+        * platform/mac/fast/text/combining-enclosing-keycap-expected.txt: Added.
+
+2018-03-05  Ali Juma  <ajuma@chromium.org>
+
+        imported/w3c/web-platform-tests/html/semantics/text-level-semantics/the-a-element/a-download-click-404.html times out with async policy delegates
+        https://bugs.webkit.org/show_bug.cgi?id=183297
+
+        Reviewed by Chris Dumez.
+
+        Add layout test coverage. Copy expectations from the existing sync-policy version of the test.
+
+        * http/wpt/html/semantics/text-level-semantics/the-a-element/a-download-click-404-expected.txt: Added.
+        * http/wpt/html/semantics/text-level-semantics/the-a-element/a-download-click-404.html: Added.
+        * http/wpt/html/semantics/text-level-semantics/the-a-element/resources/a-download-404.html: Added.
+        * platform/ios-wk2/http/wpt/html/semantics/text-level-semantics/the-a-element/a-download-click-404-expected.txt: Added.
+        * platform/mac-wk1/http/wpt/html/semantics/text-level-semantics/the-a-element/a-download-click-404-expected.txt: Added.
+        * platform/win/http/wpt/html/semantics/text-level-semantics/the-a-element/a-download-click-404-expected.txt: Added.
+        * platform/wpe/TestExpectations:
+
+2018-03-05  Youenn Fablet  <youenn@apple.com>
+
+        Service worker test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=183264
+        <rdar://problem/38048743>
+
+        Unreviewed.
+
+        * TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2018-03-05  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK] fast/events/blur-focus-window-should-blur-focus-element.html failing
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations: Move this test to the failing test section.
+
+2018-03-05  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK] Implement WTR's PlatformWebView::setWindowIsKey()
+        https://bugs.webkit.org/show_bug.cgi?id=183143
+
+        Reviewed by Carlos Garcia Campos.
+
+        * platform/gtk/TestExpectations: Unmark the passing tests
+
+2018-03-04  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark http/wpt/html/browsers/history/the-location-interface/location-protocol-setter-non-broken-async-delegate.html as failure on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=183322
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-03-03  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Delete incorrect version of clampTo() function from SVGToOTFFontConversion.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=183165
+
+        Reviewed by Darin Adler.
+
+        Re-baseline the results of these two tests since the local version of
+        clampTo() was not returning the expected results always.
+
+        * platform/ios/svg/W3C-SVG-1.1/text-altglyph-01-b-expected.txt:
+        * platform/ios/svg/text/text-altglyph-01-b-expected.txt:
+
+2018-03-03  Zalan Bujtas  <zalan@apple.com>
+
+        [RenderTreeBuilder] Move styleDidChange mutation logic to RenderTreeUpdater
+        https://bugs.webkit.org/show_bug.cgi?id=183273
+        <rdar://problem/38054892>
+
+        Reviewed by Antti Koivisto.
+
+        This is just a different repaint order.
+
+        * fast/repaint/absolute-position-change-containing-block-expected.txt:
+
+2018-03-03  Yoav Weiss  <yoav@yoav.ws>
+
+        Link headers for subresources are not being processed
+        https://bugs.webkit.org/show_bug.cgi?id=181789
+
+        Reviewed by Youenn Fablet.
+
+        Adds tests to make sure Link headers on subresources are being processed.
+
+        * http/tests/preload/link-header-on-subresource-expected.txt: Added.
+        * http/tests/preload/link-header-on-subresource.html: Added.
+        * http/tests/preload/resources/dummy-preloads-subresource.css.php: Added.
+
+2018-03-02  Youenn Fablet  <youenn@apple.com>
+
+        Service worker test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=183264
+        <rdar://problem/38048743>
+
+        Unreviewed.
+
+        * TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2018-03-02  Chris Dumez  <cdumez@apple.com>
+
+        imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-non-broken.html crashes with async policy delegates
+        https://bugs.webkit.org/show_bug.cgi?id=183294
+        <rdar://problem/38073596>
+
+        Reviewed by Youenn Fablet.
+
+        Add layout test coverage.
+
+        * http/wpt/html/browsers/history/the-location-interface/location-protocol-setter-non-broken-async-delegate-expected.txt: Added.
+        * http/wpt/html/browsers/history/the-location-interface/location-protocol-setter-non-broken-async-delegate.html: Added.
+
+2018-03-02  Chris Dumez  <cdumez@apple.com>
+
+        fast/events/before-unload-remove-itself.html crashes with async policy delegates
+        https://bugs.webkit.org/show_bug.cgi?id=183290
+        <rdar://problem/38069045>
+
+        Reviewed by Alex Christensen.
+
+        Add layout test coverage.
+
+        * fast/events/before-unload-remove-itself-async-delegate-expected.txt: Added.
+        * fast/events/before-unload-remove-itself-async-delegate.html: Added.
+
+2018-03-02  Chris Dumez  <cdumez@apple.com>
+
+        Converting a load to a download does not work with async policy delegates
+        https://bugs.webkit.org/show_bug.cgi?id=183254
+        <rdar://problem/38035334>
+
+        Reviewed by Youenn Fablet.
+
+        Add layout test coverage.
+
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download-async-delegate-expected.txt: Added.
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download-async-delegate.html: Added.
+
+2018-03-02  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK] Unreviewed gardening
+
+        * platform/gtk/TestExpectations: Add
+        imported/w3c/web-platform-tests/css/css-ui/text-overflow-022.html,
+        which started failing in the bots.
+
+2018-03-02  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK][WPE] Update js/dom static properties after r229112
+
+        Unreviewed gardening.
+        * platform/gtk/js/dom/dom-static-property-for-in-iteration-expected.txt:
+        * platform/wpe/js/dom/dom-static-property-for-in-iteration-expected.txt:
+
+2018-03-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r222843): [HarfBuzz] Combining enclosed keycap not correctly handled
+        https://bugs.webkit.org/show_bug.cgi?id=183246
+
+        Reviewed by Michael Catanzaro.
+
+        * fast/text/combining-enclosing-keycap-expected.txt: Added.
+        * platform/gtk/fast/text/combining-enclosing-keycap.html: Added.
+        * platform/gtk/TestExpectations:
+
+2018-03-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [FreeType] Remove FontPlatformData fallbacks
+        https://bugs.webkit.org/show_bug.cgi?id=183210
+
+        Reviewed by Michael Catanzaro.
+
+        Rebaseline 3 tests that progressed.
+
+        * platform/gtk/fast/text/international/bidi-LDB-2-CSS-expected.png:
+        * platform/gtk/fast/text/international/bidi-LDB-2-CSS-expected.txt:
+        * platform/gtk/fast/text/international/bidi-LDB-2-HTML-expected.png:
+        * platform/gtk/fast/text/international/bidi-LDB-2-HTML-expected.txt:
+        * platform/gtk/fast/text/international/bidi-LDB-2-formatting-characters-expected.png:
+        * platform/gtk/fast/text/international/bidi-LDB-2-formatting-characters-expected.txt:
+
+2018-03-01  Youenn Fablet  <youenn@apple.com>
+
+        Service worker test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=183264
+
+        Unreviewed.
+
+        * TestExpectations: Unflake/Unskip some tests that seem stable now.
+
+2018-03-01  John Wilander  <wilander@apple.com>
+
+        Move resource load statistics tests from js-test-pre.js to js-test.js
+        https://bugs.webkit.org/show_bug.cgi?id=183249
+        <rdar://problem/38033096>
+
+        Unreviewed test gardening.
+
+        * http/tests/resourceLoadStatistics/classify-as-non-prevalent-based-on-mixed-statistics-expected.txt:
+        * http/tests/resourceLoadStatistics/classify-as-non-prevalent-based-on-mixed-statistics.html:
+        * http/tests/resourceLoadStatistics/classify-as-non-prevalent-based-on-sub-frame-under-top-frame-origins-expected.txt:
+        * http/tests/resourceLoadStatistics/classify-as-non-prevalent-based-on-sub-frame-under-top-frame-origins.html:
+        * http/tests/resourceLoadStatistics/classify-as-non-prevalent-based-on-subresource-under-top-frame-origins-expected.txt:
+        * http/tests/resourceLoadStatistics/classify-as-non-prevalent-based-on-subresource-under-top-frame-origins.html:
+        * http/tests/resourceLoadStatistics/classify-as-non-prevalent-based-on-subresource-unique-redirects-to-expected.txt:
+        * http/tests/resourceLoadStatistics/classify-as-non-prevalent-based-on-subresource-unique-redirects-to.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-mixed-statistics-expected.txt:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-mixed-statistics.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-sub-frame-under-top-frame-origins-expected.txt:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-sub-frame-under-top-frame-origins.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-under-top-frame-origins-expected.txt:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-under-top-frame-origins.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-unique-redirects-to-expected.txt:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-unique-redirects-to.html:
+        * http/tests/resourceLoadStatistics/classify-as-very-prevalent-based-on-mixed-statistics.html:
+        * http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store-expected.txt:
+        * http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour-expected.txt:
+        * http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour.html:
+        * http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store.html:
+        * http/tests/resourceLoadStatistics/grandfathering-expected.txt:
+        * http/tests/resourceLoadStatistics/grandfathering.html:
+        * http/tests/resourceLoadStatistics/non-prevalent-resource-with-user-interaction-expected.txt:
+        * http/tests/resourceLoadStatistics/non-prevalent-resource-with-user-interaction.html:
+        * http/tests/resourceLoadStatistics/non-prevalent-resource-without-user-interaction-expected.txt:
+        * http/tests/resourceLoadStatistics/non-prevalent-resource-without-user-interaction.html:
+        * http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html:
+        * http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout-expected.txt:
+        * http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout.html:
+        * http/tests/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction-expected.txt:
+        * http/tests/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-handled-keydown.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-unhandled-keydown.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-with-user-interaction-expected.txt:
+        * http/tests/resourceLoadStatistics/prevalent-resource-with-user-interaction-timeout-expected.txt:
+        * http/tests/resourceLoadStatistics/prevalent-resource-with-user-interaction-timeout.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-with-user-interaction.html:
+        * http/tests/resourceLoadStatistics/prevalent-resource-without-user-interaction-expected.txt:
+        * http/tests/resourceLoadStatistics/prevalent-resource-without-user-interaction.html:
+
+2018-03-01  Youenn Fablet  <youenn@apple.com>
+
+        LayoutTest imported/w3c/web-platform-tests/service-workers/service-worker/fetch-event-within-sw.https.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=179248
+        <rdar://problem/35377756>
+
+        Reviewed by Chris Dumez.
+
+        * TestExpectations:
+
+2018-03-01  Youenn Fablet  <youenn@apple.com>
+
+        Add API test to validate setting of service worker and cache storage directories
+        https://bugs.webkit.org/show_bug.cgi?id=182543
+
+        Reviewed by Chris Dumez.
+
+        Updated tests according new engine representation.
+
+        * http/tests/cache-storage/cache-clearing-origin.https.html:
+        * http/tests/cache-storage/cache-origins.https.html:
+        * http/tests/cache-storage/cache-representation.https.html:
+
+2018-03-01  Daniel Bates  <dabates@apple.com>
+
+        CSS ::selection stroke-color and stroke-width are not applied to selected text in text fields
+        and ::selection:window-inactive stroke-color and stroke-width are never applied
+        https://bugs.webkit.org/show_bug.cgi?id=183178
+
+        Reviewed by David Hyatt.
+
+        Add tests to ensure that we paint ::selection stroke-color and stroke-width for selected text
+        in text fields. Add tests to ensure that we apply ::selection:window-inactive stroke-color
+        and stroke-width to selected text when the page is deactivated.
+
+        * fast/selectors/selection-window-inactive-stroke-color-expected.html: Added.
+        * fast/selectors/selection-window-inactive-stroke-color.html: Added.
+        * fast/selectors/selection-window-inactive-text-shadow-expected.html: Added.
+        * fast/selectors/selection-window-inactive-text-shadow.html: Added.
+        * fast/selectors/text-field-selection-stroke-color-expected.html: Added.
+        * fast/selectors/text-field-selection-stroke-color.html: Added.
+        * fast/selectors/text-field-selection-text-shadow-expected.html: Added.
+        * fast/selectors/text-field-selection-text-shadow.html: Added.
+        * fast/selectors/text-field-selection-window-inactive-stroke-color-expected.html: Added.
+        * fast/selectors/text-field-selection-window-inactive-stroke-color.html: Added.
+        * fast/selectors/text-field-selection-window-inactive-text-shadow-expected.html: Added.
+        * fast/selectors/text-field-selection-window-inactive-text-shadow.html: Added.
+        * platform/gtk/TestExpectations: Skip the ::selection:window-inactive tests until we fix
+        <https://bugs.webkit.org/show_bug.cgi?id=183143>.
+        * platform/ios/TestExpectations: Mark the tests as won't fix since UIKit draws selection on iOS.
+        * platform/win/TestExpectations: Mark tests as image failures an associated with <https://bugs.webkit.org/show_bug.cgi?id=117322>.
+        Windows does not seem to be updating selectors when the window is deactivated or window deactivation,
+        testRunner.setWindowIsKey() is broken.
+        * platform/wpe/TestExpectations: Skip the ::selection:window-inactive tests until we fix
+        <https://bugs.webkit.org/show_bug.cgi?id=183144>.
+
+2018-03-01  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [Win][DRT] Implement setSpatialNavigationEnabled.
+        https://bugs.webkit.org/show_bug.cgi?id=183166
+
+        Reviewed by Per Arne Vollan.
+
+        * platform/win/fast/spatial-navigation/snav-multiple-select-focusring-expected.txt:
+        * platform/wincairo/fast/spatial-navigation/snav-multiple-select-focusring-expected.txt: Added.
+        This test requires an expectation for every platform. AppleWin had one but it must've been a copy-paste job?
+
+        * platform/win/TestExpectations:
+        Enable fast/spatial-navigation tests on AppleWin too.
+
+2018-03-01  Chris Dumez  <cdumez@apple.com>
+
+        imported/w3c/web-platform-tests/html/browsers/windows/browsing-context.html fails with async policy delegates
+        https://bugs.webkit.org/show_bug.cgi?id=183225
+        <rdar://problem/38003828>
+
+        Reviewed by Alex Christensen.
+
+        * http/wpt/html/browsers/windows/browsing-context-expected.txt: Added.
+        * http/wpt/html/browsers/windows/browsing-context.html: Added.
+        Add layout test coverage.
+
+        * fast/loader/iframe-src-invalid-url-expected.txt:
+        * fast/loader/policy-delegate-action-hit-test-zoomed-expected.txt:
+        * loader/navigation-policy/should-open-external-urls/subframe-click-target-self-expected.txt:
+        * loader/navigation-policy/should-open-external-urls/subframe-click-target-top-expected.txt:
+        Rebaseline a few layout tests now that the log lines for the about:blank policy checks are
+        gone.
+
+2018-02-28  Nan Wang  <n_wang@apple.com>
+
+        Layout Test accessibility/mac/accessibility-make-first-responder.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=183232
+
+        Reviewed by Chris Fleizach.
+
+        The test is flaky because that the UIProcess might have received the IPC message
+        to set the first responder after we check the current state. Added a delay 
+        in the test to fix that.
+
+        * accessibility/mac/accessibility-make-first-responder.html:
+
+2018-02-28  Nan Wang  <n_wang@apple.com>
+
+        AX: AOM: Dispatch accessiblesetvalue event
+        https://bugs.webkit.org/show_bug.cgi?id=183021
+        <rdar://problem/37764242>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/AOM-event-accessiblesetvalue-expected.txt: Added.
+        * accessibility/mac/AOM-event-accessiblesetvalue.html: Added.
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+
+2018-02-28  Chris Dumez  <cdumez@apple.com>
+
+        html/browsers/browsing-the-web/navigating-across-documents/006.html fails with async policy delegates
+        https://bugs.webkit.org/show_bug.cgi?id=183168
+        <rdar://problem/37951341>
+
+        Reviewed by Alex Christensen.
+
+        Add layout test coverage.
+
+        * TestExpectations:
+        * http/wpt/html/browsers/browsing-the-web/navigating-across-documents/006-expected.txt: Added.
+        * http/wpt/html/browsers/browsing-the-web/navigating-across-documents/006.html: Added.
+        * http/wpt/html/browsers/browsing-the-web/navigating-across-documents/click.html: Added.
+        * http/wpt/html/browsers/browsing-the-web/navigating-across-documents/href.html: Added.
+
+2018-02-28  Alicia Boya García  <aboya@igalia.com>
+
+        Unreviewed GTK test gardening.
+        https://bugs.webkit.org/show_bug.cgi?id=183217
+
+        * platform/gtk/TestExpectations:
+
+2018-02-28  John Wilander  <wilander@apple.com>
+
+        Add a second tier of prevalence to facilitate telemetry on very prevalent domains
+        https://bugs.webkit.org/show_bug.cgi?id=183218
+        <rdar://problem/37992388>
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-mixed-statistics.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-sub-frame-under-top-frame-origins.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-redirect-collusion.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-under-top-frame-origins.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-unique-redirects-to.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-top-frame-redirect-collusion.html:
+        * http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-top-frame-unique-redirects-to.html:
+        * http/tests/resourceLoadStatistics/classify-as-very-prevalent-based-on-mixed-statistics-expected.txt: Added.
+        * http/tests/resourceLoadStatistics/classify-as-very-prevalent-based-on-mixed-statistics.html: Added.
+        * platform/wk2/TestExpectations:
+            New test marked as [ Pass ].
+
+2018-02-28  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Disable three resourceLoadStatistics tests on iOS Simulator Debug because they frequently time out.
+        https://bugs.webkit.org/show_bug.cgi?id=183216
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2018-02-28  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-top-frame-redirect-collusion.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=182983
+
+        Unreviewed test gardening.
+
+        * platform/wk2/TestExpectations:
+
+2018-02-27  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r229060.
+        https://bugs.webkit.org/show_bug.cgi?id=183198
+
+        This patch causes crashes on two SVG tests (Requested by fredw
+        on #webkit).
+
+        Reverted changeset:
+
+        "Relayout frames after AsyncFrameScrolling or FrameFlattening
+        option is changed"
+        https://bugs.webkit.org/show_bug.cgi?id=183081
+        https://trac.webkit.org/changeset/229060
+
+2018-02-27  Youenn Fablet  <youenn@apple.com>
+
+        Do not trigger a service worker match in case of document redirection if it will be already served by AppCache
+        https://bugs.webkit.org/show_bug.cgi?id=183185
+        <rdar://problem/37693796>
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/appcache/main-resource-redirect-with-sw-expected.txt: Added.
+        * http/tests/appcache/main-resource-redirect-with-sw.html: Added.
+        * http/tests/appcache/resources/main-resource-redirect-with-sw.manifest: Added.
+        * http/tests/appcache/resources/register-resources-service-worker.html: Added.
+        * http/tests/appcache/service-worker-proxy.js: Added.
+        * platform/gtk/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2018-02-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=183094
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-02-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark fast/dom/Window/window-focus-self.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=183164
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-02-27  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed GTK test gardening
+
+        * TestExpectations:
+        * platform/gtk/TestExpectations:
+
+2018-02-27  Doug Russell  <doug@getitdownonpaper.com>
+
+        AX: Spell check and style attributes should be optional when fetching attributed string
+        https://bugs.webkit.org/show_bug.cgi?id=160744
+
+        Reviewed by Chris Fleizach.
+
+        The overhead of fetching a spell checked attributed string via AX API is substantial. 
+        In some cases on the order of 7/8 of the total time spent fetching the string.
+
+        This change introduces the new attribute AXAttributedStringForTextMarkerRangeWithOptions which accepts an NSDictionary as it's parameter with keys "AXTextMarkerRange" (AXTextMarkerRangeRef) and "AXSpellCheck" (NSNumber(BOOL)).
+
+        AXAttributedStringForTextMarkerRange will remain unchanged.
+
+        * accessibility/mac/attributed-string: Added.
+        * accessibility/mac/attributed-string/attributed-string-for-range-expected.txt: Added.
+        * accessibility/mac/attributed-string/attributed-string-for-range-with-options-expected.txt: Added.
+        * accessibility/mac/attributed-string/attributed-string-for-range-with-options.html: Added.
+        * accessibility/mac/attributed-string/attributed-string-for-range.html: Added.
+        * accessibility/mac/bounds-for-range-expected.txt:
+
+2018-02-27  Antoine Quint  <graouts@apple.com>
+
+        Unreviewed, marking a number of Web Animations WPT tests non-flaky.
+
+        * TestExpectations:
+
+2018-02-27  Frederic Wang  <fwang@igalia.com>
+
+        Relayout frames after AsyncFrameScrolling or FrameFlattening option is changed
+        https://bugs.webkit.org/show_bug.cgi?id=183081
+
+        Reviewed by Antonio Gomes.
+
+        Add a test to check whether an iframe changes its flattening status after one of the option
+        AsyncFrameScrolling/FrameFlattening is enabled/disabled.
+
+        * platform/ios-simulator/TestExpectations: Remove failure.
+        * platform/ios/fast/frames/flattening/iframe-flattening-async-frame-scrolling-dynamic-expected.txt: Added.
+        * platform/ios/fast/frames/flattening/iframe-flattening-async-frame-scrolling-dynamic.html: Added.
+
+2018-02-26  Daniel Bates  <dabates@apple.com>
+
+        testRunner.setWindowIsKey() has no effect on the web process side in WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=81736
+        <rdar://problem/11088268>
+
+        Remove some tests from the platform-independent WebKit2 TestExpectations file that
+        now pass on iOS and Mac following r189959 and r211910, respectively. Skip these
+        tests on GTK and WPE. For GTK we need to fix <https://bugs.webkit.org/show_bug.cgi?id=183140>
+        For WPE we need to fix <https://bugs.webkit.org/show_bug.cgi?id=183144>.
+
+        The test fast/selectors/querySelector-window-inactive.html still fails on WebKit2,
+        but for a different reason. See <https://bugs.webkit.org/show_bug.cgi?id=183140>
+        for more details.
+
+        * platform/gtk/TestExpectations:
+        * platform/wk2/TestExpectations:
+        * platform/wpe/TestExpectations:
+
+2018-02-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r226745.
+        https://bugs.webkit.org/show_bug.cgi?id=183132
+
+        This is breaking some websites (Requested by youenn on
+        #webkit).
+
+        Reverted changeset:
+
+        "Use no-cache fetch mode when loading main documents with
+        location.reload()"
+        https://bugs.webkit.org/show_bug.cgi?id=181285
+        https://trac.webkit.org/changeset/226745
+
+2018-02-25  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WK2] http/tests/navigation/new-window-redirect-history.html crashes
+        https://bugs.webkit.org/show_bug.cgi?id=127683
+
+        Reviewed by Dan Bernstein.
+
+        * platform/ios-wk2/TestExpectations:
+        Unmarked http/tests/navigation/new-window-redirect-history.html.
+        * platform/wk2/TestExpectations: Ditto.
+
+2018-02-22  Antoine Quint  <graouts@apple.com>
+
+        REGRESSION (r228445): A big pause button shows over YouTube videos if you tap "Tap To Unmute" on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=183074
+        <rdar://problem/37747028>
+
+        Reviewed by Eric Carlson.
+
+        Add a new test that set controls on the video, then immediately removes them, plays the video and turns the controls
+        back on as soon as the video starts to check that the "showsStartButton" property is false on the media controls.
+        Prior to this patch this test would fail.
+
+        * media/modern-media-controls/start-support/start-support-disable-controls-and-re-enable-post-play-expected.txt: Added.
+        * media/modern-media-controls/start-support/start-support-disable-controls-and-re-enable-post-play.html: Added.
+        * platform/ios/TestExpectations:
+
+2018-02-22  Youenn Fablet  <youenn@apple.com>
+
+        CacheStorage::Engine::Caches::writeRecord is not always calling the completion handler
+        https://bugs.webkit.org/show_bug.cgi?id=183055
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/cache-storage/resources/cache-persistency-iframe.html:
+
+2018-02-22  Chris Dumez  <cdumez@apple.com>
+
+        Document.open() cancels existing provisional load but not navigation policy check
+        https://bugs.webkit.org/show_bug.cgi?id=183012
+        <rdar://problem/37755831>
+
+        Reviewed by Alex Christensen.
+
+        Add layout test coverage.
+
+        * fast/dom/Document/open-with-pending-load-async-policy-expected.txt: Added.
+        * fast/dom/Document/open-with-pending-load-async-policy.html: Added.
+
+2018-02-22  Matt Lewis  <jlewis3@apple.com>
+
+        Updated expectations for http/tests/appcache/404-resource-with-slow-main-resource.php.
+        https://bugs.webkit.org/show_bug.cgi?id=153503
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2018-02-22  Per Arne Vollan  <pvollan@apple.com>
+
+        Mark http/tests/preload/onerror_event.html as a flaky crash on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=179297
+
+        Unreviewed test gardening.
+
+        * platform/win/TestExpectations:
+
+2018-02-22  Miguel Gomez  <magomez@igalia.com>
+
+        Unreviewed GTK+ gardening after r228915.
+
+        * platform/gtk/TestExpectations:
+
+2018-02-21  John Wilander  <wilander@apple.com>
+
+        Add delay to make cookie purge catch up when running http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html
+        https://bugs.webkit.org/show_bug.cgi?id=183024
+        <rdar://problem/37765207>
+
+        Unreviewed test gardening.
+
+        * http/tests/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html:
+            Added a setTimeout() delay.
+
+2018-02-21  Youenn Fablet  <youenn@apple.com>
+
+        Move AppCache loading to the NetworkProcess
+        https://bugs.webkit.org/show_bug.cgi?id=178540
+        <rdar://problem/37119346>
+
+        Reviewed by Alex Christensen.
+
+        There is no guarantee that aborting in an event handler will be executed before some loads finish,
+        as the events are fired asynchronously.
+        Making tests less flaky by waiting some time before fnishing some loads.
+
+        * http/tests/appcache/abort-cache-onchecking.html:
+        * http/tests/appcache/resource-redirect-2-expected.txt:
+        * http/tests/appcache/resources/abort-cache-onchecking-resource-404.manifest:
+        * http/tests/appcache/resources/abort-cache-onchecking.manifest: Removed.
+        * http/tests/appcache/resources/abort-cache-onchecking.manifest.php: Added.
+        * http/tests/appcache/resources/abort-cache-ondownloading.manifest:
+        * http/tests/appcache/resources/abort-cache-ondownloading.text: Removed.
+        * http/tests/appcache/resources/abort-cache-ondownloading.text.php: Added.
+        * http/tests/appcache/resources/not-exist.vob.php: Added.
+
 2018-02-21  Youenn Fablet  <youenn@apple.com>
 
         Use ResourceLoader to load appcache manifest

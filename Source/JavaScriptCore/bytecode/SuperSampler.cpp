@@ -28,7 +28,6 @@
 
 #include "MacroAssembler.h"
 #include "Options.h"
-#include <wtf/CurrentTime.h>
 #include <wtf/DataLog.h>
 #include <wtf/Lock.h>
 #include <wtf/Threading.h>
@@ -60,7 +59,7 @@ void initializeSuperSampler()
                         else
                             out++;
                     }
-                    sleepMS(sleepQuantum);
+                    sleep(Seconds::fromMilliseconds(sleepQuantum));
                 }
                 printSuperSamplerState();
                 if (static_cast<int32_t>(g_superSamplerCount) < 0)

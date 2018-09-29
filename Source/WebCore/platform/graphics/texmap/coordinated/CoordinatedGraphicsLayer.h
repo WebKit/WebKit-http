@@ -44,7 +44,6 @@ class PaintingEngine;
 namespace WebCore {
 class CoordinatedGraphicsLayer;
 class TextureMapperAnimations;
-class ScrollableArea;
 
 class CoordinatedGraphicsLayerClient {
 public:
@@ -108,7 +107,7 @@ public:
     bool addAnimation(const KeyframeValueList&, const FloatSize&, const Animation*, const String&, double) override;
     void pauseAnimation(const String&, double) override;
     void removeAnimation(const String&) override;
-    void suspendAnimations(double time) override;
+    void suspendAnimations(MonotonicTime) override;
     void resumeAnimations() override;
     bool usesContentsLayer() const override { return m_platformLayer || m_compositedImage; }
 
@@ -119,10 +118,6 @@ public:
     void computePixelAlignment(FloatPoint& position, FloatSize&, FloatPoint3D& anchorPoint, FloatSize& alignmentOffset);
 
     void setVisibleContentRectTrajectoryVector(const FloatPoint&);
-
-    void setScrollableArea(ScrollableArea*);
-    bool isScrollable() const { return !!m_scrollableArea; }
-    void commitScrollOffset(const IntSize&);
 
     CoordinatedLayerID id() const { return m_id; }
 
@@ -229,9 +224,7 @@ private:
     PlatformLayer* m_platformLayer;
     Timer m_animationStartedTimer;
     TextureMapperAnimations m_animations;
-    double m_lastAnimationStartTime { 0.0 };
-
-    ScrollableArea* m_scrollableArea;
+    MonotonicTime m_lastAnimationStartTime;
 };
 
 } // namespace WebCore

@@ -60,7 +60,6 @@
 #import <WebCore/NotImplemented.h>
 #import <WebCore/PlatformScreen.h>
 #import <pal/spi/cocoa/QuartzCoreSPI.h>
-#import <wtf/CurrentTime.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/text/TextStream.h>
 
@@ -425,6 +424,7 @@ private:
         _sizeChangedSinceLastVisibleContentRectUpdate,
         isChangingObscuredInsetsInteractively,
         _webView._allowsViewportShrinkToFit,
+        _webView._forceHorizontalViewportShrinkToFit,
         enclosedInScrollableAncestorView,
         timestamp,
         velocityData.horizontalVelocity,

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2017 Apple Inc.
+ * Copyright (C) 2008-2018 Apple Inc.
  * Copyright (C) 2009, 2010 University of Szeged
  * All rights reserved.
  *
@@ -34,7 +34,9 @@
 
 namespace JSC {
 
-class MacroAssemblerARM : public AbstractMacroAssembler<ARMAssembler> {
+using Assembler = TARGET_ASSEMBLER;
+
+class MacroAssemblerARM : public AbstractMacroAssembler<Assembler> {
     static const int DoubleConditionMask = 0x0f;
     static const int DoubleConditionBitSpecial = 0x10;
     COMPILE_ASSERT(!(DoubleConditionBitSpecial & DoubleConditionMask), DoubleConditionBitSpecial_should_not_interfere_with_ARMAssembler_Condition_codes);
@@ -1147,7 +1149,7 @@ public:
         return dataLabel;
     }
 
-    Jump branchPtrWithPatch(RelationalCondition cond, RegisterID left, DataLabelPtr& dataLabel, TrustedImmPtr initialRightValue = TrustedImmPtr(0))
+    Jump branchPtrWithPatch(RelationalCondition cond, RegisterID left, DataLabelPtr& dataLabel, TrustedImmPtr initialRightValue = TrustedImmPtr(nullptr))
     {
         ensureSpace(3 * sizeof(ARMWord), 2 * sizeof(ARMWord));
         dataLabel = moveWithPatch(initialRightValue, ARMRegisters::S1);
@@ -1155,7 +1157,7 @@ public:
         return jump;
     }
 
-    Jump branchPtrWithPatch(RelationalCondition cond, Address left, DataLabelPtr& dataLabel, TrustedImmPtr initialRightValue = TrustedImmPtr(0))
+    Jump branchPtrWithPatch(RelationalCondition cond, Address left, DataLabelPtr& dataLabel, TrustedImmPtr initialRightValue = TrustedImmPtr(nullptr))
     {
         load32(left, ARMRegisters::S1);
         ensureSpace(3 * sizeof(ARMWord), 2 * sizeof(ARMWord));
@@ -1182,7 +1184,7 @@ public:
 
     DataLabelPtr storePtrWithPatch(ImplicitAddress address)
     {
-        return storePtrWithPatch(TrustedImmPtr(0), address);
+        return storePtrWithPatch(TrustedImmPtr(nullptr), address);
     }
 
     // Floating point operators

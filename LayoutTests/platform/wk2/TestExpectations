@@ -141,14 +141,6 @@ http/tests/cache/history-only-cached-subresource-loads-max-age-https.html
 # https://bugs.webkit.org/show_bug.cgi?id=40361
 editing/text-iterator/findString-selection-disabled.html
 
-# testRunner.setWindowIsKey() has no effect on the web process side in WebKit2
-# https://bugs.webkit.org/show_bug.cgi?id=81736 rdar://problem/11088268
-fast/events/blur-focus-window-should-blur-focus-element.html
-fast/selectors/querySelector-window-inactive.html
-fast/selectors/selection-window-inactive.html
-fast/dom/Window/window-focus-self.html
-scrollbars/corner-resizer-window-inactive.html
-
 # WebKitTestRunner needs to implement testRunner.closeIdleLocalStorageDatabases().
 # https://bugs.webkit.org/show_bug.cgi?id=103861
 storage/domstorage/localstorage/close-idle-localstorage-databases-immediately.html
@@ -162,8 +154,6 @@ storage/domstorage/storage-close-database-on-idle.html
 plugins/npruntime/embed-property-iframe-equality.html
 
 webkit.org/b/105952 fast/loader/submit-form-while-parsing-2.html [ Pass Failure ]
-
-webkit.org/b/127683 http/tests/navigation/new-window-redirect-history.html [ Skip ]
 
 # Causes next test to crash only on WebKit2
 webkit.org/b/98345 fast/parser/document-open-in-unload.html [ Skip ]
@@ -686,11 +676,12 @@ http/tests/resourceLoadStatistics/classify-as-non-prevalent-based-on-sub-frame-u
 http/tests/resourceLoadStatistics/classify-as-non-prevalent-based-on-subresource-under-top-frame-origins.html [ Pass ]
 http/tests/resourceLoadStatistics/classify-as-non-prevalent-based-on-subresource-unique-redirects-to.html [ Pass ]
 http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-mixed-statistics.html [ Pass ]
+http/tests/resourceLoadStatistics/classify-as-very-prevalent-based-on-mixed-statistics.html [ Pass ]
 http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-sub-frame-under-top-frame-origins.html [ Pass ]
 http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-under-top-frame-origins.html [ Pass ]
 http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-unique-redirects-to.html [ Pass ]
 http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-redirect-collusion.html [ Pass ]
-http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-top-frame-redirect-collusion.html [ Pass ]
+http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-top-frame-redirect-collusion.html [ Pass Failure ]
 http/tests/resourceLoadStatistics/classify-as-prevalent-based-on-top-frame-unique-redirects-to.html [ Pass ]
 http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store.html [ Pass ]
 http/tests/resourceLoadStatistics/grandfathering.html [ Pass ]
@@ -730,4 +721,7 @@ webkit.org/b/172662 [ Debug ] http/tests/cache/disk-cache/redirect-chain-limits.
 webkit.org/b/174471 webrtc/filtering-ice-candidate-after-reload.html [ Pass Timeout ]
 
 webkit.org/b/175678 media/W3C/video/events/event_progress.html [ Pass Failure ]
+
+webkit.org/b/183139 fast/events/blur-focus-window-should-blur-focus-element.html
+webkit.org/b/183140 fast/selectors/querySelector-window-inactive.html
 

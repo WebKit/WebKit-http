@@ -116,7 +116,7 @@ static Expected<MacroAssemblerCodeRef, BindingFailure> handleBadI64Use(VM* vm, J
             return makeUnexpected(BindingFailure::OutOfMemory);
 
         linkBuffer.link(call, throwBadI64);
-        return FINALIZE_CODE(linkBuffer, ("WebAssembly->JavaScript invalid i64 use in import[%i]", importIndex));
+        return FINALIZE_CODE(linkBuffer, "WebAssembly->JavaScript invalid i64 use in import[%i]", importIndex);
     }
     
     return MacroAssemblerCodeRef();
@@ -224,7 +224,7 @@ Expected<MacroAssemblerCodeRef, BindingFailure> wasmToJS(VM* vm, Bag<CallLinkInf
         if (argCount) {
             // The GC should not look at this buffer at all, these aren't JSValues.
             jit.move(CCallHelpers::TrustedImmPtr(scratchBuffer->addressOfActiveLength()), GPRInfo::argumentGPR0);
-            jit.storePtr(CCallHelpers::TrustedImmPtr(0), GPRInfo::argumentGPR0);
+            jit.storePtr(CCallHelpers::TrustedImmPtr(nullptr), GPRInfo::argumentGPR0);
         }
 
         uint64_t (*callFunc)(ExecState*, JSObject*, SignatureIndex, uint64_t*) =
@@ -342,7 +342,7 @@ Expected<MacroAssemblerCodeRef, BindingFailure> wasmToJS(VM* vm, Bag<CallLinkInf
         linkBuffer.link(call, callFunc);
         linkBuffer.link(exceptionCall, doUnwinding);
 
-        return FINALIZE_CODE(linkBuffer, ("WebAssembly->JavaScript import[%i] %s", importIndex, signature.toString().ascii().data()));
+        return FINALIZE_CODE(linkBuffer, "WebAssembly->JavaScript import[%i] %s", importIndex, signature.toString().ascii().data());
     }
 
     // Note: We don't need to perform a stack check here since WasmB3IRGenerator
@@ -505,7 +505,7 @@ Expected<MacroAssemblerCodeRef, BindingFailure> wasmToJS(VM* vm, Bag<CallLinkInf
     CallLinkInfo* callLinkInfo = callLinkInfos.add();
     callLinkInfo->setUpCall(CallLinkInfo::Call, CodeOrigin(), importJSCellGPRReg);
     JIT::DataLabelPtr targetToCheck;
-    JIT::TrustedImmPtr initialRightValue(0);
+    JIT::TrustedImmPtr initialRightValue(nullptr);
     JIT::Jump slowPath = jit.branchPtrWithPatch(MacroAssembler::NotEqual, importJSCellGPRReg, targetToCheck, initialRightValue);
     JIT::Call fastCall = jit.nearCall();
     JIT::Jump done = jit.jump();
@@ -654,7 +654,7 @@ Expected<MacroAssemblerCodeRef, BindingFailure> wasmToJS(VM* vm, Bag<CallLinkInf
     CodeLocationNearCall hotPathOther = patchBuffer.locationOfNearCall(fastCall);
     callLinkInfo->setCallLocations(callReturnLocation, hotPathBegin, hotPathOther);
 
-    return FINALIZE_CODE(patchBuffer, ("WebAssembly->JavaScript import[%i] %s", importIndex, signature.toString().ascii().data()));
+    return FINALIZE_CODE(patchBuffer, "WebAssembly->JavaScript import[%i] %s", importIndex, signature.toString().ascii().data());
 }
 
 void* wasmToJSException(ExecState* exec, Wasm::ExceptionType type, Instance* wasmInstance)

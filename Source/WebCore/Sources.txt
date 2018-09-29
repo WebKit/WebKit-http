@@ -290,7 +290,6 @@ Modules/websockets/WorkerThreadableWebSocketChannel.cpp
 
 Modules/webvr/NavigatorWebVR.cpp
 Modules/webvr/VRDisplay.cpp
-Modules/webvr/VRDisplayCapabilities.cpp
 Modules/webvr/VRDisplayEvent.cpp
 Modules/webvr/VREyeParameters.cpp
 Modules/webvr/VRFrameData.cpp
@@ -330,12 +329,15 @@ accessibility/AccessibilityTableHeaderContainer.cpp
 accessibility/AccessibilityTableRow.cpp
 accessibility/AccessibilityTree.cpp
 accessibility/AccessibilityTreeItem.cpp
+accessibility/AccessibleSetValueEvent.cpp
 
 animation/AnimationEffectReadOnly.cpp
 animation/AnimationEffectTiming.cpp
 animation/AnimationEffectTimingReadOnly.cpp
 animation/AnimationPlaybackEvent.cpp
 animation/AnimationTimeline.cpp
+animation/CSSAnimation.cpp
+animation/CSSTransition.cpp
 animation/DocumentTimeline.cpp
 animation/KeyframeEffect.cpp
 animation/KeyframeEffectReadOnly.cpp
@@ -1792,7 +1794,7 @@ rendering/InlineTextBox.cpp
 rendering/LayoutDisallowedScope.cpp
 rendering/LayoutRepainter.cpp
 rendering/LayoutState.cpp
-rendering/MarkerSubrange.cpp
+rendering/MarkedText.cpp
 rendering/OrderIterator.cpp
 rendering/PointerEventsHitRules.cpp
 rendering/RenderAttachment.cpp
@@ -2014,6 +2016,7 @@ rendering/svg/SVGTextQuery.cpp
 rendering/updating/RenderTreeBuilder.cpp
 rendering/updating/RenderTreeBuilderBlock.cpp
 rendering/updating/RenderTreeBuilderBlockFlow.cpp
+rendering/updating/RenderTreeBuilderContinuation.cpp
 rendering/updating/RenderTreeBuilderFirstLetter.cpp
 rendering/updating/RenderTreeBuilderFormControls.cpp
 rendering/updating/RenderTreeBuilderFullScreen.cpp
@@ -2327,6 +2330,7 @@ JSHTMLElementWrapperFactory.cpp
 JSAbortController.cpp
 JSAbortSignal.cpp
 JSAbstractWorker.cpp
+JSAccessibleSetValueEvent.cpp
 JSAesCbcCfbParams.cpp
 JSAesCtrParams.cpp
 JSAesGcmParams.cpp
@@ -2434,6 +2438,8 @@ JSCryptoKeyPair.cpp
 JSCryptoKeyUsage.cpp
 JSCryptoRsaHashedKeyAlgorithm.cpp
 JSCryptoRsaKeyAlgorithm.cpp
+JSCSSAnimation.cpp
+JSCSSTransition.cpp
 JSCustomElementRegistry.cpp
 JSCustomEvent.cpp
 JSDocumentTimeline.cpp

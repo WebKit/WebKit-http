@@ -35,7 +35,6 @@
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "InputTypeNames.h"
-#include <wtf/CurrentTime.h>
 #include <wtf/DateMath.h>
 #include <wtf/MathExtras.h>
 #include <wtf/NeverDestroyed.h>
@@ -78,7 +77,7 @@ String MonthInputType::serializeWithMilliseconds(double value) const
 
 Decimal MonthInputType::defaultValueForStepUp() const
 {
-    double current = currentTimeMS();
+    double current = WallTime::now().secondsSinceEpoch().milliseconds();
     int offset = calculateLocalTimeOffset(current).offset / msPerMinute;
     current += offset * msPerMinute;
 

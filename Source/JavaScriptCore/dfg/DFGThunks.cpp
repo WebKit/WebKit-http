@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,7 +45,7 @@ MacroAssemblerCodeRef osrExitThunkGenerator(VM* vm)
     MacroAssembler jit;
     jit.probe(OSRExit::executeOSRExit, vm);
     LinkBuffer patchBuffer(jit, GLOBAL_THUNK_ID);
-    return FINALIZE_CODE(patchBuffer, ("DFG OSR exit thunk"));
+    return FINALIZE_CODE(patchBuffer, "DFG OSR exit thunk");
 }
 
 MacroAssemblerCodeRef osrExitGenerationThunkGenerator(VM* vm)
@@ -85,7 +85,7 @@ MacroAssemblerCodeRef osrExitGenerationThunkGenerator(VM* vm)
     MacroAssembler::Call functionCall = jit.call();
 
     jit.move(MacroAssembler::TrustedImmPtr(scratchBuffer->addressOfActiveLength()), GPRInfo::regT0);
-    jit.storePtr(MacroAssembler::TrustedImmPtr(0), MacroAssembler::Address(GPRInfo::regT0));
+    jit.storePtr(MacroAssembler::TrustedImmPtr(nullptr), MacroAssembler::Address(GPRInfo::regT0));
 
     for (unsigned i = 0; i < FPRInfo::numberOfRegisters; ++i) {
         jit.move(MacroAssembler::TrustedImmPtr(buffer + GPRInfo::numberOfRegisters + i), GPRInfo::regT0);
@@ -105,7 +105,7 @@ MacroAssemblerCodeRef osrExitGenerationThunkGenerator(VM* vm)
     
     patchBuffer.link(functionCall, OSRExit::compileOSRExit);
     
-    return FINALIZE_CODE(patchBuffer, ("DFG OSR exit generation thunk"));
+    return FINALIZE_CODE(patchBuffer, "DFG OSR exit generation thunk");
 }
 
 MacroAssemblerCodeRef osrEntryThunkGenerator(VM* vm)
@@ -146,7 +146,7 @@ MacroAssemblerCodeRef osrEntryThunkGenerator(VM* vm)
     jit.jump(GPRInfo::regT1);
     
     LinkBuffer patchBuffer(jit, GLOBAL_THUNK_ID);
-    return FINALIZE_CODE(patchBuffer, ("DFG OSR entry thunk"));
+    return FINALIZE_CODE(patchBuffer, "DFG OSR entry thunk");
 }
 
 } } // namespace JSC::DFG

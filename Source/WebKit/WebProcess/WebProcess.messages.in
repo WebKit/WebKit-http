@@ -51,9 +51,9 @@ messages -> WebProcess LegacyReceiver {
     DestroySession(PAL::SessionID sessionID)
 
     # Plug-ins.
-    DidAddPlugInAutoStartOriginHash(uint32_t hash, double expirationTime, PAL::SessionID sessionID)
-    ResetPlugInAutoStartOriginDefaultHashes(HashMap<uint32_t,double> hashes)
-    ResetPlugInAutoStartOriginHashes(HashMap<PAL::SessionID, HashMap<uint32_t,double>> hashes)
+    DidAddPlugInAutoStartOriginHash(uint32_t hash, WallTime expirationTime, PAL::SessionID sessionID)
+    ResetPlugInAutoStartOriginDefaultHashes(HashMap<uint32_t,WallTime> hashes)
+    ResetPlugInAutoStartOriginHashes(HashMap<PAL::SessionID, HashMap<uint32_t,WallTime>> hashes)
     SetPluginLoadClientPolicy(uint8_t policy, String host, String bundleIdentifier, String versionString)
     ResetPluginLoadClientPolicies(HashMap<String, HashMap<String, HashMap<String, uint8_t>>> pluginLoadClientPolicies)
     ClearPluginClientPolicies()
@@ -124,4 +124,9 @@ messages -> WebProcess LegacyReceiver {
     DidCheckRemotePortForActivity(uint64_t callbackIdentifier, bool hasActivity)
     CheckProcessLocalPortForActivity(struct WebCore::MessagePortIdentifier port, uint64_t callbackIdentifier)
     MessagesAvailableForPort(struct WebCore::MessagePortIdentifier port)
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+    SetScreenProperties(HashMap<uint32_t, WebCore::ScreenProperties> screenProperties)
+    ScrollerStylePreferenceChanged(bool useOvelayScrollbars)
+#endif
 }

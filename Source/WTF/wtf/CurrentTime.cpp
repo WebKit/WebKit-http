@@ -32,11 +32,8 @@
  */
 
 #include "config.h"
-#include "CurrentTime.h"
 #include "MonotonicTime.h"
-
-#include "Condition.h"
-#include "Lock.h"
+#include "WallTime.h"
 
 #if OS(DARWIN)
 #include <mach/mach.h>
@@ -155,7 +152,7 @@ static bool qpcAvailable()
     return available;
 }
 
-double currentTime()
+static inline double currentTime()
 {
     // Use a combination of ftime and QueryPerformanceCounter.
     // ftime returns the information we want, but doesn't have sufficient resolution.
@@ -200,7 +197,7 @@ double currentTime()
 
 #else
 
-double currentTime()
+static inline double currentTime()
 {
     static bool init = false;
     static double lastTime;
@@ -230,7 +227,7 @@ double currentTime()
 // better accuracy compared with Windows implementation of g_get_current_time:
 // (http://www.google.com/codesearch/p?hl=en#HHnNRjks1t0/glib-2.5.2/glib/gmain.c&q=g_get_current_time).
 // Non-Windows GTK builds could use gettimeofday() directly but for the sake of consistency lets use GTK function.
-double currentTime()
+static inline double currentTime()
 {
     GTimeVal now;
     g_get_current_time(&now);
@@ -246,7 +243,7 @@ double currentTime()
 
 #else
 
-double currentTime()
+static inline double currentTime()
 {
     struct timeval now;
     gettimeofday(&now, 0);
@@ -255,17 +252,16 @@ double currentTime()
 
 #endif
 
-#if USE(GLIB)
-
-double monotonicallyIncreasingTime()
+WallTime WallTime::now()
 {
-    return static_cast<double>(g_get_monotonic_time() / 1000000.0);
+    return fromRawSeconds(currentTime());
 }
 
-#elif OS(DARWIN)
-
-double monotonicallyIncreasingTime()
+MonotonicTime MonotonicTime::now()
 {
+#if USE(GLIB)
+    return fromRawSeconds(static_cast<double>(g_get_monotonic_time() / 1000000.0));
+#elif OS(DARWIN)
     // Based on listing #2 from Apple QA 1398, but modified to be thread-safe.
     static mach_timebase_info_data_t timebaseInfo;
     static std::once_flag initializeTimerOnceFlag;
@@ -275,80 +271,19 @@ double monotonicallyIncreasingTime()
         ASSERT(timebaseInfo.denom);
     });
 
-    return (mach_absolute_time() * timebaseInfo.numer) / (1.0e9 * timebaseInfo.denom);
-}
-
+    return fromRawSeconds((mach_absolute_time() * timebaseInfo.numer) / (1.0e9 * timebaseInfo.denom));
 #elif OS(LINUX) || OS(FREEBSD) || OS(OPENBSD) || OS(NETBSD)
-
-double monotonicallyIncreasingTime()
-{
     struct timespec ts { };
     clock_gettime(CLOCK_MONOTONIC, &ts);
-    return static_cast<double>(ts.tv_sec) + ts.tv_nsec / 1.0e9;
-}
-
+    return fromRawSeconds(static_cast<double>(ts.tv_sec) + ts.tv_nsec / 1.0e9);
 #else
-
-double monotonicallyIncreasingTime()
-{
     static double lastTime = 0;
     double currentTimeNow = currentTime();
     if (currentTimeNow < lastTime)
         return lastTime;
     lastTime = currentTimeNow;
-    return currentTimeNow;
-}
-
+    return fromRawSeconds(currentTimeNow);
 #endif
-
-Seconds currentCPUTime()
-{
-#if OS(DARWIN)
-    mach_msg_type_number_t infoCount = THREAD_BASIC_INFO_COUNT;
-    thread_basic_info_data_t info;
-
-    // Get thread information
-    mach_port_t threadPort = mach_thread_self();
-    thread_info(threadPort, THREAD_BASIC_INFO, reinterpret_cast<thread_info_t>(&info), &infoCount);
-    mach_port_deallocate(mach_task_self(), threadPort);
-
-    return Seconds(info.user_time.seconds + info.system_time.seconds) + Seconds::fromMicroseconds(info.user_time.microseconds + info.system_time.microseconds);
-#elif OS(WINDOWS)
-    union {
-        FILETIME fileTime;
-        unsigned long long fileTimeAsLong;
-    } userTime, kernelTime;
-    
-    // GetThreadTimes won't accept null arguments so we pass these even though
-    // they're not used.
-    FILETIME creationTime, exitTime;
-    
-    GetThreadTimes(GetCurrentThread(), &creationTime, &exitTime, &kernelTime.fileTime, &userTime.fileTime);
-
-    return Seconds::fromMicroseconds((userTime.fileTimeAsLong + kernelTime.fileTimeAsLong) / 10);
-#elif OS(LINUX) || OS(FREEBSD) || OS(OPENBSD) || OS(NETBSD)
-    struct timespec ts { };
-    clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts);
-    return Seconds(ts.tv_sec) + Seconds::fromNanoseconds(ts.tv_nsec);
-#else
-    // FIXME: We should return the time the current thread has spent executing.
-
-    static MonotonicTime firstTime = MonotonicTime::now();
-    return MonotonicTime::now() - firstTime;
-#endif
-}
-
-void sleep(double value)
-{
-    // It's very challenging to find portable ways of sleeping for less than a second. On UNIX, you want to
-    // use usleep() but it's hard to #include it in a portable way (you'd think it's in unistd.h, but then
-    // you'd be wrong on some OSX SDKs). Also, usleep() won't save you on Windows. Hence, bottoming out in
-    // lock code, which already solves the sleeping problem, is probably for the best.
-    
-    Lock fakeLock;
-    Condition fakeCondition;
-    LockHolder fakeLocker(fakeLock);
-    fakeCondition.waitFor(fakeLock, Seconds(value));
 }
 
 } // namespace WTF

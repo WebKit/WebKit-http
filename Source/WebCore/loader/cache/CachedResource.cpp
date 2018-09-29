@@ -49,7 +49,6 @@
 #include "SubresourceLoader.h"
 #include "URL.h"
 #include <wtf/CompletionHandler.h>
-#include <wtf/CurrentTime.h>
 #include <wtf/MathExtras.h>
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
@@ -672,7 +671,7 @@ void CachedResource::setEncodedSize(unsigned size)
     }
 }
 
-void CachedResource::didAccessDecodedData(double timeStamp)
+void CachedResource::didAccessDecodedData(MonotonicTime timeStamp)
 {
     m_lastDecodedAccessTime = timeStamp;
     

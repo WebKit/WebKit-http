@@ -668,6 +668,8 @@ static String responseSourceToString(const ResourceResponse& response)
         return "Memory cache";
     case ResourceResponse::Source::MemoryCacheAfterValidation:
         return "Memory cache after validation";
+    case ResourceResponse::Source::ApplicationCache:
+        return "Application cache";
     }
     ASSERT_NOT_REACHED();
     return "Error";
@@ -4254,7 +4256,7 @@ ExceptionOr<void> Internals::setMediaDeviceState(const String& id, const String&
 
 void Internals::delayMediaStreamTrackSamples(MediaStreamTrack& track, float delay)
 {
-    track.source().delaySamples(delay);
+    track.source().delaySamples(Seconds { delay });
 }
 
 void Internals::setMediaStreamTrackMuted(MediaStreamTrack& track, bool muted)

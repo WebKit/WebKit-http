@@ -28,11 +28,27 @@
 
 #include "JSAnimationEffectReadOnly.h"
 #include "JSAnimationTimeline.h"
+#include "JSCSSAnimation.h"
+#include "JSCSSTransition.h"
 #include "JSDOMConstructor.h"
 
 namespace WebCore {
 
 using namespace JSC;
+
+JSValue toJSNewlyCreated(ExecState*, JSDOMGlobalObject* globalObject, Ref<WebAnimation>&& value)
+{
+    if (value->isCSSAnimation())
+        return createWrapper<CSSAnimation>(globalObject, WTFMove(value));
+    if (value->isCSSTransition())
+        return createWrapper<CSSTransition>(globalObject, WTFMove(value));
+    return createWrapper<WebAnimation>(globalObject, WTFMove(value));
+}
+
+JSValue toJS(ExecState* state, JSDOMGlobalObject* globalObject, WebAnimation& value)
+{
+    return wrap(state, globalObject, value);
+}
 
 EncodedJSValue JSC_HOST_CALL constructJSWebAnimation(ExecState& state)
 {

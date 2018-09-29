@@ -43,7 +43,6 @@
 #include "Timer.h"
 #include "URL.h"
 #include <pal/spi/cg/CoreGraphicsSPI.h>
-#include <wtf/CurrentTime.h>
 #include <wtf/MathExtras.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/text/TextStream.h>
@@ -289,7 +288,7 @@ void GraphicsContext::drawNativeImage(const RetainPtr<CGImageRef>& image, const 
     }
 
 #if !LOG_DISABLED
-    double startTime = currentTime();
+    MonotonicTime startTime = MonotonicTime::now();
 #endif
     RetainPtr<CGImageRef> subImage(image);
 
@@ -392,7 +391,7 @@ void GraphicsContext::drawNativeImage(const RetainPtr<CGImageRef>& image, const 
 #endif
     }
 
-    LOG_WITH_STREAM(Images, stream << "GraphicsContext::drawNativeImage " << image.get() << " size " << imageSize << " into " << destRect << " took " << 1000.0 * (currentTime() - startTime) << "ms");
+    LOG_WITH_STREAM(Images, stream << "GraphicsContext::drawNativeImage " << image.get() << " size " << imageSize << " into " << destRect << " took " << (MonotonicTime::now() - startTime).milliseconds() << "ms");
 }
 
 static void drawPatternCallback(void* info, CGContextRef context)

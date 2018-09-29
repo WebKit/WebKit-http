@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -944,10 +944,10 @@ void linkPolymorphicCall(
     
     Vector<int64_t> caseValues(callCases.size());
     Vector<CallToCodePtr> calls(callCases.size());
-    std::unique_ptr<uint32_t[]> fastCounts;
+    UniqueArray<uint32_t> fastCounts;
     
     if (!isWebAssembly && callerCodeBlock->jitType() != JITCode::topTierJIT())
-        fastCounts = std::make_unique<uint32_t[]>(callCases.size());
+        fastCounts = makeUniqueArray<uint32_t>(callCases.size());
     
     for (size_t i = 0; i < callCases.size(); ++i) {
         if (fastCounts)
@@ -1079,9 +1079,9 @@ void linkPolymorphicCall(
     auto stubRoutine = adoptRef(*new PolymorphicCallStubRoutine(
         FINALIZE_CODE_FOR(
             callerCodeBlock, patchBuffer,
-            ("Polymorphic call stub for %s, return point %p, targets %s",
+            "Polymorphic call stub for %s, return point %p, targets %s",
                 isWebAssembly ? "WebAssembly" : toCString(*callerCodeBlock).data(), callLinkInfo.callReturnLocation().labelAtOffset(0).executableAddress(),
-                toCString(listDump(callCases)).data())),
+                toCString(listDump(callCases)).data()),
         vm, owner, exec->callerFrame(), callLinkInfo, callCases,
         WTFMove(fastCounts)));
     

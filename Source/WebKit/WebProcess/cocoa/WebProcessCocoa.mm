@@ -57,6 +57,7 @@
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/LogInitialization.h>
 #import <WebCore/MemoryRelease.h>
+#import <WebCore/NSScrollerImpDetails.h>
 #import <WebCore/PerformanceLogging.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/WebCoreNSURLExtras.h>
@@ -82,6 +83,10 @@
 #define kAXPidStatusChangedNotification 0
 #endif
 
+#endif
+
+#if PLATFORM(MAC)
+#import <WebCore/ScrollbarThemeMac.h>
 #endif
 
 #if USE(OS_STATE)
@@ -533,13 +538,13 @@ RefPtr<ObjCObjectGraph> WebProcess::transformObjectsToHandles(ObjCObjectGraph& o
 void WebProcess::destroyRenderingResources()
 {
 #if !RELEASE_LOG_DISABLED
-    double startTime = monotonicallyIncreasingTime();
+    MonotonicTime startTime = MonotonicTime::now();
 #endif
     CABackingStoreCollectBlocking();
 #if !RELEASE_LOG_DISABLED
-    double endTime = monotonicallyIncreasingTime();
+    MonotonicTime endTime = MonotonicTime::now();
 #endif
-    RELEASE_LOG(ProcessSuspension, "%p - WebProcess::destroyRenderingResources() took %.2fms", this, (endTime - startTime) * 1000.0);
+    RELEASE_LOG(ProcessSuspension, "%p - WebProcess::destroyRenderingResources() took %.2fms", this, (endTime - startTime).milliseconds());
 }
 
 // FIXME: This should live somewhere else, and it should have the implementation in line instead of calling out to WKSI.
@@ -554,5 +559,18 @@ void WebProcess::accessibilityProcessSuspendedNotification(bool suspended)
     UIAccessibilityPostNotification(kAXPidStatusChangedNotification, @{ @"pid" : @(getpid()), @"suspended" : @(suspended) });
 }
 #endif
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+void WebProcess::scrollerStylePreferenceChanged(bool useOverlayScrollbars)
+{
+    ScrollerStyle::setUseOverlayScrollbars(useOverlayScrollbars);
+
+    ScrollbarTheme& theme = ScrollbarTheme::theme();
+    if (theme.isMockTheme())
+        return;
+
+    static_cast<ScrollbarThemeMac&>(theme).preferencesChanged();
+}
+#endif    
 
 } // namespace WebKit

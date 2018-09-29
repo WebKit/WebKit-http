@@ -31,6 +31,7 @@
 #import "FloatRect.h"
 #import "FrameView.h"
 #import "HostWindow.h"
+#import "ScreenProperties.h"
 #import <ColorSync/ColorSync.h>
 #import <pal/spi/cg/CoreGraphicsSPI.h>
 
@@ -90,16 +91,6 @@ static NSScreen *screen(Widget* widget)
     return screen(displayID(widget));
 }
 
-int screenDepth(Widget* widget)
-{
-    return NSBitsPerPixelFromDepth(screen(widget).depth);
-}
-
-int screenDepthPerComponent(Widget* widget)
-{
-    return NSBitsPerSampleFromDepth(screen(widget).depth);
-}
-
 bool screenIsMonochrome(Widget*)
 {
     // This is a system-wide accessibility setting, same on all screens.
@@ -112,13 +103,79 @@ bool screenHasInvertedColors()
     return CGDisplayUsesInvertedPolarity();
 }
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+void getScreenProperties(HashMap<PlatformDisplayID, ScreenProperties>& screenProperties)
+{
+    for (NSScreen *screen in [NSScreen screens]) {
+        FloatRect screenAvailableRect = [screen visibleFrame];
+        screenAvailableRect.setY(NSMaxY([screen frame]) - (screenAvailableRect.y() + screenAvailableRect.height())); // flip
+        FloatRect screenRect = [screen frame];
+        int screenDepth = NSBitsPerPixelFromDepth(screen.depth);
+        int screenDepthPerComponent = NSBitsPerSampleFromDepth(screen.depth);
+        screenProperties.set(WebCore::displayID(screen), ScreenProperties { screenAvailableRect, screenRect, screenDepth, screenDepthPerComponent });
+    }
+}
+
+static HashMap<PlatformDisplayID, ScreenProperties>& screenProperties()
+{
+    static NeverDestroyed<HashMap<PlatformDisplayID, ScreenProperties>> screenProperties;
+    return screenProperties;
+}
+
+void setScreenProperties(const HashMap<PlatformDisplayID, ScreenProperties>& properties)
+{
+    screenProperties() = properties;
+}
+    
+static ScreenProperties getScreenProperties(Widget* widget)
+{
+    auto displayIDForWidget = displayID(widget);
+    if (displayIDForWidget && screenProperties().contains(displayIDForWidget))
+        return screenProperties().get(displayIDForWidget);
+    // Return property of the first screen if the screen is not found in the map.
+    auto iter = screenProperties().begin();
+    return screenProperties().get(iter->key);
+}
+#endif
+
+int screenDepth(Widget* widget)
+{
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+    if (!screenProperties().isEmpty()) {
+        ASSERT(getScreenProperties(widget).screenDepth);
+        return getScreenProperties(widget).screenDepth;
+    }
+#endif
+    return NSBitsPerPixelFromDepth(screen(widget).depth);
+}
+
+int screenDepthPerComponent(Widget* widget)
+{
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+    if (!screenProperties().isEmpty()) {
+        ASSERT(getScreenProperties(widget).screenDepthPerComponent);
+        return getScreenProperties(widget).screenDepthPerComponent;
+    }
+#endif
+    return NSBitsPerSampleFromDepth(screen(widget).depth);
+}
+
 FloatRect screenRect(Widget* widget)
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+    if (!screenProperties().isEmpty())
+        return getScreenProperties(widget).screenRect;
+#endif
     return toUserSpace([screen(widget) frame], window(widget));
 }
 
 FloatRect screenAvailableRect(Widget* widget)
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+    if (!screenProperties().isEmpty()) {
+        return getScreenProperties(widget).screenAvailableRect;
+    }
+#endif
     return toUserSpace([screen(widget) visibleFrame], window(widget));
 }
 

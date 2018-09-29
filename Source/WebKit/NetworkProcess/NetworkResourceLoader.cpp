@@ -47,7 +47,6 @@
 #include <WebCore/ProtectionSpace.h>
 #include <WebCore/SharedBuffer.h>
 #include <WebCore/SynchronousLoaderClient.h>
-#include <wtf/CurrentTime.h>
 #include <wtf/RunLoop.h>
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
@@ -706,6 +705,9 @@ void NetworkResourceLoader::continueCanAuthenticateAgainstProtectionSpace(bool r
 
 bool NetworkResourceLoader::isAlwaysOnLoggingAllowed() const
 {
+    if (NetworkProcess::singleton().sessionIsControlledByAutomation(sessionID()))
+        return true;
+
     return sessionID().isAlwaysOnLoggingAllowed();
 }
 

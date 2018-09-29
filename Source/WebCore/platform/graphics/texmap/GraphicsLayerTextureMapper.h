@@ -36,7 +36,6 @@ public:
     explicit GraphicsLayerTextureMapper(Type, GraphicsLayerClient&);
     virtual ~GraphicsLayerTextureMapper();
 
-    void setScrollClient(TextureMapperLayer::ScrollingClient* client) { m_layer.setScrollClient(client); }
     void setID(uint32_t id) { m_layer.setID(id); }
 
     // GraphicsLayer
@@ -89,18 +88,12 @@ public:
 
     TextureMapperLayer& layer() { return m_layer; }
 
-    void didCommitScrollOffset(const IntSize&);
-    void setIsScrollable(bool);
-    bool isScrollable() const { return m_isScrollable; }
-
     void setFixedToViewport(bool);
     bool fixedToViewport() const { return m_fixedToViewport; }
 
     Color debugBorderColor() const { return m_debugBorderColor; }
     float debugBorderWidth() const { return m_debugBorderWidth; }
     void setRepaintCount(int);
-
-    void setAnimations(const TextureMapperAnimations&);
 
 private:
     // GraphicsLayer
@@ -157,9 +150,6 @@ private:
 
         FixedToViewporChange =      (1L << 26),
         AnimationStarted =          (1L << 27),
-
-        CommittedScrollOffsetChange =     (1L << 28),
-        IsScrollableChange =              (1L << 29)
     };
     void notifyChange(ChangeMask);
 
@@ -179,10 +169,7 @@ private:
     TextureMapperPlatformLayer* m_contentsLayer;
     FloatRect m_needsDisplayRect;
     TextureMapperAnimations m_animations;
-    double m_animationStartTime;
-
-    IntSize m_committedScrollOffset;
-    bool m_isScrollable;
+    MonotonicTime m_animationStartTime;
 };
 
 } // namespace WebCore

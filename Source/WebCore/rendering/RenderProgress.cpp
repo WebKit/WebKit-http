@@ -23,7 +23,6 @@
 
 #include "HTMLProgressElement.h"
 #include "RenderTheme.h"
-#include <wtf/CurrentTime.h>
 #include <wtf/IsoMallocInlines.h>
 #include <wtf/RefPtr.h>
 
@@ -34,9 +33,6 @@ WTF_MAKE_ISO_ALLOCATED_IMPL(RenderProgress);
 RenderProgress::RenderProgress(HTMLElement& element, RenderStyle&& style)
     : RenderBlockFlow(element, WTFMove(style))
     , m_position(HTMLProgressElement::InvalidPosition)
-    , m_animationStartTime(0)
-    , m_animationDuration(0)
-    , m_animating(false)
     , m_animationTimer(*this, &RenderProgress::animationTimerFired)
 {
 }
@@ -70,7 +66,7 @@ RenderBox::LogicalExtentComputedValues RenderProgress::computeLogicalHeight(Layo
 
 double RenderProgress::animationProgress() const
 {
-    return m_animating ? (fmod((monotonicallyIncreasingTime() - m_animationStartTime), m_animationDuration) / m_animationDuration) : 0;
+    return m_animating ? (fmod((MonotonicTime::now() - m_animationStartTime).seconds(), m_animationDuration.seconds()) / m_animationDuration.seconds()) : 0;
 }
 
 bool RenderProgress::isDeterminate() const
@@ -91,13 +87,13 @@ void RenderProgress::updateAnimationState()
     m_animationDuration = theme().animationDurationForProgressBar(*this);
     m_animationRepeatInterval = theme().animationRepeatIntervalForProgressBar(*this);
 
-    bool animating = style().hasAppearance() && m_animationDuration > 0;
+    bool animating = style().hasAppearance() && m_animationDuration > 0_s;
     if (animating == m_animating)
         return;
 
     m_animating = animating;
     if (m_animating) {
-        m_animationStartTime = monotonicallyIncreasingTime();
+        m_animationStartTime = MonotonicTime::now();
         m_animationTimer.startOneShot(m_animationRepeatInterval);
     } else
         m_animationTimer.stop();

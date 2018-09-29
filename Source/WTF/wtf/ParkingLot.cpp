@@ -26,7 +26,6 @@
 #include "config.h"
 #include "ParkingLot.h"
 
-#include "CurrentTime.h"
 #include "DataLog.h"
 #include "HashFunctions.h"
 #include "StringPrintStream.h"
@@ -133,7 +132,7 @@ public:
         ThreadData** currentPtr = &queueHead;
         ThreadData* previous = nullptr;
 
-        double time = monotonicallyIncreasingTimeMS();
+        MonotonicTime time = MonotonicTime::now();
         bool timeToBeFair = false;
         if (time > nextFairTime)
             timeToBeFair = true;
@@ -170,7 +169,7 @@ public:
         }
         
         if (timeToBeFair && didDequeue)
-            nextFairTime = time + random.get();
+            nextFairTime = time + Seconds::fromMilliseconds(random.get());
 
         ASSERT(!!queueHead == !!queueTail);
     }
@@ -193,7 +192,7 @@ public:
     // this lock.
     WordLock lock;
     
-    double nextFairTime { 0 };
+    MonotonicTime nextFairTime;
     
     WeakRandom random;
 
@@ -595,7 +594,7 @@ NEVER_INLINE ParkingLot::ParkResult ParkingLot::parkConditionallyImpl(
         MutexLocker locker(me->parkingLock);
         while (me->address && timeout.nowWithSameClock() < timeout) {
             me->parkingCondition.timedWait(
-                me->parkingLock, timeout.approximateWallTime().secondsSinceEpoch().value());
+                me->parkingLock, timeout.approximateWallTime());
             
             // It's possible for the OS to decide not to wait. If it does that then it will also
             // decide not to release the lock. If there's a bug in the time math, then this could

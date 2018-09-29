@@ -39,7 +39,6 @@
 #include "KeyboardEvent.h"
 #include "PlatformLocale.h"
 #include <limits>
-#include <wtf/CurrentTime.h>
 #include <wtf/DateMath.h>
 #include <wtf/MathExtras.h>
 #include <wtf/text/StringView.h>
@@ -86,7 +85,7 @@ bool BaseDateAndTimeInputType::typeMismatch() const
 
 Decimal BaseDateAndTimeInputType::defaultValueForStepUp() const
 {
-    double ms = currentTimeMS();
+    double ms = WallTime::now().secondsSinceEpoch().milliseconds();
     int offset = calculateLocalTimeOffset(ms).offset / msPerMinute;
     return Decimal::fromDouble(ms + (offset * msPerMinute));
 }

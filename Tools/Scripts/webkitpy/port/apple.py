@@ -33,6 +33,7 @@ from webkitpy.common.version_name_map import VersionNameMap
 from webkitpy.port.base import Port
 from webkitpy.port.config import apple_additions
 from webkitpy.layout_tests.models.test_configuration import TestConfiguration
+from webkitpy.common.version_name_map import PUBLIC_TABLE, INTERNAL_TABLE
 
 
 _log = logging.getLogger(__name__)
@@ -42,8 +43,6 @@ class ApplePort(Port):
     """Shared logic between all of Apple's ports."""
 
     # overridden in subclasses
-    VERSION_MIN = None
-    VERSION_MAX = None
     ARCHITECTURES = []
     _crash_logs_to_skip_for_host = {}
 
@@ -61,10 +60,12 @@ class ApplePort(Port):
             # That convention means that we're supposed to use the version currently
             # being run, so this won't work if you're not on mac or win (respectively).
             # If you're not on the o/s in question, you must specify a full version or -future (cf. above).
-            if port_name == cls.port_name and not getattr(options, 'webkit_test_runner', False):
+            if port_name == cls.port_name and not getattr(options, 'webkit_test_runner', False) and host.platform.os_version_name():
                 port_name = cls.port_name + '-' + host.platform.os_version_name().lower().replace(' ', '')
-            else:
+            elif host.platform.os_version_name():
                 port_name = cls.port_name + '-' + host.platform.os_version_name().lower().replace(' ', '') + '-wk2'
+            else:
+                port_name = cls.port_name + '-wk2'
         elif getattr(options, 'webkit_test_runner', False) and  '-wk2' not in port_name:
             port_name += '-wk2'
 
@@ -94,25 +95,22 @@ class ApplePort(Port):
     def should_retry_crashes(self):
         return True
 
-    # FIXME: A more sophisticated version of this function should move to WebKitPort and replace all calls to name().
-    # This is also a misleading name, since 'mac-future' gets remapped to 'mac'.
-    def _port_name_with_version(self):
-        return self.name().replace('-future', '').replace('-wk2', '')
-
     @memoized
     def _allowed_versions(self):
-        if self.VERSION_MIN is None or self.VERSION_MAX is None:
-            return []
-        sorted_versions = sorted(VersionNameMap.map(self.host.platform).mapping_for_platform(platform=self.port_name.split('-')[0]).values())
-        return sorted_versions[sorted_versions.index(self.VERSION_MIN):sorted_versions.index(self.VERSION_MAX) + 1]
+        versions = set()
+        for table in [PUBLIC_TABLE, INTERNAL_TABLE]:
+            versions.update(VersionNameMap.map(self.host.platform).mapping_for_platform(platform=self.port_name.split('-')[0], table=table).values())
+        return sorted(versions)
 
     def _generate_all_test_configurations(self):
         configurations = []
         for version in self._allowed_versions():
             for build_type in self.ALL_BUILD_TYPES:
                 for architecture in self.ARCHITECTURES:
-                    version_name = VersionNameMap.map(self.host.platform).to_name(version, platform=self.port_name.split('-')[0])
-                    configurations.append(TestConfiguration(version=version_name, architecture=architecture, build_type=build_type))
+                    for table in [PUBLIC_TABLE, INTERNAL_TABLE]:
+                        version_name = VersionNameMap.map(self.host.platform).to_name(version, platform=self.port_name.split('-')[0], table=table)
+                        if version_name:
+                            configurations.append(TestConfiguration(version=version_name, architecture=architecture, build_type=build_type))
         return configurations
 
     def _apple_baseline_path(self, platform):

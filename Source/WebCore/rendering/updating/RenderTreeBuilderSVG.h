@@ -35,18 +35,19 @@ class RenderSVGRoot;
 class RenderSVGText;
 
 class RenderTreeBuilder::SVG {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     SVG(RenderTreeBuilder&);
 
-    void insertChild(RenderSVGContainer& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild);
-    void insertChild(RenderSVGInline& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild);
-    void insertChild(RenderSVGRoot& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild);
-    void insertChild(RenderSVGText& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild);
+    void attach(RenderSVGContainer& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild);
+    void attach(RenderSVGInline& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild);
+    void attach(RenderSVGRoot& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild);
+    void attach(RenderSVGText& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild);
 
-    RenderPtr<RenderObject> takeChild(RenderSVGText& parent, RenderObject& child);
-    RenderPtr<RenderObject> takeChild(RenderSVGInline& parent, RenderObject& child);
-    RenderPtr<RenderObject> takeChild(RenderSVGContainer& parent, RenderObject& child);
-    RenderPtr<RenderObject> takeChild(RenderSVGRoot& parent, RenderObject& child);
+    RenderPtr<RenderObject> detach(RenderSVGText& parent, RenderObject& child) WARN_UNUSED_RETURN;
+    RenderPtr<RenderObject> detach(RenderSVGInline& parent, RenderObject& child) WARN_UNUSED_RETURN;
+    RenderPtr<RenderObject> detach(RenderSVGContainer& parent, RenderObject& child) WARN_UNUSED_RETURN;
+    RenderPtr<RenderObject> detach(RenderSVGRoot& parent, RenderObject& child) WARN_UNUSED_RETURN;
 
 private:
     RenderTreeBuilder& m_builder;

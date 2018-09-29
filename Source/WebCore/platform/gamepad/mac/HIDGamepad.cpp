@@ -31,7 +31,6 @@
 #include <IOKit/hid/IOHIDElement.h>
 #include <IOKit/hid/IOHIDUsageTables.h>
 #include <IOKit/hid/IOHIDValue.h>
-#include <wtf/CurrentTime.h>
 #include <wtf/cf/TypeCastsCF.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
@@ -44,7 +43,7 @@ HIDGamepad::HIDGamepad(IOHIDDeviceRef hidDevice, unsigned index)
     : PlatformGamepad(index)
     , m_hidDevice(hidDevice)
 {
-    m_connectTime = m_lastUpdateTime = monotonicallyIncreasingTime();
+    m_connectTime = m_lastUpdateTime = MonotonicTime::now();
 
     CFNumberRef cfVendorID = (CFNumberRef)IOHIDDeviceGetProperty(hidDevice, CFSTR(kIOHIDVendorIDKey));
     CFNumberRef cfProductID = (CFNumberRef)IOHIDDeviceGetProperty(hidDevice, CFSTR(kIOHIDProductIDKey));
@@ -267,7 +266,7 @@ HIDInputType HIDGamepad::valueChanged(IOHIDValueRef value)
     } else
         ASSERT_NOT_REACHED();
 
-    m_lastUpdateTime = monotonicallyIncreasingTime();
+    m_lastUpdateTime = MonotonicTime::now();
 
     return element->isButton() ? HIDInputType::ButtonPress : HIDInputType::NotAButtonPress;
 }

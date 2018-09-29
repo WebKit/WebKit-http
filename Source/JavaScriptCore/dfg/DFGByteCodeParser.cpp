@@ -2779,6 +2779,12 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
         set(VirtualRegister(resultOperand), jsConstant(jsBoolean(true)));
         return true;
     }
+
+    case FTLTrueIntrinsic: {
+        insertChecks();
+        set(VirtualRegister(resultOperand), jsConstant(jsBoolean(isFTL(m_graph.m_plan.mode))));
+        return true;
+    }
         
     case OSRExitIntrinsic: {
         insertChecks();
@@ -3117,6 +3123,17 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
             Node* result = addToGraph(NumberToStringWithRadix, thisNumber, radix);
             set(VirtualRegister(resultOperand), result);
         }
+        return true;
+    }
+
+    case NumberIsIntegerIntrinsic: {
+        if (argumentCountIncludingThis < 2)
+            return false;
+
+        insertChecks();
+        Node* input = get(virtualRegisterForArgument(1, registerOffset));
+        Node* result = addToGraph(NumberIsInteger, input);
+        set(VirtualRegister(resultOperand), result);
         return true;
     }
 

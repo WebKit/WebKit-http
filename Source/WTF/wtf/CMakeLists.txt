@@ -41,7 +41,6 @@ set(WTF_HEADERS
     CrossThreadTaskHandler.h
     CryptographicUtilities.h
     CryptographicallyRandomNumber.h
-    CurrentTime.h
     DataLog.h
     DateMath.h
     DebugUtilities.h
@@ -233,6 +232,7 @@ set(WTF_HEADERS
     Unexpected.h
     UniStdExtras.h
     UnionFind.h
+    UniqueArray.h
     UniqueRef.h
     UnsafePointer.h
     VMTags.h

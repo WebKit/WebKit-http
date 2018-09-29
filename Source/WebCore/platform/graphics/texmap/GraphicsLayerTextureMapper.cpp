@@ -24,7 +24,6 @@
 #include "GraphicsLayerFactory.h"
 #include "ImageBuffer.h"
 #include "TextureMapperAnimation.h"
-#include <wtf/CurrentTime.h>
 
 #if !USE(COORDINATED_GRAPHICS)
 
@@ -46,8 +45,6 @@ GraphicsLayerTextureMapper::GraphicsLayerTextureMapper(Type layerType, GraphicsL
     , m_fixedToViewport(false)
     , m_debugBorderWidth(0)
     , m_contentsLayer(0)
-    , m_animationStartTime(0)
-    , m_isScrollable(false)
 {
 }
 
@@ -346,29 +343,11 @@ void GraphicsLayerTextureMapper::setShowRepaintCounter(bool show)
     notifyChange(DebugVisualsChange);
 }
 
-void GraphicsLayerTextureMapper::didCommitScrollOffset(const IntSize& offset)
-{
-    if (offset.isZero())
-        return;
-
-    m_committedScrollOffset = offset;
-    notifyChange(CommittedScrollOffsetChange);
-}
-
-void GraphicsLayerTextureMapper::setIsScrollable(bool isScrollable)
-{
-    if (m_isScrollable == isScrollable)
-        return;
-
-    m_isScrollable = isScrollable;
-    notifyChange(IsScrollableChange);
-}
-
 void GraphicsLayerTextureMapper::flushCompositingStateForThisLayerOnly()
 {
     prepareBackingStoreIfNeeded();
     commitLayerChanges();
-    m_layer.syncAnimations();
+    m_layer.syncAnimations(MonotonicTime::now());
 }
 
 void GraphicsLayerTextureMapper::prepareBackingStoreIfNeeded()
@@ -488,12 +467,6 @@ void GraphicsLayerTextureMapper::commitLayerChanges()
     if (m_changeMask & FixedToViewporChange)
         m_layer.setFixedToViewport(fixedToViewport());
 
-    if (m_changeMask & IsScrollableChange)
-        m_layer.setIsScrollable(isScrollable());
-
-    if (m_changeMask & CommittedScrollOffsetChange)
-        m_layer.didCommitScrollOffset(m_committedScrollOffset);
-
     m_changeMask = NoChanges;
 }
 
@@ -596,28 +569,21 @@ bool GraphicsLayerTextureMapper::addAnimation(const KeyframeValueList& valueList
     if (valueList.property() == AnimatedPropertyTransform)
         listsMatch = validateTransformOperations(valueList, hasBigRotation) >= 0;
 
-    const double currentTime = monotonicallyIncreasingTime();
-    m_animations.add(TextureMapperAnimation(keyframesName, valueList, boxSize, *anim, listsMatch, currentTime - timeOffset, 0, TextureMapperAnimation::AnimationState::Playing));
+    const MonotonicTime currentTime = MonotonicTime::now();
+    m_animations.add(TextureMapperAnimation(keyframesName, valueList, boxSize, *anim, listsMatch, currentTime - Seconds(timeOffset), 0_s, TextureMapperAnimation::AnimationState::Playing));
     // m_animationStartTime is the time of the first real frame of animation, now or delayed by a negative offset.
-    if (timeOffset > 0)
+    if (Seconds(timeOffset) > 0_s)
         m_animationStartTime = currentTime;
     else
-        m_animationStartTime = currentTime - timeOffset;
+        m_animationStartTime = currentTime - Seconds(timeOffset);
     notifyChange(AnimationChange);
     notifyChange(AnimationStarted);
     return true;
 }
 
-void GraphicsLayerTextureMapper::setAnimations(const TextureMapperAnimations& animations)
-{
-    m_animations = animations;
-    notifyChange(AnimationChange);
-}
-
-
 void GraphicsLayerTextureMapper::pauseAnimation(const String& animationName, double timeOffset)
 {
-    m_animations.pause(animationName, timeOffset);
+    m_animations.pause(animationName, Seconds(timeOffset));
 }
 
 void GraphicsLayerTextureMapper::removeAnimation(const String& animationName)

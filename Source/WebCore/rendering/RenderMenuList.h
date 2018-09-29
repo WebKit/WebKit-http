@@ -62,10 +62,10 @@ public:
     RenderBlock* innerRenderer() const { return m_innerBlock.get(); }
     void setInnerRenderer(RenderBlock&);
 
-    void didInsertChild(RenderObject& child, RenderObject* beforeChild);
+    void didAttachChild(RenderObject& child, RenderObject* beforeChild);
 
 private:
-    void willBeDestroyed(RenderTreeBuilder&) override;
+    void willBeDestroyed() override;
 
     void element() const = delete;
 

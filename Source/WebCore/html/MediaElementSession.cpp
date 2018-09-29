@@ -47,7 +47,6 @@
 #include "ScriptController.h"
 #include "Settings.h"
 #include "SourceBuffer.h"
-#include <wtf/CurrentTime.h>
 #include <wtf/text/StringBuilder.h>
 
 #if PLATFORM(IOS)
@@ -140,7 +139,7 @@ void MediaElementSession::addBehaviorRestriction(BehaviorRestrictions restrictio
 void MediaElementSession::removeBehaviorRestriction(BehaviorRestrictions restriction)
 {
     if (restriction & RequireUserGestureToControlControlsManager) {
-        m_mostRecentUserInteractionTime = monotonicallyIncreasingTime();
+        m_mostRecentUserInteractionTime = MonotonicTime::now();
         if (auto page = m_element.document().page())
             page->setAllowsPlaybackControlsForAutoplayingAudio(true);
     }
@@ -395,7 +394,7 @@ bool MediaElementSession::isLargeEnoughForMainContent(MediaSessionMainContentPur
     return isElementLargeEnoughForMainContent(m_element, purpose);
 }
 
-double MediaElementSession::mostRecentUserInteractionTime() const
+MonotonicTime MediaElementSession::mostRecentUserInteractionTime() const
 {
     return m_mostRecentUserInteractionTime;
 }
@@ -652,7 +651,7 @@ void MediaElementSession::mediaEngineUpdated(const HTMLMediaElement& element)
 
 void MediaElementSession::resetPlaybackSessionState()
 {
-    m_mostRecentUserInteractionTime = 0;
+    m_mostRecentUserInteractionTime = MonotonicTime();
     addBehaviorRestriction(RequireUserGestureToControlControlsManager | RequirePlaybackToControlControlsManager);
 }
 

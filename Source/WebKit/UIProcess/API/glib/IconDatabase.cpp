@@ -67,7 +67,7 @@ static bool checkIntegrityOnOpen = false;
 
 // We are not interested in icons that have been unused for more than
 // 30 days, delete them even if they have not been explicitly released.
-static const int notUsedIconExpirationTime = 60*60*24*30;
+static const Seconds notUsedIconExpirationTime { 60*60*24*30 };
 
 #if !LOG_DISABLED || !ERROR_DISABLED
 static String urlForLogging(const String& url)
@@ -546,7 +546,7 @@ void IconDatabase::setIconDataForIconURL(RefPtr<SharedBuffer>&& data, const Stri
 
         // Update the data and set the time stamp
         icon->setImageData(WTFMove(data));
-        icon->setTimestamp((int)currentTime());
+        icon->setTimestamp((int)WallTime::now().secondsSinceEpoch().seconds());
 
         // Copy the current retaining pageURLs - if any - to notify them of the change
         pageURLs.appendRange(icon->retainingPageURLs().begin(), icon->retainingPageURLs().end());
@@ -657,7 +657,7 @@ IconDatabase::IconLoadDecision IconDatabase::synchronousLoadDecisionForIconURL(c
         LockHolder locker(m_urlAndIconLock);
         if (IconRecord* icon = m_iconURLToRecordMap.get(iconURL)) {
             LOG(IconDatabase, "Found expiration time on a present icon based on existing IconRecord");
-            return static_cast<int>(currentTime()) - static_cast<int>(icon->getTimestamp()) > iconExpirationTime ? IconLoadDecision::Yes : IconLoadDecision::No;
+            return static_cast<int>(WallTime::now().secondsSinceEpoch().seconds()) - static_cast<int>(icon->getTimestamp()) > iconExpirationTime ? IconLoadDecision::Yes : IconLoadDecision::No;
         }
     }
 
@@ -863,7 +863,7 @@ void IconDatabase::iconDatabaseSyncThread()
     LOG(IconDatabase, "(THREAD) IconDatabase sync thread started");
 
 #if !LOG_DISABLED
-    double startTime = monotonicallyIncreasingTime();
+    MonotonicTime startTime = MonotonicTime::now();
 #endif
 
     // Need to create the database path if it doesn't already exist
@@ -889,8 +889,9 @@ void IconDatabase::iconDatabaseSyncThread()
     }
 
 #if !LOG_DISABLED
-    double timeStamp = monotonicallyIncreasingTime();
-    LOG(IconDatabase, "(THREAD) Open took %.4f seconds", timeStamp - startTime);
+    MonotonicTime timeStamp = MonotonicTime::now();
+    Seconds delta = timeStamp - startTime;
+    LOG(IconDatabase, "(THREAD) Open took %.4f seconds", delta.value());
 #endif
 
     performOpenInitialization();
@@ -900,13 +901,15 @@ void IconDatabase::iconDatabaseSyncThread()
     }
 
 #if !LOG_DISABLED
-    double newStamp = monotonicallyIncreasingTime();
-    LOG(IconDatabase, "(THREAD) performOpenInitialization() took %.4f seconds, now %.4f seconds from thread start", newStamp - timeStamp, newStamp - startTime);
+    MonotonicTime newStamp = MonotonicTime::now();
+    Seconds totalDelta = newStamp - startTime;
+    delta = newStamp - timeStamp;
+    LOG(IconDatabase, "(THREAD) performOpenInitialization() took %.4f seconds, now %.4f seconds from thread start", delta.value(), totalDelta.value());
     timeStamp = newStamp;
 #endif
 
     // Uncomment the following line to simulate a long lasting URL import (*HUGE* icon databases, or network home directories)
-    // while (monotonicallyIncreasingTime() - timeStamp < 10);
+    // while (MonotonicTime::now() - timeStamp < 10_s);
 
     // Read in URL mappings from the database
     LOG(IconDatabase, "(THREAD) Starting iconURL import");
@@ -918,8 +921,10 @@ void IconDatabase::iconDatabaseSyncThread()
     }
 
 #if !LOG_DISABLED
-    newStamp = monotonicallyIncreasingTime();
-    LOG(IconDatabase, "(THREAD) performURLImport() took %.4f seconds. Entering main loop %.4f seconds from thread start", newStamp - timeStamp, newStamp - startTime);
+    newStamp = MonotonicTime::now();
+    totalDelta = newStamp - startTime;
+    delta = newStamp - timeStamp;
+    LOG(IconDatabase, "(THREAD) performURLImport() took %.4f seconds. Entering main loop %.4f seconds from thread start", delta.value(), totalDelta.value());
 #endif
 
     LOG(IconDatabase, "(THREAD) Beginning sync");
@@ -1079,7 +1084,7 @@ void IconDatabase::performURLImport()
     // Note that IconInfo.stamp is only set when the icon data is retrieved from the server (and thus is not updated whether
     // we use it or not). This code works anyway because the IconDatabase downloads icons again if they are older than 4 days,
     // so if the timestamp goes back in time more than those 30 days we can be sure that the icon was not used at all.
-    String importQuery = String::format("SELECT PageURL.url, IconInfo.url, IconInfo.stamp FROM PageURL INNER JOIN IconInfo ON PageURL.iconID=IconInfo.iconID WHERE IconInfo.stamp > %.0f;", floor(currentTime() - notUsedIconExpirationTime));
+    String importQuery = String::format("SELECT PageURL.url, IconInfo.url, IconInfo.stamp FROM PageURL INNER JOIN IconInfo ON PageURL.iconID=IconInfo.iconID WHERE IconInfo.stamp > %.0f;", floor((WallTime::now() - notUsedIconExpirationTime).secondsSinceEpoch().seconds()));
 
     SQLiteStatement query(m_syncDB, importQuery);
 
@@ -1225,7 +1230,7 @@ void IconDatabase::syncThreadMainLoop()
         m_syncLock.unlock();
 
 #if !LOG_DISABLED
-        double timeStamp = monotonicallyIncreasingTime();
+        MonotonicTime timeStamp = MonotonicTime::now();
 #endif
         LOG(IconDatabase, "(THREAD) Main work loop starting");
 
@@ -1265,13 +1270,16 @@ void IconDatabase::syncThreadMainLoop()
             static bool prunedUnretainedIcons = false;
             if (didWrite && !m_privateBrowsingEnabled && !prunedUnretainedIcons && !databaseCleanupCounter) {
 #if !LOG_DISABLED
-                double time = monotonicallyIncreasingTime();
+                MonotonicTime time = MonotonicTime::now();
 #endif
                 LOG(IconDatabase, "(THREAD) Starting pruneUnretainedIcons()");
 
                 pruneUnretainedIcons();
 
-                LOG(IconDatabase, "(THREAD) pruneUnretainedIcons() took %.4f seconds", monotonicallyIncreasingTime() - time);
+#if !LOG_DISABLED
+                Seconds delta = MonotonicTime::now() - time;
+#endif
+                LOG(IconDatabase, "(THREAD) pruneUnretainedIcons() took %.4f seconds", delta.value());
 
                 // If pruneUnretainedIcons() returned early due to requested thread termination, its still okay
                 // to mark prunedUnretainedIcons true because we're about to terminate anyway
@@ -1284,8 +1292,9 @@ void IconDatabase::syncThreadMainLoop()
         }
 
 #if !LOG_DISABLED
-        double newstamp = monotonicallyIncreasingTime();
-        LOG(IconDatabase, "(THREAD) Main work loop ran for %.4f seconds, %s requested to terminate", newstamp - timeStamp, shouldStopThreadActivity() ? "was" : "was not");
+        MonotonicTime newstamp = MonotonicTime::now();
+        Seconds delta = newstamp - timeStamp;
+        LOG(IconDatabase, "(THREAD) Main work loop ran for %.4f seconds, %s requested to terminate", delta.value(), shouldStopThreadActivity() ? "was" : "was not");
 #endif
 
         m_syncLock.lock();
@@ -1345,7 +1354,7 @@ bool IconDatabase::readFromDatabase()
     ASSERT_ICON_SYNC_THREAD();
 
 #if !LOG_DISABLED
-    double timeStamp = monotonicallyIncreasingTime();
+    MonotonicTime timeStamp = MonotonicTime::now();
 #endif
 
     bool didAnyWork = false;
@@ -1432,7 +1441,10 @@ bool IconDatabase::readFromDatabase()
             return didAnyWork;
     }
 
-    LOG(IconDatabase, "Reading from database took %.4f seconds", monotonicallyIncreasingTime() - timeStamp);
+#if !LOG_DISABLED
+    Seconds delta = MonotonicTime::now() - timeStamp;
+    LOG(IconDatabase, "Reading from database took %.4f seconds", delta.value());
+#endif
 
     return didAnyWork;
 }
@@ -1442,7 +1454,7 @@ bool IconDatabase::writeToDatabase()
     ASSERT_ICON_SYNC_THREAD();
 
 #if !LOG_DISABLED
-    double timeStamp = monotonicallyIncreasingTime();
+    MonotonicTime timeStamp = MonotonicTime::now();
 #endif
 
     bool didAnyWork = false;
@@ -1492,7 +1504,10 @@ bool IconDatabase::writeToDatabase()
     if (didAnyWork)
         checkForDanglingPageURLs(false);
 
-    LOG(IconDatabase, "Updating the database took %.4f seconds", monotonicallyIncreasingTime() - timeStamp);
+#if !LOG_DISABLED
+    Seconds delta = MonotonicTime::now() - timeStamp;
+    LOG(IconDatabase, "Updating the database took %.4f seconds", delta.value());
+#endif
 
     return didAnyWork;
 }
@@ -1636,7 +1651,7 @@ void* IconDatabase::cleanupSyncThread()
     ASSERT_ICON_SYNC_THREAD();
 
 #if !LOG_DISABLED
-    double timeStamp = monotonicallyIncreasingTime();
+    MonotonicTime timeStamp = MonotonicTime::now();
 #endif
 
     // If the removeIcons flag is set, remove all icons from the db.
@@ -1656,7 +1671,8 @@ void* IconDatabase::cleanupSyncThread()
     m_syncDB.close();
 
 #if !LOG_DISABLED
-    LOG(IconDatabase, "(THREAD) Final closure took %.4f seconds", monotonicallyIncreasingTime() - timeStamp);
+    Seconds delta = MonotonicTime::now() - timeStamp;
+    LOG(IconDatabase, "(THREAD) Final closure took %.4f seconds", delta.value());
 #endif
 
     m_syncThreadRunning = false;

@@ -26,6 +26,7 @@
 #include "config.h"
 #include "CacheStorageEngine.h"
 
+#include "Logging.h"
 #include "NetworkCacheFileSystem.h"
 #include "NetworkCacheIOChannel.h"
 #include "NetworkProcess.h"
@@ -281,6 +282,8 @@ void Engine::writeFile(const String& filename, NetworkCache::Data&& data, WebCor
         channel->write(0, data, nullptr, [callback = WTFMove(callback)](int error) mutable {
             ASSERT(RunLoop::isMain());
             if (error) {
+                RELEASE_LOG_ERROR(CacheStorage, "CacheStorage::Engine::writeFile failed with error %d", error);
+
                 callback(Error::WriteDisk);
                 return;
             }
@@ -306,6 +309,8 @@ void Engine::readFile(const String& filename, WTF::Function<void(const NetworkCa
         }
 
         channel->read(0, std::numeric_limits<size_t>::max(), nullptr, [callback = WTFMove(callback)](const Data& data, int error) mutable {
+            RELEASE_LOG_ERROR_IF(error, CacheStorage, "CacheStorage::Engine::readFile failed with error %d", error);
+
             // FIXME: We should do the decoding in the background thread.
             ASSERT(RunLoop::isMain());
             callback(data, error);
@@ -470,7 +475,9 @@ String Engine::representation()
 {
     bool isFirst = true;
     StringBuilder builder;
-    builder.append("[");
+    builder.append("{ \"path\": \"");
+    builder.append(m_rootPath);
+    builder.append("\", \"origins\": [");
     for (auto& keyValue : m_caches) {
         if (!isFirst)
             builder.append(",");
@@ -484,7 +491,7 @@ String Engine::representation()
         keyValue.value->appendRepresentation(builder);
         builder.append("}");
     }
-    builder.append("\n]");
+    builder.append("]}");
     return builder.toString();
 }
 

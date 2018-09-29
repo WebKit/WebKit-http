@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2017-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,6 +35,7 @@
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Seconds.h>
+#include <wtf/UniqueRef.h>
 
 namespace WebCore {
 
@@ -45,11 +46,14 @@ class Document;
 class Element;
 class RenderStyle;
 
-class WebAnimation final : public RefCounted<WebAnimation>, public EventTargetWithInlineData, public ActiveDOMObject {
+class WebAnimation : public RefCounted<WebAnimation>, public EventTargetWithInlineData, public ActiveDOMObject {
 public:
     static Ref<WebAnimation> create(Document&, AnimationEffectReadOnly*);
     static Ref<WebAnimation> create(Document&, AnimationEffectReadOnly*, AnimationTimeline*);
     ~WebAnimation();
+
+    virtual bool isCSSAnimation() const { return false; }
+    virtual bool isCSSTransition() const { return false; }
 
     const String& id() const { return m_id; }
     void setId(const String& id) { m_id = id; }
@@ -73,16 +77,16 @@ public:
     double playbackRate() const { return m_playbackRate; }
     void setPlaybackRate(double, Silently silently = Silently::No );
 
-    enum class PlayState { Idle, Pending, Running, Paused, Finished };
+    enum class PlayState { Idle, Running, Paused, Finished };
     PlayState playState() const;
 
     bool pending() const { return hasPendingPauseTask() || hasPendingPlayTask(); }
 
     using ReadyPromise = DOMPromiseProxyWithResolveCallback<IDLInterface<WebAnimation>>;
-    ReadyPromise& ready() { return m_readyPromise; }
+    ReadyPromise& ready() { return m_readyPromise.get(); }
 
     using FinishedPromise = DOMPromiseProxyWithResolveCallback<IDLInterface<WebAnimation>>;
-    FinishedPromise& finished() { return m_finishedPromise; }
+    FinishedPromise& finished() { return m_finishedPromise.get(); }
 
     void cancel();
     ExceptionOr<void> finish();
@@ -107,9 +111,10 @@ public:
     using RefCounted::ref;
     using RefCounted::deref;
 
-private:
+protected:
     explicit WebAnimation(Document&);
 
+private:
     enum class RespectHoldTime { Yes, No };
     enum class AutoRewind { Yes, No };
     enum class TimeToRunPendingTask { NotScheduled, ASAP, WhenReady };
@@ -118,6 +123,7 @@ private:
     Seconds effectEndTime() const;
     WebAnimation& readyPromiseResolve();
     WebAnimation& finishedPromiseResolve();
+    void setHoldTime(std::optional<Seconds>);
     std::optional<Seconds> currentTime(RespectHoldTime) const;
     ExceptionOr<void> silentlySetCurrentTime(std::optional<Seconds>);
     void finishNotificationSteps();
@@ -143,8 +149,8 @@ private:
     bool m_isStopped { false };
     bool m_finishNotificationStepsMicrotaskPending;
     bool m_scheduledMicrotask;
-    ReadyPromise m_readyPromise;
-    FinishedPromise m_finishedPromise;
+    UniqueRef<ReadyPromise> m_readyPromise;
+    UniqueRef<FinishedPromise> m_finishedPromise;
     TimeToRunPendingTask m_timeToRunPendingPlayTask { TimeToRunPendingTask::NotScheduled };
     TimeToRunPendingTask m_timeToRunPendingPauseTask { TimeToRunPendingTask::NotScheduled };
 
@@ -161,3 +167,8 @@ private:
 };
 
 } // namespace WebCore
+
+#define SPECIALIZE_TYPE_TRAITS_WEB_ANIMATION(ToValueTypeName, predicate) \
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ToValueTypeName) \
+static bool isType(const WebCore::WebAnimation& value) { return value.predicate; } \
+SPECIALIZE_TYPE_TRAITS_END()

@@ -127,7 +127,7 @@ RenderBlockFlow::~RenderBlockFlow()
     // Do not add any code here. Add it to willBeDestroyed() instead.
 }
 
-void RenderBlockFlow::willBeDestroyed(RenderTreeBuilder& builder)
+void RenderBlockFlow::willBeDestroyed()
 {
     if (!renderTreeBeingDestroyed()) {
         if (firstRootBox()) {
@@ -154,7 +154,7 @@ void RenderBlockFlow::willBeDestroyed(RenderTreeBuilder& builder)
     blockWillBeDestroyed();
 
     // NOTE: This jumps down to RenderBox, bypassing RenderBlock since it would do duplicate work.
-    RenderBox::willBeDestroyed(builder);
+    RenderBox::willBeDestroyed();
 }
 
 RenderBlockFlow* RenderBlockFlow::previousSiblingWithOverhangingFloats(bool& parentHasFloats) const
@@ -2020,10 +2020,6 @@ void RenderBlockFlow::styleDidChange(StyleDifference diff, const RenderStyle* ol
         parentBlock->markAllDescendantsWithFloatsForLayout();
         parentBlock->markSiblingsWithFloatsForLayout();
     }
-    // Fresh floats need to be reparented if they actually belong to the previous anonymous block.
-    // It copies the logic of RenderBlock::addChildIgnoringContinuation
-    if (noLongerAffectsParentBlock() && style().isFloating() && previousSibling() && previousSibling()->isAnonymousBlock())
-        RenderTreeBuilder::current()->moveChildTo(downcast<RenderBoxModelObject>(*parent()), downcast<RenderBoxModelObject>(*previousSibling()), *this, RenderTreeBuilder::NormalizeAfterInsertion::No);
 
     if (diff >= StyleDifferenceRepaint) {
         // FIXME: This could use a cheaper style-only test instead of SimpleLineLayout::canUseFor.

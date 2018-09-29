@@ -51,13 +51,9 @@
 #include <webrtc/p2p/base/basicpacketsocketfactory.h>
 #include <webrtc/p2p/client/basicportallocator.h>
 #include <webrtc/pc/peerconnectionfactory.h>
-#include <wtf/CurrentTime.h>
 #include <wtf/MainThread.h>
 
-#include <pal/cf/CoreMediaSoftLink.h>
-
 namespace WebCore {
-using namespace PAL;
 
 LibWebRTCMediaEndpoint::LibWebRTCMediaEndpoint(LibWebRTCPeerConnectionBackend& peerConnection, LibWebRTCProvider& client)
     : m_peerConnectionBackend(peerConnection)

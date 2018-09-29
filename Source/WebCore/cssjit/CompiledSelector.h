@@ -55,6 +55,7 @@ private:
 };
 
 struct CompiledSelector {
+    WTF_MAKE_STRUCT_FAST_ALLOCATED;
     SelectorCompilationStatus status;
     JSC::MacroAssemblerCodeRef codeRef;
 #if defined(CSS_SELECTOR_JIT_PROFILING) && CSS_SELECTOR_JIT_PROFILING

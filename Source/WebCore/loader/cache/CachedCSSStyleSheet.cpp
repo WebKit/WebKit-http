@@ -34,7 +34,6 @@
 #include "SharedBuffer.h"
 #include "StyleSheetContents.h"
 #include "TextResourceDecoder.h"
-#include <wtf/CurrentTime.h>
 
 namespace WebCore {
 
@@ -186,7 +185,7 @@ RefPtr<StyleSheetContents> CachedCSSStyleSheet::restoreParsedStyleSheet(const CS
     if (m_parsedStyleSheetCache->parserContext() != context)
         return nullptr;
 
-    didAccessDecodedData(monotonicallyIncreasingTime());
+    didAccessDecodedData(MonotonicTime::now());
 
     return m_parsedStyleSheetCache;
 }

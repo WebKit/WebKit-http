@@ -35,7 +35,6 @@
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "InputTypeNames.h"
-#include <wtf/CurrentTime.h>
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
@@ -58,7 +57,7 @@ DateComponents::Type DateTimeInputType::dateType() const
 
 Decimal DateTimeInputType::defaultValueForStepUp() const
 {
-    return Decimal::fromDouble(currentTimeMS());
+    return Decimal::fromDouble(WallTime::now().secondsSinceEpoch().milliseconds());
 }
 
 StepRange DateTimeInputType::createStepRange(AnyStepHandling anyStepHandling) const

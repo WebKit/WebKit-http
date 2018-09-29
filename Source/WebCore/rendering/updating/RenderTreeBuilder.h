@@ -41,40 +41,44 @@ public:
     // FIXME: Remove.
     static RenderTreeBuilder* current() { return s_current; }
 
-    void insertChild(RenderTreePosition&, RenderPtr<RenderObject>);
-    void insertChild(RenderElement& parent, RenderPtr<RenderObject>, RenderObject* beforeChild = nullptr);
+    void attach(RenderTreePosition&, RenderPtr<RenderObject>);
+    void attach(RenderElement& parent, RenderPtr<RenderObject>, RenderObject* beforeChild = nullptr);
 
-    void removeAndDestroy(RenderObject& child);
-    RenderPtr<RenderObject> takeChild(RenderElement&, RenderObject&) WARN_UNUSED_RETURN;
+    RenderPtr<RenderObject> detach(RenderElement&, RenderObject&) WARN_UNUSED_RETURN;
+
+    void destroy(RenderObject& renderer);
 
     // NormalizeAfterInsertion::Yes ensures that the destination subtree is consistent after the insertion (anonymous wrappers etc).
     enum class NormalizeAfterInsertion { No, Yes };
-    void moveChildTo(RenderBoxModelObject& from, RenderBoxModelObject& to, RenderObject& child, NormalizeAfterInsertion);
+    void move(RenderBoxModelObject& from, RenderBoxModelObject& to, RenderObject& child, NormalizeAfterInsertion);
 
     void updateAfterDescendants(RenderElement&);
-    void removeFromParentAndDestroyCleaningUpAnonymousWrappers(RenderObject& child);
+    void destroyAndCleanUpAnonymousWrappers(RenderObject& child);
+    void normalizeTreeAfterStyleChange(RenderElement&, RenderStyle& oldStyle);
 
-    void childFlowStateChangesAndAffectsParentBlock(RenderElement& child);
-    void childFlowStateChangesAndNoLongerAffectsParentBlock(RenderElement& child);
-    void multiColumnDescendantInserted(RenderMultiColumnFlow&, RenderObject& newDescendant);
+#if ENABLE(FULLSCREEN_API)
+    void createPlaceholderForFullScreen(RenderFullScreen&, std::unique_ptr<RenderStyle>, const LayoutRect&);
+#endif
 
 private:
-    void insertChildIgnoringContinuation(RenderElement& parent, RenderPtr<RenderObject>, RenderObject* beforeChild = nullptr);
-    void insertChildToRenderGrid(RenderGrid& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild = nullptr);
-    void insertChildToRenderElement(RenderElement& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild = nullptr);
-    void insertChildToRenderElementInternal(RenderElement& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild = nullptr);
+    void childFlowStateChangesAndAffectsParentBlock(RenderElement& child);
+    void childFlowStateChangesAndNoLongerAffectsParentBlock(RenderElement& child);
+    void attachIgnoringContinuation(RenderElement& parent, RenderPtr<RenderObject>, RenderObject* beforeChild = nullptr);
+    void attachToRenderGrid(RenderGrid& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild = nullptr);
+    void attachToRenderElement(RenderElement& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild = nullptr);
+    void attachToRenderElementInternal(RenderElement& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild = nullptr);
 
-    RenderPtr<RenderObject> takeChildFromRenderElement(RenderElement& parent, RenderObject& child) WARN_UNUSED_RETURN;
-    RenderPtr<RenderObject> takeChildFromRenderGrid(RenderGrid& parent, RenderObject& child) WARN_UNUSED_RETURN;
+    RenderPtr<RenderObject> detachFromRenderElement(RenderElement& parent, RenderObject& child) WARN_UNUSED_RETURN;
+    RenderPtr<RenderObject> detachFromRenderGrid(RenderGrid& parent, RenderObject& child) WARN_UNUSED_RETURN;
 
-    void moveChildTo(RenderBoxModelObject& from, RenderBoxModelObject& to, RenderObject& child, RenderObject* beforeChild, NormalizeAfterInsertion);
+    void move(RenderBoxModelObject& from, RenderBoxModelObject& to, RenderObject& child, RenderObject* beforeChild, NormalizeAfterInsertion);
     // Move all of the kids from |startChild| up to but excluding |endChild|. 0 can be passed as the |endChild| to denote
     // that all the kids from |startChild| onwards should be moved.
-    void moveChildrenTo(RenderBoxModelObject& from, RenderBoxModelObject& to, RenderObject* startChild, RenderObject* endChild, NormalizeAfterInsertion);
-    void moveChildrenTo(RenderBoxModelObject& from, RenderBoxModelObject& to, RenderObject* startChild, RenderObject* endChild, RenderObject* beforeChild, NormalizeAfterInsertion);
-    void moveAllChildrenIncludingFloatsTo(RenderBlock& from, RenderBlock& toBlock, RenderTreeBuilder::NormalizeAfterInsertion);
-    void moveAllChildrenTo(RenderBoxModelObject& from, RenderBoxModelObject& to, NormalizeAfterInsertion);
-    void moveAllChildrenTo(RenderBoxModelObject& from, RenderBoxModelObject& to, RenderObject* beforeChild, NormalizeAfterInsertion);
+    void moveChildren(RenderBoxModelObject& from, RenderBoxModelObject& to, RenderObject* startChild, RenderObject* endChild, NormalizeAfterInsertion);
+    void moveChildren(RenderBoxModelObject& from, RenderBoxModelObject& to, RenderObject* startChild, RenderObject* endChild, RenderObject* beforeChild, NormalizeAfterInsertion);
+    void moveAllChildrenIncludingFloats(RenderBlock& from, RenderBlock& toBlock, RenderTreeBuilder::NormalizeAfterInsertion);
+    void moveAllChildren(RenderBoxModelObject& from, RenderBoxModelObject& to, NormalizeAfterInsertion);
+    void moveAllChildren(RenderBoxModelObject& from, RenderBoxModelObject& to, RenderObject* beforeChild, NormalizeAfterInsertion);
 
     RenderObject* splitAnonymousBoxesAroundChild(RenderBox& parent, RenderObject* beforeChild);
     void makeChildrenNonInline(RenderBlock& parent, RenderObject* insertionPoint = nullptr);
@@ -91,6 +95,7 @@ private:
     class Inline;
     class SVG;
     class MathML;
+    class Continuation;
 #if ENABLE(FULLSCREEN_API)
     class FullScreen;
 #endif
@@ -106,6 +111,7 @@ private:
     Inline& inlineBuilder() { return *m_inlineBuilder; }
     SVG& svgBuilder() { return *m_svgBuilder; }
     MathML& mathMLBuilder() { return *m_mathMLBuilder; }
+    Continuation& continuationBuilder() { return *m_continuationBuilder; }
 #if ENABLE(FULLSCREEN_API)
     FullScreen& fullScreenBuilder() { return *m_fullScreenBuilder; }
 #endif
@@ -125,6 +131,7 @@ private:
     std::unique_ptr<Inline> m_inlineBuilder;
     std::unique_ptr<SVG> m_svgBuilder;
     std::unique_ptr<MathML> m_mathMLBuilder;
+    std::unique_ptr<Continuation> m_continuationBuilder;
 #if ENABLE(FULLSCREEN_API)
     std::unique_ptr<FullScreen> m_fullScreenBuilder;
 #endif

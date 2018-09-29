@@ -26,7 +26,8 @@
 #include "config.h"
 #include "Seconds.h"
 
-#include "CurrentTime.h"
+#include "Condition.h"
+#include "Lock.h"
 #include "MonotonicTime.h"
 #include "PrintStream.h"
 #include "TimeWithDynamicClockType.h"
@@ -71,7 +72,15 @@ void Seconds::dump(PrintStream& out) const
 
 void sleep(Seconds value)
 {
-    sleep(value.value());
+    // It's very challenging to find portable ways of sleeping for less than a second. On UNIX, you want to
+    // use usleep() but it's hard to #include it in a portable way (you'd think it's in unistd.h, but then
+    // you'd be wrong on some OSX SDKs). Also, usleep() won't save you on Windows. Hence, bottoming out in
+    // lock code, which already solves the sleeping problem, is probably for the best.
+
+    Lock fakeLock;
+    Condition fakeCondition;
+    LockHolder fakeLocker(fakeLock);
+    fakeCondition.waitFor(fakeLock, value);
 }
 
 } // namespace WTF

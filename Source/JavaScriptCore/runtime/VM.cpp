@@ -136,7 +136,6 @@
 #include "WeakGCMapInlines.h"
 #include "WebAssemblyFunction.h"
 #include "WebAssemblyWrapperFunction.h"
-#include <wtf/CurrentTime.h>
 #include <wtf/ProcessID.h>
 #include <wtf/ReadWriteLock.h>
 #include <wtf/SimpleStats.h>
@@ -454,9 +453,13 @@ VM::VM(VMType vmType, HeapType heapType)
         watchdog.setTimeLimit(Seconds::fromMilliseconds(Options::watchdog()));
     }
 
+#if ENABLE(JIT)
     // Make sure that any stubs that the JIT is going to use are initialized in non-compilation threads.
-    getCTIInternalFunctionTrampolineFor(CodeForCall);
-    getCTIInternalFunctionTrampolineFor(CodeForConstruct);
+    if (canUseJIT()) {
+        getCTIInternalFunctionTrampolineFor(CodeForCall);
+        getCTIInternalFunctionTrampolineFor(CodeForConstruct);
+    }
+#endif
 
     VMInspector::instance().add(this);
 }
@@ -535,11 +538,6 @@ VM::~VM()
 
     delete clientData;
     delete m_regExpCache;
-
-#if ENABLE(YARR_JIT_ALL_PARENS_EXPRESSIONS)
-    if (m_regExpPatternContexBuffer)
-        delete[] m_regExpPatternContexBuffer;
-#endif
 
 #if ENABLE(REGEXP_TRACING)
     delete m_rtTraceList;
@@ -693,14 +691,15 @@ NativeExecutable* VM::getHostFunction(NativeFunction function, Intrinsic intrins
 MacroAssemblerCodePtr VM::getCTIInternalFunctionTrampolineFor(CodeSpecializationKind kind)
 {
 #if ENABLE(JIT)
-    if (kind == CodeForCall)
-        return jitStubs->ctiInternalFunctionCall(this);
-    return jitStubs->ctiInternalFunctionConstruct(this);
-#else
+    if (canUseJIT()) {
+        if (kind == CodeForCall)
+            return jitStubs->ctiInternalFunctionCall(this);
+        return jitStubs->ctiInternalFunctionConstruct(this);
+    }
+#endif
     if (kind == CodeForCall)
         return MacroAssemblerCodePtr::createLLIntCodePtr(llint_internal_function_call_trampoline);
     return MacroAssemblerCodePtr::createLLIntCodePtr(llint_internal_function_construct_trampoline);
-#endif
 }
 
 VM::ClientData::~ClientData()
@@ -907,8 +906,8 @@ char* VM::acquireRegExpPatternContexBuffer()
 
     m_regExpPatternContextLock.lock();
     if (!m_regExpPatternContexBuffer)
-        m_regExpPatternContexBuffer = new char[VM::patternContextBufferSize];
-    return m_regExpPatternContexBuffer;
+        m_regExpPatternContexBuffer = makeUniqueArray<char>(VM::patternContextBufferSize);
+    return m_regExpPatternContexBuffer.get();
 }
 
 void VM::releaseRegExpPatternContexBuffer()

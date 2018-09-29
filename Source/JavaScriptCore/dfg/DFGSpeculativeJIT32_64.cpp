@@ -3675,7 +3675,7 @@ void SpeculativeJIT::compile(Node* node)
             GPRTemporary scratch(this);
 
             m_jit.move(TrustedImmPtr(scratchBuffer->addressOfActiveLength()), scratch.gpr());
-            m_jit.storePtr(TrustedImmPtr(0), scratch.gpr());
+            m_jit.storePtr(TrustedImmPtr(nullptr), scratch.gpr());
         }
 
         cellResult(result.gpr(), node, UseChildrenCalledExplicitly);
@@ -4402,6 +4402,17 @@ void SpeculativeJIT::compile(Node* node)
         m_jit.add32(TrustedImm32(1), value.tagGPR(), result.gpr());
         m_jit.compare32(JITCompiler::Below, result.gpr(), JITCompiler::TrustedImm32(JSValue::LowestTag + 1), result.gpr());
         booleanResult(result.gpr(), node);
+        break;
+    }
+
+    case NumberIsInteger: {
+        JSValueOperand input(this, node->child1());
+        JSValueRegs inputRegs = input.jsValueRegs();
+        flushRegisters();
+        GPRFlushedCallResult result(this);
+        GPRReg resultGPR = result.gpr();
+        callOperation(operationNumberIsInteger, resultGPR, inputRegs);
+        booleanResult(resultGPR, node);
         break;
     }
 
@@ -5266,7 +5277,7 @@ void SpeculativeJIT::compileAllocateNewArrayWithSize(JSGlobalObject* globalObjec
     GPRReg scratchGPR = scratch.gpr();
     GPRReg scratch2GPR = scratch2.gpr();
     
-    m_jit.move(TrustedImmPtr(0), storageGPR);
+    m_jit.move(TrustedImmPtr(nullptr), storageGPR);
             
     MacroAssembler::JumpList slowCases;
     if (shouldConvertLargeSizeToArrayStorage)

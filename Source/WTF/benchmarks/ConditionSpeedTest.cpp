@@ -35,7 +35,6 @@
 #include <type_traits>
 #include <unistd.h>
 #include <wtf/Condition.h>
-#include <wtf/CurrentTime.h>
 #include <wtf/DataLog.h>
 #include <wtf/Deque.h>
 #include <wtf/Lock.h>
@@ -175,7 +174,7 @@ void runBenchmark(
     const NotifyFunctor& notify,
     const NotifyAllFunctor& notifyAll)
 {
-    double before = monotonicallyIncreasingTimeMS();
+    MonotonicTime before = MonotonicTime::now();
     
     runTest<LockType, ConditionType>(
         numProducers,
@@ -185,9 +184,9 @@ void runBenchmark(
         notify,
         notifyAll);
 
-    double after = monotonicallyIncreasingTimeMS();
+    MonotonicTime after = MonotonicTime::now();
 
-    printf("%s: %.3lf ms.\n", name, after - before);
+    printf("%s: %.3lf ms.\n", name, (after - before).milliseconds());
 }
 
 } // anonymous namespace

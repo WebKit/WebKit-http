@@ -60,8 +60,8 @@ Ref<WebAnimation> WebAnimation::create(Document& document, AnimationEffectReadOn
 
 WebAnimation::WebAnimation(Document& document)
     : ActiveDOMObject(&document)
-    , m_readyPromise(*this, &WebAnimation::readyPromiseResolve)
-    , m_finishedPromise(*this, &WebAnimation::finishedPromiseResolve)
+    , m_readyPromise(makeUniqueRef<ReadyPromise>(*this, &WebAnimation::readyPromiseResolve))
+    , m_finishedPromise(makeUniqueRef<FinishedPromise>(*this, &WebAnimation::finishedPromiseResolve))
 {
     suspendIfNeeded();
 }
@@ -80,47 +80,60 @@ void WebAnimation::timingModelDidChange()
         m_timeline->timingModelDidChange();
 }
 
-void WebAnimation::setEffect(RefPtr<AnimationEffectReadOnly>&& effect)
+void WebAnimation::setEffect(RefPtr<AnimationEffectReadOnly>&& newEffect)
 {
     // 3.4.3. Setting the target effect of an animation
     // https://drafts.csswg.org/web-animations-1/#setting-the-target-effect
 
+    // 1. Let old effect be the current target effect of animation, if any.
+    auto oldEffect = m_effect;
+
     // 2. If new effect is the same object as old effect, abort this procedure.
-    if (effect == m_effect)
+    if (newEffect == oldEffect)
         return;
 
     // 3. If new effect is null and old effect is not null, run the procedure to reset an animation's pending tasks on animation.
-    if (!effect && m_effect)
+    if (!newEffect && oldEffect)
         resetPendingTasks();
 
-    if (m_effect) {
-        m_effect->setAnimation(nullptr);
+    // 4. If animation has a pending pause task, reschedule that task to run as soon as animation is ready.
+    if (hasPendingPauseTask())
+        setTimeToRunPendingPauseTask(TimeToRunPendingTask::WhenReady);
 
-        // Update the Element to Animation map.
-        if (m_timeline && is<KeyframeEffect>(m_effect)) {
-            auto* keyframeEffect = downcast<KeyframeEffect>(m_effect.get());
-            auto* target = keyframeEffect->target();
-            if (target)
+    // 5. If animation has a pending play task, reschedule that task to run as soon as animation is ready to play new effect.
+    if (hasPendingPlayTask())
+        setTimeToRunPendingPlayTask(TimeToRunPendingTask::WhenReady);
+
+    // 6. If new effect is not null and if new effect is the target effect of another animation, previous animation, run the
+    // procedure to set the target effect of an animation (this procedure) on previous animation passing null as new effect.
+    if (newEffect && newEffect->animation())
+        newEffect->animation()->setEffect(nullptr);
+
+    // 7. Let the target effect of animation be new effect.
+    m_effect = WTFMove(newEffect);
+
+    // 8. Run the procedure to update an animation’s finished state for animation with the did seek flag set to false,
+    // and the synchronously notify flag set to false.
+    updateFinishedState(DidSeek::No, SynchronouslyNotify::No);
+
+    // Update the effect-to-animation relationships and the timeline's animation map.
+    if (oldEffect) {
+        oldEffect->setAnimation(nullptr);
+        if (m_timeline && is<KeyframeEffect>(oldEffect)) {
+            if (auto* target = downcast<KeyframeEffect>(oldEffect.get())->target())
                 m_timeline->animationWasRemovedFromElement(*this, *target);
         }
     }
 
-    if (effect) {
-        // An animation effect can only be associated with a single animation.
-        if (effect->animation())
-            effect->animation()->setEffect(nullptr);
-
-        effect->setAnimation(this);
-
-        if (m_timeline && is<KeyframeEffect>(effect)) {
-            auto* keyframeEffect = downcast<KeyframeEffect>(effect.get());
-            auto* target = keyframeEffect->target();
-            if (target)
+    if (m_effect) {
+        m_effect->setAnimation(this);
+        if (m_timeline && is<KeyframeEffect>(m_effect)) {
+            if (auto* target = downcast<KeyframeEffect>(m_effect.get())->target())
                 m_timeline->animationWasAddedToElement(*this, *target);
         }
     }
 
-    m_effect = WTFMove(effect);
+    timingModelDidChange();
 }
 
 void WebAnimation::setTimeline(RefPtr<AnimationTimeline>&& timeline)
@@ -133,8 +146,8 @@ void WebAnimation::setTimeline(RefPtr<AnimationTimeline>&& timeline)
         return;
 
     // 4. If the animation start time of animation is resolved, make animation’s hold time unresolved.
-    if (startTime())
-        m_holdTime = std::nullopt;
+    if (m_startTime)
+        setHoldTime(std::nullopt);
 
     if (m_timeline)
         m_timeline->removeAnimation(*this);
@@ -174,6 +187,15 @@ void WebAnimation::effectTargetDidChange(Element* previousTarget, Element* newTa
         m_timeline->animationWasAddedToElement(*this, *newTarget);
 }
 
+void WebAnimation::setHoldTime(std::optional<Seconds> holdTime)
+{
+    if (m_holdTime == holdTime)
+        return;
+
+    m_holdTime = holdTime;
+    timingModelDidChange();
+}
+
 std::optional<double> WebAnimation::bindingsStartTime() const
 {
     if (!m_startTime)
@@ -183,10 +205,53 @@ std::optional<double> WebAnimation::bindingsStartTime() const
 
 void WebAnimation::setBindingsStartTime(std::optional<double> startTime)
 {
+    // 3.4.6 The procedure to set the start time of animation, animation, to new start time, is as follows:
+    // https://drafts.csswg.org/web-animations/#setting-the-start-time-of-an-animation
+
+    std::optional<Seconds> newStartTime;
     if (!startTime)
-        setStartTime(std::nullopt);
+        newStartTime = std::nullopt;
     else
-        setStartTime(Seconds::fromMilliseconds(startTime.value()));
+        newStartTime = Seconds::fromMilliseconds(startTime.value());
+
+    // 1. Let timeline time be the current time value of the timeline that animation is associated with. If
+    //    there is no timeline associated with animation or the associated timeline is inactive, let the timeline
+    //    time be unresolved.
+    auto timelineTime = m_timeline ? m_timeline->currentTime() : std::nullopt;
+
+    // 2. If timeline time is unresolved and new start time is resolved, make animation's hold time unresolved.
+    if (!timelineTime && newStartTime)
+        setHoldTime(std::nullopt);
+
+    // 3. Let previous current time be animation's current time.
+    auto previousCurrentTime = currentTime();
+
+    // 4. Set animation's start time to new start time.
+    setStartTime(newStartTime);
+
+    // 5. Update animation's hold time based on the first matching condition from the following,
+    if (newStartTime) {
+        // If new start time is resolved,
+        // If animation’s playback rate is not zero, make animation’s hold time unresolved.
+        if (m_playbackRate)
+            setHoldTime(std::nullopt);
+    } else {
+        // Otherwise (new start time is unresolved),
+        // Set animation's hold time to previous current time even if previous current time is unresolved.
+        setHoldTime(previousCurrentTime);
+    }
+
+    // 6. If animation has a pending play task or a pending pause task, cancel that task and resolve animation's current ready promise with animation.
+    if (pending()) {
+        setTimeToRunPendingPauseTask(TimeToRunPendingTask::NotScheduled);
+        setTimeToRunPendingPlayTask(TimeToRunPendingTask::NotScheduled);
+        m_readyPromise->resolve(*this);
+    }
+
+    // 7. Run the procedure to update an animation’s finished state for animation with the did seek flag set to true, and the synchronously notify flag set to false.
+    updateFinishedState(DidSeek::Yes, SynchronouslyNotify::No);
+
+    timingModelDidChange();
 }
 
 std::optional<Seconds> WebAnimation::startTime() const
@@ -194,12 +259,12 @@ std::optional<Seconds> WebAnimation::startTime() const
     return m_startTime;
 }
 
-void WebAnimation::setStartTime(std::optional<Seconds> startTime)
+void WebAnimation::setStartTime(std::optional<Seconds> newStartTime)
 {
-    if (startTime == m_startTime)
+    if (m_startTime == newStartTime)
         return;
 
-    m_startTime = startTime;
+    m_startTime = newStartTime;
     timingModelDidChange();
 }
 
@@ -269,8 +334,8 @@ ExceptionOr<void> WebAnimation::silentlySetCurrentTime(std::optional<Seconds> se
     // Set animation's hold time to seek time.
     // Otherwise, set animation's start time to the result of evaluating timeline time - (seek time / playback rate)
     // where timeline time is the current time value of timeline associated with animation.
-    if (m_holdTime || !startTime() || !m_timeline || !m_timeline->currentTime() || !m_playbackRate)
-        m_holdTime = seekTime;
+    if (m_holdTime || !m_startTime || !m_timeline || !m_timeline->currentTime() || !m_playbackRate)
+        setHoldTime(seekTime);
     else
         setStartTime(m_timeline->currentTime().value() - (seekTime.value() / m_playbackRate));
 
@@ -297,13 +362,13 @@ ExceptionOr<void> WebAnimation::setCurrentTime(std::optional<Seconds> seekTime)
     // 2. If animation has a pending pause task, synchronously complete the pause operation by performing the following steps:
     if (hasPendingPauseTask()) {
         // 1. Set animation's hold time to seek time.
-        m_holdTime = seekTime;
+        setHoldTime(seekTime);
         // 2. Make animation's start time unresolved.
         setStartTime(std::nullopt);
         // 3. Cancel the pending pause task.
         setTimeToRunPendingPauseTask(TimeToRunPendingTask::NotScheduled);
         // 4. Resolve animation's current ready promise with animation.
-        m_readyPromise.resolve(*this);
+        m_readyPromise->resolve(*this);
     }
 
     // 3. Run the procedure to update an animation's finished state for animation with the did seek flag set to true, and the synchronously notify flag set to false.
@@ -345,24 +410,30 @@ void WebAnimation::setPlaybackRate(double newPlaybackRate, Silently silently)
 
 auto WebAnimation::playState() const -> PlayState
 {
-    // Section 3.5.19. Play states
+    // 3.5.19 Play states
+    // https://drafts.csswg.org/web-animations/#play-states
 
-    // Animation has a pending play task or a pending pause task → pending
-    if (pending())
-        return PlayState::Pending;
+    // The play state of animation, animation, at a given moment is the state corresponding to the
+    // first matching condition from the following:
 
-    // The current time of animation is unresolved → idle
+    // The current time of animation is unresolved, and animation does not have either a pending
+    // play task or a pending pause task,
+    // → idle
     auto animationCurrentTime = currentTime();
-    if (!animationCurrentTime)
+    if (!animationCurrentTime && !pending())
         return PlayState::Idle;
 
-    // The start time of animation is unresolved → paused
-    if (!startTime())
+    // Animation has a pending pause task, or both the start time of animation is unresolved and it does not
+    // have a pending play task,
+    // → paused
+    if (hasPendingPauseTask() || (!m_startTime && !hasPendingPlayTask()))
         return PlayState::Paused;
 
-    // For animation, animation playback rate > 0 and current time ≥ target effect end; or
-    // animation playback rate < 0 and current time ≤ 0 → finished
-    if ((m_playbackRate > 0 && animationCurrentTime.value() >= effectEndTime()) || (m_playbackRate < 0 && animationCurrentTime.value() <= 0_s))
+    // For animation, current time is resolved and either of the following conditions are true:
+    // playback rate > 0 and current time ≥ target effect end; or
+    // playback rate < 0 and current time ≤ 0,
+    // → finished
+    if (animationCurrentTime && ((m_playbackRate > 0 && animationCurrentTime.value() >= effectEndTime()) || (m_playbackRate < 0 && animationCurrentTime.value() <= 0_s)))
         return PlayState::Finished;
 
     // Otherwise → running
@@ -391,10 +462,11 @@ void WebAnimation::cancel()
         resetPendingTasks();
 
         // 2. Reject the current finished promise with a DOMException named "AbortError".
-        m_finishedPromise.reject(Exception { AbortError });
+        if (!m_finishedPromise->isFulfilled())
+            m_finishedPromise->reject(Exception { AbortError });
 
         // 3. Let current finished promise be a new (pending) Promise object.
-        m_finishedPromise.clear();
+        m_finishedPromise = makeUniqueRef<FinishedPromise>(*this, &WebAnimation::finishedPromiseResolve);
 
         // 4. Create an AnimationPlaybackEvent, cancelEvent.
         // 5. Set cancelEvent's type attribute to cancel.
@@ -411,7 +483,7 @@ void WebAnimation::cancel()
     }
 
     // 2. Make animation's hold time unresolved.
-    m_holdTime = std::nullopt;
+    setHoldTime(std::nullopt);
 
     // 3. Make animation's start time unresolved.
     setStartTime(std::nullopt);
@@ -455,11 +527,11 @@ void WebAnimation::resetPendingTasks()
         setTimeToRunPendingPauseTask(TimeToRunPendingTask::NotScheduled);
 
     // 4. Reject animation's current ready promise with a DOMException named "AbortError".
-    m_readyPromise.reject(Exception { AbortError });
+    m_readyPromise->reject(Exception { AbortError });
 
     // 5. Let animation's current ready promise be the result of creating a new resolved Promise object.
-    m_readyPromise.clear();
-    m_readyPromise.resolve(*this);
+    m_readyPromise = makeUniqueRef<ReadyPromise>(*this, &WebAnimation::readyPromiseResolve);
+    m_readyPromise->resolve(*this);
 }
 
 ExceptionOr<void> WebAnimation::finish()
@@ -483,23 +555,23 @@ ExceptionOr<void> WebAnimation::finish()
 
     // 4. If animation's start time is unresolved and animation has an associated active timeline, let the start time be the result of
     //    evaluating timeline time - (limit / playback rate) where timeline time is the current time value of the associated timeline.
-    if (!startTime() && m_timeline && m_timeline->currentTime())
+    if (!m_startTime && m_timeline && m_timeline->currentTime())
         setStartTime(m_timeline->currentTime().value() - (limit / m_playbackRate));
 
     // 5. If there is a pending pause task and start time is resolved,
-    if (hasPendingPauseTask() && startTime()) {
+    if (hasPendingPauseTask() && m_startTime) {
         // 1. Let the hold time be unresolved.
-        m_holdTime = std::nullopt;
+        setHoldTime(std::nullopt);
         // 2. Cancel the pending pause task.
         setTimeToRunPendingPauseTask(TimeToRunPendingTask::NotScheduled);
         // 3. Resolve the current ready promise of animation with animation.
-        m_readyPromise.resolve(*this);
+        m_readyPromise->resolve(*this);
     }
 
     // 6. If there is a pending play task and start time is resolved, cancel that task and resolve the current ready promise of animation with animation.
-    if (hasPendingPlayTask() && startTime()) {
+    if (hasPendingPlayTask() && m_startTime) {
         setTimeToRunPendingPlayTask(TimeToRunPendingTask::NotScheduled);
-        m_readyPromise.resolve(*this);
+        m_readyPromise->resolve(*this);
     }
 
     // 7. Run the procedure to update an animation's finished state animation with the did seek flag set to true, and the synchronously notify flag set to true.
@@ -522,28 +594,28 @@ void WebAnimation::updateFinishedState(DidSeek didSeek, SynchronouslyNotify sync
     //    - the unconstrained current time is resolved, and
     //    - animation's start time is resolved, and
     //    - animation does not have a pending play task or a pending pause task,
-    if (unconstrainedCurrentTime && startTime() && !pending()) {
+    if (unconstrainedCurrentTime && m_startTime && !pending()) {
         // then update animation's hold time based on the first matching condition for animation from below, if any:
         if (m_playbackRate > 0 && unconstrainedCurrentTime >= endTime) {
             // If animation playback rate > 0 and unconstrained current time is greater than or equal to target effect end,
             // If did seek is true, let the hold time be the value of unconstrained current time.
             if (didSeek == DidSeek::Yes)
-                m_holdTime = unconstrainedCurrentTime;
+                setHoldTime(unconstrainedCurrentTime);
             // If did seek is false, let the hold time be the maximum value of previous current time and target effect end. If the previous current time is unresolved, let the hold time be target effect end.
             else if (!m_previousCurrentTime)
-                m_holdTime = endTime;
+                setHoldTime(endTime);
             else
-                m_holdTime = std::max(m_previousCurrentTime.value(), endTime);
+                setHoldTime(std::max(m_previousCurrentTime.value(), endTime));
         } else if (m_playbackRate < 0 && unconstrainedCurrentTime <= 0_s) {
             // If animation playback rate < 0 and unconstrained current time is less than or equal to 0,
             // If did seek is true, let the hold time be the value of unconstrained current time.
             if (didSeek == DidSeek::Yes)
-                m_holdTime = unconstrainedCurrentTime;
+                setHoldTime(unconstrainedCurrentTime);
             // If did seek is false, let the hold time be the minimum value of previous current time and zero. If the previous current time is unresolved, let the hold time be zero.
             else if (!m_previousCurrentTime)
-                m_holdTime = 0_s;
+                setHoldTime(0_s);
             else
-                m_holdTime = std::min(m_previousCurrentTime.value(), 0_s);
+                setHoldTime(std::min(m_previousCurrentTime.value(), 0_s));
         } else if (m_playbackRate && m_timeline && m_timeline->currentTime()) {
             // If animation playback rate ≠ 0, and animation is associated with an active timeline,
             // Perform the following steps:
@@ -552,7 +624,7 @@ void WebAnimation::updateFinishedState(DidSeek didSeek, SynchronouslyNotify sync
             if (didSeek == DidSeek::Yes && m_holdTime)
                 setStartTime(m_timeline->currentTime().value() - (m_holdTime.value() / m_playbackRate));
             // 2. Let the hold time be unresolved.
-            m_holdTime = std::nullopt;
+            setHoldTime(std::nullopt);
         }
     }
 
@@ -563,7 +635,7 @@ void WebAnimation::updateFinishedState(DidSeek didSeek, SynchronouslyNotify sync
     auto currentFinishedState = playState() == PlayState::Finished;
 
     // 5. If current finished state is true and the current finished promise is not yet resolved, perform the following steps:
-    if (currentFinishedState && !m_finishedPromise.isFulfilled()) {
+    if (currentFinishedState && !m_finishedPromise->isFulfilled()) {
         if (synchronouslyNotify == SynchronouslyNotify::Yes) {
             // If synchronously notify is true, cancel any queued microtask to run the finish notification steps for this animation,
             // and run the finish notification steps immediately.
@@ -579,8 +651,8 @@ void WebAnimation::updateFinishedState(DidSeek didSeek, SynchronouslyNotify sync
 
     // 6. If current finished state is false and animation's current finished promise is already resolved, set animation's current
     // finished promise to a new (pending) Promise object.
-    if (!currentFinishedState && m_finishedPromise.isFulfilled())
-        m_finishedPromise.clear();
+    if (!currentFinishedState && m_finishedPromise->isFulfilled())
+        m_finishedPromise = makeUniqueRef<FinishedPromise>(*this, &WebAnimation::finishedPromiseResolve);
 }
 
 void WebAnimation::scheduleMicrotaskIfNeeded()
@@ -613,7 +685,7 @@ void WebAnimation::finishNotificationSteps()
         return;
 
     // 2. Resolve animation's current finished promise object with animation.
-    m_finishedPromise.resolve(*this);
+    m_finishedPromise->resolve(*this);
 
     // 3. Create an AnimationPlaybackEvent, finishEvent.
     // 4. Set finishEvent's type attribute to finish.
@@ -653,7 +725,7 @@ ExceptionOr<void> WebAnimation::play(AutoRewind autoRewind)
         //     - current time < zero, or
         //     - current time ≥ target effect end,
         // Set animation's hold time to zero.
-        m_holdTime = 0_s;
+        setHoldTime(0_s);
     } else if (m_playbackRate < 0 && autoRewind == AutoRewind::Yes && (!localTime || localTime.value() <= 0_s || localTime.value() > endTime)) {
         // If animation playback rate < 0, the auto-rewind flag is true and either animation's:
         //     - current time is unresolved, or
@@ -662,16 +734,17 @@ ExceptionOr<void> WebAnimation::play(AutoRewind autoRewind)
         // If target effect end is positive infinity, throw an InvalidStateError and abort these steps.
         if (endTime == Seconds::infinity())
             return Exception { InvalidStateError };
-        m_holdTime = endTime;
+        setHoldTime(endTime);
     } else if (!m_playbackRate && !localTime) {
         // If animation playback rate = 0 and animation's current time is unresolved,
         // Set animation's hold time to zero.
-        m_holdTime = 0_s;
+        setHoldTime(0_s);
     }
 
     // 4. If animation has a pending play task or a pending pause task,
-    if (hasPendingPauseTask()) {
+    if (pending()) {
         // 1. Cancel that task.
+        setTimeToRunPendingPauseTask(TimeToRunPendingTask::NotScheduled);
         setTimeToRunPendingPlayTask(TimeToRunPendingTask::NotScheduled);
         // 2. Set has pending ready promise to true.
         hasPendingReadyPromise = true;
@@ -687,7 +760,7 @@ ExceptionOr<void> WebAnimation::play(AutoRewind autoRewind)
 
     // 7. If has pending ready promise is false, let animation's current ready promise be a new (pending) Promise object.
     if (!hasPendingReadyPromise)
-        m_readyPromise.clear();
+        m_readyPromise = makeUniqueRef<ReadyPromise>(*this, &WebAnimation::readyPromiseResolve);
 
     // 8. Schedule a task to run as soon as animation is ready.
     setTimeToRunPendingPlayTask(TimeToRunPendingTask::WhenReady);
@@ -711,11 +784,14 @@ void WebAnimation::runPendingPlayTask()
 
     m_timeToRunPendingPlayTask = TimeToRunPendingTask::NotScheduled;
 
-    // 1. Let ready time be the time value of the timeline associated with animation at the moment when animation became ready.
+    // 1. Assert that at least one of animation’s start time or hold time is resolved.
+    ASSERT(m_startTime || m_holdTime);
+
+    // 2. Let ready time be the time value of the timeline associated with animation at the moment when animation became ready.
     auto readyTime = m_timeline->currentTime();
 
-    // 2. If animation's start time is unresolved, perform the following steps:
-    if (!startTime()) {
+    // 3. If animation's start time is unresolved, perform the following steps:
+    if (!m_startTime) {
         // 1. Let new start time be the result of evaluating ready time - hold time / animation playback rate for animation.
         // If the animation playback rate is zero, let new start time be simply ready time.
         auto newStartTime = readyTime.value();
@@ -723,15 +799,15 @@ void WebAnimation::runPendingPlayTask()
             newStartTime -= m_holdTime.value() / m_playbackRate;
         // 2. If animation's playback rate is not 0, make animation's hold time unresolved.
         if (m_playbackRate)
-            m_holdTime = std::nullopt;
+            setHoldTime(std::nullopt);
         // 3. Set the animation start time of animation to new start time.
         setStartTime(newStartTime);
     }
 
-    // 3. Resolve animation's current ready promise with animation.
-    m_readyPromise.resolve(*this);
+    // 4. Resolve animation's current ready promise with animation.
+    m_readyPromise->resolve(*this);
 
-    // 4. Run the procedure to update an animation's finished state for animation with the did seek flag set to false, and the synchronously notify flag set to false.
+    // 5. Run the procedure to update an animation's finished state for animation with the did seek flag set to false, and the synchronously notify flag set to false.
     updateFinishedState(DidSeek::No, SynchronouslyNotify::No);
 }
 
@@ -754,13 +830,13 @@ ExceptionOr<void> WebAnimation::pause()
     if (!localTime) {
         if (m_playbackRate >= 0) {
             // If animation's playback rate is ≥ 0, let animation's hold time be zero.
-            m_holdTime = 0_s;
+            setHoldTime(0_s);
         } else if (effectEndTime() == Seconds::infinity()) {
             // Otherwise, if target effect end for animation is positive infinity, throw an InvalidStateError and abort these steps.
             return Exception { InvalidStateError };
         } else {
             // Otherwise, let animation's hold time be target effect end.
-            m_holdTime = effectEndTime();
+            setHoldTime(effectEndTime());
         }
     }
 
@@ -775,7 +851,7 @@ ExceptionOr<void> WebAnimation::pause()
 
     // 6. If has pending ready promise is false, set animation's current ready promise to a new (pending) Promise object.
     if (!hasPendingReadyPromise)
-        m_readyPromise.clear();
+        m_readyPromise = makeUniqueRef<ReadyPromise>(*this, &WebAnimation::readyPromiseResolve);
 
     // 7. Schedule a task to be executed at the first possible moment after the user agent has performed any processing necessary
     //    to suspend the playback of animation's target effect, if any.
@@ -835,20 +911,20 @@ void WebAnimation::runPendingPauseTask()
     // 1. Let ready time be the time value of the timeline associated with animation at the moment when the user agent
     //    completed processing necessary to suspend playback of animation's target effect.
     auto readyTime = m_timeline->currentTime();
-    auto animationStartTime = startTime();
+    auto animationStartTime = m_startTime;
 
     // 2. If animation's start time is resolved and its hold time is not resolved, let animation's hold time be the result of
     //    evaluating (ready time - start time) × playback rate.
     //    Note: The hold time might be already set if the animation is finished, or if the animation is pending, waiting to begin
     //    playback. In either case we want to preserve the hold time as we enter the paused state.
     if (animationStartTime && !m_holdTime)
-        m_holdTime = (readyTime.value() - animationStartTime.value()) * m_playbackRate;
+        setHoldTime((readyTime.value() - animationStartTime.value()) * m_playbackRate);
 
     // 3. Make animation's start time unresolved.
     setStartTime(std::nullopt);
 
     // 4. Resolve animation's current ready promise with animation.
-    m_readyPromise.resolve(*this);
+    m_readyPromise->resolve(*this);
 
     // 5. Run the procedure to update an animation's finished state for animation with the did seek flag set to false, and the
     //    synchronously notify flag set to false.
@@ -857,12 +933,24 @@ void WebAnimation::runPendingPauseTask()
 
 void WebAnimation::updatePendingTasks()
 {
-    if (m_timeToRunPendingPauseTask == TimeToRunPendingTask::ASAP && m_timeline)
-        runPendingPauseTask();
+    if (hasPendingPauseTask() && is<DocumentTimeline>(m_timeline)) {
+        if (auto document = downcast<DocumentTimeline>(*m_timeline).document()) {
+            document->postTask([this, protectedThis = makeRef(*this)] (auto&) {
+                if (this->hasPendingPauseTask() && m_timeline)
+                    this->runPendingPauseTask();
+            });
+        }
+    }
 
     // FIXME: This should only happen if we're ready, at the moment we think we're ready if we have a timeline.
-    if (m_timeToRunPendingPlayTask == TimeToRunPendingTask::WhenReady && m_timeline)
-        runPendingPlayTask();
+    if (hasPendingPlayTask() && is<DocumentTimeline>(m_timeline)) {
+        if (auto document = downcast<DocumentTimeline>(*m_timeline).document()) {
+            document->postTask([this, protectedThis = makeRef(*this)] (auto&) {
+                if (this->hasPendingPlayTask() && m_timeline)
+                    this->runPendingPlayTask();
+            });
+        }
+    }
 }
 
 Seconds WebAnimation::timeToNextRequiredTick(Seconds timelineTime) const

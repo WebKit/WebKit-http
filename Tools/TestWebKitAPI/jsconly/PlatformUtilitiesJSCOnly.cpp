@@ -26,7 +26,6 @@
 #include "config.h"
 #include "PlatformUtilities.h"
 
-#include <wtf/CurrentTime.h>
 #include <wtf/RunLoop.h>
 
 #if USE(GLIB_EVENT_LOOP)
@@ -50,7 +49,7 @@ void run(bool* done)
 
 void sleep(double seconds)
 {
-    WTF::sleep(seconds);
+    WTF::sleep(Seconds { seconds });
 }
 
 } // namespace Util

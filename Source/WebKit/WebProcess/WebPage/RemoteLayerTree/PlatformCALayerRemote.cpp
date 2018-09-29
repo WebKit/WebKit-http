@@ -38,7 +38,6 @@
 #import <WebCore/PlatformCAFilters.h>
 #import <WebCore/PlatformCALayerCocoa.h>
 #import <WebCore/TiledBacking.h>
-#import <wtf/CurrentTime.h>
 
 using namespace WebCore;
 
@@ -368,11 +367,11 @@ static inline bool isEquivalentLayer(const PlatformCALayer* layer, GraphicsLayer
     return layerID == newLayerID;
 }
 
-void PlatformCALayerRemote::animationStarted(const String& key, CFTimeInterval beginTime)
+void PlatformCALayerRemote::animationStarted(const String& key, MonotonicTime beginTime)
 {
     auto it = m_animations.find(key);
     if (it != m_animations.end())
-        downcast<PlatformCAAnimationRemote>(*it->value).didStart(beginTime);
+        downcast<PlatformCAAnimationRemote>(*it->value).didStart(currentTimeToMediaTime(beginTime));
     
     if (m_owner)
         m_owner->platformCALayerAnimationStarted(key, beginTime);

@@ -191,7 +191,6 @@ public:
 #if USE(FREETYPE)
     HarfBuzzFace& harfBuzzFace() const;
     bool hasCompatibleCharmap() const;
-    FcFontSet* fallbacks() const;
 #endif
 
     unsigned hash() const;
@@ -282,8 +281,6 @@ private:
 #if USE(FREETYPE)
 #if USE(CAIRO)
     RefPtr<FcPattern> m_pattern;
-#endif
-    mutable FcUniquePtr<FcFontSet> m_fallbacks;
     mutable std::unique_ptr<HarfBuzzFace> m_harfBuzzFace;
 #endif
 

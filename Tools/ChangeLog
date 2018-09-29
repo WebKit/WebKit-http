@@ -1,3 +1,774 @@
+2018-03-06  Youenn Fablet  <youenn@apple.com>
+
+        didReceiveServerRedirectForProvisionalNavigation is not called in case of document redirection with service worker registration change
+        https://bugs.webkit.org/show_bug.cgi?id=183299
+        <rdar://problem/37547029>
+
+        Reviewed by Alex Christensen.
+
+        Add support for checking whether this callback is called.
+        Used in the added layout test.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::didReceiveServerRedirectForProvisionalNavigation const):
+        (WTR::TestRunner::clearDidReceiveServerRedirectForProvisionalNavigation):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::createOtherPage):
+        (WTR::TestController::resetStateToConsistentValues):
+        (WTR::TestController::didReceiveServerRedirectForProvisionalNavigation):
+        * WebKitTestRunner/TestController.h:
+        (WTR::TestController::didReceiveServerRedirectForProvisionalNavigation const):
+        (WTR::TestController::clearDidReceiveServerRedirectForProvisionalNavigation):
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2018-03-06  Chris Dumez  <cdumez@apple.com>
+
+        fast/loader/redirect-to-invalid-url-using-meta-refresh-disallowed.html fails with async policy delegates
+        https://bugs.webkit.org/show_bug.cgi?id=183345
+
+        Reviewed by Alex Christensen.
+
+        Add layout test infrastructure so a test can know when didCancelClientRedirectForFrame has
+        been called. The tests used to rely on a 0-timer but this does not work when the client
+        responds to the navigation policy asynchronously.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (getDidCancelClientRedirect):
+        (TestRunner::staticValues):
+        * DumpRenderTree/TestRunner.h:
+        (TestRunner::didCancelClientRedirect const):
+        (TestRunner::setDidCancelClientRedirect):
+        * DumpRenderTree/mac/FrameLoadDelegate.mm:
+        (-[FrameLoadDelegate webView:didCancelClientRedirectForFrame:]):
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::didCancelClientRedirectForFrame):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        (WTR::TestRunner::didCancelClientRedirect const):
+        (WTR::TestRunner::setDidCancelClientRedirect):
+
+2018-03-06  Zan Dobersek  <zdobersek@igalia.com>
+
+        REGRESSION(r229309): s_exceptionInstructions allocation change causing crashes in LLInt on WPE
+        https://bugs.webkit.org/show_bug.cgi?id=183366
+
+        Reviewed by Michael Catanzaro.
+
+        Have the TestRunnerInjectedBundle CMake library link against libraries
+        in the WebKitTestRunnerInjectedBundle_LIBRARIES list, and not the
+        WebKitTestRunner_LIBRARIES list, which is used for the WebKitTestRunner
+        executable. This allows narrowing down the libraries to only those that
+        are necessary for the injected bundle shared object.
+
+        The GTK+ port already has this list specified, adding one for the WPE
+        port.
+
+        * WebKitTestRunner/CMakeLists.txt:
+        Link the TestRunnerInjectedBundle library against the libraries in the
+        WebKitTestRunnerInjectedBundle_LIBRARIES list.
+        * WebKitTestRunner/PlatformWPE.cmake:
+        Specify the WebKitTestRunnerInjectedBundle_LIBRARIES list, including the
+        basic system dependencies, WebCoreTestSupport and WebKit. This follows
+        the GTK+ port.
+
+2018-03-06  Dominik Infuehr  <dinfuehr@igalia.com>
+
+        [ARM] Disable tests that run out of memory
+        https://bugs.webkit.org/show_bug.cgi?id=182699
+
+        Reviewed by Žan Doberšek.
+
+        Add run mode to allow running modules.yaml-tests without
+        disabling LLInt for specific tests.
+
+        * Scripts/run-jsc-stress-tests:
+
+2018-03-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Fix std::make_unique / new[] using system malloc
+        https://bugs.webkit.org/show_bug.cgi?id=182975
+
+        Reviewed by JF Bastien.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/UniqueArray.cpp: Copied from Source/WebKit/Platform/win/LoggingWin.cpp.
+        (TestWebKitAPI::NonTrivialDestructor::NonTrivialDestructor):
+        (TestWebKitAPI::NonTrivialDestructor::~NonTrivialDestructor):
+        (TestWebKitAPI::NonTrivialDestructor::setLog):
+        (TestWebKitAPI::TEST):
+
+2018-03-05  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        DumpRenderTree build fix
+
+        Unreviewed.
+
+        * DumpRenderTree/mac/LayoutTestHelper.m:
+
+2018-03-05  Andy Estes  <aestes@apple.com>
+
+        [Mac] Teach WebCore::Pasteboard about file promise drags
+        https://bugs.webkit.org/show_bug.cgi?id=183314
+        <rdar://problem/38105493>
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/DumpRenderTreeFileDraggingSource.h:
+        * DumpRenderTree/DumpRenderTreeFileDraggingSource.m:
+        (-[DumpRenderTreeFileDraggingSource initWithPromisedFileURLs:]):
+        (-[DumpRenderTreeFileDraggingSource dealloc]):
+
+        Taught DumpRenderTreeFileDraggingSource to store the promised file URLs.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (runTest):
+
+        Called +[DumpRenderTreeDraggingInfo clearAllFilePromiseReceivers] after running a test.
+
+        * DumpRenderTree/mac/DumpRenderTreeDraggingInfo.h:
+        * DumpRenderTree/mac/DumpRenderTreeDraggingInfo.mm:
+        (-[DumpRenderTreeFilePromiseReceiver initWithPromisedUTIs:]):
+        (-[DumpRenderTreeFilePromiseReceiver fileTypes]):
+        (-[DumpRenderTreeFilePromiseReceiver fileNames]):
+        (-[DumpRenderTreeFilePromiseReceiver dealloc]):
+        (copyFile):
+        (-[DumpRenderTreeFilePromiseReceiver receivePromisedFilesAtDestination:options:operationQueue:reader:]):
+
+        We can't instantiate real NSFilePromiseReceivers in DumpRenderTree. They rely on the
+        pasteboard server to generate unique file URLs, which is incompatible with our swizzled
+        NSPasteboard.
+
+        Instead, create a subclass of NSFilePromiseReceiver that implements its own promise resolution.
+        -receivePromisedFilesAtDestination:... asks its DumpRenderTreeFileDraggingSource for the
+        array of file URLs, then copies each to the destination directory on the specified operation
+        queue. It emulates how NSPasteboard tries to find a unique destination name by appending
+        numbers to the file name.
+
+        All receivers are collected in a global array that is cleared when each test finishes.
+        DumpRenderTreeFilePromiseReceiver will delete the files it copied in -dealloc.
+
+        (+[DumpRenderTreeDraggingInfo clearAllFilePromiseReceivers]):
+        (-[DumpRenderTreeDraggingInfo enumerateDraggingItemsWithOptions:forView:classes:searchOptions:usingBlock:]):
+        
+        If NSFilesPromisePboardType is on the pasteboard and classArray contains
+        NSFilePromiseReceiver, construct a DumpRenderTreeFilePromiseReceiver, add it to the array of
+        all file promise receivers, then wrap it in an NSDraggingItem and call block.
+
+        * DumpRenderTree/mac/EventSendingController.mm:
+        (+[EventSendingController isSelectorExcludedFromWebScript:]):
+        (+[EventSendingController webScriptNameForSelector:]):
+        (-[EventSendingController beginDragWithFilePromises:]):
+
+        Implement eventSender.beginDragWithFilePromises() by placing file UTIs on the pasteboard
+        with type NSFilesPromisePboardType, creating a DumpRenderTreeFileDraggingSource with the
+        file URLs, and creating a new DumpRenderTreeDraggingInfo and passing it to
+        -[WebView draggingEntered:].
+
+2018-03-05  Aakash Jain  <aakash_jain@apple.com>
+
+        [webkitpy] Bugzilla class should use NetworkTransaction for network operations
+        https://bugs.webkit.org/show_bug.cgi?id=183222
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla.py:
+        (Bugzilla.open_url): Method which uses NetworkTransaction for opening url.
+        (Bugzilla.fetch_user): Used self.open_url instead of directly calling browser.open().
+        (Bugzilla.add_user_to_groups): Ditto.
+        (Bugzilla._fetch_bug_page): Ditto.
+        (Bugzilla.fetch_attachment_contents): Ditto.
+        (Bugzilla.get_bug_id_for_attachment_id): Ditto.
+        (Bugzilla.authenticate): Ditto.
+        (Bugzilla.add_attachment_to_bug): Ditto.
+        (Bugzilla.add_patch_to_bug): Ditto.
+        (Bugzilla.create_bug): Ditto.
+        (Bugzilla.clear_attachment_flags): Ditto.
+        (Bugzilla.set_flag_on_attachment): Ditto.
+        (Bugzilla.obsolete_attachment): Ditto.
+        (Bugzilla.add_cc_to_bug): Ditto.
+        (Bugzilla.post_comment_to_bug): Ditto.
+        (Bugzilla.close_bug_as_fixed): Ditto.
+        (Bugzilla.reassign_bug): Ditto.
+        (Bugzilla.reopen_bug): Ditto.
+        (Bugzilla._fetch_bug_page_by_url): Deleted, not required anymore.
+        * Scripts/webkitpy/common/net/networktransaction.py:
+        (NetworkTransaction.run): Added a FIXME.
+
+2018-03-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        dump-class-layout mishandles duplicates base classes and miscomputes padding
+        https://bugs.webkit.org/show_bug.cgi?id=183311
+
+        Reviewed by Simon Fraser.
+
+        * Scripts/dump-class-layout:
+        (verify_type):
+        (verify_type_recursive):
+        Keep a list of seen (offset, type) that we have output and don't re-output them.
+        The Python types list the base classes as members multiple times as you iterate
+        through the members, so just ignore them if we have seem them already at a
+        specific offset.
+
+2018-03-05  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][Wayland] The GTK Wayland bot exits early because of assertions related with libsecret since r221925
+        https://bugs.webkit.org/show_bug.cgi?id=183330
+
+        Reviewed by Michael Catanzaro.
+
+        Add libsecret to the JHBuild and build it only when the system version is
+        less than 0.18.6 (unreleased as of writing this) in order to cherry pick
+        a fix for a bug that causes crashes with layout tests.
+
+        * gtk/jhbuild.modules:
+        * gtk/patches/libsecret-secret-methods-Don-t-unref-NULL-when-search-fails.patch: Added.
+
+2018-03-05  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK] Implement WTR's PlatformWebView::setWindowIsKey()
+        https://bugs.webkit.org/show_bug.cgi?id=183143
+
+        Reviewed by Carlos Garcia Campos.
+
+        Implement ::setWindowIsKey() by keeping a second window to be
+        presented when the webview's window is to lose its key status.
+
+        * WebKitTestRunner/PlatformWebView.h:
+        * WebKitTestRunner/gtk/PlatformWebViewGtk.cpp:
+        (WTR::PlatformWebView::PlatformWebView):
+        (WTR::PlatformWebView::~PlatformWebView):
+        (WTR::PlatformWebView::setWindowIsKey):
+
+2018-03-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, attempt to fix Apple port build
+
+        * TestWebKitAPI/Tests/WebKitCocoa/PictureInPictureDelegate.mm:
+
+2018-03-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, attempt to fix WPE build
+
+        * WebKitTestRunner/InjectedBundle/wpe/TestRunnerWPE.cpp:
+        (WTR::TestRunner::initializeWaitToDumpWatchdogTimerIfNeeded):
+        * WebKitTestRunner/wpe/PlatformWebViewWPE.cpp:
+        (WTR::PlatformWebView::windowSnapshotImage):
+        * WebKitTestRunner/wpe/TestControllerWPE.cpp:
+        (WTR::TestController::platformRunUntil):
+
+2018-03-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Move currentCPUTime and sleep(Seconds) to CPUTime.h and Seconds.h respectively
+        https://bugs.webkit.org/show_bug.cgi?id=183312
+
+        Reviewed by Mark Lam.
+
+        Remove wtf/CurrentTime.h include pragma.
+
+        * DumpRenderTree/TestNetscapePlugIn/PluginTest.cpp:
+        * DumpRenderTree/TestNetscapePlugIn/Tests/EvaluateJSWithinNPP_New.cpp:
+        * DumpRenderTree/TestNetscapePlugIn/Tests/InvokeDestroysPluginWithinNPP_New.cpp:
+        * DumpRenderTree/TestNetscapePlugIn/Tests/SlowNPPNew.cpp:
+        * TestWebKitAPI/Tests/WTF/Condition.cpp:
+        * TestWebKitAPI/Tests/WTF/Signals.cpp:
+        * TestWebKitAPI/Tests/WTF/ThreadGroup.cpp:
+        * TestWebKitAPI/Tests/WTF/WorkQueue.cpp:
+        * TestWebKitAPI/Tests/WebKitCocoa/PictureInPictureDelegate.mm:
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        * TestWebKitAPI/jsconly/PlatformUtilitiesJSCOnly.cpp:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+
+2018-03-04  Tim Horton  <timothy_horton@apple.com>
+
+        Make !ENABLE(DATA_DETECTION) iOS build actually succeed
+        https://bugs.webkit.org/show_bug.cgi?id=183283
+        <rdar://problem/38062148>
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2018-03-02  Chris Dumez  <cdumez@apple.com>
+
+        Converting a load to a download does not work with async policy delegates
+        https://bugs.webkit.org/show_bug.cgi?id=183254
+        <rdar://problem/38035334>
+
+        Reviewed by Youenn Fablet.
+
+        Add layout test infrastructure for responding to the decidePolicyForNavigationResponse
+        delegate asynchronously.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::decidePolicyForResponse):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setShouldDecideResponsePolicyAfterDelay):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        (WTR::TestRunner::shouldDecideResponsePolicyAfterDelay const):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetStateToConsistentValues):
+        (WTR::TestController::decidePolicyForNavigationResponse):
+        * WebKitTestRunner/TestController.h:
+        (WTR::TestController::setShouldDecideResponsePolicyAfterDelay):
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle):
+
+2018-03-01  Youenn Fablet  <youenn@apple.com>
+
+        Add API test to validate setting of service worker and cache storage directories
+        https://bugs.webkit.org/show_bug.cgi?id=182543
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ServiceWorkerBasic.mm:
+
+2018-03-01  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [Win][DRT] Implement setSpatialNavigationEnabled.
+        https://bugs.webkit.org/show_bug.cgi?id=183166
+
+        Reviewed by Per Arne Vollan.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (setSpatialNavigationEnabledCallback):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebPreferencesToConsistentValues):
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::setSpatialNavigationEnabled):
+
+2018-03-01  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [webkitpy] Use shell=False to launch apache http server.
+        https://bugs.webkit.org/show_bug.cgi?id=183191
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/webkitpy/layout_tests/servers/apache_http_server.py:
+        (LayoutTestApacheHttpd.__init__):
+        (LayoutTestApacheHttpd._run):
+
+2018-03-01  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, update WebKit.CustomHeaderFields API test after r229133.
+
+        We no longer do policy checks for 'about:blank'.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/WebsitePolicies.mm:
+        (-[CustomHeaderFieldsDelegate webView:startURLSchemeTask:]):
+        (TEST):
+
+2018-02-28  Jonathan Bedard  <jbedard@apple.com>
+
+        [webkitpy] Remove concept of 'future' versions (Follow-up fix 2)
+        https://bugs.webkit.org/show_bug.cgi?id=183184
+        <rdar://problem/37958594>
+
+        Reviewed by Aakash Jain.
+
+        Unlisted Apple versions can't run webkitpy tests because they don't
+        have specified port names.
+
+        * Scripts/webkitpy/port/apple.py:
+        (ApplePort.determine_full_port_name): Return valid port name for unnamed
+        versions.
+        * Scripts/webkitpy/port/base.py:
+        (Port.version_name): Check both public and internal version mapping
+        when returning a version name.
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort.__init__): If no os version is defined, use the current version.
+
+2018-02-28  John Wilander  <wilander@apple.com>
+
+        Add a second tier of prevalence to facilitate telemetry on very prevalent domains
+        https://bugs.webkit.org/show_bug.cgi?id=183218
+        <rdar://problem/37992388>
+
+        Reviewed by Brent Fulgham.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+            Added two new testRunner functions:
+            - setStatisticsVeryPrevalentResource()
+            - isStatisticsVeryPrevalentResource()
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setStatisticsVeryPrevalentResource):
+        (WTR::TestRunner::isStatisticsVeryPrevalentResource):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::setStatisticsVeryPrevalentResource):
+        (WTR::TestController::isStatisticsVeryPrevalentResource):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2018-02-28  Jonathan Bedard  <jbedard@apple.com>
+
+        [webkitpy] Remove concept of 'future' versions (Follow-up fix)
+        https://bugs.webkit.org/show_bug.cgi?id=183184
+        <rdar://problem/37958594>
+
+        Reviewed by David Kilzer.
+
+        The factory also relies on future in a non-obvious way.
+
+        * Scripts/webkitpy/common/system/platforminfo.py:
+        (PlatformInfo.os_version_name): Check both public and internal version mapping
+        when returning a version name.
+        * Scripts/webkitpy/common/system/platforminfo_mock.py:
+        (MockPlatformInfo.os_version_name): Ditto.
+
+2018-02-28  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed WPE fixup after r229080.
+
+        Add empty definitions for two AccessibilityUIElement methods,
+        avoiding undefined symbols in the WKTR injected bundle.
+
+        * WebKitTestRunner/InjectedBundle/wpe/AccessibilityUIElementWPE.cpp:
+        (WTR::AccessibilityUIElement::attributedStringForTextMarkerRange):
+        (WTR::AccessibilityUIElement::attributedStringForTextMarkerRangeWithOptions):
+
+2018-02-27  Jonathan Bedard  <jbedard@apple.com>
+
+        Remove concept of 'future'
+        https://bugs.webkit.org/show_bug.cgi?id=183184
+        <rdar://problem/37958594>
+
+        Reviewed by Aakash Jain.
+
+        Remove concept of 'future' from expectations and instead
+        use a system of inheritance centered around the current version
+        of an OS for Mac and iOS.
+
+        Inheritance works like so:
+
+        | ....
+        V Future
+        > High Sierra (mac)
+        ^ mac-sierra
+        | mac-elcapitan
+        | ....
+
+        This does not change expectation inheritance for any currently running
+        configurations, it generalizes the logic already used.
+
+        * Scripts/webkitpy/common/version_name_map.py:
+        (VersionNameMap.__init__): Remove all future versions.
+        (VersionNameMap.mapping_for_platform): Return empty dicts instead of
+        asserting.
+        * Scripts/webkitpy/port/apple.py:
+        (ApplePort):
+        (ApplePort._allowed_versions): Return all available versions.
+        (ApplePort._generate_all_test_configurations): Instead of picking from a set
+        of allowed versions, assume that every specified version is allowed.
+        (ApplePort._port_name_with_version): Deleted.
+        * Scripts/webkitpy/port/darwin.py: Add CURRENT_VERSION overridden by subclasses.
+        (DarwinPort):
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort):
+        (IOSPort.default_baseline_search_path): Use system of inheritance centered around
+        the current version.
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort):
+        (MacPort.__init__): Use current version by default.
+        (MacPort.default_baseline_search_path): Use system of inheritance centered around
+        the current version.
+        (MacPort.configuration_specifier_macros): Use the same set of version names
+        supported in default_baseline_search_path.
+        * Scripts/webkitpy/port/mac_unittest.py:
+        (MacTest.test_versions): Remove 'future' tests.
+
+2018-02-27  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed GTK test gardening
+
+        * TestWebKitAPI/glib/TestExpectations.json:
+
+2018-02-27  Doug Russell  <doug@getitdownonpaper.com>
+
+        AX: Spell check and style attributes should be optional when fetching attributed string
+        https://bugs.webkit.org/show_bug.cgi?id=160744
+
+        Reviewed by Chris Fleizach.
+
+        The overhead of fetching a spell checked attributed string via AX API is substantial. 
+        In some cases on the order of 7/8 of the total time spent fetching the string.
+
+        This change introduces the new attribute AXAttributedStringForTextMarkerRangeWithOptions which accepts an NSDictionary as it's parameter with keys "AXTextMarkerRange" (AXTextMarkerRangeRef) and "AXSpellCheck" (NSNumber(BOOL)).
+
+        AXAttributedStringForTextMarkerRange will remain unchanged.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (attributedStringForTextMarkerRangeCallback):
+        (attributedStringForTextMarkerRangeWithOptionsCallback):
+        (AccessibilityUIElement::attributedStringForTextMarkerRange):
+        (AccessibilityUIElement::attributedStringForTextMarkerRangeWithOptions):
+        (AccessibilityUIElement::getJSClass):
+        * DumpRenderTree/AccessibilityUIElement.h:
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::attributedStringForTextMarkerRange):
+        (AccessibilityUIElement::attributedStringForTextMarkerRangeWithOptions):
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (createJSStringRef):
+        (AccessibilityUIElement::attributedStringForTextMarkerRange):
+        (AccessibilityUIElement::attributedStringForTextMarkerRangeWithOptions):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::attributedStringForTextMarkerRange):
+        (WTR::AccessibilityUIElement::attributedStringForTextMarkerRangeWithOptions):
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::attributedStringForTextMarkerRange):
+        (WTR::AccessibilityUIElement::attributedStringForTextMarkerRangeWithOptions):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::createJSStringRef):
+        (WTR::AccessibilityUIElement::attributedStringForTextMarkerRange):
+        (WTR::AccessibilityUIElement::attributedStringForTextMarkerRangeWithOptions):
+
+2018-02-27  Daniel Bates  <dabates@apple.com>
+
+        Standardize terminology for marked text
+        https://bugs.webkit.org/show_bug.cgi?id=180999
+
+        Reviewed by Zalan Bujtas.
+
+        The name MarkerSubrange is a misnomer for a data structure that associates a text subrange with a type
+        and optional document marker. In particular, a MarkerSubrange may not always correspond to a document
+        marker. For instance, selected text is represented using a MarkerSubrange that does not have a
+        corresponding document marker. Let's standardize on the phrase "marked text" as the canonical way to
+        describe these tagged text subranges.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/MarkedText.cpp: Added.
+        (WebCore::operator<<):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebCore/MarkerSubrange.cpp: Removed.
+
+2018-02-27  Aakash Jain  <aakash_jain@apple.com>
+
+        webkitpy Bugzilla transactions should retry on URLError
+        https://bugs.webkit.org/show_bug.cgi?id=183156
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla.py:
+        (Bugzilla): Use NetworkTransaction.
+        (Bugzilla._fetch_bug_page_by_url):
+        (Bugzilla.bug_id_for_attachment_id):
+        (Bugzilla.get_bug_id_for_attachment_id):
+
+2018-02-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] Implement additional SPI for adjusting viewport shrink-to-fit behavior
+        https://bugs.webkit.org/show_bug.cgi?id=183100
+        <rdar://problem/37840987>
+
+        Reviewed by Tim Horton.
+
+        Add API tests that exercise -_setMinimumAllowedLayoutWidth: and -_setForceHorizontalViewportShrinkToFit:. See
+        WebKit ChangeLog for more detail.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/ios/ViewportSizingTests.mm: Added.
+        (TestWebKitAPI::while):
+        (viewportTestPageMarkup):
+        (TestWebKitAPI::TEST):
+
+2018-02-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, skip FTL tests if FTL is disabled
+        https://bugs.webkit.org/show_bug.cgi?id=183071
+
+        * Scripts/run-jsc-stress-tests:
+
+2018-02-26  Don Olmstead  <don.olmstead@sony.com>
+
+        Fix WebCore includes within WebKitLegacy
+        https://bugs.webkit.org/show_bug.cgi?id=183147
+
+        Reviewed by Tim Horton.
+
+        * MiniBrowser/win/ResourceLoadDelegate.cpp:
+
+2018-02-26  Yousuke Kimoto  <yousuke.kimoto@sony.com>
+
+        [WinCairo] WebKit2_C.h should be included for TestWebKit
+        https://bugs.webkit.org/show_bug.cgi?id=182682
+
+        Reviewed by Yusuke Suzuki.
+
+        * TestWebKitAPI/config.h:
+
+2018-02-25  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WK2] http/tests/navigation/new-window-redirect-history.html crashes
+        https://bugs.webkit.org/show_bug.cgi?id=127683
+
+        Reviewed by Dan Bernstein.
+
+        m_previousTestBackForwardListItem was null for the new window.
+        m_previousTestBackForwardListItem is initialized only for the main
+        window in InjectedBundlePage::prepare.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::dumpBackForwardList):
+        Do null-check of m_previousTestBackForwardListItem.
+
+2018-02-25  Alexey Proskuryakov  <ap@apple.com>
+
+        Various crashes in WebKitTestRunner, especially when system is under heavy load
+        https://bugs.webkit.org/show_bug.cgi?id=183109
+
+        Reviewed by Tim Horton.
+
+        WebKitTestRunner had many places where it sent messages to WebContent with a timeout,
+        but it didn't handle the timeout when it did occur. Nearly all of those would result
+        in logic errors and failing tests, and most would even result in stack corruption,
+        as the response handler modified local variables.
+
+        There is only one timeout scenario that we actually mean to handle in WKTR. That's
+        when a test freezes after it is done (e.g. an infinite loop in beforeunload) - we don't
+        want to blame the next test for freezing, so we silently relaunch WebContent.
+        Everything else is cargo cult code that never worked.
+
+        This patch addresses the crashes, and actually makes tests pass a lot more on an
+        overloaded system.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetStateToConsistentValues): Moved m_doneResetting assignment
+        to where it's actually needed, for clarity.
+        (WTR::TestController::reattachPageToWebProcess): This function used to always hit
+        and ignore message timeout, as m_doneResetting is only updated by navigation callback
+        when the state is Resetting. This change makes it faster.
+        (WTR::TestController::platformResetStateToConsistentValues): Style fix.
+        (WTR::TestController::clearServiceWorkerRegistrations): Timing out here wasn't
+        handled in a meaningful manner, and would even corrupt the stack.
+        (WTR::TestController::clearDOMCache): Ditto.
+        (WTR::TestController::clearDOMCaches): Ditto.
+        (WTR::TestController::hasDOMCache): Ditto.
+        (WTR::TestController::domCacheSize): Ditto.
+        (WTR::TestController::isStatisticsPrevalentResource): Ditto.
+        (WTR::TestController::isStatisticsRegisteredAsSubFrameUnder): Ditto.
+        (WTR::TestController::isStatisticsRegisteredAsRedirectingTo): Ditto.
+        (WTR::TestController::isStatisticsHasHadUserInteraction): Ditto.
+        (WTR::TestController::isStatisticsGrandfathered): Ditto.
+        (WTR::TestController::statisticsUpdateCookiePartitioning): Ditto.
+        (WTR::TestController::statisticsSetShouldPartitionCookiesForHost): Ditto.
+        (WTR::TestController::statisticsClearInMemoryAndPersistentStore): Ditto.
+        (WTR::TestController::statisticsClearInMemoryAndPersistentStoreModifiedSinceHours): Ditto.
+        (WTR::TestController::statisticsClearThroughWebsiteDataRemoval): Ditto.
+
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::shortTimeout const): Made shortTimeout shorter (on a hunch).
+        (WTR::TestInvocation::invoke): Removed a timeout waiting for initial response. There
+        is never a logical reason for such a timeout, as we always have a new or responsive
+        WebContent process here.
+        (WTR::TestInvocation::dumpResults): Removed another timeout that we don't know how to
+        properly handle.
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle): Removed assignment to
+        m_errorMessage, which had no effect in this context.
+
+        * WebKitTestRunner/TestInvocation.h: Removed no longer used code.
+
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::cocoaResetStateToConsistentValues): Use a named constant for
+        no timeout.
+        
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (WTR::TestController::platformConfigureViewForTest): Removed a useless timeout.
+        Not sure if timing out here would corrupt the stack or not, but there is no reason
+        to impose arbitrary limits on individual steps of a test.
+
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::TestController::platformConfigureViewForTest): Use a named constant for
+        no timeout.
+
+2018-02-25  Ali Juma  <ajuma@chromium.org>
+
+        Unreviewed. Change my status to committer.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2018-02-25  Chris Dumez  <cdumez@apple.com>
+
+        Service workers do not work well inside Web.app
+        https://bugs.webkit.org/show_bug.cgi?id=183105
+        <rdar://problem/37864140>
+
+        Reviewed by Youenn Fablet.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ServiceWorkerBasic.mm:
+
+2018-02-25  Aakash Jain  <aakash_jain@apple.com>
+
+        [build.webkit.org] unit-tests fail if buildbot 0.8.6p1 is not installed locally
+        https://bugs.webkit.org/show_bug.cgi?id=183103
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/steps_unittest.py: Removed extra imports.
+
+2018-02-24  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, fix the TestWebKitAPI build after r228825.
+
+        I removed a `>= iOS 11` check in r228825, but forgot that this was also neeed to guard against tvOS and watchOS
+        builds. This fixes the build by restoring the compile-time guard and also makes it explicit for these platforms.
+
+        * TestWebKitAPI/Tests/ios/ActionSheetTests.mm:
+
+2018-02-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Remove currentTime() / currentTimeMS()
+        https://bugs.webkit.org/show_bug.cgi?id=183052
+
+        Reviewed by Mark Lam.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (preciseTimeCallback):
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (TestRunner::setMockGeolocationPosition):
+        * TestWebKitAPI/Tests/WTF/Condition.cpp:
+        * TestWebKitAPI/Tests/WTF/ThreadGroup.cpp:
+        * TestWebKitAPI/Tests/WTF/WorkQueue.cpp:
+        * WebKitTestRunner/GeolocationProviderMock.cpp:
+        (WTR::GeolocationProviderMock::setPosition):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::preciseTime):
+
+2018-02-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Remove sleep(double) and sleepMS(double) interfaces
+        https://bugs.webkit.org/show_bug.cgi?id=183038
+
+        Reviewed by Mark Lam.
+
+        * DumpRenderTree/TestNetscapePlugIn/PluginTest.cpp:
+        (PluginTest::indicateTestFailure):
+        * DumpRenderTree/TestNetscapePlugIn/Tests/EvaluateJSWithinNPP_New.cpp:
+        (EvaluteJSWithinNPP_New::NPP_New):
+        * DumpRenderTree/TestNetscapePlugIn/Tests/InvokeDestroysPluginWithinNPP_New.cpp:
+        (InvokeDestroysPluginWithinNPP_New::NPP_New):
+        * DumpRenderTree/TestNetscapePlugIn/Tests/SlowNPPNew.cpp:
+        * TestWebKitAPI/Tests/WTF/Signals.cpp:
+        (TEST):
+        * TestWebKitAPI/Tests/WTF/ThreadGroup.cpp:
+        (TestWebKitAPI::testThreadGroup):
+        * TestWebKitAPI/Tests/WTF/WorkQueue.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/PictureInPictureDelegate.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/jsconly/PlatformUtilitiesJSCOnly.cpp:
+        (TestWebKitAPI::Util::sleep):
+
 2018-02-21  Don Olmstead  <don.olmstead@sony.com>
 
         [CMake][Win] Use cmakeconfig.h rather than config.h and Platform.h

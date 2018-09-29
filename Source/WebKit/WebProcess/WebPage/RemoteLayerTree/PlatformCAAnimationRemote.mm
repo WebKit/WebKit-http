@@ -36,16 +36,15 @@
 #import <WebCore/TimingFunction.h>
 #import <pal/spi/cocoa/QuartzCoreSPI.h>
 #import <wtf/BlockObjCExceptions.h>
-#import <wtf/CurrentTime.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/text/TextStream.h>
 
 using namespace WTF;
 using namespace WebCore;
 
-static double mediaTimeToCurrentTime(CFTimeInterval t)
+static MonotonicTime mediaTimeToCurrentTime(CFTimeInterval t)
 {
-    return monotonicallyIncreasingTime() + t - CACurrentMediaTime();
+    return MonotonicTime::now() + Seconds(t - CACurrentMediaTime());
 }
 
 static NSString * const WKExplicitBeginTimeFlag = @"WKPlatformCAAnimationExplicitBeginTimeFlag";
@@ -81,7 +80,7 @@ static NSString * const WKExplicitBeginTimeFlag = @"WKPlatformCAAnimationExplici
         return;
 
     bool hasExplicitBeginTime = [[animation valueForKey:WKExplicitBeginTimeFlag] boolValue];
-    CFTimeInterval startTime;
+    MonotonicTime startTime;
 
     if (hasExplicitBeginTime) {
         // We don't know what time CA used to commit the animation, so just use the current time

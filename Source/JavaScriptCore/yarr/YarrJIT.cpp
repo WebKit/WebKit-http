@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -246,7 +246,7 @@ class YarrGenerator : private MacroAssembler {
         jump(loopTop);
 
         initDone.link(this);
-        storePtr(TrustedImmPtr(0), Address(parenContextPointer, ParenContext::nextOffset()));
+        storePtr(TrustedImmPtr(nullptr), Address(parenContextPointer, ParenContext::nextOffset()));
         emptyFreeList.link(this);
     }
 
@@ -594,7 +594,7 @@ class YarrGenerator : private MacroAssembler {
 
     DataLabelPtr storeToFrameWithPatch(unsigned frameLocation)
     {
-        return storePtrWithPatch(TrustedImmPtr(0), Address(stackPointerRegister, frameLocation * sizeof(void*)));
+        return storePtrWithPatch(TrustedImmPtr(nullptr), Address(stackPointerRegister, frameLocation * sizeof(void*)));
     }
 
     void loadFromFrame(unsigned frameLocation, RegisterID reg)
@@ -2193,7 +2193,7 @@ class YarrGenerator : private MacroAssembler {
                 // FIXME: for capturing parens, could use the index in the capture array?
                 if (term->quantityType == QuantifierGreedy || term->quantityType == QuantifierNonGreedy) {
                     storeToFrame(TrustedImm32(0), parenthesesFrameLocation + BackTrackInfoParentheses::matchAmountIndex());
-                    storeToFrame(TrustedImmPtr(0), parenthesesFrameLocation + BackTrackInfoParentheses::parenContextHeadIndex());
+                    storeToFrame(TrustedImmPtr(nullptr), parenthesesFrameLocation + BackTrackInfoParentheses::parenContextHeadIndex());
 
                     if (term->quantityType == QuantifierNonGreedy) {
                         storeToFrame(TrustedImm32(-1), parenthesesFrameLocation + BackTrackInfoParentheses::beginIndex());
@@ -3488,14 +3488,14 @@ public:
 
         if (compileMode == MatchOnly) {
             if (m_charSize == Char8)
-                jitObject.set8BitCodeMatchOnly(FINALIZE_CODE(linkBuffer, ("Match-only 8-bit regular expression")));
+                jitObject.set8BitCodeMatchOnly(FINALIZE_CODE(linkBuffer, "Match-only 8-bit regular expression"));
             else
-                jitObject.set16BitCodeMatchOnly(FINALIZE_CODE(linkBuffer, ("Match-only 16-bit regular expression")));
+                jitObject.set16BitCodeMatchOnly(FINALIZE_CODE(linkBuffer, "Match-only 16-bit regular expression"));
         } else {
             if (m_charSize == Char8)
-                jitObject.set8BitCode(FINALIZE_CODE(linkBuffer, ("8-bit regular expression")));
+                jitObject.set8BitCode(FINALIZE_CODE(linkBuffer, "8-bit regular expression"));
             else
-                jitObject.set16BitCode(FINALIZE_CODE(linkBuffer, ("16-bit regular expression")));
+                jitObject.set16BitCode(FINALIZE_CODE(linkBuffer, "16-bit regular expression"));
         }
         if (m_failureReason)
             jitObject.setFallBackWithFailureReason(*m_failureReason);

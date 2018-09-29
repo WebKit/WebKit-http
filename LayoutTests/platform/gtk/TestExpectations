@@ -1074,7 +1074,7 @@ fast/events/webkit-media-key-events-constructor.html [ Skip ]
 
 # eventSender.callAfterScrollingCompletes doesn't work.
 webkit.org/b/168189 fast/scrolling/arrow-key-scroll-in-rtl-document.html [ Failure ]
-webkit.org/b/168189 fast/scrolling/scroll-container-horizontally.html [ Failure ]
+webkit.org/b/168189 fast/scrolling/scroll-container-horizontally.html [ Failure Pass ]
 
 # Requires CACHE_PARTITIONING or an alternative implementation
 webkit.org/b/168366 http/tests/security/credentials-iframes.html
@@ -1129,6 +1129,7 @@ webkit.org/b/175419 http/tests/workers/service [ Skip ]
 webkit.org/b/175419 http/wpt/service-workers [ Failure ]
 webkit.org/b/175419 http/tests/inspector/network/resource-response-service-worker.html [ Skip ]
 webkit.org/b/175419 imported/w3c/web-platform-tests/service-workers [ Skip ]
+http/tests/appcache/main-resource-redirect-with-sw.html [ Skip ]
 
 # Skip anything related to WebAuthN
 http/tests/webauthn/ [ Skip ]
@@ -1307,6 +1308,10 @@ webkit.org/b/180098 security/isSecureContext-disabled.html [ Crash Pass ]
 webkit.org/b/180803 http/tests/media/hls/video-cookie.html [ Crash ]
 
 webkit.org/b/182106 media/video-multiple-concurrent-playback.html [ Crash Pass Timeout ]
+
+webkit.org/b/183180 imported/blink/fast/forms/time-multiple-fields/time-multiple-fields-crash-by-focus-on-unload.html [ Crash Pass ]
+
+webkit.org/b/183215 imported/w3c/web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-cseuckr.html [ Crash Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Crashing tests
@@ -1916,6 +1921,16 @@ webkit.org/b/182790 imported/w3c/web-platform-tests/IndexedDB/idbdatabase-delete
 
 webkit.org/b/182989 http/wpt/beacon/beacon-quota.html [ Pass Failure ]
 
+webkit.org/b/183034 imported/w3c/web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-iso-ir-149.html [ Pass Crash ]
+
+webkit.org/b/183035 imported/w3c/web-platform-tests/html/browsers/the-window-object/apis-for-creating-and-navigating-browsing-contexts-by-name/open-features-negative-innerwidth-innerheight.html [ Failure Pass ]
+
+webkit.org/b/183036 fast/events/message-port.html [ Timeout Pass ]
+
+webkit.org/b/183037 http/tests/resourceLoadStatistics/prevalent-resource-handled-keydown.html [ Timeout Pass ]
+
+webkit.org/b/183188 imported/blink/svg/as-image/image-change-with-equal-sizes.html [ ImageOnlyFailure Pass ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -2240,6 +2255,10 @@ webkit.org/b/182108 http/tests/media/hls/hls-webvtt-tracks.html [ Timeout ]
 
 webkit.org/b/182317 http/tests/resourceLoadStatistics/grandfathering.html [ Pass Failure ]
 
+webkit.org/b/183181 inspector/heap/getPreview.html [ Pass Timeout ]
+
+webkit.org/b/183186 imported/w3c/web-platform-tests/html/semantics/scripting-1/the-template-element/additions-to-the-css-user-agent-style-sheet/css-user-agent-style-sheet-test-001.html [ Pass Timeout ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests timing out
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -2475,8 +2494,6 @@ webkit.org/b/123431 http/tests/css/link-css-disabled-value-with-slow-loading-she
 webkit.org/b/123431 http/tests/local/link-stylesheet-load-order-preload.html [ Pass Failure ]
 webkit.org/b/123431 http/tests/local/link-stylesheet-load-order.html [ Failure Pass ]
 
-webkit.org/b/145253 http/tests/appcache/different-https-origin-resource-main.html  [ Failure ]
-
 #////////////////////////////////////////////////////////////////////////////////////////
 # 9. TESTS FAILING
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -2493,6 +2510,8 @@ webkit.org/b/98382 accessibility/visible-elements.html [ Failure ]
 
 # Blur and focus events are not received for the following tests.
 Bug(GTK) fast/events/frame-tab-focus.html [ Failure ]
+
+webkit.org/b/183328 fast/events/blur-focus-window-should-blur-focus-element.html [ Failure ]
 
 # Looks like a bug in the testRunner global history support due to missing API.
 webkit.org/b/100238 fast/history/window-open.html [ Failure ]
@@ -3254,6 +3273,8 @@ webkit.org/b/179722 compositing/accelerated-layers-after-back.html [ Failure ]
 webkit.org/b/179113 fast/inline/padding-ellipsis-right.html [ ImageOnlyFailure ]
 webkit.org/b/179113 fast/text/ellipsis-text-rtl.html [ ImageOnlyFailure ]
 webkit.org/b/179113 imported/w3c/web-platform-tests/css/css-ui/text-overflow-013.html [ ImageOnlyFailure ]
+# This one is only failing on the bots.
+webkit.org/b/18328  imported/w3c/web-platform-tests/css/css-ui/text-overflow-022.html [ ImageOnlyFailure ]
 
 webkit.org/b/177632 fast/text/flag-codepoint.html [ ImageOnlyFailure ]
 
@@ -3298,6 +3319,8 @@ webkit.org/b/182763 accessibility/gtk/caret-offsets.html [ Timeout ]
 
 webkit.org/b/182765 fast/backgrounds/background-leakage-transforms.html [ Failure ImageOnlyFailure ]
 webkit.org/b/182765 fast/text/emphasis-overlap.html [ Failure ImageOnlyFailure ]
+
+webkit.org/b/183033 http/tests/plugins/supported-plugin-origin-specific-visibility.html [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of non-crashing, non-flaky tests failing
@@ -3363,22 +3386,6 @@ fast/scrolling/rtl-scrollbars-alternate-body-dir-attr-does-not-update-scrollbar-
 fast/scrolling/rtl-scrollbars-alternate-body-dir-attr-does-not-update-scrollbar-placement-2.html [ Pass ]
 fast/scrolling/rtl-scrollbars-alternate-iframe-body-dir-attr-does-not-update-scrollbar-placement.html [ Pass ]
 webkit.org/b/156437 fast/scrolling/rtl-scrollbars-listbox-scroll.html [ ImageOnlyFailure Pass ]
-
-# We don't support emoji genders, but half the reftests pass anyway.
-fast/text/emoji-gender-2-3.html [ Pass ]
-fast/text/emoji-gender-2-4.html [ Pass ]
-fast/text/emoji-gender-2-5.html [ Pass ]
-fast/text/emoji-gender-2-6.html [ Pass ]
-fast/text/emoji-gender-2-7.html [ Pass ]
-fast/text/emoji-gender-2-8.html [ Pass ]
-fast/text/emoji-gender-2-9.html [ Pass ]
-fast/text/emoji-gender-fe0f-3.html [ Pass ]
-fast/text/emoji-gender-fe0f-4.html [ Pass ]
-fast/text/emoji-gender-fe0f-5.html [ Pass ]
-fast/text/emoji-gender-fe0f-6.html [ Pass ]
-fast/text/emoji-gender-fe0f-7.html [ Pass ]
-fast/text/emoji-gender-fe0f-8.html [ Pass ]
-fast/text/emoji-gender-fe0f-9.html [ Pass ]
 
 transitions/svg-text-shadow-transition.html [ Pass ]
 

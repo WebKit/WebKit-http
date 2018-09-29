@@ -27,13 +27,12 @@
 #define WTF_DebugUtilities_h
 
 #include <wtf/Assertions.h>
-#include <wtf/CurrentTime.h>
 #include <wtf/ProcessID.h>
 
 #define SLEEP_THREAD_FOR_DEBUGGER() \
 do { \
     do { \
-        sleep(1.0); \
+        sleep(1_s); \
         if (WTFIsDebuggerAttached()) \
             break; \
     } while (1); \

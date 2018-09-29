@@ -117,7 +117,6 @@
 #include <WebCore/Settings.h>
 #include <WebCore/URLParser.h>
 #include <WebCore/UserGestureIndicator.h>
-#include <wtf/CurrentTime.h>
 #include <wtf/Language.h>
 #include <wtf/RunLoop.h>
 #include <wtf/text/StringHash.h>
@@ -151,7 +150,7 @@ using namespace JSC;
 using namespace WebCore;
 
 // This should be less than plugInAutoStartExpirationTimeThreshold in PlugInAutoStartProvider.
-static const double plugInAutoStartExpirationTimeUpdateThreshold = 29 * 24 * 60 * 60;
+static const Seconds plugInAutoStartExpirationTimeUpdateThreshold { 29 * 24 * 60 * 60 };
 
 // This should be greater than tileRevalidationTimeout in TileController.
 static const Seconds nonVisibleProcessCleanupDelay { 10_s };
@@ -202,7 +201,7 @@ WebProcess::WebProcess()
     addSupplement<UserMediaCaptureManager>();
 #endif
 
-    m_plugInAutoStartOriginHashes.add(PAL::SessionID::defaultSessionID(), HashMap<unsigned, double>());
+    m_plugInAutoStartOriginHashes.add(PAL::SessionID::defaultSessionID(), HashMap<unsigned, WallTime>());
 
     ResourceLoadObserver::shared().setNotificationCallback([this] (Vector<ResourceLoadStatistics>&& statistics) {
         ASSERT(!statistics.isEmpty());
@@ -374,11 +373,9 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 
     setResourceLoadStatisticsEnabled(parameters.resourceLoadStatisticsEnabled);
 
-    if (parameters.shouldAlwaysUseComplexTextCodePath)
-        setAlwaysUsesComplexTextCodePath(true);
+    setAlwaysUsesComplexTextCodePath(parameters.shouldAlwaysUseComplexTextCodePath);
 
-    if (parameters.shouldUseFontSmoothing)
-        setShouldUseFontSmoothing(true);
+    setShouldUseFontSmoothing(parameters.shouldUseFontSmoothing);
 
     if (parameters.shouldUseTestingNetworkSession)
         NetworkStorageSession::switchToNewTestingSession();
@@ -800,8 +797,8 @@ static unsigned hashForPlugInOrigin(const String& pageOrigin, const String& plug
 
 bool WebProcess::isPlugInAutoStartOriginHash(unsigned plugInOriginHash, PAL::SessionID sessionID)
 {
-    HashMap<PAL::SessionID, HashMap<unsigned, double>>::const_iterator sessionIterator = m_plugInAutoStartOriginHashes.find(sessionID);
-    HashMap<unsigned, double>::const_iterator it;
+    HashMap<PAL::SessionID, HashMap<unsigned, WallTime>>::const_iterator sessionIterator = m_plugInAutoStartOriginHashes.find(sessionID);
+    HashMap<unsigned, WallTime>::const_iterator it;
     bool contains = false;
 
     if (sessionIterator != m_plugInAutoStartOriginHashes.end()) {
@@ -814,7 +811,7 @@ bool WebProcess::isPlugInAutoStartOriginHash(unsigned plugInOriginHash, PAL::Ses
         if (it == sessionIterator->value.end())
             return false;
     }
-    return currentTime() < it->value;
+    return WallTime::now() < it->value;
 }
 
 bool WebProcess::shouldPlugInAutoStartFromOrigin(WebPage& webPage, const String& pageOrigin, const String& pluginOrigin, const String& mimeType)
@@ -851,28 +848,28 @@ void WebProcess::plugInDidStartFromOrigin(const String& pageOrigin, const String
     // comes back from the parent process. Temporarily add this hash to the list with a thirty
     // second timeout. That way, even if the parent decides not to add it, we'll only be
     // incorrect for a little while.
-    m_plugInAutoStartOriginHashes.add(sessionID, HashMap<unsigned, double>()).iterator->value.set(plugInOriginHash, currentTime() + 30 * 1000);
+    m_plugInAutoStartOriginHashes.add(sessionID, HashMap<unsigned, WallTime>()).iterator->value.set(plugInOriginHash, WallTime::now() + 30_s * 1000);
 
     parentProcessConnection()->send(Messages::WebProcessPool::AddPlugInAutoStartOriginHash(pageOrigin, plugInOriginHash, sessionID), 0);
 }
 
-void WebProcess::didAddPlugInAutoStartOriginHash(unsigned plugInOriginHash, double expirationTime, PAL::SessionID sessionID)
+void WebProcess::didAddPlugInAutoStartOriginHash(unsigned plugInOriginHash, WallTime expirationTime, PAL::SessionID sessionID)
 {
     // When called, some web process (which also might be this one) added the origin for auto-starting,
     // or received user interaction.
     // Set the bit to avoid having redundantly call into the UI process upon user interaction.
-    m_plugInAutoStartOriginHashes.add(sessionID, HashMap<unsigned, double>()).iterator->value.set(plugInOriginHash, expirationTime);
+    m_plugInAutoStartOriginHashes.add(sessionID, HashMap<unsigned, WallTime>()).iterator->value.set(plugInOriginHash, expirationTime);
 }
 
-void WebProcess::resetPlugInAutoStartOriginDefaultHashes(const HashMap<unsigned, double>& hashes)
+void WebProcess::resetPlugInAutoStartOriginDefaultHashes(const HashMap<unsigned, WallTime>& hashes)
 {
     m_plugInAutoStartOriginHashes.clear();
-    m_plugInAutoStartOriginHashes.add(PAL::SessionID::defaultSessionID(), HashMap<unsigned, double>()).iterator->value.swap(const_cast<HashMap<unsigned, double>&>(hashes));
+    m_plugInAutoStartOriginHashes.add(PAL::SessionID::defaultSessionID(), HashMap<unsigned, WallTime>()).iterator->value.swap(const_cast<HashMap<unsigned, WallTime>&>(hashes));
 }
 
-void WebProcess::resetPlugInAutoStartOriginHashes(const HashMap<PAL::SessionID, HashMap<unsigned, double>>& hashes)
+void WebProcess::resetPlugInAutoStartOriginHashes(const HashMap<PAL::SessionID, HashMap<unsigned, WallTime>>& hashes)
 {
-    m_plugInAutoStartOriginHashes.swap(const_cast<HashMap<PAL::SessionID, HashMap<unsigned, double>>&>(hashes));
+    m_plugInAutoStartOriginHashes.swap(const_cast<HashMap<PAL::SessionID, HashMap<unsigned, WallTime>>&>(hashes));
 }
 
 void WebProcess::plugInDidReceiveUserInteraction(const String& pageOrigin, const String& pluginOrigin, const String& mimeType, PAL::SessionID sessionID)
@@ -884,8 +881,8 @@ void WebProcess::plugInDidReceiveUserInteraction(const String& pageOrigin, const
     if (!plugInOriginHash)
         return;
 
-    HashMap<PAL::SessionID, HashMap<unsigned, double>>::const_iterator sessionIterator = m_plugInAutoStartOriginHashes.find(sessionID);
-    HashMap<unsigned, double>::const_iterator it;
+    HashMap<PAL::SessionID, HashMap<unsigned, WallTime>>::const_iterator sessionIterator = m_plugInAutoStartOriginHashes.find(sessionID);
+    HashMap<unsigned, WallTime>::const_iterator it;
     bool contains = false;
     if (sessionIterator != m_plugInAutoStartOriginHashes.end()) {
         it = sessionIterator->value.find(plugInOriginHash);
@@ -898,7 +895,7 @@ void WebProcess::plugInDidReceiveUserInteraction(const String& pageOrigin, const
             return;
     }
 
-    if (it->value - currentTime() > plugInAutoStartExpirationTimeUpdateThreshold)
+    if (it->value - WallTime::now() > plugInAutoStartExpirationTimeUpdateThreshold)
         return;
 
     parentProcessConnection()->send(Messages::WebProcessPool::PlugInDidReceiveUserInteraction(plugInOriginHash, sessionID), 0);
@@ -1062,9 +1059,7 @@ void WebProcess::didCheckRemotePortForActivity(uint64_t callbackIdentifier, bool
 
 void WebProcess::messagesAvailableForPort(const MessagePortIdentifier& identifier)
 {
-    auto port = MessagePort::existingMessagePortForIdentifier(identifier);
-    if (port)
-        port->messageAvailable();
+    MessagePort::notifyMessageAvailable(identifier);
 }
 
 #if ENABLE(GAMEPAD)
@@ -1676,6 +1671,13 @@ void WebProcess::registerServiceWorkerClients(PAL::SessionID sessionID)
     ServiceWorkerProvider::singleton().registerServiceWorkerClients(sessionID);
 }
 
+#endif
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+void WebProcess::setScreenProperties(const HashMap<uint32_t, WebCore::ScreenProperties>& properties)
+{
+    WebCore::setScreenProperties(properties);
+}
 #endif
 
 } // namespace WebKit

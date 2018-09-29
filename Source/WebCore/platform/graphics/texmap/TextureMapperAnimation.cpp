@@ -21,7 +21,6 @@
 #include "TextureMapperAnimation.h"
 
 #include "LayoutSize.h"
-#include <wtf/CurrentTime.h>
 
 namespace WebCore {
 
@@ -165,7 +164,7 @@ static const TimingFunction& timingFunctionForAnimationValue(const AnimationValu
     return CubicBezierTimingFunction::defaultTimingFunction();
 }
 
-TextureMapperAnimation::TextureMapperAnimation(const String& name, const KeyframeValueList& keyframes, const FloatSize& boxSize, const Animation& animation, bool listsMatch, double startTime, double pauseTime, AnimationState state)
+TextureMapperAnimation::TextureMapperAnimation(const String& name, const KeyframeValueList& keyframes, const FloatSize& boxSize, const Animation& animation, bool listsMatch, MonotonicTime startTime, Seconds pauseTime, AnimationState state)
     : m_name(name.isSafeToSendToAnotherThread() ? name : name.isolatedCopy())
     , m_keyframes(keyframes)
     , m_boxSize(boxSize)
@@ -173,7 +172,7 @@ TextureMapperAnimation::TextureMapperAnimation(const String& name, const Keyfram
     , m_listsMatch(listsMatch)
     , m_startTime(startTime)
     , m_pauseTime(pauseTime)
-    , m_totalRunningTime(0)
+    , m_totalRunningTime(0_s)
     , m_lastRefreshedTime(m_startTime)
     , m_state(state)
 {
@@ -193,17 +192,17 @@ TextureMapperAnimation::TextureMapperAnimation(const TextureMapperAnimation& oth
 {
 }
 
-void TextureMapperAnimation::apply(Client& client)
+void TextureMapperAnimation::apply(Client& client, MonotonicTime time)
 {
     if (!isActive())
         return;
 
-    double totalRunningTime = computeTotalRunningTime();
-    double normalizedValue = normalizedAnimationValue(totalRunningTime, m_animation->duration(), m_animation->direction(), m_animation->iterationCount());
+    Seconds totalRunningTime = computeTotalRunningTime(time);
+    double normalizedValue = normalizedAnimationValue(totalRunningTime.seconds(), m_animation->duration(), m_animation->direction(), m_animation->iterationCount());
 
-    if (m_animation->iterationCount() != Animation::IterationCountInfinite && totalRunningTime >= m_animation->duration() * m_animation->iterationCount()) {
+    if (m_animation->iterationCount() != Animation::IterationCountInfinite && totalRunningTime.seconds() >= m_animation->duration() * m_animation->iterationCount()) {
         m_state = AnimationState::Stopped;
-        m_pauseTime = 0;
+        m_pauseTime = 0_s;
         if (m_animation->fillsForwards())
             normalizedValue = normalizedAnimationValueForFillsForwards(m_animation->iterationCount(), m_animation->direction());
     }
@@ -238,7 +237,7 @@ void TextureMapperAnimation::apply(Client& client)
     }
 }
 
-void TextureMapperAnimation::pause(double time)
+void TextureMapperAnimation::pause(Seconds time)
 {
     m_state = AnimationState::Paused;
     m_pauseTime = time;
@@ -247,18 +246,20 @@ void TextureMapperAnimation::pause(double time)
 void TextureMapperAnimation::resume()
 {
     m_state = AnimationState::Playing;
-    m_pauseTime = 0;
+    // FIXME: This seems wrong. m_totalRunningTime is cleared.
+    // https://bugs.webkit.org/show_bug.cgi?id=183113
+    m_pauseTime = 0_s;
     m_totalRunningTime = m_pauseTime;
-    m_lastRefreshedTime = monotonicallyIncreasingTime();
+    m_lastRefreshedTime = MonotonicTime::now();
 }
 
-double TextureMapperAnimation::computeTotalRunningTime()
+Seconds TextureMapperAnimation::computeTotalRunningTime(MonotonicTime time)
 {
     if (m_state == AnimationState::Paused)
         return m_pauseTime;
 
-    double oldLastRefreshedTime = m_lastRefreshedTime;
-    m_lastRefreshedTime = monotonicallyIncreasingTime();
+    MonotonicTime oldLastRefreshedTime = m_lastRefreshedTime;
+    m_lastRefreshedTime = time;
     m_totalRunningTime += m_lastRefreshedTime - oldLastRefreshedTime;
     return m_totalRunningTime;
 }
@@ -307,7 +308,7 @@ void TextureMapperAnimations::remove(const String& name, AnimatedPropertyID prop
     });
 }
 
-void TextureMapperAnimations::pause(const String& name, double offset)
+void TextureMapperAnimations::pause(const String& name, Seconds offset)
 {
     for (auto& animation : m_animations) {
         if (animation.name() == name)
@@ -315,10 +316,12 @@ void TextureMapperAnimations::pause(const String& name, double offset)
     }
 }
 
-void TextureMapperAnimations::suspend(double offset)
+void TextureMapperAnimations::suspend(MonotonicTime time)
 {
+    // FIXME: This seems wrong. `pause` takes time offset (Seconds), not MonotonicTime.
+    // https://bugs.webkit.org/show_bug.cgi?id=183112
     for (auto& animation : m_animations)
-        animation.pause(offset);
+        animation.pause(time.secondsSinceEpoch());
 }
 
 void TextureMapperAnimations::resume()
@@ -327,10 +330,10 @@ void TextureMapperAnimations::resume()
         animation.resume();
 }
 
-void TextureMapperAnimations::apply(TextureMapperAnimation::Client& client)
+void TextureMapperAnimations::apply(TextureMapperAnimation::Client& client, MonotonicTime time)
 {
     for (auto& animation : m_animations)
-        animation.apply(client);
+        animation.apply(client, time);
 }
 
 bool TextureMapperAnimations::hasActiveAnimationsOfType(AnimatedPropertyID type) const

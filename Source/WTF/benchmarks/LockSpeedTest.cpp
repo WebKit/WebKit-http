@@ -31,7 +31,6 @@
 #include "ToyLocks.h"
 #include <thread>
 #include <unistd.h>
-#include <wtf/CurrentTime.h>
 #include <wtf/DataLog.h>
 #include <wtf/HashMap.h>
 #include <wtf/Lock.h>
@@ -81,7 +80,7 @@ struct Benchmark {
 
         volatile bool keepGoing = true;
 
-        double before = monotonicallyIncreasingTime();
+        MonotonicTime before = MonotonicTime::now();
     
         Lock numIterationsLock;
         uint64_t numIterations = 0;
@@ -115,15 +114,15 @@ struct Benchmark {
             }
         }
 
-        sleep(secondsPerTest);
+        sleep(Seconds { secondsPerTest });
         keepGoing = false;
     
         for (unsigned threadIndex = numThreadGroups * numThreadsPerGroup; threadIndex--;)
             threads[threadIndex]->waitForCompletion();
 
-        double after = monotonicallyIncreasingTime();
+        MonotonicTime after = MonotonicTime::now();
     
-        reportResult(name, numIterations / (after - before) / 1000);
+        reportResult(name, numIterations / (after - before).seconds() / 1000);
     }
 };
 

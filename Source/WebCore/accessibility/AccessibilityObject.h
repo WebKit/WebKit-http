@@ -254,6 +254,17 @@ enum class AccessibilityTextSource {
     Subtitle,
     Action,
 };
+
+enum class AccessibilityEventType {
+    ContextMenu,
+    Click,
+    Decrement,
+    Dismiss,
+    Focus,
+    Increment,
+    ScrollIntoView,
+    Select,
+};
     
 struct AccessibilityText {
     String text;
@@ -895,7 +906,9 @@ public:
     const AtomicString& getAttribute(const QualifiedName&) const;
     bool hasTagName(const QualifiedName&) const;
     
-    void dispatchAccessibilityEvent(Event&);
+    bool dispatchAccessibilityEvent(Event&) const;
+    bool dispatchAccessibilityEventWithType(AccessibilityEventType) const;
+    bool dispatchAccessibleSetValueEvent(const String&) const;
 
     virtual VisiblePositionRange visiblePositionRange() const { return VisiblePositionRange(); }
     virtual VisiblePositionRange visiblePositionRangeForLine(unsigned) const { return VisiblePositionRange(); }

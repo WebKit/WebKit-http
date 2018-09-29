@@ -34,10 +34,11 @@ class RenderMathMLFenced;
 class RenderMathMLFencedOperator;
 
 class RenderTreeBuilder::MathML {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     MathML(RenderTreeBuilder&);
 
-    void insertChild(RenderMathMLFenced& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild);
+    void attach(RenderMathMLFenced& parent, RenderPtr<RenderObject> child, RenderObject* beforeChild);
 
 private:
     void makeFences(RenderMathMLFenced& parent);

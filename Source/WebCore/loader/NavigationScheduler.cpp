@@ -53,7 +53,6 @@
 #include "PolicyChecker.h"
 #include "ScriptController.h"
 #include "UserGestureIndicator.h"
-#include <wtf/CurrentTime.h>
 #include <wtf/Ref.h>
 
 namespace WebCore {
@@ -135,7 +134,7 @@ protected:
         m_haveToldClient = true;
 
         UserGestureIndicator gestureIndicator(userGestureToForward());
-        frame.loader().clientRedirected(m_url, delay(), currentTime() + timer.nextFireInterval().value(), lockBackForwardList());
+        frame.loader().clientRedirected(m_url, delay(), WallTime::now() + timer.nextFireInterval(), lockBackForwardList());
     }
 
     void didStopTimer(Frame& frame, bool newLoadInProgress) override
@@ -183,7 +182,7 @@ public:
         UserGestureIndicator gestureIndicator { userGestureToForward() };
 
         bool refresh = equalIgnoringFragmentIdentifier(frame.document()->url(), url());
-        ResourceRequest resourceRequest { url(), referrer(), refresh ? RefreshAnyCacheData : UseProtocolCachePolicy };
+        ResourceRequest resourceRequest { url(), referrer(), refresh ? ReloadIgnoringCacheData : UseProtocolCachePolicy };
         FrameLoadRequest frameLoadRequest { initiatingDocument(), *securityOrigin(), resourceRequest, "_self", lockHistory(), lockBackForwardList(), MaybeSendReferrer, AllowNavigationToInvalidURL::No, NewFrameOpenerPolicy::Allow, shouldOpenExternalURLs(), initiatedByMainFrame() };
 
         frame.loader().changeLocation(WTFMove(frameLoadRequest));
@@ -217,7 +216,7 @@ public:
     {
         UserGestureIndicator gestureIndicator { userGestureToForward() };
 
-        ResourceRequest resourceRequest { url(), referrer(), RefreshAnyCacheData };
+        ResourceRequest resourceRequest { url(), referrer(), ReloadIgnoringCacheData };
         FrameLoadRequest frameLoadRequest { initiatingDocument(), *securityOrigin(), resourceRequest, "_self", lockHistory(), lockBackForwardList(), MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, shouldOpenExternalURLs(), initiatedByMainFrame() };
 
         frame.loader().changeLocation(WTFMove(frameLoadRequest));
@@ -283,7 +282,7 @@ public:
         m_haveToldClient = true;
 
         UserGestureIndicator gestureIndicator(userGestureToForward());
-        frame.loader().clientRedirected(m_submission->requestURL(), delay(), currentTime() + timer.nextFireInterval().value(), lockBackForwardList());
+        frame.loader().clientRedirected(m_submission->requestURL(), delay(), WallTime::now() + timer.nextFireInterval(), lockBackForwardList());
     }
 
     void didStopTimer(Frame& frame, bool newLoadInProgress) override
@@ -320,7 +319,7 @@ public:
         ResourceResponse replacementResponse { m_originDocument.url(), ASCIILiteral("text/plain"), 0, ASCIILiteral("UTF-8") };
         SubstituteData replacementData { SharedBuffer::create(), m_originDocument.url(), replacementResponse, SubstituteData::SessionHistoryVisibility::Hidden };
 
-        ResourceRequest resourceRequest { m_originDocument.url(), emptyString(), RefreshAnyCacheData };
+        ResourceRequest resourceRequest { m_originDocument.url(), emptyString(), ReloadIgnoringCacheData };
         FrameLoadRequest frameLoadRequest { m_originDocument, m_originDocument.securityOrigin(), resourceRequest, { }, lockHistory(), lockBackForwardList(), MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, shouldOpenExternalURLs(), initiatedByMainFrame() };
         frameLoadRequest.setSubstituteData(replacementData);
         frame.loader().load(WTFMove(frameLoadRequest));
@@ -521,7 +520,6 @@ void NavigationScheduler::schedule(std::unique_ptr<ScheduledNavigation> redirect
     if (redirect->wasDuringLoad()) {
         if (DocumentLoader* provisionalDocumentLoader = m_frame.loader().provisionalDocumentLoader())
             provisionalDocumentLoader->stopLoading();
-        m_frame.loader().policyChecker().stopCheck();
         m_frame.loader().stopLoading(UnloadEventPolicyUnloadAndPageHide);
     }
 

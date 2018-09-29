@@ -119,6 +119,9 @@ private:
     PlatformWindow m_window;
     bool m_windowIsKey;
     const TestOptions m_options;
+#if PLATFORM(GTK)
+    GtkWidget* m_otherWindow { nullptr };
+#endif
 };
 
 } // namespace WTR

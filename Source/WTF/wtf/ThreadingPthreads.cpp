@@ -35,7 +35,6 @@
 #if USE(PTHREADS)
 
 #include <errno.h>
-#include <wtf/CurrentTime.h>
 #include <wtf/DataLog.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/RawPointer.h>
@@ -555,18 +554,20 @@ void ThreadCondition::wait(Mutex& mutex)
     ASSERT_UNUSED(result, !result);
 }
 
-bool ThreadCondition::timedWait(Mutex& mutex, double absoluteTime)
+bool ThreadCondition::timedWait(Mutex& mutex, WallTime absoluteTime)
 {
-    if (absoluteTime < currentTime())
+    if (absoluteTime < WallTime::now())
         return false;
 
-    if (absoluteTime > INT_MAX) {
+    if (absoluteTime > WallTime::fromRawSeconds(INT_MAX)) {
         wait(mutex);
         return true;
     }
 
-    int timeSeconds = static_cast<int>(absoluteTime);
-    int timeNanoseconds = static_cast<int>((absoluteTime - timeSeconds) * 1E9);
+    double rawSeconds = absoluteTime.secondsSinceEpoch().value();
+
+    int timeSeconds = static_cast<int>(rawSeconds);
+    int timeNanoseconds = static_cast<int>((rawSeconds - timeSeconds) * 1E9);
 
     timespec targetTime;
     targetTime.tv_sec = timeSeconds;

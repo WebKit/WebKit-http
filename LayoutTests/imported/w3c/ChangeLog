@@ -1,3 +1,100 @@
+2018-03-02  Youenn Fablet  <youenn@apple.com>
+
+        Loads for a Document controlled by a Service Worker should not use AppCache
+        https://bugs.webkit.org/show_bug.cgi?id=183148
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/service-workers/service-worker/appcache-ordering-main.https-expected.txt:
+
+2018-02-28  Youenn Fablet  <youenn@apple.com>
+
+        Make LayoutTests wait_for_state fail after a given period of time
+        https://bugs.webkit.org/show_bug.cgi?id=183039
+
+        Reviewed by Chris Dumez.
+
+        This will allow further investigating why some tests are timing out.
+
+        * web-platform-tests/service-workers/service-worker/resources/test-helpers.sub.js:
+        (wait_for_state):
+
+2018-02-27  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Correct implementation of pending tasks and promises
+        https://bugs.webkit.org/show_bug.cgi?id=183161
+
+        Reviewed by Dean Jackson.
+
+        Update test expectations with progressions (+32 WPT PASS).
+
+        * web-platform-tests/web-animations/interfaces/Animatable/animate-no-browsing-context-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animation/finish-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animation/finished-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animation/onfinish-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animation/pause-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animation/pending-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animation/startTime-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/canceling-an-animation-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/pausing-an-animation-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/play-states-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/reversing-an-animation-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/set-the-animation-start-time-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/set-the-target-effect-of-an-animation-expected.txt:
+        * web-platform-tests/web-animations/timing-model/animations/set-the-timeline-of-an-animation-expected.txt:
+
+2018-02-26  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Update the playState implementation
+        https://bugs.webkit.org/show_bug.cgi?id=183145
+
+        Reviewed by Dean Jackson.
+
+        Update test expectations with slightly different failures later on in a couple of tests.
+
+        * web-platform-tests/web-animations/timing-model/animations/set-the-timeline-of-an-animation-expected.txt:
+
+2018-02-26  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Implement the procedure to set the start time
+        https://bugs.webkit.org/show_bug.cgi?id=183137
+
+        Reviewed by Dean Jackson.
+
+        Update test expectations with progressions.
+
+        * web-platform-tests/web-animations/timing-model/animations/set-the-animation-start-time-expected.txt:
+
+2018-02-26  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Ensure setting the hold time invalidates the timing model
+        https://bugs.webkit.org/show_bug.cgi?id=183136
+
+        Reviewed by Dean Jackson.
+
+        Update test expectations with progressions.
+
+        * web-platform-tests/css/css-multicol/multicol-gap-animation-001-expected.txt:
+        * web-platform-tests/web-animations/animation-model/keyframe-effects/effect-value-iteration-composite-operation-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animation/cancel-expected.txt:
+        * web-platform-tests/web-animations/interfaces/Animation/finish-expected.txt:
+        * web-platform-tests/web-animations/interfaces/KeyframeEffect/iterationComposite-expected.txt:
+
+2018-02-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r226745.
+        https://bugs.webkit.org/show_bug.cgi?id=183132
+
+        This is breaking some websites (Requested by youenn on
+        #webkit).
+
+        Reverted changeset:
+
+        "Use no-cache fetch mode when loading main documents with
+        location.reload()"
+        https://bugs.webkit.org/show_bug.cgi?id=181285
+        https://trac.webkit.org/changeset/226745
+
 2018-02-19  Antoine Quint  <graouts@apple.com>
 
         [Web Animations] Make KeyframeEffect target nullable and read-write

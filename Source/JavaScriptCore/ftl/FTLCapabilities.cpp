@@ -221,6 +221,7 @@ inline CapabilityLevel canCompile(Node* node)
     case IsUndefined:
     case IsBoolean:
     case IsNumber:
+    case NumberIsInteger:
     case IsObject:
     case IsObjectOrNull:
     case IsFunction:
@@ -237,6 +238,7 @@ inline CapabilityLevel canCompile(Node* node)
     case BooleanToNumber:
     case HasGenericProperty:
     case HasStructureProperty:
+    case HasIndexedProperty:
     case GetDirectPname:
     case GetEnumerableLength:
     case GetIndexedPropertyStorage:
@@ -387,17 +389,6 @@ inline CapabilityLevel canCompile(Node* node)
             RELEASE_ASSERT_NOT_REACHED();
         }
         break;
-    case HasIndexedProperty:
-        switch (node->arrayMode().type()) {
-        case Array::ForceExit:
-        case Array::Int32:
-        case Array::Double:
-        case Array::Contiguous:
-            break;
-        default:
-            return CannotCompile;
-        }
-        break;
     case GetByVal:
         switch (node->arrayMode().type()) {
         case Array::ForceExit:
@@ -429,6 +420,8 @@ inline CapabilityLevel canCompile(Node* node)
         case Array::Int32:
         case Array::Double:
         case Array::Contiguous:
+        case Array::ArrayStorage:
+        case Array::SlowPutArrayStorage:
             break;
         default:
             if (isTypedView(node->arrayMode().typedArrayType()))

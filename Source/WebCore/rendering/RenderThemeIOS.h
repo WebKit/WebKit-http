@@ -84,7 +84,7 @@ protected:
     // Returns the repeat interval of the animation for the progress bar.
     Seconds animationRepeatIntervalForProgressBar(RenderProgress&) const override;
     // Returns the duration of the animation for the progress bar.
-    double animationDurationForProgressBar(RenderProgress&) const override;
+    Seconds animationDurationForProgressBar(RenderProgress&) const override;
 
     bool paintProgressBar(const RenderObject&, const PaintInfo&, const IntRect&) override;
 
@@ -127,6 +127,10 @@ private:
     virtual ~RenderThemeIOS() = default;
 
     void purgeCaches() override;
+
+#if ENABLE(EXTRA_ZOOM_MODE)
+    String extraDefaultStyleSheet() final;
+#endif
 
     const Color& shadowColor() const;
     FloatRect addRoundedBorderClip(const RenderObject& box, GraphicsContext&, const IntRect&);

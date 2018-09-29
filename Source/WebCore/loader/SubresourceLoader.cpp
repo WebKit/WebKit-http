@@ -38,6 +38,7 @@
 #include "DocumentLoader.h"
 #include "Frame.h"
 #include "FrameLoader.h"
+#include "LinkLoader.h"
 #include "Logging.h"
 #include "MainFrame.h"
 #include "MemoryCache.h"
@@ -359,6 +360,8 @@ void SubresourceLoader::didReceiveResponse(const ResourceResponse& response, Com
         return;
 
     bool isResponseMultipart = response.isMultipart();
+    if (options().mode != FetchOptions::Mode::Navigate)
+        LinkLoader::loadLinksFromHeader(response.httpHeaderField(HTTPHeaderName::Link), m_documentLoader->url(), *m_frame->document(), LinkLoader::MediaAttributeCheck::SkipMediaAttributeCheck);
     ResourceLoader::didReceiveResponse(response, [this, protectedThis = WTFMove(protectedThis), isResponseMultipart, completionHandlerCaller = WTFMove(completionHandlerCaller)]() mutable {
         if (reachedTerminalState())
             return;
@@ -673,9 +676,6 @@ void SubresourceLoader::willCancel(const ResourceError& error)
         return;
     ASSERT(!reachedTerminalState());
     LOG(ResourceLoading, "Cancelled load of '%s'.\n", m_resource->url().string().latin1().data());
-
-    if (auto policyForResponseCompletionHandler = WTFMove(m_policyForResponseCompletionHandler))
-        policyForResponseCompletionHandler();
 
     Ref<SubresourceLoader> protectedThis(*this);
 #if PLATFORM(IOS)

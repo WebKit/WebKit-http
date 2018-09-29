@@ -27,18 +27,16 @@
 #include "LayerPool.h"
 
 #include "Logging.h"
-#include <wtf/CurrentTime.h>
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
-static const double capacityDecayTime = 5;
+static const Seconds capacityDecayTime { 5_s };
 
 LayerPool::LayerPool()
     : m_totalBytes(0)
     , m_maxBytesForPool(48 * 1024 * 1024)
     , m_pruneTimer(*this, &LayerPool::pruneTimerFired)
-    , m_lastAddTime(0)
 {
     allLayerPools().add(this);
 }
@@ -81,7 +79,7 @@ void LayerPool::addLayer(const RefPtr<PlatformCALayer>& layer)
     listOfLayersWithSize(layerSize).prepend(layer);
     m_totalBytes += backingStoreBytesForSize(layerSize);
     
-    m_lastAddTime = monotonicallyIncreasingTime();
+    m_lastAddTime = MonotonicTime::now();
     schedulePrune();
 }
 
@@ -99,7 +97,7 @@ RefPtr<PlatformCALayer> LayerPool::takeLayerWithSize(const IntSize& size)
 unsigned LayerPool::decayedCapacity() const
 {
     // Decay to one quarter over capacityDecayTime
-    double timeSinceLastAdd = monotonicallyIncreasingTime() - m_lastAddTime;
+    Seconds timeSinceLastAdd = MonotonicTime::now() - m_lastAddTime;
     if (timeSinceLastAdd > capacityDecayTime)
         return m_maxBytesForPool / 4;
     float decayProgess = float(timeSinceLastAdd / capacityDecayTime);
@@ -131,7 +129,7 @@ void LayerPool::pruneTimerFired()
         // still have a backing store.
         oldestReuseList.remove(--oldestReuseList.end());
     }
-    if (monotonicallyIncreasingTime() - m_lastAddTime <= capacityDecayTime)
+    if (MonotonicTime::now() - m_lastAddTime <= capacityDecayTime)
         schedulePrune();
 }
 

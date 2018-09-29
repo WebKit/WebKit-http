@@ -1,3 +1,408 @@
+2018-03-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r229330.
+        https://bugs.webkit.org/show_bug.cgi?id=183379
+
+        Broke some Apple internal code (Requested by ap on #webkit).
+
+        Reverted changeset:
+
+        "Remove unused crash hook functionality"
+        https://bugs.webkit.org/show_bug.cgi?id=183369
+        https://trac.webkit.org/changeset/229330
+
+2018-03-06  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Remove unused crash hook functionality
+        https://bugs.webkit.org/show_bug.cgi?id=183369
+
+        Reviewed by Alexey Proskuryakov.
+
+        WTFSetCrashHook and WTFInstallReportBacktraceOnCrashHook are not used on any platforms and
+        can be removed.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+
+2018-03-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Fix std::make_unique / new[] using system malloc
+        https://bugs.webkit.org/show_bug.cgi?id=182975
+
+        Reviewed by JF Bastien.
+
+        If we use `make_unique<char[]>(num)` or `new char[num]`, allocation is
+        done by the system malloc instead of bmalloc. This patch fixes this issue
+        by following three changes.
+
+        1. Introduce UniqueArray<T>. It allocates memory from FastMalloc. While C++
+        array with `new` need to hold the size to call destructor correctly, our
+        UniqueArray only supports type T which does not have a non trivial destructor.
+        It reduces the allocation size since we do not need to track the size of the
+        array compared to standard `new T[]`. This is basically usable if we want to
+        have raw array which pointer won't be changed even if the container is moved.
+        In addition, we also extend UniqueArray<T> for types which have non trivial
+        destructors.
+
+        2. Use Vector<T> instead.
+
+        3. Annotate allocated types with MAKE_FAST_ALLOCATED. Since it introduces
+        new[] and delete[] operators, make_unique<T[]>(num) will allocate memory
+        from FastMalloc.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Assertions.cpp:
+        * wtf/CMakeLists.txt:
+        * wtf/FastMalloc.h:
+        (WTF::FastFree::operator() const):
+        (WTF::FastFree<T::operator() const):
+        * wtf/MallocPtr.h:
+        (WTF::MallocPtr::operator bool const):
+        * wtf/StackShot.h:
+        (WTF::StackShot::StackShot):
+        (WTF::StackShot::operator=):
+        * wtf/SystemFree.h:
+        (WTF::SystemFree<T::operator() const):
+        * wtf/UniqueArray.h: Copied from Source/WebKit/Platform/win/LoggingWin.cpp.
+        (WTF::makeUniqueArray):
+        * wtf/Vector.h:
+        (WTF::VectorTypeOperations::forceInitialize):
+
+2018-03-05  Michael Saboff  <msaboff@apple.com>
+
+        Start using MAP_JIT for macOS
+        https://bugs.webkit.org/show_bug.cgi?id=183353
+
+        Reviewed by Filip Pizlo.
+
+        Unify setting this flag for both iOS and macOS.
+
+        * wtf/OSAllocatorPosix.cpp:
+        (WTF::OSAllocator::reserveAndCommit):
+
+2018-03-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, follow-up after r229209
+        https://bugs.webkit.org/show_bug.cgi?id=183312
+
+        Add RELEASE_ASSERT to ensure success.
+
+        * wtf/cocoa/CPUTimeCocoa.mm:
+        (WTF::CPUTime::forCurrentThread):
+        * wtf/unix/CPUTimeUnix.cpp:
+        (WTF::CPUTime::forCurrentThread):
+        * wtf/win/CPUTimeWin.cpp:
+        (WTF::CPUTime::forCurrentThread):
+
+2018-03-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, fix MediaTime test
+        https://bugs.webkit.org/show_bug.cgi?id=183319
+
+        __builtin_xxx_overflow writes overflowed data into ResultType value even if overflow happens.
+        This is different from the original CheckedArithmetic semantics.
+
+        * wtf/CheckedArithmetic.h:
+
+2018-03-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Move currentCPUTime and sleep(Seconds) to CPUTime.h and Seconds.h respectively
+        https://bugs.webkit.org/show_bug.cgi?id=183312
+
+        Reviewed by Mark Lam.
+
+        1. currentCPUTime to CPUTime.h. It is now defined as CPUTime::forCurrentThread.
+        We also removes fallback implementation for currentCPUTime since (1) that implementation
+        is wrong and (2) no environments we support needs this.
+
+        2. sleep(Seconds) to Seconds.h. Since sleep(MonotonicTime) and sleep(WallTime) are defined
+        in MonotonicTime.h and WallTime.h, this code move is natural.
+
+        3. Remove wtf/CurrentTime.h since nothing is defined now. But we keep CurrentTime.cpp to
+        consolidate various time-source implementations in one place.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * benchmarks/ConditionSpeedTest.cpp:
+        * benchmarks/LockFairnessTest.cpp:
+        * benchmarks/LockSpeedTest.cpp:
+        * wtf/CMakeLists.txt:
+        * wtf/CPUTime.h:
+        * wtf/CurrentTime.cpp:
+        (WTF::currentCPUTime): Deleted.
+        (WTF::sleep): Deleted.
+        * wtf/CurrentTime.h: Removed.
+        * wtf/DateMath.cpp:
+        * wtf/DebugUtilities.h:
+        * wtf/FastMalloc.cpp:
+        * wtf/MainThread.cpp:
+        * wtf/MonotonicTime.cpp:
+        * wtf/ParkingLot.cpp:
+        * wtf/Seconds.cpp:
+        (WTF::sleep):
+        * wtf/Seconds.h:
+        * wtf/StackShotProfiler.h:
+        * wtf/Stopwatch.h:
+        * wtf/ThreadingPthreads.cpp:
+        * wtf/ThreadingWin.cpp:
+        * wtf/cocoa/CPUTimeCocoa.mm:
+        (WTF::CPUTime::forCurrentThread):
+        * wtf/cocoa/MemoryPressureHandlerCocoa.mm:
+        * wtf/linux/MemoryPressureHandlerLinux.cpp:
+        * wtf/unix/CPUTimeUnix.cpp:
+        (WTF::CPUTime::forCurrentThread):
+        * wtf/win/CPUTimeWin.cpp:
+        (WTF::CPUTime::forCurrentThread):
+        * wtf/win/RunLoopWin.cpp:
+
+2018-03-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Use __builtin_xxx_overflow for CheckedArithmetic
+        https://bugs.webkit.org/show_bug.cgi?id=183319
+
+        Reviewed by Darin Adler.
+
+        GCC and Clang has the builtins for arithmetic operations with overflow flags.
+        CheckedArithmetic operations can be done with this builtins. Since the compiler
+        can use overflow flags, potentially this is more efficient. CheckedArithmetic
+        already has TestWebKitAPI tests and we ensured the tests pass.
+
+        * wtf/CheckedArithmetic.h:
+
+2018-03-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Remove RunLoop and RunLoop::Timer's interface using double as seconds
+        https://bugs.webkit.org/show_bug.cgi?id=183293
+
+        Reviewed by Alex Christensen.
+
+        This patch mainly drops startRepeating(double) and startOneShot(double) interfaces.
+        Use startRepeating(Seconds) and startOneShot(Seconds) instead.
+
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::MemoryPressureHandler::setShouldUsePeriodicMemoryMonitor):
+        * wtf/RunLoop.h:
+        (WTF::RunLoop::TimerBase::startRepeating):
+        (WTF::RunLoop::TimerBase::startOneShot):
+        (WTF::RunLoop::TimerBase::startInternal):
+        * wtf/RunLoopTimer.h:
+        * wtf/RunLoopTimerCF.cpp:
+        (WTF::RunLoopTimerBase::start):
+        * wtf/cf/RunLoopCF.cpp:
+        (WTF::RunLoop::runForDuration):
+        (WTF::RunLoop::TimerBase::start):
+        * wtf/generic/RunLoopGeneric.cpp:
+        (WTF::RunLoop::TimerBase::start):
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::RunLoop::TimerBase::start):
+        * wtf/win/MemoryPressureHandlerWin.cpp:
+        (WTF::MemoryPressureHandler::install):
+        * wtf/win/RunLoopWin.cpp:
+        (WTF::RunLoop::TimerBase::start):
+
+2018-03-02  Christopher Reid  <chris.reid@sony.com>
+
+        Build fix after r229174
+        https://bugs.webkit.org/show_bug.cgi?id=183301
+
+        Reviewed by Alex Christensen.
+
+        Updating MemoryPressureHandler::holdOff to use Seconds instead of unsigned.
+
+        * wtf/MemoryPressureHandler.cpp:
+
+2018-03-02  Tim Horton  <timothy_horton@apple.com>
+
+        Make it possible to build for iOS without Celestial
+        https://bugs.webkit.org/show_bug.cgi?id=183295
+        <rdar://problem/38074468>
+
+        Reviewed by Dan Bernstein.
+
+        * wtf/Platform.h:
+
+2018-03-02  Tim Horton  <timothy_horton@apple.com>
+
+        Make it possible to disable WKPDFView
+        https://bugs.webkit.org/show_bug.cgi?id=183281
+        <rdar://problem/38060815>
+
+        Reviewed by Dan Bates.
+
+        * wtf/FeatureDefines.h:
+
+2018-03-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Annotate more classes with WTF_MAKE_FAST_ALLOCATED
+        https://bugs.webkit.org/show_bug.cgi?id=183279
+
+        Reviewed by JF Bastien.
+
+        * wtf/SimpleStats.h:
+        * wtf/ThreadGroup.h:
+
+2018-03-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Remove monotonicallyIncreasingTime
+        https://bugs.webkit.org/show_bug.cgi?id=182911
+
+        Reviewed by Michael Catanzaro.
+
+        This patch drops monotonicallyIncreasingTime and monotonicallyIncreasingTimeMS.
+        We have MonotonicTime API instead. This offers strongly typed MonotonicTime,
+        Seconds etc. This reduces the chance of bugs mixing doubles which represent milliseconds
+        and seconds.
+
+        Large part of this patch is mechanical one: replacing monotonicallyIncreasingTime with
+        MonotonicTime, using MonotonicTime and Seconds instead of raw doubles.
+
+        But this patch actually finds some bugs (but it is a bit difficult to show it as a test).
+        One is mixing media time (CACurrentMediaTime()) and MonotonicTime. Basically they are
+        super close because both uses mach_absolute_time(). But they would be slightly different.
+        So we should not mix them.
+
+        The second bug is GraphicsLayer::suspendAnimations(double). While CA ports (Apple, AppleWin,
+        iOS etc.) use this double as MonotonicTime, GTK and WPE use this double as Seconds (timeOffset).
+        This patch fixes it and now the signature becomes GraphicsLayer::suspendAnimations(MonotonicTime).
+
+        In this patch, we still uses bunch of double for Seconds. But fixing them at this patch increases
+        the size of this larger and larger. So some of them remains double. This should be fixed in
+        subsequent patches.
+
+        * benchmarks/ConditionSpeedTest.cpp:
+        * benchmarks/LockSpeedTest.cpp:
+        * wtf/CurrentTime.cpp:
+        (WTF::MonotonicTime::now):
+        (WTF::monotonicallyIncreasingTime): Deleted.
+        * wtf/CurrentTime.h:
+        (WTF::monotonicallyIncreasingTimeMS): Deleted.
+        * wtf/MemoryPressureHandler.h:
+        * wtf/MonotonicTime.cpp:
+        (WTF::MonotonicTime::now): Deleted.
+        * wtf/MonotonicTime.h:
+        * wtf/ParkingLot.cpp:
+        * wtf/Seconds.h:
+        (WTF::Seconds::nan):
+        * wtf/Stopwatch.h:
+        (WTF::Stopwatch::reset):
+        (WTF::Stopwatch::start):
+        (WTF::Stopwatch::stop):
+        (WTF::Stopwatch::elapsedTime):
+        (WTF::Stopwatch::elapsedTimeSince):
+        * wtf/cocoa/MemoryPressureHandlerCocoa.mm:
+        (WTF::MemoryPressureHandler::holdOff):
+        (WTF::MemoryPressureHandler::respondToMemoryPressure):
+        * wtf/linux/MemoryPressureHandlerLinux.cpp:
+        (WTF::MemoryPressureHandler::EventFDPoller::EventFDPoller):
+        (WTF::MemoryPressureHandler::holdOff):
+        (WTF::MemoryPressureHandler::respondToMemoryPressure):
+        * wtf/win/MemoryPressureHandlerWin.cpp:
+        (WTF::MemoryPressureHandler::holdOff):
+
+2018-03-02  Dan Bernstein  <mitz@apple.com>
+
+        Safari uses WebContent.Development when loading injected bundle embedded in its app bundle
+        https://bugs.webkit.org/show_bug.cgi?id=183275
+
+        Reviewed by Tim Horton.
+
+        * wtf/spi/cocoa/SecuritySPI.h: Declared SecTaskGetCodeSignStatus.
+
+2018-02-27  Karlen Simonyan  <szkarlen@gmail.com>
+
+        [Win64] JSCOnly compile error using VS2017 and cmake
+        https://bugs.webkit.org/show_bug.cgi?id=183176
+
+        Reviewed by Alex Christensen.
+
+        * wtf/PlatformJSCOnly.cmake:
+
+2018-02-26  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GStreamer] User current executable name instead of g_get_prgname() for gst_init
+        https://bugs.webkit.org/show_bug.cgi?id=183119
+
+        Reviewed by Philippe Normand.
+
+        Add getCurrentExecutableName() helper function to get the name of the current executable.
+
+        * wtf/glib/GLibUtilities.cpp:
+        (getCurrentExecutableName): Get the basename of getCurrentExecutablePath() falling back to g_get_prgname().
+        * wtf/glib/GLibUtilities.h:
+
+2018-02-23  John Wilander  <wilander@apple.com>
+
+        Introduce ITP debug logging as an opt-in developer feature
+        https://bugs.webkit.org/show_bug.cgi?id=183065
+        <rdar://problem/37803761>
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/Assertions.h:
+            Introduces RELEASE_LOG_INFO() and RELEASE_LOG_INFO_IF().
+
+2018-02-23  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        warning: unused variable 'InitialBufferSize' in Assertions.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=183076
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/Assertions.cpp: Moved the definition of InitialBufferSize to inside #if.
+
+2018-02-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Remove currentTime() / currentTimeMS()
+        https://bugs.webkit.org/show_bug.cgi?id=183052
+
+        Reviewed by Mark Lam.
+
+        This patch removes WTF::currentTime() and WTF::currentTimeMS().
+        We have fancy WallTime APIs. It has strong types like WallTime and Seconds,
+        and this reduces the chance of bugs mixing doubles which represent milliseconds
+        and seconds.
+
+        * wtf/Condition.h:
+        * wtf/CurrentTime.cpp:
+        (WTF::currentTime):
+        (WTF::WallTime::now):
+        * wtf/CurrentTime.h:
+        (WTF::currentTimeMS): Deleted.
+        * wtf/DateMath.h:
+        (WTF::jsCurrentTime):
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::parkConditionallyImpl):
+        * wtf/ThreadingPrimitives.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::ThreadCondition::timedWait):
+        * wtf/ThreadingWin.cpp:
+        (WTF::ThreadCondition::timedWait):
+        (WTF::absoluteTimeToWaitTimeoutInterval):
+        * wtf/WallTime.cpp:
+        (WTF::WallTime::now): Deleted.
+        * wtf/WallTime.h:
+
+2018-02-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Remove sleep(double) and sleepMS(double) interfaces
+        https://bugs.webkit.org/show_bug.cgi?id=183038
+
+        Reviewed by Mark Lam.
+
+        This patch removes sleep(double) and sleepMS(double) interfaces.
+        We can just use sleep(Seconds) instead.
+
+        * benchmarks/LockFairnessTest.cpp:
+        * benchmarks/LockSpeedTest.cpp:
+        * wtf/CurrentTime.cpp:
+        (WTF::sleep):
+        * wtf/CurrentTime.h:
+        (WTF::sleepMS): Deleted.
+        * wtf/DebugUtilities.h:
+        * wtf/Seconds.cpp:
+        (WTF::sleep): Deleted.
+        * wtf/Seconds.h:
+        * wtf/StackShotProfiler.h:
+
 2018-02-21  Don Olmstead  <don.olmstead@sony.com>
 
         [CMake][Win] Use cmakeconfig.h rather than config.h and Platform.h

@@ -4208,6 +4208,7 @@ static bool isAssistableInputType(InputType type)
     _focusedFormControlViewController = adoptNS([[WKFocusedFormControlViewController alloc] init]);
     [_focusedFormControlViewController setDelegate:self];
     [[UIViewController _viewControllerForFullScreenPresentationFromView:self] presentViewController:_focusedFormControlViewController.get() animated:animated completion:nil];
+    [self setInputDelegate:_focusedFormControlViewController.get()];
 }
 
 - (void)dismissNumberPadViewController:(BOOL)animated
@@ -4226,6 +4227,7 @@ static bool isAssistableInputType(InputType type)
 
     [_focusedFormControlViewController dismissViewControllerAnimated:animated completion:nil];
     _focusedFormControlViewController = nil;
+    [self setInputDelegate:nil];
 }
 
 - (void)presentNumberPadViewController:(BOOL)animated
@@ -4273,6 +4275,8 @@ static bool isAssistableInputType(InputType type)
     _textInputViewController = adoptNS([[WKTextInputViewController alloc] initWithText:_assistedNodeInformation.value textSuggestions:@[ ]]);
     [_textInputViewController setDelegate:self];
     [_focusedFormControlViewController presentViewController:_textInputViewController.get() animated:animated completion:nil];
+
+    [_textInputViewController setSuggestions:[_focusedFormControlViewController suggestions]];
 }
 
 - (void)dismissTextInputViewController:(BOOL)animated
@@ -4286,7 +4290,15 @@ static bool isAssistableInputType(InputType type)
 
 - (void)textInputController:(WKTextFormControlViewController *)controller didCommitText:(NSString *)text
 {
-    _page->setTextAsync(text);
+    [self textInputController:controller didCommitText:text withSuggestion:nil];
+}
+
+- (void)textInputController:(WKTextFormControlViewController *)controller didCommitText:(NSString *)text withSuggestion:(UITextSuggestion *)suggestion
+{
+    if (suggestion)
+        [self insertTextSuggestion:suggestion];
+    else
+        _page->setTextAsync(text);
 
     if (![self actionNameForFocusedFormControlController:_focusedFormControlViewController.get()] && !_assistedNodeInformation.hasNextNode && !_assistedNodeInformation.hasPreviousNode) {
         // In this case, there's no point in collapsing down to the form control focus UI because there's nothing the user could potentially do
@@ -4369,6 +4381,11 @@ static bool isAssistableInputType(InputType type)
 - (BOOL)hasPreviousNodeForFocusedFormControlController:(WKFocusedFormControlViewController *)controller
 {
     return _assistedNodeInformation.hasPreviousNode;
+}
+
+- (void)focusedFormControllerDidUpdateSuggestions:(WKFocusedFormControlViewController *)controller
+{
+    [_textInputViewController setSuggestions:controller.suggestions];
 }
 
 #pragma mark - WKSelectMenuViewControllerDelegate
@@ -5537,8 +5554,10 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
             return NO;
         if (linkURL.protocolIsInHTTPFamily())
             return YES;
+#if ENABLE(DATA_DETECTION)
         if (DataDetection::canBePresentedByDataDetectors(linkURL))
             return YES;
+#endif
         return NO;
     }
     return YES;
@@ -5557,6 +5576,10 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
     BOOL supportsAttachmentPreview = ([uiDelegate respondsToSelector:@selector(_attachmentListForWebView:)] || respondsToAttachmentListForWebViewSourceIsManaged)
         && [uiDelegate respondsToSelector:@selector(_webView:indexIntoAttachmentListForElement:)];
     BOOL canShowAttachmentPreview = (_positionInformation.isAttachment || _positionInformation.isImage) && supportsAttachmentPreview;
+    BOOL isDataDetectorLink = NO;
+#if ENABLE(DATA_DETECTION)
+    isDataDetectorLink = _positionInformation.isDataDetectorLink;
+#endif
 
     if (canShowImagePreview && _positionInformation.isAnimatedImage) {
         canShowImagePreview = NO;
@@ -5568,7 +5591,7 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
         return nil;
 
     const URL& linkURL = _positionInformation.url;
-    if (!useImageURLForLink && (linkURL.isEmpty() || (!linkURL.protocolIsInHTTPFamily() && !_positionInformation.isDataDetectorLink))) {
+    if (!useImageURLForLink && (linkURL.isEmpty() || (!linkURL.protocolIsInHTTPFamily() && !isDataDetectorLink))) {
         if (canShowLinkPreview && !canShowImagePreview)
             return nil;
         canShowLinkPreview = NO;
@@ -5581,7 +5604,8 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
             dataForPreview[UIPreviewDataLink] = (NSURL *)_positionInformation.imageURL;
         else
             dataForPreview[UIPreviewDataLink] = (NSURL *)linkURL;
-        if (_positionInformation.isDataDetectorLink) {
+#if ENABLE(DATA_DETECTION)
+        if (isDataDetectorLink) {
             NSDictionary *context = nil;
             if ([uiDelegate respondsToSelector:@selector(_dataDetectionContextForWebView:)])
                 context = [uiDelegate _dataDetectionContextForWebView:_webView];
@@ -5605,6 +5629,7 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
             if (newContext)
                 dataForPreview[UIPreviewDataDDContext] = newContext;
         }
+#endif // ENABLE(DATA_DETECTION)
     } else if (canShowImagePreview) {
         *type = UIPreviewItemTypeImage;
         dataForPreview[UIPreviewDataLink] = (NSURL *)_positionInformation.imageURL;

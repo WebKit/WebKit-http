@@ -133,6 +133,13 @@ fast/repaint/overflow-scroll-touch-repaint.html [ Skip ]
 
 # TODO Drag & Drop doesn't work correctly in DRT <rdar://5621244>
 editing/pasteboard/datatransfer-items-drop-plaintext-file.html
+editing/pasteboard/datatransfer-items-drop-plaintext-file-promise.html [ Skip ]
+editing/pasteboard/datatransfer-types-dropping-text-file-promise.html [ Skip ]
+editing/pasteboard/data-transfer-items-drag-drop-file-promise.html [ Skip ]
+editing/pasteboard/data-transfer-items-drop-file-promise.html [ Skip ]
+editing/pasteboard/drag-file-promises-to-editable-element-as-URLs.html [ Skip ]
+editing/pasteboard/drag-file-promises-to-editable-element-as-attachment.html [ Skip ]
+editing/pasteboard/file-input-files-access-promise.html [ Skip ]
 fast/events/drop-handler-should-not-stop-navigate.html [ Skip ]
 fast/events/drag-in-frames.html [ Skip ]
 fast/events/drag-to-navigate.html [ Skip ]
@@ -224,9 +231,6 @@ fast/events/mouseover-button.html [ Skip ]
 
 # TODO Accept header is handled by the browser
 http/tests/misc/image-checks-for-accept.html [ Skip ]
-
-# TODO Need to add functionality to DumpRenderTree to handle enable/disable Spatial Navigation
-fast/spatial-navigation/ [ Skip ]
 
 # Need to implement AccessibilityUIElement::clearSelectedChildren()
 accessibility/aria-listbox-clear-selection-crash.html [ Skip ]
@@ -444,6 +448,7 @@ http/tests/download/anchor-download-no-value.html [ Skip ]
 
 # testRunner.setShouldDownloadUndisplayableMIMETypes() is not supported on WK1.
 fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download.html [ Skip ]
+fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download-async-delegate.html [ Skip ]
 
 # TODO Expose title direction in WebKit API (Chromium Only)
 webkit.org/b/58845 fast/dom/title-directionality.html [ Skip ]
@@ -2800,6 +2805,10 @@ fast/scrolling/scroll-select-list.html [ ImageOnlyFailure ]
 
 # Selectors don't seem to work properly
 webkit.org/b/117322 fast/selectors/selection-window-inactive.html [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/selectors/selection-window-inactive-stroke-color.html  [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/selectors/selection-window-inactive-text-shadow.html  [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/selectors/text-field-selection-window-inactive-stroke-color.html  [ ImageOnlyFailure ]
+webkit.org/b/117322 fast/selectors/text-field-selection-window-inactive-text-shadow.html  [ ImageOnlyFailure ]
 webkit.org/b/140519 [ Debug ] fast/selectors/querySelector-id-with-multiple-elements-with-same-id.html [ Skip ]  # Crashing
 fast/selectors/querySelector-window-inactive.html [ Failure ]
 fast/selectors/read-only-read-write-input-basics.html [ Failure ]
@@ -3715,6 +3724,7 @@ imported/w3c/web-platform-tests/html/webappapis/scripting/processing-model-2/int
 imported/w3c/web-platform-tests/service-workers [ Skip ]
 http/tests/cache-storage [ Skip ]
 http/wpt/cache-storage [ Skip ]
+http/tests/appcache/main-resource-redirect-with-sw.html [ Skip ]
 
 
 # Flaky tests on Windows:
@@ -3785,8 +3795,7 @@ webkit.org/b/177541 accessibility/image-load-on-delay.html [ Failure ]
 
 # preconnect tests are failing on Windows.
 webkit.org/b/177626 fast/dom/HTMLLinkElement/preconnect-support.html  [ Skip ]
-webkit.org/b/177626 http/tests/preconnect/link-rel-preconnect-http.html [ Skip ]
-webkit.org/b/177626 http/tests/preconnect/link-rel-preconnect-https.html [ Skip ]
+webkit.org/b/177626 http/tests/preconnect/ [ Skip ]
 
 webkit.org/b/177964 fast/text/font-display/block-nofinish.html [ Pass ImageOnlyFailure ]
 webkit.org/b/177964 fast/text/font-display/failure-finish.html [ Pass ImageOnlyFailure ]
@@ -3884,6 +3893,8 @@ webkit.org/b/182239 js/dom/array-with-double-push.html [ Failure ]
 
 webkit.org/b/182626 accessibility/aria-hidden-updates-alldescendants.html [ Failure ]
 
+webkit.org/b/179297 http/tests/preload/onerror_event.html [ Crash Pass ]
+
 # The following tests are failing only on ews203.
 webkit.org/b/182694 fast/text/tatechuyoko.html [ Failure ]
 webkit.org/b/182694 imported/mathml-in-html5/mathml/presentation-markup/fractions/frac-parameters-1.html [ Failure ]
@@ -3915,3 +3926,5 @@ webkit.org/b/182694 imported/mozilla/svg/smil/repeat/indefinite-repeat-1.svg [ C
 webkit.org/b/182694 imported/mozilla/svg/smil/restart/reset-2.svg [ Crash ]
 webkit.org/b/182694 imported/mozilla/svg/smil/sort/sort-startAfter-1.svg [ Crash ]
 webkit.org/b/182694 fast/css/disabled-author-styles.html [ Timeout ]
+
+webkit.org/b/183322 http/wpt/html/browsers/history/the-location-interface/location-protocol-setter-non-broken-async-delegate.html [ Failure ]
