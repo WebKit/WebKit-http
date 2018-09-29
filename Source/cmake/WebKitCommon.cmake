@@ -20,6 +20,7 @@ if (NOT HAS_RUN_WEBKIT_COMMON)
     find_package(Perl 5.10.0 REQUIRED)
     find_package(PerlModules COMPONENTS JSON::PP REQUIRED)
 
+    set(Python_ADDITIONAL_VERSIONS 3)
     find_package(PythonInterp 2.7.0 REQUIRED)
     if (PYTHON_VERSION_MAJOR GREATER 2)
         message(FATAL_ERROR "Python 2 is required, but Python ${PYTHON_VERSION_MAJOR} was found.")
