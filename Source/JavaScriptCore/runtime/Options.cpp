@@ -27,8 +27,6 @@
 #include "Options.h"
 
 #include "AssemblerCommon.h"
-#include "LLIntCommon.h"
-#include "LLIntData.h"
 #include "MinimumReservedZoneSize.h"
 #include "SigillCrashAnalyzer.h"
 #include <algorithm>
@@ -152,10 +150,6 @@ bool Options::isAvailable(Options::ID id, Options::Availability availability)
     ASSERT(availability == Availability::Configurable);
     
     UNUSED_PARAM(id);
-#if ENABLE(LLINT_STATS)
-    if (id == reportLLIntStatsID || id == llintStatsFileID)
-        return true;
-#endif
 #if !defined(NDEBUG)
     if (id == maxSingleAllocationSizeID)
         return true;
@@ -350,7 +344,9 @@ static void overrideDefaults()
     Options::smallHeapRAMFraction() = 0.8;
     Options::mediumHeapRAMFraction() = 0.9;
 
+#if !PLATFORM(WATCHOS)
     Options::useSigillCrashAnalyzer() = true;
+#endif
 #endif
 
 #if !ENABLE(SIGNAL_BASED_VM_TRAPS)
@@ -482,9 +478,6 @@ static void recomputeDependentOptions()
     ASSERT((static_cast<int64_t>(Options::thresholdForOptimizeAfterLongWarmUp()) << Options::reoptimizationRetryCounterMax()) > 0);
     ASSERT((static_cast<int64_t>(Options::thresholdForOptimizeAfterLongWarmUp()) << Options::reoptimizationRetryCounterMax()) <= static_cast<int64_t>(std::numeric_limits<int32_t>::max()));
 
-#if ENABLE(LLINT_STATS)
-    LLInt::Data::loadStats();
-#endif
 #if !defined(NDEBUG)
     if (Options::maxSingleAllocationSize())
         fastSetMaxSingleAllocationSize(Options::maxSingleAllocationSize());

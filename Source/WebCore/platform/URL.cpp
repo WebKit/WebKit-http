@@ -729,6 +729,18 @@ bool equalIgnoringFragmentIdentifier(const URL& a, const URL& b)
     return true;
 }
 
+bool equalIgnoringQueryAndFragment(const URL& a, const URL& b)
+{
+    if (a.pathEnd() != b.pathEnd())
+        return false;
+    unsigned pathEnd = a.pathEnd();
+    for (unsigned i = 0; i < pathEnd; ++i) {
+        if (a.string()[i] != b.string()[i])
+            return false;
+    }
+    return true;
+}
+
 bool protocolHostAndPortAreEqual(const URL& a, const URL& b)
 {
     if (a.m_schemeEnd != b.m_schemeEnd)
@@ -774,6 +786,22 @@ bool hostsAreEqual(const URL& a, const URL& b)
     }
 
     return true;
+}
+
+bool URL::isMatchingDomain(const String& domain) const
+{
+    // We restrict it to HTTP for simplicity since we do not want to match data, blob or file based URLs.
+    if (isNull() || !protocolIsInHTTPFamily())
+        return false;
+
+    if (domain.isEmpty())
+        return true;
+
+    auto host = this->host();
+    if (!host.endsWith(domain))
+        return false;
+
+    return host.length() == domain.length() || host.characterAt(host.length() - domain.length() - 1) == '.';
 }
 
 String encodeWithURLEscapeSequences(const String& input)

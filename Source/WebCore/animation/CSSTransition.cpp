@@ -28,21 +28,37 @@
 
 #include "Animation.h"
 #include "Element.h"
+#include "KeyframeEffectReadOnly.h"
 
 namespace WebCore {
 
-Ref<CSSTransition> CSSTransition::create(Element& target, const Animation&)
+Ref<CSSTransition> CSSTransition::create(Element& target, const Animation& backingAnimation, const RenderStyle* oldStyle, const RenderStyle& newStyle)
 {
-    auto& document = target.document();
-
-    auto result = adoptRef(*new CSSTransition(document));
-
+    auto result = adoptRef(*new CSSTransition(target.document(), backingAnimation));
+    result->m_transitionProperty = backingAnimation.property();
+    result->initialize(target);
+    downcast<KeyframeEffectReadOnly>(result->effect())->computeCSSTransitionBlendingKeyframes(oldStyle, newStyle);
     return result;
 }
 
-CSSTransition::CSSTransition(Document& document)
-    : WebAnimation(document)
+CSSTransition::CSSTransition(Document& document, const Animation& backingAnimation)
+    : DeclarativeAnimation(document, backingAnimation)
 {
+}
+
+bool CSSTransition::matchesBackingAnimationAndStyles(const Animation& newBackingAnimation, const RenderStyle* oldStyle, const RenderStyle& newStyle) const
+{
+    bool backingAnimationsMatch = backingAnimation() == newBackingAnimation;
+    if (!oldStyle)
+        return backingAnimationsMatch;
+    return backingAnimationsMatch && !downcast<KeyframeEffectReadOnly>(effect())->stylesWouldYieldNewCSSTransitionsBlendingKeyframes(*oldStyle, newStyle);
+}
+
+bool CSSTransition::canBeListed() const
+{
+    if (!downcast<KeyframeEffectReadOnly>(effect())->hasBlendingKeyframes())
+        return false;
+    return WebAnimation::canBeListed();
 }
 
 } // namespace WebCore

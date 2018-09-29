@@ -569,12 +569,6 @@
 #define HAVE_DTRACE 0
 #define USE_FILE_LOCK 1
 
-#if !PLATFORM(WATCHOS) && !PLATFORM(APPLETV)
-#define ENABLE_DATA_DETECTION 1
-#define HAVE_AVKIT 1
-#define HAVE_PARENTAL_CONTROLS 1
-#endif
-
 #endif
 
 #if PLATFORM(MAC)
@@ -599,19 +593,10 @@
 
 #if PLATFORM(IOS)
 
-#define HAVE_CELESTIAL 1
 #define HAVE_NETWORK_EXTENSION 1
 #define HAVE_READLINE 1
 #define USE_UIKIT_EDITING 1
 #define USE_WEB_THREAD 1
-
-#if !PLATFORM(WATCHOS) && !PLATFORM(APPLETV)
-#define USE_QUICK_LOOK 1
-#endif
-
-#if TARGET_OS_IOS
-#define HAVE_APP_LINKS 1
-#endif
 
 #if CPU(ARM64)
 #define ENABLE_JIT_CONSTANT_BLINDING 0
@@ -729,12 +714,12 @@
 
 /* FIXME: move out all ENABLE() defines from here to FeatureDefines.h */
 
-/* Include feature macros */
-#include <wtf/FeatureDefines.h>
-
 #if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/AdditionalFeatureDefines.h>)
 #include <WebKitAdditions/AdditionalFeatureDefines.h>
 #endif
+
+/* Include feature macros */
+#include <wtf/FeatureDefines.h>
 
 #if OS(WINDOWS)
 #define USE_SYSTEM_MALLOC 1
@@ -773,6 +758,12 @@
     && (CPU(X86) || CPU(X86_64) || CPU(ARM) || (CPU(ARM64) && !defined(__ILP32__)) || CPU(MIPS)) \
     && !CPU(APPLE_ARMV7K)
 #define ENABLE_JIT 1
+#endif
+
+/* Cocoa ports should not use the jit on 32-bit ARM CPUs. */
+#if PLATFORM(COCOA) && (CPU(ARM) || CPU(APPLE_ARMV7K))
+#undef ENABLE_JIT
+#define ENABLE_JIT 0
 #endif
 
 /* The FTL *does not* work on 32-bit platforms. Disable it even if someone asked us to enable it. */
@@ -1054,6 +1045,11 @@
 #define ENABLE_POISON 0
 #endif
 
+#if !defined(USE_POINTER_PROFILING) || USE(JSVALUE32_64) || !ENABLE(JIT)
+#undef USE_POINTER_PROFILING
+#define USE_POINTER_PROFILING 0
+#endif
+
 /* CSS Selector JIT Compiler */
 #if !defined(ENABLE_CSS_SELECTOR_JIT)
 #if (CPU(X86_64) || CPU(ARM64) || (CPU(ARM_THUMB2) && PLATFORM(IOS))) && ENABLE(JIT) && (OS(DARWIN) || PLATFORM(GTK) || PLATFORM(HAIKU) || PLATFORM(WPE))
@@ -1063,14 +1059,44 @@
 #endif
 #endif
 
-#if ENABLE(WEBGL) && PLATFORM(COCOA)
+#if PLATFORM(IOS)
+#if !PLATFORM(WATCHOS) && !PLATFORM(APPLETV) && !ENABLE(MINIMAL_SIMULATOR)
+#define USE_QUICK_LOOK 1
+#define HAVE_APP_LINKS 1
+#endif
+#if !ENABLE(MINIMAL_SIMULATOR)
+#define HAVE_CELESTIAL 1
+#endif
+#endif
+
+#if PLATFORM(COCOA)
+
+#define USE_AVFOUNDATION 1
+#define USE_PROTECTION_SPACE_AUTH_CALLBACK 1
+
+#if !PLATFORM(WATCHOS) && !PLATFORM(APPLETV) && !ENABLE(MINIMAL_SIMULATOR)
+#define ENABLE_DATA_DETECTION 1
+#define HAVE_AVKIT 1
+#define HAVE_PARENTAL_CONTROLS 1
+#endif
+
+#if ENABLE(WEBGL)
 #if PLATFORM(MAC)
+#define USE_OPENGL 1
+#define USE_OPENGL_ES 0
+#elif ENABLE(MINIMAL_SIMULATOR)
 #define USE_OPENGL 1
 #define USE_OPENGL_ES 0
 #else
 #define USE_OPENGL 0
 #define USE_OPENGL_ES 1
 #endif
+#endif
+
+#if HAVE(ACCESSIBILITY)
+#define USE_ACCESSIBILITY_CONTEXT_MENUS 1
+#endif
+
 #endif
 
 #if ENABLE(WEBGL) && PLATFORM(WIN)
@@ -1081,14 +1107,6 @@
 
 #if USE(TEXTURE_MAPPER) && ENABLE(GRAPHICS_CONTEXT_3D) && !defined(USE_TEXTURE_MAPPER_GL)
 #define USE_TEXTURE_MAPPER_GL 1
-#endif
-
-#if PLATFORM(COCOA)
-#define USE_PROTECTION_SPACE_AUTH_CALLBACK 1
-#endif
-
-#if PLATFORM(COCOA) && HAVE(ACCESSIBILITY)
-#define USE_ACCESSIBILITY_CONTEXT_MENUS 1
 #endif
 
 #if CPU(ARM_THUMB2) || CPU(ARM64)
@@ -1125,10 +1143,6 @@
 
 #if !defined(ENABLE_BINDING_INTEGRITY) && !OS(WINDOWS)
 #define ENABLE_BINDING_INTEGRITY 1
-#endif
-
-#if PLATFORM(COCOA)
-#define USE_AVFOUNDATION 1
 #endif
 
 #if !defined(ENABLE_TREE_DEBUGGING)
@@ -1221,7 +1235,7 @@
 #define HAVE_IOSURFACE 1
 #endif
 
-#if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
+#if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR) && !ENABLE(MINIMAL_SIMULATOR)
 #define HAVE_IOSURFACE_ACCELERATOR 1
 #endif
 

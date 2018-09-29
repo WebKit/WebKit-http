@@ -1370,22 +1370,14 @@ pageoverlay/overlay-large-document.html [ Failure ]
 webkit.org/b/153337 pageoverlay/overlay-installation.html [ Pass Failure ]
 
 # These tests require an OpenType MATH font on the Apple bots.
-mathml/opentype/vertical.html [ Skip ]
-mathml/opentype/large-operators.html [ Skip ]
-mathml/opentype/horizontal.html [ Skip ]
-mathml/opentype/horizontal-munderover.html [ Skip ]
+webkit.org/b/160161 mathml/opentype/vertical.html [ Skip ]
+webkit.org/b/160161 mathml/opentype/large-operators.html [ Skip ]
+webkit.org/b/160161 mathml/opentype/horizontal.html [ Skip ]
+webkit.org/b/160161 mathml/opentype/horizontal-munderover.html [ Skip ]
 
 # These tests require the Latin Modern Math font.
-mathml/opentype/fraction-line.html [ Skip ]
-mathml/presentation/fractions-linethickness.html [ Skip ]
-mathml/opentype/large-operators-italic-correction.html [ Skip ]
-mathml/presentation/bug159513.html [ Skip ]
-
-# These reftests require a font with Mathematical Alphanumeric Symbols.
-mathml/presentation/attributes-mathvariant.html [ Skip ]
-mathml/presentation/tokenElements-mathvariant.html [ Skip ]
-mathml/presentation/mathvariant-inheritance.html [ Skip ]
-mathml/presentation/mathvariant-tokens.html [ Skip ]
+webkit.org/b/160161 mathml/opentype/large-operators-italic-correction.html [ Skip ]
+webkit.org/b/160161 mathml/presentation/bug159513.html [ Skip ]
 
 # This test fails because the USE_TYPO_METRICS flag is ignored for non-math font
 webkit.org/b/150394 imported/w3c/web-platform-tests/mathml/relations/text-and-math/use-typo-metrics-1.html [ ImageOnlyFailure ]
@@ -3065,11 +3057,7 @@ fast/events/ios/before-input-events-prevent-candidate-insertion.html [ Timeout ]
 # <rdar://problem/32542300> REGRESSION (iOS 11): LayoutTest fast/events/ios/contenteditable-autocapitalize.html is failing
 fast/events/ios/contenteditable-autocapitalize.html [ Failure ]
 
-# <rdar://problem/32627945> PROGRESSION? (iOS 11): 4 mathml tests are failing
-mathml/presentation/mo-stretch.html [ ImageOnlyFailure ]
-mathml/presentation/multiscripts-equivalence.html [ ImageOnlyFailure ]
-mathml/presentation/roots.xhtml [ ImageOnlyFailure ]
-mathml/radical-fallback.html [ Failure ]
+webkit.org/b/183441 mathml/presentation/multiscripts-equivalence.html [ ImageOnlyFailure ]
 
 # <rdar://problem/32632415> REGRESSION (ImageIO-1666): LayoutTests fast/images are failing together.
 canvas/philip/tests/2d.drawImage.animated.gif.html [ Failure ]

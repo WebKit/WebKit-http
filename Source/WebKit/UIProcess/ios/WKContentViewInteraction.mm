@@ -4205,6 +4205,9 @@ static bool isAssistableInputType(InputType type)
     if (_focusedFormControlViewController)
         return;
 
+    ++_webView->_activeFocusedStateRetainCount;
+    _shouldRestoreFirstResponderStatusAfterLosingFocus = self.isFirstResponder;
+
     _focusedFormControlViewController = adoptNS([[WKFocusedFormControlViewController alloc] init]);
     [_focusedFormControlViewController setDelegate:self];
     [[UIViewController _viewControllerForFullScreenPresentationFromView:self] presentViewController:_focusedFormControlViewController.get() animated:animated completion:nil];
@@ -4224,6 +4227,13 @@ static bool isAssistableInputType(InputType type)
 {
     if (!_focusedFormControlViewController)
         return;
+
+    --_webView->_activeFocusedStateRetainCount;
+
+    if (_shouldRestoreFirstResponderStatusAfterLosingFocus && !self.isFirstResponder) {
+        _shouldRestoreFirstResponderStatusAfterLosingFocus = NO;
+        [self becomeFirstResponder];
+    }
 
     [_focusedFormControlViewController dismissViewControllerAnimated:animated completion:nil];
     _focusedFormControlViewController = nil;
@@ -4274,6 +4284,7 @@ static bool isAssistableInputType(InputType type)
 
     _textInputViewController = adoptNS([[WKTextInputViewController alloc] initWithText:_assistedNodeInformation.value textSuggestions:@[ ]]);
     [_textInputViewController setDelegate:self];
+    [_textInputViewController setUsesPasswordEntryMode:_assistedNodeInformation.elementType == InputType::Password || [_formInputSession forceSecureTextEntry]];
     [_focusedFormControlViewController presentViewController:_textInputViewController.get() animated:animated completion:nil];
 
     [_textInputViewController setSuggestions:[_focusedFormControlViewController suggestions]];

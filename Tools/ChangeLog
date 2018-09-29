@@ -1,3 +1,875 @@
+2018-03-12  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION(r211643): Dismissing WKActionSheet should not also dismiss its presenting view controller
+        https://bugs.webkit.org/show_bug.cgi?id=183549
+        <rdar://problem/34960698>
+
+        Reviewed by Andy Estes.
+
+        Add TestWebKitAPI support for testing WKWebViews embedded within presented view controllers, and use this to
+        check that dismissing an action sheet does not additionally cause the view controller being used to present the
+        web view to also dismiss.
+
+        * TestWebKitAPI/ClassMethodSwizzler.h: Added.
+        * TestWebKitAPI/ClassMethodSwizzler.mm: Added.
+        (TestWebKitAPI::ClassMethodSwizzler::ClassMethodSwizzler):
+        (TestWebKitAPI::ClassMethodSwizzler::~ClassMethodSwizzler):
+
+        Add ClassMethodSwizzler, an RAII which swizzles an Objective-C class method over its lifetime.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/ios/ActionSheetTests.mm:
+
+        Add a new API test that loads a view controller which embeds a WKWebView, and verifies that presenting and then
+        dismissing an action sheet from that web view does not cause the view controller to also dismiss.
+
+        (TestWebKitAPI::setOverrideViewControllerForFullscreenPresentation):
+        (TestWebKitAPI::overrideViewControllerForFullscreenPresentation):
+
+        Mock +[UIViewController _viewControllerForFullScreenPresentationFromView:] to return the web view. This works
+        around the fact that TestWebKitAPI is not a UI application, so certain pieces of UIKit API and SPI need to be
+        stubbed or mocked to simulate being a UI application. We can remove these workarounds once
+        https://webkit.org/b/175204 is addressed, and TestWebKitAPI becomes a UI application that can actually maintain
+        a root view controller and key window.
+
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/cocoa/TestWKWebView.h:
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+        (-[TestWKWebView initWithFrame:configuration:addToWindow:]):
+
+        Add a new initializer for TestWKWebView that doesn't force the view to be hosted within a UIWindow. This is used
+        by TestWKWebViewController to create a TestWKWebView in -loadView.
+
+        * TestWebKitAPI/ios/TestWKWebViewController.h: Added.
+        * TestWebKitAPI/ios/TestWKWebViewController.mm: Added.
+        (-[TestWKWebViewControllerWindow _beginKeyWindowDeferral]):
+        (-[TestWKWebViewControllerWindow _endKeyWindowDeferral]):
+
+        Stub out these methods to prevent UIKit from hitting assertions when making this UIWindow the key window. This
+        can also be removed once TestWebKitAPI is a UI application.
+
+        (-[TestWKWebViewController initWithFrame:configuration:]):
+        (-[TestWKWebViewController loadView]):
+        (-[TestWKWebViewController webView]):
+        (-[TestWKWebViewController dismissViewControllerAnimated:completion:]):
+        (-[TestWKWebViewController dismissalHandler]):
+        (-[TestWKWebViewController setDismissalHandler:]):
+
+        Add a UIViewController helper subclass whose -view is a WKWebView. The new API test presents this view
+        controller. Tests may also provide a dismissalHandler, which is invoked when the view controller is being
+        dismissed. The new API test uses this hook to verify that the view controller containing the web view isn't also
+        dismissed after the action sheet goes away.
+
+        * TestWebKitAPI/ios/UIKitSPI.h:
+
+2018-03-12  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [webkitpy] Remove openssl command dependency.
+        https://bugs.webkit.org/show_bug.cgi?id=183494
+
+        Reviewed by Ryosuke Niwa.
+
+        Added Python implementation of PEM file perser and switched to use that
+        from external `openssl` command.
+
+        * Scripts/webkitpy/common/system/pemfile.py: Added.
+        (load):
+        (BadFormatError):
+        (Pem):
+        (Pem.__init__):
+        (Pem.get):
+        (Pem.get_all):
+        (Pem.certificate):
+        (Pem.private_key):
+        (Pem.csr):
+        (Pem.certificate_request):
+        (Pem.certificate_signing_request):
+        (_parse_pem_format):
+        (_parse_pem_format.find_begin):
+        (_parse_pem_format.find_end):
+        (_parse_pem_format.sections):
+        * Scripts/webkitpy/common/system/pemfile_unittest.py: Added.
+        (PemFileTest):
+        (PemFileTest.test_parse):
+        (PemFileTest.test_parse_bad_format):
+        * Scripts/webkitpy/port/base.py:
+        (Port.start_websocket_server):
+        (Port._extract_certificate_from_pem): Deleted.
+        (Port._extract_private_key_from_pem): Deleted.
+
+2018-03-12  Javier Fernandez  <jfernandez@igalia.com>
+
+        Remove GridLayout runtime flag
+        https://bugs.webkit.org/show_bug.cgi?id=183484
+
+        Reviewed by Myles C. Maxfield.
+
+        The Grid Layout feature has been enabled by default for almost a
+        year, so I think it's time to remove the runtime flag and the
+        codepath run when the feature is disabled.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+
+2018-03-12  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Implement CSS Animations and CSS Transitions as Web Animations
+        https://bugs.webkit.org/show_bug.cgi?id=183504
+        <rdar://problem/38372965>
+
+        Reviewed by Jon Lee.
+
+        Add a new <!-- webkit-test-runner --> flag to enable the CSS Animations and CSS Transitions
+        as Web Animations runtime flag in the new tests we've created for this feature.
+
+        * DumpRenderTree/TestOptions.h:
+        * DumpRenderTree/TestOptions.mm:
+        (TestOptions::TestOptions):
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (setWebPreferencesForTestOptions):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        (WTR::updateTestOptionsFromTestHeader):
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::hasSameInitializationOptions const):
+
+2018-03-11  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Add Line class for InlineFormattingContext -and move files around.
+        https://bugs.webkit.org/show_bug.cgi?id=183551
+
+        Reviewed by Wenson Hsieh.
+
+        * LayoutReloaded/FormattingContext/BlockFormatting/BlockFormattingContext.js: Renamed from Tools/LayoutReloaded/BlockFormattingContext.js.
+        (BlockFormattingContext):
+        (BlockFormattingContext.prototype.layout):
+        (BlockFormattingContext.prototype.computeWidth):
+        (BlockFormattingContext.prototype.computeHeight):
+        (BlockFormattingContext.prototype.marginTop):
+        (BlockFormattingContext.prototype.marginBottom):
+        (BlockFormattingContext.prototype._computeStaticPosition):
+        (BlockFormattingContext.prototype._placeInFlowPositionedChildren):
+        (BlockFormattingContext.prototype._placeOutOfFlowDescendants):
+        (BlockFormattingContext.prototype._computeOutOfFlowWidth):
+        (BlockFormattingContext.prototype._computeFloatingWidth):
+        (BlockFormattingContext.prototype._computeInFlowWidth):
+        (BlockFormattingContext.prototype._computeOutOfFlowHeight):
+        (BlockFormattingContext.prototype._computeFloatingHeight):
+        (BlockFormattingContext.prototype._computeInFlowHeight):
+        (BlockFormattingContext.prototype._computeHorizontalConstraint):
+        (BlockFormattingContext.prototype._computeContentHeight):
+        (BlockFormattingContext.prototype._computeInFlowPositionedPosition):
+        (BlockFormattingContext.prototype._computeOutOfFlowPosition):
+        (BlockFormattingContext.prototype._shrinkToFitWidth):
+        * LayoutReloaded/FormattingContext/BlockFormatting/BlockMarginCollapse.js: Renamed from Tools/LayoutReloaded/BlockMarginCollapse.js.
+        (BlockMarginCollapse.marginTop):
+        (BlockMarginCollapse.marginBottom):
+        (BlockMarginCollapse._isMarginTopCollapsedWithSibling):
+        (BlockMarginCollapse._isMarginBottomCollapsedWithSibling):
+        (BlockMarginCollapse._isMarginTopCollapsedWithParent):
+        (BlockMarginCollapse._isMarginBottomCollapsedWithParent):
+        (BlockMarginCollapse._nonCollapsedMarginTop):
+        (BlockMarginCollapse._nonCollapsedMarginBottom):
+        (BlockMarginCollapse._collapsedMarginTopFromFirstChild):
+        (BlockMarginCollapse._collapsedMarginBottomFromLastChild):
+        (BlockMarginCollapse._marginValue):
+        (BlockMarginCollapse._hasAdjoiningMarginTopAndBottom):
+        (BlockMarginCollapse):
+        * LayoutReloaded/FormattingContext/FloatingContext.js: Renamed from Tools/LayoutReloaded/FloatingContext.js.
+        (FloatingContext):
+        (FloatingContext.prototype.computePosition):
+        (FloatingContext.prototype.bottom):
+        (FloatingContext.prototype._positionForFloating):
+        (FloatingContext.prototype._positionForClear):
+        (FloatingContext.prototype._computePositionToAvoidIntrudingFloats):
+        (FloatingContext.prototype._addFloating):
+        (FloatingContext.prototype._findInnerMostLeftAndRight):
+        (FloatingContext.prototype._moveToNextVerticalPosition):
+        (FloatingContext.prototype._availableSpace):
+        (FloatingContext.prototype._findFloatingAtVerticalPosition):
+        (FloatingContext.prototype._isEmpty):
+        (FloatingContext.prototype._adjustedFloatingPosition):
+        (FloatingContext.prototype._bottom):
+        (FloatingContext.prototype._formattingContext):
+        * LayoutReloaded/FormattingContext/FormattingContext.js: Renamed from Tools/LayoutReloaded/FormattingContext.js.
+        (FormattingContext):
+        (FormattingContext.prototype.rootContainer):
+        (FormattingContext.prototype.floatingContext):
+        (FormattingContext.prototype.layout):
+        (FormattingContext.prototype.computeWidth):
+        (FormattingContext.prototype.computeHeight):
+        (FormattingContext.prototype.marginTop):
+        (FormattingContext.prototype.marginLeft):
+        (FormattingContext.prototype.marginBottom):
+        (FormattingContext.prototype.marginRight):
+        (FormattingContext.prototype.absoluteMarginBox):
+        (FormattingContext.prototype.absoluteBorderBox):
+        (FormattingContext.prototype.absolutePaddingBox):
+        (FormattingContext.prototype.absoluteContentBox):
+        * LayoutReloaded/FormattingContext/InlineFormatting/InlineFormattingContext.js: Renamed from Tools/LayoutReloaded/InlineFormattingContext.js.
+        (InlineFormattingContext):
+        (InlineFormattingContext.prototype.layout):
+        (InlineFormattingContext.prototype._handleInlineBox):
+        (InlineFormattingContext.prototype._handleText):
+        (InlineFormattingContext.prototype._commitLine):
+        (InlineFormattingContext.prototype._line):
+        * LayoutReloaded/FormattingContext/InlineFormatting/Line.js: Copied from Tools/LayoutReloaded/InitialBlockContainer.js.
+        (Line):
+        (Line.prototype.isEmpty):
+        (Line.prototype.availableWidth):
+        (Line.prototype.appendFragment):
+        * LayoutReloaded/LayoutReloaded.xcworkspace/contents.xcworkspacedata:
+        * LayoutReloaded/LayoutTree/BlockContainer.js: Renamed from Tools/LayoutReloaded/BlockContainer.js.
+        (BlockContainer):
+        (BlockContainer.prototype.establishesInlineFormattingContext):
+        * LayoutReloaded/LayoutTree/Box.js: Renamed from Tools/LayoutReloaded/Box.js.
+        (Box):
+        (Box.prototype.id):
+        (Box.prototype.setRendererName):
+        (Box.prototype.name):
+        (Box.prototype.node):
+        (Box.prototype.parent):
+        (Box.prototype.nextSibling):
+        (Box.prototype.nextInFlowSibling):
+        (Box.prototype.previousSibling):
+        (Box.prototype.previousInFlowSibling):
+        (Box.prototype.setParent):
+        (Box.prototype.setNextSibling):
+        (Box.prototype.setPreviousSibling):
+        (Box.prototype.rect):
+        (Box.prototype.topLeft):
+        (Box.prototype.bottomRight):
+        (Box.prototype.setTopLeft):
+        (Box.prototype.setSize):
+        (Box.prototype.setWidth):
+        (Box.prototype.setHeight):
+        (Box.prototype.isContainer):
+        (Box.prototype.isBlockLevelBox):
+        (Box.prototype.isBlockContainerBox):
+        (Box.prototype.isInlineLevelBox):
+        (Box.prototype.setIsAnonymous):
+        (Box.prototype.isAnonymous):
+        (Box.prototype.establishesFormattingContext):
+        (Box.prototype.establishedFormattingContext):
+        (Box.prototype.establishesBlockFormattingContext):
+        (Box.prototype.establishesInlineFormattingContext):
+        (Box.prototype.isPositioned):
+        (Box.prototype.isRelativePositioned):
+        (Box.prototype.isAbsolutePositioned):
+        (Box.prototype.isFixedPositioned):
+        (Box.prototype.isInFlow):
+        (Box.prototype.isOutOfFlowPositioned):
+        (Box.prototype.isInFlowPositioned):
+        (Box.prototype.isFloatingPositioned):
+        (Box.prototype.isFloatingOrOutOfFlowPositioned):
+        (Box.prototype.isRootElement):
+        (Box.prototype.containingBlock):
+        (Box.prototype.borderBox):
+        (Box.prototype.paddingBox):
+        (Box.prototype.contentBox):
+        * LayoutReloaded/LayoutTree/Container.js: Renamed from Tools/LayoutReloaded/Container.js.
+        (Container):
+        (Container.prototype.isContainer):
+        (Container.prototype.setFirstChild):
+        (Container.prototype.setLastChild):
+        (Container.prototype.firstChild):
+        (Container.prototype.firstInFlowChild):
+        (Container.prototype.lastChild):
+        (Container.prototype.lastInFlowChild):
+        (Container.prototype.hasChild):
+        (Container.prototype.hasInFlowChild):
+        * LayoutReloaded/LayoutTree/InitialBlockContainer.js: Renamed from Tools/LayoutReloaded/InitialBlockContainer.js.
+        (InitialBlockContainer):
+        (InitialBlockContainer.prototype.establishesBlockFormattingContext):
+        (InitialBlockContainer.prototype.paddingBox):
+        (InitialBlockContainer.prototype.contentBox):
+        * LayoutReloaded/LayoutTree/InlineBox.js: Renamed from Tools/LayoutReloaded/InlineBox.js.
+        (InlineBox):
+        (InlineBox.prototype.setText):
+        (InlineBox.prototype.text):
+        * LayoutReloaded/LayoutTree/Text.js: Renamed from Tools/LayoutReloaded/Text.js.
+        (Text):
+        (Text.prototype.node):
+        (Text.prototype.content):
+        (Text.prototype.length):
+        * LayoutReloaded/Utils.js:
+        (Utils.nextBreakingOpportunity):
+        (Utils.measureText):
+        * LayoutReloaded/misc/headers/Line.h: Copied from Tools/LayoutReloaded/misc/headers/Text.h.
+        * LayoutReloaded/misc/headers/Text.h:
+        * LayoutReloaded/test/border-simple.html:
+        * LayoutReloaded/test/index.html:
+
+2018-03-10  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [macOS] Copying a table from the Numbers app and pasting into iCloud Numbers fails
+        https://bugs.webkit.org/show_bug.cgi?id=183485
+        <rdar://problem/38041984>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add new API tests to cover scenarios in which we paste image data alongside text data.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/PasteMixedContent.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/ios/UIPasteboardTests.mm:
+        (TestWebKitAPI::TEST):
+
+2018-03-09  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Initial commit -block formatting context.
+        https://bugs.webkit.org/show_bug.cgi?id=183462
+
+        Reviewed by Antti Koivisto.
+
+        See README.md
+
+        * LayoutReloaded/BlockContainer.js: Added.
+        (BlockContainer):
+        (BlockContainer.prototype.establishesInlineFormattingContext):
+        * LayoutReloaded/BlockFormattingContext.js: Added.
+        (BlockFormattingContext):
+        (BlockFormattingContext.prototype.layout):
+        (BlockFormattingContext.prototype.computeWidth):
+        (BlockFormattingContext.prototype.computeHeight):
+        (BlockFormattingContext.prototype.marginTop):
+        (BlockFormattingContext.prototype.marginBottom):
+        (BlockFormattingContext.prototype._computeStaticPosition):
+        (BlockFormattingContext.prototype._placeInFlowPositionedChildren):
+        (BlockFormattingContext.prototype._placeOutOfFlowDescendants):
+        (BlockFormattingContext.prototype._computeOutOfFlowWidth):
+        (BlockFormattingContext.prototype._computeFloatingWidth):
+        (BlockFormattingContext.prototype._computeInFlowWidth):
+        (BlockFormattingContext.prototype._computeOutOfFlowHeight):
+        (BlockFormattingContext.prototype._computeFloatingHeight):
+        (BlockFormattingContext.prototype._computeInFlowHeight):
+        (BlockFormattingContext.prototype._computeHorizontalConstraint):
+        (BlockFormattingContext.prototype._computeContentHeight):
+        (BlockFormattingContext.prototype._computeInFlowPositionedPosition):
+        (BlockFormattingContext.prototype._computeOutOfFlowPosition):
+        (BlockFormattingContext.prototype._shrinkToFitWidth):
+        * LayoutReloaded/BlockMarginCollapse.js: Added.
+        (BlockMarginCollapse.marginTop):
+        (BlockMarginCollapse.marginBottom):
+        (BlockMarginCollapse._isMarginTopCollapsedWithSibling):
+        (BlockMarginCollapse._isMarginBottomCollapsedWithSibling):
+        (BlockMarginCollapse._isMarginTopCollapsedWithParent):
+        (BlockMarginCollapse._isMarginBottomCollapsedWithParent):
+        (BlockMarginCollapse._nonCollapsedMarginTop):
+        (BlockMarginCollapse._nonCollapsedMarginBottom):
+        (BlockMarginCollapse._collapsedMarginTopFromFirstChild):
+        (BlockMarginCollapse._collapsedMarginBottomFromLastChild):
+        (BlockMarginCollapse._marginValue):
+        (BlockMarginCollapse._hasAdjoiningMarginTopAndBottom):
+        (BlockMarginCollapse):
+        * LayoutReloaded/Box.js: Added.
+        (Box):
+        (Box.prototype.id):
+        (Box.prototype.setRendererName):
+        (Box.prototype.name):
+        (Box.prototype.node):
+        (Box.prototype.parent):
+        (Box.prototype.nextSibling):
+        (Box.prototype.nextInFlowSibling):
+        (Box.prototype.previousSibling):
+        (Box.prototype.previousInFlowSibling):
+        (Box.prototype.setParent):
+        (Box.prototype.setNextSibling):
+        (Box.prototype.setPreviousSibling):
+        (Box.prototype.rect):
+        (Box.prototype.topLeft):
+        (Box.prototype.bottomRight):
+        (Box.prototype.setTopLeft):
+        (Box.prototype.setSize):
+        (Box.prototype.setWidth):
+        (Box.prototype.setHeight):
+        (Box.prototype.isContainer):
+        (Box.prototype.isBlockLevelBox):
+        (Box.prototype.isBlockContainerBox):
+        (Box.prototype.isInlineLevelBox):
+        (Box.prototype.setIsAnonymous):
+        (Box.prototype.isAnonymous):
+        (Box.prototype.establishesFormattingContext):
+        (Box.prototype.establishedFormattingContext):
+        (Box.prototype.establishesBlockFormattingContext):
+        (Box.prototype.establishesInlineFormattingContext):
+        (Box.prototype.isPositioned):
+        (Box.prototype.isRelativePositioned):
+        (Box.prototype.isAbsolutePositioned):
+        (Box.prototype.isFixedPositioned):
+        (Box.prototype.isInFlow):
+        (Box.prototype.isOutOfFlowPositioned):
+        (Box.prototype.isInFlowPositioned):
+        (Box.prototype.isFloatingPositioned):
+        (Box.prototype.isFloatingOrOutOfFlowPositioned):
+        (Box.prototype.isRootElement):
+        (Box.prototype.containingBlock):
+        (Box.prototype.borderBox):
+        (Box.prototype.paddingBox):
+        (Box.prototype.contentBox):
+        * LayoutReloaded/Container.js: Added.
+        (Container):
+        (Container.prototype.isContainer):
+        (Container.prototype.setFirstChild):
+        (Container.prototype.setLastChild):
+        (Container.prototype.firstChild):
+        (Container.prototype.firstInFlowChild):
+        (Container.prototype.lastChild):
+        (Container.prototype.lastInFlowChild):
+        (Container.prototype.hasChild):
+        (Container.prototype.hasInFlowChild):
+        * LayoutReloaded/FloatingContext.js: Added.
+        (FloatingContext):
+        (FloatingContext.prototype.computePosition):
+        (FloatingContext.prototype.bottom):
+        (FloatingContext.prototype._positionForFloating):
+        (FloatingContext.prototype._positionForClear):
+        (FloatingContext.prototype._computePositionToAvoidIntrudingFloats):
+        (FloatingContext.prototype._addFloating):
+        (FloatingContext.prototype._findInnerMostLeftAndRight):
+        (FloatingContext.prototype._moveToNextVerticalPosition):
+        (FloatingContext.prototype._availableSpace):
+        (FloatingContext.prototype._findFloatingAtVerticalPosition):
+        (FloatingContext.prototype._isEmpty):
+        (FloatingContext.prototype._adjustedFloatingPosition):
+        (FloatingContext.prototype._bottom):
+        (FloatingContext.prototype._formattingContext):
+        * LayoutReloaded/FormattingContext.js: Added.
+        (FormattingContext):
+        (FormattingContext.prototype.rootContainer):
+        (FormattingContext.prototype.floatingContext):
+        (FormattingContext.prototype.layout):
+        (FormattingContext.prototype.computeWidth):
+        (FormattingContext.prototype.computeHeight):
+        (FormattingContext.prototype.marginTop):
+        (FormattingContext.prototype.marginLeft):
+        (FormattingContext.prototype.marginBottom):
+        (FormattingContext.prototype.marginRight):
+        (FormattingContext.prototype.absoluteMarginBox):
+        (FormattingContext.prototype.absoluteBorderBox):
+        (FormattingContext.prototype.absolutePaddingBox):
+        (FormattingContext.prototype.absoluteContentBox):
+        * LayoutReloaded/InitialBlockContainer.js: Added.
+        (InitialBlockContainer):
+        (InitialBlockContainer.prototype.establishesBlockFormattingContext):
+        (InitialBlockContainer.prototype.paddingBox):
+        (InitialBlockContainer.prototype.contentBox):
+        * LayoutReloaded/InlineBox.js: Added.
+        (InlineBox):
+        (InlineBox.prototype.setText):
+        (InlineBox.prototype.text):
+        * LayoutReloaded/InlineFormattingContext.js: Added.
+        (InlineFormattingContext):
+        (InlineFormattingContext.prototype.layout):
+        (InlineFormattingContext.prototype._handleInlineBox):
+        (InlineFormattingContext.prototype._handleText):
+        * LayoutReloaded/Layout.js: Added.
+        (layout):
+        * LayoutReloaded/LayoutContext.js: Added.
+        (LayoutContext):
+        (LayoutContext.prototype.layoutFormattingContext):
+        * LayoutReloaded/LayoutReloaded.xcworkspace/contents.xcworkspacedata: Added.
+        * LayoutReloaded/LayoutReloaded.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist: Added.
+        * LayoutReloaded/README.md: Added.
+        * LayoutReloaded/Text.js: Added.
+        (Text):
+        * LayoutReloaded/TreeBuilder.js: Added.
+        (TreeBuilder.prototype.createTree):
+        (TreeBuilder.prototype._createAndAttachBox):
+        (TreeBuilder.prototype._appendChild):
+        (TreeBuilder.prototype._findBox):
+        (TreeBuilder.prototype._findNode):
+        (TreeBuilder):
+        * LayoutReloaded/Utils.js: Added.
+        (LayoutPoint):
+        (LayoutPoint.prototype.setLeft):
+        (LayoutPoint.prototype.setTop):
+        (LayoutPoint.prototype.left):
+        (LayoutPoint.prototype.top):
+        (LayoutPoint.prototype.shiftLeft):
+        (LayoutPoint.prototype.shiftTop):
+        (LayoutPoint.prototype.moveBy):
+        (LayoutPoint.prototype.equal):
+        (LayoutPoint.prototype.clone):
+        (LayoutSize):
+        (LayoutSize.prototype.setWidth):
+        (LayoutSize.prototype.setHeight):
+        (LayoutSize.prototype.width):
+        (LayoutSize.prototype.height):
+        (LayoutSize.prototype.growBy):
+        (LayoutSize.prototype.shrinkBy):
+        (LayoutSize.prototype.isEmpty):
+        (LayoutSize.prototype.equal):
+        (LayoutSize.prototype.clone):
+        (LayoutRect):
+        (LayoutRect.prototype.setTop):
+        (LayoutRect.prototype.setLeft):
+        (LayoutRect.prototype.setBottom):
+        (LayoutRect.prototype.setRight):
+        (LayoutRect.prototype.left):
+        (LayoutRect.prototype.top):
+        (LayoutRect.prototype.bottom):
+        (LayoutRect.prototype.right):
+        (LayoutRect.prototype.setTopLeft):
+        (LayoutRect.prototype.topLeft):
+        (LayoutRect.prototype.topRight):
+        (LayoutRect.prototype.bottomRight):
+        (LayoutRect.prototype.setWidth):
+        (LayoutRect.prototype.setHeight):
+        (LayoutRect.prototype.setSize):
+        (LayoutRect.prototype.size):
+        (LayoutRect.prototype.width):
+        (LayoutRect.prototype.height):
+        (LayoutRect.prototype.growBy):
+        (LayoutRect.prototype.shrinkBy):
+        (LayoutRect.prototype.moveBy):
+        (LayoutRect.prototype.isEmpty):
+        (LayoutRect.prototype.equal):
+        (LayoutRect.prototype.intersects):
+        (LayoutRect.prototype.contains):
+        (LayoutRect.prototype.clone):
+        (ASSERT_NOT_REACHED):
+        (ASSERT):
+        (Utils.computedValue):
+        (Utils.propertyIsAuto):
+        (Utils.isWidthAuto):
+        (Utils.isHeightAuto):
+        (Utils.isTopAuto):
+        (Utils.isLeftAuto):
+        (Utils.isBottomAuto):
+        (Utils.isRightAuto):
+        (Utils.width):
+        (Utils.height):
+        (Utils.top):
+        (Utils.bottom):
+        (Utils.left):
+        (Utils.right):
+        (Utils.hasBorderTop):
+        (Utils.hasBorderBottom):
+        (Utils.hasPaddingTop):
+        (Utils.hasPaddingBottom):
+        (Utils.computedMarginTop):
+        (Utils.computedMarginLeft):
+        (Utils.computedMarginBottom):
+        (Utils.computedMarginRight):
+        (Utils.computedBorderTopLeft):
+        (Utils.computedBorderBottomRight):
+        (Utils.computedPaddingTopLeft):
+        (Utils.computedPaddingBottomRight):
+        (Utils.computedBorderAndPaddingTop):
+        (Utils.computedBorderAndPaddingLeft):
+        (Utils.computedBorderAndPaddingBottom):
+        (Utils.computedBorderAndPaddingRight):
+        (Utils.computedHorizontalBorderAndPadding):
+        (Utils.computedVerticalBorderAndPadding):
+        (Utils.hasClear):
+        (Utils.hasClearLeft):
+        (Utils.hasClearRight):
+        (Utils.hasClearBoth):
+        (Utils.isBlockLevelElement):
+        (Utils.isBlockContainerElement):
+        (Utils.isInlineLevelElement):
+        (Utils.isTableElement):
+        (Utils.isRelativePositioned):
+        (Utils.isAbsolutePositioned):
+        (Utils.isFixedPositioned):
+        (Utils.isOverflowVisible):
+        (Utils.isFloatingPositioned):
+        (Utils.isFloatingLeft):
+        (Utils.mapToContainer):
+        (Utils.mapStaticToAbsolute):
+        (Utils.collectOutOfFlowDescendants):
+        (Utils.nextBreakingOpportunity):
+        (Utils.measureText):
+        (Utils.layoutTreeDump):
+        (Utils._dumpBox):
+        (Utils._dumpTree):
+        (Utils):
+        * LayoutReloaded/misc/LayoutReloadedWebKit.patch: Added.
+        * LayoutReloaded/misc/headers/BlockContainer.h: Added.
+        * LayoutReloaded/misc/headers/BlockFormattingContext.h: Added.
+        * LayoutReloaded/misc/headers/BlockMarginCollapse.h: Added.
+        * LayoutReloaded/misc/headers/Box.h: Added.
+        * LayoutReloaded/misc/headers/Container.h: Added.
+        * LayoutReloaded/misc/headers/FloatingContext.h: Added.
+        * LayoutReloaded/misc/headers/FormattingContext.h: Added.
+        * LayoutReloaded/misc/headers/InitialBlockContainer.h: Added.
+        * LayoutReloaded/misc/headers/InlineBox.h: Added.
+        * LayoutReloaded/misc/headers/LayoutContext.h: Added.
+        * LayoutReloaded/misc/headers/Text.h: Added.
+        * LayoutReloaded/test/TestHarness.js: Added.
+        (verifyLayoutTreeDump):
+        (runLayout):
+        * LayoutReloaded/test/absolute-auto-with-sibling-margin-bottom.html: Added.
+        * LayoutReloaded/test/absolute-bottom.html: Added.
+        * LayoutReloaded/test/absolute-height-stretch.html: Added.
+        * LayoutReloaded/test/absolute-left-auto.html: Added.
+        * LayoutReloaded/test/absolute-left-right-top-bottom-auto.html: Added.
+        * LayoutReloaded/test/absolute-nested.html: Added.
+        * LayoutReloaded/test/absolute-nested2.html: Added.
+        * LayoutReloaded/test/absolute-simple.html: Added.
+        * LayoutReloaded/test/absolute-width-shrink-to-fit.html: Added.
+        * LayoutReloaded/test/absolute-width-stretch.html: Added.
+        * LayoutReloaded/test/absolute-with-inline-preferred-width.html: Added.
+        * LayoutReloaded/test/absolute-with-static-block-position-nested.html: Added.
+        * LayoutReloaded/test/almost-intruding-left-float-simple.html: Added.
+        * LayoutReloaded/test/border-simple.html: Added.
+        * LayoutReloaded/test/fixed-nested.html: Added.
+        * LayoutReloaded/test/float-left-when-container-has-padding-margin.html: Added.
+        * LayoutReloaded/test/floating-box-clear-both-simple.html: Added.
+        * LayoutReloaded/test/floating-box-clear-right-simple.html: Added.
+        * LayoutReloaded/test/floating-box-left-and-right-multiple-with-top-offset.html: Added.
+        * LayoutReloaded/test/floating-box-left-and-right-multiple.html: Added.
+        * LayoutReloaded/test/floating-box-right-simple.html: Added.
+        * LayoutReloaded/test/floating-box-with-clear-siblings.html: Added.
+        * LayoutReloaded/test/floating-box-with-clear-simple.html: Added.
+        * LayoutReloaded/test/floating-box-with-new-formatting-context.html: Added.
+        * LayoutReloaded/test/floating-box-with-relative-positioned-sibling.html: Added.
+        * LayoutReloaded/test/floating-left-right-simple.html: Added.
+        * LayoutReloaded/test/floating-left-right-with-all-margins.html: Added.
+        * LayoutReloaded/test/floating-lefts-and-rights-simple.html: Added.
+        * LayoutReloaded/test/floating-multiple-lefts-in-body.html: Added.
+        * LayoutReloaded/test/floating-multiple-lefts-multiple-lines.html: Added.
+        * LayoutReloaded/test/floating-multiple-lefts.html: Added.
+        * LayoutReloaded/test/floating-sizing.html: Added.
+        * LayoutReloaded/test/floating-sizing2.html: Added.
+        * LayoutReloaded/test/floating-sizing3.html: Added.
+        * LayoutReloaded/test/floating-with-new-block-formatting-context.html: Added.
+        * LayoutReloaded/test/index.html: Added.
+        * LayoutReloaded/test/inline-content-simple.html: Added.
+        * LayoutReloaded/test/intruding-left-float-simple.html: Added.
+        * LayoutReloaded/test/margin-collapse-bottom-bottom.html: Added.
+        * LayoutReloaded/test/margin-collapse-bottom-nested.html: Added.
+        * LayoutReloaded/test/margin-collapse-first-last-are-floating.html: Added.
+        * LayoutReloaded/test/margin-collapse-simple.html: Added.
+        * LayoutReloaded/test/margin-collapse-top-nested.html: Added.
+        * LayoutReloaded/test/margin-collapse-when-child-has-padding-border.html: Added.
+        * LayoutReloaded/test/margin-collapse-with-block-formatting-context.html: Added.
+        * LayoutReloaded/test/margin-collapse-with-block-formatting-context2.html: Added.
+        * LayoutReloaded/test/margin-left-right-sizing-out-of-flow.html: Added.
+        * LayoutReloaded/test/margin-left-right-sizing.html: Added.
+        * LayoutReloaded/test/margin-propagation-simple-content-height.html: Added.
+        * LayoutReloaded/test/margin-sibling-collapse-propagated.html: Added.
+        * LayoutReloaded/test/margin-simple.html: Added.
+        * LayoutReloaded/test/negative-margin-simple.html: Added.
+        * LayoutReloaded/test/padding-nested.html: Added.
+        * LayoutReloaded/test/padding-simple.html: Added.
+        * LayoutReloaded/test/relative-auto-with-parent-offset.html: Added.
+        * LayoutReloaded/test/relative-auto.html: Added.
+        * LayoutReloaded/test/relative-bottom.html: Added.
+        * LayoutReloaded/test/relative-right.html: Added.
+        * LayoutReloaded/test/relative-siblings.html: Added.
+        * LayoutReloaded/test/relative-simple.html: Added.
+
+2018-03-09  Stephan Szabo  <stephan.szabo@sony.com>
+
+        WebKitTestRunner: Do not build accessibility files/idl when !HAVE(ACCESSIBILITY)
+        https://bugs.webkit.org/show_bug.cgi?id=183516
+
+        Reviewed by Alex Christensen.
+
+        * WebKitTestRunner/CMakeLists.txt:
+
+2018-03-09  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [webkitpy, WinCairo] Launch Apache HTTPD for HTTP Tests.
+        https://bugs.webkit.org/show_bug.cgi?id=183265
+
+        Reviewed by Daniel Bates.
+
+        Launch apache httpd server from python script for WinCairo HTTP LayoutTests. By now, AppleWin uses
+        Cygwin to launch httpd server. This patch enables native Windows to run HTTP LayoutTests by starting
+        and stopping httpd server from the script.
+
+        * Scripts/webkitpy/layout_tests/servers/apache_http_server.py:
+        (LayoutTestApacheHttpd.__init__):
+        (LayoutTestApacheHttpd._copy_apache_config_file):
+        (LayoutTestApacheHttpd):
+        (LayoutTestApacheHttpd.platform):
+        (LayoutTestApacheHttpd._spawn_process):
+        (LayoutTestApacheHttpd._stop_running_server):
+        (LayoutTestApacheHttpd._run):
+        (LayoutTestApacheHttpd._server_error):
+        * Scripts/webkitpy/layout_tests/servers/http_server_base.py:
+        (HttpServerBase.aliases):
+        (HttpServerBase):
+        (HttpServerBase._build_alias_path_pairs):
+        (HttpServerBase._build_alias_path_pairs._make_path):
+        * Scripts/webkitpy/layout_tests/servers/http_server_base_unittest.py:
+        (TestHttpServerBase.test_corrupt_pid_file):
+        (TestHttpServerBase):
+        (TestHttpServerBase.test_build_alias_path_pairs):
+        * Scripts/webkitpy/port/base.py:
+        (Port._apache_config_file_name_for_platform):
+        * Scripts/webkitpy/port/port_testcase.py:
+        (test_apache_config_file_name_for_platform):
+        * Scripts/webkitpy/port/win.py:
+        (WinPort._path_to_apache):
+        (WinCairoPort.default_baseline_search_path):
+        (WinCairoPort):
+        (WinCairoPort.check_httpd):
+
+2018-03-09  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Do not use WebKitDOMHTMLFormElement as argument of signal WebKitWebPage::will-submit-form
+        https://bugs.webkit.org/show_bug.cgi?id=183510
+
+        Reviewed by Michael Catanzaro.
+
+        Update the test to use WebKitDOMElement instead and fix a memory leak.
+
+        * TestWebKitAPI/Tests/WebKitGLib/WebExtensionTest.cpp:
+        (handleFormSubmissionCallback):
+        (willSubmitFormCallback):
+
+2018-03-08  Stephan Szabo  <stephan.szabo@sony.com>
+
+        WebKitTestRunner: Don't use accessibility controller when !HAVE(ACCESSIBILITY)
+        https://bugs.webkit.org/show_bug.cgi?id=183475
+
+        Reviewed by Youenn Fablet.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::done):
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::didClearWindowForFrame):
+
+2018-03-08  Ms2ger  <Ms2ger@igalia.com>
+
+        [WPE] Update expectations for API tests
+        https://bugs.webkit.org/show_bug.cgi?id=183434
+
+        Unreviewed test gardening.
+
+        * TestWebKitAPI/glib/TestExpectations.json:
+
+2018-03-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Leak checker is not working in WebKitGLib web process tests
+        https://bugs.webkit.org/show_bug.cgi?id=183404
+
+        Reviewed by Michael Catanzaro.
+
+        This might have regressed when we started to use the JSC garbage collector timers. The thing is that we expect
+        that the WebProcessTester object that we expose to JavaScript is released when the web frame is destroyed, but
+        that's no longer the case. On window object cleared a GC is scheduled, but JSC timers do the actual garbage
+        collection later. In the case of tests that never happens because the web process finishes quickly after the
+        test. We need to force a garbage collection at some point when the web page is destroyed. We can't use the
+        WebKitWebPage destroy signal, since we are also checking that WebKitWebPage isn't leaked. The
+        API::InjectedBundle::Client::willDestroyPage() always happen when the page is closed, even if WebKitWebPage is
+        still alive, so we can force the GC at that point. The only problem is that the frame is detached right after
+        that point, so we can't check WebKitFrame leaks. The only frame in the tests is the main one, so we can assume
+        that if WebKitWebPage is released, the frame is too.
+
+        * TestWebKitAPI/Tests/WebKitGLib/FrameTest.cpp:
+        (WebKitFrameTest::testMainFrame): Stop checking we don't leak WebKitFrame.
+        (WebKitFrameTest::testURI): Ditto.
+        (WebKitFrameTest::testJavaScriptContext): Ditto.
+        * TestWebKitAPI/Tests/WebKitGLib/TestFrame.cpp:
+        (testWebKitFrameMainFrame): Use new WebViewTest::runWebProcessTest() API.
+        (testWebKitFrameURI): Ditto.
+        (testWebKitFrameJavaScriptContext): Ditto.
+        (webkitFrameTestRun): Deleted.
+        * TestWebKitAPI/Tests/WebKitGLib/WebProcessTest.cpp:
+        (runTest): We no longer need the special case for dom-cache test.
+        (windowObjectClearedCallback): Only expose test runner object to JavaScript when loading tests.
+        (webkit_web_extension_initialize): Call webkitWebExtensionSetGarbageCollectOnPageDestroy() to ensure a garbage
+        collection is performed when the page is closing.
+        * TestWebKitAPI/Tests/WebKitGtk/DOMClientRectTest.cpp:
+        (WebKitDOMClientRectTest::testDivClientRectsPositionAndLength): Fix memory leak,
+        webkit_dom_client_rect_list_item() returns a full reference.
+        * TestWebKitAPI/Tests/WebKitGtk/TestAutocleanups.cpp:
+        (testWebProcessAutocleanups):Use new WebViewTest::runWebProcessTest() API.
+        * TestWebKitAPI/Tests/WebKitGtk/TestDOMClientRect.cpp:
+        (testWebKitDOMClientRectDivBoundingClientRectPosition): Use new WebViewTest::runWebProcessTest() API.
+        (testWebKitDOMClientRectDivClientRectsPositionAndLength): Use new WebViewTest::runWebProcessTest() API.
+        (prepareDOMForClientRectPositionTests): Deleted.
+        * TestWebKitAPI/Tests/WebKitGtk/TestDOMNode.cpp:
+        (testWebKitDOMNodeHierarchyNavigation): Use new WebViewTest::runWebProcessTest() API.
+        (testWebKitDOMNodeInsertion): Ditto.
+        (testWebKitDOMNodeTagNamesNodeList): Ditto.
+        (testWebKitDOMNodeTagNamesHTMLCollection): Ditto.
+        (testWebKitDOMObjectCache): We no longer need to run the test several times, since runWebProcessTest() loads
+        about blank after every test.
+        (prepareDOMForTagNamesTests): Deleted.
+        * TestWebKitAPI/Tests/WebKitGtk/TestDOMNodeFilter.cpp:
+        (testWebKitDOMNodeFilterTreeWalker): Use new WebViewTest::runWebProcessTest() API.
+        (testWebKitDOMNodeFilterNodeIterator): Ditto.
+        (runTest): Deleted.
+        * TestWebKitAPI/Tests/WebKitGtk/TestDOMXPathNSResolver.cpp:
+        (testWebKitDOMXPathNSResolverNative): Use new WebViewTest::runWebProcessTest() API.
+        (testWebKitDOMXPathNSResolverCustom): Ditto.
+        * TestWebKitAPI/Tests/WebKitGtk/TestEditor.cpp:
+        (testWebKitWebEditorSelectionChanged): Use new WebViewTest::runWebProcessTest() API.
+        * TestWebKitAPI/glib/WebKitGLib/WebViewTest.cpp:
+        (WebViewTest::runWebProcessTest): It now receives the contents, so it automatically loads the view using
+        "webprocess://test" as base URI, used to detect tests in the web process. It also loads about:blank after every
+        test to ensure that window object is cleared.
+        * TestWebKitAPI/glib/WebKitGLib/WebViewTest.h:
+
+2018-03-07  Youenn Fablet  <youenn@apple.com>
+
+        Match unsupported plugins based on domains and not origin
+        https://bugs.webkit.org/show_bug.cgi?id=183384
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebCore/URL.cpp:
+        (TestWebKitAPI::TEST_F):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::setPluginSupportedMode): Update to whitelist
+        localhost and not http://localhost:8080
+
+2018-03-07  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Allow apple_additions() to define additional ports
+        https://bugs.webkit.org/show_bug.cgi?id=183412
+        <rdar://problem/38232353>
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/webkitpy/port/factory.py:
+        (PortFactory.get): Allow apple_additions to define port classes to be used
+        in run-webkit-tests.
+
+2018-03-07  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Remove obsolete function from MockAppleAdditions
+        https://bugs.webkit.org/show_bug.cgi?id=183415
+        <rdar://problem/38236407>
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/webkitpy/port/port_testcase.py:
+        (bind_mock_apple_additions.MockAppleAdditions):
+        (bind_mock_apple_additions.MockAppleAdditions.ios_os_name): Deleted.
+        (bind_mock_apple_additions.MockAppleAdditions.mac_os_name): Deleted.
+
+2018-03-07  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: --dedicated-simulators does not boot the correct number of simulators
+        https://bugs.webkit.org/show_bug.cgi?id=183409
+        <rdar://problem/38224631>
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/webkitpy/port/ios_simulator.py:
+        (IOSSimulatorPort.default_child_processes): When not using dedicated simulators,
+        we should use the number of booted simulators as our default child processes.
+
+2018-03-07  Alejandro G. Castro  <alex@igalia.com>
+
+        Make NetworkRTCResolver port agnostic
+        https://bugs.webkit.org/show_bug.cgi?id=178855
+
+        Reviewed by Youenn Fablet.
+
+        Added new unit tests for he resolve and stopResolve functions. We need to compile them for the
+        other platforms when the APIs are supported.
+
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/Tests/WebCore/DNS.cpp:
+
 2018-03-06  Youenn Fablet  <youenn@apple.com>
 
         didReceiveServerRedirectForProvisionalNavigation is not called in case of document redirection with service worker registration change

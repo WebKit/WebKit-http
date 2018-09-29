@@ -221,7 +221,7 @@
 #endif
 
 #if USE(LIBWEBRTC) && PLATFORM(COCOA)
-#include "H264VideoToolboxEncoder.h"
+//#include "H264VideoToolboxEncoder.h"
 #endif
 
 #if PLATFORM(MAC)
@@ -491,6 +491,8 @@ void Internals::resetToConsistentState(Page& page)
 #endif
 
     page.settings().setStorageAccessAPIEnabled(false);
+    page.setFullscreenAutoHideDelay(0);
+    page.setFullscreenInsetTop(0);
 }
 
 Internals::Internals(Document& document)
@@ -2782,6 +2784,22 @@ void Internals::webkitDidExitFullScreenForElement(Element& element)
 
 #endif
 
+void Internals::setFullscreenInsetTop(double inset)
+{
+    Page* page = contextDocument()->frame()->page();
+    ASSERT(page);
+
+    page->setFullscreenInsetTop(inset);
+}
+
+void Internals::setFullscreenAutoHideDelay(double delay)
+{
+    Page* page = contextDocument()->frame()->page();
+    ASSERT(page);
+
+    page->setFullscreenAutoHideDelay(delay);
+}
+
 void Internals::setApplicationCacheOriginQuota(unsigned long long quota)
 {
     Document* document = contextDocument();
@@ -4181,11 +4199,10 @@ void Internals::setPageVisibility(bool isVisible)
 #if ENABLE(WEB_RTC)
 void Internals::setH264HardwareEncoderAllowed(bool allowed)
 {
-#if PLATFORM(MAC)
-    H264VideoToolboxEncoder::setHardwareEncoderForWebRTCAllowed(allowed);
-#else
-    UNUSED_PARAM(allowed);
-#endif
+    auto* document = contextDocument();
+    if (!document || !document->page())
+        return;
+    document->page()->libWebRTCProvider().setH264HardwareEncoderAllowed(allowed);
 }
 #endif
 

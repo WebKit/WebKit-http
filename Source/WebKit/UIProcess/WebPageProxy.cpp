@@ -412,6 +412,8 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     m_paymentCoordinator = std::make_unique<WebPaymentCoordinatorProxy>(*this);
 #endif
 
+    m_systemPreviewController = std::make_unique<SystemPreviewController>(*this);
+
 #if ENABLE(WEB_AUTHN)
     m_credentialsMessenger = std::make_unique<WebCredentialsMessengerProxy>(*this);
 #endif
@@ -668,6 +670,8 @@ void WebPageProxy::reattachToWebProcess()
 #if ENABLE(APPLE_PAY)
     m_paymentCoordinator = std::make_unique<WebPaymentCoordinatorProxy>(*this);
 #endif
+
+    m_systemPreviewController = std::make_unique<SystemPreviewController>(*this);
 
 #if ENABLE(WEB_AUTHN)
     m_credentialsMessenger = std::make_unique<WebCredentialsMessengerProxy>(*this);
@@ -5714,6 +5718,8 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     m_paymentCoordinator = nullptr;
 #endif
 
+    m_systemPreviewController = nullptr;
+
 #if ENABLE(WEB_AUTHN)
     m_credentialsMessenger = nullptr;
 #endif
@@ -5848,6 +5854,8 @@ WebPageCreationParameters WebPageProxy::creationParameters()
 #endif
 #if PLATFORM(MAC)
     parameters.colorSpace = m_pageClient.colorSpace();
+    parameters.useSystemAppearance = m_useSystemAppearance;
+    parameters.defaultAppearance = m_defaultAppearance;
 #endif
 #if PLATFORM(IOS)
     parameters.screenSize = screenSize();
@@ -6796,13 +6804,10 @@ void WebPageProxy::isPlayingMediaDidChange(MediaProducer::MediaStateFlags newSta
     if ((oldState & playingMediaMask) != (m_mediaState & playingMediaMask))
         m_uiClient->isPlayingMediaDidChange(*this);
 
-#if PLATFORM(MAC)
     if ((oldState & MediaProducer::HasAudioOrVideo) != (m_mediaState & MediaProducer::HasAudioOrVideo))
         videoControlsManagerDidChange();
-#endif
 }
 
-#if PLATFORM(MAC)
 void WebPageProxy::videoControlsManagerDidChange()
 {
     m_pageClient.videoControlsManagerDidChange();
@@ -6810,7 +6815,7 @@ void WebPageProxy::videoControlsManagerDidChange()
 
 bool WebPageProxy::hasActiveVideoForControlsManager() const
 {
-#if ENABLE(VIDEO_PRESENTATION_MODE)
+#if (PLATFORM(IOS) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     return m_playbackSessionManager && m_playbackSessionManager->controlsManagerInterface();
 #else
     return false;
@@ -6819,7 +6824,7 @@ bool WebPageProxy::hasActiveVideoForControlsManager() const
 
 void WebPageProxy::requestControlledElementID() const
 {
-#if ENABLE(VIDEO_PRESENTATION_MODE)
+#if (PLATFORM(IOS) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     if (m_playbackSessionManager)
         m_playbackSessionManager->requestControlledElementID();
 #endif
@@ -6827,18 +6832,19 @@ void WebPageProxy::requestControlledElementID() const
 
 void WebPageProxy::handleControlledElementIDResponse(const String& identifier) const
 {
+#if PLATFORM(MAC)
     m_pageClient.handleControlledElementIDResponse(identifier);
+#endif
 }
 
 bool WebPageProxy::isPlayingVideoInEnhancedFullscreen() const
 {
-#if ENABLE(VIDEO_PRESENTATION_MODE)
+#if (PLATFORM(IOS) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
     return m_videoFullscreenManager && m_videoFullscreenManager->isPlayingVideoInEnhancedFullscreen();
 #else
     return false;
 #endif
 }
-#endif
 
 #if PLATFORM(COCOA)
 void WebPageProxy::requestActiveNowPlayingSessionInfo(Ref<NowPlayingInfoCallback>&& callback)
@@ -6944,6 +6950,30 @@ void WebPageProxy::handleAcceptedCandidate(WebCore::TextCheckingResult acceptedC
 void WebPageProxy::didHandleAcceptedCandidate()
 {
     m_pageClient.didHandleAcceptedCandidate();
+}
+    
+void WebPageProxy::setUseSystemAppearance(bool useSystemAppearance)
+{
+    if (!isValid())
+        return;
+    
+    if (useSystemAppearance == m_useSystemAppearance)
+        return;
+    
+    m_useSystemAppearance = useSystemAppearance;
+    m_process->send(Messages::WebPage::SetUseSystemAppearance(useSystemAppearance), m_pageID);
+}
+    
+void WebPageProxy::setDefaultAppearance(bool defaultAppearance)
+{
+    if (!isValid())
+        return;
+    
+    if (defaultAppearance == m_defaultAppearance)
+        return;
+    
+    m_defaultAppearance = defaultAppearance;
+    m_process->send(Messages::WebPage::SetDefaultAppearance(defaultAppearance), m_pageID);
 }
 
 void WebPageProxy::setHeaderBannerHeightForTesting(int height)

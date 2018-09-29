@@ -1959,9 +1959,7 @@ mathml/presentation/mathvariant-tokens.html [ ImageOnlyFailure ]
 mathml/presentation/tokenElements-mathvariant.html [ ImageOnlyFailure ]
 
 # These tests require the Latin Modern Math font.
-mathml/opentype/fraction-line.html [ Skip ]
 mathml/opentype/large-operators-italic-correction.html [ Skip ]
-mathml/presentation/fractions-linethickness.html [ Skip ]
 ################################################################################
 #################          End MathML Issues                ####################
 ################################################################################
@@ -3833,6 +3831,8 @@ webkit.org/b/179296 fast/css/object-position/object-position-embed.html [ ImageO
 webkit.org/b/179296 fast/css/object-position/object-position-object.html [ ImageOnlyFailure ]
 
 webkit.org/b/179297 fast/loader/empty-embed-src-attribute.html [ Pass Crash ]
+webkit.org/b/179297 http/tests/preload/onerror_event.html [ Crash Pass ]
+webkit.org/b/179297 http/wpt/resource-timing/rt-initiatorType-media.html [ Crash Failure ]
 
 webkit.org/b/179299 fast/html/menuitem-element.html [ Failure ]
 
@@ -3893,8 +3893,6 @@ webkit.org/b/182239 js/dom/array-with-double-push.html [ Failure ]
 
 webkit.org/b/182626 accessibility/aria-hidden-updates-alldescendants.html [ Failure ]
 
-webkit.org/b/179297 http/tests/preload/onerror_event.html [ Crash Pass ]
-
 # The following tests are failing only on ews203.
 webkit.org/b/182694 fast/text/tatechuyoko.html [ Failure ]
 webkit.org/b/182694 imported/mathml-in-html5/mathml/presentation-markup/fractions/frac-parameters-1.html [ Failure ]
@@ -3928,3 +3926,11 @@ webkit.org/b/182694 imported/mozilla/svg/smil/sort/sort-startAfter-1.svg [ Crash
 webkit.org/b/182694 fast/css/disabled-author-styles.html [ Timeout ]
 
 webkit.org/b/183322 http/wpt/html/browsers/history/the-location-interface/location-protocol-setter-non-broken-async-delegate.html [ Failure ]
+
+webkit.org/b/183393 fast/loader/redirect-to-invalid-url-using-javascript-disallowed.html [ Skip ]
+webkit.org/b/183393 fast/loader/redirect-to-invalid-url-using-meta-refresh-disallowed-async-delegates.html [ Skip ]
+webkit.org/b/183393 fast/loader/redirect-to-invalid-url-using-meta-refresh-disallowed.html [ Skip ]
+webkit.org/b/183393 fast/loader/window-open-to-invalid-url-disallowed.html [ Skip ]
+
+webkit.org/b/183569 webanimations/css-animations.html [ Failure ]
+webkit.org/b/183569 webanimations/css-transitions.html [ Failure ]

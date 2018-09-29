@@ -106,7 +106,8 @@ enum class FunctionType {
 
 enum class FragmentPositionInRootFragments {
     Rightmost,
-    NotRightmost
+    AdjacentToRightmost,
+    Other
 };
 
 enum class VisitedMode {
@@ -178,6 +179,7 @@ struct SelectorFragment {
     FragmentRelation relationToLeftFragment;
     FragmentRelation relationToRightFragment;
     FragmentPositionInRootFragments positionInRootFragments;
+    bool isRightmostOrAdjacent { false };
 
     BacktrackingAction traversalBacktrackingAction = BacktrackingAction::NoBacktracking;
     BacktrackingAction matchingTagNameBacktrackingAction = BacktrackingAction::NoBacktracking;
@@ -422,12 +424,14 @@ static inline FunctionType mostRestrictiveFunctionType(FunctionType a, FunctionT
     return std::max(a, b);
 }
 
-static inline bool fragmentMatchesTheRightmostElement(SelectorContext selectorContext, const SelectorFragment& fragment)
+static inline bool fragmentMatchesTheRightmostElement(const SelectorFragment& fragment)
 {
-    // Return true if the position of this fragment is Rightmost in the root fragments.
-    // In this case, we should use the RenderStyle stored in the CheckingContext.
-    ASSERT_UNUSED(selectorContext, selectorContext != SelectorContext::QuerySelector);
     return fragment.relationToRightFragment == FragmentRelation::Rightmost && fragment.positionInRootFragments == FragmentPositionInRootFragments::Rightmost;
+}
+
+static inline bool fragmentMatchesRightmostOrAdjacentElement(const SelectorFragment& fragment)
+{
+    return fragment.isRightmostOrAdjacent && fragment.positionInRootFragments != FragmentPositionInRootFragments::Other;
 }
 
 FunctionType SelectorFragment::appendUnoptimizedPseudoClassWithContext(bool (*matcher)(const SelectorChecker::CheckingContext&))
@@ -876,6 +880,7 @@ static bool isScrollbarPseudoElement(CSSSelector::PseudoElementType type)
 static FunctionType constructFragmentsInternal(const CSSSelector* rootSelector, SelectorContext selectorContext, SelectorFragmentList& selectorFragments, FragmentsLevel fragmentLevel, FragmentPositionInRootFragments positionInRootFragments, bool visitedMatchEnabled, VisitedMode& visitedMode, PseudoElementMatchingBehavior pseudoElementMatchingBehavior)
 {
     FragmentRelation relationToPreviousFragment = FragmentRelation::Rightmost;
+    bool isRightmostOrAdjacent = positionInRootFragments != FragmentPositionInRootFragments::Other;
     FunctionType functionType = FunctionType::SimpleSelectorChecker;
     SelectorFragment* fragment = nullptr;
     unsigned specificity = 0;
@@ -917,7 +922,7 @@ static FunctionType constructFragmentsInternal(const CSSSelector* rootSelector, 
         case CSSSelector::PseudoClass: {
             FragmentPositionInRootFragments subPosition = positionInRootFragments;
             if (relationToPreviousFragment != FragmentRelation::Rightmost)
-                subPosition = FragmentPositionInRootFragments::NotRightmost;
+                subPosition = isRightmostOrAdjacent ? FragmentPositionInRootFragments::AdjacentToRightmost : FragmentPositionInRootFragments::Other;
             if (fragment->pseudoElementSelector && isScrollbarPseudoElement(fragment->pseudoElementSelector->pseudoElementType()))
                 functionType = mostRestrictiveFunctionType(functionType, addScrollbarPseudoClassType(*selector, *fragment));
             else {
@@ -1019,7 +1024,10 @@ static FunctionType constructFragmentsInternal(const CSSSelector* rootSelector, 
         fragment->relationToLeftFragment = fragmentRelationForSelectorRelation(relation);
         fragment->relationToRightFragment = relationToPreviousFragment;
         fragment->positionInRootFragments = positionInRootFragments;
+        fragment->isRightmostOrAdjacent = isRightmostOrAdjacent;
         relationToPreviousFragment = fragment->relationToLeftFragment;
+        if (relationToPreviousFragment != FragmentRelation::Rightmost && relationToPreviousFragment != FragmentRelation::DirectAdjacent && relationToPreviousFragment != FragmentRelation::IndirectAdjacent)
+            isRightmostOrAdjacent = false;
 
         if (fragmentLevel != FragmentsLevel::Root)
             fragment->onlyMatchesLinksInQuirksMode = false;
@@ -1734,7 +1742,7 @@ void SelectorCodeGenerator::generateSelectorChecker()
     Assembler::JumpList failureOnFunctionEntry;
     // Test selector's pseudo element equals to requested PseudoId.
     if (m_selectorContext != SelectorContext::QuerySelector && m_functionType == FunctionType::SelectorCheckerWithCheckingContext) {
-        ASSERT_WITH_MESSAGE(fragmentMatchesTheRightmostElement(m_selectorContext, m_selectorFragments.first()), "Matching pseudo elements only make sense for the rightmost fragment.");
+        ASSERT_WITH_MESSAGE(fragmentMatchesTheRightmostElement(m_selectorFragments.first()), "Matching pseudo elements only make sense for the rightmost fragment.");
         generateRequestedPseudoElementEqualsToSelectorPseudoElement(failureOnFunctionEntry, m_selectorFragments.first(), checkingContextRegister);
     }
 
@@ -1895,8 +1903,12 @@ void SelectorCodeGenerator::generateSelectorCheckerExcludingPseudoElements(Assem
             generateIndirectAdjacentTreeWalker(failureCases, fragment);
             break;
         }
-        if (shouldMarkStyleIsAffectedByPreviousSibling(fragment))
-            generateAddStyleRelationIfResolvingStyle(elementAddressRegister, Style::Relation::AffectedByPreviousSibling);
+        if (shouldMarkStyleIsAffectedByPreviousSibling(fragment)) {
+            if (fragmentMatchesTheRightmostElement(fragment))
+                generateAddStyleRelationIfResolvingStyle(elementAddressRegister, Style::Relation::AffectedByPreviousSibling);
+            else
+                generateAddStyleRelationIfResolvingStyle(elementAddressRegister, Style::Relation::DescendantsAffectedByPreviousSibling);
+        }
         generateBacktrackingTailsIfNeeded(failureCases, fragment);
     }
 
@@ -3490,7 +3502,10 @@ void SelectorCodeGenerator::generateElementIsNthChild(Assembler::JumpList& failu
     {
         LocalRegister parentElement(m_registerAllocator);
         generateWalkToParentElement(failureCases, parentElement);
-        generateAddStyleRelationIfResolvingStyle(parentElement, Style::Relation::ChildrenAffectedByForwardPositionalRules);
+        auto relation = fragmentMatchesRightmostOrAdjacentElement(fragment)
+            ? Style::Relation::ChildrenAffectedByForwardPositionalRules
+            : Style::Relation::DescendantsAffectedByForwardPositionalRules;
+        generateAddStyleRelationIfResolvingStyle(parentElement, relation);
     }
 
     Vector<std::pair<int, int>, 32> validSubsetFilters;
@@ -3550,7 +3565,10 @@ void SelectorCodeGenerator::generateElementIsNthChildOf(Assembler::JumpList& fai
     {
         LocalRegister parentElement(m_registerAllocator);
         generateWalkToParentElement(failureCases, parentElement);
-        generateAddStyleRelationIfResolvingStyle(parentElement, Style::Relation::ChildrenAffectedByForwardPositionalRules);
+        auto relation = fragmentMatchesRightmostOrAdjacentElement(fragment)
+            ? Style::Relation::ChildrenAffectedByForwardPositionalRules
+            : Style::Relation::DescendantsAffectedByForwardPositionalRules;
+        generateAddStyleRelationIfResolvingStyle(parentElement, relation);
     }
 
     // The initial element must match the selector list.
@@ -3603,7 +3621,10 @@ void SelectorCodeGenerator::generateElementIsNthLastChild(Assembler::JumpList& f
         LocalRegister parentElement(m_registerAllocator);
         generateWalkToParentElement(failureCases, parentElement);
 
-        generateAddStyleRelationIfResolvingStyle(parentElement, Style::Relation::ChildrenAffectedByBackwardPositionalRules);
+        auto relation = fragmentMatchesRightmostOrAdjacentElement(fragment)
+            ? Style::Relation::ChildrenAffectedByBackwardPositionalRules
+            : Style::Relation::DescendantsAffectedByBackwardPositionalRules;
+        generateAddStyleRelationIfResolvingStyle(parentElement, relation);
 
         failureCases.append(m_assembler.branchTest32(Assembler::Zero, Assembler::Address(parentElement, Node::nodeFlagsMemoryOffset()), Assembler::TrustedImm32(Node::flagIsParsingChildrenFinished())));
 
@@ -3731,7 +3752,7 @@ void SelectorCodeGenerator::generateElementHasPseudoElement(Assembler::JumpList&
 {
     ASSERT_UNUSED(fragment, fragment.pseudoElementSelector);
     ASSERT_WITH_MESSAGE(m_selectorContext != SelectorContext::QuerySelector, "When the fragment has pseudo element, the selector becomes CannotMatchAnything for QuerySelector and this test function is not called.");
-    ASSERT_WITH_MESSAGE_UNUSED(fragment, fragmentMatchesTheRightmostElement(m_selectorContext, fragment), "Virtual pseudo elements handling is only effective in the rightmost fragment. If the current fragment is not rightmost fragment, CSS JIT compiler makes it CannotMatchAnything in fragment construction phase, so never reach here.");
+    ASSERT_WITH_MESSAGE_UNUSED(fragment, fragmentMatchesTheRightmostElement(fragment), "Virtual pseudo elements handling is only effective in the rightmost fragment. If the current fragment is not rightmost fragment, CSS JIT compiler makes it CannotMatchAnything in fragment construction phase, so never reach here.");
 }
 
 void SelectorCodeGenerator::generateRequestedPseudoElementEqualsToSelectorPseudoElement(Assembler::JumpList& failureCases, const SelectorFragment& fragment, Assembler::RegisterID checkingContext)
@@ -3741,7 +3762,7 @@ void SelectorCodeGenerator::generateRequestedPseudoElementEqualsToSelectorPseudo
     // Make sure that the requested pseudoId equals to the pseudo element of the rightmost fragment.
     // If the rightmost fragment doesn't have a pseudo element, the requested pseudoId need to be NOPSEUDO to succeed the matching.
     // Otherwise, if the requested pseudoId is not NOPSEUDO, the requested pseudoId need to equal to the pseudo element of the rightmost fragment.
-    if (fragmentMatchesTheRightmostElement(m_selectorContext, fragment)) {
+    if (fragmentMatchesTheRightmostElement(fragment)) {
         if (!fragment.pseudoElementSelector)
             failureCases.append(m_assembler.branch8(Assembler::NotEqual, Assembler::Address(checkingContext, OBJECT_OFFSETOF(SelectorChecker::CheckingContext, pseudoId)), Assembler::TrustedImm32(NOPSEUDO)));
         else {

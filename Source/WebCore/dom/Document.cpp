@@ -111,6 +111,7 @@
 #include "JSDOMPromiseDeferred.h"
 #include "JSLazyEventListener.h"
 #include "KeyboardEvent.h"
+#include "KeyframeEffectReadOnly.h"
 #include "LayoutDisallowedScope.h"
 #include "LoaderStrategy.h"
 #include "Logging.h"
@@ -495,9 +496,6 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_constantPropertyMap(std::make_unique<ConstantPropertyMap>(*this))
     , m_documentClasses(documentClasses)
     , m_eventQueue(*this)
-#if ENABLE(FULLSCREEN_API)
-    , m_fullScreenChangeDelayTimer(*this, &Document::fullScreenChangeDelayTimerFired)
-#endif
     , m_loadEventDelayTimer(*this, &Document::loadEventDelayTimerFired)
 #if PLATFORM(IOS)
 #if ENABLE(DEVICE_ORIENTATION)
@@ -1176,11 +1174,6 @@ CustomElementNameValidationStatus Document::validateCustomElementName(const Atom
         return CustomElementNameValidationStatus::ConflictsWithStandardElementName;
 
     return CustomElementNameValidationStatus::Valid;
-}
-
-bool Document::isCSSGridLayoutEnabled() const
-{
-    return RuntimeEnabledFeatures::sharedFeatures().isCSSGridLayoutEnabled();
 }
 
 ExceptionOr<Ref<Element>> Document::createElementNS(const AtomicString& namespaceURI, const String& qualifiedName)
@@ -2076,6 +2069,10 @@ bool Document::updateLayoutIfDimensionsOutOfDate(Element& element, DimensionsChe
         // If we don't have a renderer or if the renderer needs layout for any reason, give up.
         requireFullLayout = true;
     }
+
+    // Turn off this optimization for input elements with shadow content.
+    if (is<HTMLInputElement>(element))
+        requireFullLayout = true;
 
     bool isVertical = renderer && !renderer->isHorizontalWritingMode();
     bool checkingLogicalWidth = ((dimensionsCheck & WidthDimensionsCheck) && !isVertical) || ((dimensionsCheck & HeightDimensionsCheck) && isVertical);
@@ -6089,14 +6086,19 @@ void Document::requestFullScreenForElement(Element* element, FullScreenCheckType
         // 5. Return, and run the remaining steps asynchronously.
         // 6. Optionally, perform some animation.
         m_areKeysEnabledInFullScreen = hasKeyboardAccess;
-        page()->chrome().client().enterFullScreenForElement(*element);
+        m_fullScreenTaskQueue.enqueueTask([this, element = makeRefPtr(element)] {
+            if (auto page = this->page())
+                page->chrome().client().enterFullScreenForElement(*element);
+        });
 
         // 7. Optionally, display a message indicating how the user can exit displaying the context object fullscreen.
         return;
     } while (0);
 
     m_fullScreenErrorEventTargetQueue.append(element ? element : documentElement());
-    m_fullScreenChangeDelayTimer.startOneShot(0_s);
+    m_fullScreenTaskQueue.enqueueTask([this] {
+        dispatchFullScreenChangeEvents();
+    });
 }
 
 void Document::webkitCancelFullScreen()
@@ -6174,19 +6176,21 @@ void Document::webkitExitFullscreen()
 
     // 6. Return, and run the remaining steps asynchronously.
     // 7. Optionally, perform some animation.
+    m_fullScreenTaskQueue.enqueueTask([this, newTop = makeRefPtr(newTop), fullScreenElement = m_fullScreenElement] {
+        auto* page = this->page();
+        if (!page)
+            return;
 
-    if (!page())
-        return;
+        // Only exit out of full screen window mode if there are no remaining elements in the 
+        // full screen stack.
+        if (!newTop) {
+            page->chrome().client().exitFullScreenForElement(fullScreenElement.get());
+            return;
+        }
 
-    // Only exit out of full screen window mode if there are no remaining elements in the 
-    // full screen stack.
-    if (!newTop) {
-        page()->chrome().client().exitFullScreenForElement(m_fullScreenElement.get());
-        return;
-    }
-
-    // Otherwise, notify the chrome of the new full screen element.
-    page()->chrome().client().enterFullScreenForElement(*newTop);
+        // Otherwise, notify the chrome of the new full screen element.
+        page->chrome().client().enterFullScreenForElement(*newTop);
+    });
 }
 
 bool Document::webkitFullscreenEnabled() const
@@ -6251,9 +6255,7 @@ void Document::webkitWillEnterFullScreenForElement(Element* element)
     m_fullScreenElement->setContainsFullScreenElementOnAncestorsCrossingFrameBoundaries(true);
 
     resolveStyle(ResolveStyleType::Rebuild);
-#if PLATFORM(IOS) && ENABLE(FULLSCREEN_API)
-    m_fullScreenChangeDelayTimer.startOneShot(0_s);
-#endif
+    dispatchFullScreenChangeEvents();
 }
 
 void Document::webkitDidEnterFullScreenForElement(Element*)
@@ -6265,10 +6267,6 @@ void Document::webkitDidEnterFullScreenForElement(Element*)
         return;
 
     m_fullScreenElement->didBecomeFullscreenElement();
-
-#if !PLATFORM(IOS) || !ENABLE(FULLSCREEN_API)
-    m_fullScreenChangeDelayTimer.startOneShot(0_s);
-#endif
 }
 
 void Document::webkitWillExitFullScreenForElement(Element*)
@@ -6305,7 +6303,7 @@ void Document::webkitDidExitFullScreenForElement(Element*)
     bool eventTargetQueuesEmpty = m_fullScreenChangeEventTargetQueue.isEmpty() && m_fullScreenErrorEventTargetQueue.isEmpty();
     Document& exitingDocument = eventTargetQueuesEmpty ? topDocument() : *this;
 
-    exitingDocument.m_fullScreenChangeDelayTimer.startOneShot(0_s);
+    exitingDocument.dispatchFullScreenChangeEvents();
 }
 
 void Document::setFullScreenRenderer(RenderTreeBuilder& builder, RenderFullScreen& renderer)
@@ -6327,7 +6325,7 @@ void Document::setFullScreenRenderer(RenderTreeBuilder& builder, RenderFullScree
     m_fullScreenRenderer = makeWeakPtr(renderer);
 }
 
-void Document::fullScreenChangeDelayTimerFired()
+void Document::dispatchFullScreenChangeEvents()
 {
     // Since we dispatch events in this function, it's possible that the
     // document will be detached and GC'd. We protect it here to make sure we
@@ -7028,6 +7026,15 @@ float Document::deviceScaleFactor() const
         deviceScaleFactor = documentPage->deviceScaleFactor();
     return deviceScaleFactor;
 }
+    
+bool Document::useSystemAppearance() const
+{
+    bool useSystemAppearance = false;
+    if (Page* documentPage = page())
+        useSystemAppearance = documentPage->useSystemAppearance();
+    return useSystemAppearance;
+}
+    
 void Document::didAssociateFormControl(Element* element)
 {
     if (!frame() || !frame()->page() || !frame()->page()->chrome().client().shouldNotifyOnFormChanges())
@@ -7632,11 +7639,22 @@ DocumentTimeline& Document::timeline()
 
 Vector<RefPtr<WebAnimation>> Document::getAnimations()
 {
+    // FIXME: Filter and order the list as specified (webkit.org/b/179535).
+
+    // For the list of animations to be current, we need to account for any pending CSS changes,
+    // such as updates to CSS Animations and CSS Transitions.
+    updateStyleIfNeeded();
+
     Vector<RefPtr<WebAnimation>> animations;
     if (m_timeline) {
-        // FIXME: Filter and order the list as specified (webkit.org/b/179535).
-        for (auto& animation : m_timeline->animations())
-            animations.append(animation);
+        for (auto& animation : m_timeline->animations()) {
+            if (animation->canBeListed() && is<KeyframeEffectReadOnly>(animation->effect())) {
+                if (auto* target = downcast<KeyframeEffectReadOnly>(animation->effect())->target()) {
+                    if (target->isDescendantOf(this))
+                        animations.append(animation);
+                }
+            }
+        }
     }
     return animations;
 }

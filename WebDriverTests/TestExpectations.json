@@ -282,6 +282,9 @@
             "test_no_browsing_context": {
                 "expected": {"all": {"status": ["PASS"]}}
             },
+            "test_closed_context": {
+                "expected": {"all": {"status": ["SKIP"]}}
+            },
             "test_disabled_element_not_resettable": {
                 "expected": {"all": {"status": ["PASS"]}}
             },
@@ -429,9 +432,6 @@
         "subtests": {
             "test_element_not_found": {
                 "expected": {"all": {"status": ["FAIL"], "bug": "webkit.org/b/180413"}}
-            },
-            "test_element": {
-                "expected": {"all": {"status": ["FAIL"], "bug": "webkit.org/b/180414"}}
             }
         }
     },

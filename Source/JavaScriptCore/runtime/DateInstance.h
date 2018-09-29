@@ -25,7 +25,7 @@
 
 namespace JSC {
 
-class DateInstance : public JSWrapperObject {
+class DateInstance final : public JSWrapperObject {
 protected:
     JS_EXPORT_PRIVATE DateInstance(VM&, Structure*);
     void finishCreation(VM&);
@@ -79,13 +79,5 @@ private:
 
     mutable PoisonedRefPtr<DateInstancePoison, DateInstanceData> m_data;
 };
-
-DateInstance* asDateInstance(JSValue);
-
-inline DateInstance* asDateInstance(JSValue value)
-{
-    ASSERT(asObject(value)->inherits(*value.getObject()->vm(), DateInstance::info()));
-    return static_cast<DateInstance*>(asObject(value));
-}
 
 } // namespace JSC

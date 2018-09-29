@@ -1,3 +1,172 @@
+2018-03-12  Javier Fernandez  <jfernandez@igalia.com>
+
+        Remove GridLayout runtime flag
+        https://bugs.webkit.org/show_bug.cgi?id=183484
+
+        Reviewed by Myles C. Maxfield.
+
+        The Grid Layout feature has been enabled by default for almost a
+        year, so I think it's time to remove the runtime flag and the
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2018-03-12  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Implement CSS Animations and CSS Transitions as Web Animations
+        https://bugs.webkit.org/show_bug.cgi?id=183504
+        <rdar://problem/38372965>
+
+        Reviewed by Dean Jackson and Jon Lee.
+
+        Add the missing WebKitLegacy support the cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled flag
+        which is required for the matching <!-- webkit-test-runner --> flag to work in DumpRenderTree.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences setModernMediaControlsEnabled:]):
+        (-[WebPreferences cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled]):
+        (-[WebPreferences setCSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2018-03-10  Megan Gardner  <megan_gardner@apple.com>
+
+        Media query for default appearance
+        https://bugs.webkit.org/show_bug.cgi?id=183539
+        <rdar://problem/38326388>
+
+        Reviewed by Tim Horton.
+
+        Write a media query to evaluate appearance.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView _setUseSystemAppearance:]):
+
+2018-03-09  Andy Estes  <aestes@apple.com>
+
+        [Mac] WebKit fails to receive file promises when the embedding app is sandboxed
+        https://bugs.webkit.org/show_bug.cgi?id=183489
+        <rdar://problem/38267517>
+
+        WebKitLegacy calls -[NSFilePromiseReceiver receivePromisedFilesAtDestination:...] with
+        NSTemporaryDirectory() as the destination for receiving file promise drops. AppKit attempts
+        to issue a sandbox extension for this directory, but for security reasons App Sandbox
+        refuses to do so for NSTemporaryDirectory() itself. As a result, AppKit will call our reader
+        block with a nil error and a valid file URL, but no file will actually exist at that URL.
+
+        In order for App Sandbox to grant issuing the sandbox extension needed by AppKit, we need to
+        use some other destination directory. This patch uses FileSystem::createTemporaryDirectory()
+        to securely create a unique temporary directory inside NSTemporaryDirectory() for use as the
+        drop destination.
+
+        Reviewed by Wenson Hsieh.
+
+        * WebView/WebView.mm:
+        (-[WebView performDragOperation:]):
+
+2018-03-08  Megan Gardner  <megan_gardner@apple.com>
+
+        Allow WebViews to disable system appearance
+        https://bugs.webkit.org/show_bug.cgi?id=183418
+        <rdar://problem/36975642>
+
+        Reviewed by Tim Horton.
+
+        Allow webviews to choose whether or not to follow the default system appearance.
+
+        * WebView/WebView.mm:
+        (-[WebView _setUseSystemAppearance:]):
+        (-[WebView _useSystemAppearance]):
+        * WebView/WebViewPrivate.h:
+
+2018-03-08  Youenn Fablet  <youenn@apple.com>
+
+        libwebrtc update broke internal builds
+        https://bugs.webkit.org/show_bug.cgi?id=183454
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/WebKitLegacy.xcconfig:
+
+2018-03-08  Chris Dumez  <cdumez@apple.com>
+
+        Possible null dereference of the page under WebFrameNetworkingContext::storageSession()
+        https://bugs.webkit.org/show_bug.cgi?id=183455
+        <rdar://problem/38191749>
+
+        Reviewed by Youenn Fablet.
+
+        Add a null check for the page as we have evidence from crashes that it can be null.
+        Other functions in WebFrameNetworkingContext already null check the page as well,
+        not just the frame so this is consistent.
+
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        (WebFrameNetworkingContext::storageSession const):
+
+2018-03-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Add inherits<T>(VM&) leveraging JSCast fast path
+        https://bugs.webkit.org/show_bug.cgi?id=183429
+
+        Reviewed by Mark Lam.
+
+        * DOM/DOM.mm:
+        (+[DOMNode _nodeFromJSWrapper:]):
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::retainLocalObject):
+        (WebKit::NetscapePluginInstanceProxy::releaseLocalObject):
+        * Plugins/Hosted/ProxyInstance.mm:
+        (WebKit::ProxyInstance::invokeMethod):
+        * WebView/WebView.mm:
+        (aeDescFromJSValue):
+
+2018-03-08  Tim Horton  <timothy_horton@apple.com>
+
+        Stop linking ApplicationServices directly
+        https://bugs.webkit.org/show_bug.cgi?id=182867
+        <rdar://problem/38252142>
+
+        Reviewed by Alex Christensen.
+
+        The frameworks that we use that live inside ApplicationServices
+        have mostly moved out, so import them directly.
+
+        * Carbon/CarbonUtils.h:
+        * WebKitPrefix.h:
+        * WebView/WebHTMLView.mm:
+        * WebView/WebPDFView.mm:
+
+2018-03-07  Tim Horton  <timothy_horton@apple.com>
+
+        Sort and separate FeatureDefines.xcconfig
+        https://bugs.webkit.org/show_bug.cgi?id=183427
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Sort and split FeatureDefines into paragraphs
+        (to make it easier to sort later).
+
+2018-03-07  Youenn Fablet  <youenn@apple.com>
+
+        Match unsupported plugins based on domains and not origin
+        https://bugs.webkit.org/show_bug.cgi?id=183384
+
+        Reviewed by Chris Dumez.
+
+        * WebCoreSupport/WebPluginInfoProvider.h:
+        * WebCoreSupport/WebPluginInfoProvider.mm:
+        (WebPluginInfoProvider::getPluginInfo):
+        (WebPluginInfoProvider::getWebVisiblePluginInfo):
+
 2018-03-05  Andy Estes  <aestes@apple.com>
 
         [Mac] Teach WebCore::Pasteboard about file promise drags

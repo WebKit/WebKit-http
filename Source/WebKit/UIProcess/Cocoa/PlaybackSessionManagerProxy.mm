@@ -258,6 +258,13 @@ void PlaybackSessionModelContext::mutedChanged(bool muted)
         client->mutedChanged(muted);
 }
 
+void PlaybackSessionModelContext::pictureInPictureActiveChanged(bool active)
+{
+    m_pictureInPictureActive = active;
+    for (auto* client : m_clients)
+        client->pictureInPictureActiveChanged(active);
+}
+
 #pragma mark - PlaybackSessionManagerProxy
 
 RefPtr<PlaybackSessionManagerProxy> PlaybackSessionManagerProxy::create(WebPageProxy& page)
@@ -339,7 +346,6 @@ void PlaybackSessionManagerProxy::removeClientForContext(uint64_t contextId)
 
 void PlaybackSessionManagerProxy::setUpPlaybackControlsManagerWithID(uint64_t contextId)
 {
-#if PLATFORM(MAC)
     if (m_controlsManagerContextId == contextId)
         return;
 
@@ -351,21 +357,16 @@ void PlaybackSessionManagerProxy::setUpPlaybackControlsManagerWithID(uint64_t co
     addClientForContext(m_controlsManagerContextId);
 
     m_page->videoControlsManagerDidChange();
-#else
-    UNUSED_PARAM(contextId);
-#endif
 }
 
 void PlaybackSessionManagerProxy::clearPlaybackControlsManager()
 {
-#if PLATFORM(MAC)
     if (!m_controlsManagerContextId)
         return;
 
     removeClientForContext(m_controlsManagerContextId);
     m_controlsManagerContextId = 0;
     m_page->videoControlsManagerDidChange();
-#endif
 }
 
 void PlaybackSessionManagerProxy::resetMediaState(uint64_t contextId)
@@ -454,6 +455,10 @@ void PlaybackSessionManagerProxy::rateChanged(uint64_t contextId, bool isPlaying
     ensureModel(contextId).rateChanged(isPlaying, rate);
 }
 
+void PlaybackSessionManagerProxy::pictureInPictureActiveChanged(uint64_t contextId, bool active)
+{
+    ensureModel(contextId).pictureInPictureActiveChanged(active);
+}
 
 void PlaybackSessionManagerProxy::handleControlledElementIDResponse(uint64_t contextId, String identifier) const
 {

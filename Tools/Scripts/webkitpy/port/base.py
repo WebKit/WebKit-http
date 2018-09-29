@@ -47,7 +47,7 @@ from webkitpy.common import find_files
 from webkitpy.common import read_checksum_from_png
 from webkitpy.common.memoized import memoized
 from webkitpy.common.prettypatch import PrettyPatch
-from webkitpy.common.system import path
+from webkitpy.common.system import path, pemfile
 from webkitpy.common.system.executive import ScriptError
 from webkitpy.common.version_name_map import PUBLIC_TABLE, INTERNAL_TABLE, VersionNameMap
 from webkitpy.common.wavediff import WaveDiff
@@ -991,12 +991,6 @@ class Port(object):
             return True
         return web_platform_test_server.is_wpt_server_running(self)
 
-    def _extract_certificate_from_pem(self, pem_file, destination_certificate_file):
-        return self._executive.run_command(['openssl', 'x509', '-outform', 'pem', '-in', pem_file, '-out', destination_certificate_file], return_exit_code=True) == 0
-
-    def _extract_private_key_from_pem(self, pem_file, destination_private_key_file):
-        return self._executive.run_command(['openssl', 'rsa', '-in', pem_file, '-out', destination_private_key_file], return_exit_code=True) == 0
-
     def start_websocket_server(self):
         """Start a web server. Raise an error if it can't start or is already running.
 
@@ -1007,16 +1001,20 @@ class Port(object):
         server.start()
         self._websocket_server = server
 
-        pem_file = self._filesystem.join(self.layout_tests_dir(), "http", "conf", "webkit-httpd.pem")
         websocket_server_temporary_directory = self._filesystem.mkdtemp(prefix='webkitpy-websocket-server')
-        certificate_file = self._filesystem.join(str(websocket_server_temporary_directory), 'webkit-httpd.crt')
-        private_key_file = self._filesystem.join(str(websocket_server_temporary_directory), 'webkit-httpd.key')
         self._websocket_server_temporary_directory = websocket_server_temporary_directory
-        if self._extract_certificate_from_pem(pem_file, certificate_file) and self._extract_private_key_from_pem(pem_file, private_key_file):
-            secure_server = self._websocket_secure_server = websocket_server.PyWebSocket(self, self.results_directory(),
-                                use_tls=True, port=websocket_server.PyWebSocket.DEFAULT_WSS_PORT, private_key=private_key_file, certificate=certificate_file)
-            secure_server.start()
-            self._websocket_secure_server = secure_server
+
+        pem_file = self._filesystem.join(self.layout_tests_dir(), "http", "conf", "webkit-httpd.pem")
+        pem = pemfile.load(self._filesystem, pem_file)
+        certificate_file = self._filesystem.join(str(websocket_server_temporary_directory), 'webkit-httpd.crt')
+        self._filesystem.write_text_file(certificate_file, pem.certificate)
+        private_key_file = self._filesystem.join(str(websocket_server_temporary_directory), 'webkit-httpd.key')
+        self._filesystem.write_text_file(private_key_file, pem.private_key)
+
+        secure_server = self._websocket_secure_server = websocket_server.PyWebSocket(self, self.results_directory(),
+            use_tls=True, port=websocket_server.PyWebSocket.DEFAULT_WSS_PORT, private_key=private_key_file, certificate=certificate_file)
+        secure_server.start()
+        self._websocket_secure_server = secure_server
 
     def start_web_platform_test_server(self, additional_dirs=None, number_of_servers=None):
         assert not self._web_platform_test_server, 'Already running a Web Platform Test server.'
@@ -1250,8 +1248,10 @@ class Port(object):
 
     # We pass sys_platform into this method to make it easy to unit test.
     def _apache_config_file_name_for_platform(self, sys_platform):
-        if sys_platform == 'cygwin' or sys_platform.startswith('win'):
+        if sys_platform == 'cygwin':
             return 'apache' + self._apache_version() + '-httpd-win.conf'
+        if sys_platform == 'win32':
+            return 'win-httpd-' + self._apache_version() + '-php7.conf'
         if sys_platform == 'darwin':
             return 'apache' + self._apache_version() + self._darwin_php_version() + '-httpd.conf'
         if sys_platform.startswith('linux'):

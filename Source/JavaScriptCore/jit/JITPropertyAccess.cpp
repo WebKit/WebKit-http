@@ -237,7 +237,7 @@ JITGetByIdGenerator JIT::emitGetByValWithCachedId(ByValInfo* byValInfo, Instruct
     Label coldPathBegin = label();
     gen.slowPathJump().link(this);
 
-    Call call = callOperation(WithProfile, operationGetByIdOptimize, dst, gen.stubInfo(), regT0, propertyName.impl());
+    Call call = callOperationWithProfile(operationGetByIdOptimize, dst, gen.stubInfo(), regT0, propertyName.impl());
     gen.reportSlowPathCall(coldPathBegin, call);
     slowDoneCase = jump();
 
@@ -663,7 +663,7 @@ void JIT::emitSlow_op_get_by_id(Instruction* currentInstruction, Vector<SlowCase
     
     Label coldPathBegin = label();
     
-    Call call = callOperation(WithProfile, operationGetByIdOptimize, resultVReg, gen.stubInfo(), regT0, ident->impl());
+    Call call = callOperationWithProfile(operationGetByIdOptimize, resultVReg, gen.stubInfo(), regT0, ident->impl());
 
     gen.reportSlowPathCall(coldPathBegin, call);
 }
@@ -679,7 +679,7 @@ void JIT::emitSlow_op_get_by_id_with_this(Instruction* currentInstruction, Vecto
     
     Label coldPathBegin = label();
     
-    Call call = callOperation(WithProfile, operationGetByIdWithThisOptimize, resultVReg, gen.stubInfo(), regT0, regT1, ident->impl());
+    Call call = callOperationWithProfile(operationGetByIdWithThisOptimize, resultVReg, gen.stubInfo(), regT0, regT1, ident->impl());
 
     gen.reportSlowPathCall(coldPathBegin, call);
 }
@@ -951,7 +951,7 @@ void JIT::emitSlow_op_get_from_scope(Instruction* currentInstruction, Vector<Slo
     linkAllSlowCases(iter);
 
     int dst = currentInstruction[1].u.operand;
-    callOperation(WithProfile, operationGetFromScope, dst, currentInstruction);
+    callOperationWithProfile(operationGetFromScope, dst, currentInstruction);
 }
 
 void JIT::emitPutGlobalVariable(JSValue* operand, int value, WatchpointSet* set)
@@ -1100,7 +1100,9 @@ void JIT::emit_op_get_from_arguments(Instruction* currentInstruction)
     int index = currentInstruction[3].u.operand;
     
     emitGetVirtualRegister(arguments, regT0);
-    load64(Address(regT0, DirectArguments::storageOffset() + index * sizeof(WriteBarrier<Unknown>)), regT0);
+    loadPtr(Address(regT0, DirectArguments::offsetOfStorage()), regT0);
+    xorPtr(TrustedImmPtr(DirectArgumentsPoison::key()), regT0);
+    load64(Address(regT0, index * sizeof(WriteBarrier<Unknown>)), regT0);
     emitValueProfilingSite();
     emitPutVirtualRegister(dst);
 }
@@ -1113,7 +1115,9 @@ void JIT::emit_op_put_to_arguments(Instruction* currentInstruction)
     
     emitGetVirtualRegister(arguments, regT0);
     emitGetVirtualRegister(value, regT1);
-    store64(regT1, Address(regT0, DirectArguments::storageOffset() + index * sizeof(WriteBarrier<Unknown>)));
+    loadPtr(Address(regT0, DirectArguments::offsetOfStorage()), regT0);
+    xorPtr(TrustedImmPtr(DirectArgumentsPoison::key()), regT0);
+    store64(regT1, Address(regT0, index * sizeof(WriteBarrier<Unknown>)));
 
     emitWriteBarrier(arguments, value, ShouldFilterValue);
 }
@@ -1412,14 +1416,16 @@ JIT::JumpList JIT::emitDirectArgumentsGetByVal(Instruction*, PatchableJump& badT
 
     load8(Address(base, JSCell::typeInfoTypeOffset()), scratch);
     badType = patchableBranch32(NotEqual, scratch, TrustedImm32(DirectArgumentsType));
-    emitDynamicPoisonOnLoadedType(base, scratch, DirectArgumentsType);
     
-    load32(Address(base, DirectArguments::offsetOfLength()), scratch2);
+    loadPtr(Address(base, DirectArguments::offsetOfStorage()), scratch);
+    xorPtr(TrustedImmPtr(DirectArgumentsPoison::key()), scratch);
+    
+    load32(Address(scratch, DirectArguments::offsetOfLengthInStorage()), scratch2);
     slowCases.append(branch32(AboveOrEqual, property, scratch2));
     slowCases.append(branchTestPtr(NonZero, Address(base, DirectArguments::offsetOfMappedArguments())));
     
     emitPreparePreciseIndexMask32(property, scratch2, scratch2);
-    loadValue(BaseIndex(base, property, TimesEight, DirectArguments::storageOffset()), result);
+    loadValue(BaseIndex(scratch, property, TimesEight), result);
     andPtr(scratch2, result.payloadGPR());
     
     return slowCases;

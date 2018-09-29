@@ -88,14 +88,6 @@ def bind_mock_apple_additions():
             return '/additional_testing_path/'
 
         @staticmethod
-        def ios_os_name(name):
-            return 'add-{}'.format(name)
-
-        @staticmethod
-        def mac_os_name(name):
-            return 'add-{}'.format(name)
-
-        @staticmethod
         def version_name_mapping(platform=None):
             result = VersionNameMap(platform)
             result.mapping[INTERNAL_TABLE] = {}
@@ -637,7 +629,7 @@ MOCK output of child process
         self._assert_config_file_for_platform(port, 'linux2', 'debian-httpd-2.2.conf')
 
         self._assert_config_file_for_platform(port, 'mac', 'apache2.2-httpd.conf')
-        self._assert_config_file_for_platform(port, 'win32', 'apache2.2-httpd-win.conf')  # win32 isn't a supported sys.platform.  AppleWin/WinCairo ports all use cygwin.
+        self._assert_config_file_for_platform(port, 'win32', 'win-httpd-2.2-php7.conf')  # WinCairo uses win32. Only AppleWin port uses cygwin.
         self._assert_config_file_for_platform(port, 'barf', 'apache2.2-httpd.conf')
 
     def test_path_to_apache_config_file(self):

@@ -558,9 +558,6 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (void)setDirectoryUploadEnabled:(BOOL)flag;
 - (BOOL)directoryUploadEnabled;
 
-- (void)setCSSGridLayoutEnabled:(BOOL)flag;
-- (BOOL)isCSSGridLayoutEnabled;
-
 - (void)setWebAnimationsEnabled:(BOOL)flag;
 - (BOOL)webAnimationsEnabled;
 
@@ -569,6 +566,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 
 - (void)setModernMediaControlsEnabled:(BOOL)flag;
 - (BOOL)modernMediaControlsEnabled;
+
+- (void)setCSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled:(BOOL)flag;
+- (BOOL)cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled;
 
 - (void)setWebAuthenticationEnabled:(BOOL)flag;
 - (BOOL)webAuthenticationEnabled;

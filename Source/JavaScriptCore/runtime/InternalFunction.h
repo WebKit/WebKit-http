@@ -53,7 +53,7 @@ public:
 
     static Structure* createSubclassStructure(ExecState*, JSValue newTarget, Structure*);
 
-    NativeFunction nativeFunctionFor(CodeSpecializationKind kind)
+    TaggedNativeFunction nativeFunctionFor(CodeSpecializationKind kind)
     {
         if (kind == CodeForCall)
             return m_functionForCall.unpoisoned();
@@ -70,7 +70,7 @@ public:
     }
 
 protected:
-    using PoisonedNativeFunction = Poisoned<NativeCodePoison, NativeFunction>;
+    using PoisonedTaggedNativeFunction = Poisoned<NativeCodePoison, TaggedNativeFunction>;
 
     JS_EXPORT_PRIVATE InternalFunction(VM&, Structure*, NativeFunction functionForCall, NativeFunction functionForConstruct);
 
@@ -82,8 +82,8 @@ protected:
     JS_EXPORT_PRIVATE static ConstructType getConstructData(JSCell*, ConstructData&);
     JS_EXPORT_PRIVATE static CallType getCallData(JSCell*, CallData&);
 
-    PoisonedNativeFunction m_functionForCall;
-    PoisonedNativeFunction m_functionForConstruct;
+    PoisonedTaggedNativeFunction m_functionForCall;
+    PoisonedTaggedNativeFunction m_functionForConstruct;
     WriteBarrier<JSString> m_originalName;
 };
 
@@ -91,7 +91,7 @@ InternalFunction* asInternalFunction(JSValue);
 
 inline InternalFunction* asInternalFunction(JSValue value)
 {
-    ASSERT(asObject(value)->inherits(*value.getObject()->vm(), InternalFunction::info()));
+    ASSERT(asObject(value)->inherits<InternalFunction>(*value.getObject()->vm()));
     return static_cast<InternalFunction*>(asObject(value));
 }
 

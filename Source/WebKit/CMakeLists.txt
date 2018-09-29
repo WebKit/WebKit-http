@@ -5,6 +5,7 @@ set_property(DIRECTORY . PROPERTY FOLDER "WebKit")
 set(WebKit_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}"
     "${WEBKIT_DIR}/NetworkProcess"
+    "${WEBKIT_DIR}/NetworkProcess/Cookies"
     "${WEBKIT_DIR}/NetworkProcess/CustomProtocols"
     "${WEBKIT_DIR}/NetworkProcess/Downloads"
     "${WEBKIT_DIR}/NetworkProcess/FileAPI"
@@ -56,7 +57,6 @@ set(WebKit_INCLUDE_DIRECTORIES
     "${WEBKIT_DIR}/WebProcess/ApplicationCache"
     "${WEBKIT_DIR}/WebProcess/Automation"
     "${WEBKIT_DIR}/WebProcess/Cache"
-    "${WEBKIT_DIR}/WebProcess/Cookies"
     "${WEBKIT_DIR}/WebProcess/Databases"
     "${WEBKIT_DIR}/WebProcess/Databases/IndexedDB"
     "${WEBKIT_DIR}/WebProcess/FileAPI"
@@ -104,6 +104,8 @@ set(WebKit_SYSTEM_INCLUDE_DIRECTORIES
 )
 
 set(WebKit_SOURCES
+    NetworkProcess/Cookies/WebCookieManager.cpp
+
     NetworkProcess/Downloads/Download.cpp
     NetworkProcess/Downloads/DownloadManager.cpp
     NetworkProcess/Downloads/PendingDownload.cpp
@@ -310,6 +312,7 @@ set(WebKit_SOURCES
     UIProcess/ResponsivenessTimer.cpp
     UIProcess/ServiceWorkerProcessProxy.cpp
     UIProcess/StatisticsRequest.cpp
+    UIProcess/SystemPreviewController.cpp
     UIProcess/TextCheckerCompletion.cpp
     UIProcess/UIMessagePortChannelProvider.cpp
     UIProcess/UserMediaPermissionCheckProxy.cpp
@@ -469,8 +472,6 @@ set(WebKit_SOURCES
     WebProcess/Cache/WebCacheStorageConnection.cpp
     WebProcess/Cache/WebCacheStorageProvider.cpp
 
-    WebProcess/Cookies/WebCookieManager.cpp
-
     WebProcess/Databases/WebDatabaseProvider.cpp
 
     WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.cpp
@@ -611,6 +612,8 @@ set(WebKit_SOURCES
 )
 
 set(WebKit_MESSAGES_IN_FILES
+    NetworkProcess/Cookies/WebCookieManager.messages.in
+
     NetworkProcess/NetworkConnectionToWebProcess.messages.in
     NetworkProcess/NetworkProcess.messages.in
     NetworkProcess/NetworkResourceLoader.messages.in
@@ -673,8 +676,6 @@ set(WebKit_MESSAGES_IN_FILES
     WebProcess/Automation/WebAutomationSessionProxy.messages.in
 
     WebProcess/Cache/WebCacheStorageConnection.messages.in
-
-    WebProcess/Cookies/WebCookieManager.messages.in
 
     WebProcess/Databases/IndexedDB/WebIDBConnectionToServer.messages.in
 

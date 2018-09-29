@@ -116,7 +116,7 @@ static const HashTableValue JSTestGlobalObjectTableValues[] =
 #else
     { 0, 0, NoIntrinsic, { 0, 0 } },
 #endif
-    { "regularOperation", static_cast<unsigned>(JSC::PropertyAttribute::Function), NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestGlobalObjectInstanceFunctionRegularOperation), (intptr_t) (1) } },
+    { "regularOperation", static_cast<unsigned>(JSC::PropertyAttribute::Function), NoIntrinsic, { (intptr_t)static_cast<RawNativeFunction>(jsTestGlobalObjectInstanceFunctionRegularOperation), (intptr_t) (1) } },
 };
 
 static const HashTable JSTestGlobalObjectTable = { 4, 15, true, JSTestGlobalObject::info(), JSTestGlobalObjectTableValues, JSTestGlobalObjectTableIndex };
@@ -212,19 +212,19 @@ void JSTestGlobalObject::destroy(JSC::JSCell* cell)
 
 template<> inline JSTestGlobalObject* IDLAttribute<JSTestGlobalObject>::cast(ExecState& state, EncodedJSValue thisValue)
 {
-    return jsDynamicDowncast<JSTestGlobalObject*>(state.vm(), JSValue::decode(thisValue));
+    return jsDynamicCast<JSTestGlobalObject*>(state.vm(), JSValue::decode(thisValue));
 }
 
 template<> inline JSTestGlobalObject* IDLOperation<JSTestGlobalObject>::cast(ExecState& state)
 {
-    return jsDynamicDowncast<JSTestGlobalObject*>(state.vm(), state.thisValue());
+    return jsDynamicCast<JSTestGlobalObject*>(state.vm(), state.thisValue());
 }
 
 EncodedJSValue jsTestGlobalObjectConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    auto* prototype = jsDynamicDowncast<JSTestGlobalObjectPrototype*>(vm, JSValue::decode(thisValue));
+    auto* prototype = jsDynamicCast<JSTestGlobalObjectPrototype*>(vm, JSValue::decode(thisValue));
     if (UNLIKELY(!prototype))
         return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSTestGlobalObject::getConstructor(state->vm(), prototype->globalObject()));
@@ -234,7 +234,7 @@ bool setJSTestGlobalObjectConstructor(ExecState* state, EncodedJSValue thisValue
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    auto* prototype = jsDynamicDowncast<JSTestGlobalObjectPrototype*>(vm, JSValue::decode(thisValue));
+    auto* prototype = jsDynamicCast<JSTestGlobalObjectPrototype*>(vm, JSValue::decode(thisValue));
     if (UNLIKELY(!prototype)) {
         throwVMTypeError(state, throwScope);
         return false;
@@ -622,7 +622,7 @@ JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestGl
 
 TestGlobalObject* JSTestGlobalObject::toWrapped(JSC::VM& vm, JSC::JSValue value)
 {
-    if (auto* wrapper = jsDynamicDowncast<JSTestGlobalObject*>(vm, value))
+    if (auto* wrapper = jsDynamicCast<JSTestGlobalObject*>(vm, value))
         return &wrapper->wrapped();
     return nullptr;
 }

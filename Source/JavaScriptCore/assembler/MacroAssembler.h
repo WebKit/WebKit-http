@@ -35,6 +35,11 @@
 #include "MacroAssemblerARMv7.h"
 namespace JSC { typedef MacroAssemblerARMv7 MacroAssemblerBase; };
 
+#elif CPU(ARM64E) && __has_include(<WebKitAdditions/MacroAssemblerARM64E.h>)
+#define TARGET_ASSEMBLER ARM64EAssembler
+#define TARGET_MACROASSEMBLER MacroAssemblerARM64E
+#include <WebKitAdditions/MacroAssemblerARM64E.h>
+
 #elif CPU(ARM64)
 #define TARGET_ASSEMBLER ARM64Assembler
 #define TARGET_MACROASSEMBLER MacroAssemblerARM64
@@ -302,6 +307,11 @@ public:
         storePtr(imm, addressForPoke(index));
     }
 
+    void poke(FPRegisterID src, int index = 0)
+    {
+        storeDouble(src, addressForPoke(index));
+    }
+
 #if !CPU(ARM64)
     void pushToSave(RegisterID src)
     {
@@ -525,7 +535,13 @@ public:
         loadFloat(src, scratch);
         storeFloat(scratch, dest);
     }
-    
+
+    // Overload mostly for use in templates.
+    void move(FPRegisterID src, FPRegisterID dest)
+    {
+        moveDouble(src, dest);
+    }
+
     void moveDouble(Address src, Address dest, FPRegisterID scratch)
     {
         loadDouble(src, scratch);

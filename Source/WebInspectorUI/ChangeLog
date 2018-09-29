@@ -1,3 +1,179 @@
+2018-03-12  Jon Davis  <jond@apple.com>
+
+        Web Inspector: Remove redundant tooltips
+        https://bugs.webkit.org/show_bug.cgi?id=183099
+
+        Reviewed by Matt Baker.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded):
+        Instantiate ConsoleDrawer so the keyboard shortcuts for FindBanner are available.
+
+        * UserInterface/Views/BreakpointTreeElement.js:
+        (WI.BreakpointTreeElement):
+        Suppress tooltips by setting the tooltipHandledSeprately flag with no custom handler.
+
+        * UserInterface/Views/ButtonNavigationItem.js:
+        (WI.ButtonNavigationItem):
+        Only show tooltips when the button style is an image.
+
+        * UserInterface/Views/ConsoleDrawer.js:
+        (WI.ConsoleDrawer):
+        (WI.ConsoleDrawer.prototype.toggleButtonShortcutTooltip):
+        Added helper to set the toggle button keyboard shortcut tooltip.
+
+        * UserInterface/Views/DOMBreakpointTreeElement.js:
+        (WI.DOMBreakpointTreeElement):
+        Suppress tooltips by setting the tooltipHandledSeprately flag with no custom handler.
+
+        * UserInterface/Views/DOMNodeTreeElement.js:
+        (WI.DOMNodeTreeElement):
+        Suppress tooltips by setting the tooltipHandledSeprately flag with no custom handler.
+
+        * UserInterface/Views/FindBanner.js:
+        (WI.FindBanner):
+        * UserInterface/Views/HierarchicalPathComponent.js:
+        (WI.HierarchicalPathComponent):
+        (WI.HierarchicalPathComponent.prototype.get tooltip):
+        (WI.HierarchicalPathComponent.prototype.set tooltip):
+        (WI.HierarchicalPathComponent.prototype.get hideTooltip):
+        (WI.HierarchicalPathComponent.prototype.set hideTooltip):
+        (WI.HierarchicalPathComponent.prototype._updateElementTitleAndText):
+        Add tooltip management features to manage tooltips separately of the displayName,
+        and provide a behavior to hide tooltips while retaining the tooltip data.
+
+        * UserInterface/Views/HierarchicalPathNavigationItem.js:
+        (WI.HierarchicalPathNavigationItem.prototype.updateLayout):
+        Hide tooltips when fully visible, show tooltips for collapsed items.
+
+        * UserInterface/Views/PinnedTabBarItem.js:
+        (WI.PinnedTabBarItem.prototype.titleDidChange):
+        Set tooltips for pinned tab bar items.
+
+        * UserInterface/Views/QuickConsole.js:
+        (WI.QuickConsole):
+        Set the ConsoleDrawer toggle button tooltip after the keyboard shortcut is registered.
+
+        * UserInterface/Views/StorageTreeElement.js:
+        (WI.StorageTreeElement):
+        Suppress tooltips by setting the tooltipHandledSeprately flag with no custom handler.
+
+        * UserInterface/Views/TabBarItem.js:
+        (WI.TabBarItem.prototype.get title):
+        (WI.TabBarItem.prototype.set title):
+        (WI.TabBarItem.prototype.titleDidChange):
+        (WI.TabBarItem):
+        Add title property management with an overridable titleDidChange handler for
+        setting tooltips when needed.
+
+        * UserInterface/Views/TimelineTreeElement.js:
+        (WI.TimelineTreeElement):
+        Suppress tooltips by setting the tooltipHandledSeprately flag with no custom handler.
+
+        * UserInterface/Views/ToggleButtonNavigationItem.js:
+        (WI.ToggleButtonNavigationItem.prototype.set defaultToolTip):
+        Added a setter for manging the default tooltip of a toggle button.
+
+        * UserInterface/Views/XHRBreakpointTreeElement.js:
+        (WI.XHRBreakpointTreeElement):
+        Suppress tooltips by setting the tooltipHandledSeprately flag with no custom handler.
+
+2018-03-09  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Sources: Open all resources in Sources tab instead of Resources/Debugger
+        https://bugs.webkit.org/show_bug.cgi?id=183317
+        <rdar://problem/38108455>
+
+        Reviewed by Matt Baker.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Main.js:
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WI.appendContextMenuItemsForURL):
+        Introduce preferredTabType option instead of listing ignoreResourcesTab, ignoreDebuggerTab, ignoreSearchTab, and ignoreNetworkTab.
+        The only correct outcome of selecting "Reveal in Sources Tab" context menu is to open Sources tab, not any other tab.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype.textEditorGutterContextMenu):
+        * UserInterface/Views/TabBrowser.js:
+        (WI.TabBrowser.prototype.bestTabContentViewForRepresentedObject):
+
+2018-03-08  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Sources: add SourcesTabContentView and SourceSidebarPanel classes
+        https://bugs.webkit.org/show_bug.cgi?id=183316
+        <rdar://problem/38107639>
+
+        Reviewed by Matt Baker.
+
+        Add Sources tab and sidebar panel, which are copies of the corresponding Resources classes.
+        The Sources tab is shown when it's enabled in the experimental settings. This patch doesn't
+        remove existing Resources and Debugger tabs.
+
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded):
+        * UserInterface/Main.html:
+        * UserInterface/Views/SourcesSidebarPanel.css: Added.
+        (.sidebar > .panel.navigation.sources > .content):
+        (.sidebar > .panel.navigation.sources > .navigation-bar):
+        * UserInterface/Views/SourcesSidebarPanel.js: Added.
+        (WI.SourcesSidebarPanel):
+        (WI.SourcesSidebarPanel.shouldPlaceResourcesAtTopLevel):
+        (WI.SourcesSidebarPanel.prototype.get minimumWidth):
+        (WI.SourcesSidebarPanel.prototype.closed):
+        (WI.SourcesSidebarPanel.prototype.showDefaultContentView):
+        (WI.SourcesSidebarPanel.prototype.treeElementForRepresentedObject.isAncestor):
+        (WI.SourcesSidebarPanel.prototype.treeElementForRepresentedObject.getParent):
+        (WI.SourcesSidebarPanel.prototype.treeElementForRepresentedObject):
+        (WI.SourcesSidebarPanel.prototype.initialLayout):
+        (WI.SourcesSidebarPanel.prototype.hasCustomFilters):
+        (WI.SourcesSidebarPanel.prototype.matchTreeElementAgainstCustomFilters.match):
+        (WI.SourcesSidebarPanel.prototype.matchTreeElementAgainstCustomFilters):
+        (WI.SourcesSidebarPanel.prototype._mainResourceDidChange):
+        (WI.SourcesSidebarPanel.prototype._mainFrameDidChange):
+        (WI.SourcesSidebarPanel.prototype._mainFrameMainResourceDidChange.delayedWork):
+        (WI.SourcesSidebarPanel.prototype._mainFrameMainResourceDidChange):
+        (WI.SourcesSidebarPanel.prototype._scriptWasAdded):
+        (WI.SourcesSidebarPanel.prototype._addScript):
+        (WI.SourcesSidebarPanel.prototype._scriptWasRemoved):
+        (WI.SourcesSidebarPanel.prototype._scriptsCleared):
+        (WI.SourcesSidebarPanel.prototype._styleSheetAdded):
+        (WI.SourcesSidebarPanel.prototype._addTargetWithMainResource):
+        (WI.SourcesSidebarPanel.prototype._targetRemoved):
+        (WI.SourcesSidebarPanel.prototype._treeSelectionDidChange):
+        (WI.SourcesSidebarPanel.prototype._compareTreeElements):
+        (WI.SourcesSidebarPanel.prototype._extraDomainsActivated):
+        (WI.SourcesSidebarPanel.prototype._scopeBarSelectionDidChange):
+        * UserInterface/Views/SourcesTabContentView.js: Added.
+        (WI.SourcesTabContentView):
+        (WI.SourcesTabContentView.tabInfo):
+        (WI.SourcesTabContentView.isTabAllowed):
+        (WI.SourcesTabContentView.prototype.get type):
+        (WI.SourcesTabContentView.prototype.get supportsSplitContentBrowser):
+        (WI.SourcesTabContentView.prototype.canShowRepresentedObject):
+
+2018-03-07  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Canvas tab: ensure that the Recording TreeOutline has a specified height for virtualization
+        https://bugs.webkit.org/show_bug.cgi?id=183015
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/CanvasSidebarPanel.js:
+        (WI.CanvasSidebarPanel):
+
+        * UserInterface/Views/CanvasSidebarPanel.css:
+        (.sidebar > .panel.navigation.canvas > .content):
+        (.sidebar > .panel.navigation.canvas > .content > .navigation-bar):
+        (.sidebar > .panel.navigation.canvas.has-recordings > .content > .recording-content):
+        (.sidebar > .panel.navigation.canvas:not(.has-recordings) > .filter-bar,):
+        (.sidebar > .panel.navigation.canvas > .content > .recording-content > .navigation-bar): Deleted.
+        (.sidebar > .panel.navigation.canvas.has-recordings > .content > .tree-outline.canvas): Deleted.
+
+        * UserInterface/Views/TreeElement.js:
+        (WI.TreeElement.prototype._detach):
+
 2018-02-26  Devin Rousso  <webkit@devinrousso.com>
 
         Web Inspector: Canvas Tab: Scroll into view / Inspect element if Canvas has DOM node

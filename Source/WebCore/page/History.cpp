@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007 Apple Inc.  All rights reserved.
+ * Copyright (C) 2007-2018 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -104,6 +104,13 @@ bool History::stateChanged() const
     return m_lastStateObjectRequested != stateInternal();
 }
 
+JSValueInWrappedObject& History::cachedState()
+{
+    if (m_cachedState && stateChanged())
+        m_cachedState = { };
+    return m_cachedState;
+}
+
 bool History::isSameAsCurrentState(SerializedScriptValue* state) const
 {
     return state == stateInternal();
@@ -156,15 +163,15 @@ void History::go(Document& document, int distance)
 
 URL History::urlForState(const String& urlString)
 {
-    URL baseURL = m_frame->document()->baseURL();
-    if (urlString.isEmpty())
-        return baseURL;
-
-    return URL(baseURL, urlString);
+    if (urlString.isNull())
+        return m_frame->document()->url();
+    return m_frame->document()->completeURL(urlString);
 }
 
 ExceptionOr<void> History::stateObjectAdded(RefPtr<SerializedScriptValue>&& data, const String& title, const String& urlString, StateObjectType stateObjectType)
 {
+    m_cachedState = { };
+
     // Each unique main-frame document is only allowed to send 64MB of state object payload to the UI client/process.
     static uint32_t totalStateObjectPayloadLimit = 0x4000000;
     static Seconds stateObjectTimeSpan { 30_s };
@@ -185,7 +192,13 @@ ExceptionOr<void> History::stateObjectAdded(RefPtr<SerializedScriptValue>&& data
     };
     if (!protocolHostAndPortAreEqual(fullURL, documentURL) || fullURL.user() != documentURL.user() || fullURL.pass() != documentURL.pass())
         return createBlockedURLSecurityErrorWithMessageSuffix("Protocols, domains, ports, usernames, and passwords must match.");
-    if (!m_frame->document()->securityOrigin().canRequest(fullURL) && (fullURL.path() != documentURL.path() || fullURL.query() != documentURL.query()))
+
+    const auto& documentSecurityOrigin = m_frame->document()->securityOrigin();
+    // We allow sandboxed documents, 'data:'/'file:' URLs, etc. to use 'pushState'/'replaceState' to modify the URL query and fragments.
+    // See https://bugs.webkit.org/show_bug.cgi?id=183028 for the compatibility concerns.
+    bool allowSandboxException = (documentSecurityOrigin.isLocal() || documentSecurityOrigin.isUnique()) && equalIgnoringQueryAndFragment(documentURL, fullURL);
+
+    if (!allowSandboxException && !documentSecurityOrigin.canRequest(fullURL) && (fullURL.path() != documentURL.path() || fullURL.query() != documentURL.query()))
         return createBlockedURLSecurityErrorWithMessageSuffix("Paths and fragments must match for a sandboxed document.");
 
     Document* mainDocument = m_frame->page()->mainFrame().document();

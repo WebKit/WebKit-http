@@ -471,7 +471,14 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
     }
     return static_cast<uint32_t>(WebCore::UserInterfaceLayoutDirection::LTR);
 }
+
+#if USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/WebViewAndWKWebViewAdditions.mm>
+#else
+- (bool)_defaultAppearance { return true; }
 #endif
+
+#endif // PLATFORM(MAC)
 
 static void validate(WKWebViewConfiguration *configuration)
 {
@@ -677,6 +684,8 @@ static void validate(WKWebViewConfiguration *configuration)
 
     _impl->setAutomaticallyAdjustsContentInsets(true);
     _impl->setRequiresUserActionForEditingControlsManager([configuration _requiresUserActionForEditingControlsManager]);
+    
+    _page->setDefaultAppearance([self _defaultAppearance]);
 #endif
 
     _page->setBackgroundExtendsBeyondPage(true);
@@ -1562,6 +1571,14 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
         [_scrollView setIndicatorStyle:UIScrollViewIndicatorStyleWhite];
     else
         [_scrollView setIndicatorStyle:UIScrollViewIndicatorStyleDefault];
+}
+
+- (void)_videoControlsManagerDidChange
+{
+#if ENABLE(FULLSCREEN_API)
+    if (_fullScreenWindowController)
+        [_fullScreenWindowController videoControlsManagerDidChange];
+#endif
 }
 
 - (CGPoint)_adjustedContentOffset:(CGPoint)point
@@ -6137,6 +6154,17 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 - (NSRect)_candidateRect
 {
     return _page->editorState().postLayoutData().selectionClipRect;
+}
+
+- (BOOL)_useSystemAppearance
+{
+    return _page->useSystemAppearance();
+}
+
+- (void)_setUseSystemAppearance:(BOOL)useSystemAppearance
+{
+    _page->setUseSystemAppearance(useSystemAppearance);
+    _page->setDefaultAppearance([self _defaultAppearance]);
 }
 
 - (void)_setHeaderBannerHeight:(int)height

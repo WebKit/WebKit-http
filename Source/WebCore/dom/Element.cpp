@@ -1480,6 +1480,20 @@ ElementStyle Element::resolveStyle(const RenderStyle* parentStyle)
     return styleResolver().styleForElement(*this, parentStyle);
 }
 
+static void invalidateForSiblingCombinators(Element* sibling)
+{
+    for (; sibling; sibling = sibling->nextElementSibling()) {
+        if (sibling->styleIsAffectedByPreviousSibling())
+            sibling->invalidateStyleInternal();
+        if (sibling->descendantsAffectedByPreviousSibling()) {
+            for (auto* siblingChild = sibling->firstElementChild(); siblingChild; siblingChild = siblingChild->nextElementSibling())
+                siblingChild->invalidateStyleForSubtreeInternal();
+        }
+        if (!sibling->affectsNextSiblingElementStyle())
+            return;
+    }
+}
+
 static void invalidateSiblingsIfNeeded(Element& element)
 {
     if (!element.affectsNextSiblingElementStyle())
@@ -1488,12 +1502,7 @@ static void invalidateSiblingsIfNeeded(Element& element)
     if (parent && parent->styleValidity() >= Style::Validity::SubtreeInvalid)
         return;
 
-    for (auto* sibling = element.nextElementSibling(); sibling; sibling = sibling->nextElementSibling()) {
-        if (sibling->styleIsAffectedByPreviousSibling())
-            sibling->invalidateStyleForSubtreeInternal();
-        if (!sibling->affectsNextSiblingElementStyle())
-            return;
-    }
+    invalidateForSiblingCombinators(element.nextElementSibling());
 }
 
 void Element::invalidateStyle()
@@ -2005,6 +2014,43 @@ static void checkForEmptyStyleChange(Element& element)
     }
 }
 
+
+static void invalidateForForwardPositionalRules(Element& parent, Element* elementAfterChange)
+{
+    bool childrenAffected = parent.childrenAffectedByForwardPositionalRules();
+    bool descendantsAffected = parent.descendantsAffectedByForwardPositionalRules();
+
+    if (!childrenAffected && !descendantsAffected)
+        return;
+
+    for (auto* sibling = elementAfterChange; sibling; sibling = sibling->nextElementSibling()) {
+        if (childrenAffected)
+            sibling->invalidateStyleInternal();
+        if (descendantsAffected) {
+            for (auto* siblingChild = sibling->firstElementChild(); siblingChild; siblingChild = siblingChild->nextElementSibling())
+                siblingChild->invalidateStyleForSubtreeInternal();
+        }
+    }
+}
+
+static void invalidateForBackwardPositionalRules(Element& parent, Element* elementBeforeChange)
+{
+    bool childrenAffected = parent.childrenAffectedByBackwardPositionalRules();
+    bool descendantsAffected = parent.descendantsAffectedByBackwardPositionalRules();
+
+    if (!childrenAffected && !descendantsAffected)
+        return;
+
+    for (auto* sibling = elementBeforeChange; sibling; sibling = sibling->previousElementSibling()) {
+        if (childrenAffected)
+            sibling->invalidateStyleInternal();
+        if (descendantsAffected) {
+            for (auto* siblingChild = sibling->firstElementChild(); siblingChild; siblingChild = siblingChild->nextElementSibling())
+                siblingChild->invalidateStyleForSubtreeInternal();
+        }
+    }
+}
+
 enum SiblingCheckType { FinishedParsingChildren, SiblingElementRemoved, Other };
 
 static void checkForSiblingStyleChanges(Element& parent, SiblingCheckType checkType, Element* elementBeforeChange, Element* elementAfterChange)
@@ -2027,14 +2073,14 @@ static void checkForSiblingStyleChanges(Element& parent, SiblingCheckType checkT
         if (newFirstElement != elementAfterChange) {
             auto* style = elementAfterChange->renderStyle();
             if (!style || style->firstChildState())
-                elementAfterChange->invalidateStyleForSubtree();
+                elementAfterChange->invalidateStyleForSubtreeInternal();
         }
 
         // We also have to handle node removal.
         if (checkType == SiblingElementRemoved && newFirstElement == elementAfterChange && newFirstElement) {
             auto* style = newFirstElement->renderStyle();
             if (!style || !style->firstChildState())
-                newFirstElement->invalidateStyleForSubtree();
+                newFirstElement->invalidateStyleForSubtreeInternal();
         }
     }
 
@@ -2047,7 +2093,7 @@ static void checkForSiblingStyleChanges(Element& parent, SiblingCheckType checkT
         if (newLastElement != elementBeforeChange) {
             auto* style = elementBeforeChange->renderStyle();
             if (!style || style->lastChildState())
-                elementBeforeChange->invalidateStyleForSubtree();
+                elementBeforeChange->invalidateStyleForSubtreeInternal();
         }
 
         // We also have to handle node removal.  The parser callback case is similar to node removal as well in that we need to change the last child
@@ -2055,35 +2101,14 @@ static void checkForSiblingStyleChanges(Element& parent, SiblingCheckType checkT
         if ((checkType == SiblingElementRemoved || checkType == FinishedParsingChildren) && newLastElement == elementBeforeChange && newLastElement) {
             auto* style = newLastElement->renderStyle();
             if (!style || !style->lastChildState())
-                newLastElement->invalidateStyleForSubtree();
+                newLastElement->invalidateStyleForSubtreeInternal();
         }
     }
 
-    if (elementAfterChange) {
-        if (elementAfterChange->styleIsAffectedByPreviousSibling())
-            elementAfterChange->invalidateStyleForSubtree();
-        else if (elementAfterChange->affectsNextSiblingElementStyle()) {
-            Element* elementToInvalidate = elementAfterChange;
-            do {
-                elementToInvalidate = elementToInvalidate->nextElementSibling();
-            } while (elementToInvalidate && !elementToInvalidate->styleIsAffectedByPreviousSibling());
+    invalidateForSiblingCombinators(elementAfterChange);
 
-            if (elementToInvalidate)
-                elementToInvalidate->invalidateStyleForSubtree();
-        }
-    }
-
-    // We have to invalidate everything following the insertion point in the forward case, and everything before the insertion point in the
-    // backward case.
-    if (parent.childrenAffectedByForwardPositionalRules()) {
-        for (auto* next = elementAfterChange; next; next = next->nextElementSibling())
-            next->invalidateStyleForSubtree();
-    }
-    // Backward positional selectors include nth-last-child, nth-last-of-type, last-of-type and only-of-type.
-    if (parent.childrenAffectedByBackwardPositionalRules()) {
-        for (auto* previous = elementBeforeChange; previous; previous = previous->previousElementSibling())
-            previous->invalidateStyleForSubtree();
-    }
+    invalidateForForwardPositionalRules(parent, elementAfterChange);
+    invalidateForBackwardPositionalRules(parent, elementBeforeChange);
 }
 
 void Element::childrenChanged(const ChildChange& change)
@@ -2818,9 +2843,19 @@ void Element::setChildrenAffectedByForwardPositionalRules()
     ensureElementRareData().setChildrenAffectedByForwardPositionalRules(true);
 }
 
+void Element::setDescendantsAffectedByForwardPositionalRules()
+{
+    ensureElementRareData().setDescendantsAffectedByForwardPositionalRules(true);
+}
+
 void Element::setChildrenAffectedByBackwardPositionalRules()
 {
     ensureElementRareData().setChildrenAffectedByBackwardPositionalRules(true);
+}
+
+void Element::setDescendantsAffectedByBackwardPositionalRules()
+{
+    ensureElementRareData().setDescendantsAffectedByBackwardPositionalRules(true);
 }
 
 void Element::setChildrenAffectedByPropertyBasedBackwardPositionalRules()
@@ -2844,7 +2879,9 @@ bool Element::hasFlagsSetDuringStylingOfChildren() const
     return rareDataStyleAffectedByActive()
         || rareDataChildrenAffectedByDrag()
         || rareDataChildrenAffectedByForwardPositionalRules()
+        || rareDataDescendantsAffectedByForwardPositionalRules()
         || rareDataChildrenAffectedByBackwardPositionalRules()
+        || rareDataDescendantsAffectedByBackwardPositionalRules()
         || rareDataChildrenAffectedByPropertyBasedBackwardPositionalRules();
 }
 
@@ -2878,10 +2915,22 @@ bool Element::rareDataChildrenAffectedByForwardPositionalRules() const
     return elementRareData()->childrenAffectedByForwardPositionalRules();
 }
 
+bool Element::rareDataDescendantsAffectedByForwardPositionalRules() const
+{
+    ASSERT(hasRareData());
+    return elementRareData()->descendantsAffectedByForwardPositionalRules();
+}
+
 bool Element::rareDataChildrenAffectedByBackwardPositionalRules() const
 {
     ASSERT(hasRareData());
     return elementRareData()->childrenAffectedByBackwardPositionalRules();
+}
+
+bool Element::rareDataDescendantsAffectedByBackwardPositionalRules() const
+{
+    ASSERT(hasRareData());
+    return elementRareData()->descendantsAffectedByBackwardPositionalRules();
 }
 
 bool Element::rareDataChildrenAffectedByPropertyBasedBackwardPositionalRules() const
@@ -3771,9 +3820,20 @@ ExceptionOr<Ref<WebAnimation>> Element::animate(JSC::ExecState& state, JSC::Stro
 Vector<RefPtr<WebAnimation>> Element::getAnimations()
 {
     // FIXME: Filter and order the list as specified (webkit.org/b/179535).
-    if (auto timeline = document().existingTimeline())
-        return timeline->animationsForElement(*this);
-    return { };
+
+    // For the list of animations to be current, we need to account for any pending CSS changes,
+    // such as updates to CSS Animations and CSS Transitions.
+    // FIXME: We might be able to use ComputedStyleExtractor which is more optimized.
+    document().updateStyleIfNeeded();
+
+    Vector<RefPtr<WebAnimation>> animations;
+    if (auto timeline = document().existingTimeline()) {
+        for (auto& animation : timeline->animationsForElement(*this)) {
+            if (animation->canBeListed())
+                animations.append(animation);
+        }
+    }
+    return animations;
 }
 
 } // namespace WebCore

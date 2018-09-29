@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,18 +30,14 @@
 #include "BytecodeConventions.h"
 #include "CodeBlock.h"
 #include "CodeType.h"
-#include "InitializeThreading.h"
 #include "Instruction.h"
 #include "JSScope.h"
 #include "LLIntCLoop.h"
-#include "LLIntCommon.h"
 #include "MaxFrameExtentForSlowPathCall.h"
 #include "Opcode.h"
 #include "PropertyOffset.h"
 #include "ShadowChicken.h"
 #include "WriteBarrier.h"
-#include <string>
-#include <wtf/NeverDestroyed.h>
 
 #define STATIC_ASSERT(cond) static_assert(cond, "LLInt assumes " #cond)
 
@@ -49,7 +45,6 @@ namespace JSC { namespace LLInt {
 
 Instruction Data::s_exceptionInstructions[maxOpcodeLength + 1] = { };
 Opcode Data::s_opcodeMap[numOpcodeIDs] = { };
-OpcodeStatsArray* Data::s_opcodeStatsArray = nullptr;
 
 #if ENABLE(JIT)
 extern "C" void llint_entry(void*);
@@ -63,14 +58,47 @@ void initialize()
 #else // ENABLE(JIT)
     llint_entry(&Data::s_opcodeMap);
 
-    for (int i = 0; i < maxOpcodeLength + 1; ++i)
-        Data::s_exceptionInstructions[i].u.pointer =
-            LLInt::getCodePtr(llint_throw_from_slow_path_trampoline);
-#endif // ENABLE(JIT)
+    for (int i = 0; i < NUMBER_OF_BYTECODE_IDS; ++i) {
+        PtrTag tag = (i == op_catch) ? ExceptionHandlerPtrTag : BytecodePtrTag;
+        Data::s_opcodeMap[i] = tagCodePtr(Data::s_opcodeMap[i], tag);
+    }
 
-#if ENABLE(LLINT_STATS)
-    Data::ensureStats();
-#endif
+    if (VM::canUseJIT()) {
+        for (int i = NUMBER_OF_BYTECODE_IDS; i < NUMBER_OF_BYTECODE_IDS + NUMBER_OF_BYTECODE_HELPER_IDS; ++i)
+            Data::s_opcodeMap[i] = tagCodePtr(Data::s_opcodeMap[i], ptrTag(BytecodeHelperPtrTag, i));
+    } else {
+        static const PtrTag tagsForOpcode[] = {
+            CodeEntryPtrTag, // llint_program_prologue
+            CodeEntryPtrTag, // llint_eval_prologue
+            CodeEntryPtrTag, // llint_module_program_prologue
+            CodeEntryPtrTag, // llint_function_for_call_prologue
+            CodeEntryPtrTag, // llint_function_for_construct_prologue
+            CodeEntryWithArityCheckPtrTag, // llint_function_for_call_arity_check
+            CodeEntryWithArityCheckPtrTag, // llint_function_for_construct_arity_check
+            CodeEntryPtrTag, // llint_generic_return_point
+            BytecodePtrTag, // llint_throw_from_slow_path_trampoline
+            ExceptionHandlerPtrTag, // llint_throw_during_call_trampoline
+            NativeCodePtrTag, // llint_native_call_trampoline
+            NativeCodePtrTag, // llint_native_construct_trampoline
+            NativeCodePtrTag, // llint_internal_function_call_trampoline
+            NativeCodePtrTag, // llint_internal_function_construct_trampoline
+            ExceptionHandlerPtrTag, // handleUncaughtException
+        };
+
+        static_assert(sizeof(tagsForOpcode) / sizeof(tagsForOpcode[0]) == NUMBER_OF_BYTECODE_HELPER_IDS, "");
+        static_assert(static_cast<uintptr_t>(llint_program_prologue) == NUMBER_OF_BYTECODE_IDS, "");
+
+        for (int i = 0; i < NUMBER_OF_BYTECODE_HELPER_IDS; ++i) {
+            int opcodeID = i + NUMBER_OF_BYTECODE_IDS;
+            Data::s_opcodeMap[opcodeID] = tagCodePtr(Data::s_opcodeMap[opcodeID], tagsForOpcode[i]);
+        }
+    }
+
+    void* handler = LLInt::getCodePtr(llint_throw_from_slow_path_trampoline);
+    for (int i = 0; i < maxOpcodeLength + 1; ++i)
+        Data::s_exceptionInstructions[i].u.pointer = handler;
+
+#endif // ENABLE(JIT)
 }
 
 #if COMPILER(CLANG)
@@ -207,140 +235,6 @@ void Data::performAssertions(VM& vm)
 }
 #if COMPILER(CLANG)
 #pragma clang diagnostic pop
-#endif
-
-void Data::finalizeStats()
-{
-#if ENABLE(LLINT_STATS)
-    if (!Options::reportLLIntStats())
-        return;
-    
-    if (Options::llintStatsFile())
-        saveStats();
-    
-    dumpStats();
-#endif
-}
-
-#if ENABLE(LLINT_STATS)
-namespace LLIntDataInternal {
-static const bool verboseStats = false;
-}
-
-static bool compareStats(const OpcodeStats& a, const OpcodeStats& b)
-{
-    if (a.count > b.count)
-        return true;
-    if (a.count < b.count)
-        return false;
-    return a.slowPathCount > b.slowPathCount;
-}
-
-void Data::dumpStats()
-{
-    ASSERT(Options::reportLLIntStats());
-    auto statsCopy = *s_opcodeStatsArray;
-    std::sort(statsCopy.begin(), statsCopy.end(), compareStats);
-
-    dataLog("Opcode stats:\n");
-    unsigned i = 0;
-    for (auto& stats : statsCopy) {
-        if (stats.count || stats.slowPathCount)
-            dataLog("   [", i++, "]: fast:", stats.count, " slow:", stats.slowPathCount, " ", opcodeNames[stats.id], "\n");
-    }
-}
-
-void Data::ensureStats()
-{
-    static std::once_flag initializeOptionsOnceFlag;
-    std::call_once(initializeOptionsOnceFlag, [] {
-        s_opcodeStatsArray = new OpcodeStatsArray();
-        resetStats();
-    });
-}
-
-void Data::loadStats()
-{
-    static NeverDestroyed<std::string> installedStatsFile;
-    if (!Options::llintStatsFile() || !installedStatsFile.get().compare(Options::llintStatsFile()))
-        return;
-
-    Options::reportLLIntStats() = true; // Force stats collection.
-    installedStatsFile.get() = Options::llintStatsFile();
-
-    ensureStats();
-
-    const char* filename = Options::llintStatsFile();
-    FILE* file = fopen(filename, "r");
-    if (!file) {
-        dataLogF("Failed to open file %s. Did you add the file-read-write-data entitlement to WebProcess.sb?\n", filename);
-        return;
-    }
-
-    resetStats();
-
-    OpcodeStats loaded;
-    unsigned index;
-    char opcodeName[100];
-    while (fscanf(file, "[%u]: fast:%zu slow:%zu id:%u %s\n", &index, &loaded.count, &loaded.slowPathCount, &loaded.id, opcodeName) != EOF) {
-        if (LLIntDataInternal::verboseStats)
-            dataLogF("loaded [%u]: fast %zu slow %zu id:%u %s\n", index, loaded.count, loaded.slowPathCount, loaded.id, opcodeName);
-
-        OpcodeStats& stats = opcodeStats(loaded.id);
-        stats.count = loaded.count;
-        stats.slowPathCount = loaded.slowPathCount;
-    }
-
-    if (LLIntDataInternal::verboseStats) {
-        dataLogF("After loading from %s, ", filename);
-        dumpStats();
-    }
-
-    int result = fclose(file);
-    if (result)
-        dataLogF("Failed to close file %s: %s\n", filename, strerror(errno));
-}
-
-void Data::resetStats()
-{
-    unsigned i = 0;
-    for (auto& stats : *s_opcodeStatsArray) {
-        stats.id = static_cast<OpcodeID>(i++);
-        stats.count = 0;
-        stats.slowPathCount = 0;
-    }
-}
-
-void Data::saveStats()
-{
-    ASSERT(Options::reportLLIntStats() && Options::llintStatsFile());
-    const char* filename = Options::llintStatsFile();
-
-    FILE* file = fopen(filename, "w");
-    if (!file) {
-        dataLogF("Failed to open file %s. Did you add the file-read-write-data entitlement to WebProcess.sb?\n", filename);
-        return;
-    }
-
-    auto statsCopy = *s_opcodeStatsArray;
-    std::sort(statsCopy.begin(), statsCopy.end(), compareStats);
-
-    int index = 0;
-    for (auto& stats : statsCopy) {
-        if (!stats.count && !stats.slowPathCount)
-            break; // stats are sorted. If we encountered 0 counts, then there are no more non-zero counts.
-
-        if (LLIntDataInternal::verboseStats)
-            dataLogF("saved [%u]: fast:%zu slow:%zu id:%u %s\n", index, stats.count, stats.slowPathCount, stats.id, opcodeNames[stats.id]);
-
-        fprintf(file, "[%u]: fast:%zu slow:%zu id:%u %s\n", index, stats.count, stats.slowPathCount, stats.id, opcodeNames[stats.id]);
-        index++;
-    }
-
-    int result = fclose(file);
-    if (result)
-        dataLogF("Failed to close file %s: %s\n", filename, strerror(errno));
-}
 #endif
 
 } } // namespace JSC::LLInt

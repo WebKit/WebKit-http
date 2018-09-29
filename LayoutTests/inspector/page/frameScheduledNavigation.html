@@ -22,14 +22,18 @@ function test()
 
     function onStarted(msg)
     {
-        // This event should be received before the scheduled navigation is cleared.
         ProtocolTest.log("Started loading");
+        ProtocolTest.wasStarted = true;
+        if (ProtocolTest.wasCleared)
+            ProtocolTest.completeTest();
     }
 
     function onCleared(msg)
     {
         ProtocolTest.log("Cleared scheduled navigation");
-        ProtocolTest.completeTest();
+        ProtocolTest.wasCleared = true;
+        if (ProtocolTest.wasStarted)
+            ProtocolTest.completeTest();
     }
 
     InspectorProtocol.sendCommand("Runtime.evaluate", { "expression": "load()" });

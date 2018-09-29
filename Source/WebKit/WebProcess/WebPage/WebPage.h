@@ -488,6 +488,9 @@ public:
 #if PLATFORM(MAC)
     void setTopOverhangImage(WebImage*);
     void setBottomOverhangImage(WebImage*);
+    
+    void setUseSystemAppearance(bool);
+    void setDefaultAppearance(bool);
 #endif
 
     bool windowIsFocused() const;

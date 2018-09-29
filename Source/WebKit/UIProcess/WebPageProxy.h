@@ -44,6 +44,7 @@
 #include "ProcessThrottler.h"
 #include "SandboxExtension.h"
 #include "ShareableBitmap.h"
+#include "SystemPreviewController.h"
 #include "UserMediaPermissionRequestManagerProxy.h"
 #include "VisibleContentRectUpdateInfo.h"
 #include "VisibleWebPageCounter.h"
@@ -377,6 +378,8 @@ public:
     bool allowsMediaDocumentInlinePlayback() const;
     void setAllowsMediaDocumentInlinePlayback(bool);
 #endif
+
+    SystemPreviewController* systemPreviewController() { return m_systemPreviewController.get(); }
 
 #if ENABLE(CONTEXT_MENUS)
     API::ContextMenuClient& contextMenuClient() { return *m_contextMenuClient; }
@@ -798,6 +801,13 @@ public:
     void setPaginationLineGridEnabled(bool);
     bool paginationLineGridEnabled() const { return m_paginationLineGridEnabled; }
     unsigned pageCount() const { return m_pageCount; }
+        
+#if PLATFORM(MAC)
+    void setUseSystemAppearance(bool);
+    bool useSystemAppearance() const { return m_useSystemAppearance; }
+    void setDefaultAppearance(bool);
+    bool defaultAppearance() const { return m_defaultAppearance; }
+#endif
 
 #if PLATFORM(COCOA)
     // Called by the web process through a message.
@@ -1121,13 +1131,11 @@ public:
     WebCore::MediaProducer::MediaStateFlags mediaStateFlags() const { return m_mediaState; }
     void handleAutoplayEvent(WebCore::AutoplayEvent, OptionSet<WebCore::AutoplayEventFlags>);
 
-#if PLATFORM(MAC)
     void videoControlsManagerDidChange();
     bool hasActiveVideoForControlsManager() const;
     void requestControlledElementID() const;
     void handleControlledElementIDResponse(const String&) const;
     bool isPlayingVideoInEnhancedFullscreen() const;
-#endif
 
 #if PLATFORM(COCOA)
     void requestActiveNowPlayingSessionInfo(Ref<NowPlayingInfoCallback>&&);
@@ -1786,10 +1794,17 @@ private:
     bool m_isKeyboardAnimatingIn { false };
     bool m_isScrollingOrZooming { false };
 #endif
+        
+#if PLATFORM(MAC)
+    bool m_useSystemAppearance { false };
+    bool m_defaultAppearance { true };
+#endif
 
 #if ENABLE(APPLE_PAY)
     std::unique_ptr<WebPaymentCoordinatorProxy> m_paymentCoordinator;
 #endif
+
+    std::unique_ptr<SystemPreviewController> m_systemPreviewController;
 
 #if ENABLE(WEB_AUTHN)
     std::unique_ptr<WebCredentialsMessengerProxy> m_credentialsMessenger;

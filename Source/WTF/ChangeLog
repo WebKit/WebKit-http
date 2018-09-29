@@ -1,3 +1,244 @@
+2018-03-12  Mark Lam  <mark.lam@apple.com>
+
+        Make a NativeFunction into a class to support pointer profiling.
+        https://bugs.webkit.org/show_bug.cgi?id=183573
+        <rdar://problem/38384697>
+
+        Reviewed by Filip Pizlo.
+
+        Changed Poisoned so that it can be used on tagged pointers as well.
+
+        * wtf/Poisoned.h:
+
+2018-03-11  Filip Pizlo  <fpizlo@apple.com>
+
+        Split DirectArguments into JSValueOOB and JSValueStrict parts
+        https://bugs.webkit.org/show_bug.cgi?id=183458
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/MathExtras.h:
+        (WTF::dynamicPoison): Deleted.
+
+2018-03-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [Win] Use SRWLOCK and CONDITION_VARIABLE to simplify implementation
+        https://bugs.webkit.org/show_bug.cgi?id=183541
+
+        Reviewed by Darin Adler.
+
+        After Windows Vista, Windows offers SRWLOCK and CONDITION_VARIABLE.
+        They can simplify the implementation of our WTF::Mutex and WTF::ThreadCondition.
+
+        C++ std::mutex and std::condition_variable uses std::chrono for their timed
+        functions. Since std::chrono is not overflow-aware, we cannot reliably use
+        this functionalities. This is why we still keep WTF::Mutex and WTF::ThreadCondition.
+        They are used for ParkingLot.
+
+        * wtf/ThreadingPrimitives.h:
+        * wtf/ThreadingWin.cpp:
+        (WTF::Mutex::Mutex):
+        (WTF::Mutex::~Mutex):
+        (WTF::Mutex::lock):
+        (WTF::Mutex::tryLock):
+        (WTF::Mutex::unlock):
+        (WTF::absoluteTimeToWaitTimeoutInterval):
+        (WTF::ThreadCondition::ThreadCondition):
+        (WTF::ThreadCondition::~ThreadCondition):
+        (WTF::ThreadCondition::wait):
+        (WTF::ThreadCondition::timedWait):
+        (WTF::ThreadCondition::signal):
+        (WTF::ThreadCondition::broadcast):
+        (WTF::PlatformCondition::timedWait): Deleted.
+        (WTF::PlatformCondition::signal): Deleted.
+
+2018-03-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r229436.
+        https://bugs.webkit.org/show_bug.cgi?id=183542
+
+        seems to have regressed wasm compile times by 10% (Requested
+        by pizlo-mbp on #webkit).
+
+        Reverted changeset:
+
+        "bmalloc mutex should be adaptive"
+        https://bugs.webkit.org/show_bug.cgi?id=177839
+        https://trac.webkit.org/changeset/229436
+
+2018-03-09  Mark Lam  <mark.lam@apple.com>
+
+        [Re-landing] Prepare LLInt code to support pointer profiling.
+        https://bugs.webkit.org/show_bug.cgi?id=183387
+        <rdar://problem/38199678>
+
+        Reviewed by JF Bastien.
+
+        * wtf/Platform.h:
+
+2018-03-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r229354 and r229364.
+        https://bugs.webkit.org/show_bug.cgi?id=183492
+
+        Breaks internal builds (Requested by ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "Prepare LLInt code to support pointer profiling."
+        https://bugs.webkit.org/show_bug.cgi?id=183387
+        https://trac.webkit.org/changeset/229354
+
+        "Add support for ARM64E."
+        https://bugs.webkit.org/show_bug.cgi?id=183398
+        https://trac.webkit.org/changeset/229364
+
+2018-03-08  Filip Pizlo  <fpizlo@apple.com>
+
+        bmalloc mutex should be adaptive
+        https://bugs.webkit.org/show_bug.cgi?id=177839
+
+        Reviewed by Michael Saboff.
+        
+        Add some comments that I thought of while copy-pasting this code.
+
+        Reland after failing to reproduce the WasmBench crash that caused it to get rolled out. Maybe that fixed
+        itself somehow?
+
+        * wtf/LockAlgorithmInlines.h:
+        * wtf/WordLock.cpp:
+        (WTF::WordLock::unlockSlow):
+
+2018-03-08  Keith Miller  <keith_miller@apple.com>
+
+        Disable JIT on Cocoa 32-bit ARM.
+        https://bugs.webkit.org/show_bug.cgi?id=183426
+
+        Reviewed by Michael Saboff.
+
+        * wtf/Platform.h:
+
+2018-03-08  Keith Miller  <keith_miller@apple.com>
+
+        Use asm instead of __asm__ in WTFBreakpointTrap so MSVC builds
+        https://bugs.webkit.org/show_bug.cgi?id=183465
+
+        Reviewed by Michael Saboff.
+
+        * wtf/Assertions.h:
+
+2018-03-07  Filip Pizlo  <fpizlo@apple.com>
+
+        Make it possible to randomize register allocation
+        https://bugs.webkit.org/show_bug.cgi?id=183416
+
+        Reviewed by Keith Miller.
+
+        * wtf/MathExtras.h:
+        (WTF::shuffleVector):
+
+2018-03-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [Win] Use __debugbreak for WTFBreakpointTrap
+        https://bugs.webkit.org/show_bug.cgi?id=183450
+
+        Reviewed by Mark Lam.
+
+        This patch adds WTFBreakpointTrap() implementation for MSVC by using
+        __debugbreak. It fixes build failure in Windows due to the use of
+        WTFBreakpointTrap().
+
+        * wtf/Assertions.h:
+
+2018-03-08  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GLib] RunLoop::wakeUp(): use a zero value instead of the monotonic time
+        https://bugs.webkit.org/show_bug.cgi?id=183447
+
+        Reviewed by Carlos Garcia Campos.
+
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::RunLoop::wakeUp): Micro-optimize the wake-up schedule by using
+        a zero value as the GSource ready time, instead of retrieving and using
+        the current monotonic time.
+
+2018-03-08  Tim Horton  <timothy_horton@apple.com>
+
+        Don't have Celestial in minimal simulator configuration
+        https://bugs.webkit.org/show_bug.cgi?id=183432
+        <rdar://problem/38252985>
+
+        Reviewed by Dan Bernstein.
+
+        * wtf/Platform.h:
+
+2018-03-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Set canInitializeWithMemset = true if T is an integral type
+        https://bugs.webkit.org/show_bug.cgi?id=183357
+
+        Reviewed by Darin Adler.
+
+        This patch set `canInitializeWithMemset = true` if T is an integral type.
+        This can offer a chance to use memset if we use UniqueArray<T> where T is
+        an integral type. We also rename VectorTypeOperations::initialize to
+        VectorTypeOperations::initializeIfNonPOD, VectorTypeOperations::forceInitialize
+        to VectorTypeOperations::initialize respectively.
+
+        * wtf/RefCountedArray.h:
+        (WTF::RefCountedArray::RefCountedArray):
+        * wtf/UniqueArray.h:
+        * wtf/Vector.h:
+        (WTF::VectorTypeOperations::initializeIfNonPOD):
+        (WTF::VectorTypeOperations::initialize):
+        (WTF::Vector::Vector):
+        (WTF::Malloc>::resize):
+        (WTF::Malloc>::grow):
+        (WTF::VectorTypeOperations::forceInitialize): Deleted.
+        * wtf/VectorTraits.h:
+
+2018-03-07  Keith Miller  <keith_miller@apple.com>
+
+        Meta-program setupArguments and callOperation
+        https://bugs.webkit.org/show_bug.cgi?id=183263
+
+        Rubber-stamped by Filip Pizlo.
+
+        Add a new function traits struct that provides interesting
+        information about the provided function pointer. Right now it only
+        provides information for function pointers, in theory we could
+        also get it to work for other types.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Bitmap.h:
+        (WTF::WordType>::Bitmap):
+        * wtf/CMakeLists.txt:
+        * wtf/FunctionTraits.h: Added.
+        (WTF::slotsForCCallArgument):
+        (WTF::computeCCallSlots):
+        (WTF::FunctionTraits<Result):
+
+2018-03-07  Tim Horton  <timothy_horton@apple.com>
+
+        Shuffle around some feature flags for minimal simulator mode
+        https://bugs.webkit.org/show_bug.cgi?id=183419
+        <rdar://problem/37694987>
+
+        Reviewed by Beth Dakin.
+
+        * wtf/FeatureDefines.h:
+        * wtf/Platform.h:
+
+2018-03-06  Mark Lam  <mark.lam@apple.com>
+
+        Prepare LLInt code to support pointer profiling.
+        https://bugs.webkit.org/show_bug.cgi?id=183387
+        <rdar://problem/38199678>
+
+        Reviewed by JF Bastien.
+
+        * wtf/Platform.h:
+
 2018-03-06  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r229330.

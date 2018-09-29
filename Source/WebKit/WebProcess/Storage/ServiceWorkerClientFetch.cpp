@@ -68,6 +68,9 @@ void ServiceWorkerClientFetch::start()
 
     auto referrer = request.httpReferrer();
 
+    m_didFail = false;
+    m_didFinish = false;
+
     // We are intercepting fetch calls after going through the HTTP layer, which may add some specific headers.
     cleanHTTPRequestHeadersForAccessControl(request, options.httpHeadersToKeep);
 
@@ -100,12 +103,17 @@ std::optional<ResourceError> ServiceWorkerClientFetch::validateResponse(const Re
 
 void ServiceWorkerClientFetch::didReceiveResponse(ResourceResponse&& response)
 {
+    m_isCheckingResponse = true;
     callOnMainThread([this, protectedThis = makeRef(*this), response = WTFMove(response)]() mutable {
-        if (!m_loader)
+        if (!m_loader) {
+            m_isCheckingResponse = false;
             return;
+        }
 
         if (auto error = validateResponse(response)) {
+            m_isCheckingResponse = false;
             m_loader->didFail(error.value());
+            ASSERT(!m_loader);
             if (auto callback = WTFMove(m_callback))
                 callback(Result::Succeeded);
             return;
@@ -113,6 +121,8 @@ void ServiceWorkerClientFetch::didReceiveResponse(ResourceResponse&& response)
         response.setSource(ResourceResponse::Source::ServiceWorker);
 
         if (response.isRedirection() && response.httpHeaderFields().contains(HTTPHeaderName::Location)) {
+            m_isCheckingResponse = false;
+            continueLoadingAfterCheckingResponse();
             m_redirectionStatus = RedirectionStatus::Receiving;
             m_loader->willSendRequest(m_loader->request().redirectedRequest(response, m_shouldClearReferrerOnHTTPSToHTTPRedirect), response, [protectedThis = makeRef(*this), this](ResourceRequest&& request) {
                 if (request.isNull() || !m_callback)
@@ -142,19 +152,34 @@ void ServiceWorkerClientFetch::didReceiveResponse(ResourceResponse&& response)
             response.setURL(m_loader->request().url());
 
         m_loader->didReceiveResponse(response, [this, protectedThis = WTFMove(protectedThis)] {
+            m_isCheckingResponse = false;
+            continueLoadingAfterCheckingResponse();
             if (auto callback = WTFMove(m_callback))
                 callback(Result::Succeeded);
         });
     });
 }
 
-void ServiceWorkerClientFetch::didReceiveData(const IPC::DataReference& data, int64_t encodedDataLength)
+void ServiceWorkerClientFetch::didReceiveData(const IPC::DataReference& dataReference, int64_t encodedDataLength)
 {
-    callOnMainThread([this, protectedThis = makeRef(*this), data = data.vector(), encodedDataLength] {
+    auto* data = reinterpret_cast<const char*>(dataReference.data());
+    if (!m_buffer) {
+        m_buffer = SharedBuffer::create(data, dataReference.size());
+        m_encodedDataLength = encodedDataLength;
+    } else {
+        m_buffer->append(data, dataReference.size());
+        m_encodedDataLength += encodedDataLength;
+    }
+
+    if (m_isCheckingResponse)
+        return;
+
+    callOnMainThread([this, protectedThis = makeRef(*this)] {
         if (!m_loader)
             return;
 
-        m_loader->didReceiveData(reinterpret_cast<const char*>(data.data()), data.size(), encodedDataLength, DataPayloadBytes);
+        m_loader->didReceiveBuffer(m_buffer.releaseNonNull(), m_encodedDataLength, DataPayloadBytes);
+        m_encodedDataLength = 0;
     });
 }
 
@@ -165,6 +190,11 @@ void ServiceWorkerClientFetch::didReceiveFormData(const IPC::FormDataReference&)
 
 void ServiceWorkerClientFetch::didFinish()
 {
+    m_didFinish = true;
+
+    if (m_isCheckingResponse)
+        return;
+
     callOnMainThread([this, protectedThis = makeRef(*this)] {
         if (!m_loader)
             return;
@@ -192,6 +222,11 @@ void ServiceWorkerClientFetch::didFinish()
 
 void ServiceWorkerClientFetch::didFail()
 {
+    m_didFail = true;
+
+    if (m_isCheckingResponse)
+        return;
+
     callOnMainThread([this, protectedThis = makeRef(*this)] {
         if (!m_loader)
             return;
@@ -207,6 +242,8 @@ void ServiceWorkerClientFetch::didFail()
 
 void ServiceWorkerClientFetch::didNotHandle()
 {
+    ASSERT(!m_isCheckingResponse);
+
     callOnMainThread([this, protectedThis = makeRef(*this)] {
         if (!m_loader)
             return;
@@ -223,6 +260,31 @@ void ServiceWorkerClientFetch::cancel()
     if (auto callback = WTFMove(m_callback))
         callback(Result::Cancelled);
     m_loader = nullptr;
+    m_buffer = nullptr;
+}
+
+void ServiceWorkerClientFetch::continueLoadingAfterCheckingResponse()
+{
+    ASSERT(!m_isCheckingResponse);
+    if (!m_loader)
+        return;
+
+    if (m_encodedDataLength) {
+        callOnMainThread([this, protectedThis = makeRef(*this)] {
+            if (!m_loader || !m_encodedDataLength)
+                return;
+            m_loader->didReceiveBuffer(m_buffer.releaseNonNull(), m_encodedDataLength, DataPayloadBytes);
+            m_encodedDataLength = 0;
+        });
+    }
+
+    if (m_didFail) {
+        didFail();
+        return;
+    }
+
+    if (m_didFinish)
+        didFinish();
 }
 
 } // namespace WebKit

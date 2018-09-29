@@ -70,6 +70,7 @@
 #include "RenderView.h"
 #include "RenderWidget.h"
 #include "RenderedPosition.h"
+#include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
 #include "TextCheckerClient.h"
 #include "TextCheckingHelper.h"
@@ -1776,6 +1777,9 @@ unsigned AccessibilityObject::doAXLineForIndex(unsigned index)
 #if HAVE(ACCESSIBILITY)
 void AccessibilityObject::updateBackingStore()
 {
+    if (!axObjectCache())
+        return;
+    
     // Updating the layout may delete this object.
     RefPtr<AccessibilityObject> protectedThis(this);
     if (auto* document = this->document()) {
@@ -2152,8 +2156,16 @@ const AtomicString& AccessibilityObject::getAttribute(const QualifiedName& attri
     return nullAtom();
 }
 
+bool AccessibilityObject::shouldDispatchAccessibilityEvent() const
+{
+    return RuntimeEnabledFeatures::sharedFeatures().accessibilityObjectModelEnabled();
+}
+
 bool AccessibilityObject::dispatchAccessibilityEvent(Event& event) const
 {
+    if (!shouldDispatchAccessibilityEvent())
+        return false;
+    
     Vector<Element*> eventPath;
     for (auto* parentObject = this; parentObject; parentObject = parentObject->parentObject()) {
         if (parentObject->isWebArea())
@@ -2161,6 +2173,9 @@ bool AccessibilityObject::dispatchAccessibilityEvent(Event& event) const
         if (auto* parentElement = parentObject->element())
             eventPath.append(parentElement);
     }
+    
+    if (!eventPath.size())
+        return false;
     
     EventDispatcher::dispatchEvent(eventPath, event);
     

@@ -1087,6 +1087,7 @@ svg/custom/embedded-svg-allowed-in-dashboard.xml [ Skip ]
 svg/custom/manually-parsed-svg-allowed-in-dashboard.html [ Skip ]
 svg/custom/manually-parsed-embedded-svg-allowed-in-dashboard.html [ Skip ]
 svg/custom/svg-allowed-in-dashboard-object.html [ Skip ]
+mathml/mathml-in-dashboard.html [ Skip ]
 
 # No embedded PDF support
 fast/hidpi/pdf-image-scaled.html [ Skip ]
@@ -1129,7 +1130,9 @@ webkit.org/b/175419 http/tests/workers/service [ Skip ]
 webkit.org/b/175419 http/wpt/service-workers [ Failure ]
 webkit.org/b/175419 http/tests/inspector/network/resource-response-service-worker.html [ Skip ]
 webkit.org/b/175419 imported/w3c/web-platform-tests/service-workers [ Skip ]
-http/tests/appcache/main-resource-redirect-with-sw.html [ Skip ]
+webkit.org/b/175419 http/tests/appcache/main-resource-redirect-with-sw.html [ Skip ]
+webkit.org/b/175419 http/tests/appcache/main-resource-redirect.html [ Skip ]
+webkit.org/b/175419 http/wpt/service-workers/navigation-redirect-main-frame.https.html [ Skip ]
 
 # Skip anything related to WebAuthN
 http/tests/webauthn/ [ Skip ]
@@ -1312,6 +1315,8 @@ webkit.org/b/182106 media/video-multiple-concurrent-playback.html [ Crash Pass T
 webkit.org/b/183180 imported/blink/fast/forms/time-multiple-fields/time-multiple-fields-crash-by-focus-on-unload.html [ Crash Pass ]
 
 webkit.org/b/183215 imported/w3c/web-platform-tests/encoding/legacy-mb-korean/euc-kr/euckr-decode-cseuckr.html [ Crash Pass ]
+
+webkit.org/b/183401 fast/animation/request-animation-frame-during-modal.html [ Crash Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Crashing tests
@@ -3244,6 +3249,7 @@ webkit.org/b/175661 inspector/worker/resources-in-worker.html [ Failure ]
 webkit.org/b/175662 inspector/canvas/recording-2d.html [ Failure ]
 
 webkit.org/b/177934 fast/dom/HTMLLinkElement/preconnect-support.html [ Failure ]
+webkit.org/b/177934 http/tests/preconnect/link-header-rel-preconnect-http.html [ Failure ]
 
 webkit.org/b/177936 fast/text/emoji-gender-2.html [ ImageOnlyFailure ]
 webkit.org/b/177936 fast/text/emoji-gender.html [ ImageOnlyFailure ]

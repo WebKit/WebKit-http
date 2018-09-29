@@ -27,9 +27,9 @@
 
 namespace JSC {
     
-class RegExpObject : public JSNonFinalObject {
+class RegExpObject final : public JSNonFinalObject {
 public:
-    typedef JSNonFinalObject Base;
+    using Base = JSNonFinalObject;
     static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | OverridesGetPropertyNames;
 
     static RegExpObject* create(VM& vm, Structure* structure, RegExp* regExp)
@@ -116,8 +116,6 @@ public:
         return sizeof(RegExpObject);
     }
 
-    static unsigned advanceStringUnicode(String, unsigned length, unsigned currentIndex);
-
 protected:
     JS_EXPORT_PRIVATE RegExpObject(VM&, Structure*, RegExp*);
     JS_EXPORT_PRIVATE void finishCreation(VM&);
@@ -137,13 +135,5 @@ private:
     WriteBarrier<Unknown> m_lastIndex;
     uint8_t m_lastIndexIsWritable;
 };
-
-RegExpObject* asRegExpObject(JSValue);
-
-inline RegExpObject* asRegExpObject(JSValue value)
-{
-    ASSERT(asObject(value)->inherits(*value.getObject()->vm(), RegExpObject::info()));
-    return static_cast<RegExpObject*>(asObject(value));
-}
 
 } // namespace JSC

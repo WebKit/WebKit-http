@@ -32,68 +32,34 @@
 
 namespace WebKit {
 
-static void resolvedName(CFHostRef hostRef, CFHostInfoType typeInfo, const CFStreamError *error, void *info)
+// FIXME: Use the function after removing the NetworkRTCResolverCocoa.
+#if !PLATFORM(COCOA)
+std::unique_ptr<NetworkRTCResolver> NetworkRTCResolver::create(uint64_t identifier, WebCore::DNSCompletionHandler&& completionHandler)
 {
-    ASSERT_UNUSED(typeInfo, !typeInfo);
-
-    if (error->domain) {
-        // FIXME: Need to handle failure, but info is not provided in the callback.
-        return;
-    }
-
-    ASSERT(info);
-    auto* resolver = static_cast<NetworkRTCResolver*>(info);
-
-    Boolean result;
-    CFArrayRef resolvedAddresses = (CFArrayRef)CFHostGetAddressing(hostRef, &result);
-    ASSERT_UNUSED(result, result);
-
-    size_t count = CFArrayGetCount(resolvedAddresses);
-    Vector<RTCNetwork::IPAddress> addresses;
-    addresses.reserveInitialCapacity(count);
-
-    for (size_t index = 0; index < count; ++index) {
-        CFDataRef data = (CFDataRef)CFArrayGetValueAtIndex(resolvedAddresses, index);
-        auto* address = reinterpret_cast<const struct sockaddr_in*>(CFDataGetBytePtr(data));
-        addresses.uncheckedAppend(RTCNetwork::IPAddress(rtc::IPAddress(address->sin_addr)));
-    }
-    resolver->completed(addresses);
+    return std::unique_ptr<NetworkRTCResolver>(new NetworkRTCResolver(identifier, WTFMove(completionHandler)));
 }
+#endif
 
-NetworkRTCResolver::NetworkRTCResolver(CompletionHandler&& completionHandler)
-    : m_completionHandler(WTFMove(completionHandler))
+NetworkRTCResolver::NetworkRTCResolver(uint64_t identifier, WebCore::DNSCompletionHandler&& completionHandler)
+    : m_identifier(identifier)
+    , m_completionHandler(WTFMove(completionHandler))
 {
 }
 
 NetworkRTCResolver::~NetworkRTCResolver()
 {
-    CFHostUnscheduleFromRunLoop(m_host.get(), CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
-    CFHostSetClient(m_host.get(), nullptr, nullptr);
     if (auto completionHandler = WTFMove(m_completionHandler))
-        completionHandler(makeUnexpected(Error::Unknown));
+        completionHandler(makeUnexpected(WebCore::DNSError::Unknown));
 }
 
 void NetworkRTCResolver::start(const String& address)
 {
-    m_host = adoptCF(CFHostCreateWithName(kCFAllocatorDefault, address.createCFString().get()));
-    CFHostClientContext context = { 0, this, nullptr, nullptr, nullptr };
-    CFHostSetClient(m_host.get(), resolvedName, &context);
-    CFHostScheduleWithRunLoop(m_host.get(), CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
-    Boolean result = CFHostStartInfoResolution(m_host.get(), kCFHostAddresses, nullptr);
-    ASSERT_UNUSED(result, result);
+    WebCore::resolveDNS(address, m_identifier, WTFMove(m_completionHandler));
 }
 
 void NetworkRTCResolver::stop()
 {
-    CFHostCancelInfoResolution(m_host.get(), CFHostInfoType::kCFHostAddresses);
-    if (auto completionHandler = WTFMove(m_completionHandler))
-        completionHandler(makeUnexpected(Error::Cancelled));
-}
-
-void NetworkRTCResolver::completed(const Vector<RTCNetwork::IPAddress>& addresses)
-{
-    if (auto completionHandler = WTFMove(m_completionHandler))
-        completionHandler({ addresses });
+    WebCore::stopResolveDNS(m_identifier);
 }
 
 } // namespace WebKit

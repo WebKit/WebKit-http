@@ -36,9 +36,13 @@
 #include "WebRTCResolverMessages.h"
 #include "WebRTCSocketMessages.h"
 #include <WebCore/LibWebRTCMacros.h>
-#include <webrtc/base/asyncpacketsocket.h>
+#include <webrtc/rtc_base/asyncpacketsocket.h>
 #include <wtf/MainThread.h>
 #include <wtf/text/WTFString.h>
+
+#if PLATFORM(COCOA)
+#include "NetworkRTCResolverCocoa.h"
+#endif
 
 namespace WebKit {
 
@@ -162,15 +166,22 @@ void NetworkRTCProvider::didReceiveNetworkRTCSocketMessage(IPC::Connection& conn
     NetworkRTCSocket(decoder.destinationID(), *this).didReceiveMessage(connection, decoder);
 }
 
+#if PLATFORM(COCOA)
+
 void NetworkRTCProvider::createResolver(uint64_t identifier, const String& address)
 {
-    auto resolver = std::make_unique<NetworkRTCResolver>([this, identifier](NetworkRTCResolver::AddressesOrError&& result) mutable {
+    auto resolver = NetworkRTCResolver::create(identifier, [this, identifier](WebCore::DNSAddressesOrError&& result) mutable {
         if (!result.has_value()) {
-            if (result.error() != NetworkRTCResolver::Error::Cancelled)
+            if (result.error() != WebCore::DNSError::Cancelled)
                 m_connection->connection().send(Messages::WebRTCResolver::ResolvedAddressError(1), identifier);
             return;
         }
-        m_connection->connection().send(Messages::WebRTCResolver::SetResolvedAddress(result.value()), identifier);
+
+        auto addresses = WTF::map(result.value(), [] (auto& address) {
+            return RTCNetwork::IPAddress { rtc::IPAddress { address.getSinAddr() } };
+        });
+
+        m_connection->connection().send(Messages::WebRTCResolver::SetResolvedAddress(addresses), identifier);
     });
     resolver->start(address);
     m_resolvers.add(identifier, WTFMove(resolver));
@@ -181,6 +192,34 @@ void NetworkRTCProvider::stopResolver(uint64_t identifier)
     if (auto resolver = m_resolvers.take(identifier))
         resolver->stop();
 }
+
+#else
+
+void NetworkRTCProvider::createResolver(uint64_t identifier, const String& address)
+{
+    auto completionHandler = [this, identifier](WebCore::DNSAddressesOrError&& result) mutable {
+        if (!result.has_value()) {
+            if (result.error() != WebCore::DNSError::Cancelled)
+                m_connection->connection().send(Messages::WebRTCResolver::ResolvedAddressError(1), identifier);
+            return;
+        }
+
+        auto addresses = WTF::map(result.value(), [] (auto& address) {
+            return RTCNetwork::IPAddress { rtc::IPAddress { address.getSinAddr() } };
+        });
+
+        m_connection->connection().send(Messages::WebRTCResolver::SetResolvedAddress(addresses), identifier);
+    };
+
+    WebCore::resolveDNS(address, identifier, WTFMove(completionHandler));
+}
+
+void NetworkRTCProvider::stopResolver(uint64_t identifier)
+{
+    WebCore::stopResolveDNS(identifier);
+}
+
+#endif
 
 void NetworkRTCProvider::closeListeningSockets(Function<void()>&& completionHandler)
 {

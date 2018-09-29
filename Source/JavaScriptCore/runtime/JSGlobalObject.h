@@ -511,7 +511,7 @@ public:
 
     void addVar(ExecState* exec, const Identifier& propertyName)
     {
-        if (!hasProperty(exec, propertyName))
+        if (!hasOwnProperty(exec, propertyName))
             addGlobalVar(propertyName);
     }
     void addFunction(ExecState*, const Identifier&);
@@ -924,14 +924,6 @@ private:
     
     RefPtr<ThreadLocalCache> m_threadLocalCache;
 };
-
-JSGlobalObject* asGlobalObject(JSValue);
-
-inline JSGlobalObject* asGlobalObject(JSValue value)
-{
-    ASSERT(asObject(value)->isGlobalObject());
-    return jsCast<JSGlobalObject*>(asObject(value));
-}
 
 inline JSArray* constructEmptyArray(ExecState* exec, ArrayAllocationProfile* profile, JSGlobalObject* globalObject, unsigned initialLength = 0, JSValue newTarget = JSValue())
 {

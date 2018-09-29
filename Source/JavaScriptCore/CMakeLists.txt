@@ -829,6 +829,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/Microtask.h
     runtime/ModuleProgramExecutable.h
     runtime/NativeExecutable.h
+    runtime/NativeFunction.h
     runtime/NumberObject.h
     runtime/NumberPrototype.h
     runtime/NumericStrings.h
@@ -838,6 +839,7 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     runtime/Operations.h
     runtime/Options.h
     runtime/ParseInt.h
+    runtime/PtrTag.h
     runtime/PrivateName.h
     runtime/ProgramExecutable.h
     runtime/PromiseDeferredTimer.h

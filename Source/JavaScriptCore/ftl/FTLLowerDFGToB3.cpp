@@ -174,6 +174,9 @@ public:
                 [codeBlock] (CCallHelpers& jit, B3::Air::Code& code) {
                     AllowMacroScratchRegisterUsage allowScratch(jit);
                     jit.addPtr(CCallHelpers::TrustedImm32(-code.frameSize()), GPRInfo::callFrameRegister, CCallHelpers::stackPointerRegister);
+                    if (Options::zeroStackFrame())
+                        jit.clearStackFrame(GPRInfo::callFrameRegister, CCallHelpers::stackPointerRegister, GPRInfo::regT0, code.frameSize());
+
                     jit.emitSave(code.calleeSaveRegisterAtOffsetList());
                     jit.emitPutToCallFrameHeader(codeBlock, CallFrameSlot::codeBlock);
                 });
@@ -1207,6 +1210,9 @@ private:
             break;
         case RegExpMatchFast:
             compileRegExpMatchFast();
+            break;
+        case RegExpMatchFastGlobal:
+            compileRegExpMatchFastGlobal();
             break;
         case NewRegexp:
             compileNewRegexp();
@@ -3667,7 +3673,10 @@ private:
             speculate(
                 ExoticObjectMode, noValue(), nullptr,
                 m_out.notNull(m_out.loadPtr(arguments, m_heaps.DirectArguments_mappedArguments)));
-            setInt32(m_out.load32NonNegative(arguments, m_heaps.DirectArguments_length));
+            LValue storage = m_out.bitXor(
+                m_out.loadPtr(lowCell(m_node->child1()), m_heaps.DirectArguments_storage),
+                m_out.constIntPtr(DirectArgumentsPoison::key()));
+            setInt32(m_out.load32NonNegative(storage, m_heaps.DirectArguments_Storage_length));
             return;
         }
             
@@ -3833,13 +3842,16 @@ private:
                 ExoticObjectMode, noValue(), nullptr,
                 m_out.notNull(m_out.loadPtr(base, m_heaps.DirectArguments_mappedArguments)));
 
-            LValue length = m_out.load32NonNegative(base, m_heaps.DirectArguments_length);
+            LValue storage = m_out.loadPtr(base, m_heaps.DirectArguments_storage);
+            storage = m_out.bitXor(storage, m_out.constIntPtr(DirectArgumentsPoison::key()));
+            
+            LValue length = m_out.load32NonNegative(storage, m_heaps.DirectArguments_Storage_length);
             auto isOutOfBounds = m_out.aboveOrEqual(index, length);
             if (m_node->arrayMode().isInBounds()) {
                 speculate(OutOfBounds, noValue(), nullptr, isOutOfBounds);
                 TypedPointer address = m_out.baseIndex(
-                    m_heaps.DirectArguments_storage, base, m_out.zeroExtPtr(index));
-                setJSValue(m_out.load64(address));
+                    m_heaps.DirectArguments_Storage_storage, storage, m_out.zeroExtPtr(index));
+                setJSValue(preciseIndexMask32(m_out.load64(address), index, length));
                 return;
             }
 
@@ -3851,8 +3863,7 @@ private:
 
             LBasicBlock lastNext = m_out.appendTo(inBounds, slowCase);
             TypedPointer address = m_out.baseIndex(
-                m_heaps.DirectArguments_storage,
-                dynamicPoisonOnType(base, DirectArgumentsType),
+                m_heaps.DirectArguments_Storage_storage, storage,
                 m_out.zeroExt(index, pointerType()));
             ValueFromBlock fastResult = m_out.anchor(
                 preciseIndexMask32(m_out.load64(address), index, length));
@@ -5151,29 +5162,39 @@ private:
         
         ArgumentsLength length = getArgumentsLength();
         
+        LValue fastStorage;
         LValue fastObject;
         if (length.isKnown) {
-            fastObject = allocateObject<DirectArguments>(
-                DirectArguments::allocationSize(std::max(length.known, minCapacity)), structure,
-                m_out.intPtrZero, m_out.int32Zero, slowPath);
+            LValue allocator = m_out.constInt32(
+                vm().jsValueGigacageAuxiliarySpace.allocatorForNonVirtual(
+                    DirectArguments::storageSize(std::max(length.known, minCapacity)),
+                    AllocatorForMode::AllocatorIfExists).offset());
+
+            fastStorage = allocateHeapCell(allocator, slowPath);
         } else {
             LValue size = m_out.add(
                 m_out.shl(length.value, m_out.constInt32(3)),
-                m_out.constInt32(DirectArguments::storageOffset()));
+                m_out.constInt32(DirectArguments::storageHeaderSize()));
             
             size = m_out.select(
                 m_out.aboveOrEqual(length.value, m_out.constInt32(minCapacity)),
-                size, m_out.constInt32(DirectArguments::allocationSize(minCapacity)));
-            
-            fastObject = allocateVariableSizedObject<DirectArguments>(
-                m_out.zeroExtPtr(size), structure, m_out.intPtrZero, m_out.int32Zero, slowPath);
+                size, m_out.constInt32(DirectArguments::storageSize(minCapacity)));
+        
+            fastStorage = allocateVariableSizedHeapCell(
+                vm().jsValueGigacageAuxiliarySpace, m_out.zeroExtPtr(size), slowPath);
         }
         
-        m_out.store32(length.value, fastObject, m_heaps.DirectArguments_length);
-        m_out.store32(m_out.constInt32(minCapacity), fastObject, m_heaps.DirectArguments_minCapacity);
+        fastStorage = m_out.add(fastStorage, m_out.constIntPtr(DirectArguments::storageHeaderSize()));
+        m_out.store32(length.value, fastStorage, m_heaps.DirectArguments_Storage_length);
+        m_out.store32(m_out.constInt32(minCapacity), fastStorage, m_heaps.DirectArguments_Storage_minCapacity);
+        
+        fastObject = allocateObject<DirectArguments>(structure, m_out.intPtrZero, m_out.intPtrZero, slowPath);
+ 
+        m_out.storePtr(m_out.bitXor(fastStorage, m_out.constIntPtr(DirectArgumentsPoison::key())), fastObject, m_heaps.DirectArguments_storage);
         m_out.storePtr(m_out.intPtrZero, fastObject, m_heaps.DirectArguments_mappedArguments);
         m_out.storePtr(m_out.intPtrZero, fastObject, m_heaps.DirectArguments_modifiedArgumentsDescriptor);
         
+        ValueFromBlock fastStorageAnchor = m_out.anchor(fastStorage);
         ValueFromBlock fastResult = m_out.anchor(fastObject);
         m_out.jump(continuation);
         
@@ -5187,9 +5208,14 @@ private:
                     CCallHelpers::TrustedImm32(minCapacity));
             }, length.value);
         ValueFromBlock slowResult = m_out.anchor(callResult);
+        ValueFromBlock slowStorage = m_out.anchor(
+            m_out.bitXor(
+                m_out.loadPtr(callResult, m_heaps.DirectArguments_storage),
+                m_out.constIntPtr(DirectArgumentsPoison::key())));
         m_out.jump(continuation);
         
         m_out.appendTo(continuation, lastNext);
+        LValue storage = m_out.phi(pointerType(), fastStorageAnchor, slowStorage);
         LValue result = m_out.phi(pointerType(), fastResult, slowResult);
 
         m_out.storePtr(getCurrentCallee(), result, m_heaps.DirectArguments_callee);
@@ -5199,7 +5225,7 @@ private:
             for (unsigned i = 0; i < std::max(length.known, minCapacity); ++i) {
                 m_out.store64(
                     m_out.load64(addressFor(start + i)),
-                    result, m_heaps.DirectArguments_storage[i]);
+                    storage, m_heaps.DirectArguments_Storage_storage[i]);
             }
         } else {
             LValue stackBase = getArgumentsStart();
@@ -5227,7 +5253,7 @@ private:
             LValue index = m_out.sub(previousIndex, m_out.intPtrOne);
             m_out.store64(
                 m_out.load64(m_out.baseIndex(m_heaps.variables, stackBase, index)),
-                m_out.baseIndex(m_heaps.DirectArguments_storage, result, index));
+                m_out.baseIndex(m_heaps.DirectArguments_Storage_storage, storage, index));
             ValueFromBlock nextIndex = m_out.anchor(index);
             m_out.addIncomingToPhi(previousIndex, nextIndex);
             m_out.branch(m_out.isNull(index), unsure(end), unsure(loop));
@@ -6684,18 +6710,23 @@ private:
     
     void compileGetFromArguments()
     {
+        LValue storage = m_out.bitXor(
+            m_out.loadPtr(lowCell(m_node->child1()), m_heaps.DirectArguments_storage),
+            m_out.constIntPtr(DirectArgumentsPoison::key()));
         setJSValue(
             m_out.load64(
-                lowCell(m_node->child1()),
-                m_heaps.DirectArguments_storage[m_node->capturedArgumentsOffset().offset()]));
+                storage,
+                m_heaps.DirectArguments_Storage_storage[m_node->capturedArgumentsOffset().offset()]));
     }
     
     void compilePutToArguments()
     {
+        LValue storage = m_out.bitXor(
+            m_out.loadPtr(lowCell(m_node->child1()), m_heaps.DirectArguments_storage),
+            m_out.constIntPtr(DirectArgumentsPoison::key()));
         m_out.store64(
-            lowJSValue(m_node->child2()),
-            lowCell(m_node->child1()),
-            m_heaps.DirectArguments_storage[m_node->capturedArgumentsOffset().offset()]);
+            lowJSValue(m_node->child2()), storage,
+            m_heaps.DirectArguments_Storage_storage[m_node->capturedArgumentsOffset().offset()]);
     }
 
     void compileGetArgument()
@@ -7699,7 +7730,7 @@ private:
                 {
                     CCallHelpers::Jump dontThrow = jit.jump();
                     slowCase.link(&jit);
-                    jit.setupArgumentsExecState();
+                    jit.setupArguments<decltype(operationThrowStackOverflowForVarargs)>();
                     callWithExceptionCheck(bitwise_cast<void*>(operationThrowStackOverflowForVarargs));
                     jit.abortWithReason(DFGVarargsThrowingPathDidNotThrow);
                     
@@ -7965,14 +7996,14 @@ private:
 
                     CCallHelpers::Jump done = jit.jump();
                     slowCase.link(&jit);
-                    jit.setupArgumentsExecState();
+                    jit.setupArguments<decltype(operationThrowStackOverflowForVarargs)>();
                     callWithExceptionCheck(bitwise_cast<void*>(operationThrowStackOverflowForVarargs));
                     jit.abortWithReason(DFGVarargsThrowingPathDidNotThrow);
                     
                     done.link(&jit);
                 } else {
                     jit.move(CCallHelpers::TrustedImm32(originalStackHeight / sizeof(EncodedJSValue)), scratchGPR1);
-                    jit.setupArgumentsWithExecState(argumentsGPR, scratchGPR1, CCallHelpers::TrustedImm32(data->firstVarArgOffset));
+                    jit.setupArguments<decltype(operationSizeFrameForVarargs)>(argumentsGPR, scratchGPR1, CCallHelpers::TrustedImm32(data->firstVarArgOffset));
                     callWithExceptionCheck(bitwise_cast<void*>(operationSizeFrameForVarargs));
 
                     jit.move(GPRInfo::returnValueGPR, scratchGPR1);
@@ -7980,7 +8011,7 @@ private:
                     argumentsLateRep.emitRestore(jit, argumentsGPR);
                     emitSetVarargsFrame(jit, scratchGPR1, false, scratchGPR2, scratchGPR2);
                     jit.addPtr(CCallHelpers::TrustedImm32(-minimumJSCallAreaSize), scratchGPR2, CCallHelpers::stackPointerRegister);
-                    jit.setupArgumentsWithExecState(scratchGPR2, argumentsGPR, CCallHelpers::TrustedImm32(data->firstVarArgOffset), scratchGPR1);
+                    jit.setupArguments<decltype(operationSetupVarargsFrame)>(scratchGPR2, argumentsGPR, CCallHelpers::TrustedImm32(data->firstVarArgOffset), scratchGPR1);
                     callWithExceptionCheck(bitwise_cast<void*>(operationSetupVarargsFrame));
                     
                     jit.addPtr(CCallHelpers::TrustedImm32(sizeof(CallerFrameAndPC)), GPRInfo::returnValueGPR, CCallHelpers::stackPointerRegister);
@@ -8130,7 +8161,7 @@ private:
                 unsigned requiredBytes = sizeof(CallerFrameAndPC) + sizeof(ExecState*) * 2;
                 requiredBytes = WTF::roundUpToMultipleOf(stackAlignmentBytes(), requiredBytes);
                 jit.subPtr(CCallHelpers::TrustedImm32(requiredBytes), CCallHelpers::stackPointerRegister);
-                jit.setupArgumentsWithExecState(GPRInfo::regT1);
+                jit.setupArguments<decltype(operationCallEval)>(GPRInfo::regT1);
                 jit.move(CCallHelpers::TrustedImmPtr(bitwise_cast<void*>(operationCallEval)), GPRInfo::nonPreservedNonArgumentGPR);
                 jit.call(GPRInfo::nonPreservedNonArgumentGPR);
                 exceptions->append(jit.emitExceptionCheck(state->vm(), AssemblyHelpers::NormalExceptionCheck, AssemblyHelpers::FarJumpWidth));
@@ -9808,7 +9839,7 @@ private:
     void compileOverridesHasInstance()
     {
         FrozenValue* defaultHasInstanceFunction = m_node->cellOperand();
-        ASSERT(defaultHasInstanceFunction->cell()->inherits(vm(), JSFunction::info()));
+        ASSERT(defaultHasInstanceFunction->cell()->inherits<JSFunction>(vm()));
 
         LValue constructor = lowCell(m_node->child1());
         LValue hasInstance = lowJSValue(m_node->child2());
@@ -10681,6 +10712,15 @@ private:
         setJSValue(result);
     }
 
+    void compileRegExpMatchFastGlobal()
+    {
+        LValue globalObject = lowCell(m_node->child1());
+        LValue argument = lowString(m_node->child2());
+        LValue result = vmCall(
+            Int64, m_out.operation(operationRegExpMatchFastGlobalString), m_callFrame, globalObject, frozenPointer(m_node->cellOperand()), argument);
+        setJSValue(result);
+    }
+
     void compileRegExpTest()
     {
         LValue globalObject = lowCell(m_node->child1());
@@ -10728,7 +10768,7 @@ private:
     {
         FrozenValue* regexp = m_node->cellOperand();
         LValue lastIndex = lowJSValue(m_node->child1());
-        ASSERT(regexp->cell()->inherits(vm(), RegExp::info()));
+        ASSERT(regexp->cell()->inherits<RegExp>(vm()));
         ASSERT(m_node->castOperand<RegExp*>()->isValid());
 
         LBasicBlock slowCase = m_out.newBlock();
@@ -11826,7 +11866,7 @@ private:
 
             LValue structure = loadStructure(cell);
             LValue poisonedClassInfo = m_out.loadPtr(structure, m_heaps.Structure_classInfo);
-            LValue classInfo = m_out.bitXor(poisonedClassInfo, m_out.constInt64(GlobalDataPoison::key()));
+            LValue classInfo = m_out.bitXor(poisonedClassInfo, m_out.constIntPtr(GlobalDataPoison::key()));
             ValueFromBlock otherAtStart = m_out.anchor(classInfo);
             m_out.jump(loop);
 
@@ -12599,6 +12639,12 @@ private:
     {
         LValue allocator = allocatorForSize(*subspaceFor<ClassType>(vm()), size, slowPath);
         return allocateCell(allocator, structure, slowPath);
+    }
+    
+    LValue allocateVariableSizedHeapCell(CompleteSubspace& subspace, LValue size, LBasicBlock slowPath)
+    {
+        LValue allocator = allocatorForSize(subspace, size, slowPath);
+        return allocateHeapCell(allocator, slowPath);
     }
     
     LValue allocateObject(RegisteredStructure structure)
@@ -15557,32 +15603,6 @@ private:
         return preciseIndexMask64(value, m_out.zeroExt(index, Int64), m_out.zeroExt(limit, Int64));
     }
     
-    LValue dynamicPoison(LValue value, LValue poison)
-    {
-        return m_out.add(
-            value,
-            m_out.shl(
-                m_out.zeroExt(poison, pointerType()),
-                m_out.constInt32(40)));
-    }
-    
-    LValue dynamicPoisonOnLoadedType(LValue value, LValue actualType, JSType expectedType)
-    {
-        return dynamicPoison(
-            value,
-            m_out.bitXor(
-                m_out.opaque(actualType),
-                m_out.constInt32(expectedType)));
-    }
-    
-    LValue dynamicPoisonOnType(LValue value, JSType expectedType)
-    {
-        return dynamicPoisonOnLoadedType(
-            value,
-            m_out.load8ZeroExt32(value, m_heaps.JSCell_typeInfoType),
-            expectedType);
-    }
-
     template<typename... Args>
     LValue vmCall(LType type, LValue function, Args&&... args)
     {

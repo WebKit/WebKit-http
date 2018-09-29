@@ -41,7 +41,7 @@ void useRealRTCPeerConnectionFactory(LibWebRTCProvider&);
 
 class MockLibWebRTCPeerConnection : public webrtc::PeerConnectionInterface {
 public:
-    virtual ~MockLibWebRTCPeerConnection() = default;
+    ~MockLibWebRTCPeerConnection();
 
 protected:
     explicit MockLibWebRTCPeerConnection(webrtc::PeerConnectionObserver& observer) : m_observer(observer) { }
@@ -69,6 +69,8 @@ protected:
     rtc::scoped_refptr<webrtc::DataChannelInterface> CreateDataChannel(const std::string&, const webrtc::DataChannelInit*) final;
     rtc::scoped_refptr<webrtc::RtpSenderInterface> AddTrack(webrtc::MediaStreamTrackInterface*, std::vector<webrtc::MediaStreamInterface*> streams) final;
     bool RemoveTrack(webrtc::RtpSenderInterface*) final;
+    webrtc::RTCError SetBitrate(const BitrateParameters&) final { return { }; }
+
 
     void SetLocalDescription(webrtc::SetSessionDescriptionObserver*, webrtc::SessionDescriptionInterface*) override;
     bool GetStats(webrtc::StatsObserver*, webrtc::MediaStreamTrackInterface*, StatsOutputLevel) override { return false; }
@@ -149,7 +151,7 @@ private:
 
     bool m_enabled { true };
     std::string m_id;
-    webrtc::AudioSourceInterface* m_source { nullptr };
+    rtc::scoped_refptr<webrtc::AudioSourceInterface> m_source;
 };
 
 class MockLibWebRTCVideoTrack : public webrtc::VideoTrackInterface {
@@ -171,7 +173,7 @@ private:
 
     bool m_enabled;
     std::string m_id;
-    webrtc::VideoTrackSourceInterface* m_source { nullptr };
+    rtc::scoped_refptr<webrtc::VideoTrackSourceInterface> m_source;
 };
 
 class MockLibWebRTCDataChannel : public webrtc::DataChannelInterface {
@@ -208,8 +210,11 @@ private:
 class MockRtpSender : public webrtc::RtpSenderInterface {
 public:
     MockRtpSender(rtc::scoped_refptr<webrtc::MediaStreamTrackInterface>&& track) : m_track(WTFMove(track)) { }
-
-    bool SetTrack(webrtc::MediaStreamTrackInterface*) final { return false; }
+    bool SetTrack(webrtc::MediaStreamTrackInterface* track) final
+    {
+        m_track = track;
+        return true;
+    }
     rtc::scoped_refptr<webrtc::MediaStreamTrackInterface> track() const final { return m_track; }
     
     uint32_t ssrc() const { return 0; }
@@ -250,10 +255,6 @@ private:
 
     bool StartAecDump(rtc::PlatformFile, int64_t) final { return false; }
     void StopAecDump() final { }
-
-    bool StartRtcEventLog(rtc::PlatformFile, int64_t) final { return false; }
-    bool StartRtcEventLog(rtc::PlatformFile) final { return false; }
-    void StopRtcEventLog() final { }
 
 private:
     String m_testCase;
