@@ -119,7 +119,6 @@ void AcceleratedCompositingContext::compositeLayers(BRect updateRect)
     m_updateRect = updateRect;
 
     currentRootLayer.setTextureMapper(m_textureMapper.get());
-    currentRootLayer.applyAnimationsRecursively();
 
     m_textureMapper->beginPainting();
     m_textureMapper->beginClip(TransformationMatrix(), updateRect);

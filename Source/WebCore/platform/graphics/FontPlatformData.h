@@ -283,6 +283,7 @@ private:
     RefPtr<FcPattern> m_pattern;
     mutable std::unique_ptr<HarfBuzzFace> m_harfBuzzFace;
 #endif
+#endif
 
     // The values below are common to all ports
     // FIXME: If they're common to all ports, they should move to Font

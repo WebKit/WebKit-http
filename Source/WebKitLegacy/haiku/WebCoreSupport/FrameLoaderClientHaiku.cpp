@@ -322,7 +322,7 @@ void FrameLoaderClientHaiku::dispatchDidCancelClientRedirect()
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::dispatchWillPerformClientRedirect(const URL&, double /*interval*/, double /*fireDate*/)
+void FrameLoaderClientHaiku::dispatchWillPerformClientRedirect(const URL&, double /*interval*/, WallTime /*fireDate*/)
 {
     notImplemented();
 }
