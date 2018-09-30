@@ -222,6 +222,7 @@
 #include <JavaScriptCore/ScriptCallStack.h>
 #include <JavaScriptCore/VM.h>
 #include <ctime>
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/Language.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/SetForScope.h>
@@ -307,6 +308,9 @@
 
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(Document);
+
 using namespace PAL;
 using namespace WTF;
 using namespace Unicode;
@@ -568,8 +572,10 @@ Ref<Document> Document::create(Document& contextDocument)
 
 Document::~Document()
 {
-    bool wasRemoved = allDocumentsMap().remove(m_identifier);
-    ASSERT_UNUSED(wasRemoved, wasRemoved);
+    ASSERT(allDocumentsMap().contains(m_identifier));
+    allDocumentsMap().remove(m_identifier);
+    // We need to remove from the contexts map very early in the destructor so that calling postTask() on this Document from another thread is safe.
+    removeFromContextsMap();
 
     ASSERT(!renderView());
     ASSERT(m_pageCacheState != InPageCache);
@@ -7622,6 +7628,17 @@ void Document::setHasFrameSpecificStorageAccess(bool value)
 {
     m_frame->loader().client().setHasFrameSpecificStorageAccess(value);
 }
+
+bool Document::hasRequestedPageSpecificStorageAccessWithUserInteraction(const String& primaryDomain)
+{
+    return m_primaryDomainRequestedPageSpecificStorageAccessWithUserInteraction == primaryDomain;
+}
+
+void Document::setHasRequestedPageSpecificStorageAccessWithUserInteraction(const String& primaryDomain)
+{
+    m_primaryDomainRequestedPageSpecificStorageAccessWithUserInteraction = primaryDomain;
+}
+
 #endif
 
 void Document::setConsoleMessageListener(RefPtr<StringCallback>&& listener)

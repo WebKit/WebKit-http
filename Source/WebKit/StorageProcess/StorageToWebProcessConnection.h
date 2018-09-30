@@ -36,6 +36,7 @@ namespace WebKit {
 
 class WebIDBConnectionToClient;
 class WebSWServerConnection;
+class WebSWServerToContextConnection;
 
 class StorageToWebProcessConnection : public RefCounted<StorageToWebProcessConnection>, private IPC::Connection::Client, private IPC::MessageSender {
 public:
@@ -43,10 +44,6 @@ public:
     ~StorageToWebProcessConnection();
 
     IPC::Connection& connection() { return m_connection.get(); }
-
-#if ENABLE(SERVICE_WORKER)
-    void workerContextProcessConnectionCreated();
-#endif
 
 private:
     StorageToWebProcessConnection(IPC::Connection::Identifier);

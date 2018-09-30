@@ -31,19 +31,19 @@ window.addEventListener("pagehide", function(event) {
 
 function loadSubframeAndNavigateAway()
 {
-    // Force a back navigation back to this page.
     window.sessionStorage.page_cache_provisional_load_test_started = true;
-    window.location.href = "resources/page-cache-helper.html";
 
+    // Force a back navigation back to this page after the subframe starts provisional navigation.
     var testFrame = document.getElementById("testFrame");
+    testFrame.onbeforeunload = function() {
+        setTimeout(function() {
+            window.location.href = "resources/page-cache-helper.html";
+        }, 0);
+    };
     testFrame.src = "http://127.0.0.1:8000/navigation/resources/slow-resource.pl?delay=3000";
 }
 
-window.addEventListener('load', function() {
-    setTimeout(function() {
-        loadSubframeAndNavigateAway();
-    }, 0);
-}, false);
+window.addEventListener('load', loadSubframeAndNavigateAway, false);
 
 </script>
 <iframe id="testFrame" src="about:blank"></iframe>

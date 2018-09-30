@@ -31,6 +31,7 @@
 #include "DocumentIdentifier.h"
 #include "RegistrationStore.h"
 #include "SWServerWorker.h"
+#include "SecurityOriginHash.h"
 #include "ServiceWorkerClientData.h"
 #include "ServiceWorkerIdentifier.h"
 #include "ServiceWorkerJob.h"
@@ -154,17 +155,17 @@ public:
     void didFinishInstall(const std::optional<ServiceWorkerJobDataIdentifier>&, SWServerWorker&, bool wasSuccessful);
     void didFinishActivation(SWServerWorker&);
     void workerContextTerminated(SWServerWorker&);
-    void matchAll(SWServerWorker&, const ServiceWorkerClientQueryOptions&, ServiceWorkerClientsMatchAllCallback&&);
+    void matchAll(SWServerWorker&, const ServiceWorkerClientQueryOptions&, const ServiceWorkerClientsMatchAllCallback&);
     void claim(SWServerWorker&);
 
-    WEBCORE_EXPORT void serverToContextConnectionCreated();
+    WEBCORE_EXPORT void serverToContextConnectionCreated(SWServerToContextConnection&);
     
     WEBCORE_EXPORT static HashSet<SWServer*>& allServers();
 
     WEBCORE_EXPORT void registerServiceWorkerClient(ClientOrigin&&, ServiceWorkerClientData&&, const std::optional<ServiceWorkerRegistrationIdentifier>&);
     WEBCORE_EXPORT void unregisterServiceWorkerClient(const ClientOrigin&, ServiceWorkerClientIdentifier);
 
-    using RunServiceWorkerCallback = WTF::Function<void(bool, SWServerToContextConnection&)>;
+    using RunServiceWorkerCallback = WTF::Function<void(SWServerToContextConnection*)>;
     WEBCORE_EXPORT void runServiceWorkerIfNecessary(ServiceWorkerIdentifier, RunServiceWorkerCallback&&);
 
     void resolveRegistrationReadyRequests(SWServerRegistration&);
@@ -224,8 +225,8 @@ private:
 
     UniqueRef<SWOriginStore> m_originStore;
     RegistrationStore m_registrationStore;
-    Vector<ServiceWorkerContextData> m_pendingContextDatas;
-    HashMap<ServiceWorkerIdentifier, Vector<RunServiceWorkerCallback>> m_serviceWorkerRunRequests;
+    HashMap<RefPtr<SecurityOrigin>, Vector<ServiceWorkerContextData>> m_pendingContextDatas;
+    HashMap<RefPtr<SecurityOrigin>, HashMap<ServiceWorkerIdentifier, Vector<RunServiceWorkerCallback>>> m_serviceWorkerRunRequests;
     PAL::SessionID m_sessionID;
     bool m_importCompleted { false };
     Vector<CompletionHandler<void()>> m_clearCompletionCallbacks;

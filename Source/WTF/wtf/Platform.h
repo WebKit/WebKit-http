@@ -89,7 +89,7 @@
 #define WTF_CPU_KNOWN 1
 #endif
 
-/* CPU(PPC64) - PowerPC 64-bit Little Endian */
+/* CPU(PPC64LE) - PowerPC 64-bit Little Endian */
 #if (   defined(__ppc64__)     \
     || defined(__PPC64__)      \
     || defined(__ppc64le__)    \
@@ -569,6 +569,12 @@
 #define HAVE_DTRACE 0
 #define USE_FILE_LOCK 1
 
+/* Cocoa defines a series of platform macros for debugging. */
+/* Some of them are really annoying because they use common names (e.g. check()). */
+/* Disable those macros so that we are not limited in how we name methods and functions. */
+#undef __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES
+#define __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES 0
+
 #endif
 
 #if PLATFORM(MAC)
@@ -582,13 +588,6 @@
 #define HAVE_NETWORK_EXTENSION 1
 #define USE_PLUGIN_HOST_PROCESS 1
 #endif
-
-/* OS X defines a series of platform macros for debugging. */
-/* Some of them are really annoying because they use common names (e.g. check()). */
-/* Disable those macros so that we are not limited in how we name methods and functions. */
-#undef __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES
-#define __ASSERT_MACROS_DEFINE_VERSIONS_WITHOUT_UNDERSCORES 0
-
 #endif /* PLATFORM(MAC) */
 
 #if PLATFORM(IOS)
@@ -1076,15 +1075,18 @@
 
 #if !PLATFORM(WATCHOS) && !PLATFORM(APPLETV) && !ENABLE(MINIMAL_SIMULATOR)
 #define ENABLE_DATA_DETECTION 1
-#define HAVE_AVKIT 1
 #define HAVE_PARENTAL_CONTROLS 1
+#endif
+
+#if !PLATFORM(APPLETV) && !ENABLE(MINIMAL_SIMULATOR)
+#define HAVE_AVKIT 1
 #endif
 
 #if ENABLE(WEBGL)
 #if PLATFORM(MAC)
 #define USE_OPENGL 1
 #define USE_OPENGL_ES 0
-#elif ENABLE(MINIMAL_SIMULATOR)
+#elif ENABLE(MINIMAL_SIMULATOR) && __has_include(<OpenGL/OpenGL.h>)
 #define USE_OPENGL 1
 #define USE_OPENGL_ES 0
 #else
@@ -1155,8 +1157,13 @@
 
 #if PLATFORM(IOS) || PLATFORM(MAC)
 #define USE_COREMEDIA 1
-#define HAVE_AVFOUNDATION_VIDEO_OUTPUT 1
 #define USE_VIDEOTOOLBOX 1
+
+#if !ENABLE(MINIMAL_SIMULATOR)
+#define HAVE_AVFOUNDATION_VIDEO_OUTPUT 1
+#define HAVE_CORE_VIDEO 1
+#define HAVE_MEDIA_PLAYER 1
+#endif
 #endif
 
 #if PLATFORM(IOS) || PLATFORM(MAC) || (OS(WINDOWS) && USE(CG))
@@ -1177,6 +1184,7 @@
 #endif
 
 #if PLATFORM(MAC)
+#define HAVE_APPLE_GRAPHICS_CONTROL 1
 #define USE_COREAUDIO 1
 #endif
 

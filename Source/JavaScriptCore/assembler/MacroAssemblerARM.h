@@ -789,21 +789,25 @@ public:
         return Jump(m_assembler.jmp());
     }
 
-    void jump(RegisterID target)
+    void jump(RegisterID target, PtrTag)
     {
         m_assembler.bx(target);
     }
 
-    void jump(Address address)
+    void jump(Address address, PtrTag)
     {
         load32(address, ARMRegisters::pc);
     }
 
-    void jump(AbsoluteAddress address)
+    void jump(AbsoluteAddress address, PtrTag)
     {
         move(TrustedImmPtr(address.m_ptr), ARMRegisters::S0);
         load32(Address(ARMRegisters::S0, 0), ARMRegisters::pc);
     }
+
+    ALWAYS_INLINE void jump(RegisterID target, RegisterID jumpTag) { UNUSED_PARAM(jumpTag), jump(target, NoPtrTag); }
+    ALWAYS_INLINE void jump(Address address, RegisterID jumpTag) { UNUSED_PARAM(jumpTag), jump(address, NoPtrTag); }
+    ALWAYS_INLINE void jump(AbsoluteAddress address, RegisterID jumpTag) { UNUSED_PARAM(jumpTag), jump(address, NoPtrTag); }
 
     void moveDoubleToInts(FPRegisterID src, RegisterID dest1, RegisterID dest2)
     {
@@ -988,12 +992,12 @@ public:
         return Call(m_assembler.jmp(), Call::LinkableNearTail);
     }
 
-    Call call(RegisterID target)
+    Call call(RegisterID target, PtrTag)
     {
         return Call(m_assembler.blx(target), Call::None);
     }
 
-    void call(Address address)
+    void call(Address address, PtrTag)
     {
         call32(address.base, address.offset);
     }
@@ -1118,12 +1122,16 @@ public:
         m_assembler.mov(ARMRegisters::r0, ARMRegisters::r0);
     }
 
-    Call call()
+    Call call(PtrTag)
     {
         ensureSpace(2 * sizeof(ARMWord), sizeof(ARMWord));
         m_assembler.loadBranchTarget(ARMRegisters::S1, ARMAssembler::AL, true);
         return Call(m_assembler.blx(ARMRegisters::S1), Call::Linkable);
     }
+
+    ALWAYS_INLINE Call call(RegisterID callTag) { return UNUSED_PARAM(callTag), call(NoPtrTag); }
+    ALWAYS_INLINE Call call(RegisterID target, RegisterID callTag) { return UNUSED_PARAM(callTag), call(target, NoPtrTag); }
+    ALWAYS_INLINE void call(Address address, RegisterID callTag) { UNUSED_PARAM(callTag), call(address, NoPtrTag); }
 
     Call tailRecursiveCall()
     {
@@ -1499,7 +1507,7 @@ public:
 
     static FunctionPtr readCallTarget(CodeLocationCall call)
     {
-        return FunctionPtr(reinterpret_cast<void(*)()>(ARMAssembler::readCallTarget(call.dataLocation())));
+        return FunctionPtr(reinterpret_cast<void(*)()>(ARMAssembler::readCallTarget(call.dataLocation())), CodeEntryPtrTag);
     }
 
     static void replaceWithJump(CodeLocationLabel instructionStart, CodeLocationLabel destination)
@@ -1614,9 +1622,9 @@ private:
     static void linkCall(void* code, Call call, FunctionPtr function)
     {
         if (call.isFlagSet(Call::Tail))
-            ARMAssembler::linkJump(code, call.m_label, function.value());
+            ARMAssembler::linkJump(code, call.m_label, function.executableAddress());
         else
-            ARMAssembler::linkCall(code, call.m_label, function.value());
+            ARMAssembler::linkCall(code, call.m_label, function.executableAddress());
     }
 
     static const bool s_isVFPPresent;

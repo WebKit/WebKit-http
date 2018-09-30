@@ -54,7 +54,7 @@ class Box {
     
     void setIsAnonymous(bool);
     bool isAnonymous() const;
-    virtual bool isRootElement() const;
+    bool isRootBox() const;
     virtual bool isContainer() const;
 
     bool isBlockLevelBox() const;
@@ -64,12 +64,10 @@ class Box {
     bool establishesFormattingContext() const;
     bool establishesBlockFormattingContext() const;
 
-    FormattingContext* establishedFormattingContext();
-
     bool isInFlow() const;
     bool isPositioned() const;
-    bool isRelativePositioned() const;
-    bool isAbsolutePositioned() const;
+    bool isRelativelyPositioned() const;
+    bool isAbsolutelyPositioned() const;
     bool isFixedPositioned() const;
     bool isOutOfFlowPositioned() const;
     bool isInFlowPositioned() const;
@@ -91,7 +89,6 @@ private:
     Box* m_previousSibling { nullptr };
     bool m_isAnonymous { false };
     LayoutRect m_rect;
-    FormattingContext* m_establishedFormattingContext { nullptr };
 };
 
 }

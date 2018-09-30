@@ -594,7 +594,6 @@ webkit.org/b/79203 fast/mediastream/RTCPeerConnection-closed-state.html [ Failur
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-createAnswer.html [ Failure ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-createOffer.html [ Failure ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-datachannel.html [ Failure ]
-webkit.org/b/79203 fast/mediastream/RTCPeerConnection-getConfiguration.html [ Failure ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-have-local-offer.html [ Failure ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-have-local-pranswer.html [ Failure ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-have-remote-offer.html [ Failure ]
@@ -614,7 +613,6 @@ webkit.org/b/79203 fast/mediastream/RTCPeerConnection-overloaded-operations.html
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-remoteDescription.html [ Failure ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-stable.html [ Failure ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-statsSelector.html [ Failure ]
-webkit.org/b/79203 fast/mediastream/RTCPeerConnection.html [ Failure ]
 webkit.org/b/79203 fast/mediastream/RTCTrackEvent-constructor.html [ Failure ]
 webkit.org/b/79203 webaudio/mediastreamaudiosourcenode.html [ Failure ]
 webkit.org/b/79203 fast/mediastream/MediaStream-video-element-displays-buffer.html [ Crash ]
@@ -1133,6 +1131,7 @@ webkit.org/b/175419 imported/w3c/web-platform-tests/service-workers [ Skip ]
 webkit.org/b/175419 http/tests/appcache/main-resource-redirect-with-sw.html [ Skip ]
 webkit.org/b/175419 http/tests/appcache/main-resource-redirect.html [ Skip ]
 webkit.org/b/175419 http/wpt/service-workers/navigation-redirect-main-frame.https.html [ Skip ]
+webkit.org/b/175419 http/wpt/service-workers/third-party-registration.html [ Skip ]
 
 # Skip anything related to WebAuthN
 http/tests/webauthn/ [ Skip ]
@@ -1335,7 +1334,6 @@ webkit.org/b/119735 [ Debug ] plugins/unavailable-plugin-indicator-obscurity.htm
 
 webkit.org/b/71777 fast/lists/inlineBoxWrapperNullCheck.html [ Failure Pass ]
 
-webkit.org/b/71655 fast/frames/flattening/frameset-flattening-simple.html [ Failure Pass ]
 webkit.org/b/80129 fast/frames/flattening/iframe-flattening-fixed-width.html [ Failure Pass ]
 webkit.org/b/80129 fast/frames/flattening/iframe-flattening-offscreen.html [ Failure Pass ]
 webkit.org/b/80129 fast/frames/flattening/frameset-flattening-grid.html [ Failure Pass ]
@@ -1935,6 +1933,16 @@ webkit.org/b/183036 fast/events/message-port.html [ Timeout Pass ]
 webkit.org/b/183037 http/tests/resourceLoadStatistics/prevalent-resource-handled-keydown.html [ Timeout Pass ]
 
 webkit.org/b/183188 imported/blink/svg/as-image/image-change-with-equal-sizes.html [ ImageOnlyFailure Pass ]
+
+webkit.org/b/183608 imported/w3c/web-platform-tests/WebCryptoAPI/wrapKey_unwrapKey/test_wrapKey_unwrapKey.https.html [ Failure Pass ]
+
+webkit.org/b/183609 inspector/unit-tests/throttle.html [ Pass Failure ]
+
+webkit.org/b/183214 compositing/video/poster.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/183903 http/tests/media/video-buffered-range-contains-currentTime.html [ Crash Pass ]
+
+webkit.org/b/183904 imported/w3c/web-platform-tests/IndexedDB/idbindex_getAllKeys.html [ Crash Pass ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
@@ -3227,8 +3235,6 @@ webkit.org/b/175931 fast/canvas/webgl/no-info-log-for-simple-shaders.html [ Fail
 
 webkit.org/b/176021 fast/events/overflow-viewport-renderer-deleted.html [ Missing ]
 
-webkit.org/b/176024 fast/forms/file/entries-api/webkitdirectory-open-panel.html [ Failure ]
-
 webkit.org/b/176025 inspector/canvas/recording-webgl-snapshots.html [ Failure ]
 webkit.org/b/176025 inspector/canvas/recording-webgl.html [ Failure ]
 
@@ -3327,6 +3333,12 @@ webkit.org/b/182765 fast/backgrounds/background-leakage-transforms.html [ Failur
 webkit.org/b/182765 fast/text/emphasis-overlap.html [ Failure ImageOnlyFailure ]
 
 webkit.org/b/183033 http/tests/plugins/supported-plugin-origin-specific-visibility.html [ Failure ]
+
+webkit.org/b/183611 media/context-menu-actions.html [ Failure ]
+
+webkit.org/b/183613 imported/w3c/web-platform-tests/media-source/interfaces.html [ Failure ]
+
+webkit.org/b/183902 fast/dom/frame-loading-via-document-write.html [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of non-crashing, non-flaky tests failing

@@ -40,6 +40,23 @@ public:
     IntSize offset;
 };
 
+TextureMapperLayer::TextureMapperLayer() = default;
+
+TextureMapperLayer::~TextureMapperLayer()
+{
+    for (auto* child : m_children)
+        child->m_parent = nullptr;
+
+    removeFromParent();
+
+    if (m_effectTarget) {
+        if (m_effectTarget->m_state.maskLayer == this)
+            m_effectTarget->m_state.maskLayer = nullptr;
+        if (m_effectTarget->m_state.replicaLayer == this)
+            m_effectTarget->m_state.replicaLayer = nullptr;
+    }
+}
+
 void TextureMapperLayer::computeTransformsRecursive()
 {
     if (m_state.size.isEmpty() && m_state.masksToBounds)
@@ -91,17 +108,6 @@ static Color blendWithOpacity(const Color& color, float opacity)
     return color.colorWithAlphaMultipliedBy(opacity);
 }
 
-void TextureMapperLayer::computePatternTransformIfNeeded()
-{
-    if (!m_patternTransformDirty)
-        return;
-
-    m_patternTransformDirty = false;
-    m_patternTransform =
-        TransformationMatrix::rectToRect(FloatRect(FloatPoint::zero(), m_state.contentsTileSize), FloatRect(FloatPoint::zero(), m_state.contentsRect.size()))
-        .multiply(TransformationMatrix().translate(m_state.contentsTilePhase.width() / m_state.contentsRect.width(), m_state.contentsTilePhase.height() / m_state.contentsRect.height()));
-}
-
 void TextureMapperLayer::paintSelf(const TextureMapperPaintOptions& options)
 {
     if (!m_state.visible || !m_state.contentsVisible)
@@ -138,9 +144,11 @@ void TextureMapperLayer::paintSelf(const TextureMapperPaintOptions& options)
         return;
 
     if (!m_state.contentsTileSize.isEmpty()) {
-        computePatternTransformIfNeeded();
         options.textureMapper.setWrapMode(TextureMapper::RepeatWrap);
-        options.textureMapper.setPatternTransform(m_patternTransform);
+
+        auto patternTransform = TransformationMatrix::rectToRect({ { }, m_state.contentsTileSize }, { { }, m_state.contentsRect.size() })
+            .translate(m_state.contentsTilePhase.width() / m_state.contentsRect.width(), m_state.contentsTilePhase.height() / m_state.contentsRect.height());
+        options.textureMapper.setPatternTransform(patternTransform);
     }
 
     ASSERT(!layerRect().isEmpty());
@@ -225,24 +233,9 @@ void TextureMapperLayer::paintSelfAndChildrenWithReplica(const TextureMapperPain
     paintSelfAndChildren(options);
 }
 
-void TextureMapperLayer::setAnimatedTransform(const TransformationMatrix& matrix)
-{
-    m_currentTransform.setLocalTransform(matrix);
-}
-
-void TextureMapperLayer::setAnimatedOpacity(float opacity)
-{
-    m_currentOpacity = opacity;
-}
-
 TransformationMatrix TextureMapperLayer::replicaTransform()
 {
     return TransformationMatrix(m_state.replicaLayer->m_currentTransform.combined()).multiply(m_currentTransform.combined().inverse().value_or(TransformationMatrix()));
-}
-
-void TextureMapperLayer::setAnimatedFilters(const FilterOperations& filters)
-{
-    m_currentFilters = filters;
 }
 
 static void resolveOverlaps(Region& newRegion, Region& overlapRegion, Region& nonOverlapRegion)
@@ -443,21 +436,6 @@ void TextureMapperLayer::paintRecursive(const TextureMapperPaintOptions& options
     paintUsingOverlapRegions(paintOptions);
 }
 
-TextureMapperLayer::~TextureMapperLayer()
-{
-    for (auto* child : m_children)
-        child->m_parent = nullptr;
-
-    removeFromParent();
-
-    if (m_effectTarget) {
-        if (m_effectTarget->m_state.maskLayer == this)
-            m_effectTarget->m_state.maskLayer = nullptr;
-        if (m_effectTarget->m_state.replicaLayer == this)
-            m_effectTarget->m_state.replicaLayer = nullptr;
-    }
-}
-
 #if !USE(COORDINATED_GRAPHICS)
 void TextureMapperLayer::setChildren(const Vector<GraphicsLayer*>& newChildren)
 {
@@ -555,26 +533,17 @@ void TextureMapperLayer::setChildrenTransform(const TransformationMatrix& childr
 
 void TextureMapperLayer::setContentsRect(const FloatRect& contentsRect)
 {
-    if (contentsRect == m_state.contentsRect)
-        return;
     m_state.contentsRect = contentsRect;
-    m_patternTransformDirty = true;
 }
 
 void TextureMapperLayer::setContentsTileSize(const FloatSize& size)
 {
-    if (size == m_state.contentsTileSize)
-        return;
     m_state.contentsTileSize = size;
-    m_patternTransformDirty = true;
 }
 
 void TextureMapperLayer::setContentsTilePhase(const FloatSize& phase)
 {
-    if (phase == m_state.contentsTilePhase)
-        return;
     m_state.contentsTilePhase = phase;
-    m_patternTransformDirty = true;
 }
 
 void TextureMapperLayer::setMasksToBounds(bool masksToBounds)
@@ -661,23 +630,24 @@ bool TextureMapperLayer::descendantsOrSelfHaveRunningAnimations() const
         });
 }
 
-void TextureMapperLayer::applyAnimationsRecursively(MonotonicTime time)
+bool TextureMapperLayer::applyAnimationsRecursively(MonotonicTime time)
 {
-    syncAnimations(time);
+    bool hasRunningAnimations = syncAnimations(time);
     for (auto* child : m_children)
-        child->applyAnimationsRecursively(time);
+        hasRunningAnimations |= child->applyAnimationsRecursively(time);
+    return hasRunningAnimations;
 }
 
-void TextureMapperLayer::syncAnimations(MonotonicTime time)
+bool TextureMapperLayer::syncAnimations(MonotonicTime time)
 {
-    m_animations.apply(*this, time);
-    if (!m_animations.hasActiveAnimationsOfType(AnimatedPropertyTransform))
-        m_currentTransform.setLocalTransform(m_state.transform);
-    if (!m_animations.hasActiveAnimationsOfType(AnimatedPropertyOpacity))
-        m_currentOpacity = m_state.opacity;
+    TextureMapperAnimation::ApplicationResult applicationResults;
+    m_animations.apply(applicationResults, time);
 
-    if (!m_animations.hasActiveAnimationsOfType(AnimatedPropertyFilter))
-        m_currentFilters = m_state.filters;
+    m_currentTransform.setLocalTransform(applicationResults.transform.value_or(m_state.transform));
+    m_currentOpacity = applicationResults.opacity.value_or(m_state.opacity);
+    m_currentFilters = applicationResults.filters.value_or(m_state.filters);
+
+    return applicationResults.hasRunningAnimations;
 }
 
 bool TextureMapperLayer::isAncestorFixedToViewport() const

@@ -40,6 +40,7 @@ namespace WebCore {
 struct ClientOrigin;
 class SWServer;
 class SWServerRegistration;
+class SWServerToContextConnection;
 struct ServiceWorkerClientData;
 struct ServiceWorkerClientIdentifier;
 struct ServiceWorkerClientQueryOptions;
@@ -78,9 +79,6 @@ public:
 
     ServiceWorkerIdentifier identifier() const { return m_data.identifier; }
 
-    std::optional<SWServerToContextConnectionIdentifier> contextConnectionIdentifier() const { return m_contextConnectionIdentifier; }
-    void setContextConnectionIdentifier(std::optional<SWServerToContextConnectionIdentifier> identifier) { m_contextConnectionIdentifier = identifier; }
-
     ServiceWorkerState state() const { return m_data.state; }
     void setState(ServiceWorkerState);
 
@@ -93,26 +91,30 @@ public:
     void didFinishActivation();
     void contextTerminated();
     WEBCORE_EXPORT std::optional<ServiceWorkerClientData> findClientByIdentifier(const ServiceWorkerClientIdentifier&) const;
-    void matchAll(const ServiceWorkerClientQueryOptions&, ServiceWorkerClientsMatchAllCallback&&);
+    void matchAll(const ServiceWorkerClientQueryOptions&, const ServiceWorkerClientsMatchAllCallback&);
     void claim();
 
     void skipWaiting();
     bool isSkipWaitingFlagSet() const { return m_isSkipWaitingFlagSet; }
 
     WEBCORE_EXPORT static SWServerWorker* existingWorkerForIdentifier(ServiceWorkerIdentifier);
+    static HashMap<ServiceWorkerIdentifier, SWServerWorker*>& allWorkers();
 
     const ServiceWorkerData& data() const { return m_data; }
     ServiceWorkerContextData contextData() const;
+
     const ClientOrigin& origin() const;
+    WEBCORE_EXPORT Ref<SecurityOrigin> securityOrigin() const;
+
+    WEBCORE_EXPORT SWServerToContextConnection* contextConnection();
 
 private:
-    SWServerWorker(SWServer&, SWServerRegistration&, std::optional<SWServerToContextConnectionIdentifier>, const URL&, const String& script, const ContentSecurityPolicyResponseHeaders&,  WorkerType, ServiceWorkerIdentifier);
+    SWServerWorker(SWServer&, SWServerRegistration&, const URL&, const String& script, const ContentSecurityPolicyResponseHeaders&,  WorkerType, ServiceWorkerIdentifier);
 
     void callWhenActivatedHandler(bool success);
 
     SWServer& m_server;
     ServiceWorkerRegistrationKey m_registrationKey;
-    std::optional<SWServerToContextConnectionIdentifier> m_contextConnectionIdentifier;
     ServiceWorkerData m_data;
     String m_script;
     ContentSecurityPolicyResponseHeaders m_contentSecurityPolicy;

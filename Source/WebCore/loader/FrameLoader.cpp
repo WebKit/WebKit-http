@@ -123,6 +123,7 @@
 #include "XMLDocumentParser.h"
 #include <wtf/CompletionHandler.h>
 #include <wtf/Ref.h>
+#include <wtf/SetForScope.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/SystemTracing.h>
 #include <wtf/text/CString.h>
@@ -1403,6 +1404,7 @@ void FrameLoader::load(FrameLoadRequest&& request)
     Ref<DocumentLoader> loader = m_client.createDocumentLoader(request.resourceRequest(), request.substituteData());
     applyShouldOpenExternalURLsPolicyToNewDocumentLoader(m_frame, loader, request);
 
+    SetForScope<bool> currentLoadShouldCheckNavigationPolicyGuard(m_currentLoadShouldCheckNavigationPolicy, request.shouldCheckNavigationPolicy());
     load(loader.ptr());
 }
 
@@ -1538,10 +1540,24 @@ void FrameLoader::loadWithDocumentLoader(DocumentLoader* loader, FrameLoadType t
 
     m_frame.navigationScheduler().cancel(true);
 
+    if (!m_currentLoadShouldCheckNavigationPolicy) {
+        continueLoadAfterNavigationPolicy(loader->request(), formState, true, allowNavigationToInvalidURL);
+        return;
+    }
+
     policyChecker().checkNavigationPolicy(ResourceRequest(loader->request()), false /* didReceiveRedirectResponse */, loader, formState, [this, protectedFrame = makeRef(m_frame), allowNavigationToInvalidURL, completionHandler = completionHandlerCaller.release()] (const ResourceRequest& request, FormState* formState, bool shouldContinue) {
         continueLoadAfterNavigationPolicy(request, formState, shouldContinue, allowNavigationToInvalidURL);
         completionHandler();
     });
+}
+
+void FrameLoader::clearProvisionalLoadForPolicyCheck()
+{
+    if (!m_policyDocumentLoader || !m_provisionalDocumentLoader)
+        return;
+
+    m_provisionalDocumentLoader->stopLoading();
+    setProvisionalDocumentLoader(nullptr);
 }
 
 void FrameLoader::reportLocalLoadFailed(Frame* frame, const String& url)
@@ -2906,6 +2922,8 @@ void FrameLoader::receivedMainResourceError(const ResourceError& error)
 
 void FrameLoader::continueFragmentScrollAfterNavigationPolicy(const ResourceRequest& request, bool shouldContinue)
 {
+    m_client.didDecidePolicyForNavigationAction();
+
     m_quickRedirectComing = false;
 
     if (!shouldContinue)
@@ -3150,6 +3168,8 @@ void FrameLoader::continueLoadAfterNavigationPolicy(const ResourceRequest& reque
     // nil policyDataSource because loading the alternate page will have passed
     // through this method already, nested; otherwise, policyDataSource should still be set.
     ASSERT(m_policyDocumentLoader || !m_provisionalDocumentLoader->unreachableURL().isEmpty());
+
+    m_client.didDecidePolicyForNavigationAction();
 
     bool isTargetItem = history().provisionalItem() ? history().provisionalItem()->isTargetItem() : false;
 

@@ -64,7 +64,7 @@ public:
     AnimationEffectReadOnly* effect() const { return m_effect.get(); }
     void setEffect(RefPtr<AnimationEffectReadOnly>&&);
     AnimationTimeline* timeline() const { return m_timeline.get(); }
-    void setTimeline(RefPtr<AnimationTimeline>&&);
+    virtual void setTimeline(RefPtr<AnimationTimeline>&&);
 
     std::optional<double> bindingsStartTime() const;
     void setBindingsStartTime(std::optional<double>);
@@ -91,21 +91,17 @@ public:
     using FinishedPromise = DOMPromiseProxyWithResolveCallback<IDLInterface<WebAnimation>>;
     FinishedPromise& finished() { return m_finishedPromise.get(); }
 
-    void cancel();
+    virtual void cancel();
     ExceptionOr<void> finish();
     ExceptionOr<void> play();
     ExceptionOr<void> pause();
     ExceptionOr<void> reverse();
 
-    Seconds timeToNextRequiredTick(Seconds) const;
+    Seconds timeToNextRequiredTick() const;
     void resolve(RenderStyle&);
     void effectTargetDidChange(Element* previousTarget, Element* newTarget);
     void acceleratedRunningStateDidChange();
     void startOrStopAccelerated();
-
-    enum class DidSeek { Yes, No };
-    enum class SynchronouslyNotify { Yes, No };
-    void updateFinishedState(DidSeek, SynchronouslyNotify);
 
     void timingModelDidChange();
     void suspendEffectInvalidation();
@@ -122,10 +118,13 @@ protected:
     bool isEffectInvalidationSuspended() { return m_suspendCount; }
 
 private:
+    enum class DidSeek { Yes, No };
+    enum class SynchronouslyNotify { Yes, No };
     enum class RespectHoldTime { Yes, No };
     enum class AutoRewind { Yes, No };
     enum class TimeToRunPendingTask { NotScheduled, ASAP, WhenReady };
 
+    void updateFinishedState(DidSeek, SynchronouslyNotify);
     void enqueueAnimationPlaybackEvent(const AtomicString&, std::optional<Seconds>, std::optional<Seconds>);
     Seconds effectEndTime() const;
     WebAnimation& readyPromiseResolve();

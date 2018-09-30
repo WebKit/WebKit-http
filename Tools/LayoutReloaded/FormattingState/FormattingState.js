@@ -1,0 +1,80 @@
+/*
+ * Copyright (C) 2018 Apple Inc. All Rights Reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+class FormattingState {
+    constructor(layoutState, formattingRoot) {
+        this.m_layoutState = layoutState;
+        this.m_formattingContext = null;
+        this.m_formattingRoot = formattingRoot;
+        this.m_displayToLayout = new Map();
+    }
+
+    formattingContext() {
+        return this.m_formattingContext;
+    }
+
+    formattingRoot() {
+        return this.m_formattingRoot;
+    }
+
+    layoutState() {
+        return this.m_layoutState;
+    }
+
+    createDisplayBox(layoutBox) {
+        let displayBox = new Display.Box(layoutBox.node());
+        this.m_displayToLayout.set(layoutBox, displayBox);
+    }
+
+    displayBoxMap() {
+        return this.m_displayToLayout;
+    }
+
+    displayBox(layoutBox) {
+        ASSERT(layoutBox);
+        // 1. Normally we only need to access boxes within the same formatting context
+        // 2. In some cases we need size information about the root container -which is in the parent formatting context
+        // 3. In rare cases (statically positioned out-of-flow box), we need position information on sibling formatting context
+        // but in all cases it needs to be a descendant of the root container (or the container itself)
+        ASSERT(layoutBox == this.formattingRoot() || layoutBox.isDescendantOf(this.formattingRoot()));
+        let displayBox = this.m_displayToLayout.get(layoutBox);
+        if (displayBox)
+            return displayBox;
+
+        let formattingStates = this.layoutState().formattingStates();
+        for (let formattingState of formattingStates) {
+            let displayBox = formattingState[1].displayBoxMap().get(layoutBox);
+            if (displayBox)
+                return displayBox;
+        }
+        // It must be the ICB.
+        ASSERT(!layoutBox.parent());
+        return this.layoutState().initialDisplayBox();
+    }
+
+    _setFormattingContext(formattingContext) {
+        this.m_formattingContext = formattingContext;
+    }
+}

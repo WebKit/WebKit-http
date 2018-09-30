@@ -30,6 +30,7 @@
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "DOMWindow.h"
+#include "DeclarativeAnimation.h"
 #include "DisplayRefreshMonitor.h"
 #include "DisplayRefreshMonitorManager.h"
 #include "Document.h"
@@ -109,6 +110,12 @@ void DocumentTimeline::scheduleInvalidationTaskIfNeeded()
 
 void DocumentTimeline::performInvalidationTask()
 {
+    // Now that the timing model has changed we can see if there are DOM events to dispatch for declarative animations.
+    for (auto& animation : animations()) {
+        if (is<DeclarativeAnimation>(animation))
+            downcast<DeclarativeAnimation>(*animation).invalidateDOMEvents();
+    }
+
     updateAnimationSchedule();
     m_cachedCurrentTime = std::nullopt;
 }
@@ -120,11 +127,10 @@ void DocumentTimeline::updateAnimationSchedule()
 
     m_needsUpdateAnimationSchedule = false;
 
-    Seconds now = currentTime().value();
     Seconds scheduleDelay = Seconds::infinity();
 
     for (const auto& animation : animations()) {
-        auto animationTimeToNextRequiredTick = animation->timeToNextRequiredTick(now);
+        auto animationTimeToNextRequiredTick = animation->timeToNextRequiredTick();
         if (animationTimeToNextRequiredTick < animationInterval) {
             scheduleAnimationResolution();
             return;
@@ -173,7 +179,7 @@ void DocumentTimeline::updateAnimations()
         m_document->updateStyleIfNeeded();
     }
 
-    for (auto animation : m_acceleratedAnimationsPendingRunningStateChange)
+    for (auto& animation : m_acceleratedAnimationsPendingRunningStateChange)
         animation->startOrStopAccelerated();
     m_acceleratedAnimationsPendingRunningStateChange.clear();
 

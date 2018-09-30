@@ -1,3 +1,1068 @@
+2018-03-22  Nan Wang  <n_wang@apple.com>
+
+        AX: Web table row count is incorrect when role row is added to <tr> in DOM
+        https://bugs.webkit.org/show_bug.cgi?id=183922
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/row-with-aria-role-in-native-table-expected.txt: Added.
+        * accessibility/row-with-aria-role-in-native-table.html: Added.
+
+2018-03-22  Daniel Bates  <dabates@apple.com>
+
+        CSS mask images should be retrieved using potentially CORS-enabled fetch
+        https://bugs.webkit.org/show_bug.cgi?id=179983
+        <rdar://problem/35678149>
+
+        Reviewed by Brent Fulgham.
+
+        Add a test to ensure we do not fetch a cross-origin CSS mask image that does
+        not allow CORS access.
+
+        * http/tests/security/css-mask-image-expected.html: Added.
+        * http/tests/security/css-mask-image.html: Added.
+        * http/tests/security/resources/black-square.png: Added.
+        * http/tests/security/resources/fail-mask.png: Added.
+
+2018-03-22  Zalan Bujtas  <zalan@apple.com>
+
+        [Simple line layout] Text with letter spacing is not positioned properly.
+        https://bugs.webkit.org/show_bug.cgi?id=183079
+        <rdar://problem/38762569>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/text/simple-line-layout-dynamic-letter-word-spacing-expected.html: Added.
+        * fast/text/simple-line-layout-dynamic-letter-word-spacing.html: Added.
+
+2018-03-22  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [WPE] Enable WOFF2 support
+        https://bugs.webkit.org/show_bug.cgi?id=178158
+
+        Reviewed by Frédéric Wang.
+
+        * platform/wpe/TestExpectations: Unskip the fast/text/woff2.html and fast/text/woff2-totalsfntsize.html
+
+2018-03-21  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-animations/test_event-dispatch.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183845
+
+        Reviewed by Dean Jackson.
+
+        A couple of crashing tests no longer crash and a couple are now reliably passing.
+
+        * TestExpectations:
+
+2018-03-22  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Unreviewed gardening. Update WinCairo TestExpectations and drop the unnecessary suffix.
+
+        * platform/wincairo-win10/TestExpectations: Removed.
+        * platform/wincairo/TestExpectations: Added.
+
+2018-03-22  Zalan Bujtas  <zalan@apple.com>
+
+        Unreviewed gardening.
+
+        Unskipping imported/blink/svg/css/path-layout-crash.html (should have been unskipped with r229782). 
+
+        * TestExpectations:
+
+2018-03-22  Miguel Gomez  <magomez@igalia.com>
+
+        Unreviewed GTK+ gardening after r229847.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/http/tests/loading/simple-subframe-expected.txt:
+        * platform/gtk/http/tests/navigation/redirect-to-fragment2-expected.txt: Added.
+        * platform/gtk/js/dom/dom-static-property-for-in-iteration-expected.txt:
+
+2018-03-22  Zalan Bujtas  <zalan@apple.com>
+
+        SVG root is skipped while marking percentage height descendants dirty.
+        https://bugs.webkit.org/show_bug.cgi?id=183877
+
+        Reviewed by Antti Koivisto.
+
+        * TestExpectations:
+
+2018-03-22  Frederic Wang  <fwang@igalia.com>
+
+        [MathML] Import WPT test to replace mathml/opentype/large-operators-italic-correction.html
+        https://bugs.webkit.org/show_bug.cgi?id=183891
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        Remove large-operators-italic-correction.html. Italic correction is tested more completely by
+        a new WPT test that does not require Latin Modern Math to be installed on the try bots.
+
+        * mathml/opentype/large-operators-italic-correction-expected.txt: Removed.
+        * mathml/opentype/large-operators-italic-correction.html: Removed.
+        * platform/ios/TestExpectations: Remove test expectation.
+        * platform/mac/TestExpectations: Ditto.
+        * platform/win/TestExpectations: Ditto.
+
+2018-03-21  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r229831): fast/loader/javascript-url-iframe-remove-on-navigate-async-delegate.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=183885
+
+        Unreviewed, temporarily mark the test as flaky while I investigate.
+
+        * TestExpectations:
+
+2018-03-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark fast/scrolling/latching/scroll-div-no-latching.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=183879
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-03-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark inspector/console/messageAdded-from-named-evaluations.html as slow.
+        https://bugs.webkit.org/show_bug.cgi?id=183880
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-03-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/seek-backward-support/seek-backward-support.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=183869
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-03-21  Chris Dumez  <cdumez@apple.com>
+
+        Make policy decisions asynchronous
+        https://bugs.webkit.org/show_bug.cgi?id=180568
+        <rdar://problem/37131297>
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline tests for WebKit2. The issue is that some tests dump policy delegate calls
+        and things now happen in a slightly different order now that those delegates are
+        asynchronous.
+
+        * TestExpectations:
+        * http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-main-frame-expected.txt:
+        * platform/ios/http/tests/loading/simple-subframe-expected.txt:
+        * platform/mac-wk2/http/tests/loading/simple-subframe-expected.txt: Copied from LayoutTests/platform/ios/http/tests/loading/simple-subframe-expected.txt.
+        * platform/wk2/fast/loader/fragment-navigation-base-blank-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/fast/loader/iframe-meta-refresh-base-blank-expected.txt: Copied from LayoutTests/platform/wk2/http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials-expected.txt.
+        * platform/wk2/fast/loader/iframe-set-location-base-blank-expected.txt: Copied from LayoutTests/platform/wk2/http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials-expected.txt.
+        * platform/wk2/fast/loader/main-document-url-for-non-http-loads-expected.txt: Added.
+        * platform/wk2/fast/loader/refresh-iframe-base-blank-expected.txt: Copied from LayoutTests/platform/wk2/http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials-expected.txt.
+        * platform/wk2/fast/loader/subframe-removes-itself-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/contentdispositionattachmentsandbox/cross-origin-frames-disabled-expected.txt: Added.
+        * platform/wk2/http/tests/contentextensions/block-everything-unless-domain-expected.txt: Added.
+        * platform/wk2/http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials-expected.txt:
+        * platform/wk2/http/tests/loading/bad-server-subframe-expected.txt: Added.
+        * platform/wk2/http/tests/loading/basic-auth-load-URL-with-consecutive-slashes-expected.txt:
+        * platform/wk2/http/tests/loading/redirect-with-no-location-crash-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/loading/server-redirect-for-provisional-load-caching-expected.txt: Added.
+        * platform/wk2/http/tests/loading/slow-parsing-subframe-expected.txt: Added.
+        * platform/wk2/http/tests/misc/will-send-request-returns-null-on-redirect-expected.txt: Added.
+        * platform/wk2/http/tests/misc/window-dot-stop-expected.txt: Added.
+        * platform/wk2/http/tests/navigation/redirect-preserves-fragment-expected.txt: Added.
+        * platform/wk2/http/tests/navigation/redirect-to-fragment-expected.txt: Added.
+        * platform/wk2/http/tests/navigation/redirect-to-invalid-url-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-allowall-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-deny-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-in-body-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-parent-same-origin-allow-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-parent-same-origin-deny-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-invalid-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-multiple-headers-conflict-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-multiple-headers-sameorigin-allow-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-multiple-headers-sameorigin-deny-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-allow-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-deny-expected.txt: Added.
+        * platform/wk2/http/tests/security/blocked-on-redirect-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/data-url-iframe-in-main-frame-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-iframe-report-only-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-main-frame-expected.txt: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-main-frame-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-iframe-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-iframe-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-iframe-with-enforced-and-report-policies-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-iframe-with-inherited-policy-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-javascript-url-iframe-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-main-frame-expected.txt: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-main-frame-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-xslt-document-in-iframe-with-inherited-policy-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-plugin-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-plugin-in-main-frame-expected.txt: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-main-frame-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-script-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-script-in-iframe-with-inherited-policy-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-script-in-main-frame-expected.txt: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-main-frame-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-xhr-asynchronous-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-xhr-asynchronous-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-xhr-synchronous-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-xhr-synchronous-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/secure-image-after-upgrade-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/secure-image-after-upgrade-redirect-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/iframe-upgrade.https-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/proper-nested-upgrades-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-css-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-redirect-http-to-https-script-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-redirect-https-to-http-script-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/http-0.9/iframe-blocked-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/about-blank-iframe-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/data-url-iframe-in-main-frame-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/mixedContent/data-url-script-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/mixedContent/empty-url-plugin-in-frame-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/mixedContent/insecure-css-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/mixedContent/insecure-css-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/insecure-css-with-secure-cookies-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/insecure-executable-css-with-secure-cookies-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/insecure-form-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/mixedContent/insecure-form-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/insecure-iframe-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/insecure-iframe-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/insecure-image-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/mixedContent/javascript-url-form-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/redirect-http-to-https-iframe-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/redirect-http-to-https-script-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/redirect-https-to-http-iframe-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/redirect-https-to-http-image-secure-cookies-block-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/redirect-https-to-http-image-secure-cookies-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/redirect-https-to-http-script-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/xssAuditor/script-tag-with-callbacks-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/inspector/page/frameScheduledNavigation-expected.txt: Added.
+        * platform/wk2/loader/go-back-cached-main-resource-expected.txt: Added.
+        * platform/wk2/webarchive/loading/mainresource-null-mimetype-crash-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/webarchive/loading/test-loading-archive-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/webarchive/loading/video-in-webarchive-expected.txt: Renamed from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+
+2018-03-21  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Disconnect the SVGPathSegList items from their SVGPathElement before rebuilding a new list
+        https://bugs.webkit.org/show_bug.cgi?id=183723
+        <rdar://problem/38517871>
+
+        Reviewed by Daniel Bates.
+
+        * svg/dom/reuse-pathseg-after-changing-d-expected.txt: Added.
+        * svg/dom/reuse-pathseg-after-changing-d.html: Added.
+
+2018-03-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip imported/w3c/web-platform-tests/service-workers/service-worker/appcache-ordering-main.https.html.
+        https://bugs.webkit.org/show_bug.cgi?id=182176
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-03-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip http/tests/resourceLoadStatistics/prevalent-resource-unhandled-keydown.html.
+        https://bugs.webkit.org/show_bug.cgi?id=183093
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-03-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/track/track-css-matching-timestamps.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=183220
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-03-21  Jer Noble  <jer.noble@apple.com>
+
+        REGRESSION (r226059?): [macOS WK2] Layout Test fast/mediastream/MediaStream-MediaElement-setObject-null.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=181069
+        <rdar://problem/36188221>
+
+        Reviewed by Youenn Fablet.
+
+        Pass the function into the play() promise handler rather than calling it immediately.
+
+        * fast/mediastream/MediaStream-MediaElement-setObject-null.html:
+        * platform/mac-wk2/TestExpectations:
+
+2018-03-21  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Dispatch DOM events for CSS Transitions and CSS Animations implemented as Web Animations
+        https://bugs.webkit.org/show_bug.cgi?id=183781
+
+        Reviewed by Dean Jackson.
+
+        New attribute-based event handlers are now exposed, update the expectations for those.
+
+        * js/dom/dom-static-property-for-in-iteration-expected.txt:
+
+2018-03-21  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Import CSS Animations and CSS Transitions as Web Animations tests from Mozilla
+        https://bugs.webkit.org/show_bug.cgi?id=183851
+
+        Reviewed by Jon Lee.
+
+        Mark all imported tests as flaky failures or timeouts while we work on making them pass reliably.
+        Each test has a dedicated bug tracking progress.
+
+        * TestExpectations:
+
+2018-03-21  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK] Mark fast/forms/file/entries-api/webkitdirectory-open-panel.html as passing.
+        https://bugs.webkit.org/show_bug.cgi?id=176024
+
+        Unreviewed test gardening.
+
+        It has been passing since the test was changed not to rely on the order
+        of files in the list in r229642.
+
+        * platform/gtk/TestExpectations:
+
+2018-03-21  Frederic Wang  <fwang@igalia.com>
+
+        [iOS] Text highlighted by the Find UI overlaps with NBC news header on google.com
+        https://bugs.webkit.org/show_bug.cgi?id=183658
+
+        Reviewed by Tim Horton.
+
+        Improve the test added in r224284, so that we test when a result is revealed at
+        the center of the overflow node.
+
+        * platform/ios/fast/scrolling/find-text-in-overflow-node.html: Put some content after
+        'match 4' so that the overflow node can scroll and make the text appear at the center.
+        Perform more accurate testing of the scrollTop of the overflow node.
+        * platform/ios/fast/scrolling/find-text-in-overflow-node-expected.txt: Update expectation.
+
+2018-03-20  Zalan Bujtas  <zalan@apple.com>
+
+        RenderTreeNeedsLayoutChecker fails with absolutely positioned svg and <use>
+        https://bugs.webkit.org/show_bug.cgi?id=183718
+
+        Reviewed by Antti Koivisto.
+
+        * svg/in-html/path-with-absolute-positioned-svg-and-use-crash-expected.txt: Added.
+        * svg/in-html/path-with-absolute-positioned-svg-and-use-crash.html: Added.
+
+2018-03-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/appcache/abort-cache-onprogress.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=183684
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-03-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/wpt/webrtc/third-party-frame-ice-candidate-filtering.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=183801
+
+        Unreviewed test gardening.
+
+        * platform/wk2/TestExpectations:
+
+2018-03-20  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r229726 and r229763.
+
+        Caused some API test failures on iOS
+
+        Reverted changesets:
+
+        "Make policy decisions asynchronous"
+        https://bugs.webkit.org/show_bug.cgi?id=180568
+        https://trac.webkit.org/changeset/229726
+
+        "Rebaseline three webarchive tests for WK2 after r229726."
+        https://bugs.webkit.org/show_bug.cgi?id=180568
+        https://trac.webkit.org/changeset/229763
+
+2018-03-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline three webarchive tests for WK2 after r229726.
+        https://bugs.webkit.org/show_bug.cgi?id=180568
+
+        Unreviewed test gardening.
+
+        * platform/wk2/webarchive/loading/missing-data-expected.txt: Added.
+        * platform/wk2/webarchive/loading/object-expected.txt: Added.
+        * platform/wk2/webarchive/loading/test-loading-archive-subresource-null-mimetype-expected.txt: Added.
+
+2018-03-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline three forms tests after r229730.
+
+        Unreviewed test gardening.
+
+        * platform/mac/fast/forms/basic-selects-expected.txt:
+        * platform/mac/fast/forms/disabled-select-change-index-expected.txt:
+        * platform/mac/fast/forms/select-disabled-appearance-expected.txt:
+
+2018-03-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline a test after the case of the 'Strong Password' localized string was changed in r229724.
+
+        Unreviewed test gardening.
+
+        * platform/ios/fast/forms/auto-fill-button/input-strong-password-auto-fill-button-expected.txt:
+        * platform/mac/fast/forms/auto-fill-button/input-strong-password-auto-fill-button-expected.txt:
+
+2018-03-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip http/tests/storageAccess/grant-storage-access-under-opener.html on iOS debug.
+        https://bugs.webkit.org/show_bug.cgi?id=183714
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2018-03-19  Brady Eidson  <beidson@apple.com>
+
+        Add a layout test verifying AppCache resource fetches have the document's cookie in place.
+        https://bugs.webkit.org/show_bug.cgi?id=183757
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/appcache/document-cookie-expected.txt: Added.
+        * http/tests/appcache/document-cookie.php: Added.
+        * http/tests/appcache/resources/cookie-protected-script.php: Added.
+        * http/tests/appcache/resources/document-cookie.manifest: Added.
+
+2018-03-19  Chris Dumez  <cdumez@apple.com>
+
+        Make policy decisions asynchronous
+        https://bugs.webkit.org/show_bug.cgi?id=180568
+        <rdar://problem/37131297>
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline tests for WebKit2. The issue is that some tests dump policy delegate calls
+        and things now happen in a slightly different order now that those delegates are
+        asynchronous.
+
+        * TestExpectations:
+        * http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-main-frame-expected.txt:
+        * platform/ios/http/tests/loading/simple-subframe-expected.txt:
+        * platform/mac-wk2/http/tests/loading/simple-subframe-expected.txt: Copied from LayoutTests/platform/ios/http/tests/loading/simple-subframe-expected.txt.
+        * platform/wk2/fast/loader/fragment-navigation-base-blank-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/fast/loader/iframe-meta-refresh-base-blank-expected.txt: Copied from LayoutTests/platform/wk2/http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials-expected.txt.
+        * platform/wk2/fast/loader/iframe-set-location-base-blank-expected.txt: Copied from LayoutTests/platform/wk2/http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials-expected.txt.
+        * platform/wk2/fast/loader/main-document-url-for-non-http-loads-expected.txt: Added.
+        * platform/wk2/fast/loader/refresh-iframe-base-blank-expected.txt: Copied from LayoutTests/platform/wk2/http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials-expected.txt.
+        * platform/wk2/fast/loader/subframe-removes-itself-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/contentdispositionattachmentsandbox/cross-origin-frames-disabled-expected.txt: Added.
+        * platform/wk2/http/tests/contentextensions/block-everything-unless-domain-expected.txt: Added.
+        * platform/wk2/http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials-expected.txt:
+        * platform/wk2/http/tests/loading/bad-server-subframe-expected.txt: Added.
+        * platform/wk2/http/tests/loading/basic-auth-load-URL-with-consecutive-slashes-expected.txt:
+        * platform/wk2/http/tests/loading/redirect-with-no-location-crash-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/loading/server-redirect-for-provisional-load-caching-expected.txt: Added.
+        * platform/wk2/http/tests/loading/slow-parsing-subframe-expected.txt: Added.
+        * platform/wk2/http/tests/misc/will-send-request-returns-null-on-redirect-expected.txt: Added.
+        * platform/wk2/http/tests/misc/window-dot-stop-expected.txt: Added.
+        * platform/wk2/http/tests/navigation/redirect-preserves-fragment-expected.txt: Added.
+        * platform/wk2/http/tests/navigation/redirect-to-fragment-expected.txt: Added.
+        * platform/wk2/http/tests/navigation/redirect-to-invalid-url-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-allowall-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-deny-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-in-body-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-parent-same-origin-allow-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-parent-same-origin-deny-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-invalid-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-multiple-headers-conflict-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-multiple-headers-sameorigin-allow-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-multiple-headers-sameorigin-deny-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-allow-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-deny-expected.txt: Added.
+        * platform/wk2/http/tests/security/blocked-on-redirect-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/data-url-iframe-in-main-frame-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-iframe-report-only-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-main-frame-expected.txt: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-main-frame-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-iframe-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-iframe-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-iframe-with-enforced-and-report-policies-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-iframe-with-inherited-policy-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-javascript-url-iframe-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-main-frame-expected.txt: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-main-frame-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-xslt-document-in-iframe-with-inherited-policy-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-plugin-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-plugin-in-main-frame-expected.txt: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-main-frame-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-script-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-script-in-iframe-with-inherited-policy-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-script-in-main-frame-expected.txt: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-main-frame-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-xhr-asynchronous-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-xhr-asynchronous-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-xhr-synchronous-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-xhr-synchronous-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/secure-image-after-upgrade-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/secure-image-after-upgrade-redirect-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/iframe-upgrade.https-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/proper-nested-upgrades-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-css-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-redirect-http-to-https-script-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-redirect-https-to-http-script-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/http-0.9/iframe-blocked-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/about-blank-iframe-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/data-url-iframe-in-main-frame-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/mixedContent/data-url-script-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/mixedContent/empty-url-plugin-in-frame-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/mixedContent/insecure-css-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/mixedContent/insecure-css-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/insecure-css-with-secure-cookies-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/insecure-executable-css-with-secure-cookies-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/insecure-form-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/mixedContent/insecure-form-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/insecure-iframe-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/insecure-iframe-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/insecure-image-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/mixedContent/javascript-url-form-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/redirect-http-to-https-iframe-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/redirect-http-to-https-script-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/redirect-https-to-http-iframe-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/redirect-https-to-http-image-secure-cookies-block-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/redirect-https-to-http-image-secure-cookies-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/redirect-https-to-http-script-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/xssAuditor/script-tag-with-callbacks-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/inspector/page/frameScheduledNavigation-expected.txt: Added.
+        * platform/wk2/loader/go-back-cached-main-resource-expected.txt: Added.
+        * platform/wk2/webarchive/loading/mainresource-null-mimetype-crash-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/webarchive/loading/test-loading-archive-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/webarchive/loading/video-in-webarchive-expected.txt: Renamed from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+
+2018-03-19  Chris Dumez  <cdumez@apple.com>
+
+        WebKit.WebsitePoliciesAutoplayQuirks API test times out with async policy delegates
+        https://bugs.webkit.org/show_bug.cgi?id=183702
+        <rdar://problem/38566060>
+
+        Reviewed by Alex Christensen.
+
+        Add variant of fast/loader/inner-iframe-loads-data-url-into-parent-on-unload-crash.html with async navigation
+        delegate since the previous iteration of this patch broke this test case.
+
+        * fast/loader/inner-iframe-loads-data-url-into-parent-on-unload-crash-async-delegate-expected.txt: Added.
+        * fast/loader/inner-iframe-loads-data-url-into-parent-on-unload-crash-async-delegate.html: Added.
+
+2018-03-17  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Implement authenticatorMakeCredential
+        https://bugs.webkit.org/show_bug.cgi?id=183527
+        <rdar://problem/35275886>
+
+        Reviewed by Brent Fulgham.
+
+        * http/wpt/credential-management/credentialscontainer-store-basics.https.html:
+        * http/wpt/webauthn/idl.https.html:
+        * http/wpt/webauthn/public-key-credential-create-success.https.html:
+
+2018-03-16  Brent Fulgham  <bfulgham@apple.com>
+
+        Correct debug assertion in Range::borderAndTextRects
+        https://bugs.webkit.org/show_bug.cgi?id=183710
+        <rdar://problem/38466976>
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/dom/Range/range-selection-empty-body-expected.txt: Added.
+        * fast/dom/Range/range-selection-empty-body.html: Added.
+
+2018-03-16  Youenn Fablet  <youenn@apple.com>
+
+        Add a test verifying that an AppCache manifest request includes credentials
+        https://bugs.webkit.org/show_bug.cgi?id=183716
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/appcache/appcache-cookies-expected.txt: Added.
+        * http/tests/appcache/appcache-cookies.html: Added.
+        * http/tests/appcache/resources/appcache-cookies-test.html: Added.
+        * http/tests/appcache/resources/manifest-if-cookie.php: Added.
+
+2018-03-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip editing/pasteboard/data-transfer-get-data-on-pasting-html-uses-blob-url.html on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=183219
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2018-03-16  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: AccessibilityNodeObject::textForLabelElement() doesn't follow AccName calculation rules
+        https://bugs.webkit.org/show_bug.cgi?id=183661
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/aria-label-on-label-element-expected.txt: Moved from Mac tests to shared tests.
+        * accessibility/aria-label-on-label-element.html: Moved from Mac tests to shared tests.
+        * accessibility/label-with-pseudo-elements-expected.txt: Added.
+        * accessibility/label-with-pseudo-elements.html: Added.
+        * platform/gtk/accessibility/aria-label-on-label-element-expected.txt: Added.
+        * platform/gtk/accessibility/label-with-pseudo-elements-expected.txt: Added.
+        * platform/mac/accessibility/label-with-pseudo-elements-expected.txt: Added.
+        * platform/win/accessibility/label-with-pseudo-elements-expected.txt: Added.
+
+2018-03-16  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] Rebaseline for web-platform-tests specific test
+
+        Unreviewed gardening.
+        * platform/wpe/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+
+2018-03-16  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK][WPE] Remove baselines for FileAPI test.
+
+        Unreviewed gardening. Now with service workers the results in both
+        WPE and GTK+ are the same as the default expectation.
+        * platform/gtk/imported/w3c/web-platform-tests/FileAPI/historical.https-expected.txt: Removed.
+        * platform/wpe/imported/w3c/web-platform-tests/FileAPI/historical.https-expected.txt: Removed.
+
+2018-03-15  Matt Lewis  <jlewis3@apple.com>
+
+        Rebaselined test on macOS WK1 after r229642.
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/fast/forms/file/entries-api/webkitdirectory-open-panel-expected.txt:
+
+2018-03-15  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, mark location-protocol-setter-non-broken-async-delegate.html as flaky on all platforms, not just WK1
+
+        * TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+
+2018-03-15  Youenn Fablet  <youenn@apple.com>
+
+        Bad configuration parameters should make RTCPeerConnection constructor throw
+        https://bugs.webkit.org/show_bug.cgi?id=183615
+
+        Reviewed by Eric Carlson.
+
+        Removed tests that are subsumed by WPT ones.
+
+        * fast/mediastream/RTCPeerConnection-expected.txt: Removed.
+        * fast/mediastream/RTCPeerConnection-getConfiguration-expected.txt: Removed.
+        * fast/mediastream/RTCPeerConnection-getConfiguration.html: Removed.
+        * fast/mediastream/RTCPeerConnection.html: Removed.
+        * platform/gtk/TestExpectations:
+        * platform/ios/TestExpectations:
+
+2018-03-15  Youenn Fablet  <youenn@apple.com>
+
+        replaceTrack triggers negotiationneeded
+        https://bugs.webkit.org/show_bug.cgi?id=180342
+        <rdar://problem/35822426>
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-replace-track.html:
+
+2018-03-15  Chris Dumez  <cdumez@apple.com>
+
+        webkitdirectory-open-panel stumbles over unordered results
+        https://bugs.webkit.org/show_bug.cgi?id=183643
+
+        Reviewed by Wenson Hsieh.
+
+        Update fast/forms/file/entries-api/webkitdirectory-open-panel.html to not rely on a
+        specific file ordering when checking input.files.
+
+        * fast/forms/file/entries-api/webkitdirectory-open-panel-expected.txt:
+        * fast/forms/file/entries-api/webkitdirectory-open-panel.html:
+
+2018-03-15  Youenn Fablet  <youenn@apple.com>
+
+        Layout Test http/wpt/service-workers/update-service-worker.https.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=181753
+        <rdar://problem/36605091>
+
+        Unreviewed.
+
+        * platform/mac-wk2/TestExpectations: Test is no longer flaky on High Sierra Release.
+
+2018-03-15  Youenn Fablet  <youenn@apple.com>
+
+        MessagePort is not always destroyed on the right thread
+        https://bugs.webkit.org/show_bug.cgi?id=183619
+        <rdar://problem/38204711>
+
+        Reviewed by Chris Dumez.
+
+        * TestExpectations:
+        * http/tests/workers/worker-messageport-2-expected.txt: Added.
+        * http/tests/workers/worker-messageport-2.html: Added.
+
+2018-03-15  Ms2ger  <Ms2ger@igalia.com>
+
+        [GTK][WPE] Enable service workers
+        https://bugs.webkit.org/show_bug.cgi?id=178576
+
+        Reviewed by Žan Doberšek.
+
+        * platform/wpe/TestExpectations: update remaining expectations to point to another bug.
+
+2018-03-14  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Canvas: a recording initiated by the user should be shown immediately on completion
+        https://bugs.webkit.org/show_bug.cgi?id=183647
+        <rdar://problem/38479187>
+
+        Reviewed by Matt Baker.
+
+        * inspector/canvas/recording-2d.html:
+        Reorder the agent calls so that the CanvasManager `_recordingCanvas` state variable has a
+        chance to properly update after a recording is stopped.
+
+2018-03-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r229613.
+
+        Caused API test failures
+
+        Reverted changeset:
+
+        "Make policy decisions asynchronous"
+        https://bugs.webkit.org/show_bug.cgi?id=180568
+        https://trac.webkit.org/changeset/229613
+
+2018-03-14  Youenn Fablet  <youenn@apple.com>
+
+        MessagePort should remove its listeners when being closed
+        https://bugs.webkit.org/show_bug.cgi?id=183644
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/workers/resources/messageport-echo-worker.js: Added.
+        * http/tests/workers/worker-messageport-expected.txt: Added.
+        * http/tests/workers/worker-messageport.html: Added.
+
+2018-03-14  Chris Dumez  <cdumez@apple.com>
+
+        Make policy decisions asynchronous
+        https://bugs.webkit.org/show_bug.cgi?id=180568
+        <rdar://problem/37131297>
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline tests for WebKit2. The issue is that some tests dump policy delegate calls
+        and things now happen in a slightly different order now that those delegates are
+        asynchronous.
+
+        * TestExpectations:
+        * http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-main-frame-expected.txt:
+        * platform/ios/http/tests/loading/simple-subframe-expected.txt:
+        * platform/mac-wk2/http/tests/loading/simple-subframe-expected.txt: Copied from LayoutTests/platform/ios/http/tests/loading/simple-subframe-expected.txt.
+        * platform/wk2/fast/loader/fragment-navigation-base-blank-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/fast/loader/iframe-meta-refresh-base-blank-expected.txt: Copied from LayoutTests/platform/wk2/http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials-expected.txt.
+        * platform/wk2/fast/loader/iframe-set-location-base-blank-expected.txt: Copied from LayoutTests/platform/wk2/http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials-expected.txt.
+        * platform/wk2/fast/loader/main-document-url-for-non-http-loads-expected.txt: Added.
+        * platform/wk2/fast/loader/refresh-iframe-base-blank-expected.txt: Copied from LayoutTests/platform/wk2/http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials-expected.txt.
+        * platform/wk2/fast/loader/subframe-removes-itself-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/contentdispositionattachmentsandbox/cross-origin-frames-disabled-expected.txt: Added.
+        * platform/wk2/http/tests/contentextensions/block-everything-unless-domain-expected.txt: Added.
+        * platform/wk2/http/tests/loading/authentication-after-redirect-stores-wrong-credentials/authentication-after-redirect-stores-wrong-credentials-expected.txt:
+        * platform/wk2/http/tests/loading/bad-server-subframe-expected.txt: Added.
+        * platform/wk2/http/tests/loading/basic-auth-load-URL-with-consecutive-slashes-expected.txt:
+        * platform/wk2/http/tests/loading/redirect-with-no-location-crash-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/loading/server-redirect-for-provisional-load-caching-expected.txt: Added.
+        * platform/wk2/http/tests/loading/slow-parsing-subframe-expected.txt: Added.
+        * platform/wk2/http/tests/misc/will-send-request-returns-null-on-redirect-expected.txt: Added.
+        * platform/wk2/http/tests/misc/window-dot-stop-expected.txt: Added.
+        * platform/wk2/http/tests/navigation/redirect-preserves-fragment-expected.txt: Added.
+        * platform/wk2/http/tests/navigation/redirect-to-fragment-expected.txt: Added.
+        * platform/wk2/http/tests/navigation/redirect-to-invalid-url-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-allowall-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-deny-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-in-body-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-parent-same-origin-allow-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-parent-same-origin-deny-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-invalid-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-multiple-headers-conflict-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-multiple-headers-sameorigin-allow-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-multiple-headers-sameorigin-deny-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-allow-expected.txt: Added.
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-deny-expected.txt: Added.
+        * platform/wk2/http/tests/security/blocked-on-redirect-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/data-url-iframe-in-main-frame-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-iframe-report-only-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-main-frame-expected.txt: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-main-frame-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-iframe-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-iframe-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-iframe-with-enforced-and-report-policies-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-iframe-with-inherited-policy-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-javascript-url-iframe-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-main-frame-expected.txt: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-main-frame-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-image-in-xslt-document-in-iframe-with-inherited-policy-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-plugin-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-plugin-in-main-frame-expected.txt: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-main-frame-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-script-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-script-in-iframe-with-inherited-policy-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-script-in-main-frame-expected.txt: Copied from LayoutTests/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-main-frame-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-xhr-asynchronous-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-xhr-asynchronous-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-xhr-synchronous-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-xhr-synchronous-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/secure-image-after-upgrade-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/block-all-mixed-content/secure-image-after-upgrade-redirect-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/iframe-upgrade.https-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/proper-nested-upgrades-expected.txt: Added.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-css-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-redirect-http-to-https-script-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-redirect-https-to-http-script-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/http-0.9/iframe-blocked-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/about-blank-iframe-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/data-url-iframe-in-main-frame-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/mixedContent/data-url-script-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/mixedContent/empty-url-plugin-in-frame-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/mixedContent/insecure-css-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/mixedContent/insecure-css-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/insecure-css-with-secure-cookies-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/insecure-executable-css-with-secure-cookies-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/insecure-form-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/mixedContent/insecure-form-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/insecure-iframe-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/insecure-iframe-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/insecure-image-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/mixedContent/javascript-url-form-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/redirect-http-to-https-iframe-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/redirect-http-to-https-script-in-iframe-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/redirect-https-to-http-iframe-in-main-frame-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/redirect-https-to-http-image-secure-cookies-block-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/redirect-https-to-http-image-secure-cookies-expected.txt: Added.
+        * platform/wk2/http/tests/security/mixedContent/redirect-https-to-http-script-in-iframe-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/http/tests/security/xssAuditor/script-tag-with-callbacks-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/inspector/page/frameScheduledNavigation-expected.txt: Added.
+        * platform/wk2/loader/go-back-cached-main-resource-expected.txt: Added.
+        * platform/wk2/webarchive/loading/mainresource-null-mimetype-crash-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/webarchive/loading/test-loading-archive-expected.txt: Copied from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+        * platform/wk2/webarchive/loading/video-in-webarchive-expected.txt: Renamed from LayoutTests/platform/mac/webarchive/loading/mainresource-null-mimetype-crash-expected.txt.
+
+2018-03-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip three svg LayoutTests.
+        https://bugs.webkit.org/show_bug.cgi?id=183572
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-03-14  Alicia Boya García  <aboya@igalia.com>
+
+        Unreviewed GTK test gardening.
+        https://bugs.webkit.org/show_bug.cgi?id=183636
+
+        * platform/gtk/TestExpectations:
+
+2018-03-14  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Implement accessible dismiss action on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=183352
+        <rdar://problem/38161500>
+
+        Reviewed by Zalan Bujtas.
+
+        * accessibility/ios-simulator/AOM-dismiss-event-expected.txt: Added.
+        * accessibility/ios-simulator/AOM-dismiss-event.html: Added.
+        * platform/mac-wk1/TestExpectations:
+
+2018-03-14  Youenn Fablet  <youenn@apple.com>
+
+        Update libwebrtc up to 36af4e9614f707f733eb2340fae66d6325aaac5b
+        https://bugs.webkit.org/show_bug.cgi?id=183481
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-stats.html:
+
+2018-03-14  Frederic Wang  <fwang@igalia.com>
+
+        Finish migration to MathML WPT tests
+        https://bugs.webkit.org/show_bug.cgi?id=183628
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        In r225162, the MathML tests from the WPT repository were imported. They were intended to
+        replace the ones in imported/mathml-in-html5 but the migration was not fully possible. The
+        main issue was that many MathML tests use Web fonts to test the use of OpenType parameters
+        but document.fonts.ready is unreliable in WebKit (bug 174030). A workaround was implemented
+        in WPT ( https://github.com/w3c/web-platform-tests/pull/10025 ) so this commit finishes
+        the migration. We update the WPT MathML tests and now run them all, we remove
+        imported/mathml-in-html5 and the associated TestExpectations failures. Two cases unrelated to
+        font loading are still failing: One for the SuperscriptShiftUpCramped parameter (bug 156401)
+        and one for the RadicalDegreeBottomRaisePercent parameter (bug 183631).
+
+        * TestExpectations: Unskip MathML WPT tests.
+        * imported/mathml-in-html5/LICENSE: Removed.
+        * imported/mathml-in-html5/README.md: Removed.
+        * imported/mathml-in-html5/mathml/presentation-markup/fractions/frac-parameters-1.html: Removed.
+        * imported/mathml-in-html5/mathml/presentation-markup/fractions/frac-parameters-2.html: Removed.
+        * imported/mathml-in-html5/mathml/presentation-markup/radicals/root-parameters-1.html: Removed.
+        * imported/mathml-in-html5/mathml/presentation-markup/scripts/subsup-parameters-1.html: Removed.
+        * imported/mathml-in-html5/mathml/presentation-markup/scripts/underover-parameters-1.html: Removed.
+        * imported/mathml-in-html5/mathml/presentation-markup/scripts/underover-parameters-2.html: Removed.
+        * imported/mathml-in-html5/mathml/presentation-markup/scripts/underover-parameters-3.html: Removed.
+        * imported/mathml-in-html5/mathml/presentation-markup/scripts/underover-parameters-4.html: Removed.
+        * platform/mac-wk2/TestExpectations: Remove the expectation.
+        * platform/win/TestExpectations: Remove the expectation.
+
+2018-03-13  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Immediately forward cookie access for domains with previous user interaction when there's an opener document
+        https://bugs.webkit.org/show_bug.cgi?id=183620
+        <rdar://problem/38431469>
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/storageAccess/deny-storage-access-under-opener-expected.txt: Added.
+        * http/tests/storageAccess/deny-storage-access-under-opener.html: Added.
+        * http/tests/storageAccess/grant-storage-access-under-opener-expected.txt: Added.
+        * http/tests/storageAccess/grant-storage-access-under-opener.html: Added.
+        * http/tests/storageAccess/resources/set-cookie-and-report-back.html: Added.
+        * platform/ios/TestExpectations:
+            New tests marked as [ Pass ].
+        * platform/mac-wk2/TestExpectations:
+            New tests marked as [ Pass ].
+
+2018-03-13  Youenn Fablet  <youenn@apple.com>
+
+        Layout Test imported/w3c/web-platform-tests/service-workers/service-worker/register-closed-window.https.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=182853
+        <rdar://problem/37645429>
+
+        Reviewed by Chris Dumez.
+
+        * TestExpectations:
+        * platform/ios/TestExpectations:
+
+2018-03-13  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed GTK expectations gardening
+
+        * platform/gtk/TestExpectations:
+
+2018-03-13  Youenn Fablet  <youenn@apple.com>
+
+        Changing link element rel attribute from preload to stylesheet should succeed loading the stylesheet
+        https://bugs.webkit.org/show_bug.cgi?id=183601
+        <rdar://problem/38309441>
+
+        Reviewed by Antti Koivisto.
+
+        * http/wpt/preload/change-link-rel-attribute-expected.txt: Added.
+        * http/wpt/preload/change-link-rel-attribute.html: Added.
+        * http/wpt/preload/resources/style.css: Added.
+        (body):
+
+2018-03-13  Frederic Wang  <fwang@igalia.com>
+
+        Skip mathml-in-dashboard-expected on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=183562
+
+        There is no dashboard compatibility mode on Windows so the test is not necessary.
+
+        Reviewed by Alexey Proskuryakov.
+
+        * platform/win/TestExpectations: Skip test.
+        * platform/win/mathml/mathml-in-dashboard-expected.png: Removed.
+        * platform/win/mathml/mathml-in-dashboard-expected.txt: Removed.
+
+2018-03-13  Chris Dumez  <cdumez@apple.com>
+
+        fast/loader/javascript-url-iframe-remove-on-navigate.html is flaky with async policy delegates
+        https://bugs.webkit.org/show_bug.cgi?id=183588
+
+        Reviewed by Alex Christensen.
+
+        The test was setting the frame's src to a javascript URL in a setTimeout(0), expecting the
+        navigation policy delegate to have already completed. However, with asynchronous policy
+        delegates, this is not necessarily the case. Therefore, we now wait for the beforeunload
+        event to be fired at the window, since this indicates a policy decision has been made and
+        we are actually navigating.
+
+        I checked that this test was printing the "FAIL" alert in both Firefox and Chrome before
+        this change.
+
+        * fast/loader/javascript-url-iframe-remove-on-navigate-async-delegate-expected.txt: Added.
+        * fast/loader/javascript-url-iframe-remove-on-navigate-async-delegate.html: Added.
+        * fast/loader/javascript-url-iframe-remove-on-navigate.html:
+
+2018-03-13  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [Win] Layout Test fast/html/menuitem-element.html is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=179299
+
+        Reviewed by Per Arne Vollan.
+
+        * platform/win/TestExpectations:
+        Remove "failure" line.
+
+2018-03-13  Danyao Wang  <danyao@chromium.org>
+
+        LayoutTests/http/tests/navigation/page-cache-iframe-provisional-load.html fails with async policy delegate
+        https://bugs.webkit.org/show_bug.cgi?id=183386
+
+        Reviewed by Chris Dumez.
+
+        This test relies on the happenstance that with sync poicy decision, the subframe transitions
+        to FrameLoadProvisional before main frame navigation is committed. With async delegate,
+        policy checks for the main frame and subframe are interleaved. When the main frame policy
+        decision is received, it cancels the subframe check. So the page ends up being cached when
+        navigating away. This is working as intended.
+
+        * http/tests/navigation/page-cache-iframe-provisional-load-async-delegates-expected.txt: Added.
+        * http/tests/navigation/page-cache-iframe-provisional-load-async-delegates.html: Copied from LayoutTests/http/tests/navigation/page-cache-iframe-provisional-load.html.
+        Add a new version of the test that forces async policy delegate.
+
+        * http/tests/navigation/page-cache-iframe-provisional-load.html:
+        Update test to sequence main frame navigation after start of provisional navigation in subframe.
+
+2018-03-13  Frederic Wang  <fwang@igalia.com>
+
+        Rewrite frameset-flattening-simple to make expectation clearer
+        https://bugs.webkit.org/show_bug.cgi?id=183129
+
+        The description of fast/frames/flattening/frameset-flattening-simple.html says that the
+        iframe should be 800px wide and should not have any scrollbars. However, it is a bit
+        difficult to know the size when checking the test visually. Moreover, the scrollbars of the
+        main frame are visible, which makes things a bit confusing and may be the cause of bug 71655
+        on GTK.
+
+        Reviewed by Javier Fernandez.
+
+        * fast/frames/flattening/frameset-flattening-simple.html: Put the frame inside a 200x300
+        frameset cell and set its width to 300px. The frame should be a 300x300 square when it is
+        flattened (test passes) and a 200x300 rectangle when it is not (test fails). That's easier
+        to verify visually. That also avoids scrollbars on the main frame.
+        * platform/gtk/TestExpectations: Attempt to remove flacky expectation.
+        * platform/gtk/fast/frames/flattening/frameset-flattening-simple-expected.png: Update.
+        * platform/gtk/fast/frames/flattening/frameset-flattening-simple-expected.txt: Ditto.
+        * platform/ios/fast/frames/flattening/frameset-flattening-simple-expected.txt: Ditto.
+        * platform/mac-wk2/fast/frames/flattening/frameset-flattening-simple-expected.txt: Ditto.
+        * platform/mac/fast/frames/flattening/frameset-flattening-simple-expected.png: Ditto.
+        * platform/mac/fast/frames/flattening/frameset-flattening-simple-expected.txt: Ditto.
+        * platform/win/fast/frames/flattening/frameset-flattening-simple-expected.txt: Ditto.
+
 2018-03-12  Chris Dumez  <cdumez@apple.com>
 
         Load may get committed before receiving policy for the resource response

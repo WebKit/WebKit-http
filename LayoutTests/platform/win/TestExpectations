@@ -127,6 +127,7 @@ svg/custom/embedded-svg-allowed-in-dashboard.xml [ Skip ]
 svg/custom/manually-parsed-svg-allowed-in-dashboard.html [ Skip ]
 svg/custom/manually-parsed-embedded-svg-allowed-in-dashboard.html [ Skip ]
 svg/custom/svg-allowed-in-dashboard-object.html [ Skip ]
+mathml/mathml-in-dashboard.html [ Skip ]
 
 # TODO Accelerated overflow scrolling (ENABLE_ACCELERATED_OVERFLOW_SCROLLING) is not enabled.
 fast/repaint/overflow-scroll-touch-repaint.html [ Skip ]
@@ -1957,9 +1958,6 @@ mathml/presentation/href-style.html [ ImageOnlyFailure ]
 mathml/presentation/mathvariant-inheritance.html  [ ImageOnlyFailure ]
 mathml/presentation/mathvariant-tokens.html [ ImageOnlyFailure ]
 mathml/presentation/tokenElements-mathvariant.html [ ImageOnlyFailure ]
-
-# These tests require the Latin Modern Math font.
-mathml/opentype/large-operators-italic-correction.html [ Skip ]
 ################################################################################
 #################          End MathML Issues                ####################
 ################################################################################
@@ -3834,8 +3832,6 @@ webkit.org/b/179297 fast/loader/empty-embed-src-attribute.html [ Pass Crash ]
 webkit.org/b/179297 http/tests/preload/onerror_event.html [ Crash Pass ]
 webkit.org/b/179297 http/wpt/resource-timing/rt-initiatorType-media.html [ Crash Failure ]
 
-webkit.org/b/179299 fast/html/menuitem-element.html [ Failure ]
-
 webkit.org/b/179301 http/tests/security/xss-DENIED-xsl-external-entity.xml [ Pass Failure ]
 
 webkit.org/b/179613 editing/execCommand/underline-selection-containing-image.html [ Failure ]
@@ -3895,7 +3891,6 @@ webkit.org/b/182626 accessibility/aria-hidden-updates-alldescendants.html [ Fail
 
 # The following tests are failing only on ews203.
 webkit.org/b/182694 fast/text/tatechuyoko.html [ Failure ]
-webkit.org/b/182694 imported/mathml-in-html5/mathml/presentation-markup/fractions/frac-parameters-1.html [ Failure ]
 webkit.org/b/182694 fast/css/fontloader-svg-select.svg [ Crash ]
 webkit.org/b/182694 fast/dom/crash-moving-subtree-between-documents.html [ Crash ]
 webkit.org/b/182694 fast/dom/event-handler-attributes.html [ Crash ]

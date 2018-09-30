@@ -160,7 +160,10 @@ void FindController::didFindString()
 
     // Scrolling the main frame is handled by the SmartMagnificationController class but we still
     // need to consider overflow nodes and subframes here.
-    frame.selection().revealSelection(SelectionRevealMode::RevealUpToMainFrame, ScrollAlignment::alignToEdgeIfNeeded, WebCore::DoNotRevealExtent);
+    // Many sites have overlay headers or footers that may overlap with the highlighted
+    // text, so we reveal the text at the center of the viewport.
+    // FIXME: Find a better way to estimate the obscured area (https://webkit.org/b/183889).
+    frame.selection().revealSelection(SelectionRevealMode::RevealUpToMainFrame, ScrollAlignment::alignCenterAlways, WebCore::DoNotRevealExtent);
 }
 
 void FindController::didFailToFindString()

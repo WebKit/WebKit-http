@@ -2,13 +2,13 @@
 <Workspace
    version = "1.0">
    <FileRef
-      location = "group:test">
-   </FileRef>
-   <FileRef
-      location = "group:misc">
+      location = "group:DisplayTree">
    </FileRef>
    <FileRef
       location = "group:FormattingContext">
+   </FileRef>
+   <FileRef
+      location = "group:FormattingState">
    </FileRef>
    <FileRef
       location = "group:LayoutTree">
@@ -20,12 +20,18 @@
       location = "group:Layout.js">
    </FileRef>
    <FileRef
-      location = "group:LayoutContext.js">
+      location = "group:LayoutState.js">
    </FileRef>
    <FileRef
       location = "group:Utils.js">
    </FileRef>
    <FileRef
       location = "group:TreeBuilder.js">
+   </FileRef>
+   <FileRef
+      location = "group:test">
+   </FileRef>
+   <FileRef
+      location = "group:misc">
    </FileRef>
 </Workspace>

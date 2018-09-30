@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -248,18 +248,13 @@ private:
         std::array<FPRReg, FPRInfo::numberOfRegisters> fprDestinations;
     };
 
-#if COMPILER(MSVC)
-#pragma warning(push)
-#pragma warning(disable: 4701)
-#endif
-
     template<unsigned TargetSize, typename RegType>
     std::array<RegType, TargetSize> clampArrayToSize(std::array<RegType, InfoTypeForReg<RegType>::numberOfRegisters> sourceArray)
     {
         static_assert(TargetSize <= sourceArray.size(), "TargetSize is bigger than source.size()");
         RELEASE_ASSERT(TargetSize <= InfoTypeForReg<RegType>::numberOfRegisters);
 
-        std::array<RegType, TargetSize> result;
+        std::array<RegType, TargetSize> result { };
 
         for (unsigned i = 0; i < TargetSize; i++) {
             ASSERT(sourceArray[i] != InfoTypeForReg<RegType>::InvalidIndex);
@@ -268,10 +263,6 @@ private:
 
         return result;
     }
-
-#if COMPILER(MSVC)
-#pragma warning(pop)
-#endif
 
     template<typename ArgType>
     ALWAYS_INLINE void pokeForArgument(ArgType arg, unsigned currentGPRArgument, unsigned currentFPRArgument, unsigned extraPoke)
@@ -518,7 +509,7 @@ public:
         // genericUnwind() leaves the handler CallFrame* in vm->callFrameForCatch,
         // and the address of the handler in vm->targetMachinePCForThrow.
         loadPtr(&vm.targetMachinePCForThrow, GPRInfo::regT1);
-        jump(GPRInfo::regT1);
+        jump(GPRInfo::regT1, ExceptionHandlerPtrTag);
     }
 
     void prepareForTailCallSlow(GPRReg calleeGPR = InvalidGPRReg)

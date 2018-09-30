@@ -54,12 +54,15 @@
 #include "XMLNames.h"
 #include <wtf/Assertions.h>
 #include <wtf/HashMap.h>
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/WTFString.h>
 
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(SVGElement);
 
 // Animated property definitions
 DEFINE_ANIMATED_STRING(SVGElement, HTMLNames::classAttr, ClassName, className)
@@ -729,8 +732,11 @@ void SVGElement::synchronizeSystemLanguage(SVGElement* contextElement)
 std::optional<ElementStyle> SVGElement::resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle*)
 {
     // If the element is in a <use> tree we get the style from the definition tree.
-    if (auto styleElement = makeRefPtr(this->correspondingElement()))
-        return styleElement->resolveStyle(&parentStyle);
+    if (auto styleElement = makeRefPtr(this->correspondingElement())) {
+        std::optional<ElementStyle> style = styleElement->resolveStyle(&parentStyle);
+        StyleResolver::adjustSVGElementStyle(*this, *style->renderStyle);
+        return style;
+    }
 
     return resolveStyle(&parentStyle);
 }

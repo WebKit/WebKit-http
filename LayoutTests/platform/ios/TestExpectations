@@ -1054,7 +1054,6 @@ fast/mediastream/RTCPeerConnection-addTransceiver.html [ Pass ]
 fast/mediastream/RTCPeerConnection-createAnswer.html [ Pass ]
 fast/mediastream/RTCPeerConnection-createOffer.html [ Pass ]
 fast/mediastream/RTCPeerConnection-datachannel.html [ Pass ]
-fast/mediastream/RTCPeerConnection-getConfiguration.html [ Pass ]
 fast/mediastream/RTCPeerConnection-have-local-offer.html [ Pass ]
 fast/mediastream/RTCPeerConnection-have-local-pranswer.html [ Pass ]
 fast/mediastream/RTCPeerConnection-have-remote-offer.html [ Pass ]
@@ -1072,7 +1071,6 @@ fast/mediastream/RTCPeerConnection-setLocalDescription-offer.html [ Pass ]
 fast/mediastream/RTCPeerConnection-setRemoteDescription-offer.html [ Pass ]
 fast/mediastream/RTCPeerConnection-stable.html [ Pass ]
 fast/mediastream/RTCPeerConnection-statsSelector.html [ Pass ]
-fast/mediastream/RTCPeerConnection.html [ Pass ]
 fast/mediastream/RTCSessionDescription.html [ Pass ]
 fast/mediastream/RTCTrackEvent-constructor.html [ Pass ]
 
@@ -1375,8 +1373,7 @@ webkit.org/b/160161 mathml/opentype/large-operators.html [ Skip ]
 webkit.org/b/160161 mathml/opentype/horizontal.html [ Skip ]
 webkit.org/b/160161 mathml/opentype/horizontal-munderover.html [ Skip ]
 
-# These tests require the Latin Modern Math font.
-webkit.org/b/160161 mathml/opentype/large-operators-italic-correction.html [ Skip ]
+# This test requires the Latin Modern Math font.
 webkit.org/b/160161 mathml/presentation/bug159513.html [ Skip ]
 
 # This test fails because the USE_TYPO_METRICS flag is ignored for non-math font
@@ -3007,6 +3004,8 @@ http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store.html [ Pa
 http/tests/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour.html [ Pass ]
 http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-redirects.html [ Pass ]
 http/tests/resourceLoadStatistics/strip-referrer-to-origin-for-prevalent-subresource-requests.html [ Pass ]
+http/tests/storageAccess/deny-storage-access-under-opener.html [ Pass ]
+http/tests/storageAccess/grant-storage-access-under-opener.html [ Pass ]
 
 # Skipped in general expectations since they only work on iOS and Mac, WK2.
 http/tests/security/strip-referrer-to-origin-for-third-party-redirects-in-private-mode.html [ Pass ]
@@ -3265,9 +3264,9 @@ webkit.org/b/182592 webgl/webgl-texture-image-buffer-reuse.html [ Skip ]
 
 webkit.org/b/181612 [ Debug ] webanimations/animation-opacity-animation-crash.html [ Pass Failure ]
 
-webkit.org/b/182853 imported/w3c/web-platform-tests/service-workers/service-worker/register-closed-window.https.html [ Pass Failure ]
-
 webkit.org/b/182850 [ Release ] editing/pasteboard/data-transfer-set-data-sanitizes-html-when-copying-in-null-origin.html [ Skip ]
 
 webkit.org/b/182833 imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-drawImage.html [ Pass Failure ]
 webkit.org/b/182833 imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-invalid-args.html [ Pass Failure ]
+
+webkit.org/b/183219 [ Release ] editing/pasteboard/data-transfer-get-data-on-pasting-html-uses-blob-url.html [ Skip ]

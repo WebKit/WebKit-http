@@ -1,3 +1,125 @@
+2018-03-22  Frederic Wang  <fwang@igalia.com>
+
+        [MathML] Import WPT test to replace mathml/opentype/large-operators-italic-correction.html
+        https://bugs.webkit.org/show_bug.cgi?id=183891
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        Import WPT test added in https://github.com/w3c/web-platform-tests/pull/9993.
+
+        * web-platform-tests/fonts/math/largeop-displayoperatorminheight2000-2AFF-italiccorrection3000.woff: Added.
+        * web-platform-tests/fonts/math/w3c-import.log:
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-parameters-2-expected.txt: Added.
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-parameters-2.html: Added.
+        * web-platform-tests/mathml/presentation-markup/scripts/w3c-import.log:
+        * web-platform-tests/mathml/tools/largeop.py:
+
+2018-03-20  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Update the timing model when pending tasks schedule changes
+        https://bugs.webkit.org/show_bug.cgi?id=183785
+
+        Reviewed by Dean Jackson.
+
+        Record a progression now that we correctly invalidate effects as their pending play
+        or pause task schedule changes. Setting an animation's effect resets pending tasks. 
+
+        * web-platform-tests/web-animations/interfaces/Animation/effect-expected.txt:
+
+2018-03-16  Claudio Saavedra  <csaavedra@igalia.com>
+
+        Unreviewed rebaseline
+
+        These seem to have been forgotten, update baseline as it seemed needed.
+        * web-platform-tests/dom/events/EventListener-invoke-legacy-expected.txt:
+        * web-platform-tests/dom/nodes/Document-createElement-namespace-expected.txt:
+        * web-platform-tests/encrypted-media/idlharness-expected.txt:
+
+2018-03-15  Youenn Fablet  <youenn@apple.com>
+
+        Bad configuration parameters should make RTCPeerConnection constructor throw
+        https://bugs.webkit.org/show_bug.cgi?id=183615
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCConfiguration-bundlePolicy-expected.txt:
+        * web-platform-tests/webrtc/RTCConfiguration-iceServers-expected.txt:
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-constructor-expected.txt:
+
+2018-03-14  Frederic Wang  <fwang@igalia.com>
+
+        Finish migration to MathML WPT tests
+        https://bugs.webkit.org/show_bug.cgi?id=183628
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        In r225162, the MathML tests from the WPT repository were imported. They were intended to
+        replace the ones in imported/mathml-in-html5 but the migration was not fully possible. The
+        main issue was that many MathML tests use Web fonts to test the use of OpenType parameters
+        but document.fonts.ready is unreliable in WebKit (bug 174030). A workaround was implemented
+        in WPT ( https://github.com/w3c/web-platform-tests/pull/10025 ) so this commit finishes
+        the migration. We update the WPT MathML tests and now run them all, we remove
+        imported/mathml-in-html5 and the associated TestExpectations failures. Two cases unrelated to
+        font loading are still failing: One for the SuperscriptShiftUpCramped parameter (bug 156401)
+        and one for the RadicalDegreeBottomRaisePercent parameter (bug 183631).
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-parameters-1-expected.txt: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/fractions/frac-parameters-1-expected.txt.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-parameters-1.html: Import font loading workaround.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-parameters-2-expected.txt: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/fractions/frac-parameters-2-expected.txt.
+        * web-platform-tests/mathml/presentation-markup/fractions/frac-parameters-2.html: Import font loading workaround.
+        * web-platform-tests/mathml/presentation-markup/operators/mo-axis-height-1.html: Import font loading workaround.
+        * web-platform-tests/mathml/presentation-markup/radicals/root-parameters-1-expected.txt: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/radicals/root-parameters-1-expected.txt.
+        Also add the failure with RadicalDegreeBottomRaisePercent.
+        * web-platform-tests/mathml/presentation-markup/radicals/root-parameters-1.html: Import font loading workaround.
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-parameters-1-expected.txt: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/scripts/subsup-parameters-1-expected.txt.
+        Also add the failure for SuperscriptShiftUpCramped.
+        * web-platform-tests/mathml/presentation-markup/scripts/subsup-parameters-1.html: Import font loading workaround.
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-1-expected.txt: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/scripts/underover-parameters-1-expected.txt.
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-1.html: Import font loading workaround.
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-2-expected.txt: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/scripts/underover-parameters-2-expected.txt.
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-2.html: Import font loading workaround.
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-3-expected.txt: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/scripts/underover-parameters-3-expected.txt.
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-3.html: Import font loading workaround.
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-4-expected.txt: Renamed from LayoutTests/imported/mathml-in-html5/mathml/presentation-markup/scripts/underover-parameters-4-expected.txt.
+        * web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-4.html: Import font loading workaround.
+        * web-platform-tests/mathml/presentation-markup/tables/table-axis-height.html: Import font loading workaround.
+        * web-platform-tests/mathml/relations/css-styling/displaystyle-1.html: Import font loading workaround.
+        * web-platform-tests/mathml/relations/css-styling/lengths-3.html: Import font loading workaround.
+        * web-platform-tests/mathml/tools/utils/misc.py: Import update to Python 3.
+        (downloadWithProgressBar):
+
+2018-03-13  Youenn Fablet  <youenn@apple.com>
+
+        Layout Test imported/w3c/web-platform-tests/service-workers/service-worker/register-closed-window.https.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=182853
+        <rdar://problem/37645429>
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/service-workers/service-worker/register-closed-window.https-expected.txt:
+
+2018-03-13  Youenn Fablet  <youenn@apple.com>
+
+        Calling removeTrack with RTCRtpSender does not set SenderTrack to null
+        https://bugs.webkit.org/show_bug.cgi?id=183308
+
+        Reviewed by Eric Carlson.
+
+        * web-platform-tests/webrtc/RTCPeerConnection-removeTrack.https-expected.txt:
+
+2018-03-12  Chris Dumez  <cdumez@apple.com>
+
+        Return boolean from DOMTokenList's replace() method
+        https://bugs.webkit.org/show_bug.cgi?id=183567
+
+        Reviewed by Youenn Fablet.
+
+        Rebaseline web platform test now that all checks are passing.
+
+        * web-platform-tests/dom/nodes/Element-classlist-expected.txt:
+
 2018-03-12  Ryan Haddad  <ryanhaddad@apple.com>
 
         Unreviewed, rebaseline two cssom tests after r229544.

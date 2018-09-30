@@ -47,20 +47,21 @@
 @property (readonly, nonatomic) NSURLResponse *previewResponse;
 @end
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+@class QLItem;
+
+@protocol QLPreviewItemDataProvider <NSObject>
+- (NSData *)provideDataForItem:(QLItem *)item;
+@end
+
+@interface QLItem : NSObject
+- (instancetype)initWithDataProvider:(id<QLPreviewItemDataProvider>)data contentType:(NSString *)contentType previewTitle:(NSString *)previewTitle;
+@end
+
 #define kQLReturnPasswordProtected 1 << 2
-#else
-#define kQLReturnMask 0xaf00
-#define kQLReturnPasswordProtected (kQLReturnMask | 20)
-#endif
 
 #endif
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
 static_assert(kQLReturnPasswordProtected == 4, "kQLReturnPasswordProtected should equal 4.");
-#else
-static_assert(kQLReturnPasswordProtected == 44820, "kQLReturnPasswordProtected should equal 44820.");
-#endif
 
 WTF_EXTERN_C_BEGIN
 

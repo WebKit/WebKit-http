@@ -121,19 +121,19 @@ unsigned CallFrame::callSiteBitsAsBytecodeOffset() const
 {
     ASSERT(codeBlock());
     ASSERT(callSiteBitsAreBytecodeOffset());
-    return currentVPC() - codeBlock()->instructions().begin();     
+    return codeBlock()->bytecodeOffset(currentVPC());     
 }
 
 #else // USE(JSVALUE32_64)
 Instruction* CallFrame::currentVPC() const
 {
     ASSERT(callSiteBitsAreBytecodeOffset());
-    return codeBlock()->instructions().begin() + callSiteBitsAsBytecodeOffset();
+    return &codeBlock()->instructions()[callSiteBitsAsBytecodeOffset()];
 }
 
 void CallFrame::setCurrentVPC(Instruction* vpc)
 {
-    CallSiteIndex callSite(vpc - codeBlock()->instructions().begin());
+    CallSiteIndex callSite(codeBlock()->bytecodeOffset(vpc));
     this[CallFrameSlot::argumentCount].tag() = static_cast<int32_t>(callSite.bits());
 }
 
@@ -148,6 +148,7 @@ unsigned CallFrame::callSiteBitsAsBytecodeOffset() const
     
 unsigned CallFrame::bytecodeOffset()
 {
+    ASSERT(!callee().isWasm());
     if (!codeBlock())
         return 0;
 #if ENABLE(DFG_JIT)
@@ -329,7 +330,7 @@ String CallFrame::friendlyFunctionName()
 void CallFrame::dump(PrintStream& out)
 {
     if (CodeBlock* codeBlock = this->codeBlock()) {
-        out.print(codeBlock->inferredName(), "#", codeBlock->hashAsStringIfPossible(), " [", codeBlock->jitType(), "]");
+        out.print(codeBlock->inferredName(), "#", codeBlock->hashAsStringIfPossible(), " [", codeBlock->jitType(), " bc#", bytecodeOffset(), "]");
 
         out.print("(");
         thisValue().dumpForBacktrace(out);

@@ -185,6 +185,7 @@
 #import <WebCore/PathUtilities.h>
 #import <WebCore/PlatformEventFactoryMac.h>
 #import <WebCore/ProgressTracker.h>
+#import <WebCore/RenderTheme.h>
 #import <WebCore/RenderView.h>
 #import <WebCore/RenderWidget.h>
 #import <WebCore/ResourceHandle.h>
@@ -5197,19 +5198,36 @@ static Vector<String> toStringVector(NSArray* patterns)
 - (bool)_defaultAppearance { return true; }
 #endif
 
+
+- (void)_updateDefaultAppearance
+{
+    _private->page->setDefaultAppearance([self _defaultAppearance]);
+    RenderTheme::singleton().platformColorsDidChange();
+    _private->page->setNeedsRecalcStyleInAllFrames();
+}
+
 - (void)_setUseSystemAppearance:(BOOL)useSystemAppearance
 {
     if (auto page = _private->page) {
         page->setUseSystemAppearance(useSystemAppearance);
-        page->setDefaultAppearance([self _defaultAppearance]);
+        [self _updateDefaultAppearance];
     }
 }
 
 - (BOOL)_useSystemAppearance
 {
-    if (auto page = _private->page)
-        return page->useSystemAppearance();
-    return NO;
+    if (!_private->page)
+        return NO;
+    
+    return _private->page->useSystemAppearance();
+}
+
+- (void)effectiveAppearanceDidChange
+{
+    if (!_private->page)
+        return;
+    
+    [self _updateDefaultAppearance];
 }
 
 - (void)_setSourceApplicationAuditData:(NSData *)sourceApplicationAuditData

@@ -23,7 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-class Container extends Box {
+Layout.Container = class Container extends Layout.Box {
     constructor(node, id) {
         super(node, id);
         this.m_firstChild = null;
@@ -55,6 +55,15 @@ class Container extends Box {
         return firstChild.nextInFlowSibling();
     }
 
+    firstInFlowOrFloatChild() {
+        if (!this.hasChild())
+            return null;
+        let firstChild = this.firstChild();
+        if (firstChild.isInFlow() || firstChild.isFloatingPositioned())
+            return firstChild;
+        return firstChild.nextInFlowOrFloatSibling();
+    }
+
     lastChild() {
         return this.m_lastChild;
     }
@@ -75,4 +84,29 @@ class Container extends Box {
     hasInFlowChild() {
         return !!this.firstInFlowChild();
     }
+
+    hasInFlowOrFloatChild() {
+        return !!this.firstInFlowOrFloatChild();
+    }
+
+    outOfFlowDescendants() {
+        if (!this.isPositioned())
+            return new Array();
+        let outOfFlowBoxes = new Array();
+        let descendants = new Array();
+        for (let child = this.firstChild(); child; child = child.nextSibling())
+            descendants.push(child);
+        while (descendants.length) {
+            let descendant = descendants.pop();
+            if (descendant.isOutOfFlowPositioned() && descendant.containingBlock() == this)
+                outOfFlowBoxes.push(descendant);
+            if (!descendant.isContainer())
+                continue;
+            for (let child = descendant.lastChild(); child; child = child.previousSibling())
+                descendants.push(child);
+        }
+        return outOfFlowBoxes;
+    }
+
+
 }

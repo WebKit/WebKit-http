@@ -13,6 +13,7 @@ let testFiles = [
     "relative-right.html",
     "relative-auto.html",
     "relative-auto-with-parent-offset.html",
+    "relative-position-when-containing-block-is-not-in-the-formatting-context.html",
     "relative-siblings.html",
     "padding-simple.html",
     "padding-nested.html",
@@ -41,6 +42,8 @@ let testFiles = [
     "absolute-width-shrink-to-fit.html",
     "absolute-width-stretch.html",
     "absolute-with-static-block-position-nested.html",
+    "absolute-position-when-containing-block-is-not-in-the-formatting-context.html",
+    "absolute-position-when-containing-block-is-not-in-the-formatting-context2.html",
     "fixed-nested.html",
     "floating-box-left-and-right-multiple.html",
     "floating-box-right-simple.html",
@@ -58,11 +61,11 @@ let testFiles = [
     "floating-box-clear-both-simple.html",
     "almost-intruding-left-float-simple.html",
     "negative-margin-simple.html",
-    "intruding-left-float-simple.html"
+    "intruding-left-float-simple.html",
+    "simple-inline-text.html"
 ];
 
-let debugThis = [
-];
+let debugThis = [];
 
 function addJS(fileName) {
     let script = document.currentScript.src;
@@ -75,13 +78,17 @@ addJS("./TestHarness.js");
 addJS("../Utils.js");
 addJS("../Layout.js");
 addJS("../TreeBuilder.js");
-addJS("../LayoutContext.js");
+addJS("../LayoutState.js");
 addJS("../LayoutTree/Box.js");
 addJS("../LayoutTree/Container.js");
 addJS("../LayoutTree/BlockContainer.js");
 addJS("../LayoutTree/InitialBlockContainer.js");
 addJS("../LayoutTree/InlineBox.js");
 addJS("../LayoutTree/Text.js");
+addJS("../DisplayTree/Box.js");
+addJS("../FormattingState/FormattingState.js");
+addJS("../FormattingState/BlockFormattingState.js");
+addJS("../FormattingState/InlineFormattingState.js");
 addJS("../FormattingContext/FormattingContext.js");
 addJS("../FormattingContext/FloatingContext.js");
 addJS("../FormattingContext/BlockFormatting/BlockFormattingContext.js");

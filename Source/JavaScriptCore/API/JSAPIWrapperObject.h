@@ -32,7 +32,7 @@
 #include "WeakReferenceHarvester.h"
 #include <wtf/Poisoned.h>
 
-#if JSC_OBJC_API_ENABLED
+#if JSC_OBJC_API_ENABLED || defined(JSC_GLIB_API_ENABLED)
 
 namespace JSC {
     
@@ -55,6 +55,6 @@ private:
 
 } // namespace JSC
 
-#endif // JSC_OBJC_API_ENABLED
+#endif // JSC_OBJC_API_ENABLED || defined(JSC_GLIB_API_ENABLED)
 
 #endif // JSAPIWrapperObject_h

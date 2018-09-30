@@ -23,7 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-class Box {
+var Layout = { }
+
+Layout.Box = class Box {
     constructor(node, id) {
         this.m_id = id;
         this.m_rendererName = null;
@@ -32,8 +34,7 @@ class Box {
         this.m_nextSibling = null;
         this.m_previousSibling = null;
         this.m_isAnonymous = false;
-        this.m_rect = new LayoutRect(new LayoutPoint(0, 0), new LayoutSize(0, 0));
-        this.m_establishedFormattingContext = null;
+        this.m_displayBox = null;
     }
 
     id() {
@@ -70,6 +71,16 @@ class Box {
         return null;
     }
 
+    nextInFlowOrFloatSibling() {
+        let nextInFlowSibling = this.nextSibling();
+        while (nextInFlowSibling) {
+            if (nextInFlowSibling.isInFlow() || nextInFlowSibling.isFloatingPositioned())
+                return nextInFlowSibling;
+            nextInFlowSibling = nextInFlowSibling.nextSibling();
+        }
+        return null;
+    }
+
     previousSibling() {
         return this.m_previousSibling;
     }
@@ -94,34 +105,6 @@ class Box {
     
     setPreviousSibling(previousSibling) {
         this.m_previousSibling = previousSibling;
-    }
-
-    rect() {
-        return this.m_rect.clone();
-    }
-
-    topLeft() {
-        return this.rect().topLeft();
-    }
-
-    bottomRight() {
-        return this.rect().bottomRight();
-    }
-
-    setTopLeft(topLeft) {
-        this.m_rect.setTopLeft(topLeft);
-    }
-
-    setSize(size) {
-        this.m_rect.setSize(size);
-    }
-
-    setWidth(width) {
-        this.m_rect.setWidth(width);
-    }
-
-    setHeight(height) {
-        this.m_rect.setHeight(height);
     }
 
     isContainer() {
@@ -154,18 +137,12 @@ class Box {
         return this.establishesBlockFormattingContext() || this.establishesInlineFormattingContext();
     }
 
-    establishedFormattingContext() {
-        if (this.establishesFormattingContext() && !this.m_establishedFormattingContext)
-            this.m_establishedFormattingContext = this.establishesBlockFormattingContext() ? new BlockFormattingContext(this) : new InlineFormattingContext(this);
-        return this.m_establishedFormattingContext;
-    }
-
     establishesBlockFormattingContext() {
         // 9.4.1 Block formatting contexts
         // Floats, absolutely positioned elements, block containers (such as inline-blocks, table-cells, and table-captions)
         // that are not block boxes, and block boxes with 'overflow' other than 'visible' (except when that value has been propagated to the viewport)
         // establish new block formatting contexts for their contents.
-        return this.isFloatingPositioned() || this.isAbsolutePositioned() || (this.isBlockContainerBox() && !this.isBlockLevelBox())
+        return this.isFloatingPositioned() || this.isAbsolutelyPositioned() || (this.isBlockContainerBox() && !this.isBlockLevelBox())
             || (this.isBlockLevelBox() && !Utils.isOverflowVisible(this));
     }
 
@@ -174,15 +151,15 @@ class Box {
     }
 
     isPositioned() {
-        return this.isOutOfFlowPositioned() || this.isRelativePositioned();
+        return this.isOutOfFlowPositioned() || this.isRelativelyPositioned();
     }
 
-    isRelativePositioned() {
-        return Utils.isRelativePositioned(this);
+    isRelativelyPositioned() {
+        return Utils.isRelativelyPositioned(this);
     }
 
-    isAbsolutePositioned() {
-        return Utils.isAbsolutePositioned(this);
+    isAbsolutelyPositioned() {
+        return Utils.isAbsolutelyPositioned(this) || this.isFixedPositioned();
     }
 
     isFixedPositioned() {
@@ -196,7 +173,7 @@ class Box {
     }
 
     isOutOfFlowPositioned() {
-        return this.isAbsolutePositioned() || this.isFixedPositioned();
+        return this.isAbsolutelyPositioned();
     }
 
     isInFlowPositioned() {
@@ -211,7 +188,7 @@ class Box {
         return this.isFloatingPositioned() || this.isOutOfFlowPositioned();
     }
 
-    isRootElement() {
+    isRootBox() {
         // FIXME: This should just be a simple instanceof check, but we are in the mainframe while the test document is in an iframe
         // Let's just return root for both the RenderView and the <html> element.
         return !this.parent() || !this.parent().parent();
@@ -222,34 +199,27 @@ class Box {
             return null;
         if (!this.isPositioned() || this.isInFlowPositioned())
             return this.parent();
-        let parent = this.parent();
-        while (parent.parent()) {
-            if (this.isAbsolutePositioned() && parent.isPositioned())
-                return parent;
-            parent = parent.parent();
+        if (this.isOutOfFlowPositioned() && !this.isFixedPositioned()) {
+            let ascendant = this.parent();
+            while (ascendant.parent() && !ascendant.isPositioned())
+                ascendant = ascendant.parent();
+            return ascendant;
         }
-        return parent;
+        if (this.isFixedPositioned()) {
+            let ascendant = this.parent();
+            while (ascendant.parent())
+                ascendant = ascendant.parent();
+            return ascendant;
+        }
+        ASSERT_NOT_REACHED();
+        return null;
     }
 
-    borderBox() {
-        return new LayoutRect(new LayoutPoint(0, 0), this.rect().size());
-    }
-
-    paddingBox() {
-        let paddingBox = this.borderBox();
-        let borderSize = Utils.computedBorderTopLeft(this);
-        paddingBox.moveBy(borderSize);
-        paddingBox.shrinkBy(borderSize);
-        paddingBox.shrinkBy(Utils.computedBorderBottomRight(this));
-        return paddingBox;
-    }
-
-    contentBox() {
-        let contentBox = this.paddingBox();
-        let paddingSize = Utils.computedPaddingTopLeft(this);
-        contentBox.moveBy(paddingSize);
-        contentBox.shrinkBy(paddingSize);
-        contentBox.shrinkBy(Utils.computedPaddingBottomRight(this));
-        return contentBox;
+    isDescendantOf(container) {
+        ASSERT(container);
+        let ascendant = this.parent();
+        while (ascendant && ascendant != container)
+            ascendant = ascendant.parent();
+        return !!ascendant;
     }
 }

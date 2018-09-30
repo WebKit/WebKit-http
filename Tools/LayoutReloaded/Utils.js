@@ -323,72 +323,72 @@ class Utils {
         return window.getComputedStyle(box.node()).paddingBottom != "0px";
     }
 
-    static computedMarginTop(box) {
-        return Utils.computedValue(window.getComputedStyle(box.node()).marginTop);
+    static computedMarginTop(node) {
+        return Utils.computedValue(window.getComputedStyle(node).marginTop);
     }
 
-    static computedMarginLeft(box) {
-        return Utils.computedValue(window.getComputedStyle(box.node()).marginLeft);
+    static computedMarginLeft(node) {
+        return Utils.computedValue(window.getComputedStyle(node).marginLeft);
     }
 
-    static computedMarginBottom(box) {
-        return Utils.computedValue(window.getComputedStyle(box.node()).marginBottom);
+    static computedMarginBottom(node) {
+        return Utils.computedValue(window.getComputedStyle(node).marginBottom);
     }
 
-    static computedMarginRight(box) {
-        return Utils.computedValue(window.getComputedStyle(box.node()).marginRight);
+    static computedMarginRight(node) {
+        return Utils.computedValue(window.getComputedStyle(node).marginRight);
     }
 
-    static computedBorderTopLeft(box) {
-        let node = box.node();
+    static computedBorderTopLeft(node) {
         return new LayoutSize(Utils.computedValue(window.getComputedStyle(node).borderLeftWidth), Utils.computedValue(window.getComputedStyle(node).borderTopWidth));
     }
 
-    static computedBorderBottomRight(box) {
-        let node = box.node();
+    static computedBorderBottomRight(node) {
         return new LayoutSize(Utils.computedValue(window.getComputedStyle(node).borderRightWidth), Utils.computedValue(window.getComputedStyle(node).borderBottomWidth));
     }
 
-    static computedPaddingTopLeft(box) {
-        let node = box.node();
+    static computedPaddingTopLeft(node) {
         return new LayoutSize(Utils.computedValue(window.getComputedStyle(node).paddingLeft), Utils.computedValue(window.getComputedStyle(node).paddingTop));
     }
 
-    static computedPaddingBottomRight(box) {
-        let node = box.node();
+    static computedPaddingBottomRight(node) {
         return new LayoutSize(Utils.computedValue(window.getComputedStyle(node).paddingRight), Utils.computedValue(window.getComputedStyle(node).paddingBottom));
     }
 
-    static computedBorderAndPaddingTop(box) {
-        return Utils.computedBorderTopLeft(box).height() + Utils.computedPaddingTopLeft(box).height();
+    static computedBorderAndPaddingTop(node) {
+        return Utils.computedBorderTopLeft(node).height() + Utils.computedPaddingTopLeft(node).height();
     }
 
-    static computedBorderAndPaddingLeft(box) {
-        return Utils.computedBorderTopLeft(box).width() + Utils.computedPaddingTopLeft(box).width();
+    static computedBorderAndPaddingLeft(node) {
+        return Utils.computedBorderTopLeft(node).width() + Utils.computedPaddingTopLeft(node).width();
     }
 
-    static computedBorderAndPaddingTop(box) {
-        return Utils.computedBorderTopLeft(box).height() + Utils.computedPaddingTopLeft(box).height();
+    static computedBorderAndPaddingTop(node) {
+        return Utils.computedBorderTopLeft(node).height() + Utils.computedPaddingTopLeft(node).height();
     }
 
-    static computedBorderAndPaddingLeft(box) {
-        return Utils.computedBorderTopLeft(box).width() + Utils.computedPaddingTopLeft(box).width();
+    static computedBorderAndPaddingLeft(node) {
+        return Utils.computedBorderTopLeft(node).width() + Utils.computedPaddingTopLeft(node).width();
     }
 
-    static computedBorderAndPaddingBottom(box) {
-        return Utils.computedBorderBottomRight(box).height() + Utils.computedPaddingBottomRight(box).height();
+    static computedBorderAndPaddingBottom(node) {
+        return Utils.computedBorderBottomRight(node).height() + Utils.computedPaddingBottomRight(node).height();
     }
 
-    static computedBorderAndPaddingRight(box) {
-        return Utils.computedBorderBottomRight(box).width() + Utils.computedPaddingBottomRight(box).width();
+    static computedBorderAndPaddingRight(node) {
+        return Utils.computedBorderBottomRight(node).width() + Utils.computedPaddingBottomRight(node).width();
     }
 
-    static computedHorizontalBorderAndPadding(box) {
-        return this.computedBorderAndPaddingLeft(box) + this.computedBorderAndPaddingRight(box);
+    static computedHorizontalBorderAndPadding(node) {
+        return this.computedBorderAndPaddingLeft(node) + this.computedBorderAndPaddingRight(node);
     }
 
-    static computedVerticalBorderAndPadding(box) {
-        return this.computedBorderAndPaddingTop(box) + this.computedBorderAndPaddingBottom(box);
+    static computedVerticalBorderAndPadding(node) {
+        return this.computedBorderAndPaddingTop(node) + this.computedBorderAndPaddingBottom(node);
+    }
+
+    static computedLineHeight(node) {
+        return Utils.computedValue(window.getComputedStyle(node).lineHeight);
     }
 
     static hasClear(box) {
@@ -396,17 +396,14 @@ class Utils {
     }
 
     static hasClearLeft(box) {
-        let node = box.node();
         return window.getComputedStyle(box.node()).clear == "left";
     }
 
     static hasClearRight(box) {
-        let node = box.node();
         return window.getComputedStyle(box.node()).clear == "right";
     }
 
     static hasClearBoth(box) {
-        let node = box.node();
         return window.getComputedStyle(box.node()).clear == "both";
     }
 
@@ -418,6 +415,8 @@ class Utils {
     }
 
     static isBlockContainerElement(node) {
+        if (node.nodeType != Node.ELEMENT_NODE)
+            return false;
         let display = window.getComputedStyle(node).display;
         return  display == "block" || display == "list-item" || display == "inline-block" || display == "table-cell" || display == "table-caption"; //TODO && !replaced element
     }
@@ -432,14 +431,14 @@ class Utils {
         return  display == "table" || display == "inline-table";
     }
 
-    static isRelativePositioned(box) {
+    static isRelativelyPositioned(box) {
         if (box.isAnonymous())
             return false;
         let node = box.node();
         return window.getComputedStyle(node).position == "relative";
     }
 
-    static isAbsolutePositioned(box) {
+    static isAbsolutelyPositioned(box) {
         if (box.isAnonymous())
             return false;
         let node = box.node();
@@ -451,6 +450,13 @@ class Utils {
             return false;
         let node = box.node();
         return window.getComputedStyle(node).position == "fixed";
+    }
+
+    static isStaticallyPositioned(box) {
+        if (box.isAnonymous())
+            return true;
+        let node = box.node();
+        return (Utils.propertyIsAuto("top", box) && Utils.propertyIsAuto("bottom", box)) || (Utils.propertyIsAuto("left", box) && Utils.propertyIsAuto("right", box));
     }
 
     static isOverflowVisible(box) {
@@ -469,38 +475,6 @@ class Utils {
         return window.getComputedStyle(node).float == "left";
     }
 
-    static mapToContainer(box, container) {
-        let topLeft = box.rect().topLeft();
-        let ascendant = box.parent();
-        while (ascendant && ascendant != container) {
-            topLeft.moveBy(ascendant.rect().topLeft());
-            ascendant = ascendant.parent();
-        }
-        ASSERT(ascendant);
-        return new LayoutRect(topLeft, box.rect().size());
-    }
-
-    static mapStaticToAbsolute(box) {
-        return Utils.mapToContainer(box, box.containingBlock());
-    }
-
-    static collectOutOfFlowDescendants(containtBlock) {
-        let outOfFlowBoxes = new Array();
-        let descendants = new Array();
-        for (let child = containtBlock.firstChild(); child; child = child.nextSibling())
-            descendants.push(child);
-        while (descendants.length) {
-            let descendant = descendants.pop();
-            if (descendant.isOutOfFlowPositioned() && descendant.containingBlock() == containtBlock)
-                outOfFlowBoxes.push(descendant);
-            if (!descendant.isContainer())
-                continue;
-            for (let child = descendant.lastChild(); child; child = child.previousSibling())
-                descendants.push(child);
-        }
-        return outOfFlowBoxes;
-    }
-
     static nextBreakingOpportunity(textBox, currentPosition)
     {
         return window.nextBreakingOpportunity(textBox.content(), currentPosition);
@@ -511,29 +485,73 @@ class Utils {
         return texBox.node().textWidth(start, end);
     }
 
-    // "RenderView at (0,0) size 1317x366\n HTML RenderBlock at (0,0) size 1317x116\n  BODY RenderBody at (8,8) size 1301x100\n   DIV RenderBlock at (0,0) size 100x100\n";
-    static layoutTreeDump(initialContainingBlock) {
-        return this._dumpBox(initialContainingBlock, 1) + this._dumpTree(initialContainingBlock, 2);
+    static textHeight(textBox)
+    {
+        return textBox.text().node().textHeight();
     }
 
-    static _dumpBox(box, level) {
+    // "RenderView at (0,0) size 1317x366\n HTML RenderBlock at (0,0) size 1317x116\n  BODY RenderBody at (8,8) size 1301x100\n   DIV RenderBlock at (0,0) size 100x100\n";
+    static layoutTreeDump(initialContainingBlock, layoutState) {
+        return this._dumpBox(layoutState, initialContainingBlock, 1) + this._dumpTree(layoutState, initialContainingBlock, 2);
+    }
+
+    static _findDisplayBox(layoutState, box) {
+        for (let formattingState of layoutState.formattingStates()) {
+            let displayBox = formattingState[1].displayBoxMap().get(box);
+            if (displayBox)
+                return displayBox;
+        }
+        ASSERT(!box.parent());
+        return layoutState.initialDisplayBox();
+    }
+
+    static _dumpBox(layoutState, box, level) {
         // Skip anonymous boxes for now -This is the case where WebKit does not generate an anon inline container for text content where the text is a direct child
         // of a block container.
-        if (box.isAnonymous())
-            return;
         let indentation = " ".repeat(level);
-        let boxRect = box.rect();
+        if (box instanceof Layout.InlineBox) {
+            if (box.text())
+                return indentation + "#text RenderText\n";
+        }
+        if (box.isAnonymous())
+            return "";
+        let displayBox = Utils._findDisplayBox(layoutState, box);
+        let boxRect = displayBox.rect();
         return indentation + (box.node().tagName ? (box.node().tagName + " ") : "")  + box.name() + " at (" + boxRect.left() + "," + boxRect.top() + ") size " + boxRect.width() + "x" + boxRect.height() + "\n";
     }
 
-    static _dumpTree(root, level) {
+    static _dumpLines(layoutState, root, level) {
+        ASSERT(root.establishesInlineFormattingContext());
+        let inlineFormattingState = layoutState.formattingState(root);
+        let lines = inlineFormattingState.lines();
         let content = "";
+        let indentation = " ".repeat(level);
+        lines.forEach(function(line) {
+            let lineRect = line.rect();
+            content += indentation + "RootInlineBox at (" + lineRect.left() + "," + lineRect.top() + ") size " + Utils.precisionRound(lineRect.width(), 2) + "x" + lineRect.height() + "\n";
+            line.lineBoxes().forEach(function(lineBox) {
+                let indentation = " ".repeat(level + 1);
+                content += indentation + "InlineTextBox at (" + lineBox.lineBoxRect.left() + "," + lineBox.lineBoxRect.top() + ") size " + Utils.precisionRound(lineBox.lineBoxRect.width(), 2) + "x" + lineBox.lineBoxRect.height() + "\n";
+            });
+        });
+        return content;
+    }
+
+    static _dumpTree(layoutState, root, level) {
+        let content = "";
+        if (root.isBlockContainerBox() && root.establishesInlineFormattingContext())
+            content += this._dumpLines(layoutState, root, level);
         for (let child = root.firstChild(); child; child = child.nextSibling()) {
-            content += this._dumpBox(child, level);
+            content += this._dumpBox(layoutState, child, level);
             if (child.isContainer())
-                content += this._dumpTree(child, level + 1, content);
+                content += this._dumpTree(layoutState, child, level + 1, content);
         }
         return content;
+    }
+
+    static precisionRound(number, precision) {
+        var factor = Math.pow(10, precision);
+        return Math.round(number * factor) / factor;
     }
 }
 

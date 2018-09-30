@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,12 +33,16 @@
 #include "HTMLPictureElement.h"
 #include "Logging.h"
 #include "MediaList.h"
+#include "MediaQueryParser.h"
+#include <wtf/IsoMallocInlines.h>
 
 #if ENABLE(VIDEO)
 #include "HTMLMediaElement.h"
 #endif
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLSourceElement);
 
 using namespace HTMLNames;
 
@@ -162,13 +166,13 @@ void HTMLSourceElement::parseAttribute(const QualifiedName& name, const AtomicSt
     }
 }
 
-const MediaQuerySet* HTMLSourceElement::parsedMediaAttribute() const
+const MediaQuerySet* HTMLSourceElement::parsedMediaAttribute(Document& document) const
 {
     if (!m_cachedParsedMediaAttribute) {
         RefPtr<const MediaQuerySet> parsedAttribute;
         auto& value = attributeWithoutSynchronization(mediaAttr);
         if (!value.isNull())
-            parsedAttribute = MediaQuerySet::create(value);
+            parsedAttribute = MediaQuerySet::create(value, MediaQueryParserContext(document));
         m_cachedParsedMediaAttribute = WTFMove(parsedAttribute);
     }
     return m_cachedParsedMediaAttribute.value().get();

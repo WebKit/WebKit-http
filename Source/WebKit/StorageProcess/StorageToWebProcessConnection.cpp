@@ -93,8 +93,10 @@ void StorageToWebProcessConnection::didReceiveMessage(IPC::Connection& connectio
     }
 
     if (decoder.messageReceiverName() == Messages::WebSWServerToContextConnection::messageReceiverName()) {
-        StorageProcess::singleton().globalServerToContextConnection()->didReceiveMessage(connection, decoder);
-        return;
+        if (auto* contextConnection = StorageProcess::singleton().connectionToContextProcessFromIPCConnection(connection)) {
+            contextConnection->didReceiveMessage(connection, decoder);
+            return;
+        }
     }
 #endif
 
@@ -125,9 +127,10 @@ void StorageToWebProcessConnection::didClose(IPC::Connection& connection)
     UNUSED_PARAM(connection);
 
 #if ENABLE(SERVICE_WORKER)
-    if (StorageProcess::singleton().globalServerToContextConnection() && StorageProcess::singleton().globalServerToContextConnection()->ipcConnection() == &connection) {
+    if (RefPtr<WebSWServerToContextConnection> serverToContextConnection = StorageProcess::singleton().connectionToContextProcessFromIPCConnection(connection)) {
         // Service Worker process exited.
-        StorageProcess::singleton().connectionToContextProcessWasClosed();
+        StorageProcess::singleton().connectionToContextProcessWasClosed(serverToContextConnection.releaseNonNull());
+        return;
     }
 #endif
 
@@ -169,12 +172,6 @@ void StorageToWebProcessConnection::establishSWServerConnection(SessionID sessio
 
     auto addResult = m_swConnections.add(serverConnectionIdentifier, WTFMove(connection));
     ASSERT_UNUSED(addResult, addResult.isNewEntry);
-}
-
-void StorageToWebProcessConnection::workerContextProcessConnectionCreated()
-{
-    for (auto* server : SWServer::allServers())
-        server->serverToContextConnectionCreated();
 }
 #endif
 

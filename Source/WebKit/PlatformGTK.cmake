@@ -366,6 +366,9 @@ list(INSERT WebKit_INCLUDE_DIRECTORIES 0
 )
 
 list(APPEND WebKit_INCLUDE_DIRECTORIES
+    "${DERIVED_SOURCES_JAVASCRIPCOREGTK_DIR}"
+    "${FORWARDING_HEADERS_DIR}/JavaScriptCore/"
+    "${FORWARDING_HEADERS_DIR}/JavaScriptCore/glib"
     "${WEBKIT_DIR}/PluginProcess/unix"
     "${WEBKIT_DIR}/NetworkProcess/CustomProtocols/soup"
     "${WEBKIT_DIR}/NetworkProcess/Downloads/soup"
@@ -762,7 +765,9 @@ if (ENABLE_INTROSPECTION)
             -I${WEBKIT_DIR}
             -I${DERIVED_SOURCES_DIR}
             -I${DERIVED_SOURCES_WEBKIT2GTK_DIR}
+            -I${DERIVED_SOURCES_JAVASCRIPCOREGTK_DIR}
             -I${FORWARDING_HEADERS_DIR}
+            -I${FORWARDING_HEADERS_DIR}/JavaScriptCore/glib
             -I${FORWARDING_HEADERS_WEBKIT2GTK_DIR}
             ${WebKit2GTK_INSTALLED_HEADERS}
             ${WEBKIT_DIR}/Shared/API/glib/*.cpp
@@ -806,7 +811,9 @@ if (ENABLE_INTROSPECTION)
             -I${WEBKIT_DIR}
             -I${DERIVED_SOURCES_DIR}
             -I${DERIVED_SOURCES_WEBKIT2GTK_DIR}
+            -I${DERIVED_SOURCES_JAVASCRIPCOREGTK_DIR}
             -I${FORWARDING_HEADERS_DIR}
+            -I${FORWARDING_HEADERS_DIR}/JavaScriptCore/glib
             -I${FORWARDING_HEADERS_WEBKIT2GTK_DIR}
             -I${FORWARDING_HEADERS_WEBKIT2GTK_EXTENSION_DIR}
             -I${WEBKIT_DIR}/WebProcess/InjectedBundle/API/gtk
@@ -871,6 +878,8 @@ endif ()
 file(WRITE ${CMAKE_BINARY_DIR}/gtkdoc-webkit2gtk.cfg
     "[webkit2gtk-${WEBKITGTK_API_VERSION}]\n"
     "pkgconfig_file=${WebKit2_PKGCONFIG_FILE}\n"
+    "decorator=WEBKIT_API|WEBKIT_DEPRECATED|WEBKIT_DEPRECATED_FOR\\(.+\\)\n"
+    "deprecation_guard=WEBKIT_DISABLE_DEPRECATED\n"
     "namespace=webkit\n"
     "cflags=-I${CMAKE_SOURCE_DIR}/Source\n"
     "       -I${WEBKIT_DIR}/Shared/API/glib\n"
@@ -892,6 +901,8 @@ file(WRITE ${CMAKE_BINARY_DIR}/gtkdoc-webkit2gtk.cfg
 file(WRITE ${CMAKE_BINARY_DIR}/gtkdoc-webkitdom.cfg
     "[webkitdomgtk-${WEBKITGTK_API_VERSION}]\n"
     "pkgconfig_file=${WebKit2_PKGCONFIG_FILE}\n"
+    "decorator=WEBKIT_API|WEBKIT_DEPRECATED|WEBKIT_DEPRECATED_FOR\\(.+\\)\n"
+    "deprecation_guard=WEBKIT_DISABLE_DEPRECATED\n"
     "namespace=webkit_dom\n"
     "cflags=-I${CMAKE_SOURCE_DIR}/Source\n"
     "       -I${WEBKIT_DIR}/WebProcess/InjectedBundle/API/gtk/DOM\n"

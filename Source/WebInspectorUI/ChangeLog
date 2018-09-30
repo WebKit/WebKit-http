@@ -1,3 +1,114 @@
+2018-03-22  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Uncaught Exception: TypeError: this._textEditor.toggleUnexecutedCodeHighlights().then is not a function
+        https://bugs.webkit.org/show_bug.cgi?id=181912
+        <rdar://problem/36700022>
+
+        Reviewed by Matt Baker.
+
+        The uncaught exception was caused by returning `false` instead of a promise object.
+        This patch only fixes the exception. Further enhancements should be done in <https://webkit.org/b/183887>.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WI.SourceCodeTextEditor.prototype.toggleTypeAnnotations):
+        (WI.SourceCodeTextEditor.prototype.toggleUnexecutedCodeHighlights):
+
+2018-03-20  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: Loses focus when editing a property while page is being loaded
+        https://bugs.webkit.org/show_bug.cgi?id=182619
+        <rdar://problem/37363185>
+
+        Reviewed by Matt Baker.
+
+        Adding or removing a stylesheet causes SpreadsheetRulesStyleDetailsPanel to refresh, triggering a layout
+        of all SpreadsheetCSSStyleDeclarationSection child views. This resets the focus, selection, and
+        auto-completion state.
+
+        This patch prevents SpreadsheetCSSStyleDeclarationSection from performing a layout when a property is being edited.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js:
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.layout):
+        Allow re-layout after creating a blank CSS property and pasting CSS code.
+        - _pendingAddBlankPropertyIndexOffset is a number after pasting CSS rules.
+        - _propertyPendingStartEditing is a property model after creating a new property.
+
+2018-03-20  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Session dividers are not added when Console tab is not visible
+        https://bugs.webkit.org/show_bug.cgi?id=168622
+
+        Reviewed by Matt Baker.
+
+        Restructure `_pendingMessages` to be a `Map [ConsoleSession, ConsoleMessageView]`. Instead
+        of rendering to the `_currentConsoleGroup`, we now render to the saved `ConsoleSession`.
+        Also ensure that `_pendingMessages` is cleared when navigating and "Preserve Log" is off.
+
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WI.JavaScriptLogViewController):
+        (WI.JavaScriptLogViewController.prototype.startNewSession):
+        (WI.JavaScriptLogViewController.prototype.consolePromptHistoryDidChange):
+        (WI.JavaScriptLogViewController.prototype._appendConsoleMessageView):
+        (WI.JavaScriptLogViewController.prototype.renderPendingMessages):
+        (WI.JavaScriptLogViewController.prototype.get prompt): Deleted.
+        (WI.JavaScriptLogViewController.prototype.get currentConsoleGroup): Deleted.
+
+2018-03-20  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Can't add a new class by editing class attribute in DOM outline
+        https://bugs.webkit.org/show_bug.cgi?id=180890
+
+        Reviewed by Ryosuke Niwa.
+
+        Typing "my-foo my-bar" creates a single "my-foo\xA0my-bar" class name because
+        contentEditable-based attribute editor sometimes inserts non-breaking space characters (\xA0).
+
+        Replace all non-breaking space characters with the regular space characters when
+        commiting attribute change.
+
+        * UserInterface/Views/DOMTreeElement.js:
+
+2018-03-16  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Elements: "Force Print Media Styles" should not persist across Web Inspector sessions
+        https://bugs.webkit.org/show_bug.cgi?id=183708
+        <rdar://problem/36452183>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/Main.js:
+        (WI.loaded):
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WI.DOMTreeContentView):
+        (WI.DOMTreeContentView.prototype._showPrintStylesChanged):
+        (WI.DOMTreeContentView.prototype._togglePrintStyles):
+        (WI.DOMTreeContentView.prototype._showPrintStylesSettingChanged): Deleted.
+        (WI.DOMTreeContentView.prototype._togglePrintStylesSetting): Deleted.
+
+2018-03-14  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Canvas: a recording initiated by the user should be shown immediately on completion
+        https://bugs.webkit.org/show_bug.cgi?id=183647
+        <rdar://problem/38479187>
+
+        Reviewed by Matt Baker.
+
+        When recordings are initiated via `console.record`, we don't want to automatically show the
+        recording after it's payload is sent to the frontend. We determine whether a recording came
+        from the console by comparing the recording's associated canvas with the current value of
+        `_recordingCanvas`. Previously, when stopping a recording, we would always null the value,
+        which meant that all non-single-frame recordings (single-frame recordings are stopped by
+        the agent after the first paint or tick after an action is performed) would be categorized
+        as coming from the console, since `_recordingCanvas` would be null by the time the frontend
+        recieved the payload.
+
+        This patch changes it so that the nulling of `_recordingCanvas` in `stopRecording` is only
+        done if the agent command errors. It was already the case that `_recordingCanvas` was nulled
+        in `stopRecording`, so this patch just prevents it from being nulled too early.
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager.prototype.stopRecording):
+
 2018-03-12  Jon Davis  <jond@apple.com>
 
         Web Inspector: Remove redundant tooltips

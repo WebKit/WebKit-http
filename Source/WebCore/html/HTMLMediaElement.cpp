@@ -92,6 +92,7 @@
 #include <pal/SessionID.h>
 #include <pal/system/SleepDisabler.h>
 #include <wtf/Algorithms.h>
+#include <wtf/IsoMallocInlines.h>
 #include <wtf/Language.h>
 #include <wtf/MathExtras.h>
 #include <wtf/MemoryPressureHandler.h>
@@ -185,6 +186,9 @@ struct LogArgument<WebCore::URL> {
 
 
 namespace WebCore {
+
+WTF_MAKE_ISO_ALLOCATED_IMPL(HTMLMediaElement);
+
 using namespace PAL;
 
 static const Seconds SeekRepeatDelay { 100_ms };
@@ -4517,7 +4521,7 @@ URL HTMLMediaElement::selectNextSourceChild(ContentType* contentType, String* ke
         if (mediaURL.isEmpty())
             goto CheckAgain;
 
-        if (auto* media = source->parsedMediaAttribute()) {
+        if (auto* media = source->parsedMediaAttribute(document())) {
             if (shouldLog)
                 INFO_LOG(LOGIDENTIFIER, "'media' is ", source->attributeWithoutSynchronization(mediaAttr));
             auto* renderer = this->renderer();
@@ -5251,6 +5255,14 @@ void HTMLMediaElement::updatePlayState(UpdateState updateState)
 
     INFO_LOG(LOGIDENTIFIER, "shouldBePlaying = ", shouldBePlaying, ", playerPaused = ", playerPaused);
 
+    if (shouldBePlaying && playerPaused && m_mediaSession->requiresFullscreenForVideoPlayback(*this) && !isFullscreen()) {
+        enterFullscreen();
+#if ENABLE(EXTRA_ZOOM_MODE)
+        // FIXME: Investigate doing this for all builds.
+        return;
+#endif
+    }
+
     if (shouldBePlaying) {
         scheduleUpdatePlaybackControlsManager();
 
@@ -5259,9 +5271,6 @@ void HTMLMediaElement::updatePlayState(UpdateState updateState)
 
         if (playerPaused) {
             m_mediaSession->clientWillBeginPlayback();
-
-            if (m_mediaSession->requiresFullscreenForVideoPlayback(*this) && !isFullscreen())
-                enterFullscreen();
 
             // Set rate, muted before calling play in case they were set before the media engine was setup.
             // The media engine should just stash the rate and muted values since it isn't already playing.
@@ -5963,6 +5972,7 @@ void HTMLMediaElement::didBecomeFullscreenElement()
 {
     if (hasMediaControls())
         mediaControls()->enteredFullscreen();
+    updatePlayState(UpdateState::Asynchronously);
 }
 
 void HTMLMediaElement::willStopBeingFullscreenElement()

@@ -387,6 +387,11 @@ void WKContextRegisterURLSchemeAsCachePartitioned(WKContextRef contextRef, WKStr
     toImpl(contextRef)->registerURLSchemeAsCachePartitioned(toImpl(urlScheme)->string());
 }
 
+void WKContextRegisterURLSchemeAsCanDisplayOnlyIfCanRequest(WKContextRef contextRef, WKStringRef urlScheme)
+{
+    toImpl(contextRef)->registerURLSchemeAsCanDisplayOnlyIfCanRequest(toImpl(urlScheme)->string());
+}
+
 void WKContextSetDomainRelaxationForbiddenForURLScheme(WKContextRef contextRef, WKStringRef urlScheme)
 {
     toImpl(contextRef)->setDomainRelaxationForbiddenForURLScheme(toImpl(urlScheme)->string());
@@ -608,7 +613,7 @@ void WKContextTerminateNetworkProcess(WKContextRef context)
 
 void WKContextTerminateServiceWorkerProcess(WKContextRef context)
 {
-    toImpl(context)->terminateServiceWorkerProcess();
+    toImpl(context)->terminateServiceWorkerProcesses();
 }
 
 ProcessID WKContextGetNetworkProcessIdentifier(WKContextRef contextRef)

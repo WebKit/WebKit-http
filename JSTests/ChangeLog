@@ -1,3 +1,104 @@
+2018-03-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Clear MustGenerate for ToString(Number) converted from NumberToStringWithRadix
+        https://bugs.webkit.org/show_bug.cgi?id=183559
+
+        Reviewed by Mark Lam.
+
+        * stress/double-to-string-in-loop-removed.js: Added.
+        (test):
+        * stress/int32-to-string-in-loop-removed.js: Added.
+        (test):
+        * stress/int52-to-string-in-loop-removed.js: Added.
+        (test):
+
+2018-03-22  Michael Saboff  <msaboff@apple.com>
+
+        Race Condition in arrayProtoFuncReverse() causes wrong results or crash
+        https://bugs.webkit.org/show_bug.cgi?id=183901
+
+        Reviewed by Keith Miller.
+
+        New test.
+
+        * stress/array-reverse-doesnt-clobber.js: Added.
+        (testArrayReverse):
+        (createArrayOfArrays):
+        (createArrayStorage):
+
+2018-03-21  Filip Pizlo  <fpizlo@apple.com>
+
+        ScopedArguments should do poisoning and index masking
+        https://bugs.webkit.org/show_bug.cgi?id=183863
+
+        Reviewed by Mark Lam.
+        
+        Adds another stress test of scoped arguments.
+
+        * stress/scoped-arguments-test.js: Added.
+        (foo):
+
+2018-03-20  Saam Barati  <sbarati@apple.com>
+
+        We need to do proper bookkeeping of exitOK when inserting constants when sinking NewArrayBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=183795
+        <rdar://problem/38298694>
+
+        Reviewed by JF Bastien.
+
+        * stress/sink-phantom-new-array-buffer-exit-ok.js: Added.
+        (foo):
+        (bar):
+
+2018-03-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG][FTL] Add vectorLengthHint for NewArray
+        https://bugs.webkit.org/show_bug.cgi?id=183694
+
+        Reviewed by Saam Barati.
+
+        * stress/vector-length-hint-array-constructor.js: Added.
+        (shouldBe):
+        (test):
+        * stress/vector-length-hint-new-array.js: Added.
+        (shouldBe):
+        (test):
+
+2018-03-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG][FTL] Make ArraySlice(0) code tight
+        https://bugs.webkit.org/show_bug.cgi?id=183590
+
+        Reviewed by Saam Barati.
+
+        * stress/array-slice-with-zero.js: Added.
+        (shouldBe):
+        (test):
+        (test2):
+        * stress/array-slice-zero-args.js: Added.
+        (shouldBe):
+        (test):
+
+2018-03-14  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] fix order of evaluation for ClassDefinitionEvaluation
+        https://bugs.webkit.org/show_bug.cgi?id=183523
+
+        Reviewed by Keith Miller.
+
+        Computed property names need to be evaluated in source order during class
+        definition evaluation, as it's observable (and specified to work this way).
+
+        This change improves compatibility with Chromium.
+
+        * stress/class_elements.js: Added.
+        (test):
+        (test.C.prototype.effect):
+        (test.C.effect):
+        (test.C.prototype.get effect):
+        (test.C.prototype.set effect):
+        (test.C):
+
 2018-03-11  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [DFG] AI should convert CreateThis to NewObject if the prototype object is proved

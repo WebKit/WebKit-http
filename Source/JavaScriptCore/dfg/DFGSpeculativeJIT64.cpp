@@ -3730,6 +3730,8 @@ void SpeculativeJIT::compile(Node* node)
                 || hasContiguous(structure->indexingType()));
             
             unsigned numElements = node->numChildren();
+            unsigned vectorLengthHint = node->vectorLengthHint();
+            ASSERT(vectorLengthHint >= numElements);
             
             GPRTemporary result(this);
             GPRTemporary storage(this);
@@ -3737,7 +3739,7 @@ void SpeculativeJIT::compile(Node* node)
             GPRReg resultGPR = result.gpr();
             GPRReg storageGPR = storage.gpr();
 
-            emitAllocateRawObject(resultGPR, structure, storageGPR, numElements, numElements);
+            emitAllocateRawObject(resultGPR, structure, storageGPR, numElements, vectorLengthHint);
             
             // At this point, one way or another, resultGPR and storageGPR have pointers to
             // the JSArray and the Butterfly, respectively.
@@ -5682,7 +5684,7 @@ void SpeculativeJIT::compile(Node* node)
                 osrEnter.link(&m_jit);
             }
             m_jit.emitRestoreCalleeSaves();
-            m_jit.jump(tempGPR);
+            m_jit.jump(tempGPR, NoPtrTag);
         });
         break;
     }

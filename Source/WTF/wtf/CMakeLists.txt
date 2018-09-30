@@ -1,4 +1,4 @@
-set(WTF_HEADERS
+set(WTF_PUBLIC_HEADERS
     ASCIICType.h
     Algorithms.h
     Assertions.h
@@ -165,6 +165,7 @@ set(WTF_HEADERS
     PrintStream.h
     PriorityQueue.h
     ProcessID.h
+    ProcessPrivilege.h
     RAMSize.h
     RandomDevice.h
     RandomNumber.h
@@ -359,6 +360,7 @@ set(WTF_SOURCES
     ParkingLot.cpp
     Poisoned.cpp
     PrintStream.cpp
+    ProcessPrivilege.cpp
     RAMSize.cpp
     RandomDevice.cpp
     RandomNumber.cpp
@@ -451,7 +453,7 @@ set(WTF_LIBRARIES
 )
 
 if (CMAKE_SYSTEM_NAME MATCHES "Darwin")
-    list(APPEND WTF_HEADERS
+    list(APPEND WTF_PUBLIC_HEADERS
         spi/darwin/CommonCryptoSPI.h
     )
 list(APPEND WTF_PRIVATE_INCLUDE_DIRECTORIES
@@ -501,7 +503,7 @@ WEBKIT_FRAMEWORK(WTF)
 
 WEBKIT_MAKE_FORWARDING_HEADERS(WTF
     DESTINATION ${FORWARDING_HEADERS_DIR}/wtf
-    FILES ${WTF_HEADERS}
+    FILES ${WTF_PUBLIC_HEADERS}
 )
 
 if (MSVC)

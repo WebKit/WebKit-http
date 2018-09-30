@@ -28,11 +28,12 @@
 
 #if ENABLE(SERVICE_WORKER)
 
+#include "SWServerToContextConnection.h"
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
-static HashMap<ServiceWorkerIdentifier, SWServerWorker*>& allWorkers()
+HashMap<ServiceWorkerIdentifier, SWServerWorker*>& SWServerWorker::allWorkers()
 {
     static NeverDestroyed<HashMap<ServiceWorkerIdentifier, SWServerWorker*>> workers;
     return workers;
@@ -44,10 +45,9 @@ SWServerWorker* SWServerWorker::existingWorkerForIdentifier(ServiceWorkerIdentif
 }
 
 // FIXME: Use r-value references for script and contentSecurityPolicy
-SWServerWorker::SWServerWorker(SWServer& server, SWServerRegistration& registration, std::optional<SWServerToContextConnectionIdentifier> contextConnectionIdentifier, const URL& scriptURL, const String& script, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicy, WorkerType type, ServiceWorkerIdentifier identifier)
+SWServerWorker::SWServerWorker(SWServer& server, SWServerRegistration& registration, const URL& scriptURL, const String& script, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicy, WorkerType type, ServiceWorkerIdentifier identifier)
     : m_server(server)
     , m_registrationKey(registration.key())
-    , m_contextConnectionIdentifier(contextConnectionIdentifier)
     , m_data { identifier, scriptURL, ServiceWorkerState::Redundant, type, registration.identifier() }
     , m_script(script)
     , m_contentSecurityPolicy(contentSecurityPolicy)
@@ -90,6 +90,16 @@ const ClientOrigin& SWServerWorker::origin() const
     return *m_origin;
 }
 
+Ref<SecurityOrigin> SWServerWorker::securityOrigin() const
+{
+    return SecurityOrigin::create(m_data.scriptURL);
+}
+
+SWServerToContextConnection* SWServerWorker::contextConnection()
+{
+    return SWServerToContextConnection::connectionForOrigin(securityOrigin());
+}
+
 void SWServerWorker::scriptContextFailedToStart(const std::optional<ServiceWorkerJobDataIdentifier>& jobDataIdentifier, const String& message)
 {
     m_server.scriptContextFailedToStart(jobDataIdentifier, *this, message);
@@ -120,9 +130,9 @@ std::optional<ServiceWorkerClientData> SWServerWorker::findClientByIdentifier(co
     return m_server.serviceWorkerClientWithOriginByID(origin(), clientId);
 }
 
-void SWServerWorker::matchAll(const ServiceWorkerClientQueryOptions& options, ServiceWorkerClientsMatchAllCallback&& callback)
+void SWServerWorker::matchAll(const ServiceWorkerClientQueryOptions& options, const ServiceWorkerClientsMatchAllCallback& callback)
 {
-    return m_server.matchAll(*this, options, WTFMove(callback));
+    return m_server.matchAll(*this, options, callback);
 }
 
 void SWServerWorker::claim()

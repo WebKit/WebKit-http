@@ -184,7 +184,6 @@ imported/w3c/web-platform-tests/service-workers/service-worker/navigation-redire
 imported/w3c/web-platform-tests/service-workers/service-worker/websocket.https.html [ Pass Failure ]
 
 # Console log lines may appear in a different order so we silence them.
-http/wpt/html/browsers/history/the-location-interface/location-protocol-setter-non-broken-async-delegate.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-non-broken.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-non-broken-weird.html [ DumpJSConsoleLogInStdErr ]
 
@@ -196,6 +195,7 @@ webkit.org/b/181901 imported/w3c/web-platform-tests/service-workers/service-work
 webkit.org/b/181897 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-canvas-tainting.https.html [ DumpJSConsoleLogInStdErr ]
 webkit.org/b/181900 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-canvas-tainting-cache.https.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-response-taint.https.html [ DumpJSConsoleLogInStdErr ]
+imported/w3c/web-platform-tests/service-workers/service-worker/register-closed-window.https.html [ DumpJSConsoleLogInStdErr ]
 imported/w3c/web-platform-tests/service-workers/service-worker/fetch-request-redirect.https.html [ Slow ]
 [ Debug ] imported/w3c/web-platform-tests/service-workers/service-worker/clients-matchall-order.https.html [ Slow ]
 [ Debug ] imported/w3c/web-platform-tests/service-workers/service-worker/getregistrations.https.html [ Slow ]
@@ -209,6 +209,8 @@ imported/w3c/web-platform-tests/service-workers/service-worker/fetch-request-red
 
 # Reenable it when having a custom gc exposed in service workers.
 [ Debug ] http/wpt/service-workers/fetchEvent.https.html [ Skip ]
+
+[ Debug ] http/tests/workers/worker-messageport-2.html [ Slow ]
 
 # Skip workers tests that are timing out or are SharedWorker related only
 imported/w3c/web-platform-tests/workers/constructors/Worker/same-origin.html [ Skip ]
@@ -590,17 +592,6 @@ imported/w3c/web-platform-tests/dom/nodes/Document-createElement-namespace.html 
 imported/w3c/web-platform-tests/html/browsers/windows/nested-browsing-contexts/frameElement.sub.html [ Pass Failure ]
 imported/w3c/web-platform-tests/html/browsers/windows/targeting-cross-origin-nested-browsing-contexts.sub.html [ Pass Failure ]
 
-# These MathML WPT tests are skipped because they are executed before Web fonts are available.
-# For now, tweaked versions remain in LayoutTests/imported/mathml-in-html5/.
-webkit.org/b/174030 imported/w3c/web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-4.html [ Skip ]
-webkit.org/b/174030 imported/w3c/web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-1.html [ Skip ]
-webkit.org/b/174030 imported/w3c/web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-2.html [ Skip ]
-webkit.org/b/174030 imported/w3c/web-platform-tests/mathml/presentation-markup/scripts/subsup-parameters-1.html [ Skip ]
-webkit.org/b/174030 imported/w3c/web-platform-tests/mathml/presentation-markup/scripts/underover-parameters-3.html [ Skip ]
-webkit.org/b/174030 imported/w3c/web-platform-tests/mathml/presentation-markup/radicals/root-parameters-1.html [ Skip ]
-webkit.org/b/174030 imported/w3c/web-platform-tests/mathml/presentation-markup/fractions/frac-parameters-1.html [ Skip ]
-webkit.org/b/174030 imported/w3c/web-platform-tests/mathml/presentation-markup/fractions/frac-parameters-2.html [ Skip ]
-
 # These MathML WPT tests fail.
 webkit.org/b/180013 imported/w3c/web-platform-tests/mathml/relations/css-styling/lengths-1.html [ ImageOnlyFailure ]
 webkit.org/b/180013 imported/w3c/web-platform-tests/mathml/relations/css-styling/lengths-2.html [ ImageOnlyFailure ]
@@ -952,6 +943,8 @@ webkit.org/b/147520 http/tests/appcache/fail-on-update.html [ Pass Failure ]
 webkit.org/b/147520 http/tests/appcache/fail-on-update-2.html [ Pass Failure ]
 
 webkit.org/b/141370 http/tests/security/appcache-in-private-browsing.html [ Pass Failure ]
+
+webkit.org/b/183684 http/tests/appcache/abort-cache-onprogress.html [ Pass Failure ]
 
 # The current expectations for this test only make sense for WebKit on iOS; other platforms can have very different behaviors.
 webkit.org/b/141488 fast/replaced/pdf-as-object-and-embed.html [ Skip ]
@@ -1712,6 +1705,42 @@ webkit.org/b/181122 imported/w3c/web-platform-tests/web-animations/interfaces/An
 webkit.org/b/181123 imported/w3c/web-platform-tests/web-animations/interfaces/Animation/finish.html [ Pass Failure ]
 webkit.org/b/181888 imported/w3c/web-platform-tests/web-animations/timing-model/animation-effects/current-iteration.html [ Pass Failure ]
 
+webkit.org/b/183815 imported/mozilla/css-animations/test_animation-cancel.html [ Pass Failure Timeout ]
+webkit.org/b/183816 imported/mozilla/css-transitions/test_keyframeeffect-getkeyframes.html [ Pass Failure Timeout ]
+webkit.org/b/183817 imported/mozilla/css-animations/test_animation-computed-timing.html [ Pass Failure Timeout ]
+webkit.org/b/183818 imported/mozilla/css-animations/test_pseudoElement-get-animations.html [ Pass Failure Timeout ]
+webkit.org/b/183819 imported/mozilla/css-animations/test_animation-currenttime.html [ Pass Failure Timeout ]
+webkit.org/b/183820 imported/mozilla/css-animations/test_animation-finish.html [ Pass Failure Timeout ]
+webkit.org/b/183821 imported/mozilla/css-transitions/test_animation-cancel.html [ Pass Failure Timeout ]
+webkit.org/b/183822 imported/mozilla/css-animations/test_animation-finished.html [ Pass Failure Timeout ]
+webkit.org/b/183823 imported/mozilla/css-transitions/test_animation-computed-timing.html [ Pass Failure Timeout ]
+webkit.org/b/183824 imported/mozilla/css-animations/test_animation-id.html [ Pass Failure Timeout ]
+webkit.org/b/183825 imported/mozilla/css-transitions/test_animation-currenttime.html [ Pass Failure Timeout ]
+webkit.org/b/183826 imported/mozilla/css-animations/test_animation-pausing.html [ Pass Failure Timeout ]
+webkit.org/b/183827 imported/mozilla/css-transitions/test_animation-finished.html [ Pass Failure Timeout ]
+webkit.org/b/183828 imported/mozilla/css-animations/test_animation-playstate.html [ Pass Failure Timeout ]
+webkit.org/b/183829 imported/mozilla/css-transitions/test_animation-pausing.html [ Pass Failure Timeout ]
+webkit.org/b/183830 imported/mozilla/css-animations/test_animation-ready.html [ Pass Failure Timeout ]
+webkit.org/b/183831 imported/mozilla/css-transitions/test_animation-ready.html [ Pass Failure Timeout ]
+webkit.org/b/183832 imported/mozilla/css-animations/test_animation-reverse.html [ Pass Failure Timeout ]
+webkit.org/b/183833 imported/mozilla/css-transitions/test_animation-starttime.html [ Pass Failure Timeout ]
+webkit.org/b/183834 imported/mozilla/css-animations/test_animation-starttime.html [ Pass Failure Timeout ]
+webkit.org/b/183835 imported/mozilla/css-transitions/test_csstransition-transitionproperty.html [ Pass Failure Timeout ]
+webkit.org/b/183836 imported/mozilla/css-animations/test_animations-dynamic-changes.html [ Pass Failure Timeout ]
+webkit.org/b/183837 imported/mozilla/css-transitions/test_document-get-animations.html [ Pass Failure Timeout ]
+webkit.org/b/183838 imported/mozilla/css-animations/test_cssanimation-animationname.html [ Pass Failure Timeout ]
+webkit.org/b/183839 imported/mozilla/css-transitions/test_effect-target.html [ Pass Failure Timeout ]
+webkit.org/b/183840 imported/mozilla/css-animations/test_document-get-animations.html [ Pass Failure Timeout ]
+webkit.org/b/183841 imported/mozilla/css-transitions/test_element-get-animations.html [ Pass Failure Timeout ]
+webkit.org/b/183842 imported/mozilla/css-animations/test_effect-target.html [ Pass Failure Timeout ]
+webkit.org/b/183844 imported/mozilla/css-animations/test_element-get-animations.html [ Pass Failure Timeout ]
+webkit.org/b/183846 imported/mozilla/css-transitions/test_pseudoElement-get-animations.html [ Pass Failure Timeout ]
+webkit.org/b/183847 imported/mozilla/css-animations/test_event-order.html [ Pass Failure Timeout ]
+webkit.org/b/183849 imported/mozilla/css-animations/test_setting-effect.html [ Pass Failure Timeout ]
+webkit.org/b/183850 imported/mozilla/css-transitions/test_setting-effect.html [ Pass Failure Timeout ]
+
+webkit.org/b/183848 imported/mozilla/css-animations/test_keyframeeffect-getkeyframes.html [ Crash ]
+
 webkit.org/b/177440 imported/w3c/web-platform-tests/html/browsers/origin/relaxing-the-same-origin-restriction/document_domain_setter_null.tentative.html [ Pass Failure ]
 
 webkit.org/b/157068 [ Debug ] imported/w3c/web-platform-tests/fetch/nosniff/importscripts.html [ Pass Crash ]
@@ -1726,7 +1755,16 @@ webkit.org/b/178785 perf/object-keys.html [ Pass Failure ]
 # There is a bug in the test
 imported/w3c/web-platform-tests/workers/worker-performance.worker.html [ Pass Failure ]
 
+webkit.org/b/183390 http/wpt/html/browsers/history/the-location-interface/location-protocol-setter-non-broken-async-delegate.html [ DumpJSConsoleLogInStdErr Pass Failure ]
+
+# We sometimes get 2 console log messages about CSP instead of 1 due to preloading.
+http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-css-in-main-frame.html [ DumpJSConsoleLogInStdErr ]
+
 media/event-queue-crash.html [ DumpJSConsoleLogInStdErr ]
+
+# This is flaky since r229831.
+webkit.org/b/183885 fast/loader/javascript-url-iframe-remove-on-navigate.html [ Pass Failure ]
+webkit.org/b/183885 fast/loader/javascript-url-iframe-remove-on-navigate-async-delegate.html [ Pass Failure ]
 
 webkit.org/b/172243 imported/w3c/web-platform-tests/IndexedDB/idbdatabase-createObjectStore-exception-order.htm [ Pass Failure ]
 

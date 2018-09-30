@@ -550,6 +550,22 @@ Color RenderThemeMac::systemColor(CSSValueID cssValueID, bool useSystemAppearanc
                 return @selector(windowFrameColor);
             case CSSValueWindowtext:
                 return @selector(windowFrameTextColor);
+            case CSSValueAppleSystemHeaderText:
+                return @selector(headerTextColor);
+            case CSSValueAppleSystemTextBackground:
+                return @selector(textBackgroundColor);
+            case CSSValueAppleSystemAlternateSelectedText:
+                return @selector(alternateSelectedControlTextColor);
+            case CSSValueAppleSystemLabel:
+                return @selector(labelColor);
+            case CSSValueAppleSystemSecondaryLabel:
+                return @selector(secondaryLabelColor);
+            case CSSValueAppleSystemTertiaryLabel:
+                return @selector(tertiaryLabelColor);
+            case CSSValueAppleSystemQuaternaryLabel:
+                return @selector(quaternaryLabelColor);
+            case CSSValueAppleSystemGrid:
+                return @selector(gridColor);
             case CSSValueAppleWirelessPlaybackTargetActive:
                 return @selector(systemBlueColor);
             case CSSValueAppleSystemBlue:
@@ -1345,8 +1361,12 @@ void RenderThemeMac::adjustMenuListStyle(StyleResolver& styleResolver, RenderSty
     style.setWhiteSpace(PRE);
 
     // Set the foreground color to black or gray when we have the aqua look.
-    // Cast to RGB32 is to work around a compiler bug.
-    style.setColor(e && !e->isDisabledFormControl() ? static_cast<RGBA32>(Color::black) : Color::darkGray);
+    Color c = Color::darkGray;
+    if (e) {
+        bool useSystemAppearance = e->document().page()->useSystemAppearance();
+        c = !e->isDisabledFormControl() ? systemColor(CSSValueButtontext, useSystemAppearance) : systemColor(CSSValueGraytext, useSystemAppearance);
+    }
+    style.setColor(c);
 
     // Set the button's vertical size.
     setSizeFromFont(style, menuListButtonSizes());

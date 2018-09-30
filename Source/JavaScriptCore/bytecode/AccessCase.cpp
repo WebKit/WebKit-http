@@ -403,12 +403,16 @@ void AccessCase::generateWithGuard(
                 CCallHelpers::Address(baseGPR, JSCell::typeInfoTypeOffset()),
                 CCallHelpers::TrustedImm32(ScopedArgumentsType)));
 
+        jit.loadPtr(
+            CCallHelpers::Address(baseGPR, ScopedArguments::offsetOfStorage()),
+            scratchGPR);
+        jit.xorPtr(CCallHelpers::TrustedImmPtr(ScopedArgumentsPoison::key()), scratchGPR);
         fallThrough.append(
             jit.branchTest8(
                 CCallHelpers::NonZero,
-                CCallHelpers::Address(baseGPR, ScopedArguments::offsetOfOverrodeThings())));
+                CCallHelpers::Address(scratchGPR, ScopedArguments::offsetOfOverrodeThingsInStorage())));
         jit.load32(
-            CCallHelpers::Address(baseGPR, ScopedArguments::offsetOfTotalLength()),
+            CCallHelpers::Address(scratchGPR, ScopedArguments::offsetOfTotalLengthInStorage()),
             valueRegs.payloadGPR());
         jit.boxInt32(valueRegs.payloadGPR(), valueRegs);
         state.succeed();
@@ -863,9 +867,10 @@ void AccessCase::generateImpl(AccessGenerationState& state)
 #endif
             jit.storePtr(GPRInfo::callFrameRegister, &vm.topCallFrame);
 
-            operationCall = jit.call();
+            PtrTag callTag = ptrTag(JITOperationPtrTag, nextPtrTagID());
+            operationCall = jit.call(callTag);
             jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
-                linkBuffer.link(operationCall, FunctionPtr(this->as<GetterSetterAccessCase>().m_customAccessor.opaque));
+                linkBuffer.link(operationCall, FunctionPtr(this->as<GetterSetterAccessCase>().m_customAccessor.opaque, callTag));
             });
 
             if (m_type == CustomValueGetter || m_type == CustomAccessorGetter)
@@ -1007,11 +1012,12 @@ void AccessCase::generateImpl(AccessGenerationState& state)
                 if (!reallocating) {
                     jit.setupArguments<decltype(operationReallocateButterflyToHavePropertyStorageWithInitialCapacity)>(baseGPR);
                     
-                    CCallHelpers::Call operationCall = jit.call();
+                    PtrTag callTag = ptrTag(JITOperationPtrTag, nextPtrTagID());
+                    CCallHelpers::Call operationCall = jit.call(callTag);
                     jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
                         linkBuffer.link(
                             operationCall,
-                            FunctionPtr(operationReallocateButterflyToHavePropertyStorageWithInitialCapacity));
+                            FunctionPtr(operationReallocateButterflyToHavePropertyStorageWithInitialCapacity, callTag));
                     });
                 } else {
                     // Handle the case where we are reallocating (i.e. the old structure/butterfly
@@ -1019,11 +1025,12 @@ void AccessCase::generateImpl(AccessGenerationState& state)
                     jit.setupArguments<decltype(operationReallocateButterflyToGrowPropertyStorage)>(
                         baseGPR, CCallHelpers::TrustedImm32(newSize / sizeof(JSValue)));
                     
-                    CCallHelpers::Call operationCall = jit.call();
+                    PtrTag callTag = ptrTag(JITOperationPtrTag, nextPtrTagID());
+                    CCallHelpers::Call operationCall = jit.call(callTag);
                     jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
                         linkBuffer.link(
                             operationCall,
-                            FunctionPtr(operationReallocateButterflyToGrowPropertyStorage));
+                            FunctionPtr(operationReallocateButterflyToGrowPropertyStorage, callTag));
                     });
                 }
                 

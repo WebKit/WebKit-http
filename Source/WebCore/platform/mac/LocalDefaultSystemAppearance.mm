@@ -32,18 +32,21 @@
 namespace WebCore {
     
 LocalDefaultSystemAppearance::LocalDefaultSystemAppearance(bool useSystemAppearance)
-    : m_savedSystemAppearance()
 {
-    if (!useSystemAppearance) {
-        m_savedSystemAppearance = [NSAppearance currentAppearance];
-        [NSAppearance setCurrentAppearance:[NSAppearance appearanceNamed:NSAppearanceNameAqua]];
-    }
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+    m_savedSystemAppearance = [NSAppearance currentAppearance];
+    [NSAppearance setCurrentAppearance:useSystemAppearance ? [NSApp effectiveAppearance] : [NSAppearance appearanceNamed:NSAppearanceNameAqua]];
+#else
+    UNUSED_PARAM(useSystemAppearance);
+#endif
 }
 
 LocalDefaultSystemAppearance::~LocalDefaultSystemAppearance()
 {
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
     if (m_savedSystemAppearance)
         [NSAppearance setCurrentAppearance:m_savedSystemAppearance.get()];
+#endif
 }
     
 }

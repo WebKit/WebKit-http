@@ -29,24 +29,46 @@
 
 namespace JSC {
 
-enum PtrTag : uintptr_t {
-    NoPtrTag = 0,
-    NearCallPtrTag,
-    NearJumpPtrTag,
-    CFunctionPtrTag,
+#define FOR_EACH_PTRTAG_ENUM(v) \
+    v(NoPtrTag) \
+    v(NearCallPtrTag) \
+    v(NearJumpPtrTag) \
+    v(CFunctionPtrTag) \
+    \
+    v(BytecodePtrTag) \
+    v(BytecodeHelperPtrTag) \
+    v(CodeEntryPtrTag) \
+    v(CodeEntryWithArityCheckPtrTag) \
+    v(ExceptionHandlerPtrTag) \
+    v(JITCodePtrTag) \
+    v(JITOperationPtrTag) \
+    v(JITThunkPtrTag) \
+    v(NativeCodePtrTag) \
+    v(SlowPathPtrTag) \
+    \
+    v(Yarr8BitPtrTag) \
+    v(Yarr16BitPtrTag) \
+    v(YarrMatchOnly8BitPtrTag) \
+    v(YarrMatchOnly16BitPtrTag) \
+    v(YarrBacktrackPtrTag) \
 
-    BytecodePtrTag,
-    BytecodeHelperPtrTag,
-    CodeEntryPtrTag,
-    CodeEntryWithArityCheckPtrTag,
-    ExceptionHandlerPtrTag,
-    JITCodePtrTag,
-    NativeCodePtrTag,
-    SlowPathPtrTag,
+
+enum PtrTag : uintptr_t {
+#define DECLARE_PTRTAG_ENUM(tag)  tag,
+    FOR_EACH_PTRTAG_ENUM(DECLARE_PTRTAG_ENUM)
+#undef DECLARE_PTRTAG_ENUM
 };
 
+static_assert(static_cast<uintptr_t>(NoPtrTag) == static_cast<uintptr_t>(0), "");
+static_assert(static_cast<uintptr_t>(NearCallPtrTag) == static_cast<uintptr_t>(1), "");
+static_assert(static_cast<uintptr_t>(NearJumpPtrTag) == static_cast<uintptr_t>(2), "");
+
+JS_EXPORT_PRIVATE const char* ptrTagName(PtrTag);
+
+uintptr_t nextPtrTagID();
+
 #if !USE(POINTER_PROFILING)
-inline uintptr_t uniquePtrTagID() { return 0; }
+inline uintptr_t nextPtrTagID() { return 0; }
 
 template<typename... Arguments>
 inline constexpr PtrTag ptrTag(Arguments&&...) { return NoPtrTag; }
@@ -86,6 +108,16 @@ inline T untagCFunctionPtr(PtrType ptr, PtrTag) { return bitwise_cast<T>(ptr); }
 
 template<typename PtrType, typename = std::enable_if_t<std::is_pointer<PtrType>::value>>
 inline PtrType untagCFunctionPtr(PtrType ptr, PtrTag) { return ptr; }
+
+template<typename PtrType> void assertIsCFunctionPtr(PtrType) { }
+template<typename PtrType> void assertIsNullOrCFunctionPtr(PtrType) { }
+
+template<typename PtrType> void assertIsNotTagged(PtrType) { }
+template<typename PtrType> void assertIsTagged(PtrType) { }
+template<typename PtrType> void assertIsNullOrTagged(PtrType) { }
+
+template<typename PtrType> void assertIsTaggedWith(PtrType, PtrTag) { }
+template<typename PtrType> void assertIsNullOrTaggedWith(PtrType, PtrTag) { }
 
 #endif // !USE(POINTER_PROFILING)
 

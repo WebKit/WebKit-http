@@ -144,6 +144,7 @@ class HTMLMediaElement
     , private LoggerHelper
 #endif
 {
+    WTF_MAKE_ISO_ALLOCATED(HTMLMediaElement);
 public:
     WeakPtr<HTMLMediaElement> createWeakPtr() { return m_weakFactory.createWeakPtr(*this); }
     RefPtr<MediaPlayer> player() const { return m_player; }
@@ -552,6 +553,8 @@ public:
 
     bool isSuspended() const final;
 
+    WEBCORE_EXPORT void didBecomeFullscreenElement() override;
+
 protected:
     HTMLMediaElement(const QualifiedName&, Document&, bool createdByParser);
     virtual void finishInitialization();
@@ -602,7 +605,6 @@ private:
     void didRecalcStyle(Style::Change) override;
 
     void willBecomeFullscreenElement() override;
-    void didBecomeFullscreenElement() override;
     void willStopBeingFullscreenElement() override;
 
     // ActiveDOMObject API.

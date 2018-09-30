@@ -15,6 +15,7 @@ class BuildbotBuildEntry {
         assert.equal(syncer.builderID(), rawData['builderid']);
 
         this._syncer = syncer;
+        this._buildbotBuildRequestId = rawData['buildrequestid']
         this._hasFinished = rawData['complete'];
         this._isPending = 'claimed' in rawData && !rawData['claimed'];
         this._isInProgress = !this._isPending && !this._hasFinished;
@@ -32,7 +33,7 @@ class BuildbotBuildEntry {
     isPending() { return this._isPending; }
     isInProgress() { return this._isInProgress; }
     hasFinished() { return this._hasFinished; }
-    url() { return this.isPending() ? this._syncer.urlForPendingBuild(this._buildRequestId) : this._syncer.urlForBuildNumber(this._buildNumber); }
+    url() { return this.isPending() ? this._syncer.urlForPendingBuild(this._buildbotBuildRequestId) : this._syncer.urlForBuildNumber(this._buildNumber); }
 
     buildRequestStatusIfUpdateIsNeeded(request)
     {
@@ -150,7 +151,7 @@ class BuildbotSyncer {
             properties[this._platformPropertyName] = newRequest.platform().name();
 
         this._slavesWithNewRequests.add(slaveName);
-        return this.scheduleBuildOnBuildbotDeprecated(properties);
+        return this.scheduleBuildOnBuildbot(properties);
     }
 
     scheduleBuildOnBuildbotDeprecated(properties)
@@ -210,9 +211,9 @@ class BuildbotSyncer {
 
     pullBuildbot(count)
     {
-        return this._remote.getJSON(this.pathForPendingBuildsJSONDeprecated()).then((content) => {
-            let pendingEntries = content.map((entry) => new BuildbotBuildEntryDeprecated(this, entry));
-            return this._pullRecentBuildsDeprecated(count).then((entries) => {
+        return this._remote.getJSON(this.pathForPendingBuilds()).then((content) => {
+            const pendingEntries = (content.buildrequests || []).map((entry) => new BuildbotBuildEntry(this, entry));
+            return this._pullRecentBuilds(count).then((entries) => {
                 let entryByRequest = {};
 
                 for (let entry of pendingEntries)
@@ -576,7 +577,7 @@ class BuildbotSyncer {
         for (const propertyName in properties) {
             let value = properties[propertyName];
             const isDictionary = typeof(value) == 'object';
-            assert(isDictionary || typeof(value) == 'string',
+            assert(isDictionary || typeof(value) == 'string' || typeof(value) == 'boolean',
                 `Repository group "${groupName}" uses an invalid value "${value}" in property "${propertyName}"`);
 
             if (!isDictionary) {

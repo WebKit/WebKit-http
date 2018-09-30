@@ -77,10 +77,7 @@ public:
 #if ENABLE(XSLT)
         , XSLStyleSheet
 #endif
-#if ENABLE(LINK_PREFETCH)
         , LinkPrefetch
-        , LinkSubresource
-#endif
 #if ENABLE(VIDEO_TRACK)
         , TextTrackResource
 #endif
@@ -144,7 +141,7 @@ public:
 
     virtual void didAddClient(CachedResourceClient&);
     virtual void didRemoveClient(CachedResourceClient&) { }
-    virtual void allClientsRemoved() { }
+    virtual void allClientsRemoved();
     void destroyDecodedDataIfNeeded();
 
     unsigned count() const { return m_clients.size(); }
@@ -176,10 +173,7 @@ public:
     {
         return m_ignoreForRequestCount
             || type() == MainResource
-#if ENABLE(LINK_PREFETCH)
             || type() == LinkPrefetch
-            || type() == LinkSubresource
-#endif
             || type() == Icon
             || type() == RawResource;
     }

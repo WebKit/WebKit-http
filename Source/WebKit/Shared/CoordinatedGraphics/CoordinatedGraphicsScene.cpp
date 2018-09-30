@@ -35,30 +35,6 @@
 namespace WebKit {
 using namespace WebCore;
 
-void CoordinatedGraphicsScene::dispatchOnMainThread(Function<void()>&& function)
-{
-    if (RunLoop::isMain()) {
-        function();
-        return;
-    }
-
-    RunLoop::main().dispatch([protectedThis = makeRef(*this), function = WTFMove(function)] {
-        function();
-    });
-}
-
-void CoordinatedGraphicsScene::dispatchOnClientRunLoop(Function<void()>&& function)
-{
-    if (&m_clientRunLoop == &RunLoop::current()) {
-        function();
-        return;
-    }
-
-    m_clientRunLoop.dispatch([protectedThis = makeRef(*this), function = WTFMove(function)] {
-        function();
-    });
-}
-
 static bool layerShouldHaveBackingStore(TextureMapperLayer* layer)
 {
     return layer->drawsContent() && layer->contentsAreVisible() && !layer->size().isEmpty();
@@ -69,7 +45,6 @@ CoordinatedGraphicsScene::CoordinatedGraphicsScene(CoordinatedGraphicsSceneClien
     , m_isActive(false)
     , m_rootLayerID(InvalidCoordinatedLayerID)
     , m_viewBackgroundColor(Color::white)
-    , m_clientRunLoop(RunLoop::current())
 {
 }
 
@@ -103,7 +78,7 @@ void CoordinatedGraphicsScene::paintToCurrentGLContext(const TransformationMatri
 #endif
 
     currentRootLayer->setTextureMapper(m_textureMapper.get());
-    currentRootLayer->applyAnimationsRecursively(MonotonicTime::now());
+    bool sceneHasRunningAnimations = currentRootLayer->applyAnimationsRecursively(MonotonicTime::now());
     m_textureMapper->beginPainting(PaintFlags);
     m_textureMapper->beginClip(TransformationMatrix(), clipRect);
 
@@ -125,7 +100,7 @@ void CoordinatedGraphicsScene::paintToCurrentGLContext(const TransformationMatri
     m_textureMapper->endClip();
     m_textureMapper->endPainting();
 
-    if (currentRootLayer->descendantsOrSelfHaveRunningAnimations())
+    if (sceneHasRunningAnimations)
         updateViewport();
 }
 
@@ -170,14 +145,6 @@ void CoordinatedGraphicsScene::syncPlatformLayerIfNeeded(TextureMapperLayer* lay
 void CoordinatedGraphicsScene::onNewBufferAvailable()
 {
     updateViewport();
-}
-
-TextureMapperGL* CoordinatedGraphicsScene::texmapGL()
-{
-    if (!m_textureMapper)
-        return nullptr;
-
-    return static_cast<TextureMapperGL*>(m_textureMapper.get());
 }
 #endif
 
@@ -542,16 +509,6 @@ void CoordinatedGraphicsScene::commitSceneState(const CoordinatedGraphicsState& 
         backingStore->commitTileOperations(*m_textureMapper);
 }
 
-void CoordinatedGraphicsScene::renderNextFrame()
-{
-    if (!m_client)
-        return;
-    dispatchOnMainThread([this] {
-        if (m_client)
-            m_client->renderNextFrame();
-    });
-}
-
 void CoordinatedGraphicsScene::ensureRootLayer()
 {
     if (m_rootLayer)
@@ -602,16 +559,6 @@ void CoordinatedGraphicsScene::detach()
     ASSERT(RunLoop::isMain());
     m_isActive = false;
     m_client = nullptr;
-}
-
-void CoordinatedGraphicsScene::setActive(bool active)
-{
-    if (!m_client || m_isActive == active)
-        return;
-
-    m_isActive = active;
-    if (m_isActive)
-        renderNextFrame();
 }
 
 } // namespace WebKit

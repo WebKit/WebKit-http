@@ -2102,7 +2102,8 @@
       ],
       "nicks" : [
          "fujihiro"
-      ]
+      ],
+      "status" : "committer"
    },
    "Fumitoshi Ukai" : {
       "emails" : [
@@ -5816,6 +5817,15 @@
       "emails" : [
          "yongjun_zhang@apple.com",
          "yongjun.zhang@nokia.com"
+      ],
+      "status" : "committer"
+   },
+   "Yoshiaki Jitsukawa" : {
+      "emails" : [
+         "yoshiaki.jitsukawa@sony.com"
+      ],
+      "nicks" : [
+         "yjitsukawa"
       ],
       "status" : "committer"
    },

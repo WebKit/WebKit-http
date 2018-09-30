@@ -138,8 +138,7 @@ void SWServer::addRegistrationFromStore(ServiceWorkerContextData&& data)
     auto registrationPtr = registration.get();
     addRegistration(WTFMove(registration));
 
-    auto* connection = SWServerToContextConnection::globalServerToContextConnection();
-    auto worker = SWServerWorker::create(*this, *registrationPtr, connection ? connection->identifier() : SWServerToContextConnectionIdentifier(), data.scriptURL, data.script, data.contentSecurityPolicy, data.workerType, data.serviceWorkerIdentifier);
+    auto worker = SWServerWorker::create(*this, *registrationPtr, data.scriptURL, data.script, data.contentSecurityPolicy, data.workerType, data.serviceWorkerIdentifier);
     registrationPtr->updateRegistrationState(ServiceWorkerRegistrationState::Active, worker.ptr());
     worker->setState(ServiceWorkerState::Activated);
 }
@@ -226,9 +225,11 @@ void SWServer::clear(const SecurityOrigin& origin, CompletionHandler<void()>&& c
             registrationsToRemove.append(keyAndValue.value.get());
     }
 
-    m_pendingContextDatas.removeAllMatching([&](auto& contextData) {
-        return contextData.registration.key.relatesToOrigin(origin);
-    });
+    for (auto& contextDatas : m_pendingContextDatas.values()) {
+        contextDatas.removeAllMatching([&](auto& contextData) {
+            return contextData.registration.key.relatesToOrigin(origin);
+        });
+    }
 
     if (registrationsToRemove.isEmpty()) {
         completionHandler();
@@ -410,7 +411,7 @@ void SWServer::didFinishActivation(SWServerWorker& worker)
 }
 
 // https://w3c.github.io/ServiceWorker/#clients-getall
-void SWServer::matchAll(SWServerWorker& worker, const ServiceWorkerClientQueryOptions& options, ServiceWorkerClientsMatchAllCallback&& callback)
+void SWServer::matchAll(SWServerWorker& worker, const ServiceWorkerClientQueryOptions& options, const ServiceWorkerClientsMatchAllCallback& callback)
 {
     // FIXME: Support reserved client filtering.
     // FIXME: Support WindowClient additional properties.
@@ -497,31 +498,29 @@ void SWServer::updateWorker(Connection&, const ServiceWorkerJobDataIdentifier& j
 
 void SWServer::tryInstallContextData(ServiceWorkerContextData&& data)
 {
-    // Right now we only ever keep up to one connection to one SW context process.
-    // And it should always exist if we're trying to install context data.
-    auto* connection = SWServerToContextConnection::globalServerToContextConnection();
+    auto origin = SecurityOrigin::create(data.scriptURL);
+    auto* connection = SWServerToContextConnection::connectionForOrigin(origin);
     if (!connection) {
-        m_pendingContextDatas.append(WTFMove(data));
+        m_pendingContextDatas.ensure(WTFMove(origin), [] {
+            return Vector<ServiceWorkerContextData> { };
+        }).iterator->value.append(WTFMove(data));
         return;
     }
     
     installContextData(data);
 }
 
-void SWServer::serverToContextConnectionCreated()
+void SWServer::serverToContextConnectionCreated(SWServerToContextConnection& contextConnection)
 {
-    auto* connection = SWServerToContextConnection::globalServerToContextConnection();
-    ASSERT(connection);
-
-    auto pendingContextDatas = WTFMove(m_pendingContextDatas);
+    auto pendingContextDatas = m_pendingContextDatas.take(&contextConnection.origin());
     for (auto& data : pendingContextDatas)
         installContextData(data);
 
-    auto serviceWorkerRunRequests = WTFMove(m_serviceWorkerRunRequests);
+    auto serviceWorkerRunRequests = m_serviceWorkerRunRequests.take(&contextConnection.origin());
     for (auto& item : serviceWorkerRunRequests) {
         bool success = runServiceWorker(item.key);
         for (auto& callback : item.value)
-            callback(success, *connection);
+            callback(success ? &contextConnection : nullptr);
     }
 }
 
@@ -536,13 +535,13 @@ void SWServer::installContextData(const ServiceWorkerContextData& data)
             return;
     }
 
-    auto* connection = SWServerToContextConnection::globalServerToContextConnection();
-    ASSERT(connection);
-
     auto* registration = m_registrations.get(data.registration.key);
     RELEASE_ASSERT(registration);
 
-    auto worker = SWServerWorker::create(*this, *registration, connection->identifier(), data.scriptURL, data.script, data.contentSecurityPolicy, data.workerType, data.serviceWorkerIdentifier);
+    auto worker = SWServerWorker::create(*this, *registration, data.scriptURL, data.script, data.contentSecurityPolicy, data.workerType, data.serviceWorkerIdentifier);
+
+    auto* connection = worker->contextConnection();
+    ASSERT(connection);
 
     registration->setPreInstallationWorker(worker.ptr());
     worker->setState(SWServerWorker::State::Running);
@@ -554,23 +553,31 @@ void SWServer::installContextData(const ServiceWorkerContextData& data)
 
 void SWServer::runServiceWorkerIfNecessary(ServiceWorkerIdentifier identifier, RunServiceWorkerCallback&& callback)
 {
-    auto* connection = SWServerToContextConnection::globalServerToContextConnection();
-    if (auto* worker = m_runningOrTerminatingWorkers.get(identifier)) {
-        if (worker->isRunning()) {
-            ASSERT(connection);
-            callback(true, *connection);
-            return;
-        }
+    auto* worker = workerByID(identifier);
+    if (!worker) {
+        callback(nullptr);
+        return;
     }
 
-    if (!connection) {
-        m_serviceWorkerRunRequests.ensure(identifier, [&] {
+    auto* contextConnection = worker->contextConnection();
+    if (worker->isRunning()) {
+        ASSERT(contextConnection);
+        callback(contextConnection);
+        return;
+    }
+
+    if (!contextConnection) {
+        auto& serviceWorkerRunRequestsForOrigin = m_serviceWorkerRunRequests.ensure(worker->securityOrigin(), [] {
+            return HashMap<ServiceWorkerIdentifier, Vector<RunServiceWorkerCallback>> { };
+        }).iterator->value;
+        serviceWorkerRunRequestsForOrigin.ensure(identifier, [&] {
             return Vector<RunServiceWorkerCallback> { };
         }).iterator->value.append(WTFMove(callback));
         return;
     }
 
-    callback(runServiceWorker(identifier), *connection);
+    bool success = runServiceWorker(identifier);
+    callback(success ? contextConnection : nullptr);
 }
 
 bool SWServer::runServiceWorker(ServiceWorkerIdentifier identifier)
@@ -589,14 +596,10 @@ bool SWServer::runServiceWorker(ServiceWorkerIdentifier identifier)
 
     worker->setState(SWServerWorker::State::Running);
 
-    auto* connection = SWServerToContextConnection::globalServerToContextConnection();
-    ASSERT(connection);
+    auto* contextConnection = worker->contextConnection();
+    ASSERT(contextConnection);
 
-    // When re-running a service worker after a context process crash, the connection identifier may have changed
-    // so we update it here.
-    worker->setContextConnectionIdentifier(connection->identifier());
-
-    connection->installServiceWorkerContext(worker->contextData(), m_sessionID);
+    contextConnection->installServiceWorkerContext(worker->contextData(), m_sessionID);
 
     return true;
 }
@@ -620,17 +623,9 @@ void SWServer::terminateWorkerInternal(SWServerWorker& worker, TerminationMode m
 
     worker.setState(SWServerWorker::State::Terminating);
 
-    auto contextConnectionIdentifier = worker.contextConnectionIdentifier();
-    ASSERT(contextConnectionIdentifier);
-    if (!contextConnectionIdentifier) {
-        LOG_ERROR("Request to terminate a worker whose contextConnectionIdentifier is invalid");
-        workerContextTerminated(worker);
-        return;
-    }
-
-    auto* connection = SWServerToContextConnection::connectionForIdentifier(*contextConnectionIdentifier);
-    ASSERT(connection);
-    if (!connection) {
+    auto* contextConnection = worker.contextConnection();
+    ASSERT(contextConnection);
+    if (!contextConnection) {
         LOG_ERROR("Request to terminate a worker whose context connection does not exist");
         workerContextTerminated(worker);
         return;
@@ -638,10 +633,10 @@ void SWServer::terminateWorkerInternal(SWServerWorker& worker, TerminationMode m
 
     switch (mode) {
     case Asynchronous:
-        connection->terminateWorker(worker.identifier());
+        contextConnection->terminateWorker(worker.identifier());
         break;
     case Synchronous:
-        connection->syncTerminateWorker(worker.identifier());
+        contextConnection->syncTerminateWorker(worker.identifier());
         break;
     };
 }
@@ -655,7 +650,6 @@ void SWServer::markAllWorkersAsTerminated()
 void SWServer::workerContextTerminated(SWServerWorker& worker)
 {
     worker.setState(SWServerWorker::State::NotRunning);
-    worker.setContextConnectionIdentifier(std::nullopt);
 
     if (auto* jobQueue = m_jobQueues.get(worker.registrationKey()))
         jobQueue->cancelJobsFromServiceWorker(worker.identifier());
@@ -668,35 +662,24 @@ void SWServer::workerContextTerminated(SWServerWorker& worker)
 
 void SWServer::fireInstallEvent(SWServerWorker& worker)
 {
-    auto contextConnectionIdentifier = worker.contextConnectionIdentifier();
-    if (!contextConnectionIdentifier) {
-        LOG_ERROR("Request to fire install event on a worker whose contextConnectionIdentifier is invalid");
-        return;
-    }
-    auto* connection = SWServerToContextConnection::connectionForIdentifier(*contextConnectionIdentifier);
-    if (!connection) {
+    auto* contextConnection = worker.contextConnection();
+    if (!contextConnection) {
         LOG_ERROR("Request to fire install event on a worker whose context connection does not exist");
         return;
     }
 
-    connection->fireInstallEvent(worker.identifier());
+    contextConnection->fireInstallEvent(worker.identifier());
 }
 
 void SWServer::fireActivateEvent(SWServerWorker& worker)
 {
-    auto contextConnectionIdentifier = worker.contextConnectionIdentifier();
-    if (!contextConnectionIdentifier) {
-        LOG_ERROR("Request to fire install event on a worker whose contextConnectionIdentifier is invalid");
-        return;
-    }
-
-    auto* connection = SWServerToContextConnection::connectionForIdentifier(*contextConnectionIdentifier);
-    if (!connection) {
+    auto* contextConnection = worker.contextConnection();
+    if (!contextConnection) {
         LOG_ERROR("Request to fire install event on a worker whose context connection does not exist");
         return;
     }
 
-    connection->fireActivateEvent(worker.identifier());
+    contextConnection->fireActivateEvent(worker.identifier());
 }
 
 void SWServer::registerConnection(Connection& connection)

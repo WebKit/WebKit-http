@@ -183,6 +183,7 @@
 #include <WebCore/PromisedBlobInfo.h>
 #include <WebCore/Range.h>
 #include <WebCore/RenderLayer.h>
+#include <WebCore/RenderTheme.h>
 #include <WebCore/RenderTreeAsText.h>
 #include <WebCore/RenderView.h>
 #include <WebCore/ResourceRequest.h>
@@ -1260,6 +1261,7 @@ void WebPage::loadRequest(LoadParameters&& loadParameters)
     FrameLoadRequest frameLoadRequest { *m_mainFrame->coreFrame(), loadParameters.request, ShouldOpenExternalURLsPolicy::ShouldNotAllow };
     ShouldOpenExternalURLsPolicy externalURLsPolicy = static_cast<ShouldOpenExternalURLsPolicy>(loadParameters.shouldOpenExternalURLsPolicy);
     frameLoadRequest.setShouldOpenExternalURLsPolicy(externalURLsPolicy);
+    frameLoadRequest.setShouldCheckNavigationPolicy(loadParameters.shouldCheckNavigationPolicy);
 
     corePage()->userInputBridge().loadRequest(WTFMove(frameLoadRequest));
 
@@ -2839,6 +2841,16 @@ void WebPage::continueWillSubmitForm(uint64_t frameID, uint64_t listenerID)
     frame->continueWillSubmitForm(listenerID);
 }
 
+void WebPage::didStartNavigationPolicyCheck()
+{
+    m_drawingArea->setLayerTreeStateIsFrozen(true);
+}
+
+void WebPage::didCompleteNavigationPolicyCheck()
+{
+    m_drawingArea->setLayerTreeStateIsFrozen(false);
+}
+
 void WebPage::didStartPageTransition()
 {
     m_drawingArea->setLayerTreeStateIsFrozen(true);
@@ -4130,6 +4142,8 @@ void WebPage::setUseSystemAppearance(bool useSystemAppearance)
 void WebPage::setDefaultAppearance(bool defaultAppearance)
 {
     corePage()->setDefaultAppearance(defaultAppearance);
+    RenderTheme::singleton().platformColorsDidChange();
+    corePage()->setNeedsRecalcStyleInAllFrames();
 }
 #endif
 

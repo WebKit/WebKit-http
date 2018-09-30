@@ -33,6 +33,7 @@ namespace WebCore {
 class MediaQuerySet;
 
 class HTMLSourceElement final : public HTMLElement, private ActiveDOMObject {
+    WTF_MAKE_ISO_ALLOCATED(HTMLSourceElement);
 public:
     static Ref<HTMLSourceElement> create(Document&);
     static Ref<HTMLSourceElement> create(const QualifiedName&, Document&);
@@ -40,7 +41,7 @@ public:
     void scheduleErrorEvent();
     void cancelPendingErrorEvent();
 
-    const MediaQuerySet* parsedMediaAttribute() const;
+    const MediaQuerySet* parsedMediaAttribute(Document&) const;
 
 private:
     HTMLSourceElement(const QualifiedName&, Document&);

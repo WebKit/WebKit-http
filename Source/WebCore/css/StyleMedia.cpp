@@ -31,6 +31,7 @@
 #include "FrameView.h"
 #include "MediaList.h"
 #include "MediaQueryEvaluator.h"
+#include "MediaQueryParser.h"
 #include "NodeRenderStyle.h"
 #include "RenderElement.h"
 #include "StyleResolver.h"
@@ -65,7 +66,7 @@ bool StyleMedia::matchMedium(const String& query) const
 
     auto rootStyle = document->styleScope().resolver().styleForElement(*documentElement, document->renderStyle(), nullptr, MatchOnlyUserAgentRules).renderStyle;
 
-    auto media = MediaQuerySet::create(query);
+    auto media = MediaQuerySet::create(query, MediaQueryParserContext(*document));
 
     return MediaQueryEvaluator { type(), *document, rootStyle.get() }.evaluate(media.get());
 }

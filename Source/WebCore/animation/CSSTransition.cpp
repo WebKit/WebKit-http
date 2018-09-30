@@ -34,22 +34,22 @@ namespace WebCore {
 
 Ref<CSSTransition> CSSTransition::create(Element& target, const Animation& backingAnimation, const RenderStyle* oldStyle, const RenderStyle& newStyle)
 {
-    auto result = adoptRef(*new CSSTransition(target.document(), backingAnimation));
+    auto result = adoptRef(*new CSSTransition(target, backingAnimation));
     result->m_transitionProperty = backingAnimation.property();
     result->initialize(target);
     downcast<KeyframeEffectReadOnly>(result->effect())->computeCSSTransitionBlendingKeyframes(oldStyle, newStyle);
     return result;
 }
 
-CSSTransition::CSSTransition(Document& document, const Animation& backingAnimation)
-    : DeclarativeAnimation(document, backingAnimation)
+CSSTransition::CSSTransition(Element& element, const Animation& backingAnimation)
+    : DeclarativeAnimation(element, backingAnimation)
 {
 }
 
 bool CSSTransition::matchesBackingAnimationAndStyles(const Animation& newBackingAnimation, const RenderStyle* oldStyle, const RenderStyle& newStyle) const
 {
     bool backingAnimationsMatch = backingAnimation() == newBackingAnimation;
-    if (!oldStyle)
+    if (!oldStyle || !effect())
         return backingAnimationsMatch;
     return backingAnimationsMatch && !downcast<KeyframeEffectReadOnly>(effect())->stylesWouldYieldNewCSSTransitionsBlendingKeyframes(*oldStyle, newStyle);
 }
