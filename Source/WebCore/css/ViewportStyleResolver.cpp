@@ -28,13 +28,14 @@
  */
 
 #include "config.h"
+#include "NodeRenderStyle.h"
 #include "ViewportStyleResolver.h"
 
 #if ENABLE(CSS_DEVICE_ADAPTATION)
 
 #include "CSSValueKeywords.h"
 #include "Document.h"
-#include "NodeRenderStyle.h"
+#include "RenderElement.h"
 #include "StyleProperties.h"
 #include "StyleRule.h"
 #include "ViewportArguments.h"
