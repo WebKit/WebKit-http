@@ -1,5 +1,15 @@
 2018-09-30  Eric Carlson  <eric.carlson@apple.com>
 
+        [MediaStream] Use display-specific capture factories
+        https://bugs.webkit.org/show_bug.cgi?id=190043
+        <rdar://problem/44834412>
+
+        Reviewed by Youenn Fablet.
+
+        * WebProcess/cocoa/UserMediaCaptureManager.h:
+
+2018-09-29  Commit Queue  <commit-queue@webkit.org>
+
         [MediaStream] Clean up RealtimeMediaSource settings change handling
         https://bugs.webkit.org/show_bug.cgi?id=189998
         <rdar://problem/44797884>

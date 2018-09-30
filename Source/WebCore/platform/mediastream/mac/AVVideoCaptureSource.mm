@@ -206,7 +206,7 @@ AVVideoCaptureSource::AVVideoCaptureSource(AVCaptureDeviceTypedef* device, const
 AVVideoCaptureSource::~AVVideoCaptureSource()
 {
 #if PLATFORM(IOS)
-    RealtimeMediaSourceCenterMac::videoCaptureSourceFactory().unsetActiveSource(*this);
+    RealtimeMediaSourceCenter::singleton().videoFactory().unsetActiveSource(*this);
 #endif
     [m_objcObserver disconnect];
 
@@ -216,7 +216,6 @@ AVVideoCaptureSource::~AVVideoCaptureSource()
     [m_session removeObserver:m_objcObserver.get() forKeyPath:@"rate"];
     if ([m_session isRunning])
         [m_session stopRunning];
-
 }
 
 void AVVideoCaptureSource::startProducingData()
@@ -458,7 +457,7 @@ AVFrameRateRangeType* AVVideoCaptureSource::frameDurationForFrameRate(double rat
 bool AVVideoCaptureSource::setupCaptureSession()
 {
 #if PLATFORM(IOS)
-    RealtimeMediaSourceCenterMac::videoCaptureSourceFactory().setActiveSource(*this);
+    RealtimeMediaSourceCenter::singleton().videoFactory().setActiveSource(*this);
 #endif
 
     NSError *error = nil;

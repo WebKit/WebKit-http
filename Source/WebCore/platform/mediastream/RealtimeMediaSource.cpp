@@ -962,14 +962,6 @@ RealtimeMediaSource::Observer::~Observer()
 {
 }
 
-RealtimeMediaSource::AudioCaptureFactory::~AudioCaptureFactory()
-{
-}
-
-RealtimeMediaSource::VideoCaptureFactory::~VideoCaptureFactory()
-{
-}
-
 } // namespace WebCore
 
 #endif // ENABLE(MEDIA_STREAM)
