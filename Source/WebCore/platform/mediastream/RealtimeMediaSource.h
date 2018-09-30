@@ -202,8 +202,6 @@ public:
     bool supportsConstraints(const MediaConstraints&, String&);
     bool supportsConstraint(const MediaConstraint&);
 
-    virtual void settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag>);
-
     virtual bool isIsolated() const { return false; }
 
     virtual bool isCaptureSource() const { return false; }
@@ -235,6 +233,7 @@ protected:
 
     void notifyMutedObservers() const;
     void notifyMutedChange(bool muted);
+    void notifySettingsDidChangeObservers(OptionSet<RealtimeMediaSourceSettings::Flag>);
 
     void initializeVolume(double volume) { m_volume = volume; }
     void initializeSampleRate(int sampleRate) { m_sampleRate = sampleRate; }
@@ -246,6 +245,8 @@ protected:
 private:
     virtual void startProducingData() { }
     virtual void stopProducingData() { }
+    virtual void settingsDidChange(OptionSet<RealtimeMediaSourceSettings::Flag>);
+
 
     void forEachObserver(const WTF::Function<void(Observer&)>&) const;
 
