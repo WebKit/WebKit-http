@@ -227,6 +227,12 @@ void Pasteboard::writeImage(Element&, const URL&, const String&)
     notImplemented();
 }
 
+Pasteboard::FileContentState Pasteboard::fileContentState()
+{
+    notImplemented();
+    return FileContentState::NoFileOrImageData;
+}
+
 bool Pasteboard::canSmartReplace()
 {
     notImplemented();
@@ -303,12 +309,6 @@ RefPtr<DocumentFragment> Pasteboard::documentFragment(Frame& frame, Range& conte
     }
 
     return 0;
-}
-
-bool Pasteboard::containsFiles()
-{
-	notImplemented();
-	return false;
 }
 
 bool Pasteboard::hasData()

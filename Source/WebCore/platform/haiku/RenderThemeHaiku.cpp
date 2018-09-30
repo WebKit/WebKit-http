@@ -98,7 +98,7 @@ Color RenderThemeHaiku::platformInactiveSelectionForegroundColor() const
     return Color(0, 0, 0, 255);
 }
 
-Color RenderThemeHaiku::platformFocusRingColor() const
+Color RenderThemeHaiku::platformFocusRingColor(bool) const
 {
     return ui_color(B_NAVIGATION_BASE_COLOR);
 }

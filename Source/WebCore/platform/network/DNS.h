@@ -25,7 +25,7 @@
 
 #pragma once
 
-#if PLATFORM(COCOA) || PLATFORM(GTK) || PLATFORM(WPE)
+#if PLATFORM(COCOA) || PLATFORM(GTK) || PLATFORM(WPE) || PLATFORM(HAIKU)
 #include <netinet/in.h>
 #elif PLATFORM(WIN)
 #include <winsock2.h>

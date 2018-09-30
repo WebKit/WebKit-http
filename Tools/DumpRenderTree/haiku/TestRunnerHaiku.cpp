@@ -62,6 +62,7 @@ TestRunner::~TestRunner()
 JSContextRef TestRunner::mainFrameJSContext()
 {
     notImplemented();
+	return nullptr;
 }
 
 void TestRunner::addDisallowedURL(JSStringRef)

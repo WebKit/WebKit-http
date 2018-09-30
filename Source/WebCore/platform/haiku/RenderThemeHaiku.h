@@ -51,7 +51,7 @@ public:
     Color platformActiveSelectionForegroundColor() const override;
     Color platformInactiveSelectionForegroundColor() const override;
 
-    Color platformFocusRingColor() const override;
+    Color platformFocusRingColor(bool) const override;
 
     // System fonts.
     void updateCachedSystemFontDescription(CSSValueID propId, FontCascadeDescription&) const override;
