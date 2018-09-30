@@ -42,15 +42,10 @@ static bool layerShouldHaveBackingStore(TextureMapperLayer* layer)
 
 CoordinatedGraphicsScene::CoordinatedGraphicsScene(CoordinatedGraphicsSceneClient* client)
     : m_client(client)
-    , m_isActive(false)
-    , m_rootLayerID(InvalidCoordinatedLayerID)
-    , m_viewBackgroundColor(Color::white)
 {
 }
 
-CoordinatedGraphicsScene::~CoordinatedGraphicsScene()
-{
-}
+CoordinatedGraphicsScene::~CoordinatedGraphicsScene() = default;
 
 void CoordinatedGraphicsScene::applyStateChanges(const Vector<CoordinatedGraphicsState>& states)
 {
@@ -118,7 +113,7 @@ void CoordinatedGraphicsScene::adjustPositionForFixedLayers(const FloatPoint& co
     // Fixed layer positions are updated by the web process when we update the visible contents rect / scroll position.
     // If we want those layers to follow accurately the viewport when we move between the web process updates, we have to offset
     // them by the delta between the current position and the position of the viewport used for the last layout.
-    FloatSize delta = contentPosition - m_renderedContentsScrollPosition;
+    FloatSize delta = contentPosition - m_scrollPosition;
 
     for (auto& fixedLayer : m_fixedLayers.values())
         fixedLayer->setScrollPositionDeltaIfNeeded(delta);
@@ -385,36 +380,9 @@ void CoordinatedGraphicsScene::updateTilesIfNeeded(TextureMapperLayer* layer, co
     for (auto& tile : state.tilesToUpdate) {
         const SurfaceUpdateInfo& surfaceUpdateInfo = tile.updateInfo;
 
-        auto surfaceIt = m_surfaces.find(surfaceUpdateInfo.atlasID);
-        ASSERT(surfaceIt != m_surfaces.end());
-
-        backingStore->updateTile(tile.tileID, surfaceUpdateInfo.updateRect, tile.tileRect, surfaceIt->value.copyRef(), surfaceUpdateInfo.surfaceOffset);
+        backingStore->updateTile(tile.tileID, surfaceUpdateInfo.updateRect, tile.tileRect, surfaceUpdateInfo.buffer.copyRef(), { 0, 0 });
         commitScope.backingStoresWithPendingBuffers.add(backingStore);
     }
-}
-
-void CoordinatedGraphicsScene::syncUpdateAtlases(const CoordinatedGraphicsState& state)
-{
-    for (auto& atlas : state.updateAtlasesToCreate)
-        createUpdateAtlas(atlas.first, atlas.second.copyRef());
-}
-
-void CoordinatedGraphicsScene::createUpdateAtlas(uint32_t atlasID, RefPtr<Nicosia::Buffer>&& buffer)
-{
-    ASSERT(!m_surfaces.contains(atlasID));
-    m_surfaces.add(atlasID, WTFMove(buffer));
-}
-
-void CoordinatedGraphicsScene::removeUpdateAtlas(uint32_t atlasID)
-{
-    ASSERT(m_surfaces.contains(atlasID));
-    m_surfaces.remove(atlasID);
-}
-
-void CoordinatedGraphicsScene::releaseUpdateAtlases(const Vector<uint32_t>& atlasesToRemove)
-{
-    for (auto& atlas : atlasesToRemove)
-        removeUpdateAtlas(atlas);
 }
 
 void CoordinatedGraphicsScene::syncImageBackings(const CoordinatedGraphicsState& state, CommitScope& commitScope)
@@ -491,7 +459,7 @@ void CoordinatedGraphicsScene::commitSceneState(const CoordinatedGraphicsState& 
 
     CommitScope commitScope;
 
-    m_renderedContentsScrollPosition = state.scrollPosition;
+    m_scrollPosition = state.scrollPosition;
 
     createLayers(state.layersToCreate);
     deleteLayers(state.layersToRemove);
@@ -500,7 +468,6 @@ void CoordinatedGraphicsScene::commitSceneState(const CoordinatedGraphicsState& 
         setRootLayerID(state.rootCompositingLayer);
 
     syncImageBackings(state, commitScope);
-    syncUpdateAtlases(state);
 
     for (auto& layer : state.layersToUpdate)
         setLayerState(layer.first, layer.second, commitScope);
@@ -536,7 +503,6 @@ void CoordinatedGraphicsScene::purgeGLResources()
         proxy->invalidate();
     m_platformLayerProxies.clear();
 #endif
-    m_surfaces.clear();
 
     m_rootLayer = nullptr;
     m_rootLayerID = InvalidCoordinatedLayerID;

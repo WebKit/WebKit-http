@@ -220,10 +220,6 @@
 #include "MockMediaPlayerMediaSource.h"
 #endif
 
-#if USE(LIBWEBRTC) && PLATFORM(COCOA)
-//#include "H264VideoToolboxEncoder.h"
-#endif
-
 #if PLATFORM(MAC)
 #include "DictionaryLookup.h"
 #endif
@@ -435,7 +431,6 @@ void Internals::resetToConsistentState(Page& page)
         mainFrameView->setFixedLayoutSize(IntSize());
 #if USE(COORDINATED_GRAPHICS)
         mainFrameView->setFixedVisibleContentRect(IntRect());
-        page.chrome().client().resetUpdateAtlasForTesting();
 #endif
         if (auto* backing = mainFrameView->tiledBacking())
             backing->setTileSizeUpdateDelayDisabledForTesting(false);
@@ -4328,7 +4323,7 @@ void Internals::clearCacheStorageMemoryRepresentation(DOMPromiseDeferred<void>&&
         if (!m_cacheStorageConnection)
             return;
     }
-    m_cacheStorageConnection->clearMemoryRepresentation(ClientOrigin { SecurityOriginData::fromSecurityOrigin(document->topOrigin()), SecurityOriginData::fromSecurityOrigin(document->securityOrigin()) }, [promise = WTFMove(promise)] (auto && result) mutable {
+    m_cacheStorageConnection->clearMemoryRepresentation(ClientOrigin { document->topOrigin().data(), document->securityOrigin().data() }, [promise = WTFMove(promise)] (auto && result) mutable {
         ASSERT_UNUSED(result, !result);
         promise.resolve();
     });
@@ -4377,7 +4372,7 @@ void Internals::hasServiceWorkerRegistration(const String& clientURL, HasRegistr
 
     URL parsedURL = contextDocument()->completeURL(clientURL);
 
-    return ServiceWorkerProvider::singleton().serviceWorkerConnectionForSession(contextDocument()->sessionID()).matchRegistration(contextDocument()->topOrigin(), parsedURL, [promise = WTFMove(promise)] (auto&& result) mutable {
+    return ServiceWorkerProvider::singleton().serviceWorkerConnectionForSession(contextDocument()->sessionID()).matchRegistration(SecurityOriginData { contextDocument()->topOrigin().data() }, parsedURL, [promise = WTFMove(promise)] (auto&& result) mutable {
         promise.resolve(!!result);
     });
 }

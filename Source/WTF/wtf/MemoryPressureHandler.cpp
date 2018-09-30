@@ -28,6 +28,7 @@
 
 #include <wtf/MemoryFootprint.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/RAMSize.h>
 
 #define LOG_CHANNEL_PREFIX Log
 
@@ -84,20 +85,17 @@ static const char* toString(MemoryUsagePolicy policy)
 
 static size_t thresholdForMemoryKillWithProcessState(WebsamProcessState processState, unsigned tabCount)
 {
+    size_t baseThreshold = 2 * GB;
 #if CPU(X86_64) || CPU(ARM64)
-    size_t baseThreshold;
     if (processState == WebsamProcessState::Active)
         baseThreshold = 4 * GB;
-    else
-        baseThreshold = 2 * GB;
-    if (tabCount <= 1)
-        return baseThreshold;
-    return baseThreshold + (std::min(tabCount - 1, 4u) * 1 * GB);
+    if (tabCount > 1)
+        baseThreshold += std::min(tabCount - 1, 4u) * 1 * GB;
 #else
-    UNUSED_PARAM(processState);
-    UNUSED_PARAM(tabCount);
-    return 3 * GB;
+    if ((tabCount > 1) || (processState == WebsamProcessState::Active))
+        baseThreshold = 3 * GB;
 #endif
+    return std::min(baseThreshold, static_cast<size_t>(ramSize() * 0.9));
 }
 
 void MemoryPressureHandler::setPageCount(unsigned pageCount)
@@ -114,11 +112,12 @@ size_t MemoryPressureHandler::thresholdForMemoryKill()
 
 static size_t thresholdForPolicy(MemoryUsagePolicy policy)
 {
+    const size_t baseThresholdForPolicy = std::min(3 * GB, ramSize());
     switch (policy) {
     case MemoryUsagePolicy::Conservative:
-        return 1 * GB;
+        return baseThresholdForPolicy / 3;
     case MemoryUsagePolicy::Strict:
-        return 1.5 * GB;
+        return baseThresholdForPolicy / 2;
     case MemoryUsagePolicy::Unrestricted:
     default:
         ASSERT_NOT_REACHED();
@@ -142,7 +141,7 @@ void MemoryPressureHandler::shrinkOrDie()
 
     auto footprint = memoryFootprint();
     RELEASE_ASSERT(footprint);
-    RELEASE_LOG(MemoryPressure, "New memory footprint: %lu MB", footprint.value() / MB);
+    RELEASE_LOG(MemoryPressure, "New memory footprint: %zu MB", footprint.value() / MB);
 
     if (footprint.value() < thresholdForMemoryKill()) {
         RELEASE_LOG(MemoryPressure, "Shrank below memory kill threshold. Process gets to live.");
@@ -150,6 +149,7 @@ void MemoryPressureHandler::shrinkOrDie()
         return;
     }
 
+    WTFLogAlways("Unable to shrink memory footprint of process (%zu MB) below the kill thresold (%zu MB). Killed\n", footprint.value() / MB, thresholdForMemoryKill() / MB);
     RELEASE_ASSERT(m_memoryKillCallback);
     m_memoryKillCallback();
 }
@@ -171,7 +171,7 @@ void MemoryPressureHandler::measurementTimerFired()
     if (!footprint)
         return;
 
-    RELEASE_LOG(MemoryPressure, "Current memory footprint: %lu MB", footprint.value() / MB);
+    RELEASE_LOG(MemoryPressure, "Current memory footprint: %zu MB", footprint.value() / MB);
     if (footprint.value() >= thresholdForMemoryKill()) {
         shrinkOrDie();
         return;

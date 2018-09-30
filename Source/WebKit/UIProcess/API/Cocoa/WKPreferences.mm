@@ -731,6 +731,16 @@ static WebCore::EditableLinkBehavior toEditableLinkBehavior(_WKEditableLinkBehav
     _preferences->setEditableLinkBehavior(toEditableLinkBehavior(editableLinkBehavior));
 }
 
+- (void)_setAVFoundationEnabled:(BOOL)enabled
+{
+    _preferences->setAVFoundationEnabled(enabled);
+}
+
+- (BOOL)_avFoundationEnabled
+{
+    return _preferences->isAVFoundationEnabled();
+}
+
 #if PLATFORM(MAC)
 - (void)_setJavaEnabledForLocalFiles:(BOOL)enabled
 {
@@ -870,16 +880,6 @@ static WebCore::EditableLinkBehavior toEditableLinkBehavior(_WKEditableLinkBehav
 - (BOOL)_universalAccessFromFileURLsAllowed
 {
     return _preferences->allowUniversalAccessFromFileURLs();
-}
-
-- (void)_setAVFoundationEnabled:(BOOL)enabled
-{
-    _preferences->setAVFoundationEnabled(enabled);
-}
-
-- (BOOL)_avFoundationEnabled
-{
-    return _preferences->isAVFoundationEnabled();
 }
 
 - (void)_setSuppressesIncrementalRendering:(BOOL)enabled
@@ -1227,6 +1227,22 @@ static WebCore::EditableLinkBehavior toEditableLinkBehavior(_WKEditableLinkBehav
 - (BOOL)_domPasteAllowed
 {
     return _preferences->domPasteAllowed();
+}
+
+- (void)_setShouldEnableTextAutosizingBoost:(BOOL)shouldEnableTextAutosizingBoost
+{
+#if ENABLE(TEXT_AUTOSIZING)
+    _preferences->setShouldEnableTextAutosizingBoost(shouldEnableTextAutosizingBoost);
+#endif
+}
+
+- (BOOL)_shouldEnableTextAutosizingBoost
+{
+#if ENABLE(TEXT_AUTOSIZING)
+    return _preferences->shouldEnableTextAutosizingBoost();
+#else
+    return NO;
+#endif
 }
 
 @end

@@ -733,9 +733,19 @@ inline Value* B3IRGenerator::emitLoadOp(LoadOpType op, ExpressionType pointer, u
     case LoadOpType::I32Load16S: {
         return m_currentBlock->appendNew<MemoryValue>(m_proc, memoryKind(Load16S), origin(), pointer, offset);
     }
+
     case LoadOpType::I64Load16S: {
         Value* value = m_currentBlock->appendNew<MemoryValue>(m_proc, memoryKind(Load16S), origin(), pointer, offset);
         return m_currentBlock->appendNew<Value>(m_proc, SExt32, origin(), value);
+    }
+
+    case LoadOpType::I32Load16U: {
+        return m_currentBlock->appendNew<MemoryValue>(m_proc, memoryKind(Load16Z), origin(), pointer, offset);
+    }
+
+    case LoadOpType::I64Load16U: {
+        Value* value = m_currentBlock->appendNew<MemoryValue>(m_proc, memoryKind(Load16Z), origin(), pointer, offset);
+        return m_currentBlock->appendNew<Value>(m_proc, ZExt32, origin(), value);
     }
 
     case LoadOpType::I32Load: {
@@ -762,21 +772,6 @@ inline Value* B3IRGenerator::emitLoadOp(LoadOpType op, ExpressionType pointer, u
 
     case LoadOpType::F64Load: {
         return m_currentBlock->appendNew<MemoryValue>(m_proc, memoryKind(Load), Double, origin(), pointer, offset);
-    }
-
-    // FIXME: B3 doesn't support Load16Z yet. We should lower to that value when
-    // it's added. https://bugs.webkit.org/show_bug.cgi?id=165884
-    case LoadOpType::I32Load16U: {
-        Value* value = m_currentBlock->appendNew<MemoryValue>(m_proc, memoryKind(Load16S), origin(), pointer, offset);
-        return m_currentBlock->appendNew<Value>(m_proc, BitAnd, origin(), value,
-            m_currentBlock->appendNew<Const32Value>(m_proc, origin(), 0x0000ffff));
-    }
-    case LoadOpType::I64Load16U: {
-        Value* value = m_currentBlock->appendNew<MemoryValue>(m_proc, memoryKind(Load16S), origin(), pointer, offset);
-        Value* partialResult = m_currentBlock->appendNew<Value>(m_proc, BitAnd, origin(), value,
-            m_currentBlock->appendNew<Const32Value>(m_proc, origin(), 0x0000ffff));
-
-        return m_currentBlock->appendNew<Value>(m_proc, ZExt32, origin(), partialResult);
     }
     }
     RELEASE_ASSERT_NOT_REACHED();
@@ -1567,8 +1562,19 @@ auto B3IRGenerator::addOp<OpType::I64Ctz>(ExpressionType arg, ExpressionType& re
 template<>
 auto B3IRGenerator::addOp<OpType::I32Popcnt>(ExpressionType arg, ExpressionType& result) -> PartialResult
 {
-    // FIXME: This should use the popcnt instruction if SSE4 is available but we don't have code to detect SSE4 yet.
-    // see: https://bugs.webkit.org/show_bug.cgi?id=165363
+#if CPU(X86_64)
+    if (MacroAssembler::supportsCountPopulation()) {
+        PatchpointValue* patchpoint = m_currentBlock->appendNew<PatchpointValue>(m_proc, Int32, origin());
+        patchpoint->append(arg, ValueRep::SomeRegister);
+        patchpoint->setGenerator([=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+            jit.countPopulation32(params[1].gpr(), params[0].gpr());
+        });
+        patchpoint->effects = Effects::none();
+        result = patchpoint;
+        return { };
+    }
+#endif
+
     uint32_t (*popcount)(int32_t) = [] (int32_t value) -> uint32_t { return __builtin_popcount(value); };
     Value* funcAddress = m_currentBlock->appendNew<ConstPtrValue>(m_proc, origin(), bitwise_cast<void*>(popcount));
     result = m_currentBlock->appendNew<CCallValue>(m_proc, Int32, origin(), Effects::none(), funcAddress, arg);
@@ -1578,8 +1584,19 @@ auto B3IRGenerator::addOp<OpType::I32Popcnt>(ExpressionType arg, ExpressionType&
 template<>
 auto B3IRGenerator::addOp<OpType::I64Popcnt>(ExpressionType arg, ExpressionType& result) -> PartialResult
 {
-    // FIXME: This should use the popcnt instruction if SSE4 is available but we don't have code to detect SSE4 yet.
-    // see: https://bugs.webkit.org/show_bug.cgi?id=165363
+#if CPU(X86_64)
+    if (MacroAssembler::supportsCountPopulation()) {
+        PatchpointValue* patchpoint = m_currentBlock->appendNew<PatchpointValue>(m_proc, Int64, origin());
+        patchpoint->append(arg, ValueRep::SomeRegister);
+        patchpoint->setGenerator([=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+            jit.countPopulation64(params[1].gpr(), params[0].gpr());
+        });
+        patchpoint->effects = Effects::none();
+        result = patchpoint;
+        return { };
+    }
+#endif
+
     uint64_t (*popcount)(int64_t) = [] (int64_t value) -> uint64_t { return __builtin_popcountll(value); };
     Value* funcAddress = m_currentBlock->appendNew<ConstPtrValue>(m_proc, origin(), bitwise_cast<void*>(popcount));
     result = m_currentBlock->appendNew<CCallValue>(m_proc, Int64, origin(), Effects::none(), funcAddress, arg);

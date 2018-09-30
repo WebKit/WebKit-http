@@ -135,7 +135,7 @@ public:
 #endif
 
 #if PLATFORM(COCOA) && USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    bool canAuthenticateAgainstProtectionSpace(const ProtectionSpace&);
+    void canAuthenticateAgainstProtectionSpace(const ProtectionSpace&, CompletionHandler<void(bool)>&&);
 #endif
 
 #if PLATFORM(COCOA)
@@ -218,19 +218,6 @@ public:
     // The client may be 0, in which case no callbacks will be made.
     WEBCORE_EXPORT ResourceHandleClient* client() const;
     WEBCORE_EXPORT void clearClient();
-
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    // Called in response to ResourceHandleClient::canAuthenticateAgainstProtectionSpaceAsync().
-    WEBCORE_EXPORT void continueCanAuthenticateAgainstProtectionSpace(bool);
-#endif
-
-    // Called in response to ResourceHandleClient::willCacheResponseAsync().
-#if USE(CFURLCONNECTION)
-    WEBCORE_EXPORT void continueWillCacheResponse(CFCachedURLResponseRef);
-#endif
-#if PLATFORM(COCOA)
-    WEBCORE_EXPORT void continueWillCacheResponse(NSCachedURLResponse *);
-#endif
 
     WEBCORE_EXPORT void setDefersLoading(bool);
 

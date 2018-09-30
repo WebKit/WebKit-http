@@ -609,6 +609,7 @@
 		2D1087631D2C641B00B85F82 /* LoadParametersCocoa.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2D1087621D2C641B00B85F82 /* LoadParametersCocoa.mm */; };
 		2D125C5E1857EA05003BA3CB /* ViewGestureController.h in Headers */ = {isa = PBXBuildFile; fileRef = 2D125C5C1857EA05003BA3CB /* ViewGestureController.h */; };
 		2D125C5F1857EA05003BA3CB /* ViewGestureControllerMac.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2D125C5D1857EA05003BA3CB /* ViewGestureControllerMac.mm */; };
+		2D12DAB520662C73006F00FB /* WKAnimationDelegate.h in Headers */ = {isa = PBXBuildFile; fileRef = 2D12DAB420662C73006F00FB /* WKAnimationDelegate.h */; };
 		2D1B5D5D185869C8006C6596 /* ViewGestureControllerMessageReceiver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2D1B5D5B185869C8006C6596 /* ViewGestureControllerMessageReceiver.cpp */; };
 		2D1B5D5E185869C8006C6596 /* ViewGestureControllerMessages.h in Headers */ = {isa = PBXBuildFile; fileRef = 2D1B5D5C185869C8006C6596 /* ViewGestureControllerMessages.h */; };
 		2D28A4971AF965A100F190C9 /* WKViewLayoutStrategy.h in Headers */ = {isa = PBXBuildFile; fileRef = 2D28A4951AF965A100F190C9 /* WKViewLayoutStrategy.h */; };
@@ -743,8 +744,6 @@
 		2EA7B3D62026CF23009CE5AC /* WKNumberPadView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2EA7B3D42026CF23009CE5AC /* WKNumberPadView.mm */; };
 		2EB6FC01203021960017E619 /* WKTimePickerViewController.h in Headers */ = {isa = PBXBuildFile; fileRef = 2EB6FBFF203021960017E619 /* WKTimePickerViewController.h */; };
 		2EB6FC02203021960017E619 /* WKTimePickerViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2EB6FC00203021960017E619 /* WKTimePickerViewController.mm */; };
-		2EE4529F20292D2A00D81777 /* WKSelectMenuViewController.h in Headers */ = {isa = PBXBuildFile; fileRef = 2EE4529C20292BD900D81777 /* WKSelectMenuViewController.h */; };
-		2EE452A020292D2E00D81777 /* WKSelectMenuViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2EE4529B20292BD800D81777 /* WKSelectMenuViewController.mm */; };
 		2F809DD71FBD1BC9005FE63A /* TouchBarMenuItemData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2F809DD51FBD1BC9005FE63A /* TouchBarMenuItemData.cpp */; };
 		2F8336861FA139DF00C6E080 /* TouchBarMenuData.h in Headers */ = {isa = PBXBuildFile; fileRef = 2FD43B911FA006A10083F51C /* TouchBarMenuData.h */; };
 		2F8336871FA13A1E00C6E080 /* TouchBarMenuData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 2FD43B921FA006A30083F51C /* TouchBarMenuData.cpp */; };
@@ -915,6 +914,7 @@
 		3FB08E431F60B240005E5312 /* iOS.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 3FB08E421F60B240005E5312 /* iOS.xcassets */; };
 		3FFDDB961F577F480050E593 /* WKFullScreenWindowControllerIOS.h in Headers */ = {isa = PBXBuildFile; fileRef = 3F915C0F1F564DED00183CE9 /* WKFullScreenWindowControllerIOS.h */; };
 		3FFDDB971F5780E10050E593 /* WKFullScreenWindowControllerIOS.mm in Sources */ = {isa = PBXBuildFile; fileRef = 3F915C0E1F564DED00183CE9 /* WKFullScreenWindowControllerIOS.mm */; };
+		4103FBA52061C8FE00C2EAF8 /* NetworkLoadChecker.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4103FBA22061BDB800C2EAF8 /* NetworkLoadChecker.cpp */; };
 		410482CD1DDD324C00F006D0 /* RTCNetwork.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 410482CB1DDD2FB500F006D0 /* RTCNetwork.cpp */; };
 		410482CE1DDD324F00F006D0 /* RTCNetwork.h in Headers */ = {isa = PBXBuildFile; fileRef = 410482CC1DDD2FB500F006D0 /* RTCNetwork.h */; };
 		4112B5551FA0EA7A00E67875 /* NetworkRTCResolver.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4112B5471F9FD3AB00E67875 /* NetworkRTCResolver.cpp */; };
@@ -1548,6 +1548,7 @@
 		99C81D591C20E1E5005C4C82 /* AutomationClient.mm in Sources */ = {isa = PBXBuildFile; fileRef = 99C81D561C20DFBE005C4C82 /* AutomationClient.mm */; };
 		99C81D5A1C20E7E2005C4C82 /* AutomationClient.h in Headers */ = {isa = PBXBuildFile; fileRef = 99C81D551C20DFBE005C4C82 /* AutomationClient.h */; };
 		99C81D5D1C21F38B005C4C82 /* APIAutomationClient.h in Headers */ = {isa = PBXBuildFile; fileRef = 99C81D5B1C20E817005C4C82 /* APIAutomationClient.h */; };
+		99CA66CA2036685D0074F35E /* EnterFullscreen.js in Copy WebDriver Atoms */ = {isa = PBXBuildFile; fileRef = 99CA66C8203668220074F35E /* EnterFullscreen.js */; };
 		99E714C51C124A0400665B3A /* _WKAutomationDelegate.h in Headers */ = {isa = PBXBuildFile; fileRef = 99E714C11C1249E600665B3A /* _WKAutomationDelegate.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		9F54F88F16488E87007DF81A /* ChildProcessMac.mm in Sources */ = {isa = PBXBuildFile; fileRef = 9F54F88E16488E87007DF81A /* ChildProcessMac.mm */; };
 		9F54F8951648AE0F007DF81A /* PluginProcessManagerMac.mm in Sources */ = {isa = PBXBuildFile; fileRef = 9F54F8941648AE0E007DF81A /* PluginProcessManagerMac.mm */; };
@@ -2163,6 +2164,7 @@
 		F4D5F51E206087A10038BBA8 /* WKTextInputListViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = F4D5F51A206087A10038BBA8 /* WKTextInputListViewController.mm */; };
 		F4D5F51F206087A10038BBA8 /* WKFormControlListViewController.h in Headers */ = {isa = PBXBuildFile; fileRef = F4D5F51B206087A10038BBA8 /* WKFormControlListViewController.h */; };
 		F4D5F520206087A10038BBA8 /* WKFormControlListViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = F4D5F51C206087A10038BBA8 /* WKFormControlListViewController.mm */; };
+		F4F59AD62065AEB1006CAA46 /* WKSelectMenuListViewController.mm in Sources */ = {isa = PBXBuildFile; fileRef = F4F59AD32065A5C9006CAA46 /* WKSelectMenuListViewController.mm */; };
 		F6113E25126CE1820057D0A7 /* APIUserContentURLPattern.h in Headers */ = {isa = PBXBuildFile; fileRef = F6113E24126CE1820057D0A7 /* APIUserContentURLPattern.h */; };
 		F6113E28126CE19B0057D0A7 /* WKUserContentURLPattern.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F6113E26126CE19B0057D0A7 /* WKUserContentURLPattern.cpp */; };
 		F6113E29126CE19B0057D0A7 /* WKUserContentURLPattern.h in Headers */ = {isa = PBXBuildFile; fileRef = F6113E27126CE19B0057D0A7 /* WKUserContentURLPattern.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -2343,6 +2345,7 @@
 			dstPath = PrivateHeaders/atoms;
 			dstSubfolderSpec = 1;
 			files = (
+				99CA66CA2036685D0074F35E /* EnterFullscreen.js in Copy WebDriver Atoms */,
 				99B750F21F33ED5B00C1CFB5 /* ElementAttribute.js in Copy WebDriver Atoms */,
 				99B750F31F33ED5B00C1CFB5 /* ElementDisplayed.js in Copy WebDriver Atoms */,
 				99B750F41F33ED5B00C1CFB5 /* FindNodes.js in Copy WebDriver Atoms */,
@@ -2988,6 +2991,7 @@
 		2D1087621D2C641B00B85F82 /* LoadParametersCocoa.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = LoadParametersCocoa.mm; sourceTree = "<group>"; };
 		2D125C5C1857EA05003BA3CB /* ViewGestureController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ViewGestureController.h; sourceTree = "<group>"; };
 		2D125C5D1857EA05003BA3CB /* ViewGestureControllerMac.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ViewGestureControllerMac.mm; sourceTree = "<group>"; };
+		2D12DAB420662C73006F00FB /* WKAnimationDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WKAnimationDelegate.h; sourceTree = "<group>"; };
 		2D1B5D5A18586599006C6596 /* ViewGestureController.messages.in */ = {isa = PBXFileReference; lastKnownFileType = text; path = ViewGestureController.messages.in; sourceTree = "<group>"; };
 		2D1B5D5B185869C8006C6596 /* ViewGestureControllerMessageReceiver.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ViewGestureControllerMessageReceiver.cpp; sourceTree = "<group>"; };
 		2D1B5D5C185869C8006C6596 /* ViewGestureControllerMessages.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ViewGestureControllerMessages.h; sourceTree = "<group>"; };
@@ -3131,8 +3135,6 @@
 		2EA7B3D42026CF23009CE5AC /* WKNumberPadView.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = WKNumberPadView.mm; path = ios/forms/WKNumberPadView.mm; sourceTree = "<group>"; };
 		2EB6FBFF203021960017E619 /* WKTimePickerViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = WKTimePickerViewController.h; path = ios/forms/WKTimePickerViewController.h; sourceTree = "<group>"; };
 		2EB6FC00203021960017E619 /* WKTimePickerViewController.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; name = WKTimePickerViewController.mm; path = ios/forms/WKTimePickerViewController.mm; sourceTree = "<group>"; };
-		2EE4529B20292BD800D81777 /* WKSelectMenuViewController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = WKSelectMenuViewController.mm; path = ios/forms/WKSelectMenuViewController.mm; sourceTree = "<group>"; };
-		2EE4529C20292BD900D81777 /* WKSelectMenuViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = WKSelectMenuViewController.h; path = ios/forms/WKSelectMenuViewController.h; sourceTree = "<group>"; };
 		2F809DD51FBD1BC9005FE63A /* TouchBarMenuItemData.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = TouchBarMenuItemData.cpp; sourceTree = "<group>"; };
 		2F809DD91FBD1BF2005FE63A /* TouchBarMenuItemData.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TouchBarMenuItemData.h; sourceTree = "<group>"; };
 		2FD43B911FA006A10083F51C /* TouchBarMenuData.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TouchBarMenuData.h; sourceTree = "<group>"; };
@@ -3301,6 +3303,8 @@
 		3F915C0E1F564DED00183CE9 /* WKFullScreenWindowControllerIOS.mm */ = {isa = PBXFileReference; indentWidth = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = WKFullScreenWindowControllerIOS.mm; path = ios/fullscreen/WKFullScreenWindowControllerIOS.mm; sourceTree = "<group>"; };
 		3F915C0F1F564DED00183CE9 /* WKFullScreenWindowControllerIOS.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = WKFullScreenWindowControllerIOS.h; path = ios/fullscreen/WKFullScreenWindowControllerIOS.h; sourceTree = "<group>"; };
 		3FB08E421F60B240005E5312 /* iOS.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = iOS.xcassets; sourceTree = "<group>"; };
+		4103FBA12061BDB700C2EAF8 /* NetworkLoadChecker.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = NetworkLoadChecker.h; path = NetworkProcess/NetworkLoadChecker.h; sourceTree = "<group>"; };
+		4103FBA22061BDB800C2EAF8 /* NetworkLoadChecker.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = NetworkLoadChecker.cpp; path = NetworkProcess/NetworkLoadChecker.cpp; sourceTree = "<group>"; };
 		410482CB1DDD2FB500F006D0 /* RTCNetwork.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RTCNetwork.cpp; sourceTree = "<group>"; };
 		410482CC1DDD2FB500F006D0 /* RTCNetwork.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RTCNetwork.h; sourceTree = "<group>"; };
 		4112B5471F9FD3AB00E67875 /* NetworkRTCResolver.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = NetworkRTCResolver.cpp; path = NetworkProcess/webrtc/NetworkRTCResolver.cpp; sourceTree = "<group>"; };
@@ -4034,6 +4038,7 @@
 		99C81D551C20DFBE005C4C82 /* AutomationClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AutomationClient.h; sourceTree = "<group>"; };
 		99C81D561C20DFBE005C4C82 /* AutomationClient.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = AutomationClient.mm; sourceTree = "<group>"; };
 		99C81D5B1C20E817005C4C82 /* APIAutomationClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = APIAutomationClient.h; sourceTree = "<group>"; };
+		99CA66C8203668220074F35E /* EnterFullscreen.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = EnterFullscreen.js; sourceTree = "<group>"; };
 		99E714C11C1249E600665B3A /* _WKAutomationDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = _WKAutomationDelegate.h; sourceTree = "<group>"; };
 		99F642D21FABE378009621E9 /* CoordinateSystem.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CoordinateSystem.h; sourceTree = "<group>"; };
 		9BC59D6C1EFCCCB6001E8D09 /* CallbackID.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CallbackID.h; sourceTree = "<group>"; };
@@ -4703,6 +4708,8 @@
 		F4D5F51A206087A10038BBA8 /* WKTextInputListViewController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = WKTextInputListViewController.mm; path = ios/forms/WKTextInputListViewController.mm; sourceTree = "<group>"; };
 		F4D5F51B206087A10038BBA8 /* WKFormControlListViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = WKFormControlListViewController.h; path = ios/forms/WKFormControlListViewController.h; sourceTree = "<group>"; };
 		F4D5F51C206087A10038BBA8 /* WKFormControlListViewController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = WKFormControlListViewController.mm; path = ios/forms/WKFormControlListViewController.mm; sourceTree = "<group>"; };
+		F4F59AD32065A5C9006CAA46 /* WKSelectMenuListViewController.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = WKSelectMenuListViewController.mm; path = ios/forms/WKSelectMenuListViewController.mm; sourceTree = "<group>"; };
+		F4F59AD42065A5CA006CAA46 /* WKSelectMenuListViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = WKSelectMenuListViewController.h; path = ios/forms/WKSelectMenuListViewController.h; sourceTree = "<group>"; };
 		F6113E24126CE1820057D0A7 /* APIUserContentURLPattern.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = APIUserContentURLPattern.h; sourceTree = "<group>"; };
 		F6113E26126CE19B0057D0A7 /* WKUserContentURLPattern.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WKUserContentURLPattern.cpp; sourceTree = "<group>"; };
 		F6113E27126CE19B0057D0A7 /* WKUserContentURLPattern.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WKUserContentURLPattern.h; sourceTree = "<group>"; };
@@ -5756,6 +5763,7 @@
 				1AF1AC691651759E00C17D7F /* RemoteLayerTreeTransaction.mm */,
 				0F5947A1187B3B7D00437857 /* RemoteScrollingCoordinatorTransaction.cpp */,
 				0F5947A2187B3B7D00437857 /* RemoteScrollingCoordinatorTransaction.h */,
+				2D12DAB420662C73006F00FB /* WKAnimationDelegate.h */,
 			);
 			path = RemoteLayerTree;
 			sourceTree = "<group>";
@@ -6381,6 +6389,8 @@
 				539EB5471DC2EE40009D48CF /* NetworkDataTaskBlob.h */,
 				839901FF1BE9A01B000F3653 /* NetworkLoad.cpp */,
 				839901FE1BE9A01B000F3653 /* NetworkLoad.h */,
+				4103FBA22061BDB800C2EAF8 /* NetworkLoadChecker.cpp */,
+				4103FBA12061BDB700C2EAF8 /* NetworkLoadChecker.h */,
 				83D454D61BE9D3C4006C93BD /* NetworkLoadClient.h */,
 				839149631BEA838500D2D953 /* NetworkLoadParameters.h */,
 				510CC7DF16138E2900D03ED3 /* NetworkProcess.cpp */,
@@ -6916,6 +6926,7 @@
 			children = (
 				990657341F323CBF00944F9C /* ElementAttribute.js */,
 				990657331F323CBF00944F9C /* ElementDisplayed.js */,
+				99CA66C8203668220074F35E /* EnterFullscreen.js */,
 				990657311F323CBF00944F9C /* FindNodes.js */,
 				990657321F323CBF00944F9C /* FormElementClear.js */,
 				990657351F323CBF00944F9C /* FormSubmit.js */,
@@ -8465,8 +8476,8 @@
 				2EA7B3D42026CF23009CE5AC /* WKNumberPadView.mm */,
 				2EA7B3CF2026CEF8009CE5AC /* WKNumberPadViewController.h */,
 				2EA7B3D02026CEF8009CE5AC /* WKNumberPadViewController.mm */,
-				2EE4529C20292BD900D81777 /* WKSelectMenuViewController.h */,
-				2EE4529B20292BD800D81777 /* WKSelectMenuViewController.mm */,
+				F4F59AD42065A5CA006CAA46 /* WKSelectMenuListViewController.h */,
+				F4F59AD32065A5C9006CAA46 /* WKSelectMenuListViewController.mm */,
 				2E16B69F2016E680008996D6 /* WKTextFormControlViewController.h */,
 				2E16B6A02016E680008996D6 /* WKTextFormControlViewController.mm */,
 				F4D5F519206087A00038BBA8 /* WKTextInputListViewController.h */,
@@ -9400,6 +9411,7 @@
 				0FCB4E4818BBE044000FCFC9 /* WKActionSheet.h in Headers */,
 				0FCB4E4A18BBE044000FCFC9 /* WKActionSheetAssistant.h in Headers */,
 				C5FA1ED318E1062200B3F402 /* WKAirPlayRoutePicker.h in Headers */,
+				2D12DAB520662C73006F00FB /* WKAnimationDelegate.h in Headers */,
 				BCDDB32D124EC2E10048D13C /* WKAPICast.h in Headers */,
 				512E34E5130B4D0500ABD19A /* WKApplicationCacheManager.h in Headers */,
 				BC4075F4124FF0270068F20A /* WKArray.h in Headers */,
@@ -9668,7 +9680,6 @@
 				51CD1C651B34B9D400142CA5 /* WKSecurityOrigin.h in Headers */,
 				51CD1C671B34B9DF00142CA5 /* WKSecurityOriginInternal.h in Headers */,
 				51CD1C5E1B3493B400142CA5 /* WKSecurityOriginRef.h in Headers */,
-				2EE4529F20292D2A00D81777 /* WKSelectMenuViewController.h in Headers */,
 				BC407604124FF0270068F20A /* WKSerializedScriptValue.h in Headers */,
 				1ADE46B31954EC61000F7985 /* WKSessionStateRef.h in Headers */,
 				BCDDB32B124EC2AB0048D13C /* WKSharedAPICast.h in Headers */,
@@ -10094,7 +10105,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if [[ ${PLATFORM_NAME} != \"macosx\" ]]; then\nexit 0\nfi\n\nln -shf Versions/Current/Frameworks \"$TARGET_BUILD_DIR/WebKit.framework/Frameworks\"\n";
+			shellScript = "if [[ ${WK_PLATFORM_NAME} != \"macosx\" ]]; then\nexit 0\nfi\n\nln -shf Versions/Current/Frameworks \"$TARGET_BUILD_DIR/WebKit.framework/Frameworks\"\n";
 		};
 		1A1D2115191D96380001619F /* Postprocess Framework Headers */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -10122,7 +10133,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 			shellPath = /bin/sh;
-			shellScript = "if [[ ${PLATFORM_NAME} != \"iphoneos\" ]]; then\n    exit 0;\nfi\n\nif [[ ! -d \"${INSTALL_ROOT}/${SYSTEM_LIBRARY_DIR}/PrivateFrameworks\" ]]; then\n    mkdir -p \"${INSTALL_ROOT}/${SYSTEM_LIBRARY_DIR}/PrivateFrameworks\"\nfi\n\nln -s -h -f ../Frameworks/WebKit.framework \"${INSTALL_ROOT}/${SYSTEM_LIBRARY_DIR}/PrivateFrameworks/WebKit.framework\"";
+			shellScript = "if [[ ${WK_PLATFORM_NAME} != \"iphoneos\" ]]; then\n    exit 0;\nfi\n\nif [[ ! -d \"${INSTALL_ROOT}/${SYSTEM_LIBRARY_DIR}/PrivateFrameworks\" ]]; then\n    mkdir -p \"${INSTALL_ROOT}/${SYSTEM_LIBRARY_DIR}/PrivateFrameworks\"\nfi\n\nln -s -h -f ../Frameworks/WebKit.framework \"${INSTALL_ROOT}/${SYSTEM_LIBRARY_DIR}/PrivateFrameworks/WebKit.framework\"";
 		};
 		1A6280C81919956B006AD9F9 /* Migrate WebKitLegacy Headers */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -10212,7 +10223,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if [[ \"${WK_MANUAL_SANDBOXING_ENABLED}\" != \"YES\" || \"${PLATFORM_NAME}\" == \"macosx\" ]]; then\n    exit\nfi\n\nif [[ \"${ACTION}\" == \"build\" || \"${ACTION}\" == \"install\" ]]; then\n    for ((i = 0; i < ${SCRIPT_INPUT_FILE_COUNT}; ++i)); do\n        eval ENTITLEMENTS=\\${SCRIPT_INPUT_FILE_${i}}\n        ENTITLEMENTS_BASE=${ENTITLEMENTS##*/}\n        ENTITLEMENTS_BASE=${ENTITLEMENTS_BASE%.entitlements}\n        plutil -remove seatbelt-profiles -o \"${BUILT_PRODUCTS_DIR}/DerivedSources/WebKit2/${ENTITLEMENTS_BASE}-no-sandbox.entitlements\" \"${ENTITLEMENTS}\"\n    done\nfi";
+			shellScript = "if [[ \"${WK_MANUAL_SANDBOXING_ENABLED}\" != \"YES\" || \"${WK_PLATFORM_NAME}\" == \"macosx\" ]]; then\n    exit\nfi\n\nif [[ \"${ACTION}\" == \"build\" || \"${ACTION}\" == \"install\" ]]; then\n    for ((i = 0; i < ${SCRIPT_INPUT_FILE_COUNT}; ++i)); do\n        eval ENTITLEMENTS=\\${SCRIPT_INPUT_FILE_${i}}\n        ENTITLEMENTS_BASE=${ENTITLEMENTS##*/}\n        ENTITLEMENTS_BASE=${ENTITLEMENTS_BASE%.entitlements}\n        plutil -remove seatbelt-profiles -o \"${BUILT_PRODUCTS_DIR}/DerivedSources/WebKit2/${ENTITLEMENTS_BASE}-no-sandbox.entitlements\" \"${ENTITLEMENTS}\"\n    done\nfi";
 		};
 		375A248817E5048E00C9A086 /* Postprocess WKBase.h */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -10244,7 +10255,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if [[ \"${WK_MANUAL_SANDBOXING_ENABLED}\" != \"YES\" || \"${PLATFORM_NAME}\" == \"macosx\" ]]; then\n    exit\nfi\n\nif [[ \"${ACTION}\" == \"build\" || \"${ACTION}\" == \"install\" ]]; then\n    for ((i = 0; i < ${SCRIPT_INPUT_FILE_COUNT}; ++i)); do\n        eval SANDBOX_PROFILE=\\${SCRIPT_INPUT_FILE_${i}}\n        ditto \"${SANDBOX_PROFILE}\" \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/${SANDBOX_PROFILE##*/}\"\n    done\nfi";
+			shellScript = "if [[ \"${WK_MANUAL_SANDBOXING_ENABLED}\" != \"YES\" || \"${WK_PLATFORM_NAME}\" == \"macosx\" ]]; then\n    exit\nfi\n\nif [[ \"${ACTION}\" == \"build\" || \"${ACTION}\" == \"install\" ]]; then\n    for ((i = 0; i < ${SCRIPT_INPUT_FILE_COUNT}; ++i)); do\n        eval SANDBOX_PROFILE=\\${SCRIPT_INPUT_FILE_${i}}\n        ditto \"${SANDBOX_PROFILE}\" \"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/${SANDBOX_PROFILE##*/}\"\n    done\nfi";
 		};
 		5DF408C5131DD46700130071 /* Check For Weak VTables and Externals */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -10319,7 +10330,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if [[ ${PLATFORM_NAME} == macosx ]]; then\n    ln -sf \"Versions/Current/XPCServices\" \"${BUILT_PRODUCTS_DIR}/WebKit.framework/XPCServices\";\nfi\n";
+			shellScript = "if [[ ${WK_PLATFORM_NAME} == macosx ]]; then\n    ln -sf \"Versions/Current/XPCServices\" \"${BUILT_PRODUCTS_DIR}/WebKit.framework/XPCServices\";\nfi\n";
 		};
 		BCFFCA8B160D6E7B003DF315 /* Copy XPC services for engineering builds */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -10345,7 +10356,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if [[ \"${CONFIGURATION}\" == \"Production\" ]]; then\n    exit\nfi\n\nif [[ ${PLATFORM_NAME} != \"macosx\" ]]; then\n    XPC_SERVICES_PATH=\"${BUILT_PRODUCTS_DIR}/WebKit.framework/XPCServices\"\nelse\n    XPC_SERVICES_PATH=\"${BUILT_PRODUCTS_DIR}/WebKit.framework/Versions/A/XPCServices\"\nfi\n\nmkdir -p \"${XPC_SERVICES_PATH}\"\nditto \"${BUILT_PRODUCTS_DIR}/com.apple.WebKit.WebContent.xpc\" \"${XPC_SERVICES_PATH}/com.apple.WebKit.WebContent.xpc\"\nditto \"${BUILT_PRODUCTS_DIR}/com.apple.WebKit.Networking.xpc\" \"${XPC_SERVICES_PATH}/com.apple.WebKit.Networking.xpc\"\nditto \"${BUILT_PRODUCTS_DIR}/${WK_STORAGE_SERVICE_PRODUCT_NAME}.xpc\" \"${XPC_SERVICES_PATH}/${WK_STORAGE_SERVICE_PRODUCT_NAME}.xpc\"\n\nif [[ ${PLATFORM_NAME} == macosx ]]; then\n    ditto \"${BUILT_PRODUCTS_DIR}/com.apple.WebKit.Plugin.32.xpc\" \"${XPC_SERVICES_PATH}/com.apple.WebKit.Plugin.xpc\"\n    ditto \"${BUILT_PRODUCTS_DIR}/com.apple.WebKit.Plugin.64.xpc\" \"${XPC_SERVICES_PATH}/com.apple.WebKit.Plugin.64.xpc\"\nfi\n";
+			shellScript = "if [[ \"${CONFIGURATION}\" == \"Production\" ]]; then\n    exit\nfi\n\nif [[ ${WK_PLATFORM_NAME} != \"macosx\" ]]; then\n    XPC_SERVICES_PATH=\"${BUILT_PRODUCTS_DIR}/WebKit.framework/XPCServices\"\nelse\n    XPC_SERVICES_PATH=\"${BUILT_PRODUCTS_DIR}/WebKit.framework/Versions/A/XPCServices\"\nfi\n\nmkdir -p \"${XPC_SERVICES_PATH}\"\nditto \"${BUILT_PRODUCTS_DIR}/com.apple.WebKit.WebContent.xpc\" \"${XPC_SERVICES_PATH}/com.apple.WebKit.WebContent.xpc\"\nditto \"${BUILT_PRODUCTS_DIR}/com.apple.WebKit.Networking.xpc\" \"${XPC_SERVICES_PATH}/com.apple.WebKit.Networking.xpc\"\nditto \"${BUILT_PRODUCTS_DIR}/${WK_STORAGE_SERVICE_PRODUCT_NAME}.xpc\" \"${XPC_SERVICES_PATH}/${WK_STORAGE_SERVICE_PRODUCT_NAME}.xpc\"\n\nif [[ ${WK_PLATFORM_NAME} == macosx ]]; then\n    ditto \"${BUILT_PRODUCTS_DIR}/com.apple.WebKit.Plugin.32.xpc\" \"${XPC_SERVICES_PATH}/com.apple.WebKit.Plugin.xpc\"\n    ditto \"${BUILT_PRODUCTS_DIR}/com.apple.WebKit.Plugin.64.xpc\" \"${XPC_SERVICES_PATH}/com.apple.WebKit.Plugin.64.xpc\"\nfi\n";
 		};
 		C0CE72841247E66800BC0EC4 /* Generate Derived Sources */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -10656,6 +10667,7 @@
 				5CBC9B8D1C65279C00A8FDCF /* NetworkDataTaskCocoa.mm in Sources */,
 				530258461DCBBD2200DA89C2 /* NetworkDataTaskReplay.cpp in Sources */,
 				839902021BE9A02B000F3653 /* NetworkLoad.cpp in Sources */,
+				4103FBA52061C8FE00C2EAF8 /* NetworkLoadChecker.cpp in Sources */,
 				51795568162876CF00FA43B6 /* NetworkProcess.cpp in Sources */,
 				7EC4F0FB18E4ACBB008056AF /* NetworkProcessCocoa.mm in Sources */,
 				5183DDEC1630BDFC008BE5C7 /* NetworkProcessConnection.cpp in Sources */,
@@ -11316,7 +11328,7 @@
 				0FCB4E5518BBE044000FCFC9 /* WKScrollView.mm in Sources */,
 				51CD1C661B34B9DC00142CA5 /* WKSecurityOrigin.mm in Sources */,
 				51CD1C5D1B3493AF00142CA5 /* WKSecurityOriginRef.cpp in Sources */,
-				2EE452A020292D2E00D81777 /* WKSelectMenuViewController.mm in Sources */,
+				F4F59AD62065AEB1006CAA46 /* WKSelectMenuListViewController.mm in Sources */,
 				BC407603124FF0270068F20A /* WKSerializedScriptValue.cpp in Sources */,
 				1ADE46B21954EC61000F7985 /* WKSessionStateRef.cpp in Sources */,
 				513E462E1AD837560016234A /* WKSharingServicePickerDelegate.mm in Sources */,

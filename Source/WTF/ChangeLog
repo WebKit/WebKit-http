@@ -1,3 +1,241 @@
+2018-03-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r230062.
+        https://bugs.webkit.org/show_bug.cgi?id=184128
+
+        Broke mac port. web content process crashes while loading any
+        web page (Requested by rniwa on #webkit).
+
+        Reverted changeset:
+
+        "MSVC __forceinline slows down JSC release build fivefold
+        after r229391"
+        https://bugs.webkit.org/show_bug.cgi?id=184062
+        https://trac.webkit.org/changeset/230062
+
+2018-03-28  Ross Kirsling  <ross.kirsling@sony.com>
+
+        MSVC __forceinline slows down JSC release build fivefold after r229391
+        https://bugs.webkit.org/show_bug.cgi?id=184062
+
+        Reviewed by Alex Christensen.
+
+        * wtf/Compiler.h:
+        Add ALWAYS_INLINE_EXCEPT_MSVC to support MSVC optimizer sensitivities.
+
+2018-03-28  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win] Assertions.h: VC doesn't support GCC extension ##__VA_ARGS__
+        https://bugs.webkit.org/show_bug.cgi?id=184076
+
+        Reviewed by Alex Christensen.
+
+        ##__VA_ARGS__ is used to define RELEASE_LOG, RELEASE_LOG_ERROR,
+        RELEASE_LOG_IF, RELEASE_LOG_ERROR_IF, RELEASE_LOG_WITH_LEVEL,
+        RELEASE_LOG_WITH_LEVEL_IF and RELEASE_LOG_INFO_IF.
+
+        A macro using ##__VA_ARGS__,
+
+          #define foo(format, ...) bar(format, ##__VA_ARGS__)
+
+        can be defined without ##__VA_ARGS__:
+
+          #define foo(...) bar(__VA_ARGS__)
+
+        * wtf/Assertions.h: Use __VA_ARGS__ instead of ##__VA_ARGS__.
+
+2018-03-28  Brent Fulgham  <bfulgham@apple.com>
+
+        Avoid uninitialized mach ports
+        https://bugs.webkit.org/show_bug.cgi?id=184090
+        <rdar://problem/37261129>
+
+        Reviewed by Chris Dumez.
+
+        It is possible for mach_port_allocate to return an error, but we rarely check its return value. The value
+        of the argument passed to mach_port_allocate is not guaranteed to be valid when it returns an error, so
+        there is a potential for us to try to use invalid ports.
+
+        We should always check return values, and ensure that the mach port variables we seek to initialize are
+        kept in a valid state.
+
+        Reviewed by Chris Dumez.
+
+        * wtf/Threading.h: Initialize mach port.
+
+2018-03-28  Robin Morisset  <rmorisset@apple.com>
+
+        appendQuotedJSONString stops on arithmetic overflow instead of propagating it upwards
+        https://bugs.webkit.org/show_bug.cgi?id=183894
+
+        Reviewed by Saam Barati.
+
+        appendQuotedJSONString now returns a bool indicating whether it succeeded, instead of silently failing when given a string too large
+        to fit in 4GB.
+
+        * wtf/text/StringBuilder.h:
+        * wtf/text/StringBuilderJSON.cpp:
+        (WTF::StringBuilder::appendQuotedJSONString):
+
+2018-03-27  Per Arne Vollan  <pvollan@apple.com>
+
+        The layout test fast/canvas/webgl/read-pixels-test.html is timing out.
+        https://bugs.webkit.org/show_bug.cgi?id=183923
+        <rdar://problem/38756869>
+
+        Reviewed by Brent Fulgham.
+
+        Add compile guard for blocking of the WindowServer in the WebProcess.
+
+        * wtf/FeatureDefines.h:
+
+2018-03-26  Tim Horton  <timothy_horton@apple.com>
+
+        Add and adopt HAVE(CORE_ANIMATION_RENDER_SERVER)
+        https://bugs.webkit.org/show_bug.cgi?id=184026
+        <rdar://problem/38883321>
+
+        Reviewed by Sam Weinig.
+
+        * wtf/Platform.h:
+
+2018-03-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        We should have SSE4 detection in the X86 MacroAssembler.
+        https://bugs.webkit.org/show_bug.cgi?id=165363
+
+        Reviewed by JF Bastien.
+
+        GCC 5 supports clobbering PIC registers in inline ASM [1,2].
+
+        [1]: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=47602
+        [2]: https://gcc.gnu.org/viewcvs/gcc?view=revision&revision=216154
+
+        * wtf/Atomics.h:
+        (WTF::x86_cpuid):
+
+2018-03-26  Antoine Quint  <graouts@apple.com>
+
+        [ASan] Allow Ref<> to be swapped
+        https://bugs.webkit.org/show_bug.cgi?id=184017
+        <rdar://problem/36336787>
+
+        Reviewed by JF Bastien.
+
+        Unpoison a Ref in various calls just like in ~Ref so that sorting a Vector<Ref<>> works with ASan on.
+
+        * wtf/Ref.h:
+        (WTF::Ref::assignToHashTableEmptyValue):
+        (WTF::=):
+        (WTF::U>::replace):
+
+2018-03-26  Brent Fulgham  <bfulgham@apple.com>
+
+        Warn against cookie access in the WebContent process using ProcessPrivilege assertions
+        https://bugs.webkit.org/show_bug.cgi?id=183911
+        <rdar://problem/38762306>
+
+        Reviewed by Youenn Fablet.
+
+        Extend the ProcessPrivilege API with the ability to add and remove individual
+        privileges.
+
+        * wtf/ProcessPrivilege.cpp:
+        (WTF::addProcessPrivilege):
+        (WTF::removeProcessPrivilege):
+        * wtf/ProcessPrivilege.h:
+
+2018-03-25  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        WebProcess memory monitor: use %zu format specifier for size_t
+        https://bugs.webkit.org/show_bug.cgi?id=183997
+
+        Reviewed by Michael Catanzaro.
+
+        usse %zu format specifier for size_t instead of %lu.
+
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::MemoryPressureHandler::shrinkOrDie):
+        (WTF::MemoryPressureHandler::measurementTimerFired):
+
+2018-03-25  Tim Horton  <timothy_horton@apple.com>
+
+        Add and adopt ENABLE(AIRPLAY_PICKER)
+        https://bugs.webkit.org/show_bug.cgi?id=183992
+
+        Reviewed by Daniel Bates.
+
+        * wtf/FeatureDefines.h:
+
+2018-03-23  Tim Horton  <timothy_horton@apple.com>
+
+        Introduce and adopt HAVE(AUDIO_TOOLBOX_AUDIO_SESSION)
+        https://bugs.webkit.org/show_bug.cgi?id=183954
+        <rdar://problem/38808858>
+
+        Reviewed by Dan Bernstein.
+
+        * wtf/Platform.h:
+
+2018-03-23  David Kilzer  <ddkilzer@apple.com>
+
+        Stop using dispatch_set_target_queue()
+        <https://webkit.org/b/183908>
+        <rdar://problem/33553533>
+
+        Reviewed by Daniel Bates.
+
+        * wtf/cocoa/WorkQueueCocoa.cpp:
+        (WTF::WorkQueue::platformInitialize): Remove !HAVE(QOS_CLASSES)
+        code path since it's never used now that HAVE(QOS_CLASSES) is
+        equivalent to PLATFORM(COCOA) in <wtf/Platform.h>.
+
+2018-03-23  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        WebProcess memory monitor thresholds should be better tuned for embedded systems.
+        https://bugs.webkit.org/show_bug.cgi?id=183773
+
+        Reviewed by Yusuke Suzuki.
+
+        Take into account the total system RAM for the thresholds calculation.
+
+        For systems with more than 3GB the conservative and strict thresholds remain as they are,
+        but for systems with less RAM the thresholds are dynamically configured as follows:
+
+        - Conservative threshold (release non critical memory) if WebProcess using more than 33% of the total RAM.
+        - Strict threshold (release all possible memory) if WebProcess using more than 50% of the total RAM.
+
+        The Kill threshold is also modified. Now it is capped at 90% of the total RAM.
+
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::thresholdForMemoryKillWithProcessState):
+        (WTF::thresholdForPolicy):
+        (WTF::MemoryPressureHandler::shrinkOrDie):
+
+2018-03-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Add standard containers with FastAllocator specialization
+        https://bugs.webkit.org/show_bug.cgi?id=183789
+
+        Reviewed by Darin Adler.
+
+        Sometimes we want standard containers due to various reasons.
+        For example, WTF::HashMap lacks the ability to hold all the
+        integer keys since it uses 0 for empty value and -1 for deleted
+        value. However, using std::containers use std::allocator without
+        specialization.
+
+        This patch introduces WTF::{StdMap, StdSet, StdList, StdUnorderedMap, StdUnorderedSet}.
+        They are standard containers with FastAllocator specialization.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/StdList.h: Copied from Source/JavaScriptCore/runtime/TypeLocationCache.h.
+        * wtf/StdMap.h: Copied from Source/JavaScriptCore/runtime/TypeLocationCache.h.
+        * wtf/StdSet.h: Copied from Source/JavaScriptCore/runtime/TypeLocationCache.h.
+        * wtf/StdUnorderedMap.h: Copied from Source/JavaScriptCore/runtime/TypeLocationCache.h.
+        * wtf/StdUnorderedSet.h: Copied from Source/JavaScriptCore/runtime/TypeLocationCache.h.
+
 2018-03-22  Tim Horton  <timothy_horton@apple.com>
 
         Adopt USE(OPENGL[_ES]) in more places

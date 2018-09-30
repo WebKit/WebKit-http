@@ -46,11 +46,6 @@ public:
     virtual void setupConnectionScheduling(CFURLConnectionRef) = 0;
     virtual void releaseHandle();
 
-    virtual void continueWillCacheResponse(CFCachedURLResponseRef) = 0;
-#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    virtual void continueCanAuthenticateAgainstProtectionSpace(bool) = 0;
-#endif // USE(PROTECTION_SPACE_AUTH_CALLBACK)
-
 protected:
     RetainPtr<CFURLResponseRef> synthesizeRedirectResponseIfNecessary(CFURLRequestRef, CFURLResponseRef);
     ResourceRequest createResourceRequest(CFURLRequestRef, CFURLResponseRef);

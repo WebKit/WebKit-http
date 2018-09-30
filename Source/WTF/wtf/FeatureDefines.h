@@ -54,6 +54,12 @@
 /* --------- Apple IOS (but not MAC) port --------- */
 #if PLATFORM(IOS)
 
+#if !defined(ENABLE_AIRPLAY_PICKER)
+#if !ENABLE(MINIMAL_SIMULATOR)
+#define ENABLE_AIRPLAY_PICKER 1
+#endif
+#endif
+
 #if !defined(ENABLE_ASYNC_SCROLLING)
 #define ENABLE_ASYNC_SCROLLING 1
 #endif
@@ -223,6 +229,10 @@ the public iOS SDK. See <https://webkit.org/b/179167>. */
 
 #if !defined(ENABLE_MAC_GESTURE_EVENTS) && USE(APPLE_INTERNAL_SDK)
 #define ENABLE_MAC_GESTURE_EVENTS 1
+#endif
+
+#if !defined(ENABLE_WEBPROCESS_WINDOWSERVER_BLOCKING)
+#define ENABLE_WEBPROCESS_WINDOWSERVER_BLOCKING 0
 #endif
 
 #endif /* PLATFORM(MAC) */

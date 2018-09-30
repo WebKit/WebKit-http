@@ -87,8 +87,6 @@ public:
     void setViewBackgroundColor(const WebCore::Color& color) { m_viewBackgroundColor = color; }
     WebCore::Color viewBackgroundColor() const { return m_viewBackgroundColor; }
 
-    void releaseUpdateAtlases(const Vector<uint32_t>&);
-
 private:
     struct CommitScope {
         CommitScope() = default;
@@ -111,10 +109,6 @@ private:
     void setLayerAnimationsIfNeeded(WebCore::TextureMapperLayer*, const WebCore::CoordinatedGraphicsLayerState&);
     void syncPlatformLayerIfNeeded(WebCore::TextureMapperLayer*, const WebCore::CoordinatedGraphicsLayerState&);
     void setLayerRepaintCountIfNeeded(WebCore::TextureMapperLayer*, const WebCore::CoordinatedGraphicsLayerState&);
-
-    void syncUpdateAtlases(const WebCore::CoordinatedGraphicsState&);
-    void createUpdateAtlas(uint32_t atlasID, RefPtr<Nicosia::Buffer>&&);
-    void removeUpdateAtlas(uint32_t atlasID);
 
     void syncImageBackings(const WebCore::CoordinatedGraphicsState&, CommitScope&);
     void createImageBacking(WebCore::CoordinatedImageBackingID);
@@ -159,20 +153,17 @@ private:
     HashMap<WebCore::TextureMapperLayer*, RefPtr<WebCore::TextureMapperPlatformLayerProxy>> m_platformLayerProxies;
 #endif
 
-    HashMap<uint32_t /* atlasID */, RefPtr<Nicosia::Buffer>> m_surfaces;
-
     // Below two members are accessed by only the main thread. The painting thread must lock the main thread to access both members.
     CoordinatedGraphicsSceneClient* m_client;
-    bool m_isActive;
+    bool m_isActive { false };
 
     std::unique_ptr<WebCore::TextureMapperLayer> m_rootLayer;
 
     HashMap<WebCore::CoordinatedLayerID, std::unique_ptr<WebCore::TextureMapperLayer>> m_layers;
     HashMap<WebCore::CoordinatedLayerID, WebCore::TextureMapperLayer*> m_fixedLayers;
-    WebCore::CoordinatedLayerID m_rootLayerID;
+    WebCore::CoordinatedLayerID m_rootLayerID { WebCore::InvalidCoordinatedLayerID };
     WebCore::FloatPoint m_scrollPosition;
-    WebCore::FloatPoint m_renderedContentsScrollPosition;
-    WebCore::Color m_viewBackgroundColor;
+    WebCore::Color m_viewBackgroundColor { WebCore::Color::white };
 
     WebCore::TextureMapperFPSCounter m_fpsCounter;
 };

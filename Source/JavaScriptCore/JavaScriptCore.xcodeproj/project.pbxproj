@@ -1130,6 +1130,7 @@
 		79EFD4841EBC045C00F3DFEA /* JSWebAssemblyCodeBlockHeapCellType.h in Headers */ = {isa = PBXBuildFile; fileRef = 79EFD4821EBC045C00F3DFEA /* JSWebAssemblyCodeBlockHeapCellType.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		79F8FC1F1B9FED0F00CA66AB /* DFGMaximalFlushInsertionPhase.h in Headers */ = {isa = PBXBuildFile; fileRef = 79F8FC1D1B9FED0F00CA66AB /* DFGMaximalFlushInsertionPhase.h */; };
 		79FC8A081E32E9F000D88F0E /* DFGRegisteredStructure.h in Headers */ = {isa = PBXBuildFile; fileRef = 79FC8A071E32E9F000D88F0E /* DFGRegisteredStructure.h */; settings = {ATTRIBUTES = (Private, ); }; };
+		7A9774A8206B82E4008D03D0 /* JSWeakValue.h in Headers */ = {isa = PBXBuildFile; fileRef = 7A9774A7206B82C9008D03D0 /* JSWeakValue.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		7BC547D31B6959A100959B58 /* WasmFormat.h in Headers */ = {isa = PBXBuildFile; fileRef = 7BC547D21B69599B00959B58 /* WasmFormat.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		7C008CDB187124BB00955C24 /* JSPromiseDeferred.h in Headers */ = {isa = PBXBuildFile; fileRef = 7C008CD9187124BB00955C24 /* JSPromiseDeferred.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		7C008CE7187631B600955C24 /* Microtask.h in Headers */ = {isa = PBXBuildFile; fileRef = 7C008CE5187631B600955C24 /* Microtask.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -1701,6 +1702,7 @@
 		E33F50811B8429A400413856 /* JSInternalPromise.h in Headers */ = {isa = PBXBuildFile; fileRef = E33F507F1B8429A400413856 /* JSInternalPromise.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		E33F50851B8437A000413856 /* JSInternalPromiseDeferred.h in Headers */ = {isa = PBXBuildFile; fileRef = E33F50831B8437A000413856 /* JSInternalPromiseDeferred.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		E33F50871B8449EF00413856 /* JSInternalPromiseConstructor.lut.h in Headers */ = {isa = PBXBuildFile; fileRef = E33F50861B8449EF00413856 /* JSInternalPromiseConstructor.lut.h */; };
+		E34E657520668EAA00FB81AC /* ParseHash.h in Headers */ = {isa = PBXBuildFile; fileRef = E34E657320668E8D00FB81AC /* ParseHash.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		E34EDBF71DB5FFC900DC87A5 /* FrameTracers.h in Headers */ = {isa = PBXBuildFile; fileRef = E34EDBF61DB5FFC100DC87A5 /* FrameTracers.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		E350708A1DC49BBF0089BCD6 /* DOMJITSignature.h in Headers */ = {isa = PBXBuildFile; fileRef = E35070891DC49BB60089BCD6 /* DOMJITSignature.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		E354622B1B6065D100545386 /* ConstructAbility.h in Headers */ = {isa = PBXBuildFile; fileRef = E354622A1B6065D100545386 /* ConstructAbility.h */; settings = {ATTRIBUTES = (Private, ); }; };
@@ -3660,6 +3662,8 @@
 		79F8FC1C1B9FED0F00CA66AB /* DFGMaximalFlushInsertionPhase.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = DFGMaximalFlushInsertionPhase.cpp; path = dfg/DFGMaximalFlushInsertionPhase.cpp; sourceTree = "<group>"; };
 		79F8FC1D1B9FED0F00CA66AB /* DFGMaximalFlushInsertionPhase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGMaximalFlushInsertionPhase.h; path = dfg/DFGMaximalFlushInsertionPhase.h; sourceTree = "<group>"; };
 		79FC8A071E32E9F000D88F0E /* DFGRegisteredStructure.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGRegisteredStructure.h; path = dfg/DFGRegisteredStructure.h; sourceTree = "<group>"; };
+		7A9774A6206B828C008D03D0 /* JSWeakValue.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSWeakValue.cpp; sourceTree = "<group>"; };
+		7A9774A7206B82C9008D03D0 /* JSWeakValue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSWeakValue.h; sourceTree = "<group>"; };
 		7BC547D21B69599B00959B58 /* WasmFormat.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WasmFormat.h; sourceTree = "<group>"; };
 		7C008CD8187124BB00955C24 /* JSPromiseDeferred.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = JSPromiseDeferred.cpp; sourceTree = "<group>"; };
 		7C008CD9187124BB00955C24 /* JSPromiseDeferred.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSPromiseDeferred.h; sourceTree = "<group>"; };
@@ -4548,6 +4552,8 @@
 		E33F50831B8437A000413856 /* JSInternalPromiseDeferred.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSInternalPromiseDeferred.h; sourceTree = "<group>"; };
 		E33F50861B8449EF00413856 /* JSInternalPromiseConstructor.lut.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JSInternalPromiseConstructor.lut.h; sourceTree = "<group>"; };
 		E33F50881B844A1A00413856 /* InternalPromiseConstructor.js */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.javascript; path = InternalPromiseConstructor.js; sourceTree = "<group>"; };
+		E34E657320668E8D00FB81AC /* ParseHash.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ParseHash.h; sourceTree = "<group>"; };
+		E34E657420668E8E00FB81AC /* ParseHash.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ParseHash.cpp; sourceTree = "<group>"; };
 		E34EDBF61DB5FFC100DC87A5 /* FrameTracers.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FrameTracers.h; sourceTree = "<group>"; };
 		E35070891DC49BB60089BCD6 /* DOMJITSignature.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DOMJITSignature.h; sourceTree = "<group>"; };
 		E354622A1B6065D100545386 /* ConstructAbility.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ConstructAbility.h; sourceTree = "<group>"; };
@@ -5854,6 +5860,8 @@
 				A7482B791166CDEA003B0712 /* JSWeakObjectMapRefPrivate.h */,
 				0F0B28691EB8E6CD000EB5D2 /* JSWeakPrivate.cpp */,
 				0F0B286A1EB8E6CD000EB5D2 /* JSWeakPrivate.h */,
+				7A9774A6206B828C008D03D0 /* JSWeakValue.cpp */,
+				7A9774A7206B82C9008D03D0 /* JSWeakValue.h */,
 				86E3C60C167BAB87006D760A /* JSWrapperMap.h */,
 				86E3C60B167BAB87006D760A /* JSWrapperMap.mm */,
 				86F3EEB9168CCF750077B92A /* ObjCCallbackFunction.h */,
@@ -7639,6 +7647,8 @@
 				969A07950ED1D3AE00F1F681 /* Opcode.h */,
 				0F2BDC2B151FDE8B00CD8910 /* Operands.h */,
 				A70447E917A0BD4600F5898E /* OperandsInlines.h */,
+				E34E657420668E8E00FB81AC /* ParseHash.cpp */,
+				E34E657320668E8D00FB81AC /* ParseHash.h */,
 				0FF9CE711B9CD6D0004EDCA6 /* PolymorphicAccess.cpp */,
 				0FF9CE721B9CD6D0004EDCA6 /* PolymorphicAccess.h */,
 				521131F51F82BF11007CCEEE /* PolyProtoAccessChain.cpp */,
@@ -9034,6 +9044,7 @@
 				A503FA1E188E0FB000110F14 /* JSJavaScriptCallFramePrototype.h in Headers */,
 				7013CA8C1B491A9400CAE613 /* JSJob.h in Headers */,
 				BC18C4160E16F5CD00B34460 /* JSLexicalEnvironment.h in Headers */,
+				7A9774A8206B82E4008D03D0 /* JSWeakValue.h in Headers */,
 				BC18C4230E16F5CD00B34460 /* JSLock.h in Headers */,
 				C25D709C16DE99F400FCA6BC /* JSManagedValue.h in Headers */,
 				2A4BB7F318A41179008A0FCD /* JSManagedValueInternal.h in Headers */,
@@ -9232,6 +9243,7 @@
 				BC18C4480E16F5CD00B34460 /* Operations.h in Headers */,
 				0FE228ED1436AB2700196C48 /* Options.h in Headers */,
 				0F9DAA0A1FD1C3D30079C5B2 /* ParallelSourceAdapter.h in Headers */,
+				E34E657520668EAA00FB81AC /* ParseHash.h in Headers */,
 				37C738D21EDB56E4003F2B0B /* ParseInt.h in Headers */,
 				BC18C44B0E16F5CD00B34460 /* Parser.h in Headers */,
 				93052C350FB792190048FDC3 /* ParserArena.h in Headers */,
@@ -9907,7 +9919,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n\nif [[ -f \"${BUILT_PRODUCTS_DIR}/libWTF.a\" ]]; then\n    ln -s -f -h \"${BUILT_PRODUCTS_DIR}/libWTF.a\" \"${BUILT_PRODUCTS_DIR}/DerivedSources/JavaScriptCore/libWTF.a\"\nelse\n    ln -s -f -h \"${SDK_DIR}/usr/local/lib/libWTF.a\" \"${BUILT_PRODUCTS_DIR}/DerivedSources/JavaScriptCore/libWTF.a\"\nfi";
+			shellScript = "set -e\n\nif [[ -f \"${BUILT_PRODUCTS_DIR}${WK_ALTERNATE_WEBKIT_SDK_PATH}/libWTF.a\" ]]; then\n    ln -s -f -h \"${BUILT_PRODUCTS_DIR}${WK_ALTERNATE_WEBKIT_SDK_PATH}/libWTF.a\" \"${BUILT_PRODUCTS_DIR}/DerivedSources/JavaScriptCore/libWTF.a\"\nelse\n    ln -s -f -h \"${SDK_DIR}${WK_ALTERNATE_WEBKIT_SDK_PATH}/usr/local/lib/libWTF.a\" \"${BUILT_PRODUCTS_DIR}/DerivedSources/JavaScriptCore/libWTF.a\"\nfi";
 		};
 		53B4BD091F68AF8900D2BEA3 /* Generate Unified Sources */ = {
 			isa = PBXShellScriptBuildPhase;

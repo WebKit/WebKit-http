@@ -907,7 +907,7 @@ static void validate(WKWebViewConfiguration *configuration)
 
 - (WKNavigation *)goToBackForwardListItem:(WKBackForwardListItem *)item
 {
-    auto navigation = _page->goToBackForwardItem(&item._item);
+    auto navigation = _page->goToBackForwardItem(item._item);
     if (!navigation)
         return nil;
 
@@ -1917,6 +1917,7 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
 
 - (RefPtr<WebKit::ViewSnapshot>)_takeViewSnapshot
 {
+#if HAVE(CORE_ANIMATION_RENDER_SERVER)
     float deviceScale = WebCore::screenScaleFactor();
     WebCore::FloatSize snapshotSize(self.bounds.size);
     snapshotSize.scale(deviceScale);
@@ -1954,6 +1955,9 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
     WebCore::IntSize imageSize = WebCore::expandedIntSize(WebCore::FloatSize(snapshotSize));
     return WebKit::ViewSnapshot::create(slotID, imageSize, (imageSize.area() * 4).unsafeGet());
 #endif // HAVE(IOSURFACE)
+#else // HAVE(CORE_ANIMATION_RENDER_SERVER)
+    return nullptr;
+#endif
 }
 
 - (void)_zoomToPoint:(WebCore::FloatPoint)point atScale:(double)scale animated:(BOOL)animated
@@ -2424,8 +2428,8 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
 {
-    if (![self usesStandardContentView])
-        [_customContentView scrollViewDidScroll:(UIScrollView *)scrollView];
+    if (![self usesStandardContentView] && [_customContentView respondsToSelector:@selector(web_scrollViewDidScroll:)])
+        [_customContentView web_scrollViewDidScroll:(UIScrollView *)scrollView];
 
     [self _scheduleVisibleContentRectUpdateAfterScrollInView:scrollView];
 
@@ -5346,7 +5350,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     CGFloat imageHeight = imageScale * snapshotRectInContentCoordinates.size.height;
     CGSize imageSize = CGSizeMake(imageWidth, imageHeight);
 
-#if HAVE(IOSURFACE)
+#if HAVE(CORE_ANIMATION_RENDER_SERVER) && HAVE(IOSURFACE)
     // If we are parented and thus won't incur a significant penalty from paging in tiles, snapshot the view hierarchy directly.
     if (NSString *displayName = self.window.screen.displayConfiguration.name) {
         auto surface = WebCore::IOSurface::create(WebCore::expandedIntSize(WebCore::FloatSize(imageSize)), WebCore::sRGBColorSpaceRef());

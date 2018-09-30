@@ -3030,7 +3030,7 @@ void webkit_web_view_go_to_back_forward_list_item(WebKitWebView* webView, WebKit
     g_return_if_fail(WEBKIT_IS_WEB_VIEW(webView));
     g_return_if_fail(WEBKIT_IS_BACK_FORWARD_LIST_ITEM(listItem));
 
-    getPage(webView).goToBackForwardItem(webkitBackForwardListItemGetItem(listItem));
+    getPage(webView).goToBackForwardItem(*webkitBackForwardListItemGetItem(listItem));
 }
 
 /**
@@ -3249,7 +3249,7 @@ WebKitFindController* webkit_web_view_get_find_controller(WebKitWebView* webView
 
 #if PLATFORM(GTK)
 /**
- * webkit_web_view_get_javascript_global_context:
+ * webkit_web_view_get_javascript_global_context: (skip)
  * @web_view: a #WebKitWebView
  *
  * Get the global JavaScript context used by @web_view to deserialize the

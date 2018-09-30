@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2018 Apple Inc. All rights reserved.
  * Copyright (C) 2018 Sony Interactive Entertainment Inc.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -62,10 +62,12 @@
 #include <WebCore/DiagnosticLoggingClient.h>
 #include <WebCore/LogInitialization.h>
 #include <WebCore/MIMETypeRegistry.h>
+#include <WebCore/NetworkStateNotifier.h>
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/PlatformCookieJar.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/RuntimeApplicationChecks.h>
+#include <WebCore/SchemeRegistry.h>
 #include <WebCore/SecurityOriginData.h>
 #include <WebCore/SecurityOriginHash.h>
 #include <WebCore/Settings.h>
@@ -73,6 +75,7 @@
 #include <pal/SessionID.h>
 #include <wtf/CallbackAggregator.h>
 #include <wtf/OptionSet.h>
+#include <wtf/ProcessPrivilege.h>
 #include <wtf/RunLoop.h>
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/CString.h>
@@ -121,6 +124,12 @@ NetworkProcess::NetworkProcess()
 #if ENABLE(LEGACY_CUSTOM_PROTOCOL_MANAGER)
     addSupplement<LegacyCustomProtocolManager>();
 #endif
+
+    NetworkStateNotifier::singleton().addListener([this](bool isOnLine) {
+        auto webProcessConnections = m_webProcessConnections;
+        for (auto& webProcessConnection : webProcessConnections)
+            webProcessConnection->setOnLineState(isOnLine);
+    });
 }
 
 NetworkProcess::~NetworkProcess()
@@ -209,6 +218,8 @@ void NetworkProcess::lowMemoryHandler(Critical critical)
 
 void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&& parameters)
 {
+    WTF::setProcessPrivileges({ ProcessPrivilege::CanAccessRawCookies, ProcessPrivilege::CanAccessCredentials });
+    WebCore::NetworkStorageSession::permitProcessToUseCookieAPI(true);
     WebCore::setPresentingApplicationPID(parameters.presentingApplicationPID);
     platformInitializeNetworkProcess(parameters);
 
@@ -261,6 +272,27 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
     for (auto& supplement : m_supplements.values())
         supplement->initialize(parameters);
 
+    for (auto& scheme : parameters.urlSchemesRegisteredAsSecure)
+        registerURLSchemeAsSecure(scheme);
+
+    for (auto& scheme : parameters.urlSchemesRegisteredAsBypassingContentSecurityPolicy)
+        registerURLSchemeAsBypassingContentSecurityPolicy(scheme);
+
+    for (auto& scheme : parameters.urlSchemesRegisteredAsLocal)
+        registerURLSchemeAsLocal(scheme);
+
+    for (auto& scheme : parameters.urlSchemesRegisteredAsNoAccess)
+        registerURLSchemeAsNoAccess(scheme);
+
+    for (auto& scheme : parameters.urlSchemesRegisteredAsDisplayIsolated)
+        registerURLSchemeAsDisplayIsolated(scheme);
+
+    for (auto& scheme : parameters.urlSchemesRegisteredAsCORSEnabled)
+        registerURLSchemeAsCORSEnabled(scheme);
+
+    for (auto& scheme : parameters.urlSchemesRegisteredAsCanDisplayOnlyIfCanRequest)
+        registerURLSchemeAsCanDisplayOnlyIfCanRequest(scheme);
+
     RELEASE_LOG(Process, "%p - NetworkProcess::initializeNetworkProcess: Presenting process = %d", this, WebCore::presentingApplicationPID());
 }
 
@@ -284,8 +316,12 @@ void NetworkProcess::createNetworkConnectionToWebProcess()
     parentProcessConnection()->send(Messages::NetworkProcessProxy::DidCreateNetworkConnectionToWebProcess(clientSocket), 0);
 #elif OS(DARWIN)
     // Create the listening port.
-    mach_port_t listeningPort;
-    mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &listeningPort);
+    mach_port_t listeningPort = MACH_PORT_NULL;
+    auto kr = mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &listeningPort);
+    if (kr != KERN_SUCCESS) {
+        LOG_ERROR("Could not allocate mach port, error %x", kr);
+        CRASH();
+    }
 
     // Create a listening connection.
     auto connection = NetworkConnectionToWebProcess::create(IPC::Connection::Identifier(listeningPort));
@@ -306,6 +342,9 @@ void NetworkProcess::createNetworkConnectionToWebProcess()
 #else
     notImplemented();
 #endif
+
+    if (!m_webProcessConnections.isEmpty())
+        m_webProcessConnections.last()->setOnLineState(NetworkStateNotifier::singleton().onLine());
 }
 
 void NetworkProcess::clearCachedCredentials()
@@ -847,6 +886,41 @@ void NetworkProcess::preconnectTo(const WebCore::URL& url, WebCore::StoredCreden
 uint64_t NetworkProcess::cacheStoragePerOriginQuota() const
 {
     return m_cacheStoragePerOriginQuota;
+}
+
+void NetworkProcess::registerURLSchemeAsSecure(const String& scheme) const
+{
+    SchemeRegistry::registerURLSchemeAsSecure(scheme);
+}
+
+void NetworkProcess::registerURLSchemeAsBypassingContentSecurityPolicy(const String& scheme) const
+{
+    SchemeRegistry::registerURLSchemeAsBypassingContentSecurityPolicy(scheme);
+}
+
+void NetworkProcess::registerURLSchemeAsLocal(const String& scheme) const
+{
+    SchemeRegistry::registerURLSchemeAsLocal(scheme);
+}
+
+void NetworkProcess::registerURLSchemeAsNoAccess(const String& scheme) const
+{
+    SchemeRegistry::registerURLSchemeAsNoAccess(scheme);
+}
+
+void NetworkProcess::registerURLSchemeAsDisplayIsolated(const String& scheme) const
+{
+    SchemeRegistry::registerURLSchemeAsDisplayIsolated(scheme);
+}
+
+void NetworkProcess::registerURLSchemeAsCORSEnabled(const String& scheme) const
+{
+    SchemeRegistry::registerURLSchemeAsCORSEnabled(scheme);
+}
+
+void NetworkProcess::registerURLSchemeAsCanDisplayOnlyIfCanRequest(const String& scheme) const
+{
+    SchemeRegistry::registerAsCanDisplayOnlyIfCanRequest(scheme);
 }
 
 #if !PLATFORM(COCOA)

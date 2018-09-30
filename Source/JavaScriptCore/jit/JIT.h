@@ -313,8 +313,11 @@ namespace JSC {
         void compileCallEvalSlowCase(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitPutCallResult(Instruction*);
 
-        enum CompileOpStrictEqType { OpStrictEq, OpNStrictEq };
-        void compileOpStrictEq(Instruction* instruction, CompileOpStrictEqType type);
+        enum class CompileOpStrictEqType { StrictEq, NStrictEq };
+        void compileOpStrictEq(Instruction*, CompileOpStrictEqType);
+        void compileOpStrictEqJump(Instruction*, CompileOpStrictEqType);
+        enum class CompileOpEqType { Eq, NEq };
+        void compileOpEqJumpSlow(Vector<SlowCaseEntry>::iterator&, CompileOpEqType, int jumpTarget);
         bool isOperandConstantDouble(int src);
         
         void emitLoadDouble(int index, FPRegisterID value);
@@ -523,6 +526,10 @@ namespace JSC {
         void emit_op_jnlesseq(Instruction*);
         void emit_op_jngreater(Instruction*);
         void emit_op_jngreatereq(Instruction*);
+        void emit_op_jeq(Instruction*);
+        void emit_op_jneq(Instruction*);
+        void emit_op_jstricteq(Instruction*);
+        void emit_op_jnstricteq(Instruction*);
         void emit_op_jbelow(Instruction*);
         void emit_op_jbeloweq(Instruction*);
         void emit_op_jtrue(Instruction*);
@@ -616,6 +623,10 @@ namespace JSC {
         void emitSlow_op_jnlesseq(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_jngreater(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_jngreatereq(Instruction*, Vector<SlowCaseEntry>::iterator&);
+        void emitSlow_op_jeq(Instruction*, Vector<SlowCaseEntry>::iterator&);
+        void emitSlow_op_jneq(Instruction*, Vector<SlowCaseEntry>::iterator&);
+        void emitSlow_op_jstricteq(Instruction*, Vector<SlowCaseEntry>::iterator&);
+        void emitSlow_op_jnstricteq(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_jtrue(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_loop_hint(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_check_traps(Instruction*, Vector<SlowCaseEntry>::iterator&);
@@ -705,7 +716,7 @@ namespace JSC {
 
         MacroAssembler::Call appendCallWithExceptionCheck(const FunctionPtr, PtrTag);
 #if OS(WINDOWS) && CPU(X86_64)
-        MacroAssembler::Call appendCallWithExceptionCheckAndSlowPathReturnType(const FunctionPtr, PtrTag = NoPtrTag);
+        MacroAssembler::Call appendCallWithExceptionCheckAndSlowPathReturnType(const FunctionPtr, PtrTag);
 #endif
         MacroAssembler::Call appendCallWithCallFrameRollbackOnException(const FunctionPtr, PtrTag);
         MacroAssembler::Call appendCallWithExceptionCheckSetJSValueResult(const FunctionPtr, PtrTag, int);
@@ -727,12 +738,37 @@ namespace JSC {
             return callOperation(operation, tag, result, args...);
         }
 
+#if OS(WINDOWS) && CPU(X86_64)
+        template<typename OperationType, typename... Args>
+        std::enable_if_t<std::is_same<typename FunctionTraits<OperationType>::ResultType, SlowPathReturnType>::value, MacroAssembler::Call>
+        callOperation(OperationType operation, PtrTag tag, Args... args)
+        {
+            setupArguments<OperationType>(args...);
+            return appendCallWithExceptionCheckAndSlowPathReturnType(operation, tag);
+        }
+
+        template<typename Type>
+        static constexpr bool is64BitType() { return sizeof(Type) <= 8; }
+
+        template<>
+        static constexpr bool is64BitType<void>() { return true; }
+
+        template<typename OperationType, typename... Args>
+        std::enable_if_t<!std::is_same<typename FunctionTraits<OperationType>::ResultType, SlowPathReturnType>::value, MacroAssembler::Call>
+        callOperation(OperationType operation, PtrTag tag, Args... args)
+        {
+            static_assert(is64BitType<typename FunctionTraits<OperationType>::ResultType>(), "Win64 cannot use standard call when return type is larger than 64 bits.");
+            setupArguments<OperationType>(args...);
+            return appendCallWithExceptionCheck(operation, tag);
+        }
+#else // OS(WINDOWS) && CPU(X86_64)
         template<typename OperationType, typename... Args>
         MacroAssembler::Call callOperation(OperationType operation, PtrTag tag, Args... args)
         {
             setupArguments<OperationType>(args...);
             return appendCallWithExceptionCheck(operation, tag);
         }
+#endif // OS(WINDOWS) && CPU(X86_64)
 
         template<typename OperationType, typename... Args>
         MacroAssembler::Call callOperation(OperationType operation, Args... args)

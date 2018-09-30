@@ -198,7 +198,7 @@ AllowCrossOriginSubresourcesToAskForCredentials:
 
 AVFoundationEnabled:
   type: bool
-  defaultValue: true
+  defaultValue: DEFAULT_AVFOUNDATION_ENABLED
   getter: isAVFoundationEnabled
   webcoreBinding: DeprecatedGlobalSettings
   condition: USE(AVFOUNDATION)
@@ -1037,6 +1037,11 @@ VisibleDebugOverlayRegions:
   type: uint32_t
   defaultValue: 0
   category: debug
+
+ShouldEnableTextAutosizingBoost:
+  type: bool
+  defaultValue: false
+  condition: ENABLE(TEXT_AUTOSIZING)
 
 ShouldAllowUserInstalledFonts:
   type: bool

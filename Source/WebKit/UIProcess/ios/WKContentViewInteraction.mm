@@ -53,7 +53,7 @@
 #import "WKPreviewActionItemIdentifiers.h"
 #import "WKPreviewActionItemInternal.h"
 #import "WKPreviewElementInfoInternal.h"
-#import "WKSelectMenuViewController.h"
+#import "WKSelectMenuListViewController.h"
 #import "WKTextInputListViewController.h"
 #import "WKTimePickerViewController.h"
 #import "WKUIDelegatePrivate.h"
@@ -126,7 +126,7 @@
 
 #if ENABLE(EXTRA_ZOOM_MODE)
 
-@interface WKContentView (ExtraZoomMode) <WKTextFormControlViewControllerDelegate, WKFocusedFormControlViewControllerDelegate, WKSelectMenuViewControllerDelegate, WKFormControlListViewControllerDelegate>
+@interface WKContentView (ExtraZoomMode) <WKTextFormControlViewControllerDelegate, WKFocusedFormControlViewControllerDelegate, WKSelectMenuListViewControllerDelegate, WKTextFormControlListViewControllerDelegate>
 @end
 
 #endif
@@ -575,6 +575,11 @@ static WKDragSessionContext *ensureLocalDragSessionContext(id <UIDragSession> se
 @end
 
 @implementation WKContentView (WKInteraction)
+
+static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeInformation)
+{
+    return (assistedNodeInformation.elementType != InputType::None);
+}
 
 - (void)_createAndConfigureDoubleTapGestureRecognizer
 {
@@ -1256,7 +1261,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
         fontSize:_assistedNodeInformation.nodeFontSize
         minimumScale:_assistedNodeInformation.minimumScaleFactor
         maximumScale:_assistedNodeInformation.maximumScaleFactorIgnoringAlwaysScalable
-        allowScaling:_assistedNodeInformation.allowsUserScalingIgnoringAlwaysScalable && [[UIDevice currentDevice] userInterfaceIdiom] == UIUserInterfaceIdiomPhone
+        allowScaling:_assistedNodeInformation.allowsUserScalingIgnoringAlwaysScalable && !currentUserInterfaceIdiomIsPad()
         forceScroll:[self requiresAccessoryView]];
 
     _didAccessoryTabInitiateFocus = NO;
@@ -1266,7 +1271,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
 
 - (UIView *)inputView
 {
-    if (_assistedNodeInformation.elementType == InputType::None)
+    if (!hasAssistedNode(_assistedNodeInformation))
         return nil;
 
     if (!_inputPeripheral)
@@ -1279,7 +1284,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
 
 - (CGRect)_selectionClipRect
 {
-    if (_assistedNodeInformation.elementType == InputType::None)
+    if (!hasAssistedNode(_assistedNodeInformation))
         return CGRectNull;
     return _page->editorState().postLayoutData().selectionClipRect;
 }
@@ -1295,10 +1300,12 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)preventedGestureRecognizer canBePreventedByGestureRecognizer:(UIGestureRecognizer *)preventingGestureRecognizer {
     // Don't allow the highlight to be prevented by a selection gesture. Press-and-hold on a link should highlight the link, not select it.
-    if ((preventingGestureRecognizer == _textSelectionAssistant.get().loupeGesture || [_webSelectionAssistant isSelectionGestureRecognizer:preventingGestureRecognizer])
-        && (preventedGestureRecognizer == _highlightLongPressGestureRecognizer || preventedGestureRecognizer == _longPressGestureRecognizer)) {
+    bool isForcePressGesture = NO;
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000
+    isForcePressGesture = (preventingGestureRecognizer == _textSelectionAssistant.get().forcePressGesture);
+#endif
+    if ((preventingGestureRecognizer == _textSelectionAssistant.get().loupeGesture || isForcePressGesture || [_webSelectionAssistant isSelectionGestureRecognizer:preventingGestureRecognizer]) && (preventedGestureRecognizer == _highlightLongPressGestureRecognizer || preventedGestureRecognizer == _longPressGestureRecognizer))
         return NO;
-    }
 
     return YES;
 }
@@ -1315,7 +1322,10 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
     if (isSamePair(gestureRecognizer, otherGestureRecognizer, _highlightLongPressGestureRecognizer.get(), _webSelectionAssistant.get().selectionLongPressRecognizer))
         return YES;
-
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 120000
+    if (isSamePair(gestureRecognizer, otherGestureRecognizer, _highlightLongPressGestureRecognizer.get(), _textSelectionAssistant.get().forcePressGesture))
+        return YES;
+#endif
     if (isSamePair(gestureRecognizer, otherGestureRecognizer, _singleTapGestureRecognizer.get(), _textSelectionAssistant.get().singleTapGesture))
         return YES;
 
@@ -1518,7 +1528,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
         || gestureRecognizer == _twoFingerDoubleTapGestureRecognizer
         || gestureRecognizer == _singleTapGestureRecognizer) {
 
-        if (_textSelectionAssistant) {
+        if (hasAssistedNode(_assistedNodeInformation)) {
             // Request information about the position with sync message.
             // If the assisted node is the same, prevent the gesture.
             if (![self ensurePositionInformationIsUpToDate:InteractionInformationRequest(roundedIntPoint(point))])
@@ -1529,30 +1539,30 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     }
 
     if (gestureRecognizer == _highlightLongPressGestureRecognizer) {
-        if (_textSelectionAssistant) {
+        if (hasAssistedNode(_assistedNodeInformation)) {
             // This is a different node than the assisted one.
             // Prevent the gesture if there is no node.
             // Allow the gesture if it is a node that wants highlight or if there is an action for it.
             if (!_positionInformation.isElement)
                 return NO;
             return [self _actionForLongPress] != nil;
-        } else {
-            // We still have no idea about what is at the location.
-            // Send and async message to find out.
-            _hasValidPositionInformation = NO;
-            InteractionInformationRequest request(roundedIntPoint(point));
-
-            // If 3D Touch is enabled, asynchronously collect snapshots in the hopes that
-            // they'll arrive before we have to synchronously request them in
-            // _interactionShouldBeginFromPreviewItemController.
-            if (self.traitCollection.forceTouchCapability == UIForceTouchCapabilityAvailable) {
-                request.includeSnapshot = true;
-                request.includeLinkIndicator = true;
-            }
-
-            [self requestAsynchronousPositionInformationUpdate:request];
-            return YES;
         }
+        // We still have no idea about what is at the location.
+        // Send an async message to find out.
+        _hasValidPositionInformation = NO;
+        InteractionInformationRequest request(roundedIntPoint(point));
+
+        // If 3D Touch is enabled, asynchronously collect snapshots in the hopes that
+        // they'll arrive before we have to synchronously request them in
+        // _interactionShouldBeginFromPreviewItemController.
+        if (self.traitCollection.forceTouchCapability == UIForceTouchCapabilityAvailable) {
+            request.includeSnapshot = true;
+            request.includeLinkIndicator = true;
+        }
+
+        [self requestAsynchronousPositionInformationUpdate:request];
+        return YES;
+
     }
 
     if (gestureRecognizer == _longPressGestureRecognizer) {
@@ -1563,7 +1573,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
         if (![self ensurePositionInformationIsUpToDate:request])
             return NO;
 
-        if (_textSelectionAssistant) {
+        if (hasAssistedNode(_assistedNodeInformation)) {
             // Prevent the gesture if it is the same node.
             if (_positionInformation.nodeAtPositionIsAssistedNode)
                 return NO;
@@ -1650,6 +1660,10 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     if (self.isAssistingNode)
         return _positionInformation.nodeAtPositionIsAssistedNode;
 
+    // If we're selecting something, don't activate highlight.
+    if (gesture == UIWKGestureLoupe && [self hasSelectablePositionAtPoint:point])
+        [self _cancelLongPressGestureRecognizer];
+    
     // Otherwise, if we're using a text interaction assistant outside of editing purposes (e.g. the selection mode
     // is character granularity) then allow text selection.
     return YES;
@@ -1682,7 +1696,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
 - (NSArray *)webSelectionRects
 {
-    if (_page->editorState().selectionIsNone)
+    if (_page->editorState().isMissingPostLayoutData || _page->editorState().selectionIsNone)
         return nil;
     const auto& selectionRects = _page->editorState().postLayoutData().selectionRects;
     return [self webSelectionRectsForSelectionRects:selectionRects];
@@ -1889,6 +1903,9 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 
 - (void)useSelectionAssistantWithGranularity:(WKSelectionGranularity)selectionGranularity
 {
+#if ENABLE(UNIFIED_TEXT_SELECTION)
+    selectionGranularity = WKSelectionGranularityCharacter;
+#endif
     if (selectionGranularity == WKSelectionGranularityDynamic) {
         if (_textSelectionAssistant) {
             [_textSelectionAssistant deactivateSelection];
@@ -1936,6 +1953,10 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     [_webSelectionAssistant willStartScrollingOrZoomingPage];
     [_textSelectionAssistant willStartScrollingOverflow];
     _page->setIsScrollingOrZooming(true);
+
+#if ENABLE(EXTRA_ZOOM_MODE)
+    [_focusedFormControlViewController disengageFocusedFormControlNavigation];
+#endif
 }
 
 - (void)scrollViewWillStartPanOrPinchGesture
@@ -1952,6 +1973,10 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
         [_textSelectionAssistant didEndScrollingOverflow];
     }
     _page->setIsScrollingOrZooming(false);
+
+#if ENABLE(EXTRA_ZOOM_MODE)
+    [_focusedFormControlViewController engageFocusedFormControlNavigation];
+#endif
 }
 
 - (BOOL)requiresAccessoryView
@@ -4023,7 +4048,7 @@ static bool isAssistableInputType(InputType type)
 
 - (void)_startAssistingNode:(const AssistedNodeInformation&)information userIsInteracting:(BOOL)userIsInteracting blurPreviousNode:(BOOL)blurPreviousNode changingActivityState:(BOOL)changingActivityState userObject:(NSObject <NSSecureCoding> *)userObject
 {
-    SetForScope<BOOL> isChangingFocusForScope { _isChangingFocus, _assistedNodeInformation.elementType != InputType::None };
+    SetForScope<BOOL> isChangingFocusForScope { _isChangingFocus, hasAssistedNode(_assistedNodeInformation) };
     _inputViewUpdateDeferrer = nullptr;
 
     id <_WKInputDelegate> inputDelegate = [_webView _inputDelegate];
@@ -4034,7 +4059,7 @@ static bool isAssistableInputType(InputType type)
         shouldShowKeyboard = [inputDelegate _webView:_webView focusShouldStartInputSession:focusedElementInfo.get()];
     else {
         // The default behavior is to allow node assistance if the user is interacting or the keyboard is already active.
-        shouldShowKeyboard = userIsInteracting || _textSelectionAssistant || changingActivityState;
+        shouldShowKeyboard = userIsInteracting || _isChangingFocus || changingActivityState;
 #if ENABLE(DATA_INTERACTION)
         shouldShowKeyboard |= _dragDropInteractionState.isPerformingDrop();
 #endif
@@ -4165,93 +4190,17 @@ static bool isAssistableInputType(InputType type)
 
 #if ENABLE(EXTRA_ZOOM_MODE)
 
-- (void)dismissAllInputViewControllers
-{
-    [self dismissTextInputViewController:YES];
-    [self dismissNumberPadViewController:YES];
-    [self dismissSelectMenuViewController:YES];
-    [self dismissTimePickerViewController:YES];
-    [self dismissDatePickerViewController:YES];
-}
-
-- (void)presentDatePickerViewController:(BOOL)animated
-{
-    if (_datePickerViewController)
-        return;
-
-    _datePickerViewController = adoptNS([[WKDatePickerViewController alloc] initWithText:_assistedNodeInformation.value textSuggestions:@[ ]]);
-    [_datePickerViewController setDelegate:self];
-    [_focusedFormControlViewController presentViewController:_datePickerViewController.get() animated:animated completion:nil];
-}
-
-- (void)dismissDatePickerViewController:(BOOL)animated
-{
-    if (!_datePickerViewController)
-        return;
-
-    auto datePickerViewController = WTFMove(_datePickerViewController);
-    [datePickerViewController dismissViewControllerAnimated:animated completion:nil];
-}
-
-- (void)presentTimePickerViewController:(BOOL)animated
-{
-    if (_timePickerViewController)
-        return;
-
-    _timePickerViewController = adoptNS([[WKTimePickerViewController alloc] initWithText:_assistedNodeInformation.value textSuggestions:@[ ]]);
-    [_timePickerViewController setDelegate:self];
-    [_focusedFormControlViewController presentViewController:_timePickerViewController.get() animated:animated completion:nil];
-}
-
-- (void)dismissTimePickerViewController:(BOOL)animated
-{
-    if (!_timePickerViewController)
-        return;
-
-    auto timePickerViewController = WTFMove(_timePickerViewController);
-    [timePickerViewController dismissViewControllerAnimated:animated completion:nil];
-}
-
-- (void)presentSelectMenuViewController:(BOOL)animated
-{
-    if (_selectMenuViewController)
-        return;
-
-    _selectMenuViewController = adoptNS([[WKSelectMenuViewController alloc] init]);
-    [_selectMenuViewController setDelegate:self];
-    [_focusedFormControlViewController presentViewController:_selectMenuViewController.get() animated:animated completion:nil];
-}
-
-- (void)dismissSelectMenuViewController:(BOOL)animated
-{
-    if (!_selectMenuViewController)
-        return;
-
-    auto selectMenuViewController = WTFMove(_selectMenuViewController);
-    [selectMenuViewController dismissViewControllerAnimated:animated completion:nil];
-}
-
 - (void)presentFocusedFormControlViewController:(BOOL)animated
 {
     if (_focusedFormControlViewController)
         return;
 
     ++_webView->_activeFocusedStateRetainCount;
-    _shouldRestoreFirstResponderStatusAfterLosingFocus = self.isFirstResponder;
 
     _focusedFormControlViewController = adoptNS([[WKFocusedFormControlViewController alloc] init]);
     [_focusedFormControlViewController setDelegate:self];
     [[UIViewController _viewControllerForFullScreenPresentationFromView:self] presentViewController:_focusedFormControlViewController.get() animated:animated completion:nil];
     [self setInputDelegate:_focusedFormControlViewController.get()];
-}
-
-- (void)dismissNumberPadViewController:(BOOL)animated
-{
-    if (!_numberPadViewController)
-        return;
-
-    auto numberPadViewController = WTFMove(_numberPadViewController);
-    [numberPadViewController dismissViewControllerAnimated:animated completion:nil];
 }
 
 - (void)dismissFocusedFormControlViewController:(BOOL)animated
@@ -4261,69 +4210,81 @@ static bool isAssistableInputType(InputType type)
 
     --_webView->_activeFocusedStateRetainCount;
 
-    if (_shouldRestoreFirstResponderStatusAfterLosingFocus && !self.isFirstResponder) {
-        _shouldRestoreFirstResponderStatusAfterLosingFocus = NO;
-        [self becomeFirstResponder];
-    }
-
     [_focusedFormControlViewController dismissViewControllerAnimated:animated completion:nil];
     _focusedFormControlViewController = nil;
     [self setInputDelegate:nil];
-}
-
-- (void)presentNumberPadViewController:(BOOL)animated
-{
-    if (_numberPadViewController)
-        return;
-
-    _numberPadViewController = adoptNS([[WKNumberPadViewController alloc] initWithText:_assistedNodeInformation.value textSuggestions:@[]]);
-    [_numberPadViewController setDelegate:self];
-    [_focusedFormControlViewController presentViewController:_numberPadViewController.get() animated:animated completion:nil];
 }
 
 - (void)presentViewControllerForCurrentAssistedNode
 {
     [self dismissAllInputViewControllers];
 
+    _shouldRestoreFirstResponderStatusAfterLosingFocus = self.isFirstResponder;
+
     switch (_assistedNodeInformation.elementType) {
     case InputType::Number:
     case InputType::NumberPad:
     case InputType::Phone:
-        [self presentNumberPadViewController:YES];
+        if (!_numberPadViewController) {
+            _numberPadViewController = adoptNS([[WKNumberPadViewController alloc] initWithText:_assistedNodeInformation.value textSuggestions:@[]]);
+            [_numberPadViewController setDelegate:self];
+            [_focusedFormControlViewController presentViewController:_numberPadViewController.get() animated:YES completion:nil];
+        }
         break;
     case InputType::Select:
-        [self presentSelectMenuViewController:YES];
+        if (!_selectMenuListViewController) {
+            _selectMenuListViewController = adoptNS([[WKSelectMenuListViewController alloc] initWithDelegate:self]);
+            [_focusedFormControlViewController presentViewController:_selectMenuListViewController.get() animated:YES completion:nil];
+        }
         break;
     case InputType::Time:
-        [self presentTimePickerViewController:YES];
+        if (!_timePickerViewController) {
+            _timePickerViewController = adoptNS([[WKTimePickerViewController alloc] initWithText:_assistedNodeInformation.value textSuggestions:@[ ]]);
+            [_timePickerViewController setDelegate:self];
+            [_focusedFormControlViewController presentViewController:_timePickerViewController.get() animated:YES completion:nil];
+        }
         break;
     case InputType::Date:
-        [self presentDatePickerViewController:YES];
+        if (!_datePickerViewController) {
+            _datePickerViewController = adoptNS([[WKDatePickerViewController alloc] initWithText:_assistedNodeInformation.value textSuggestions:@[ ]]);
+            [_datePickerViewController setDelegate:self];
+            [_focusedFormControlViewController presentViewController:_datePickerViewController.get() animated:YES completion:nil];
+        }
         break;
     case InputType::None:
+        ASSERT_NOT_REACHED();
         break;
     default:
-        [self presentTextInputViewController:YES];
+        if (!_textInputListViewController) {
+            _textInputListViewController = adoptNS([[WKTextInputListViewController alloc] initWithDelegate:self]);
+            [_focusedFormControlViewController presentViewController:_textInputListViewController.get() animated:YES completion:nil];
+        }
         break;
     }
 }
 
-- (void)presentTextInputViewController:(BOOL)animated
+- (void)dismissAllInputViewControllers
 {
-    if (_textInputListViewController)
-        return;
+    if (auto controller = WTFMove(_textInputListViewController))
+        [controller dismissViewControllerAnimated:YES completion:nil];
 
-    _textInputListViewController = adoptNS([[WKTextInputListViewController alloc] initWithDelegate:self]);
-    [_focusedFormControlViewController presentViewController:_textInputListViewController.get() animated:animated completion:nil];
-}
+    if (auto controller = WTFMove(_numberPadViewController))
+        [controller dismissViewControllerAnimated:YES completion:nil];
 
-- (void)dismissTextInputViewController:(BOOL)animated
-{
-    if (!_textInputListViewController)
-        return;
+    if (auto controller = WTFMove(_selectMenuListViewController))
+        [controller dismissViewControllerAnimated:YES completion:nil];
 
-    auto textInputListViewController = WTFMove(_textInputListViewController);
-    [textInputListViewController dismissViewControllerAnimated:animated completion:nil];
+    if (auto controller = WTFMove(_timePickerViewController))
+        [controller dismissViewControllerAnimated:YES completion:nil];
+
+    if (auto controller = WTFMove(_datePickerViewController))
+        [controller dismissViewControllerAnimated:YES completion:nil];
+
+    if (_shouldRestoreFirstResponderStatusAfterLosingFocus) {
+        _shouldRestoreFirstResponderStatusAfterLosingFocus = NO;
+        if (!self.isFirstResponder)
+            [self becomeFirstResponder];
+    }
 }
 
 - (void)textInputController:(WKTextFormControlViewController *)controller didCommitText:(NSString *)text
@@ -4348,8 +4309,11 @@ static bool isAssistableInputType(InputType type)
     [_focusedFormControlViewController show:NO];
     [self dismissAllInputViewControllers];
     [self updateCurrentAssistedNodeInformation:[weakSelf = WeakObjCPtr<WKContentView>(self)] (bool didUpdate) {
-        if (didUpdate)
-            [weakSelf.get()->_focusedFormControlViewController reloadData:YES];
+        if (didUpdate) {
+            auto focusedFormController = weakSelf.get()->_focusedFormControlViewController;
+            [focusedFormController reloadData:YES];
+            [focusedFormController engageFocusedFormControlNavigation];
+        }
     }];
 }
 
@@ -4377,9 +4341,30 @@ static bool isAssistableInputType(InputType type)
     }];
 }
 
-- (CGRect)highlightedRectForFocusedFormControlController:(WKFocusedFormControlViewController *)controller inCoordinateSpace:(id <UICoordinateSpace>)coordinateSpace
+- (CGRect)rectForFocusedFormControlController:(WKFocusedFormControlViewController *)controller inCoordinateSpace:(id <UICoordinateSpace>)coordinateSpace
 {
     return [self convertRect:_assistedNodeInformation.elementRect toCoordinateSpace:coordinateSpace];
+}
+
+- (CGRect)nextRectForFocusedFormControlController:(WKFocusedFormControlViewController *)controller inCoordinateSpace:(id <UICoordinateSpace>)coordinateSpace
+{
+    if (!_assistedNodeInformation.hasNextNode)
+        return CGRectNull;
+
+    return [self convertRect:_assistedNodeInformation.nextNodeRect toCoordinateSpace:coordinateSpace];
+}
+
+- (CGRect)previousRectForFocusedFormControlController:(WKFocusedFormControlViewController *)controller inCoordinateSpace:(id <UICoordinateSpace>)coordinateSpace
+{
+    if (!_assistedNodeInformation.hasPreviousNode)
+        return CGRectNull;
+
+    return [self convertRect:_assistedNodeInformation.previousNodeRect toCoordinateSpace:coordinateSpace];
+}
+
+- (UIScrollView *)scrollViewForFocusedFormControlController:(WKFocusedFormControlViewController *)controller
+{
+    return self._scroller;
 }
 
 - (NSString *)actionNameForFocusedFormControlController:(WKFocusedFormControlViewController *)controller
@@ -4427,27 +4412,20 @@ static bool isAssistableInputType(InputType type)
         [_textInputListViewController reloadTextSuggestions];
 }
 
-#pragma mark - WKSelectMenuViewControllerDelegate
+#pragma mark - WKSelectMenuListViewControllerDelegate
 
-- (void)selectMenu:(WKSelectMenuViewController *)selectMenu didSelectItemAtIndex:(NSUInteger)index
+- (void)selectMenu:(WKSelectMenuListViewController *)selectMenu didSelectItemAtIndex:(NSUInteger)index
 {
-    if (!_assistedNodeInformation.isMultiSelect)
-        _page->setAssistedNodeSelectedIndex(index, false);
-
-    _page->blurAssistedNode();
+    ASSERT(!_assistedNodeInformation.isMultiSelect);
+    _page->setAssistedNodeSelectedIndex(index, false);
 }
 
-- (void)didCancelSelectionInSelectMenu:(WKSelectMenuViewController *)selectMenu
-{
-    _page->blurAssistedNode();
-}
-
-- (NSUInteger)numberOfItemsInSelectMenu:(WKSelectMenuViewController *)selectMenu
+- (NSUInteger)numberOfItemsInSelectMenu:(WKSelectMenuListViewController *)selectMenu
 {
     return self.assistedNodeSelectOptions.size();
 }
 
-- (NSString *)selectMenu:(WKSelectMenuViewController *)selectMenu displayTextForItemAtIndex:(NSUInteger)index
+- (NSString *)selectMenu:(WKSelectMenuListViewController *)selectMenu displayTextForItemAtIndex:(NSUInteger)index
 {
     auto& options = self.assistedNodeSelectOptions;
     if (index >= options.size()) {
@@ -4458,7 +4436,7 @@ static bool isAssistableInputType(InputType type)
     return options[index].text;
 }
 
-- (void)selectMenu:(WKSelectMenuViewController *)selectMenu didCheckItemAtIndex:(NSUInteger)index checked:(BOOL)checked
+- (void)selectMenu:(WKSelectMenuListViewController *)selectMenu didCheckItemAtIndex:(NSUInteger)index checked:(BOOL)checked
 {
     ASSERT(_assistedNodeInformation.isMultiSelect);
     if (index >= self.assistedNodeSelectOptions.size()) {
@@ -4476,12 +4454,12 @@ static bool isAssistableInputType(InputType type)
     option.isSelected = checked;
 }
 
-- (BOOL)selectMenuSupportsMultipleSelection:(WKSelectMenuViewController *)selectMenu
+- (BOOL)selectMenuUsesMultipleSelection:(WKSelectMenuListViewController *)selectMenu
 {
     return _assistedNodeInformation.isMultiSelect;
 }
 
-- (BOOL)selectMenu:(WKSelectMenuViewController *)selectMenu hasCheckedOptionAtIndex:(NSUInteger)index
+- (BOOL)selectMenu:(WKSelectMenuListViewController *)selectMenu hasSelectedOptionAtIndex:(NSUInteger)index
 {
     if (index >= self.assistedNodeSelectOptions.size()) {
         ASSERT_NOT_REACHED();
@@ -4491,27 +4469,12 @@ static bool isAssistableInputType(InputType type)
     return self.assistedNodeSelectOptions[index].isSelected;
 }
 
-- (NSUInteger)startingIndexForSelectMenu:(WKSelectMenuViewController *)selectMenu
-{
-    if (_assistedNodeInformation.isMultiSelect)
-        return 0;
-
-    auto firstSelectedIndex = self.assistedNodeSelectOptions.findMatching([&] (auto& option) {
-        return option.isSelected;
-    });
-
-    return firstSelectedIndex == notFound ? 0 : firstSelectedIndex;
-}
-
 #endif // ENABLE(EXTRA_ZOOM_MODE)
 
 - (void)_wheelChangedWithEvent:(UIEvent *)event
 {
 #if ENABLE(EXTRA_ZOOM_MODE)
     if ([_numberPadViewController handleWheelEvent:event])
-        return;
-
-    if ([_selectMenuViewController handleWheelEvent:event])
         return;
 
     if ([_timePickerViewController handleWheelEvent:event])
@@ -4611,6 +4574,7 @@ static bool isAssistableInputType(InputType type)
 
 - (void)_showPlaybackTargetPicker:(BOOL)hasVideo fromRect:(const IntRect&)elementRect
 {
+#if ENABLE(AIRPLAY_PICKER)
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000 && !PLATFORM(WATCHOS) && !PLATFORM(APPLETV)
     if (!_airPlayRoutePicker)
         _airPlayRoutePicker = adoptNS([[WKAirPlayRoutePicker alloc] init]);
@@ -4619,6 +4583,7 @@ static bool isAssistableInputType(InputType type)
     if (!_airPlayRoutePicker)
         _airPlayRoutePicker = adoptNS([[WKAirPlayRoutePicker alloc] initWithView:self]);
     [_airPlayRoutePicker show:hasVideo fromRect:elementRect];
+#endif
 #endif
 }
 
@@ -5173,7 +5138,7 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
 - (NSDictionary *)_autofillContext
 {
     BOOL provideStrongPasswordAssistance = _focusRequiresStrongPasswordAssistance && _assistedNodeInformation.elementType == InputType::Password;
-    if (_assistedNodeInformation.elementType == InputType::None || (!_assistedNodeInformation.acceptsAutofilledLoginCredentials && !provideStrongPasswordAssistance))
+    if (!hasAssistedNode(_assistedNodeInformation) || (!_assistedNodeInformation.acceptsAutofilledLoginCredentials && !provideStrongPasswordAssistance))
         return nil;
 
     if (provideStrongPasswordAssistance)

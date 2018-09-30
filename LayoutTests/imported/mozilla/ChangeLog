@@ -1,3 +1,81 @@
+2018-03-23  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Make imported/mozilla/css-animations/test_animation-currenttime.html pass reliably
+        https://bugs.webkit.org/show_bug.cgi?id=183819
+
+        Reviewed by Dean Jackson.
+
+        Record progressions of Mozilla tests.
+
+        * css-animations/test_animation-currenttime-expected.txt:
+
+2018-03-23  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Correctly handle timing functions specified by CSS Animations and CSS Transitions
+        https://bugs.webkit.org/show_bug.cgi?id=183935
+
+        Reviewed by Dean Jackson.
+
+        Record progressions of Mozilla tests.
+
+        * css-animations/test_animation-computed-timing-expected.txt:
+        * css-transitions/test_animation-computed-timing-expected.txt:
+        * css-transitions/test_keyframeeffect-getkeyframes-expected.txt:
+
+2018-03-23  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] infinite repeat counts aren't reflected for CSS Animations
+        https://bugs.webkit.org/show_bug.cgi?id=183932
+
+        Reviewed by Dean Jackson.
+
+        Record progressions of Mozilla tests.
+
+        * css-animations/test_animation-computed-timing-expected.txt:
+        * css-animations/test_animation-finish-expected.txt:
+
+2018-03-22  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Correctly cancel animations when a parent gets a "display: none" style or when an element is removed
+        https://bugs.webkit.org/show_bug.cgi?id=183919
+
+        Reviewed by Dean Jackson.
+
+        A number of tests now pass thanks to correctly canceling animations when a parent element in the hierarchy gets a
+        "display: none" style or if an element with animations is removed.
+
+        * css-animations/test_animation-cancel-expected.txt:
+        * css-animations/test_document-get-animations-expected.txt:
+        * css-animations/test_effect-target-expected.txt:
+        * css-transitions/test_animation-cancel-expected.txt:
+        * css-transitions/test_effect-target-expected.txt:
+
+2018-03-23  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Animated transform styles are ignored when calling getComputedStyle()
+        https://bugs.webkit.org/show_bug.cgi?id=183918
+
+        Reviewed by Dean Jackson.
+
+        We obtain one more PASS by correctly serializing the transform property on getComputedStyle().
+
+        * css-animations/test_animation-cancel-expected.txt:
+
+2018-03-22  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Support "transition: all" for CSS Transitions as Web Animations
+        https://bugs.webkit.org/show_bug.cgi?id=183917
+
+        Reviewed by Dean Jackson.
+
+        Record progressions thanks to supporting "transition: all".
+
+        * css-transitions/test_animation-finished-expected.txt:
+        * css-transitions/test_csstransition-transitionproperty-expected.txt:
+        * css-transitions/test_effect-target-expected.txt:
+        * css-transitions/test_element-get-animations-expected.txt:
+        * css-transitions/test_pseudoElement-get-animations-expected.txt:
+
 2018-03-21  Antoine Quint  <graouts@apple.com>
 
         [Web Animations] Make imported/mozilla/css-animations/test_event-dispatch.html pass reliably

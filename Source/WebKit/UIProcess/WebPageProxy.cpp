@@ -126,11 +126,13 @@
 #include <WebCore/EventNames.h>
 #include <WebCore/FloatRect.h>
 #include <WebCore/FocusDirection.h>
+#include <WebCore/FrameLoader.h>
 #include <WebCore/JSDOMBinding.h>
 #include <WebCore/JSDOMExceptionHandling.h>
 #include <WebCore/LengthBox.h>
 #include <WebCore/MIMETypeRegistry.h>
 #include <WebCore/MediaStreamRequest.h>
+#include <WebCore/NavigationPolicyCheck.h>
 #include <WebCore/PerformanceLoggingClient.h>
 #include <WebCore/PublicSuffix.h>
 #include <WebCore/RenderEmbeddedObject.h>
@@ -713,13 +715,13 @@ RefPtr<API::Navigation> WebPageProxy::reattachToWebProcessForReload()
     auto navigation = m_navigationState->createReloadNavigation();
 
     // We allow stale content when reloading a WebProcess that's been killed or crashed.
-    m_process->send(Messages::WebPage::GoToBackForwardItem(navigation->navigationID(), m_backForwardList->currentItem()->itemID()), m_pageID);
+    m_process->send(Messages::WebPage::GoToBackForwardItem(navigation->navigationID(), m_backForwardList->currentItem()->itemID(), FrameLoadType::IndexedBackForward, NavigationPolicyCheck::Require), m_pageID);
     m_process->responsivenessTimer().start();
 
     return WTFMove(navigation);
 }
 
-RefPtr<API::Navigation> WebPageProxy::reattachToWebProcessWithItem(WebBackForwardListItem* item)
+RefPtr<API::Navigation> WebPageProxy::reattachToWebProcessWithItem(WebBackForwardListItem& item)
 {
     if (m_isClosed)
         return nullptr;
@@ -727,15 +729,12 @@ RefPtr<API::Navigation> WebPageProxy::reattachToWebProcessWithItem(WebBackForwar
     ASSERT(!isValid());
     reattachToWebProcess();
 
-    if (!item)
-        return nullptr;
+    if (&item != m_backForwardList->currentItem())
+        m_backForwardList->goToItem(item);
 
-    if (item != m_backForwardList->currentItem())
-        m_backForwardList->goToItem(*item);
+    auto navigation = m_navigationState->createBackForwardNavigation(item, FrameLoadType::IndexedBackForward);
 
-    auto navigation = m_navigationState->createBackForwardNavigation();
-
-    m_process->send(Messages::WebPage::GoToBackForwardItem(navigation->navigationID(), item->itemID()), m_pageID);
+    m_process->send(Messages::WebPage::GoToBackForwardItem(navigation->navigationID(), item.itemID(), FrameLoadType::IndexedBackForward, NavigationPolicyCheck::Require), m_pageID);
     m_process->responsivenessTimer().start();
 
     return WTFMove(navigation);
@@ -1184,21 +1183,7 @@ RefPtr<API::Navigation> WebPageProxy::goForward()
     if (!forwardItem)
         return nullptr;
 
-    auto transaction = m_pageLoadState.transaction();
-
-    m_pageLoadState.setPendingAPIRequestURL(transaction, forwardItem->url());
-
-    if (!isValid())
-        return reattachToWebProcessWithItem(forwardItem);
-
-    RefPtr<API::Navigation> navigation;
-    if (!m_backForwardList->currentItem()->itemIsInSameDocument(*forwardItem))
-        navigation = m_navigationState->createBackForwardNavigation();
-
-    m_process->send(Messages::WebPage::GoForward(navigation ? navigation->navigationID() : 0, forwardItem->itemID()), m_pageID);
-    m_process->responsivenessTimer().start();
-
-    return navigation;
+    return goToBackForwardItem(*forwardItem, FrameLoadType::Forward);
 }
 
 RefPtr<API::Navigation> WebPageProxy::goBack()
@@ -1207,37 +1192,30 @@ RefPtr<API::Navigation> WebPageProxy::goBack()
     if (!backItem)
         return nullptr;
 
-    auto transaction = m_pageLoadState.transaction();
-
-    m_pageLoadState.setPendingAPIRequestURL(transaction, backItem->url());
-
-    if (!isValid())
-        return reattachToWebProcessWithItem(backItem);
-
-    RefPtr<API::Navigation> navigation;
-    if (!m_backForwardList->currentItem()->itemIsInSameDocument(*backItem))
-        navigation = m_navigationState->createBackForwardNavigation();
-
-    m_process->send(Messages::WebPage::GoBack(navigation ? navigation->navigationID() : 0, backItem->itemID()), m_pageID);
-    m_process->responsivenessTimer().start();
-
-    return navigation;
+    return goToBackForwardItem(*backItem, FrameLoadType::Back);
 }
 
-RefPtr<API::Navigation> WebPageProxy::goToBackForwardItem(WebBackForwardListItem* item)
+RefPtr<API::Navigation> WebPageProxy::goToBackForwardItem(WebBackForwardListItem& item)
 {
+    return goToBackForwardItem(item, FrameLoadType::IndexedBackForward);
+}
+
+RefPtr<API::Navigation> WebPageProxy::goToBackForwardItem(WebBackForwardListItem& item, FrameLoadType frameLoadType)
+{
+    LOG(Loading, "WebPageProxy %p goToBackForwardItem to back item URL %s", this, item.url().utf8().data());
+
     if (!isValid())
         return reattachToWebProcessWithItem(item);
 
     auto transaction = m_pageLoadState.transaction();
 
-    m_pageLoadState.setPendingAPIRequestURL(transaction, item->url());
+    m_pageLoadState.setPendingAPIRequestURL(transaction, item.url());
 
     RefPtr<API::Navigation> navigation;
-    if (!m_backForwardList->currentItem()->itemIsInSameDocument(*item))
-        navigation = m_navigationState->createBackForwardNavigation();
+    if (!m_backForwardList->currentItem()->itemIsInSameDocument(item))
+        navigation = m_navigationState->createBackForwardNavigation(item, frameLoadType);
 
-    m_process->send(Messages::WebPage::GoToBackForwardItem(navigation ? navigation->navigationID() : 0, item->itemID()), m_pageID);
+    m_process->send(Messages::WebPage::GoToBackForwardItem(navigation ? navigation->navigationID() : 0, item.itemID(), frameLoadType, NavigationPolicyCheck::Require), m_pageID);
     m_process->responsivenessTimer().start();
 
     return navigation;
@@ -2373,9 +2351,10 @@ void WebPageProxy::receivedPolicyDecision(PolicyAction action, WebFrameProxy& fr
         ASSERT(activePolicyListener->listenerID() == listenerID);
 
         if (action == PolicyAction::Use && navigation) {
-            auto proposedProcess = process().processPool().processForNavigation(*this, navigation->request().url());
+            auto proposedProcess = process().processPool().processForNavigation(*this, *navigation, action);
             if (proposedProcess.ptr() != &process()) {
-                action = PolicyAction::Suspend;
+                LOG(Loading, "Switching to new process for navigation %" PRIu64 " to url '%s' (WebBackForwardListItem %p)", navigation->navigationID(), navigation->loggingURL().utf8().data(), navigation->backForwardListItem());
+
                 RunLoop::main().dispatch([this, protectedThis = makeRef(*this), navigation = makeRef(*navigation), proposedProcess = WTFMove(proposedProcess)]() mutable {
                     continueNavigationInNewProcess(navigation.get(), WTFMove(proposedProcess));
                 });
@@ -2388,9 +2367,21 @@ void WebPageProxy::receivedPolicyDecision(PolicyAction action, WebFrameProxy& fr
 
 void WebPageProxy::continueNavigationInNewProcess(API::Navigation& navigation, Ref<WebProcessProxy>&& process)
 {
-    LOG(Loading, "Continuing navigation %" PRIu64 " to URL %s in a new web process", navigation.navigationID(), navigation.request().url().string().utf8().data());
+    LOG(Loading, "Continuing navigation %" PRIu64 " to URL %s in a new web process", navigation.navigationID(), navigation.loggingURL().utf8().data());
 
     attachToProcessForNavigation(WTFMove(process));
+
+    if (auto* item = navigation.backForwardListItem()) {
+        if (item != m_backForwardList->currentItem())
+            m_backForwardList->goToItem(*item);
+
+        ASSERT(navigation.backForwardFrameLoadType());
+        ASSERT(isBackForwardLoadType(*navigation.backForwardFrameLoadType()));
+
+        m_process->send(Messages::WebPage::GoToBackForwardItem(navigation.navigationID(), item->itemID(), *navigation.backForwardFrameLoadType(), NavigationPolicyCheck::Bypass), m_pageID);
+
+        return;
+    }
 
     // FIXME: Work out timing of responding with the last policy delegate, etc
     loadRequestWithNavigation(navigation, ResourceRequest { navigation.request() }, WebCore::ShouldOpenExternalURLsPolicy::ShouldAllowExternalSchemes, nullptr, NavigationPolicyCheck::Bypass);
@@ -2528,9 +2519,8 @@ RefPtr<API::Navigation> WebPageProxy::restoreFromSessionState(SessionState sessi
             return loadRequest(sessionState.provisionalURL);
 
         if (hasBackForwardList) {
-            // FIXME: Do we have to null check the back forward list item here?
             if (WebBackForwardListItem* item = m_backForwardList->currentItem())
-                return goToBackForwardItem(item);
+                return goToBackForwardItem(*item);
         }
     }
 
@@ -2655,6 +2645,11 @@ void WebPageProxy::windowScreenDidChange(PlatformDisplayID displayID)
         return;
 
     m_process->send(Messages::WebPage::WindowScreenDidChange(displayID), m_pageID);
+
+#if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
+    auto currentDisplaymask = CGDisplayIDToOpenGLDisplayMask(displayID);
+    m_process->send(Messages::WebPage::OpenGLDisplayMaskChanged(currentDisplaymask), m_pageID);
+#endif
 }
 
 float WebPageProxy::deviceScaleFactor() const
@@ -3813,25 +3808,20 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const Secur
     
     uint64_t newNavigationID { 0 };
     Ref<WebFramePolicyListenerProxy> listener = frame->setUpPolicyListenerProxy(listenerID, PolicyListenerType::NavigationAction);
-    if (!navigationID) {
-        auto navigation = m_navigationState->createLoadRequestNavigation(ResourceRequest(request));
-        newNavigationID = navigation->navigationID();
-        navigation->setWasUserInitiated(!!navigationActionData.userGestureTokenIdentifier);
-        navigation->setShouldForceDownload(!navigationActionData.downloadAttribute.isNull());
-        listener->setNavigation(WTFMove(navigation));
-    } else {
-        auto& navigation = m_navigationState->navigation(navigationID);
-        newNavigationID = navigationID;
-        navigation.setWasUserInitiated(!!navigationActionData.userGestureTokenIdentifier);
-        navigation.setShouldForceDownload(!navigationActionData.downloadAttribute.isNull());
-        listener->setNavigation(navigation);
-    }
+    Ref<API::Navigation> navigation = navigationID ? makeRef(m_navigationState->navigation(navigationID)) : m_navigationState->createLoadRequestNavigation(ResourceRequest(request));
+
+    newNavigationID = navigation->navigationID();
+    navigation->setWasUserInitiated(!!navigationActionData.userGestureTokenIdentifier);
+    navigation->setShouldForceDownload(!navigationActionData.downloadAttribute.isNull());
+    navigation->setIsCrossOriginWindowOpenNavigation(navigationActionData.isCrossOriginWindowOpenNavigation);
+    navigation->setOpener(navigationActionData.opener);
+    listener->setNavigation(WTFMove(navigation));
 
 #if ENABLE(CONTENT_FILTERING)
     if (frame->didHandleContentFilterUnblockNavigation(request))
         return receivedPolicyDecision(PolicyAction::Ignore, *frame, listenerID, &m_navigationState->navigation(newNavigationID), { });
 #else
-    UNUSED(newNavigationID);
+    UNUSED_PARAM(newNavigationID);
 #endif
 
     WebFrameProxy* originatingFrame = m_process->webFrame(originatingFrameInfoData.frameID);
@@ -5879,6 +5869,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
 #if PLATFORM(IOS)
     parameters.screenSize = screenSize();
     parameters.availableScreenSize = availableScreenSize();
+    parameters.overrideScreenSize = overrideScreenSize();
     parameters.textAutosizingWidth = textAutosizingWidth();
     parameters.mimeTypesWithCustomContentProviders = m_pageClient.mimeTypesWithCustomContentProviders();
     parameters.ignoresViewportScaleLimits = m_forceAlwaysUserScalable;

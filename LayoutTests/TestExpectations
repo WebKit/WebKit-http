@@ -61,6 +61,9 @@ fast/images/eps-as-image.html [ Skip ]
 # Only Mac supports Dashboard widgets.
 fast/xmlhttprequest/set-dangerous-headers-in-dashboard.html [ WontFix ]
 
+# Only applicable on macOS
+fast/css/apple-system-control-colors.html [ Skip ]
+
 # Only Mac supports force tests.
 fast/events/cancelled-force-click-link-navigation.html [ Skip ]
 fast/events/force-click-link-selection-behavior.html [ Skip ]
@@ -1705,12 +1708,8 @@ webkit.org/b/181122 imported/w3c/web-platform-tests/web-animations/interfaces/An
 webkit.org/b/181123 imported/w3c/web-platform-tests/web-animations/interfaces/Animation/finish.html [ Pass Failure ]
 webkit.org/b/181888 imported/w3c/web-platform-tests/web-animations/timing-model/animation-effects/current-iteration.html [ Pass Failure ]
 
-webkit.org/b/183815 imported/mozilla/css-animations/test_animation-cancel.html [ Pass Failure Timeout ]
-webkit.org/b/183816 imported/mozilla/css-transitions/test_keyframeeffect-getkeyframes.html [ Pass Failure Timeout ]
-webkit.org/b/183817 imported/mozilla/css-animations/test_animation-computed-timing.html [ Pass Failure Timeout ]
 webkit.org/b/183818 imported/mozilla/css-animations/test_pseudoElement-get-animations.html [ Pass Failure Timeout ]
-webkit.org/b/183819 imported/mozilla/css-animations/test_animation-currenttime.html [ Pass Failure Timeout ]
-webkit.org/b/183820 imported/mozilla/css-animations/test_animation-finish.html [ Pass Failure Timeout ]
+webkit.org/b/184011 imported/mozilla/css-animations/test_animation-cancel.html [ Pass Failure ]
 webkit.org/b/183821 imported/mozilla/css-transitions/test_animation-cancel.html [ Pass Failure Timeout ]
 webkit.org/b/183822 imported/mozilla/css-animations/test_animation-finished.html [ Pass Failure Timeout ]
 webkit.org/b/183823 imported/mozilla/css-transitions/test_animation-computed-timing.html [ Pass Failure Timeout ]
@@ -1729,17 +1728,15 @@ webkit.org/b/183835 imported/mozilla/css-transitions/test_csstransition-transiti
 webkit.org/b/183836 imported/mozilla/css-animations/test_animations-dynamic-changes.html [ Pass Failure Timeout ]
 webkit.org/b/183837 imported/mozilla/css-transitions/test_document-get-animations.html [ Pass Failure Timeout ]
 webkit.org/b/183838 imported/mozilla/css-animations/test_cssanimation-animationname.html [ Pass Failure Timeout ]
-webkit.org/b/183839 imported/mozilla/css-transitions/test_effect-target.html [ Pass Failure Timeout ]
 webkit.org/b/183840 imported/mozilla/css-animations/test_document-get-animations.html [ Pass Failure Timeout ]
 webkit.org/b/183841 imported/mozilla/css-transitions/test_element-get-animations.html [ Pass Failure Timeout ]
-webkit.org/b/183842 imported/mozilla/css-animations/test_effect-target.html [ Pass Failure Timeout ]
 webkit.org/b/183844 imported/mozilla/css-animations/test_element-get-animations.html [ Pass Failure Timeout ]
 webkit.org/b/183846 imported/mozilla/css-transitions/test_pseudoElement-get-animations.html [ Pass Failure Timeout ]
 webkit.org/b/183847 imported/mozilla/css-animations/test_event-order.html [ Pass Failure Timeout ]
 webkit.org/b/183849 imported/mozilla/css-animations/test_setting-effect.html [ Pass Failure Timeout ]
 webkit.org/b/183850 imported/mozilla/css-transitions/test_setting-effect.html [ Pass Failure Timeout ]
 
-webkit.org/b/183848 imported/mozilla/css-animations/test_keyframeeffect-getkeyframes.html [ Crash ]
+webkit.org/b/183848 imported/mozilla/css-animations/test_keyframeeffect-getkeyframes.html [ Skip ]
 
 webkit.org/b/177440 imported/w3c/web-platform-tests/html/browsers/origin/relaxing-the-same-origin-restriction/document_domain_setter_null.tentative.html [ Pass Failure ]
 
@@ -1777,3 +1774,9 @@ webkit.org/b/182311 imported/w3c/web-platform-tests/service-workers/service-work
 webkit.org/b/90980 fast/forms/textarea/textarea-state-restore.html [ Pass Timeout ]
 
 webkit.org/b/182928 http/tests/cache-storage/cache-representation.https.html [ Pass Failure ]
+
+webkit.org/b/116621 fast/replaced/preferred-widths.html [ Pass Failure ]
+
+webkit.org/b/182833 imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-drawImage.html [ Skip ]
+webkit.org/b/182833 imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-invalid-args.html [ Pass Failure ]
+webkit.org/b/182833 imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-origin.sub.html [ Pass Failure ]

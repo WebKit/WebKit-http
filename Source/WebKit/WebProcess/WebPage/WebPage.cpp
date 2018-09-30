@@ -367,6 +367,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     , m_forceAlwaysUserScalable(parameters.ignoresViewportScaleLimits)
     , m_screenSize(parameters.screenSize)
     , m_availableScreenSize(parameters.availableScreenSize)
+    , m_overrideScreenSize(parameters.overrideScreenSize)
 #endif
     , m_layerVolatilityTimer(*this, &WebPage::layerVolatilityTimerFired)
     , m_activityState(parameters.activityState)
@@ -1380,49 +1381,23 @@ void WebPage::reload(uint64_t navigationID, uint32_t reloadOptions, SandboxExten
     corePage()->userInputBridge().reloadFrame(m_mainFrame->coreFrame(), OptionSet<ReloadOption>::fromRaw(reloadOptions));
 }
 
-void WebPage::goForward(uint64_t navigationID, uint64_t backForwardItemID)
+void WebPage::goToBackForwardItem(uint64_t navigationID, uint64_t backForwardItemID, FrameLoadType backForwardType, NavigationPolicyCheck navigationPolicyCheck)
 {
     SendStopResponsivenessTimer stopper;
+
+    ASSERT(isBackForwardLoadType(backForwardType));
 
     HistoryItem* item = WebBackForwardListProxy::itemForID(backForwardItemID);
     ASSERT(item);
     if (!item)
         return;
 
-    ASSERT(!m_pendingNavigationID);
-    m_pendingNavigationID = navigationID;
-
-    m_page->goToItem(*item, FrameLoadType::Forward);
-}
-
-void WebPage::goBack(uint64_t navigationID, uint64_t backForwardItemID)
-{
-    SendStopResponsivenessTimer stopper;
-
-    HistoryItem* item = WebBackForwardListProxy::itemForID(backForwardItemID);
-    ASSERT(item);
-    if (!item)
-        return;
+    LOG(Loading, "In WebProcess, WebPage %" PRIu64 " is navigating to back/forward URL %s", m_pageID, item->url().string().utf8().data());
 
     ASSERT(!m_pendingNavigationID);
     m_pendingNavigationID = navigationID;
 
-    m_page->goToItem(*item, FrameLoadType::Back);
-}
-
-void WebPage::goToBackForwardItem(uint64_t navigationID, uint64_t backForwardItemID)
-{
-    SendStopResponsivenessTimer stopper;
-
-    HistoryItem* item = WebBackForwardListProxy::itemForID(backForwardItemID);
-    ASSERT(item);
-    if (!item)
-        return;
-
-    ASSERT(!m_pendingNavigationID);
-    m_pendingNavigationID = navigationID;
-
-    m_page->goToItem(*item, FrameLoadType::IndexedBackForward);
+    m_page->goToItem(*item, backForwardType, navigationPolicyCheck);
 }
 
 void WebPage::tryRestoreScrollPosition()

@@ -111,7 +111,6 @@ private:
 
 #if USE(COORDINATED_GRAPHICS)
     void delegatedScrollRequested(const WebCore::IntPoint& scrollOffset) final;
-    void resetUpdateAtlasForTesting() final;
 #endif
 
     WebCore::IntPoint screenToRootView(const WebCore::IntPoint&) const final;
@@ -280,6 +279,7 @@ private:
 #if PLATFORM(IOS)
     WebCore::FloatSize screenSize() const final;
     WebCore::FloatSize availableScreenSize() const final;
+    WebCore::FloatSize overrideScreenSize() const final;
 #endif
 
     void dispatchViewportPropertiesDidChange(const WebCore::ViewportArguments&) const final;

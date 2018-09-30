@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,17 +41,18 @@
 namespace WebCore {
 namespace Style {
 
-// <https://html.spec.whatwg.org/multipage/urls-and-fetching.html#cors-settings-attributes> (21 March 2018)
+// <https://html.spec.whatwg.org/multipage/urls-and-fetching.html#cors-settings-attributes>
 enum class LoadPolicy { NoCORS, Anonymous };
 static void loadPendingImage(Document& document, const StyleImage* styleImage, const Element* element, LoadPolicy loadPolicy = LoadPolicy::NoCORS)
 {
     if (!styleImage || !styleImage->isPending())
         return;
 
+    bool isInUserAgentShadowTree = element && element->isInUserAgentShadowTree();
     ResourceLoaderOptions options = CachedResourceLoader::defaultCachedResourceOptions();
-    options.contentSecurityPolicyImposition = element && element->isInUserAgentShadowTree() ? ContentSecurityPolicyImposition::SkipPolicyCheck : ContentSecurityPolicyImposition::DoPolicyCheck;
+    options.contentSecurityPolicyImposition = isInUserAgentShadowTree ? ContentSecurityPolicyImposition::SkipPolicyCheck : ContentSecurityPolicyImposition::DoPolicyCheck;
 
-    if (loadPolicy == LoadPolicy::Anonymous) {
+    if (loadPolicy == LoadPolicy::Anonymous && !isInUserAgentShadowTree && document.settings().useAnonymousModeWhenFetchingMaskImages()) {
         options.mode = FetchOptions::Mode::Cors;
         options.credentials = FetchOptions::Credentials::SameOrigin;
         options.storedCredentialsPolicy = StoredCredentialsPolicy::DoNotUse;

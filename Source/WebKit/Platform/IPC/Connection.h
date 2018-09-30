@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
  * Portions Copyright (c) 2010 Motorola Mobility, Inc.  All rights reserved.
  * Copyright (C) 2017 Sony Interactive Entertainment Inc.
@@ -100,7 +100,7 @@ public:
 
 #if USE(UNIX_DOMAIN_SOCKETS)
     typedef int Identifier;
-    static bool identifierIsNull(Identifier identifier) { return identifier == -1; }
+    static bool identifierIsValid(Identifier identifier) { return identifier != -1; }
 
     struct SocketPair {
         int client;
@@ -116,7 +116,6 @@ public:
 #elif OS(DARWIN)
     struct Identifier {
         Identifier()
-            : port(MACH_PORT_NULL)
         {
         }
 
@@ -131,17 +130,17 @@ public:
         {
         }
 
-        mach_port_t port;
+        mach_port_t port { MACH_PORT_NULL };
         OSObjectPtr<xpc_connection_t> xpcConnection;
     };
-    static bool identifierIsNull(Identifier identifier) { return identifier.port == MACH_PORT_NULL; }
+    static bool identifierIsValid(Identifier identifier) { return MACH_PORT_VALID(identifier.port); }
     xpc_connection_t xpcConnection() const { return m_xpcConnection.get(); }
     bool getAuditToken(audit_token_t&);
     pid_t remoteProcessID() const;
 #elif OS(WINDOWS)
     typedef HANDLE Identifier;
     static bool createServerAndClientIdentifiers(Identifier& serverIdentifier, Identifier& clientIdentifier);
-    static bool identifierIsNull(Identifier identifier) { return !identifier; }
+    static bool identifierIsValid(Identifier identifier) { return !!identifier; }
 #endif
 
     static Ref<Connection> createServerConnection(Identifier, Client&);
@@ -328,11 +327,11 @@ private:
     void receiveSourceEventHandler();
     void initializeSendSource();
 
-    mach_port_t m_sendPort;
-    dispatch_source_t m_sendSource;
+    mach_port_t m_sendPort { MACH_PORT_NULL };
+    dispatch_source_t m_sendSource { nullptr };
 
-    mach_port_t m_receivePort;
-    dispatch_source_t m_receiveSource;
+    mach_port_t m_receivePort { MACH_PORT_NULL };
+    dispatch_source_t m_receiveSource { nullptr };
 
     std::unique_ptr<MachMessage> m_pendingOutgoingMachMessage;
 

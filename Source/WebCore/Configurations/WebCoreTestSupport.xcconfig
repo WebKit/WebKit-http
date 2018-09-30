@@ -27,7 +27,9 @@
 PRIVATE_HEADERS_FOLDER_PATH = $(PRIVATE_HEADERS_FOLDER_PATH_$(CONFIGURATION));
 PRIVATE_HEADERS_FOLDER_PATH_Debug = WebCoreTestSupport;
 PRIVATE_HEADERS_FOLDER_PATH_Release = $(PRIVATE_HEADERS_FOLDER_PATH_Debug);
-PRIVATE_HEADERS_FOLDER_PATH_Production = /usr/local/include/WebCoreTestSupport;
+PRIVATE_HEADERS_FOLDER_PATH_Production = $(PRIVATE_HEADERS_FOLDER_PATH_Production_$(WK_USE_ALTERNATE_FRAMEWORKS_DIR));
+PRIVATE_HEADERS_FOLDER_PATH_Production_NO = /usr/local/include/WebCoreTestSupport;
+PRIVATE_HEADERS_FOLDER_PATH_Production_YES = $(WK_ALTERNATE_FRAMEWORKS_DIR)/usr/local/include/WebCoreTestSupport;
 
 INSTALL_PATH = $(INSTALL_PATH_WebCoreTestSupport_$(CONFIGURATION));
 // Using [sdk=macosx*] to override the setting in WebCore.xcconfig.
@@ -55,6 +57,6 @@ GCC_SYMBOLS_PRIVATE_EXTERN = YES;
 OTHER_LDFLAGS = $(ASAN_OTHER_LDFLAGS);
 OTHER_LDFLAGS[sdk=macos*] = $(ASAN_OTHER_LDFLAGS) -framework AppKit $(LIBWEBRTC_LDFLAGS);
 
-OTHER_LDFLAGS[sdk=iphoneos*] = $(ASAN_OTHER_LDFLAGS) -lAccessibility -F$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/PhonyWebKitLegacy $(LIBWEBRTC_LDFLAGS);
-OTHER_LDFLAGS[sdk=iphonesimulator*] = $(ASAN_OTHER_LDFLAGS) -lAccessibility -F$(BUILT_PRODUCTS_DIR)/DerivedSources/WebCore/PhonyWebKitLegacy $(LIBWEBRTC_LDFLAGS);
+OTHER_LDFLAGS[sdk=iphoneos*] = $(ASAN_OTHER_LDFLAGS) -lAccessibility $(LIBWEBRTC_LDFLAGS);
+OTHER_LDFLAGS[sdk=iphonesimulator*] = $(ASAN_OTHER_LDFLAGS) -lAccessibility $(LIBWEBRTC_LDFLAGS);
 SECT_ORDER_FLAGS = ;

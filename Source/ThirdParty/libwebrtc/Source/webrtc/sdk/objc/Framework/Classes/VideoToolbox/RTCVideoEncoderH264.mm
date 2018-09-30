@@ -35,6 +35,9 @@
 #include "system_wrappers/include/clock.h"
 #include "third_party/libyuv/include/libyuv/convert_from.h"
 
+#include "sdk/WebKit/EncoderUtilities.h"
+#include "sdk/WebKit/WebKitUtilities.h"
+
 @interface RTCVideoEncoderH264 ()
 
 - (void)frameWasEncoded:(OSStatus)status
@@ -285,7 +288,7 @@ CFStringRef ExtractProfile(webrtc::SdpVideoFormat videoFormat) {
   RTCVideoEncoderCallback _callback;
   int32_t _width;
   int32_t _height;
-  VTCompressionSessionRef _compressionSession;
+  CompressionSessionRef _compressionSession;
   RTCVideoCodecMode _mode;
 
   webrtc::H264BitstreamParser _h264BitstreamParser;
@@ -318,6 +321,10 @@ CFStringRef ExtractProfile(webrtc::SdpVideoFormat videoFormat) {
 
 - (void)dealloc {
   [self destroyCompressionSession];
+  if (_callback) {
+    Block_release(_callback);
+  }
+  [super dealloc];
 }
 
 - (NSInteger)startEncodeWithSettings:(RTCVideoEncoderSettings *)settings
@@ -358,9 +365,9 @@ CFStringRef ExtractProfile(webrtc::SdpVideoFormat videoFormat) {
 
   // Get a pixel buffer from the pool and copy frame data over.
   CVPixelBufferPoolRef pixelBufferPool =
-      VTCompressionSessionGetPixelBufferPool(_compressionSession);
+      CompressionSessionGetPixelBufferPool(_compressionSession);
   if ([self resetCompressionSessionIfNeededForPool:pixelBufferPool withFrame:frame]) {
-    pixelBufferPool = VTCompressionSessionGetPixelBufferPool(_compressionSession);
+    pixelBufferPool = CompressionSessionGetPixelBufferPool(_compressionSession);
     isKeyframeRequired = YES;
   }
 
@@ -442,7 +449,7 @@ CFStringRef ExtractProfile(webrtc::SdpVideoFormat videoFormat) {
   // Update the bitrate if needed.
   [self setBitrateBps:_bitrateAdjuster->GetAdjustedBitrateBps()];
 
-  OSStatus status = VTCompressionSessionEncodeFrame(_compressionSession,
+  OSStatus status = CompressionSessionEncodeFrame(_compressionSession,
                                                     pixelBuffer,
                                                     presentationTimeStamp,
                                                     kCMTimeInvalid,
@@ -463,7 +470,7 @@ CFStringRef ExtractProfile(webrtc::SdpVideoFormat videoFormat) {
 }
 
 - (void)setCallback:(RTCVideoEncoderCallback)callback {
-  _callback = callback;
+  _callback = Block_copy(callback);
 }
 
 - (int)setBitrate:(uint32_t)bitrateKbit framerate:(uint32_t)framerate {
@@ -480,6 +487,7 @@ CFStringRef ExtractProfile(webrtc::SdpVideoFormat videoFormat) {
   // callback anymore. Do not remove callback until the session is invalidated
   // since async encoder callbacks can occur until invalidation.
   [self destroyCompressionSession];
+  Block_release(_callback);
   _callback = nullptr;
   return WEBRTC_VIDEO_CODEC_OK;
 }
@@ -573,13 +581,13 @@ CFStringRef ExtractProfile(webrtc::SdpVideoFormat videoFormat) {
       nullptr, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
   CFDictionarySetValue(encoder_specs,
                        kVTVideoEncoderSpecification_EnableHardwareAcceleratedVideoEncoder,
-                       kCFBooleanTrue);
+                       webrtc::isH264HardwareEncoderAllowed() ? kCFBooleanTrue : kCFBooleanFalse);
 #endif
   OSStatus status =
-      VTCompressionSessionCreate(nullptr,  // use default allocator
+      CompressionSessionCreate(nullptr,  // use default allocator
                                  _width,
                                  _height,
-                                 kCMVideoCodecType_H264,
+                                 kCodecTypeH264,
                                  encoder_specs,  // use hardware accelerated encoder if available
                                  sourceAttributes,
                                  nullptr,  // use default compressed data allocator
@@ -636,7 +644,7 @@ CFStringRef ExtractProfile(webrtc::SdpVideoFormat videoFormat) {
 
 - (void)destroyCompressionSession {
   if (_compressionSession) {
-    VTCompressionSessionInvalidate(_compressionSession);
+    CompressionSessionInvalidate(_compressionSession);
     CFRelease(_compressionSession);
     _compressionSession = nullptr;
   }

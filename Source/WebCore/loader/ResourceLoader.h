@@ -164,7 +164,7 @@ protected:
     void didReceiveDataOrBuffer(const char*, unsigned, RefPtr<SharedBuffer>&&, long long encodedDataLength, DataPayloadType);
 
 #if PLATFORM(COCOA)
-    NSCachedURLResponse* willCacheResponse(ResourceHandle*, NSCachedURLResponse*) override;
+    void willCacheResponseAsync(ResourceHandle*, NSCachedURLResponse*, CompletionHandler<void(NSCachedURLResponse *)>&&) override;
 #endif
 
     virtual void willSendRequestInternal(ResourceRequest&&, const ResourceResponse& redirectResponse, CompletionHandler<void(ResourceRequest&&)>&&);
@@ -202,7 +202,7 @@ private:
     bool shouldUseCredentialStorage(ResourceHandle*) override { return shouldUseCredentialStorage(); }
     void didReceiveAuthenticationChallenge(ResourceHandle*, const AuthenticationChallenge&) override;
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    void canAuthenticateAgainstProtectionSpaceAsync(ResourceHandle*, const ProtectionSpace&) override;
+    void canAuthenticateAgainstProtectionSpaceAsync(ResourceHandle*, const ProtectionSpace&, CompletionHandler<void(bool)>&&) override;
 #endif
     void receivedCancellation(ResourceHandle*, const AuthenticationChallenge& challenge) override { receivedCancellation(challenge); }
 #if PLATFORM(IOS)

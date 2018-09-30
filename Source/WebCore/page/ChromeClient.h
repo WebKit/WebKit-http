@@ -166,7 +166,6 @@ public:
 
 #if USE(COORDINATED_GRAPHICS)
     virtual void delegatedScrollRequested(const IntPoint&) = 0;
-    virtual void resetUpdateAtlasForTesting() = 0;
 #endif
 
     virtual IntPoint screenToRootView(const IntPoint&) const = 0;
@@ -186,6 +185,7 @@ public:
 
     virtual FloatSize screenSize() const { return const_cast<ChromeClient&>(*this).windowRect().size(); }
     virtual FloatSize availableScreenSize() const { return const_cast<ChromeClient&>(*this).windowRect().size(); }
+    virtual FloatSize overrideScreenSize() const { return const_cast<ChromeClient&>(*this).windowRect().size(); }
 
     virtual void dispatchViewportPropertiesDidChange(const ViewportArguments&) const { }
 

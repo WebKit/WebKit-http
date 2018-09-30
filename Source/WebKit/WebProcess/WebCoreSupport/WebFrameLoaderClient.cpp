@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -90,6 +90,7 @@
 #include <WebCore/Widget.h>
 #include <WebCore/WindowFeatures.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/ProcessPrivilege.h>
 
 using namespace WebCore;
 
@@ -845,7 +846,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
     FrameInfoData originatingFrameInfoData;
     originatingFrameInfoData.isMainFrame = navigationAction.initiatedByMainFrame() == InitiatedByMainFrame::Yes;
     originatingFrameInfoData.request = ResourceRequest(sourceDocument.url());
-    originatingFrameInfoData.securityOrigin = SecurityOriginData::fromSecurityOrigin(sourceDocument.securityOrigin());
+    originatingFrameInfoData.securityOrigin = sourceDocument.securityOrigin().data();
     if (originatingFrame)
         originatingFrameInfoData.frameID = originatingFrame->frameID();
 
@@ -860,6 +861,8 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
     navigationActionData.shouldOpenExternalURLsPolicy = navigationAction.shouldOpenExternalURLsPolicy();
     navigationActionData.downloadAttribute = navigationAction.downloadAttribute();
     navigationActionData.isRedirect = didReceiveRedirectResponse;
+    navigationActionData.isCrossOriginWindowOpenNavigation = navigationAction.isCrossOriginWindowOpenNavigation();
+    navigationActionData.opener = navigationAction.opener();
 
     WebCore::Frame* coreFrame = m_frame->coreFrame();
     if (!coreFrame)
@@ -1738,13 +1741,13 @@ RemoteAXObjectRef WebFrameLoaderClient::accessibilityRemoteObject()
     return webPage->accessibilityRemoteObject();
 }
     
-NSCachedURLResponse *WebFrameLoaderClient::willCacheResponse(DocumentLoader*, unsigned long identifier, NSCachedURLResponse* response) const
+void WebFrameLoaderClient::willCacheResponse(DocumentLoader*, unsigned long identifier, NSCachedURLResponse* response, CompletionHandler<void(NSCachedURLResponse *)>&& completionHandler) const
 {
     WebPage* webPage = m_frame->page();
     if (!webPage)
-        return response;
+        return completionHandler(response);
 
-    return webPage->injectedBundleResourceLoadClient().shouldCacheResponse(*webPage, *m_frame, identifier) ? response : nil;
+    return completionHandler(webPage->injectedBundleResourceLoadClient().shouldCacheResponse(*webPage, *m_frame, identifier) ? response : nil);
 }
 
 NSDictionary *WebFrameLoaderClient::dataDetectionContext()
@@ -1793,6 +1796,7 @@ bool WebFrameLoaderClient::shouldForceUniversalAccessFromLocalURL(const WebCore:
 
 Ref<FrameNetworkingContext> WebFrameLoaderClient::createNetworkingContext()
 {
+    ASSERT(!hasProcessPrivilege(ProcessPrivilege::CanAccessRawCookies));
     return WebFrameNetworkingContext::create(m_frame);
 }
 

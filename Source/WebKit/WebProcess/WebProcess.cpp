@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -117,6 +117,7 @@
 #include <WebCore/URLParser.h>
 #include <WebCore/UserGestureIndicator.h>
 #include <wtf/Language.h>
+#include <wtf/ProcessPrivilege.h>
 #include <wtf/RunLoop.h>
 #include <wtf/text/StringHash.h>
 
@@ -219,12 +220,26 @@ WebProcess::~WebProcess()
 
 void WebProcess::initializeProcess(const ChildProcessInitializationParameters& parameters)
 {
+    WTF::setProcessPrivileges({ });
+
     MessagePortChannelProvider::setSharedProvider(WebMessagePortChannelProvider::singleton());
     
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#if PLATFORM(MAC)
+#if ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
+    // Deny the WebContent process access to the WindowServer.
+    // We cannot call setApplicationIsDaemon here, since Activity Monitor will not show the
+    // url of the WebContent process, then.
+    // This call will not succeed if there are open WindowServer connections at this point.
+    CGError error = CGSSetDenyWindowServerConnections(true);
+    ASSERT(error == kCGErrorSuccess);
+    if (error != kCGErrorSuccess)
+        WTFLogAlways("Failed to deny WindowServer connections, error = %d", error);
+#endif
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
     // This call is needed when the WebProcess is not running the NSApplication event loop.
     // Otherwise, calling enableSandboxStyleFileQuarantine() will fail.
     launchServicesCheckIn();
+#endif
 #endif
     platformInitializeProcess(parameters);
 }
@@ -1141,7 +1156,7 @@ NetworkProcessConnection& WebProcess::ensureNetworkProcessConnection()
 #else
         ASSERT_NOT_REACHED();
 #endif
-        if (IPC::Connection::identifierIsNull(connectionIdentifier))
+        if (!IPC::Connection::identifierIsValid(connectionIdentifier))
             CRASH();
         m_networkProcessConnection = NetworkProcessConnection::create(connectionIdentifier);
     }
@@ -1215,8 +1230,9 @@ WebToStorageProcessConnection& WebProcess::ensureWebToStorageProcessConnection(P
 #else
         ASSERT_NOT_REACHED();
 #endif
-        if (IPC::Connection::identifierIsNull(connectionIdentifier))
+        if (!IPC::Connection::identifierIsValid(connectionIdentifier))
             CRASH();
+
         m_webToStorageProcessConnection = WebToStorageProcessConnection::create(connectionIdentifier);
 
     }
@@ -1273,7 +1289,7 @@ void WebProcess::fetchWebsiteData(PAL::SessionID sessionID, OptionSet<WebsiteDat
 {
     if (websiteDataTypes.contains(WebsiteDataType::MemoryCache)) {
         for (auto& origin : MemoryCache::singleton().originsWithCache(sessionID))
-            websiteData.entries.append(WebsiteData::Entry { SecurityOriginData::fromSecurityOrigin(*origin), WebsiteDataType::MemoryCache, 0 });
+            websiteData.entries.append(WebsiteData::Entry { origin->data(), WebsiteDataType::MemoryCache, 0 });
     }
 
     if (websiteDataTypes.contains(WebsiteDataType::Credentials)) {
@@ -1676,9 +1692,11 @@ void WebProcess::establishWorkerContextConnectionToStorageProcess(uint64_t pageG
     SWContextManager::singleton().setConnection(std::make_unique<WebSWContextManagerConnection>(ipcConnection, pageGroupID, pageID, store));
 }
 
-void WebProcess::registerServiceWorkerClients(PAL::SessionID sessionID)
+void WebProcess::registerServiceWorkerClients()
 {
-    ServiceWorkerProvider::singleton().registerServiceWorkerClients(sessionID);
+    // We do not want to register service worker dummy documents.
+    ASSERT(!SWContextManager::singleton().connection());
+    ServiceWorkerProvider::singleton().registerServiceWorkerClients();
 }
 
 #endif

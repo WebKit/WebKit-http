@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -156,6 +156,9 @@ void Connection::terminateSoon(Seconds interval)
     
 void Connection::platformInitialize(Identifier identifier)
 {
+    if (!MACH_PORT_VALID(identifier.port))
+        return;
+
     if (m_isServer) {
         m_receivePort = identifier.port;
         m_sendPort = MACH_PORT_NULL;
@@ -179,12 +182,17 @@ bool Connection::open()
     if (m_isServer) {
         ASSERT(m_receivePort);
         ASSERT(!m_sendPort);
-        
+        ASSERT(MACH_PORT_VALID(m_receivePort));
     } else {
         ASSERT(!m_receivePort);
         ASSERT(m_sendPort);
+        ASSERT(MACH_PORT_VALID(m_sendPort));
 
-        mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &m_receivePort);
+        auto kr = mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &m_receivePort);
+        if (kr != KERN_SUCCESS) {
+            LOG_ERROR("Could not allocate mach port, error %x: %s", kr, mach_error_string(kr));
+            CRASH();
+        }
 #if !PLATFORM(WATCHOS)
         mach_port_guard(mach_task_self(), m_receivePort, reinterpret_cast<mach_port_context_t>(this), true);
 #endif
@@ -354,6 +362,7 @@ bool Connection::sendOutgoingMessage(std::unique_ptr<Encoder> encoder)
         memcpy(messageData, encoder->buffer(), encoder->bufferSize());
 
     ASSERT(m_sendPort);
+    ASSERT(MACH_PORT_VALID(m_sendPort));
 
     return sendMessage(WTFMove(message));
 }
@@ -383,6 +392,7 @@ void Connection::initializeSendSource()
         }
     });
 
+    ASSERT(MACH_PORT_VALID(m_sendPort));
     mach_port_t sendPort = m_sendPort;
     dispatch_source_set_cancel_handler(m_sendSource, ^{
         // Release our send right.
@@ -455,12 +465,14 @@ typedef Vector<char, receiveBufferSize> ReceiveBuffer;
 
 static mach_msg_header_t* readFromMachPort(mach_port_t machPort, ReceiveBuffer& buffer)
 {
+    ASSERT(MACH_PORT_VALID(machPort));
+
     buffer.resize(receiveBufferSize);
 
     mach_msg_header_t* header = reinterpret_cast<mach_msg_header_t*>(buffer.data());
     kern_return_t kr = mach_msg(header, MACH_RCV_MSG | MACH_RCV_LARGE | MACH_RCV_TIMEOUT, 0, buffer.size(), machPort, 0, MACH_PORT_NULL);
     if (kr == MACH_RCV_TIMED_OUT)
-        return 0;
+        return nullptr;
 
     if (kr == MACH_RCV_TOO_LARGE) {
         // The message was too large, resize the buffer and try again.
@@ -476,7 +488,7 @@ static mach_msg_header_t* readFromMachPort(mach_port_t machPort, ReceiveBuffer& 
         WebKit::setCrashReportApplicationSpecificInformation((CFStringRef)[NSString stringWithFormat:@"Unhandled error code %x from mach_msg, receive port is %x", kr, machPort]);
 #endif
         ASSERT_NOT_REACHED();
-        return 0;
+        return nullptr;
     }
 
     return header;
@@ -486,6 +498,7 @@ void Connection::receiveSourceEventHandler()
 {
     ReceiveBuffer buffer;
 
+    ASSERT(MACH_PORT_VALID(m_receivePort));
     mach_msg_header_t* header = readFromMachPort(m_receivePort, buffer);
     if (!header)
         return;
@@ -525,8 +538,15 @@ void Connection::receiveSourceEventHandler()
         m_sendPort = port.port();
         
         if (m_sendPort) {
-            mach_port_t previousNotificationPort;
-            mach_port_request_notification(mach_task_self(), m_receivePort, MACH_NOTIFY_NO_SENDERS, 0, MACH_PORT_NULL, MACH_MSG_TYPE_MOVE_SEND_ONCE, &previousNotificationPort);
+            ASSERT(MACH_PORT_VALID(m_receivePort));
+            mach_port_t previousNotificationPort = MACH_PORT_NULL;
+            auto kr = mach_port_request_notification(mach_task_self(), m_receivePort, MACH_NOTIFY_NO_SENDERS, 0, MACH_PORT_NULL, MACH_MSG_TYPE_MOVE_SEND_ONCE, &previousNotificationPort);
+            ASSERT(kr == KERN_SUCCESS);
+            if (kr != KERN_SUCCESS) {
+                // If mach_port_request_notification fails, 'previousNotificationPort' will be uninitialized.
+                LOG_ERROR("mach_port_request_notification failed: (%x) %s", kr, mach_error_string(kr));
+                previousNotificationPort = MACH_PORT_NULL;
+            }
 
             if (previousNotificationPort != MACH_PORT_NULL)
                 mach_port_deallocate(mach_task_self(), previousNotificationPort);

@@ -26,6 +26,7 @@
 class BlockFormattingState extends FormattingState {
     constructor(formattingRoot, layoutState) {
         super(layoutState, formattingRoot);
-        this._setFormattingContext(new BlockFormattingContext(this));
+        // New block formatting state always establishes a new floating state.
+        this.m_floatingState = new FloatingState(this);
     }
 }

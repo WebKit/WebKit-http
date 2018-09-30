@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include <wtf/CompletionHandler.h>
 #include <wtf/Forward.h>
 #include <wtf/Ref.h>
 
@@ -83,14 +84,13 @@ public:
     WEBCORE_EXPORT virtual void didReceiveResponseAsync(ResourceHandle*, ResourceResponse&&, CompletionHandler<void()>&&) = 0;
 
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
-    // Client will pass an updated request using ResourceHandle::continueCanAuthenticateAgainstProtectionSpace() when ready.
-    WEBCORE_EXPORT virtual void canAuthenticateAgainstProtectionSpaceAsync(ResourceHandle*, const ProtectionSpace&) = 0;
+    WEBCORE_EXPORT virtual void canAuthenticateAgainstProtectionSpaceAsync(ResourceHandle*, const ProtectionSpace&, CompletionHandler<void(bool)>&&) = 0;
 #endif
-    // Client will pass an updated request using ResourceHandle::continueWillCacheResponse() when ready.
+
 #if USE(CFURLCONNECTION)
-    WEBCORE_EXPORT virtual void willCacheResponseAsync(ResourceHandle*, CFCachedURLResponseRef);
+    WEBCORE_EXPORT virtual void willCacheResponseAsync(ResourceHandle*, CFCachedURLResponseRef response, CompletionHandler<void(CFCachedURLResponseRef)>&& completionHandler) { completionHandler(response); }
 #elif PLATFORM(COCOA)
-    WEBCORE_EXPORT virtual void willCacheResponseAsync(ResourceHandle*, NSCachedURLResponse *);
+    WEBCORE_EXPORT virtual void willCacheResponseAsync(ResourceHandle*, NSCachedURLResponse *response, CompletionHandler<void(NSCachedURLResponse *)>&& completionHandler) { completionHandler(response); }
 #endif
 
     virtual bool shouldUseCredentialStorage(ResourceHandle*) { return false; }
@@ -106,14 +106,8 @@ public:
     virtual RetainPtr<CFDictionaryRef> connectionProperties(ResourceHandle*) { return nullptr; }
 #endif
 
-#if USE(CFURLCONNECTION)
-    virtual CFCachedURLResponseRef willCacheResponse(ResourceHandle*, CFCachedURLResponseRef response) { return response; }
-#if PLATFORM(WIN)
+#if PLATFORM(WIN) && USE(CFURLCONNECTION)
     virtual bool shouldCacheResponse(ResourceHandle*, CFCachedURLResponseRef) { return true; }
-#endif // PLATFORM(WIN)
-
-#elif PLATFORM(COCOA)
-    virtual NSCachedURLResponse *willCacheResponse(ResourceHandle*, NSCachedURLResponse *response) { return response; }
 #endif
 };
 

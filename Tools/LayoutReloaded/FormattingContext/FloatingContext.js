@@ -23,22 +23,21 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+// All geometry here is absolute to the formatting context's root.
 class FloatingContext {
-    constructor(formattingContext) {
-        this.m_leftFloatingBoxStack = new Array();
-        this.m_rightFloatingBoxStack = new Array();
-        this.m_lastFloating = null;
-        this.m_formattingContext = formattingContext;
+    constructor(floatingState, parentFormattingContext) {
+        this.m_floatingState = floatingState;
+        this.m_parentFormattingContext = parentFormattingContext;
     }
 
     computePosition(layoutBox) {
         if (layoutBox.isOutOfFlowPositioned())
             return;
-        let displayBox = this._formattingContext().displayBox(layoutBox);
+        let displayBox = this._formattingState().displayBox(layoutBox);
         if (layoutBox.isFloatingPositioned()) {
-            let position = this._positionForFloating(layoutBox);
-            this._addFloating(layoutBox);
-            return displayBox.setTopLeft(position);
+            displayBox.setTopLeft(this._positionForFloating(layoutBox));
+            this._addFloatingBox(layoutBox);
+            return;
         }
         if (Utils.hasClear(layoutBox))
             return displayBox.setTopLeft(this._positionForClear(layoutBox));
@@ -47,8 +46,8 @@ class FloatingContext {
     }
 
     bottom() {
-        let leftBottom = this._bottom(this.m_leftFloatingBoxStack);
-        let rightBottom = this._bottom(this.m_rightFloatingBoxStack);
+        let leftBottom = this._bottom(this._leftFloatingStack());
+        let rightBottom = this._bottom(this._rightFloatingStack());
         if (Number.isNaN(leftBottom) && Number.isNaN(rightBottom))
             return Number.NaN;
         if (!Number.isNaN(leftBottom) && !Number.isNaN(rightBottom))
@@ -59,10 +58,11 @@ class FloatingContext {
     }
 
     _positionForFloating(floatingBox) {
+        let absoluteFloatingBox = this._formattingContext().absoluteMarginBox(floatingBox);
         if (this._isEmpty())
-            return this._adjustedFloatingPosition(floatingBox, this._formattingContext().absoluteMarginBox(floatingBox).top());
-        let verticalPosition = Math.max(this._formattingContext().absoluteMarginBox(floatingBox).top(), this._formattingContext().absoluteMarginBox(this.m_lastFloating).top());
-        let spaceNeeded = this._formattingContext().absoluteMarginBox(floatingBox).width();
+            return this._adjustedFloatingPosition(floatingBox, absoluteFloatingBox.top());
+        let verticalPosition = Math.max(absoluteFloatingBox.top(), this._lastFloating().top());
+        let spaceNeeded = absoluteFloatingBox.width();
         while (true) {
             let floatingPair = this._findInnerMostLeftAndRight(verticalPosition);
             if (this._availableSpace(floatingBox.containingBlock(), floatingPair) >= spaceNeeded)
@@ -74,16 +74,16 @@ class FloatingContext {
 
     _positionForClear(layoutBox) {
         ASSERT(Utils.hasClear(layoutBox));
-        let displayBox = this._formattingContext().displayBox(layoutBox);
+        let displayBox = this._formattingState().displayBox(layoutBox);
         if (this._isEmpty())
             return displayBox.topLeft();
 
         let leftBottom = Number.NaN;
         let rightBottom = Number.NaN;
         if (Utils.hasClearLeft(layoutBox) || Utils.hasClearBoth(layoutBox))
-            leftBottom = this._bottom(this.m_leftFloatingBoxStack);
+            leftBottom = this._bottom(this._leftFloatingStack());
         if (Utils.hasClearRight(layoutBox) || Utils.hasClearBoth(layoutBox))
-            rightBottom = this._bottom(this.m_rightFloatingBoxStack);
+            rightBottom = this._bottom(this._rightFloatingStack());
 
         if (!Number.isNaN(leftBottom) && !Number.isNaN(rightBottom))
             return new LayoutPoint(Math.max(leftBottom, rightBottom), displayBox.left());
@@ -96,7 +96,7 @@ class FloatingContext {
 
     _computePositionToAvoidIntrudingFloats(layoutBox) {
         if (!layoutBox.establishesBlockFormattingContext() || this._isEmpty())
-            return this._formattingContext().displayBox(layoutBox).topLeft();
+            return this._formattingState().displayBox(layoutBox).topLeft();
         // The border box of a table, a block-level replaced element, or an element in the normal flow that establishes
         // a new block formatting context (such as an element with 'overflow' other than 'visible') must not overlap the
         // margin box of any floats in the same block formatting context as the element itself.
@@ -104,18 +104,9 @@ class FloatingContext {
         return this._positionForFloating(layoutBox);
     }
 
-    _addFloating(floatingBox) {
-        this.m_lastFloating = floatingBox;
-        if (Utils.isFloatingLeft(floatingBox)) {
-            this.m_leftFloatingBoxStack.push(floatingBox);
-            return;
-        }
-        this.m_rightFloatingBoxStack.push(floatingBox);
-    }
-
     _findInnerMostLeftAndRight(verticalPosition) {
-        let leftFloating = this._findFloatingAtVerticalPosition(verticalPosition, this.m_leftFloatingBoxStack);
-        let rightFloating = this._findFloatingAtVerticalPosition(verticalPosition, this.m_rightFloatingBoxStack);
+        let leftFloating = this._findFloatingAtVerticalPosition(verticalPosition, this._leftFloatingStack());
+        let rightFloating = this._findFloatingAtVerticalPosition(verticalPosition, this._rightFloatingStack());
         return { left: leftFloating, right: rightFloating };
     }
 
@@ -125,31 +116,31 @@ class FloatingContext {
         let leftBottom = Number.POSITIVE_INFINITY;
         let rightBottom = Number.POSITIVE_INFINITY;
         if (floatingPair.left)
-            leftBottom = this._formattingContext().absoluteMarginBox(floatingPair.left).bottom();
+            leftBottom = floatingPair.left.bottom();
         if (floatingPair.right)
-            rightBottom = this._formattingContext().absoluteMarginBox(floatingPair.right).bottom();
+            rightBottom = floatingPair.right.bottom();
         return Math.min(leftBottom, rightBottom);
     }
 
     _availableSpace(containingBlock, floatingPair) {
         let containingBlockContentBox = this._formattingContext().displayBox(containingBlock);
         if (floatingPair.left && floatingPair.right)
-            return this._formattingContext().absoluteMarginBox(floatingPair.right).left() - this._formattingContext().absoluteMarginBox(floatingPair.left).right();
+            return floatingPair.right.left() - floatingPair.left.right();
         if (floatingPair.left)
-            return containingBlockContentBox.width() - (this._formattingContext().absoluteMarginBox(floatingPair.left).right() - this._formattingContext().absoluteBorderBox(containingBlock).left());
+            return containingBlockContentBox.width() - (floatingPair.left.right() - this._formattingContext().absoluteBorderBox(containingBlock).left());
         if (floatingPair.right)
-            return this._formattingContext().absoluteMarginBox(floatingPair.right).left();
+            return floatingPair.right.left();
         return containingBlockContentBox.width();
     }
 
     _findFloatingAtVerticalPosition(verticalPosition, floatingStack) {
         let index = floatingStack.length;
-        while (--index >= 0 && this._formattingContext().absoluteMarginBox(floatingStack[index]).bottom() <= verticalPosition);
+        while (--index >= 0 && floatingStack[index].bottom() <= verticalPosition);
         return index >= 0 ? floatingStack[index] : null;
     }
 
     _isEmpty() {
-        return !this.m_leftFloatingBoxStack.length && !this.m_rightFloatingBoxStack.length;
+        return !this._leftFloatingStack().length && !this._rightFloatingStack().length;
     }
 
     _adjustedFloatingPosition(floatingBox, verticalPosition, leftRightFloatings) {
@@ -159,13 +150,13 @@ class FloatingContext {
         let right = this._formattingContext().absoluteContentBox(containingBlock).right();
         if (leftRightFloatings) {
             if (leftRightFloatings.left) {
-                let floatingBoxRight = this._formattingContext().absoluteMarginBox(leftRightFloatings.left).right();
+                let floatingBoxRight = leftRightFloatings.left.right();
                 if (floatingBoxRight > left)
                     left = floatingBoxRight;
             }
 
             if (leftRightFloatings.right) {
-                let floatingBoxLeft = this._formattingContext().absoluteMarginBox(leftRightFloatings.right).left();
+                let floatingBoxLeft = leftRightFloatings.right.left();
                 if (floatingBoxLeft < right)
                     right = floatingBoxLeft;
             }
@@ -190,11 +181,38 @@ class FloatingContext {
             return Number.NaN;
         let max = Number.NEGATIVE_INFINITY;
         for (let i = 0; i < floatingStack.length; ++i)
-            max = Math.max(this._formattingContext().absoluteMarginBox(floatingStack[i]).bottom(), max);
+            max = Math.max(floatingStack[i].bottom(), max);
         return max;
     }
 
+    _addFloatingBox(layoutBox) {
+        // Convert floating box to absolute.
+        let clonedDisplayBox = this._formattingContext().displayBox(layoutBox).clone();
+        clonedDisplayBox.setRect(this._formattingContext().absoluteMarginBox(layoutBox));
+        this._floatingState().addFloating(layoutBox, clonedDisplayBox);
+    }
+
+    _floatingState() {
+        return this.m_floatingState;
+    }
+
     _formattingContext() {
-        return this.m_formattingContext;
+        return this.m_parentFormattingContext;
+    }
+
+    _formattingState() {
+        return this._floatingState().formattingState();
+    }
+
+    _lastFloating() {
+        return this._floatingState().lastFloating();
+    }
+
+    _leftFloatingStack() {
+        return this._floatingState().leftFloatingStack();
+    }
+
+    _rightFloatingStack() {
+        return this._floatingState().rightFloatingStack();
     }
 }

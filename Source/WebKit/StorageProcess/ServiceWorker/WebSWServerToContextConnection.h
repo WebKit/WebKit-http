@@ -47,8 +47,10 @@ public:
     // IPC::MessageReceiver
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) final;
 
+    void terminate();
+
 private:
-    explicit WebSWServerToContextConnection(Ref<WebCore::SecurityOrigin>&&, Ref<IPC::Connection>&&);
+    WebSWServerToContextConnection(const WebCore::SecurityOriginData&, Ref<IPC::Connection>&&);
 
     // IPC::MessageSender
     IPC::Connection* messageSenderConnection() final;
@@ -64,6 +66,8 @@ private:
     void matchAllCompleted(uint64_t requestIdentifier, const Vector<WebCore::ServiceWorkerClientData>&) final;
     void claimCompleted(uint64_t requestIdentifier) final;
     void didFinishSkipWaiting(uint64_t callbackID) final;
+
+    void connectionMayNoLongerBeNeeded() final;
 
     Ref<IPC::Connection> m_ipcConnection;
     

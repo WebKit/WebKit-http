@@ -91,10 +91,10 @@
 #include "VirtualRegister.h"
 #include "Watchdog.h"
 #include <atomic>
-#include <unordered_set>
 #include <wtf/Box.h>
 #include <wtf/Gigacage.h>
 #include <wtf/RecursableLambda.h>
+#include <wtf/StdUnorderedSet.h>
 
 #undef RELEASE_ASSERT
 #define RELEASE_ASSERT(assertion) do { \
@@ -4660,7 +4660,7 @@ private:
                 Edge& element = m_graph.varArgChild(m_node, elementIndex + elementOffset);
 
                 LValue value = lowJSValue(element);
-                m_out.store64(value, m_out.baseIndex(m_heaps.variables, buffer, m_out.constInt32(elementIndex), jsNumber(elementIndex)));
+                m_out.store64(value, m_out.baseIndex(m_heaps.ArrayStorage_vector.atAnyIndex(), buffer, m_out.constIntPtr(elementIndex), ScaleEight));
             }
             ValueFromBlock fastResult = m_out.anchor(boxInt32(newLength));
 
@@ -13492,7 +13492,7 @@ private:
         
         Vector<SwitchCase> cases;
         // These may be negative, or zero, or probably other stuff, too. We don't want to mess with HashSet's corner cases and we don't really care about throughput here.
-        std::unordered_set<int32_t, std::hash<int32_t>, std::equal_to<int32_t>, FastAllocator<int32_t>> alreadyHandled;
+        StdUnorderedSet<int32_t> alreadyHandled;
         for (unsigned i = 0; i < data->cases.size(); ++i) {
             // FIXME: The fact that we're using the bytecode's switch table means that the
             // following DFG IR transformation would be invalid.

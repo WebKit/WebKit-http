@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 
 #import <crt_externs.h>
 #import <mach-o/dyld.h>
+#import <mach/mach_error.h>
 #import <mach/machine.h>
 #import <pal/spi/cocoa/ServersSPI.h>
 #import <spawn.h>
@@ -150,15 +151,24 @@ void ProcessLauncher::launchProcess()
     }
     
     // Create the listening port.
-    mach_port_t listeningPort;
-    mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &listeningPort);
-    
+    mach_port_t listeningPort = MACH_PORT_NULL;
+    auto kr = mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &listeningPort);
+    if (kr != KERN_SUCCESS) {
+        LOG_ERROR("Could not allocate mach port, error %x: %s", kr, mach_error_string(kr));
+        CRASH();
+    }
+
     // Insert a send right so we can send to it.
     mach_port_insert_right(mach_task_self(), listeningPort, listeningPort, MACH_MSG_TYPE_MAKE_SEND);
 
-    mach_port_t previousNotificationPort;
-    mach_port_request_notification(mach_task_self(), listeningPort, MACH_NOTIFY_NO_SENDERS, 0, listeningPort, MACH_MSG_TYPE_MAKE_SEND_ONCE, &previousNotificationPort);
+    mach_port_t previousNotificationPort = MACH_PORT_NULL;
+    auto mc = mach_port_request_notification(mach_task_self(), listeningPort, MACH_NOTIFY_NO_SENDERS, 0, listeningPort, MACH_MSG_TYPE_MAKE_SEND_ONCE, &previousNotificationPort);
     ASSERT(!previousNotificationPort);
+    ASSERT(mc == KERN_SUCCESS);
+    if (mc != KERN_SUCCESS) {
+        // If mach_port_request_notification fails, 'previousNotificationPort' will be uninitialized.
+        LOG_ERROR("mach_port_request_notification failed: (%x) %s", mc, mach_error_string(mc));
+    }
 
     String clientIdentifier;
 #if PLATFORM(MAC)

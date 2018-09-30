@@ -1,3 +1,105 @@
+2018-03-27  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Modernize some utility functions
+        https://bugs.webkit.org/show_bug.cgi?id=184047
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/Utilities.js:
+        (Node.prototype.enclosingNodeOrSelfWithClass): Use parentElement instead of parentNode, so we don't need to check for document.
+        (Node.prototype.enclosingNodeOrSelfWithNodeNameInArray): Ditto. Also just toUpperCase input, since nodeName is already upper case.
+        (String.prototype.escapeCharacters): Use Set and string iteration instead of indexOf and charAt.
+
+2018-03-27  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Command-Shift-left/right arrow keys should not switch tabs when focused on color picker text fields
+        https://bugs.webkit.org/show_bug.cgi?id=184028
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/EditingSupport.js:
+        (WI.isEventTargetAnEditableField):
+        Detect <input type="number"> as an editable text field.
+
+2018-03-23  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: don't show checkboxes for invalid properties
+        https://bugs.webkit.org/show_bug.cgi?id=183951
+        <rdar://problem/38807602>
+
+        Reviewed by Matt Baker.
+
+        Since toggling of invalid properties isn't supported by the backend, don't show checkboxes for invalid properties.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css:
+        (.spreadsheet-css-declaration:matches(:hover, :focus) .property:not(:matches(.invalid-name, .invalid-value)) .property-toggle,):
+        (.spreadsheet-css-declaration:matches(:hover, :focus) .property-toggle,): Deleted.
+        Don't show checkboxes for invalid properties but still show them for duplicate properties.
+
+2018-03-23  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: add WebKitAdditions hooks for WebInspectorUI
+        https://bugs.webkit.org/show_bug.cgi?id=183940
+        <rdar://problem/38796310>
+
+        Reviewed by Timothy Hatcher.
+
+        * Scripts/combine-resources.pl:
+        (debugLog): Added. Leave in the logging I used to debug this.
+
+        (concatenateIncludedFilesMatchingPattern):
+        (stripIncludedFilesMatchingPattern):
+        (concatenateFiles): Deleted.
+        This function tried to do too many things. Split it into
+        two functions, one for stripping includes and one for concatenating
+        files referenced by includes.
+
+        Lastly, add a negative lookahead clause for 'WebKitAdditions' so includes
+        containing that string are not combined when no input directory is passed
+        to the script.
+
+        * Scripts/copy-user-interface-resources.pl:
+        WebKitAdditions is computed either from BUILT_PRODUCTS_DIR or SDKROOT,
+        depending on the build style. Just try them in order and use the first
+        one that exists. WebInspectorUI files are in their own directory, so
+        we can assume there are files to process if that directory exists.
+
+        Copy Main.html to derived sources before doing any processing on it.
+        This makes all combining phases have the same --input-html argument.
+
+        (debugLog): Added. Leave in the logging I used to debug this.
+
+        (combineOrStripResourcesForWebKitAdditions):
+        (stripResourcesForWebKitAdditions):
+        (combineResourcesForWebKitAdditions):
+        Determine if WebKitAdditions exists and whether there are any
+        resources for WebInspectorUI present that need to be processed.
+
+        * UserInterface/Main.html:
+        Add stub .js and .css WebKitAdditions files. We can add more later
+        if it makes sense but this is good enough to validate the build machinery.
+
+2018-03-23  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: flashing when switching between nodes
+        https://bugs.webkit.org/show_bug.cgi?id=179291
+        <rdar://problem/35352660>
+
+        Reviewed by Matt Baker.
+
+        Flashing was happening because the layout was a two-step process:
+        1. Append empty sections.
+        2. Layout everything inside of the section on requestAnimationFrame.
+
+        SpreadsheetRulesStyleDetailsPanel was converted to use layout method,
+        so both steps happen on requestAnimationFrame.
+
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        (WI.SpreadsheetRulesStyleDetailsPanel):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.refresh):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.layout):
+        The removed lines from the refresh method moved to the layout method without any changes.
+
 2018-03-22  Nikita Vasilyev  <nvasilyev@apple.com>
 
         Uncaught Exception: TypeError: this._textEditor.toggleUnexecutedCodeHighlights().then is not a function

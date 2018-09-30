@@ -61,12 +61,12 @@
 #include "InspectorController.h"
 #include "InspectorInstrumentation.h"
 #include "LibWebRTCProvider.h"
+#include "LoaderStrategy.h"
 #include "Logging.h"
 #include "LowPowerModeNotifier.h"
 #include "MainFrame.h"
 #include "MediaCanStartListener.h"
 #include "Navigator.h"
-#include "NetworkStateNotifier.h"
 #include "PageCache.h"
 #include "PageConfiguration.h"
 #include "PageConsoleClient.h"
@@ -76,6 +76,7 @@
 #include "PerformanceLoggingClient.h"
 #include "PerformanceMonitor.h"
 #include "PlatformMediaSessionManager.h"
+#include "PlatformStrategies.h"
 #include "PlugInClient.h"
 #include "PluginData.h"
 #include "PluginInfoProvider.h"
@@ -243,7 +244,7 @@ Page::Page(PageConfiguration&& pageConfiguration)
 
     static bool addedListener;
     if (!addedListener) {
-        NetworkStateNotifier::singleton().addListener(&networkStateChanged);
+        platformStrategies()->loaderStrategy()->addOnlineStateChangeListener(&networkStateChanged);
         addedListener = true;
     }
 
@@ -447,7 +448,7 @@ void Page::setOpenedByDOM()
     m_openedByDOM = true;
 }
 
-void Page::goToItem(HistoryItem& item, FrameLoadType type)
+void Page::goToItem(HistoryItem& item, FrameLoadType type, NavigationPolicyCheck navigationPolicyCheck)
 {
     // stopAllLoaders may end up running onload handlers, which could cause further history traversals that may lead to the passed in HistoryItem
     // being deref()-ed. Make sure we can still use it with HistoryController::goToItem later.
@@ -456,7 +457,7 @@ void Page::goToItem(HistoryItem& item, FrameLoadType type)
     if (m_mainFrame->loader().history().shouldStopLoadingForHistoryItem(item))
         m_mainFrame->loader().stopAllLoaders();
 
-    m_mainFrame->loader().history().goToItem(item, type);
+    m_mainFrame->loader().history().goToItem(item, type, navigationPolicyCheck);
 }
 
 void Page::setGroupName(const String& name)

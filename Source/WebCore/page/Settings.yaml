@@ -105,6 +105,8 @@ allowCrossOriginSubresourcesToAskForCredentials:
   initial: false
 needsStorageAccessFromFileURLsQuirk:
   initial: true
+useAnonymousModeWhenFetchingMaskImages:
+  initial: true
 javaScriptCanOpenWindowsAutomatically:
   initial: false
 javaScriptCanAccessClipboard:
@@ -328,7 +330,7 @@ requestAnimationFrameEnabled:
 cookieEnabled:
   initial: true
 mediaEnabled:
-  initial: true
+  initial: defaultMediaEnabled
 DOMPasteAllowed:
   initial: false
 
@@ -713,20 +715,11 @@ touchEventEmulationEnabled:
   getter: isTouchEventEmulationEnabled
   conditional: TOUCH_EVENTS
 
-oneLineTextMultiplierCoefficient:
-  type: float
-  initial: defaultOneLineTextMultiplierCoefficient()
+shouldEnableTextAutosizingBoost:
+  type: bool
+  initial: false
   conditional: TEXT_AUTOSIZING
-
-multiLineTextMultiplierCoefficient:
-  type: float
-  initial: defaultMultiLineTextMultiplierCoefficient()
-  conditional: TEXT_AUTOSIZING
-
-maxTextAutosizingScaleIncrease:
-  type: float
-  initial: defaultMaxTextAutosizingScaleIncrease()
-  conditional: TEXT_AUTOSIZING
+  onChange: shouldEnableTextAutosizingBoostChanged
 
 mediaCapabilitiesEnabled:
   initial: false

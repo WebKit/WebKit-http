@@ -3829,6 +3829,7 @@ webkit.org/b/179296 fast/css/object-position/object-position-embed.html [ ImageO
 webkit.org/b/179296 fast/css/object-position/object-position-object.html [ ImageOnlyFailure ]
 
 webkit.org/b/179297 fast/loader/empty-embed-src-attribute.html [ Pass Crash ]
+webkit.org/b/179297 http/tests/preload/download_resources.html [ Crash Pass ]
 webkit.org/b/179297 http/tests/preload/onerror_event.html [ Crash Pass ]
 webkit.org/b/179297 http/wpt/resource-timing/rt-initiatorType-media.html [ Crash Failure ]
 
@@ -3929,3 +3930,20 @@ webkit.org/b/183393 fast/loader/window-open-to-invalid-url-disallowed.html [ Ski
 
 webkit.org/b/183569 webanimations/css-animations.html [ Failure ]
 webkit.org/b/183569 webanimations/css-transitions.html [ Failure ]
+
+webkit.org/b/183953 imported/mozilla/css-animations/test_animation-cancel.html [ Failure ]
+webkit.org/b/183953 imported/mozilla/css-animations/test_animation-finish.html [ Failure ]
+webkit.org/b/183953 imported/mozilla/css-animations/test_effect-target.html [ Failure ]
+webkit.org/b/183953 imported/mozilla/css-transitions/test_effect-target.html [ Failure ]
+webkit.org/b/183953 imported/mozilla/css-animations/test_event-dispatch.html [ Skip ]
+webkit.org/b/183953 imported/mozilla/css-transitions/test_event-dispatch.html [ Skip ]
+webkit.org/b/183953 imported/mozilla/css-animations/test_keyframeeffect-getkeyframes.html [ Skip ]
+webkit.org/b/183953 imported/mozilla/css-animations/test_animation-computed-timing.html [ Failure ]
+webkit.org/b/183953 imported/mozilla/css-animations/test_animation-currenttime.html [ Failure ]
+webkit.org/b/183953 imported/mozilla/css-transitions/test_keyframeeffect-getkeyframes.html [ Failure ]
+
+webkit.org/b/183955 accessibility/row-with-aria-role-in-native-table.html [ Failure ]
+
+webkit.org/b/184133 transitions/opacity-transition-zindex.html [ Skip ]
+
+webkit.org/b/184134 http/tests/websocket/tests/hybi/websocket-cookie-overwrite-behavior.html [ Failure ]

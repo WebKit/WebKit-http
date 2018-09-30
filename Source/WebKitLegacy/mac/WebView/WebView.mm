@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2018 Apple Inc. All rights reserved.
  * Copyright (C) 2006 David Smith (catfish.man@gmail.com)
  * Copyright (C) 2010 Igalia S.L
  *
@@ -174,6 +174,7 @@
 #import <WebCore/MainFrame.h>
 #import <WebCore/MemoryCache.h>
 #import <WebCore/MemoryRelease.h>
+#import <WebCore/NavigationPolicyCheck.h>
 #import <WebCore/NetworkStorageSession.h>
 #import <WebCore/NodeList.h>
 #import <WebCore/Notification.h>
@@ -227,6 +228,7 @@
 #import <wtf/HashTraits.h>
 #import <wtf/MainThread.h>
 #import <wtf/ObjcRuntimeExtras.h>
+#import <wtf/ProcessPrivilege.h>
 #import <wtf/RAMSize.h>
 #import <wtf/RefCountedLeakCounter.h>
 #import <wtf/RefPtr.h>
@@ -1805,7 +1807,9 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 }
 #endif
 
-#if ENABLE(DRAG_SUPPORT) && PLATFORM(IOS)
+#if PLATFORM(IOS)
+
+#if ENABLE(DRAG_SUPPORT)
 
 - (BOOL)_requestStartDataInteraction:(CGPoint)clientPosition globalPosition:(CGPoint)globalPosition
 {
@@ -1937,7 +1941,77 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     }
 }
 
-#endif // ENABLE(DRAG_SUPPORT) && PLATFORM(IOS)
+#elif __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+
+- (BOOL)_requestStartDataInteraction:(CGPoint)clientPosition globalPosition:(CGPoint)globalPosition
+{
+    return NO;
+}
+
+- (WebUITextIndicatorData *)_getDataInteractionData
+{
+    return nil;
+}
+
+- (WebUITextIndicatorData *)_dataOperationTextIndicator
+{
+    return nil;
+}
+
+- (NSUInteger)_dragSourceAction
+{
+    return 0;
+}
+
+- (NSString *)_draggedLinkTitle
+{
+    return nil;
+}
+
+- (NSURL *)_draggedLinkURL
+{
+    return nil;
+}
+
+- (CGRect)_draggedElementBounds
+{
+    return CGRectNull;
+}
+
+- (uint64_t)_enteredDataInteraction:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
+{
+    return 0;
+}
+
+- (uint64_t)_updatedDataInteraction:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
+{
+    return 0;
+}
+
+- (void)_exitedDataInteraction:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
+{
+}
+
+- (void)_performDataInteraction:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
+{
+}
+
+- (BOOL)_tryToPerformDataInteraction:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
+{
+    return NO;
+}
+
+- (void)_endedDataInteraction:(CGPoint)clientPosition global:(CGPoint)globalPosition
+{
+}
+
+- (CGRect)_dataInteractionCaretRect
+{
+    return CGRectNull;
+}
+
+#endif
+#endif // PLATFORM(IOS)
 
 static NSMutableSet *knownPluginMIMETypes()
 {
@@ -2566,7 +2640,7 @@ static bool fastDocumentTeardownEnabled()
     }
 
     ASSERT(newItemToGoTo);
-    _private->page->goToItem(*newItemToGoTo, FrameLoadType::IndexedBackForward);
+    _private->page->goToItem(*newItemToGoTo, FrameLoadType::IndexedBackForward, NavigationPolicyCheck::Require);
 }
 
 - (void)_setFormDelegate: (id<WebFormDelegate>)delegate
@@ -5420,6 +5494,9 @@ static Vector<String> toStringVector(NSArray* patterns)
     RunLoop::initializeMainRunLoop();
 #endif
 
+    WTF::setProcessPrivileges(allPrivileges());
+    WebCore::NetworkStorageSession::permitProcessToUseCookieAPI(true);
+
 #if !PLATFORM(IOS)
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_applicationWillTerminate) name:NSApplicationWillTerminateNotification object:NSApp];
 #endif
@@ -6369,7 +6446,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
         return NO;
 
     ASSERT(item);
-    _private->page->goToItem(*core(item), FrameLoadType::IndexedBackForward);
+    _private->page->goToItem(*core(item), FrameLoadType::IndexedBackForward, NavigationPolicyCheck::Require);
     return YES;
 }
 

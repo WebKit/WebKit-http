@@ -1,3 +1,566 @@
+2018-03-29  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Decouple formatting state and context lifetime.
+        https://bugs.webkit.org/show_bug.cgi?id=184136
+
+        Reviewed by Antti Koivisto.
+
+        FormattingContext is about the layout logic. We don't need to hold on to it.
+
+        * LayoutReloaded/FormattingContext/FloatingContext.js:
+        (FloatingContext):
+        (FloatingContext.prototype.computePosition):
+        (FloatingContext.prototype._positionForClear):
+        (FloatingContext.prototype._computePositionToAvoidIntrudingFloats):
+        (FloatingContext.prototype._addFloatingBox):
+        (FloatingContext.prototype._formattingContext):
+        (FloatingContext.prototype._formattingState):
+        * LayoutReloaded/FormattingContext/FormattingContext.js:
+        (FormattingContext):
+        * LayoutReloaded/FormattingState/BlockFormattingState.js:
+        (BlockFormattingState):
+        * LayoutReloaded/FormattingState/FloatingState.js:
+        (FloatingState):
+        (FloatingState.prototype.addFloating):
+        (FloatingState.prototype.formattingState):
+        (FloatingState.prototype.formattingContext): Deleted.
+        * LayoutReloaded/FormattingState/FormattingState.js:
+        (FormattingState):
+        (FormattingState.prototype.formattingContext): Deleted.
+        * LayoutReloaded/FormattingState/InlineFormattingState.js:
+        (InlineFormattingState):
+        * LayoutReloaded/LayoutState.js:
+        (LayoutState.prototype.layout):
+        (LayoutState.prototype.formattingContext):
+
+2018-03-28  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Introduce FloatingState.
+        https://bugs.webkit.org/show_bug.cgi?id=184126
+
+        Reviewed by Antti Koivisto.
+
+        It holds the floating state (left/right floating stack) for a given formatting state (Block or Inline).
+        (FormattingState -> FloatingState/FormattingContext -> FloatingContext)
+
+        * LayoutReloaded/FormattingContext/BlockFormatting/BlockFormattingContext.js:
+        (BlockFormattingContext):
+        * LayoutReloaded/FormattingContext/FloatingContext.js:
+        (FloatingContext):
+        (FloatingContext.prototype.computePosition):
+        (FloatingContext.prototype.bottom):
+        (FloatingContext.prototype._positionForFloating):
+        (FloatingContext.prototype._positionForClear):
+        (FloatingContext.prototype._findInnerMostLeftAndRight):
+        (FloatingContext.prototype._isEmpty):
+        (FloatingContext.prototype._floatingState):
+        (FloatingContext.prototype._formattingContext):
+        (FloatingContext.prototype._lastFloating):
+        (FloatingContext.prototype._leftFloatingStack):
+        (FloatingContext.prototype._rightFloatingStack):
+        (FloatingContext.prototype._addFloating): Deleted.
+        * LayoutReloaded/FormattingContext/FormattingContext.js:
+        (FormattingContext):
+        * LayoutReloaded/FormattingContext/InlineFormatting/InlineFormattingContext.js:
+        (InlineFormattingContext):
+        * LayoutReloaded/FormattingState/BlockFormattingState.js:
+        (BlockFormattingState):
+        * LayoutReloaded/FormattingState/FloatingState.js: Copied from Tools/LayoutReloaded/FormattingState/InlineFormattingState.js.
+        (FloatingState):
+        (FloatingState.prototype.addFloating):
+        (FloatingState.prototype.leftFloatingStack):
+        (FloatingState.prototype.rightFloatingStack):
+        (FloatingState.prototype.lastFloating):
+        (FloatingState.prototype.formattingContext):
+        * LayoutReloaded/FormattingState/FormattingState.js:
+        (FormattingState):
+        (FormattingState.prototype.floatingState):
+        * LayoutReloaded/FormattingState/InlineFormattingState.js:
+        (InlineFormattingState):
+        * LayoutReloaded/test/index.html:
+
+2018-03-28  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Convert floating left/right stack display boxes absolute to the formatting context's root.
+        https://bugs.webkit.org/show_bug.cgi?id=184123
+
+        Reviewed by Antti Koivisto.
+
+        1. The left/right floating array should hold the Display.Box (and not the Layout.Box)
+        2. Clone the Display.Box and convert its rect absolute to the formatting context's root so that we
+        don't have to keep converting the coordinates while computing the positions. 
+
+        * LayoutReloaded/DisplayTree/Box.js:
+        (Display.Box.prototype.clone):
+        (Display.Box.prototype.setRect):
+        * LayoutReloaded/FormattingContext/FloatingContext.js:
+        (FloatingContext.prototype.computePosition):
+        (FloatingContext.prototype._positionForFloating):
+        (FloatingContext.prototype._addFloating):
+        (FloatingContext.prototype._moveToNextVerticalPosition):
+        (FloatingContext.prototype._availableSpace):
+        (FloatingContext.prototype._findFloatingAtVerticalPosition):
+        (FloatingContext.prototype._adjustedFloatingPosition):
+        (FloatingContext.prototype._bottom):
+
+2018-03-28  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed iOS build fix after r230060.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2018-03-28  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, disable new window.open() API tests introduced in r230051 on iOS.
+
+        I will investigate if this is testable on iOS.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2018-03-28  Chris Dumez  <cdumez@apple.com>
+
+        Do process swap when opening a cross-origin URL via window.open(url, '_blank', 'noopener')
+        https://bugs.webkit.org/show_bug.cgi?id=183962
+        <rdar://problem/38817833>
+
+        Reviewed by Brady Eidson.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+        (-[PSONUIDelegate initWithNavigationDelegate:]):
+        (-[PSONUIDelegate webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:]):
+
+2018-03-28  Carlos Eduardo Ramalho  <cadubentzen@gmail.com>
+
+        Add Carlos Eduardo Ramalho as contributor
+        https://bugs.webkit.org/show_bug.cgi?id=184082
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2018-03-28  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] Make boosted text autosizing values switchable at runtime
+        https://bugs.webkit.org/show_bug.cgi?id=184092
+        <rdar://problem/38939917>
+
+        Reviewed by Tim Horton.
+
+        Add an API test to check that toggling the boosted text autosizing preference causes text to lay out larger than
+        it would with normal text autosizing.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/ios/TextAutosizingBoost.mm: Added.
+        (TEST):
+
+2018-03-28  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] InlineFormattingContext::_handleText should support runs on multiple lines
+        https://bugs.webkit.org/show_bug.cgi?id=184101
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/FormattingContext/InlineFormatting/InlineFormattingContext.js:
+        (InlineFormattingContext):
+        (InlineFormattingContext.prototype.layout):
+        (InlineFormattingContext.prototype._handleText):
+        (InlineFormattingContext.prototype._createNewLine):
+        * LayoutReloaded/test/index.html:
+        * LayoutReloaded/test/simple-multiline-text.html: Added.
+
+2018-03-28  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Add InlineTextBreaker::skipLeadingWhitespaceIfNeeded
+        https://bugs.webkit.org/show_bug.cgi?id=184099
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/misc/LayoutReloadedWebKit.patch:
+
+2018-03-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Add JSCWeakValue to JavaScriptCore GLib API
+        https://bugs.webkit.org/show_bug.cgi?id=184041
+
+        Reviewed by Michael Catanzaro.
+
+        Add test case for JSCWeakValue.
+
+        * TestWebKitAPI/Tests/JavaScriptCore/glib/TestJSC.cpp:
+        (weakValueClearedCallback):
+        (testJSCWeakValue):
+        (main):
+
+2018-03-27  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Start using window.collectTextRuns() to layout text lines in inline formatting context
+        https://bugs.webkit.org/show_bug.cgi?id=184070
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/FormattingContext/InlineFormatting/InlineFormattingContext.js:
+        (InlineFormattingContext.prototype._handleText):
+        (InlineFormattingContext.prototype._commitLine):
+        * LayoutReloaded/FormattingContext/InlineFormatting/Line.js:
+        (Line.prototype.addTextLineBox):
+        (Line):
+        (Line.prototype.addLineBox): Deleted.
+        * LayoutReloaded/FormattingState/BlockFormattingState.js:
+        (BlockFormattingState):
+        * LayoutReloaded/FormattingState/FormattingState.js:
+        (FormattingState.prototype.displayBox):
+        (FormattingState):
+        (FormattingState.prototype._setFormattingContext): Deleted.
+        * LayoutReloaded/FormattingState/InlineFormattingState.js:
+        (InlineFormattingState):
+        * LayoutReloaded/LayoutTree/Text.js:
+        (Text.prototype.content):
+        * LayoutReloaded/Utils.js:
+        (Utils.textRuns):
+        (Utils.textRunsForLine):
+        (Utils._dumpLines.):
+        (Utils._dumpLines):
+        * LayoutReloaded/test/simple-inline-text.html:
+
+2018-03-27  Eric Carlson  <eric.carlson@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=183876
+        <rdar://problem/38726459>
+        
+        Unreviewed, fix for the test added in r229995 in the iOS simulator.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/AVFoundationPreference.mm:
+        (TestWebKitAPI::AVFoundationPref::testWithPreference):
+
+2018-03-27  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebAuthN] Implement authenticatorGetAssertion
+        https://bugs.webkit.org/show_bug.cgi?id=183881
+        <rdar://problem/37258628>
+
+        Reviewed by Brent Fulgham.
+
+        * TestWebKitAPI/Tests/ios/LocalAuthenticator.mm:
+        (TestWebKitAPI::getTestKey):
+        (TestWebKitAPI::addTestKeyToKeychain):
+        (TestWebKitAPI::LAEvaluatePolicyFailedSwizzler::evaluatePolicyFailed):
+        (TestWebKitAPI::LAEvaluatePolicyPassedSwizzler::evaluatePolicyPassed):
+        (TestWebKitAPI::LAEvaluateAccessControlFailedSwizzler::LAEvaluateAccessControlFailedSwizzler):
+        (TestWebKitAPI::LAEvaluateAccessControlFailedSwizzler::evaluateAccessControlFailed):
+        (TestWebKitAPI::LAEvaluateAccessControlPassedSwizzler::LAEvaluateAccessControlPassedSwizzler):
+        (TestWebKitAPI::LAEvaluateAccessControlPassedSwizzler::evaluateAccessControlPassed):
+        (TestWebKitAPI::TEST):
+
+2018-03-27  Brian Burg  <bburg@apple.com>
+
+        REGRESSION(r229937): WebDriver tests no longer run, test runner hangs when launching wpt web server
+        https://bugs.webkit.org/show_bug.cgi?id=184056
+        <rdar://problem/38925058>
+
+        Reviewed by Timothy Hatcher and Youenn Fablet.
+
+        * Scripts/webkitpy/webdriver_tests/webdriver_w3c_web_server.py:
+        (WebDriverW3CWebServer.start):
+        The config key used in upstream WPT has changed from 'host' to 'browser_host'.
+
+2018-03-27  Timothy Hatcher  <timothy@hatcher.name>
+
+        Update my email address in contributors.json and scripts
+        https://bugs.webkit.org/show_bug.cgi?id=184054
+
+        * Scripts/validate-committer-lists:
+        (CommitterListFromGit):
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2018-03-27  Eric Carlson  <eric.carlson@apple.com>
+
+        Make AVFoundationEnabled preference available on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=183876
+        <rdar://problem/38726459>
+
+        Reviewed by Youenn Fablet.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit/video.html: Added.
+        * TestWebKitAPI/Tests/WebKitCocoa/AVFoundationPreference.mm: Added.
+        (-[PreferenceTestMessageHandler userContentController:didReceiveScriptMessage:]):
+        (TestWebKitAPI::AVFoundationPref::SetUp):
+        (TestWebKitAPI::AVFoundationPref::testWithPreference):
+        (TestWebKitAPI::TEST_F):
+
+2018-03-26  Brent Fulgham  <bfulgham@apple.com>
+
+        Warn against cookie access in the WebContent process using ProcessPrivilege assertions
+        https://bugs.webkit.org/show_bug.cgi?id=183911
+        <rdar://problem/38762306>
+
+        Reviewed by Youenn Fablet.
+
+        Add a set of ProcessPrivilege assertions to enforce the rule that the WebContent process
+        should never call Cookie API directly. That should only happen in the Networking or
+        UIProcess. 
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (DumpRenderTreeMain):
+        * TestWebKitAPI/TestsController.cpp:
+        (TestWebKitAPI::TestsController::TestsController):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::initialize):
+
+2018-03-26  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Add InlineText DOM interface and dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=184010
+
+        Reviewed by Antti Koivisto.
+
+        to help inline text layout.
+
+        * LayoutReloaded/misc/LayoutReloadedWebKit.patch:
+
+2018-03-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Add API to convert between DOM and JSCValue
+        https://bugs.webkit.org/show_bug.cgi?id=183448
+
+        Reviewed by Michael Catanzaro.
+
+        Add unit tests for non-deprecated DOM API and switch existing tests to use non-deprecated API except for the
+        ones that test the deprecated API.
+
+        * TestWebKitAPI/Tests/WebKitGLib/DOMElementTest.cpp: Added.
+        (DOMElementTest::create):
+        (DOMElementTest::testAutoFill):
+        (registerTests):
+        * TestWebKitAPI/Tests/WebKitGLib/EditorTest.cpp: Added.
+        (WebKitWebEditorTest::create):
+        (WebKitWebEditorTest::selectionChangedCallback):
+        (WebKitWebEditorTest::testSelectionchanged):
+        (registerTests):
+        * TestWebKitAPI/Tests/WebKitGLib/FrameTest.cpp:
+        (WebKitFrameTest::testJavaScriptValues):
+        (registerTests):
+        * TestWebKitAPI/Tests/WebKitGLib/TestDOMElement.cpp: Renamed from Source/WebKit/WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMObjectPrivate.h.
+        (testWebKitDOMElementAutoFill):
+        (beforeAll):
+        (afterAll):
+        * TestWebKitAPI/Tests/WebKitGLib/TestEditor.cpp: Renamed from Tools/TestWebKitAPI/Tests/WebKitGtk/TestEditor.cpp.
+        * TestWebKitAPI/Tests/WebKitGLib/TestFrame.cpp:
+        (testWebKitFrameJavaScriptValues):
+        (beforeAll):
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebExtensions.cpp:
+        (inputElementIsUserEdited):
+        (testWebExtensionInputElementIsUserEdited):
+        (testWebExtensionFormSubmissionSteps):
+        (beforeAll):
+        * TestWebKitAPI/Tests/WebKitGLib/WebExtensionTest.cpp:
+        (documentLoadedCallback):
+        (serializeNode):
+        (contextMenuCallback):
+        (consoleMessageSentCallback):
+        (formControlsAssociatedCallback):
+        (willSubmitFormCallback):
+        (pageCreatedCallback):
+        (methodCallCallback):
+        * TestWebKitAPI/Tests/WebKitGLib/WebProcessTest.cpp:
+        (checkLeaks):
+        (webProcessTestRunnerFinalize):
+        (checkLeaksAtExit):
+        * TestWebKitAPI/Tests/WebKitGtk/AutocleanupsTest.cpp:
+        (AutocleanupsTest::testWebProcessAutocleanups):
+        * TestWebKitAPI/Tests/WebKitGtk/DOMClientRectTest.cpp:
+        * TestWebKitAPI/Tests/WebKitGtk/DOMNodeFilterTest.cpp:
+        * TestWebKitAPI/Tests/WebKitGtk/DOMNodeTest.cpp:
+        * TestWebKitAPI/Tests/WebKitGtk/DOMXPathNSResolverTest.cpp:
+        * TestWebKitAPI/Tests/WebKitGtk/EditorTest.cpp: Removed.
+        * TestWebKitAPI/glib/CMakeLists.txt:
+        * TestWebKitAPI/glib/PlatformGTK.cmake:
+        * TestWebKitAPI/glib/PlatformWPE.cmake:
+
+2018-03-24  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Unrecognized mac versions always use WebKitTestRunner
+        https://bugs.webkit.org/show_bug.cgi?id=183681
+        <rdar://problem/38509162>
+
+        Reviewed by Daniel Bates.
+
+        When an unrecognized version is used, we were unconditionally adding '-wk2'
+        to the mac version name. This would mean that the port object would always
+        use WebKitTestRunner as the driver, even if DumpRenderTree was explicitly
+        requested.
+
+        * Scripts/webkitpy/port/apple.py:
+        (ApplePort.determine_full_port_name): Only add wk2 to port names if
+        WebKitTestRunner is specified.
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort.__init__): Compare length of split string, and do not treat wk2 as a
+        version name.
+        * Scripts/webkitpy/port/mac_unittest.py:
+        (MacTest):
+        (MacTest.test_factory_with_future_version): Confirm that future versions correctly
+        assign the driver and have undefined version names.
+        (MacTest.test_factory_with_portname_version): Confirm that general versions correctly assign
+        the driver and have defined versions.
+        (MacTest.test_factory_with_portname_wk2): Ensure that mac ports ending in 'wk2' set
+        the driver to be WebKitTestRunner even if webkit_test_runner=False.
+
+2018-03-23  Zan Dobersek  <zdobersek@igalia.com>
+
+        Fix the run-benchmark script, properly specifying the plan directory
+        where the Skipped file is located.
+
+        Rubber-stamped by Carlos Alberto Lopez Perez.
+
+        * Scripts/webkitpy/benchmark_runner/run_benchmark.py:
+        (start):
+
+2018-03-23  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the build with no pasteboard
+        https://bugs.webkit.org/show_bug.cgi?id=183973
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2018-03-23  Youenn Fablet  <youenn@apple.com>
+
+        Update WPT tools to a1ec330
+        https://bugs.webkit.org/show_bug.cgi?id=183934
+
+        Reviewed by Chris Dumez.
+
+        Update script to run WPT server  according updated WPT tools.
+
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_launcher.py:
+        (main):
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py:
+        (base_http_url):
+        (base_https_url):
+
+2018-03-23  Sihui Liu  <sihui_liu@apple.com>
+
+        Local storage getItem() for an empty string returned UNDEFINED value.
+        https://bugs.webkit.org/show_bug.cgi?id=69138
+        <rdar://problem/13410974>
+
+        Reviewed by Brady Eidson.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/LocalStoragePersistence.mm: Added.
+        (-[LocalStorageMessageHandler userContentController:didReceiveScriptMessage:]):
+        (TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/localstorage-empty-string-value.html: Added.
+
+2018-03-23  Chris Dumez  <cdumez@apple.com>
+
+        Promptly terminate service worker processes when they are no longer needed
+        https://bugs.webkit.org/show_bug.cgi?id=183873
+        <rdar://problem/38676995>
+
+        Reviewed by Youenn Fablet.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ServiceWorkerBasic.mm:
+
+2018-03-23  Brady Eidson  <beidson@apple.com>
+
+        Go to back/forward list items after a process-swapped navigation.
+        <rdar://problem/38690544> and https://bugs.webkit.org/show_bug.cgi?id=183920
+
+        Reviewed by Andy Estes.
+
+        Add a new API test that does some process-swapping navigations (including a back navigation)
+        and verifies the state of the engine afterwards.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+        (-[PSONMessageHandler userContentController:didReceiveScriptMessage:]):
+        (-[PSONScheme initWithBytes:]):
+        (-[PSONScheme webView:startURLSchemeTask:]):
+        (log):
+        (function):
+        (TEST): Deleted.
+
+2018-03-23  Brendan McLoughlin  <brendan@bocoup.com>
+
+        Lint web-platform-tests changes with the wpt linter before exporting
+        https://bugs.webkit.org/show_bug.cgi?id=183796
+
+        Reviewed by Youenn Fablet.
+
+        * Scripts/webkitpy/w3c/test_exporter.py:
+        (TestExporter.__init__):
+        (TestExporter.do_export):
+        * Scripts/webkitpy/w3c/test_exporter_unittest.py:
+        (TestExporterTest.MockWPTLinter):
+        (TestExporterTest.MockWPTLinter.__init__):
+        (TestExporterTest.MockWPTLinter.lint):
+        (TestExporterTest.test_export):
+        (TestExporterTest.test_export_with_specific_branch):
+        * Scripts/webkitpy/w3c/wpt_linter.py: Added.
+        (WPTLinter):
+        (WPTLinter.__init__):
+        (WPTLinter.lint):
+
+2018-03-23  David Kilzer  <ddkilzer@apple.com>
+
+        Stop using dispatch_set_target_queue()
+        <https://webkit.org/b/183908>
+        <rdar://problem/33553533>
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_language): Add check for use of
+        dispatch_set_target_queue().
+        (CppChecker): Add 'runtime/dispatch_set_target_queue' category.
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (CppStyleTest): Add test.
+
+2018-03-23  Youenn Fablet  <youenn@apple.com>
+
+        Allow fully whitelisted plug-ins to match non HTTP URLs
+        https://bugs.webkit.org/show_bug.cgi?id=183938
+        rdar://problem/38534312
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebCore/URL.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2018-03-23  JF Bastien  <jfbastien@apple.com>
+
+        dump-class-layout is just wrong
+        https://bugs.webkit.org/show_bug.cgi?id=183939
+
+        Reviewed by Yusuke Suzuki.
+
+        Looks like r229291 contained a half-renamed variable in it, so it
+        just doesn't work.
+
+        * Scripts/dump-class-layout:
+        (verify_type):
+        (verify_type_recursive):
+
+2018-03-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Run JSC GLib API tests in GTK+ and WPE bots.
+
+        The test runners were still considering the JSC tests as google tests, but they are now GLib tests.
+
+        * Scripts/run-gtk-tests:
+        (GtkTestRunner.is_glib_test):
+        (GtkTestRunner.is_google_test):
+        * Scripts/run-wpe-tests:
+        (WPETestRunner.is_glib_test):
+        (WPETestRunner.is_google_test):
+
 2018-03-22  Daniel Bates  <dabates@apple.com>
 
         Expose SchemeRegistry::registerAsCanDisplayOnlyIfCanRequest() as WebKit SPI

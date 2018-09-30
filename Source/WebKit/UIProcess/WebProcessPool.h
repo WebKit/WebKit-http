@@ -272,6 +272,7 @@ public:
     void terminateStorageProcess();
     void terminateNetworkProcess();
     void terminateServiceWorkerProcesses();
+    void disableServiceWorkerProcessTerminationDelay();
 
     void syncNetworkProcessCookies();
 
@@ -334,7 +335,7 @@ public:
 #if ENABLE(SERVICE_WORKER)
     void establishWorkerContextConnectionToStorageProcess(StorageProcessProxy&, WebCore::SecurityOriginData&&, std::optional<PAL::SessionID>);
     ServiceWorkerProcessProxy* serviceWorkerProcessProxyFromPageID(uint64_t pageID) const;
-    const HashMap<RefPtr<WebCore::SecurityOrigin>, ServiceWorkerProcessProxy*>& serviceWorkerProxies() const { return m_serviceWorkerProcesses; }
+    const HashMap<WebCore::SecurityOriginData, ServiceWorkerProcessProxy*>& serviceWorkerProxies() const { return m_serviceWorkerProcesses; }
     void setAllowsAnySSLCertificateForServiceWorker(bool allows) { m_allowsAnySSLCertificateForServiceWorker = allows; }
     bool allowsAnySSLCertificateForServiceWorker() const { return m_allowsAnySSLCertificateForServiceWorker; }
     void updateServiceWorkerUserAgent(const String& userAgent);
@@ -444,7 +445,7 @@ public:
     BackgroundWebProcessToken backgroundWebProcessToken() const { return BackgroundWebProcessToken(m_backgroundWebProcessCounter.count()); }
 #endif
 
-    Ref<WebProcessProxy> processForNavigation(WebPageProxy&, const WebCore::URL&);
+    Ref<WebProcessProxy> processForNavigation(WebPageProxy&, const API::Navigation&, WebCore::PolicyAction&);
 
 private:
     void platformInitialize();
@@ -516,9 +517,10 @@ private:
 
     WebProcessProxy* m_processWithPageCache { nullptr };
 #if ENABLE(SERVICE_WORKER)
-    HashMap<RefPtr<WebCore::SecurityOrigin>, ServiceWorkerProcessProxy*> m_serviceWorkerProcesses;
+    HashMap<WebCore::SecurityOriginData, ServiceWorkerProcessProxy*> m_serviceWorkerProcesses;
     bool m_waitingForWorkerContextProcessConnection { false };
     bool m_allowsAnySSLCertificateForServiceWorker { false };
+    bool m_shouldDisableServiceWorkerProcessTerminationDelay { false };
     String m_serviceWorkerUserAgent;
     std::optional<WebPreferencesStore> m_serviceWorkerPreferences;
     HashMap<String, bool> m_mayHaveRegisteredServiceWorkers;
@@ -675,8 +677,8 @@ private:
     ProcessThrottler::ForegroundActivityToken m_foregroundTokenForNetworkProcess;
     ProcessThrottler::BackgroundActivityToken m_backgroundTokenForNetworkProcess;
 #if ENABLE(SERVICE_WORKER)
-    HashMap<RefPtr<WebCore::SecurityOrigin>, ProcessThrottler::ForegroundActivityToken> m_foregroundTokensForServiceWorkerProcesses;
-    HashMap<RefPtr<WebCore::SecurityOrigin>, ProcessThrottler::BackgroundActivityToken> m_backgroundTokensForServiceWorkerProcesses;
+    HashMap<WebCore::SecurityOriginData, ProcessThrottler::ForegroundActivityToken> m_foregroundTokensForServiceWorkerProcesses;
+    HashMap<WebCore::SecurityOriginData, ProcessThrottler::BackgroundActivityToken> m_backgroundTokensForServiceWorkerProcesses;
 #endif
 #endif
 };

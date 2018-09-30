@@ -87,7 +87,7 @@ class WebPageProxy;
 @class WKDatePickerViewController;
 @class WKFocusedFormControlViewController;
 @class WKNumberPadViewController;
-@class WKSelectMenuViewController;
+@class WKSelectMenuListViewController;
 @class WKTextInputListViewController;
 @class WKTimePickerViewController;
 #endif
@@ -171,7 +171,9 @@ struct WKAutoCorrectionData {
     RetainPtr<UIView> _interactionViewsContainerView;
     RetainPtr<NSString> _markedText;
     RetainPtr<WKActionSheetAssistant> _actionSheetAssistant;
+#if ENABLE(AIRPLAY_PICKER)
     RetainPtr<WKAirPlayRoutePicker> _airPlayRoutePicker;
+#endif
     RetainPtr<WKFormInputSession> _formInputSession;
     RetainPtr<WKFileUploadPanel> _fileUploadPanel;
     RetainPtr<UIGestureRecognizer> _previewGestureRecognizer;
@@ -254,7 +256,7 @@ struct WKAutoCorrectionData {
     RetainPtr<WKTextInputListViewController> _textInputListViewController;
     RetainPtr<WKFocusedFormControlViewController> _focusedFormControlViewController;
     RetainPtr<WKNumberPadViewController> _numberPadViewController;
-    RetainPtr<WKSelectMenuViewController> _selectMenuViewController;
+    RetainPtr<WKSelectMenuListViewController> _selectMenuListViewController;
     RetainPtr<WKTimePickerViewController> _timePickerViewController;
 
     BOOL _shouldRestoreFirstResponderStatusAfterLosingFocus;

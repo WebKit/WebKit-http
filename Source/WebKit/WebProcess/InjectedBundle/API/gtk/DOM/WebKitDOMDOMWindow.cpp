@@ -48,6 +48,8 @@ typedef struct _WebKitDOMDOMWindowPrivate {
     RefPtr<WebCore::DOMWindow> coreObject;
 } WebKitDOMDOMWindowPrivate;
 
+G_GNUC_BEGIN_IGNORE_DEPRECATIONS;
+
 namespace WebKit {
 
 WebKitDOMDOMWindow* kit(WebCore::DOMWindow* obj)
@@ -960,7 +962,7 @@ WebKitDOMDOMWindow* webkit_dom_dom_window_get_window(WebKitDOMDOMWindow* self)
     WebCore::JSMainThreadNullState state;
     g_return_val_if_fail(WEBKIT_DOM_IS_DOM_WINDOW(self), 0);
     WebCore::DOMWindow* item = WebKit::core(self);
-    RefPtr<WebCore::DOMWindow> gobjectResult = WTF::getPtr(item->window());
+    RefPtr<WebCore::DOMWindow> gobjectResult = WTF::getPtr(item->self());
     return WebKit::kit(gobjectResult.get());
 }
 
@@ -969,7 +971,7 @@ WebKitDOMDOMWindow* webkit_dom_dom_window_get_frames(WebKitDOMDOMWindow* self)
     WebCore::JSMainThreadNullState state;
     g_return_val_if_fail(WEBKIT_DOM_IS_DOM_WINDOW(self), 0);
     WebCore::DOMWindow* item = WebKit::core(self);
-    RefPtr<WebCore::DOMWindow> gobjectResult = WTF::getPtr(item->frames());
+    RefPtr<WebCore::DOMWindow> gobjectResult = WTF::getPtr(item->self());
     return WebKit::kit(gobjectResult.get());
 }
 
@@ -1057,3 +1059,4 @@ gboolean webkit_dom_dom_window_webkit_message_handlers_post_message(WebKitDOMDOM
 
     return TRUE;
 }
+G_GNUC_END_IGNORE_DEPRECATIONS;

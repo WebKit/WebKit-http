@@ -26,11 +26,7 @@
 class InlineFormattingContext extends FormattingContext {
     constructor(inlineFormattingState) {
         super(inlineFormattingState);
-        // If the block container box that initiates this inline formatting contex also establishes a block context, create a new float for us.
         ASSERT(this.formattingRoot().isBlockContainerBox());
-        if (this.formattingRoot().establishesBlockFormattingContext())
-            this.m_floatingContext = new FloatingContext(this);
-        this.m_line = this._createNewLine();
     }
 
     layout() {
@@ -40,6 +36,7 @@ class InlineFormattingContext extends FormattingContext {
             return;
         // This is a post-order tree traversal layout.
         // The root container layout is done in the formatting context it lives in, not that one it creates, so let's start with the first child.
+        this.m_line = this._createNewLine();
         this._addToLayoutQueue(this.formattingRoot().firstChild());
         while (this._descendantNeedsLayout()) {
             // Travers down on the descendants until we find a leaf node.
@@ -76,20 +73,21 @@ class InlineFormattingContext extends FormattingContext {
     _handleText(inlineBox) {
         // FIXME: This is a extremely simple line breaking algorithm.
         let currentPosition = 0;
-        let endPosition = inlineBox.text().length() - 1;
-        while (currentPosition < endPosition) {
-            let breakingPosition = Utils.nextBreakingOpportunity(inlineBox.text(), currentPosition);
-            if (breakingPosition == currentPosition)
+        let text = inlineBox.text().content();
+        while (text.length) {
+            let textRuns = Utils.textRunsForLine(text, this._line().availableWidth(), this.formattingRoot());
+            if (!textRuns.length)
                 break;
-            let fragmentWidth = Utils.measureText(inlineBox.text(), currentPosition, breakingPosition);
-            if (this._line().availableWidth() < fragmentWidth && !this._line().isEmpty())
-                this._commitLine();
-            this._line().addLineBox(currentPosition, breakingPosition, new LayoutSize(fragmentWidth, Utils.textHeight(inlineBox)));
-            currentPosition = breakingPosition;
+            for (let run of textRuns)
+                this._line().addTextLineBox(run.startPosition, run.endPosition, new LayoutSize(run.width, Utils.textHeight(inlineBox)));
+            text = text.slice(textRuns[textRuns.length - 1].endPosition, text.length);
+            this._commitLine();
         }
     }
 
     _commitLine() {
+        if (this._line().isEmpty())
+            return;
         this.formattingState().appendLine(this._line());
         this.m_line = this._createNewLine();
     }
@@ -101,7 +99,11 @@ class InlineFormattingContext extends FormattingContext {
     _createNewLine() {
         // TODO: Floats need to be taken into account.
         let contentBoxRect = this.displayBox(this.formattingRoot()).contentBox();
-        return new Line(contentBoxRect.topLeft(), Utils.computedLineHeight(this.formattingRoot().node()), contentBoxRect.width());
+        let topLeft = contentBoxRect.topLeft();
+        let lines = this.formattingState().lines();
+        if (lines.length)
+            topLeft.setTop(lines[lines.length - 1].rect().bottom());
+        return new Line(topLeft, Utils.computedLineHeight(this.formattingRoot().node()), contentBoxRect.width());
     }
 }
 

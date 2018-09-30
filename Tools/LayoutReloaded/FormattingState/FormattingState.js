@@ -26,13 +26,9 @@
 class FormattingState {
     constructor(layoutState, formattingRoot) {
         this.m_layoutState = layoutState;
-        this.m_formattingContext = null;
         this.m_formattingRoot = formattingRoot;
+        this.m_floatingState = null;
         this.m_displayToLayout = new Map();
-    }
-
-    formattingContext() {
-        return this.m_formattingContext;
     }
 
     formattingRoot() {
@@ -41,6 +37,10 @@ class FormattingState {
 
     layoutState() {
         return this.m_layoutState;
+    }
+
+    floatingState() {
+        return this.m_floatingState;
     }
 
     createDisplayBox(layoutBox) {
@@ -72,9 +72,5 @@ class FormattingState {
         // It must be the ICB.
         ASSERT(!layoutBox.parent());
         return this.layoutState().initialDisplayBox();
-    }
-
-    _setFormattingContext(formattingContext) {
-        this.m_formattingContext = formattingContext;
     }
 }

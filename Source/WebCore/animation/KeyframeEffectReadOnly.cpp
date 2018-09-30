@@ -487,7 +487,7 @@ void KeyframeEffectReadOnly::copyPropertiesFromSource(Ref<KeyframeEffectReadOnly
             keyframeValue.addProperty(propertyId);
         keyframeList.insert(WTFMove(keyframeValue));
     }
-    m_blendingKeyframes = WTFMove(keyframeList);
+    setBlendingKeyframes(keyframeList);
 }
 
 Vector<Strong<JSObject>> KeyframeEffectReadOnly::getKeyframes(ExecState& state)
@@ -524,6 +524,9 @@ Vector<Strong<JSObject>> KeyframeEffectReadOnly::getKeyframes(ExecState& state)
             BaseComputedKeyframe computedKeyframe;
             computedKeyframe.offset = keyframe.key();
             computedKeyframe.computedOffset = keyframe.key();
+            // For CSS transitions, there are only two keyframes and the second keyframe should always report "linear". In practice, this value
+            // has no bearing since, as the last keyframe, its value will never be used.
+            computedKeyframe.easing = is<CSSTransition>(animation()) && i == 1 ? "linear" : timingFunctionForKeyframeAtIndex(0)->cssText();
 
             auto outputKeyframe = convertDictionaryToJS(state, *jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject()), computedKeyframe);
 
@@ -545,7 +548,7 @@ Vector<Strong<JSObject>> KeyframeEffectReadOnly::getKeyframes(ExecState& state)
             result.append(JSC::Strong<JSC::JSObject> { state.vm(), outputKeyframe });
         }
     } else {
-        for (auto& parsedKeyframe : m_parsedKeyframes) {
+        for (size_t i = 0; i < m_parsedKeyframes.size(); ++i) {
             // 1. Initialize a dictionary object, output keyframe, using the following definition:
             //
             // dictionary BaseComputedKeyframe {
@@ -555,12 +558,14 @@ Vector<Strong<JSObject>> KeyframeEffectReadOnly::getKeyframes(ExecState& state)
             //      CompositeOperation? composite = null;
             // };
 
+            auto& parsedKeyframe = m_parsedKeyframes[i];
+
             // 2. Set offset, computedOffset, easing, composite members of output keyframe to the respective values keyframe offset, computed keyframe
             // offset, keyframe-specific timing function and keyframe-specific composite operation of keyframe.
             BaseComputedKeyframe computedKeyframe;
             computedKeyframe.offset = parsedKeyframe.offset;
             computedKeyframe.computedOffset = parsedKeyframe.computedOffset;
-            computedKeyframe.easing = parsedKeyframe.timingFunction->cssText();
+            computedKeyframe.easing = timingFunctionForKeyframeAtIndex(i)->cssText();
             computedKeyframe.composite = parsedKeyframe.composite;
 
             auto outputKeyframe = convertDictionaryToJS(state, *jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject()), computedKeyframe);
@@ -682,10 +687,133 @@ void KeyframeEffectReadOnly::updateBlendingKeyframes()
         keyframeList.insert(WTFMove(keyframeValue));
     }
 
-    m_blendingKeyframes = WTFMove(keyframeList);
+    setBlendingKeyframes(keyframeList);
+}
+
+void KeyframeEffectReadOnly::setBlendingKeyframes(KeyframeList& blendingKeyframes)
+{
+    m_blendingKeyframes = WTFMove(blendingKeyframes);
 
     computeStackingContextImpact();
+
+    checkForMatchingTransformFunctionLists();
+    checkForMatchingFilterFunctionLists();
+#if ENABLE(FILTERS_LEVEL_2)
+    checkForMatchingBackdropFilterFunctionLists();
+#endif
 }
+
+void KeyframeEffectReadOnly::checkForMatchingTransformFunctionLists()
+{
+    m_transformFunctionListsMatch = false;
+
+    if (m_blendingKeyframes.size() < 2 || !m_blendingKeyframes.containsProperty(CSSPropertyTransform))
+        return;
+
+    // Empty transforms match anything, so find the first non-empty entry as the reference.
+    size_t numKeyframes = m_blendingKeyframes.size();
+    size_t firstNonEmptyTransformKeyframeIndex = numKeyframes;
+
+    for (size_t i = 0; i < numKeyframes; ++i) {
+        const KeyframeValue& currentKeyframe = m_blendingKeyframes[i];
+        if (currentKeyframe.style()->transform().operations().size()) {
+            firstNonEmptyTransformKeyframeIndex = i;
+            break;
+        }
+    }
+
+    if (firstNonEmptyTransformKeyframeIndex == numKeyframes)
+        return;
+
+    const TransformOperations* firstVal = &m_blendingKeyframes[firstNonEmptyTransformKeyframeIndex].style()->transform();
+    for (size_t i = firstNonEmptyTransformKeyframeIndex + 1; i < numKeyframes; ++i) {
+        const KeyframeValue& currentKeyframe = m_blendingKeyframes[i];
+        const TransformOperations* val = &currentKeyframe.style()->transform();
+
+        // An empty transform list matches anything.
+        if (val->operations().isEmpty())
+            continue;
+
+        if (!firstVal->operationsMatch(*val))
+            return;
+    }
+
+    m_transformFunctionListsMatch = true;
+}
+
+void KeyframeEffectReadOnly::checkForMatchingFilterFunctionLists()
+{
+    m_filterFunctionListsMatch = false;
+
+    if (m_blendingKeyframes.size() < 2 || !m_blendingKeyframes.containsProperty(CSSPropertyFilter))
+        return;
+
+    // Empty filters match anything, so find the first non-empty entry as the reference.
+    size_t numKeyframes = m_blendingKeyframes.size();
+    size_t firstNonEmptyFilterKeyframeIndex = numKeyframes;
+
+    for (size_t i = 0; i < numKeyframes; ++i) {
+        if (m_blendingKeyframes[i].style()->filter().operations().size()) {
+            firstNonEmptyFilterKeyframeIndex = i;
+            break;
+        }
+    }
+
+    if (firstNonEmptyFilterKeyframeIndex == numKeyframes)
+        return;
+
+    auto& firstVal = m_blendingKeyframes[firstNonEmptyFilterKeyframeIndex].style()->filter();
+    for (size_t i = firstNonEmptyFilterKeyframeIndex + 1; i < numKeyframes; ++i) {
+        auto& value = m_blendingKeyframes[i].style()->filter();
+
+        // An empty filter list matches anything.
+        if (value.operations().isEmpty())
+            continue;
+
+        if (!firstVal.operationsMatch(value))
+            return;
+    }
+
+    m_filterFunctionListsMatch = true;
+}
+
+#if ENABLE(FILTERS_LEVEL_2)
+void KeyframeEffectReadOnly::checkForMatchingBackdropFilterFunctionLists()
+{
+    m_backdropFilterFunctionListsMatch = false;
+
+    if (m_blendingKeyframes.size() < 2 || !m_blendingKeyframes.containsProperty(CSSPropertyWebkitBackdropFilter))
+        return;
+
+    // Empty filters match anything, so find the first non-empty entry as the reference.
+    size_t numKeyframes = m_blendingKeyframes.size();
+    size_t firstNonEmptyFilterKeyframeIndex = numKeyframes;
+
+    for (size_t i = 0; i < numKeyframes; ++i) {
+        if (m_blendingKeyframes[i].style()->backdropFilter().operations().size()) {
+            firstNonEmptyFilterKeyframeIndex = i;
+            break;
+        }
+    }
+
+    if (firstNonEmptyFilterKeyframeIndex == numKeyframes)
+        return;
+
+    auto& firstVal = m_blendingKeyframes[firstNonEmptyFilterKeyframeIndex].style()->backdropFilter();
+    for (size_t i = firstNonEmptyFilterKeyframeIndex + 1; i < numKeyframes; ++i) {
+        auto& value = m_blendingKeyframes[i].style()->backdropFilter();
+
+        // An empty filter list matches anything.
+        if (value.operations().isEmpty())
+            continue;
+
+        if (!firstVal.operationsMatch(value))
+            return;
+    }
+
+    m_backdropFilterFunctionListsMatch = true;
+}
+#endif
 
 void KeyframeEffectReadOnly::computeCSSAnimationBlendingKeyframes()
 {
@@ -709,9 +837,7 @@ void KeyframeEffectReadOnly::computeCSSAnimationBlendingKeyframes()
             Style::loadPendingResources(*style, m_target->document(), m_target.get());
     }
 
-    m_blendingKeyframes = WTFMove(keyframeList);
-
-    computeStackingContextImpact();
+    setBlendingKeyframes(keyframeList);
 }
 
 void KeyframeEffectReadOnly::computeCSSTransitionBlendingKeyframes(const RenderStyle* oldStyle, const RenderStyle& newStyle)
@@ -721,26 +847,24 @@ void KeyframeEffectReadOnly::computeCSSTransitionBlendingKeyframes(const RenderS
     if (!oldStyle || m_blendingKeyframes.size())
         return;
 
-    auto& backingAnimation = downcast<CSSTransition>(animation())->backingAnimation();
+    auto property = downcast<CSSTransition>(animation())->property();
 
     auto toStyle = RenderStyle::clonePtr(newStyle);
     if (m_target)
         Style::loadPendingResources(*toStyle, m_target->document(), m_target.get());
 
     KeyframeList keyframeList("keyframe-effect-" + createCanonicalUUIDString());
-    keyframeList.addProperty(backingAnimation.property());
+    keyframeList.addProperty(property);
 
     KeyframeValue fromKeyframeValue(0, RenderStyle::clonePtr(*oldStyle));
-    fromKeyframeValue.addProperty(backingAnimation.property());
+    fromKeyframeValue.addProperty(property);
     keyframeList.insert(WTFMove(fromKeyframeValue));
 
     KeyframeValue toKeyframeValue(1, WTFMove(toStyle));
-    toKeyframeValue.addProperty(backingAnimation.property());
+    toKeyframeValue.addProperty(property);
     keyframeList.insert(WTFMove(toKeyframeValue));
 
-    m_blendingKeyframes = WTFMove(keyframeList);
-
-    computeStackingContextImpact();
+    setBlendingKeyframes(keyframeList);
 }
 
 bool KeyframeEffectReadOnly::stylesWouldYieldNewCSSTransitionsBlendingKeyframes(const RenderStyle& oldStyle, const RenderStyle& newStyle) const
@@ -977,11 +1101,10 @@ void KeyframeEffectReadOnly::setAnimatedPropertiesInStyle(RenderStyle& targetSty
         // 17. Let transformed distance be the result of evaluating the timing function associated with the first keyframe in interval endpoints
         //     passing interval distance as the input progress.
         auto transformedDistance = intervalDistance;
-        // In case we're backing a CSSAnimation or CSSTransition we won't actually have parsed keyframes.
-        if (startKeyframeIndex && startKeyframeIndex.value() + 1 <= m_parsedKeyframes.size()) {
+        if (startKeyframeIndex) {
             if (auto iterationDuration = timing()->iterationDuration()) {
                 auto rangeDuration = (endOffset - startOffset) * iterationDuration.seconds();
-                transformedDistance = m_parsedKeyframes[startKeyframeIndex.value()].timingFunction->transformTime(intervalDistance, rangeDuration);
+                transformedDistance = timingFunctionForKeyframeAtIndex(startKeyframeIndex.value())->transformTime(intervalDistance, rangeDuration);
             }
         }
 
@@ -992,6 +1115,27 @@ void KeyframeEffectReadOnly::setAnimatedPropertiesInStyle(RenderStyle& targetSty
         auto endStyle = !endKeyframeIndex ? &targetStyle : m_blendingKeyframes[endKeyframeIndex.value()].style();
         CSSPropertyAnimation::blendProperties(this, cssPropertyId, &targetStyle, startStyle, endStyle, transformedDistance);
     }
+}
+
+TimingFunction* KeyframeEffectReadOnly::timingFunctionForKeyframeAtIndex(size_t index)
+{
+    if (!m_parsedKeyframes.isEmpty())
+        return m_parsedKeyframes[index].timingFunction.get();
+
+    auto effectAnimation = animation();
+
+    // If we didn't have parsed keyframes, we must be dealing with a declarative animation.
+    ASSERT(is<DeclarativeAnimation>(effectAnimation));
+
+    // If we're dealing with a CSS Animation, the timing function is specified either on the keyframe itself,
+    // or failing that on the backing Animation object which defines the default for all keyframes.
+    if (is<CSSAnimation>(effectAnimation)) {
+        if (auto* timingFunction = m_blendingKeyframes[index].timingFunction(downcast<CSSAnimation>(effectAnimation)->animationName()))
+            return timingFunction;
+    }
+
+    // Failing that, or for a CSS Transition, the timing function is inherited from the backing Animation object. 
+    return downcast<DeclarativeAnimation>(effectAnimation)->backingAnimation().timingFunction();
 }
 
 void KeyframeEffectReadOnly::startOrStopAccelerated()

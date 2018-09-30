@@ -260,7 +260,7 @@ typedef size_t (JIT_OPERATION *S_JITOperation_EOJss)(ExecState*, JSObject*, JSSt
 typedef size_t (JIT_OPERATION *S_JITOperation_EReoJ)(ExecState*, RegExpObject*, EncodedJSValue);
 typedef size_t (JIT_OPERATION *S_JITOperation_EReoJss)(ExecState*, RegExpObject*, JSString*);
 typedef size_t (JIT_OPERATION *S_JITOperation_J)(EncodedJSValue);
-typedef SlowPathReturnType (JIT_OPERATION *Sprt_JITOperation_EZ)(ExecState*, int32_t);
+typedef SlowPathReturnType (JIT_OPERATION *Sprt_JITOperation_EUi)(ExecState*, uint32_t);
 typedef void (JIT_OPERATION *V_JITOperation)();
 typedef void (JIT_OPERATION *V_JITOperation_E)(ExecState*);
 typedef void (JIT_OPERATION *V_JITOperation_EC)(ExecState*, JSCell*);
@@ -396,6 +396,7 @@ size_t JIT_OPERATION operationCompareLessEq(ExecState*, EncodedJSValue, EncodedJ
 size_t JIT_OPERATION operationCompareGreater(ExecState*, EncodedJSValue, EncodedJSValue) WTF_INTERNAL;
 size_t JIT_OPERATION operationCompareGreaterEq(ExecState*, EncodedJSValue, EncodedJSValue) WTF_INTERNAL;
 size_t JIT_OPERATION operationCompareEq(ExecState*, EncodedJSValue, EncodedJSValue) WTF_INTERNAL;
+size_t JIT_OPERATION operationCompareStrictEq(ExecState*, EncodedJSValue, EncodedJSValue) WTF_INTERNAL;
 #if USE(JSVALUE64)
 EncodedJSValue JIT_OPERATION operationCompareStringEq(ExecState*, JSCell* left, JSCell* right) WTF_INTERNAL;
 #else

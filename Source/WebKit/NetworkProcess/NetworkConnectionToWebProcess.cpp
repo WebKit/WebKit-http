@@ -251,6 +251,11 @@ void NetworkConnectionToWebProcess::didFinishPingLoad(uint64_t pingLoadIdentifie
     m_connection->send(Messages::NetworkProcessConnection::DidFinishPingLoad(pingLoadIdentifier, error, response), 0);
 }
 
+void NetworkConnectionToWebProcess::setOnLineState(bool isOnLine)
+{
+    m_connection->send(Messages::NetworkProcessConnection::SetOnLineState(isOnLine), 0);
+}
+
 void NetworkConnectionToWebProcess::removeLoadIdentifier(ResourceLoadIdentifier identifier)
 {
     RefPtr<NetworkResourceLoader> loader = m_networkResourceLoaders.get(identifier);
@@ -338,7 +343,12 @@ void NetworkConnectionToWebProcess::convertMainResourceLoadToDownload(PAL::Sessi
 
 void NetworkConnectionToWebProcess::cookiesForDOM(PAL::SessionID sessionID, const URL& firstParty, const URL& url, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, IncludeSecureCookies includeSecureCookies, String& cookieString, bool& secureCookiesAccessed)
 {
-    std::tie(cookieString, secureCookiesAccessed) = WebCore::cookiesForDOM(storageSession(sessionID), firstParty, url, frameID, pageID, includeSecureCookies);
+    auto& networkStorageSession = storageSession(sessionID);
+    std::tie(cookieString, secureCookiesAccessed) = WebCore::cookiesForDOM(networkStorageSession, firstParty, url, frameID, pageID, includeSecureCookies);
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
+    if (NetworkProcess::singleton().shouldLogCookieInformation())
+        NetworkResourceLoader::logCookieInformation("NetworkConnectionToWebProcess::cookiesForDOM", reinterpret_cast<const void*>(this), networkStorageSession, firstParty, url, emptyString(), frameID, pageID, std::nullopt);
+#endif
 }
 
 void NetworkConnectionToWebProcess::setCookiesFromDOM(PAL::SessionID sessionID, const URL& firstParty, const URL& url, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, const String& cookieString)
@@ -346,10 +356,8 @@ void NetworkConnectionToWebProcess::setCookiesFromDOM(PAL::SessionID sessionID, 
     auto& networkStorageSession = storageSession(sessionID);
     WebCore::setCookiesFromDOM(networkStorageSession, firstParty, url, frameID, pageID, cookieString);
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
-    if (NetworkProcess::singleton().shouldLogCookieInformation()) {
-        auto partition = WebCore::URL(ParsedURLString, networkStorageSession.cookieStoragePartition(firstParty, url, frameID, pageID));
-        NetworkResourceLoader::logCookieInformation("NetworkConnectionToWebProcess::setCookiesFromDOM", reinterpret_cast<const void*>(this), networkStorageSession, partition, url, emptyString(), frameID, pageID, std::nullopt);
-    }
+    if (NetworkProcess::singleton().shouldLogCookieInformation())
+        NetworkResourceLoader::logCookieInformation("NetworkConnectionToWebProcess::setCookiesFromDOM", reinterpret_cast<const void*>(this), networkStorageSession, firstParty, url, emptyString(), frameID, pageID, std::nullopt);
 #endif
 }
 

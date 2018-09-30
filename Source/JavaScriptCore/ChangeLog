@@ -1,3 +1,535 @@
+2018-03-29  Keith Miller  <keith_miller@apple.com>
+
+        ArrayMode should not try to get the DFG to think it can convert TypedArrays
+        https://bugs.webkit.org/show_bug.cgi?id=184137
+
+        Reviewed by Saam Barati.
+
+        * dfg/DFGArrayMode.cpp:
+        (JSC::DFG::ArrayMode::fromObserved):
+
+2018-03-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r230062.
+        https://bugs.webkit.org/show_bug.cgi?id=184128
+
+        Broke mac port. web content process crashes while loading any
+        web page (Requested by rniwa on #webkit).
+
+        Reverted changeset:
+
+        "MSVC __forceinline slows down JSC release build fivefold
+        after r229391"
+        https://bugs.webkit.org/show_bug.cgi?id=184062
+        https://trac.webkit.org/changeset/230062
+
+2018-03-28  Ross Kirsling  <ross.kirsling@sony.com>
+
+        MSVC __forceinline slows down JSC release build fivefold after r229391
+        https://bugs.webkit.org/show_bug.cgi?id=184062
+
+        Reviewed by Alex Christensen.
+
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::marshallArgumentRegister):
+        Exempt MSVC from a single forced inline used within recursive templates.
+
+2018-03-28  Mark Lam  <mark.lam@apple.com>
+
+        Enhance ARM64 probe to support pointer profiling.
+        https://bugs.webkit.org/show_bug.cgi?id=184069
+        <rdar://problem/38939879>
+
+        Reviewed by JF Bastien.
+
+        * assembler/MacroAssemblerARM64.cpp:
+        (JSC::MacroAssembler::probe):
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::popPair):
+        (JSC::MacroAssemblerX86Common::pushPair):
+        * assembler/testmasm.cpp:
+        (JSC::testProbeReadsArgumentRegisters):
+        (JSC::testProbeWritesArgumentRegisters):
+        * runtime/PtrTag.h:
+        (JSC::tagForPtr):
+
+2018-03-28  Robin Morisset  <rmorisset@apple.com>
+
+        appendQuotedJSONString stops on arithmetic overflow instead of propagating it upwards
+        https://bugs.webkit.org/show_bug.cgi?id=183894
+
+        Reviewed by Saam Barati.
+
+        Use the return value of appendQuotedJSONString to fail more gracefully when given a string that is too large to handle.
+
+        * runtime/JSONObject.cpp:
+        (JSC::Stringifier::appendStringifiedValue):
+
+2018-03-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [JSC] Move WeakValueRef class to its own file and use it from Objc and GLib
+        https://bugs.webkit.org/show_bug.cgi?id=184073
+
+        Reviewed by Yusuke Suzuki.
+
+        We currently have duplicated code in Obj and GLib implementations.
+
+        * API/JSManagedValue.mm:
+        (managedValueHandleOwner):
+        (-[JSManagedValue initWithValue:]):
+        * API/JSWeakValue.cpp: Added.
+        (JSC::JSWeakValue::~JSWeakValue):
+        (JSC::JSWeakValue::clear):
+        (JSC::JSWeakValue::isClear const):
+        (JSC::JSWeakValue::setPrimitive):
+        (JSC::JSWeakValue::setObject):
+        (JSC::JSWeakValue::setString):
+        * API/JSWeakValue.h: Added.
+        (JSC::JSWeakValue::isSet const):
+        (JSC::JSWeakValue::isPrimitive const):
+        (JSC::JSWeakValue::isObject const):
+        (JSC::JSWeakValue::isString const):
+        (JSC::JSWeakValue::object const):
+        (JSC::JSWeakValue::primitive const):
+        (JSC::JSWeakValue::string const):
+        * API/glib/JSCWeakValue.cpp:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+
+2018-03-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Add JSCWeakValue to JavaScriptCore GLib API
+        https://bugs.webkit.org/show_bug.cgi?id=184041
+
+        Reviewed by Michael Catanzaro.
+
+        This allows to keep a reference to a JavaSCript value without protecting it, and without having a strong
+        reference of the context. When the value is cleared the JSCWeakValue::cleared signal is emitted and
+        jsc_weak_value_get_value() will always return nullptr.
+
+        * API/glib/JSCWeakValue.cpp: Added.
+        (WeakValueRef::~WeakValueRef):
+        (WeakValueRef::clear):
+        (WeakValueRef::isClear const):
+        (WeakValueRef::isSet const):
+        (WeakValueRef::isPrimitive const):
+        (WeakValueRef::isObject const):
+        (WeakValueRef::isString const):
+        (WeakValueRef::setPrimitive):
+        (WeakValueRef::setObject):
+        (WeakValueRef::setString):
+        (WeakValueRef::object const):
+        (WeakValueRef::primitive const):
+        (WeakValueRef::string const):
+        (weakValueHandleOwner):
+        (jscWeakValueInitialize):
+        (jscWeakValueSetProperty):
+        (jscWeakValueDispose):
+        (jsc_weak_value_class_init):
+        (jsc_weak_value_new):
+        (jsc_weak_value_get_value):
+        * API/glib/JSCWeakValue.h: Added.
+        * API/glib/docs/jsc-glib-4.0-sections.txt:
+        * API/glib/docs/jsc-glib-docs.sgml:
+        * API/glib/jsc.h:
+        * GLib.cmake:
+
+2018-03-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Remove unnecessary USE(JSVALUE32_64) / USE(JSVALUE64)
+        https://bugs.webkit.org/show_bug.cgi?id=181292
+
+        Reviewed by Saam Barati.
+
+        By using JSValueRegs abstraction, we can simplify DFGSpeculativeJIT.cpp code.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileGetByValOnDirectArguments):
+        (JSC::DFG::SpeculativeJIT::compileGetByValOnScopedArguments):
+        (JSC::DFG::SpeculativeJIT::compileCreateRest):
+        (JSC::DFG::SpeculativeJIT::compileArraySlice):
+        (JSC::DFG::SpeculativeJIT::emitSwitchImm):
+        (JSC::DFG::SpeculativeJIT::compilePutDynamicVar):
+        (JSC::DFG::SpeculativeJIT::compilePutAccessorByVal):
+
+2018-03-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Add Load16Z for B3 and use it in WebAssembly
+        https://bugs.webkit.org/show_bug.cgi?id=165884
+
+        Reviewed by JF Bastien.
+
+        We already support Load16Z in B3. Use it for i32.load16_u / i64.load16_u in WebAssembly.
+        spec-tests/memory.wast.js already covered this change.
+
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::emitLoadOp):
+
+2018-03-24  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Remove repeated iteration of ElementNode
+        https://bugs.webkit.org/show_bug.cgi?id=183987
+
+        Reviewed by Keith Miller.
+
+        BytecodeGenerator repeatedly iterates ElementNode to emit the efficient code.
+        While it is OK for small arrays, this repeated iteration takes much time
+        if the array is very large. For example, Kraken's initialization code includes
+        very large array with numeric literals. This makes bytecode compiling so long.
+
+        This patch carefully removes unnecessary iteration when emitting arrays.
+        This reduces one of Kraken/imaging-darkroom's bytecode compiling from 13.169856 ms
+        to 9.988050 ms.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitNewArrayBuffer):
+        (JSC::BytecodeGenerator::emitNewArray):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ArrayNode::emitBytecode):
+        (JSC::ArrayPatternNode::bindValue const):
+        (JSC::ArrayPatternNode::emitDirectBinding):
+
+2018-03-26  Ross Kirsling  <ross.kirsling@sony.com>
+
+        JIT callOperation() needs to support operations that return SlowPathReturnType differently on Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=183655
+
+        Reviewed by Keith Miller.
+
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::ArgCollection::argCount):
+        (JSC::CCallHelpers::marshallArgumentRegister):
+        (JSC::CCallHelpers::setupArgumentsImpl):
+        On Win64, ensure that argCount always includes GPRs and FPRs and that counting starts from 1 for SlowPathReturnType.
+
+        * jit/JIT.h:
+        (JSC::JIT::callOperation):
+        (JSC::JIT::is64BitType):
+        (JSC::JIT::is64BitType<void>):
+        On Win64, ensure special call is used for SlowPathReturnType.
+
+        * jit/JITOperations.h:
+        Update changed type.
+
+2018-03-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        We should have SSE4 detection in the X86 MacroAssembler.
+        https://bugs.webkit.org/show_bug.cgi?id=165363
+
+        Reviewed by JF Bastien.
+
+        This patch adds popcnt support to WASM in x86_64 environment.
+        To use it, we refactor our CPUID feature detection in MacroAssemblerX86Common.
+        Our spec-tests already cover popcnt.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::supportsCountPopulation):
+        * assembler/MacroAssemblerX86Common.cpp:
+        (JSC::MacroAssemblerX86Common::getCPUID):
+        (JSC::MacroAssemblerX86Common::getCPUIDEx):
+        (JSC::MacroAssemblerX86Common::collectCPUFeatures):
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::countPopulation32):
+        (JSC::MacroAssemblerX86Common::supportsFloatingPointRounding):
+        (JSC::MacroAssemblerX86Common::supportsCountPopulation):
+        (JSC::MacroAssemblerX86Common::supportsAVX):
+        (JSC::MacroAssemblerX86Common::supportsLZCNT):
+        (JSC::MacroAssemblerX86Common::supportsBMI1):
+        (JSC::MacroAssemblerX86Common::isSSE2Present):
+        (JSC::MacroAssemblerX86Common::updateEax1EcxFlags): Deleted.
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::countPopulation64):
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::popcnt_rr):
+        (JSC::X86Assembler::popcnt_mr):
+        (JSC::X86Assembler::popcntq_rr):
+        (JSC::X86Assembler::popcntq_mr):
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::I32Popcnt>):
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::I64Popcnt>):
+
+2018-03-26  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG should know that CreateThis can be effectful
+        https://bugs.webkit.org/show_bug.cgi?id=184013
+
+        Reviewed by Saam Barati.
+
+        As shown in the tests added in JSTests, CreateThis can be effectful if the constructor this
+        is a proxy.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+
+2018-03-25  Saam Barati  <sbarati@apple.com>
+
+        Fix typo in JSC option name
+        https://bugs.webkit.org/show_bug.cgi?id=184001
+
+        Reviewed by Mark Lam.
+
+        enableJITDebugAssetions => enableJITDebugAssertions.
+
+        * assembler/MacroAssembler.cpp:
+        (JSC::MacroAssembler::jitAssert):
+        * runtime/Options.h:
+
+2018-03-25  Saam Barati  <sbarati@apple.com>
+
+        r228149 accidentally removed code that resets m_emptyCursor at the end of a GC
+        https://bugs.webkit.org/show_bug.cgi?id=183995
+
+        Reviewed by Filip Pizlo.
+
+        The removal of this line of code was unintended and happened during some
+        refactoring Fil was doing. The consequence of removing this line of code
+        is that the m_emptyCursor became a monotonically increasing integer, leading
+        the cursor to usually being out of bounds of the block range (depending on
+        what the program is doing). This made the functionality of finding an empty
+        block to steal almost always fail.
+
+        * heap/BlockDirectory.cpp:
+        (JSC::BlockDirectory::prepareForAllocation):
+
+2018-03-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Introduces fused compare and jump
+        https://bugs.webkit.org/show_bug.cgi?id=177100
+
+        Reviewed by Mark Lam.
+
+        This patch introduces op_jeq, op_jneq, op_jstricteq, and op_jnstricteq.
+        It offers 3 benefit.
+
+        1. They are introduced due to the similar purpose to op_jless etc. It aligns
+        op_eq families to op_jless families.
+
+        2. It reduces the size of bytecode to represent the typical code sequence.
+
+        3. It offers the way to fuse check and jump in DFG code generation. Since
+        we have MovHint between Branch and CompareEq/CompareStrictEq previously,
+        we cannot do this optimization. It reduces the machine code size in DFG too.
+
+        It slightly improves Octane/boyer.
+
+            boyer  6.18038+-0.05002    ^     6.06990+-0.04176       ^ definitely 1.0182x faster
+
+        * bytecode/BytecodeDumper.cpp:
+        (JSC::BytecodeDumper<Block>::dumpBytecode):
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/Opcode.h:
+        (JSC::isBranch):
+        * bytecode/PreciseJumpTargetsInlines.h:
+        (JSC::extractStoredJumpTargetsForBytecodeOffset):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitJumpIfTrue):
+        (JSC::BytecodeGenerator::emitJumpIfFalse):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileStrictEq):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        (JSC::JIT::privateCompileSlowCases):
+        * jit/JIT.h:
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_jeq):
+        (JSC::JIT::emit_op_neq):
+        (JSC::JIT::emit_op_jneq):
+        (JSC::JIT::compileOpStrictEq):
+        (JSC::JIT::emit_op_stricteq):
+        (JSC::JIT::emit_op_nstricteq):
+        (JSC::JIT::compileOpStrictEqJump):
+        (JSC::JIT::emit_op_jstricteq):
+        (JSC::JIT::emit_op_jnstricteq):
+        (JSC::JIT::emitSlow_op_jstricteq):
+        (JSC::JIT::emitSlow_op_jnstricteq):
+        (JSC::JIT::emitSlow_op_jeq):
+        (JSC::JIT::emitSlow_op_jneq):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emitSlow_op_eq):
+        (JSC::JIT::emit_op_jeq):
+        (JSC::JIT::compileOpEqJumpSlow):
+        (JSC::JIT::emitSlow_op_jeq):
+        (JSC::JIT::emit_op_jneq):
+        (JSC::JIT::emitSlow_op_jneq):
+        (JSC::JIT::compileOpStrictEq):
+        (JSC::JIT::emit_op_stricteq):
+        (JSC::JIT::emit_op_nstricteq):
+        (JSC::JIT::compileOpStrictEqJump):
+        (JSC::JIT::emit_op_jstricteq):
+        (JSC::JIT::emit_op_jnstricteq):
+        (JSC::JIT::emitSlow_op_jstricteq):
+        (JSC::JIT::emitSlow_op_jnstricteq):
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * llint/LLIntSlowPaths.h:
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+
+2018-03-24  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Improve constants and add comments for CodeBlockHash
+        https://bugs.webkit.org/show_bug.cgi?id=183982
+
+        Rubber-stamped by Mark Lam.
+
+        * bytecode/CodeBlockHash.cpp:
+        (JSC::CodeBlockHash::CodeBlockHash):
+        * bytecode/ParseHash.cpp:
+        (JSC::ParseHash::ParseHash):
+
+2018-03-24  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Add options to report parsing and bytecode compiling times
+        https://bugs.webkit.org/show_bug.cgi?id=183982
+
+        Reviewed by Mark Lam.
+
+        This patch adds reportParseTimes and reportBytecodeCompileTimes options.
+        When they are enabled, JSC reports times consumed for parsing and bytecode
+        compiling.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Sources.txt:
+        * bytecode/ParseHash.cpp: Added.
+        (JSC::ParseHash::ParseHash):
+        * bytecode/ParseHash.h: Added.
+        (JSC::ParseHash::hashForCall const):
+        (JSC::ParseHash::hashForConstruct const):
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::generateUnlinkedFunctionCodeBlock):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::generate):
+        * parser/Parser.h:
+        (JSC::parse):
+        * runtime/CodeCache.h:
+        (JSC::generateUnlinkedCodeBlock):
+        * runtime/Options.h:
+
+2018-03-24  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JIT] Drop ENABLE_JIT_VERBOSE flag
+        https://bugs.webkit.org/show_bug.cgi?id=183983
+
+        Reviewed by Mark Lam.
+
+        Just use JITInternal::verbose value.
+
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        (JSC::JIT::privateCompileSlowCases):
+        (JSC::JIT::link):
+
+2018-03-23  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the build with no pasteboard
+        https://bugs.webkit.org/show_bug.cgi?id=183973
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-03-23  Mark Lam  <mark.lam@apple.com>
+
+        LLInt TypeArray pointer poisoning should not pick its poison dynamically.
+        https://bugs.webkit.org/show_bug.cgi?id=183942
+        <rdar://problem/38798018>
+
+        Reviewed by JF Bastien.
+
+        1. Move the LLInt TypedArray unpoisoning to just before the array access after
+           all the branches.
+        2. Renamed FirstArrayType to FirstTypedArrayType to match the symbol in C++ code.
+        3. Remove a useless instruction in the implementation of emitX86Lea for a global
+           label.
+
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * offlineasm/x86.rb:
+
+2018-03-23  Mark Lam  <mark.lam@apple.com>
+
+        Add more support for pointer profiling.
+        https://bugs.webkit.org/show_bug.cgi?id=183943
+        <rdar://problem/38799068>
+
+        Reviewed by JF Bastien.
+
+        * assembler/ARM64Assembler.h:
+        (JSC::ARM64Assembler::linkJumpOrCall):
+        * assembler/AbstractMacroAssembler.h:
+        (JSC::AbstractMacroAssembler::repatchNearCall):
+        (JSC::AbstractMacroAssembler::tagReturnAddress):
+        (JSC::AbstractMacroAssembler::untagReturnAddress):
+
+2018-03-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Add standard containers with FastAllocator specialization
+        https://bugs.webkit.org/show_bug.cgi?id=183789
+
+        Reviewed by Darin Adler.
+
+        * b3/air/testair.cpp:
+        * b3/testb3.cpp:
+        (JSC::B3::testDoubleLiteralComparison):
+        (JSC::B3::testFloatEqualOrUnorderedFoldingNaN):
+        * dfg/DFGGraph.h:
+        * dfg/DFGIntegerCheckCombiningPhase.cpp:
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::switchStringSlow):
+        * runtime/FunctionHasExecutedCache.h:
+        * runtime/TypeLocationCache.h:
+
+2018-03-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [FTL] Fix ArrayPush(ArrayStorage)'s abstract heap
+        https://bugs.webkit.org/show_bug.cgi?id=182960
+
+        Reviewed by Saam Barati.
+
+        This patch fixes ArrayPush(ArrayStorage)'s abstract heap.
+        It should always touch ArrayStorage_vector. To unify
+        vector setting code for the real ArrayStorage_vector and
+        ScratchBuffer, we use ArrayStorage_vector.atAnyIndex() to
+        annotate this.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileArrayPush):
+
+2018-03-23  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed build fix for GCC 4.9 builds.
+
+        * assembler/MacroAssemblerCodeRef.h: std::is_trivially_copyable<> isn't
+        supported in 4.9 libstdc++, so wrap the static assert using it in a
+        COMPILER_SUPPORTS() macro, and use __is_trivially_copyable() builtin,
+        as is done in bitwise_cast() in StdLibExtras.h.
+
+2018-03-22  Tim Horton  <timothy_horton@apple.com>
+
+        Adopt WK_ALTERNATE_FRAMEWORKS_DIR in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=183930
+        <rdar://problem/38782249>
+
+        Reviewed by Dan Bernstein.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
 2018-03-22  Mark Lam  <mark.lam@apple.com>
 
         Add placeholder call and jump MacroAssembler emitters that take PtrTag in a register.

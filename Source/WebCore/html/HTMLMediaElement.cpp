@@ -1337,11 +1337,15 @@ void HTMLMediaElement::prepareForLoad()
     m_autoplaying = true;
     mediaSession().clientWillBeginAutoplaying();
 
-    // 9 - Invoke the media element's resource selection algorithm.
-    // Note, unless the restriction on requiring user action has been removed,
-    // do not begin downloading data.
-    if (m_mediaSession->dataLoadingPermitted(*this))
-        selectMediaResource();
+    if (!MediaPlayer::isAvailable())
+        noneSupported();
+    else {
+        // 9 - Invoke the media element's resource selection algorithm.
+        // Note, unless the restriction on requiring user action has been removed,
+        // do not begin downloading data.
+        if (m_mediaSession->dataLoadingPermitted(*this))
+            selectMediaResource();
+    }
 
     // 10 - Note: Playback of any previously playing media resource for this element stops.
 
@@ -2151,6 +2155,9 @@ void HTMLMediaElement::waitForSourceChange()
 
 void HTMLMediaElement::noneSupported()
 {
+    if (m_error)
+        return;
+
     INFO_LOG(LOGIDENTIFIER);
 
     stopPeriodicTimers();
@@ -2611,7 +2618,7 @@ String HTMLMediaElement::mediaPlayerMediaKeysStorageDirectory() const
     if (storageDirectory.isEmpty())
         return emptyString();
 
-    return FileSystem::pathByAppendingComponent(storageDirectory, SecurityOriginData::fromSecurityOrigin(document().securityOrigin()).databaseIdentifier());
+    return FileSystem::pathByAppendingComponent(storageDirectory, document().securityOrigin().data().databaseIdentifier());
 }
 
 void HTMLMediaElement::webkitSetMediaKeys(WebKitMediaKeys* mediaKeys)
@@ -6964,7 +6971,6 @@ void HTMLMediaElement::removeBehaviorsRestrictionsAfterFirstUserGesture(MediaEle
         | MediaElementSession::RequireUserGestureToShowPlaybackTargetPicker
         | MediaElementSession::RequireUserGestureToAutoplayToExternalDevice
 #endif
-        | MediaElementSession::RequireUserGestureForLoad
         | MediaElementSession::RequireUserGestureForVideoRateChange
         | MediaElementSession::RequireUserGestureForAudioRateChange
         | MediaElementSession::RequireUserGestureForFullscreen
