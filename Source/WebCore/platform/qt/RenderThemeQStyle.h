@@ -42,7 +42,7 @@ private:
     ~RenderThemeQStyle();
 
 public:
-    static PassRefPtr<RenderTheme> create(Page*);
+    static RefPtr<RenderTheme> create(Page*);
 
     static void setStyleFactoryFunction(QtStyleFactoryFunction);
     static QtStyleFactoryFunction styleFactory();

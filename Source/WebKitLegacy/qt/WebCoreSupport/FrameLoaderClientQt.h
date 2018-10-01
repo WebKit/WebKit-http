@@ -124,14 +124,14 @@ public:
     void dispatchShow() override;
 
     void dispatchDecidePolicyForResponse(const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, FramePolicyFunction) override;
-    void dispatchDecidePolicyForNewWindowAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, PassRefPtr<FormState>, const WTF::String&, FramePolicyFunction) override;
-    void dispatchDecidePolicyForNavigationAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, PassRefPtr<FormState>, FramePolicyFunction) override;
+    void dispatchDecidePolicyForNewWindowAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, Ref<FormState>&&, const WTF::String&, FramePolicyFunction) override;
+    void dispatchDecidePolicyForNavigationAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, Ref<FormState>&&, FramePolicyFunction) override;
     void cancelPolicyCheck() override;
 
     void dispatchUnableToImplementPolicy(const WebCore::ResourceError&) override;
 
-    void dispatchWillSendSubmitEvent(PassRefPtr<FormState>) override { }
-    void dispatchWillSubmitForm(PassRefPtr<FormState>, FramePolicyFunction) override;
+    void dispatchWillSendSubmitEvent(Ref<FormState>&&) override { }
+    void dispatchWillSubmitForm(Ref<FormState>&&, FramePolicyFunction) override;
 
     void revertToProvisionalState(DocumentLoader*) override { }
     void setMainDocumentError(DocumentLoader*, const ResourceError&) override;
@@ -199,7 +199,7 @@ public:
     void recreatePlugin(Widget*) override { }
     void redirectDataToPlugin(Widget* pluginWidget) override;
 
-    PassRefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const URL& baseURL, const Vector<String>& paramNames, const Vector<String>& paramValues) override;
+    RefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const URL& baseURL, const Vector<String>& paramNames, const Vector<String>& paramValues) override;
 
     ObjectContentType objectContentType(const URL&, const String& mimeTypeIn) override;
     String overrideMediaType() const override;
@@ -214,7 +214,7 @@ public:
     void updateCachedDocumentLoader(DocumentLoader &) override;
     void prefetchDNS(const WTF::String &) override;
 
-    PassRefPtr<FrameNetworkingContext> createNetworkingContext() override;
+    RefPtr<FrameNetworkingContext> createNetworkingContext() override;
 
     const URL& lastRequestedUrl() const { return m_lastRequestedUrl; }
 

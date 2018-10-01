@@ -34,14 +34,14 @@
 
 namespace WebCore {
 
-PassRefPtr<DataTransferItemListQt> DataTransferItemListQt::create(PassRefPtr<Clipboard> owner, ScriptExecutionContext* context)
+RefPtr<DataTransferItemListQt> DataTransferItemListQt::create(Ref<Clipboard>&& owner, ScriptExecutionContext* context)
 {
-    return adoptRef(new DataTransferItemListQt(owner, context));
+    return adoptRef(new DataTransferItemListQt(WTFMove(owner), context));
 }
 
-DataTransferItemListQt::DataTransferItemListQt(PassRefPtr<Clipboard> owner, ScriptExecutionContext* context)
+DataTransferItemListQt::DataTransferItemListQt(Ref<Clipboard>&& owner, ScriptExecutionContext* context)
     : m_owner(clipboard)
-    , m_context(context)
+    , m_context(WTFMove(context))
 {
 }
 
@@ -53,7 +53,7 @@ size_t DataTransferItemListQt::length() const
     return m_items.size();
 }
 
-PassRefPtr<DataTransferItem> DataTransferItemListQt::item(unsigned long index)
+RefPtr<DataTransferItem> DataTransferItemListQt::item(unsigned long index)
 {
     if (!m_owner->canReadTypes() || index >= length())
         return 0;
@@ -99,12 +99,12 @@ void DataTransferItemListQt::add(const String& data, const String& type, Excepti
     m_items.append(DataTransferItem::create(m_owner, m_context, data, type));
 }
 
-void DataTransferItemListQt::add(PassRefPtr<File> file)
+void DataTransferItemListQt::add(Ref<File>&& file)
 {
     if (!m_owner->canWriteData() || !file)
         return;
 
-    m_items.append(DataTransferItem::create(m_owner, m_context, file));
+    m_items.append(DataTransferItem::create(m_owner, m_context, WTFMove(file)));
 }
 
 void DataTransferItemListQt::addPasteboardItem(const String& type)

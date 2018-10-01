@@ -1205,9 +1205,9 @@ void QWebElement::removeAllChildren()
 
 // FIXME: This code, and all callers are wrong, and have no place in a
 // WebKit implementation.  These should be replaced with WebCore implementations.
-static RefPtr<Node> findInsertionPoint(PassRefPtr<Node> root)
+static RefPtr<Node> findInsertionPoint(Ref<Node>&& root)
 {
-    RefPtr<Node> node = root;
+    RefPtr<Node> node = WTFMove(root);
 
     // Go as far down the tree as possible.
     while (node->hasChildNodes() && node->firstChild()->isElementNode())
@@ -1507,7 +1507,7 @@ void QWebElement::endExitFullScreen()
 class QWebElementCollectionPrivate : public QSharedData
 {
 public:
-    static QWebElementCollectionPrivate* create(const PassRefPtr<ContainerNode> &context, const QString &query);
+    static QWebElementCollectionPrivate* create(const Ref<ContainerNode>&& &context, const QString &query);
 
     RefPtr<NodeList> m_result;
 
@@ -1515,7 +1515,7 @@ private:
     inline QWebElementCollectionPrivate() {}
 };
 
-QWebElementCollectionPrivate* QWebElementCollectionPrivate::create(const PassRefPtr<ContainerNode> &context, const QString &query)
+QWebElementCollectionPrivate* QWebElementCollectionPrivate::create(const Ref<ContainerNode>&& &context, const QString &query)
 {
     if (!context)
         return 0;

@@ -107,8 +107,6 @@ public:
     PlatformLayer* platformLayer() const override { return 0; }
     void paintToTextureMapper(TextureMapper&, const FloatRect& targetRect, const TransformationMatrix&, float opacity) override;
 
-    PlatformMedia platformMedia() const override;
-
     QMediaPlayer* mediaPlayer() const { return m_mediaPlayer; }
     void removeVideoItem();
     void restoreVideoItem();

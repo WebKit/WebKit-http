@@ -41,7 +41,7 @@
 #include "RenderView.h"
 #include "ShadowRoot.h"
 #include "Text.h"
-#include "TextBreakIterator.h"
+#include "wtf/text/TextBreakIterator.h"
 
 namespace WebCore {
 

@@ -222,9 +222,9 @@ static Qt::PenStyle toQPenStyle(StrokeStyle style)
 static inline Qt::FillRule toQtFillRule(WindRule rule)
 {
     switch (rule) {
-    case RULE_EVENODD:
+    case WindRule::EvenOdd:
         return Qt::OddEvenFill;
-    case RULE_NONZERO:
+    case WindRule::NonZero:
         return Qt::WindingFill;
     default:
         ASSERT_NOT_REACHED();
@@ -950,7 +950,7 @@ void GraphicsContext::clipPath(const Path& path, WindRule clipRule)
 
     QPainter* p = m_data->p();
     QPainterPath platformPath = path.platformPath();
-    platformPath.setFillRule(clipRule == RULE_EVENODD ? Qt::OddEvenFill : Qt::WindingFill);
+    platformPath.setFillRule(clipRule == WindRule::EvenOdd ? Qt::OddEvenFill : Qt::WindingFill);
     p->setClipPath(platformPath, Qt::IntersectClip);
 }
 

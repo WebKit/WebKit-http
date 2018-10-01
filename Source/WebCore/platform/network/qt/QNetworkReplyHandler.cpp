@@ -719,7 +719,7 @@ void QNetworkReplyHandler::forwardData()
     // FIXME: We need API to get unflattened array of data segments to convert it to non-contiguous SharedBuffer
 
     qint64 bytesAvailable = m_replyWrapper->reply()->bytesAvailable();
-    Vector<char> buffer(8128); // smaller than 8192 to fit within 8k including overhead.
+    Vector<uint8_t> buffer(8128); // smaller than 8192 to fit within 8k including overhead.
     while (bytesAvailable > 0 && !m_queue.deferSignals()) {
         qint64 readSize = m_replyWrapper->reply()->read(buffer.data(), buffer.size());
         if (readSize <= 0)

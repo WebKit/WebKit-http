@@ -44,7 +44,7 @@ void FrameNetworkingContextQt::setSession(std::unique_ptr<NetworkStorageSession>
     m_session = WTFMove(session);
 }
 
-PassRefPtr<FrameNetworkingContextQt> FrameNetworkingContextQt::create(Frame* frame, QObject* originatingObject, bool mimeSniffingEnabled)
+RefPtr<FrameNetworkingContextQt> FrameNetworkingContextQt::create(Frame* frame, QObject* originatingObject, bool mimeSniffingEnabled)
 {
     RefPtr<FrameNetworkingContextQt> self = adoptRef(new FrameNetworkingContextQt(frame, originatingObject, mimeSniffingEnabled));
     self->setSession(std::make_unique<NetworkStorageSession>(self.get()));

@@ -44,11 +44,11 @@ public:
     ImageDecoderQt(AlphaOption, GammaAndColorProfileOption);
     ~ImageDecoderQt();
 
-    void setData(&SharedBuffer data, bool allDataReceived) final;
+    void setData(SharedBuffer& data, bool allDataReceived) final;
     bool isSizeAvailable() const final;
     size_t frameCount() const final;
     RepetitionCount repetitionCount() const final;
-    ImageFrame* frameBufferAtIndex(size_t index) final;
+    ScalableImageDecoderFrame* frameBufferAtIndex(size_t index) final;
 
     String filenameExtension() const final;
 
@@ -59,10 +59,10 @@ private:
     ImageDecoderQt &operator=(const ImageDecoderQt&);
 
 private:
-    void internalDecodeSize();
+    void internalDecodeSize() const;
     void internalReadImage(size_t);
     bool internalHandleCurrentImage(size_t);
-    void forceLoadEverything();
+    void forceLoadEverything() const;
     void clearPointers();
 
 private:

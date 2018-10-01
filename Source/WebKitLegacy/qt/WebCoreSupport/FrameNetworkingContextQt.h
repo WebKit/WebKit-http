@@ -26,7 +26,7 @@ namespace WebCore {
 
 class FrameNetworkingContextQt : public FrameNetworkingContext {
 public:
-    static PassRefPtr<FrameNetworkingContextQt> create(Frame*, QObject* originatingObject, bool mimeSniffingEnabled);
+    static RefPtr<FrameNetworkingContextQt> create(Frame*, QObject* originatingObject, bool mimeSniffingEnabled);
 
 private:
     FrameNetworkingContextQt(Frame*, QObject* originatingObject, bool mimeSniffingEnabled);

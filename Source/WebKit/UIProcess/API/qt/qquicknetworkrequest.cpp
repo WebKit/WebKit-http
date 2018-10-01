@@ -32,9 +32,9 @@ QQuickNetworkRequest::QQuickNetworkRequest(QObject* parent)
     Q_ASSERT(parent);
 }
 
-void QQuickNetworkRequest::setNetworkRequestData(WTF::PassRefPtr<WebKit::QtRefCountedNetworkRequestData> data)
+void QQuickNetworkRequest::setNetworkRequestData(WTF::Ref<WebKit::QtRefCountedNetworkRequestData>&& data)
 {
-    m_networkRequestData = data;
+    m_networkRequestData = WTFMove(data);
 }
 
 QUrl QQuickNetworkRequest::url() const

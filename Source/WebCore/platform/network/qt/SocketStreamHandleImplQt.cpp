@@ -116,7 +116,7 @@ void SocketStreamHandlePrivate::socketReadyRead()
     }
 }
 
-int SocketStreamHandlePrivate::send(const char* data, int len)
+int SocketStreamHandlePrivate::send(const uint8_t* data, size_t len)
 {
     if (!m_socket || m_socket->state() != QAbstractSocket::ConnectedState)
         return 0;
@@ -206,10 +206,11 @@ SocketStreamHandle::~SocketStreamHandle()
     delete m_p;
 }
 
-int SocketStreamHandle::platformSend(const char* data, int len)
+void SocketStreamHandleImpl::platformSend(const uint8_t* data, size_t len, Function<void(bool)>&& completionHandler)
 {
     LOG(Network, "SocketStreamHandle %p platformSend", this);
-    return m_p->send(data, len);
+    int bytesWritten = m_p->send(data, len);
+    completionHandler(bytesWritten == len);
 }
 
 void SocketStreamHandle::platformClose()

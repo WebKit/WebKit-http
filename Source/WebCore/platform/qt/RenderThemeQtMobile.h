@@ -43,7 +43,7 @@ private:
     ~RenderThemeQtMobile();
 
 public:
-    static PassRefPtr<RenderTheme> create(Page*);
+    static RefPtr<RenderTheme> create(Page*);
 
     void adjustSliderThumbSize(RenderStyle&, Element*) const final;
 

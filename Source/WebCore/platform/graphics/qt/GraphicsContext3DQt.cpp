@@ -384,7 +384,7 @@ void GraphicsContext3DPrivate::createGraphicsSurfaces(const IntSize& size)
 #endif
 }
 
-PassRefPtr<GraphicsContext3D> GraphicsContext3D::create(GraphicsContext3D::Attributes attrs, HostWindow* hostWindow, GraphicsContext3D::RenderStyle renderStyle)
+RefPtr<GraphicsContext3D> GraphicsContext3D::create(GraphicsContext3D::Attributes attrs, HostWindow* hostWindow, GraphicsContext3D::RenderStyle renderStyle)
 {
     // This implementation doesn't currently support rendering directly to the HostWindow.
     if (renderStyle == RenderDirectlyToHostWindow)

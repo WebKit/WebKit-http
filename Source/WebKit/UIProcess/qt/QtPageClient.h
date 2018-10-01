@@ -58,7 +58,7 @@ public:
     void didRelaunchProcess() override;
     std::unique_ptr<DrawingAreaProxy> createDrawingAreaProxy() override;
     void handleDownloadRequest(DownloadProxy*) override;
-    void handleApplicationSchemeRequest(PassRefPtr<QtRefCountedNetworkRequestData>); // QTFIXME
+    void handleApplicationSchemeRequest(Ref<QtRefCountedNetworkRequestData>&&); // QTFIXME
     void handleAuthenticationRequiredRequest(const String& hostname, const String& realm, const String& prefilledUsername, String& username, String& password) override;
     void handleCertificateVerificationRequest(const String& hostname, bool& ignoreErrors) override;
     void handleProxyAuthenticationRequiredRequest(const String& hostname, uint16_t port, const String& prefilledUsername, String& username, String& password) override;
@@ -74,14 +74,14 @@ public:
     void pageClosed() override { }
     void preferencesDidChange() override { }
 #if ENABLE(DRAG_SUPPORT)
-    void startDrag(const WebCore::DragData&, PassRefPtr<ShareableBitmap> dragImage) override;
+    void startDrag(const WebCore::DragData&, Ref<ShareableBitmap>&& dragImage) override;
 #endif
     void setCursor(const WebCore::Cursor&) override;
     void setCursorHiddenUntilMouseMoves(bool) override;
     void toolTipChanged(const String&, const String&) override;
 
     // DefaultUndoController
-    void registerEditCommand(PassRefPtr<WebEditCommandProxy>, WebPageProxy::UndoOrRedo) override;
+    void registerEditCommand(Ref<WebEditCommandProxy>&&, WebPageProxy::UndoOrRedo) override;
     void clearAllEditCommands() override;
     bool canUndoRedo(WebPageProxy::UndoOrRedo) override;
     void executeUndoRedo(WebPageProxy::UndoOrRedo) override;

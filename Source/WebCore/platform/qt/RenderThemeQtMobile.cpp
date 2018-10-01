@@ -36,7 +36,7 @@
 #include "RenderProgress.h"
 #include "StyleResolver.h"
 
-#include <wtf/PassRefPtr.h>
+#include <wtf/RefPtr.h>
 
 #include <QColor>
 #include <QFile>
@@ -630,7 +630,7 @@ void StylePainterMobile::drawSliderThumb(const QRect & rect, bool pressed) const
 }
 
 
-PassRefPtr<RenderTheme> RenderThemeQtMobile::create(Page* page)
+RefPtr<RenderTheme> RenderThemeQtMobile::create(Page* page)
 {
     return adoptRef(new RenderThemeQtMobile(page));
 }

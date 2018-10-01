@@ -32,8 +32,8 @@
 #include "Cookie.h"
 #include "URL.h"
 #include "NetworkingContext.h"
+#include "NetworkStorageSession.h"
 #include "NotImplemented.h"
-#include "PlatformCookieJar.h"
 #include "SQLiteStatement.h"
 #include "SQLiteTransaction.h"
 #include "ThirdPartyCookiesQt.h"
@@ -204,7 +204,7 @@ bool SharedCookieJarQt::deleteCookie(const QNetworkCookie& cookie)
     if (!m_database.isOpen())
         return false;
 
-    SQLiteStatement sqlQuery(m_database, ASCIILiteral("DELETE FROM cookies WHERE cookieId=?"));
+    SQLiteStatement sqlQuery(m_database, "DELETE FROM cookies WHERE cookieId=?"_s);
     if (sqlQuery.prepare() != SQLITE_OK) {
         qWarning("Failed to prepare delete statement - cannot write to cookie database");
         return false;
@@ -234,7 +234,7 @@ void SharedCookieJarQt::deleteCookiesForHostname(const String& hostname)
     QList<QNetworkCookie> cookies = allCookies();
     QList<QNetworkCookie>::Iterator it = cookies.begin();
     QList<QNetworkCookie>::Iterator end = cookies.end();
-    SQLiteStatement sqlQuery(m_database, ASCIILiteral("DELETE FROM cookies WHERE cookieId=?"));
+    SQLiteStatement sqlQuery(m_database, "DELETE FROM cookies WHERE cookieId=?"_s);
     if (sqlQuery.prepare() != SQLITE_OK) {
         qWarning("Failed to prepare delete statement - cannot write to cookie database");
         return;
@@ -263,7 +263,7 @@ void SharedCookieJarQt::deleteAllCookies()
     if (!m_database.isOpen())
         return;
 
-    if (!m_database.executeCommand(ASCIILiteral("DELETE FROM cookies")))
+    if (!m_database.executeCommand("DELETE FROM cookies"_s))
         qWarning("Failed to clear cookies database");
     setAllCookies(QList<QNetworkCookie>());
 }
@@ -276,13 +276,13 @@ void SharedCookieJarQt::deleteAllCookiesModifiedSince(std::chrono::system_clock:
 
 SharedCookieJarQt::SharedCookieJarQt(const String& cookieStorageDirectory)
 {
-    if (!m_database.open(cookieStorageDirectory + ASCIILiteral("/cookies.db"))) {
+    if (!m_database.open(cookieStorageDirectory + "/cookies.db"_s)) {
         qWarning("Can't open cookie database");
         return;
     }
 
     m_database.setSynchronous(SQLiteDatabase::SyncOff);
-    m_database.executeCommand(ASCIILiteral("PRAGMA secure_delete = 1;"));
+    m_database.executeCommand("PRAGMA secure_delete = 1;"_s);
 
     if (ensureDatabaseTable())
         loadCookies();
@@ -303,7 +303,7 @@ bool SharedCookieJarQt::setCookiesFromUrl(const QList<QNetworkCookie>& cookieLis
     if (!m_database.isOpen())
         return false;
 
-    SQLiteStatement sqlQuery(m_database, ASCIILiteral("INSERT OR REPLACE INTO cookies (cookieId, cookie) VALUES (?, ?)"));
+    SQLiteStatement sqlQuery(m_database, "INSERT OR REPLACE INTO cookies (cookieId, cookie) VALUES (?, ?)"_s);
     if (sqlQuery.prepare() != SQLITE_OK)
         return false;
 
@@ -327,7 +327,7 @@ bool SharedCookieJarQt::setCookiesFromUrl(const QList<QNetworkCookie>& cookieLis
 
 bool SharedCookieJarQt::ensureDatabaseTable()
 {
-    if (!m_database.executeCommand(ASCIILiteral("CREATE TABLE IF NOT EXISTS cookies (cookieId VARCHAR PRIMARY KEY, cookie BLOB);"))) {
+    if (!m_database.executeCommand("CREATE TABLE IF NOT EXISTS cookies (cookieId VARCHAR PRIMARY KEY, cookie BLOB);"_s)) {
         qWarning("Failed to create cookie table");
         return false;
     }
@@ -340,7 +340,7 @@ void SharedCookieJarQt::loadCookies()
         return;
 
     QList<QNetworkCookie> cookies;
-    SQLiteStatement sqlQuery(m_database, ASCIILiteral("SELECT cookie FROM cookies"));
+    SQLiteStatement sqlQuery(m_database, "SELECT cookie FROM cookies"_s);
     if (sqlQuery.prepare() != SQLITE_OK)
         return;
 

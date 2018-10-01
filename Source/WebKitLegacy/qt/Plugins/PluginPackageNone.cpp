@@ -49,7 +49,7 @@ uint16_t PluginPackage::NPVersion() const
 }
 #endif
 
-PassRefPtr<PluginPackage> PluginPackage::createPackage(const String&, const time_t&)
+RefPtr<PluginPackage> PluginPackage::createPackage(const String&, const time_t&)
 {
     return 0;
 }

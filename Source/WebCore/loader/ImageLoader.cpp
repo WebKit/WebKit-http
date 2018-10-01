@@ -150,9 +150,9 @@ void ImageLoader::setImageWithoutConsideringPendingLoadEvent(CachedImage* newIma
         }
         m_imageComplete = true;
         if (newImage)
-            newImage->addClient(this);
+            newImage->addClient(*this);
         if (oldImage)
-            oldImage->removeClient(this);
+            oldImage->removeClient(*this);
     }
 
     if (RenderImageResource* imageResource = renderImageResource())

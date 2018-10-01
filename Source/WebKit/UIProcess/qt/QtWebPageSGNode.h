@@ -22,7 +22,7 @@
 #define QtWebPageSGNode_h
 
 #include <QtQuick/QSGTransformNode>
-#include <wtf/PassRefPtr.h>
+#include <wtf/RefPtr.h>
 
 QT_BEGIN_NAMESPACE
 class QQuickItem;
@@ -40,7 +40,7 @@ class QtWebPageSGNode final : public QSGTransformNode {
         QtWebPageSGNode(WebPageProxy&);
         void setBackground(const QRectF&, const QColor&);
         void setScale(float);
-        void setCoordinatedGraphicsScene(PassRefPtr<CoordinatedGraphicsScene>);
+        void setCoordinatedGraphicsScene(Ref<CoordinatedGraphicsScene>&&);
         qreal devicePixelRatio() const { return m_devicePixelRatio; }
         void setDevicePixelRatio(qreal devicePixelRatio) { m_devicePixelRatio = devicePixelRatio; }
         const WebPageProxy& page() const { return m_page; }

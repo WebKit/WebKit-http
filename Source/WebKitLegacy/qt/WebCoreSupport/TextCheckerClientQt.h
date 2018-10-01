@@ -46,7 +46,7 @@ public:
     String getAutoCorrectSuggestionForMisspelledWord(const String& misspelledWord) final;
     void checkGrammarOfString(StringView, Vector<GrammarDetail>&, int* badGrammarLocation, int* badGrammarLength) final;
     void getGuessesForWord(const String& word, const String& context, Vector<String>& guesses) final;
-    void requestCheckingOfString(WTF::PassRefPtr<WebCore::TextCheckingRequest>) final { }
+    void requestCheckingOfString(WTF::Ref<WebCore::TextCheckingRequest>&&) final { }
 
     virtual bool isContinousSpellCheckingEnabled();
     virtual void toggleContinousSpellChecking();

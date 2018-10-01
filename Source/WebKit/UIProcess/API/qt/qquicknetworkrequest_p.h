@@ -35,7 +35,7 @@ class QWEBKIT_EXPORT QQuickNetworkRequest : public QObject {
 public:
     QQuickNetworkRequest(QObject* parent);
 
-    void setNetworkRequestData(WTF::PassRefPtr<WebKit::QtRefCountedNetworkRequestData> data);
+    void setNetworkRequestData(WTF::Ref<WebKit::QtRefCountedNetworkRequestData>&& data);
 
     QUrl url() const;
 

@@ -139,7 +139,7 @@ String DragData::asURL(FilenameConversionPolicy filenamePolicy, String*) const
 }
 
 /*
-PassRefPtr<DocumentFragment> DragData::asFragment(PassRefPtr<Range>, bool, bool&) const
+RefPtr<DocumentFragment> DragData::asFragment(Ref<Range>&&, bool, bool&) const
 {
     if (m_platformDragData && m_platformDragData->hasHtml())
         return createFragmentFromMarkup(frame->document(), m_platformDragData->html(), "", DisallowScriptingAndPluginContent);

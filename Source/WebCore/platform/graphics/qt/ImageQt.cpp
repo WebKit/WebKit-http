@@ -146,7 +146,7 @@ bool FrameData::clear(bool clearMetadata)
 // Image Class
 // ================================================
 
-PassRefPtr<Image> Image::loadPlatformResource(const char* name)
+RefPtr<Image> Image::loadPlatformResource(const char* name)
 {
     return StillImage::create(loadResourcePixmap(name));
 }
@@ -320,7 +320,7 @@ void BitmapImage::checkForSolidColor()
 }
 
 #if OS(WINDOWS)
-PassRefPtr<BitmapImage> BitmapImage::create(HBITMAP hBitmap)
+RefPtr<BitmapImage> BitmapImage::create(HBITMAP hBitmap)
 {
     QPixmap* qPixmap = new QPixmap(qt_pixmapFromWinHBITMAP(hBitmap));
 

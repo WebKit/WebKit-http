@@ -148,7 +148,7 @@ static void drawQtGlyphRun(GraphicsContext& context, const QGlyphRun& qtGlyphRun
                 shadowPainter->setPen(state.shadowColor);
                 if (shadowContext.textDrawingMode() & TextModeFill)
                     shadowPainter->drawGlyphRun(point, qtGlyphRun);
-                else if (shadowContext->textDrawingMode() & TextModeStroke)
+                else if (shadowContext.textDrawingMode() & TextModeStroke)
                     shadowPainter->strokePath(textStrokePath, shadowPainter->pen());
             });
         } else {

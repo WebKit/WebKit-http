@@ -1642,9 +1642,9 @@ QQmlListProperty<QQuickUrlSchemeDelegate> QQuickWebViewExperimental::schemeDeleg
             QQuickWebViewExperimental::schemeDelegates_Clear);
 }
 
-void QQuickWebViewExperimental::invokeApplicationSchemeHandler(PassRefPtr<QtRefCountedNetworkRequestData> request)
+void QQuickWebViewExperimental::invokeApplicationSchemeHandler(Ref<QtRefCountedNetworkRequestData>&& request)
 {
-    RefPtr<QtRefCountedNetworkRequestData> req = request;
+    RefPtr<QtRefCountedNetworkRequestData> req = WTFMove(request);
     if (req->data().m_scheme.startsWith("qrc", false)) {
         QQuickQrcSchemeDelegate qrcDelegate(QUrl(QString(req->data().m_urlString)));
         qrcDelegate.request()->setNetworkRequestData(req);

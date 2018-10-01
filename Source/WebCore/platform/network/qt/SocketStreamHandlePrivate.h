@@ -31,7 +31,7 @@
 #ifndef SocketStreamHandlePrivate_h
 #define SocketStreamHandlePrivate_h
 
-#include "SocketStreamHandleBase.h"
+#include "SocketStreamHandle.h"
 
 #include <QSslSocket>
 #include <QTcpSocket>
@@ -53,7 +53,7 @@ public:
 public Q_SLOTS:
     void socketConnected();
     void socketReadyRead();
-    int send(const char* data, int len);
+    int send(const uint8_t* data, size_t len);
     void close();
     void socketSentData();
     void socketClosed();

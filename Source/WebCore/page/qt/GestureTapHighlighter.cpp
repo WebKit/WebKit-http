@@ -34,7 +34,6 @@
 #include "FrameView.h"
 #include "GraphicsContext.h"
 #include "GraphicsTypes.h"
-#include "MainFrame.h"
 #include "Node.h"
 #include "Page.h"
 #include "RenderBoxModelObject.h"

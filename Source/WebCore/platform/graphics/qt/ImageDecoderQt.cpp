@@ -37,7 +37,7 @@
 
 namespace WebCore {
 
-ImageDecoderQt::ImageDecoderQt(ImageSource::AlphaOption alphaOption, ImageSource::GammaAndColorProfileOption gammaAndColorProfileOption)
+ImageDecoderQt::ImageDecoderQt(AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
     : ScalableImageDecoder(alphaOption, gammaAndColorProfileOption)
     , m_repetitionCount(RepetitionCountNone)
 {
@@ -66,7 +66,7 @@ static bool isFormatWhiteListed(const QByteArray &format)
     return whiteListSet.contains(format);
 }
 
-void ImageDecoderQt::setData(&SharedBuffer data, bool allDataReceived)
+void ImageDecoderQt::setData(SharedBuffer& data, bool allDataReceived)
 {
     if (failed())
         return;
@@ -170,7 +170,7 @@ void ImageDecoderQt::clearFrameBufferCache(size_t /*index*/)
 {
 }
 
-void ImageDecoderQt::internalDecodeSize()
+void ImageDecoderQt::internalDecodeSize() const
 {
     ASSERT(m_reader);
 
@@ -265,7 +265,7 @@ bool ImageDecoderQt::internalHandleCurrentImage(size_t frameIndex)
 // then we truly failed to decode, otherwise we're OK.
 
 // TODO: Do not increment the m_frameBufferCache.size() by one but more than one
-void ImageDecoderQt::forceLoadEverything()
+void ImageDecoderQt::forceLoadEverything() const
 {
     int imageCount = 0;
 

@@ -25,7 +25,7 @@
 #include "IntPoint.h"
 #include "IntRect.h"
 #include "Tile.h"
-#include <wtf/PassRefPtr.h>
+#include <wtf/RefPtr.h>
 #include <wtf/RefCounted.h>
 
 QT_BEGIN_NAMESPACE
@@ -41,7 +41,7 @@ class TileQt : public Tile {
 public:
     typedef IntPoint Coordinate;
 
-    static PassRefPtr<Tile> create(TiledBackingStore* backingStore, const Coordinate& tileCoordinate) { return adoptRef(new TileQt(backingStore, tileCoordinate)); }
+    static RefPtr<Tile> create(TiledBackingStore* backingStore, const Coordinate& tileCoordinate) { return adoptRef(new TileQt(backingStore, tileCoordinate)); }
     ~TileQt();
 
     bool isDirty() const;

@@ -187,7 +187,7 @@ void TiledBackingStoreBackend::paintCheckerPattern(GraphicsContext* context, con
     painter->setWorldTransform(worldTransform);
 }
 
-PassRefPtr<Tile> TiledBackingStoreBackend::createTile(TiledBackingStore* backingStore, const Tile::Coordinate& tileCoordinate)
+RefPtr<Tile> TiledBackingStoreBackend::createTile(TiledBackingStore* backingStore, const Tile::Coordinate& tileCoordinate)
 {
     return TileQt::create(backingStore, tileCoordinate);
 }

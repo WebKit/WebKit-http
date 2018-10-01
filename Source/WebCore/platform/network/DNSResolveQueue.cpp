@@ -39,6 +39,10 @@
 
 namespace WebCore {
 
+#if PLATFORM(QT)
+class DNSResolveQueuePlatform;
+#endif
+
 // When resolve queue is empty, we fire async resolution requests immediately (which is important if the prefetch is triggered by hovering).
 // But during page parsing, we should coalesce identical requests to avoid stressing out the DNS resolver.
 static const int gNamesToResolveImmediately = 4;

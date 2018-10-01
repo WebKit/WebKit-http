@@ -113,7 +113,7 @@ class QtConnectionObject final : public QObject
 {
     Q_OBJECT_FAKE
 public:
-    QtConnectionObject(JSContextRef, PassRefPtr<QtInstance> senderInstance, int signalIndex, JSObjectRef receiver, JSObjectRef receiverFunction);
+    QtConnectionObject(JSContextRef, Ref<QtInstance>&& senderInstance, int signalIndex, JSObjectRef receiver, JSObjectRef receiverFunction);
     ~QtConnectionObject();
 
     void execute(void **argv);
@@ -139,7 +139,7 @@ typedef JSValue (*ConvertToJSValueFunction)(ExecState* exec, WebCore::JSDOMGloba
 void registerCustomType(int qtMetaTypeId, ConvertToVariantFunction, ConvertToJSValueFunction);
 
 QVariant convertValueToQVariant(JSContextRef, JSValueRef, QMetaType::Type hint, int *distance, JSValueRef* exception);
-JSValueRef convertQVariantToValue(JSContextRef, PassRefPtr<RootObject>, const QVariant&, JSValueRef* exception);
+JSValueRef convertQVariantToValue(JSContextRef, Ref<RootObject>&&, const QVariant&, JSValueRef* exception);
 
 void setException(JSContextRef, JSValueRef* exception, const QString& text);
 

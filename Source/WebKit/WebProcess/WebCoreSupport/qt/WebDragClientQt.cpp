@@ -40,7 +40,7 @@ using namespace WebCore;
 
 namespace WebKit {
 
-static PassRefPtr<ShareableBitmap> convertQPixmapToShareableBitmap(QPixmap* pixmap)
+static RefPtr<ShareableBitmap> convertQPixmapToShareableBitmap(QPixmap* pixmap)
 {
     if (!pixmap)
         return 0;

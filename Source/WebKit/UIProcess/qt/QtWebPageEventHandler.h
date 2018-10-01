@@ -27,7 +27,7 @@
 #include <QBasicTimer>
 #include <QTouchEvent>
 #include <WKPage.h>
-#include <wtf/PassRefPtr.h>
+#include <wtf/RefPtr.h>
 
 QT_BEGIN_NAMESPACE
 class QInputMethodEvent;
@@ -95,7 +95,7 @@ public:
     PageViewportControllerClientQt* viewportController() { return m_viewportController; }
     WebPageProxy* webPageProxy() { return m_webPageProxy; }
 
-    void startDrag(const WebCore::DragData&, PassRefPtr<ShareableBitmap> dragImage);
+    void startDrag(const WebCore::DragData&, Ref<ShareableBitmap>&& dragImage);
 
 protected:
     WebPageProxy* m_webPageProxy;

@@ -56,18 +56,20 @@ namespace WebCore {
 
     class SocketStreamHandleImpl final : public RefCounted<SocketStreamHandleImpl>, public SocketStreamHandle {
     public:
-        static RefPtr<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient* client, NetworkingContext&) { return adoptRef(new SocketStreamHandleImpl(url, client)); }
-        static RefPtr<SocketStreamHandleImpl> create(QTcpSocket* socket, SocketStreamHandleClient* client) { return adoptRef(new SocketStreamHandleImpl(socket, client)); }
+        static RefPtr<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient* client, NetworkingContext&) { return adoptRef(*new SocketStreamHandleImpl(url, client)); }
+        static RefPtr<SocketStreamHandleImpl> create(QTcpSocket* socket, SocketStreamHandleClient* client) { return adoptRef(*new SocketStreamHandleImpl(socket, client)); }
 
         ~SocketStreamHandle();
 
-    protected:
-        int platformSend(const char* data, int length) final;
-        void platformClose() final;
+        WEBCORE_EXPORT void platformSend(const uint8_t* data, size_t length, Function<void(bool)>&& completionHandler) final;
+        WEBCORE_EXPORT void platformSendHandshake(const uint8_t* data, size_t length, const std::optional<CookieRequestHeaderFieldProxy>&, Function<void(bool, bool)>&&) final;
+        WEBCORE_EXPORT void platformClose() final;
 
     private:
         SocketStreamHandle(const URL&, SocketStreamHandleClient*);
         SocketStreamHandle(QTcpSocket*, SocketStreamHandleClient*);
+
+        size_t bufferedAmount() final;
 
         // No authentication for streams per se, but proxy may ask for credentials.
         void didReceiveAuthenticationChallenge(const AuthenticationChallenge&);

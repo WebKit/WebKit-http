@@ -88,7 +88,7 @@ public:
     void cancel(Notification*) override;
     void notificationObjectDestroyed(Notification*) override;
     void notificationControllerDestroyed() override;
-    void requestPermission(ScriptExecutionContext*, PassRefPtr<NotificationPermissionCallback>) override;
+    void requestPermission(ScriptExecutionContext*, Ref<NotificationPermissionCallback>&&) override;
     bool hasPendingPermissionRequests(ScriptExecutionContext*) const override;
     NotificationClient::Permission checkPermission(ScriptExecutionContext*) override;
     void cancelRequestsForPermission(ScriptExecutionContext*) override;

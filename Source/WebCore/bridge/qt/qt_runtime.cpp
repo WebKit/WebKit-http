@@ -680,7 +680,7 @@ QVariant convertValueToQVariant(JSContextRef context, JSValueRef value, QMetaTyp
     return convertValueToQVariant(context, value, hint, distance, &visitedObjects, recursionLimit, exception);
 }
 
-JSValueRef convertQVariantToValue(JSContextRef context, PassRefPtr<RootObject> root, const QVariant& variant, JSValueRef *exception)
+JSValueRef convertQVariantToValue(JSContextRef context, Ref<RootObject>&& root, const QVariant& variant, JSValueRef *exception)
 {
     // Variants with QObject * can be isNull but not a null pointer
     // An empty QString variant is also null
@@ -754,7 +754,7 @@ JSValueRef convertQVariantToValue(JSContextRef context, PassRefPtr<RootObject> r
             return JSValueMakeNull(context);
         ExecState* exec = toJS(context);
         JSLockHolder locker(exec);
-        return toRef(exec, QtInstance::getQtInstance(obj, root, QtInstance::QtOwnership)->createRuntimeObject(exec));
+        return toRef(exec, QtInstance::getQtInstance(obj, WTFMove(root), QtInstance::QtOwnership)->createRuntimeObject(exec));
     }
 
     if (QtPixmapRuntime::canHandle(static_cast<QMetaType::Type>(variant.type())))
@@ -780,7 +780,7 @@ JSValueRef convertQVariantToValue(JSContextRef context, PassRefPtr<RootObject> r
         while (i != map.constEnd()) {
             QString s = i.key();
             JSStringRef propertyName = JSStringCreateWithCharacters(reinterpret_cast<const JSChar*>(s.constData()), s.length());
-            JSValueRef propertyValue = convertQVariantToValue(context, root.get(), i.value(), /*ignored exception*/0);
+            JSValueRef propertyValue = convertQVariantToValue(context, root.ptr(), i.value(), /*ignored exception*/0);
             if (propertyValue)
                 JSObjectSetProperty(context, ret, propertyName, propertyValue, kJSPropertyAttributeNone, /*ignored exception*/0);
             JSStringRelease(propertyName);
@@ -799,7 +799,7 @@ JSValueRef convertQVariantToValue(JSContextRef context, PassRefPtr<RootObject> r
         if (exception && *exception)
             return array;
         for (int i = 0; i < vl.count(); ++i) {
-            JSValueRef property = convertQVariantToValue(context, root.get(), vl.at(i), /*ignored exception*/0);
+            JSValueRef property = convertQVariantToValue(context, root.ptr(), vl.at(i), /*ignored exception*/0);
             if (property)
                 JSObjectSetPropertyAtIndex(context, array, i, property, /*ignored exception*/0);
         }
@@ -836,7 +836,7 @@ JSValueRef convertQVariantToValue(JSContextRef context, PassRefPtr<RootObject> r
     if (type == (QMetaType::Type)qMetaTypeId<QVariant>()) {
         QVariant real = variant.value<QVariant>();
         qConvDebug() << "real variant is:" << real;
-        return convertQVariantToValue(context, root.get(), real, exception);
+        return convertQVariantToValue(context, root.ptr(), real, exception);
     }
 
     qConvDebug() << "fallback path for" << variant << variant.userType();
@@ -1463,7 +1463,7 @@ JSValueRef QtRuntimeMethod::connectOrDisconnect(JSContextRef context, JSObjectRe
 
 QMultiMap<QObject*, QtConnectionObject*> QtConnectionObject::connections;
 
-QtConnectionObject::QtConnectionObject(JSContextRef context, PassRefPtr<QtInstance> senderInstance, int signalIndex, JSObjectRef receiver, JSObjectRef receiverFunction)
+QtConnectionObject::QtConnectionObject(JSContextRef context, Ref<QtInstance>&& senderInstance, int signalIndex, JSObjectRef receiver, JSObjectRef receiverFunction)
     : QObject(senderInstance->getObject())
     , m_context(JSContextGetGlobalContext(context))
     , m_rootObject(senderInstance->rootObject())

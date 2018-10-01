@@ -332,9 +332,9 @@ ViewportArguments QWebPageAdapter::viewportArguments() const
 }
 
 
-void QWebPageAdapter::registerUndoStep(WTF::PassRefPtr<WebCore::UndoStep> step)
+void QWebPageAdapter::registerUndoStep(WTF::Ref<WebCore::UndoStep>&& step)
 {
-    createUndoStep(QSharedPointer<UndoStepQt>(new UndoStepQt(step)));
+    createUndoStep(QSharedPointer<UndoStepQt>(new UndoStepQt(WTFMove(step))));
 }
 
 void QWebPageAdapter::setVisibilityState(VisibilityState state)

@@ -43,7 +43,7 @@ class WebColorPickerQt final : public QObject, public WebColorPicker {
     Q_OBJECT
 
 public:
-    static PassRefPtr<WebColorPicker> create(WebColorPicker::Client* client, QQuickWebView* webView, const WebCore::Color& initialColor, const WebCore::IntRect& elementRect)
+    static RefPtr<WebColorPicker> create(WebColorPicker::Client* client, QQuickWebView* webView, const WebCore::Color& initialColor, const WebCore::IntRect& elementRect)
     {
         return adoptRef(new WebColorPickerQt(client, webView, initialColor, elementRect));
     }

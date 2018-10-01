@@ -84,7 +84,9 @@ void NetworkStateNotifier::updateState()
 }
 
 NetworkStateNotifier::NetworkStateNotifier()
-    : m_isOnLine(true)
+    : m_isOnLine(true), m_updateStateTimer([] {
+        singleton().updateState();
+    })
 {
     p = new NetworkStateNotifierPrivate(this);
     m_isOnLine = p->effectivelyOnline();

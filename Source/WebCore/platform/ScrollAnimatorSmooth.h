@@ -46,7 +46,7 @@ public:
     virtual ~ScrollAnimatorSmooth();
 
     bool scroll(ScrollbarOrientation, ScrollGranularity, float step, float multiplier) override;
-    void scrollToOffsetWithoutAnimation(const FloatPoint&) override;
+    void scrollToOffsetWithoutAnimation(const FloatPoint&, ScrollClamping) override;
 
 #if !USE(REQUEST_ANIMATION_FRAME_TIMER)
     void cancelAnimations() override;

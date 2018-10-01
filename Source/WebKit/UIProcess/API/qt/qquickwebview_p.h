@@ -62,7 +62,7 @@ class QtWebPageUIClient;
 }
 
 namespace WTF {
-template<class T> class PassRefPtr;
+template<class T> class Ref;
 }
 
 typedef const struct OpaqueWKPageConfiguration* WKPageConfigurationRef;
@@ -346,7 +346,7 @@ public:
     static int schemeDelegates_Count(QQmlListProperty<QQuickUrlSchemeDelegate>*);
     static void schemeDelegates_Clear(QQmlListProperty<QQuickUrlSchemeDelegate>*);
     QQmlListProperty<QQuickUrlSchemeDelegate> schemeDelegates();
-    void invokeApplicationSchemeHandler(WTF::PassRefPtr<WebKit::QtRefCountedNetworkRequestData>);
+    void invokeApplicationSchemeHandler(WTF::Ref<WebKit::QtRefCountedNetworkRequestData>&&);
     void sendApplicationSchemeReply(QQuickNetworkReply*);
 
     bool transparentBackground() const;

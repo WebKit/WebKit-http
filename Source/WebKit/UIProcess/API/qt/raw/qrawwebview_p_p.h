@@ -39,7 +39,7 @@ public:
 
     virtual void preferencesDidChange() { }
 
-    virtual void setFindIndicator(PassRefPtr<WebKit::FindIndicator>, bool fadeOut, bool animate) { }
+    virtual void setFindIndicator(Ref<WebKit::FindIndicator>&&, bool fadeOut, bool animate) { }
     virtual void clearAllEditCommands() { }
 
     virtual void didChangeViewportProperties(const WebCore::ViewportAttributes& attr);
@@ -49,7 +49,7 @@ public:
     virtual void handleCertificateVerificationRequest(const String& hostname, bool& ignoreErrors);
     virtual void handleProxyAuthenticationRequiredRequest(const String& hostname, uint16_t port, const String& prefilledUsername, String& username, String& password);
 
-    virtual void registerEditCommand(PassRefPtr<WebKit::WebEditCommandProxy>, WebKit::WebPageProxy::UndoOrRedo);
+    virtual void registerEditCommand(Ref<WebKit::WebEditCommandProxy>&&, WebKit::WebPageProxy::UndoOrRedo);
     virtual bool canUndoRedo(WebKit::WebPageProxy::UndoOrRedo undoOrRedo);
     virtual void executeUndoRedo(WebKit::WebPageProxy::UndoOrRedo undoOrRedo);
 
@@ -80,13 +80,13 @@ public:
     virtual void toolTipChanged(const String&, const String& newTooltip);
     virtual void pageTransitionViewportReady();
 
-    virtual void startDrag(const WebCore::DragData& dragData, PassRefPtr<WebKit::ShareableBitmap> dragImage);
+    virtual void startDrag(const WebCore::DragData& dragData, Ref<WebKit::ShareableBitmap>&& dragImage);
 
-    virtual PassRefPtr<WebKit::WebPopupMenuProxy> createPopupMenuProxy(WebKit::WebPageProxy* webPageProxy);
-    virtual PassRefPtr<WebKit::WebContextMenuProxy> createContextMenuProxy(WebKit::WebPageProxy* webPageProxy);
+    virtual RefPtr<WebKit::WebPopupMenuProxy> createPopupMenuProxy(WebKit::WebPageProxy* webPageProxy);
+    virtual RefPtr<WebKit::WebContextMenuProxy> createContextMenuProxy(WebKit::WebPageProxy* webPageProxy);
 
 #if ENABLE(INPUT_TYPE_COLOR)
-    virtual PassRefPtr<WebKit::WebColorPicker> createColorPicker(WebKit::WebPageProxy*, const WebCore::Color& intialColor, const WebCore::IntRect&);
+    virtual RefPtr<WebKit::WebColorPicker> createColorPicker(WebKit::WebPageProxy*, const WebCore::Color& intialColor, const WebCore::IntRect&);
 #endif
 
     QRawWebViewPrivate(WebKit::WebContext*, WebKit::WebPageGroup*, QRawWebViewClient*);

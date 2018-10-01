@@ -21,6 +21,7 @@
 #include "qt_instance.h"
 
 #include "APICast.h"
+#include "CommonVM.h"
 #include "Error.h"
 #include "JSDOMBinding.h"
 #include "JSDOMWindowBase.h"
@@ -30,7 +31,6 @@
 #include "PropertyNameArray.h"
 #include "qt_class.h"
 #include "qt_runtime.h"
-#include "runtime/FunctionPrototype.h"
 #include "runtime_object.h"
 
 #include <qdebug.h>
@@ -50,13 +50,13 @@ class QtRuntimeObject : public RuntimeObject {
 public:
     typedef RuntimeObject Base;
 
-    static QtRuntimeObject* create(VM& vm, Structure* structure, PassRefPtr<Instance> instance)
+    static QtRuntimeObject* create(VM& vm, Structure* structure, Ref<Instance>&& instance)
     {
-        QtRuntimeObject* object = new (allocateCell<QtRuntimeObject>(vm.heap)) QtRuntimeObject(vm, structure, instance);
+        QtRuntimeObject* object = new (allocateCell<QtRuntimeObject>(vm.heap)) QtRuntimeObject(vm, structure, WTFMove(instance));
         object->finishCreation(vm);
         return object;
     }
-    
+
     DECLARE_INFO;
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
@@ -69,19 +69,19 @@ protected:
     // static const unsigned StructureFlags = RuntimeObject::StructureFlags | OverridesVisitChildren;
 
 private:
-    QtRuntimeObject(VM&, Structure*, PassRefPtr<Instance>);
+    QtRuntimeObject(VM&, Structure*, Ref<Instance>&&);
 };
 
-const ClassInfo QtRuntimeObject::s_info = { "QtRuntimeObject", &RuntimeObject::s_info, 0, CREATE_METHOD_TABLE(QtRuntimeObject) };
+const ClassInfo QtRuntimeObject::s_info = { "QtRuntimeObject", &RuntimeObject::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(QtRuntimeObject) };
 
-QtRuntimeObject::QtRuntimeObject(VM& vm, Structure* structure, PassRefPtr<Instance> instance)
-    : RuntimeObject(vm, structure, instance)
+QtRuntimeObject::QtRuntimeObject(VM& vm, Structure* structure, Ref<Instance>&& instance)
+    : RuntimeObject(vm, structure, WTFMove(instance))
 {
 }
 
 // QtInstance
-QtInstance::QtInstance(QObject* o, PassRefPtr<RootObject> rootObject, ValueOwnership ownership)
-    : Instance(rootObject)
+QtInstance::QtInstance(QObject* o, Ref<RootObject>&& rootObject, ValueOwnership ownership)
+    : Instance(WTFMove(rootObject))
     , m_class(0)
     , m_object(o)
     , m_hashkey(o)
@@ -91,7 +91,7 @@ QtInstance::QtInstance(QObject* o, PassRefPtr<RootObject> rootObject, ValueOwner
 
 QtInstance::~QtInstance()
 {
-    JSLockHolder lock(WebCore::JSDOMWindowBase::commonVM());
+    JSLockHolder lock(commonVM());
 
     cachedInstances.remove(m_hashkey);
 
@@ -116,9 +116,9 @@ QtInstance::~QtInstance()
     }
 }
 
-PassRefPtr<QtInstance> QtInstance::getQtInstance(QObject* o, PassRefPtr<RootObject> rootObject, ValueOwnership ownership)
+RefPtr<QtInstance> QtInstance::getQtInstance(QObject* o, RootObject* rootObject, ValueOwnership ownership)
 {
-    JSLockHolder lock(WebCore::JSDOMWindowBase::commonVM());
+    JSLockHolder lock(commonVM());
 
     foreach (QtInstance* instance, cachedInstances.values(o))
         if (instance->rootObject() == rootObject) {
@@ -143,9 +143,9 @@ bool QtInstance::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyN
     return JSObject::getOwnPropertySlot(object, exec, propertyName, slot);
 }
 
-void QtInstance::put(JSObject* object, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
+bool QtInstance::put(JSObject* object, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
-    JSObject::put(object, exec, propertyName, value, slot);
+    return JSObject::put(object, exec, propertyName, value, slot);
 }
 
 QtInstance* QtInstance::getInstance(JSObject* object)
@@ -310,6 +310,9 @@ QByteArray QtField::name() const
 
 JSValue QtField::valueFromInstance(ExecState* exec, const Instance* inst) const
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     const QtInstance* instance = static_cast<const QtInstance*>(inst);
     QObject* obj = instance->getObject();
 
@@ -329,17 +332,20 @@ JSValue QtField::valueFromInstance(ExecState* exec, const Instance* inst) const
         JSValueRef exception = 0;
         JSValueRef jsValue = convertQVariantToValue(toRef(exec), inst->rootObject(), val, &exception);
         if (exception)
-            return exec->vm().throwException(exec, toJS(exec, exception));
+            return throwException(exec, scope, toJS(exec, exception));
         return toJS(exec, jsValue);
     }
     QString msg = QString(QLatin1String("cannot access member `%1' of deleted QObject")).arg(QLatin1String(name()));
-    return exec->vm().throwException(exec, createError(exec, msg.toLatin1().constData()));
+    return throwException(exec, scope, createError(exec, msg.toLatin1().constData()));
 }
 
 void QtField::setValueToInstance(ExecState* exec, const Instance* inst, JSValue aValue) const
 {
     if (m_type == ChildObject) // QtScript doesn't allow setting to a named child
         return;
+
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
 
     const QtInstance* instance = static_cast<const QtInstance*>(inst);
     QObject* obj = instance->getObject();
@@ -352,7 +358,7 @@ void QtField::setValueToInstance(ExecState* exec, const Instance* inst, JSValue 
         JSValueRef exception = 0;
         QVariant val = convertValueToQVariant(toRef(exec), toRef(exec, aValue), argtype, 0, &exception);
         if (exception) {
-            exec->vm().throwException(exec, toJS(exec, exception));
+            throwException(exec, scope, toJS(exec, exception));
             return;
         }
         if (m_type == MetaProperty) {
@@ -365,7 +371,7 @@ void QtField::setValueToInstance(ExecState* exec, const Instance* inst, JSValue 
 #endif
     } else {
         QString msg = QString(QLatin1String("cannot access member `%1' of deleted QObject")).arg(QLatin1String(name()));
-        exec->vm().throwException(exec, createError(exec, msg.toLatin1().constData()));
+        throwException(exec, scope, createError(exec, msg.toLatin1().constData()));
     }
 }
 

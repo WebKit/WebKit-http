@@ -536,7 +536,7 @@ void FrameLoaderClientQt::cancelPolicyCheck()
 }
 
 
-void FrameLoaderClientQt::dispatchWillSubmitForm(PassRefPtr<FormState>, FramePolicyFunction function)
+void FrameLoaderClientQt::dispatchWillSubmitForm(Ref<FormState>&&, FramePolicyFunction function)
 {
     notImplemented();
     // FIXME: This is surely too simple.
@@ -1159,7 +1159,7 @@ void FrameLoaderClientQt::dispatchDecidePolicyForResponse(const WebCore::Resourc
         callPolicyFunction(function, PolicyDownload);
 }
 
-void FrameLoaderClientQt::dispatchDecidePolicyForNewWindowAction(const WebCore::NavigationAction& action, const WebCore::ResourceRequest& request, PassRefPtr<WebCore::FormState>, const WTF::String&, FramePolicyFunction function)
+void FrameLoaderClientQt::dispatchDecidePolicyForNewWindowAction(const WebCore::NavigationAction& action, const WebCore::ResourceRequest& request, Ref<WebCore::FormState>&&, const WTF::String&, FramePolicyFunction function)
 {
     Q_ASSERT(m_webFrame);
     QNetworkRequest r(request.toNetworkRequest(m_frame->loader().networkingContext()));
@@ -1179,7 +1179,7 @@ void FrameLoaderClientQt::dispatchDecidePolicyForNewWindowAction(const WebCore::
     callPolicyFunction(function, PolicyUse);
 }
 
-void FrameLoaderClientQt::dispatchDecidePolicyForNavigationAction(const WebCore::NavigationAction& action, const WebCore::ResourceRequest& request, PassRefPtr<WebCore::FormState>, FramePolicyFunction function)
+void FrameLoaderClientQt::dispatchDecidePolicyForNavigationAction(const WebCore::NavigationAction& action, const WebCore::ResourceRequest& request, Ref<WebCore::FormState>&&, FramePolicyFunction function)
 {
     Q_ASSERT(m_webFrame);
     QNetworkRequest r(request.toNetworkRequest(m_frame->loader().networkingContext()));
@@ -1506,7 +1506,7 @@ void FrameLoaderClientQt::redirectDataToPlugin(Widget* pluginWidget)
     m_hasSentResponseToPlugin = false;
 }
 
-PassRefPtr<Widget> FrameLoaderClientQt::createJavaAppletWidget(const IntSize& pluginSize, HTMLAppletElement* element, const URL& url, const Vector<String>& paramNames, const Vector<String>& paramValues)
+RefPtr<Widget> FrameLoaderClientQt::createJavaAppletWidget(const IntSize& pluginSize, HTMLAppletElement* element, const URL& url, const Vector<String>& paramNames, const Vector<String>& paramValues)
 {
     return createPlugin(pluginSize, element, url, paramNames, paramValues, "application/x-java-applet", true);
 }
@@ -1519,7 +1519,7 @@ String FrameLoaderClientQt::overrideMediaType() const
     return String();
 }
 
-PassRefPtr<FrameNetworkingContext> FrameLoaderClientQt::createNetworkingContext()
+RefPtr<FrameNetworkingContext> FrameLoaderClientQt::createNetworkingContext()
 {
     QVariant value = m_webFrame->pageAdapter->handle()->property("_q_MIMESniffingDisabled");
     bool MIMESniffingDisabled = value.isValid() && value.toBool();

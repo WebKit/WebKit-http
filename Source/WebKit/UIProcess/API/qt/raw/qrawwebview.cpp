@@ -62,7 +62,7 @@ void QRawWebViewPrivate::handleProxyAuthenticationRequiredRequest(const String& 
     notImplemented();
 }
 
-void QRawWebViewPrivate::registerEditCommand(PassRefPtr<WebKit::WebEditCommandProxy>, WebKit::WebPageProxy::UndoOrRedo)
+void QRawWebViewPrivate::registerEditCommand(Ref<WebKit::WebEditCommandProxy>&&, WebKit::WebPageProxy::UndoOrRedo)
 {
     notImplemented();
 }
@@ -172,28 +172,28 @@ void QRawWebViewPrivate::pageTransitionViewportReady()
     m_webPageProxy->commitPageTransitionViewport();
 }
 
-void QRawWebViewPrivate::startDrag(const WebCore::DragData& dragData, PassRefPtr<WebKit::ShareableBitmap> dragImage)
+void QRawWebViewPrivate::startDrag(const WebCore::DragData& dragData, Ref<WebKit::ShareableBitmap>&& dragImage)
 {
     notImplemented();
 }
 
-PassRefPtr<WebKit::WebPopupMenuProxy> QRawWebViewPrivate::createPopupMenuProxy(WebKit::WebPageProxy* webPageProxy)
+RefPtr<WebKit::WebPopupMenuProxy> QRawWebViewPrivate::createPopupMenuProxy(WebKit::WebPageProxy* webPageProxy)
 {
     notImplemented();
-    return PassRefPtr<WebKit::WebPopupMenuProxy>();
+    return RefPtr<WebKit::WebPopupMenuProxy>();
 }
 
-PassRefPtr<WebKit::WebContextMenuProxy> QRawWebViewPrivate::createContextMenuProxy(WebKit::WebPageProxy* webPageProxy)
+RefPtr<WebKit::WebContextMenuProxy> QRawWebViewPrivate::createContextMenuProxy(WebKit::WebPageProxy* webPageProxy)
 {
     notImplemented();
-    return PassRefPtr<WebKit::WebContextMenuProxy>();
+    return RefPtr<WebKit::WebContextMenuProxy>();
 }
 
 #if ENABLE(INPUT_TYPE_COLOR)
-PassRefPtr<WebKit::WebColorPicker> QRawWebViewPrivate::createColorPicker(WebKit::WebPageProxy*, const WebCore::Color& intialColor, const WebCore::IntRect&)
+RefPtr<WebKit::WebColorPicker> QRawWebViewPrivate::createColorPicker(WebKit::WebPageProxy*, const WebCore::Color& intialColor, const WebCore::IntRect&)
 {
     notImplemented();
-    return PassRefPtr<WebKit::WebColorPicker>();
+    return RefPtr<WebKit::WebColorPicker>();
 }
 #endif
 

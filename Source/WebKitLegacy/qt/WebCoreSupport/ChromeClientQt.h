@@ -173,7 +173,7 @@ public:
     std::unique_ptr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&) final;
 #endif
 
-    void runOpenPanel(Frame*, PassRefPtr<FileChooser>) final;
+    void runOpenPanel(Frame*, Ref<FileChooser>&&) final;
     void loadIconForFiles(const Vector<String>&, FileIconLoader*) final;
 
     void setCursor(const Cursor&) final;

@@ -112,9 +112,9 @@ void QtPageClient::didChangeViewportProperties(const WebCore::ViewportAttributes
 }
 
 #if ENABLE(DRAG_SUPPORT)
-void QtPageClient::startDrag(const WebCore::DragData& dragData, PassRefPtr<ShareableBitmap> dragImage)
+void QtPageClient::startDrag(const WebCore::DragData& dragData, Ref<ShareableBitmap>&& dragImage)
 {
-    m_eventHandler->startDrag(dragData, dragImage);
+    m_eventHandler->startDrag(dragData, WTFMove(dragImage));
 }
 #endif
 
@@ -123,11 +123,11 @@ void QtPageClient::handleDownloadRequest(DownloadProxy* download)
     QQuickWebViewPrivate::get(m_webView)->handleDownloadRequest(download);
 }
 
-void QtPageClient::handleApplicationSchemeRequest(PassRefPtr<QtRefCountedNetworkRequestData> requestData)
+void QtPageClient::handleApplicationSchemeRequest(Ref<QtRefCountedNetworkRequestData>&& requestData)
 {
     if (!m_webView || !m_webView->experimental())
         return;
-    m_webView->experimental()->invokeApplicationSchemeHandler(requestData);
+    m_webView->experimental()->invokeApplicationSchemeHandler(WTFMove(requestData));
 }
 
 void QtPageClient::handleAuthenticationRequiredRequest(const String& hostname, const String& realm, const String& prefilledUsername, String& username, String& password)
@@ -172,9 +172,9 @@ void QtPageClient::toolTipChanged(const String&, const String& newTooltip)
     // There is not yet any UI defined for the tooltips for mobile so we ignore the change.
 }
 
-void QtPageClient::registerEditCommand(PassRefPtr<WebEditCommandProxy> command, WebPageProxy::UndoOrRedo undoOrRedo)
+void QtPageClient::registerEditCommand(Ref<WebEditCommandProxy>&& command, WebPageProxy::UndoOrRedo undoOrRedo)
 {
-    m_undoController->registerEditCommand(command, undoOrRedo);
+    m_undoController->registerEditCommand(WTFMove(command), undoOrRedo);
 }
 
 void QtPageClient::clearAllEditCommands()

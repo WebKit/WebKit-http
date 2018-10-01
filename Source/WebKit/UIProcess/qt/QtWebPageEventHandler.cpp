@@ -629,12 +629,12 @@ void QtWebPageEventHandler::didFindZoomableArea(const IntPoint& target, const In
     m_viewportController->zoomToAreaGestureEnded(QPointF(target), QRectF(area));
 }
 
-void QtWebPageEventHandler::startDrag(const WebCore::DragData& dragData, PassRefPtr<ShareableBitmap> dragImage)
+void QtWebPageEventHandler::startDrag(const WebCore::DragData& dragData, Ref<ShareableBitmap>&& dragImage)
 {
 #if ENABLE(DRAG_SUPPORT)
     QImage dragQImage;
     if (dragImage)
-        dragQImage = dragImage->createQImage();
+        dragQImage = WTFMove(dragImage)->createQImage();
     else if (dragData.platformData() && dragData.platformData()->hasImage())
         dragQImage = qvariant_cast<QImage>(dragData.platformData()->imageData());
 

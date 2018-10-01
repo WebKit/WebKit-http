@@ -58,7 +58,7 @@ StillImage::~StillImage()
         delete m_pixmap;
 }
 
-bool StillImage::currentFrameKnownToBeOpaque()
+bool StillImage::currentFrameKnownToBeOpaque() const
 {
     return !m_pixmap->hasAlpha();
 }
@@ -68,16 +68,16 @@ FloatSize StillImage::size() const
     return FloatSize(m_pixmap->width(), m_pixmap->height());
 }
 
-NativeImagePtr StillImage::nativeImageForCurrentFrame()
+NativeImagePtr StillImage::nativeImageForCurrentFrame(const GraphicsContext*)
 {
     return const_cast<NativeImagePtr>(m_pixmap);
 }
 
-void StillImage::draw(GraphicsContext& ctxt, const FloatRect& dst,
-    const FloatRect& src, CompositeOperator op, BlendMode blendMode, ImageOrientationDescription)
+ImageDrawResult StillImage::draw(GraphicsContext& ctxt, const FloatRect& dst,
+    const FloatRect& src, CompositeOperator op, BlendMode blendMode, DecodingMode, ImageOrientationDescription)
 {
     if (m_pixmap->isNull())
-        return;
+        return ImageDrawResult::DidNothing;
 
     FloatRect normalizedSrc = src.normalized();
     FloatRect normalizedDst = dst.normalized();
@@ -101,6 +101,7 @@ void StillImage::draw(GraphicsContext& ctxt, const FloatRect& dst,
 
     ctxt.platformContext()->drawPixmap(normalizedDst, *m_pixmap, normalizedSrc);
     ctxt.setCompositeOperation(previousOperator, previousBlendMode);
+    return ImageDrawResult::DidDraw;
 }
 
 }

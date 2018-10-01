@@ -40,8 +40,8 @@ namespace WebKit {
 
 class ContentsSGNode final : public QSGRenderNode {
 public:
-    ContentsSGNode(PassRefPtr<CoordinatedGraphicsScene> scene)
-        : m_scene(scene)
+    ContentsSGNode(Ref<CoordinatedGraphicsScene>&& scene)
+        : m_scene(WTFMove(scene))
     {
         coordinatedGraphicsScene()->setActive(true);
     }
@@ -186,13 +186,13 @@ void QtWebPageSGNode::setScale(float scale)
     setMatrix(matrix);
 }
 
-void QtWebPageSGNode::setCoordinatedGraphicsScene(PassRefPtr<CoordinatedGraphicsScene> scene)
+void QtWebPageSGNode::setCoordinatedGraphicsScene(Ref<CoordinatedGraphicsScene>&& scene)
 {
     if (m_contentsNode && m_contentsNode->coordinatedGraphicsScene() == scene)
         return;
 
     delete m_contentsNode;
-    m_contentsNode = new ContentsSGNode(scene);
+    m_contentsNode = new ContentsSGNode(WTFMove(scene));
     // This sets the parent node of the content to QtWebPageSGNode.
     appendChildNode(m_contentsNode);
 }

@@ -228,17 +228,17 @@ void EditorClientQt::getClientPasteboardDataForRange(Range*, Vector<String>&, Ve
 {
 }
 
-void EditorClientQt::registerUndoStep(WTF::PassRefPtr<WebCore::UndoStep> step)
+void EditorClientQt::registerUndoStep(WTF::Ref<WebCore::UndoStep>&& step)
 {
 #ifndef QT_NO_UNDOSTACK
     Frame& frame = m_page->page->focusController().focusedOrMainFrame();
     if (m_inUndoRedo || !frame.editor().lastEditCommand() /* HACK!! Don't recreate undos */)
         return;
-    m_page->registerUndoStep(step);
+    m_page->registerUndoStep(WTFMove(step));
 #endif // QT_NO_UNDOSTACK
 }
 
-void EditorClientQt::registerRedoStep(WTF::PassRefPtr<WebCore::UndoStep>)
+void EditorClientQt::registerRedoStep(WTF::Ref<WebCore::UndoStep>&&)
 {
 }
 

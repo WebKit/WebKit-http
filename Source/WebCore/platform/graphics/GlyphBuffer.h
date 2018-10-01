@@ -78,6 +78,15 @@ public:
         : QPointF(advance)
     {
     }
+    GlyphBufferAdvance(float width, float height)
+        : QPointF(width, height)
+    {
+    }
+    GlyphBufferAdvance(FloatSize size)
+        : QPointF(size.width(), size.height())
+    {
+    }
+
 
     void setWidth(qreal width) { QPointF::setX(width); }
     qreal width() const { return QPointF::x(); }

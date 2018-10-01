@@ -34,11 +34,12 @@ bool GlyphPage::fill(UChar* buffer, unsigned bufferLength)
     QRawFont rawFont = font().platformData().rawFont();
     QString qstring = QString::fromRawData(reinterpret_cast<const QChar*>(buffer), static_cast<int>(bufferLength));
     QVector<quint32> indexes = rawFont.glyphIndexesForString(qstring);
+    unsigned indexSize = (unsigned)indexes.size();
 
     bool haveGlyphs = false;
 
     for (unsigned i = 0; i < GlyphPage::size; ++i) {
-        Glyph glyph = (i < indexes.size()) ? indexes.at(i) : 0;
+        Glyph glyph = (i < indexSize) ? indexes.at(i) : 0;
         if (!glyph)
             setGlyphForIndex(i, 0);
         else {

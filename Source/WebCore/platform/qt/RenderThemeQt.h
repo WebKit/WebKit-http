@@ -47,7 +47,7 @@ class RenderThemeQt : public RenderTheme {
 public:
     RenderThemeQt(Page*);
 
-    static void setCustomTheme(QtThemeFactoryFunction, ScrollbarTheme* customScrollbarTheme);
+    static void setCustomTheme(QtThemeFactoryFunction factory, ScrollbarTheme* customScrollbarTheme);
     static ScrollbarTheme* customScrollbarTheme();
 
     String extraDefaultStyleSheet() override;

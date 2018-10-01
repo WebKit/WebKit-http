@@ -47,7 +47,7 @@ public:
 
     void setWebViewExperimental(QQuickWebViewExperimental*);
     WebKit::QtRefCountedNetworkRequestData* networkRequestData() const;
-    void setNetworkRequestData(WTF::PassRefPtr<WebKit::QtRefCountedNetworkRequestData> data);
+    void setNetworkRequestData(WTF::Ref<WebKit::QtRefCountedNetworkRequestData>&& data);
     WebKit::QtRefCountedNetworkReplyData* networkReplyData() const;
 
 public Q_SLOTS:

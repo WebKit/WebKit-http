@@ -50,7 +50,7 @@ void ShareableBitmap::releaseSharedMemoryData(void* typelessBitmap)
     static_cast<ShareableBitmap*>(typelessBitmap)->deref(); // Balanced by ref in createQImage.
 }
 
-PassRefPtr<Image> ShareableBitmap::createImage()
+RefPtr<Image> ShareableBitmap::createImage()
 {
     QPixmap* pixmap = new QPixmap(QPixmap::fromImage(createQImage()));
     return BitmapImage::create(pixmap);

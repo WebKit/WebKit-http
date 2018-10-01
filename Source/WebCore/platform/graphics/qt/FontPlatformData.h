@@ -118,7 +118,8 @@ public:
 
     FontOrientation orientation() const { return Horizontal; } // FIXME: Implement.
     void setOrientation(FontOrientation) { } // FIXME: Implement.
-    PassRefPtr<SharedBuffer> openTypeTable(uint32_t table) const;
+    FontPlatformData cloneWithOrientation(const FontPlatformData& source, FontOrientation orientation);
+    RefPtr<SharedBuffer> openTypeTable(uint32_t table) const;
 
     unsigned hash() const;
 

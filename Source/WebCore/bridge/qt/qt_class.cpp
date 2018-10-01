@@ -64,6 +64,9 @@ QtClass* QtClass::classForObject(QObject* o)
 // identifier.
 JSValue QtClass::fallbackObject(ExecState* exec, Instance* inst, PropertyName identifier)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     QtInstance* qtinst = static_cast<QtInstance*>(inst);
     JSContextRef context = toRef(exec);
     JSValueRef exception = 0;
@@ -75,7 +78,7 @@ JSValue QtClass::fallbackObject(ExecState* exec, Instance* inst, PropertyName id
     if (QtRuntimeMethod* method = qtinst->m_methods.value(name)) {
         JSValue obj = toJS(method->jsObjectRef(context, &exception));
         if (exception)
-            return exec->vm().throwException(exec, toJS(exec, exception));
+            return throwException(exec, scope, toJS(exec, exception));
         return obj;
     }
 
@@ -112,7 +115,7 @@ JSValue QtClass::fallbackObject(ExecState* exec, Instance* inst, PropertyName id
     qtinst->m_methods.insert(name, method);
     JSValue obj = toJS(method->jsObjectRef(context, &exception));
     if (exception)
-        return exec->vm().throwException(exec, toJS(exec, exception));
+        return throwException(exec, scope, toJS(exec, exception));
     return obj;
 }
 

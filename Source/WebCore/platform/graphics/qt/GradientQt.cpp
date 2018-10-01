@@ -45,20 +45,24 @@ QGradient* Gradient::platformGradient()
     if (m_gradient)
         return m_gradient;
 
-    bool reversed = m_data.startRadius > m_data.endRadius;
-
-    qreal innerRadius = reversed ? m_data.endRadius : m_data.startRadius;
-    qreal outerRadius = reversed ? m_data.startRadius : m_data.endRadius;
-    QPointF center = reversed ? m_data.point0 : m_data.point1;
-    QPointF focalPoint = reversed ? m_data.point1 : m_data.point0;
+    bool reversed;
+    qreal innerRadius;
+    qreal outerRadius;
 
     WTF::switchOn(m_data,
         [&] (const LinearData& data) {
-            m_gradient = new QLinearGradient(m_data.point0.x(), m_data.point0.y(), m_data.point1.x(), m_data.point1.y());
+            m_gradient = new QLinearGradient(data.point0.x(), data.point0.y(), data.point1.x(), data.point1.y());
         },
         [&] (const RadialData& data) {
+            reversed = data.startRadius > data.endRadius;
+            innerRadius = reversed ? data.endRadius : data.startRadius;
+            outerRadius = reversed ? data.startRadius : data.endRadius;
+            QPointF center = reversed ? data.point0 : data.point1;
+            QPointF focalPoint = reversed ? data.point1 : data.point0;
+
             m_gradient = new QRadialGradient(center, outerRadius, focalPoint);
-        }
+        },
+        [&] (const ConicData&) {}
     );
 
     m_gradient->setInterpolationMode(QGradient::ComponentInterpolation);
@@ -66,31 +70,40 @@ QGradient* Gradient::platformGradient()
     sortStopsIfNecessary();
 
     QColor stopColor;
-    Vector<ColorStop>::iterator stopIterator = m_stops.begin();
     qreal lastStop(0.0);
     const qreal lastStopDiff = 0.0000001;
-    while (stopIterator != m_stops.end()) {
-        stopColor.setRgbF(stopIterator->color.red(), stopIterator->color.green(), stopIterator->color.blue(), stopIterator->color.alpha());
-        if (qFuzzyCompare(lastStop, qreal(stopIterator->color.stop)))
-            lastStop = stopIterator->stop + lastStopDiff;
-        else
-            lastStop = stopIterator->stop;
 
-        if (m_radial && !qFuzzyCompare(1 + outerRadius, qreal(1))) {
-            lastStop = lastStop * (1.0f - innerRadius / outerRadius);
-            if (!reversed)
-                lastStop += innerRadius / outerRadius;
-        }
+    for (auto stop : m_stops) {
+        stopColor.setRgbF(stop.color.red(), stop.color.green(), stop.color.blue(), stop.color.alpha());
+        if (qFuzzyCompare(lastStop, qreal(stop.offset)))
+            lastStop = stop.offset + lastStopDiff;
+        else
+            lastStop = stop.offset;
+
+        WTF::switchOn(m_data,
+            [&] (const LinearData&) {},
+            [&] (const RadialData&) {
+                if (!qFuzzyCompare(1 + outerRadius, qreal(1))) {
+                    lastStop = lastStop * (1.0f - innerRadius / outerRadius);
+                    if (!reversed)
+                        lastStop += innerRadius / outerRadius;
+                }
+            },
+            [&] (const ConicData&) {});
 
         qreal stopPosition = qMin(lastStop, qreal(1.0f));
 
-        if (m_radial && reversed)
-            stopPosition = 1 - stopPosition;
+        WTF::switchOn(m_data,
+            [&] (const LinearData&) {},
+            [&] (const RadialData&) {
+                if (reversed)
+                    stopPosition = 1 - stopPosition;
+            },
+            [&] (const ConicData&) {});
 
         m_gradient->setColorAt(stopPosition, stopColor);
         // Keep the lastStop as orginal value, since the following stopColor depend it
-        lastStop = stopIterator->stop;
-        ++stopIterator;
+        lastStop = stop.offset;
     }
 
     if (m_stops.isEmpty()) {
@@ -114,9 +127,9 @@ QGradient* Gradient::platformGradient()
     return m_gradient;
 }
 
-void Gradient::fill(GraphicsContext* context, const FloatRect& rect)
+void Gradient::fill(GraphicsContext& context, const FloatRect& rect)
 {
-    context->platformContext()->fillRect(rect, *platformGradient());
+    context.platformContext()->fillRect(rect, *platformGradient());
 }
 
 } //namespace

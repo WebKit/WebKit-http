@@ -139,7 +139,7 @@ void PluginView::keepAlive(NPP)
 }
 #endif
 
-PassRefPtr<JSC::Bindings::Instance> PluginView::bindingInstance()
+RefPtr<JSC::Bindings::Instance> PluginView::bindingInstance()
 {
     return 0;
 }

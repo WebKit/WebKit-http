@@ -110,9 +110,9 @@ WebKit::QtRefCountedNetworkRequestData* QQuickNetworkReply::networkRequestData()
     return m_networkRequestData.get();
 }
 
-void QQuickNetworkReply::setNetworkRequestData(WTF::PassRefPtr<WebKit::QtRefCountedNetworkRequestData> data)
+void QQuickNetworkReply::setNetworkRequestData(WTF::Ref<WebKit::QtRefCountedNetworkRequestData>&& data)
 {
-    m_networkRequestData = data;
+    m_networkRequestData = WTFMove(data);
     m_networkReplyData->data().m_replyUuid = m_networkRequestData->data().m_replyUuid;
 }
 

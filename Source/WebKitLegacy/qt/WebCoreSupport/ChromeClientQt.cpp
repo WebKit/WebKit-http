@@ -571,9 +571,9 @@ std::unique_ptr<ColorChooser> ChromeClientQt::createColorChooser(ColorChooserCli
 }
 #endif
 
-void ChromeClientQt::runOpenPanel(Frame* frame, PassRefPtr<FileChooser> prpFileChooser)
+void ChromeClientQt::runOpenPanel(Frame* frame, Ref<FileChooser>&& prpFileChooser)
 {
-    RefPtr<FileChooser> fileChooser = prpFileChooser;
+    RefPtr<FileChooser> fileChooser = WTFMove(prpFileChooser);
 
     QStringList suggestedFileNames;
     for (unsigned i = 0; i < fileChooser->settings().selectedFiles.size(); ++i)
