@@ -22,7 +22,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WKebAutomationSession_h
+#ifndef WKWebAutomationSession_h
 #define WKWebAutomationSession_h
 
 #include <WebKit/WKBase.h>
