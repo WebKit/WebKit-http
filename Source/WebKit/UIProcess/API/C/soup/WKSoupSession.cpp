@@ -32,7 +32,7 @@ void WKSoupSessionSetPreferredLanguages(WKContextRef context, WKArrayRef languag
     for (const auto& entry : languagesArray->elementsOfType<API::String>()) {
         auto string = entry->string();
         if (equalIgnoringASCIICase(string, "C") || equalIgnoringASCIICase(string, "POSIX"))
-            languagesVector.uncheckedAppend(ASCIILiteral("en-us"));
+            languagesVector.uncheckedAppend("en-us"_s);
         else
             languagesVector.uncheckedAppend(string.convertToASCIILowercase().replace("_", "-"));
     }

@@ -105,6 +105,9 @@ UIProcess/WebResourceLoadStatisticsTelemetry.cpp
 
 UIProcess/API/C/WKGrammarDetail.cpp
 
+UIProcess/API/C/soup/WKCookieManagerSoup.cpp
+UIProcess/API/C/soup/WKSoupSession.cpp
+
 UIProcess/API/C/wpe/WKView.cpp
 
 UIProcess/API/glib/APIWebsiteDataStoreGLib.cpp @no-unify
