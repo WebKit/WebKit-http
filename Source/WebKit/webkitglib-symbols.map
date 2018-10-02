@@ -1,6 +1,8 @@
 {
 global:
   webkit_*;
+  JS*;
+  WK*;
   WebProcessMainUnix;
   NetworkProcessMainUnix;
   PluginProcessMainUnix;
