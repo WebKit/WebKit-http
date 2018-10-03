@@ -6352,8 +6352,14 @@ static void determineNonLayerDescendantsPaintedContent(const RenderElement& rend
 
         if (is<RenderText>(child)) {
             const auto& renderText = downcast<RenderText>(child);
-            if (renderText.linesBoundingBox().isEmpty())
-                continue;
+            if (renderText.linesBoundingBox().isEmpty()) {
+                if (renderText.needsLayout()) {
+                    // If the RenderText is pending a layout, we may incorrectly be getting an empty boundingBox, but we cannot
+                    // assume that it's empty.
+                    request.makeStatesUndetermined();
+                } else
+                    continue;
+            }
 
             if (renderer.style().userSelect() != SELECT_NONE)
                 request.setHasPaintedContent();
