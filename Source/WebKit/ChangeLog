@@ -1,3 +1,299 @@
+2018-10-03  Youenn Fablet  <youenn@apple.com>
+
+        Add VP8 support to WebRTC
+        https://bugs.webkit.org/show_bug.cgi?id=189976
+
+        Reviewed by Eric Carlson.
+
+        * Shared/WebPreferences.yaml:
+
+2018-10-03  Zamiul Haque  <zhaque@apple.com>
+
+        Search does not cancel after number of matching terms exceed set max limit
+        https://bugs.webkit.org/show_bug.cgi?id=190020
+        <rdar://problem/39585214>
+
+        Reviewed by Andy Estes.
+
+        When searching a PDF document on MobileSafari, the maximum number of matching
+        terms are limited to a set constant. Beyond this limit, a PDF document should not
+        be searched, since the UI will not be updated correspondingly. To this effect,
+        a new SPI was made to cancel a search when the maximum limit of matching terms
+        is reached. This is done without clearing the highlighting for the all the terms
+        that were found under the limit. This bug was a result of not having implemented 
+        the new SPI in WKPDFView.
+
+        This will be tested in a follow-up patch, after re-enabling WKPDFView tests
+        on iOS 12.
+
+        * UIProcess/ios/WKPDFView.mm:
+        (-[WKPDFView pdfHostViewController:findStringUpdate:done:]):
+
+2018-10-03  Brian Burg  <bburg@apple.com>
+
+        [Cocoa] REGRESSION: web content process paused in debugger is considered to be unresponsive if WebKit client is sandboxed
+        https://bugs.webkit.org/show_bug.cgi?id=190256
+        <rdar://problem/44957921>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Instead of giving up when the client is sandboxed, check whether it has the
+        exception that's necessary to get process information. If it is possible,
+        proceed to check whether the web content process has a debugger attached.
+
+        * UIProcess/Cocoa/WebProcessProxyCocoa.mm:
+        (WebKit::WebProcessProxy::platformIsBeingDebugged const):
+        Check 'process-info-pidinfo' to see if the sysctl call would be allowed.
+
+2018-10-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE][GTK] Enable MSE by default
+        https://bugs.webkit.org/show_bug.cgi?id=190243
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * UIProcess/API/glib/WebKitSettings.cpp:
+        (webkit_settings_class_init):
+
+2018-10-02  Alex Christensen  <achristensen@webkit.org>
+
+        Deprecate WKConnection
+        https://bugs.webkit.org/show_bug.cgi?id=190147
+
+        Reviewed by Andy Estes.
+
+        * Shared/Cocoa/APIObject.mm:
+        (API::Object::newObject):
+        * UIProcess/API/Cocoa/WKConnection.h:
+        * UIProcess/API/Cocoa/WKConnection.mm:
+        (didReceiveMessage):
+        (didClose):
+        * UIProcess/API/Cocoa/WKConnectionInternal.h:
+        * UIProcess/API/Cocoa/WKProcessGroup.h:
+        * WebProcess/InjectedBundle/API/mac/WKWebProcessPlugIn.h:
+        * WebProcess/InjectedBundle/API/mac/WKWebProcessPlugIn.mm:
+
+2018-10-01  Dean Jackson  <dino@apple.com>
+
+        [macOS] Switching to discrete GPU should be done in the UI process
+        https://bugs.webkit.org/show_bug.cgi?id=189361
+        <rdar://problem/43949622>
+
+        Reviewed by Simon Fraser.
+
+        Implement the UI-side process for triggering a GPU mux.
+
+        * Platform/Logging.h: Add a WebGL logging channel.
+
+        * SourcesCocoa.txt: Add the new files: WebSwitchingGPUClient and HighPerformanceGPUManager.
+
+        * UIProcess/Cocoa/WebProcessProxyCocoa.mm: UI process calls that use HighPerformanceGPUManager
+        to keep track of whether or not this process needs the high-performance GPU.
+        (WebKit::WebProcessProxy::requestHighPerformanceGPU):
+        (WebKit::WebProcessProxy::releaseHighPerformanceGPU):
+
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::~WebProcessProxy): Make sure to unregister with the HighPerformanceGPUManager
+        as the process disappears without manually removing itself (e.g. crashes).
+        * UIProcess/WebProcessProxy.h:
+        * UIProcess/WebProcessProxy.messages.in: New messages.
+
+        * UIProcess/mac/HighPerformanceGPUManager.cpp: New class that copies most of what used
+        to live in GraphicsContext3DManager. It creates a CGLPixelFormat object when it sees
+        that at least one process needs the high-performance GPU.
+        (WebKit::HighPerformanceGPUManager::singleton):
+        (WebKit::HighPerformanceGPUManager::addProcessRequiringHighPerformance):
+        (WebKit::HighPerformanceGPUManager::removeProcessRequiringHighPerformance):
+        (WebKit::HighPerformanceGPUManager::updateState):
+        * UIProcess/mac/HighPerformanceGPUManager.h: Added.
+
+        * WebKit.xcodeproj/project.pbxproj: Add new files.
+
+        * WebProcess/WebCoreSupport/mac/WebSwitchingGPUClient.cpp: Implementation of the SwitchingGPUClient for
+        WebCore, which sends messages to the UI process.
+        (WebKit::WebSwitchingGPUClient::singleton):
+        (WebKit::WebSwitchingGPUClient::requestHighPerformanceGPU):
+        (WebKit::WebSwitchingGPUClient::releaseHighPerformanceGPU):
+        * WebProcess/WebCoreSupport/mac/WebSwitchingGPUClient.h: Added.
+
+        * WebProcess/cocoa/WebProcessCocoa.mm: Register the GPUClient.
+        (WebKit::WebProcess::platformInitializeProcess):
+
+2018-10-02  Sihui Liu  <sihui_liu@apple.com>
+
+        Fix a potential crash in NetworkProcess::deleteWebsiteDataForOrigins
+        https://bugs.webkit.org/show_bug.cgi?id=190220
+
+        Reviewed by Chris Dumez.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::deleteWebsiteDataForOrigins):
+
+2018-10-02  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WebKit2] Format > Bold and Format > Italic don't toggle between bold and italic style
+        https://bugs.webkit.org/show_bug.cgi?id=179787
+        <rdar://problem/35593389>
+
+        Reviewed by Tim Horton.
+
+        Fixes the bug by relaxing our policy in WebViewImpl::updateFontManagerIfNeeded. Instead of updating only when
+        the font panel is visible, update when either the font panel is visible, or the selection is in a richly
+        editable area. In the latter case, an up-to-date NSFontManager state is needed in order for certain font
+        formatting menu items, such as bold and italic, to correctly toggle state.
+
+        Test: FontManagerTests.ToggleBoldAndItalicWithMenuItems
+
+        * UIProcess/Cocoa/WebViewImpl.h:
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (-[WKWindowVisibilityObserver observeValueForKeyPath:ofObject:change:context:]):
+        (WebKit::WebViewImpl::selectionDidChange):
+        (WebKit::WebViewImpl::updateFontManagerIfNeeded):
+
+        Rename updateFontPanelIfNeeded to updateFontManagerIfNeeded, to reflect the new behavior.
+
+        (WebKit::WebViewImpl::changeFontAttributesFromSender):
+        (WebKit::WebViewImpl::changeFontFromFontManager):
+        (WebKit::WebViewImpl::updateFontPanelIfNeeded): Deleted.
+
+2018-10-02  Alex Christensen  <achristensen@webkit.org>
+
+        Remove ParsedURLString
+        https://bugs.webkit.org/show_bug.cgi?id=190154
+
+        Reviewed by Chris Dumez.
+
+        * NetworkProcess/FileAPI/NetworkBlobRegistry.cpp:
+        (WebKit::NetworkBlobRegistry::writeBlobToFilePath):
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::writeBlobsToTemporaryFiles):
+        * PluginProcess/PluginControllerProxy.cpp:
+        (WebKit::PluginControllerProxy::streamWillSendRequest):
+        (WebKit::PluginControllerProxy::streamDidReceiveResponse):
+        (WebKit::PluginControllerProxy::manualStreamDidReceiveResponse):
+        * Shared/API/APIUserContentURLPattern.h:
+        (API::UserContentURLPattern::matchesURL const):
+        * Shared/WebBackForwardListItem.cpp:
+        (WebKit::WebBackForwardListItem::itemIsInSameDocument const):
+        * UIProcess/API/gtk/WebKitRemoteInspectorProtocolHandler.cpp:
+        (WebKit::RemoteInspectorProtocolHandler::handleRequest):
+        (WebKit::RemoteInspectorProtocolHandler::targetListChanged):
+        * UIProcess/Plugins/mac/PluginProcessProxyMac.mm:
+        (WebKit::PluginProcessProxy::openURL):
+        * UIProcess/SuspendedPageProxy.cpp:
+        (WebKit::SuspendedPageProxy::SuspendedPageProxy):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::loadFile):
+        (WebKit::WebPageProxy::decidePolicyForNavigationAction):
+        (WebKit::WebPageProxy::decidePolicyForNewWindowAction):
+        (WebKit::WebPageProxy::createNewPage):
+        (WebKit::WebPageProxy::processDidTerminate):
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::addProcessToOriginCacheSet):
+        (WebKit::WebProcessPool::processForNavigationInternal):
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::processDidTerminateOrFailedToLaunch):
+        * UIProcess/mac/WebContextMenuProxyMac.mm:
+        (WebKit::WebContextMenuProxyMac::createShareMenuItem):
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::addUserScript):
+        (WebKit::InjectedBundle::addUserStyleSheet):
+        (WebKit::InjectedBundle::removeUserScript):
+        (WebKit::InjectedBundle::removeUserStyleSheet):
+        * WebProcess/Plugins/Plugin.cpp:
+        (WebKit::Plugin::Parameters::decode):
+        * WebProcess/WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebKit::WebPlatformStrategies::url):
+        (WebKit::WebPlatformStrategies::readURLFromPasteboard):
+
+2018-10-01  Dean Jackson  <dino@apple.com>
+
+        Remove CSS Animation Triggers
+        https://bugs.webkit.org/show_bug.cgi?id=190175
+        <rdar://problem/44925626>
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-10-02  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        REGRESSION(r236662): Fix -Wformat warnings in CacheStorageEngineCaches.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=190205
+
+        Reviewed by Chris Dumez.
+
+        Passing enums to %d is not kosher, at least not according to GCC's -Wformat. Avoid it.
+
+        * NetworkProcess/cache/CacheStorageEngineCaches.cpp:
+        (WebKit::CacheStorage::Caches::initialize):
+        (WebKit::CacheStorage::Caches::readCachesFromDisk):
+        (WebKit::CacheStorage::Caches::writeCachesToDisk):
+
+2018-10-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r236624 and r236671.
+        https://bugs.webkit.org/show_bug.cgi?id=190207
+
+        The change in r236624 introduced crashes on the bots
+        (Requested by ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "Refactoring: eliminate raw pointer usage in Fullscreen code"
+        https://bugs.webkit.org/show_bug.cgi?id=188747
+        https://trac.webkit.org/changeset/236624
+
+        "Unify implementation in VideoFullscreenInterfaceAVKit"
+        https://bugs.webkit.org/show_bug.cgi?id=190091
+        https://trac.webkit.org/changeset/236671
+
+2018-10-02  Antti Koivisto  <antti@apple.com>
+
+        WebPageProxy::reattachToWebProcess cleanups
+        https://bugs.webkit.org/show_bug.cgi?id=189881
+
+        Reviewed by Chris Dumez.
+
+        Change the factoring to separate swap and crash code paths into different functions.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::reattachToWebProcess):
+        (WebKit::WebPageProxy::swapToWebProcess):
+
+        Separate function for the swap case.
+
+        (WebKit::WebPageProxy::finishAttachingToWebProcess):
+
+        Factor the common parts here.
+
+        (WebKit::WebPageProxy::continueNavigationInNewProcess):
+        * UIProcess/WebPageProxy.h:
+
+2018-10-02  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK] Theming of authentication dialog breaks with themes other than Adwaita
+        https://bugs.webkit.org/show_bug.cgi?id=190117
+
+        Reviewed by Michael Catanzaro.
+
+        Adds the missing GTK_STYLE_CLASS_BACKGROUND to the WebKitWebViewDialog
+        widget, which was missing for GTK+ 3.20 or newer, and set the widget
+        as app-paintable to avoid the base class paint method to add an opaque
+        background.
+
+        Thanks to Benjamin Otte for the guidance to debug the theming issues.
+
+        * UIProcess/API/gtk/WebKitWebViewDialog.cpp:
+        (webkitWebViewDialogDraw): Remove the style context save/restore, it
+        is unneeded because the style classes are set at widget construction
+        time and not changed ever after.
+        (webkitWebViewDialogConstructed): Mark the widget as app-paintable to
+        avoid the base widget paint operation to fill the whole background,
+        because the dialog widget paints the translucent overlay itself; and
+        also add the missing GTK_STYLE_CLASS_BACKGROUND class at construction
+        when building against GTK+ 3.20 or newer.
+
 2018-10-02  Eric Carlson  <eric.carlson@apple.com>
 
         [MediaStream] RealtimeMediaSource should be able to vend hashed IDs
