@@ -7572,13 +7572,6 @@ void Document::mediaStreamCaptureStateChanged()
     for (auto* mediaElement : m_mediaStreamStateChangeElements)
         mediaElement->mediaStreamCaptureStarted();
 }
-
-void Document::setDeviceIDHashSalt(const String& salt)
-{
-    ASSERT(m_idHashSalt.isEmpty() || m_idHashSalt == salt);
-    m_idHashSalt = salt;
-}
-
 #endif
 
 void Document::addApplicationStateChangeListener(ApplicationStateChangeListener& listener)
