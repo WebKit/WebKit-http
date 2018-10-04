@@ -33,6 +33,7 @@
 #include "NetworkCache.h"
 #include "NetworkConnectionToWebProcessMessages.h"
 #include "NetworkLoad.h"
+#include "NetworkMDNSRegisterMessages.h"
 #include "NetworkProcess.h"
 #include "NetworkProcessConnectionMessages.h"
 #include "NetworkRTCMonitorMessages.h"
@@ -54,6 +55,7 @@
 #include <WebCore/PlatformCookieJar.h>
 #include <WebCore/ResourceLoaderOptions.h>
 #include <WebCore/ResourceRequest.h>
+#include <WebCore/SecurityPolicy.h>
 #include <pal/SessionID.h>
 
 using namespace WebCore;
@@ -67,6 +69,9 @@ Ref<NetworkConnectionToWebProcess> NetworkConnectionToWebProcess::create(IPC::Co
 
 NetworkConnectionToWebProcess::NetworkConnectionToWebProcess(IPC::Connection::Identifier connectionIdentifier)
     : m_connection(IPC::Connection::createServerConnection(connectionIdentifier, *this))
+#if ENABLE(WEB_RTC)
+    , m_mdnsRegister(*this)
+#endif
 {
     m_connection->open();
 }
@@ -122,6 +127,12 @@ void NetworkConnectionToWebProcess::didReceiveMessage(IPC::Connection& connectio
     }
     if (decoder.messageReceiverName() == Messages::NetworkRTCProvider::messageReceiverName()) {
         rtcProvider().didReceiveMessage(connection, decoder);
+        return;
+    }
+#endif
+#if ENABLE(WEB_RTC)
+    if (decoder.messageReceiverName() == Messages::NetworkMDNSRegister::messageReceiverName()) {
+        mdnsRegister().didReceiveMessage(connection, decoder);
         return;
     }
 #endif
@@ -220,26 +231,32 @@ void NetworkConnectionToWebProcess::endSuspension()
 
 void NetworkConnectionToWebProcess::scheduleResourceLoad(NetworkResourceLoadParameters&& loadParameters)
 {
+    auto identifier = loadParameters.identifier;
+    ASSERT(!m_networkResourceLoaders.contains(identifier));
+
     auto loader = NetworkResourceLoader::create(WTFMove(loadParameters), *this);
-    m_networkResourceLoaders.add(loadParameters.identifier, loader.ptr());
+    m_networkResourceLoaders.add(identifier, loader.ptr());
     loader->start();
 }
 
-void NetworkConnectionToWebProcess::performSynchronousLoad(NetworkResourceLoadParameters&& loadParameters, Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply&& reply)
+void NetworkConnectionToWebProcess::performSynchronousLoad(NetworkResourceLoadParameters&& loadParameters, Ref<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply>&& reply)
 {
+    auto identifier = loadParameters.identifier;
+    ASSERT(!m_networkResourceLoaders.contains(identifier));
+
     auto loader = NetworkResourceLoader::create(WTFMove(loadParameters), *this, WTFMove(reply));
-    m_networkResourceLoaders.add(loadParameters.identifier, loader.ptr());
+    m_networkResourceLoaders.add(identifier, loader.ptr());
     loader->start();
 }
 
-void NetworkConnectionToWebProcess::loadPing(NetworkResourceLoadParameters&& loadParameters, HTTPHeaderMap&& originalRequestHeaders)
+void NetworkConnectionToWebProcess::loadPing(NetworkResourceLoadParameters&& loadParameters)
 {
     auto completionHandler = [this, protectedThis = makeRef(*this), identifier = loadParameters.identifier] (const ResourceError& error, const ResourceResponse& response) {
         didFinishPingLoad(identifier, error, response);
     };
 
     // PingLoad manages its own lifetime, deleting itself when its purpose has been fulfilled.
-    new PingLoad(WTFMove(loadParameters), WTFMove(originalRequestHeaders), WTFMove(completionHandler));
+    new PingLoad(WTFMove(loadParameters), WTFMove(completionHandler));
 }
 
 void NetworkConnectionToWebProcess::didFinishPingLoad(uint64_t pingLoadIdentifier, const ResourceError& error, const ResourceResponse& response)
@@ -495,6 +512,21 @@ void NetworkConnectionToWebProcess::removeStorageAccessForAllFramesOnPage(PAL::S
     UNUSED_PARAM(sessionID);
     UNUSED_PARAM(pageID);
 #endif
+}
+
+void NetworkConnectionToWebProcess::addOriginAccessWhitelistEntry(const String& sourceOrigin, const String& destinationProtocol, const String& destinationHost, bool allowDestinationSubdomains)
+{
+    SecurityPolicy::addOriginAccessWhitelistEntry(SecurityOrigin::createFromString(sourceOrigin).get(), destinationProtocol, destinationHost, allowDestinationSubdomains);
+}
+
+void NetworkConnectionToWebProcess::removeOriginAccessWhitelistEntry(const String& sourceOrigin, const String& destinationProtocol, const String& destinationHost, bool allowDestinationSubdomains)
+{
+    SecurityPolicy::removeOriginAccessWhitelistEntry(SecurityOrigin::createFromString(sourceOrigin).get(), destinationProtocol, destinationHost, allowDestinationSubdomains);
+}
+
+void NetworkConnectionToWebProcess::resetOriginAccessWhitelists()
+{
+    SecurityPolicy::resetOriginAccessWhitelists();
 }
 
 } // namespace WebKit

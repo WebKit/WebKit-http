@@ -23,6 +23,52 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+namespace Layout {
+class Box {
+public:
+    Layout::Container& parent();
+    Layout::Box* nextSibling();
+    Layout::Box* nextInFlowSibling();
+    Layout::Box* nextInFlowOrFloatSibling();
+    Layout::Box* previousSibling();
+    Layout::Box* previousInFlowSibling();
+
+    void setParent(Layout::Container&);
+    void setNextSibling(Layout::Box&);
+    void setPreviousSibling(Layout::Box&);
+
+    bool isContainer();
+    bool isInlineContainer();
+    bool isInlineBox();
+    bool isBlockLevelBox();
+    bool isBlockContainerBox();
+    bool isInlineBlockBox();
+    bool isInlineLevelBox();
+
+    void setIsAnonymous(bool);
+    bool isAnonymous();
+
+    bool establishesFormattingContext();
+    bool establishesBlockFormattingContext();
+    bool establishesInlineFormattingContext();
+
+    bool isPositioned();
+    bool isRelativelyPositioned();
+    bool isAbsolutelyPositioned();
+    bool isFixedPositioned();
+    bool isInFlow();
+    bool isOutOfFlowPositioned();
+    bool isInFlowPositioned();
+    bool isFloatingPositioned();
+    bool isFloatingOrOutOfFlowPositioned();
+    bool isRootBox();
+    Layout::Container* containingBlock();
+    bool isDescendantOf(Layout::Container&);
+};
+}
+*/
+
 var Layout = { }
 
 Layout.Box = class Box {
@@ -108,7 +154,15 @@ Layout.Box = class Box {
     }
 
     isContainer() {
-        return false;
+        return this instanceof Layout.Container
+    }
+
+    isInlineContainer() {
+        return this instanceof Layout.InlineContainer
+    }
+
+    isInlineBox() {
+        return this instanceof Layout.InlineBox;
     }
 
     isBlockLevelBox() {
@@ -117,6 +171,10 @@ Layout.Box = class Box {
 
     isBlockContainerBox() {
         return Utils.isBlockContainerElement(this.node());
+    }
+
+    isInlineBlockBox() {
+        return Utils.isInlineBlockElement(this.node());
     }
 
     isInlineLevelBox() {
@@ -138,6 +196,9 @@ Layout.Box = class Box {
     }
 
     establishesBlockFormattingContext() {
+        // Initial Containing Block always creates a new (inital) block formatting context.
+        if (!this.parent())
+            return true;
         // 9.4.1 Block formatting contexts
         // Floats, absolutely positioned elements, block containers (such as inline-blocks, table-cells, and table-captions)
         // that are not block boxes, and block boxes with 'overflow' other than 'visible' (except when that value has been propagated to the viewport)

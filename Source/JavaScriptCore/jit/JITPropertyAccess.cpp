@@ -91,7 +91,7 @@ JIT::CodeRef JIT::stringGetByValStubGenerator(VM* vm)
     jit.ret();
     
     LinkBuffer patchBuffer(jit, GLOBAL_THUNK_ID);
-    return FINALIZE_CODE(patchBuffer, NearCallPtrTag, "String get_by_val stub");
+    return FINALIZE_CODE(patchBuffer, NearCodePtrTag, "String get_by_val stub");
 }
 
 void JIT::emit_op_get_by_val(Instruction* currentInstruction)
@@ -590,6 +590,43 @@ void JIT::emitSlow_op_try_get_by_id(Instruction* currentInstruction, Vector<Slow
 
     Call call = callOperation(operationTryGetByIdOptimize, GetPropertyPtrTag, resultVReg, gen.stubInfo(), regT0, ident->impl());
     
+    gen.reportSlowPathCall(coldPathBegin, call);
+}
+
+void JIT::emit_op_get_by_id_direct(Instruction* currentInstruction)
+{
+    int resultVReg = currentInstruction[1].u.operand;
+    int baseVReg = currentInstruction[2].u.operand;
+    const Identifier* ident = &(m_codeBlock->identifier(currentInstruction[3].u.operand));
+
+    emitGetVirtualRegister(baseVReg, regT0);
+
+    emitJumpSlowCaseIfNotJSCell(regT0, baseVReg);
+
+    JITGetByIdGenerator gen(
+        m_codeBlock, CodeOrigin(m_bytecodeOffset), CallSiteIndex(m_bytecodeOffset), RegisterSet::stubUnavailableRegisters(),
+        ident->impl(), JSValueRegs(regT0), JSValueRegs(regT0), AccessType::GetDirect);
+    gen.generateFastPath(*this);
+    addSlowCase(gen.slowPathJump());
+    m_getByIds.append(gen);
+
+    emitValueProfilingSite();
+    emitPutVirtualRegister(resultVReg);
+}
+
+void JIT::emitSlow_op_get_by_id_direct(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
+{
+    linkAllSlowCases(iter);
+
+    int resultVReg = currentInstruction[1].u.operand;
+    const Identifier* ident = &(m_codeBlock->identifier(currentInstruction[3].u.operand));
+
+    JITGetByIdGenerator& gen = m_getByIds[m_getByIdIndex++];
+
+    Label coldPathBegin = label();
+
+    Call call = callOperationWithProfile(operationGetByIdDirectOptimize, GetPropertyPtrTag, resultVReg, gen.stubInfo(), regT0, ident->impl());
+
     gen.reportSlowPathCall(coldPathBegin, call);
 }
 
@@ -1248,7 +1285,7 @@ void JIT::privateCompileGetByVal(ByValInfo* byValInfo, ReturnAddressPtr returnAd
     patchBuffer.link(done, byValInfo->badTypeJump.labelAtOffset(byValInfo->badTypeJumpToDone));
     
     byValInfo->stubRoutine = FINALIZE_CODE_FOR_STUB(
-        m_codeBlock, patchBuffer, NearJumpPtrTag,
+        m_codeBlock, patchBuffer, NearCodePtrTag,
         "Baseline get_by_val stub for %s, return point %p", toCString(*m_codeBlock).data(), returnAddress.value());
     
     MacroAssembler::repatchJump(byValInfo->badTypeJump, CodeLocationLabel(byValInfo->stubRoutine->code().code()));
@@ -1280,7 +1317,7 @@ void JIT::privateCompileGetByValWithCachedId(ByValInfo* byValInfo, ReturnAddress
     gen.finalize(patchBuffer);
 
     byValInfo->stubRoutine = FINALIZE_CODE_FOR_STUB(
-        m_codeBlock, patchBuffer, NearJumpPtrTag,
+        m_codeBlock, patchBuffer, NearCodePtrTag,
         "Baseline get_by_val with cached property name '%s' stub for %s, return point %p", propertyName.impl()->utf8().data(), toCString(*m_codeBlock).data(), returnAddress.value());
     byValInfo->stubInfo = gen.stubInfo();
 
@@ -1335,12 +1372,12 @@ void JIT::privateCompilePutByVal(ByValInfo* byValInfo, ReturnAddressPtr returnAd
     bool isDirect = Interpreter::getOpcodeID(currentInstruction->u.opcode) == op_put_by_val_direct;
     if (!isDirect) {
         byValInfo->stubRoutine = FINALIZE_CODE_FOR_STUB(
-            m_codeBlock, patchBuffer, NearJumpPtrTag,
+            m_codeBlock, patchBuffer, NearCodePtrTag,
             "Baseline put_by_val stub for %s, return point %p", toCString(*m_codeBlock).data(), returnAddress.value());
         
     } else {
         byValInfo->stubRoutine = FINALIZE_CODE_FOR_STUB(
-            m_codeBlock, patchBuffer, NearJumpPtrTag,
+            m_codeBlock, patchBuffer, NearCodePtrTag,
             "Baseline put_by_val_direct stub for %s, return point %p", toCString(*m_codeBlock).data(), returnAddress.value());
     }
     MacroAssembler::repatchJump(byValInfo->badTypeJump, CodeLocationLabel(byValInfo->stubRoutine->code().code()));
@@ -1370,7 +1407,7 @@ void JIT::privateCompilePutByValWithCachedId(ByValInfo* byValInfo, ReturnAddress
     gen.finalize(patchBuffer);
 
     byValInfo->stubRoutine = FINALIZE_CODE_FOR_STUB(
-        m_codeBlock, patchBuffer, NearJumpPtrTag,
+        m_codeBlock, patchBuffer, NearCodePtrTag,
         "Baseline put_by_val%s with cached property name '%s' stub for %s, return point %p", (putKind == Direct) ? "_direct" : "", propertyName.impl()->utf8().data(), toCString(*m_codeBlock).data(), returnAddress.value());
     byValInfo->stubInfo = gen.stubInfo();
 

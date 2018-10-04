@@ -23,58 +23,105 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
 class LayoutState {
-    constructor(initialDisplayBox) {
+public:
+    Container& rootContainer();
+
+    FormattingContext& formattingContext(const Layout::Container& formattingRoot);
+    FormattingState& establishedFormattingState(const Layout::Container& formattingRoot);
+    FormattingState& formattingStateForBox(const Layout::Box&);
+
+    Display::Box* displayBox(const Layout::Box&);
+
+    void markNeedsLayout(const Layout::Box&);
+    bool needsLayout();
+};
+*/
+
+class LayoutState {
+    constructor(rootContainer, rootDisplayBox) {
+        ASSERT(rootContainer.establishesFormattingContext());
+        this.m_rootContainer = rootContainer;
+        this.m_rootDisplayBox = rootDisplayBox;
+
         this.m_formattingStates = new Map();
-        this.m_initialDisplayBox = initialDisplayBox;
     }
 
-    layout(formattingRoot) {
-        let formattingState = this._createFormattingState(formattingRoot);
-        this.m_formattingStates.set(formattingRoot, formattingState);
-        this.formattingContext(formattingState).layout();
+    formattingContext(formattingRoot) {
+        return this._formattingContext(this.establishedFormattingState(formattingRoot));
     }
 
-    _createFormattingState(formattingRoot) {
+    rootContainer() {
+        return this.m_rootContainer;
+    }
+
+    establishedFormattingState(formattingRoot) {
         ASSERT(formattingRoot.establishesFormattingContext());
-        if (formattingRoot.establishesBlockFormattingContext())
-            return new BlockFormattingState(formattingRoot, this);
-        if (formattingRoot.establishesInlineFormattingContext())
-            return new InlineFormattingState(formattingRoot, this);
+        let formattingState = this.m_formattingStates.get(formattingRoot);
+        if (formattingState)
+            return formattingState;
+        formattingState = this._createFormattingState(formattingRoot);
+        this.m_formattingStates.set(formattingRoot, formattingState);
+        return formattingState;
+    }
+
+    formattingStateForBox(layoutBox) {
+        for (let formattingEntry of this.m_formattingStates) {
+            let formattingRoot = formattingEntry[0];
+            let formattingState = formattingEntry[1];
+            if (FormattingContext.isInFormattingContext(layoutBox, formattingRoot))
+                return formattingState;
+        }
         ASSERT_NOT_REACHED();
         return null;
     }
 
-    formattingContext(formattingState) {
+    markNeedsLayout(layoutBox) {
+        let formattingState = this.formattingStateForBox(layoutBox);
+        // Newly created formatting state will obviously mark all the boxes dirty.
+        if (!formattingState)
+            return;
+        formattingState.markNeedsLayout(layoutBox);
+    }
+
+    needsLayout() {
+        for (let formattingEntry of this.m_formattingStates) {
+            let formattingState = formattingEntry[1];
+            if (formattingState.layoutNeeded())
+                return true;
+        }
+        return false;
+    }
+
+    displayBox(layoutBox) {
+        for (let formattingEntry of this.m_formattingStates) {
+            let formattingState = formattingEntry[1];
+            let displayBox = formattingState.displayBoxes().get(layoutBox);
+            if (displayBox)
+                return displayBox;
+        }
+        // It must be the root container.
+        ASSERT(layoutBox == this.m_rootContainer);
+        return this.m_rootDisplayBox;
+    }
+
+    _createFormattingState(formattingRoot) {
+        ASSERT(formattingRoot.establishesFormattingContext());
+        if (formattingRoot.establishesInlineFormattingContext())
+            return new InlineFormattingState(formattingRoot, this);
+        if (formattingRoot.establishesBlockFormattingContext())
+            return new BlockFormattingState(formattingRoot, this);
+        ASSERT_NOT_REACHED();
+        return null;
+    }
+
+    _formattingContext(formattingState) {
         if (formattingState instanceof BlockFormattingState)
             return new BlockFormattingContext(formattingState);
         if (formattingState instanceof InlineFormattingState)
             return new InlineFormattingContext(formattingState);
         ASSERT_NOT_REACHED();
         return null;
-    }
-
-    formattingStates() {
-        return this.m_formattingStates;
-    }
-
-    establishedFormattingState(formattingRoot) {
-        ASSERT(formattingRoot.establishesFormattingContext());
-        return this.m_formattingStates.get(formattingRoot);
-    }
-
-    formattingStateForBox(layoutBox) {
-        // FIXME: We should probably cache this somewhere
-        let formattingState = null;
-        let ancestor = layoutBox.containingBlock();
-        do {
-            formattingState = this.m_formattingStates.get(ancestor);
-            ancestor = ancestor.containingBlock();
-        } while (!formattingState);
-        return formattingState;
-    }
-
-    initialDisplayBox() {
-        return this.m_initialDisplayBox;
     }
 }

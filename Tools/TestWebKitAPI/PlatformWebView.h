@@ -91,9 +91,6 @@ private:
 
     PlatformWKView m_view;
     PlatformWindow m_window;
-#if PLATFORM(WPE)
-    struct wpe_view_backend* m_backend { nullptr };
-#endif
 };
 
 } // namespace TestWebKitAPI

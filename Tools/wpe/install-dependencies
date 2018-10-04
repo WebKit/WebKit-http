@@ -107,6 +107,7 @@ function installDependenciesWithApt {
     packages="$packages \
         git \
         gsettings-desktop-schemas-dev \
+        libegl1-mesa-dev \
         libexpat1-dev \
         libgbm-dev \
         libgles2-mesa-dev \
@@ -122,9 +123,11 @@ function installDependenciesWithApt {
         libvorbis-dev \
         libvpx-dev \
         libxcb-xkb-dev \
+        libxkbcommon-dev \
         libxml-libxml-perl \
         libwayland-dev \
-        luajit"
+        luajit \
+        yasm"
 
     # These are dependencies necessary for using webkit-patch
     packages="$packages \
@@ -207,6 +210,7 @@ function installDependenciesWithPacman {
         libvorbis \
         libvpx \
         libxcb \
+        libxkbcommon \
         luajit \
         mesa \
         mesa-libgl \
@@ -215,7 +219,9 @@ function installDependenciesWithPacman {
         perl-xml-libxml \
         util-linux \
         v4l-utils \
-        wayland"
+        xorg-xrandr \
+        wayland \
+        yasm"
 
     # These are dependencies necessary for using webkit-patch
     packages="$packages \
@@ -228,7 +234,7 @@ function installDependenciesWithPacman {
 }
 
 function installDependenciesWithDnf {
-    # These are dependencies necessary for building WebKitGTK+.
+    # These are dependencies necessary for building WebKitWPE.
     packages=" \
         autoconf \
         automake \
@@ -254,6 +260,7 @@ function installDependenciesWithDnf {
         ninja-build \
         patch \
         perl-File-Copy-Recursive \
+        perl-JSON-PP \
         perl-Time-HiRes \
         perl-version \
         ruby \
@@ -290,15 +297,19 @@ function installDependenciesWithDnf {
         libvorbis-devel \
         libvpx-devel \
         libxcb-devel \
+        libxkbcommon-devel \
+        libXrandr-devel \
         luajit \
         luajit-devel \
         mesa-libgbm-devel \
         mesa-libGLES-devel \
+        mesa-libEGL-devel \
         opus-devel \
         orc-devel \
         perl-XML-LibXML \
         pulseaudio-libs-devel \
-        wayland-devel"
+        wayland-devel \
+        yasm"
 
     # These are dependencies necessary for using webkit-patch
     packages="$packages

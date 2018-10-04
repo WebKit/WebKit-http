@@ -111,7 +111,7 @@ void JIT::emitEnterOptimizationCheck()
 
     callOperation(operationOptimize, m_bytecodeOffset);
     skipOptimize.append(branchTestPtr(Zero, returnValueGPR));
-    jump(returnValueGPR, NoPtrTag);
+    jump(returnValueGPR, GPRInfo::callFrameRegister);
     skipOptimize.link(this);
 }
 #endif
@@ -334,6 +334,7 @@ void JIT::privateCompileMainPass()
         case op_get_by_id_unset:
         DEFINE_OP(op_get_by_id)
         DEFINE_OP(op_get_by_id_with_this)
+        DEFINE_OP(op_get_by_id_direct)
         DEFINE_OP(op_get_by_val)
         DEFINE_OP(op_overrides_has_instance)
         DEFINE_OP(op_instanceof)
@@ -512,6 +513,7 @@ void JIT::privateCompileSlowCases()
         case op_get_by_id_unset:
         DEFINE_SLOWCASE_OP(op_get_by_id)
         DEFINE_SLOWCASE_OP(op_get_by_id_with_this)
+        DEFINE_SLOWCASE_OP(op_get_by_id_direct)
         DEFINE_SLOWCASE_OP(op_get_by_val)
         DEFINE_SLOWCASE_OP(op_instanceof)
         DEFINE_SLOWCASE_OP(op_instanceof_custom)
@@ -735,25 +737,8 @@ void JIT::compileWithoutLinking(JITCompilationEffort effort)
         if (maxFrameExtentForSlowPathCall)
             addPtr(TrustedImm32(maxFrameExtentForSlowPathCall), stackPointerRegister);
         branchTest32(Zero, returnValueGPR).linkTo(beginLabel, this);
-#if CPU(ARM64) && USE(POINTER_PROFILING)
-        loadPtr(Address(callFrameRegister, CallFrame::returnPCOffset()), linkRegister);
-        addPtr(TrustedImm32(sizeof(CallerFrameAndPC)), callFrameRegister, regT1);
-        untagPtr(linkRegister, regT1);
-        PtrTag tempTag = ptrTag(JITThunkPtrTag, nextPtrTagID());
-        move(TrustedImmPtr(tempTag), regT1);
-        tagPtr(linkRegister, regT1);
-        storePtr(linkRegister, Address(callFrameRegister, CallFrame::returnPCOffset()));
-#endif
         move(returnValueGPR, GPRInfo::argumentGPR0);
-        emitNakedCall(m_vm->getCTIStub(arityFixupGenerator).retaggedCode(ptrTag(JITThunkPtrTag, m_vm), NearCallPtrTag));
-#if CPU(ARM64) && USE(POINTER_PROFILING)
-        loadPtr(Address(callFrameRegister, CallFrame::returnPCOffset()), linkRegister);
-        move(TrustedImmPtr(tempTag), regT1);
-        untagPtr(linkRegister, regT1);
-        addPtr(TrustedImm32(sizeof(CallerFrameAndPC)), callFrameRegister, regT1);
-        tagPtr(linkRegister, regT1);
-        storePtr(linkRegister, Address(callFrameRegister, CallFrame::returnPCOffset()));
-#endif
+        emitNakedCall(m_vm->getCTIStub(arityFixupGenerator).retaggedCode(ptrTag(ArityFixupPtrTag, m_vm), NearCodePtrTag));
 
 #if !ASSERT_DISABLED
         m_bytecodeOffset = std::numeric_limits<unsigned>::max(); // Reset this, in order to guard its use with ASSERTs.
@@ -881,14 +866,17 @@ CompilationResult JIT::link()
             patchBuffer.locationOfNearCall(compilationInfo.hotPathOther));
     }
 
-    CompactJITCodeMap::Encoder jitCodeMapEncoder;
+    JITCodeMap jitCodeMap;
     for (unsigned bytecodeOffset = 0; bytecodeOffset < m_labels.size(); ++bytecodeOffset) {
-        if (m_labels[bytecodeOffset].isSet())
-            jitCodeMapEncoder.append(bytecodeOffset, patchBuffer.offsetOf(m_labels[bytecodeOffset]));
+        if (m_labels[bytecodeOffset].isSet()) {
+            PtrTag tag = ptrTag(CodePtrTag, m_codeBlock, bytecodeOffset);
+            jitCodeMap.append(bytecodeOffset, patchBuffer.locationOf(m_labels[bytecodeOffset], tag));
+        }
     }
-    m_codeBlock->setJITCodeMap(jitCodeMapEncoder.finish());
+    jitCodeMap.finish();
+    m_codeBlock->setJITCodeMap(WTFMove(jitCodeMap));
 
-    MacroAssemblerCodePtr withArityCheck = patchBuffer.locationOf(m_arityCheck, CodeEntryWithArityCheckPtrTag);
+    MacroAssemblerCodePtr withArityCheck = patchBuffer.locationOf(m_arityCheck, CodePtrTag);
 
     if (Options::dumpDisassembly()) {
         m_disassembler->dump(patchBuffer);
@@ -904,7 +892,7 @@ CompilationResult JIT::link()
         m_codeBlock->setPCToCodeOriginMap(std::make_unique<PCToCodeOriginMap>(WTFMove(m_pcToCodeOriginMapBuilder), patchBuffer));
     
     CodeRef result = FINALIZE_CODE(
-        patchBuffer, CodeEntryPtrTag,
+        patchBuffer, CodePtrTag,
         "Baseline JIT code for %s", toCString(CodeBlockWithJITType(m_codeBlock, JITCode::BaselineJIT)).data());
     
     m_vm->machineCodeBytesPerBytecodeWordForBaselineJIT->add(

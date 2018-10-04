@@ -45,6 +45,7 @@
 #include "RenderPtr.h"
 #include "ScriptExecutionContext.h"
 #include "StringWithDirection.h"
+#include "StyleColor.h"
 #include "Supplementable.h"
 #include "TextResourceDecoder.h"
 #include "Timer.h"
@@ -543,8 +544,9 @@ public:
     Settings& mutableSettings() { return m_settings.get(); }
 
     float deviceScaleFactor() const;
-        
+
     bool useSystemAppearance() const;
+    OptionSet<StyleColor::Options> styleColorOptions() const;
 
     WEBCORE_EXPORT Ref<Range> createRange();
 
@@ -1390,7 +1392,7 @@ public:
 
     WEBCORE_EXPORT void setConsoleMessageListener(RefPtr<StringCallback>&&); // For testing.
 
-    DocumentTimeline& timeline();
+    WEBCORE_EXPORT DocumentTimeline& timeline();
     DocumentTimeline* existingTimeline() const { return m_timeline.get(); }
     Vector<RefPtr<WebAnimation>> getAnimations();
         

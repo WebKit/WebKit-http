@@ -273,6 +273,7 @@ void WebLoaderStrategy::scheduleLoadFromNetworkProcess(ResourceLoader& resourceL
     loadParameters.needsCertificateInfo = resourceLoader.shouldIncludeCertificateInfo();
     loadParameters.maximumBufferingTime = maximumBufferingTime;
     loadParameters.derivedCachedDataTypesToRetrieve = resourceLoader.options().derivedCachedDataTypesToRetrieve;
+    loadParameters.options = resourceLoader.options();
 
     // FIXME: We should also sanitize redirect response for navigations.
     loadParameters.shouldRestrictHTTPResponseAccess = RuntimeEnabledFeatures::sharedFeatures().restrictedHTTPResponseAccess() && resourceLoader.options().mode != FetchOptions::Mode::Navigate;
@@ -432,6 +433,8 @@ void WebLoaderStrategy::loadResourceSynchronously(FrameLoader& frameLoader, unsi
     loadParameters.clientCredentialPolicy = clientCredentialPolicy;
     loadParameters.shouldClearReferrerOnHTTPSToHTTPRedirect = shouldClearReferrerOnHTTPSToHTTPRedirect(webFrame ? webFrame->coreFrame() : nullptr);
     loadParameters.shouldRestrictHTTPResponseAccess = RuntimeEnabledFeatures::sharedFeatures().restrictedHTTPResponseAccess();
+    // FIXME: Use the proper destination once all fetch options are passed.
+    loadParameters.options.destination = FetchOptions::Destination::EmptyString;
 
     data.shrink(0);
 
@@ -467,8 +470,8 @@ void WebLoaderStrategy::startPingLoad(Frame& frame, ResourceRequest& request, co
     loadParameters.sourceOrigin = &document->securityOrigin();
     loadParameters.sessionID = frame.page() ? frame.page()->sessionID() : PAL::SessionID::defaultSessionID();
     loadParameters.storedCredentialsPolicy = options.credentials == FetchOptions::Credentials::Omit ? StoredCredentialsPolicy::DoNotUse : StoredCredentialsPolicy::Use;
-    loadParameters.mode = options.mode;
-    loadParameters.shouldFollowRedirects = options.redirect == FetchOptions::Redirect::Follow;
+    loadParameters.options = options;
+    loadParameters.originalRequestHeaders = originalRequestHeaders;
     loadParameters.shouldClearReferrerOnHTTPSToHTTPRedirect = shouldClearReferrerOnHTTPSToHTTPRedirect(&frame);
     loadParameters.shouldRestrictHTTPResponseAccess = RuntimeEnabledFeatures::sharedFeatures().restrictedHTTPResponseAccess();
     if (!document->shouldBypassMainWorldContentSecurityPolicy()) {
@@ -489,7 +492,7 @@ void WebLoaderStrategy::startPingLoad(Frame& frame, ResourceRequest& request, co
     if (completionHandler)
         m_pingLoadCompletionHandlers.add(loadParameters.identifier, WTFMove(completionHandler));
 
-    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::LoadPing(WTFMove(loadParameters), originalRequestHeaders), 0);
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::LoadPing { loadParameters }, 0);
 }
 
 void WebLoaderStrategy::didFinishPingLoad(uint64_t pingLoadIdentifier, ResourceError&& error, ResourceResponse&& response)
@@ -528,6 +531,8 @@ void WebLoaderStrategy::preconnectTo(FrameLoader& frameLoader, const WebCore::UR
     parameters.storedCredentialsPolicy = storedCredentialsPolicy;
     parameters.shouldPreconnectOnly = PreconnectOnly::Yes;
     parameters.shouldRestrictHTTPResponseAccess = RuntimeEnabledFeatures::sharedFeatures().restrictedHTTPResponseAccess();
+    // FIXME: Use the proper destination once all fetch options are passed.
+    parameters.options.destination = FetchOptions::Destination::EmptyString;
 
     WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::PreconnectTo(preconnectionIdentifier, WTFMove(parameters)), 0);
 }

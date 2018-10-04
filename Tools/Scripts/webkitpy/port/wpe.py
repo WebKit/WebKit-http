@@ -66,9 +66,7 @@ class WPEPort(Port):
 
     @memoized
     def _driver_class(self):
-        if self._display_server == "wayland":
-            return WaylandDriver
-        return HeadlessDriver
+        return WaylandDriver
 
     def setup_environ_for_server(self, server_name=None):
         environment = super(WPEPort, self).setup_environ_for_server(server_name)
@@ -78,6 +76,9 @@ class WPEPort(Port):
         environment['TEST_RUNNER_TEST_PLUGIN_PATH'] = self._build_path('lib', 'plugins')
         environment['WEBKIT_EXEC_PATH'] = self._build_path('bin')
         return environment
+
+    def check_sys_deps(self, needs_http):
+        return super(WPEPort, self).check_sys_deps(needs_http) and self._driver_class().check_driver(self)
 
     def _generate_all_test_configurations(self):
         configurations = []

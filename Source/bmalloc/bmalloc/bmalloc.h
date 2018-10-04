@@ -30,9 +30,9 @@
 #include "Gigacage.h"
 #include "Heap.h"
 #include "IsoTLS.h"
+#include "Mutex.h"
 #include "PerHeapKind.h"
 #include "Scavenger.h"
-#include "StaticMutex.h"
 
 namespace bmalloc {
 namespace api {
@@ -82,7 +82,7 @@ inline void free(void* object, HeapKind kind = HeapKind::Primary)
 
 BEXPORT void freeOutOfLine(void* object, HeapKind kind = HeapKind::Primary);
 
-BEXPORT void freeLargeVirtual(void* object, HeapKind kind = HeapKind::Primary);
+BEXPORT void freeLargeVirtual(void* object, size_t, HeapKind kind = HeapKind::Primary);
 
 inline void scavengeThisThread()
 {

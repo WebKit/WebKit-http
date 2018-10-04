@@ -212,7 +212,7 @@ struct MediaPlayerFactory {
 
 static void addMediaEngine(CreateMediaEnginePlayer&&, MediaEngineSupportedTypes, MediaEngineSupportsType, MediaEngineOriginsInMediaCache, MediaEngineClearMediaCache, MediaEngineClearMediaCacheForOrigins, MediaEngineSupportsKeySystem);
 
-static StaticLock mediaEngineVectorLock;
+static Lock mediaEngineVectorLock;
 
 static bool& haveMediaEnginesVector()
 {

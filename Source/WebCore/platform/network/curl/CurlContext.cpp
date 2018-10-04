@@ -66,11 +66,13 @@ private:
         ASSERT_NOT_REACHED();
         return nullptr;
     }
-
-    // define specialized member function for specific type.
-    template<> constexpr const char* sscanTemplate<signed>() { return "%d"; }
-    template<> constexpr const char* sscanTemplate<unsigned>() { return "%u"; }
 };
+
+template<>
+constexpr const char* EnvironmentVariableReader::sscanTemplate<signed>() { return "%d"; }
+
+template<>
+constexpr const char* EnvironmentVariableReader::sscanTemplate<unsigned>() { return "%u"; }
 
 // CurlContext -------------------------------------------------------------------
 
@@ -199,11 +201,11 @@ void CurlShareHandle::unlockCallback(CURL*, curl_lock_data data, void*)
         mutex->unlock();
 }
 
-StaticLock* CurlShareHandle::mutexFor(curl_lock_data data)
+Lock* CurlShareHandle::mutexFor(curl_lock_data data)
 {
-    static StaticLock cookieMutex;
-    static StaticLock dnsMutex;
-    static StaticLock shareMutex;
+    static Lock cookieMutex;
+    static Lock dnsMutex;
+    static Lock shareMutex;
 
     switch (data) {
     case CURL_LOCK_DATA_COOKIE:

@@ -552,7 +552,7 @@ public:
     
     void convertToGetByOffset(StorageAccessData& data, Edge storage, Edge base)
     {
-        ASSERT(m_op == GetById || m_op == GetByIdFlush || m_op == MultiGetByOffset);
+        ASSERT(m_op == GetById || m_op == GetByIdFlush || m_op == GetByIdDirect || m_op == GetByIdDirectFlush || m_op == MultiGetByOffset);
         m_opInfo = &data;
         children.setChild1(storage);
         children.setChild2(base);
@@ -562,7 +562,7 @@ public:
     
     void convertToMultiGetByOffset(MultiGetByOffsetData* data)
     {
-        ASSERT(m_op == GetById || m_op == GetByIdFlush);
+        ASSERT(m_op == GetById || m_op == GetByIdFlush || m_op == GetByIdDirect || m_op == GetByIdDirectFlush);
         m_opInfo = data;
         child1().setUseKind(CellUse);
         m_op = MultiGetByOffset;
@@ -1002,6 +1002,8 @@ public:
         case GetById:
         case GetByIdFlush:
         case GetByIdWithThis:
+        case GetByIdDirect:
+        case GetByIdDirectFlush:
         case PutById:
         case PutByIdFlush:
         case PutByIdDirect:
@@ -1578,6 +1580,8 @@ public:
         case GetById:
         case GetByIdFlush:
         case GetByIdWithThis:
+        case GetByIdDirect:
+        case GetByIdDirectFlush:
         case GetPrototypeOf:
         case TryGetById:
         case GetByVal:
@@ -2340,6 +2344,11 @@ public:
         return isSymbolSpeculation(prediction());
     }
     
+    bool shouldSpeculateBigInt()
+    {
+        return isBigIntSpeculation(prediction());
+    }
+    
     bool shouldSpeculateFinalObject()
     {
         return isFinalObjectSpeculation(prediction());
@@ -2528,6 +2537,11 @@ public:
     static bool shouldSpeculateSymbol(Node* op1, Node* op2)
     {
         return op1->shouldSpeculateSymbol() && op2->shouldSpeculateSymbol();
+    }
+    
+    static bool shouldSpeculateBigInt(Node* op1, Node* op2)
+    {
+        return op1->shouldSpeculateBigInt() && op2->shouldSpeculateBigInt();
     }
     
     static bool shouldSpeculateFinalObject(Node* op1, Node* op2)

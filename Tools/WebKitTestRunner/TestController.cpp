@@ -668,6 +668,7 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetWebAudioEnabled(preferences, true);
     WKPreferencesSetMediaDevicesEnabled(preferences, true);
     WKPreferencesSetWebRTCLegacyAPIEnabled(preferences, true);
+    WKPreferencesSetWebRTCMDNSICECandidatesEnabled(preferences, false);
     WKPreferencesSetDeveloperExtrasEnabled(preferences, true);
     WKPreferencesSetJavaScriptRuntimeFlags(preferences, kWKJavaScriptRuntimeFlagsAllEnabled);
     WKPreferencesSetJavaScriptCanOpenWindowsAutomatically(preferences, true);
@@ -696,7 +697,9 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetWebAuthenticationEnabled(preferences, options.enableWebAuthentication);
     WKPreferencesSetIsSecureContextAttributeEnabled(preferences, options.enableIsSecureContextAttribute);
     WKPreferencesSetAllowCrossOriginSubresourcesToAskForCredentials(preferences, options.allowCrossOriginSubresourcesToAskForCredentials);
-    WKPreferencesSetCSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled(preferences, options.enableCSSAnimationsAndCSSTransitionsBackedByWebAnimations);
+
+    // We always want to have CSS Animations and CSS Transitions as Web Animations turned off for legacy-animation-engine directory.
+    WKPreferencesSetCSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled(preferences, options.enableCSSAnimationsAndCSSTransitionsBackedByWebAnimations && !options.isLegacyAnimationEngineTest);
 
     static WKStringRef defaultTextEncoding = WKStringCreateWithUTF8CString("ISO-8859-1");
     WKPreferencesSetDefaultTextEncodingName(preferences, defaultTextEncoding);
@@ -2395,6 +2398,14 @@ WKContextRef TestController::platformAdjustContext(WKContextRef context, WKConte
 {
     auto* dataStore = WKContextGetWebsiteDataStore(context);
     WKWebsiteDataStoreSetResourceLoadStatisticsEnabled(dataStore, true);
+
+    if (const char* dumpRenderTreeTemp = libraryPathForTesting()) {
+        String temporaryFolder = String::fromUTF8(dumpRenderTreeTemp);
+        const char separator = '/';
+
+        WKWebsiteDataStoreSetServiceWorkerRegistrationDirectory(dataStore, toWK(temporaryFolder + separator + "ServiceWorkers").get());
+    }
+
     return context;
 }
 
@@ -2411,9 +2422,12 @@ void TestController::removeAllSessionCredentials()
 {
 }
 
+void TestController::getAllStorageAccessEntries()
+{
+}
+
 #endif
 
-#if PLATFORM(COCOA) && WK_API_ENABLED
 struct ClearServiceWorkerRegistrationsCallbackContext {
     explicit ClearServiceWorkerRegistrationsCallbackContext(TestController& controller)
         : testController(controller)
@@ -2430,20 +2444,16 @@ static void clearServiceWorkerRegistrationsCallback(void* userData)
     context->done = true;
     context->testController.notifyDone();
 }
-#endif
 
 void TestController::clearServiceWorkerRegistrations()
 {
-#if PLATFORM(COCOA) && WK_API_ENABLED
     auto websiteDataStore = WKContextGetWebsiteDataStore(platformContext());
     ClearServiceWorkerRegistrationsCallbackContext context(*this);
 
     WKWebsiteDataStoreRemoveAllServiceWorkerRegistrations(websiteDataStore, &context, clearServiceWorkerRegistrationsCallback);
     runUntil(context.done, noTimeout);
-#endif
 }
 
-#if PLATFORM(COCOA) && WK_API_ENABLED
 struct ClearDOMCacheCallbackContext {
     explicit ClearDOMCacheCallbackContext(TestController& controller)
         : testController(controller)
@@ -2460,29 +2470,24 @@ static void clearDOMCacheCallback(void* userData)
     context->done = true;
     context->testController.notifyDone();
 }
-#endif
 
 void TestController::clearDOMCache(WKStringRef origin)
 {
-#if PLATFORM(COCOA) && WK_API_ENABLED
     auto websiteDataStore = WKContextGetWebsiteDataStore(platformContext());
     ClearDOMCacheCallbackContext context(*this);
 
     auto cacheOrigin = adoptWK(WKSecurityOriginCreateFromString(origin));
     WKWebsiteDataStoreRemoveFetchCacheForOrigin(websiteDataStore, cacheOrigin.get(), &context, clearDOMCacheCallback);
     runUntil(context.done, noTimeout);
-#endif
 }
 
 void TestController::clearDOMCaches()
 {
-#if PLATFORM(COCOA) && WK_API_ENABLED
     auto websiteDataStore = WKContextGetWebsiteDataStore(platformContext());
     ClearDOMCacheCallbackContext context(*this);
 
     WKWebsiteDataStoreRemoveAllFetchCaches(websiteDataStore, &context, clearDOMCacheCallback);
     runUntil(context.done, noTimeout);
-#endif
 }
 
 struct FetchCacheOriginsCallbackContext {
@@ -2819,12 +2824,5 @@ void TestController::statisticsResetToConsistentState()
     auto* dataStore = WKContextGetWebsiteDataStore(platformContext());
     WKWebsiteDataStoreStatisticsResetToConsistentState(dataStore);
 }
-
-#if !PLATFORM(COCOA)
-void TestController::getAllStorageAccessEntries()
-{
-    // FIXME: Implement C API version of this test.
-}
-#endif
 
 } // namespace WTR

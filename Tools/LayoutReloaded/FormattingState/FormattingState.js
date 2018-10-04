@@ -23,12 +23,32 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+class FormattingState {
+public:
+    Layout::Container& formattingRoot();
+    LayoutState& layoutState();
+    FloatingState& floatingState();
+    Display::Box& createDisplayBox(const Layout::Box&);
+
+    Vector<Display::Box&> displayBoxes();
+    Display::Box& displayBox(const Layout::Box&);
+
+    void markNeedsLayout(const Layout::Box&);
+    void clearNeedsLayout(const Layout::Box&);
+    bool needsLayout(const Layout::Box&);
+
+    bool needsLayout();
+};
+*/
 class FormattingState {
     constructor(layoutState, formattingRoot) {
         this.m_layoutState = layoutState;
         this.m_formattingRoot = formattingRoot;
         this.m_floatingState = null;
         this.m_displayToLayout = new Map();
+        this.m_needsLayoutBoxList = new Map();
+        this._markSubTreeNeedsLayout(formattingRoot);
     }
 
     formattingRoot() {
@@ -60,7 +80,7 @@ class FormattingState {
         return displayBox;
     }
 
-    displayBoxMap() {
+    displayBoxes() {
         return this.m_displayToLayout;
     }
 
@@ -69,21 +89,53 @@ class FormattingState {
         // 1. Normally we only need to access boxes within the same formatting context
         // 2. In some cases we need size information about the root container -which is in the parent formatting context
         // 3. In inline formatting with parent floating state, we need display boxes from the parent formatting context
-        // 3. In rare cases (statically positioned out-of-flow box), we need position information on sibling formatting context
+        // 4. In rare cases (statically positioned out-of-flow box), we need position information on sibling formatting context
         // but in all cases it needs to be a descendant of the root container (or the container itself)
-        // ASSERT(layoutBox == this.formattingRoot() || layoutBox.isDescendantOf(this.formattingRoot()));
         let displayBox = this.m_displayToLayout.get(layoutBox);
         if (displayBox)
             return displayBox;
-
-        let formattingStates = this.layoutState().formattingStates();
-        for (let formattingState of formattingStates) {
-            let displayBox = formattingState[1].displayBoxMap().get(layoutBox);
-            if (displayBox)
-                return displayBox;
-        }
-        // It must be the ICB.
-        ASSERT(!layoutBox.parent());
-        return this.layoutState().initialDisplayBox();
+        return this.layoutState().displayBox(layoutBox);
     }
+
+    markNeedsLayout(layoutBox) {
+        // Never mark the formatting root dirty. It belongs to the parent formatting context (or none if ICB).
+        ASSERT(layoutBox != this.formattingRoot());
+        this.m_needsLayoutBoxList.set(layoutBox);
+        // FIXME: Let's just mark all the ancestors dirty in this formatting scope.
+        let containingBlock = layoutBox.containingBlock();
+        if (!containingBlock || containingBlock == this.formattingRoot())
+            return;
+        if (!FormattingContext.isInFormattingContext(containingBlock, this.formattingRoot()))
+            return;
+        if (this.needsLayout(containingBlock))
+            return;
+
+        this.markNeedsLayout(containingBlock);
+    }
+
+    clearNeedsLayout(layoutBox) {
+        this.m_needsLayoutBoxList.delete(layoutBox);
+    }
+
+    needsLayout(layoutBox) {
+        return this.m_needsLayoutBoxList.has(layoutBox);
+    }
+
+    // This should just be needsLayout()
+    layoutNeeded() {
+        return this.m_needsLayoutBoxList.size;
+    }
+
+    _markSubTreeNeedsLayout(subTreeRoot) {
+        if (!subTreeRoot)
+            return;
+        // Only mark children that actually belong to this formatting context/state.
+        if (FormattingContext.isInFormattingContext(subTreeRoot, this.formattingRoot()))
+            this.markNeedsLayout(subTreeRoot);
+        if (!subTreeRoot.isContainer() || !subTreeRoot.hasChild())
+            return;
+        for (let child = subTreeRoot.firstChild(); child; child = child.nextSibling())
+            this._markSubTreeNeedsLayout(child);
+    }
+
 }

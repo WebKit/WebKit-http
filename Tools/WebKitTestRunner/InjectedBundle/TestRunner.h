@@ -132,6 +132,7 @@ public:
     void setEncryptedMediaAPIEnabled(bool);
     void setMediaDevicesEnabled(bool);
     void setWebRTCLegacyAPIEnabled(bool);
+    void setMDNSICECandidatesEnabled(bool);
 
     // Special DOM functions.
     void clearBackForwardList();

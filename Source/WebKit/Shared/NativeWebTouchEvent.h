@@ -51,6 +51,8 @@ public:
 #elif PLATFORM(WPE)
     NativeWebTouchEvent(struct wpe_input_touch_event*, float deviceScaleFactor);
     const struct wpe_input_touch_event_raw* nativeFallbackTouchPoint() const { return &m_fallbackTouchPoint; }
+#elif PLATFORM(WIN)
+    NativeWebTouchEvent();
 #endif
 
 private:

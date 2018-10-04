@@ -114,6 +114,7 @@
 #include "KeyboardEvent.h"
 #include "KeyframeEffectReadOnly.h"
 #include "LayoutDisallowedScope.h"
+#include "LibWebRTCProvider.h"
 #include "LoaderStrategy.h"
 #include "Logging.h"
 #include "MediaCanStartListener.h"
@@ -188,6 +189,7 @@
 #include "SocketProvider.h"
 #include "StorageEvent.h"
 #include "StringCallback.h"
+#include "StyleColor.h"
 #include "StyleProperties.h"
 #include "StyleResolveForDocument.h"
 #include "StyleResolver.h"
@@ -800,17 +802,17 @@ String Document::compatMode() const
 
 void Document::resetLinkColor()
 {
-    m_linkColor = Color(0, 0, 238);
+    m_linkColor = StyleColor::colorFromKeyword(CSSValueWebkitLink, styleColorOptions());
 }
 
 void Document::resetVisitedLinkColor()
 {
-    m_visitedLinkColor = Color(85, 26, 139);    
+    m_visitedLinkColor = StyleColor::colorFromKeyword(CSSValueWebkitLink, styleColorOptions() | StyleColor::Options::ForVisitedLink);
 }
 
 void Document::resetActiveLinkColor()
 {
-    m_activeLinkColor = Color(255, 0, 0);
+    m_activeLinkColor = StyleColor::colorFromKeyword(CSSValueWebkitActivelink, styleColorOptions());
 }
 
 DOMImplementation& Document::implementation()
@@ -2257,11 +2259,17 @@ void Document::didBecomeCurrentDocumentInFrame()
     // be out of sync if the DOM suspension state changed while the document was not in the frame (possibly in the
     // page cache, or simply newly created).
     if (m_frame->activeDOMObjectsAndAnimationsSuspended()) {
-        m_frame->animation().suspendAnimationsForDocument(this);
+        if (RuntimeEnabledFeatures::sharedFeatures().cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled())
+            timeline().suspendAnimations();
+        else
+            m_frame->animation().suspendAnimationsForDocument(this);
         suspendScheduledTasks(ActiveDOMObject::PageWillBeSuspended);
     } else {
         resumeScheduledTasks(ActiveDOMObject::PageWillBeSuspended);
-        m_frame->animation().resumeAnimationsForDocument(this);
+        if (RuntimeEnabledFeatures::sharedFeatures().cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled())
+            timeline().resumeAnimations();
+        else
+            m_frame->animation().resumeAnimationsForDocument(this);
     }
 }
 
@@ -2348,6 +2356,14 @@ void Document::prepareForDestruction()
 
     if (m_frame)
         m_frame->animation().detachFromDocument(this);
+
+#if USE(LIBWEBRTC)
+    // FIXME: This should be moved to Modules/mediastream.
+    if (LibWebRTCProvider::webRTCAvailable()) {
+        if (auto* page = this->page())
+            page->libWebRTCProvider().unregisterMDNSNames(identifier().toUInt64());
+    }
+#endif
 
 #if ENABLE(SERVICE_WORKER)
     setActiveServiceWorker(nullptr);
@@ -4877,6 +4893,14 @@ void Document::suspend(ActiveDOMObject::ReasonForSuspension reason)
             view->compositor().cancelCompositingLayerUpdate();
     }
 
+#if USE(LIBWEBRTC)
+    // FIXME: This should be moved to Modules/mediastream.
+    if (LibWebRTCProvider::webRTCAvailable()) {
+        if (auto* page = this->page())
+            page->libWebRTCProvider().unregisterMDNSNames(identifier().toUInt64());
+    }
+#endif
+
 #if ENABLE(SERVICE_WORKER)
     if (RuntimeEnabledFeatures::sharedFeatures().serviceWorkerEnabled() && reason == ActiveDOMObject::ReasonForSuspension::PageCache) {
         ASSERT_WITH_MESSAGE(!activeServiceWorker(), "Documents with an active service worker should not go into PageCache in the first place");
@@ -4911,7 +4935,11 @@ void Document::resume(ActiveDOMObject::ReasonForSuspension reason)
 
     ASSERT(m_frame);
     m_frame->loader().client().dispatchDidBecomeFrameset(isFrameSet());
-    m_frame->animation().resumeAnimationsForDocument(this);
+
+    if (RuntimeEnabledFeatures::sharedFeatures().cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled())
+        timeline().resumeAnimations();
+    else
+        m_frame->animation().resumeAnimationsForDocument(this);
 
     resumeScheduledTasks(reason);
 
@@ -7016,7 +7044,7 @@ float Document::deviceScaleFactor() const
         deviceScaleFactor = documentPage->deviceScaleFactor();
     return deviceScaleFactor;
 }
-    
+
 bool Document::useSystemAppearance() const
 {
     bool useSystemAppearance = false;
@@ -7024,7 +7052,15 @@ bool Document::useSystemAppearance() const
         useSystemAppearance = documentPage->useSystemAppearance();
     return useSystemAppearance;
 }
-    
+
+OptionSet<StyleColor::Options> Document::styleColorOptions() const
+{
+    OptionSet<StyleColor::Options> options;
+    if (useSystemAppearance())
+        options |= StyleColor::Options::UseSystemAppearance;
+    return options;
+}
+
 void Document::didAssociateFormControl(Element* element)
 {
     if (!frame() || !frame()->page() || !frame()->page()->chrome().client().shouldNotifyOnFormChanges())

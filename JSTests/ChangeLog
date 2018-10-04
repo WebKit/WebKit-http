@@ -1,3 +1,198 @@
+2018-04-14  Filip Pizlo  <fpizlo@apple.com>
+
+        Function.prototype.caller shouldn't return generator bodies
+        https://bugs.webkit.org/show_bug.cgi?id=184630
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/function-caller-async-arrow-function-body.js: Added.
+        * stress/function-caller-async-function-body.js: Added.
+        * stress/function-caller-async-generator-body.js: Added.
+        * stress/function-caller-generator-body.js: Added.
+        * stress/function-caller-generator-method-body.js: Added.
+
+2018-04-12  Tomas Popela  <tpopela@redhat.com>
+
+        Unreviewed, skip JIT tests if it isn't enabled
+
+        See https://bugs.webkit.org/show_bug.cgi?id=182730.
+
+        * stress/big-int-spec-to-primitive.js:
+        * stress/big-int-spec-to-this.js:
+
+2018-04-10  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESNext][BigInt] Add support for BigInt in SpeculatedType
+        https://bugs.webkit.org/show_bug.cgi?id=182470
+
+        Reviewed by Saam Barati.
+
+        * stress/big-int-spec-to-primitive.js: Added.
+        * stress/big-int-spec-to-this.js: Added.
+        * stress/big-int-strict-equals-jit.js: Added.
+        * stress/big-int-strict-spec-to-this.js: Added.
+        * stress/big-int-type-of-proven-type.js: Added.
+
+2018-04-10  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG AI and clobberize should agree with each other
+        https://bugs.webkit.org/show_bug.cgi?id=184440
+
+        Reviewed by Saam Barati.
+        
+        Add tests for all of the bugs I fixed.
+
+        * stress/direct-arguments-out-of-bounds-change-structure.js: Added.
+        (foo):
+        * stress/new-typed-array-cse-effects.js: Added.
+        (foo):
+        * stress/scoped-arguments-out-of-bounds-change-structure.js: Added.
+        (foo.theO):
+        (foo):
+        * stress/string-from-char-code-change-structure-not-dead.js: Added.
+        (foo):
+        (i.valueOf):
+        (weirdValue.valueOf):
+        * stress/string-from-char-code-change-structure.js: Added.
+        (foo):
+        (i.valueOf):
+        (weirdValue.valueOf):
+
+2018-04-09  Leo Balter  <leonardo.balter@gmail.com>
+
+        Fix errant Test262 files CRLF to LF for consistency with the original source
+        https://bugs.webkit.org/show_bug.cgi?id=184425
+
+        Reviewed by Yusuke Suzuki.
+
+        * test262/test/built-ins/Math/acosh/nan-returns.js:
+        * test262/test/built-ins/Math/asinh/asinh-specialVals.js:
+        * test262/test/built-ins/Math/atanh/atanh-specialVals.js:
+        * test262/test/built-ins/Math/cbrt/cbrt-specialValues.js:
+        * test262/test/built-ins/Math/cbrt/prop-desc.js:
+        * test262/test/built-ins/Math/cosh/cosh-specialVals.js:
+        * test262/test/built-ins/Math/expm1/expm1-specialVals.js:
+        * test262/test/built-ins/Math/log10/Log10-specialVals.js:
+        * test262/test/built-ins/Math/log2/log2-basicTests.js:
+        * test262/test/built-ins/Math/sign/sign-specialVals.js:
+        * test262/test/built-ins/Math/sinh/sinh-specialVals.js:
+        * test262/test/built-ins/Math/tanh/tanh-specialVals.js:
+        * test262/test/built-ins/Math/trunc/trunc-sampleTests.js:
+        * test262/test/built-ins/Math/trunc/trunc-specialVals.js:
+
+2018-04-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, remove incorrect entry in test262.yaml
+        https://bugs.webkit.org/show_bug.cgi?id=184266
+
+        * test262.yaml:
+
+2018-04-08  Valerie Young  <valerie@bocoup.com>
+
+        [JSC] Update Test262 to April 6 version
+        https://bugs.webkit.org/show_bug.cgi?id=184266
+
+        Rubber stamped by Yusuke Suzuki.
+
+2018-04-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Introduce op_get_by_id_direct
+        https://bugs.webkit.org/show_bug.cgi?id=183970
+
+        Reviewed by Filip Pizlo.
+
+        * stress/generator-prototype-copy.js: Added.
+        (gen):
+        (catch):
+        Adopted JF's tests.
+
+        * stress/generator-type-check.js: Added.
+        (shouldThrow):
+        (foo2):
+        (i.shouldThrow):
+        * stress/get-by-id-direct-getter.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (obj.get hello):
+        (builtin.createBuiltin):
+        (obj2.get length):
+        * stress/get-by-id-direct.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (builtin.createBuiltin):
+        * test262.yaml:
+        We fixed long-standing spec compatibility issue.
+        As a result, this patch makes several test262 tests passed!
+
+
+2018-04-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, annotate test with @skip if $memoryLimited
+        https://bugs.webkit.org/show_bug.cgi?id=183894
+
+        * stress/json-stringified-overflow.js:
+
+2018-04-06  Alexey Proskuryakov  <ap@apple.com>
+
+        Add svn:eol-style to line-terminator-normalisation-CR.js
+        https://bugs.webkit.org/show_bug.cgi?id=184341
+
+        * test262/test/built-ins/Function/prototype/toString/line-terminator-normalisation-CR.js: Added property svn:eol-style.
+
+2018-04-06  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Unreviewed, remove errant LF from existing test262 test for CR line endings.
+
+        * test262/test/built-ins/Function/prototype/toString/line-terminator-normalisation-CR.js:
+
+2018-04-05  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Unreviewed, rolling out r230320.
+
+        Revert fix, as the root cause lies elsewhere.
+
+        Reverted changeset:
+
+        "[test262] Mark line-terminator-normalisation-CR.js as a
+        binary file."
+        https://bugs.webkit.org/show_bug.cgi?id=184341
+        https://trac.webkit.org/changeset/230320
+
+2018-04-05  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [test262] Mark line-terminator-normalisation-CR.js as a binary file.
+        https://bugs.webkit.org/show_bug.cgi?id=184341
+
+        Reviewed by Yusuke Suzuki.
+
+        This test is all about CR line endings, but `svn-apply` can't deal with them.
+        Treating the file as binary ensures that its contents never are never shown in a diff.
+
+        * .gitattributes: Added.
+
+2018-04-05  Robin Morisset  <rmorisset@apple.com>
+
+        Fix testcase (missing try/catch).
+        https://bugs.webkit.org/show_bug.cgi?id=183657
+
+        Unreviewed.
+
+        * stress/large-unshift-splice.js
+
+2018-04-04  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION(r222563): removed DoubleReal type check causes tons of crashes because CSE has never known how to handle SaneChain
+        https://bugs.webkit.org/show_bug.cgi?id=184319
+
+        Reviewed by Saam Barati.
+
+        * stress/array-push-nan-to-double-array-cse-sane-and-insane-chain.js: Added.
+        (foo):
+        (bar):
+        * stress/array-push-nan-to-double-array.js: Added.
+        (foo):
+        (bar):
+
 2018-04-03  Mark Lam  <mark.lam@apple.com>
 
         Test js-fixed-array-out-of-memory.js should be excluded for memory limited devices.

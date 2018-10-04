@@ -656,7 +656,16 @@ static void validate(WKWebViewConfiguration *configuration)
 
     _viewportMetaTagWidth = WebCore::ViewportArguments::ValueAuto;
     _initialScaleFactor = 1;
-    _fastClickingIsDisabled = [[NSUserDefaults standardUserDefaults] boolForKey:@"WebKitFastClickingDisabled"];
+
+    if (NSNumber *enabledValue = [[NSUserDefaults standardUserDefaults] objectForKey:@"WebKitFastClickingDisabled"])
+        _fastClickingIsDisabled = enabledValue.boolValue;
+    else {
+#if ENABLE(EXTRA_ZOOM_MODE)
+        _fastClickingIsDisabled = YES;
+#else
+        _fastClickingIsDisabled = NO;
+#endif
+    }
 
     [self _frameOrBoundsChanged];
 
@@ -1422,7 +1431,7 @@ static CGSize roundScrollViewContentSize(const WebKit::WebPageProxy& page, CGSiz
 
 - (UIView *)_currentContentView
 {
-    return _customContentView ? _customContentView.get() : _contentView.get();
+    return _customContentView ? [_customContentView web_contentView] : _contentView.get();
 }
 
 - (WKWebViewContentProviderRegistry *)_contentProviderRegistry
@@ -2348,17 +2357,16 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 - (UIView *)viewForZoomingInScrollView:(UIScrollView *)scrollView
 {
     ASSERT(_scrollView == scrollView);
-
-    if (_customContentView)
-        return _customContentView.get();
-
-    return _contentView.get();
+    return self._currentContentView;
 }
 
 - (void)scrollViewWillBeginZooming:(UIScrollView *)scrollView withView:(UIView *)view
 {
-    if (![self usesStandardContentView])
+    if (![self usesStandardContentView]) {
+        if ([_customContentView respondsToSelector:@selector(web_scrollViewWillBeginZooming:withView:)])
+            [_customContentView web_scrollViewWillBeginZooming:scrollView withView:view];
         return;
+    }
 
     if (scrollView.pinchGestureRecognizer.state == UIGestureRecognizerStateBegan) {
         _page->willStartUserTriggeredZooming();
@@ -2451,12 +2459,18 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
 - (void)scrollViewDidZoom:(UIScrollView *)scrollView
 {
+    if (![self usesStandardContentView] && [_customContentView respondsToSelector:@selector(web_scrollViewDidZoom:)])
+        [_customContentView web_scrollViewDidZoom:scrollView];
+
     [self _updateScrollViewBackground];
     [self _scheduleVisibleContentRectUpdateAfterScrollInView:scrollView];
 }
 
 - (void)scrollViewDidEndZooming:(UIScrollView *)scrollView withView:(UIView *)view atScale:(CGFloat)scale
 {
+    if (![self usesStandardContentView] && [_customContentView respondsToSelector:@selector(web_scrollViewDidEndZooming:withView:atScale:)])
+        [_customContentView web_scrollViewDidEndZooming:scrollView withView:view atScale:scale];
+
     ASSERT(scrollView == _scrollView);
     // FIXME: remove when rdar://problem/36065495 is fixed.
     // When rotating with two fingers down, UIScrollView can set a bogus content view position.
@@ -4468,7 +4482,7 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
 {
 #if ENABLE(APPLICATION_MANIFEST)
     _page->getApplicationManifest([completionHandler = makeBlockPtr(completionHandler)](const std::optional<WebCore::ApplicationManifest>& manifest, WebKit::CallbackBase::Error error) {
-        UNUSED(error);
+        UNUSED_PARAM(error);
         if (completionHandler) {
             if (manifest) {
                 auto apiManifest = API::ApplicationManifest::create(*manifest);
@@ -5517,6 +5531,16 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     _impl->setDrawsBackground(drawsBackground);
 }
 
+- (NSColor *)_backgroundColor
+{
+    return _impl->backgroundColor();
+}
+
+- (void)_setBackgroundColor:(NSColor *)backgroundColor
+{
+    _impl->setBackgroundColor(backgroundColor);
+}
+
 - (void)_setDrawsTransparentBackground:(BOOL)drawsTransparentBackground
 {
     static BOOL hasLoggedDeprecationWarning;
@@ -5845,6 +5869,11 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 - (void)selectFormAccessoryPickerRow:(int)rowIndex
 {
     [_contentView selectFormAccessoryPickerRow:rowIndex];
+}
+
+- (NSString *)selectFormPopoverTitle
+{
+    return [_contentView selectFormPopoverTitle];
 }
 
 - (void)didStartFormControlInteraction
@@ -6438,9 +6467,9 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 
 - (id <_WKWebViewPrintProvider>)_printProvider
 {
-    id contentView = self._currentContentView;
-    if ([contentView conformsToProtocol:@protocol(_WKWebViewPrintProvider)])
-        return contentView;
+    id printProvider = _customContentView ? _customContentView.get() : _contentView.get();
+    if ([printProvider conformsToProtocol:@protocol(_WKWebViewPrintProvider)])
+        return printProvider;
     return nil;
 }
 

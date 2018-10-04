@@ -442,14 +442,13 @@ LLINT_SLOW_PATH_DECL(loop_osr)
     CODEBLOCK_LOG_EVENT(codeBlock, "osrEntry", ("at bc#", loopOSREntryBytecodeOffset));
 
     ASSERT(codeBlock->jitType() == JITCode::BaselineJIT);
-    
-    Vector<BytecodeAndMachineOffset> map;
-    codeBlock->jitCodeMap()->decode(map);
-    BytecodeAndMachineOffset* mapping = binarySearch<BytecodeAndMachineOffset, unsigned>(map, map.size(), loopOSREntryBytecodeOffset, BytecodeAndMachineOffset::getBytecodeIndex);
-    ASSERT(mapping);
-    ASSERT(mapping->m_bytecodeIndex == loopOSREntryBytecodeOffset);
-    
-    void* jumpTarget = codeBlock->jitCode()->executableAddressAtOffset(mapping->m_machineCodeOffset);
+
+    const JITCodeMap& codeMap = codeBlock->jitCodeMap();
+    CodeLocationLabel codeLocation = codeMap.find(loopOSREntryBytecodeOffset);
+    ASSERT(codeLocation);
+
+    PtrTag locationTag = ptrTag(CodePtrTag, codeBlock, loopOSREntryBytecodeOffset);
+    void* jumpTarget = codeLocation.retagged(locationTag, CodePtrTag).executableAddress();
     ASSERT(jumpTarget);
     
     LLINT_RETURN_TWO(jumpTarget, exec->topOfFrame());
@@ -593,6 +592,56 @@ LLINT_SLOW_PATH_DECL(slow_path_try_get_by_id)
 
     LLINT_RETURN_PROFILED(op_try_get_by_id, result);
 }
+
+LLINT_SLOW_PATH_DECL(slow_path_get_by_id_direct)
+{
+    LLINT_BEGIN();
+    CodeBlock* codeBlock = exec->codeBlock();
+    const Identifier& ident = codeBlock->identifier(pc[3].u.operand);
+    JSValue baseValue = LLINT_OP_C(2).jsValue();
+    PropertySlot slot(baseValue, PropertySlot::PropertySlot::InternalMethodType::GetOwnProperty);
+
+    bool found = baseValue.getOwnPropertySlot(exec, ident, slot);
+    LLINT_CHECK_EXCEPTION();
+    JSValue result = found ? slot.getValue(exec, ident) : jsUndefined();
+    LLINT_CHECK_EXCEPTION();
+
+    if (!LLINT_ALWAYS_ACCESS_SLOW && slot.isCacheable()) {
+        {
+            StructureID oldStructureID = pc[4].u.structureID;
+            if (oldStructureID) {
+                Structure* a = vm.heap.structureIDTable().get(oldStructureID);
+                Structure* b = baseValue.asCell()->structure(vm);
+
+                if (Structure::shouldConvertToPolyProto(a, b)) {
+                    ASSERT(a->rareData()->sharedPolyProtoWatchpoint().get() == b->rareData()->sharedPolyProtoWatchpoint().get());
+                    a->rareData()->sharedPolyProtoWatchpoint()->invalidate(vm, StringFireDetail("Detected poly proto opportunity."));
+                }
+            }
+        }
+
+        JSCell* baseCell = baseValue.asCell();
+        Structure* structure = baseCell->structure();
+        if (slot.isValue()) {
+            // Start out by clearing out the old cache.
+            pc[4].u.pointer = nullptr; // old structure
+            pc[5].u.pointer = nullptr; // offset
+
+            if (structure->propertyAccessesAreCacheable()
+                && !structure->needImpurePropertyWatchpoint()) {
+                vm.heap.writeBarrier(codeBlock);
+
+                ConcurrentJSLocker locker(codeBlock->m_lock);
+
+                pc[4].u.structureID = structure->id();
+                pc[5].u.operand = slot.cachedOffset();
+            }
+        }
+    }
+
+    LLINT_RETURN_PROFILED(op_get_by_id_direct, result);
+}
+
 
 static void setupGetByIdPrototypeCache(ExecState* exec, VM& vm, Instruction* pc, JSCell* baseCell, PropertySlot& slot, const Identifier& ident)
 {
@@ -1401,12 +1450,12 @@ inline SlowPathReturnType setUpCall(ExecState* execCallee, Instruction* pc, Code
                     callLinkInfo->remove();
                 callLinkInfo->callee.set(vm, callerCodeBlock, internalFunction);
                 callLinkInfo->lastSeenCallee.set(vm, callerCodeBlock, internalFunction);
-                callLinkInfo->machineCodeTarget = codePtr.retagged(CodeEntryPtrTag, LLIntCallICPtrTag);
+                callLinkInfo->machineCodeTarget = codePtr.retagged(CodePtrTag, LLIntCallICPtrTag);
             }
 
-            assertIsTaggedWith(codePtr.executableAddress(), CodeEntryPtrTag);
+            assertIsTaggedWith(codePtr.executableAddress(), CodePtrTag);
             PoisonedMasmPtr::assertIsNotPoisoned(codePtr.executableAddress());
-            LLINT_CALL_RETURN(exec, execCallee, codePtr.executableAddress(), CodeEntryPtrTag);
+            LLINT_CALL_RETURN(exec, execCallee, codePtr.executableAddress(), CodePtrTag);
         }
         throwScope.release();
         return handleHostCall(execCallee, pc, calleeAsValue, kind);
@@ -1415,13 +1464,11 @@ inline SlowPathReturnType setUpCall(ExecState* execCallee, Instruction* pc, Code
     JSScope* scope = callee->scopeUnchecked();
     ExecutableBase* executable = callee->executable();
 
-    PtrTag callPtrTag = NoPtrTag;
     MacroAssemblerCodePtr codePtr;
     CodeBlock* codeBlock = 0;
-    if (executable->isHostFunction()) {
+    if (executable->isHostFunction())
         codePtr = executable->entrypointFor(kind, MustCheckArity);
-        callPtrTag = CodeEntryWithArityCheckPtrTag;
-    } else {
+    else {
         FunctionExecutable* functionExecutable = static_cast<FunctionExecutable*>(executable);
 
         if (!isCall(kind) && functionExecutable->constructAbility() == ConstructAbility::CannotConstruct)
@@ -1435,16 +1482,12 @@ inline SlowPathReturnType setUpCall(ExecState* execCallee, Instruction* pc, Code
         codeBlock = *codeBlockSlot;
         ASSERT(codeBlock);
         ArityCheckMode arity;
-        if (execCallee->argumentCountIncludingThis() < static_cast<size_t>(codeBlock->numParameters())) {
+        if (execCallee->argumentCountIncludingThis() < static_cast<size_t>(codeBlock->numParameters()))
             arity = MustCheckArity;
-            callPtrTag = CodeEntryWithArityCheckPtrTag;
-        } else {
+        else
             arity = ArityCheckNotRequired;
-            callPtrTag = CodeEntryPtrTag;
-        }
         codePtr = functionExecutable->entrypointFor(kind, arity);
     }
-    assertIsTaggedWith(codePtr.executableAddress(), callPtrTag);
 
     ASSERT(!!codePtr);
     
@@ -1457,15 +1500,14 @@ inline SlowPathReturnType setUpCall(ExecState* execCallee, Instruction* pc, Code
             callLinkInfo->remove();
         callLinkInfo->callee.set(vm, callerCodeBlock, callee);
         callLinkInfo->lastSeenCallee.set(vm, callerCodeBlock, callee);
-        callLinkInfo->machineCodeTarget = codePtr.retagged(callPtrTag, LLIntCallICPtrTag);
-        RELEASE_ASSERT(callPtrTag != NoPtrTag);
+        callLinkInfo->machineCodeTarget = codePtr.retagged(CodePtrTag, LLIntCallICPtrTag);
         if (codeBlock)
             codeBlock->linkIncomingCall(exec, callLinkInfo);
     }
 
-    assertIsTaggedWith(codePtr.executableAddress(), callPtrTag);
+    assertIsTaggedWith(codePtr.executableAddress(), CodePtrTag);
     PoisonedMasmPtr::assertIsNotPoisoned(codePtr.executableAddress());
-    LLINT_CALL_RETURN(exec, execCallee, codePtr.executableAddress(), callPtrTag);
+    LLINT_CALL_RETURN(exec, execCallee, codePtr.executableAddress(), CodePtrTag);
 }
 
 inline SlowPathReturnType genericCall(ExecState* exec, Instruction* pc, CodeSpecializationKind kind)

@@ -107,8 +107,8 @@ if (USE_OPENMP)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif ()
 
-# GTK uses the GNU installation directories as defaults.
-if (NOT PORT STREQUAL "GTK")
+# GTK and WPE use the GNU installation directories as defaults.
+if (NOT PORT STREQUAL "GTK" AND NOT PORT STREQUAL "WPE")
     IF(HAIKU)
         set(LIB_SUFFIX "/${CMAKE_HAIKU_SECONDARY_ARCH}" CACHE STRING
             "Define suffix of directory name (x86/x86_gcc2)")

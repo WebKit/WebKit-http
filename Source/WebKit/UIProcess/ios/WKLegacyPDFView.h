@@ -23,13 +23,14 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if PLATFORM(IOS) && ENABLE(WKPDFVIEW)
+#if ENABLE(WKLEGACYPDFVIEW)
 
 #import "CorePDFSPI.h"
 #import "WKActionSheetAssistant.h"
+#import "WKApplicationStateTrackingView.h"
 #import "WKWebViewContentProvider.h"
 
-@interface WKLegacyPDFView : UIView <WKWebViewContentProvider, UIPDFPageViewDelegate, UIPDFAnnotationControllerDelegate, WKActionSheetAssistantDelegate>
+@interface WKLegacyPDFView : WKApplicationStateTrackingView <WKWebViewContentProvider, UIPDFPageViewDelegate, UIPDFAnnotationControllerDelegate, WKActionSheetAssistantDelegate>
 @end
 
-#endif // PLATFORM(IOS) && ENABLE(WKPDFVIEW)
+#endif // ENABLE(WKLEGACYPDFVIEW)

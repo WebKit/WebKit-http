@@ -19,6 +19,12 @@ list(APPEND WebKit_SOURCES
     Platform/win/ModuleWin.cpp
     Platform/win/SharedMemoryWin.cpp
 
+    Shared/win/NativeWebKeyboardEventWin.cpp
+    Shared/win/NativeWebMouseEventWin.cpp
+    Shared/win/NativeWebTouchEventWin.cpp
+    Shared/win/NativeWebWheelEventWin.cpp
+    Shared/win/WebEventFactory.cpp
+
     StorageProcess/win/StorageProcessMainWin.cpp
 
     WebProcess/InjectedBundle/win/InjectedBundleWin.cpp
@@ -113,6 +119,7 @@ if (${WTF_PLATFORM_WIN_CAIRO})
         NetworkProcess/cache/NetworkCacheDataCurl.cpp
         NetworkProcess/cache/NetworkCacheIOChannelCurl.cpp
 
+        NetworkProcess/curl/NetworkDataTaskCurl.cpp
         NetworkProcess/curl/NetworkProcessCurl.cpp
         NetworkProcess/curl/RemoteNetworkingContextCurl.cpp
 
@@ -129,9 +136,10 @@ if (${WTF_PLATFORM_WIN_CAIRO})
     )
 
     list(APPEND WebKit_LIBRARIES
-        ${OPENSSL_LIBRARIES}
-        mfuuid.lib
-        strmiids.lib
+        PRIVATE
+            ${OPENSSL_LIBRARIES}
+            mfuuid.lib
+            strmiids.lib
     )
 endif ()
 

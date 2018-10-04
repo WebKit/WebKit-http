@@ -195,6 +195,8 @@ inline CapabilityLevel canCompile(Node* node)
     case GetById:
     case GetByIdFlush:
     case GetByIdWithThis:
+    case GetByIdDirect:
+    case GetByIdDirectFlush:
     case ToThis:
     case MultiGetByOffset:
     case MultiPutByOffset:
@@ -427,6 +429,7 @@ CapabilityLevel canCompile(Graph& graph)
                 case StringObjectUse:
                 case StringOrStringObjectUse:
                 case SymbolUse:
+                case BigIntUse:
                 case MapObjectUse:
                 case SetObjectUse:
                 case WeakMapObjectUse:

@@ -84,11 +84,7 @@ class WebPageProxy;
 @class _UIWebHighlightLongPressGestureRecognizer;
 
 #if ENABLE(EXTRA_ZOOM_MODE)
-@class WKDatePickerViewController;
-@class WKFocusedFormControlViewController;
-@class WKSelectMenuListViewController;
-@class WKTextInputListViewController;
-@class WKTimePickerViewController;
+@class WKFocusedFormControlView;
 #endif
 
 typedef void (^UIWKAutocorrectionCompletionHandler)(UIWKAutocorrectionRects *rectsForInput);
@@ -251,11 +247,9 @@ struct WKAutoCorrectionData {
 #endif
 
 #if ENABLE(EXTRA_ZOOM_MODE)
-    RetainPtr<WKDatePickerViewController> _datePickerViewController;
-    RetainPtr<WKTextInputListViewController> _textInputListViewController;
-    RetainPtr<WKFocusedFormControlViewController> _focusedFormControlViewController;
-    RetainPtr<WKSelectMenuListViewController> _selectMenuListViewController;
-    RetainPtr<WKTimePickerViewController> _timePickerViewController;
+    RetainPtr<WKFocusedFormControlView> _focusedFormControlView;
+    RetainPtr<UIViewController> _presentedFullScreenInputViewController;
+    RetainPtr<UINavigationController> _inputNavigationViewControllerForFullScreenInputs;
 
     BOOL _shouldRestoreFirstResponderStatusAfterLosingFocus;
 #endif
@@ -316,9 +310,6 @@ FOR_EACH_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 - (void)_didEndScrollingOrZooming;
 - (void)_overflowScrollingWillBegin;
 - (void)_overflowScrollingDidEnd;
-#if __IPHONE_OS_VERSION_MAX_ALLOWED < 120000
-- (void)_didUpdateBlockSelectionWithTouch:(WebKit::SelectionTouch)touch withFlags:(WebKit::SelectionFlags)flags growThreshold:(CGFloat)growThreshold shrinkThreshold:(CGFloat)shrinkThreshold;
-#endif
 - (void)_showPlaybackTargetPicker:(BOOL)hasVideo fromRect:(const WebCore::IntRect&)elementRect;
 - (void)_showRunOpenPanel:(API::OpenPanelParameters*)parameters resultListener:(WebKit::WebOpenPanelResultListenerProxy*)listener;
 - (void)accessoryDone;
@@ -362,6 +353,8 @@ FOR_EACH_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 - (void)_simulateLongPressActionAtLocation:(CGPoint)location;
 - (void)selectFormAccessoryPickerRow:(NSInteger)rowIndex;
 - (NSDictionary *)_contentsOfUserInterfaceItem:(NSString *)userInterfaceItem;
+
+@property (nonatomic, readonly) NSString *selectFormPopoverTitle;
 
 @end
 

@@ -40,6 +40,7 @@
 #include "DiagnosticLoggingKeys.h"
 #include "DocumentLoader.h"
 #include "DocumentMarkerController.h"
+#include "DocumentTimeline.h"
 #include "DragController.h"
 #include "Editor.h"
 #include "EditorClient.h"
@@ -1139,7 +1140,13 @@ void Page::setIsVisuallyIdleInternal(bool isVisuallyIdle)
 void Page::handleLowModePowerChange(bool isLowPowerModeEnabled)
 {
     updateScriptedAnimationsThrottlingReason(*this, isLowPowerModeEnabled ? ThrottlingReasonOperation::Add : ThrottlingReasonOperation::Remove, ScriptedAnimationController::ThrottlingReason::LowPowerMode);
-    mainFrame().animation().updateThrottlingState();
+    if (RuntimeEnabledFeatures::sharedFeatures().cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled()) {
+        forEachDocument([&] (Document& document) {
+            if (auto timeline = document.existingTimeline())
+                timeline->updateThrottlingState();
+        });
+    } else
+        mainFrame().animation().updateThrottlingState();
     updateDOMTimerAlignmentInterval();
 }
 
@@ -1630,8 +1637,14 @@ void Page::setIsVisibleInternal(bool isVisible)
         if (FrameView* view = mainFrame().view())
             view->show();
 
-        if (m_settings->hiddenPageCSSAnimationSuspensionEnabled())
-            mainFrame().animation().resumeAnimations();
+        if (m_settings->hiddenPageCSSAnimationSuspensionEnabled()) {
+            if (RuntimeEnabledFeatures::sharedFeatures().cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled()) {
+                forEachDocument([&] (Document& document) {
+                    document.timeline().resumeAnimations();
+                });
+            } else
+                mainFrame().animation().resumeAnimations();
+        }
 
         setSVGAnimationsState(*this, SVGAnimationsState::Resumed);
 
@@ -1644,8 +1657,14 @@ void Page::setIsVisibleInternal(bool isVisible)
     }
 
     if (!isVisible) {
-        if (m_settings->hiddenPageCSSAnimationSuspensionEnabled())
-            mainFrame().animation().suspendAnimations();
+        if (m_settings->hiddenPageCSSAnimationSuspensionEnabled()) {
+            if (RuntimeEnabledFeatures::sharedFeatures().cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled()) {
+                forEachDocument([&] (Document& document) {
+                    document.timeline().suspendAnimations();
+                });
+            } else
+                mainFrame().animation().suspendAnimations();
+        }
 
         setSVGAnimationsState(*this, SVGAnimationsState::Paused);
 
@@ -1991,10 +2010,19 @@ void Page::resetSeenMediaEngines()
 void Page::hiddenPageCSSAnimationSuspensionStateChanged()
 {
     if (!isVisible()) {
-        if (m_settings->hiddenPageCSSAnimationSuspensionEnabled())
-            mainFrame().animation().suspendAnimations();
-        else
-            mainFrame().animation().resumeAnimations();
+        if (RuntimeEnabledFeatures::sharedFeatures().cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled()) {
+            forEachDocument([&] (Document& document) {
+                if (m_settings->hiddenPageCSSAnimationSuspensionEnabled())
+                    document.timeline().suspendAnimations();
+                else
+                    document.timeline().resumeAnimations();
+            });
+        } else {
+            if (m_settings->hiddenPageCSSAnimationSuspensionEnabled())
+                mainFrame().animation().suspendAnimations();
+            else
+                mainFrame().animation().resumeAnimations();
+        }
     }
 }
 

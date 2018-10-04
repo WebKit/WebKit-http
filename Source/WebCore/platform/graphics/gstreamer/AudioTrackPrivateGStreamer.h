@@ -28,7 +28,7 @@
 #if ENABLE(VIDEO) && USE(GSTREAMER) && ENABLE(VIDEO_TRACK)
 
 #include "AudioTrackPrivate.h"
-#include "GRefPtrGStreamer.h"
+#include "GStreamerCommon.h"
 #include "TrackPrivateBaseGStreamer.h"
 #include <gst/gst.h>
 #include <wtf/WeakPtr.h>
@@ -43,7 +43,7 @@ public:
         return adoptRef(*new AudioTrackPrivateGStreamer(player, index, pad));
     }
 
-#if USE(GSTREAMER_PLAYBIN3)
+#if GST_CHECK_VERSION(1, 10, 0)
     static RefPtr<AudioTrackPrivateGStreamer> create(WeakPtr<MediaPlayerPrivateGStreamer> player, gint index, GRefPtr<GstStream> stream)
     {
         return adoptRef(*new AudioTrackPrivateGStreamer(player, index, stream));
@@ -64,7 +64,7 @@ public:
 
 private:
     AudioTrackPrivateGStreamer(WeakPtr<MediaPlayerPrivateGStreamer>, gint index, GRefPtr<GstPad>);
-#if USE(GSTREAMER_PLAYBIN3)
+#if GST_CHECK_VERSION(1, 10, 0)
     AudioTrackPrivateGStreamer(WeakPtr<MediaPlayerPrivateGStreamer>, gint index, GRefPtr<GstStream>);
 #endif
 

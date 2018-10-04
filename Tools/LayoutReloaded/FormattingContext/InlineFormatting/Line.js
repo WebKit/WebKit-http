@@ -23,6 +23,23 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+class Line {
+public:
+    bool isEmpty();
+
+    LayoutUnit availableWidth();
+
+    LayoutRect rect();
+    lineBoxes();
+
+    shrink(float width);
+    adjustWithOffset(LayoutUnit offset);
+    moveContentHorizontally(LayoutUnit offset);
+    addInlineContainerBox(LayoutSize);
+    addTextLineBox(unsigned startPosition, unsigned endPosition, LayoutSize size);
+};
+*/
 class Line {
     constructor(topLeft, height, availableWidth) {
         this.m_availableWidth = availableWidth;
@@ -46,17 +63,38 @@ class Line {
         return this.m_lineBoxes;
     }
 
-    addTextLineBox(startPosition, endPosition, size) {
-        this.m_availableWidth -= size.width();
-        // TODO: use the actual height instead of the line height.
-        let lineBoxRect = new LayoutRect(this.rect().topRight(), new LayoutSize(size.width(), this.rect().height()));
-        this.m_lineBoxes.push({startPosition, endPosition, lineBoxRect});
-        this.m_lineRect.growBy(new LayoutSize(size.width(), 0));
+    shrink(width) {
+        this.m_availableWidth -= width;
     }
 
-    addFloatingBox(size) {
-        // TODO: Add missing cases.
-        this.m_availableWidth -= size.width();
-        this.m_lineRect.moveBy(new LayoutSize(size.width(), 0));
+    adjustWithOffset(offset) {
+        this.m_availableWidth -= offset;
+        this.m_lineRect.growBy(new LayoutSize(offset, 0));
+    }
+
+    moveContentHorizontally(offset) {
+        // Push non-floating boxes to the right.
+        for (let lineBox of this.m_lineBoxes)
+            lineBox.lineBoxRect.moveHorizontally(offset);
+        this.m_lineRect.moveHorizontally(offset);
+    }
+
+    addInlineContainerBox(size) {
+        let width = size.width();
+        ASSERT(width <= this.m_availableWidth);
+        this.shrink(width);
+        let lineBoxRect = new LayoutRect(this.rect().topRight(), size);
+        this.m_lineBoxes.push({lineBoxRect});
+        this.m_lineRect.growHorizontally(width);
+    }
+
+    addTextLineBox(startPosition, endPosition, size) {
+        let width = size.width();
+        ASSERT(width <= this.m_availableWidth);
+        this.shrink(width);
+        // TODO: use the actual height instead of the line height.
+        let lineBoxRect = new LayoutRect(this.rect().topRight(), new LayoutSize(width, this.rect().height()));
+        this.m_lineBoxes.push({startPosition, endPosition, lineBoxRect});
+        this.m_lineRect.growHorizontally(width);
     }
 }

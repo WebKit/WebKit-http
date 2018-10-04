@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -49,12 +49,14 @@
 #include "Page.h"
 #include "Pasteboard.h"
 #include "PlatformEventFactoryMac.h"
+#include "PlatformScreen.h"
 #include "Range.h"
 #include "RenderLayer.h"
 #include "RenderListBox.h"
 #include "RenderView.h"
 #include "RenderWidget.h"
 #include "RuntimeApplicationChecks.h"
+#include "ScreenProperties.h"
 #include "ScrollAnimator.h"
 #include "ScrollLatchingState.h"
 #include "ScrollableArea.h"
@@ -67,6 +69,7 @@
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/ObjcRuntimeExtras.h>
+#include <wtf/ProcessPrivilege.h>
 
 #if ENABLE(MAC_GESTURE_EVENTS)
 #import <WebKitAdditions/EventHandlerMacGesture.cpp>
@@ -198,6 +201,7 @@ static bool lastEventIsMouseUp()
     // It's not clear in what cases this is helpful now -- it's possible it can be removed. 
 
     ASSERT([NSApp isRunning]);
+    ASSERT(hasProcessPrivilege(ProcessPrivilege::CanCommunicateWithWindowServer));
 
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
     NSEvent *currentEventAfterHandlingMouseDown = [NSApp currentEvent];
@@ -567,6 +571,8 @@ void EventHandler::sendFakeEventsAfterWidgetTracking(NSEvent *initiatingEvent)
     FrameView* view = m_frame.view();
     if (!view)
         return;
+
+    ASSERT(hasProcessPrivilege(ProcessPrivilege::CanCommunicateWithWindowServer));
 
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
 
@@ -1164,7 +1170,7 @@ IntPoint EventHandler::targetPositionInWindowForSelectionAutoscroll() const
     if (!page)
         return m_lastKnownMousePosition;
 
-    auto frame = toUserSpace(screen(page->chrome().displayID()).frame, nil);
+    auto frame = toUserSpaceForPrimaryScreen(screenRectForDisplay(page->chrome().displayID()));
     return m_lastKnownMousePosition + autoscrollAdjustmentFactorForScreenBoundaries(m_lastKnownMouseGlobalPosition, frame);
 }
 

@@ -80,7 +80,7 @@ namespace {
 using CPUState = Probe::CPUState;
 #endif
 
-StaticLock crashLock;
+Lock crashLock;
 
 typedef WTF::Function<void(CCallHelpers&)> Generator;
 
@@ -610,7 +610,7 @@ void testProbeModifiesProgramCounter()
         // Write expected values into the registers.
         jit.probe([&] (Probe::Context& context) {
             probeCallCount++;
-            context.cpu.pc() = continuation.code().executableAddress();
+            context.cpu.pc() = untagCodePtr(continuation.code().executableAddress(), JITCodePtrTag);
         });
 
         jit.breakpoint(); // We should never get here.

@@ -150,8 +150,8 @@ webrtc [ Skip ]
 http/tests/webrtc [ Skip ]
 http/wpt/webrtc [ Skip ]
 webrtc/datachannel [ Pass ]
-webrtc/datachannel/bufferedAmountLowThreshold.html [ Pass Failure ]
-webrtc/datachannel/bufferedAmountLowThreshold-default.html [ Pass Failure ]
+webrtc/datachannel/mdns-ice-candidates.html [ Skip ]
+imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-setLocalDescription-offer.html [ Failure ]
 
 # These tests test the Shadow DOM based HTML form validation UI but Mac WK1 is using native dialogs instead.
 fast/forms/validation-message-on-listbox.html
@@ -243,8 +243,10 @@ imported/blink/fast/canvas/bug382588.html [ Pass Timeout ImageOnlyFailure ]
 
 # Blink tests that time out waiting on requestAnimationFrame callbacks. http://webkit.org/b/150050
 imported/blink/animations/background-shorthand-crash.html [ Pass Timeout ]
+legacy-animation-engine/imported/blink/animations/background-shorthand-crash.html [ Pass Timeout ]
 imported/blink/compositing/squashing/invalidate-on-grouped-mapping-reorder.html [ Pass Timeout ]
 imported/blink/css3/calc/transition-asan-crash.html [ Pass Timeout ]
+legacy-animation-engine/imported/blink/css3/calc/transition-asan-crash.html [ Pass Timeout ]
 imported/blink/fast/images/image-hover-display-alt.html [ Pass Timeout ]
 imported/blink/fast/inline/reparent-inline-box.html [ Pass Timeout ]
 imported/blink/fast/text-autosizing/print-autosizing.html  [ Pass Timeout ]
@@ -318,6 +320,7 @@ fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download-async-delegate.h
 webkit.org/b/156629 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/sizes/parse-a-sizes-attribute.html [ Pass Failure ]
 
 webkit.org/b/157007 fast/layers/no-clipping-overflow-hidden-added-after-transform.html [ Pass ImageOnlyFailure ]
+webkit.org/b/157007 legacy-animation-engine/fast/layers/no-clipping-overflow-hidden-added-after-transform.html [ Pass ImageOnlyFailure ]
 
 # This test relies on a settings option that we can only set with WKRT.
 js/dom/regress-157246.html
@@ -393,7 +396,6 @@ webkit.org/b/154612 [ Sierra+ ] compositing/repaint/fixed-background-scroll.html
 
 webkit.org/b/165589 pointer-lock/lock-lost-on-esc-in-fullscreen.html [ Skip ]
 
-imported/w3c/web-platform-tests/IndexedDB/interleaved-cursors.html [ Failure ]
 imported/w3c/web-platform-tests/html/webappapis/timers/negative-settimeout.html [ Failure ]
 
 # webkit.org/b/163585
@@ -491,6 +493,7 @@ webkit.org/b/175886 svg/animations/smil-leak-element-instances.svg [ Pass Failur
 [ HighSierra+ ] fast/text/system-font-fallback-emoji.html [ Crash ]
 
 webkit.org/b/172397 [ Debug ] animations/needs-layout.html [ Pass ImageOnlyFailure ]
+webkit.org/b/172397 [ Debug ] legacy-animation-engine/animations/needs-layout.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/179775 imported/w3c/web-platform-tests/XMLHttpRequest/firing-events-http-no-content-length.html [ Pass Failure ]
 
@@ -520,9 +523,14 @@ http/wpt/webauthn/ [ Skip ]
 imported/w3c/web-platform-tests/credential-management/ [ Skip ]
 
 webkit.org/b/182554 transitions/transition-display-property.html [ Pass ImageOnlyFailure ]
+webkit.org/b/182554 legacy-animation-engine/transitions/transition-display-property.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/181834 [ Debug ] fast/block/positioning/fixed-container-with-relative-parent.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/182932 media/track/track-css-matching-default.html [ Pass Timeout ]
 
 webkit.org/b/183220 media/track/track-css-matching-timestamps.html [ Pass Timeout ]
+
+imported/w3c/web-platform-tests/css/selectors/selector-placeholder-shown-type-change-002.html [ ImageOnlyFailure ]
+
+webkit.org/b/184456 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-embed-element/embed-in-object-fallback.html [ Pass Failure ]

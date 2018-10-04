@@ -62,6 +62,7 @@ extern "C" {
     M(Printing) \
     M(Process) \
     M(ProcessSuspension) \
+    M(ProcessSwapping) \
     M(RemoteLayerTree) \
     M(Resize) \
     M(ResourceLoadStatistics) \
@@ -76,6 +77,7 @@ extern "C" {
     M(VirtualMemory) \
     M(VisibleRects) \
     M(WebRTC) \
+    M(WiFiAssertions) \
 
 WEBKIT2_LOG_CHANNELS(DECLARE_LOG_CHANNEL)
 

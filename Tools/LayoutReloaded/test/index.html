@@ -8,6 +8,7 @@ iframe {
 </style>
 <script>
 let testFiles = [
+    "simple-incremental-layout-with-static-content.html",
     "relative-simple.html",
     "relative-bottom.html",
     "relative-right.html",
@@ -67,7 +68,21 @@ let testFiles = [
     "inline-formatting-context-with-floats.html",
     "inline-with-floats-right-left-simple.html",
     "inline-formatting-context-with-floats2.html",
-    "float-is-inside-inline-formatting-context-simple.html"
+    "float-is-inside-inline-formatting-context-simple.html",
+    "multiple-left-floats-on-line-simple.html",
+    "multiple-left-floats-on-line-from-parent-formatting-context.html",
+    "inline-with-floats-when-they-dont-fit.html",
+    "inline-with-right-float-simple.html",
+    "inline-with-right-floats2.html",
+    "inline-with-right-floats3.html",
+    "inline-content-simple2.html",
+    "inline-floating1.html",
+    "inline-formatting-context-floats1.html",
+    "inline-formatting-context-floats2.html",
+    "inline-with-padding-border-margin-offsets.html",
+    "inline-block-with-fixed-width-height.html",
+    "inline-with-relative-positioning.html",
+    "inline-with-out-of-flow-descendant.html"
 ];
 
 let debugThis = [];
@@ -87,7 +102,7 @@ addJS("../LayoutState.js");
 addJS("../LayoutTree/Box.js");
 addJS("../LayoutTree/Container.js");
 addJS("../LayoutTree/BlockContainer.js");
-addJS("../LayoutTree/InitialBlockContainer.js");
+addJS("../LayoutTree/InlineContainer.js");
 addJS("../LayoutTree/InlineBox.js");
 addJS("../LayoutTree/Text.js");
 addJS("../DisplayTree/Box.js");
@@ -102,45 +117,122 @@ addJS("../FormattingContext/BlockFormatting/BlockMarginCollapse.js");
 addJS("../FormattingContext/InlineFormatting/InlineFormattingContext.js");
 addJS("../FormattingContext/InlineFormatting/Line.js");
 
-let failedTests = [];
+let failedTests = new Array();
 
-function printResult(files, currentTestIndex) {
-    let resultContent = currentTestIndex != null ? ("Testing..." + currentTestIndex + " out of " + files.length) : ("Number of tests: " + files.length) ;
-    resultContent += "<br><br>Passed: " + ((currentTestIndex != null ? currentTestIndex : files.length) - failedTests.length) + "<br>Failed: " + failedTests.length;
+let isRunningAsyncTest = false;
+let tests;
+let testsPassed = 0;
+let currentTestIndex = 0;
+let subTests = 0;
+let subTestPassed = true;
+let layoutState = null;
+
+function runAndVerifyLayout(window) {
+    layoutState = runLayout(window, layoutState);
+    return verifyLayout(window.simplifiedRenderTree);
+}
+
+class TestRunner {
+    waitUntilDone() {
+        isRunningAsyncTest = true;
+    }
+
+    notifyDone() {
+        let testFrame = document.getElementById("testFrame");
+        ASSERT(subTests);
+        finishAndMoveToNextTest(subTestPassed);
+    }
+
+    forceLayout() {
+        let testFrame = document.getElementById("testFrame");
+        let needsLayoutRenderers = testFrame.contentWindow.collectRenderersWithNeedsLayout();
+        testFrame.contentWindow.document.body.offsetWidth;
+        if (layoutState) {
+            // Finding box by id won't work unless this is ICB's layout state.
+            ASSERT(!layoutState.rootContainer().parent());
+            for (let rendererId of needsLayoutRenderers) {
+                let layoutBox = Utils.layoutBoxById(rendererId, layoutState.rootContainer());
+                layoutState.markNeedsLayout(layoutBox);
+            }
+        }
+        let passed = runAndVerifyLayout(testFrame.contentWindow);
+        ++subTests;
+        if (!passed) {
+            subTestPassed = false;
+            if (failedTests.indexOf(currentTestIndex) == -1)
+                failedTests.push(currentTestIndex);
+        }
+        printIntermediateResult();
+    }
+
+}
+
+function printFinalResult() {
+    let resultContent = "Number of tests: " + tests.length;
+    resultContent += "<br><br>Passed: " + (tests.length - failedTests.length) + "<br>Failed: " + failedTests.length;
     if (failedTests.length > 0) {
         resultContent += "<br><br>Failed cases:"
         failedTests.forEach(function(item) {
-            resultContent += "<br><a href=\"" + files[item] + "\">" + files[item] + "</a>";
+            resultContent += "<br><a href=\"" + tests[item] + "\">" + tests[item] + "</a>";
         });
     }
     result.innerHTML = resultContent;
 }
 
-function runTest(files, currentTestIndex) {
-    printResult(files, currentTestIndex);
+function printIntermediateResult() {
+    let resultContent = "Testing..." + (currentTestIndex + 1) + (subTests > 0 ? "(" + subTests + ")" : "") + " out of " + tests.length;
+    resultContent += "<br><br>Passed: " + testsPassed + "<br>Failed: " + failedTests.length;
+    if (failedTests.length > 0) {
+        resultContent += "<br><br>Failed cases:"
+        failedTests.forEach(function(item) {
+            resultContent += "<br><a href=\"" + tests[item] + "\">" + tests[item] + "</a>";
+        });
+    }
+    result.innerHTML = resultContent;
+}
+
+function finishAndMoveToNextTest(passed) {
+    let testFrame = document.getElementById("testFrame");
+    testFrame.remove();
+    initialContainingBlock = null;
+    layoutState = null;
+    subTests = 0;
+    isRunningAsyncTest = false;
+    if (passed)
+        ++testsPassed;
+    else if (failedTests.indexOf(currentTestIndex) == -1)
+        failedTests.push(currentTestIndex);
+    setTimeout(function() {
+        if (currentTestIndex < tests.length - 1) {
+            printIntermediateResult();
+            ++currentTestIndex;
+            runTest(tests);
+            return;
+        }
+        printFinalResult();
+    }, 0);
+}
+
+function runTest() {
     let iframe = document.createElement("iframe");
-    iframe.src = files[currentTestIndex];
+    iframe.src = tests[currentTestIndex];
     iframe.id = "testFrame";
     iframe.width = window.innerWidth;
     iframe.height = window.innerHeight;
     iframe.onload = function() {
+        if (isRunningAsyncTest)
+            return;
         let testFrame = document.getElementById("testFrame");
-        let passed = runLayout(testFrame.contentWindow);
-        testFrame.remove();
-        if (!passed)
-            failedTests.push(currentTestIndex);
-        setTimeout(function() {
-            if (currentTestIndex < files.length - 1)
-                runTest(files, ++currentTestIndex);
-            else
-                printResult(files);
-        }, 0);
+        let passed = runAndVerifyLayout(testFrame.contentWindow);
+        finishAndMoveToNextTest(passed, tests);
     };
     document.body.appendChild(iframe);
+    iframe.contentWindow.testRunner = new TestRunner();
 }
 
 function runTests() {
-    runTest(debugThis.length ? debugThis : testFiles, 0);
+    tests = debugThis.length ? debugThis : testFiles;
+    runTest();
 }
 </script>
 </head>

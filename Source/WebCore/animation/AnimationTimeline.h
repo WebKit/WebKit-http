@@ -58,8 +58,8 @@ public:
     virtual void timingModelDidChange() { };
 
     const ListHashSet<RefPtr<WebAnimation>>& animations() const { return m_animations; }
-    Vector<RefPtr<WebAnimation>> animationsForElement(Element&);
-    void cancelAnimationsForElement(Element&);
+    Vector<RefPtr<WebAnimation>> animationsForElement(Element&) const;
+    void cancelDeclarativeAnimationsForElement(Element&);
     void animationWasAddedToElement(WebAnimation&, Element&);
     void animationWasRemovedFromElement(WebAnimation&, Element&);
 
@@ -87,6 +87,7 @@ protected:
 private:
     HashMap<Element*, Vector<RefPtr<WebAnimation>>>& relevantMapForAnimation(WebAnimation&);
     void cancelOrRemoveDeclarativeAnimation(RefPtr<DeclarativeAnimation>);
+    RefPtr<WebAnimation> cssAnimationForElementAndProperty(Element&, CSSPropertyID);
 
     ClassType m_classType;
     std::optional<Seconds> m_currentTime;

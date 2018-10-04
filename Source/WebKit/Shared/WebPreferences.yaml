@@ -101,7 +101,7 @@ CSSAnimationTriggersEnabled:
 
 CSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: true
   webcoreBinding: RuntimeEnabledFeatures
 
 ForceFTPDirectoryListings:
@@ -1114,6 +1114,15 @@ WebRTCLegacyAPIEnabled:
   webcoreBinding: RuntimeEnabledFeatures
   condition: ENABLE(WEB_RTC)
 
+MDNSICECandidatesEnabled:
+  type: bool
+  defaultValue: false
+  humanReadableName: "Enable MDNS ICE candidates"
+  humanReadableDescription: "Enable MDNS ICE candidates"
+  webcoreBinding: RuntimeEnabledFeatures
+  category: experimental
+  condition: ENABLE(WEB_RTC)
+
 IsSecureContextAttributeEnabled:
   type: bool
   defaultValue: DEFAULT_EXPERIMENTAL_FEATURES_ENABLED
@@ -1164,7 +1173,7 @@ VisualViewportAPIEnabled:
 
 WebAnimationsEnabled:
   type: bool
-  defaultValue: false
+  defaultValue: true
   humanReadableName: "Web Animations"
   humanReadableDescription: "Web Animations prototype"
   category: experimental

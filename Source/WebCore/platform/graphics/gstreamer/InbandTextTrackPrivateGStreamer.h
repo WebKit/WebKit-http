@@ -27,7 +27,7 @@
 
 #if ENABLE(VIDEO) && USE(GSTREAMER) && ENABLE(VIDEO_TRACK)
 
-#include "GRefPtrGStreamer.h"
+#include "GStreamerCommon.h"
 #include "InbandTextTrackPrivate.h"
 #include "TrackPrivateBaseGStreamer.h"
 #include <gst/gst.h>
@@ -44,7 +44,7 @@ public:
         return adoptRef(*new InbandTextTrackPrivateGStreamer(index, pad));
     }
 
-#if USE(GSTREAMER_PLAYBIN3)
+#if GST_CHECK_VERSION(1, 10, 0)
     static Ref<InbandTextTrackPrivateGStreamer> create(gint index, GRefPtr<GstStream> stream)
     {
         return adoptRef(*new InbandTextTrackPrivateGStreamer(index, stream));
@@ -63,7 +63,7 @@ public:
 
 private:
     InbandTextTrackPrivateGStreamer(gint index, GRefPtr<GstPad>);
-#if USE(GSTREAMER_PLAYBIN3)
+#if GST_CHECK_VERSION(1, 10, 0)
     InbandTextTrackPrivateGStreamer(gint index, GRefPtr<GstStream>);
 #endif
 

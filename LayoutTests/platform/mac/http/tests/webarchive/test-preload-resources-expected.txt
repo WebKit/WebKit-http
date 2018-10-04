@@ -65,8 +65,6 @@ REGRESSION (35867): Many resources missing when saving webarchive of webkit.org&
 					<string>"301925-21-45c7d72d3e780"</string>
 					<key>Last-Modified</key>
 					<string>Sun, 16 Nov 2008 16:55:00 GMT</string>
-					<key>Server</key>
-					<string>Apache/2.2.9 (Unix) mod_ssl/2.2.9 OpenSSL/0.9.7l PHP/5.2.6</string>
 				</dict>
 				<key>expectedContentLength</key>
 				<integer>33</integer>
@@ -102,8 +100,6 @@ REGRESSION (35867): Many resources missing when saving webarchive of webkit.org&
 					<string>"301925-21-45c7d72d3e780"</string>
 					<key>Last-Modified</key>
 					<string>Sun, 16 Nov 2008 16:55:00 GMT</string>
-					<key>Server</key>
-					<string>Apache/2.2.9 (Unix) mod_ssl/2.2.9 OpenSSL/0.9.7l PHP/5.2.6</string>
 				</dict>
 				<key>expectedContentLength</key>
 				<integer>33</integer>
@@ -139,8 +135,6 @@ REGRESSION (35867): Many resources missing when saving webarchive of webkit.org&
 					<string>"301925-21-45c7d72d3e780"</string>
 					<key>Last-Modified</key>
 					<string>Sun, 16 Nov 2008 16:55:00 GMT</string>
-					<key>Server</key>
-					<string>Apache/2.2.9 (Unix) mod_ssl/2.2.9 OpenSSL/0.9.7l PHP/5.2.6</string>
 				</dict>
 				<key>expectedContentLength</key>
 				<integer>33</integer>
@@ -176,8 +170,6 @@ REGRESSION (35867): Many resources missing when saving webarchive of webkit.org&
 					<string>"301925-21-45c7d72d3e780"</string>
 					<key>Last-Modified</key>
 					<string>Sun, 16 Nov 2008 16:55:00 GMT</string>
-					<key>Server</key>
-					<string>Apache/2.2.9 (Unix) mod_ssl/2.2.9 OpenSSL/0.9.7l PHP/5.2.6</string>
 				</dict>
 				<key>expectedContentLength</key>
 				<integer>33</integer>
@@ -213,8 +205,6 @@ REGRESSION (35867): Many resources missing when saving webarchive of webkit.org&
 					<string>"301925-21-45c7d72d3e780"</string>
 					<key>Last-Modified</key>
 					<string>Sun, 16 Nov 2008 16:55:00 GMT</string>
-					<key>Server</key>
-					<string>Apache/2.2.9 (Unix) mod_ssl/2.2.9 OpenSSL/0.9.7l PHP/5.2.6</string>
 				</dict>
 				<key>expectedContentLength</key>
 				<integer>33</integer>
@@ -250,8 +240,6 @@ REGRESSION (35867): Many resources missing when saving webarchive of webkit.org&
 					<string>"301925-21-45c7d72d3e780"</string>
 					<key>Last-Modified</key>
 					<string>Sun, 16 Nov 2008 16:55:00 GMT</string>
-					<key>Server</key>
-					<string>Apache/2.2.9 (Unix) mod_ssl/2.2.9 OpenSSL/0.9.7l PHP/5.2.6</string>
 				</dict>
 				<key>expectedContentLength</key>
 				<integer>33</integer>
@@ -287,8 +275,6 @@ REGRESSION (35867): Many resources missing when saving webarchive of webkit.org&
 					<string>"301925-21-45c7d72d3e780"</string>
 					<key>Last-Modified</key>
 					<string>Sun, 16 Nov 2008 16:55:00 GMT</string>
-					<key>Server</key>
-					<string>Apache/2.2.9 (Unix) mod_ssl/2.2.9 OpenSSL/0.9.7l PHP/5.2.6</string>
 				</dict>
 				<key>expectedContentLength</key>
 				<integer>33</integer>

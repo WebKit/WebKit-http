@@ -1,6 +1,6 @@
 include(InspectorGResources.cmake)
 
-set(WebKit_OUTPUT_NAME WPEWebKit)
+set(WebKit_OUTPUT_NAME WPEWebKit-${WPE_API_VERSION})
 set(WebKit_WebProcess_OUTPUT_NAME WPEWebProcess)
 set(WebKit_NetworkProcess_OUTPUT_NAME WPENetworkProcess)
 set(WebKit_StorageProcess_OUTPUT_NAME WPEStorageProcess)
@@ -10,11 +10,13 @@ file(MAKE_DIRECTORY ${FORWARDING_HEADERS_WPE_DIR})
 file(MAKE_DIRECTORY ${FORWARDING_HEADERS_WPE_EXTENSION_DIR})
 file(MAKE_DIRECTORY ${FORWARDING_HEADERS_WPE_DOM_DIR})
 
-configure_file(wpe/wpe-webkit.pc.in ${CMAKE_BINARY_DIR}/wpe-webkit.pc @ONLY)
+configure_file(wpe/wpe-webkit.pc.in ${CMAKE_BINARY_DIR}/wpe-webkit-${WPE_API_VERSION}.pc @ONLY)
+configure_file(wpe/wpe-web-extension.pc.in ${CMAKE_BINARY_DIR}/wpe-web-extension-${WPE_API_VERSION}.pc @ONLY)
 
 add_definitions(-DWEBKIT2_COMPILATION)
 
-add_definitions(-DLIBEXECDIR="${LIBEXEC_INSTALL_DIR}")
+add_definitions(-DPKGLIBDIR="${LIB_INSTALL_DIR}/wpe-webkit-${WPE_API_VERSION}")
+add_definitions(-DPKGLIBEXECDIR="${LIBEXEC_INSTALL_DIR}")
 add_definitions(-DLOCALEDIR="${CMAKE_INSTALL_FULL_LOCALEDIR}")
 
 if (NOT DEVELOPER_MODE AND NOT CMAKE_SYSTEM_NAME MATCHES "Darwin")
@@ -158,11 +160,8 @@ set(WPE_WEB_EXTENSION_API_INSTALLED_HEADERS
     ${WEBKIT_DIR}/WebProcess/InjectedBundle/API/wpe/WebKitWebHitTestResult.h
     ${WEBKIT_DIR}/WebProcess/InjectedBundle/API/wpe/WebKitWebPage.h
     ${WEBKIT_DIR}/WebProcess/InjectedBundle/API/wpe/webkit-web-extension.h
-)
-
-set(WPE_DOM_API_INSTALLED_HEADERS
-    ${WEBKIT_DIR}/WebProcess/InjectedBundle/API/wpe/DOM/webkitdomdefines.h
     ${WEBKIT_DIR}/WebProcess/InjectedBundle/API/wpe/DOM/webkitdom.h
+    ${WEBKIT_DIR}/WebProcess/InjectedBundle/API/wpe/DOM/WebKitDOMDefines.h
     ${WEBKIT_DIR}/WebProcess/InjectedBundle/API/wpe/DOM/WebKitDOMDocument.h
     ${WEBKIT_DIR}/WebProcess/InjectedBundle/API/wpe/DOM/WebKitDOMElement.h
     ${WEBKIT_DIR}/WebProcess/InjectedBundle/API/wpe/DOM/WebKitDOMNode.h
@@ -286,13 +285,14 @@ list(APPEND WebKit_SYSTEM_INCLUDE_DIRECTORIES
 )
 
 list(APPEND WebKit_LIBRARIES
-    ${CAIRO_LIBRARIES}
-    ${FREETYPE2_LIBRARIES}
-    ${GLIB_LIBRARIES}
-    ${GSTREAMER_LIBRARIES}
-    ${HARFBUZZ_LIBRARIES}
-    ${LIBSOUP_LIBRARIES}
-    ${WPE_LIBRARIES}
+    PRIVATE
+        ${CAIRO_LIBRARIES}
+        ${FREETYPE2_LIBRARIES}
+        ${GLIB_LIBRARIES}
+        ${GSTREAMER_LIBRARIES}
+        ${HARFBUZZ_LIBRARIES}
+        ${LIBSOUP_LIBRARIES}
+        ${WPE_LIBRARIES}
 )
 
 WEBKIT_BUILD_INSPECTOR_GRESOURCES(${DERIVED_SOURCES_WEBINSPECTORUI_DIR})
@@ -312,7 +312,7 @@ add_library(WPEWebInspectorResources SHARED ${WPEWebInspectorResources_DERIVED_S
 add_dependencies(WPEWebInspectorResources WebKit)
 target_link_libraries(WPEWebInspectorResources ${WPEWebInspectorResources_LIBRARIES})
 target_include_directories(WPEWebInspectorResources SYSTEM PUBLIC ${WPEWebInspectorResources_SYSTEM_INCLUDE_DIRECTORIES})
-install(TARGETS WPEWebInspectorResources DESTINATION "${LIB_INSTALL_DIR}")
+install(TARGETS WPEWebInspectorResources DESTINATION "${LIB_INSTALL_DIR}/wpe-webkit-${WPE_API_VERSION}")
 
 add_library(WPEInjectedBundle MODULE "${WEBKIT_DIR}/WebProcess/InjectedBundle/API/glib/WebKitInjectedBundleMain.cpp")
 ADD_WEBKIT_PREFIX_HEADER(WPEInjectedBundle)
@@ -321,12 +321,18 @@ target_link_libraries(WPEInjectedBundle WebKit)
 target_include_directories(WPEInjectedBundle PRIVATE ${WebKit_INCLUDE_DIRECTORIES})
 target_include_directories(WPEInjectedBundle SYSTEM PRIVATE ${WebKit_SYSTEM_INCLUDE_DIRECTORIES})
 
-install(FILES "${CMAKE_BINARY_DIR}/wpe-webkit.pc"
-    DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig"
-    COMPONENT "Development"
+install(TARGETS WPEInjectedBundle
+        DESTINATION "${LIB_INSTALL_DIR}/wpe-webkit-${WPE_API_VERSION}/injected-bundle"
+)
+
+install(FILES "${CMAKE_BINARY_DIR}/wpe-webkit-${WPE_API_VERSION}.pc"
+              "${CMAKE_BINARY_DIR}/wpe-web-extension-${WPE_API_VERSION}.pc"
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig"
+        COMPONENT "Development"
 )
 
 install(FILES ${WPE_API_INSTALLED_HEADERS}
-    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/wpe-${WPE_API_VERSION}/WPE/wpe"
-    COMPONENT "Development"
+              ${WPE_WEB_EXTENSION_API_INSTALLED_HEADERS}
+        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/wpe-webkit-${WPE_API_VERSION}/wpe"
+        COMPONENT "Development"
 )

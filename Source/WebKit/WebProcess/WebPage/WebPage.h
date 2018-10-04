@@ -580,9 +580,6 @@ public:
     void requestAssistedNodeInformation(CallbackID);
     void selectWithGesture(const WebCore::IntPoint&, uint32_t granularity, uint32_t gestureType, uint32_t gestureState, bool isInteractingWithAssistedNode, CallbackID);
     void updateSelectionWithTouches(const WebCore::IntPoint&, uint32_t touches, bool baseIsStart, CallbackID);
-#if __IPHONE_OS_VERSION_MAX_ALLOWED < 120000
-    void updateBlockSelectionWithTouch(const WebCore::IntPoint&, uint32_t touch, uint32_t handlePosition);
-#endif
     void selectWithTwoTouches(const WebCore::IntPoint& from, const WebCore::IntPoint& to, uint32_t gestureType, uint32_t gestureState, CallbackID);
     void extendSelection(uint32_t granularity);
     void selectWordBackward();
@@ -807,7 +804,7 @@ public:
 #endif
 
 #if PLATFORM(IOS)
-    void computePagesForPrintingAndDrawToPDF(uint64_t frameID, const PrintInfo&, CallbackID, Messages::WebPage::ComputePagesForPrintingAndDrawToPDF::DelayedReply&&);
+    void computePagesForPrintingAndDrawToPDF(uint64_t frameID, const PrintInfo&, CallbackID, Ref<Messages::WebPage::ComputePagesForPrintingAndDrawToPDF::DelayedReply>&&);
 #endif
 
 #if PLATFORM(GTK)
@@ -891,6 +888,9 @@ public:
     void applicationWillEnterForeground(bool isSuspendedUnderLock);
     void applicationDidBecomeActive();
     void completePendingSyntheticClickForContentChangeObserver();
+
+    bool platformPrefersTextLegibilityBasedZoomScaling() const;
+    const WebCore::ViewportConfiguration& viewportConfiguration() const { return m_viewportConfiguration; }
 #endif
 
 #if ENABLE(IOS_TOUCH_EVENTS)
@@ -1072,6 +1072,8 @@ public:
 
     UserContentControllerIdentifier userContentControllerIdentifier() const { return m_userContentController->identifier(); }
 
+    bool isSuspended() const { return m_isSuspended; }
+
 private:
     WebPage(uint64_t pageID, WebPageCreationParameters&&);
 
@@ -1104,12 +1106,6 @@ private:
 
     static void convertSelectionRectsToRootView(WebCore::FrameView*, Vector<WebCore::SelectionRect>&);
     RefPtr<WebCore::Range> rangeForWebSelectionAtPosition(const WebCore::IntPoint&, const WebCore::VisiblePosition&, SelectionFlags&);
-#if __IPHONE_OS_VERSION_MAX_ALLOWED < 120000
-    RefPtr<WebCore::Range> rangeForBlockAtPoint(const WebCore::IntPoint&);
-    void computeExpandAndShrinkThresholdsForHandle(const WebCore::IntPoint&, SelectionHandlePosition, float& growThreshold, float& shrinkThreshold);
-    Ref<WebCore::Range> expandedRangeFromHandle(WebCore::Range&, SelectionHandlePosition);
-    Ref<WebCore::Range> contractedRangeFromHandle(WebCore::Range& currentRange, SelectionHandlePosition, SelectionFlags&);
-#endif
     void getAssistedNodeInformation(AssistedNodeInformation&);
     void platformInitializeAccessibility();
     void handleSyntheticClick(WebCore::Node* nodeRespondingToClick, const WebCore::FloatPoint& location);
@@ -1118,9 +1114,6 @@ private:
     void resetTextAutosizing();
     WebCore::VisiblePosition visiblePositionInFocusedNodeForPoint(const WebCore::Frame&, const WebCore::IntPoint&, bool isInteractingWithAssistedNode);
     RefPtr<WebCore::Range> rangeForGranularityAtPoint(WebCore::Frame&, const WebCore::IntPoint&, uint32_t granularity, bool isInteractingWithAssistedNode);
-#if __IPHONE_OS_VERSION_MAX_ALLOWED < 120000
-    RefPtr<WebCore::Range> changeBlockSelection(const WebCore::IntPoint&, SelectionHandlePosition, float& growThreshold, float& shrinkThreshold, SelectionFlags&);
-#endif
 #endif
 
 #if PLATFORM(IOS) && ENABLE(DATA_INTERACTION)
@@ -1396,6 +1389,8 @@ private:
     void urlSchemeTaskDidReceiveResponse(uint64_t handlerIdentifier, uint64_t taskIdentifier, const WebCore::ResourceResponse&);
     void urlSchemeTaskDidReceiveData(uint64_t handlerIdentifier, uint64_t taskIdentifier, const IPC::DataReference&);
     void urlSchemeTaskDidComplete(uint64_t handlerIdentifier, uint64_t taskIdentifier, const WebCore::ResourceError&);
+
+    void setIsSuspended(bool);
 
     RefPtr<WebImage> snapshotAtSize(const WebCore::IntRect&, const WebCore::IntSize& bitmapSize, SnapshotOptions);
     RefPtr<WebImage> snapshotNode(WebCore::Node&, SnapshotOptions, unsigned maximumPixelCount = std::numeric_limits<unsigned>::max());
@@ -1714,6 +1709,7 @@ private:
     std::unique_ptr<WebCredentialsMessenger> m_credentialsMessenger;
 #endif
 
+    bool m_isSuspended { false };
 };
 
 } // namespace WebKit

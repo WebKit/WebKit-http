@@ -70,6 +70,7 @@ public:
         case StringUse:
         case StringOrOtherUse:
         case SymbolUse:
+        case BigIntUse:
         case StringObjectUse:
         case StringOrStringObjectUse:
         case NotStringVarUse:
@@ -225,6 +226,8 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case GetByIdWithThis:
     case GetByValWithThis:
     case GetByIdFlush:
+    case GetByIdDirect:
+    case GetByIdDirectFlush:
     case PutById:
     case PutByIdFlush:
     case PutByIdWithThis:

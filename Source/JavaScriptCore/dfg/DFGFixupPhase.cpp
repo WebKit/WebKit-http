@@ -616,6 +616,11 @@ private:
                 fixEdge<SymbolUse>(node->child2());
                 break;
             }
+            if (Node::shouldSpeculateBigInt(node->child1().node(), node->child2().node())) {
+                fixEdge<BigIntUse>(node->child1());
+                fixEdge<BigIntUse>(node->child2());
+                break;
+            }
             if (node->child1()->shouldSpeculateStringIdent() && node->child2()->shouldSpeculateStringIdent()) {
                 fixEdge<StringIdentUse>(node->child1());
                 fixEdge<StringIdentUse>(node->child2());
@@ -685,9 +690,10 @@ private:
         }
             
         case StringFromCharCode:
-            if (node->child1()->shouldSpeculateInt32())
+            if (node->child1()->shouldSpeculateInt32()) {
                 fixEdge<Int32Use>(node->child1());
-            else
+                node->clearFlags(NodeMustGenerate);
+            } else
                 fixEdge<UntypedUse>(node->child1());
             break;
 
@@ -1367,6 +1373,13 @@ private:
         }
 
         case TryGetById: {
+            if (node->child1()->shouldSpeculateCell())
+                fixEdge<CellUse>(node->child1());
+            break;
+        }
+
+        case GetByIdDirect:
+        case GetByIdDirectFlush: {
             if (node->child1()->shouldSpeculateCell())
                 fixEdge<CellUse>(node->child1());
             break;
@@ -2489,6 +2502,12 @@ private:
                 node->convertToIdentity();
                 return;
             }
+            
+            if (node->child1()->shouldSpeculateBigInt()) {
+                fixEdge<BigIntUse>(node->child1());
+                node->convertToIdentity();
+                return;
+            }
         }
 
         if (node->child1()->shouldSpeculateOther()) {
@@ -2985,6 +3004,7 @@ private:
         case StringUse:
         case KnownStringUse:
         case SymbolUse:
+        case BigIntUse:
         case StringObjectUse:
         case StringOrStringObjectUse:
             if (alwaysUnboxSimplePrimitives()

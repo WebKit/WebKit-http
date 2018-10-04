@@ -1,3 +1,93 @@
+2018-04-15  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make it possible to hide some repository groups
+        https://bugs.webkit.org/show_bug.cgi?id=184632
+
+        Reviewed by Saam Barati.
+
+        Added the ability to hide repository groups in the custom analysis task configurator from the admin page.
+        Hidden repositroy groups will continue to function for existing test groups. This is purely an UI change.
+
+        * init-database.sql: Added repositorygroup_hidden as a new column to triggerable_repository_groups.
+        * public/admin/triggerables.php: Added a form field to hide a repository group.
+        * public/include/manifest-generator.php: Include hidden state in the manifest file.
+        * public/v3/components/custom-analysis-task-configurator.js:
+        (CustomAnalysisTaskConfigurator.prototype._renderRepositoryPanes): Filter out hidden repository groups.
+        * public/v3/models/triggerable.js:
+        (prototype.isHidden): Added.
+        * server-tests/api-manifest-tests.js: Updated an existing test case to test a hidden repository group.
+
+2018-04-06  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Added 'CommitSet.diff' which will be shared between multiple independent incoming changes.
+        https://bugs.webkit.org/show_bug.cgi?id=184368
+
+        Reviewed by Ryosuke Niwa.
+
+        'CommitSet.diff' will be used in multiple independent incoming changes.
+        It would be easier to make this a separate change to parallelize the changes depends on this API.
+
+        * public/v3/models/commit-set.js:
+        (CommitSet.prototype.createNameWithoutCollision): Moved from 'AnalysisTaskPage' and make it more generic.
+        (CommitSet.prototype.diff): Describe differences between 2 commit sets including commit, root and patch differences.
+        * public/v3/pages/analysis-task-page.js: Move 'AnalysisTaskPage._createRetryNameForTestGroup' to CommitSet in a more generic form.
+        (AnalysisTaskPage.prototype._retryCurrentTestGroup): Use 'CommitSet.withoutRootPatchOrOwnedCommit' instead.
+        (AnalysisTaskPage.prototype._createRetryNameForTestGroup): Moved to CommitSet in a more generic form.
+        * unit-tests/commit-set-tests.js: Added unit tests for 'CommitSet.diff'.
+
+2018-04-05  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Fix a bug introduced in r230295 that A/B test result is not shown.
+        https://bugs.webkit.org/show_bug.cgi?id=184350
+
+        Reviewed by Ryosuke Niwa.
+
+        result.label should be assigned in `TestGroup._computeRequestedCommitSets`.
+
+        * public/v3/models/test-group.js:
+        (TestGroup.prototype._computeRequestedCommitSets):
+
+2018-03-29  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Added UI to show potential regressions in chart with t-testing against segmentations.
+        https://bugs.webkit.org/show_bug.cgi?id=184131
+
+        Reviewed by Ryosuke Niwa.
+
+        Added UI in the chart-pane so that user can use new option in trendline which not only
+        shows the segmentation, but also t-test against potential changes indicated by segmentation.
+
+        Fix a bug in AnalysisTaskPage that chart is not updated when change type of task changes.
+
+        * browser-tests/interactive-time-series-chart-tests.js: Fix a unit tests.
+        * browser-tests/time-series-chart-tests.js: Fix a unit tests.
+        * public/shared/statistics.js: Added a function to t-test certain range based on segmentation results.
+        (Statistics.supportedOneSideTTestProbabilities):
+        (Statistics.findRangesForChangeDetectionsWithWelchsTTest): The argument `segmentations`, every 2 items in the list defines 
+        segmentation, that is why the index incremental is 2 in this funcion.
+        * public/v3/components/chart-pane-base.js: Will select the range if user clicks on a suggested annotation.
+        (ChartPaneBase.prototype.configure):
+        (ChartPaneBase.prototype._didClickAnnotation):
+        * public/v3/components/chart-styles.js:
+        (ChartStyles.annotationFillStyleForTask): Added 'annotationFillStyleForTask' to determine the fillStyle for annotation based on change type of a analysis task.
+        * public/v3/components/interactive-time-series-chart.js:
+        (InteractiveTimeSeriesChart.prototype._findAnnotation): Also need to search among suggested annotaions.
+        * public/v3/components/time-series-chart.js: Introduced 'suggested annotaion' which does not have an existing task and is suggested by t-test based on segmentation.
+        (TimeSeriesChart):
+        (TimeSeriesChart.prototype.setSuggestedAnnotations):
+        (TimeSeriesChart.prototype.allAnnotations): Returns both annotations with and without analysis task.
+        (TimeSeriesChart.prototype._layoutAnnotationBars): Should take all annotations in the calculation.
+        * public/v3/models/measurement-set.js:
+        (MeasurementSet.prototype.metricId): Returns metric id.
+        * public/v3/models/metric.js:
+        (Metric.prototype.summarizeForValues): Added helper function to summarize a given value
+        * public/v3/models/test-group.js:
+        (TestGroup.prototype.compareTestResults): Adapted to use 'Metric.summarizeForValues'.
+        * public/v3/pages/chart-pane.js: Added 'Segmentation with t-test analysis' to 'ChartTrendLineTypes'.
+        (ChartPane.prototype._renderTrendLinePopover):
+        (ChartPane.prototype.async._updateTrendLine): make it an async function.
+        * unit-tests/statistics-tests.js: Added unit tests for 'findRangesForChangeDetectionsWithWelchsTTest'.
+
 2018-04-02  Aakash Jain  <aakash_jain@apple.com>
 
         Remove deprecated Buildbot 0.8 code from Perf syncing scripts

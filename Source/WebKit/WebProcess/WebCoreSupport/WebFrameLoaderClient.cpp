@@ -209,7 +209,12 @@ void WebFrameLoaderClient::dispatchWillSendRequest(DocumentLoader*, unsigned lon
     if (!webPage)
         return;
 
+    // The API can return a completely new request. We should ensure that at least the requester
+    // is kept, so that if this is a main resource load it's still considered as such.
+    auto requester = request.requester();
     webPage->injectedBundleResourceLoadClient().willSendRequestForFrame(*webPage, *m_frame, identifier, request, redirectResponse);
+    if (!request.isNull())
+        request.setRequester(requester);
 }
 
 bool WebFrameLoaderClient::shouldUseCredentialStorage(DocumentLoader*, unsigned long identifier)
@@ -748,14 +753,10 @@ void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceRespons
 
     WebCore::Frame* coreFrame = m_frame->coreFrame();
     auto* policyDocumentLoader = coreFrame ? coreFrame->loader().provisionalDocumentLoader() : nullptr;
-    if (!policyDocumentLoader) {
-        function(PolicyAction::Ignore);
-        return;
-    }
-
+    auto navigationID = policyDocumentLoader ? static_cast<WebDocumentLoader&>(*policyDocumentLoader).navigationID() : 0;
+    
     Ref<WebFrame> protector(*m_frame);
     uint64_t listenerID = m_frame->setUpPolicyListener(WTFMove(function), WebFrame::ForNavigationAction::No);
-    auto navigationID = static_cast<WebDocumentLoader&>(*policyDocumentLoader).navigationID();
     if (!webPage->send(Messages::WebPageProxy::DecidePolicyForResponse(m_frame->frameID(), SecurityOriginData::fromFrame(coreFrame), navigationID, response, request, canShowMIMEType, listenerID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get()))))
         m_frame->didReceivePolicyDecision(listenerID, PolicyAction::Ignore, 0, { }, { });
 }

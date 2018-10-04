@@ -140,12 +140,12 @@ public:
             LinkBuffer linkBuffer(jit, m_inlineStart.dataLocation(), jit.m_assembler.buffer().codeSize(), JITCompilationMustSucceed, needsBranchCompaction);
             RELEASE_ASSERT(linkBuffer.isValid());
             linkBuffer.link(jump, CodeLocationLabel(m_code.code()));
-            FINALIZE_CODE(linkBuffer, NearJumpPtrTag, "JITMathIC: linking constant jump to out of line stub");
+            FINALIZE_CODE(linkBuffer, NearCodePtrTag, "JITMathIC: linking constant jump to out of line stub");
         };
 
         auto replaceCall = [&] () {
-            PtrTag tag = ptrTag(MathICPtrTag, m_instruction);
-            ftlThunkAwareRepatchCall(codeBlock, slowPathCallLocation(), FunctionPtr(callReplacement, tag));
+            PtrTag callTag = ptrTag(MathICPtrTag, m_instruction);
+            ftlThunkAwareRepatchCall(codeBlock, slowPathCallLocation(), callReplacement, callTag);
         };
 
         bool shouldEmitProfiling = !JITCode::isOptimizingJIT(codeBlock->jitType());
@@ -168,7 +168,7 @@ public:
                     linkBuffer.link(jumpToDone, doneLocation());
 
                     m_code = FINALIZE_CODE_FOR(
-                        codeBlock, linkBuffer, NearJumpPtrTag, "JITMathIC: generating out of line fast IC snippet");
+                        codeBlock, linkBuffer, NearCodePtrTag, "JITMathIC: generating out of line fast IC snippet");
 
                     if (!generationState.shouldSlowPathRepatch) {
                         // We won't need to regenerate, so we can wire the slow path call
@@ -210,7 +210,7 @@ public:
             linkBuffer.link(slowPathJumpList, slowPathStartLocation());
 
             m_code = FINALIZE_CODE_FOR(
-                codeBlock, linkBuffer, NearJumpPtrTag, "JITMathIC: generating out of line IC snippet");
+                codeBlock, linkBuffer, NearCodePtrTag, "JITMathIC: generating out of line IC snippet");
         }
 
         linkJumpToOutOfLineSnippet();
@@ -218,7 +218,7 @@ public:
 
     void finalizeInlineCode(const MathICGenerationState& state, LinkBuffer& linkBuffer)
     {
-        CodeLocationLabel start = linkBuffer.locationOf(state.fastPathStart, NearJumpPtrTag);
+        CodeLocationLabel start = linkBuffer.locationOf(state.fastPathStart, NearCodePtrTag);
         m_inlineStart = start;
 
         m_inlineSize = MacroAssembler::differenceBetweenCodePtr(
@@ -228,10 +228,11 @@ public:
         m_deltaFromStartToSlowPathCallLocation = MacroAssembler::differenceBetweenCodePtr(
             start, linkBuffer.locationOf(state.slowPathCall));
         m_deltaFromStartToSlowPathStart = MacroAssembler::differenceBetweenCodePtr(
-            start, linkBuffer.locationOf(state.slowPathStart, NoPtrTag));
+            start, linkBuffer.locationOf(state.slowPathStart));
     }
 
     ArithProfile* arithProfile() const { return m_arithProfile; }
+    Instruction* instruction() const { return m_instruction; }
 
 #if ENABLE(MATH_IC_STATS)
     size_t m_generatedCodeSize { 0 };

@@ -29,6 +29,8 @@
 #include "APIArray.h"
 #include "APIData.h"
 #include "InjectedBundleScriptWorld.h"
+#include "NetworkConnectionToWebProcessMessages.h"
+#include "NetworkProcessConnection.h"
 #include "NetworkSessionCreationParameters.h"
 #include "NotificationPermissionRequestManager.h"
 #include "SessionTracker.h"
@@ -238,6 +240,8 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
 #if ENABLE(WEB_RTC)
     if (preference == "WebKitWebRTCLegacyAPIEnabled")
         RuntimeEnabledFeatures::sharedFeatures().setWebRTCLegacyAPIEnabled(enabled);
+    if (preference == "WebKitMDNSICECandidatesEnabled")
+        RuntimeEnabledFeatures::sharedFeatures().setMDNSICECandidatesEnabled(enabled);
 #endif
 
     if (preference == "WebKitIsSecureContextAttributeEnabled") {
@@ -373,16 +377,20 @@ void InjectedBundle::setSpatialNavigationEnabled(WebPageGroupProxy* pageGroup, b
 void InjectedBundle::addOriginAccessWhitelistEntry(const String& sourceOrigin, const String& destinationProtocol, const String& destinationHost, bool allowDestinationSubdomains)
 {
     SecurityPolicy::addOriginAccessWhitelistEntry(SecurityOrigin::createFromString(sourceOrigin).get(), destinationProtocol, destinationHost, allowDestinationSubdomains);
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::AddOriginAccessWhitelistEntry { sourceOrigin, destinationProtocol, destinationHost, allowDestinationSubdomains }, 0);
+
 }
 
 void InjectedBundle::removeOriginAccessWhitelistEntry(const String& sourceOrigin, const String& destinationProtocol, const String& destinationHost, bool allowDestinationSubdomains)
 {
     SecurityPolicy::removeOriginAccessWhitelistEntry(SecurityOrigin::createFromString(sourceOrigin).get(), destinationProtocol, destinationHost, allowDestinationSubdomains);
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::RemoveOriginAccessWhitelistEntry { sourceOrigin, destinationProtocol, destinationHost, allowDestinationSubdomains }, 0);
 }
 
 void InjectedBundle::resetOriginAccessWhitelists()
 {
     SecurityPolicy::resetOriginAccessWhitelists();
+    WebProcess::singleton().ensureNetworkProcessConnection().connection().send(Messages::NetworkConnectionToWebProcess::ResetOriginAccessWhitelists { }, 0);
 }
 
 void InjectedBundle::setAsynchronousSpellCheckingEnabled(WebPageGroupProxy* pageGroup, bool enabled)

@@ -6,6 +6,12 @@ set(WPE_API_VERSION 0.1)
 
 CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT 1 0 0)
 
+# These are shared variables, but we special case their definition so that we can use the
+# CMAKE_INSTALL_* variables that are populated by the GNUInstallDirs macro.
+set(LIB_INSTALL_DIR "${CMAKE_INSTALL_FULL_LIBDIR}" CACHE PATH "Absolute path to library installation directory")
+set(EXEC_INSTALL_DIR "${CMAKE_INSTALL_FULL_BINDIR}" CACHE PATH "Absolute path to executable installation directory")
+set(LIBEXEC_INSTALL_DIR "${CMAKE_INSTALL_FULL_LIBEXECDIR}/wpe-webkit-${WPE_API_VERSION}" CACHE PATH "Absolute path to install executables executed by the library")
+
 WEBKIT_OPTION_BEGIN()
 
 include(GStreamerDefinitions)
@@ -105,7 +111,6 @@ endif ()
 
 add_definitions(-DBUILDING_WPE__=1)
 add_definitions(-DGETTEXT_PACKAGE="WPE")
-add_definitions(-DDATA_DIR="${CMAKE_INSTALL_DATADIR}")
 add_definitions(-DJSC_GLIB_API_ENABLED)
 
 SET_AND_EXPOSE_TO_BUILD(USE_CAIRO TRUE)

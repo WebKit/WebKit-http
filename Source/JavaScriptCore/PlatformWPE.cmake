@@ -27,14 +27,10 @@ list(APPEND JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
     inspector/remote/glib/RemoteInspectorUtils.h
 )
 
-install(FILES ${JavaScriptCore_PUBLIC_FRAMEWORK_HEADERS}
-    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/wpe-${WPE_API_VERSION}/WPE/JavaScriptCore"
-    COMPONENT "Development"
-)
-
 install(FILES ${JavaScriptCore_INSTALLED_HEADERS}
-    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/wpe-${WPE_API_VERSION}/WPE/jsc"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/wpe-webkit-${WPE_API_VERSION}/jsc"
     COMPONENT "Development"
 )
 
 add_definitions(-DJSC_COMPILATION)
+add_definitions(-DPKGLIBDIR="${CMAKE_INSTALL_FULL_LIBDIR}/wpe-webkit-${WPE_API_VERSION}")

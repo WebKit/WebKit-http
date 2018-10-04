@@ -488,6 +488,8 @@ private:
                 break;
             }
         
+            case GetByIdDirect:
+            case GetByIdDirectFlush:
             case GetById:
             case GetByIdFlush: {
                 Edge childEdge = node->child1();
@@ -613,7 +615,7 @@ private:
             }
 
             case ToPrimitive: {
-                if (m_state.forNode(node->child1()).m_type & ~(SpecFullNumber | SpecBoolean | SpecString | SpecSymbol))
+                if (m_state.forNode(node->child1()).m_type & ~(SpecFullNumber | SpecBoolean | SpecString | SpecSymbol | SpecBigInt))
                     break;
                 
                 node->convertToIdentity();
@@ -781,6 +783,23 @@ private:
                 break;
             }
                 
+            case PhantomNewObject:
+            case PhantomNewFunction:
+            case PhantomNewGeneratorFunction:
+            case PhantomNewAsyncGeneratorFunction:
+            case PhantomNewAsyncFunction:
+            case PhantomCreateActivation:
+            case PhantomDirectArguments:
+            case PhantomClonedArguments:
+            case PhantomCreateRest:
+            case PhantomSpread:
+            case PhantomNewArrayWithSpread:
+            case PhantomNewArrayBuffer:
+            case PhantomNewRegexp:
+            case BottomValue:
+                alreadyHandled = true;
+                break;
+
             default:
                 break;
             }

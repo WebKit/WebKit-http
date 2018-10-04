@@ -345,11 +345,6 @@ public:
 
     void compileStoreBarrier(Node*);
 
-    static GPRReg selectScratchGPR(GPRReg preserve1 = InvalidGPRReg, GPRReg preserve2 = InvalidGPRReg, GPRReg preserve3 = InvalidGPRReg, GPRReg preserve4 = InvalidGPRReg)
-    {
-        return AssemblyHelpers::selectScratchGPR(preserve1, preserve2, preserve3, preserve4);
-    }
-
     // Called by the speculative operand types, below, to fill operand to
     // machine registers, implicitly generating speculation checks as needed.
     GPRReg fillSpeculateInt32(Edge, DataFormat& returnFormat);
@@ -724,22 +719,22 @@ public:
     void compileMovHint(Node*);
     void compileMovHintAndCheck(Node*);
 
-    void cachedGetById(CodeOrigin, JSValueRegs base, JSValueRegs result, unsigned identifierNumber, JITCompiler::Jump slowPathTarget = JITCompiler::Jump(), SpillRegistersMode = NeedToSpill, AccessType = AccessType::Get);
+    void cachedGetById(CodeOrigin, JSValueRegs base, JSValueRegs result, unsigned identifierNumber, JITCompiler::Jump slowPathTarget, SpillRegistersMode, AccessType);
+    void cachedPutById(CodeOrigin, GPRReg baseGPR, JSValueRegs valueRegs, GPRReg scratchGPR, unsigned identifierNumber, PutKind, JITCompiler::Jump slowPathTarget = JITCompiler::Jump(), SpillRegistersMode = NeedToSpill);
 
 #if USE(JSVALUE64)
-    void cachedGetById(CodeOrigin, GPRReg baseGPR, GPRReg resultGPR, unsigned identifierNumber, JITCompiler::Jump slowPathTarget = JITCompiler::Jump(), SpillRegistersMode = NeedToSpill, AccessType = AccessType::Get);
-    void cachedPutById(CodeOrigin, GPRReg base, GPRReg value, GPRReg scratchGPR, unsigned identifierNumber, PutKind, JITCompiler::Jump slowPathTarget = JITCompiler::Jump(), SpillRegistersMode = NeedToSpill);
+    void cachedGetById(CodeOrigin, GPRReg baseGPR, GPRReg resultGPR, unsigned identifierNumber, JITCompiler::Jump slowPathTarget, SpillRegistersMode, AccessType);
     void cachedGetByIdWithThis(CodeOrigin, GPRReg baseGPR, GPRReg thisGPR, GPRReg resultGPR, unsigned identifierNumber, JITCompiler::JumpList slowPathTarget = JITCompiler::JumpList());
 #elif USE(JSVALUE32_64)
-    void cachedGetById(CodeOrigin, GPRReg baseTagGPROrNone, GPRReg basePayloadGPR, GPRReg resultTagGPR, GPRReg resultPayloadGPR, unsigned identifierNumber, JITCompiler::Jump slowPathTarget = JITCompiler::Jump(), SpillRegistersMode = NeedToSpill, AccessType = AccessType::Get);
-    void cachedPutById(CodeOrigin, GPRReg basePayloadGPR, GPRReg valueTagGPR, GPRReg valuePayloadGPR, GPRReg scratchGPR, unsigned identifierNumber, PutKind, JITCompiler::Jump slowPathTarget = JITCompiler::Jump(), SpillRegistersMode = NeedToSpill);
+    void cachedGetById(CodeOrigin, GPRReg baseTagGPROrNone, GPRReg basePayloadGPR, GPRReg resultTagGPR, GPRReg resultPayloadGPR, unsigned identifierNumber, JITCompiler::Jump slowPathTarget, SpillRegistersMode, AccessType);
     void cachedGetByIdWithThis(CodeOrigin, GPRReg baseTagGPROrNone, GPRReg basePayloadGPR, GPRReg thisTagGPROrNone, GPRReg thisPayloadGPR, GPRReg resultTagGPR, GPRReg resultPayloadGPR, unsigned identifierNumber, JITCompiler::JumpList slowPathTarget = JITCompiler::JumpList());
 #endif
 
     void compileDeleteById(Node*);
     void compileDeleteByVal(Node*);
     void compilePushWithScope(Node*);
-    void compileTryGetById(Node*);
+    void compileGetById(Node*, AccessType);
+    void compileGetByIdFlush(Node*, AccessType);
     void compileIn(Node*);
     
     void nonSpeculativeNonPeepholeCompareNullOrUndefined(Edge operand);
@@ -747,7 +742,6 @@ public:
     
     void nonSpeculativePeepholeBranch(Node*, Node* branchNode, MacroAssembler::RelationalCondition, S_JITOperation_EJJ helperFunction);
     void nonSpeculativeNonPeepholeCompare(Node*, MacroAssembler::RelationalCondition, S_JITOperation_EJJ helperFunction);
-    bool nonSpeculativeCompare(Node*, MacroAssembler::RelationalCondition, S_JITOperation_EJJ helperFunction);
     
     void nonSpeculativePeepholeStrictEq(Node*, Node* branchNode, bool invert = false);
     void nonSpeculativeNonPeepholeStrictEq(Node*, bool invert = false);
@@ -756,6 +750,7 @@ public:
     void compileInstanceOfForObject(Node*, GPRReg valueReg, GPRReg prototypeReg, GPRReg scratchAndResultReg, GPRReg scratch2Reg, GPRReg scratch3Reg);
     void compileInstanceOf(Node*);
     void compileInstanceOfCustom(Node*);
+    void compileOverridesHasInstance(Node*);
 
     void compileIsCellWithType(Node*);
     void compileIsTypedArrayView(Node*);
@@ -936,10 +931,30 @@ public:
     std::enable_if_t<
         FunctionTraits<OperationType>::hasResult,
     JITCompiler::Call>
-    callOperation(OperationType operation, ResultRegType result, Args... args)
+    callOperation(OperationType operation, PtrTag tag, ResultRegType result, Args... args)
     {
         m_jit.setupArguments<OperationType>(args...);
-        return appendCallSetResult(operation, result);
+        return appendCallSetResult(operation, tag, result);
+    }
+
+    template<typename OperationType, typename ResultRegType, typename... Args>
+    std::enable_if_t<
+        FunctionTraits<OperationType>::hasResult,
+    JITCompiler::Call>
+    callOperation(OperationType operation, ResultRegType result, Args... args)
+    {
+        return callOperation(operation, CFunctionPtrTag, result, args...);
+    }
+
+    template<typename OperationType, typename Arg, typename... Args>
+    std::enable_if_t<
+        !FunctionTraits<OperationType>::hasResult
+        && !std::is_same<Arg, NoResultTag>::value,
+    JITCompiler::Call>
+    callOperation(OperationType operation, PtrTag tag, Arg arg, Args... args)
+    {
+        m_jit.setupArguments<OperationType>(arg, args...);
+        return appendCall(operation, tag);
     }
 
     template<typename OperationType, typename Arg, typename... Args>
@@ -949,8 +964,17 @@ public:
     JITCompiler::Call>
     callOperation(OperationType operation, Arg arg, Args... args)
     {
-        m_jit.setupArguments<OperationType>(arg, args...);
-        return appendCall(operation);
+        return callOperation(operation, CFunctionPtrTag, arg, args...);
+    }
+
+    template<typename OperationType, typename... Args>
+    std::enable_if_t<
+        !FunctionTraits<OperationType>::hasResult,
+    JITCompiler::Call>
+    callOperation(OperationType operation, PtrTag tag, NoResultTag, Args... args)
+    {
+        m_jit.setupArguments<OperationType>(args...);
+        return appendCall(operation, tag);
     }
 
     template<typename OperationType, typename... Args>
@@ -959,8 +983,17 @@ public:
     JITCompiler::Call>
     callOperation(OperationType operation, NoResultTag, Args... args)
     {
-        m_jit.setupArguments<OperationType>(args...);
-        return appendCall(operation);
+        return callOperation(operation, CFunctionPtrTag, NoResult, args...);
+    }
+
+    template<typename OperationType>
+    std::enable_if_t<
+        !FunctionTraits<OperationType>::hasResult,
+    JITCompiler::Call>
+    callOperation(OperationType operation, PtrTag tag)
+    {
+        m_jit.setupArguments<OperationType>();
+        return appendCall(operation, tag);
     }
 
     template<typename OperationType>
@@ -969,8 +1002,7 @@ public:
     JITCompiler::Call>
     callOperation(OperationType operation)
     {
-        m_jit.setupArguments<OperationType>();
-        return appendCall(operation);
+        return callOperation(operation, CFunctionPtrTag);
     }
 
 #undef FIRST_ARGUMENT_TYPE
@@ -1007,11 +1039,11 @@ public:
 #endif
 
     // These methods add call instructions, optionally setting results, and optionally rolling back the call frame on an exception.
-    JITCompiler::Call appendCall(const FunctionPtr function)
+    JITCompiler::Call appendCall(const FunctionPtr function, PtrTag tag = CFunctionPtrTag)
     {
         prepareForExternalCall();
         m_jit.emitStoreCodeOrigin(m_currentNode->origin.semantic);
-        return m_jit.appendCall(function);
+        return m_jit.appendCall(function, tag);
     }
     JITCompiler::Call appendCallWithCallFrameRollbackOnException(const FunctionPtr function)
     {
@@ -1026,31 +1058,43 @@ public:
             m_jit.move(GPRInfo::returnValueGPR, result);
         return call;
     }
-    JITCompiler::Call appendCallSetResult(const FunctionPtr function, GPRReg result)
+    JITCompiler::Call appendCallSetResult(const FunctionPtr function, PtrTag tag, GPRReg result)
     {
-        JITCompiler::Call call = appendCall(function);
+        JITCompiler::Call call = appendCall(function, tag);
         if (result != InvalidGPRReg)
             m_jit.move(GPRInfo::returnValueGPR, result);
         return call;
     }
-    JITCompiler::Call appendCallSetResult(const FunctionPtr function, GPRReg result1, GPRReg result2)
+    JITCompiler::Call appendCallSetResult(const FunctionPtr function, GPRReg result)
     {
-        JITCompiler::Call call = appendCall(function);
+        return appendCallSetResult(function, CFunctionPtrTag, result);
+    }
+    JITCompiler::Call appendCallSetResult(const FunctionPtr function, PtrTag tag, GPRReg result1, GPRReg result2)
+    {
+        JITCompiler::Call call = appendCall(function, tag);
         m_jit.setupResults(result1, result2);
         return call;
     }
-    JITCompiler::Call appendCallSetResult(const FunctionPtr function, JSValueRegs resultRegs)
+    JITCompiler::Call appendCallSetResult(const FunctionPtr function, GPRReg result1, GPRReg result2)
+    {
+        return appendCallSetResult(function, CFunctionPtrTag, result1, result2);
+    }
+    JITCompiler::Call appendCallSetResult(const FunctionPtr function, PtrTag tag, JSValueRegs resultRegs)
     {
 #if USE(JSVALUE64)
-        return appendCallSetResult(function, resultRegs.gpr());
+        return appendCallSetResult(function, tag, resultRegs.gpr());
 #else
-        return appendCallSetResult(function, resultRegs.payloadGPR(), resultRegs.tagGPR());
+        return appendCallSetResult(function, tag, resultRegs.payloadGPR(), resultRegs.tagGPR());
 #endif
     }
-#if CPU(X86)
-    JITCompiler::Call appendCallSetResult(const FunctionPtr function, FPRReg result)
+    JITCompiler::Call appendCallSetResult(const FunctionPtr function, JSValueRegs resultRegs)
     {
-        JITCompiler::Call call = appendCall(function);
+        return appendCallSetResult(function, CFunctionPtrTag, resultRegs);
+    }
+#if CPU(X86)
+    JITCompiler::Call appendCallSetResult(const FunctionPtr function, PtrTag tag, FPRReg result)
+    {
+        JITCompiler::Call call = appendCall(function, tag);
         if (result != InvalidFPRReg) {
             m_jit.assembler().fstpl(0, JITCompiler::stackPointerRegister);
             m_jit.loadDouble(JITCompiler::stackPointerRegister, result);
@@ -1058,23 +1102,27 @@ public:
         return call;
     }
 #elif CPU(ARM) && !CPU(ARM_HARDFP)
-    JITCompiler::Call appendCallSetResult(const FunctionPtr function, FPRReg result)
+    JITCompiler::Call appendCallSetResult(const FunctionPtr function, PtrTag tag, FPRReg result)
     {
-        JITCompiler::Call call = appendCall(function);
+        JITCompiler::Call call = appendCall(function, tag);
         if (result != InvalidFPRReg)
             m_jit.assembler().vmov(result, GPRInfo::returnValueGPR, GPRInfo::returnValueGPR2);
         return call;
     }
 #else // CPU(X86_64) || (CPU(ARM) && CPU(ARM_HARDFP)) || CPU(ARM64) || CPU(MIPS)
-    JITCompiler::Call appendCallSetResult(const FunctionPtr function, FPRReg result)
+    JITCompiler::Call appendCallSetResult(const FunctionPtr function, PtrTag tag, FPRReg result)
     {
-        JITCompiler::Call call = appendCall(function);
+        JITCompiler::Call call = appendCall(function, tag);
         if (result != InvalidFPRReg)
             m_jit.moveDouble(FPRInfo::returnValueFPR, result);
         return call;
     }
 #endif
-    
+    JITCompiler::Call appendCallSetResult(const FunctionPtr function, FPRReg result)
+    {
+        return appendCallSetResult(function, CFunctionPtrTag, result);
+    }
+
     void branchDouble(JITCompiler::DoubleCondition cond, FPRReg left, FPRReg right, BasicBlock* destination)
     {
         return addBranch(m_jit.branchDouble(cond, left, right), destination);
@@ -1207,6 +1255,7 @@ public:
     void compileMiscStrictEq(Node*);
 
     void compileSymbolEquality(Node*);
+    void compileBigIntEquality(Node*);
     void compilePeepHoleSymbolEquality(Node*, Node* branchNode);
     void compileSymbolUntypedEquality(Node*, Edge symbolEdge, Edge untypedEdge);
 
@@ -1387,6 +1436,7 @@ public:
     void compileSetFunctionName(Node*);
     void compileNewRegexp(Node*);
     void compileForwardVarargs(Node*);
+    void compileLoadVarargs(Node*);
     void compileCreateActivation(Node*);
     void compileCreateDirectArguments(Node*);
     void compileGetFromArguments(Node*);
@@ -1409,10 +1459,12 @@ public:
     void compileRegExpMatchFastGlobal(Node*);
     void compileRegExpTest(Node*);
     void compileStringReplace(Node*);
+    void compileIsObject(Node*);
     void compileIsObjectOrNull(Node*);
     void compileIsFunction(Node*);
     void compileTypeOf(Node*);
     void compileCheckCell(Node*);
+    void compileCheckNotEmpty(Node*);
     void compileCheckStructure(Node*);
     void emitStructureCheck(Node*, GPRReg cellGPR, GPRReg tempGPR);
     void compilePutAccessorById(Node*);
@@ -1442,8 +1494,12 @@ public:
     void compileGetEnumerableLength(Node*);
     void compileHasGenericProperty(Node*);
     void compileToIndexString(Node*);
+    void compilePutByIdFlush(Node*);
+    void compilePutById(Node*);
+    void compilePutByIdDirect(Node*);
     void compilePutByIdWithThis(Node*);
     void compileHasStructureProperty(Node*);
+    void compileGetDirectPname(Node*);
     void compileGetPropertyEnumerator(Node*);
     void compileGetEnumeratorPname(Node*);
     void compileGetExecutable(Node*);
@@ -1462,6 +1518,9 @@ public:
     void compileToPrimitive(Node*);
     void compileLogShadowChickenPrologue(Node*);
     void compileLogShadowChickenTail(Node*);
+    void compileHasIndexedProperty(Node*);
+    void compileExtractCatchLocal(Node*);
+    void compileProfileType(Node*);
 
     void moveTrueTo(GPRReg);
     void moveFalseTo(GPRReg);
@@ -1607,6 +1666,8 @@ public:
     void speculateStringOrStringObject(Edge);
     void speculateSymbol(Edge, GPRReg cell);
     void speculateSymbol(Edge);
+    void speculateBigInt(Edge, GPRReg cell);
+    void speculateBigInt(Edge);
     void speculateNotCell(Edge, JSValueRegs);
     void speculateNotCell(Edge);
     void speculateOther(Edge, JSValueRegs, GPRReg temp);
@@ -1958,9 +2019,7 @@ public:
         else
             m_gpr = m_jit->allocate();
     }
-#if USE(JSVALUE32_64)
     GPRTemporary(SpeculativeJIT*, ReuseTag, JSValueOperand&, WhichValueWord);
-#endif
 
     GPRTemporary(GPRTemporary& other) = delete;
 

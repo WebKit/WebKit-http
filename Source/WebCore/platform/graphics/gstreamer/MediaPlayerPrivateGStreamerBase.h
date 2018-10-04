@@ -25,7 +25,7 @@
 #define MediaPlayerPrivateGStreamerBase_h
 #if ENABLE(VIDEO) && USE(GSTREAMER)
 
-#include "GRefPtrGStreamer.h"
+#include "GStreamerCommon.h"
 #include "MainThreadNotifier.h"
 #include "MediaPlayerPrivate.h"
 #include "PlatformLayer.h"
@@ -190,7 +190,7 @@ protected:
 
     void triggerRepaint(GstSample*);
     void repaint();
-    void cancelRepaint();
+    void cancelRepaint(bool destroying = false);
 
     static void repaintCallback(MediaPlayerPrivateGStreamerBase*, GstSample*);
     static void repaintCancelledCallback(MediaPlayerPrivateGStreamerBase*);
@@ -211,7 +211,7 @@ protected:
         TextChanged = 1 << 5,
 #endif
         SizeChanged = 1 << 6,
-#if USE(GSTREAMER_PLAYBIN3)
+#if GST_CHECK_VERSION(1, 10, 0)
         StreamCollectionChanged = 1 << 7
 #endif
     };
@@ -235,7 +235,7 @@ protected:
 
     Condition m_drawCondition;
     Lock m_drawMutex;
-    bool m_drawCancelled { false };
+    bool m_destroying { false };
     RunLoop::Timer<MediaPlayerPrivateGStreamerBase> m_drawTimer;
 
 #if USE(TEXTURE_MAPPER_GL)

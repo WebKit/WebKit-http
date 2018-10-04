@@ -62,13 +62,13 @@ using namespace WebCore;
 namespace WebKit {
 
 struct NetworkResourceLoader::SynchronousLoadData {
-    SynchronousLoadData(Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply&& reply)
+    SynchronousLoadData(RefPtr<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply>&& reply)
         : delayedReply(WTFMove(reply))
     {
         ASSERT(delayedReply);
     }
     ResourceRequest currentRequest;
-    Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply delayedReply;
+    RefPtr<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply> delayedReply;
     ResourceResponse response;
     ResourceError error;
 };
@@ -82,14 +82,14 @@ static void sendReplyToSynchronousRequest(NetworkResourceLoader::SynchronousLoad
     if (buffer && buffer->size())
         responseBuffer.append(buffer->data(), buffer->size());
 
-    data.delayedReply(data.error, data.response, responseBuffer);
+    data.delayedReply->send(data.error, data.response, responseBuffer);
     data.delayedReply = nullptr;
 }
 
-NetworkResourceLoader::NetworkResourceLoader(NetworkResourceLoadParameters&& parameters, NetworkConnectionToWebProcess& connection, Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply&& synchronousReply)
+NetworkResourceLoader::NetworkResourceLoader(NetworkResourceLoadParameters&& parameters, NetworkConnectionToWebProcess& connection, RefPtr<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply>&& synchronousReply)
     : m_parameters { WTFMove(parameters) }
     , m_connection { connection }
-    , m_defersLoading { m_parameters.defersLoading }
+    , m_defersLoading { parameters.defersLoading }
     , m_isAllowedToAskUserForCredentials { m_parameters.clientCredentialPolicy == ClientCredentialPolicy::MayAskClientForCredentials }
     , m_bufferingTimer { *this, &NetworkResourceLoader::bufferingTimerFired }
     , m_cache { sessionID().isEphemeral() ? nullptr : NetworkProcess::singleton().cache() }
@@ -167,7 +167,7 @@ void NetworkResourceLoader::start()
         return;
     }
 
-    startNetworkLoad(originalRequest());
+    startNetworkLoad(ResourceRequest { originalRequest() });
 }
 
 void NetworkResourceLoader::retrieveCacheEntry(const ResourceRequest& request)
@@ -175,7 +175,7 @@ void NetworkResourceLoader::retrieveCacheEntry(const ResourceRequest& request)
     ASSERT(canUseCache(request));
 
     RefPtr<NetworkResourceLoader> loader(this);
-    m_cache->retrieve(request, { m_parameters.webPageID, m_parameters.webFrameID }, [this, loader = WTFMove(loader), request](auto entry) {
+    m_cache->retrieve(request, { m_parameters.webPageID, m_parameters.webFrameID }, [this, loader = WTFMove(loader), request = ResourceRequest { request }](auto entry) mutable {
 #if RELEASE_LOG_DISABLED
         UNUSED_PARAM(this);
 #endif
@@ -185,7 +185,7 @@ void NetworkResourceLoader::retrieveCacheEntry(const ResourceRequest& request)
         }
         if (!entry) {
             RELEASE_LOG_IF_ALLOWED("retrieveCacheEntry: Resource not in cache (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ", isMainResource = %d, isSynchronous = %d)", m_parameters.webPageID, m_parameters.webFrameID, m_parameters.identifier, isMainResource(), isSynchronous());
-            loader->startNetworkLoad(request);
+            loader->startNetworkLoad(WTFMove(request));
             return;
         }
         if (entry->redirectRequest()) {
@@ -195,7 +195,7 @@ void NetworkResourceLoader::retrieveCacheEntry(const ResourceRequest& request)
         }
         if (loader->m_parameters.needsCertificateInfo && !entry->response().certificateInfo()) {
             RELEASE_LOG_IF_ALLOWED("retrieveCacheEntry: Resource does not have required certificate (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ", isMainResource = %d, isSynchronous = %d)", m_parameters.webPageID, m_parameters.webFrameID, m_parameters.identifier, isMainResource(), isSynchronous());
-            loader->startNetworkLoad(request);
+            loader->startNetworkLoad(WTFMove(request));
             return;
         }
         if (entry->needsValidation() || request.cachePolicy() == WebCore::RefreshAnyCacheData) {
@@ -208,7 +208,7 @@ void NetworkResourceLoader::retrieveCacheEntry(const ResourceRequest& request)
     });
 }
 
-void NetworkResourceLoader::startNetworkLoad(const ResourceRequest& request)
+void NetworkResourceLoader::startNetworkLoad(ResourceRequest&& request)
 {
     RELEASE_LOG_IF_ALLOWED("startNetworkLoad: (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ", isMainResource = %d, isSynchronous = %d)", m_parameters.webPageID, m_parameters.webFrameID, m_parameters.identifier, isMainResource(), isSynchronous());
 
@@ -222,7 +222,6 @@ void NetworkResourceLoader::startNetworkLoad(const ResourceRequest& request)
 
     NetworkLoadParameters parameters = m_parameters;
     parameters.defersLoading = m_defersLoading;
-    parameters.request = request;
 
     if (request.url().protocolIsBlob())
         parameters.blobFileReferences = NetworkBlobRegistry::singleton().filesInBlob(m_connection, originalRequest().url());
@@ -239,6 +238,8 @@ void NetworkResourceLoader::startNetworkLoad(const ResourceRequest& request)
         didFailLoading(internalError(request.url()));
         return;
     }
+
+    parameters.request = WTFMove(request);
     m_networkLoad = std::make_unique<NetworkLoad>(*this, WTFMove(parameters), *networkSession);
 
     if (m_defersLoading) {
@@ -335,10 +336,12 @@ auto NetworkResourceLoader::didReceiveResponse(ResourceResponse&& receivedRespon
 
     bool shouldWaitContinueDidReceiveResponse = isMainResource();
     if (shouldSendDidReceiveResponse) {
+        // FIXME: Sanitize response.
+        auto response = sanitizeResponseIfPossible(ResourceResponse { m_response }, ResourceResponse::SanitizationType::CrossOriginSafe);
         if (isSynchronous())
-            m_synchronousLoadData->response = m_response;
+            m_synchronousLoadData->response = WTFMove(response);
         else
-            send(Messages::WebResourceLoader::DidReceiveResponse(m_response, shouldWaitContinueDidReceiveResponse));
+            send(Messages::WebResourceLoader::DidReceiveResponse { response, shouldWaitContinueDidReceiveResponse });
     }
 
     // For main resources, the web process is responsible for sending back a NetworkResourceLoader::ContinueDidReceiveResponse message.
@@ -459,13 +462,21 @@ void NetworkResourceLoader::willSendRedirectedRequest(ResourceRequest&& request,
     if (canUseCachedRedirect(request))
         m_cache->storeRedirect(request, redirectResponse, redirectRequest);
 
-    send(Messages::WebResourceLoader::WillSendRequest(redirectRequest, sanitizeRedirectResponseIfPossible(WTFMove(redirectResponse))));
+    send(Messages::WebResourceLoader::WillSendRequest(redirectRequest, sanitizeResponseIfPossible(WTFMove(redirectResponse), ResourceResponse::SanitizationType::Redirection)));
 }
 
-ResourceResponse NetworkResourceLoader::sanitizeRedirectResponseIfPossible(ResourceResponse&& response)
+ResourceResponse NetworkResourceLoader::sanitizeResponseIfPossible(ResourceResponse&& response, ResourceResponse::SanitizationType type)
 {
-    if (m_parameters.shouldRestrictHTTPResponseAccess)
-        response.sanitizeRedirectionHTTPHeaderFields();
+    if (m_parameters.shouldRestrictHTTPResponseAccess) {
+        if (type == ResourceResponse::SanitizationType::CrossOriginSafe) {
+            // We reduce filtering when it would otherwise be visible to scripts.
+            // FIXME: We should use response tainting once computed in Network Process.
+            bool isSameOrigin = m_parameters.sourceOrigin ? m_parameters.sourceOrigin->canRequest(response.url()) : protocolHostAndPortAreEqual(response.url(), m_parameters.request.url());
+            if (isSameOrigin && m_parameters.options.destination == FetchOptions::Destination::EmptyString)
+                type = ResourceResponse::SanitizationType::RemoveCookies;
+        }
+        response.sanitizeHTTPHeaderFields(type);
+    }
     return WTFMove(response);
 }
 
@@ -487,7 +498,7 @@ void NetworkResourceLoader::continueWillSendRequest(ResourceRequest&& newRequest
         if (canUseCachedRedirect(newRequest))
             retrieveCacheEntry(newRequest);
         else
-            startNetworkLoad(newRequest);
+            startNetworkLoad(WTFMove(newRequest));
 
         return;
     }
@@ -568,15 +579,16 @@ void NetworkResourceLoader::tryStoreAsCacheEntry()
 
 void NetworkResourceLoader::didRetrieveCacheEntry(std::unique_ptr<NetworkCache::Entry> entry)
 {
+    auto response = sanitizeResponseIfPossible(ResourceResponse { entry->response() }, ResourceResponse::SanitizationType::CrossOriginSafe);
     if (isSynchronous()) {
-        m_synchronousLoadData->response = entry->response();
+        m_synchronousLoadData->response = WTFMove(response);
         sendReplyToSynchronousRequest(*m_synchronousLoadData, entry->buffer());
         cleanup();
         return;
     }
 
     bool needsContinueDidReceiveResponseMessage = isMainResource();
-    send(Messages::WebResourceLoader::DidReceiveResponse(entry->response(), needsContinueDidReceiveResponseMessage));
+    send(Messages::WebResourceLoader::DidReceiveResponse { response, needsContinueDidReceiveResponseMessage });
 
     if (needsContinueDidReceiveResponseMessage)
         m_cacheEntryWaitingForContinueDidReceiveResponse = WTFMove(entry);
@@ -661,7 +673,7 @@ void NetworkResourceLoader::validateCacheEntry(std::unique_ptr<NetworkCache::Ent
 
     m_cacheEntryForValidation = WTFMove(entry);
 
-    startNetworkLoad(revalidationRequest);
+    startNetworkLoad(WTFMove(revalidationRequest));
 }
 
 void NetworkResourceLoader::dispatchWillSendRequestForCacheEntry(std::unique_ptr<NetworkCache::Entry> entry)
@@ -672,7 +684,7 @@ void NetworkResourceLoader::dispatchWillSendRequestForCacheEntry(std::unique_ptr
     LOG(NetworkCache, "(NetworkProcess) Executing cached redirect");
 
     ++m_redirectCount;
-    send(Messages::WebResourceLoader::WillSendRequest { *entry->redirectRequest(), sanitizeRedirectResponseIfPossible(ResourceResponse { entry->response() }) });
+    send(Messages::WebResourceLoader::WillSendRequest { *entry->redirectRequest(), sanitizeResponseIfPossible(ResourceResponse { entry->response() }, ResourceResponse::SanitizationType::Redirection) });
     m_isWaitingContinueWillSendRequestForCachedRedirect = true;
 }
 

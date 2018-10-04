@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -1229,16 +1229,10 @@ size_t JIT_OPERATION operationRegExpTestGeneric(ExecState* exec, JSGlobalObject*
     return regexp->test(exec, globalObject, input);
 }
 
-size_t JIT_OPERATION operationCompareStrictEqCell(ExecState* exec, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2)
+size_t JIT_OPERATION operationCompareStrictEqCell(ExecState* exec, JSCell* op1, JSCell* op2)
 {
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
-    
-    JSValue op1 = JSValue::decode(encodedOp1);
-    JSValue op2 = JSValue::decode(encodedOp2);
-    
-    ASSERT(op1.isCell());
-    ASSERT(op2.isCell());
     
     return JSValue::strictEqualSlowCaseInline(exec, op1, op2);
 }
@@ -1257,18 +1251,6 @@ EncodedJSValue JIT_OPERATION operationToNumber(ExecState* exec, EncodedJSValue v
     NativeCallFrameTracer tracer(vm, exec);
 
     return JSValue::encode(jsNumber(JSValue::decode(value).toNumber(exec)));
-}
-
-EncodedJSValue JIT_OPERATION operationGetByIdWithThis(ExecState* exec, EncodedJSValue encodedBase, EncodedJSValue encodedThis, UniquedStringImpl* impl)
-{
-    VM& vm = exec->vm();
-    NativeCallFrameTracer tracer(&vm, exec);
-
-    JSValue baseValue = JSValue::decode(encodedBase);
-    JSValue thisVal = JSValue::decode(encodedThis);
-    PropertySlot slot(thisVal, PropertySlot::PropertySlot::InternalMethodType::Get);
-    JSValue result = baseValue.get(exec, Identifier::fromUid(exec, impl), slot);
-    return JSValue::encode(result);
 }
 
 EncodedJSValue JIT_OPERATION operationGetByValWithThis(ExecState* exec, EncodedJSValue encodedBase, EncodedJSValue encodedThis, EncodedJSValue encodedSubscript)
@@ -1915,16 +1897,16 @@ EncodedJSValue JIT_OPERATION operationHasGenericProperty(ExecState* exec, Encode
     return JSValue::encode(jsBoolean(base->hasPropertyGeneric(exec, asString(propertyName)->toIdentifier(exec), PropertySlot::InternalMethodType::GetOwnProperty)));
 }
 
-EncodedJSValue JIT_OPERATION operationHasIndexedPropertyByInt(ExecState* exec, JSCell* baseCell, int32_t subscript, int32_t internalMethodType)
+size_t JIT_OPERATION operationHasIndexedPropertyByInt(ExecState* exec, JSCell* baseCell, int32_t subscript, int32_t internalMethodType)
 {
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
     JSObject* object = baseCell->toObject(exec, exec->lexicalGlobalObject());
     if (UNLIKELY(subscript < 0)) {
         // Go the slowest way possible because negative indices don't use indexed storage.
-        return JSValue::encode(jsBoolean(object->hasPropertyGeneric(exec, Identifier::from(exec, subscript), static_cast<PropertySlot::InternalMethodType>(internalMethodType))));
+        return object->hasPropertyGeneric(exec, Identifier::from(exec, subscript), static_cast<PropertySlot::InternalMethodType>(internalMethodType));
     }
-    return JSValue::encode(jsBoolean(object->hasPropertyGeneric(exec, subscript, static_cast<PropertySlot::InternalMethodType>(internalMethodType))));
+    return object->hasPropertyGeneric(exec, subscript, static_cast<PropertySlot::InternalMethodType>(internalMethodType));
 }
 
 JSCell* JIT_OPERATION operationGetPropertyEnumerator(ExecState* exec, EncodedJSValue encodedBase)
@@ -3062,7 +3044,7 @@ static char* tierUpCommon(ExecState* exec, unsigned originBytecodeIndex, unsigne
                 dataLog("OSR entry: From ", RawPointer(jitCode), " got entry block ", RawPointer(entryBlock), "\n");
             if (void* address = FTL::prepareOSREntry(exec, codeBlock, entryBlock, originBytecodeIndex, streamIndex)) {
                 CODEBLOCK_LOG_EVENT(entryBlock, "osrEntry", ("at bc#", originBytecodeIndex));
-                return static_cast<char*>(address);
+                return retagCodePtr<char*>(address, CodePtrTag, bitwise_cast<PtrTag>(exec));
             }
         }
     }
@@ -3182,7 +3164,9 @@ static char* tierUpCommon(ExecState* exec, unsigned originBytecodeIndex, unsigne
         dataLog("Immediate OSR entry: From ", RawPointer(jitCode), " got entry block ", RawPointer(jitCode->osrEntryBlock()), "\n");
     void* address = FTL::prepareOSREntry(
         exec, codeBlock, jitCode->osrEntryBlock(), originBytecodeIndex, streamIndex);
-    return static_cast<char*>(address);
+    if (!address)
+        return nullptr;
+    return retagCodePtr<char*>(address, CodePtrTag, bitwise_cast<PtrTag>(exec));
 }
 
 void JIT_OPERATION triggerTierUpNowInLoop(ExecState* exec, unsigned bytecodeIndex)

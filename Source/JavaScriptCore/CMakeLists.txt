@@ -83,7 +83,6 @@ set(JavaScriptCore_OBJECT_LUT_SOURCES
     runtime/NumberConstructor.cpp
     runtime/NumberPrototype.cpp
     runtime/ObjectConstructor.cpp
-    runtime/PtrTag.cpp
     runtime/ReflectObject.cpp
     runtime/RegExpConstructor.cpp
     runtime/RegExpPrototype.cpp
@@ -616,13 +615,13 @@ set(JavaScriptCore_PRIVATE_FRAMEWORK_HEADERS
 
     jit/AssemblyHelpers.h
     jit/CCallHelpers.h
-    jit/CompactJITCodeMap.h
     jit/ExecutableAllocator.h
     jit/FPRInfo.h
     jit/GCAwareJITStubRoutine.h
     jit/GPRInfo.h
     jit/JITAllocator.h
     jit/JITCode.h
+    jit/JITCodeMap.h
     jit/JITCompilationEffort.h
     jit/JITMathICForwards.h
     jit/JITOperations.h

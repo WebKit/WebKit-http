@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006-2018 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -84,15 +84,17 @@ struct ScreenProperties;
 NSScreen *screen(NSWindow *);
 NSScreen *screen(PlatformDisplayID);
 
+FloatRect screenRectForDisplay(PlatformDisplayID);
+
 WEBCORE_EXPORT FloatRect toUserSpace(const NSRect&, NSWindow *destination);
+FloatRect toUserSpaceForPrimaryScreen(const NSRect&);
 WEBCORE_EXPORT NSRect toDeviceSpace(const FloatRect&, NSWindow *source);
 
 NSPoint flipScreenPoint(const NSPoint&, NSScreen *);
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
-WEBCORE_EXPORT void getScreenProperties(HashMap<PlatformDisplayID, ScreenProperties>&);
-WEBCORE_EXPORT void setScreenProperties(const HashMap<PlatformDisplayID, ScreenProperties>&);
-#endif
+WEBCORE_EXPORT std::pair<PlatformDisplayID, HashMap<PlatformDisplayID, ScreenProperties>> getScreenProperties();
+WEBCORE_EXPORT void setScreenProperties(PlatformDisplayID primaryScreenID, const HashMap<PlatformDisplayID, ScreenProperties>&);
+ScreenProperties screenProperties(PlatformDisplayID);
 
 #endif
 

@@ -23,10 +23,25 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+class InlineFormattingContext {
+public:
+    void layout() override;
+
+private:
+    void handleInlineContainer(const Layout::Container&);
+    void handleInlineBlockContainer(const Layout::Container&);
+    void handleInlineContent(const Layout::Box&);
+    void handleInlineBox(const Layout::InlineBox&);
+    void handleText(const Layout::InlineBox&);
+    void handleFloatingBox(const Layout::Box&);
+};
+*/
 class InlineFormattingContext extends FormattingContext {
     constructor(inlineFormattingState) {
         super(inlineFormattingState);
         ASSERT(this.formattingRoot().isBlockContainerBox());
+        this.m_inlineContainerStack = new Array();
     }
 
     layout() {
@@ -34,39 +49,68 @@ class InlineFormattingContext extends FormattingContext {
         // In an inline formatting context, boxes are laid out horizontally, one after the other, beginning at the top of a containing block.
         if (!this.formattingRoot().firstChild())
             return;
-        // This is a post-order tree traversal layout.
-        // The root container layout is done in the formatting context it lives in, not that one it creates, so let's start with the first child.
         this.m_line = this._createNewLine();
-        this._addToLayoutQueue(this.formattingRoot().firstChild());
+        let inlineContainerStack = new Array();
+        this._addToLayoutQueue(this._firstInFlowChildWithNeedsLayout(this.formattingRoot()));
         while (this._descendantNeedsLayout()) {
-            // Travers down on the descendants until we find a leaf node.
-            while (true) {
-                let layoutBox = this._nextInLayoutQueue();
-                if (layoutBox.establishesFormattingContext()) {
-                    this.layoutState().layout(layoutBox);
-                    break;
-                }
-                if (!layoutBox.isContainer() || !layoutBox.hasChild())
-                    break;
-                this._addToLayoutQueue(layoutBox.firstChild());
-            }
-            while (this._descendantNeedsLayout()) {
-                let layoutBox = this._nextInLayoutQueue();
-                if (layoutBox instanceof Layout.InlineBox)
-                    this._handleInlineBox(layoutBox);
-                else if (layoutBox.isFloatingPositioned())
-                    this._handleFloatingBox(layoutBox);
-                // We are done with laying out this box.
-                this._removeFromLayoutQueue(layoutBox);
-                if (layoutBox.nextSibling()) {
-                    this._addToLayoutQueue(layoutBox.nextSibling());
-                    break;
-                }
-            }
+            let layoutBox = this._nextInLayoutQueue();
+            if (layoutBox.isInlineContainer())
+                this._handleInlineContainer(layoutBox);
+            else if (layoutBox.isInlineBlockBox())
+                this._handleInlineBlockContainer(layoutBox);
+            else
+                this._handleInlineContent(layoutBox);
         }
-        //this._placeOutOfFlowDescendants(this.formattingRoot());
+        // Place the inflow positioned children.
+        this._placeInFlowPositionedChildren(this.formattingRoot());
+        // And take care of out-of-flow boxes as the final step.
+        this._layoutOutOfFlowDescendants(this.formattingRoot());
         this._commitLine();
+        ASSERT(!this.m_inlineContainerStack.length);
+        ASSERT(!this.formattingState().layoutNeeded());
    }
+
+    _handleInlineContainer(inlineContainer) {
+        ASSERT(!inlineContainer.establishesFormattingContext());
+        let inlineContainerStart = this.m_inlineContainerStack.indexOf(inlineContainer) == -1;
+        if (inlineContainerStart) {
+            this.m_inlineContainerStack.push(inlineContainer);
+            this._adjustLineForInlineContainerStart(inlineContainer);
+            this._addToLayoutQueue(this._firstInFlowChildWithNeedsLayout(inlineContainer));
+            // Keep the inline container in the layout stack so that we can finish it when all the descendants are all set.
+            return;
+        }
+        this.m_inlineContainerStack.pop(inlineContainer);
+        this._adjustLineForInlineContainerEnd(inlineContainer);
+        this._clearAndMoveToNext(inlineContainer);
+        // Place inflow positioned children.
+        this._placeInFlowPositionedChildren(inlineContainer);
+    }
+
+
+    _handleInlineBlockContainer(inlineBlockContainer) {
+        ASSERT(inlineBlockContainer.establishesFormattingContext());
+        let displayBox = this.displayBox(inlineBlockContainer);
+
+        // TODO: auto width/height
+        this._adjustLineForInlineContainerStart(inlineBlockContainer);
+        displayBox.setWidth(Utils.width(inlineBlockContainer) + Utils.computedHorizontalBorderAndPadding(inlineBlockContainer.node()));
+        this.layoutState().formattingContext(inlineBlockContainer).layout();
+        displayBox.setHeight(Utils.height(inlineBlockContainer) + Utils.computedVerticalBorderAndPadding(inlineBlockContainer.node()));
+        this._adjustLineForInlineContainerEnd(inlineBlockContainer);
+        this._line().addInlineContainerBox(displayBox.size());
+        this._clearAndMoveToNext(inlineBlockContainer);
+    }
+
+    _handleInlineContent(layoutBox) {
+        if (layoutBox.isInlineBox())
+            this._handleInlineBox(layoutBox);
+        else if (layoutBox.isFloatingPositioned())
+            this._handleFloatingBox(layoutBox);
+        else
+            ASSERT_NOT_REACHED();
+        this._clearAndMoveToNext(layoutBox);
+    }
 
     _handleInlineBox(inlineBox) {
         if (inlineBox.text())
@@ -84,15 +128,40 @@ class InlineFormattingContext extends FormattingContext {
             for (let run of textRuns)
                 this._line().addTextLineBox(run.startPosition, run.endPosition, new LayoutSize(run.width, Utils.textHeight(inlineBox)));
             text = text.slice(textRuns[textRuns.length - 1].endPosition, text.length);
-            this._commitLine();
+            // Commit the line unless we run out of content.
+            if (text.length)
+                this._commitLine();
         }
     }
 
     _handleFloatingBox(floatingBox) {
         this._computeFloatingWidth(floatingBox);
+        this.layoutState().formattingContext(floatingBox).layout();
         this._computeFloatingHeight(floatingBox);
+        let displayBox = this.displayBox(floatingBox);
+        // Position this float statically first, the floating context will figure it out the final position.
+        let floatingStaticPosition = this._line().rect().topLeft();
+        if (displayBox.width() > this._line().availableWidth())
+            floatingStaticPosition = new LayoutPoint(this._line().rect().bottom(), this.displayBox(this.formattingRoot()).contentBox().left());
+        displayBox.setTopLeft(floatingStaticPosition);
         this.floatingContext().computePosition(floatingBox);
-        this._line().addFloatingBox(this.displayBox(floatingBox).size());
+        // Check if the floating box is actually on the current line or got pushed further down.
+        if (displayBox.top() >= this._line().rect().bottom())
+            return;
+        let floatWidth = displayBox.width();
+        this._line().shrink(floatWidth);
+        if (Utils.isFloatingLeft(floatingBox))
+            this._line().moveContentHorizontally(floatWidth);
+    }
+
+    _adjustLineForInlineContainerStart(inlineContainer) {
+        let offset = this.marginLeft(inlineContainer) + Utils.computedBorderAndPaddingLeft(inlineContainer.node());
+        this._line().adjustWithOffset(offset);
+    }
+
+    _adjustLineForInlineContainerEnd(inlineContainer) {
+        let offset = this.marginRight(inlineContainer) + Utils.computedBorderAndPaddingRight(inlineContainer.node());
+        this._line().adjustWithOffset(offset);
     }
 
     _commitLine() {
@@ -108,38 +177,57 @@ class InlineFormattingContext extends FormattingContext {
 
     _createNewLine() {
         let lineRect = this.displayBox(this.formattingRoot()).contentBox();
-        let floatingLeft = this._mapFloatingPosition(this.floatingContext().left());
-        let floatingRight = this._mapFloatingPosition(this.floatingContext().right());
-        // TODO: Check the case when the containing block is narrower than the floats.
+        let lines = this.formattingState().lines();
+        if (lines.length)
+            lineRect.setTop(lines[lines.length - 1].rect().bottom());
+        // Find floatings on this line.
+        // Offset the vertical position if the floating context belongs to the parent formatting context.
+        let lineTopInFloatingPosition = this._mapFloatingVerticalPosition(lineRect.top());
+        let floatingLeft = this._mapFloatingHorizontalPosition(this.floatingContext().left(lineTopInFloatingPosition));
+        let floatingRight = this._mapFloatingHorizontalPosition(this.floatingContext().right(lineTopInFloatingPosition));
         if (!Number.isNaN(floatingLeft) && !Number.isNaN(floatingRight)) {
             // Floats on both sides.
             lineRect.setLeft(floatingLeft);
             lineRect.setWidth(floatingRight - floatingLeft);
-        } else if (!Number.isNaN(floatingLeft))
+        } else if (!Number.isNaN(floatingLeft)) {
             lineRect.setLeft(floatingLeft);
-        else if (!Number.isNaN(floatingRight))
+            lineRect.shrinkBy(new LayoutSize(floatingLeft, 0));
+        } else if (!Number.isNaN(floatingRight))
             lineRect.setRight(floatingRight);
 
-        let lines = this.formattingState().lines();
-        if (lines.length)
-            lineRect.setTop(lines[lines.length - 1].rect().bottom());
         return new Line(lineRect.topLeft(), Utils.computedLineHeight(this.formattingRoot().node()), lineRect.width());
     }
 
-    _mapFloatingPosition(verticalPosition) {
-        if (Number.isNaN(verticalPosition))
-            return verticalPosition;
+    _mapFloatingVerticalPosition(verticalPosition) {
         // Floats position are relative to their formatting root (which might not be this formatting root).
         let root = this.displayBox(this.formattingRoot());
         let floatFormattingRoot = this.displayBox(this.floatingContext().formattingRoot());
         if (root == floatFormattingRoot)
             return verticalPosition;
+        let rootTop = Utils.mapPosition(root.topLeft(), root, floatFormattingRoot).top();
+        return rootTop + root.contentBox().top() + verticalPosition;
+    }
+
+    _mapFloatingHorizontalPosition(horizontalPosition) {
+        if (Number.isNaN(horizontalPosition))
+            return horizontalPosition;
+        // Floats position are relative to their formatting root (which might not be this formatting root).
+        let root = this.displayBox(this.formattingRoot());
+        let floatFormattingRoot = this.displayBox(this.floatingContext().formattingRoot());
+        if (root == floatFormattingRoot)
+            return horizontalPosition;
         let rootLeft = Utils.mapPosition(root.topLeft(), root, floatFormattingRoot).left();
         rootLeft += root.contentBox().left();
         // The left most float is to the right of the root.
-        if (rootLeft >= verticalPosition)
+        if (rootLeft >= horizontalPosition)
             return root.contentBox().left();
-        return verticalPosition - rootLeft;
+        return horizontalPosition - rootLeft;
      }
+
+    _clearAndMoveToNext(layoutBox) {
+        this._removeFromLayoutQueue(layoutBox);
+        this.formattingState().clearNeedsLayout(layoutBox);
+        this._addToLayoutQueue(this._nextInFlowSiblingWithNeedsLayout(layoutBox));
+    }
 }
 

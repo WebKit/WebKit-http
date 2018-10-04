@@ -185,6 +185,8 @@ namespace JSC { namespace DFG {
     macro(GetById, NodeResultJS | NodeMustGenerate) \
     macro(GetByIdFlush, NodeResultJS | NodeMustGenerate) \
     macro(GetByIdWithThis, NodeResultJS | NodeMustGenerate) \
+    macro(GetByIdDirect, NodeResultJS | NodeMustGenerate) \
+    macro(GetByIdDirectFlush, NodeResultJS | NodeMustGenerate) \
     macro(PutById, NodeMustGenerate) \
     macro(PutByIdFlush, NodeMustGenerate) \
     macro(PutByIdDirect, NodeMustGenerate) \
@@ -280,7 +282,7 @@ namespace JSC { namespace DFG {
     /* Optimizations for string access */ \
     macro(StringCharCodeAt, NodeResultInt32) \
     macro(StringCharAt, NodeResultJS) \
-    macro(StringFromCharCode, NodeResultJS) \
+    macro(StringFromCharCode, NodeResultJS | NodeMustGenerate) \
     \
     /* Nodes for comparison operations. */\
     macro(CompareLess, NodeResultBoolean | NodeMustGenerate) \

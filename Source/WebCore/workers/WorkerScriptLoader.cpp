@@ -28,6 +28,7 @@
 #include "WorkerScriptLoader.h"
 
 #include "ContentSecurityPolicy.h"
+#include "FetchIdioms.h"
 #include "ResourceResponse.h"
 #include "ScriptExecutionContext.h"
 #include "ServiceWorker.h"
@@ -49,6 +50,7 @@ void WorkerScriptLoader::loadSynchronously(ScriptExecutionContext* scriptExecuti
     auto& workerGlobalScope = downcast<WorkerGlobalScope>(*scriptExecutionContext);
 
     m_url = url;
+    m_destination = FetchOptions::Destination::Script;
 
     std::unique_ptr<ResourceRequest> request(createResourceRequest(initiatorIdentifier));
     if (!request)
@@ -65,6 +67,7 @@ void WorkerScriptLoader::loadSynchronously(ScriptExecutionContext* scriptExecuti
     options.cache = cachePolicy;
     options.sendLoadCallbacks = SendCallbacks;
     options.contentSecurityPolicyEnforcement = contentSecurityPolicyEnforcement;
+    options.destination = m_destination;
 #if ENABLE(SERVICE_WORKER)
     options.serviceWorkersMode = workerGlobalScope.isServiceWorkerGlobalScope() ? ServiceWorkersMode::None : ServiceWorkersMode::All;
     if (auto* activeServiceWorker = workerGlobalScope.activeServiceWorker())
@@ -73,10 +76,11 @@ void WorkerScriptLoader::loadSynchronously(ScriptExecutionContext* scriptExecuti
     WorkerThreadableLoader::loadResourceSynchronously(workerGlobalScope, WTFMove(*request), *this, options);
 }
 
-void WorkerScriptLoader::loadAsynchronously(ScriptExecutionContext& scriptExecutionContext, ResourceRequest&& scriptRequest, FetchOptions::Mode mode, FetchOptions::Cache cachePolicy, FetchOptions::Redirect redirectPolicy, ContentSecurityPolicyEnforcement contentSecurityPolicyEnforcement, WorkerScriptLoaderClient& client)
+void WorkerScriptLoader::loadAsynchronously(ScriptExecutionContext& scriptExecutionContext, ResourceRequest&& scriptRequest, FetchOptions&& fetchOptions, ContentSecurityPolicyEnforcement contentSecurityPolicyEnforcement, ServiceWorkersMode serviceWorkerMode, WorkerScriptLoaderClient& client)
 {
     m_client = &client;
     m_url = scriptRequest.url();
+    m_destination = fetchOptions.destination;
 
     ASSERT(scriptRequest.httpMethod() == "GET");
 
@@ -86,20 +90,19 @@ void WorkerScriptLoader::loadAsynchronously(ScriptExecutionContext& scriptExecut
 
     // Only used for loading worker scripts in classic mode.
     // FIXME: We should add an option to set credential mode.
-    ASSERT(mode == FetchOptions::Mode::SameOrigin);
+    ASSERT(fetchOptions.mode == FetchOptions::Mode::SameOrigin);
 
-    ThreadableLoaderOptions options;
+    ThreadableLoaderOptions options { WTFMove(fetchOptions) };
     options.credentials = FetchOptions::Credentials::SameOrigin;
-    options.mode = mode;
-    options.cache = cachePolicy;
-    options.redirect = redirectPolicy;
     options.sendLoadCallbacks = SendCallbacks;
     options.contentSecurityPolicyEnforcement = contentSecurityPolicyEnforcement;
+    // A service worker job can be executed from a worker context or a document context.
+    options.serviceWorkersMode = serviceWorkerMode;
 #if ENABLE(SERVICE_WORKER)
-    options.serviceWorkersMode = m_client->isServiceWorkerClient() ? ServiceWorkersMode::None : ServiceWorkersMode::All;
     if (auto* activeServiceWorker = scriptExecutionContext.activeServiceWorker())
         options.serviceWorkerRegistrationIdentifier = activeServiceWorker->registrationIdentifier();
 #endif
+
     // During create, callbacks may happen which remove the last reference to this object.
     Ref<WorkerScriptLoader> protectedThis(*this);
     m_threadableLoader = ThreadableLoader::create(scriptExecutionContext, *this, WTFMove(*request), options);
@@ -127,6 +130,15 @@ void WorkerScriptLoader::didReceiveResponse(unsigned long identifier, const Reso
     }
 
     if (!isScriptAllowedByNosniff(response)) {
+        String message = makeString("Refused to execute ", response.url().stringCenterEllipsizedToLength(), " as script because \"X-Content-Type: nosniff\" was given and its Content-Type is not a script MIME type.");
+        m_error = ResourceError { errorDomainWebKitInternal, 0, url(), message, ResourceError::Type::General };
+        m_failed = true;
+        return;
+    }
+
+    if (shouldBlockResponseDueToMIMEType(response, m_destination)) {
+        String message = makeString("Refused to execute ", response.url().stringCenterEllipsizedToLength(), " as script because ", response.mimeType(), " is not a script MIME type.");
+        m_error = ResourceError { errorDomainWebKitInternal, 0, response.url(), message, ResourceError::Type::General };
         m_failed = true;
         return;
     }

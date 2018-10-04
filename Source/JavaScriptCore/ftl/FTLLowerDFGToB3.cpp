@@ -286,17 +286,19 @@ public:
 
                     jit.move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
                     jit.move(CCallHelpers::TrustedImmPtr(jit.codeBlock()), GPRInfo::argumentGPR1);
-                    CCallHelpers::Call throwCall = jit.call(NoPtrTag);
+                    PtrTag throwTag = ptrTag(FTLOperationPtrTag, nextPtrTagID());
+                    CCallHelpers::Call throwCall = jit.call(throwTag);
 
                     jit.move(CCallHelpers::TrustedImmPtr(vm), GPRInfo::argumentGPR0);
                     jit.move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR1);
-                    CCallHelpers::Call lookupExceptionHandlerCall = jit.call(NoPtrTag);
+                    PtrTag lookupTag = ptrTag(FTLOperationPtrTag, nextPtrTagID());
+                    CCallHelpers::Call lookupExceptionHandlerCall = jit.call(lookupTag);
                     jit.jumpToExceptionHandler(*vm);
 
                     jit.addLinkTask(
                         [=] (LinkBuffer& linkBuffer) {
-                            linkBuffer.link(throwCall, FunctionPtr(operationThrowStackOverflowError));
-                            linkBuffer.link(lookupExceptionHandlerCall, FunctionPtr(lookupExceptionHandlerFromCallerFrame));
+                            linkBuffer.link(throwCall, FunctionPtr(operationThrowStackOverflowError, throwTag));
+                            linkBuffer.link(lookupExceptionHandlerCall, FunctionPtr(lookupExceptionHandlerFromCallerFrame, lookupTag));
                     });
                 });
             });
@@ -363,7 +365,7 @@ public:
                 CCallHelpers::Jump jump = jit.jump();
                 jit.addLinkTask(
                     [=] (LinkBuffer& linkBuffer) {
-                        linkBuffer.link(jump, linkBuffer.locationOf(*exceptionHandler));
+                        linkBuffer.link(jump, linkBuffer.locationOf(*exceptionHandler, ExceptionHandlerPtrTag));
                     });
             });
         m_out.unreachable();
@@ -703,6 +705,10 @@ private:
             break;
         case GetByIdWithThis:
             compileGetByIdWithThis();
+            break;
+        case GetByIdDirect:
+        case GetByIdDirectFlush:
+            compileGetById(AccessType::GetDirect);
             break;
         case In:
             compileIn();
@@ -3043,7 +3049,7 @@ private:
     
     void compileGetById(AccessType type)
     {
-        ASSERT(type == AccessType::Get || type == AccessType::TryGet);
+        ASSERT(type == AccessType::Get || type == AccessType::TryGet || type == AccessType::GetDirect);
         switch (m_node->child1().useKind()) {
         case CellUse: {
             setJSValue(getById(lowCell(m_node->child1()), type));
@@ -3067,11 +3073,7 @@ private:
             ValueFromBlock cellResult = m_out.anchor(getById(value, type));
             m_out.jump(continuation);
 
-            J_JITOperation_EJI getByIdFunction;
-            if (type == AccessType::Get)
-                getByIdFunction = operationGetByIdGeneric;
-            else
-                getByIdFunction = operationTryGetByIdGeneric;
+            J_JITOperation_EJI getByIdFunction = appropriateGenericGetByIdFunction(type);
 
             m_out.appendTo(notCellCase, continuation);
             ValueFromBlock notCellResult = m_out.anchor(vmCall(
@@ -3118,7 +3120,7 @@ private:
 
             m_out.appendTo(notCellCase, continuation);
             ValueFromBlock notCellResult = m_out.anchor(vmCall(
-                Int64, m_out.operation(operationGetByIdWithThis),
+                Int64, m_out.operation(operationGetByIdWithThisGeneric),
                 m_callFrame, base, thisValue,
                 m_out.constIntPtr(m_graph.identifiers()[m_node->identifierNumber()])));
             m_out.jump(continuation);
@@ -4449,11 +4451,11 @@ private:
                 if (m_node->arrayMode().type() != Array::Double) {
                     value = lowJSValue(element, ManualOperandSpeculation);
                     if (m_node->arrayMode().type() == Array::Int32)
-                        RELEASE_ASSERT(!m_interpreter.needsTypeCheck(element, SpecInt32Only));
+                        DFG_ASSERT(m_graph, m_node, !m_interpreter.needsTypeCheck(element, SpecInt32Only));
                     storeType = Output::Store64;
                 } else {
                     value = lowDouble(element);
-                    RELEASE_ASSERT(!m_interpreter.needsTypeCheck(element, SpecDoubleReal));
+                    DFG_ASSERT(m_graph, m_node, !m_interpreter.needsTypeCheck(element, SpecDoubleReal));
                     storeType = Output::StoreDouble;
                 }
 
@@ -4529,11 +4531,11 @@ private:
                 if (m_node->arrayMode().type() != Array::Double) {
                     value = lowJSValue(element, ManualOperandSpeculation);
                     if (m_node->arrayMode().type() == Array::Int32)
-                        RELEASE_ASSERT(!m_interpreter.needsTypeCheck(element, SpecInt32Only));
+                        DFG_ASSERT(m_graph, m_node, !m_interpreter.needsTypeCheck(element, SpecInt32Only));
                     storeType = Output::Store64;
                 } else {
                     value = lowDouble(element);
-                    RELEASE_ASSERT(!m_interpreter.needsTypeCheck(element, SpecDoubleReal));
+                    DFG_ASSERT(m_graph, m_node, !m_interpreter.needsTypeCheck(element, SpecDoubleReal));
                     storeType = Output::StoreDouble;
                 }
 
@@ -6861,6 +6863,29 @@ private:
             return;
         }
         
+        if (m_node->isBinaryUseKind(BigIntUse)) {
+            // FIXME: [ESNext][BigInt] Create specialized version of strict equals for BigIntUse
+            // https://bugs.webkit.org/show_bug.cgi?id=182895
+            LValue left = lowBigInt(m_node->child1());
+            LValue right = lowBigInt(m_node->child2());
+
+            LBasicBlock notTriviallyEqualCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
+
+            ValueFromBlock fastResult = m_out.anchor(m_out.booleanTrue);
+            m_out.branch(m_out.equal(left, right), rarely(continuation), usually(notTriviallyEqualCase));
+
+            LBasicBlock lastNext = m_out.appendTo(notTriviallyEqualCase, continuation);
+
+            ValueFromBlock slowResult = m_out.anchor(m_out.notNull(vmCall(
+                pointerType(), m_out.operation(operationCompareStrictEq), m_callFrame, left, right)));
+            m_out.jump(continuation);
+
+            m_out.appendTo(continuation, lastNext);
+            setBoolean(m_out.phi(Int32, fastResult, slowResult));
+            return;
+        }
+
         if (m_node->isBinaryUseKind(SymbolUse, UntypedUse)
             || m_node->isBinaryUseKind(UntypedUse, SymbolUse)) {
             Edge symbolEdge = m_node->child1();
@@ -7145,8 +7170,9 @@ private:
 
                 jit.addLinkTask(
                     [=] (LinkBuffer& linkBuffer) {
+                        PtrTag linkTag = ptrTag(LinkCallPtrTag, vm);
                         MacroAssemblerCodePtr linkCall =
-                            vm->getCTIStub(linkCallThunkGenerator).code();
+                            vm->getCTIStub(linkCallThunkGenerator).retaggedCode(linkTag, NearCodePtrTag);
                         linkBuffer.link(slowCall, FunctionPtr(linkCall));
 
                         callLinkInfo->setCallLocations(
@@ -7294,7 +7320,7 @@ private:
                         [=] (LinkBuffer& linkBuffer) {
                             CodeLocationLabel patchableJumpLocation = linkBuffer.locationOf(patchableJump);
                             CodeLocationNearCall callLocation = linkBuffer.locationOfNearCall(call);
-                            CodeLocationLabel slowPathLocation = linkBuffer.locationOf(slowPath);
+                            CodeLocationLabel slowPathLocation = linkBuffer.locationOf(slowPath, SlowPathPtrTag);
                             
                             callLinkInfo->setCallLocations(
                                 patchableJumpLocation,
@@ -7342,7 +7368,7 @@ private:
                         jit.addLinkTask(
                             [=] (LinkBuffer& linkBuffer) {
                                 CodeLocationNearCall callLocation = linkBuffer.locationOfNearCall(call);
-                                CodeLocationLabel slowPathLocation = linkBuffer.locationOf(slowPath);
+                                CodeLocationLabel slowPathLocation = linkBuffer.locationOf(slowPath, NearCodePtrTag);
                                 
                                 linkBuffer.link(call, slowPathLocation);
                                 
@@ -7466,8 +7492,9 @@ private:
 
                 jit.addLinkTask(
                     [=] (LinkBuffer& linkBuffer) {
+                        PtrTag linkTag = ptrTag(LinkCallPtrTag, vm);
                         MacroAssemblerCodePtr linkCall =
-                            vm->getCTIStub(linkCallThunkGenerator).code();
+                            vm->getCTIStub(linkCallThunkGenerator).retaggedCode(linkTag, NearCodePtrTag);
                         linkBuffer.link(slowCall, FunctionPtr(linkCall));
 
                         callLinkInfo->setCallLocations(
@@ -7610,8 +7637,9 @@ private:
                 };
 
                 auto callWithExceptionCheck = [&] (void* callee) {
-                    jit.move(CCallHelpers::TrustedImmPtr(callee), GPRInfo::nonPreservedNonArgumentGPR0);
-                    jit.call(GPRInfo::nonPreservedNonArgumentGPR0, NoPtrTag);
+                    PtrTag tag = ptrTag(FTLOperationPtrTag, nextPtrTagID());
+                    jit.move(CCallHelpers::TrustedImmPtr(tagCFunctionPtr(callee, tag)), GPRInfo::nonPreservedNonArgumentGPR0);
+                    jit.call(GPRInfo::nonPreservedNonArgumentGPR0, tag);
                     exceptions->append(jit.emitExceptionCheck(*vm, AssemblyHelpers::NormalExceptionCheck, AssemblyHelpers::FarJumpWidth));
                 };
 
@@ -7765,8 +7793,9 @@ private:
                 
                 jit.addLinkTask(
                     [=] (LinkBuffer& linkBuffer) {
+                        PtrTag linkTag = ptrTag(LinkCallPtrTag, vm);
                         MacroAssemblerCodePtr linkCall =
-                            vm->getCTIStub(linkCallThunkGenerator).code();
+                            vm->getCTIStub(linkCallThunkGenerator).retaggedCode(linkTag, NearCodePtrTag);
                         linkBuffer.link(slowCall, FunctionPtr(linkCall));
                         
                         callLinkInfo->setCallLocations(
@@ -7949,8 +7978,9 @@ private:
                 RELEASE_ASSERT(!allocator.numberOfReusedRegisters());
 
                 auto callWithExceptionCheck = [&] (void* callee) {
-                    jit.move(CCallHelpers::TrustedImmPtr(callee), GPRInfo::nonPreservedNonArgumentGPR0);
-                    jit.call(GPRInfo::nonPreservedNonArgumentGPR0, NoPtrTag);
+                    PtrTag tag = ptrTag(FTLOperationPtrTag, nextPtrTagID());
+                    jit.move(CCallHelpers::TrustedImmPtr(tagCFunctionPtr(callee, tag)), GPRInfo::nonPreservedNonArgumentGPR0);
+                    jit.call(GPRInfo::nonPreservedNonArgumentGPR0, tag);
                     exceptions->append(jit.emitExceptionCheck(*vm, AssemblyHelpers::NormalExceptionCheck, AssemblyHelpers::FarJumpWidth));
                 };
 
@@ -8048,8 +8078,9 @@ private:
                 
                 jit.addLinkTask(
                     [=] (LinkBuffer& linkBuffer) {
+                        PtrTag linkTag = ptrTag(LinkCallPtrTag, vm);
                         MacroAssemblerCodePtr linkCall =
-                            vm->getCTIStub(linkCallThunkGenerator).code();
+                            vm->getCTIStub(linkCallThunkGenerator).retaggedCode(linkTag, NearCodePtrTag);
                         linkBuffer.link(slowCall, FunctionPtr(linkCall));
                         
                         callLinkInfo->setCallLocations(
@@ -8137,8 +8168,9 @@ private:
                 requiredBytes = WTF::roundUpToMultipleOf(stackAlignmentBytes(), requiredBytes);
                 jit.subPtr(CCallHelpers::TrustedImm32(requiredBytes), CCallHelpers::stackPointerRegister);
                 jit.setupArguments<decltype(operationCallEval)>(GPRInfo::regT1);
-                jit.move(CCallHelpers::TrustedImmPtr(bitwise_cast<void*>(operationCallEval)), GPRInfo::nonPreservedNonArgumentGPR0);
-                jit.call(GPRInfo::nonPreservedNonArgumentGPR0, NoPtrTag);
+                PtrTag tag = ptrTag(FTLOperationPtrTag, nextPtrTagID());
+                jit.move(CCallHelpers::TrustedImmPtr(tagCFunctionPtr(operationCallEval, tag)), GPRInfo::nonPreservedNonArgumentGPR0);
+                jit.call(GPRInfo::nonPreservedNonArgumentGPR0, tag);
                 exceptions->append(jit.emitExceptionCheck(state->vm(), AssemblyHelpers::NormalExceptionCheck, AssemblyHelpers::FarJumpWidth));
                 
                 CCallHelpers::Jump done = jit.branchTest64(CCallHelpers::NonZero, GPRInfo::returnValueGPR);
@@ -9991,9 +10023,8 @@ private:
             m_out.branch(checkHoleResultValue, usually(continuation), rarely(slowCase));
 
             m_out.appendTo(slowCase, continuation);
-            ValueFromBlock slowResult = m_out.anchor(m_out.equal(
-                m_out.constInt64(JSValue::encode(jsBoolean(true))), 
-                vmCall(Int64, m_out.operation(operationHasIndexedPropertyByInt), m_callFrame, base, index, internalMethodType)));
+            ValueFromBlock slowResult = m_out.anchor(
+                m_out.notZero64(vmCall(Int64, m_out.operation(operationHasIndexedPropertyByInt), m_callFrame, base, index, internalMethodType)));
             m_out.jump(continuation);
 
             m_out.appendTo(continuation, lastNext);
@@ -10028,9 +10059,8 @@ private:
             m_out.branch(checkHoleResultValue, usually(continuation), rarely(slowCase));
             
             m_out.appendTo(slowCase, continuation);
-            ValueFromBlock slowResult = m_out.anchor(m_out.equal(
-                m_out.constInt64(JSValue::encode(jsBoolean(true))), 
-                vmCall(Int64, m_out.operation(operationHasIndexedPropertyByInt), m_callFrame, base, index, internalMethodType)));
+            ValueFromBlock slowResult = m_out.anchor(
+                m_out.notZero64(vmCall(Int64, m_out.operation(operationHasIndexedPropertyByInt), m_callFrame, base, index, internalMethodType)));
             m_out.jump(continuation);
             
             m_out.appendTo(continuation, lastNext);
@@ -10064,9 +10094,8 @@ private:
             m_out.branch(checkHoleResultValue, usually(continuation), rarely(slowCase));
 
             m_out.appendTo(slowCase, continuation);
-            ValueFromBlock slowResult = m_out.anchor(m_out.equal(
-                m_out.constInt64(JSValue::encode(jsBoolean(true))),
-                vmCall(Int64, m_out.operation(operationHasIndexedPropertyByInt), m_callFrame, base, index, internalMethodType)));
+            ValueFromBlock slowResult = m_out.anchor(
+                m_out.notZero64(vmCall(Int64, m_out.operation(operationHasIndexedPropertyByInt), m_callFrame, base, index, internalMethodType)));
             m_out.jump(continuation);
 
             m_out.appendTo(continuation, lastNext);
@@ -10078,9 +10107,7 @@ private:
             LValue base = lowCell(m_node->child1());
             LValue index = lowInt32(m_node->child2());
             LValue internalMethodType = m_out.constInt32(static_cast<int32_t>(m_node->internalMethodType()));
-            setBoolean(m_out.equal(
-                m_out.constInt64(JSValue::encode(jsBoolean(true))),
-                vmCall(Int64, m_out.operation(operationHasIndexedPropertyByInt), m_callFrame, base, index, internalMethodType)));
+            setBoolean(m_out.notZero64(vmCall(Int64, m_out.operation(operationHasIndexedPropertyByInt), m_callFrame, base, index, internalMethodType)));
             break;
         }
         }
@@ -11099,6 +11126,11 @@ private:
             speculate(BadType, jsValueValue(value), edge.node(), isNotSymbol(value, provenType(edge)));
             return;
 
+        case InferredType::BigInt:
+            speculate(BadType, jsValueValue(value), edge.node(), isNotCell(value, provenType(edge)));
+            speculate(BadType, jsValueValue(value), edge.node(), isNotBigInt(value, provenType(edge)));
+            return;
+
         case InferredType::ObjectWithStructure: {
             RegisteredStructure structure = m_graph.registerStructure(type.structure());
             speculate(BadType, jsValueValue(value), edge.node(), isNotCell(value, provenType(edge)));
@@ -11397,7 +11429,7 @@ private:
         patchpoint->append(m_tagMask, ValueRep::lateReg(GPRInfo::tagMaskRegister));
         patchpoint->append(m_tagTypeNumber, ValueRep::lateReg(GPRInfo::tagTypeNumberRegister));
 
-        // FIXME: If this is a GetByIdFlush, we might get some performance boost if we claim that it
+        // FIXME: If this is a GetByIdFlush/GetByIdDirectFlush, we might get some performance boost if we claim that it
         // clobbers volatile registers late. It's not necessary for correctness, though, since the
         // IC code is super smart about saving registers.
         // https://bugs.webkit.org/show_bug.cgi?id=152848
@@ -11436,11 +11468,7 @@ private:
                     [=] (CCallHelpers& jit) {
                         AllowMacroScratchRegisterUsage allowScratch(jit);
 
-                        J_JITOperation_ESsiJI optimizationFunction;
-                        if (type == AccessType::Get)
-                            optimizationFunction = operationGetByIdOptimize;
-                        else
-                            optimizationFunction = operationTryGetByIdOptimize;
+                        J_JITOperation_ESsiJI optimizationFunction = appropriateOptimizingGetByIdFunction(type);
 
                         generator->slowPathJump().link(&jit);
                         CCallHelpers::Label slowPathBegin = jit.label();
@@ -13961,22 +13989,26 @@ private:
 
                         jit.addLinkTask(
                             [=] (LinkBuffer& linkBuffer) {
+                                PtrTag thunkTag = ptrTag(FTLLazySlowPathPtrTag, vm);
                                 linkBuffer.link(
                                     generatorJump, CodeLocationLabel(
                                         vm->getCTIStub(
-                                            lazySlowPathGenerationThunkGenerator).code()));
+                                            lazySlowPathGenerationThunkGenerator).retaggedCode(thunkTag, NearCodePtrTag)));
                                 
+                                std::unique_ptr<LazySlowPath> lazySlowPath = std::make_unique<LazySlowPath>();
+
+                                PtrTag slowPathTag = ptrTag(FTLLazySlowPathPtrTag, bitwise_cast<PtrTag>(lazySlowPath.get()));
                                 CodeLocationJump linkedPatchableJump = CodeLocationJump(
-                                    linkBuffer.locationOf(patchableJump));
-                                CodeLocationLabel linkedDone = linkBuffer.locationOf(done);
+                                    linkBuffer.locationOf(patchableJump, slowPathTag));
+
+                                CodeLocationLabel linkedDone = linkBuffer.locationOf(done, slowPathTag);
 
                                 CallSiteIndex callSiteIndex =
                                     jitCode->common.addUniqueCallSiteIndex(origin);
                                     
-                                std::unique_ptr<LazySlowPath> lazySlowPath =
-                                    std::make_unique<LazySlowPath>(
+                                lazySlowPath->initialize(
                                         linkedPatchableJump, linkedDone,
-                                        exceptionTarget->label(linkBuffer), usedRegisters,
+                                        exceptionTarget->label(linkBuffer, slowPathTag), usedRegisters,
                                         callSiteIndex, generator);
                                     
                                 jitCode->lazySlowPaths[index] = WTFMove(lazySlowPath);
@@ -14034,7 +14066,8 @@ private:
         if (edge->hasConstant()) {
             JSValue value = edge->asJSValue();
             if (!value.isInt32()) {
-                terminate(Uncountable);
+                if (mayHaveTypeCheck(edge.useKind()))
+                    terminate(Uncountable);
                 return m_out.int32Zero;
             }
             LValue result = m_out.constInt32(value.asInt32());
@@ -14065,7 +14098,8 @@ private:
         }
 
         DFG_ASSERT(m_graph, m_node, !(provenType(edge) & SpecInt32Only), provenType(edge));
-        terminate(Uncountable);
+        if (mayHaveTypeCheck(edge.useKind()))
+            terminate(Uncountable);
         return m_out.int32Zero;
     }
     
@@ -14099,7 +14133,8 @@ private:
         }
 
         DFG_ASSERT(m_graph, m_node, !provenType(edge), provenType(edge));
-        terminate(Uncountable);
+        if (mayHaveTypeCheck(edge.useKind()))
+            terminate(Uncountable);
         return m_out.int64Zero;
     }
     
@@ -14151,7 +14186,8 @@ private:
         if (edge->op() == JSConstant) {
             FrozenValue* value = edge->constant();
             if (!value->value().isCell()) {
-                terminate(Uncountable);
+                if (mayHaveTypeCheck(edge.useKind()))
+                    terminate(Uncountable);
                 return m_out.intPtrZero;
             }
             LValue result = frozenPointer(value);
@@ -14168,7 +14204,8 @@ private:
         }
         
         DFG_ASSERT(m_graph, m_node, !(provenType(edge) & SpecCellCheck), provenType(edge));
-        terminate(Uncountable);
+        if (mayHaveTypeCheck(edge.useKind()))
+            terminate(Uncountable);
         return m_out.intPtrZero;
     }
     
@@ -14243,6 +14280,15 @@ private:
         speculateSymbol(edge, result);
         return result;
     }
+
+    LValue lowBigInt(Edge edge, OperandSpeculationMode mode = AutomaticOperandSpeculation)
+    {
+        ASSERT_UNUSED(mode, mode == ManualOperandSpeculation || edge.useKind() == BigIntUse);
+
+        LValue result = lowCell(edge, mode);
+        speculateBigInt(edge, result);
+        return result;
+    }
     
     LValue lowNonNullObject(Edge edge, OperandSpeculationMode mode = AutomaticOperandSpeculation)
     {
@@ -14260,7 +14306,8 @@ private:
         if (edge->hasConstant()) {
             JSValue value = edge->asJSValue();
             if (!value.isBoolean()) {
-                terminate(Uncountable);
+                if (mayHaveTypeCheck(edge.useKind()))
+                    terminate(Uncountable);
                 return m_out.booleanFalse;
             }
             LValue result = m_out.constBool(value.asBoolean());
@@ -14281,9 +14328,10 @@ private:
             setBoolean(edge.node(), result);
             return result;
         }
-        
+
         DFG_ASSERT(m_graph, m_node, !(provenType(edge) & SpecBoolean), provenType(edge));
-        terminate(Uncountable);
+        if (mayHaveTypeCheck(edge.useKind()))
+            terminate(Uncountable);
         return m_out.booleanFalse;
     }
     
@@ -14295,7 +14343,8 @@ private:
         if (isValid(value))
             return value.value();
         DFG_ASSERT(m_graph, m_node, !provenType(edge), provenType(edge));
-        terminate(Uncountable);
+        if (mayHaveTypeCheck(edge.useKind()))
+            terminate(Uncountable);
         return m_out.doubleZero;
     }
     
@@ -14710,6 +14759,9 @@ private:
         case BooleanUse:
             speculateBoolean(edge);
             break;
+        case BigIntUse:
+            speculateBigInt(edge);
+            break;
         case NotStringVarUse:
             speculateNotStringVar(edge);
             break;
@@ -14754,6 +14806,9 @@ private:
     
     void speculateCellOrOther(Edge edge)
     {
+        if (shouldNotHaveTypeCheck(edge.useKind()))
+            return;
+        
         LValue value = lowJSValue(edge, ManualOperandSpeculation);
 
         LBasicBlock isNotCell = m_out.newBlock();
@@ -14849,6 +14904,15 @@ private:
         return m_out.equal(
             m_out.load32(cell, m_heaps.JSCell_structureID),
             m_out.constInt32(vm().symbolStructure->id()));
+    }
+
+    LValue isNotBigInt(LValue cell, SpeculatedType type = SpecFullTop)
+    {
+        if (LValue proven = isProvenValue(type & SpecCell, ~SpecBigInt))
+            return proven;
+        return m_out.notEqual(
+            m_out.load32(cell, m_heaps.JSCell_structureID),
+            m_out.constInt32(vm().bigIntStructure->id()));
     }
 
     LValue isArrayTypeForArrayify(LValue cell, ArrayMode arrayMode)
@@ -15163,6 +15227,9 @@ private:
     
     void speculateStringOrOther(Edge edge, LValue value)
     {
+        if (!m_interpreter.needsTypeCheck(edge))
+            return;
+        
         LBasicBlock cellCase = m_out.newBlock();
         LBasicBlock notCellCase = m_out.newBlock();
         LBasicBlock continuation = m_out.newBlock();
@@ -15263,6 +15330,16 @@ private:
     void speculateSymbol(Edge edge)
     {
         speculateSymbol(edge, lowCell(edge));
+    }
+
+    void speculateBigInt(Edge edge, LValue cell)
+    {
+        FTL_TYPE_CHECK(jsValueValue(cell), edge, SpecBigInt, isNotBigInt(cell));
+    }
+
+    void speculateBigInt(Edge edge)
+    {
+        speculateBigInt(edge, lowCell(edge));
     }
 
     void speculateNonNullObject(Edge edge, LValue cell)

@@ -164,8 +164,8 @@ public:
 #if USE(JSVALUE64)
         load64(address, regs.gpr());
 #else
-        load32(bitwise_cast<void*>(bitwise_cast<uintptr_t>(address) + PayloadOffset), regs.payloadGPR());
-        load32(bitwise_cast<void*>(bitwise_cast<uintptr_t>(address) + TagOffset), regs.tagGPR());
+        move(TrustedImmPtr(address), regs.payloadGPR());
+        loadValue(Address(regs.payloadGPR()), regs);
 #endif
     }
     
@@ -899,6 +899,8 @@ public:
     Jump branchIfNotString(GPRReg cellGPR) { return branchIfNotType(cellGPR, StringType); }
     Jump branchIfSymbol(GPRReg cellGPR) { return branchIfType(cellGPR, SymbolType); }
     Jump branchIfNotSymbol(GPRReg cellGPR) { return branchIfNotType(cellGPR, SymbolType); }
+    Jump branchIfBigInt(GPRReg cellGPR) { return branchIfType(cellGPR, BigIntType); }
+    Jump branchIfNotBigInt(GPRReg cellGPR) { return branchIfNotType(cellGPR, BigIntType); }
     Jump branchIfFunction(GPRReg cellGPR) { return branchIfType(cellGPR, JSFunctionType); }
     Jump branchIfNotFunction(GPRReg cellGPR) { return branchIfNotType(cellGPR, JSFunctionType); }
     
@@ -908,6 +910,25 @@ public:
         return branchTest64(Zero, regs.gpr());
 #else
         return branch32(Equal, regs.tagGPR(), TrustedImm32(JSValue::EmptyValueTag));
+#endif
+    }
+
+    // Note that this function does not respect MasqueradesAsUndefined.
+    Jump branchIfUndefined(JSValueRegs regs)
+    {
+#if USE(JSVALUE64)
+        return branch64(Equal, regs.gpr(), TrustedImm64(JSValue::encode(jsUndefined())));
+#else
+        return branch32(Equal, regs.tagGPR(), TrustedImm32(JSValue::UndefinedTag));
+#endif
+    }
+
+    Jump branchIfNull(JSValueRegs regs)
+    {
+#if USE(JSVALUE64)
+        return branch64(Equal, regs.gpr(), TrustedImm64(JSValue::encode(jsNull())));
+#else
+        return branch32(Equal, regs.tagGPR(), TrustedImm32(JSValue::NullTag));
 #endif
     }
 
@@ -1009,24 +1030,53 @@ public:
         return calleeFrameSlot(0).withOffset(CallFrame::callerFrameOffset());
     }
 
-    static GPRReg selectScratchGPR(GPRReg preserve1 = InvalidGPRReg, GPRReg preserve2 = InvalidGPRReg, GPRReg preserve3 = InvalidGPRReg, GPRReg preserve4 = InvalidGPRReg, GPRReg preserve5 = InvalidGPRReg)
+    static GPRReg selectScratchGPR(RegisterSet preserved)
     {
-        if (preserve1 != GPRInfo::regT0 && preserve2 != GPRInfo::regT0 && preserve3 != GPRInfo::regT0 && preserve4 != GPRInfo::regT0 && preserve5 != GPRInfo::regT0)
-            return GPRInfo::regT0;
+        GPRReg registers[] = {
+            GPRInfo::regT0,
+            GPRInfo::regT1,
+            GPRInfo::regT2,
+            GPRInfo::regT3,
+            GPRInfo::regT4,
+            GPRInfo::regT5,
+        };
 
-        if (preserve1 != GPRInfo::regT1 && preserve2 != GPRInfo::regT1 && preserve3 != GPRInfo::regT1 && preserve4 != GPRInfo::regT1 && preserve5 != GPRInfo::regT1)
-            return GPRInfo::regT1;
+        for (GPRReg reg : registers) {
+            if (!preserved.contains(reg))
+                return reg;
+        }
+        RELEASE_ASSERT_NOT_REACHED();
+        return InvalidGPRReg;
+    }
 
-        if (preserve1 != GPRInfo::regT2 && preserve2 != GPRInfo::regT2 && preserve3 != GPRInfo::regT2 && preserve4 != GPRInfo::regT2 && preserve5 != GPRInfo::regT2)
-            return GPRInfo::regT2;
+    template<typename... Regs>
+    static GPRReg selectScratchGPR(Regs... args)
+    {
+        RegisterSet set;
+        constructRegisterSet(set, args...);
+        return selectScratchGPR(set);
+    }
 
-        if (preserve1 != GPRInfo::regT3 && preserve2 != GPRInfo::regT3 && preserve3 != GPRInfo::regT3 && preserve4 != GPRInfo::regT3 && preserve5 != GPRInfo::regT3)
-            return GPRInfo::regT3;
+    static void constructRegisterSet(RegisterSet&)
+    {
+    }
 
-        if (preserve1 != GPRInfo::regT4 && preserve2 != GPRInfo::regT4 && preserve3 != GPRInfo::regT4 && preserve4 != GPRInfo::regT4 && preserve5 != GPRInfo::regT4)
-            return GPRInfo::regT4;
+    template<typename... Regs>
+    static void constructRegisterSet(RegisterSet& set, JSValueRegs regs, Regs... args)
+    {
+        if (regs.tagGPR() != InvalidGPRReg)
+            set.set(regs.tagGPR());
+        if (regs.payloadGPR() != InvalidGPRReg)
+            set.set(regs.payloadGPR());
+        constructRegisterSet(set, args...);
+    }
 
-        return GPRInfo::regT5;
+    template<typename... Regs>
+    static void constructRegisterSet(RegisterSet& set, GPRReg reg, Regs... args)
+    {
+        if (reg != InvalidGPRReg)
+            set.set(reg);
+        constructRegisterSet(set, args...);
     }
 
     // Add a debug call. This call has no effect on JIT code execution state.
@@ -1507,8 +1557,6 @@ public:
     
     void emitDumbVirtualCall(VM&, CallLinkInfo*);
     
-    Vector<BytecodeAndMachineOffset>& decodedCodeMapFor(CodeBlock*);
-
     void makeSpaceOnStackForCCall();
     void reclaimSpaceOnStackForCCall();
 
@@ -1630,8 +1678,6 @@ protected:
 
     CodeBlock* m_codeBlock;
     CodeBlock* m_baselineCodeBlock;
-
-    HashMap<CodeBlock*, Vector<BytecodeAndMachineOffset>> m_decodedCodeMaps;
 };
 
 } // namespace JSC

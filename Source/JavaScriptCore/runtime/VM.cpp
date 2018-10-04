@@ -463,7 +463,7 @@ VM::VM(VMType vmType, HeapType heapType)
     VMInspector::instance().add(this);
 }
 
-static StaticReadWriteLock s_destructionLock;
+static ReadWriteLock s_destructionLock;
 
 void waitForVMDestruction()
 {
@@ -901,9 +901,8 @@ void logSanitizeStack(VM* vm)
 #if ENABLE(YARR_JIT_ALL_PARENS_EXPRESSIONS)
 char* VM::acquireRegExpPatternContexBuffer()
 {
-    ASSERT(!m_regExpPatternContextLock.isLocked());
-
     m_regExpPatternContextLock.lock();
+    ASSERT(m_regExpPatternContextLock.isLocked());
     if (!m_regExpPatternContexBuffer)
         m_regExpPatternContexBuffer = makeUniqueArray<char>(VM::patternContextBufferSize);
     return m_regExpPatternContexBuffer.get();

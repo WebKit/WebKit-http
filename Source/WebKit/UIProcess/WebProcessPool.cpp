@@ -514,7 +514,7 @@ NetworkProcessProxy& WebProcessPool::ensureNetworkProcess(WebsiteDataStore* with
     return *m_networkProcess;
 }
 
-void WebProcessPool::networkProcessCrashed(NetworkProcessProxy& networkProcessProxy, Vector<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>&& pendingReplies)
+void WebProcessPool::networkProcessCrashed(NetworkProcessProxy& networkProcessProxy, Vector<Ref<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>>&& pendingReplies)
 {
     networkProcessFailedToLaunch(networkProcessProxy);
     ASSERT(!m_networkProcess);
@@ -540,7 +540,7 @@ void WebProcessPool::networkProcessFailedToLaunch(NetworkProcessProxy& networkPr
     m_networkProcess = nullptr;
 }
 
-void WebProcessPool::getNetworkProcessConnection(Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply&& reply)
+void WebProcessPool::getNetworkProcessConnection(Ref<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>&& reply)
 {
     ensureNetworkProcess();
     ASSERT(m_networkProcess);
@@ -587,7 +587,7 @@ void WebProcessPool::ensureStorageProcessAndWebsiteDataStore(WebsiteDataStore* r
     m_storageProcess->send(Messages::StorageProcess::InitializeWebsiteDataStore(relevantDataStore->storageProcessParameters()), 0);
 }
 
-void WebProcessPool::getStorageProcessConnection(WebProcessProxy& webProcessProxy, PAL::SessionID initialSessionID, Messages::WebProcessProxy::GetStorageProcessConnection::DelayedReply&& reply)
+void WebProcessPool::getStorageProcessConnection(WebProcessProxy& webProcessProxy, PAL::SessionID initialSessionID, Ref<Messages::WebProcessProxy::GetStorageProcessConnection::DelayedReply>&& reply)
 {
     ensureStorageProcessAndWebsiteDataStore(WebsiteDataStore::existingNonDefaultDataStoreForSessionID(initialSessionID));
 
@@ -746,14 +746,12 @@ WebProcessProxy& WebProcessPool::createNewWebProcess(WebsiteDataStore& websiteDa
     return process;
 }
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#if PLATFORM(MAC)
 static void displayReconfigurationCallBack(CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *userInfo)
 {
-    HashMap<PlatformDisplayID, ScreenProperties> screenProperties;
-    WebCore::getScreenProperties(screenProperties);
-
+    auto screenProperties = WebCore::getScreenProperties();
     for (auto& processPool : WebProcessPool::allProcessPools())
-        processPool->sendToAllProcesses(Messages::WebProcess::SetScreenProperties(screenProperties));
+        processPool->sendToAllProcesses(Messages::WebProcess::SetScreenProperties(screenProperties.first, screenProperties.second));
 }
 
 static void registerDisplayConfigurationCallback()
@@ -915,12 +913,11 @@ void WebProcessPool::initializeNewWebProcess(WebProcessProxy& process, WebsiteDa
     Inspector::RemoteInspector::singleton(); 
 #endif
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
+#if PLATFORM(MAC)
     registerDisplayConfigurationCallback();
 
-    HashMap<PlatformDisplayID, ScreenProperties> screenProperties;
-    WebCore::getScreenProperties(screenProperties);
-    process.send(Messages::WebProcess::SetScreenProperties(screenProperties), 0);
+    auto screenProperties = WebCore::getScreenProperties();
+    process.send(Messages::WebProcess::SetScreenProperties(screenProperties.first, screenProperties.second), 0);
 #endif
 }
 

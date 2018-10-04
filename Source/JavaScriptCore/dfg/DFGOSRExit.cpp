@@ -389,15 +389,12 @@ void OSRExit::executeOSRExit(Context& context)
         adjustedThreshold = BaselineExecutionCounter::clippedThreshold(codeBlock->globalObject(), adjustedThreshold);
 
         CodeBlock* codeBlockForExit = baselineCodeBlockForOriginAndBaselineCodeBlock(exit.m_codeOrigin, baselineCodeBlock);
-        Vector<BytecodeAndMachineOffset> decodedCodeMap;
-        codeBlockForExit->jitCodeMap()->decode(decodedCodeMap);
+        const JITCodeMap& codeMap = codeBlockForExit->jitCodeMap();
+        CodeLocationLabel codeLocation = codeMap.find(exit.m_codeOrigin.bytecodeIndex);
+        ASSERT(codeLocation);
 
-        BytecodeAndMachineOffset* mapping = binarySearch<BytecodeAndMachineOffset, unsigned>(decodedCodeMap, decodedCodeMap.size(), exit.m_codeOrigin.bytecodeIndex, BytecodeAndMachineOffset::getBytecodeIndex);
-
-        ASSERT(mapping);
-        ASSERT(mapping->m_bytecodeIndex == exit.m_codeOrigin.bytecodeIndex);
-
-        void* jumpTarget = codeBlockForExit->jitCode()->executableAddressAtOffset(mapping->m_machineCodeOffset);
+        PtrTag locationTag = ptrTag(CodePtrTag, codeBlockForExit, exit.m_codeOrigin.bytecodeIndex);
+        void* jumpTarget = codeLocation.retagged(locationTag, CodePtrTag).executableAddress();
 
         // Compute the value recoveries.
         Operands<ValueRecovery> operands;
@@ -748,6 +745,11 @@ static void reifyInlinedCallFrames(Context& context, CodeBlock* outermostBaselin
         if (!trueCaller) {
             ASSERT(inlineCallFrame->isTail());
             void* returnPC = frame.get<void*>(CallFrame::returnPCOffset());
+#if USE(POINTER_PROFILING)
+            void* oldEntrySP = cpu.fp<uint8_t*>() + sizeof(CallerFrameAndPC);
+            void* newEntrySP = cpu.fp<uint8_t*>() + inlineCallFrame->returnPCOffset() + sizeof(void*);
+            returnPC = retagCodePtr(returnPC, bitwise_cast<PtrTag>(oldEntrySP), bitwise_cast<PtrTag>(newEntrySP));
+#endif
             frame.set<void*>(inlineCallFrame->returnPCOffset(), returnPC);
             callerFrame = frame.get<void*>(CallFrame::callerFrameOffset());
         } else {
@@ -787,6 +789,10 @@ static void reifyInlinedCallFrames(Context& context, CodeBlock* outermostBaselin
             if (trueCaller->inlineCallFrame)
                 callerFrame = cpu.fp<uint8_t*>() + trueCaller->inlineCallFrame->stackOffset * sizeof(EncodedJSValue);
 
+#if USE(POINTER_PROFILING)
+            void* newEntrySP = cpu.fp<uint8_t*>() + inlineCallFrame->returnPCOffset() + sizeof(void*);
+            jumpTarget = tagCodePtr(jumpTarget, bitwise_cast<PtrTag>(newEntrySP));
+#endif
             frame.set<void*>(inlineCallFrame->returnPCOffset(), jumpTarget);
         }
 
@@ -860,7 +866,7 @@ static void adjustAndJumpToTarget(Context& context, VM& vm, CodeBlock* codeBlock
     }
 
     vm.topCallFrame = context.fp<ExecState*>();
-    context.pc() = jumpTarget;
+    context.pc() = untagCodePtr(jumpTarget, CodePtrTag);
 }
 
 static void printOSRExit(Context& context, uint32_t osrExitIndex, const OSRExit& exit)
@@ -989,18 +995,19 @@ void OSRExit::emitRestoreArguments(CCallHelpers& jit, const Operands<ValueRecove
         static_assert(std::is_same<decltype(operationCreateDirectArgumentsDuringExit), decltype(operationCreateClonedArgumentsDuringExit)>::value, "We assume these functions have the same signature below.");
         jit.setupArguments<decltype(operationCreateDirectArgumentsDuringExit)>(
             AssemblyHelpers::TrustedImmPtr(inlineCallFrame), GPRInfo::regT0, GPRInfo::regT1);
+        PtrTag tag = ptrTag(DFGOperationPtrTag, nextPtrTagID());
         switch (recovery.technique()) {
         case DirectArgumentsThatWereNotCreated:
-            jit.move(AssemblyHelpers::TrustedImmPtr(bitwise_cast<void*>(operationCreateDirectArgumentsDuringExit)), GPRInfo::nonArgGPR0);
+            jit.move(AssemblyHelpers::TrustedImmPtr(tagCFunctionPtr(operationCreateDirectArgumentsDuringExit, tag)), GPRInfo::nonArgGPR0);
             break;
         case ClonedArgumentsThatWereNotCreated:
-            jit.move(AssemblyHelpers::TrustedImmPtr(bitwise_cast<void*>(operationCreateClonedArgumentsDuringExit)), GPRInfo::nonArgGPR0);
+            jit.move(AssemblyHelpers::TrustedImmPtr(tagCFunctionPtr(operationCreateClonedArgumentsDuringExit, tag)), GPRInfo::nonArgGPR0);
             break;
         default:
             RELEASE_ASSERT_NOT_REACHED();
             break;
         }
-        jit.call(GPRInfo::nonArgGPR0, NoPtrTag);
+        jit.call(GPRInfo::nonArgGPR0, tag);
         jit.storeCell(GPRInfo::returnValueGPR, AssemblyHelpers::addressFor(operand));
 
         alreadyAllocatedArguments.add(id, operand);
@@ -1039,6 +1046,7 @@ void JIT_OPERATION OSRExit::compileOSRExit(ExecState* exec)
     if (exit.m_recoveryIndex != UINT_MAX)
         recovery = &codeBlock->jitCode()->dfg()->speculationRecovery[exit.m_recoveryIndex];
 
+    PtrTag exitTag = ptrTag(DFGOSRExitPtrTag, vm);
     {
         CCallHelpers jit(codeBlock);
 
@@ -1069,14 +1077,14 @@ void JIT_OPERATION OSRExit::compileOSRExit(ExecState* exec)
         LinkBuffer patchBuffer(jit, codeBlock);
         exit.m_code = FINALIZE_CODE_IF(
             shouldDumpDisassembly() || Options::verboseOSR() || Options::verboseDFGOSRExit(),
-            patchBuffer, NoPtrTag,
+            patchBuffer, exitTag,
             "DFG OSR exit #%u (%s, %s) from %s, with operands = %s",
                 exitIndex, toCString(exit.m_codeOrigin).data(),
                 exitKindToString(exit.m_kind), toCString(*codeBlock).data(),
                 toCString(ignoringContext<DumpContext>(operands)).data());
     }
 
-    MacroAssembler::repatchJump(exit.codeLocationForRepatch(codeBlock), CodeLocationLabel(exit.m_code.code()));
+    MacroAssembler::repatchJump(exit.codeLocationForRepatch(codeBlock), CodeLocationLabel(exit.m_code.retaggedCode(exitTag, NearCodePtrTag)));
 
     vm->osrExitJumpDestination = exit.m_code.code().executableAddress();
 }

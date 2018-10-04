@@ -57,12 +57,26 @@ public:
     void timingModelDidChange() override;
     void windowScreenDidChange(PlatformDisplayID);
 
+    // If possible, compute the visual extent of any transform animation on the given renderer
+    // using the given rect, returning the result in the rect. Return false if there is some
+    // transform animation but we were unable to cheaply compute its effect on the extent.
+    bool computeExtentOfAnimation(RenderElement&, LayoutRect&) const;
     std::unique_ptr<RenderStyle> animatedStyleForRenderer(RenderElement& renderer);
+    bool isRunningAnimationOnRenderer(RenderElement&, CSSPropertyID) const;
+    bool isRunningAcceleratedAnimationOnRenderer(RenderElement&, CSSPropertyID) const;
     void animationAcceleratedRunningStateDidChange(WebAnimation&);
+    void applyPendingAcceleratedAnimations();
     bool runningAnimationsForElementAreAllAccelerated(Element&);
     void detachFromDocument();
 
     void enqueueAnimationPlaybackEvent(AnimationPlaybackEvent&);
+
+    void updateThrottlingState();
+    WEBCORE_EXPORT Seconds animationInterval() const;
+    WEBCORE_EXPORT void suspendAnimations();
+    WEBCORE_EXPORT void resumeAnimations();
+    WEBCORE_EXPORT bool animationsAreSuspended();
+    WEBCORE_EXPORT unsigned numberOfActiveAnimationsForTesting() const;
 
 private:
     DocumentTimeline(Document&, PlatformDisplayID);
@@ -77,6 +91,7 @@ private:
 
     RefPtr<Document> m_document;
     bool m_paused { false };
+    bool m_isSuspended { false };
     std::optional<Seconds> m_cachedCurrentTime;
     GenericTaskQueue<Timer> m_invalidationTaskQueue;
     GenericTaskQueue<Timer> m_eventDispatchTaskQueue;

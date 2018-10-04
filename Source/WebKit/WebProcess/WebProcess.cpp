@@ -686,10 +686,12 @@ void WebProcess::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& de
 
 void WebProcess::didClose(IPC::Connection&)
 {
-#ifndef NDEBUG
+#if !defined(NDEBUG) || PLATFORM(GTK) || PLATFORM(WPE)
     for (auto& page : copyToVector(m_pageMap.values()))
         page->close();
+#endif
 
+#ifndef NDEBUG
     GCController::singleton().garbageCollectSoon();
     FontCache::singleton().invalidate();
     MemoryCache::singleton().setDisabled(true);
@@ -1672,14 +1674,12 @@ bool WebProcess::hasVisibleWebPage() const
     return false;
 }
 
-#if USE(LIBWEBRTC)
 LibWebRTCNetwork& WebProcess::libWebRTCNetwork()
 {
     if (!m_libWebRTCNetwork)
         m_libWebRTCNetwork = std::make_unique<LibWebRTCNetwork>();
     return *m_libWebRTCNetwork;
 }
-#endif
 
 #if ENABLE(SERVICE_WORKER)
 void WebProcess::establishWorkerContextConnectionToStorageProcess(uint64_t pageGroupID, uint64_t pageID, const WebPreferencesStore& store, PAL::SessionID initialSessionID)
@@ -1700,10 +1700,10 @@ void WebProcess::registerServiceWorkerClients()
 
 #endif
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101400
-void WebProcess::setScreenProperties(const HashMap<uint32_t, WebCore::ScreenProperties>& properties)
+#if PLATFORM(MAC)
+void WebProcess::setScreenProperties(uint32_t primaryScreenID, const HashMap<uint32_t, WebCore::ScreenProperties>& properties)
 {
-    WebCore::setScreenProperties(properties);
+    WebCore::setScreenProperties(primaryScreenID, properties);
 }
 #endif
 

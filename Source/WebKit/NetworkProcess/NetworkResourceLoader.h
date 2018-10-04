@@ -23,7 +23,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
+#ifndef NetworkResourceLoader_h
+#define NetworkResourceLoader_h
 
 #include "DownloadID.h"
 #include "MessageSender.h"
@@ -31,6 +32,7 @@
 #include "NetworkLoadClient.h"
 #include "NetworkResourceLoadParameters.h"
 #include "ShareableResource.h"
+#include <WebCore/ResourceResponse.h>
 #include <WebCore/Timer.h>
 
 namespace WebCore {
@@ -51,7 +53,7 @@ class Entry;
 
 class NetworkResourceLoader final : public RefCounted<NetworkResourceLoader>, public NetworkLoadClient, public IPC::MessageSender {
 public:
-    static Ref<NetworkResourceLoader> create(NetworkResourceLoadParameters&& parameters, NetworkConnectionToWebProcess& connection, Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply&& reply = nullptr)
+    static Ref<NetworkResourceLoader> create(NetworkResourceLoadParameters&& parameters, NetworkConnectionToWebProcess& connection, RefPtr<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply>&& reply = nullptr)
     {
         return adoptRef(*new NetworkResourceLoader(WTFMove(parameters), connection, WTFMove(reply)));
     }
@@ -110,7 +112,7 @@ public:
 #endif
 
 private:
-    NetworkResourceLoader(NetworkResourceLoadParameters&&, NetworkConnectionToWebProcess&, Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply&&);
+    NetworkResourceLoader(NetworkResourceLoadParameters&&, NetworkConnectionToWebProcess&, RefPtr<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply>&&);
 
     // IPC::MessageSender
     IPC::Connection* messageSenderConnection() override;
@@ -127,7 +129,7 @@ private:
     void dispatchWillSendRequestForCacheEntry(std::unique_ptr<NetworkCache::Entry>);
     void continueProcessingCachedEntryAfterDidReceiveResponse(std::unique_ptr<NetworkCache::Entry>);
 
-    void startNetworkLoad(const WebCore::ResourceRequest&);
+    void startNetworkLoad(WebCore::ResourceRequest&&);
     void continueDidReceiveResponse();
 
     void cleanup();
@@ -145,7 +147,7 @@ private:
     void logCookieInformation() const;
 #endif
 
-    WebCore::ResourceResponse sanitizeRedirectResponseIfPossible(WebCore::ResourceResponse&&);
+    WebCore::ResourceResponse sanitizeResponseIfPossible(WebCore::ResourceResponse&&, WebCore::ResourceResponse::SanitizationType);
 
     const NetworkResourceLoadParameters m_parameters;
 
@@ -180,3 +182,5 @@ private:
 };
 
 } // namespace WebKit
+
+#endif // NetworkResourceLoader_h

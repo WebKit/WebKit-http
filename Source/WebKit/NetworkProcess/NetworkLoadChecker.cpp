@@ -41,17 +41,26 @@ namespace WebKit {
 
 using namespace WebCore;
 
-NetworkLoadChecker::NetworkLoadChecker(WebCore::FetchOptions::Mode mode, bool shouldFollowRedirects, WebCore::StoredCredentialsPolicy storedCredentialsPolicy, PAL::SessionID sessionID, WebCore::HTTPHeaderMap&& originalRequestHeaders, URL&& url, RefPtr<SecurityOrigin>&& sourceOrigin)
-    : m_mode(mode)
-    , m_shouldFollowRedirects(shouldFollowRedirects)
-    , m_storedCredentialsPolicy(storedCredentialsPolicy)
+NetworkLoadChecker::NetworkLoadChecker(WebCore::FetchOptions&& options, PAL::SessionID sessionID, WebCore::HTTPHeaderMap&& originalRequestHeaders, URL&& url, RefPtr<SecurityOrigin>&& sourceOrigin)
+    : m_options(WTFMove(options))
     , m_sessionID(sessionID)
     , m_originalRequestHeaders(WTFMove(originalRequestHeaders))
     , m_url(WTFMove(url))
     , m_origin(WTFMove(sourceOrigin))
 {
-    if (m_mode == FetchOptions::Mode::Cors || m_mode == FetchOptions::Mode::SameOrigin)
-        m_isSameOriginRequest = m_origin->canRequest(m_url);
+    if (m_options.mode == FetchOptions::Mode::Cors || m_options.mode == FetchOptions::Mode::SameOrigin)
+        m_isSameOriginRequest = m_url.protocolIsData() || m_url.protocolIsBlob() || m_origin->canRequest(m_url);
+    switch (options.credentials) {
+    case FetchOptions::Credentials::Include:
+        m_storedCredentialsPolicy = StoredCredentialsPolicy::Use;
+        break;
+    case FetchOptions::Credentials::SameOrigin:
+        m_storedCredentialsPolicy = m_isSameOriginRequest ? StoredCredentialsPolicy::Use : StoredCredentialsPolicy::DoNotUse;
+        break;
+    case FetchOptions::Credentials::Omit:
+        m_storedCredentialsPolicy = StoredCredentialsPolicy::DoNotUse;
+        break;
+    }
 }
 
 NetworkLoadChecker::~NetworkLoadChecker() = default;
@@ -64,14 +73,20 @@ void NetworkLoadChecker::check(ResourceRequest&& request, ValidationHandler&& ha
     checkRequest(WTFMove(request), WTFMove(handler));
 }
 
-void NetworkLoadChecker::checkRedirection(ResourceRequest&& request, ValidationHandler&& handler)
+void NetworkLoadChecker::checkRedirection(WebCore::ResourceResponse& redirectResponse, ResourceRequest&& request, ValidationHandler&& handler)
 {
     ASSERT(!isChecking());
+
+    auto error = validateResponse(redirectResponse);
+    if (!error.isNull()) {
+        handler(makeUnexpected(WTFMove(error)));
+        return;
+    }
 
     m_previousURL = WTFMove(m_url);
     m_url = request.url();
 
-    if (!m_shouldFollowRedirects) {
+    if (m_options.redirect != FetchOptions::Redirect::Follow) {
         handler(returnError(ASCIILiteral("Load parameters do not allow following redirections")));
         return;
     }
@@ -87,6 +102,31 @@ void NetworkLoadChecker::checkRedirection(ResourceRequest&& request, ValidationH
     }
 
     checkRequest(WTFMove(request), WTFMove(handler));
+}
+
+ResourceError NetworkLoadChecker::validateResponse(ResourceResponse& response)
+{
+    if (m_redirectCount)
+        response.setRedirected(true);
+
+    if (m_isSameOriginRequest) {
+        response.setTainting(ResourceResponse::Tainting::Basic);
+        return { };
+    }
+
+    if (m_options.mode == FetchOptions::Mode::NoCors) {
+        response.setTainting(ResourceResponse::Tainting::Opaque);
+        return { };
+    }
+
+    ASSERT(m_options.mode == FetchOptions::Mode::Cors);
+
+    String errorMessage;
+    if (!WebCore::passesAccessControlCheck(response, m_storedCredentialsPolicy, *m_origin, errorMessage))
+        return ResourceError { errorDomainWebKitInternal, 0, m_url, WTFMove(errorMessage), ResourceError::Type::AccessControl };
+
+    response.setTainting(ResourceResponse::Tainting::Cors);
+    return { };
 }
 
 NetworkLoadChecker::RequestOrError NetworkLoadChecker::returnError(String&& error)
@@ -114,7 +154,7 @@ void NetworkLoadChecker::continueCheckingRequest(ResourceRequest&& request, Vali
     if (auto* contentSecurityPolicy = this->contentSecurityPolicy()) {
         if (isRedirected()) {
             URL url = request.url();
-            auto type = m_mode == FetchOptions::Mode::Navigate ? ContentSecurityPolicy::InsecureRequestType::Navigation : ContentSecurityPolicy::InsecureRequestType::Load;
+            auto type = m_options.mode == FetchOptions::Mode::Navigate ? ContentSecurityPolicy::InsecureRequestType::Navigation : ContentSecurityPolicy::InsecureRequestType::Load;
             contentSecurityPolicy->upgradeInsecureRequestIfNeeded(url, type);
             if (url != request.url())
                 request.setURL(url);
@@ -125,12 +165,15 @@ void NetworkLoadChecker::continueCheckingRequest(ResourceRequest&& request, Vali
         }
     }
 
+    if (m_options.credentials == FetchOptions::Credentials::SameOrigin)
+        m_storedCredentialsPolicy =  (m_isSameOriginRequest && m_origin->canRequest(request.url())) ? StoredCredentialsPolicy::Use : StoredCredentialsPolicy::DoNotUse;
+
     if (doesNotNeedCORSCheck(request.url())) {
         handler(WTFMove(request));
         return;
     }
 
-    if (m_mode == FetchOptions::Mode::SameOrigin) {
+    if (m_options.mode == FetchOptions::Mode::SameOrigin) {
         handler(returnError(ASCIILiteral("SameOrigin mode does not allow cross origin requests")));
         return;
     }
@@ -146,7 +189,7 @@ void NetworkLoadChecker::continueCheckingRequest(ResourceRequest&& request, Vali
 
 void NetworkLoadChecker::checkCORSRequest(ResourceRequest&& request, ValidationHandler&& handler)
 {
-    ASSERT(m_mode == FetchOptions::Mode::Cors);
+    ASSERT(m_options.mode == FetchOptions::Mode::Cors);
 
     // Except in case where preflight is needed, loading should be able to continue on its own.
     if (m_isSimpleRequest && isSimpleCrossOriginAccessRequest(request.httpMethod(), m_originalRequestHeaders)) {
@@ -159,7 +202,7 @@ void NetworkLoadChecker::checkCORSRequest(ResourceRequest&& request, ValidationH
 
 void NetworkLoadChecker::checkCORSRedirectedRequest(ResourceRequest&& request, ValidationHandler&& handler)
 {
-    ASSERT(m_mode == FetchOptions::Mode::Cors);
+    ASSERT(m_options.mode == FetchOptions::Mode::Cors);
     ASSERT(isRedirected());
 
     // Force any subsequent request to use these checks.
@@ -184,7 +227,7 @@ void NetworkLoadChecker::checkCORSRedirectedRequest(ResourceRequest&& request, V
 
 void NetworkLoadChecker::checkCORSRequestWithPreflight(ResourceRequest&& request, ValidationHandler&& handler)
 {
-    ASSERT(m_mode == FetchOptions::Mode::Cors);
+    ASSERT(m_options.mode == FetchOptions::Mode::Cors);
 
     m_isSimpleRequest = false;
     // FIXME: We should probably partition preflight result cache by session ID.
@@ -223,7 +266,7 @@ void NetworkLoadChecker::checkCORSRequestWithPreflight(ResourceRequest&& request
 
 bool NetworkLoadChecker::doesNotNeedCORSCheck(const URL& url) const
 {
-    if (m_mode == FetchOptions::Mode::NoCors || m_mode == FetchOptions::Mode::Navigate)
+    if (m_options.mode == FetchOptions::Mode::NoCors || m_options.mode == FetchOptions::Mode::Navigate)
         return true;
 
     return m_isSameOriginRequest && m_origin->canRequest(url);

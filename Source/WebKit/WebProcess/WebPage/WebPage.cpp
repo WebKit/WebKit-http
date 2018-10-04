@@ -3820,7 +3820,7 @@ void WebPage::mainFrameDidLayout()
         m_cachedPageCount = pageCount;
     }
 
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     m_viewGestureGeometryCollector->mainFrameDidLayout();
 #endif
 #if PLATFORM(IOS)
@@ -5864,6 +5864,11 @@ void WebPage::urlSchemeTaskDidComplete(uint64_t handlerIdentifier, uint64_t task
     ASSERT(handler);
 
     handler->taskDidComplete(taskIdentifier, error);
+}
+
+void WebPage::setIsSuspended(bool suspended)
+{
+    m_isSuspended = suspended;
 }
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)

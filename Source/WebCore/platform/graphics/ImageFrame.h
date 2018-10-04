@@ -53,11 +53,6 @@ public:
     unsigned clearImage();
     unsigned clear();
 
-#if !USE(CG)
-    bool initialize(const ImageBackingStore&);
-    bool initialize(const IntSize&, bool premultiplyAlpha);
-#endif
-
     void setDecodingStatus(DecodingStatus);
     DecodingStatus decodingStatus() const;
 
@@ -69,12 +64,6 @@ public:
     IntSize sizeRespectingOrientation() const { return !m_orientation.usesWidthAsHeight() ? size() : size().transposedSize(); }
     unsigned frameBytes() const { return hasNativeImage() ? (size().area() * sizeof(uint32_t)).unsafeGet() : 0; }
     SubsamplingLevel subsamplingLevel() const { return m_subsamplingLevel; }
-
-#if !USE(CG)
-    enum class DisposalMethod { Unspecified, DoNotDispose, RestoreToBackground, RestoreToPrevious };
-    void setDisposalMethod(DisposalMethod method) { m_disposalMethod = method; }
-    DisposalMethod disposalMethod() const { return m_disposalMethod; }
-#endif
 
     NativeImagePtr nativeImage() const { return m_nativeImage; }
 
@@ -92,21 +81,11 @@ public:
     bool hasDecodedNativeImageCompatibleWithOptions(const std::optional<SubsamplingLevel>&, const DecodingOptions&) const;
     bool hasMetadata() const { return !size().isEmpty(); }
 
-#if !USE(CG)
-    ImageBackingStore* backingStore() const { return m_backingStore ? m_backingStore.get() : nullptr; }
-    bool hasBackingStore() const { return backingStore(); }
-#endif
-
     Color singlePixelSolidColor() const;
 
 private:
     DecodingStatus m_decodingStatus { DecodingStatus::Invalid };
     IntSize m_size;
-
-#if !USE(CG)
-    std::unique_ptr<ImageBackingStore> m_backingStore;
-    DisposalMethod m_disposalMethod { DisposalMethod::Unspecified };
-#endif
 
     NativeImagePtr m_nativeImage;
     SubsamplingLevel m_subsamplingLevel { SubsamplingLevel::Default };

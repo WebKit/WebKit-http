@@ -26,11 +26,10 @@
 #import "config.h"
 #import "WKLegacyPDFView.h"
 
-#if PLATFORM(IOS) && ENABLE(WKPDFVIEW)
+#if ENABLE(WKLEGACYPDFVIEW)
 
 #import "APIFindClient.h"
 #import "APIUIClient.h"
-#import "ApplicationStateTracker.h"
 #import "CorePDFSPI.h"
 #import "DrawingAreaProxy.h"
 #import "SessionState.h"
@@ -116,15 +115,13 @@ typedef struct {
 
     RetainPtr<UIWKSelectionAssistant> _webSelectionAssistant;
 
-    std::unique_ptr<ApplicationStateTracker> _applicationStateTracker;
-
     UIEdgeInsets _lastUnobscuredSafeAreaInset;
     CGFloat _lastLayoutWidth;
 }
 
 - (instancetype)web_initWithFrame:(CGRect)frame webView:(WKWebView *)webView
 {
-    if (!(self = [super initWithFrame:frame]))
+    if (!(self = [super initWithFrame:frame webView:webView]))
         return nil;
 
     self.backgroundColor = [UIColor grayColor];
@@ -384,6 +381,11 @@ static void detachViewForPage(PDFPageInfo& page)
     // FIXME: restore the scroll position and page scale if navigating back from a fragment.
 
     [self _scrollToFragment:_webView.URL.fragment];
+}
+
+- (UIView *)web_contentView
+{
+    return self;
 }
 
 - (void)_computePageAndDocumentFrames
@@ -812,54 +814,17 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions options)
     }];
 }
 
-- (void)willMoveToWindow:(UIWindow *)newWindow
-{
-    if (newWindow)
-        return;
-    
-    ASSERT(self.window);
-    ASSERT(_applicationStateTracker);
-    _applicationStateTracker = nullptr;
-}
-
-- (void)didMoveToWindow
-{
-    if (!self.window)
-        return;
-
-    ASSERT(!_applicationStateTracker);
-    _applicationStateTracker = std::make_unique<ApplicationStateTracker>(self, @selector(_applicationDidEnterBackground), @selector(_applicationDidCreateWindowContext), @selector(_applicationDidFinishSnapshottingAfterEnteringBackground), @selector(_applicationWillEnterForeground));
-}
-
 - (BOOL)web_isBackground
 {
-    if (!_applicationStateTracker)
-        return YES;
-
-    return _applicationStateTracker->isInBackground();
-}
-
-- (void)_applicationDidEnterBackground
-{
-    _webView->_page->applicationDidEnterBackground();
-    _webView->_page->activityStateDidChange(ActivityState::AllFlags & ~ActivityState::IsInWindow);
-}
-
-- (void)_applicationDidCreateWindowContext
-{
-}
-
-- (void)_applicationDidFinishSnapshottingAfterEnteringBackground
-{
-    _webView->_page->applicationDidFinishSnapshottingAfterEnteringBackground();
+    return [self isBackground];
 }
 
 - (void)_applicationWillEnterForeground
 {
-    _webView->_page->applicationWillEnterForeground();
+    [super _applicationWillEnterForeground];
+    // FIXME: Is it really necessary to hide the web content drawing area when a PDF is displayed?
     if (auto drawingArea = _webView->_page->drawingArea())
         drawingArea->hideContentUntilAnyUpdate();
-    _webView->_page->activityStateDidChange(ActivityState::AllFlags & ~ActivityState::IsInWindow, true, WebPageProxy::ActivityStateChangeDispatchMode::Immediate);
 }
 
 @end
@@ -897,4 +862,4 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions options)
 
 #pragma clang diagnostic pop
 
-#endif // PLATFORM(IOS) && ENABLE(WKPDFVIEW)
+#endif // ENABLE(WKLEGACYPDFVIEW)

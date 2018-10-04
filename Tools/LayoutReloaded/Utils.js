@@ -207,7 +207,19 @@ class LayoutRect {
     moveBy(distance) {
         this.m_topLeft.moveBy(distance);
     }
-    
+
+    growHorizontally(distance) {
+        this.m_size.setWidth(this.m_size.width() + distance);
+    }
+
+    moveHorizontally(distance) {
+        this.m_topLeft.shiftLeft(distance);
+    }
+
+    moveVertically(distance) {
+        this.m_topLeft.shiftTop(distance);
+    }
+
     isEmpty() {
         return this.m_size.isEmpty();
     }
@@ -415,7 +427,7 @@ class Utils {
     }
 
     static isBlockContainerElement(node) {
-        if (node.nodeType != Node.ELEMENT_NODE)
+        if (!node || node.nodeType != Node.ELEMENT_NODE)
             return false;
         let display = window.getComputedStyle(node).display;
         return  display == "block" || display == "list-item" || display == "inline-block" || display == "table-cell" || display == "table-caption"; //TODO && !replaced element
@@ -429,6 +441,13 @@ class Utils {
     static isTableElement(node) {
         let display = window.getComputedStyle(node).display;
         return  display == "table" || display == "inline-table";
+    }
+
+    static isInlineBlockElement(node) {
+        if (!node || node.nodeType != Node.ELEMENT_NODE)
+            return false;
+        let display = window.getComputedStyle(node).display;
+        return  display == "inline-block";
     }
 
     static isRelativelyPositioned(box) {
@@ -529,32 +548,45 @@ class Utils {
         return textBox.text().node().textHeight();
     }
 
-    // "RenderView at (0,0) size 1317x366\n HTML RenderBlock at (0,0) size 1317x116\n  BODY RenderBody at (8,8) size 1301x100\n   DIV RenderBlock at (0,0) size 100x100\n";
-    static layoutTreeDump(initialContainingBlock, layoutState) {
-        return this._dumpBox(layoutState, initialContainingBlock, 1) + this._dumpTree(layoutState, initialContainingBlock, 2);
-    }
-
-    static _findDisplayBox(layoutState, box) {
-        for (let formattingState of layoutState.formattingStates()) {
-            let displayBox = formattingState[1].displayBoxMap().get(box);
-            if (displayBox)
-                return displayBox;
+    static layoutBoxById(layoutBoxId, box) {
+        if (box.id() == layoutBoxId)
+            return box;
+        if (!box.isContainer())
+            return null;
+        // Super inefficient but this is all temporary anyway.
+        for (let child = box.firstChild(); child; child = child.nextSibling()) {
+            if (child.id() == layoutBoxId)
+                return child;
+            let foundIt = Utils.layoutBoxById(layoutBoxId, child);
+            if (foundIt)
+                return foundIt;
         }
-        ASSERT(!box.parent());
-        return layoutState.initialDisplayBox();
+        return null;
+    }
+    // "RenderView at (0,0) size 1317x366\n HTML RenderBlock at (0,0) size 1317x116\n  BODY RenderBody at (8,8) size 1301x100\n   DIV RenderBlock at (0,0) size 100x100\n";
+    static layoutTreeDump(layoutState) {
+        return this._dumpBox(layoutState, layoutState.rootContainer(), 1) + this._dumpTree(layoutState, layoutState.rootContainer(), 2);
     }
 
     static _dumpBox(layoutState, box, level) {
         // Skip anonymous boxes for now -This is the case where WebKit does not generate an anon inline container for text content where the text is a direct child
         // of a block container.
         let indentation = " ".repeat(level);
-        if (box instanceof Layout.InlineBox) {
+        if (box.isInlineBox()) {
             if (box.text())
                 return indentation + "#text RenderText\n";
         }
+        if (box.name() == "RenderInline") {
+            if (box.isInFlowPositioned()) {
+                let displayBox = layoutState.displayBox(box);
+                let boxRect = displayBox.rect();
+                return indentation + box.node().tagName + " " + box.name() + "  (" + Utils.precisionRoundWithDecimals(boxRect.left()) + ", " + Utils.precisionRoundWithDecimals(boxRect.top()) + ")\n";
+            }
+            return indentation + box.node().tagName + " " + box.name() + "\n";
+        }
         if (box.isAnonymous())
             return "";
-        let displayBox = Utils._findDisplayBox(layoutState, box);
+        let displayBox = layoutState.displayBox(box);
         let boxRect = displayBox.rect();
         return indentation + (box.node().tagName ? (box.node().tagName + " ") : "")  + box.name() + " at (" + boxRect.left() + "," + boxRect.top() + ") size " + boxRect.width() + "x" + boxRect.height() + "\n";
     }
@@ -567,10 +599,11 @@ class Utils {
         let indentation = " ".repeat(level);
         lines.forEach(function(line) {
             let lineRect = line.rect();
-            content += indentation + "RootInlineBox at (" + lineRect.left() + "," + lineRect.top() + ") size " + Utils.precisionRound(lineRect.width(), 2) + "x" + lineRect.height() + "\n";
+            content += indentation + "RootInlineBox at (" + lineRect.left() + "," + lineRect.top() + ") size " + Utils.precisionRound(lineRect.width()) + "x" + lineRect.height() + "\n";
             line.lineBoxes().forEach(function(lineBox) {
                 let indentation = " ".repeat(level + 1);
-                content += indentation + "InlineTextBox at (" + Utils.precisionRound(lineBox.lineBoxRect.left(), 2) + "," + Utils.precisionRound(lineBox.lineBoxRect.top(), 2) + ") size " + Utils.precisionRound(lineBox.lineBoxRect.width(), 2) + "x" + lineBox.lineBoxRect.height() + "\n";
+                let inlineBoxName = lineBox.startPosition === undefined ? "InlineBox" : "InlineTextBox";
+                content += indentation +  inlineBoxName + " at (" + Utils.precisionRound(lineBox.lineBoxRect.left()) + "," + Utils.precisionRound(lineBox.lineBoxRect.top()) + ") size " + Utils.precisionRound(lineBox.lineBoxRect.width()) + "x" + lineBox.lineBoxRect.height() + "\n";
             });
         });
         return content;
@@ -588,8 +621,12 @@ class Utils {
         return content;
     }
 
-    static precisionRound(number, precision) {
-        var factor = Math.pow(10, precision);
+    static precisionRoundWithDecimals(number) {
+        return number.toFixed(2);
+    }
+
+    static precisionRound(number) {
+        let factor = Math.pow(10, 2);
         return Math.round(number * factor) / factor;
     }
 }

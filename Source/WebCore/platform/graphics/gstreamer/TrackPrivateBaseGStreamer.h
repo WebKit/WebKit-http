@@ -27,7 +27,7 @@
 
 #if ENABLE(VIDEO) && USE(GSTREAMER) && ENABLE(VIDEO_TRACK)
 
-#include "GRefPtrGStreamer.h"
+#include "GStreamerCommon.h"
 #include "MainThreadNotifier.h"
 #include <gst/gst.h>
 #include <wtf/Lock.h>
@@ -56,9 +56,16 @@ public:
 
     void setIndex(int index) { m_index =  index; }
 
+#if GST_CHECK_VERSION(1, 10, 0)
+    GstStream* stream()
+    {
+        return m_stream.get();
+    }
+#endif
+
 protected:
     TrackPrivateBaseGStreamer(TrackPrivateBase* owner, gint index, GRefPtr<GstPad>);
-#if USE(GSTREAMER_PLAYBIN3)
+#if GST_CHECK_VERSION(1, 10, 0)
     TrackPrivateBaseGStreamer(TrackPrivateBase* owner, gint index, GRefPtr<GstStream>);
 #endif
     void notifyTrackOfActiveChanged();
@@ -76,7 +83,7 @@ protected:
     AtomicString m_label;
     AtomicString m_language;
     GRefPtr<GstPad> m_pad;
-#if USE(GSTREAMER_PLAYBIN3)
+#if GST_CHECK_VERSION(1, 10, 0)
     GRefPtr<GstStream> m_stream;
 #endif
 

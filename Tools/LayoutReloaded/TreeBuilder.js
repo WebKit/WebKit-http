@@ -28,7 +28,7 @@ class TreeBuilder {
 
     createTree(document, renderTreeDump) {
         // Root.
-        let initialBlockContainer = new Layout.InitialBlockContainer(document, parseInt(renderTreeDump.substring(0, renderTreeDump.indexOf("("))));
+        let initialBlockContainer = new Layout.BlockContainer(document, parseInt(renderTreeDump.substring(0, renderTreeDump.indexOf("("))));
         initialBlockContainer.setRendererName("RenderView");
         renderTreeDump = renderTreeDump.substring(renderTreeDump.indexOf("|") + 1);
 
@@ -64,10 +64,10 @@ class TreeBuilder {
         if (box)
             box.setRendererName(name);
 
-        let parentBox = this._findBox(initialBlockContainer, parentId);
+        let parentBox = Utils.layoutBoxById(parentId, initialBlockContainer);
         // WebKit does not construct anonymous inline container for text if the text
         // is a direct child of a block container.
-        if (text && !parentBox.isInlineContainer) {
+        if (text) {
             box = new Layout.InlineBox(null, -1);
             box.setIsAnonymous();
             box.setText(text);
@@ -88,21 +88,6 @@ class TreeBuilder {
         lastChild.setNextSibling(child);
         child.setPreviousSibling(lastChild);
         parent.setLastChild(child);
-    }
-
-    _findBox(root, boxId) {
-        if (root.id() == boxId)
-            return root;
-        // Super inefficient but this is all temporary anyway.
-        for (let box = root.firstChild(); box; box = box.nextSibling()) {
-            if (box.id() == boxId)
-                return box;
-            if (box.isContainer() && box.hasChild()) {
-                let candidate = this._findBox(box, boxId);
-                if (candidate)
-                    return candidate;
-            }
-        }
     }
 
     _findNode(node, boxId) {

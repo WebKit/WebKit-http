@@ -36,7 +36,6 @@
 #include "CodeBlockHash.h"
 #include "CodeOrigin.h"
 #include "CodeType.h"
-#include "CompactJITCodeMap.h"
 #include "CompilationResult.h"
 #include "ConcurrentJSLock.h"
 #include "DFGCommon.h"
@@ -48,6 +47,7 @@
 #include "HandlerInfo.h"
 #include "Instruction.h"
 #include "JITCode.h"
+#include "JITCodeMap.h"
 #include "JITMathICForwards.h"
 #include "JSCPoison.h"
 #include "JSCast.h"
@@ -301,15 +301,17 @@ public:
 
     void linkIncomingCall(ExecState* callerFrame, LLIntCallLinkInfo*);
 
-    void setJITCodeMap(std::unique_ptr<CompactJITCodeMap> jitCodeMap)
+#if ENABLE(JIT)
+    void setJITCodeMap(JITCodeMap&& jitCodeMap)
     {
         m_jitCodeMap = WTFMove(jitCodeMap);
     }
-    CompactJITCodeMap* jitCodeMap()
+    const JITCodeMap& jitCodeMap() const
     {
-        return m_jitCodeMap.get();
+        return m_jitCodeMap;
     }
-    
+#endif
+
     typedef JSC::Instruction Instruction;
     typedef PoisonedRefCountedArray<CodeBlockPoison, Instruction>& UnpackedInstructions;
 
@@ -986,8 +988,8 @@ private:
     SentinelLinkedList<CallLinkInfo, BasicRawSentinelNode<CallLinkInfo>> m_incomingCalls;
     SentinelLinkedList<PolymorphicCallNode, BasicRawSentinelNode<PolymorphicCallNode>> m_incomingPolymorphicCalls;
     std::unique_ptr<PCToCodeOriginMap> m_pcToCodeOriginMap;
+    JITCodeMap m_jitCodeMap;
 #endif
-    std::unique_ptr<CompactJITCodeMap> m_jitCodeMap;
 #if ENABLE(DFG_JIT)
     // This is relevant to non-DFG code blocks that serve as the profiled code block
     // for DFG code blocks.

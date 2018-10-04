@@ -28,7 +28,7 @@ function asyncGeneratorQueueIsEmpty(generator)
 {
     "use strict";
 
-    return generator.@asyncGeneratorQueueLast === null;
+    return @getByIdDirectPrivate(generator, "asyncGeneratorQueueLast") === null;
 }
 
 @globalPrivate
@@ -36,17 +36,18 @@ function asyncGeneratorQueueEnqueue(generator, item)
 {
     "use strict";
 
-    @assert(item.@asyncGeneratorQueueItemNext === null && item.@asyncGeneratorQueueItemPrevious === null);
+    @assert(@getByIdDirectPrivate(item, "asyncGeneratorQueueItemNext") === null && @getByIdDirectPrivate(item, "asyncGeneratorQueueItemPrevious") === null);
 
-    if (generator.@asyncGeneratorQueueFirst === null) {
-        @assert(generator.@asyncGeneratorQueueLast === null);
+    if (@getByIdDirectPrivate(generator, "asyncGeneratorQueueFirst") === null) {
+        @assert(@getByIdDirectPrivate(generator, "asyncGeneratorQueueLast") === null);
 
-        generator.@asyncGeneratorQueueFirst = item;
-        generator.@asyncGeneratorQueueLast = item;
+        @putByIdDirectPrivate(generator, "asyncGeneratorQueueFirst", item);
+        @putByIdDirectPrivate(generator, "asyncGeneratorQueueLast", item);
     } else {
-        item.@asyncGeneratorQueueItemPrevious = generator.@asyncGeneratorQueueLast;
-        generator.@asyncGeneratorQueueLast.@asyncGeneratorQueueItemNext = item;
-        generator.@asyncGeneratorQueueLast = item;
+        var last = @getByIdDirectPrivate(generator, "asyncGeneratorQueueLast");
+        @putByIdDirectPrivate(item, "asyncGeneratorQueueItemPrevious", last);
+        @putByIdDirectPrivate(last, "asyncGeneratorQueueItemNext", item);
+        @putByIdDirectPrivate(generator, "asyncGeneratorQueueLast", item);
     }
 }
 
@@ -55,14 +56,15 @@ function asyncGeneratorQueueDequeue(generator)
 {
     "use strict";
 
-    if (generator.@asyncGeneratorQueueFirst === null)
+    const result = @getByIdDirectPrivate(generator, "asyncGeneratorQueueFirst");
+    if (result === null)
         return null;
 
-    const result = generator.@asyncGeneratorQueueFirst;
-    generator.@asyncGeneratorQueueFirst = result.@asyncGeneratorQueueItemNext;
+    var updatedFirst = @getByIdDirectPrivate(result, "asyncGeneratorQueueItemNext");
+    @putByIdDirectPrivate(generator, "asyncGeneratorQueueFirst", updatedFirst);
 
-    if (generator.@asyncGeneratorQueueFirst === null)
-        generator.@asyncGeneratorQueueLast = null;
+    if (updatedFirst === null)
+        @putByIdDirectPrivate(generator, "asyncGeneratorQueueLast", null);
 
     return result;
 }
@@ -72,7 +74,7 @@ function asyncGeneratorDequeue(generator)
 {
     "use strict";
 
-    const queue = generator.@asyncGeneratorQueue;
+    const queue = @getByIdDirectPrivate(generator, "asyncGeneratorQueue");
 
     @assert(!@asyncGeneratorQueueIsEmpty(generator), "Async genetator's Queue is an empty List.");
     
@@ -84,9 +86,11 @@ function isExecutionState(generator)
 {
     "use strict";
 
-    return (generator.@generatorState > 0 && generator.@asyncGeneratorSuspendReason === @AsyncGeneratorSuspendReasonNone)
-        || generator.@generatorState === @AsyncGeneratorStateExecuting
-        || generator.@asyncGeneratorSuspendReason === @AsyncGeneratorSuspendReasonAwait;
+    var state = @getByIdDirectPrivate(generator, "generatorState");
+    var reason = @getByIdDirectPrivate(generator, "asyncGeneratorSuspendReason");
+    return (state > 0 && reason === @AsyncGeneratorSuspendReasonNone)
+        || state === @AsyncGeneratorStateExecuting
+        || reason === @AsyncGeneratorSuspendReasonAwait;
 }
 
 @globalPrivate
@@ -94,8 +98,9 @@ function isSuspendYieldState(generator)
 {
     "use strict";
 
-    return (generator.@generatorState > 0 && generator.@asyncGeneratorSuspendReason === @AsyncGeneratorSuspendReasonYield)
-        || generator.@generatorState === @AsyncGeneratorStateSuspendedYield;
+    var state = @getByIdDirectPrivate(generator, "generatorState");
+    return (state > 0 && @getByIdDirectPrivate(generator, "asyncGeneratorSuspendReason") === @AsyncGeneratorSuspendReasonYield)
+        || state === @AsyncGeneratorStateSuspendedYield;
 }
 
 @globalPrivate
@@ -103,7 +108,7 @@ function asyncGeneratorReject(generator, exception)
 {
     "use strict";
 
-    @assert(typeof generator.@asyncGeneratorSuspendReason === "number", "Generator is not an AsyncGenerator instance.");
+    @assert(typeof @getByIdDirectPrivate(generator, "asyncGeneratorSuspendReason") === "number", "Generator is not an AsyncGenerator instance.");
 
     const { promiseCapability } = @asyncGeneratorDequeue(generator);
     promiseCapability.@reject.@call(@undefined, exception);
@@ -116,7 +121,7 @@ function asyncGeneratorResolve(generator, value, done)
 {
     "use strict";
 
-    @assert(typeof generator.@asyncGeneratorSuspendReason === "number", "Generator is not an AsyncGenerator instance.");
+    @assert(typeof @getByIdDirectPrivate(generator, "asyncGeneratorSuspendReason") === "number", "Generator is not an AsyncGenerator instance.");
 
     const { promiseCapability } = @asyncGeneratorDequeue(generator);
     promiseCapability.@resolve.@call(@undefined, { done, value: value });
@@ -131,11 +136,11 @@ function asyncGeneratorYield(generator, value, resumeMode)
 
     function asyncGeneratorYieldAwaited(result)
     {
-        generator.@asyncGeneratorSuspendReason = @AsyncGeneratorSuspendReasonYield;
+        @putByIdDirectPrivate(generator, "asyncGeneratorSuspendReason", @AsyncGeneratorSuspendReasonYield);
         @asyncGeneratorResolve(generator, result, false);
     }
 
-    generator.@asyncGeneratorSuspendReason = @AsyncGeneratorSuspendReasonAwait;
+    @putByIdDirectPrivate(generator, "asyncGeneratorSuspendReason", @AsyncGeneratorSuspendReasonAwait);
 
     @awaitValue(generator, value, asyncGeneratorYieldAwaited);
 
@@ -163,23 +168,23 @@ function doAsyncGeneratorBodyCall(generator, resumeValue, resumeMode)
     "use strict";
 
     let value = @undefined;
-    let state = generator.@generatorState;
+    let state = @getByIdDirectPrivate(generator, "generatorState");
 
-    generator.@generatorState = @AsyncGeneratorStateExecuting;
-    generator.@asyncGeneratorSuspendReason = @AsyncGeneratorSuspendReasonNone;
+    @putByIdDirectPrivate(generator, "generatorState", @AsyncGeneratorStateExecuting);
+    @putByIdDirectPrivate(generator, "asyncGeneratorSuspendReason", @AsyncGeneratorSuspendReasonNone);
 
     try {
-        value = generator.@generatorNext.@call(generator.@generatorThis, generator, state, resumeValue, resumeMode, generator.@generatorFrame);
-        if (generator.@generatorState === @AsyncGeneratorStateExecuting)
-            generator.@generatorState = @AsyncGeneratorStateCompleted;
+        value = @getByIdDirectPrivate(generator, "generatorNext").@call(@getByIdDirectPrivate(generator, "generatorThis"), generator, state, resumeValue, resumeMode, @getByIdDirectPrivate(generator, "generatorFrame"));
+        if (@getByIdDirectPrivate(generator, "generatorState") === @AsyncGeneratorStateExecuting)
+            @putByIdDirectPrivate(generator, "generatorState", @AsyncGeneratorStateCompleted);
     } catch (error) {
-        generator.@generatorState = @AsyncGeneratorStateCompleted;
-        generator.@asyncGeneratorSuspendReason = @AsyncGeneratorSuspendReasonNone;
+        @putByIdDirectPrivate(generator, "generatorState", @AsyncGeneratorStateCompleted);
+        @putByIdDirectPrivate(generator, "asyncGeneratorSuspendReason", @AsyncGeneratorSuspendReasonNone);
 
         return @asyncGeneratorReject(generator, error);
     }
 
-    if (generator.@asyncGeneratorSuspendReason === @AsyncGeneratorSuspendReasonAwait) {
+    if (@getByIdDirectPrivate(generator, "asyncGeneratorSuspendReason") === @AsyncGeneratorSuspendReasonAwait) {
         const onFulfilled = function(result) { @doAsyncGeneratorBodyCall(generator, result, @GeneratorResumeModeNormal); };
 
         @awaitValue(generator, value, onFulfilled);
@@ -187,11 +192,11 @@ function doAsyncGeneratorBodyCall(generator, resumeValue, resumeMode)
         return @undefined;
     }
 
-    if (generator.@asyncGeneratorSuspendReason === @AsyncGeneratorSuspendReasonYield)
+    if (@getByIdDirectPrivate(generator, "asyncGeneratorSuspendReason") === @AsyncGeneratorSuspendReasonYield)
         return @asyncGeneratorYield(generator, value, resumeMode);
 
-    if (generator.@generatorState === @AsyncGeneratorStateCompleted) {
-        generator.@asyncGeneratorSuspendReason = @AsyncGeneratorSuspendReasonNone;
+    if (@getByIdDirectPrivate(generator, "generatorState") === @AsyncGeneratorStateCompleted) {
+        @putByIdDirectPrivate(generator, "asyncGeneratorSuspendReason", @AsyncGeneratorSuspendReasonNone);
         return @asyncGeneratorResolve(generator, value, true);
     }
 
@@ -203,9 +208,9 @@ function asyncGeneratorResumeNext(generator)
 {
     "use strict";
 
-    @assert(typeof generator.@asyncGeneratorSuspendReason === "number", "Generator is not an AsyncGenerator instance.");
+    @assert(typeof @getByIdDirectPrivate(generator, "asyncGeneratorSuspendReason") === "number", "Generator is not an AsyncGenerator instance.");
 
-    let state = generator.@generatorState;
+    let state = @getByIdDirectPrivate(generator, "generatorState");
 
     @assert(state !== @AsyncGeneratorStateExecuting, "Async generator should not be in executing state");
 
@@ -215,17 +220,17 @@ function asyncGeneratorResumeNext(generator)
     if (@asyncGeneratorQueueIsEmpty(generator))
         return @undefined;
 
-    const next = generator.@asyncGeneratorQueueFirst;
+    const next = @getByIdDirectPrivate(generator, "asyncGeneratorQueueFirst");
 
     if (next.resumeMode !== @GeneratorResumeModeNormal) {
         if (state === @AsyncGeneratorStateSuspendedStart) {
-            generator.@generatorState = @AsyncGeneratorStateCompleted;
+            @putByIdDirectPrivate(generator, "generatorState", @AsyncGeneratorStateCompleted);
             state = @AsyncGeneratorStateCompleted;
         }
 
         if (state === @AsyncGeneratorStateCompleted) {
             if (next.resumeMode === @GeneratorResumeModeReturn) {
-                generator.@generatorState = @AsyncGeneratorStateAwaitingReturn;
+                @putByIdDirectPrivate(generator, "generatorState", @AsyncGeneratorStateAwaitingReturn);
 
                 const promiseCapability = @newPromiseCapability(@Promise);
                 promiseCapability.@resolve.@call(@undefined, next.value);
@@ -234,7 +239,7 @@ function asyncGeneratorResumeNext(generator)
                     function (result) { generator.@generatorState = @AsyncGeneratorStateCompleted; @asyncGeneratorResolve(generator, result, true); },
                     function (error) { generator.@generatorState = @AsyncGeneratorStateCompleted; @asyncGeneratorReject(generator, error); });
 
-                throwawayCapabilityPromise.@promiseIsHandled = true;
+                @putByIdDirectPrivate(throwawayCapabilityPromise, "promiseIsHandled", true);
 
                 return @undefined;
             }
@@ -259,7 +264,7 @@ function asyncGeneratorEnqueue(generator, value, resumeMode)
     "use strict";
     
     const promiseCapability = @newPromiseCapability(@Promise);
-    if (!@isObject(generator) || typeof generator.@asyncGeneratorSuspendReason !== 'number') {
+    if (!@isObject(generator) || typeof @getByIdDirectPrivate(generator, "asyncGeneratorSuspendReason") !== 'number') {
         promiseCapability.@reject.@call(@undefined, new @TypeError('|this| should be an async generator'));
         return promiseCapability.@promise;
     }

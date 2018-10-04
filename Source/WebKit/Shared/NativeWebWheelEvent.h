@@ -46,6 +46,10 @@ typedef union _GdkEvent GdkEvent;
 struct wpe_input_axis_event;
 #endif
 
+#if PLATFORM(WIN)
+#include <windows.h>
+#endif
+
 namespace WebKit {
 
 class NativeWebWheelEvent : public WebWheelEvent {
@@ -58,6 +62,8 @@ public:
     NativeWebWheelEvent(GdkEvent*, WebWheelEvent::Phase, WebWheelEvent::Phase momentumPhase);
 #elif PLATFORM(WPE)
     NativeWebWheelEvent(struct wpe_input_axis_event*, float deviceScaleFactor);
+#elif PLATFORM(WIN)
+    NativeWebWheelEvent(HWND, UINT message, WPARAM, LPARAM);
 #endif
 
 #if USE(APPKIT)

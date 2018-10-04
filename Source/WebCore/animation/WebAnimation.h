@@ -100,12 +100,14 @@ public:
     Seconds timeToNextRequiredTick() const;
     void resolve(RenderStyle&);
     void effectTargetDidChange(Element* previousTarget, Element* newTarget);
-    void acceleratedRunningStateDidChange();
-    void startOrStopAccelerated();
+    void acceleratedStateDidChange();
+    void applyPendingAcceleratedActions();
 
     void timingModelDidChange();
     void suspendEffectInvalidation();
     void unsuspendEffectInvalidation();
+    void setSuspended(bool);
+    bool isSuspended() const { return m_isSuspended; }
 
     String description();
 
@@ -154,6 +156,7 @@ private:
     int m_suspendCount { 0 };
     double m_playbackRate { 1 };
     bool m_isStopped { false };
+    bool m_isSuspended { false };
     bool m_finishNotificationStepsMicrotaskPending;
     bool m_scheduledMicrotask;
     UniqueRef<ReadyPromise> m_readyPromise;

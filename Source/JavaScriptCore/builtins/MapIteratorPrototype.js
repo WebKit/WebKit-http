@@ -31,7 +31,7 @@ function mapIteratorNext(bucket, kind)
     var value;
 
     bucket = @mapBucketNext(bucket);
-    this.@mapBucket = bucket;
+    @putByIdDirectPrivate(this, "mapBucket", bucket);
     var done = bucket === @sentinelMapBucket;
     if (!done) {
         var key = @mapBucketKey(bucket);
@@ -51,8 +51,8 @@ function next()
     if (this == null)
         @throwTypeError("%MapIteratorPrototype%.next requires that |this| not be null or undefined");
 
-    var bucket = this.@mapBucket;
+    var bucket = @getByIdDirectPrivate(this, "mapBucket");
     if (bucket === @undefined)
         @throwTypeError("%MapIteratorPrototype%.next requires that |this| be a Map Iterator instance");
-    return @mapIteratorNext.@call(this, bucket, this.@mapIteratorKind);
+    return @mapIteratorNext.@call(this, bucket, @getByIdDirectPrivate(this, "mapIteratorKind"));
 }

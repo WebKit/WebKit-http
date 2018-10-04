@@ -71,6 +71,8 @@ list(APPEND WebCore_SOURCES
     platform/graphics/win/TransformationMatrixWin.cpp
     platform/graphics/win/UniscribeController.cpp
 
+    platform/mediastream/libwebrtc/LibWebRTCProviderWin.cpp
+
     platform/network/win/DownloadBundleWin.cpp
     platform/network/win/NetworkStateNotifierWin.cpp
 
@@ -103,6 +105,7 @@ list(APPEND WebCore_SOURCES
     platform/win/SharedBufferWin.cpp
     platform/win/StructuredExceptionHandlerSuppressor.cpp
     platform/win/SystemInfo.cpp
+    platform/win/UserAgentWin.cpp
     platform/win/WCDataObject.cpp
     platform/win/WebCoreBundleWin.cpp
     platform/win/WebCoreInstanceHandle.cpp

@@ -41,6 +41,7 @@
 + (NSColor *)systemPinkColor;
 + (NSColor *)systemPurpleColor;
 + (NSColor *)systemGrayColor;
++ (NSColor *)linkColor;
 @end
 
 #endif

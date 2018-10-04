@@ -47,6 +47,10 @@ public:
 
 private:
     rtc::scoped_refptr<webrtc::PeerConnectionInterface> createPeerConnection(webrtc::PeerConnectionObserver&, webrtc::PeerConnectionInterface::RTCConfiguration&&) final;
+
+    void unregisterMDNSNames(uint64_t documentIdentifier) final;
+    void registerMDNSName(PAL::SessionID, uint64_t documentIdentifier, const String& ipAddress, CompletionHandler<void(MDNSNameOrError&&)>&&) final;
+    void resolveMDNSName(PAL::SessionID, const String& name, CompletionHandler<void(IPAddressOrError&&)>&&) final;
 };
 #else
 using LibWebRTCProvider = WebCore::LibWebRTCProvider;

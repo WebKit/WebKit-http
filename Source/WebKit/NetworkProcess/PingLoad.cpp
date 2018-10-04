@@ -38,11 +38,11 @@ namespace WebKit {
 
 using namespace WebCore;
 
-PingLoad::PingLoad(NetworkResourceLoadParameters&& parameters, HTTPHeaderMap&& originalRequestHeaders, WTF::CompletionHandler<void(const ResourceError&, const ResourceResponse&)>&& completionHandler)
+PingLoad::PingLoad(NetworkResourceLoadParameters&& parameters, WTF::CompletionHandler<void(const ResourceError&, const ResourceResponse&)>&& completionHandler)
     : m_parameters(WTFMove(parameters))
     , m_completionHandler(WTFMove(completionHandler))
     , m_timeoutTimer(*this, &PingLoad::timeoutTimerFired)
-    , m_networkLoadChecker(NetworkLoadChecker::create(m_parameters.mode, m_parameters.shouldFollowRedirects, m_parameters.storedCredentialsPolicy, m_parameters.sessionID, WTFMove(originalRequestHeaders), URL { m_parameters.request.url() }, m_parameters.sourceOrigin.copyRef()))
+    , m_networkLoadChecker(NetworkLoadChecker::create(FetchOptions { m_parameters.options}, m_parameters.sessionID, WTFMove(m_parameters.originalRequestHeaders), URL { m_parameters.request.url() }, m_parameters.sourceOrigin.copyRef()))
 {
 
     if (m_parameters.cspResponseHeaders)
@@ -93,8 +93,7 @@ void PingLoad::loadRequest(ResourceRequest&& request)
 
 void PingLoad::willPerformHTTPRedirection(ResourceResponse&& redirectResponse, ResourceRequest&& request, RedirectCompletionHandler&& completionHandler)
 {
-
-    m_networkLoadChecker->checkRedirection(WTFMove(request), [this, completionHandler = WTFMove(completionHandler)](auto&& result) {
+    m_networkLoadChecker->checkRedirection(redirectResponse, WTFMove(request), [this, completionHandler = WTFMove(completionHandler)](auto&& result) {
         if (!result.has_value()) {
             completionHandler({ });
             this->didFinish(result.error());

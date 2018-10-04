@@ -26,6 +26,7 @@
 #include "config.h"
 #include "LoadableClassicScript.h"
 
+#include "FetchIdioms.h"
 #include "ScriptElement.h"
 #include "ScriptSourceCode.h"
 #include "SubresourceIntegrity.h"
@@ -90,7 +91,18 @@ void LoadableClassicScript::notifyFinished(CachedResource& resource)
             ConsoleMessage {
                 MessageSource::Security,
                 MessageLevel::Error,
-                makeString("Did not load script at '", m_cachedScript->url().stringCenterEllipsizedToLength(), "' because non script MIME types are not allowed when 'X-Content-Type: nosniff' is given.")
+                makeString("Refused to execute ", m_cachedScript->url().stringCenterEllipsizedToLength(), " as script because \"X-Content-Type: nosniff\" was given and its Content-Type is not a script MIME type.")
+            }
+        };
+    }
+
+    if (!m_error && shouldBlockResponseDueToMIMEType(m_cachedScript->response(), m_cachedScript->options().destination)) {
+        m_error = Error {
+            ErrorType::MIMEType,
+            ConsoleMessage {
+                MessageSource::Security,
+                MessageLevel::Error,
+                makeString("Refused to execute ", m_cachedScript->url().stringCenterEllipsizedToLength(), " as script because ", m_cachedScript->response().mimeType(), " is not a script MIME type.")
             }
         };
     }

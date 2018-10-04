@@ -79,9 +79,6 @@ private:
 #endif
     void initialize(NetworkSession&);
 
-    NetworkLoadClient::ShouldContinueDidReceiveResponse sharedDidReceiveResponse(WebCore::ResourceResponse&&);
-    void sharedWillSendRedirectedRequest(WebCore::ResourceRequest&&, WebCore::ResourceResponse&&);
-
     // NetworkDataTaskClient
     void willPerformHTTPRedirection(WebCore::ResourceResponse&&, WebCore::ResourceRequest&&, RedirectCompletionHandler&&) final;
     void didReceiveChallenge(const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler&&) final;

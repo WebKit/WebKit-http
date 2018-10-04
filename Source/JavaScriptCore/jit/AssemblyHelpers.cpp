@@ -50,20 +50,6 @@ ExecutableBase* AssemblyHelpers::executableFor(const CodeOrigin& codeOrigin)
     return codeOrigin.inlineCallFrame->baselineCodeBlock->ownerExecutable();
 }
 
-Vector<BytecodeAndMachineOffset>& AssemblyHelpers::decodedCodeMapFor(CodeBlock* codeBlock)
-{
-    ASSERT(codeBlock == codeBlock->baselineVersion());
-    ASSERT(codeBlock->jitType() == JITCode::BaselineJIT);
-    ASSERT(codeBlock->jitCodeMap());
-    
-    HashMap<CodeBlock*, Vector<BytecodeAndMachineOffset>>::AddResult result = m_decodedCodeMaps.add(codeBlock, Vector<BytecodeAndMachineOffset>());
-    
-    if (result.isNewEntry)
-        codeBlock->jitCodeMap()->decode(result.iterator->value);
-    
-    return result.iterator->value;
-}
-
 AssemblyHelpers::JumpList AssemblyHelpers::branchIfNotType(
     JSValueRegs regs, GPRReg tempGPR, const InferredType::Descriptor& descriptor, TagRegistersMode mode)
 {
@@ -98,6 +84,11 @@ AssemblyHelpers::JumpList AssemblyHelpers::branchIfNotType(
     case InferredType::Symbol:
         result.append(branchIfNotCell(regs, mode));
         result.append(branchIfNotSymbol(regs.payloadGPR()));
+        break;
+
+    case InferredType::BigInt:
+        result.append(branchIfNotCell(regs, mode));
+        result.append(branchIfNotBigInt(regs.payloadGPR()));
         break;
 
     case InferredType::ObjectWithStructure:
@@ -722,9 +713,10 @@ void AssemblyHelpers::emitDumbVirtualCall(VM& vm, CallLinkInfo* info)
     Call call = nearCall();
     addLinkTask(
         [=, &vm] (LinkBuffer& linkBuffer) {
+            PtrTag linkTag = ptrTag(LinkVirtualCallPtrTag, &vm);
             MacroAssemblerCodeRef virtualThunk = virtualThunkFor(&vm, *info);
             info->setSlowStub(createJITStubRoutine(virtualThunk, vm, nullptr, true));
-            linkBuffer.link(call, CodeLocationLabel(virtualThunk.code()));
+            linkBuffer.link(call, CodeLocationLabel(virtualThunk.retaggedCode(linkTag, NearCodePtrTag)));
         });
 }
 

@@ -1,3 +1,43 @@
+2018-04-09  John Wilander  <wilander@apple.com>
+
+        Refactor Ignore HSTS code
+        https://bugs.webkit.org/show_bug.cgi?id=184433
+        <rdar://problem/39298238>
+
+        Reviewed by Darin Adler.
+
+        This patch refactors our ignore HSTS code. The convenience functions are moved
+        out of CFNetwork SPI in PAL, and into where they are used. It also switches
+        from performSelector: calls to straight function calls, after checking that
+        there is a responder.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+        (schemeWasUpgradedDueToDynamicHSTS): Deleted.
+        (setIgnoreHSTS): Deleted.
+        (ignoreHSTS): Deleted.
+
+2018-04-07  Timothy Hatcher  <timothy@apple.com>
+
+        Use the system's link color when system appearance is desired for a WebView.
+
+        https://bugs.webkit.org/show_bug.cgi?id=184353
+        rdar://problem/9420053
+
+        Reviewed by Wenson Hsieh.
+
+        * pal/spi/cocoa/NSColorSPI.h: Added linkColor.
+
+2018-04-05  John Wilander  <wilander@apple.com>
+
+        Add necessary colon to CFNetwork selector
+        https://bugs.webkit.org/show_bug.cgi?id=184335
+        <rdar://problem/39213124>
+
+        Reviewed by Brent Fulgham.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+        (setIgnoreHSTS):
+
 2018-04-04  Per Arne Vollan  <pvollan@apple.com>
 
         The layout test fast/canvas/canvas-blending-global-alpha.html is failing when the WebContent process does not have WindowServer access.

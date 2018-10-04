@@ -76,12 +76,11 @@ EncodedJSValue JIT_OPERATION operationGetByValObjectString(ExecState*, JSCell*, 
 EncodedJSValue JIT_OPERATION operationGetByValObjectSymbol(ExecState*, JSCell*, JSCell* symbol) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationToPrimitive(ExecState*, EncodedJSValue) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationToNumber(ExecState*, EncodedJSValue) WTF_INTERNAL;
-EncodedJSValue JIT_OPERATION operationGetByIdWithThis(ExecState*, EncodedJSValue, EncodedJSValue, UniquedStringImpl*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationGetByValWithThis(ExecState*, EncodedJSValue, EncodedJSValue, EncodedJSValue) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationGetPrototypeOf(ExecState*, EncodedJSValue) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationGetPrototypeOfObject(ExecState*, JSObject*) WTF_INTERNAL;
 EncodedJSValue JIT_OPERATION operationHasGenericProperty(ExecState*, EncodedJSValue, JSCell*);
-EncodedJSValue JIT_OPERATION operationHasIndexedPropertyByInt(ExecState*, JSCell*, int32_t, int32_t);
+size_t JIT_OPERATION operationHasIndexedPropertyByInt(ExecState*, JSCell*, int32_t, int32_t);
 JSCell* JIT_OPERATION operationGetPropertyEnumerator(ExecState*, EncodedJSValue);
 JSCell* JIT_OPERATION operationGetPropertyEnumeratorCell(ExecState*, JSCell*);
 JSCell* JIT_OPERATION operationToIndexString(ExecState*, int32_t);
@@ -161,7 +160,7 @@ EncodedJSValue JIT_OPERATION operationRegExpMatchFastString(ExecState*, JSGlobal
 size_t JIT_OPERATION operationRegExpTestString(ExecState*, JSGlobalObject*, RegExpObject*, JSString*) WTF_INTERNAL;
 size_t JIT_OPERATION operationRegExpTest(ExecState*, JSGlobalObject*, RegExpObject*, EncodedJSValue) WTF_INTERNAL;
 size_t JIT_OPERATION operationRegExpTestGeneric(ExecState*, JSGlobalObject*, EncodedJSValue, EncodedJSValue) WTF_INTERNAL;
-size_t JIT_OPERATION operationCompareStrictEqCell(ExecState*, EncodedJSValue encodedOp1, EncodedJSValue encodedOp2) WTF_INTERNAL;
+size_t JIT_OPERATION operationCompareStrictEqCell(ExecState*, JSCell* op1, JSCell* op2) WTF_INTERNAL;
 JSCell* JIT_OPERATION operationCreateActivationDirect(ExecState*, Structure*, JSScope*, SymbolTable*, EncodedJSValue);
 JSCell* JIT_OPERATION operationCreateDirectArguments(ExecState*, Structure*, uint32_t length, uint32_t minCapacity);
 JSCell* JIT_OPERATION operationCreateDirectArgumentsDuringExit(ExecState*, InlineCallFrame*, JSFunction*, uint32_t argumentCount);

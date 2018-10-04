@@ -32,7 +32,7 @@
 
 #if defined(USE_SYSTEM_MALLOC) && USE_SYSTEM_MALLOC
 
-char g_gigacageBasePtrs[GIGACAGE_BASE_PTRS_SIZE];
+alignas(void*) char g_gigacageBasePtrs[GIGACAGE_BASE_PTRS_SIZE];
 
 namespace Gigacage {
 
@@ -108,12 +108,12 @@ void* tryAllocateZeroedVirtualPages(Kind kind, size_t size)
     return result;
 }
 
-void freeVirtualPages(Kind kind, void* basePtr, size_t)
+void freeVirtualPages(Kind kind, void* basePtr, size_t size)
 {
     if (!basePtr)
         return;
     RELEASE_ASSERT(isCaged(kind, basePtr));
-    bmalloc::api::freeLargeVirtual(basePtr, bmalloc::heapKind(kind));
+    bmalloc::api::freeLargeVirtual(basePtr, size, bmalloc::heapKind(kind));
     WTF::compilerFence();
 }
 

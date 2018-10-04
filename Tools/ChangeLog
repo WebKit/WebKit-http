@@ -1,3 +1,1013 @@
+2018-04-15  Andy Estes  <aestes@apple.com>
+
+        [iOS] Add API tests for PDF find-in-page
+        https://bugs.webkit.org/show_bug.cgi?id=184634
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit/find.pdf: Added.
+        * TestWebKitAPI/Tests/WebKitCocoa/WKPDFView.mm:
+        (-[TestFindDelegate findString]):
+        (-[TestFindDelegate _webView:didCountMatches:forString:]):
+        (-[TestFindDelegate _webView:didFindMatches:forString:withMatchIndex:]):
+        (-[TestFindDelegate _webView:didFailToFindString:]):
+        (loadWebView):
+        (TEST):
+
+2018-04-13  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Update class documentation
+        https://bugs.webkit.org/show_bug.cgi?id=184625
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/DisplayTree/Box.js:
+        * LayoutReloaded/FormattingContext/BlockFormatting/BlockFormattingContext.js:
+        * LayoutReloaded/FormattingContext/BlockFormatting/BlockMarginCollapse.js:
+        * LayoutReloaded/FormattingContext/FloatingContext.js:
+        * LayoutReloaded/FormattingContext/FormattingContext.js:
+        * LayoutReloaded/FormattingContext/InlineFormatting/InlineFormattingContext.js:
+        * LayoutReloaded/FormattingContext/InlineFormatting/Line.js:
+        * LayoutReloaded/FormattingState/BlockFormattingState.js:
+        * LayoutReloaded/FormattingState/FloatingState.js:
+        * LayoutReloaded/FormattingState/FormattingState.js:
+        * LayoutReloaded/FormattingState/InlineFormattingState.js:
+        * LayoutReloaded/LayoutState.js:
+        * LayoutReloaded/LayoutTree/BlockContainer.js:
+        * LayoutReloaded/LayoutTree/Box.js:
+        * LayoutReloaded/LayoutTree/Container.js:
+        * LayoutReloaded/LayoutTree/InlineBox.js:
+        * LayoutReloaded/LayoutTree/InlineContainer.js:
+        * LayoutReloaded/LayoutTree/Text.js:
+        * LayoutReloaded/misc/headers/BlockContainer.h: Removed.
+        * LayoutReloaded/misc/headers/BlockFormattingContext.h: Removed.
+        * LayoutReloaded/misc/headers/BlockMarginCollapse.h: Removed.
+        * LayoutReloaded/misc/headers/Box.h: Removed.
+        * LayoutReloaded/misc/headers/Container.h: Removed.
+        * LayoutReloaded/misc/headers/FloatingContext.h: Removed.
+        * LayoutReloaded/misc/headers/FormattingContext.h: Removed.
+        * LayoutReloaded/misc/headers/InitialBlockContainer.h: Removed.
+        * LayoutReloaded/misc/headers/InlineBox.h: Removed.
+        * LayoutReloaded/misc/headers/LayoutContext.h: Removed.
+        * LayoutReloaded/misc/headers/Line.h: Removed.
+        * LayoutReloaded/misc/headers/Text.h: Removed.
+
+2018-04-13  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Add simple implementation for FormattingState::markNeedsLayout()
+        https://bugs.webkit.org/show_bug.cgi?id=184621
+
+        Reviewed by Antti Koivisto.
+
+        This is just a simple, mark ancestors dirty implementation.
+
+        * LayoutReloaded/FormattingState/FormattingState.js:
+        (FormattingState.prototype.markNeedsLayout):
+        * LayoutReloaded/LayoutState.js:
+        (LayoutState.prototype.markNeedsLayout):
+        (LayoutState.prototype.setNeedsLayoutById): Deleted.
+        (LayoutState.prototype.setNeedsLayout): Deleted.
+        * LayoutReloaded/TreeBuilder.js:
+        (TreeBuilder.prototype._createAndAttachBox):
+        (TreeBuilder.prototype._findBox): Deleted.
+        * LayoutReloaded/Utils.js:
+        (Utils.layoutBoxById):
+        * LayoutReloaded/test/index.html:
+        * LayoutReloaded/test/simple-incremental-layout-with-static-content.html:
+
+2018-04-13  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [WPE] [webkitpy] The driver requirements should be checked before starting the tests
+        https://bugs.webkit.org/show_bug.cgi?id=184595
+
+        Reviewed by Michael Catanzaro.
+
+        Ensure Driver.check_driver() is checked at check_sys_deps() time.
+
+        * Scripts/webkitpy/port/wpe.py:
+        (WPEPort.check_sys_deps):
+
+2018-04-13  Zalan Bujtas  <zalan@apple.com>
+
+        Rebaseline LayoutReloaded patch file (collectRenderersWithNeedsLayout).
+
+        * LayoutReloaded/misc/LayoutReloadedWebKit.patch:
+
+2018-04-13  Jonathan Bedard  <jbedard@apple.com>
+
+        Boot fewer simulators in CI/EWS machines
+        https://bugs.webkit.org/show_bug.cgi?id=184594
+        <rdar://problem/39188082>
+
+        Reviewed by Alexey Proskuryakov.
+
+        This is a temporary workaround fro <rdar://problem/39393590>.
+
+        * Scripts/webkitpy/xcode/simulated_device.py:
+        (SimulatedDeviceManager): Treat simulators as taking 6 gigs instead of 2.
+
+2018-04-13  Brady Eidson  <beidson@apple.com>
+
+        Introduce SuspendedPageProxy to keep old web processes around after their WebPageProxy has been swapped to a new one.
+        https://bugs.webkit.org/show_bug.cgi?id=184559
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+
+2018-04-13  Chris Dumez  <cdumez@apple.com>
+
+        input.webkitEntries does not work as expected when folder contains accented chars
+        https://bugs.webkit.org/show_bug.cgi?id=184517
+        <rdar://problem/39265537>
+
+        Reviewed by Alex Christensen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/Tests/WebCore/FileSystem.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2018-04-13  Thibault Saunier  <tsaunier@igalia.com>
+
+        Update my emails ordering in contributors.json
+        https://bugs.webkit.org/show_bug.cgi?id=184587
+
+        Rubber-stamped by Philippe Normand.
+
+        Bugzilla seems to pick up tsaunier@igalia.com which is not the one I use there.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2018-04-13  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] xkbcommon: ERROR: failed to add default include path /home/mcatanzaro/Projects/WebKit/WebKitBuild/DependenciesWPE/Root/share/X11/xkb
+        https://bugs.webkit.org/show_bug.cgi?id=184388
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Remove libxkbcommon from the JHBuild environment. We could alternatively add
+        xkeyboard-config, but there doesn't seem to be any need to build libxkbcommon because I do
+        not believe it depends on anything else in the JHBuild environment.
+
+        * wpe/install-dependencies:
+        * wpe/jhbuild.modules:
+
+2018-04-12  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Turn CSS Animations and CSS Transitions as Web Animations on by default
+        https://bugs.webkit.org/show_bug.cgi?id=184569
+        <rdar://problem/38671301>
+
+        Reviewed by Jon Lee.
+
+        We set the default value for the CSS Animations and CSS Transitions as Web Animations flag to true
+        but override it to be false always in the LayoutTests/legacy-animation-engine directory.
+
+        * DumpRenderTree/TestOptions.h:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (shouldOverrideAndDisableCSSAnimationsAndCSSTransitionsBackedByWebAnimationsPreference):
+        (runTest):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        * WebKitTestRunner/TestOptions.cpp:
+        (WTR::isLegacyAnimationEngineTestPath):
+        (WTR::TestOptions::TestOptions):
+        * WebKitTestRunner/TestOptions.h:
+
+2018-04-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Tests WTF_RefPtr.ReleaseInNonMainThread and WTF_RefPtr.ReleaseInNonMainThreadDestroyInMainThread are crashing since they were added
+        https://bugs.webkit.org/show_bug.cgi?id=184531
+
+        Reviewed by Michael Catanzaro.
+
+        It's not a bug in WebKit, but in the tests. The problem is that those tests are using RunLoop::main() but main
+        run loop hasn't been initialized. ReleaseInNonMainThread doesn't really need to initialize the main run loop if
+        we change Util::run() to always use RunLop::current() instead of RunLoop::main(). But
+        ReleaseInNonMainThreadDestroyInMainThread ends up scheduling a task to the main thread, and the generic
+        implementation fo that uses RunLoop::main(), so we need to initialize the main loop in this case.
+
+        * TestWebKitAPI/Tests/WTF/RefPtr.cpp:
+        (TestWebKitAPI::TEST): Call RunLoop::initializeMainRunLoop().
+        * TestWebKitAPI/glib/UtilitiesGLib.cpp:
+        (TestWebKitAPI::Util::run): Use RunLop::current() to stop the current run loop.
+        (TestWebKitAPI::Util::sleep): Ditto.
+
+2018-04-12  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Add support for incremental layout
+        https://bugs.webkit.org/show_bug.cgi?id=184578
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/Layout.js:
+        (layout):
+        * LayoutReloaded/LayoutState.js:
+        (LayoutState.prototype.rootContainer):
+        (LayoutState.prototype.setNeedsLayoutById):
+        * LayoutReloaded/Utils.js:
+        (Utils.layoutTreeDump):
+        * LayoutReloaded/test/TestHarness.js:
+        (verifyLayout):
+        (runLayout):
+        (verifyLayoutTreeDump): Deleted.
+        * LayoutReloaded/test/index.html:
+        * LayoutReloaded/test/simple-incremental-layout-with-static-content.html: Added.
+
+2018-04-12  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Move root container ownership to layout state
+        https://bugs.webkit.org/show_bug.cgi?id=184575
+
+        Reviewed by Antti Koivisto.
+
+        Now the root container is on the associated layout state (ICB only at this point though).
+
+        * LayoutReloaded/FormattingContext/BlockFormatting/BlockFormattingContext.js:
+        (BlockFormattingContext.prototype.layout):
+        * LayoutReloaded/FormattingContext/FormattingContext.js:
+        (FormattingContext.prototype._layoutOutOfFlowDescendants):
+        * LayoutReloaded/FormattingContext/InlineFormatting/InlineFormattingContext.js:
+        (InlineFormattingContext.prototype._handleInlineBlockContainer):
+        (InlineFormattingContext.prototype._handleFloatingBox):
+        * LayoutReloaded/Layout.js:
+        (layout):
+        * LayoutReloaded/LayoutState.js:
+        (LayoutState):
+        (LayoutState.prototype.formattingContext):
+        (LayoutState.prototype.establishedFormattingState):
+        (LayoutState.prototype.formattingStateForBox):
+        (LayoutState.prototype.needsLayout):
+        (LayoutState.prototype.displayBox):
+        (LayoutState.prototype._formattingContext):
+        (LayoutState.prototype.layout): Deleted.
+        (LayoutState.prototype.formattingStates): Deleted.
+        (LayoutState.prototype.initialDisplayBox): Deleted.
+        * LayoutReloaded/Utils.js:
+        (Utils._dumpBox):
+        (Utils._findDisplayBox): Deleted.
+
+2018-04-12  Jonathan Bedard  <jbedard@apple.com>
+
+        Fix --build-directory flag for run-webkit-tests
+        https://bugs.webkit.org/show_bug.cgi?id=184545
+        <rdar://problem/39385080>
+
+        Rubber-stamped by Aakash Jain.
+
+        The --build-directory path does not work with iOS-Simulator.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port._build_path): Use the port configuration to calculate the root directory.
+        * Scripts/webkitpy/port/base_unittest.py:
+        (PortTest.test_build_path): Test build directories for embedded configurations.
+
+2018-04-12  Ross Kirsling  <ross.kirsling@sony.com>
+
+        pemfile.py should not assume POSIX line endings
+        https://bugs.webkit.org/show_bug.cgi?id=184507
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitpy/common/system/pemfile.py:
+        (_parse_pem_format):
+        * Scripts/webkitpy/common/system/pemfile_unittest.py:
+        (PemFileTest.test_parse_crlf):
+        (PemFileTest.test_parse_cr):
+
+2018-04-12  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Minor cleanup in LayoutSate
+        https://bugs.webkit.org/show_bug.cgi?id=184546
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/FormattingContext/FormattingContext.js:
+        (FormattingContext.isInFormattingContext):
+        * LayoutReloaded/FormattingState/FormattingState.js:
+        (FormattingState.prototype.displayBoxes):
+        (FormattingState.prototype.displayBox):
+        (FormattingState.prototype._markSubTreeNeedsLayout):
+        (FormattingState):
+        (FormattingState.prototype.displayBoxMap): Deleted.
+        * LayoutReloaded/LayoutState.js:
+        (LayoutState.prototype.formattingStateForBox):
+        (LayoutState.prototype.needsLayout):
+        (LayoutState.prototype.displayBox):
+        (LayoutState.prototype._createFormattingState):
+        (LayoutState):
+        * LayoutReloaded/LayoutTree/Box.js:
+        (Layout.Box.prototype.isFormattingContextDescendant): Deleted.
+        * LayoutReloaded/LayoutTree/Container.js:
+        (Layout.Container.prototype.isContainingBlockDescendant): Deleted.
+        * LayoutReloaded/Utils.js:
+        (Utils._findDisplayBox):
+
+2018-04-12  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Introduce needsLayout to InlineFormattingContext
+        https://bugs.webkit.org/show_bug.cgi?id=184538
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/FormattingContext/BlockFormatting/BlockFormattingContext.js:
+        (BlockFormattingContext.prototype._adjustBottomWithFIXME):
+        (BlockFormattingContext):
+        (BlockFormattingContext.prototype._firstInFlowChildWithNeedsLayout): Deleted.
+        (BlockFormattingContext.prototype._nextInFlowSiblingWithNeedsLayout): Deleted.
+        * LayoutReloaded/FormattingContext/FormattingContext.js:
+        (FormattingContext.prototype._firstInFlowChildWithNeedsLayout):
+        (FormattingContext.prototype._nextInFlowSiblingWithNeedsLayout):
+        (FormattingContext):
+        * LayoutReloaded/FormattingContext/InlineFormatting/InlineFormattingContext.js:
+        (InlineFormattingContext.prototype.layout):
+        (InlineFormattingContext.prototype._handleInlineContainer):
+        (InlineFormattingContext.prototype._handleInlineBlockContainer):
+        (InlineFormattingContext.prototype._handleInlineContent):
+        (InlineFormattingContext.prototype._clearAndMoveToNext):
+        (InlineFormattingContext):
+
+2018-04-12  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GStreamer] Speed up GStreamer dependency build by removing examples compilation
+        https://bugs.webkit.org/show_bug.cgi?id=184528
+
+        Reviewed by Philippe Normand.
+
+        * gstreamer/jhbuild.modules: Added --disable-examples for GStreamer package.
+
+2018-04-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Switch testing process to using WPEBackend-fdo
+        https://bugs.webkit.org/show_bug.cgi?id=184357
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Switch WPE testing to using the WPEBackend-fdo implementation that
+        depends on the WL_bind_wayland_display EGL extension, as defined under
+        the freedesktop.org project.
+        https://cgit.freedesktop.org/mesa/mesa/tree/docs/specs/WL_bind_wayland_display.spec
+
+        HeadlessViewBackend is refactored to use the WPEBackend-fdo API, but
+        otherwise is not changed in functionality.
+
+        Unit tests now have to unconditionally use HeadlessViewBackend as a
+        wpe_view_backend provider, since WPEBackend-fdo does not provide a
+        default wpe_view_backend implementation. Unit tests covering that are
+        adjusted to instead use a mock wpe_view_backend interface.
+
+        * Scripts/webkitdirs.pm:
+        (builtDylibPathForName): Fix the libWPEWebKit.so name to also include
+        the API version that was added in r230449.
+        * Scripts/webkitpy/port/waylanddriver.py:
+        (WaylandDriver._setup_environ_for_test): Export EGL_PLATFORM=wayland.
+        * Scripts/webkitpy/port/wpe.py:
+        (WPEPort._driver_class): Use WaylandDriver by default.
+        * TestWebKitAPI/PlatformWebView.h:
+        (): Deleted.
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitWebView.cpp:
+        (testWebViewWebBackend):
+        * TestWebKitAPI/glib/WebKitGLib/TestMain.h:
+        (Test::createWebViewBackend):
+        * TestWebKitAPI/wpe/PlatformWebViewWPE.cpp:
+        (TestWebKitAPI::PlatformWebView::~PlatformWebView):
+        (TestWebKitAPI::PlatformWebView::initialize):
+        * wpe/HeadlessViewBackend/CMakeLists.txt:
+        * wpe/HeadlessViewBackend/HeadlessViewBackend.cpp:
+        (getEGLDisplay):
+        (HeadlessViewBackend::HeadlessViewBackend):
+        (HeadlessViewBackend::~HeadlessViewBackend):
+        (HeadlessViewBackend::backend const):
+        (HeadlessViewBackend::createSnapshot):
+        (HeadlessViewBackend::performUpdate):
+        (HeadlessViewBackend::makeCurrent): Deleted.
+        * wpe/HeadlessViewBackend/HeadlessViewBackend.h:
+        * wpe/jhbuild.modules: Module name cleanup. Dyz version is bumped.
+
+2018-04-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Switch to use always complex text code path
+        https://bugs.webkit.org/show_bug.cgi?id=183285
+
+        Reviewed by Michael Catanzaro.
+
+        Keep the auto mode for the layout tests to avoid having to rebaseline a lot of tests.
+
+        * WebKitTestRunner/gtk/main.cpp:
+        (main): Set WEBKIT_FORCE_COMPLEX_TEXT to 0 unless it's already present in the environment.
+
+2018-04-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Handle strings containing null characters
+        https://bugs.webkit.org/show_bug.cgi?id=184450
+
+        Reviewed by Michael Catanzaro.
+
+        Add test case for strings with null characters and update all calls to evaluate to pass the script length.
+
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/PlatformWPE.cmake:
+        * TestWebKitAPI/Tests/JavaScriptCore/glib/TestJSC.cpp:
+        (testJSCBasic):
+        (testJSCFunction):
+        (testJSCObject):
+        (testJSCClass):
+        (testJSCPrototypes):
+        (testJSCExceptions):
+        (testJSCPromises):
+        (testJSCGarbageCollector):
+        (testJSCWeakValue):
+        (testsJSCVirtualMachine):
+        (testsJSCAutocleanups):
+        * TestWebKitAPI/Tests/JavaScriptCore/glib/script.js: Added.
+        * TestWebKitAPI/Tests/WebKitGLib/DOMElementTest.cpp:
+        (DOMElementTest::testAutoFill):
+        * TestWebKitAPI/Tests/WebKitGLib/EditorTest.cpp:
+        (WebKitWebEditorTest::testSelectionChanged):
+        * TestWebKitAPI/Tests/WebKitGLib/FrameTest.cpp:
+        (WebKitFrameTest::testJavaScriptValues):
+        * TestWebKitAPI/Tests/WebKitGLib/WebExtensionTest.cpp:
+        (consoleMessageSentCallback):
+        (methodCallCallback):
+
+2018-04-11  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Make WebKitWebViewBackend object mandatory for webkit_web_view_new*() constructors
+        https://bugs.webkit.org/show_bug.cgi?id=184513
+
+        Reviewed by Michael Catanzaro.
+
+        Update the WPE-specific testWebViewWebBackend() test case, removing the
+        test that passes a null WebKitWebViewBackend object to the
+        webkit_web_view_new() call.
+
+        Helper createWebViewBackend() that's called via Test::createWebView()
+        variations is updated to, in case of not using the headless backend,
+        return a WebKitWebViewBackend instance that wraps around a
+        default wpe_view_backend object.
+
+        * TestWebKitAPI/Tests/WebKitGLib/TestWebKitWebView.cpp:
+        (testWebViewWebBackend):
+        * TestWebKitAPI/glib/WebKitGLib/TestMain.h:
+        (Test::createWebViewBackend):
+
+2018-04-11  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Introduce needsLayout flag
+        https://bugs.webkit.org/show_bug.cgi?id=184527
+
+        Reviewed by Antti Koivisto.
+
+        Use the formatting state to mark boxes dirty.
+
+        * LayoutReloaded/FormattingContext/BlockFormatting/BlockFormattingContext.js:
+        (BlockFormattingContext.prototype.layout):
+        (BlockFormattingContext.prototype._firstInFlowChildWithNeedsLayout):
+        (BlockFormattingContext.prototype._nextInFlowSiblingWithNeedsLayout):
+        (BlockFormattingContext):
+        * LayoutReloaded/FormattingContext/FormattingContext.js:
+        (FormattingContext.prototype._layoutOutOfFlowDescendants):
+        * LayoutReloaded/FormattingState/FormattingState.js:
+        (FormattingState):
+        (FormattingState.prototype.markNeedsLayout):
+        (FormattingState.prototype.clearNeedsLayout):
+        (FormattingState.prototype.needsLayout):
+        (FormattingState.prototype.layoutNeeded):
+        (FormattingState.prototype._markSubTreeNeedsLayout):
+        * LayoutReloaded/LayoutState.js:
+        (LayoutState.prototype.formattingStateForBox):
+        (LayoutState.prototype.setNeedsLayout):
+        (LayoutState.prototype.needsLayout):
+        * LayoutReloaded/LayoutTree/Box.js:
+        (Layout.Box.prototype.isFormattingContextDescendant):
+        * LayoutReloaded/LayoutTree/Container.js:
+        (Layout.Container.prototype.isContainingBlockDescendant):
+
+2018-04-11  Jonathan Bedard  <jbedard@apple.com>
+
+        Fix TestInvocation class for newer versions of clang.
+        https://bugs.webkit.org/show_bug.cgi?id=184508
+        <rdar://problem/39328648>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Declare TestInvocation to be final so it does not require a virtual destructor.
+
+        * WebKitTestRunner/TestInvocation.h:
+
+2018-04-10  Alex Christensen  <achristensen@webkit.org>
+
+        IDN spoofing with Hebrew combining characters
+        https://bugs.webkit.org/show_bug.cgi?id=184472
+        <rdar://problem/39148687>
+
+        Reviewed by Brent Fulgham.
+
+        * TestWebKitAPI/Tests/WebCore/cocoa/URLExtras.mm:
+        (TestWebKitAPI::TEST):
+
+2018-04-11  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] Missing label when focusing a <select> with a title attribute but no associated <label>
+        https://bugs.webkit.org/show_bug.cgi?id=184352
+        <rdar://problem/39237683>
+
+        Reviewed by Andy Estes.
+
+        Add support for UIScriptController::selectFormPopoverTitle, which returns the title of the current select
+        popover's UITableViewController (for testing purposes).
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::selectFormPopoverTitle const):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::selectFormPopoverTitle const):
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::selectFormPopoverTitle const):
+
+2018-04-10  Nan Wang  <n_wang@apple.com>
+
+        AX: Expose strong password fields on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=184465
+        <rdar://problem/39325104>
+
+        Reviewed by Chris Fleizach.
+
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::boolAttributeValue):
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::boolAttributeValue):
+
+2018-04-10  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Add support for out-of-flow descendants in inline formatting context.
+        https://bugs.webkit.org/show_bug.cgi?id=184454
+
+        Reviewed by Antti Koivisto.
+
+        When the containing block of an out-of-flow positioned element establishes an inline formatting context.
+        This is mostly about moving out-of-flow logic from BlockFormattingContext to the base class.
+
+        * LayoutReloaded/FormattingContext/BlockFormatting/BlockFormattingContext.js:
+        (BlockFormattingContext.prototype._adjustBottomWithFIXME):
+        (BlockFormattingContext):
+        (BlockFormattingContext.prototype._layoutOutOfFlowDescendants): Deleted.
+        (BlockFormattingContext.prototype._computeOutOfFlowWidth): Deleted.
+        (BlockFormattingContext.prototype._computeInFlowWidth): Deleted.
+        (BlockFormattingContext.prototype._computeOutOfFlowHeight): Deleted.
+        (BlockFormattingContext.prototype._computeOutOfFlowPosition): Deleted.
+        (BlockFormattingContext.prototype._shrinkToFitWidth): Deleted.
+        * LayoutReloaded/FormattingContext/FormattingContext.js:
+        (FormattingContext.prototype._placeInFlowPositionedChildren):
+        (FormattingContext.prototype._computeInFlowWidth):
+        (FormattingContext.prototype._layoutOutOfFlowDescendants):
+        (FormattingContext.prototype._computeOutOfFlowWidth):
+        (FormattingContext.prototype._computeOutOfFlowHeight):
+        (FormattingContext.prototype._computeOutOfFlowPosition):
+        (FormattingContext.prototype._shrinkToFitWidth):
+        * LayoutReloaded/FormattingContext/InlineFormatting/InlineFormattingContext.js:
+        (InlineFormattingContext.prototype.layout):
+        (InlineFormattingContext.prototype._handleInlineContainer):
+        (InlineFormattingContext.prototype._handleInlineBlockContainer):
+        (InlineFormattingContext.prototype._placeOutOfFlowDescendants): Deleted.
+        * LayoutReloaded/test/index.html:
+        * LayoutReloaded/test/inline-with-out-of-flow-descendant.html: Added.
+
+2018-04-09  Zan Dobersek  <zdobersek@igalia.com>
+
+        WKTR: Enable DOM cache, SW registration directory cleanup on non-Cocoa platforms
+        https://bugs.webkit.org/show_bug.cgi?id=184414
+
+        Reviewed by Michael Catanzaro.
+
+        Enable clearServiceWorkerRegistrations(), clearDOMCache() and
+        clearDOMCaches() implementations in WebKitTestRunner's TestController
+        class for non-Cocoa platforms. Implementations depend on the generic
+        WK2 C API that other ports can leverage as well.
+
+        The clearDOMCache() and clearDOMCaches() calls are now operational for
+        tests that invoke them. clearServiceWorkerRegistrations() and
+        clearDOMCaches() are also called between each test, cleaning up relevant
+        resources.
+
+        The TestController::getAllStorageAccessEntries() stub for non-Cocoa
+        platforms is moved into the main !PLATFORM(COCOA) block.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::getAllStorageAccessEntries):
+        (WTR::clearServiceWorkerRegistrationsCallback):
+        (WTR::TestController::clearServiceWorkerRegistrations):
+        (WTR::clearDOMCacheCallback):
+        (WTR::TestController::clearDOMCache):
+        (WTR::TestController::clearDOMCaches):
+
+2018-04-09  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Add support for relatively positioned containers in inline formatting context.
+        https://bugs.webkit.org/show_bug.cgi?id=184439
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/FormattingContext/BlockFormatting/BlockFormattingContext.js:
+        (BlockFormattingContext.prototype._placeInFlowPositionedChildren): Deleted.
+        (BlockFormattingContext.prototype._computeInFlowPositionedPosition): Deleted.
+        * LayoutReloaded/FormattingContext/FormattingContext.js:
+        (FormattingContext.prototype._computeInFlowPositionedPosition):
+        (FormattingContext.prototype._placeInFlowPositionedChildren):
+        * LayoutReloaded/FormattingContext/InlineFormatting/InlineFormattingContext.js:
+        (InlineFormattingContext.prototype._placeInFlowPositionedChildren): Deleted.
+        * LayoutReloaded/Utils.js:
+        (Utils._dumpBox):
+        (Utils._dumpLines.):
+        (Utils._dumpLines):
+        (Utils.precisionRoundWithDecimals):
+        (Utils.precisionRound):
+        (Utils):
+        * LayoutReloaded/test/index.html:
+        * LayoutReloaded/test/inline-with-relative-positioning.html: Added.
+
+2018-04-09  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Remove Layout.InitialContainingBlock class
+        https://bugs.webkit.org/show_bug.cgi?id=184436
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/LayoutTree/Box.js:
+        (Layout.Box.prototype.establishesBlockFormattingContext):
+        * LayoutReloaded/LayoutTree/InitialBlockContainer.js: Removed.
+        * LayoutReloaded/TreeBuilder.js:
+        (TreeBuilder.prototype.createTree):
+        * LayoutReloaded/test/index.html:
+
+2018-04-09  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Add support for inline-block.
+        https://bugs.webkit.org/show_bug.cgi?id=184434
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/FormattingContext/InlineFormatting/InlineFormattingContext.js:
+        (InlineFormattingContext):
+        (InlineFormattingContext.prototype.layout):
+        (InlineFormattingContext.prototype._handleInlineContainer):
+        (InlineFormattingContext.prototype._handleInlineBlockContainer):
+        (InlineFormattingContext.prototype._handleInlineContent):
+        * LayoutReloaded/FormattingContext/InlineFormatting/Line.js:
+        (Line.prototype.addInlineContainerBox):
+        (Line.prototype.addTextLineBox):
+        (Line):
+        * LayoutReloaded/LayoutTree/Box.js:
+        (Layout.Box.prototype.isInlineBlockBox):
+        * LayoutReloaded/Utils.js:
+        (LayoutRect.prototype.growHorizontally):
+        (Utils.isBlockContainerElement):
+        (Utils.isInlineBlockElement):
+        (Utils._dumpLines.):
+        (Utils._dumpLines):
+        * LayoutReloaded/test/index.html:
+        * LayoutReloaded/test/inline-block-with-fixed-width-height.html: Added.
+
+2018-04-09  Timothy Hatcher  <timothy@apple.com>
+
+        Add support for setting a background color on WKWebView and WKView
+        https://bugs.webkit.org/show_bug.cgi?id=184426
+
+        Reviewed by Wenson Hsieh.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/mac/BackgroundColor.mm: Added.
+
+2018-04-09  Charlie Turner  <cturner@igalia.com>
+
+        [WPE] Add some missing install dependencies
+        https://bugs.webkit.org/show_bug.cgi?id=184383
+
+        Reviewed by Michael Catanzaro.
+
+        * wpe/install-dependencies:
+
+2018-04-09  Sihui Liu  <sihui_liu@apple.com>
+
+        REGRESSION(r229929): localStorage is broken for WebInspector
+        https://bugs.webkit.org/show_bug.cgi?id=184382
+        <rdar://problem/39257355>
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/LocalStoragePersistence.mm:
+        (TEST):
+        * TestWebKitAPI/Tests/WebKitCocoa/localstorage-empty-string-value.html:
+
+2018-04-09  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed follow-up to r230389.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::platformAdjustContext): Use the 'ServiceWorkers'
+        subdirectory for the temporary testing-purpose SW registration directory
+        like it's used in Cocoa's TestController, addressing the review comment
+        that I forgot about.
+
+2018-04-08  Zan Dobersek  <zdobersek@igalia.com>
+
+        Non-Cocoa ports use default directory for ServiceWorker data during testing
+        https://bugs.webkit.org/show_bug.cgi?id=183784
+
+        Reviewed by Youenn Fablet.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::platformAdjustContext): Set the service worker registration
+        directory through the new WKWebsiteDataStore API for non-Cocoa ports.
+
+2018-04-08  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Adjust line with inline container's margin border and padding
+        https://bugs.webkit.org/show_bug.cgi?id=184409
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/FormattingContext/InlineFormatting/InlineFormattingContext.js:
+        (InlineFormattingContext.prototype.layout):
+        (InlineFormattingContext.prototype._handleFloatingBox):
+        (InlineFormattingContext.prototype._adjustLineForInlineContainerStart):
+        (InlineFormattingContext.prototype._adjustLineForInlineContainerEnd):
+        * LayoutReloaded/FormattingContext/InlineFormatting/Line.js:
+        (Line.prototype.shrink):
+        (Line.prototype.adjustWithOffset):
+        (Line.prototype.moveContentHorizontally):
+        (Line.prototype.addTextLineBox):
+        (Line):
+        (Line.prototype.addFloatingBox): Deleted.
+        * LayoutReloaded/misc/LayoutReloadedWebKit.patch:
+        * LayoutReloaded/test/index.html:
+        * LayoutReloaded/test/inline-with-padding-border-margin-offsets.html: Added.
+
+2018-04-07  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Add support for InlineContainer
+        https://bugs.webkit.org/show_bug.cgi?id=184394
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/FormattingContext/FormattingContext.js:
+        (FormattingContext.prototype._addToLayoutQueue):
+        * LayoutReloaded/FormattingContext/InlineFormatting/InlineFormattingContext.js:
+        (InlineFormattingContext.prototype.layout):
+        (InlineFormattingContext.prototype._handleInlineContent):
+        (InlineFormattingContext.prototype._handleFloatingBox):
+        (InlineFormattingContext.prototype._adjustLineForInlineContainerStart):
+        (InlineFormattingContext.prototype._adjustLineForInlineContainerEnd):
+        (InlineFormattingContext.prototype._placeInFlowPositionedChildren):
+        (InlineFormattingContext.prototype._placeOutOfFlowDescendants):
+        (InlineFormattingContext.prototype._createNewLine):
+        (InlineFormattingContext.prototype._handleContent): Deleted.
+        * LayoutReloaded/LayoutState.js:
+        (LayoutState.prototype._createFormattingState):
+        * LayoutReloaded/LayoutTree/Box.js:
+        (Layout.Box.prototype.isContainer):
+        (Layout.Box.prototype.isInlineContainer):
+        (Layout.Box.prototype.isInlineBox):
+        * LayoutReloaded/LayoutTree/Container.js:
+        (Layout.Container.prototype.isContainer): Deleted.
+        * LayoutReloaded/LayoutTree/InlineContainer.js: Added.
+        (Layout.InlineContainer):
+        * LayoutReloaded/TreeBuilder.js:
+        (TreeBuilder.prototype._createAndAttachBox):
+        * LayoutReloaded/Utils.js:
+        (Utils._dumpBox):
+        (Utils.precisionRound):
+        (Utils):
+        * LayoutReloaded/test/index.html:
+        * LayoutReloaded/test/inline-content-simple2.html: Added.
+        * LayoutReloaded/test/inline-floating1.html: Added.
+        * LayoutReloaded/test/inline-formatting-context-floats1.html: Added.
+        * LayoutReloaded/test/inline-formatting-context-floats2.html: Added.
+
+2018-04-07  Timothy Hatcher  <timothy@apple.com>
+
+        Use the system's link color when system appearance is desired for a WebView.
+
+        https://bugs.webkit.org/show_bug.cgi?id=184353
+        rdar://problem/9420053
+
+        Reviewed by Wenson Hsieh.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKitCocoa/SystemColors.mm: Added.
+        (TestWebKitAPI::WebKit::LinkColor):
+        (TestWebKitAPI::WebKit::LinkColorWithSystemAppearance):
+
+2018-04-06  Zalan Bujtas  <zalan@apple.com>
+
+        Rebaseline LayoutReloaded patch file.
+
+        * LayoutReloaded/misc/LayoutReloadedWebKit.patch:
+
+2018-04-06  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][WebCore] Expose a constant for scrollbar pixels per line (cScrollbarPixelsPerLine)
+        https://bugs.webkit.org/show_bug.cgi?id=184296
+
+        Reviewed by Alex Christensen.
+
+        * DumpRenderTree/win/EventSender.cpp:
+        (mouseScrollBy): Removed the duplicated cScrollbarPixelsPerLine
+        definition. Use WebCore::cScrollbarPixelsPerLine.
+
+2018-04-06  Zalan Bujtas  <zalan@apple.com>
+
+        Rebaseline LayoutReloaded patch file.
+
+        * LayoutReloaded/misc/LayoutReloadedWebKit.patch:
+
+2018-04-05  Youenn Fablet  <youenn@apple.com>
+
+        Test expectation updater should handle Win bot results
+        https://bugs.webkit.org/show_bug.cgi?id=184274
+
+        Reviewed by Ryosuke Niwa.
+
+        Add processing of win bot results.
+        They will update platform/win results.
+
+        Updated the script so that if there is no mac-wk2 results, it will still process specific results.
+
+        * Scripts/webkitpy/common/net/bugzilla/test_expectation_updater.py:
+        (TestExpectationUpdater.__init__):
+        (TestExpectationUpdater._bot_type):
+        (TestExpectationUpdater.do_update):
+        * Scripts/webkitpy/common/net/bugzilla/test_expectation_updater_unittest.py:
+        (MockAttachment):
+        (MockAttachment.__init__):
+        (MockAttachment.contents):
+        (MockBugzilla):
+        (MockBugzilla.__init__):
+        (MockBugzilla.fetch_bug):
+        (MockBugzilla.attachments):
+        (MockZip):
+        (MockZip.__init__):
+        (MockZip.unzip):
+        (MockZip.read):
+        (TestExpectationUpdaterTest.test_update_test_expectations):
+        (TestExpectationUpdaterTest):
+        (TestExpectationUpdaterTest.test_update_win_future_test_expectations):
+
+2018-04-05  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Fix static position for floating boxes when they don't fit the current line
+        https://bugs.webkit.org/show_bug.cgi?id=184354
+
+        Reviewed by Antti Koivisto.
+
+        Do not shrink the current line with the floating box unless it is on the current line.
+
+        * LayoutReloaded/FormattingContext/InlineFormatting/InlineFormattingContext.js:
+        (InlineFormattingContext.prototype._handleFloatingBox):
+        (InlineFormattingContext.prototype._mapFloatingVerticalPosition):
+        * LayoutReloaded/FormattingContext/InlineFormatting/Line.js:
+        (Line.prototype.addFloatingBox):
+        (Line):
+        * LayoutReloaded/test/index.html:
+        * LayoutReloaded/test/inline-with-right-floats3.html: Added.
+
+2018-04-05  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Add support for right floating boxes in inline formatting context
+        https://bugs.webkit.org/show_bug.cgi?id=184351
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/FormattingContext/InlineFormatting/InlineFormattingContext.js:
+        (InlineFormattingContext.prototype._handleFloatingBox):
+        (InlineFormattingContext.prototype._mapFloatingVerticalPosition):
+        * LayoutReloaded/FormattingContext/InlineFormatting/Line.js:
+        (Line.prototype.addFloatingBox):
+        (Line):
+        * LayoutReloaded/test/index.html:
+        * LayoutReloaded/test/inline-with-right-float-simple.html: Added.
+        * LayoutReloaded/test/inline-with-right-floats2.html: Added.
+
+2018-04-05  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Move floating box to the next line when needed
+        https://bugs.webkit.org/show_bug.cgi?id=184349
+
+        Reviewed by Antti Koivisto.
+
+        * LayoutReloaded/FormattingContext/InlineFormatting/InlineFormattingContext.js:
+        (InlineFormattingContext.prototype.layout):
+        (InlineFormattingContext.prototype._handleContent):
+        (InlineFormattingContext.prototype._handleText):
+        (InlineFormattingContext.prototype._handleFloatingBox):
+        (InlineFormattingContext.prototype._mapFloatingHorizontalPosition):
+        (InlineFormattingContext):
+        (InlineFormattingContext.prototype._handleFloatingBoxes): Deleted.
+        (InlineFormattingContext.prototype._floatingBoxes): Deleted.
+        * LayoutReloaded/FormattingContext/InlineFormatting/Line.js:
+        (Line.prototype.addTextLineBox):
+        (Line.prototype.addFloatingBox):
+        (Line):
+        * LayoutReloaded/Utils.js:
+        (LayoutRect.prototype.moveHorizontally):
+        (LayoutRect.prototype.moveVertically):
+        * LayoutReloaded/test/index.html:
+        * LayoutReloaded/test/inline-with-floats-when-they-dont-fit.html: Added.
+
+2018-04-05  Brady Eidson  <beidson@apple.com>
+
+        Process Swap on Navigation causes many webpages to hang due to attempted process swap for iframe navigations.
+        <rdar://problem/39162236> and https://bugs.webkit.org/show_bug.cgi?id=184318
+
+        Reviewed by Andy Estes.
+
+        * TestWebKitAPI/Tests/WebKitCocoa/ProcessSwapOnNavigation.mm:
+        (-[PSONMessageHandler userContentController:didReceiveScriptMessage:]):
+        (-[PSONScheme addMappingFromURLString:toData:]):
+        (-[PSONScheme webView:startURLSchemeTask:]):
+
+2018-04-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Remove StaticLock
+        https://bugs.webkit.org/show_bug.cgi?id=184332
+
+        Reviewed by Mark Lam.
+
+        * DumpRenderTree/JavaScriptThreading.cpp:
+
+2018-04-05  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Find the correct left edge for a line when floating boxes are in parent formatting context.
+        https://bugs.webkit.org/show_bug.cgi?id=184330
+
+        Reviewed by Antti Koivisto.
+
+        In inline formatting context, the floating boxes can come from the parent (block) formatting context. Let's
+        take them into account when computing the line edges.
+
+        * LayoutReloaded/FormattingContext/FloatingContext.js:
+        (FloatingContext.prototype.left):
+        (FloatingContext.prototype.right):
+        * LayoutReloaded/FormattingContext/InlineFormatting/InlineFormattingContext.js:
+        (InlineFormattingContext.prototype._createNewLine):
+        (InlineFormattingContext.prototype._mapFloatingVerticalPosition):
+        (InlineFormattingContext.prototype._mapFloatingHorizontalPosition):
+        (InlineFormattingContext.prototype._mapFloatingPosition): Deleted.
+        * LayoutReloaded/test/index.html:
+        * LayoutReloaded/test/multiple-left-floats-on-line-from-parent-formatting-context.html: Added.
+
+2018-04-05  Zalan Bujtas  <zalan@apple.com>
+
+        [LayoutReloaded] Collect floating boxes in inline formatting context and layout them first.
+        https://bugs.webkit.org/show_bug.cgi?id=184329
+
+        Reviewed by Antti Koivisto.
+
+        Let's do this for now. There might be some cases where this violates layout.
+
+        * LayoutReloaded/FormattingContext/FormattingContext.js:
+        (FormattingContext.prototype._outOfFlowDescendants):
+        (FormattingContext):
+        * LayoutReloaded/FormattingContext/InlineFormatting/InlineFormattingContext.js:
+        (InlineFormattingContext.prototype.layout):
+        (InlineFormattingContext.prototype._handleFloatingBoxes):
+        (InlineFormattingContext.prototype._handleFloatingBox):
+        (InlineFormattingContext.prototype._floatingBoxes):
+        (InlineFormattingContext):
+        * LayoutReloaded/test/index.html:
+        * LayoutReloaded/test/multiple-left-floats-on-line-simple.html: Added.
+
+2018-04-04  Youenn Fablet  <youenn@apple.com>
+
+        WebRTC data channel only applications require capture permissions for direct connections
+        https://bugs.webkit.org/show_bug.cgi?id=174500
+        <rdar://problem/34134281>
+
+        Reviewed by Eric Carlson.
+
+        Adding options to enable MDNS ICE candidates.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setMediaDevicesEnabled):
+        (WTR::TestRunner::setMDNSICECandidatesEnabled):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+2018-04-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Disable failing WKWebViewAutofillTests
+        https://bugs.webkit.org/show_bug.cgi?id=184196
+
+        Unreviewed test gardening.
+
+        * TestWebKitAPI/Tests/ios/WKWebViewAutofillTests.mm:
+        (TestWebKitAPI::TEST):
+
 2018-04-04  Youenn Fablet  <youenn@apple.com>
 
         Introduce a ThreadSafeRefCounted parameter to ensure being destroyed on the main thread

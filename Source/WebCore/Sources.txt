@@ -468,6 +468,7 @@ bindings/js/StructuredClone.cpp
 bindings/js/SerializedScriptValue.cpp
 bindings/js/WebCoreJSClientData.cpp
 bindings/js/WebCoreTypedArrayController.cpp
+bindings/js/WindowProxyController.cpp
 bindings/js/WorkerScriptController.cpp
 
 bridge/IdentifierRep.cpp
@@ -1224,6 +1225,7 @@ loader/FormSubmission.cpp
 loader/FrameLoadRequest.cpp
 loader/FrameLoader.cpp
 loader/FrameLoaderStateMachine.cpp
+loader/FetchIdioms.cpp
 loader/HTTPHeaderField.cpp
 loader/HistoryController.cpp
 loader/ImageLoader.cpp
@@ -1310,6 +1312,8 @@ mathml/MathMLTokenElement.cpp
 mathml/MathMLUnderOverElement.cpp
 mathml/MathMLUnknownElement.cpp
 
+page/AbstractDOMWindow.cpp
+page/AbstractFrame.cpp
 page/AutoscrollController.cpp
 page/BarProp.cpp
 page/Base64Utilities.cpp
@@ -1369,6 +1373,8 @@ page/PerformanceTiming.cpp
 page/PerformanceUserTiming.cpp
 page/PointerLockController.cpp
 page/PrintContext.cpp
+page/RemoteDOMWindow.cpp
+page/RemoteFrame.cpp
 page/ResourceUsageData.cpp
 page/ResourceUsageOverlay.cpp
 page/ResourceUsageThread.cpp

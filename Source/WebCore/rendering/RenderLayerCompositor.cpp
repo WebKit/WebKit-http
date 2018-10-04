@@ -54,6 +54,7 @@
 #include "RenderReplica.h"
 #include "RenderVideo.h"
 #include "RenderView.h"
+#include "RuntimeEnabledFeatures.h"
 #include "ScrollingConstraints.h"
 #include "ScrollingCoordinator.h"
 #include "Settings.h"
@@ -2477,6 +2478,9 @@ bool RenderLayerCompositor::requiresCompositingForAnimation(RenderLayerModelObje
         }
     }
 
+    if (RuntimeEnabledFeatures::sharedFeatures().cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled())
+        return false;
+
     const AnimationBase::RunningState activeAnimationState = AnimationBase::Running | AnimationBase::Paused;
     auto& animController = renderer.animation();
     return (animController.isRunningAnimationOnRenderer(renderer, CSSPropertyOpacity, activeAnimationState)
@@ -2715,6 +2719,13 @@ bool RenderLayerCompositor::isRunningTransformAnimation(RenderLayerModelObject& 
     if (!(m_compositingTriggers & ChromeClient::AnimationTrigger))
         return false;
 
+    if (RuntimeEnabledFeatures::sharedFeatures().cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled()) {
+        if (auto* element = renderer.element()) {
+            if (auto* timeline = element->document().existingTimeline())
+                return timeline->isRunningAnimationOnRenderer(renderer, CSSPropertyTransform);
+        }
+        return false;
+    }
     return renderer.animation().isRunningAnimationOnRenderer(renderer, CSSPropertyTransform, AnimationBase::Running | AnimationBase::Paused);
 }
 

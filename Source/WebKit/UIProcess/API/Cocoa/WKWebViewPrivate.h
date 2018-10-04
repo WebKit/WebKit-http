@@ -260,6 +260,7 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 @property (nonatomic, setter=_setRubberBandingEnabled:) _WKRectEdge _rubberBandingEnabled WK_API_AVAILABLE(macosx(10.13.4));
 
 @property (readonly) NSColor *_pageExtendedBackgroundColor;
+@property (nonatomic, setter=_setBackgroundColor:) NSColor *_backgroundColor WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 @property (nonatomic, setter=_setDrawsBackground:) BOOL _drawsBackground;
 @property (nonatomic, setter=_setTopContentInset:) CGFloat _topContentInset;
 
@@ -380,6 +381,7 @@ typedef NS_OPTIONS(NSUInteger, _WKRectEdge) {
 - (void)keyboardAccessoryBarPrevious WK_API_AVAILABLE(ios(10.0));
 - (void)dismissFormAccessoryView WK_API_AVAILABLE(ios(10.3));
 - (void)selectFormAccessoryPickerRow:(int)rowIndex WK_API_AVAILABLE(ios(10.3));
+@property (nonatomic, readonly) NSString *selectFormPopoverTitle WK_API_AVAILABLE(ios(WK_IOS_TBA));
 
 - (void)applyAutocorrection:(NSString *)newString toString:(NSString *)oldString withCompletionHandler:(void (^)(void))completionHandler WK_API_AVAILABLE(ios(11.0));
 

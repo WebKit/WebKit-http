@@ -177,6 +177,8 @@ void WebAnimation::setTimeline(RefPtr<AnimationTimeline>&& timeline)
 
     m_timeline = WTFMove(timeline);
 
+    setSuspended(is<DocumentTimeline>(m_timeline) && downcast<DocumentTimeline>(*m_timeline).animationsAreSuspended());
+
     updatePendingTasks();
 
     // 5. Run the procedure to update an animation’s finished state for animation with the did seek flag set to false,
@@ -382,6 +384,9 @@ ExceptionOr<void> WebAnimation::setCurrentTime(std::optional<Seconds> seekTime)
 
     // 3. Run the procedure to update an animation's finished state for animation with the did seek flag set to true, and the synchronously notify flag set to false.
     updateFinishedState(DidSeek::Yes, SynchronouslyNotify::No);
+
+    if (m_effect)
+        m_effect->animationDidSeek();
 
     return { };
 }
@@ -779,6 +784,9 @@ ExceptionOr<void> WebAnimation::play(AutoRewind autoRewind)
     // 9. Run the procedure to update an animation's finished state for animation with the did seek flag set to false, and the synchronously notify flag set to false.
     updateFinishedState(DidSeek::No, SynchronouslyNotify::No);
 
+    if (m_effect)
+        m_effect->animationPlayStateDidChange(PlayState::Running);
+
     return { };
 }
 
@@ -874,6 +882,9 @@ ExceptionOr<void> WebAnimation::pause()
 
     // 8. Run the procedure to update an animation's finished state for animation with the did seek flag set to false, and the synchronously notify flag set to false.
     updateFinishedState(DidSeek::No, SynchronouslyNotify::No);
+
+    if (m_effect)
+        m_effect->animationPlayStateDidChange(PlayState::Paused);
 
     return { };
 }
@@ -992,11 +1003,6 @@ Seconds WebAnimation::timeToNextRequiredTick() const
     if (localTime < 0_s)
         return -localTime;
 
-    // If our current time is just at the acthive duration threshold we want to invalidate as
-    // soon as possible to restore a non-animated value.
-    if (std::abs(localTime.microseconds() - m_effect->timing()->activeDuration().microseconds()) < timeEpsilon.microseconds())
-        return 0_s;
-
     // In any other case, we're idle or already outside our active duration and have no need
     // to schedule an invalidation.
     return Seconds::infinity();
@@ -1006,18 +1012,35 @@ void WebAnimation::resolve(RenderStyle& targetStyle)
 {
     if (m_effect)
         m_effect->apply(targetStyle);
+
+    updateFinishedState(DidSeek::No, SynchronouslyNotify::Yes);
 }
 
-void WebAnimation::acceleratedRunningStateDidChange()
+void WebAnimation::setSuspended(bool isSuspended)
+{
+    if (m_isSuspended == isSuspended)
+        return;
+
+    m_isSuspended = isSuspended;
+
+    if (!is<KeyframeEffectReadOnly>(m_effect))
+        return;
+
+    auto& keyframeEffect = downcast<KeyframeEffectReadOnly>(*m_effect);
+    if (keyframeEffect.isRunningAccelerated() && playState() == PlayState::Running)
+        keyframeEffect.animationPlayStateDidChange(isSuspended ? PlayState::Paused : PlayState::Running);
+}
+
+void WebAnimation::acceleratedStateDidChange()
 {
     if (is<DocumentTimeline>(m_timeline))
         downcast<DocumentTimeline>(*m_timeline).animationAcceleratedRunningStateDidChange(*this);
 }
 
-void WebAnimation::startOrStopAccelerated()
+void WebAnimation::applyPendingAcceleratedActions()
 {
     if (is<KeyframeEffectReadOnly>(m_effect))
-        downcast<KeyframeEffectReadOnly>(*m_effect).startOrStopAccelerated();
+        downcast<KeyframeEffectReadOnly>(*m_effect).applyPendingAcceleratedActions();
 }
 
 WebAnimation& WebAnimation::readyPromiseResolve()

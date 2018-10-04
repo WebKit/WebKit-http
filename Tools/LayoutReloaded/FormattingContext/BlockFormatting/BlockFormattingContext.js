@@ -22,6 +22,26 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+/*
+class BlockFormattingContext : public FormattingContext {
+public:
+    void layout() override;
+
+    void computeWidth(const Layout::Box&) override;
+    void computeHeight(const Layout::Box&) override;
+ 
+    void marginTop(const Layout::Box&) override;
+    void marginBottom(const Layout::Box&) override;
+
+private:
+    void computeStaticPosition(const Layout::Box&);
+    void computeInFlowHeight(const Layout::Box&);
+    void horizontalConstraint(const Layout::Box&);
+    void contentHeight(const Layout::Box&);
+};
+*/
+
 class BlockFormattingContext extends FormattingContext {
     constructor(blockFormattingState) {
         super(blockFormattingState);
@@ -35,8 +55,7 @@ class BlockFormattingContext extends FormattingContext {
 
         // This is a post-order tree traversal layout.
         // The root container layout is done in the formatting context it lives in, not that one it creates, so let's start with the first child.
-        if (this.formattingRoot().firstInFlowOrFloatChild())
-            this._addToLayoutQueue(this.formattingRoot().firstInFlowOrFloatChild());
+        this._addToLayoutQueue(this._firstInFlowChildWithNeedsLayout(this.formattingRoot()));
         // 1. Go all the way down to the leaf node
         // 2. Compute static position and width as we travers down
         // 3. As we climb back on the tree, compute height and finialize position
@@ -48,12 +67,13 @@ class BlockFormattingContext extends FormattingContext {
                 this.computeWidth(layoutBox);
                 this._computeStaticPosition(layoutBox);
                 if (layoutBox.establishesFormattingContext()) {
-                    this.layoutState().layout(layoutBox);
+                    this.layoutState().formattingContext(layoutBox).layout();
                     break;
                 }
-                if (!layoutBox.isContainer() || !layoutBox.hasInFlowOrFloatChild())
+                let childToLayout = this._firstInFlowChildWithNeedsLayout(layoutBox);
+                if (!childToLayout)
                     break;
-                this._addToLayoutQueue(layoutBox.firstInFlowOrFloatChild());
+                this._addToLayoutQueue(childToLayout);
             }
 
             // Climb back on the ancestors and compute height/final position.
@@ -67,8 +87,10 @@ class BlockFormattingContext extends FormattingContext {
                 this._placeInFlowPositionedChildren(layoutBox);
                 // We are done with laying out this box.
                 this._removeFromLayoutQueue(layoutBox);
-                if (layoutBox.nextInFlowOrFloatSibling()) {
-                    this._addToLayoutQueue(layoutBox.nextInFlowOrFloatSibling());
+                this.formattingState().clearNeedsLayout(layoutBox);
+                let nextSiblingToLayout = this._nextInFlowSiblingWithNeedsLayout(layoutBox);
+                if (nextSiblingToLayout) {
+                    this._addToLayoutQueue(nextSiblingToLayout);
                     break;
                 }
             }
@@ -77,6 +99,7 @@ class BlockFormattingContext extends FormattingContext {
         this._placeInFlowPositionedChildren(this.formattingRoot());
         // And take care of out-of-flow boxes as the final step.
         this._layoutOutOfFlowDescendants();
+        ASSERT(!this.formattingState().layoutNeeded());
    }
 
     computeWidth(layoutBox) {
@@ -116,109 +139,6 @@ class BlockFormattingContext extends FormattingContext {
         let position = new LayoutPoint(contentBottom, containingBlockContentBox.left());
         position.moveBy(new LayoutSize(this.marginLeft(layoutBox), this.marginTop(layoutBox)));
         this.displayBox(layoutBox).setTopLeft(position);
-    }
-
-    _placeInFlowPositionedChildren(container) {
-        if (!container.isContainer())
-            return;
-        // If this layoutBox also establishes a formatting context, then positioning already has happend at the formatting context.
-        if (container.establishesFormattingContext() && container != this.formattingRoot())
-            return;
-        ASSERT(container.isContainer());
-        for (let inFlowChild = container.firstInFlowChild(); inFlowChild; inFlowChild = inFlowChild.nextInFlowSibling()) {
-            if (!inFlowChild.isInFlowPositioned())
-                continue;
-            this._computeInFlowPositionedPosition(inFlowChild);
-        }
-    }
-
-    _layoutOutOfFlowDescendants() {
-        // This lays out all the out-of-flow boxes that belong to this formatting context even if
-        // the root container is not the containing block.
-        let outOfFlowDescendants = this._outOfFlowDescendants();
-        for (let outOfFlowBox of outOfFlowDescendants) {
-            this._addToLayoutQueue(outOfFlowBox);
-            this.computeWidth(outOfFlowBox);
-            this.layoutState().layout(outOfFlowBox);
-            this.computeHeight(outOfFlowBox);
-            this._computeOutOfFlowPosition(outOfFlowBox);
-            this._removeFromLayoutQueue(outOfFlowBox);
-        }
-    }
-
-    _computeOutOfFlowWidth(layoutBox) {
-        // 10.3.7 Absolutely positioned, non-replaced elements
-
-        // 1. 'left' and 'width' are 'auto' and 'right' is not 'auto', then the width is shrink-to-fit. Then solve for 'left'
-        // 2. 'left' and 'right' are 'auto' and 'width' is not 'auto', then if the 'direction' property of the element establishing
-        //     the static-position containing block is 'ltr' set 'left' to the static position, otherwise set 'right' to the static position.
-        //     Then solve for 'left' (if 'direction is 'rtl') or 'right' (if 'direction' is 'ltr').
-        // 3. 'width' and 'right' are 'auto' and 'left' is not 'auto', then the width is shrink-to-fit . Then solve for 'right'
-        // 4. 'left' is 'auto', 'width' and 'right' are not 'auto', then solve for 'left'
-        // 5. 'width' is 'auto', 'left' and 'right' are not 'auto', then solve for 'width'
-        // 6. 'right' is 'auto', 'left' and 'width' are not 'auto', then solve for 'right'
-        let width = Number.NaN;
-        if (Utils.isWidthAuto(layoutBox) && Utils.isLeftAuto(layoutBox) && Utils.isRightAuto(layoutBox))
-            width = this._shrinkToFitWidth(layoutBox);
-        else if (Utils.isLeftAuto(layoutBox) && Utils.isWidthAuto(layoutBox) && !Utils.isRightAuto(layoutBox))
-            width = this._shrinkToFitWidth(layoutBox); // 1
-        else if (Utils.isLeftAuto(layoutBox) && Utils.isRightAuto(layoutBox) && !Utils.isWidthAuto(layoutBox))
-            width = Utils.width(layoutBox); // 2
-        else if (Utils.isWidthAuto(layoutBox) && Utils.isRightAuto(layoutBox) && !Utils.isLeftAuto(layoutBox))
-            width = this._shrinkToFitWidth(layoutBox); // 3
-        else if (Utils.isLeftAuto(layoutBox) && !Utils.isWidthAuto(layoutBox) && !Utils.isRightAuto(layoutBox))
-            width = Utils.width(layoutBox); // 4
-        else if (Utils.isWidthAuto(layoutBox) && !Utils.isLeftAuto(layoutBox) && !Utils.isRightAuto(layoutBox))
-            width = Math.max(0, this.displayBox(layoutBox.containingBlock()).contentBox().width() - Utils.right(layoutBox) - Utils.left(layoutBox)); // 5
-        else if (Utils.isRightAuto(layoutBox) && !Utils.isLeftAuto(layoutBox) && !Utils.isWidthAuto(layoutBox))
-            width = Utils.width(layoutBox); // 6
-        else
-            ASSERT_NOT_REACHED();
-        width += Utils.computedHorizontalBorderAndPadding(layoutBox.node());
-        this.displayBox(layoutBox).setWidth(width);
-    }
-
-    _computeInFlowWidth(layoutBox) {
-        if (Utils.isWidthAuto(layoutBox))
-            return this.displayBox(layoutBox).setWidth(this._horizontalConstraint(layoutBox));
-        return this.displayBox(layoutBox).setWidth(Utils.width(layoutBox) + Utils.computedHorizontalBorderAndPadding(layoutBox.node()));
-    }
-
-    _computeOutOfFlowHeight(layoutBox) {
-        // 1. If all three of 'top', 'height', and 'bottom' are auto, set 'top' to the static position and apply rule number three below.
-        // 2. If none of the three are 'auto': If both 'margin-top' and 'margin-bottom' are 'auto', solve the equation under
-        //    the extra constraint that the two margins get equal values. If one of 'margin-top' or 'margin-bottom' is 'auto',
-        //    solve the equation for that value. If the values are over-constrained, ignore the value for 'bottom' and solve for that value.
-        // Otherwise, pick the one of the following six rules that applies.
-
-        // 3. 'top' and 'height' are 'auto' and 'bottom' is not 'auto', then the height is based on the content per 10.6.7,
-        //    set 'auto' values for 'margin-top' and 'margin-bottom' to 0, and solve for 'top'
-        // 4. 'top' and 'bottom' are 'auto' and 'height' is not 'auto', then set 'top' to the static position, set 'auto' values
-        //    for 'margin-top' and 'margin-bottom' to 0, and solve for 'bottom'
-        // 5. 'height' and 'bottom' are 'auto' and 'top' is not 'auto', then the height is based on the content per 10.6.7,
-        //    set 'auto' values for 'margin-top' and 'margin-bottom' to 0, and solve for 'bottom'
-        // 6. 'top' is 'auto', 'height' and 'bottom' are not 'auto', then set 'auto' values for 'margin-top' and 'margin-bottom' to 0, and solve for 'top'
-        // 7. 'height' is 'auto', 'top' and 'bottom' are not 'auto', then 'auto' values for 'margin-top' and 'margin-bottom' are set to 0 and solve for 'height'
-        // 8. 'bottom' is 'auto', 'top' and 'height' are not 'auto', then set 'auto' values for 'margin-top' and 'margin-bottom' to 0 and solve for 'bottom'
-        let height = Number.NaN;
-        if (Utils.isHeightAuto(layoutBox) && Utils.isBottomAuto(layoutBox) && Utils.isTopAuto(layoutBox))
-            height = this._contentHeight(layoutBox); // 1
-        else if (Utils.isTopAuto((layoutBox)) && Utils.isHeightAuto((layoutBox)) && !Utils.isBottomAuto((layoutBox)))
-            height = this._contentHeight(layoutBox); // 3
-        else if (Utils.isTopAuto((layoutBox)) && Utils.isBottomAuto((layoutBox)) && !Utils.isHeightAuto((layoutBox)))
-            height = Utils.height(layoutBox); // 4
-        else if (Utils.isHeightAuto((layoutBox)) && Utils.isBottomAuto((layoutBox)) && !Utils.isTopAuto((layoutBox)))
-            height = this._contentHeight(layoutBox); // 5
-        else if (Utils.isTopAuto((layoutBox)) && !Utils.isHeightAuto((layoutBox)) && !Utils.isBottomAuto((layoutBox)))
-            height = Utils.height(layoutBox); // 6
-        else if (Utils.isHeightAuto((layoutBox)) && !Utils.isTopAuto((layoutBox)) && !Utils.isBottomAuto((layoutBox)))
-            height = Math.max(0, this.displayBox(layoutBox.containingBlock()).contentBox().height() - Utils.bottom(layoutBox) - Utils.top(layoutBox)); // 7
-        else if (Utils.isBottomAuto((layoutBox)) && !Utils.isTopAuto((layoutBox)) && !Utils.isHeightAuto((layoutBox)))
-            height = Utils.height(layoutBox); // 8
-        else
-            ASSERT_NOT_REACHED();
-        height += Utils.computedVerticalBorderAndPadding(layoutBox.node());
-        this.displayBox(layoutBox).setHeight(height);
     }
 
     _computeInFlowHeight(layoutBox) {
@@ -277,83 +197,5 @@ class BlockFormattingContext extends FormattingContext {
                 bottom = Math.max(floatingBottom, bottom);
         }
         return bottom;
-    }
-
-    _computeInFlowPositionedPosition(layoutBox) {
-        // Start with the original, static position.
-        let displayBox = this.displayBox(layoutBox);
-        let relativePosition = displayBox.topLeft();
-        // Top/bottom
-        if (!Utils.isTopAuto(layoutBox))
-            relativePosition.shiftTop(Utils.top(layoutBox));
-        else if (!Utils.isBottomAuto(layoutBox))
-            relativePosition.shiftTop(-Utils.bottom(layoutBox));
-        // Left/right
-        if (!Utils.isLeftAuto(layoutBox))
-            relativePosition.shiftLeft(Utils.left(layoutBox));
-        else if (!Utils.isRightAuto(layoutBox))
-            relativePosition.shiftLeft(-Utils.right(layoutBox));
-        displayBox.setTopLeft(relativePosition);
-    }
-
-    _computeOutOfFlowPosition(layoutBox) {
-        let displayBox = this.displayBox(layoutBox);
-        let top = Number.NaN;
-        let containerSize = this.displayBox(layoutBox.containingBlock()).contentBox().size();
-        // Top/bottom
-        if (Utils.isTopAuto(layoutBox) && Utils.isBottomAuto(layoutBox)) {
-            ASSERT(Utils.isStaticallyPositioned(layoutBox));
-            // Vertically statically positioned.
-            // FIXME: Figure out if it is actually valid that we use the parent box as the container (which is not even in this formatting context).
-            let parent = layoutBox.parent();
-            let parentDisplayBox = this.displayBox(parent);
-            let previousInFlowSibling = layoutBox.previousInFlowSibling();
-            let contentBottom = previousInFlowSibling ? this.displayBox(previousInFlowSibling).bottom() : parentDisplayBox.contentBox().top();
-            top = contentBottom + this.marginTop(layoutBox);
-            // Convert static position (in parent coordinate system) to absolute (in containing block coordindate system).
-            if (parent != layoutBox.containingBlock()) {
-                ASSERT(displayBox.parent() == this.displayBox(layoutBox.containingBlock()));
-                top += Utils.mapPosition(parentDisplayBox.topLeft(), parentDisplayBox, displayBox.parent()).top();
-            }
-        } else if (!Utils.isTopAuto(layoutBox))
-            top = Utils.top(layoutBox) + this.marginTop(layoutBox);
-        else if (!Utils.isBottomAuto(layoutBox))
-            top = containerSize.height() - Utils.bottom(layoutBox) - displayBox.height() - this.marginBottom(layoutBox);
-        else
-            ASSERT_NOT_REACHED();
-        // Left/right
-        let left = Number.NaN;
-        if (Utils.isLeftAuto(layoutBox) && Utils.isRightAuto(layoutBox)) {
-            ASSERT(Utils.isStaticallyPositioned(layoutBox));
-            // Horizontally statically positioned.
-            // FIXME: Figure out if it is actually valid that we use the parent box as the container (which is not even in this formatting context).
-            let parent = layoutBox.parent();
-            let parentDisplayBox = this.displayBox(parent);
-            left = parentDisplayBox.contentBox().left() + this.marginLeft(layoutBox);
-            // Convert static position (in parent coordinate system) to absolute (in containing block coordindate system).
-            if (parent != layoutBox.containingBlock()) {
-                ASSERT(displayBox.parent() == this.displayBox(layoutBox.containingBlock()));
-                left += Utils.mapPosition(parentDisplayBox.topLeft(), parentDisplayBox, displayBox.parent()).left();
-            }
-        } else if (!Utils.isLeftAuto(layoutBox))
-            left = Utils.left(layoutBox) + this.marginLeft(layoutBox);
-        else if (!Utils.isRightAuto(layoutBox))
-            left = containerSize.width() - Utils.right(layoutBox) - displayBox.width() - this.marginRight(layoutBox);
-        else
-            ASSERT_NOT_REACHED();
-        displayBox.setTopLeft(new LayoutPoint(top, left));
-    }
-
-    _shrinkToFitWidth(layoutBox) {
-        // FIXME: this is naive.
-        ASSERT(Utils.isWidthAuto(layoutBox));
-        if (!layoutBox.isContainer() || !layoutBox.hasChild())
-            return 0;
-        let width = 0;
-        for (let inFlowChild = layoutBox.firstInFlowChild(); inFlowChild; inFlowChild = inFlowChild.nextInFlowSibling()) {
-            let widthCandidate = Utils.isWidthAuto(inFlowChild) ? this._shrinkToFitWidth(inFlowChild) : Utils.width(inFlowChild);
-            width = Math.max(width, widthCandidate + Utils.computedHorizontalBorderAndPadding(inFlowChild.node()));
-        }
-        return width;
     }
 }

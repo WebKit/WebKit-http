@@ -30,19 +30,19 @@ function next()
     if (this == null)
         @throwTypeError("%StringIteratorPrototype%.next requires that |this| not be null or undefined");
 
-    var position = this.@stringIteratorNextIndex;
+    var position = @getByIdDirectPrivate(this, "stringIteratorNextIndex");
     if (position === @undefined)
         @throwTypeError("%StringIteratorPrototype%.next requires that |this| be a String Iterator instance");
 
     var done = true;
     var value = @undefined;
 
-    var string = this.@iteratedString;
+    var string = @getByIdDirectPrivate(this, "iteratedString");
     if (string !== @undefined) {
         var length = string.length >>> 0;
-        if (position >= length) {
-            this.@iteratedString = @undefined;
-        } else {
+        if (position >= length)
+            @putByIdDirectPrivate(this, "iteratedString", @undefined);
+        else {
             done = false;
 
             var first = string.@charCodeAt(position);
@@ -56,7 +56,7 @@ function next()
                     value = string[position] + string[position + 1];
             }
 
-            this.@stringIteratorNextIndex = position + value.length;
+            @putByIdDirectPrivate(this, "stringIteratorNextIndex", position + value.length);
         }
     }
 

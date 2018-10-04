@@ -57,6 +57,7 @@
 #include "Document.h"
 #include "DocumentLoader.h"
 #include "DocumentMarkerController.h"
+#include "DocumentTimeline.h"
 #include "Editor.h"
 #include "Element.h"
 #include "EventHandler.h"
@@ -124,6 +125,7 @@
 #include "RenderView.h"
 #include "RenderedDocumentMarker.h"
 #include "ResourceLoadObserver.h"
+#include "RuntimeEnabledFeatures.h"
 #include "SMILTimeContainer.h"
 #include "SVGDocumentExtensions.h"
 #include "SVGPathStringBuilder.h"
@@ -913,6 +915,8 @@ ExceptionOr<unsigned> Internals::lastSpatialNavigationCandidateCount() const
 
 unsigned Internals::numberOfActiveAnimations() const
 {
+    if (RuntimeEnabledFeatures::sharedFeatures().cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled())
+        return frame()->document()->timeline().numberOfActiveAnimationsForTesting();
     return frame()->animation().numberOfActiveAnimations(frame()->document());
 }
 
@@ -922,15 +926,25 @@ ExceptionOr<bool> Internals::animationsAreSuspended() const
     if (!document || !document->frame())
         return Exception { InvalidAccessError };
 
+    if (RuntimeEnabledFeatures::sharedFeatures().cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled())
+        return document->timeline().animationsAreSuspended();
     return document->frame()->animation().animationsAreSuspendedForDocument(document);
 }
 
 double Internals::animationsInterval() const
 {
     Document* document = contextDocument();
-    if (!document || !document->frame())
+    if (!document)
         return INFINITY;
 
+    if (RuntimeEnabledFeatures::sharedFeatures().cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled()) {
+        if (auto timeline = document->existingTimeline())
+            return timeline->animationInterval().seconds();
+        return INFINITY;
+    }
+
+    if (!document->frame())
+        return INFINITY;
     return document->frame()->animation().animationInterval().value();
 }
 
@@ -940,11 +954,19 @@ ExceptionOr<void> Internals::suspendAnimations() const
     if (!document || !document->frame())
         return Exception { InvalidAccessError };
 
-    document->frame()->animation().suspendAnimationsForDocument(document);
+    if (RuntimeEnabledFeatures::sharedFeatures().cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled()) {
+        document->timeline().suspendAnimations();
+        for (Frame* frame = document->frame(); frame; frame = frame->tree().traverseNext()) {
+            if (Document* document = frame->document())
+                document->timeline().suspendAnimations();
+        }
+    } else {
+        document->frame()->animation().suspendAnimationsForDocument(document);
 
-    for (Frame* frame = document->frame(); frame; frame = frame->tree().traverseNext()) {
-        if (Document* document = frame->document())
-            frame->animation().suspendAnimationsForDocument(document);
+        for (Frame* frame = document->frame(); frame; frame = frame->tree().traverseNext()) {
+            if (Document* document = frame->document())
+                frame->animation().suspendAnimationsForDocument(document);
+        }
     }
 
     return { };
@@ -956,11 +978,19 @@ ExceptionOr<void> Internals::resumeAnimations() const
     if (!document || !document->frame())
         return Exception { InvalidAccessError };
 
-    document->frame()->animation().resumeAnimationsForDocument(document);
+    if (RuntimeEnabledFeatures::sharedFeatures().cssAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled()) {
+        document->timeline().resumeAnimations();
+        for (Frame* frame = document->frame(); frame; frame = frame->tree().traverseNext()) {
+            if (Document* document = frame->document())
+                document->timeline().resumeAnimations();
+        }
+    } else {
+        document->frame()->animation().resumeAnimationsForDocument(document);
 
-    for (Frame* frame = document->frame(); frame; frame = frame->tree().traverseNext()) {
-        if (Document* document = frame->document())
-            frame->animation().resumeAnimationsForDocument(document);
+        for (Frame* frame = document->frame(); frame; frame = frame->tree().traverseNext()) {
+            if (Document* document = frame->document())
+                frame->animation().resumeAnimationsForDocument(document);
+        }
     }
 
     return { };
@@ -1008,6 +1038,14 @@ ExceptionOr<bool> Internals::pauseTransitionAtTimeOnPseudoElement(const String& 
         return Exception { InvalidAccessError };
 
     return frame()->animation().pauseTransitionAtTime(*pseudoElement, property, pauseTime);
+}
+
+ExceptionOr<RefPtr<Element>> Internals::pseudoElement(Element& element, const String& pseudoId)
+{
+    if (pseudoId != "before" && pseudoId != "after")
+        return Exception { InvalidAccessError };
+
+    return pseudoId == "before" ? element.beforePseudoElement() : element.afterPseudoElement();
 }
 
 ExceptionOr<String> Internals::elementRenderTreeAsText(Element& element)
@@ -4286,6 +4324,10 @@ void Internals::simulateMediaStreamTrackCaptureSourceFailure(MediaStreamTrack& t
     track.source().captureFailed();
 }
 
+void Internals::setMediaStreamTrackIdentifier(MediaStreamTrack& track, String&& id)
+{
+    track.setIdForTesting(WTFMove(id));
+}
 #endif
 
 String Internals::audioSessionCategory() const
