@@ -32,7 +32,7 @@
 
 namespace WebCore {
 
-void BitmapTextureImageBuffer::updateContents(const void* data, const IntRect& targetRect, const IntPoint& sourceOffset, int bytesPerLine, UpdateContentsFlag)
+void BitmapTextureImageBuffer::updateContents(const void* data, const IntRect& targetRect, const IntPoint& sourceOffset, int bytesPerLine)
 {
 #if PLATFORM(CAIRO)
     RefPtr<cairo_surface_t> surface = adoptRef(cairo_image_surface_create_for_data(static_cast<unsigned char*>(data()),
@@ -47,7 +47,7 @@ void BitmapTextureImageBuffer::updateContents(const void* data, const IntRect& t
 #endif
 }
 
-void BitmapTextureImageBuffer::updateContents(TextureMapper*, GraphicsLayer* sourceLayer, const IntRect& targetRect, const IntPoint& sourceOffset, UpdateContentsFlag)
+void BitmapTextureImageBuffer::updateContents(TextureMapper*, GraphicsLayer* sourceLayer, const IntRect& targetRect, const IntPoint& sourceOffset)
 {
     GraphicsContext& context = m_image->context();
 
@@ -67,7 +67,7 @@ void BitmapTextureImageBuffer::didReset()
     m_image = ImageBuffer::create(contentSize(), UnacceleratedNonPlatformBuffer /* TODO make sure we never need a platform buffer (ie BBitmap+BView) */);
 }
 
-void BitmapTextureImageBuffer::updateContents(Image* image, const IntRect& targetRect, const IntPoint& offset, UpdateContentsFlag)
+void BitmapTextureImageBuffer::updateContents(Image* image, const IntRect& targetRect, const IntPoint& offset)
 {
     m_image->context().drawImage(*image, targetRect, IntRect(offset, targetRect.size()), CompositeCopy);
 }
