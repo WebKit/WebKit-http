@@ -35,7 +35,6 @@
 #include "FrameLoader.h"
 #include "FrameLoadRequest.h"
 #include "HitTestResult.h"
-#include "MainFrame.h"
 #include "NotImplemented.h"
 #include "Page.h"
 #include "ResourceRequest.h"

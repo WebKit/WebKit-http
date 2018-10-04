@@ -41,7 +41,6 @@
 #include <Frame.h>
 #include <FrameLoader.h>
 #include <FrameView.h>
-#include <MainFrame.h>
 #include "NotImplemented.h"
 #include <Page.h>
 #include <PageGroup.h>

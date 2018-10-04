@@ -40,7 +40,6 @@
 #include "FrameLoaderClientHaiku.h"
 #include "FrameView.h"
 #include "HTMLFrameOwnerElement.h"
-#include "MainFrame.h"
 #include "Page.h"
 #include "ProgressTracker.h"
 #include "ProgressTrackerHaiku.h"

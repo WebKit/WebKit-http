@@ -22,9 +22,9 @@
 #include "AcceleratedCompositingContext.h"
 #include "Bitmap.h"
 #include "FrameView.h"
+#include "Frame.h"
 #include "GraphicsContext.h"
 #include "GraphicsLayerTextureMapper.h"
-#include "MainFrame.h"
 #include "NotImplemented.h"
 #include "TextureMapperLayer.h"
 #include "WebFrame.h"
@@ -69,7 +69,7 @@ void AcceleratedCompositingContext::flushAndRenderLayers()
 
     if (!page) return;
 
-    MainFrame& frame = *(MainFrame*)(page->MainFrame()->Frame());
+    Frame& frame = *(Frame*)(page->MainFrame()->Frame());
     if (!frame.contentRenderer() || !frame.view())
         return;
     frame.view()->updateLayoutAndStyleIfNeededRecursive();
