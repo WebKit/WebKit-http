@@ -870,6 +870,11 @@ void KeyframeEffectReadOnly::computeCSSTransitionBlendingKeyframes(const RenderS
 bool KeyframeEffectReadOnly::stylesWouldYieldNewCSSTransitionsBlendingKeyframes(const RenderStyle& oldStyle, const RenderStyle& newStyle) const
 {
     ASSERT(is<CSSTransition>(animation()));
+
+    // We don't yet have blending keyframes to compare with, so these wouldn't be new keyframes, but the fisrt ones.
+    if (!hasBlendingKeyframes())
+        return false;
+
     auto property = downcast<CSSTransition>(animation())->backingAnimation().property();
 
     // There cannot be new keyframes if the start and to values are the same.
@@ -1130,7 +1135,7 @@ TimingFunction* KeyframeEffectReadOnly::timingFunctionForKeyframeAtIndex(size_t 
     // If we're dealing with a CSS Animation, the timing function is specified either on the keyframe itself,
     // or failing that on the backing Animation object which defines the default for all keyframes.
     if (is<CSSAnimation>(effectAnimation)) {
-        if (auto* timingFunction = m_blendingKeyframes[index].timingFunction(downcast<CSSAnimation>(effectAnimation)->animationName()))
+        if (auto* timingFunction = m_blendingKeyframes[index].timingFunction())
             return timingFunction;
     }
 

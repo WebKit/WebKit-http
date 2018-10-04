@@ -317,11 +317,13 @@ namespace WebCore {
 #endif
 
 #if ENABLE(EXTRA_ZOOM_MODE)
+    WEBCORE_EXPORT String numberPadOKButtonTitle();
     WEBCORE_EXPORT String formControlCancelButtonTitle();
     WEBCORE_EXPORT String formControlDoneButtonTitle();
     WEBCORE_EXPORT String formControlHideButtonTitle();
     WEBCORE_EXPORT String formControlGoButtonTitle();
     WEBCORE_EXPORT String formControlSearchButtonTitle();
+    WEBCORE_EXPORT String datePickerSetButtonTitle();
     WEBCORE_EXPORT String datePickerDayLabelTitle();
     WEBCORE_EXPORT String datePickerMonthLabelTitle();
     WEBCORE_EXPORT String datePickerYearLabelTitle();

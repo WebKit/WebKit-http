@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,6 +33,7 @@
 #import <mach/mach_port.h>
 #import <pal/spi/cocoa/QuartzCoreSPI.h>
 #import <wtf/BlockPtr.h>
+#import <wtf/MachSendRight.h>
 
 @interface WebVideoContainerLayer : CALayer
 @end
@@ -74,6 +75,8 @@ void VideoFullscreenLayerManagerObjC::setVideoLayer(PlatformLayer *videoLayer, I
     [m_videoInlineLayer setName:@"WebVideoContainerLayer"];
 #endif
     [m_videoInlineLayer setFrame:m_videoInlineFrame];
+    [m_videoInlineLayer setContentsGravity:kCAGravityResizeAspect];
+
     if (m_videoFullscreenLayer) {
         [m_videoLayer setFrame:CGRectMake(0, 0, m_videoFullscreenFrame.width(), m_videoFullscreenFrame.height())];
         [m_videoFullscreenLayer insertSublayer:m_videoLayer.get() atIndex:0];
@@ -83,7 +86,13 @@ void VideoFullscreenLayerManagerObjC::setVideoLayer(PlatformLayer *videoLayer, I
     }
 }
 
-void VideoFullscreenLayerManagerObjC::setVideoFullscreenLayer(PlatformLayer *videoFullscreenLayer, WTF::Function<void()>&& completionHandler)
+void VideoFullscreenLayerManagerObjC::updateVideoFullscreenInlineImage(NativeImagePtr image)
+{
+    if (m_videoInlineLayer)
+        [m_videoInlineLayer setContents:(id)image.get()];
+}
+
+void VideoFullscreenLayerManagerObjC::setVideoFullscreenLayer(PlatformLayer *videoFullscreenLayer, WTF::Function<void()>&& completionHandler, NativeImagePtr currentImage)
 {
     if (m_videoFullscreenLayer == videoFullscreenLayer) {
         completionHandler();
@@ -97,6 +106,9 @@ void VideoFullscreenLayerManagerObjC::setVideoFullscreenLayer(PlatformLayer *vid
 
     if (m_videoLayer) {
         CAContext *oldContext = [m_videoLayer context];
+
+        if (m_videoInlineLayer)
+            [m_videoInlineLayer setContents:(id)currentImage.get()];
 
         if (m_videoFullscreenLayer) {
             [m_videoFullscreenLayer insertSublayer:m_videoLayer.get() atIndex:0];
@@ -113,9 +125,8 @@ void VideoFullscreenLayerManagerObjC::setVideoFullscreenLayer(PlatformLayer *vid
             oldContext.commitPriority = 0;
             newContext.commitPriority = 1;
 #endif
-            mach_port_t fencePort = [oldContext createFencePort];
-            [newContext setFencePort:fencePort];
-            mach_port_deallocate(mach_task_self(), fencePort);
+            auto fencePort = MachSendRight::adopt([oldContext createFencePort]);
+            [newContext setFencePort:fencePort.sendRight()];
         }
     }
 

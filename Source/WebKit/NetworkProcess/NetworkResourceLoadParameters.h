@@ -27,7 +27,7 @@
 
 #include "NetworkLoadParameters.h"
 #include "SandboxExtension.h"
-#include "WebCompiledContentRuleListData.h"
+#include "UserContentControllerIdentifier.h"
 #include <WebCore/ContentSecurityPolicyResponseHeaders.h>
 #include <WebCore/FetchOptions.h>
 #include <WebCore/ResourceLoaderOptions.h>
@@ -58,10 +58,11 @@ public:
     RefPtr<WebCore::SecurityOrigin> sourceOrigin;
     WebCore::FetchOptions::Mode mode;
     std::optional<WebCore::ContentSecurityPolicyResponseHeaders> cspResponseHeaders;
+    bool shouldRestrictHTTPResponseAccess { false };
 
 #if ENABLE(CONTENT_EXTENSIONS)
     WebCore::URL mainDocumentURL;
-    Vector<std::pair<String, WebCompiledContentRuleListData>> contentRuleLists;
+    std::optional<UserContentControllerIdentifier> userContentControllerIdentifier;
 #endif
 };
 

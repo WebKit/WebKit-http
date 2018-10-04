@@ -46,14 +46,6 @@
 class BUrlProtocolHandler;
 #endif
 
-#if USE(SOUP)
-#include "GUniquePtrSoup.h"
-#include "SoupNetworkSession.h"
-#include <libsoup/soup.h>
-#include <wtf/RunLoop.h>
-#include <wtf/glib/GRefPtr.h>
-#endif
-
 #if PLATFORM(COCOA)
 OBJC_CLASS NSURLAuthenticationChallenge;
 OBJC_CLASS NSURLConnection;
@@ -86,9 +78,6 @@ public:
 #endif
 #if PLATFORM(HAIKU)
 		, m_urlrequest(0)
-#endif
-#if USE(SOUP)
-        , m_timeoutSource(RunLoop::main(), loader, &ResourceHandle::timeoutFired)
 #endif
         , m_failureTimer(*loader, &ResourceHandle::failureTimerFired)
     {
@@ -147,30 +136,6 @@ public:
 #if PLATFORM(HAIKU)
 		BUrlProtocolHandler* m_urlrequest;
 		BString	m_url;
-#endif
-
-#if USE(SOUP)
-    SoupNetworkSession* m_session { nullptr };
-    GRefPtr<SoupMessage> m_soupMessage;
-    ResourceResponse m_response;
-    bool m_cancelled { false };
-    GRefPtr<SoupRequest> m_soupRequest;
-    GRefPtr<GInputStream> m_inputStream;
-    GRefPtr<SoupMultipartInputStream> m_multipartInputStream;
-    GRefPtr<GCancellable> m_cancellable;
-    GRefPtr<GAsyncResult> m_deferredResult;
-    RunLoop::Timer<ResourceHandle> m_timeoutSource;
-    GUniquePtr<SoupBuffer> m_soupBuffer;
-    unsigned long m_bodySize { 0 };
-    unsigned long m_bodyDataSent { 0 };
-    SoupSession* soupSession();
-    int m_redirectCount { 0 };
-    size_t m_previousPosition { 0 };
-    bool m_useAuthenticationManager { true };
-    struct {
-        Credential credential;
-        ProtectionSpace protectionSpace;
-    } m_credentialDataToSaveInPersistentStore;
 #endif
 
 #if PLATFORM(COCOA)

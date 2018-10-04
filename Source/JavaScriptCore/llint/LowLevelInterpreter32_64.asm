@@ -96,7 +96,7 @@ macro callSlowPath(slowPath)
     move r0, PC
 end
 
-macro doVMEntry(makeCall, unused1, unused2)
+macro doVMEntry(makeCall)
     functionPrologue()
     pushCalleeSaves()
 
@@ -1622,7 +1622,6 @@ _llint_op_get_by_val:
 
 .opGetByValIsContiguous:
     biaeq t1, -sizeof IndexingHeader + IndexingHeader::u.lengths.publicLength[t3], .opGetByValSlow
-    andi JSObject::m_butterflyIndexingMask[t0], t1
     loadi TagOffset[t3, t1, 8], t2
     loadi PayloadOffset[t3, t1, 8], t1
     jmp .opGetByValDone
@@ -1630,7 +1629,6 @@ _llint_op_get_by_val:
 .opGetByValNotContiguous:
     bineq t2, DoubleShape, .opGetByValNotDouble
     biaeq t1, -sizeof IndexingHeader + IndexingHeader::u.lengths.publicLength[t3], .opGetByValSlow
-    andi JSObject::m_butterflyIndexingMask[t0], t1
     loadd [t3, t1, 8], ft0
     bdnequn ft0, ft0, .opGetByValSlow
     # FIXME: This could be massively optimized.
@@ -1642,7 +1640,6 @@ _llint_op_get_by_val:
     subi ArrayStorageShape, t2
     bia t2, SlowPutArrayStorageShape - ArrayStorageShape, .opGetByValSlow
     biaeq t1, -sizeof IndexingHeader + IndexingHeader::u.lengths.vectorLength[t3], .opGetByValSlow
-    andi JSObject::m_butterflyIndexingMask[t0], t1
     loadi ArrayStorage::m_vector + TagOffset[t3, t1, 8], t2
     loadi ArrayStorage::m_vector + PayloadOffset[t3, t1, 8], t1
 
@@ -1995,8 +1992,8 @@ macro doCall(slowPath, prepareCall)
     storei t2, ArgumentCount + PayloadOffset[t3]
     storei CellTag, Callee + TagOffset[t3]
     move t3, sp
-    prepareCall(LLIntCallLinkInfo::machineCodeTarget[t1], t2, t3, t4, macro (callPtrTag) end)
-    callTargetFunction(LLIntCallLinkInfo::machineCodeTarget[t1], NoPtrTag)
+    prepareCall(LLIntCallLinkInfo::machineCodeTarget[t1], t2, t3, t4, LLIntCallICPtrTag)
+    callTargetFunction(LLIntCallLinkInfo::machineCodeTarget[t1], LLIntCallICPtrTag)
 
 .opCallSlow:
     slowPathForCall(slowPath, prepareCall)
@@ -2534,9 +2531,8 @@ _llint_op_get_from_arguments:
     loadisFromInstruction(2, t0)
     loadi PayloadOffset[cfr, t0, 8], t0
     loadi 12[PC], t1
-    loadp DirectArguments::m_storage[t0], t0
-    loadi TagOffset[t0, t1, 8], t2
-    loadi PayloadOffset[t0, t1, 8], t3
+    loadi DirectArguments_storage + TagOffset[t0, t1, 8], t2
+    loadi DirectArguments_storage + PayloadOffset[t0, t1, 8], t3
     loadisFromInstruction(1, t1)
     valueProfile(t2, t3, 16, t0)
     storei t2, TagOffset[cfr, t1, 8]
@@ -2551,10 +2547,9 @@ _llint_op_put_to_arguments:
     loadi PayloadOffset[cfr, t0, 8], t0
     loadisFromInstruction(3, t1)
     loadConstantOrVariable(t1, t2, t3)
-    loadp DirectArguments::m_storage[t0], t0
     loadi 8[PC], t1
-    storei t2, TagOffset[t0, t1, 8]
-    storei t3, PayloadOffset[t0, t1, 8]
+    storei t2, DirectArguments_storage + TagOffset[t0, t1, 8]
+    storei t3, DirectArguments_storage + PayloadOffset[t0, t1, 8]
     dispatch(4)
 
 

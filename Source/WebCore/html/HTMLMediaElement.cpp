@@ -46,6 +46,7 @@
 #include "DocumentLoader.h"
 #include "ElementChildIterator.h"
 #include "EventNames.h"
+#include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "FrameView.h"
@@ -57,7 +58,6 @@
 #include "JSHTMLMediaElement.h"
 #include "Logging.h"
 #include "MIMETypeRegistry.h"
-#include "MainFrame.h"
 #include "MediaController.h"
 #include "MediaControls.h"
 #include "MediaDocument.h"
@@ -6022,6 +6022,12 @@ void HTMLMediaElement::waitForPreparedForInlineThen(WTF::Function<void()>&& comp
 }
 
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+
+void HTMLMediaElement::willExitFullscreen()
+{
+    if (m_player)
+        m_player->updateVideoFullscreenInlineImage();
+}
 
 bool HTMLMediaElement::isVideoLayerInline()
 {

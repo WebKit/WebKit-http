@@ -51,17 +51,16 @@ namespace JSC { namespace FTL {
     macro(Butterfly_vectorLength, Butterfly::offsetOfVectorLength()) \
     macro(CallFrame_callerFrame, CallFrame::callerFrameOffset()) \
     macro(ClassInfo_parentClass, ClassInfo::offsetOfParentClass()) \
-    macro(DirectArguments_Storage_length, DirectArguments::offsetOfLengthInStorage()) \
-    macro(DirectArguments_Storage_minCapacity, DirectArguments::offsetOfMinCapacityInStorage()) \
     macro(DirectArguments_callee, DirectArguments::offsetOfCallee()) \
+    macro(DirectArguments_length, DirectArguments::offsetOfLength()) \
+    macro(DirectArguments_minCapacity, DirectArguments::offsetOfMinCapacity()) \
     macro(DirectArguments_mappedArguments, DirectArguments::offsetOfMappedArguments()) \
     macro(DirectArguments_modifiedArgumentsDescriptor, DirectArguments::offsetOfModifiedArgumentsDescriptor()) \
-    macro(DirectArguments_storage, DirectArguments::offsetOfStorage()) \
     macro(GetterSetter_getter, GetterSetter::offsetOfGetter()) \
     macro(GetterSetter_setter, GetterSetter::offsetOfSetter()) \
     macro(JSArrayBufferView_length, JSArrayBufferView::offsetOfLength()) \
     macro(JSArrayBufferView_mode, JSArrayBufferView::offsetOfMode()) \
-    macro(JSArrayBufferView_poisonedVector, JSArrayBufferView::offsetOfPoisonedVector()) \
+    macro(JSArrayBufferView_vector, JSArrayBufferView::offsetOfVector()) \
     macro(JSCell_cellState, JSCell::cellStateOffset()) \
     macro(JSCell_header, 0) \
     macro(JSCell_indexingTypeAndMisc, JSCell::indexingTypeAndMiscOffset()) \
@@ -74,7 +73,6 @@ namespace JSC { namespace FTL {
     macro(JSFunction_scope, JSFunction::offsetOfScopeChain()) \
     macro(JSFunction_rareData, JSFunction::offsetOfRareData()) \
     macro(JSObject_butterfly, JSObject::butterflyOffset()) \
-    macro(JSObject_butterflyMask, JSObject::butterflyIndexingMaskOffset()) \
     macro(JSPropertyNameEnumerator_cachedInlineCapacity, JSPropertyNameEnumerator::cachedInlineCapacityOffset()) \
     macro(JSPropertyNameEnumerator_cachedPropertyNamesVector, JSPropertyNameEnumerator::cachedPropertyNamesVectorOffset()) \
     macro(JSPropertyNameEnumerator_cachedStructureID, JSPropertyNameEnumerator::cachedStructureIDOffset()) \
@@ -112,7 +110,6 @@ namespace JSC { namespace FTL {
     macro(StringImpl_data, StringImpl::dataOffset()) \
     macro(StringImpl_hashAndFlags, StringImpl::flagsOffset()) \
     macro(StringImpl_length, StringImpl::lengthMemoryOffset()) \
-    macro(StringImpl_mask, StringImpl::maskOffset()) \
     macro(Structure_classInfo, Structure::classInfoOffset()) \
     macro(Structure_globalObject, Structure::globalObjectOffset()) \
     macro(Structure_prototype, Structure::prototypeOffset()) \
@@ -135,7 +132,7 @@ namespace JSC { namespace FTL {
 #define FOR_EACH_INDEXED_ABSTRACT_HEAP(macro) \
     macro(ArrayStorage_vector, ArrayStorage::vectorOffset(), sizeof(WriteBarrier<Unknown>)) \
     macro(CompleteSubspace_allocatorForSizeStep, CompleteSubspace::offsetOfAllocatorForSizeStep(), sizeof(Allocator)) \
-    macro(DirectArguments_Storage_storage, 0, sizeof(EncodedJSValue)) \
+    macro(DirectArguments_storage, DirectArguments::storageOffset(), sizeof(EncodedJSValue)) \
     macro(JSLexicalEnvironment_variables, JSLexicalEnvironment::offsetOfVariables(), sizeof(EncodedJSValue)) \
     macro(JSPropertyNameEnumerator_cachedPropertyNamesVectorContents, 0, sizeof(WriteBarrier<JSString>)) \
     macro(JSRopeString_fibers, JSRopeString::offsetOfFibers(), sizeof(WriteBarrier<JSString>)) \
@@ -152,8 +149,7 @@ namespace JSC { namespace FTL {
     macro(variables, 0, sizeof(Register)) \
     macro(HasOwnPropertyCache, 0, sizeof(HasOwnPropertyCache::Entry)) \
     macro(JSFixedArray_buffer, JSFixedArray::offsetOfData(), sizeof(EncodedJSValue)) \
-    macro(TypedArrayPoisons, 0, sizeof(uintptr_t)) \
-
+    
 #define FOR_EACH_NUMBERED_ABSTRACT_HEAP(macro) \
     macro(properties)
     

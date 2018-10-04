@@ -38,6 +38,7 @@
 #include "Database.h"
 #include "DocumentLoader.h"
 #include "Event.h"
+#include "Frame.h"
 #include "InspectorApplicationCacheAgent.h"
 #include "InspectorCSSAgent.h"
 #include "InspectorCanvasAgent.h"
@@ -53,7 +54,6 @@
 #include "InspectorWorkerAgent.h"
 #include "InstrumentingAgents.h"
 #include "LoaderStrategy.h"
-#include "MainFrame.h"
 #include "PageDebuggerAgent.h"
 #include "PageHeapAgent.h"
 #include "PageRuntimeAgent.h"
@@ -999,6 +999,13 @@ bool InspectorInstrumentation::isShaderProgramDisabledImpl(InstrumentingAgents& 
 {
     if (InspectorCanvasAgent* canvasAgent = instrumentingAgents.inspectorCanvasAgent())
         return canvasAgent->isShaderProgramDisabled(program);
+    return false;
+}
+
+bool InspectorInstrumentation::isShaderProgramHighlightedImpl(InstrumentingAgents& instrumentingAgents, WebGLProgram& program)
+{
+    if (InspectorCanvasAgent* canvasAgent = instrumentingAgents.inspectorCanvasAgent())
+        return canvasAgent->isShaderProgramHighlighted(program);
     return false;
 }
 #endif

@@ -1039,7 +1039,9 @@ webkit.org/b/139489 http/tests/css/link-css-disabled-value-with-slow-loading-she
 
 webkit.org/b/175419 http/tests/workers/service [ Skip ]
 webkit.org/b/175419 http/tests/inspector/network/resource-response-service-worker.html [ Skip ]
-webkit.org/b/175419 http/wpt/service-workers [ Failure ]
+
+webkit.org/b/175419 http/wpt/service-workers [ Pass Failure ]
+
 webkit.org/b/175419 imported/w3c/web-platform-tests/service-workers [ Skip ]
 webkit.org/b/175419 http/tests/appcache/main-resource-redirect-with-sw.html [ Skip ]
 webkit.org/b/175419 http/tests/appcache/main-resource-redirect.html [ Skip ]
@@ -1148,3 +1150,5 @@ webkit.org/b/181139 imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt
 
 webkit.org/b/184086 imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/accumulation-per-property.html [ Failure ]
 webkit.org/b/184086 imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/interpolation-per-property.html [ Failure ]
+
+webkit.org/b/184295 http/wpt/loading/redirect-headers.html [ Skip ]

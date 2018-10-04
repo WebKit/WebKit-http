@@ -97,8 +97,9 @@ void OMGPlan::work(CompilationEffort)
         return;
     }
 
+    PtrTag callTag = ptrTag(WasmCallPtrTag, signature.hash());
     omgEntrypoint.compilation = std::make_unique<B3::Compilation>(
-        FINALIZE_CODE(linkBuffer, NoPtrTag, "WebAssembly OMG function[%i] %s", m_functionIndex, SignatureInformation::get(signatureIndex).toString().ascii().data()),
+        FINALIZE_CODE(linkBuffer, callTag, "WebAssembly OMG function[%i] %s", m_functionIndex, signature.toString().ascii().data()),
         WTFMove(context.wasmEntrypointByproducts));
 
     omgEntrypoint.calleeSaveRegisters = WTFMove(parseAndCompileResult.value()->entrypoint.calleeSaveRegisters);
@@ -125,7 +126,10 @@ void OMGPlan::work(CompilationEffort)
             else
                 entrypoint = m_codeBlock->wasmEntrypointCalleeFromFunctionIndexSpace(call.functionIndexSpace).entrypoint();
 
-            MacroAssembler::repatchNearCall(call.callLocation, CodeLocationLabel(entrypoint));
+            SignatureIndex signatureIndex = m_moduleInformation->signatureIndexFromFunctionIndexSpace(call.functionIndexSpace);
+            const Signature& signature = SignatureInformation::get(signatureIndex);
+            PtrTag oldTag = ptrTag(WasmCallPtrTag, signature.hash());
+            MacroAssembler::repatchNearCall(call.callLocation, CodeLocationLabel(entrypoint.retagged(oldTag, NearCallPtrTag)));
         }
         unlinkedCalls = std::exchange(m_codeBlock->m_wasmToWasmCallsites[m_functionIndex], unlinkedCalls);
     }
@@ -136,7 +140,7 @@ void OMGPlan::work(CompilationEffort)
     resetInstructionCacheOnAllThreads();
     WTF::storeStoreFence(); // This probably isn't necessary but it's good to be paranoid.
 
-    m_codeBlock->m_wasmIndirectCallEntryPoints[m_functionIndex] = entrypoint.executableAddress();
+    m_codeBlock->m_wasmIndirectCallEntryPoints[m_functionIndex] = entrypoint;
     {
         LockHolder holder(m_codeBlock->m_lock);
 
@@ -145,7 +149,10 @@ void OMGPlan::work(CompilationEffort)
                 dataLogLnIf(WasmOMGPlanInternal::verbose, "Considering repatching call at: ", RawPointer(call.callLocation.dataLocation()), " that targets ", call.functionIndexSpace);
                 if (call.functionIndexSpace == functionIndexSpace) {
                     dataLogLnIf(WasmOMGPlanInternal::verbose, "Repatching call at: ", RawPointer(call.callLocation.dataLocation()), " to ", RawPointer(entrypoint.executableAddress()));
-                    MacroAssembler::repatchNearCall(call.callLocation, CodeLocationLabel(entrypoint));
+                    SignatureIndex signatureIndex = m_moduleInformation->signatureIndexFromFunctionIndexSpace(call.functionIndexSpace);
+                    const Signature& signature = SignatureInformation::get(signatureIndex);
+                    PtrTag oldTag = ptrTag(WasmCallPtrTag, signature.hash());
+                    MacroAssembler::repatchNearCall(call.callLocation, CodeLocationLabel(entrypoint.retagged(oldTag, NearCallPtrTag)));
                 }
             }
 

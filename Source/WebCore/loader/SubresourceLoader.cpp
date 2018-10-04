@@ -38,9 +38,9 @@
 #include "DocumentLoader.h"
 #include "Frame.h"
 #include "FrameLoader.h"
+#include "HTTPParsers.h"
 #include "LinkLoader.h"
 #include "Logging.h"
-#include "MainFrame.h"
 #include "MemoryCache.h"
 #include "Page.h"
 #include "ResourceLoadObserver.h"
@@ -568,12 +568,32 @@ bool SubresourceLoader::checkRedirectionCrossOriginAccessControl(const ResourceR
     if (crossOriginFlag && redirectingToNewOrigin)
         m_origin = SecurityOrigin::createUnique();
 
+    updateReferrerPolicy(redirectResponse.httpHeaderField(HTTPHeaderName::ReferrerPolicy));
+    
     if (redirectingToNewOrigin) {
         cleanHTTPRequestHeadersForAccessControl(newRequest);
         updateRequestForAccessControl(newRequest, *m_origin, options().storedCredentialsPolicy);
     }
+    
+    updateRequestReferrer(newRequest, referrerPolicy(), previousRequest.httpReferrer());
 
     return true;
+}
+
+void SubresourceLoader::updateReferrerPolicy(const String& referrerPolicyValue)
+{
+    if (referrerPolicyValue.isEmpty())
+        return;
+    
+    // Implementing https://www.w3.org/TR/2017/CR-referrer-policy-20170126/#parse-referrer-policy-from-header.
+    ReferrerPolicy referrerPolicy = ReferrerPolicy::EmptyString;
+    for (auto tokenView : StringView { referrerPolicyValue }.split(',')) {
+        auto token = parseReferrerPolicy(stripLeadingAndTrailingHTTPSpaces(tokenView), ShouldParseLegacyKeywords::No);
+        if (token && token.value() != ReferrerPolicy::EmptyString)
+            referrerPolicy = token.value();
+    }
+    if (referrerPolicy != ReferrerPolicy::EmptyString)
+        setReferrerPolicy(referrerPolicy);
 }
 
 void SubresourceLoader::didFinishLoading(const NetworkLoadMetrics& networkLoadMetrics)

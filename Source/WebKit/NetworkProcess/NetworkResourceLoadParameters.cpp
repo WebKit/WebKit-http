@@ -93,8 +93,10 @@ void NetworkResourceLoadParameters::encode(IPC::Encoder& encoder) const
 
 #if ENABLE(CONTENT_EXTENSIONS)
     encoder << mainDocumentURL;
-    encoder << contentRuleLists;
+    encoder << userContentControllerIdentifier;
 #endif
+
+    encoder << shouldRestrictHTTPResponseAccess;
 }
 
 bool NetworkResourceLoadParameters::decode(IPC::Decoder& decoder, NetworkResourceLoadParameters& result)
@@ -184,12 +186,18 @@ bool NetworkResourceLoadParameters::decode(IPC::Decoder& decoder, NetworkResourc
     if (!decoder.decode(result.mainDocumentURL))
         return false;
 
-    std::optional<Vector<std::pair<String, WebCompiledContentRuleListData>>> contentRuleLists;
-    decoder >> contentRuleLists;
-    if (!contentRuleLists)
+    std::optional<std::optional<UserContentControllerIdentifier>> userContentControllerIdentifier;
+    decoder >> userContentControllerIdentifier;
+    if (!userContentControllerIdentifier)
         return false;
-    result.contentRuleLists = WTFMove(*contentRuleLists);
+    result.userContentControllerIdentifier = *userContentControllerIdentifier;
 #endif
+
+    std::optional<bool> shouldRestrictHTTPResponseAccess;
+    decoder >> shouldRestrictHTTPResponseAccess;
+    if (!shouldRestrictHTTPResponseAccess)
+        return false;
+    result.shouldRestrictHTTPResponseAccess = *shouldRestrictHTTPResponseAccess;
 
     return true;
 }

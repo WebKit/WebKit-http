@@ -178,11 +178,6 @@ class BlockFormattingContext extends FormattingContext {
         this.displayBox(layoutBox).setWidth(width);
     }
 
-    _computeFloatingWidth(layoutBox) {
-        // FIXME: missing cases
-        this.displayBox(layoutBox).setWidth(Utils.width(layoutBox) + Utils.computedHorizontalBorderAndPadding(layoutBox.node()));
-    }
-
     _computeInFlowWidth(layoutBox) {
         if (Utils.isWidthAuto(layoutBox))
             return this.displayBox(layoutBox).setWidth(this._horizontalConstraint(layoutBox));
@@ -226,11 +221,6 @@ class BlockFormattingContext extends FormattingContext {
         this.displayBox(layoutBox).setHeight(height);
     }
 
-    _computeFloatingHeight(layoutBox) {
-        // FIXME: missing cases
-        this.displayBox(layoutBox).setHeight(Utils.height(layoutBox) + Utils.computedVerticalBorderAndPadding(layoutBox.node()));
-    }
-
     _computeInFlowHeight(layoutBox) {
         if (Utils.isHeightAuto(layoutBox)) {
             // Only children in the normal flow are taken into account (i.e., floating boxes and absolutely positioned boxes are ignored,
@@ -261,7 +251,7 @@ class BlockFormattingContext extends FormattingContext {
         if (!layoutBox.isContainer() || !layoutBox.hasInFlowChild())
             return 0;
         if (layoutBox.establishesInlineFormattingContext()) {
-            let lines = this.layoutState().formattingState(layoutBox).lines();
+            let lines = this.layoutState().establishedFormattingState(layoutBox).lines();
             if (!lines.length)
                 return 0;
             let lastLine = lines[lines.length - 1];
@@ -321,8 +311,10 @@ class BlockFormattingContext extends FormattingContext {
             let contentBottom = previousInFlowSibling ? this.displayBox(previousInFlowSibling).bottom() : parentDisplayBox.contentBox().top();
             top = contentBottom + this.marginTop(layoutBox);
             // Convert static position (in parent coordinate system) to absolute (in containing block coordindate system).
-            if (parent != layoutBox.containingBlock())
-                top += this._toAbsolutePosition(parentDisplayBox.topLeft(), parent, layoutBox.containingBlock()).top();
+            if (parent != layoutBox.containingBlock()) {
+                ASSERT(displayBox.parent() == this.displayBox(layoutBox.containingBlock()));
+                top += Utils.mapPosition(parentDisplayBox.topLeft(), parentDisplayBox, displayBox.parent()).top();
+            }
         } else if (!Utils.isTopAuto(layoutBox))
             top = Utils.top(layoutBox) + this.marginTop(layoutBox);
         else if (!Utils.isBottomAuto(layoutBox))
@@ -339,8 +331,10 @@ class BlockFormattingContext extends FormattingContext {
             let parentDisplayBox = this.displayBox(parent);
             left = parentDisplayBox.contentBox().left() + this.marginLeft(layoutBox);
             // Convert static position (in parent coordinate system) to absolute (in containing block coordindate system).
-            if (parent != layoutBox.containingBlock())
-                left += this._toAbsolutePosition(parentDisplayBox.rect(), parent, layoutBox.containingBlock()).left();
+            if (parent != layoutBox.containingBlock()) {
+                ASSERT(displayBox.parent() == this.displayBox(layoutBox.containingBlock()));
+                left += Utils.mapPosition(parentDisplayBox.topLeft(), parentDisplayBox, displayBox.parent()).left();
+            }
         } else if (!Utils.isLeftAuto(layoutBox))
             left = Utils.left(layoutBox) + this.marginLeft(layoutBox);
         else if (!Utils.isRightAuto(layoutBox))

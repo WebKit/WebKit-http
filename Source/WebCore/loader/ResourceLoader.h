@@ -162,6 +162,9 @@ protected:
     bool wasCancelled() const { return m_cancellationStatus >= Cancelled; }
 
     void didReceiveDataOrBuffer(const char*, unsigned, RefPtr<SharedBuffer>&&, long long encodedDataLength, DataPayloadType);
+    
+    void setReferrerPolicy(ReferrerPolicy referrerPolicy) { m_options.referrerPolicy = referrerPolicy; }
+    ReferrerPolicy referrerPolicy() const { return m_options.referrerPolicy; }
 
 #if PLATFORM(COCOA)
     void willCacheResponseAsync(ResourceHandle*, NSCachedURLResponse*, CompletionHandler<void(NSCachedURLResponse *)>&&) override;
@@ -211,6 +214,10 @@ private:
 #if USE(CFURLCONNECTION)
     // FIXME: Windows should use willCacheResponse - <https://bugs.webkit.org/show_bug.cgi?id=57257>.
     bool shouldCacheResponse(ResourceHandle*, CFCachedURLResponseRef) override;
+#endif
+
+#if USE(SOUP)
+    void loadGResource();
 #endif
 
     ResourceRequest m_request;

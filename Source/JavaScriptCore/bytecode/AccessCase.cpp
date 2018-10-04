@@ -383,12 +383,8 @@ void AccessCase::generateWithGuard(
             jit.branchTestPtr(
                 CCallHelpers::NonZero,
                 CCallHelpers::Address(baseGPR, DirectArguments::offsetOfMappedArguments())));
-        jit.loadPtr(
-            CCallHelpers::Address(baseGPR, DirectArguments::offsetOfStorage()),
-            valueRegs.payloadGPR());
-        jit.xorPtr(CCallHelpers::TrustedImmPtr(DirectArgumentsPoison::key()), valueRegs.payloadGPR());
         jit.load32(
-            CCallHelpers::Address(valueRegs.payloadGPR(), DirectArguments::offsetOfLengthInStorage()),
+            CCallHelpers::Address(baseGPR, DirectArguments::offsetOfLength()),
             valueRegs.payloadGPR());
         jit.boxInt32(valueRegs.payloadGPR(), valueRegs);
         state.succeed();
@@ -867,7 +863,7 @@ void AccessCase::generateImpl(AccessGenerationState& state)
 #endif
             jit.storePtr(GPRInfo::callFrameRegister, &vm.topCallFrame);
 
-            PtrTag callTag = ptrTag(JITOperationPtrTag, nextPtrTagID());
+            PtrTag callTag = ptrTag(GetterSetterPtrTag, nextPtrTagID());
             operationCall = jit.call(callTag);
             jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
                 linkBuffer.link(operationCall, FunctionPtr(this->as<GetterSetterAccessCase>().m_customAccessor.opaque, callTag));

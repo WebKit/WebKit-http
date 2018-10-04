@@ -34,7 +34,6 @@ namespace JSC {
     v(ArrayPrototype) \
     v(CodeBlock) \
     v(DateInstance) \
-    v(DirectArguments) \
     v(GlobalData) \
     v(JITCode) \
     v(JSAPIWrapperObject) \
@@ -61,13 +60,11 @@ namespace JSC {
 #define POISON_KEY_NAME(_poisonID_) g_##_poisonID_##Poison
 
 #define DECLARE_POISON(_poisonID_) \
-    extern "C" JS_EXPORTDATA uintptr_t POISON_KEY_NAME(_poisonID_); \
+    extern "C" JS_EXPORT_PRIVATE uintptr_t POISON_KEY_NAME(_poisonID_); \
     using _poisonID_ ## Poison = Poison<POISON_KEY_NAME(_poisonID_)>;
 
 FOR_EACH_JSC_POISON(DECLARE_POISON)
 #undef DECLARE_POISON
-
-extern "C" JS_EXPORTDATA uintptr_t g_typedArrayPoisons[];
 
 struct ClassInfo;
 

@@ -1288,6 +1288,7 @@ public:
 
 #if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
     WEBCORE_EXPORT static void setOpenGLDisplayMask(CGOpenGLDisplayMask);
+    WEBCORE_EXPORT static CGOpenGLDisplayMask getOpenGLDisplayMask();
 #endif
 
 private:

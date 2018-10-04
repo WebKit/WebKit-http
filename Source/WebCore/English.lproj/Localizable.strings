@@ -212,7 +212,7 @@
 "Cut (Undo action name)" = "Cut";
 
 /* Day label in date picker */
-"Day (Date picker for extra zoom mode)" = "Day";
+"DAY (Date picker for extra zoom mode)" = "DAY";
 
 /* Fullscreen Deceptive Website Warning Sheet Title */
 "Deceptive Website Warning" = "Deceptive Website Warning";
@@ -403,6 +403,9 @@
 /* Undo action name */
 "Lower Baseline (Undo action name)" = "Lower Baseline";
 
+/* Month label in date picker */
+"MONTH (Date picker for extra zoom mode)" = "MONTH";
+
 /* Make Lower Case context menu item */
 "Make Lower Case" = "Make Lower Case";
 
@@ -414,9 +417,6 @@
 
 /* Label text to be used when a plugin is missing */
 "Missing Plug-in" = "Missing Plug-in";
-
-/* Month label in date picker */
-"Month (Date picker for extra zoom mode)" = "Month";
 
 /* Media Mute context menu item */
 "Mute" = "Mute";
@@ -438,6 +438,9 @@
 
 /* Option in segmented control for inserting a numbered list in text editing */
 "Numbered list" = "Numbered list";
+
+/* Title of the OK button for the number pad in zoomed form controls. */
+"OK (OK button title in extra zoomed number pad)" = "OK";
 
 /* OK button label in document password failure alert */
 "OK (document password failure alert)" = "OK";
@@ -573,6 +576,9 @@
 
 /* Selection direction context sub-menu item */
 "Selection Direction" = "Selection Direction";
+
+/* Set button below date picker */
+"Set (Button below date picker for extra zoom mode)" = "Set";
 
 /* Undo action name */
 "Set Background Color (Undo action name)" = "Set Background Color";
@@ -833,7 +839,7 @@
 "WebKit encountered an internal error" = "WebKit encountered an internal error";
 
 /* Year label in date picker */
-"Year (Date picker for extra zoom mode)" = "Year";
+"YEAR (Date picker for extra zoom mode)" = "YEAR";
 
 /* message in authentication panel */
 "Your login information will be sent securely." = "Your login information will be sent securely.";
@@ -1204,11 +1210,11 @@
 /* accessibility help text for hide closed captions button */
 "stop displaying closed captions" = "stop displaying closed captions";
 
-/* Label for the strong password confirmation auto fill button inside a text field. */
-"strong password confirmation auto fill" = "strong password confirmation auto fill";
-
 /* Label for the strong password auto fill button inside a text field. */
 "strong password auto fill" = "strong password auto fill";
+
+/* Label for the strong password confirmation auto fill button inside a text field. */
+"strong password confirmation auto fill" = "strong password confirmation auto fill";
 
 /* The suboptimal value description for a meter element. */
 "suboptimal value" = "suboptimal value";

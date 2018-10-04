@@ -60,7 +60,7 @@ SOFT_LINK_CONSTANT(AVFoundation, AVLayerVideoGravityResize, NSString *)
 SOFT_LINK_CONSTANT(AVFoundation, AVLayerVideoGravityResizeAspect, NSString *)
 SOFT_LINK_CONSTANT(AVFoundation, AVLayerVideoGravityResizeAspectFill, NSString *)
 
-SOFT_LINK_FRAMEWORK_OPTIONAL(AVKit)
+SOFTLINK_AVKIT_FRAMEWORK()
 SOFT_LINK_CLASS_OPTIONAL(AVKit, AVPictureInPictureController)
 SOFT_LINK_CLASS_OPTIONAL(AVKit, AVPlayerViewController)
 SOFT_LINK_CLASS_OPTIONAL(AVKit, __AVPlayerLayerView)
@@ -979,7 +979,7 @@ void VideoFullscreenInterfaceAVKit::exitFullscreen(const IntRect& finalRect)
             m_fullscreenChangeObserver->didExitFullscreen();
         return;
     }
-    
+
     LOG(Fullscreen, "VideoFullscreenInterfaceAVKit::exitFullscreen(%p)", this);
     [m_playerViewController setShowsPlaybackControls:NO];
     
@@ -1101,6 +1101,15 @@ void VideoFullscreenInterfaceAVKit::preparedToReturnToInline(bool visible, const
         WTF::Function<void(bool)> callback = WTFMove(m_prepareToInlineCallback);
         callback(visible);
     }
+}
+
+void VideoFullscreenInterfaceAVKit::preparedToExitFullscreen()
+{
+    if (!m_waitingForPreparedToExit)
+        return;
+
+    m_waitingForPreparedToExit = false;
+    m_videoFullscreenModel->requestFullscreenMode(HTMLMediaElementEnums::VideoFullscreenModeNone, true);
 }
 
 bool VideoFullscreenInterfaceAVKit::mayAutomaticallyShowVideoPictureInPicture() const
@@ -1251,11 +1260,19 @@ bool VideoFullscreenInterfaceAVKit::shouldExitFullscreenWithReason(VideoFullscre
     if (playbackSessionModel() && (reason == ExitFullScreenReason::DoneButtonTapped || reason == ExitFullScreenReason::RemoteControlStopEventReceived))
         playbackSessionModel()->pause();
 
-    BOOL finished = reason == ExitFullScreenReason::DoneButtonTapped || reason == ExitFullScreenReason::PinchGestureHandled;
-    m_videoFullscreenModel->requestFullscreenMode(HTMLMediaElementEnums::VideoFullscreenModeNone, finished);
-
     if (!m_watchdogTimer.isActive() && !ignoreWatchdogForDebugging)
         m_watchdogTimer.startOneShot(defaultWatchdogTimerInterval);
+
+#if ENABLE(EXTRA_ZOOM_MODE)
+    if (m_fullscreenChangeObserver) {
+        m_waitingForPreparedToExit = true;
+        m_fullscreenChangeObserver->willExitFullscreen();
+        return false;
+    }
+#endif
+
+    BOOL finished = reason == ExitFullScreenReason::DoneButtonTapped || reason == ExitFullScreenReason::PinchGestureHandled;
+    m_videoFullscreenModel->requestFullscreenMode(HTMLMediaElementEnums::VideoFullscreenModeNone, finished);
 
     return false;
 }
@@ -1388,6 +1405,10 @@ void VideoFullscreenInterfaceAVKit::preparedToReturnToInline(bool visible, const
         WTF::Function<void(bool)> callback = WTFMove(m_prepareToInlineCallback);
         callback(visible);
     }
+}
+
+void VideoFullscreenInterfaceAVKit::preparedToExitFullscreen()
+{
 }
 
 bool VideoFullscreenInterfaceAVKit::mayAutomaticallyShowVideoPictureInPicture() const

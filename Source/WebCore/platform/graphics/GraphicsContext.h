@@ -269,7 +269,7 @@ public:
     };
     GraphicsContext(NonPaintingReasons);
 
-    bool hasPlatformContext() const;
+    WEBCORE_EXPORT bool hasPlatformContext() const;
     WEBCORE_EXPORT PlatformGraphicsContext* platformContext() const;
 
     bool paintingDisabled() const { return !m_data && !m_impl; }

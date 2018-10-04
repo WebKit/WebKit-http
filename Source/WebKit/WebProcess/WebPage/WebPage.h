@@ -46,6 +46,7 @@
 #include "SharedMemory.h"
 #include "UserData.h"
 #include "WebURLSchemeHandler.h"
+#include "WebUserContentController.h"
 #include <WebCore/ActivityState.h>
 #include <WebCore/DictionaryPopupInfo.h>
 #include <WebCore/FrameLoaderTypes.h>
@@ -384,7 +385,7 @@ public:
 
     WebFrame* mainWebFrame() const { return m_mainFrame.get(); }
 
-    WebCore::MainFrame* mainFrame() const; // May return nullptr.
+    WebCore::Frame* mainFrame() const; // May return nullptr.
     WebCore::FrameView* mainFrameView() const; // May return nullptr.
 
     RefPtr<WebCore::Range> currentSelectionAsRange();
@@ -806,7 +807,7 @@ public:
 #endif
 
 #if PLATFORM(IOS)
-    void computePagesForPrintingAndDrawToPDF(uint64_t frameID, const PrintInfo&, CallbackID, Ref<Messages::WebPage::ComputePagesForPrintingAndDrawToPDF::DelayedReply>&&);
+    void computePagesForPrintingAndDrawToPDF(uint64_t frameID, const PrintInfo&, CallbackID, Messages::WebPage::ComputePagesForPrintingAndDrawToPDF::DelayedReply&&);
 #endif
 
 #if PLATFORM(GTK)
@@ -1068,6 +1069,8 @@ public:
 #if PLATFORM(MAC) && ENABLE(WEBPROCESS_WINDOWSERVER_BLOCKING)
     void openGLDisplayMaskChanged(uint32_t displayMask);
 #endif
+
+    UserContentControllerIdentifier userContentControllerIdentifier() const { return m_userContentController->identifier(); }
 
 private:
     WebPage(uint64_t pageID, WebPageCreationParameters&&);

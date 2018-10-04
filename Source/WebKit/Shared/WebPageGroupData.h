@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "UserContentControllerIdentifier.h"
 #include <wtf/text/WTFString.h>
 
 namespace IPC {
@@ -43,7 +44,7 @@ struct WebPageGroupData {
     bool visibleToInjectedBundle;
     bool visibleToHistoryClient;
 
-    uint64_t userContentControllerIdentifier;
+    UserContentControllerIdentifier userContentControllerIdentifier;
 };
 
 } // namespace WebKit

@@ -151,6 +151,7 @@
 #include <WebCore/File.h>
 #include <WebCore/FocusController.h>
 #include <WebCore/FormState.h>
+#include <WebCore/Frame.h>
 #include <WebCore/FrameLoadRequest.h>
 #include <WebCore/FrameLoaderTypes.h>
 #include <WebCore/FrameView.h>
@@ -172,7 +173,6 @@
 #include <WebCore/JSDOMWindow.h>
 #include <WebCore/KeyboardEvent.h>
 #include <WebCore/MIMETypeRegistry.h>
-#include <WebCore/MainFrame.h>
 #include <WebCore/MouseEvent.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/Page.h>
@@ -234,6 +234,7 @@
 #include "VideoFullscreenManager.h"
 #include "WKStringCF.h"
 #include <WebCore/LegacyWebArchive.h>
+#include <wtf/MachSendRight.h>
 #endif
 
 #if PLATFORM(GTK)
@@ -1379,6 +1380,12 @@ void WebPage::reload(uint64_t navigationID, uint32_t reloadOptions, SandboxExten
 
     m_sandboxExtensionTracker.beginLoad(m_mainFrame.get(), WTFMove(sandboxExtensionHandle));
     corePage()->userInputBridge().reloadFrame(m_mainFrame->coreFrame(), OptionSet<ReloadOption>::fromRaw(reloadOptions));
+
+    if (m_pendingNavigationID) {
+        // This can happen if FrameLoader::reload() returns early because the document URL is empty.
+        // The reload does nothing so we need to reset the pending navigation. See webkit.org/b/153210.
+        m_pendingNavigationID = 0;
+    }
 }
 
 void WebPage::goToBackForwardItem(uint64_t navigationID, uint64_t backForwardItemID, FrameLoadType backForwardType, NavigationPolicyCheck navigationPolicyCheck)
@@ -2655,7 +2662,7 @@ void WebPage::setTopContentInsetFenced(float contentInset, IPC::Attachment fence
 
     setTopContentInset(contentInset);
 
-    mach_port_deallocate(mach_task_self(), fencePort.port());
+    deallocateSendRightSafely(fencePort.port());
 }
 #endif
 
@@ -2796,7 +2803,7 @@ void WebPage::setLayerHostingMode(LayerHostingMode layerHostingMode)
 void WebPage::setSessionID(PAL::SessionID sessionID)
 {
     if (sessionID.isEphemeral())
-        WebProcess::singleton().addWebsiteDataStore({{ }, { }, { }, { }, { }, { }, { sessionID, { }, { }, { }}});
+        WebProcess::singleton().addWebsiteDataStore(WebsiteDataStoreParameters::privateSessionParameters(sessionID));
     m_page->setSessionID(sessionID);
 }
 
@@ -4530,7 +4537,7 @@ void WebPage::recomputeShortCircuitHorizontalWheelEventsState()
     send(Messages::WebPageProxy::SetCanShortCircuitHorizontalWheelEvents(m_canShortCircuitHorizontalWheelEvents));
 }
 
-MainFrame* WebPage::mainFrame() const
+Frame* WebPage::mainFrame() const
 {
     return m_page ? &m_page->mainFrame() : nullptr;
 }
@@ -5302,7 +5309,7 @@ void WebPage::determinePrimarySnapshottedPlugIn()
 
     layoutIfNeeded();
 
-    MainFrame& mainFrame = corePage()->mainFrame();
+    auto& mainFrame = corePage()->mainFrame();
     if (!mainFrame.view())
         return;
     if (!mainFrame.view()->renderView())
@@ -5401,7 +5408,7 @@ bool WebPage::matchesPrimaryPlugIn(const String& pageOrigin, const String& plugi
 
 bool WebPage::plugInIntersectsSearchRect(HTMLPlugInImageElement& plugInImageElement)
 {
-    MainFrame& mainFrame = corePage()->mainFrame();
+    auto& mainFrame = corePage()->mainFrame();
     if (!mainFrame.view())
         return false;
     if (!mainFrame.view()->renderView())

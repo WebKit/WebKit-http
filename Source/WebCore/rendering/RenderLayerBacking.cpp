@@ -33,6 +33,7 @@
 #include "CachedImage.h"
 #include "Chrome.h"
 #include "FilterEffectRenderer.h"
+#include "Frame.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
 #include "GraphicsLayer.h"
@@ -45,7 +46,6 @@
 #include "InspectorInstrumentation.h"
 #include "KeyframeList.h"
 #include "Logging.h"
-#include "MainFrame.h"
 #include "Page.h"
 #include "PerformanceLoggingClient.h"
 #include "PluginViewBase.h"
@@ -2732,7 +2732,7 @@ bool RenderLayerBacking::startAnimation(double timeOffset, const Animation* anim
         if (!keyframeStyle)
             continue;
             
-        auto* tf = currentKeyframe.timingFunction(keyframes.animationName());
+        auto* tf = currentKeyframe.timingFunction();
         
         bool isFirstOrLastKeyframe = key == 0 || key == 1;
         if ((hasTransform && isFirstOrLastKeyframe) || currentKeyframe.containsProperty(CSSPropertyTransform))

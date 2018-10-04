@@ -52,7 +52,10 @@ class InlineFormattingContext extends FormattingContext {
             }
             while (this._descendantNeedsLayout()) {
                 let layoutBox = this._nextInLayoutQueue();
-                this._handleInlineBox(layoutBox);
+                if (layoutBox instanceof Layout.InlineBox)
+                    this._handleInlineBox(layoutBox);
+                else if (layoutBox.isFloatingPositioned())
+                    this._handleFloatingBox(layoutBox);
                 // We are done with laying out this box.
                 this._removeFromLayoutQueue(layoutBox);
                 if (layoutBox.nextSibling()) {
@@ -85,6 +88,13 @@ class InlineFormattingContext extends FormattingContext {
         }
     }
 
+    _handleFloatingBox(floatingBox) {
+        this._computeFloatingWidth(floatingBox);
+        this._computeFloatingHeight(floatingBox);
+        this.floatingContext().computePosition(floatingBox);
+        this._line().addFloatingBox(this.displayBox(floatingBox).size());
+    }
+
     _commitLine() {
         if (this._line().isEmpty())
             return;
@@ -97,13 +107,39 @@ class InlineFormattingContext extends FormattingContext {
     }
 
     _createNewLine() {
-        // TODO: Floats need to be taken into account.
-        let contentBoxRect = this.displayBox(this.formattingRoot()).contentBox();
-        let topLeft = contentBoxRect.topLeft();
+        let lineRect = this.displayBox(this.formattingRoot()).contentBox();
+        let floatingLeft = this._mapFloatingPosition(this.floatingContext().left());
+        let floatingRight = this._mapFloatingPosition(this.floatingContext().right());
+        // TODO: Check the case when the containing block is narrower than the floats.
+        if (!Number.isNaN(floatingLeft) && !Number.isNaN(floatingRight)) {
+            // Floats on both sides.
+            lineRect.setLeft(floatingLeft);
+            lineRect.setWidth(floatingRight - floatingLeft);
+        } else if (!Number.isNaN(floatingLeft))
+            lineRect.setLeft(floatingLeft);
+        else if (!Number.isNaN(floatingRight))
+            lineRect.setRight(floatingRight);
+
         let lines = this.formattingState().lines();
         if (lines.length)
-            topLeft.setTop(lines[lines.length - 1].rect().bottom());
-        return new Line(topLeft, Utils.computedLineHeight(this.formattingRoot().node()), contentBoxRect.width());
+            lineRect.setTop(lines[lines.length - 1].rect().bottom());
+        return new Line(lineRect.topLeft(), Utils.computedLineHeight(this.formattingRoot().node()), lineRect.width());
     }
+
+    _mapFloatingPosition(verticalPosition) {
+        if (Number.isNaN(verticalPosition))
+            return verticalPosition;
+        // Floats position are relative to their formatting root (which might not be this formatting root).
+        let root = this.displayBox(this.formattingRoot());
+        let floatFormattingRoot = this.displayBox(this.floatingContext().formattingRoot());
+        if (root == floatFormattingRoot)
+            return verticalPosition;
+        let rootLeft = Utils.mapPosition(root.topLeft(), root, floatFormattingRoot).left();
+        rootLeft += root.contentBox().left();
+        // The left most float is to the right of the root.
+        if (rootLeft >= verticalPosition)
+            return root.contentBox().left();
+        return verticalPosition - rootLeft;
+     }
 }
 

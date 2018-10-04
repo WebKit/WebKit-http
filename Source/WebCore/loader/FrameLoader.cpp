@@ -61,6 +61,7 @@
 #include "FloatRect.h"
 #include "FormState.h"
 #include "FormSubmission.h"
+#include "Frame.h"
 #include "FrameLoadRequest.h"
 #include "FrameLoaderClient.h"
 #include "FrameNetworkingContext.h"
@@ -83,7 +84,6 @@
 #include "LoadTiming.h"
 #include "LoaderStrategy.h"
 #include "Logging.h"
-#include "MainFrame.h"
 #include "MemoryCache.h"
 #include "MemoryRelease.h"
 #include "NavigationDisabler.h"
@@ -1494,9 +1494,10 @@ void FrameLoader::loadWithDocumentLoader(DocumentLoader* loader, FrameLoadType t
 
     // Log main frame navigation types.
     if (m_frame.isMainFrame()) {
-        if (auto* page = m_frame.page())
+        if (auto* page = m_frame.page()) {
             page->mainFrameLoadStarted(newURL, type);
-        static_cast<MainFrame&>(m_frame).performanceLogging().didReachPointOfInterest(PerformanceLogging::MainFrameLoadStarted);
+            page->performanceLogging().didReachPointOfInterest(PerformanceLogging::MainFrameLoadStarted);
+        }
     }
 
     policyChecker().setLoadType(type);
@@ -1856,7 +1857,7 @@ void FrameLoader::setState(FrameState newState)
         if (m_documentLoader)
             m_documentLoader->stopRecordingResponses();
         if (m_frame.isMainFrame() && oldState != newState)
-            static_cast<MainFrame&>(m_frame).didCompleteLoad();
+            m_frame.page()->performanceLogging().didReachPointOfInterest(PerformanceLogging::MainFrameLoadCompleted);
     }
 }
 
@@ -2930,8 +2931,6 @@ void FrameLoader::receivedMainResourceError(const ResourceError& error)
 
 void FrameLoader::continueFragmentScrollAfterNavigationPolicy(const ResourceRequest& request, bool shouldContinue)
 {
-    m_client.didDecidePolicyForNavigationAction();
-
     m_quickRedirectComing = false;
 
     if (!shouldContinue)
@@ -3176,8 +3175,6 @@ void FrameLoader::continueLoadAfterNavigationPolicy(const ResourceRequest& reque
     // nil policyDataSource because loading the alternate page will have passed
     // through this method already, nested; otherwise, policyDataSource should still be set.
     ASSERT(m_policyDocumentLoader || !m_provisionalDocumentLoader->unreachableURL().isEmpty());
-
-    m_client.didDecidePolicyForNavigationAction();
 
     bool isTargetItem = history().provisionalItem() ? history().provisionalItem()->isTargetItem() : false;
 

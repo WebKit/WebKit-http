@@ -1342,13 +1342,11 @@ page/IntersectionObserver.cpp
 page/IntersectionObserverEntry.cpp
 page/LayoutContext.cpp
 page/Location.cpp
-page/MainFrame.cpp
 page/MemoryRelease.cpp
 page/MouseEventWithHitTestResults.cpp
 page/Navigator.cpp
 page/NavigatorBase.cpp
 page/OriginAccessEntry.cpp
-page/OriginThreadLocalCache.cpp
 page/Page.cpp
 page/PageConfiguration.cpp
 page/PageConsoleClient.cpp
@@ -1465,6 +1463,7 @@ platform/PlatformSpeechSynthesisVoice.cpp
 platform/PlatformSpeechSynthesizer.cpp
 platform/PlatformStrategies.cpp
 platform/Process.cpp
+platform/ReferrerPolicy.cpp
 platform/RemoteCommandListener.cpp
 platform/RuntimeApplicationChecks.cpp
 platform/SchemeRegistry.cpp

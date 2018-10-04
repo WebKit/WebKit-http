@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2013 University of Szeged. All rights reserved.
  * Copyright (C) 2013 Samsung Electronics. All rights reserved.
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,89 +32,80 @@
 
 namespace WTR {
 
-Options::Options()
-    : useWaitToDumpWatchdogTimer(true)
-    , forceNoTimeout(false)
-    , verbose(false)
-    , gcBetweenTests(false)
-    , shouldDumpPixelsForAllTests(false)
-    , printSupportedFeatures(false)
-    , forceComplexText(false)
-    , shouldUseAcceleratedDrawing(false)
-    , shouldUseRemoteLayerTree(false)
-    , shouldShowWebView(false)
-    , shouldShowTouches(false)
-{
-}
-
-bool handleOptionNoTimeout(Options& options, const char*, const char*)
+static bool handleOptionNoTimeout(Options& options, const char*, const char*)
 {
     options.useWaitToDumpWatchdogTimer = false;
     options.forceNoTimeout = true;
     return true;
 }
 
-bool handleOptionVerbose(Options& options, const char*, const char*)
+static bool handleOptionVerbose(Options& options, const char*, const char*)
 {
     options.verbose = true;
     return true;
 }
 
-bool handleOptionGcBetweenTests(Options& options, const char*, const char*)
+static bool handleOptionGcBetweenTests(Options& options, const char*, const char*)
 {
     options.gcBetweenTests = true;
     return true;
 }
 
-bool handleOptionPixelTests(Options& options, const char*, const char*)
+static bool handleOptionPixelTests(Options& options, const char*, const char*)
 {
     options.shouldDumpPixelsForAllTests = true;
     return true;
 }
 
-bool handleOptionPrintSupportedFeatures(Options& options, const char*, const char*)
+static bool handleOptionPrintSupportedFeatures(Options& options, const char*, const char*)
 {
     options.printSupportedFeatures = true;
     return true;
 }
 
-bool handleOptionComplexText(Options& options, const char*, const char*)
+static bool handleOptionComplexText(Options& options, const char*, const char*)
 {
     options.forceComplexText = true;
     return true;
 }
 
-bool handleOptionAcceleratedDrawing(Options& options, const char*, const char*)
+static bool handleOptionAcceleratedDrawing(Options& options, const char*, const char*)
 {
     options.shouldUseAcceleratedDrawing = true;
     return true;
 }
 
-bool handleOptionRemoteLayerTree(Options& options, const char*, const char*)
+static bool handleOptionRemoteLayerTree(Options& options, const char*, const char*)
 {
     options.shouldUseRemoteLayerTree = true;
     return true;
 }
 
-bool handleOptionShowWebView(Options& options, const char*, const char*)
+static bool handleOptionShowWebView(Options& options, const char*, const char*)
 {
     options.shouldShowWebView = true;
     return true;
 }
-    
-bool handleOptionShowTouches(Options& options, const char*, const char*)
+
+static bool handleOptionShowTouches(Options& options, const char*, const char*)
 {
     options.shouldShowTouches = true;
     return true;
 }
 
-bool handleOptionAllowedHost(Options& options, const char*, const char* host)
+static bool handleOptionAllowAnyHTTPSCertificateForAllowedHosts(Options& options, const char*, const char*)
 {
-    options.allowedHosts.push_back(host);
+    options.allowAnyHTTPSCertificateForAllowedHosts = true;
     return true;
 }
 
-bool handleOptionUnmatched(Options& options, const char* option, const char*)
+static bool handleOptionAllowedHost(Options& options, const char*, const char* host)
+{
+    options.allowedHosts.insert(host);
+    return true;
+}
+
+static bool handleOptionUnmatched(Options& options, const char* option, const char*)
 {
     if (option[0] && option[1] && option[0] == '-' && option[1] == '-')
         return true;
@@ -135,6 +126,7 @@ OptionsHandler::OptionsHandler(Options& o)
     optionList.append(Option("--accelerated-drawing", "Use accelerated drawing.", handleOptionAcceleratedDrawing));
     optionList.append(Option("--remote-layer-tree", "Use remote layer tree.", handleOptionRemoteLayerTree));
     optionList.append(Option("--allowed-host", "Allows access to the specified host from tests.", handleOptionAllowedHost, true));
+    optionList.append(Option("--allow-any-certificate-for-allowed-hosts", "Allows any HTTPS certificate for an allowed host.", handleOptionAllowAnyHTTPSCertificateForAllowedHosts));
     optionList.append(Option("--show-webview", "Show the WebView during test runs (for debugging)", handleOptionShowWebView));
     optionList.append(Option("--show-touches", "Show the touches during test runs (for debugging)", handleOptionShowTouches));
 

@@ -52,7 +52,6 @@
 #include "InspectorOverlay.h"
 #include "InstrumentingAgents.h"
 #include "MIMETypeRegistry.h"
-#include "MainFrame.h"
 #include "MemoryCache.h"
 #include "Page.h"
 #include "RenderObject.h"
@@ -142,9 +141,6 @@ void InspectorPageAgent::resourceContent(ErrorString& errorString, Frame* frame,
 
 String InspectorPageAgent::sourceMapURLForResource(CachedResource* cachedResource)
 {
-    static NeverDestroyed<String> sourceMapHTTPHeader(MAKE_STATIC_STRING_IMPL("SourceMap"));
-    static NeverDestroyed<String> sourceMapHTTPHeaderDeprecated(MAKE_STATIC_STRING_IMPL("X-SourceMap"));
-
     if (!cachedResource)
         return String();
 
@@ -152,11 +148,11 @@ String InspectorPageAgent::sourceMapURLForResource(CachedResource* cachedResourc
     if (cachedResource->type() != CachedResource::CSSStyleSheet)
         return String();
 
-    String sourceMapHeader = cachedResource->response().httpHeaderField(sourceMapHTTPHeader);
+    String sourceMapHeader = cachedResource->response().httpHeaderField(HTTPHeaderName::SourceMap);
     if (!sourceMapHeader.isEmpty())
         return sourceMapHeader;
 
-    sourceMapHeader = cachedResource->response().httpHeaderField(sourceMapHTTPHeaderDeprecated);
+    sourceMapHeader = cachedResource->response().httpHeaderField(HTTPHeaderName::XSourceMap);
     if (!sourceMapHeader.isEmpty())
         return sourceMapHeader;
 
@@ -582,7 +578,7 @@ void InspectorPageAgent::frameDetached(Frame& frame)
     m_identifierToFrame.remove(identifier);
 }
 
-MainFrame& InspectorPageAgent::mainFrame()
+Frame& InspectorPageAgent::mainFrame()
 {
     return m_page.mainFrame();
 }

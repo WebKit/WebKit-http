@@ -57,7 +57,7 @@ LargeRange VMHeap::tryAllocateLargeChunk(size_t alignment, size_t size)
     PerProcess<Zone>::get()->addRange(Range(chunk->bytes(), size));
 #endif
 
-    return LargeRange(chunk->bytes(), size, 0);
+    return LargeRange(chunk->bytes(), size, 0, 0);
 }
 
 } // namespace bmalloc

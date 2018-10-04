@@ -45,7 +45,19 @@ class FormattingState {
 
     createDisplayBox(layoutBox) {
         let displayBox = new Display.Box(layoutBox.node());
+        let parentDisplayBox = this.displayBox(layoutBox.containingBlock());
+        displayBox.setParent(parentDisplayBox);
+        if (!parentDisplayBox.firstChild()) {
+            parentDisplayBox.setFirstChild(displayBox);
+            parentDisplayBox.setLastChild(displayBox);
+        } else {
+            let previousSibling = parentDisplayBox.lastChild();
+            previousSibling.setNextSibling(displayBox);
+            displayBox.setPreviousSibling(previousSibling);
+            parentDisplayBox.setLastChild(displayBox);
+        }
         this.m_displayToLayout.set(layoutBox, displayBox);
+        return displayBox;
     }
 
     displayBoxMap() {
@@ -56,9 +68,10 @@ class FormattingState {
         ASSERT(layoutBox);
         // 1. Normally we only need to access boxes within the same formatting context
         // 2. In some cases we need size information about the root container -which is in the parent formatting context
+        // 3. In inline formatting with parent floating state, we need display boxes from the parent formatting context
         // 3. In rare cases (statically positioned out-of-flow box), we need position information on sibling formatting context
         // but in all cases it needs to be a descendant of the root container (or the container itself)
-        ASSERT(layoutBox == this.formattingRoot() || layoutBox.isDescendantOf(this.formattingRoot()));
+        // ASSERT(layoutBox == this.formattingRoot() || layoutBox.isDescendantOf(this.formattingRoot()));
         let displayBox = this.m_displayToLayout.get(layoutBox);
         if (displayBox)
             return displayBox;

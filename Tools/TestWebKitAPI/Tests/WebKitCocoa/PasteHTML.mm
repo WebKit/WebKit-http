@@ -178,6 +178,9 @@ TEST(PasteHTML, PreservesMSOList)
     EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"pastedHTML.includes('[if !supportLists]')"].boolValue);
     EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"pastedHTML.includes('[endif]')"].boolValue);
     EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"pastedHTML.includes(' style=\"text-indent:-.25in;mso-list:l0 level1 lfo1\">')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"pastedHTML.includes('<p class=\"MsoNormal\" style=\"margin-left:0cm;text-indent:0cm;mso-pagination:none;\\n"
+        "mso-list:l1 level1 lfo1;mso-layout-grid-align:none;text-autospace:none\">')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"pastedHTML.includes('<p class=\"MsoNormal\" style=\"mso-list:l1 level1 lfo1;margin-left:0cm\">')"].boolValue);
     EXPECT_FALSE([webView stringByEvaluatingJavaScript:@"pastedHTML.includes('/Users/webkitten/Library/')"].boolValue);
 
     [webView stringByEvaluatingJavaScript:@"getSelection().setPosition(document.querySelector('.MsoListParagraphCxSpLast'));"];
@@ -193,6 +196,9 @@ TEST(PasteHTML, PreservesMSOList)
     EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"htmlInDataTransfer.includes('[if !supportLists]')"].boolValue);
     EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"htmlInDataTransfer.includes('[endif]')"].boolValue);
     EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"htmlInDataTransfer.includes(' style=\"text-indent:-.25in;mso-list:l0 level1 lfo1\">')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"htmlInDataTransfer.includes('<p class=\"MsoNormal\" style=\"margin-left:0cm;text-indent:0cm;mso-pagination:none;\\n"
+        "mso-list:l1 level1 lfo1;mso-layout-grid-align:none;text-autospace:none\">')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"htmlInDataTransfer.includes('<p class=\"MsoNormal\" style=\"mso-list:l1 level1 lfo1;margin-left:0cm\">')"].boolValue);
     EXPECT_FALSE([webView stringByEvaluatingJavaScript:@"htmlInDataTransfer.includes('/Users/webkitten/Library/')"].boolValue);
 
     [webView stringByEvaluatingJavaScript:@"editor.innerHTML = ''; editor.focus();"];
@@ -235,6 +241,42 @@ TEST(PasteHTML, PreservesMSOListInCompatibilityMode)
     EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"htmlInDataTransfer.includes('[if !supportLists]')"].boolValue);
     EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"htmlInDataTransfer.includes('[endif]')"].boolValue);
     EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"pastedHTML.includes('<p style=\"margin-left:.5in;text-indent:-.25in;mso-list:l0 level1 lfo1\">')"].boolValue);
+    EXPECT_FALSE([webView stringByEvaluatingJavaScript:@"htmlInDataTransfer.includes('/Users/webkitten/Library/')"].boolValue);
+}
+
+TEST(PasteHTML, PreservesMSOListOnH4)
+{
+    writeHTMLToPasteboard([NSString stringWithContentsOfFile:[[NSBundle mainBundle] pathForResource:@"mso-list-on-h4" ofType:@"html" inDirectory:@"TestWebKitAPI.resources"]
+        encoding:NSUTF8StringEncoding error:NULL]);
+
+    auto webView = createWebViewWithCustomPasteboardDataSetting(true);
+    [webView synchronouslyLoadTestPageNamed:@"paste-rtfd"];
+    [webView paste:nil];
+
+    EXPECT_WK_STREQ("[\"text/html\"]", [webView stringByEvaluatingJavaScript:@"JSON.stringify(clipboardData.types)"]);
+    [webView stringByEvaluatingJavaScript:@"window.htmlInDataTransfer = clipboardData.values[0]"];
+    [webView stringByEvaluatingJavaScript:@"window.pastedHTML = editor.innerHTML"];
+
+    EXPECT_FALSE([webView stringByEvaluatingJavaScript:@"pastedHTML.startsWith('<html xmlns:o=\"urn:schemas-microsoft-com:office:office\"')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"pastedHTML.includes('<style class=\"WebKit-mso-list-quirks-style\">\\n<!--\\n')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"pastedHTML.includes('/* Style Definitions */')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"pastedHTML.includes('/* List Definitions */')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"pastedHTML.includes('@list l0:level1')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"pastedHTML.includes('}\\n\\n-->\\n</style>')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"pastedHTML.includes('[if !supportLists]')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"pastedHTML.includes('[endif]')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"pastedHTML.includes('<h4 style=\"margin-left:67.5pt;text-indent:-.25in;mso-list:l0 level1 lfo4\">')"].boolValue);
+    EXPECT_FALSE([webView stringByEvaluatingJavaScript:@"pastedHTML.includes('/Users/webkitten/Library/')"].boolValue);
+
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"htmlInDataTransfer.startsWith('<html xmlns:o=\"urn:schemas-microsoft-com:office:office\"')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"htmlInDataTransfer.includes('<head><style class=\"WebKit-mso-list-quirks-style\">\\n<!--\\n')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"htmlInDataTransfer.includes('/* Style Definitions */')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"htmlInDataTransfer.includes('/* List Definitions */')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"htmlInDataTransfer.includes('@list l0:level1')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"htmlInDataTransfer.includes('}\\n\\n-->\\n</style></head>')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"htmlInDataTransfer.includes('[if !supportLists]')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"htmlInDataTransfer.includes('[endif]')"].boolValue);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"htmlInDataTransfer.includes('<h4 style=\"margin-left:67.5pt;text-indent:-.25in;mso-list:l0 level1 lfo4\">')"].boolValue);
     EXPECT_FALSE([webView stringByEvaluatingJavaScript:@"htmlInDataTransfer.includes('/Users/webkitten/Library/')"].boolValue);
 }
 

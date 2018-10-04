@@ -114,6 +114,7 @@ set(WebKit_SOURCES
 
     NetworkProcess/NetworkCORSPreflightChecker.cpp
     NetworkProcess/NetworkConnectionToWebProcess.cpp
+    NetworkProcess/NetworkContentRuleListManager.cpp
     NetworkProcess/NetworkDataTask.cpp
     NetworkProcess/NetworkDataTaskBlob.cpp
     NetworkProcess/NetworkLoad.cpp
@@ -184,6 +185,8 @@ set(WebKit_SOURCES
     Shared/NavigationActionData.cpp
     Shared/PlatformPopupMenuData.cpp
     Shared/PrintInfo.cpp
+    Shared/RTCNetwork.cpp
+    Shared/RTCPacketOptions.cpp
     Shared/SessionState.cpp
     Shared/SessionTracker.cpp
     Shared/ShareableBitmap.cpp
@@ -533,6 +536,14 @@ set(WebKit_SOURCES
     WebProcess/Network/WebSocketProvider.cpp
     WebProcess/Network/WebSocketStream.cpp
 
+    WebProcess/Network/webrtc/LibWebRTCProvider.cpp
+    WebProcess/Network/webrtc/LibWebRTCResolver.cpp
+    WebProcess/Network/webrtc/LibWebRTCSocket.cpp
+    WebProcess/Network/webrtc/LibWebRTCSocketFactory.cpp
+    WebProcess/Network/webrtc/WebRTCMonitor.cpp
+    WebProcess/Network/webrtc/WebRTCResolver.cpp
+    WebProcess/Network/webrtc/WebRTCSocket.cpp
+
     WebProcess/Notifications/NotificationPermissionRequestManager.cpp
     WebProcess/Notifications/WebNotificationManager.cpp
 
@@ -616,6 +627,7 @@ set(WebKit_MESSAGES_IN_FILES
     NetworkProcess/Cookies/WebCookieManager.messages.in
 
     NetworkProcess/NetworkConnectionToWebProcess.messages.in
+    NetworkProcess/NetworkContentRuleListManager.messages.in
     NetworkProcess/NetworkProcess.messages.in
     NetworkProcess/NetworkResourceLoader.messages.in
     NetworkProcess/NetworkSocketStream.messages.in

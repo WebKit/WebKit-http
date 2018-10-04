@@ -1,3 +1,207 @@
+2018-04-04  Youenn Fablet  <youenn@apple.com>
+
+        Add a test for HttpOnly cookies used to load AppCache resources
+        https://bugs.webkit.org/show_bug.cgi?id=184305
+        <rdar://problem/39175648>
+
+        Reviewed by Brady Eidson.
+
+        * http/tests/appcache/document-cookie-http-only-expected.txt: Added.
+        * http/tests/appcache/document-cookie-http-only.php: Added.
+
+2018-04-04  Ms2ger  <Ms2ger@igalia.com>
+
+        Test gardening for GTK.
+        https://bugs.webkit.org/show_bug.cgi?id=184298
+
+        Unreviewed test gardening.
+
+        * platform/gtk/TestExpectations:
+          - update expectations for fast/mediastream tests for the libwebrtc
+            integration in r230152
+          - skip http/wpt/loading/redirect-headers.html, which was added in
+            r230224, because the API it uses is only implemented for cocoa
+            (https://bugs.webkit.org/show_bug.cgi?id=184295)
+        * platform/wpe/TestExpectations:
+          - skip http/wpt/loading/redirect-headers.html, which was added in
+            r230224, because the API it uses is only implemented for cocoa
+            (https://bugs.webkit.org/show_bug.cgi?id=184295)
+
+2018-04-03  Youenn Fablet  <youenn@apple.com>
+
+        NetworkResourceLoader does not need to expose all redirect response headers
+        https://bugs.webkit.org/show_bug.cgi?id=184114
+        <rdar://problem/39010557>
+
+        Reviewed by Ryosuke Niwa.
+
+        New test verifies that headers are filtered. Witout filtering, 9 headers would be visible to the injected bundle, while 6 headers reamin after filtering.
+
+        * http/wpt/loading/redirect-headers-expected.txt: Added.
+        * http/wpt/loading/redirect-headers.html: Added.
+        * platform/mac-wk1/TestExpectations: Skipped new test for WK1.
+
+2018-04-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/appcache/interrupted-update.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=184061
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-04-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark storage/indexeddb/dont-wedge-private.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=184058
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-04-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/workers/service/service-worker-cache-api.https.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=184245
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2018-04-02  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Followup(r230063): Add test a layout test for https://bugs.webkit.org/show_bug.cgi?id=183972
+        https://bugs.webkit.org/show_bug.cgi?id=184162
+
+        Reviewed by Daniel Bates.
+
+        Without r230063, running run-webkit-tests -g for this test will crash.
+
+        * svg/dom/animated-tearoff-list-remove-target-expected.txt: Added.
+        * svg/dom/animated-tearoff-list-remove-target.html: Added.
+
+2018-04-02  Jer Noble  <jer.noble@apple.com>
+
+        AudioBufferSourceNode start method causes OfflineAudioContext to start running
+        https://bugs.webkit.org/show_bug.cgi?id=181939
+        <rdar://problem/36755393>
+
+        Reviewed by Eric Carlson.
+
+        * webaudio/offlineaudiocontext-restriction-expected.txt: Added.
+        * webaudio/offlineaudiocontext-restriction.html: Added.
+
+2018-03-31  Brent Fulgham  <bfulgham@apple.com>
+
+        Show punycode if URL contains hyphen character
+        https://bugs.webkit.org/show_bug.cgi?id=184221
+        <rdar://problem/38044633>
+
+        Reviewed by Darin Adler.
+
+        * fast/url/host-expected.txt:
+        * fast/url/host.html:
+
+2018-03-30  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: tint all pixels drawn by shader program when hovering ShaderProgramTreeElement
+        https://bugs.webkit.org/show_bug.cgi?id=175223
+
+        Reviewed by Matt Baker.
+
+        * inspector/canvas/setShaderProgramHighlighted-expected.txt: Added.
+        * inspector/canvas/setShaderProgramHighlighted.html: Added.
+
+2018-03-30  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip http/tests/resourceLoadStatistics/prevalent-resource-with-user-interaction-timeout.html
+        https://bugs.webkit.org/show_bug.cgi?id=178472
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2018-03-30  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/html/browsers/offline/appcache/workers/appcache-worker.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=184198
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-03-30  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark inspector/unit-tests/debounce.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=184057
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-03-29  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] CSSTransition objects should have fill: backwards to allow seeking prior to start time
+        https://bugs.webkit.org/show_bug.cgi?id=184129
+
+        Reviewed by Dean Jackson.
+
+        Make one test opt into CSS Animations and CSS Transitions as Web Animations and fix expectations for a CSSTransition
+        test which mistakenly assumes the fill to be "none".
+
+        * transitions/transition-in-delay-phase.html:
+        * webanimations/css-transitions.html:
+
+2018-03-28  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/IndexedDB/idbobjectstore_createIndex7-event_order.htm as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=184116
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2018-03-29  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Correctly obtain the timing function for a given keyframe
+        https://bugs.webkit.org/show_bug.cgi?id=184146
+
+        Reviewed by Dean Jackson.
+
+        Make 4 tests opt into CSS Animations and CSS Transitions as Web Animations.
+
+        * animations/keyframe-timing-functions-transform.html:
+        * animations/keyframe-timing-functions.html:
+        * animations/keyframe-timing-functions2.html:
+        * animations/missing-keyframe-properties-timing-function.html:
+
+2018-03-29  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r230087.
+
+        Introduced LayoutTest failures.
+
+        Reverted changeset:
+
+        "FrameSelection::appearanceUpdateTimerFired should be robust
+        against layout passes underneath it"
+        https://bugs.webkit.org/show_bug.cgi?id=183395
+        https://trac.webkit.org/changeset/230087
+
+2018-03-29  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        FrameSelection::appearanceUpdateTimerFired should be robust against layout passes underneath it
+        https://bugs.webkit.org/show_bug.cgi?id=183395
+        <rdar://problem/38055732>
+
+        Reviewed by Zalan Bujtas.
+
+        Add a new layout test that passes if we didn't crash.
+
+        * editing/selection/iframe-update-selection-appearance-expected.txt: Added.
+        * editing/selection/iframe-update-selection-appearance.html: Added.
+
 2018-03-29  Per Arne Vollan  <pvollan@apple.com>
 
         The test http/tests/websocket/tests/hybi/websocket-cookie-overwrite-behavior.html is failing on Windows.

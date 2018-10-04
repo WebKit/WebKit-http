@@ -1551,6 +1551,17 @@ if (USE_XDGMIME)
     list(APPEND WebCore_LIBRARIES xdgmime)
 endif ()
 
+if (USE_LIBWEBRTC)
+  list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES "${THIRDPARTY_DIR}/libwebrtc/Source/"
+      "${THIRDPARTY_DIR}/libwebrtc/Source/webrtc")
+  list(APPEND WebCore_LIBRARIES webrtc)
+  list(APPEND WebCore_SOURCES
+      Modules/mediastream/libwebrtc/LibWebRTCDataChannelHandler.cpp
+      Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.cpp
+      Modules/mediastream/libwebrtc/LibWebRTCPeerConnectionBackend.cpp
+      )
+endif ()
+
 set(WebCoreTestSupport_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/mock"
     "${WEBCORE_DIR}/testing"
@@ -1589,6 +1600,7 @@ list(APPEND WebCoreTestSupport_SOURCES
     testing/MockCDMFactory.cpp
     testing/MockGamepad.cpp
     testing/MockGamepadProvider.cpp
+    testing/MockLibWebRTCPeerConnection.cpp
     testing/MockPageOverlay.cpp
     testing/MockPageOverlayClient.cpp
     testing/ServiceWorkerInternals.cpp
@@ -1721,7 +1733,7 @@ add_custom_command(
     DEPENDS ${WebCore_CSS_VALUE_KEYWORDS}
     WORKING_DIRECTORY ${DERIVED_SOURCES_WEBCORE_DIR}
     COMMAND ${PERL_EXECUTABLE} -ne "print" ${WebCore_CSS_VALUE_KEYWORDS} > ${DERIVED_SOURCES_WEBCORE_DIR}/CSSValueKeywords.in
-    COMMAND ${PERL_EXECUTABLE} ${WEBCORE_DIR}/css/makevalues.pl --defines "${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}" --preprocessor "${CODE_GENERATOR_PREPROCESSOR}"
+    COMMAND ${PERL_EXECUTABLE} ${WEBCORE_DIR}/css/makevalues.pl --defines "${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}" --preprocessor "${CODE_GENERATOR_PREPROCESSOR}" --gperf-executable "${GPERF_EXECUTABLE}"
     VERBATIM)
 list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/CSSValueKeywords.cpp)
 ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/css/CSSParser.cpp CSSValueKeywords.h)

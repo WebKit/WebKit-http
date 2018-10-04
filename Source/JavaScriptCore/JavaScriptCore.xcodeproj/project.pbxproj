@@ -162,7 +162,6 @@
 		0F256C361627B0AD007F2783 /* DFGCallArrayAllocatorSlowPathGenerator.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F256C341627B0AA007F2783 /* DFGCallArrayAllocatorSlowPathGenerator.h */; };
 		0F25F1B2181635F300522F39 /* FTLSlowPathCall.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F25F1AB181635F300522F39 /* FTLSlowPathCall.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		0F25F1B4181635F300522F39 /* FTLSlowPathCallKey.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F25F1AD181635F300522F39 /* FTLSlowPathCallKey.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		0F26A7A32053895C0090A141 /* DFGCallCreateDirectArgumentsWithKnownLengthSlowPathGenerator.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F26A7A2205389580090A141 /* DFGCallCreateDirectArgumentsWithKnownLengthSlowPathGenerator.h */; };
 		0F2AC5671E8A0B790001EE3F /* AirFixSpillsAfterTerminals.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F2AC5651E8A0B760001EE3F /* AirFixSpillsAfterTerminals.h */; };
 		0F2AC56B1E8A0BD50001EE3F /* AirAllocateRegistersAndStackByLinearScan.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F2AC5691E8A0BD10001EE3F /* AirAllocateRegistersAndStackByLinearScan.h */; };
 		0F2AC56F1E8D7B030001EE3F /* AirPhaseInsertionSet.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F2AC56D1E8D7AFF0001EE3F /* AirPhaseInsertionSet.h */; };
@@ -296,7 +295,6 @@
 		0F426A481460CBB300131F8F /* ValueRecovery.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F426A451460CBAB00131F8F /* ValueRecovery.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		0F426A491460CBB700131F8F /* VirtualRegister.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F426A461460CBAB00131F8F /* VirtualRegister.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		0F426A4B1460CD6E00131F8F /* DataFormat.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F426A4A1460CD6B00131F8F /* DataFormat.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		0F42B3C3201EC9FF00357031 /* SecurityOriginToken.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F42B3C2201EC9FD00357031 /* SecurityOriginToken.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		0F431738146BAC69007E3890 /* ListableHandler.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F431736146BAC65007E3890 /* ListableHandler.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		0F4570391BE44C910062A629 /* AirEliminateDeadCode.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F4570371BE44C910062A629 /* AirEliminateDeadCode.h */; };
 		0F45703D1BE45F0A0062A629 /* AirReportUsedRegisters.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F45703B1BE45F0A0062A629 /* AirReportUsedRegisters.h */; };
@@ -336,7 +334,6 @@
 		0F5A6284188C98D40072C9DF /* FTLValueRange.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F5A6282188C98D40072C9DF /* FTLValueRange.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		0F5AE2C41DF4F2800066EFE1 /* VMInlines.h in Headers */ = {isa = PBXBuildFile; fileRef = FE90BB3A1B7CF64E006B3F03 /* VMInlines.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		0F5B4A331C84F0D600F1B17E /* SlowPathReturnType.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F5B4A321C84F0D600F1B17E /* SlowPathReturnType.h */; settings = {ATTRIBUTES = (Private, ); }; };
-		0F5B6ED32036796B007AABF3 /* SecurityKind.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F5B6ED120367968007AABF3 /* SecurityKind.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		0F5BF1641F2317120029D91D /* B3HoistLoopInvariantValues.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F5BF1621F2317120029D91D /* B3HoistLoopInvariantValues.h */; };
 		0F5BF1671F23A0980029D91D /* B3BackwardsCFG.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F5BF1661F23A0980029D91D /* B3BackwardsCFG.h */; };
 		0F5BF1691F23A0AA0029D91D /* B3NaturalLoops.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F5BF1681F23A0AA0029D91D /* B3NaturalLoops.h */; };
@@ -2064,7 +2061,6 @@
 		0F25F1AB181635F300522F39 /* FTLSlowPathCall.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FTLSlowPathCall.h; path = ftl/FTLSlowPathCall.h; sourceTree = "<group>"; };
 		0F25F1AC181635F300522F39 /* FTLSlowPathCallKey.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = FTLSlowPathCallKey.cpp; path = ftl/FTLSlowPathCallKey.cpp; sourceTree = "<group>"; };
 		0F25F1AD181635F300522F39 /* FTLSlowPathCallKey.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FTLSlowPathCallKey.h; path = ftl/FTLSlowPathCallKey.h; sourceTree = "<group>"; };
-		0F26A7A2205389580090A141 /* DFGCallCreateDirectArgumentsWithKnownLengthSlowPathGenerator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DFGCallCreateDirectArgumentsWithKnownLengthSlowPathGenerator.h; path = dfg/DFGCallCreateDirectArgumentsWithKnownLengthSlowPathGenerator.h; sourceTree = "<group>"; };
 		0F275F2C1ECE079600620D47 /* Intrinsic.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Intrinsic.cpp; sourceTree = "<group>"; };
 		0F2AC5641E8A0B760001EE3F /* AirFixSpillsAfterTerminals.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = AirFixSpillsAfterTerminals.cpp; path = b3/air/AirFixSpillsAfterTerminals.cpp; sourceTree = "<group>"; };
 		0F2AC5651E8A0B760001EE3F /* AirFixSpillsAfterTerminals.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AirFixSpillsAfterTerminals.h; path = b3/air/AirFixSpillsAfterTerminals.h; sourceTree = "<group>"; };
@@ -2270,7 +2266,6 @@
 		0F426A461460CBAB00131F8F /* VirtualRegister.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = VirtualRegister.h; sourceTree = "<group>"; };
 		0F426A4A1460CD6B00131F8F /* DataFormat.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DataFormat.h; sourceTree = "<group>"; };
 		0F42B3C0201EB50900357031 /* Allocator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Allocator.cpp; sourceTree = "<group>"; };
-		0F42B3C2201EC9FD00357031 /* SecurityOriginToken.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SecurityOriginToken.h; sourceTree = "<group>"; };
 		0F431736146BAC65007E3890 /* ListableHandler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ListableHandler.h; sourceTree = "<group>"; };
 		0F4570361BE44C910062A629 /* AirEliminateDeadCode.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = AirEliminateDeadCode.cpp; path = b3/air/AirEliminateDeadCode.cpp; sourceTree = "<group>"; };
 		0F4570371BE44C910062A629 /* AirEliminateDeadCode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AirEliminateDeadCode.h; path = b3/air/AirEliminateDeadCode.h; sourceTree = "<group>"; };
@@ -2338,9 +2333,6 @@
 		0F5A6281188C98D40072C9DF /* FTLValueRange.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = FTLValueRange.cpp; path = ftl/FTLValueRange.cpp; sourceTree = "<group>"; };
 		0F5A6282188C98D40072C9DF /* FTLValueRange.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FTLValueRange.h; path = ftl/FTLValueRange.h; sourceTree = "<group>"; };
 		0F5B4A321C84F0D600F1B17E /* SlowPathReturnType.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SlowPathReturnType.h; sourceTree = "<group>"; };
-		0F5B6ED120367968007AABF3 /* SecurityKind.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SecurityKind.h; sourceTree = "<group>"; };
-		0F5B6ED220367968007AABF3 /* SecurityKind.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SecurityKind.cpp; sourceTree = "<group>"; };
-		0F5B6ED42036799A007AABF3 /* SecurityOriginToken.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SecurityOriginToken.cpp; sourceTree = "<group>"; };
 		0F5BF1611F2317120029D91D /* B3HoistLoopInvariantValues.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = B3HoistLoopInvariantValues.cpp; path = b3/B3HoistLoopInvariantValues.cpp; sourceTree = "<group>"; };
 		0F5BF1621F2317120029D91D /* B3HoistLoopInvariantValues.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = B3HoistLoopInvariantValues.h; path = b3/B3HoistLoopInvariantValues.h; sourceTree = "<group>"; };
 		0F5BF1661F23A0980029D91D /* B3BackwardsCFG.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = B3BackwardsCFG.h; path = b3/B3BackwardsCFG.h; sourceTree = "<group>"; };
@@ -5736,10 +5728,6 @@
 				0FD0E5EF1E46BF230006AB08 /* RegisterState.h */,
 				0F7CF94E1DBEEE860098CC12 /* ReleaseHeapAccessScope.h */,
 				0F2C63A91E4FA42C00C13839 /* RunningScope.h */,
-				0F5B6ED220367968007AABF3 /* SecurityKind.cpp */,
-				0F5B6ED120367968007AABF3 /* SecurityKind.h */,
-				0F5B6ED42036799A007AABF3 /* SecurityOriginToken.cpp */,
-				0F42B3C2201EC9FD00357031 /* SecurityOriginToken.h */,
 				0F4D8C761FCA3CF2001D32AC /* SimpleMarkingConstraint.cpp */,
 				0F4D8C771FCA3CF3001D32AC /* SimpleMarkingConstraint.h */,
 				C225494215F7DBAA0065E898 /* SlotVisitor.cpp */,
@@ -7149,7 +7137,6 @@
 				86EC9DB51328DF82002B2AD7 /* DFGByteCodeParser.h */,
 				0F256C341627B0AA007F2783 /* DFGCallArrayAllocatorSlowPathGenerator.h */,
 				0FBDB9AC1AB0FBC6000B57E5 /* DFGCallCreateDirectArgumentsSlowPathGenerator.h */,
-				0F26A7A2205389580090A141 /* DFGCallCreateDirectArgumentsWithKnownLengthSlowPathGenerator.h */,
 				0FD82E1E14172C2F00179C94 /* DFGCapabilities.cpp */,
 				0FD82E1F14172C2F00179C94 /* DFGCapabilities.h */,
 				0FFFC94B14EF909500C72532 /* DFGCFAPhase.cpp */,
@@ -8508,7 +8495,6 @@
 				86EC9DC51328DF82002B2AD7 /* DFGByteCodeParser.h in Headers */,
 				0F256C361627B0AD007F2783 /* DFGCallArrayAllocatorSlowPathGenerator.h in Headers */,
 				0FBDB9AD1AB0FBC6000B57E5 /* DFGCallCreateDirectArgumentsSlowPathGenerator.h in Headers */,
-				0F26A7A32053895C0090A141 /* DFGCallCreateDirectArgumentsWithKnownLengthSlowPathGenerator.h in Headers */,
 				0F7B294B14C3CD2F007C3DB1 /* DFGCapabilities.h in Headers */,
 				0FFFC95814EF90A200C72532 /* DFGCFAPhase.h in Headers */,
 				0F3B3A281544C997003ED0FF /* DFGCFGSimplificationPhase.h in Headers */,
@@ -9357,8 +9343,6 @@
 				A54CF2FA184EAEDA00237F19 /* ScriptObject.h in Headers */,
 				A55165D51BDF135A003B75C1 /* ScriptProfilingScope.h in Headers */,
 				A54CF2F6184EAB2400237F19 /* ScriptValue.h in Headers */,
-				0F5B6ED32036796B007AABF3 /* SecurityKind.h in Headers */,
-				0F42B3C3201EC9FF00357031 /* SecurityOriginToken.h in Headers */,
 				A7299DA617D12858005F5FF9 /* SetConstructor.h in Headers */,
 				A790DD6E182F499700588807 /* SetIteratorPrototype.h in Headers */,
 				A7299DA217D12848005F5FF9 /* SetPrototype.h in Headers */,

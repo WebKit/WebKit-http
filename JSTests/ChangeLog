@@ -1,3 +1,93 @@
+2018-04-03  Mark Lam  <mark.lam@apple.com>
+
+        Test js-fixed-array-out-of-memory.js should be excluded for memory limited devices.
+        https://bugs.webkit.org/show_bug.cgi?id=184284
+
+        Reviewed by Saam Barati.
+
+        * stress/js-fixed-array-out-of-memory.js:
+
+2018-03-31  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC crash in JIT code with for-of loop and Array/Set iterators
+        https://bugs.webkit.org/show_bug.cgi?id=183174
+
+        Reviewed by Saam Barati.
+
+        * microbenchmarks/hoist-get-by-offset-tower-with-inferred-types.js: Added. This test shows that fixing the bug didn't break hoisting of GetByOffset with inferred types. I confirmed that if I did break it, this test slows down by >7x.
+        (foo):
+        * stress/hoist-get-by-offset-with-control-dependent-inferred-type.js: Added. This test shows that the bug is fixed.
+        (f):
+
+2018-03-30  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: support DataView compilation
+        https://bugs.webkit.org/show_bug.cgi?id=183342
+
+        Reviewed by Mark Lam.
+
+        Test WebAssembly compilation using a DataView with offset.
+
+        * wasm/regress/183342.js: Added.
+        (attempt.catch):
+
+2018-03-30  Filip Pizlo  <fpizlo@apple.com>
+
+        Bytecode generator should not get_from_scope something that may be a hole into a variable that is already live
+        https://bugs.webkit.org/show_bug.cgi?id=184189
+
+        Reviewed by JF Bastien.
+
+        * stress/load-hole-from-scope-into-live-var.js: Added.
+        (result.eval.try.switch):
+        (catch):
+
+2018-03-30  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r230102.
+
+        Caused assertion failures on JSC bots.
+
+        Reverted changeset:
+
+        "A stack overflow in the parsing of a builtin (called by
+        createExecutable) cause a crash instead of a catchable js
+        exception"
+        https://bugs.webkit.org/show_bug.cgi?id=184074
+        https://trac.webkit.org/changeset/230102
+
+2018-03-30  Robin Morisset  <rmorisset@apple.com>
+
+        Inlining of a function that ends in op_unreachable in a non-tail position triggers an ASSERT
+        https://bugs.webkit.org/show_bug.cgi?id=183812
+
+        Reviewed by Keith Miller.
+
+        * stress/inlining-unreachable-non-tail.js: Added.
+        (foo.):
+        (foo):
+
+2018-03-30  Robin Morisset  <rmorisset@apple.com>
+
+        A stack overflow in the parsing of a builtin (called by createExecutable) cause a crash instead of a catchable js exception
+        https://bugs.webkit.org/show_bug.cgi?id=184074
+        <rdar://problem/37165897>
+
+        Reviewed by Keith Miller.
+
+        * stress/stack-overflow-while-parsing-builtin.js: Added.
+        (f):
+
+2018-03-30  Robin Morisset  <rmorisset@apple.com>
+
+        Out-of-bounds accesses due to a missing check for MAX_STORAGE_VECTOR_LENGTH in unshiftCountForAnyIndexingType
+        https://bugs.webkit.org/show_bug.cgi?id=183657
+
+        Reviewed by Keith Miller.
+
+        * stress/large-unshift-splice.js: Added.
+        (make_contig_arr):
+
 2018-03-28  Robin Morisset  <rmorisset@apple.com>
 
         appendQuotedJSONString stops on arithmetic overflow instead of propagating it upwards

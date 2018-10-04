@@ -49,7 +49,6 @@
 #import "WKImagePreviewViewController.h"
 #import "WKInspectorNodeSearchGestureRecognizer.h"
 #import "WKNSURLExtras.h"
-#import "WKNumberPadViewController.h"
 #import "WKPreviewActionItemIdentifiers.h"
 #import "WKPreviewActionItemInternal.h"
 #import "WKPreviewElementInfoInternal.h"
@@ -126,7 +125,7 @@
 
 #if ENABLE(EXTRA_ZOOM_MODE)
 
-@interface WKContentView (ExtraZoomMode) <WKTextFormControlViewControllerDelegate, WKFocusedFormControlViewControllerDelegate, WKSelectMenuListViewControllerDelegate, WKTextFormControlListViewControllerDelegate>
+@interface WKContentView (ExtraZoomMode) <WKFocusedFormControlViewControllerDelegate, WKSelectMenuListViewControllerDelegate, WKTextInputListViewControllerDelegate>
 @end
 
 #endif
@@ -2244,8 +2243,10 @@ FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKWEBVIEW)
         if (!textLength || textLength > 200)
             return NO;
 
+#if !ENABLE(MINIMAL_SIMULATOR)
         if ([[getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:MCFeatureDefinitionLookupAllowed] == MCRestrictedBoolExplicitNo)
             return NO;
+#endif
             
         return YES;
     }
@@ -2253,10 +2254,12 @@ FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKWEBVIEW)
     if (action == @selector(_lookup:)) {
         if (_page->editorState().isInPasswordField)
             return NO;
-        
+
+#if !ENABLE(MINIMAL_SIMULATOR)
         if ([[getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:MCFeatureDefinitionLookupAllowed] == MCRestrictedBoolExplicitNo)
             return NO;
-        
+#endif
+
         return YES;
     }
 
@@ -2414,8 +2417,10 @@ FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKWEBVIEW)
 
 - (void)_defineForWebView:(id)sender
 {
+#if !ENABLE(MINIMAL_SIMULATOR)
     if ([[getMCProfileConnectionClass() sharedConnection] effectiveBoolValueForSetting:MCFeatureDefinitionLookupAllowed] == MCRestrictedBoolExplicitNo)
         return;
+#endif
 
     RetainPtr<WKContentView> view = self;
     _page->getSelectionOrContentsAsString([view](const String& string, WebKit::CallbackBase::Error error) {
@@ -4222,15 +4227,6 @@ static bool isAssistableInputType(InputType type)
     _shouldRestoreFirstResponderStatusAfterLosingFocus = self.isFirstResponder;
 
     switch (_assistedNodeInformation.elementType) {
-    case InputType::Number:
-    case InputType::NumberPad:
-    case InputType::Phone:
-        if (!_numberPadViewController) {
-            _numberPadViewController = adoptNS([[WKNumberPadViewController alloc] initWithText:_assistedNodeInformation.value textSuggestions:@[]]);
-            [_numberPadViewController setDelegate:self];
-            [_focusedFormControlViewController presentViewController:_numberPadViewController.get() animated:YES completion:nil];
-        }
-        break;
     case InputType::Select:
         if (!_selectMenuListViewController) {
             _selectMenuListViewController = adoptNS([[WKSelectMenuListViewController alloc] initWithDelegate:self]);
@@ -4239,15 +4235,13 @@ static bool isAssistableInputType(InputType type)
         break;
     case InputType::Time:
         if (!_timePickerViewController) {
-            _timePickerViewController = adoptNS([[WKTimePickerViewController alloc] initWithText:_assistedNodeInformation.value textSuggestions:@[ ]]);
-            [_timePickerViewController setDelegate:self];
+            _timePickerViewController = adoptNS([[WKTimePickerViewController alloc] initWithDelegate:self]);
             [_focusedFormControlViewController presentViewController:_timePickerViewController.get() animated:YES completion:nil];
         }
         break;
     case InputType::Date:
         if (!_datePickerViewController) {
-            _datePickerViewController = adoptNS([[WKDatePickerViewController alloc] initWithText:_assistedNodeInformation.value textSuggestions:@[ ]]);
-            [_datePickerViewController setDelegate:self];
+            _datePickerViewController = adoptNS([[WKDatePickerViewController alloc] initWithDelegate:self]);
             [_focusedFormControlViewController presentViewController:_datePickerViewController.get() animated:YES completion:nil];
         }
         break;
@@ -4268,9 +4262,6 @@ static bool isAssistableInputType(InputType type)
     if (auto controller = WTFMove(_textInputListViewController))
         [controller dismissViewControllerAnimated:YES completion:nil];
 
-    if (auto controller = WTFMove(_numberPadViewController))
-        [controller dismissViewControllerAnimated:YES completion:nil];
-
     if (auto controller = WTFMove(_selectMenuListViewController))
         [controller dismissViewControllerAnimated:YES completion:nil];
 
@@ -4285,41 +4276,6 @@ static bool isAssistableInputType(InputType type)
         if (!self.isFirstResponder)
             [self becomeFirstResponder];
     }
-}
-
-- (void)textInputController:(WKTextFormControlViewController *)controller didCommitText:(NSString *)text
-{
-    [self textInputController:controller didCommitText:text withSuggestion:nil];
-}
-
-- (void)textInputController:(WKTextFormControlViewController *)controller didCommitText:(NSString *)text withSuggestion:(UITextSuggestion *)suggestion
-{
-    if (suggestion)
-        [self insertTextSuggestion:suggestion];
-    else
-        _page->setTextAsync(text);
-
-    if (![self actionNameForFocusedFormControlController:_focusedFormControlViewController.get()] && !_assistedNodeInformation.hasNextNode && !_assistedNodeInformation.hasPreviousNode) {
-        // In this case, there's no point in collapsing down to the form control focus UI because there's nothing the user could potentially do
-        // besides dismiss the UI, so we just automatically dismiss the focused form control UI.
-        _page->blurAssistedNode();
-        return;
-    }
-
-    [_focusedFormControlViewController show:NO];
-    [self dismissAllInputViewControllers];
-    [self updateCurrentAssistedNodeInformation:[weakSelf = WeakObjCPtr<WKContentView>(self)] (bool didUpdate) {
-        if (didUpdate) {
-            auto focusedFormController = weakSelf.get()->_focusedFormControlViewController;
-            [focusedFormController reloadData:YES];
-            [focusedFormController engageFocusedFormControlNavigation];
-        }
-    }];
-}
-
-- (void)textInputControllerDidRequestDismissal:(WKTextFormControlViewController *)controller
-{
-    _page->blurAssistedNode();
 }
 
 - (void)focusedFormControlControllerDidSubmit:(WKFocusedFormControlViewController *)controller
@@ -4474,9 +4430,6 @@ static bool isAssistableInputType(InputType type)
 - (void)_wheelChangedWithEvent:(UIEvent *)event
 {
 #if ENABLE(EXTRA_ZOOM_MODE)
-    if ([_numberPadViewController handleWheelEvent:event])
-        return;
-
     if ([_timePickerViewController handleWheelEvent:event])
         return;
 
@@ -5256,6 +5209,9 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
     auto positionForDragEnd = roundedIntPoint(_dragDropInteractionState.adjustedPositionForDragEnd());
     RetainPtr<WKContentView> protectedSelf(self);
     [animator addCompletion:[session, positionForDragEnd, protectedSelf, page = _page] (UIViewAnimatingPosition finalPosition) {
+#if RELEASE_LOG_DISABLED
+        UNUSED_PARAM(session);
+#endif
         if (finalPosition == UIViewAnimatingPositionStart) {
             RELEASE_LOG(DragAndDrop, "Drag session ended at start: %p", session);
             // The lift was canceled, so -dropInteraction:sessionDidEnd: will never be invoked. This is the last chance to clean up.

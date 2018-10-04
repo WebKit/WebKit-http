@@ -41,7 +41,6 @@
 #include "FrameLoaderClient.h"
 #include "InspectorInstrumentation.h"
 #include "LoaderStrategy.h"
-#include "MainFrame.h"
 #include "Page.h"
 #include "PlatformStrategies.h"
 #include "ProgressTracker.h"
@@ -212,6 +211,13 @@ void ResourceLoader::start()
         loadDataURL();
         return;
     }
+
+#if USE(SOUP)
+    if (m_request.url().protocolIs("resource")) {
+        loadGResource();
+        return;
+    }
+#endif
 
     m_handle = ResourceHandle::create(frameLoader()->networkingContext(), m_request, this, m_defersLoading, m_options.sniffContent == SniffContent, m_options.sniffContentEncoding == ContentEncodingSniffingPolicy::Sniff);
 }

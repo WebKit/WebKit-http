@@ -147,6 +147,7 @@
 #import <WebCore/FileSystem.h>
 #import <WebCore/FocusController.h>
 #import <WebCore/FontCache.h>
+#import <WebCore/Frame.h>
 #import <WebCore/FrameLoader.h>
 #import <WebCore/FrameSelection.h>
 #import <WebCore/FrameTree.h>
@@ -171,7 +172,6 @@
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/LogInitialization.h>
 #import <WebCore/MIMETypeRegistry.h>
-#import <WebCore/MainFrame.h>
 #import <WebCore/MemoryCache.h>
 #import <WebCore/MemoryRelease.h>
 #import <WebCore/NavigationPolicyCheck.h>
@@ -6831,7 +6831,7 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     NSArray* types = draggingInfo.draggingPasteboard.types;
-    if (![types containsObject:WebArchivePboardType] && ![types containsObject:legacyFilenamesPasteboardType()] && [types containsObject:legacyFilesPromisePasteboardType()]) {
+    if (![types containsObject:WebArchivePboardType] && [types containsObject:legacyFilesPromisePasteboardType()]) {
         
         // FIXME: legacyFilesPromisePasteboardType() contains UTIs, not path names. Also, it's not
         // guaranteed that the count of UTIs equals the count of files, since some clients only write

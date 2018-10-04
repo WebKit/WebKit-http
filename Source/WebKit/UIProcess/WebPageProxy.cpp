@@ -169,9 +169,9 @@
 #include "VideoFullscreenManagerProxy.h"
 #include "VideoFullscreenManagerProxyMessages.h"
 #include "ViewSnapshotStore.h"
-#include <WebCore/MachSendRight.h>
 #include <WebCore/RunLoopObserver.h>
 #include <WebCore/TextIndicatorWindow.h>
+#include <wtf/MachSendRight.h>
 #endif
 
 #if PLATFORM(GTK)
@@ -231,7 +231,7 @@ public:
         uint64_t currentOriginUsage;
         uint64_t currentDatabaseUsage;
         uint64_t expectedUsage;
-        RefPtr<Messages::WebPageProxy::ExceededDatabaseQuota::DelayedReply> reply;
+        Messages::WebPageProxy::ExceededDatabaseQuota::DelayedReply reply;
     };
 
     static ExceededDatabaseQuotaRecords& singleton();
@@ -239,7 +239,7 @@ public:
     std::unique_ptr<Record> createRecord(uint64_t frameID, String originIdentifier,
         String databaseName, String displayName, uint64_t currentQuota,
         uint64_t currentOriginUsage, uint64_t currentDatabaseUsage, uint64_t expectedUsage, 
-        Ref<Messages::WebPageProxy::ExceededDatabaseQuota::DelayedReply>&&);
+        Messages::WebPageProxy::ExceededDatabaseQuota::DelayedReply&&);
 
     void add(std::unique_ptr<Record>);
     bool areBeingProcessed() const { return !!m_currentRecord; }
@@ -262,7 +262,7 @@ ExceededDatabaseQuotaRecords& ExceededDatabaseQuotaRecords::singleton()
 std::unique_ptr<ExceededDatabaseQuotaRecords::Record> ExceededDatabaseQuotaRecords::createRecord(
     uint64_t frameID, String originIdentifier, String databaseName, String displayName,
     uint64_t currentQuota, uint64_t currentOriginUsage, uint64_t currentDatabaseUsage,
-    uint64_t expectedUsage, Ref<Messages::WebPageProxy::ExceededDatabaseQuota::DelayedReply>&& reply)
+    uint64_t expectedUsage, Messages::WebPageProxy::ExceededDatabaseQuota::DelayedReply&& reply)
 {
     auto record = std::make_unique<Record>();
     record->frameID = frameID;
@@ -2352,8 +2352,9 @@ void WebPageProxy::receivedPolicyDecision(PolicyAction action, WebFrameProxy& fr
 
         if (action == PolicyAction::Use && navigation) {
             auto proposedProcess = process().processPool().processForNavigation(*this, *navigation, action);
+
             if (proposedProcess.ptr() != &process()) {
-                LOG(Loading, "Switching to new process for navigation %" PRIu64 " to url '%s' (WebBackForwardListItem %p)", navigation->navigationID(), navigation->loggingURL().utf8().data(), navigation->backForwardListItem());
+                LOG(Loading, "Switching from process %i to new process for navigation %" PRIu64 " '%s'", processIdentifier(), navigation->navigationID(), navigation->loggingString().utf8().data());
 
                 RunLoop::main().dispatch([this, protectedThis = makeRef(*this), navigation = makeRef(*navigation), proposedProcess = WTFMove(proposedProcess)]() mutable {
                     continueNavigationInNewProcess(navigation.get(), WTFMove(proposedProcess));
@@ -2367,8 +2368,9 @@ void WebPageProxy::receivedPolicyDecision(PolicyAction action, WebFrameProxy& fr
 
 void WebPageProxy::continueNavigationInNewProcess(API::Navigation& navigation, Ref<WebProcessProxy>&& process)
 {
-    LOG(Loading, "Continuing navigation %" PRIu64 " to URL %s in a new web process", navigation.navigationID(), navigation.loggingURL().utf8().data());
+    LOG(Loading, "Continuing navigation %" PRIu64 " '%s' in a new web process", navigation.navigationID(), navigation.loggingString().utf8().data());
 
+    ASSERT(m_process.ptr() != process.ptr());
     attachToProcessForNavigation(WTFMove(process));
 
     if (auto* item = navigation.backForwardListItem()) {
@@ -2384,7 +2386,20 @@ void WebPageProxy::continueNavigationInNewProcess(API::Navigation& navigation, R
     }
 
     // FIXME: Work out timing of responding with the last policy delegate, etc
-    loadRequestWithNavigation(navigation, ResourceRequest { navigation.request() }, WebCore::ShouldOpenExternalURLsPolicy::ShouldAllowExternalSchemes, nullptr, NavigationPolicyCheck::Bypass);
+    ASSERT(!navigation.currentRequest().isEmpty());
+    loadRequestWithNavigation(navigation, ResourceRequest { navigation.currentRequest() }, WebCore::ShouldOpenExternalURLsPolicy::ShouldAllowExternalSchemes, nullptr, NavigationPolicyCheck::Bypass);
+
+    // Normally, notification of a server redirect comes from the WebContent process.
+    // If we are process swapping in response to a server redirect then that notification will not come from the new WebContent process.
+    // In this case we have the UIProcess synthesize the redirect notification at the appropriate time.
+    if (navigation.currentRequestIsRedirect()) {
+        ASSERT(!m_mainFrame);
+        m_mainFrameCreationHandler = [this, protectedThis = makeRef(*this), navigation = makeRef(navigation), request =  navigation.currentRequest()]() mutable {
+            ASSERT(m_mainFrame);
+            m_mainFrame->frameLoadState().didStartProvisionalLoad(request.url());
+            didReceiveServerRedirectForProvisionalLoadForFrame(m_mainFrame->frameID(), navigation->navigationID(), WTFMove(request), { });
+        };
+    }
 }
 
 void WebPageProxy::setUserAgent(String&& userAgent)
@@ -3193,6 +3208,11 @@ void WebPageProxy::didCreateMainFrame(uint64_t frameID)
 
     // Add the frame to the process wide map.
     m_process->frameCreated(frameID, m_mainFrame.get());
+
+    if (m_mainFrameCreationHandler) {
+        m_mainFrameCreationHandler();
+        m_mainFrameCreationHandler = nullptr;
+    }
 }
 
 void WebPageProxy::didCreateSubframe(uint64_t frameID)
@@ -3269,10 +3289,6 @@ void WebPageProxy::didStartProvisionalLoadForFrame(uint64_t frameID, uint64_t na
 {
     PageClientProtector protector(m_pageClient);
 
-    auto transaction = m_pageLoadState.transaction();
-
-    m_pageLoadState.clearPendingAPIRequestURL(transaction);
-
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
     MESSAGE_CHECK_URL(url);
@@ -3281,6 +3297,20 @@ void WebPageProxy::didStartProvisionalLoadForFrame(uint64_t frameID, uint64_t na
     RefPtr<API::Navigation> navigation;
     if (frame->isMainFrame() && navigationID)
         navigation = &navigationState().navigation(navigationID);
+
+    // If this seemingly new load is actually continuing a server redirect for a previous navigation in a new process,
+    // then we ignore this notification.
+    if (navigation && navigation->currentRequestIsRedirect()) {
+        auto navigationProcessIdentifier = navigation->currentRequestProcessIdentifier();
+        if (navigationProcessIdentifier && *navigationProcessIdentifier != m_process->coreProcessIdentifier())
+            return;
+    }
+
+    LOG(Loading, "WebPageProxy::didStartProvisionalLoadForFrame to frameID %" PRIu64 ", navigationID %" PRIu64 ", url %s", frameID, navigationID, url.string().utf8().data());
+
+    auto transaction = m_pageLoadState.transaction();
+
+    m_pageLoadState.clearPendingAPIRequestURL(transaction);
 
     if (frame->isMainFrame()) {
         if (m_pageLoadStart)
@@ -3302,27 +3332,29 @@ void WebPageProxy::didStartProvisionalLoadForFrame(uint64_t frameID, uint64_t na
         m_loaderClient->didStartProvisionalLoadForFrame(*this, *frame, navigation.get(), m_process->transformHandlesToObjects(userData.object()).get());
 }
 
-void WebPageProxy::didReceiveServerRedirectForProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, WebCore::URL&& url, const UserData& userData)
+void WebPageProxy::didReceiveServerRedirectForProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, ResourceRequest&& request, const UserData& userData)
 {
+    LOG(Loading, "WebPageProxy::didReceiveServerRedirectForProvisionalLoadForFrame to frameID %" PRIu64 ", navigationID %" PRIu64 ", url %s", frameID, navigationID, request.url().string().utf8().data());
+
     PageClientProtector protector(m_pageClient);
 
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
-    MESSAGE_CHECK_URL(url);
+    MESSAGE_CHECK_URL(request.url());
 
     // FIXME: We should message check that navigationID is not zero here, but it's currently zero for some navigations through the page cache.
     RefPtr<API::Navigation> navigation;
     if (navigationID) {
         navigation = &navigationState().navigation(navigationID);
-        navigation->appendRedirectionURL(url);
+        navigation->appendRedirectionURL(request.url());
     }
 
     auto transaction = m_pageLoadState.transaction();
 
     if (frame->isMainFrame())
-        m_pageLoadState.didReceiveServerRedirectForProvisionalLoad(transaction, url);
+        m_pageLoadState.didReceiveServerRedirectForProvisionalLoad(transaction, request.url());
 
-    frame->didReceiveServerRedirectForProvisionalLoad(url);
+    frame->didReceiveServerRedirectForProvisionalLoad(request.url());
 
     m_pageLoadState.commitChanges();
     if (m_navigationClient) {
@@ -3442,6 +3474,8 @@ void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID
     RefPtr<API::Navigation> navigation;
     if (frame->isMainFrame() && navigationID)
         navigation = &navigationState().navigation(navigationID);
+
+    m_process->didCommitProvisionalLoad();
 
 #if PLATFORM(IOS)
     if (frame->isMainFrame()) {
@@ -3791,7 +3825,7 @@ void WebPageProxy::frameDidBecomeFrameSet(uint64_t frameID, bool value)
 
 void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, NavigationActionData&& navigationActionData, const FrameInfoData& originatingFrameInfoData, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, ResourceRequest&& request, uint64_t listenerID, const UserData& userData)
 {
-    LOG(Loading, "WebPageProxy::didStartProvisionalLoadForFrame - Target url %s", originalRequest.url().string().utf8().data());
+    LOG(Loading, "WebPageProxy::decidePolicyForNavigationAction - Original URL %s, current target URL %s", originalRequest.url().string().utf8().data(), request.url().string().utf8().data());
 
     PageClientProtector protector(m_pageClient);
 
@@ -3806,15 +3840,17 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const Secur
     MESSAGE_CHECK_URL(request.url());
     MESSAGE_CHECK_URL(originalRequest.url());
     
-    uint64_t newNavigationID { 0 };
-    Ref<WebFramePolicyListenerProxy> listener = frame->setUpPolicyListenerProxy(listenerID, PolicyListenerType::NavigationAction);
     Ref<API::Navigation> navigation = navigationID ? makeRef(m_navigationState->navigation(navigationID)) : m_navigationState->createLoadRequestNavigation(ResourceRequest(request));
 
-    newNavigationID = navigation->navigationID();
+    uint64_t newNavigationID = navigation->navigationID();
     navigation->setWasUserInitiated(!!navigationActionData.userGestureTokenIdentifier);
     navigation->setShouldForceDownload(!navigationActionData.downloadAttribute.isNull());
+    navigation->setCurrentRequest(ResourceRequest(request), m_process->coreProcessIdentifier());
+    navigation->setCurrentRequestIsRedirect(navigationActionData.isRedirect);
     navigation->setIsCrossOriginWindowOpenNavigation(navigationActionData.isCrossOriginWindowOpenNavigation);
     navigation->setOpener(navigationActionData.opener);
+
+    auto listener = makeRef(frame->setUpPolicyListenerProxy(listenerID, PolicyListenerType::NavigationAction));
     listener->setNavigation(WTFMove(navigation));
 
 #if ENABLE(CONTENT_FILTERING)
@@ -4006,20 +4042,20 @@ void WebPageProxy::didUpdateHistoryTitle(const String& title, const String& url,
 
 // UIClient
 
-void WebPageProxy::createNewPage(const FrameInfoData& originatingFrameInfoData, uint64_t originatingPageID, ResourceRequest&& request, WindowFeatures&& windowFeatures, NavigationActionData&& navigationActionData, Ref<Messages::WebPageProxy::CreateNewPage::DelayedReply>&& reply)
+void WebPageProxy::createNewPage(const FrameInfoData& originatingFrameInfoData, uint64_t originatingPageID, ResourceRequest&& request, WindowFeatures&& windowFeatures, NavigationActionData&& navigationActionData, Messages::WebPageProxy::CreateNewPage::DelayedReply&& reply)
 {
     MESSAGE_CHECK(m_process->webFrame(originatingFrameInfoData.frameID));
     auto originatingFrameInfo = API::FrameInfo::create(originatingFrameInfoData, m_process->webPage(originatingPageID));
 
     auto mainFrameURL = m_mainFrame->url();
 
-    m_uiClient->createNewPage(*this, WTFMove(originatingFrameInfo), WTFMove(request), WTFMove(windowFeatures), WTFMove(navigationActionData), [this, protectedThis = RefPtr<WebPageProxy>(this), mainFrameURL, request, reply = WTFMove(reply)](RefPtr<WebPageProxy> newPage) {
+    m_uiClient->createNewPage(*this, WTFMove(originatingFrameInfo), WTFMove(request), WTFMove(windowFeatures), WTFMove(navigationActionData), [this, protectedThis = makeRef(*this), mainFrameURL, request, reply = WTFMove(reply)](RefPtr<WebPageProxy> newPage) {
         if (!newPage) {
-            reply->send(0, { });
+            reply(0, { });
             return;
         }
 
-        reply->send(newPage->pageID(), newPage->creationParameters());
+        reply(newPage->pageID(), newPage->creationParameters());
 
         WebsiteDataStore::cloneSessionData(*this, *newPage);
         newPage->m_shouldSuppressAppLinksInNextNavigationPolicyDecision = hostsAreEqual(URL(ParsedURLString, mainFrameURL), request.url());
@@ -4055,7 +4091,7 @@ void WebPageProxy::closePage(bool stopResponsivenessTimer)
     m_uiClient->close(this);
 }
 
-void WebPageProxy::runJavaScriptAlert(uint64_t frameID, const SecurityOriginData& securityOrigin, const String& message, Ref<Messages::WebPageProxy::RunJavaScriptAlert::DelayedReply>&& reply)
+void WebPageProxy::runJavaScriptAlert(uint64_t frameID, const SecurityOriginData& securityOrigin, const String& message, Messages::WebPageProxy::RunJavaScriptAlert::DelayedReply&& reply)
 {
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
@@ -4068,11 +4104,11 @@ void WebPageProxy::runJavaScriptAlert(uint64_t frameID, const SecurityOriginData
             automationSession->willShowJavaScriptDialog(*this);
     }
     m_uiClient->runJavaScriptAlert(this, message, frame, securityOrigin, [reply = WTFMove(reply)] {
-        reply->send();
+        reply();
     });
 }
 
-void WebPageProxy::runJavaScriptConfirm(uint64_t frameID, const SecurityOriginData& securityOrigin, const String& message, Ref<Messages::WebPageProxy::RunJavaScriptConfirm::DelayedReply>&& reply)
+void WebPageProxy::runJavaScriptConfirm(uint64_t frameID, const SecurityOriginData& securityOrigin, const String& message, Messages::WebPageProxy::RunJavaScriptConfirm::DelayedReply&& reply)
 {
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
@@ -4086,11 +4122,11 @@ void WebPageProxy::runJavaScriptConfirm(uint64_t frameID, const SecurityOriginDa
     }
 
     m_uiClient->runJavaScriptConfirm(this, message, frame, securityOrigin, [reply = WTFMove(reply)](bool result) {
-        reply->send(result);
+        reply(result);
     });
 }
 
-void WebPageProxy::runJavaScriptPrompt(uint64_t frameID, const SecurityOriginData& securityOrigin, const String& message, const String& defaultValue, Ref<Messages::WebPageProxy::RunJavaScriptPrompt::DelayedReply>&& reply)
+void WebPageProxy::runJavaScriptPrompt(uint64_t frameID, const SecurityOriginData& securityOrigin, const String& message, const String& defaultValue, Messages::WebPageProxy::RunJavaScriptPrompt::DelayedReply&& reply)
 {
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
@@ -4104,7 +4140,7 @@ void WebPageProxy::runJavaScriptPrompt(uint64_t frameID, const SecurityOriginDat
     }
 
     m_uiClient->runJavaScriptPrompt(this, message, defaultValue, frame, securityOrigin, [reply = WTFMove(reply)](const String& result) {
-        reply->send(result);
+        reply(result);
     });
 }
 
@@ -4131,7 +4167,7 @@ void WebPageProxy::connectionWillOpen(IPC::Connection& connection)
 
 void WebPageProxy::webProcessWillShutDown()
 {
-    m_webProcessLifetimeTracker.webProcessWillShutDown();
+    m_webProcessLifetimeTracker.webPageLeavingWebProcess();
 }
 
 void WebPageProxy::processDidFinishLaunching()
@@ -4173,24 +4209,24 @@ void WebPageProxy::unavailablePluginButtonClicked(uint32_t opaquePluginUnavailab
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
 #if ENABLE(WEBGL)
-void WebPageProxy::webGLPolicyForURL(URL&& url, Ref<Messages::WebPageProxy::WebGLPolicyForURL::DelayedReply>&& reply)
+void WebPageProxy::webGLPolicyForURL(URL&& url, Messages::WebPageProxy::WebGLPolicyForURL::DelayedReply&& reply)
 {
     if (m_navigationClient) {
         m_navigationClient->webGLLoadPolicy(*this, url, [reply = WTFMove(reply)](WebGLLoadPolicy policy) {
-            reply->send(static_cast<uint32_t>(policy));
+            reply(static_cast<uint32_t>(policy));
         });
     } else
-        reply->send(static_cast<uint32_t>(m_loaderClient->webGLLoadPolicy(*this, url)));
+        reply(static_cast<uint32_t>(m_loaderClient->webGLLoadPolicy(*this, url)));
 }
 
-void WebPageProxy::resolveWebGLPolicyForURL(URL&& url, Ref<Messages::WebPageProxy::ResolveWebGLPolicyForURL::DelayedReply>&& reply)
+void WebPageProxy::resolveWebGLPolicyForURL(URL&& url, Messages::WebPageProxy::ResolveWebGLPolicyForURL::DelayedReply&& reply)
 {
     if (m_navigationClient) {
         m_navigationClient->resolveWebGLLoadPolicy(*this, url, [reply = WTFMove(reply)](WebGLLoadPolicy policy) {
-            reply->send(static_cast<uint32_t>(policy));
+            reply(static_cast<uint32_t>(policy));
         });
     } else
-        reply->send(static_cast<uint32_t>(m_loaderClient->resolveWebGLLoadPolicy(*this, url)));
+        reply(static_cast<uint32_t>(m_loaderClient->resolveWebGLLoadPolicy(*this, url)));
 }
 #endif // ENABLE(WEBGL)
 
@@ -4199,10 +4235,10 @@ void WebPageProxy::setToolbarsAreVisible(bool toolbarsAreVisible)
     m_uiClient->setToolbarsAreVisible(*this, toolbarsAreVisible);
 }
 
-void WebPageProxy::getToolbarsAreVisible(Ref<Messages::WebPageProxy::GetToolbarsAreVisible::DelayedReply>&& reply)
+void WebPageProxy::getToolbarsAreVisible(Messages::WebPageProxy::GetToolbarsAreVisible::DelayedReply&& reply)
 {
     m_uiClient->toolbarsAreVisible(*this, [reply = WTFMove(reply)](bool visible) {
-        reply->send(visible);
+        reply(visible);
     });
 }
 
@@ -4211,10 +4247,10 @@ void WebPageProxy::setMenuBarIsVisible(bool menuBarIsVisible)
     m_uiClient->setMenuBarIsVisible(*this, menuBarIsVisible);
 }
 
-void WebPageProxy::getMenuBarIsVisible(Ref<Messages::WebPageProxy::GetMenuBarIsVisible::DelayedReply>&& reply)
+void WebPageProxy::getMenuBarIsVisible(Messages::WebPageProxy::GetMenuBarIsVisible::DelayedReply&& reply)
 {
     m_uiClient->menuBarIsVisible(*this, [reply = WTFMove(reply)] (bool visible) {
-        reply->send(visible);
+        reply(visible);
     });
 }
 
@@ -4223,10 +4259,10 @@ void WebPageProxy::setStatusBarIsVisible(bool statusBarIsVisible)
     m_uiClient->setStatusBarIsVisible(*this, statusBarIsVisible);
 }
 
-void WebPageProxy::getStatusBarIsVisible(Ref<Messages::WebPageProxy::GetStatusBarIsVisible::DelayedReply>&& reply)
+void WebPageProxy::getStatusBarIsVisible(Messages::WebPageProxy::GetStatusBarIsVisible::DelayedReply&& reply)
 {
     m_uiClient->statusBarIsVisible(*this, [reply = WTFMove(reply)] (bool visible) {
-        reply->send(visible);
+        reply(visible);
     });
 }
 
@@ -4240,10 +4276,10 @@ void WebPageProxy::setWindowFrame(const FloatRect& newWindowFrame)
     m_uiClient->setWindowFrame(*this, m_pageClient.convertToDeviceSpace(newWindowFrame));
 }
 
-void WebPageProxy::getWindowFrame(Ref<Messages::WebPageProxy::GetWindowFrame::DelayedReply>&& reply)
+void WebPageProxy::getWindowFrame(Messages::WebPageProxy::GetWindowFrame::DelayedReply&& reply)
 {
     m_uiClient->windowFrame(*this, [this, protectedThis = makeRef(*this), reply = WTFMove(reply)] (FloatRect frame) {
-        reply->send(m_pageClient.convertToUserSpace(frame));
+        reply(m_pageClient.convertToUserSpace(frame));
     });
 }
 
@@ -4252,14 +4288,14 @@ void WebPageProxy::getWindowFrameWithCallback(Function<void(FloatRect)>&& comple
     m_uiClient->windowFrame(*this, WTFMove(completionHandler));
 }
 
-void WebPageProxy::screenToRootView(const IntPoint& screenPoint, Ref<Messages::WebPageProxy::ScreenToRootView::DelayedReply>&& reply)
+void WebPageProxy::screenToRootView(const IntPoint& screenPoint, Messages::WebPageProxy::ScreenToRootView::DelayedReply&& reply)
 {
-    reply->send(m_pageClient.screenToRootView(screenPoint));
+    reply(m_pageClient.screenToRootView(screenPoint));
 }
     
-void WebPageProxy::rootViewToScreen(const IntRect& viewRect, Ref<Messages::WebPageProxy::RootViewToScreen::DelayedReply>&& reply)
+void WebPageProxy::rootViewToScreen(const IntRect& viewRect, Messages::WebPageProxy::RootViewToScreen::DelayedReply&& reply)
 {
-    reply->send(m_pageClient.rootViewToScreen(viewRect));
+    reply(m_pageClient.rootViewToScreen(viewRect));
 }
     
 #if PLATFORM(IOS)
@@ -4274,7 +4310,7 @@ void WebPageProxy::rootViewToAccessibilityScreen(const IntRect& viewRect, IntRec
 }
 #endif
 
-void WebPageProxy::runBeforeUnloadConfirmPanel(uint64_t frameID, const SecurityOriginData& securityOrigin, const String& message, RefPtr<Messages::WebPageProxy::RunBeforeUnloadConfirmPanel::DelayedReply> reply)
+void WebPageProxy::runBeforeUnloadConfirmPanel(uint64_t frameID, const SecurityOriginData& securityOrigin, const String& message, Messages::WebPageProxy::RunBeforeUnloadConfirmPanel::DelayedReply reply)
 {
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
@@ -4287,7 +4323,7 @@ void WebPageProxy::runBeforeUnloadConfirmPanel(uint64_t frameID, const SecurityO
             automationSession->willShowJavaScriptDialog(*this);
     }
 
-    m_uiClient->runBeforeUnloadConfirmPanel(this, message, frame, securityOrigin, [reply](bool result) { reply->send(result); });
+    m_uiClient->runBeforeUnloadConfirmPanel(this, message, frame, securityOrigin, [reply = WTFMove(reply)](bool result) { reply(result); });
 }
 
 void WebPageProxy::didChangeViewportProperties(const ViewportAttributes& attr)
@@ -5583,7 +5619,9 @@ void WebPageProxy::processDidTerminate(ProcessTerminationReason reason)
     // For bringup of process swapping, NavigationSwap termination will not go out to clients.
     // If it does *during* process swapping, and the client triggers a reload, that causes bizarre WebKit re-entry.
     // FIXME: This might have to change
-    if (reason != ProcessTerminationReason::NavigationSwap) {
+    if (reason == ProcessTerminationReason::NavigationSwap)
+        m_webProcessLifetimeTracker.webPageLeavingWebProcess();
+    else {
         navigationState().clearAllNavigations();
 
         if (m_navigationClient)
@@ -5803,9 +5841,12 @@ void WebPageProxy::resetStateAfterProcessExited(ProcessTerminationReason termina
     m_touchEventQueue.clear();
 #endif
 
-    PageLoadState::Transaction transaction = m_pageLoadState.transaction();
-    m_pageLoadState.reset(transaction);
+    if (terminationReason != ProcessTerminationReason::NavigationSwap) {
+        PageLoadState::Transaction transaction = m_pageLoadState.transaction();
+        m_pageLoadState.reset(transaction);
+    }
 
+    // FIXME: <rdar://problem/38676604> In case of process swaps, the old process should gracefully suspend instead of terminating.
     m_process->processTerminated();
 }
 
@@ -5977,7 +6018,7 @@ void WebPageProxy::didReceiveAuthenticationChallengeProxy(uint64_t frameID, Ref<
         m_loaderClient->didReceiveAuthenticationChallengeInFrame(*this, *frame, authenticationChallenge.get());
 }
 
-void WebPageProxy::exceededDatabaseQuota(uint64_t frameID, const String& originIdentifier, const String& databaseName, const String& displayName, uint64_t currentQuota, uint64_t currentOriginUsage, uint64_t currentDatabaseUsage, uint64_t expectedUsage, Ref<Messages::WebPageProxy::ExceededDatabaseQuota::DelayedReply>&& reply)
+void WebPageProxy::exceededDatabaseQuota(uint64_t frameID, const String& originIdentifier, const String& databaseName, const String& displayName, uint64_t currentQuota, uint64_t currentOriginUsage, uint64_t currentDatabaseUsage, uint64_t expectedUsage, Messages::WebPageProxy::ExceededDatabaseQuota::DelayedReply&& reply)
 {
     ExceededDatabaseQuotaRecords& records = ExceededDatabaseQuotaRecords::singleton();
     std::unique_ptr<ExceededDatabaseQuotaRecords::Record> newRecord = records.createRecord(frameID,
@@ -5988,26 +6029,23 @@ void WebPageProxy::exceededDatabaseQuota(uint64_t frameID, const String& originI
     if (records.areBeingProcessed())
         return;
 
-    ExceededDatabaseQuotaRecords::Record* record = records.next();
-    while (record) {
+    while (auto* record = records.next()) {
         WebFrameProxy* frame = m_process->webFrame(record->frameID);
         MESSAGE_CHECK(frame);
 
-        RefPtr<API::SecurityOrigin> origin = API::SecurityOrigin::create(SecurityOriginData::fromDatabaseIdentifier(record->originIdentifier)->securityOrigin());
-        auto currentReply = record->reply;
-        m_uiClient->exceededDatabaseQuota(this, frame, origin.get(),
-            record->databaseName, record->displayName, record->currentQuota,
-            record->currentOriginUsage, record->currentDatabaseUsage, record->expectedUsage,
-            [currentReply](unsigned long long newQuota) { currentReply->send(newQuota); });
-
-        record = records.next();
+        auto origin = API::SecurityOrigin::create(SecurityOriginData::fromDatabaseIdentifier(record->originIdentifier)->securityOrigin());
+        m_uiClient->exceededDatabaseQuota(this, frame, origin.ptr(), record->databaseName, record->displayName, record->currentQuota, record->currentOriginUsage, record->currentDatabaseUsage, record->expectedUsage, [currentReply = WTFMove(record->reply)](unsigned long long newQuota) {
+            currentReply(newQuota);
+        });
     }
 }
 
-void WebPageProxy::reachedApplicationCacheOriginQuota(const String& originIdentifier, uint64_t currentQuota, uint64_t totalBytesNeeded, Ref<Messages::WebPageProxy::ReachedApplicationCacheOriginQuota::DelayedReply>&& reply)
+void WebPageProxy::reachedApplicationCacheOriginQuota(const String& originIdentifier, uint64_t currentQuota, uint64_t totalBytesNeeded, Messages::WebPageProxy::ReachedApplicationCacheOriginQuota::DelayedReply&& reply)
 {
     Ref<SecurityOrigin> securityOrigin = SecurityOriginData::fromDatabaseIdentifier(originIdentifier)->securityOrigin();
-    m_uiClient->reachedApplicationCacheOriginQuota(this, securityOrigin.get(), currentQuota, totalBytesNeeded, [reply = WTFMove(reply)](unsigned long long newQuota) { reply->send(newQuota); });
+    m_uiClient->reachedApplicationCacheOriginQuota(this, securityOrigin.get(), currentQuota, totalBytesNeeded, [reply = WTFMove(reply)](unsigned long long newQuota) {
+        reply(newQuota);
+    });
 }
 
 void WebPageProxy::requestGeolocationPermissionForFrame(uint64_t geolocationID, uint64_t frameID, String originIdentifier)

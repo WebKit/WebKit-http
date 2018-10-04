@@ -100,11 +100,11 @@ static const double executablePoolReservationFraction = 0.15;
 static const double executablePoolReservationFraction = 0.25;
 #endif
 
-JS_EXPORTDATA uintptr_t startOfFixedExecutableMemoryPool;
-JS_EXPORTDATA uintptr_t endOfFixedExecutableMemoryPool;
-JS_EXPORTDATA bool useFastPermisionsJITCopy { false };
+JS_EXPORT_PRIVATE uintptr_t startOfFixedExecutableMemoryPool;
+JS_EXPORT_PRIVATE uintptr_t endOfFixedExecutableMemoryPool;
+JS_EXPORT_PRIVATE bool useFastPermisionsJITCopy { false };
 
-JS_EXPORTDATA JITWriteSeparateHeapsFunction jitWriteSeparateHeapsFunction;
+JS_EXPORT_PRIVATE JITWriteSeparateHeapsFunction jitWriteSeparateHeapsFunction;
 
 #if !USE(EXECUTE_ONLY_JIT_WRITE_FUNCTION) && HAVE(REMAP_JIT)
 static uintptr_t startOfFixedWritableMemoryPool;
@@ -238,6 +238,7 @@ private:
 
         MacroAssembler jit;
 
+        jit.tagReturnAddress();
         jit.move(MacroAssembler::TrustedImmPtr(writableAddr), x7);
         jit.addPtr(x7, x0);
 
@@ -298,7 +299,8 @@ private:
         // to appear in the console or anywhere in memory, via the PrintStream buffer.
         // The second is we can't guarantee that the code is readable when using the
         // asyncDisassembly option as our caller will set our pages execute only.
-        return linkBuffer.finalizeCodeWithoutDisassembly(NoPtrTag);
+        PtrTag tag = ptrTag(JITWriteThunkPtrTag, &jitWriteSeparateHeapsFunction);
+        return linkBuffer.finalizeCodeWithoutDisassembly(tag);
     }
 #else // CPU(ARM64) && USE(EXECUTE_ONLY_JIT_WRITE_FUNCTION)
     static void genericWriteToJITRegion(off_t offset, const void* data, size_t dataSize)

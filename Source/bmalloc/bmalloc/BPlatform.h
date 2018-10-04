@@ -57,7 +57,7 @@
 #define BOS_WINDOWS 1
 #endif
 
-#if BOS(DARWIN)
+#if BOS(DARWIN) && !defined(BUILDING_WITH_CMAKE)
 #if TARGET_OS_IPHONE
 #define BPLATFORM_IOS 1
 #if TARGET_OS_SIMULATOR
@@ -240,3 +240,6 @@
 #if !defined(BUNUSED_PARAM)
 #define BUNUSED_PARAM(variable) (void)variable
 #endif
+
+/* This is used for debugging when hacking on how bmalloc calculates its physical footprint. */
+#define ENABLE_PHYSICAL_PAGE_MAP 0

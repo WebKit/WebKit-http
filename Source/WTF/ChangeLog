@@ -1,3 +1,262 @@
+2018-04-04  Brent Fulgham  <bfulgham@apple.com>
+
+        Failures from mach port reference handling should be fatal
+        https://bugs.webkit.org/show_bug.cgi?id=184202
+        <rdar://problem/37771114>
+
+        Reviewed by Anders Carlsson.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/MachSendRight.h: Copied from WebCore/platform/cocoa/MachSendRight.h.
+        (WebCore::MachSendRight::operator bool const): Deleted.
+        (WebCore::MachSendRight::sendRight const): Deleted.
+        * wtf/PlatformMac.cmake:
+        * wtf/cocoa/CPUTimeCocoa.mm:
+        (WTF::CPUTime::forCurrentThread): Do proper cleanup if the port is invalid.
+        * wtf/cocoa/MachSendRight.cpp: Copied from WebCore/platform/cocoa/MachSendRight.cpp.
+        (WTF::retainSendRight):
+        (WTF::releaseSendRight):
+        (WTF::deallocateSendRightSafely):
+        (WebCore::retainSendRight): Deleted.
+        (WebCore::releaseSendRight): Deleted.
+        (WebCore::MachSendRight::adopt): Deleted.
+        (WebCore::MachSendRight::create): Deleted.
+        (WebCore::MachSendRight::MachSendRight): Deleted.
+        (WebCore::MachSendRight::~MachSendRight): Deleted.
+        (WebCore::MachSendRight::operator=): Deleted.
+        (WebCore::MachSendRight::copySendRight const): Deleted.
+        (WebCore::MachSendRight::leakSendRight): Deleted.
+
+2018-04-04  Youenn Fablet  <youenn@apple.com>
+
+        Introduce a ThreadSafeRefCounted parameter to ensure being destroyed on the main thread
+        https://bugs.webkit.org/show_bug.cgi?id=183988
+
+        Reviewed by Darin Adler.
+
+        * wtf/ThreadSafeRefCounted.h:
+        (WTF::ThreadSafeRefCounted::deref const):
+
+2018-04-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Remove Atomics.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=184300
+
+        Reviewed by Konstantin Tokarev.
+
+        This Atomics.cpp is a workaround for GCC which version is < 4.8.
+        Our compiler requirement is now 5.0.0. This workaround is no
+        longer necessary.
+
+        * wtf/Atomics.cpp: Removed.
+        * wtf/CMakeLists.txt:
+
+2018-04-03  Tomas Popela  <tpopela@redhat.com>
+
+        Unreviewed, mute the unused parameter compilation warning
+
+        Triggered on the PPC64 machine.
+
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::signalHandlerSuspendResume):
+
+2018-04-03  Tomas Popela  <tpopela@redhat.com>
+
+        Unreviewed, fix the unused variable compilation warning
+
+        Move the ucontext_t code under the HAVE(MACHINE_CONTEXT). Triggered
+        on the PPC64 machine.
+
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::signalHandlerSuspendResume):
+
+2018-04-02  Saam Barati  <sbarati@apple.com>
+
+        bmalloc should compute its own estimate of its footprint
+        https://bugs.webkit.org/show_bug.cgi?id=184121
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::fastCommitAlignedMemory):
+        (WTF::fastDecommitAlignedMemory):
+        * wtf/FastMalloc.h:
+
+2018-03-30  Filip Pizlo  <fpizlo@apple.com>
+
+        Strings and Vectors shouldn't do index masking
+        https://bugs.webkit.org/show_bug.cgi?id=184193
+
+        Reviewed by Mark Lam.
+
+        * wtf/SizeLimits.cpp:
+        * wtf/Vector.h:
+        (WTF::VectorBufferBase::allocateBuffer):
+        (WTF::VectorBufferBase::tryAllocateBuffer):
+        (WTF::VectorBufferBase::reallocateBuffer):
+        (WTF::VectorBufferBase::deallocateBuffer):
+        (WTF::VectorBufferBase::releaseBuffer):
+        (WTF::VectorBufferBase::VectorBufferBase):
+        (WTF::VectorBuffer::allocateBuffer):
+        (WTF::VectorBuffer::tryAllocateBuffer):
+        (WTF::VectorBuffer::swap):
+        (WTF::VectorBuffer::restoreInlineBufferIfNeeded):
+        (WTF::Vector::at):
+        (WTF::Vector::at const):
+        (WTF::VectorBufferBase::updateMask): Deleted.
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::flagIsSymbol):
+        (WTF::StringImpl::length const):
+        (WTF::StringImplShape::StringImplShape):
+        (WTF::StringImpl::at const):
+        (WTF::StringImpl::tailOffset):
+        (WTF::StringImpl::maskOffset): Deleted.
+        (WTF::StringImpl::mask const): Deleted.
+        * wtf/text/StringView.h:
+        (WTF::StringView::StringView):
+        (WTF::StringView::operator=):
+        (WTF::StringView::initialize):
+        (WTF::StringView::clear):
+        (WTF::StringView::operator[] const):
+        * wtf/text/WTFString.h:
+        (WTF::String::length const):
+        (WTF::String::mask const): Deleted.
+
+2018-03-30  Mark Lam  <mark.lam@apple.com>
+
+        Add pointer profiling support in baseline JIT and supporting files.
+        https://bugs.webkit.org/show_bug.cgi?id=184200
+        <rdar://problem/39057300>
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/PointerPreparations.h:
+        - Remove WTF_PREPARE_FUNCTION_POINTER_FOR_EXECUTION.  It is no longer needed.
+
+2018-03-30  JF Bastien  <jfbastien@apple.com>
+
+        WorkQueueWin: don't move rvalues
+        https://bugs.webkit.org/show_bug.cgi?id=184190
+        <rdar://problem/39049850>
+
+        Reviewed by Mark Lam.
+
+        As part of #184167 optional is now more frequently an rvalue
+        reference, and moving its .value() is not a thing that should be
+        done anymore.
+
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::unregisterAndCloseHandle):
+
+2018-03-30  JF Bastien  <jfbastien@apple.com>
+
+        Remove CXX_REFERENCE_QUALIFIED_FUNCTIONS and optional's equivalent
+        https://bugs.webkit.org/show_bug.cgi?id=184167
+        <rdar://problem/39023130>
+
+        Reviewed by Yusuke Suzuki.
+
+        Remove COMPILER_SUPPORTS(CXX_REFERENCE_QUALIFIED_FUNCTIONS), it's
+        supported by all compilers WebKit supports (it's a C++11 feature,
+        *detection* of it with __has_extension was added to clang on May
+        13th 2011, and VS2015 / GCC support it).
+
+        Optional.h had a similar thing, ditch it too.
+
+        * wtf/Compiler.h:
+        * wtf/Optional.h:
+        (std::optional::contained_val const):
+        (std::optional::contained_val):
+        * wtf/Ref.h:
+        * wtf/RefPtr.h:
+        * wtf/text/WTFString.cpp:
+        * wtf/text/WTFString.h:
+
+2018-03-30  JF Bastien  <jfbastien@apple.com>
+
+        Introduce WTF_LAZY_INSTANTIATE
+        https://bugs.webkit.org/show_bug.cgi?id=184169
+        <rdar://problem/39023385>
+
+        Reviewed by Mark Lam.
+
+        As part of #184164 I'm adding some forwarding methods to
+        WTF::String. These need to forward RetainPtr and CString, and
+        usually that would require #include'ing RetainPtr.h and CString.h
+        to WTFString.h which isn't really something we should do.
+
+        Introduce WTF_LAZY_INSTANTIATE to forward-declare functions which
+        just pass parameters to another function, and return whatever that
+        other function returned, without having to include the return's /
+        parameters' type header.
+
+        Try it out here: godbolt.org/g/oV8G5Q
+
+        * wtf/Forward.h:
+
+2018-03-29  JF Bastien  <jfbastien@apple.com>
+
+        Use Forward.h instead of forward-declaring WTF::String
+        https://bugs.webkit.org/show_bug.cgi?id=184172
+        <rdar://problem/39026146>
+
+        Reviewed by Yusuke Suzuki.
+
+        As part of #184164 I'm changing WTF::String, and the forward
+        declarations are just wrong because I'm making it templated. We
+        should use Forward.h anyways, so do that instead.
+
+        * wtf/Forward.h:
+        * wtf/HashTraits.h:
+        * wtf/PrintStream.h:
+
+2018-03-29  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Remove WTF_EXPORTDATA and JS_EXPORTDATA
+        https://bugs.webkit.org/show_bug.cgi?id=184170
+
+        Reviewed by JF Bastien.
+
+        Replace WTF_EXPORTDATA and JS_EXPORTDATA with
+        WTF_EXPORT_PRIVATE and JS_EXPORT_PRIVATE respectively.
+
+        * wtf/ExportMacros.h:
+        * wtf/Gigacage.h:
+        * wtf/HashTable.h:
+        * wtf/Threading.h:
+        * wtf/text/AtomicString.cpp:
+        * wtf/text/AtomicString.h:
+        * wtf/text/StringImpl.h:
+
+2018-03-29  Ross Kirsling  <ross.kirsling@sony.com>
+
+        MSVC __forceinline slows down JSC release build fivefold after r229391
+        https://bugs.webkit.org/show_bug.cgi?id=184062
+
+        Reviewed by Alex Christensen.
+
+        * wtf/Compiler.h:
+        Add ALWAYS_INLINE_EXCEPT_MSVC to support MSVC optimizer sensitivities.
+
+2018-03-29  JF Bastien  <jfbastien@apple.com>
+
+        Remove WTF_EXPORT_STRING_API
+        https://bugs.webkit.org/show_bug.cgi?id=184168
+        <rdar://problem/39023253>
+
+        Reviewed by Yusuke Suzuki.
+
+        Remove WTF_EXPORT_STRING_API as requested by a FIXME, and use
+        WTF_EXPORT_PRIVATE instead.
+
+        * wtf/ExportMacros.h:
+        * wtf/text/AtomicString.h:
+        * wtf/text/AtomicStringImpl.h:
+        * wtf/text/StringImpl.h:
+        * wtf/text/StringView.h:
+        * wtf/text/SymbolImpl.h:
+        * wtf/text/WTFString.h:
+
 2018-03-29  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r230062.

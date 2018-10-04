@@ -70,6 +70,7 @@
 #include "FocusEvent.h"
 #include "FontFaceSet.h"
 #include "FormController.h"
+#include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "FrameView.h"
@@ -115,7 +116,6 @@
 #include "LayoutDisallowedScope.h"
 #include "LoaderStrategy.h"
 #include "Logging.h"
-#include "MainFrame.h"
 #include "MediaCanStartListener.h"
 #include "MediaProducer.h"
 #include "MediaQueryList.h"
@@ -131,7 +131,6 @@
 #include "NodeRareData.h"
 #include "NodeWithIndex.h"
 #include "OriginAccessEntry.h"
-#include "OriginThreadLocalCache.h"
 #include "OverflowEvent.h"
 #include "PageConsoleClient.h"
 #include "PageGroup.h"
@@ -3460,29 +3459,14 @@ void Document::processReferrerPolicy(const String& policy)
     if (shouldEnforceQuickLookSandbox())
         return;
 #endif
-
-    // "never" / "default" / "always" are legacy keywords that we will support. They were defined in:
-    // https://www.w3.org/TR/2014/WD-referrer-policy-20140807/#referrer-policy-delivery-meta
-    if (equalLettersIgnoringASCIICase(policy, "no-referrer") || equalLettersIgnoringASCIICase(policy, "never"))
-        setReferrerPolicy(ReferrerPolicy::NoReferrer);
-    else if (equalLettersIgnoringASCIICase(policy, "unsafe-url") || equalLettersIgnoringASCIICase(policy, "always"))
-        setReferrerPolicy(ReferrerPolicy::UnsafeUrl);
-    else if (equalLettersIgnoringASCIICase(policy, "origin"))
-        setReferrerPolicy(ReferrerPolicy::Origin);
-    else if (equalLettersIgnoringASCIICase(policy, "origin-when-cross-origin"))
-        setReferrerPolicy(ReferrerPolicy::OriginWhenCrossOrigin);
-    else if (equalLettersIgnoringASCIICase(policy, "same-origin"))
-        setReferrerPolicy(ReferrerPolicy::SameOrigin);
-    else if (equalLettersIgnoringASCIICase(policy, "strict-origin"))
-        setReferrerPolicy(ReferrerPolicy::StrictOrigin);
-    else if (equalLettersIgnoringASCIICase(policy, "strict-origin-when-cross-origin"))
-        setReferrerPolicy(ReferrerPolicy::StrictOriginWhenCrossOrigin);
-    else if (equalLettersIgnoringASCIICase(policy, "no-referrer-when-downgrade") || equalLettersIgnoringASCIICase(policy, "default"))
-        setReferrerPolicy(ReferrerPolicy::NoReferrerWhenDowngrade);
-    else {
+    
+    auto referrerPolicy = parseReferrerPolicy(policy, ShouldParseLegacyKeywords::Yes);
+    if (!referrerPolicy) {
         addConsoleMessage(MessageSource::Rendering, MessageLevel::Error, "Failed to set referrer policy: The value '" + policy + "' is not one of 'no-referrer', 'no-referrer-when-downgrade', 'same-origin', 'origin', 'strict-origin', 'origin-when-cross-origin', 'strict-origin-when-cross-origin' or 'unsafe-url'. Defaulting to 'no-referrer'.");
         setReferrerPolicy(ReferrerPolicy::NoReferrer);
+        return;
     }
+    setReferrerPolicy(referrerPolicy.value());
 }
 
 MouseEventWithHitTestResults Document::prepareMouseEvent(const HitTestRequest& request, const LayoutPoint& documentPoint, const PlatformMouseEvent& event)
@@ -7781,17 +7765,5 @@ void Document::setServiceWorkerConnection(SWClientConnection* serviceWorkerConne
     m_serviceWorkerConnection->registerServiceWorkerClient(topOrigin(), ServiceWorkerClientData::from(*this, *serviceWorkerConnection), controllingServiceWorkerRegistrationIdentifier);
 }
 #endif
-
-JSC::ThreadLocalCache& Document::threadLocalCache()
-{
-    if (!m_threadLocalCache) {
-        SecurityOrigin& origin = securityOrigin();
-        if (origin.isUnique() || (origin.isLocal() && origin.enforcesFilePathSeparation()))
-            m_threadLocalCache = JSC::ThreadLocalCache::create(commonVM().heap);
-        else
-            m_threadLocalCache = OriginThreadLocalCache::create(origin);
-    }
-    return *m_threadLocalCache;
-}
 
 } // namespace WebCore

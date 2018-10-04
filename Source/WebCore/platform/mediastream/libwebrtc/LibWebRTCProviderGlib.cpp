@@ -23,6 +23,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "config.h"
+#include "LibWebRTCProviderGlib.h"
+
+#include <wtf/UniqueRef.h>
+
 namespace WebCore {
 
 UniqueRef<LibWebRTCProvider> LibWebRTCProvider::create()

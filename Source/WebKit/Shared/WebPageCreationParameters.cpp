@@ -54,7 +54,7 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << itemStates;
     encoder << sessionID;
     encoder << highestUsedBackForwardItemID;
-    encoder << userContentControllerID;
+    encoder << userContentControllerID.toUInt64();
     encoder << visitedLinkTableID;
     encoder << websiteDataStoreID;
     encoder << canRunBeforeUnloadConfirmPanel;
@@ -179,8 +179,13 @@ std::optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::
         return std::nullopt;
     if (!decoder.decode(parameters.highestUsedBackForwardItemID))
         return std::nullopt;
-    if (!decoder.decode(parameters.userContentControllerID))
+
+    std::optional<uint64_t> userContentControllerIdentifier;
+    decoder >> userContentControllerIdentifier;
+    if (!userContentControllerIdentifier)
         return std::nullopt;
+    parameters.userContentControllerID = makeObjectIdentifier<UserContentControllerIdentifierType>(*userContentControllerIdentifier);
+
     if (!decoder.decode(parameters.visitedLinkTableID))
         return std::nullopt;
     if (!decoder.decode(parameters.websiteDataStoreID))

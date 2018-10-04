@@ -62,13 +62,13 @@ using namespace WebCore;
 namespace WebKit {
 
 struct NetworkResourceLoader::SynchronousLoadData {
-    SynchronousLoadData(RefPtr<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply>&& reply)
+    SynchronousLoadData(Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply&& reply)
         : delayedReply(WTFMove(reply))
     {
         ASSERT(delayedReply);
     }
     ResourceRequest currentRequest;
-    RefPtr<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply> delayedReply;
+    Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply delayedReply;
     ResourceResponse response;
     ResourceError error;
 };
@@ -82,15 +82,15 @@ static void sendReplyToSynchronousRequest(NetworkResourceLoader::SynchronousLoad
     if (buffer && buffer->size())
         responseBuffer.append(buffer->data(), buffer->size());
 
-    data.delayedReply->send(data.error, data.response, responseBuffer);
+    data.delayedReply(data.error, data.response, responseBuffer);
     data.delayedReply = nullptr;
 }
 
-NetworkResourceLoader::NetworkResourceLoader(const NetworkResourceLoadParameters& parameters, NetworkConnectionToWebProcess& connection, RefPtr<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply>&& synchronousReply)
-    : m_parameters { parameters }
+NetworkResourceLoader::NetworkResourceLoader(NetworkResourceLoadParameters&& parameters, NetworkConnectionToWebProcess& connection, Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply&& synchronousReply)
+    : m_parameters { WTFMove(parameters) }
     , m_connection { connection }
-    , m_defersLoading { parameters.defersLoading }
-    , m_isAllowedToAskUserForCredentials { parameters.clientCredentialPolicy == ClientCredentialPolicy::MayAskClientForCredentials }
+    , m_defersLoading { m_parameters.defersLoading }
+    , m_isAllowedToAskUserForCredentials { m_parameters.clientCredentialPolicy == ClientCredentialPolicy::MayAskClientForCredentials }
     , m_bufferingTimer { *this, &NetworkResourceLoader::bufferingTimerFired }
     , m_cache { sessionID().isEphemeral() ? nullptr : NetworkProcess::singleton().cache() }
 {
@@ -176,6 +176,9 @@ void NetworkResourceLoader::retrieveCacheEntry(const ResourceRequest& request)
 
     RefPtr<NetworkResourceLoader> loader(this);
     m_cache->retrieve(request, { m_parameters.webPageID, m_parameters.webFrameID }, [this, loader = WTFMove(loader), request](auto entry) {
+#if RELEASE_LOG_DISABLED
+        UNUSED_PARAM(this);
+#endif
         if (loader->hasOneRef()) {
             // The loader has been aborted and is only held alive by this lambda.
             return;
@@ -453,10 +456,17 @@ void NetworkResourceLoader::willSendRedirectedRequest(ResourceRequest&& request,
         continueWillSendRequest(WTFMove(overridenRequest), false);
         return;
     }
-    send(Messages::WebResourceLoader::WillSendRequest(redirectRequest, redirectResponse));
-
     if (canUseCachedRedirect(request))
         m_cache->storeRedirect(request, redirectResponse, redirectRequest);
+
+    send(Messages::WebResourceLoader::WillSendRequest(redirectRequest, sanitizeRedirectResponseIfPossible(WTFMove(redirectResponse))));
+}
+
+ResourceResponse NetworkResourceLoader::sanitizeRedirectResponseIfPossible(ResourceResponse&& response)
+{
+    if (m_parameters.shouldRestrictHTTPResponseAccess)
+        response.sanitizeRedirectionHTTPHeaderFields();
+    return WTFMove(response);
 }
 
 void NetworkResourceLoader::continueWillSendRequest(ResourceRequest&& newRequest, bool isAllowedToAskUserForCredentials)
@@ -662,7 +672,7 @@ void NetworkResourceLoader::dispatchWillSendRequestForCacheEntry(std::unique_ptr
     LOG(NetworkCache, "(NetworkProcess) Executing cached redirect");
 
     ++m_redirectCount;
-    send(Messages::WebResourceLoader::WillSendRequest(*entry->redirectRequest(), entry->response()));
+    send(Messages::WebResourceLoader::WillSendRequest { *entry->redirectRequest(), sanitizeRedirectResponseIfPossible(ResourceResponse { entry->response() }) });
     m_isWaitingContinueWillSendRequestForCachedRedirect = true;
 }
 

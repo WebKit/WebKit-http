@@ -41,6 +41,8 @@ accessibility/atk/WebKitAccessibleWrapperAtk.cpp
 
 editing/atk/FrameSelectionAtk.cpp
 
+loader/soup/ResourceLoaderSoup.cpp
+
 page/linux/ResourceUsageOverlayLinux.cpp
 page/linux/ResourceUsageThreadLinux.cpp
 
@@ -81,6 +83,12 @@ platform/gtk/PasteboardGtk.cpp
 platform/gtk/ScrollAnimatorGtk.cpp
 platform/gtk/SelectionData.cpp
 
+platform/mediastream/gstreamer/RealtimeIncomingAudioSourceLibWebRTC.cpp
+platform/mediastream/gstreamer/RealtimeIncomingVideoSourceLibWebRTC.cpp
+platform/mediastream/gstreamer/RealtimeOutgoingAudioSourceLibWebRTC.cpp
+platform/mediastream/gstreamer/RealtimeOutgoingVideoSourceLibWebRTC.cpp
+
+platform/mediastream/libwebrtc/LibWebRTCAudioModule.cpp
 platform/mediastream/libwebrtc/LibWebRTCProviderGlib.cpp
 
 platform/text/Hyphenation.cpp

@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2013 University of Szeged. All rights reserved.
  * Copyright (C) 2013 Samsung Electronics. All rights reserved.
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,10 +25,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Options_h
-#define Options_h
+#pragma once
 
 #include <functional>
+#include <set>
 #include <stdio.h>
 #include <string>
 #include <vector>
@@ -37,20 +37,20 @@
 namespace WTR {
 
 struct Options {
-    Options();
-    bool useWaitToDumpWatchdogTimer;
-    bool forceNoTimeout;
-    bool verbose;
-    bool gcBetweenTests;
-    bool shouldDumpPixelsForAllTests;
-    bool printSupportedFeatures;
-    bool forceComplexText;
-    bool shouldUseAcceleratedDrawing;
-    bool shouldUseRemoteLayerTree;
-    bool shouldShowWebView;
-    bool shouldShowTouches;
+    bool useWaitToDumpWatchdogTimer { true };
+    bool forceNoTimeout { false };
+    bool verbose { false };
+    bool gcBetweenTests { false };
+    bool shouldDumpPixelsForAllTests { false };
+    bool printSupportedFeatures { false };
+    bool forceComplexText { false };
+    bool shouldUseAcceleratedDrawing { false };
+    bool shouldUseRemoteLayerTree { false };
+    bool shouldShowWebView { false };
+    bool shouldShowTouches { false };
+    bool allowAnyHTTPSCertificateForAllowedHosts { false };
     std::vector<std::string> paths;
-    std::vector<std::string> allowedHosts;
+    std::set<std::string> allowedHosts;
 };
 
 class Option {
@@ -77,4 +77,3 @@ private:
 
 } // namespace WTR
 
-#endif // Options_h

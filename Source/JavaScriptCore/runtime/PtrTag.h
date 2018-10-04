@@ -35,22 +35,38 @@ namespace JSC {
     v(NearJumpPtrTag) \
     v(CFunctionPtrTag) \
     \
+    v(B3CCallPtrTag) \
     v(BytecodePtrTag) \
     v(BytecodeHelperPtrTag) \
     v(CodeEntryPtrTag) \
     v(CodeEntryWithArityCheckPtrTag) \
     v(ExceptionHandlerPtrTag) \
+    v(GetPropertyPtrTag) \
+    v(GetterSetterPtrTag) \
+    v(HasPropertyPtrTag) \
     v(JITCodePtrTag) \
     v(JITOperationPtrTag) \
     v(JITThunkPtrTag) \
+    v(JITWriteThunkPtrTag) \
+    v(LLIntCallICPtrTag) \
+    v(MathICPtrTag) \
     v(NativeCodePtrTag) \
+    v(OperationLinkCallPtrTag) \
+    v(OperationLinkPolymorphicCallPtrTag) \
+    v(OperationVirtualCallPtrTag) \
+    v(PutPropertyPtrTag) \
     v(SlowPathPtrTag) \
+    v(SpecializedThunkPtrTag) \
+    v(SwitchTablePtrTag) \
     \
     v(Yarr8BitPtrTag) \
     v(Yarr16BitPtrTag) \
     v(YarrMatchOnly8BitPtrTag) \
     v(YarrMatchOnly16BitPtrTag) \
     v(YarrBacktrackPtrTag) \
+    \
+    v(WasmCallPtrTag) \
+    v(WasmHelperPtrTag) \
 
 
 enum PtrTag : uintptr_t {

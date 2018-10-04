@@ -37,10 +37,10 @@
 #import "WebPageProxy.h"
 #import "WebProcessProxy.h"
 #import <QuartzCore/CoreAnimation.h>
-#import <WebCore/MachSendRight.h>
 #import <WebCore/MediaPlayerEnums.h>
 #import <WebCore/TimeRanges.h>
 #import <pal/spi/cocoa/QuartzCoreSPI.h>
+#import <wtf/MachSendRight.h>
 
 #if PLATFORM(IOS)
 #import "RemoteLayerTreeDrawingAreaProxy.h"
@@ -256,6 +256,12 @@ void VideoFullscreenModelContext::didEnterFullscreen()
 {
     if (m_manager)
         m_manager->didEnterFullscreen(m_contextId);
+}
+
+void VideoFullscreenModelContext::willExitFullscreen()
+{
+    if (m_manager)
+        m_manager->willExitFullscreen(m_contextId);
 }
 
 void VideoFullscreenModelContext::didExitFullscreen()
@@ -541,6 +547,11 @@ void VideoFullscreenManagerProxy::preparedToReturnToInline(uint64_t contextId, b
 #endif
 }
 
+void VideoFullscreenManagerProxy::preparedToExitFullscreen(uint64_t contextId)
+{
+    ensureInterface(contextId).preparedToExitFullscreen();
+}
+
 #pragma mark Messages to VideoFullscreenManager
 
 void VideoFullscreenManagerProxy::requestFullscreenMode(uint64_t contextId, WebCore::HTMLMediaElementEnums::VideoFullscreenMode mode, bool finishedWithMedia)
@@ -566,6 +577,11 @@ void VideoFullscreenManagerProxy::returnVideoContentLayer(uint64_t contextId)
 void VideoFullscreenManagerProxy::didSetupFullscreen(uint64_t contextId)
 {
     m_page->send(Messages::VideoFullscreenManager::DidSetupFullscreen(contextId), m_page->pageID());
+}
+
+void VideoFullscreenManagerProxy::willExitFullscreen(uint64_t contextId)
+{
+    m_page->send(Messages::VideoFullscreenManager::WillExitFullscreen(contextId), m_page->pageID());
 }
 
 void VideoFullscreenManagerProxy::didExitFullscreen(uint64_t contextId)

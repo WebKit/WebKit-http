@@ -119,6 +119,7 @@ set(WTF_PUBLIC_HEADERS
     LoggingHashSet.h
     LoggingHashTraits.h
     MD5.h
+    MachSendRight.h
     MainThread.h
     MallocPtr.h
     MathExtras.h
@@ -322,7 +323,6 @@ set(WTF_PUBLIC_HEADERS
 
 set(WTF_SOURCES
     Assertions.cpp
-    Atomics.cpp
     AutomaticThread.cpp
     BitVector.cpp
     CPUTime.cpp
