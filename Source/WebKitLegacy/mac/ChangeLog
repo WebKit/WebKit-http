@@ -1,3 +1,245 @@
+2018-10-04  YUHAN WU  <yuhan_wu@apple.com>
+
+        Runtime flag and IDL for MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=190018
+
+        Reviewed by Youenn Fablet and Chris Dumez.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences mediaRecorderEnabled]):
+        (-[WebPreferences setMediaRecorderEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2018-10-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Enable selectionAcrossShadowBoundariesEnabled by default in WebKitLegacy
+        https://bugs.webkit.org/show_bug.cgi?id=190238
+
+        Reviewed by Antti Koivisto.
+
+        Enabled the feature by default.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2018-10-01  Dean Jackson  <dino@apple.com>
+
+        [macOS] Switching to discrete GPU should be done in the UI process
+        https://bugs.webkit.org/show_bug.cgi?id=189361
+        <rdar://problem/43949622>
+
+        Reviewed by Simon Fraser.
+
+        Implement a no-op SwitchingGPUClient instance in legacy WebKit. We will
+        not support swapping to the discrete GPU in this configuration.
+
+        * WebCoreSupport/WebSwitchingGPUClient.cpp: Added.
+        (WebKit::WebSwitchingGPUClient::singleton):
+        * WebCoreSupport/WebSwitchingGPUClient.h: Added.
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+
+2018-10-02  Alex Christensen  <achristensen@webkit.org>
+
+        Remove ParsedURLString
+        https://bugs.webkit.org/show_bug.cgi?id=190154
+
+        Reviewed by Chris Dumez.
+
+        * WebView/WebScriptDebugger.mm:
+        (toNSURL):
+
+2018-10-01  Dean Jackson  <dino@apple.com>
+
+        Remove CSS Animation Triggers
+        https://bugs.webkit.org/show_bug.cgi?id=190175
+        <rdar://problem/44925626>
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-10-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r236624 and r236671.
+        https://bugs.webkit.org/show_bug.cgi?id=190207
+
+        The change in r236624 introduced crashes on the bots
+        (Requested by ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "Refactoring: eliminate raw pointer usage in Fullscreen code"
+        https://bugs.webkit.org/show_bug.cgi?id=188747
+        https://trac.webkit.org/changeset/236624
+
+        "Unify implementation in VideoFullscreenInterfaceAVKit"
+        https://bugs.webkit.org/show_bug.cgi?id=190091
+        https://trac.webkit.org/changeset/236671
+
+2018-10-01  Alex Christensen  <achristensen@webkit.org>
+
+        URL should not use TextEncoding internally
+        https://bugs.webkit.org/show_bug.cgi?id=190111
+
+        Reviewed by Andy Estes.
+
+        * Misc/WebNSURLExtras.mm:
+
+2018-09-28  Jer Noble  <jer.noble@apple.com>
+
+        Refactoring: eliminate raw pointer usage in Fullscreen code
+        https://bugs.webkit.org/show_bug.cgi?id=188747
+        <rdar://problem/43541164>
+
+        Reviewed by Alex Christensen.
+
+        PlaybackSessionInterface no longer has an invalidate() method.
+
+        * WebView/WebView.mm:
+        (-[WebView _clearPlaybackControlsManager]):
+
+2018-09-28  Chris Dumez  <cdumez@apple.com>
+
+        Drop support for cross-origin-window-policy header
+        https://bugs.webkit.org/show_bug.cgi?id=190081
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2018-09-28  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Rename createMarkup to serializePreservingVisualAppearance
+        https://bugs.webkit.org/show_bug.cgi?id=190086
+
+        Reviewed by Wenson Hsieh.
+
+        * DOM/WebDOMOperations.mm:
+        (-[DOMRange markupString]):
+
+2018-09-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r236605.
+        https://bugs.webkit.org/show_bug.cgi?id=190087
+
+        caused three API test timeouts (Requested by jernoble on
+        #webkit).
+
+        Reverted changeset:
+
+        "Refactoring: eliminate raw pointer usage in Fullscreen code"
+        https://bugs.webkit.org/show_bug.cgi?id=188747
+        https://trac.webkit.org/changeset/236605
+
+2018-09-28  Jer Noble  <jer.noble@apple.com>
+
+        Refactoring: eliminate raw pointer usage in Fullscreen code
+        https://bugs.webkit.org/show_bug.cgi?id=188747
+        <rdar://problem/43541164>
+
+        Reviewed by Alex Christensen.
+
+        PlaybackSessionInterface no longer has an invalidate() method.
+
+        * WebView/WebView.mm:
+        (-[WebView _clearPlaybackControlsManager]):
+
+2018-09-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Use enum class in createMarkup arguments
+        https://bugs.webkit.org/show_bug.cgi?id=190028
+
+        Reviewed by Wenson Hsieh.
+
+        * DOM/WebDOMOperations.mm:
+        (-[DOMNode markupString]): Moved the code from WebCore/editing/markup.cpp
+        (-[DOMRange markupString]): Ditto.
+
+2018-09-27  Antoine Quint  <graouts@apple.com>
+
+        [Web Animations] Turn Web Animations with CSS integration on
+        https://bugs.webkit.org/show_bug.cgi?id=184819
+        <rdar://problem/39597337>
+
+        Reviewed by Dean Jackson.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2018-09-26  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Selection should work across shadow boundary when initiated by a mouse drag
+        https://bugs.webkit.org/show_bug.cgi?id=151380
+        <rdar://problem/24363872>
+
+        Reviewed by Wenson Hsieh.
+
+        Added selectionAcrossShadowBoundariesEnabled as a preference to be used in DumpRenderTree.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences selectionAcrossShadowBoundariesEnabled]):
+        (-[WebPreferences setSelectionAcrossShadowBoundariesEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2018-09-24  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Refactor Editor::fontAttributesForSelectionStart to be platform-agnostic
+        https://bugs.webkit.org/show_bug.cgi?id=189918
+        Work towards <rdar://problem/44648705>
+
+        Reviewed by Tim Horton.
+
+        Replace call sites of fontAttributesForSelectionStart() to fontAttributesAtSelectionStart().createDictionary().
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _selectionStartFontAttributesAsRTF]):
+        (-[WebHTMLView _updateFontPanel]):
+        * WebView/WebView.mm:
+        (-[WebView typingAttributes]):
+
+2018-09-17  Darin Adler  <darin@apple.com>
+
+        Use OpaqueJSString rather than JSRetainPtr inside WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=189652
+
+        Reviewed by Saam Barati.
+
+        * WebView/WebPDFRepresentation.mm:
+        (-[WebPDFRepresentation finishedLoadingWithDataSource:]): Use OpaqueJSString::create.
+
+2018-09-14  Jer Noble  <jer.noble@apple.com>
+
+        Turn SourceBufferChangeTypeEnabled on by default
+        https://bugs.webkit.org/show_bug.cgi?id=189527
+
+        Reviewed by Eric Carlson.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2018-09-12  Alex Christensen  <achristensen@webkit.org>
+
+        Fix an internal build after r235935
+        https://bugs.webkit.org/show_bug.cgi?id=188996
+
+        * Carbon/HIWebView.mm:
+        (Draw):
+        r235935 fixed a mismatched macro with deprecated functions below it.  To quickly fix the build, I'm just going to restore the imbalance.
+
 2018-09-12  Guillaume Emont  <guijemont@igalia.com>
 
         Add IGNORE_WARNING_.* macros

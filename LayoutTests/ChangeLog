@@ -1,3 +1,45 @@
+2018-10-04  YUHAN WU  <yuhan_wu@apple.com>
+
+        runtime flag and IDL for MediaRecorder
+        https://bugs.webkit.org/show_bug.cgi?id=190018
+
+        Reviewed by Youenn Fablet and Chris Dumez.
+
+        * platform/win/TestExpectations:
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-capture-out-of-DOM-element-expected.txt:
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-framerate-0-expected.txt:
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-imagebitmaprenderingcontext-expected.txt:
+
+2018-10-04  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r236803.
+
+        Caused crashes on some bots
+
+        Reverted changeset:
+
+        "Regression(r236779): Crash when changing the input element
+        type from inside an 'input' event listener"
+        https://bugs.webkit.org/show_bug.cgi?id=190252
+        https://trac.webkit.org/changeset/236803
+
+2018-10-03  Justin Michaud  <justin_michaud@apple.com>
+
+        Registered custom properties should allow inheritance to be controlled
+        https://bugs.webkit.org/show_bug.cgi?id=190038
+
+        Reviewed by Antti Koivisto.
+
+        Add tests to check css registered custom properties with inherits. Also test
+        calc expression evaluation for inherited registered custom properties.
+
+        * css-custom-properties-api/inherits-expected.txt: Added.
+        * css-custom-properties-api/inherits.html: Added.
+        * css-custom-properties-api/length-expected.txt: Added.
+        * css-custom-properties-api/length.html: Added.
+        * css-custom-properties-api/length2-expected.txt: Added.
+        * css-custom-properties-api/length2.html: Added.
+
 2018-10-03  Youenn Fablet  <youenn@apple.com>
 
         Add VP8 support to WebRTC

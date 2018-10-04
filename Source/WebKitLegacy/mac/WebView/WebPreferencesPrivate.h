@@ -610,6 +610,7 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification WEBKIT_DEPR
 @property (nonatomic) BOOL accessibilityObjectModelEnabled;
 @property (nonatomic) BOOL ariaReflectionEnabled;
 @property (nonatomic) BOOL mediaCapabilitiesEnabled;
+@property (nonatomic) BOOL mediaRecorderEnabled;
 @property (nonatomic) BOOL allowCrossOriginSubresourcesToAskForCredentials;
 
 #if TARGET_OS_IPHONE
