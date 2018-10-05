@@ -98,11 +98,6 @@ Color RenderThemeHaiku::platformInactiveSelectionForegroundColor() const
     return Color(0, 0, 0, 255);
 }
 
-Color RenderThemeHaiku::platformFocusRingColor(bool) const
-{
-    return ui_color(B_NAVIGATION_BASE_COLOR);
-}
-
 bool RenderThemeHaiku::paintSliderTrack(const RenderObject& object, const PaintInfo& info, const IntRect& intRect)
 {
     rgb_color base = ui_color(B_PANEL_BACKGROUND_COLOR);
