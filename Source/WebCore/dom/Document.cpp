@@ -2291,6 +2291,8 @@ void Document::attachToCachedFrame(CachedFrameBase& cachedFrame)
     ASSERT(cachedFrame.view());
     ASSERT(m_pageCacheState == Document::InPageCache);
     observeFrame(&cachedFrame.view()->frame());
+    if (auto* window = domWindow())
+        window->attachToFrame(cachedFrame.view()->frame());
 }
 
 void Document::detachFromCachedFrame(CachedFrameBase& cachedFrame)
@@ -8061,6 +8063,14 @@ String Document::signedPublicKeyAndChallengeString(unsigned keySizeIndex, const 
     if (!page)
         return emptyString();
     return page->chrome().client().signedPublicKeyAndChallengeString(keySizeIndex, challengeString, url);
+}
+
+void Document::detachFromFrame()
+{
+    if (auto* window = domWindow())
+        window->willDetachDocumentFromFrame();
+
+    observeFrame(nullptr);
 }
 
 } // namespace WebCore
