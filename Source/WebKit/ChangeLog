@@ -1,3 +1,284 @@
+2018-10-05  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] RealtimeMediaSource should be able to vend hashed IDs
+        https://bugs.webkit.org/show_bug.cgi?id=190142
+        <rdar://problem/44911109>
+
+        Reviewed by Youenn Fablet.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<MediaConstraints>::encode):
+        (IPC::ArgumentCoder<MediaConstraints>::decode):
+        * UIProcess/Cocoa/UserMediaCaptureManagerProxy.cpp:
+        (WebKit::UserMediaCaptureManagerProxy::createMediaSourceForCaptureDeviceWithConstraints):
+        * UIProcess/Cocoa/UserMediaCaptureManagerProxy.h:
+        * UIProcess/Cocoa/UserMediaCaptureManagerProxy.messages.in:
+        * UIProcess/UserMediaPermissionRequestManagerProxy.cpp:
+        (WebKit::UserMediaPermissionRequestManagerProxy::requestUserMediaPermissionForFrame):
+        * WebProcess/cocoa/UserMediaCaptureManager.cpp:
+        (WebKit::UserMediaCaptureManager::Source::Source):
+        (WebKit::UserMediaCaptureManager::createCaptureSource):
+        * WebProcess/cocoa/UserMediaCaptureManager.h:
+
+2018-10-03  Jer Noble  <jer.noble@apple.com>
+
+        Add support for reporting "display composited video frames" through the VideoPlaybackQuality object.
+        https://bugs.webkit.org/show_bug.cgi?id=190266
+
+        Reviewed by Eric Carlson.
+
+        Add a new preference to control the visibility of displayCompositedVideoFrames in the VideoPlaybackQualityObject.
+
+        * Shared/WebPreferences.yaml:
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences _setVideoQualityIncludesDisplayCompositingEnabled:]):
+        (-[WKPreferences _videoQualityIncludesDisplayCompositingEnabled]):
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+
+2018-10-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r236866.
+
+        Breaks internal builds.
+
+        Reverted changeset:
+
+        "Add support for reporting "display composited video frames"
+        through the VideoPlaybackQuality object."
+        https://bugs.webkit.org/show_bug.cgi?id=190266
+        https://trac.webkit.org/changeset/236866
+
+2018-10-05  Zach Li  <zachli@apple.com>
+
+        Expose whether WKWebProcessPlugInNodeHandle is a select element to clients
+        https://bugs.webkit.org/show_bug.cgi?id=190302
+        <rdar://problem/45031469>
+
+        Reviewed by Tim Horton.
+
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInNodeHandle.h:
+        Introduce a new property `isSelectElement`.
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInNodeHandle.mm:
+        (-[WKWebProcessPlugInNodeHandle isSelectElement]):
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.cpp:
+        (WebKit::InjectedBundleNodeHandle::isSelectElement const):
+        Check whether the node is a select element.
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.h:
+
+2018-10-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] [WK2] Expose some more editing SPI on WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=190232
+        <rdar://problem/44963368>
+
+        Reviewed by Tim Horton.
+
+        Exposes a few additional editing commands as SPI on WKWebView, by defining a new extension on WKWebView that
+        also conforms to <UIResponderStandardEditActions>. This patch implements nearly all of the remaining
+        unimplemented methods on UIResponderStandardEditActions, and the new extension augments this set of editing
+        methods by adding additional editing helpers that don't currently exist on iOS (e.g. toggleStrikeThrough and
+        insertUnorderedList). The names of these new methods have been largely been borrowed from their counterparts on
+        macOS (see: `NSResponder.h`).
+
+        The new edit actions are added in this patch on iOS are:
+
+        ```
+        - (void)alignCenter:(id)sender;
+        - (void)alignJustified:(id)sender;
+        - (void)alignLeft:(id)sender;
+        - (void)alignRight:(id)sender;
+        - (void)indent:(id)sender;
+        - (void)insertOrderedList:(id)sender;
+        - (void)insertUnorderedList:(id)sender;
+        - (void)outdent:(id)sender;
+        - (void)toggleStrikeThrough:(id)sender;
+        - (void)setFont:(UIFont *)font sender:(id)sender;
+        - (void)setFontSize:(CGFloat)fontSize sender:(id)sender;
+        - (void)setTextColor:(UIColor *)color sender:(id)sender;
+        ```
+
+        Tests:  WKWebViewEditActions.ListInsertion
+                WKWebViewEditActions.ChangeIndentation
+                WKWebViewEditActions.SetAlignment
+                WKWebViewEditActions.ToggleStrikeThrough
+                WKWebViewEditActions.ChangeFontSize
+                WKWebViewEditActions.SetTextColor
+                WKWebViewEditActions.SetFontFamily
+
+        * Platform/spi/ios/UIKitSPI.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView canPerformAction:withSender:]):
+
+        Update this to handle the new editing actions. For now, we simply treat all of the new edit actions in the same
+        way as we currently treat bold, italic and underline: that is, they are enabled only when the user is in a
+        richly contenteditable element.
+
+        (-[WKWebView setFont:sender:]):
+        (-[WKWebView setFontSize:sender:]):
+
+        Construct and send a set of FontChanges.
+
+        (-[WKWebView setTextColor:sender:]):
+
+        Invoke "ForeColor" with the serialized color representation. This allows us to handle `rgba()` color values,
+        which hex format would not permit.
+
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+        Add the new SPI.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::changeFontAttributes):
+        (WebKit::WebPageProxy::changeFont):
+
+        Pull logic for applying font and font attribute style changes out of macOS-specific code, and into
+        platform-agnostic code in WebPage and WebPageProxy.
+
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/ios/WKContentViewInteraction.h:
+
+        Add the new supported editing commands as supported actions in WKWebView. The only new editing commands that
+        aren't present in this list are -setFont:sender:, -setColor:sender:, and -setFontSize:sender: which are manually
+        handled in places where the `FOR_EACH_WKCONTENTVIEW_ACTION` macro is otherwise used. In a followup, we could
+        consider augmenting `FOR_EACH_WKCONTENTVIEW_ACTION` to handle actions with multiple arguments.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+
+        Define a new helper macro here to define boilerplate implementations of the -…ForWebView edit command
+        implementations that turn around and invoke `_page->executeEditCommand` with no additional arguments, and an
+        edit command name matching that of the WebCore edit command.
+
+        (-[WKContentView toggleStrikeThroughForWebView:]):
+        (-[WKContentView increaseSizeForWebView:]):
+        (-[WKContentView decreaseSizeForWebView:]):
+        (-[WKContentView setFontForWebView:sender:]):
+        (-[WKContentView setFontSizeForWebView:sender:]):
+        (-[WKContentView setTextColorForWebView:sender:]):
+        (-[WKContentView canPerformActionForWebView:sender:]):
+
+        Add …ForWebView plumbing for the new editing actions, so they turn around and call into WKContentView by
+        default, but behavior may be overridden in WKWebView.
+
+        * UIProcess/mac/WebPageProxyMac.mm:
+        (WebKit::WebPageProxy::changeFontAttributes): Deleted.
+        (WebKit::WebPageProxy::changeFont): Deleted.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::changeFontAttributes):
+        (WebKit::WebPage::changeFont):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::changeFontAttributes): Deleted.
+        (WebKit::WebPage::changeFont): Deleted.
+
+2018-10-04  Jer Noble  <jer.noble@apple.com>
+
+        Add support for reporting "display composited video frames" through the VideoPlaybackQuality object.
+        https://bugs.webkit.org/show_bug.cgi?id=190266
+
+        Reviewed by Eric Carlson.
+
+        Add a new preference to control the visibility of displayCompositedVideoFrames in the VideoPlaybackQualityObject.
+
+        * Shared/WebPreferences.yaml:
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences _setVideoQualityIncludesDisplayCompositingEnabled:]):
+        (-[WKPreferences _videoQualityIncludesDisplayCompositingEnabled]):
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+
+2018-10-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Cocoa] Add SPI to expose typing attributes at the current selection on WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=190119
+        <rdar://problem/44767062>
+
+        Reviewed by Tim Horton.
+
+        Add support for new WebKit2 SPI to notify the UI delegate about font attributes when the editor state changes
+        (e.g. due to selection changes, or executing an edit command). See below for more detail.
+
+        Test: FontAttributes.FontAttributesAfterChangingSelection
+
+        * Shared/EditorState.cpp:
+        (WebKit::EditorState::PostLayoutData::encode const):
+        (WebKit::EditorState::PostLayoutData::decode):
+        * Shared/EditorState.h:
+
+        Add a new optional `FontAttributes` member to EditorState's post-layout data. FontAttributes are computed and
+        sent over IPC only if the UI delegate implements the new delegate hook which requires information about font
+        attributes.
+
+        * Shared/WebPageCreationParameters.cpp:
+        (WebKit::WebPageCreationParameters::encode const):
+        (WebKit::WebPageCreationParameters::decode):
+        * Shared/WebPageCreationParameters.h:
+
+        Add a new flag for the UI process to let a new web page know whether it should additionally compute font
+        attributes when computing editor state.
+
+        * UIProcess/API/APIUIClient.h:
+        (API::UIClient::needsFontAttributes const):
+        (API::UIClient::didChangeFontAttributes):
+        * UIProcess/API/Cocoa/WKUIDelegatePrivate.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _didChangeEditorState]):
+        * UIProcess/Cocoa/UIDelegate.h:
+        * UIProcess/Cocoa/UIDelegate.mm:
+        (WebKit::UIDelegate::setDelegate):
+        (WebKit::UIDelegate::UIClient::didChangeFontAttributes):
+
+        Call out to the UI delegate with a font attribute dictionary, created via FontAttributes on EditorState's
+        post-layout data.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::setUIClient):
+
+        Update whether or not the UI process needs to know about font attributes. The UI process only requires font
+        attribute information if the UI delegate implements `-_webView:didChangeFontAttributes:`.
+
+        (WebKit::WebPageProxy::setNeedsFontAttributes):
+        (WebKit::WebPageProxy::creationParameters):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::editorStateChanged):
+        * UIProcess/mac/WebPageProxyMac.mm:
+        (WebKit::WebPageProxy::editorStateChanged):
+
+        Update the cached font attributes in the UI process when receiving a new editor state update.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::m_cpuLimit):
+        (WebKit::WebPage::editorState const):
+        (WebKit::WebPage::setNeedsFontAttributes):
+
+        Add a new IPC hook to update whether or not the page should additionally compute font attributes. In the case
+        where the UI delegate changes from something that does not require font attributes to one that does, we
+        additionally schedule an editor state update.
+
+        (WebKit::WebPage::updateFontAttributesAfterEditorStateChange):
+
+        Private helper function to plumb FontAttributes to the UI client after an editor state change.
+
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2018-10-04  Jeremy Jones  <jeremyj@apple.com>
+
+        Unify implementation in VideoFullscreenInterfaceAVKit
+        https://bugs.webkit.org/show_bug.cgi?id=190091
+        rdar://problem/44734523
+
+        Reviewed by Jer Noble.
+
+        Unified code in VideoFullscreenInterfaceAVKit now that new code path is proven and include
+        any changes that had been made in the old path.
+
+        * UIProcess/Cocoa/VideoFullscreenManagerProxy.mm:
+        * WebProcess/cocoa/VideoFullscreenManager.mm:
+        (WebKit::VideoFullscreenManager::supportsVideoFullscreenStandby const):
+        (WebKit::VideoFullscreenManager::didSetupFullscreen):
+        (WebKit::VideoFullscreenManager::didExitFullscreen):
+
 2018-10-04  Matt Lewis  <jlewis3@apple.com>
 
         Unreviewed, rolling out r236730.

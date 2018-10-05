@@ -48,7 +48,7 @@ class DisplayCaptureSourceCocoa : public RealtimeMediaSource {
 public:
 
 protected:
-    DisplayCaptureSourceCocoa(String&&);
+    DisplayCaptureSourceCocoa(String&& name);
     virtual ~DisplayCaptureSourceCocoa();
 
     virtual RetainPtr<CVPixelBufferRef> generateFrame() = 0;
