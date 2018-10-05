@@ -56,7 +56,7 @@ static bool fastHandlerInstalled { false };
 
 static SignalAction trapHandler(Signal, SigInfo& sigInfo, PlatformRegisters& context)
 {
-    void* faultingInstruction = MachineContext::instructionPointer(context);
+    void* faultingInstruction = MachineContext::instructionPointer(context).untaggedExecutableAddress();
     dataLogLnIf(WasmFaultSignalHandlerInternal::verbose, "starting handler for fault at: ", RawPointer(faultingInstruction));
 
     dataLogLnIf(WasmFaultSignalHandlerInternal::verbose, "JIT memory start: ", RawPointer(reinterpret_cast<void*>(startOfFixedExecutableMemoryPool)), " end: ", RawPointer(reinterpret_cast<void*>(endOfFixedExecutableMemoryPool)));
@@ -80,13 +80,13 @@ static SignalAction trapHandler(Signal, SigInfo& sigInfo, PlatformRegisters& con
                 dataLogLnIf(WasmFaultSignalHandlerInternal::verbose, "function start: ", RawPointer(start), " end: ", RawPointer(end));
                 if (start <= faultingInstruction && faultingInstruction < end) {
                     dataLogLnIf(WasmFaultSignalHandlerInternal::verbose, "found match");
-                    MacroAssemblerCodeRef exceptionStub = Thunks::singleton().existingStub(throwExceptionFromWasmThunkGenerator);
+                    MacroAssemblerCodeRef<JITThunkPtrTag> exceptionStub = Thunks::singleton().existingStub(throwExceptionFromWasmThunkGenerator);
                     // If for whatever reason we don't have a stub then we should just treat this like a regular crash.
                     if (!exceptionStub)
                         break;
                     dataLogLnIf(WasmFaultSignalHandlerInternal::verbose, "found stub: ", RawPointer(exceptionStub.code().executableAddress()));
                     MachineContext::argumentPointer<1>(context) = reinterpret_cast<void*>(ExceptionType::OutOfBoundsMemoryAccess);
-                    MachineContext::instructionPointer(context) = exceptionStub.code().executableAddress();
+                    MachineContext::setInstructionPointer(context, exceptionStub.code().retagged<CFunctionPtrTag>());
                     return SignalAction::Handled;
                 }
             }

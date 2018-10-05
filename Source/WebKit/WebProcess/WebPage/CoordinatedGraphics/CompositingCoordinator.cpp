@@ -125,11 +125,6 @@ bool CompositingCoordinator::flushPendingLayerChanges()
     if (m_shouldSyncFrame) {
         didSync = true;
 
-        if (m_rootCompositingLayer) {
-            m_state.contentsSize = roundedIntSize(m_rootCompositingLayer->size());
-            if (CoordinatedGraphicsLayer* contentsLayer = mainContentsLayer())
-                m_state.coveredRect = contentsLayer->coverRect();
-        }
         m_state.scrollPosition = m_visibleContentsRect.location();
 
         m_client.commitSceneState(m_state);
@@ -280,20 +275,8 @@ FloatRect CompositingCoordinator::visibleContentsRect() const
     return m_visibleContentsRect;
 }
 
-CoordinatedGraphicsLayer* CompositingCoordinator::mainContentsLayer()
+void CompositingCoordinator::setVisibleContentsRect(const FloatRect& rect)
 {
-    if (!is<CoordinatedGraphicsLayer>(m_rootCompositingLayer))
-        return nullptr;
-
-    return downcast<CoordinatedGraphicsLayer>(*m_rootCompositingLayer).findFirstDescendantWithContentsRecursively();
-}
-
-void CompositingCoordinator::setVisibleContentsRect(const FloatRect& rect, const FloatPoint& trajectoryVector)
-{
-    // A zero trajectoryVector indicates that tiles all around the viewport are requested.
-    if (CoordinatedGraphicsLayer* contentsLayer = mainContentsLayer())
-        contentsLayer->setVisibleContentRectTrajectoryVector(trajectoryVector);
-
     bool contentsRectDidChange = rect != m_visibleContentsRect;
     if (contentsRectDidChange) {
         m_visibleContentsRect = rect;

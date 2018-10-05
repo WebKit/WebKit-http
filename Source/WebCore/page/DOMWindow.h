@@ -86,6 +86,7 @@ struct ImageBitmapOptions;
 struct WindowFeatures;
 
 enum SetLocationLocking { LockHistoryBasedOnGestureState, LockHistoryAndBackForwardList };
+enum class IncludeTargetOrigin { No, Yes };
 
 // FIXME: DOMWindow shouldn't subclass FrameDestructionObserver and instead should get to Frame via its Document.
 // FIXME: Rename DOMWindow to LocalWindow and AbstractDOMWindow to DOMWindow.
@@ -157,7 +158,7 @@ public:
     void print();
     void stop();
 
-    WEBCORE_EXPORT RefPtr<DOMWindow> open(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& urlString, const AtomicString& frameName, const String& windowFeaturesString);
+    WEBCORE_EXPORT RefPtr<WindowProxy> open(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& urlString, const AtomicString& frameName, const String& windowFeaturesString);
 
     void showModalDialog(const String& urlString, const String& dialogFeaturesString, DOMWindow& activeWindow, DOMWindow& firstWindow, const WTF::Function<void(DOMWindow&)>& prepareDialogFunction);
 
@@ -192,12 +193,12 @@ public:
     String defaultStatus() const;
     void setDefaultStatus(const String&);
 
-    DOMWindow* self() const;
+    WindowProxy* self() const;
 
-    DOMWindow* opener() const;
+    WindowProxy* opener() const;
     void disownOpener();
-    DOMWindow* parent() const;
-    DOMWindow* top() const;
+    WindowProxy* parent() const;
+    WindowProxy* top() const;
 
     Frame* frame() const final { return FrameDestructionObserver::frame(); }
 
@@ -226,7 +227,8 @@ public:
     PageConsoleClient* console() const;
 
     void printErrorMessage(const String&);
-    String crossDomainAccessErrorMessage(const DOMWindow& activeWindow);
+
+    String crossDomainAccessErrorMessage(const DOMWindow& activeWindow, IncludeTargetOrigin);
 
     ExceptionOr<void> postMessage(JSC::ExecState&, DOMWindow& incumbentWindow, JSC::JSValue message, const String& targetOrigin, Vector<JSC::Strong<JSC::JSObject>>&&);
     void postMessageTimerFired(PostMessageTimer&);

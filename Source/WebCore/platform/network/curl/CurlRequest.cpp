@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017 Sony Interactive Entertainment Inc.
+ * Copyright (C) 2018 Sony Interactive Entertainment Inc.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,6 +33,7 @@
 #include "MIMETypeRegistry.h"
 #include "ResourceError.h"
 #include "SharedBuffer.h"
+#include <wtf/Language.h>
 #include <wtf/MainThread.h>
 
 namespace WebCore {
@@ -163,11 +164,14 @@ CURL* CurlRequest::setupTransfer()
 {
     auto& sslHandle = CurlContext::singleton().sslHandle();
 
+    auto httpHeaderFields = m_request.httpHeaderFields();
+    appendAcceptLanguageHeader(httpHeaderFields);
+
     m_curlHandle = std::make_unique<CurlHandle>();
 
     m_curlHandle->initialize();
     m_curlHandle->setUrl(m_request.url());
-    m_curlHandle->appendRequestHeaders(m_request.httpHeaderFields());
+    m_curlHandle->appendRequestHeaders(httpHeaderFields);
 
     const auto& method = m_request.httpMethod();
     if (method == "GET")
@@ -406,25 +410,26 @@ void CurlRequest::didCompleteTransfer(CURLcode result)
         return;
     }
 
+    if (needToInvokeDidReceiveResponse()) {
+        // Processing of didReceiveResponse() has not been completed. (For example, HEAD method)
+        // When completeDidReceiveResponse() is called, didCompleteTransfer() will be called again.
+
+        m_finishedResultCode = result;
+        invokeDidReceiveResponse(m_response, Action::FinishTransfer);
+        return;
+    }
+
     if (result == CURLE_OK) {
-        if (needToInvokeDidReceiveResponse()) {
-            // Processing of didReceiveResponse() has not been completed. (For example, HEAD method)
-            // When completeDidReceiveResponse() is called, didCompleteTransfer() will be called again.
+        if (m_multipartHandle)
+            m_multipartHandle->didComplete();
 
-            m_finishedResultCode = result;
-            invokeDidReceiveResponse(m_response, Action::FinishTransfer);
-        } else {
-            if (m_multipartHandle)
-                m_multipartHandle->didComplete();
+        if (auto metrics = m_curlHandle->getNetworkLoadMetrics())
+            m_networkLoadMetrics = *metrics;
 
-            if (auto metrics = m_curlHandle->getNetworkLoadMetrics())
-                m_networkLoadMetrics = *metrics;
-
-            finalizeTransfer();
-            callClient([](CurlRequest& request, CurlRequestClient& client) {
-                client.curlDidComplete(request);
-            });
-        }
+        finalizeTransfer();
+        callClient([](CurlRequest& request, CurlRequestClient& client) {
+            client.curlDidComplete(request);
+        });
     } else {
         auto type = (result == CURLE_OPERATION_TIMEDOUT && m_request.timeoutInterval() > 0.0) ? ResourceError::Type::Timeout : ResourceError::Type::General;
         auto resourceError = ResourceError::httpError(result, m_request.url(), type);
@@ -451,6 +456,12 @@ void CurlRequest::finalizeTransfer()
     m_sslVerifier = nullptr;
     m_multipartHandle = nullptr;
     m_curlHandle = nullptr;
+}
+
+void CurlRequest::appendAcceptLanguageHeader(HTTPHeaderMap& header)
+{
+    for (const auto& language : userPreferredLanguages())
+        header.add(HTTPHeaderName::AcceptLanguage, language);
 }
 
 void CurlRequest::setupPUT(ResourceRequest& request)

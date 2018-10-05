@@ -81,7 +81,7 @@ void PolicyChecker::checkNavigationPolicy(ResourceRequest&& newRequest, bool did
     checkNavigationPolicy(WTFMove(newRequest), didReceiveRedirectResponse, m_frame.loader().activeDocumentLoader(), nullptr, WTFMove(function));
 }
 
-void PolicyChecker::checkNavigationPolicy(ResourceRequest&& request, bool didReceiveRedirectResponse, DocumentLoader* loader, FormState* formState, NavigationPolicyDecisionFunction&& function)
+void PolicyChecker::checkNavigationPolicy(ResourceRequest&& request, bool didReceiveRedirectResponse, DocumentLoader* loader, FormState* formState, NavigationPolicyDecisionFunction&& function, PolicyDecisionMode policyDecisionMode)
 {
     NavigationAction action = loader->triggeringAction();
     if (action.isEmpty()) {
@@ -123,8 +123,9 @@ void PolicyChecker::checkNavigationPolicy(ResourceRequest&& request, bool didRec
 
     loader->setLastCheckedRequest(ResourceRequest(request));
 
-    if (request.url() == blankURL())
-        return function(WTFMove(request), formState, ShouldContinue::Yes);
+    // Initial 'about:blank' load needs to happen synchronously so the policy check needs to be synchronous in this case.
+    if (!m_frame.loader().stateMachine().committedFirstRealDocumentLoad() && request.url().isBlankURL() && !substituteData.isValid())
+        policyDecisionMode = PolicyDecisionMode::Synchronous;
 
 #if USE(QUICK_LOOK)
     // Always allow QuickLook-generated URLs based on the protocol scheme.
@@ -149,9 +150,7 @@ void PolicyChecker::checkNavigationPolicy(ResourceRequest&& request, bool didRec
     m_delegateIsDecidingNavigationPolicy = true;
     String suggestedFilename = action.downloadAttribute().isEmpty() ? nullAtom() : action.downloadAttribute();
     ResourceRequest requestCopy = request;
-    m_frame.loader().client().dispatchDecidePolicyForNavigationAction(action, request, didReceiveRedirectResponse, formState, [this, function = WTFMove(function), request = WTFMove(requestCopy), formState = makeRefPtr(formState), suggestedFilename = WTFMove(suggestedFilename)](PolicyAction policyAction) mutable {
-        m_frame.loader().client().didDecidePolicyForNavigationAction();
-
+    m_frame.loader().client().dispatchDecidePolicyForNavigationAction(action, request, didReceiveRedirectResponse, formState, policyDecisionMode, [this, function = WTFMove(function), request = WTFMove(requestCopy), formState = makeRefPtr(formState), suggestedFilename = WTFMove(suggestedFilename)](PolicyAction policyAction) mutable {
         m_delegateIsDecidingNavigationPolicy = false;
 
         switch (policyAction) {

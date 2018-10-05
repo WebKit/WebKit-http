@@ -80,6 +80,16 @@
 #include <wtf/StackTrace.h>
 #endif
 
+// Enable the Objective-C API for platforms with a modern runtime. This has to match exactly what we
+// have in JSBase.h.
+#if !defined(JSC_OBJC_API_ENABLED)
+#if (defined(__clang__) && defined(__APPLE__) && ((defined(__MAC_OS_X_VERSION_MIN_REQUIRED) && !defined(__i386__)) || (defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE)))
+#define JSC_OBJC_API_ENABLED 1
+#else
+#define JSC_OBJC_API_ENABLED 0
+#endif
+#endif
+
 namespace WTF {
 class SimpleStats;
 } // namespace WTF
@@ -336,15 +346,15 @@ public:
     CompleteSubspace destructibleObjectSpace;
     CompleteSubspace eagerlySweptDestructibleObjectSpace;
     CompleteSubspace segmentedVariableObjectSpace;
-#if ENABLE(WEBASSEMBLY)
-    CompleteSubspace webAssemblyCodeBlockSpace;
-#endif
     
+    IsoSubspace arrayBufferConstructorSpace;
     IsoSubspace asyncFunctionSpace;
     IsoSubspace asyncGeneratorFunctionSpace;
     IsoSubspace boundFunctionSpace;
+    IsoSubspace callbackFunctionSpace;
     IsoSubspace customGetterSetterFunctionSpace;
     IsoSubspace directEvalExecutableSpace;
+    IsoSubspace errorConstructorSpace;
     IsoSubspace executableToCodeBlockEdgeSpace;
     IsoSubspace functionExecutableSpace;
     IsoSubspace functionSpace;
@@ -352,16 +362,30 @@ public:
     IsoSubspace indirectEvalExecutableSpace;
     IsoSubspace inferredTypeSpace;
     IsoSubspace inferredValueSpace;
+    IsoSubspace internalFunctionSpace;
+#if ENABLE(INTL)
+    IsoSubspace intlCollatorConstructorSpace;
+    IsoSubspace intlDateTimeFormatConstructorSpace;
+    IsoSubspace intlNumberFormatConstructorSpace;
+#endif
     IsoSubspace moduleProgramExecutableSpace;
+    IsoSubspace nativeErrorConstructorSpace;
     IsoSubspace nativeExecutableSpace;
     IsoSubspace nativeStdFunctionSpace;
+#if JSC_OBJC_API_ENABLED
+    IsoSubspace objCCallbackFunctionSpace;
+#endif
     IsoSubspace programExecutableSpace;
     IsoSubspace propertyTableSpace;
+    IsoSubspace proxyRevokeSpace;
+    IsoSubspace regExpConstructorSpace;
+    IsoSubspace strictModeTypeErrorFunctionSpace;
     IsoSubspace structureRareDataSpace;
     IsoSubspace structureSpace;
     IsoSubspace weakSetSpace;
     IsoSubspace weakMapSpace;
 #if ENABLE(WEBASSEMBLY)
+    IsoSubspace webAssemblyCodeBlockSpace;
     IsoSubspace webAssemblyFunctionSpace;
     IsoSubspace webAssemblyWrapperFunctionSpace;
 #endif
@@ -544,7 +568,7 @@ public:
     Interpreter* interpreter;
 #if ENABLE(JIT)
     std::unique_ptr<JITThunks> jitStubs;
-    MacroAssemblerCodeRef getCTIStub(ThunkGenerator generator)
+    MacroAssemblerCodeRef<JITThunkPtrTag> getCTIStub(ThunkGenerator generator)
     {
         return jitStubs->ctiStub(this, generator);
     }
@@ -556,7 +580,7 @@ public:
     NativeExecutable* getHostFunction(NativeFunction, NativeFunction constructor, const String& name);
     NativeExecutable* getHostFunction(NativeFunction, Intrinsic, NativeFunction constructor, const DOMJIT::Signature*, const String& name);
 
-    MacroAssemblerCodePtr getCTIInternalFunctionTrampolineFor(CodeSpecializationKind);
+    MacroAssemblerCodePtr<JSEntryPtrTag> getCTIInternalFunctionTrampolineFor(CodeSpecializationKind);
 
     static ptrdiff_t exceptionOffset()
     {

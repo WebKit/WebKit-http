@@ -738,8 +738,6 @@ void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceRespons
         return;
     }
 
-    ASSERT(!m_isDecidingNavigationPolicyDecision);
-
     RefPtr<API::Object> userData;
 
     // Notify the bundle client.
@@ -749,7 +747,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceRespons
         return;
     }
 
-    bool canShowMIMEType = webPage->canShowMIMEType(response.mimeType());
+    bool canShowResponse = webPage->canShowResponse(response);
 
     WebCore::Frame* coreFrame = m_frame->coreFrame();
     auto* policyDocumentLoader = coreFrame ? coreFrame->loader().provisionalDocumentLoader() : nullptr;
@@ -757,7 +755,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceRespons
     
     Ref<WebFrame> protector(*m_frame);
     uint64_t listenerID = m_frame->setUpPolicyListener(WTFMove(function), WebFrame::ForNavigationAction::No);
-    if (!webPage->send(Messages::WebPageProxy::DecidePolicyForResponse(m_frame->frameID(), SecurityOriginData::fromFrame(coreFrame), navigationID, response, request, canShowMIMEType, listenerID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get()))))
+    if (!webPage->send(Messages::WebPageProxy::DecidePolicyForResponse(m_frame->frameID(), SecurityOriginData::fromFrame(coreFrame), navigationID, response, request, canShowResponse, listenerID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get()))))
         m_frame->didReceivePolicyDecision(listenerID, PolicyAction::Ignore, 0, { }, { });
 }
 
@@ -815,7 +813,7 @@ void WebFrameLoaderClient::applyToDocumentLoader(WebsitePoliciesData&& websitePo
     WebsitePoliciesData::applyToDocumentLoader(WTFMove(websitePolicies), *documentLoader);
 }
 
-void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const NavigationAction& navigationAction, const ResourceRequest& request, bool didReceiveRedirectResponse, FormState* formState, FramePolicyFunction&& function)
+void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const NavigationAction& navigationAction, const ResourceRequest& request, bool didReceiveRedirectResponse, FormState* formState, PolicyDecisionMode policyDecisionMode, FramePolicyFunction&& function)
 {
     WebPage* webPage = m_frame ? m_frame->page() : nullptr;
     if (!webPage) {
@@ -824,10 +822,6 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
     }
 
     LOG(Loading, "WebProcess %i - dispatchDecidePolicyForNavigationAction to request url %s", getCurrentProcessID(), request.url().string().utf8().data());
-
-    m_isDecidingNavigationPolicyDecision = true;
-    if (m_frame->isMainFrame())
-        webPage->didStartNavigationPolicyCheck();
 
     // Always ignore requests with empty URLs. 
     if (request.isEmpty()) {
@@ -887,29 +881,29 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
 
     // Notify the UIProcess.
     Ref<WebFrame> protect(*m_frame);
+
+    if (policyDecisionMode == PolicyDecisionMode::Synchronous) {
+        uint64_t newNavigationID;
+        PolicyAction policyAction;
+        DownloadID downloadID;
+        std::optional<WebsitePoliciesData> websitePolicies;
+
+        if (!webPage->sendSync(Messages::WebPageProxy::DecidePolicyForNavigationActionSync(m_frame->frameID(), SecurityOriginData::fromFrame(coreFrame), documentLoader->navigationID(), navigationActionData, originatingFrameInfoData, originatingFrame && originatingFrame->page() ? originatingFrame->page()->pageID() : 0, navigationAction.resourceRequest(), request, listenerID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())), Messages::WebPageProxy::DecidePolicyForNavigationActionSync::Reply(newNavigationID, policyAction, downloadID, websitePolicies))) {
+            m_frame->didReceivePolicyDecision(listenerID, PolicyAction::Ignore, 0, { }, { });
+            return;
+        }
+
+        m_frame->didReceivePolicyDecision(listenerID, policyAction, 0, downloadID, { });
+        return;
+    }
+
+    ASSERT(policyDecisionMode == PolicyDecisionMode::Asynchronous);
     if (!webPage->send(Messages::WebPageProxy::DecidePolicyForNavigationAction(m_frame->frameID(), SecurityOriginData::fromFrame(coreFrame), documentLoader->navigationID(), navigationActionData, originatingFrameInfoData, originatingFrame && originatingFrame->page() ? originatingFrame->page()->pageID() : 0, navigationAction.resourceRequest(), request, listenerID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get()))))
         m_frame->didReceivePolicyDecision(listenerID, PolicyAction::Ignore, 0, { }, { });
 }
 
-void WebFrameLoaderClient::didDecidePolicyForNavigationAction()
-{
-    if (!m_isDecidingNavigationPolicyDecision)
-        return;
-
-    m_isDecidingNavigationPolicyDecision = false;
-
-    if (!m_frame || !m_frame->isMainFrame())
-        return;
-
-    if (auto* webPage = m_frame->page())
-        webPage->didCompleteNavigationPolicyCheck();
-}
-
 void WebFrameLoaderClient::cancelPolicyCheck()
 {
-    if (m_isDecidingNavigationPolicyDecision)
-        didDecidePolicyForNavigationAction();
-
     m_frame->invalidatePolicyListener();
 }
 
@@ -1119,13 +1113,6 @@ bool WebFrameLoaderClient::shouldGoToHistoryItem(HistoryItem* item) const
     WebPage* webPage = m_frame->page();
     if (!webPage)
         return false;
-    
-    uint64_t itemID = WebBackForwardListProxy::idForItem(item);
-    if (!itemID) {
-        // We should never be considering navigating to an item that is not actually in the back/forward list.
-        ASSERT_NOT_REACHED();
-        return false;
-    }
 
     RefPtr<InjectedBundleBackForwardListItem> bundleItem = InjectedBundleBackForwardListItem::create(item);
     RefPtr<API::Object> userData;
@@ -1135,7 +1122,7 @@ bool WebFrameLoaderClient::shouldGoToHistoryItem(HistoryItem* item) const
     if (!shouldGoToBackForwardListItem)
         return false;
 
-    webPage->send(Messages::WebPageProxy::WillGoToBackForwardListItem(itemID, bundleItem->isInPageCache(), UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
+    webPage->send(Messages::WebPageProxy::WillGoToBackForwardListItem(item->identifier(), bundleItem->isInPageCache(), UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
     return true;
 }
 
@@ -1322,8 +1309,6 @@ void WebFrameLoaderClient::provisionalLoadStarted()
     WebPage* webPage = m_frame->page();
     if (!webPage)
         return;
-
-    ASSERT(!m_isDecidingNavigationPolicyDecision);
 
     if (m_frame->isMainFrame()) {
         webPage->didStartPageTransition();
@@ -1857,6 +1842,15 @@ void WebFrameLoaderClient::finishedLoadingIcon(uint64_t callbackIdentifier, Shar
         else
             webPage->send(Messages::WebPageProxy::FinishedLoadingIcon(callbackID, { nullptr, 0 }));
     }
+}
+
+void WebFrameLoaderClient::didCreateWindow(DOMWindow& window)
+{
+    auto* webPage = m_frame->page();
+    if (!webPage)
+        return;
+
+    webPage->send(Messages::WebPageProxy::DidCreateWindow(m_frame->frameID(), window.identifier()));
 }
 
 #if ENABLE(APPLICATION_MANIFEST)

@@ -41,7 +41,7 @@ enum class BindingFailure {
     OutOfMemory,
 };
 
-Expected<MacroAssemblerCodeRef, BindingFailure> wasmToWasm(const Signature&, unsigned importIndex);
+Expected<MacroAssemblerCodeRef<WasmEntryPtrTag>, BindingFailure> wasmToWasm(unsigned importIndex);
 
 } } // namespace JSC::Wasm
 

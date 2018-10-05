@@ -325,8 +325,8 @@ class EmptyPaymentCoordinatorClient final : public PaymentCoordinatorClient {
 
 class EmptyPluginInfoProvider final : public PluginInfoProvider {
     void refreshPlugins() final { };
-    void getPluginInfo(Page&, Vector<PluginInfo>&, std::optional<Vector<SupportedPluginName>>&) final { }
-    void getWebVisiblePluginInfo(Page&, Vector<PluginInfo>&) final { }
+    Vector<PluginInfo> pluginInfo(Page&, std::optional<Vector<SupportedPluginName>>&) final { return { }; }
+    Vector<PluginInfo> webVisiblePluginInfo(Page&, const URL&) final { return { }; }
 };
 
 class EmptyPopupMenu : public PopupMenu {
@@ -436,7 +436,7 @@ void EmptyFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const Naviga
 {
 }
 
-void EmptyFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const NavigationAction&, const ResourceRequest&, bool, FormState*, FramePolicyFunction&&)
+void EmptyFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const NavigationAction&, const ResourceRequest&, bool, FormState*, PolicyDecisionMode, FramePolicyFunction&&)
 {
 }
 

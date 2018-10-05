@@ -391,7 +391,6 @@ bindings/js/JSDOMPromiseDeferred.cpp
 bindings/js/JSDOMWindowBase.cpp
 bindings/js/JSDOMWindowCustom.cpp
 bindings/js/JSDOMWindowProperties.cpp
-bindings/js/JSDOMWindowProxy.cpp
 bindings/js/JSDOMWrapper.cpp
 bindings/js/JSDOMWrapperCache.cpp
 bindings/js/JSDocumentCustom.cpp
@@ -433,6 +432,8 @@ bindings/js/JSPluginElementFunctions.cpp
 bindings/js/JSPopStateEventCustom.cpp
 bindings/js/JSReadableStreamPrivateConstructors.cpp
 bindings/js/JSReadableStreamSourceCustom.cpp
+bindings/js/JSRemoteDOMWindowBase.cpp
+bindings/js/JSRemoteDOMWindowCustom.cpp
 bindings/js/JSSVGPathSegCustom.cpp
 bindings/js/JSStyleSheetCustom.cpp
 bindings/js/JSServiceWorkerClientCustom.cpp
@@ -450,6 +451,7 @@ bindings/js/JSWebGL2RenderingContextCustom.cpp
 bindings/js/JSWebGLRenderingContextCustom.cpp
 bindings/js/JSWebGPURenderPassAttachmentDescriptorCustom.cpp
 bindings/js/JSWebGPURenderingContextCustom.cpp
+bindings/js/JSWindowProxy.cpp
 bindings/js/JSWorkerGlobalScopeBase.cpp
 bindings/js/JSWorkerGlobalScopeCustom.cpp
 bindings/js/JSWorkerNavigatorCustom.cpp
@@ -468,7 +470,7 @@ bindings/js/StructuredClone.cpp
 bindings/js/SerializedScriptValue.cpp
 bindings/js/WebCoreJSClientData.cpp
 bindings/js/WebCoreTypedArrayController.cpp
-bindings/js/WindowProxyController.cpp
+bindings/js/WindowProxy.cpp
 bindings/js/WorkerScriptController.cpp
 
 bridge/IdentifierRep.cpp
@@ -540,6 +542,7 @@ crypto/keys/CryptoKeyRSAComponents.cpp
 crypto/keys/CryptoKeyRaw.cpp
 
 css/BasicShapeFunctions.cpp
+css/CSSAnimationTriggerScrollValue.cpp
 css/CSSAspectRatioValue.cpp
 css/CSSBasicShapes.cpp
 css/CSSBorderImage.cpp
@@ -1741,6 +1744,7 @@ platform/network/ResourceHandle.cpp
 platform/network/ResourceHandleClient.cpp
 platform/network/ResourceRequestBase.cpp
 platform/network/ResourceResponseBase.cpp
+platform/network/SameSiteInfo.cpp
 platform/network/SocketStreamHandle.cpp
 platform/network/SocketStreamHandleImpl.cpp
 platform/network/SynchronousLoaderClient.cpp
@@ -2144,6 +2148,7 @@ svg/SVGFontFaceSrcElement.cpp
 svg/SVGFontFaceUriElement.cpp
 svg/SVGForeignObjectElement.cpp
 svg/SVGGElement.cpp
+svg/SVGGeometryElement.cpp
 svg/SVGGlyphElement.cpp
 svg/SVGGlyphRefElement.cpp
 svg/SVGGradientElement.cpp
@@ -2834,6 +2839,7 @@ JSReadableStreamDefaultController.cpp
 JSReadableStreamDefaultReader.cpp
 JSReadableStreamSink.cpp
 JSReadableStreamSource.cpp
+JSRemoteDOMWindow.cpp
 JSRequestAnimationFrameCallback.cpp
 JSRsaHashedImportParams.cpp
 JSRsaHashedKeyGenParams.cpp
@@ -2917,6 +2923,7 @@ JSSVGFontFaceSrcElement.cpp
 JSSVGFontFaceUriElement.cpp
 JSSVGForeignObjectElement.cpp
 JSSVGGElement.cpp
+JSSVGGeometryElement.cpp
 JSSVGGlyphElement.cpp
 JSSVGGlyphRefElement.cpp
 JSSVGGradientElement.cpp

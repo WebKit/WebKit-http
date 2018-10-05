@@ -52,29 +52,29 @@ enum {
     PROP_VIRTUAL_MACHINE,
 };
 
-struct ExceptionHandler {
-    ExceptionHandler(JSCExceptionHandler handler, void* userData = nullptr, GDestroyNotify destroyNotifyFunction = nullptr)
+struct JSCContextExceptionHandler {
+    JSCContextExceptionHandler(JSCExceptionHandler handler, void* userData = nullptr, GDestroyNotify destroyNotifyFunction = nullptr)
         : handler(handler)
         , userData(userData)
         , destroyNotifyFunction(destroyNotifyFunction)
     {
     }
 
-    ~ExceptionHandler()
+    ~JSCContextExceptionHandler()
     {
         if (destroyNotifyFunction)
             destroyNotifyFunction(userData);
     }
 
-    ExceptionHandler(ExceptionHandler&& other)
+    JSCContextExceptionHandler(JSCContextExceptionHandler&& other)
     {
         std::swap(handler, other.handler);
         std::swap(userData, other.userData);
         std::swap(destroyNotifyFunction, other.destroyNotifyFunction);
     }
 
-    ExceptionHandler(const ExceptionHandler&) = delete;
-    ExceptionHandler& operator=(const ExceptionHandler&) = delete;
+    JSCContextExceptionHandler(const JSCContextExceptionHandler&) = delete;
+    JSCContextExceptionHandler& operator=(const JSCContextExceptionHandler&) = delete;
 
     JSCExceptionHandler handler { nullptr };
     void* userData { nullptr };
@@ -85,7 +85,7 @@ struct _JSCContextPrivate {
     GRefPtr<JSCVirtualMachine> vm;
     JSRetainPtr<JSGlobalContextRef> jsContext;
     GRefPtr<JSCException> exception;
-    Vector<ExceptionHandler> exceptionHandlers;
+    Vector<JSCContextExceptionHandler> exceptionHandlers;
 };
 
 WEBKIT_DEFINE_TYPE(JSCContext, jsc_context, G_TYPE_OBJECT)
@@ -150,7 +150,7 @@ static void jscContextConstructed(GObject* object)
     if (!context->priv->vm)
         jscContextSetVirtualMachine(context, adoptGRef(jsc_virtual_machine_new()));
 
-    context->priv->exceptionHandlers.append(ExceptionHandler([](JSCContext* context, JSCException* exception, gpointer) {
+    context->priv->exceptionHandlers.append(JSCContextExceptionHandler([](JSCContext* context, JSCException* exception, gpointer) {
         jsc_context_throw_exception(context, exception);
     }));
 }
@@ -238,6 +238,11 @@ JSC::JSObject* jscContextGetOrCreateJSWrapper(JSCContext* context, JSClassRef js
 gpointer jscContextWrappedObject(JSCContext* context, JSObjectRef jsObject)
 {
     return wrapperMap(context).wrappedObject(context->priv->jsContext.get(), jsObject);
+}
+
+JSCClass* jscContextGetRegisteredClass(JSCContext* context, JSClassRef jsClass)
+{
+    return wrapperMap(context).registeredClass(jsClass);
 }
 
 CallbackData jscContextPushCallback(JSCContext* context, JSValueRef calleeValue, JSValueRef thisValue, size_t argumentCount, const JSValueRef* arguments)
@@ -589,6 +594,19 @@ void jsc_context_throw_exception(JSCContext* context, JSCException* exception)
 }
 
 /**
+ * jsc_context_clear_exception:
+ * @context: a #JSCContext
+ *
+ * Clear the uncaught exception in @context if any.
+ */
+void jsc_context_clear_exception(JSCContext* context)
+{
+    g_return_if_fail(JSC_IS_CONTEXT(context));
+
+    context->priv->exception = nullptr;
+}
+
+/**
  * JSCExceptionHandler:
  * @context: a #JSCContext
  * @exception: a #JSCException
@@ -749,23 +767,26 @@ JSCValue* jsc_context_get_value(JSCContext* context, const char* name)
  * jsc_context_register_class:
  * @context: a #JSCContext
  * @name: the class name
- * @parent_class: (nullable): a #JSCClass
+ * @parent_class: (nullable): a #JSCClass or %NULL
+ * @vtable: (nullable): an optional #JSCClassVTable or %NULL
  * @destroy_notify: (nullable): a destroy notifier for class instances
  *
  * Register a custom class in @context using the given @name. If the new class inherits from
  * another #JSCClass, the parent should be passed as @parent_class, otherwise %NULL should be
- * used. When an instance of the #JSCClass is cleared in the context, @destroy_notify is
- * called with the instance as parameter.
+ * used. The optional @vtable parameter allows to provide a custom implementation for handling
+ * the class, for example, to handle external properties not added to the prototype.
+ * When an instance of the #JSCClass is cleared in the context, @destroy_notify is called with
+ * the instance as parameter.
  *
  * Returns: (transfer none): a #JSCClass
  */
-JSCClass* jsc_context_register_class(JSCContext* context, const char* name, JSCClass* parentClass, GDestroyNotify destroyFunction)
+JSCClass* jsc_context_register_class(JSCContext* context, const char* name, JSCClass* parentClass, JSCClassVTable* vtable, GDestroyNotify destroyFunction)
 {
     g_return_val_if_fail(JSC_IS_CONTEXT(context), nullptr);
     g_return_val_if_fail(name, nullptr);
     g_return_val_if_fail(!parentClass || JSC_IS_CLASS(parentClass), nullptr);
 
-    auto jscClass = jscClassCreate(context, name, parentClass, destroyFunction);
+    auto jscClass = jscClassCreate(context, name, parentClass, vtable, destroyFunction);
     wrapperMap(context).registerClass(jscClass.get());
     return jscClass.get();
 }

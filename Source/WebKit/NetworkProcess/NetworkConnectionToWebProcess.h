@@ -40,6 +40,7 @@ class BlobDataFileReference;
 class HTTPHeaderMap;
 class ResourceError;
 class ResourceRequest;
+struct SameSiteInfo;
 
 enum class IncludeSecureCookies;
 }
@@ -75,6 +76,41 @@ public:
     void cleanupForSuspension(Function<void()>&&);
     void endSuspension();
 
+    // FIXME: We should store all redirected request/responses.
+    struct NetworkLoadInformation {
+        WebCore::ResourceResponse response;
+        WebCore::NetworkLoadMetrics metrics;
+    };
+
+    void takeNetworkLoadInformationResponse(ResourceLoadIdentifier identifier, WebCore::ResourceResponse& response)
+    {
+        response = m_networkLoadInformationByID.get(identifier).response;
+    }
+
+    void takeNetworkLoadInformationMetrics(ResourceLoadIdentifier identifier, WebCore::NetworkLoadMetrics& metrics)
+    {
+        metrics = m_networkLoadInformationByID.take(identifier).metrics;
+    }
+
+    void addNetworkLoadInformationResponse(ResourceLoadIdentifier identifier, const WebCore::ResourceResponse& response)
+    {
+        ASSERT(!m_networkLoadInformationByID.contains(identifier));
+        m_networkLoadInformationByID.add(identifier, NetworkLoadInformation { response, { } });
+    }
+
+    void addNetworkLoadInformationMetrics(ResourceLoadIdentifier identifier, const WebCore::NetworkLoadMetrics& metrics)
+    {
+        ASSERT(m_networkLoadInformationByID.contains(identifier));
+        m_networkLoadInformationByID.ensure(identifier, [] {
+            return NetworkLoadInformation { };
+        }).iterator->value.metrics = metrics;
+    }
+
+    void removeNetworkLoadInformation(ResourceLoadIdentifier identifier)
+    {
+        m_networkLoadInformationByID.remove(identifier);
+    }
+
 private:
     NetworkConnectionToWebProcess(IPC::Connection::Identifier);
 
@@ -102,11 +138,11 @@ private:
     void startDownload(PAL::SessionID, DownloadID, const WebCore::ResourceRequest&, const String& suggestedName = { });
     void convertMainResourceLoadToDownload(PAL::SessionID, uint64_t mainResourceLoadIdentifier, DownloadID, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&);
 
-    void cookiesForDOM(PAL::SessionID, const WebCore::URL& firstParty, const WebCore::URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, WebCore::IncludeSecureCookies, String& cookieString, bool& secureCookiesAccessed);
-    void setCookiesFromDOM(PAL::SessionID, const WebCore::URL& firstParty, const WebCore::URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, const String&);
+    void cookiesForDOM(PAL::SessionID, const WebCore::URL& firstParty, const WebCore::SameSiteInfo&, const WebCore::URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, WebCore::IncludeSecureCookies, String& cookieString, bool& secureCookiesAccessed);
+    void setCookiesFromDOM(PAL::SessionID, const WebCore::URL& firstParty, const WebCore::SameSiteInfo&, const WebCore::URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, const String&);
     void cookiesEnabled(PAL::SessionID, bool& result);
-    void cookieRequestHeaderFieldValue(PAL::SessionID, const WebCore::URL& firstParty, const WebCore::URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, WebCore::IncludeSecureCookies, String& cookieString, bool& secureCookiesAccessed);
-    void getRawCookies(PAL::SessionID, const WebCore::URL& firstParty, const WebCore::URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, Vector<WebCore::Cookie>&);
+    void cookieRequestHeaderFieldValue(PAL::SessionID, const WebCore::URL& firstParty, const WebCore::SameSiteInfo&, const WebCore::URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, WebCore::IncludeSecureCookies, String& cookieString, bool& secureCookiesAccessed);
+    void getRawCookies(PAL::SessionID, const WebCore::URL& firstParty, const WebCore::SameSiteInfo&, const WebCore::URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, Vector<WebCore::Cookie>&);
     void deleteCookie(PAL::SessionID, const WebCore::URL&, const String& cookieName);
 
     void registerFileBlobURL(const WebCore::URL&, const String& path, SandboxExtension::Handle&&, const String& contentType);
@@ -149,6 +185,9 @@ private:
     HashMap<uint64_t, RefPtr<NetworkSocketStream>> m_networkSocketStreams;
     HashMap<ResourceLoadIdentifier, RefPtr<NetworkResourceLoader>> m_networkResourceLoaders;
     HashMap<String, RefPtr<WebCore::BlobDataFileReference>> m_blobDataFileReferences;
+
+    HashMap<ResourceLoadIdentifier, NetworkLoadInformation> m_networkLoadInformationByID;
+
 
 #if USE(LIBWEBRTC)
     RefPtr<NetworkRTCProvider> m_rtcProvider;

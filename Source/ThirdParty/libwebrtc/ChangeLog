@@ -1,3 +1,51 @@
+2018-04-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r230862.
+        https://bugs.webkit.org/show_bug.cgi?id=184855
+
+        it is making some tests to time out on bots (Requested by
+        youenn on #webkit).
+
+        Reverted changeset:
+
+        "Mandate H264 hardware encoder for Mac in libwebrtc"
+        https://bugs.webkit.org/show_bug.cgi?id=184835
+        https://trac.webkit.org/changeset/230862
+
+2018-04-20  Youenn Fablet  <youenn@apple.com>
+
+        Mandate H264 hardware encoder for Mac in libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=184835
+
+        Reviewed by Eric Carlson.
+
+        Tested manually through console traces that hardware VCP encoder code path is actually used instead of software VCP encoder code path.
+
+        * Source/webrtc/sdk/objc/Framework/Classes/VideoToolbox/RTCVideoEncoderH264.mm:
+        (-[RTCVideoEncoderH264 resetCompressionSessionWithPixelFormat:]):
+        * WebKit/0001-Update-RTCVideoEncoderH264.mm-for-WebKit.patch: Added to cover this change and changes made in bug 184668 and 183961.
+
+2018-04-19  David Kilzer  <ddkilzer@apple.com>
+
+        Enable Objective-C weak references
+        <https://webkit.org/b/184789>
+        <rdar://problem/39571716>
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+        (CLANG_ENABLE_OBJC_WEAK): Enable.
+
+2018-04-16  Youenn Fablet  <youenn@apple.com>
+
+        Set H264 VT encoder usage to 1
+        https://bugs.webkit.org/show_bug.cgi?id=184668
+
+        Reviewed by Eric Carlson.
+
+        * Source/webrtc/sdk/objc/Framework/Classes/VideoToolbox/RTCVideoEncoderH264.mm:
+        (-[RTCVideoEncoderH264 configureCompressionSession]):
+
 2018-04-10  Youenn Fablet  <youenn@apple.com>
 
         webrtc/datachannel/basic-tcp.html will crash with an invalid crash

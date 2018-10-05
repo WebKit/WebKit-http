@@ -51,6 +51,7 @@
 #include <wtf/RefPtr.h>
 
 namespace API {
+class Navigation;
 class PageConfiguration;
 }
 
@@ -92,7 +93,6 @@ typedef BackgroundWebProcessCounter::Token BackgroundWebProcessToken;
 
 class WebProcessProxy : public ChildProcessProxy, public ResponsivenessTimer::Client, private ProcessThrottlerClient {
 public:
-    typedef HashMap<uint64_t, RefPtr<WebBackForwardListItem>> WebBackForwardListItemMap;
     typedef HashMap<uint64_t, RefPtr<WebFrameProxy>> WebFrameProxyMap;
     typedef HashMap<uint64_t, WebPageProxy*> WebPageProxyMap;
     typedef HashMap<uint64_t, RefPtr<API::UserInitiatedAction>> UserInitiatedActionMap;
@@ -124,7 +124,6 @@ public:
     void didDestroyVisitedLinkStore(VisitedLinkStore&);
     void didDestroyWebUserContentControllerProxy(WebUserContentControllerProxy&);
 
-    WebBackForwardListItem* webBackForwardItem(uint64_t itemID) const;
     RefPtr<API::UserInitiatedAction> userInitiatedActivity(uint64_t);
 
     ResponsivenessTimer& responsivenessTimer() { return m_responsivenessTimer; }
@@ -132,7 +131,7 @@ public:
 
     WebFrameProxy* webFrame(uint64_t) const;
     bool canCreateFrame(uint64_t frameID) const;
-    void frameCreated(uint64_t, WebFrameProxy*);
+    void frameCreated(uint64_t, WebFrameProxy&);
     void disconnectFramesFromPage(WebPageProxy*); // Including main frame.
     size_t frameCountInPage(WebPageProxy*) const; // Including main frame.
 
@@ -141,9 +140,6 @@ public:
     void testIncomingSyncIPCMessageWhileWaitingForSyncReply(bool& handled);
 
     void updateTextCheckerState();
-
-    void registerNewWebBackForwardListItem(WebBackForwardListItem&);
-    void removeBackForwardItem(uint64_t);
 
     void willAcquireUniversalFileReadSandboxExtension() { m_mayHaveUniversalFileReadSandboxExtension = true; }
     void assumeReadAccessToBaseURL(const String&);
@@ -209,8 +205,13 @@ public:
     void didCommitProvisionalLoad() { m_hasCommittedAnyProvisionalLoads = true; }
     bool hasCommittedAnyProvisionalLoads() const { return m_hasCommittedAnyProvisionalLoads; }
 
-    void suspendWebPageProxy(WebPageProxy&);
+    void suspendWebPageProxy(WebPageProxy&, API::Navigation&);
     void suspendedPageWasDestroyed(SuspendedPageProxy&);
+
+#if ENABLE(EXTRA_ZOOM_MODE)
+    void takeBackgroundActivityTokenForFullscreenInput();
+    void releaseBackgroundActivityTokenForFullscreenInput();
+#endif
 
 protected:
     static uint64_t generatePageID();
@@ -228,7 +229,7 @@ private:
     void maybeShutDown();
 
     // IPC message handlers.
-    void addOrUpdateBackForwardItem(uint64_t itemID, uint64_t pageID, const PageState&);
+    void updateBackForwardItem(const BackForwardListItemState&);
     void didDestroyFrame(uint64_t);
     void didDestroyUserGestureToken(uint64_t);
 
@@ -305,7 +306,6 @@ private:
     WebPageProxyMap m_pageMap;
     HashMap<uint64_t, SuspendedPageProxy*> m_suspendedPageMap;
     WebFrameProxyMap m_frameMap;
-    WebBackForwardListItemMap m_backForwardListItemMap;
     UserInitiatedActionMap m_userInitiatedActionMap;
 
     HashSet<VisitedLinkStore*> m_visitedLinkStores;
@@ -340,6 +340,10 @@ private:
     HashMap<uint64_t, CompletionHandler<void(WebCore::MessagePortChannelProvider::HasActivity)>> m_localPortActivityCompletionHandlers;
 
     bool m_hasCommittedAnyProvisionalLoads { false };
+
+#if ENABLE(EXTRA_ZOOM_MODE)
+    ProcessThrottler::BackgroundActivityToken m_backgroundActivityTokenForFullscreenFormControls;
+#endif
 };
 
 } // namespace WebKit

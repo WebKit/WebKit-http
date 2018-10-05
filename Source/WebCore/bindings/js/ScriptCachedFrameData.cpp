@@ -51,13 +51,13 @@ ScriptCachedFrameData::ScriptCachedFrameData(Frame& frame)
 {
     JSLockHolder lock(commonVM());
 
-    for (auto windowProxy : frame.windowProxyController().windowProxiesAsVector()) {
-        auto* window = windowProxy->window();
+    for (auto windowProxy : frame.windowProxy().jsWindowProxiesAsVector()) {
+        auto* window = jsCast<JSDOMWindow*>(windowProxy->window());
         m_windows.add(&windowProxy->world(), Strong<JSDOMWindow>(window->vm(), window));
         window->setConsoleClient(nullptr);
     }
 
-    frame.script().attachDebugger(nullptr);
+    frame.windowProxy().attachDebugger(nullptr);
 }
 
 ScriptCachedFrameData::~ScriptCachedFrameData()
@@ -70,9 +70,8 @@ void ScriptCachedFrameData::restore(Frame& frame)
     JSLockHolder lock(commonVM());
 
     Page* page = frame.page();
-    auto& scriptController = frame.script();
 
-    for (auto windowProxy : frame.windowProxyController().windowProxiesAsVector()) {
+    for (auto windowProxy : frame.windowProxy().jsWindowProxiesAsVector()) {
         auto* world = &windowProxy->world();
 
         if (auto* window = m_windows.get(world).get())
@@ -80,13 +79,13 @@ void ScriptCachedFrameData::restore(Frame& frame)
         else {
             ASSERT(frame.document()->domWindow());
             auto& domWindow = *frame.document()->domWindow();
-            if (&windowProxy->window()->wrapped() == &domWindow)
+            if (&windowProxy->wrapped() == &domWindow)
                 continue;
 
             windowProxy->setWindow(domWindow);
 
             if (page) {
-                scriptController.attachDebugger(windowProxy.get(), page->debugger());
+                windowProxy->attachDebugger(page->debugger());
                 windowProxy->window()->setProfileGroup(page->group().identifier());
             }
         }

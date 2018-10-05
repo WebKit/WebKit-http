@@ -1,3 +1,135 @@
+2018-04-20  JF Bastien  <jfbastien@apple.com>
+
+        Handle more JSON stringify OOM
+        https://bugs.webkit.org/show_bug.cgi?id=184846
+        <rdar://problem/39390672>
+
+        Reviewed by Mark Lam.
+
+        JSON stringification can OOM easily. Here's another case.
+
+        * wtf/text/StringBuilderJSON.cpp:
+        (WTF::StringBuilder::appendQuotedJSONString):
+
+2018-04-18  Jer Noble  <jer.noble@apple.com>
+
+        Don't put build products into WK_ALTERNATE_WEBKIT_SDK_PATH for engineering builds
+        https://bugs.webkit.org/show_bug.cgi?id=184762
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+
+2018-04-20  Daniel Bates  <dabates@apple.com>
+
+        Remove code for compilers that did not support NSDMI for aggregates
+        https://bugs.webkit.org/show_bug.cgi?id=184599
+
+        Reviewed by Per Arne Vollan.
+
+        Remove workaround for earlier Visual Studio versions that did not support non-static data
+        member initializers (NSDMI) for aggregates. We have since updated all the build.webkit.org
+        and EWS bots to a newer version that supports this feature.
+
+        * wtf/Compiler.h:
+
+2018-04-19  David Kilzer  <ddkilzer@apple.com>
+
+        Enable Objective-C weak references
+        <https://webkit.org/b/184789>
+        <rdar://problem/39571716>
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+        (CLANG_ENABLE_OBJC_WEAK): Enable.
+
+2018-04-19  Brady Eidson  <beidson@apple.com>
+
+        Add globally-unique HistoryItem identifiers (and have WebKit2 adopt them).
+        <rdar://problem/39533949> and https://bugs.webkit.org/show_bug.cgi?id=184750
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/DebugUtilities.h:
+        (WTF::debugString):
+
+2018-04-19  Per Arne Vollan  <pvollan@apple.com>
+
+        Unreviewed, rolling out r230677.
+
+        Introduced Netflix problems.
+
+        Reverted changeset:
+
+        "Deactivate the WindowServer connection for the WebContent process."
+        https://bugs.webkit.org/show_bug.cgi?id=184451
+        https://trac.webkit.org/changeset/230677
+
+2018-04-19  Nan Wang  <n_wang@apple.com>
+
+        AX: AOM: respect the accessibility setting for dispatching the accessible events
+        https://bugs.webkit.org/show_bug.cgi?id=184619
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/Platform.h:
+
+2018-04-18  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [Win] Layout Test js/date-constructor.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=140945
+
+        Reviewed by Per Arne Vollan.
+
+        * wtf/DateMath.cpp:
+        (WTF::calculateDSTOffset):
+        Move all shared calculations outside of the #if -- including the "jump forward a day" case that had been overlooked.
+
+2018-04-17  Saam Barati  <sbarati@apple.com>
+
+        Add system trace points for process launch and for initializeWebProcess
+        https://bugs.webkit.org/show_bug.cgi?id=184669
+
+        Reviewed by Simon Fraser.
+
+        This patch adds TracePointCodes to measure process launch time and
+        WebProcess::initializeWebProcess time.
+        
+        It also renames the TracePoint function to tracePoint since WebKit style
+        does not capitalize the first letter in function names.
+
+        * wtf/SystemTracing.h:
+        (WTF::tracePoint):
+        (WTF::TraceScope::TraceScope):
+        (WTF::TraceScope::~TraceScope):
+        (WTF::TracePoint): Deleted.
+
+2018-04-16  Andy Estes  <aestes@apple.com>
+
+        [iOS] Enable WKPDFView by default
+        https://bugs.webkit.org/show_bug.cgi?id=184675
+        <rdar://problem/27885452>
+
+        Reviewed by Darin Adler.
+
+        * wtf/FeatureDefines.h:
+
+2018-04-16  Per Arne Vollan  <pvollan@apple.com>
+
+        Deactivate the WindowServer connection for the WebContent process.
+        https://bugs.webkit.org/show_bug.cgi?id=184451
+        <rdar://problem/38313938>
+
+        Reviewed by Brent Fulgham.
+
+        Defining ENABLE_WEBPROCESS_WINDOWSERVER_BLOCKING as 1 will deactivate the WindowServer connection
+        for the WebContent process by enabling the call to 'CGSSetDenyWindowServerConnections(true)' on
+        process startup. After calling this function, every attempt to establish a connection to the
+        WindowServer from the WebContent process will fail, except for CA render server connections.
+
+        * wtf/FeatureDefines.h:
+
 2018-04-14  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r230659.

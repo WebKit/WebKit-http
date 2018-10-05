@@ -101,7 +101,7 @@ CSSAnimationTriggersEnabled:
 
 CSSAnimationsAndCSSTransitionsBackedByWebAnimationsEnabled:
   type: bool
-  defaultValue: true
+  defaultValue: false
   webcoreBinding: RuntimeEnabledFeatures
 
 ForceFTPDirectoryListings:
@@ -637,6 +637,10 @@ ApplePayCapabilityDisclosureAllowed:
 VisualViewportEnabled:
   type: bool
   defaultValue: true
+
+LayoutViewportHeightExpansionFactor:
+  type: double
+  defaultValue: DEFAULT_VISUAL_VIEWPORT_HEIGHT_EXPANSION_FACTOR
 
 NeedsStorageAccessFromFileURLsQuirk:
   type: bool

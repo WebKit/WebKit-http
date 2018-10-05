@@ -49,7 +49,16 @@ AudioTrackPrivateGStreamer::AudioTrackPrivateGStreamer(WeakPtr<MediaPlayerPrivat
     , m_player(player)
 {
     m_id = gst_stream_get_stream_id(stream.get());
+    setActive(gst_stream_get_stream_flags(stream.get()) & GST_STREAM_FLAG_SELECT);
     notifyTrackOfActiveChanged();
+}
+
+AudioTrackPrivate::Kind AudioTrackPrivateGStreamer::kind() const
+{
+    if (m_stream.get() && gst_stream_get_stream_flags(m_stream.get()) & GST_STREAM_FLAG_SELECT)
+        return AudioTrackPrivate::Kind::Main;
+
+    return AudioTrackPrivate::kind();
 }
 #endif
 

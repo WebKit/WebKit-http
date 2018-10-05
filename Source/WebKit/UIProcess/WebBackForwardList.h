@@ -28,6 +28,7 @@
 #include "APIObject.h"
 #include "WebBackForwardListItem.h"
 #include "WebPageProxy.h"
+#include <WebCore/BackForwardItemIdentifier.h>
 #include <wtf/Ref.h>
 #include <wtf/Vector.h>
 
@@ -45,7 +46,9 @@ public:
 
     virtual ~WebBackForwardList();
 
-    void addItem(WebBackForwardListItem*);
+    WebBackForwardListItem* itemForID(const WebCore::BackForwardItemIdentifier&);
+
+    void addItem(Ref<WebBackForwardListItem>&&);
     void goToItem(WebBackForwardListItem&);
     void removeAllItems();
     void clear();
@@ -71,6 +74,11 @@ public:
     void restoreFromState(BackForwardListState);
 
     Vector<BackForwardListItemState> itemStates() const;
+    Vector<BackForwardListItemState> filteredItemStates(Function<bool(WebBackForwardListItem&)>&&) const;
+
+#if !LOG_DISABLED
+    const char* loggingString();
+#endif
 
 private:
     explicit WebBackForwardList(WebPageProxy&);

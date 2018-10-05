@@ -150,14 +150,6 @@
 #import <pal/spi/cg/CoreGraphicsSPI.h>
 #import <pal/spi/cocoa/QuartzCoreSPI.h>
 
-#if __has_include(<AccessibilitySupport.h>)
-#include <AccessibilitySupport.h>
-#else
-extern "C" {
-CFStringRef kAXSAllowForceWebScalingEnabledNotification;
-}
-#endif
-
 #define RELEASE_LOG_IF_ALLOWED(...) RELEASE_LOG_IF(_page && _page->isAlwaysOnLoggingAllowed(), ViewState, __VA_ARGS__)
 
 @interface UIScrollView (UIScrollViewInternal)
@@ -213,6 +205,17 @@ static const uint32_t firstSDKVersionWithLinkPreviewEnabledByDefault = 0xA0000;
 @end
 #endif // HAVE(TOUCH_BAR)
 #endif // PLATFORM(MAC)
+
+#if ENABLE(ACCESSIBILITY_EVENTS)
+#if __has_include(<AccessibilitySupport.h>)
+#include <AccessibilitySupport.h>
+#else
+extern "C" {
+CFStringRef kAXSWebAccessibilityEventsEnabledNotification;
+Boolean _AXSWebAccessibilityEventsEnabled();
+}
+#endif
+#endif
 
 static HashMap<WebKit::WebPageProxy*, WKWebView *>& pageToViewMap()
 {
@@ -693,6 +696,12 @@ static void validate(WKWebViewConfiguration *configuration)
 
     _impl->setAutomaticallyAdjustsContentInsets(true);
     _impl->setRequiresUserActionForEditingControlsManager([configuration _requiresUserActionForEditingControlsManager]);
+    _impl->setDefaultAppearance([self _defaultAppearance]);
+#endif
+
+#if ENABLE(ACCESSIBILITY_EVENTS)
+    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), (__bridge const void *)(self), accessibilityEventsEnabledChangedCallback, kAXSWebAccessibilityEventsEnabledNotification, 0, CFNotificationSuspensionBehaviorDeliverImmediately);
+    [self _updateAccessibilityEventsEnabled];
 #endif
 
     _page->setBackgroundExtendsBeyondPage(true);
@@ -2588,7 +2597,8 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     sizes.viewSize = WebCore::FloatSize { bounds.size };
 #endif
 
-    sizes.minimumLayoutSize = { std::max<float>(sizes.viewSize.width(), self._minimumAllowedLayoutWidth), sizes.viewSize.height() };
+    auto layoutWidth = std::max<float>(sizes.viewSize.width(), self._minimumAllowedLayoutWidth);
+    sizes.minimumLayoutSize = { layoutWidth, sizes.viewSize.height() * (layoutWidth / sizes.viewSize.width()) };
     return sizes;
 }
 
@@ -3052,6 +3062,20 @@ static bool scrollViewCanScroll(UIScrollView *scrollView)
 }
 
 #endif // PLATFORM(IOS)
+
+#if ENABLE(ACCESSIBILITY_EVENTS)
+static void accessibilityEventsEnabledChangedCallback(CFNotificationCenterRef, void* observer, CFStringRef, const void*, CFDictionaryRef)
+{
+    ASSERT(observer);
+    WKWebView* webview = static_cast<WKWebView*>(observer);
+    [webview _updateAccessibilityEventsEnabled];
+}
+
+- (void)_updateAccessibilityEventsEnabled
+{
+    _page->updateAccessibilityEventsEnabled(_AXSWebAccessibilityEventsEnabled());
+}
+#endif
 
 #pragma mark OS X-specific methods
 
@@ -5829,6 +5853,15 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     [_contentView _accessibilityClearSelection];
 }
 
+- (UIView *)_fullScreenPlaceholderView
+{
+#if ENABLE(FULLSCREEN_API)
+    if ([_fullScreenWindowController isFullScreen])
+        return [_fullScreenWindowController webViewPlaceholder];
+#endif // ENABLE(FULLSCREEN_API)
+    return nil;
+}
+
 - (CGRect)_contentVisibleRect
 {
     return [self convertRect:[self bounds] toView:self._currentContentView];
@@ -6228,6 +6261,11 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 
 - (void)effectiveAppearanceDidChange
 {
+    // This can be called during [super initWithCoder:] and [super initWithFrame:].
+    // That is before _impl is ready to be used, so check. <rdar://problem/39611236>
+    if (!_impl)
+        return;
+
     _impl->setDefaultAppearance([self _defaultAppearance]);
 }
 
@@ -6338,6 +6376,11 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     [_contentView _simulateLongPressActionAtLocation:location];
 }
 
+- (void)_simulateTextEntered:(NSString *)text
+{
+    [_contentView _simulateTextEntered:text];
+}
+
 #endif // PLATFORM(IOS)
 
 - (BOOL)_beginBackSwipeForTesting
@@ -6389,13 +6432,6 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 
     [_fullScreenWindowController close];
     _fullScreenWindowController = nullptr;
-}
-
-- (WebCoreFullScreenPlaceholderView *)fullScreenPlaceholderView
-{
-    if ([_fullScreenWindowController isFullScreen])
-        return [_fullScreenWindowController webViewPlaceholder];
-    return nil;
 }
 
 @end

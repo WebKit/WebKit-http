@@ -1,3 +1,69 @@
+2018-04-23  Daniel Bates  <dabates@apple.com>
+
+        Implement Same-Site cookies
+        https://bugs.webkit.org/show_bug.cgi?id=159464
+        <rdar://problem/27196358>
+
+        Reviewed by Brent Fulgham.
+
+        Forward declare some SPI.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2018-04-20  Tim Horton  <timothy_horton@apple.com>
+
+        Adjust geolocation feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=184856
+
+        Reviewed by Wenson Hsieh.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2018-04-18  Jer Noble  <jer.noble@apple.com>
+
+        Don't put build products into WK_ALTERNATE_WEBKIT_SDK_PATH for engineering builds
+        https://bugs.webkit.org/show_bug.cgi?id=184762
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/CopyPALHeaders.xcconfig:
+        * Configurations/PAL.xcconfig:
+
+2018-04-19  David Kilzer  <ddkilzer@apple.com>
+
+        Enable Objective-C weak references
+        <https://webkit.org/b/184789>
+        <rdar://problem/39571716>
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+        (CLANG_ENABLE_OBJC_WEAK): Enable.
+
+2018-04-17  Eric Carlson  <eric.carlson@apple.com>
+
+        [iOS] AirPlay device name is sometimes wrong
+        https://bugs.webkit.org/show_bug.cgi?id=184543
+        <rdar://problem/39105498>
+
+        Reviewed by Jer Noble.
+
+        * pal/spi/mac/AVFoundationSPI.h: Declare more AVOutputContext SPI.
+
+2018-04-16  Brent Fulgham  <bfulgham@apple.com>
+
+        [macOS] Don't establish unneeded Dock connections
+        https://bugs.webkit.org/show_bug.cgi?id=184664
+        <rdar://problem/16863698>
+
+        Reviewed by Simon Fraser.
+
+        There is no reason for the WebContent or Plugin processes to interact with
+        the Dock. We should tell AppKit that we don't want this connection, and to
+        avoid creating such connections.
+
+        * pal/spi/mac/NSApplicationSPI.h: Add Dock connection declaration.
+
 2018-04-09  John Wilander  <wilander@apple.com>
 
         Refactor Ignore HSTS code

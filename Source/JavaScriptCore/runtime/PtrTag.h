@@ -29,64 +29,51 @@
 
 namespace JSC {
 
-#define FOR_EACH_PTRTAG_ENUM(v) \
+#define FOR_EACH_BASE_PTRTAG_ENUM(v) \
     v(NoPtrTag) \
-    v(NearCodePtrTag) \
     v(CFunctionPtrTag) \
-    \
-    v(ArityFixupPtrTag) \
+
+#define FOR_EACH_ADDITIONAL_PTRTAG_ENUM(v) \
     v(B3CCallPtrTag) \
+    v(B3CompilationPtrTag) \
     v(BytecodePtrTag) \
-    v(BytecodeHelperPtrTag) \
-    v(CodePtrTag) \
-    v(DFGOSREntryPtrTag) \
-    v(DFGOSRExitPtrTag) \
-    v(DFGOperationPtrTag) \
+    v(DisassemblyPtrTag) \
     v(ExceptionHandlerPtrTag) \
-    v(FTLCodePtrTag) \
-    v(FTLLazySlowPathPtrTag) \
-    v(FTLOSRExitPtrTag) \
-    v(FTLOperationPtrTag) \
-    v(FTLSlowPathPtrTag) \
-    v(GetPropertyPtrTag) \
-    v(GetterSetterPtrTag) \
-    v(HasPropertyPtrTag) \
-    v(JITCodePtrTag) \
-    v(JITOperationPtrTag) \
     v(JITThunkPtrTag) \
-    v(JITWriteThunkPtrTag) \
-    v(LLIntCallICPtrTag) \
-    v(LinkCallPtrTag) \
-    v(LinkCallResultPtrTag) \
-    v(LinkPolymorphicCallPtrTag) \
-    v(LinkPolymorphicCallResultPtrTag) \
-    v(LinkVirtualCallPtrTag) \
-    v(LinkVirtualCallResultPtrTag) \
-    v(MathICPtrTag) \
-    v(NativeCodePtrTag) \
-    v(PutPropertyPtrTag) \
+    v(JITStubRoutinePtrTag) \
+    v(JSEntryPtrTag) \
+    v(JSInternalPtrTag) \
+    v(JSSwitchPtrTag) \
+    v(LinkBufferPtrTag) \
+    v(OperationPtrTag) \
+    v(OSRExitPtrTag) \
     v(SlowPathPtrTag) \
-    v(SpecializedThunkPtrTag) \
-    v(SwitchTablePtrTag) \
-    v(ThrowExceptionPtrTag) \
+    v(WasmEntryPtrTag) \
     v(Yarr8BitPtrTag) \
     v(Yarr16BitPtrTag) \
     v(YarrMatchOnly8BitPtrTag) \
     v(YarrMatchOnly16BitPtrTag) \
     v(YarrBacktrackPtrTag) \
-    v(WasmCallPtrTag) \
-    v(WasmHelperPtrTag) \
 
+#define FOR_EACH_PTRTAG_ENUM(v) \
+    FOR_EACH_BASE_PTRTAG_ENUM(v) \
+    FOR_EACH_ADDITIONAL_PTRTAG_ENUM(v) \
 
 enum PtrTag : uintptr_t {
+    NoPtrTag,
+    CFunctionPtrTag,
+
+#ifndef PTRTAG_ENUM_HASH
 #define DECLARE_PTRTAG_ENUM(tag)  tag,
-    FOR_EACH_PTRTAG_ENUM(DECLARE_PTRTAG_ENUM)
+#else
+#define DECLARE_PTRTAG_ENUM(tag)  tag = PTRTAG_ENUM_HASH(tag),
+#endif
+    FOR_EACH_ADDITIONAL_PTRTAG_ENUM(DECLARE_PTRTAG_ENUM)
 #undef DECLARE_PTRTAG_ENUM
 };
 
 static_assert(static_cast<uintptr_t>(NoPtrTag) == static_cast<uintptr_t>(0), "");
-static_assert(static_cast<uintptr_t>(NearCodePtrTag) == static_cast<uintptr_t>(1), "");
-static_assert(static_cast<uintptr_t>(CFunctionPtrTag) == static_cast<uintptr_t>(2), "");
+static_assert(static_cast<uintptr_t>(CFunctionPtrTag) == static_cast<uintptr_t>(1), "");
 
 inline const char* ptrTagName(PtrTag tag)
 {
@@ -98,10 +85,7 @@ inline const char* ptrTagName(PtrTag tag)
 #undef RETURN_PTRTAG_NAME
 }
 
-uintptr_t nextPtrTagID();
-
 #if !USE(POINTER_PROFILING)
-inline uintptr_t nextPtrTagID() { return 0; }
 
 inline const char* tagForPtr(const void*) { return "<no tag>"; }
 
@@ -111,20 +95,38 @@ inline constexpr PtrTag ptrTag(Arguments&&...) { return NoPtrTag; }
 template<typename T, typename PtrType, typename = std::enable_if_t<std::is_pointer<PtrType>::value && !std::is_same<T, PtrType>::value>>
 inline constexpr T tagCodePtr(PtrType ptr, PtrTag) { return bitwise_cast<T>(ptr); }
 
+template<typename T, PtrTag, typename PtrType, typename = std::enable_if_t<std::is_pointer<PtrType>::value>>
+inline T tagCodePtr(PtrType ptr) { return bitwise_cast<T>(ptr); }
+
 template<typename PtrType, typename = std::enable_if_t<std::is_pointer<PtrType>::value>>
 inline constexpr PtrType tagCodePtr(PtrType ptr, PtrTag) { return ptr; }
+
+template<PtrTag, typename PtrType, typename = std::enable_if_t<std::is_pointer<PtrType>::value>>
+inline PtrType tagCodePtr(PtrType ptr) { return ptr; }
 
 template<typename T, typename PtrType, typename = std::enable_if_t<std::is_pointer<PtrType>::value && !std::is_same<T, PtrType>::value>>
 inline constexpr T untagCodePtr(PtrType ptr, PtrTag) { return bitwise_cast<T>(ptr); }
 
+template<typename T, PtrTag, typename PtrType, typename = std::enable_if_t<std::is_pointer<PtrType>::value>>
+inline T untagCodePtr(PtrType ptr)  { return bitwise_cast<T>(ptr); }
+
 template<typename PtrType, typename = std::enable_if_t<std::is_pointer<PtrType>::value>>
 inline constexpr PtrType untagCodePtr(PtrType ptr, PtrTag) { return ptr; }
+
+template<PtrTag, typename PtrType, typename = std::enable_if_t<std::is_pointer<PtrType>::value>>
+inline PtrType untagCodePtr(PtrType ptr) { return ptr; }
 
 template<typename T, typename PtrType, typename = std::enable_if_t<std::is_pointer<PtrType>::value && !std::is_same<T, PtrType>::value>>
 inline constexpr T retagCodePtr(PtrType ptr, PtrTag, PtrTag) { return bitwise_cast<T>(ptr); }
 
+template<typename T, PtrTag, PtrTag, typename PtrType, typename = std::enable_if_t<std::is_pointer<PtrType>::value>>
+inline T retagCodePtr(PtrType ptr) { return bitwise_cast<T>(ptr); }
+
 template<typename PtrType, typename = std::enable_if_t<std::is_pointer<PtrType>::value>>
 inline constexpr PtrType retagCodePtr(PtrType ptr, PtrTag, PtrTag) { return ptr; }
+
+template<PtrTag, PtrTag, typename PtrType, typename = std::enable_if_t<std::is_pointer<PtrType>::value>>
+inline PtrType retagCodePtr(PtrType ptr) { return ptr; }
 
 template<typename T, typename PtrType, typename = std::enable_if_t<std::is_pointer<PtrType>::value && !std::is_same<T, PtrType>::value>>
 inline constexpr T removeCodePtrTag(PtrType ptr) { return bitwise_cast<T>(ptr); }
@@ -135,14 +137,26 @@ inline constexpr PtrType removeCodePtrTag(PtrType ptr) { return ptr; }
 template<typename T, typename PtrType, typename = std::enable_if_t<std::is_pointer<PtrType>::value && !std::is_same<T, PtrType>::value>>
 inline T tagCFunctionPtr(PtrType ptr, PtrTag) { return bitwise_cast<T>(ptr); }
 
+template<typename T, PtrTag, typename PtrType, typename = std::enable_if_t<std::is_pointer<PtrType>::value>>
+inline T tagCFunctionPtr(PtrType ptr) { return bitwise_cast<T>(ptr); }
+
 template<typename PtrType, typename = std::enable_if_t<std::is_pointer<PtrType>::value>>
 inline PtrType tagCFunctionPtr(PtrType ptr, PtrTag) { return ptr; }
+
+template<PtrTag, typename PtrType, typename = std::enable_if_t<std::is_pointer<PtrType>::value>>
+inline PtrType tagCFunctionPtr(PtrType ptr) { return ptr; }
 
 template<typename T, typename PtrType, typename = std::enable_if_t<std::is_pointer<PtrType>::value && !std::is_same<T, PtrType>::value>>
 inline T untagCFunctionPtr(PtrType ptr, PtrTag) { return bitwise_cast<T>(ptr); }
 
+template<typename T, PtrTag, typename PtrType, typename = std::enable_if_t<std::is_pointer<PtrType>::value>>
+inline T untagCFunctionPtr(PtrType ptr) { return bitwise_cast<T>(ptr); }
+
 template<typename PtrType, typename = std::enable_if_t<std::is_pointer<PtrType>::value>>
 inline PtrType untagCFunctionPtr(PtrType ptr, PtrTag) { return ptr; }
+
+template<PtrTag, typename PtrType, typename = std::enable_if_t<std::is_pointer<PtrType>::value>>
+inline PtrType untagCFunctionPtr(PtrType ptr) { return ptr; }
 
 template<typename PtrType> void assertIsCFunctionPtr(PtrType) { }
 template<typename PtrType> void assertIsNullOrCFunctionPtr(PtrType) { }

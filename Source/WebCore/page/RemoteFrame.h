@@ -47,6 +47,9 @@ public:
     void setWindow(RemoteDOMWindow* window) { m_window = window; }
     RemoteDOMWindow* window() const { return m_window; }
 
+    void setOpener(AbstractFrame* opener) { m_opener = opener; }
+    AbstractFrame* opener() const { return m_opener.get(); }
+
 private:
     WEBCORE_EXPORT explicit RemoteFrame(GlobalFrameIdentifier&&);
 
@@ -57,6 +60,8 @@ private:
 
     GlobalFrameIdentifier m_identifier;
     RemoteDOMWindow* m_window { nullptr };
+
+    RefPtr<AbstractFrame> m_opener;
 };
 
 } // namespace WebCore

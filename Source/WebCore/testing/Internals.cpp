@@ -72,12 +72,14 @@
 #include "FrameView.h"
 #include "GCObservation.h"
 #include "GridPosition.h"
+#include "HTMLAnchorElement.h"
 #include "HTMLCanvasElement.h"
 #include "HTMLIFrameElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLLinkElement.h"
 #include "HTMLNames.h"
+#include "HTMLPictureElement.h"
 #include "HTMLPlugInElement.h"
 #include "HTMLPreloadScanner.h"
 #include "HTMLSelectElement.h"
@@ -157,9 +159,7 @@
 #include "ViewportArguments.h"
 #include "VoidCallback.h"
 #include "WebCoreJSClientData.h"
-#if ENABLE(WEBGL)
-#include "WebGLRenderingContext.h"
-#endif
+#include "WindowProxy.h"
 #include "WorkerThread.h"
 #include "WritingDirection.h"
 #include "XMLHttpRequest.h"
@@ -201,6 +201,10 @@
 #if ENABLE(VIDEO)
 #include "HTMLMediaElement.h"
 #include "TimeRanges.h"
+#endif
+
+#if ENABLE(WEBGL)
+#include "WebGLRenderingContext.h"
 #endif
 
 #if ENABLE(SPEECH_SYNTHESIS)
@@ -260,6 +264,10 @@
 #if ENABLE(WEB_AUTHN)
 #include "AuthenticatorManager.h"
 #include "MockCredentialsMessenger.h"
+#endif
+
+#if USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/SystemPreviewDetection.cpp>
 #endif
 
 using JSC::CallData;
@@ -1038,14 +1046,6 @@ ExceptionOr<bool> Internals::pauseTransitionAtTimeOnPseudoElement(const String& 
         return Exception { InvalidAccessError };
 
     return frame()->animation().pauseTransitionAtTime(*pseudoElement, property, pauseTime);
-}
-
-ExceptionOr<RefPtr<Element>> Internals::pseudoElement(Element& element, const String& pseudoId)
-{
-    if (pseudoId != "before" && pseudoId != "after")
-        return Exception { InvalidAccessError };
-
-    return pseudoId == "before" ? element.beforePseudoElement() : element.afterPseudoElement();
 }
 
 ExceptionOr<String> Internals::elementRenderTreeAsText(Element& element)
@@ -2307,13 +2307,13 @@ unsigned Internals::referencingNodeCount(const Document& document) const
     return document.referencingNodeCount();
 }
 
-RefPtr<DOMWindow> Internals::openDummyInspectorFrontend(const String& url)
+RefPtr<WindowProxy> Internals::openDummyInspectorFrontend(const String& url)
 {
     auto* inspectedPage = contextDocument()->frame()->page();
     auto* window = inspectedPage->mainFrame().document()->domWindow();
-    auto frontendWindow = window->open(*window, *window, url, "", "");
-    m_inspectorFrontend = std::make_unique<InspectorStubFrontend>(*inspectedPage, frontendWindow.copyRef());
-    return frontendWindow;
+    auto frontendWindowProxy = window->open(*window, *window, url, "", "");
+    m_inspectorFrontend = std::make_unique<InspectorStubFrontend>(*inspectedPage, downcast<DOMWindow>(frontendWindowProxy->window()));
+    return frontendWindowProxy;
 }
 
 void Internals::closeDummyInspectorFrontend()
@@ -4471,5 +4471,37 @@ MockCredentialsMessenger& Internals::mockCredentialsMessenger() const
     return *m_mockCredentialsMessenger;
 }
 #endif
+
+String Internals::systemPreviewRelType()
+{
+#if USE(APPLE_INTERNAL_SDK)
+    return getSystemPreviewRelValue();
+#else
+    return ASCIILiteral("system-preview");
+#endif
+}
+
+bool Internals::isSystemPreviewLink(Element& element) const
+{
+    return is<HTMLAnchorElement>(element) && downcast<HTMLAnchorElement>(element).isSystemPreviewLink();
+}
+
+bool Internals::isSystemPreviewImage(Element& element) const
+{
+    if (is<HTMLImageElement>(element))
+        return downcast<HTMLImageElement>(element).isSystemPreviewImage();
+    if (is<HTMLPictureElement>(element))
+        return downcast<HTMLPictureElement>(element).isSystemPreviewImage();
+    return false;
+}
+
+bool Internals::usingAppleInternalSDK() const
+{
+#if USE(APPLE_INTERNAL_SDK)
+    return true;
+#else
+    return false;
+#endif
+}
 
 } // namespace WebCore

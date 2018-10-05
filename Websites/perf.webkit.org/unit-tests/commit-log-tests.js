@@ -48,6 +48,7 @@ function osxCommit()
         repository: MockModels.osx,
         revision: '10.11.4 15E65',
         time: null,
+        order: 1504065
     });
 }
 
@@ -57,6 +58,7 @@ function oldOSXCommit()
         repository: MockModels.osx,
         revision: '10.11.3 15D21',
         time: null,
+        order: 1503021
     });
 }
 
@@ -67,6 +69,7 @@ function commitWithoutOwnedCommits()
         revision: '10.11.4 15E66',
         ownsCommits: false,
         time: null,
+        order: 1504065
     });
 }
 
@@ -77,6 +80,7 @@ function ownerCommit()
         revision: '10.11.4 15E65',
         ownsCommits: true,
         time: null,
+        order: 1504065
     });
 }
 
@@ -87,6 +91,27 @@ function otherOwnerCommit()
         revision: '10.11.4 15E66',
         ownsCommits: true,
         time: null,
+        order: 1504066
+    });
+}
+
+function ownedCommit()
+{
+    return new CommitLog(11, {
+        repository: MockModels.ownedRepository,
+        revision: 'owned-commit-0',
+        ownsCommits: true,
+        time: null
+    });
+}
+
+function anotherOwnedCommit()
+{
+    return new CommitLog(11, {
+        repository: MockModels.ownedRepository,
+        revision: 'owned-commit-1',
+        ownsCommits: true,
+        time: null
     });
 }
 
@@ -118,6 +143,15 @@ describe('CommitLog', function () {
 
         it('should not modify OS X version', function () {
             assert.equal(osxCommit().title(), 'OS X at 10.11.4 15E65');
+        });
+    });
+
+    describe('order', () => {
+        it('should return null if no commit order', () => {
+            assert.equal(webkitCommit().order(), null);
+        });
+        it('should return commit order if order exists', () => {
+            assert.equal(osxCommit().order(), 1504065);
         });
     });
 
@@ -164,6 +198,60 @@ describe('CommitLog', function () {
                 url: '',
                 repository: MockModels.osx
             });
+        });
+    });
+
+    describe('hasOrdering', () => {
+        it('should return "true" when both commits have commit orders', () => {
+            assert.ok(CommitLog.hasOrdering(osxCommit(), oldOSXCommit()));
+        });
+
+        it('should return "true" when both commits have commit time', () => {
+            assert.ok(CommitLog.hasOrdering(webkitCommit(), oldWebKitCommit()));
+        });
+
+        it('should return "false" when neither commit time nor commit order exists', () => {
+            assert.ok(!CommitLog.hasOrdering(ownedCommit(), anotherOwnedCommit()));
+        });
+
+        it('should return "false" when one commit only has commit time and another only has commit order', () => {
+            assert.ok(!CommitLog.hasOrdering(webkitCommit(), osxCommit()));
+        });
+    });
+
+    describe('hasCommitOrder', () => {
+        it('should return "true" when a commit has commit order', () => {
+            assert.ok(osxCommit().hasCommitOrder());
+        });
+
+        it('should return "false" when a commit only has commit time', () => {
+            assert.ok(!webkitCommit().hasCommitOrder());
+        });
+    });
+
+    describe('hasCommitTime', () => {
+        it('should return "true" when a commit has commit order', () => {
+            assert.ok(!osxCommit().hasCommitTime());
+        });
+
+        it('should return "false" when a commit only has commit time', () => {
+            assert.ok(webkitCommit().hasCommitTime());
+        });
+    });
+
+    describe('orderTowCommits', () => {
+        it('should order by time when both commits have time', () => {
+            const startCommit = oldWebKitCommit();
+            const endCommit = webkitCommit();
+            assert.deepEqual(CommitLog.orderTwoCommits(endCommit, startCommit), [startCommit, endCommit]);
+            assert.deepEqual(CommitLog.orderTwoCommits(startCommit, endCommit), [startCommit, endCommit]);
+        });
+
+        it('should order by commit order when both commits only have commit order', () => {
+            const startCommit = oldOSXCommit();
+            const endCommit = osxCommit();
+            assert.deepEqual(CommitLog.orderTwoCommits(endCommit, startCommit), [startCommit, endCommit]);
+            assert.deepEqual(CommitLog.orderTwoCommits(startCommit, endCommit), [startCommit, endCommit]);
         });
     });
 

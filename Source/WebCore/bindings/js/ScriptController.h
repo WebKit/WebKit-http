@@ -22,8 +22,8 @@
 #pragma once
 
 #include "FrameLoaderTypes.h"
-#include "JSDOMWindowProxy.h"
-#include "WindowProxyController.h"
+#include "JSWindowProxy.h"
+#include "WindowProxy.h"
 #include <JavaScriptCore/JSBase.h>
 #include <JavaScriptCore/Strong.h>
 #include <wtf/Forward.h>
@@ -83,7 +83,7 @@ public:
 
     JSDOMWindow* globalObject(DOMWrapperWorld& world)
     {
-        return windowProxyController().windowProxy(world).window();
+        return JSC::jsCast<JSDOMWindow*>(windowProxy().jsWindowProxy(world).window());
     }
 
     static void getAllWorlds(Vector<Ref<DOMWrapperWorld>>&);
@@ -123,17 +123,11 @@ public:
     static bool canAccessFromCurrentOrigin(Frame*);
     WEBCORE_EXPORT bool canExecuteScripts(ReasonForCallingCanExecuteScripts);
 
-    // Debugger can be 0 to detach any existing Debugger.
-    void attachDebugger(JSC::Debugger*); // Attaches/detaches in all worlds/window proxies.
-    void attachDebugger(JSDOMWindowProxy*, JSC::Debugger*);
-
     void setPaused(bool b) { m_paused = b; }
     bool isPaused() const { return m_paused; }
 
     const String* sourceURL() const { return m_sourceURL; } // 0 if we are not evaluating any script
 
-    void clearWindowProxiesNotMatchingDOMWindow(DOMWindow*, bool goingIntoPageCache);
-    WEBCORE_EXPORT void setDOMWindowForWindowProxy(DOMWindow*);
     void updateDocument();
 
     void namedItemAdded(HTMLDocument*, const AtomicString&) { }
@@ -147,6 +141,7 @@ public:
     RefPtr<JSC::Bindings::Instance>  createScriptInstanceForWidget(Widget*);
     WEBCORE_EXPORT JSC::Bindings::RootObject* bindingRootObject();
     JSC::Bindings::RootObject* cacheableBindingRootObject();
+    JSC::Bindings::RootObject* existingCacheableBindingRootObject() const { return m_cacheableBindingRootObject.get(); }
 
     WEBCORE_EXPORT Ref<JSC::Bindings::RootObject> createRootObject(void* nativeHandle);
 
@@ -163,14 +158,14 @@ public:
     WEBCORE_EXPORT NPObject* windowScriptNPObject();
 #endif
 
-    void initScriptForWindowProxy(JSDOMWindowProxy&);
+    void initScriptForWindowProxy(JSWindowProxy&);
 
 private:
     void setupModuleScriptHandlers(LoadableModuleScript&, JSC::JSInternalPromise&, DOMWrapperWorld&);
 
     void disconnectPlatformScriptObjects();
 
-    WEBCORE_EXPORT WindowProxyController& windowProxyController();
+    WEBCORE_EXPORT WindowProxy& windowProxy();
 
     Frame& m_frame;
     const String* m_sourceURL;

@@ -783,6 +783,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/page/PerformanceObserverEntryList.idl \
     $(WebCore)/page/PerformanceResourceTiming.idl \
     $(WebCore)/page/PerformanceTiming.idl \
+    $(WebCore)/page/RemoteDOMWindow.idl \
     $(WebCore)/page/Screen.idl \
     $(WebCore)/page/ScrollToOptions.idl \
     $(WebCore)/page/UserMessageHandler.idl \
@@ -867,6 +868,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/svg/SVGFontFaceUriElement.idl \
     $(WebCore)/svg/SVGForeignObjectElement.idl \
     $(WebCore)/svg/SVGGElement.idl \
+    $(WebCore)/svg/SVGGeometryElement.idl \
     $(WebCore)/svg/SVGGlyphElement.idl \
     $(WebCore)/svg/SVGGlyphRefElement.idl \
     $(WebCore)/svg/SVGGradientElement.idl \

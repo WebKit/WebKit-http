@@ -48,7 +48,10 @@ public:
     static Ref<WebBackForwardListItem> create(BackForwardListItemState&&, uint64_t pageID);
     virtual ~WebBackForwardListItem();
 
-    uint64_t itemID() const { return m_itemState.identifier; }
+    static WebBackForwardListItem* itemForID(const WebCore::BackForwardItemIdentifier&);
+    static HashMap<WebCore::BackForwardItemIdentifier, WebBackForwardListItem*>& allItems();
+
+    const WebCore::BackForwardItemIdentifier& itemID() const { return m_itemState.identifier; }
     const BackForwardListItemState& itemState() { return m_itemState; }
     uint64_t pageID() const { return m_pageID; }
 
@@ -65,9 +68,12 @@ public:
     ViewSnapshot* snapshot() const { return m_itemState.snapshot.get(); }
     void setSnapshot(RefPtr<ViewSnapshot>&& snapshot) { m_itemState.snapshot = WTFMove(snapshot); }
 #endif
-    void setSuspendedPage(SuspendedPageProxy&);
+    void setSuspendedPage(SuspendedPageProxy*);
+    SuspendedPageProxy* suspendedPage() const { return m_suspendedPage; }
 
-    static uint64_t highestUsedItemID();
+#if !LOG_DISABLED
+    const char* loggingString();
+#endif
 
 private:
     explicit WebBackForwardListItem(BackForwardListItemState&&, uint64_t pageID);

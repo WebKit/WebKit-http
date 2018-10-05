@@ -102,7 +102,7 @@ public:
     static Ref<PluginData> create(Page& page) { return adoptRef(*new PluginData(page)); }
 
     const Vector<PluginInfo>& plugins() const { return m_plugins; }
-    Vector<PluginInfo> webVisiblePlugins() const;
+    const Vector<PluginInfo>& webVisiblePlugins() const;
     Vector<PluginInfo> publiclyVisiblePlugins() const;
     WEBCORE_EXPORT void getWebVisibleMimesAndPluginIndices(Vector<MimeClassInfo>&, Vector<size_t>&) const;
 
@@ -115,6 +115,7 @@ public:
     String pluginFileForWebVisibleMimeType(const String& mimeType) const;
 
     WEBCORE_EXPORT bool supportsMimeType(const String& mimeType, const AllowedPluginTypes) const;
+    WEBCORE_EXPORT bool supportsWebVisibleMimeTypeForURL(const String& mimeType, const AllowedPluginTypes, const URL&) const;
 
 private:
     explicit PluginData(Page&);
@@ -122,11 +123,18 @@ private:
     bool getPluginInfoForWebVisibleMimeType(const String& mimeType, PluginInfo&) const;
     void getMimesAndPluginIndices(Vector<MimeClassInfo>&, Vector<size_t>&) const;
     void getMimesAndPluginIndiciesForPlugins(const Vector<PluginInfo>&, Vector<MimeClassInfo>&, Vector<size_t>&) const;
+    bool supportsWebVisibleMimeType(const String& mimeType, const AllowedPluginTypes, const Vector<PluginInfo>&) const;
 
 protected:
     Page& m_page;
     Vector<PluginInfo> m_plugins;
     std::optional<Vector<SupportedPluginName>> m_supportedPluginNames;
+
+    struct CachedVisiblePlugins {
+        URL pageURL;
+        std::optional<Vector<PluginInfo>> pluginList;
+    };
+    mutable CachedVisiblePlugins m_cachedVisiblePlugins;
 };
 
 inline bool isSupportedPlugin(const Vector<SupportedPluginName>& pluginNames, const URL& pageURL, const String& pluginName)

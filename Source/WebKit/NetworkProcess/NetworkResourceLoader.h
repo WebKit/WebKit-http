@@ -45,6 +45,7 @@ namespace WebKit {
 
 class NetworkConnectionToWebProcess;
 class NetworkLoad;
+class NetworkLoadChecker;
 class SandboxExtension;
 
 namespace NetworkCache {
@@ -108,7 +109,7 @@ public:
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
     static bool shouldLogCookieInformation();
-    static void logCookieInformation(const String& label, const void* loggedObject, const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&, const String& referrer, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, std::optional<uint64_t> identifier);
+    static void logCookieInformation(const String& label, const void* loggedObject, const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::SameSiteInfo&, const WebCore::URL&, const String& referrer, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, std::optional<uint64_t> identifier);
 #endif
 
 private:
@@ -129,7 +130,8 @@ private:
     void dispatchWillSendRequestForCacheEntry(std::unique_ptr<NetworkCache::Entry>);
     void continueProcessingCachedEntryAfterDidReceiveResponse(std::unique_ptr<NetworkCache::Entry>);
 
-    void startNetworkLoad(WebCore::ResourceRequest&&);
+    enum class FirstLoad { No, Yes };
+    void startNetworkLoad(WebCore::ResourceRequest&&, FirstLoad);
     void continueDidReceiveResponse();
 
     void cleanup();
@@ -146,6 +148,8 @@ private:
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING) && !RELEASE_LOG_DISABLED
     void logCookieInformation() const;
 #endif
+
+    void continueWillSendRedirectedRequest(WebCore::ResourceRequest&& request, WebCore::ResourceRequest&& redirectRequest, WebCore::ResourceResponse&&);
 
     WebCore::ResourceResponse sanitizeResponseIfPossible(WebCore::ResourceResponse&&, WebCore::ResourceResponse::SanitizationType);
 
@@ -179,6 +183,7 @@ private:
     std::unique_ptr<NetworkCache::Entry> m_cacheEntryForValidation;
     bool m_isWaitingContinueWillSendRequestForCachedRedirect { false };
     std::unique_ptr<NetworkCache::Entry> m_cacheEntryWaitingForContinueDidReceiveResponse;
+    RefPtr<NetworkLoadChecker> m_networkLoadChecker;
 };
 
 } // namespace WebKit

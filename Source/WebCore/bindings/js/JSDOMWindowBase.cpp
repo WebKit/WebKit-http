@@ -78,7 +78,7 @@ const GlobalObjectMethodTable JSDOMWindowBase::s_globalObjectMethodTable = {
     &defaultLanguage
 };
 
-JSDOMWindowBase::JSDOMWindowBase(VM& vm, Structure* structure, RefPtr<DOMWindow>&& window, JSDOMWindowProxy* proxy)
+JSDOMWindowBase::JSDOMWindowBase(VM& vm, Structure* structure, RefPtr<DOMWindow>&& window, JSWindowProxy* proxy)
     : JSDOMGlobalObject(vm, structure, proxy->world(), &s_globalObjectMethodTable)
     , m_windowCloseWatchpoints((window && window->frame()) ? IsWatched : IsInvalidated)
     , m_wrapped(WTFMove(window))
@@ -86,7 +86,7 @@ JSDOMWindowBase::JSDOMWindowBase(VM& vm, Structure* structure, RefPtr<DOMWindow>
 {
 }
 
-void JSDOMWindowBase::finishCreation(VM& vm, JSDOMWindowProxy* proxy)
+void JSDOMWindowBase::finishCreation(VM& vm, JSWindowProxy* proxy)
 {
     Base::finishCreation(vm, proxy);
     ASSERT(inherits(vm, info()));
@@ -243,26 +243,17 @@ void JSDOMWindowBase::willRemoveFromWindowProxy()
     setCurrentEvent(0);
 }
 
-JSDOMWindowProxy* JSDOMWindowBase::proxy() const
+JSWindowProxy* JSDOMWindowBase::proxy() const
 {
     return m_proxy;
 }
 
-// JSDOMGlobalObject* is ignored, accessing a window in any context will
-// use that DOMWindow's prototype chain.
-JSValue toJS(ExecState* state, JSDOMGlobalObject*, DOMWindow& domWindow)
-{
-    return toJS(state, domWindow);
-}
-
-JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject*, Frame& frame)
-{
-    return toJS(state, frame);
-}
-
 JSValue toJS(ExecState* state, DOMWindow& domWindow)
 {
-    return toJS(state, domWindow.frame());
+    auto* frame = domWindow.frame();
+    if (!frame)
+        return jsNull();
+    return toJS(state, frame->windowProxy());
 }
 
 JSDOMWindow* toJSDOMWindow(Frame& frame, DOMWrapperWorld& world)
@@ -280,8 +271,8 @@ JSDOMWindow* toJSDOMWindow(JSC::VM& vm, JSValue value)
         const ClassInfo* classInfo = object->classInfo(vm);
         if (classInfo == JSDOMWindow::info())
             return jsCast<JSDOMWindow*>(object);
-        if (classInfo == JSDOMWindowProxy::info())
-            return jsCast<JSDOMWindowProxy*>(object)->window();
+        if (classInfo == JSWindowProxy::info())
+            return jsDynamicCast<JSDOMWindow*>(vm, jsCast<JSWindowProxy*>(object)->window());
         value = object->getPrototypeDirect(vm);
     }
     return nullptr;

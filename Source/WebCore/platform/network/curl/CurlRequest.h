@@ -77,6 +77,8 @@ public:
     bool isCancelled() const { return m_cancelled; }
     bool isCompletedOrCancelled() const { return isCompleted() || isCancelled(); }
 
+    const String& user() const { return m_user; }
+    const String& password() const { return m_password; }
 
     // Processing for DidReceiveResponse
     WEBCORE_EXPORT void completeDidReceiveResponse();
@@ -118,13 +120,14 @@ private:
     void didCancelTransfer() override;
     void finalizeTransfer();
 
-    // For POST and PUT method 
+    // For setup 
+    void appendAcceptLanguageHeader(HTTPHeaderMap&);
     void setupPOST(ResourceRequest&);
     void setupPUT(ResourceRequest&);
     void setupSendData(bool forPutMethod);
 
     // Processing for DidReceiveResponse
-    bool needToInvokeDidReceiveResponse() const { return !m_didNotifyResponse || !m_didReturnFromNotify; }
+    bool needToInvokeDidReceiveResponse() const { return m_didReceiveResponse && (!m_didNotifyResponse || !m_didReturnFromNotify); }
     bool needToInvokeDidCancelTransfer() const { return m_didNotifyResponse && !m_didReturnFromNotify && m_actionAfterInvoke == Action::FinishTransfer; }
     void invokeDidReceiveResponseForFile(URL&);
     void invokeDidReceiveResponse(const CurlResponse&, Action);

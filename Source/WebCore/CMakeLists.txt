@@ -827,6 +827,7 @@ set(WebCore_NON_SVG_IDL_FILES
     page/PerformanceNavigation.idl
     page/PerformanceResourceTiming.idl
     page/PerformanceTiming.idl
+    page/RemoteDOMWindow.idl
     page/Screen.idl
     page/ScrollToOptions.idl
     page/VisualViewport.idl
@@ -946,6 +947,7 @@ set(WebCore_SVG_IDL_FILES
     svg/SVGFontFaceUriElement.idl
     svg/SVGForeignObjectElement.idl
     svg/SVGGElement.idl
+    svg/SVGGeometryElement.idl
     svg/SVGGlyphElement.idl
     svg/SVGGlyphRefElement.idl
     svg/SVGGradientElement.idl

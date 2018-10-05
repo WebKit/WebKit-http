@@ -185,6 +185,7 @@ class WebAnimation;
 class WebGL2RenderingContext;
 class WebGLRenderingContext;
 class WebGPURenderingContext;
+class WindowProxy;
 class XPathEvaluator;
 class XPathExpression;
 class XPathNSResolver;
@@ -619,7 +620,7 @@ public:
     
     WEBCORE_EXPORT DocumentLoader* loader() const;
 
-    WEBCORE_EXPORT ExceptionOr<RefPtr<DOMWindow>> openForBindings(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& url, const AtomicString& name, const String& features);
+    WEBCORE_EXPORT ExceptionOr<RefPtr<WindowProxy>> openForBindings(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& url, const AtomicString& name, const String& features);
     WEBCORE_EXPORT ExceptionOr<Document&> openForBindings(Document* responsibleDocument, const String& type, const String& replace);
 
     // FIXME: We should rename this at some point and give back the name 'open' to the HTML specified ones.
@@ -917,6 +918,14 @@ public:
     //
     const URL& firstPartyForCookies() const { return m_firstPartyForCookies; }
     void setFirstPartyForCookies(const URL& url) { m_firstPartyForCookies = url; }
+
+    // The full URL corresponding to the "site for cookies" in the Same-Site Cookies spec.,
+    // <https://tools.ietf.org/html/draft-ietf-httpbis-cookie-same-site-00>. It is either
+    // the URL of the top-level document or the null URL depending on whether the registrable
+    // domain of this document's URL matches the registrable domain of its parent's/opener's
+    // URL. For the top-level document, it is set to the document's URL.
+    const URL& firstPartyForSameSiteCookies() const { return m_firstPartyForSameSiteCookies; }
+    void setFirstPartyForSameSiteCookies(const URL& url) { m_firstPartyForSameSiteCookies = url; }
     
     // The following implements the rule from HTML 4 for what valid names are.
     // To get this right for all the XML cases, we probably have to improve this or move it
@@ -1550,6 +1559,7 @@ private:
     URL m_baseElementURL; // The URL set by the <base> element.
     URL m_cookieURL; // The URL to use for cookie access.
     URL m_firstPartyForCookies; // The policy URL for third-party cookie blocking.
+    URL m_firstPartyForSameSiteCookies; // The policy URL for Same-Site cookies.
 
     // Document.documentURI:
     // Although URL-like, Document.documentURI can actually be set to any
@@ -1732,6 +1742,8 @@ private:
     std::unique_ptr<DeviceOrientationClient> m_deviceOrientationClient;
     std::unique_ptr<DeviceOrientationController> m_deviceOrientationController;
 #endif
+
+    GenericTaskQueue<Timer> m_logMessageTaskQueue;
 
     Timer m_pendingTasksTimer;
     Vector<Task> m_pendingTasks;

@@ -182,6 +182,8 @@
 #include <WebCore/PrintContext.h>
 #include <WebCore/PromisedBlobInfo.h>
 #include <WebCore/Range.h>
+#include <WebCore/RemoteDOMWindow.h>
+#include <WebCore/RemoteFrame.h>
 #include <WebCore/RenderLayer.h>
 #include <WebCore/RenderTheme.h>
 #include <WebCore/RenderTreeAsText.h>
@@ -204,11 +206,13 @@
 #include <WebCore/UserInputBridge.h>
 #include <WebCore/UserScript.h>
 #include <WebCore/UserStyleSheet.h>
+#include <WebCore/UserTypingGestureIndicator.h>
 #include <WebCore/VisiblePosition.h>
 #include <WebCore/VisibleUnits.h>
 #include <WebCore/WebGLStateTracker.h>
 #include <WebCore/markup.h>
 #include <pal/SessionID.h>
+#include <wtf/ProcessID.h>
 #include <wtf/RunLoop.h>
 #include <wtf/SetForScope.h>
 #include <wtf/text/TextStream.h>
@@ -521,11 +525,9 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     setTopContentInset(parameters.topContentInset);
 
     m_userAgent = parameters.userAgent;
-
-    WebBackForwardListProxy::setHighestItemIDFromUIProcess(parameters.highestUsedBackForwardItemID);
     
     if (!parameters.itemStates.isEmpty())
-        restoreSessionInternal(parameters.itemStates, WasRestoredByAPIRequest::No);
+        restoreSessionInternal(parameters.itemStates, WasRestoredByAPIRequest::No, WebBackForwardListProxy::OverwriteExistingItem::No);
 
     if (parameters.sessionID.isValid())
         setSessionID(parameters.sessionID);
@@ -641,6 +643,9 @@ void WebPage::enableEnumeratingAllNetworkInterfaces()
 
 void WebPage::reinitializeWebPage(WebPageCreationParameters&& parameters)
 {
+    ASSERT(m_drawingArea);
+    m_drawingArea->attachDrawingArea();
+
     if (m_activityState != parameters.activityState)
         setActivityState(parameters.activityState, false, Vector<CallbackID>());
     if (m_layerHostingMode != parameters.layerHostingMode)
@@ -1388,7 +1393,7 @@ void WebPage::reload(uint64_t navigationID, uint32_t reloadOptions, SandboxExten
     }
 }
 
-void WebPage::goToBackForwardItem(uint64_t navigationID, uint64_t backForwardItemID, FrameLoadType backForwardType, NavigationPolicyCheck navigationPolicyCheck)
+void WebPage::goToBackForwardItem(uint64_t navigationID, const BackForwardItemIdentifier& backForwardItemID, FrameLoadType backForwardType, NavigationPolicyCheck navigationPolicyCheck)
 {
     SendStopResponsivenessTimer stopper;
 
@@ -1399,7 +1404,7 @@ void WebPage::goToBackForwardItem(uint64_t navigationID, uint64_t backForwardIte
     if (!item)
         return;
 
-    LOG(Loading, "In WebProcess, WebPage %" PRIu64 " is navigating to back/forward URL %s", m_pageID, item->url().string().utf8().data());
+    LOG(Loading, "In WebProcess pid %i, WebPage %" PRIu64 " is navigating to back/forward URL %s", getCurrentProcessID(), m_pageID, item->url().string().utf8().data());
 
     ASSERT(!m_pendingNavigationID);
     m_pendingNavigationID = navigationID;
@@ -1730,6 +1735,13 @@ void WebPage::accessibilitySettingsDidChange()
 {
     m_page->accessibilitySettingsDidChange();
 }
+
+#if ENABLE(ACCESSIBILITY_EVENTS)
+void WebPage::updateAccessibilityEventsEnabled(bool enabled)
+{
+    m_page->settings().setAccessibilityEventsEnabled(enabled);
+}
+#endif
 
 void WebPage::setUseFixedLayout(bool fixed)
 {
@@ -2483,18 +2495,23 @@ void WebPage::executeEditCommand(const String& commandName, const String& argume
     executeEditingCommand(commandName, argument);
 }
 
-void WebPage::restoreSessionInternal(const Vector<BackForwardListItemState>& itemStates, WasRestoredByAPIRequest restoredByAPIRequest)
+void WebPage::restoreSessionInternal(const Vector<BackForwardListItemState>& itemStates, WasRestoredByAPIRequest restoredByAPIRequest, WebBackForwardListProxy::OverwriteExistingItem overwrite)
 {
     for (const auto& itemState : itemStates) {
-        auto historyItem = toHistoryItem(itemState.pageState);
+        auto historyItem = toHistoryItem(itemState);
         historyItem->setWasRestoredFromSession(restoredByAPIRequest == WasRestoredByAPIRequest::Yes);
-        static_cast<WebBackForwardListProxy*>(corePage()->backForward().client())->addItemFromUIProcess(itemState.identifier, WTFMove(historyItem), m_pageID);
+        static_cast<WebBackForwardListProxy*>(corePage()->backForward().client())->addItemFromUIProcess(itemState.identifier, WTFMove(historyItem), m_pageID, overwrite);
     }
 }
 
 void WebPage::restoreSession(const Vector<BackForwardListItemState>& itemStates)
 {
-    restoreSessionInternal(itemStates, WasRestoredByAPIRequest::Yes);
+    restoreSessionInternal(itemStates, WasRestoredByAPIRequest::Yes, WebBackForwardListProxy::OverwriteExistingItem::No);
+}
+
+void WebPage::updateBackForwardListForReattach(const Vector<WebKit::BackForwardListItemState>& itemStates)
+{
+    restoreSessionInternal(itemStates, WasRestoredByAPIRequest::No, WebBackForwardListProxy::OverwriteExistingItem::Yes);
 }
 
 #if ENABLE(TOUCH_EVENTS)
@@ -2821,16 +2838,6 @@ void WebPage::continueWillSubmitForm(uint64_t frameID, uint64_t listenerID)
     if (!frame)
         return;
     frame->continueWillSubmitForm(listenerID);
-}
-
-void WebPage::didStartNavigationPolicyCheck()
-{
-    m_drawingArea->setLayerTreeStateIsFrozen(true);
-}
-
-void WebPage::didCompleteNavigationPolicyCheck()
-{
-    m_drawingArea->setLayerTreeStateIsFrozen(false);
 }
 
 void WebPage::didStartPageTransition()
@@ -3184,6 +3191,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
             RuntimeEnabledFeatures::sharedFeatures().setServiceWorkerEnabled(false);
     }
 #endif
+
+    settings.setLayoutViewportHeightExpansionFactor(store.getDoubleValueForKey(WebPreferencesKey::layoutViewportHeightExpansionFactorKey()));
 
     if (m_drawingArea)
         m_drawingArea->updatePreferences(store);
@@ -4080,7 +4089,7 @@ void WebPage::setCustomTextEncodingName(const String& encoding)
     m_page->mainFrame().loader().reloadWithOverrideEncoding(encoding);
 }
 
-void WebPage::didRemoveBackForwardItem(uint64_t itemID)
+void WebPage::didRemoveBackForwardItem(const BackForwardItemIdentifier& itemID)
 {
     WebBackForwardListProxy::removeItem(itemID);
 }
@@ -4598,15 +4607,11 @@ bool WebPage::shouldUseCustomContentProviderForResponse(const ResourceResponse& 
 
 void WebPage::setTextAsync(const String& text)
 {
-    if (is<HTMLInputElement>(m_assistedNode.get())) {
-        downcast<HTMLInputElement>(*m_assistedNode).setValueForUser(text);
-        return;
-    }
-
     auto frame = makeRef(m_page->focusController().focusedOrMainFrame());
     if (!frame->selection().selection().isContentEditable())
         return;
 
+    UserTypingGestureIndicator indicator(frame.get());
     frame->selection().selectAll();
     frame->editor().insertText(text, nullptr, TextEventInputKeyboard);
 }
@@ -5074,20 +5079,33 @@ void WebPage::setSelectTrailingWhitespaceEnabled(bool enabled)
     }
 }
 
-bool WebPage::canShowMIMEType(const String& MIMEType) const
+bool WebPage::canShowResponse(const WebCore::ResourceResponse& response) const
 {
-    if (MIMETypeRegistry::canShowMIMEType(MIMEType))
+    return canShowMIMEType(response.mimeType(), [&](auto& mimeType, auto allowedPlugins) {
+        return m_page->pluginData().supportsWebVisibleMimeTypeForURL(mimeType, allowedPlugins, response.url());
+    });
+}
+
+bool WebPage::canShowMIMEType(const String& mimeType) const
+{
+    return canShowMIMEType(mimeType, [&](auto& mimeType, auto allowedPlugins) {
+        return m_page->pluginData().supportsWebVisibleMimeType(mimeType, allowedPlugins);
+    });
+}
+
+bool WebPage::canShowMIMEType(const String& mimeType, const Function<bool(const String&, PluginData::AllowedPluginTypes)>& pluginsSupport) const
+{
+    if (MIMETypeRegistry::canShowMIMEType(mimeType))
         return true;
 
-    if (!MIMEType.isNull() && m_mimeTypesWithCustomContentProviders.contains(MIMEType))
+    if (!mimeType.isNull() && m_mimeTypesWithCustomContentProviders.contains(mimeType))
         return true;
 
-    const PluginData& pluginData = m_page->pluginData();
-    if (pluginData.supportsWebVisibleMimeType(MIMEType, PluginData::AllPlugins) && corePage()->mainFrame().loader().subframeLoader().allowPlugins())
+    if (corePage()->mainFrame().loader().subframeLoader().allowPlugins() && pluginsSupport(mimeType, PluginData::AllPlugins))
         return true;
 
     // We can use application plugins even if plugins aren't enabled.
-    if (pluginData.supportsWebVisibleMimeType(MIMEType, PluginData::OnlyApplicationPlugins))
+    if (pluginsSupport(mimeType, PluginData::OnlyApplicationPlugins))
         return true;
 
     return false;
@@ -5869,6 +5887,34 @@ void WebPage::urlSchemeTaskDidComplete(uint64_t handlerIdentifier, uint64_t task
 void WebPage::setIsSuspended(bool suspended)
 {
     m_isSuspended = suspended;
+}
+
+void WebPage::frameBecameRemote(uint64_t frameID, GlobalFrameIdentifier&& remoteFrameIdentifier, GlobalWindowIdentifier&& remoteWindowIdentifier)
+{
+    RefPtr<WebFrame> frame = WebProcess::singleton().webFrame(frameID);
+    if (!frame)
+        return;
+
+    if (frame->page() != this)
+        return;
+
+    auto remoteFrame = RemoteFrame::create(WTFMove(remoteFrameIdentifier));
+    auto remoteWindow = RemoteDOMWindow::create(remoteFrame.copyRef(), WTFMove(remoteWindowIdentifier));
+    UNUSED_PARAM(remoteWindow);
+
+    remoteFrame->setOpener(frame->coreFrame()->loader().opener());
+
+    auto jsWindowProxies = frame->coreFrame()->windowProxy().releaseJSWindowProxies();
+    remoteFrame->windowProxy().setJSWindowProxies(WTFMove(jsWindowProxies));
+    remoteFrame->windowProxy().setDOMWindow(remoteWindow.ptr());
+
+    auto* coreFrame = frame->coreFrame();
+    coreFrame->setView(nullptr);
+    coreFrame->willDetachPage();
+    coreFrame->detachFromPage();
+
+    if (frame->isMainFrame())
+        close();
 }
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)

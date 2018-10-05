@@ -287,7 +287,7 @@ describe('CommitSet', () => {
     function oneMeasurementCommitSet()
     {
         return MeasurementCommitSet.ensureSingleton(1, [
-            [2017, 11, 'webkit-commit-0', 1456932773000]
+            [2017, 11, 'webkit-commit-0', null, 1456932773000]
         ]);
     }
 
@@ -325,6 +325,43 @@ describe('CommitSet', () => {
         it('should be able to compare between CommitSet and MeasurementCommitSet', () => {
             assert(oneCommitSet().equals(oneMeasurementCommitSet()));
             assert(oneMeasurementCommitSet().equals(oneCommitSet()));
+        });
+    });
+
+    describe('containsRootOrPatchOrOwnedCommit', () => {
+        it('should return false if commit does not contain root, patch or owned commit', () => {
+            assert.ok(!oneCommitSet().containsRootOrPatchOrOwnedCommit());
+            assert.ok(!anotherCommitSet().containsRootOrPatchOrOwnedCommit());
+            assert.ok(!commitSetWithAnotherWebKitCommit().containsRootOrPatchOrOwnedCommit());
+            assert.ok(!commitSetWithSVNCommit().containsRootOrPatchOrOwnedCommit());
+            assert.ok(!anotherCommitSetWithSVNCommit().containsRootOrPatchOrOwnedCommit());
+            assert.ok(!commitSetWithGitCommit().containsRootOrPatchOrOwnedCommit());
+            assert.ok(!anotherCommitSetWithGitCommit().containsRootOrPatchOrOwnedCommit());
+            assert.ok(!commitSetWithTwoCommits().containsRootOrPatchOrOwnedCommit());
+            assert.ok(!anotherCommitSetWithTwoCommits().containsRootOrPatchOrOwnedCommit());
+            assert.ok(!oneMeasurementCommitSet().containsRootOrPatchOrOwnedCommit());
+        });
+
+        it('should return true if commit contains root, patch or owned commit', () => {
+            assert.ok(commitSetWithPatch().containsRootOrPatchOrOwnedCommit());
+            assert.ok(commitSetWithAnotherPatch().containsRootOrPatchOrOwnedCommit());
+            assert.ok(commitSetWithRoot().containsRootOrPatchOrOwnedCommit());
+            assert.ok(anotherCommitSetWithRoot().containsRootOrPatchOrOwnedCommit());
+            assert.ok(commitSetWithTwoRoots().containsRootOrPatchOrOwnedCommit());
+            assert.ok(commitSetWithAnotherCommitPatchAndRoot().containsRootOrPatchOrOwnedCommit());
+        });
+    });
+
+    describe('hasSameRepositories', () => {
+        it('should return true if two commit sets have same repositories', () => {
+            assert.ok(oneCommitSet().hasSameRepositories(anotherCommitSet()));
+            assert.ok(commitSetWithGitCommit().hasSameRepositories(anotherCommitSetWithGitCommit()));
+            assert.ok(oneCommitSet().hasSameRepositories(oneCommitSet()));
+        });
+
+        it('should return false if two commit sets have differen repositories', () => {
+            assert.ok(!commitSetWithGitCommit().hasSameRepositories(commitSetWithSVNCommit()));
+            assert.ok(!commitSetWithTwoCommits().hasSameRepositories(commitSetWithGitCommit()));
         });
     });
 

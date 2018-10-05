@@ -56,10 +56,12 @@ class FetchResponse;
 class File;
 class Frame;
 class GCObservation;
+class HTMLAnchorElement;
 class HTMLImageElement;
 class HTMLInputElement;
 class HTMLLinkElement;
 class HTMLMediaElement;
+class HTMLPictureElement;
 class HTMLSelectElement;
 class ImageData;
 class InspectorStubFrontend;
@@ -192,9 +194,6 @@ public:
     // CSS Transition testing.
     ExceptionOr<bool> pauseTransitionAtTimeOnElement(const String& propertyName, double pauseTime, Element&);
     ExceptionOr<bool> pauseTransitionAtTimeOnPseudoElement(const String& property, double pauseTime, Element&, const String& pseudoId);
-
-    // For animations testing, we need a way to get at pseudo elements.
-    ExceptionOr<RefPtr<Element>> pseudoElement(Element&, const String&);
 
     Node* treeScopeRootNode(Node&);
     Node* parentTreeScope(Node&);
@@ -350,7 +349,7 @@ public:
     unsigned numberOfLiveDocuments() const;
     unsigned referencingNodeCount(const Document&) const;
 
-    RefPtr<DOMWindow> openDummyInspectorFrontend(const String& url);
+    RefPtr<WindowProxy> openDummyInspectorFrontend(const String& url);
     void closeDummyInspectorFrontend();
     ExceptionOr<void> setInspectorIsUnderTest(bool);
 
@@ -657,6 +656,12 @@ public:
 #if ENABLE(WEB_AUTHN)
     MockCredentialsMessenger& mockCredentialsMessenger() const;
 #endif
+
+    String systemPreviewRelType();
+    bool isSystemPreviewLink(Element&) const;
+    bool isSystemPreviewImage(Element&) const;
+
+    bool usingAppleInternalSDK() const;
 
 private:
     explicit Internals(Document&);

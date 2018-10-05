@@ -127,6 +127,8 @@
 #include <WebCore/FloatRect.h>
 #include <WebCore/FocusDirection.h>
 #include <WebCore/FrameLoader.h>
+#include <WebCore/GlobalFrameIdentifier.h>
+#include <WebCore/GlobalWindowIdentifier.h>
 #include <WebCore/JSDOMBinding.h>
 #include <WebCore/JSDOMExceptionHandling.h>
 #include <WebCore/LengthBox.h>
@@ -291,21 +293,38 @@ ExceededDatabaseQuotaRecords::Record* ExceededDatabaseQuotaRecords::next()
 }
 
 #if !LOG_DISABLED
+static const char* webMouseEventTypeString(WebEvent::Type type)
+{
+    switch (type) {
+    case WebEvent::MouseDown:
+        return "MouseDown";
+    case WebEvent::MouseUp:
+        return "MouseUp";
+    case WebEvent::MouseMove:
+        return "MouseMove";
+    case WebEvent::MouseForceChanged:
+        return "MouseForceChanged";
+    case WebEvent::MouseForceDown:
+        return "MouseForceDown";
+    case WebEvent::MouseForceUp:
+        return "MouseForceUp";
+    default:
+        ASSERT_NOT_REACHED();
+        return "<unknown>";
+    }
+}
+
 static const char* webKeyboardEventTypeString(WebEvent::Type type)
 {
     switch (type) {
     case WebEvent::KeyDown:
         return "KeyDown";
-    
     case WebEvent::KeyUp:
         return "KeyUp";
-    
     case WebEvent::RawKeyDown:
         return "RawKeyDown";
-    
     case WebEvent::Char:
         return "Char";
-    
     default:
         ASSERT_NOT_REACHED();
         return "<unknown>";
@@ -642,25 +661,14 @@ void WebPageProxy::handleSynchronousMessage(IPC::Connection& connection, const S
 void WebPageProxy::reattachToWebProcess()
 {
     auto process = makeRef(m_process->processPool().createNewWebProcessRespectingProcessCountLimit(m_websiteDataStore.get()));
-    reattachToWebProcess(WTFMove(process), false);
+    reattachToWebProcess(WTFMove(process), nullptr, ReattachForBackForward::No);
 }
 
-void WebPageProxy::attachToProcessForNavigation(Ref<WebProcessProxy>&& process)
-{
-    // FIXME: If this WebPageProxy is the only one hosted in its WebProcess, does this make it go away?
-    // We need to be prepared to reuse it later.
-    processDidTerminate(ProcessTerminationReason::NavigationSwap);
-
-    // FIXME: this is to fix the ASSERT(isValid()) inside reattachToWebProcess, some other way to fix this is needed.
-    m_isValid = false;
-    reattachToWebProcess(WTFMove(process), true);
-}
-
-SuspendedPageProxy* WebPageProxy::maybeCreateSuspendedPage(WebProcessProxy& process)
+SuspendedPageProxy* WebPageProxy::maybeCreateSuspendedPage(WebProcessProxy& process, API::Navigation& navigation)
 {
     ASSERT(!m_suspendedPage || m_suspendedPage->process() != &process);
 
-    auto* currentItem = m_backForwardList->currentItem();
+    auto* currentItem = navigation.fromItem();
     if (!currentItem) {
         LOG(ProcessSwapping, "WebPageProxy %" PRIu64 " unable to create suspended page for process pid %i - No current back/forward item", pageID(), process.processIdentifier());
         return nullptr;
@@ -668,7 +676,7 @@ SuspendedPageProxy* WebPageProxy::maybeCreateSuspendedPage(WebProcessProxy& proc
 
     m_suspendedPage = SuspendedPageProxy::create(*this, process, *currentItem);
 
-    LOG(ProcessSwapping, "WebPageProxy %" PRIu64 " created suspended page %s for process pid %i, back/forward item %" PRIu64, pageID(), m_suspendedPage->loggingString(), process.processIdentifier(), currentItem->itemID());
+    LOG(ProcessSwapping, "WebPageProxy %" PRIu64 " created suspended page %s for process pid %i, back/forward item %s" PRIu64, pageID(), m_suspendedPage->loggingString(), process.processIdentifier(), currentItem->itemID().logString());
 
     return m_suspendedPage.get();
 }
@@ -679,20 +687,36 @@ void WebPageProxy::suspendedPageProcessClosed(SuspendedPageProxy& page)
     m_suspendedPage = nullptr;
 }
 
-void WebPageProxy::reattachToWebProcess(Ref<WebProcessProxy>&& process, bool suspendInOldProcess)
+void WebPageProxy::reattachToWebProcess(Ref<WebProcessProxy>&& process, API::Navigation* navigation, ReattachForBackForward reattachForBackForward)
 {
     ASSERT(!m_isClosed);
     ASSERT(!isValid());
 
     m_isValid = true;
 
-    if (!suspendInOldProcess) {
+    // If the process we're attaching to is kept alive solely by our current suspended page,
+    // we need to maintain that by temporarily keeping the suspended page alive.
+    RefPtr<SuspendedPageProxy> currentSuspendedPage;
+    if (!navigation) {
         m_process->removeWebPage(*this, m_pageID);
         m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID);
-    } else
-        m_process->suspendWebPageProxy(*this);
+    } else {
+        currentSuspendedPage = m_suspendedPage;
+        m_process->suspendWebPageProxy(*this, *navigation);
+    }
 
     m_process = WTFMove(process);
+    if (m_process->state() == WebProcessProxy::State::Running)
+        m_webProcessLifetimeTracker.webPageEnteringWebProcess();
+
+    if (reattachForBackForward == ReattachForBackForward::Yes) {
+        ASSERT(!m_mainFrame);
+        ASSERT(m_mainFrameID);
+        m_mainFrame = WebFrameProxy::create(this, *m_mainFrameID);
+        m_process->frameCreated(*m_mainFrameID, *m_mainFrame);
+    }
+
+    LOG(ProcessSwapping, "(ProcessSwapping) Reattaching WebPageProxy %p to WebProcessProxy %p with pid %i\n", this, m_process.ptr(), m_process->processIdentifier());
 
     ASSERT(m_process->state() != ChildProcessProxy::State::Terminated);
     if (m_process->state() == ChildProcessProxy::State::Running)
@@ -759,7 +783,7 @@ RefPtr<API::Navigation> WebPageProxy::reattachToWebProcessWithItem(WebBackForwar
     if (&item != m_backForwardList->currentItem())
         m_backForwardList->goToItem(item);
 
-    auto navigation = m_navigationState->createBackForwardNavigation(item, FrameLoadType::IndexedBackForward);
+    auto navigation = m_navigationState->createBackForwardNavigation(item, m_backForwardList->currentItem(), FrameLoadType::IndexedBackForward);
 
     m_process->send(Messages::WebPage::GoToBackForwardItem(navigation->navigationID(), item.itemID(), FrameLoadType::IndexedBackForward, NavigationPolicyCheck::Require), m_pageID);
     m_process->responsivenessTimer().start();
@@ -770,10 +794,6 @@ RefPtr<API::Navigation> WebPageProxy::reattachToWebProcessWithItem(WebBackForwar
 void WebPageProxy::initializeWebPage()
 {
     ASSERT(isValid());
-
-    const BackForwardListItemVector& items = m_backForwardList->entries();
-    for (size_t i = 0; i < items.size(); ++i)
-        m_process->registerNewWebBackForwardListItem(items[i].get());
 
     m_drawingArea = m_pageClient.createDrawingAreaProxy();
     ASSERT(m_drawingArea);
@@ -915,7 +935,7 @@ RefPtr<API::Navigation> WebPageProxy::loadRequest(ResourceRequest&& request, Sho
     if (m_isClosed)
         return nullptr;
 
-    auto navigation = m_navigationState->createLoadRequestNavigation(ResourceRequest(request));
+    auto navigation = m_navigationState->createLoadRequestNavigation(ResourceRequest(request), m_backForwardList->currentItem());
     loadRequestWithNavigation(navigation.get(), WTFMove(request), shouldOpenExternalURLsPolicy, userData, NavigationPolicyCheck::Require);
     return WTFMove(navigation);
 }
@@ -968,7 +988,7 @@ RefPtr<API::Navigation> WebPageProxy::loadFile(const String& fileURLString, cons
             return nullptr;
     }
 
-    auto navigation = m_navigationState->createLoadRequestNavigation(ResourceRequest(fileURL));
+    auto navigation = m_navigationState->createLoadRequestNavigation(ResourceRequest(fileURL), m_backForwardList->currentItem());
 
     auto transaction = m_pageLoadState.transaction();
 
@@ -1229,7 +1249,7 @@ RefPtr<API::Navigation> WebPageProxy::goToBackForwardItem(WebBackForwardListItem
 
 RefPtr<API::Navigation> WebPageProxy::goToBackForwardItem(WebBackForwardListItem& item, FrameLoadType frameLoadType)
 {
-    LOG(Loading, "WebPageProxy %p goToBackForwardItem to back item URL %s", this, item.url().utf8().data());
+    LOG(Loading, "WebPageProxy %p goToBackForwardItem to item URL %s", this, item.url().utf8().data());
 
     if (!isValid())
         return reattachToWebProcessWithItem(item);
@@ -1240,7 +1260,7 @@ RefPtr<API::Navigation> WebPageProxy::goToBackForwardItem(WebBackForwardListItem
 
     RefPtr<API::Navigation> navigation;
     if (!m_backForwardList->currentItem()->itemIsInSameDocument(item))
-        navigation = m_navigationState->createBackForwardNavigation(item, frameLoadType);
+        navigation = m_navigationState->createBackForwardNavigation(item, m_backForwardList->currentItem(), frameLoadType);
 
     m_process->send(Messages::WebPage::GoToBackForwardItem(navigation ? navigation->navigationID() : 0, item.itemID(), frameLoadType, NavigationPolicyCheck::Require), m_pageID);
     m_process->responsivenessTimer().start();
@@ -1269,11 +1289,11 @@ void WebPageProxy::didChangeBackForwardList(WebBackForwardListItem* added, Vecto
     m_pageLoadState.setCanGoForward(transaction, m_backForwardList->forwardItem());
 }
 
-void WebPageProxy::willGoToBackForwardListItem(uint64_t itemID, bool inPageCache, const UserData& userData)
+void WebPageProxy::willGoToBackForwardListItem(const BackForwardItemIdentifier& itemID, bool inPageCache, const UserData& userData)
 {
     PageClientProtector protector(m_pageClient);
 
-    if (auto* item = m_process->webBackForwardItem(itemID)) {
+    if (auto* item = m_backForwardList->itemForID(itemID)) {
         if (m_navigationClient && m_navigationClient->willGoToBackForwardListItem(*this, *item, inPageCache, m_process->transformHandlesToObjects(userData.object()).get()))
             return;
         m_loaderClient->willGoToBackForwardListItem(*this, *item, m_process->transformHandlesToObjects(userData.object()).get());
@@ -1898,28 +1918,29 @@ void WebPageProxy::handleMouseEvent(const NativeWebMouseEvent& event)
     if (!isValid())
         return;
 
+    LOG(MouseHandling, "UIProcess: enqueued mouse event %s (queue size %zu)", webMouseEventTypeString(event.type()), m_mouseEventQueue.size());
+    m_mouseEventQueue.append(event);
+    if (m_mouseEventQueue.size() == 1) // Otherwise, called from DidReceiveEvent message handler.
+        processNextQueuedMouseEvent();
+}
+    
+void WebPageProxy::processNextQueuedMouseEvent()
+{
+    if (!isValid())
+        return;
+
+    ASSERT(!m_mouseEventQueue.isEmpty());
+
+    const NativeWebMouseEvent& event = m_mouseEventQueue.first();
+    
     if (m_pageClient.windowIsFrontWindowUnderMouse(event))
         setToolTip(String());
 
     // NOTE: This does not start the responsiveness timer because mouse move should not indicate interaction.
     if (event.type() != WebEvent::MouseMove)
         m_process->responsivenessTimer().start();
-    else {
-        if (m_processingMouseMoveEvent) {
-            m_nextMouseMoveEvent = std::make_unique<NativeWebMouseEvent>(event);
-            return;
-        }
 
-        m_processingMouseMoveEvent = true;
-    }
-
-    // <https://bugs.webkit.org/show_bug.cgi?id=57904> We need to keep track of the mouse down event in the case where we
-    // display a popup menu for select elements. When the user changes the selected item,
-    // we fake a mouse up event by using this stored down event. This event gets cleared
-    // when the mouse up message is received from WebProcess.
-    if (event.type() == WebEvent::MouseDown)
-        m_currentlyProcessedMouseDownEvent = std::make_unique<NativeWebMouseEvent>(event);
-
+    LOG(MouseHandling, "UIProcess: sent mouse event %s (queue size %zu)", webMouseEventTypeString(event.type()), m_mouseEventQueue.size());
     m_process->send(Messages::WebPage::MouseEvent(event), m_pageID);
 }
 
@@ -2381,7 +2402,7 @@ void WebPageProxy::receivedPolicyDecision(PolicyAction action, WebFrameProxy& fr
             auto proposedProcess = process().processPool().processForNavigation(*this, *navigation, action);
 
             if (proposedProcess.ptr() != &process()) {
-                LOG(ProcessSwapping, "Switching from process %i to new process for navigation %" PRIu64 " '%s'", processIdentifier(), navigation->navigationID(), navigation->loggingString().utf8().data());
+                LOG(ProcessSwapping, "Switching from process %i to new process for navigation %" PRIu64 " '%s'", processIdentifier(), navigation->navigationID(), navigation->loggingString());
 
                 RunLoop::main().dispatch([this, protectedThis = makeRef(*this), navigation = makeRef(*navigation), proposedProcess = WTFMove(proposedProcess)]() mutable {
                     continueNavigationInNewProcess(navigation.get(), WTFMove(proposedProcess));
@@ -2390,24 +2411,47 @@ void WebPageProxy::receivedPolicyDecision(PolicyAction action, WebFrameProxy& fr
         }
     }
 
+    if (auto syncNavigationActionPolicyReply = WTFMove(m_syncNavigationActionPolicyReply)) {
+        syncNavigationActionPolicyReply->send(navigation ? navigation->navigationID() : 0, action, downloadID, WTFMove(websitePolicies));
+        return;
+    }
+
     m_process->send(Messages::WebPage::DidReceivePolicyDecision(frame.frameID(), listenerID, action, navigation ? navigation->navigationID() : 0, downloadID, websitePolicies), m_pageID);
 }
 
 void WebPageProxy::continueNavigationInNewProcess(API::Navigation& navigation, Ref<WebProcessProxy>&& process)
 {
-    LOG(Loading, "Continuing navigation %" PRIu64 " '%s' in a new web process", navigation.navigationID(), navigation.loggingString().utf8().data());
+    LOG(Loading, "Continuing navigation %" PRIu64 " '%s' in a new web process", navigation.navigationID(), navigation.loggingString());
+
+    Ref<WebProcessProxy> previousProcess = m_process.copyRef();
+    std::optional<uint64_t> navigatedFrameIdentifierInPreviousProcess;
+    if (m_mainFrame)
+        navigatedFrameIdentifierInPreviousProcess = m_mainFrame->frameID();
 
     ASSERT(m_process.ptr() != process.ptr());
-    attachToProcessForNavigation(WTFMove(process));
 
-    if (auto* item = navigation.backForwardListItem()) {
-        if (item != m_backForwardList->currentItem())
-            m_backForwardList->goToItem(*item);
+    processDidTerminate(ProcessTerminationReason::NavigationSwap);
 
-        ASSERT(navigation.backForwardFrameLoadType());
-        ASSERT(isBackForwardLoadType(*navigation.backForwardFrameLoadType()));
+    // FIXME: this is to fix the ASSERT(isValid()) inside reattachToWebProcess, some other way to fix this is needed.
+    m_isValid = false;
+    reattachToWebProcess(WTFMove(process), &navigation, navigation.targetItem() ? ReattachForBackForward::Yes : ReattachForBackForward::No);
 
+    if (auto* item = navigation.targetItem()) {
+        LOG(Loading, "WebPageProxy %p continueNavigationInNewProcess to back item URL %s", this, item->url().utf8().data());
+
+        auto transaction = m_pageLoadState.transaction();
+        m_pageLoadState.setPendingAPIRequestURL(transaction, item->url());
+
+        auto itemStates = m_backForwardList-> filteredItemStates([this, targetItem = item](WebBackForwardListItem& item) {
+            if (auto* page = item.suspendedPage()) {
+                if (page->process() == m_process.ptr())
+                    return false;
+            }
+            return &item != targetItem;
+        });
+        m_process->send(Messages::WebPage::UpdateBackForwardListForReattach(WTFMove(itemStates)), m_pageID);
         m_process->send(Messages::WebPage::GoToBackForwardItem(navigation.navigationID(), item->itemID(), *navigation.backForwardFrameLoadType(), NavigationPolicyCheck::Bypass), m_pageID);
+        m_process->responsivenessTimer().start();
 
         return;
     }
@@ -2427,6 +2471,15 @@ void WebPageProxy::continueNavigationInNewProcess(API::Navigation& navigation, R
             didReceiveServerRedirectForProvisionalLoadForFrame(m_mainFrame->frameID(), navigation->navigationID(), WTFMove(request), { });
         };
     }
+
+    if (!navigation.isCrossOriginWindowOpenNavigation() || !navigatedFrameIdentifierInPreviousProcess)
+        return;
+
+    m_mainFrameWindowCreationHandler = [this, previousProcess = WTFMove(previousProcess), navigatedFrameIdentifierInPreviousProcess = *navigatedFrameIdentifierInPreviousProcess](const GlobalWindowIdentifier& windowIdentifier) {
+        ASSERT(m_mainFrame);
+        GlobalFrameIdentifier navigatedFrameIdentifierInNewProcess { pageID(), m_mainFrame->frameID() };
+        previousProcess->send(Messages::WebPage::FrameBecameRemote(navigatedFrameIdentifierInPreviousProcess, navigatedFrameIdentifierInNewProcess, windowIdentifier), pageID());
+    };
 }
 
 void WebPageProxy::setUserAgent(String&& userAgent)
@@ -2536,10 +2589,6 @@ RefPtr<API::Navigation> WebPageProxy::restoreFromSessionState(SessionState sessi
 
     if (hasBackForwardList) {
         m_backForwardList->restoreFromState(WTFMove(sessionState.backForwardListState));
-
-        for (const auto& entry : m_backForwardList->entries())
-            process().registerNewWebBackForwardListItem(entry.get());
-
         process().send(Messages::WebPage::RestoreSession(m_backForwardList->itemStates()), m_pageID);
 
         auto transaction = m_pageLoadState.transaction();
@@ -2732,6 +2781,16 @@ void WebPageProxy::accessibilitySettingsDidChange()
 
     m_process->send(Messages::WebPage::AccessibilitySettingsDidChange(), m_pageID);
 }
+
+#if ENABLE(ACCESSIBILITY_EVENTS)
+void WebPageProxy::updateAccessibilityEventsEnabled(bool enabled)
+{
+    if (!isValid())
+        return;
+
+    m_process->send(Messages::WebPage::UpdateAccessibilityEventsEnabled(enabled), m_pageID);
+}
+#endif
 
 void WebPageProxy::setUseFixedLayout(bool fixed)
 {
@@ -3232,9 +3291,10 @@ void WebPageProxy::didCreateMainFrame(uint64_t frameID)
     MESSAGE_CHECK(m_process->canCreateFrame(frameID));
 
     m_mainFrame = WebFrameProxy::create(this, frameID);
+    m_mainFrameID = frameID;
 
     // Add the frame to the process wide map.
-    m_process->frameCreated(frameID, m_mainFrame.get());
+    m_process->frameCreated(frameID, *m_mainFrame);
 
     if (m_mainFrameCreationHandler) {
         m_mainFrameCreationHandler();
@@ -3252,7 +3312,15 @@ void WebPageProxy::didCreateSubframe(uint64_t frameID)
     RefPtr<WebFrameProxy> subFrame = WebFrameProxy::create(this, frameID);
 
     // Add the frame to the process wide map.
-    m_process->frameCreated(frameID, subFrame.get());
+    m_process->frameCreated(frameID, *subFrame);
+}
+
+void WebPageProxy::didCreateWindow(uint64_t frameID, GlobalWindowIdentifier&& windowIdentifier)
+{
+    if (m_mainFrame && m_mainFrame->frameID() == frameID) {
+        if (auto mainFrameWindowCreationHandler = WTFMove(m_mainFrameWindowCreationHandler))
+            mainFrameWindowCreationHandler(windowIdentifier);
+    }
 }
 
 double WebPageProxy::estimatedProgress() const
@@ -3333,7 +3401,7 @@ void WebPageProxy::didStartProvisionalLoadForFrame(uint64_t frameID, uint64_t na
             return;
     }
 
-    LOG(Loading, "WebPageProxy::didStartProvisionalLoadForFrame to frameID %" PRIu64 ", navigationID %" PRIu64 ", url %s", frameID, navigationID, url.string().utf8().data());
+    LOG(Loading, "WebPageProxy %" PRIu64 " in process pid %i didStartProvisionalLoadForFrame to frameID %" PRIu64 ", navigationID %" PRIu64 ", url %s", m_pageID, m_process->processIdentifier(), frameID, navigationID, url.string().utf8().data());
 
     auto transaction = m_pageLoadState.transaction();
 
@@ -3438,6 +3506,8 @@ void WebPageProxy::didChangeProvisionalURLForFrame(uint64_t frameID, uint64_t, W
 
 void WebPageProxy::didFailProvisionalLoadForFrame(uint64_t frameID, const SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, const String& provisionalURL, const ResourceError& error, const UserData& userData)
 {
+    LOG(Loading, "(Loading) WebPageProxy %" PRIu64 " in web process pid %i didFailProvisionalLoadForFrame to provisionalURL %s", m_pageID, m_process->processIdentifier(), provisionalURL.utf8().data());
+
     PageClientProtector protector(m_pageClient);
 
     WebFrameProxy* frame = m_process->webFrame(frameID);
@@ -3492,6 +3562,9 @@ void WebPageProxy::clearLoadDependentCallbacks()
 
 void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& mimeType, bool frameHasCustomContentProvider, uint32_t opaqueFrameLoadType, const WebCore::CertificateInfo& certificateInfo, bool containsPluginDocument, std::optional<HasInsecureContent> hasInsecureContent, const UserData& userData)
 {
+    LOG(Loading, "(Loading) WebPageProxy %" PRIu64 " didCommitLoadForFrame in navigation %" PRIu64, m_pageID, m_navigationID);
+    LOG(BackForward, "(Back/Forward) After load commit, back/forward list is now:%s", m_backForwardList->loggingString());
+
     PageClientProtector protector(m_pageClient);
 
     WebFrameProxy* frame = m_process->webFrame(frameID);
@@ -3598,7 +3671,7 @@ void WebPageProxy::didFinishDocumentLoadForFrame(uint64_t frameID, uint64_t navi
 
 void WebPageProxy::didFinishLoadForFrame(uint64_t frameID, uint64_t navigationID, const UserData& userData)
 {
-    LOG(Loading, "WebPageProxy::didFinishLoadForFrame - WebPageProxy %p with navigationID %llu didFinishLoad", this, navigationID);
+    LOG(Loading, "WebPageProxy::didFinishLoadForFrame - WebPageProxy %p with navigationID %" PRIu64 " didFinishLoad", this, navigationID);
 
     PageClientProtector protector(m_pageClient);
 
@@ -3869,7 +3942,7 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const Secur
     MESSAGE_CHECK_URL(request.url());
     MESSAGE_CHECK_URL(originalRequest.url());
     
-    Ref<API::Navigation> navigation = navigationID ? makeRef(m_navigationState->navigation(navigationID)) : m_navigationState->createLoadRequestNavigation(ResourceRequest(request));
+    Ref<API::Navigation> navigation = navigationID ? makeRef(m_navigationState->navigation(navigationID)) : m_navigationState->createLoadRequestNavigation(ResourceRequest(request), m_backForwardList->currentItem());
 
     uint64_t newNavigationID = navigation->navigationID();
     navigation->setWasUserInitiated(!!navigationActionData.userGestureTokenIdentifier);
@@ -3909,6 +3982,18 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const Secur
         m_policyClient->decidePolicyForNavigationAction(*this, frame, WTFMove(navigationActionData), originatingFrame, originalRequest, WTFMove(request), WTFMove(listener), m_process->transformHandlesToObjects(userData.object()).get());
 
     m_shouldSuppressAppLinksInNextNavigationPolicyDecision = false;
+}
+
+void WebPageProxy::decidePolicyForNavigationActionSync(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, NavigationActionData&& navigationActionData, const FrameInfoData& originatingFrameInfoData, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&& request, uint64_t listenerID, const UserData& userData, Ref<Messages::WebPageProxy::DecidePolicyForNavigationActionSync::DelayedReply>&& reply)
+{
+    ASSERT(!m_syncNavigationActionPolicyReply);
+    m_syncNavigationActionPolicyReply = WTFMove(reply);
+
+    decidePolicyForNavigationAction(frameID, frameSecurityOrigin, navigationID, WTFMove(navigationActionData), originatingFrameInfoData, originatingPageID, originalRequest, WTFMove(request), listenerID, userData);
+
+    // If the client did not respond synchronously, proceed with the load.
+    if (auto syncNavigationActionPolicyReply = WTFMove(m_syncNavigationActionPolicyReply))
+        syncNavigationActionPolicyReply->send(navigationID, PolicyAction::Use, { }, { });
 }
 
 void WebPageProxy::decidePolicyForNewWindowAction(uint64_t frameID, const SecurityOriginData& frameSecurityOrigin, NavigationActionData&& navigationActionData, ResourceRequest&& request, const String& frameName, uint64_t listenerID, const UserData& userData)
@@ -4189,9 +4274,9 @@ void WebPageProxy::mouseDidMoveOverElement(WebHitTestResultData&& hitTestResultD
 
 void WebPageProxy::connectionWillOpen(IPC::Connection& connection)
 {
-    ASSERT(&connection == m_process->connection());
+    ASSERT_UNUSED(connection, &connection == m_process->connection());
 
-    m_webProcessLifetimeTracker.connectionWillOpen(connection);
+    m_webProcessLifetimeTracker.webPageEnteringWebProcess();
 }
 
 void WebPageProxy::webProcessWillShutDown()
@@ -4634,14 +4719,14 @@ void WebPageProxy::setNeedsPlainTextQuirk(bool needsPlainTextQuirk)
 
 // BackForwardList
 
-void WebPageProxy::backForwardAddItem(uint64_t itemID)
+void WebPageProxy::backForwardAddItem(BackForwardListItemState&& itemState)
 {
-    m_backForwardList->addItem(m_process->webBackForwardItem(itemID));
+    m_backForwardList->addItem(WebBackForwardListItem::create(WTFMove(itemState), pageID()));
 }
 
-void WebPageProxy::backForwardGoToItem(uint64_t itemID, SandboxExtension::Handle& sandboxExtensionHandle)
+void WebPageProxy::backForwardGoToItem(const BackForwardItemIdentifier& itemID, SandboxExtension::Handle& sandboxExtensionHandle)
 {
-    WebBackForwardListItem* item = m_process->webBackForwardItem(itemID);
+    WebBackForwardListItem* item = m_backForwardList->itemForID(itemID);
     if (!item)
         return;
 
@@ -4651,10 +4736,13 @@ void WebPageProxy::backForwardGoToItem(uint64_t itemID, SandboxExtension::Handle
     m_backForwardList->goToItem(*item);
 }
 
-void WebPageProxy::backForwardItemAtIndex(int32_t index, uint64_t& itemID)
+void WebPageProxy::backForwardItemAtIndex(int32_t index, std::optional<BackForwardItemIdentifier>& itemID)
 {
     WebBackForwardListItem* item = m_backForwardList->itemAtIndex(index);
-    itemID = item ? item->itemID() : 0;
+    if (item)
+        itemID = item->itemID();
+    else
+        itemID = std::nullopt;
 }
 
 void WebPageProxy::backForwardBackListCount(int32_t& count)
@@ -4787,9 +4875,26 @@ void WebPageProxy::setTextFromItemForPopupMenu(WebPopupMenuProxy*, int32_t index
     m_process->send(Messages::WebPage::SetTextForActivePopupMenu(index), m_pageID);
 }
 
+bool WebPageProxy::isProcessingMouseEvents() const
+{
+    return !m_mouseEventQueue.isEmpty();
+}
+
 NativeWebMouseEvent* WebPageProxy::currentlyProcessedMouseDownEvent()
 {
-    return m_currentlyProcessedMouseDownEvent.get();
+    // <https://bugs.webkit.org/show_bug.cgi?id=57904> We need to keep track of the mouse down event in the case where we
+    // display a popup menu for select elements. When the user changes the selected item, we fake a mouseup event by
+    // using this stored mousedown event and changing the event type. This trickery happens when WebProcess handles
+    // a mousedown event that runs the default handler for HTMLSelectElement, so the triggering mousedown must be the first event.
+
+    if (m_mouseEventQueue.isEmpty())
+        return nullptr;
+    
+    auto& event = m_mouseEventQueue.first();
+    if (event.type() != WebEvent::Type::MouseDown)
+        return nullptr;
+
+    return &event;
 }
 
 void WebPageProxy::postMessageToInjectedBundle(const String& messageName, API::Object* messageBody)
@@ -5197,20 +5302,27 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
     switch (type) {
     case WebEvent::NoType:
         break;
-    case WebEvent::MouseMove:
-        m_processingMouseMoveEvent = false;
-        if (m_nextMouseMoveEvent)
-            handleMouseEvent(*std::exchange(m_nextMouseMoveEvent, nullptr));
-        break;
-    case WebEvent::MouseDown:
-        break;
-    case WebEvent::MouseUp:
-        m_currentlyProcessedMouseDownEvent = nullptr;
-        break;
     case WebEvent::MouseForceChanged:
     case WebEvent::MouseForceDown:
     case WebEvent::MouseForceUp:
+    case WebEvent::MouseMove:
+    case WebEvent::MouseDown:
+    case WebEvent::MouseUp: {
+        LOG(MouseHandling, "WebPageProxy::didReceiveEvent: %s (queue size %zu)", webMouseEventTypeString(type), m_mouseEventQueue.size());
+
+        // Retire the last sent event now that WebProcess is done handling it.
+        MESSAGE_CHECK(!m_mouseEventQueue.isEmpty());
+        NativeWebMouseEvent event = m_mouseEventQueue.takeFirst();
+        MESSAGE_CHECK(type == event.type());
+
+        if (!m_mouseEventQueue.isEmpty()) {
+            LOG(MouseHandling, " UIProcess: handling a queued mouse event from didReceiveEvent");
+            processNextQueuedMouseEvent();
+        } else if (auto* automationSession = process().processPool().automationSession())
+            automationSession->mouseEventsFlushedForPage(*this);
+
         break;
+    }
 
     case WebEvent::Wheel: {
         MESSAGE_CHECK(!m_currentlyProcessedWheelEvents.isEmpty());
@@ -5239,7 +5351,8 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
 
         MESSAGE_CHECK(type == event.type());
 
-        if (!m_keyEventQueue.isEmpty()) {
+        bool canProcessMoreKeyEvents = !m_keyEventQueue.isEmpty();
+        if (canProcessMoreKeyEvents) {
             LOG(KeyHandling, " UI process: sent keyEvent from didReceiveEvent");
             m_process->send(Messages::WebPage::KeyEvent(m_keyEventQueue.first()), m_pageID);
         }
@@ -5253,7 +5366,7 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
             m_uiClient->didNotHandleKeyEvent(this, event);
 
         // Notify the session after -[NSApp sendEvent:] has a crack at turning the event into an action.
-        if (m_keyEventQueue.isEmpty()) {
+        if (!canProcessMoreKeyEvents) {
             if (auto* automationSession = process().processPool().automationSession())
                 automationSession->keyboardEventsFlushedForPage(*this);
         }
@@ -5857,15 +5970,10 @@ void WebPageProxy::resetStateAfterProcessExited(ProcessTerminationReason termina
     m_pendingLearnOrIgnoreWordMessageCount = 0;
 
     // Can't expect DidReceiveEvent notifications from a crashed web process.
+    m_mouseEventQueue.clear();
     m_keyEventQueue.clear();
     m_wheelEventQueue.clear();
     m_currentlyProcessedWheelEvents.clear();
-
-    m_nextMouseMoveEvent = nullptr;
-    m_currentlyProcessedMouseDownEvent = nullptr;
-
-    m_processingMouseMoveEvent = false;
-
 #if ENABLE(TOUCH_EVENTS) && !ENABLE(IOS_TOUCH_EVENTS)
     m_touchEventQueue.clear();
 #endif
@@ -5904,7 +6012,6 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.userAgent = userAgent();
     parameters.itemStates = m_backForwardList->itemStates();
     parameters.sessionID = sessionID();
-    parameters.highestUsedBackForwardItemID = WebBackForwardListItem::highestUsedItemID();
     parameters.userContentControllerID = m_userContentController->identifier();
     parameters.visitedLinkTableID = m_visitedLinkStore->identifier();
     parameters.websiteDataStoreID = m_websiteDataStore->identifier();
@@ -6311,9 +6418,8 @@ void WebPageProxy::didFinishLoadingDataForCustomContentProvider(const String& su
     m_pageClient.didFinishLoadingDataForCustomContentProvider(suggestedFilename, dataReference);
 }
 
-void WebPageProxy::backForwardRemovedItem(uint64_t itemID)
+void WebPageProxy::backForwardRemovedItem(const BackForwardItemIdentifier& itemID)
 {
-    m_process->removeBackForwardItem(itemID);
     m_process->send(Messages::WebPage::DidRemoveBackForwardItem(itemID), m_pageID);
 }
 
@@ -7081,6 +7187,11 @@ void WebPageProxy::setShouldDispatchFakeMouseMoveEvents(bool shouldDispatchFakeM
 void WebPageProxy::handleAutoFillButtonClick(const UserData& userData)
 {
     m_uiClient->didClickAutoFillButton(*this, m_process->transformHandlesToObjects(userData.object()).get());
+}
+
+void WebPageProxy::didResignInputElementStrongPasswordAppearance(const UserData& userData)
+{
+    m_uiClient->didResignInputElementStrongPasswordAppearance(*this, m_process->transformHandlesToObjects(userData.object()).get());
 }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)

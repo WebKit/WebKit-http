@@ -106,6 +106,7 @@
 #include "WebKitPoint.h"
 #include "WindowFeatures.h"
 #include "WindowFocusAllowedIndicator.h"
+#include "WindowProxy.h"
 #include <JavaScriptCore/ScriptCallStack.h>
 #include <JavaScriptCore/ScriptCallStackFactory.h>
 #include <algorithm>
@@ -1014,7 +1015,8 @@ Element* DOMWindow::frameElement() const
 
 void DOMWindow::focus(DOMWindow& incumbentWindow)
 {
-    focus(opener() && opener() != this && &incumbentWindow == opener());
+    auto* opener = this->opener();
+    focus(opener && opener != self() && incumbentWindow.self() == opener);
 }
 
 void DOMWindow::focus(bool allowFocus)
@@ -1417,24 +1419,24 @@ void DOMWindow::setDefaultStatus(const String& string)
     page->chrome().setStatusbarText(*m_frame, m_defaultStatus);
 }
 
-DOMWindow* DOMWindow::self() const
+WindowProxy* DOMWindow::self() const
 {
     if (!m_frame)
         return nullptr;
 
-    return m_frame->document()->domWindow();
+    return &m_frame->windowProxy();
 }
 
-DOMWindow* DOMWindow::opener() const
+WindowProxy* DOMWindow::opener() const
 {
     if (!m_frame)
         return nullptr;
 
-    Frame* opener = m_frame->loader().opener();
-    if (!opener)
+    auto* openerFrame = m_frame->loader().opener();
+    if (!openerFrame)
         return nullptr;
 
-    return opener->document()->domWindow();
+    return &openerFrame->windowProxy();
 }
 
 void DOMWindow::disownOpener()
@@ -1443,28 +1445,27 @@ void DOMWindow::disownOpener()
         m_frame->loader().setOpener(nullptr);
 }
 
-DOMWindow* DOMWindow::parent() const
+WindowProxy* DOMWindow::parent() const
 {
     if (!m_frame)
         return nullptr;
 
-    Frame* parent = m_frame->tree().parent();
-    if (parent)
-        return parent->document()->domWindow();
+    auto* parentFrame = m_frame->tree().parent();
+    if (parentFrame)
+        return &parentFrame->windowProxy();
 
-    return m_frame->document()->domWindow();
+    return &m_frame->windowProxy();
 }
 
-DOMWindow* DOMWindow::top() const
+WindowProxy* DOMWindow::top() const
 {
     if (!m_frame)
         return nullptr;
 
-    Page* page = m_frame->page();
-    if (!page)
+    if (!m_frame->page())
         return nullptr;
 
-    return m_frame->tree().top().document()->domWindow();
+    return &m_frame->tree().top().windowProxy();
 }
 
 String DOMWindow::origin() const
@@ -2170,7 +2171,7 @@ void DOMWindow::printErrorMessage(const String& message)
         pageConsole->addMessage(MessageSource::JS, MessageLevel::Error, message);
 }
 
-String DOMWindow::crossDomainAccessErrorMessage(const DOMWindow& activeWindow)
+String DOMWindow::crossDomainAccessErrorMessage(const DOMWindow& activeWindow, IncludeTargetOrigin includeTargetOrigin)
 {
     const URL& activeWindowURL = activeWindow.document()->url();
     if (activeWindowURL.isNull())
@@ -2181,31 +2182,41 @@ String DOMWindow::crossDomainAccessErrorMessage(const DOMWindow& activeWindow)
     // FIXME: This message, and other console messages, have extra newlines. Should remove them.
     SecurityOrigin& activeOrigin = activeWindow.document()->securityOrigin();
     SecurityOrigin& targetOrigin = document()->securityOrigin();
-    String message = "Blocked a frame with origin \"" + activeOrigin.toString() + "\" from accessing a frame with origin \"" + targetOrigin.toString() + "\". ";
+    String message;
+    if (includeTargetOrigin == IncludeTargetOrigin::Yes)
+        message = makeString("Blocked a frame with origin \"", activeOrigin.toString(), "\" from accessing a frame with origin \"", targetOrigin.toString(), "\". ");
+    else
+        message = makeString("Blocked a frame with origin \"", activeOrigin.toString(), "\" from accessing a cross-origin frame. ");
 
     // Sandbox errors: Use the origin of the frames' location, rather than their actual origin (since we know that at least one will be "null").
     URL activeURL = activeWindow.document()->url();
     URL targetURL = document()->url();
     if (document()->isSandboxed(SandboxOrigin) || activeWindow.document()->isSandboxed(SandboxOrigin)) {
-        message = "Blocked a frame at \"" + SecurityOrigin::create(activeURL).get().toString() + "\" from accessing a frame at \"" + SecurityOrigin::create(targetURL).get().toString() + "\". ";
+        if (includeTargetOrigin == IncludeTargetOrigin::Yes)
+            message = makeString("Blocked a frame at \"", SecurityOrigin::create(activeURL).get().toString(), "\" from accessing a frame at \"", SecurityOrigin::create(targetURL).get().toString(), "\". ");
+        else
+            message = makeString("Blocked a frame at \"", SecurityOrigin::create(activeURL).get().toString(), "\" from accessing a cross-origin frame. ");
+
         if (document()->isSandboxed(SandboxOrigin) && activeWindow.document()->isSandboxed(SandboxOrigin))
-            return "Sandbox access violation: " + message + " Both frames are sandboxed and lack the \"allow-same-origin\" flag.";
+            return makeString("Sandbox access violation: ", message, " Both frames are sandboxed and lack the \"allow-same-origin\" flag.");
         if (document()->isSandboxed(SandboxOrigin))
-            return "Sandbox access violation: " + message + " The frame being accessed is sandboxed and lacks the \"allow-same-origin\" flag.";
-        return "Sandbox access violation: " + message + " The frame requesting access is sandboxed and lacks the \"allow-same-origin\" flag.";
+            return makeString("Sandbox access violation: ", message, " The frame being accessed is sandboxed and lacks the \"allow-same-origin\" flag.");
+        return makeString("Sandbox access violation: ", message, " The frame requesting access is sandboxed and lacks the \"allow-same-origin\" flag.");
     }
 
-    // Protocol errors: Use the URL's protocol rather than the origin's protocol so that we get a useful message for non-heirarchal URLs like 'data:'.
-    if (targetOrigin.protocol() != activeOrigin.protocol())
-        return message + " The frame requesting access has a protocol of \"" + activeURL.protocol() + "\", the frame being accessed has a protocol of \"" + targetURL.protocol() + "\". Protocols must match.\n";
+    if (includeTargetOrigin == IncludeTargetOrigin::Yes) {
+        // Protocol errors: Use the URL's protocol rather than the origin's protocol so that we get a useful message for non-heirarchal URLs like 'data:'.
+        if (targetOrigin.protocol() != activeOrigin.protocol())
+            return message + " The frame requesting access has a protocol of \"" + activeURL.protocol() + "\", the frame being accessed has a protocol of \"" + targetURL.protocol() + "\". Protocols must match.\n";
 
-    // 'document.domain' errors.
-    if (targetOrigin.domainWasSetInDOM() && activeOrigin.domainWasSetInDOM())
-        return message + "The frame requesting access set \"document.domain\" to \"" + activeOrigin.domain() + "\", the frame being accessed set it to \"" + targetOrigin.domain() + "\". Both must set \"document.domain\" to the same value to allow access.";
-    if (activeOrigin.domainWasSetInDOM())
-        return message + "The frame requesting access set \"document.domain\" to \"" + activeOrigin.domain() + "\", but the frame being accessed did not. Both must set \"document.domain\" to the same value to allow access.";
-    if (targetOrigin.domainWasSetInDOM())
-        return message + "The frame being accessed set \"document.domain\" to \"" + targetOrigin.domain() + "\", but the frame requesting access did not. Both must set \"document.domain\" to the same value to allow access.";
+        // 'document.domain' errors.
+        if (targetOrigin.domainWasSetInDOM() && activeOrigin.domainWasSetInDOM())
+            return message + "The frame requesting access set \"document.domain\" to \"" + activeOrigin.domain() + "\", the frame being accessed set it to \"" + targetOrigin.domain() + "\". Both must set \"document.domain\" to the same value to allow access.";
+        if (activeOrigin.domainWasSetInDOM())
+            return message + "The frame requesting access set \"document.domain\" to \"" + activeOrigin.domain() + "\", but the frame being accessed did not. Both must set \"document.domain\" to the same value to allow access.";
+        if (targetOrigin.domainWasSetInDOM())
+            return message + "The frame being accessed set \"document.domain\" to \"" + targetOrigin.domain() + "\", but the frame requesting access did not. Both must set \"document.domain\" to the same value to allow access.";
+    }
 
     // Default.
     return message + "Protocols, domains, and ports must match.";
@@ -2231,7 +2242,7 @@ bool DOMWindow::isInsecureScriptAccess(DOMWindow& activeWindow, const String& ur
             return false;
     }
 
-    printErrorMessage(crossDomainAccessErrorMessage(activeWindow));
+    printErrorMessage(crossDomainAccessErrorMessage(activeWindow, IncludeTargetOrigin::Yes));
     return true;
 }
 
@@ -2279,6 +2290,7 @@ RefPtr<Frame> DOMWindow::createWindow(const String& urlString, const AtomicStrin
 
     if (created) {
         ResourceRequest resourceRequest { completedURL, referrer, UseProtocolCachePolicy };
+        FrameLoader::addSameSiteInfoToRequestIfNeeded(resourceRequest, openerFrame.document());
         FrameLoadRequest frameLoadRequest { *activeWindow.document(), activeWindow.document()->securityOrigin(), resourceRequest, ASCIILiteral("_self"), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, activeDocument->shouldOpenExternalURLsPolicyToPropagate(), initiatedByMainFrame };
         if (openerFrame.document() && !protocolHostAndPortAreEqual(openerFrame.document()->url(), frameLoadRequest.resourceRequest().url()))
             frameLoadRequest.setIsCrossOriginWindowOpenNavigation(true);
@@ -2302,7 +2314,7 @@ RefPtr<Frame> DOMWindow::createWindow(const String& urlString, const AtomicStrin
     return windowFeatures.noopener ? nullptr : newFrame;
 }
 
-RefPtr<DOMWindow> DOMWindow::open(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& urlString, const AtomicString& frameName, const String& windowFeaturesString)
+RefPtr<WindowProxy> DOMWindow::open(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& urlString, const AtomicString& frameName, const String& windowFeaturesString)
 {
     if (!isCurrentlyDisplayedInFrame())
         return nullptr;
@@ -2353,21 +2365,21 @@ RefPtr<DOMWindow> DOMWindow::open(DOMWindow& activeWindow, DOMWindow& firstWindo
         URL completedURL = firstFrame->document()->completeURL(urlString);
 
         if (targetFrame->document()->domWindow()->isInsecureScriptAccess(activeWindow, completedURL))
-            return targetFrame->document()->domWindow();
+            return &targetFrame->windowProxy();
 
         if (urlString.isEmpty())
-            return targetFrame->document()->domWindow();
+            return &targetFrame->windowProxy();
 
         // For whatever reason, Firefox uses the first window rather than the active window to
         // determine the outgoing referrer. We replicate that behavior here.
         LockHistory lockHistory = UserGestureIndicator::processingUserGesture() ? LockHistory::No : LockHistory::Yes;
         targetFrame->navigationScheduler().scheduleLocationChange(*activeDocument, activeDocument->securityOrigin(), completedURL, firstFrame->loader().outgoingReferrer(),
             lockHistory, LockBackForwardList::No);
-        return targetFrame->document()->domWindow();
+        return &targetFrame->windowProxy();
     }
 
-    RefPtr<Frame> result = createWindow(urlString, frameName, parseWindowFeatures(windowFeaturesString), activeWindow, *firstFrame, *m_frame);
-    return result ? result->document()->domWindow() : nullptr;
+    auto newFrame = createWindow(urlString, frameName, parseWindowFeatures(windowFeaturesString), activeWindow, *firstFrame, *m_frame);
+    return newFrame ? &newFrame->windowProxy() : nullptr;
 }
 
 void DOMWindow::showModalDialog(const String& urlString, const String& dialogFeaturesString, DOMWindow& activeWindow, DOMWindow& firstWindow, const WTF::Function<void (DOMWindow&)>& prepareDialogFunction)

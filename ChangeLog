@@ -1,3 +1,45 @@
+2018-04-20  Daniel Bates  <dabates@apple.com>
+
+        Unreviewed, rolling out r230117.
+
+        Broke find-in-page for PDFs
+
+        Reverted changeset:
+
+        "ASSERTION FAILED: ASSERT(!containsImage ||
+        MIMETypeRegistry::isSupportedImageResourceMIMEType([resource
+        MIMEType])) in -[NSPasteboard(WebExtras)
+        _web_writePromisedRTFDFromArchive:containsImage:]"
+        https://bugs.webkit.org/show_bug.cgi?id=184161
+        https://trac.webkit.org/changeset/230117
+
+2018-04-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Local cross references are broken in API documentation
+        https://bugs.webkit.org/show_bug.cgi?id=184771
+
+        Reviewed by Michael Catanzaro.
+
+        Update the documentation html paths and install the JSC GLib API too.
+
+        * Source/PlatformGTK.cmake:
+
+2018-04-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.21.1 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2018-04-17  Zan Dobersek  <zdobersek@igalia.com>
+
+        [CMake] Add and enable the ENABLE_CSS_ANIMATIONS_LEVEL_2 feature define
+        https://bugs.webkit.org/show_bug.cgi?id=184681
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Source/cmake/WebKitFeatures.cmake: Add the ENABLE_CSS_ANIMATIONS_LEVEL_2
+        feature define. Follow Cocoa ports and enable it by default.
+
 2018-04-15  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         [WPE] Install files needed for WebKitWebExtensions

@@ -40,6 +40,7 @@ public:
 protected:
     TextControlInnerContainer(Document&);
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
+    std::optional<ElementStyle> resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle* shadowHostStyle) override;
 };
 
 class TextControlInnerElement final : public HTMLDivElement {
@@ -75,7 +76,7 @@ private:
 class TextControlPlaceholderElement final : public HTMLDivElement {
     WTF_MAKE_ISO_ALLOCATED(TextControlPlaceholderElement);
 public:
-    static Ref<TextControlPlaceholderElement> create(Document& document) { return adoptRef(*new TextControlPlaceholderElement(document)); }
+    static Ref<TextControlPlaceholderElement> create(Document&);
 
 private:
     TextControlPlaceholderElement(Document&);

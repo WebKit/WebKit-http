@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2018 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -256,7 +256,7 @@ inline bool isValidNameType(Int val)
 }
 
 struct UnlinkedWasmToWasmCall {
-    CodeLocationNearCall callLocation;
+    CodeLocationNearCall<WasmEntryPtrTag> callLocation;
     size_t functionIndexSpace;
 };
 
@@ -266,7 +266,7 @@ struct Entrypoint {
 };
 
 struct InternalFunction {
-    CodeLocationDataLabelPtr calleeMoveLocation;
+    CodeLocationDataLabelPtr<WasmEntryPtrTag> calleeMoveLocation;
     Entrypoint entrypoint;
 };
 
@@ -274,16 +274,7 @@ struct InternalFunction {
 // with all imports, and then all internal functions. WasmToWasmImportableFunction and FunctionIndexSpace are only
 // meant as fast lookup tables for these opcodes and do not own code.
 struct WasmToWasmImportableFunction {
-    using LoadLocation = MacroAssemblerCodePtr*;
-#if !COMPILER_SUPPORTS(NSDMI_FOR_AGGREGATES)
-    WasmToWasmImportableFunction() = default;
-    WasmToWasmImportableFunction(SignatureIndex signatureIndex, LoadLocation entrypointLoadLocation)
-        : signatureIndex { signatureIndex }
-        , entrypointLoadLocation { entrypointLoadLocation }
-    {
-    }
-#endif
-
+    using LoadLocation = MacroAssemblerCodePtr<WasmEntryPtrTag>*;
     static ptrdiff_t offsetOfEntrypointLoadLocation() { return OBJECT_OFFSETOF(WasmToWasmImportableFunction, entrypointLoadLocation); }
 
     // FIXME: Pack signature index and code pointer into one 64-bit value. See <https://bugs.webkit.org/show_bug.cgi?id=165511>.

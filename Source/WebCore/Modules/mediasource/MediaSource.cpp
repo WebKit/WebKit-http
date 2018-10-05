@@ -587,6 +587,8 @@ void MediaSource::streamEndedWithError(std::optional<EndOfStreamError> error)
         setDurationInternal(maxEndTime);
 
         // 2. Notify the media element that it now has all of the media data.
+        for (auto& sourceBuffer : *m_sourceBuffers)
+            sourceBuffer->trySignalAllSamplesEnqueued();
         m_private->markEndOfStream(MediaSourcePrivate::EosNoError);
     } else if (error == EndOfStreamError::Network) {
         // ↳ If error is set to "network"
@@ -623,7 +625,7 @@ void MediaSource::streamEndedWithError(std::optional<EndOfStreamError> error)
     }
 }
 
-ExceptionOr<SourceBuffer&> MediaSource::addSourceBuffer(const String& type)
+ExceptionOr<Ref<SourceBuffer>> MediaSource::addSourceBuffer(const String& type)
 {
     LOG(MediaSource, "MediaSource::addSourceBuffer(%s) %p", type.ascii().data(), this);
 
@@ -669,14 +671,12 @@ ExceptionOr<SourceBuffer&> MediaSource::addSourceBuffer(const String& type)
     // ↳ Set the mode attribute on the new object to "segments".
     buffer->setMode(shouldGenerateTimestamps ? SourceBuffer::AppendMode::Sequence : SourceBuffer::AppendMode::Segments);
 
-    auto& result = buffer.get();
-
     // 8. Add the new object to sourceBuffers and fire a addsourcebuffer on that object.
-    m_sourceBuffers->add(WTFMove(buffer));
+    m_sourceBuffers->add(buffer.copyRef());
     regenerateActiveSourceBuffers();
 
     // 9. Return the new object to the caller.
-    return result;
+    return WTFMove(buffer);
 }
 
 ExceptionOr<void> MediaSource::removeSourceBuffer(SourceBuffer& buffer)

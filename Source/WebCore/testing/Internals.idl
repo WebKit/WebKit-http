@@ -148,9 +148,6 @@ enum EventThrottlingBehavior {
     [MayThrowException] boolean pauseTransitionAtTimeOnElement(DOMString propertyName, unrestricted double pauseTime, Element element);
     [MayThrowException] boolean pauseTransitionAtTimeOnPseudoElement(DOMString property, unrestricted double pauseTime, Element element, DOMString pseudoId);
 
-    // For animations testing, we need a way to get at pseudo elements.
-    [MayThrowException] Element? pseudoElement(Element element, DOMString pseudoId);
-
     DOMString visiblePlaceholder(Element element);
     void selectColorInColorChooser(HTMLInputElement element, DOMString colorValue);
     [MayThrowException] sequence<DOMString> formControlStateOfPreviousHistoryItem();
@@ -318,7 +315,7 @@ enum EventThrottlingBehavior {
     unsigned long numberOfLiveNodes();
     unsigned long numberOfLiveDocuments();
     unsigned long referencingNodeCount(Document document);
-    DOMWindow? openDummyInspectorFrontend(DOMString url);
+    WindowProxy? openDummyInspectorFrontend(DOMString url);
     void closeDummyInspectorFrontend();
     [MayThrowException] void setInspectorIsUnderTest(boolean isUnderTest);
 
@@ -591,4 +588,10 @@ enum EventThrottlingBehavior {
     [EnabledAtRuntime=WebAnimations] void setTimelineCurrentTime(AnimationTimeline timeline, double currentTime);
     [Conditional=APPLE_PAY] readonly attribute MockPaymentCoordinator mockPaymentCoordinator;
     [Conditional=WEB_AUTHN] readonly attribute MockCredentialsMessenger mockCredentialsMessenger;
+
+    DOMString systemPreviewRelType();
+    boolean isSystemPreviewLink(Element element);
+    boolean isSystemPreviewImage(Element element);
+
+    boolean usingAppleInternalSDK();
 };

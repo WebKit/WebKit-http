@@ -1,3 +1,287 @@
+2018-04-20  JF Bastien  <jfbastien@apple.com>
+
+        Handle more JSON stringify OOM
+        https://bugs.webkit.org/show_bug.cgi?id=184846
+        <rdar://problem/39390672>
+
+        Reviewed by Mark Lam.
+
+        * stress/json-stringified-overflow-2.js: Added. Same as the one
+        below, but with a bigger input which will trigger a different code
+        path.
+        (catch):
+        * stress/json-stringified-overflow.js: Modify the test to only
+        catch OOM on stringification. not on string creation.
+
+2018-04-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WebAssembly][Modules] Import tables in wasm modules
+        https://bugs.webkit.org/show_bug.cgi?id=184738
+
+        Reviewed by JF Bastien.
+
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports.js:
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports/imports.wasm:
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports/imports.wat:
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports/re-export.js:
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports/sum.wasm:
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports/sum.wat:
+        * wasm/modules/wasm-imports-wasm-exports.js:
+        * wasm/modules/wasm-imports-wasm-exports/imports.wasm:
+        * wasm/modules/wasm-imports-wasm-exports/imports.wat:
+        * wasm/modules/wasm-imports-wasm-exports/sum.wasm:
+        * wasm/modules/wasm-imports-wasm-exports/sum.wat:
+
+2018-04-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WebAssembly][Modules] Import globals from wasm modules
+        https://bugs.webkit.org/show_bug.cgi?id=184736
+
+        Reviewed by JF Bastien.
+
+        * wasm.yaml:
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports.js:
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports/imports.wasm:
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports/imports.wat:
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports/re-export.js:
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports/sum.wasm:
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports/sum.wat:
+        * wasm/modules/wasm-imports-wasm-exports.js:
+        * wasm/modules/wasm-imports-wasm-exports/imports.wasm:
+        * wasm/modules/wasm-imports-wasm-exports/imports.wat:
+        * wasm/modules/wasm-imports-wasm-exports/sum.wasm:
+        * wasm/modules/wasm-imports-wasm-exports/sum.wat:
+
+2018-04-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, reland r230697, r230720, and r230724.
+        https://bugs.webkit.org/show_bug.cgi?id=184600
+
+        * wasm.yaml:
+        * wasm/modules/constant.wasm: Added.
+        * wasm/modules/constant.wat: Added.
+        * wasm/modules/default-import-star-error.js: Added.
+        (then):
+        * wasm/modules/default-import-star-error/entry.wasm: Added.
+        * wasm/modules/default-import-star-error/entry.wat: Added.
+        * wasm/modules/default-import-star-error/t0.js: Added.
+        * wasm/modules/default-import-star-error/t1.js: Added.
+        * wasm/modules/default-import-star-error/t2.js: Added.
+        (export.default.Cocoa):
+        * wasm/modules/js-wasm-cycle.js: Added.
+        * wasm/modules/js-wasm-cycle/entry.js: Added.
+        (from.string_appeared_here.export.return42):
+        * wasm/modules/js-wasm-cycle/sum.wasm: Added.
+        * wasm/modules/js-wasm-cycle/sum.wat: Added.
+        * wasm/modules/js-wasm-function-namespace.js: Added.
+        (assert.throws):
+        * wasm/modules/js-wasm-function.js: Added.
+        (assert.throws):
+        * wasm/modules/js-wasm-global-namespace.js: Added.
+        (assert.throws):
+        * wasm/modules/js-wasm-global.js: Added.
+        (assert.throws):
+        * wasm/modules/js-wasm-memory-namespace.js: Added.
+        (assert.throws):
+        * wasm/modules/js-wasm-memory.js: Added.
+        (assert.throws):
+        * wasm/modules/js-wasm-start.js: Added.
+        (then):
+        * wasm/modules/js-wasm-table-namespace.js: Added.
+        (assert.throws):
+        * wasm/modules/js-wasm-table.js: Added.
+        (assert.throws):
+        * wasm/modules/memory.wasm: Added.
+        * wasm/modules/memory.wat: Added.
+        * wasm/modules/run-from-wasm.wasm: Added.
+        * wasm/modules/run-from-wasm.wat: Added.
+        * wasm/modules/run-from-wasm/check.js: Added.
+        (export.check):
+        * wasm/modules/start.wasm: Added.
+        * wasm/modules/start.wat: Added.
+        * wasm/modules/sum.wasm: Added.
+        * wasm/modules/sum.wat: Added.
+        * wasm/modules/table.wasm: Added.
+        * wasm/modules/table.wat: Added.
+        * wasm/modules/wasm-imports-js-exports.js: Added.
+        * wasm/modules/wasm-imports-js-exports/imports.wasm: Added.
+        * wasm/modules/wasm-imports-js-exports/imports.wat: Added.
+        * wasm/modules/wasm-imports-js-exports/sum.js: Added.
+        (export.sum):
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports.js: Added.
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports/imports.wasm: Added.
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports/imports.wat: Added.
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports/re-export.js: Added.
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports/sum.wasm: Added.
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports/sum.wat: Added.
+        * wasm/modules/wasm-imports-wasm-exports.js: Added.
+        * wasm/modules/wasm-imports-wasm-exports/imports.wasm: Added.
+        * wasm/modules/wasm-imports-wasm-exports/imports.wat: Added.
+        * wasm/modules/wasm-imports-wasm-exports/sum.wasm: Added.
+        * wasm/modules/wasm-imports-wasm-exports/sum.wat: Added.
+        * wasm/modules/wasm-js-cycle.js: Added.
+        * wasm/modules/wasm-js-cycle/entry.wasm: Added.
+        * wasm/modules/wasm-js-cycle/entry.wat: Added.
+        * wasm/modules/wasm-js-cycle/sum.js: Added.
+        (from.string_appeared_here.export.sum):
+        * wasm/modules/wasm-wasm-cycle.js: Added.
+        * wasm/modules/wasm-wasm-cycle/entry.wasm: Added.
+        * wasm/modules/wasm-wasm-cycle/entry.wat: Added.
+        * wasm/modules/wasm-wasm-cycle/sum.wasm: Added.
+        * wasm/modules/wasm-wasm-cycle/sum.wat: Added.
+
+2018-04-17  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r230697, r230720, and r230724.
+        https://bugs.webkit.org/show_bug.cgi?id=184717
+
+        These caused multiple failures on the Test262 testers.
+        (Requested by mlewis13 on #webkit).
+
+        Reverted changesets:
+
+        "[WebAssembly][Modules] Prototype wasm import"
+        https://bugs.webkit.org/show_bug.cgi?id=184600
+        https://trac.webkit.org/changeset/230697
+
+        "[WebAssembly][Modules] Implement function import from wasm
+        modules"
+        https://bugs.webkit.org/show_bug.cgi?id=184689
+        https://trac.webkit.org/changeset/230720
+
+        "[JSC] Rename runWebAssembly to runWebAssemblySuite"
+        https://bugs.webkit.org/show_bug.cgi?id=184703
+        https://trac.webkit.org/changeset/230724
+
+2018-04-17  JF Bastien  <jfbastien@apple.com>
+
+        A put is not an ExistingProperty put when we transition a structure because of an attributes change
+        https://bugs.webkit.org/show_bug.cgi?id=184706
+        <rdar://problem/38871451>
+
+        Reviewed by Saam Barati.
+
+        * stress/put-by-id-direct-strict-transition.js: Added.
+        (const.foo):
+        (j.const.obj.set hello):
+        * stress/put-by-id-direct-transition.js: Added.
+        (const.foo):
+        (j.const.obj.set hello):
+        * stress/put-getter-setter-by-id-strict-transition.js: Added.
+        (const.foo):
+        (j.const.obj.set hello):
+        * stress/put-getter-setter-by-id-transition.js: Added.
+        (const.foo):
+        (j.const.obj.set hello):
+
+2018-04-16  Filip Pizlo  <fpizlo@apple.com>
+
+        PutStackSinkingPhase should know that KillStack means ConflictingFlush
+        https://bugs.webkit.org/show_bug.cgi?id=184672
+
+        Reviewed by Michael Saboff.
+
+        * stress/sink-put-stack-over-kill-stack.js: Added.
+        (avocado_1):
+        (apricot_0):
+        (__c_0):
+        (banana_2):
+
+2018-04-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Rename runWebAssembly to runWebAssemblySuite
+        https://bugs.webkit.org/show_bug.cgi?id=184703
+
+        Reviewed by JF Bastien.
+
+        And add runWebAssembly as a command to simplely run wasm modules.
+
+        * wasm.yaml:
+
+2018-04-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WebAssembly][Modules] Implement function import from wasm modules
+        https://bugs.webkit.org/show_bug.cgi?id=184689
+
+        Reviewed by JF Bastien.
+
+        * wasm.yaml:
+        * wasm/modules/js-wasm-cycle.js: Added.
+        * wasm/modules/js-wasm-cycle/entry.js: Added.
+        (from.string_appeared_here.export.return42):
+        * wasm/modules/js-wasm-cycle/sum.wasm: Added.
+        * wasm/modules/js-wasm-cycle/sum.wat: Added.
+        * wasm/modules/run-from-wasm.wasm: Added.
+        * wasm/modules/run-from-wasm.wat: Added.
+        * wasm/modules/run-from-wasm/check.js: Added.
+        (export.check):
+        * wasm/modules/wasm-imports-js-exports.js: Added.
+        * wasm/modules/wasm-imports-js-exports/imports.wasm: Added.
+        * wasm/modules/wasm-imports-js-exports/imports.wat: Added.
+        * wasm/modules/wasm-imports-js-exports/sum.js: Added.
+        (export.sum):
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports.js: Added.
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports/imports.wasm: Added.
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports/imports.wat: Added.
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports/re-export.js: Added.
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports/sum.wasm: Added.
+        * wasm/modules/wasm-imports-js-re-exports-wasm-exports/sum.wat: Added.
+        * wasm/modules/wasm-imports-wasm-exports.js: Added.
+        * wasm/modules/wasm-imports-wasm-exports/imports.wasm: Added.
+        * wasm/modules/wasm-imports-wasm-exports/imports.wat: Added.
+        * wasm/modules/wasm-imports-wasm-exports/sum.wasm: Added.
+        * wasm/modules/wasm-imports-wasm-exports/sum.wat: Added.
+        * wasm/modules/wasm-js-cycle.js: Added.
+        * wasm/modules/wasm-js-cycle/entry.wasm: Added.
+        * wasm/modules/wasm-js-cycle/entry.wat: Added.
+        * wasm/modules/wasm-js-cycle/sum.js: Added.
+        (from.string_appeared_here.export.sum):
+        * wasm/modules/wasm-wasm-cycle.js: Added.
+        * wasm/modules/wasm-wasm-cycle/entry.wasm: Added.
+        * wasm/modules/wasm-wasm-cycle/entry.wat: Added.
+        * wasm/modules/wasm-wasm-cycle/sum.wasm: Added.
+        * wasm/modules/wasm-wasm-cycle/sum.wat: Added.
+
+2018-04-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WebAssembly][Modules] Prototype wasm import
+        https://bugs.webkit.org/show_bug.cgi?id=184600
+
+        Reviewed by JF Bastien.
+
+        Add wasm and wat files since module loader want to load wasm files from FS.
+        Currently, importing the other modules from wasm is not supported.
+
+        * wasm.yaml:
+        * wasm/modules/constant.wasm: Added.
+        * wasm/modules/constant.wat: Added.
+        * wasm/modules/js-wasm-function-namespace.js: Added.
+        (assert.throws):
+        * wasm/modules/js-wasm-function.js: Added.
+        (assert.throws):
+        * wasm/modules/js-wasm-global-namespace.js: Added.
+        (assert.throws):
+        * wasm/modules/js-wasm-global.js: Added.
+        (assert.throws):
+        * wasm/modules/js-wasm-memory-namespace.js: Added.
+        (assert.throws):
+        * wasm/modules/js-wasm-memory.js: Added.
+        (assert.throws):
+        * wasm/modules/js-wasm-start.js: Added.
+        (then):
+        * wasm/modules/js-wasm-table-namespace.js: Added.
+        (assert.throws):
+        * wasm/modules/js-wasm-table.js: Added.
+        (assert.throws):
+        * wasm/modules/memory.wasm: Added.
+        * wasm/modules/memory.wat: Added.
+        * wasm/modules/start.wasm: Added.
+        * wasm/modules/start.wat: Added.
+        * wasm/modules/sum.wasm: Added.
+        * wasm/modules/sum.wat: Added.
+        * wasm/modules/table.wasm: Added.
+        * wasm/modules/table.wat: Added.
+
 2018-04-14  Filip Pizlo  <fpizlo@apple.com>
 
         Function.prototype.caller shouldn't return generator bodies

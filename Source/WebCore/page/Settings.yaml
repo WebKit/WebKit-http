@@ -529,6 +529,11 @@ treatIPAddressAsDomain:
 mediaPreloadingEnabled:
   initial: false
 
+layoutViewportHeightExpansionFactor:
+  type: double
+  initial: 0
+  onChange: setNeedsRecalcStyleInAllFrames
+
 # Runtime-enabled features
 visualViewportEnabled:
   initial: false
@@ -730,3 +735,7 @@ resourceLoadStatisticsDebugMode:
 clientCoordinatesRelativeToLayoutViewport:
   initial: false
   onChange: setNeedsRecalcStyleInAllFrames
+
+accessibilityEventsEnabled:
+  initial: true
+  conditional: ACCESSIBILITY_EVENTS

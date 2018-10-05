@@ -105,6 +105,10 @@
 #import <WebCore/WebItemProviderPasteboard.h>
 #endif
 
+#if USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/WKContentViewInteractionAdditionsBefore.mm>
+#endif
+
 @interface UIEvent(UIEventInternal)
 @property (nonatomic, assign) UIKeyboardInputFlags _inputFlags;
 @end
@@ -614,6 +618,10 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
     [_touchEventGestureRecognizer setDelegate:self];
     [self addGestureRecognizer:_touchEventGestureRecognizer.get()];
 
+#if USE(APPLE_INTERNAL_SDK)
+    [self _internalSetupInteraction];
+#endif
+
     _singleTapGestureRecognizer = adoptNS([[WKSyntheticClickTapGestureRecognizer alloc] initWithTarget:self action:@selector(_singleTapCommited:)]);
     [_singleTapGestureRecognizer setDelegate:self];
     [_singleTapGestureRecognizer setGestureRecognizedTarget:self action:@selector(_singleTapRecognized:)];
@@ -704,6 +712,10 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
     [_touchEventGestureRecognizer setDelegate:nil];
     [self removeGestureRecognizer:_touchEventGestureRecognizer.get()];
 
+#if USE(APPLE_INTERNAL_SDK)
+    [self _internalCleanupInteraction];
+#endif
+
     [_singleTapGestureRecognizer setDelegate:nil];
     [_singleTapGestureRecognizer setGestureRecognizedTarget:nil action:nil];
     [_singleTapGestureRecognizer setResetTarget:nil action:nil];
@@ -764,6 +776,10 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
     [self removeGestureRecognizer:_nonBlockingDoubleTapGestureRecognizer.get()];
     [self removeGestureRecognizer:_twoFingerDoubleTapGestureRecognizer.get()];
     [self removeGestureRecognizer:_twoFingerSingleTapGestureRecognizer.get()];
+
+#if USE(APPLE_INTERNAL_SDK)
+    [self _internalRemoveDefaultGestureRecognizers];
+#endif
 }
 
 - (void)_addDefaultGestureRecognizers
@@ -775,6 +791,10 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
     [self addGestureRecognizer:_nonBlockingDoubleTapGestureRecognizer.get()];
     [self addGestureRecognizer:_twoFingerDoubleTapGestureRecognizer.get()];
     [self addGestureRecognizer:_twoFingerSingleTapGestureRecognizer.get()];
+
+#if USE(APPLE_INTERNAL_SDK)
+    [self _internalAddDefaultGestureRecognizers];
+#endif
 }
 
 - (UIView*)unscaledView
@@ -937,8 +957,6 @@ static inline bool hasAssistedNode(WebKit::AssistedNodeInformation assistedNodeI
         SetForScope<BOOL> becomingFirstResponder { _becomingFirstResponder, YES };
         didBecomeFirstResponder = [super becomeFirstResponder];
     }
-    if (didBecomeFirstResponder && !self.suppressAssistantSelectionView)
-        [_textSelectionAssistant activateSelection];
 
     return didBecomeFirstResponder;
 }
@@ -1658,6 +1676,10 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     // If we're currently editing an assisted node, only allow the selection to move within that assisted node.
     if (self.isAssistingNode)
         return _positionInformation.nodeAtPositionIsAssistedNode;
+    
+    // Don't allow double tap text gestures in noneditable content.
+    if (gesture == UIWKGestureDoubleTap)
+        return NO;
 
     // If we're selecting something, don't activate highlight.
     if (gesture == UIWKGestureLoupe && [self hasSelectablePositionAtPoint:point])
@@ -1902,30 +1924,17 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 
 - (void)useSelectionAssistantWithGranularity:(WKSelectionGranularity)selectionGranularity
 {
-#if ENABLE(UNIFIED_TEXT_SELECTION)
-    selectionGranularity = WKSelectionGranularityCharacter;
-#endif
-    if (selectionGranularity == WKSelectionGranularityDynamic) {
-        if (_textSelectionAssistant) {
-            [_textSelectionAssistant deactivateSelection];
-            _textSelectionAssistant = nil;
-        }
-        if (!_webSelectionAssistant)
-            _webSelectionAssistant = adoptNS([[UIWKSelectionAssistant alloc] initWithView:self]);
-    } else if (selectionGranularity == WKSelectionGranularityCharacter) {
-        if (_webSelectionAssistant)
-            _webSelectionAssistant = nil;
+    _webSelectionAssistant = nil;
 
-        if (!_textSelectionAssistant)
-            _textSelectionAssistant = adoptNS([[UIWKTextInteractionAssistant alloc] initWithView:self]);
-        else {
-            // Reset the gesture recognizers in case editibility has changed.
-            [_textSelectionAssistant setGestureRecognizers];
-        }
-
-        if (self.isFirstResponder && !self.suppressAssistantSelectionView)
-            [_textSelectionAssistant activateSelection];
+    if (!_textSelectionAssistant)
+        _textSelectionAssistant = adoptNS([[UIWKTextInteractionAssistant alloc] initWithView:self]);
+    else {
+        // Reset the gesture recognizers in case editibility has changed.
+        [_textSelectionAssistant setGestureRecognizers];
     }
+
+    if (self.isFirstResponder && !self.suppressAssistantSelectionView)
+        [_textSelectionAssistant activateSelection];
 }
 
 - (void)clearSelection
@@ -2261,7 +2270,7 @@ FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKWEBVIEW)
             return NO;
 #endif
 
-        return YES;
+        return hasWebSelection || _page->editorState().selectionIsRange;
     }
 
     if (action == @selector(_share:)) {
@@ -3160,6 +3169,10 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 {
     if (_page->editorState().selectionIsNone || _page->editorState().isMissingPostLayoutData)
         return nil;
+    // UIKit does not expect caret selections in noneditable content.
+    if (!_page->editorState().isContentEditable && !_page->editorState().selectionIsRange)
+        return nil;
+    
     auto& postLayoutEditorStateData = _page->editorState().postLayoutData();
     FloatRect startRect = postLayoutEditorStateData.caretRectAtStart;
     FloatRect endRect = postLayoutEditorStateData.caretRectAtEnd;
@@ -4021,22 +4034,50 @@ static bool isAssistableInputType(InputType type)
 
     id <_WKInputDelegate> inputDelegate = [_webView _inputDelegate];
     RetainPtr<WKFocusedElementInfo> focusedElementInfo = adoptNS([[WKFocusedElementInfo alloc] initWithAssistedNodeInformation:information isUserInitiated:userIsInteracting userObject:userObject]);
-    BOOL shouldShowKeyboard;
 
-    if ([inputDelegate respondsToSelector:@selector(_webView:focusShouldStartInputSession:)])
-        shouldShowKeyboard = [inputDelegate _webView:_webView focusShouldStartInputSession:focusedElementInfo.get()];
-    else {
-        // The default behavior is to allow node assistance if the user is interacting or the keyboard is already active.
-        shouldShowKeyboard = userIsInteracting || _isChangingFocus || changingActivityState;
-#if ENABLE(DATA_INTERACTION)
-        shouldShowKeyboard |= _dragDropInteractionState.isPerformingDrop();
-#endif
+    BOOL shouldShowKeyboard = NO;
+    _WKFocusStartsInputSessionPolicy startInputSessionPolicy = _WKFocusStartsInputSessionPolicyAuto;
+
+    if ([inputDelegate respondsToSelector:@selector(_webView:focusShouldStartInputSession:)]) {
+        if ([inputDelegate _webView:_webView focusShouldStartInputSession:focusedElementInfo.get()])
+            startInputSessionPolicy = _WKFocusStartsInputSessionPolicyAllow;
+        else
+            startInputSessionPolicy = _WKFocusStartsInputSessionPolicyDisallow;
     }
-    if (!shouldShowKeyboard)
-        return;
+
+    if ([inputDelegate respondsToSelector:@selector(_webView:decidePolicyForFocusedElement:)])
+        startInputSessionPolicy = [inputDelegate _webView:_webView decidePolicyForFocusedElement:focusedElementInfo.get()];
+
+    switch (startInputSessionPolicy) {
+    case _WKFocusStartsInputSessionPolicyAuto:
+        // The default behavior is to allow node assistance if the user is interacting.
+        // We also allow node assistance if the keyboard already is showing, unless we're in extra zoom mode.
+        shouldShowKeyboard = userIsInteracting
+#if ENABLE(EXTRA_ZOOM_MODE)
+            || (_isChangingFocus && ![_focusedFormControlView isHidden])
+#else
+            || _isChangingFocus
+#endif
+#if ENABLE(DRAG_SUPPORT)
+            || _dragDropInteractionState.isPerformingDrop()
+#endif
+            || changingActivityState;
+        break;
+    case _WKFocusStartsInputSessionPolicyAllow:
+        shouldShowKeyboard = YES;
+        break;
+    case _WKFocusStartsInputSessionPolicyDisallow:
+        shouldShowKeyboard = NO;
+        break;
+    default:
+        ASSERT_NOT_REACHED();
+    }
 
     if (blurPreviousNode)
         [self _stopAssistingNode];
+
+    if (!shouldShowKeyboard)
+        return;
 
     if (!isAssistableInputType(information.elementType))
         return;
@@ -4049,6 +4090,15 @@ static bool isAssistableInputType(InputType type)
     _focusRequiresStrongPasswordAssistance = NO;
     if ([inputDelegate respondsToSelector:@selector(_webView:focusRequiresStrongPasswordAssistance:)])
         _focusRequiresStrongPasswordAssistance = [inputDelegate _webView:_webView focusRequiresStrongPasswordAssistance:focusedElementInfo.get()];
+
+    bool delegateImplementsWillStartInputSession = [inputDelegate respondsToSelector:@selector(_webView:willStartInputSession:)];
+    bool delegateImplementsDidStartInputSession = [inputDelegate respondsToSelector:@selector(_webView:didStartInputSession:)];
+
+    if (delegateImplementsWillStartInputSession || delegateImplementsDidStartInputSession)
+        _formInputSession = adoptNS([[WKFormInputSession alloc] initWithContentView:self focusedElementInfo:focusedElementInfo.get() requiresStrongPasswordAssistance:_focusRequiresStrongPasswordAssistance]);
+
+    if (delegateImplementsWillStartInputSession)
+        [inputDelegate _webView:_webView willStartInputSession:_formInputSession.get()];
 
     BOOL editableChanged = [self setIsEditable:YES];
     _assistedNodeInformation = information;
@@ -4092,10 +4142,8 @@ static bool isAssistableInputType(InputType type)
     // _inputPeripheral has been initialized in inputView called by reloadInputViews.
     [_inputPeripheral beginEditing];
 
-    if ([inputDelegate respondsToSelector:@selector(_webView:didStartInputSession:)]) {
-        _formInputSession = adoptNS([[WKFormInputSession alloc] initWithContentView:self focusedElementInfo:focusedElementInfo.get() requiresStrongPasswordAssistance:_focusRequiresStrongPasswordAssistance]);
+    if (delegateImplementsDidStartInputSession)
         [inputDelegate _webView:_webView didStartInputSession:_formInputSession.get()];
-    }
     
     [_webView didStartFormControlInteraction];
 }
@@ -4231,6 +4279,16 @@ static bool isAssistableInputType(InputType type)
         [_inputNavigationViewControllerForFullScreenInputs pushViewController:_presentedFullScreenInputViewController.get() animated:YES];
     else
         [presentingViewController presentViewController:_presentedFullScreenInputViewController.get() animated:YES completion:nil];
+
+    // Presenting a fullscreen input view controller fully obscures the web view. Without taking this token, the web content process will get backgrounded.
+    _page->process().takeBackgroundActivityTokenForFullscreenInput();
+
+    [presentingViewController.transitionCoordinator animateAlongsideTransition:nil completion:[weakWebView = WeakObjCPtr<WKWebView>(_webView), controller = _presentedFullScreenInputViewController] (id <UIViewControllerTransitionCoordinatorContext>) {
+        auto strongWebView = weakWebView.get();
+        id <WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([strongWebView UIDelegate]);
+        if ([uiDelegate respondsToSelector:@selector(_webView:didPresentFocusedElementViewController:)])
+            [uiDelegate _webView:strongWebView.get() didPresentFocusedElementViewController:controller.get()];
+    }];
 }
 
 - (void)dismissAllInputViewControllers:(BOOL)animated
@@ -4238,16 +4296,28 @@ static bool isAssistableInputType(InputType type)
     auto navigationController = WTFMove(_inputNavigationViewControllerForFullScreenInputs);
     auto presentedController = WTFMove(_presentedFullScreenInputViewController);
 
+    if (!presentedController)
+        return;
+
     if ([navigationController viewControllers].lastObject == presentedController.get())
         [navigationController popViewControllerAnimated:animated];
     else
         [presentedController dismissViewControllerAnimated:animated completion:nil];
+
+    [[presentedController transitionCoordinator] animateAlongsideTransition:nil completion:[weakWebView = WeakObjCPtr<WKWebView>(_webView), controller = presentedController] (id <UIViewControllerTransitionCoordinatorContext>) {
+        auto strongWebView = weakWebView.get();
+        id <WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([strongWebView UIDelegate]);
+        if ([uiDelegate respondsToSelector:@selector(_webView:didDismissFocusedElementViewController:)])
+            [uiDelegate _webView:strongWebView.get() didDismissFocusedElementViewController:controller.get()];
+    }];
 
     if (_shouldRestoreFirstResponderStatusAfterLosingFocus) {
         _shouldRestoreFirstResponderStatusAfterLosingFocus = NO;
         if (!self.isFirstResponder)
             [self becomeFirstResponder];
     }
+
+    _page->process().releaseBackgroundActivityTokenForFullscreenInput();
 }
 
 - (void)focusedFormControlViewDidSubmit:(WKFocusedFormControlView *)view
@@ -4264,8 +4334,12 @@ static bool isAssistableInputType(InputType type)
 - (void)focusedFormControlViewDidBeginEditing:(WKFocusedFormControlView *)view
 {
     [self updateCurrentAssistedNodeInformation:[weakSelf = WeakObjCPtr<WKContentView>(self)] (bool didUpdate) {
-        if (didUpdate)
-            [weakSelf presentViewControllerForCurrentAssistedNode];
+        if (!didUpdate)
+            return;
+
+        auto strongSelf = weakSelf.get();
+        [strongSelf presentViewControllerForCurrentAssistedNode];
+        [strongSelf->_focusedFormControlView hide:YES];
     }];
 }
 
@@ -5399,11 +5473,22 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
 
 #if USE(APPLE_INTERNAL_SDK)
 #import <WebKitAdditions/WKContentViewInteractionAdditions.mm>
+#import <WebKitAdditions/WKContentViewInteractionAdditionsAfter.mm>
 #endif
 
 @end
 
 @implementation WKContentView (WKTesting)
+
+- (void)_simulateTextEntered:(NSString *)text
+{
+#if ENABLE(EXTRA_ZOOM_MODE)
+    if ([_presentedFullScreenInputViewController isKindOfClass:[WKTextInputListViewController class]])
+        [(WKTextInputListViewController *)_presentedFullScreenInputViewController.get() enterText:text];
+#else
+    [self insertText:text];
+#endif
+}
 
 - (void)_simulateLongPressActionAtLocation:(CGPoint)location
 {
@@ -5416,8 +5501,13 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
 
 - (void)selectFormAccessoryPickerRow:(NSInteger)rowIndex
 {
+#if ENABLE(EXTRA_ZOOM_MODE)
+    if ([_presentedFullScreenInputViewController isKindOfClass:[WKSelectMenuListViewController class]])
+        [(WKSelectMenuListViewController *)_presentedFullScreenInputViewController.get() selectItemAtIndex:rowIndex];
+#else
     if ([_inputPeripheral isKindOfClass:[WKFormSelectControl self]])
         [(WKFormSelectControl *)_inputPeripheral selectRow:rowIndex inComponent:0 extendingSelection:NO];
+#endif
 }
 
 - (NSString *)selectFormPopoverTitle

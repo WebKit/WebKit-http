@@ -116,13 +116,10 @@ public:
     FloatPoint computePositionRelativeToBase();
     void computePixelAlignment(FloatPoint& position, FloatSize&, FloatPoint3D& anchorPoint, FloatSize& alignmentOffset);
 
-    void setVisibleContentRectTrajectoryVector(const FloatPoint&);
-
     CoordinatedLayerID id() const { return m_id; }
 
     void setFixedToViewport(bool isFixed);
 
-    IntRect coverRect() const { return m_mainBackingStore ? m_mainBackingStore->mapToContents(m_mainBackingStore->coverRect()) : IntRect(); }
     IntRect transformedVisibleRect();
 
     // TiledBackingStoreClient
@@ -135,9 +132,6 @@ public:
 
     void setNeedsVisibleRectAdjustment();
     void purgeBackingStores();
-
-    static void setShouldSupportContentsTiling(bool);
-    CoordinatedGraphicsLayer* findFirstDescendantWithContentsRecursively();
 
 private:
     bool isCoordinatedGraphicsLayer() const override { return true; }

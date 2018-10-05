@@ -1,3 +1,996 @@
+2018-04-23  Daniel Bates  <dabates@apple.com>
+
+        Implement Same-Site cookies
+        https://bugs.webkit.org/show_bug.cgi?id=159464
+        <rdar://problem/27196358>
+
+        Reviewed by Brent Fulgham.
+
+        Add tests. These tests are skipped on all ports for now, including Mac and iOS. We will
+        look to subsequently enable the tests for Mac and iOS once we have CFNetwork support for
+        Same-Site cookies.
+
+        The following tests and utilities were taken in whole or in part from Blink:
+            http/tests/cookies/resources/echo-json.php
+            http/tests/cookies/resources/post-cookies-onmessage.php
+            http/tests/cookies/resources/post-cookies-to-opener.php
+            http/tests/cookies/resources/testharness-helpers.js
+            http/tests/cookies/same-site/popup-cross-site-post.html
+            http/tests/cookies/same-site/popup-cross-site.html
+            http/tests/cookies/same-site/popup-same-site-post.html
+            http/tests/cookies/same-site/popup-same-site.html
+
+        The following files were derived from tests taken from Blink:
+            http/tests/cookies/same-site/popup-same-site-via-cross-site-redirect.html
+            http/tests/cookies/same-site/popup-same-site-via-same-site-redirect.html
+
+        * TestExpectations: Skip on all ports for now.
+        * http/tests/cookies/resources/cookie-utilities.js: Added.
+        (createCookie):
+        (setBaseDocumentWhenFetchingDOMCookies):
+        (setDOMCookie):
+        * http/tests/cookies/resources/cookie-utility.php:
+        * http/tests/cookies/resources/echo-json.php: Added.
+        * http/tests/cookies/resources/post-cookies-onmessage.php: Added.
+        * http/tests/cookies/resources/post-cookies-to-opener.php: Added.
+        * http/tests/cookies/resources/testharness-helpers.js: Added.
+        (clearKnownCookies):
+        * http/tests/cookies/same-site/fetch-after-navigating-iframe-in-cross-origin-page-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-after-navigating-iframe-in-cross-origin-page.html: Added.
+        * http/tests/cookies/same-site/fetch-after-top-level-navigation-from-cross-origin-page-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-after-top-level-navigation-from-cross-origin-page.html: Added.
+        * http/tests/cookies/same-site/fetch-after-top-level-navigation-initiated-from-iframe-in-cross-origin-page-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-after-top-level-navigation-initiated-from-iframe-in-cross-origin-page.html: Added.
+        * http/tests/cookies/same-site/fetch-cookies-set-in-about-blank-iframe-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-cookies-set-in-about-blank-iframe.html: Added.
+        * http/tests/cookies/same-site/fetch-in-about-blank-page-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-in-about-blank-page.html: Added.
+        * http/tests/cookies/same-site/fetch-in-cross-origin-iframe-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-in-cross-origin-iframe.html: Added.
+        * http/tests/cookies/same-site/fetch-in-cross-origin-page-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-in-cross-origin-page.html: Added.
+        * http/tests/cookies/same-site/fetch-in-cross-origin-service-worker-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-in-cross-origin-service-worker.html: Added.
+        * http/tests/cookies/same-site/fetch-in-cross-origin-worker-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-in-cross-origin-worker.html: Added.
+        * http/tests/cookies/same-site/fetch-in-same-origin-page-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-in-same-origin-page.html: Added.
+        * http/tests/cookies/same-site/fetch-in-same-origin-service-worker-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-in-same-origin-service-worker.html: Added.
+        * http/tests/cookies/same-site/fetch-in-same-origin-srcdoc-iframe-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-in-same-origin-srcdoc-iframe.html: Added.
+        * http/tests/cookies/same-site/fetch-in-same-origin-worker-expected.txt: Added.
+        * http/tests/cookies/same-site/fetch-in-same-origin-worker.html: Added.
+        * http/tests/cookies/same-site/popup-cross-site-expected.txt: Added.
+        * http/tests/cookies/same-site/popup-cross-site-post-expected.txt: Added.
+        * http/tests/cookies/same-site/popup-cross-site-post.html: Added.
+        * http/tests/cookies/same-site/popup-cross-site.html: Added.
+        * http/tests/cookies/same-site/popup-same-site-expected.txt: Added.
+        * http/tests/cookies/same-site/popup-same-site-post-expected.txt: Added.
+        * http/tests/cookies/same-site/popup-same-site-post.html: Added.
+        * http/tests/cookies/same-site/popup-same-site-via-cross-site-redirect-expected.txt: Added.
+        * http/tests/cookies/same-site/popup-same-site-via-cross-site-redirect.html: Added.
+        * http/tests/cookies/same-site/popup-same-site-via-same-site-redirect-expected.txt: Added.
+        * http/tests/cookies/same-site/popup-same-site-via-same-site-redirect.html: Added.
+        * http/tests/cookies/same-site/popup-same-site.html: Added.
+        * http/tests/cookies/same-site/resources/click-hyperlink.php: Added.
+        * http/tests/cookies/same-site/resources/echo-iframe-src.php: Added.
+        * http/tests/cookies/same-site/resources/fetch-after-navigating-iframe-in-cross-origin-page.php: Added.
+        * http/tests/cookies/same-site/resources/fetch-after-top-level-navigation-from-cross-origin-page.php: Added.
+        * http/tests/cookies/same-site/resources/fetch-after-top-level-navigation-initiated-from-iframe-in-cross-origin-page.php: Added.
+        * http/tests/cookies/same-site/resources/fetch-in-cross-origin-iframe.html: Added.
+        * http/tests/cookies/same-site/resources/fetch-in-cross-origin-service-worker.html: Added.
+        * http/tests/cookies/same-site/resources/fetch-in-cross-origin-worker.js: Added.
+        (async.checkResult):
+        * http/tests/cookies/same-site/resources/fetch-in-same-origin-service-worker.php: Added.
+        * http/tests/cookies/same-site/resources/fetch-in-same-origin-worker.js: Added.
+        (async.checkResult):
+        * http/tests/cookies/same-site/resources/passthrough-service-worker.js: Added.
+        * platform/mac-wk1/TestExpectations: Skip the Service Worker tests as they are not supported in LegacyWebKit.
+
+2018-04-23  Chris Dumez  <cdumez@apple.com>
+
+        HTML String load cannot be prevented by responding 'Cancel' asynchronously in decidePolicyForNavigationAction
+        https://bugs.webkit.org/show_bug.cgi?id=184848
+        <rdar://problem/39145306>
+
+        Reviewed by Brady Eidson.
+
+        Update layout tests that wrongly expected 'about:blank' to load synchronously even
+        when it is not the initial empty document of an iframe. I have checked that our
+        behavior is now consistent with Chrome.
+
+        * fast/events/beforeunload-alert-user-interaction2.html:
+        * http/tests/security/cross-origin-reified-window-location-setting-expected.txt:
+        * http/tests/security/cross-origin-reified-window-location-setting.html:
+        * webarchive/loading/javascript-url-iframe-crash-expected.txt:
+
+2018-04-23  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] 100vw is roughly half of the viewport width in extra zoom mode
+        https://bugs.webkit.org/show_bug.cgi?id=184871
+        <rdar://problem/39477595>
+
+        Reviewed by Andy Estes.
+
+        Add a new layout test to verify that shrink-to-fit works as intended in extra zoom mode:
+        1.  The large element should cause the entire viewport to shrink down to fit.
+        2.  Removing the large element should adjust the viewport, such that the smaller element now fits the entire
+            viewport.
+        3.  The smaller element (at 100vw and 100vh) should be the same size as the window.
+
+        * TestExpectations:
+        * fast/css/extrazoom/viewport-units-shrink-to-fit-expected.txt: Added.
+        * fast/css/extrazoom/viewport-units-shrink-to-fit.html: Added.
+
+2018-04-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add a layout test for r230785
+        https://bugs.webkit.org/show_bug.cgi?id=184757
+
+        Reviewed by Beth Dakin.
+
+        Adds a new layout test to verify that true screen dimensions in extra zoom mode
+        are observable from the page, via window.screen.
+
+        * TestExpectations:
+        * fast/dom/Window/extrazoom/window-get-real-screen-dimensions.html: Added.
+
+2018-04-21  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Show a loading indicator after pressing the play button in compact mode
+        https://bugs.webkit.org/show_bug.cgi?id=184863
+        <rdar://problem/38939468>
+
+        Reviewed by Dean Jackson.
+
+        * media/modern-media-controls/compact-media-controls/compact-media-controls-constructor-expected.txt:
+        * media/modern-media-controls/compact-media-controls/compact-media-controls-constructor.html:
+        * media/modern-media-controls/compact-media-controls/compact-media-controls-layout-expected.txt:
+        * media/modern-media-controls/compact-media-controls/compact-media-controls-layout.html:
+
+2018-04-21  Youenn Fablet  <youenn@apple.com>
+
+        Activate NetworkLoadChecker for media loads
+        https://bugs.webkit.org/show_bug.cgi?id=184841
+
+        Reviewed by Eric Carlson.
+
+        * TestExpectations: Added DumpJSConsoleLogInStdErr to remove console message differences between WK1/WK2.
+
+2018-04-20  Nan Wang  <n_wang@apple.com>
+
+        AX: AOM does not work with DOM Level 1 events
+        https://bugs.webkit.org/show_bug.cgi?id=184847
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/ios-simulator/AOM-dismiss-event-expected.txt:
+        * accessibility/ios-simulator/AOM-dismiss-event.html:
+        * accessibility/mac/AOM-event-accessiblesetvalue-expected.txt:
+        * accessibility/mac/AOM-event-accessiblesetvalue.html:
+        * accessibility/mac/AOM-events-all-expected.txt:
+        * accessibility/mac/AOM-events-all.html:
+        * accessibility/mac/AOM-events-expected.txt:
+        * accessibility/mac/AOM-events.html:
+
+2018-04-20  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rebaseline more tests after r230864.
+
+        * fast/frames/sandboxed-iframe-history-denied-expected.txt:
+        * fast/xmlhttprequest/xmlhttprequest-no-file-access-expected.txt:
+
+2018-04-20  Daniel Bates  <dabates@apple.com>
+
+        Hide Strong Password label when text field is too narrow
+        https://bugs.webkit.org/show_bug.cgi?id=184785
+        <rdar://problem/38183939>
+
+        Reviewed by Zalan Bujtas.
+
+        Update existing tests to include narrow text fields.
+
+        * fast/forms/auto-fill-button/input-strong-confirmation-password-auto-fill-button.html:
+        * fast/forms/auto-fill-button/input-strong-password-auto-fill-button.html:
+        * platform/mac/fast/forms/auto-fill-button/input-strong-confirmation-password-auto-fill-button-expected.txt:
+        * platform/mac/fast/forms/auto-fill-button/input-strong-password-auto-fill-button-expected.txt:
+
+2018-04-20  Dean Jackson  <dino@apple.com>
+
+        Render a badge on system preview images
+        https://bugs.webkit.org/show_bug.cgi?id=184854
+        <rdar://problem/39615154>
+
+        Reviewed by Tim Horton.
+
+        * system-preview/badge-expected.html: Added.
+        * system-preview/badge.html: Added.
+
+2018-04-20  Chris Dumez  <cdumez@apple.com>
+
+        Update cross-origin SecurityError messages to not include the target origin
+        https://bugs.webkit.org/show_bug.cgi?id=184803
+        <rdar://problem/39547724>
+
+        Reviewed by Sam Weinig.
+
+        * http/tests/history/cross-origin-replace-history-object-child-expected.txt:
+        * http/tests/history/cross-origin-replace-history-object-expected.txt:
+        * http/tests/plugins/cross-frame-object-access-expected.txt:
+        * http/tests/security/XFrameOptions/x-frame-options-deny-expected.txt:
+        * http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-parent-same-origin-deny-expected.txt:
+        * http/tests/security/XFrameOptions/x-frame-options-multiple-headers-sameorigin-deny-expected.txt:
+        * http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-deny-expected.txt:
+        * http/tests/security/aboutBlank/xss-DENIED-navigate-opener-document-write-expected.txt:
+        * http/tests/security/aboutBlank/xss-DENIED-navigate-opener-javascript-url-expected.txt:
+        * http/tests/security/aboutBlank/xss-DENIED-set-opener-expected.txt:
+        * http/tests/security/contentSecurityPolicy/sandbox-allow-scripts-in-http-header-expected.txt:
+        * http/tests/security/cross-frame-access-call-expected.txt:
+        * http/tests/security/cross-frame-access-callback-explicit-domain-DENY-expected.txt:
+        * http/tests/security/cross-frame-access-child-explicit-domain-expected.txt:
+        * http/tests/security/cross-frame-access-custom-expected.txt:
+        * http/tests/security/cross-frame-access-delete-expected.txt:
+        * http/tests/security/cross-frame-access-first-time-expected.txt:
+        * http/tests/security/cross-frame-access-get-custom-property-cached-expected.txt:
+        * http/tests/security/cross-frame-access-get-expected.txt:
+        * http/tests/security/cross-frame-access-getOwnPropertyDescriptor-expected.txt:
+        * http/tests/security/cross-frame-access-history-get-expected.txt:
+        * http/tests/security/cross-frame-access-history-get-override-expected.txt:
+        * http/tests/security/cross-frame-access-history-prototype-expected.txt:
+        * http/tests/security/cross-frame-access-location-get-expected.txt:
+        * http/tests/security/cross-frame-access-location-get-override-expected.txt:
+        * http/tests/security/cross-frame-access-location-put-expected.txt:
+        * http/tests/security/cross-frame-access-name-getter-expected.txt:
+        * http/tests/security/cross-frame-access-object-getPrototypeOf-expected.txt:
+        * http/tests/security/cross-frame-access-object-prototype-expected.txt:
+        * http/tests/security/cross-frame-access-parent-explicit-domain-expected.txt:
+        * http/tests/security/cross-frame-access-port-expected.txt:
+        * http/tests/security/cross-frame-access-protocol-expected.txt:
+        * http/tests/security/cross-frame-access-protocol-explicit-domain-expected.txt:
+        * http/tests/security/cross-frame-access-put-expected.txt:
+        * http/tests/security/cross-frame-access-selection-expected.txt:
+        * http/tests/security/cross-origin-reified-window-property-access-expected.txt:
+        * http/tests/security/cross-origin-window-property-access-expected.txt:
+        * http/tests/security/dataURL/xss-DENIED-from-data-url-in-foreign-domain-subframe-expected.txt:
+        * http/tests/security/dataURL/xss-DENIED-from-data-url-in-foreign-domain-window-open-expected.txt:
+        * http/tests/security/dataURL/xss-DENIED-from-data-url-sub-frame-2-level-expected.txt:
+        * http/tests/security/dataURL/xss-DENIED-from-data-url-sub-frame-expected.txt:
+        * http/tests/security/dataURL/xss-DENIED-from-data-url-sub-frame-to-data-url-sub-frame-expected.txt:
+        * http/tests/security/dataURL/xss-DENIED-from-data-url-to-data-url-expected.txt:
+        * http/tests/security/dataURL/xss-DENIED-from-javascript-url-window-open-expected.txt:
+        * http/tests/security/dataURL/xss-DENIED-to-data-url-from-data-url-expected.txt:
+        * http/tests/security/dataURL/xss-DENIED-to-data-url-in-foreign-domain-subframe-expected.txt:
+        * http/tests/security/dataURL/xss-DENIED-to-data-url-in-foreign-domain-subframe-location-change-expected.txt:
+        * http/tests/security/dataURL/xss-DENIED-to-data-url-in-foreign-domain-window-open-expected.txt:
+        * http/tests/security/dataURL/xss-DENIED-to-data-url-sub-frame-2-level-expected.txt:
+        * http/tests/security/dataURL/xss-DENIED-to-data-url-sub-frame-expected.txt:
+        * http/tests/security/dataURL/xss-DENIED-to-data-url-sub-frame-uppercase-expected.txt:
+        * http/tests/security/dataURL/xss-DENIED-to-data-url-window-open-expected.txt:
+        * http/tests/security/document-all-expected.txt:
+        * http/tests/security/javascriptURL/xss-DENIED-from-javascript-url-in-foreign-domain-subframe-expected.txt:
+        * http/tests/security/javascriptURL/xss-DENIED-from-javascript-url-in-foreign-domain-window-open-expected.txt:
+        * http/tests/security/javascriptURL/xss-DENIED-to-javascript-url-in-foreign-domain-subframe-expected.txt:
+        * http/tests/security/javascriptURL/xss-DENIED-to-javascript-url-in-foreign-domain-window-open-expected.txt:
+        * http/tests/security/listener/xss-JSTargetNode-onclick-addEventListener-expected.txt:
+        * http/tests/security/listener/xss-JSTargetNode-onclick-shortcut-expected.txt:
+        * http/tests/security/listener/xss-XMLHttpRequest-addEventListener-expected.txt:
+        * http/tests/security/listener/xss-XMLHttpRequest-shortcut-expected.txt:
+        * http/tests/security/listener/xss-window-onclick-addEventListener-expected.txt:
+        * http/tests/security/listener/xss-window-onclick-shortcut-expected.txt:
+        * http/tests/security/location-cross-origin-expected.txt:
+        * http/tests/security/sandboxed-iframe-blocks-access-from-parent-expected.txt:
+        * http/tests/security/sandboxed-iframe-modify-self-expected.txt:
+        * http/tests/security/sandboxed-iframe-origin-add-expected.txt:
+        * http/tests/security/sandboxed-iframe-origin-remove-expected.txt:
+        * http/tests/security/srcdoc-in-sandbox-cannot-access-parent-expected.txt:
+        * http/tests/security/symbols-cross-origin-expected.txt:
+        * http/tests/security/window-defineProperty-crossOrigin-expected.txt:
+        * http/tests/security/xss-DENIED-assign-location-hash-expected.txt:
+        * http/tests/security/xss-DENIED-assign-location-host-expected.txt:
+        * http/tests/security/xss-DENIED-assign-location-hostname-expected.txt:
+        * http/tests/security/xss-DENIED-assign-location-nonstandardProperty-expected.txt:
+        * http/tests/security/xss-DENIED-assign-location-pathname-expected.txt:
+        * http/tests/security/xss-DENIED-assign-location-protocol-expected.txt:
+        * http/tests/security/xss-DENIED-assign-location-reload-expected.txt:
+        * http/tests/security/xss-DENIED-assign-location-search-expected.txt:
+        * http/tests/security/xss-DENIED-defineProperty-expected.txt:
+        * http/tests/security/xss-DENIED-frame-name-expected.txt:
+        * http/tests/security/xss-DENIED-htmlelelment-with-iframe-proto-expected.txt:
+        * http/tests/security/xss-DENIED-method-with-iframe-proto-expected.txt:
+        * http/tests/security/xss-DENIED-named-window-property-from-cross-origin-inactive-document-expected.txt:
+        * http/tests/security/xss-DENIED-sandboxed-iframe-expected.txt:
+        * http/tests/security/xss-DENIED-synchronous-form-expected.txt:
+        * http/tests/security/xss-DENIED-window-name-navigator-expected.txt:
+        * http/tests/security/xss-DENIED-xsl-document-securityOrigin-expected.txt:
+        * http/tests/security/xssAuditor/block-does-not-leak-location-expected.txt:
+        * http/tests/security/xssAuditor/full-block-script-tag-cross-domain-expected.txt:
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-deny-expected.txt:
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-ignore-deny-meta-tag-parent-same-origin-deny-expected.txt:
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-multiple-headers-sameorigin-deny-expected.txt:
+        * platform/wk2/http/tests/security/XFrameOptions/x-frame-options-parent-same-origin-deny-expected.txt:
+
+2018-04-20  Chris Nardi  <cnardi@chromium.org>
+
+        Update HSL/HSLA parsing to match CSS Color 4
+        https://bugs.webkit.org/show_bug.cgi?id=180528
+        <rdar://problem/35926675>
+
+        Reviewed by Simon Fraser.
+
+        This change updates our import of web-platform-tests/css/css-color
+        to test the new behavior.
+
+        * TestExpectations:
+        * canvas/philip/tests/2d.fillStyle.parse.invalid.hsl-5-expected.txt:
+
+2018-04-20  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] Injected bundle form client should be notified when editing text fields
+        https://bugs.webkit.org/show_bug.cgi?id=184822
+        <rdar://problem/38807319>
+
+        Reviewed by Tim Horton.
+
+        Add a new layout test that focuses an input field, simulates text entry, and verifies that the injected bundle
+        form client's textDidChangeInTextField, textFieldDidBeginEditing and textFieldDidEndEditing functions are called.
+
+        * TestExpectations:
+
+        Skip tests in fast/forms/extrazoom by default.
+
+        * fast/forms/extrazoom/edit-text-field-calls-injected-bundle-expected.txt: Added.
+        * fast/forms/extrazoom/edit-text-field-calls-injected-bundle.html: Added.
+        * resources/ui-helper.js:
+        (window.UIHelper.enterText):
+
+        Introduce a new UIHelper method to simulate text entry in the currently focused element.
+
+        (window.UIHelper):
+
+2018-04-20  Youenn Fablet  <youenn@apple.com>
+
+        Refactor NetworkResourceLoader to check for m_networkLoadChecker presence before using it
+        https://bugs.webkit.org/show_bug.cgi?id=184755
+
+        Reviewed by Chris Dumez.
+
+        Made specific WK1 expectations as WK2 now has console messages for sync XHR that WK1 does not have.
+        Dump JS console log in stderr for redirect-cross-origin-sync-double.html as the test does not rely on it
+        and this allows keeping a single expected.txt file for WK1 and WK2.
+
+        * TestExpectations:
+        * http/tests/xmlhttprequest/access-control-and-redirects-expected.txt:
+        * http/tests/xmlhttprequest/redirect-cross-origin-tripmine-expected.txt:
+        * platform/mac-wk1/http/tests/xmlhttprequest/redirect-cross-origin-tripmine-expected.txt: Added.
+        * platform/win/http/tests/xmlhttprequest/redirect-cross-origin-tripmine-expected.txt: Added.
+
+2018-04-20  Nan Wang  <n_wang@apple.com>
+
+        Layout Test accessibility/mac/async-increment-decrement-action.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=184834
+        <rdar://problem/39604753>
+
+        Reviewed by Chris Fleizach.
+
+        Changed the test to just make sure the increment/decrement actions are async, that
+        they won't block the test by changing the object's value.
+
+        * accessibility/mac/async-increment-decrement-action-expected.txt:
+        * accessibility/mac/async-increment-decrement-action.html:
+
+2018-04-20  Daniel Bates  <dabates@apple.com>
+
+        Remove Strong Password decoration when text field type changes
+        https://bugs.webkit.org/show_bug.cgi?id=184795
+        <rdar://problem/38325108>
+
+        Reviewed by Antti Koivisto.
+
+        Add tests to ensure that we remove the Strong Password decoration when the text field's type changes.
+
+        Extract code to toggle showing the AutoFill button from fast/forms/auto-fill-button/input-{disabled, readonly}-strong-password-and-strong-confirmation-password-auto-fill-buttons.html
+        into a new file fast/forms/auto-fill-button/resources/process-auto-fill-button-type-and-invoke-runTest.js
+        that can be shared.
+
+        * fast/forms/auto-fill-button/hide-strong-password-when-field-type-changes-expected.html: Added.
+        * fast/forms/auto-fill-button/hide-strong-password-when-field-type-changes.html: Added.
+        * fast/forms/auto-fill-button/input-disabled-strong-password-and-strong-confirmation-password-auto-fill-buttons.html:
+        * fast/forms/auto-fill-button/input-readonly-strong-password-and-strong-confirmation-password-auto-fill-buttons.html:
+        * fast/forms/auto-fill-button/resources/process-auto-fill-button-type-and-invoke-runTest.js: Added.
+        (window.onload):
+
+2018-04-20  Chris Nardi  <cnardi@chromium.org>
+
+        Omit default value when serializing font-feature-settings
+        https://bugs.webkit.org/show_bug.cgi?id=182382
+
+        Reviewed by Myles C. Maxfield.
+
+        Update tests to omit default value when serializing.
+
+        * css3/font-feature-settings-parsing-expected.txt:
+        * css3/font-feature-settings-parsing.html:
+        * fast/css/inherited-properties-rare-text-expected.txt:
+        * fast/text/font-face-javascript-expected.txt:
+        * fast/text/font-face-javascript.html:
+
+2018-04-19  Dirk Schulze  <krit@webkit.org>
+
+        Introduce SVGGeometryElement interface
+        https://bugs.webkit.org/show_bug.cgi?id=184768
+
+        Reviewed by Antti Koivisto.
+
+        Start implementing SVGGeometryElement interface from SVG2.
+
+        * svg/dom/SVGPolygonElement-baseVal-list-removal-crash.html: pointAtLength requires value now.
+        * svg/dom/path-pointAtLength-expected.txt:
+        * svg/dom/path-pointAtLength.html: Added throw tests for pointAtLength.
+        * svg/dom/svg2-inheritance-expected.txt: Inheritance fixed for SVGPathElement only for now.
+
+2018-04-19  Tadeu Zagallo  <tzagallo@apple.com>
+
+        REGRESSION(r227340): ArrayBuffers were not being serialized when sent via MessagePorts
+        https://bugs.webkit.org/show_bug.cgi?id=184254
+        <rdar://problem/39140200>
+
+        Reviewed by Daniel Bates.
+
+        The regression test provided with the bug report verifies that the ArrayBuffer is properly
+        serialized - before, the whole data object would be null.
+        Test case provided by Yann Cabon <ycabon@esri.com> as part of the bug report.
+
+        * workers/message-port-expected.txt: Added.
+        * workers/message-port.html: Added.
+
+2018-04-19  Eric Carlson  <eric.carlson@apple.com>
+
+        Runtime logging during GC can cause crash
+        https://bugs.webkit.org/show_bug.cgi?id=184792
+        <rdar://problem/39567927>
+
+        Reviewed by Jer Noble.
+
+        * media/destructor-logging-crash-expected.txt: Added.
+        * media/destructor-logging-crash.html: Added.
+
+2018-04-19  Youenn Fablet  <youenn@apple.com>
+
+        Web Inspector backend should get headers & cookies from network process separately from resource requests
+        https://bugs.webkit.org/show_bug.cgi?id=184396
+        <rdar://problem/38877384>
+
+        Reviewed by Brian Burg.
+
+        * http/wpt/service-workers/header-filtering.https-expected.txt:
+
+2018-04-19  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] Add a mechanism to extend the height of the layout viewport in extra zoom mode
+        https://bugs.webkit.org/show_bug.cgi?id=184782
+        <rdar://problem/38346712>
+
+        Reviewed by Tim Horton.
+
+        Add a new layout test to exercise the following scenarios:
+        •   The layout viewport should be fully extended when the document is much taller than the viewport.
+        •   Programmatically shrinking the document height to less than the viewport height causes the layout viewport
+            to shrink to the viewport height.
+        •   Programmatically extending the document height to a little more than the viewport height causes the layout
+            viewport to also expand, but this time, only to the new document height.
+
+        * TestExpectations:
+
+        Skip tests in fast/visual-viewport/extrazoom by default.
+
+        * fast/visual-viewport/extrazoom/layout-viewport-after-scrolling-and-resizing-expected.txt: Added.
+        * fast/visual-viewport/extrazoom/layout-viewport-after-scrolling-and-resizing.html: Added.
+
+2018-04-19  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (r229133): decidePolicyForNavigationAction not called for loading an HTML string
+        https://bugs.webkit.org/show_bug.cgi?id=184209
+        <rdar://problem/39145306>
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline existing layout tests. Their output is back to what it was before r229133.
+
+        * fast/loader/iframe-src-invalid-url-expected.txt:
+        * fast/loader/policy-delegate-action-hit-test-zoomed-expected.txt:
+        * loader/navigation-policy/should-open-external-urls/subframe-click-target-self-expected.txt:
+        * loader/navigation-policy/should-open-external-urls/subframe-click-target-top-expected.txt:
+
+2018-04-19  Chris Nardi  <cnardi@chromium.org>
+
+        Support calc() in webkit-gradient and cross-fade
+        https://bugs.webkit.org/show_bug.cgi?id=182225
+
+        Reviewed by Simon Fraser.
+
+        Add new test cases.
+
+        * css3/calc/cross-fade-calc.html: Added.
+        * css3/calc/cross-fade-calc-expected.txt: Added.
+        * css3/calc/webkit-gradient-calc.html: Added.
+        * css3/calc/webkit-gradient-calc-expected.txt: Added.
+
+2018-04-19  Youenn Fablet  <youenn@apple.com>
+
+        NetworkProcess should use CSP/content blockers for sync XHR
+        https://bugs.webkit.org/show_bug.cgi?id=184760
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/contentextensions/sync-xhr-redirection-blocked-expected.txt: Added.
+        * http/tests/contentextensions/sync-xhr-redirection-blocked.html: Added.
+        * http/tests/contentextensions/sync-xhr-redirection-blocked.html.json: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/resources/insecure-sync-xhr-in-main-frame-window.html: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-sync-xhr-in-main-frame-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-sync-xhr-in-main-frame.html: Added.
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2018-04-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed test gardening for iOS simulator.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/ios-wk2/imported/w3c/web-platform-tests/beacon/headers/header-content-type-expected.txt: Removed.
+        * platform/ios/TestExpectations:
+
+2018-04-19  Nan Wang  <n_wang@apple.com>
+
+        AX: AOM: respect the accessibility setting for dispatching the accessible events
+        https://bugs.webkit.org/show_bug.cgi?id=184619
+
+        Reviewed by Ryosuke Niwa.
+
+        * accessibility/ios-simulator/accessibility-events-setting-expected.txt: Added.
+        * accessibility/ios-simulator/accessibility-events-setting.html: Added.
+        * platform/ios-wk1/TestExpectations:
+        * platform/ios-wk2/TestExpectations:
+
+2018-04-19  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Fix flakiness in worker-to-worker test
+        https://bugs.webkit.org/show_bug.cgi?id=184769
+        <rdar://problem/39552333>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * workers/worker-to-worker-expected.txt:
+        * workers/worker-to-worker.html:
+        * workers/worker-to-worker.js:
+
+2018-04-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rebaseline tests for iOS simulator.
+
+        * platform/ios/TestExpectations:
+        * platform/ios/editing/deleting/delete-emoji-9-expected.txt:
+        * platform/ios/http/tests/blink/sendbeacon/beacon-same-origin-expected.txt: Added.
+        * platform/ios/imported/w3c/web-platform-tests/beacon/headers/header-content-type-expected.txt: Added.
+        * platform/ios/quicklook/excel-expected.txt:
+        * platform/ios/quicklook/excel-legacy-expected.txt:
+        * platform/ios/quicklook/excel-macro-enabled-expected.txt:
+
+2018-04-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip legacy-animation-engine/media/track/opera directory on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=184420
+
+        Unreviewed test gardening.
+
+        The media/track/opera directory is already skipped on iOS, so skip this duplicated directory.
+
+        * platform/ios/TestExpectations:
+
+2018-04-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/2dcontext/imagebitmap/createImageBitmap-transfer.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=182833
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2018-04-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/video-aspect-ratio.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=184457
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-04-19  Miguel Gomez  <magomez@igalia.com>
+
+        Unreviewed GTK+ gardening after r230796.
+
+        * platform/gtk/TestExpectations:
+
+2018-04-19  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        Caret rendered at incorrect location inside empty table cell
+        https://bugs.webkit.org/show_bug.cgi?id=85385
+
+        Reviewed by Zalan Bujtas.
+
+        * editing/caret/caret-in-empty-cell-expected.html: Added.
+        * editing/caret/caret-in-empty-cell.html: Added.
+        * editing/deleting/5206311-2-expected.txt:
+        * editing/deleting/5433862-1-expected.txt:
+        * platform/gtk/editing/deleting/5126166-expected.png:
+        * platform/gtk/editing/deleting/5126166-expected.txt:
+        * platform/gtk/editing/deleting/5206311-1-expected.png:
+        * platform/gtk/editing/deleting/5206311-1-expected.txt:
+        * platform/gtk/editing/deleting/5433862-2-expected.png:
+        * platform/gtk/editing/deleting/5433862-2-expected.txt:
+        * platform/gtk/editing/deleting/5483370-expected.png:
+        * platform/gtk/editing/deleting/5483370-expected.txt:
+        * platform/gtk/editing/selection/move-by-line-001-expected.png:
+        * platform/gtk/editing/selection/move-by-line-001-expected.txt:
+        * platform/gtk/editing/selection/select-all-004-expected.txt:
+        * platform/ios-simulator/editing/deleting/5126166-expected.txt:
+        * platform/ios-simulator/editing/deleting/5206311-1-expected.txt:
+        * platform/ios-simulator/editing/deleting/5433862-2-expected.txt:
+        * platform/ios-simulator/editing/deleting/5483370-expected.txt:
+        * platform/mac/editing/deleting/5126166-expected.png:
+        * platform/mac/editing/deleting/5126166-expected.txt:
+        * platform/mac/editing/deleting/5206311-1-expected.png:
+        * platform/mac/editing/deleting/5206311-1-expected.txt:
+        * platform/mac/editing/deleting/5433862-2-expected.png:
+        * platform/mac/editing/deleting/5433862-2-expected.txt:
+        * platform/mac/editing/deleting/5483370-expected.png:
+        * platform/mac/editing/deleting/5483370-expected.txt:
+        * platform/mac/editing/selection/move-by-line-001-expected.txt:
+        * platform/mac/editing/selection/select-all-004-expected.txt:
+        * platform/win/editing/deleting/5126166-expected.png: Added.
+        * platform/win/editing/deleting/5126166-expected.txt:
+        * platform/win/editing/deleting/5206311-1-expected.png: Added.
+        * platform/win/editing/deleting/5206311-1-expected.txt:
+        * platform/win/editing/deleting/5433862-2-expected.png: Added.
+        * platform/win/editing/deleting/5433862-2-expected.txt:
+        * platform/win/editing/deleting/5483370-expected.png: Added.
+        * platform/win/editing/deleting/5483370-expected.txt:
+
+2018-04-18  Youenn Fablet  <youenn@apple.com>
+
+        Allow SameOrigin credentials handling for synchronous XHR
+        https://bugs.webkit.org/show_bug.cgi?id=184723
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/xmlhttprequest/access-control-and-redirects-expected.txt:
+        * http/tests/xmlhttprequest/access-control-and-redirects.html:
+        * http/tests/xmlhttprequest/redirect-cross-origin-post-sync-expected.txt:
+        * http/tests/xmlhttprequest/redirect-cross-origin-sync-expected.txt:
+        * http/tests/xmlhttprequest/xmlhttprequest-unsafe-redirect-expected.txt:
+        * platform/mac-wk1/http/tests/xmlhttprequest/access-control-and-redirects-expected.txt:
+        * platform/mac-wk1/http/tests/xmlhttprequest/redirect-cross-origin-post-sync-expected.txt: Copied from LayoutTests/http/tests/xmlhttprequest/redirect-cross-origin-post-sync-expected.txt.
+        * platform/mac-wk1/http/tests/xmlhttprequest/redirect-cross-origin-sync-expected.txt: Copied from LayoutTests/http/tests/xmlhttprequest/redirect-cross-origin-sync-expected.txt.
+        * platform/mac-wk1/http/tests/xmlhttprequest/xmlhttprequest-unsafe-redirect-expected.txt: Copied from LayoutTests/http/tests/xmlhttprequest/xmlhttprequest-unsafe-redirect-expected.txt.
+        * platform/win/http/tests/xmlhttprequest/access-control-and-redirects-expected.txt:
+        * platform/win/http/tests/xmlhttprequest/redirect-cross-origin-post-sync-expected.txt: Copied from LayoutTests/http/tests/xmlhttprequest/redirect-cross-origin-post-sync-expected.txt.
+        * platform/win/http/tests/xmlhttprequest/redirect-cross-origin-sync-expected.txt: Copied from LayoutTests/http/tests/xmlhttprequest/redirect-cross-origin-sync-expected.txt.
+        * platform/win/http/tests/xmlhttprequest/xmlhttprequest-unsafe-redirect-expected.txt: Copied from LayoutTests/http/tests/xmlhttprequest/xmlhttprequest-unsafe-redirect-expected.txt.
+
+2018-04-18  Chris Dumez  <cdumez@apple.com>
+
+        Set RemoteDOMWindow's initial opener
+        https://bugs.webkit.org/show_bug.cgi?id=184716
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline existing test now that remoteWindow.opener now returns
+        its initial opener.
+
+        * http/tests/navigation/process-swap-window-open-expected.txt:
+
+2018-04-18  Dean Jackson  <dino@apple.com>
+
+        Detect system preview links
+        https://bugs.webkit.org/show_bug.cgi?id=184753
+        <rdar://problem/39500514>
+
+        Reviewed by Antoine Quint.
+
+        * system-preview/detection-expected.txt: Added.
+        * system-preview/detection.html: Added.
+
+2018-04-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip animations/missing-from-to.html on mac-wk1 debug.
+        https://bugs.webkit.org/show_bug.cgi?id=184569
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2018-04-18  Nan Wang  <n_wang@apple.com>
+
+        AX: [macOS] WebKit hangs when triggering an alert from an AOM increment event
+        https://bugs.webkit.org/show_bug.cgi?id=184742
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/async-increment-decrement-action-expected.txt: Added.
+        * accessibility/mac/async-increment-decrement-action.html: Added.
+        * platform/mac-wk1/TestExpectations:
+
+2018-04-18  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [Win] Layout Test js/date-constructor.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=140945
+
+        Reviewed by Per Arne Vollan.
+
+        * platform/win/TestExpectations:
+        * platform/wincairo/TestExpectations:
+
+2018-04-18  Chris Dumez  <cdumez@apple.com>
+
+        Add support for converting a local window to a remote window
+        https://bugs.webkit.org/show_bug.cgi?id=184515
+        <rdar://problem/39011318>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add layout test coverage a cross-origin window.open() to check that the
+        returned window looks like a regular cross-origin window after being
+        navigated cross-origin. We are still failing some of the checks because
+        our implementation is still incomplete. However, it mostly works as
+        expected.
+
+        * TestExpectations:
+        * http/tests/navigation/process-swap-window-open-expected.txt: Added.
+        * http/tests/navigation/process-swap-window-open.html: Added.
+        * platform/wk2/TestExpectations:
+
+2018-04-18  Ms2ger  <Ms2ger@igalia.com>
+
+        Test gardening.
+        https://bugs.webkit.org/show_bug.cgi?id=184726
+
+        Unreviewed test gardening.
+
+        Update expectations.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt:
+        * platform/wpe/TestExpectations:
+        * platform/wpe/imported/w3c/web-platform-tests/html/dom/interfaces-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/web-animations/animation-model/animation-types/addition-per-property-expected.txt:
+        * platform/wpe/js/dom/dom-static-property-for-in-iteration-expected.txt:
+
+2018-04-17  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] Programmatically changing focus when an element already has focus is a confusing experience
+        https://bugs.webkit.org/show_bug.cgi?id=184635
+        <rdar://problem/39440642>
+
+        Reviewed by Tim Horton.
+
+        Add a new layout test to exercise the following sequence of events in extra zoom mode:
+
+        1. Focus select element #1.
+        2. Choose an unselected option.
+        3. Programmatically focus select element #2 in the "change" event handler.
+        4. Choose an unselected option.
+        5. Programmatically blur select element #2 in the "change" event handler.
+
+        * fast/events/extrazoom/change-focus-during-change-event-expected.txt: Added.
+        * fast/events/extrazoom/change-focus-during-change-event.html: Added.
+        * resources/ui-helper.js:
+        (window.UIHelper.waitForKeyboardToHide.return.new.Promise):
+        (window.UIHelper.waitForKeyboardToHide):
+
+2018-04-17  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Extra zoom mode] Double tap to zoom should account for text legibility in extra zoom mode
+        https://bugs.webkit.org/show_bug.cgi?id=184631
+        <rdar://problem/39303706>
+
+        Reviewed by Tim Horton.
+
+        Add a layout test to check that double tap to zoom works in extra zoom mode, even when text spans the entire
+        width of the document.
+
+        * TestExpectations:
+        * fast/events/extrazoom/double-tap-to-zoom-on-full-width-text-expected.txt: Added.
+        * fast/events/extrazoom/double-tap-to-zoom-on-full-width-text.html: Added.
+        * resources/basic-gestures.js:
+
+        Add a helper method to double tap at a given location, and wait for zooming to finish.
+
+        (return.new.Promise):
+
+2018-04-17  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Retain MessagePortChannel for transfer when disentangling ports
+        https://bugs.webkit.org/show_bug.cgi?id=184502
+        <rdar://problem/39372771>
+
+        Reviewed by Geoffrey Garen.
+
+        Check that the MessageChannel does not get eagerly deallocated when transferring both of its
+        ports. Original test case provided with the bug report by Ashley Gullen <ashley@scirra.com>
+
+        * workers/worker-to-worker-expected.txt: Added.
+        * workers/worker-to-worker.html: Added.
+        * workers/worker-to-worker.js: Added.
+
+2018-04-17  Jonathan Bedard  <jbedard@apple.com>
+
+        Unreviewed rollout of r230632. Regression in memory usage.
+
+        That bug tracked in https://bugs.webkit.org/show_bug.cgi?id=184569.
+
+        * TestExpectations:
+        * animations/animation-direction-alternate-reverse-expected.txt:
+        * animations/animation-direction-alternate-reverse.html:
+        * animations/animation-hit-test-transform.html:
+        * animations/animation-internals-api-expected.txt: Copied from LayoutTests/animations/animation-internals-api-expected.txt.
+        * animations/animation-internals-api-multiple-keyframes-expected.txt: Copied from LayoutTests/animations/animation-internals-api-multiple-keyframes-expected.txt.
+        * animations/animation-internals-api-multiple-keyframes.html: Copied from LayoutTests/animations/animation-internals-api-multiple-keyframes.html.
+        * animations/animation-internals-api.html: Copied from LayoutTests/animations/animation-internals-api.html.
+        * animations/big-rotation-expected.txt:
+        * animations/big-rotation.html:
+        * animations/duplicated-keyframes-name.html:
+        * animations/fill-forwards-end-state.html:
+        * animations/fill-mode-forwards-zero-duration-expected.txt:
+        * animations/fill-mode-forwards-zero-duration.html:
+        * fast/css-generated-content/pseudo-animation.html:
+        * fast/css-generated-content/pseudo-transition.html:
+        * platform/ios/TestExpectations:
+        * platform/win/TestExpectations:
+        * transitions/remove-transition-style.html:
+        * transitions/transition-drt-api-delay-expected.txt: Copied from LayoutTests/transitions/transition-drt-api-delay-expected.txt.
+        * transitions/transition-drt-api-delay.html: Copied from LayoutTests/transitions/transition-drt-api-delay.html.
+        * transitions/transition-drt-api-expected.txt: Copied from LayoutTests/transitions/transition-drt-api-expected.txt.
+        * transitions/transition-drt-api.html: Copied from LayoutTests/transitions/transition-drt-api.html.
+        * transitions/transition-hit-test-transform.html:
+        * transitions/zero-duration-with-non-zero-delay-end.html:
+
+2018-04-17  Tadeu Zagallo  <tzagallo@apple.com>
+
+        Do not unregister MessagePorts on deallocation if it has been disentangled
+        https://bugs.webkit.org/show_bug.cgi?id=184285
+        <rdar://problem/39256714>
+
+        Reviewed by Darin Adler.
+
+        Original test provided as part of the bug report by Yann Cabon <ycabon@esri.com>
+
+        * workers/message-port-gc-expected.txt: Added.
+        * workers/message-port-gc.html: Added.
+        * workers/message-port-gc.js: Added.
+
+2018-04-17  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (r229831): CMD-clicking an iCloud web app link unexpectedly opens that link in a new tab and the current tab
+        https://bugs.webkit.org/show_bug.cgi?id=184678
+        <rdar://problem/39422122>
+
+        Reviewed by Alex Christensen.
+
+        Add layout test coverage.
+
+        * http/tests/navigation/fragment-navigation-policy-ignore-expected.txt: Added.
+        * http/tests/navigation/fragment-navigation-policy-ignore.html: Added.
+
+2018-04-17  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Animated GIF imagery with finite looping are falling one loop short
+        https://bugs.webkit.org/show_bug.cgi?id=183153
+
+        Reviewed by Simon Fraser.
+
+        This layout test tests GIF when it has to loop its entire frames a specific
+        number of times. There are three cases for the loopCount field:
+        -- loopCount is missing: This means the GIF should animate only once. This
+           is covered by animated-red-green-blue-repeat-1.gif.
+        -- loopCount = 0: This means the image has to animate indefinatly. This
+           case is covered by the new GIF animated-red-green-blue-repeat-infinite.gif.
+        -- loopCount > 0: This will loop the GIF entire frames for (loopCount + 1)
+           times. To fix the test with the extra loop, loopCount in
+           animated-red-green-blue-repeat-2.gif was changed to 1 instead of 2.
+
+        * fast/images/animated-image-loop-count-expected.html:
+        * fast/images/animated-image-loop-count.html:
+        * fast/images/resources/animated-red-green-blue-repeat-2.gif:
+        * fast/images/resources/animated-red-green-blue-repeat-infinite.gif:
+
+2018-04-16  Antoine Quint  <graouts@apple.com>
+
+        Layout Test animations/needs-layout.html is a flaky Image Failure.
+        https://bugs.webkit.org/show_bug.cgi?id=172397
+
+        Reviewed by Dean Jackson.
+
+        No longer mark this test as flaky.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2018-04-16  Keith Rollin  <krollin@apple.com>
+
+        REGRESSION: [mac-wk2 release] LayoutTest http/tests/security/contentSecurityPolicy/script-src-blocked-error-event.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=184673
+        <rdar://problem/39474698>
+
+        Unreviewed test gardening. The test was flaky because the HTTP parser
+        would try to preload the Javascript resource. Sometimes this operation
+        would complete in time to print its own console message, duplicating a
+        subsequent one when the non-preloading resource-load occurs. Updated
+        the test to load the Javascript in such a way that it skips the reload
+        step.
+
+        * TestExpectations:
+        * http/tests/security/contentSecurityPolicy/script-src-blocked-error-event-expected.txt:
+        * http/tests/security/contentSecurityPolicy/script-src-blocked-error-event.html:
+
+2018-04-16  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Unreviewed. Update WinCairo TestExpectations in preparation for LayoutTests automation.
+
+        * platform/wincairo/TestExpectations:
+        Updated current failures for directories A-E. Added temporary skips for everything after.
+
+        * platform/wincairo/accessibility:
+        * platform/wincairo/animations/3d:
+        * platform/wincairo/css2.1:
+        * platform/wincairo/css3:
+        * platform/wincairo/editing:
+        * platform/wincairo/fast/css-generated-content:
+        * platform/wincairo/fast/dom:
+        * platform/wincairo/legacy-animation-engine/animations/3d:
+        * platform/wincairo/legacy-animation-engine/compositing:
+        Added expectation files.
+
+2018-04-16  Megan Gardner  <megan_gardner@apple.com>
+
+        Switch to UIWKTextInteractionAssistant for non-editable text
+        https://bugs.webkit.org/show_bug.cgi?id=182834
+
+        Reviewed by Beth Dakin.
+        
+        Marking tests as flaky and to be fixed later.
+
+        * platform/ios-wk2/TestExpectations:
+
+2018-04-16  Youenn Fablet  <youenn@apple.com>
+
+        Use NetworkLoadChecker to handle synchronous HTTP loads
+        https://bugs.webkit.org/show_bug.cgi?id=184240
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/xmlhttprequest/access-control-preflight-not-successful-expected.txt:
+        * http/wpt/beacon/cors/cors-preflight-blob-failure.html: Fix buggy assertion.
+        Test should check for actual request header and not header name in Access-Control-Request-Headers.
+        * http/wpt/beacon/cors/cors-preflight-blob-success.html: Ditto.
+        * platform/mac-wk1/http/tests/xmlhttprequest/access-control-and-redirects-expected.txt: Added.
+        * platform/mac-wk1/http/tests/xmlhttprequest/access-control-preflight-not-successful-expected.txt: Added.
+        * platform/mac-wk1/http/tests/xmlhttprequest/cross-origin-no-authorization-expected.txt: Added.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/XMLHttpRequest/access-control-and-redirects-expected.txt: Added.
+        * platform/win/http/tests/xmlhttprequest/access-control-and-redirects-expected.txt: Added.
+        * platform/win/http/tests/xmlhttprequest/access-control-preflight-not-successful-expected.txt: Added.
+        * platform/win/http/tests/xmlhttprequest/cross-origin-no-authorization-expected.txt: Added.
+        * platform/mac-highsierra-wk2/imported/w3c/web-platform-tests/XMLHttpRequest/send-authentication-cors-basic-setrequestheader-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-authentication-cors-basic-setrequestheader-expected.txt.
+        * platform/mac-highsierra-wk2/imported/w3c/web-platform-tests/XMLHttpRequest/send-authentication-cors-setrequestheader-no-cred-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-authentication-cors-setrequestheader-no-cred-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/XMLHttpRequest/send-authentication-cors-basic-setrequestheader-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-authentication-cors-basic-setrequestheader-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/XMLHttpRequest/send-authentication-cors-setrequestheader-no-cred-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-authentication-cors-setrequestheader-no-cred-expected.txt.
+        * platform/mac-wk1/imported/w3c/web-platform-tests/cors/request-headers-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/cors/request-headers-expected.txt.
+        * platform/win/http/tests/xmlhttprequest/access-control-and-redirects-expected.txt:
+        * platform/win/http/tests/xmlhttprequest/access-control-preflight-not-successful-expected.txt:
+        * platform/win/imported/w3c/web-platform-tests/XMLHttpRequest/send-authentication-cors-basic-setrequestheader-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-authentication-cors-basic-setrequestheader-expected.txt.
+        * platform/win/imported/w3c/web-platform-tests/XMLHttpRequest/send-authentication-cors-setrequestheader-no-cred-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/XMLHttpRequest/send-authentication-cors-setrequestheader-no-cred-expected.txt.
+        * platform/win/imported/w3c/web-platform-tests/cors/request-headers-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/cors/request-headers-expected.txt.
+
 2018-04-16  Per Arne Vollan  <pvollan@apple.com>
 
         Mark css3/filters/blur-various-radii.html as a crash on Windows.

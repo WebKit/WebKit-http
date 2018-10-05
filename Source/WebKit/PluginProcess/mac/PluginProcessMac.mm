@@ -48,6 +48,7 @@
 #import <pal/spi/cg/CoreGraphicsSPI.h>
 #import <pal/spi/cocoa/LaunchServicesSPI.h>
 #import <pal/spi/mac/HIToolboxSPI.h>
+#import <pal/spi/mac/NSApplicationSPI.h>
 #import <pal/spi/mac/NSWindowSPI.h>
 #import <sysexits.h>
 #import <wtf/HashSet.h>

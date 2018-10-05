@@ -58,41 +58,12 @@ void initialize()
 #else // ENABLE(JIT)
     llint_entry(&Data::s_opcodeMap);
 
-    for (int i = 0; i < NUMBER_OF_BYTECODE_IDS; ++i) {
-        PtrTag tag = (i == op_catch) ? ExceptionHandlerPtrTag : BytecodePtrTag;
-        Data::s_opcodeMap[i] = tagCodePtr(Data::s_opcodeMap[i], tag);
-    }
+    for (int i = 0; i < numOpcodeIDs; ++i)
+        Data::s_opcodeMap[i] = tagCodePtr(Data::s_opcodeMap[i], BytecodePtrTag);
 
-    static const PtrTag tagsForOpcode[] = {
-        CodePtrTag, // llint_program_prologue
-        CodePtrTag, // llint_eval_prologue
-        CodePtrTag, // llint_module_program_prologue
-        CodePtrTag, // llint_function_for_call_prologue
-        CodePtrTag, // llint_function_for_construct_prologue
-        CodePtrTag, // llint_function_for_call_arity_check
-        CodePtrTag, // llint_function_for_construct_arity_check
-        CodePtrTag, // llint_generic_return_point
-        BytecodePtrTag, // llint_throw_from_slow_path_trampoline
-        ExceptionHandlerPtrTag, // llint_throw_during_call_trampoline
-        CodePtrTag, // llint_native_call_trampoline
-        CodePtrTag, // llint_native_construct_trampoline
-        CodePtrTag, // llint_internal_function_call_trampoline
-        CodePtrTag, // llint_internal_function_construct_trampoline
-        ExceptionHandlerPtrTag, // handleUncaughtException
-    };
-
-    static_assert(sizeof(tagsForOpcode) / sizeof(tagsForOpcode[0]) == NUMBER_OF_BYTECODE_HELPER_IDS, "");
-    static_assert(static_cast<uintptr_t>(llint_program_prologue) == NUMBER_OF_BYTECODE_IDS, "");
-
-    for (int i = 0; i < NUMBER_OF_BYTECODE_HELPER_IDS; ++i) {
-        int opcodeID = i + NUMBER_OF_BYTECODE_IDS;
-        Data::s_opcodeMap[opcodeID] = tagCodePtr(Data::s_opcodeMap[opcodeID], tagsForOpcode[i]);
-    }
-
-    void* handler = LLInt::getCodePtr(llint_throw_from_slow_path_trampoline);
+    void* handler = Data::s_opcodeMap[llint_throw_from_slow_path_trampoline];
     for (int i = 0; i < maxOpcodeLength + 1; ++i)
         Data::s_exceptionInstructions[i].u.pointer = handler;
-
 #endif // ENABLE(JIT)
 }
 

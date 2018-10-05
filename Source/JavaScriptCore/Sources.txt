@@ -502,6 +502,7 @@ heap/IncrementalSweeper.cpp
 heap/IsoAlignedMemoryAllocator.cpp
 heap/IsoCellSet.cpp
 heap/IsoSubspace.cpp
+heap/IsoSubspacePerVM.cpp
 heap/JITStubRoutineSet.cpp
 heap/LargeAllocation.cpp
 heap/LocalAllocator.cpp
@@ -857,7 +858,6 @@ runtime/MatchResult.cpp
 runtime/MathCommon.cpp
 runtime/MathObject.cpp
 runtime/MemoryStatistics.cpp
-runtime/ModuleLoaderPrototype.cpp
 runtime/ModuleProgramExecutable.cpp
 runtime/NativeErrorConstructor.cpp
 runtime/NativeErrorPrototype.cpp

@@ -97,6 +97,9 @@ webkit.org/b/178272 [ Sierra ] http/tests/security/video-cross-origin-caching.ht
 # rdar://problem/34716163 Breaks subsequent tests using response.xml
 [ HighSierra+ ] http/tests/xmlhttprequest/range-test.html [ Skip ]
 
+# WK1 does not support sync XHR redirections as does WK2
+http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-sync-xhr-in-main-frame.html [ Skip ]
+
 ### END OF (1) Failures with bug reports
 ########################################
 
@@ -143,6 +146,8 @@ http/wpt/cache-storage [ Skip ]
 http/tests/cache-storage [ Skip ]
 imported/w3c/web-platform-tests/streams/readable-byte-streams/detached-buffers.serviceworker.https.html [ Skip ]
 http/tests/appcache/main-resource-redirect-with-sw.html [ Skip ]
+http/tests/cookies/same-site/fetch-in-cross-origin-service-worker.html [ Skip ]
+http/tests/cookies/same-site/fetch-in-same-origin-service-worker.html [ Skip ]
 
 # Skip WebRTC for now in WK1
 imported/w3c/web-platform-tests/webrtc [ Skip ]
@@ -492,7 +497,6 @@ webkit.org/b/175886 svg/animations/smil-leak-element-instances.svg [ Pass Failur
 [ HighSierra+ ] fast/forms/textarea-maxlength.html [ Crash ]
 [ HighSierra+ ] fast/text/system-font-fallback-emoji.html [ Crash ]
 
-webkit.org/b/172397 [ Debug ] animations/needs-layout.html [ Pass ImageOnlyFailure ]
 webkit.org/b/172397 [ Debug ] legacy-animation-engine/animations/needs-layout.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/179775 imported/w3c/web-platform-tests/XMLHttpRequest/firing-events-http-no-content-length.html [ Pass Failure ]
@@ -502,6 +506,7 @@ webkit.org/b/172044 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/open-req
 webkit.org/b/180898 accessibility/mac/AOM-events.html [ Skip ]
 webkit.org/b/183023 accessibility/mac/AOM-events-all.html [ Skip ]
 webkit.org/b/183352 accessibility/ios-simulator/AOM-dismiss-event.html [ Skip ]
+webkit.org/b/184742 accessibility/mac/async-increment-decrement-action.html [ Skip ]
 
 webkit.org/b/182752 accessibility/mac/accessibility-make-first-responder.html [ Skip ]
 
@@ -534,3 +539,7 @@ webkit.org/b/183220 media/track/track-css-matching-timestamps.html [ Pass Timeou
 imported/w3c/web-platform-tests/css/selectors/selector-placeholder-shown-type-change-002.html [ ImageOnlyFailure ]
 
 webkit.org/b/184456 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-embed-element/embed-in-object-fallback.html [ Pass Failure ]
+
+webkit.org/b/184569 [ Debug ] animations/missing-from-to.html [ Skip ]
+
+webkit.org/b/184457 media/video-aspect-ratio.html [ Pass Failure ]

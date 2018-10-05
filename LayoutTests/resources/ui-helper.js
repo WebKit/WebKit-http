@@ -100,6 +100,16 @@ window.UIHelper = class UIHelper {
         });
     }
 
+    static waitForKeyboardToHide()
+    {
+        return new Promise(resolve => {
+            testRunner.runUIScript(`
+                (function() {
+                    uiController.didHideKeyboardCallback = () => uiController.uiScriptComplete();
+                })()`, resolve);
+        });
+    }
+
     static getUICaretRect()
     {
         if (!this.isWebKit2() || !this.isIOS())
@@ -175,5 +185,12 @@ window.UIHelper = class UIHelper {
                 uiController.uiScriptComplete(uiController.selectFormPopoverTitle);
             })()`, resolve);
         });
+    }
+
+    static enterText(text)
+    {
+        const escapedText = text.replace(/`/g, "\\`");
+        const enterTextScript = `(() => uiController.enterText(\`${escapedText}\`))()`;
+        return new Promise(resolve => testRunner.runUIScript(enterTextScript, resolve));
     }
 }

@@ -29,10 +29,13 @@ class CommitLog extends DataModelObject {
             this._rawData.message = rawData.message;
         if (rawData.ownsCommits)
             this._rawData.ownsCommits = rawData.ownsCommits;
+        if (rawData.order)
+            this._rawData.order = rawData.order;
     }
 
     repository() { return this._repository; }
     time() { return new Date(this._rawData['time']); }
+    hasCommitTime() { return this._rawData['time'] > 0 && this._rawData['time'] != null; }
     author() { return this._rawData['authorName']; }
     revision() { return this._rawData['revision']; }
     message() { return this._rawData['message']; }
@@ -40,7 +43,8 @@ class CommitLog extends DataModelObject {
     ownsCommits() { return this._rawData['ownsCommits']; }
     ownedCommits() { return this._ownedCommits; }
     ownerCommit() { return this._ownerCommit; }
-
+    order() { return this._rawData['order']; }
+    hasCommitOrder() { return this._rawData['order'] != null; }
     setOwnerCommits(ownerCommit) { this._ownerCommit = ownerCommit; }
 
     label()
@@ -88,6 +92,20 @@ class CommitLog extends DataModelObject {
             rawData.repository = repository;
             return CommitLog.ensureSingleton(rawData.id, rawData);
         });
+    }
+
+    static hasOrdering(firstCommit, secondCommit)
+    {
+        return (firstCommit.hasCommitTime() && secondCommit.hasCommitTime()) ||
+            (firstCommit.hasCommitOrder() && secondCommit.hasCommitOrder());
+    }
+
+    static orderTwoCommits(firstCommit, secondCommit)
+    {
+        console.assert(CommitLog.hasOrdering(firstCommit, secondCommit));
+        const firstCommitSmaller = firstCommit.hasCommitTime() && secondCommit.hasCommitTime() ?
+            firstCommit.time() < secondCommit.time() : firstCommit.order() < secondCommit.order();
+        return firstCommitSmaller ? [firstCommit, secondCommit] : [secondCommit, firstCommit];
     }
 
     ownedCommitForOwnedRepository(ownedRepository) { return this._ownedCommitByOwnedRepository.get(ownedRepository); }
