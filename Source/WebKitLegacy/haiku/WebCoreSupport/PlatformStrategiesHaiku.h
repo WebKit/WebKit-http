@@ -43,31 +43,13 @@ private:
     WebCore::CookiesStrategy* createCookiesStrategy() override;
 
     // WebCore::CookiesStrategy
-	std::pair<WTF::String, bool> cookiesForDOM(const WebCore::NetworkStorageSession& session,
-			const WebCore::URL& firstParty, const WebCore::URL& url,
-			std::optional<uint64_t> frameID, std::optional<uint64_t> pageID,
-			WebCore::IncludeSecureCookies) override;
-
-    void setCookiesFromDOM(const WebCore::NetworkStorageSession&,
-			const WebCore::URL& firstParty, const WebCore::URL&,
-			std::optional<uint64_t> frameID, std::optional<uint64_t> pageID,
-			const String&) override;
-
-	bool cookiesEnabled(const WebCore::NetworkStorageSession&) override;
-
-	std::pair<WTF::String, bool> cookieRequestHeaderFieldValue(const WebCore::NetworkStorageSession& session,
-			const WebCore::URL& firstParty, const WebCore::URL& url,
-			std::optional<uint64_t> frameID, std::optional<uint64_t> pageID,
-			WebCore::IncludeSecureCookies) override;
-
-	std::pair<WTF::String, bool> cookieRequestHeaderFieldValue(PAL::SessionID sessionID,
-			const WebCore::URL& firstParty, const WebCore::URL& url,
-			std::optional<uint64_t> frameID, std::optional<uint64_t> pageID,
-			WebCore::IncludeSecureCookies) override;
-    bool getRawCookies(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&,
-			std::optional<uint64_t> frameID, std::optional<uint64_t> pageID,
-			Vector<WebCore::Cookie>&) override;
-    void deleteCookie(const WebCore::NetworkStorageSession&, const WebCore::URL&, const String&) override;
+    std::pair<String, bool> cookiesForDOM(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::SameSiteInfo&, const WebCore::URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, WebCore::IncludeSecureCookies) override;
+    virtual void setCookiesFromDOM(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::SameSiteInfo&, const WebCore::URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, const String&);
+    virtual bool cookiesEnabled(const WebCore::NetworkStorageSession&);
+    std::pair<String, bool> cookieRequestHeaderFieldValue(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::SameSiteInfo&, const WebCore::URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, WebCore::IncludeSecureCookies) override;
+    std::pair<String, bool> cookieRequestHeaderFieldValue(PAL::SessionID, const WebCore::URL& firstParty, const WebCore::SameSiteInfo&, const WebCore::URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, WebCore::IncludeSecureCookies) override;
+    virtual bool getRawCookies(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::SameSiteInfo&, const WebCore::URL&, std::optional<uint64_t> frameID, std::optional<uint64_t> pageID, Vector<WebCore::Cookie>&);
+    virtual void deleteCookie(const WebCore::NetworkStorageSession&, const WebCore::URL&, const String&);
 };
 
 #endif // PlatformStrategiesHaiku_h

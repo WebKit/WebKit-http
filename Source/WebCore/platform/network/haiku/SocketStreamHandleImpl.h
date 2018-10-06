@@ -51,19 +51,20 @@ namespace WebCore {
 
     class SocketStreamHandleImpl : public SocketStreamHandle {
     public:
-        static 				Ref<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient& client, PAL::SessionID id, const String&, SourceApplicationAuditToken&&)
-								{ return adoptRef(*new SocketStreamHandleImpl(url, client)); }
-        virtual 			~SocketStreamHandleImpl();
+        static 			Ref<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient& client, PAL::SessionID id, const String&, SourceApplicationAuditToken&&)
+							{ return adoptRef(*new SocketStreamHandleImpl(url, client)); }
+        virtual 		~SocketStreamHandleImpl();
 
     protected:
-        void			platformSend(const char* data, size_t length, Function<void(bool)>&&) final;
-        std::optional<size_t>	platformSendInternal(const char* data, size_t length);
+        void			platformSend(const uint8_t* data, size_t length, Function<void(bool)>&&) final;
+        std::optional<size_t>	platformSendInternal(const uint8_t* data, size_t length);
         void 			platformClose() final;
-	size_t 			bufferedAmount() final;
-	bool			sendPendingData();
+		void			platformSendHandshake(const uint8_t* data, size_t length, const std::optional<CookieRequestHeaderFieldProxy>&, Function<void(bool, bool)>&&) final;
+		size_t 			bufferedAmount() final;
+		bool			sendPendingData();
 
     private:
-        					SocketStreamHandleImpl(const URL&, SocketStreamHandleClient&);
+        				SocketStreamHandleImpl(const URL&, SocketStreamHandleClient&);
         // No authentication for streams per se, but proxy may ask for credentials.
         void didReceiveAuthenticationChallenge(const AuthenticationChallenge&);
         void receivedCredential(const AuthenticationChallenge&, const Credential&);
@@ -84,7 +85,7 @@ namespace WebCore {
 
         static std::set<void*> liveObjects;
 
-	StreamBuffer<char, 1024 * 1024> m_buffer;
+	StreamBuffer<uint8_t, 1024 * 1024> m_buffer;
 	static const unsigned maxBufferSize = 100 * 1024 * 1024;
     };
 

@@ -31,6 +31,7 @@
 #include "Cookie.h"
 #include "CookieStorage.h"
 #include "CookiesStrategy.h"
+#include "CookieRequestHeaderFieldProxy.h"
 
 #include "URL.h"
 #include "NetworkingContext.h"
@@ -51,9 +52,9 @@
 
 namespace WebCore {
 
-void setCookiesFromDOM(const NetworkStorageSession& session, const URL&, const URL& url, 
-    std::optional<uint64_t>, std::optional<uint64_t>,
-    const String& value)
+void setCookiesFromDOM(const NetworkStorageSession& session, const URL&, 
+	const SameSiteInfo&, const URL& url,  std::optional<uint64_t>,
+	std::optional<uint64_t>, const String& value)
 {
 	BNetworkCookie* heapCookie
 		= new BNetworkCookie(value, BUrl(url));
@@ -67,7 +68,7 @@ void setCookiesFromDOM(const NetworkStorageSession& session, const URL&, const U
 }
 
 std::pair<String, bool> cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty,
-    const URL& url, std::optional<uint64_t>, std::optional<uint64_t>,
+    const SameSiteInfo&, const URL& url, std::optional<uint64_t>, std::optional<uint64_t>,
     IncludeSecureCookies includeSecure)
 {
 #if TRACE_COOKIE_JAR
@@ -102,7 +103,7 @@ std::pair<String, bool> cookiesForDOM(const NetworkStorageSession& session, cons
     return {result, secure};
 }
 
-std::pair<String, bool> cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL&, const URL& url,
+std::pair<String, bool> cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL&, const SameSiteInfo&, const URL& url,
     std::optional<uint64_t>, std::optional<uint64_t>,
 	IncludeSecureCookies includeSecure)
 {
@@ -133,12 +134,18 @@ std::pair<String, bool> cookieRequestHeaderFieldValue(const NetworkStorageSessio
     return {result, secure};
 }
 
+std::pair<String, bool> cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const CookieRequestHeaderFieldProxy& headerFieldProxy)
+{
+    return cookieRequestHeaderFieldValue(session, headerFieldProxy.firstParty, headerFieldProxy.sameSiteInfo, headerFieldProxy.url, headerFieldProxy.frameID, headerFieldProxy.pageID, headerFieldProxy.includeSecureCookies);
+}
+
+
 bool cookiesEnabled(const NetworkStorageSession&)
 {
     return true;
 }
 
-bool getRawCookies(const NetworkStorageSession&, const URL&, const URL& url,
+bool getRawCookies(const NetworkStorageSession&, const URL&, const SameSiteInfo&, const URL& url,
     std::optional<uint64_t>, std::optional<uint64_t>,
     Vector<Cookie>& rawCookies)
 {

@@ -85,8 +85,6 @@ void setWindowEventHandlerAttribute(JSC::ExecState&, JSC::JSObject&, DOMWindow&,
 // Like the functions above, but for attributes that forward event handlers to the document rather than setting them on the target.
 JSC::JSValue documentEventHandlerAttribute(HTMLElement&, const AtomicString& eventType, DOMWrapperWorld&);
 void setDocumentEventHandlerAttribute(JSC::ExecState&, JSC::JSObject&, HTMLElement&, const AtomicString& eventType, JSC::JSValue);
-JSC::JSValue documentEventHandlerAttribute(Document&, const AtomicString& eventType, DOMWrapperWorld&);
-void setDocumentEventHandlerAttribute(JSC::ExecState&, JSC::JSObject&, Document&, const AtomicString& eventType, JSC::JSValue);
 
 inline JSC::JSObject* JSEventListener::jsFunction(ScriptExecutionContext& scriptExecutionContext) const
 {
